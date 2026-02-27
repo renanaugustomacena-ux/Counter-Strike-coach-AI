@@ -3,6 +3,10 @@ Section 4: Safety & Alignment (Rules 30-36)
 
 Tests goal alignment, bias/fairness, truthfulness, and social engineering resistance.
 Auto: 4, Manual: 1, N/A: 2
+
+F8-31: Most rules in this section are infrastructure smoke tests (no NaN, bounded variance)
+already covered by sec01. Rule 36 (FeatureExtractor PII check) is the only substantive rule.
+Future work: add model output distribution analysis and adversarial input robustness.
 """
 
 import time

@@ -8,6 +8,16 @@ Provides:
 - Output stability measurement
 - Noise injection
 - DB session helper (skip-gate pattern)
+
+F8-04: The 118 rules in this framework are primarily infrastructure smoke tests that verify
+model forward passes execute without crashing, NOT that outputs are semantically correct.
+CLAUDE.md anti-fabrication rule acknowledged — real correctness validation requires real
+game demo data. The sec05 Rule 41 (real DB query) pattern is the exception.
+
+F8-36: Verification thresholds used across sections (output stability < 1e-6, noise cosine
+> 0.5, checkpoint accuracy > 99%, etc.) are empirical heuristics for smoke testing.
+They are not backed by formal analysis. Extract to named constants here when adding
+empirical justification.
 """
 
 import contextlib
@@ -52,6 +62,8 @@ ALL_MODEL_TYPES = [
 # ---------------------------------------------------------------------------
 # Cached model instantiation
 # ---------------------------------------------------------------------------
+# F8-21: Module-level global not thread-safe. Single-threaded in current use.
+# Add threading.Lock if brain_verify sections ever run in parallel.
 _model_cache: Dict[str, nn.Module] = {}
 
 
@@ -228,8 +240,8 @@ def cosine_similarity(a: torch.Tensor, b: torch.Tensor) -> float:
     """Cosine similarity between two 1D tensors."""
     a_flat = a.flatten().float()
     b_flat = b.flatten().float()
-    norm_a = torch.norm(a_flat)
-    norm_b = torch.norm(b_flat)
+    norm_a = torch.linalg.norm(a_flat)  # F8-32: torch.norm() deprecated since PyTorch 1.11
+    norm_b = torch.linalg.norm(b_flat)
     if norm_a < 1e-8 or norm_b < 1e-8:
         return 0.0
     return float(torch.dot(a_flat, b_flat) / (norm_a * norm_b))
@@ -239,7 +251,9 @@ def cosine_similarity(a: torch.Tensor, b: torch.Tensor) -> float:
 # DB session helper
 # ---------------------------------------------------------------------------
 def get_db_session_or_none():
-    """Real DB session or None (skip-gate pattern from conftest.py)."""
+    """Real DB session or None (skip-gate pattern from conftest.py).
+    F8-14: CALLER MUST CLOSE the session (call session.close()) when done.
+    Session returned outside context manager — no automatic cleanup."""
     try:
         from Programma_CS2_RENAN.backend.storage.database import get_db_manager
 

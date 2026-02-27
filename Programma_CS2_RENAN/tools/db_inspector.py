@@ -240,7 +240,7 @@ def collect_splits():
             for split, cnt in rows:
                 result["splits"][split or "null"] = cnt
         except Exception as e:
-            _ = e  # Intentionally suppressed
+            logger.debug("collect_splits query suppressed: %s", e)  # F8-23/F8-24: log instead of silent suppress
 
         # Pro vs user
         try:
@@ -251,7 +251,7 @@ def collect_splits():
                 key = "pro" if is_pro else "user"
                 result["pro_user"][key] = cnt
         except Exception as e:
-            _ = e  # Intentionally suppressed
+            logger.debug("collect_splits pro/user query suppressed: %s", e)  # F8-23/F8-24
 
     return result
 
@@ -312,6 +312,8 @@ def collect_table_schema(table_name):
     from sqlalchemy import text
 
     with db.get_session() as s:
+        # F8-12: table_name from SQLAlchemy introspection (not user input) — injection risk minimal.
+        # Bracket escaping is SQLite-specific; use sqlalchemy.sql.quoted_name for portability.
         row = s.exec(text(f"SELECT COUNT(*) FROM [{table_name}]")).first()
         row_count = row[0] if row else 0
 

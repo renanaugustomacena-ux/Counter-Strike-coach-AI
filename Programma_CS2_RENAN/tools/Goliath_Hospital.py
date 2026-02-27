@@ -33,7 +33,7 @@ import sys
 import time
 from collections import defaultdict
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -42,6 +42,10 @@ from typing import Any, Dict, List, Optional
 from _infra import path_stabilize
 
 PROJECT_ROOT, SOURCE_ROOT = path_stabilize()
+
+# F8-19: Goliath Hospital uses print() for console output rather than structured logging.
+# As a diagnostic tool (not production service), this is acceptable — all findings are
+# captured in DiagnosticFinding objects with severity levels.
 
 # =============================================================================
 # CLINICAL CONSTANTS & CONFIGURATION
@@ -1266,10 +1270,11 @@ class GoliathHospital:
             consecutive_comments = 0
             for i, line in enumerate(lines, 1):
                 stripped = line.strip()
-                if stripped.startswith("#") and not stripped.startswith("# "):
-                    # Looks like commented code
-                    if re.match(r"#\s*(def |class |import |from |if |for |while )", stripped):
-                        consecutive_comments += 1
+                # F8-15: Detect both `#def` and `# def` patterns (with or without space)
+                if stripped.startswith("#") and re.match(
+                    r"#\s*(def |class |import |from |if |for |while |return )", stripped
+                ):
+                    consecutive_comments += 1
                 else:
                     if consecutive_comments >= 5:
                         findings.append(
@@ -1366,6 +1371,9 @@ class GoliathHospital:
 
     def _check_orphan_files(self, findings: List):
         """Check for Python files that aren't imported anywhere."""
+        # F8-06: Regex-based import scan matches "import" in comments and strings.
+        # For accurate orphan detection use dead_code_detector.py (AST-based).
+        # This department provides a heuristic estimate only.
         all_imports = set()
 
         # Collect all imports
@@ -1385,7 +1393,7 @@ class GoliathHospital:
                 continue
             if "test" in rel_path.lower():
                 continue
-            if "tools/" in rel_path:
+            if rel_path.startswith("tools/"):   # F8-22: startswith prevents 'internal_tools/' false match
                 continue  # Tools are standalone
 
             # Convert path to import format
@@ -1430,12 +1438,14 @@ class GoliathHospital:
         Console.department("PEDIATRICS", "PENDING")
         print("  Identifying recently modified files that need attention...")
 
-        now = datetime.now()
+        now = datetime.now(timezone.utc)  # F8-13/F8-37: timezone-aware UTC datetime
         recent_files = []
         new_files = []
 
         for rel_path, health in self.report.file_health.items():
             mod_time = datetime.fromisoformat(health.last_modified)
+            if mod_time.tzinfo is None:
+                mod_time = mod_time.replace(tzinfo=timezone.utc)
             age = now - mod_time
 
             if age < timedelta(days=1):
@@ -1661,6 +1671,8 @@ class GoliathHospital:
         print("  Checking dependency health and package versions...")
 
         # Critical dependencies
+        # F8-29: hflayers is a root-level custom implementation (hflayers.py), not pip-installed.
+        # Cannot check via importlib.import_module — Pharmacy verifies pip-installable deps only.
         critical_deps = [
             ("torch", "PyTorch"),
             ("sqlmodel", "SQLModel"),
@@ -1997,6 +2009,10 @@ class GoliathHospital:
                 if f.severity in ("CRITICAL", "ERROR", "WARNING"):
                     Console.finding(f, verbose=True)
 
+    # F8-05: Health rating thresholds — adjust if project error/warning baseline changes
+    _HEALTH_ERROR_THRESHOLD = 3   # >N errors → ERROR rating
+    _HEALTH_WARN_THRESHOLD = 10   # >N warnings → WARNING rating (when errors == 0)
+
     def _calculate_overall_health(self):
         """Calculate overall project health based on all departments."""
         all_critical = sum(d.critical_count for d in self.report.departments.values())
@@ -2005,9 +2021,9 @@ class GoliathHospital:
 
         if all_critical > 0:
             self.report.overall_health = "CRITICAL"
-        elif all_errors > 3:
+        elif all_errors > self._HEALTH_ERROR_THRESHOLD:
             self.report.overall_health = "ERROR"
-        elif all_errors > 0 or all_warnings > 10:
+        elif all_errors > 0 or all_warnings > self._HEALTH_WARN_THRESHOLD:
             self.report.overall_health = "WARNING"
         else:
             self.report.overall_health = "HEALTHY"
@@ -2064,7 +2080,7 @@ class GoliathHospital:
         report_dir = self.project_root / "reports"
         report_dir.mkdir(exist_ok=True)
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")  # F8-38: UTC for unambiguous filenames
         report_path = report_dir / f"goliath_hospital_{timestamp}.json"
 
         # Convert to dict
@@ -2109,6 +2125,8 @@ class GoliathHospital:
 
 def main():
     """Main entry point for Goliath Hospital."""
+    # F8-33: argparse imported inside main() as lazy import. Avoids loading when Goliath_Hospital
+    # is imported as a module by goliath.py root orchestrator. Acceptable pattern.
     import argparse
 
     parser = argparse.ArgumentParser(
@@ -2143,6 +2161,9 @@ def main():
 
     args = parser.parse_args()
 
+    # F8-30: --department flag is defined but not wired to selective execution.
+    # Per-department dispatch is implemented in goliath.py root orchestrator.
+    # To run a single department standalone, use: python goliath.py --dept <name>
     target = Path(args.target) if args.target else SOURCE_ROOT
     hospital = GoliathHospital(target_dir=target, verbose=not args.quiet)
 

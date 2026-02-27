@@ -287,6 +287,8 @@ def collect_reverse_deps(p: Path) -> list:
         except Exception:
             continue
 
+        # F8-11: Substring matching creates false reverse deps from comments/strings.
+        # Use dead_code_detector.py for accurate AST-based import analysis.
         for pattern in patterns:
             if pattern in content:
                 try:
@@ -340,6 +342,8 @@ def collect_git_history(p: Path) -> list:
     except ValueError:
         return []
 
+    # F8-34: subprocess.run() uses list args (shell=False by default) with timeout=10.
+    # Path comes from relative_to(PROJECT_ROOT) — no injection risk. Pattern is correct.
     result = subprocess.run(
         ["git", "log", "-5", "--format=%h %ad %s", "--date=short", "--", str(rel)],
         capture_output=True,
@@ -538,7 +542,7 @@ def main():
         target_path = resolve_target(args.target)
     except FileNotFoundError as e:
         print(f"ERROR: {e}", file=sys.stderr)
-        return 0
+        return 1  # F8-25: signal failure to calling scripts
 
     file_info = _safe(lambda: collect_file_info(target_path), {"error": "cannot read file"})
     structure = _safe(lambda: collect_structure(target_path), {"error": "cannot parse"})

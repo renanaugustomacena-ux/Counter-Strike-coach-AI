@@ -17,7 +17,7 @@ Usage:
 import argparse
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from _infra import PROJECT_ROOT, SOURCE_ROOT, path_stabilize
@@ -52,12 +52,12 @@ def cmd_personalize(args):
     steam_key = input("Steam Web API Key (leave blank to skip): ").strip()
     if steam_key:
         save_setting("STEAM_API_KEY", steam_key)
-        print(f"  Saved STEAM_API_KEY = ***{steam_key[-4:]}")
+        print(f"  Saved STEAM_API_KEY = ***")  # F8-10: no key fragment — avoids partial credential exposure
 
     faceit_key = input("FACEIT API Key (leave blank to skip): ").strip()
     if faceit_key:
         save_setting("FACEIT_API_KEY", faceit_key)
-        print(f"  Saved FACEIT_API_KEY = ***{faceit_key[-4:]}")
+        print(f"  Saved FACEIT_API_KEY = ***")  # F8-10: no key fragment
 
     refresh_settings()
     print("\nPersonalization complete.")
@@ -151,7 +151,7 @@ def cmd_manual_entry(args):
             anomaly_score=0.0,
             sample_weight=1.0,
             is_pro=True,
-            processed_at=datetime.utcnow(),
+            processed_at=datetime.now(timezone.utc),  # F8-08: timezone-aware UTC datetime
         )
 
         with db.get_session() as s:
@@ -166,46 +166,16 @@ def cmd_manual_entry(args):
 
 
 def cmd_seed_pro(args):
-    """Seed database with sample pro player baselines."""
-    print("\n=== SEEDING PRO PLAYER DATA ===\n")
+    """DISABLED — F8-01: Hardcoded synthetic pro stats violate CLAUDE.md anti-fabrication rule.
 
-    from Programma_CS2_RENAN.backend.storage.database import get_db_manager
-    from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
-
-    db = get_db_manager()
-
-    pros = [
-        {"name": "s1mple", "rating": 1.30, "adr": 87.5, "kast": 75.2, "hs": 42.0, "kd": 1.45},
-        {"name": "ZywOo", "rating": 1.28, "adr": 85.0, "kast": 74.0, "hs": 44.0, "kd": 1.40},
-    ]
-
-    for pro in pros:
-        entry = PlayerMatchStats(
-            player_name=pro["name"],
-            demo_name=f"seed_pro_{datetime.now().strftime('%Y%m%d')}",
-            avg_kills=25.0,
-            avg_deaths=17.0,
-            avg_adr=pro["adr"],
-            avg_hs=pro["hs"],
-            avg_kast=pro["kast"],
-            kill_std=3.0,
-            adr_std=10.0,
-            kd_ratio=pro["kd"],
-            impact_rounds=0.0,
-            accuracy=0.55,
-            econ_rating=1.1,
-            rating=pro["rating"],
-            anomaly_score=0.0,
-            sample_weight=1.0,
-            is_pro=True,
-            processed_at=datetime.utcnow(),
-        )
-        with db.get_session() as s:
-            s.add(entry)
-            s.commit()
-        print(f"  Seeded: {pro['name']} (rating={pro['rating']})")
-
-    print(f"\n{len(pros)} pro players seeded.")
+    The fabricated stats (e.g. s1mple rating=1.30, ADR=87.5) contaminate the pro baseline
+    used by the coaching system, producing inaccurate advice based on invented numbers.
+    Use the HLTV ingestion pipeline for real pro data instead.
+    """
+    # F8-01: Refuse to inject fabricated pro stats into the database.
+    print("\n[ERROR] seed-pro is disabled.")
+    print("        Hardcoded synthetic stats violate CLAUDE.md anti-fabrication rule.")
+    print("        Use the HLTV ingestion pipeline for real pro data.\n")
 
 
 # =============================================================================
@@ -318,8 +288,10 @@ def cmd_heartbeat(args):
 
             pid = int(pid_f.read_text().strip())
             print(f"\n  HLTV Daemon: PID {pid} ({'alive' if psutil.pid_exists(pid) else 'stale'})")
-        except Exception:
-            print(f"\n  HLTV Daemon: PID file exists")
+        except (psutil.NoSuchProcess, ProcessLookupError):
+            print(f"\n  HLTV Daemon: PID file exists but process is dead (stale lock)")  # F8-35
+        except Exception as e:
+            print(f"\n  HLTV Daemon: could not read PID — {e}")
     else:
         print(f"\n  HLTV Daemon: not running")
 

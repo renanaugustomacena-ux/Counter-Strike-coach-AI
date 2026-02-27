@@ -126,6 +126,8 @@ class HeadlessValidator(BaseValidator):
 
             import Programma_CS2_RENAN.backend.storage.db_models  # noqa: F401 — registers tables
 
+            # F8-07: Schema validation uses in-memory SQLite for speed. Does not test WAL mode,
+            # busy timeouts, or concurrent access. Full production DB validation: backend_validator.py.
             engine = create_engine("sqlite:///:memory:")
             SQLModel.metadata.create_all(engine)
 

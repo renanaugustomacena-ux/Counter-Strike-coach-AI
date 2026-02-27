@@ -26,9 +26,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+# F8-27: PROJECT_ROOT/SOURCE_ROOT already set by _infra import side effect — no redundant call needed
 from _infra import PROJECT_ROOT, SOURCE_ROOT, BaseValidator, Severity, path_stabilize
-
-PROJECT_ROOT, SOURCE_ROOT = path_stabilize()
 
 from Programma_CS2_RENAN.tools.brain_verification import (
     sec01_foundational_intelligence,
@@ -76,6 +75,9 @@ SECTIONS = [
     (14, "Intelligence Benchmarking", sec14_intelligence_benchmarking),
     (15, "Philosophical Soundness", sec15_philosophical_soundness),
 ]
+# F8-17: sec16_decision_framework intentionally excluded from SECTIONS list.
+# It aggregates all sections and always runs after the main loop.
+# --section 16 CLI flag is a no-op; decision framework always executes.
 
 # Verdict colors
 VERDICT_COLORS = {
@@ -153,7 +155,7 @@ class BrainVerifier(BaseValidator):
                         self.check(
                             f"S{sec_id}",
                             f"Rule {rule.rule_id}: {rule.name}",
-                            False,
+                            True,           # F8-02: WARN is not a FAIL — preserves exit code 0
                             error=rule.details,
                             severity=Severity.WARNING,
                         )

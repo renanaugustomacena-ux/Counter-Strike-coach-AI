@@ -17,7 +17,10 @@ from pathlib import Path
 from _infra import SOURCE_ROOT, BaseValidator, Severity
 
 # Directories excluded from orphan detection (standalone entry points, tools, tests)
-_EXCLUDED_DIRS = {"tools", "tests", "__pycache__", "brain_verification"}
+_EXCLUDED_DIRS = {
+    "tools", "tests", "__pycache__", "brain_verification",
+    "apps",   # F8-18: KivyMD screens loaded dynamically by MDScreenManager, not via Python import
+}
 _EXCLUDED_FILES = {"__init__.py", "conftest.py", "setup.py"}
 
 
@@ -58,9 +61,9 @@ class DeadCodeDetector(BaseValidator):
             if not module_name:
                 continue
 
-            # A module is "imported" if any prefix of its dotted path appears
+            # A module is "imported" if an exact match or dot-delimited prefix exists
             is_imported = any(
-                module_name.startswith(imp) or imp.startswith(module_name)
+                imp == module_name or imp.startswith(module_name + ".")  # F8-03: dot-delimited boundary
                 for imp in imported_modules
             )
 
@@ -98,8 +101,9 @@ class DeadCodeDetector(BaseValidator):
             self.check("Stale Tests", "Test directory exists", False, severity=Severity.WARNING)
             return
 
+        test_files = list(test_dir.rglob("test_*.py"))  # F8-26: capture once to avoid redundant rglob
         stale_count = 0
-        for tf in sorted(test_dir.rglob("test_*.py")):
+        for tf in sorted(test_files):
             imports = self._extract_imports(tf)
             for imp in imports:
                 if not imp.startswith("Programma_CS2_RENAN"):
@@ -126,7 +130,7 @@ class DeadCodeDetector(BaseValidator):
                 "Stale Tests",
                 "No stale test imports found",
                 True,
-                detail=f"Scanned {len(list(test_dir.rglob('test_*.py')))} test files",
+                detail=f"Scanned {len(test_files)} test files",
             )
 
     # ------------------------------------------------------------------

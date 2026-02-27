@@ -1,6 +1,13 @@
+"""
+Ultimate ML Coach Debugger
+===========================
+F8-28: Neural belief state and decision logic falsification tool.
+Checks fidelity thresholds, stability probes, and insight traceability
+against real database records.
+"""
+
 import sys
 
-import numpy as np
 import torch
 from _infra import path_stabilize
 from sqlmodel import func, select
@@ -15,6 +22,10 @@ from Programma_CS2_RENAN.backend.storage.db_models import (
     PlayerMatchStats,
     PlayerTickState,
 )
+
+# F8-20: Variance threshold for neural belief stability. 0.5 is a heuristic upper bound
+# based on expected normalized output magnitude. Adjust if model architecture changes.
+_BELIEF_STABILITY_VARIANCE_THRESHOLD = 0.5
 
 
 class UltimateMLDebugger:
@@ -52,7 +63,7 @@ class UltimateMLDebugger:
                 )
             ).one()
 
-        _check_fidelity_thresholds(self, ticks, matches)
+        self._check_fidelity_thresholds(ticks, matches)  # F8-09: proper instance method call
 
     def _audit_belief_stability(self, player_name):
         print("[2/3] Probing Neural Belief State Stability...")
@@ -64,7 +75,7 @@ class UltimateMLDebugger:
         if not match_data:
             return self.report.append(("Belief_Stability", "FAIL", "No sequential data"))
 
-        _execute_stability_probe(self, match_data)
+        self._execute_stability_probe(match_data)  # F8-09: proper instance method call
 
     def _audit_decision_logic(self, player_name):
         print("[3/3] Probing Decision Quality Delta (DQD)...")
@@ -73,7 +84,7 @@ class UltimateMLDebugger:
                 select(CoachingInsight).where(CoachingInsight.player_name == player_name)
             ).all()
 
-        _verify_insight_traceability(self, insights)
+        self._verify_insight_traceability(insights)  # F8-09: proper instance method call
 
     def _generate_clinical_summary(self):
         print("\n" + "=" * 60 + "\nCLINICAL DIAGNOSTIC REPORT\n" + "=" * 60)
@@ -85,43 +96,41 @@ class UltimateMLDebugger:
         print("\n" + ("BRAIN STATE: HEALTHY" if all_pass else "BRAIN STATE: PATHOLOGICAL") + "\n")
         return 0 if all_pass else 1
 
+    # F8-09: Converted from module-level functions to proper instance methods
+    def _check_fidelity_thresholds(self, ticks, matches):
+        status = "PASS" if ticks > 0 and matches > 0 else "FAIL"
+        detail = f"Ticks: {ticks}, Matches: {matches}"
+        self.report.append(("KB_Fidelity", status, detail))
 
-def _check_fidelity_thresholds(dbg, ticks, matches):
-    status = "PASS" if ticks > 0 and matches > 0 else "FAIL"
-    detail = f"Ticks: {ticks}, Matches: {matches}"
-    dbg.report.append(("KB_Fidelity", status, detail))
+    def _execute_stability_probe(self, data):
+        try:
+            tensors = self.recon.reconstruct_belief_tensors(data)
+            out = self.model(tensors["metadata"])
+            variance = torch.var(out).item()
+            status = "PASS" if variance < _BELIEF_STABILITY_VARIANCE_THRESHOLD else "FAIL"
+            self.report.append(("Neural_Stability", status, f"Var: {variance:.6f}"))
+        except Exception as e:
+            self.report.append(("Neural_Stability", "FAIL", str(e)))
 
+    def _verify_insight_traceability(self, insights):
+        if not insights:
+            return self.report.append(("DQD_Traceability", "WARN", "No insights generated yet"))
 
-def _execute_stability_probe(dbg, data):
-    try:
-        tensors = dbg.recon.reconstruct_belief_tensors(data)
-        out = dbg.model(tensors["metadata"])
-        variance = torch.var(out).item()
-        status = "PASS" if variance < 0.5 else "FAIL"
-        dbg.report.append(("Neural_Stability", status, f"Var: {variance:.6f}"))
-    except Exception as e:
-        dbg.report.append(("Neural_Stability", "FAIL", str(e)))
+        # Verify each insight has a traceable demo_name link
+        traceable = 0
+        for ins in insights:
+            if hasattr(ins, "demo_name") and ins.demo_name:
+                traceable += 1
 
-
-def _verify_insight_traceability(dbg, insights):
-    if not insights:
-        return dbg.report.append(("DQD_Traceability", "WARN", "No insights generated yet"))
-
-    # Verify each insight has a traceable demo_name link
-    traceable = 0
-    for ins in insights:
-        if hasattr(ins, "demo_name") and ins.demo_name:
-            traceable += 1
-
-    ratio = traceable / len(insights) if insights else 0
-    status = "PASS" if ratio >= 0.8 else "FAIL"
-    dbg.report.append(
-        (
-            "DQD_Traceability",
-            status,
-            f"Audited {len(insights)} insights, {traceable} traceable ({ratio:.0%})",
+        ratio = traceable / len(insights) if insights else 0
+        status = "PASS" if ratio >= 0.8 else "FAIL"
+        self.report.append(
+            (
+                "DQD_Traceability",
+                status,
+                f"Audited {len(insights)} insights, {traceable} traceable ({ratio:.0%})",
+            )
         )
-    )
 
 
 if __name__ == "__main__":
