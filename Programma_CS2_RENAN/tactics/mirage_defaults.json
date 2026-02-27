@@ -1,0 +1,16 @@
+{
+    "map": "de_mirage",
+    "version": "1.0",
+    "rules": [
+        {
+            "role": "AWPer",
+            "trigger": "round_start",
+            "advice": "Check Mid Nest timing. Professional standard is reaching window by 1:48."
+        },
+        {
+            "role": "Entry Fragger",
+            "trigger": "t_side_exec",
+            "advice": "Prioritize clearing Sandwich and Firebox during A-site execution."
+        }
+    ]
+}

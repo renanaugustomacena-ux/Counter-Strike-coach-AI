@@ -1,0 +1,17 @@
+# Binary Dependencies for Macena CS2 Analyzer
+# Governance: Doctorate-Level Strictness
+
+# Core Parsing Engine
+demoparser2 [platform:windows]
+
+# Multimedia Processing
+ffmpeg [platform:windows]
+
+# Browser Automation & Scraper
+playwright [platform:windows]
+
+# Ecosystem Tools
+npm [platform:windows]
+
+# Knowledge Graph Infrastructure (Future)
+# neo4j [platform:windows]

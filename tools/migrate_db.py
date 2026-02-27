@@ -1,0 +1,223 @@
+import argparse
+import logging
+import os
+import shutil
+import sqlite3
+import sys
+from datetime import datetime
+from pathlib import Path
+from typing import List, Optional, Tuple
+
+# --- Path Stabilization ---
+script_dir = Path(__file__).parent.absolute()
+project_root = script_dir.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+# --- Windows Encoding Fix ---
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+
+# --- Rich & Logging Imports ---
+try:
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.prompt import Confirm
+    from rich.table import Table
+    from rich.theme import Theme
+    from rich.traceback import install as install_rich_traceback
+except ImportError:
+    print("CRITICAL: 'rich' library not found. Please run 'pip install rich'.")
+    sys.exit(1)
+
+# --- Configuration ---
+MTS_THEME = Theme(
+    {
+        "info": "cyan",
+        "warning": "bold yellow",
+        "error": "bold red",
+        "success": "bold green",
+        "db": "bold blue",
+        "path": "underline blue",
+    }
+)
+
+console = Console(theme=MTS_THEME)
+install_rich_traceback(console=console)
+
+
+# --- Logging Setup ---
+def setup_logging(log_dir: Path):
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_file = log_dir / f"db_migration_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+
+    file_handler = logging.FileHandler(log_file, encoding="utf-8")
+    file_handler.setLevel(logging.DEBUG)
+    file_formatter = logging.Formatter(
+        '{"timestamp": "%(asctime)s", "level": "%(levelname)s", "message": "%(message)s"}'
+    )
+    file_handler.setFormatter(file_formatter)
+
+    logger = logging.getLogger("DBMigrator")
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(file_handler)
+    return logger, log_file
+
+
+class IndustrialDatabaseMigrator:
+    # Required schema state for the current version of the ML Brain
+    REQUIRED_COLUMNS = [
+        ("current_epoch", "INTEGER DEFAULT 0"),
+        ("total_epochs", "INTEGER DEFAULT 0"),
+        ("train_loss", "FLOAT DEFAULT 0.0"),
+        ("val_loss", "FLOAT DEFAULT 0.0"),
+        ("eta_seconds", "FLOAT DEFAULT 0.0"),
+    ]
+
+    def __init__(self, force: bool = False):
+        self.project_root = project_root
+        self.force = force
+        self.logger, self.log_file = setup_logging(self.project_root / "logs")
+
+        # Determine real DB path
+        self.db_path = (
+            self.project_root / "Programma_CS2_RENAN" / "backend" / "storage" / "database.db"
+        )
+        self.backup_dir = self.project_root / "backups" / "database"
+
+    def create_backup(self) -> Optional[Path]:
+        """Creates a timestamped backup of the REAL database before migration."""
+        if not self.db_path.exists():
+            return None
+
+        self.backup_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = self.backup_dir / f"database_pre_migration_{timestamp}.db"
+
+        try:
+            shutil.copy2(self.db_path, backup_path)
+            self.logger.info(f"Database backup created at {backup_path}")
+            return backup_path
+        except Exception as e:
+            self.logger.error(f"Backup failed: {e}")
+            raise
+
+    def get_missing_columns(
+        self, conn: sqlite3.Connection, table_name: str
+    ) -> Optional[List[Tuple[str, str]]]:
+        """Audits the existing schema to find columns that need to be added.
+        Returns None on failure (distinguishable from empty list = no missing columns)."""
+        cursor = conn.cursor()
+        try:
+            cursor.execute(f"PRAGMA table_info({table_name})")
+            existing_columns = {row[1] for row in cursor.fetchall()}
+
+            if not existing_columns:
+                return []  # Table might not exist yet
+
+            return [col for col in self.REQUIRED_COLUMNS if col[0] not in existing_columns]
+        except Exception as e:
+            self.logger.error(f"Schema audit failed: {e}")
+            return None
+
+    def migrate(self) -> bool:
+        console.print(
+            Panel.fit(
+                "[bold cyan]MACENA INDUSTRIAL DB MIGRATOR[/bold cyan]\n[dim]Schema Evolution & Data Integrity Guard[/dim]",
+                border_style="blue",
+            )
+        )
+
+        if not self.db_path.exists():
+            console.print(
+                f"[warning]No database found at [path]{self.db_path}[/path]. Initializing fresh DB...[/warning]"
+            )
+            # In a real system, we'd call the initialization script.
+            # For this tool, we only migrate existing ones.
+            return True
+
+        console.print(f"[info]Target Database:[/info] [path]{self.db_path}[/path]")
+
+        # 1. Audit
+        conn = sqlite3.connect(self.db_path)
+        missing = self.get_missing_columns(conn, "coachstate")
+
+        if missing is None:
+            console.print("[error]Schema audit failed. Cannot determine migration plan.[/error]")
+            conn.close()
+            return False
+
+        if not missing:
+            console.print("[success]Schema is already up to date. No migration needed.[/success]")
+            conn.close()
+            return True
+
+        # 2. Display Plan
+        table = Table(title="Migration Plan (Table: coachstate)", border_style="blue")
+        table.add_column("Column Name", style="db")
+        table.add_column("Definition", style="dim")
+        table.add_column("Status", style="warning")
+
+        for col_name, col_def in missing:
+            table.add_row(col_name, col_def, "PENDING")
+
+        console.print(table)
+
+        # 3. Confirmation & Backup
+        if not self.force:
+            if not Confirm.ask("\n[warning]Proceed with database schema modification?[/warning]"):
+                console.print("[info]Migration cancelled.[/info]")
+                conn.close()
+                return False
+
+        try:
+            backup_path = self.create_backup()
+            console.print(f"📦 [success]Backup Created:[/success] [dim]{backup_path.name}[/dim]")
+
+            # 4. Execution
+            cursor = conn.cursor()
+            with console.status("[bold blue]Evolving schema...[/bold blue]"):
+                for col_name, col_def in missing:
+                    self.logger.info(f"Adding column {col_name} to coachstate")
+                    cursor.execute(f"ALTER TABLE coachstate ADD COLUMN {col_name} {col_def}")
+                    console.print(f"  [+] Added: [db]{col_name}[/db]")
+
+                conn.commit()
+
+            console.print(
+                Panel(
+                    "[bold green]MIGRATION SUCCESSFUL[/bold green]\nDatabase schema is now compatible with the current version.",
+                    border_style="green",
+                )
+            )
+            return True
+
+        except Exception as e:
+            console.print(
+                Panel(
+                    f"[bold red]MIGRATION FAILED[/bold red]\nError: {e}\n[info]A backup exists at: {backup_path}[/info]",
+                    border_style="red",
+                )
+            )
+            self.logger.exception("Migration failed during execution.")
+            conn.rollback()
+            return False
+        finally:
+            conn.close()
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Macena Database Migrator (MTS-IS)")
+    parser.add_argument(
+        "-y", "--yes", action="store_true", help="Force migration without confirmation."
+    )
+    args = parser.parse_args()
+
+    migrator = IndustrialDatabaseMigrator(force=args.yes)
+    if not migrator.migrate():
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

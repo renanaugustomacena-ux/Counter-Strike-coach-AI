@@ -1,0 +1,11 @@
+{
+    "player_id": "User_Test_001",
+    "match_id": "match_display_123",
+    "stats": {
+        "kills": 24,
+        "deaths": 12,
+        "headshot_pct": 45.5,
+        "map": "de_mirage"
+    },
+    "timestamp": 1766598146.4699953
+}

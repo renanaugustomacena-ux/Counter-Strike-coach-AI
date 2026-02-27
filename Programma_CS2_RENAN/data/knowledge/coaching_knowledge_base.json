@@ -1,0 +1,86 @@
+{
+  "version": "1.0",
+  "created_at": "2026-01-21T20:57:13.381101",
+  "maps": {
+    "ancient": {
+      "map_name": "ancient",
+      "extracted_at": "2026-01-21T20:57:13.596405",
+      "sections": [],
+      "positions": [],
+      "utility": [],
+      "tactics": [],
+      "callouts": [],
+      "raw_text": "--- Page 4 ---\n⊙\n\n\n--- Page 5 ---\n→\n"
+    },
+    "anubis": {
+      "map_name": "anubis",
+      "extracted_at": "2026-01-21T20:57:13.768279",
+      "sections": [],
+      "positions": [],
+      "utility": [],
+      "tactics": [],
+      "callouts": [],
+      "raw_text": ""
+    },
+    "dust2": {
+      "map_name": "dust2",
+      "extracted_at": "2026-01-21T20:57:14.092590",
+      "sections": [],
+      "positions": [],
+      "utility": [],
+      "tactics": [],
+      "callouts": [],
+      "raw_text": "--- Page 7 ---\n⊙\n∩\n\n\n--- Page 10 ---\n→\n"
+    },
+    "inferno": {
+      "map_name": "inferno",
+      "extracted_at": "2026-01-21T20:57:14.328697",
+      "sections": [],
+      "positions": [],
+      "utility": [],
+      "tactics": [],
+      "callouts": [],
+      "raw_text": "--- Page 6 ---\n⊙\n⊙\n⊙\n⊙\n∩\n\n\n--- Page 8 ---\n→\n"
+    },
+    "mirage": {
+      "map_name": "mirage",
+      "extracted_at": "2026-01-21T20:57:14.478601",
+      "sections": [],
+      "positions": [],
+      "utility": [],
+      "tactics": [],
+      "callouts": [],
+      "raw_text": "--- Page 3 ---\n∇∇\n\n\n--- Page 4 ---\n∇∇\n∇\n→\n"
+    },
+    "nuke": {
+      "map_name": "nuke",
+      "extracted_at": "2026-01-21T20:57:14.634177",
+      "sections": [],
+      "positions": [],
+      "utility": [],
+      "tactics": [],
+      "callouts": [],
+      "raw_text": "--- Page 4 ---\n∇\n∇\n→\n"
+    },
+    "overpass": {
+      "map_name": "overpass",
+      "extracted_at": "2026-01-21T20:57:14.926536",
+      "sections": [],
+      "positions": [],
+      "utility": [],
+      "tactics": [],
+      "callouts": [],
+      "raw_text": "--- Page 4 ---\n→\nκ\nκ\n\n\n--- Page 5 ---\nκ\n\n\n--- Page 6 ---\nκ\n→\n→\n\n\n--- Page 7 ---\n∇\n"
+    },
+    "general": {
+      "map_name": "general",
+      "extracted_at": "2026-01-21T20:57:15.240741",
+      "sections": [],
+      "positions": [],
+      "utility": [],
+      "tactics": [],
+      "callouts": [],
+      "raw_text": ""
+    }
+  }
+}

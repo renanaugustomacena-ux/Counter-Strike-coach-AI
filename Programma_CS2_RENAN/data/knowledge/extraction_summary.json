@@ -1,0 +1,45 @@
+{
+  "total_maps": 8,
+  "maps": [
+    {
+      "name": "ancient",
+      "sections": 0,
+      "text_length": 36
+    },
+    {
+      "name": "anubis",
+      "sections": 0,
+      "text_length": 0
+    },
+    {
+      "name": "dust2",
+      "sections": 0,
+      "text_length": 39
+    },
+    {
+      "name": "inferno",
+      "sections": 0,
+      "text_length": 44
+    },
+    {
+      "name": "mirage",
+      "sections": 0,
+      "text_length": 42
+    },
+    {
+      "name": "nuke",
+      "sections": 0,
+      "text_length": 21
+    },
+    {
+      "name": "overpass",
+      "sections": 0,
+      "text_length": 82
+    },
+    {
+      "name": "general",
+      "sections": 0,
+      "text_length": 0
+    }
+  ]
+}

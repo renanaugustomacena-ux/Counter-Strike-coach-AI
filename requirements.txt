@@ -1,0 +1,22 @@
+kivy>=2.3.0
+kivymd @ https://github.com/kivymd/KivyMD/archive/master.zip
+sqlmodel
+torch
+numpy
+fastapi
+uvicorn
+requests
+sqlalchemy
+psutil
+pydantic
+keyring
+watchdog
+reportlab
+pdfkit
+opencv-python
+pillow
+pymupdf
+pdfplumber
+pypdf
+sentry-sdk>=1.40.0
+pre-commit>=3.5.0

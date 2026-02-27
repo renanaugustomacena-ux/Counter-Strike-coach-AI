@@ -1,0 +1,245 @@
+"""
+Training Orchestrator for RAP Coach Model.
+
+Coordinates all training components:
+- Learning rate scheduling
+- Early stopping
+- EMA weights
+- Progress monitoring
+- Checkpoint management
+
+Usage:
+    from backend.nn.coach_manager import CoachTrainingManager
+    from backend.nn.training_orchestrator import TrainingOrchestrator
+    from backend.nn.training_config import TrainingConfig
+
+    coach_manager = CoachTrainingManager()
+    config = TrainingConfig()
+    orchestrator = TrainingOrchestrator(coach_manager, config)
+
+    orchestrator.run_training()
+"""
+
+import torch
+import torch.optim as optim
+from pathlib import Path
+import sys
+
+from Programma_CS2_RENAN.backend.nn.training_config import TrainingConfig
+from Programma_CS2_RENAN.backend.nn.ema import EMA
+from Programma_CS2_RENAN.backend.nn.early_stopping import EarlyStopping
+from Programma_CS2_RENAN.backend.nn.training_monitor import TrainingMonitor
+from Programma_CS2_RENAN.backend.nn.config import get_device
+from Programma_CS2_RENAN.backend.nn.persistence import save_nn, load_nn
+from Programma_CS2_RENAN.backend.nn.rap_coach.model import RAPCoachModel
+
+class TrainingOrchestrator:
+    """Orchestrates model training with all safety features."""
+
+    def __init__(self, coach_manager, config: TrainingConfig = None):
+        """
+        Args:
+            coach_manager: CoachTrainingManager instance
+            config: TrainingConfig dataclass (uses default if None)
+        """
+        self.coach_manager = coach_manager
+        self.config = config or TrainingConfig()
+
+        # Device setup
+        if self.config.device == "auto":
+            self.device = get_device()
+        else:
+            self.device = self.config.device
+
+        # Initialize model
+        self.model = RAPCoachModel()
+        try:
+            load_nn("rap_coach", self.model)
+            print("Loaded existing checkpoint")
+        except:
+            print("Starting from scratch (no existing checkpoint)")
+        self.model.to(self.device)
+
+        # Optimizer
+        self.optimizer = optim.AdamW(
+            self.model.parameters(),
+            lr=self.config.base_lr,
+            weight_decay=1e-5
+        )
+
+        # Learning rate scheduler
+        self.scheduler = optim.lr_scheduler.CosineAnnealingLR(
+            self.optimizer,
+            T_max=self.config.max_epochs,
+            eta_min=self.config.min_lr
+        )
+
+        # Training components
+        self.ema = EMA(self.model, decay=self.config.ema_decay) if self.config.use_ema else None
+        self.early_stopper = EarlyStopping(
+            patience=self.config.patience,
+            min_delta=self.config.min_delta
+        )
+        self.monitor = TrainingMonitor(self.config.progress_file)
+
+        # Checkpoint directory
+        self.checkpoint_dir = Path(self.config.checkpoint_dir)
+        self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
+
+        # Training state
+        self.global_step = 0
+        self.current_epoch = 0
+
+    def run_training(self):
+        """Main training loop."""
+        print("=" * 60)
+        print("Starting Training Pipeline")
+        print("=" * 60)
+        print(f"Device: {self.device}")
+        print(f"Max Epochs: {self.config.max_epochs}")
+        print(f"Patience: {self.config.patience}")
+        print(f"Base LR: {self.config.base_lr}")
+        print("=" * 60)
+
+        for epoch in range(self.config.max_epochs):
+            self.current_epoch = epoch
+
+            # Train for one epoch
+            train_loss = self._train_epoch()
+
+            # Validate
+            val_loss = self._validate()
+
+            # Log progress
+            current_lr = self.scheduler.get_last_lr()[0]
+            self.monitor.log_epoch(epoch, train_loss, val_loss, current_lr)
+
+            print(f"Epoch {epoch}: train_loss={train_loss:.4f}, val_loss={val_loss:.4f}, lr={current_lr:.6f}")
+
+            # Check early stopping
+            if self.early_stopper(val_loss):
+                print(f"\n🛑 Early stopping triggered at epoch {epoch}")
+                self.monitor.mark_early_stop()
+                break
+
+            # Save checkpoint
+            if epoch % self.config.save_every_n_epochs == 0:
+                self._save_checkpoint(is_best=(val_loss == self.monitor.metrics["best_val_loss"]))
+
+            # Update learning rate
+            self.scheduler.step()
+
+        # Training complete
+        self.monitor.mark_complete()
+        self._save_checkpoint(is_best=True, final=True)
+
+        print("\n" + "=" * 60)
+        print("Training Complete!")
+        print("=" * 60)
+        print(self.monitor.get_summary())
+
+    def _train_epoch(self):
+        """Train for one epoch on training data."""
+        self.model.train()
+        total_loss = 0.0
+        n_batches = 0
+
+        # Fetch training data
+        # Note: RAPCoach processes one match at a time currently
+        train_data = self.coach_manager._fetch_training_data(is_pro=True, split="train")
+
+        if len(train_data) == 0:
+            raise ValueError("No training data found! Run demo ingestion first.")
+
+        for match in train_data:
+            # Process match (this is a simplification - actual training is more complex)
+            # In reality, you'd call the full RAP training pipeline here
+            loss = self._train_on_match(match)
+
+            total_loss += loss
+            n_batches += 1
+
+            # Update EMA
+            if self.ema:
+                self.ema.update()
+
+            self.global_step += 1
+
+            # Log periodically
+            if self.global_step % self.config.log_every_n_steps == 0:
+                print(f"  Step {self.global_step}: loss={loss:.4f}")
+
+        return total_loss / max(n_batches, 1)
+
+    def _train_on_match(self, match):
+        """
+        Train on a single match.
+
+        NOTE: This is a placeholder. In reality, this would call
+        the full RAP training pipeline from coach_manager.
+        """
+        # TODO: Integrate with actual RAP training logic
+        # For now, return a dummy loss
+        return 1.0 / (self.global_step + 1)
+
+    def _validate(self):
+        """Evaluate on validation data."""
+        self.model.eval()
+        total_loss = 0.0
+        n_batches = 0
+
+        # Use EMA weights if available
+        if self.ema:
+            self.ema.apply_shadow()
+
+        val_data = self.coach_manager._fetch_training_data(is_pro=True, split="val")
+
+        with torch.no_grad():
+            for match in val_data:
+                loss = self._validate_on_match(match)
+                total_loss += loss
+                n_batches += 1
+
+        # Restore training weights
+        if self.ema:
+            self.ema.restore()
+
+        return total_loss / max(n_batches, 1) if n_batches > 0 else float('inf')
+
+    def _validate_on_match(self, match):
+        """
+        Validate on a single match.
+
+        NOTE: This is a placeholder. In reality, this would call
+        the validation version of the RAP pipeline.
+        """
+        # TODO: Integrate with actual RAP validation logic
+        return 0.9 / (self.global_step + 1)
+
+    def _save_checkpoint(self, is_best=False, final=False):
+        """Save model checkpoint."""
+        # Save main model
+        save_nn("rap_coach", self.model)
+
+        # Save EMA model if this is best
+        if is_best and self.ema:
+            self.ema.apply_shadow()
+            save_nn("rap_coach_ema", self.model)
+            self.ema.restore()
+
+        if final:
+            print(f"Final checkpoint saved to models/rap_coach.pth")
+        elif is_best:
+            print(f"New best checkpoint (val_loss={self.monitor.metrics['best_val_loss']:.4f})")
+
+# CLI entry point
+if __name__ == "__main__":
+    from Programma_CS2_RENAN.backend.nn.coach_manager import CoachTrainingManager
+
+    print("Initializing Training Orchestrator...")
+
+    coach_manager = CoachTrainingManager()
+    config = TrainingConfig()
+
+    orchestrator = TrainingOrchestrator(coach_manager, config)
+    orchestrator.run_training()

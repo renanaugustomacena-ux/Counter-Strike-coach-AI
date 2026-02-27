@@ -1,0 +1,256 @@
+{
+    "_description": "CS2 Map Spatial Configuration. Update when Valve changes map layouts.",
+    "_source": "Extracted from official Valve resource txt files",
+    "_last_updated": "2026-01-24",
+    "maps": {
+        "de_mirage": {
+            "pos_x": -3230,
+            "pos_y": 1713,
+            "scale": 5.0,
+            "display_name": "Mirage",
+            "landmarks": {
+                "T-Spawn": [
+                    -3200,
+                    -650
+                ],
+                "CT-Spawn": [
+                    1000,
+                    -2350
+                ],
+                "A-Site": [
+                    1030,
+                    -350
+                ],
+                "B-Site": [
+                    -1900,
+                    -300
+                ],
+                "Mid-Window": [
+                    -150,
+                    -750
+                ]
+            }
+        },
+        "de_inferno": {
+            "pos_x": -2087,
+            "pos_y": 3870,
+            "scale": 4.9,
+            "display_name": "Inferno",
+            "landmarks": {
+                "T-Spawn": [
+                    -1200,
+                    200
+                ],
+                "CT-Spawn": [
+                    550,
+                    2700
+                ],
+                "A-Site": [
+                    -600,
+                    1000
+                ],
+                "B-Site": [
+                    200,
+                    2900
+                ]
+            }
+        },
+        "de_dust2": {
+            "pos_x": -2476,
+            "pos_y": 3239,
+            "scale": 4.4,
+            "display_name": "Dust 2",
+            "landmarks": {
+                "T-Spawn": [
+                    -1500,
+                    -1000
+                ],
+                "CT-Spawn": [
+                    50,
+                    2500
+                ],
+                "A-Site": [
+                    1100,
+                    2400
+                ],
+                "B-Site": [
+                    -1500,
+                    2500
+                ],
+                "Mid-Doors": [
+                    0,
+                    0
+                ]
+            }
+        },
+        "de_nuke": {
+            "pos_x": -3453,
+            "pos_y": 2887,
+            "scale": 7.0,
+            "z_cutoff": -495,
+            "level": "upper",
+            "display_name": "Nuke",
+            "multi_level": true,
+            "levels": [
+                "upper",
+                "lower"
+            ],
+            "landmarks": {
+                "T-Spawn": [
+                    -900,
+                    -1100
+                ],
+                "CT-Spawn": [
+                    500,
+                    2500
+                ],
+                "A-Site": [
+                    600,
+                    1000
+                ],
+                "B-Site": [
+                    600,
+                    800
+                ]
+            }
+        },
+        "de_overpass": {
+            "pos_x": -4831,
+            "pos_y": 1781,
+            "scale": 5.2,
+            "display_name": "Overpass",
+            "landmarks": {
+                "T-Spawn": [
+                    -2500,
+                    -2300
+                ],
+                "CT-Spawn": [
+                    -1500,
+                    500
+                ],
+                "A-Site": [
+                    -2100,
+                    200
+                ],
+                "B-Site": [
+                    -1900,
+                    -600
+                ]
+            }
+        },
+        "de_vertigo": {
+            "pos_x": -3168,
+            "pos_y": 1762,
+            "scale": 4.0,
+            "z_cutoff": 11700,
+            "level": "upper",
+            "display_name": "Vertigo",
+            "multi_level": true,
+            "levels": [
+                "upper",
+                "lower"
+            ],
+            "landmarks": {
+                "T-Spawn": [
+                    -1500,
+                    400
+                ],
+                "CT-Spawn": [
+                    -1200,
+                    -600
+                ],
+                "A-Site": [
+                    -700,
+                    -500
+                ],
+                "B-Site": [
+                    -1700,
+                    -450
+                ]
+            }
+        },
+        "de_ancient": {
+            "pos_x": -2953,
+            "pos_y": 2164,
+            "scale": 5.0,
+            "display_name": "Ancient",
+            "landmarks": {
+                "T-Spawn": [
+                    -300,
+                    -1800
+                ],
+                "CT-Spawn": [
+                    -300,
+                    1500
+                ],
+                "A-Site": [
+                    -1500,
+                    700
+                ],
+                "B-Site": [
+                    700,
+                    900
+                ]
+            }
+        },
+        "de_anubis": {
+            "pos_x": -2796,
+            "pos_y": 3328,
+            "scale": 5.22,
+            "display_name": "Anubis",
+            "landmarks": {
+                "T-Spawn": [
+                    -800,
+                    -500
+                ],
+                "CT-Spawn": [
+                    0,
+                    2300
+                ],
+                "A-Site": [
+                    -1300,
+                    1400
+                ],
+                "B-Site": [
+                    800,
+                    2100
+                ]
+            }
+        },
+        "de_train": {
+            "pos_x": -2477,
+            "pos_y": 2392,
+            "scale": 4.7,
+            "display_name": "Train",
+            "landmarks": {
+                "T-Spawn": [
+                    -1400,
+                    -600
+                ],
+                "CT-Spawn": [
+                    100,
+                    1200
+                ],
+                "A-Site": [
+                    -400,
+                    1100
+                ],
+                "B-Site": [
+                    -200,
+                    -100
+                ]
+            }
+        }
+    },
+    "competitive_pool": [
+        "de_nuke",
+        "de_inferno",
+        "de_mirage",
+        "de_dust2",
+        "de_ancient",
+        "de_overpass",
+        "de_vertigo",
+        "de_anubis",
+        "de_train"
+    ]
+}

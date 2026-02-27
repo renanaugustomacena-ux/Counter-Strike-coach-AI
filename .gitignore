@@ -1,0 +1,77 @@
+# Environments
+venv/
+venv_win/
+__pycache__/
+*.pyc
+.pytest_cache/
+.agent/
+.claude/
+.gemini/
+.vscode/
+.vs/
+.idea/
+
+# Distribution / Build
+dist/
+build/
+*.spec
+*.zip
+*.tar.gz
+
+# Logs
+*.log
+logs/
+
+# Data & Cache
+*.dem
+*.mcn
+*.sqlite3-journal
+*.db-wal
+*.db-shm
+*.corrupted_backup
+
+# All SQLite databases (user-specific, binary, regenerable)
+*.db
+**/match_data/*.db
+
+# Large data files (external datasets, downloadable separately)
+Programma_CS2_RENAN/data/external/*.csv
+
+# External libraries (JDK, etc. — install via setup script)
+external_libs/jdk17/
+external_libs/*.tar.gz
+
+# User settings (machine-specific paths and preferences)
+user_settings.json
+
+# Model checkpoints (binary, regenerable via training)
+*.pt
+
+# OS generated
+nul
+desktop.ini
+thumbs.db
+.DS_Store
+
+# External analysis (third-party reference repositories)
+external_analysis/
+
+# External data paths (machine-specific symlinks/junctions)
+D:/
+D:\\
+
+# TensorBoard logs (regenerable via training)
+runs/
+
+# Media recordings
+*.gif
+*.mp4
+
+# Temporary test scripts
+_test_ingest.py
+
+# Secrets
+.env
+.env.*
+.secret_master.key
+gha-creds-*.json

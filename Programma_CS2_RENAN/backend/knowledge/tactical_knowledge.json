@@ -1,0 +1,124 @@
+{
+    "knowledge": [
+        {
+            "title": "Mirage T-side: Mid control for ADR boost",
+            "description": "Pro teams average 15% higher ADR by taking mid control in first 30 seconds. Use connector smoke, window flash, and top mid molly to secure control. This creates space for A/B splits and isolates CT rotations.",
+            "category": "positioning",
+            "situation": "T-side, low ADR, need map control",
+            "map_name": "de_mirage",
+            "pro_example": "Team Liquid vs NAVI - IEM Katowice 2024 (avg 92 ADR with mid control)"
+        },
+        {
+            "title": "Dust2 A Long: Crossfire positioning",
+            "description": "CT setup: One player pit, one player site. Pit player holds long doors, site player trades from car/default. Avoid both players being on site - creates easy multi-frags for T's.",
+            "category": "positioning",
+            "situation": "CT-side defense, A site",
+            "map_name": "de_dust2",
+            "pro_example": "FaZe Clan defensive setups - 78% A hold rate"
+        },
+        {
+            "title": "Economy: Force buy after pistol loss",
+            "description": "If you lose pistol + anti-eco (0-2), force buy round 3 with SMGs/armor. Goal: Deal $2000+ utility damage to delay T execute. Even if you lose, you reset their economy and get better guns round 4.",
+            "category": "economy",
+            "situation": "Lost first two rounds, economy decision",
+            "map_name": null,
+            "pro_example": "G2 Esports economy playbook - 65% round 3 force success rate"
+        },
+        {
+            "title": "Utility: Mirage A execute standard",
+            "description": "Smoke CT, smoke jungle, molly stairs, flash stairs x2. Execute at 1:15 remaining. CT smoke cuts rotations, jungle smoke isolates site, molly clears default. Coordinate flashes for entry fraggers.",
+            "category": "utility",
+            "situation": "T-side A execute, need site entry",
+            "map_name": "de_mirage",
+            "pro_example": "Vitality A execute - 72% plant rate with full utility"
+        },
+        {
+            "title": "Aim: Crosshair placement on angles",
+            "description": "Keep crosshair at head level, pre-aimed at common angles. On Mirage mid, pre-aim window, then connector, then top mid. Reduce reaction time by 200ms with proper pre-aim. Practice in deathmatch.",
+            "category": "aim",
+            "situation": "Low headshot percentage, slow reactions",
+            "map_name": null,
+            "pro_example": "s1mple crosshair placement analysis - 68% HS rate"
+        },
+        {
+            "title": "Inferno: Banana control importance",
+            "description": "T-side: Take banana control early (first 45s). Use car smoke, CT smoke, and sandbags molly. Banana control gives B split option and forces CT utility dump. Denying banana control loses 30% of round win rate.",
+            "category": "positioning",
+            "situation": "T-side map control, low round win rate",
+            "map_name": "de_inferno",
+            "pro_example": "Astralis banana control - 85% B execute success with control"
+        },
+        {
+            "title": "Retake: Trade kills over survival",
+            "description": "In retakes, prioritize trading your teammate's death over staying alive. 2v2 retake with trade = 50% win rate. 1v2 retake after no trade = 15% win rate. Use utility to create trade opportunities.",
+            "category": "positioning",
+            "situation": "CT retake scenarios, low clutch rate",
+            "map_name": null,
+            "pro_example": "NiKo retake fundamentals - 78% trade rate in retakes"
+        },
+        {
+            "title": "Overpass: B site utility setup",
+            "description": "CT setup: Molly barrels at round start (delays T push 15s). One player heaven, one player site. Heaven player throws pillar smoke on execute. Site player holds close angles with flashbang support.",
+            "category": "utility",
+            "situation": "CT-side B defense, getting rushed",
+            "map_name": "de_overpass",
+            "pro_example": "ENCE B site defense - 68% hold rate with molly delay"
+        },
+        {
+            "title": "Pistol round: Armor vs utility decision",
+            "description": "T-side pistol: Buy armor if playing aggressive (mid rush, A rush). Buy utility if playing default (smokes/flashes for late execute). Armor increases duel win rate by 25%, utility increases plant rate by 30%.",
+            "category": "economy",
+            "situation": "Pistol round buy decision",
+            "map_name": null,
+            "pro_example": "Pro meta: 60% armor buys on aggressive maps (Dust2, Mirage)"
+        },
+        {
+            "title": "Ancient: Mid control with AWP",
+            "description": "CT AWP mid: Hold from donut or elbow. Deny T mid control to prevent A/B information. If T's smoke mid, fall back to site and hold retake angles. AWP mid control increases round win rate by 18%.",
+            "category": "positioning",
+            "situation": "CT-side AWP positioning, mid control",
+            "map_name": "de_ancient",
+            "pro_example": "ZywOo Ancient AWP - 2.1 kills per round from mid"
+        },
+        {
+            "title": "Communication: Damage callouts",
+            "description": "Always call damage dealt ('85 in 2' means 85 damage, hit 2 times). Helps teammates know if enemy is low HP for aggressive plays. Include location and weapon if possible ('85 in 2, long, AK').",
+            "category": "positioning",
+            "situation": "Team coordination, lack of information",
+            "map_name": null,
+            "pro_example": "IGL best practice - damage callouts increase team frag rate by 12%"
+        },
+        {
+            "title": "Nuke: Ramp control for outside access",
+            "description": "T-side: Take ramp control early to enable outside pushes. Use ramp smoke, red smoke, and lobby flash. Ramp control opens 3 site hit options (A, B, outside). Without ramp, forced into predictable A main hits.",
+            "category": "positioning",
+            "situation": "T-side map control, predictable executes",
+            "map_name": "de_nuke",
+            "pro_example": "Heroic Nuke T-side - 70% round win with ramp control"
+        },
+        {
+            "title": "Vertigo: Mid control for information",
+            "description": "CT-side: One player mid (stairs or ramp) for early info. Mid player calls T movement (A or B) then rotates. Mid control gives 10-15s rotation advantage. If T's take mid, fall back and retake with utility.",
+            "category": "positioning",
+            "situation": "CT-side information gathering",
+            "map_name": "de_vertigo",
+            "pro_example": "Vitality Vertigo CT - 82% correct rotation prediction with mid info"
+        },
+        {
+            "title": "Aim: Spray control practice",
+            "description": "Practice first 10 bullets of AK/M4 spray pattern daily. 90% of spray kills happen in first 10 bullets. Focus on pulling down + slight left compensation. Use workshop maps: Recoil Master, Aim Botz.",
+            "category": "aim",
+            "situation": "Low spray accuracy, losing medium-range duels",
+            "map_name": null,
+            "pro_example": "NiKo spray control - 85% accuracy in first 10 bullets"
+        },
+        {
+            "title": "Anubis: A main default setup",
+            "description": "CT setup: One player heaven (holds main), one player site (holds connector). Heaven player uses one-way smoke for advantageous angle. Site player holds close with molly for default plant denial.",
+            "category": "positioning",
+            "situation": "CT-side A defense, new map",
+            "map_name": "de_anubis",
+            "pro_example": "FaZe Anubis A defense - 74% hold rate with heaven one-way"
+        }
+    ]
+}

@@ -1,0 +1,13 @@
+{
+    "hashes": {
+        "Programma_CS2_RENAN/main.py": "fb9019dfb5f6441c2990e66e97d4a88a3a5e72d0356ec5ade1a0c2f82fbb2534",
+        "Programma_CS2_RENAN/core/session_engine.py": "fa080c35738872a6ad350244236f1dab58aeebeaaac23d8f8f0edaebffd3b7dc",
+        "Programma_CS2_RENAN/backend/storage/database.py": "4ce2b59bfc06929c93b967491294e77bd0303c0bf8a1f05dbccb76e3cc4ea56b",
+        "Programma_CS2_RENAN/backend/storage/db_models.py": "6ac0653457654d663dc05f3067976bed2b3306b35f97b23b3d0b2ad4a6195f5c",
+        "Programma_CS2_RENAN/backend/processing/validation/dem_validator.py": "682e6820cab8747dbaa5b7b0bd598d92aebf1965a12be5ecf98107edc6663145",
+        "Programma_CS2_RENAN/core/config.py": "ddafd15d922826c1eec4f3a00996ea1e924d2fa089ea45a144f99c345125e58a",
+        "Programma_CS2_RENAN/core/localization.py": "d41f54aecac8a233f0d271336f5a668b7296f3a62bee92997aed5e03034af1b4",
+        "Programma_CS2_RENAN/core/registry.py": "ce0e11fa195e147ccc9d05d4bf5facda8d66cfc29761c2e1f0e3870c70344c4b"
+    },
+    "last_sync": "python.exe"
+}

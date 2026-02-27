@@ -1,0 +1,1579 @@
+#:import i18n Programma_CS2_RENAN.core.localization.i18n
+#:import PlayerSidebar Programma_CS2_RENAN.apps.desktop_app.player_sidebar.PlayerSidebar
+#:import FadeTransition kivy.uix.screenmanager.FadeTransition
+#:import FitImage kivymd.uix.fitimage.FitImage
+#:import MDButton kivymd.uix.button.MDButton
+#:import MDButtonText kivymd.uix.button.MDButtonText
+#:import MDTextFieldHintText kivymd.uix.textfield.MDTextFieldHintText
+#:import MDLinearProgressIndicator kivymd.uix.progressindicator.progressindicator.MDLinearProgressIndicator
+#:import Switch kivy.uix.switch.Switch
+#:import MDTopAppBarLeadingButtonContainer kivymd.uix.appbar.MDTopAppBarLeadingButtonContainer
+#:import MDTopAppBarTrailingButtonContainer kivymd.uix.appbar.MDTopAppBarTrailingButtonContainer
+#:import MDTopAppBarTitle kivymd.uix.appbar.MDTopAppBarTitle
+#:import MDActionTopAppBarButton kivymd.uix.appbar.MDActionTopAppBarButton
+
+# --- Custom Modular Components ---
+<SectionHeader@MDBoxLayout>:
+   orientation: "horizontal"
+   adaptive_height: True
+   spacing: "10dp"
+   padding: [0, "8dp", 0, "4dp"]
+   icon: ""
+   title: ""
+   MDIcon:
+      icon: root.icon
+      theme_text_color: "Custom"
+      text_color: app.theme_cls.primaryColor
+      pos_hint: {"center_y": .5}
+      opacity: 1 if root.icon else 0
+      size_hint_x: None
+      width: "24dp" if root.icon else "0dp"
+   MDLabel:
+      text: root.title
+      font_style: "Title"
+      role: "large"
+      theme_text_color: "Primary"
+      adaptive_height: True
+
+<AppSettingItem@MDBoxLayout>:
+   orientation: "vertical"
+   adaptive_height: True
+   spacing: "4dp"
+   title: ""
+   value: ""
+   MDLabel:
+      text: root.title
+      font_style: "Body"
+      role: "small"
+      theme_text_color: "Secondary"
+   MDLabel:
+      text: root.value
+      font_style: "Body"
+      role: "medium"
+      italic: True
+
+<DashboardCard@MDCard>:
+   size_hint_y: None
+   height: "160dp"
+   padding: ["16dp", "14dp"]
+   orientation: "vertical"
+   radius: [16, ]
+   md_bg_color: 0.08, 0.08, 0.12, 0.85
+   elevation: 2
+   shadow_softness: 8
+   shadow_color: 0, 0, 0, 0.3
+
+<TrainingStatusCard@DashboardCard>:
+   md_bg_color: 0.1, 0.1, 0.1, 0.6
+   MDBoxLayout:
+      adaptive_height: True
+      spacing: "8dp"
+      MDIcon:
+         icon: "brain"
+         theme_text_color: "Custom"
+         text_color: 0.2, 0.8, 0.4, 1
+      MDLabel:
+         text: "Training Progress"
+         font_style: "Title"
+         role: "large"
+         theme_text_color: "Custom"
+         text_color: 0.9, 0.9, 0.9, 1
+
+   MDLabel:
+      text: f"Epoch {app.current_epoch} / {app.total_epochs}"
+      font_style: "Body"
+      role: "small"
+      halign: "right"
+      theme_text_color: "Secondary"
+
+   MDLinearProgressIndicator:
+      value: (app.current_epoch / app.total_epochs * 100) if app.total_epochs > 0 else 0
+      color: 0.2, 0.8, 0.4, 1
+      size_hint_y: None
+      height: "4dp"
+
+   MDBoxLayout:
+      adaptive_height: True
+      padding: [0, "10dp", 0, 0]
+      MDBoxLayout:
+         orientation: "vertical"
+         MDLabel:
+            text: "Loss (T/V)"
+            font_style: "Label"
+            role: "small"
+            theme_text_color: "Hint"
+         MDLabel:
+            text: f"{app.train_loss:.4f} / {app.val_loss:.4f}"
+            font_style: "Body"
+            role: "small"
+            theme_text_color: "Primary"
+
+      MDBoxLayout:
+         orientation: "vertical"
+         MDLabel:
+            text: "ETA"
+            font_style: "Label"
+            role: "small"
+            theme_text_color: "Hint"
+            halign: "right"
+         MDLabel:
+            text: f"{int(app.eta_seconds)}s"
+            font_style: "Body"
+            role: "small"
+            theme_text_color: "Primary"
+            halign: "right"
+
+<FadingBackground@FloatLayout>:
+   canvas.before:
+      Color:
+         rgba: 0, 0, 0, 1
+      Rectangle:
+         pos: self.pos
+         size: self.size
+   FitImage:
+      source: app.background_source
+      opacity: app.background_opacity_current
+   FitImage:
+      source: app.background_source_next
+      opacity: app.background_opacity_next
+
+FloatLayout:
+   FadingBackground:
+   MDScreenManager:
+      id: screen_manager
+      transition: FadeTransition(duration=0.2)
+      WizardScreen:
+      HomeScreen:
+      CoachScreen:
+      UserProfileScreen:
+      SettingsScreen:
+      ProfileScreen:
+      SteamConfigScreen:
+      FaceitConfigScreen:
+      HelpScreen:
+      TacticalViewerScreen:
+      MatchHistoryScreen:
+      MatchDetailScreen:
+      PerformanceScreen:
+
+<HomeScreen>:
+   name: "home"
+   MDBoxLayout:
+      orientation: "vertical"
+      md_bg_color: 0, 0, 0, 0 # Transparent background
+      MDTopAppBar:
+         type: "small"
+         MDTopAppBarLeadingButtonContainer:
+            MDActionTopAppBarButton:
+               icon: "cog"
+               on_release: app.switch_screen("settings")
+            MDActionTopAppBarButton:
+               icon: "help-circle"
+               on_release: app.switch_screen("help")
+         MDTopAppBarTitle:
+            text: i18n.get_text("app_name", app.lang_trigger)
+         MDTopAppBarTrailingButtonContainer:
+            MDActionTopAppBarButton:
+               icon: "format-list-bulleted"
+               on_release: app.switch_screen("match_history")
+            MDActionTopAppBarButton:
+               icon: "chart-box"
+               on_release: app.switch_screen("performance")
+            MDActionTopAppBarButton:
+               icon: "school"
+               on_release: app.switch_screen("coach")
+            MDActionTopAppBarButton:
+               icon: "account-circle"
+               on_release: app.switch_screen("user_profile")
+
+      # ML Status Bar
+      MDBoxLayout:
+         orientation: "horizontal"
+         adaptive_height: True
+         padding: ["10dp", 0, "10dp", 0]
+         MDLabel:
+            text: i18n.get_text("coach_status", app.lang_trigger) + app.coach_status
+            halign: "center"
+            size_hint_y: None
+            height: "30dp"
+            theme_text_color: "Custom"
+            text_color: (0.2, 0.6, 1, 1) if app.service_active else (1, 0.2, 0.2, 1)
+            font_style: "Body"
+            role: "small"
+
+         MDButton:
+            style: "outlined"
+            size_hint: None, None
+            size: "120dp", "24dp"
+            opacity: 1 if not app.service_active else 0
+            disabled: app.service_active
+            on_release: app.soft_restart_service()
+            MDButtonText:
+               text: "RESTART SERVICE"
+               font_style: "Body"
+               role: "small"
+               theme_text_color: "Custom"
+               text_color: 1, 0.2, 0.2, 1
+
+      ScrollView:
+         MDBoxLayout:
+            orientation: "vertical"
+            padding: "16dp"
+            spacing: "16dp"
+            adaptive_height: True
+
+            # --- Training Dashboard ---
+            DashboardCard:
+               MDBoxLayout:
+                  adaptive_height: True
+                  spacing: "8dp"
+                  MDIcon:
+                     icon: "school"
+                     theme_text_color: "Custom"
+                     text_color: 1, 0.6, 0, 1
+                     pos_hint: {"center_y": .5}
+                  MDLabel:
+                     text: i18n.get_text("coaching", app.lang_trigger)
+                     bold: True
+                     adaptive_height: True
+                     theme_text_color: "Custom"
+                     text_color: 1, 0.95, 0.9, 1
+               MDLabel:
+                  id: upload_status_label
+                  text: i18n.get_text("upload_status", app.lang_trigger)
+                  font_style: "Body"
+                  role: "small"
+                  adaptive_height: True
+               MDLabel:
+                  id: quota_label
+                  text: "Quota: 0/10 | Total: 0/100"
+                  font_style: "Body"
+                  role: "small"
+                  theme_text_color: "Secondary"
+                  adaptive_height: True
+               MDBoxLayout:
+                  orientation: "horizontal"
+                  spacing: "8dp"
+                  adaptive_height: True
+                  padding: [0, "10dp", 0, 0]
+                  MDButton:
+                     style: "elevated"
+                     on_release: app.open_folder_picker(target="default")
+                     MDButtonText:
+                        text: "Set Folder"
+
+               # --- NEW Ingestion Progress Bar ---
+               MDBoxLayout:
+                  orientation: "vertical"
+                  adaptive_height: True
+                  spacing: "4dp"
+                  opacity: 1 if (app.parsing_progress > 0 and app.parsing_progress < 100) else 0
+                  MDLabel:
+                     text: f"Parsing Demos: {int(app.parsing_progress)}%"
+                     font_style: "Body"
+                     role: "small"
+                     theme_text_color: "Custom"
+                     text_color: 0.2, 0.8, 0.4, 1
+                  MDLinearProgressIndicator:
+                     value: app.parsing_progress
+                     max: 100
+                     color: 0.2, 0.8, 0.4, 1
+
+            # --- Pro Ingestion Hub ---
+            DashboardCard:
+               height: "180dp"
+               md_bg_color: 0.06, 0.06, 0.18, 0.9
+               MDBoxLayout:
+                  adaptive_height: True
+                  spacing: "8dp"
+                  MDIcon:
+                     icon: "trophy"
+                     theme_text_color: "Custom"
+                     text_color: 0.3, 0.6, 1, 1
+                     pos_hint: {"center_y": .5}
+                  MDLabel:
+                     text: i18n.get_text("pro_knowledge", app.lang_trigger)
+                     bold: True
+                     theme_text_color: "Custom"
+                     text_color: 0.4, 0.7, 1, 1
+                     adaptive_height: True
+               MDLabel:
+                  text: "Upload pro demos directly or point the coach to a folder."
+                  font_style: "Body"
+                  role: "small"
+                  theme_text_color: "Secondary"
+                  adaptive_height: True
+               MDBoxLayout:
+                  orientation: "horizontal"
+                  spacing: "8dp"
+                  adaptive_height: True
+                  padding: [0, "5dp", 0, 0]
+                  MDButton:
+                     style: "filled"
+                     md_bg_color: 0.15, 0.35, 0.7, 1
+                     on_release: app.open_folder_picker(target="pro")
+                     MDButtonText:
+                        text: "Pro Folder"
+
+               MDLabel:
+                  text: "Ingestion Flux Speed:"
+                  font_style: "Body"
+                  role: "small"
+                  theme_text_color: "Hint"
+                  adaptive_height: True
+               MDBoxLayout:
+                  orientation: "horizontal"
+                  spacing: "8dp"
+                  adaptive_height: True
+                  padding: [0, "5dp", 0, 0]
+                  MDButton:
+                     style: "outlined"
+                     on_release: app.set_pro_ingest_speed(6)
+                     MDButtonText:
+                        text: "Eco (6h)"
+                        font_style: "Body"
+                        role: "small"
+                  MDButton:
+                     style: "outlined"
+                     on_release: app.set_pro_ingest_speed(1)
+                     MDButtonText:
+                        text: "Standard (1h)"
+                        font_style: "Body"
+                        role: "small"
+                  MDButton:
+                     style: "filled"
+                     md_bg_color: 0.85, 0.2, 0.15, 1
+                     on_release: app.set_pro_ingest_speed(0)
+                     MDButtonText:
+                        text: "Turbo"
+                        font_style: "Body"
+                        role: "small"
+                  MDIconButton:
+                     icon: "play-circle" if not app.service_active else "stop-circle"
+                     style: "standard"
+                     theme_icon_color: "Custom"
+                     icon_color: (0.2, 0.9, 0.4, 1) if not app.service_active else (1, 0.3, 0.3, 1)
+                     on_release: app.toggle_ai_service()
+
+            # --- API & Profile Connectivity ---
+            DashboardCard:
+               height: "140dp"
+               MDBoxLayout:
+                  adaptive_height: True
+                  spacing: "8dp"
+                  MDIcon:
+                     icon: "account-cog"
+                     theme_text_color: "Custom"
+                     text_color: 0.6, 0.7, 1, 1
+                     pos_hint: {"center_y": .5}
+                  MDLabel:
+                     text: i18n.get_text("personalization", app.lang_trigger)
+                     bold: True
+                     adaptive_height: True
+                     theme_text_color: "Custom"
+                     text_color: 1, 1, 1, 1
+               MDBoxLayout:
+                  orientation: "horizontal"
+                  spacing: "10dp"
+                  padding: [0, "10dp", 0, 0]
+                  MDButton:
+                     style: "outlined"
+                     on_release: app.switch_screen("profile")
+                     MDButtonText:
+                        text: i18n.get_text("profile", app.lang_trigger)
+                  MDButton:
+                     style: "filled"
+                     md_bg_color: 0.1, 0.35, 0.7, 1
+                     on_release: app.switch_screen("steam_config")
+                     MDButtonText:
+                        text: "Steam"
+                  MDButton:
+                     style: "filled"
+                     md_bg_color: 0.85, 0.35, 0, 1
+                     on_release: app.switch_screen("faceit_config")
+                     MDButtonText:
+                        text: "FaceIT"
+
+            # --- Tactical Analysis Entry ---
+            DashboardCard:
+               height: "140dp"
+               md_bg_color: 0.05, 0.14, 0.08, 0.9
+               MDBoxLayout:
+                  adaptive_height: True
+                  spacing: "8dp"
+                  MDIcon:
+                     icon: "map-marker-radius"
+                     theme_text_color: "Custom"
+                     text_color: 0.2, 0.9, 0.5, 1
+                     pos_hint: {"center_y": .5}
+                  MDLabel:
+                     text: i18n.get_text("tactical_analysis", app.lang_trigger)
+                     bold: True
+                     theme_text_color: "Custom"
+                     text_color: 0.3, 1, 0.6, 1
+                     adaptive_height: True
+               MDLabel:
+                  text: i18n.get_text("tactical_desc", app.lang_trigger)
+                  font_style: "Body"
+                  role: "small"
+                  theme_text_color: "Secondary"
+                  adaptive_height: True
+               MDButton:
+                  style: "filled"
+                  md_bg_color: 0.15, 0.65, 0.35, 1
+                  pos_hint: {"center_x": .5}
+                  on_release: app.trigger_viewer_picker()
+                  MDButtonText:
+                     text: i18n.get_text("launch_viewer", app.lang_trigger)
+
+<CoachingCard>:
+   size_hint_y: None
+   height: self.minimum_height
+   padding: ["20dp", "16dp", "16dp", "16dp"]
+   spacing: "8dp"
+   orientation: "vertical"
+   radius: [16, ]
+   elevation: 1
+   shadow_softness: 6
+   shadow_color: 0, 0, 0, 0.2
+   md_bg_color: (0.08, 0.12, 0.22, 0.92) if root.severity == "info" else ((0.18, 0.14, 0.06, 0.92) if root.severity == "warning" else (0.2, 0.08, 0.08, 0.92))
+   canvas.before:
+      Color:
+         rgba: (0.2, 0.7, 1, 0.9) if root.severity == "info" else ((1, 0.7, 0, 0.9) if root.severity == "warning" else (1, 0.3, 0.3, 0.9))
+      RoundedRectangle:
+         pos: self.pos[0], self.pos[1]
+         size: dp(4), self.height
+         radius: [16, 0, 0, 16]
+      # Glassmorphism effect for the card itself
+      Color:
+         rgba: self.md_bg_color[0], self.md_bg_color[1], self.md_bg_color[2], 0.6 # Reduced opacity for background
+      RoundedRectangle:
+         pos: self.pos
+         size: self.size
+         radius: self.radius
+      Color:
+         rgba: 1, 1, 1, 0.05 # Light border/highlight
+      Line:
+         rounded_rectangle: self.x, self.y, self.width, self.height, self.radius[0]
+         width: 1.2
+   MDBoxLayout:
+      orientation: "horizontal"
+      adaptive_height: True
+      spacing: "10dp"
+      MDIcon:
+         icon: "lightbulb-on-outline" if root.severity == "info" else ("alert-circle-outline" if root.severity == "warning" else "alert-octagon-outline")
+         theme_text_color: "Custom"
+         text_color: (0.3, 0.8, 1, 1) if root.severity == "info" else ((1, 0.75, 0.15, 1) if root.severity == "warning" else (1, 0.4, 0.4, 1))
+         pos_hint: {"center_y": .5}
+      MDLabel:
+         text: root.title
+         bold: True
+         theme_text_color: "Custom"
+         text_color: 1, 1, 1, 1
+         adaptive_height: True
+   MDLabel:
+      text: root.message
+      theme_text_color: "Custom"
+      text_color: 0.85, 0.85, 0.9, 1
+      adaptive_height: True
+   MDLabel:
+      text: root.focus_area
+      font_style: "Label"
+      role: "small"
+      theme_text_color: "Custom"
+      text_color: 0.5, 0.7, 1, 0.8
+      adaptive_height: True
+
+<CoachScreen>:
+   name: "coach"
+   MDBoxLayout:
+      orientation: "vertical"
+      md_bg_color: 0, 0, 0, 0
+      MDTopAppBar:
+         type: "small"
+         MDTopAppBarLeadingButtonContainer:
+            MDActionTopAppBarButton:
+               icon: "home"
+               on_release: app.switch_screen("home")
+         MDTopAppBarTitle:
+            text: "RAP-Coach Dashboard"
+         MDTopAppBarTrailingButtonContainer:
+            MDActionTopAppBarButton:
+               icon: "chat-outline"
+               on_release: root.toggle_chat_panel()
+            MDActionTopAppBarButton:
+               icon: "brain"
+               on_release: app.show_brain_dialog()
+      ScrollView:
+         MDBoxLayout:
+            id: coaching_container
+            orientation: "vertical"
+            padding: "24dp"
+            spacing: "20dp"
+            adaptive_height: True
+
+            # --- Active Belief State ---
+            MDCard:
+               size_hint_y: None
+               height: "240dp"
+               padding: "16dp"
+               orientation: "vertical"
+               radius: [15, ]
+               md_bg_color: 0.1, 0.15, 0.25, 1
+               MDLabel:
+                  text: i18n.get_text("belief_state", app.lang_trigger)
+                  bold: True
+                  theme_text_color: "Custom"
+                  text_color: 0, 0.8, 1, 1
+                  adaptive_height: True
+               MDLabel:
+                  text: i18n.get_text("belief_desc", app.lang_trigger)
+                  font_style: "Body"
+                  role: "small"
+                  theme_text_color: "Secondary"
+                  adaptive_height: True
+               MDLinearProgressIndicator:
+                  value: app.belief_confidence
+                  max: 100
+                  pos_hint: {"center_y": .5}
+               MDLabel:
+                  text: i18n.get_text("inference_stability", app.lang_trigger) + ("HIGH" if app.belief_confidence > 70 else "CALIBRATING...")
+                  font_style: "Body"
+                  role: "small"
+                  halign: "right"
+                  theme_text_color: "Hint"
+
+
+            # --- Advanced Features (Always Available) ---
+            MDCard:
+               size_hint_y: None
+               height: "400dp"  # Increased height for graphs
+               padding: "16dp"
+               orientation: "vertical"
+               radius: [15, ]
+               md_bg_color: 0.15, 0.1, 0.2, 1
+               MDLabel:
+                  text: "Advanced Analytics"
+                  bold: True
+                  theme_text_color: "Custom"
+                  text_color: 0.8, 0.4, 1, 1
+                  adaptive_height: True
+
+               # --- Graph Containers (Injected by Python) ---
+               MDBoxLayout:
+                  id: analytics_container
+                  orientation: "vertical"
+                  size_hint_y: None
+                  height: "200dp"
+
+               MDBoxLayout:
+                  id: radar_container
+                  orientation: "vertical"
+                  size_hint_y: None
+                  height: "240dp"
+
+               MDBoxLayout:
+                  orientation: "horizontal"
+                  spacing: "10dp"
+                  adaptive_height: True
+                  padding: [0, 10, 0, 0]
+                  pos_hint: {"center_x": .5}
+
+                  MDButton:
+                     style: "elevated"
+                     md_bg_color: 0.2, 0.6, 1, 1
+                     on_release: app.show_interactive_overlay()
+                     MDButtonText:
+                        text: "Tactical Overlay"
+
+
+            # --- Causal Audit ---
+            MDCard:
+               size_hint_y: None
+               height: "160dp"
+               padding: "12dp"
+               orientation: "vertical"
+               radius: [12, ]
+               md_bg_color: 0.1, 0.2, 0.3, 1
+               MDLabel:
+                  text: i18n.get_text("causal_advantage", app.lang_trigger)
+                  bold: True
+                  theme_text_color: "Custom"
+                  text_color: 1, 0.6, 0, 1
+                  adaptive_height: True
+               MDButton:
+                  style: "elevated"
+                  md_bg_color: 1, 0.6, 0, 1
+                  pos_hint: {"center_x": .5}
+                  on_release: app.show_pro_comparison_dialog()
+                  MDButtonText:
+                     text: i18n.get_text("audit_path", app.lang_trigger)
+
+            # --- Pro Ingestion Progress ---
+            MDCard:
+               id: ingestion_progress_card
+               size_hint_y: None
+               height: "180dp"
+               padding: "16dp"
+               orientation: "vertical"
+               radius: [16, ]
+               md_bg_color: 0.07, 0.07, 0.1, 0.9
+               elevation: 1
+               opacity: 1 if app.service_active else 0.4
+               MDBoxLayout:
+                  adaptive_height: True
+                  spacing: "8dp"
+                  MDIcon:
+                     icon: "database-cog"
+                     theme_text_color: "Custom"
+                     text_color: 0.2, 0.8, 0.4, 1
+                     pos_hint: {"center_y": .5}
+                  MDLabel:
+                     text: "Knowledge Engine"
+                     bold: True
+                     theme_text_color: "Custom"
+                     text_color: 0.3, 0.9, 0.5, 1
+                     adaptive_height: True
+               MDLabel:
+                  text: "Reservoir: {:,} experience ticks".format(app.knowledge_reservoir_ticks)
+                  font_style: "Body"
+                  role: "small"
+                  theme_text_color: "Hint"
+                  halign: "right"
+                  adaptive_height: True
+               MDLinearProgressIndicator:
+                  value: app.parsing_progress
+                  max: 100
+                  color: 0.2, 0.8, 0.4, 1
+                  opacity: 1 if (app.parsing_progress > 0 and app.parsing_progress < 100) else 0
+               ScrollView:
+                  MDBoxLayout:
+                     id: active_tasks_list
+                     orientation: "vertical"
+                     adaptive_height: True
+                     spacing: "4dp"
+
+            # --- Dynamic Insights Section ---
+            MDBoxLayout:
+               id: insights_list
+               orientation: "vertical"
+               adaptive_height: True
+               spacing: "12dp"
+
+      # --- Coaching Chat Panel (collapsible) ---
+      MDBoxLayout:
+         id: chat_panel
+         orientation: "vertical"
+         size_hint_y: None
+         # 420dp = ~7 chat bubbles visible without scrolling on 1080p displays
+         height: dp(420) if root.chat_expanded else dp(0)
+         opacity: 1 if root.chat_expanded else 0
+         padding: ["12dp", "8dp", "12dp", "8dp"]
+         canvas.before:
+            Color:
+               rgba: 0.06, 0.06, 0.1, 0.95
+            RoundedRectangle:
+               pos: self.pos
+               size: self.size
+               radius: [16, 16, 0, 0]
+
+         # Chat header
+         MDBoxLayout:
+            orientation: "horizontal"
+            adaptive_height: True
+            spacing: "8dp"
+            padding: [0, 0, 0, "4dp"]
+            MDIcon:
+               icon: "chat-processing-outline"
+               theme_text_color: "Custom"
+               text_color: 0.3, 0.8, 1, 1
+               pos_hint: {"center_y": .5}
+            MDLabel:
+               text: "Ask Your Coach"
+               bold: True
+               theme_text_color: "Custom"
+               text_color: 0.4, 0.85, 1, 1
+               adaptive_height: True
+            MDLabel:
+               id: chat_status_label
+               text: ""
+               font_style: "Label"
+               role: "small"
+               theme_text_color: "Custom"
+               text_color: 0.5, 0.5, 0.6, 0.8
+               halign: "right"
+               adaptive_height: True
+            MDIconButton:
+               icon: "broom"
+               style: "standard"
+               theme_icon_color: "Custom"
+               icon_color: 0.6, 0.6, 0.7, 0.7
+               on_release: root.clear_chat()
+            MDIconButton:
+               icon: "chevron-down"
+               style: "standard"
+               theme_icon_color: "Custom"
+               icon_color: 0.6, 0.6, 0.7, 0.7
+               on_release: root.toggle_chat_panel()
+
+         # Message area
+         ScrollView:
+            id: chat_scroll
+            do_scroll_x: False
+            MDBoxLayout:
+               id: chat_messages
+               orientation: "vertical"
+               adaptive_height: True
+               spacing: "8dp"
+               padding: ["4dp", "4dp"]
+
+         # Typing indicator
+         MDLabel:
+            id: chat_typing_label
+            text: "Coach is thinking..."
+            font_style: "Label"
+            role: "small"
+            theme_text_color: "Custom"
+            text_color: 0.4, 0.7, 0.9, 0.7
+            italic: True
+            adaptive_height: True
+            opacity: 0
+
+         # Quick actions
+         MDBoxLayout:
+            orientation: "horizontal"
+            adaptive_height: True
+            spacing: "6dp"
+            padding: [0, "4dp", 0, "4dp"]
+            MDButton:
+               style: "outlined"
+               adaptive_width: True
+               on_release: root.send_quick_action("How can I improve my positioning?")
+               MDButtonText:
+                  text: "Positioning"
+                  font_style: "Label"
+                  role: "small"
+            MDButton:
+               style: "outlined"
+               adaptive_width: True
+               on_release: root.send_quick_action("Analyze my utility usage")
+               MDButtonText:
+                  text: "Utility"
+                  font_style: "Label"
+                  role: "small"
+            MDButton:
+               style: "outlined"
+               adaptive_width: True
+               on_release: root.send_quick_action("What should I focus on improving?")
+               MDButtonText:
+                  text: "What to improve?"
+                  font_style: "Label"
+                  role: "small"
+
+         # Input bar
+         MDBoxLayout:
+            orientation: "horizontal"
+            adaptive_height: True
+            spacing: "8dp"
+            MDTextField:
+               id: chat_input
+               size_hint_y: None
+               height: "44dp"
+               on_text_validate: root.send_chat_message()
+               MDTextFieldHintText:
+                  text: "Ask your coach..."
+            MDIconButton:
+               icon: "send"
+               style: "filled"
+               md_bg_color: 0.2, 0.6, 1, 1
+               on_release: root.send_chat_message()
+               pos_hint: {"center_y": .5}
+
+<UserProfileScreen>:
+   name: "user_profile"
+   MDBoxLayout:
+      orientation: "vertical"
+      md_bg_color: 0, 0, 0, 0
+      MDTopAppBar:
+         type: "small"
+         MDTopAppBarLeadingButtonContainer:
+            MDActionTopAppBarButton:
+               icon: "home"
+               on_release: app.switch_screen("home")
+         MDTopAppBarTitle:
+            text: i18n.get_text("pro_profile", app.lang_trigger)
+         MDTopAppBarTrailingButtonContainer:
+            MDActionTopAppBarButton:
+               icon: "pencil"
+               on_release: root.open_edit_dialog()
+      ScrollView:
+         MDBoxLayout:
+            orientation: "vertical"
+            padding: "24dp"
+            spacing: "20dp"
+            adaptive_height: True
+            AnchorLayout:
+               anchor_x: "center"
+               size_hint_y: None
+               height: "160dp"
+               RelativeLayout:
+                  size_hint: None, None
+                  size: "120dp", "120dp"
+                  FitImage:
+                     id: avatar_image
+                     source: ""
+                     radius: [60, ]
+                     size: "120dp", "120dp"
+                  MDCard:
+                     id: role_badge
+                     size_hint: None, None
+                     size: "36dp", "36dp"
+                     pos: "84dp", "0dp"
+                     radius: [18, ]
+                     elevation: 2
+                     MDIcon:
+                        icon: "shield-star"
+                        pos_hint: {"center_x": .5, "center_y": .5}
+                        theme_text_color: "Custom"
+                        text_color: 1, 1, 1, 1
+            MDLabel:
+               id: name_label
+               text: i18n.get_text("player_name_default", app.lang_trigger)
+               halign: "center"
+               font_style: "Headline"
+               role: "medium"
+               bold: True
+            MDLabel:
+               id: role_label
+               text: i18n.get_text("role_default", app.lang_trigger)
+               halign: "center"
+               theme_text_color: "Secondary"
+            MDDivider:
+            MDCard:
+               orientation: "vertical"
+               padding: "16dp"
+               adaptive_height: True
+               MDLabel:
+                  text: i18n.get_text("bio", app.lang_trigger)
+                  bold: True
+                  theme_text_color: "Custom"
+                  text_color: 1, 1, 1, 1
+               MDLabel:
+                  id: bio_label
+                  text: "..."
+                  theme_text_color: "Custom"
+                  text_color: 0.9, 0.9, 0.9, 1
+                  adaptive_height: True
+            MDCard:
+               orientation: "vertical"
+               padding: "16dp"
+               adaptive_height: True
+               md_bg_color: 0.1, 0.1, 0.15, 1
+               MDLabel:
+                  text: i18n.get_text("system_specs", app.lang_trigger)
+                  bold: True
+                  theme_text_color: "Custom"
+                  text_color: 1, 1, 1, 1
+               MDLabel:
+                  id: specs_label
+                  text: "N/A"
+                  theme_text_color: "Custom"
+                  text_color: 0.9, 0.9, 0.9, 1
+            MDButton:
+               style: "elevated"
+               pos_hint: {"center_x": .5}
+               on_release: app.sync_profile_with_steam()
+               MDButtonText:
+                  text: i18n.get_text("sync_steam", app.lang_trigger)
+
+<ProfileScreen>:
+   name: "profile"
+   MDBoxLayout:
+      orientation: "vertical"
+      MDTopAppBar:
+         type: "small"
+         MDTopAppBarLeadingButtonContainer:
+            MDActionTopAppBarButton:
+               icon: "home"
+               on_release: app.switch_screen("home")
+         MDTopAppBarTitle:
+            text: i18n.get_text("settings_name", app.lang_trigger)
+      MDBoxLayout:
+         orientation: "vertical"
+         padding: "20dp"
+         spacing: "20dp"
+         MDLabel:
+            text: i18n.get_text("ingame_name", app.lang_trigger)
+            font_style: "Headline"
+            role: "small"
+         MDLabel:
+            text: i18n.get_text("ingame_desc", app.lang_trigger)
+            font_style: "Body"
+            role: "small"
+            theme_text_color: "Secondary"
+            adaptive_height: True
+         MDTextField:
+            id: player_name_field
+            MDTextFieldHintText:
+               text: i18n.get_text("nickname_hint", app.lang_trigger)
+         MDButton:
+            style: "elevated"
+            on_release: app.save_user_config("CS2_PLAYER_NAME", player_name_field.text)
+            MDButtonText:
+               text: i18n.get_text("save", app.lang_trigger)
+
+<SteamConfigScreen>:
+   name: "steam_config"
+   MDBoxLayout:
+      orientation: "vertical"
+      MDTopAppBar:
+         type: "small"
+         MDTopAppBarLeadingButtonContainer:
+            MDActionTopAppBarButton:
+               icon: "home"
+               on_release: app.switch_screen("home")
+         MDTopAppBarTitle:
+            text: i18n.get_text("settings_steam", app.lang_trigger)
+      ScrollView:
+         MDBoxLayout:
+            orientation: "vertical"
+            padding: "20dp"
+            spacing: "20dp"
+            adaptive_height: True
+            MDLabel:
+               text: i18n.get_text("steam_integration", app.lang_trigger)
+               font_style: "Title"
+               role: "large"
+            MDLabel:
+               text: i18n.get_text("steam_desc", app.lang_trigger)
+               font_style: "Body"
+               role: "small"
+               theme_text_color: "Secondary"
+               adaptive_height: True
+            MDButton:
+               style: "elevated"
+               md_bg_color: 0.1, 0.4, 0.8, 1
+               on_release: app.open_url("https://steamid.io")
+               MDButtonText:
+                  text: i18n.get_text("find_steam_id", app.lang_trigger)
+            MDTextField:
+               id: steam_id_field
+               MDTextFieldHintText:
+                  text: "17-digit SteamID64"
+
+            Widget:
+               size_hint_y: None
+               height: "10dp"
+
+            MDLabel:
+               text: i18n.get_text("dev_api_support", app.lang_trigger)
+               font_style: "Title"
+               role: "large"
+            MDLabel:
+               text: "A Steam Web API Key allows the app to fetch match history. You can generate one for free on the official developer page. Use 'localhost' as the domain if prompted."
+               font_style: "Body"
+               role: "small"
+               theme_text_color: "Secondary"
+               adaptive_height: True
+            MDButton:
+               style: "elevated"
+               md_bg_color: 0.1, 0.4, 0.8, 1
+               on_release: app.open_url("https://steamcommunity.com/dev/apikey")
+               MDButtonText:
+                  text: i18n.get_text("get_steam_key", app.lang_trigger)
+            MDTextField:
+               id: steam_key_field
+               MDTextFieldHintText:
+                  text: i18n.get_text("steam_key_hint", app.lang_trigger)
+            MDButton:
+               style: "elevated"
+               on_release:
+                  app.save_multiple_configs({"STEAM_ID": steam_id_field.text, "STEAM_API_KEY": steam_key_field.text})
+               MDButtonText:
+                  text: i18n.get_text("save_config", app.lang_trigger)
+
+<FaceitConfigScreen>:
+   name: "faceit_config"
+   MDBoxLayout:
+      orientation: "vertical"
+      MDTopAppBar:
+         type: "small"
+         MDTopAppBarLeadingButtonContainer:
+            MDActionTopAppBarButton:
+               icon: "home"
+               on_release: app.switch_screen("home")
+         MDTopAppBarTitle:
+            text: i18n.get_text("settings_faceit", app.lang_trigger)
+      MDBoxLayout:
+         orientation: "vertical"
+         padding: "20dp"
+         spacing: "20dp"
+         MDLabel:
+            text: i18n.get_text("faceit_stats", app.lang_trigger)
+            font_style: "Headline"
+            role: "small"
+         MDLabel:
+            text: i18n.get_text("faceit_desc", app.lang_trigger)
+            font_style: "Body"
+            role: "small"
+            theme_text_color: "Secondary"
+            adaptive_height: True
+         MDButton:
+            style: "elevated"
+            md_bg_color: 1, 0.4, 0, 1
+            on_release: app.open_url("https://developers.faceit.com/")
+            MDButtonText:
+               text: i18n.get_text("get_faceit_key", app.lang_trigger)
+         MDTextField:
+            id: faceit_key_field
+            MDTextFieldHintText:
+               text: i18n.get_text("faceit_hint", app.lang_trigger)
+         MDButton:
+            style: "elevated"
+            on_release: app.save_user_config("FACEIT_API_KEY", faceit_key_field.text)
+            MDButtonText:
+               text: i18n.get_text("save_faceit", app.lang_trigger)
+
+<HelpScreen>:
+   name: "help"
+   MDBoxLayout:
+      orientation: "vertical"
+      md_bg_color: 0, 0, 0, 0
+      MDTopAppBar:
+         type: "small"
+         MDTopAppBarLeadingButtonContainer:
+            MDActionTopAppBarButton:
+               icon: "home"
+               on_release: app.switch_screen("home")
+         MDTopAppBarTitle:
+            text: root.current_topic_title
+      MDBoxLayout:
+         orientation: "horizontal"
+         padding: "12dp"
+         spacing: "12dp"
+         # Sidebar
+         MDBoxLayout:
+            orientation: "vertical"
+            size_hint_x: 0.3
+            spacing: "8dp"
+            MDTextField:
+               id: search_field
+               size_hint_y: None
+               height: "48dp"
+               on_text: root.filter_topics(self.text)
+               MDTextFieldHintText:
+                  text: i18n.get_text("search", app.lang_trigger)
+            ScrollView:
+               MDBoxLayout:
+                  id: topic_list
+                  orientation: "vertical"
+                  adaptive_height: True
+                  spacing: "4dp"
+         # Content area
+         ScrollView:
+            size_hint_x: 0.7
+            MDLabel:
+               id: content_label
+               text: ""
+               halign: "left"
+               valign: "top"
+               adaptive_height: True
+               padding: ["16dp", "16dp"]
+               markup: False
+
+<SettingsScreen>:
+   name: "settings"
+   MDBoxLayout:
+      orientation: "vertical"
+      md_bg_color: 0, 0, 0, 0
+      MDTopAppBar:
+         type: "small"
+         MDTopAppBarLeadingButtonContainer:
+            MDActionTopAppBarButton:
+               icon: "home"
+               on_release: app.switch_screen("home")
+         MDTopAppBarTitle:
+            text: i18n.get_text("settings", app.lang_trigger)
+      ScrollView:
+         MDBoxLayout:
+            orientation: "vertical"
+            padding: "20dp"
+            spacing: "24dp"
+            adaptive_height: True
+
+            # --- Theme Section ---
+            SectionHeader:
+               icon: "palette"
+               title: i18n.get_text("visual_theme", app.lang_trigger)
+            MDBoxLayout:
+               orientation: "horizontal"
+               spacing: "10dp"
+               adaptive_height: True
+               padding: [0, "4dp", 0, "8dp"]
+               MDButton:
+                  style: "filled"
+                  md_bg_color: 0.85, 0.4, 0, 1
+                  on_release: app.set_app_theme("CS2")
+                  MDButtonText:
+                     text: "CS2"
+               MDButton:
+                  style: "filled"
+                  md_bg_color: 0.3, 0.4, 0.5, 1
+                  on_release: app.set_app_theme("CSGO")
+                  MDButtonText:
+                     text: "CS:GO"
+               MDButton:
+                  style: "filled"
+                  md_bg_color: 0.2, 0.5, 0.2, 1
+                  on_release: app.set_app_theme("CS1.6")
+                  MDButtonText:
+                     text: "CS 1.6"
+
+            MDButton:
+               style: "outlined"
+               pos_hint: {"center_x": .5}
+               on_release: app.cycle_wallpaper()
+               MDButtonText:
+                  text: i18n.get_text("cycle_wallpaper", app.lang_trigger)
+
+            MDDivider:
+
+            # --- Analysis Configuration ---
+            SectionHeader:
+               icon: "folder-cog"
+               title: i18n.get_text("analysis_paths", app.lang_trigger)
+
+            AppSettingItem:
+               title: i18n.get_text("change_default_folder", app.lang_trigger) + ":"
+               value: root.current_default_folder
+            MDButton:
+               style: "outlined"
+               on_release: app.open_folder_picker(target="default")
+               MDButtonText:
+                  text: i18n.get_text("change_default_folder", app.lang_trigger)
+
+            AppSettingItem:
+               title: i18n.get_text("change_pro_folder", app.lang_trigger) + ":"
+               value: root.current_pro_folder
+            MDButton:
+               style: "outlined"
+               on_release: app.open_folder_picker(target="pro")
+               MDButtonText:
+                  text: i18n.get_text("change_pro_folder", app.lang_trigger)
+
+            MDDivider:
+
+            # --- Appearance Section ---
+            SectionHeader:
+               icon: "format-size"
+               title: i18n.get_text("appearance", app.lang_trigger)
+
+            MDLabel:
+               text: i18n.get_text("font_size", app.lang_trigger) + ": " + root.current_font_size
+               font_style: "Body"
+               role: "medium"
+            MDBoxLayout:
+               orientation: "horizontal"
+               spacing: "10dp"
+               adaptive_height: True
+               MDButton:
+                  style: "elevated"
+                  on_release: app.set_font_size("Small")
+                  MDButtonText:
+                     text: "Small"
+               MDButton:
+                  style: "elevated"
+                  on_release: app.set_font_size("Medium")
+                  MDButtonText:
+                     text: "Medium"
+               MDButton:
+                  style: "elevated"
+                  on_release: app.set_font_size("Large")
+                  MDButtonText:
+                     text: "Large"
+
+            MDDivider:
+
+            # --- Data Ingestion Control ---
+            SectionHeader:
+               icon: "database-sync"
+               title: "Data Ingestion"
+
+            AppSettingItem:
+               title: "Ingestion Mode:"
+               value: "Auto (Continuous)" if app.ingest_mode_auto else "Manual"
+
+            MDBoxLayout:
+               orientation: "horizontal"
+               spacing: "20dp"
+               adaptive_height: True
+               padding: [0, "10dp", 0, "10dp"]
+
+               MDButton:
+                  style: "filled" if not app.ingest_mode_auto else "outlined"
+                  md_bg_color: (0.15, 0.5, 0.8, 1) if not app.ingest_mode_auto else (0, 0, 0, 0)
+                  on_release: app.set_ingest_mode(False)
+                  MDButtonText:
+                     text: "Manual"
+
+               MDButton:
+                  style: "filled" if app.ingest_mode_auto else "outlined"
+                  md_bg_color: (0.15, 0.5, 0.8, 1) if app.ingest_mode_auto else (0, 0, 0, 0)
+                  on_release: app.set_ingest_mode(True)
+                  MDButtonText:
+                     text: "Auto"
+
+            AppSettingItem:
+               title: "Scan Interval (min):"
+               value: str(app.ingest_interval)
+
+            MDBoxLayout:
+               orientation: "horizontal"
+               spacing: "10dp"
+               adaptive_height: True
+
+               MDTextField:
+                  id: interval_field
+                  text: str(app.ingest_interval)
+                  input_filter: "int"
+                  size_hint_x: 0.3
+                  MDTextFieldHintText:
+                     text: "Minutes"
+
+               MDButton:
+                  style: "text"
+                  on_release: app.update_ingest_interval(interval_field.text)
+                  MDButtonText:
+                     text: "Set"
+
+            MDBoxLayout:
+               orientation: "horizontal"
+               spacing: "20dp"
+               adaptive_height: True
+               padding: [0, "16dp", 0, "8dp"]
+
+               MDButton:
+                  style: "filled"
+                  md_bg_color: 0.1, 0.6, 0.3, 1
+                  on_release: app.start_manual_ingestion()
+                  MDButtonText:
+                     text: "Start Ingestion Now"
+
+               MDButton:
+                  style: "filled"
+                  md_bg_color: 0.75, 0.18, 0.18, 1
+                  on_release: app.stop_manual_ingestion()
+                  MDButtonText:
+                     text: "Stop Ingestion"
+
+            MDDivider:
+
+            # --- Font Type Section (moved from Appearance) ---
+            MDLabel:
+               text: i18n.get_text("font_type", app.lang_trigger) + ": " + root.current_font_type
+               font_style: "Body"
+               role: "medium"
+            MDBoxLayout:
+               orientation: "horizontal"
+               spacing: "10dp"
+               adaptive_height: True
+               MDButton:
+                  style: "elevated"
+                  on_release: app.set_font_type("Roboto")
+                  MDButtonText:
+                     text: "Roboto"
+               MDButton:
+                  style: "elevated"
+                  on_release: app.set_font_type("Arial")
+                  MDButtonText:
+                     text: "Arial"
+               MDButton:
+                  style: "elevated"
+                  on_release: app.set_font_type("JetBrains Mono")
+                  MDButtonText:
+                     text: "JetBrains"
+               MDButton:
+                  style: "elevated"
+                  on_release: app.set_font_type("New Hope")
+                  MDButtonText:
+                     text: "New Hope"
+               MDButton:
+                  style: "elevated"
+                  on_release: app.set_font_type("CS Regular")
+                  MDButtonText:
+                     text: "CS Regular"
+               MDButton:
+                  style: "elevated"
+                  on_release: app.set_font_type("YUPIX")
+                  MDButtonText:
+                     text: "YUPIX"
+
+            MDDivider:
+
+            # --- Language Section ---
+            SectionHeader:
+               icon: "translate"
+               title: i18n.get_text("language", app.lang_trigger)
+            MDBoxLayout:
+               orientation: "horizontal"
+               spacing: "10dp"
+               adaptive_height: True
+               padding: [0, "4dp", 0, "8dp"]
+               MDButton:
+                  style: "filled"
+                  md_bg_color: 0.15, 0.25, 0.55, 1
+                  on_release: app.set_language("en")
+                  MDButtonText:
+                     text: "English"
+               MDButton:
+                  style: "filled"
+                  md_bg_color: 0.1, 0.45, 0.2, 1
+                  on_release: app.set_language("it")
+                  MDButtonText:
+                     text: "Italiano"
+               MDButton:
+                  style: "filled"
+                  md_bg_color: 0.1, 0.4, 0.15, 1
+                  on_release: app.set_language("pt")
+                  MDButtonText:
+                     text: "Português"
+
+<WizardScreen>:
+   name: "wizard"
+   MDBoxLayout:
+      orientation: "vertical"
+      padding: "24dp"
+      spacing: "24dp"
+
+      MDLabel:
+         id: title_label
+         text: i18n.get_text("welcome", app.lang_trigger)
+         font_style: "Headline"
+         role: "medium"
+         halign: "center"
+         adaptive_height: True
+
+      MDDivider:
+
+      MDBoxLayout:
+         id: content_area
+         orientation: "vertical"
+         # specific content injected by python
+
+      AnchorLayout:
+         anchor_x: "center"
+         size_hint_y: None
+         height: "60dp"
+         MDButton:
+            id: next_btn
+            style: "elevated"
+            md_bg_color: app.theme_cls.primaryColor
+            on_release: root.next_action()
+            MDButtonText:
+               text: i18n.get_text("next", app.lang_trigger)
+
+<TacticalViewerScreen>:
+   name: "tactical_viewer"
+   MDBoxLayout:
+      orientation: "vertical"
+      MDTopAppBar:
+         type: "small"
+         MDTopAppBarLeadingButtonContainer:
+            MDActionTopAppBarButton:
+               icon: "arrow-left"
+               on_release: app.switch_screen("home")
+         MDTopAppBarTitle:
+            text: i18n.get_text("tactical_analyzer", app.lang_trigger)
+         MDTopAppBarTrailingButtonContainer:
+            MDActionTopAppBarButton:
+               icon: "folder-open"
+               on_release: app.trigger_viewer_picker()
+
+      MDBoxLayout:
+         orientation: "horizontal"
+         PlayerSidebar:
+            id: ct_sidebar
+            team_name: "COUNTER-TERRORIST"
+            team_color: 0.3, 0.5, 1, 1
+            size_hint_x: 0.2
+
+         TacticalMap:
+            id: tactical_map
+            size_hint_x: 0.6
+
+         PlayerSidebar:
+            id: t_sidebar
+            team_name: "TERRORIST"
+            team_color: 1, 0.6, 0.2, 1
+            size_hint_x: 0.2
+
+      MDBoxLayout:
+         size_hint_y: None
+         height: "120dp"
+         orientation: "vertical"
+         padding: "8dp"
+         MDBoxLayout:
+            orientation: "horizontal"
+            spacing: "10dp"
+            adaptive_height: True
+            Spinner:
+               id: map_spinner
+               text: i18n.get_text("select_map", app.lang_trigger)
+               size_hint_x: 0.3
+               on_text: root.switch_map(self.text)
+            Spinner:
+               id: round_spinner
+               text: i18n.get_text("select_round", app.lang_trigger)
+               size_hint_x: 0.3
+               on_text: root.on_round_change(self.text)
+            MDLabel:
+               id: tick_label
+               text: "Tick: 0"
+               halign: "right"
+               size_hint_x: 0.2
+            Switch:
+               active: False
+               on_active: tactical_map.debug_mode = self.active
+               size_hint_x: None
+               width: "48dp"
+            MDLabel:
+               text: i18n.get_text("debug", app.lang_trigger)
+               font_style: "Body"
+               role: "small"
+               size_hint_x: None
+               width: "40dp"
+
+            Switch:
+               id: ghost_switch
+               active: root.ghost_active
+               on_active: root.ghost_active = self.active
+               size_hint_x: None
+               width: "48dp"
+            MDLabel:
+               text: "GHOST"
+               font_style: "Body"
+               role: "small"
+               bold: True
+               theme_text_color: "Custom"
+               text_color: 0.8, 0.4, 1, 1
+               size_hint_x: None
+               width: "45dp"
+
+         MDBoxLayout:
+            orientation: "horizontal"
+            spacing: "16dp"
+            padding: [0, "10dp", 0, 0]
+            MDIconButton:
+               icon: "skip-previous-circle-outline"
+               style: "standard"
+               on_release: root.jump_to_prev_cm()
+            MDIconButton:
+               id: play_btn
+               icon: "play"
+               style: "standard"
+               on_release: root.toggle_playback()
+            MDIconButton:
+               icon: "skip-next-circle-outline"
+               style: "standard"
+               on_release: root.jump_to_next_cm()
+            MDButton:
+               style: "elevated"
+               on_release: root.set_speed(0.5)
+               MDButtonText:
+                  text: "0.5x"
+            MDButton:
+               style: "elevated"
+               on_release: root.set_speed(0.75)
+               MDButtonText:
+                  text: "0.75x"
+            MDButton:
+               style: "elevated"
+               on_release: root.set_speed(1.0)
+               MDButtonText:
+                  text: "1x"
+            MDButton:
+               style: "elevated"
+               on_release: root.set_speed(2.0)
+               MDButtonText:
+                  text: "2x"
+            MDButton:
+               style: "elevated"
+               on_release: root.set_speed(4.0)
+               MDButtonText:
+                  text: "4x"
+
+         TimelineScrubber:
+            id: timeline
+            size_hint_y: None
+            height: "40dp"
+
+<MatchHistoryScreen>:
+   name: "match_history"
+   MDBoxLayout:
+      orientation: "vertical"
+      md_bg_color: 0, 0, 0, 0
+      MDTopAppBar:
+         type: "small"
+         MDTopAppBarLeadingButtonContainer:
+            MDActionTopAppBarButton:
+               icon: "arrow-left"
+               on_release: app.switch_screen("home")
+         MDTopAppBarTitle:
+            text: "Match History"
+         MDTopAppBarTrailingButtonContainer:
+            MDActionTopAppBarButton:
+               icon: "chart-line"
+               on_release: app.switch_screen("performance")
+      ScrollView:
+         MDBoxLayout:
+            id: match_list_container
+            orientation: "vertical"
+            padding: "16dp"
+            spacing: "8dp"
+            adaptive_height: True
+
+<MatchDetailScreen>:
+   name: "match_detail"
+   MDBoxLayout:
+      orientation: "vertical"
+      md_bg_color: 0, 0, 0, 0
+      MDTopAppBar:
+         type: "small"
+         MDTopAppBarLeadingButtonContainer:
+            MDActionTopAppBarButton:
+               icon: "arrow-left"
+               on_release: app.switch_screen("match_history")
+         MDTopAppBarTitle:
+            text: "Match Detail"
+      ScrollView:
+         MDBoxLayout:
+            id: detail_container
+            orientation: "vertical"
+            padding: "16dp"
+            spacing: "12dp"
+            adaptive_height: True
+
+<PerformanceScreen>:
+   name: "performance"
+   MDBoxLayout:
+      orientation: "vertical"
+      md_bg_color: 0, 0, 0, 0
+      MDTopAppBar:
+         type: "small"
+         MDTopAppBarLeadingButtonContainer:
+            MDActionTopAppBarButton:
+               icon: "arrow-left"
+               on_release: app.switch_screen("home")
+         MDTopAppBarTitle:
+            text: "Performance Dashboard"
+         MDTopAppBarTrailingButtonContainer:
+            MDActionTopAppBarButton:
+               icon: "history"
+               on_release: app.switch_screen("match_history")
+      ScrollView:
+         MDBoxLayout:
+            id: performance_container
+            orientation: "vertical"
+            padding: "16dp"
+            spacing: "12dp"
+            adaptive_height: True

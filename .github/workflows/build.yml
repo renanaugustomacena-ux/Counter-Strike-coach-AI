@@ -1,0 +1,136 @@
+name: Build and Test
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-health:
+    name: Build Health Validation
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-ci.txt
+
+      - name: Run Headless Validator
+        run: python tools/headless_validator.py
+
+      - name: Upload Build Health Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-health-report
+          path: Build_Health_Report.json
+          retention-days: 30
+
+  test-portability:
+    name: Portability & Integrity Tests
+    runs-on: windows-latest
+    needs: build-health
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-ci.txt
+
+      - name: Run portability tests
+        run: python tools/portability_test.py
+
+      - name: Verify integrity manifest
+        run: python Programma_CS2_RENAN/tools/sync_integrity_manifest.py --verify-only
+
+  test-suite:
+    name: Run Test Suite
+    runs-on: windows-latest
+    needs: build-health
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-ci.txt
+
+      - name: Run pytest with coverage
+        run: >
+          python -m pytest Programma_CS2_RENAN/tests/ tests/
+          -v --tb=short
+          --cov=Programma_CS2_RENAN
+          --cov-report=xml
+          --cov-report=term-missing
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage.xml
+          retention-days: 30
+
+  build-distribution:
+    name: Build Distribution
+    runs-on: windows-latest
+    needs: [test-portability, test-suite]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-ci.txt
+          pip install pyinstaller
+
+      - name: Build executable
+        run: python -m PyInstaller --noconfirm packaging/cs2_analyzer_win.spec --log-level WARN
+
+      - name: Post-build integrity audit
+        run: python tools/audit_binaries.py
+
+      - name: Upload distribution artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cs2-analyzer-windows
+          path: dist/
+          retention-days: 30
+          if-no-files-found: warn

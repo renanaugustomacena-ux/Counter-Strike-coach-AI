@@ -1,0 +1,23 @@
+{
+    "generated_at": "2026-02-04T23:39:57.446118",
+    "version": "2.0",
+    "hashes": {
+        "Programma_CS2_RENAN/main.py": "845099d0777b9c2ee8b44c523516f1e4b522c5437799484949f3f3609abcc895",
+        "Programma_CS2_RENAN/hltv_sync_service.py": "85031503ee8db68668089fddcc78c462cca2a47ebb7266fb78114f6bfd67f24a",
+        "Programma_CS2_RENAN/backend/storage/database.py": "97e01c1a4fa7c64c96df64610b3cb6346ca05f75a70d7c19b0bb3122ea209aa6",
+        "Programma_CS2_RENAN/backend/storage/db_models.py": "9b2d56bcf3746ed403debf0a0df4ba56b1a736ce93d7b95fe4f0255d4720923a",
+        "Programma_CS2_RENAN/backend/storage/match_data_manager.py": "f2eb8cb3ff4129ffa57101214ba2f0a934f0a5be9f43cddfdbad64f9151d6a3a",
+        "Programma_CS2_RENAN/backend/nn/model.py": "6c2cbe6b27d9a2c99ad7bf985f79be6fadb5fa708858aedfcf9bbabbb5ddfc3d",
+        "Programma_CS2_RENAN/backend/nn/coach_manager.py": "9c2298dff6618086a6c33c87a8fa489eb2211b2ad36f2d51a943df61dd4d43c7",
+        "Programma_CS2_RENAN/backend/nn/inference/ghost_engine.py": "bf09f451d3838382c26e04b0691cf0b1b3a6a309b1bf23330e8f404962c90963",
+        "Programma_CS2_RENAN/backend/processing/tensor_factory.py": "c769bc833f3a82abd1d17732535eee4f9d2fadffd1cc6700bd24f277f8a2c30d",
+        "Programma_CS2_RENAN/backend/processing/state_reconstructor.py": "edcc888b5716adc19d6ab55534fcc7821418e8b9ee285cf9ae8f236d2cba0834",
+        "Programma_CS2_RENAN/backend/processing/feature_engineering/vectorizer.py": "c583275e7b0b7ac08f177cc89d76f081f74f371b4cba522386671934b420dd4a",
+        "Programma_CS2_RENAN/backend/processing/validation/dem_validator.py": "682e6820cab8747dbaa5b7b0bd598d92aebf1965a12be5ecf98107edc6663145",
+        "Programma_CS2_RENAN/core/config.py": "89194b7e73645f8c14f22d3c18d2ec8a18fbe236a48b843ede827e048f10d590",
+        "Programma_CS2_RENAN/core/localization.py": "ddb4a0e8a0c2a8f2442387dd048c5b9b81adeb28f4353cc4a74e59962cc4651e",
+        "Programma_CS2_RENAN/core/registry.py": "ce0e11fa195e147ccc9d05d4bf5facda8d66cfc29761c2e1f0e3870c70344c4b",
+        "Programma_CS2_RENAN/core/spatial_data.py": "5d512fd12736a55c793032560d211d5ac99761e9d62a18c65b0cfd1b4f876871",
+        "Programma_CS2_RENAN/observability/rasp.py": "81c885446ca4576dbb64a0436866ff5d8b1ad3a8247a668cae9a2309c1d218f2"
+    }
+}
