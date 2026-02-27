@@ -19,6 +19,8 @@ _last_cpu_sample_time = 0
 _THROTTLE_HIGH_THRESHOLD = 85  # Start throttling above this
 _THROTTLE_LOW_THRESHOLD = 70  # Stop throttling below this
 _current_throttle_state = False
+# F6-18: Separate lock for throttle state — _cpu_sample_lock guards CPU samples only.
+_throttle_lock = Lock()
 
 
 class ResourceManager:
@@ -73,7 +75,8 @@ class ResourceManager:
         # In HP mode (Turbo), we never throttle.
         hp_mode = os.environ.get("HP_MODE", "0") == "1"
         if hp_mode:
-            _current_throttle_state = False
+            with _throttle_lock:  # F6-18: thread-safe write
+                _current_throttle_state = False
             return False
 
         stats = ResourceManager.get_system_stats()
@@ -82,20 +85,21 @@ class ResourceManager:
 
         # RAM check is immediate (no hysteresis needed)
         if ram > 90:
-            _current_throttle_state = True
+            with _throttle_lock:  # F6-18: thread-safe write
+                _current_throttle_state = True
             return True
 
-        # CPU check with hysteresis
-        if _current_throttle_state:
-            # Currently throttling - only stop if below low threshold
-            if cpu < _THROTTLE_LOW_THRESHOLD:
-                _current_throttle_state = False
-        else:
-            # Not throttling - only start if above high threshold
-            if cpu > _THROTTLE_HIGH_THRESHOLD:
-                _current_throttle_state = True
-
-        return _current_throttle_state
+        # CPU check with hysteresis — F6-18: protect read-modify-write under lock
+        with _throttle_lock:
+            if _current_throttle_state:
+                # Currently throttling - only stop if below low threshold
+                if cpu < _THROTTLE_LOW_THRESHOLD:
+                    _current_throttle_state = False
+            else:
+                # Not throttling - only start if above high threshold
+                if cpu > _THROTTLE_HIGH_THRESHOLD:
+                    _current_throttle_state = True
+            return _current_throttle_state
 
     @staticmethod
     def get_optimal_worker_count(is_high_priority=False):

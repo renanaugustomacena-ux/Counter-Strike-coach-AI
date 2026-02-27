@@ -240,9 +240,12 @@ def detect_trade_kills(
     result.trade_kills = len(trade_kill_indices)
     result.players_traded = len(traded_indices)
 
-    logger.info(
-        f"Trade kill analysis: {result.trade_kills}/{result.total_kills} kills were trades "
-        f"({result.trade_kill_ratio:.1%}), {result.players_traded} deaths traded"
+    logger.info(  # F6-09: %s format instead of f-string
+        "Trade kill analysis: %s/%s kills were trades (%.1f%%), %s deaths traded",
+        result.trade_kills,
+        result.total_kills,
+        result.trade_kill_ratio * 100,
+        result.players_traded,
     )
 
     return result

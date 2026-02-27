@@ -29,6 +29,9 @@ class GameEventSpec:
     fields: Dict[str, str]  # field_name -> type description
     priority: str  # "critical", "standard", "optional"
     implemented: bool  # Whether Macena currently handles this event
+    # F6-33: handler_path references are not validated at registration time. If handler
+    # modules are relocated, references silently become stale. Add runtime validation
+    # (hasattr/callable check) at event dispatch if reliability is critical.
     handler_path: Optional[str] = None  # File path to handler if implemented
     notes: str = ""  # Implementation notes or caveats
 

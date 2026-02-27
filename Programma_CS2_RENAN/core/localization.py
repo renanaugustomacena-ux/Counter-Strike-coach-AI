@@ -3,6 +3,8 @@ import os
 from kivy.event import EventDispatcher
 from kivy.properties import StringProperty
 
+# F6-23: Translations are hardcoded dicts. Migrate to JSON files in assets/i18n/
+# when localization is a priority (enables runtime locale switching without code changes).
 TRANSLATIONS = {
     "en": {
         "app_name": "Macena CS2 Analyzer",

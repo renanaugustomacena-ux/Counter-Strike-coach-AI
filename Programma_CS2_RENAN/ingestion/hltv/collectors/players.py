@@ -1,10 +1,17 @@
-import datetime
-
-import torch
+# F6-01: Removed unused `import torch`. Replaced `import datetime` with explicit imports.
+# F6-05: Replaced all print() calls with structured logger calls.
+# F6-04: datetime.utcnow() → datetime.now(timezone.utc) (timezone-aware).
+# Anti-fabrication: _map_stats_to_model() raises ValueError on missing/unparseable stats
+# instead of silently inserting hardcoded fallback values into the pro baseline DB.
+from datetime import datetime, timezone
+from typing import Optional
 
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
 from Programma_CS2_RENAN.ingestion.hltv.selectors import HLTVURLBuilder, PlayerStatsSelectors
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+logger = get_logger("cs2analyzer.hltv.players")
 
 
 class PlayerCollector:
@@ -14,11 +21,11 @@ class PlayerCollector:
 
     def discover_player_ids(self, start_id=1, end_id=35000):
         ids_to_check = _prepare_id_list(start_id, end_id)
-        print(f"Starting Discovery Pass for IDs {start_id} to {end_id}...")
+        logger.info("Starting Discovery Pass for IDs %s to %s...", start_id, end_id)
         return _execute_discovery_loop(self, ids_to_check)
 
     def scrape_from_list(self, url_list):
-        print(f"Starting Extraction Pass for {len(url_list)} validated URLs...")
+        logger.info("Starting Extraction Pass for %s validated URLs...", len(url_list))
         return _execute_extraction_loop(self, url_list)
 
 
@@ -40,14 +47,14 @@ def _execute_discovery_loop(collector, ids):
 
 def _check_single_player_id(coll, pid, url, results):
     try:
-        print(f"Checking ID {pid}...")
+        logger.debug("Checking ID %s...", pid)
         resp = coll.page.goto(url, wait_until="domcontentloaded", timeout=60000)
         coll.limiter.wait("micro")
         if _is_profile_valid(coll.page, resp, pid):
-            print(f"[Valid] ID {pid} -> {coll.page.url}")
+            logger.info("[Valid] ID %s -> %s", pid, coll.page.url)
             results.append(coll.page.url)
     except Exception as e:
-        print(f"[Error] Failed ID {pid}: {e}")
+        logger.error("[Error] Failed ID %s: %s", pid, e)
         coll.limiter.wait("backoff")
 
 
@@ -72,13 +79,13 @@ def _execute_extraction_loop(collector, url_list):
 def _extract_player_data(coll, url, db):
     detailed_url = url.replace("/player/", "/stats/players/individual/")
     player_name = url.split("/")[-1]
-    print(f"Extracting stats for {player_name}...")
+    logger.info("Extracting stats for %s...", player_name)
     try:
         coll.page.goto(detailed_url, wait_until="domcontentloaded", timeout=60000)
         coll.limiter.wait("standard")
         return _process_extraction_page(coll, player_name, db)
     except Exception as e:
-        print(f"[Error] Failed {url}: {e}")
+        logger.error("[Error] Failed %s: %s", url, e)
         return False
 
 
@@ -88,7 +95,7 @@ def _process_extraction_page(coll, name, db):
     stats = coll.page.eval_on_selector(".statistics", _get_stats_js())
     match_stats = _map_stats_to_model(name, stats, coll.page.content())
     db.upsert(match_stats)
-    print(f"[Success] Fully synced {name}")
+    logger.info("[Success] Fully synced %s", name)
     return True
 
 
@@ -105,23 +112,51 @@ def _get_stats_js():
     }"""
 
 
-def _map_stats_to_model(name, stats, html):
+def _parse_required_stat(key: str, raw: Optional[str], player_name: str) -> float:
+    """Parse a required stat to float; raise ValueError if absent or unparseable (F6-01).
+
+    Anti-fabrication: no fallback defaults allowed for required stats.
+    """
+    if raw is None:
+        raise ValueError(f"Missing required stat '{key}' for player {player_name}")
+    try:
+        return float(raw.split()[0].replace("%", ""))
+    except (ValueError, AttributeError) as exc:
+        raise ValueError(
+            f"Unparseable stat '{key}' for player {player_name}: {raw!r}"
+        ) from exc
+
+
+def _map_stats_to_model(name: str, stats: dict, html: str) -> PlayerMatchStats:
+    # F6-01: Anti-fabrication — all hardcoded fallback string defaults removed.
+    # Missing or unparseable required stats raise ValueError so failures are explicit
+    # rather than silently inserting fabricated data into the pro baseline DB.
+    rating_raw = stats.get("Rating 2.0") or stats.get("Rating 1.0")
+    if rating_raw is None:
+        raise ValueError(f"Missing required stat 'Rating' for player {name}")
+
+    kast_raw = stats.get("KAST")
+    kast = _parse_required_stat("KAST", kast_raw, name) / 100
+
+    hs_raw = stats.get("Headshot %")
+    avg_hs = _parse_required_stat("Headshot %", hs_raw, name) / 100 if hs_raw else 0.0
+
     return PlayerMatchStats(
         user_id="system",
         player_name=name,
         demo_name=f"hltv_discovered_{name}.dem",
-        avg_kills=float(stats.get("Kills per round", "0.7").split()[0]),
-        avg_deaths=float(stats.get("Deaths per round", "0.6").split()[0]),
-        avg_adr=float(stats.get("Damage / round", "80.0").split()[0]),
-        avg_hs=0.5,
-        avg_kast=float(stats.get("KAST", "70%").replace("%", "")) / 100,
-        rating=float(stats.get("Rating 2.0", stats.get("Rating 1.0", "1.0"))),
-        kd_ratio=float(stats.get("K/D Ratio", "1.0")),
-        kill_std=0.1,
-        adr_std=5.0,
-        impact_rounds=float(stats.get("Impact", "1.0")),
+        avg_kills=_parse_required_stat("Kills per round", stats.get("Kills per round"), name),
+        avg_deaths=_parse_required_stat("Deaths per round", stats.get("Deaths per round"), name),
+        avg_adr=_parse_required_stat("Damage / round", stats.get("Damage / round"), name),
+        avg_hs=avg_hs,
+        avg_kast=kast,
+        rating=_parse_required_stat("Rating", rating_raw, name),
+        kd_ratio=_parse_required_stat("K/D Ratio", stats.get("K/D Ratio"), name),
+        kill_std=0.0,   # Not available from HLTV stats page; computed separately
+        adr_std=0.0,    # Not available from HLTV stats page; computed separately
+        impact_rounds=_parse_required_stat("Impact", stats.get("Impact"), name),
         anomaly_score=0.0,
         sample_weight=1.0,
         is_pro=True,
-        processed_at=datetime.datetime.utcnow(),
+        processed_at=datetime.now(timezone.utc),  # F6-04: timezone-aware UTC
     )

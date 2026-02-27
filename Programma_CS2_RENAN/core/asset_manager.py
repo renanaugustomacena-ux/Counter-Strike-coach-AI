@@ -89,6 +89,9 @@ class AssetAuthority:
     """
 
     _instance = None
+    # F6-32: _cache is class-level (shared across all instances). AssetAuthority is a
+    # singleton (see __new__), so this is safe — all callers share one instance. If
+    # multiple instances are ever created this cache must move to instance level.
     _cache: Dict[str, SmartAsset] = {}
     _fallback_texture: Optional[Texture] = None
 

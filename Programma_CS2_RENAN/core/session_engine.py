@@ -4,7 +4,10 @@ import sys
 import threading
 import time
 
-# Add root to sys.path manually if missing
+# F6-06: sys.path bootstrap — required only when this daemon is executed directly as a script
+# (e.g. `python session_engine.py`). With proper package installation (pip install -e .)
+# and `python -m` invocation this block is a no-op. Technical debt: remove when entrypoints
+# are configured in pyproject.toml/setup.py.
 current = os.path.dirname(os.path.abspath(__file__))
 root = os.path.dirname(os.path.dirname(os.path.dirname(current)))
 if root not in sys.path:
@@ -391,6 +394,7 @@ def _commit_trained_sample_count(count: int) -> None:
             if st:
                 st.last_trained_sample_count = count
                 s.add(st)
+                s.commit()  # F6-03: persist trained sample count; context manager does not auto-commit here
     except Exception as e:
         logger.error("Failed to commit trained sample count: %s", e)
 

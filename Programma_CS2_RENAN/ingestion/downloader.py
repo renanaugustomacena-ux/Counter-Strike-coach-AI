@@ -2,6 +2,7 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 from playwright.sync_api import sync_playwright
 
@@ -30,6 +31,13 @@ class BrowserManager:
         self.context.set_default_timeout(NAVIGATION_TIMEOUT)
         self.page = self.context.new_page()
         return self.page
+
+
+def _extract_date(page) -> Optional[str]:
+    # F6-12: Date extraction not yet implemented. Returns None until HLTV date
+    # parsing is added (parse page.locator(".date") or similar HLTV selector).
+    # Downstream consumers must handle None gracefully.
+    return None
 
 
 # --- Extractor ---

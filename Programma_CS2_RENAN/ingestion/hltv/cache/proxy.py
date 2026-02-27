@@ -8,32 +8,31 @@ and preventing IP bans. Uses SQLite for persistent storage with TTL.
 import datetime
 import os
 import sqlite3
+from pathlib import Path
 from typing import Optional, Tuple
 
+from Programma_CS2_RENAN.core.config import USER_DATA_ROOT
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.hltv_cache")
+
+# F6-07: Use config constant instead of fragile 4-level __file__ traversal.
+# __file__ traversal breaks under packaging and symlinks; USER_DATA_ROOT is stable.
+_DEFAULT_CACHE_DB = str(Path(USER_DATA_ROOT) / "data" / "hltv_cache.db")
 
 
 class HLTVCachingProxy:
     """
     Manages caching of HLTV player profiles.
 
-    Database: data/hltv_cache.db
+    Database: <USER_DATA_ROOT>/data/hltv_cache.db
     Table: hltv_player_cache
     TTL: 7 days (default)
     """
 
-    DB_PATH = os.path.join(
-        os.path.dirname(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        ),
-        "data",
-        "hltv_cache.db",
-    )
-
-    def __init__(self, ttl_days: int = 7):
+    def __init__(self, ttl_days: int = 7, db_path: str = _DEFAULT_CACHE_DB):
         self.ttl = datetime.timedelta(days=ttl_days)
+        self.DB_PATH = db_path  # F6-07: injectable path; defaults to config-derived constant
         self._init_db()
 
     def _init_db(self):

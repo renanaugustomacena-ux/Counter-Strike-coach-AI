@@ -1,6 +1,7 @@
 import json
 import shutil
 from pathlib import Path
+from typing import Set
 
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -13,7 +14,10 @@ class DemoRegistry:
         self._load()
 
     def _load(self):
-        self.data = _execute_registry_load(self.registry_path)
+        data = _execute_registry_load(self.registry_path)
+        # F6-20: Convert list → set for O(1) membership checks.
+        # JSON serializes as list; we deserialize as set internally.
+        self._processed: Set[str] = set(data.get("processed_demos", []))
 
     def _save(self):
         # Create backup before overwriting
@@ -25,16 +29,16 @@ class DemoRegistry:
             except Exception as e:
                 logger.warning("Failed to create registry backup: %s", e)
 
-        # Write new registry
+        # F6-20: Serialize set back to list for JSON compatibility
         with open(self.registry_path, "w") as f:
-            json.dump(self.data, f, indent=4)
+            json.dump({"processed_demos": list(self._processed)}, f, indent=4)
 
     def is_processed(self, demo_name: str) -> bool:
-        return demo_name in self.data["processed_demos"]
+        return demo_name in self._processed  # F6-20: O(1) set lookup
 
     def mark_processed(self, demo_name: str):
-        if demo_name not in self.data["processed_demos"]:
-            self.data["processed_demos"].append(demo_name)
+        if demo_name not in self._processed:  # F6-20: O(1) set lookup
+            self._processed.add(demo_name)
             self._save()
 
 

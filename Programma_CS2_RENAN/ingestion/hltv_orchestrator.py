@@ -11,7 +11,7 @@ Adheres to GEMINI.md principles:
 """
 
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -129,7 +129,7 @@ class HLTVOrchestrator:
                                 "match_url": match_url,
                                 "teams": teams,
                                 "event": event,
-                                "date": datetime.utcnow().isoformat(),
+                                "date": datetime.now(timezone.utc).isoformat(),
                             }
                         )
 
@@ -157,7 +157,7 @@ class HLTVOrchestrator:
         If run after, assumes all recent matches are CS2 (CSGO no longer competitive).
         """
         cs2_release_date = datetime(2023, 9, 27)
-        current_date = datetime.utcnow()
+        current_date = datetime.now(timezone.utc)
 
         # Safety check: if running before CS2 release, cannot reliably filter
         if current_date < cs2_release_date:

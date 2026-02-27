@@ -83,7 +83,7 @@ class ProtoChange:
 
     date: str
     description: str
-    affected_events: List[str]
+    affected_events: Tuple[str, ...]  # F6-30: Tuple instead of List in frozen dataclass
     migration_notes: str
 
 
@@ -92,19 +92,19 @@ PROTO_CHANGELOG: List[ProtoChange] = [
     ProtoChange(
         date="2024-03-01",
         description="CS2 initial protobuf demo format stabilization",
-        affected_events=["CSVCMsg_GameEvent", "CDemoFileInfo"],
+        affected_events=("CSVCMsg_GameEvent", "CDemoFileInfo"),
         migration_notes="demoparser2 handles this natively.",
     ),
     ProtoChange(
         date="2024-09-15",
         description="Sub-tick movement data format update",
-        affected_events=["CNETMsg_Tick"],
+        affected_events=("CNETMsg_Tick",),
         migration_notes="Sub-tick interpolation fields added. Backward compatible.",
     ),
     ProtoChange(
         date="2025-06-01",
         description="Updated player_death event with additional flags",
-        affected_events=["player_death"],
+        affected_events=("player_death",),
         migration_notes="Added 'wipe' and 'noreplay' fields. Older demos may not have these.",
     ),
 ]
@@ -192,9 +192,12 @@ class DemoFormatAdapter:
         result["warnings"].extend(corruption_warnings)
 
         result["valid"] = True
-        logger.info(
-            f"Demo validated: {Path(demo_path).name} — {version}, "
-            f"{file_size / 1024**2:.1f} MB, {len(corruption_warnings)} warnings"
+        logger.info(  # F6-09: %s format instead of f-string
+            "Demo validated: %s — %s, %.1f MB, %s warnings",
+            Path(demo_path).name,
+            version,
+            file_size / 1024**2,
+            len(corruption_warnings),
         )
         return result
 

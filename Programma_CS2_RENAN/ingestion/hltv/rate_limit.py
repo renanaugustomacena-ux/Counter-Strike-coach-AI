@@ -1,6 +1,10 @@
 import random
 import time
 
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+logger = get_logger("cs2analyzer.hltv.rate_limit")
+
 
 class RateLimiter:
     def __init__(self):
@@ -14,11 +18,12 @@ class RateLimiter:
 
     def wait(self, tier="standard"):
         min_d, max_d = self.delays.get(tier, self.delays["standard"])
-        # Add extra jitter to prevent pattern detection
+        # F6-25: Randomness intentionally unseeded — deterministic jitter would create
+        # detectable request patterns. Anti-scraping detection relies on apparent human randomness.
         jitter = random.uniform(-0.5, 0.5)
         # Ensure the final delay is never below 2.0 seconds
         delay = max(2.0, random.uniform(min_d, max_d) + jitter)
-        print(f"[Limiter] Sleeping for {delay:.2f}s (Tier: {tier})")
+        logger.debug("[Limiter] Sleeping for %.2fs (Tier: %s)", delay, tier)  # F6-05
         time.sleep(delay)
 
     def random_combination(self):

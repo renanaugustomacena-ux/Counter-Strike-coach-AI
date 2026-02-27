@@ -16,6 +16,10 @@ class SpatialEngine:
     def world_to_normalized(x: float, y: float, map_name: str) -> Tuple[float, float]:
         """
         Convert world coordinates to normalized (0.0 - 1.0) space.
+
+        # F6-26: Z coordinate ignored. Multi-level maps (Nuke, Vertigo) place all players
+        # on a single 2D plane. Proper floor detection requires altitude-band mapping per
+        # map (future work).
         """
         meta = get_map_metadata(map_name)
         if not meta:

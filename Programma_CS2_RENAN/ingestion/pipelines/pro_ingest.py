@@ -12,6 +12,9 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 logger = get_logger("cs2analyzer.pro_ingest")
 
 
+# F6-19: This pipeline stores basic PlayerMatchStats only. RoundStats, events, and
+# tick-level data are not extracted here. Full enrichment requires calling
+# enrich_from_demo() and _extract_and_store_events() from run_ingestion.py.
 def ingest_pro_demos(source_dir: Path, processed_dir: Path):
     db_manager = get_db_manager()
     demo_files = list(source_dir.glob("*.dem"))
@@ -32,6 +35,9 @@ def _map_and_archive_pro(demo_path, rounds_df, db_manager, processed_dir):
     match_stats_dict = extract_match_stats(rounds_df)
     if not match_stats_dict:
         return
+    # F6-28: player_name hardcoded as "ProPlayer". Actual player name must be extracted
+    # from demo file (requires demoparser2 integration). Placeholder until demo parsing
+    # is implemented.
     match_stats = PlayerMatchStats(
         player_name="ProPlayer", demo_name=demo_path.name, is_pro=True, **match_stats_dict
     )

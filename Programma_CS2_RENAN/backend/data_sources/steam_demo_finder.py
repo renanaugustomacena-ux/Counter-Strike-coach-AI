@@ -16,9 +16,15 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
 # winreg imported conditionally inside _get_steam_path_from_registry()
+logger = get_logger("cs2analyzer.steam_demo_finder")  # F6-05
 
 
+# F6-11: Steam path discovery is also performed in ingestion/steam_locator.py (primary).
+# This module is supplementary (scans replay directories). Consolidation deferred;
+# ensure both modules use identical path precedence order when modifying path resolution.
 class SteamNotFoundError(Exception):
     """Raised when Steam installation cannot be located."""
 
@@ -217,28 +223,31 @@ def auto_discover_steam_demos(days: int = 7) -> List[dict]:
 
 
 if __name__ == "__main__":
-    # Self-test
+    # Self-test — F6-05: replaced print() with structured logger calls
     finder = SteamDemoFinder()
 
-    print("=== Steam Demo Auto-Discovery ===\n")
+    logger.info("=== Steam Demo Auto-Discovery ===")
 
     steam_dir = finder.find_steam_directory()
     if steam_dir:
-        print(f"[OK] Steam directory: {steam_dir}")
+        logger.info("[OK] Steam directory: %s", steam_dir)
     else:
-        print("[!] Steam directory not found")
+        logger.warning("[!] Steam directory not found")
 
     replay_dir = finder.find_cs2_replay_directory()
     if replay_dir:
-        print(f"[OK] CS2 replays: {replay_dir}\n")
+        logger.info("[OK] CS2 replays: %s", replay_dir)
 
         recent = finder.scan_recent_demos(days=7)
-        print(f"Found {len(recent)} demos from last 7 days:\n")
+        logger.info("Found %s demos from last 7 days", len(recent))
 
         for filepath, mtime in recent[:5]:  # Show first 5
             metadata = finder.get_demo_metadata(filepath)
-            print(f"  - {metadata['filename']}")
-            print(f"    Size: {metadata['size_mb']:.1f} MB")
-            print(f"    Modified: {metadata['modified']}\n")
+            logger.info(
+                "  - %s | Size: %.1f MB | Modified: %s",
+                metadata["filename"],
+                metadata["size_mb"],
+                metadata["modified"],
+            )
     else:
-        print("[!] CS2 replay directory not found")
+        logger.warning("[!] CS2 replay directory not found")

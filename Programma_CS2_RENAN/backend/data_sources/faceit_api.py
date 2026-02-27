@@ -1,3 +1,5 @@
+from typing import Any, Dict
+
 import requests
 
 from Programma_CS2_RENAN.core.config import get_setting
@@ -6,7 +8,7 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 logger = get_logger("cs2analyzer.faceit_api")
 
 
-def fetch_faceit_data(nickname):
+def fetch_faceit_data(nickname: str) -> Dict[str, Any]:  # F6-29: type hints
     """Fetches FaceIT Elo and Level for a given nickname."""
     api_key = get_setting("FACEIT_API_KEY")
     if not api_key or api_key == "YOUR_FACEIT_KEY":

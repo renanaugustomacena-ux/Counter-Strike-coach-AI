@@ -18,6 +18,8 @@ logger = get_logger("cs2analyzer.watcher")
 FILE_STABILITY_CHECK_INTERVAL = 1.0  # seconds between size checks
 FILE_STABILITY_REQUIRED_CHECKS = 2  # file must be stable for this many checks
 FILE_MINIMUM_SIZE = 1024  # 1KB minimum to avoid empty/corrupt files
+# F6-16: Maximum total stability attempts before giving up (~30 seconds at 1s interval)
+_MAX_STABILITY_ATTEMPTS = 30
 
 
 class DemoFileHandler(FileSystemEventHandler):
@@ -54,17 +56,33 @@ class DemoFileHandler(FileSystemEventHandler):
             if file_path in self._pending_files:
                 self._pending_files[file_path].cancel()
 
-            # Schedule new stability check
+            # Schedule new stability check; attempt_count=0 on first schedule
             timer = threading.Timer(
-                FILE_STABILITY_CHECK_INTERVAL, self._check_file_stability, args=[file_path, 0, 0]
+                FILE_STABILITY_CHECK_INTERVAL,
+                self._check_file_stability,
+                args=[file_path, 0, 0, 0],  # (file_path, last_size, stable_count, attempt_count)
             )
             timer.daemon = True
             self._pending_files[file_path] = timer
             timer.start()
 
-    def _check_file_stability(self, file_path: str, last_size: int, stable_count: int):
+    def _check_file_stability(
+        self, file_path: str, last_size: int, stable_count: int, attempt_count: int
+    ):
         """Check if file size has stabilized (not being written to)."""
         try:
+            # F6-16: Guard against infinite timer accumulation when file stays locked.
+            attempt_count += 1
+            if attempt_count > _MAX_STABILITY_ATTEMPTS:
+                logger.warning(
+                    "File stability check exceeded max attempts (%s), giving up: %s",
+                    _MAX_STABILITY_ATTEMPTS,
+                    file_path,
+                )
+                with self._lock:
+                    self._pending_files.pop(file_path, None)
+                return
+
             if not os.path.exists(file_path):
                 logger.warning("File no longer exists: %s", file_path)
                 with self._lock:
@@ -89,7 +107,7 @@ class DemoFileHandler(FileSystemEventHandler):
                         self._pending_files.pop(file_path, None)
                     return
 
-                # Try to open file in append mode to verify it's not locked
+                # Try to open file to verify it's not locked
                 if self._is_file_accessible(file_path):
                     logger.info("File stable and accessible, queueing: %s", file_path)
                     self._queue_file(file_path)
@@ -98,32 +116,34 @@ class DemoFileHandler(FileSystemEventHandler):
                 else:
                     # File still locked, continue waiting
                     logger.debug("File still locked, will retry: %s", file_path)
-                    self._reschedule_check(file_path, current_size, 0)
+                    self._reschedule_check(file_path, current_size, 0, attempt_count)
             else:
                 # Not stable yet, schedule another check
-                self._reschedule_check(file_path, current_size, stable_count)
+                self._reschedule_check(file_path, current_size, stable_count, attempt_count)
 
         except Exception as e:
             logger.error("Error checking file stability for %s: %s", file_path, e)
             with self._lock:
                 self._pending_files.pop(file_path, None)
 
-    def _reschedule_check(self, file_path: str, current_size: int, stable_count: int):
+    def _reschedule_check(
+        self, file_path: str, current_size: int, stable_count: int, attempt_count: int
+    ):
         """Reschedule stability check with updated state."""
         with self._lock:
             timer = threading.Timer(
                 FILE_STABILITY_CHECK_INTERVAL,
                 self._check_file_stability,
-                args=[file_path, current_size, stable_count],
+                args=[file_path, current_size, stable_count, attempt_count],
             )
             timer.daemon = True
             self._pending_files[file_path] = timer
             timer.start()
 
     def _is_file_accessible(self, file_path: str) -> bool:
-        """Check if file can be opened exclusively (not locked by writer)."""
+        """Check if file can be opened (not locked by writer)."""
         try:
-            with open(file_path, "ab") as f:
+            with open(file_path, "rb") as _:  # F6-24: read-only check; avoids timestamp mutation
                 pass
             return True
         except (PermissionError, OSError):

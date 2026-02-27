@@ -1,3 +1,5 @@
+from typing import Any, Dict, List
+
 from kivy.event import EventDispatcher
 from kivy.properties import BooleanProperty, NumericProperty, ObjectProperty
 
@@ -75,7 +77,7 @@ class TimelineController(EventDispatcher):
         """Default handler."""
         pass
 
-    def get_players_at_tick(self, tick: int):
+    def get_players_at_tick(self, tick: int) -> List[Dict[str, Any]]:  # F6-22
         """
         Retrieves player positions at the given tick.
         This is a helper for consumers like HeatmapEngine.

@@ -5,10 +5,13 @@ from pathlib import Path
 
 import pandas as pd
 
-# --- Add project root to Python path ---
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
+# F6-06: sys.path bootstrap — required only when this utility script is executed directly.
+# With proper package installation (pip install -e .) this block is a no-op when imported.
+# Technical debt: remove when entrypoints are configured in pyproject.toml/setup.py.
+if __name__ == "__main__":
+    _project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    if _project_root not in sys.path:
+        sys.path.insert(0, _project_root)
 
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 

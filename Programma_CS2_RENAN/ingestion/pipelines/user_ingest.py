@@ -13,6 +13,9 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 logger = get_logger("cs2analyzer.user_ingest")
 
 
+# F6-19: This pipeline stores basic PlayerMatchStats only. RoundStats, events, and
+# tick-level data are not extracted here. Full enrichment requires calling
+# enrich_from_demo() and _extract_and_store_events() from run_ingestion.py.
 def ingest_user_demos(source_dir: Path, processed_dir: Path):
     db_manager = get_db_manager()
     demo_files = list(source_dir.glob("*.dem"))

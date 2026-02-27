@@ -323,7 +323,9 @@ def process_queued_tasks(db_manager, storage, is_pro, high_priority, limit=0):
     processed_count = 0
     total_tasks = len(tasks)
     for task in tasks:
-        # Update task status to processing immediately
+        # F6-13: Objects fetched in one session; do not access lazy-loaded attrs after
+        # session closes. Re-attach via session.add(task) before modifying, or
+        # re-fetch in the new session if lazy-loaded attributes are needed.
         with db_manager.get_session() as session:
             session.add(task)
             task.status = "processing"
@@ -552,11 +554,21 @@ def _extract_and_store_events(demo_path, match_id, match_manager, df_ticks):
         logger.error("Failed to create DemoParser for event extraction: %s", e)
         return 0
 
+    # F6-14: Bounded state_lookup to prevent OOM on large match files (>50k tick rows).
+    _STATE_LOOKUP_CAP = 50_000
     # Build a lookup: (tick, player_name_lower) -> {health, armor, equipment_value, team}
     # for cross-referencing player state at event time
     state_lookup = {}
     if not df_ticks.empty and "player_name" in df_ticks.columns:
         for _, row in df_ticks.iterrows():
+            if len(state_lookup) >= _STATE_LOOKUP_CAP:
+                logger.warning(
+                    "state_lookup hit cap (%s); older entries evicted to prevent OOM",
+                    _STATE_LOOKUP_CAP,
+                )
+                keys = list(state_lookup.keys())
+                for k in keys[: len(keys) // 2]:
+                    del state_lookup[k]
             key = (int(row["tick"]), str(row["player_name"]).strip().lower())
             state_lookup[key] = {
                 "health": int(row.get("health", 100)),

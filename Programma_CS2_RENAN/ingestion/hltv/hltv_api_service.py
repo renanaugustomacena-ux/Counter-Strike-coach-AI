@@ -1,9 +1,9 @@
-import datetime
 import re
+import time
+from datetime import datetime, timezone
 
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
-from Programma_CS2_RENAN.core.logger import app_logger
 from Programma_CS2_RENAN.ingestion.hltv.browser.manager import BrowserManager
 from Programma_CS2_RENAN.ingestion.hltv.cache import get_proxy
 from Programma_CS2_RENAN.ingestion.hltv.rate_limit import RateLimiter
@@ -19,6 +19,33 @@ KILL_STD_DEFAULT = 0.1  # Placeholder — HLTV does not expose per-round varianc
 ADR_STD_DEFAULT = 5.0  # Placeholder — HLTV does not expose per-round variance
 
 
+# F6-10: Circuit breaker — stops the loop after MAX_FAILURES consecutive failures
+# to avoid wasting hours on a blocked/unavailable service.
+class _CircuitBreaker:
+    """Open after MAX_FAILURES consecutive failures; resets after RESET_WINDOW_S."""
+
+    MAX_FAILURES = 10
+    RESET_WINDOW_S = 3600.0
+
+    def __init__(self):
+        self._failures = 0
+        self._last_failure_ts: float = 0.0
+
+    def record_failure(self) -> None:
+        now = time.monotonic()
+        if now - self._last_failure_ts > self.RESET_WINDOW_S:
+            self._failures = 0
+        self._failures += 1
+        self._last_failure_ts = now
+
+    def record_success(self) -> None:
+        self._failures = 0
+
+    @property
+    def is_open(self) -> bool:
+        return self._failures >= self.MAX_FAILURES
+
+
 class HLTVApiService:
     def __init__(self, headless=True):
         self.browser_manager = BrowserManager(headless=headless)
@@ -29,7 +56,7 @@ class HLTVApiService:
         page = self.browser_manager.start()
         db_manager = get_db_manager()
         ids = self._get_ids_range(start_id, end_id)
-        app_logger.info("Starting Stability Sync for IDs %s...", ids)
+        logger.info("Starting Stability Sync for IDs %s...", ids)
         synced = _sync_ids_loop(self, page, db_manager, ids)
         self.browser_manager.close()
         return synced
@@ -46,14 +73,14 @@ class HLTVApiService:
         cached_html = self.proxy.get_player_html(pid)
 
         if cached_html:
-            app_logger.info("Cache HIT for ID %s", pid)
+            logger.info("Cache HIT for ID %s", pid)
             # Load cached HTML into page to reuse JS extraction logic
             page.set_content(cached_html, wait_until="domcontentloaded")
             return _process_player_page(self, page, db_manager, pid)
 
         # Cache Miss - Fetch Live
         url = f"https://www.hltv.org/stats/players/individual/{pid}/_"
-        app_logger.info("Fetching live from HLTV for ID %s...", pid)
+        logger.info("Fetching live from HLTV for ID %s...", pid)
 
         try:
             page.goto(url, wait_until="domcontentloaded", timeout=60000)
@@ -66,7 +93,7 @@ class HLTVApiService:
             return _process_player_page(self, page, db_manager, pid)
 
         except Exception as e:
-            app_logger.error("Failed to fetch ID %s: %s", pid, e)
+            logger.error("Failed to fetch ID %s: %s", pid, e)
             return False
 
     def _extract_stats(self, page):
@@ -86,23 +113,50 @@ class HLTVApiService:
 
 def _sync_ids_loop(svc, page, db, id_list):
     count = 0
+    breaker = _CircuitBreaker()  # F6-10: circuit breaker to abort on consecutive failures
     for pid in id_list:
+        if breaker.is_open:  # F6-10: abort loop when circuit is open
+            logger.error(
+                "Circuit breaker OPEN after %s consecutive failures — aborting sync loop",
+                _CircuitBreaker.MAX_FAILURES,
+            )
+            break
         try:
             if svc._sync_player(page, db, pid):
+                breaker.record_success()
                 count += 1
+            else:
+                breaker.record_failure()
         except Exception as e:
-            app_logger.error("Fail ID %s: %s", pid, e)
+            logger.error("Fail ID %s: %s", pid, e)
+            breaker.record_failure()
             svc.limiter.wait("backoff")
     return count
 
 
+def _is_cloudflare_block(page) -> bool:
+    """Detect Cloudflare challenge or block pages robustly (F6-21)."""
+    title = page.title().lower()
+    try:
+        content = page.content().lower()
+    except Exception:
+        content = ""
+    return (
+        "attention required" in title
+        or "just a moment" in title
+        or "cf-browser-verification" in content
+        or "challenge-form" in content
+        or page.locator("#cf-challenge-running").count() > 0
+    )
+
+
 def _process_player_page(svc, page, db, pid):
-    if "just a moment" in page.title().lower():
-        app_logger.warning("Cloudflare detected: %s", pid)
+    if _is_cloudflare_block(page):  # F6-21: robust Cloudflare detection
+        logger.warning("Cloudflare detected for ID %s", pid)
         svc.limiter.wait("backoff")
         return False
     if not page.locator(".statistics").is_visible():
-        app_logger.warning("No stats: %s", pid)
+        logger.warning("No stats for ID %s", pid)
         return False
     _finalize_extraction(svc, page, db, pid)
     return True
@@ -113,7 +167,7 @@ def _finalize_extraction(svc, page, db, pid):
     nick = svc._get_nickname(page, pid)
     m = svc._map_to_model(data, nick, pid, page.content())
     db.upsert(m)
-    app_logger.info("Synced %s", nick)
+    logger.info("Synced %s", nick)
 
 
 def _get_stats_js_eval():
@@ -171,7 +225,7 @@ def _build_stats_dict(d, nick, pid, html):
         "anomaly_score": 0.0,  # Computed later by drift detection
         "sample_weight": 1.0,  # Default weight for pro data
         "is_pro": True,
-        "processed_at": datetime.datetime.utcnow(),
+        "processed_at": datetime.now(timezone.utc),  # F6-04: timezone-aware UTC
     }
 
 
@@ -181,7 +235,7 @@ def _apply_hs_ratio(m, html):
         m.avg_hs = float(match.group(1)) / 100
     else:
         logger.warning(
-            "Failed to extract Headshot % for %s (ID: %s) - avg_hs remains 0.0",
+            "Failed to extract Headshot %% for %s (ID: %s) - avg_hs remains 0.0",
             m.player_name,
             m.demo_name,
         )

@@ -1,11 +1,18 @@
 import os
 from pathlib import Path
 
+from sqlmodel import select  # F6-31: moved from inside _queue_if_new() to module level
+
+from Programma_CS2_RENAN.backend.storage.database import get_db_manager  # F6-31
+from Programma_CS2_RENAN.backend.storage.db_models import IngestionTask  # F6-31
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.steam_locator")
 
 
+# F6-11: Steam path discovery is also performed in backend/data_sources/steam_demo_finder.py
+# (supplementary). steam_locator.py is the primary authority. Consolidation deferred;
+# ensure both use identical precedence order when modifying path resolution logic.
 def get_steam_path():
     """Finds the Steam installation path."""
     if os.name == "nt":
@@ -118,11 +125,6 @@ def _find_and_queue_demos(target_dir, pattern):
 
 
 def _queue_if_new(demo_path):
-    from sqlmodel import select
-
-    from Programma_CS2_RENAN.backend.storage.database import get_db_manager
-    from Programma_CS2_RENAN.backend.storage.db_models import IngestionTask
-
     db = get_db_manager()
     p_str = str(demo_path)
     with db.get_session() as s:

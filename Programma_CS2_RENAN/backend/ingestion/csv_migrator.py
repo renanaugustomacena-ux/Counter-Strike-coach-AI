@@ -3,9 +3,12 @@ import logging
 import sys
 from pathlib import Path
 
-# Add project root to sys.path explicitly to resolve Programma_CS2_RENAN imports
-project_root = Path(__file__).resolve().parents[3]  # .../Macena_cs2_analyzer
-sys.path.append(str(project_root))
+# F6-06: sys.path bootstrap — required only when this utility script is executed directly.
+# With proper package installation (pip install -e .) this block is a no-op when imported.
+# Technical debt: remove when entrypoints are configured in pyproject.toml/setup.py.
+if __name__ == "__main__":
+    project_root = Path(__file__).resolve().parents[3]  # .../Macena_cs2_analyzer
+    sys.path.insert(0, str(project_root))
 
 from datetime import datetime
 from typing import List, Optional
@@ -20,12 +23,29 @@ logger = logging.getLogger("CSVMigrator")
 logging.basicConfig(level=logging.INFO)
 
 
+# F6-17: Extracted safe_float to module level — was redefined inside every loop iteration.
+def _safe_float(value, default: float = 0.0) -> float:
+    """Parse float safely; return default on failure."""
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return default
+
+
+def _safe_int(value, default: int = 0) -> int:
+    """Parse int safely; return default on failure."""
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return default
+
+
 class CSVMigrator:
     def __init__(self, db_manager: DatabaseManager):
         self.db = db_manager
         # Use absolute paths derived from project_root
         # All CSVs are now in Programma_CS2_RENAN/data/external
-        self.data_dir = Path(project_root) / "Programma_CS2_RENAN/data/external"
+        self.data_dir = Path(__file__).resolve().parents[3] / "Programma_CS2_RENAN/data/external"
 
         # Translation/Alignment Logic:
         # - We map "lurker", "entry" etc. to normalized role probabilities.
@@ -69,13 +89,6 @@ class CSVMigrator:
                     if existing:
                         continue
 
-                    # Safe float conversion
-                    def safe_float(key, default=0.0):
-                        try:
-                            return float(row.get(key, default))
-                        except (ValueError, TypeError):
-                            return default
-
                     # Parse role
                     role_overall = row.get("role_overall", "Flex")
 
@@ -115,10 +128,10 @@ class CSVMigrator:
                         role_anchor=roles["anchor"],
                         role_igl=roles["igl"],
                         assigned_role=role_overall,
-                        # Raw Metrics mapping
-                        tapd=safe_float("tapd_overall"),
-                        oap=safe_float("oap_overall"),
-                        podt=safe_float("podt_overall"),
+                        # Raw Metrics mapping — F6-17: use module-level _safe_float
+                        tapd=_safe_float(row.get("tapd_overall")),
+                        oap=_safe_float(row.get("oap_overall")),
+                        podt=_safe_float(row.get("podt_overall")),
                         # No direct 'impact_rating' or 'aggression' column found in inspection,
                         # so likely oap serves as aggression proxy. Leaving 0.0 for now if not present.
                         rating_impact=0.0,
@@ -145,7 +158,7 @@ class CSVMigrator:
                     # Batch commit every 1000 rows
                     if i > 0 and i % 1000 == 0:
                         session.commit()
-                        print(f"Processed {i} rows...", end="\r")
+                        logger.info("Processed %s rows...", i)  # F6-05
 
                     try:
                         match_id = int(row["match_id"])
@@ -159,30 +172,25 @@ class CSVMigrator:
                         # Optimization: We'll assume for now we are adding new data.
                         # Users can clear the table if re-running.
 
-                        def safe_float(val):
-                            return float(val) if val else 0.0
-
-                        def safe_int(val):
-                            return int(val) if val else 0
-
                         record = Ext_TeamRoundStats(
                             match_id=0,  # No internal match link yet
                             external_match_id=match_id,
                             map_name=row["map_name"],
                             round_num=round_num,
                             team_name=team_name,
-                            kills=safe_int(row["kills"]),
-                            deaths=safe_int(row["deaths"]),
-                            damage=safe_float(row["damage"]),
-                            hits=safe_int(row["hits"]),
-                            shots=safe_int(row["shots"]),
-                            utility_value=safe_float(row["utility_value"]),
-                            money_spent=safe_float(row["money_spent"]),
-                            headshots=safe_int(row["headshots"]),
-                            first_kills=safe_int(row["first_kills"]),
-                            first_deaths=safe_int(row["first_deaths"]),
-                            accuracy=safe_float(row["accuracy"]),
-                            econ_rating=safe_float(row["econ_rating"]),
+                            # F6-17: use module-level _safe_float / _safe_int
+                            kills=_safe_int(row["kills"]),
+                            deaths=_safe_int(row["deaths"]),
+                            damage=_safe_float(row["damage"]),
+                            hits=_safe_int(row["hits"]),
+                            shots=_safe_int(row["shots"]),
+                            utility_value=_safe_float(row["utility_value"]),
+                            money_spent=_safe_float(row["money_spent"]),
+                            headshots=_safe_int(row["headshots"]),
+                            first_kills=_safe_int(row["first_kills"]),
+                            first_deaths=_safe_int(row["first_deaths"]),
+                            accuracy=_safe_float(row["accuracy"]),
+                            econ_rating=_safe_float(row["econ_rating"]),
                         )
                         session.add(record)
                         count += 1
