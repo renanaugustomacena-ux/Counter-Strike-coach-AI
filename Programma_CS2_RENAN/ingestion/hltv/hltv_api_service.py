@@ -93,7 +93,7 @@ class HLTVApiService:
             return _process_player_page(self, page, db_manager, pid)
 
         except Exception as e:
-            logger.error("Failed to fetch ID %s: %s", pid, e)
+            logger.exception("Failed to fetch ID %s", pid)
             return False
 
     def _extract_stats(self, page):
@@ -128,7 +128,7 @@ def _sync_ids_loop(svc, page, db, id_list):
             else:
                 breaker.record_failure()
         except Exception as e:
-            logger.error("Fail ID %s: %s", pid, e)
+            logger.exception("Fail ID %s", pid)
             breaker.record_failure()
             svc.limiter.wait("backoff")
     return count
@@ -140,6 +140,7 @@ def _is_cloudflare_block(page) -> bool:
     try:
         content = page.content().lower()
     except Exception:
+        logger.debug("Could not retrieve page content for Cloudflare check", exc_info=True)
         content = ""
     return (
         "attention required" in title

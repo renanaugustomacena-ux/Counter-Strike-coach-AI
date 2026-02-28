@@ -1,13 +1,11 @@
-import os
 import sys
 
+# --- Venv Guard ---
+if sys.prefix == sys.base_prefix:
+    print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
+    sys.exit(2)
+
 import pytest
-
-# Ensure project root is in path
-project_root = os.path.abspath(os.path.join(os.getcwd()))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
 import torch
 
 from Programma_CS2_RENAN.backend.nn.win_probability import WinProbabilityNN, predict_win_prob
@@ -76,5 +74,3 @@ class TestIntegration:
             assert len(ds) > 0, "Dataset name should not be empty"
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

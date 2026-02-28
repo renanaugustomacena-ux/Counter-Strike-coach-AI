@@ -4,6 +4,11 @@ import sys
 import time
 from pathlib import Path
 
+# --- Venv Guard ---
+if sys.prefix == sys.base_prefix:
+    print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
+    sys.exit(2)
+
 # --- Path Stabilization ---
 _script_dir = Path(__file__).parent.absolute()
 _project_root = _script_dir.parent
@@ -24,7 +29,8 @@ def run_tool(path_str, relative_name):
         # We run as subprocess to ensure clean environment for each
         cmd = [sys.executable, path_str] + args
         res = subprocess.run(
-            cmd, capture_output=True, encoding="utf-8", errors="replace", cwd=_project_root
+            cmd, capture_output=True, encoding="utf-8", errors="replace",
+            cwd=_project_root, timeout=120,
         )
 
         duration = time.time() - start
@@ -38,6 +44,10 @@ def run_tool(path_str, relative_name):
             print(res.stderr[:1000])  # Cap output
             print("=" * 40)
             return False, res.stderr
+    except subprocess.TimeoutExpired:
+        duration = time.time() - start
+        print(f" [TIMEOUT] {relative_name} exceeded 120s limit ({duration:.2f}s)")
+        return False, "Timed out after 120s"
     except Exception as e:
         print(f" [CRASH] {relative_name}: {e}")
         return False, str(e)

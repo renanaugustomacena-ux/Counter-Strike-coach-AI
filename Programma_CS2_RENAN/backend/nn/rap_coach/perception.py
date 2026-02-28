@@ -1,6 +1,10 @@
 import torch
 import torch.nn as nn
 
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+logger = get_logger("cs2analyzer.nn.rap_coach.perception")
+
 
 class ResNetBlock(nn.Module):
     """
@@ -59,6 +63,7 @@ class RAPPerception(nn.Module):
         self.map_backbone = self._make_resnet_stack(3, 32, [2, 2])
         self.map_pool = nn.AdaptiveAvgPool2d((1, 1))
         self.motion_conv = self._create_motion_conv()
+        logger.debug("RAPPerception initialized: view=[1,2,2,1], map=[2,2], motion_conv")
 
     def _create_motion_conv(self):
         return nn.Sequential(

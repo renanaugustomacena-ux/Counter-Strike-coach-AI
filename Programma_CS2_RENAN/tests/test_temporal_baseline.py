@@ -12,15 +12,14 @@ Tests cover:
 import math
 import sys
 import types
-from datetime import datetime, timedelta
-from pathlib import Path
+from datetime import datetime, timedelta, timezone
+
+# --- Venv Guard ---
+if sys.prefix == sys.base_prefix:
+    print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
+    sys.exit(2)
 
 import pytest
-
-# --- Path Stabilization ---
-PROJECT_ROOT = Path(__file__).parent.parent.parent.absolute()
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
 
 from Programma_CS2_RENAN.backend.processing.baselines.pro_baseline import (
     TemporalBaselineDecay,
@@ -40,7 +39,7 @@ def _make_stat_card(**overrides):
     new MagicMock objects.
     """
     defaults = {
-        "last_updated": datetime(2026, 1, 1),
+        "last_updated": datetime(2026, 1, 1, tzinfo=timezone.utc),
         "rating_2_0": 1.15,
         "kpr": 0.78,
         "dpr": 0.62,
@@ -88,7 +87,7 @@ class TestComputeWeight:
         """Weight at 45 days (half of half-life) should be ~0.707."""
         stat_date = self.reference - timedelta(days=45)
         w = self.decay.compute_weight(stat_date, self.reference)
-        expected = math.exp(-0.693 * 45 / 90.0)
+        expected = math.exp(-math.log(2) * 45 / 90.0)
         assert abs(w - expected) < 0.01
 
     def test_weight_at_180_days(self):
@@ -146,11 +145,11 @@ class TestComputeWeightedBaseline:
     def test_recent_cards_weighted_higher(self):
         """Recent cards should influence mean more than old cards."""
         recent = _make_stat_card(
-            last_updated=datetime(2026, 2, 1),
+            last_updated=datetime(2026, 2, 1, tzinfo=timezone.utc),
             rating_2_0=1.30,
         )
         old = _make_stat_card(
-            last_updated=datetime(2025, 1, 1),
+            last_updated=datetime(2025, 1, 1, tzinfo=timezone.utc),
             rating_2_0=0.90,
         )
         result = self.decay.compute_weighted_baseline([recent, old])
@@ -164,11 +163,14 @@ class TestComputeWeightedBaseline:
         assert "rating" in result
 
     def test_deterministic(self):
-        """Same inputs, same outputs."""
-        cards = [_make_stat_card(last_updated=datetime(2026, 1, 15))]
+        """Same inputs, same outputs (within float precision)."""
+        cards = [_make_stat_card(last_updated=datetime(2026, 1, 15, tzinfo=timezone.utc))]
         r1 = self.decay.compute_weighted_baseline(cards)
         r2 = self.decay.compute_weighted_baseline(cards)
-        assert r1 == r2
+        # datetime.now(UTC) shifts by microseconds between calls, causing
+        # negligible weight differences that surface as float rounding.
+        for metric in r1:
+            assert r1[metric] == pytest.approx(r2[metric])
 
 
 # ---------------------------------------------------------------------------

@@ -4,6 +4,9 @@ from pathlib import Path
 import torch
 
 from Programma_CS2_RENAN.core.config import MODELS_DIR, get_resource_path
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+logger = get_logger("cs2analyzer.nn.persistence")
 
 # Base models directory is now imported from config to ensure persistence
 BASE_NN_DIR = Path(MODELS_DIR)
@@ -56,23 +59,19 @@ def load_nn(version, model, user_id=None):
         except RuntimeError as re:
             # Handle size mismatch (common during architecture upgrades)
             if "size mismatch" in str(re):
-                from Programma_CS2_RENAN.core.logger import app_logger
-
-                app_logger.warning(
+                logger.warning(
                     "Architecture Mismatch: Model at %s is stale (old dims). Running with fresh initialization.",
                     path,
                 )
                 # Flag the model as untrained so callers can check (F3-23)
                 model._stale_checkpoint = True
-                app_logger.warning(
+                logger.warning(
                     "PREDICTION QUALITY: Model is running with RANDOM WEIGHTS after stale "
                     "checkpoint detection. All predictions are meaningless until re-training completes."
                 )
             else:
                 raise
         except Exception as e:
-            from Programma_CS2_RENAN.core.logger import app_logger
-
-            app_logger.error("Failed to load model from %s: %s", path, e)
+            logger.exception("Failed to load model from %s", path)
 
     return model

@@ -462,11 +462,18 @@ CONCEPT_NAMES = [c.name for c in COACHING_CONCEPTS]
 
 class ConceptLabeler:
     """
-    Generates soft coaching concept labels from the 25-dim feature vector.
+    Generates soft coaching concept labels for VL-JEPA training.
 
-    Uses heuristic rules derived from the same features the model sees,
-    producing [NUM_COACHING_CONCEPTS] soft labels in [0, 1] per tick.
+    Two labeling modes:
+    1. **Outcome-based** (preferred, no label leakage): Derives labels from
+       RoundStats outcome data (kills, deaths, utility usage, round_won, etc.)
+       which is orthogonal to the input feature vector.
+    2. **Heuristic fallback** (legacy, has label leakage): Derives labels from
+       the same 25-dim feature vector the model sees as input. Only used when
+       RoundStats data is unavailable.
+
     Multi-label: a tick can activate multiple concepts simultaneously.
+    Shape: [NUM_COACHING_CONCEPTS=16] soft labels in [0, 1].
 
     Feature index reference (from FeatureExtractor, METADATA_DIM=25):
         0: health/100,   1: armor/100,    2: has_helmet,     3: has_defuser,
@@ -614,6 +621,141 @@ class ConceptLabeler:
             labels[15] = 0.5 + hp * 0.3
         elif hp < 0.3 and enemies_vis < 0.1:
             labels[15] = 0.5  # passive when hurt = calibrated
+
+        return labels
+
+    def label_from_round_stats(self, round_stats) -> torch.Tensor:
+        """
+        Generate concept labels from RoundStats outcome data (G-01 fix).
+
+        Derives labels from round OUTCOMES rather than tick-level input features,
+        eliminating label leakage. The model must learn to predict outcomes
+        from features instead of reconstructing known feature patterns.
+
+        Args:
+            round_stats: A RoundStats ORM object with fields:
+                kills, deaths, assists, damage_dealt, headshot_kills,
+                trade_kills, was_traded, opening_kill, opening_death,
+                he_damage, molotov_damage, flashes_thrown, smokes_thrown,
+                equipment_value, round_won, round_rating
+
+        Returns:
+            [NUM_COACHING_CONCEPTS] soft labels in [0, 1].
+        """
+        labels = torch.zeros(NUM_COACHING_CONCEPTS)
+
+        kills = getattr(round_stats, "kills", 0)
+        deaths = getattr(round_stats, "deaths", 0)
+        assists = getattr(round_stats, "assists", 0)
+        damage = getattr(round_stats, "damage_dealt", 0)
+        hs_kills = getattr(round_stats, "headshot_kills", 0)
+        trade_kills = getattr(round_stats, "trade_kills", 0)
+        was_traded = getattr(round_stats, "was_traded", False)
+        opening_kill = getattr(round_stats, "opening_kill", False)
+        opening_death = getattr(round_stats, "opening_death", False)
+        he_dmg = getattr(round_stats, "he_damage", 0.0)
+        molly_dmg = getattr(round_stats, "molotov_damage", 0.0)
+        flashes = getattr(round_stats, "flashes_thrown", 0)
+        smokes = getattr(round_stats, "smokes_thrown", 0)
+        equip = getattr(round_stats, "equipment_value", 0)
+        round_won = getattr(round_stats, "round_won", False)
+        rating = getattr(round_stats, "round_rating", None) or 0.0
+
+        survived = deaths == 0
+        utility_total = he_dmg + molly_dmg + flashes * 20 + smokes * 15
+
+        # 0: positioning_aggressive — opening kill indicates aggressive positioning
+        if opening_kill:
+            labels[0] = 0.8 + min(kills * 0.05, 0.2)
+        elif kills >= 2 and survived:
+            labels[0] = 0.6
+
+        # 1: positioning_passive — survived without opening duel + low damage
+        if survived and not opening_kill and not opening_death and damage < 60:
+            labels[1] = 0.7
+
+        # 2: positioning_exposed — opening death or death with low damage output
+        if opening_death:
+            labels[2] = 0.8
+        elif deaths > 0 and damage < 40:
+            labels[2] = 0.6
+
+        # 3: utility_effective — high utility damage/info AND round won
+        if utility_total > 80 and round_won:
+            labels[3] = min(0.5 + utility_total / 300, 1.0)
+        elif flashes >= 2 and round_won:
+            labels[3] = 0.6
+
+        # 4: utility_wasteful — no utility used, or utility + still lost
+        if flashes == 0 and smokes == 0 and he_dmg == 0 and molly_dmg == 0:
+            labels[4] = 0.5
+        elif utility_total > 60 and not round_won:
+            labels[4] = 0.4
+
+        # 5: economy_efficient — low equip + win (eco win) or normal equip + win
+        if round_won:
+            if equip < 2000:
+                labels[5] = 0.9  # Eco win = very efficient
+            elif equip < 4500:
+                labels[5] = 0.7
+            else:
+                labels[5] = 0.5
+        else:
+            labels[5] = 0.3
+
+        # 6: economy_wasteful — high equip + loss
+        if not round_won and equip > 4000:
+            labels[6] = min(0.4 + equip / 16000, 1.0)
+
+        # 7: engagement_favorable — multi-kills, high damage, survived
+        if kills >= 2 and survived:
+            labels[7] = min(0.5 + kills * 0.15, 1.0)
+        elif damage > 120 and survived:
+            labels[7] = 0.7
+
+        # 8: engagement_unfavorable — died with low trade value
+        if deaths > 0 and kills == 0 and damage < 50:
+            labels[8] = 0.7
+        elif deaths > 0 and not was_traded:
+            labels[8] = 0.5
+
+        # 9: trade_responsive — got trade kills or was traded after death
+        if trade_kills > 0:
+            labels[9] = min(0.6 + trade_kills * 0.2, 1.0)
+        elif was_traded:
+            labels[9] = 0.5
+
+        # 10: trade_isolated — died without being traded, no trade kills
+        if deaths > 0 and not was_traded and trade_kills == 0:
+            labels[10] = 0.7
+
+        # 11: rotation_fast — proxy: assists suggest support/rotation plays
+        if assists >= 1 and round_won:
+            labels[11] = 0.6 + assists * 0.1
+
+        # 12: information_gathered — flashes + survived = gathering intel
+        if flashes >= 2 and survived:
+            labels[12] = 0.6
+        elif flashes >= 1 and kills >= 1:
+            labels[12] = 0.5
+
+        # 13: momentum_leveraged — high rating round (confident play)
+        if rating > 1.5:
+            labels[13] = min(rating / 2.5, 1.0)
+        elif kills >= 3:
+            labels[13] = 0.7
+
+        # 14: clutch_composed — proxy: kills + round_won when likely in clutch
+        # (high kills but deaths = 0 suggests last-man-standing performance)
+        if kills >= 2 and survived and round_won:
+            labels[14] = 0.6
+
+        # 15: aggression_calibrated — kills proportional to equipment investment
+        if kills > 0 and equip > 0:
+            efficiency = (kills * 1000) / max(equip, 1)
+            labels[15] = min(efficiency * 0.5, 1.0)
+        elif survived and round_won:
+            labels[15] = 0.5
 
         return labels
 

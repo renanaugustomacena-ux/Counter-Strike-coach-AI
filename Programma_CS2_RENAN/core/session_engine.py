@@ -105,8 +105,32 @@ def run_session_loop():
         else:
             logger.info("Daily Backup already exists. Skipping.")
     except Exception as e:
-        logger.error("Backup Routine Failed: %s", e)
+        logger.exception("Backup Routine Failed")
         # Non-blocking: We continue ensuring core functionality works
+
+    # --- H-02: One-time knowledge base population (pro demo mining) ---
+    try:
+        from sqlmodel import func
+
+        from Programma_CS2_RENAN.backend.storage.db_models import TacticalKnowledge
+
+        with get_db_manager().get_session() as s:
+            kb_count = s.exec(
+                select(func.count()).select_from(TacticalKnowledge)
+            ).one()
+
+        if kb_count == 0:
+            logger.info("Knowledge base empty — running first-time initialization...")
+            from Programma_CS2_RENAN.backend.knowledge.init_knowledge_base import (
+                initialize_knowledge_base,
+            )
+
+            initialize_knowledge_base()
+            logger.info("Knowledge base initialization complete.")
+        else:
+            logger.debug("Knowledge base already populated (%d entries). Skipping init.", kb_count)
+    except Exception as e:
+        logger.warning("Knowledge base initialization failed (non-fatal): %s", e)
 
     # Start IPC Monitor (The Life-Line)
     threading.Thread(target=_monitor_stdin, daemon=True).start()
@@ -123,7 +147,7 @@ def run_session_loop():
         watcher = IngestionWatcher()
         watcher.start()
     except Exception as e:
-        logger.error("Failed to start IngestionWatcher: %s", e)
+        logger.exception("Failed to start IngestionWatcher")
 
     threading.Thread(target=_scanner_daemon_loop, daemon=True).start()
     threading.Thread(target=_digester_daemon_loop, daemon=True).start()
@@ -138,7 +162,7 @@ def run_session_loop():
     except KeyboardInterrupt:
         logger.info("Session Engine stopping via KeyboardInterrupt")
     except Exception as e:
-        logger.critical("Session Engine Crashed: %s", e)
+        logger.critical("Session Engine Crashed", exc_info=True)
     finally:
         _shutdown_event.set()  # Signal all daemons to stop
         if watcher:
@@ -164,7 +188,7 @@ def _cleanup_zombie_tasks():
                     s.add(task)
                 s.commit()
     except Exception as e:
-        logger.error("Failed to cleanup zombie tasks: %s", e)
+        logger.exception("Failed to cleanup zombie tasks")
 
 
 def _scanner_daemon_loop():
@@ -202,7 +226,7 @@ def _scanner_daemon_loop():
                     # is_pro=False scan
                     process_new_demos(is_pro=False, limit=0)
                 except Exception as scan_err:
-                    logger.error("[Scanner] Scan Cycle Failed: %s", scan_err)
+                    logger.exception("[Scanner] Scan Cycle Failed")
                     state_manager.set_error("hunter", str(scan_err))
 
                 state_manager.update_status("hunter", "Active")
@@ -212,7 +236,7 @@ def _scanner_daemon_loop():
             time.sleep(1)
 
         except Exception as e:
-            logger.error("Scanner Daemon Error: %s", e)
+            logger.exception("Scanner Daemon Error")
             time.sleep(5)  # Backoff on error
 
     logger.info("Scanner Daemon Stopped")
@@ -258,7 +282,7 @@ def _digester_daemon_loop():
                 state_manager.update_status("digester", "Processing")
 
         except Exception as e:
-            logger.error("Digester Error: %s", e)
+            logger.exception("Digester Error")
             state_manager.set_error("digester", str(e))
             time.sleep(5)
 
@@ -269,6 +293,7 @@ def _teacher_daemon_loop():
     """DAEMON C: Cognitive ML Trainer"""
     from Programma_CS2_RENAN.backend.storage.state_manager import state_manager
 
+    logger.info("Teacher Daemon Started")
     state_manager.update_status("teacher", "Idle")
 
     # Cache baseline snapshot for meta-shift detection (Proposal 11)
@@ -293,17 +318,22 @@ def _teacher_daemon_loop():
                 try:
                     from Programma_CS2_RENAN.backend.analysis.belief_model import (
                         AdaptiveBeliefCalibrator,
+                        extract_death_events_from_db,
                     )
 
-                    calibrator = AdaptiveBeliefCalibrator()
-                    calibrator.auto_calibrate(get_db_manager())
-                    logger.info("Belief calibration completed after retraining")
+                    death_events = extract_death_events_from_db()
+                    if not death_events.empty:
+                        calibrator = AdaptiveBeliefCalibrator()
+                        summary = calibrator.auto_calibrate(death_events)
+                        logger.info("Belief calibration completed: %s", summary)
+                    else:
+                        logger.info("Belief calibration skipped: no death events in DB")
                 except Exception as cal_err:
                     logger.warning("Belief calibration non-fatal: %s", cal_err)
             else:
                 logger.debug("Teacher: retraining not triggered this cycle")
         except Exception as e:
-            logger.error("Teacher Error: %s", e)
+            logger.exception("Teacher Error")
             state_manager.set_error("teacher", str(e))
 
         # Check stop signal more frequently than 300s sleep
@@ -408,7 +438,7 @@ def _commit_trained_sample_count(count: int) -> None:
                 s.add(st)
                 s.commit()  # F6-03: persist trained sample count; context manager does not auto-commit here
     except Exception as e:
-        logger.error("Failed to commit trained sample count: %s", e)
+        logger.exception("Failed to commit trained sample count")
 
 
 if __name__ == "__main__":

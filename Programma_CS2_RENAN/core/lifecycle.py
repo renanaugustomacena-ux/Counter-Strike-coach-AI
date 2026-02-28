@@ -51,7 +51,7 @@ class AppLifecycleManager:
 
             return True
         except Exception as e:
-            logger.error("Failed to acquire single instance lock: %s", e)
+            logger.exception("Failed to acquire single instance lock")
             # Fail closed to protect DB
             return False
 
@@ -103,7 +103,7 @@ class AppLifecycleManager:
             return self._daemon_process
 
         except Exception as e:
-            logger.error("Failed to launch daemon: %s", e)
+            logger.exception("Failed to launch daemon")
             return None
 
     def shutdown(self):
@@ -122,7 +122,7 @@ class AppLifecycleManager:
                     logger.warning("Daemon hung, forcing kill.")
                     self._daemon_process.kill()
             except Exception as e:
-                logger.error("Error killing daemon: %s", e)
+                logger.exception("Error killing daemon")
 
         # Close daemon log handles to prevent resource leaks
         for handle in (getattr(self, "_out_log", None), getattr(self, "_err_log", None)):

@@ -33,7 +33,7 @@ def parse_demo(demo_path: str, target_player: Optional[str] = None) -> pd.DataFr
 
         return _extract_stats_with_full_fields(parser, len(rounds_df), target_player)
     except Exception as e:
-        logger.error("Parser Fatal: %s", e)
+        logger.exception("Parser Fatal")
         return pd.DataFrame()
 
 
@@ -192,6 +192,7 @@ def _compute_per_round_variance(parser):
 
         return kill_std.merge(adr_std, on="player_name", how="outer").fillna(0.0)
     except Exception:
+        logger.debug("Per-round variance computation failed", exc_info=True)
         return None
 
 
@@ -277,7 +278,7 @@ def _add_event_stats_safe(parser, df, total_rounds):
         logger.info("Event stats extracted for %d/%d players", players_with_data, len(df))
 
     except Exception as e:
-        logger.error("Event parsing failed - stats remain 0.0: %s (type: %s)", e, type(e).__name__)
+        logger.exception("Event parsing failed - stats remain 0.0")
 
 
 def parse_sequential_ticks(
@@ -362,5 +363,5 @@ def parse_sequential_ticks(
             ]
         return df
     except Exception as e:
-        logger.error("Seq failure: %s", e)
+        logger.exception("Seq failure")
         return pd.DataFrame()

@@ -1,6 +1,10 @@
 import numpy as np
 import torch
 
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+logger = get_logger("cs2analyzer.nn.rap_coach.communication")
+
 
 class RAPCommunication:
     """
@@ -35,6 +39,7 @@ class RAPCommunication:
         Applies the 'Skill-Conditioned Explanation' rule.
         """
         if confidence < 0.7:
+            logger.debug("Advice suppressed: confidence %.2f below threshold 0.7", confidence)
             return None
 
         # 1. Determine Tier

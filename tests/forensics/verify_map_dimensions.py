@@ -2,6 +2,11 @@ import os
 import sys
 from pathlib import Path
 
+# --- Venv Guard ---
+if sys.prefix == sys.base_prefix:
+    print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
+    sys.exit(2)
+
 from PIL import Image
 
 # --- Path Stabilization ---
@@ -10,7 +15,7 @@ root = os.path.dirname(os.path.dirname(script_dir))
 if root not in sys.path:
     sys.path.insert(0, root)
 
-from Programma_CS2_RENAN.core.spatial_data import MAP_DATA
+from Programma_CS2_RENAN.core.spatial_data import SPATIAL_REGISTRY
 
 
 def verify_dimensions():
@@ -19,7 +24,7 @@ def verify_dimensions():
     print(f"{'Map Name':<15} | {'Width':<6} | {'Height':<6} | {'Status'}")
     print("-" * 45)
 
-    for map_name in MAP_DATA.keys():
+    for map_name in SPATIAL_REGISTRY.keys():
         path = maps_dir / f"{map_name}.png"
         if path.exists():
             with Image.open(path) as img:

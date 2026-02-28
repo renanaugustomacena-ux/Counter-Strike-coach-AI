@@ -7,6 +7,10 @@ scaling each correction's weighted Z-score by the NN-suggested feature weight.
 
 from typing import Any, Dict, List
 
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+logger = get_logger("cs2analyzer.coaching.nn_refinement")
+
 
 def apply_nn_refinement(
     corrections: List[Dict[str, Any]],
@@ -22,4 +26,5 @@ def apply_nn_refinement(
 
         refined.append({**c, "weighted_z": refined_z})
 
+    logger.debug("NN refinement applied to %d corrections", len(refined))
     return refined

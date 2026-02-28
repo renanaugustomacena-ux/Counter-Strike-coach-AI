@@ -5,6 +5,10 @@ from ncps.wirings import AutoNCP
 
 from hflayers import Hopfield
 
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+logger = get_logger("cs2analyzer.nn.rap_coach.memory")
+
 
 class RAPMemory(nn.Module):
     """
@@ -48,6 +52,10 @@ class RAPMemory(nn.Module):
             nn.Linear(hidden_dim, hidden_dim),
             nn.SiLU(),  # Better gradient flow than ReLU
             nn.Linear(hidden_dim, 64),  # Belief vector size
+        )
+        logger.debug(
+            "RAPMemory initialized: input=%d, hidden=%d, ncp_units=%d, hopfield_heads=4",
+            input_dim, hidden_dim, ncp_units,
         )
 
     def forward(self, x, hidden=None):

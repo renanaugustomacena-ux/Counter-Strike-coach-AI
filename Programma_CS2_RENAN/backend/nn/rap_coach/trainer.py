@@ -3,6 +3,9 @@ import torch.nn as nn
 import torch.optim as optim
 
 from Programma_CS2_RENAN.backend.nn.rap_coach.model import RAPCoachModel
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+logger = get_logger("cs2analyzer.nn.rap_coach.trainer")
 
 
 class RAPTrainer:
@@ -26,7 +29,11 @@ class RAPTrainer:
         self.optimizer.zero_grad()
 
         # Forward Pass
-        outputs = self.model(batch["view"], batch["map"], batch["motion"], batch["metadata"])
+        try:
+            outputs = self.model(batch["view"], batch["map"], batch["motion"], batch["metadata"])
+        except Exception:
+            logger.exception("Forward pass failed during train_step")
+            raise
 
         # 1. Strategy Loss (Decision optimality)
         # In actual training, 'targets' come from pro-baseline deltas
@@ -65,6 +72,11 @@ class RAPTrainer:
 
         total_loss.backward()
         self.optimizer.step()
+
+        logger.debug(
+            "train_step: loss=%.4f sparsity=%.3f pos_loss=%.4f z_err=%.4f",
+            total_loss.item(), sparsity_ratio, loss_pos.item(), z_error,
+        )
 
         # Return dict with metrics for the Orchestrator to log
         return {

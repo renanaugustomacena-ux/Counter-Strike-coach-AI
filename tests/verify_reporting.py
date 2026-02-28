@@ -1,11 +1,17 @@
 import os
 import shutil
 import sys
+from pathlib import Path
 
-# Path setup
-current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(current_dir)
-sys.path.insert(0, project_root)
+# --- Venv Guard ---
+if sys.prefix == sys.base_prefix:
+    print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
+    sys.exit(2)
+
+# Path setup — anchored to this file's location, not CWD
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_PROJECT_ROOT))
+_TEST_REPORTS_DIR = str(Path(__file__).resolve().parent / "test_reports")
 
 from Programma_CS2_RENAN.reporting.report_generator import MatchReportGenerator
 from Programma_CS2_RENAN.reporting.visualizer import MatchVisualizer
@@ -35,7 +41,7 @@ def verify_visualizer():
     real_positions = [(t.pos_x, t.pos_y) for t in ticks]
     print(f"    Fetched {len(real_positions)} real coordinates.")
 
-    viz = MatchVisualizer(output_dir="tests/test_reports")
+    viz = MatchVisualizer(output_dir=_TEST_REPORTS_DIR)
 
     # Use real map name and real positions
     meta = mgr.get_metadata(match_id)
@@ -66,8 +72,8 @@ def verify_generator_stub():
 
 
 if __name__ == "__main__":
-    if os.path.exists("tests/test_reports"):
-        shutil.rmtree("tests/test_reports")
+    if os.path.exists(_TEST_REPORTS_DIR):
+        shutil.rmtree(_TEST_REPORTS_DIR)
 
     v_res = verify_visualizer()
     g_res = verify_generator_stub()
@@ -76,3 +82,4 @@ if __name__ == "__main__":
         print("\nReporting System Verified.")
     else:
         print("\nReporting System Verification FAILED.")
+        sys.exit(1)

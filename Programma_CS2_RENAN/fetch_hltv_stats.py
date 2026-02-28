@@ -6,7 +6,13 @@ import time
 from typing import Any, Dict, Optional
 
 import requests
-from bs4 import BeautifulSoup
+
+try:
+    from bs4 import BeautifulSoup
+
+    _HAS_BS4 = True
+except ImportError:
+    _HAS_BS4 = False
 
 # Add project root to path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -24,6 +30,13 @@ class HLTVStatFetcher:
     """
     Robust fetcher for HLTV.org statistical data.
     """
+
+    def __init__(self):
+        if not _HAS_BS4:
+            raise ImportError(
+                "beautifulsoup4 is required for HLTV stat fetching. "
+                "Install it with: pip install beautifulsoup4"
+            )
 
     HEADERS = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
@@ -55,7 +68,7 @@ class HLTVStatFetcher:
             logger.info("Discovered %s players.", len(player_links))
             return player_links
         except Exception as e:
-            logger.error("Error discovering top players: %s", e)
+            logger.exception("Error discovering top players")
             return []
 
     def fetch_player_stats(self, url: str) -> Optional[Dict[str, Any]]:
@@ -114,7 +127,7 @@ class HLTVStatFetcher:
             return main_data
 
         except Exception as e:
-            logger.error("Error in Deep Crawl: %s", e)
+            logger.exception("Error in Deep Crawl")
             return None
 
     def _fetch_sub_stats(self, url: str, parser_func) -> Dict[str, Any]:

@@ -4,6 +4,9 @@ import torch.nn.functional as F
 
 from Programma_CS2_RENAN.backend.nn.layers.superposition import SuperpositionLayer
 from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+logger = get_logger("cs2analyzer.nn.rap_coach.strategy")
 
 
 class ContextualAttention(nn.Module):

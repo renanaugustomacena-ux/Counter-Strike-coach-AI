@@ -6,6 +6,11 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
+# --- Venv Guard ---
+if sys.prefix == sys.base_prefix:
+    print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
+    sys.exit(2)
+
 # --- Path Stabilization ---
 script_dir = Path(__file__).parent.absolute()
 project_root = script_dir.parent

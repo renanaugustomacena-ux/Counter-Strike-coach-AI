@@ -21,6 +21,27 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 # =============================================================================
+# VENV GUARD — prevent misleading failures when running with system Python
+# =============================================================================
+
+EXPECTED_VENV = "cs2analyzer"
+
+
+def require_venv():
+    """Bail out early if not running inside a virtual environment."""
+    if sys.prefix == sys.base_prefix:
+        print(
+            f"ERROR: Not running inside a virtual environment.\n"
+            f"This project requires the '{EXPECTED_VENV}' venv.\n"
+            f"\n"
+            f"  Activate it with:  source ~/.venvs/{EXPECTED_VENV}/bin/activate\n"
+            f"  Then retry:        python {' '.join(sys.argv)}\n",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+
+# =============================================================================
 # PATH STABILIZATION — single canonical implementation
 # =============================================================================
 
@@ -36,6 +57,8 @@ def path_stabilize() -> tuple:
         PROJECT_ROOT = Macena_cs2_analyzer/
         SOURCE_ROOT  = Macena_cs2_analyzer/Programma_CS2_RENAN/
     """
+    require_venv()
+
     # Walk up from this file: _infra.py -> tools/ -> Programma_CS2_RENAN/ -> root/
     source_root = Path(__file__).resolve().parent.parent
     project_root = source_root.parent
@@ -172,11 +195,16 @@ class ToolReport:
 
     def to_json(self, indent: int = 2) -> str:
         d = self.to_dict()
-        # Enum values need serialization
+        # Normalize severity to its primitive value for portable JSON serialization.
+        # dataclasses.asdict() returns the Enum instance on Python <3.12 and the
+        # value directly on >=3.12; handle both plus the legacy _value_ dict format.
         for r in d["results"]:
-            r["severity"] = (
-                r["severity"]["_value_"] if isinstance(r["severity"], dict) else str(r["severity"])
-            )
+            sev = r["severity"]
+            if hasattr(sev, "value"):          # Enum instance (Python <3.12)
+                r["severity"] = sev.value
+            elif isinstance(sev, dict):        # Legacy dict format with _value_ key
+                r["severity"] = sev.get("_value_", sev.get("value", str(sev)))
+            # else: already a primitive (string/int), leave unchanged
         return json.dumps(d, indent=indent, default=str)
 
 

@@ -3,10 +3,13 @@ import os
 import sys
 from pathlib import Path
 
-_script_dir = Path(__file__).parent.absolute()
-_project_root = _script_dir
-while _project_root.name != "Macena_cs2_analyzer" and _project_root.parent != _project_root:
-    _project_root = _project_root.parent
+# --- Venv Guard ---
+if sys.prefix == sys.base_prefix:
+    print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
+    sys.exit(2)
+
+# tools/ is one level below the project root — no fragile name matching needed
+_project_root = Path(__file__).resolve().parent.parent
 if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
 # ----------------------------------------
@@ -200,6 +203,24 @@ class PortabilityVerifier:
         docstring_count = sum(l.count('"""') + l.count("'''") for l in lines)
         return docstring_count % 2 == 1  # Odd count means we're inside
 
+    def _is_in_platform_guard(self, lines: list, line_num: int) -> bool:
+        """Check if line is inside a platform-specific guard (e.g., if os.name == 'nt':)."""
+        # Walk backwards from current line to find enclosing if-block
+        current_indent = len(lines[line_num - 1]) - len(lines[line_num - 1].lstrip())
+        for i in range(line_num - 2, max(0, line_num - 20), -1):
+            prev_line = lines[i]
+            prev_stripped = prev_line.strip()
+            prev_indent = len(prev_line) - len(prev_line.lstrip())
+            if prev_indent < current_indent and re.search(
+                r'''if\s+os\.name\s*==\s*["']nt["']''', prev_stripped
+            ):
+                return True
+            if prev_indent < current_indent and re.search(
+                r'''if\s+.*sys\.platform.*==.*["']win''', prev_stripped
+            ):
+                return True
+        return False
+
     def _add_violation(
         self,
         file: str,
@@ -278,6 +299,15 @@ class PortabilityVerifier:
 
                             # Skip allowed markers
                             if "# PORTABILITY_OK" in line or "# Example" in line:
+                                continue
+
+                            # Skip regex pattern strings (e.g., r"C:\\Users" in security scanners)
+                            stripped = line.strip()
+                            if re.search(r'''[rb]?["'].*\\\\.*["']''', stripped):
+                                continue
+
+                            # Skip platform-guarded code (inside if os.name == "nt": blocks)
+                            if self._is_in_platform_guard(lines, line_num):
                                 continue
 
                             local_violations.append(

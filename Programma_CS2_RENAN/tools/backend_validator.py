@@ -19,12 +19,12 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import torch
-
 # --- Use shared infrastructure ---
 from _infra import PROJECT_ROOT, SOURCE_ROOT, BaseValidator, Severity, path_stabilize
 
 PROJECT_ROOT, SOURCE_ROOT = path_stabilize()
+
+import torch
 
 from Programma_CS2_RENAN.core.config import DATABASE_URL, MODELS_DIR, SETTINGS_PATH
 from Programma_CS2_RENAN.observability.logger_setup import get_logger

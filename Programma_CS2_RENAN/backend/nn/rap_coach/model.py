@@ -6,6 +6,9 @@ from Programma_CS2_RENAN.backend.nn.rap_coach.pedagogy import CausalAttributor, 
 from Programma_CS2_RENAN.backend.nn.rap_coach.perception import RAPPerception
 from Programma_CS2_RENAN.backend.nn.rap_coach.strategy import RAPStrategy
 from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+logger = get_logger("cs2analyzer.nn.rap_coach.model")
 
 # Canonical scale factor for converting normalised position-delta outputs
 # (model range ≈ [-1, 1]) to CS2 world-unit displacements.
@@ -47,6 +50,11 @@ class RAPCoachModel(nn.Module):
         # 5. Position Head (Optimal Shadow)
         # Predicts delta (dx, dy, dz) from current pos to optimal pos
         self.position_head = nn.Linear(hidden_dim, 3)
+
+        logger.info(
+            "RAPCoachModel initialized: metadata_dim=%d, output_dim=%d, hidden=%d, perception=%d",
+            metadata_dim, output_dim, hidden_dim, perception_dim,
+        )
 
     def forward(self, view_frame, map_frame, motion_diff, metadata, skill_vec=None):
         # x metadata shape: (batch, seq_len, metadata_dim)

@@ -27,6 +27,11 @@ import os
 import sys
 from pathlib import Path
 
+# --- Venv Guard ---
+if sys.prefix == sys.base_prefix:
+    print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
+    sys.exit(2)
+
 import pytest
 
 # --- Path Stabilization (centralized for all tests) ---
@@ -44,6 +49,14 @@ def in_memory_db():
 
     Useful for testing schema creation and ORM operations
     without touching the real database.
+
+    Note (PT2-18): This fixture uses SQLModel.metadata.create_all() rather than
+    init_database(). This is intentional: init_database() is designed for the real
+    WAL-mode SQLite file and performs operations (PRAGMA journal_mode=WAL, default
+    row inserts) that are not meaningful for an in-memory session. The schema created
+    here is equivalent for ORM testing purposes — all SQLModel-registered tables are
+    created. If init_database() ever adds schema that is NOT reflected in SQLModel
+    metadata (e.g. raw CREATE TABLE via sqlite3), this fixture must be updated.
     """
     from sqlmodel import Session, SQLModel, create_engine
 

@@ -3,6 +3,10 @@ from kivy.clock import Clock
 from kivy.graphics.texture import Texture
 from kivy.uix.image import Image
 
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+_logger = get_logger("cs2analyzer.widgets")
+
 matplotlib.use("Agg")  # Headless backend for Kivy compatibility
 import io
 
@@ -91,8 +95,7 @@ class RadarChartWidget(MatplotlibWidget):
         values = list(skill_dict.values())
 
         if len(metrics) < 3:  # F7-36: radar chart needs at least 3 points for a meaningful polygon
-            import logging
-            logging.getLogger("cs2analyzer.widgets").warning(
+            _logger.warning(
                 "RadarChartWidget: need at least 3 attributes, got %s", len(metrics)
             )
             self.texture = None

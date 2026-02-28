@@ -8,11 +8,12 @@ against real database records.
 
 import sys
 
-import torch
 from _infra import path_stabilize
-from sqlmodel import func, select
 
 path_stabilize()
+
+import torch
+from sqlmodel import func, select
 
 from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
 from Programma_CS2_RENAN.backend.processing.state_reconstructor import RAPStateReconstructor

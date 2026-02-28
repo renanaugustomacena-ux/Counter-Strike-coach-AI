@@ -108,3 +108,8 @@ beautifulsoup4==4.12.3
 lxml==5.1.0
 ncps
 hopfield-layers
+alembic
+watchdog
+opencv-python
+tensorboard
+sentence-transformers

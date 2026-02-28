@@ -1,9 +1,9 @@
-import logging
-
 from kivy.properties import StringProperty
 from kivymd.uix.label import MDLabel
 from kivymd.uix.list import MDListItem, MDListItemHeadlineText
 from kivymd.uix.screen import MDScreen
+
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 try:
     from Programma_CS2_RENAN.backend.knowledge_base.help_system import help_system
@@ -14,7 +14,7 @@ except ImportError:
     help_system = None
     _HELP_SYSTEM_AVAILABLE = False
 
-_logger = logging.getLogger("cs2analyzer.help_screen")
+_logger = get_logger("cs2analyzer.help_screen")
 
 
 class HelpScreen(MDScreen):

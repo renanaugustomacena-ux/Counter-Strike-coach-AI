@@ -18,7 +18,7 @@ import os
 import re
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from _infra import PROJECT_ROOT, SOURCE_ROOT, Console, path_stabilize
@@ -110,13 +110,23 @@ def cmd_build(args):
         console.section("Integrity Hash")
         dist_dir = PROJECT_ROOT / "dist"
         if dist_dir.exists():
-            for exe in dist_dir.rglob("*.exe"):
+            # Collect platform-appropriate binary artifacts
+            if sys.platform == "win32":
+                binaries = list(dist_dir.rglob("*.exe"))
+            else:
+                # Linux/macOS: ELF/Mach-O binaries have no extension; find
+                # executable files one level deep (PyInstaller dist/<name>/<name>)
+                binaries = [
+                    p for p in dist_dir.rglob("*")
+                    if p.is_file() and os.access(str(p), os.X_OK) and "." not in p.name
+                ]
+            for exe in binaries:
                 sha = calculate_sha256(exe)
                 print(f"  {exe.name}: SHA256={sha[:16]}...")
                 manifest = {
                     "file": exe.name,
                     "sha256": sha,
-                    "built_at": datetime.utcnow().isoformat(),
+                    "built_at": datetime.now(timezone.utc).isoformat(),
                 }
                 (dist_dir / "build_manifest.json").write_text(json.dumps(manifest, indent=2))
 
@@ -179,7 +189,7 @@ def cmd_verify(args):
 
     # Report
     report = {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "violations": [str(v) for v in violations],
         "passed": len(violations) == 0,
     }
@@ -261,7 +271,7 @@ def cmd_debug_build(args):
 
     # Save report
     report = {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "exit_code": process.returncode,
         "errors": errors,
     }

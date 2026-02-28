@@ -5,6 +5,13 @@ Verifies skill vector calculation, curriculum level mapping, and tensor output
 using fields that actually feed into calculate_skill_vector.
 """
 
+import sys
+
+# --- Venv Guard ---
+if sys.prefix == sys.base_prefix:
+    print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
+    sys.exit(2)
+
 import pytest
 import torch
 
@@ -186,6 +193,3 @@ class TestSkillTensor:
             if i != level - 1:
                 assert tensor[0, i].item() == 0.0
 
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

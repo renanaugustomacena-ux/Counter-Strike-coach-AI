@@ -41,7 +41,7 @@ def run(quick: bool = False) -> SectionResult:
 
 
 def _rule_114() -> RuleResult:
-    """Ontological consistency: FEATURE_NAMES has 19 entries, all input_dims=19 (except RoleHead=5)."""
+    """Ontological consistency: FEATURE_NAMES has 25 entries, all input_dims=25 (except RoleHead=5)."""
     t0 = time.perf_counter()
     try:
         from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import (
@@ -56,7 +56,7 @@ def _rule_114() -> RuleResult:
     feature_names = FeatureExtractor.get_feature_names()
     name_count = len(feature_names)
 
-    checks = {"feature_names_count": name_count, "expected": 19, "names_match": name_count == 19}
+    checks = {"feature_names_count": name_count, "expected": 25, "names_match": name_count == 25}
 
     # Check model input dims
     models = get_all_models()
@@ -70,9 +70,9 @@ def _rule_114() -> RuleResult:
             model.eval()
             with torch.no_grad():
                 out = model(x)
-            checks[f"{mt}_accepts_19"] = True
+            checks[f"{mt}_accepts_25"] = True
         except Exception:
-            checks[f"{mt}_accepts_19"] = False
+            checks[f"{mt}_accepts_25"] = False
 
     # RoleHead should accept 5
     rh = models.get(ModelFactory.TYPE_ROLE_HEAD)
@@ -86,15 +86,15 @@ def _rule_114() -> RuleResult:
         except Exception:
             checks["role_head_accepts_5"] = False
 
-    passed = name_count == 19 and all(
-        v for k, v in checks.items() if k.endswith("_19") or k.endswith("_5")
+    passed = name_count == 25 and all(
+        v for k, v in checks.items() if k.endswith("_25") or k.endswith("_5")
     )
     return RuleResult(
         114,
         "Ontological consistency",
         PASS if passed else FAIL,
         evidence=checks,
-        details=f"Feature names={name_count}/19, models accept correct dims",
+        details=f"Feature names={name_count}/25, models accept correct dims",
         duration_ms=(time.perf_counter() - t0) * 1000,
     )
 

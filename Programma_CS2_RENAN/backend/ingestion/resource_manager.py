@@ -1,4 +1,3 @@
-import logging
 import os
 import time
 from collections import deque
@@ -6,7 +5,9 @@ from threading import Lock
 
 import psutil
 
-logger = logging.getLogger("cs2analyzer.resource_manager")
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+logger = get_logger("cs2analyzer.resource_manager")
 
 # CPU usage smoothing configuration
 _CPU_SAMPLE_WINDOW = 10  # seconds of history to maintain

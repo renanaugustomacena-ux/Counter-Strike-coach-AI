@@ -2,7 +2,12 @@ import json
 import os
 import time
 
-import httpx
+try:
+    import httpx
+
+    _HAS_HTTPX = True
+except ImportError:
+    _HAS_HTTPX = False
 
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -22,6 +27,10 @@ def send_match_telemetry(player_id: str, match_id: str, stats: dict):
         "stats": stats,
         "timestamp": time.time(),
     }
+
+    if not _HAS_HTTPX:
+        logger.warning("httpx not installed — telemetry disabled. Install with: pip install httpx")
+        return False
 
     try:
         logger.info("[*] Sending telemetry to %s...", DEV_SERVER_URL)

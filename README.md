@@ -10,24 +10,87 @@
 
 Macena CS2 Analyzer is a desktop application that acts as a personal AI coach for Counter-Strike 2. It ingests professional and user demo files, trains multiple neural network models, and delivers personalized tactical coaching by comparing your gameplay against professional standards.
 
-The system learns from the best professional matches ever played and adapts its coaching to your individual playstyle — whether you're an AWPer, entry fragger, support, or any other role.
+The system learns from the best professional matches ever played and adapts its coaching to your individual playstyle — whether you're an AWPer, entry fragger, support, or any other role. The coaching pipeline fuses machine learning predictions with retrieved tactical knowledge, game theory analysis, and Bayesian belief modeling to produce actionable, context-aware advice.
+
+Unlike static coaching tools that ship with pre-written tips, this system builds its intelligence from real professional gameplay data. At first launch the neural networks have random weights and zero tactical knowledge. Every demo you feed it makes the coach smarter, more nuanced, and more personalized.
+
+---
+
+## Table of Contents
+
+- [Key Features](#key-features)
+- [System Requirements](#system-requirements)
+- [Quick Start](#quick-start)
+- [Architecture Deep-Dive](#architecture-deep-dive)
+- [Supported Maps](#supported-maps)
+- [Technology Stack](#technology-stack)
+- [Project Structure](#project-structure)
+- [Entry Points](#entry-points)
+- [Validation and Quality](#validation-and-quality)
+- [Multi-Language Support](#multi-language-support)
+- [Security Features](#security-features)
+- [System Maturity](#system-maturity)
+- [Documentation](#documentation)
+- [Feeding the Coach](#feeding-the-coach)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
+- [Author](#author)
 
 ---
 
 ## Key Features
 
-- **AI Coaching Pipeline** — 4-level fallback chain (COPER > Hybrid > RAG > Base) that fuses ML predictions with retrieved tactical knowledge
-- **6 AI Subsystems** — JEPA encoder, VL-JEPA vision-language alignment, RAP Coach (6-layer architecture with LTC-Hopfield memory), LSTM+MoE, Neural Role Head, Bayesian belief models
-- **Tri-Daemon Engine** — Background automation with Hunter (file scanner), Digester (demo processor), and Teacher (model trainer) daemons
-- **Coach Introspection Observatory** — TensorBoard integration with maturity state machine, embedding projector, and conviction tracking
-- **Demo Analysis** — Tick-level parsing of `.dem` files via demoparser2, with HLTV 2.0 rating computation, round-by-round breakdowns, and momentum tracking
-- **Game Theory Analysis** — Expectiminimax trees, Bayesian death probability estimation, deception index, engagement range analysis
-- **Desktop App** — Kivy + KivyMD interface with tactical 2D map viewer, match history, performance dashboard, coach chat, and radar charts
-- **Spatial Intelligence** — Multi-level map support (Nuke, Vertigo), pixel-accurate coordinate mapping, Z-cutoff handling
-- **3-Stage Maturity Gating** — Models progress through CALIBRATING > LEARNING > MATURE with automatic quality gates
+### AI Coaching Pipeline
+
+- **4-Level Fallback Chain** — COPER > Hybrid > RAG > Base coaching, ensuring the system always produces useful advice regardless of model maturity
 - **COPER Experience Bank** — Stores and retrieves past coaching experiences weighted by recency, effectiveness, and context similarity
-- **Temporal Baseline Decay** — Tracks player skill evolution over time with exponential decay weighting
+- **RAG Knowledge Base** — Retrieval-Augmented Generation with professional reference patterns and tactical knowledge
 - **Ollama Integration** — Optional local LLM for natural language polishing of coaching insights
+- **Causal Attribution** — Every coaching recommendation includes a "why" explanation tracing back to specific gameplay decisions
+
+### Neural Network Subsystems
+
+- **RAP Coach** — 7-layer architecture combining perception, memory (LTC-Hopfield), strategy (Mixture-of-Experts with superposition), pedagogy (value function), position prediction, and causal attribution
+- **JEPA Encoder** — Joint-Embedding Predictive Architecture for self-supervised pre-training with InfoNCE contrastive loss and EMA target encoder
+- **VL-JEPA** — Vision-Language extension with 16 tactical concept alignment (positioning, utility, economy, engagement, decision, psychology)
+- **AdvancedCoachNN** — LSTM + Mixture-of-Experts architecture for coaching weight prediction
+- **Neural Role Head** — 5-role MLP classifier (entry, support, lurk, AWP, anchor) with KL-divergence and consensus gating
+- **Bayesian Belief Models** — Opponent mental state tracking with adaptive calibration from match data
+
+### Demo Analysis
+
+- **Tick-Level Parsing** — Every tick of `.dem` files is parsed via demoparser2, preserving all game state (no tick decimation)
+- **HLTV 2.0 Rating** — Computed per-match using the official HLTV 2.0 formula (kills, deaths, ADR, KAST%, survival, flash assists)
+- **Round-by-Round Breakdowns** — Economy timeline, engagement analysis, utility usage, momentum tracking
+- **Temporal Baseline Decay** — Tracks player skill evolution over time with exponential decay weighting
+
+### Game Theory Analysis
+
+- **Expectiminimax Trees** — Game-theoretic decision evaluation for strategic scenarios
+- **Bayesian Death Probability** — Estimates survival likelihood based on position, equipment, and enemy state
+- **Deception Index** — Quantifies positional unpredictability relative to professional baselines
+- **Engagement Range Analysis** — Maps weapon selection against engagement distance distributions
+- **Win Probability** — Real-time match win probability calculation
+- **Momentum Tracking** — Round-to-round confidence and performance trajectory
+
+### Desktop Application
+
+- **Kivy + KivyMD Interface** — Cross-platform desktop app with MVVM architecture
+- **Tactical 2D Map Viewer** — Real-time demo replay with player positions, kill events, bomb indicators, and AI ghost predictions
+- **Match History** — Scrollable list of recent matches with color-coded ratings
+- **Performance Dashboard** — Rating trends, per-map stats, strengths/weaknesses analysis, utility breakdowns
+- **Coach Chat** — Interactive AI conversation with quick-action buttons and free-text questions
+- **User Profile** — Steam integration with automatic match import
+- **3 Visual Themes** — CS2 (orange), CS:GO (blue-gray), CS 1.6 (green) with cycling wallpapers
+
+### Training and Automation
+
+- **4-Daemon Session Engine** — Scanner (file discovery), Digester (demo processing), Teacher (model training), Pulse (health monitoring)
+- **3-Stage Maturity Gating** — CALIBRATING (0-49 demos, 0.5x confidence) > LEARNING (50-199, 0.8x) > MATURE (200+, full)
+- **Conviction Index** — 5-signal composite tracking belief entropy, gate specialization, concept focus, value accuracy, and role stability
+- **Auto-Retraining** — Training triggers automatically at 10% demo count growth
+- **Drift Detection** — Z-score based feature drift monitoring with automatic retraining flag
+- **Coach Introspection Observatory** — TensorBoard integration with maturity state machine, embedding projector, and conviction tracking
 
 ---
 
@@ -49,8 +112,8 @@ The system learns from the best professional matches ever played and adapts its 
 ### 1. Clone
 
 ```bash
-git clone https://github.com/renanaugustomacena-ux/Macena_cs2_analyzer.git
-cd Macena_cs2_analyzer
+git clone https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI.git
+cd Counter-Strike-coach-AI
 ```
 
 ### 2. Automated Setup (Windows)
@@ -67,25 +130,53 @@ This creates a virtual environment, installs all dependencies, initializes the d
 .\venv_win\Scripts\pip.exe install --force-reinstall torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 ```
 
-### 3. Manual Setup
+### 3. Manual Setup (Windows)
 
-```bash
+```powershell
 python -m venv venv_win
-# Windows:
 .\venv_win\Scripts\activate
-# Linux:
-source venv_win/bin/activate
 
-pip install -r requirements.txt
-python -c "from backend.storage.database import init_db; init_db()"
-playwright install chromium
+# PyTorch (choose ONE):
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu       # CPU only
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121     # NVIDIA GPU
+
+pip install -r Programma_CS2_RENAN/requirements.txt
+python -c "import sys; sys.path.append('.'); from Programma_CS2_RENAN.backend.storage.database import init_database; init_database()"
+pip install playwright && python -m playwright install chromium
 ```
 
-### 4. Launch
+### 4. Manual Setup (Linux)
+
+```bash
+sudo apt update
+sudo apt install -y python3.10 python3.10-venv python3.10-dev libsdl2-dev libglew-dev build-essential
+
+python3.10 -m venv venv_linux
+source venv_linux/bin/activate
+
+# PyTorch (choose ONE):
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu       # CPU only
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121     # NVIDIA GPU
+
+pip install -r Programma_CS2_RENAN/requirements.txt
+pip install Kivy==2.3.0 KivyMD==1.2.0
+python -c "import sys; sys.path.append('.'); from Programma_CS2_RENAN.backend.storage.database import init_database; init_database()"
+pip install playwright && python -m playwright install chromium
+```
+
+### 5. Verify Installation
+
+```bash
+python -c "import torch; print(f'PyTorch: {torch.__version__}')"
+python -c "import kivy; print(f'Kivy: {kivy.__version__}')"
+python -c "from Programma_CS2_RENAN.backend.nn.config import get_device; print(f'Device: {get_device()}')"
+```
+
+### 6. Launch
 
 ```bash
 # Desktop application (Kivy GUI)
-python Programma_CS2_RENAN/apps/desktop_app/main.py
+python Programma_CS2_RENAN/main.py
 
 # Interactive console (live TUI with real-time panels)
 python console.py
@@ -98,79 +189,597 @@ python goliath.py
 
 ---
 
-## Architecture Overview
+## Architecture Deep-Dive
 
-The system is organized into 6 AI subsystems working as a unified pipeline:
+### WATCH > LEARN > THINK > SPEAK Pipeline
 
-```
-WATCH (Ingestion)  -->  LEARN (Training)  -->  THINK (Inference)  -->  SPEAK (Dialogue)
-    Hunter daemon        Teacher daemon         COPER pipeline        Template + Ollama
-    Demo parsing         3-stage maturity       RAG knowledge         Causal attribution
-    Feature extraction   Multi-model training   Game theory           Pro comparisons
-```
-
-### Technology Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Language | Python 3.10+ |
-| UI | Kivy + KivyMD |
-| ML | PyTorch, ncps (LTC), Hopfield networks |
-| Database | SQLite (WAL mode) |
-| Migrations | Alembic |
-| Scraping | Playwright |
-| Observability | TensorBoard, Sentry |
-
-### Project Structure
+The system is organized as a 4-stage pipeline that transforms raw demo files into personalized coaching:
 
 ```
-Programma_CS2_RENAN/
-  apps/desktop_app/     Kivy UI (MVVM pattern)
-  backend/
-    analysis/           Game theory, belief models, momentum
-    data_sources/       Demo parser, HLTV metadata
-    nn/                 Neural networks (RAP Coach, JEPA, VL-JEPA)
-      rap_coach/        6-layer RAP model with LTC-Hopfield memory
-    processing/         Feature engineering, heatmaps, validation
-    knowledge/          RAG knowledge base, COPER experience bank
-    services/           Coaching service, Ollama integration
-    storage/            DB models, migrations, backup
-  core/                 Asset manager, map manager, session engine
-  ingestion/            Steam locator, integrity checks
-  observability/        RASP, telemetry
-  reporting/            Visualizer, PDF generators
-docs/                   User guides (EN/IT/PT), technical studies
-tools/                  Validation suite, diagnostics, audit tools
+WATCH (Ingestion)      LEARN (Training)       THINK (Inference)       SPEAK (Dialogue)
+  Scanner daemon         Teacher daemon         COPER pipeline          Template + Ollama
+  Demo parsing           3-stage maturity       RAG knowledge           Causal attribution
+  Feature extraction     Multi-model training   Game theory             Pro comparisons
+  Tick-level storage     Drift detection        Belief modeling         Severity scoring
+```
+
+**WATCH** — The Scanner daemon continuously monitors configured demo folders for new `.dem` files. When found, the Digester daemon parses every tick using demoparser2, extracts the canonical 25-dimensional feature vector, computes HLTV 2.0 ratings, and stores everything in per-match SQLite databases.
+
+**LEARN** — The Teacher daemon automatically trains neural models when enough data accumulates. Training proceeds through 3 maturity stages (CALIBRATING > LEARNING > MATURE). Multiple architectures train in parallel: JEPA for self-supervised representation learning, RAP Coach for tactical decision modeling, NeuralRoleHead for player role classification.
+
+**THINK** — At inference time, the COPER pipeline combines neural predictions with retrieved coaching experiences, RAG knowledge, and game theory analysis. A 4-level fallback chain (COPER > Hybrid > RAG > Base) ensures advice is always available regardless of model maturity.
+
+**SPEAK** — Final coaching output is formatted with severity levels, causal attribution ("why this advice"), and optionally polished through a local Ollama LLM for natural language quality.
+
+### 4-Daemon Session Engine
+
+| Daemon | Role | Trigger |
+|--------|------|---------|
+| **Scanner (Hunter)** | Discovers new `.dem` files in configured folders | Periodic scan or file watcher |
+| **Digester** | Parses demos, extracts features, computes ratings | New file detected by Scanner |
+| **Teacher** | Trains neural models on accumulated data | 10% demo count growth threshold |
+| **Pulse** | Health monitoring, drift detection, system status | Continuous background |
+
+### COPER Coaching Pipeline
+
+COPER (Coaching via Organized Pattern Experience Retrieval) is the primary coaching engine. It operates a 4-level fallback chain:
+
+1. **COPER Mode** — Full pipeline: Experience Bank retrieval + RAG knowledge + neural model predictions + professional comparisons. Requires trained models.
+2. **Hybrid Mode** — Combines neural predictions with template-based advice when some models are still calibrating.
+3. **RAG Mode** — Pure retrieval: searches knowledge base for relevant coaching patterns without neural inference. Works with just ingested demos.
+4. **Base Mode** — Template-based advice from statistical analysis (mean/std deviations from professional baselines). Works immediately.
+
+### Neural Network Architectures
+
+**RAP Coach (7-Layer Architecture)**
+
+The RAP (Reasoning, Attribution, Prediction) Coach is the primary neural model. Its 7 layers process gameplay data through a cognitive pipeline:
+
+| Layer | Function | Details |
+|-------|----------|---------|
+| 1. Perception | Visual + spatial encoding | Conv layers for view frames (64d), map state (32d), motion diff (32d) → 128d |
+| 2. Memory | Recurrent belief tracking | LSTM + Hopfield network for associative memory. Input: 153d (128 perception + 25 metadata) → 256d hidden state |
+| 3. Strategy | Decision optimization | Mixture-of-Experts with superposition for context-dependent decisions. 10 action weights |
+| 4. Pedagogy | Value estimation | V-function evaluation with skill vector integration |
+| 5. Position | Optimal placement | Predicts (dx, dy, dz) delta to optimal position (scale: 500 world units) |
+| 6. Attribution | Causal diagnosis | 5-dimensional attribution explaining decision drivers |
+| 7. Output | Aggregation | advice_probs, belief_state, value_estimate, gate_weights, optimal_pos, attribution |
+
+**JEPA (Joint-Embedding Predictive Architecture)**
+
+Self-supervised pre-training with:
+- Context encoder + predictor → predicts target embeddings
+- EMA-updated target encoder (momentum 0.996)
+- InfoNCE contrastive loss with in-batch negatives
+- Latent dimension: 128
+
+**VL-JEPA (Vision-Language Extension)**
+
+Extends JEPA with 16 tactical concept alignment:
+- Concepts: positioning (3), utility (2), economy (2), engagement (4), decision (2), psychology (3)
+- Concept alignment loss + diversity regularization
+- Outcome-based labeling from RoundStats (kills, deaths, equipment, round result)
+
+**Other Models:**
+- **AdvancedCoachNN** — LSTM (hidden=128) + Mixture-of-Experts (4 experts, top-k=2) for coaching weight prediction
+- **NeuralRoleHead** — 5-role MLP classifier with KL-divergence gating and consensus voting
+- **RoleClassifier** — Lightweight role detection from tick features
+
+### 25-Dimensional Feature Vector
+
+Every game tick is represented as a canonical 25-dimensional vector (`METADATA_DIM=25`):
+
+| Index | Feature | Range | Description |
+|-------|---------|-------|-------------|
+| 0 | health | [0, 1] | HP / 100 |
+| 1 | armor | [0, 1] | Armor / 100 |
+| 2 | has_helmet | {0, 1} | Helmet equipped |
+| 3 | has_defuser | {0, 1} | Defuse kit |
+| 4 | equipment_value | [0, 1] | Normalized equipment cost |
+| 5 | is_crouching | {0, 1} | Crouching stance |
+| 6 | is_scoped | {0, 1} | Scoped weapon active |
+| 7 | is_blinded | {0, 1} | Flash effect |
+| 8 | enemies_visible | [0, 1] | Visible enemy count (normalized) |
+| 9-11 | pos_x, pos_y, pos_z | [-1, 1] | World coordinates (map-normalized) |
+| 12-13 | view_yaw_sin, view_yaw_cos | [-1, 1] | View angle (cyclic encoding) |
+| 14 | view_pitch | [-1, 1] | Vertical view angle |
+| 15 | z_penalty | [0, 1] | Vertical distinctiveness (multi-level maps) |
+| 16 | kast_estimate | [0, 1] | Kill/Assist/Survive/Trade ratio |
+| 17 | map_id | [0, 1] | Deterministic map hash (MD5-based) |
+| 18 | round_phase | {0, .33, .66, 1} | Pistol / Eco / Force / Full buy |
+| 19 | weapon_class | [0, 1] | Knife=0, Pistol=.2, SMG=.4, Rifle=.6, Sniper=.8, Heavy=1 |
+| 20 | time_in_round | [0, 1] | Seconds / 115 |
+| 21 | bomb_planted | {0, 1} | Bomb planted flag |
+| 22 | teammates_alive | [0, 1] | Count / 4 |
+| 23 | enemies_alive | [0, 1] | Count / 5 |
+| 24 | team_economy | [0, 1] | Average team money / 16000 |
+
+### 3-Stage Maturity Gating
+
+Models progress through maturity gates based on ingested demo count:
+
+| Stage | Demo Count | Confidence | Behavior |
+|-------|-----------|------------|----------|
+| **CALIBRATING** | 0-49 | 0.5x | Basic coaching, advice marked provisional |
+| **LEARNING** | 50-199 | 0.8x | Intermediate, growing reliability |
+| **MATURE** | 200+ | 1.0x | Full confidence, all subsystems contributing |
+
+A parallel **Conviction Index** (0.0-1.0) tracks 5 neural signals: belief entropy, gate specialization, concept focus, value accuracy, and role stability. States: DOUBT (<0.30) > LEARNING (0.30-0.60) > CONVICTION (>0.60 stable 10+ epochs) > MATURE (>0.75 stable 20+ epochs). A sharp drop >20% triggers CRISIS state.
+
+---
+
+## Supported Maps
+
+The system supports all 9 Active Duty competitive maps with pixel-accurate coordinate mapping:
+
+| Map | Type | Calibration |
+|-----|------|-------------|
+| de_mirage | Single-level | pos (-3230, 1713), scale 5.0 |
+| de_inferno | Single-level | pos (-2087, 3870), scale 4.9 |
+| de_dust2 | Single-level | pos (-2476, 3239), scale 4.4 |
+| de_overpass | Single-level | pos (-4831, 1781), scale 5.2 |
+| de_ancient | Single-level | pos (-2953, 2164), scale 5.0 |
+| de_anubis | Single-level | pos (-2796, 3328), scale 5.22 |
+| de_train | Single-level | pos (-2477, 2392), scale 4.7 |
+| de_nuke | **Multi-level** | pos (-3453, 2887), scale 7.0, Z-cutoff -495 |
+| de_vertigo | **Multi-level** | pos (-3168, 1762), scale 4.0, Z-cutoff 11700 |
+
+Multi-level maps (Nuke, Vertigo) use Z-axis cutoffs to separate upper and lower levels for accurate 2D rendering. The z_penalty feature (index 15) in the feature vector captures vertical distinctiveness for these maps.
+
+---
+
+## Technology Stack
+
+### Core Dependencies
+
+| Category | Package | Version | Purpose |
+|----------|---------|---------|---------|
+| **ML Framework** | PyTorch | Latest | Neural network training and inference |
+| **Recurrent Nets** | ncps | Latest | Liquid Time-Constant (LTC) networks |
+| **Associative Memory** | hopfield-layers | Latest | Hopfield network layers for memory |
+| **Demo Parsing** | demoparser2 | 0.40.2 | CS2 demo file tick-level parsing |
+| **CS2 Utilities** | awpy | 1.2.3 | CS2 analysis utilities |
+| **UI Framework** | Kivy | 2.3.0 | Cross-platform desktop GUI |
+| **UI Components** | KivyMD | 1.2.0 | Material Design widgets |
+| **Database ORM** | SQLAlchemy + SQLModel | Latest | Database models and queries |
+| **Migrations** | Alembic | Latest | Database schema migrations |
+| **Web Scraping** | Playwright | 1.57.0 | Headless browser for HLTV |
+| **HTTP Client** | HTTPX | 0.28.1 | Async HTTP requests |
+| **Data Science** | NumPy, Pandas, SciPy, scikit-learn | Latest | Numerical computing and analysis |
+| **Visualization** | Matplotlib | Latest | Chart generation |
+| **Geometry** | Shapely | 2.1.2 | Spatial analysis |
+| **Graphs** | NetworkX | Latest | Graph-based analysis |
+| **Security** | cryptography | 46.0.3 | Credential encryption |
+| **TUI** | Rich | 14.2.0 | Terminal UI for console mode |
+| **API** | FastAPI + Uvicorn | 0.40.0 | Internal API server |
+| **Validation** | Pydantic | Latest | Data validation and settings |
+| **Testing** | pytest + pytest-cov + pytest-mock | 9.0.2 | Test framework and coverage |
+| **Packaging** | PyInstaller | 6.17.0 | Binary distribution |
+| **Templating** | Jinja2 | 3.1.6 | Report template rendering |
+| **HTML Parsing** | BeautifulSoup4 + lxml | 4.12.3 | Web content extraction |
+| **Config** | PyYAML | 6.0.3 | YAML configuration files |
+| **Images** | Pillow | 12.0.0 | Image processing |
+| **Keyring** | keyring | 25.6.0 | Secure credential storage |
+
+### Windows-Only Dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| kivy-deps.glew | 0.3.1 | OpenGL extension wrangler |
+| kivy-deps.sdl2 | 0.7.0 | SDL2 multimedia library |
+| kivy-deps.angle | 0.4.0 | ANGLE OpenGL ES backend |
+
+---
+
+## Project Structure
+
+```
+Counter-Strike-coach-AI/
+|
++-- Programma_CS2_RENAN/                Main application package
+|   +-- apps/desktop_app/               Kivy GUI (MVVM pattern)
+|   |   +-- main.py                     App entry point
+|   |   +-- layout.kv                   Kivy layout definition
+|   |   +-- viewmodels/                 ViewModel layer (playback, ghost, chronovisor)
+|   |   +-- screens/                    UI screens (tactical viewer, match history, performance,
+|   |   |                               match detail, wizard, help, coach, settings, profile)
+|   |   +-- widgets/                    Reusable UI components (tactical map, player sidebar,
+|   |   |                               timeline scrubber, ghost pixel renderer)
+|   |   +-- assets/                     Themes (CS2, CSGO, CS1.6), fonts, map radar images
+|   |   +-- i18n/                       Translations (EN, IT, PT)
+|   |
+|   +-- backend/
+|   |   +-- analysis/                   Game theory and statistical analysis
+|   |   |   +-- belief_model.py         Bayesian opponent mental state tracking
+|   |   |   +-- game_tree.py            Expectiminimax decision trees
+|   |   |   +-- momentum.py             Round momentum and confidence trends
+|   |   |   +-- role_classifier.py      Player role detection (entry, support, lurk, AWP, anchor)
+|   |   |   +-- blind_spots.py          Map awareness and positional weaknesses
+|   |   |   +-- deception_index.py      Positional unpredictability metric
+|   |   |   +-- entropy_analysis.py     Decision randomness quantification
+|   |   |   +-- engagement_range.py     Weapon-distance distribution analysis
+|   |   |   +-- utility_economy.py      Grenade spending efficiency
+|   |   |   +-- win_probability.py      Real-time win probability calculation
+|   |   |
+|   |   +-- data_sources/              External data integration
+|   |   |   +-- demo_parser.py          demoparser2 wrapper (tick-level extraction)
+|   |   |   +-- hltv_api_service.py     HLTV professional metadata scraping
+|   |   |   +-- steam_api_service.py    Steam profile and match data
+|   |   |   +-- faceit_api_service.py   FaceIT match data integration
+|   |   |
+|   |   +-- nn/                         Neural network subsystems
+|   |   |   +-- config.py               Global NN configuration (dims, lr, batch size, device)
+|   |   |   +-- jepa_model.py           JEPA encoder + VL-JEPA + ConceptLabeler
+|   |   |   +-- jepa_trainer.py         JEPA training loop with drift monitoring
+|   |   |   +-- training_orchestrator.py Multi-model training orchestration
+|   |   |   +-- rap_coach/              RAP Coach model
+|   |   |   |   +-- model.py            7-layer architecture (Perception-Memory-Strategy-
+|   |   |   |   |                       Pedagogy-Position-Attribution-Output)
+|   |   |   |   +-- trainer.py          RAP-specific training loop
+|   |   |   |   +-- memory.py           LTC + Hopfield memory module
+|   |   |   +-- layers/                 Shared neural components
+|   |   |       +-- superposition.py    Context-dependent superposition layer
+|   |   |       +-- moe.py             Mixture-of-Experts gating
+|   |   |
+|   |   +-- processing/                Feature engineering and data processing
+|   |   |   +-- feature_engineering/
+|   |   |   |   +-- vectorizer.py       Canonical 25-dim feature extraction (METADATA_DIM=25)
+|   |   |   |   +-- tensor_factory.py   View/map tensor construction for RAP Coach
+|   |   |   +-- heatmap/               Spatial heatmap generation
+|   |   |   +-- validation/            Drift detection, data quality checks
+|   |   |
+|   |   +-- knowledge/                 Knowledge management
+|   |   |   +-- rag_knowledge.py        RAG retrieval for coaching patterns
+|   |   |   +-- experience_bank.py      COPER experience storage and retrieval
+|   |   |   +-- round_utils.py          Round phase detection utilities
+|   |   |
+|   |   +-- services/                  Application services
+|   |   |   +-- coaching_service.py     4-level coaching pipeline (COPER/Hybrid/RAG/Base)
+|   |   |   +-- ollama_service.py       Local LLM integration for language polishing
+|   |   |
+|   |   +-- storage/                   Database layer
+|   |       +-- database.py            SQLite WAL-mode connection management
+|   |       +-- models.py              SQLAlchemy/SQLModel ORM definitions
+|   |       +-- backup.py              Automated database backup
+|   |       +-- match_data_manager.py  Per-match SQLite database management
+|   |
+|   +-- core/                          Core application services
+|   |   +-- session_engine.py           4-daemon engine (Scanner, Digester, Teacher, Pulse)
+|   |   +-- map_manager.py             Map loading, coordinate calibration, Z-cutoffs
+|   |   +-- asset_manager.py           Theme and asset resolution
+|   |   +-- spatial_data.py            Spatial coordinate systems
+|   |
+|   +-- ingestion/                     Demo ingestion pipeline
+|   |   +-- steam_locator.py           Auto-discover Steam CS2 demo paths
+|   |   +-- integrity_check.py         Demo file validation
+|   |
+|   +-- observability/                 Monitoring and security
+|   |   +-- rasp.py                    Runtime Application Self-Protection
+|   |   +-- telemetry.py              TensorBoard metrics and conviction tracking
+|   |   +-- logger_setup.py           Structured logging (cs2analyzer.* namespace)
+|   |
+|   +-- reporting/                     Output generation
+|   |   +-- visualizer.py             Chart and graph rendering
+|   |   +-- pdf_generator.py          PDF report generation
+|   |
+|   +-- tests/                         Test suite (390+ tests)
+|   +-- data/                          Static data (knowledge base seeds, external datasets)
+|
++-- docs/                              Documentation
+|   +-- USER_GUIDE.md                  Complete user guide (EN)
+|   +-- USER_GUIDE_IT.md               User guide (Italian)
+|   +-- USER_GUIDE_PT.md               User guide (Portuguese)
+|   +-- AI-cs2-coach-part1.md          Architecture documentation (Part 1)
+|   +-- AI-cs2-coach-part2.md          Architecture documentation (Part 2)
+|   +-- AI-cs2-coach-part3.md          Architecture documentation (Part 3)
+|   +-- cybersecurity.md               Security analysis
+|   +-- Studies/                        17 research papers covering:
+|       +-- Studio_01                   Epistemic Foundations
+|       +-- Studio_02                   Ingestion Algebra
+|       +-- Studio_03                   Recurrent Networks
+|       +-- Studio_04                   Reinforcement Learning
+|       +-- Studio_05                   Perceptive Architecture
+|       +-- Studio_06                   Cognitive Architecture
+|       +-- Studio_07                   JEPA Architecture
+|       +-- Studio_08                   Forensic Engineering
+|       +-- Studio_09                   Feature Engineering
+|       +-- Studio_10                   Database & Storage
+|       +-- Studio_11                   Tri-Daemon Engine
+|       +-- Studio_12                   Evaluation & Falsification
+|       +-- Studio_13                   Explainability & Coaching Interface
+|       +-- Studio_14                   Ethics, Privacy & Integrity
+|       +-- Studio_15                   Hardware Optimization & Scaling
+|       +-- Studio_16                   Maps & GNN
+|       +-- Studio_17                   Sociotechnical Impact & Future
+|
++-- tools/                             Validation and diagnostic tools
+|   +-- headless_validator.py          Primary regression gate (245+ checks)
+|   +-- Feature_Audit.py              Feature engineering audit
+|   +-- portability_test.py           Cross-platform portability check
+|   +-- dead_code_detector.py         Unused code detection
+|   +-- dev_health.py                 Development environment health
+|   +-- verify_all_safe.py            Safety verification
+|   +-- db_health_diagnostic.py       Database health diagnostics
+|   +-- generate_manifest.py          Integrity manifest generator
+|   +-- Sanitize_Project.py           Distribution preparation
+|   +-- build_pipeline.py             Build pipeline orchestration
+|
++-- tests/                            Integration and verification tests
+|   +-- forensics/                    Debug and forensic utilities
+|
++-- scripts/                          Setup and deployment scripts
+|   +-- Setup_Macena_CS2.ps1          Windows automated setup
+|
++-- alembic/                          Database migration scripts
++-- console.py                        Interactive TUI entry point
++-- goliath.py                        Production CLI orchestrator
++-- run_full_training_cycle.py        Standalone training cycle runner
 ```
 
 ---
 
-## Validation & Quality
+## Entry Points
+
+The application provides 4 entry points for different use cases:
+
+### Desktop Application (GUI)
+
+```bash
+python Programma_CS2_RENAN/main.py
+```
+
+Full graphical interface with tactical viewer, match history, performance dashboard, coach chat, and settings. Opens at 1280x720. On first launch, a 3-step setup wizard configures the Brain Data Root directory.
+
+### Interactive Console (TUI)
+
+```bash
+python console.py
+```
+
+Terminal UI with real-time panels for development and runtime control. Commands organized by subsystem:
+
+| Command Group | Examples |
+|---------------|----------|
+| **ML Pipeline** | `ml start`, `ml stop`, `ml pause`, `ml resume`, `ml throttle 0.5`, `ml status` |
+| **Ingestion** | `ingest start`, `ingest stop`, `ingest mode continuous 5`, `ingest scan` |
+| **Build & Test** | `build run`, `build verify`, `test all`, `test headless`, `test hospital` |
+| **System** | `sys status`, `sys audit`, `sys baseline`, `sys db`, `sys vacuum`, `sys resources` |
+| **Config** | `set steam /path`, `set faceit KEY`, `set config key value` |
+| **Services** | `svc restart coaching` |
+
+### Production CLI (Goliath)
+
+```bash
+python goliath.py <command>
+```
+
+Master orchestrator for production builds, releases, and diagnostics:
+
+| Command | Description | Flags |
+|---------|-------------|-------|
+| `build` | Industrial build pipeline | `--test-only` |
+| `sanitize` | Clean project for distribution | `--force` |
+| `integrity` | Generate integrity manifest | |
+| `audit` | Verify data and features | `--demo <path>` |
+| `db` | Database schema management | `--force` |
+| `doctor` | Clinical diagnostics | `--department <name>` |
+| `baseline` | Temporal baseline decay status | |
+
+### Training Cycle Runner
+
+```bash
+python run_full_training_cycle.py
+```
+
+Standalone script that runs a complete training cycle outside the daemon engine. Useful for manual training or debugging.
+
+---
+
+## Validation and Quality
 
 The project maintains a multi-level validation hierarchy:
 
-| Tool | Scope | Command |
-|------|-------|---------|
-| Headless Validator | Regression gate (79 checks) | `python tools/headless_validator.py` |
-| Pytest Suite | Logic tests (390+ tests) | `python -m pytest tests/ -x -q` |
-| Backend Validator | Build health (40 checks) | `python tools/backend_validator.py` |
-| Goliath Hospital | Comprehensive diagnostics | `python tools/Goliath_Hospital.py` |
+| Tool | Scope | Command | Checks |
+|------|-------|---------|--------|
+| Headless Validator | Primary regression gate | `python tools/headless_validator.py` | 245+ checks |
+| Pytest Suite | Logic and integration tests | `python -m pytest Programma_CS2_RENAN/tests/ -x -q` | 390+ tests |
+| Feature Audit | Feature engineering integrity | `python tools/Feature_Audit.py` | Vector dimensions, ranges |
+| Portability Test | Cross-platform compatibility | `python tools/portability_test.py` | Import checks, path handling |
+| Dev Health | Development environment | `python tools/dev_health.py` | Dependencies, config |
+| Dead Code Detector | Unused code scanning | `python tools/dead_code_detector.py` | Import analysis |
+| Safety Verifier | Security checks | `python tools/verify_all_safe.py` | RASP, secrets scan |
+| DB Health | Database diagnostics | `python tools/db_health_diagnostic.py` | Schema, WAL mode, integrity |
+| Goliath Hospital | Comprehensive diagnostics | `python goliath.py doctor` | Full system health |
+
+**CI/CD gates:** The headless validator must exit 0 before any commit is considered valid. Pre-commit hooks enforce code quality standards.
+
+---
+
+## Multi-Language Support
+
+The application supports 3 languages across the entire UI:
+
+| Language | UI | User Guide | README |
+|----------|----|-----------|--------|
+| English | Full | [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | [README.md](README.md) |
+| Italian | Full | [docs/USER_GUIDE_IT.md](docs/USER_GUIDE_IT.md) | [README_IT.md](README_IT.md) |
+| Portuguese | Full | [docs/USER_GUIDE_PT.md](docs/USER_GUIDE_PT.md) | [README_PT.md](README_PT.md) |
+
+Language can be switched at runtime from Settings without restarting the application.
+
+---
+
+## Security Features
+
+### Runtime Application Self-Protection (RASP)
+
+- **Integrity Manifest** — SHA-256 hashes of all critical source files, verified at startup
+- **Tamper Detection** — Alerts when source files have been modified since last manifest generation
+- **Frozen Binary Validation** — Verifies PyInstaller bundle structure and execution environment
+- **Suspicious Location Detection** — Warns when executed from unexpected filesystem paths
+
+### Credential Security
+
+- **OS Keyring Integration** — API keys (Steam, FaceIT) stored in Windows Credential Manager / Linux keyring, never in plaintext
+- **No Hardcoded Secrets** — Settings file shows `"PROTECTED_BY_WINDOWS_VAULT"` placeholder
+- **Cryptographic Operations** — Uses `cryptography==46.0.3` (vetted library, no custom crypto)
+
+### Database Security
+
+- **SQLite WAL Mode** — Write-Ahead Logging for safe concurrent access across all databases
+- **Input Validation** — Pydantic models at ingestion boundary, parameterized SQL queries
+- **Backup System** — Automated database backups with integrity verification
+
+### Structured Logging
+
+- All logging through `get_logger("cs2analyzer.<module>")` namespace
+- No PII in log output
+- Structured format for observability integration
+
+---
+
+## System Maturity
+
+Not all subsystems are equally mature. The default coaching mode (COPER) is production-ready and does **not** depend on neural models. Neural-powered coaching improves as more demos are processed.
+
+| Subsystem | Status | Score | Notes |
+|-----------|--------|-------|-------|
+| COPER Coaching | OPERATIVO | 8/10 | Experience bank + RAG + pro references. Works immediately. |
+| Analytics Engine | OPERATIVO | 6/10 | HLTV 2.0 ratings, round breakdowns, economy timeline. |
+| JEPA Base (InfoNCE) | OPERATIVO | 7/10 | Self-supervised pre-training, EMA target encoder. |
+| Neural Role Head | OPERATIVO | 7/10 | 5-role MLP with KL-divergence, consensus gating. |
+| RAP Coach (7-layer) | LIMITATO | 3/10 | Architecture complete (LTC+Hopfield), needs 200+ demos. |
+| VL-JEPA (16 concepts) | LIMITATO | 2/10 | Concept alignment implemented, label quality improving. |
+
+**Maturity tiers:**
+- **CALIBRATING** (0-49 demos): 0.5x confidence, coaching heavily supplemented by COPER
+- **LEARNING** (50-199 demos): 0.8x confidence, neural features gradually activated
+- **MATURE** (200+ demos): Full confidence, all subsystems contributing
 
 ---
 
 ## Documentation
 
+### User Guides
+
 | Document | Description |
 |----------|-------------|
-| [User Guide](docs/USER_GUIDE.md) | Complete installation and usage guide |
-| [User Guide (IT)](docs/USER_GUIDE_IT.md) | Guida utente in italiano |
-| [User Guide (PT)](docs/USER_GUIDE_PT.md) | Guia do usuario em portugues |
-| [Project Architecture](docs/Progetto-Renan-Cs2-AI-Coach.md) | Full system architecture (Italian) |
-| [Technical Studies](docs/Studies/) | 17 deep-dive research papers |
-| [JEPA Analysis](jepa.md) | JEPA architecture deep analysis |
-| [Console Architecture](CONSOLE_ARCHITECTURE.md) | Control console design |
-| [Audit Report](MASTER_AUDIT_REPORT.md) | Final audit: 59 findings, 56 resolved |
-| [Changelog](CHANGELOG.md) | Version history |
+| [User Guide (EN)](docs/USER_GUIDE.md) | Complete installation, setup wizard, API keys, all screens, demo acquisition, troubleshooting |
+| [User Guide (IT)](docs/USER_GUIDE_IT.md) | Guida utente completa in italiano |
+| [User Guide (PT)](docs/USER_GUIDE_PT.md) | Guia completo do usuario em portugues |
+
+### Architecture Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Architecture Part 1](docs/AI-cs2-coach-part1.md) | System design and core architecture |
+| [Architecture Part 2](docs/AI-cs2-coach-part2.md) | Neural network subsystems |
+| [Architecture Part 3](docs/AI-cs2-coach-part3.md) | Coaching pipeline and knowledge management |
+| [Cybersecurity Analysis](docs/cybersecurity.md) | Security posture and threat model |
+
+### Research Papers (17 Studies)
+
+The `docs/Studies/` folder contains 17 deep-dive research papers covering the theoretical foundations and engineering decisions behind each subsystem:
+
+| # | Study | Topic |
+|---|-------|-------|
+| 01 | Epistemic Foundations | Knowledge representation and reasoning framework |
+| 02 | Ingestion Algebra | Mathematical model of demo data processing |
+| 03 | Recurrent Networks | LTC and Hopfield network theory |
+| 04 | Reinforcement Learning | RL foundations for coaching decisions |
+| 05 | Perceptive Architecture | Visual processing pipeline design |
+| 06 | Cognitive Architecture | Belief modeling and decision systems |
+| 07 | JEPA Architecture | Joint-Embedding Predictive Architecture theory |
+| 08 | Forensic Engineering | Debug and diagnostic methodology |
+| 09 | Feature Engineering | 25-dim vector design and validation |
+| 10 | Database & Storage | SQLite WAL, per-match DBs, migration strategy |
+| 11 | Tri-Daemon Engine | Multi-daemon architecture and lifecycle |
+| 12 | Evaluation & Falsification | Testing and validation methodology |
+| 13 | Explainability & Coaching | Causal attribution and user interface design |
+| 14 | Ethics, Privacy & Integrity | Data protection and ethical AI considerations |
+| 15 | Hardware & Scaling | Optimization for various hardware configurations |
+| 16 | Maps & GNN | Spatial analysis and graph neural network approaches |
+| 17 | Sociotechnical Impact | Future directions and societal implications |
+
+---
+
+## Feeding the Coach
+
+The AI coach ships with no pre-trained knowledge. It learns exclusively from professional CS2 demo files. The quality of coaching is directly proportional to the quality and quantity of demos ingested.
+
+### Demo Count Thresholds
+
+| Pro Demos | Tier | Confidence | What Happens |
+|-----------|------|------------|--------------|
+| 0-9 | Not ready | 0% | Minimum 10 pro demos required for first training cycle |
+| 10-49 | CALIBRATING | 50% | Basic coaching active, advice marked provisional |
+| 50-199 | LEARNING | 80% | Growing reliability, increasingly personalized |
+| 200+ | MATURE | 100% | Full confidence, maximum accuracy |
+
+### Where to Get Pro Demos
+
+1. Go to [hltv.org](https://www.hltv.org) > Results
+2. Filter for top-tier events: Major Championships, IEM Katowice/Cologne, BLAST Premier, ESL Pro League, PGL Major
+3. Select matches from top-20 ranked teams (Navi, FaZe, Vitality, G2, Spirit, Heroic)
+4. Prefer BO3/BO5 series for maximum training data per download
+5. Diversify across all Active Duty maps — a biased map distribution creates a biased coach
+6. Download the "GOTV Demo" or "Watch Demo" link
+
+### Storage Planning
+
+`.dem` files are typically 300-850 MB each. Plan your storage accordingly:
+
+| Demos | Raw Files | Match DBs | Total |
+|-------|-----------|-----------|-------|
+| 10 | ~5 GB | ~1 GB | ~6 GB |
+| 50 | ~30 GB | ~5 GB | ~35 GB |
+| 100 | ~60 GB | ~10 GB | ~70 GB |
+| 200 | ~120 GB | ~20 GB | ~140 GB |
+
+Three separate storage locations:
+
+| Location | Content | Recommendation |
+|----------|---------|----------------|
+| Core Database | Player stats, coaching state, HLTV metadata | Stays in program folder |
+| Brain Data Root | AI model weights, logs, knowledge base | SSD recommended |
+| Pro Demo Folder | Raw .dem files + per-match SQLite databases | Largest, HDD acceptable |
+
+### TensorBoard Monitoring
+
+```bash
+tensorboard --logdir runs/coach_training
+```
+
+Open [http://localhost:6006](http://localhost:6006) to monitor conviction index, maturity state transitions, gate specialization, and training loss curves.
+
+> For the complete step-by-step coaching cycle checklist and detailed storage guide, see the [User Guide](docs/USER_GUIDE.md).
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+| Problem | Solution |
+|---------|----------|
+| `ModuleNotFoundError: No module named 'kivy'` | Install Kivy deps: `pip install kivy-deps.glew==0.3.1 kivy-deps.sdl2==0.7.0 kivy-deps.angle==0.4.0 Kivy==2.3.0 KivyMD==1.2.0` (skip kivy-deps on Linux) |
+| `CUDA not available` | Verify driver with `nvidia-smi`, reinstall PyTorch with `--index-url https://download.pytorch.org/whl/cu121` |
+| `sentence-transformers not installed` | Non-blocking warning. Install with `pip install sentence-transformers` for enhanced embeddings, or ignore (TF-IDF fallback works) |
+| App crashes with GL error | Set `KIVY_GL_BACKEND=angle_sdl2` (Windows) or `KIVY_GL_BACKEND=sdl2` (Linux) |
+| `database is locked` | Close all Python processes and restart |
+| Blank/white screen | Run from project root: `python Programma_CS2_RENAN/main.py`, verify `layout.kv` exists |
+| Reset to factory state | Delete `Programma_CS2_RENAN/user_settings.json` and restart |
+
+### Database Locations
+
+| Database | Path | Content |
+|----------|------|---------|
+| Main | `Programma_CS2_RENAN/backend/storage/database.db` | Player stats, coaching state, training data |
+| HLTV | `Programma_CS2_RENAN/backend/storage/hltv_metadata.db` | Professional player metadata |
+| Knowledge | `Programma_CS2_RENAN/data/knowledge_base.db` | RAG knowledge base |
+| Per-match | `{PRO_DEMO_PATH}/match_data/match_*.db` | Tick-level match data |
+
+> For complete troubleshooting, see the [User Guide](docs/USER_GUIDE.md).
 
 ---
 
@@ -192,723 +801,4 @@ See [LICENSE](LICENSE) for full terms.
 
 Built with passion by a Counter-Strike player with 10,000+ hours since 2004, combining deep game knowledge with AI engineering to create the ultimate coaching system.
 
-> *"I've always wanted a professional guide — like the real pro players have — to understand what it truly looks like when someone trains the right way and plays the right way."*
-
----
-
-# User Guide
-
-Complete guide to install, configure, and use the Macena CS2 Analyzer on Windows or Linux.
-
----
-
-## Table of Contents
-
-1. [System Requirements](#1-system-requirements)
-2. [Installation](#2-installation)
-3. [First Launch & Setup Wizard](#3-first-launch--setup-wizard)
-4. [Configuring API Keys (Steam & FaceIT)](#4-configuring-api-keys-steam--faceit)
-5. [Home Screen](#5-home-screen)
-6. [Settings Page](#6-settings-page)
-7. [Coach Screen & AI Chat](#7-coach-screen--ai-chat)
-8. [Match History](#8-match-history)
-9. [Match Detail](#9-match-detail)
-10. [Performance Dashboard](#10-performance-dashboard)
-11. [Tactical Viewer (2D Map Widget)](#11-tactical-viewer-2d-map-widget)
-12. [User Profile](#12-user-profile)
-13. [Feeding the Coach: Demo Acquisition & Storage Guide](#13-feeding-the-coach-demo-acquisition--storage-guide)
-14. [Troubleshooting](#14-troubleshooting)
-
----
-
-## 1. System Requirements
-
-| Component | Minimum | Recommended |
-|-----------|---------|-------------|
-| OS | Windows 10 / Ubuntu 22.04 | Windows 10/11 |
-| Python | 3.10 | 3.10 or 3.12 |
-| RAM | 8 GB | 16 GB |
-| GPU | None (CPU mode) | NVIDIA GTX 1650+ (CUDA 12.1) |
-| Disk | 3 GB free | 5 GB free |
-| Display | 1280x720 | 1920x1080 |
-
----
-
-## 2. Installation
-
-### 2.1 Clone the Repository
-
-```bash
-git clone https://github.com/renanaugustomacena-ux/Macena_cs2_analyzer.git
-cd Macena_cs2_analyzer
-```
-
-### 2.2 Windows (Automated Setup)
-
-Open **PowerShell** in the project root and run:
-
-```powershell
-.\scripts\Setup_Macena_CS2.ps1
-```
-
-This script will:
-- Verify Python 3.10+ is installed
-- Create a virtual environment (`venv_win/`)
-- Install PyTorch (CPU version) and all dependencies
-- Initialize the database
-- Install Playwright (Chromium browser for HLTV scraping)
-
-**For GPU support** (NVIDIA only), after the script completes:
-
-```powershell
-.\venv_win\Scripts\pip.exe install --force-reinstall torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-```
-
-### 2.3 Windows (Manual Setup)
-
-If the PowerShell script fails or you prefer manual installation:
-
-```powershell
-# Create virtual environment
-python -m venv venv_win
-.\venv_win\Scripts\activate
-
-# Install PyTorch (choose ONE):
-# CPU only:
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-# NVIDIA GPU (CUDA 12.1):
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-
-# Install all other dependencies
-pip install -r Programma_CS2_RENAN/requirements.txt
-
-# Initialize database
-python -c "import sys; sys.path.append('.'); from Programma_CS2_RENAN.backend.storage.database import init_database; init_database()"
-
-# Install Playwright browser
-pip install playwright
-python -m playwright install chromium
-```
-
-### 2.4 Linux (Ubuntu/Debian)
-
-```bash
-# System dependencies
-sudo apt update
-sudo apt install -y python3.10 python3.10-venv python3.10-dev
-sudo apt install -y libsdl2-dev libglew-dev build-essential
-
-# Create virtual environment
-python3.10 -m venv venv_linux
-source venv_linux/bin/activate
-
-# Install PyTorch (choose ONE):
-# CPU only:
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-# NVIDIA GPU (CUDA 12.1):
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-
-# Install dependencies (skip Windows-only kivy-deps if pip complains)
-pip install -r Programma_CS2_RENAN/requirements.txt
-pip install Kivy==2.3.0 KivyMD==1.2.0
-
-# Initialize database
-python -c "import sys; sys.path.append('.'); from Programma_CS2_RENAN.backend.storage.database import init_database; init_database()"
-
-# Install Playwright browser
-pip install playwright
-python -m playwright install chromium
-```
-
-### 2.5 Verify Installation
-
-```bash
-# Activate your venv first, then:
-python -c "import torch; print(f'PyTorch: {torch.__version__}')"
-python -c "import kivy; print(f'Kivy: {kivy.__version__}')"
-python -c "from Programma_CS2_RENAN.backend.nn.config import get_device; print(f'Device: {get_device()}')"
-```
-
-Expected output (GPU example):
-```
-PyTorch: 2.5.1+cu121
-Kivy: 2.3.0
-Device: cuda:0
-```
-
-### 2.6 Launch the Application
-
-```bash
-# Windows
-.\venv_win\Scripts\python.exe Programma_CS2_RENAN/main.py
-
-# Linux
-./venv_linux/bin/python Programma_CS2_RENAN/main.py
-```
-
-The window opens at 1280x720. On **first launch**, you will see the Setup Wizard.
-
----
-
-## 3. First Launch & Setup Wizard
-
-When you run main.py for the first time, the app shows a **3-step setup wizard**.
-
-### Step 1: Welcome Screen
-
-You see a welcome message explaining the app. Click **START** to begin configuration.
-
-### Step 2: Brain Data Root
-
-The app asks: **"Where should the AI store its training data?"**
-
-This is the folder where the neural network models, knowledge base, and training datasets will be saved. It can be on any drive.
-
-**How to set it:**
-1. Click **Select Folder** — a file picker opens
-2. Navigate to your desired location (e.g., `D:\CS2_Coach_Data` or `C:\Users\YourName\Documents\CS2Coach`)
-3. Select the folder and confirm
-4. The app creates three subdirectories inside it: `knowledge/`, `models/`, `datasets/`
-
-**Or** paste a path manually into the text field.
-
-> **Tip:** Choose a location with at least 2 GB of free space. An SSD is recommended for faster training.
-
-> **If you see "Permission denied":** Choose a folder inside your user directory, like `C:\Users\YourName\Documents\MacenaData`.
-
-Click **NEXT** when done.
-
-### Step 3: Setup Complete
-
-Click **LAUNCH** to enter the app. The wizard will not appear again on future launches.
-
-> **To re-run the wizard:** Delete the file `Programma_CS2_RENAN/user_settings.json` and restart the app.
-
----
-
-## 4. Configuring API Keys (Steam & FaceIT)
-
-API keys enable the app to fetch your match history and player statistics. They are **optional** — the app works without them, but some features (automatic match import, player profile sync) will be unavailable.
-
-### 4.1 Steam API Key
-
-1. From the **Home Screen**, find the **Personalization** card
-2. Click the **Steam** button
-3. You see two fields:
-
-**Steam ID (SteamID64):**
-- This is your 17-digit Steam identifier (e.g., `76561198012345678`)
-- Click the link **"Find Your Steam ID"** to open [steamid.io](https://steamid.io) in your browser
-- Enter your Steam profile URL and copy the **SteamID64** number
-
-**Steam Web API Key:**
-- Click the link **"Get Steam API Key"** to open [Steam Developer](https://steamcommunity.com/dev/apikey) in your browser
-- Log in with your Steam account
-- When asked for a domain name, type `localhost`
-- Copy the generated key
-
-4. Paste both values and click **Save Config**
-
-> **Security:** Your API key is stored in **Windows Credential Manager** (or the system keyring on Linux), not in plain text. The settings file shows `"PROTECTED_BY_WINDOWS_VAULT"` instead of the actual key.
-
-### 4.2 FaceIT API Key
-
-1. From the **Home Screen** > **Personalization** card, click **FaceIT**
-2. Click the link **"Get FaceIT API Key"** to open [FaceIT Developers](https://developers.faceit.com/)
-3. Create a developer account and generate an API key
-4. Paste the key and click **Save**
-
-> **Note:** The app validates keys at usage time, not at save time. If a key is invalid, you will see an error when the app tries to fetch data.
-
----
-
-## 5. Home Screen
-
-After setup, this is your main dashboard. It has a **top navigation bar** and **scrollable cards**.
-
-### Top Navigation Bar
-
-| Icon | Action |
-|------|--------|
-| Gear (left) | Opens **Settings** |
-| Question mark (left) | Opens **Help** — searchable documentation topics |
-| Clipboard (right) | Opens **Match History** |
-| Chart (right) | Opens **Performance Dashboard** |
-| Graduation cap (right) | Opens **Coach Screen** |
-| Person (right) | Opens **User Profile** |
-
-### Dashboard Cards
-
-**1. Training Progress**
-Shows real-time ML training status: current epoch, train/validation loss, estimated time remaining. When training is idle, this shows the last completed training metrics.
-
-**2. Pro Ingestion Hub**
-- **Set Folder**: Pick the folder containing your personal `.dem` demo files
-- **Pro Folder**: Pick the folder containing professional player `.dem` files
-- **Speed selector**: Eco (slow, low CPU), Standard (balanced), Turbo (fast, high CPU)
-- **Play/Stop button**: Start or stop the demo ingestion process
-
-**3. Personalization**
-- **Profile**: Set your in-game player name
-- **Steam**: Configure Steam ID and API key ([see Section 4.1](#41-steam-api-key))
-- **FaceIT**: Configure FaceIT API key ([see Section 4.2](#42-faceit-api-key))
-
-**4. Tactical Analysis**
-Click **Launch Viewer** to open the 2D tactical map viewer ([see Section 11](#11-tactical-viewer-2d-map-widget)).
-
-**5. Dynamic Insights**
-Auto-populated coaching cards from the AI. Each card has:
-- A **severity color** (blue = info, orange = warning, red = critical)
-- A **title** and **message** explaining the insight
-- A **focus area** (e.g., "Positioning", "Utility Usage")
-
-### ML Status Bar
-
-At the top of the dashboard, a colored bar shows the coaching service status:
-- **Blue**: Service is active and running
-- **Red**: Service is offline — click **RESTART SERVICE** to recover
-
----
-
-## 6. Settings Page
-
-Access from the gear icon on the Home Screen. All changes are saved immediately.
-
-### Visual Theme
-
-Three theme presets that change the app's color scheme and wallpaper:
-- **CS2** (orange tones)
-- **CS:GO** (blue-gray tones)
-- **CS 1.6** (green tones)
-
-Click **Cycle Wallpaper** to rotate through available background images for the current theme.
-
-### Analysis Paths
-
-- **Default Demo Folder**: Where your personal `.dem` files are stored. Click **Change** to pick a new folder.
-- **Pro Demo Folder**: Where professional player `.dem` files are stored. Click **Change** to pick a new folder.
-
-> **Important:** When you change the Pro Demo Folder, the app automatically migrates the match database files (`match_data/`) to the new location.
-
-### Appearance
-
-- **Font Size**: Small (12pt), Medium (16pt), or Large (20pt)
-- **Font Type**: Choose from Roboto, Arial, JetBrains Mono, New Hope, CS Regular, or YUPIX
-
-### Data Ingestion Control
-
-- **Mode Toggle**: Switch between **Manual** (one-shot scan) and **Auto** (continuous scanning at intervals)
-- **Scan Interval**: How often (in minutes) auto-mode checks for new demos. Minimum: 1 minute.
-- **Start/Stop Ingestion**: Manually trigger or stop the ingestion process
-
-### Language
-
-Switch between English, Italiano, and Portugues. The entire UI updates immediately.
-
----
-
-## 7. Coach Screen & AI Chat
-
-Access from the graduation cap icon on the Home Screen.
-
-### Dashboard
-
-- **Belief State**: Shows the AI coach's inference confidence (0-100%). Green when above 70%.
-- **Trend Graph**: Line chart of your Rating and ADR over the last 20 matches.
-- **Skill Radar**: Spider chart showing 5 skill dimensions (Aim, Utility, Positioning, Map Sense, Clutch) compared to professional baselines.
-- **Causal Audit**: Click **Show Advantage Audit** to view causal analysis of your decisions.
-- **Knowledge Engine**: Shows how many experience ticks the AI has processed and current parsing progress.
-- **Coaching Cards**: AI-generated insights with severity levels.
-
-### Chat Panel
-
-Click the **chat toggle** button (bottom of screen) to expand the chat panel.
-
-- **Quick Action Buttons**: Pre-built questions — "Positioning", "Utility", "What to improve?"
-- **Text Input**: Type any question about your gameplay
-- **Coach Replies**: The AI analyzes your match data and provides personalized advice
-
-> **Note:** The coach's quality improves with more ingested demos. Minimum 10 demos recommended for meaningful insights.
-
----
-
-## 8. Match History
-
-Access from the clipboard icon on the Home Screen.
-
-Shows a scrollable list of your **last 50 non-pro matches**. Each match card displays:
-
-- **Rating badge** (left side, color-coded):
-  - Green: Rating > 1.10 (above average)
-  - Yellow: Rating 0.90 - 1.10 (average)
-  - Red: Rating < 0.90 (below average)
-- **Map name** and **date**
-- **Stats**: K/D ratio, ADR, Kills, Deaths
-
-**Click any match** to open the [Match Detail](#9-match-detail) screen.
-
----
-
-## 9. Match Detail
-
-Shows in-depth analysis of a single match, organized in 4 sections:
-
-### Overview
-Map name, date, overall rating (color-coded), and a stats grid: Kills, Deaths, ADR, KAST%, HS%, K:D ratio, KPR (Kills Per Round), DPR (Deaths Per Round).
-
-### Round Timeline
-A list of every round played, showing:
-- Round number and side (CT/T)
-- Kills, Deaths, Damage dealt
-- Opening kill badge (if applicable)
-- Round result (Win/Loss)
-
-### Economy Graph
-A bar chart showing your equipment value per round. Blue bars = CT side, Yellow bars = T side. Helps identify eco/force-buy patterns.
-
-### Highlights & Momentum
-- **Momentum Graph**: Line chart of your cumulative Kill-Death delta across rounds. Green fill = positive momentum, Red fill = negative.
-- **Coaching Insights**: AI-generated analysis specific to this match.
-
----
-
-## 10. Performance Dashboard
-
-Access from the chart icon on the Home Screen. Shows your long-term performance trends.
-
-### Rating Trend
-Sparkline chart of your rating over the last 50 matches. Reference lines at:
-- 1.10 (green) — top performance
-- 1.00 (white) — average
-- 0.90 (red) — below average
-
-### Per-Map Performance
-Horizontally scrollable cards, one per map (de_dust2, de_mirage, etc.). Each shows:
-- Average rating (color-coded)
-- Average ADR and K:D ratio
-- Number of matches played
-
-### Strengths & Weaknesses
-Two-column comparison against professional player baselines using Z-scores:
-- **Left (Green)**: Your strongest metrics
-- **Right (Red)**: Areas needing improvement
-
-### Utility Panel
-Bar chart comparing your utility usage to professional baselines across 6 metrics:
-- HE Grenades, Molotovs, Smoke Grenades
-- Flash Blind Time, Flash Assists, Unused Utility
-
----
-
-## 11. Tactical Viewer (2D Map Widget)
-
-Access from **Launch Viewer** on the Home Screen.
-
-This is the real-time 2D replay viewer. It renders demo files as an interactive map visualization.
-
-### What You See
-- **2D Map**: Top-down view of the CS2 map with player positions as colored circles
-- **Player Labels**: Name, role, and health bars for each player
-- **Event Markers**: Kill icons, bomb plant/defuse indicators
-- **AI Overlay**: Ghost predictions showing AI-suggested positions (when enabled)
-
-### Controls
-- **Play/Pause**: Start or stop playback
-- **Speed**: Toggle between 0.5x, 1x, 2x speed
-- **Timeline Scrubber**: Click anywhere on the horizontal bar to jump to a specific tick
-- **Map Selector**: Switch between maps (for multi-map demos)
-- **Round Selector**: Jump to a specific round or view the full match
-- **Ghost AI Toggle**: Enable/disable AI position predictions
-
-### Loading a Demo
-On first enter, a file picker opens automatically. Select a `.dem` file to load. The viewer parses and renders the demo data.
-
----
-
-## 12. User Profile
-
-Access from the person icon on the Home Screen.
-
-Shows your player avatar, name, role, and bio. Click the **pencil icon** to edit your bio and role. Click **SYNC WITH STEAM** to pull your profile data from Steam (requires Steam API key).
-
----
-
-## 13. Feeding the Coach: Demo Acquisition & Storage Guide
-
-The AI coach ships with **no pre-trained knowledge**. It learns exclusively from professional CS2 match demo files (`.dem`). The quality and depth of coaching you receive is directly proportional to the quality and quantity of demos you ingest. Without demos, the coaching screens will display "Calibrating" and most coaching features remain inactive.
-
-This section explains how to acquire demo files, how many you need, and how to plan your storage.
-
-### 13.1 Why Your Coach Starts Empty
-
-Unlike traditional coaching tools that ship with static tips, Macena CS2 Analyzer builds its intelligence from **real professional gameplay**. At first launch:
-
-- The neural networks (RAP Coach, JEPA, Belief Model) have random weights with zero tactical knowledge
-- The coaching pipeline has no professional baseline to compare your gameplay against
-- The experience bank and RAG knowledge system are empty
-
-This is by design. The coach learns from real professional match data, not synthetic or pre-fabricated advice. The more high-quality demos you feed it, the more nuanced and accurate its coaching becomes.
-
-### 13.2 How to Download Pro Demos from HLTV.org
-
-Follow these steps to build your professional demo library:
-
-1. Go to [hltv.org](https://www.hltv.org) and navigate to **Results**
-2. Filter by **top-tier events**: Major Championships, IEM Katowice/Cologne, BLAST Premier, ESL Pro League, PGL Major
-3. Select matches involving **top-20 ranked teams** (e.g., Navi, FaZe, Vitality, G2, Spirit, Heroic)
-4. Prefer **BO3 or BO5 series** — more rounds per download means more training data per file
-5. On the match page, click **"Watch Demo"** (or "GOTV Demo") to download the `.dem` file
-6. **Diversify maps** — cover all Active Duty maps (Mirage, Inferno, Nuke, Ancient, Anubis, Dust2, Vertigo). Downloading 50 demos of one map will create a biased coach
-7. **Choose carefully** — pick the best matches: tournament finals, playoff elimination matches, and Grand Finals. These contain the highest tactical depth
-
-**What to avoid:**
-- Showmatches and exhibition games (low tactical intensity)
-- Qualifiers with unknown/amateur teams (inconsistent quality)
-- Charity events or content creator matches
-- Very old demos (meta changes make them less relevant)
-
-**Recommended events (highest quality):**
-- CS2 Major Championships (any year)
-- IEM Katowice, IEM Cologne
-- BLAST World Final, BLAST Premier
-- ESL Pro League Finals
-- PGL Major series
-
-### 13.3 How Many Demos to Download
-
-The more demos you ingest, the better your coach becomes. Here are the coaching tiers:
-
-| Pro Demos Ingested | Coaching Tier | Confidence | Coach Behavior |
-|-------------------|---------------|-----------|----------------|
-| **0 - 9** | Not ready | 0% | Coach inactive. Minimum 10 pro demos required to start the first training cycle. |
-| **10 - 49** | CALIBRATING | 50% | Basic coaching active. Advice is marked as provisional. |
-| **50 - 199** | LEARNING | 80% | Intermediate coaching. Growing confidence, increasingly reliable. |
-| **200+** | MATURE | 100% | Full confidence. Production-ready coaching with maximum accuracy. |
-
-**Key thresholds:**
-- **10 pro demos**: First training cycle triggers automatically. This is the absolute minimum.
-- **10% growth**: After the first cycle, retraining auto-triggers every time your pro demo count grows by 10% (e.g., 10 → 11, 50 → 55, 100 → 110).
-- **50 demos**: Recommended minimum for meaningful, actionable coaching.
-- **200+ demos**: Target for mature, high-confidence coaching across all maps and scenarios.
-
-**The golden rule: more demos = better coach.** Download as many high-quality pro demos as you can. There is no upper limit — the system continuously improves with more data.
-
-### 13.4 Maturity Gates Explained
-
-Two maturity systems operate in parallel:
-
-**A. Demo-Count Tiers** (primary, visible in the app)
-
-These tiers are based on the raw number of ingested pro demos (see table in section 13.3). They directly control the confidence multiplier applied to all coaching advice.
-
-**B. Conviction Index** (advanced, visible via TensorBoard)
-
-During training, the AI tracks a composite "conviction index" (0.0 to 1.0) computed from five neural signals: belief entropy, gate specialization, concept focus, value accuracy, and role stability.
-
-| State | Conviction Index | What It Means |
-|-------|-----------------|---------------|
-| **DOUBT** | < 0.30 | Model uncertain. Beliefs noisy, experts not specializing. |
-| **LEARNING** | 0.30 - 0.60 | Actively forming beliefs. Experts beginning to differentiate. |
-| **CONVICTION** | > 0.60 (stable for 10+ epochs) | Strong, consistent beliefs across training batches. |
-| **MATURE** | > 0.75 (stable for 20+ epochs) | Converged model. Production-ready inference. |
-| **CRISIS** | Sharp drop > 20% | Anomaly detected (overfitting or data distribution shift). Investigation needed. |
-
-The conviction index provides deeper insight into the AI's internal state beyond just demo count. You can monitor it in real-time via TensorBoard (see section 13.6).
-
-### 13.5 Storage Planning
-
-`.dem` files are **large** — typically 300 to 850 MB each. As you build your demo library, storage requirements grow significantly. Plan ahead.
-
-**Space Estimates:**
-
-| Pro Demos | Raw .dem Files | Match Databases | Total Estimate |
-|-----------|---------------|-----------------|----------------|
-| 10 | ~5 GB | ~1 GB | **~6 GB** |
-| 50 | ~30 GB | ~5 GB | **~35 GB** |
-| 100 | ~60 GB | ~10 GB | **~70 GB** |
-| 200 | ~120 GB | ~20 GB | **~140 GB** |
-
-**Recommendations:**
-
-- **Use a separate drive** with plenty of free space for your Pro Demo Folder. An HDD is perfectly fine for demo storage; SSD is preferred for the Brain Data Root (AI models and training)
-- **Create a dedicated folder** (e.g., `D:\CS2_Pro_Demos\`) BEFORE you start downloading demos
-- Configure this path in **Settings > Analysis Paths > Pro Demo Folder**
-- If you store demos on the **same drive** as the program, ensure you have at least **50 GB of free space** beyond your OS and application needs
-- The `match_data/` folder (per-match SQLite databases) is automatically created alongside your Pro Demo Folder
-- The system does **NOT** auto-delete old demos — monitor your drive space periodically
-
-**Why three separate storage locations?**
-
-| Location | What It Stores | Where to Place It |
-|----------|---------------|-------------------|
-| **Core Database** (program folder) | Player stats, coaching state, HLTV metadata | Always stays in the program folder. Portable. |
-| **Brain Data Root** (Setup Wizard) | AI model weights, logs, knowledge base, cache | SSD recommended for faster training. |
-| **Pro Demo Folder** (Settings) | Raw .dem files + per-match SQLite databases | Needs the most space. HDD is acceptable. |
-
-### 13.6 TensorBoard Monitoring
-
-You can monitor the coach's training progress and maturity in real-time using TensorBoard.
-
-**Launch TensorBoard:**
-```bash
-tensorboard --logdir runs/coach_training
-```
-
-Then open [http://localhost:6006](http://localhost:6006) in your browser.
-
-**Key metrics to watch:**
-- **`maturity/conviction_index`** (Scalars): Should trend upward over training epochs
-- **`maturity/state`** (Text): Tracks transitions through doubt → learning → conviction → mature
-- **`maturity/gate_specialization`** (Scalars): Higher values mean the expert network is becoming more specialized
-- **`loss/train`** and **`loss/val`** (Scalars): Training and validation loss curves — both should decrease
-- **`gates/mean_activation`** (Scalars): Gate routing in the mixture-of-experts layer
-
-TensorBoard is optional but highly recommended for users who want to understand how their coach is evolving.
-
-### 13.7 First Coaching Cycle: Step-by-Step Checklist
-
-Follow this checklist from installation to your first coaching advice:
-
-1. **Install** the application and complete the **Setup Wizard** (configure your Brain Data Root)
-2. Go to **Settings > Analysis Paths** and set your **Pro Demo Folder** to a dedicated drive/folder with ample space
-3. **Download at least 10 pro demos** from HLTV.org (diverse maps!)
-4. **Place the `.dem` files** in your configured Pro Demo Folder
-5. **Launch the app** — the Hunter daemon automatically discovers new demo files
-6. **Wait for ingestion** — each demo takes approximately 5-10 minutes to process. Monitor progress on the Home Screen
-7. After **10 pro demos are ingested**, the Teacher daemon automatically starts the **first training cycle**
-8. *(Optional)* **Monitor maturity** via TensorBoard to see the conviction index rise
-9. **Connect your Steam account** (Home > Personalization > Steam ID)
-10. **Play 10+ competitive matches** — your personal demos are auto-located via Steam integration
-11. Once you have **10+ personal demos AND 10+ pro demos**, the full coaching pipeline activates!
-
-### 13.8 Troubleshooting: Disk Space
-
-- **Drive full?** Move your Pro Demo Folder to a larger drive via Settings. The `match_data/` directory migrates automatically.
-- **Database growing too fast?** The per-match SQLite files in `match_data/` can be individually deleted for old matches you no longer need to review in detail.
-- **Want to save space but keep coaching?** The `.dem` files can be deleted after ingestion — all necessary data is extracted into the match databases during processing. However, keeping the original `.dem` files allows future re-ingestion if the demo parser is upgraded.
-- **Cache taking space?** The ingestion cache in `ingestion/cache/` can be safely cleared. Demos will be re-parsed from the original `.dem` files on next access.
-
----
-
-## 14. Troubleshooting
-
-### "ModuleNotFoundError: No module named 'kivy'"
-
-Kivy dependencies are not installed. On Windows:
-```bash
-pip install kivy-deps.glew==0.3.1 kivy-deps.sdl2==0.7.0 kivy-deps.angle==0.4.0
-pip install Kivy==2.3.0 KivyMD==1.2.0
-```
-On Linux, skip the `kivy-deps` packages — they are Windows-only.
-
-### "No module named 'watchdog'"
-
-```bash
-pip install watchdog
-```
-This is needed for automatic demo file detection. Without it, use manual ingestion from Settings.
-
-### "CUDA not available" / GPU not detected
-
-Verify your NVIDIA driver is installed:
-```bash
-nvidia-smi
-```
-Then reinstall PyTorch with CUDA:
-```bash
-pip install --force-reinstall torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-```
-Verify:
-```bash
-python -c "import torch; print(torch.cuda.is_available())"  # Should print True
-```
-
-> **No NVIDIA GPU?** The app works on CPU. Training is slower but everything functions.
-
-### "sentence-transformers not installed" warning
-
-This is **normal** and non-blocking. The app falls back to TF-IDF embeddings. To install:
-```bash
-pip install sentence-transformers
-```
-First run downloads a ~80MB model — this is expected.
-
-### App crashes on launch with Kivy GL error
-
-On Windows, try:
-```bash
-set KIVY_GL_BACKEND=angle_sdl2
-python Programma_CS2_RENAN/main.py
-```
-On Linux:
-```bash
-export KIVY_GL_BACKEND=sdl2
-python Programma_CS2_RENAN/main.py
-```
-
-### Database lock error ("database is locked")
-
-Another process has the database open. Close all Python processes:
-```bash
-# Windows
-taskkill /F /IM python.exe
-# Linux
-pkill -f python
-```
-Then restart the app.
-
-### Permission denied when selecting folders
-
-Choose a folder inside your user directory:
-- Windows: `C:\Users\YourName\Documents\MacenaData`
-- Linux: `~/MacenaData`
-
-Avoid system-protected paths like `C:\Program Files\` or `/usr/`.
-
-### "Integrity mismatch detected" warning
-
-This is a development-mode warning from the RASP security audit. It means source files have been modified since the last integrity manifest was generated. **It does not block the app** — it only blocks frozen/production builds.
-
-### App opens but shows a blank/white screen
-
-The KV layout file failed to load. Check:
-1. You are running from the project root (not from inside `Programma_CS2_RENAN/`)
-2. The file `Programma_CS2_RENAN/apps/desktop_app/layout.kv` exists
-3. Run: `python Programma_CS2_RENAN/main.py` (not `python main.py`)
-
-### How to reset the app to factory state
-
-Delete `user_settings.json` and restart:
-```bash
-# Windows
-del Programma_CS2_RENAN\user_settings.json
-# Linux
-rm Programma_CS2_RENAN/user_settings.json
-```
-The setup wizard will appear again on next launch.
-
-### Where are my databases stored?
-
-| Database | Location | Content |
-|----------|----------|---------|
-| Main DB | `Programma_CS2_RENAN/backend/storage/database.db` | Player stats, coaching state, training data |
-| HLTV DB | `Programma_CS2_RENAN/backend/storage/hltv_metadata.db` | Professional player metadata (separate from training) |
-| Knowledge DB | `Programma_CS2_RENAN/data/knowledge_base.db` | RAG knowledge base |
-| Match DBs | `{PRO_DEMO_PATH}/match_data/match_*.db` | Per-match tick-level data |
-
----
-
-## Quick Reference
-
-| Action | How |
-|--------|-----|
-| Launch app | `python Programma_CS2_RENAN/main.py` |
-| Re-run wizard | Delete `user_settings.json`, restart |
-| Change demo folder | Settings > Analysis Paths > Change |
-| Add Steam key | Home > Personalization > Steam |
-| Add FaceIT key | Home > Personalization > FaceIT |
-| Start ingestion | Home > Pro Ingestion Hub > Play button |
-| View match replay | Home > Launch Viewer |
-| Ask the AI coach | Coach Screen > Chat toggle > Type question |
-| Change theme | Settings > Visual Theme |
-| Change language | Settings > Language |
+> *"I've always wanted a professional guide -- like the real pro players have -- to understand what it truly looks like when someone trains the right way and plays the right way."*

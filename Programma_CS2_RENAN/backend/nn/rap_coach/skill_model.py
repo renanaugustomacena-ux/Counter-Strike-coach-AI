@@ -5,6 +5,9 @@ import torch
 
 from Programma_CS2_RENAN.backend.processing.baselines.pro_baseline import get_pro_baseline
 from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+logger = get_logger("cs2analyzer.nn.rap_coach.skill_model")
 
 
 class SkillAxes:
@@ -95,6 +98,7 @@ class SkillLatentModel:
 
         # Fallback if everything is empty
         if not results:
+            logger.warning("All skill axes unavailable for player — using default 0.5")
             return {
                 ax: 0.5
                 for ax in [

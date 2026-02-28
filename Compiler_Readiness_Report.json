@@ -1,7 +1,0 @@
-{
-    "errors": [],
-    "warnings": [],
-    "checks": {
-        "pyinstaller": "6.17.0"
-    }
-}

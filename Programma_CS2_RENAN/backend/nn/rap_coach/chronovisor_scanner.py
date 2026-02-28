@@ -29,7 +29,9 @@ from Programma_CS2_RENAN.backend.nn.persistence import load_nn
 from Programma_CS2_RENAN.backend.nn.rap_coach.model import RAPCoachModel
 from Programma_CS2_RENAN.backend.processing.state_reconstructor import RAPStateReconstructor
 from Programma_CS2_RENAN.backend.storage.db_models import PlayerTickState
-from Programma_CS2_RENAN.core.logger import app_logger
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+logger = get_logger("cs2analyzer.nn.chronovisor")
 
 
 @dataclass
@@ -158,7 +160,7 @@ class ChronovisorScanner:
                 model.eval()
             return model
         except Exception as e:
-            app_logger.error("Chronovisor Model Load Error: %s", e)
+            logger.exception("Chronovisor Model Load Error")
             return None
 
     def scan_match(self, match_id: int) -> ScanResult:
@@ -228,7 +230,7 @@ class ChronovisorScanner:
             )
 
         except Exception as e:
-            app_logger.error("Chronovisor Scan Error: %s", e)
+            logger.exception("Chronovisor Scan Error")
             return ScanResult(
                 critical_moments=[],
                 success=False,

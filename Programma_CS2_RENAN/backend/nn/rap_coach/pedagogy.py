@@ -1,6 +1,10 @@
 import torch
 import torch.nn as nn
 
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+logger = get_logger("cs2analyzer.nn.rap_coach.pedagogy")
+
 
 class RAPPedagogy(nn.Module):
     """

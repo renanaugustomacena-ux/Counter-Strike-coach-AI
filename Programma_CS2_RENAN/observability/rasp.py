@@ -70,11 +70,14 @@ class RASPGuard:
 
             expected_hashes: Dict[str, str] = manifest.get("hashes", {})
 
-            # Determine base path for file resolution
+            # Determine base path for file resolution.
+            # Manifest paths are relative to SOURCE_ROOT (Programma_CS2_RENAN/).
+            # In frozen mode, PyInstaller flattens into _MEIPASS.
+            # In dev mode, derive from manifest location (core/ -> parent = SOURCE_ROOT).
             if getattr(sys, "frozen", False):
                 base_path = Path(sys._MEIPASS)
             else:
-                base_path = self.project_root
+                base_path = self.manifest_path.parent.parent
 
             for rel_path, expected_hash in expected_hashes.items():
                 full_path = base_path / rel_path

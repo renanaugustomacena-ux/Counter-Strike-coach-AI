@@ -4,7 +4,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from playwright.sync_api import sync_playwright
+try:
+    from playwright.sync_api import sync_playwright
+
+    _HAS_PLAYWRIGHT = True
+except ImportError:
+    _HAS_PLAYWRIGHT = False
 
 from Programma_CS2_RENAN.backend.storage.storage_manager import StorageManager
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -21,6 +26,11 @@ DOWNLOAD_TIMEOUT = 120000
 # --- Browser Management ---
 class BrowserManager:
     def __enter__(self):
+        if not _HAS_PLAYWRIGHT:
+            raise ImportError(
+                "playwright is required for demo downloading. "
+                "Install it with: pip install playwright && playwright install chromium"
+            )
         self.pw = sync_playwright().start()
         self.browser = self.pw.chromium.launch(
             headless=HEADLESS, args=["--disable-blink-features=AutomationControlled"]
@@ -117,4 +127,4 @@ if __name__ == "__main__":
         download_result = download_single_match(example_match_url, example_match_id)
         app_logger.info("Download successful: %s", download_result["match_id"])
     except Exception as e:
-        app_logger.error("Download failed: %s", e)
+        app_logger.exception("Download failed")

@@ -75,3 +75,19 @@ _test_ingest.py
 .env.*
 .secret_master.key
 gha-creds-*.json
+
+# Internal review/audit documents (not for public distribution)
+AIstate.md
+AUDIT_PROTOCOL.md
+CLAUDE.md
+CONSOLE_ARCHITECTURE.md
+jepa.md
+part1_review.md
+
+# Reports (generated artifacts, regenerable)
+reports/
+
+# Build/runtime artifacts at root
+Build_Health_Report.json
+Compiler_Readiness_Report.json
+training_progress.json

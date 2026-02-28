@@ -6,7 +6,6 @@ Ensures that raw crawled data is correctly mapped to the persistent schema.
 """
 
 import json
-import logging
 from datetime import datetime, timezone
 from typing import Any, Dict
 
@@ -14,8 +13,9 @@ from sqlmodel import select
 
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import ProPlayer, ProPlayerStatCard, ProTeam
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
-logger = logging.getLogger("cs2analyzer.stat_aggregator")
+logger = get_logger("cs2analyzer.stat_aggregator")
 
 
 class StatCardAggregator:

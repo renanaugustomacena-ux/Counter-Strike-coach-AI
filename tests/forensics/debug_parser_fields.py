@@ -1,11 +1,31 @@
 import os
+import sys
+from pathlib import Path
+
+# --- Venv Guard ---
+if sys.prefix == sys.base_prefix:
+    print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
+    sys.exit(2)
 
 import pandas as pd
 from demoparser2 import DemoParser
 
-demo_path = r"E:\Renan\project\Macena_cs2_analyzer\Programma_CS2_RENAN\data\demos_to_process\ingest\match730_003739054579921191006_0270250829_273.dem"
+# Discover demo files dynamically relative to the project root
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+_SEARCH_DIRS = [
+    _PROJECT_ROOT / "Programma_CS2_RENAN" / "data" / "pro_demos",
+    _PROJECT_ROOT / "Programma_CS2_RENAN" / "data" / "demos_to_process" / "ingest",
+    _PROJECT_ROOT / "Programma_CS2_RENAN" / "data" / "demos_to_process",
+]
 
-if os.path.exists(demo_path):
+demo_path = None
+for _d in _SEARCH_DIRS:
+    _hits = list(_d.glob("*.dem")) if _d.exists() else []
+    if _hits:
+        demo_path = str(_hits[0])
+        break
+
+if demo_path is not None and os.path.exists(demo_path):
     parser = DemoParser(demo_path)
 
     print("--- Testing parse_ticks ---")
@@ -38,4 +58,6 @@ if os.path.exists(demo_path):
             print(f"Tuple[1] Type: {type(evs[0][1])}")
 
 else:
-    print(f"File not found: {demo_path}")
+    searched = "\n  ".join(str(d) for d in _SEARCH_DIRS)
+    print(f"No .dem files found. Searched:\n  {searched}")
+    print("Place a .dem file in data/pro_demos/ to use this script.")

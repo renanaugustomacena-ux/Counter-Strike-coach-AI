@@ -1,5 +1,3 @@
-import logging
-
 from kivy.metrics import dp
 from kivy.properties import BooleanProperty, ListProperty, NumericProperty, StringProperty
 from kivy.uix.boxlayout import BoxLayout
@@ -18,7 +16,9 @@ from kivymd.uix.list import (
 )
 from kivymd.uix.progressindicator.progressindicator import MDLinearProgressIndicator
 
-_logger = logging.getLogger("cs2analyzer.player_sidebar")
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+_logger = get_logger("cs2analyzer.player_sidebar")
 
 
 class LivePlayerCard(MDCard):

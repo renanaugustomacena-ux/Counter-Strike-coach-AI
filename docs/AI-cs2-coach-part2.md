@@ -60,6 +60,8 @@ flowchart TB
 
 **Progettazione chiave:** Non restituisce mai zero insight. L'analisi di Fase 6 è non bloccante (incapsulata in try-catch, registrata in modo non fatale).
 
+> **Correzione G-08 (Coaching Fallback):** In precedenza, il metodo `_generate_coper_insights()` non riceveva i parametri `deviations` e `rounds_played` dal chiamante, causando un fallback silenzioso ai template di base. Dopo la rimediazione, `generate_new_insights()` ora passa esplicitamente entrambi i parametri (`deviations=deviations, rounds_played=rounds_played`) al handler COPER, garantendo che il Livello 1 COPER possa generare insight contestuali basati sulle deviazioni statistiche reali del giocatore rispetto alla baseline pro. Senza questa correzione, il sistema avrebbe sempre degradato al Livello 4 (template) anche quando i dati COPER erano disponibili.
+
 **Arricchimento della baseline temporale (Proposta 11):** Il servizio di coaching ora integra confronti pro ponderati nel tempo tramite due nuovi metodi:
 
 - `_get_temporal_baseline(map_name)` — recupera una baseline pro ponderata in base a `TemporalBaselineDecay` (emivita = 90 giorni) invece di medie statiche
@@ -373,25 +375,35 @@ Modelli P(morte | credenza, HP, armatura, classe_arma):
 
 ```mermaid
 flowchart TB
-    YOU["Livello 1 (TU):<br/>Cosa dovrei fare?"]
-    YOU --> PUSH["SPINGERE"]
-    YOU --> HOLD["TENERE"]
-    YOU --> ROT["RUOTARE"]
-    YOU --> UTIL["UTILITÀ"]
-    PUSH --> WP3["Prob Vitt: 0.72"]
-    HOLD --> CHANCE["Livello 2 (CASUALITÀ):<br/>Cosa potrebbe fare il nemico?"]
-    CHANCE --> EP["Nemico SPINGE (30%)"]
-    CHANCE --> EH["Nemico TIENE (70%)"]
-    EP --> WP1["Prob Vitt: 0.45"]
-    EH --> L3["Livello 3 (MIN NEMICO):<br/>La loro migliore risposta"]
-    L3 --> EU["UTILITÀ"]
-    L3 --> ER["RUOTARE"]
-    EU --> WP4["Prob Vitt: 0.68"]
-    ER --> WP5["Prob Vitt: 0.31"]
-    WP3 --> RESULT["Risultato: SPINGERE (0.72)<br/>è l'azione migliore!"]
-    style WP3 fill:#51cf66,color:#fff
-    style RESULT fill:#51cf66,color:#fff
+    subgraph INPUT["EVENTO MORTE IN ARRIVO"]
+        DEATH["Evento Morte<br/>(posizione, arma, HP, armatura)"]
+    end
+    subgraph PRIOR["CREDENZE A PRIORI (dal database)"]
+        HP_BAND["Fascia HP<br/>pieno ≥80: 0.35<br/>ferito 40-79: 0.55<br/>critico <40: 0.80"]
+    end
+    subgraph LIKELIHOOD["FATTORI DI VEROSIMIGLIANZA"]
+        WEAPON["Moltiplicatore Arma<br/>AWP: 1.4x, Fucile: 1.0x<br/>SMG: 0.75x, Pistola: 0.6x"]
+        ARMOR["Riduzione Armatura<br/>0.75x se equipaggiata"]
+        THREAT["Livello Minaccia<br/>exp(-0.1 × età) decadimento"]
+    end
+    subgraph BAYES["AGGIORNAMENTO BAYESIANO"]
+        LOGIT["Combinazione Log-Odds<br/>log(prior/(1-prior))<br/>+ Σ log(likelihood_i)"]
+    end
+    subgraph OUTPUT["PROBABILITÀ POSTERIORE"]
+        POST["P(morte) calibrata<br/>sigmoide(log-odds)"]
+    end
+    DEATH --> HP_BAND
+    HP_BAND --> LOGIT
+    WEAPON --> LOGIT
+    ARMOR --> LOGIT
+    THREAT --> LOGIT
+    LOGIT --> POST
+    POST --> CALIB["auto_calibrate()<br/>Calibrazione con dati storici<br/>(≥10 campioni per fascia)<br/>via extract_death_events_from_db()"]
+    style POST fill:#ff6b6b,color:#fff
+    style CALIB fill:#51cf66,color:#fff
 ```
+
+> **Nota sulla calibrazione (G-07):** Lo Stimatore Bayesiano di Morte è ora un **componente live** grazie al cablaggio completato durante la rimediazione. La funzione `extract_death_events_from_db()` nel Session Engine estrae automaticamente gli eventi di morte dal database e li passa ad `auto_calibrate()`, permettendo al modello di affinare le sue probabilità a priori sulla base dei dati reali accumulati. Questo ciclo di feedback trasforma lo stimatore da un modello statico a un sistema che si auto-calibra con l'esperienza.
 
 ### -Indice di Inganno (`deception_index.py`, ~220 righe)
 
@@ -648,8 +660,26 @@ Converte i dati tick grezzi in tensori di immagini 64x64 per il livello di perce
 | Tensor              | Canali    | Contenuto                                                                                        |
 | ------------------- | --------- | ------------------------------------------------------------------------------------------------ |
 | **Mappa**     | 3 (R/G/B) | R: posizione del giocatore, G: compagni di squadra (α-blended), B: nemici (α-blended)          |
-| **Vista**     | 3         | Stesso layout ma mascherato dal cono FOV (90° predefinito) tramite mascheramento trigonometrico |
+| **Vista**     | 3         | **Ch0:** maschera FOV corrente (90° predefinito, mascheramento trigonometrico); **Ch1:** zona di pericolo (= 1 − FOV accumulato sugli ultimi 8 tick), le aree mai controllate sono potenziali posizioni nemiche; **Ch2:** zona sicura (= 1 − FOV corrente − zona di pericolo), l'area tra la vista attuale e le zone inesplorate |
 | **Movimento** | 2 o 3     | Mappe di calore di velocità/accelerazione (gocce 2D sfocate gaussiane)                          |
+
+> **Correzione G-02 (Zona di Pericolo):** In precedenza, il tensore vista aveva 3 canali identici (placeholder). Dopo la rimediazione, i 3 canali codificano informazioni tattiche distinte: il **FOV corrente** mostra ciò che il giocatore vede adesso, la **zona di pericolo** accumula la storia FOV degli ultimi 8 tick (~125ms a 64 Hz) e inverte il risultato per identificare le aree mai controllate — dove i nemici potrebbero nascondersi — e la **zona sicura** rappresenta l'area intermedia tra vista attuale e zone inesplorate. Il calcolo della zona di pericolo usa `np.maximum(accumulated_fov, tick_fov)` per ogni tick storico, poi `danger_zone = 1.0 − accumulated_fov`. Questo fornisce al modello RAP una consapevolezza spaziale della copertura visiva, trasformando il tensore vista da un semplice input statico a un **indicatore tattico temporale**.
+
+```mermaid
+flowchart TB
+    subgraph VIEW_TENSOR["TENSORE VISTA 3-CANALI (64x64, G-02)"]
+        CH0["Canale 0: FOV Corrente<br/>Maschera trigonometrica 90°<br/>1.0 = nel campo visivo<br/>0.0 = fuori vista"]
+        CH1["Canale 1: Zona di Pericolo<br/>1.0 − FOV accumulato (8 tick)<br/>Alto = mai controllato = PERICOLO<br/>Basso = controllato di recente"]
+        CH2["Canale 2: Zona Sicura<br/>1.0 − FOV corrente − pericolo<br/>Area intermedia tra<br/>vista attuale e inesplorato"]
+    end
+    CH0 --> STACK["np.stack([ch0, ch1, ch2])<br/>→ torch.Tensor [3, 64, 64]"]
+    CH1 --> STACK
+    CH2 --> STACK
+    STACK --> PERC["Flusso Ventrale ResNet<br/>(Percezione RAP)"]
+    style CH0 fill:#51cf66,color:#fff
+    style CH1 fill:#ff6b6b,color:#fff
+    style CH2 fill:#ffd43b,color:#000
+```
 
 > **Analogia:** Tensor Factory crea **piccoli dipinti da 64x64 pixel** della situazione di gioco che l'allenatore RAP può osservare. Il **tensore mappa** è come un dipinto a volo d'uccello: il giocatore è un punto rosso, i compagni di squadra sono punti verdi, i nemici sono punti blu. Il **tensore vista** è lo stesso dipinto, ma con tutto ciò che si trova al di fuori del campo visivo di 90° del giocatore cancellato: è come indossare dei paraocchi, quindi il modello vede solo ciò che il giocatore poteva effettivamente vedere. Il **tensore movimento** è come una fotografia a lunga esposizione: i giocatori in rapido movimento lasciano scie luminose, i giocatori fermi sono invisibili. Insieme, questi tre "dipinti" offrono all'allenatore RAP una comprensione visiva completa di ogni momento.
 

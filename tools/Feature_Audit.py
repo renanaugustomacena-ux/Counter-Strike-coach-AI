@@ -6,6 +6,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
+# --- Venv Guard ---
+if sys.prefix == sys.base_prefix:
+    print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
+    sys.exit(2)
+
 # --- Path Stabilization ---
 script_dir = Path(__file__).parent.absolute()
 project_root = script_dir.parent
@@ -142,7 +147,14 @@ class IndustrialFeatureAuditor:
         )
 
         # 1. Pipeline Expectations
-        expected = set(self.pipeline.feature_cols)
+        feature_cols = getattr(self.pipeline, "feature_cols", None)
+        if feature_cols is None:
+            console.print(
+                "[error]ProDataPipeline has no 'feature_cols' attribute — "
+                "pipeline API may have changed.[/error]"
+            )
+            sys.exit(1)
+        expected = set(feature_cols)
         self.logger.info(f"Pipeline expects {len(expected)} features.")
 
         # 2. Parser Capabilities (Static or Live)

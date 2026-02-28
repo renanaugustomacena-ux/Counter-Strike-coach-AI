@@ -96,6 +96,7 @@ def _get_team_roster(parser) -> Dict[str, int]:
 
         return build_team_roster(parser)
     except Exception:
+        logger.warning("Team roster extraction failed — trade kills unavailable", exc_info=True)
         return {}
 
 
@@ -492,7 +493,7 @@ def enrich_from_demo(
         parser = DemoParser(demo_path)
         round_stats = build_round_stats(parser, demo_name)
     except Exception as e:
-        logger.error("Failed to build round stats for %s: %s", demo_name, e)
+        logger.exception("Failed to build round stats for %s", demo_name)
         return {}, []
 
     if not round_stats:

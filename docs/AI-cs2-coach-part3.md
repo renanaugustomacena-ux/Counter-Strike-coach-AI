@@ -1,8 +1,45 @@
 ## 9. Schema del database e ciclo di vita dei dati
 
-Il progetto utilizza **SQLModel** (Pydantic + SQLAlchemy) con SQLite (modalità WAL). 20 tabelle SQLModel principali:
+Il progetto utilizza **SQLModel** (Pydantic + SQLAlchemy) con SQLite (modalità WAL) e un'**architettura tri-database** specializzata. 22+ tabelle SQLModel principali distribuite su 3 database:
 
-> **Analogia:** Il database è l'**archivio** del sistema: ogni informazione ha un cassetto e una cartella specifici. SQLite in modalità WAL consente a più programmi di leggere l'archivio contemporaneamente senza bloccarsi a vicenda (come una biblioteca dove molte persone possono leggere libri diversi contemporaneamente). SQLModel combina Pydantic (per la convalida dei dati: "assicurati che il campo età sia effettivamente un numero") con SQLAlchemy (per le operazioni sul database: "salva questo nella tabella giusta"). Le oltre 20 tabelle sono organizzate come l'archivio scolastico: profili degli studenti, punteggi dei test, appunti di classe, valutazioni degli insegnanti e libri della biblioteca.
+1. **`database.db`** — Database principale dell'applicazione. Contiene tutte le tabelle core: statistiche giocatori, stato del coach, task di ingestione, insight di coaching, profili utente, notifiche di sistema.
+2. **`knowledge_base.db`** — Database della conoscenza. Contiene la base RAG (`TacticalKnowledge`), la banca esperienze COPER (`CoachingExperience`), e il Knowledge Graph (`kg_entities`, `kg_relations`).
+3. **`hltv_metadata.db`** — Database dei metadati professionali. Contiene i profili dei giocatori pro (`ProPlayer`, `ProTeam`), le schede statistiche (`ProPlayerStatCard`) e lo storico dei download (`HLTVDownload`).
+
+Questa separazione garantisce che le operazioni di scrittura intensive (ingestione demo → `database.db`) non contendano lock WAL con le operazioni di lettura semantica (query RAG → `knowledge_base.db`) o con lo scraping HLTV (`hltv_metadata.db`).
+
+```mermaid
+flowchart TB
+    subgraph DB1["database.db (Core Applicazione)"]
+        PMS_DB["PlayerMatchStats"]
+        RS_DB["RoundStats"]
+        CS_DB["CoachState"]
+        IT_DB["IngestionTask"]
+        CI_DB["CoachingInsight"]
+        PP_DB["PlayerProfile"]
+        SN_DB["ServiceNotification"]
+        CALIB["CalibrationSnapshot"]
+        ROLE_TH["RoleThresholdRecord"]
+    end
+    subgraph DB2["knowledge_base.db (Conoscenza)"]
+        TK_DB["TacticalKnowledge<br/>(RAG 384-dim)"]
+        CE_DB["CoachingExperience<br/>(COPER)"]
+        KG_DB["Knowledge Graph<br/>(kg_entities, kg_relations)"]
+    end
+    subgraph DB3["hltv_metadata.db (Dati Pro)"]
+        PRO_DB["ProPlayer"]
+        TEAM_DB["ProTeam"]
+        STAT_DB["ProPlayerStatCard"]
+        DL_DB["HLTVDownload"]
+    end
+    DB1 -->|"riferimento incrociato<br/>demo_name, player_name"| DB2
+    DB3 -->|"baseline pro per<br/>confronto coaching"| DB1
+    style DB1 fill:#4a9eff,color:#fff
+    style DB2 fill:#51cf66,color:#fff
+    style DB3 fill:#ffd43b,color:#000
+```
+
+> **Analogia:** Il database è l'**archivio** del sistema: ogni informazione ha un cassetto e una cartella specifici. L'architettura tri-database è come avere **tre archivi specializzati**: l'archivio principale (dati del gioco quotidiano), la biblioteca (conoscenze e esperienze), e lo schedario dei professionisti (dati HLTV). Separandoli, molte persone possono consultare libri in biblioteca mentre qualcun altro aggiorna lo schedario principale senza bloccarsi a vicenda. SQLite in modalità WAL consente a più programmi di leggere ciascun archivio contemporaneamente. SQLModel combina Pydantic (per la convalida dei dati: "assicurati che il campo età sia effettivamente un numero") con SQLAlchemy (per le operazioni sul database: "salva questo nella tabella giusta"). Le oltre 22 tabelle sono organizzate come l'archivio scolastico: profili degli studenti, punteggi dei test, appunti di classe, valutazioni degli insegnanti e libri della biblioteca.
 
 ![92204.svg](.attachments.253054/92204.svg)
 
@@ -368,7 +405,7 @@ L'interfaccia desktop è costruita con **Kivy + KivyMD** e segue il pattern **MV
 ```mermaid
 flowchart TB
     SM["ScreenManager<br/>(MDScreenManager + FadeTransition)"]
-    SM --> WIZ["wizard_screen<br/>Setup iniziale<br/>(nome, ruolo, percorsi)"]
+    SM --> WIZ["wizard<br/>Setup iniziale<br/>(nome, ruolo, percorsi)"]
     SM --> HOME["home<br/>Dashboard principale<br/>(quota, stato servizi,<br/>fiducia credenze)"]
     SM --> COACH["coach<br/>Insight coaching + Chat AI<br/>(card severità, radar skill,<br/>trend storici)"]
     SM --> TV["tactical_viewer<br/>Mappa 2D + Playback<br/>(giocatori, granate,<br/>fantasma, heatmap)"]
@@ -378,10 +415,15 @@ flowchart TB
     SM --> MD["match_detail<br/>Statistiche singola demo"]
     SM --> PERF["performance<br/>Radar skill + Tendenze"]
     SM --> UP["user_profile<br/>Bio, ruolo, Steam sync"]
+    SM --> PROF["profile<br/>Profilo pubblico giocatore"]
+    SM --> STEAM["steam_config<br/>Configurazione Steam API"]
+    SM --> FACEIT["faceit_config<br/>Configurazione FACEIT"]
 
     WIZ -->|"SETUP_COMPLETED=True"| HOME
     HOME -->|"Upload demo"| COACH
     HOME -->|"Tactical Viewer"| TV
+    UP -->|"Configura Steam"| STEAM
+    UP -->|"Configura FACEIT"| FACEIT
 
     style WIZ fill:#ffd43b,color:#000
     style HOME fill:#4a9eff,color:#fff
@@ -389,7 +431,7 @@ flowchart TB
     style TV fill:#ff6b6b,color:#fff
 ```
 
-**Schermate principali:**
+**13 schermate dell'interfaccia:**
 
 | Schermata | Ruolo | Componenti chiave |
 | --------- | ----- | ----------------- |
@@ -399,6 +441,13 @@ flowchart TB
 | **Tactical Viewer** | Riproduzione tattica | Mappa 2D con giocatori/granate/fantasma, timeline con marcatori eventi, sidebar giocatori CT/T, controlli velocità (0.25x→8x) |
 | **Settings** | Personalizzazione | Tema (CS2/CSGO/CS1.6), font, dimensione testo, lingua, percorsi demo, wallpaper |
 | **Help** | Supporto utente | Tutorial interattivo, FAQ, troubleshooting |
+| **Match History** | Storico partite | Lista demo analizzate con filtri e ordinamento |
+| **Match Detail** | Dettaglio partita | Statistiche dettagliate per una singola demo analizzata |
+| **Performance** | Progressi | Radar skill a 5 assi, grafici di tendenza, confronti temporali |
+| **User Profile** | Profilo utente | Bio, ruolo preferito, sincronizzazione Steam/FACEIT |
+| **Profile** | Profilo pubblico | Visualizzazione profilo pubblico del giocatore |
+| **Steam Config** | Configurazione Steam | Inserimento e validazione API key Steam |
+| **FACEIT Config** | Configurazione FACEIT | Inserimento e validazione API key FACEIT |
 
 > **Analogia della Home Screen:** La Home è come la **plancia di comando di una nave spaziale**. L'indicatore di quota ("5/10 demo questo mese") è il **misuratore di carburante**. Lo stato del servizio (verde/rosso) è il **pannello dei sistemi vitali**: verde = tutti i sistemi operativi, rosso = allarme. La fiducia delle credenze (0.0-1.0) è il **livello di stabilità dell'IA**: 0.0 = l'IA non sa nulla, 1.0 = l'IA è sicura delle sue analisi. Il contatore delle partite processate è l'**odometro**: quanta strada ha percorso il sistema.
 
@@ -518,6 +567,33 @@ flowchart TB
 3. `MLController` resta in stato di attesa — il training è gestito dal daemon Teacher
 4. `IngestionManager` resta idle — il lavoro attivo è gestito dai daemon Hunter/Digester
 
+**MLControlContext — Controllo Live dell'Addestramento:**
+
+L'`MLController` utilizza un token di controllo chiamato `MLControlContext` (`backend/control/ml_controller.py`) che viene passato ai cicli di addestramento per consentire **intervento in tempo reale** da parte dell'operatore. Questo sostituisce l'approccio precedente basato su `StopIteration` con un sistema thread-safe più robusto.
+
+> **Analogia:** MLControlContext è come il **telecomando di un lettore video**. L'operatore può premere **Pausa** (il training si ferma immediatamente, senza perdita di dati), **Play** (il training riprende dal punto esatto in cui si era fermato), **Stop** (il training termina con un'eccezione controllata `TrainingStopRequested`) o regolare la **velocità** (throttle: 0.0 = massima velocità, 1.0 = massimo ritardo). Il meccanismo usa `threading.Event` per evitare busy-wait durante la pausa — il thread di training semplicemente dorme finché non riceve il segnale di ripresa.
+
+```mermaid
+flowchart LR
+    OP["Operatore"] -->|"request_pause()"| CTX["MLControlContext"]
+    OP -->|"request_resume()"| CTX
+    OP -->|"request_stop()"| CTX
+    OP -->|"set_throttle(0.5)"| CTX
+    CTX -->|"check_state()<br/>in ogni batch"| LOOP["Ciclo Training"]
+    LOOP -->|"Pausa: Event.wait()"| PAUSE["Training Sospeso<br/>(nessun busy-wait)"]
+    LOOP -->|"Stop: raise<br/>TrainingStopRequested"| STOP["Training Terminato<br/>(checkpoint salvato)"]
+    style CTX fill:#4a9eff,color:#fff
+    style PAUSE fill:#ffd43b,color:#000
+    style STOP fill:#ff6b6b,color:#fff
+```
+
+| Comando | Metodo | Effetto |
+| ------- | ------ | ------- |
+| **Pausa** | `request_pause()` | `_resume_event.clear()` → blocca `check_state()` |
+| **Riprendi** | `request_resume()` | `_resume_event.set()` → sblocca il training |
+| **Stop** | `request_stop()` | Lancia `TrainingStopRequested` (eccezione custom) |
+| **Throttle** | `set_throttle(factor)` | Aggiunge `time.sleep(factor)` dopo ogni batch |
+
 ---
 
 ### 12.8 Onboarding e Flusso Nuovo Utente
@@ -599,30 +675,32 @@ flowchart TB
     style T4 fill:#868e96,color:#fff
 ```
 
-**Le 20 tabelle SQLModel:**
+**Le 22 tabelle SQLModel:**
 
-| # | Tabella | Categoria | Descrizione |
-| - | ------- | --------- | ----------- |
-| 1 | `PlayerMatchStats` | Core | Statistiche aggregate per giocatore/partita (32 campi) |
-| 2 | `PlayerTickState` | Core | Stato per-tick (128 Hz), archiviato in DB separati |
-| 3 | `PlayerProfile` | Utente | Profilo utente (nome, ruolo, Steam ID, quota mensile) |
-| 4 | `RoundStats` | Core | Statistiche isolate per round (uccisioni, valutazione, arricchimento) |
-| 5 | `CoachingInsight` | Coaching | Consigli generati dal servizio di coaching |
-| 6 | `CoachingExperience` | Coaching | Banca esperienze COPER (contesto, esito, efficacia) |
-| 7 | `IngestionTask` | Sistema | Coda di lavoro per il daemon Digester |
-| 8 | `CoachState` | Sistema | Stato globale (training metrics, heartbeat, status) |
-| 9 | `ServiceNotification` | Sistema | Messaggi di errore/evento dei daemon → UI |
-| 10 | `TacticalKnowledge` | Conoscenza | Base RAG (embedding 384-dim in JSON) |
-| 11 | `ProPlayer` | Pro | Profili giocatori professionisti |
-| 12 | `ProTeam` | Pro | Metadata squadre professionali |
-| 13 | `ProPlayerStatCard` | Pro | Statistiche stagionali per giocatore pro |
-| 14 | `HLTVDownload` | Pro | Tracking demo pro scaricate |
-| 15 | `Ext_PlayerPlaystyle` | Esterno | Dati stile di gioco da CSV (per NeuralRoleHead) |
-| 16 | `Ext_TeamRoundStats` | Esterno | Statistiche torneo esterne |
-| 17 | `MatchResult` | Partite | Esiti delle partite |
-| 18 | `MapVeto` | Partite | Storico selezione mappe |
-| 19 | `DatasetSplit` | Enum | Categorie split (train/val/test) |
-| 20 | `CoachStatus` | Enum | Stati del coach (Paused/Training/Idle/Error) |
+| # | Tabella | Database | Categoria | Descrizione |
+| - | ------- | -------- | --------- | ----------- |
+| 1 | `PlayerMatchStats` | database.db | Core | Statistiche aggregate per giocatore/partita (32 campi) |
+| 2 | `PlayerTickState` | match_XXXX.db | Core | Stato per-tick (128 Hz), archiviato in DB separati |
+| 3 | `PlayerProfile` | database.db | Utente | Profilo utente (nome, ruolo, Steam ID, quota mensile) |
+| 4 | `RoundStats` | database.db | Core | Statistiche isolate per round (uccisioni, valutazione, arricchimento) |
+| 5 | `CoachingInsight` | database.db | Coaching | Consigli generati dal servizio di coaching |
+| 6 | `CoachingExperience` | knowledge_base.db | Coaching | Banca esperienze COPER (contesto, esito, efficacia) |
+| 7 | `IngestionTask` | database.db | Sistema | Coda di lavoro per il daemon Digester |
+| 8 | `CoachState` | database.db | Sistema | Stato globale (training metrics, heartbeat, status) |
+| 9 | `ServiceNotification` | database.db | Sistema | Messaggi di errore/evento dei daemon → UI |
+| 10 | `TacticalKnowledge` | knowledge_base.db | Conoscenza | Base RAG (embedding 384-dim in JSON) |
+| 11 | `ProPlayer` | hltv_metadata.db | Pro | Profili giocatori professionisti |
+| 12 | `ProTeam` | hltv_metadata.db | Pro | Metadata squadre professionali |
+| 13 | `ProPlayerStatCard` | hltv_metadata.db | Pro | Statistiche stagionali per giocatore pro |
+| 14 | `HLTVDownload` | hltv_metadata.db | Pro | Tracking demo pro scaricate |
+| 15 | `Ext_PlayerPlaystyle` | database.db | Esterno | Dati stile di gioco da CSV (per NeuralRoleHead) |
+| 16 | `Ext_TeamRoundStats` | database.db | Esterno | Statistiche torneo esterne |
+| 17 | `MatchResult` | database.db | Partite | Esiti delle partite |
+| 18 | `MapVeto` | database.db | Partite | Storico selezione mappe |
+| 19 | `DatasetSplit` | database.db | Enum | Categorie split (train/val/test) |
+| 20 | `CoachStatus` | database.db | Enum | Stati del coach (Paused/Training/Idle/Error) |
+| 21 | `CalibrationSnapshot` | database.db | Sistema | Registro di calibrazione del modello di credenza (timestamp, campioni, risultato) |
+| 22 | `RoleThresholdRecord` | database.db | Sistema | Soglie apprese per la classificazione dei ruoli (persistite tra i riavvii) |
 
 **Connection Pooling e Concorrenza:**
 
@@ -730,7 +808,7 @@ flowchart LR
 **File:** `Programma_CS2_RENAN/observability/logger_setup.py`
 **File correlati:** `backend/storage/state_manager.py`, `backend/services/telemetry_client.py`
 
-Il sistema di osservabilità garantisce che ogni evento significativo sia **tracciabile, strutturato e persistente**.
+Il sistema di osservabilità garantisce che ogni evento significativo sia **tracciabile, strutturato e persistente**. Il client di telemetria (`telemetry_client.py`) utilizza **`httpx`** (HTTP asincrono) per l'invio non bloccante di metriche e eventi, evitando che latenze di rete influiscano sulle prestazioni dell'applicazione.
 
 > **Analogia:** L'osservabilità è come il **sistema di telecamere di sicurezza e registri di un edificio**. Il logging strutturato (`get_logger()`) è la telecamera che registra tutto con timestamp e etichette ("chi ha fatto cosa, dove e quando"). Lo StateManager è la **lavagna nella hall** che mostra lo stato attuale di ogni piano (daemon): "Piano 1 (Hunter): Scanning. Piano 2 (Digester): Idle. Piano 3 (Teacher): Learning." Le ServiceNotification sono gli **annunci interfono** che informano i residenti (l'utente) di eventi importanti o errori.
 
@@ -851,6 +929,7 @@ flowchart TB
         ZTC["Zombie Task Cleanup<br/>All'avvio: task 'processing'<br/>→ reset a 'queued'<br/>Ripristino automatico senza perdita"]
         BAK["Backup Automatico<br/>All'avvio: checkpoint 'startup_auto'<br/>Rotazione: 7 giornalieri + 4 settimanali<br/>Copia completa database"]
         SUP["Service Supervisor<br/>Monitora servizi esterni<br/>Auto-restart con backoff esponenziale<br/>Max 3 tentativi/ora"]
+        CB["Circuit Breaker HLTV<br/>MAX_FAILURES=10, RESET=3600s<br/>Stato: CLOSED→OPEN→HALF_OPEN<br/>Previene cascade failure"]
         POOL["Connection Pooling<br/>20 connessioni persistenti<br/>Timeout 30s per contesa WAL<br/>Health checks automatici"]
         GRACE["Degradazione Graduale<br/>Coaching: 4 livelli fallback<br/>GhostEngine: (0,0) se errore<br/>Ogni servizio ha un piano B"]
     end
@@ -858,6 +937,7 @@ flowchart TB
     style ZTC fill:#4a9eff,color:#fff
     style BAK fill:#51cf66,color:#fff
     style SUP fill:#ffd43b,color:#000
+    style CB fill:#be4bdb,color:#fff
     style GRACE fill:#ff6b6b,color:#fff
 ```
 
@@ -867,7 +947,7 @@ flowchart TB
 | ---------------------- | ---------------------- | --------------- |
 | Crash dell'applicazione durante parsing | Zombie Task Cleanup al riavvio | Nessuna — task ricominciato |
 | Corruzione database | Restore da backup automatico più recente | Massimo 24 ore di dati |
-| Servizio HLTV non raggiungibile | Retry con backoff esponenziale, max 3/ora | Nessuna — dati pro ritardati |
+| Servizio HLTV non raggiungibile | Circuit Breaker `_CircuitBreaker` (MAX_FAILURES=10, RESET_WINDOW_S=3600): dopo 10 fallimenti consecutivi il circuito si apre e blocca le richieste per 1 ora, poi passa a HALF_OPEN per un test. Previene cascade failure su API esterne. | Nessuna — dati pro ritardati |
 | Modello ML non caricabile | Fallback a pesi casuali (GhostEngine) o coaching base | Nessuna — qualità degradata |
 | RAM insufficiente durante training | Early stopping automatico, checkpoint salvato | Nessuna — ultimo checkpoint valido |
 | Disco pieno | Database Governor rileva e notifica via ServiceNotification | Prevenzione — nessun dato scritto |
@@ -1013,7 +1093,7 @@ flowchart TB
         KNOWLEDGE["Conoscenza (RAG, COPER, KG)"]
     end
     subgraph L4["LIVELLO 4: PERSISTENZA"]
-        SQLITE["SQLite WAL<br/>(database.db + match_XXXX.db)"]
+        SQLITE["SQLite WAL Tri-Database<br/>(database.db + knowledge_base.db<br/>+ hltv_metadata.db + match_XXXX.db)"]
         FILES["Filesystem<br/>(checkpoint .pt, log, demo)"]
     end
     subgraph L5["LIVELLO 5: INFRASTRUTTURA"]
@@ -1066,6 +1146,33 @@ flowchart LR
 
 ---
 
+### Nota sulla Rimediazione — Codice Eliminato (G-06)
+
+Durante il processo di rimediazione in 11 fasi (350 problemi risolti complessivamente), la directory `backend/nn/advanced/` è stata **completamente eliminata** in quanto conteneva codice morto non referenziato:
+
+- **`superposition_net.py`** — Una rete di sovrapposizione sperimentale mai integrata nel flusso di addestramento o inferenza. La funzionalità di sovrapposizione attiva è implementata in `layers/superposition.py` (utilizzata dal livello Strategia RAP).
+- **`brain_bridge.py`** — Un ponte tra modelli sperimentale mai chiamato da nessun modulo.
+- **`feature_engineering.py`** — Feature engineering duplicato; la versione canonica risiede in `backend/processing/feature_engineering/`.
+
+> **Motivazione (G-06):** Mantenere codice morto crea rischi di confusione (quale `superposition` è quello vero?), aumenta la superficie di manutenzione e può introdurre import accidentali. L'eliminazione è stata verificata tramite analisi statica delle dipendenze: nessun file nel progetto importava da `backend/nn/advanced/`.
+
+### Utilità Condivise — `round_utils.py`
+
+**File:** `Programma_CS2_RENAN/backend/knowledge/round_utils.py`
+
+La funzione `infer_round_phase(equipment_value)` è un'**utilità condivisa** utilizzata sia dal servizio di coaching che dal sistema di conoscenza per classificare la fase economica di un round. Risiede in `backend/knowledge/` ed è importata da moduli in `services/` e `processing/`.
+
+| Valore equipaggiamento | Fase restituita |
+| ---------------------- | --------------- |
+| < $1.500               | `"pistol"`    |
+| $1.500 – $2.999       | `"eco"`       |
+| $3.000 – $3.999       | `"force"`     |
+| ≥ $4.000               | `"full_buy"`  |
+
+> **Analogia:** `round_utils.py` è come un **dizionario condiviso** consultato da più dipartimenti. Invece di avere ogni ufficio che definisce le proprie regole per classificare "eco" vs "force buy", tutti consultano lo stesso dizionario, garantendo coerenza tra coaching, analisi e knowledge base.
+
+---
+
 ### Punti di Forza dell'Architettura
 
 1. **Contratto di funzionalità unificato a 25 dimensioni** — `METADATA_DIM = 25` impone la parità di addestramento/inferenza a livello di sistema.
@@ -1083,17 +1190,21 @@ flowchart LR
 13. **Per-Round Statistical Isolation** — Il modello `RoundStats` impedisce la contaminazione tra round, consentendo un coaching granulare a livello di round e valutazioni HLTV 2.0 per round.
 14. **Architettura Quad-Daemon** — Separazione completa tra GUI e lavoro pesante, con shutdown coordinato e zombie task cleanup automatico.
 15. **Degradazione graduale pervasiva** — Ogni componente ha un piano di fallback: il sistema non crasha mai, degrada sempre in modo controllato.
+16. **Architettura Tri-Database** — Separazione di `database.db` (core), `knowledge_base.db` (RAG/COPER), `hltv_metadata.db` (dati pro) per eliminare la contesa WAL tra operazioni di scrittura intensive e letture semantiche.
+17. **Calibrazione Bayesiana Live (G-07)** — Lo stimatore di morte si auto-calibra con `extract_death_events_from_db()` → `auto_calibrate()`, trasformandosi da modello statico a sistema adattivo.
+18. **Controllo Live Addestramento (MLControlContext)** — Pause/resume/stop/throttle in tempo reale del training via `threading.Event`, con eccezione custom `TrainingStopRequested` al posto di `StopIteration`.
+19. **Circuit Breaker Resiliente** — `_CircuitBreaker` per API esterne (HLTV) con MAX_FAILURES=10, RESET_WINDOW_S=3600, previene cascade failure con pattern CLOSED→OPEN→HALF_OPEN.
 
 ```mermaid
 flowchart TB
-    subgraph PILLARS["PUNTI DI FORZA ARCHITETTURALI - I 15 PILASTRI"]
+    subgraph PILLARS["PUNTI DI FORZA ARCHITETTURALI - I 19 PILASTRI"]
         P1["1. Contratto unificato 25-dim - Tutti parlano la stessa lingua"]
         P2["2. Gate maturità 3 livelli - Nessun rilascio prematuro"]
         P3["3. Fallback coaching 4 livelli - Mai a mani vuote"]
         P4["4. Diversità multi-modello - 5 cervelli > 1 cervello"]
         P5["5. Divisione temporale - Nessun imbroglio viaggi nel tempo"]
         P6["6. Loop feedback COPER - Impara dai propri consigli"]
-        P7["7. Analisi Fase 6 (8 mot.) - 8 detective specializzati"]
+        P7["7. Analisi Fase 6 (9 mot.) - 9 detective specializzati"]
         P8["8. Persistenza soglie - Sopravvive ai riavvii"]
         P9["9. Euristiche configurabili - Override via JSON"]
         P10["10. Rifinitura LLM (Ollama) - Consigli suonano naturali"]
@@ -1102,6 +1213,10 @@ flowchart TB
         P13["13. Isolamento Per-Round - Valuta ogni domanda, non solo il test"]
         P14["14. Architettura Quad-Daemon - GUI reattiva, lavoro pesante in background"]
         P15["15. Degradazione Graduale - Il sistema non crasha mai"]
+        P16["16. Tri-Database - Nessuna contesa tra scrittura e lettura"]
+        P17["17. Calibrazione Bayesiana Live - Si auto-calibra con i dati"]
+        P18["18. Controllo Live Training - Pausa/Stop senza perdita"]
+        P19["19. Circuit Breaker - Resilienza API esterne"]
     end
 ```
 
@@ -1109,14 +1224,16 @@ flowchart TB
 
 **Fine documento — Guida completa di Macena CS2 Analyzer**
 
-Totale file sorgente analizzati: **288+**
-Totale righe di codice Python verificate: **≈ 54.000+**
+Totale file sorgente analizzati: **355+**
+Totale righe di codice Python verificate: **≈ 74.000+**
 Sottosistemi AI coperti: **6 + Osservatorio** (NN Core, RAP Coach, Servizi di Coaching, Conoscenza, Analisi, Elaborazione, Osservatorio)
 Sottosistemi programma coperti: **8** (Avvio, Lifecycle, Configurazione, Session Engine, UI Desktop, Ingestione, Storage, Osservabilità)
 Modelli documentati: **6** (AdvancedCoachNN/TeacherRefinementNN, JEPA, VL-JEPA, RAPCoachModel, NeuralRoleHead, WinProbabilityNN)
-Motori di analisi documentati: **8** (Ruolo, WinProb, GameTree, Credenza, Inganno, Momentum, Entropia, Punti Ciechi)
-Tabelle di database documentate: **20**
-Schermate UI documentate: **10** (Wizard, Home, Coach, Tactical Viewer, Settings, Help, Match History, Match Detail, Performance, User Profile)
+Motori di analisi documentati: **9** (Ruolo, WinProb, GameTree, Credenza, Inganno, Momentum, Entropia, Punti Ciechi, Distanza di Ingaggio)
+Tabelle di database documentate: **22+** (distribuite su architettura tri-database: `database.db`, `knowledge_base.db`, `hltv_metadata.db`)
+Schermate UI documentate: **13** (Wizard, Home, Coach, Tactical Viewer, Settings, Help, Match History, Match Detail, Performance, User Profile, Profile, Steam Config, FACEIT Config)
 Daemon documentati: **4** (Hunter, Digester, Teacher, Pulse)
+Pilastri architetturali: **19** (inclusi Tri-Database, Calibrazione Bayesiana Live, Controllo Live Training, Circuit Breaker)
+Problemi risolti tramite rimediazione: **350** (in 11 fasi sistematiche)
 
 **Autore:** Renan Augusto Macena

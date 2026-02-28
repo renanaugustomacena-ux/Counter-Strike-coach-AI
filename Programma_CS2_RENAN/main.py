@@ -8,6 +8,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+# --- Venv Guard ---
+if sys.prefix == sys.base_prefix:
+    print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
+    sys.exit(2)
+
 # --- Early Integrity Audit (RASP) ---
 # We verify the codebase before any heavy library imports
 script_dir = os.path.dirname(os.path.abspath(__file__))

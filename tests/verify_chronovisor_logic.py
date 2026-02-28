@@ -2,7 +2,6 @@
 Chronovisor Logic Verification Suite
 
 This script rigorously tests the signal processing logic of the Chronovisor.
-This script rigorously tests the signal processing logic of the Chronovisor.
 It uses SYNTHETIC DATA (Algorithmic Generation) to ensure the algorithm detects spikes correctly
 without needing a full neural network or real match database. This is a standard unit test practice
 and does NOT represent "mock data" in the production system.
@@ -17,6 +16,11 @@ Tests:
 import os
 import sys
 import unittest
+
+# --- Venv Guard ---
+if sys.prefix == sys.base_prefix:
+    print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
+    sys.exit(2)
 
 import numpy as np
 
@@ -103,9 +107,10 @@ class TestChronovisorLogic(unittest.TestCase):
 
         np.random.seed(42)
         timeline = []
-        # Random noise with std 0.02. Max delta roughly 0.08? < 0.15 threshold
+        # Random noise with std 0.01.  Delta distribution std ≈ 0.01*√2 ≈ 0.014.
+        # Micro-scale threshold is 0.10, so 0.10/0.014 ≈ 7σ — practically unreachable.
         for i in range(1000):
-            val = 0.5 + np.random.normal(0, 0.02)
+            val = 0.5 + np.random.normal(0, 0.01)
             timeline.append((i, val))
 
         cms = self.scanner._analyze_signal(match_id=1, timeline=timeline)

@@ -1,6 +1,11 @@
 import os
 import sys
 
+# --- Venv Guard ---
+if sys.prefix == sys.base_prefix:
+    print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
+    sys.exit(2)
+
 import torch
 import torch.nn as nn
 
@@ -8,11 +13,10 @@ import torch.nn as nn
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(current_dir)
 sys.path.insert(0, project_root)
-print(f"DEBUG: Added {project_root} to sys.path")
-print(f"DEBUG: sys.path: {sys.path}")
 
 from Programma_CS2_RENAN.backend.nn.layers.superposition import SuperpositionLayer
 from Programma_CS2_RENAN.backend.nn.rap_coach.model import RAPCoachModel
+from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import METADATA_DIM
 
 
 def verify_superposition_logic():
@@ -43,8 +47,8 @@ def verify_superposition_logic():
 
 def verify_full_model_integration():
     print("\n--- Verifying RAPCoachModel Integration ---")
-    # Init model
-    model = RAPCoachModel(metadata_dim=18, output_dim=10)
+    # Init model with current METADATA_DIM constant
+    model = RAPCoachModel(metadata_dim=METADATA_DIM, output_dim=10)
     print("Model instantiated successfully.")
 
     # Check for core heads (RAPCoachModel has position_head and pedagogy, not stability_head)
@@ -63,7 +67,7 @@ def verify_full_model_integration():
     view_frame = torch.randn(batch_size, 3, 224, 224)  # Image
     map_frame = torch.randn(batch_size, 3, 64, 64)  # Map
     motion_diff = torch.randn(batch_size, 3, 64, 64)  # Motion
-    metadata = torch.randn(batch_size, seq_len, 18)  # Context
+    metadata = torch.randn(batch_size, seq_len, METADATA_DIM)  # Context
 
     output = model(view_frame, map_frame, motion_diff, metadata)
 

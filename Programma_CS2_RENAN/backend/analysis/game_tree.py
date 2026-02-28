@@ -373,6 +373,7 @@ class ExpectiminimaxSearch:
             prob, _ = predictor.predict_from_dict(state)
             return prob
         except Exception:
+            logger.debug("WinProbabilityPredictor failed, using fallback heuristic", exc_info=True)
             # Fallback heuristic
             alive = state.get("alive_players", 5)
             enemy = state.get("enemy_alive", 5)

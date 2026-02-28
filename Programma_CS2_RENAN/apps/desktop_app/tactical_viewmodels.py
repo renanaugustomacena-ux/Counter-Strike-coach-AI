@@ -14,7 +14,6 @@ This refactoring reduces the "God Object" anti-pattern and improves
 maintainability, testability, and separation of concerns.
 """
 
-import logging
 import threading
 from dataclasses import is_dataclass, replace
 from threading import Thread
@@ -22,7 +21,9 @@ from typing import Any, Callable, List, Optional, Tuple
 
 from kivy.event import EventDispatcher
 
-logger = logging.getLogger("cs2analyzer.tactical_viewmodels")
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+logger = get_logger("cs2analyzer.tactical_viewmodels")
 
 # Tick buffer to avoid getting stuck on same critical moment when navigating
 CM_NAVIGATION_BUFFER_TICKS = 32

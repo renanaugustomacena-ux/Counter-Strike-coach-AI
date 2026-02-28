@@ -5,12 +5,12 @@ Provides programmatic access to Alembic migrations for auto-upgrade
 on application startup (TASK 2.20.1).
 """
 
-import logging
 import os
 import sys
 
-# Get logger early - it will be configured by main.py later
-logger = logging.getLogger("cs2analyzer.db_migrate")
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+logger = get_logger("cs2analyzer.db_migrate")
 
 
 def ensure_database_current() -> bool:
@@ -90,6 +90,7 @@ def get_current_revision() -> str | None:
             context = MigrationContext.configure(conn)
             return context.get_current_revision()
     except Exception:
+        logger.debug("Could not retrieve current DB revision", exc_info=True)
         return None
 
 
@@ -107,4 +108,5 @@ def get_head_revision() -> str | None:
         script = ScriptDirectory.from_config(alembic_cfg)
         return script.get_current_head()
     except Exception:
+        logger.debug("Could not retrieve head revision", exc_info=True)
         return None

@@ -8,7 +8,15 @@ subprocess safety, integrity manifest integrity.
 import fnmatch
 import json
 import re
+import sys
 from pathlib import Path
+
+# --- Venv Guard ---
+if sys.prefix == sys.base_prefix:
+    print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
+    sys.exit(2)
+
+import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 SOURCE_ROOT = PROJECT_ROOT / "Programma_CS2_RENAN"

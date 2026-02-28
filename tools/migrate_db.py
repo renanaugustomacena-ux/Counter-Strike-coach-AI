@@ -8,6 +8,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+# --- Venv Guard ---
+if sys.prefix == sys.base_prefix:
+    print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
+    sys.exit(2)
+
 # --- Path Stabilization ---
 script_dir = Path(__file__).parent.absolute()
 project_root = script_dir.parent
@@ -171,6 +176,7 @@ class IndustrialDatabaseMigrator:
                 conn.close()
                 return False
 
+        backup_path = None
         try:
             backup_path = self.create_backup()
             console.print(f"📦 [success]Backup Created:[/success] [dim]{backup_path.name}[/dim]")
@@ -196,7 +202,8 @@ class IndustrialDatabaseMigrator:
         except Exception as e:
             console.print(
                 Panel(
-                    f"[bold red]MIGRATION FAILED[/bold red]\nError: {e}\n[info]A backup exists at: {backup_path}[/info]",
+                    f"[bold red]MIGRATION FAILED[/bold red]\nError: {e}"
+                    + (f"\n[info]A backup exists at: {backup_path}[/info]" if backup_path else ""),
                     border_style="red",
                 )
             )

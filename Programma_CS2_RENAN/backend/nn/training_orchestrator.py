@@ -240,6 +240,7 @@ class TrainingOrchestrator:
                             tensor_batch["context"],
                             tensor_batch["target"],
                             tensor_batch.get("negatives"),
+                            round_stats=tensor_batch.get("round_stats"),
                         )
                         loss = result["total_loss"]
                     else:
@@ -350,7 +351,16 @@ class TrainingOrchestrator:
                 )
                 return None
 
-            return {"context": context, "target": target, "negatives": negatives}
+            result = {"context": context, "target": target, "negatives": negatives}
+
+            # G-01: For VL-JEPA, fetch RoundStats to provide outcome-based concept labels
+            # (eliminates label leakage from heuristic labeling)
+            if self._use_vl:
+                round_stats = self._fetch_round_stats_for_batch(raw_items[:context_len])
+                if round_stats is not None:
+                    result["round_stats"] = round_stats
+
+            return result
         else:
             return self._prepare_rap_batch(raw_items, features, features_tensor, b)
 
@@ -565,6 +575,7 @@ class TrainingOrchestrator:
                 try:
                     metadata_cache[match_id] = match_mgr.get_metadata(match_id)
                 except Exception:
+                    logger.debug("Metadata cache miss for match_id=%s", match_id, exc_info=True)
                     metadata_cache[match_id] = None
 
             meta = metadata_cache.get(match_id)
@@ -590,6 +601,79 @@ class TrainingOrchestrator:
                 return f"de_{m}"
 
         return "de_mirage"
+
+    # ============ G-01: RoundStats Fetch for VL-JEPA ============
+
+    def _fetch_round_stats_for_batch(self, raw_items):
+        """Fetch RoundStats for batch items to provide outcome-based concept labels.
+
+        Returns a list of RoundStats objects (one per item, None if unavailable),
+        or None if no RoundStats could be found at all.
+        """
+        try:
+            from sqlmodel import select
+
+            from Programma_CS2_RENAN.backend.storage.database import get_db_manager
+            from Programma_CS2_RENAN.backend.storage.db_models import RoundStats
+
+            db = get_db_manager()
+
+            # Collect unique (demo_name, player_name) pairs
+            demo_player_pairs = set()
+            for item in raw_items:
+                demo = getattr(item, "demo_name", None)
+                player = getattr(item, "player_name", None)
+                if demo and player:
+                    demo_player_pairs.add((demo, player))
+
+            if not demo_player_pairs:
+                return None
+
+            # Fetch all relevant RoundStats in one query
+            with db.get_session() as session:
+                stats_by_key = {}
+                for demo, player in demo_player_pairs:
+                    rows = session.exec(
+                        select(RoundStats)
+                        .where(RoundStats.demo_name == demo, RoundStats.player_name == player)
+                        .limit(50)
+                    ).all()
+                    for rs in rows:
+                        stats_by_key[(demo, player, rs.round_number)] = rs
+
+            if not stats_by_key:
+                return None
+
+            # Map each batch item to its RoundStats (use round_number estimate from tick)
+            result = []
+            found = 0
+            for item in raw_items:
+                demo = getattr(item, "demo_name", None)
+                player = getattr(item, "player_name", None)
+                tick = getattr(item, "tick", 0)
+                # Estimate round number from tick (64 tick/s, ~115s per round)
+                est_round = max(1, tick // (64 * 115) + 1)
+
+                rs = None
+                if demo and player:
+                    # Try exact round, then nearest
+                    rs = stats_by_key.get((demo, player, est_round))
+                    if rs is None:
+                        # Try round 1 as fallback (common for early ticks)
+                        rs = stats_by_key.get((demo, player, 1))
+
+                result.append(rs)
+                if rs is not None:
+                    found += 1
+
+            if found == 0:
+                return None
+
+            return result
+
+        except Exception as e:
+            logger.debug("RoundStats fetch for VL-JEPA failed (non-fatal): %s", e)
+            return None
 
     # ============ Training Target Computation ============
 

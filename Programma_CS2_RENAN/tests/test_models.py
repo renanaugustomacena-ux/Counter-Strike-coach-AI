@@ -1,4 +1,10 @@
+import sys
 from datetime import datetime
+
+# --- Venv Guard ---
+if sys.prefix == sys.base_prefix:
+    print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
+    sys.exit(2)
 
 import pytest
 
@@ -71,6 +77,3 @@ class TestDBModels:
         assert player.nickname == "ProPlayer"
         assert player.team_id == 123
 
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

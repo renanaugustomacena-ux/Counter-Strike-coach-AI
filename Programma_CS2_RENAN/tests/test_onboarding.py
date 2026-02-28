@@ -5,6 +5,13 @@ Tests the stage determination logic directly with controlled scalar inputs
 (protocol-compliant pure-formula tests) and the real DB integration path.
 """
 
+import sys
+
+# --- Venv Guard ---
+if sys.prefix == sys.base_prefix:
+    print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
+    sys.exit(2)
+
 import pytest
 
 from Programma_CS2_RENAN.backend.onboarding.new_user_flow import (

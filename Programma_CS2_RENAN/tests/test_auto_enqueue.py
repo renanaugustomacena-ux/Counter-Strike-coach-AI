@@ -4,8 +4,14 @@ Unit tests for automated demo parsing triggers.
 Tests IngestionTask creation and auto-enqueue functionality.
 """
 
+import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
+
+# --- Venv Guard ---
+if sys.prefix == sys.base_prefix:
+    print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
+    sys.exit(2)
 
 import pytest
 from sqlmodel import select
@@ -111,7 +117,7 @@ class TestAutoEnqueue:
             assert isinstance(task.created_at, datetime)
             assert isinstance(task.updated_at, datetime)
             # Timestamps should be recent (within last 60 seconds)
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             delta = (now - task.created_at).total_seconds()
             assert delta < 60, f"created_at is {delta}s old — should be recent"
 
@@ -136,6 +142,3 @@ class TestAutoEnqueue:
             ordered_ids = [t.id for t in tasks if t.id in task_ids]
             assert ordered_ids == task_ids
 
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

@@ -397,9 +397,5 @@ def generate_highlight_report(match_id, map_name="de_mirage"):
         return viz.render_critical_moments(annotations, map_name)
 
     except Exception as e:
-        import logging
-
-        logging.getLogger("cs2analyzer.highlights").error(
-            "Highlight report generation failed: %s", e
-        )
+        _logger.error("Highlight report generation failed: %s", e)
         return None

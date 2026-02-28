@@ -45,9 +45,11 @@ class JEPATrainer:
 
     def train_step(
         self, x_context: torch.Tensor, x_target: torch.Tensor, negatives: torch.Tensor
-    ) -> float:
+    ) -> dict:
         """
         Single self-supervised training step.
+
+        Returns dict with "loss" key for consistency with RAPTrainer and VL-JEPA interfaces.
 
         Handles two negative-sample paths:
         1. Pre-encoded negatives (from train_epoch dataloader) — shape (B, N, latent_dim)
@@ -80,7 +82,7 @@ class JEPATrainer:
         # 5. Update Target Encoder (EMA)
         self.model.update_target_encoder()
 
-        return loss.item()
+        return {"loss": loss.item()}
 
     def train_epoch(self, dataloader, device):
         """
@@ -104,8 +106,8 @@ class JEPATrainer:
 
             negatives_tensor = torch.stack(negatives)
 
-            loss = self.train_step(x_context, x_target, negatives_tensor)
-            total_loss += loss
+            result = self.train_step(x_context, x_target, negatives_tensor)
+            total_loss += result["loss"]
             count += 1
 
         # Step scheduler once per epoch (not per batch)
@@ -182,6 +184,7 @@ class JEPATrainer:
         negatives: torch.Tensor,
         concept_alpha: float = 0.5,
         concept_beta: float = 0.1,
+        round_stats=None,
     ) -> dict:
         """
         VL-JEPA training step: InfoNCE + concept alignment + diversity.
@@ -194,6 +197,7 @@ class JEPATrainer:
             negatives: Negative samples [batch, num_negatives, latent_dim]
             concept_alpha: Weight for concept alignment loss
             concept_beta: Weight for diversity regularization
+            round_stats: Optional list of RoundStats objects for outcome-based labeling (G-01)
 
         Returns:
             Dict with infonce_loss, concept_loss, diversity_loss, total_loss
@@ -221,20 +225,27 @@ class JEPATrainer:
         vl_output = self.model.forward_vl(x_context)
         concept_logits = vl_output["concept_logits"]
 
-        # 4. Generate heuristic concept labels from raw features
-        # WARNING: Label leakage — ConceptLabeler derives labels from the same
-        # input features the model encodes. This means the model can learn
-        # shallow heuristic patterns instead of genuine semantic concepts.
-        # TODO: Replace with external ground truth or self-supervised discovery.
-        if not getattr(self, "_concept_label_warning_logged", False):
-            logger.warning(
-                "VL-JEPA concept alignment uses heuristic labels derived from "
-                "input features (label leakage). Concept predictions may not "
-                "generalize beyond training heuristics."
-            )
-            self._concept_label_warning_logged = True
+        # 4. Generate concept labels — prefer outcome-based (G-01 fix) over heuristic
         labeler = ConceptLabeler()
-        concept_labels = labeler.label_batch(x_context).to(x_context.device)
+        if round_stats is not None and any(rs is not None for rs in round_stats):
+            # G-01: Use RoundStats outcome data (no label leakage)
+            batch_labels = []
+            for rs in round_stats:
+                if rs is not None:
+                    batch_labels.append(labeler.label_from_round_stats(rs))
+                else:
+                    # Fallback: neutral labels for missing RoundStats
+                    batch_labels.append(torch.full((16,), 0.5))
+            concept_labels = torch.stack(batch_labels).to(x_context.device)
+        else:
+            # Legacy heuristic fallback (has label leakage — logged once)
+            if not getattr(self, "_concept_label_warning_logged", False):
+                logger.warning(
+                    "VL-JEPA concept alignment using heuristic labels (label leakage). "
+                    "Provide RoundStats data for outcome-based labeling."
+                )
+                self._concept_label_warning_logged = True
+            concept_labels = labeler.label_batch(x_context).to(x_context.device)
 
         # 5. Concept loss + diversity
         concept_total, concept_loss, diversity_loss = vl_jepa_concept_loss(

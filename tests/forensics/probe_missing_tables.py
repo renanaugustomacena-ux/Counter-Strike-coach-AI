@@ -1,6 +1,11 @@
 import os
 import sys
 
+# --- Venv Guard ---
+if sys.prefix == sys.base_prefix:
+    print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
+    sys.exit(2)
+
 from sqlalchemy import inspect
 
 # --- Path Stabilization ---
@@ -9,11 +14,11 @@ root = os.path.dirname(os.path.dirname(script_dir))
 if root not in sys.path:
     sys.path.insert(0, root)
 
-from Programma_CS2_RENAN.backend.storage.database import engine
+from Programma_CS2_RENAN.backend.storage.database import get_db_manager
 
 
 def probe_tables():
-    inspector = inspect(engine)
+    inspector = inspect(get_db_manager().engine)
     tables = inspector.get_table_names()
     print(f"Existing tables: {tables}")
 

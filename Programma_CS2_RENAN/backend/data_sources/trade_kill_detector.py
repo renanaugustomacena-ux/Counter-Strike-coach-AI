@@ -111,6 +111,7 @@ def get_round_boundaries(parser) -> List[int]:
         boundaries = sorted([0] + df["tick"].tolist())
         return boundaries
     except Exception:
+        logger.debug("Round boundary extraction failed, using fallback [0]", exc_info=True)
         return [0]
 
 

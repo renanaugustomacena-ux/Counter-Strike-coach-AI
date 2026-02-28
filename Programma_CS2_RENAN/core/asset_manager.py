@@ -20,6 +20,9 @@ from kivy.graphics.texture import Texture
 
 from Programma_CS2_RENAN.core.config import get_resource_path
 from Programma_CS2_RENAN.core.spatial_data import SPATIAL_REGISTRY, get_map_metadata
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+_logger = get_logger("cs2analyzer.asset_manager")
 
 
 @dataclass
@@ -56,11 +59,7 @@ class SmartAsset:
                 img = CoreImage(self.path)
                 self._texture = img.texture
             except Exception as e:
-                import logging
-
-                logging.getLogger("cs2analyzer.asset_manager").warning(
-                    "Failed to load texture %s: %s", self.path, e
-                )
+                _logger.warning("Failed to load texture %s: %s", self.path, e)
                 self._texture = AssetAuthority._generate_checkered_texture()
         else:
             self._texture = AssetAuthority._generate_checkered_texture()

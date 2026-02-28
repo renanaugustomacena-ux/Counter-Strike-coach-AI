@@ -1,7 +1,23 @@
-import pandas as pd
+import sys
+from pathlib import Path
+
+# --- Venv Guard ---
+if sys.prefix == sys.base_prefix:
+    print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
+    sys.exit(2)
+
 from demoparser2 import DemoParser
 
-path = "Programma_CS2_RENAN/data/pro_demos/furia-vs-natus-vincere-m1-mirage.dem"
+# Discover first available .dem file from the pro_demos directory
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+_PRO_DEMOS_DIR = _PROJECT_ROOT / "Programma_CS2_RENAN" / "data" / "pro_demos"
+_demo_files = sorted(_PRO_DEMOS_DIR.glob("*.dem")) if _PRO_DEMOS_DIR.exists() else []
+if not _demo_files:
+    print(f"No .dem files in {_PRO_DEMOS_DIR} — place a demo there to use this script.")
+    raise SystemExit(0)
+
+path = str(_demo_files[0])
+print(f"Using demo: {path}")
 parser = DemoParser(path)
 
 print("--- smokegrenade_detonate ---")

@@ -1,16 +1,24 @@
 import os
 import sqlite3
 import sys
+from pathlib import Path
+
+# --- Venv Guard ---
+if sys.prefix == sys.base_prefix:
+    print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
+    sys.exit(2)
 
 import pandas as pd
 from demoparser2 import DemoParser
 
-# Ensure project root is in path
-sys.path.append(os.getcwd())
+# Ensure project root is in path regardless of CWD
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
 
-GOLDEN_DIR = r"tests/golden_data"
-DEMO_PATH = os.path.join(GOLDEN_DIR, "golden.dem")
-DB_PATH = os.path.join(GOLDEN_DIR, "golden.db")
+GOLDEN_DIR = Path(__file__).resolve().parent / "golden_data"
+DEMO_PATH = str(GOLDEN_DIR / "golden.dem")
+DB_PATH = str(GOLDEN_DIR / "golden.db")
 
 # Comprehensive list of fields to extract
 # Based on common CS2 demo analysis needs

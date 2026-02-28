@@ -45,7 +45,7 @@ CS2 Ultimate è un **sistema di coaching basato su IA ibrido** per Counter-Strik
 2. **Addestra** più modelli di reti neurali attraverso un programma a fasi con limiti di maturità (a 3 livelli: CALIBRAZIONE → APPRENDIMENTO → MATURO). 3. **Inferisce** consigli di allenamento fondendo le previsioni di apprendimento automatico con conoscenze tattiche recuperate semanticamente tramite una catena di fallback a 4 livelli (COPER → Ibrido → RAG → Base).
 3. **Spiega** il suo ragionamento tramite attribuzione causale, narrazioni basate su template, confronti tra giocatori professionisti e un'opzionale rifinitura LLM (Ollama).
 
-Il sistema contiene **≈ oltre 54.000 righe di Python** distribuite su oltre 288 file sorgente, che si estendono su sei sottosistemi logici AI, un Osservatorio di addestramento, un'architettura Quad-Daemon per l'automazione in background, un'interfaccia desktop Kivy con pattern MVVM e un sistema completo di ingestione, storage e reporting documentati di seguito.
+Il sistema contiene **≈ oltre 74.000 righe di Python** distribuite su oltre 355 file sorgente, che si estendono su sei sottosistemi logici AI, un Osservatorio di addestramento, un'architettura Quad-Daemon per l'automazione in background, un'interfaccia desktop Kivy con pattern MVVM, un sistema completo di ingestione, storage e reporting, e un'architettura tri-database specializzata documentati di seguito. Il progetto ha attraversato un processo di **rimediazione sistematica in 11 fasi** che ha risolto 350 problemi di qualità del codice, correttezza ML, sicurezza e architettura, inclusa l'eliminazione di label leakage nell'addestramento (G-01), l'implementazione della zona di pericolo visiva nel tensore vista (G-02), la calibrazione automatica dello stimatore bayesiano (G-07), e la correzione del fallback del coaching COPER (G-08).
 
 > **Analogia:** Immagina di avere un allenatore robot super intelligente che guarda le tue partite di calcio in video. Innanzitutto, **guarda** centinaia di partite professionistiche e le tue, prendendo appunti su ogni singola mossa (questa è la parte di "ingestione", gestita dal daemon Hunter che scansiona le cartelle e dal daemon Digester che elabora i file). Poi, **studia** quegli appunti e impara cosa fanno i grandi giocatori in modo diverso dai principianti, come uno studente che affronta i vari livelli scolastici (CALIBRARE è l'asilo, APPRENDERE è la scuola media, MATURARE è il diploma) — questo lo fa il daemon Teacher in background. Quando è il momento di darti un consiglio, non si limita a tirare a indovinare: controlla il suo **quaderno di suggerimenti**, la sua **memoria delle sessioni di allenamento passate** e cosa farebbero i **professionisti** nella tua esatta situazione, scegliendo la fonte di cui si fida di più. Infine, **spiega** perché ti sta dicendo di fare qualcosa, non solo "fai questo", ma "fai questo *perché* continui a essere colto alla sprovvista". È come avere un allenatore che ha visto ogni partita professionistica mai giocata, ricorda ogni sessione di allenamento che hai fatto e può spiegarti esattamente perché dovresti cambiare strategia. Nel frattempo, l'interfaccia desktop Kivy ti mostra tutto in tempo reale: una mappa tattica 2D con il tuo "fantasma" ottimale, grafici radar delle tue abilità, e una dashboard che ti dice esattamente a che punto è il tuo allenatore nel suo processo di apprendimento. Il daemon Pulse assicura che il sistema sia sempre vigile con un battito cardiaco costante.
 
@@ -61,7 +61,7 @@ flowchart LR
     style K fill:#51cf66,color:#fff
 ```
 
-> 288+ source files · 54,000+ lines · 6 AI subsystems + Observatory + Quad-Daemon + Desktop UI
+> 355+ source files · 74,000+ lines · 6 AI subsystems + Observatory + Quad-Daemon + Desktop UI · 350 issues fixed across 11 remediation phases
 
 ---
 
@@ -308,7 +308,7 @@ graph LR
 | Modulo                        | Parametri                                                                                               |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------- |
 | **Codificatore online** | Linear(input_dim, 512) → LayerNorm → GELU → Dropout(0.1) → Linear(512, latent_dim=256) → LayerNorm |
-| **Codificatore target** | Strutturalmente identico; aggiornato tramite media mobile esponenziale (τ = 0.996)                     |
+| **Codificatore target** | Strutturalmente identico; aggiornato tramite media mobile esponenziale (τ = 0.996). `EMA.state_dict()` restituisce tensori **clonati** per prevenire aliasing (un bug precedente permetteva la modifica accidentale dei pesi target attraverso riferimenti condivisi) |
 | **Predictor**           | Linear(256, 512) → LayerNorm → GELU → Dropout(0.1) → Linear(512, 256)                               |
 | **Coaching Head**       | LSTM(256, hidden_dim, 2 layers, dropout=0.2) → 3 esperti MoE → output controllato                     |
 
@@ -340,6 +340,7 @@ flowchart TB
 4. Riduce al minimo la **perdita di contrasto di InfoNCE** utilizzando negativi in batch con similarità del coseno e temperatura τ=0,07.
 5. Dopo ogni batch, esegue l'aggiornamento EMA: `θ_target ← τ·θ_target + (1−τ)·θ_online`.
 6. **Monitoraggio della deriva**: Traccia gli oggetti DriftReport; attiva il riaddestramento automatico se la deriva > 2,5σ.
+7. **Etichette basate sull'esito (Correzione G-01):** Il `ConceptLabeler` nell'addestramento VL-JEPA ora genera etichette dai dati `RoundStats` (esiti per round: uccisioni, morti, danni, sopravvivenza) anziché da feature a livello di tick. Questo elimina il **label leakage** — il problema precedente in cui le etichette dei concetti venivano derivate dalle stesse feature usate come input, permettendo al modello di "barare" durante l'addestramento senza apprendere effettivamente i pattern. Il metodo `label_from_round_stats(rs)` produce un vettore di 16 etichette di concetto basate su esiti misurabili. Se i dati `RoundStats` non sono disponibili, il sistema ricade sull'euristica legacy con un avviso di log una tantum.
 
 > **Analogia:** La ricetta dell'allenamento è questa: (1) Carica le registrazioni di giocatori professionisti, fotogramma per fotogramma. (2) Per ogni registrazione, dividila in "cosa è successo prima" e "cosa è successo dopo". (3) Due codificatori esaminano ciascuna metà in modo indipendente. (4) Il sistema verifica: "La mia previsione di 'cosa è successo dopo' si è avvicinata alla risposta effettiva e non a risposte sbagliate casuali?" — questo è InfoNCE, come un test a risposta multipla in cui il modello deve scegliere la risposta giusta tra molte risposte sbagliate. (5) Il codificatore del fratello maggiore assorbe lentamente le conoscenze del fratello minore (solo lo 0,4% per passaggio). (6) Se i dati iniziano a sembrare molto diversi da quelli su cui il modello si è allenato (deriva > 2,5 deviazioni standard), scatta un campanello d'allarme: "Il meta del gioco è cambiato: è ora di riqualificarsi!"
 
@@ -706,7 +707,7 @@ flowchart BT
 ```mermaid
 graph TB
     subgraph L1P["Livello 1: Percezione"]
-        VIEW["Tensore Vista<br/>3x64x64"] --> RN1["ResNet Ventrale<br/>[3,4,6,3] blocchi, 64-dim"]
+        VIEW["Tensore Vista<br/>3x64x64"] --> RN1["ResNet Ventrale<br/>[1,2,2,1] blocchi, 64-dim"]
         MAP["Tensore Mappa<br/>3x64x64"] --> RN2["ResNet Dorsale<br/>[2,2] blocchi, 32-dim"]
         MOTION["Tensore Movimento<br/>3x64x64"] --> CONV["Stack Conv, 32-dim"]
         RN1 --> CAT["Concatena, 128-dim"]
@@ -748,17 +749,17 @@ Un front-end **convoluzionale a tre flussi** che elabora gli input visivi:
 
 | Input                                | Forma         | Backbone                                                | Output Dim       |
 | ------------------------------------ | ------------- | ------------------------------------------------------- | ---------------- |
-| **Tensore di visualizzazione** | `3×64×64` | Flusso ventrale ResNet: [3,4,6,3] blocchi, 3→64 canali | **64-dim** |
+| **Tensore di visualizzazione** | `3×64×64` | Flusso ventrale ResNet: [1,2,2,1] blocchi, 3→64 canali | **64-dim** |
 | **Tensore di mappa**           | `3×64×64` | Flusso dorsale ResNet: [2,2] blocchi, 3→32 canali      | **32-dim** |
 | **Tensore di movimento**       | `3×64×64` | Conv(3→16→32) + MaxPool + AdaptiveAvgPool             | **32-dim** |
 
 I tre vettori di caratteristiche sono concatenati in un singolo **embedding di percezione a 128 dimensioni** (64 + 32 + 32).
 
-> **Analogia:** Il Livello di Percezione è come i **tre diversi paia di occhiali** dell'allenatore. La prima coppia (tensore di vista / flusso ventrale) mostra **ciò che il giocatore vede** – la sua prospettiva in prima persona, elaborata attraverso una ResNet profonda a 15 blocchi che estrae 64 caratteristiche importanti dall'immagine. La seconda coppia (tensore di mappa / flusso dorsale) mostra il **radar/minimappa aerea** – dove si trovano tutti – elaborato attraverso una rete più semplice a 4 blocchi in 32 caratteristiche. La terza coppia (tensore di movimento) mostra **chi si sta muovendo e con quale velocità** – come la sfocatura del movimento in una foto – elaborata in altre 32 caratteristiche. Quindi tutte e tre le viste vengono **incollate insieme** in un unico riepilogo di 128 numeri: "Ecco tutto ciò che riesco a vedere in questo momento". Questo processo trae ispirazione dal modo in cui il cervello umano elabora la vista: il flusso ventrale riconosce "cosa" sono le cose, mentre il flusso dorsale traccia "dove" si trovano le cose.
+> **Analogia:** Il Livello di Percezione è come i **tre diversi paia di occhiali** dell'allenatore. La prima coppia (tensore di vista / flusso ventrale) mostra **ciò che il giocatore vede** – la sua prospettiva in prima persona, elaborata attraverso una ResNet leggera a 5 blocchi (configurazione `[1,2,2,1]`, calibrata per input 64×64) che estrae 64 caratteristiche importanti dall'immagine. La seconda coppia (tensore di mappa / flusso dorsale) mostra il **radar/minimappa aerea** – dove si trovano tutti – elaborato attraverso una rete più semplice a 3 blocchi in 32 caratteristiche. La terza coppia (tensore di movimento) mostra **chi si sta muovendo e con quale velocità** – come la sfocatura del movimento in una foto – elaborata in altre 32 caratteristiche. Quindi tutte e tre le viste vengono **incollate insieme** in un unico riepilogo di 128 numeri: "Ecco tutto ciò che riesco a vedere in questo momento". Questo processo trae ispirazione dal modo in cui il cervello umano elabora la vista: il flusso ventrale riconosce "cosa" sono le cose, mentre il flusso dorsale traccia "dove" si trovano le cose.
 
 ```mermaid
 flowchart TB
-    VIEW["TENSORE VISTA<br/>(Cosa vedi - FPS)<br/>3x64x64 px"] --> RND["ResNet Profondo<br/>(15 blocchi)"]
+    VIEW["TENSORE VISTA<br/>(Cosa vedi - FPS)<br/>3x64x64 px"] --> RND["ResNet Leggero<br/>(5 blocchi [1,2,2,1])"]
     MAP["TENSORE MAPPA<br/>(Dove sono tutti?)<br/>3x64x64 px"] --> RNL["ResNet Leggero<br/>(4 blocchi)"]
     MOTION["TENSORE MOVIMENTO<br/>(Chi si sta muovendo?)<br/>3x64x64 px"] --> CS["Stack Conv<br/>(3 livelli)"]
     RND --> D64["64-dim"]
@@ -769,18 +770,20 @@ flowchart TB
     D32B --> PE
 ```
 
-I blocchi ResNet utilizzano **scorciatoie di identità** con downsample apprendibile (Conv1×1 + BatchNorm) quando stride ≠ 1 o il conteggio dei canali cambia. **44 livelli di conversione** su tutti e tre i flussi:
+I blocchi ResNet utilizzano **scorciatoie di identità** con downsample apprendibile (Conv1×1 + BatchNorm) quando stride ≠ 1 o il conteggio dei canali cambia. **24 livelli di convoluzione** su tutti e tre i flussi:
 
 | Flusso                     | Configurazione blocco                | Blocchi | Conv/Blocco | Conversioni scorciatoie | Totale       |
 | -------------------------- | ------------------------------------ | ------- | ----------- | ----------------------- | ------------ |
-| **Vista (Ventrale)** | `[3,4,6,3]` → 1 + 15 = 16 blocchi | 16      | 2           | 1 (primo blocco)        | **33** |
+| **Vista (Ventrale)** | `[1,2,2,1]` → 1 + 5 = 6 blocchi  | 6       | 2           | 1 (primo blocco)        | **13** |
 | **Mappa (Dorsale)**  | `[2,2]` → 1 + 3 = 4 blocchi       | 4       | 2           | 1 (primo blocco)        | **9**  |
 | **Movimento**        | Stack di conversione (2 livelli)     | —      | —          | —                      | **2**  |
-| **Totale**           |                                      |         |             |                         | **44** |
+| **Totale**           |                                      |         |             |                         | **24** |
 
 > **Come funziona** `_make_resnet_stack`: Crea 1 blocco iniziale con `stride=2` (per il downsampling spaziale), quindi `sum(num_blocks) - 1` blocchi aggiuntivi con `stride=1`. Ogni `ResNetBlock` ha 2 livelli Conv2d (kernel 3×3). Il primo blocco riceve anche una scorciatoia Conv1×1 perché i canali di input (3) sono diversi dai canali di output (64 o 32).
 
-> **Analogia:** Le scorciatoie di identità sono come gli **ascensori di un edificio**: consentono alle informazioni di saltare i piani e di passare direttamente dai livelli iniziali a quelli successivi. Senza di esse, le informazioni dovrebbero salire 70 rampe di scale (70 livelli convoluzionali) e, una volta raggiunta la cima, il segnale originale sarebbe così sbiadito che la rete non potrebbe apprendere. Le scorciatoie garantiscono che anche in una rete molto profonda, i gradienti (i segnali di apprendimento) possano fluire in modo efficiente. Questo è lo stesso trucco che ha reso possibile il moderno deep learning, inventato da Kaiming He nel 2015.
+> **Nota sulla scelta architettonica (F3-29):** La configurazione originale `[3,4,6,3]` (15 blocchi, 33 conv nel flusso ventrale) era progettata per input 224×224 (la dimensione standard di ImageNet). Per input 64×64 come quelli utilizzati in questo progetto, le feature map collasserebbero spazialmente dopo il primo blocco stride-2, rendendo i blocchi successivi ridondanti. La configurazione `[1,2,2,1]` (5 blocchi effettivi) è calibrata specificamente per la risoluzione di training 64×64, con `AdaptiveAvgPool2d` che gestisce qualsiasi risoluzione spaziale residua. Eventuali checkpoint precedenti vengono automaticamente rilevati come `_stale_checkpoint` da `load_nn()`.
+
+> **Analogia:** Le scorciatoie di identità sono come gli **ascensori di un edificio**: consentono alle informazioni di saltare i piani e di passare direttamente dai livelli iniziali a quelli successivi. Senza di esse, le informazioni dovrebbero salire molte rampe di scale e, una volta raggiunta la cima, il segnale originale sarebbe così sbiadito che la rete non potrebbe apprendere. Le scorciatoie garantiscono che anche in una rete profonda, i gradienti (i segnali di apprendimento) possano fluire in modo efficiente. Questo è lo stesso trucco che ha reso possibile il moderno deep learning, inventato da Kaiming He nel 2015. La scelta di una rete più compatta (`[1,2,2,1]` anziché `[3,4,6,3]`) è come scegliere un edificio di 6 piani anziché 16 quando il terreno disponibile (64×64 pixel) è piccolo: meno piani significano meno ascensori necessari, ma il trasporto rimane ugualmente efficiente.
 
 ### -Livello di memoria (`memory.py`) — LTC + Hopfield
 
@@ -955,7 +958,7 @@ L_totale = L_strategia + 0,5 × L_valore + L_sparsità + L_posizione
 | ------------------ | --------------------------------------------------------- | ---- | ---------------------------------------------------------------- |
 | `L_strategy`     | `MSELoss(advice_probs, target_strat)`                   | 1.0  | Raccomandazione tattica corretta                                 |
 | `L_value`        | `MSELoss(V(s), true_advantage)`                         | 0.5  | Stima accurata del vantaggio                                     |
-| `L_sparsity`     | `model.compute_sparsity_loss()` — L1 sui pesi dei gate | 1e-4 | Specializzazione esperta                                         |
+| `L_sparsity`     | `model.compute_sparsity_loss(gate_weights)` — L1 sui pesi dei gate (parametro esplicito, thread-safe) | 1e-4 | Specializzazione esperta                                         |
 | `L_position`     | `MSE(pred_xy, true_xy) + 2.0 × MSE(pred_z, true_z)`    | 1.0  | Posizionamento ottimale,**penalità rigorosa sull'asse Z** |
 
 > **Nota:** Il moltiplicatore 2× sull'asse Z esiste perché gli errori di posizionamento verticale (ad esempio, un livello sbagliato su Nuke/Vertigo) sono tatticamente catastrofici: rappresentano errori di piano sbagliato che nessuna correzione orizzontale può correggere.
@@ -1028,19 +1031,31 @@ flowchart LR
 
 ### -ChronovisorScanner (`chronovisor_scanner.py`)
 
-Un **modulo di elaborazione del segnale** che identifica i momenti critici nelle partite analizzando i delta di vantaggio temporale:
+Un **modulo di elaborazione del segnale multi-scala** che identifica i momenti critici nelle partite analizzando i delta di vantaggio temporale su **3 livelli di risoluzione** (micro, standard, macro):
 
-> **Analogia:** Il Chronovisor è come un **rilevatore di momenti salienti**: osserva un'intera partita e individua automaticamente i momenti più emozionanti o importanti. Funziona monitorando il vantaggio della squadra nel tempo (come un grafico del prezzo di un'azione) e cercando picchi o crolli improvvisi. Un picco improvviso significa "è appena successo qualcosa di grandioso" (una giocata decisiva, un'esecuzione perfetta). Un crollo improvviso significa "qualcosa è andato terribilmente storto" (un push fallito, essere colti di sorpresa). Invece di guardare l'intera partita di 45 minuti, il giocatore può passare direttamente a questi 5-10 momenti critici.
+> **Analogia:** Il Chronovisor è come un **rilevatore di momenti salienti con 3 lenti di ingrandimento**. La lente **micro** (sotto-secondo) cattura decisioni istantanee negli scontri a fuoco — come un arbitro che rivede un'azione al rallentatore. La lente **standard** (livello ingaggio) individua i momenti critici come giocate decisive o errori fatali — come il replay principale della partita. La lente **macro** (strategica) rileva cambiamenti di strategia che si sviluppano su 5-10 secondi — come l'analisi tattica del commentatore. Funziona monitorando il vantaggio della squadra nel tempo (come un grafico del prezzo di un'azione) e cercando picchi o crolli improvvisi a ciascuna scala. Invece di guardare l'intera partita di 45 minuti, il giocatore può passare direttamente ai momenti critici più significativi.
+
+**Configurazione Multi-Scala (`ANALYSIS_SCALES`):**
+
+| Scala | Window (tick) | Lag | Soglia | Descrizione |
+| ----- | ------------- | --- | ------ | ----------- |
+| **Micro** | 64 | 16 | 0.10 | Decisioni di ingaggio sotto-secondo |
+| **Standard** | 192 | 64 | 0.15 | Momenti critici a livello di ingaggio |
+| **Macro** | 640 | 128 | 0.20 | Rilevamento cambiamenti strategici (5-10 secondi) |
+
+> **Analogia della multi-scala:** Le tre scale sono come **tre diversi zoom su Google Maps**: la scala micro è il livello strada (puoi vedere ogni dettaglio di un incrocio), la scala standard è il livello quartiere (vedi la struttura generale della zona), la scala macro è il livello città (vedi come i quartieri si collegano tra loro). Un giocatore può avere una micro-decisione sbagliata (un peek troppo lento) che non appare nelle scale più grandi, o un cambiamento strategico macro (rotazione tardiva) che non è visibile nella micro-analisi. Utilizzando tutte e tre contemporaneamente, il coach cattura sia gli errori istantanei che le scelte strategiche errate.
+
+**Pipeline di rilevamento (per ciascuna scala):**
 
 1. Utilizza il modello RAP addestrato per prevedere V(s) per ogni tick window.
-2. Calcola i delta utilizzando un **ritardo di 64 tick**: `deltas = values[LAG:] - values[:-LAG]`.
-3. Rileva i **picchi** in cui `|delta| > 0,15` (soglia di variazione del vantaggio del 15%).
-4. Cerca il picco all'interno di una **finestra di 192 tick**, mantenendo la coerenza del segno.
+2. Calcola i delta utilizzando il lag configurato per la scala: `deltas = values[LAG:] - values[:-LAG]`.
+3. Rileva i **picchi** in cui `|delta| > soglia` (variabile per scala: 0.10/0.15/0.20).
+4. Cerca il picco all'interno della finestra configurata, mantenendo la coerenza del segno.
 5. La **soppressione non massima** impedisce rilevamenti duplicati.
 6. Classifica ogni picco come **"gioco"** (gradiente positivo, vantaggio acquisito) o **"errore"** (negativo, vantaggio perso).
-7. Restituisce istanze della classe di dati `CriticalMoment` con `(match_id, start_tick, peak_tick, end_tick, severity [0-1], type, description)`.
+7. Restituisce istanze della classe di dati `CriticalMoment` con `(match_id, start_tick, peak_tick, end_tick, severity [0-1], type, description, scale)`.
 
-> **Analogia:** Ecco la procedura passo dopo passo: (1) Il modello RAP osserva ogni momento e assegna un "punteggio di vantaggio" (come un cardiofrequenzimetro). (2) Confronta ogni momento con ciò che è accaduto 64 tick prima (circa mezzo secondo) - "le cose sono migliorate o peggiorate?" (3) Se il cambiamento supera il 15%, si tratta di un evento significativo - come un picco di frequenza cardiaca. (4) Ingrandisce una finestra di 192 tick attorno al picco per trovare il momento di picco esatto. (5) Filtra i rilevamenti duplicati - se due picchi sono troppo vicini tra loro, mantiene solo quello più grande. (6) Etichetta ogni picco: "gioco" (hai fatto qualcosa di eccezionale) o "errore" (hai commesso un errore). (7) Confeziona tutto in una scheda di valutazione ordinata per ogni momento critico, con punteggi di gravità da 0 (minore) a 1 (che cambia il gioco).
+> **Analogia della pipeline:** Ecco la procedura passo dopo passo: (1) Il modello RAP osserva ogni momento e assegna un "punteggio di vantaggio" (come un cardiofrequenzimetro). (2) Per ciascuna delle 3 scale, confronta ogni momento con ciò che è accaduto N tick prima (16, 64 o 128 tick a seconda della scala) — "le cose sono migliorate o peggiorate?" (3) Se il cambiamento supera la soglia della scala, si tratta di un evento significativo — come un picco di frequenza cardiaca. (4) Ingrandisce la finestra attorno al picco per trovare il momento di picco esatto. (5) Filtra i rilevamenti duplicati — se due picchi sono troppo vicini tra loro, mantiene solo quello più grande. (6) Etichetta ogni picco: "gioco" (hai fatto qualcosa di eccezionale) o "errore" (hai commesso un errore). (7) Confeziona tutto in una scheda di valutazione ordinata per ogni momento critico, con punteggi di gravità da 0 (minore) a 1 (che cambia il gioco) e la scala di rilevamento (micro/standard/macro).
 
 ```mermaid
 flowchart LR

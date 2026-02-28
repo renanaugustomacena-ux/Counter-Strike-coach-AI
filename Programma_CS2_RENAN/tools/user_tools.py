@@ -24,7 +24,7 @@ from _infra import PROJECT_ROOT, SOURCE_ROOT, path_stabilize
 
 path_stabilize()
 
-from Programma_CS2_RENAN.core.config import get_setting, refresh_settings, save_setting
+from Programma_CS2_RENAN.core.config import get_setting, refresh_settings, save_user_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.user_tools")
@@ -41,22 +41,22 @@ def cmd_personalize(args):
 
     name = input("Your CS2 player name: ").strip()
     if name:
-        save_setting("PLAYER_NAME", name)
+        save_user_setting("PLAYER_NAME", name)
         print(f"  Saved PLAYER_NAME = {name}")
 
     steam_id = input("Your Steam ID (leave blank to skip): ").strip()
     if steam_id:
-        save_setting("STEAM_ID", steam_id)
+        save_user_setting("STEAM_ID", steam_id)
         print(f"  Saved STEAM_ID = {steam_id}")
 
     steam_key = input("Steam Web API Key (leave blank to skip): ").strip()
     if steam_key:
-        save_setting("STEAM_API_KEY", steam_key)
+        save_user_setting("STEAM_API_KEY", steam_key)
         print(f"  Saved STEAM_API_KEY = ***")  # F8-10: no key fragment — avoids partial credential exposure
 
     faceit_key = input("FACEIT API Key (leave blank to skip): ").strip()
     if faceit_key:
-        save_setting("FACEIT_API_KEY", faceit_key)
+        save_user_setting("FACEIT_API_KEY", faceit_key)
         print(f"  Saved FACEIT_API_KEY = ***")  # F8-10: no key fragment
 
     refresh_settings()
@@ -76,7 +76,7 @@ def cmd_customize(args):
         "Language [en/pt/it] (current: {}): ".format(get_setting("LANGUAGE", "en"))
     ).strip()
     if lang in ("en", "pt", "it"):
-        save_setting("LANGUAGE", lang)
+        save_user_setting("LANGUAGE", lang)
         print(f"  Language set to: {lang}")
 
     theme = input(
@@ -85,7 +85,7 @@ def cmd_customize(args):
         )
     ).strip()
     if theme:
-        save_setting("ACTIVE_THEME", theme)
+        save_user_setting("ACTIVE_THEME", theme)
         print(f"  Theme set to: {theme}")
 
     font = input(
@@ -94,7 +94,7 @@ def cmd_customize(args):
         )
     ).strip()
     if font:
-        save_setting("FONT_TYPE", font)
+        save_user_setting("FONT_TYPE", font)
         print(f"  Font set to: {font}")
 
     refresh_settings()
@@ -197,13 +197,13 @@ def cmd_weights(args):
         try:
             weight = float(input("  Weight value: "))
             overrides[feature] = weight
-            save_setting("COACH_WEIGHT_OVERRIDES", overrides)
+            save_user_setting("COACH_WEIGHT_OVERRIDES", overrides)
             print(f"  Set {feature} = {weight}")
         except ValueError:
             print("  Invalid weight.")
 
     elif action == "r":
-        save_setting("COACH_WEIGHT_OVERRIDES", {})
+        save_user_setting("COACH_WEIGHT_OVERRIDES", {})
         print("  All overrides reset.")
 
     elif action == "v":

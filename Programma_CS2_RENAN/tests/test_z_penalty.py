@@ -2,21 +2,21 @@
 Unit tests for Z-Penalty vertical awareness functions.
 
 Tests compute_z_penalty() and classify_vertical_level() from spatial_data.py,
-plus FeatureExtractor integration (slot 15 of 19-dim vector).
+plus FeatureExtractor integration (slot 15 of METADATA_DIM-dim vector, currently 25).
 
 Z-cutoff values:
   - Nuke: -495 (upper above, lower below)
   - Vertigo: 11700 (upper above, lower below)
 """
 
-import os
 import sys
 
-import pytest
+# --- Venv Guard ---
+if sys.prefix == sys.base_prefix:
+    print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
+    sys.exit(2)
 
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-if PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, PROJECT_ROOT)
+import pytest
 
 from Programma_CS2_RENAN.core.spatial_data import classify_vertical_level, compute_z_penalty
 

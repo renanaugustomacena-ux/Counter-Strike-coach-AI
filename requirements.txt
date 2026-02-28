@@ -20,3 +20,8 @@ pdfplumber
 pypdf
 sentry-sdk>=1.40.0
 pre-commit>=3.5.0
+httpx
+playwright
+shap
+sentence-transformers
+beautifulsoup4

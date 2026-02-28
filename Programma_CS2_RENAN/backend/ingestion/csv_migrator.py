@@ -1,5 +1,4 @@
 import csv
-import logging
 import sys
 from pathlib import Path
 
@@ -17,10 +16,9 @@ from sqlmodel import Session, select
 
 from Programma_CS2_RENAN.backend.storage.database import DatabaseManager
 from Programma_CS2_RENAN.backend.storage.db_models import Ext_PlayerPlaystyle, Ext_TeamRoundStats
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
-# Setup Logger
-logger = logging.getLogger("CSVMigrator")
-logging.basicConfig(level=logging.INFO)
+logger = get_logger("cs2analyzer.csv_migrator")
 
 
 # F6-17: Extracted safe_float to module level — was redefined inside every loop iteration.

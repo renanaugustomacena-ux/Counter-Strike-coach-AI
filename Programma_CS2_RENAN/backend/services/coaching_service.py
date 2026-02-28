@@ -1,8 +1,10 @@
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from Programma_CS2_RENAN.backend.coaching.correction_engine import generate_corrections
 from Programma_CS2_RENAN.backend.coaching.longitudinal_engine import generate_longitudinal_coaching
 from Programma_CS2_RENAN.backend.knowledge.round_utils import infer_round_phase  # F5-20: shared utility
+from Programma_CS2_RENAN.backend.progress.longitudinal import FeatureTrend
+from Programma_CS2_RENAN.backend.progress.trend_analysis import compute_trend
 from Programma_CS2_RENAN.backend.services.ollama_writer import get_ollama_writer
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import CoachingInsight, PlayerMatchStats
@@ -75,7 +77,8 @@ class CoachingService:
                 "Coaching mode selected: COPER for player=%s demo=%s", player_name, demo_name
             )
             self._generate_coper_insights(
-                player_name, demo_name, player_stats or {}, map_name, tick_data
+                player_name, demo_name, player_stats or {}, map_name, tick_data,
+                deviations=deviations, rounds_played=rounds_played,
             )
         elif self.use_hybrid and player_stats:
             _coaching_logger.info(
@@ -98,6 +101,9 @@ class CoachingService:
         # Phase 6 Advanced Analysis (runs after main coaching, non-blocking)
         self._generate_advanced_insights(player_name, demo_name, tick_data)
 
+        # Longitudinal tracking (C-02: was imported but never called)
+        self._run_longitudinal_coaching(player_name, demo_name)
+
     def _generate_coper_insights(
         self,
         player_name: str,
@@ -105,6 +111,8 @@ class CoachingService:
         player_stats: Dict[str, float],
         map_name: str,
         tick_data: Dict,
+        deviations: Optional[Dict[str, float]] = None,
+        rounds_played: int = 0,
     ):
         """
         Generate insights using COPER Framework (Context, Experience, Prompt, Replay).
@@ -192,19 +200,29 @@ class CoachingService:
             from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
             logger = get_logger("cs2analyzer.coaching")
-            logger.error("COPER coaching failed: %s", e)
+            logger.exception("COPER coaching failed")
             # Fallback to hybrid or traditional
             if self.use_hybrid and player_stats:
                 self._generate_hybrid_insights(player_name, demo_name, player_stats, map_name)
             else:
                 # G-08: fallback to traditional coaching instead of zero output
-                logger.warning(
-                    "COPER fallback: using traditional coaching for %s on %s",
-                    player_name,
-                    demo_name,
-                )
-                corrections = generate_corrections(deviations, rounds_played)
-                _save_corrections_as_insights(self.db_manager, player_name, demo_name, corrections)
+                if deviations:
+                    logger.warning(
+                        "COPER fallback: using traditional coaching for %s on %s",
+                        player_name,
+                        demo_name,
+                    )
+                    corrections = generate_corrections(deviations, rounds_played)
+                    _save_corrections_as_insights(
+                        self.db_manager, player_name, demo_name, corrections
+                    )
+                else:
+                    logger.warning(
+                        "COPER fallback: no deviations data — "
+                        "no coaching generated for %s on %s",
+                        player_name,
+                        demo_name,
+                    )
 
     def _format_coper_message(self, advice, baseline_note: str = "") -> str:
         """Format COPER advice into readable message."""
@@ -338,6 +356,60 @@ class CoachingService:
             logger = get_logger("cs2analyzer.coaching")
             logger.warning("Phase 6 advanced analysis failed (non-fatal): %s", e)
 
+    def _run_longitudinal_coaching(self, player_name: str, demo_name: str):
+        """
+        Generate trend-aware longitudinal coaching insights.
+
+        Compares the player's recent performance trajectory and flags regressions
+        or improvements. Non-blocking: failures are logged but do not affect
+        main coaching pipeline.
+
+        Pattern reused from run_ingestion.py:130-148.
+        """
+        try:
+            from sqlmodel import select
+
+            with self.db_manager.get_session() as session:
+                stmt = (
+                    select(PlayerMatchStats)
+                    .where(PlayerMatchStats.player_name == player_name)
+                    .order_by(PlayerMatchStats.processed_at.desc())
+                    .limit(10)
+                )
+                history = session.exec(stmt).all()
+
+            if len(history) < 3:
+                return  # Not enough data for trend analysis
+
+            trends = []
+            for feat in ("avg_kills", "avg_adr", "avg_kast", "accuracy"):
+                values = [getattr(h, feat, 0) for h in reversed(history)]
+                slope, vol, conf = compute_trend(values)
+                trends.append(FeatureTrend(feature=feat, slope=slope, volatility=vol, confidence=conf))
+
+            nn_signals = {"stability_warning": any(t.volatility > 0.2 for t in trends)}
+            long_insights = generate_longitudinal_coaching(trends, nn_signals)
+
+            if long_insights:
+                with self.db_manager.get_session() as session:
+                    for li in long_insights:
+                        session.add(CoachingInsight(
+                            player_name=player_name,
+                            demo_name=demo_name,
+                            title=li["title"],
+                            severity=li["severity"],
+                            message=li["message"],
+                            focus_area=li["focus_area"],
+                        ))
+                    session.commit()
+                _coaching_logger.info(
+                    "Longitudinal coaching: %d trend insights saved for %s",
+                    len(long_insights),
+                    player_name,
+                )
+        except Exception as e:
+            _coaching_logger.warning("Longitudinal coaching failed (non-fatal): %s", e)
+
     def _generate_hybrid_insights(
         self, player_name: str, demo_name: str, player_stats: Dict[str, float], map_name: str = None
     ):
@@ -359,7 +431,7 @@ class CoachingService:
             from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
             logger = get_logger("cs2analyzer.coaching")
-            logger.error("Hybrid coaching failed: %s", e)
+            logger.exception("Hybrid coaching failed")
 
             # Fallback to traditional — but only if we have deviations
             logger.warning(
@@ -406,7 +478,7 @@ class CoachingService:
             from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
             logger = get_logger("cs2analyzer.coaching")
-            logger.error("RAG enhancement failed: %s", e)
+            logger.exception("RAG enhancement failed")
 
         return corrections
 
@@ -524,7 +596,7 @@ class CoachingService:
             from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
             logger = get_logger("cs2analyzer.coaching")
-            logger.error("Differential heatmap coaching failed: %s", e)
+            logger.exception("Differential heatmap coaching failed")
             return None
 
     def get_latest_insights(self, player_name: str, limit: int = 5) -> List[CoachingInsight]:

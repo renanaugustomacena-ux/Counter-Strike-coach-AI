@@ -1,6 +1,3 @@
-import logging as _logging
-
-import numpy as np
 import torch
 
 from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import (
@@ -9,8 +6,9 @@ from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer impor
 )
 from Programma_CS2_RENAN.backend.processing.tensor_factory import get_tensor_factory
 from Programma_CS2_RENAN.backend.storage.db_models import PlayerTickState
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
-_logger = _logging.getLogger("cs2analyzer.state_reconstructor")
+_logger = get_logger("cs2analyzer.state_reconstructor")
 
 
 class RAPStateReconstructor:
@@ -67,7 +65,6 @@ class RAPStateReconstructor:
         )
 
         # Add batch dimension
-        batch_size = metadata_tensor.shape[0]
         view_frame = vision_tensors["view"].unsqueeze(0)
         map_frame = vision_tensors["map"].unsqueeze(0)
         motion_diff = vision_tensors["motion"].unsqueeze(0)

@@ -17,8 +17,9 @@ percentage and emits a warning, because confusing these two produces silently wr
 ratings (error ~×100 on the KAST term).
 """
 
-import logging as _logging
-_rating_logger = _logging.getLogger("cs2analyzer.rating")
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+_rating_logger = get_logger("cs2analyzer.rating")
 
 # --- HLTV 2.0 Pro Baseline Constants ---
 # These represent the average professional player.

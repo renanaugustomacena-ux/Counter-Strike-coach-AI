@@ -10,6 +10,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
+# --- Venv Guard ---
+if sys.prefix == sys.base_prefix:
+    print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
+    sys.exit(2)
+
 # --- Path Stabilization ---
 # We use the robust header defined in MTS-IS
 script_dir = Path(__file__).parent.absolute()

@@ -61,9 +61,7 @@ class SteamDemoFinder:
                     drives.append(f"{letter}:/")
                 bitmask >>= 1
         except Exception as e:
-            import logging
-
-            logging.getLogger("cs2analyzer.steam_finder").warning("Drive detection failed: %s", e)
+            logger.warning("Drive detection failed: %s", e)
             drives = ["C:/", "D:/", "E:/"]  # Fallback
 
         # Common suffixes
