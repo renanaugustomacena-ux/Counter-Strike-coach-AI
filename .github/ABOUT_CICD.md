@@ -1,6 +1,6 @@
 # GitHub Actions - CI/CD Configuration
 
-> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
+> **[English](ABOUT_CICD.md)** | **[Italiano](ABOUT_CICD_IT.md)** | **[Português](ABOUT_CICD_PT.md)**
 
 This directory contains GitHub Actions workflows and automation configurations for the Macena CS2 Analyzer project.
 
