@@ -57,7 +57,7 @@ class RAPPerception(nn.Module):
         # 224x224 inputs and wasted compute on 64x64 where feature maps collapse after
         # the first stride-2 block. AdaptiveAvgPool2d handles any spatial resolution,
         # so this change is architecture-safe. Any stale checkpoint will be auto-detected
-        # by load_nn() and flagged as _stale_checkpoint. (F3-29)
+        # by load_nn() which raises StaleCheckpointError. (F3-29)
         self.view_backbone = self._make_resnet_stack(3, 64, [1, 2, 2, 1])
         self.view_pool = nn.AdaptiveAvgPool2d((1, 1))
         self.map_backbone = self._make_resnet_stack(3, 32, [2, 2])

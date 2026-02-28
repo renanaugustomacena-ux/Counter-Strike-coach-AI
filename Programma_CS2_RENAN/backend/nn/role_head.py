@@ -288,7 +288,11 @@ def load_role_head() -> Optional[Tuple[NeuralRoleHead, Dict]]:
         return None
 
     model = NeuralRoleHead()
-    model = load_nn("role_head", model)
+    try:
+        model = load_nn("role_head", model)
+    except Exception:
+        logger.warning("Role head checkpoint incompatible or corrupted. Skipping.")
+        return None
     model.eval()
 
     return model, norm_stats

@@ -157,6 +157,7 @@ def load_user_settings():
             "LANGUAGE": "en",
             "SENTRY_DSN": "",
             "SENTRY_ENABLED": False,
+            "ENABLE_HLTV_SYNC": True,
         }
 
         # File I/O and keyring retrieval are inside the lock to prevent

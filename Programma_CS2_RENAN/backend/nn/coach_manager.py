@@ -557,8 +557,13 @@ class CoachTrainingManager:
         pro_vec = self._get_pro_baseline_vector()
         for item in raw_data:
             stats = item.model_dump()
-            # Extract all 25 match-aggregate features (actual DB columns, no zero-padding needed)
-            vec = np.array([stats.get(f, 0.0) for f in MATCH_AGGREGATE_FEATURES], dtype=np.float32)
+            # Extract all 25 match-aggregate features (actual DB columns, no zero-padding needed).
+            # Explicit None guard: dict.get(key, default) returns None when the key
+            # exists with a NULL DB value, which would produce NaN in the tensor.
+            vec = np.array(
+                [(v if (v := stats.get(f, 0.0)) is not None else 0.0) for f in MATCH_AGGREGATE_FEATURES],
+                dtype=np.float32,
+            )
             X.append(vec)
             y.append(self._calculate_deltas(vec, pro_vec))
         X_t = torch.tensor(np.array(X, dtype=np.float32), dtype=torch.float32)

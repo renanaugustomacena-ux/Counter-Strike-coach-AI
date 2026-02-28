@@ -5,8 +5,6 @@ import sys
 import time
 from typing import Any, Dict, Optional
 
-import requests
-
 try:
     from bs4 import BeautifulSoup
 
@@ -21,6 +19,7 @@ if project_root not in sys.path:
 
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
+from Programma_CS2_RENAN.ingestion.hltv.flaresolverr_client import FlareSolverrClient
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.hltv_manual_fetcher")
@@ -29,6 +28,10 @@ logger = get_logger("cs2analyzer.hltv_manual_fetcher")
 class HLTVStatFetcher:
     """
     Robust fetcher for HLTV.org statistical data.
+
+    Uses FlareSolverr (Docker) to bypass Cloudflare protection.
+    All HTTP requests go through the local FlareSolverr REST API
+    which resolves JS challenges automatically.
     """
 
     def __init__(self):
@@ -37,11 +40,7 @@ class HLTVStatFetcher:
                 "beautifulsoup4 is required for HLTV stat fetching. "
                 "Install it with: pip install beautifulsoup4"
             )
-
-    HEADERS = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
-        "Accept-Language": "en-US,en;q=0.9",  # Request English to minimize localization issues
-    }
+        self._solver = FlareSolverrClient(timeout=60)
 
     def fetch_top_players(self) -> list[str]:
         """Scrapes the Top 50 players page to get profile URLs."""
@@ -49,12 +48,12 @@ class HLTVStatFetcher:
         logger.info("Auto-discovering Top 50 players from: %s", url)
         try:
             time.sleep(random.uniform(2, 4))
-            resp = requests.get(url, headers=self.HEADERS, timeout=15)
-            if resp.status_code != 200:
-                logger.error("Failed to fetch Top 50: %s", resp.status_code)
+            html = self._solver.get(url)
+            if not html:
+                logger.error("FlareSolverr failed for Top 50 page")
                 return []
 
-            soup = BeautifulSoup(resp.content, "html.parser")
+            soup = BeautifulSoup(html, "html.parser")
             player_links = []
 
             # Select rows in the stats table
@@ -67,7 +66,7 @@ class HLTVStatFetcher:
 
             logger.info("Discovered %s players.", len(player_links))
             return player_links
-        except Exception as e:
+        except Exception:
             logger.exception("Error discovering top players")
             return []
 
@@ -79,13 +78,13 @@ class HLTVStatFetcher:
         try:
             # 1. Main Stats Page (Overview + Firepower/Entrying/Utility)
             # URL format: .../stats/players/{id}/{name}
-            time.sleep(random.uniform(2, 5))
-            resp = requests.get(url, headers=self.HEADERS, timeout=15)
-            if resp.status_code != 200:
-                logger.error("Failed to fetch Main Page %s: %s", url, resp.status_code)
+            time.sleep(random.uniform(3, 7))
+            html = self._solver.get(url)
+            if not html:
+                logger.error("FlareSolverr failed for %s", url)
                 return None
 
-            soup = BeautifulSoup(resp.content, "html.parser")
+            soup = BeautifulSoup(html, "html.parser")
             main_data = self._parse_overview(soup)
 
             # Extract ID and Name for sub-pages
@@ -133,10 +132,10 @@ class HLTVStatFetcher:
     def _fetch_sub_stats(self, url: str, parser_func) -> Dict[str, Any]:
         """Generic helper for sub-page fetching."""
         try:
-            time.sleep(random.uniform(1.5, 3.0))  # Polite delay
-            resp = requests.get(url, headers=self.HEADERS, timeout=10)
-            if resp.status_code == 200:
-                return parser_func(BeautifulSoup(resp.content, "html.parser"))
+            time.sleep(random.uniform(2, 5))  # Polite delay
+            html = self._solver.get(url)
+            if html:
+                return parser_func(BeautifulSoup(html, "html.parser"))
         except Exception as e:
             logger.debug("Sub-stat fetch skipped for %s: %s", url, e)
         return {}
@@ -299,9 +298,20 @@ class HLTVStatFetcher:
         else:
             mapped["kd_ratio"] = 0.0  # Avoid DivByZero
 
-        # Extract player name from title or breadcrumb
+        # Extract player nickname from page title or known selectors.
+        # HLTV title format: "RealFirst 'nickname' RealLast Counter-Strike Statistics"
+        player_name = None
         name_tag = soup.select_one(".player-nickname") or soup.select_one("h1.summaryNickname")
-        mapped["player_name"] = name_tag.text.strip() if name_tag else "Unknown_Pro"
+        if name_tag:
+            player_name = name_tag.text.strip()
+        if not player_name:
+            title_tag = soup.find("title")
+            if title_tag:
+                import re as _re
+                m = _re.search(r"'([^']+)'", title_tag.text)
+                if m:
+                    player_name = m.group(1)
+        mapped["player_name"] = player_name or "Unknown_Pro"
 
         return mapped
 

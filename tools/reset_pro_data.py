@@ -8,11 +8,15 @@ Clears all stale data from:
   - hltv_cache.db (player cache)
   - ingestion/cache/*.mcn (parsed demo cache)
   - models/**/*.pt (all model checkpoints)
+  - ingestion/.validated_cache.json (demo registry)
+  - data/hltv_sync_state.json (HLTV sync state)
+  - match_data/*.db (per-match SQLite files)
 
 Idempotent: safe to run multiple times.
 """
 
 import glob
+import json
 import os
 import sqlite3
 import sys
@@ -33,6 +37,16 @@ KNOWLEDGE_GRAPH_PATH = os.path.join(PROJECT_ROOT, "data", "knowledge_graph.db")
 HLTV_CACHE_PATH = os.path.join(BASE_DIR, "data", "hltv_cache.db")
 
 CACHE_DIR = os.path.join(BASE_DIR, "ingestion", "cache")
+
+VALIDATED_CACHE_PATH = os.path.join(BASE_DIR, "ingestion", ".validated_cache.json")
+HLTV_SYNC_STATE_PATH = os.path.join(BASE_DIR, "data", "hltv_sync_state.json")
+HLTV_PID_FILE = os.path.join(BASE_DIR, "hltv_sync.pid")
+HLTV_STOP_FILE = os.path.join(BASE_DIR, "hltv_sync.stop")
+
+# Match data directories (in-project fallback + user-configured)
+MATCH_DATA_DIRS = [
+    os.path.join(CORE_DB_DIR, "match_data"),
+]
 
 MODEL_DIRS = [
     os.path.join(BASE_DIR, "models", "global"),
@@ -91,12 +105,15 @@ def phase_main_database() -> dict:
         "servicenotification",
         "tacticalknowledge",
         "mapveto",
+        "proplayerstatcard",
         "playermatchstats",
         "hltvdownload",
         "matchresult",
         "ingestiontask",
         "ext_teamroundstats",
         "ext_playerplaystyle",
+        "proplayer",
+        "proteam",
     ]
 
     for table in tables_to_clear:
@@ -131,6 +148,7 @@ def phase_main_database() -> dict:
                     ml_status = 'Idle',
                     service_pid = NULL,
                     last_heartbeat = NULL
+                WHERE 1=1
             """
             )
             log("  coachstate: reset to defaults", GREEN)
@@ -257,6 +275,81 @@ def phase_demo_cache() -> list:
     return deleted
 
 
+def phase_state_files() -> dict:
+    """Phase 5.5: Reset cache and state files."""
+    log("\n=== Phase 5.5: State Files & Demo Registry ===", BOLD + CYAN)
+    results = {}
+
+    # Reset .validated_cache.json (demo registry)
+    if os.path.exists(VALIDATED_CACHE_PATH):
+        with open(VALIDATED_CACHE_PATH, "w") as f:
+            json.dump({}, f)
+        log("  .validated_cache.json: reset to {}", GREEN)
+        results["validated_cache"] = "reset"
+    else:
+        log("  .validated_cache.json: not found (OK)", YELLOW)
+        results["validated_cache"] = "not_found"
+
+    # Reset hltv_sync_state.json
+    if os.path.exists(HLTV_SYNC_STATE_PATH):
+        with open(HLTV_SYNC_STATE_PATH, "w") as f:
+            json.dump({}, f)
+        log("  hltv_sync_state.json: reset to {}", GREEN)
+        results["hltv_sync_state"] = "reset"
+    else:
+        log("  hltv_sync_state.json: not found (OK)", YELLOW)
+        results["hltv_sync_state"] = "not_found"
+
+    # Delete stale PID and stop signal files
+    for label, path in [("hltv_sync.pid", HLTV_PID_FILE), ("hltv_sync.stop", HLTV_STOP_FILE)]:
+        if os.path.exists(path):
+            os.remove(path)
+            log(f"  {label}: DELETED", YELLOW)
+            results[label] = "deleted"
+
+    return results
+
+
+def phase_match_data() -> list:
+    """Phase 5.7: Delete per-match SQLite files."""
+    log("\n=== Phase 5.7: Per-Match SQLite Files ===", BOLD + CYAN)
+    deleted = []
+
+    # Also check user-configured match_data path
+    try:
+        from Programma_CS2_RENAN.core.config import MATCH_DATA_PATH
+        extra_dirs = [MATCH_DATA_PATH] if MATCH_DATA_PATH else []
+    except Exception:
+        extra_dirs = []
+
+    all_dirs = list(set(MATCH_DATA_DIRS + extra_dirs))
+
+    for match_dir in all_dirs:
+        if not os.path.isdir(match_dir):
+            log(f"  Directory not found: {match_dir}", YELLOW)
+            continue
+
+        # Find all match_*.db files and their WAL/SHM companions
+        db_files = glob.glob(os.path.join(match_dir, "match_*.db*"))
+        if not db_files:
+            log(f"  No match files in {match_dir}", GREEN)
+            continue
+
+        total_bytes = 0
+        for f in db_files:
+            size = os.path.getsize(f)
+            total_bytes += size
+            os.remove(f)
+            deleted.append(os.path.basename(f))
+
+        log(f"  DELETED {len(db_files)} files from {match_dir} ({total_bytes / 1024 / 1024:.1f} MB)", YELLOW)
+
+    if not deleted:
+        log("  No per-match files found", GREEN)
+
+    return deleted
+
+
 def phase_model_checkpoints() -> list:
     """Phase 6: Delete all .pt model checkpoints."""
     log("\n=== Phase 6: Model Checkpoints (models/**/*.pt) ===", BOLD + CYAN)
@@ -380,6 +473,40 @@ def phase_verify() -> bool:
         log(f"  FAIL: {len(remaining_pt)} .pt files remain", RED)
         all_ok = False
 
+    # Verify demo registry is empty
+    if os.path.exists(VALIDATED_CACHE_PATH):
+        try:
+            with open(VALIDATED_CACHE_PATH, "r") as f:
+                cache_data = json.load(f)
+            if cache_data:
+                log(f"  FAIL: .validated_cache.json not empty ({len(cache_data)} keys)", RED)
+                all_ok = False
+            else:
+                log("  .validated_cache.json: empty (OK)", GREEN)
+        except Exception as e:
+            log(f"  WARN: .validated_cache.json unreadable: {e}", YELLOW)
+
+    # Verify hltv_sync_state is empty
+    if os.path.exists(HLTV_SYNC_STATE_PATH):
+        try:
+            with open(HLTV_SYNC_STATE_PATH, "r") as f:
+                sync_data = json.load(f)
+            if sync_data:
+                log(f"  FAIL: hltv_sync_state.json not empty ({len(sync_data)} keys)", RED)
+                all_ok = False
+            else:
+                log("  hltv_sync_state.json: empty (OK)", GREEN)
+        except Exception as e:
+            log(f"  WARN: hltv_sync_state.json unreadable: {e}", YELLOW)
+
+    # Verify no per-match SQLite files remain
+    for match_dir in MATCH_DATA_DIRS:
+        if os.path.isdir(match_dir):
+            remaining_match = glob.glob(os.path.join(match_dir, "match_*.db"))
+            if remaining_match:
+                log(f"  FAIL: {len(remaining_match)} match files remain in {match_dir}", RED)
+                all_ok = False
+
     if all_ok:
         log("  ALL CLEAR — system is ready for fresh ingestion", GREEN + BOLD)
     else:
@@ -395,12 +522,15 @@ def main() -> int:
     log(f"{'=' * 60}", BOLD)
 
     log("\nThis will DELETE:", YELLOW + BOLD)
-    log("  - All data rows in database.db (stats, ticks, insights, tasks)")
+    log("  - All data rows in database.db (stats, ticks, insights, tasks, pro tables)")
     log("  - All rows in hltv_metadata.db (pro players, teams)")
     log("  - All rows in knowledge_graph.db (entities, relations)")
     log("  - All rows in hltv_cache.db")
-    log("  - All .mcn files in ingestion/cache/ (~1.1 GB)")
-    log("  - All .pt model checkpoints (5 files)")
+    log("  - All .mcn files in ingestion/cache/")
+    log("  - All .pt model checkpoints")
+    log("  - Demo registry (.validated_cache.json)")
+    log("  - HLTV sync state (hltv_sync_state.json)")
+    log("  - All per-match SQLite files (match_data/*.db)")
     log("\nPreserved: schema, user profile, settings, CSVs, knowledge base, migrations")
 
     confirm = input(f"\n{BOLD}Proceed? [y/N]: {RESET}").strip().lower()
@@ -413,6 +543,8 @@ def main() -> int:
     phase_knowledge_graph()
     phase_hltv_cache()
     phase_demo_cache()
+    phase_state_files()
+    phase_match_data()
     phase_model_checkpoints()
     phase_vacuum()
     ok = phase_verify()

@@ -232,13 +232,18 @@ class Console:
         """System-wide startup sequence."""
         logger.info("Console: Booting system subsystems...")
 
-        # 1. Start background services
-        self.supervisor.start_service("hunter")
-        time.sleep(1)
-        svcs = self.supervisor.get_status()
-        hunter_status = svcs.get("hunter", {}).get("status", "unknown")
-        if hunter_status != "running":
-            logger.warning("Console: Hunter service status after boot: %s", hunter_status)
+        # 1. Start background services (only if HLTV sync is enabled)
+        from Programma_CS2_RENAN.core.config import get_setting
+
+        if get_setting("ENABLE_HLTV_SYNC", False):
+            self.supervisor.start_service("hunter")
+            time.sleep(1)
+            svcs = self.supervisor.get_status()
+            hunter_status = svcs.get("hunter", {}).get("status", "unknown")
+            if hunter_status != "running":
+                logger.warning("Console: Hunter service status after boot: %s", hunter_status)
+        else:
+            logger.info("Console: HLTV sync disabled (ENABLE_HLTV_SYNC=False). Hunter skipped.")
 
         # 2. Start unified ingestion scan (Low Priority)
         # DISABLE AUTO-START: User requested manual control only (Task 3)

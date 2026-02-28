@@ -15,12 +15,19 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from playwright.sync_api import sync_playwright
 from sqlmodel import select
+
+try:
+    from bs4 import BeautifulSoup
+
+    _HAS_BS4 = True
+except ImportError:
+    _HAS_BS4 = False
 
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager, init_database
 from Programma_CS2_RENAN.backend.storage.db_models import HLTVDownload, IngestionTask
 from Programma_CS2_RENAN.ingestion.downloader import download_single_match
+from Programma_CS2_RENAN.ingestion.hltv.flaresolverr_client import FlareSolverrClient
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.hltv_orchestrator")
@@ -43,6 +50,7 @@ class HLTVOrchestrator:
     def __init__(self):
         init_database()
         self.db = get_db_manager()
+        self._solver = FlareSolverrClient(timeout=60)
 
     def run_sync_cycle(self, limit: int = 20):
         """
@@ -76,7 +84,7 @@ class HLTVOrchestrator:
 
     def fetch_recent_matches(self, limit: int = 20) -> List[Dict]:
         """
-        Scrape HLTV results page for recent matches.
+        Scrape HLTV results page for recent matches via FlareSolverr.
 
         Returns:
             List of match dictionaries with keys:
@@ -88,56 +96,55 @@ class HLTVOrchestrator:
         """
         matches = []
 
+        if not _HAS_BS4:
+            logger.error("beautifulsoup4 required for HLTV match discovery")
+            return matches
+
         try:
-            with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
-                context = browser.new_context(
-                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120 Safari/537.36"
-                )
-                page = context.new_page()
+            logger.info("Fetching %s via FlareSolverr", self.HLTV_RESULTS_URL)
+            html = self._solver.get(self.HLTV_RESULTS_URL)
+            if not html:
+                logger.error("FlareSolverr failed for HLTV results page")
+                return matches
 
-                logger.info("Fetching %s", self.HLTV_RESULTS_URL)
-                page.goto(self.HLTV_RESULTS_URL, wait_until="domcontentloaded")
-                page.wait_for_selector(".result-con", timeout=30000)
+            soup = BeautifulSoup(html, "html.parser")
+            result_elements = soup.select(".result-con")[:limit]
 
-                # Extract match data
-                result_elements = page.locator(".result-con").all()[:limit]
-
-                for elem in result_elements:
-                    try:
-                        # Extract match URL
-                        link = elem.locator("a.a-reset").first
-                        match_url = "https://www.hltv.org" + link.get_attribute("href")
-
-                        # Extract teams
-                        team1 = elem.locator(".team1").inner_text().strip()
-                        team2 = elem.locator(".team2").inner_text().strip()
-                        teams = f"{team1} vs {team2}"
-
-                        # Extract event
-                        event_elem = elem.locator(".event-name")
-                        event = (
-                            event_elem.inner_text().strip() if event_elem.count() > 0 else "Unknown"
-                        )
-
-                        # Generate match ID from URL
-                        match_id = match_url.split("/")[-2] if "/" in match_url else match_url
-
-                        matches.append(
-                            {
-                                "match_id": match_id,
-                                "match_url": match_url,
-                                "teams": teams,
-                                "event": event,
-                                "date": datetime.now(timezone.utc).isoformat(),
-                            }
-                        )
-
-                    except Exception as e:
-                        logger.warning("Failed to parse match element: %s", e)
+            for elem in result_elements:
+                try:
+                    # Extract match URL
+                    link = elem.select_one("a.a-reset")
+                    if not link or not link.get("href"):
                         continue
+                    match_url = "https://www.hltv.org" + link["href"]
 
-                browser.close()
+                    # Extract teams
+                    team1_el = elem.select_one(".team1")
+                    team2_el = elem.select_one(".team2")
+                    team1 = team1_el.get_text(strip=True) if team1_el else "Unknown"
+                    team2 = team2_el.get_text(strip=True) if team2_el else "Unknown"
+                    teams = f"{team1} vs {team2}"
+
+                    # Extract event
+                    event_el = elem.select_one(".event-name")
+                    event = event_el.get_text(strip=True) if event_el else "Unknown"
+
+                    # Generate match ID from URL
+                    match_id = match_url.split("/")[-2] if "/" in match_url else match_url
+
+                    matches.append(
+                        {
+                            "match_id": match_id,
+                            "match_url": match_url,
+                            "teams": teams,
+                            "event": event,
+                            "date": datetime.now(timezone.utc).isoformat(),
+                        }
+                    )
+
+                except Exception as e:
+                    logger.warning("Failed to parse match element: %s", e)
+                    continue
 
         except Exception as e:
             logger.error("Failed to fetch HLTV matches: %s", e)

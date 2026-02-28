@@ -71,13 +71,25 @@ class ModelFactory:
                 output_dim=kwargs.get("output_dim", NeuralRoleHead.ROLE_OUTPUT_DIM),
             )
 
-        else:  # Default / Legacy
+        elif model_type == ModelFactory.TYPE_LEGACY:
             from Programma_CS2_RENAN.backend.nn.model import TeacherRefinementNN
 
             return TeacherRefinementNN(
                 input_dim=kwargs.get("input_dim", METADATA_DIM),
                 output_dim=kwargs.get("output_dim", OUTPUT_DIM),
                 hidden_dim=kwargs.get("hidden_dim", 64),
+            )
+
+        else:
+            valid_types = [
+                ModelFactory.TYPE_LEGACY,
+                ModelFactory.TYPE_JEPA,
+                ModelFactory.TYPE_VL_JEPA,
+                ModelFactory.TYPE_RAP,
+                ModelFactory.TYPE_ROLE_HEAD,
+            ]
+            raise ValueError(
+                f"Unknown model type: '{model_type}'. Valid types: {valid_types}"
             )
 
     @staticmethod
@@ -93,5 +105,16 @@ class ModelFactory:
             return "rap_coach"
         elif model_type == ModelFactory.TYPE_ROLE_HEAD:
             return "role_head"
+        elif model_type == ModelFactory.TYPE_LEGACY:
+            return "latest"
         else:
-            return "latest"  # Legacy default
+            valid_types = [
+                ModelFactory.TYPE_LEGACY,
+                ModelFactory.TYPE_JEPA,
+                ModelFactory.TYPE_VL_JEPA,
+                ModelFactory.TYPE_RAP,
+                ModelFactory.TYPE_ROLE_HEAD,
+            ]
+            raise ValueError(
+                f"Unknown model type for checkpoint: '{model_type}'. Valid types: {valid_types}"
+            )

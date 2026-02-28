@@ -9,6 +9,7 @@ Changes to the feature order or normalization MUST be made HERE ONLY.
 
 import hashlib
 import math
+import threading
 from typing import Any, ClassVar, Dict, List, Optional, Union
 
 import numpy as np
@@ -111,6 +112,7 @@ class FeatureExtractor:
     _config: ClassVar[Optional[Any]] = (
         None  # HeuristicConfig; Optional[Any] to avoid circular import at class-definition time
     )
+    _config_lock: ClassVar[threading.RLock] = threading.RLock()
 
     @classmethod
     def configure(cls, config) -> None:
@@ -118,13 +120,19 @@ class FeatureExtractor:
         Set the class-level HeuristicConfig for all subsequent extract() calls.
 
         Should be called once at application startup after loading config from disk.
+        Thread-safe: acquires _config_lock before writing (Bug #6).
         """
-        cls._config = config
+        with cls._config_lock:
+            cls._config = config
 
     @classmethod
     def update_heuristics(cls, new_config) -> None:
-        """Runtime hot-swap of heuristic parameters (e.g. after learning new bounds)."""
-        cls._config = new_config
+        """Runtime hot-swap of heuristic parameters (e.g. after learning new bounds).
+
+        Thread-safe: acquires _config_lock before writing (Bug #6).
+        """
+        with cls._config_lock:
+            cls._config = new_config
 
     @staticmethod
     def extract(
@@ -146,8 +154,9 @@ class FeatureExtractor:
         Returns:
             np.ndarray of shape (METADATA_DIM,) with float32 values
         """
-        # Resolve config: class-level override or built-in defaults
-        cfg = FeatureExtractor._config
+        # Resolve config: class-level override or built-in defaults (thread-safe read, Bug #6)
+        with FeatureExtractor._config_lock:
+            cfg = FeatureExtractor._config
         if cfg is None:
             from Programma_CS2_RENAN.backend.processing.feature_engineering.base_features import (
                 HeuristicConfig,
