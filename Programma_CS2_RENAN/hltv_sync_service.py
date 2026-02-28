@@ -7,6 +7,7 @@ from pathlib import Path
 
 # Use the automated discovery fetcher we just refined
 from Programma_CS2_RENAN.fetch_hltv_stats import HLTVStatFetcher
+from Programma_CS2_RENAN.ingestion.hltv.flaresolverr_client import FlareSolverrClient
 from Programma_CS2_RENAN.ingestion.hltv_orchestrator import HLTVOrchestrator
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -17,13 +18,65 @@ SCRIPT_DIR = Path(os.path.dirname(os.path.abspath(__file__)))
 PID_FILE = SCRIPT_DIR / "hltv_sync.pid"
 STOP_SIGNAL = SCRIPT_DIR / "hltv_sync.stop"
 
+# Dormant mode sleep duration (6 hours) when HLTV is unreachable
+_DORMANT_SLEEP_S = 21600
+
+
+def _dormant_sleep(seconds: int) -> None:
+    """Sleep in 1-second increments, checking the stop signal."""
+    for _ in range(seconds):
+        if STOP_SIGNAL.exists():
+            break
+        time.sleep(1)
+
 
 def run_sync_loop():
     """
     Main background loop.
     Coordinates match discovery (Orchestrator) and player card scraping (Fetcher).
+    Uses FlareSolverr (Docker) to bypass Cloudflare protection on HLTV.
     """
     logger.info("HLTV Sync Service Loop started.")
+
+    # Import state_manager early for status updates
+    from Programma_CS2_RENAN.backend.storage.state_manager import state_manager
+
+    # --- Pre-flight: FlareSolverr availability ---
+    solver = FlareSolverrClient()
+    if not solver.is_available():
+        logger.error(
+            "FlareSolverr non disponibile! Avvialo con: docker start flaresolverr"
+        )
+        state_manager.update_status(
+            "hunter", "Blocked", "FlareSolverr non raggiungibile"
+        )
+        state_manager.add_notification(
+            "hunter",
+            "error",
+            "HLTV sync bloccato: FlareSolverr non disponibile. "
+            "Esegui: docker start flaresolverr",
+        )
+        return
+
+    # --- Pre-flight: HLTV connectivity test ---
+    logger.info("Testing HLTV connectivity via FlareSolverr...")
+    test_html = solver.get("https://www.hltv.org/stats")
+    if not test_html:
+        logger.error(
+            "HLTV non raggiungibile nemmeno via FlareSolverr. Dormant mode (%s ore).",
+            _DORMANT_SLEEP_S // 3600,
+        )
+        state_manager.update_status(
+            "hunter", "Blocked", "HLTV non raggiungibile via FlareSolverr"
+        )
+        _dormant_sleep(_DORMANT_SLEEP_S)
+        return
+
+    logger.info("HLTV connectivity test passed. Creating persistent session...")
+
+    # Create persistent session for cookie reuse across requests
+    solver.create_session()
+
     orchestrator = HLTVOrchestrator()
     fetcher = HLTVStatFetcher()
 
@@ -32,9 +85,6 @@ def run_sync_loop():
 
     while not STOP_SIGNAL.exists():
         try:
-            # Heartbeat for Console monitoring
-            from Programma_CS2_RENAN.backend.storage.state_manager import state_manager
-
             state_manager.update_status(
                 "hunter", "Running", f"Discovery cycle active at {time.ctime()}"
             )
@@ -49,15 +99,14 @@ def run_sync_loop():
 
             # 3. Wait (Polite long-tail delay between full cycles)
             logger.info("Cycle complete. Sleeping for 1 hour...")
-            # We check for stop signal during sleep
-            for _ in range(3600):
-                if STOP_SIGNAL.exists():
-                    break
-                time.sleep(1)
+            _dormant_sleep(3600)
 
         except Exception as e:
             logger.error("Sync Loop Error: %s", e)
             time.sleep(60)  # Wait a minute before retry on crash
+
+    # Cleanup persistent session
+    solver.destroy_session()
 
     logger.info("Sync Loop received stop signal. Exiting.")
     if PID_FILE.exists():

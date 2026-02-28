@@ -211,6 +211,10 @@ def _add_event_stats_safe(parser, df, total_rounds):
     df["avg_hs"] = 0.0
     df["accuracy"] = 0.0
     df["avg_kast"] = 0.0
+    # Data quality flag: "none" = no event data, "partial" = some players missing,
+    # "complete" = all players have real event data. Downstream consumers (training
+    # pipeline) should filter or weight samples based on this flag (Bug #3).
+    df["data_quality"] = "partial"
 
     try:
         hurt = parser.parse_events(["player_hurt"])
@@ -220,6 +224,15 @@ def _add_event_stats_safe(parser, df, total_rounds):
         h_df = hurt[0][1] if hurt and isinstance(hurt[0], tuple) else pd.DataFrame()
         s_df = shots[0][1] if shots and isinstance(shots[0], tuple) else pd.DataFrame()
         d_df = deaths[0][1] if deaths and isinstance(deaths[0], tuple) else pd.DataFrame()
+
+        # If ALL event DataFrames are empty, no meaningful stats can be extracted
+        if h_df.empty and s_df.empty and d_df.empty:
+            df["data_quality"] = "none"
+            logger.warning(
+                "No event data extracted — all event DataFrames empty. "
+                "Stats remain 0.0 (missing, not measured)."
+            )
+            return
 
         # Resolve name columns — varies across demo versions and event types
         h_name_col = _resolve_name_column(h_df, ["attacker_name", "user_name", "player_name"])
@@ -273,11 +286,20 @@ def _add_event_stats_safe(parser, df, total_rounds):
                 player_has_data = True
 
             if player_has_data:
+                df.at[idx, "data_quality"] = "complete"
                 players_with_data += 1
 
+        partial_count = len(df) - players_with_data
+        if partial_count > 0:
+            logger.warning(
+                "%d/%d players have PARTIAL event data (0.0 = missing, not measured). "
+                "Training pipeline should filter or weight these samples.",
+                partial_count, len(df),
+            )
         logger.info("Event stats extracted for %d/%d players", players_with_data, len(df))
 
     except Exception as e:
+        df["data_quality"] = "none"
         logger.exception("Event parsing failed - stats remain 0.0")
 
 

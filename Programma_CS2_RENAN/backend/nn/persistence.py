@@ -12,6 +12,14 @@ logger = get_logger("cs2analyzer.nn.persistence")
 BASE_NN_DIR = Path(MODELS_DIR)
 
 
+class StaleCheckpointError(RuntimeError):
+    """Raised when a checkpoint has incompatible dimensions (architecture upgrade).
+
+    Callers must handle this explicitly — silently using a model with random
+    weights is never acceptable.
+    """
+
+
 def get_model_path(version, user_id=None):
     if user_id:
         target_dir = BASE_NN_DIR / user_id
@@ -60,15 +68,14 @@ def load_nn(version, model, user_id=None):
             # Handle size mismatch (common during architecture upgrades)
             if "size mismatch" in str(re):
                 logger.warning(
-                    "Architecture Mismatch: Model at %s is stale (old dims). Running with fresh initialization.",
+                    "Architecture Mismatch: Model at %s is stale (old dims). "
+                    "Checkpoint is incompatible with current architecture.",
                     path,
                 )
-                # Flag the model as untrained so callers can check (F3-23)
-                model._stale_checkpoint = True
-                logger.warning(
-                    "PREDICTION QUALITY: Model is running with RANDOM WEIGHTS after stale "
-                    "checkpoint detection. All predictions are meaningless until re-training completes."
-                )
+                raise StaleCheckpointError(
+                    f"Checkpoint at {path} has incompatible dimensions. "
+                    f"Model needs re-training. Original error: {re}"
+                ) from re
             else:
                 raise
         except Exception as e:

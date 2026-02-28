@@ -22,6 +22,8 @@ def infer_round_phase(tick_data: Dict) -> str:
     Returns:
         One of: "pistol", "eco", "force", "full_buy".
     """
+    if not isinstance(tick_data, dict):
+        return "full_buy"
     equip = tick_data.get("equipment_value", 0)
     if equip < _PISTOL_MAX_EQUIP:
         return "pistol"

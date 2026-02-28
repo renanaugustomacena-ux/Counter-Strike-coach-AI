@@ -2,7 +2,7 @@ import numpy as np
 import torch
 
 from Programma_CS2_RENAN.backend.nn.config import get_device
-from Programma_CS2_RENAN.backend.nn.persistence import load_nn, save_nn
+from Programma_CS2_RENAN.backend.nn.persistence import StaleCheckpointError, load_nn, save_nn
 from Programma_CS2_RENAN.backend.nn.training_callbacks import CallbackRegistry
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -81,6 +81,11 @@ class TrainingOrchestrator:
             logger.info("Resumed training from %s", self.model_name)
         except FileNotFoundError:
             logger.info("No checkpoint found — starting fresh training for %s", self.model_name)
+        except StaleCheckpointError:
+            logger.warning(
+                "Stale checkpoint for %s — architecture changed. Starting fresh training.",
+                self.model_name,
+            )
         except Exception as e:
             logger.warning(
                 "Checkpoint load failed for %s (possible corruption): %s. Starting fresh.",
@@ -195,10 +200,12 @@ class TrainingOrchestrator:
         if self.model_type in ("jepa", "vl-jepa"):
             raw_items = self.manager._fetch_jepa_ticks(is_pro=is_pro, split=split)
         else:
-            # RAP usually runs on windows of ticks
-            # This logic needs to align with RAP data loading
-            # For now, we assume manager exposes a way or we use a placeholder
-            # Reusing fetch_jepa_ticks for RAP tick access as well
+            # RAP data loading reuses JEPA tick fetcher (stub — Bug #5).
+            # RAP-specific data pipeline (windowed ticks) not yet implemented.
+            logger.warning(
+                "RAP data loading reuses JEPA tick fetcher (stub). "
+                "RAP-specific data pipeline not yet implemented."
+            )
             raw_items = self.manager._fetch_jepa_ticks(is_pro=is_pro, split=split)
 
         if not raw_items:
@@ -252,8 +259,12 @@ class TrainingOrchestrator:
                         loss = result["loss"] if isinstance(result, dict) else result
                 else:
                     # RAP signature: batch dict directly — returns dict with "loss" key
-                    result = trainer.train_step(tensor_batch)
-                    loss = result["loss"] if isinstance(result, dict) else result
+                    try:
+                        result = trainer.train_step(tensor_batch)
+                        loss = result["loss"] if isinstance(result, dict) else result
+                    except (KeyError, TypeError) as e:
+                        logger.warning("RAP train_step failed (missing tensor key): %s", e)
+                        continue
 
                 # Fire: on_batch_end (training batches only)
                 batch_outputs = result if isinstance(result, dict) else {"loss": float(loss)}
@@ -289,16 +300,20 @@ class TrainingOrchestrator:
 
                         loss = jepa_contrastive_loss(pred, target, neg_latent).item()
                     else:
-                        # RAP validation
-                        outputs = trainer.model(
-                            tensor_batch["view"],
-                            tensor_batch["map"],
-                            tensor_batch["motion"],
-                            tensor_batch["metadata"],
-                        )
-                        loss = trainer.criterion_val(
-                            outputs["value_estimate"], tensor_batch["target_val"]
-                        ).item()
+                        # RAP validation (Bug #5: guard against missing tensor keys)
+                        try:
+                            outputs = trainer.model(
+                                tensor_batch["view"],
+                                tensor_batch["map"],
+                                tensor_batch["motion"],
+                                tensor_batch["metadata"],
+                            )
+                            loss = trainer.criterion_val(
+                                outputs["value_estimate"], tensor_batch["target_val"]
+                            ).item()
+                        except (KeyError, TypeError) as e:
+                            logger.warning("RAP validation failed (missing tensor key): %s", e)
+                            continue
 
             total_loss += loss
 

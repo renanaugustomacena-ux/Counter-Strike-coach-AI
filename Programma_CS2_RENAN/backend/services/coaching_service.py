@@ -131,6 +131,13 @@ class CoachingService:
 
             logger = get_logger("cs2analyzer.coaching.coper")
 
+            # Guard: tick_data must be a dict for .get() calls below (Bug #8)
+            if not isinstance(tick_data, dict):
+                logger.warning(
+                    "COPER: tick_data is not a dict (%s), skipping.", type(tick_data).__name__
+                )
+                return
+
             bank = get_experience_bank()  # Singleton — avoids re-loading SBERT model (F5-04)
 
             # Build context from tick data

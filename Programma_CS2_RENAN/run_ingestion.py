@@ -167,7 +167,11 @@ def _execute_rap_logic(db_manager, player_name, skill_level: int = 5):
     if not ticks:
         return []
     recon, model, comm = RAPStateReconstructor(), RAPCoachModel(), RAPCommunication()
-    model = load_nn("latest_rap", model, user_id=player_name)
+    try:
+        model = load_nn("latest_rap", model, user_id=player_name)
+    except Exception:
+        logger.warning("RAP model checkpoint incompatible for %s. Skipping RAP insights.", player_name)
+        return []
     windows = recon.segment_match_into_windows(ticks)
     insights = []
     for window in windows[:5]:
