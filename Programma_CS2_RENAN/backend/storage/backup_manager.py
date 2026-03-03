@@ -1,7 +1,5 @@
 import os
-import shutil
-import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
 
@@ -42,7 +40,7 @@ class BackupManager:
             logger.warning("No database found at %s to backup.", self.db_path)
             return False
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         filename = f"backup_{label}_{timestamp}.db"
         target_path = Path(self.backup_dir) / filename
 
@@ -196,7 +194,7 @@ class BackupManager:
     def should_run_auto_backup(self) -> bool:
         """Returns True if no backup exists for today."""
         try:
-            today = datetime.now().date()
+            today = datetime.now(timezone.utc).date()
             files = [
                 f
                 for f in os.listdir(self.backup_dir)

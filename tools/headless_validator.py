@@ -2256,8 +2256,8 @@ def verify_manifest_hash_sampling():
     sample = sorted(hashes.items())[:10]
     mismatches = []
     for rel_path, expected_hash in sample:
-        # Manifest paths already include Programma_CS2_RENAN/ prefix
-        full_path = Path(PROJECT_ROOT) / rel_path
+        # Manifest paths are relative to Programma_CS2_RENAN/
+        full_path = Path(PROJECT_ROOT) / "Programma_CS2_RENAN" / rel_path
         if not full_path.exists():
             mismatches.append(f"{rel_path} (missing)")
             continue
@@ -2492,17 +2492,25 @@ def verify_settings_defaults_completeness():
     config_text = config_path.read_text(encoding="utf-8")
 
     # Extract default keys from the defaults dict in config.py
+    # Uses brace-depth counting to handle nested dicts (e.g. "KEY": {})
     default_keys = set()
     in_defaults = False
+    brace_depth = 0
     for line in config_text.split("\n"):
         stripped = line.strip()
-        if "defaults" in stripped and "{" in stripped:
+        if not in_defaults and "defaults" in stripped and "{" in stripped:
             in_defaults = True
-        if in_defaults:
+            brace_depth = stripped.count("{") - stripped.count("}")
             match = re.search(r'"(\w+)":', stripped)
             if match:
                 default_keys.add(match.group(1))
-            if "}" in stripped and in_defaults:
+            continue
+        if in_defaults:
+            brace_depth += stripped.count("{") - stripped.count("}")
+            match = re.search(r'"(\w+)":', stripped)
+            if match:
+                default_keys.add(match.group(1))
+            if brace_depth <= 0:
                 in_defaults = False
 
     # Scan production code for get_setting() calls
@@ -2575,7 +2583,10 @@ def verify_no_circular_imports():
             continue
 
         imports = set()
-        for node in ast.walk(tree):
+        # Only consider TOP-LEVEL imports (direct children of the module body).
+        # Deferred imports inside functions/methods are a standard Python pattern
+        # for breaking circular dependencies and must NOT be counted as edges.
+        for node in tree.body:
             if isinstance(node, ast.ImportFrom) and node.module:
                 if node.module.startswith("Programma_CS2_RENAN"):
                     imports.add(node.module)

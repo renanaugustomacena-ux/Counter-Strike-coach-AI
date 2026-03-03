@@ -1,4 +1,5 @@
-import os
+import shutil
+import sqlite3
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -27,36 +28,49 @@ class DatabaseGovernor:
         report = {"tier1_2_size": 0, "tier3_count": 0, "tier3_total_size": 0, "anomalies": []}
 
         # 1. Tier 1 & 2 (Monolith)
-        db_path = Path(os.path.join(DB_DIR, "database.db"))
+        db_path = Path(DB_DIR) / "database.db"
         if db_path.exists():
             # Get size of main DB + WAL + SHM
             total_size = db_path.stat().st_size
             for ext in ["-wal", "-shm"]:
-                p = Path(str(db_path) + ext)
+                p = db_path.with_name(db_path.name + ext)
                 if p.exists():
                     total_size += p.stat().st_size
             report["tier1_2_size"] = total_size
         else:
             # Fallback check in CORE_DB_DIR just in case
-            fallback_path = Path(os.path.join(CORE_DB_DIR, "database.db"))
+            fallback_path = Path(CORE_DB_DIR) / "database.db"
             if fallback_path.exists():
                 report["tier1_2_size"] = fallback_path.stat().st_size
             else:
                 report["anomalies"].append("CRITICAL: Monolith database.db not found!")
 
-        # 1b. Check HLTV Metadata DB
-        hltv_path = Path(os.path.join(DB_DIR, "hltv_metadata.db"))
-        hltv_bak_path = Path(os.path.join(DB_DIR, "hltv_metadata.db.bak"))
+        # 1b. Check HLTV Metadata DB — auto-restore from backup if missing
+        hltv_path = Path(DB_DIR) / "hltv_metadata.db"
+        hltv_bak_path = Path(DB_DIR) / "hltv_metadata.db.bak"
 
         if not hltv_path.exists():
             if hltv_bak_path.exists():
-                report["anomalies"].append(
-                    "WARNING: hltv_metadata.db missing, but .bak exists. Restore required."
-                )
+                try:
+                    shutil.copy2(str(hltv_bak_path), str(hltv_path))
+                    app_logger.info("Auto-restored hltv_metadata.db from backup.")
+                except Exception as e:
+                    app_logger.error("Failed to auto-restore hltv_metadata.db: %s", e)
+                    report["anomalies"].append(
+                        f"WARNING: hltv_metadata.db missing, auto-restore failed: {e}"
+                    )
             else:
-                report["anomalies"].append(
-                    "CRITICAL: hltv_metadata.db missing and no backup found."
-                )
+                # Create empty DB with WAL mode so downstream code doesn't crash
+                try:
+                    conn = sqlite3.connect(str(hltv_path))
+                    conn.execute("PRAGMA journal_mode=WAL")
+                    conn.close()
+                    app_logger.info("Created empty hltv_metadata.db (no backup available).")
+                except Exception as e:
+                    app_logger.error("Failed to create hltv_metadata.db: %s", e)
+                    report["anomalies"].append(
+                        f"CRITICAL: hltv_metadata.db missing and creation failed: {e}"
+                    )
 
         # 2. Tier 3 (Match Databases)
         available_matches = self.match_manager.list_available_matches()

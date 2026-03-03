@@ -22,18 +22,33 @@ Spero che qualcosa lì dentro possa essere utile.
 
 ## Indice
 
+**Parte 1 — Cervello e Sensi (questo documento)**
+
 1. [Riepilogo esecutivo](#1-executive-summary)
-2. [Panoramica dell&#39;architettura di sistema](#2-system-architecture-overview)
-3. [Sottosistema 1 — Core della rete neurale (](#3-subsystem-1--neural-network-core)`backend/nn/`)
-4. [Sottosistema 2 — Modello di coach RAP (](#4-subsystem-2--rap-coach-model)`backend/nn/rap_coach/`)
-5. [Sottosistema 3 — Servizi di coaching (](#5-subsystem-3--coaching-services)`backend/services/`)
-6. [Sottosistema 4 — Conoscenza e recupero (](#6-subsystem-4--knowledge--retrieval)`backend/knowledge/`)
-7. [Sottosistema 5 — Motori di analisi (](#7-subsystem-5--analysis-engines)`backend/analysis/`)
-8. [Sottosistema 6 — Elaborazione e feature engineering (](#8-subsystem-6--processing--feature-engineering)`backend/processing/`)
-9. [Schema del database e ciclo di vita dei dati](#9-database-schema--data-lifecycle)
-10. [Regime di formazione e Controllo di maturità](#10-training-regime--maturity-gating)
-11. [Catalogo delle funzioni di perdita](#11-loss-functions-catalogue)
-12. [Logica completa del programma — Dal lancio al consiglio](#12-logica-completa-del-programma--dal-lancio-al-consiglio)
+2. [Panoramica dell'architettura di sistema](#2-system-architecture-overview)
+3. [Sottosistema 1 — Core della rete neurale (`backend/nn/`)](#3-subsystem-1--neural-network-core)
+   - AdvancedCoachNN (LSTM + MoE)
+   - JEPA (Auto-Supervisionato InfoNCE)
+   - **VL-JEPA** (Visione-Linguaggio, 16 Concetti di Coaching, ConceptLabeler)
+   - JEPATrainer (Addestramento + Monitoraggio Deriva)
+   - Pipeline Standalone (jepa_train.py)
+   - SuperpositionLayer (Gating Contestuale)
+   - Modulo EMA
+   - CoachTrainingManager, TrainingOrchestrator, ModelFactory, Config
+   - NeuralRoleHead (Classificazione Ruoli MLP)
+   - Coach Introspection Observatory
+4. [Sottosistema 2 — Modello di coach RAP (`backend/nn/rap_coach/`)](#4-subsystem-2--rap-coach-model)
+5. [Sottosistema 1B — Sorgenti Dati (`backend/data_sources/`)](#5-sottosistema-1b--sorgenti-dati)
+   - Demo Parser + Demo Format Adapter
+   - Event Registry (Schema CS2 Events)
+   - Trade Kill Detector
+   - Steam API + Steam Demo Finder
+   - HLTV Scraper + Metadata
+   - FACEIT API + Integration
+
+**Parte 2** — Servizi, Analisi, Knowledge, Processing, Database, Training, Loss Functions
+
+**Parte 3** — Logica Programma, UI, Ingestion, Tools, Tests, Build, Remediation
 
 ---
 
@@ -45,7 +60,7 @@ CS2 Ultimate è un **sistema di coaching basato su IA ibrido** per Counter-Strik
 2. **Addestra** più modelli di reti neurali attraverso un programma a fasi con limiti di maturità (a 3 livelli: CALIBRAZIONE → APPRENDIMENTO → MATURO). 3. **Inferisce** consigli di allenamento fondendo le previsioni di apprendimento automatico con conoscenze tattiche recuperate semanticamente tramite una catena di fallback a 4 livelli (COPER → Ibrido → RAG → Base).
 3. **Spiega** il suo ragionamento tramite attribuzione causale, narrazioni basate su template, confronti tra giocatori professionisti e un'opzionale rifinitura LLM (Ollama).
 
-Il sistema contiene **≈ oltre 74.000 righe di Python** distribuite su oltre 355 file sorgente, che si estendono su sei sottosistemi logici AI, un Osservatorio di addestramento, un'architettura Quad-Daemon per l'automazione in background, un'interfaccia desktop Kivy con pattern MVVM, un sistema completo di ingestione, storage e reporting, e un'architettura tri-database specializzata documentati di seguito. Il progetto ha attraversato un processo di **rimediazione sistematica in 11 fasi** che ha risolto 350 problemi di qualità del codice, correttezza ML, sicurezza e architettura, inclusa l'eliminazione di label leakage nell'addestramento (G-01), l'implementazione della zona di pericolo visiva nel tensore vista (G-02), la calibrazione automatica dello stimatore bayesiano (G-07), e la correzione del fallback del coaching COPER (G-08).
+Il sistema contiene **≈ oltre 74.000 righe di Python** distribuite su oltre 355 file sorgente (307 `.py` sotto `Programma_CS2_RENAN/`), che si estendono su **otto sottosistemi logici AI** (NN Core con VL-JEPA, RAP Coach, Coaching Services, Knowledge & Retrieval, Analysis Engines, Processing & Feature Engineering, Sorgenti Dati, Motori di Coaching), un Osservatorio di addestramento, un modulo di Controllo (Console, DB Governor, Ingest Manager, ML Controller), un'architettura Quad-Daemon per l'automazione in background, un'interfaccia desktop Kivy con pattern MVVM, un sistema completo di ingestione (con sottosistema HLTV dedicato: HLTVApiService, CircuitBreaker, RateLimiter), storage e reporting, una **Tools Suite** con oltre 30 strumenti di validazione (Goliath Hospital, Brain Verification, headless validator), un'architettura tri-database specializzata, e una **Test Suite** con 48 file di test organizzati in smoke, unit, functional, e2e e regression. Il progetto ha attraversato un processo di **rimediazione sistematica in 12 fasi** che ha risolto 350+ problemi di qualità del codice, correttezza ML, sicurezza e architettura, inclusa l'eliminazione di label leakage nell'addestramento (G-01), l'implementazione della zona di pericolo visiva nel tensore vista (G-02), la calibrazione automatica dello stimatore bayesiano (G-07), e la correzione del fallback del coaching COPER (G-08).
 
 > **Analogia:** Immagina di avere un allenatore robot super intelligente che guarda le tue partite di calcio in video. Innanzitutto, **guarda** centinaia di partite professionistiche e le tue, prendendo appunti su ogni singola mossa (questa è la parte di "ingestione", gestita dal daemon Hunter che scansiona le cartelle e dal daemon Digester che elabora i file). Poi, **studia** quegli appunti e impara cosa fanno i grandi giocatori in modo diverso dai principianti, come uno studente che affronta i vari livelli scolastici (CALIBRARE è l'asilo, APPRENDERE è la scuola media, MATURARE è il diploma) — questo lo fa il daemon Teacher in background. Quando è il momento di darti un consiglio, non si limita a tirare a indovinare: controlla il suo **quaderno di suggerimenti**, la sua **memoria delle sessioni di allenamento passate** e cosa farebbero i **professionisti** nella tua esatta situazione, scegliendo la fonte di cui si fida di più. Infine, **spiega** perché ti sta dicendo di fare qualcosa, non solo "fai questo", ma "fai questo *perché* continui a essere colto alla sprovvista". È come avere un allenatore che ha visto ogni partita professionistica mai giocata, ricorda ogni sessione di allenamento che hai fatto e può spiegarti esattamente perché dovresti cambiare strategia. Nel frattempo, l'interfaccia desktop Kivy ti mostra tutto in tempo reale: una mappa tattica 2D con il tuo "fantasma" ottimale, grafici radar delle tue abilità, e una dashboard che ti dice esattamente a che punto è il tuo allenatore nel suo processo di apprendimento. Il daemon Pulse assicura che il sistema sia sempre vigile con un battito cardiaco costante.
 
@@ -61,7 +76,7 @@ flowchart LR
     style K fill:#51cf66,color:#fff
 ```
 
-> 355+ source files · 74,000+ lines · 6 AI subsystems + Observatory + Quad-Daemon + Desktop UI · 350 issues fixed across 11 remediation phases
+> 370+ source files · 74,000+ lines · 307 .py files · 8 AI subsystems + Observatory + Control Module + Quad-Daemon + Desktop UI + 30+ Tools · 370+ issues fixed across 12 remediation phases
 
 ---
 
@@ -73,10 +88,16 @@ Il sistema è suddiviso in **6 sottosistemi principali** che lavorano insieme co
 
 ```mermaid
 graph TB
-    subgraph Acquisizione
-        DEMO["File .dem"] --> PARSER["Parser Demo<br/>(demoparser2)"]
-        HLTV["Crawler HLTV"] --> PRO_DB["DB Giocatori Pro"]
+    subgraph Acquisizione["Acquisizione (Sorgenti Dati)"]
+        DEMO["File .dem"] --> FMT_ADAPT["Format Adapter<br/>(magic bytes, validazione)"]
+        FMT_ADAPT --> PARSER["Parser Demo<br/>(demoparser2)"]
+        PARSER --> TRADE_DET["Trade Kill Detector<br/>(192 tick window)"]
+        HLTV["Crawler HLTV<br/>(CircuitBreaker, RateLimiter)"] --> PRO_DB["DB Giocatori Pro"]
         CSV["CSV Esterni"] --> EXT_DB["Migratore CSV"]
+        STEAM_API["Steam Web API<br/>(retry + backoff)"] --> STEAM_PROFILE["Profilo Giocatore"]
+        STEAM_FIND["Steam Demo Finder<br/>(cross-platform)"] --> DEMO
+        FACEIT_API["FACEIT API<br/>(rate limited 10/min)"] --> FACEIT_DATA["Elo + Level"]
+        EVTREG["Event Registry<br/>(Schema CS2)"] -.-> PARSER
     end
 
     subgraph Elaborazione
@@ -125,6 +146,14 @@ graph TB
         UE["Utilità ed Economia<br/>Ottimizzatore acquisti"]
     end
 
+    subgraph Coaching_Engines["Motori di Coaching"]
+        CE_CORR["CorrectionEngine<br/>(top-3 correzioni pesate)"]
+        CE_HYBRID["HybridEngine<br/>(ML Z-score + RAG)"]
+        CE_EXPLAIN["ExplainabilityGenerator<br/>(5 assi + template)"]
+        CE_LONG["LongitudinalEngine<br/>(Trend-aware coaching)"]
+        CE_CORR --> CE_HYBRID --> CE_EXPLAIN
+    end
+
     subgraph Inferenza
         COACH_MGR --> HE["Servizio Coaching 4 Livelli<br/>(COPER, Ibrido, RAG, Base)"]
         RAG --> HE
@@ -136,8 +165,24 @@ graph TB
         BM --> HE
         DI --> HE
         RC --> HE
+        CE_EXPLAIN --> HE
+        FACEIT_DATA --> PB
+        STEAM_PROFILE --> PB
         HE --> OLLAMA["OllamaCoachWriter<br/>(Rifinitura NL Opzionale)"]
         HE --> EXP["Livello Spiegabilità"]
+    end
+
+    subgraph Controllo["Modulo di Controllo"]
+        CTRL_CONSOLE["Console di Sistema<br/>(TUI Rich, CLI)"]
+        CTRL_DB["DB Governor<br/>(WAL audit, Tier 1-3)"]
+        CTRL_INGEST["Ingest Manager<br/>(Thread-safe, 30min re-scan)"]
+        CTRL_ML["ML Controller<br/>(Throttle, Stop)"]
+    end
+
+    subgraph Progresso["Progress & Trend"]
+        PROG_LONG["Longitudinal Analysis<br/>(slope, volatility, confidence)"]
+        PROG_TREND["Trend Analysis<br/>(numpy polyfit)"]
+        PROG_LONG --> CE_LONG
     end
 
     EXP --> UI["GUI Kivy"]
@@ -347,6 +392,391 @@ flowchart TB
 **Decodifica Selettiva** (`forward_selective`): salta l'intero passaggio in avanti se la distanza del coseno tra l'embedding corrente e quello precedente è inferiore a una soglia (`skip_threshold=0.05`). Utilizza `1.0 - F.cosine_similarity()` come metrica di distanza e, durante l'operazione di salto, restituisce l'output precedente memorizzato nella cache. Questo consente un'efficace inferenza in tempo reale con salto dinamico dei frame: durante i momenti di gioco statici (i giocatori mantengono gli angoli), la maggior parte dei frame viene saltata completamente.
 
 > **Analogia:** La decodifica selettiva è come una telecamera di sicurezza con **rilevamento del movimento**. Invece di registrare 24 ore su 24, 7 giorni su 7 (elaborando ogni singolo frame), si attiva solo quando qualcosa cambia effettivamente. Se due frame consecutivi sono quasi identici (distanza < 0.05 — in pratica "non è successo nulla"), il modello salta completamente il calcolo. Questo consente di risparmiare un'enorme quantità di potenza di elaborazione nei momenti lenti (come quando i giocatori mantengono gli angoli e aspettano), pur continuando a catturare ogni azione importante.
+
+### -VL-JEPA: Architettura di Allineamento Visione-Linguaggio con Concetti di Coaching
+
+Definito nella seconda metà di `jepa_model.py` (righe 355-963). Il VL-JEPA (**Vision-Language JEPA**) è un'**estensione fondamentale** del JEPACoachingModel che aggiunge un **meccanismo di allineamento tra embedding latenti e concetti di coaching interpretabili**. Ispirato al VL-JEPA di Meta FAIR (2026), mappa le rappresentazioni latenti in uno spazio concettuale strutturato con 16 concetti di coaching predefiniti.
+
+> **Analogia:** Se JEPA è un allenatore che "capisce" il gioco osservandolo (apprendimento auto-supervisionato), VL-JEPA è lo stesso allenatore che ha anche imparato il **vocabolario specifico del coaching**. Non solo capisce i pattern del gioco, ma sa etichettarli con concetti come "posizionamento aggressivo", "economia inefficiente" o "scambio reattivo". È come la differenza tra un critico cinematografico che "sente" quando un film funziona e uno che sa articolare il perché: "la fotografia è eccellente, il ritmo è lento nel secondo atto, il colpo di scena è prevedibile". Il VL-JEPA traduce la comprensione latente in linguaggio di coaching specifico.
+
+#### Tassonomia dei 16 Concetti di Coaching
+
+Il sistema definisce `NUM_COACHING_CONCEPTS = 16` concetti organizzati in **5 dimensioni tattiche**:
+
+```mermaid
+graph TB
+    subgraph POS["POSIZIONAMENTO (0-2)"]
+        C0["0: positioning_aggressive<br/>Combattimenti ravvicinati, push angoli"]
+        C1["1: positioning_passive<br/>Angoli lunghi, evita contatto"]
+        C2["2: positioning_exposed<br/>Posizione vulnerabile, alta prob. morte"]
+    end
+    subgraph UTL["UTILITÀ (3-4)"]
+        C3["3: utility_effective<br/>Utilità con impatto significativo"]
+        C4["4: utility_wasteful<br/>Utilità inutilizzata o a basso impatto"]
+    end
+    subgraph DEC["DECISIONE (5-6, 11-12)"]
+        C5["5: economy_efficient<br/>Equipaggiamento allineato al tipo di round"]
+        C6["6: economy_wasteful<br/>Force-buy sfavorevoli o morte con gear costoso"]
+        C11["11: rotation_fast<br/>Rotazione posizionale rapida dopo info"]
+        C12["12: information_gathered<br/>Buona raccolta intel, nemici individuati"]
+    end
+    subgraph ENG["INGAGGIO (7-10)"]
+        C7["7: engagement_favorable<br/>Combattimenti con vantaggio HP/pos/numeri"]
+        C8["8: engagement_unfavorable<br/>Combattimenti in svantaggio numerico/HP"]
+        C9["9: trade_responsive<br/>Trade kill rapidi, buon coordinamento"]
+        C10["10: trade_isolated<br/>Morte senza trade, troppo isolato"]
+    end
+    subgraph PSY["PSICOLOGIA (13-15)"]
+        C13["13: momentum_leveraged<br/>Capitalizza hot streak con giocate sicure"]
+        C14["14: clutch_composed<br/>Decisioni calme in situazioni 1vN"]
+        C15["15: aggression_calibrated<br/>Aggressività appropriata alla situazione"]
+    end
+
+    style POS fill:#4a9eff,color:#fff
+    style UTL fill:#51cf66,color:#fff
+    style DEC fill:#ffd43b,color:#000
+    style ENG fill:#ff6b6b,color:#fff
+    style PSY fill:#be4bdb,color:#fff
+```
+
+Ogni concetto è definito come un `CoachingConcept` dataclass immutabile con `(id, name, dimension, description)`. La lista globale `COACHING_CONCEPTS` e `CONCEPT_NAMES` sono le sorgenti di verità per tutto il sistema.
+
+> **Analogia:** I 16 concetti sono come le **16 materie di una pagella scolastica del coaching**. Invece di un voto unico "sei bravo/cattivo", il VL-JEPA valuta il giocatore su 16 aspetti specifici: "In posizionamento aggressivo sei al 80%, in economia efficiente al 45%, in reattività allo scambio al 70%". Le 5 dimensioni sono i "dipartimenti" della scuola: Posizionamento, Utilità, Decisione, Ingaggio e Psicologia. Un giocatore può eccellere in una dimensione e avere lacune in un'altra — proprio come uno studente può avere ottimi voti in matematica ma scarsi in letteratura.
+
+#### Architettura VLJEPACoachingModel
+
+`VLJEPACoachingModel` eredita da `JEPACoachingModel` e aggiunge 3 componenti:
+
+| Componente | Parametri | Scopo |
+|---|---|---|
+| **concept_embeddings** | `nn.Embedding(16, latent_dim=256)` | 16 prototipi di concetto appresi nello spazio latente |
+| **concept_projector** | `Linear(256→256) → GELU → Linear(256→256)` | Proietta embedding encoder nello spazio allineato ai concetti |
+| **concept_temperature** | `nn.Parameter(0.07)`, clamped `[0.01, 1.0]` | Temperatura appresa per scaling della similarità coseno |
+
+Tutti i percorsi forward del genitore (`forward`, `forward_coaching`, `forward_selective`, `forward_jepa_pretrain`) sono **preservati immutati** via ereditarietà. Il nuovo percorso `forward_vl()` aggiunge l'allineamento concettuale.
+
+```mermaid
+flowchart TB
+    subgraph PARENT["Ereditato da JEPACoachingModel"]
+        CE["Context Encoder<br/>Linear(25→512)→LN→GELU→DO→Linear(512→256)→LN"]
+        TE["Target Encoder<br/>(identico, aggiornato via EMA τ=0.996)"]
+        PRED["Predictor<br/>Linear(256→512)→LN→GELU→DO→Linear(512→256)"]
+        LSTM["LSTM(256, 128, 2 layers, DO=0.2)"]
+        MOE["3 MoE Experts<br/>Linear(128→128)→ReLU→Linear(128→output)"]
+        GATE["Gate: Linear(128→3)→Softmax"]
+    end
+    subgraph VLNEW["Nuovi Componenti VL-JEPA"]
+        CEMB["Concept Embeddings<br/>nn.Embedding(16, 256)<br/>16 prototipi appresi"]
+        CPROJ["Concept Projector<br/>Linear(256→256)→GELU→Linear(256→256)"]
+        CTEMP["concept_temperature<br/>nn.Parameter(0.07)"]
+    end
+
+    X["Input: [B, seq, 25]"] --> CE
+    CE --> POOL["Mean Pool → [B, 256]"]
+    POOL --> CPROJ
+    CPROJ --> NORM1["L2 Normalize"]
+    CEMB --> NORM2["L2 Normalize"]
+    NORM1 --> SIM["Cosine Similarity<br/>[B, 16]"]
+    NORM2 --> SIM
+    SIM --> CTEMP
+    CTEMP --> SOFT["Softmax → concept_probs"]
+    SOFT --> TOP3["Top-3 Concepts<br/>Interpretabili"]
+
+    CE --> LSTM
+    LSTM --> GATE
+    GATE --> MOE
+    MOE --> COUT["Coaching Output [B, output_dim]"]
+
+    style VLNEW fill:#be4bdb,color:#fff
+    style PARENT fill:#228be6,color:#fff
+```
+
+> **Analogia:** L'architettura VL-JEPA è come aggiungere un **traduttore simultaneo** a un analista che già capisce il gioco. Il `concept_projector` è l'interprete che prende la comprensione latente dell'encoder (256 numeri astratti) e la traduce nello "spazio dei concetti". I `concept_embeddings` sono come 16 **cartelli segnaletici** nello spazio latente: ognuno rappresenta un concetto di coaching e ha una posizione fissa (appresa durante l'addestramento). Il `concept_temperature` controlla quanto "netta" deve essere la classificazione: una temperatura bassa (0.01) rende le decisioni binarie ("è questo concetto o non lo è"), una temperatura alta (1.0) le rende morbide ("potrebbe essere diversi concetti contemporaneamente"). Il sistema calcola la distanza coseno tra la proiezione del giocatore e ciascun cartello, e i concetti più vicini vengono attivati.
+
+#### Percorso Forward VL-JEPA (`forward_vl`)
+
+```
+1. Encode:        embeddings = context_encoder(x)                    # [B, seq, 256]
+2. Pool:          latent = embeddings.mean(dim=1)                    # [B, 256]
+3. Project:       projected = L2_normalize(concept_projector(latent)) # [B, 256]
+4. Similarity:    logits = projected @ concept_embs_norm.T            # [B, 16]
+5. Temperature:   probs = softmax(logits / clamp(temp, 0.01, 1.0))   # [B, 16]
+6. Coaching:      coaching_output = forward_coaching(x, role_id)      # [B, output_dim]
+7. Decode:        top_concepts = top-k(probs, k=3)                   # interpretabili
+```
+
+**Output `forward_vl()`:** Dizionario con 5 chiavi:
+
+| Chiave | Forma | Contenuto |
+|---|---|---|
+| `concept_probs` | `[B, 16]` | Probabilità softmax per ogni concetto |
+| `concept_logits` | `[B, 16]` | Punteggi di similarità grezzi (pre-softmax) |
+| `top_concepts` | `List[tuple]` | `[(nome_concetto, probabilità), ...]` per il primo campione |
+| `coaching_output` | `[B, output_dim]` | Predizione coaching standard (via genitore) |
+| `latent` | `[B, 256]` | Embedding latente pooled dell'encoder |
+
+**Percorso leggero — `get_concept_activations()`:** Forward solo concettuale senza testa di coaching né LSTM. Utilizza `torch.no_grad()` per efficienza massima durante l'inferenza.
+
+```mermaid
+flowchart LR
+    subgraph FULL["forward_vl() — Percorso Completo"]
+        A1["Encoder"] --> A2["Projector"] --> A3["Concept Sim"]
+        A1 --> A4["LSTM"] --> A5["MoE"] --> A6["Coaching Output"]
+    end
+    subgraph LIGHT["get_concept_activations() — Solo Concetti"]
+        B1["Encoder"] --> B2["Projector"] --> B3["Concept Probs"]
+    end
+    style LIGHT fill:#51cf66,color:#fff
+    style FULL fill:#228be6,color:#fff
+```
+
+#### ConceptLabeler: Due Modalità di Etichettatura
+
+La classe `ConceptLabeler` genera **etichette soft multi-label** (`[0, 1]^16`) per l'addestramento VL-JEPA. Supporta due modalità:
+
+**Modalità 1 — Basata su Esiti (preferita, correzione G-01):** `label_from_round_stats(round_stats)` genera etichette da dati di **esito del round** (uccisioni, morti, danni, sopravvivenza, trade kill, utilità, equipaggiamento, round vinto). Questi dati sono **ortogonali** al vettore di input a 25 dim, eliminando il label leakage.
+
+| Concetto | Segnale di Esito Usato |
+|---|---|
+| `positioning_aggressive` (0) | `opening_kill=True` → 0.8, kills≥2+survived → 0.6 |
+| `positioning_passive` (1) | survived, no opening, damage<60 → 0.7 |
+| `positioning_exposed` (2) | `opening_death=True` → 0.8, deaths>0+damage<40 → 0.6 |
+| `utility_effective` (3) | utility_total>80 + round_won → 0.5+util/300 |
+| `utility_wasteful` (4) | zero utility → 0.5, utility+lost → 0.4 |
+| `economy_efficient` (5) | eco win (equip<2000) → 0.9, normal win → 0.7 |
+| `economy_wasteful` (6) | high equip+loss → 0.4+equip/16000 |
+| `engagement_favorable` (7) | multi-kill+survived → 0.5+kills×0.15 |
+| `engagement_unfavorable` (8) | deaths+no kills+low dmg → 0.7 |
+| `trade_responsive` (9) | trade_kills>0 → 0.6+tk×0.2 |
+| `trade_isolated` (10) | died, not traded, no trade kills → 0.7 |
+| `rotation_fast` (11) | assists≥1+round_won → 0.6+assists×0.1 |
+| `information_gathered` (12) | flashes≥2+survived → 0.6 |
+| `momentum_leveraged` (13) | rating>1.5 → rating/2.5, kills≥3 → 0.7 |
+| `clutch_composed` (14) | kills≥2+survived+won → 0.6 |
+| `aggression_calibrated` (15) | efficiency = kills×1000/equip → min(eff×0.5, 1.0) |
+
+**Modalità 2 — Euristica Legacy (fallback con label leakage):** `label_tick(features)` genera etichette direttamente dal vettore di feature a 25 dim. Questo crea **label leakage** perché il modello può "barare" ricostruendo le feature di input anziché imparare pattern latenti. Usato solo quando `RoundStats` non è disponibile, con un avviso di log una tantum.
+
+> **Analogia G-01:** Il label leakage è come un **esame in cui le risposte sono scritte sul retro del foglio delle domande**. Nella modalità euristica, le etichette dei concetti sono derivate dalle stesse 25 feature che il modello vede come input — il modello può semplicemente "copiare le risposte" senza capire nulla. Nella modalità basata su esiti, le etichette vengono da dati diversi (cosa è SUCCESSO nel round: uccisioni, morti, vittoria) — il modello deve effettivamente capire la relazione tra le feature di input e gli esiti per ottenere buoni punteggi. È la differenza tra studiare per capire e studiare per copiare.
+
+**`label_batch(features_batch)`:** Wrapper che gestisce batch 2D `[B, 25]` e 3D `[B, seq_len, 25]` (media delle etichette sulla sequenza per input 3D).
+
+**Riferimento indici feature (METADATA_DIM=25):**
+
+```
+ 0: health/100      1: armor/100       2: has_helmet      3: has_defuser
+ 4: equip/10000     5: is_crouching    6: is_scoped       7: is_blinded
+ 8: enemies_vis     9: pos_x/4096     10: pos_y/4096     11: pos_z/1024
+12: view_x_sin     13: view_x_cos     14: view_y/90      15: z_penalty
+16: kast_est       17: map_id         18: round_phase
+19: weapon_class   20: time_in_round/115  21: bomb_planted
+22: teammates_alive/4  23: enemies_alive/5  24: team_economy/16000
+```
+
+#### Funzioni di Perdita VL-JEPA
+
+**1. `jepa_contrastive_loss()` — InfoNCE (già documentata sopra)**
+
+Formula: `-log(exp(sim(pred, target)/τ) / (exp(sim(pred, target)/τ) + Σ exp(sim(pred, neg_i)/τ)))` con τ=0.07.
+
+**2. `vl_jepa_concept_loss()` — Allineamento Concetti + Diversità VICReg**
+
+```python
+concept_loss = BCE_with_logits(concept_logits, concept_labels)  # Multi-label
+diversity_loss = -std(L2_normalize(concept_embeddings), dim=0).mean()  # VICReg
+total = alpha * concept_loss + beta * diversity_loss
+```
+
+| Termine | Formula | Peso Default | Scopo |
+|---|---|---|---|
+| `concept_loss` | `F.binary_cross_entropy_with_logits(logits, labels)` | α = 0.5 | Allinea embedding ai concetti corretti |
+| `diversity_loss` | `-std_per_dim(L2_norm(concept_embs)).mean()` | β = 0.1 | Impedisce il collasso degli embedding di concetto |
+
+> **Analogia:** La `concept_loss` è come **verificare che lo studente associ correttamente i termini alle definizioni** — "posizionamento aggressivo" deve attivarsi quando il giocatore è effettivamente aggressivo. La `diversity_loss` è ispirata a VICReg (Variance-Invariance-Covariance Regularization): impedisce che tutti i 16 prototipi di concetto collassino nello stesso punto dello spazio latente. È come assicurarsi che i 16 cartelli segnaletici nel museo siano **tutti in posizioni diverse** — se due cartelli sono nello stesso posto, non servono a distinguere i concetti. La diversità viene misurata come la deviazione standard degli embedding normalizzati lungo ogni dimensione: una std alta significa che i concetti sono ben separati.
+
+**Perdita totale nel training step VL-JEPA (`train_step_vl`):**
+
+```
+L_total = L_infonce + α × L_concept + β × L_diversity
+```
+
+Dove `L_infonce` è la perdita contrastiva standard JEPA e `(α × L_concept + β × L_diversity)` è il termine di allineamento concettuale.
+
+#### Flusso Dimensionale Completo JEPA / VL-JEPA
+
+```mermaid
+flowchart TB
+    subgraph INPUT["INPUT"]
+        X["Sequenza Match<br/>[B, seq_len, 25]"]
+    end
+    subgraph ENCODE["ENCODING"]
+        CE["Context Encoder<br/>25 → 512 → 256"]
+        TE["Target Encoder (EMA)<br/>25 → 512 → 256"]
+        X -->|"context window"| CE
+        X -->|"target window"| TE
+    end
+    subgraph PRETRAIN["JEPA PRE-TRAINING"]
+        CE --> POOL_C["Mean Pool<br/>[B, 256]"]
+        TE --> POOL_T["Mean Pool<br/>[B, 256]"]
+        POOL_C --> PREDICTOR["Predictor<br/>256 → 512 → 256"]
+        PREDICTOR --> PRED["Predicted [B, 256]"]
+        PRED -.->|"InfoNCE τ=0.07"| POOL_T
+    end
+    subgraph COACHING["COACHING HEAD"]
+        CE --> LSTM_IN["[B, seq, 256]"]
+        LSTM_IN --> LSTM_H["LSTM(256→128, 2 layers)"]
+        LSTM_H --> LAST["last hidden [B, 128]"]
+        LAST --> GATE_C["Gate: Linear(128→3)→Softmax"]
+        LAST --> E1C["Expert 1: Lin→ReLU→Lin"]
+        LAST --> E2C["Expert 2"]
+        LAST --> E3C["Expert 3"]
+        GATE_C --> WS["Weighted Sum → tanh"]
+        E1C --> WS
+        E2C --> WS
+        E3C --> WS
+        WS --> OUT_C["Coaching [B, output_dim]"]
+    end
+    subgraph VL["VL-JEPA CONCEPT ALIGNMENT"]
+        POOL_C --> PROJ["Projector<br/>256→256→GELU→256"]
+        PROJ --> NORM_P["L2 Norm"]
+        CEMB_W["16 Concept Embeddings<br/>[16, 256]"] --> NORM_E["L2 Norm"]
+        NORM_P --> COSIM["Cosine Sim<br/>[B, 16]"]
+        NORM_E --> COSIM
+        COSIM --> TEMP["/ temperature<br/>(0.07, learned)"]
+        TEMP --> PROBS["Softmax → concept_probs"]
+    end
+    style VL fill:#be4bdb,color:#fff
+    style PRETRAIN fill:#4a9eff,color:#fff
+    style COACHING fill:#51cf66,color:#fff
+```
+
+> **Analogia del flusso dimensionale:** Immagina il percorso dei dati come un viaggio di **traduzione multilingue**: i dati grezzi del gioco (25 numeri) sono come un testo in "linguaggio del gioco". L'encoder li traduce in "linguaggio latente" (256 numeri) — una rappresentazione compressa ma ricca. Da qui, il percorso si biforca: il **ramo JEPA** (auto-supervisione) verifica se il traduttore capisce la sequenza temporale, il **ramo Coaching** (LSTM+MoE) produce consigli pratici, e il **ramo VL** (concetti) traduce dal "linguaggio latente" al "linguaggio del coaching" (16 concetti interpretabili). Ogni ramo serve uno scopo diverso, ma tutti partono dalla stessa traduzione di base.
+
+#### JEPATrainer: Addestramento con Monitoraggio Deriva
+
+Definito in `jepa_trainer.py` (276 righe). Gestisce sia l'addestramento JEPA standard che VL-JEPA, con riaddestramento automatico basato sulla deriva.
+
+| Parametro | Default | Scopo |
+|---|---|---|
+| **Optimizer** | AdamW (lr=1e-4, weight_decay=1e-4) | Ottimizzazione con decadimento dei pesi |
+| **Scheduler** | CosineAnnealingLR (T_max=100) | Decadimento ciclico del learning rate |
+| **DriftMonitor** | z_threshold=2.5 | Rileva drift delle feature oltre 2.5σ |
+| **drift_history** | `List[DriftReport]` | Storico dei report di drift |
+
+**Ciclo di addestramento — `train_step(x_context, x_target, negatives)`:**
+
+1. Forward pass JEPA: `pred, target = model.forward_jepa_pretrain(context, target)`
+2. **Auto-detect negativi grezzi:** Se `negatives.shape[-1] ≠ latent_dim`, i negativi sono feature grezze → vengono auto-codificati via `target_encoder` con `torch.no_grad()` (reshape `[B*N, 1, D]` → expand → encode → mean pool → reshape)
+3. Loss InfoNCE su embedding normalizzati
+4. Backward + optimizer step
+5. **Aggiornamento EMA target encoder** (deve avvenire DOPO `optimizer.step()`)
+
+**Training step VL-JEPA — `train_step_vl()`:** Estende `train_step` con:
+
+1. Forward pass JEPA standard (InfoNCE)
+2. Forward VL: `model.forward_vl(x_context)` → concept_logits
+3. **Generazione etichette (preferenza G-01):** Se `round_stats` è disponibile → `label_from_round_stats()` (no leakage). Altrimenti → `label_batch()` (euristica legacy con avviso una tantum)
+4. Concept loss + diversity loss: `vl_jepa_concept_loss(logits, labels, embeddings, α, β)`
+5. Loss totale: `L_infonce + L_concept_total`
+6. Backward + optimize + EMA update
+
+**Output:** `{total_loss, infonce_loss, concept_loss, diversity_loss}`.
+
+**Monitoraggio deriva — `check_val_drift(val_df, reference_stats)`:**
+
+- Utilizza `DriftMonitor` dalla pipeline di validazione
+- Calcola z-score per ogni feature del validation set rispetto alle statistiche di riferimento
+- Se `max_z_score > 2.5`, il report segna `is_drifted=True`
+- `should_retrain(drift_history, window=5)` → se la maggioranza delle ultime 5 finestre mostra drift, attiva il flag `_needs_full_retrain`
+
+**Riaddestramento automatico — `retrain_if_needed(full_dataloader, device, epochs=10)`:**
+
+- Se il flag `_needs_full_retrain` è attivo, resetta il scheduler e riesegue `epochs` epoche complete
+- Dopo il riaddestramento, cancella il flag e lo storico drift
+- Restituisce `True/False` per indicare se il riaddestramento è avvenuto
+
+> **Analogia:** Il sistema di monitoraggio della deriva è come un **termometro automatico per le condizioni del meta-gioco**. Se i dati dei nuovi giocatori sono molto diversi da quelli su cui il modello si è allenato (ad esempio, un aggiornamento importante del gioco ha cambiato le meccaniche), il termometro rileva la "febbre" (drift > 2.5σ). Se la febbre persiste per 5 controlli consecutivi, il sistema prescrive una "cura completa" — riaddestramento totale. Questo impedisce al modello di dare consigli basati su un meta-gioco obsoleto.
+
+#### Pipeline di Addestramento Standalone (`jepa_train.py`)
+
+Script standalone per pre-addestramento e fine-tuning JEPA, eseguibile da CLI:
+
+```bash
+python -m Programma_CS2_RENAN.backend.nn.jepa_train --mode pretrain
+python -m Programma_CS2_RENAN.backend.nn.jepa_train --mode finetune --model-path models/jepa_model.pt
+```
+
+**`JEPAPretrainDataset`:** Dataset PyTorch per il pre-addestramento:
+
+| Parametro | Default | Descrizione |
+|---|---|---|
+| `context_len` | 10 | Lunghezza finestra contesto (tick) |
+| `target_len` | 10 | Lunghezza finestra target (tick) |
+| `match_sequences` | `List[np.ndarray]` | Sequenze di match `[num_rounds, METADATA_DIM]` |
+
+Per ogni campione, seleziona un punto di partenza casuale nella sequenza e restituisce `{"context": [context_len, 25], "target": [target_len, 25]}`.
+
+> **Nota (F3-25):** Il punto di partenza usa `np.random.randint()` con stato globale non seedato → finestre non riproducibili tra run. Per addestramento deterministico, usare `worker_init_fn` o un `Generator` dedicato nel `DataLoader`.
+
+**`load_pro_demo_sequences(limit=100)`:** Carica sequenze demo professionali dal database. Estrae 12 feature aggregate a livello di match da `PlayerMatchStats`, paddate a `METADATA_DIM` con zeri.
+
+> **⚠️ Avvertimento Critico (F3-08):** Lo script standalone usa `np.tile(features, (20, 1))` per creare 20 frame identici da un singolo vettore aggregato. Questo rende il pre-addestramento JEPA **un'operazione identità** — il modello impara semplicemente a copiare l'input, non le dinamiche temporali. Il `TrainingOrchestrator` nel percorso di produzione **non è affetto** da questo problema e usa dati per-tick reali.
+
+**`train_jepa_pretrain()`:** 50 epoche, batch_size=16, lr=1e-4, 8 negativi in-batch. L'optimizer include SOLO `context_encoder` e `predictor` — il `target_encoder` è aggiornato esclusivamente via EMA.
+
+**`train_jepa_finetune()`:** 30 epoche, batch_size=16, lr=1e-3, weight_decay=1e-3. Congela gli encoder e ottimizza solo LSTM + MoE + Gate.
+
+**Persistenza:** `save_jepa_model()` salva `{model_state_dict, is_pretrained}`. `load_jepa_model()` carica con `weights_only=True` (sicurezza).
+
+#### SuperpositionLayer — Gating Contestuale (`layers/superposition.py`)
+
+Modulo standalone che implementa un livello lineare con **gating dipendente dal contesto**, usato all'interno del RAP Coach Strategy Layer.
+
+```python
+class SuperpositionLayer(nn.Module):
+    def __init__(self, in_features, out_features, context_dim=METADATA_DIM):
+        self.weight = nn.Parameter(randn(out_features, in_features))
+        self.bias = nn.Parameter(zeros(out_features))
+        self.context_gate = nn.Linear(context_dim, out_features)  # Superposition Controller
+
+    def forward(self, x, context):
+        gate = sigmoid(self.context_gate(context))  # [B, out_features]
+        out = F.linear(x, self.weight, self.bias)
+        return out * gate  # Modulazione contestuale
+```
+
+**Meccanismo:** L'output di ogni neurone viene moltiplicato per un gate sigmoide condizionato sulle feature di contesto (25-dim). Questo permette al modello di "accendere" o "spegnere" neuroni dinamicamente in base alla situazione di gioco.
+
+**Osservabilità integrata:**
+
+| Metodo | Ritorno | Descrizione |
+|---|---|---|
+| `get_gate_activations()` | `Tensor` o `None` | Ultime attivazioni del gate (detached) |
+| `get_gate_statistics()` | `Dict[str, float]` | `mean_activation`, `std_activation`, `sparsity`, `active_ratio`, `top_3_dims`, `bottom_3_dims` |
+| `gate_sparsity_loss()` | `Tensor` | Perdita L1 sulle attivazioni del gate per specializzazione degli esperti |
+| `enable_tracing(interval)` | — | Log dettagliato del gate ogni `interval` passi |
+
+**Log periodico durante addestramento:** Ogni 100 forward pass (configurabile), logga dimensioni attive (gate_mean > 0.5), dimensioni sparse (gate_mean < 0.1) e media complessiva.
+
+> **Analogia:** Il SuperpositionLayer è come un **mixer audio con 256 canali** dove ogni slider è controllato automaticamente in base alla "scena" attuale. In un round eco, certi canali vengono abbassati (le feature relative al full-buy sono irrilevanti). In un retake post-plant, altri canali vengono alzati. Il `gate_sparsity_loss` è come un fonico che dice: "Usa il minor numero possibile di canali alla volta — se riesci a ottenere lo stesso suono con 50 canali invece di 200, il mix sarà più pulito e interpretabile".
+
+#### Modulo EMA Standalone
+
+L'aggiornamento **Exponential Moving Average** del target encoder è implementato direttamente in `JEPACoachingModel.update_target_encoder(momentum=0.996)`:
+
+```python
+with torch.no_grad():
+    for param_q, param_k in zip(context_encoder.parameters(), target_encoder.parameters()):
+        param_k.data = param_k.data * momentum + param_q.data * (1.0 - momentum)
+```
+
+**Invarianti:**
+- L'aggiornamento EMA avviene **sempre dopo** `optimizer.step()` — mai prima, altrimenti i gradienti non sono ancora applicati
+- Il target encoder **non riceve mai gradienti** diretti — solo aggiornamenti EMA
+- Il momentum 0.996 significa che il target encoder "assorbe" solo lo 0.4% dei pesi dell'encoder online a ogni passo — aggiornamento molto conservativo
+- `state_dict()` del modello restituisce tensori **clonati** per prevenire aliasing accidentale
+
+> **Analogia:** L'EMA è come un **mentore che impara lentamente dall'allievo**. L'allievo (context encoder) impara velocemente dai dati e cambia molto a ogni lezione. Il mentore (target encoder) osserva l'allievo e aggiorna le proprie conoscenze molto lentamente — solo lo 0.4% per lezione. Questo impedisce al mentore di "dimenticare" ciò che sapeva prima, creando un obiettivo stabile per l'apprendimento. Senza EMA, entrambi i cervelli cambierebbero troppo velocemente e il sistema potrebbe "collassare" — un fenomeno noto come mode collapse dove entrambi gli encoder producono lo stesso output indipendentemente dall'input.
 
 ### -CoachTrainingManager (Orchestrazione)
 
@@ -1095,5 +1525,195 @@ flowchart TB
 **Fallback graduale:** Restituisce `(0.0, 0.0)` in caso di eccezione. Utilizza pesi casuali in caso di checkpoint mancante.
 
 > **Analogia:** Il fallback è come un GPS che dice "Non so dove dovresti andare" invece di mandare la tua auto contro un muro. Se qualcosa va storto – il modello non è caricato, i dati sono corrotti o CUDA esaurisce la memoria – il Ghost Engine restituisce silenziosamente (0,0) invece di mandare in crash l'applicazione. Se non esiste ancora un modello addestrato, utilizza pesi casuali (essenzialmente per ipotesi), il che produce posizioni fantasma prive di significato, ma almeno non si blocca. Questa filosofia del "mai crash, degrada sempre in modo graduale" permea l'intero sistema.
+
+---
+
+## 5. Sottosistema 1B — Sorgenti Dati
+
+**Cartella nel programma:** `backend/data_sources/`
+**File:** `demo_parser.py`, `demo_format_adapter.py`, `event_registry.py`, `trade_kill_detector.py`, `hltv_scraper.py`, `hltv_metadata.py`, `steam_api.py`, `steam_demo_finder.py`, `faceit_api.py`, `faceit_integration.py`, `__init__.py`
+
+Il sottosistema Sorgenti Dati è il **punto di ingresso di tutti i dati esterni** nel sistema. Raccoglie informazioni da 5 fonti distinte: file demo CS2, statistiche HLTV, profili Steam, dati FACEIT e registry eventi di gioco.
+
+> **Analogia:** Le Sorgenti Dati sono come i **5 sensi** del coach AI. L'occhio principale (demo parser) guarda le registrazioni delle partite frame per frame. L'orecchio (HLTV scraper) ascolta le notizie dal mondo professionistico. Il tatto (Steam API) sente il profilo e la storia del giocatore. Il gusto (FACEIT) assaggia il livello competitivo del giocatore. Il sesto senso (event registry) cataloga sistematicamente ogni tipo di evento che il gioco può produrre. Senza questi sensi, il coach sarebbe cieco e sordo — incapace di imparare qualsiasi cosa.
+
+```mermaid
+flowchart TB
+    subgraph SOURCES["5 SORGENTI DATI"]
+        DEMO["File .dem<br/>(Demo Parser)"]
+        HLTV["HLTV.org<br/>(Scraper + Metadata)"]
+        STEAM["Steam Web API<br/>(Profili + Demo Finder)"]
+        FACEIT["FACEIT API<br/>(Elo + Match History)"]
+        EVENTS["Event Registry<br/>(Schema CS2 Events)"]
+    end
+    subgraph ADAPT["LIVELLO DI ADATTAMENTO"]
+        FMT["Demo Format Adapter<br/>(Magic bytes, validazione)"]
+        TRADE["Trade Kill Detector<br/>(Finestra 192 tick)"]
+    end
+    DEMO --> FMT
+    FMT --> PARSED["DataFrame Per-Round<br/>+ PlayerTickState"]
+    PARSED --> TRADE
+    HLTV --> PRO_DB["Pro Player Database<br/>(Rating 2.0, Stats)"]
+    STEAM --> PROFILE["Profilo Giocatore<br/>(SteamID, Avatar, Ore)"]
+    STEAM --> AUTO_DEMO["Auto-Discovery Demo<br/>(Cross-platform)"]
+    FACEIT --> ELO["FACEIT Elo/Level<br/>(Ranking competitivo)"]
+    EVENTS --> SCHEMA["Schema Canonico<br/>(Copertura eventi)"]
+
+    PARSED --> PIPELINE["Pipeline Elaborazione"]
+    TRADE --> PIPELINE
+    PRO_DB --> PIPELINE
+    PROFILE --> PIPELINE
+    ELO --> PIPELINE
+    AUTO_DEMO --> INGEST["Pipeline Ingestione"]
+
+    style SOURCES fill:#4a9eff,color:#fff
+    style ADAPT fill:#ffd43b,color:#000
+```
+
+### -Demo Parser (`demo_parser.py`)
+
+Wrapper robusto attorno alla libreria `demoparser2` per l'estrazione di statistiche da file demo CS2.
+
+**Baseline HLTV 2.0** — costanti di normalizzazione per il calcolo del rating:
+
+| Costante | Valore | Significato |
+|---|---|---|
+| `RATING_BASELINE_KPR` | 0.679 | Media pro: uccisioni per round |
+| `RATING_BASELINE_SURVIVAL` | 0.317 | Media pro: tasso di sopravvivenza |
+| `RATING_BASELINE_KAST` | 0.70 | Media pro: Kill/Assist/Survive/Trade % |
+| `RATING_BASELINE_ADR` | 73.3 | Media pro: danno medio per round |
+| `RATING_BASELINE_ECON` | 85.0 | Media pro: efficienza economica |
+
+**`parse_demo(demo_path, target_player=None)`:** Entry point principale. Validazione di esistenza file, parsing eventi `round_end` per contare i round, poi estrazione statistica completa via `_extract_stats_with_full_fields()`. Restituisce `pd.DataFrame` vuoto in caso di qualsiasi errore (fail-safe).
+
+**`_extract_stats_with_full_fields(parser, total_rounds, target_player)`:** Calcola tutte le 25 feature aggregate obbligatorie per il database:
+- Statistiche base: `avg_kills`, `avg_deaths`, `avg_adr`, `kd_ratio`
+- Varianza: `kill_std`, `adr_std` (via `_compute_per_round_variance`)
+- Statistiche avanzate: `avg_hs`, `accuracy`, `impact_rounds`, `econ_rating`
+- Rating HLTV 2.0 approssimato (approssimazione hand-tuned, non formula ufficiale)
+
+> **Analogia:** Il Demo Parser è come un **cronista sportivo esperto** che guarda la registrazione di una partita e compila una pagella dettagliata per ogni giocatore. Non si limita a contare le uccisioni: calcola il danno per round, la percentuale di headshot, l'efficienza economica e persino quanto sono consistenti le prestazioni (deviazione standard). Se la registrazione è corrotta o mancano dati, il cronista scrive "nessun dato disponibile" invece di inventare numeri — è la politica di tolleranza zero alla fabbricazione di dati del progetto.
+
+### -Demo Format Adapter (`demo_format_adapter.py`)
+
+Livello di resilienza per la gestione di versioni diverse del formato demo CS2.
+
+**Costanti di validazione:**
+
+| Costante | Valore | Descrizione |
+|---|---|---|
+| `DEMO_MAGIC_V2` | `b"PBDEMS2\x00"` | Magic bytes CS2 (Source 2 Protobuf) |
+| `DEMO_MAGIC_LEGACY` | `b"HL2DEMO\x00"` | Magic bytes CS:GO legacy (non supportato) |
+| `MIN_DEMO_SIZE` | 1,024 bytes (1 KB) | File più piccoli sono corrotti |
+| `MAX_DEMO_SIZE` | 5 × 1024³ (5 GB) | Cap di sicurezza |
+
+**Dataclass:**
+- `FormatVersion(name, magic, description, supported)` — specifica una versione nota del formato
+- `ProtoChange(date, description, affected_events, migration_notes)` — record di un cambiamento protobuf noto
+
+**`FORMAT_VERSIONS`:** Dizionario con due formati conosciuti (`cs2_protobuf` supportato, `csgo_legacy` non supportato).
+
+**`PROTO_CHANGELOG`:** Lista cronologica dei cambiamenti noti al formato protobuf CS2 (per resilienza ai futuri aggiornamenti).
+
+**`DemoFormatAdapter.validate_demo(path)`:** Validazione a 3 fasi: (1) esistenza e dimensioni entro bounds, (2) lettura magic bytes per identificazione formato, (3) verifica supporto del formato rilevato.
+
+> **Analogia:** Il Demo Format Adapter è come un **doganiere all'aeroporto** che controlla ogni "pacco" (file demo) prima di farlo entrare nel sistema. Controlla: (1) "Il pacco è della giusta dimensione?" (non troppo piccolo = corrotto, non troppo grande = potenziale bomba), (2) "Ha il timbro giusto?" (magic bytes PBDEMS2 = CS2, HL2DEMO = CS:GO vecchio), (3) "Accettiamo pacchi da questo paese?" (CS2 sì, CS:GO no). Se qualcosa non quadra, il pacco viene respinto con un messaggio chiaro sul motivo. Questo impedisce a file corrotti o del formato sbagliato di entrare nella pipeline e causare errori misteriosi a valle.
+
+### -Event Registry (`event_registry.py`)
+
+Registro canonico di **tutti gli eventi di gioco CS2** derivato dai dump SteamDatabase.
+
+**`GameEventSpec`** dataclass con 7 campi: `name`, `category` (round/combat/utility/economy/movement/meta), `fields` (dict campo→tipo), `priority` (critical/standard/optional), `implemented` (bool), `handler_path` (opzionale), `notes`.
+
+**Categorie di eventi registrati:**
+
+| Categoria | Eventi | Priorità Critica | Implementati |
+|---|---|---|---|
+| **Round** | `round_end`, `round_start`, `round_freeze_end`, `round_mvp`, `begin_new_match` | `round_end` | 1/5 |
+| **Combat** | `player_death`, `player_hurt`, `player_blind`, etc. | `player_death` | parziale |
+| **Utility** | `flashbang_detonate`, `hegrenade_detonate`, `smokegrenade_expired`, etc. | — | parziale |
+| **Economy** | `item_purchase`, `bomb_planted`, `bomb_defused`, etc. | `bomb_planted/defused` | parziale |
+| **Movement** | `player_footstep`, `player_jump`, etc. | — | no |
+| **Meta** | `player_connect`, `player_disconnect`, etc. | — | no |
+
+**Funzioni di utility:** `get_implemented_events()` → lista eventi implementati. `get_coverage_report()` → rapporto copertura per categoria.
+
+> **Nota (F6-33):** I `handler_path` non sono validati a runtime — se i moduli gestori vengono spostati, i riferimenti diventano silenziosamente obsoleti. Aggiungere validazione `hasattr/callable` al dispatch degli eventi se l'affidabilità è critica.
+
+> **Analogia:** L'Event Registry è come un **catalogo enciclopedico di tutti i segnali che il gioco può emettere**. Ogni segnale è classificato per categoria (combattimento, round, utilità, economia, movimento, meta), priorità (critico/standard/opzionale) e stato di implementazione. È come un catalogo di un museo: ogni opera d'arte ha una scheda con titolo, sala, artista e se è attualmente esposta. Questo permette al team di sapere esattamente quali eventi il sistema gestisce e quali mancano, pianificando l'espansione in modo sistematico.
+
+### -Trade Kill Detector (`trade_kill_detector.py`)
+
+Identifica i **trade kill** — uccisioni di ritorsione entro una finestra temporale — dalle sequenze di morte nel demo.
+
+**Costante:** `TRADE_WINDOW_TICKS = 192` (3 secondi a 64 tick/sec, il tickrate standard CS2).
+
+**`TradeKillResult`** dataclass:
+- `total_kills`, `trade_kills`, `players_traded`, `trade_details`
+- Proprietà calcolate: `trade_kill_ratio`, `was_traded_ratio`
+
+**Algoritmo (derivato da cstat-main):** Per ogni uccisione K al tick T: guarda indietro nel tempo per uccisioni effettuate dalla vittima. Se la vittima ha ucciso un compagno di squadra dell'uccisore di K entro `TRADE_WINDOW_TICKS`, segna K come trade kill e la vittima originale come "was traded".
+
+**`build_team_roster(parser)`:** Costruisce mappatura `player_name → team_num` dai tick iniziali della partita (usa il 10° percentile dei tick per stabilità dell'assegnazione).
+
+**`get_round_boundaries(parser)`:** Estrae i tick di confine tra round dall'evento `round_end`.
+
+> **Analogia:** Il Trade Kill Detector è come un **analista di replay sportivo** che rivede ogni eliminazione e chiede: "Qualcuno ha vendicato questo giocatore entro 3 secondi?" Se sì, la morte è stata "scambiata" — significa che la squadra ha reagito velocemente. Un alto rapporto di trade kill indica un buon coordinamento di squadra; un basso rapporto indica giocatori isolati che muoiono senza supporto. Questa metrica è uno degli indicatori più importanti nel CS2 professionistico per valutare la disciplina posizionale e la comunicazione della squadra.
+
+### -Steam API (`steam_api.py`)
+
+Client per la Steam Web API con retry e backoff esponenziale.
+
+**Costanti:** `MAX_RETRIES = 3`, `BACKOFF_DELAYS = [1, 2, 4]` secondi.
+
+**`_request_with_retry(url, params, timeout=5)`:** Wrapper HTTP GET con 3 tentativi per errori di connessione/timeout. Non effettua retry su errori HTTP 4xx/5xx (li propaga al chiamante).
+
+**Funzioni principali:**
+- `resolve_vanity_url(vanity_url, api_key)` → risolve un URL personalizzato Steam a un SteamID a 64 bit
+- `fetch_steam_profile(steam_id, api_key)` → recupera profilo giocatore (nome, avatar, ore di gioco). Auto-risolve vanity URL se l'input non è numerico
+
+### -Steam Demo Finder (`steam_demo_finder.py`)
+
+Auto-discovery delle demo CS2 dall'installazione Steam locale.
+
+**`SteamDemoFinder`** classe con strategia di rilevamento a 3 livelli:
+
+| Priorità | Metodo | Piattaforma |
+|---|---|---|
+| 1 | Registry Windows (`winreg`) | Windows |
+| 2 | Percorsi comuni (generati dinamicamente per ogni drive) | Windows/Linux/macOS |
+| 3 | Variabili d'ambiente | Tutte |
+
+**Rilevamento drive dinamico (Windows):** Usa `windll.kernel32.GetLogicalDrives()` per enumerare tutti i drive disponibili, poi cerca `Program Files (x86)/Steam`, `Program Files/Steam`, `Steam` su ogni drive.
+
+**`SteamNotFoundError`:** Eccezione specifica quando l'installazione Steam non può essere localizzata.
+
+> **Nota (F6-11):** La scoperta del percorso Steam è duplicata in `ingestion/steam_locator.py` (primario). Questo modulo è supplementare (scansiona directory replay). Consolidamento differito; assicurare stessa precedenza dei percorsi quando si modifica la risoluzione.
+
+### -HLTV Scraper e Metadata (`hltv_scraper.py`, `hltv_metadata.py`)
+
+**`hltv_scraper.py`:** Orchestratore del ciclo di sincronizzazione statistiche HLTV. La funzione `run_hltv_sync_cycle(limit=20)` importa `HLTVApiService` dalla pipeline di ingestione completa (`ingestion/hltv/`) e sincronizza le statistiche dei top player professionisti (Rating 2.0, K/D, ADR, KAST) per la baseline pro del coach.
+
+**`hltv_metadata.py`:** Script di debug per il salvataggio di pagine HLTV via Playwright (headless Chromium). Utilizzato durante lo sviluppo per ispezionare la struttura HTML delle pagine risultati HLTV e validare i selettori CSS del scraper.
+
+> **Nota architetturale:** Il sottosistema HLTV completo (con `HLTVApiService`, `CircuitBreaker`, `BrowserManager`, `CacheProxy`, `RateLimiter`, `collectors`, `selectors`) risiede in `ingestion/hltv/` ed è documentato in Part 3. I file in `data_sources/` sono entry point semplificati per l'uso da altri moduli.
+
+### -FACEIT API e Integrazione (`faceit_api.py`, `faceit_integration.py`)
+
+**`faceit_api.py`:** Funzione singola `fetch_faceit_data(nickname)` che recupera Elo e Level FACEIT per un dato nickname. Richiede `FACEIT_API_KEY` dalla configurazione. Restituisce `{faceit_id, faceit_elo, faceit_level}` o dizionario vuoto in caso di errore.
+
+**`faceit_integration.py`:** Client FACEIT completo con rate limiting:
+
+| Parametro | Valore | Descrizione |
+|---|---|---|
+| `BASE_URL` | `https://open.faceit.com/data/v4` | Endpoint API FACEIT v4 |
+| `RATE_LIMIT_DELAY` | 6 secondi | 10 req/min = 1 req ogni 6s (tier gratuito) |
+
+**`FACEITIntegration`** classe con:
+- `_rate_limited_request(endpoint, params)` — richieste con rate limiting automatico e backoff esponenziale su 429
+- Gestione match history e download demo
+- Eccezione dedicata `FACEITAPIError`
+
+> **Analogia:** FACEIT è come un **consulente esterno** che fornisce al coach una seconda opinione sul livello del giocatore. Mentre il sistema HLTV fornisce dati sui professionisti, FACEIT fornisce il ranking competitivo del giocatore utente (Elo e Level da 1 a 10). Il rate limiting è come un **appuntamento con il consulente**: non puoi chiamare più di 10 volte al minuto, altrimenti il consulente si rifiuta di rispondere (errore 429). Il sistema rispetta automaticamente questo limite, aspettando il tempo necessario tra una richiesta e l'altra.
 
 ---

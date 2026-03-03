@@ -63,16 +63,15 @@ class TestVisualizationService:
         viz = VisualizationService()
         assert callable(getattr(viz, "plot_comparison_v2", None))
 
-    def test_plot_with_real_data(self, real_db_session):
-        """VisualizationService plot_comparison_v2 works with real DB data."""
+    def test_plot_with_real_data(self, seeded_db_session):
+        """VisualizationService plot_comparison_v2 works with seeded DB data."""
         from sqlmodel import select
 
         from Programma_CS2_RENAN.backend.services.visualization_service import VisualizationService
         from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
 
-        records = real_db_session.exec(select(PlayerMatchStats).limit(2)).all()
-        if len(records) < 2:
-            pytest.skip("Need at least 2 PlayerMatchStats records for comparison")
+        records = seeded_db_session.exec(select(PlayerMatchStats).limit(2)).all()
+        assert len(records) >= 2, "Seeded DB should have at least 2 PlayerMatchStats"
 
         r1, r2 = records[0], records[1]
         # Keys must match numeric_feats in visualization_service.py

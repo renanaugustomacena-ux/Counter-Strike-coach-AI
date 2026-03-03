@@ -163,7 +163,7 @@ class HLTVOrchestrator:
         LIMITATION: If this code runs before Sept 2023, it will fail.
         If run after, assumes all recent matches are CS2 (CSGO no longer competitive).
         """
-        cs2_release_date = datetime(2023, 9, 27)
+        cs2_release_date = datetime(2023, 9, 27, tzinfo=timezone.utc)
         current_date = datetime.now(timezone.utc)
 
         # Safety check: if running before CS2 release, cannot reliably filter

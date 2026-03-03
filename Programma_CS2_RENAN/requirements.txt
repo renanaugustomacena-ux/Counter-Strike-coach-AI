@@ -100,7 +100,7 @@ wheel==0.43.0
 zipp==3.23.0
 demoparser2==0.40.2
 Kivy==2.3.0
-KivyMD==1.2.0
+kivymd @ https://github.com/kivymd/KivyMD/archive/master.zip
 kivy-deps.glew==0.3.1
 kivy-deps.sdl2==0.7.0
 kivy-deps.angle==0.4.0

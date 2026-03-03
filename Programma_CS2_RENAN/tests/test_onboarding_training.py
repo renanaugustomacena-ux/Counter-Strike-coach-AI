@@ -35,10 +35,6 @@ from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
 class TestExtractFeatures:
     """Pure math tests for _extract_features() with controlled inputs."""
 
-    @pytest.mark.xfail(
-        strict=False,
-        reason="F9-01: baseline values in test may not match current TrainingController baselines",
-    )
     def test_baseline_player_yields_zero_vector(self):
         """A player at exact baselines should produce a near-zero vector."""
         controller = TrainingController()

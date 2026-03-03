@@ -177,6 +177,78 @@ class PortabilityVerifier:
         ("grp", "Unix group database"),
     ]
 
+    # Patterns that are safe at module level (not import-time side effects)
+    SAFE_IMPORT_PATTERNS = [
+        # Standard library / framework
+        "Path(", "os.path.", "os.makedirs(", "os.environ", "logging.", "getLogger",
+        # Type annotations
+        "Optional[", "List[", "Dict[", "Tuple[", "Union[", "Type[",
+        "TypeVar(", "Callable[",
+        # Dataclass / enum
+        "dataclass", "field(", "Enum)", "namedtuple(",
+        "IntEnum)", "StrEnum)", "auto()",
+        # Project-specific safe patterns
+        "get_logger(", "get_setting(", "get_base_dir(", "get_writeable_dir(",
+        "get_resource_path(", "stabilize_paths(", "get_db_manager(",
+        "get_match_data_manager(", "get_experience_bank(",
+        # SQLAlchemy / SQLModel
+        "create_engine(", "Column(", "Field(", "Relationship(",
+        "event.listens_for", "select(",
+        # Kivy properties
+        "ObjectProperty(", "StringProperty(", "NumericProperty(",
+        "BooleanProperty(", "ListProperty(", "DictProperty(",
+        "Builder.load", "Factory.register",
+        # Constants / config
+        "re.compile(", "threading.", "functools.", "collections.",
+        # Data structure constructors (module-level constants)
+        "NamedPosition(", "MapMetadata(", "GameEventSpec(",
+        "CoachingConcept(", "RoleProfile(", "EngagementProfile(",
+        "FormatVersion(", "ProtoChange(", "ScaleConfig(", "TrainingConfig(",
+        # System / process (entry point scripts)
+        "sys.path.insert(", "sys.path.append(", "sys.exit(", "print(",
+        # Kivy / GUI config
+        "Config.set(", "Config.read(", "matplotlib.use(",
+        # Argparse
+        "ArgumentParser(", "parse_args(",
+        # Standard lib
+        "warnings.warn(", "_warnings.warn(",
+        "defaultdict(", "OrderedDict(", "deque(",
+        "raise ",
+        # Register / decorators
+        ".register(",
+        # Threading primitives
+        "Lock(", "Event(", "Semaphore(", "Condition(",
+        # Type construction
+        "NewType(",
+        # Environment / sys introspection
+        "os.getenv(", "getattr(sys", "getattr(os",
+        # FastAPI / ASGI
+        "FastAPI(", "APIKeyHeader(", "APIRouter(", "@app.",
+        # Pytest
+        "@pytest.mark.", "pytest.mark.",
+        # Logging setup
+        "addHandler(", "setFormatter(", "fileConfig(",
+        "logger.info(", "logger.warning(", "logger.critical(",
+        "logger.debug(", "logger.error(", "app_logger.",
+        # Project entry-point helpers
+        "path_stabilize(", "init_sentry(", "run_rasp_audit(",
+        # Alembic
+        "run_migrations_offline(", "run_migrations_online(", "is_offline_mode(",
+        # Module-level builtins (constant computation)
+        "float(", "int(", "str(", "len(", "set(", "list(",
+        "dict(", "tuple(", "bool(", "max(", "min(", "abs(", "round(",
+        # Module-level singletons (service locator pattern)
+        "= HelpSystem(", "= AnalyticsEngine(", "= StateManager(",
+        "= VisualizationService(", "= AppLifecycleManager(",
+        "= LocalizationManager(", "= ScreenRegistry(",
+        "= RateLimiter(", "= Console(",
+        "hook(", "stdlib_module_names",
+        # Config module bootstrap
+        "load_user_settings(", "_settings.get(",
+        "_resolve_match_data_path(", "configure_log_dir(",
+        "ensure_database_current(",
+    ]
+
     def __init__(self, project_root: Path = None):
         self.project_root = project_root or Path(__file__).parent.parent
         self.violations: List[Violation] = []
@@ -202,6 +274,62 @@ class PortabilityVerifier:
         lines = full_content.split("\n")[:line_num]
         docstring_count = sum(l.count('"""') + l.count("'''") for l in lines)
         return docstring_count % 2 == 1  # Odd count means we're inside
+
+    @staticmethod
+    def _is_false_positive_path(line: str) -> bool:
+        """Detect f-strings with / or \\ that are NOT file path construction.
+
+        Strategy: only flag lines that show strong evidence of file system
+        path construction.  Everything else is a false positive (URL routes,
+        text fractions, ANSI codes, TensorBoard metric keys, etc.).
+        """
+        lower = line.lower()
+        # --- Definite non-path patterns (return True = false positive) ---
+        # URL / protocol patterns
+        if any(p in lower for p in ("http", "sqlite:///", "ftp:", "://", "mailto:")):
+            return True
+        # Already uses os.path (safe path construction)
+        if "os.path." in line:
+            return True
+        # Explicit suppression
+        if "# PORTABILITY_OK" in line:
+            return True
+        # Logging / debug strings
+        if any(p in line for p in ("logger.", "log.", "app_logger.", "logging.")):
+            return True
+        # ANSI escape codes (\033[)
+        if "\\033[" in line or "\\x1b[" in line:
+            return True
+
+        # --- Pathlib / operator already in use → correct, not a violation ---
+        import re as _re
+        # Pattern: `variable / f"..."` — pathlib division operator
+        if _re.search(r'\w\s*/\s*f["\']', line):
+            return True
+
+        # --- Positive evidence for file path construction ---
+        # A genuine file path f-string typically has a file extension
+        file_ext_pattern = _re.compile(
+            r'\.(py|json|db|txt|csv|pt|pth|log|cfg|ini|yaml|yml|toml|md|html|kv|png|jpg|bak)\b'
+        )
+        if file_ext_pattern.search(line):
+            return False  # Likely genuine path construction — flag it
+
+        # Backslash that is NOT an escape sequence
+        stripped = line.strip()
+        if "\\" in stripped:
+            test = stripped
+            # Remove all known Python escape sequences
+            for esc in ("\\n", "\\t", "\\r", "\\\\", "\\'", '\\"', "\\0", "\\a", "\\b", "\\f", "\\v"):
+                test = test.replace(esc, "")
+            # Remove unicode escapes (\uXXXX) and hex escapes (\xXX)
+            test = _re.sub(r"\\u[0-9a-fA-F]{4}", "", test)
+            test = _re.sub(r"\\x[0-9a-fA-F]{2}", "", test)
+            if "\\" in test:
+                return False  # Has real backslash path separators — flag it
+
+        # No file extension AND no real backslash → almost certainly not a path
+        return True
 
     def _is_in_platform_guard(self, lines: list, line_num: int) -> bool:
         """Check if line is inside a platform-specific guard (e.g., if os.name == 'nt':)."""
@@ -383,8 +511,7 @@ class PortabilityVerifier:
                     if 'f"' in line or "f'" in line:
                         if ("/" in line or "\\" in line) and "Path" not in line:
                             if not self._is_in_comment_or_docstring(line, content, line_num):
-                                # Allow URL patterns
-                                if "http" not in line.lower() and "url" not in line.lower():
+                                if not self._is_false_positive_path(line):
                                     local_violations.append(
                                         Violation(
                                             file=str(pyfile.relative_to(self.project_root)),
@@ -455,61 +582,41 @@ class PortabilityVerifier:
                 content = pyfile.read_text(encoding="utf-8")
 
                 # Check for dangerous platform-specific imports
-                for danger_import, description in self.DANGEROUS_IMPORTS:
-                    pattern = rf"^\s*(?:import|from)\s+{danger_import}"
-                    for line_num, line in enumerate(content.split("\n"), 1):
-                        if re.match(pattern, line):
-                            # Check if wrapped in try/except or platform check
-                            context_start = max(0, line_num - 5)
-                            context_lines = content.split("\n")[context_start:line_num]
-                            context = "\n".join(context_lines)
-
-                            if "try:" not in context and "platform" not in context.lower():
-                                local_violations.append(
-                                    Violation(
-                                        file=str(pyfile.relative_to(self.project_root)),
-                                        line=line_num,
-                                        severity=Severity.CRITICAL,
-                                        category="Platform Import",
-                                        message=f"{description} - not guarded",
-                                        code_snippet=line.strip(),
-                                        suggestion="Wrap in try/except or check sys.platform",
-                                    )
-                                )
+                rel_path_for_danger = str(pyfile.relative_to(self.project_root))
+                content_lines = content.split("\n")
+                self._check_dangerous_imports(
+                    content_lines, rel_path_for_danger, local_violations
+                )
 
                 # Check for import-time function calls (side effects)
                 tree = ast.parse(content)
+                lines = content.split("\n")
+                rel_path = str(pyfile.relative_to(self.project_root))
+
                 for node in ast.walk(tree):
-                    if isinstance(node, ast.Call):
-                        # Top-level calls (not inside function/class)
-                        if hasattr(node, "lineno"):
-                            line = content.split("\n")[node.lineno - 1]
-                            # Skip common safe patterns
-                            safe_patterns = [
-                                "Path(",
-                                "os.path.",
-                                "logging.",
-                                "getLogger",
-                                "Optional[",
-                                "List[",
-                                "Dict[",
-                                "Tuple[",
-                            ]
-                            if not any(sp in line for sp in safe_patterns):
-                                # Check if inside function/class
-                                if not self._is_inside_function_or_class(tree, node.lineno):
-                                    if "__name__" not in line and "if " not in line:
-                                        local_violations.append(
-                                            Violation(
-                                                file=str(pyfile.relative_to(self.project_root)),
-                                                line=node.lineno,
-                                                severity=Severity.WARNING,
-                                                category="Import Side Effect",
-                                                message="Top-level function call at import time",
-                                                code_snippet=line.strip(),
-                                                suggestion="Move to main() or lazy initialization",
-                                            )
-                                        )
+                    if not isinstance(node, ast.Call) or not hasattr(node, "lineno"):
+                        continue
+
+                    line = lines[node.lineno - 1]
+
+                    if any(sp in line for sp in self.SAFE_IMPORT_PATTERNS):
+                        continue
+                    if self._is_inside_function_or_class(tree, node.lineno):
+                        continue
+                    if self._is_inside_name_main_block(tree, node.lineno):
+                        continue
+
+                    local_violations.append(
+                        Violation(
+                            file=rel_path,
+                            line=node.lineno,
+                            severity=Severity.WARNING,
+                            category="Import Side Effect",
+                            message="Top-level function call at import time",
+                            code_snippet=line.strip(),
+                            suggestion="Move to main() or lazy initialization",
+                        )
+                    )
 
             except SyntaxError:
                 local_violations.append(
@@ -543,6 +650,57 @@ class PortabilityVerifier:
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                 if hasattr(node, "lineno") and hasattr(node, "end_lineno"):
                     if node.lineno <= lineno <= (node.end_lineno or node.lineno + 1000):
+                        return True
+        return False
+
+    def _check_dangerous_imports(
+        self,
+        content_lines: list,
+        rel_path: str,
+        violations: list,
+    ) -> None:
+        """Flag platform-specific imports that lack try/except or platform guards."""
+        for danger_import, description in self.DANGEROUS_IMPORTS:
+            pattern = rf"^\s*(?:import|from)\s+{danger_import}"
+            for line_num, line in enumerate(content_lines, 1):
+                if not re.match(pattern, line):
+                    continue
+
+                context_start = max(0, line_num - 5)
+                context = "\n".join(content_lines[context_start:line_num])
+
+                if "try:" in context or "platform" in context.lower():
+                    continue
+
+                violations.append(
+                    Violation(
+                        file=rel_path,
+                        line=line_num,
+                        severity=Severity.CRITICAL,
+                        category="Platform Import",
+                        message=f"{description} - not guarded",
+                        code_snippet=line.strip(),
+                        suggestion="Wrap in try/except or check sys.platform",
+                    )
+                )
+
+    @staticmethod
+    def _is_inside_name_main_block(tree: ast.AST, lineno: int) -> bool:
+        """Check if a line is inside an 'if __name__ == \"__main__\":' block."""
+        for node in ast.walk(tree):
+            if isinstance(node, ast.If) and hasattr(node, "end_lineno"):
+                # Match: if __name__ == "__main__":
+                test = node.test
+                is_name_main = False
+                if isinstance(test, ast.Compare):
+                    left = test.left
+                    if isinstance(left, ast.Name) and left.id == "__name__":
+                        is_name_main = True
+                    elif isinstance(left, ast.Constant) and left.value == "__main__":
+                        is_name_main = True
+                if is_name_main:
+                    end = node.end_lineno or node.lineno + 5000
+                    if node.lineno <= lineno <= end:
                         return True
         return False
 

@@ -26,7 +26,6 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 from sqlmodel import Session, func, select
 
-from Programma_CS2_RENAN.backend.knowledge.rag_knowledge import KnowledgeEmbedder
 from Programma_CS2_RENAN.backend.knowledge.round_utils import infer_round_phase  # F5-20: shared utility
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import CoachingExperience, PlayerMatchStats
@@ -102,6 +101,9 @@ class ExperienceBank:
 
     def __init__(self):
         # F5-23: init_database() removed — must be called once at app startup, not per-constructor.
+        # Deferred import breaks circular dependency: experience_bank <-> rag_knowledge
+        from Programma_CS2_RENAN.backend.knowledge.rag_knowledge import KnowledgeEmbedder
+
         self.db = get_db_manager()
         self.embedder = KnowledgeEmbedder()
         logger.info("ExperienceBank initialized")
