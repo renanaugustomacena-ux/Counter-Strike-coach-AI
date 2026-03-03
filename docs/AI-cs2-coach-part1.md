@@ -60,7 +60,7 @@ CS2 Ultimate è un **sistema di coaching basato su IA ibrido** per Counter-Strik
 2. **Addestra** più modelli di reti neurali attraverso un programma a fasi con limiti di maturità (a 3 livelli: CALIBRAZIONE → APPRENDIMENTO → MATURO). 3. **Inferisce** consigli di allenamento fondendo le previsioni di apprendimento automatico con conoscenze tattiche recuperate semanticamente tramite una catena di fallback a 4 livelli (COPER → Ibrido → RAG → Base).
 3. **Spiega** il suo ragionamento tramite attribuzione causale, narrazioni basate su template, confronti tra giocatori professionisti e un'opzionale rifinitura LLM (Ollama).
 
-Il sistema contiene **≈ oltre 74.000 righe di Python** distribuite su oltre 355 file sorgente (307 `.py` sotto `Programma_CS2_RENAN/`), che si estendono su **otto sottosistemi logici AI** (NN Core con VL-JEPA, RAP Coach, Coaching Services, Knowledge & Retrieval, Analysis Engines, Processing & Feature Engineering, Sorgenti Dati, Motori di Coaching), un Osservatorio di addestramento, un modulo di Controllo (Console, DB Governor, Ingest Manager, ML Controller), un'architettura Quad-Daemon per l'automazione in background, un'interfaccia desktop Kivy con pattern MVVM, un sistema completo di ingestione (con sottosistema HLTV dedicato: HLTVApiService, CircuitBreaker, RateLimiter), storage e reporting, una **Tools Suite** con oltre 30 strumenti di validazione (Goliath Hospital, Brain Verification, headless validator), un'architettura tri-database specializzata, e una **Test Suite** con 48 file di test organizzati in smoke, unit, functional, e2e e regression. Il progetto ha attraversato un processo di **rimediazione sistematica in 12 fasi** che ha risolto 350+ problemi di qualità del codice, correttezza ML, sicurezza e architettura, inclusa l'eliminazione di label leakage nell'addestramento (G-01), l'implementazione della zona di pericolo visiva nel tensore vista (G-02), la calibrazione automatica dello stimatore bayesiano (G-07), e la correzione del fallback del coaching COPER (G-08).
+Il sistema contiene **≈ 75.800+ righe di Python** distribuite su 1.249 file sorgente (334 `.py` sotto `Programma_CS2_RENAN/`), che si estendono su **otto sottosistemi logici AI** (NN Core con VL-JEPA, RAP Coach, Coaching Services, Knowledge & Retrieval, Analysis Engines, Processing & Feature Engineering, Sorgenti Dati, Motori di Coaching), un Osservatorio di addestramento, un modulo di Controllo (Console, DB Governor, Ingest Manager, ML Controller), un'architettura Quad-Daemon per l'automazione in background, un'interfaccia desktop Kivy con 13 schermi e pattern MVVM, un sistema completo di ingestione (con sottosistema HLTV dedicato: HLTVApiService, CircuitBreaker, RateLimiter), storage e reporting, una **Tools Suite** con 35 script di validazione e diagnostica (Goliath Hospital, Brain Verification, headless validator, Ultimate ML Coach Debugger), un'architettura tri-database specializzata con 20 tabelle SQLModel nel monolite più database per-match separati, e una **Test Suite** con 73 file di test organizzati in 6 categorie: analysis/theory, coaching/training, ML/models, data/storage, UI/playback, integration/misc. Il progetto ha attraversato un processo di **rimediazione sistematica in 12 fasi** che ha risolto 370+ problemi di qualità del codice, correttezza ML, sicurezza e architettura, inclusa l'eliminazione di label leakage nell'addestramento (G-01), l'implementazione della zona di pericolo visiva nel tensore vista (G-02), la calibrazione automatica dello stimatore bayesiano (G-07), e la correzione del fallback del coaching COPER (G-08).
 
 > **Analogia:** Immagina di avere un allenatore robot super intelligente che guarda le tue partite di calcio in video. Innanzitutto, **guarda** centinaia di partite professionistiche e le tue, prendendo appunti su ogni singola mossa (questa è la parte di "ingestione", gestita dal daemon Hunter che scansiona le cartelle e dal daemon Digester che elabora i file). Poi, **studia** quegli appunti e impara cosa fanno i grandi giocatori in modo diverso dai principianti, come uno studente che affronta i vari livelli scolastici (CALIBRARE è l'asilo, APPRENDERE è la scuola media, MATURARE è il diploma) — questo lo fa il daemon Teacher in background. Quando è il momento di darti un consiglio, non si limita a tirare a indovinare: controlla il suo **quaderno di suggerimenti**, la sua **memoria delle sessioni di allenamento passate** e cosa farebbero i **professionisti** nella tua esatta situazione, scegliendo la fonte di cui si fida di più. Infine, **spiega** perché ti sta dicendo di fare qualcosa, non solo "fai questo", ma "fai questo *perché* continui a essere colto alla sprovvista". È come avere un allenatore che ha visto ogni partita professionistica mai giocata, ricorda ogni sessione di allenamento che hai fatto e può spiegarti esattamente perché dovresti cambiare strategia. Nel frattempo, l'interfaccia desktop Kivy ti mostra tutto in tempo reale: una mappa tattica 2D con il tuo "fantasma" ottimale, grafici radar delle tue abilità, e una dashboard che ti dice esattamente a che punto è il tuo allenatore nel suo processo di apprendimento. Il daemon Pulse assicura che il sistema sia sempre vigile con un battito cardiaco costante.
 
@@ -76,7 +76,7 @@ flowchart LR
     style K fill:#51cf66,color:#fff
 ```
 
-> 370+ source files · 74,000+ lines · 307 .py files · 8 AI subsystems + Observatory + Control Module + Quad-Daemon + Desktop UI + 30+ Tools · 370+ issues fixed across 12 remediation phases
+> 1,249 source files · 75,800+ lines · 334 .py files · 8 AI subsystems + Observatory + Control Module + Quad-Daemon + Desktop UI (13 screens) + 35 Tools · 73 test files · 20 SQLModel tables · 370+ issues fixed across 12 remediation phases
 
 ---
 
@@ -134,16 +134,17 @@ graph TB
         KG["Grafo della Conoscenza<br/>(Triple SQLite)"]
     end
 
-    subgraph Analisi
+    subgraph Analisi["Analisi (10 Motori)"]
         GT["Expectiminimax<br/>Albero di Gioco - profondità 3"]
-        BM["Stimatore Bayesiano<br/>Probabilità Morte"]
+        BM["Stimatore Bayesiano<br/>Probabilità Morte +<br/>Calibratore Adattivo"]
         DI["Indice Inganno<br/>3 sotto-metriche"]
         RC["Classificatore Ruoli<br/>6 ruoli + Consenso Neurale"]
-        WP["Predittore Probabilità<br/>Vittoria - 12 feature"]
+        WP["Predittore Probabilità<br/>Vittoria - 12 feature NN"]
         MOM["Tracker Momentum<br/>Rilevamento Tilt/Hot"]
         ENT["Analizzatore Entropia<br/>Impatto utilità Shannon"]
         BS["Rilevatore Punti Ciechi"]
         UE["Utilità ed Economia<br/>Ottimizzatore acquisti"]
+        ER["Analizzatore Ingaggio<br/>50+ posizioni 8 mappe"]
     end
 
     subgraph Coaching_Engines["Motori di Coaching"]

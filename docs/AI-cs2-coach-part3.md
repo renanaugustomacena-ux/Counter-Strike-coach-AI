@@ -1,6 +1,6 @@
 ## 9. Schema del database e ciclo di vita dei dati
 
-Il progetto utilizza **SQLModel** (Pydantic + SQLAlchemy) con SQLite (modalità WAL) e un'**architettura tri-database** specializzata. 22+ tabelle SQLModel principali distribuite su 3 database:
+Il progetto utilizza **SQLModel** (Pydantic + SQLAlchemy) con SQLite (modalità WAL) e un'**architettura tri-database** specializzata. 20 tabelle SQLModel principali distribuite su 3 database:
 
 1. **`database.db`** — Database principale dell'applicazione. Contiene tutte le tabelle core: statistiche giocatori, stato del coach, task di ingestione, insight di coaching, profili utente, notifiche di sistema.
 2. **`knowledge_base.db`** — Database della conoscenza. Contiene la base RAG (`TacticalKnowledge`), la banca esperienze COPER (`CoachingExperience`), e il Knowledge Graph (`kg_entities`, `kg_relations`).
@@ -39,9 +39,156 @@ flowchart TB
     style DB3 fill:#ffd43b,color:#000
 ```
 
-> **Analogia:** Il database è l'**archivio** del sistema: ogni informazione ha un cassetto e una cartella specifici. L'architettura tri-database è come avere **tre archivi specializzati**: l'archivio principale (dati del gioco quotidiano), la biblioteca (conoscenze e esperienze), e lo schedario dei professionisti (dati HLTV). Separandoli, molte persone possono consultare libri in biblioteca mentre qualcun altro aggiorna lo schedario principale senza bloccarsi a vicenda. SQLite in modalità WAL consente a più programmi di leggere ciascun archivio contemporaneamente. SQLModel combina Pydantic (per la convalida dei dati: "assicurati che il campo età sia effettivamente un numero") con SQLAlchemy (per le operazioni sul database: "salva questo nella tabella giusta"). Le oltre 22 tabelle sono organizzate come l'archivio scolastico: profili degli studenti, punteggi dei test, appunti di classe, valutazioni degli insegnanti e libri della biblioteca.
+> **Analogia:** Il database è l'**archivio** del sistema: ogni informazione ha un cassetto e una cartella specifici. L'architettura tri-database è come avere **tre archivi specializzati**: l'archivio principale (dati del gioco quotidiano), la biblioteca (conoscenze e esperienze), e lo schedario dei professionisti (dati HLTV). Separandoli, molte persone possono consultare libri in biblioteca mentre qualcun altro aggiorna lo schedario principale senza bloccarsi a vicenda. SQLite in modalità WAL consente a più programmi di leggere ciascun archivio contemporaneamente. SQLModel combina Pydantic (per la convalida dei dati: "assicurati che il campo età sia effettivamente un numero") con SQLAlchemy (per le operazioni sul database: "salva questo nella tabella giusta"). Le 20 tabelle sono organizzate come l'archivio scolastico: profili degli studenti, punteggi dei test, appunti di classe, valutazioni degli insegnanti e libri della biblioteca.
 
-![92204.svg](.attachments.253054/92204.svg)
+```mermaid
+erDiagram
+    PlayerMatchStats ||--o{ RoundStats : "demo_name"
+    PlayerMatchStats ||--o{ PlayerTickState : "demo_name, player_name"
+    PlayerMatchStats ||--o{ CoachingInsight : "player_name, demo_name"
+    PlayerMatchStats }o--o| ProPlayer : "pro_player_id → hltv_id"
+    ProPlayer }o--|| ProTeam : "team_id → hltv_id"
+    ProPlayer ||--o{ ProPlayerStatCard : "player_id → hltv_id"
+    MatchResult ||--o{ MapVeto : "match_id"
+    MatchResult ||--o{ PlayerTickState : "match_id"
+    CoachingExperience }o--o| MatchResult : "pro_match_id → match_id"
+
+    PlayerMatchStats {
+        int id PK
+        string player_name "indexed"
+        string demo_name "unique per player"
+        float rating "0.0 - 5.0"
+        string dataset_split "train/val/test"
+        int pro_player_id FK
+        bool is_pro
+    }
+    RoundStats {
+        int id PK
+        string demo_name "indexed"
+        int round_number "indexed"
+        string player_name "indexed"
+        int kills
+        float round_rating
+    }
+    PlayerTickState {
+        int id PK
+        int match_id FK
+        int tick "128 Hz"
+        string demo_name "indexed"
+        string player_name "indexed"
+        float pos_x
+        float pos_y
+    }
+    CoachingInsight {
+        int id PK
+        string player_name "indexed"
+        string demo_name "indexed"
+        string title
+        string severity
+        string focus_area
+    }
+    CoachingExperience {
+        int id PK
+        string context_hash "indexed"
+        string map_name "indexed"
+        string action_taken
+        string outcome "indexed"
+        string embedding "384-dim JSON"
+        int pro_match_id FK
+    }
+    TacticalKnowledge {
+        int id PK
+        string title "indexed"
+        string category "indexed"
+        string embedding "384-dim JSON"
+        int usage_count
+    }
+    ProPlayer {
+        int id PK
+        int hltv_id "unique indexed"
+        string nickname "indexed"
+        int team_id FK
+    }
+    ProTeam {
+        int id PK
+        int hltv_id "unique indexed"
+        string name "indexed"
+        int world_rank
+    }
+    ProPlayerStatCard {
+        int id PK
+        int player_id FK
+        float rating_2_0
+        float adr
+        string time_span
+    }
+    MatchResult {
+        int match_id PK
+        string event_name "indexed"
+        int team_a_id
+        int winner_id
+    }
+    MapVeto {
+        int id PK
+        int match_id FK
+        string map_name
+        string action
+    }
+    PlayerProfile {
+        int id PK
+        string player_name "unique indexed"
+        string role
+        string bio
+    }
+    CoachState {
+        int id PK
+        string status "Paused/Training/Idle/Error"
+        float belief_confidence
+        string detail
+    }
+    ServiceNotification {
+        int id PK
+        string daemon "indexed"
+        string severity
+        string message
+    }
+    IngestionTask {
+        int id PK
+        string demo_path "unique indexed"
+        string status "queued/processing/completed/failed"
+        int retry_count
+    }
+    Ext_PlayerPlaystyle {
+        int id PK
+        string player_name "indexed"
+        string assigned_role
+        float rating_impact
+    }
+    Ext_TeamRoundStats {
+        int id PK
+        int match_id "indexed"
+        string team_name "indexed"
+        string map_name
+    }
+    HLTVDownload {
+        int id PK
+        string match_id "unique indexed"
+        string teams
+        string event
+    }
+    CalibrationSnapshot {
+        int id PK
+        string calibration_type "indexed"
+        string parameters_json
+        int sample_count
+    }
+    RoleThresholdRecord {
+        int id PK
+        string stat_name "unique indexed"
+        float value
+        int sample_count
+    }
+```
 
 > **Spiegazione del diagramma ER:** Ogni riquadro rappresenta un **tipo di record** nel database. `PlayerMatchStats` è come una **pagella** per ogni giocatore in ogni partita (quante uccisioni, morti, la loro valutazione, ecc.). `PlayerTickState` è come un **diario fotogramma per fotogramma**: 128 voci al secondo che registrano esattamente dove si trovava il giocatore, quanto era in salute, in che direzione stava guardando. `RoundStats` è la **scomposizione per domanda**: valutazioni individuali per ogni round (uccisioni, morti, danni, uccisioni noscope, assist flash, valutazione del round), consentendo analisi dettagliate. `CoachingExperience` è il **diario** dell'allenatore: ogni momento di allenamento, se i consigli hanno funzionato e quanto sono stati efficaci. `CoachingInsight` è il **consiglio effettivo** fornito al giocatore. `TacticalKnowledge` è il **libro di testo**: suggerimenti e strategie che l'allenatore può consultare. `RoleThresholdRecord` è la **rubrica di valutazione**, ovvero le soglie apprese per classificare i ruoli dei giocatori. `CalibrationSnapshot` è il **registro di controllo dello strumento**, che registra quando il modello di credenza è stato ricalibrato e con quanti campioni. `Ext_PlayerPlaystyle` è il **report di scouting esterno**, ovvero le metriche dello stile di gioco ricavate dai dati CSV utilizzati per addestrare NeuralRoleHead. `ServiceNotification` è il **sistema di interfono**, ovvero i messaggi di errore ed evento provenienti dai daemon in background mostrati nell'interfaccia utente. Le linee tra le tabelle mostrano le relazioni: ogni record di partita è collegato al profilo di un giocatore, le esperienze di allenamento sono collegate a partite specifiche e RoundStats è collegato a PlayerMatchStats tramite demo_name.
 
@@ -1102,7 +1249,7 @@ flowchart TB
     style T4 fill:#868e96,color:#fff
 ```
 
-**Le 22 tabelle SQLModel:**
+**Le 20 tabelle SQLModel:**
 
 | # | Tabella | Database | Categoria | Descrizione |
 | - | ------- | -------- | --------- | ----------- |
@@ -1124,10 +1271,15 @@ flowchart TB
 | 16 | `Ext_TeamRoundStats` | database.db | Esterno | Statistiche torneo esterne |
 | 17 | `MatchResult` | database.db | Partite | Esiti delle partite |
 | 18 | `MapVeto` | database.db | Partite | Storico selezione mappe |
-| 19 | `DatasetSplit` | database.db | Enum | Categorie split (train/val/test) |
-| 20 | `CoachStatus` | database.db | Enum | Stati del coach (Paused/Training/Idle/Error) |
-| 21 | `CalibrationSnapshot` | database.db | Sistema | Registro di calibrazione del modello di credenza (timestamp, campioni, risultato) |
-| 22 | `RoleThresholdRecord` | database.db | Sistema | Soglie apprese per la classificazione dei ruoli (persistite tra i riavvii) |
+| 19 | `CalibrationSnapshot` | database.db | Sistema | Registro di calibrazione del modello di credenza (timestamp, campioni, risultato) |
+| 20 | `RoleThresholdRecord` | database.db | Sistema | Soglie apprese per la classificazione dei ruoli (persistite tra i riavvii) |
+
+**Enum di supporto (non tabelle):**
+
+| Enum | Tipo | Descrizione |
+| ---- | ---- | ----------- |
+| `DatasetSplit` | `str, Enum` | Categorie split (train/val/test/unassigned) — usato come constraint su `PlayerMatchStats.dataset_split` |
+| `CoachStatus` | `str, Enum` | Stati del coach (Paused/Training/Idle/Error) — usato come constraint su `CoachState.status` |
 
 **Componenti di Storage dettagliati:**
 
@@ -1857,7 +2009,7 @@ sequenceDiagram
 **Directory:** `Programma_CS2_RENAN/tools/`
 **File principali:** `headless_validator.py`, `db_inspector.py`, `demo_inspector.py`, `brain_verify.py`, `Goliath_Hospital.py`, `Ultimate_ML_Coach_Debugger.py`, `_infra.py`
 
-La suite di strumenti è una **raccolta di 30+ script** che formano una piramide di validazione multi-livello. Ogni strumento ha uno scopo preciso e può essere eseguito indipendentemente, ma insieme formano un sistema di garanzia della qualità che copre ogni aspetto del progetto.
+La suite di strumenti è una **raccolta di 35 script** che formano una piramide di validazione multi-livello. Ogni strumento ha uno scopo preciso e può essere eseguito indipendentemente, ma insieme formano un sistema di garanzia della qualità che copre ogni aspetto del progetto.
 
 > **Analogia:** La suite di strumenti è come il **reparto di controllo qualità di una fabbrica automobilistica**. Ogni veicolo (build del progetto) attraversa una serie di stazioni di ispezione, ciascuna specializzata in un aspetto: il **Headless Validator** è la stazione di collaudo rapido che verifica che il motore si accenda e le ruote girino (regression gate in 7 fasi). Il **DB Inspector** è il meccanico che smonta e controlla il motore pezzo per pezzo (ispezione database). Il **Demo Inspector** è il tecnico che verifica la carrozzeria (integrità file demo). Il **Brain Verify** è il neurologo che testa ogni funzione cognitiva (118 regole di qualità dell'intelligenza). Il **Goliath Hospital** è l'ospedale completo con 10 reparti specializzati. Nessun veicolo esce dalla fabbrica senza aver superato tutti i controlli.
 
@@ -1865,7 +2017,7 @@ La suite di strumenti è una **raccolta di 30+ script** che formano una piramide
 flowchart TB
     subgraph PYRAMID["PIRAMIDE DI VALIDAZIONE (dal più veloce al più profondo)"]
         L1["LIVELLO 1: Headless Validator<br/>7 fasi, ~10 secondi<br/>Gate di regressione obbligatorio<br/>Exit code 0 = PASS"]
-        L2["LIVELLO 2: pytest Suite<br/>48 file di test<br/>Unit + Integration + E2E<br/>~2-5 minuti"]
+        L2["LIVELLO 2: pytest Suite<br/>73 file di test<br/>Unit + Integration + E2E<br/>~2-5 minuti"]
         L3["LIVELLO 3: Backend Validator<br/>Verifica import, schema,<br/>coerenza interfacce<br/>~30 secondi"]
         L4["LIVELLO 4: Goliath Hospital<br/>10 reparti diagnostici<br/>Audit profondo multisistema<br/>~1-3 minuti"]
         L5["LIVELLO 5: Brain Verify<br/>118 regole qualità intelligence<br/>16 sezioni di verifica<br/>~2-5 minuti"]
@@ -1885,7 +2037,7 @@ flowchart TB
 | 1 | **Ambiente** | Python ≥ 3.10, dipendenze critiche presenti (torch, kivy, sqlmodel, demoparser2) |
 | 2 | **Import Core** | `config.py`, `spatial_data.py`, `lifecycle.py` — i moduli fondamentali si caricano senza errori |
 | 3 | **Import Backend** | `nn/`, `processing/`, `storage/`, `services/`, `coaching/` — tutti i sottosistemi backend importabili |
-| 4 | **Schema DB** | Le 22+ tabelle SQLModel si creano correttamente, le relazioni sono valide |
+| 4 | **Schema DB** | Le 20 tabelle SQLModel si creano correttamente, le relazioni sono valide |
 | 5 | **Configurazione** | `METADATA_DIM`, percorsi, costanti — valori coerenti e raggiungibili |
 | 6 | **ML Smoke** | Istanziazione modelli (JEPA, RAP, MoE) con pesi casuali — verificano dimensioni e forward pass |
 | 7 | **Osservabilità** | `get_logger()` funzionante, `StateManager` inizializzabile, log path scrivibile |
@@ -1990,7 +2142,7 @@ Questo strumento esegue un audit a **3 fasi** sulla pipeline ML:
 ### 12.18 Architettura della Test Suite (`tests/`)
 
 **Directory:** `Programma_CS2_RENAN/tests/`
-**File totali:** 48 file di test + `conftest.py` + 10 script forensics + 15 script di verifica
+**File totali:** 73 file di test + `conftest.py` + 10 script forensics + 15 script di verifica
 
 La test suite è organizzata secondo il **principio della piramide dei test**: molti unit test (veloci, isolati), meno integration test (più lenti, con dipendenze reali), e pochi end-to-end test (completi ma costosi).
 
@@ -1998,10 +2150,10 @@ La test suite è organizzata secondo il **principio della piramide dei test**: m
 
 ```mermaid
 flowchart TB
-    subgraph PYRAMID["PIRAMIDE DEI TEST (48 FILE)"]
-        UNIT["UNIT TEST (~30 file)<br/>Testano singole funzioni/classi<br/>Mock per I/O esterno<br/>Velocità: <1s per test"]
-        INTEG["INTEGRATION TEST (~12 file)<br/>Testano pipeline complete<br/>DB SQLite reale (in-memory o temp)<br/>Velocità: 1-10s per test"]
-        E2E["E2E / SMOKE TEST (~6 file)<br/>Testano flussi utente completi<br/>Tutte le dipendenze reali<br/>Velocità: 10-60s per test"]
+    subgraph PYRAMID["PIRAMIDE DEI TEST (73 FILE)"]
+        UNIT["UNIT TEST (~40 file)<br/>Testano singole funzioni/classi<br/>Mock per I/O esterno<br/>Velocità: <1s per test"]
+        INTEG["INTEGRATION TEST (~20 file)<br/>Testano pipeline complete<br/>DB SQLite reale (in-memory o temp)<br/>Velocità: 1-10s per test"]
+        E2E["E2E / SMOKE TEST (~13 file)<br/>Testano flussi utente completi<br/>Tutte le dipendenze reali<br/>Velocità: 10-60s per test"]
     end
     E2E --> INTEG --> UNIT
     style UNIT fill:#51cf66,color:#fff
@@ -2064,7 +2216,7 @@ Script di verifica one-shot per validare specifici aspetti del sistema:
 | ------ | -------- |
 | `verify_feature_pipeline.py` | METADATA_DIM=25 rispettato in tutti i percorsi |
 | `verify_training_cycle.py` | 4 fasi training completano senza errore |
-| `verify_db_schema.py` | 22+ tabelle presenti con schema corretto |
+| `verify_db_schema.py` | 20 tabelle presenti con schema corretto |
 | `verify_coaching_pipeline.py` | Demo → insight path end-to-end |
 | `verify_imports.py` | Tutti i moduli importabili senza errori circolari |
 | `verify_rag_index.py` | Knowledge base indexata con dimensioni corrette (384-dim) |
@@ -2133,7 +2285,7 @@ flowchart TB
 | **3** | Data pipeline e feature | ~30 | G-01 label leakage, G-02 normalizzazione bounds, feature alignment |
 | **4** | Database e schema | ~30 | WAL mode enforcement, missing indici, schema migration safety |
 | **5** | Dead code e cleanup | ~25 | G-06 eliminazione `nn/advanced/`, import inutilizzati, file duplicati |
-| **6** | Analysis engines | ~30 | Graceful degradation per tutti i 9 motori, edge case handling |
+| **6** | Analysis engines | ~30 | Graceful degradation per tutti i 10 motori, edge case handling |
 | **7** | ML pipeline | ~35 | G-07 Bayesian calibration, gradient clipping, checkpoint versioning |
 | **8** | Coaching e COPER | ~30 | G-08 experience decay, RAG index validation, fallback chain |
 | **9** | UI e UX | ~25 | F8-XX feedback visivo, state consistency, error prevention |
@@ -2604,7 +2756,7 @@ flowchart TB
     subgraph L3["LIVELLO 3: DOMINIO"]
         INGEST["Ingestione (Demo → Stats)"]
         ML["ML (JEPA, RAP, MoE)"]
-        ANALYSIS["Analisi (9 motori)"]
+        ANALYSIS["Analisi (10 motori)"]
         KNOWLEDGE["Conoscenza (RAG, COPER, KG)"]
     end
     subgraph L4["LIVELLO 4: PERSISTENZA"]
@@ -2731,7 +2883,7 @@ La funzione `infer_round_phase(equipment_value)` è un'**utilità condivisa** ut
 4. **Diversità multi-modello** — JEPA, VL-JEPA, LSTM+MoE, RAP e NeuralRoleHead contribuiscono a bias induttivi complementari.
 5. **Suddivisione temporale** — Previene la perdita di dati garantendo l'ordinamento cronologico.
 6. **Ciclo di feedback COPER** — Monitoraggio dell'efficacia basato su EMA con decadimento dell'esperienza obsoleta.
-7. **Suite di analisi di Fase 6** — 9 motori di analisi (ruolo, probabilità di vittoria, albero di gioco, convinzione, inganno, momentum, entropia, punti ciechi, distanza di ingaggio).
+7. **Suite di analisi di Fase 6** — 10 motori di analisi (ruolo, probabilità di vittoria, albero di gioco, convinzione, inganno, momentum, entropia, punti ciechi, utilità ed economia, distanza di ingaggio).
 8. **Persistenza della soglia** — Le soglie di ruolo sopravvivono ai riavvii tramite la tabella DB `RoleThresholdRecord`.
 9. **Euristica configurabile** — `HeuristicConfig` esternalizza i limiti di normalizzazione in JSON.
 10. **Polishing LLM** — Integrazione opzionale con Ollama per narrazioni di coaching in linguaggio naturale.
@@ -2784,20 +2936,20 @@ flowchart TB
 
 **Fine documento — Guida completa di Macena CS2 Analyzer**
 
-Totale file sorgente analizzati: **370+**
-Totale righe di codice Python verificate: **≈ 74.000+**
-Totale file `.py` nel progetto: **307**
+Totale file sorgente analizzati: **1.249**
+Totale righe di codice Python verificate: **≈ 75.800+**
+Totale file `.py` nel progetto: **334**
 Sottosistemi AI coperti: **8** (NN Core, VL-JEPA, RAP Coach, Servizi di Coaching, Motori di Coaching, Conoscenza, Analisi, Elaborazione + Osservatorio Addestramento)
 Sottosistemi programma coperti: **18** (Avvio, Lifecycle, Configurazione, Session Engine, UI Desktop, Ingestione, Storage, Osservabilità, Console di Controllo, RASP Guard, HLTV Sync, Orchestratore Ingestione, ResourceManager, Tools Suite, Test Suite, Pre-commit, Build/Packaging, Migrazioni Alembic)
 Modelli documentati: **6** (AdvancedCoachNN/TeacherRefinementNN, JEPA, VL-JEPA, RAPCoachModel, NeuralRoleHead, WinProbabilityNN)
-Motori di analisi documentati: **9** (Ruolo, WinProb, GameTree, Credenza, Inganno, Momentum, Entropia, Punti Ciechi, Distanza di Ingaggio)
+Motori di analisi documentati: **10** (Ruolo, WinProb, GameTree, Credenza, Inganno, Momentum, Entropia, Punti Ciechi, Utilità ed Economia, Distanza di Ingaggio)
 Motori di coaching documentati: **7** (HybridEngine, CorrectionEngine, ExplainabilityGenerator, NNRefinement, ProBridge, TokenResolver, LongitudinalEngine)
 Servizi aggiuntivi documentati: **7** (CoachingDialogue, LessonGenerator, LLMService, VisualizationService, ProfileService, AnalysisService, TelemetryClient)
-Tabelle di database documentate: **22+** (distribuite su architettura tri-database: `database.db`, `knowledge_base.db`, `hltv_metadata.db`)
+Tabelle di database documentate: **20** (distribuite su architettura tri-database: `database.db`, `knowledge_base.db`, `hltv_metadata.db`)
 Schermate UI documentate: **13** (Wizard, Home, Coach, Tactical Viewer, Settings, Help, Match History, Match Detail, Performance, User Profile, Profile, Steam Config, FACEIT Config)
 Daemon documentati: **4** (Hunter, Digester, Teacher, Pulse)
-Strumenti di validazione documentati: **15+** (Headless Validator, Brain Verify, Goliath Hospital, DB Inspector, Demo Inspector, ML Coach Debugger, Backend Validator, Dead Code Detector, etc.)
-File di test documentati: **48** (+ conftest.py, 10 forensics, 15 verification scripts)
+Strumenti di validazione documentati: **35** (Headless Validator, Brain Verify, Goliath Hospital, DB Inspector, Demo Inspector, ML Coach Debugger, Backend Validator, Dead Code Detector, etc.)
+File di test documentati: **73** (+ conftest.py, 10 forensics, 15 verification scripts)
 Pre-commit hooks documentati: **10** (4 locali custom + 6 standard)
 Pilastri architetturali: **24** (inclusi Tri-Database, Calibrazione Bayesiana Live, Controllo Live Training, Circuit Breaker, Piramide Validazione, RASP Guard, Pre-commit Gate, ResourceManager HW-aware, Forensics)
 Problemi risolti tramite rimediazione: **370+** (in 12 fasi sistematiche)
@@ -2820,18 +2972,18 @@ flowchart TB
     subgraph PART2["PARTE 2 — Coaching & Servizi"]
         P2_CE["Coaching Engines<br/>(Hybrid, Correction, Explain)"]
         P2_SV["Additional Services<br/>(LLM, Dialogue, Lesson)"]
-        P2_AN["Analysis Engines<br/>(9 motori)"]
+        P2_AN["Analysis Engines<br/>(10 motori)"]
         P2_KN["Knowledge<br/>(RAG, COPER, KG)"]
         P2_PR["Processing<br/>(Feature Eng, Validation)"]
         P2_CT["Control Module<br/>(Console, Governor, ML)"]
     end
     subgraph PART3["PARTE 3 — Programma Completo"]
-        P3_DB["Database<br/>(22+ tabelle, tri-DB)"]
+        P3_DB["Database<br/>(20 tabelle, tri-DB)"]
         P3_TR["Training Regime<br/>(4 fasi, VL-JEPA 2-stage)"]
         P3_UI["Desktop UI<br/>(13 schermate, MVVM)"]
         P3_SE["Session Engine<br/>(4 daemon)"]
-        P3_TL["Tools Suite<br/>(30+ strumenti)"]
-        P3_TS["Test Suite<br/>(48 file)"]
+        P3_TL["Tools Suite<br/>(35 strumenti)"]
+        P3_TS["Test Suite<br/>(73 file)"]
     end
 
     P1_NN -->|"Modelli usati da"| P2_CE
