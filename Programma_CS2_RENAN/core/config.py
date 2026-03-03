@@ -141,7 +141,7 @@ def mask_secret(value: str) -> str:
 def load_user_settings():
     with _settings_lock:
         defaults = {
-            "CS2_PLAYER_NAME": "Knowledge_mc",
+            "CS2_PLAYER_NAME": "",
             "STEAM_ID": "",
             "STEAM_API_KEY": "",
             "FACEIT_API_KEY": "",
@@ -158,6 +158,23 @@ def load_user_settings():
             "SENTRY_DSN": "",
             "SENTRY_ENABLED": False,
             "ENABLE_HLTV_SYNC": True,
+            # --- Settings referenced via get_setting() across the codebase ---
+            "COACH_SYSTEM_PROMPT": "",
+            "COACH_WEIGHT_OVERRIDES": {},
+            "CUDA_DEVICE": "auto",
+            "DEMO_ARCHIVE_PATH": "",
+            "INGEST_INTERVAL_MINUTES": 30,
+            "LOCAL_QUOTA_GB": 10.0,
+            "ML_INTENSITY": "Medium",
+            "SETUP_COMPLETED": False,
+            "STORAGE_API_KEY": "",
+            "THEME": "CS2",
+            "USER_DEMO_PATH": "",
+            "USE_COPER_COACHING": True,
+            "USE_HYBRID_COACHING": False,
+            "USE_JEPA_MODEL": False,
+            "USE_OLLAMA_COACHING": False,
+            "USE_RAG_COACHING": False,
         }
 
         # File I/O and keyring retrieval are inside the lock to prevent
@@ -255,6 +272,12 @@ LOG_DIR = os.path.join(USER_DATA_ROOT, "logs")
 DATA_DIR = os.path.join(USER_DATA_ROOT, "data")
 MODELS_DIR = os.path.join(USER_DATA_ROOT, "models")
 
+# Wire resolved LOG_DIR into logger_setup (breaks circular import dependency).
+# Safe: logger_setup is already in sys.modules from line 7 import.
+from Programma_CS2_RENAN.observability.logger_setup import configure_log_dir  # noqa: E402
+
+configure_log_dir(LOG_DIR)
+
 for d in [DB_DIR, LOG_DIR, DATA_DIR, MODELS_DIR]:
     os.makedirs(d, exist_ok=True)
 
@@ -277,7 +300,7 @@ def refresh_settings():
 
     with _settings_lock:
         _settings = load_user_settings()
-        CS2_PLAYER_NAME = _settings.get("CS2_PLAYER_NAME", "Knowledge_mc")
+        CS2_PLAYER_NAME = _settings.get("CS2_PLAYER_NAME", "")
         STEAM_ID = _settings.get("STEAM_ID", "")
         STEAM_API_KEY = _settings.get("STEAM_API_KEY", "")
         FACEIT_API_KEY = _settings.get("FACEIT_API_KEY", "")

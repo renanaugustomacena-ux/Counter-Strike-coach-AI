@@ -2,6 +2,23 @@ import logging
 import logging.handlers
 import os
 
+# Module-level log directory, configurable after import via configure_log_dir().
+# Defaults to None; get_logger() falls back to "logs" (relative) if unset.
+_log_dir: str | None = None
+
+
+def configure_log_dir(log_dir: str) -> None:
+    """Set the log directory.  Called by config.py after LOG_DIR is resolved.
+
+    This function exists to break the circular dependency between config.py
+    and logger_setup.py: config needs get_logger() at import time, but
+    get_logger() used to import LOG_DIR from config.  Now config calls
+    configure_log_dir(LOG_DIR) after LOG_DIR is computed, and this module
+    never imports from config.
+    """
+    global _log_dir
+    _log_dir = log_dir
+
 
 def _create_file_handler(log_path: str, formatter: logging.Formatter) -> logging.Handler:
     """Create a RotatingFileHandler with fallback to plain FileHandler.
@@ -36,13 +53,8 @@ def get_logger(name: str) -> logging.Logger:
         "%Y-%m-%d %H:%M:%S",
     )
 
-    # Resolve log directory from centralized config (falls back to relative)
-    try:
-        from Programma_CS2_RENAN.core.config import LOG_DIR
-
-        log_dir = LOG_DIR
-    except ImportError:
-        log_dir = "logs"
+    # Use log directory set by configure_log_dir(), fall back to relative "logs"
+    log_dir = _log_dir or "logs"
     os.makedirs(log_dir, exist_ok=True)
 
     file_handler = _create_file_handler(

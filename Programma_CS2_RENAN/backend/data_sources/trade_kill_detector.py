@@ -82,7 +82,10 @@ def build_team_roster(parser) -> Dict[str, int]:
             name_str = str(name).strip()
             if not name_str:
                 continue
-            team = int(group["team_num"].mode().iloc[0])
+            mode_result = group["team_num"].mode()
+            if mode_result.empty:
+                continue
+            team = int(mode_result.iloc[0])
             if team in (2, 3):
                 roster[name_str.lower()] = team
 

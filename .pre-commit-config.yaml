@@ -13,8 +13,8 @@ repos:
         pass_filenames: false
         always_run: true
         verbose: true
-        stages: [commit]
-        description: "Run headless validation suite before commit"
+        stages: [pre-push]
+        description: "Run headless validation suite before push"
 
       # Dead Code & Orphan Detector
       - id: dead-code-detector
@@ -23,7 +23,7 @@ repos:
         language: system
         pass_filenames: false
         types: [python]
-        stages: [commit]
+        stages: [pre-push]
         description: "Scans for orphaned modules and unused code"
 
       # Integrity manifest sync check

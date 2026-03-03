@@ -12,7 +12,7 @@ Adheres to GEMINI.md principles:
 
 import os
 import platform
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -165,12 +165,12 @@ class SteamDemoFinder:
         if not replay_dir:
             return []
 
-        cutoff_time = datetime.now() - timedelta(days=days)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(days=days)
         recent_demos = []
 
         for dem_file in replay_dir.glob("*.dem"):
             try:
-                mtime = datetime.fromtimestamp(dem_file.stat().st_mtime)
+                mtime = datetime.fromtimestamp(dem_file.stat().st_mtime, tz=timezone.utc)
                 if mtime >= cutoff_time:
                     recent_demos.append((dem_file, mtime))
             except OSError:
@@ -192,7 +192,7 @@ class SteamDemoFinder:
             "filename": filepath.name,
             "filepath": str(filepath),
             "size_mb": filepath.stat().st_size / (1024 * 1024),
-            "modified": datetime.fromtimestamp(filepath.stat().st_mtime).isoformat(),
+            "modified": datetime.fromtimestamp(filepath.stat().st_mtime, tz=timezone.utc).isoformat(),
         }
 
         # Try to extract map name

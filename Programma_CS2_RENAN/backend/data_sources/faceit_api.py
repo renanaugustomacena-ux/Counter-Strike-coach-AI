@@ -18,7 +18,9 @@ def fetch_faceit_data(nickname: str) -> Dict[str, Any]:  # F6-29: type hints
     try:
         # Get Player ID by Nickname
         player_url = f"https://open.faceit.com/data/v4/players?nickname={nickname}&game=cs2"
-        player_data = requests.get(player_url, headers=headers, timeout=10).json()
+        response = requests.get(player_url, headers=headers, timeout=10)
+        response.raise_for_status()
+        player_data = response.json()
 
         player_id = player_data.get("player_id")
         if not player_id:

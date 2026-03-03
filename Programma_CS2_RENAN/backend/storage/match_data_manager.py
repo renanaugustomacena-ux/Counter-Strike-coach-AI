@@ -619,11 +619,13 @@ def get_match_data_manager(match_data_path: Optional[str] = None) -> MatchDataMa
             from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
             _logger = get_logger("cs2analyzer.match_data_migration")
-            _logger.info(f"One-time migration: {_OLD_IN_PROJECT} -> {match_data_path}")
+            _logger.info("One-time migration: %s -> %s", _OLD_IN_PROJECT, match_data_path)
             result = migrate_match_data(_OLD_IN_PROJECT, match_data_path, logger=_logger)
             _logger.info(
-                f"Migration result: {result['moved']} moved, "
-                f"{result['skipped']} skipped, {len(result['errors'])} errors"
+                "Migration result: %d moved, %d skipped, %d errors",
+                result["moved"],
+                result["skipped"],
+                len(result["errors"]),
             )
 
         _match_data_manager = MatchDataManager(match_data_path)

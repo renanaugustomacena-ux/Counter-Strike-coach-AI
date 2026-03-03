@@ -57,7 +57,10 @@ def extract_match_metadata(page):
     page.wait_for_selector(".team1 .teamName", timeout=30000)
     team1 = page.locator(".team1 .teamName").inner_text().strip()
     team2 = page.locator(".team2 .teamName").inner_text().strip()
-    event = page.locator(".event a").inner_text().strip()
+
+    event_loc = page.locator(".event a")
+    event = event_loc.inner_text().strip() if event_loc.count() > 0 else "Unknown Event"
+
     date_val = _extract_date(page)
     return {"teams": {"team1": team1, "team2": team2}, "event": event, "date": date_val}
 
@@ -87,7 +90,7 @@ def download_demo(page, demo_url, filename):
 
 def _execute_demo_download(page, url, directory, name):
     with page.expect_download(timeout=DOWNLOAD_TIMEOUT) as download_info:
-        page.goto(url)
+        page.goto(url, timeout=NAVIGATION_TIMEOUT)
     download = download_info.value
     target = os.path.join(directory, name)
     download.save_as(target)
@@ -96,7 +99,7 @@ def _execute_demo_download(page, url, directory, name):
 
 def download_single_match(match_url, match_id):
     with BrowserManager() as page:
-        page.goto(match_url, wait_until="domcontentloaded")
+        page.goto(match_url, wait_until="domcontentloaded", timeout=NAVIGATION_TIMEOUT)
         meta = extract_match_metadata(page)
         maps = extract_maps_and_demos(page)
         return _process_match_maps(page, match_id, meta, maps)
