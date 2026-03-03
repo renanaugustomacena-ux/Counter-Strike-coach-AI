@@ -654,13 +654,13 @@ Utility condivisa per classificazione fase economica del round, estratta per eli
 **cartella nella repo:** `backend/analysis/`
 **10 file, ~2.100 righe di codice di produzione**
 
-Questo sottosistema contiene **9 motori di analisi specializzati**, ognuno progettato per indagare una diversa dimensione del gameplay. Funzionano come analisi di Fase 6, fornendo approfondimenti che vanno oltre ciò che le sole reti neurali possono offrire.
+Questo sottosistema contiene **10 motori di analisi specializzati**, ognuno progettato per indagare una diversa dimensione del gameplay. Funzionano come analisi di Fase 6, fornendo approfondimenti che vanno oltre ciò che le sole reti neurali possono offrire.
 
-> **Analogia:** Pensate a questi 9 motori di analisi come a un **team di 9 diversi scienziati sportivi**, ognuno con la propria specializzazione. Uno scienziato studia le vostre meccaniche di tiro, un altro le vostre capacità decisionali sotto pressione, un altro ancora la vostra capacità di essere imprevedibili e così via. Ogni scienziato produce la propria mini-pagella e insieme dipingono un quadro completo dei vostri punti di forza e di debolezza. Nessuno scienziato da solo vede tutto, ma insieme coprono tutti gli aspetti importanti del gioco competitivo in CS2.
+> **Analogia:** Pensate a questi 10 motori di analisi come a un **team di 10 diversi scienziati sportivi**, ognuno con la propria specializzazione. Uno scienziato studia le vostre meccaniche di tiro, un altro le vostre capacità decisionali sotto pressione, un altro ancora la vostra capacità di essere imprevedibili e così via. Ogni scienziato produce la propria mini-pagella e insieme dipingono un quadro completo dei vostri punti di forza e di debolezza. Nessuno scienziato da solo vede tutto, ma insieme coprono tutti gli aspetti importanti del gioco competitivo in CS2.
 
 ```mermaid
 flowchart TB
-    subgraph ENGINES["GLI 9 MOTORI DI ANALISI - IL TUO TEAM DI SPECIALISTI"]
+    subgraph ENGINES["I 10 MOTORI DI ANALISI - IL TUO TEAM DI SPECIALISTI"]
         E1["1. Classificatore Ruoli - Che posizione giochi?"]
         E2["2. Probabilità Vittoria - Quali sono le probabilità ora?"]
         E3["3. Albero di Gioco - Qual è la mossa migliore?"]
@@ -670,6 +670,7 @@ flowchart TB
         E7["7. Analizzatore Entropia - Le tue granate sono efficaci?"]
         E8["8. Rilevatore Punti Ciechi - Che errore ripeti?"]
         E9["9. Utilità ed Economia - Ottimizzatore acquisti"]
+        E10["10. Analizzatore Ingaggio - A che distanza combatti meglio?"]
     end
 ```
 
