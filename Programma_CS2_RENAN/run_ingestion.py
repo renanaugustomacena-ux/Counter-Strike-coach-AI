@@ -397,11 +397,13 @@ def _ingest_single_demo(db_manager, storage, demo_path, is_pro):
     from Programma_CS2_RENAN.backend.storage.db_models import IngestionTask
     from Programma_CS2_RENAN.core.config import get_setting
 
+    demo_path_str = str(demo_path)
     with db_manager.get_session() as session:
         task = session.exec(
-            select(IngestionTask).where(IngestionTask.demo_path == str(demo_path))
+            select(IngestionTask).where(IngestionTask.demo_path == demo_path_str)
         ).first()
         start_tick = task.last_tick_processed if task else 0
+        task_exists = task is not None
 
     target = "ALL" if is_pro else get_setting("CS2_PLAYER_NAME")
 
@@ -416,12 +418,14 @@ def _ingest_single_demo(db_manager, storage, demo_path, is_pro):
     # 2. Parse sequential data (incremental)
     last_processed = _save_sequential_data(db_manager, demo_path, target, start_tick=start_tick)
 
-    # Update task progress
-    if task:
+    # Update task progress — re-fetch inside new session to avoid DetachedInstanceError
+    if task_exists:
         with db_manager.get_session() as session:
-            session.add(task)
-            task.last_tick_processed = last_processed
-            session.commit()
+            fresh_task = session.exec(
+                select(IngestionTask).where(IngestionTask.demo_path == demo_path_str)
+            ).first()
+            if fresh_task:
+                fresh_task.last_tick_processed = last_processed
 
     if last_processed > start_tick:
         storage.archive_demo(demo_path, is_pro)
@@ -933,23 +937,29 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
 
     total_ticks = len(df_ticks)
 
-    for idx, (index, row) in enumerate(df_ticks.iterrows()):
+    # Convert to list of dicts once — avoids pandas Series overhead per row
+    # (~10x faster than iterrows() for large DataFrames)
+    tick_records = df_ticks.to_dict("records")
 
-        # Update progress every 1000 ticks or 5%
+    for idx, row in enumerate(tick_records):
+
+        # Update progress every 1000 ticks
         if idx % 1000 == 0:
             # Map 0..total -> 40..95%
             pct = 40.0 + (idx / total_ticks) * 55.0
             state_manager.update_parsing_progress(pct)
 
-        last_tick = max(last_tick, row["tick"])
+        tick_val = int(row["tick"])
+        last_tick = max(last_tick, tick_val)
+        player_name = str(row["player_name"])
 
         # Create MatchTickState for per-match database (NEW Tier 3 Storage)
         match_tick = MatchTickState(
-            tick=int(row["tick"]),
+            tick=tick_val,
             round_number=int(row.get("round_number", 1)),
-            player_name=str(row["player_name"]),
-            steamid=int(row.get("player_steamid", 0)),  # Renamed from steamid default
-            team=str(row.get("team_name", "CT")),  # Renamed from team default
+            player_name=player_name,
+            steamid=int(row.get("player_steamid", 0)),
+            team=str(row.get("team_name", "CT")),
             pos_x=_sanitize_value(row.get("X"), 0.0),
             pos_y=_sanitize_value(row.get("Y"), 0.0),
             pos_z=_sanitize_value(row.get("Z"), 0.0),
@@ -962,9 +972,8 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
             is_blinded=bool(row.get("is_blinded", False)),
             active_weapon=_sanitize_value(row.get("active_weapon"), "unknown", str),
             equipment_value=_sanitize_value(row.get("equipment_value"), 0, int),
-            money=_sanitize_value(row.get("balance"), 0, int),  # Renamed from money default
+            money=_sanitize_value(row.get("balance"), 0, int),
             enemies_visible=int(row.get("enemies_visible", 0)),
-            # --- WP6 New Fields ---
             has_helmet=bool(row.get("has_helmet", False)),
             has_defuser=bool(row.get("has_defuser", False)),
             ping=int(row.get("ping", 0)),
@@ -990,8 +999,8 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
         # This maintains existing code paths until full migration is complete
         legacy_tick = PlayerTickState(
             demo_name=demo_name,
-            tick=int(row["tick"]),
-            player_name=str(row["player_name"]),
+            tick=tick_val,
+            player_name=player_name,
             pos_x=_sanitize_value(row.get("X"), 0.0),
             pos_y=_sanitize_value(row.get("Y"), 0.0),
             pos_z=_sanitize_value(row.get("Z"), 0.0),
@@ -1015,7 +1024,6 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
             # Store to legacy monolithic (backward compatibility)
             with db_manager.get_session() as session:
                 session.add_all(legacy_batch)
-                session.commit()
             legacy_batch = []
 
     # Commit remaining ticks
@@ -1024,7 +1032,6 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
     if legacy_batch:
         with db_manager.get_session() as session:
             session.add_all(legacy_batch)
-            session.commit()
 
     # Store match metadata
     meta = MatchMetadata(

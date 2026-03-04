@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from sqlmodel import select
 
-from Programma_CS2_RENAN.backend.storage.database import get_db_manager
+from Programma_CS2_RENAN.backend.storage.database import get_db_manager, get_hltv_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import ProPlayerStatCard
 from Programma_CS2_RENAN.core.config import BASE_DIR
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -76,7 +76,7 @@ def _load_pro_from_db(map_name: Optional[str] = None):
     Args:
         map_name: Optional map filter (e.g., 'de_mirage').
     """
-    db = get_db_manager()
+    db = get_hltv_db_manager()
     try:
         with db.get_session() as s:
             query = select(ProPlayerStatCard).limit(5000)
@@ -397,7 +397,7 @@ class TemporalBaselineDecay:
             Baseline dict compatible with existing code.
         """
         try:
-            db = get_db_manager()
+            db = get_hltv_db_manager()
             with db.get_session() as session:
                 query = select(ProPlayerStatCard)
                 cards = session.exec(query).all()

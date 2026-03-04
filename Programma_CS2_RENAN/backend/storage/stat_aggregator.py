@@ -11,7 +11,7 @@ from typing import Any, Dict
 
 from sqlmodel import select
 
-from Programma_CS2_RENAN.backend.storage.database import get_db_manager
+from Programma_CS2_RENAN.backend.storage.database import get_hltv_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import ProPlayer, ProPlayerStatCard, ProTeam
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -25,7 +25,7 @@ class StatCardAggregator:
     """
 
     def __init__(self):
-        self.db = get_db_manager()
+        self.db = get_hltv_db_manager()
 
     def persist_player_card(self, spider_data: Dict[str, Any]):
         """

@@ -4,7 +4,7 @@ import sys
 import pytest
 import torch
 
-from Programma_CS2_RENAN.backend.nn.win_probability import WinProbabilityNN, predict_win_prob
+from Programma_CS2_RENAN.backend.nn.win_probability_trainer import WinProbabilityNN, predict_win_prob
 from Programma_CS2_RENAN.backend.processing.baselines.pro_baseline import get_pro_baseline
 from Programma_CS2_RENAN.backend.processing.external_analytics import EliteAnalytics
 

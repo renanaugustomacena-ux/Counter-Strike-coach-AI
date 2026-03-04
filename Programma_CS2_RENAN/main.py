@@ -819,11 +819,17 @@ class CS2AnalyzerApp(MDApp):
                 with db.get_session() as s_q:
                     from Programma_CS2_RENAN.backend.storage.db_models import IngestionTask
 
-                    active_tasks = s_q.exec(
+                    raw_tasks = s_q.exec(
                         select(IngestionTask)
                         .where(IngestionTask.status.in_(["processing", "queued"]))
                         .limit(20)
                     ).all()
+                    # Materialize to plain dicts while session is open to avoid
+                    # DetachedInstanceError when Clock callback fires after close.
+                    active_tasks = [
+                        {"demo_path": t.demo_path, "status": t.status}
+                        for t in raw_tasks
+                    ]
                     knowledge_ticks = s_q.exec(
                         select(func.sum(IngestionTask.last_tick_processed))
                         .where(IngestionTask.status == "complete")
@@ -923,12 +929,13 @@ class CS2AnalyzerApp(MDApp):
             return
 
         for t in tasks:
-            fname = os.path.basename(t.demo_path)
-            status_color = (0.2, 0.8, 0.4, 1) if t.status == "processing" else (0.8, 0.6, 0.2, 1)
+            fname = os.path.basename(t["demo_path"])
+            status = t["status"]
+            status_color = (0.2, 0.8, 0.4, 1) if status == "processing" else (0.8, 0.6, 0.2, 1)
             row = MDBoxLayout(adaptive_height=True, spacing="10dp")
             row.add_widget(
                 MDIcon(
-                    icon="loading" if t.status == "processing" else "clock-outline",
+                    icon="loading" if status == "processing" else "clock-outline",
                     theme_text_color="Custom",
                     text_color=status_color,
                     font_size="16sp",
@@ -936,7 +943,7 @@ class CS2AnalyzerApp(MDApp):
             )
             row.add_widget(
                 MDLabel(
-                    text=f"{fname} ({t.status})",
+                    text=f"{fname} ({status})",
                     font_style="Body",
                     role="small",
                     theme_text_color="Secondary",

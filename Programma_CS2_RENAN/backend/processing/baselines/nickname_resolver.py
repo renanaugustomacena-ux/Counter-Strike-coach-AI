@@ -14,7 +14,7 @@ from typing import List, Optional
 
 from sqlmodel import select
 
-from Programma_CS2_RENAN.backend.storage.database import get_db_manager
+from Programma_CS2_RENAN.backend.storage.database import get_hltv_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import ProPlayer
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -47,7 +47,7 @@ class NicknameResolver:
         Returns:
             HLTV player ID if found, None otherwise
         """
-        db = get_db_manager()
+        db = get_hltv_db_manager()
         clean_name = NicknameResolver._clean(raw_name)
 
         with db.get_session() as session:

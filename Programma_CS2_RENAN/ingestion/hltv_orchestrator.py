@@ -24,7 +24,7 @@ try:
 except ImportError:
     _HAS_BS4 = False
 
-from Programma_CS2_RENAN.backend.storage.database import get_db_manager, init_database
+from Programma_CS2_RENAN.backend.storage.database import get_db_manager, get_hltv_db_manager, init_database
 from Programma_CS2_RENAN.backend.storage.db_models import HLTVDownload, IngestionTask
 from Programma_CS2_RENAN.ingestion.downloader import download_single_match
 from Programma_CS2_RENAN.ingestion.hltv.flaresolverr_client import FlareSolverrClient
@@ -49,7 +49,8 @@ class HLTVOrchestrator:
 
     def __init__(self):
         init_database()
-        self.db = get_db_manager()
+        self.db = get_db_manager()  # Monolith — for IngestionTask
+        self.hltv_db = get_hltv_db_manager()  # hltv_metadata.db — for HLTVDownload
         self._solver = FlareSolverrClient(timeout=60)
 
     def run_sync_cycle(self, limit: int = 20):
@@ -197,8 +198,8 @@ class HLTVOrchestrator:
         """
         match_id = match["match_id"]
 
-        # Check if already downloaded
-        with self.db.get_session() as session:
+        # Check if already downloaded (HLTVDownload lives in hltv_metadata.db)
+        with self.hltv_db.get_session() as session:
             existing = session.exec(
                 select(HLTVDownload).where(HLTVDownload.match_id == match_id)
             ).first()
@@ -212,8 +213,8 @@ class HLTVOrchestrator:
             logger.info("Downloading %s: %s", match_id, match["teams"])
             result = download_single_match(match["match_url"], match_id)
 
-            # Track download
-            with self.db.get_session() as session:
+            # Track download in hltv_metadata.db
+            with self.hltv_db.get_session() as session:
                 download_record = HLTVDownload(
                     match_id=match_id,
                     match_url=match["match_url"],
@@ -222,7 +223,6 @@ class HLTVOrchestrator:
                     demo_count=len(result.get("maps", [])),
                 )
                 session.add(download_record)
-                session.commit()
 
             logger.info("Downloaded %s: %s demos", match_id, len(result.get("maps", [])))
             return True

@@ -23,7 +23,7 @@ import numpy as np
 import torch
 
 from Programma_CS2_RENAN.backend.knowledge.rag_knowledge import KnowledgeRetriever
-from Programma_CS2_RENAN.backend.storage.database import get_db_manager
+from Programma_CS2_RENAN.backend.storage.database import get_db_manager, get_hltv_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import CoachingInsight, TacticalKnowledge
 from Programma_CS2_RENAN.core.config import get_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -259,7 +259,8 @@ class HybridCoachingEngine:
         from Programma_CS2_RENAN.backend.storage.db_models import ProPlayerStatCard
 
         try:
-            with self.db.get_session() as session:
+            hltv_db = get_hltv_db_manager()
+            with hltv_db.get_session() as session:
                 card = session.exec(
                     select(ProPlayerStatCard).where(ProPlayerStatCard.player_id == pro_id)
                 ).first()

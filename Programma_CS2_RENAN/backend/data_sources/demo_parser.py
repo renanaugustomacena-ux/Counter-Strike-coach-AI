@@ -1,4 +1,5 @@
 import os
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from typing import Dict, Optional
 
 import pandas as pd
@@ -309,6 +310,9 @@ def _add_event_stats_safe(parser, df, total_rounds):
         logger.exception("Event parsing failed - stats remain 0.0")
 
 
+DEMO_PARSE_TIMEOUT_SECONDS = 300  # 5 minutes max for a single demo parse
+
+
 def parse_sequential_ticks(
     demo_path: str, target_player: str, rate: int = None, start_tick: int = 0
 ) -> pd.DataFrame:
@@ -370,7 +374,20 @@ def parse_sequential_ticks(
             "ping",
         ]
 
-        df = pd.DataFrame(parser.parse_ticks(fields))
+        # Run parser.parse_ticks in a thread with timeout to prevent indefinite
+        # hangs on corrupted or very large demo files.
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(parser.parse_ticks, fields)
+            try:
+                raw_ticks = future.result(timeout=DEMO_PARSE_TIMEOUT_SECONDS)
+            except FutureTimeoutError:
+                logger.error(
+                    "Demo parser timed out after %ds for %s — skipping demo.",
+                    DEMO_PARSE_TIMEOUT_SECONDS, demo_path,
+                )
+                return pd.DataFrame()
+
+        df = pd.DataFrame(raw_ticks)
         if df.empty:
             return pd.DataFrame()
         p_col = next((c for c in ["player_name", "name"] if c in df.columns), None)
