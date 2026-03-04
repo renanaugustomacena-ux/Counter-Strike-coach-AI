@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 import numpy as np
 from sqlmodel import func, select
 
-from Programma_CS2_RENAN.backend.storage.database import get_db_manager
+from Programma_CS2_RENAN.backend.storage.database import get_db_manager, get_hltv_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import (
     PlayerMatchStats,
     PlayerTickState,
@@ -83,10 +83,11 @@ class MetaDriftEngine:
         Returns a value between 0.0 (Stable) and 1.0 (Meta Chaos).
         Combines Statistical Drift (Rating) and Spatial Drift (Positioning).
         """
-        db = get_db_manager()
         stat_drift = 0.0
 
-        with db.get_session() as s:
+        # ProPlayerStatCard lives in hltv_metadata.db
+        hltv_db = get_hltv_db_manager()
+        with hltv_db.get_session() as s:
             # 1. Statistical Drift
             # max(..., 1e-6) prevents division-by-zero when all pro ratings are 0.0.
             # In that degenerate case (0/1e-6 = 0) stat_drift stays 0.0 — correct. (F2-45)

@@ -259,7 +259,7 @@ NN_IMPORTS = [
     "Programma_CS2_RENAN.backend.nn.early_stopping",
     "Programma_CS2_RENAN.backend.nn.ema",
     "Programma_CS2_RENAN.backend.nn.role_head",
-    "Programma_CS2_RENAN.backend.nn.win_probability",
+    "Programma_CS2_RENAN.backend.nn.win_probability_trainer",
     "Programma_CS2_RENAN.backend.nn.embedding_projector",
     "Programma_CS2_RENAN.backend.nn.maturity_observatory",
     "Programma_CS2_RENAN.backend.nn.training_callbacks",

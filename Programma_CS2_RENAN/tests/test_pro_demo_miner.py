@@ -15,7 +15,7 @@ from Programma_CS2_RENAN.backend.knowledge.pro_demo_miner import (
     ProDemoMiner,
     auto_populate_from_pro_demos,
 )
-from Programma_CS2_RENAN.backend.storage.database import get_db_manager, init_database
+from Programma_CS2_RENAN.backend.storage.database import get_db_manager, get_hltv_db_manager, init_database
 from Programma_CS2_RENAN.backend.storage.db_models import HLTVDownload, TacticalKnowledge
 
 _TEST_PREFIX = "/__test_pro_miner__/"
@@ -32,13 +32,16 @@ class TestProDemoMiner:
         self._created_download_ids = []
         self._created_knowledge_ids = []
         yield
-        # Cleanup only test-created records
+        # Cleanup: TacticalKnowledge in monolith, HLTVDownload in hltv_metadata.db
         db = get_db_manager()
         with db.get_session() as session:
             for kid in self._created_knowledge_ids:
                 k = session.get(TacticalKnowledge, kid)
                 if k:
                     session.delete(k)
+            session.commit()
+        hltv_db = get_hltv_db_manager()
+        with hltv_db.get_session() as session:
             for did in self._created_download_ids:
                 d = session.get(HLTVDownload, did)
                 if d:
@@ -94,7 +97,7 @@ class TestProDemoMiner:
 
     def test_mine_single_demo(self):
         """Test mining knowledge from a single demo."""
-        db = get_db_manager()
+        db = get_hltv_db_manager()
         with db.get_session() as session:
             download = self._create_download(
                 session,
@@ -110,7 +113,8 @@ class TestProDemoMiner:
         # mine_single_demo: 2 map entries (positioning + utility) + 1 team entry = 3
         assert count == 3, f"Expected 3 knowledge entries, got {count}"
 
-        with db.get_session() as session:
+        monolith_db = get_db_manager()
+        with monolith_db.get_session() as session:
             knowledge = session.exec(select(TacticalKnowledge)).all()
             test_knowledge = [k for k in knowledge if _TEST_PREFIX in (k.pro_example or "")]
             assert len(test_knowledge) == 3
@@ -152,7 +156,7 @@ class TestProDemoMiner:
 
     def test_auto_populate_function(self):
         """Test convenience auto-populate function."""
-        db = get_db_manager()
+        db = get_hltv_db_manager()
         with db.get_session() as session:
             for i in range(3):
                 self._create_download(
@@ -170,7 +174,7 @@ class TestProDemoMiner:
 
     def test_duplicate_mining_is_idempotent(self):
         """Mining the same demo twice should not create duplicate entries."""
-        db = get_db_manager()
+        db = get_hltv_db_manager()
         with db.get_session() as session:
             download = self._create_download(
                 session, match_id="dedup-test-mirage", teams="Alpha vs Beta"
@@ -182,7 +186,8 @@ class TestProDemoMiner:
         count2 = miner.mine_single_demo(download)
         self._track_knowledge()
 
-        with db.get_session() as session:
+        monolith_db = get_db_manager()
+        with monolith_db.get_session() as session:
             all_k = session.exec(select(TacticalKnowledge)).all()
             test_k = [k for k in all_k if _TEST_PREFIX in (k.pro_example or "")]
 

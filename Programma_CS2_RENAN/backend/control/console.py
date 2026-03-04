@@ -364,10 +364,10 @@ class Console:
             from Programma_CS2_RENAN.backend.processing.baselines.pro_baseline import (
                 TemporalBaselineDecay,
             )
-            from Programma_CS2_RENAN.backend.storage.database import get_db_manager
+            from Programma_CS2_RENAN.backend.storage.database import get_hltv_db_manager
             from Programma_CS2_RENAN.backend.storage.db_models import ProPlayerStatCard
 
-            db = get_db_manager()
+            db = get_hltv_db_manager()
             with db.get_session() as session:
                 card_count = session.exec(select(func.count(ProPlayerStatCard.id))).one()
 

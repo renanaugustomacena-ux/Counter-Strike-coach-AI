@@ -24,7 +24,7 @@ from typing import Dict, List, Optional
 from sqlmodel import select
 
 from Programma_CS2_RENAN.backend.knowledge.rag_knowledge import KnowledgePopulator
-from Programma_CS2_RENAN.backend.storage.database import get_db_manager
+from Programma_CS2_RENAN.backend.storage.database import get_hltv_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import HLTVDownload
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -43,7 +43,7 @@ class ProDemoMiner:
     """
 
     def __init__(self):
-        self.db = get_db_manager()
+        self.db = get_hltv_db_manager()
         self.populator = KnowledgePopulator()
 
         # Pattern thresholds
