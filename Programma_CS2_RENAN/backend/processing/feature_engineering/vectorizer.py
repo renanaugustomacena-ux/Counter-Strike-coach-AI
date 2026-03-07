@@ -148,8 +148,9 @@ class FeatureExtractor:
                        with tick fields as attributes.
             map_name: Optional map name to compute map-specific features (e.g. Z-penalty).
             context: Optional dict with game-level context (time_in_round, bomb_planted,
-                     teammates_alive, enemies_alive, team_economy). Available during
-                     inference from DemoFrame; defaults to 0.0 during DB-based training.
+                     teammates_alive, enemies_alive, team_economy). Features 20-24
+                     are first read from tick_data (enriched during ingestion), with
+                     fallback to this context dict (DemoFrame at inference).
 
         Returns:
             np.ndarray of shape (METADATA_DIM,) with float32 values
@@ -266,14 +267,41 @@ class FeatureExtractor:
             weapon_name = weapon_name[7:]
         vec[19] = WEAPON_CLASS_MAP.get(weapon_name, 0.1)  # 0.1 = unknown weapon default
 
-        # Context-dependent features (20-24): Available from DemoFrame at inference,
-        # default to 0.0 when training from DB-stored PlayerTickState (no context).
+        # Context-dependent features (20-24): Read from tick_data first (enriched
+        # during ingestion), fall back to context dict (DemoFrame at inference).
+        # This eliminates the training/inference skew where these features were
+        # always 0.0 during training but populated during inference.
         ctx = context or {}
-        vec[20] = min(float(ctx.get("time_in_round", 0.0)) / 115.0, 1.0)
-        vec[21] = 1.0 if ctx.get("bomb_planted", False) else 0.0
-        vec[22] = min(float(ctx.get("teammates_alive", 0)) / 4.0, 1.0)
-        vec[23] = min(float(ctx.get("enemies_alive", 0)) / 5.0, 1.0)
-        vec[24] = min(float(ctx.get("team_economy", 0)) / 16000.0, 1.0)
+
+        # 20: time_in_round
+        time_val = get_val("time_in_round", None)
+        if time_val is None:
+            time_val = ctx.get("time_in_round", 0.0)
+        vec[20] = min(float(time_val or 0.0) / 115.0, 1.0)
+
+        # 21: bomb_planted
+        bomb_val = get_val("bomb_planted", None)
+        if bomb_val is None:
+            bomb_val = ctx.get("bomb_planted", False)
+        vec[21] = 1.0 if bomb_val else 0.0
+
+        # 22: teammates_alive
+        team_val = get_val("teammates_alive", None)
+        if team_val is None:
+            team_val = ctx.get("teammates_alive", 0)
+        vec[22] = min(float(team_val or 0) / 4.0, 1.0)
+
+        # 23: enemies_alive
+        enemy_val = get_val("enemies_alive", None)
+        if enemy_val is None:
+            enemy_val = ctx.get("enemies_alive", 0)
+        vec[23] = min(float(enemy_val or 0) / 5.0, 1.0)
+
+        # 24: team_economy
+        econ_val = get_val("team_economy", None)
+        if econ_val is None:
+            econ_val = ctx.get("team_economy", 0)
+        vec[24] = min(float(econ_val or 0) / 16000.0, 1.0)
 
         # Warn if any feature produced Inf/NaN — the nan_to_num clamp is a safety net,
         # not a substitute for fixing the upstream bug that created the anomaly. (F2-16)

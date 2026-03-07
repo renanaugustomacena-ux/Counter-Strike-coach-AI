@@ -142,8 +142,19 @@ class CommandRegistry:
         try:
             return cmd.handler(args)
         except Exception as e:
-            logger.exception(f"Command {category} {subcmd} failed: {e}")
-            return f"[error]Error: {e}[/error]"
+            # P7-02: Sanitize error messages to prevent API key leakage in logs
+            sanitized = str(e)
+            try:
+                from Programma_CS2_RENAN.core.config import get_setting as _gs
+
+                for secret_key in ("STEAM_API_KEY", "FACEIT_API_KEY", "STORAGE_API_KEY"):
+                    val = _gs(secret_key, "")
+                    if val and val in sanitized:
+                        sanitized = sanitized.replace(val, "***REDACTED***")
+            except ImportError:
+                pass
+            logger.exception("Command %s %s failed: %s", category, subcmd, sanitized)
+            return f"[error]Error: {sanitized}[/error]"
 
     def dispatch_interactive(self, cmd_line: str) -> str:
         parts = cmd_line.strip().split()
@@ -644,27 +655,48 @@ def _cmd_sys_resources(args):
 
 
 # --- SET ---
-# SECURITY WARNING (F7-01): API keys are stored in plaintext in settings.json.
-# For production use, migrate to the OS credential store via the keyring library:
-#   import keyring; keyring.set_password("cs2analyzer", "STEAM_API_KEY", api_key)
-# Until keyring integration is implemented, ensure settings.json has filesystem
-# permissions restricted to the current user (chmod 600 on Linux/macOS).
+# P7-01: API keys are now collected via getpass (secure prompt, not visible in
+# process list). Storage is still plaintext settings.json — for production use,
+# migrate to OS credential store via the keyring library.
 def _cmd_set_steam(args):
-    if len(args) < 1:
-        return "[error]Usage: set steam <KEY>[/error]"
+    import getpass
+
+    if args:
+        rich_con.print(
+            "[warning]WARNING: Passing keys via CLI arguments is insecure "
+            "(visible in process list).[/warning]"
+        )
+        rich_con.print("[info]Use 'set steam' without arguments for secure input.[/info]")
+    try:
+        key = getpass.getpass("Enter Steam API Key: ")
+    except (EOFError, KeyboardInterrupt):
+        return "[warning]Cancelled.[/warning]"
+    if not key.strip():
+        return "[error]Empty key — not saved.[/error]"
     from Programma_CS2_RENAN.core.config import save_user_setting
 
-    save_user_setting("STEAM_API_KEY", args[0])
+    save_user_setting("STEAM_API_KEY", key.strip())
     return "[success]Steam API key updated.[/success]"
 
 
-# SECURITY WARNING (F7-01): same as above — FACEIT_API_KEY stored in plaintext.
 def _cmd_set_faceit(args):
-    if len(args) < 1:
-        return "[error]Usage: set faceit <KEY>[/error]"
+    import getpass
+
+    if args:
+        rich_con.print(
+            "[warning]WARNING: Passing keys via CLI arguments is insecure "
+            "(visible in process list).[/warning]"
+        )
+        rich_con.print("[info]Use 'set faceit' without arguments for secure input.[/info]")
+    try:
+        key = getpass.getpass("Enter FACEIT API Key: ")
+    except (EOFError, KeyboardInterrupt):
+        return "[warning]Cancelled.[/warning]"
+    if not key.strip():
+        return "[error]Empty key — not saved.[/error]"
     from Programma_CS2_RENAN.core.config import save_user_setting
 
-    save_user_setting("FACEIT_API_KEY", args[0])
+    save_user_setting("FACEIT_API_KEY", key.strip())
     return "[success]Faceit API key updated.[/success]"
 
 
@@ -830,6 +862,8 @@ def _cmd_maint_clear_queue(args):
         ).one()
         if count == 0:
             return "[warning]No queued tasks to purge.[/warning]"
+        # P0-03: get_session() auto-commits on successful exit (database.py:120).
+        # No explicit session.commit() needed.
         session.exec(delete(IngestionTask).where(IngestionTask.status == "queued"))
     return f"[success]Ingestion queue purged ({count} task(s) removed).[/success]"
 
@@ -1232,7 +1266,7 @@ class TUIRenderer:
             f"  [info]sys[/]    {_D}status | audit [--demo PATH] | baseline | db [-y] | vacuum | resources{_E}"
         )
         grid.add_row(
-            f"  [info]set[/]    {_D}steam <key> | faceit <key> | config <k> <v> | view | demo-path <path> | pro-path <path>{_E}"
+            f"  [info]set[/]    {_D}steam | faceit | config <k> <v> | view | demo-path <path> | pro-path <path>{_E}"
         )
         grid.add_row(
             f"  [info]svc[/]    {_D}restart <name> | kill-all | spawn <script> | status{_E}"
@@ -1501,10 +1535,8 @@ def build_cli_parser() -> argparse.ArgumentParser:
     # Set
     st_p = sub.add_parser("set", help="Configuration settings")
     st_sub = st_p.add_subparsers(dest="subcmd")
-    st_steam = st_sub.add_parser("steam", help="Set Steam API key")
-    st_steam.add_argument("key", type=str)
-    st_faceit = st_sub.add_parser("faceit", help="Set FACEIT API key")
-    st_faceit.add_argument("key", type=str)
+    st_sub.add_parser("steam", help="Set Steam API key (secure prompt)")
+    st_sub.add_parser("faceit", help="Set FACEIT API key (secure prompt)")
     st_cfg = st_sub.add_parser("config", help="Set config key/value")
     st_cfg.add_argument("key", type=str)
     st_cfg.add_argument("value", type=str)
@@ -1575,10 +1607,6 @@ def run_cli_mode(argv: List[str]):
         handler_args = ["-y"]
     elif args.category == "maint" and subcmd == "prune":
         handler_args = [str(args.match_id)]
-    elif args.category == "set" and subcmd == "steam":
-        handler_args = [args.key]
-    elif args.category == "set" and subcmd == "faceit":
-        handler_args = [args.key]
     elif args.category == "set" and subcmd == "config":
         handler_args = [args.key, args.value]
     elif args.category == "set" and subcmd in ("demo-path", "pro-path"):

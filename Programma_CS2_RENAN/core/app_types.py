@@ -19,6 +19,37 @@ class Team(Enum):
     CT = 2
 
 
+class PlayerRole(str, Enum):
+    """Canonical CS2 player role classification (P3-01).
+
+    Single source of truth — imported by role_features.py, role_classifier.py,
+    and all downstream consumers.  Values are lowercase identifiers suitable
+    for serialisation, DB storage, and cross-module comparison.
+    """
+
+    ENTRY = "entry"
+    AWPER = "awper"
+    SUPPORT = "support"
+    LURKER = "lurker"
+    IGL = "igl"
+    FLEX = "flex"
+    UNKNOWN = "unknown"
+
+    @property
+    def display_name(self) -> str:
+        """Human-readable name for UI display."""
+        _DISPLAY = {
+            "entry": "Entry Fragger",
+            "awper": "AWPer",
+            "support": "Support",
+            "lurker": "Lurker",
+            "igl": "IGL",
+            "flex": "Flex",
+            "unknown": "Unknown",
+        }
+        return _DISPLAY.get(self.value, self.value.title())
+
+
 class IngestionStatus(Enum):
     QUEUED = auto()
     PROCESSING = auto()

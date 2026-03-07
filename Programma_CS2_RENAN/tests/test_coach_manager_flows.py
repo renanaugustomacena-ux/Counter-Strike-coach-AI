@@ -536,8 +536,8 @@ class TestCheckPrerequisites:
         _seed_matches(engine, pro_count=10)
         mock_sm = MagicMock()
         monkeypatch.setattr(
-            "Programma_CS2_RENAN.backend.storage.state_manager.state_manager",
-            mock_sm,
+            "Programma_CS2_RENAN.backend.storage.state_manager.get_state_manager",
+            lambda: mock_sm,
         )
         ok, msg = mgr.check_prerequisites()
         assert ok is True
@@ -548,8 +548,8 @@ class TestCheckPrerequisites:
         # No pro demos, no profile → stalled
         mock_sm = MagicMock()
         monkeypatch.setattr(
-            "Programma_CS2_RENAN.backend.storage.state_manager.state_manager",
-            mock_sm,
+            "Programma_CS2_RENAN.backend.storage.state_manager.get_state_manager",
+            lambda: mock_sm,
         )
         ok, msg = mgr.check_prerequisites()
         assert ok is False
@@ -560,8 +560,8 @@ class TestCheckPrerequisites:
         _seed_matches(engine, pro_count=5)  # 5/10 pro demos
         mock_sm = MagicMock()
         monkeypatch.setattr(
-            "Programma_CS2_RENAN.backend.storage.state_manager.state_manager",
-            mock_sm,
+            "Programma_CS2_RENAN.backend.storage.state_manager.get_state_manager",
+            lambda: mock_sm,
         )
         ok, msg = mgr.check_prerequisites()
         assert ok is False
@@ -582,8 +582,8 @@ class TestCheckPrerequisites:
             session.commit()
         mock_sm = MagicMock()
         monkeypatch.setattr(
-            "Programma_CS2_RENAN.backend.storage.state_manager.state_manager",
-            mock_sm,
+            "Programma_CS2_RENAN.backend.storage.state_manager.get_state_manager",
+            lambda: mock_sm,
         )
         ok, msg = mgr.check_prerequisites()
         assert ok is False
@@ -788,8 +788,8 @@ class TestRunFullCycleGuards:
         # No data → prerequisites fail
         mock_sm = MagicMock()
         monkeypatch.setattr(
-            "Programma_CS2_RENAN.backend.storage.state_manager.state_manager",
-            mock_sm,
+            "Programma_CS2_RENAN.backend.storage.state_manager.get_state_manager",
+            lambda: mock_sm,
         )
         mgr.run_full_cycle()
         # Should have set status to Idle (not Running)

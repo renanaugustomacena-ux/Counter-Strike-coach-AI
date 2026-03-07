@@ -45,7 +45,7 @@ def run_sync_loop():
     """
     logger.info("HLTV Sync Service Loop started.")
 
-    from Programma_CS2_RENAN.backend.storage.state_manager import state_manager
+    from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
 
     # --- Pre-flight: Auto-start FlareSolverr Docker container ---
     from Programma_CS2_RENAN.backend.data_sources.hltv.docker_manager import ensure_flaresolverr
@@ -53,10 +53,10 @@ def run_sync_loop():
     project_root = str(Path(__file__).resolve().parent.parent)
     if not ensure_flaresolverr(project_root):
         logger.error("FlareSolverr non avviabile automaticamente.")
-        state_manager.update_status(
+        get_state_manager().update_status(
             "hunter", "Blocked", "FlareSolverr/Docker non disponibile"
         )
-        state_manager.add_notification(
+        get_state_manager().add_notification(
             "hunter",
             "error",
             "HLTV sync bloccato: FlareSolverr non disponibile e auto-start fallito. "
@@ -70,10 +70,10 @@ def run_sync_loop():
         logger.error(
             "FlareSolverr non disponibile dopo auto-start! Avvialo con: docker start flaresolverr"
         )
-        state_manager.update_status(
+        get_state_manager().update_status(
             "hunter", "Blocked", "FlareSolverr non raggiungibile"
         )
-        state_manager.add_notification(
+        get_state_manager().add_notification(
             "hunter",
             "error",
             "HLTV sync bloccato: FlareSolverr non disponibile. "
@@ -89,7 +89,7 @@ def run_sync_loop():
             "HLTV non raggiungibile nemmeno via FlareSolverr. Dormant mode (%s ore).",
             _DORMANT_SLEEP_S // 3600,
         )
-        state_manager.update_status(
+        get_state_manager().update_status(
             "hunter", "Blocked", "HLTV non raggiungibile via FlareSolverr"
         )
         _dormant_sleep(_DORMANT_SLEEP_S)
@@ -107,7 +107,7 @@ def run_sync_loop():
 
     while not STOP_SIGNAL.exists():
         try:
-            state_manager.update_status(
+            get_state_manager().update_status(
                 "hunter", "Running", f"Stats sync cycle active at {time.ctime()}"
             )
 

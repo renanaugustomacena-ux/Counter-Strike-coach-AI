@@ -382,6 +382,11 @@ def generate_highlight_report(match_id, map_name="de_mirage"):
         Path to the generated highlight report image, or None.
     """
     try:
+        from Programma_CS2_RENAN.core.config import get_setting
+
+        if not get_setting("USE_RAP_MODEL", default=False):
+            return None
+
         from Programma_CS2_RENAN.backend.nn.rap_coach.chronovisor_scanner import ChronovisorScanner
 
         scanner = ChronovisorScanner()

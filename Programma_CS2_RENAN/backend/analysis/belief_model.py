@@ -52,11 +52,17 @@ class BeliefState:
     information_age: float = 0.0
     positional_exposure: float = 0.0
 
+    # P8-01: Threat decay rate (lambda). Controls how quickly inferred enemy
+    # positions lose credibility as information ages.
+    # Source: hand-tuned for CS2 round pacing (~7-tick half-life at 64 Hz).
+    # Validation: AdaptiveBeliefCalibrator.calibrate_threat_decay() fits this
+    # via least-squares on engagement data. Run auto_calibrate() with 100+
+    # parsed demos to obtain empirical value. Bounded to [0.01, 1.0].
+    THREAT_DECAY_LAMBDA: float = 0.1
+
     def threat_level(self) -> float:
         """Combined threat from visible + inferred enemies, decayed by info age."""
-        # HEURISTIC: exponential decay with lambda=0.1 (~7-tick half-life).
-        # Hand-tuned for CS2 round pacing. Not empirically validated yet.
-        decay = math.exp(-0.1 * self.information_age)
+        decay = math.exp(-self.THREAT_DECAY_LAMBDA * self.information_age)
         return (self.visible_enemies + self.inferred_enemies * decay * 0.5) / 5.0
 
 
@@ -109,11 +115,16 @@ class DeathProbabilityEstimator:
         exposure_factor = 0.5 + 0.5 * belief.positional_exposure
 
         # 3. Bayesian-inspired posterior (logistic combination)
+        # P8-02: Log-odds weights. Hand-tuned; validate via logistic regression
+        # on actual death outcomes with (threat, weapon, armor, exposure) as inputs.
+        # Use regression coefficients as empirically validated replacements.
+        # AdaptiveBeliefCalibrator.auto_calibrate() calibrates priors and lethality
+        # but not these weights directly — future: grid search over weight space.
         log_odds = math.log(prior / max(1e-6, 1.0 - prior))
-        log_odds += threat * 2.0
-        log_odds += (weapon_mult - 1.0) * 1.5
-        log_odds += (armor_factor - 1.0) * -1.0
-        log_odds += (exposure_factor - 0.5) * 1.0
+        log_odds += threat * 2.0        # threat sensitivity
+        log_odds += (weapon_mult - 1.0) * 1.5  # weapon lethality amplification
+        log_odds += (armor_factor - 1.0) * -1.0  # armor damage reduction
+        log_odds += (exposure_factor - 0.5) * 1.0  # positional exposure risk
 
         posterior = 1.0 / (1.0 + math.exp(-log_odds))
         return max(0.0, min(1.0, posterior))
@@ -160,9 +171,21 @@ class DeathProbabilityEstimator:
         return "critical"
 
 
+# P3-10: Thread-safe lazy singleton with double-checked locking (AR-5).
+import threading
+
+_death_estimator: Optional[DeathProbabilityEstimator] = None
+_death_estimator_lock = threading.Lock()
+
+
 def get_death_estimator() -> DeathProbabilityEstimator:
-    """Factory function for singleton access."""
-    return DeathProbabilityEstimator()
+    """Thread-safe lazy singleton factory for DeathProbabilityEstimator."""
+    global _death_estimator
+    if _death_estimator is None:
+        with _death_estimator_lock:
+            if _death_estimator is None:
+                _death_estimator = DeathProbabilityEstimator()
+    return _death_estimator
 
 
 # ---------------------------------------------------------------------------

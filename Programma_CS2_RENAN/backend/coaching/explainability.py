@@ -2,7 +2,7 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
-from Programma_CS2_RENAN.backend.nn.rap_coach.skill_model import SkillAxes
+from Programma_CS2_RENAN.backend.processing.skill_assessment import SkillAxes
 
 # Coaching thresholds — extracted for visibility and tunability
 SILENCE_THRESHOLD = 0.2  # |delta| below this -> no feedback (silence is valid)

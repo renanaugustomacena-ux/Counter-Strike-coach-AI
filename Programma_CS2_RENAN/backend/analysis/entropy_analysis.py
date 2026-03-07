@@ -17,7 +17,17 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.analysis.entropy")
 
-# Theoretical max entropy reduction per utility type (in bits)
+# P8-07: Maximum entropy reduction per utility type (in bits).
+# Theoretical estimates based on information-theoretic modeling of a 32x32
+# spatial grid. Used to normalize effectiveness: actual_delta / max_delta.
+# Validation: compute actual entropy deltas from parsed demo files across
+# 100+ matches. Use the 95th percentile of observed deltas as empirical
+# max_delta values. Current values are hand-estimated:
+#   - Smoke (2.5): highest because it blocks LOS for ~18s, eliminating
+#     multiple enemy position hypotheses simultaneously
+#   - Molotov (2.0): area denial restricts positions for ~7s
+#   - Flash (1.8): brief info advantage (~3s blind window)
+#   - HE (1.5): damage reveals position but only momentarily
 _MAX_DELTA: Dict[str, float] = {
     "smoke": 2.5,
     "flash": 1.8,

@@ -9,7 +9,8 @@ import sys
 from pathlib import Path
 
 # --- Venv Guard (skip in frozen/PyInstaller builds) ---
-if not getattr(sys, "frozen", False) and sys.prefix == sys.base_prefix:
+# Only enforce when running as main entry point, not when imported (e.g. by headless_validator).
+if __name__ == "__main__" and not getattr(sys, "frozen", False) and sys.prefix == sys.base_prefix:
     print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
     sys.exit(2)
 
@@ -104,7 +105,7 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.screenmanager import MDScreenManager
 from kivymd.uix.textfield import MDTextField, MDTextFieldHintText
-from sqlmodel import select
+from sqlmodel import func, select
 
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager, init_database
 from Programma_CS2_RENAN.backend.storage.db_models import CoachingInsight, PlayerProfile
@@ -332,11 +333,17 @@ class UserProfileScreen(MDScreen):
             )
 
     def _update_role_badge(self, r):
+        # P3-01: Keys match canonical PlayerRole.value (lowercase) + legacy display names
         colors = {
+            "entry": (1, 0.2, 0.2, 1),
             "Entry Fragger": (1, 0.2, 0.2, 1),
+            "awper": (0.2, 0.6, 1, 1),
             "AWPer": (0.2, 0.6, 1, 1),
+            "lurker": (0.6, 0.2, 0.8, 1),
             "Lurker": (0.6, 0.2, 0.8, 1),
+            "support": (0.2, 0.8, 0.2, 1),
             "Support": (0.2, 0.8, 0.2, 1),
+            "igl": (1, 0.8, 0, 1),
             "IGL": (1, 0.8, 0, 1),
         }
         self.ids.role_badge.md_bg_color = colors.get(r, (0.5, 0.5, 0.5, 1))
@@ -508,6 +515,7 @@ class CS2AnalyzerApp(MDApp):
         i18n.set_language(get_setting("LANGUAGE", "en"))
         self.console = None
         self.parsing_dialog = None
+        self.folder_picker_target = None  # P0-07: Initialize to prevent AttributeError
 
     def _update_background_source(self):
         img = get_setting("BACKGROUND_IMAGE", "vertical_wallpaper_cs2_A.jpg")
@@ -1367,6 +1375,8 @@ class CS2AnalyzerApp(MDApp):
         db = get_db_manager()
         try:
             with db.get_session() as session:
+                # P0-02: get_session() auto-commits on successful exit (database.py:120).
+                # No explicit session.commit() needed.
                 session.add(IngestionTask(demo_path=path, is_pro=self.is_pro))
             self.show_success_dialog("Queued", f"Demo queued for analysis: {os.path.basename(path)}")
         except Exception as e:
@@ -1404,6 +1414,10 @@ class CS2AnalyzerApp(MDApp):
             self.service_active = not active  # Revert on error
 
     def handle_folder_selection(self, path):
+        # P0-07: Guard against missing folder_picker_target when called from
+        # paths other than open_folder_picker (e.g., open_file_manager_direct).
+        if self.folder_picker_target is None:
+            return
         k = "DEFAULT_DEMO_PATH" if self.folder_picker_target == "default" else "PRO_DEMO_PATH"
 
         # Capture old MATCH_DATA_PATH before saving (for migration)
@@ -1839,9 +1853,20 @@ class CS2AnalyzerApp(MDApp):
 
         threading.Thread(target=_bg_update, daemon=True).start()
 
-    def switch_screen(self, n):
+    # P4-10: Navigation back-stack for proper history-based back navigation
+    _nav_stack: list = []
+
+    def switch_screen(self, n, push_history: bool = True):
         if self.root:
-            self.root.ids.screen_manager.current = n
+            sm = self.root.ids.screen_manager
+            if push_history and sm.current != n:
+                self._nav_stack.append(sm.current)
+            sm.current = n
+
+    def go_back(self):
+        """Navigate to the previous screen in the history stack."""
+        if self._nav_stack and self.root:
+            self.root.ids.screen_manager.current = self._nav_stack.pop()
 
     def save_multiple_configs(self, cfg):
         for k, v in cfg.items():

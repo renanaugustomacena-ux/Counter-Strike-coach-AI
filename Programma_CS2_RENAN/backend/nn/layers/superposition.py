@@ -1,3 +1,4 @@
+import math
 from typing import Dict, Optional
 
 import torch
@@ -19,7 +20,9 @@ class SuperpositionLayer(nn.Module):
 
     def __init__(self, in_features, out_features, context_dim=METADATA_DIM):
         super(SuperpositionLayer, self).__init__()
-        self.weight = nn.Parameter(torch.randn(out_features, in_features))
+        # P1-09: Kaiming initialization for proper variance scaling
+        self.weight = nn.Parameter(torch.empty(out_features, in_features))
+        nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
         self.bias = nn.Parameter(torch.zeros(out_features))
 
         # Context-dependent gating (Superposition Controller)

@@ -56,7 +56,13 @@ class AdvancedCoachNN(nn.Module):
             dropout = 0.2
             use_layer_norm = True
 
+        # P1-12: Store architecture config for checkpoint serialization
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.hidden_dim = hidden_dim
         self.num_experts = num_experts
+        self.num_lstm_layers = num_layers
+
         self.lstm = nn.LSTM(
             input_dim, hidden_dim, batch_first=True, num_layers=num_layers, dropout=dropout
         )
@@ -142,20 +148,28 @@ class ModelManager:
         v_name = f"brain_{timestamp}"
         path = os.path.join(self.model_dir, f"{v_name}.pt")
         torch.save(model.state_dict(), path)
-        _save_model_metadata(path, v_name, timestamp, metrics)
+        # P1-12: Include architecture config so checkpoints are self-describing
+        architecture = {}
+        for attr in ("input_dim", "output_dim", "hidden_dim", "num_experts", "num_lstm_layers"):
+            if hasattr(model, attr):
+                architecture[attr] = getattr(model, attr)
+        _save_model_metadata(path, v_name, timestamp, metrics, architecture)
         return path
 
 
-def _save_model_metadata(path, v_name, timestamp, metrics):
+def _save_model_metadata(path, v_name, timestamp, metrics, architecture=None):
     meta_path = path.replace(".pt", ".json")
+    meta = {"version": v_name, "timestamp": timestamp, "metrics": metrics}
+    if architecture:
+        meta["architecture"] = architecture
     with open(meta_path, "w") as f:
-        json.dump({"version": v_name, "timestamp": timestamp, "metrics": metrics}, f, indent=4)
+        json.dump(meta, f, indent=4)
 
 
 # Integrated RAP-Coach Architecture (optional - requires ncps and hflayers)
 try:
-    from .rap_coach.communication import RAPCommunication
-    from .rap_coach.model import RAPCoachModel
+    from .experimental.rap_coach.communication import RAPCommunication
+    from .experimental.rap_coach.model import RAPCoachModel
 
     RAP_COACH_AVAILABLE = True
 except ImportError:

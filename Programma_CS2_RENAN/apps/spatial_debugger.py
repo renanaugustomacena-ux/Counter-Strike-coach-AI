@@ -81,6 +81,10 @@ class SpatialValidatorWidget(FloatLayout):
 
     def update_debug_info(self, touch):
         """Calculates World Coordinates from UI Touch."""
+        # P4-09: Guard against zero-dimension widgets before first layout pass
+        if self.map_image.width <= 0 or self.map_image.height <= 0:
+            return
+
         # 1. Get relative coordinates within the image widget
         # The image might be letterboxed, so we need the actual texture position
         norm_x = (touch.x - self.map_image.x) / self.map_image.width

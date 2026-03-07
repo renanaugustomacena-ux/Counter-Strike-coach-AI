@@ -238,8 +238,15 @@ class HLTVDatabaseManager:
                 table.drop(self.engine, checkfirst=True)
         # Also drop tables that don't belong in the HLTV database
         hltv_table_names = {t.name for t in _HLTV_TABLES}
+        import re as _re
+
+        _SAFE_TABLE_NAME = _re.compile(r"^[a-zA-Z0-9_]+$")
         for orphan in set(existing_tables) - hltv_table_names:
             if orphan in ("sqlite_sequence",):
+                continue
+            # P7-04: Validate table name before using in SQL to prevent injection
+            if not _SAFE_TABLE_NAME.match(orphan):
+                logger.error("Invalid table name in HLTV reconciliation: %s — skipped", orphan)
                 continue
             logger.info("Dropping orphan table '%s' from HLTV database.", orphan)
             with self.engine.connect() as conn:

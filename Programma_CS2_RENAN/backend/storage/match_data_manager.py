@@ -101,6 +101,15 @@ class MatchTickState(SQLModel, table=True):
     cash_spent_this_round: int = Field(default=0)
     cash_spent_total: int = Field(default=0)
 
+    # --- Enriched Features (cross-player & contextual) ---
+    pitch: float = Field(default=0.0)
+    time_in_round: float = Field(default=0.0)
+    bomb_planted: bool = Field(default=False)
+    teammates_alive: int = Field(default=4)
+    enemies_alive: int = Field(default=5)
+    team_economy: int = Field(default=0)
+    map_name: str = Field(default="de_unknown")
+
     # Timestamp for maintenance
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

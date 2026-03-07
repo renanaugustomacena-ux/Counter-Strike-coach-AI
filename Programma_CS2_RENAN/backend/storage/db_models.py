@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 
+from pydantic import field_validator
 from sqlalchemy import CheckConstraint, Column, Index, String, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
@@ -106,6 +107,7 @@ class PlayerMatchStats(SQLModel, table=True):
 class PlayerTickState(SQLModel, table=True):
     __table_args__ = (
         Index("ix_tick_demo_tick", "demo_name", "tick"),
+        Index("ix_pts_player_demo", "player_name", "demo_name"),  # P2-05: Composite index for common query pattern
         {"extend_existing": True},
     )
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -133,6 +135,15 @@ class PlayerTickState(SQLModel, table=True):
     enemies_visible: int = Field(default=0)
     is_blinded: bool = Field(default=False)
     round_outcome: Optional[int] = None
+
+    # --- Enriched Features (cross-player & contextual) ---
+    round_number: int = Field(default=1)
+    time_in_round: float = Field(default=0.0)
+    bomb_planted: bool = Field(default=False)
+    teammates_alive: int = Field(default=4)
+    enemies_alive: int = Field(default=5)
+    team_economy: int = Field(default=0)
+    map_name: str = Field(default="de_unknown")
 
 
 class PlayerProfile(SQLModel, table=True):
@@ -291,10 +302,16 @@ class TacticalKnowledge(SQLModel, table=True):
 
 
 class CoachState(SQLModel, table=True):
-    """Detailed status of the ML pipeline for the GUI."""
+    """Detailed status of the ML pipeline for the GUI.
 
-    __table_args__ = {"extend_existing": True}
-    id: Optional[int] = Field(default=None, primary_key=True)
+    Singleton: exactly one row with id=1 enforced by CHECK constraint (P2-01).
+    """
+
+    __table_args__ = (
+        CheckConstraint("id = 1", name="ck_coachstate_singleton"),
+        {"extend_existing": True},
+    )
+    id: Optional[int] = Field(default=1, primary_key=True)
 
     # Global View
     # sa_column=String to store enum .value ("Paused") not .name ("PAUSED") — backward-compatible with existing DB rows
@@ -456,6 +473,17 @@ class CoachingExperience(SQLModel, table=True):
     # Game State Snapshot (JSON for flexibility)
     game_state_json: str = Field(default="{}")  # Full tick data at moment of experience
 
+    # P2-02: Enforce MAX_GAME_STATE_JSON_BYTES to prevent unbounded DB growth
+    @field_validator("game_state_json")
+    @classmethod
+    def validate_json_size(cls, v: str) -> str:
+        if v and len(v.encode("utf-8")) > MAX_GAME_STATE_JSON_BYTES:
+            raise ValueError(
+                f"game_state_json exceeds {MAX_GAME_STATE_JSON_BYTES} bytes "
+                f"({len(v.encode('utf-8'))} bytes)"
+            )
+        return v
+
     # Action & Outcome
     action_taken: str  # "pushed", "held_angle", "rotated", "used_utility", etc.
     outcome: str = Field(index=True)  # "kill", "death", "trade", "objective", "survived"
@@ -497,6 +525,7 @@ class RoundStats(SQLModel, table=True):
 
     __table_args__ = (
         Index("ix_rs_demo_player", "demo_name", "player_name"),
+        Index("ix_rs_demo_round", "demo_name", "round_number"),  # P2-05: Composite index for round queries
         {"extend_existing": True},
     )
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

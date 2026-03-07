@@ -92,3 +92,11 @@ reports/
 Build_Health_Report.json
 Compiler_Readiness_Report.json
 training_progress.json
+
+# Test/validation artifacts
+.coverage
+validator_out.txt
+identifier.sqlite
+
+# Node modules (docs PDF generation)
+docs/node_modules/

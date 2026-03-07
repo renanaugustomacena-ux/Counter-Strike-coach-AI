@@ -22,7 +22,13 @@ FAKE_EXECUTE_WINDOW = 5.0  # Time window to detect site-take fakes
 UTILITY_FOLLOWUP_WINDOW = 3.0  # Time after utility for expected engagement
 FLASH_BLIND_WINDOW_TICKS: int = 128  # ~2 s at 64 tick
 
-# Composite index weights
+# P8-04: Composite deception index weights. Sum = 1.0.
+# Hand-tuned based on subjective impact assessment:
+#   - Rotation feints (0.40): highest weight because position > utility in CS2 info-war
+#   - Sound deception (0.35): fake-step / gun-switch noise exploits directional audio
+#   - Fake flash (0.25): lowest weight because flash baits are common at all skill levels
+# Validation: compute distribution of deception indices for pro vs amateur matches.
+# Discriminative weights should produce significantly higher indices for pro players.
 W_FAKE_FLASH = 0.25
 W_ROTATION_FEINT = 0.40
 W_SOUND_DECEPTION = 0.35
@@ -95,14 +101,22 @@ class DeceptionAnalyzer:
 
         blinds = df[df["event_type"] == "player_blind"]
         total_flashes = len(flashes)
-        effective_flashes = 0
 
-        for _, flash in flashes.iterrows():
-            flash_tick = flash["tick"]
-            window_end = flash_tick + FLASH_BLIND_WINDOW_TICKS
-            nearby_blinds = blinds[(blinds["tick"] >= flash_tick) & (blinds["tick"] <= window_end)]
-            if not nearby_blinds.empty:
-                effective_flashes += 1
+        if blinds.empty:
+            # No blinds at all — every flash is a bait
+            return 1.0
+
+        # Vectorized: use sorted blind ticks + searchsorted for O(F·log B)
+        flash_ticks = flashes["tick"].values
+        blind_ticks = np.sort(blinds["tick"].values)
+
+        # For each flash, find the first blind tick >= flash_tick
+        idx = np.searchsorted(blind_ticks, flash_ticks, side="left")
+        # A flash is "effective" if the nearest blind tick is within the window
+        effective_mask = (idx < len(blind_ticks)) & (
+            blind_ticks[np.minimum(idx, len(blind_ticks) - 1)] <= flash_ticks + FLASH_BLIND_WINDOW_TICKS
+        )
+        effective_flashes = int(np.sum(effective_mask))
 
         bait_rate = 1.0 - (effective_flashes / max(1, total_flashes))
         return min(1.0, bait_rate)

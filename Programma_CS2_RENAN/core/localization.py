@@ -109,6 +109,8 @@ TRANSLATIONS = {
         "match_history_title": "Match History",
         # F7-26: Missing search key
         "search": "Search",
+        # P10-03: Baseline degraded warning (was hardcoded Portuguese in hybrid_engine.py)
+        "baseline_degraded_warning": "WARNING: baseline_quality=degraded \u2014 using static fallback; coaching precision reduced",
     },
     "pt": {
         "app_name": "Macena CS2 Analisador",
@@ -210,6 +212,8 @@ TRANSLATIONS = {
         "match_history_title": "Histórico de Partidas",
         # F7-26
         "search": "Buscar",
+        # P10-03
+        "baseline_degraded_warning": "AVISO: baseline_quality=degraded \u2014 usando valores est\u00e1ticos; precis\u00e3o do coaching reduzida",
     },
     "it": {
         "app_name": "Macena CS2 Analizzatore",
@@ -311,6 +315,8 @@ TRANSLATIONS = {
         "match_history_title": "Cronologia delle Partite",
         # F7-26
         "search": "Cerca",
+        # P10-03
+        "baseline_degraded_warning": "ATTENZIONE: baseline_quality=degraded \u2014 usando valori statici; precisione del coaching ridotta",
     },
 }
 

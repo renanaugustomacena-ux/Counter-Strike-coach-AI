@@ -27,21 +27,34 @@ RATING_BASELINE_ECON = 85.0  # Economy-specific, not part of HLTV 2.0
 
 def parse_demo(demo_path: str, target_player: Optional[str] = None) -> pd.DataFrame:
     """Extremely stable parsing with full data integrity checks."""
+    demo_name = os.path.basename(demo_path)
     if not os.path.exists(demo_path):
-        logger.warning("Demo file not found: %s", demo_path)
+        logger.warning("Demo file not found: %s", demo_name)
         return pd.DataFrame()
     try:
         parser = DemoParser(demo_path)
-        evs = parser.parse_events(["round_end"])
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(parser.parse_events, ["round_end"])
+            try:
+                evs = future.result(timeout=DEMO_PARSE_TIMEOUT_SECONDS)
+            except FutureTimeoutError:
+                logger.error(
+                    "parse_demo timed out after %ds for %s",
+                    DEMO_PARSE_TIMEOUT_SECONDS,
+                    demo_name,
+                )
+                return pd.DataFrame()
         if not evs:
+            logger.warning("parse_demo: no round_end events in %s", demo_name)
             return pd.DataFrame()
         rounds_df = evs[0][1] if isinstance(evs[0], tuple) else pd.DataFrame(evs)
         if rounds_df.empty:
+            logger.warning("parse_demo: empty rounds DataFrame for %s", demo_name)
             return pd.DataFrame()
 
         return _extract_stats_with_full_fields(parser, len(rounds_df), target_player)
     except Exception as e:
-        logger.exception("Parser Fatal")
+        logger.exception("parse_demo failed for %s: %s", demo_name, e)
         return pd.DataFrame()
 
 

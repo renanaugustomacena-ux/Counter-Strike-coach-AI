@@ -4,6 +4,11 @@ JEPA-Enhanced Coaching Model
 Joint-Embedding Predictive Architecture for CS2 coaching.
 This is an ADDITIVE feature that coexists with the existing AdvancedCoachNN.
 
+STATUS: Active pre-training option (P9-02 decision: KEEP)
+    The contrastive loss fix (P1-03) resolved embedding collapse risk.
+    Embeddings should be monitored for diversity during training.
+    Enable via USE_JEPA_MODEL=True in settings.
+
 Architecture:
     Stage 1: JEPA Pre-training (self-supervised on pro demos)
     Stage 2: LSTM Fine-tuning (supervised on user data)
@@ -160,7 +165,9 @@ class JEPACoachingModel(nn.Module):
         """
         # Encode context and target
         s_context = self.context_encoder(x_context)
-        s_target = self.target_encoder(x_target)
+        # P1-07: Target encoder is updated only via EMA, never by gradient — no_grad saves GPU memory
+        with torch.no_grad():
+            s_target = self.target_encoder(x_target)
 
         # Average pool over sequence
         s_context_pooled = s_context.mean(dim=1)
@@ -545,7 +552,7 @@ class ConceptLabeler:
         # 2: positioning_exposed — low HP, enemies visible, not in cover;
         # late-round bomb pressure amplifies exposure (bomb_planted=1.0)
         if hp < 0.4 and enemies_vis > 0.2:
-            labels[2] = (1.0 - hp) * 0.8 + enemies_vis * 0.2 + bomb_planted * 0.1
+            labels[2] = min((1.0 - hp) * 0.8 + enemies_vis * 0.2 + bomb_planted * 0.1, 1.0)
 
         # 3: utility_effective — enemies visible after utility (proxy: many enemies seen)
         if enemies_vis > 0.6:
@@ -578,7 +585,7 @@ class ConceptLabeler:
         # numerical advantage (more teammates than enemies) amplifies signal
         if hp > 0.7 and armor > 0.5 and enemies_vis > 0.2:
             advantage = max(0.0, teammates - enemies)
-            labels[7] = hp * 0.4 + armor * 0.3 + enemies_vis * 0.2 + advantage * 0.1
+            labels[7] = min(hp * 0.4 + armor * 0.3 + enemies_vis * 0.2 + advantage * 0.1, 1.0)
 
         # 8: engagement_unfavorable — low HP or blinded with enemies;
         # numerical disadvantage worsens it
@@ -594,7 +601,7 @@ class ConceptLabeler:
 
         # 10: trade_isolated — low KAST
         if kast < 0.3:
-            labels[10] = 1.0 - kast
+            labels[10] = min(1.0 - kast, 1.0)
 
         # 11: rotation_fast — mobile player (not crouching/scoped);
         # early round with time remaining = higher rotation signal
@@ -609,7 +616,7 @@ class ConceptLabeler:
         # AWP-class weapon (weapon_class ≈ 0.9) with buy rounds boosts signal
         if kast > 0.6 and round_phase > 0.6:
             awp_bonus = 0.1 if weapon_class > 0.8 else 0.0
-            labels[13] = kast * 0.6 + round_phase * 0.4 + awp_bonus
+            labels[13] = min(kast * 0.6 + round_phase * 0.4 + awp_bonus, 1.0)
 
         # 14: clutch_composed — few enemies visible, player alive, post-bomb-plant
         # bomb_planted context is now available
@@ -622,7 +629,8 @@ class ConceptLabeler:
         elif hp < 0.3 and enemies_vis < 0.1:
             labels[15] = 0.5  # passive when hurt = calibrated
 
-        return labels
+        # Safety clamp: all concept labels must be in [0, 1]
+        return labels.clamp(0.0, 1.0)
 
     def label_from_round_stats(self, round_stats) -> torch.Tensor:
         """

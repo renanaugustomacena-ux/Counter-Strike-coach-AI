@@ -118,6 +118,7 @@ CRITICAL_DIRS = [
     "Programma_CS2_RENAN/backend/storage",
     "Programma_CS2_RENAN/backend/nn",
     "Programma_CS2_RENAN/backend/nn/rap_coach",
+    "Programma_CS2_RENAN/backend/nn/experimental/rap_coach",
     "Programma_CS2_RENAN/backend/nn/advanced",
     "Programma_CS2_RENAN/backend/nn/inference",
     "Programma_CS2_RENAN/backend/nn/layers",
@@ -271,16 +272,17 @@ NN_IMPORTS = [
     "Programma_CS2_RENAN.backend.nn.jepa_train",
     # Layers
     "Programma_CS2_RENAN.backend.nn.layers.superposition",
-    # RAP Coach
-    "Programma_CS2_RENAN.backend.nn.rap_coach.memory",
-    "Programma_CS2_RENAN.backend.nn.rap_coach.model",
-    "Programma_CS2_RENAN.backend.nn.rap_coach.trainer",
-    "Programma_CS2_RENAN.backend.nn.rap_coach.chronovisor_scanner",
-    "Programma_CS2_RENAN.backend.nn.rap_coach.strategy",
-    "Programma_CS2_RENAN.backend.nn.rap_coach.perception",
-    "Programma_CS2_RENAN.backend.nn.rap_coach.pedagogy",
-    "Programma_CS2_RENAN.backend.nn.rap_coach.communication",
-    "Programma_CS2_RENAN.backend.nn.rap_coach.skill_model",
+    # RAP Coach (canonical: experimental/rap_coach, shim: rap_coach)
+    "Programma_CS2_RENAN.backend.nn.experimental.rap_coach.memory",
+    "Programma_CS2_RENAN.backend.nn.experimental.rap_coach.model",
+    "Programma_CS2_RENAN.backend.nn.experimental.rap_coach.trainer",
+    "Programma_CS2_RENAN.backend.nn.experimental.rap_coach.chronovisor_scanner",
+    "Programma_CS2_RENAN.backend.nn.experimental.rap_coach.strategy",
+    "Programma_CS2_RENAN.backend.nn.experimental.rap_coach.perception",
+    "Programma_CS2_RENAN.backend.nn.experimental.rap_coach.pedagogy",
+    "Programma_CS2_RENAN.backend.nn.experimental.rap_coach.communication",
+    # Shared utilities (extracted from RAP, P9-01)
+    "Programma_CS2_RENAN.backend.processing.skill_assessment",
     # Inference
     "Programma_CS2_RENAN.backend.nn.inference.ghost_engine",
 ]
@@ -1154,9 +1156,11 @@ print("\n[Phase 10] Deep ML Invariants")
 
 def verify_output_dim():
     from Programma_CS2_RENAN.backend.nn.config import OUTPUT_DIM
+    from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
 
-    if OUTPUT_DIM != 4:
-        raise AssertionError(f"OUTPUT_DIM = {OUTPUT_DIM}, expected 4")
+    # P1-08: OUTPUT_DIM must equal METADATA_DIM (was hardcoded to 4, now aligned)
+    if OUTPUT_DIM != METADATA_DIM:
+        raise AssertionError(f"OUTPUT_DIM = {OUTPUT_DIM}, expected METADATA_DIM = {METADATA_DIM}")
 
 
 def verify_input_dim_matches_metadata():
@@ -1313,7 +1317,7 @@ def verify_concept_labeler_output():
         raise AssertionError("ConceptLabeler produced labels outside [0, 1]")
 
 
-check("ML-Deep", "OUTPUT_DIM == 4", verify_output_dim)
+check("ML-Deep", "OUTPUT_DIM == METADATA_DIM", verify_output_dim)
 check("ML-Deep", "INPUT_DIM == METADATA_DIM", verify_input_dim_matches_metadata)
 check("ML-Deep", "NUM_COACHING_CONCEPTS == 16", verify_num_coaching_concepts)
 check("ML-Deep", "JEPA forward -> [batch, OUTPUT_DIM]", verify_jepa_forward_shape)
@@ -1904,7 +1908,7 @@ def verify_rap_coach_forward():
     """Full forward pass through RAPCoachModel with production dimensions."""
     import torch
 
-    from Programma_CS2_RENAN.backend.nn.rap_coach.model import RAPCoachModel
+    from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.model import RAPCoachModel
     from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
 
     with torch.no_grad():
@@ -1944,7 +1948,7 @@ def verify_perception_output_invariant():
     """RAPPerception always outputs (batch, 128) regardless of input resolution."""
     import torch
 
-    from Programma_CS2_RENAN.backend.nn.rap_coach.perception import RAPPerception
+    from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.perception import RAPPerception
 
     with torch.no_grad():
         perception = RAPPerception()
@@ -1963,7 +1967,7 @@ def verify_sparsity_loss_safety():
     """compute_sparsity_loss handles None and valid tensors without crash."""
     import torch
 
-    from Programma_CS2_RENAN.backend.nn.rap_coach.model import RAPCoachModel
+    from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.model import RAPCoachModel
 
     model = RAPCoachModel()
     # None input should return 0.0
@@ -1979,7 +1983,7 @@ def verify_sparsity_loss_safety():
 
 
 def verify_rap_position_scale():
-    from Programma_CS2_RENAN.backend.nn.rap_coach.model import RAP_POSITION_SCALE
+    from Programma_CS2_RENAN.backend.nn.config import RAP_POSITION_SCALE
 
     if RAP_POSITION_SCALE != 500.0:
         raise AssertionError(
@@ -2220,7 +2224,6 @@ check("Shared", "round_utils.infer_round_phase() all phases", verify_round_utils
 # Additional module imports not covered by earlier phases
 ADDITIONAL_IMPORTS = [
     "Programma_CS2_RENAN.backend.processing.player_knowledge",
-    "Programma_CS2_RENAN.backend.processing.cv_framebuffer",
     "Programma_CS2_RENAN.backend.storage.backup_manager",
     "Programma_CS2_RENAN.backend.storage.db_backup",
     "Programma_CS2_RENAN.backend.coaching.nn_refinement",
@@ -2236,6 +2239,7 @@ for mod in ADDITIONAL_IMPORTS:
 # Optional dependency modules (warn, not fail)
 OPTIONAL_IMPORTS = [
     "Programma_CS2_RENAN.backend.nn.tensorboard_callback",
+    "Programma_CS2_RENAN.backend.processing.cv_framebuffer",  # requires cv2 (OpenCV)
 ]
 
 for mod in OPTIONAL_IMPORTS:
@@ -2478,8 +2482,7 @@ def verify_requirements_core_deps():
 
 def verify_critical_constants_cross_module():
     """Cross-module constant agreement: METADATA_DIM, HIDDEN_DIM, INPUT_DIM."""
-    from Programma_CS2_RENAN.backend.nn.config import HIDDEN_DIM, INPUT_DIM
-    from Programma_CS2_RENAN.backend.nn.rap_coach.model import RAP_POSITION_SCALE
+    from Programma_CS2_RENAN.backend.nn.config import HIDDEN_DIM, INPUT_DIM, RAP_POSITION_SCALE
     from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
 
     errors = []

@@ -1,20 +1,14 @@
 """Match History Screen — navigable list of user's matches."""
 
 import re
-from threading import Thread
 
-from kivy.clock import Clock
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.card import MDCard
 from kivymd.uix.label import MDLabel
 from kivymd.uix.screen import MDScreen
 
-from sqlmodel import select
-
-from Programma_CS2_RENAN.backend.storage.database import get_db_manager
-from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
-from Programma_CS2_RENAN.core.config import get_setting
+from Programma_CS2_RENAN.apps.desktop_app.data_viewmodels import MatchHistoryViewModel
 from Programma_CS2_RENAN.core.registry import registry
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -44,6 +38,17 @@ def _rating_color(rating: float):
     return _COLOR_YELLOW
 
 
+# P4-07: Text label alongside color for WCAG 1.4.1 color-blind accessibility
+def _rating_label(rating: float) -> str:
+    if rating >= 1.20:
+        return "Excellent"
+    if rating > _RATING_GOOD:
+        return "Good"
+    if rating >= _RATING_BAD:
+        return "Average"
+    return "Below Avg"
+
+
 def _extract_map_name(demo_name: str) -> str:
     m = _MAP_PATTERN.search(demo_name)
     return m.group(1) if m else "Unknown Map"
@@ -53,47 +58,26 @@ def _extract_map_name(demo_name: str) -> str:
 class MatchHistoryScreen(MDScreen):
     """User's match list, ordered by date, with color-coded HLTV rating."""
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # P4-03: Delegate DB access to ViewModel (MVVM)
+        self._vm = MatchHistoryViewModel()
+        self._vm.bind(matches=self._on_matches_loaded)
+        self._vm.bind(error_message=self._on_vm_error)
+
     def on_pre_enter(self):
-        Thread(target=self._load_matches, daemon=True).start()
+        # P4-04: Show loading indicator while data loads
+        self._show_placeholder("Loading matches...")
+        self._vm.load_matches()
 
-    def _load_matches(self):
-        try:
-            player = get_setting("CS2_PLAYER_NAME", "")
-            if not player:
-                Clock.schedule_once(
-                    lambda dt: self._show_placeholder("Set your player name in Settings first."), 0
-                )
-                return
+    def _on_matches_loaded(self, instance, matches):
+        if not matches:
+            return
+        self._populate(matches)
 
-            with get_db_manager().get_session() as session:
-                # F7-05: Migrated from legacy session.query() to SQLModel convention
-                matches = session.exec(
-                    select(PlayerMatchStats)
-                    .where(
-                        PlayerMatchStats.player_name == player,
-                        PlayerMatchStats.is_pro == False,  # noqa: E712
-                    )
-                    .order_by(PlayerMatchStats.match_date.desc())
-                    .limit(50)
-                ).all()
-                # Detach from session before scheduling UI update
-                match_data = [
-                    {
-                        "demo_name": m.demo_name,
-                        "match_date": m.match_date,
-                        "rating": m.rating,
-                        "avg_kills": m.avg_kills,
-                        "avg_deaths": m.avg_deaths,
-                        "avg_adr": m.avg_adr,
-                        "avg_kast": m.avg_kast,
-                        "kd_ratio": m.kd_ratio,
-                    }
-                    for m in matches
-                ]
-            Clock.schedule_once(lambda dt: self._populate(match_data), 0)
-        except Exception as e:
-            logger.error("match_history.load_failed", error=str(e))
-            Clock.schedule_once(lambda dt: self._show_placeholder("Error loading matches."), 0)
+    def _on_vm_error(self, instance, msg):
+        if msg:
+            self._show_placeholder(msg)
 
     def _populate(self, matches: list):
         container = self.ids.get("match_list_container")
@@ -148,9 +132,9 @@ class MatchHistoryScreen(MDScreen):
             spacing="12dp",
         )
 
-        # Rating badge
+        # Rating badge (P4-07: includes text label for color-blind accessibility)
         rating_label = MDLabel(
-            text=f"{rating:.2f}",
+            text=f"{rating:.2f}\n{_rating_label(rating)}",
             halign="center",
             theme_text_color="Custom",
             text_color=_rating_color(rating),

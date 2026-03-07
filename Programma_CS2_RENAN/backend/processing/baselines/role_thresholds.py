@@ -132,9 +132,15 @@ class RoleThresholdStore:
         """
         Learn thresholds from real pro player statistics.
 
+        P8-05: Validate by running on scraped pro player stats (HLTV).
+        Verify that pros are classified into their known roles (from HLTV
+        team pages). Target: 80%+ classification accuracy.
+
         Args:
-            pro_stats: List of player stat dictionaries from HLTV or demos
-            known_roles: Optional mapping of player_name -> role for labeled data
+            pro_stats: List of player stat dictionaries from HLTV or demos.
+            known_roles: Optional mapping of player_name -> role for labeled data.
+                         When provided, enables accuracy measurement against
+                         ground truth (HLTV role assignments).
 
         This calculates thresholds as statistical boundaries (e.g., 75th percentile)
         that separate role archetypes.
@@ -255,13 +261,18 @@ class RoleThresholdStore:
         return loaded > 0
 
 
-# Singleton instance
+# P3-06: Thread-safe lazy singleton with double-checked locking (AR-5).
+import threading
+
 _threshold_store: Optional[RoleThresholdStore] = None
+_threshold_store_lock = threading.Lock()
 
 
 def get_role_threshold_store() -> RoleThresholdStore:
-    """Get the singleton RoleThresholdStore instance."""
+    """Thread-safe lazy singleton factory for RoleThresholdStore."""
     global _threshold_store
     if _threshold_store is None:
-        _threshold_store = RoleThresholdStore()
+        with _threshold_store_lock:
+            if _threshold_store is None:
+                _threshold_store = RoleThresholdStore()
     return _threshold_store

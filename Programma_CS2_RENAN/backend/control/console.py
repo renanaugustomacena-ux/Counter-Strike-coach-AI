@@ -8,7 +8,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from Programma_CS2_RENAN.backend.storage.state_manager import state_manager
+from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.console")
@@ -328,7 +328,7 @@ class Console:
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "state": self._compute_state(),
             "services": _safe_call("services", self.supervisor.get_status),
-            "teacher": _safe_call("teacher", lambda: state_manager.get_status("teacher")),
+            "teacher": _safe_call("teacher", lambda: get_state_manager().get_status("teacher")),
             "ml_controller": _safe_call("ml_controller", self.ml_controller.get_status),
             "ingestion": _safe_call("ingestion", self.ingest_manager.get_status),
             "storage": _safe_call("storage", self.db_governor.audit_storage),

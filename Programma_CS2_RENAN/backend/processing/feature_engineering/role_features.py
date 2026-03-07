@@ -13,21 +13,11 @@ meta-shifts (e.g., if lurkers start using more utility, this module won't captur
 the change). Meta-level drift is tracked separately by meta_drift.py.
 """
 
-from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
-
-class PlayerRole(Enum):
-    """Standard CS2 role classifications."""
-
-    ENTRY = "entry"
-    AWPER = "awper"
-    SUPPORT = "support"
-    LURKER = "lurker"
-    IGL = "igl"
-    UNKNOWN = "unknown"
+from Programma_CS2_RENAN.core.app_types import PlayerRole  # P3-01: canonical enum
 
 
 # Role signature centroids (mean stat profiles for each role)
@@ -83,21 +73,29 @@ ROLE_SIGNATURES = {
 
 
 def classify_role(player_stats: Dict[str, float]) -> Tuple[PlayerRole, float]:
-    """
-    Classifies a player's role based on their statistical signature.
+    """P3-04: Delegate to the canonical RoleClassifier.
 
-    Uses Euclidean distance to role centroids in normalized feature space.
-
-    Args:
-        player_stats: Dict with keys matching ROLE_SIGNATURES features
-
-    Returns:
-        Tuple of (PlayerRole, confidence_score 0.0-1.0)
+    This function is kept for backward compatibility but now delegates to
+    ``role_classifier.RoleClassifier`` which uses learned thresholds + neural
+    consensus.  Falls back to centroid-distance heuristic when the classifier
+    is in cold-start state (no learned thresholds yet).
     """
     if not player_stats:
         return PlayerRole.UNKNOWN, 0.0
 
-    # Features used for classification
+    try:
+        from Programma_CS2_RENAN.backend.analysis.role_classifier import RoleClassifier
+
+        clf = RoleClassifier()
+        role, confidence, _ = clf.classify(player_stats)
+        return role, confidence
+    except Exception:
+        # Fallback: simple centroid-distance heuristic (original logic)
+        return _heuristic_classify_role(player_stats)
+
+
+def _heuristic_classify_role(player_stats: Dict[str, float]) -> Tuple[PlayerRole, float]:
+    """Fallback Euclidean-distance classifier using static ROLE_SIGNATURES centroids."""
     classification_features = [
         "opening_attempts_per_round",
         "first_kill_pct",
@@ -105,8 +103,6 @@ def classify_role(player_stats: Dict[str, float]) -> Tuple[PlayerRole, float]:
         "kpr",
         "adr",
     ]
-
-    # Normalization ranges (min, max) for each feature
     normalization = {
         "opening_attempts_per_round": (0.0, 0.5),
         "first_kill_pct": (0.0, 0.30),
@@ -117,23 +113,21 @@ def classify_role(player_stats: Dict[str, float]) -> Tuple[PlayerRole, float]:
 
     def normalize(value: float, feature: str) -> float:
         min_v, max_v = normalization.get(feature, (0, 1))
-        return (value - min_v) / (max_v - min_v + 1e-6)
+        # P3-09: prevent division by near-zero range
+        range_v = max_v - min_v
+        if range_v < 1e-6:
+            return 0.5
+        return (value - min_v) / range_v
 
-    # Build player vector
     player_vec = np.array([normalize(player_stats.get(f, 0), f) for f in classification_features])
 
-    # Calculate distances to each role centroid
     distances = {}
     for role, signature in ROLE_SIGNATURES.items():
         role_vec = np.array([normalize(signature.get(f, 0), f) for f in classification_features])
         distances[role] = np.linalg.norm(player_vec - role_vec)
 
-    # Find closest role
     closest_role = min(distances, key=distances.get)
     min_distance = distances[closest_role]
-
-    # Convert distance to confidence (0 = perfect match, larger = less confident)
-    # Using exponential decay: confidence = exp(-distance)
     confidence = np.exp(-min_distance * 2)
 
     return closest_role, float(confidence)

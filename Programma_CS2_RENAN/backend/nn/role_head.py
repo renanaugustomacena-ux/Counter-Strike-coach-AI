@@ -27,7 +27,7 @@ logger = get_logger("cs2analyzer.role_head")
 # role_anchor is merged into SUPPORT (anchors hold sites ≈ support playstyle).
 ROLE_OUTPUT_ORDER: List[PlayerRole] = [
     PlayerRole.LURKER,  # 0 ← role_lurker
-    PlayerRole.ENTRY_FRAGGER,  # 1 ← role_entry
+    PlayerRole.ENTRY,  # 1 ← role_entry
     PlayerRole.SUPPORT,  # 2 ← role_support + role_anchor
     PlayerRole.AWPER,  # 3 ← role_awper
     PlayerRole.IGL,  # 4 ← role_igl

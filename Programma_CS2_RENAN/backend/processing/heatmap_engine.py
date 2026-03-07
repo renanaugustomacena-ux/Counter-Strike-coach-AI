@@ -73,18 +73,17 @@ class HeatmapEngine:
         # Pre-calc constants
         scale_factor = 1.0 / (meta.scale * 1024.0)
 
-        for wx, wy in points:
-            # Normalize (0.0 to 1.0)
-            nx = (wx - meta.pos_x) * scale_factor
-            ny = (meta.pos_y - wy) * scale_factor
+        # Vectorized projection: world coords -> grid coords
+        pts = np.asarray(points, dtype=np.float64)
+        nx = (pts[:, 0] - meta.pos_x) * scale_factor
+        ny = (meta.pos_y - pts[:, 1]) * scale_factor
+        gx = (nx * resolution).astype(np.intp)
+        gy = ((1.0 - ny) * resolution).astype(np.intp)
 
-            # Map to grid
-            gx = int(nx * resolution)
-            # Flip Y for Kivy texture (origin is Bottom-Left)
-            gy = int((1.0 - ny) * resolution)
-
-            if 0 <= gx < resolution and 0 <= gy < resolution:
-                grid[gy, gx] += 1.0
+        # Mask out-of-bounds points
+        valid = (gx >= 0) & (gx < resolution) & (gy >= 0) & (gy < resolution)
+        # Atomic accumulation handles duplicate grid cells correctly
+        np.add.at(grid, (gy[valid], gx[valid]), 1.0)
 
         # 3. Apply Gaussian Blur
         density = gaussian_filter(grid, sigma=sigma)
@@ -170,13 +169,13 @@ class HeatmapEngine:
 
         def _positions_to_grid(positions: list[tuple[float, float]]) -> np.ndarray:
             grid = np.zeros((resolution, resolution), dtype=np.float32)
-            for wx, wy in positions:
-                nx = (wx - meta.pos_x) * scale_factor
-                ny = (meta.pos_y - wy) * scale_factor
-                gx = int(nx * resolution)
-                gy = int((1.0 - ny) * resolution)
-                if 0 <= gx < resolution and 0 <= gy < resolution:
-                    grid[gy, gx] += 1.0
+            pts = np.asarray(positions, dtype=np.float64)
+            nx = (pts[:, 0] - meta.pos_x) * scale_factor
+            ny = (meta.pos_y - pts[:, 1]) * scale_factor
+            gx = (nx * resolution).astype(np.intp)
+            gy = ((1.0 - ny) * resolution).astype(np.intp)
+            valid = (gx >= 0) & (gx < resolution) & (gy >= 0) & (gy < resolution)
+            np.add.at(grid, (gy[valid], gx[valid]), 1.0)
             density = gaussian_filter(grid, sigma=sigma)
             max_val = np.max(density)
             if max_val > 0:

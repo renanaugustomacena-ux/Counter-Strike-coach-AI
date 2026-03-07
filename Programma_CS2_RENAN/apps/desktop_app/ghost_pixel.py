@@ -99,6 +99,10 @@ class GhostPixelValidator(Widget):
             self.lbl.size = self.lbl.texture_size
             return
 
+        # P4-09: Guard against zero-dimension widgets before first layout pass
+        if self.width <= 0 or self.height <= 0:
+            return
+
         # 1. Coordinate Reverse Mapping (Pixel -> World)
         # Using the standardized SpatialEngine logic
 

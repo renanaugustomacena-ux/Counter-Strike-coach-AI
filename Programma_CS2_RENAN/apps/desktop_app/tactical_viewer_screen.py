@@ -109,7 +109,9 @@ class TacticalViewerScreen(MDScreen):
             Clock.schedule_once(_safe_trigger_picker, 0.5)
 
     def on_leave(self):
-        """Called when screen is left — release the tick timer."""
+        """Called when screen is left — release the tick timer and unbind."""
+        # P4-01: Unbind map selection to prevent duplicate bindings on re-enter
+        self.ids.tactical_map.unbind(selected_player_id=self.on_map_selection)
         if self._tick_event is not None:
             self._tick_event.cancel()
             self._tick_event = None
@@ -129,6 +131,10 @@ class TacticalViewerScreen(MDScreen):
         frames, events, segments = self.full_demo_data[map_name]
         self.game_events = events
         self.segments = segments
+
+        # P4-11: Clear stale player widget cache before loading new match players
+        self.ids.ct_sidebar.clear_all()
+        self.ids.t_sidebar.clear_all()
 
         # Update UI widgets
         self.ids.map_spinner.text = map_name

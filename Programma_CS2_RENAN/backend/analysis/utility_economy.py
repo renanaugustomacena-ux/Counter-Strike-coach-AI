@@ -62,7 +62,14 @@ class UtilityAnalyzer:
     - Strategic value (smokes)
     """
 
-    # Pro baseline values
+    # P8-06: Pro utility baselines. Hand-estimated from manual analysis of
+    # pro match VODs. Validation: compute actual averages from parsed pro demo
+    # files and update with empirical values.
+    # - Molotov: avg damage per throw from pro demos (estimated 30-40 HP)
+    # - HE: avg damage per throw from pro demos (estimated 20-30 HP)
+    # - Flash: avg enemies blinded per throw from pro demos (estimated 1.0-1.5)
+    # - Smoke: strategic value is a normalized 0-1 score (no direct measurement)
+    # - usage_rate: fraction of buy rounds where utility type is purchased
     PRO_BASELINES = {
         UtilityType.MOLOTOV: {"damage_per_throw": 35, "usage_rate": 0.7},
         UtilityType.HE: {"damage_per_throw": 25, "usage_rate": 0.5},
@@ -218,6 +225,12 @@ class EconomyOptimizer:
     FULL_BUY_THRESHOLD = 4000  # Minimum for full buy
     FORCE_BUY_THRESHOLD = 2000  # Minimum for force
 
+    # P3-12: MR format → second-half pistol round number.
+    # MR12 (CS2 default since Sep 2023): halftime after round 12, pistol at 13.
+    # MR13: halftime after round 15, pistol at 16 (tournament/legacy formats).
+    HALF_ROUND = {12: 13, 13: 16}
+    MR_FORMAT_DEFAULT = 12
+
     def __init__(self):
         pass
 
@@ -228,6 +241,7 @@ class EconomyOptimizer:
         is_ct: bool = True,
         score_diff: int = 0,
         loss_bonus: int = 1900,
+        mr_format: int = MR_FORMAT_DEFAULT,
     ) -> EconomyDecision:
         """
         Recommend economy decision.
@@ -238,6 +252,7 @@ class EconomyOptimizer:
             is_ct: Whether player is CT
             score_diff: Score difference (positive = winning)
             loss_bonus: Current loss bonus amount
+            mr_format: Max Rounds format (12 or 13). Default: 12 (CS2 standard).
 
         Returns:
             EconomyDecision with recommendation
@@ -246,7 +261,9 @@ class EconomyOptimizer:
         if round_number == 1:
             return self._pistol_round_decision(current_money, is_ct)
 
-        if round_number in [13, 25]:  # Half (MR12) / overtime
+        # P3-12: configurable half-round detection instead of hardcoded [13, 25]
+        half_round = self.HALF_ROUND.get(mr_format, 13)
+        if round_number == half_round:
             return self._overtime_decision(current_money, is_ct)
 
         # Standard decision logic
