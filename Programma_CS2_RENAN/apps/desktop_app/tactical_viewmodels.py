@@ -230,6 +230,17 @@ class TacticalChronovisorViewModel(EventDispatcher):
                     Clock.schedule_once(lambda dt: self._on_scan_done([]), 0)
                     return
 
+                from Programma_CS2_RENAN.core.config import get_setting
+
+                if not get_setting("USE_RAP_MODEL", default=False):
+                    Clock.schedule_once(
+                        lambda dt: self._on_scan_error(
+                            "RAP model disabled (USE_RAP_MODEL=False)"
+                        ),
+                        0,
+                    )
+                    return
+
                 from Programma_CS2_RENAN.backend.nn.rap_coach.chronovisor_scanner import (
                     ChronovisorScanner,
                 )

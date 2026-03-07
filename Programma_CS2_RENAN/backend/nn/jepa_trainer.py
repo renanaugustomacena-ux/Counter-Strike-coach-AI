@@ -82,7 +82,26 @@ class JEPATrainer:
         # 5. Update Target Encoder (EMA)
         self.model.update_target_encoder()
 
-        return {"loss": loss.item()}
+        # 6. Embedding diversity monitoring (P9-02 acceptance criterion)
+        embedding_variance = self._log_embedding_diversity(pred_embedding)
+
+        return {"loss": loss.item(), "embedding_variance": embedding_variance}
+
+    def _log_embedding_diversity(self, embeddings: torch.Tensor) -> float:
+        """Monitor embedding collapse risk (P9-02 acceptance criterion).
+
+        Returns the mean variance across latent dimensions. A healthy value
+        should be > 0.01; below that indicates potential representation collapse.
+        """
+        with torch.no_grad():
+            variance = embeddings.var(dim=0).mean().item()
+            if variance < 0.01:
+                logger.warning(
+                    "JEPA embedding variance=%.6f — potential collapse detected", variance
+                )
+            else:
+                logger.debug("JEPA embedding variance=%.6f (healthy)", variance)
+            return variance
 
     def train_epoch(self, dataloader, device):
         """

@@ -31,10 +31,12 @@ class TestDimensionChainAlignment:
 
         assert METADATA_DIM == 25
 
-    def test_output_dim_is_4(self):
+    def test_output_dim_matches_metadata_dim(self):
+        """P1-08: OUTPUT_DIM must be aligned with METADATA_DIM."""
         from Programma_CS2_RENAN.backend.nn.config import OUTPUT_DIM
+        from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
 
-        assert OUTPUT_DIM == 4
+        assert OUTPUT_DIM == METADATA_DIM
 
     def test_legacy_model_accepts_metadata_dim_input(self):
         """TeacherRefinementNN should accept METADATA_DIM-sized input without error."""

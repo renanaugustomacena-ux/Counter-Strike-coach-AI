@@ -34,7 +34,7 @@ from Programma_CS2_RENAN.backend.storage.match_data_manager import (
     get_match_data_manager,
 )
 from Programma_CS2_RENAN.backend.storage.state_manager import (  # NEW: For progress tracking
-    state_manager,
+    get_state_manager,
 )
 from Programma_CS2_RENAN.backend.storage.storage_manager import StorageManager
 from Programma_CS2_RENAN.core.config import MIN_DEMOS_FOR_COACHING, get_setting, refresh_settings
@@ -78,7 +78,7 @@ def run_ml_pipeline(db_manager, player_name: str, current_demo_name: str, stats:
     logger.info("Running ML pipeline for %s...", player_name)
 
     # 1. Resolve Skill & Curriculum (Phase 5)
-    from Programma_CS2_RENAN.backend.nn.rap_coach.skill_model import SkillLatentModel
+    from Programma_CS2_RENAN.backend.processing.skill_assessment import SkillLatentModel
     from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
 
     # Wrap the stats dict into a model-like object for the skill calculator
@@ -202,7 +202,7 @@ def _save_insights(
 
 def _save_batch_insights(session, p_name, demo_name, rap, corr, long_i, skill_level):
     from Programma_CS2_RENAN.backend.coaching.explainability import ExplanationGenerator
-    from Programma_CS2_RENAN.backend.nn.rap_coach.skill_model import SkillAxes
+    from Programma_CS2_RENAN.backend.processing.skill_assessment import SkillAxes
 
     for r in rap:
         session.add(
@@ -373,9 +373,9 @@ def process_queued_tasks(db_manager, storage, is_pro, high_priority, limit=0):
 
     # Reset progress when batch is done
     if processed_count == total_tasks:
-        from Programma_CS2_RENAN.backend.storage.state_manager import state_manager
+        from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
 
-        state_manager.update_status("digester", "Idle", f"Processed {total_tasks} demos")
+        get_state_manager().update_status("digester", "Idle", f"Processed {total_tasks} demos")
 
 
 def _queue_files(session, files, is_pro):
@@ -410,6 +410,11 @@ def _ingest_single_demo(db_manager, storage, demo_path, is_pro):
     if start_tick == 0:
         df = parse_demo(str(demo_path), target_player=target)
         if df.empty:
+            logger.warning(
+                "parse_demo returned empty DataFrame for %s (target=%s)",
+                demo_path.name,
+                target,
+            )
             return False, f"Empty data for '{target}'"
         for _, row in df.iterrows():
             _save_player_stats(db_manager, row, demo_path.name, is_pro)
@@ -901,20 +906,25 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
     import time as _time
 
     from Programma_CS2_RENAN.backend.data_sources.demo_parser import parse_sequential_ticks
+    from Programma_CS2_RENAN.backend.processing.tick_enrichment import enrich_tick_data
 
     t_pipeline = _time.monotonic()
 
     # PROGRESS: 10% - Sending to Rust Parser
-    state_manager.update_parsing_progress(10.0)
+    get_state_manager().update_parsing_progress(10.0)
 
-    df_ticks = parse_sequential_ticks(str(demo_path), target_player, start_tick=start_tick)
+    # Parse ALL players — required for cross-player feature computation
+    # (teammates_alive, enemies_alive, team_economy, enemies_visible).
+    # demoparser2 parsing is O(file_size) regardless of player filter;
+    # the filter only affects post-parse DataFrame slicing.
+    df_ticks = parse_sequential_ticks(str(demo_path), "ALL", start_tick=start_tick)
 
     if df_ticks.empty:
-        state_manager.update_parsing_progress(100.0)
+        get_state_manager().update_parsing_progress(100.0)
         return start_tick
 
-    # PROGRESS: 30% - Interpolation
-    state_manager.update_parsing_progress(30.0)
+    # PROGRESS: 20% - Interpolation
+    get_state_manager().update_parsing_progress(20.0)
     t_interp = _time.monotonic()
 
     # Apply intelligent interpolation to fill missing positions
@@ -922,8 +932,28 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
 
     logger.info("Interpolation completed in %.2fs for %s rows", _time.monotonic() - t_interp, f"{len(df_ticks):,}")
 
+    # PROGRESS: 25% - Tick Enrichment (cross-player features)
+    get_state_manager().update_parsing_progress(25.0)
+    t_enrich = _time.monotonic()
+
+    # Resolve map_name from tick data (demoparser2 may include it)
+    _meta_map_name = "de_unknown"
+    if "map_name" in df_ticks.columns and not df_ticks["map_name"].isna().all():
+        _meta_map_name = str(df_ticks["map_name"].dropna().iloc[0])
+
+    # Enrich with cross-player features: round_number, time_in_round,
+    # bomb_planted, teammates_alive, enemies_alive, team_economy, enemies_visible
+    df_ticks = enrich_tick_data(
+        df_ticks,
+        demo_path=str(demo_path),
+        tick_rate=64.0,
+        map_name=_meta_map_name,
+    )
+
+    logger.info("Enrichment completed in %.2fs", _time.monotonic() - t_enrich)
+
     # PROGRESS: 40% - Database Insertion Start
-    state_manager.update_parsing_progress(40.0)
+    get_state_manager().update_parsing_progress(40.0)
     t_db = _time.monotonic()
 
     demo_name = demo_path.stem
@@ -933,10 +963,6 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
     total_ticks = len(df_ticks)
     last_tick = int(df_ticks["tick"].max()) if total_ticks > 0 else start_tick
 
-    # Snapshot metadata before bulk operations
-    _meta_map_name = str(
-        df_ticks.iloc[0].get("map_name", "de_unknown") if total_ticks > 0 else "de_unknown"
-    )
     _meta_player_count = (
         df_ticks["player_name"].nunique() if "player_name" in df_ticks.columns else 10
     )
@@ -949,7 +975,7 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
 
     import numpy as np
 
-    BATCH_SIZE = 10000 if target_player == "ALL" or os.environ.get("HP_MODE") == "1" else 2000
+    BATCH_SIZE = 10000 if os.environ.get("HP_MODE") == "1" else 2000
 
     # --- Build MatchTickState DataFrame (vectorized column mapping) ---
     t_build = _time.monotonic()
@@ -964,20 +990,31 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
         "deaths_total": 0, "assists_total": 0, "headshot_kills_total": 0,
         "mvps": 0, "score": 0, "cash_spent_this_round": 0,
         "total_cash_spent": 0,
+        "teammates_alive": 4, "enemies_alive": 5, "team_economy": 0,
     }
-    _float_defaults = {"X": 0.0, "Y": 0.0, "Z": 0.0, "yaw": 0.0}
+    _float_defaults = {"X": 0.0, "Y": 0.0, "Z": 0.0, "yaw": 0.0, "pitch": 0.0, "time_in_round": 0.0}
     _bool_defaults = {
         "is_crouching": False, "is_scoped": False, "is_blinded": False,
-        "has_helmet": False, "has_defuser": False,
+        "has_helmet": False, "has_defuser": False, "bomb_planted": False,
     }
 
     # Fill NaN/None with defaults (vectorized, ~100ms for 2.4M rows)
     for col, default in _int_defaults.items():
         if col in df_ticks.columns:
-            df_ticks[col] = pd.to_numeric(df_ticks[col], errors="coerce").fillna(default).astype(int)
+            original_na = df_ticks[col].isna().sum()
+            numeric = pd.to_numeric(df_ticks[col], errors="coerce")
+            coerced_count = numeric.isna().sum() - original_na
+            if coerced_count > 0:
+                logger.warning("Column '%s': %d non-numeric values coerced to default %s", col, coerced_count, default)
+            df_ticks[col] = numeric.fillna(default).astype(int)
     for col, default in _float_defaults.items():
         if col in df_ticks.columns:
-            df_ticks[col] = pd.to_numeric(df_ticks[col], errors="coerce").fillna(default).astype(float)
+            original_na = df_ticks[col].isna().sum()
+            numeric = pd.to_numeric(df_ticks[col], errors="coerce")
+            coerced_count = numeric.isna().sum() - original_na
+            if coerced_count > 0:
+                logger.warning("Column '%s': %d non-numeric values coerced to default %s", col, coerced_count, default)
+            df_ticks[col] = numeric.fillna(default).astype(float)
     for col, default in _bool_defaults.items():
         if col in df_ticks.columns:
             df_ticks[col] = df_ticks[col].fillna(default).astype(bool)
@@ -996,8 +1033,12 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
         df_ticks.loc[df_ticks["active_weapon"].str.lower() == "nan", "active_weapon"] = "unknown"
     if "player_name" in df_ticks.columns:
         df_ticks["player_name"] = df_ticks["player_name"].astype(str)
+    if "map_name" in df_ticks.columns:
+        df_ticks["map_name"] = df_ticks["map_name"].fillna(_meta_map_name).astype(str)
+    else:
+        df_ticks["map_name"] = _meta_map_name
 
-    # Build MatchTickState DataFrame with renamed columns
+    # Build MatchTickState DataFrame with renamed columns (ALL players)
     df_match = pd.DataFrame({
         "tick": df_ticks["tick"].astype(int),
         "round_number": df_ticks.get("round_number", pd.Series(1, index=df_ticks.index)).astype(int),
@@ -1036,24 +1077,51 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
         "score": df_ticks.get("score", pd.Series(0, index=df_ticks.index)).astype(int),
         "cash_spent_this_round": df_ticks.get("cash_spent_this_round", pd.Series(0, index=df_ticks.index)).astype(int),
         "cash_spent_total": df_ticks.get("total_cash_spent", pd.Series(0, index=df_ticks.index)).astype(int),
+        # --- Enriched features ---
+        "pitch": df_ticks.get("pitch", pd.Series(0.0, index=df_ticks.index)).astype(float),
+        "time_in_round": df_ticks.get("time_in_round", pd.Series(0.0, index=df_ticks.index)).astype(float),
+        "bomb_planted": df_ticks.get("bomb_planted", pd.Series(False, index=df_ticks.index)).astype(bool),
+        "teammates_alive": df_ticks.get("teammates_alive", pd.Series(4, index=df_ticks.index)).astype(int),
+        "enemies_alive": df_ticks.get("enemies_alive", pd.Series(5, index=df_ticks.index)).astype(int),
+        "team_economy": df_ticks.get("team_economy", pd.Series(0, index=df_ticks.index)).astype(int),
+        "map_name": df_ticks["map_name"],
     })
 
-    # Build legacy PlayerTickState DataFrame
+    # Build legacy PlayerTickState DataFrame — filtered to target_player
+    # for user demos, ALL players for pro demos
+    df_legacy_source = df_ticks
+    if target_player and target_player != "ALL":
+        target_lower = str(target_player).strip().lower()
+        df_legacy_source = df_ticks[
+            df_ticks["player_name"].astype(str).str.strip().str.lower() == target_lower
+        ]
+
     df_legacy = pd.DataFrame({
         "demo_name": demo_name,
-        "tick": df_ticks["tick"].astype(int),
-        "player_name": df_ticks["player_name"],
-        "pos_x": df_ticks["X"].astype(float),
-        "pos_y": df_ticks["Y"].astype(float),
-        "pos_z": df_ticks["Z"].astype(float),
-        "view_x": df_ticks["yaw"].astype(float),
-        "view_y": df_ticks.get("pitch", pd.Series(0.0, index=df_ticks.index)).astype(float),
-        "health": df_ticks["health"].astype(int),
-        "armor": df_ticks.get("armor", pd.Series(0, index=df_ticks.index)).astype(int),
-        "is_crouching": df_ticks.get("is_crouching", pd.Series(False, index=df_ticks.index)).astype(bool),
-        "is_scoped": df_ticks.get("is_scoped", pd.Series(False, index=df_ticks.index)).astype(bool),
-        "active_weapon": df_ticks.get("active_weapon", pd.Series("unknown", index=df_ticks.index)),
-        "equipment_value": df_ticks.get("equipment_value", pd.Series(0, index=df_ticks.index)).astype(int),
+        "tick": df_legacy_source["tick"].astype(int),
+        "player_name": df_legacy_source["player_name"],
+        "pos_x": df_legacy_source["X"].astype(float),
+        "pos_y": df_legacy_source["Y"].astype(float),
+        "pos_z": df_legacy_source["Z"].astype(float),
+        "view_x": df_legacy_source["yaw"].astype(float),
+        "view_y": df_legacy_source.get("pitch", pd.Series(0.0, index=df_legacy_source.index)).astype(float),
+        "health": df_legacy_source["health"].astype(int),
+        "armor": df_legacy_source.get("armor", pd.Series(0, index=df_legacy_source.index)).astype(int),
+        "is_crouching": df_legacy_source.get("is_crouching", pd.Series(False, index=df_legacy_source.index)).astype(bool),
+        "is_scoped": df_legacy_source.get("is_scoped", pd.Series(False, index=df_legacy_source.index)).astype(bool),
+        "active_weapon": df_legacy_source.get("active_weapon", pd.Series("unknown", index=df_legacy_source.index)),
+        "equipment_value": df_legacy_source.get("equipment_value", pd.Series(0, index=df_legacy_source.index)).astype(int),
+        "enemies_visible": df_legacy_source.get("enemies_visible", pd.Series(0, index=df_legacy_source.index)).astype(int),
+        "is_blinded": df_legacy_source.get("is_blinded", pd.Series(False, index=df_legacy_source.index)).astype(bool),
+        # --- Enriched features ---
+        "round_number": df_legacy_source.get("round_number", pd.Series(1, index=df_legacy_source.index)).astype(int),
+        "time_in_round": df_legacy_source.get("time_in_round", pd.Series(0.0, index=df_legacy_source.index)).astype(float),
+        "bomb_planted": df_legacy_source.get("bomb_planted", pd.Series(False, index=df_legacy_source.index)).astype(bool),
+        "teammates_alive": df_legacy_source.get("teammates_alive", pd.Series(4, index=df_legacy_source.index)).astype(int),
+        "enemies_alive": df_legacy_source.get("enemies_alive", pd.Series(5, index=df_legacy_source.index)).astype(int),
+        "team_economy": df_legacy_source.get("team_economy", pd.Series(0, index=df_legacy_source.index)).astype(int),
+        "map_name": df_legacy_source.get("map_name", pd.Series(_meta_map_name, index=df_legacy_source.index)),
+        "created_at": datetime.now(timezone.utc),
     })
 
     logger.info("DataFrame construction: %.2fs", _time.monotonic() - t_build)
@@ -1069,7 +1137,7 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
 
         # Update progress: map chunk_idx/n_chunks -> 40..95%
         pct = 40.0 + (chunk_idx / n_chunks) * 55.0
-        state_manager.update_parsing_progress(pct)
+        get_state_manager().update_parsing_progress(pct)
 
         # Write chunk to per-match database
         df_match.iloc[start:end].to_sql(

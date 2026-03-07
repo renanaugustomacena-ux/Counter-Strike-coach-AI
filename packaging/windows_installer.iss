@@ -5,7 +5,8 @@
 [Setup]
 AppId={{D3B3E1A2-5678-4CDE-9012-3456789ABCDE}
 AppName=Macena CS2 Analyzer
-AppVersion=1.0.0
+; P10-02: Must match pyproject.toml [project].version on every release
+AppVersion=0.9.0
 AppPublisher=Macena
 DefaultDirName={autopf}\Macena_CS2_Analyzer
 DefaultGroupName=Macena CS2 Analyzer

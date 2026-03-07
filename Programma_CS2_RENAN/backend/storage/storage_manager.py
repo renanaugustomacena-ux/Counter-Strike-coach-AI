@@ -105,13 +105,21 @@ class StorageManager:
         """
         Get absolute path to demo.
         Only checks local search paths.
+
+        P2-03: Validates filename against path traversal attacks.
         """
+        # P2-03: Strip directory components to block path traversal (e.g. ../../etc/passwd)
+        safe_name = Path(filename).name
+        if safe_name != filename:
+            logger.warning("Path traversal attempt blocked in get_demo_path: %s", filename)
+            return None
+
         # Check local search paths
         search_paths = [
-            self.local_path / filename,
-            self.ingest_dir / filename,
-            self.pro_ingest_dir / filename,
-            self.archive_path / filename,
+            self.local_path / safe_name,
+            self.ingest_dir / safe_name,
+            self.pro_ingest_dir / safe_name,
+            self.archive_path / safe_name,
         ]
 
         for path in search_paths:

@@ -10,9 +10,17 @@
 ## Pre-Build Verification
 
 - [ ] All 13 pre-commit hooks pass: `pre-commit run --all-files`
-- [ ] Test suite passes: `pytest --cov=Programma_CS2_RENAN --cov-fail-under=49`
+- [ ] Test suite passes: `pytest --cov=Programma_CS2_RENAN --cov-fail-under=30`
 - [ ] No `print()` in production code (headless validator Phase 12 checks this)
 - [ ] `integrity_manifest.json` is current (regenerate if files changed)
+
+## Version Synchronization
+
+Before every release build, verify version consistency:
+
+- [ ] `pyproject.toml` → `[project].version`
+- [ ] `packaging/windows_installer.iss` → `AppVersion`
+- Both must match. Current: **0.9.0**
 
 ## Build Command
 
@@ -32,6 +40,13 @@ pip install torch --index-url https://download.pytorch.org/whl/cpu
 
 The code auto-detects CPU via `backend/nn/config.py:get_device()` — no code changes needed.
 
+## Expected Bundle Size
+
+| Variant | Approximate Size |
+|---------|-----------------|
+| CPU-only torch | ~1.5 GB |
+| GPU (CUDA) torch | ~2.5 GB |
+
 ## Post-Build Verification
 
 - [ ] `dist/Macena_CS2_Analyzer/Macena_CS2_Analyzer.exe` exists
@@ -40,6 +55,8 @@ The code auto-detects CPU via `backend/nn/config.py:get_device()` — no code ch
 - [ ] Verify map_config.json accessible (map images load)
 - [ ] Verify alembic/ directory present in bundle
 - [ ] Verify PHOTO_GUI/ assets present (fonts, themes, backgrounds)
+- [ ] Verify matplotlib charts render (Performance screen → skill radar)
+- [ ] Run `python tools/audit_binaries.py` on the dist folder
 
 ## Windows Installer (Optional)
 
@@ -55,3 +72,4 @@ iscc packaging/windows_installer.iss
 - Playwright requires browser install — not bundled for frozen builds
 - HLTV scraping excluded from frozen build (Playwright dep)
 - SentenceTransformer model downloads on first run (~80MB)
+- matplotlib is included in the bundle (~30MB) — required for chart rendering

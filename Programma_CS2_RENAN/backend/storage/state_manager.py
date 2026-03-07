@@ -23,9 +23,9 @@ class StateManager:
     def get_state(self) -> CoachState:
         """
         Retrieves the singleton CoachState. Creates it if it doesn't exist.
-        Uses the 'knowledge' session scope.
+        P0-04: Lock acquired to prevent duplicate row creation under concurrent access.
         """
-        with self.db.get_session() as session:
+        with self._lock, self.db.get_session() as session:
             state = session.exec(select(CoachState)).first()
             if not state:
                 state = CoachState()
@@ -137,6 +137,32 @@ class StateManager:
         except Exception as e:
             logger.error("Failed to add notification: %s", e)
 
+    def prune_old_notifications(self, max_age_days: int = 30) -> int:
+        """P2-06: Delete notifications older than max_age_days to prevent unbounded growth.
+
+        Returns:
+            Number of notifications deleted.
+        """
+        from datetime import timedelta
+
+        from sqlmodel import delete
+
+        cutoff = datetime.now(timezone.utc) - timedelta(days=max_age_days)
+        try:
+            with self.db.get_session() as session:
+                stmt = delete(ServiceNotification).where(
+                    ServiceNotification.created_at < cutoff
+                )
+                result = session.exec(stmt)
+                session.commit()
+                deleted = result.rowcount  # type: ignore[union-attr]
+                if deleted:
+                    logger.info("Pruned %d old notifications (older than %d days)", deleted, max_age_days)
+                return deleted
+        except Exception as e:
+            logger.error("Failed to prune notifications: %s", e)
+            return 0
+
     def get_status(self, daemon: str) -> dict:
         """Retrieves the current status and detail for a daemon."""
         try:
@@ -161,5 +187,20 @@ class StateManager:
             return {"status": "Error", "detail": str(e)}
 
 
-# Global instance for easy import
-state_manager = StateManager()
+# P0-04: Lazy singleton with double-checked locking (AR-5).
+# Replaces module-level `state_manager = StateManager()` which called
+# get_db_manager() at import time, before init_database() was guaranteed.
+from typing import Optional
+
+_state_manager: Optional[StateManager] = None
+_state_manager_lock = threading.Lock()
+
+
+def get_state_manager() -> StateManager:
+    """Thread-safe lazy singleton factory for StateManager."""
+    global _state_manager
+    if _state_manager is None:
+        with _state_manager_lock:
+            if _state_manager is None:
+                _state_manager = StateManager()
+    return _state_manager

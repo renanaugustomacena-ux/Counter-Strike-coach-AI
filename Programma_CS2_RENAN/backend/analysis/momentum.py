@@ -20,11 +20,21 @@ HALF_SWITCH_MR12 = 13
 # MR13 (legacy 30-round format) — kept for backward compat with older demos
 HALF_SWITCH_MR13 = 16
 
-# Multiplier bounds
+# Multiplier bounds — hand-tuned to prevent extreme swings.
+# Min 0.7 = max 30% performance drop; Max 1.4 = max 40% boost.
 MULTIPLIER_MIN = 0.7
 MULTIPLIER_MAX = 1.4
 
-# Tilt detection threshold
+# P8-03: Momentum multipliers per streak round.
+# Hand-tuned. Validation: analyze 500+ matches for correlation between
+# streak length and next-round win probability. The empirical relationship
+# should approximate these multipliers.
+# Win asymmetry (+0.05 vs -0.04) reflects CS2 economy advantage on win streaks.
+MOMENTUM_WIN_PER_STREAK = 0.05
+MOMENTUM_LOSS_PER_STREAK = 0.04
+
+# Tilt detection threshold — player is "tilted" when multiplier < 0.85.
+# Source: hand-tuned; corresponds to ~3-round loss streak.
 TILT_THRESHOLD = 0.85
 
 
@@ -35,6 +45,8 @@ class MomentumState:
     current_multiplier: float = 1.0
     streak_length: int = 0
     streak_type: str = "neutral"  # "win", "loss", "neutral"
+    # Inter-round gap decay rate. Hand-tuned; only applies when rounds
+    # are skipped (gap > 0). At 0.15, a 3-round gap reduces momentum by ~36%.
     decay_rate: float = 0.15
 
     @property
@@ -110,9 +122,9 @@ class MomentumTracker:
         streak = self._state.streak_length
 
         if self._state.streak_type == "win":
-            raw = 1.0 + 0.05 * streak * decay
+            raw = 1.0 + MOMENTUM_WIN_PER_STREAK * streak * decay
         elif self._state.streak_type == "loss":
-            raw = 1.0 - 0.04 * streak * decay
+            raw = 1.0 - MOMENTUM_LOSS_PER_STREAK * streak * decay
         else:
             raw = 1.0
 

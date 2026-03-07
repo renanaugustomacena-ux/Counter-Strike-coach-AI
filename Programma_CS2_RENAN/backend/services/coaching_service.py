@@ -15,6 +15,39 @@ _coaching_logger = get_logger("cs2analyzer.coaching.temporal")
 
 
 class CoachingService:
+    """Unified coaching orchestrator with prioritized mode selection.
+
+    Mode Priority Chain (P9-03)
+    ===========================
+    1. **COPER** (default, ``USE_COPER_COACHING=True``)
+       Context-aware coaching using Experience Bank + RAG + Pro References.
+       Requires ``map_name`` and ``tick_data``; falls back to Hybrid on failure.
+
+    2. **Hybrid** (``USE_HYBRID_COACHING=True``)
+       ML predictions synthesised with RAG knowledge retrieval.
+       Requires ``player_stats``; falls back to Traditional on failure.
+
+    3. **Traditional + RAG** (``USE_RAG_COACHING=True``)
+       Correction engine enhanced with tactical knowledge retrieval.
+       Uses ``deviations`` and ``rounds_played`` — always available.
+
+    4. **Traditional** (always available)
+       Pure deviation-based correction engine. Lowest fidelity, zero
+       external dependencies. This is the ultimate fallback — if even
+       this fails, no coaching is generated and a warning is logged.
+
+    Fallback Transitions
+    --------------------
+    - COPER failure → Hybrid (if enabled + player_stats available) → Traditional
+    - Hybrid failure → Traditional (warning logged, no deviations → zero output)
+    - Traditional is terminal — no further fallback.
+
+    Post-Coaching Pipelines (non-blocking)
+    ---------------------------------------
+    - Phase 6 Advanced Analysis (momentum, deception, entropy, game theory)
+    - Longitudinal Trend Coaching (regression/improvement detection)
+    """
+
     def __init__(self):
         self.db_manager = get_db_manager()
         self.use_rag = get_setting("USE_RAG_COACHING", default=False)
@@ -73,6 +106,7 @@ class CoachingService:
 
         # COPER mode takes highest precedence
         if self.use_coper and map_name and tick_data:
+            mode_used = "COPER"
             _coaching_logger.info(
                 "Coaching mode selected: COPER for player=%s demo=%s", player_name, demo_name
             )
@@ -81,11 +115,13 @@ class CoachingService:
                 deviations=deviations, rounds_played=rounds_played,
             )
         elif self.use_hybrid and player_stats:
+            mode_used = "Hybrid"
             _coaching_logger.info(
                 "Coaching mode selected: Hybrid for player=%s demo=%s", player_name, demo_name
             )
             self._generate_hybrid_insights(player_name, demo_name, player_stats, map_name)
         else:
+            mode_used = "Traditional+RAG" if self.use_rag else "Traditional"
             _coaching_logger.info(
                 "Coaching mode selected: Traditional%s for player=%s demo=%s",
                 "+RAG" if self.use_rag else "",
@@ -103,6 +139,14 @@ class CoachingService:
 
         # Longitudinal tracking (C-02: was imported but never called)
         self._run_longitudinal_coaching(player_name, demo_name)
+
+        # P9-03: Log the mode that was actually executed for observability
+        _coaching_logger.info(
+            "Coaching pipeline complete: mode_used=%s player=%s demo=%s",
+            mode_used,
+            player_name,
+            demo_name,
+        )
 
     def _generate_coper_insights(
         self,

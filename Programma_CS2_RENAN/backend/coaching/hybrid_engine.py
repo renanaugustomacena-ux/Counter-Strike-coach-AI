@@ -24,6 +24,7 @@ import torch
 
 from Programma_CS2_RENAN.backend.knowledge.rag_knowledge import KnowledgeRetriever
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager, get_hltv_db_manager
+from Programma_CS2_RENAN.core.localization import i18n
 from Programma_CS2_RENAN.backend.storage.db_models import CoachingInsight, TacticalKnowledge
 from Programma_CS2_RENAN.core.config import get_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -239,11 +240,7 @@ class HybridCoachingEngine:
         # warning instead of silently serving lower-quality advice.
         if self._using_fallback_baseline:
             for ins in insights:
-                ins.message = (
-                    ins.message
-                    + " [AVISO: baseline_quality=degraded — usando valores estáticos; "
-                    "precisão do coaching reduzida.]"
-                )
+                ins.message += f" [{i18n.get_text('baseline_degraded_warning')}]"
 
         # Step 5: Sort by priority and confidence
         insights.sort(key=lambda x: (-self._priority_value(x.priority), -x.confidence))

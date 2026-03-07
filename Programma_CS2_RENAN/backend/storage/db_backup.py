@@ -51,21 +51,35 @@ def backup_monolith(target_dir: Optional[Path] = None) -> Path:
     if not _MONOLITH_DB.exists():
         raise FileNotFoundError(f"Monolith database not found: {_MONOLITH_DB}")
 
-    # WAL checkpoint — flush all pending writes into the main database file
-    logger.info("Executing WAL checkpoint before backup...")
-    conn = sqlite3.connect(str(_MONOLITH_DB), timeout=10)
-    try:
-        conn.execute("PRAGMA busy_timeout = 5000")
-        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-    finally:
-        conn.close()
-
+    # P0-05: Use SQLite Online Backup API instead of WAL checkpoint + shutil.copy2.
+    # The previous approach had a TOCTOU race: between checkpoint completion and
+    # file copy, another thread could write via SQLAlchemy, re-creating the WAL.
+    # sqlite3.backup() is atomic and handles concurrent writes correctly.
     backup_name = f"database_{_timestamp()}.db"
     backup_path = target_dir / backup_name
-    shutil.copy2(str(_MONOLITH_DB), str(backup_path))
+
+    logger.info("Creating backup via SQLite Online Backup API...")
+    source = sqlite3.connect(str(_MONOLITH_DB), timeout=10)
+    dest = sqlite3.connect(str(backup_path))
+    try:
+        source.backup(dest)
+    finally:
+        dest.close()
+        source.close()
+
+    # P2-08: Verify backup integrity after creation
+    verify_conn = sqlite3.connect(str(backup_path))
+    try:
+        result = verify_conn.execute("PRAGMA integrity_check").fetchone()
+        if result[0] != "ok":
+            logger.error("Backup integrity check FAILED: %s", result[0])
+            backup_path.unlink(missing_ok=True)
+            raise RuntimeError(f"Backup integrity check failed: {result[0]}")
+    finally:
+        verify_conn.close()
 
     size_mb = backup_path.stat().st_size / (1024 * 1024)
-    logger.info("Monolith backup created: %s (%s MB)", backup_path, format(size_mb, ".2f"))
+    logger.info("Monolith backup created and verified: %s (%s MB)", backup_path, format(size_mb, ".2f"))
     return backup_path
 
 
@@ -98,10 +112,13 @@ def backup_match_data(target_dir: Optional[Path] = None) -> Path:
                 continue
             # WAL checkpoint each .db file before archiving to flush pending writes
             if entry.suffix == ".db":
+                # P0-06: Wrap in try/finally to prevent connection leak on checkpoint failure.
                 try:
                     conn = sqlite3.connect(str(entry), timeout=10)
-                    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-                    conn.close()
+                    try:
+                        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                    finally:
+                        conn.close()
                 except Exception as e:
                     logger.warning("WAL checkpoint failed for %s: %s", entry.name, e)
             tar.add(str(entry), arcname=entry.name)

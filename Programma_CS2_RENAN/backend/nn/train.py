@@ -18,9 +18,10 @@ def train_nn(X, y, X_val=None, y_val=None, model=None, config_name="default", co
     ML-Audited Training Entry Point with GPU support.
     Supports Model Factory selection (Legacy vs JEPA).
     """
-    from Programma_CS2_RENAN.backend.nn.config import get_device, get_intensity_batch_size
+    from Programma_CS2_RENAN.backend.nn.config import get_device, get_intensity_batch_size, set_global_seed
     from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
 
+    set_global_seed()  # P1-02: Reproducible training
     device = get_device()
 
     # Check if we are in JEPA mode (Self-Supervised)
@@ -29,6 +30,10 @@ def train_nn(X, y, X_val=None, y_val=None, model=None, config_name="default", co
 
     # Validated Supervised Loop (Legacy/RAP)
     X_train, X_val, y_train, y_val = _prepare_splits(X, y, X_val, y_val)
+    if X_train is None:
+        # P1-04: Insufficient data — refuse to train
+        logger.error("Training aborted: insufficient data for train/val split.")
+        return None
     train_ds = ProPerformanceDataset(X_train, y_train)
     val_ds = ProPerformanceDataset(X_val, y_val)
 
@@ -36,7 +41,7 @@ def train_nn(X, y, X_val=None, y_val=None, model=None, config_name="default", co
     train_loader = DataLoader(
         train_ds, batch_size=min(effective_batch, len(train_ds)), shuffle=True
     )
-    val_loader = DataLoader(val_ds, batch_size=len(val_ds))
+    val_loader = DataLoader(val_ds, batch_size=min(len(val_ds), 256), shuffle=False)  # P1-11: Cap val batch size
 
     # Use Factory to get model instance (if not provided)
     if model is None:
@@ -59,11 +64,13 @@ def _train_jepa_self_supervised(X, device, context=None):
     Stage 1: Self-Supervised Pre-training for JEPA.
     Uses Contrastive Loss, not MSE. User labels (y) are ignored.
     """
-    from Programma_CS2_RENAN.backend.nn.config import get_intensity_batch_size
+    from Programma_CS2_RENAN.backend.nn.config import get_intensity_batch_size, set_global_seed
     from Programma_CS2_RENAN.backend.nn.dataset import SelfSupervisedDataset
+    from Programma_CS2_RENAN.backend.nn.early_stopping import EarlyStopping
     from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
     from Programma_CS2_RENAN.backend.nn.jepa_model import jepa_contrastive_loss
 
+    set_global_seed()  # P1-02: Reproducible training
     logger.info("Starting JEPA Self-Supervised Pre-training (Prototype)...")
 
     # 1. Prepare Data (Unlabeled Sequences)
@@ -85,9 +92,10 @@ def _train_jepa_self_supervised(X, device, context=None):
     # 3. Pre-training Loop
     # In production, this would be 100+ epochs.
     # For "Activation" prototype, we do enough to verify gradients and loss decrease.
-    EPOCHS = 5
+    JEPA_EPOCHS = 5
+    early_stopper = EarlyStopping(patience=10, min_delta=1e-5)  # P1-01
 
-    for epoch in range(EPOCHS):
+    for epoch in range(JEPA_EPOCHS):
         if context:
             context.check_state()
         total_loss = 0.0
@@ -104,16 +112,26 @@ def _train_jepa_self_supervised(X, device, context=None):
             # Target Encoder: Target -> Target Embedding (No Grad)
             pred_emb, target_emb = model.forward_jepa_pretrain(context_tensor, target)
 
-            # loss = jepa_contrastive_loss(pred_emb, target_emb, negatives)
-            # PROTOTYPE SIMPLIFICATION:
-            # We use strict "negative-free" MSE in latent space for this Activation phase.
-            # Why? Because efficient negative sampling requires a memory bank or large batches.
-            # Using simple Latent MSE is valid for "BYOL-style" collapse prevention via EMA.
-            # Model.update_target_encoder() provides the EMA Asymmetry.
-
-            loss = nn.MSELoss()(pred_emb, target_emb)
+            # P1-03: Use contrastive loss to prevent embedding collapse.
+            # Sample negatives from current batch (excluding positive for each sample).
+            batch_size_actual = pred_emb.size(0)
+            num_negatives = min(8, batch_size_actual - 1)
+            if num_negatives > 0 and batch_size_actual > 1:
+                # P1-05 pattern: exclude positive index from negatives
+                neg_indices = []
+                for i in range(batch_size_actual):
+                    candidates = [j for j in range(batch_size_actual) if j != i]
+                    selected = candidates[:num_negatives]
+                    neg_indices.append(selected)
+                neg_indices = torch.tensor(neg_indices, device=device)
+                negatives = target_emb[neg_indices]
+                loss = jepa_contrastive_loss(pred_emb, target_emb, negatives)
+            else:
+                # Fallback for batch_size=1: use MSE (cannot do contrastive with 1 sample)
+                loss = nn.MSELoss()(pred_emb, target_emb)
 
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)  # P1-06
             optimizer.step()
 
             # EMA Update for Target Encoder (Critical for preventing collapse)
@@ -123,10 +141,18 @@ def _train_jepa_self_supervised(X, device, context=None):
             batch_count += 1
 
         avg_loss = total_loss / max(1, batch_count)
-        logger.info("JEPA Epoch %s/%s | Loss: %s", epoch + 1, EPOCHS, format(avg_loss, ".6f"))
+        logger.info("JEPA Epoch %s/%s | Loss: %s", epoch + 1, JEPA_EPOCHS, format(avg_loss, ".6f"))
+
+        # P1-01: Early stopping on training loss (no separate val set for self-supervised)
+        if early_stopper(avg_loss):
+            logger.info("JEPA early stopping triggered at epoch %d", epoch + 1)
+            break
 
     logger.info("JEPA Pre-training Complete.")
     return model.cpu()
+
+
+MIN_TRAINING_SAMPLES = 20  # P1-04 / AR-6: Minimum samples for meaningful train/val split
 
 
 def _prepare_splits(X, y, X_val, y_val):
@@ -134,8 +160,13 @@ def _prepare_splits(X, y, X_val, y_val):
 
     if X_val is not None:
         return X, X_val, y, y_val
-    if len(X) < 10:
-        return X, X, y, y
+    if len(X) < MIN_TRAINING_SAMPLES:
+        # P1-04: Refuse to train with insufficient data instead of using train=val
+        logger.warning(
+            "Insufficient training data (%d < %d). Cannot create meaningful train/val split.",
+            len(X), MIN_TRAINING_SAMPLES,
+        )
+        return None, None, None, None
     return train_test_split(X, y, test_size=0.2, random_state=42)
 
 
@@ -145,8 +176,11 @@ def _execute_validated_loop(
     import time
 
     from Programma_CS2_RENAN.backend.nn.config import get_throttling_delay
+    from Programma_CS2_RENAN.backend.nn.early_stopping import EarlyStopping
 
     delay = get_throttling_delay()
+    early_stopper = EarlyStopping(patience=10, min_delta=1e-4)  # P1-01
+
     for epoch in range(EPOCHS):
         if context:
             context.check_state()
@@ -158,13 +192,20 @@ def _execute_validated_loop(
         model.eval()
         v_loss = _run_validation_pass(model, val_loader, loss_fn, device)
 
+        avg_v_loss = v_loss / max(len(val_loader), 1)
+
         if (epoch + 1) % 10 == 0:
             logger.info(
                 "Epoch %s: T-Loss=%s, V-Loss=%s",
                 epoch + 1,
                 format(t_loss / len(train_loader), ".4f"),
-                format(v_loss / len(val_loader), ".4f"),
+                format(avg_v_loss, ".4f"),
             )
+
+        # P1-01: Early stopping based on validation loss
+        if early_stopper(avg_v_loss):
+            logger.info("Early stopping triggered at epoch %d (patience=%d)", epoch + 1, early_stopper.patience)
+            break
 
 
 def _run_training_epoch(model, loader, optimizer, loss_fn, delay, device, context=None):
@@ -179,6 +220,7 @@ def _run_training_epoch(model, loader, optimizer, loss_fn, delay, device, contex
         pred = model(xb)
         loss = loss_fn(pred, yb)
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)  # P1-06: Prevent exploding gradients in LSTM
         optimizer.step()
         total_loss += loss.item()
         if delay > 0:

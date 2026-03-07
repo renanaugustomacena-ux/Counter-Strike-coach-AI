@@ -1,7 +1,5 @@
 """Performance Dashboard — aggregate trends, per-map stats, strengths/weaknesses, utility."""
 
-from threading import Thread
-
 from kivy.clock import Clock
 from kivy.metrics import dp
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -9,7 +7,7 @@ from kivymd.uix.card import MDCard
 from kivymd.uix.label import MDLabel
 from kivymd.uix.screen import MDScreen
 
-from Programma_CS2_RENAN.core.config import get_setting
+from Programma_CS2_RENAN.apps.desktop_app.data_viewmodels import PerformanceViewModel
 from Programma_CS2_RENAN.core.registry import registry
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -33,35 +31,44 @@ def _rating_color(rating: float):
     return _COLOR_YELLOW
 
 
+# P4-07: Text label alongside color for WCAG 1.4.1 color-blind accessibility
+def _rating_label(rating: float) -> str:
+    if rating >= 1.20:
+        return "Excellent"
+    if rating > _RATING_GOOD:
+        return "Good"
+    if rating >= _RATING_BAD:
+        return "Average"
+    return "Below Avg"
+
+
 @registry.register("performance")
 class PerformanceScreen(MDScreen):
     """Aggregate performance dashboard: trends, per-map, strengths, utility."""
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # P4-03: Delegate analytics access to ViewModel (MVVM)
+        self._vm = PerformanceViewModel()
+        self._vm.bind(history=self._on_vm_data_changed)
+        self._vm.bind(error_message=self._on_vm_error)
+
     def on_pre_enter(self):
-        Thread(target=self._load_performance, daemon=True).start()
+        # P4-04: Show loading indicator while data loads
+        self._show_placeholder("Loading performance data...")
+        self._vm.load_performance()
 
-    def _load_performance(self):
-        try:
-            from Programma_CS2_RENAN.backend.reporting.analytics import analytics
+    def _on_vm_data_changed(self, instance, history):
+        if not history and not self._vm.map_stats:
+            return
+        self._populate(
+            list(history), dict(self._vm.map_stats),
+            dict(self._vm.strength_weakness), dict(self._vm.utility),
+        )
 
-            player = get_setting("CS2_PLAYER_NAME", "")
-            if not player:
-                Clock.schedule_once(
-                    lambda dt: self._show_placeholder("Set your player name in Settings first."), 0
-                )
-                return
-
-            history = analytics.get_rating_history(player, limit=50)
-            map_stats = analytics.get_per_map_stats(player)
-            sw = analytics.get_strength_weakness(player)
-            utility = analytics.get_utility_breakdown(player)
-
-            Clock.schedule_once(lambda dt: self._populate(history, map_stats, sw, utility), 0)
-        except Exception as e:
-            logger.error("performance.load_failed", error=str(e))
-            Clock.schedule_once(
-                lambda dt: self._show_placeholder("Error loading performance data."), 0
-            )
+    def _on_vm_error(self, instance, msg):
+        if msg:
+            self._show_placeholder(msg)
 
     def _show_placeholder(self, text: str):
         container = self.ids.get("performance_container")
@@ -167,7 +174,7 @@ class PerformanceScreen(MDScreen):
         )
         col.add_widget(
             MDLabel(
-                text=f"Rating: {rating:.2f}",
+                text=f"Rating: {rating:.2f} ({_rating_label(rating)})",
                 font_style="Headline",
                 role="small",
                 theme_text_color="Custom",

@@ -172,6 +172,7 @@ def load_user_settings():
             "USE_JEPA_MODEL": False,
             "USE_OLLAMA_COACHING": False,
             "USE_RAG_COACHING": False,
+            "USE_RAP_MODEL": False,
         }
 
         # File I/O and keyring retrieval are inside the lock to prevent

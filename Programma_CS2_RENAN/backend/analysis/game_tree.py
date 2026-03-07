@@ -32,6 +32,25 @@ _DEFAULT_OPPONENT_PROBS: Dict[str, float] = {
 # Computation budget
 DEFAULT_NODE_BUDGET = 1000
 
+# Transposition table size limit
+_TT_MAX_SIZE = 10_000
+
+
+def _state_hash(state: Dict) -> int:
+    """Create a deterministic hash from a game state dict for memoization."""
+    # Use only the numeric fields that affect evaluation
+    key = (
+        state.get("alive_players", 5),
+        state.get("enemy_alive", 5),
+        state.get("team_economy", 4000),
+        state.get("enemy_economy", 4000),
+        round(state.get("map_control_pct", 0.5), 2),
+        state.get("time_remaining", 115),
+        state.get("utility_remaining", 4),
+        state.get("is_ct", True),
+    )
+    return hash(key)
+
 
 class OpponentModel:
     """
@@ -205,6 +224,9 @@ class ExpectiminimaxSearch:
         self._map_name = map_name
         self._nodes_created = 0
         self._predictor = None
+        # Transposition table: state_hash -> (value, depth)
+        self._tt: Dict[int, Tuple[float, int]] = {}
+        self._tt_hits = 0
 
     @property
     def opponent_probs(self) -> Dict[str, float]:
@@ -232,6 +254,8 @@ class ExpectiminimaxSearch:
             Root GameNode with children populated.
         """
         self._nodes_created = 0
+        self._tt.clear()
+        self._tt_hits = 0
         root = GameNode(node_type="max", state=initial_state)
         self._expand(root, depth, is_max=True)
         return root
@@ -334,20 +358,26 @@ class ExpectiminimaxSearch:
 
         return new_state
 
-    def evaluate(self, node: GameNode) -> float:
+    def evaluate(self, node: GameNode, depth: int = 0) -> float:
         """
-        Recursively evaluate the tree using expectiminimax.
+        Recursively evaluate the tree using expectiminimax with transposition table.
 
         Returns:
             Utility value in [0, 1] representing estimated win probability.
         """
-        if node.is_leaf:
-            return self._evaluate_leaf(node.state)
+        # Transposition table lookup
+        sh = _state_hash(node.state)
+        cached = self._tt.get(sh)
+        if cached is not None and cached[1] >= depth:
+            self._tt_hits += 1
+            return cached[0]
 
-        if node.node_type == "max":
-            return max(self.evaluate(c) for c in node.children)
+        if node.is_leaf:
+            value = self._evaluate_leaf(node.state)
+        elif node.node_type == "max":
+            value = max(self.evaluate(c, depth + 1) for c in node.children)
         elif node.node_type == "min":
-            return min(self.evaluate(c) for c in node.children)
+            value = min(self.evaluate(c, depth + 1) for c in node.children)
         elif node.node_type == "chance":
             # Weighted expectation using opponent probabilities
             if self._opponent_model:
@@ -360,11 +390,18 @@ class ExpectiminimaxSearch:
             for child in node.children:
                 action = child.action
                 prob = probs.get(action, 0.25)
-                total += prob * self.evaluate(child)
+                total += prob * self.evaluate(child, depth + 1)
                 prob_sum += prob
-            return total / max(prob_sum, 1e-6)
+            value = total / max(prob_sum, 1e-6)
+        else:
+            value = 0.5
 
-        return 0.5
+        # Store in transposition table (evict oldest if full)
+        if len(self._tt) >= _TT_MAX_SIZE:
+            self._tt.pop(next(iter(self._tt)))
+        self._tt[sh] = (value, depth)
+
+        return value
 
     def _evaluate_leaf(self, state: Dict) -> float:
         """Evaluate a leaf node using WinProbabilityPredictor."""
@@ -461,7 +498,8 @@ class ExpectiminimaxSearch:
             f"Recommended: {desc} "
             f"(win probability: {value:.0%}, confidence: {conf_label}, "
             f"opponent model: {model_label}). "
-            f"Tree explored {self._nodes_created} game states."
+            f"Tree explored {self._nodes_created} game states "
+            f"({self._tt_hits} transposition hits)."
         )
 
 

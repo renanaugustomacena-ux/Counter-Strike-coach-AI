@@ -35,7 +35,11 @@ HEARING_RANGE_FOOTSTEP = 1000.0
 """World units within which footsteps are audible."""
 
 MEMORY_DECAY_TAU = 160
-"""Exponential decay time constant in ticks (2.5 second half-life at 64 tick/s)."""
+"""Exponential decay time constant in ticks (~1.73 s half-life at 64 tick/s).
+
+P3-08: Previous comment erroneously stated 2.5 s. Actual half-life =
+tau * ln(2) / tick_rate = 160 * 0.693 / 64 ≈ 1.73 s.
+"""
 
 MEMORY_CUTOFF_TICKS = 320
 """Maximum memory window in ticks (5 seconds at 64 tick/s). Beyond this, memory is gone."""
@@ -347,20 +351,23 @@ class PlayerKnowledgeBuilder:
         apply exponential decay based on time elapsed.
         """
         # Track: enemy_name -> (pos_x, pos_y, pos_z, last_visible_tick)
-        enemy_last_seen = {}
+        enemy_last_seen: dict = {}
+
+        # Pre-index: tick -> {player_name -> player_obj} for O(1) lookup
+        indexed_history: dict = {}
+        for hist_tick, players_at_tick in recent_all_players_history.items():
+            by_name: dict = {}
+            for p in players_at_tick:
+                by_name[str(getattr(p, "player_name", ""))] = p
+            indexed_history[hist_tick] = by_name
 
         # Walk history from oldest to newest
-        sorted_ticks = sorted(recent_all_players_history.keys())
+        sorted_ticks = sorted(indexed_history.keys())
         for hist_tick in sorted_ticks:
-            players_at_tick = recent_all_players_history[hist_tick]
+            by_name = indexed_history[hist_tick]
 
-            # Find our player at this tick
-            our_player = None
-            for p in players_at_tick:
-                if str(getattr(p, "player_name", "")) == player_name:
-                    our_player = p
-                    break
-
+            # O(1) lookup for our player
+            our_player = by_name.get(player_name)
             if not our_player:
                 continue
 
@@ -374,8 +381,7 @@ class PlayerKnowledgeBuilder:
 
             # Find enemies in FOV at this historical tick
             enemies_in_fov = []
-            for p in players_at_tick:
-                p_name = str(getattr(p, "player_name", ""))
+            for p_name, p in by_name.items():
                 if p_name == player_name:
                     continue
                 if str(getattr(p, "team", "")) == player_team:
@@ -419,12 +425,17 @@ class PlayerKnowledgeBuilder:
         knowledge: PlayerKnowledge,
         events: list,
         current_tick: int,
+        tick_rate: int = 64,
     ) -> None:
         """Infer audible events from MatchEventState records.
 
         The player can hear gunfire within HEARING_RANGE_GUNFIRE and
         explosions within the same range. Direction is computed as the
         angle from the player to the event source.
+
+        Args:
+            tick_rate: Server tick rate (64 or 128). Used to compute the
+                       1-second audible event window in ticks.
         """
         audible_types = {"weapon_fire", "he_detonate", "flash_detonate", "bomb_planted"}
 
@@ -434,10 +445,8 @@ class PlayerKnowledgeBuilder:
                 continue
 
             evt_tick = int(getattr(evt, "tick", 0))
-            # Only recent events (within ~1 second at 64 tick/s).
-            # NOTE (F2-07): Window is 64 ticks = 1 s at 64 Hz, but ~0.5 s at 128 Hz.
-            # Callers on 128-tick demos should pass ticks_per_second to adjust this window.
-            if abs(evt_tick - current_tick) > 64:
+            # P3-05: Use tick_rate to compute 1-second window instead of hardcoded 64.
+            if abs(evt_tick - current_tick) > tick_rate:
                 continue
 
             evt_x = float(getattr(evt, "pos_x", 0))

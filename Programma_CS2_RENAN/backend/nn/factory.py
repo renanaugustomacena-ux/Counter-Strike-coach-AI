@@ -55,7 +55,7 @@ class ModelFactory:
             )
 
         elif model_type == ModelFactory.TYPE_RAP:
-            from Programma_CS2_RENAN.backend.nn.rap_coach.model import RAPCoachModel
+            from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.model import RAPCoachModel
 
             return RAPCoachModel(
                 metadata_dim=kwargs.get("metadata_dim", METADATA_DIM),

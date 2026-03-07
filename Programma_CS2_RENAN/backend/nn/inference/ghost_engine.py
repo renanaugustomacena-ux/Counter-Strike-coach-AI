@@ -6,7 +6,7 @@ import torch
 
 from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
 from Programma_CS2_RENAN.backend.nn.persistence import load_nn
-from Programma_CS2_RENAN.backend.nn.rap_coach.model import RAP_POSITION_SCALE
+from Programma_CS2_RENAN.backend.nn.config import RAP_POSITION_SCALE
 from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import FeatureExtractor
 from Programma_CS2_RENAN.backend.processing.tensor_factory import get_tensor_factory
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -30,6 +30,14 @@ class GhostEngine:
 
     def _load_brain(self):
         """Loads the verified RAP Coach model."""
+        from Programma_CS2_RENAN.core.config import get_setting
+
+        if not get_setting("USE_RAP_MODEL", default=False):
+            app_logger.info("GhostEngine: RAP model disabled (USE_RAP_MODEL=False)")
+            self.model = None
+            self.is_trained = False
+            return
+
         try:
             self.model = ModelFactory.get_model(ModelFactory.TYPE_RAP)
 

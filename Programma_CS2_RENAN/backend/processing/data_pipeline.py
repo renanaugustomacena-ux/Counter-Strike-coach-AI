@@ -64,7 +64,12 @@ class ProDataPipeline:
 
         # 1. Cleaning
         df = df[df["avg_adr"] < 400]
-        df = df[df["avg_kills"] < 3.0]
+        # P3-11: IQR-based outlier detection instead of hardcoded threshold.
+        # Hardcoded 3.0 silently dropped legitimate high-performance matches.
+        q1, q3 = df["avg_kills"].quantile([0.25, 0.75])
+        iqr = q3 - q1
+        upper_bound = q3 + 3.0 * iqr  # 3x IQR for extreme outliers only
+        df = df[df["avg_kills"] < upper_bound]
 
         # 2. Split FIRST to prevent data leakage (temporal split before scaling)
         df["stratify_col"] = df["is_pro"].astype(str) + "_" + df["user_id"].astype(str)

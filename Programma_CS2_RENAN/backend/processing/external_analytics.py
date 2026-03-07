@@ -74,6 +74,13 @@ class EliteAnalytics:
 
     def analyze_user_vs_elite(self, user_stats):
         """Compares user metrics against Top 100 and Historical data."""
+        # P3-03: Guard against missing data or columns before accessing DataFrame
+        if not self.is_healthy():
+            return {"elite_rating_avg": 0, "z_scores": {}, "tournament_z_scores": {}}
+        required_cols = {"CS Rating", "Win_Rate"}
+        if not required_cols.issubset(self.players_df.columns):
+            return {"elite_rating_avg": 0, "z_scores": {}, "tournament_z_scores": {}}
+
         elite_avg = self.players_df[["CS Rating", "Win_Rate"]].mean()
         z_scores = self._calc_z_scores(user_stats)
         t_z_scores = self._calc_tournament_z(user_stats)

@@ -1,10 +1,27 @@
 # backend/nn/config.py
+import random
+
+import numpy as np
 import torch
 
 from Programma_CS2_RENAN.core.config import get_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.nn.config")
+
+# --- Reproducibility ---
+GLOBAL_SEED = 42
+
+
+def set_global_seed(seed: int = GLOBAL_SEED):
+    """Set all random seeds for reproducible training runs (AR-6, P1-02)."""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    logger.info("Global seed set to %d", seed)
 
 # --- Hardware Allocation ---
 _device_logged = False
@@ -102,7 +119,7 @@ BATCH_SIZE = 32
 from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
 
 INPUT_DIM = METADATA_DIM  # Canonical 25-dim feature vector (was 19, was legacy 12)
-OUTPUT_DIM = 4  # Number of output weights to adjust
+OUTPUT_DIM = METADATA_DIM  # P1-08: Aligned with METADATA_DIM (was 4, conflicting with model.py)
 HIDDEN_DIM = 128  # Hidden layer size for AdvancedCoachNN / TeacherRefinementNN
 
 # Training
@@ -128,3 +145,10 @@ def get_intensity_batch_size():
     """Adjusts batch size to regulate memory/cache usage."""
     lvl = get_setting("ML_INTENSITY", "Medium")
     return {"High": 128, "Medium": 32, "Low": 8}.get(lvl, 32)
+
+
+# --- RAP Position Scale (P9-01 extraction) ---
+# Canonical scale factor for converting normalised position-delta outputs
+# (model range [-1, 1]) to CS2 world-unit displacements.
+# Must be used consistently in both GhostEngine and overlay code. (F3-05)
+RAP_POSITION_SCALE = 500.0

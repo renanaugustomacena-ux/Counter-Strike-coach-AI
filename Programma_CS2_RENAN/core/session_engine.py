@@ -84,7 +84,7 @@ def signal_work_available():
 
 def run_session_loop():
     """Started by main.py, dies when main.py dies (via stdin pipe closure)."""
-    from Programma_CS2_RENAN.backend.storage.state_manager import state_manager
+    from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
 
     logger.info("Session Engine Starting [PID: %s]", os.getpid())
 
@@ -136,7 +136,7 @@ def run_session_loop():
     threading.Thread(target=_monitor_stdin, daemon=True).start()
 
     # Reset Status via DAO
-    state_manager.update_status("global", "Running", "Session Engine Started")
+    get_state_manager().update_status("global", "Running", "Session Engine Started")
     _cleanup_zombie_tasks()
 
     # Start Daemons
@@ -167,7 +167,7 @@ def run_session_loop():
         _shutdown_event.set()  # Signal all daemons to stop
         if watcher:
             watcher.stop()
-        state_manager.update_status("global", "Offline", "Session Engine Exited")
+        get_state_manager().update_status("global", "Offline", "Session Engine Exited")
         logger.info("Session Engine Exiting")
 
 
@@ -213,7 +213,7 @@ def _scanner_daemon_loop():
     """DAEMON A: File Scanner (The Gatekeeper)"""
     # Responsibility: File System -> DB Queue (Ticket Creation)
     # Strictly isolated from processing logic.
-    from Programma_CS2_RENAN.backend.storage.state_manager import state_manager
+    from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
     from Programma_CS2_RENAN.core.config import refresh_settings
     from Programma_CS2_RENAN.run_ingestion import process_new_demos
 
@@ -221,7 +221,7 @@ def _scanner_daemon_loop():
     SCAN_INTERVAL = 10  # Seconds between scans
 
     logger.info("Scanner Daemon Started")
-    state_manager.update_status("hunter", "Active", "Scanner Running")
+    get_state_manager().update_status("hunter", "Active", "Scanner Running")
 
     while not _shutdown_event.is_set():
         try:
@@ -229,14 +229,14 @@ def _scanner_daemon_loop():
             refresh_settings()
 
             # 2. Check Play/Pause State (Global Master Switch)
-            state = state_manager.get_state()
+            state = get_state_manager().get_state()
             is_active = state.hltv_status == "Scanning"
 
             # 3. Running Scan (Only if Active)
             current_time = time.time()
             if is_active and (current_time - last_scan > SCAN_INTERVAL):
                 logger.debug("[Scanner] Active Cycle")
-                state_manager.update_status("hunter", "Scanning")
+                get_state_manager().update_status("hunter", "Scanning")
 
                 try:
                     # is_pro=True scan
@@ -245,9 +245,9 @@ def _scanner_daemon_loop():
                     process_new_demos(is_pro=False, limit=0)
                 except Exception as scan_err:
                     logger.exception("[Scanner] Scan Cycle Failed")
-                    state_manager.set_error("hunter", str(scan_err))
+                    get_state_manager().set_error("hunter", str(scan_err))
 
-                state_manager.update_status("hunter", "Active")
+                get_state_manager().update_status("hunter", "Active")
                 last_scan = time.time()
 
             # Idle Sleep
@@ -264,7 +264,7 @@ def _digester_daemon_loop():
     """DAEMON B: Processing Worker (Queue Consumer)"""
     # Responsibility: DB Queue -> Match Stats (Heavy Lifting)
     # Does NOT touch the file system scanning logic.
-    from Programma_CS2_RENAN.backend.storage.state_manager import state_manager
+    from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
     from Programma_CS2_RENAN.backend.storage.storage_manager import StorageManager
     from Programma_CS2_RENAN.run_ingestion import process_queued_tasks
 
@@ -272,7 +272,7 @@ def _digester_daemon_loop():
     storage = StorageManager()
 
     logger.info("Digester Daemon Started")
-    state_manager.update_status("digester", "Idle")
+    get_state_manager().update_status("digester", "Idle")
 
     # Prove Priority on Startup
     ResourceManager.log_current_priority()
@@ -293,15 +293,15 @@ def _digester_daemon_loop():
             )
 
             if processed_pro == 0 and processed_user == 0:
-                state_manager.update_status("digester", "Idle")
+                get_state_manager().update_status("digester", "Idle")
                 _work_available_event.wait(timeout=2.0)
                 _work_available_event.clear()
             else:
-                state_manager.update_status("digester", "Processing")
+                get_state_manager().update_status("digester", "Processing")
 
         except Exception as e:
             logger.exception("Digester Error")
-            state_manager.set_error("digester", str(e))
+            get_state_manager().set_error("digester", str(e))
             time.sleep(5)
 
     logger.info("Digester Daemon Stopped")
@@ -309,10 +309,10 @@ def _digester_daemon_loop():
 
 def _teacher_daemon_loop():
     """DAEMON C: Cognitive ML Trainer"""
-    from Programma_CS2_RENAN.backend.storage.state_manager import state_manager
+    from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
 
     logger.info("Teacher Daemon Started")
-    state_manager.update_status("teacher", "Idle")
+    get_state_manager().update_status("teacher", "Idle")
 
     # Cache baseline snapshot for meta-shift detection (Proposal 11)
     _last_baseline = _get_current_baseline_snapshot()
@@ -321,7 +321,7 @@ def _teacher_daemon_loop():
         try:
             trigger_count = _check_retraining_trigger()
             if trigger_count > 0:
-                state_manager.update_status("teacher", "Learning")
+                get_state_manager().update_status("teacher", "Learning")
                 from Programma_CS2_RENAN.backend.nn.coach_manager import CoachTrainingManager
 
                 CoachTrainingManager().run_full_cycle()
@@ -352,8 +352,8 @@ def _teacher_daemon_loop():
                 logger.debug("Teacher: retraining not triggered this cycle")
         except Exception as e:
             logger.exception("Teacher Error")
-            state_manager.set_error("teacher", str(e))
-            state_manager.update_status("teacher", "Error", str(e))
+            get_state_manager().set_error("teacher", str(e))
+            get_state_manager().update_status("teacher", "Error", str(e))
 
         # Check stop signal more frequently than 300s sleep
         for _ in range(300):
@@ -366,11 +366,11 @@ def _teacher_daemon_loop():
 
 def _pulse_daemon_loop():
     """Update Heartbeat"""
-    from Programma_CS2_RENAN.backend.storage.state_manager import state_manager
+    from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
 
     while not _shutdown_event.is_set():
         try:
-            state_manager.heartbeat()
+            get_state_manager().heartbeat()
         except Exception as e:
             logger.warning("Heartbeat failed: %s", e)
         time.sleep(5)
@@ -428,7 +428,7 @@ def _check_retraining_trigger() -> int:
     """
     from sqlmodel import func
 
-    from Programma_CS2_RENAN.backend.storage.state_manager import state_manager
+    from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
 
     db = get_db_manager()
 
@@ -437,7 +437,7 @@ def _check_retraining_trigger() -> int:
             select(func.count(PlayerMatchStats.id)).where(PlayerMatchStats.is_pro == True)
         ).one()
 
-    state = state_manager.get_state()
+    state = get_state_manager().get_state()
     last_count = state.last_trained_sample_count
 
     if pro_count >= (last_count * 1.10) or (last_count == 0 and pro_count >= 10):

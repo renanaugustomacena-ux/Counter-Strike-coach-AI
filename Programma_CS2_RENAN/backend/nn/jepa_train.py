@@ -140,6 +140,10 @@ def train_jepa_pretrain(
         learning_rate: Learning rate
         num_negatives: Number of negative samples for contrastive loss
     """
+    from Programma_CS2_RENAN.backend.nn.config import set_global_seed
+    from Programma_CS2_RENAN.backend.nn.early_stopping import EarlyStopping
+
+    set_global_seed()  # P1-02: Reproducible training
     logger.info("Starting JEPA pre-training...")
 
     # Load pro demo data
@@ -159,6 +163,8 @@ def train_jepa_pretrain(
     device = get_device()
     model.to(device)
 
+    early_stopper = EarlyStopping(patience=10, min_delta=1e-5)  # P1-01
+
     for epoch in range(num_epochs):
         model.train()
         total_loss = 0
@@ -170,9 +176,17 @@ def train_jepa_pretrain(
             # Forward pass
             pred, target = model.forward_jepa_pretrain(x_context, x_target)
 
-            # Sample negatives from batch
+            # P1-05: Sample negatives from batch, excluding positive index for each sample
             batch_size_actual = pred.size(0)
-            neg_indices = torch.randint(0, batch_size_actual, (batch_size_actual, num_negatives))
+            effective_negatives = min(num_negatives, batch_size_actual - 1)
+            if effective_negatives > 0 and batch_size_actual > 1:
+                neg_indices = []
+                for i in range(batch_size_actual):
+                    candidates = [j for j in range(batch_size_actual) if j != i]
+                    neg_indices.append(candidates[:effective_negatives])
+                neg_indices = torch.tensor(neg_indices, device=device)
+            else:
+                neg_indices = torch.zeros(batch_size_actual, max(1, effective_negatives), dtype=torch.long, device=device)
             negatives = target[neg_indices]
 
             # Contrastive loss
@@ -181,6 +195,7 @@ def train_jepa_pretrain(
             # Backward pass
             optimizer.zero_grad()
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)  # P1-06
             optimizer.step()
 
             # EMA update for target encoder (must happen after optimizer.step)
@@ -192,6 +207,11 @@ def train_jepa_pretrain(
 
         if (epoch + 1) % 10 == 0:
             logger.info("Epoch %s/%s - Loss: %s", epoch + 1, num_epochs, format(avg_loss, ".4f"))
+
+        # P1-01: Early stopping based on training loss (self-supervised, no val set)
+        if early_stopper(avg_loss):
+            logger.info("JEPA early stopping triggered at epoch %d", epoch + 1)
+            break
 
     logger.info("JEPA pre-training complete")
 

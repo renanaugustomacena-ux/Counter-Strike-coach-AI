@@ -42,8 +42,8 @@ def generate_corrections(
     corrections = []
 
     for feature, val in deviations.items():
-        # Handle both float (legacy) and tuple (new standard) inputs
-        z = val[0] if isinstance(val, tuple) else val
+        # P3-07: Handle float (legacy), tuple, and list (JSON deserialization) inputs
+        z = val[0] if isinstance(val, (tuple, list)) else val
 
         weighted = z * confidence
         corrections.append(

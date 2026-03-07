@@ -43,11 +43,13 @@ def _prepare_training_data(db_manager):
             X.append(_extract_features(r))
             # Training labels: per-feature deviation from pro baseline (rating=1.05)
             # Provides gradient signal proportional to distance from pro mean
+            # P1-08: Padded to OUTPUT_DIM to match model output dimensions
             rating_delta = r.rating - 1.05 if r.rating else -0.1
             adr_delta = (r.avg_adr - 80.0) / 80.0 if r.avg_adr else 0.0
             kd_delta = (r.kd_ratio - 1.0) if r.kd_ratio else 0.0
             hs_delta = (r.avg_hs - 0.50) if r.avg_hs else 0.0
-            y.append([rating_delta, adr_delta, kd_delta, hs_delta])
+            base_labels = [rating_delta, adr_delta, kd_delta, hs_delta]
+            y.append(base_labels + [0.0] * (OUTPUT_DIM - len(base_labels)))
     return X, y
 
 

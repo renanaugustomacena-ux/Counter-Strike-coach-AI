@@ -125,7 +125,8 @@ class CoachingChatViewModel(EventDispatcher):
         self.is_available = available
 
     def _on_session_started(self, opening: str):
-        self.messages.append({"role": "assistant", "content": opening})
+        with self._messages_lock:  # P4-02: guard concurrent message list access
+            self.messages.append({"role": "assistant", "content": opening})
         self.session_active = True
         self.is_loading = False
         logger.info("Chat session started")

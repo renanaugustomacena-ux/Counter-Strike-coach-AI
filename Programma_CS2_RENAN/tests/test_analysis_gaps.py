@@ -73,7 +73,7 @@ class TestRoleClassifierWarm:
             "kd_ratio": 1.5,
         }
         role, conf, _ = clf.classify(stats)
-        assert role == PlayerRole.ENTRY_FRAGGER
+        assert role == PlayerRole.ENTRY
 
     def test_classify_lurker_high_solo(self):
         from Programma_CS2_RENAN.backend.analysis.role_classifier import PlayerRole
@@ -228,7 +228,7 @@ class TestAuditTeamBalance:
         clf = self._make_classifier()
         roles = {
             "p1": (PlayerRole.AWPER, 0.8),
-            "p2": (PlayerRole.ENTRY_FRAGGER, 0.7),
+            "p2": (PlayerRole.ENTRY, 0.7),
             "p3": (PlayerRole.SUPPORT, 0.6),
             "p4": (PlayerRole.LURKER, 0.7),
             "p5": (PlayerRole.IGL, 0.5),
@@ -262,7 +262,7 @@ class TestAuditTeamBalance:
         clf = self._make_classifier()
         roles = {
             "p1": (PlayerRole.AWPER, 0.8),
-            "p2": (PlayerRole.ENTRY_FRAGGER, 0.7),
+            "p2": (PlayerRole.ENTRY, 0.7),
             "p3": (PlayerRole.LURKER, 0.6),
         }
         issues = clf.audit_team_balance(roles)
@@ -285,7 +285,7 @@ class TestAuditTeamBalance:
         roles = {
             "p1": (PlayerRole.LURKER, 0.7),
             "p2": (PlayerRole.LURKER, 0.6),
-            "p3": (PlayerRole.ENTRY_FRAGGER, 0.8),
+            "p3": (PlayerRole.ENTRY, 0.8),
             "p4": (PlayerRole.SUPPORT, 0.7),
         }
         issues = clf.audit_team_balance(roles)

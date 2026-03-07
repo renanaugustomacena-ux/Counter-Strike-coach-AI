@@ -2,7 +2,7 @@ import threading
 import time
 from typing import Dict, Optional
 
-from Programma_CS2_RENAN.backend.storage.state_manager import state_manager
+from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.ml_controller")
@@ -89,11 +89,11 @@ class MLController:
 
     def pause_training(self):
         self.context.request_pause()
-        state_manager.update_status("teacher", "Paused", "Training suspended by operator.")
+        get_state_manager().update_status("teacher", "Paused", "Training suspended by operator.")
 
     def resume_training(self):
         self.context.request_resume()
-        state_manager.update_status("teacher", "Running", "Resuming training cycle...")
+        get_state_manager().update_status("teacher", "Running", "Resuming training cycle...")
 
     def _run_wrapper(self):
         from Programma_CS2_RENAN.backend.nn.coach_manager import CoachTrainingManager
@@ -104,10 +104,10 @@ class MLController:
             manager.run_full_cycle(context=self.context)
         except TrainingStopRequested:
             logger.info("MLController: Training stopped gracefully by operator.")
-            state_manager.update_status("teacher", "Stopped", "Manually terminated.")
+            get_state_manager().update_status("teacher", "Stopped", "Manually terminated.")
         except Exception as e:
             logger.error("MLController: Training cycle crashed: %s", e)
-            state_manager.set_error("teacher", str(e))
+            get_state_manager().set_error("teacher", str(e))
         finally:
             self._is_running = False
             self.thread = None

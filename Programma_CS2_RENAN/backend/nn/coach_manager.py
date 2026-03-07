@@ -141,7 +141,7 @@ class CoachTrainingManager:
             return False, f"Prerequisite Check Failed: {e}"
 
     def _check_db_prerequisites(self) -> tuple[bool, str]:
-        from Programma_CS2_RENAN.backend.storage.state_manager import state_manager
+        from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
 
         with self.db.get_session() as session:
             # Check professional demo count (NO ID validation needed)
@@ -152,7 +152,7 @@ class CoachTrainingManager:
             # Professional demos can be processed without any user IDs
             # (We analyze all 10 players in the match)
             if p_count >= 10:
-                state_manager.update_status(
+                get_state_manager().update_status(
                     "teacher", "Ready", "Professional baseline available. Starting cycle..."
                 )
                 return True, "Ready"
@@ -164,10 +164,10 @@ class CoachTrainingManager:
                 # If no IDs connected, can only train on pro demos when available
                 if p_count > 0:
                     msg = f"Gathering Pro Baseline. Have {p_count}/10 pro demos."
-                    state_manager.update_status("teacher", "Idle", msg)
+                    get_state_manager().update_status("teacher", "Idle", msg)
                     return False, msg
                 else:
-                    state_manager.update_status(
+                    get_state_manager().update_status(
                         "teacher",
                         "Stalled",
                         "Neural Stall: Connect IDs for user demo analysis OR ingest pro demos",
@@ -184,16 +184,16 @@ class CoachTrainingManager:
 
             if u_count < 10:
                 msg = f"Need more data. You have {u_count}/10 personal demos."
-                state_manager.update_status("teacher", "Idle", msg)
+                get_state_manager().update_status("teacher", "Idle", msg)
                 return False, msg
 
             # Have enough user demos
             if p_count < 10:
                 msg = f"Gathering Pro Baseline. Have {p_count}/10 pro demos."
-                state_manager.update_status("teacher", "Idle", msg)
+                get_state_manager().update_status("teacher", "Idle", msg)
                 return False, msg
 
-        state_manager.update_status("teacher", "Ready", "All systems go. Starting cycle...")
+        get_state_manager().update_status("teacher", "Ready", "All systems go. Starting cycle...")
         return True, "Ready"
 
     def increment_maturity_counter(self):
@@ -285,16 +285,16 @@ class CoachTrainingManager:
         except ImportError:
             pass
 
-        from Programma_CS2_RENAN.backend.storage.state_manager import state_manager
+        from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
 
         check_passed, reason = self.check_prerequisites()
         if not check_passed:
-            state_manager.update_status("teacher", "Idle", detail=reason)
+            get_state_manager().update_status("teacher", "Idle", detail=reason)
             return app_logger.warning("ML Training Skipped: %s", reason)
 
         try:
             init_database()
-            state_manager.update_status(
+            get_state_manager().update_status(
                 "teacher", "Running", detail="Initializing Training Cycle..."
             )
             app_logger.info("--- ML Cycle Start ---")
@@ -311,7 +311,7 @@ class CoachTrainingManager:
         except StopIteration:
             raise
         except Exception as e:
-            state_manager.set_error("teacher", f"Cycle Failed: {e}")
+            get_state_manager().set_error("teacher", f"Cycle Failed: {e}")
             app_logger.error("Training Cycle Crash: %s", e, exc_info=True)
 
     def _assign_dataset_splits(self):
@@ -382,12 +382,12 @@ class CoachTrainingManager:
         return registry
 
     def _execute_training_phases(self, context=None):
-        from Programma_CS2_RENAN.backend.storage.state_manager import state_manager
+        from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
 
         callbacks = self._build_callbacks()
 
         try:
-            state_manager.update_status(
+            get_state_manager().update_status(
                 "teacher", "Learning", "Phase 1: JEPA Cognitive Pre-training..."
             )
             self.run_jepa_pretraining(context=context, callbacks=callbacks)
@@ -395,12 +395,12 @@ class CoachTrainingManager:
             if context:
                 context.check_state()
 
-            state_manager.update_status(
+            get_state_manager().update_status(
                 "teacher", "Learning", "Phase 2: Establish Professional Baseline..."
             )
             global_m = self._train_phase(is_pro=True, context=context)
             if not global_m:
-                state_manager.update_status(
+                get_state_manager().update_status(
                     "teacher", "Idle", "Failed Professional Baseline Establishment"
                 )
                 return app_logger.error("Failed to establish Professional Baseline.")
@@ -410,7 +410,7 @@ class CoachTrainingManager:
             if context:
                 context.check_state()
 
-            state_manager.update_status(
+            get_state_manager().update_status(
                 "teacher", "Learning", "Phase 3: Tailoring AI to your playstyle..."
             )
             user_m = self._train_phase(is_pro=False, base_model=global_m, context=context)
@@ -420,7 +420,7 @@ class CoachTrainingManager:
             if context:
                 context.check_state()
 
-            state_manager.update_status(
+            get_state_manager().update_status(
                 "teacher", "Learning", "Phase 4: RAP Behavioral Optimization..."
             )
             self.run_rap_cycle(context=context, callbacks=callbacks)
@@ -428,7 +428,7 @@ class CoachTrainingManager:
             if context:
                 context.check_state()
 
-            state_manager.update_status(
+            get_state_manager().update_status(
                 "teacher", "Learning", "Phase 5: Role Classification Head..."
             )
             self._train_role_head(context=context)
@@ -436,7 +436,7 @@ class CoachTrainingManager:
             # Increment maturity after successful training
             self.increment_maturity_counter()
 
-            state_manager.update_status("teacher", "Idle", "Training Complete. Knowledge Updated.")
+            get_state_manager().update_status("teacher", "Idle", "Training Complete. Knowledge Updated.")
         finally:
             callbacks.close_all()
 
@@ -541,9 +541,9 @@ class CoachTrainingManager:
 
     def _update_state(self, status, detail):
         """Internal helper for Orchestrator to update global state."""
-        from Programma_CS2_RENAN.backend.storage.state_manager import state_manager
+        from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
 
-        state_manager.update_status("teacher", status, detail=detail)
+        get_state_manager().update_status("teacher", status, detail=detail)
 
     def _fetch_training_data(self, is_pro, split="train"):
         with self.db.get_session() as session:
@@ -751,6 +751,16 @@ class CoachTrainingManager:
         Returns:
             dict: {"status": str, "overlay_results": dict, "maturity_progress": int}
         """
+        from Programma_CS2_RENAN.core.config import get_setting
+
+        if not get_setting("USE_RAP_MODEL", default=False):
+            return {
+                "status": "disabled",
+                "message": "RAP model is experimental and disabled by default. "
+                "Enable via USE_RAP_MODEL=True in settings.",
+                "overlay_results": {},
+            }
+
         is_mature, count = self.check_maturity_gate()
 
         if not is_mature:
@@ -763,7 +773,7 @@ class CoachTrainingManager:
 
         try:
             from Programma_CS2_RENAN.backend.nn.config import get_device
-            from Programma_CS2_RENAN.backend.nn.rap_coach.model import RAPCoachModel
+            from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.model import RAPCoachModel
             from Programma_CS2_RENAN.backend.nn.persistence import (
                 StaleCheckpointError,
                 load_nn,

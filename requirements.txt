@@ -1,27 +1,48 @@
-kivy>=2.3.0
-kivymd @ https://github.com/kivymd/KivyMD/archive/master.zip
-sqlmodel
-torch
-numpy
-fastapi
-uvicorn
-requests
-sqlalchemy
-psutil
-pydantic
-keyring
-watchdog
-reportlab
-pdfkit
-opencv-python
-pillow
-pymupdf
-pdfplumber
-pypdf
-sentry-sdk>=1.40.0
-pre-commit>=3.5.0
-httpx
-playwright
-shap
-sentence-transformers
-beautifulsoup4
+# =============================================================================
+# Macena CS2 Analyzer — Pinned Dependencies
+# P5-01: KivyMD pinned to specific commit (no stable 2.0.x on PyPI yet)
+# P5-02: All deps pinned with version ranges for reproducibility
+# P5-03: Unused PDF/analysis packages removed (reportlab, pdfkit, pymupdf,
+#         pdfplumber, pypdf, shap — zero imports found in codebase)
+# =============================================================================
+
+# --- UI Framework ---
+kivy>=2.3.0,<3.0
+# P5-01: Pinned to commit d668d8b (2025-11-11) — installed as 2.0.1.dev0.
+# Do NOT change to master.zip — that pulls unstable HEAD and can break the app.
+kivymd @ https://github.com/kivymd/KivyMD/archive/d668d8b2b3d9eb54517892f613ffe34d9914517a.zip
+
+# --- Data & ORM ---
+sqlmodel>=0.0.14,<1.0
+sqlalchemy>=2.0.0,<3.0
+pydantic>=2.0.0,<3.0
+
+# --- ML & Scientific ---
+torch>=2.1.0,<3.0
+numpy>=1.24.0,<3.0
+
+# --- Web & API ---
+fastapi>=0.109.0,<1.0
+uvicorn>=0.25.0,<1.0
+requests>=2.31.0,<3.0
+httpx>=0.25.0,<1.0
+
+# --- Scraping & Browser ---
+playwright>=1.40.0,<2.0
+beautifulsoup4>=4.12.0,<5.0
+
+# --- System & Monitoring ---
+psutil>=5.9.0,<7.0
+watchdog>=3.0.0,<6.0
+keyring>=24.0.0,<26.0
+sentry-sdk>=1.40.0,<3.0
+
+# --- Media ---
+opencv-python>=4.8.0,<5.0
+pillow>=10.0.0,<12.0
+
+# --- NLP (optional — graceful fallback if missing) ---
+sentence-transformers>=2.2.0,<4.0
+
+# --- Dev Tools ---
+pre-commit>=3.5.0,<5.0

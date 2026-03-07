@@ -54,7 +54,7 @@
 
 <DashboardCard@MDCard>:
    size_hint_y: None
-   height: "160dp"
+   adaptive_height: True
    padding: ["16dp", "14dp"]
    orientation: "vertical"
    radius: [16, ]
@@ -283,7 +283,6 @@ FloatLayout:
 
             # --- Pro Ingestion Hub ---
             DashboardCard:
-               height: "180dp"
                md_bg_color: 0.06, 0.06, 0.18, 0.9
                MDBoxLayout:
                   adaptive_height: True
@@ -517,7 +516,7 @@ FloatLayout:
             # --- Active Belief State ---
             MDCard:
                size_hint_y: None
-               height: "240dp"
+               adaptive_height: True
                padding: "16dp"
                orientation: "vertical"
                radius: [15, ]
@@ -549,7 +548,7 @@ FloatLayout:
             # --- Advanced Features (Always Available) ---
             MDCard:
                size_hint_y: None
-               height: "400dp"  # Increased height for graphs
+               adaptive_height: True
                padding: "16dp"
                orientation: "vertical"
                radius: [15, ]
@@ -1545,7 +1544,7 @@ FloatLayout:
          MDTopAppBarLeadingButtonContainer:
             MDActionTopAppBarButton:
                icon: "arrow-left"
-               on_release: app.switch_screen("match_history")
+               on_release: app.go_back()
          MDTopAppBarTitle:
             text: "Match Detail"
       ScrollView:

@@ -19,7 +19,8 @@ import sys
 from pathlib import Path
 
 # --- Venv Guard ---
-if sys.prefix == sys.base_prefix:
+# P6-03: Allow CI runners (no venv) via CI/GITHUB_ACTIONS env vars
+if sys.prefix == sys.base_prefix and not os.environ.get("CI") and not os.environ.get("GITHUB_ACTIONS"):
     import pytest
     pytest.exit("Not running in virtualenv — activate before running tests", returncode=2)
 

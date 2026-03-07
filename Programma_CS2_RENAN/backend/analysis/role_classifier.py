@@ -12,23 +12,12 @@ Target accuracy: 80%+ agreement with manual labels
 """
 
 from dataclasses import dataclass
-from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
+from Programma_CS2_RENAN.core.app_types import PlayerRole  # P3-01: canonical enum
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.role_classifier")
-
-
-class PlayerRole(Enum):
-    """CS2 player roles."""
-
-    AWPER = "AWPer"
-    ENTRY_FRAGGER = "Entry Fragger"
-    SUPPORT = "Support"
-    IGL = "IGL"
-    LURKER = "Lurker"
-    FLEX = "Flex"  # When role is unclear
 
 
 @dataclass
@@ -53,7 +42,7 @@ _FALLBACK_TIPS = {
         "Hold angles patiently — avoid aggressive peeks with the AWP",
         "Reposition after each shot to avoid counter-AWP trades",
     ],
-    PlayerRole.ENTRY_FRAGGER: [
+    PlayerRole.ENTRY: [
         "Use utility before peeking — flash or smoke your entry point",
         "Communicate contact calls immediately for teammate trades",
     ],
@@ -84,8 +73,8 @@ ROLE_PROFILES = {
         key_stats={"awp_kill_ratio": "High", "first_kill_rate": "High"},
         coaching_focus=[],  # Populated dynamically from Knowledge Base
     ),
-    PlayerRole.ENTRY_FRAGGER: RoleProfile(
-        role=PlayerRole.ENTRY_FRAGGER,
+    PlayerRole.ENTRY: RoleProfile(
+        role=PlayerRole.ENTRY,
         description="First player into sites, creates space",
         key_stats={"entry_rate": "High", "first_death_rate": "High"},
         coaching_focus=[],  # Populated dynamically from Knowledge Base
@@ -209,7 +198,7 @@ class RoleClassifier:
 
         # Entry Fragger score
         entry_rate = stats.get("entry_frags", 0) / max(stats.get("rounds_played", 1), 1)
-        scores[PlayerRole.ENTRY_FRAGGER] = self._score_entry(entry_rate, stats)
+        scores[PlayerRole.ENTRY] = self._score_entry(entry_rate, stats)
 
         # Support score
         assist_rate = stats.get("assists", 0) / max(stats.get("rounds_played", 1), 1)
@@ -388,7 +377,7 @@ class RoleClassifier:
         """
         _ROLE_QUERIES = {
             PlayerRole.AWPER: "AWP positioning angles peek timing sniper discipline",
-            PlayerRole.ENTRY_FRAGGER: "entry fragging site take first contact aggression trade",
+            PlayerRole.ENTRY: "entry fragging site take first contact aggression trade",
             PlayerRole.SUPPORT: "support utility flash smoke trade teammate crossfire",
             PlayerRole.IGL: "round calling economy management strategy rotation leadership",
             PlayerRole.LURKER: "lurking timing rotation catching flanking map control",
@@ -484,7 +473,7 @@ class RoleClassifier:
             )
 
         # Check for missing Entry Fragger (at least 1 needed)
-        entry_count = role_counts.get(PlayerRole.ENTRY_FRAGGER, 0)
+        entry_count = role_counts.get(PlayerRole.ENTRY, 0)
         if entry_count == 0:
             issues.append(
                 {

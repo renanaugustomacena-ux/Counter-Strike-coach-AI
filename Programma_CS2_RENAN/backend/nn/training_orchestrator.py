@@ -53,7 +53,14 @@ class TrainingOrchestrator:
             self._use_vl = model_type == "vl-jepa"
 
         elif model_type == "rap":
-            from Programma_CS2_RENAN.backend.nn.rap_coach.trainer import RAPTrainer
+            from Programma_CS2_RENAN.core.config import get_setting
+
+            if not get_setting("USE_RAP_MODEL", default=False):
+                raise ValueError(
+                    "RAP model training is experimental and disabled by default. "
+                    "Enable via USE_RAP_MODEL=True in settings."
+                )
+            from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.trainer import RAPTrainer
 
             self.TrainerClass = RAPTrainer
             self.model_name = "rap_coach"

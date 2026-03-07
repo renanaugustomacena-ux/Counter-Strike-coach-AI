@@ -221,8 +221,8 @@ class TestCheckRetrainingTrigger:
         mock_sm = MagicMock()
         mock_sm.get_state.return_value = mock_state
         monkeypatch.setattr(
-            "Programma_CS2_RENAN.backend.storage.state_manager.state_manager",
-            mock_sm,
+            "Programma_CS2_RENAN.backend.storage.state_manager.get_state_manager",
+            lambda: mock_sm,
         )
 
         return _check_retraining_trigger

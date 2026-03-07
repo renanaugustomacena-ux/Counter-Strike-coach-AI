@@ -35,10 +35,13 @@ class PlayerCardAssimilator:
         Translates the professional card into the Coach's expected baseline format.
         This provides a "Contextual Pro Baseline" specific to this player.
         """
-        # We start with the core stats stored directly on the card
+        # P3-02: Use per-round rates directly (KPR/DPR) to match the scale used by
+        # base_features.extract_match_stats() and pro_baseline.py. The previous code
+        # multiplied by ESTIMATED_ROUNDS_PER_MATCH (24), producing total-kills-per-match
+        # which was 10-20x larger than user stats, making all z-score comparisons invalid.
         baseline = {
-            "avg_kills": self.card.kpr * ESTIMATED_ROUNDS_PER_MATCH,
-            "avg_deaths": self.card.dpr * ESTIMATED_ROUNDS_PER_MATCH,
+            "avg_kills": self.card.kpr,
+            "avg_deaths": self.card.dpr,
             "avg_adr": self.card.adr,
             "avg_hs": self._extract_hs_ratio(),
             "avg_kast": self.card.kast,

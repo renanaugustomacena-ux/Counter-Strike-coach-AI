@@ -1,7 +1,6 @@
 """Match Detail Screen — round-by-round drill-down with economy and momentum."""
 
 import re
-from threading import Thread
 
 from kivy.clock import Clock
 from kivy.metrics import dp
@@ -11,13 +10,7 @@ from kivymd.uix.card import MDCard
 from kivymd.uix.label import MDLabel
 from kivymd.uix.screen import MDScreen
 
-from Programma_CS2_RENAN.backend.storage.database import get_db_manager
-from Programma_CS2_RENAN.backend.storage.db_models import (
-    CoachingInsight,
-    PlayerMatchStats,
-    RoundStats,
-)
-from Programma_CS2_RENAN.core.config import get_setting
+from Programma_CS2_RENAN.apps.desktop_app.data_viewmodels import MatchDetailViewModel
 from Programma_CS2_RENAN.core.registry import registry
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -54,6 +47,17 @@ def _rating_color(rating: float):
     return _COLOR_YELLOW
 
 
+# P4-07: Text label alongside color for WCAG 1.4.1 color-blind accessibility
+def _rating_label(rating: float) -> str:
+    if rating >= 1.20:
+        return "Excellent"
+    if rating > _RATING_GOOD:
+        return "Good"
+    if rating >= _RATING_BAD:
+        return "Average"
+    return "Below Avg"
+
+
 def _extract_map_name(demo_name: str) -> str:
     m = _MAP_PATTERN.search(demo_name)
     return m.group(1) if m else "Unknown Map"
@@ -62,6 +66,13 @@ def _extract_map_name(demo_name: str) -> str:
 @registry.register("match_detail")
 class MatchDetailScreen(MDScreen):
     """Drill-down for a single match: overview, rounds, economy, highlights."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # P4-03: Delegate DB access to ViewModel (MVVM)
+        self._vm = MatchDetailViewModel()
+        self._vm.bind(stats=self._on_vm_data_changed)
+        self._vm.bind(error_message=self._on_vm_error)
 
     def on_pre_enter(self):
         app = MDApp.get_running_app()
@@ -73,90 +84,21 @@ class MatchDetailScreen(MDScreen):
                 0,
             )
             return
-        Thread(target=self._load_detail, args=(demo,), daemon=True).start()
+        # P4-04: Show loading indicator while data loads
+        self._show_placeholder("Loading match details...")
+        self._vm.load_detail(demo)
 
-    def _load_detail(self, demo_name: str):
-        try:
-            player = get_setting("CS2_PLAYER_NAME", "")
-            with get_db_manager().get_session() as session:
-                # Query 1: Aggregate match stats
-                match_stats = (
-                    session.query(PlayerMatchStats)
-                    .filter(
-                        PlayerMatchStats.demo_name == demo_name,
-                        PlayerMatchStats.player_name == player,
-                    )
-                    .first()
-                )
+    def _on_vm_data_changed(self, instance, stats):
+        if not stats and not self._vm.rounds:
+            return
+        self._populate_sections(
+            dict(stats), list(self._vm.rounds),
+            list(self._vm.insights), dict(self._vm.hltv_breakdown),
+        )
 
-                # Query 2: Round-by-round data
-                rounds = (
-                    session.query(RoundStats)
-                    .filter(
-                        RoundStats.demo_name == demo_name,
-                        RoundStats.player_name == player,
-                    )
-                    .order_by(RoundStats.round_number.asc())
-                    .all()
-                )
-
-                # Query 3: Coaching insights for this match
-                insights = (
-                    session.query(CoachingInsight)
-                    .filter(CoachingInsight.demo_name == demo_name)
-                    .order_by(CoachingInsight.created_at.desc())
-                    .all()
-                )
-
-                # Detach from session
-                stats_dict = {}
-                if match_stats:
-                    stats_dict = {
-                        "demo_name": match_stats.demo_name,
-                        "match_date": match_stats.match_date,
-                        "rating": match_stats.rating,
-                        "avg_kills": match_stats.avg_kills,
-                        "avg_deaths": match_stats.avg_deaths,
-                        "avg_adr": match_stats.avg_adr,
-                        "avg_kast": match_stats.avg_kast,
-                        "kd_ratio": match_stats.kd_ratio,
-                        "avg_hs": match_stats.avg_hs,
-                        "kpr": match_stats.kpr,
-                        "dpr": match_stats.dpr,
-                    }
-
-                rounds_data = [
-                    {
-                        "round_number": r.round_number,
-                        "side": r.side,
-                        "kills": r.kills,
-                        "deaths": r.deaths,
-                        "damage_dealt": r.damage_dealt,
-                        "opening_kill": r.opening_kill,
-                        "equipment_value": r.equipment_value,
-                        "round_won": r.round_won,
-                    }
-                    for r in rounds
-                ]
-
-                insights_data = [
-                    {
-                        "title": i.title,
-                        "message": i.message,
-                        "severity": i.severity,
-                        "focus_area": i.focus_area,
-                    }
-                    for i in insights
-                ]
-
-            Clock.schedule_once(
-                lambda dt: self._populate_sections(stats_dict, rounds_data, insights_data), 0
-            )
-        except Exception as e:
-            logger.error("match_detail.load_failed", error=str(e), demo=demo_name)
-            Clock.schedule_once(
-                lambda dt: self._show_placeholder("Error loading match details."), 0
-            )
+    def _on_vm_error(self, instance, msg):
+        if msg:
+            self._show_placeholder(msg)
 
     def _show_placeholder(self, text: str):
         container = self.ids.get("detail_container")
@@ -172,7 +114,7 @@ class MatchDetailScreen(MDScreen):
             )
         )
 
-    def _populate_sections(self, stats: dict, rounds: list, insights: list):
+    def _populate_sections(self, stats: dict, rounds: list, insights: list, hltv_breakdown=None):
         container = self.ids.get("detail_container")
         if not container:
             return
@@ -183,7 +125,7 @@ class MatchDetailScreen(MDScreen):
             return
 
         # Section 1: Overview
-        self._build_overview_section(container, stats)
+        self._build_overview_section(container, stats, hltv_breakdown)
 
         # Section 2: Round Timeline
         if rounds:
@@ -198,7 +140,7 @@ class MatchDetailScreen(MDScreen):
 
     # --- Section Builders ---
 
-    def _build_overview_section(self, container, stats: dict):
+    def _build_overview_section(self, container, stats: dict, hltv_breakdown=None):
         card, section = self._section_card("Overview")
 
         rating = stats.get("rating", 1.0) or 1.0
@@ -220,13 +162,13 @@ class MatchDetailScreen(MDScreen):
         )
         rating_row.add_widget(
             MDLabel(
-                text=f"{rating:.2f}",
+                text=f"{rating:.2f} ({_rating_label(rating)})",
                 font_style="Display",
                 role="small",
                 theme_text_color="Custom",
                 text_color=_rating_color(rating),
                 size_hint_x=None,
-                width="100dp",
+                width="180dp",
                 adaptive_height=True,
             )
         )
@@ -265,17 +207,14 @@ class MatchDetailScreen(MDScreen):
             )
         )
 
-        # HLTV 2.0 Breakdown bars
-        self._add_hltv_breakdown(section)
+        # HLTV 2.0 Breakdown bars (P4-06: data pre-fetched in background thread)
+        self._add_hltv_breakdown(section, hltv_breakdown)
 
         container.add_widget(card)
 
-    def _add_hltv_breakdown(self, parent):
+    def _add_hltv_breakdown(self, parent, breakdown=None):
+        # P4-06: breakdown is now pre-fetched in background thread by _load_detail
         try:
-            from Programma_CS2_RENAN.backend.reporting.analytics import analytics
-
-            player = get_setting("CS2_PLAYER_NAME", "")
-            breakdown = analytics.get_hltv2_breakdown(player)
             if not breakdown:
                 return
 

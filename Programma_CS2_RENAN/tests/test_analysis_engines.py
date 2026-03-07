@@ -144,7 +144,7 @@ class TestRoleClassifier:
         """Test all role profiles are defined."""
         for role in [
             PlayerRole.AWPER,
-            PlayerRole.ENTRY_FRAGGER,
+            PlayerRole.ENTRY,
             PlayerRole.SUPPORT,
             PlayerRole.IGL,
             PlayerRole.LURKER,
