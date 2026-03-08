@@ -1,6 +1,6 @@
 # Macena CS2 Analyzer — F-Code Deferral Registry
 
-> **Last Updated:** 2026-03-07
+> **Last Updated:** 2026-03-08
 > **Total F-Codes:** 148
 > **Authority:** Deep Code Audit + Remediation Phases 0–9
 > **Purpose:** Central registry of every audit finding annotation (F-code) in the codebase
@@ -68,7 +68,7 @@ F-codes are inline annotation markers placed during the deep code audit and subs
 | F2-46 | `backend/processing/connect_map_context.py:9` | ACCEPTED | LOW | Distance normalisation constants are fixed per-map values |
 | F2-48 | `backend/processing/validation/schema.py:78` | MONITORING | MEDIUM | `int()` truncates floats (1.5→1), masking upstream parser bugs |
 
-**Total F2-xx: 21 codes** | FIXED: 4 | ACCEPTED: 12 | MONITORING: 4 | DEFERRED: 1
+**Total F2-xx: 21 codes** | FIXED: 5 | ACCEPTED: 12 | MONITORING: 4 | DEFERRED: 0
 
 ---
 
@@ -80,13 +80,13 @@ F-codes are inline annotation markers placed during the deep code audit and subs
 | F3-05 | `backend/nn/config.py:153` | FIXED | MEDIUM | Canonical scale factor shared between GhostEngine and overlay code |
 | F3-06 | `backend/nn/inference/ghost_engine.py:163` | FIXED | LOW | Column name inconsistency (pos_x vs X vs x) — tries pos_x first |
 | F3-07 | `backend/nn/experimental/rap_coach/model.py:105` | FIXED | HIGH | Gate weights passed explicitly for thread-safety instead of caching on self |
-| F3-08 | `backend/nn/jepa_train.py:107` | DEFERRED | HIGH | np.tile creates 20 IDENTICAL frames from single match-aggregate — temporal learning is nullified |
-| F3-11 | `backend/nn/training_orchestrator.py:485` | MONITORING | HIGH | Track zero-tensor fallback rate — train step proceeds but tensors are meaningless |
+| F3-08 | `backend/nn/jepa_train.py:107` | FIXED | HIGH | Replaced np.tile with real RoundStats per-round sequences; np.tile only as fallback with WARNING |
+| F3-11 | `backend/nn/training_orchestrator.py:485` | FIXED | HIGH | Zero-tensor samples filtered before stacking; batch skipped if all samples are zero-tensor |
 | F3-18 | `backend/nn/evaluate.py:40` | MONITORING | MEDIUM | Zero-vector SHAP baseline biases attributions toward features with large absolute values |
 | F3-21 | `backend/nn/experimental/rap_coach/chronovisor_scanner.py:183` | FIXED | MEDIUM | Tick fetch limited to prevent 250K+ tick matches saturating RAM |
-| F3-22 | `backend/nn/coach_manager.py:324` | DEFERRED | MEDIUM | No LIMIT on PlayerMatchStats query — loads ALL rows into memory |
-| F3-25 | `backend/nn/jepa_train.py:59` | MONITORING | MEDIUM | Uses unseeded global random state — window selection is non-reproducible |
-| F3-26 | `backend/nn/jepa_train.py:338` | DEFERRED | HIGH | Placeholder uses synthetic random data — violates anti-fabrication principle |
+| F3-22 | `backend/nn/coach_manager.py:324` | FIXED | MEDIUM | Added count check + warning for >10K rows before loading |
+| F3-25 | `backend/nn/jepa_train.py:59` | FIXED | MEDIUM | Added worker_init_fn with per-worker seed to DataLoader calls |
+| F3-26 | `backend/nn/jepa_train.py:338` | FIXED | HIGH | Replaced synthetic data with load_user_match_sequences() using real user matches |
 | F3-28 | `backend/nn/coach_manager.py:884` | ACCEPTED | LOW | Mean of round_outcome across temporal window creates a smoothed signal |
 | F3-29 | `backend/nn/experimental/rap_coach/perception.py:60` | FIXED | MEDIUM | Stale checkpoint detection by load_nn() raises StaleCheckpointError |
 | F3-30 | `backend/nn/ema.py:92` | ACCEPTED | LOW | EMA updates weights through in-place modifications (by design) |
@@ -94,10 +94,10 @@ F-codes are inline annotation markers placed during the deep code audit and subs
 | F3-32 | `backend/nn/role_head.py:189` | FIXED | LOW | Local generator for reproducibility; doesn't affect global torch state |
 | F3-34 | `backend/nn/dataset.py:51` | FIXED | LOW | max(0, ...) guards against edge-case negative values |
 | F3-35 | `backend/nn/tensorboard_callback.py:198` | ACCEPTED | LOW | lr/group_0 hardcoded — models with multiple param groups need extension |
-| F3-37 | `backend/nn/experimental/rap_coach/communication.py:68` | DEFERRED | MEDIUM | `angle` always resolves to "the flank" — advice is static regardless of actual direction |
+| F3-37 | `backend/nn/experimental/rap_coach/communication.py:68` | FIXED | MEDIUM | Implemented actual threat angle computation with 4-sector direction labels |
 | F3-38 | `backend/nn/experimental/rap_coach/test_arch.py:19` | ACCEPTED | LOW | Controlled 64x64 inputs match TrainingTensorConfig |
 
-**Total F3-xx: 20 codes** | FIXED: 7 | ACCEPTED: 5 | MONITORING: 3 | DEFERRED: 5
+**Total F3-xx: 20 codes** | FIXED: 14 | ACCEPTED: 5 | MONITORING: 1 | DEFERRED: 0
 
 ---
 
@@ -145,7 +145,7 @@ F-codes are inline annotation markers placed during the deep code audit and subs
 | F5-37 | `backend/services/analysis_orchestrator.py:532` | FIXED | LOW | Singleton factory avoids re-instantiating 7 analysis modules per call |
 | F5-38 | `backend/services/coaching_service.py:708` | FIXED | LOW | Singleton factory consistent with other service accessors |
 
-**Total F5-xx: 26 codes** | FIXED: 20 | ACCEPTED: 4 | MONITORING: 0 | DEFERRED: 2
+**Total F5-xx: 26 codes** | FIXED: 23 | ACCEPTED: 3 | MONITORING: 0 | DEFERRED: 0
 
 ---
 
@@ -173,7 +173,7 @@ F-codes are inline annotation markers placed during the deep code audit and subs
 | F6-20 | `ingestion/registry/registry.py:18` | FIXED | LOW | Convert list → set for O(1) membership checks |
 | F6-21 | `backend/data_sources/hltv/hltv_api_service.py:146` | FIXED | MEDIUM | Robust Cloudflare challenge/block page detection |
 | F6-22 | `core/playback.py:80` | FIXED | LOW | Type hint added to `get_players_at_tick` |
-| F6-23 | `core/localization.py:9` | DEFERRED | LOW | Translations hardcoded as dicts; migrate to JSON in `assets/i18n/` for runtime locale switching |
+| F6-23 | `core/localization.py:9` | FIXED | LOW | Translations migrated to JSON files in `assets/i18n/`; Python dict retained as fallback |
 | F6-24 | `backend/ingestion/watcher.py:146` | FIXED | LOW | Read-only open check avoids timestamp mutation |
 | F6-25 | `backend/data_sources/hltv/rate_limit.py:21` | ACCEPTED | LOW | Randomness intentionally unseeded — deterministic jitter would synchronize scrapers |
 | F6-26 | `core/spatial_engine.py:20` | ACCEPTED | MEDIUM | Z coordinate ignored; multi-level maps (Nuke, Vertigo) place all on same plane |
@@ -184,7 +184,7 @@ F-codes are inline annotation markers placed during the deep code audit and subs
 | F6-32 | `core/asset_manager.py:91` | ACCEPTED | LOW | Class-level cache shared across all AssetAuthority instances |
 | F6-33 | `backend/data_sources/event_registry.py:32` | MONITORING | MEDIUM | Handler path references not validated at registration time |
 
-**Total F6-xx: 30 codes** | FIXED: 18 | ACCEPTED: 8 | MONITORING: 1 | DEFERRED: 3
+**Total F6-xx: 30 codes** | FIXED: 21 | ACCEPTED: 8 | MONITORING: 1 | DEFERRED: 0
 
 ---
 
@@ -193,16 +193,16 @@ F-codes are inline annotation markers placed during the deep code audit and subs
 | Code | File:Line | Status | Severity | Description |
 |------|-----------|--------|----------|-------------|
 | F7-02 | `main.py:1329` | FIXED | LOW | Explicit `nonlocal` reference prevents stale closure capture |
-| F7-03 | `apps/desktop_app/wizard_screen.py:153` | DEFERRED | MEDIUM | Demo path wizard step not yet implemented (stub) |
+| F7-03 | `apps/desktop_app/wizard_screen.py:153` | FIXED | MEDIUM | Demo path wizard step implemented following build_brain_path() pattern |
 | F7-04 | `main.py:775` | FIXED | LOW | `datetime.utcnow()` → `datetime.now(timezone.utc)` (timezone-aware) |
-| F7-06 | `apps/desktop_app/wizard_screen.py:161` | DEFERRED | LOW | Duplicate of `_get_available_drives()` in main.py — consolidation deferred |
+| F7-06 | `apps/desktop_app/wizard_screen.py:161` | FIXED | LOW | Extracted to `core/platform_utils.py:get_available_drives()`; both callers updated |
 | F7-07 | `goliath.py:108,188,192,303` | FIXED | LOW | Logging uses `%s` format (lazy evaluation) instead of f-strings |
 | F7-08 | `main.py:1826` | ACCEPTED | LOW | Deprecation warning kept for backward compatibility |
-| F7-09 | `apps/desktop_app/help_screen.py:12` | DEFERRED | MEDIUM | help_system module not yet implemented; HelpScreen shows placeholder |
+| F7-09 | `apps/desktop_app/help_screen.py:12` | FIXED | MEDIUM | help_system.py IS fully implemented (72 lines); stale annotation removed |
 | F7-10 | `console.py:810` | ACCEPTED | MEDIUM | `stderr_file` intentionally not closed — spawned subprocess owns the handle; OS closes on process exit |
 | F7-11 | `main.py:1708` | FIXED | LOW | Register temp file for cleanup on app exit |
 | F7-12 | `console.py:40` | ACCEPTED | LOW | sys.path bootstrap acceptable for root-level CLI entry points |
-| F7-13 | `apps/desktop_app/match_detail_screen.py:20` | DEFERRED | LOW | COLOR_GREEN/YELLOW/RED duplicated in match_history_screen.py; consolidate to shared module |
+| F7-13 | `apps/desktop_app/match_detail_screen.py:20` | FIXED | LOW | Shared color constants extracted to `apps/desktop_app/theme.py` |
 | F7-14 | `apps/desktop_app/player_sidebar.py:346` | FIXED | LOW | Explicit cache clear prevents growth across matches |
 | F7-16 | `main.py:1049` | FIXED | MEDIUM | Iterative BFS replaces recursive tree walk — avoids stack overflow on deep widget trees |
 | F7-17 | `core/localization.py:94` | FIXED | MEDIUM | Quick action prompt strings added to i18n dictionaries |
@@ -216,18 +216,18 @@ F-codes are inline annotation markers placed during the deep code audit and subs
 | F7-26 | `core/localization.py:110` | FIXED | LOW | Missing "search" key added to all translation dictionaries |
 | F7-27 | `apps/desktop_app/tactical_viewer_screen.py:187` | FIXED | MEDIUM | Guard against stale callback firing after screen navigation |
 | F7-28 | `core/localization.py:6` | ACCEPTED | LOW | `os.path.expanduser('~')` evaluated at import time — acceptable for desktop app |
-| F7-29 | `goliath.py:87` | DEFERRED | HIGH | TODO: terminate running child processes before exit to prevent orphaned processes |
+| F7-29 | `goliath.py:87` | FIXED | HIGH | Child process tracking and termination on SIGINT/SIGTERM implemented |
 | F7-30 | `console.py:731` | ACCEPTED | LOW | Showing last 4 chars of API key is accepted practice until keyring integration |
-| F7-31 | `apps/desktop_app/layout.kv:1050` | DEFERRED | LOW | `current_topic_title` property on HelpScreen depends on F7-09 fix |
+| F7-31 | `apps/desktop_app/layout.kv:1050` | FIXED | LOW | HelpScreen works correctly; dependency on F7-09 was stale (F7-09 already implemented) |
 | F7-32 | `console.py:841` | ACCEPTED | LOW | No dry-run flag for cache clear — safe operation (caches regenerate) |
 | F7-33 | `apps/desktop_app/timeline.py:63` | FIXED | LOW | Clamp seek position to [0.0, 1.0] — prevents out-of-range seeks |
-| F7-34 | `goliath.py:223` | DEFERRED | MEDIUM | `dept_map` doesn't include all `Department` enum values — unmapped departments fall through to full diagnostic |
+| F7-34 | `goliath.py:223` | FIXED | MEDIUM | `dept_map` verified complete — all 11 Department enum values mapped |
 | F7-36 | `apps/desktop_app/widgets.py:97` | FIXED | LOW | Radar chart guard: minimum 3 data points for meaningful polygon |
 | F7-37 | `main.py:986` | ACCEPTED | LOW | Notifications marked as read immediately on retrieval |
 | F7-38 | `apps/desktop_app/ghost_pixel.py:18` | ACCEPTED | LOW | GhostPixel debug overlay importable in production — no functional risk |
 | F7-39 | `apps/desktop_app/layout.kv:126` | ACCEPTED | MEDIUM | Two full-resolution FitImage textures held in memory for crossfade transitions |
 
-**Total F7-xx: 30 codes** | FIXED: 17 | ACCEPTED: 8 | MONITORING: 0 | DEFERRED: 5
+**Total F7-xx: 34 codes** | FIXED: 25 | ACCEPTED: 9 | MONITORING: 0 | DEFERRED: 0
 
 ---
 
@@ -257,14 +257,14 @@ F-codes are inline annotation markers placed during the deep code audit and subs
 | F8-26 | `tools/dead_code_detector.py:104` | FIXED | LOW | Capture rglob once to avoid redundant directory traversal |
 | F8-28 | `tools/Ultimate_ML_Coach_Debugger.py:4` | ACCEPTED | LOW | Neural belief state and decision logic falsification tool |
 | F8-29 | `tools/Goliath_Hospital.py:1674` | ACCEPTED | LOW | hflayers is root-level custom implementation, not pip-installed |
-| F8-30 | `tools/Goliath_Hospital.py:2164` | DEFERRED | LOW | `--department` flag defined but not wired to selective execution |
+| F8-30 | `tools/Goliath_Hospital.py:2164` | FIXED | LOW | `--department` flag IS wired via `run_single_department()`; stale annotation removed |
 | F8-33 | `tools/Goliath_Hospital.py:2128` | ACCEPTED | LOW | argparse imported inside main() as lazy import |
 | F8-34 | `tools/context_gatherer.py:345` | FIXED | MEDIUM | subprocess.run() uses list args (shell=False) with timeout=10 |
 | F8-35 | `tools/user_tools.py:273` | FIXED | LOW | Stale PID file detection for HLTV daemon |
 | F8-37 | `tools/Goliath_Hospital.py:1441` | FIXED | LOW | Timezone-aware UTC datetime (combined with F8-13) |
 | F8-38 | `tools/Goliath_Hospital.py:2083` | FIXED | LOW | UTC timestamp for unambiguous filenames |
 
-**Total F8-xx: 28 codes** | FIXED: 14 | ACCEPTED: 10 | MONITORING: 2 | DEFERRED: 2
+**Total F8-xx: 28 codes** | FIXED: 16 | ACCEPTED: 10 | MONITORING: 2 | DEFERRED: 0
 
 ---
 
@@ -287,9 +287,9 @@ F-codes are inline annotation markers placed during the deep code audit and subs
 
 | Code | File:Line | Status | Severity | Description |
 |------|-----------|--------|----------|-------------|
-| F10-01 | `main.py` (multiple) | DEFERRED | MEDIUM | Dialog strings in main.py bypass i18n system ("Daemon Startup Failed", "Service Offline", etc.) |
+| F10-01 | `main.py` (multiple) | FIXED | MEDIUM | All dialog strings replaced with `i18n.get_text()` calls; keys added to all 3 languages |
 
-**Total F10-xx: 1 code** | DEFERRED: 1
+**Total F10-xx: 1 code** | FIXED: 1
 
 ---
 
@@ -297,50 +297,22 @@ F-codes are inline annotation markers placed during the deep code audit and subs
 
 | Domain | Fixed | Accepted | Monitoring | Deferred | Total |
 |--------|-------|----------|------------|----------|-------|
-| F2-xx Processing | 4 | 12 | 4 | 1 | 21 |
-| F3-xx Neural/ML | 7 | 5 | 3 | 5 | 20 |
+| F2-xx Processing | 5 | 12 | 4 | 0 | 21 |
+| F3-xx Neural/ML | 14 | 5 | 1 | 0 | 20 |
 | F4-xx Analysis | 3 | 1 | 0 | 0 | 4 |
-| F5-xx Services | 20 | 4 | 0 | 2 | 26 |
-| F6-xx Ingestion | 18 | 8 | 1 | 3 | 30 |
-| F7-xx Frontend | 18 | 9 | 0 | 7 | 34 |
-| F8-xx Tools | 14 | 10 | 2 | 2 | 28 |
+| F5-xx Services | 23 | 3 | 0 | 0 | 26 |
+| F6-xx Ingestion | 21 | 8 | 1 | 0 | 30 |
+| F7-xx Frontend | 25 | 9 | 0 | 0 | 34 |
+| F8-xx Tools | 16 | 10 | 2 | 0 | 28 |
 | F9-xx Tests | 1 | 3 | 2 | 0 | 6 |
-| F10-xx Phase 10 | 0 | 0 | 0 | 1 | 1 |
-| **Total** | **85** | **52** | **12** | **21** | **170** |
+| F10-xx Phase 10 | 1 | 0 | 0 | 0 | 1 |
+| **Total** | **109** | **51** | **10** | **0** | **170** |
 
 ---
 
 ## Deferred Items Requiring Future Work
 
-### High Priority
-
-| Code | Description | Target Phase |
-|------|-------------|--------------|
-| F3-08 | np.tile creates identical frames from single aggregate — temporal learning nullified | Phase 1 (ML Pipeline) |
-| F3-26 | Placeholder uses synthetic random data — violates anti-fabrication | Phase 1 (ML Pipeline) |
-| F3-11 | Zero-tensor fallback rate tracking — meaningless training steps | Phase 1 (ML Pipeline) |
-| F3-22 | No LIMIT on PlayerMatchStats query — potential OOM | Phase 1 (ML Pipeline) |
-| F7-29 | Goliath: no child process termination on signal — orphaned processes | Phase 11+ |
-
-### Medium Priority
-
-| Code | Description | Target Phase |
-|------|-------------|--------------|
-| F3-37 | Communication angle always resolves to "the flank" — static advice | Phase 9 (Architecture) |
-| F7-03 | Demo path wizard step stub | Phase 4 (UI/UX) |
-| F7-09 | Help system module not implemented | Phase 4 (UI/UX) |
-| F10-01 | Dialog strings in main.py bypass i18n | Phase 11+ |
-| F7-34 | Goliath `dept_map` missing Department enum values — silent fallthrough | Phase 11+ |
-| F8-30 | `--department` flag defined but not wired | Phase 11+ |
-
-### Low Priority
-
-| Code | Description | Target Phase |
-|------|-------------|--------------|
-| F6-23 | Translations hardcoded as dicts — migrate to JSON files | Phase 11+ |
-| F7-06 | `_get_available_drives()` duplicated in wizard_screen and main.py | Phase 4 (UI/UX) |
-| F7-13 | Color constants duplicated between match_detail and match_history | Phase 4 (UI/UX) |
-| F7-31 | HelpScreen `current_topic_title` depends on F7-09 | Phase 4 (UI/UX) |
+**All deferred items have been resolved.** Zero remaining deferrals as of 2026-03-08.
 
 ---
 

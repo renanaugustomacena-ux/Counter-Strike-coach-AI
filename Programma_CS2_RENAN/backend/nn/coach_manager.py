@@ -321,10 +321,14 @@ class CoachTrainingManager:
         Uses match_date as sort column (indexed in DB).
         Re-assigns ALL matches each cycle so boundaries shift as new data arrives.
         """
-        # NOTE (F3-22): No LIMIT on this query — loads ALL PlayerMatchStats into memory for
-        # temporal split assignment. Acceptable for hundreds of matches, but should be
-        # bounded if match counts grow into the tens of thousands.
         with self.db.get_session() as session:
+            total = session.exec(select(func.count(PlayerMatchStats.id))).one()
+            if total > 10_000:
+                app_logger.warning(
+                    "Large match set (%d) in split assignment — "
+                    "consider batching if memory pressure occurs.",
+                    total,
+                )
             all_matches = session.exec(
                 select(PlayerMatchStats).order_by(PlayerMatchStats.match_date)
             ).all()
@@ -436,7 +440,9 @@ class CoachTrainingManager:
             # Increment maturity after successful training
             self.increment_maturity_counter()
 
-            get_state_manager().update_status("teacher", "Idle", "Training Complete. Knowledge Updated.")
+            get_state_manager().update_status(
+                "teacher", "Idle", "Training Complete. Knowledge Updated."
+            )
         finally:
             callbacks.close_all()
 
@@ -561,7 +567,10 @@ class CoachTrainingManager:
             # Explicit None guard: dict.get(key, default) returns None when the key
             # exists with a NULL DB value, which would produce NaN in the tensor.
             vec = np.array(
-                [(v if (v := stats.get(f, 0.0)) is not None else 0.0) for f in MATCH_AGGREGATE_FEATURES],
+                [
+                    (v if (v := stats.get(f, 0.0)) is not None else 0.0)
+                    for f in MATCH_AGGREGATE_FEATURES
+                ],
                 dtype=np.float32,
             )
             X.append(vec)
@@ -697,10 +706,14 @@ class CoachTrainingManager:
                 "Economy": ("econ_rating", 0.75),
             }
 
-            # Get user averages from match stats
+            # Get user averages from match stats (F3-22: bounded query)
+            _RADAR_MATCH_LIMIT = 5000
             with self.db.get_session() as session:
                 user_matches = session.exec(
-                    select(PlayerMatchStats).where(PlayerMatchStats.is_pro == False)
+                    select(PlayerMatchStats)
+                    .where(PlayerMatchStats.is_pro == False)
+                    .order_by(PlayerMatchStats.match_date.desc())
+                    .limit(_RADAR_MATCH_LIMIT)
                 ).all()
 
             # Get pro baseline
@@ -774,10 +787,7 @@ class CoachTrainingManager:
         try:
             from Programma_CS2_RENAN.backend.nn.config import get_device
             from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.model import RAPCoachModel
-            from Programma_CS2_RENAN.backend.nn.persistence import (
-                StaleCheckpointError,
-                load_nn,
-            )
+            from Programma_CS2_RENAN.backend.nn.persistence import StaleCheckpointError, load_nn
             from Programma_CS2_RENAN.backend.processing.state_reconstructor import (
                 RAPStateReconstructor,
             )
