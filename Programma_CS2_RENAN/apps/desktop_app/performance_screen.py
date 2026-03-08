@@ -8,38 +8,17 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.screen import MDScreen
 
 from Programma_CS2_RENAN.apps.desktop_app.data_viewmodels import PerformanceViewModel
+from Programma_CS2_RENAN.apps.desktop_app.theme import (
+    COLOR_CARD_BG as _COLOR_CARD_BG,
+    COLOR_GREEN as _COLOR_GREEN,
+    COLOR_RED as _COLOR_RED,
+    rating_color as _rating_color,
+    rating_label as _rating_label,
+)
 from Programma_CS2_RENAN.core.registry import registry
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.performance")
-
-# Color constants
-_COLOR_GREEN = (0.30, 0.69, 0.31, 1)
-_COLOR_YELLOW = (1.0, 0.60, 0.0, 1)
-_COLOR_RED = (0.96, 0.26, 0.21, 1)
-_COLOR_CARD_BG = (0.12, 0.12, 0.14, 1)
-
-_RATING_GOOD = 1.10
-_RATING_BAD = 0.90
-
-
-def _rating_color(rating: float):
-    if rating > _RATING_GOOD:
-        return _COLOR_GREEN
-    if rating < _RATING_BAD:
-        return _COLOR_RED
-    return _COLOR_YELLOW
-
-
-# P4-07: Text label alongside color for WCAG 1.4.1 color-blind accessibility
-def _rating_label(rating: float) -> str:
-    if rating >= 1.20:
-        return "Excellent"
-    if rating > _RATING_GOOD:
-        return "Good"
-    if rating >= _RATING_BAD:
-        return "Average"
-    return "Below Avg"
 
 
 @registry.register("performance")
@@ -59,8 +38,7 @@ class PerformanceScreen(MDScreen):
         self._vm.load_performance()
 
     def _on_vm_data_changed(self, instance, history):
-        if not history and not self._vm.map_stats:
-            return
+        # DA-PS-01: Always call _populate — it handles empty data with a placeholder
         self._populate(
             list(history), dict(self._vm.map_stats),
             dict(self._vm.strength_weakness), dict(self._vm.utility),

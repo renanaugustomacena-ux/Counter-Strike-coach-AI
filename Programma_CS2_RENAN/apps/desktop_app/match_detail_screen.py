@@ -11,24 +11,23 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.screen import MDScreen
 
 from Programma_CS2_RENAN.apps.desktop_app.data_viewmodels import MatchDetailViewModel
+from Programma_CS2_RENAN.apps.desktop_app.theme import (
+    COLOR_CARD_BG as _COLOR_CARD_BG,
+    COLOR_GREEN as _COLOR_GREEN,
+    COLOR_RED as _COLOR_RED,
+    COLOR_YELLOW as _COLOR_YELLOW,
+    rating_color as _rating_color,
+    rating_label as _rating_label,
+)
 from Programma_CS2_RENAN.core.registry import registry
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.match_detail")
 
-# Color constants
-# F7-13: COLOR_GREEN/YELLOW/RED duplicated in match_history_screen.py. Consolidate to
-# apps/desktop_app/theme.py when UI theming is refactored.
-_COLOR_GREEN = (0.30, 0.69, 0.31, 1)
-_COLOR_YELLOW = (1.0, 0.60, 0.0, 1)
-_COLOR_RED = (0.96, 0.26, 0.21, 1)
+# Screen-specific color constants
 _COLOR_CT = (0.36, 0.62, 0.91, 1)  # #5C9EE8
 _COLOR_T = (0.91, 0.79, 0.36, 1)  # #E8C95C
-_COLOR_CARD_BG = (0.12, 0.12, 0.14, 1)
 _COLOR_SECTION_BG = (0.10, 0.10, 0.12, 1)
-
-_RATING_GOOD = 1.10
-_RATING_BAD = 0.90
 
 _MAP_PATTERN = re.compile(r"(de_\w+|cs_\w+|ar_\w+)")
 
@@ -37,25 +36,6 @@ _SEVERITY_ICONS = {
     "warning": ("alert", _COLOR_YELLOW),
     "info": ("information", _COLOR_CT),
 }
-
-
-def _rating_color(rating: float):
-    if rating > _RATING_GOOD:
-        return _COLOR_GREEN
-    if rating < _RATING_BAD:
-        return _COLOR_RED
-    return _COLOR_YELLOW
-
-
-# P4-07: Text label alongside color for WCAG 1.4.1 color-blind accessibility
-def _rating_label(rating: float) -> str:
-    if rating >= 1.20:
-        return "Excellent"
-    if rating > _RATING_GOOD:
-        return "Good"
-    if rating >= _RATING_BAD:
-        return "Average"
-    return "Below Avg"
 
 
 def _extract_map_name(demo_name: str) -> str:
@@ -76,7 +56,8 @@ class MatchDetailScreen(MDScreen):
 
     def on_pre_enter(self):
         app = MDApp.get_running_app()
-        demo = app.selected_demo
+        # DA-MD-01: Use getattr to prevent AttributeError if never set
+        demo = getattr(app, "selected_demo", None)
         if not demo:
             logger.warning("match_detail.no_demo_selected")
             Clock.schedule_once(
@@ -90,6 +71,8 @@ class MatchDetailScreen(MDScreen):
 
     def _on_vm_data_changed(self, instance, stats):
         if not stats and not self._vm.rounds:
+            # DA-MD-02: Clear loading state when no data returned
+            self._show_placeholder("No match data available.")
             return
         self._populate_sections(
             dict(stats), list(self._vm.rounds),

@@ -69,7 +69,8 @@ class TacticalMap(Widget):
         # self.selected_player_id = None  <-- Removed, handled by Property
         self._map_texture = None
         self._heatmap_texture = None
-        self._name_textures = {}
+        # DA-03-02: OrderedDict for LRU eviction (move_to_end on access)
+        self._name_textures: dict = {}
 
         # --- Optimization: Render Layers ---
         self.map_group = InstructionGroup()
@@ -288,13 +289,16 @@ class TacticalMap(Widget):
 
         if name not in self._name_textures:
             if len(self._name_textures) >= self._NAME_TEXTURE_CACHE_LIMIT:
-                # F7-21: Evict oldest entry (FIFO). clear() is too aggressive.
-                oldest_key = next(iter(self._name_textures))
-                del self._name_textures[oldest_key]
+                # DA-03-02: LRU eviction — remove least-recently-used entry.
+                lru_key = next(iter(self._name_textures))
+                del self._name_textures[lru_key]
             # [VISUAL] Smaller font for smaller player icons
             lbl = CoreLabel(text=name, font_size=9, color=(1, 1, 1, 1))
             lbl.refresh()
             self._name_textures[name] = lbl.texture
+        else:
+            # DA-03-02: Move to end on access (most-recently-used)
+            self._name_textures[name] = self._name_textures.pop(name)
         tex = self._name_textures.get(name)
         if tex:
             group.add(Color(1, 1, 1, 1))

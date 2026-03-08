@@ -35,6 +35,9 @@ class MatchHistoryViewModel(EventDispatcher):
     error_message = StringProperty("")
 
     def load_matches(self):
+        # DA-DV-01: Prevent duplicate background loads from rapid on_enter calls
+        if self.is_loading:
+            return
         self.is_loading = True
         self.error_message = ""
         Thread(target=self._bg_load, daemon=True).start()
@@ -106,6 +109,9 @@ class MatchDetailViewModel(EventDispatcher):
     error_message = StringProperty("")
 
     def load_detail(self, demo_name: str):
+        # DA-DV-01: Prevent duplicate background loads
+        if self.is_loading:
+            return
         self.is_loading = True
         self.error_message = ""
         Thread(target=self._bg_load, args=(demo_name,), daemon=True).start()
@@ -233,6 +239,9 @@ class PerformanceViewModel(EventDispatcher):
     error_message = StringProperty("")
 
     def load_performance(self):
+        # DA-DV-01: Prevent duplicate background loads
+        if self.is_loading:
+            return
         self.is_loading = True
         self.error_message = ""
         Thread(target=self._bg_load, daemon=True).start()
