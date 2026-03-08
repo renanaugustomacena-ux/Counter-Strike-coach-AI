@@ -233,8 +233,10 @@ class AdaptiveBeliefCalibrator:
             Calibrated priors dict, or empty dict if insufficient data.
         """
         if len(death_events) < self.MIN_SAMPLES:
-            logger.info(
-                f"Insufficient samples for HP calibration: {len(death_events)} < {self.MIN_SAMPLES}"
+            # AC-05-01: Warn (not info) — sparse data leaves posterior dominated by prior
+            logger.warning(
+                "Insufficient samples for HP calibration: %d < %d",
+                len(death_events), self.MIN_SAMPLES,
             )
             return {}
 

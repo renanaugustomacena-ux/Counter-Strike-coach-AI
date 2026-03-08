@@ -435,6 +435,9 @@ class ExperienceBank:
                 events_by_tick[tick] = []
             events_by_tick[tick].append(event)
 
+        # AC-32-03: Index tick_data by tick for O(1) lookup instead of O(T) linear scan
+        tick_data_by_tick = {td.get("tick"): td for td in tick_data}
+
         # Process kill/death events
         for event in events:
             if event.get("event_type") not in ("player_death",):
@@ -442,12 +445,8 @@ class ExperienceBank:
 
             tick = event.get("tick", 0)
 
-            # Find corresponding tick data
-            tick_snapshot = None
-            for td in tick_data:
-                if td.get("tick") == tick:
-                    tick_snapshot = td
-                    break
+            # Find corresponding tick data (O(1) dict lookup)
+            tick_snapshot = tick_data_by_tick.get(tick)
 
             if not tick_snapshot:
                 continue
