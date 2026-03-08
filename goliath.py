@@ -9,6 +9,7 @@ Industrial Standard Version 2.0
 """
 
 import argparse
+import atexit
 import logging
 import os
 import signal
@@ -81,13 +82,34 @@ logger = setup_logging(PROJECT_ROOT / "logs")
 
 class GoliathOrchestrator:
     def __init__(self):
+        self._children: list = []
         signal.signal(signal.SIGINT, self._signal_handler)
+        signal.signal(signal.SIGTERM, self._signal_handler)
+        # F7-29: Also clean up children on normal exit (atexit)
+        atexit.register(self._cleanup_children)
+
+    def register_child(self, proc):
+        """Track a subprocess.Popen for cleanup on signal."""
+        self._children.append(proc)
+
+    def _cleanup_children(self):
+        """Terminate all tracked child processes (F7-29)."""
+        for proc in self._children:
+            try:
+                if proc.poll() is None:  # Still running
+                    proc.terminate()
+                    proc.wait(timeout=5)
+            except Exception:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+        self._children.clear()
 
     def _signal_handler(self, sig, frame):
-        # F7-29: TODO — terminate any running child processes (e.g. spawned build workers)
-        # before exit to prevent orphaned processes.
+        self._cleanup_children()
         console.print("\n[error]>>> Goliath Terminated by User.[/error]")
-        logger.warning("Goliath session interrupted by user.")
+        logger.warning("Goliath session interrupted by user (signal=%s).", sig)
         sys.exit(0)
 
     def print_header(self):
@@ -219,10 +241,8 @@ class GoliathOrchestrator:
                         "ICU": hospital._run_icu,
                         "PHARMACY": hospital._run_pharmacy,
                         "TOOL_CLINIC": hospital._run_tool_clinic,
+                        "ENDOCRINOLOGY": hospital._run_endocrinology,
                     }
-                    # F7-34: dept_map does not include all Department enum values. Unmapped
-                    # departments fall through to full diagnostic. Add assertion coverage when
-                    # new departments are added: assert set(Department) == set(dept_map.keys())
                     if dept_key in dept_map:
                         dept_map[dept_key]()
                     else:

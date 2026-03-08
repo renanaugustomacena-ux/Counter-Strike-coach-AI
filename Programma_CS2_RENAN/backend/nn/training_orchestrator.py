@@ -42,6 +42,9 @@ class TrainingOrchestrator:
         # Deterministic RNG for JEPA negative sampling (F3-02).
         # Seeded once at construction so training runs are reproducible.
         self._neg_rng = np.random.default_rng(seed=42)
+        # F3-11: Aggregate zero-tensor fallback counters across entire training run
+        self._total_samples = 0
+        self._total_fallbacks = 0
 
         # Determine internal model/trainer classes based on type
         if model_type in ("jepa", "vl-jepa"):
@@ -181,6 +184,17 @@ class TrainingOrchestrator:
                 logger.info("Early Stopping Triggered at Epoch %s", epoch)
                 break
 
+        # F3-11: Log aggregate zero-tensor fallback summary
+        if self._total_samples > 0 and self._total_fallbacks > 0:
+            rate = self._total_fallbacks / self._total_samples * 100
+            level = logger.warning if rate > 10 else logger.info
+            level(
+                "Training complete — zero-tensor fallback rate: %.1f%% (%d/%d samples)",
+                rate,
+                self._total_fallbacks,
+                self._total_samples,
+            )
+
         # Fire: on_train_end
         self.callbacks.fire(
             "on_train_end",
@@ -189,6 +203,11 @@ class TrainingOrchestrator:
                 "best_val_loss": self.best_val_loss,
                 "final_epoch": epoch,
                 "model_type": self.model_type,
+                "fallback_rate": (
+                    self._total_fallbacks / max(self._total_samples, 1)
+                    if self._total_samples > 0
+                    else 0.0
+                ),
             },
         )
 
@@ -410,6 +429,7 @@ class TrainingOrchestrator:
         motion_list = []
         target_val_list = []
         target_strat_list = []
+        had_real_pov = []
 
         # Per-batch caches to avoid re-querying same match/tick
         _all_players_cache: dict = {}
@@ -453,6 +473,8 @@ class TrainingOrchestrator:
                         e,
                     )
 
+            had_real_pov.append(knowledge is not None)
+
             # Generate tensors (real POV or legacy zero-fallback)
             map_t = tf.generate_map_tensor(tick_list, map_name, knowledge=knowledge)
             view_t = tf.generate_view_tensor(tick_list, map_name, knowledge=knowledge)
@@ -482,17 +504,39 @@ class TrainingOrchestrator:
             strat_vec[strat_idx] = 1.0
             target_strat_list.append(strat_vec)
 
-        # F3-11: Track zero-tensor fallback rate — train step proceeds but tensors are meaningless.
+        # F3-11: Filter out zero-tensor fallback samples instead of training on garbage
         fallback_count = b - pov_count
-        if pov_count > 0:
-            logger.debug("RAP batch: %d/%d samples with real Player-POV tensors", pov_count, b)
+        self._total_samples += b
+        self._total_fallbacks += fallback_count
         if fallback_count > 0:
+            fallback_rate = self._total_fallbacks / max(self._total_samples, 1) * 100
             logger.warning(
-                "RAP batch: %d/%d samples fell back to ZERO tensors (match DB unavailable). "
-                "Training on zero-tensor data degrades model quality.",
+                "RAP batch: %d/%d samples fell back to ZERO tensors — dropping them. "
+                "Aggregate fallback rate: %.1f%% (%d/%d total)",
                 fallback_count,
                 b,
+                fallback_rate,
+                self._total_fallbacks,
+                self._total_samples,
             )
+
+            if pov_count == 0:
+                logger.warning("Entire RAP batch is zero-tensor fallback. Skipping batch.")
+                return None
+
+            # Keep only samples with real POV data
+            valid = had_real_pov
+            view_list = [v for v, ok in zip(view_list, valid) if ok]
+            map_list = [m for m, ok in zip(map_list, valid) if ok]
+            motion_list = [m for m, ok in zip(motion_list, valid) if ok]
+            target_val_list = [t for t, ok in zip(target_val_list, valid) if ok]
+            target_strat_list = [t for t, ok in zip(target_strat_list, valid) if ok]
+
+            # Re-slice metadata to match filtered samples
+            valid_indices = [i for i, ok in enumerate(valid) if ok]
+            metadata = features_tensor[valid_indices]
+        else:
+            logger.debug("RAP batch: %d/%d samples with real Player-POV tensors", pov_count, b)
 
         view = torch.stack(view_list).to(self.device)
         map_tensor = torch.stack(map_list).to(self.device)
