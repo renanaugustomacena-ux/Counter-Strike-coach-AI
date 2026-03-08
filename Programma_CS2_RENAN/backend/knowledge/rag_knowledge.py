@@ -140,6 +140,14 @@ class KnowledgeEmbedder:
 
             session.commit()
 
+        # AC-36-02: Invalidate FAISS index after re-embedding
+        if count > 0:
+            from Programma_CS2_RENAN.backend.knowledge.vector_index import get_vector_index_manager
+
+            index_mgr = get_vector_index_manager()
+            if index_mgr:
+                index_mgr.mark_dirty("knowledge")
+
         logger.info("Re-embedded %s knowledge entries", count)
         return count
 
@@ -166,6 +174,9 @@ class KnowledgeRetriever:
         """
         Retrieve most relevant tactical knowledge.
 
+        Uses FAISS vector index when available (AC-36-02), falling back
+        to brute-force cosine similarity if FAISS is not installed.
+
         Args:
             query: Search query (e.g., "low ADR on T-side")
             top_k: Number of results
@@ -175,10 +186,71 @@ class KnowledgeRetriever:
         Returns:
             List of TacticalKnowledge entries, ranked by relevance
         """
-        # Encode query
         query_embedding = self.embedder.embed(query)
 
-        # Fetch all knowledge (with filters)
+        # AC-36-02: FAISS fast-path — O(1) index lookup instead of O(n) brute-force
+        from Programma_CS2_RENAN.backend.knowledge.vector_index import (
+            OVERFETCH_KNOWLEDGE,
+            get_vector_index_manager,
+        )
+
+        index_mgr = get_vector_index_manager()
+        if index_mgr is not None:
+            overfetch_k = top_k * OVERFETCH_KNOWLEDGE
+            candidates = index_mgr.search("knowledge", query_embedding, overfetch_k)
+            if candidates:
+                result = self._fetch_and_filter(candidates, category, map_name, top_k)
+                if result is not None:
+                    return result
+
+        # Brute-force fallback (original implementation)
+        return self._brute_force_retrieve(query_embedding, top_k, category, map_name)
+
+    def _fetch_and_filter(
+        self,
+        candidates: List,
+        category: Optional[str],
+        map_name: Optional[str],
+        top_k: int,
+    ) -> Optional[List[TacticalKnowledge]]:
+        """Fetch DB records from FAISS candidates, post-filter, return top-k."""
+        candidate_ids = [db_id for db_id, _ in candidates]
+        score_map = {db_id: score for db_id, score in candidates}
+
+        with self.db.get_session() as session:
+            entries = session.exec(
+                select(TacticalKnowledge).where(TacticalKnowledge.id.in_(candidate_ids))
+            ).all()
+
+            if not entries:
+                return None
+
+            # Post-filter by metadata
+            filtered = entries
+            if category:
+                filtered = [e for e in filtered if e.category == category]
+            if map_name:
+                filtered = [e for e in filtered if e.map_name == map_name]
+
+            if not filtered:
+                return None
+
+            # Rank by FAISS similarity score
+            filtered.sort(key=lambda e: score_map.get(e.id, 0), reverse=True)
+            top_entries = filtered[:top_k]
+            top_ids = [e.id for e in top_entries]
+
+        self._update_usage_counts(top_ids)
+        return top_entries
+
+    def _brute_force_retrieve(
+        self,
+        query_embedding: np.ndarray,
+        top_k: int,
+        category: Optional[str],
+        map_name: Optional[str],
+    ) -> List[TacticalKnowledge]:
+        """Original brute-force cosine similarity search."""
         with self.db.get_session() as session:
             stmt = select(TacticalKnowledge)
 
@@ -194,25 +266,17 @@ class KnowledgeRetriever:
                 logger.warning("No knowledge entries found")
                 return []
 
-            # Compute similarities
             similarities = []
             for entry in knowledge_entries:
                 entry_embedding = np.array(json.loads(entry.embedding))
                 similarity = self._cosine_similarity(query_embedding, entry_embedding)
                 similarities.append((entry, similarity))
 
-            # Sort by similarity (descending)
             similarities.sort(key=lambda x: x[1], reverse=True)
-
-            # Return top-k
             top_entries = [entry for entry, _ in similarities[:top_k]]
-
-            # Capture IDs to avoid DetachedInstanceError when updating counts
             top_ids = [e.id for e in top_entries]
 
-        # Update usage count
         self._update_usage_counts(top_ids)
-
         return top_entries
 
     def _cosine_similarity(self, a: np.ndarray, b: np.ndarray) -> float:
@@ -288,6 +352,13 @@ class KnowledgePopulator:
             session.add(knowledge)
             session.commit()
             session.refresh(knowledge)
+
+        # AC-36-02: Signal FAISS index rebuild
+        from Programma_CS2_RENAN.backend.knowledge.vector_index import get_vector_index_manager
+
+        index_mgr = get_vector_index_manager()
+        if index_mgr:
+            index_mgr.mark_dirty("knowledge")
 
         logger.info("Added knowledge: %s", title)
         return knowledge

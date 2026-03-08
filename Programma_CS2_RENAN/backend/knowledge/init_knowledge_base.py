@@ -103,7 +103,20 @@ def initialize_knowledge_base():
         for map_name, cnt in map_rows:
             logger.info("  %-15s: %3d entries", map_name, cnt)
         logger.info("=" * 50)
-        logger.info("Knowledge base initialization complete!")
+
+    # Step 5: Build FAISS vector indexes (AC-36-02)
+    try:
+        from Programma_CS2_RENAN.backend.knowledge.vector_index import get_vector_index_manager
+
+        index_mgr = get_vector_index_manager()
+        if index_mgr:
+            k_count = index_mgr.rebuild_from_db("knowledge")
+            e_count = index_mgr.rebuild_from_db("experience")
+            logger.info("FAISS indexes built: %d knowledge, %d experience vectors", k_count, e_count)
+    except Exception as e:
+        logger.warning("FAISS index build skipped (non-fatal): %s", e)
+
+    logger.info("Knowledge base initialization complete!")
 
 
 if __name__ == "__main__":
