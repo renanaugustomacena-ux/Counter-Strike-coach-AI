@@ -53,6 +53,7 @@ class CoachingService:
         self.use_rag = get_setting("USE_RAG_COACHING", default=False)
         self.use_hybrid = get_setting("USE_HYBRID_COACHING", default=False)
         self.use_coper = get_setting("USE_COPER_COACHING", default=True)  # COPER enabled by default
+        self._hybrid_engine = None  # AC-23-03: lazy-cached to avoid re-initialization per call
 
     def _get_temporal_baseline(self, map_name: str = None) -> dict:
         """Get temporal-weighted pro baseline, with graceful fallback to legacy.
@@ -470,9 +471,11 @@ class CoachingService:
         Combines ML predictions with RAG knowledge for unified insights.
         """
         try:
-            from Programma_CS2_RENAN.backend.coaching.hybrid_engine import HybridCoachingEngine
+            if self._hybrid_engine is None:
+                from Programma_CS2_RENAN.backend.coaching.hybrid_engine import HybridCoachingEngine
 
-            engine = HybridCoachingEngine()
+                self._hybrid_engine = HybridCoachingEngine()
+            engine = self._hybrid_engine
             insights = engine.generate_insights(player_stats, map_name=map_name)
 
             # Save to database

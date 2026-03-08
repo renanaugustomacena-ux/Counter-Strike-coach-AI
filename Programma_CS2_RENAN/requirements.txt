@@ -100,14 +100,14 @@ wheel==0.43.0
 zipp==3.23.0
 demoparser2==0.40.2
 Kivy==2.3.0
-kivymd @ https://github.com/kivymd/KivyMD/archive/master.zip
+kivymd @ https://github.com/kivymd/KivyMD/archive/d668d8b2b3d9eb54517892f613ffe34d9914517a.zip
 kivy-deps.glew==0.3.1
 kivy-deps.sdl2==0.7.0
 kivy-deps.angle==0.4.0
 beautifulsoup4==4.12.3
 lxml==5.1.0
 ncps
-hopfield-layers
+# hopfield-layers — R1-07: removed (not on PyPI; project uses local hflayers.py at repo root)
 alembic
 watchdog
 opencv-python

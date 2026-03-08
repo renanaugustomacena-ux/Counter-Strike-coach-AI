@@ -381,8 +381,19 @@ class DemoLoader:
             # FIXED: hp should not default to 100 if 0 (dead)
             hp_val = int(getattr(row, "health", 0)) if hasattr(row, "health") else 100
 
-            # Fetch money using demoparser2 shorthand field name
-            money_val = int(getattr(row, "balance", 0) or 0)
+            # H-03: Fetch money with fallback field names for demoparser2 compatibility
+            money_val = 0
+            for _money_field in ("balance", "cash", "money", "m_iAccount"):
+                _raw = getattr(row, _money_field, None)
+                if _raw is not None:
+                    money_val = int(_raw or 0)
+                    break
+            else:
+                # R3-02: All money fields missing — log for data quality tracking
+                app_logger.warning(
+                    "No money field found for player at tick %d — defaulting to 0",
+                    t,
+                )
 
             # TODO: CRITICAL - inventory=[] is always empty, weapon tracking disabled
             # Equipment-based features in ML models are all zero due to this
