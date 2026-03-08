@@ -165,6 +165,13 @@ class ExperienceBank:
             session.commit()
             session.refresh(experience)
 
+        # AC-36-02: Signal FAISS index rebuild
+        from Programma_CS2_RENAN.backend.knowledge.vector_index import get_vector_index_manager
+
+        index_mgr = get_vector_index_manager()
+        if index_mgr:
+            index_mgr.mark_dirty("experience")
+
         logger.info("Added experience: %s -> %s on %s", action_taken, outcome, context.map_name)
         return experience
 
@@ -178,6 +185,9 @@ class ExperienceBank:
         """
         Retrieve similar experiences using semantic + hash matching.
 
+        Uses FAISS vector index when available (AC-36-02), falling back
+        to brute-force cosine similarity if FAISS is not installed.
+
         Args:
             context: Current game context to match
             top_k: Number of experiences to retrieve
@@ -187,38 +197,120 @@ class ExperienceBank:
         Returns:
             List of similar CoachingExperience records
         """
-        # Generate query embedding
         query_text = context.to_query_string()
         query_embedding = self.embedder.embed(query_text)
-
-        # First, try fast hash-based lookup for exact context match
         context_hash = context.compute_hash()
 
+        # AC-36-02: FAISS fast-path
+        from Programma_CS2_RENAN.backend.knowledge.vector_index import (
+            OVERFETCH_EXPERIENCE,
+            get_vector_index_manager,
+        )
+
+        index_mgr = get_vector_index_manager()
+        if index_mgr is not None:
+            overfetch_k = top_k * OVERFETCH_EXPERIENCE
+            faiss_results = index_mgr.search("experience", query_embedding, overfetch_k)
+            if faiss_results:
+                result = self._score_and_filter_faiss(
+                    faiss_results, context, context_hash,
+                    min_confidence, outcome_filter, top_k,
+                )
+                if result is not None:
+                    return result
+
+        # Brute-force fallback
+        return self._brute_force_retrieve_similar(
+            query_embedding, context_hash, context.map_name,
+            min_confidence, outcome_filter, top_k,
+        )
+
+    def _score_and_filter_faiss(
+        self,
+        faiss_results: List,
+        context: "ExperienceContext",
+        context_hash: str,
+        min_confidence: float,
+        outcome_filter: Optional[str],
+        top_k: int,
+    ) -> Optional[List[CoachingExperience]]:
+        """Post-filter FAISS results with composite scoring."""
+        candidate_ids = [db_id for db_id, _ in faiss_results]
+        faiss_scores = {db_id: score for db_id, score in faiss_results}
+
         with self.db.get_session() as session:
-            # Get candidates with matching map and phase
+            entries = session.exec(
+                select(CoachingExperience).where(CoachingExperience.id.in_(candidate_ids))
+            ).all()
+
+            if not entries:
+                return None
+
+            # Post-filter by metadata
+            filtered = [
+                e for e in entries
+                if e.map_name == context.map_name
+                and e.confidence >= min_confidence
+            ]
+            if outcome_filter:
+                filtered = [e for e in filtered if e.outcome == outcome_filter]
+
+            if not filtered:
+                return None
+
+            # Composite scoring: FAISS similarity + hash bonus + effectiveness
+            scored = []
+            for exp in filtered:
+                similarity = faiss_scores.get(exp.id, 0.0)
+                hash_bonus = 0.2 if exp.context_hash == context_hash else 0.0
+                effectiveness_bonus = 0.0
+                if (
+                    getattr(exp, "outcome_validated", False)
+                    and getattr(exp, "effectiveness_score", 0) > 0
+                ):
+                    effectiveness_bonus = exp.effectiveness_score * 0.4
+                score = (similarity + hash_bonus + effectiveness_bonus) * exp.confidence
+                scored.append((exp, score))
+
+            scored.sort(key=lambda x: x[1], reverse=True)
+            results = [exp for exp, _ in scored[:top_k]]
+
+            for exp in results:
+                exp.usage_count += 1
+            session.commit()
+
+            return results
+
+    def _brute_force_retrieve_similar(
+        self,
+        query_embedding: np.ndarray,
+        context_hash: str,
+        map_name: str,
+        min_confidence: float,
+        outcome_filter: Optional[str],
+        top_k: int,
+    ) -> List[CoachingExperience]:
+        """Original brute-force cosine similarity search."""
+        with self.db.get_session() as session:
             stmt = select(CoachingExperience).where(
-                CoachingExperience.map_name == context.map_name,
+                CoachingExperience.map_name == map_name,
                 CoachingExperience.confidence >= min_confidence,
             )
 
             if outcome_filter:
                 stmt = stmt.where(CoachingExperience.outcome == outcome_filter)
 
-            # Limit candidates for performance
             stmt = stmt.limit(100)
             candidates = session.exec(stmt).all()
 
             if not candidates:
-                logger.debug("No experiences found for %s", context.map_name)
+                logger.debug("No experiences found for %s", map_name)
                 return []
 
-            # Score by semantic similarity
             scored = []
             for exp in candidates:
-                # Prioritize exact context hash matches
                 hash_bonus = 0.2 if exp.context_hash == context_hash else 0.0
 
-                # Compute semantic similarity
                 if exp.embedding:
                     try:
                         exp_vec = np.array(json.loads(exp.embedding))
@@ -228,9 +320,6 @@ class ExperienceBank:
                 else:
                     similarity = 0.0
 
-                # Effectiveness bonus for validated experiences
-                # Weighted at 0.4 (vs similarity ~0.5-0.9) so empirical
-                # validation meaningfully competes with semantic similarity.
                 effectiveness_bonus = 0.0
                 if (
                     getattr(exp, "outcome_validated", False)
@@ -238,15 +327,12 @@ class ExperienceBank:
                 ):
                     effectiveness_bonus = exp.effectiveness_score * 0.4
 
-                # Combined score with confidence weighting
                 score = (similarity + hash_bonus + effectiveness_bonus) * exp.confidence
                 scored.append((exp, score))
 
-            # Sort by score and return top_k
             scored.sort(key=lambda x: x[1], reverse=True)
             results = [exp for exp, _ in scored[:top_k]]
 
-            # Update usage counts
             for exp in results:
                 exp.usage_count += 1
             session.commit()
@@ -259,6 +345,8 @@ class ExperienceBank:
         """
         Retrieve similar experiences specifically from pro players.
 
+        Uses FAISS vector index when available, falling back to brute-force.
+
         Args:
             context: Current game context
             top_k: Number of pro examples to retrieve
@@ -269,8 +357,37 @@ class ExperienceBank:
         query_text = context.to_query_string()
         query_embedding = self.embedder.embed(query_text)
 
+        # FAISS fast-path
+        from Programma_CS2_RENAN.backend.knowledge.vector_index import (
+            OVERFETCH_EXPERIENCE,
+            get_vector_index_manager,
+        )
+
+        index_mgr = get_vector_index_manager()
+        if index_mgr is not None:
+            overfetch_k = top_k * OVERFETCH_EXPERIENCE
+            faiss_results = index_mgr.search("experience", query_embedding, overfetch_k)
+            if faiss_results:
+                candidate_ids = [db_id for db_id, _ in faiss_results]
+                faiss_scores = {db_id: score for db_id, score in faiss_results}
+
+                with self.db.get_session() as session:
+                    entries = session.exec(
+                        select(CoachingExperience).where(
+                            CoachingExperience.id.in_(candidate_ids),
+                            CoachingExperience.pro_player_name.isnot(None),
+                            CoachingExperience.map_name == context.map_name,
+                        )
+                    ).all()
+
+                    if entries:
+                        entries.sort(
+                            key=lambda e: faiss_scores.get(e.id, 0), reverse=True
+                        )
+                        return entries[:top_k]
+
+        # Brute-force fallback
         with self.db.get_session() as session:
-            # Only get pro experiences
             stmt = (
                 select(CoachingExperience)
                 .where(
@@ -285,7 +402,6 @@ class ExperienceBank:
             if not candidates:
                 return []
 
-            # Score by similarity
             scored = []
             for exp in candidates:
                 if exp.embedding:

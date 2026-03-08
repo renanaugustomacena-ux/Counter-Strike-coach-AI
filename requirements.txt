@@ -44,5 +44,8 @@ pillow>=10.0.0,<12.0
 # --- NLP (optional — graceful fallback if missing) ---
 sentence-transformers>=2.2.0,<4.0
 
+# --- Vector Search (optional — graceful fallback to brute-force if missing) ---
+faiss-cpu>=1.7.4,<2.0
+
 # --- Dev Tools ---
 pre-commit>=3.5.0,<5.0
