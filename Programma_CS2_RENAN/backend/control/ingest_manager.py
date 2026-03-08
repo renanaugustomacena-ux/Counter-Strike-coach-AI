@@ -126,8 +126,15 @@ class IngestionManager:
                     for demo_path, is_pro in all_new_files:
                         if self._stop_requested:
                             break
-                        with self.db_manager.get_session() as session:
-                            _queue_files(session, [demo_path], is_pro)
+                        # R3-06: Guard against file disappearing between scan and enqueue
+                        if not demo_path.exists():
+                            logger.warning("File disappeared before enqueue: %s", demo_path.name)
+                            continue
+                        try:
+                            with self.db_manager.get_session() as session:
+                                _queue_files(session, [demo_path], is_pro)
+                        except Exception as exc:
+                            logger.error("Failed to enqueue %s: %s", demo_path.name, exc)
                 else:
                     logger.info("IngestionManager: No new files found.")
 

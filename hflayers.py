@@ -33,7 +33,8 @@ class Hopfield(nn.Module):
         self.num_heads = num_heads
         self.stored_pattern_size = stored_pattern_size or input_size
 
-        # Scaling factor for attention (beta in Hopfield literature, 1/sqrt(dk) in Transformer)
+        # R4-25-01 verified: stored_pattern_size == per-head dimension (d_k).
+        # Scaling = 1/sqrt(d_k) matches standard Transformer/Hopfield attention.
         self.scaling = scaling or (1.0 / math.sqrt(self.stored_pattern_size))
 
         # Internal Memory (Learnable Prototypes)

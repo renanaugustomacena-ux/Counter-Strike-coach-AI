@@ -1,7 +1,10 @@
 import json
 import shutil
+import threading
 from pathlib import Path
 from typing import Set
+
+from filelock import FileLock
 
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -11,15 +14,23 @@ logger = get_logger("cs2analyzer.demo_registry")
 class DemoRegistry:
     def __init__(self, registry_path: Path):
         self.registry_path = registry_path
+        self._lock = threading.Lock()  # R3-08: thread-safe read/write
+        self._file_lock = FileLock(str(registry_path) + ".lock")  # R3-08: cross-process safety
         self._load()
 
     def _load(self):
-        data = _execute_registry_load(self.registry_path)
-        # F6-20: Convert list → set for O(1) membership checks.
-        # JSON serializes as list; we deserialize as set internally.
-        self._processed: Set[str] = set(data.get("processed_demos", []))
+        with self._lock:
+            data = _execute_registry_load(self.registry_path)
+            # F6-20: Convert list → set for O(1) membership checks.
+            # JSON serializes as list; we deserialize as set internally.
+            self._processed: Set[str] = set(data.get("processed_demos", []))
 
     def _save(self):
+        # R3-08: caller must hold self._lock; file lock for cross-process safety
+        with self._file_lock:
+            self._save_inner()
+
+    def _save_inner(self):
         # Create backup before overwriting
         if self.registry_path.exists():
             backup_path = self.registry_path.with_suffix(".json.backup")
@@ -34,12 +45,14 @@ class DemoRegistry:
             json.dump({"processed_demos": list(self._processed)}, f, indent=4)
 
     def is_processed(self, demo_name: str) -> bool:
-        return demo_name in self._processed  # F6-20: O(1) set lookup
+        with self._lock:
+            return demo_name in self._processed  # F6-20: O(1) set lookup
 
     def mark_processed(self, demo_name: str):
-        if demo_name not in self._processed:  # F6-20: O(1) set lookup
-            self._processed.add(demo_name)
-            self._save()
+        with self._lock:
+            if demo_name not in self._processed:  # F6-20: O(1) set lookup
+                self._processed.add(demo_name)
+                self._save()
 
 
 def _execute_registry_load(path):

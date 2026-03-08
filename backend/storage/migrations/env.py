@@ -1,3 +1,15 @@
+"""
+R2-01 DEPRECATION NOTICE
+=========================
+This is a LEGACY migration directory. The authoritative Alembic migration
+chain lives at the repository root: ``alembic/`` (13+ migrations).
+
+ALL new migrations MUST be created in the root ``alembic/`` directory:
+    alembic revision --autogenerate -m "description"
+
+Do NOT add new migrations here. This directory is retained only for
+historical reference (baseline_schema + add_rating_components).
+"""
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool

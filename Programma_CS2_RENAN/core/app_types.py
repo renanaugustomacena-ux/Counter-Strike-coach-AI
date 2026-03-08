@@ -1,3 +1,10 @@
+"""
+Core application type aliases and enums.
+
+R1-02 WARNING: This module defines a NUMERIC Team enum (SPECTATOR=0, T=1, CT=2).
+A SEPARATE Team enum exists in demo_frame.py with STRING values ("ct", "t").
+Never confuse the two — import the correct one for your context.
+"""
 from enum import Enum, auto
 from typing import Any, Dict, List, NewType, Optional, Tuple, TypedDict
 
@@ -75,3 +82,14 @@ class PlayerStats(TypedDict):
     hs_percent: float
     kast: float
     rating: float
+
+
+def team_from_demo_frame(demo_team) -> Team:
+    """Convert demo_frame.Team (string enum) to app_types.Team (int enum).
+
+    R1-02: Safe bridge between the two Team enum definitions.
+    Accepts demo_frame.Team or a raw string ("ct", "t", "spectator").
+    """
+    _MAP = {"ct": Team.CT, "t": Team.T, "spectator": Team.SPECTATOR}
+    val = demo_team.value if hasattr(demo_team, "value") else str(demo_team).lower()
+    return _MAP.get(val, Team.SPECTATOR)

@@ -76,7 +76,7 @@ class EMA:
         for name, param in self.model.named_parameters():
             if param.requires_grad:
                 self.backup[name] = param.data.clone()
-                param.data = self.shadow[name]
+                param.data = self.shadow[name].clone()  # NN-16: clone to avoid shared reference
 
     def restore(self):
         """Restore original training weights after using shadow weights."""

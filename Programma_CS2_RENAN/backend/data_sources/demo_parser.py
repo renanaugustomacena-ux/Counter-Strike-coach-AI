@@ -23,6 +23,7 @@ RATING_BASELINE_SURVIVAL = BASELINE_DPR_COMPLEMENT
 RATING_BASELINE_KAST = BASELINE_KAST
 RATING_BASELINE_ADR = BASELINE_ADR
 RATING_BASELINE_ECON = 85.0  # Economy-specific, not part of HLTV 2.0
+DEFAULT_KAST_FALLBACK = 0.70  # R3-01: HLTV 2.0 average KAST (70%) — used when event data unavailable
 
 
 def parse_demo(demo_path: str, target_player: Optional[str] = None) -> pd.DataFrame:
@@ -36,11 +37,12 @@ def parse_demo(demo_path: str, target_player: Optional[str] = None) -> pd.DataFr
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(parser.parse_events, ["round_end"])
             try:
-                evs = future.result(timeout=DEMO_PARSE_TIMEOUT_SECONDS)
+                timeout = _get_parse_timeout(demo_path)
+                evs = future.result(timeout=timeout)
             except FutureTimeoutError:
                 logger.error(
                     "parse_demo timed out after %ds for %s",
-                    DEMO_PARSE_TIMEOUT_SECONDS,
+                    _get_parse_timeout(demo_path),
                     demo_name,
                 )
                 return pd.DataFrame()
@@ -135,7 +137,7 @@ def _extract_stats_with_full_fields(parser, total_rounds, target_player):
 
     # 4. Component Storage
     # avg_kast is pre-initialized to 0.0; treat 0.0 as "no data" and use fallback
-    totals["rating_kast"] = totals["avg_kast"].apply(lambda x: x if x > 0 else 0.70)
+    totals["rating_kast"] = totals["avg_kast"].apply(lambda x: x if x > 0 else DEFAULT_KAST_FALLBACK)
     totals["rating_kpr"] = totals["kpr"]
     totals["rating_adr"] = totals["avg_adr"]
 
@@ -254,7 +256,12 @@ def _add_event_stats_safe(parser, df, total_rounds):
             )
             return
 
-        # Resolve name columns — varies across demo versions and event types
+        # H-01: Column resolution semantics per event type.
+        # demoparser2 column names vary by demo version (Source 1 vs Source 2) and event:
+        #   player_hurt  → attacker is "attacker_name" or "user_name"; victim not used here
+        #   weapon_fire  → shooter is "player_name" or "user_name"
+        #   player_death → killer is "attacker_name" or "user_name"; assist: "assister_name"
+        # _resolve_name_column() returns the first match from the candidate list.
         h_name_col = _resolve_name_column(h_df, ["attacker_name", "user_name", "player_name"])
         s_name_col = _resolve_name_column(s_df, ["player_name", "user_name", "name"])
         d_name_col = _resolve_name_column(d_df, ["attacker_name", "user_name", "player_name"])
@@ -291,12 +298,20 @@ def _add_event_stats_safe(parser, df, total_rounds):
             total_kills = int(row.get("kills_total", 0))
             total_deaths = int(row.get("deaths_total", 0))
             total_assists = 0
-            if not d_df.empty and "assister_name" in d_df.columns:
-                total_assists = int((d_df["assister_name"].astype(str).str.lower() == name).sum())
+            # C-05: Try alternative column names before defaulting to 0
+            assister_col = None
+            if not d_df.empty:
+                for col_candidate in ["assister_name", "assister", "assist_player_name"]:
+                    if col_candidate in d_df.columns:
+                        assister_col = col_candidate
+                        break
+            if assister_col is not None:
+                total_assists = int((d_df[assister_col].astype(str).str.lower() == name).sum())
             else:
-                # No assister data available — set to 0 (no fabricated estimates)
                 logger.warning(
-                    "player_death events lack 'assister_name' column — assists set to 0 for %s",
+                    "player_death events lack assister column (checked: assister_name, "
+                    "assister, assist_player_name) — assists set to 0 for %s. "
+                    "KAST may be underestimated.",
                     name,
                 )
             if total_rounds > 0:
@@ -323,7 +338,16 @@ def _add_event_stats_safe(parser, df, total_rounds):
         logger.exception("Event parsing failed - stats remain 0.0")
 
 
-DEMO_PARSE_TIMEOUT_SECONDS = 300  # 5 minutes max for a single demo parse
+DEMO_PARSE_TIMEOUT_SECONDS = 300  # Base timeout (5 minutes)
+
+
+def _get_parse_timeout(demo_path: str) -> int:
+    """H-02: Dynamic timeout scaled by file size. Large pro demos need more time."""
+    try:
+        size_mb = os.path.getsize(demo_path) / (1024 * 1024)
+        return max(DEMO_PARSE_TIMEOUT_SECONDS, int(size_mb * 3))
+    except OSError:
+        return DEMO_PARSE_TIMEOUT_SECONDS
 
 
 def parse_sequential_ticks(
@@ -401,11 +425,12 @@ def parse_sequential_ticks(
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(parser.parse_ticks, fields)
             try:
-                raw_ticks = future.result(timeout=DEMO_PARSE_TIMEOUT_SECONDS)
+                timeout = _get_parse_timeout(demo_path)
+                raw_ticks = future.result(timeout=timeout)
             except FutureTimeoutError:
                 logger.error(
                     "Demo parser timed out after %ds for %s — skipping demo.",
-                    DEMO_PARSE_TIMEOUT_SECONDS, demo_path,
+                    _get_parse_timeout(demo_path), demo_path,
                 )
                 return pd.DataFrame()
 

@@ -49,14 +49,36 @@ class RAPStateReconstructor:
         - Motion tensor: Velocity/movement encoding
         """
         if knowledge is None:
-            _logger.debug(
+            _logger.warning(
                 "reconstruct_belief_tensors: knowledge=None — running in LEGACY (full-info) mode. "
                 "If GhostEngine uses Player-POV at inference, pass a PlayerKnowledge object here "
                 "to prevent training/inference skew."
             )
 
+        # C-01: Build explicit context dicts from enriched PlayerTickState fields.
+        # This ensures features 20-24 are populated during training, matching
+        # the inference path in ghost_engine.py which builds context from DemoFrame.
+        contexts = [
+            {
+                "time_in_round": getattr(t, "time_in_round", 0.0),
+                "bomb_planted": getattr(t, "bomb_planted", False),
+                "teammates_alive": getattr(t, "teammates_alive", 0),
+                "enemies_alive": getattr(t, "enemies_alive", 0),
+                "team_economy": getattr(t, "team_economy", 0),
+            }
+            for t in ticks
+        ]
+
         # Use UNIFIED FeatureExtractor for metadata (Critical for consistency)
-        metadata = FeatureExtractor.extract_batch(ticks, map_name=self.map_name)
+        metadata = FeatureExtractor.extract_batch(
+            ticks, map_name=self.map_name, contexts=contexts
+        )
+        # R4-04-02: Assert dimensional invariant — metadata must match METADATA_DIM
+        if metadata.shape[-1] != METADATA_DIM:
+            raise ValueError(
+                f"FeatureExtractor produced {metadata.shape[-1]} features, "
+                f"expected METADATA_DIM={METADATA_DIM}. Feature vector is misaligned."
+            )
         metadata_tensor = torch.tensor(metadata, dtype=torch.float32).unsqueeze(0)
 
         # Generate real Perception Tensors via TensorFactory (Vision Bridge)
