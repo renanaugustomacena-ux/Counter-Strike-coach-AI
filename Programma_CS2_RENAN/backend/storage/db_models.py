@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Optional
 
 from pydantic import field_validator
-from sqlalchemy import CheckConstraint, Column, Index, String, UniqueConstraint
+from sqlalchemy import CheckConstraint, Column, ForeignKey, Index, Integer, String, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 # Maximum allowed size (bytes) for game_state_json in CoachingExperience.
@@ -113,12 +113,14 @@ class PlayerTickState(SQLModel, table=True):
     )
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     id: Optional[int] = Field(default=None, primary_key=True)
+    # R2-07: ON DELETE SET NULL — ticks survive match deletion
     match_id: Optional[int] = Field(
-        default=None, foreign_key="matchresult.match_id", index=True
-    )  # FK: None instead of 0 to avoid FK violation
+        default=None,
+        sa_column=Column(Integer, ForeignKey("matchresult.match_id", ondelete="SET NULL"), index=True, nullable=True),
+    )
     tick: int = Field(index=True)
     player_name: str = Field(index=True)
-    demo_name: str = Field(default="unknown", index=True)  # NEW: Enable proper split filtering
+    demo_name: str = Field(index=True)  # R2-08: Required — no "unknown" default
 
     pos_x: float = Field(default=0.0)
     pos_y: float = Field(default=0.0)
@@ -387,7 +389,11 @@ class ProPlayer(SQLModel, table=True):
     real_name: Optional[str] = None
     country: Optional[str] = None
     age: Optional[int] = None
-    team_id: Optional[int] = Field(default=None, foreign_key="proteam.hltv_id")
+    # R2-07: ON DELETE SET NULL — player survives team deletion
+    team_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(Integer, ForeignKey("proteam.hltv_id", ondelete="SET NULL"), nullable=True),
+    )
     last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -399,7 +405,10 @@ class ProPlayerStatCard(SQLModel, table=True):
 
     __table_args__ = {"extend_existing": True}
     id: Optional[int] = Field(default=None, primary_key=True)
-    player_id: int = Field(foreign_key="proplayer.hltv_id", index=True)
+    # R2-07: ON DELETE CASCADE — stat card meaningless without player
+    player_id: int = Field(
+        sa_column=Column(Integer, ForeignKey("proplayer.hltv_id", ondelete="CASCADE"), index=True, nullable=False),
+    )
 
     # Core Stats (Main Page)
     rating_2_0: float = Field(default=0.0)
@@ -443,7 +452,10 @@ class MapVeto(SQLModel, table=True):
     __table_args__ = {"extend_existing": True}
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     id: Optional[int] = Field(default=None, primary_key=True)
-    match_id: int = Field(foreign_key="matchresult.match_id", index=True)
+    # R2-07: ON DELETE CASCADE — veto meaningless without match
+    match_id: int = Field(
+        sa_column=Column(Integer, ForeignKey("matchresult.match_id", ondelete="CASCADE"), index=True, nullable=False),
+    )
     map_name: str
     action: str = Field(default="unknown")  # 'pick', 'ban', 'leftover'
     team_id: Optional[int] = None
@@ -498,7 +510,11 @@ class CoachingExperience(SQLModel, table=True):
     usage_count: int = Field(default=0)  # How often retrieved for coaching
 
     # Pro Reference Linking
-    pro_match_id: Optional[int] = Field(default=None, foreign_key="matchresult.match_id")
+    # R2-07: ON DELETE SET NULL — experience survives match deletion
+    pro_match_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(Integer, ForeignKey("matchresult.match_id", ondelete="SET NULL"), nullable=True),
+    )
     pro_player_name: Optional[str] = Field(default=None, index=True)
 
     # Vector Embedding for Semantic Search (JSON-encoded 384-dim)
@@ -530,6 +546,8 @@ class RoundStats(SQLModel, table=True):
     __table_args__ = (
         Index("ix_rs_demo_player", "demo_name", "player_name"),
         Index("ix_rs_demo_round", "demo_name", "round_number"),  # P2-05: Composite index for round queries
+        # H-15: Prevent duplicate round stats for the same player/demo/round
+        UniqueConstraint("demo_name", "round_number", "player_name", name="ux_roundstats_demo_round_player"),
         {"extend_existing": True},
     )
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
