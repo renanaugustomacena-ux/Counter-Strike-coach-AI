@@ -68,7 +68,14 @@ class JEPAPretrainDataset(Dataset):
 
 
 def _roundstats_to_features(rs: RoundStats) -> List[float]:
-    """Extract a feature vector from a single RoundStats row."""
+    """Extract a feature vector from a single RoundStats row.
+
+    P-RSB-03: ``round_won`` is deliberately EXCLUDED — it is a future-looking
+    outcome label, not an observable feature.  Including it would leak the
+    round result into the training input, allowing the model to trivially
+    predict outcomes from the outcome itself.  ``round_won`` is correctly
+    used as a LABEL in ``label_from_round_stats()`` (jepa_model.py).
+    """
     return [
         float(rs.kills),
         float(rs.deaths),
@@ -84,7 +91,7 @@ def _roundstats_to_features(rs: RoundStats) -> List[float]:
         float(rs.flashes_thrown),
         float(rs.smokes_thrown),
         float(rs.equipment_value) / 5000.0,  # normalise to typical buy range
-        float(1 if rs.round_won else 0),
+        # P-RSB-03: round_won removed — outcome label, not a feature
         float(rs.round_rating or 0.0),
         float(1 if rs.side == "CT" else 0),
     ]

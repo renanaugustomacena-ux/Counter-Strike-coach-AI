@@ -82,12 +82,8 @@ class RAPStateReconstructor:
         metadata = FeatureExtractor.extract_batch(
             ticks, map_name=self.map_name, contexts=contexts
         )
-        # R4-04-02: Assert dimensional invariant — metadata must match METADATA_DIM
-        if metadata.shape[-1] != METADATA_DIM:
-            raise ValueError(
-                f"FeatureExtractor produced {metadata.shape[-1]} features, "
-                f"expected METADATA_DIM={METADATA_DIM}. Feature vector is misaligned."
-            )
+        # P-SR-01: Validate feature parity at training boundary
+        FeatureExtractor.validate_feature_parity(metadata, label="training")
         metadata_tensor = torch.tensor(metadata, dtype=torch.float32).unsqueeze(0)
 
         # Generate real Perception Tensors via TensorFactory (Vision Bridge)

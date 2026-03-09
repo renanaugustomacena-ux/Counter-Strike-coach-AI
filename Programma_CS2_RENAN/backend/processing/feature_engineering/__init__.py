@@ -21,6 +21,7 @@ _ROLE_NAMES = frozenset({
 
 _VECTORIZER_NAMES = frozenset({
     "FeatureExtractor",
+    "FEATURE_NAMES",
     "METADATA_DIM",
 })
 
@@ -46,6 +47,7 @@ def __getattr__(name: str):
 
 __all__ = [
     "FeatureExtractor",
+    "FEATURE_NAMES",
     "METADATA_DIM",
     "calculate_kast_for_round",
     "calculate_kast_percentage",

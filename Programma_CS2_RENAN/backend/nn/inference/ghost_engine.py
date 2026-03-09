@@ -152,6 +152,8 @@ class GhostEngine:
                 context["enemies_alive"] = getattr(tick_data, "enemies_alive", 0)
                 context["team_economy"] = getattr(tick_data, "team_economy", 0)
             meta_vec = FeatureExtractor.extract(tick_data, map_name=map_name, context=context)
+            # P-SR-01: Validate feature parity at inference boundary
+            FeatureExtractor.validate_feature_parity(meta_vec, label="inference")
             meta_t = (
                 torch.tensor(meta_vec, dtype=torch.float32)
                 .unsqueeze(0)

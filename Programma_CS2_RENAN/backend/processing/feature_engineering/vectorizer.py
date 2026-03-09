@@ -85,6 +85,23 @@ _UNKNOWN_WEAPON_DEFAULT = 0.1
 _unknown_weapons_seen: set = set()
 
 
+# P-X-01: Feature schema names — single source of truth for train/infer parity.
+# Length MUST equal METADATA_DIM.  If you add/remove a feature, update BOTH.
+FEATURE_NAMES: tuple = (
+    "health", "armor", "has_helmet", "has_defuser", "equipment_value",
+    "is_crouching", "is_scoped", "is_blinded", "enemies_visible",
+    "pos_x", "pos_y", "pos_z",
+    "view_yaw_sin", "view_yaw_cos", "view_pitch",
+    "z_penalty", "kast_estimate", "map_id", "round_phase", "weapon_class",
+    "time_in_round", "bomb_planted", "teammates_alive", "enemies_alive",
+    "team_economy",
+)
+assert len(FEATURE_NAMES) == METADATA_DIM, (
+    f"P-X-01: FEATURE_NAMES has {len(FEATURE_NAMES)} entries but "
+    f"METADATA_DIM={METADATA_DIM}. Feature schema is out of sync."
+)
+
+
 class FeatureExtractor:
     """
     Unified feature extraction for RAP Coach training and inference.
@@ -394,31 +411,30 @@ class FeatureExtractor:
 
     @staticmethod
     def get_feature_names() -> List[str]:
-        """Returns the ordered list of feature names for debugging/logging."""
-        return [
-            "health",
-            "armor",
-            "has_helmet",
-            "has_defuser",
-            "equipment_value",
-            "is_crouching",
-            "is_scoped",
-            "is_blinded",
-            "enemies_visible",
-            "pos_x",
-            "pos_y",
-            "pos_z",
-            "view_yaw_sin",
-            "view_yaw_cos",
-            "view_pitch",
-            "z_penalty",
-            "kast_estimate",
-            "map_id",
-            "round_phase",
-            "weapon_class",
-            "time_in_round",
-            "bomb_planted",
-            "teammates_alive",
-            "enemies_alive",
-            "team_economy",
-        ]
+        """Returns the ordered list of feature names for debugging/logging.
+
+        P-X-01: Delegates to the canonical FEATURE_NAMES tuple to guarantee
+        a single source of truth.
+        """
+        return list(FEATURE_NAMES)
+
+    @staticmethod
+    def validate_feature_parity(vec: np.ndarray, label: str = "unknown") -> None:
+        """P-SR-01: Assert that a feature vector matches the expected schema.
+
+        Call this at both training and inference boundaries to catch
+        feature dimension mismatches early.
+
+        Args:
+            vec: Feature vector (last dim must equal METADATA_DIM).
+            label: Human-readable label for error messages (e.g. "training", "inference").
+
+        Raises:
+            ValueError: If the last dimension doesn't match METADATA_DIM.
+        """
+        actual = vec.shape[-1]
+        if actual != METADATA_DIM:
+            raise ValueError(
+                f"P-SR-01: Feature parity violation [{label}]: got {actual} features, "
+                f"expected METADATA_DIM={METADATA_DIM}. Schema: {FEATURE_NAMES}"
+            )
