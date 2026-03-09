@@ -89,7 +89,15 @@ class DemoFileHandler(FileSystemEventHandler):
                     self._pending_files.pop(file_path, None)
                 return
 
-            current_size = os.path.getsize(file_path)
+            # DS-02: wrap in try-except to handle file disappearing between
+            # the existence check above and the size read (TOCTOU race).
+            try:
+                current_size = os.path.getsize(file_path)
+            except OSError:
+                logger.warning("DS-02: File disappeared during stability check: %s", file_path)
+                with self._lock:
+                    self._pending_files.pop(file_path, None)
+                return
 
             # Check if size is stable
             if current_size == last_size and current_size > 0:

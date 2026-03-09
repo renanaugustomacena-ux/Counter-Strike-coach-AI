@@ -652,7 +652,8 @@ class TensorFactory:
 
         # Convert radius from world units to grid units
         scale_factor = 1.0 / (meta.scale * 1024.0)
-        grid_radius = max(1, int(radius * scale_factor * resolution))
+        # P-TF-02: cap to resolution//2 to prevent oversized masks
+        grid_radius = min(max(1, int(radius * scale_factor * resolution)), resolution // 2)
 
         y_coords, x_coords = np.ogrid[:resolution, :resolution]
         dist = np.sqrt(((x_coords - cx) ** 2 + (y_coords - cy) ** 2).astype(np.float32))
