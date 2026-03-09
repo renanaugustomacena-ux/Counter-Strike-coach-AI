@@ -86,7 +86,10 @@ class ProDataPipeline:
         train_df = train_df[train_df["avg_adr"] < 400]
         q1, q3 = train_df["avg_kills"].quantile([0.25, 0.75])
         iqr = q3 - q1
-        upper_bound = q3 + 3.0 * iqr  # 3x IQR for extreme outliers only
+        # P-DP-03: Named constant for outlier IQR multiplier.
+        # 3.0× IQR ≈ Tukey's outer fence, retaining ~99.7% of normal data.
+        _IQR_EXTREME_OUTLIER_MULTIPLIER = 3.0
+        upper_bound = q3 + _IQR_EXTREME_OUTLIER_MULTIPLIER * iqr
         train_df = train_df[train_df["avg_kills"] < upper_bound]
         val_df = val_df[(val_df["avg_adr"] < 400) & (val_df["avg_kills"] < upper_bound)]
         test_df = test_df[(test_df["avg_adr"] < 400) & (test_df["avg_kills"] < upper_bound)]
@@ -141,9 +144,13 @@ class ProDataPipeline:
             data = joblib.load(self.SCALER_PATH)
             if isinstance(data, dict) and "scaler" in data:
                 saved_ver = data.get("sklearn_version", "unknown")
-                current_major = sklearn.__version__.split(".")[0]
-                saved_major = saved_ver.split(".")[0] if saved_ver != "unknown" else current_major
-                if saved_major != current_major:
+                # P-DP-05: Compare major.minor (not just major) — minor releases
+                # can change scaler internals (e.g. StandardScaler dtype handling).
+                current_mm = tuple(sklearn.__version__.split(".")[:2])
+                saved_mm = (
+                    tuple(saved_ver.split(".")[:2]) if saved_ver != "unknown" else current_mm
+                )
+                if saved_mm != current_mm:
                     logger.warning(
                         "Scaler sklearn version mismatch: saved=%s, current=%s — refit recommended",
                         saved_ver,

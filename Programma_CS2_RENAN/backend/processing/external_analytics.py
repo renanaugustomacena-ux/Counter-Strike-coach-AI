@@ -4,6 +4,9 @@ import numpy as np
 import pandas as pd
 
 from Programma_CS2_RENAN.core.config import get_resource_path
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+_logger = get_logger("cs2analyzer.external_analytics")
 
 
 class EliteAnalytics:
@@ -85,6 +88,11 @@ class EliteAnalytics:
             return {"elite_rating_avg": 0, "z_scores": {}, "tournament_z_scores": {}}
         required_cols = {"CS Rating", "Win_Rate"}
         if not required_cols.issubset(self.players_df.columns):
+            # P-EA-02: Log missing columns so callers can distinguish degradation from cold start
+            _logger.warning(
+                "P-EA-02: Missing required columns for elite analysis: %s",
+                required_cols - set(self.players_df.columns),
+            )
             return {"elite_rating_avg": 0, "z_scores": {}, "tournament_z_scores": {}}
 
         elite_avg = self.players_df[["CS Rating", "Win_Rate"]].mean()
@@ -150,15 +158,18 @@ def _clean_cs_rating_col(df):
 
 def _process_historical_columns(df, avail):
     for col in avail:
+        # P-EA-03: Regex handles scientific notation (e.g. 1.5e-3, 2E+10)
         df[col] = pd.to_numeric(
-            df[col].astype(str).str.extract(r"(\d+\.?\d*)")[0], errors="coerce"
+            df[col].astype(str).str.extract(r"([+-]?\d+\.?\d*(?:[eE][+-]?\d+)?)")[0],
+            errors="coerce",
         ).fillna(0)
 
 
 def _compute_z_scores(u_stats, h_stats, h_std):
     z_scores = {}
+    _MIN_STD = 1e-8  # P-EA-01: epsilon guard for floating-point near-zero std
     for key in ["adr", "rating"]:
-        if key in u_stats and h_std.get(key, 0) > 0:
+        if key in u_stats and h_std.get(key, 0) > _MIN_STD:
             # R4-12-02: Guard against NaN/Inf in user stats
             val = u_stats[key]
             if not np.isfinite(val):
@@ -169,8 +180,9 @@ def _compute_z_scores(u_stats, h_stats, h_std):
 
 def _compute_t_z_scores(u_stats, t_base, t_std):
     t_z = {}
+    _MIN_STD = 1e-8  # P-EA-01: epsilon guard for floating-point near-zero std
     for key in ["accuracy", "econ_rating"]:
-        if key in u_stats and t_std.get(key, 0) > 0:
+        if key in u_stats and t_std.get(key, 0) > _MIN_STD:
             # R4-12-02: Guard against NaN/Inf in user stats
             val = u_stats[key]
             if not np.isfinite(val):

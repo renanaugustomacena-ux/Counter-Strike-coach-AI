@@ -116,7 +116,10 @@ def _load_pro_from_db(map_name: Optional[str] = None):
                 stats["avg_adr"].append(c.adr)
                 stats["avg_kast"].append(c.kast)
                 stats["rating_impact"].append(c.impact)
-                stats["rating_survival"].append(1.0 - c.dpr)
+                # P-PB-02: Linear approximation of survival. True survival is non-linear
+                # (positioning, clutch ability), but HLTV doesn't expose a dedicated
+                # survival metric. Clamped to [0, 1] to prevent negative values.
+                stats["rating_survival"].append(max(0.0, min(1.0, 1.0 - c.dpr)))
                 stats["rating_kast"].append(c.kast)
 
             if not has_data:
@@ -146,13 +149,29 @@ def _load_pro_from_db(map_name: Optional[str] = None):
 
 
 def _load_pro_from_csv(path):
+    # P-PB-03: Dynamically map CSV columns to baseline keys instead of
+    # hardcoding only 3 columns and silently dropping the rest.
+    _CSV_COLUMN_MAP = {
+        "Rating1.0": "rating",
+        "K/D": "kd_ratio",
+        "ADR": "avg_adr",
+        "Headshot %": "avg_hs",
+        "KAST": "avg_kast",
+        "Impact": "rating_impact",
+    }
     try:
         df = pd.read_csv(path)
-        baseline = {
-            "rating": {"mean": df["Rating1.0"].mean(), "std": df["Rating1.0"].std()},
-            "kd_ratio": {"mean": df["K/D"].mean(), "std": df["K/D"].std()},
-            "avg_adr": {"mean": 80.0, "std": 15.0},  # Fallbacks for common missing columns
-        }
+        baseline = {}
+        loaded_from_csv = []
+        for csv_col, baseline_key in _CSV_COLUMN_MAP.items():
+            if csv_col in df.columns:
+                col_data = pd.to_numeric(df[csv_col], errors="coerce").dropna()
+                if len(col_data) >= 2:
+                    baseline[baseline_key] = {
+                        "mean": float(col_data.mean()),
+                        "std": max(float(col_data.std()), 0.01),
+                    }
+                    loaded_from_csv.append(csv_col)
 
         # Merge with HARD defaults for any missing keys
         defaults = _get_default_pro_baseline()
@@ -160,9 +179,11 @@ def _load_pro_from_csv(path):
             if k not in baseline:
                 baseline[k] = v
 
-        # Override specific known CSV columns if present
-        # (This logic can be expanded as CSV format evolves)
-
+        _logger.info(
+            "CSV baseline loaded: %d columns from CSV (%s), %d from defaults",
+            len(loaded_from_csv), loaded_from_csv,
+            len(baseline) - len(loaded_from_csv),
+        )
         return baseline
     except Exception as e:
         _logger.error("Failed to load pro baseline from CSV '%s': %s", path, e)
