@@ -200,9 +200,11 @@ class FeatureExtractor:
         pos_y = float(get_val("pos_y", get_val("y", get_val("Y", 0))))
         pos_z = float(get_val("pos_z", get_val("z", get_val("Z", 0))))
         if pos_x == 0.0 and pos_y == 0.0 and pos_z == 0.0:
-            # NOTE (F2-15): (0,0,0) could be a valid world position on some maps, so
-            # this is logged at DEBUG to avoid false alarms.
-            _logger.debug("Position data missing — all key variants (pos_x/x/X) returned 0")
+            # R4-14-01: On standard CS2 maps, (0,0,0) is outside the playable area.
+            # Log at WARNING to track potential data contamination rate.
+            _logger.warning(
+                "R4-14-01: Position (0,0,0) — likely missing data, not a valid coordinate"
+            )
 
         vec[9] = np.clip(pos_x / cfg.pos_xy_extent, -1.0, 1.0)
         vec[10] = np.clip(pos_y / cfg.pos_xy_extent, -1.0, 1.0)
@@ -307,25 +309,32 @@ class FeatureExtractor:
             econ_val = ctx.get("team_economy", 0)
         vec[24] = min(float(econ_val or 0) / 16000.0, 1.0)
 
-        # Warn if any feature produced Inf/NaN — the nan_to_num clamp is a safety net,
-        # not a substitute for fixing the upstream bug that created the anomaly. (F2-16)
+        # R4-14-02: Non-finite values indicate upstream bugs. Log at ERROR (not
+        # WARNING) and track affected indices for root-cause analysis.
         if np.any(~np.isfinite(vec)):
-            _logger.warning(
-                "Feature vector contains non-finite values before clamp — "
-                "indices: %s. Check upstream normalisation.",
-                np.where(~np.isfinite(vec))[0].tolist(),
+            bad_indices = np.where(~np.isfinite(vec))[0].tolist()
+            feature_names = FeatureExtractor.get_feature_names()
+            bad_names = [feature_names[i] for i in bad_indices if i < len(feature_names)]
+            _logger.error(
+                "R4-14-02: Feature vector contains NaN/Inf BEFORE clamp — "
+                "indices: %s, features: %s. Fix upstream normalisation.",
+                bad_indices, bad_names,
             )
         vec = np.nan_to_num(vec, nan=0.0, posinf=1.0, neginf=-1.0)
         return vec
 
-    @staticmethod
+    @classmethod
     def extract_batch(
+        cls,
         tick_data_list: List[Union[Dict[str, Any], Any]],
         map_name: Optional[str] = None,
         contexts: Optional[List[Dict[str, Any]]] = None,
     ) -> np.ndarray:
         """
         Extracts features for a batch of ticks.
+
+        R4-14-03: Snapshots config at batch start to prevent mid-batch changes
+        from update_heuristics() causing inconsistent features within a batch.
 
         Args:
             tick_data_list: List of tick data (dicts or objects)
@@ -336,15 +345,35 @@ class FeatureExtractor:
         Returns:
             np.ndarray of shape (len(tick_data_list), METADATA_DIM)
         """
+        # R4-14-03: Snapshot config once for the entire batch
+        with cls._config_lock:
+            batch_config = cls._config
+        if batch_config is None:
+            from Programma_CS2_RENAN.backend.processing.feature_engineering.base_features import (
+                HeuristicConfig,
+            )
+            batch_config = HeuristicConfig()
+
         if contexts is None:
             contexts = [None] * len(tick_data_list)
-        return np.array(
-            [
-                FeatureExtractor.extract(t, map_name, ctx)
-                for t, ctx in zip(tick_data_list, contexts)
-            ],
-            dtype=np.float32,
-        )
+
+        # Temporarily set config for all extract() calls in this batch,
+        # restoring afterward. This ensures consistency within a batch.
+        original_config = cls._config
+        with cls._config_lock:
+            cls._config = batch_config
+        try:
+            result = np.array(
+                [
+                    FeatureExtractor.extract(t, map_name, ctx)
+                    for t, ctx in zip(tick_data_list, contexts)
+                ],
+                dtype=np.float32,
+            )
+        finally:
+            with cls._config_lock:
+                cls._config = original_config
+        return result
 
     @staticmethod
     def get_feature_names() -> List[str]:

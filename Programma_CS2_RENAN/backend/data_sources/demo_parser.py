@@ -23,7 +23,7 @@ RATING_BASELINE_SURVIVAL = BASELINE_DPR_COMPLEMENT
 RATING_BASELINE_KAST = BASELINE_KAST
 RATING_BASELINE_ADR = BASELINE_ADR
 RATING_BASELINE_ECON = 85.0  # Economy-specific, not part of HLTV 2.0
-DEFAULT_KAST_FALLBACK = 0.70  # R3-01: HLTV 2.0 average KAST (70%) — used when event data unavailable
+DEFAULT_KAST_FALLBACK = None  # R3-01: No fabricated fallback — NaN propagates to rating
 
 
 def parse_demo(demo_path: str, target_player: Optional[str] = None) -> pd.DataFrame:
@@ -136,8 +136,11 @@ def _extract_stats_with_full_fields(parser, total_rounds, target_player):
     totals["rating_survival"] = 1.0 - totals["dpr"]
 
     # 4. Component Storage
-    # avg_kast is pre-initialized to 0.0; treat 0.0 as "no data" and use fallback
-    totals["rating_kast"] = totals["avg_kast"].apply(lambda x: x if x > 0 else DEFAULT_KAST_FALLBACK)
+    # R3-01: avg_kast 0.0 means "no event data" — preserve as-is instead of
+    # fabricating a synthetic 0.70 that contaminates rating calculations.
+    # Downstream rating components handle 0.0 gracefully (underestimates rating
+    # for players with missing event data, which is safer than overestimating).
+    totals["rating_kast"] = totals["avg_kast"]
     totals["rating_kpr"] = totals["kpr"]
     totals["rating_adr"] = totals["avg_adr"]
 

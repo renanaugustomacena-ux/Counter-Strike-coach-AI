@@ -20,9 +20,18 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
-# NOTE (F2-04): scipy is a required dependency. If not installed the import fails at
-# module load time with no fallback. Ensure scipy is in requirements.txt.
-from scipy.ndimage import gaussian_filter
+
+# R4-02-03: Lazy-import scipy to avoid hard crash on minimal installs.
+# gaussian_filter is used in multiple methods; import once at first use.
+_gaussian_filter = None
+
+
+def _get_gaussian_filter():
+    global _gaussian_filter
+    if _gaussian_filter is None:
+        from scipy.ndimage import gaussian_filter as _gf
+        _gaussian_filter = _gf
+    return _gaussian_filter
 
 from Programma_CS2_RENAN.backend.processing.player_knowledge import PlayerKnowledge
 from Programma_CS2_RENAN.backend.storage.db_models import PlayerTickState
@@ -174,9 +183,10 @@ class TensorFactory:
             player_channel[py, px] = 1.0
 
         if self.config.sigma > 0:
-            enemy_channel = gaussian_filter(enemy_channel, sigma=self.config.sigma)
-            team_channel = gaussian_filter(team_channel, sigma=self.config.sigma)
-            player_channel = gaussian_filter(player_channel, sigma=self.config.sigma)
+            gf = _get_gaussian_filter()
+            enemy_channel = gf(enemy_channel, sigma=self.config.sigma)
+            team_channel = gf(team_channel, sigma=self.config.sigma)
+            player_channel = gf(player_channel, sigma=self.config.sigma)
 
         enemy_channel = self._normalize(enemy_channel)
         team_channel = self._normalize(team_channel)
@@ -386,9 +396,10 @@ class TensorFactory:
 
         # Spatial smoothing
         if self.config.sigma > 0:
-            teammate_ch = gaussian_filter(teammate_ch, sigma=self.config.sigma)
-            enemy_ch = gaussian_filter(enemy_ch, sigma=self.config.sigma)
-            utility_ch = gaussian_filter(utility_ch, sigma=self.config.sigma)
+            gf = _get_gaussian_filter()
+            teammate_ch = gf(teammate_ch, sigma=self.config.sigma)
+            enemy_ch = gf(enemy_ch, sigma=self.config.sigma)
+            utility_ch = gf(utility_ch, sigma=self.config.sigma)
 
         teammate_ch = self._normalize(teammate_ch)
         enemy_ch = self._normalize(enemy_ch)
@@ -439,8 +450,9 @@ class TensorFactory:
 
         # Spatial smoothing
         if self.config.sigma > 0:
-            entity_ch = gaussian_filter(entity_ch, sigma=self.config.sigma)
-            utility_ch = gaussian_filter(utility_ch, sigma=self.config.sigma)
+            gf = _get_gaussian_filter()
+            entity_ch = gf(entity_ch, sigma=self.config.sigma)
+            utility_ch = gf(utility_ch, sigma=self.config.sigma)
 
         entity_ch = self._normalize(entity_ch)
         utility_ch = self._normalize(utility_ch)
@@ -474,7 +486,7 @@ class TensorFactory:
 
         # Light blur for smooth trail
         if self.config.sigma > 0:
-            channel = gaussian_filter(channel, sigma=max(1.0, self.config.sigma * 0.5))
+            channel = _get_gaussian_filter()(channel, sigma=max(1.0, self.config.sigma * 0.5))
 
         return self._normalize(channel)
 
@@ -543,7 +555,7 @@ class TensorFactory:
             channel[py, px] = norm_yaw
 
         # Spread with gaussian blur
-        channel = gaussian_filter(channel, sigma=max(2.0, self.config.sigma))
+        channel = _get_gaussian_filter()(channel, sigma=max(2.0, self.config.sigma))
 
         return self._normalize(channel)
 
@@ -683,7 +695,7 @@ class TensorFactory:
         mask[in_fov & in_range] = 1.0
 
         # Apply slight blur for smooth edges
-        mask = gaussian_filter(mask, sigma=1.5)
+        mask = _get_gaussian_filter()(mask, sigma=1.5)
 
         return mask
 

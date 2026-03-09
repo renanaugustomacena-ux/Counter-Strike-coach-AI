@@ -26,10 +26,11 @@ class RAPStateReconstructor:
       GhostEngine uses Player-POV at inference causes training/inference skew.
     """
 
-    def __init__(self, sequence_length=32, map_name: str = "de_mirage"):
+    def __init__(self, sequence_length=32, map_name: str = "de_mirage", require_pov: bool = False):
         self.sequence_length = sequence_length
         self.metadata_dim = METADATA_DIM  # Use unified constant
         self.map_name = map_name
+        self.require_pov = require_pov
         self.tensor_factory = get_tensor_factory()
 
     def reconstruct_belief_tensors(self, ticks: list[PlayerTickState], knowledge=None):
@@ -47,8 +48,16 @@ class RAPStateReconstructor:
         - Map tensor: Top-down tactical view (enemy/teammate positions)
         - View tensor: FOV approximation (what player can see)
         - Motion tensor: Velocity/movement encoding
+
+        Raises:
+            ValueError: If require_pov=True and knowledge is None (R4-04-01).
         """
         if knowledge is None:
+            if self.require_pov:
+                raise ValueError(
+                    "R4-04-01: knowledge=None but require_pov=True. Training with "
+                    "legacy mode while GhostEngine uses Player-POV causes skew."
+                )
             _logger.warning(
                 "reconstruct_belief_tensors: knowledge=None — running in LEGACY (full-info) mode. "
                 "If GhostEngine uses Player-POV at inference, pass a PlayerKnowledge object here "

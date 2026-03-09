@@ -447,6 +447,13 @@ def _save_player_stats(db_manager, row, demo_name, is_pro):
     stats_dict = row.to_dict()
     stats_dict.pop("player_name", None)
 
+    # R3-H09: Sanitize NaN/Inf in aggregate stats before DB insertion
+    import math
+    for key, val in list(stats_dict.items()):
+        if isinstance(val, float) and (math.isnan(val) or math.isinf(val)):
+            logger.warning("Sanitized NaN/Inf in '%s' for player '%s'", key, p_name)
+            stats_dict[key] = 0.0
+
     # Use clean stem to align with PlayerTickState and enable AI Coach linking
     clean_demo_name = Path(demo_name).stem if str(demo_name).endswith(".dem") else demo_name
 
