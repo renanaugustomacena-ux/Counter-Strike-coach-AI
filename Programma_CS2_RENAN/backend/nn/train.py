@@ -1,5 +1,3 @@
-import random
-
 import torch
 import torch.nn as nn
 from sqlmodel import select
@@ -119,13 +117,13 @@ def _train_jepa_self_supervised(X, device, context=None):
             batch_size_actual = pred_emb.size(0)
             num_negatives = min(8, batch_size_actual - 1)
             if num_negatives > 0 and batch_size_actual > 1:
-                # P1-05 pattern: exclude positive index from negatives
-                neg_indices = []
+                # NN-61: Vectorized negative sampling using torch.randperm (replaces O(B²) Python loops)
+                neg_indices = torch.zeros(batch_size_actual, num_negatives, dtype=torch.long, device=device)
                 for i in range(batch_size_actual):
-                    candidates = [j for j in range(batch_size_actual) if j != i]
-                    selected = random.sample(candidates, k=num_negatives)
-                    neg_indices.append(selected)
-                neg_indices = torch.tensor(neg_indices, device=device)
+                    perm = torch.randperm(batch_size_actual - 1, device=device)[:num_negatives]
+                    # Map indices: skip index i (the positive sample)
+                    perm = perm + (perm >= i).long()
+                    neg_indices[i] = perm
                 negatives = target_emb[neg_indices]
                 loss = jepa_contrastive_loss(pred_emb, target_emb, negatives)
             else:

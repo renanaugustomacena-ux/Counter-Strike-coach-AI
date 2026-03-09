@@ -14,6 +14,12 @@ class RAPTrainer:
     Handles temporal gradients across Perception and Memory layers.
     """
 
+    # NN-58: Loss weights extracted to class-level constants for tuning
+    LOSS_WEIGHT_STRATEGY = 1.0
+    LOSS_WEIGHT_VALUE = 0.5
+    LOSS_WEIGHT_SPARSITY = 1.0
+    LOSS_WEIGHT_POSITION = 1.0
+
     def __init__(self, model: RAPCoachModel, lr=1e-4):
         self.model = model
         self.optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
@@ -68,7 +74,13 @@ class RAPTrainer:
                 outputs["optimal_pos"], batch["target_pos"]
             )
 
-        total_loss = loss_strat + 0.5 * loss_val + loss_sparsity + loss_pos
+        # NN-58: Use class-level loss weights for tunable multi-task balance
+        total_loss = (
+            self.LOSS_WEIGHT_STRATEGY * loss_strat
+            + self.LOSS_WEIGHT_VALUE * loss_val
+            + self.LOSS_WEIGHT_SPARSITY * loss_sparsity
+            + self.LOSS_WEIGHT_POSITION * loss_pos
+        )
 
         total_loss.backward()
         self.optimizer.step()

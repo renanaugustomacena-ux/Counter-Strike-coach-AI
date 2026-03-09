@@ -523,22 +523,24 @@ class ConceptLabeler:
         """
         labels = torch.zeros(NUM_COACHING_CONCEPTS)
 
-        hp = features[self._HP].item()
-        armor = features[self._ARMOR].item()
-        equip = features[self._EQUIP].item()
-        crouching = features[self._CROUCHING].item()
-        scoped = features[self._SCOPED].item()
-        blinded = features[self._BLINDED].item()
-        enemies_vis = features[self._ENEMIES_VIS].item()
-        kast = features[self._KAST].item()
-        round_phase = features[self._ROUND_PHASE].item()
+        # NN-28: Vectorized extraction — single .tolist() replaces 16 .item() calls
         n = features.shape[0]
-        weapon_class = features[self._WEAPON_CLASS].item() if n > 19 else 0.0
-        time_in_round = features[self._TIME_IN_ROUND].item() if n > 20 else 0.0
-        bomb_planted = features[self._BOMB_PLANTED].item() if n > 21 else 0.0
-        teammates = features[self._TEAMMATES_ALIVE].item() if n > 22 else 1.0
-        enemies = features[self._ENEMIES_ALIVE].item() if n > 23 else 1.0
-        team_econ = features[self._TEAM_ECONOMY].item() if n > 24 else 0.0
+        vals = features.tolist()
+        hp = vals[self._HP]
+        armor = vals[self._ARMOR]
+        equip = vals[self._EQUIP]
+        crouching = vals[self._CROUCHING]
+        scoped = vals[self._SCOPED]
+        blinded = vals[self._BLINDED]
+        enemies_vis = vals[self._ENEMIES_VIS]
+        kast = vals[self._KAST]
+        round_phase = vals[self._ROUND_PHASE]
+        weapon_class = vals[self._WEAPON_CLASS] if n > 19 else 0.0
+        time_in_round = vals[self._TIME_IN_ROUND] if n > 20 else 0.0
+        bomb_planted = vals[self._BOMB_PLANTED] if n > 21 else 0.0
+        teammates = vals[self._TEAMMATES_ALIVE] if n > 22 else 1.0
+        enemies = vals[self._ENEMIES_ALIVE] if n > 23 else 1.0
+        team_econ = vals[self._TEAM_ECONOMY] if n > 24 else 0.0
 
         self._tick_positioning(labels, hp, crouching, scoped, enemies_vis, bomb_planted)
         self._tick_utility_economy(labels, equip, blinded, enemies_vis, kast, round_phase, team_econ)

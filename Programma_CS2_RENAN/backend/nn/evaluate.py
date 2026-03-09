@@ -29,6 +29,18 @@ def evaluate_adjustments(model, X_sample, role_id=None):
     with torch.no_grad():
         adj = model(X_tensor, role_id=role_id).squeeze(0)
 
+    # NN-12: Model outputs METADATA_DIM dimensions but only 4 are used as weights.
+    # Remaining dims (indices 4-24) are unused — they could be routed to additional
+    # coaching heads (utility, positioning, timing) in a future multi-head architecture.
+    if adj.shape[0] > 4:
+        unused_dims = adj[4:]
+        unused_nonzero = (unused_dims.abs() > 0.01).sum().item()
+        if unused_nonzero > 0:
+            logger.debug(
+                "NN-12: %d/%d unused output dims have non-trivial values (max=%.4f)",
+                unused_nonzero, len(unused_dims), unused_dims.abs().max().item(),
+            )
+
     # 2. Explanation (SHAP)
     shap_values = None
     if _HAS_SHAP:

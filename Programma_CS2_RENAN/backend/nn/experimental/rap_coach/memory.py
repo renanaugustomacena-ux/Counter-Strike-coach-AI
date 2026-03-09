@@ -31,7 +31,12 @@ class RAPMemory(nn.Module):
         # Ratio 2:1 ensures enough inter-neurons for expressive wiring.
         # NOTE: changing this invalidates existing checkpoints — version-gated loading required.
         ncp_units = hidden_dim * 2
+        # NN-45: Seed AutoNCP wiring for deterministic, checkpoint-portable connectivity
+        import numpy as np
+        rng_state = np.random.get_state()
+        np.random.seed(42)
         self.wiring = AutoNCP(units=ncp_units, output_size=hidden_dim)
+        np.random.set_state(rng_state)
         self.ltc = LTC(input_dim, self.wiring, batch_first=True)
 
         # 2. Hopfield Layer (Associative Memory)
