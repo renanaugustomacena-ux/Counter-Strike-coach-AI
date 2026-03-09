@@ -271,14 +271,24 @@ def get_map_metadata(map_name: str) -> MapMetadata | None:
         return loader.registry[clean_name]
 
     # 3. Try partial match (e.g. "train" -> "de_train")
-    # Note: Short inputs (< 4 chars) are skipped for the reverse match
-    # (clean_name in key) to avoid false positives like "over" matching "de_overpass".
+    # SD-03: Collect all matches and warn on ambiguity instead of returning the
+    # first arbitrary hit. Short inputs (< 4 chars) are skipped for reverse match.
+    candidates: list[tuple[str, MapMetadata]] = []
     for key, meta in loader.registry.items():
         # Skip lower-level variants for default lookup
         if "_lower" in key:
             continue
         if key in clean_name or (len(clean_name) >= 4 and clean_name in key):
-            return meta
+            candidates.append((key, meta))
+
+    if len(candidates) == 1:
+        return candidates[0][1]
+    if len(candidates) > 1:
+        _logger.warning(
+            "SD-03: Ambiguous partial match for '%s' — matched %s. Returning first.",
+            clean_name, [c[0] for c in candidates],
+        )
+        return candidates[0][1]
 
     return None
 

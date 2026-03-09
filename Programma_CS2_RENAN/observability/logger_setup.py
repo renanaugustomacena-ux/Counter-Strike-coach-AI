@@ -35,7 +35,14 @@ def _create_file_handler(log_path: str, formatter: logging.Formatter) -> logging
             encoding="utf-8",
         )
     except PermissionError:
+        # LS-01: Plain FileHandler has no size rotation — log can grow unbounded.
+        # This is acceptable only as a temporary fallback on Windows when another
+        # process holds the log file handle. Log a warning so operators are aware.
         handler = logging.FileHandler(log_path, mode="a", encoding="utf-8")
+        logging.getLogger("cs2analyzer.logger_setup").warning(
+            "LS-01: RotatingFileHandler unavailable (PermissionError) — "
+            "using plain FileHandler for %s. Log rotation is disabled.", log_path,
+        )
     handler.setFormatter(formatter)
     return handler
 

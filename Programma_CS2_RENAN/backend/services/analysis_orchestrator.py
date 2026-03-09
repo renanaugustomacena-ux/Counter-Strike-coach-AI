@@ -98,6 +98,10 @@ class AnalysisOrchestrator:
         """
         analysis = MatchAnalysis(player_name=player_name, demo_name=demo_name)
 
+        # O-01: Reset per-module failure counters at the start of each match
+        # so persistent failures from one match don't suppress logging in the next.
+        self._module_failure_counts.clear()
+
         # 1. Momentum analysis (always available from round outcomes)
         momentum_insights = self._analyze_momentum(player_name, demo_name, round_outcomes)
         analysis.match_insights.extend(momentum_insights)

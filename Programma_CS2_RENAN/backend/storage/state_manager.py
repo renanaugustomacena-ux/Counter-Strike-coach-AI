@@ -25,9 +25,13 @@ class StateManager:
     Prevents race conditions and ensures consistent status updates across daemons.
     """
 
+    # SM-02: Track consecutive telemetry failures to escalate logging.
+    _TELEMETRY_ESCALATION_THRESHOLD = 5
+
     def __init__(self):
         self.db = get_db_manager()
         self._lock = threading.Lock()
+        self._telemetry_fail_count = 0
 
     def get_state(self) -> CoachState:
         """
@@ -116,9 +120,18 @@ class StateManager:
                     state.last_updated = datetime.now(timezone.utc)
                     session.add(state)
                     session.commit()
+            # SM-02: Reset counter on success
+            self._telemetry_fail_count = 0
         except Exception as e:
-            # Don't crash training for telemetry failure
-            logger.warning("Telemetry update failed: %s", e)
+            # SM-02: Escalate to error after repeated consecutive failures.
+            self._telemetry_fail_count += 1
+            if self._telemetry_fail_count >= self._TELEMETRY_ESCALATION_THRESHOLD:
+                logger.error(
+                    "SM-02: Telemetry update failed %d consecutive times: %s",
+                    self._telemetry_fail_count, e,
+                )
+            else:
+                logger.warning("Telemetry update failed: %s", e)
 
     def heartbeat(self):
         """Updates the last_heartbeat timestamp to indicate liveness."""
@@ -140,13 +153,27 @@ class StateManager:
         self.add_notification(daemon, "ERROR", message)
         logger.error("[%s] Error: %s", daemon.upper(), message)
 
+    # SM-03: Max notifications before triggering auto-prune.
+    _MAX_NOTIFICATIONS = 500
+
     def add_notification(self, daemon: str, severity: str, message: str):
-        """Adds a service notification for the UI."""
+        """Adds a service notification for the UI.
+
+        SM-03: Auto-prunes old notifications when count exceeds _MAX_NOTIFICATIONS.
+        """
         try:
             with self.db.get_session() as session:
                 note = ServiceNotification(daemon=daemon, severity=severity, message=message)
                 session.add(note)
                 session.commit()
+
+                # SM-03: Check total count and prune if exceeding cap
+                from sqlmodel import func
+                count = session.exec(
+                    select(func.count()).select_from(ServiceNotification)
+                ).one()
+                if count > self._MAX_NOTIFICATIONS:
+                    self.prune_old_notifications()
         except Exception as e:
             logger.error("Failed to add notification: %s", e)
 

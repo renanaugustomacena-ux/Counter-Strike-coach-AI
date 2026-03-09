@@ -9,9 +9,18 @@ from typing import Dict, List, Tuple
 # R1-12: HMAC key for manifest integrity. In production builds this should be
 # injected at build time via environment variable. The fallback is a static key
 # which still detects casual tampering (not a motivated attacker with source).
-_MANIFEST_HMAC_KEY = os.environ.get(
-    "CS2_MANIFEST_KEY", "macena-cs2-integrity-v1"
-).encode("utf-8")
+_MANIFEST_HMAC_KEY_RAW = os.environ.get("CS2_MANIFEST_KEY", "")
+if not _MANIFEST_HMAC_KEY_RAW:
+    # RP-01: Warn when using the static fallback key. Builds targeting
+    # end-users should set CS2_MANIFEST_KEY in the environment.
+    import warnings
+    warnings.warn(
+        "RP-01: CS2_MANIFEST_KEY not set — using static fallback HMAC key. "
+        "Set the environment variable for production builds.",
+        stacklevel=1,
+    )
+    _MANIFEST_HMAC_KEY_RAW = "macena-cs2-integrity-v1"
+_MANIFEST_HMAC_KEY = _MANIFEST_HMAC_KEY_RAW.encode("utf-8")
 
 
 class IntegrityError(Exception):

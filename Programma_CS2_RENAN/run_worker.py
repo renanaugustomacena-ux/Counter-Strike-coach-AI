@@ -21,15 +21,24 @@ logger = get_logger("cs2analyzer.worker")
 
 
 def _recover_stale_tasks(db):
+    # IM-02: Only recover tasks whose updated_at is older than the stale threshold.
+    # Tasks that started processing recently may still be running in another process.
+    from datetime import timedelta
+
+    _STALE_THRESHOLD = timedelta(minutes=5)
+    cutoff = datetime.now(timezone.utc) - _STALE_THRESHOLD
     with db.get_session() as session:
-        stmt = select(IngestionTask).where(IngestionTask.status == "processing")
+        stmt = select(IngestionTask).where(
+            IngestionTask.status == "processing",
+            IngestionTask.updated_at < cutoff,
+        )
         stale_tasks = session.exec(stmt).all()
         for stale in stale_tasks:
             stale.status = "queued"
             session.add(stale)
         session.commit()
         if stale_tasks:
-            logger.info("Recovered %s tasks.", len(stale_tasks))
+            logger.info("Recovered %s stale tasks (>%s old).", len(stale_tasks), _STALE_THRESHOLD)
 
 
 def _fetch_next_task_data(db):

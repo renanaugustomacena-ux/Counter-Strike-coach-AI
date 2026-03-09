@@ -99,19 +99,44 @@ class BackupManager:
             return False
 
     def _verify_integrity(self, db_path: str) -> bool:
-        """Runs PRAGMA integrity_check on the backup file."""
+        """Runs PRAGMA quick_check on the backup file.
+
+        DG-01: Uses quick_check instead of full integrity_check to avoid
+        blocking for minutes on large databases. quick_check validates page
+        structure and b-tree integrity without scanning every row.
+        """
         import sqlite3
 
         try:
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
-            cursor.execute("PRAGMA integrity_check")
+            cursor.execute("PRAGMA quick_check")
             result = cursor.fetchone()[0]
             conn.close()
             return result == "ok"
         except Exception as e:
             logger.error("Integrity Check Error: %s", e)
             return False
+
+    def verify_backup(self, backup_path: str) -> bool:
+        """DG-01: Public method to verify a backup's integrity before restore.
+
+        Args:
+            backup_path: Absolute path to the backup .db file.
+
+        Returns:
+            True if the backup passes integrity checks, False otherwise.
+        """
+        # DG-03: Validate path is within backup directory to prevent traversal.
+        resolved = os.path.realpath(backup_path)
+        backup_dir_resolved = os.path.realpath(self.backup_dir)
+        if not resolved.startswith(backup_dir_resolved + os.sep) and resolved != backup_dir_resolved:
+            logger.error("DG-03: Backup path escapes backup directory: %s", backup_path)
+            return False
+        if not os.path.exists(backup_path):
+            logger.error("Backup file does not exist: %s", backup_path)
+            return False
+        return self._verify_integrity(backup_path)
 
     def _prune_backups(self):
         """
