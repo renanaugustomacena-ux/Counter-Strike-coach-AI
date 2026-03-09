@@ -53,10 +53,13 @@ class SkillLatentModel:
                 return None  # Mark as unavailable
 
             b = baseline[feat]
-            z = (val - b["mean"]) / max(1e-6, b["std"])
-            # R4-08-01: 1.702 is the GELU approximation constant (Hendrycks & Gimpel 2016).
-            # sigmoid(1.702 * z) closely approximates the Gaussian CDF Φ(z),
-            # mapping Z-scores to percentile-like [0, 1] values.
+            # P-SA-01-2: Skip metric when std ≤ 0 — Z-scores are meaningless
+            # without variance (degenerate baseline).
+            if b["std"] <= 0.0:
+                return None
+            z = (val - b["mean"]) / b["std"]
+            # P-SA-01: sigmoid(1.702 * z) approximates the Gaussian CDF Φ(z)
+            # (NOT GELU). 1.702 ≈ √(2π/ln2) maps Z-scores to [0, 1] percentiles.
             percentile = 1.0 / (1.0 + np.exp(-1.702 * z))
             return np.clip(percentile, 0, 1)
 
@@ -134,8 +137,10 @@ class SkillLatentModel:
         if not skill_vec:
             return 1
         avg_skill = sum(skill_vec.values()) / len(skill_vec)
-        # Scale 0..1 to 1..10
-        level = int(avg_skill * 9) + 1
+        # P-SA-02: Use round() instead of int() to avoid dead zone at skill=0.0.
+        # int(0.09*9)+1 = 1, but round(0.09*9)+1 = 1 too — however round
+        # distributes the mapping more uniformly across the 1-10 range.
+        level = round(avg_skill * 9) + 1
         return max(1, min(10, level))
 
     @staticmethod

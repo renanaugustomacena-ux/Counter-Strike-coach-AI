@@ -101,31 +101,34 @@ class MetaDriftEngine:
         hltv_db = get_hltv_db_manager()
         with hltv_db.get_session() as s:
             # 1. Statistical Drift
-            # max(..., 1e-6) prevents division-by-zero when all pro ratings are 0.0.
-            # In that degenerate case (0/1e-6 = 0) stat_drift stays 0.0 — correct. (F2-45)
-            hist_avg = max(
-                s.exec(select(func.avg(ProPlayerStatCard.rating_2_0))).one() or 1.0, 1e-6
-            )
-            limit_date = datetime.now(timezone.utc) - timedelta(days=30)
-            recent_avg = (
-                s.exec(
-                    select(func.avg(ProPlayerStatCard.rating_2_0)).where(
-                        ProPlayerStatCard.last_updated >= limit_date
-                    )
-                ).one()
-                or hist_avg
-            )
-
-            stat_drift = min((abs(recent_avg - hist_avg) / hist_avg) / 0.20, 1.0)
+            hist_avg = s.exec(select(func.avg(ProPlayerStatCard.rating_2_0))).one() or 0.0
+            # P-MD-02: If historical avg is near-zero, data is degenerate — no drift to measure.
+            if abs(hist_avg) < 0.1:
+                stat_drift = 0.0
+            else:
+                limit_date = datetime.now(timezone.utc) - timedelta(days=30)
+                recent_avg = (
+                    s.exec(
+                        select(func.avg(ProPlayerStatCard.rating_2_0)).where(
+                            ProPlayerStatCard.last_updated >= limit_date
+                        )
+                    ).one()
+                    or hist_avg
+                )
+                stat_drift = min((abs(recent_avg - hist_avg) / hist_avg) / 0.20, 1.0)
 
         # 2. Spatial Drift (if map provided)
         spatial_drift = 0.0
         if map_name:
             spatial_drift = MetaDriftEngine.calculate_spatial_drift(map_name)
 
-        # Combined Coefficient (Weighted: 40% Stats, 60% Spatial)
+        # P-MD-03: Named weights for drift combination.
+        # Spatial drift weighted higher because positioning changes reflect
+        # meta shifts faster than rating averages.
+        _WEIGHT_STAT_DRIFT = 0.4
+        _WEIGHT_SPATIAL_DRIFT = 0.6
         if map_name:
-            return (stat_drift * 0.4) + (spatial_drift * 0.6)
+            return (stat_drift * _WEIGHT_STAT_DRIFT) + (spatial_drift * _WEIGHT_SPATIAL_DRIFT)
         return stat_drift
 
     @staticmethod

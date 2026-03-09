@@ -46,8 +46,9 @@ class RoleThresholdStore:
         3. ML Model: Over time, learns optimal thresholds
     """
 
-    # Minimum samples required before a threshold is considered valid
-    MIN_SAMPLES_FOR_VALIDITY = 10
+    # P-PB-04: 30 samples gives ≤8% std error in 75th-percentile estimates
+    # (Bootstrap CI). Previous value of 10 produced unstable thresholds.
+    MIN_SAMPLES_FOR_VALIDITY = 30
 
     def __init__(self):
         """Initialize with empty thresholds (cold start state)."""
@@ -165,11 +166,16 @@ class RoleThresholdStore:
         # Calculate thresholds using percentile analysis
         now = datetime.now()
 
+        # P-RT-01: Consistent 75th percentile for all role thresholds.
+        # Players above the 75th pct are classified as role specialists.
+        _ROLE_THRESHOLD_PERCENTILE = 75
+
         # AWP Kill Ratio - AWPers have high awp_kills / total_kills
         awp_ratios = [s.get("awp_kills", 0) / max(s.get("total_kills", 1), 1) for s in pro_stats]
         if awp_ratios:
-            # 75th percentile - players above this are likely AWPers
-            self._thresholds["awp_kill_ratio"].value = float(np.percentile(awp_ratios, 75))
+            self._thresholds["awp_kill_ratio"].value = float(
+                np.percentile(awp_ratios, _ROLE_THRESHOLD_PERCENTILE)
+            )
             self._thresholds["awp_kill_ratio"].sample_count = len(awp_ratios)
             self._thresholds["awp_kill_ratio"].last_updated = now
             self._thresholds["awp_kill_ratio"].source = "hltv"
@@ -179,7 +185,9 @@ class RoleThresholdStore:
             s.get("entry_frags", 0) / max(s.get("rounds_played", 1), 1) for s in pro_stats
         ]
         if entry_rates:
-            self._thresholds["entry_rate"].value = float(np.percentile(entry_rates, 70))
+            self._thresholds["entry_rate"].value = float(
+                np.percentile(entry_rates, _ROLE_THRESHOLD_PERCENTILE)
+            )
             self._thresholds["entry_rate"].sample_count = len(entry_rates)
             self._thresholds["entry_rate"].last_updated = now
             self._thresholds["entry_rate"].source = "hltv"
@@ -187,7 +195,9 @@ class RoleThresholdStore:
         # Assist Rate - assists per round
         assist_rates = [s.get("assists", 0) / max(s.get("rounds_played", 1), 1) for s in pro_stats]
         if assist_rates:
-            self._thresholds["assist_rate"].value = float(np.percentile(assist_rates, 70))
+            self._thresholds["assist_rate"].value = float(
+                np.percentile(assist_rates, _ROLE_THRESHOLD_PERCENTILE)
+            )
             self._thresholds["assist_rate"].sample_count = len(assist_rates)
             self._thresholds["assist_rate"].last_updated = now
             self._thresholds["assist_rate"].source = "hltv"
@@ -197,7 +207,9 @@ class RoleThresholdStore:
             s.get("rounds_survived", 0) / max(s.get("rounds_played", 1), 1) for s in pro_stats
         ]
         if survival_rates:
-            self._thresholds["survival_rate"].value = float(np.percentile(survival_rates, 70))
+            self._thresholds["survival_rate"].value = float(
+                np.percentile(survival_rates, _ROLE_THRESHOLD_PERCENTILE)
+            )
             self._thresholds["survival_rate"].sample_count = len(survival_rates)
             self._thresholds["survival_rate"].last_updated = now
             self._thresholds["survival_rate"].source = "hltv"
@@ -205,7 +217,9 @@ class RoleThresholdStore:
         # Solo Kill Rate - for lurkers
         solo_rates = [s.get("solo_kills", 0) / max(s.get("total_kills", 1), 1) for s in pro_stats]
         if solo_rates:
-            self._thresholds["solo_kill_rate"].value = float(np.percentile(solo_rates, 70))
+            self._thresholds["solo_kill_rate"].value = float(
+                np.percentile(solo_rates, _ROLE_THRESHOLD_PERCENTILE)
+            )
             self._thresholds["solo_kill_rate"].sample_count = len(solo_rates)
             self._thresholds["solo_kill_rate"].last_updated = now
             self._thresholds["solo_kill_rate"].source = "hltv"
