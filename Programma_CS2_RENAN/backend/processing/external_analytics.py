@@ -30,12 +30,18 @@ class EliteAnalytics:
         )
 
     def is_healthy(self) -> bool:
-        """Return True if at least one reference CSV dataset was loaded successfully.
+        """Return True if at least one reference CSV dataset was loaded with expected columns.
 
+        R4-12-01: Verifies column presence, not just non-empty DataFrames.
         Callers should check this before relying on `analyze_user_vs_elite()` results.
         When False, all z-score outputs are empty dicts (degraded signal).
         """
-        return self._loaded_dataset_count > 0
+        if self._loaded_dataset_count == 0:
+            return False
+        # R4-12-01: Verify key columns exist in primary datasets
+        if not self.players_df.empty and "CS Rating" not in self.players_df.columns:
+            return False
+        return True
 
     def _read_safe(self, filename):
         rel_path = os.path.join("data", "external", filename)
@@ -153,7 +159,11 @@ def _compute_z_scores(u_stats, h_stats, h_std):
     z_scores = {}
     for key in ["adr", "rating"]:
         if key in u_stats and h_std.get(key, 0) > 0:
-            z_scores[key] = (u_stats[key] - h_stats[key]) / h_std[key]
+            # R4-12-02: Guard against NaN/Inf in user stats
+            val = u_stats[key]
+            if not np.isfinite(val):
+                continue
+            z_scores[key] = (val - h_stats[key]) / h_std[key]
     return z_scores
 
 
@@ -161,5 +171,9 @@ def _compute_t_z_scores(u_stats, t_base, t_std):
     t_z = {}
     for key in ["accuracy", "econ_rating"]:
         if key in u_stats and t_std.get(key, 0) > 0:
-            t_z[key] = (u_stats[key] - t_base[key]) / t_std[key]
+            # R4-12-02: Guard against NaN/Inf in user stats
+            val = u_stats[key]
+            if not np.isfinite(val):
+                continue
+            t_z[key] = (val - t_base[key]) / t_std[key]
     return t_z

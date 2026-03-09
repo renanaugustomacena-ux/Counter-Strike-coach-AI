@@ -31,7 +31,8 @@ SMOKE_WEAPONS = {"smokegrenade"}
 FLASH_WEAPONS = {"flashbang"}
 ALL_GRENADE_WEAPONS = HE_WEAPONS | FIRE_WEAPONS | SMOKE_WEAPONS | FLASH_WEAPONS
 
-# Flash assist detection window (128 ticks = 2 seconds at 64 tick)
+# R4-07-01: Flash assist window — 2 seconds at default 64 tick.
+# Overridden per-demo in build_round_stats() from actual tick_rate.
 FLASH_ASSIST_WINDOW_TICKS = 128
 
 
@@ -179,6 +180,15 @@ def build_round_stats(
     Returns:
         List of dicts, each representing one RoundStats row.
     """
+    # R4-07-01: Derive flash assist window from demo tick_rate
+    global FLASH_ASSIST_WINDOW_TICKS
+    try:
+        header = parser.parse_header()
+        tick_rate = int(float(header.get("tick_rate", 64) or 64))
+        FLASH_ASSIST_WINDOW_TICKS = tick_rate * 2  # 2-second window
+    except Exception:
+        pass  # Keep default 128
+
     # Parse all needed events
     round_end_df = _parse_events_safe(parser, "round_end")
     deaths_df = _parse_events_safe(parser, "player_death")
@@ -196,6 +206,11 @@ def build_round_stats(
     # Get team roster
     if team_roster is None:
         team_roster = _get_team_roster(parser)
+
+    # R4-07-02: Validate team mapping — all team_num values should be 0, 2, or 3
+    invalid_teams = {v for v in team_roster.values() if v not in (0, 2, 3)}
+    if invalid_teams:
+        logger.warning("R4-07-02: Unexpected team_num values in roster: %s", invalid_teams)
 
     # Collect all unique player names from deaths (both attacker and victim)
     all_players = set()

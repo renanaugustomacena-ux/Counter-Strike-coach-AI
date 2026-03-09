@@ -72,7 +72,11 @@ class FrameBuffer:
         Returns the stored frame.
         """
         if isinstance(source, (str, Path)):
-            img = cv2.imread(str(source))
+            # R4-10-01: Resolve and validate path to prevent directory traversal
+            resolved = Path(source).resolve()
+            if not resolved.is_file():
+                raise FileNotFoundError(f"Could not read image: {source}")
+            img = cv2.imread(str(resolved))
             if img is None:
                 raise FileNotFoundError(f"Could not read image: {source}")
             # OpenCV loads as BGR — convert to RGB

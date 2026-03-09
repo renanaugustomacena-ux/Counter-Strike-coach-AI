@@ -72,10 +72,16 @@ class MetaDriftEngine:
             r_centroid = np.mean(recent_clean, axis=0)
             h_centroid = np.mean(hist_clean, axis=0)
 
-            dist = np.linalg.norm(r_centroid - h_centroid)
+            dist = float(np.linalg.norm(r_centroid - h_centroid))
 
-            # Normalize: 500 units drift = 1.0 coefficient
-            return min(dist / 500.0, 1.0)
+            # R4-21-02: Scale spatial drift normalization by map extent.
+            # Large maps (de_dust2 ~6000 units) need larger thresholds than
+            # small maps. Use point spread as proxy for map extent.
+            all_pts = np.array(recent_clean + hist_clean)
+            map_extent = max(float(np.ptp(all_pts[:, 0])), float(np.ptp(all_pts[:, 1])), 1.0)
+            # Normalize: 10% of map extent drift = 1.0 coefficient
+            drift_threshold = max(map_extent * 0.10, 500.0)
+            return min(dist / drift_threshold, 1.0)
 
     @staticmethod
     def calculate_drift_coefficient(map_name: str = None) -> float:
