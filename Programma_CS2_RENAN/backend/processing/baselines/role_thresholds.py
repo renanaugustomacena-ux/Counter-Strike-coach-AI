@@ -100,15 +100,24 @@ class RoleThresholdStore:
         return valid_thresholds < 3
 
     def validate_consistency(self) -> bool:
-        """Check that learned thresholds form a consistent partition (no gaps/overlaps).
+        """R4-23-01: Validate that learned thresholds are consistent.
 
-        NOTE (F2-19): The current validation only checks that individual threshold values
-        are positive. This method is a placeholder for future partition-consistency
-        verification (e.g., ensuring role boundaries do not overlap or leave gaps).
-        Returns True unconditionally until the full partition check is implemented.
+        Checks:
+        1. All valid thresholds have positive values (rates must be > 0)
+        2. No threshold exceeds 1.0 (all are rate-based [0, 1])
+        3. At least MIN_SAMPLES_FOR_VALIDITY samples contributed
+
+        Returns False if any inconsistency is detected.
         """
-        # TODO: Verify that threshold boundaries partition the stat-space without
-        # gaps or overlaps across role archetypes (entry_rate, survival_rate, etc.).
+        for name, t in self._thresholds.items():
+            if t.value is None or t.sample_count < self.MIN_SAMPLES_FOR_VALIDITY:
+                continue  # Skip unlearned thresholds
+            if t.value < 0.0:
+                logger.warning("R4-23-01: Negative threshold '%s' = %.4f", name, t.value)
+                return False
+            if t.value > 1.0:
+                logger.warning("R4-23-01: Threshold '%s' = %.4f exceeds 1.0", name, t.value)
+                return False
         return True
 
     def get_readiness_report(self) -> Dict[str, Any]:

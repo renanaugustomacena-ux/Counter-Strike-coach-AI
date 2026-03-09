@@ -514,7 +514,8 @@ class PlayerKnowledgeBuilder:
             evt_tick = int(getattr(evt, "tick", 0))
             entity_id = int(getattr(evt, "entity_id", -1))
 
-            # C-10: For entity_id=-1 end events, try position-based matching
+            # R4-06-02 / C-10: For entity_id=-1, use position-based matching
+            # with increased radius (100 units) and temporal correlation
             if entity_id == -1:
                 if evt_type in ("smoke_end", "molotov_end") and evt_tick <= current_tick:
                     evt_x = float(getattr(evt, "pos_x", 0))
@@ -528,7 +529,10 @@ class PlayerKnowledgeBuilder:
                         sx = float(getattr(start_evt, "pos_x", 0))
                         sy = float(getattr(start_evt, "pos_y", 0))
                         dist = math.sqrt((evt_x - sx) ** 2 + (evt_y - sy) ** 2)
-                        if dist < 50.0 and dist < best_dist:
+                        # R4-06-02: Increased radius from 50→100 for entity_id=-1
+                        # plus temporal check (end must be after start)
+                        start_tick = int(getattr(start_evt, "tick", 0))
+                        if dist < 100.0 and dist < best_dist and evt_tick >= start_tick:
                             best_match = eid
                             best_dist = dist
                     if best_match is not None:

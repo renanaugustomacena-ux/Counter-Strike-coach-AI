@@ -54,6 +54,9 @@ class SkillLatentModel:
 
             b = baseline[feat]
             z = (val - b["mean"]) / max(1e-6, b["std"])
+            # R4-08-01: 1.702 is the GELU approximation constant (Hendrycks & Gimpel 2016).
+            # sigmoid(1.702 * z) closely approximates the Gaussian CDF Φ(z),
+            # mapping Z-scores to percentile-like [0, 1] values.
             percentile = 1.0 / (1.0 + np.exp(-1.702 * z))
             return np.clip(percentile, 0, 1)
 

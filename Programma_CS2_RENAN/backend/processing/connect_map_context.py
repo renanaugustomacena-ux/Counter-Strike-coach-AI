@@ -70,6 +70,10 @@ def calculate_map_context_features(player_pos, map_tensors, feature_dim=6):
     if not map_tensors:
         return np.zeros(feature_dim)
 
+    # R4-11-02: Use per-map max_distance if provided in map_tensors,
+    # otherwise fall back to the default 4000 units
+    max_distance = float(map_tensors.get("max_distance", 4000.0))
+
     features = []
 
     # 1. Distance to Bombsites (with Z-penalty for multi-level maps)
@@ -79,8 +83,7 @@ def calculate_map_context_features(player_pos, map_tensors, feature_dim=6):
             target = bombsites[site]
             # Use Z-aware distance calculation
             dist = distance_with_z_penalty(player_pos, target)
-            # Normalize: assume max map distance approx 4000 units
-            features.append(np.clip(dist / 4000.0, 0, 1))
+            features.append(np.clip(dist / max_distance, 0, 1))
         else:
             features.append(1.0)  # Far away if unknown
 
@@ -90,7 +93,7 @@ def calculate_map_context_features(player_pos, map_tensors, feature_dim=6):
         if side in spawns:
             target = spawns[side]
             dist = distance_with_z_penalty(player_pos, target)
-            features.append(np.clip(dist / 4000.0, 0, 1))
+            features.append(np.clip(dist / max_distance, 0, 1))
         else:
             features.append(1.0)
 
@@ -98,7 +101,7 @@ def calculate_map_context_features(player_pos, map_tensors, feature_dim=6):
     mid = map_tensors.get("mid_control")
     if mid:
         dist = distance_with_z_penalty(player_pos, mid)
-        features.append(np.clip(dist / 4000.0, 0, 1))
+        features.append(np.clip(dist / max_distance, 0, 1))
     else:
         features.append(1.0)
 
