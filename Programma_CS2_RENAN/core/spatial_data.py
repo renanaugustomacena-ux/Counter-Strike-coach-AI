@@ -180,11 +180,24 @@ class SpatialConfigLoader:
 
                 # Parse maps
                 for map_name, map_data in config.get("maps", {}).items():
+                    # SD-02: Validate numeric types before constructing MapMetadata
+                    try:
+                        pos_x = float(map_data["pos_x"])
+                        pos_y = float(map_data["pos_y"])
+                        scale = float(map_data["scale"])
+                        z_raw = map_data.get("z_cutoff")
+                        z_cutoff = float(z_raw) if z_raw is not None else None
+                    except (TypeError, ValueError, KeyError) as conv_err:
+                        _logger.warning(
+                            "SD-02: Skipping map '%s' — invalid numeric fields: %s",
+                            map_name, conv_err,
+                        )
+                        continue
                     self.registry[map_name] = MapMetadata(
-                        pos_x=map_data["pos_x"],
-                        pos_y=map_data["pos_y"],
-                        scale=map_data["scale"],
-                        z_cutoff=map_data.get("z_cutoff"),
+                        pos_x=pos_x,
+                        pos_y=pos_y,
+                        scale=scale,
+                        z_cutoff=z_cutoff,
                         level=map_data.get("level", "default"),
                     )
 

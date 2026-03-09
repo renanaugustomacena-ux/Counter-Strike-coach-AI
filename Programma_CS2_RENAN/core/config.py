@@ -67,6 +67,8 @@ try:
     import keyring
 except ImportError:
     keyring = None
+    # C-03: Warn visibly when keyring is unavailable — secrets will use disk fallbacks
+    app_logger.warning("C-03: keyring package not installed; secrets stored on disk only")
 
 
 def get_secret(key, default=""):
@@ -190,8 +192,13 @@ def load_user_settings():
             except Exception as e:
                 app_logger.warning("Failed to load user settings from %s: %s", SETTINGS_PATH, e)
 
-        current["STEAM_API_KEY"] = get_secret("STEAM_API_KEY", current["STEAM_API_KEY"])
-        current["FACEIT_API_KEY"] = get_secret("FACEIT_API_KEY", current["FACEIT_API_KEY"])
+        # C-05: Retrieve from keyring; if the disk value is the mask sentinel, treat as empty
+        # so that a failed keyring doesn't return the literal mask string to callers.
+        _MASK = "PROTECTED_BY_WINDOWS_VAULT"
+        for secret_key in ("STEAM_API_KEY", "FACEIT_API_KEY"):
+            disk_val = current[secret_key]
+            fallback = "" if disk_val == _MASK else disk_val
+            current[secret_key] = get_secret(secret_key, fallback)
         return current
 
 
@@ -362,11 +369,22 @@ def save_user_setting(key, value):
                 with open(SETTINGS_PATH, "r") as f:
                     data = json.load(f)
             except Exception as e:
-                app_logger.warning("Failed to read settings in save_user_setting: %s", e)
+                # C-04: Backup the corrupted file before overwriting to prevent data loss
+                app_logger.warning("Corrupted settings file detected: %s", e)
+                backup_path = SETTINGS_PATH + ".corrupt"
+                try:
+                    import shutil
+                    shutil.copy2(SETTINGS_PATH, backup_path)
+                    app_logger.warning("Corrupted settings backed up to %s", backup_path)
+                except Exception:
+                    pass
 
         data[key] = value
-        with open(SETTINGS_PATH, "w") as f:
+        # C-04: Write atomically via temp file to prevent partial writes
+        tmp_path = SETTINGS_PATH + ".tmp"
+        with open(tmp_path, "w") as f:
             json.dump(data, f, indent=4)
+        os.replace(tmp_path, SETTINGS_PATH)
 
         # Keep the original unmasked value in memory for the current session
         _settings[key] = original_value
