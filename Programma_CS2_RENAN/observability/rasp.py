@@ -1,9 +1,17 @@
 import hashlib
+import hmac
 import json
 import os
 import sys
 from pathlib import Path
 from typing import Dict, List, Tuple
+
+# R1-12: HMAC key for manifest integrity. In production builds this should be
+# injected at build time via environment variable. The fallback is a static key
+# which still detects casual tampering (not a motivated attacker with source).
+_MANIFEST_HMAC_KEY = os.environ.get(
+    "CS2_MANIFEST_KEY", "macena-cs2-integrity-v1"
+).encode("utf-8")
 
 
 class IntegrityError(Exception):
@@ -65,8 +73,21 @@ class RASPGuard:
             return True, []  # Skip in dev if manifest not generated yet
 
         try:
-            with open(self.manifest_path, "r") as f:
-                manifest = json.load(f)
+            raw_bytes = self.manifest_path.read_bytes()
+            manifest = json.loads(raw_bytes)
+
+            # R1-12: Verify HMAC signature if present
+            stored_sig = manifest.get("hmac_signature")
+            if stored_sig:
+                # Recompute HMAC over manifest content excluding the signature field
+                verify_manifest = {k: v for k, v in manifest.items() if k != "hmac_signature"}
+                canonical = json.dumps(verify_manifest, sort_keys=True, separators=(",", ":"))
+                expected_sig = hmac.new(
+                    _MANIFEST_HMAC_KEY, canonical.encode("utf-8"), hashlib.sha256
+                ).hexdigest()
+                if not hmac.compare_digest(stored_sig, expected_sig):
+                    violations.append("Manifest HMAC signature mismatch — possible tampering")
+                    return False, violations
 
             expected_hashes: Dict[str, str] = manifest.get("hashes", {})
 
@@ -101,6 +122,28 @@ class RASPGuard:
             for byte_block in iter(lambda: f.read(4096), b""):
                 sha256_hash.update(byte_block)
         return sha256_hash.hexdigest()
+
+    @staticmethod
+    def sign_manifest(manifest_path: Path) -> None:
+        """R1-12: Add HMAC signature to an existing integrity manifest.
+
+        Call this at build time (e.g. in sync_integrity_manifest.py) to sign
+        the manifest before packaging.
+        """
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            manifest = json.load(f)
+
+        # Remove old signature if present
+        manifest.pop("hmac_signature", None)
+
+        canonical = json.dumps(manifest, sort_keys=True, separators=(",", ":"))
+        sig = hmac.new(
+            _MANIFEST_HMAC_KEY, canonical.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+        manifest["hmac_signature"] = sig
+
+        with open(manifest_path, "w", encoding="utf-8") as f:
+            json.dump(manifest, f, indent=2, sort_keys=True)
 
     def check_frozen_binary(self) -> bool:
         """

@@ -164,7 +164,7 @@ def collect_ingestion():
             if oq and oq[0]:
                 result["oldest_queued"] = str(oq[0])
         except Exception as e:
-            _ = e  # Intentionally suppressed
+            logger.debug("collect_ingestion oldest_queued query suppressed: %s", e)
 
         # Last error message
         try:
@@ -178,7 +178,7 @@ def collect_ingestion():
                 msg = str(le[0])
                 result["last_error"] = msg[:80] + "..." if len(msg) > 80 else msg
         except Exception as e:
-            _ = e  # Intentionally suppressed
+            logger.debug("collect_ingestion last_error query suppressed: %s", e)
 
     return result
 

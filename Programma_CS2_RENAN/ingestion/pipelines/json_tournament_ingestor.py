@@ -36,9 +36,38 @@ def process_tournament_jsons(json_dir: str, output_csv: str):
     _save_results(all_stats, output_csv)
 
 
+_REQUIRED_TOP_KEYS = {"id", "slug", "match_maps"}
+_REQUIRED_MAP_KEYS = {"map_name", "games"}
+
+
+def _validate_tournament_json(data: dict, file_path) -> bool:
+    """R3-M17: Validate expected JSON structure before processing."""
+    if not isinstance(data, dict):
+        logger.error("Expected dict, got %s in %s", type(data).__name__, file_path)
+        return False
+    missing = _REQUIRED_TOP_KEYS - data.keys()
+    if missing:
+        logger.error("Missing top-level keys %s in %s", missing, file_path)
+        return False
+    if not isinstance(data["match_maps"], list):
+        logger.error("match_maps is not a list in %s", file_path)
+        return False
+    for i, m in enumerate(data["match_maps"]):
+        if not isinstance(m, dict):
+            logger.error("match_maps[%d] is not a dict in %s", i, file_path)
+            return False
+        map_missing = _REQUIRED_MAP_KEYS - m.keys()
+        if map_missing:
+            logger.warning("match_maps[%d] missing keys %s in %s", i, map_missing, file_path)
+    return True
+
+
 def _process_single_json(file_path):
     with open(file_path, "r", encoding="utf-8") as f:
         data = json.load(f)
+
+    if not _validate_tournament_json(data, file_path):
+        return []
 
     match_id = data.get("id")
     match_slug = data.get("slug")

@@ -145,8 +145,8 @@ def main():
             total_match_storage += get_file_size_mb(os.path.join(MATCH_DATA_DIR, mf))
         print(f"   [MATCH DBs] Total storage: {total_match_storage:.2f} MB")
 
-        # Spot check first 3
-        for mf in match_files[:3]:
+        # TQ-RT03-01: Check all match DBs, not just first 3
+        for mf in match_files:
             mpath = os.path.join(MATCH_DATA_DIR, mf)
             result = run_query(mpath, "PRAGMA integrity_check")
             status = result[0].get("integrity_check", "UNKNOWN") if result else "ERROR"
