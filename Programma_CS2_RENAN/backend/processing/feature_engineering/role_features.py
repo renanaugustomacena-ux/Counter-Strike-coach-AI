@@ -11,6 +11,9 @@ NOTE (F2-20): Role signatures (aggression_score, entry_ratio, support_ratio, etc
 static heuristics based on fixed thresholds. They do not automatically adapt to
 meta-shifts (e.g., if lurkers start using more utility, this module won't capture
 the change). Meta-level drift is tracked separately by meta_drift.py.
+
+R4-18-01: `get_adaptive_signatures()` applies meta_drift confidence adjustment
+to widen tolerance bands when the meta is shifting significantly.
 """
 
 from typing import Dict, List, Optional, Tuple
@@ -173,6 +176,34 @@ def extract_role_features(
     features["detected_role"] = role.value
 
     return features
+
+
+def get_adaptive_signatures(map_name: Optional[str] = None) -> Dict[PlayerRole, Dict[str, float]]:
+    """R4-18-01: Return role signatures adjusted by current meta drift.
+
+    When the meta is shifting significantly (drift > 0.3), widen tolerance
+    bands proportionally so the heuristic classifier becomes more conservative
+    (lower confidence) rather than mis-classifying players into stale archetypes.
+    """
+    import copy
+
+    sigs = copy.deepcopy(ROLE_SIGNATURES)
+    try:
+        from Programma_CS2_RENAN.backend.processing.baselines.meta_drift import MetaDriftEngine
+
+        confidence_mult = MetaDriftEngine.get_meta_confidence_adjustment(map_name)
+    except Exception:
+        return sigs
+
+    # confidence_mult in [0.5, 1.0]; lower = more drift
+    # Scale signature values: reduce stat expectations when meta is chaotic
+    if confidence_mult < 0.85:
+        scale = confidence_mult  # e.g. 0.7 → shrink values by 30%
+        for role_sigs in sigs.values():
+            for key in role_sigs:
+                role_sigs[key] *= scale
+
+    return sigs
 
 
 def get_role_coaching_focus(role: PlayerRole) -> List[str]:
