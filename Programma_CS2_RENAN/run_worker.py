@@ -33,7 +33,11 @@ def _recover_stale_tasks(db):
 
 
 def _fetch_next_task_data(db):
-    """Fetches next task and returns data as a dict to avoid DetachedInstanceError."""
+    """Atomically claim next queued task and return its data.
+
+    R3-M25: Sets status to 'processing' in the same transaction that reads
+    the task, preventing duplicate claims by concurrent workers.
+    """
     with db.get_session() as session:
         stmt = (
             select(IngestionTask)
@@ -43,7 +47,12 @@ def _fetch_next_task_data(db):
         task = session.exec(stmt).first()
         if not task:
             return None
-        # Extract data while session is alive
+        # R3-M25: Atomically claim — mark as processing in the same session
+        task.status = "processing"
+        task.updated_at = datetime.now(timezone.utc)
+        session.add(task)
+        session.commit()
+        session.refresh(task)
         return {"id": task.id, "is_pro": task.is_pro, "demo_path": task.demo_path}
 
 
@@ -73,7 +82,7 @@ def _should_skip_pro_task(db, is_pro):
 
 
 def _execute_task(db, storage, task_id, demo_path, is_pro):
-    _mark_task_status(db, task_id, "processing")
+    # R3-M25: Task already claimed as 'processing' by _fetch_next_task_data
     logger.info("Worker processing: %s", demo_path)
 
     try:

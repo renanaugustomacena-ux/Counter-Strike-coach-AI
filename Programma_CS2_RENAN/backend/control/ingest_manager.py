@@ -155,9 +155,11 @@ class IngestionManager:
                     )
                     # F5-35: Event.wait() blocks until stop or timeout — no 1s polling.
                     self._stop_event.wait(timeout=self._interval_minutes * 60)
+                    # NN-80: Clear before checking flag — prevents race where stop()
+                    # sets both flag and event between our check and clear.
+                    self._stop_event.clear()
                     if self._stop_requested:
                         break
-                    self._stop_event.clear()  # Reset for next wait cycle
                     continue
 
                 # CONTINUOUS: re-scan immediately (small pause to avoid busy-loop)
@@ -165,8 +167,8 @@ class IngestionManager:
                     self._phase = "waiting 30s"
                     # F5-35: Event.wait() — wakes immediately on stop signal.
                     self._stop_event.wait(timeout=30)
-                    if not self._stop_requested:
-                        self._stop_event.clear()  # Reset for next wait cycle
+                    # NN-80: Clear before checking flag (same race fix as TIMED mode)
+                    self._stop_event.clear()
 
         except Exception as e:
             logger.error("IngestionManager: Cycle Error: %s", e)

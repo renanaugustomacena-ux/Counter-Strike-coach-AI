@@ -57,7 +57,6 @@ class MLControlContext:
         self._stop_requested = False
         self._pause_requested = False
         self._throttle_factor = 0.0  # 0.0 = full speed, 1.0 = maximum delay
-        self._lock = threading.Lock()
         # F5-15: Event-based pause — avoids busy-wait polling loop.
         self._resume_event = threading.Event()
         self._resume_event.set()  # Initially not paused
@@ -84,6 +83,8 @@ class MLControlContext:
 
     def request_stop(self):
         self._stop_requested = True
+        # NN-78: Unblock paused training so check_state() can observe stop flag
+        self._resume_event.set()
 
     def request_pause(self):
         self._pause_requested = True

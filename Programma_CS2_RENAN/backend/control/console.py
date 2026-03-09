@@ -61,6 +61,11 @@ class ServiceSupervisor:
             if svc["status"] == ServiceStatus.RUNNING:
                 return
 
+            # NN-85: Reset retry counter on manual (non-auto-restart) start
+            svc["retries"] = 0
+            # R3-H06: Clear pending restart flag (timer may have already fired)
+            svc["restart_pending"] = False
+
             logger.info("Supervisor: Starting service '%s'...", name)
             svc["status"] = ServiceStatus.STARTING
 
@@ -141,8 +146,12 @@ class ServiceSupervisor:
             last_start = svc.get("last_start")
             if last_start and (datetime.now(timezone.utc) - last_start).total_seconds() > self._RETRY_RESET_WINDOW_S:
                 svc["retries"] = 0
-            if svc["retries"] < self._MAX_RETRIES:
+            # R3-H06: Guard against duplicate restart timers
+            if svc.get("restart_pending"):
+                logger.debug("Supervisor: Restart already pending for '%s', skipping.", name)
+            elif svc["retries"] < self._MAX_RETRIES:
                 svc["retries"] += 1
+                svc["restart_pending"] = True
                 logger.warning(
                     "Supervisor: Auto-restarting '%s' (Attempt %s)...", name, svc["retries"]
                 )
@@ -210,9 +219,12 @@ class Console:
             self.ml_controller = MLController()
         except Exception as e:
             logger.error("Console init failed during subsystem creation: %s", e)
-            # Clean up partially created components
-            if hasattr(self, "supervisor"):
-                del self.supervisor
+            # NN-84: Clean up ALL partially created components so retry can succeed
+            for attr in ("ml_controller", "db_governor", "ingest_manager", "supervisor"):
+                if hasattr(self, attr):
+                    delattr(self, attr)
+            # Reset singleton so next Console() retries from scratch
+            Console._instance = None
             raise
 
         # Baseline cache: avoid querying DB + computing decay every 1s poll

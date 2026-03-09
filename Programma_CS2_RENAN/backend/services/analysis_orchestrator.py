@@ -8,6 +8,7 @@ This is the bridge between the analysis engines (backend/analysis/)
 and the coaching pipeline (CoachingService).
 """
 
+import threading
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
@@ -526,11 +527,14 @@ class AnalysisOrchestrator:
 
 
 _orchestrator: AnalysisOrchestrator = None  # type: ignore[assignment]
+_orchestrator_lock = threading.Lock()  # AC-21-01: thread-safe singleton
 
 
 def get_analysis_orchestrator() -> AnalysisOrchestrator:
     """Singleton factory — avoids re-instantiating 7 analysis modules per call (F5-37)."""
     global _orchestrator
     if _orchestrator is None:
-        _orchestrator = AnalysisOrchestrator()
+        with _orchestrator_lock:
+            if _orchestrator is None:
+                _orchestrator = AnalysisOrchestrator()
     return _orchestrator

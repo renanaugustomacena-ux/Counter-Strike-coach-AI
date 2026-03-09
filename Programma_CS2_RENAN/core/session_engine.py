@@ -296,8 +296,11 @@ def _digester_daemon_loop():
 
             if processed_pro == 0 and processed_user == 0:
                 get_state_manager().update_status("digester", "Idle")
-                _work_available_event.wait(timeout=2.0)
+                # NN-89: Clear before wait to avoid lost-wakeup race.
+                # If signal_work_available() fires between clear() and wait(),
+                # the event stays set and wait() returns immediately.
                 _work_available_event.clear()
+                _work_available_event.wait(timeout=2.0)
             else:
                 get_state_manager().update_status("digester", "Processing")
 
