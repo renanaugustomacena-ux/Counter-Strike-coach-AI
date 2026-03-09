@@ -528,8 +528,12 @@ class TensorFactory:
         speed = np.sqrt(dx**2 + dy**2)
         norm_speed = min(speed / MAX_SPEED_UNITS_PER_TICK, 1.0)
 
-        if norm_speed < 0.01:
+        # P-TF-03: Smooth fade-in ramp [0, 0.02] instead of hard 0.01 cutoff
+        # to avoid discontinuity in learned representations.
+        if norm_speed < 1e-6:
             return channel
+        if norm_speed < 0.02:
+            norm_speed *= norm_speed / 0.02  # quadratic ramp
 
         px, py = self._world_to_grid(curr_tick.pos_x, curr_tick.pos_y, meta, resolution)
         y_coords, x_coords = np.ogrid[:resolution, :resolution]
@@ -564,8 +568,11 @@ class TensorFactory:
 
         norm_yaw = min(yaw_delta / MAX_YAW_DELTA_DEG, 1.0)
 
-        if norm_yaw < 0.01:
+        # P-TF-03: Smooth fade-in ramp instead of hard 0.01 cutoff
+        if norm_yaw < 1e-6:
             return channel
+        if norm_yaw < 0.02:
+            norm_yaw *= norm_yaw / 0.02  # quadratic ramp
 
         # Gaussian blob at player position with intensity = yaw delta
         px, py = self._world_to_grid(curr_tick.pos_x, curr_tick.pos_y, meta, resolution)
@@ -625,13 +632,17 @@ class TensorFactory:
     def _normalize(self, arr: np.ndarray) -> np.ndarray:
         """Normalize array to [0, 1] range.
 
-        M-10: Uses max(max_val, threshold) to prevent amplification of
-        noise in sparse channels (single non-zero pixel).
+        P-TF-01/M-10: When max_val < threshold, we divide by threshold
+        (not max_val) to avoid amplifying sparse noise to 1.0.
+        This means the output range is [0, max_val/threshold] ⊂ [0, 1],
+        preserving the relative magnitude of weak signals.
+        When max_val >= threshold, standard [0, 1] normalization applies.
         """
-        max_val = np.max(arr)
-        if max_val > 0:
-            return arr / max(max_val, self._MIN_NORMALIZATION_THRESHOLD)
-        return arr
+        max_val = float(np.max(arr))
+        if max_val <= 0:
+            return arr
+        divisor = max(max_val, self._MIN_NORMALIZATION_THRESHOLD)
+        return arr / divisor
 
     def _draw_circle(
         self,
@@ -713,8 +724,8 @@ class TensorFactory:
 
         mask[in_fov & in_range] = 1.0
 
-        # Apply slight blur for smooth edges
-        mask = _get_gaussian_filter()(mask, sigma=1.5)
+        # P-TF-04: Use configurable sigma (not hardcoded 1.5) for FOV edge blur
+        mask = _get_gaussian_filter()(mask, sigma=max(0.5, self.config.sigma * 0.5))
 
         return mask
 

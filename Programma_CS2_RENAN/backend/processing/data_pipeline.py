@@ -242,9 +242,11 @@ class ProDataPipeline:
     def _decontaminate_player_splits(train, val, test):
         """C-06: Ensure each player appears in exactly one split.
 
-        For players whose matches span multiple splits, assign ALL their
-        matches to the split containing the majority. Ties go to train
-        (largest split, least impact on evaluation integrity).
+        P-DP-02: To respect temporal ordering, multi-split players are
+        assigned to their **earliest** split (not the majority). This
+        prevents future data from leaking into training when a temporal
+        split is used. Dropping later-split rows is preferred over moving
+        them backward in time, which would violate the temporal guarantee.
         """
         if "player_name" not in train.columns:
             return train, val, test
@@ -255,37 +257,50 @@ class ProDataPipeline:
             test.assign(_split="test"),
         ])
 
-        # Find which split has the most matches per player
+        # P-DP-02: Assign each player to their earliest split to preserve
+        # temporal ordering. Priority: train=0 < val=1 < test=2, so the
+        # min-priority split is the earliest in time.
+        split_priority = {"train": 0, "val": 1, "test": 2}
         player_split_counts = (
             all_data.groupby(["player_name", "_split"])
             .size()
             .reset_index(name="count")
         )
-        # Priority: train=0 (preferred on tie), val=1, test=2
-        split_priority = {"train": 0, "val": 1, "test": 2}
         player_split_counts["priority"] = player_split_counts["_split"].map(split_priority)
+        # Sort by player, then by priority (earliest split first)
         player_split_counts = player_split_counts.sort_values(
-            ["player_name", "count", "priority"], ascending=[True, False, True]
+            ["player_name", "priority"], ascending=[True, True]
         )
-        player_dominant = player_split_counts.groupby("player_name").first()["_split"]
+        player_earliest = player_split_counts.groupby("player_name").first()["_split"]
 
-        # Reassign all matches per player to their dominant split
-        all_data["_split"] = all_data["player_name"].map(player_dominant)
+        # Drop rows from later splits (not move them backward)
+        all_data["_assigned"] = all_data["player_name"].map(player_earliest)
+        decontaminated = all_data[all_data["_split"] == all_data["_assigned"]].drop(
+            columns=["_split", "_assigned"]
+        )
 
-        new_train = all_data[all_data["_split"] == "train"].drop(columns=["_split"])
-        new_val = all_data[all_data["_split"] == "val"].drop(columns=["_split"])
-        new_test = all_data[all_data["_split"] == "test"].drop(columns=["_split"])
+        new_train = decontaminated[
+            decontaminated["player_name"].map(player_earliest) == "train"
+        ]
+        new_val = decontaminated[
+            decontaminated["player_name"].map(player_earliest) == "val"
+        ]
+        new_test = decontaminated[
+            decontaminated["player_name"].map(player_earliest) == "test"
+        ]
 
-        # Count how many players were moved
+        # Count how many players had cross-split data dropped
         multi_split_players = (
             player_split_counts.groupby("player_name").size()
         )
         moved = (multi_split_players > 1).sum()
         if moved > 0:
+            dropped = len(all_data) - len(decontaminated)
             logger.info(
-                "C-06 player decontamination: %d players reassigned to single splits "
+                "P-DP-02 player decontamination: %d multi-split players resolved, "
+                "%d rows dropped from later splits "
                 "(train=%d, val=%d, test=%d)",
-                moved, len(new_train), len(new_val), len(new_test),
+                moved, dropped, len(new_train), len(new_val), len(new_test),
             )
 
         return new_train, new_val, new_test

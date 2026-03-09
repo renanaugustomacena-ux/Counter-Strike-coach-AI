@@ -4,7 +4,11 @@ from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer impor
     METADATA_DIM,
     FeatureExtractor,
 )
-from Programma_CS2_RENAN.backend.processing.tensor_factory import get_tensor_factory
+from Programma_CS2_RENAN.backend.processing.tensor_factory import (
+    TensorConfig,
+    TensorFactory,
+    get_tensor_factory,
+)
 from Programma_CS2_RENAN.backend.storage.db_models import PlayerTickState
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -26,12 +30,22 @@ class RAPStateReconstructor:
       GhostEngine uses Player-POV at inference causes training/inference skew.
     """
 
-    def __init__(self, sequence_length=32, map_name: str = "de_mirage", require_pov: bool = False):
+    def __init__(
+        self,
+        sequence_length: int = 32,
+        map_name: str = "de_mirage",
+        require_pov: bool = False,
+        tensor_config: TensorConfig | None = None,
+    ):
         self.sequence_length = sequence_length
         self.metadata_dim = METADATA_DIM  # Use unified constant
         self.map_name = map_name
         self.require_pov = require_pov
-        self.tensor_factory = get_tensor_factory()
+        # P-SR-02: Accept explicit tensor config to avoid training/inference skew.
+        if tensor_config is not None:
+            self.tensor_factory = TensorFactory(config=tensor_config)
+        else:
+            self.tensor_factory = get_tensor_factory()
 
     def reconstruct_belief_tensors(self, ticks: list[PlayerTickState], knowledge=None):
         """

@@ -21,6 +21,9 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 from Programma_CS2_RENAN.core.app_types import PlayerRole  # P3-01: canonical enum
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+logger = get_logger("cs2analyzer.role_features")
 
 
 # Role signature centroids (mean stat profiles for each role)
@@ -92,8 +95,13 @@ def classify_role(player_stats: Dict[str, float]) -> Tuple[PlayerRole, float]:
         clf = RoleClassifier()
         role, confidence, _ = clf.classify(player_stats)
         return role, confidence
-    except Exception:
-        # Fallback: simple centroid-distance heuristic (original logic)
+    except Exception as e:
+        # P-RF-02: Log the exception so fallback reason is visible
+        logger.warning(
+            "P-RF-02: RoleClassifier.classify() failed (%s: %s), "
+            "falling back to heuristic classification",
+            type(e).__name__, e,
+        )
         return _heuristic_classify_role(player_stats)
 
 
