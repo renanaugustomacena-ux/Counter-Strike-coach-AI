@@ -266,6 +266,9 @@ class CoachScreen(MDScreen):
                 radar_container.add_widget(radar)
 
     def refresh_insights(self):
+        # DA-01-04: Guard against missing KV id
+        if not hasattr(self.ids, "insights_list"):
+            return
         self.ids.insights_list.clear_widgets()
         db = get_db_manager()
         with db.get_session() as session:

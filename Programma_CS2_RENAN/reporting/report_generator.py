@@ -13,7 +13,9 @@ class MatchReportGenerator:
     def __init__(self, db_manager):
         self.db = db_manager
         self.viz = MatchVisualizer()
-        self.output_dir = Path("reports")
+        # DA-RG-01: Use absolute path anchored to config, not relative to cwd
+        from Programma_CS2_RENAN.core.config import USER_DATA_ROOT
+        self.output_dir = Path(USER_DATA_ROOT) / "reports"
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def generate_report(self, demo_path):

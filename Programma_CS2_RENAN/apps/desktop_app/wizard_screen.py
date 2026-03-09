@@ -326,7 +326,9 @@ class WizardScreen(MDScreen):
 
         except OSError as e:
             app_logger.error("OSError creating brain folder: %s", e)
-            if "Permission" in str(e) or "Access" in str(e):
+            # DA-WZ-02: Use errno codes instead of locale-dependent string matching
+            import errno
+            if e.errno in (errno.EACCES, errno.EPERM):
                 user_docs = Path(os.path.expanduser("~")) / "Documents" / "DataCoach"
                 err_msg = f"Permission Denied for {self.brain_path}.\n\nPlease try: {user_docs}"
             else:

@@ -40,6 +40,9 @@ class TacticalMap(Widget):
 
     CT_COLOR = (0.3, 0.5, 1.0, 1.0)
     T_COLOR = (1.0, 0.6, 0.2, 1.0)
+
+    # DA-TM-01: Named constant for tick rate (read from demo metadata if available)
+    TICK_RATE: int = 64
     DEAD_COLOR = (0.5, 0.5, 0.5, 0.5)
     SELECTED_COLOR = (1, 1, 1, 0.8)
 
@@ -332,7 +335,7 @@ class TacticalMap(Widget):
     def _draw_nade(self, nade, group: InstructionGroup):
         # 0. Visibility Window check (Throw -> Detonate + 5s Fade)
         start_vis = nade.throw_tick or nade.starting_tick
-        end_vis = nade.ending_tick + (5 * 64)
+        end_vis = nade.ending_tick + (5 * self.TICK_RATE)
         if not (start_vis <= self._current_tick <= end_vis):
             return
 
@@ -367,7 +370,7 @@ class TacticalMap(Widget):
         if nade.starting_tick <= self._current_tick <= nade.ending_tick:
             if nade.nade_type == NadeType.SMOKE:
                 # Smoke expansion
-                age = (self._current_tick - nade.starting_tick) / 64.0
+                age = (self._current_tick - nade.starting_tick) / float(self.TICK_RATE)
                 size = min(85, 20 + age * 18) if age > 0 else 60
                 group.add(Color(0.7, 0.7, 0.8, 0.35))
                 group.add(Ellipse(pos=(px - size / 2, py - size / 2), size=(size, size)))
@@ -459,10 +462,10 @@ class TacticalMap(Widget):
             return
 
         # Fade out starting 3s after detonation
-        fade_start = nade.starting_tick + (3 * 64)
+        fade_start = nade.starting_tick + (3 * self.TICK_RATE)
         base_alpha = 0.5
         if self._current_tick > fade_start:
-            base_alpha = max(0, 0.5 - (self._current_tick - fade_start) / (2 * 64.0))
+            base_alpha = max(0, 0.5 - (self._current_tick - fade_start) / (2 * float(self.TICK_RATE)))
 
         if base_alpha <= 0:
             return

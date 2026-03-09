@@ -44,50 +44,46 @@ class MatchVisualizer:
         x_vals = [p[0] for p in positions]
         y_vals = [p[1] for p in positions]
 
-        plt.figure(figsize=(10, 10))
+        # DA-VZ-01: try/finally ensures figure is closed even on savefig error
+        fig = plt.figure(figsize=(10, 10))
+        try:
+            plt.title(f"{title} - {map_name}")
+            self._setup_map_plot(map_name)
+            plt.hist2d(x_vals, y_vals, bins=64, cmap="magma", cmin=1)
+            plt.colorbar()
 
-        # Plot styling
-        plt.title(f"{title} - {map_name}")
-
-        # Create heatmap
-        self._setup_map_plot(map_name)
-
-        # Plot using hist2d instead of seaborn
-        plt.hist2d(x_vals, y_vals, bins=64, cmap="magma", cmin=1)
-        plt.colorbar()
-
-        # Save
-        filename = f"{map_name}_{title.lower().replace(' ', '_')}.png"
-        path = self.output_dir / filename
-        plt.savefig(str(path))
-        plt.close()
-        return str(path)
+            filename = f"{map_name}_{title.lower().replace(' ', '_')}.png"
+            path = self.output_dir / filename
+            plt.savefig(str(path))
+            return str(path)
+        finally:
+            plt.close(fig)
 
     def plot_round_errors(self, round_id, deaths, bad_decisions, map_name):
         """
         Plots specific points where the user died or made bad decisions.
         """
-        plt.figure(figsize=(10, 10))
-        self._setup_map_plot(map_name)
+        fig = plt.figure(figsize=(10, 10))
+        try:
+            self._setup_map_plot(map_name)
 
-        # Plot deaths
-        dx = [d["x"] for d in deaths]
-        dy = [d["y"] for d in deaths]
-        plt.scatter(dx, dy, c="red", marker="x", s=100, label="Deaths")
+            dx = [d["x"] for d in deaths]
+            dy = [d["y"] for d in deaths]
+            plt.scatter(dx, dy, c="red", marker="x", s=100, label="Deaths")
 
-        # Plot Bad Decisions
-        bx = [b["x"] for b in bad_decisions]
-        by = [b["y"] for b in bad_decisions]
-        plt.scatter(bx, by, c="orange", marker="P", s=100, label="Coach Flag")
+            bx = [b["x"] for b in bad_decisions]
+            by = [b["y"] for b in bad_decisions]
+            plt.scatter(bx, by, c="orange", marker="P", s=100, label="Coach Flag")
 
-        plt.legend()
-        plt.title(f"Key Events - Round {round_id}")
+            plt.legend()
+            plt.title(f"Key Events - Round {round_id}")
 
-        filename = f"round_{round_id}_analysis.png"
-        path = self.output_dir / filename
-        plt.savefig(str(path))
-        plt.close()
-        return str(path)
+            filename = f"round_{round_id}_analysis.png"
+            path = self.output_dir / filename
+            plt.savefig(str(path))
+            return str(path)
+        finally:
+            plt.close(fig)
 
     def _setup_map_plot(self, map_name):
         """Helper to set up map bounds and background image."""
