@@ -111,7 +111,11 @@ class DemoLoader:
             rows_df = parser.parse_ticks(fields)
             for row in rows_df.itertuples():
                 t = int(getattr(row, "tick", 0))
-                sid = int(getattr(row, "steamid", 0) or 0)
+                # C-08: Guard against NULL steamid/entity_id in tick data
+                sid_raw = getattr(row, "steamid", None)
+                if sid_raw is None:
+                    continue
+                sid = int(sid_raw or 0)
                 if sid != 0:
                     if t not in pos_by_tick:
                         pos_by_tick[t] = {}
@@ -235,6 +239,10 @@ class DemoLoader:
                     for ev_name in event_list:
                         df = data.get(ev_name, pd.DataFrame())
                         for row in df.itertuples():
+                            # C-08: Guard against NULL entity_id in tick data
+                            eid_raw = getattr(row, "entityid", None)
+                            if eid_raw is None:
+                                continue
                             st = int(row.tick)
                             et = st + (dur_ticks or MAX_NADE_DURATION)
                             if not dur_ticks:  # Used MAX_NADE_DURATION fallback
@@ -243,7 +251,7 @@ class DemoLoader:
                             tag = "flash" if n_type == NadeType.FLASH else "grenade"
                             t_tick, t_pos = get_throw_data(st, sid, tag)
                             nade = NadeState(
-                                base_id=int(getattr(row, "entityid", 0)),
+                                base_id=int(eid_raw),
                                 nade_type=n_type,
                                 x=float(row.x),
                                 y=float(row.y),

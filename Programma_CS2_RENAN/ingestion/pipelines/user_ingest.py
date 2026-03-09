@@ -43,7 +43,9 @@ def _map_and_pipeline_user(demo_path, rounds_df, db_manager, processed_dir):
     )
     db_manager.upsert(match_stats)
     _trigger_ml_pipeline(db_manager, demo_name, match_stats_dict)
+    # R3-H03: Only archive after all pipeline steps succeed — if we get here, no exception was raised
     _archive_user_demo(demo_path, processed_dir)
+    logger.info("Demo archived after successful pipeline: %s", demo_path.name)
 
 
 def _trigger_ml_pipeline(db_manager, demo_name, stats):

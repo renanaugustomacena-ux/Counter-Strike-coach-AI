@@ -68,7 +68,21 @@ WEAPON_CLASS_MAP: Dict[str, float] = {
     "sawedoff": 1.0,
     "m249": 1.0,
     "negev": 1.0,
+    # H-12: Grenades = 0.1 (utility, not a primary weapon class)
+    "flashbang": 0.1,
+    "smokegrenade": 0.1,
+    "hegrenade": 0.1,
+    "molotov": 0.1,
+    "incgrenade": 0.1,
+    "decoy": 0.1,
+    # H-12: Special equipment = 0.05
+    "taser": 0.05,
+    "c4": 0.05,
 }
+
+# H-12: Sentinel for truly unknown weapons — logged at WARNING on first occurrence
+_UNKNOWN_WEAPON_DEFAULT = 0.1
+_unknown_weapons_seen: set = set()
 
 
 class FeatureExtractor:
@@ -269,8 +283,11 @@ class FeatureExtractor:
             weapon_name = weapon_name[7:]
         weapon_class = WEAPON_CLASS_MAP.get(weapon_name, None)
         if weapon_class is None:
-            _logger.debug("H-12: Unknown weapon '%s' — using default class 0.1", weapon_name)
-            weapon_class = 0.1
+            # H-12: Log unknown weapons at WARNING on first occurrence for map completeness
+            if weapon_name not in _unknown_weapons_seen and weapon_name != "unknown":
+                _unknown_weapons_seen.add(weapon_name)
+                _logger.warning("H-12: Unknown weapon '%s' — add to WEAPON_CLASS_MAP", weapon_name)
+            weapon_class = _UNKNOWN_WEAPON_DEFAULT
         vec[19] = weapon_class
 
         # Context-dependent features (20-24): Read from tick_data first (enriched
