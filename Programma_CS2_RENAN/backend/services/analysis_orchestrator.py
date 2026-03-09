@@ -296,6 +296,10 @@ class AnalysisOrchestrator:
                 "hegrenade_throw": "he_grenade",
             }
 
+            # O-02: verify 'team' column exists before accessing it
+            if "team" not in tick_data.columns:
+                return insights
+
             impacts = []
             for _, event in utility_events.iterrows():
                 tick = event["tick"]

@@ -111,6 +111,9 @@ class EntropyAnalyzer:
 
         probs = grid.ravel() / total
         probs = probs[probs > 0]
+        # E-02-alt: if all probabilities were zero/sub-normal, entropy is 0
+        if len(probs) == 0:
+            return 0.0
 
         # AC-06-01: clip to avoid log2(0) from floating-point underflow
         probs = np.clip(probs, np.finfo(np.float32).tiny, None)

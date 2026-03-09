@@ -18,6 +18,9 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 _logger = get_logger("cs2analyzer.vectorizer")
 
+# P-VEC-01: one-time warning flag for missing map_name during z_penalty
+_z_penalty_warned = False
+
 # Feature vector dimension - this is the contract with the neural network
 METADATA_DIM = 25
 
@@ -254,6 +257,13 @@ class FeatureExtractor:
 
             vec[15] = compute_z_penalty(pos_z, map_name)
         else:
+            # P-VEC-01: z_penalty defaults to 0.0 when map_name unavailable.
+            # Callers SHOULD provide map_name for feature parity with training.
+            global _z_penalty_warned
+            if not _z_penalty_warned:
+                _logger.warning("P-VEC-01: map_name not provided — z_penalty defaults to 0.0. "
+                                "Feature parity with training may be degraded.")
+                _z_penalty_warned = True
             vec[15] = 0.0
 
         # 16: KAST estimate (Kill/Assist/Survive/Trade participation ratio)

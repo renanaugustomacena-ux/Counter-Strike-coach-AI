@@ -30,6 +30,25 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.hybrid_coaching")
 
+# H-03: Fallback baseline with version annotation so staleness is traceable.
+# Source: HLTV professional averages, January 2024 snapshot.
+_FALLBACK_BASELINE_VERSION = "2024-01"
+_FALLBACK_BASELINE_SOURCE = "HLTV 2024 January professional averages"
+_FALLBACK_BASELINE = {
+    "avg_kills": 0.78,
+    "avg_deaths": 0.62,
+    "avg_adr": 82.0,
+    "avg_hs": 0.52,
+    "avg_kast": 0.74,
+    "kd_ratio": 1.20,
+    "impact_rounds": 0.35,
+    "accuracy": 0.22,
+    "econ_rating": 1.05,
+    "rating": 1.15,
+    "utility_damage": 45.0,
+    "entry_rate": 0.25,
+}
+
 
 class InsightPriority(Enum):
     """Priority levels for coaching insights."""
@@ -170,20 +189,12 @@ class HybridCoachingEngine:
             # _using_fallback_baseline=True causes insights to be tagged with
             # baseline_quality="degraded" so callers can display a warning (F4-02).
             self._using_fallback_baseline = True
-            return {
-                "avg_kills": 0.78,
-                "avg_deaths": 0.62,
-                "avg_adr": 82.0,
-                "avg_hs": 0.52,
-                "avg_kast": 0.74,
-                "kd_ratio": 1.20,
-                "impact_rounds": 0.35,
-                "accuracy": 0.22,
-                "econ_rating": 1.05,
-                "rating": 1.15,
-                "utility_damage": 45.0,
-                "entry_rate": 0.25,
-            }
+            logger.warning(
+                "H-03: Using fallback baseline v%s (%s)",
+                _FALLBACK_BASELINE_VERSION,
+                _FALLBACK_BASELINE_SOURCE,
+            )
+            return dict(_FALLBACK_BASELINE)
 
     def generate_insights(
         self,
