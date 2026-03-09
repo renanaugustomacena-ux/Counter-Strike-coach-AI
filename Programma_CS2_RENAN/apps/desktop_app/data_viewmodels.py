@@ -9,7 +9,7 @@ and coaching_chat_vm.py:
 - Clock.schedule_once to marshal results back to the UI thread
 """
 
-from threading import Thread
+from threading import Event, Thread
 from typing import Optional
 
 from kivy.clock import Clock
@@ -34,13 +34,23 @@ class MatchHistoryViewModel(EventDispatcher):
     is_loading = BooleanProperty(False)
     error_message = StringProperty("")
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # DV-01: Cancellation event to discard stale results from superseded loads
+        self._cancel = Event()
+
     def load_matches(self):
         # DA-DV-01: Prevent duplicate background loads from rapid on_enter calls
         if self.is_loading:
             return
+        self._cancel.clear()
         self.is_loading = True
         self.error_message = ""
         Thread(target=self._bg_load, daemon=True).start()
+
+    def cancel(self):
+        """DV-01: Signal background thread to discard results."""
+        self._cancel.set()
 
     def _bg_load(self):
         try:
@@ -79,10 +89,17 @@ class MatchHistoryViewModel(EventDispatcher):
                     }
                     for m in results
                 ]
+            # DV-01: Discard results if cancelled while loading
+            if self._cancel.is_set():
+                return
             Clock.schedule_once(lambda dt: self._on_loaded(match_data), 0)
         except Exception as e:
             logger.error("match_history_vm.load_failed: %s", e)
             Clock.schedule_once(lambda dt: self._on_error("Error loading matches."), 0)
+        finally:
+            # DV-02: Guarantee is_loading resets even on unexpected errors
+            if self._cancel.is_set():
+                Clock.schedule_once(lambda dt: setattr(self, "is_loading", False), 0)
 
     def _on_loaded(self, data):
         self.matches = data
@@ -109,6 +126,10 @@ class MatchDetailViewModel(EventDispatcher):
     error_message = StringProperty("")
 
     def load_detail(self, demo_name: str):
+        # DV-03: Validate demo_name before spawning background thread
+        if not demo_name or not demo_name.strip():
+            self.error_message = "No demo selected."
+            return
         # DA-DV-01: Prevent duplicate background loads
         if self.is_loading:
             return

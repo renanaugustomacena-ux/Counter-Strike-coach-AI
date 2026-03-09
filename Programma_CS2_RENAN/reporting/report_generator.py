@@ -15,7 +15,11 @@ class MatchReportGenerator:
         self.viz = MatchVisualizer()
         # DA-RG-01: Use absolute path anchored to config, not relative to cwd
         from Programma_CS2_RENAN.core.config import USER_DATA_ROOT
-        self.output_dir = Path(USER_DATA_ROOT) / "reports"
+        self.output_dir = Path(USER_DATA_ROOT).resolve() / "reports"
+        # RG-01: Validate output_dir stays under USER_DATA_ROOT
+        if not str(self.output_dir).startswith(str(Path(USER_DATA_ROOT).resolve())):
+            _logger.error("RG-01: Report output_dir escaped USER_DATA_ROOT: %s", self.output_dir)
+            self.output_dir = Path(USER_DATA_ROOT).resolve() / "reports"
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def generate_report(self, demo_path):
@@ -75,7 +79,12 @@ class MatchReportGenerator:
 
                 f.write("## 1. Positioning Heatmap\n")
                 f.write("This map shows your primary areas of operation.\n")
-                f.write(f"![Heatmap]({Path(heatmap_path).resolve()})\n\n")
+                # RG-02: Use relative path to avoid exposing absolute filesystem structure
+                try:
+                    rel_heatmap = Path(heatmap_path).resolve().relative_to(report_path.parent.resolve())
+                except ValueError:
+                    rel_heatmap = Path(heatmap_path).name
+                f.write(f"![Heatmap]({rel_heatmap})\n\n")
 
                 f.write("## 2. Fundamental Errors\n")
                 f.write("- Analysis of deaths shows clustering at X, Y.\n")
