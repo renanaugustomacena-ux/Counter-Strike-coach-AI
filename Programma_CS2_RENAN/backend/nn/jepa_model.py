@@ -880,6 +880,9 @@ class VLJEPACoachingModel(JEPACoachingModel):
         Returns:
             List of (concept_name, probability) for the first sample in batch.
         """
+        # NN-JM-01: Guard against empty batch (batch_size=0).
+        if probs.shape[0] == 0:
+            return []
         k = min(k, self.num_concepts)
         top_k = torch.topk(probs[0], k, dim=-1)
         return [

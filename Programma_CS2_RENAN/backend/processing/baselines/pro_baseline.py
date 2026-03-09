@@ -108,7 +108,9 @@ def _load_pro_from_db(map_name: Optional[str] = None):
 
                 stats = player_stats[pid]
                 stats["rating"].append(c.rating_2_0)
-                stats["kd_ratio"].append(c.kpr / max(0.1, c.dpr))
+                # P-PB-01: Skip K/D for near-zero deaths to avoid inflated ratios.
+                if c.dpr >= 0.01:
+                    stats["kd_ratio"].append(c.kpr / c.dpr)
                 stats["avg_kills"].append(c.kpr)
                 stats["avg_deaths"].append(c.dpr)
                 stats["avg_adr"].append(c.adr)
