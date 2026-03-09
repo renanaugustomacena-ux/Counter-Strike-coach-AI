@@ -1,5 +1,7 @@
 import json
+import os
 import shutil
+import tempfile
 import threading
 from pathlib import Path
 from typing import Set
@@ -40,9 +42,22 @@ class DemoRegistry:
             except Exception as e:
                 logger.warning("Failed to create registry backup: %s", e)
 
-        # F6-20: Serialize set back to list for JSON compatibility
-        with open(self.registry_path, "w") as f:
-            json.dump({"processed_demos": list(self._processed)}, f, indent=4)
+        # R3-H04: Write-ahead pattern — write to temp file, then atomic rename.
+        # Prevents corruption if process crashes mid-write.
+        parent = self.registry_path.parent
+        parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp_path = tempfile.mkstemp(dir=str(parent), suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w") as f:
+                json.dump({"processed_demos": list(self._processed)}, f, indent=4)
+            os.replace(tmp_path, str(self.registry_path))
+        except BaseException:
+            # Clean up temp file on any failure
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
 
     def is_processed(self, demo_name: str) -> bool:
         with self._lock:

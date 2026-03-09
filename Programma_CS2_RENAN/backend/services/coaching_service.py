@@ -1,3 +1,4 @@
+import threading
 from typing import Dict, List, Optional
 
 from Programma_CS2_RENAN.backend.coaching.correction_engine import generate_corrections
@@ -705,11 +706,14 @@ def _create_insight_obj(p_name, d_name, c):
 
 
 _coaching_service: CoachingService = None  # type: ignore[assignment]
+_coaching_service_lock = threading.Lock()  # AC-23-01: thread-safe singleton
 
 
 def get_coaching_service() -> CoachingService:
     """Singleton factory — consistent with other service accessors (F5-38)."""
     global _coaching_service
     if _coaching_service is None:
-        _coaching_service = CoachingService()
+        with _coaching_service_lock:
+            if _coaching_service is None:
+                _coaching_service = CoachingService()
     return _coaching_service
