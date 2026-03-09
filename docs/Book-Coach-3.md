@@ -1,16 +1,15 @@
 ## 9. Schema del database e ciclo di vita dei dati
 
-Il progetto utilizza **SQLModel** (Pydantic + SQLAlchemy) con SQLite (modalità WAL) e un'**architettura tri-database** specializzata. 20 tabelle SQLModel principali distribuite su 3 database:
+Il progetto utilizza **SQLModel** (Pydantic + SQLAlchemy) con SQLite (modalità WAL) e un'**architettura dual-database** specializzata. 19 tabelle SQLModel principali distribuite su 2 database:
 
-1. **`database.db`** — Database principale dell'applicazione. Contiene tutte le tabelle core: statistiche giocatori, stato del coach, task di ingestione, insight di coaching, profili utente, notifiche di sistema.
-2. **`knowledge_base.db`** — Database della conoscenza. Contiene la base RAG (`TacticalKnowledge`), la banca esperienze COPER (`CoachingExperience`), e il Knowledge Graph (`kg_entities`, `kg_relations`).
-3. **`hltv_metadata.db`** — Database dei metadati professionali. Contiene i profili dei giocatori pro (`ProPlayer`, `ProTeam`), le schede statistiche (`ProPlayerStatCard`) e lo storico dei download (`HLTVDownload`).
+1. **`database.db`** — Database monolite principale dell'applicazione (16 tabelle). Contiene tutte le tabelle core: statistiche giocatori, stato del coach, task di ingestione, insight di coaching, profili utente, notifiche di sistema, base RAG (`TacticalKnowledge`), banca esperienze COPER (`CoachingExperience`), risultati partite, calibrazioni e soglie di ruolo.
+2. **`hltv_metadata.db`** — Database dei metadati professionali (3 tabelle). Contiene i profili dei giocatori pro (`ProPlayer`, `ProTeam`) e le schede statistiche (`ProPlayerStatCard`). Separato dal monolite perché viene scritto da un processo separato (HLTV sync service) per eliminare la contesa WAL con i daemon del session engine.
 
-Questa separazione garantisce che le operazioni di scrittura intensive (ingestione demo → `database.db`) non contendano lock WAL con le operazioni di lettura semantica (query RAG → `knowledge_base.db`) o con lo scraping HLTV (`hltv_metadata.db`).
+Questa separazione garantisce che le operazioni di scrittura intensive del session engine (ingestione demo, addestramento ML → `database.db`) non contendano lock WAL con lo scraping HLTV in processo separato (`hltv_metadata.db`).
 
 ```mermaid
 flowchart TB
-    subgraph DB1["database.db (Core Applicazione)"]
+    subgraph DB1["database.db (Core + Conoscenza — 16 tabelle)"]
         PMS_DB["PlayerMatchStats"]
         RS_DB["RoundStats"]
         CS_DB["CoachState"]
@@ -18,28 +17,25 @@ flowchart TB
         CI_DB["CoachingInsight"]
         PP_DB["PlayerProfile"]
         SN_DB["ServiceNotification"]
-        CALIB["CalibrationSnapshot"]
-        ROLE_TH["RoleThresholdRecord"]
-    end
-    subgraph DB2["knowledge_base.db (Conoscenza)"]
         TK_DB["TacticalKnowledge<br/>(RAG 384-dim)"]
         CE_DB["CoachingExperience<br/>(COPER)"]
-        KG_DB["Knowledge Graph<br/>(kg_entities, kg_relations)"]
+        CALIB["CalibrationSnapshot"]
+        ROLE_TH["RoleThresholdRecord"]
+        EXT_DB["Ext_PlayerPlaystyle +<br/>Ext_TeamRoundStats"]
+        MATCH_DB["MatchResult + MapVeto"]
+        PTS_DB["PlayerTickState"]
     end
-    subgraph DB3["hltv_metadata.db (Dati Pro)"]
+    subgraph DB2["hltv_metadata.db (Dati Pro — 3 tabelle)"]
         PRO_DB["ProPlayer"]
         TEAM_DB["ProTeam"]
         STAT_DB["ProPlayerStatCard"]
-        DL_DB["HLTVDownload"]
     end
-    DB1 -->|"riferimento incrociato<br/>demo_name, player_name"| DB2
-    DB3 -->|"baseline pro per<br/>confronto coaching"| DB1
+    DB2 -->|"baseline pro per<br/>confronto coaching"| DB1
     style DB1 fill:#4a9eff,color:#fff
-    style DB2 fill:#51cf66,color:#fff
-    style DB3 fill:#ffd43b,color:#000
+    style DB2 fill:#ffd43b,color:#000
 ```
 
-> **Analogia:** Il database è l'**archivio** del sistema: ogni informazione ha un cassetto e una cartella specifici. L'architettura tri-database è come avere **tre archivi specializzati**: l'archivio principale (dati del gioco quotidiano), la biblioteca (conoscenze e esperienze), e lo schedario dei professionisti (dati HLTV). Separandoli, molte persone possono consultare libri in biblioteca mentre qualcun altro aggiorna lo schedario principale senza bloccarsi a vicenda. SQLite in modalità WAL consente a più programmi di leggere ciascun archivio contemporaneamente. SQLModel combina Pydantic (per la convalida dei dati: "assicurati che il campo età sia effettivamente un numero") con SQLAlchemy (per le operazioni sul database: "salva questo nella tabella giusta"). Le 20 tabelle sono organizzate come l'archivio scolastico: profili degli studenti, punteggi dei test, appunti di classe, valutazioni degli insegnanti e libri della biblioteca.
+> **Analogia:** Il database è l'**archivio** del sistema: ogni informazione ha un cassetto e una cartella specifici. L'architettura dual-database è come avere **due archivi specializzati**: l'archivio principale (dati del gioco, conoscenze tattiche, esperienze di coaching — tutto in un unico grande schedario WAL) e lo schedario dei professionisti (dati HLTV, aggiornato da un processo separato per evitare contesa). Separandoli, il processo principale può scrivere e leggere dall'archivio generale mentre il servizio HLTV aggiorna lo schedario dei pro senza bloccarsi a vicenda. SQLite in modalità WAL consente a più programmi di leggere ciascun archivio contemporaneamente. SQLModel combina Pydantic (per la convalida dei dati: "assicurati che il campo età sia effettivamente un numero") con SQLAlchemy (per le operazioni sul database: "salva questo nella tabella giusta"). Le 19 tabelle sono organizzate come l'archivio scolastico: profili degli studenti, punteggi dei test, appunti di classe, valutazioni degli insegnanti e libri della biblioteca.
 
 ```mermaid
 erDiagram
@@ -170,12 +166,6 @@ erDiagram
         string team_name "indexed"
         string map_name
     }
-    HLTVDownload {
-        int id PK
-        string match_id "unique indexed"
-        string teams
-        string event
-    }
     CalibrationSnapshot {
         int id PK
         string calibration_type "indexed"
@@ -262,28 +252,47 @@ La tabella PlayerMatchStats contiene tutte le statistiche aggregate per giocator
 | Campo | Tipo | Descrizione |
 | ----- | ---- | ----------- |
 | `id` | Integer PK | Identificatore |
-| `category` | String | "positioning" / "utility" / "economy" / "strategy" |
-| `title` | String | Titolo del documento |
-| `content` | Text | Testo completo del documento |
-| `embedding` | JSON | Vettore 384-dim (sentence-transformers) serializzato |
-| `source` | String | Origine: "manual" / "hltv" / "pro_demo" |
-| `relevance_score` | Float | Score di rilevanza per ranking |
+| `title` | String | Titolo del documento (indexed) |
+| `description` | String | Descrizione del contenuto tattico |
+| `category` | String | "positioning" / "economy" / "utility" / "aim" (indexed) |
+| `map_name` | String | Mappa specifica (indexed, opzionale) |
+| `situation` | String | Contesto situazionale: "T-side pistol round", "CT retake A site" |
+| `pro_example` | String | Riferimento a demo pro (opzionale) |
+| `embedding` | String | Vettore 384-dim JSON (sentence-transformers) |
+| `created_at` | DateTime | Timestamp di creazione |
+| `usage_count` | Integer | Contatore utilizzo |
 
-La ricerca semantica RAG funziona calcolando la **cosine similarity** tra l'embedding della query utente e gli embedding precomputati di ogni documento. I top-3 risultati con similarity > 0.5 vengono usati per arricchire il contesto di coaching.
+La ricerca semantica RAG funziona calcolando la **cosine similarity** tra l'embedding della query utente e gli embedding precomputati di ogni documento. I top-3 risultati con similarity > 0.5 vengono usati per arricchire il contesto di coaching. Il campo `situation` consente il filtraggio contestuale (es. "T-side pistol round") prima della ricerca semantica.
 
-**`CoachingExperience`** — la banca COPER:
+**`CoachingExperience`** — la banca COPER (22+ campi):
 
 | Campo | Tipo | Descrizione |
 | ----- | ---- | ----------- |
 | `id` | Integer PK | Identificatore |
-| `context` | JSON | Stato del giocatore al momento del consiglio |
-| `action_taken` | String | Il consiglio dato |
-| `outcome` | String | "positive" / "negative" / "neutral" |
-| `effectiveness` | Float | Score EMA 0.0-1.0 con decadimento |
-| `created_at` | DateTime | Quando l'esperienza è stata registrata |
-| `match_reference` | String | Demo di riferimento |
+| `context_hash` | String | Hash dello stato di gioco per lookup rapido (indexed) |
+| `map_name` | String | Mappa (indexed) |
+| `round_phase` | String | "pistol" / "eco" / "full_buy" / "force" |
+| `side` | String | "T" / "CT" |
+| `position_area` | String | "A-site" / "Mid" / etc. (indexed, opzionale) |
+| `game_state_json` | String | Snapshot completo del tick (max 16KB, validato con `field_validator`) |
+| `action_taken` | String | "pushed" / "held_angle" / "rotated" / "used_utility" / etc. |
+| `outcome` | String | "kill" / "death" / "trade" / "objective" / "survived" (indexed) |
+| `delta_win_prob` | Float | Variazione della probabilità di vittoria da questa azione |
+| `confidence` | Float | Affidabilità/generalizzabilità 0.0-1.0 |
+| `usage_count` | Integer | Quante volte recuperata per coaching |
+| `pro_match_id` | Integer FK | Riferimento a MatchResult (ON DELETE SET NULL) |
+| `pro_player_name` | String | Nome giocatore pro di riferimento (indexed, opzionale) |
+| `embedding` | String | Vettore 384-dim JSON per ricerca semantica (opzionale) |
+| `source_demo` | String | Demo di origine (opzionale) |
+| `created_at` | DateTime | Timestamp di creazione |
+| `outcome_validated` | Boolean | Se l'esito è stato validato |
+| `effectiveness_score` | Float | Score -1.0 a 1.0 |
+| `follow_up_match_id` | Integer | Partita di follow-up per tracking |
+| `times_advice_given` | Integer | Quante volte il consiglio è stato dato |
+| `times_advice_followed` | Integer | Quante volte il consiglio è stato seguito |
+| `last_feedback_at` | DateTime | Ultimo feedback ricevuto |
 
-Il sistema COPER utilizza queste esperienze per **imparare dai propri consigli**: se un consiglio dato in passato in una situazione simile ha avuto esito positivo (il giocatore ha migliorato in partite successive), quel tipo di consiglio viene prioritizzato. Esperienze negative vengono de-prioritizzate via EMA decay.
+Il sistema COPER utilizza queste esperienze per **imparare dai propri consigli**: il campo `context_hash` consente il lookup rapido di situazioni simili, `outcome` e `delta_win_prob` misurano l'efficacia dell'azione, e il ciclo di feedback (`outcome_validated`, `times_advice_given/followed`, `effectiveness_score`) consente al sistema di prioritizzare consigli che hanno storicamente prodotto risultati positivi. Il campo `game_state_json` è limitato a 16KB per prevenire crescita incontrollata del database.
 
 > **Analogia:** Il ciclo di vita dei dati mostra **come le informazioni fluiscono attraverso il sistema nel tempo**, come il tracciamento di un pacco dalla fabbrica alla consegna. Prima arrivano le registrazioni delle partite (100.000 punti dati per partita!). Poi le statistiche dei giocatori professionisti vengono estratte da HLTV (come scaricare un almanacco sportivo). Vengono importati file CSV esterni (come ottenere dati storici). L'IA elabora tutto, genera consigli per gli allenatori, apprende le soglie di ruolo e registra costantemente lo stato di salute del sistema. I backup vengono eseguiti automaticamente: 7 copie giornaliere e 4 copie settimanali, come se salvassi i tuoi compiti sia sul computer che su un'unità USB, per ogni evenienza.
 
@@ -338,10 +347,10 @@ P1 --> P2["Fase 2: STUDIA IL LIBRO DI TESTO (oltre 50 partite pro)<br/>Supervisi
 P2 --> P3["Fase 3: PERSONALIZZA (oltre 50 partite utente)<br/>Trasferisci l'apprendimento: Adattati a QUESTO utente<br/>Sconfitta: MSE(pred, user_stats)"]
 P3 --> P4["Fase 4: MASTER CLASS (oltre 200 partite totali)<br/>Multi-task: Strategia + Valore + Sparsity<br/>+ Posizione (con penalità Z)<br/>Coach RAP completo attivato!"]
 
-stile P1 riempimento:#4a9eff,colore:#fff
-stile P2 riempimento:#228be6,colore:#fff
-stile P3 riempimento:#15aabf,colore:#fff
-stile P4 riempimento:#ff6b6b,colore:#fff
+style P1 fill:#4a9eff,color:#fff
+style P2 fill:#228be6,color:#fff
+style P3 fill:#15aabf,color:#fff
+style P4 fill:#ff6b6b,color:#fff
 ```
 
 **Protocollo VL-JEPA Two-Stage (Allineamento Concetti):**
@@ -938,7 +947,7 @@ flowchart TB
 ### 12.6 Pipeline di Ingestione (`ingestion/`)
 
 **Directory:** `Programma_CS2_RENAN/ingestion/`
-**File chiave:** `demo_loader.py`, `steam_locator.py`, `integrity.py`, `registry/`, `pipelines/user_ingest.py`, `pipelines/pro_ingest.py`
+**File chiave:** `demo_loader.py`, `steam_locator.py`, `integrity.py`, `registry/`, `pipelines/user_ingest.py`, `pipelines/json_tournament_ingestor.py`
 
 La pipeline di ingestione è il **percorso completo** che un file `.dem` compie dal filesystem fino a diventare insight di coaching nel database. È orchestrata dal daemon Hunter (scoperta) e dal daemon Digester (elaborazione).
 
@@ -978,53 +987,39 @@ Il `DemoLoader` è il wrapper attorno a **demoparser2** (libreria Rust ad alte p
 
 **FeatureExtractor** (`backend/processing/feature_engineering/vectorizer.py`):
 
-Il FeatureExtractor è il componente che trasforma i dati grezzi del demo in **vettori numerici a 25 dimensioni** (`METADATA_DIM=25`) utilizzabili dalle reti neurali:
+Il FeatureExtractor è il componente che trasforma i dati grezzi del demo in **vettori numerici a 25 dimensioni** (`METADATA_DIM=25`) utilizzabili dalle reti neurali. **Importante:** queste sono feature **a livello di tick** (128 Hz), non statistiche aggregate a livello di partita. Ogni singolo frame di gioco produce un vettore 25-dim che cattura lo stato istantaneo del giocatore:
 
-| Feature (1-10) | Tipo | Range |
-| --------------- | ---- | ----- |
-| kills | Count | 0-50 |
-| deaths | Count | 0-50 |
-| assists | Count | 0-30 |
-| adr (Average Damage per Round) | Float | 0-200 |
-| kast (Kill/Assist/Survive/Trade %) | Float | 0.0-1.0 |
-| headshot_percentage | Float | 0.0-1.0 |
-| flash_assists | Count | 0-20 |
-| trade_kills | Count | 0-15 |
-| first_kills | Count | 0-15 |
-| clutch_wins | Count | 0-10 |
-
-| Feature (11-20) | Tipo | Range |
-| ---------------- | ---- | ----- |
-| entry_attempts | Count | 0-20 |
-| survival_rate | Float | 0.0-1.0 |
-| utility_damage | Float | 0-500 |
-| enemies_flashed | Count | 0-50 |
-| noscope_kills | Count | 0-10 |
-| wallbang_kills | Count | 0-10 |
-| thrusmoke_kills | Count | 0-5 |
-| blind_kills | Count | 0-5 |
-| rounds_played | Count | 1-50 |
-| total_rounds | Count | 1-50 |
-
-| Feature (21-25) | Tipo | Range |
-| ---------------- | ---- | ----- |
-| hltv_rating_2_0 | Float | 0.0-3.0 |
-| avg_engagement_distance | Float | 0-3000 |
-| position_quality_score | Float | 0.0-1.0 |
-| economy_efficiency | Float | 0.0-1.0 |
-| team_contribution | Float | 0.0-1.0 |
+| Dim | Feature | Tipo | Range | Descrizione |
+| --- | ------- | ---- | ----- | ----------- |
+| 0 | health | Float | [0, 1] | Salute normalizzata |
+| 1 | armor | Float | [0, 1] | Armatura normalizzata |
+| 2 | has_helmet | Binary | 0/1 | Casco equipaggiato |
+| 3 | has_defuser | Binary | 0/1 | Kit defuse equipaggiato |
+| 4 | equipment_value | Float | [0, 1] | Valore equipaggiamento normalizzato |
+| 5 | is_crouching | Binary | 0/1 | Accucciato |
+| 6 | is_scoped | Binary | 0/1 | Mirino attivo (scope) |
+| 7 | is_blinded | Binary | 0/1 | Accecato da flash |
+| 8 | enemies_visible | Float | [0, 1] | Nemici visibili (normalizzato, clamped) |
+| 9 | pos_x | Float | [-1, 1] | Posizione X (normalizzata ±pos_xy_extent) |
+| 10 | pos_y | Float | [-1, 1] | Posizione Y (normalizzata ±pos_xy_extent) |
+| 11 | pos_z | Float | [0, 1] | Posizione Z (normalizzata, gestisce Nuke/Vertigo) |
+| 12 | view_x_sin | Float | [-1, 1] | sin(yaw) — continuità ciclica angolo orizzontale |
+| 13 | view_x_cos | Float | [-1, 1] | cos(yaw) — continuità ciclica angolo orizzontale |
+| 14 | view_y | Float | [-1, 1] | Pitch normalizzato (angolo verticale) |
+| 15 | z_penalty | Float | [0, 1] | Distinzione livello verticale (penalità piano) |
+| 16 | kast_estimate | Float | [0, 1] | Stima KAST (rapporto partecipazione) |
+| 17 | map_id | Float | [0, 1] | Hash deterministico della mappa |
+| 18 | round_phase | Float | {0, 0.33, 0.66, 1} | Fase economica: pistol/eco/force/full_buy |
+| 19 | weapon_class | Float | {0–1.0} | Classe arma: 0=coltello, 0.2=pistola, 0.4=SMG, 0.6=fucile, 0.8=sniper, 1.0=pesante |
+| 20 | time_in_round | Float | [0, 1] | Secondi nel round / 115 (clamped) |
+| 21 | bomb_planted | Binary | 0/1 | Bomba piazzata |
+| 22 | teammates_alive | Float | [0, 1] | Compagni vivi (count / 4) |
+| 23 | enemies_alive | Float | [0, 1] | Nemici vivi (count / 5) |
+| 24 | team_economy | Float | [0, 1] | Media soldi squadra / 16000 (clamped) |
 
 **Normalizzazione e bounds:**
 
-Ogni feature viene normalizzata prima dell'input nei modelli ML. La normalizzazione avviene in due fasi:
-
-| Fase | Tipo | Applicata a | Formula |
-| ---- | ---- | ----------- | ------- |
-| 1 | **Clipping** | Tutte le feature | `clip(value, min_bound, max_bound)` — previene outlier estremi |
-| 2 | **Min-Max** | Feature con range noti | `(value - min) / (max - min)` → range [0, 1] |
-| 2b | **Z-score** | Feature gaussiane | `(value - mean) / std` → media 0, std 1 |
-
-La scelta tra Min-Max e Z-score è configurabile per feature tramite `HeuristicConfig` (esternalizzata in JSON). Le baseline di normalizzazione (mean, std, min, max) sono calcolate dal dataset di training e persistite per coerenza train/inference.
+La normalizzazione è integrata direttamente nel FeatureExtractor, con bounds configurabili tramite `HeuristicConfig` (esternalizzata in JSON). La codifica ciclica degli angoli di vista (sin/cos per lo yaw) previene discontinuità ai bordi 0°/360°. Il `z_penalty` distingue automaticamente i piani in mappe multilivello (Nuke, Vertigo). La classe arma utilizza una mappatura categorica ordinale (6 classi) definita nella costante `WEAPON_CLASS_MAP` (include anche granate=0.1 e equipaggiamento speciale=0.05).
 
 **Dataset Split Temporale:**
 
@@ -1044,7 +1039,7 @@ flowchart LR
 
 > **Analogia:** La divisione temporale è come preparare un **esame scolastico equo**. Le domande del test (15% test) devono riguardare argomenti insegnati DOPO gli esercizi (70% train) e i compiti a casa (15% val). Se le domande del test riguardassero argomenti studiati prima degli esercizi, lo studente (il modello) sembrerebbe più bravo di quanto sia realmente — un trucco, non vera conoscenza.
 
-> **Analogia del Feature Vector:** Il vettore a 25 dimensioni è come il **profilo biometrico completo** di un giocatore: 10 "misure corporee" (kills, deaths, ADR — le statistiche base), 5 "test di abilità speciale" (noscope, wallbang — le giocate spettacolari), 5 "indicatori di salute" (survival, economy — la gestione delle risorse), e 5 "valutazioni olistiche" (HLTV rating, position quality — i punteggi sintetici). Ogni modello ML del sistema legge questo profilo per "capire" il giocatore.
+> **Analogia del Feature Vector:** Il vettore a 25 dimensioni è come la **lettura istantanea di 25 sensori** attaccati al giocatore in ogni momento: 5 sensori "corporei" (salute, armatura, casco, defuse kit, valore equipaggiamento), 3 sensori "posturali" (accucciato, con mirino, accecato), 1 sensore "visivo" (nemici visibili), 6 sensori "spaziali" (posizione X/Y/Z e angoli di vista sin/cos/pitch), 1 sensore "livello" (penalità Z per Nuke/Vertigo), 1 sensore "tattico" (KAST), 3 sensori "contestuali" (mappa, fase economica, classe arma), e 5 sensori "situazionali" (tempo nel round, bomba piazzata, compagni/nemici vivi, economia di squadra). A differenza delle statistiche aggregate a livello di partita, ogni tick produce un nuovo vettore — 128 letture al secondo.
 
 **Enrich From Demo — Arricchimento post-parsing:**
 
@@ -1067,7 +1062,7 @@ Dopo il parsing base, `enrich_from_demo()` aggiunge metriche avanzate calcolate 
 | **SteamLocator** | `steam_locator.py` | Localizza automaticamente la cartella demo di CS2 via registro Steam / libraryfolders.vdf |
 | **IntegrityChecker** | `integrity.py` | Verifica che i file demo siano validi, completi e non corrotti prima del parsing |
 | **UserIngestPipeline** | `pipelines/user_ingest.py` | Pipeline completa per demo utente: parse → enrich → stats → coaching |
-| **ProIngestPipeline** | `pipelines/pro_ingest.py` | Pipeline per demo professionali: parse → enrich → stats (senza coaching) |
+| **JsonTournamentIngestor** | `pipelines/json_tournament_ingestor.py` | Importa dati torneo da file JSON strutturati |
 | **Registry** | `registry/registry.py` | Traccia tutte le demo processate, previene duplicati |
 | **ResourceManager** | `ingestion/resource_manager.py` | Gestione risorse hardware: CPU/RAM throttling, spazio disco |
 | **JsonTournamentIngestor** | `pipelines/json_tournament_ingestor.py` | Importa dati torneo da file JSON strutturati |
@@ -1216,63 +1211,63 @@ Il sistema di aiuto integrato fornisce supporto contestuale all'utente:
 **Directory:** `Programma_CS2_RENAN/backend/storage/`
 **File chiave:** `database.py`, `db_models.py`, `match_data_manager.py`, `storage_manager.py`, `maintenance.py`, `state_manager.py`, `stat_aggregator.py`, `backup.py`
 
-Il sistema di storage utilizza un'architettura a **tier multipli** basata su SQLite in modalità WAL (Write-Ahead Logging), che consente letture e scritture concorrenti senza blocchi.
+Il sistema di storage utilizza un'architettura **dual-database** basata su SQLite in modalità WAL (Write-Ahead Logging), che consente letture e scritture concorrenti senza blocchi.
 
-> **Analogia:** L'architettura di storage è come un **sistema bibliotecario a 3 piani**. Il **piano terra** (Tier 1/2, `database.db`) contiene il catalogo generale, le schede di tutti i lettori (giocatori), le recensioni dei critici (insight di coaching) e il registro dei prestiti (task di ingestione) — tutto in un unico grande schedario sempre disponibile. Il **primo piano** (Tier 3, `match_XXXX.db`) contiene i manoscritti originali completi (dati tick-per-tick delle partite) — ciascuno in una scatola separata per evitare che lo schedario del piano terra diventi troppo pesante. Il **seminterrato** (Tier 4, archivio opzionale) contiene le scatole vecchie che non servono spesso ma non vuoi buttare via. La modalità WAL è come avere una **porta girevole**: molte persone possono entrare a leggere contemporaneamente, e qualcuno può scrivere senza bloccare l'ingresso.
+> **Analogia:** L'architettura di storage è come un **sistema bibliotecario a 2 piani**. Il **piano terra** (`database.db`, 16 tabelle) contiene il catalogo generale, le schede di tutti i lettori (giocatori), la base di conoscenza tattica (RAG), la banca esperienze COPER, le recensioni dei critici (insight di coaching) e il registro dei prestiti (task di ingestione) — tutto in un unico grande schedario sempre disponibile. Lo **schedario separato** (`hltv_metadata.db`, 3 tabelle) contiene i profili dei giocatori professionisti e le loro statistiche — separato perché viene aggiornato da un processo diverso (HLTV sync) per evitare contesa di lock. Oltre a questi, i **database per-match** (`match_XXXX.db`) contengono i manoscritti originali completi (dati tick-per-tick delle partite) — ciascuno in una scatola separata per evitare che lo schedario principale diventi troppo pesante. La modalità WAL è come avere una **porta girevole**: molte persone possono entrare a leggere contemporaneamente, e qualcuno può scrivere senza bloccare l'ingresso.
 
 ```mermaid
 flowchart TB
-    subgraph T12["TIER 1/2: database.db (Monolite SQLite WAL)"]
+    subgraph T12["database.db (Monolite SQLite WAL — 16 tabelle)"]
         PMS["PlayerMatchStats<br/>(32 campi per giocatore/partita)"]
         CS["CoachState<br/>(stato globale del sistema)"]
         IT["IngestionTask<br/>(coda di lavoro)"]
         CI["CoachingInsight<br/>(consigli generati)"]
         PP["PlayerProfile<br/>(profilo utente)"]
-        TK["TacticalKnowledge<br/>(base RAG)"]
+        TK["TacticalKnowledge<br/>(base RAG 384-dim)"]
         CE["CoachingExperience<br/>(banca esperienza COPER)"]
         RS["RoundStats<br/>(statistiche per-round)"]
-        PRO["ProPlayer + ProTeam +<br/>ProPlayerStatCard"]
         SN["ServiceNotification<br/>(alert di sistema)"]
         EXT["Ext_PlayerPlaystyle +<br/>Ext_TeamRoundStats"]
+        CALIB_ST["CalibrationSnapshot +<br/>RoleThresholdRecord"]
+        MATCH_ST["MatchResult + MapVeto"]
     end
-    subgraph T3["TIER 3: match_XXXX.db (Per-Match SQLite)"]
+    subgraph T_HLTV["hltv_metadata.db (Dati Pro — 3 tabelle)"]
+        PRO["ProPlayer + ProTeam +<br/>ProPlayerStatCard"]
+    end
+    subgraph T3["match_XXXX.db (Per-Match SQLite)"]
         PTS["PlayerTickState<br/>(~100.000 righe per partita)<br/>Posizione, salute, arma<br/>ogni 1/128 di secondo"]
     end
-    subgraph T4["TIER 4: Archivio (Opzionale)"]
-        OLD["Demo vecchie<br/>(cold storage)"]
-    end
     T12 -->|"Riferimento"| T3
-    T3 -->|"Archiviazione"| T4
+    T_HLTV -->|"Baseline pro per<br/>confronto coaching"| T12
 
     style T12 fill:#4a9eff,color:#fff
-    style T3 fill:#ffd43b,color:#000
-    style T4 fill:#868e96,color:#fff
+    style T_HLTV fill:#ffd43b,color:#000
+    style T3 fill:#868e96,color:#fff
 ```
 
-**Le 20 tabelle SQLModel:**
+**Le 19 tabelle SQLModel:**
 
 | # | Tabella | Database | Categoria | Descrizione |
 | - | ------- | -------- | --------- | ----------- |
 | 1 | `PlayerMatchStats` | database.db | Core | Statistiche aggregate per giocatore/partita (32 campi) |
-| 2 | `PlayerTickState` | match_XXXX.db | Core | Stato per-tick (128 Hz), archiviato in DB separati |
+| 2 | `PlayerTickState` | database.db | Core | Stato per-tick (128 Hz), anche archiviato in DB per-match separati |
 | 3 | `PlayerProfile` | database.db | Utente | Profilo utente (nome, ruolo, Steam ID, quota mensile) |
 | 4 | `RoundStats` | database.db | Core | Statistiche isolate per round (uccisioni, valutazione, arricchimento) |
 | 5 | `CoachingInsight` | database.db | Coaching | Consigli generati dal servizio di coaching |
-| 6 | `CoachingExperience` | knowledge_base.db | Coaching | Banca esperienze COPER (contesto, esito, efficacia) |
+| 6 | `CoachingExperience` | database.db | Coaching | Banca esperienze COPER (contesto, esito, efficacia) |
 | 7 | `IngestionTask` | database.db | Sistema | Coda di lavoro per il daemon Digester |
 | 8 | `CoachState` | database.db | Sistema | Stato globale (training metrics, heartbeat, status) |
 | 9 | `ServiceNotification` | database.db | Sistema | Messaggi di errore/evento dei daemon → UI |
-| 10 | `TacticalKnowledge` | knowledge_base.db | Conoscenza | Base RAG (embedding 384-dim in JSON) |
+| 10 | `TacticalKnowledge` | database.db | Conoscenza | Base RAG (embedding 384-dim in JSON) |
 | 11 | `ProPlayer` | hltv_metadata.db | Pro | Profili giocatori professionisti |
 | 12 | `ProTeam` | hltv_metadata.db | Pro | Metadata squadre professionali |
 | 13 | `ProPlayerStatCard` | hltv_metadata.db | Pro | Statistiche stagionali per giocatore pro |
-| 14 | `HLTVDownload` | hltv_metadata.db | Pro | Tracking demo pro scaricate |
-| 15 | `Ext_PlayerPlaystyle` | database.db | Esterno | Dati stile di gioco da CSV (per NeuralRoleHead) |
-| 16 | `Ext_TeamRoundStats` | database.db | Esterno | Statistiche torneo esterne |
-| 17 | `MatchResult` | database.db | Partite | Esiti delle partite |
-| 18 | `MapVeto` | database.db | Partite | Storico selezione mappe |
-| 19 | `CalibrationSnapshot` | database.db | Sistema | Registro di calibrazione del modello di credenza (timestamp, campioni, risultato) |
-| 20 | `RoleThresholdRecord` | database.db | Sistema | Soglie apprese per la classificazione dei ruoli (persistite tra i riavvii) |
+| 14 | `Ext_PlayerPlaystyle` | database.db | Esterno | Dati stile di gioco da CSV (per NeuralRoleHead) |
+| 15 | `Ext_TeamRoundStats` | database.db | Esterno | Statistiche torneo esterne |
+| 16 | `MatchResult` | database.db | Partite | Esiti delle partite |
+| 17 | `MapVeto` | database.db | Partite | Storico selezione mappe |
+| 18 | `CalibrationSnapshot` | database.db | Sistema | Registro di calibrazione del modello di credenza (timestamp, campioni, risultato) |
+| 19 | `RoleThresholdRecord` | database.db | Sistema | Soglie apprese per la classificazione dei ruoli (persistite tra i riavvii) |
 
 **Enum di supporto (non tabelle):**
 
@@ -1378,7 +1373,8 @@ flowchart LR
 | --------- | ------ | ----- |
 | `check_same_thread` | `False` | Consente accesso multi-thread |
 | `timeout` | 30 secondi | Busy timeout per contesa WAL |
-| `pool_size` | 20 | Connessioni persistenti |
+| `pool_size` | 1 | Singolo scrittore SQLite (sicurezza single-writer) |
+| `max_overflow` | 4 | Connessioni overflow per picchi di carico |
 | WAL mode | Abilitato | Letture concorrenti illimitate |
 
 ---
@@ -1597,8 +1593,8 @@ flowchart TB
 
 | Daemon | Campo in CoachState | Valori tipici |
 | ------ | ------------------- | ------------- |
-| Hunter (scanner) | `ingest_status` | "Scanning", "Paused", "Error" |
-| Digester (worker) | `hltv_status` | "Processing", "Idle", "Error" |
+| Hunter (scanner) | `hltv_status` | "Scanning", "Paused", "Error" |
+| Digester (worker) | `ingest_status` | "Processing", "Idle", "Error" |
 | Teacher (trainer) | `ml_status` | "Learning", "Idle", "Error" |
 | Globale | `status` | "Paused", "Training", "Idle", "Error" |
 
@@ -2037,7 +2033,7 @@ flowchart TB
 | 1 | **Ambiente** | Python ≥ 3.10, dipendenze critiche presenti (torch, kivy, sqlmodel, demoparser2) |
 | 2 | **Import Core** | `config.py`, `spatial_data.py`, `lifecycle.py` — i moduli fondamentali si caricano senza errori |
 | 3 | **Import Backend** | `nn/`, `processing/`, `storage/`, `services/`, `coaching/` — tutti i sottosistemi backend importabili |
-| 4 | **Schema DB** | Le 20 tabelle SQLModel si creano correttamente, le relazioni sono valide |
+| 4 | **Schema DB** | Le 19 tabelle SQLModel si creano correttamente, le relazioni sono valide |
 | 5 | **Configurazione** | `METADATA_DIM`, percorsi, costanti — valori coerenti e raggiungibili |
 | 6 | **ML Smoke** | Istanziazione modelli (JEPA, RAP, MoE) con pesi casuali — verificano dimensioni e forward pass |
 | 7 | **Osservabilità** | `get_logger()` funzionante, `StateManager` inizializzabile, log path scrivibile |
@@ -2055,7 +2051,7 @@ flowchart TB
 
 **DB Inspector** (`tools/db_inspector.py`, 515 righe) — ispezione profonda del database:
 
-- Apre `database.db`, `knowledge_base.db`, `hltv_metadata.db` separatamente
+- Apre `database.db` e `hltv_metadata.db` separatamente
 - Per ogni tabella: conta record, verifica schema, controlla integrità indici
 - Mostra metriche di spazio (dimensione file, pagine WAL, frammentazione)
 - Rileva anomalie: tabelle vuote inattese, record orfani, timestamp fuori range
@@ -2216,7 +2212,7 @@ Script di verifica one-shot per validare specifici aspetti del sistema:
 | ------ | -------- |
 | `verify_feature_pipeline.py` | METADATA_DIM=25 rispettato in tutti i percorsi |
 | `verify_training_cycle.py` | 4 fasi training completano senza errore |
-| `verify_db_schema.py` | 20 tabelle presenti con schema corretto |
+| `verify_db_schema.py` | 19 tabelle presenti con schema corretto |
 | `verify_coaching_pipeline.py` | Demo → insight path end-to-end |
 | `verify_imports.py` | Tutti i moduli importabili senza errori circolari |
 | `verify_rag_index.py` | Knowledge base indexata con dimensioni corrette (384-dim) |
@@ -2456,7 +2452,7 @@ Migrazioni specifiche per lo storage layer, separate per modularità. Gestiscono
 
 ### 12.23 Orchestratore Ingestione Principale (`run_ingestion.py`)
 
-**File:** `Programma_CS2_RENAN/run_ingestion.py` (1.057 righe)
+**File:** `Programma_CS2_RENAN/run_ingestion.py` (~1.210 righe)
 
 L'`run_ingestion.py` è il **cuore orchestratore** dell'intera pipeline di ingestione. È il file più grande dedicato all'ingestione e coordina tutte le fasi dal discovery delle demo alla persistenza dei risultati nel database.
 
@@ -2496,8 +2492,8 @@ Il ResourceManager gestisce le **risorse hardware** durante l'ingestione per evi
 
 ### 12.24 HLTV Sync Service e Background Daemon
 
-**File:** `Programma_CS2_RENAN/ingestion/hltv/hltv_sync_service.py` (160 righe)
-**File correlati:** `ingestion/hltv/circuit_breaker.py`, `ingestion/hltv/browser_manager.py`, `ingestion/hltv/cache_proxy.py`, `ingestion/hltv/rate_limiter.py`
+**File:** `Programma_CS2_RENAN/hltv_sync_service.py` (~201 righe)
+**File correlati:** `backend/data_sources/hltv/`, `backend/services/telemetry_client.py`
 
 L'HLTV Sync Service è un **daemon in background** che sincronizza automaticamente i dati dei giocatori professionisti da HLTV.org. Opera come un servizio monitorato dal `ServiceSupervisor` della Console.
 
@@ -2757,10 +2753,10 @@ flowchart TB
         INGEST["Ingestione (Demo → Stats)"]
         ML["ML (JEPA, RAP, MoE)"]
         ANALYSIS["Analisi (10 motori)"]
-        KNOWLEDGE["Conoscenza (RAG, COPER, KG)"]
+        KNOWLEDGE["Conoscenza (RAG, COPER)"]
     end
     subgraph L4["LIVELLO 4: PERSISTENZA"]
-        SQLITE["SQLite WAL Tri-Database<br/>(database.db + knowledge_base.db<br/>+ hltv_metadata.db + match_XXXX.db)"]
+        SQLITE["SQLite WAL Dual-Database<br/>(database.db + hltv_metadata.db<br/>+ match_XXXX.db)"]
         FILES["Filesystem<br/>(checkpoint .pt, log, demo)"]
     end
     subgraph L5["LIVELLO 5: INFRASTRUTTURA"]
@@ -2892,7 +2888,7 @@ La funzione `infer_round_phase(equipment_value)` è un'**utilità condivisa** ut
 13. **Per-Round Statistical Isolation** — Il modello `RoundStats` impedisce la contaminazione tra round, consentendo un coaching granulare a livello di round e valutazioni HLTV 2.0 per round.
 14. **Architettura Quad-Daemon** — Separazione completa tra GUI e lavoro pesante, con shutdown coordinato e zombie task cleanup automatico.
 15. **Degradazione graduale pervasiva** — Ogni componente ha un piano di fallback: il sistema non crasha mai, degrada sempre in modo controllato.
-16. **Architettura Tri-Database** — Separazione di `database.db` (core), `knowledge_base.db` (RAG/COPER), `hltv_metadata.db` (dati pro) per eliminare la contesa WAL tra operazioni di scrittura intensive e letture semantiche.
+16. **Architettura Dual-Database** — Separazione di `database.db` (core + conoscenza, 16 tabelle) e `hltv_metadata.db` (dati pro, 3 tabelle) per eliminare la contesa WAL tra le operazioni del session engine e lo scraping HLTV in processo separato.
 17. **Calibrazione Bayesiana Live (G-07)** — Lo stimatore di morte si auto-calibra con `extract_death_events_from_db()` → `auto_calibrate()`, trasformandosi da modello statico a sistema adattivo.
 18. **Controllo Live Addestramento (MLControlContext)** — Pause/resume/stop/throttle in tempo reale del training via `threading.Event`, con eccezione custom `TrainingStopRequested` al posto di `StopIteration`.
 19. **Circuit Breaker Resiliente** — `_CircuitBreaker` per API esterne (HLTV) con MAX_FAILURES=10, RESET_WINDOW_S=3600, previene cascade failure con pattern CLOSED→OPEN→HALF_OPEN.
@@ -2911,7 +2907,7 @@ flowchart TB
         P4["4. Diversità multi-modello - 5 cervelli > 1 cervello"]
         P5["5. Divisione temporale - Nessun imbroglio viaggi nel tempo"]
         P6["6. Loop feedback COPER - Impara dai propri consigli"]
-        P7["7. Analisi Fase 6 (9 mot.) - 9 detective specializzati"]
+        P7["7. Analisi Fase 6 (10 mot.) - 10 detective specializzati"]
         P8["8. Persistenza soglie - Sopravvive ai riavvii"]
         P9["9. Euristiche configurabili - Override via JSON"]
         P10["10. Rifinitura LLM (Ollama) - Consigli suonano naturali"]
@@ -2920,7 +2916,7 @@ flowchart TB
         P13["13. Isolamento Per-Round - Valuta ogni domanda, non solo il test"]
         P14["14. Architettura Quad-Daemon - GUI reattiva, lavoro pesante in background"]
         P15["15. Degradazione Graduale - Il sistema non crasha mai"]
-        P16["16. Tri-Database - Nessuna contesa tra scrittura e lettura"]
+        P16["16. Dual-Database - Nessuna contesa tra scrittura e lettura"]
         P17["17. Calibrazione Bayesiana Live - Si auto-calibra con i dati"]
         P18["18. Controllo Live Training - Pausa/Stop senza perdita"]
         P19["19. Circuit Breaker - Resilienza API esterne"]
@@ -2938,21 +2934,21 @@ flowchart TB
 
 Totale file sorgente analizzati: **1.249**
 Totale righe di codice Python verificate: **≈ 75.800+**
-Totale file `.py` nel progetto: **334**
+Totale file `.py` nel progetto: **~326**
 Sottosistemi AI coperti: **8** (NN Core, VL-JEPA, RAP Coach, Servizi di Coaching, Motori di Coaching, Conoscenza, Analisi, Elaborazione + Osservatorio Addestramento)
 Sottosistemi programma coperti: **18** (Avvio, Lifecycle, Configurazione, Session Engine, UI Desktop, Ingestione, Storage, Osservabilità, Console di Controllo, RASP Guard, HLTV Sync, Orchestratore Ingestione, ResourceManager, Tools Suite, Test Suite, Pre-commit, Build/Packaging, Migrazioni Alembic)
 Modelli documentati: **6** (AdvancedCoachNN/TeacherRefinementNN, JEPA, VL-JEPA, RAPCoachModel, NeuralRoleHead, WinProbabilityNN)
 Motori di analisi documentati: **10** (Ruolo, WinProb, GameTree, Credenza, Inganno, Momentum, Entropia, Punti Ciechi, Utilità ed Economia, Distanza di Ingaggio)
 Motori di coaching documentati: **7** (HybridEngine, CorrectionEngine, ExplainabilityGenerator, NNRefinement, ProBridge, TokenResolver, LongitudinalEngine)
 Servizi aggiuntivi documentati: **7** (CoachingDialogue, LessonGenerator, LLMService, VisualizationService, ProfileService, AnalysisService, TelemetryClient)
-Tabelle di database documentate: **20** (distribuite su architettura tri-database: `database.db`, `knowledge_base.db`, `hltv_metadata.db`)
+Tabelle di database documentate: **19** (distribuite su architettura dual-database: `database.db`, `hltv_metadata.db`)
 Schermate UI documentate: **13** (Wizard, Home, Coach, Tactical Viewer, Settings, Help, Match History, Match Detail, Performance, User Profile, Profile, Steam Config, FACEIT Config)
 Daemon documentati: **4** (Hunter, Digester, Teacher, Pulse)
 Strumenti di validazione documentati: **35** (Headless Validator, Brain Verify, Goliath Hospital, DB Inspector, Demo Inspector, ML Coach Debugger, Backend Validator, Dead Code Detector, etc.)
 File di test documentati: **73** (+ conftest.py, 10 forensics, 15 verification scripts)
 Pre-commit hooks documentati: **10** (4 locali custom + 6 standard)
-Pilastri architetturali: **24** (inclusi Tri-Database, Calibrazione Bayesiana Live, Controllo Live Training, Circuit Breaker, Piramide Validazione, RASP Guard, Pre-commit Gate, ResourceManager HW-aware, Forensics)
-Problemi risolti tramite rimediazione: **370+** (in 12 fasi sistematiche)
+Pilastri architetturali: **24** (inclusi Dual-Database, Calibrazione Bayesiana Live, Controllo Live Training, Circuit Breaker, Piramide Validazione, RASP Guard, Pre-commit Gate, ResourceManager HW-aware, Forensics)
+Problemi risolti tramite rimediazione: **368** (in 12 fasi sistematiche)
 Fasi di rimediazione documentate: **12** (con codici G-XX e F-XX)
 
 ---
@@ -2978,7 +2974,7 @@ flowchart TB
         P2_CT["Control Module<br/>(Console, Governor, ML)"]
     end
     subgraph PART3["PARTE 3 — Programma Completo"]
-        P3_DB["Database<br/>(20 tabelle, tri-DB)"]
+        P3_DB["Database<br/>(19 tabelle, dual-DB)"]
         P3_TR["Training Regime<br/>(4 fasi, VL-JEPA 2-stage)"]
         P3_UI["Desktop UI<br/>(13 schermate, MVVM)"]
         P3_SE["Session Engine<br/>(4 daemon)"]
