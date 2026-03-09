@@ -53,7 +53,7 @@ Spero che qualcosa lì dentro possa essere utile.
    - TensorFactory — Fabbrica dei Tensori (Percezione Player-POV NO-WALLHACK)
    - Indice Vettoriale FAISS (Ricerca Semantica ad Alta Velocità)
 
-**Parte 2** — Servizi, Analisi, Knowledge, Processing, Database, Training, Loss Functions
+**Parte 2** — Sezioni 5-13: Servizi di Coaching, Coaching Engines, Conoscenza e Recupero, Motori di Analisi (10), Elaborazione e Feature Engineering, Modulo di Controllo, Progresso e Tendenze, Database e Storage (Tri-Tier), Pipeline di Addestramento e Orchestrazione, Funzioni di Perdita
 
 **Parte 3** — Logica Programma, UI, Ingestion, Tools, Tests, Build, Remediation
 
@@ -2209,5 +2209,107 @@ IndexFlatIP.add(normalized)
 **Fallback graduale:** Se `faiss-cpu` non è installato, il singleton `get_vector_index_manager()` ritorna `None` e il sistema degrada automaticamente alla ricerca brute-force (più lenta ma funzionalmente equivalente). Questo permette al programma di funzionare anche su sistemi dove FAISS non è disponibile.
 
 **Over-fetching:** Per gestire scenari di post-filtraggio, la ricerca recupera `k × OVERFETCH_KNOWLEDGE` (10×) o `k × OVERFETCH_EXPERIENCE` (20×) risultati, poi filtra e ritorna solo i top-k effettivi.
+
+### -Contesto dei Round (`round_context.py`, 224 righe)
+
+Il modulo **Round Context** è la **griglia temporale** del sistema di ingestione: converte i tick grezzi dei file demo in coordinate significative "round N, tempo T secondi" che ogni altro modulo può utilizzare per contestualizzare gli eventi di gioco.
+
+> **Analogia:** Il Round Context è come l'**assistente del cronometrista** in una partita di calcio. Il cronometrista (DemoParser) misura il tempo in millisecondi assoluti dall'inizio della registrazione, ma l'assistente traduce quei millisecondi in informazioni utili: "Questo evento è successo al 23° minuto del secondo tempo". Senza l'assistente, ogni analista dovrebbe fare questa conversione da solo, rischiando errori e incoerenze. Il Round Context fa lo stesso per CS2: converte tick assoluti in "Round 7, 42 secondi dall'inizio dell'azione", permettendo a tutti i motori di analisi di lavorare con coordinate temporali coerenti e significative.
+
+**Funzioni pubbliche:**
+
+| Funzione | Input | Output | Complessità |
+|---|---|---|---|
+| `extract_round_context(demo_path)` | Percorso file `.dem` | DataFrame: `round_number`, `round_start_tick`, `round_end_tick` | O(n) parsing eventi |
+| `extract_bomb_events(demo_path)` | Percorso file `.dem` | DataFrame: `tick`, `event_type` (planted/defused/exploded) | O(n) parsing eventi |
+| `assign_round_to_ticks(df_ticks, round_context, tick_rate)` | DataFrame tick + confini round | DataFrame arricchito con `round_number`, `time_in_round` | O(n log m) via `merge_asof` |
+
+**Costruzione dei confini di round (`extract_round_context`):**
+
+Il modulo analizza due tipi di eventi dal file demo:
+- **`round_freeze_end`** — il tick in cui termina il freeze time e inizia l'azione (i giocatori possono muoversi)
+- **`round_end`** — il tick in cui il round termina (vittoria/sconfitta)
+
+Per ogni round, accoppia l'ultimo `round_freeze_end` che precede il `round_end` corrispondente. **Fallback:** se non viene trovato un evento `round_freeze_end` per un dato round (possibile in demo corrotti o partite interrotte), utilizza il `round_end` del round precedente come inizio, registrando un warning nel log.
+
+**Estrazione eventi bomba (`extract_bomb_events`):**
+
+Estrae tre tipi di eventi: `bomb_planted`, `bomb_defused` e `bomb_exploded`. L'aggiunta di `bomb_exploded` (rimediazione H-07) permette di distinguere tra round vinti per esplosione e round vinti per eliminazione, un'informazione critica per l'analisi tattica post-plant.
+
+**Assegnazione round ai tick (`assign_round_to_ticks`):**
+
+Utilizza `pd.merge_asof` con `direction="backward"` per un'assegnazione efficiente O(n log m): per ogni tick, trova l'ultimo `round_start_tick ≤ tick`. Calcola `time_in_round = (tick − round_start_tick) / tick_rate`, limitato a [0.0, 175.0] secondi (durata massima di un round CS2). I tick prima del primo round (warmup) vengono assegnati al round 1.
+
+> **Nota:** L'uso di `merge_asof` al posto di un loop Python trasforma un'operazione O(n × m) in O(n log m), fondamentale per demo con milioni di tick e 30+ round.
+
+```mermaid
+flowchart TB
+    DEM[".dem file"] --> DP["DemoParser"]
+    DP --> FE["round_freeze_end<br/>(inizio azione)"]
+    DP --> RE["round_end<br/>(fine round)"]
+    DP --> BE["bomb_planted /<br/>bomb_defused /<br/>bomb_exploded"]
+    FE --> PAIR["Accoppiamento<br/>freeze_end ↔ round_end"]
+    RE --> PAIR
+    PAIR --> RC["round_context DataFrame<br/>(round_number, start_tick, end_tick)"]
+    RC --> MA["pd.merge_asof<br/>(direction='backward')"]
+    TICKS["Tick Data<br/>(posizioni, eventi, stati)"] --> MA
+    MA --> ENRICHED["Tick Data Arricchito<br/>+ round_number<br/>+ time_in_round (0–175s)"]
+
+    style RC fill:#4a9eff,color:#fff
+    style ENRICHED fill:#51cf66,color:#fff
+    style BE fill:#ffd43b,color:#000
+```
+
+**Gestione errori:** Ogni fase di parsing è protetta da try/except con logging strutturato. Se il parsing fallisce completamente o non vengono trovati eventi `round_end`, la funzione restituisce un DataFrame vuoto — i moduli a valle (es. `RoundStatsBuilder`) devono gestire questo caso gracefully.
+
+---
+
+## Riepilogo della Parte 1 — Cervello e Sensi
+
+La Parte 1 ha documentato i **tre pilastri percettivi e cognitivi** del sistema di coaching:
+
+| Sottosistema | Ruolo | Componenti Chiave |
+|---|---|---|
+| **1. Core Rete Neurale** | Il **cervello** — apprende pattern da migliaia di partite | JEPA (pre-addestramento auto-supervisionato), VL-JEPA (allineamento visione-linguaggio, 16 concetti), AdvancedCoachNN (LSTM + MoE), SuperpositionLayer, EMA, MaturityObservatory (macchina a 5 stati) |
+| **2. RAP Coach** | Il **medico specialista** — architettura a 7 componenti per coaching completo | Percezione (ResNet duale), Memoria (LTC-Hopfield), Strategia, Pedagogia, Attribuzione Causale, Posizionamento, Comunicazione, ChronovisorScanner, GhostEngine |
+| **1B. Sorgenti Dati** | I **sensi** — acquisiscono e strutturano dati dal mondo esterno | Demo Parser, HLTV (scraping + FlareSolverr), Steam/FACEIT API, TensorFactory (3 rasterizzatori NO-WALLHACK), FrameBuffer (HUD), FAISS (ricerca vettoriale), Round Context |
+
+> **Analogia finale:** Se il sistema di coaching fosse un **essere umano**, la Parte 1 ha descritto il suo cervello (le reti neurali che imparano), i suoi occhi e orecchie (le sorgenti dati che acquisiscono informazioni), e il suo sistema nervoso specializzato (il RAP Coach che integra percezione, memoria e decisione). Ma un cervello da solo non basta: ha bisogno di un corpo per agire. La **Parte 2** documenta quel corpo — i servizi che sintetizzano i consigli, i motori di analisi che investigano ogni aspetto del gameplay, i sistemi di conoscenza che memorizzano la saggezza accumulata, la pipeline di elaborazione che prepara i dati, il database che preserva tutto, e la pipeline di addestramento che insegna ai modelli.
+
+```mermaid
+flowchart LR
+    subgraph PARTE1["PARTE 1 — Cervello e Sensi"]
+        DS["Sorgenti Dati<br/>(Demo, HLTV, Steam,<br/>FACEIT, FrameBuffer)"]
+        TF["TensorFactory<br/>(mappa + vista + movimento)"]
+        FAISS_P1["FAISS Index<br/>(ricerca semantica)"]
+        NN["Core NN<br/>(JEPA, VL-JEPA,<br/>AdvancedCoachNN)"]
+        RAP["RAP Coach<br/>(7 componenti +<br/>ChronovisorScanner)"]
+    end
+    subgraph PARTE2["PARTE 2 — Servizi e Infrastruttura"]
+        SVC["Servizi di Coaching<br/>(fallback 4 livelli)"]
+        ANL["Motori di Analisi<br/>(10 specialisti)"]
+        KB["Conoscenza<br/>(RAG + COPER)"]
+        PROC["Elaborazione<br/>(Feature Engineering)"]
+        DB["Database<br/>(Tri-Tier SQLite)"]
+        TRAIN["Addestramento<br/>(Orchestrator + Loss)"]
+    end
+
+    DS --> PROC
+    DS --> TF
+    TF --> RAP
+    FAISS_P1 --> KB
+    NN --> SVC
+    RAP --> SVC
+    PROC --> TRAIN
+    TRAIN --> NN
+    ANL --> SVC
+    KB --> SVC
+    SVC --> DB
+
+    style PARTE1 fill:#e8f4f8
+    style PARTE2 fill:#f0f8e8
+```
+
+> **Continua nella Parte 2** — *Servizi, Analisi, Knowledge, Processing, Database, Training, Loss Functions*
 
 ---

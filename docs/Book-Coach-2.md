@@ -1,5 +1,5 @@
 ## 5. Sottosistema 3 — Servizi di Coaching
-
+https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI
 **cartella nella repo:** `backend/services/`
 **File:** `coaching_service.py`, `ollama_writer.py`, `analysis_orchestrator.py`
 
@@ -974,6 +974,21 @@ flowchart LR
     style FULL fill:#51cf66,color:#fff
 ```
 
+### Riepilogo dei 10 Motori di Analisi
+
+| # | Motore | File | Input | Output | Complessità |
+|---|---|---|---|---|---|
+| 1 | Classificatore Ruoli | `role_classifier.py` | PlayerMatchStats | Ruolo (6 classi) + confidenza | O(n) features |
+| 2 | Probabilità Vittoria | `win_probability_trainer.py` | 9 feature stato round | P(CT win) ∈ [0,1] | O(1) forward pass |
+| 3 | Albero di Gioco | `game_tree.py` | Stato round + azioni | Nodo ottimale (minimax) | O(b^d) branching |
+| 4 | Morte Bayesiana | `bayesian_death.py` | Posizione + tempo + round | P(morte) + fattori rischio | O(n) prior update |
+| 5 | Indice Inganno | `deception_index.py` | Storico round + posizioni | Score imprevedibilità [0,1] | O(n×m) pattern match |
+| 6 | Tracker Momentum | `momentum_tracker.py` | Sequenza round | Stato hot/cold/neutral | O(n) sliding window |
+| 7 | Analizzatore Entropia | `entropy_analyzer.py` | Danni utility per tipo | Score efficacia vs pro | O(k) per tipo utility |
+| 8 | Rilevatore Punti Ciechi | `blind_spot.py` | Posizioni morte + angoli | Pattern ripetuti | O(n²) clustering |
+| 9 | Utilità ed Economia | `utility_economy.py` | Economia round + utility | Consiglio acquisto + rating | O(1) threshold check |
+| 10 | Analizzatore Ingaggio | `engagement_analyzer.py` | Kill events 3D | Profilo distanza (4 fasce) | O(n) euclidean dist |
+
 ---
 
 ## 8. Sottosistema 6 — Elaborazione e Feature Engineering
@@ -1521,6 +1536,35 @@ Supervisore del ciclo di vita ML con intervento in tempo reale:
 
 > **Analogia:** MLController è come il **pannello di controllo di un reattore nucleare**. L'operatore può avviare il reattore (training), metterlo in pausa per ispezione, riprendere, o eseguire un arresto di emergenza (stop). Il `check_state()` che ogni loop ML deve chiamare è come le barre di controllo: il loop si ferma automaticamente al prossimo punto sicuro quando l'operatore tira la leva.
 
+### Coordinamento Inter-Daemon
+
+Il Modulo di Controllo orchestra i 4 daemon del sistema (Hunter, Digester, Teacher, Pulse) attraverso canali di comunicazione basati su stato condiviso (`CoachState`) e segnali event-based:
+
+```mermaid
+stateDiagram-v2
+    state SISTEMA {
+        [*] --> BOOT
+        BOOT --> IDLE: Console.boot() completato
+        IDLE --> HUNTING: Hunter attivato (HLTV sync)
+        IDLE --> INGESTING: Demo trovate
+        IDLE --> TRAINING: Dati sufficienti + quota OK
+
+        HUNTING --> IDLE: Sync completata
+        HUNTING --> ERROR: Rete / Rate limit
+
+        INGESTING --> TRAINING: Demo processate → trigger training
+        INGESTING --> IDLE: Nessun nuovo demo
+
+        TRAINING --> IDLE: Completato / Early stop
+        TRAINING --> PAUSED: Operatore pausa
+        PAUSED --> TRAINING: Operatore resume
+        TRAINING --> ERROR: Crash / OOM
+
+        ERROR --> IDLE: Auto-recovery (≤3 retry)
+        ERROR --> FATAL: Max retry superati
+    }
+```
+
 ---
 
 ## 10. Sottosistema 8 — Progresso e Tendenze
@@ -1558,5 +1602,875 @@ flowchart LR
     FT --> LE["LongitudinalEngine<br/>(coaching/longitudinal_engine.py)"]
     LE --> INS["Insight:<br/>Regressione o Miglioramento"]
 ```
+
+---
+
+## 11. Sottosistema 9 — Database e Storage
+
+**Cartella nella repo:** `backend/storage/`
+**File:** 10 moduli, ~2.600 righe totali
+
+Questo sottosistema è il **sistema di archiviazione permanente** dell'intero progetto: ogni dato — dalle statistiche di una partita ai modelli addestrati, dalle esperienze di coaching ai profili dei giocatori professionisti — viene salvato, protetto, versionato e reso disponibile attraverso questa infrastruttura.
+
+> **Analogia:** Se l'intero sistema di coaching è un **ospedale**, il sottosistema Storage è l'**archivio centrale e il sistema di cartelle cliniche**. Ci sono tre archivi separati (Tier 1, 2, 3) per evitare che chi consulta le cartelle dei pazienti (database.db) blocchi chi sta archiviando le statistiche dei medici specialisti (hltv_metadata.db) o chi sta registrando le telecamere di sorveglianza (match_*.db per-match). Il `DatabaseManager` è l'archivista capo che gestisce le chiavi degli armadi, il `BackupManager` è il responsabile della sicurezza che fa copie notturne di tutto, e il `MatchDataManager` è il tecnico che gestisce la sala delle telecamere dove ogni registrazione ha il suo nastro dedicato. Nessun dato viene mai perso: ci sono copie giornaliere, settimanali, verifiche di integrità e un sistema di migrazione che aggiorna gli archivi quando il formato delle cartelle cambia.
+
+**Architettura Tri-Database:**
+
+```mermaid
+flowchart TB
+    subgraph TIER1["Tier 1 — database.db (Core Applicazione)"]
+        PMS["PlayerMatchStats<br/>(statistiche match)"]
+        PTS["PlayerTickState<br/>(stati per-tick)"]
+        RS["RoundStats<br/>(stats per-round)"]
+        CS["CoachState<br/>(singleton, id=1)"]
+        CI["CoachingInsight"]
+        IT["IngestionTask"]
+        PP["PlayerProfile"]
+        SN["ServiceNotification"]
+        CALIB["CalibrationSnapshot"]
+        RTR["RoleThresholdRecord"]
+    end
+    subgraph TIER2["Tier 2 — hltv_metadata.db (Dati Pro)"]
+        PRO["ProPlayer"]
+        TEAM["ProTeam"]
+        STAT["ProPlayerStatCard"]
+    end
+    subgraph TIER3["Tier 3 — match_*.db (Per-Match)"]
+        MTS["MatchTickState<br/>(40+ campi per tick)"]
+        MES["MatchEventState"]
+        MM["MatchMetadata"]
+    end
+    TIER1 -->|"riferimento pro_player_id<br/>(logico, no FK cross-DB)"| TIER2
+    TIER2 -->|"baseline per confronto"| TIER1
+    TIER3 -->|"telemetria dettagliata<br/>per singola partita"| TIER1
+
+    style TIER1 fill:#4a9eff,color:#fff
+    style TIER2 fill:#ffd43b,color:#000
+    style TIER3 fill:#51cf66,color:#fff
+```
+
+> **Spiegazione Diagramma:** I tre database sono fisicamente separati: Tier 1 contiene i dati core dell'applicazione (17 tabelle), Tier 2 i dati professionali scaricati da HLTV (3 tabelle), e Tier 3 i dati di telemetria per-match in file SQLite individuali. La separazione evita contesa WAL: le scritture di ingestione (Tier 1) non bloccano le letture HLTV (Tier 2) né la registrazione di telemetria (Tier 3). I riferimenti cross-database sono **logici** (non FK reali) poiché SQLite non supporta FK cross-file.
+
+### -Modelli di Dati (`db_models.py`, 604 righe)
+
+Il **codice genetico** di tutto il sistema: definisce ogni tabella, vincolo, indice e validatore tramite SQLModel (Pydantic + SQLAlchemy). Due enum e 20+ modelli organizzati per tier.
+
+> **Analogia:** `db_models.py` è come il **progetto architettonico di un edificio**: specifica ogni stanza (tabella), le dimensioni delle porte (tipi dei campi), le serrature (vincoli CHECK e UNIQUE), e l'indice dell'edificio (indici del database). Se qualcuno prova a mettere un valore negativo per `avg_kills`, il progetto lo rifiuta prima ancora che venga scritto — come un architetto che rifiuta di costruire una stanza con altezza negativa.
+
+**Enum di integrità:**
+
+| Enum | Valori | Uso |
+|---|---|---|
+| `DatasetSplit` | `TRAIN`, `VAL`, `TEST`, `UNASSIGNED` | Split ML nei `PlayerMatchStats` |
+| `CoachStatus` | `Paused`, `Training`, `Idle`, `Error` | Stato pipeline ML nel `CoachState` |
+
+**Costante di sicurezza:** `MAX_GAME_STATE_JSON_BYTES = 16.384` (16 KB) — cap per `game_state_json` in `CoachingExperience`, validato da `@field_validator` Pydantic. Previene crescita illimitata del DB da snapshot di stato troppo grandi.
+
+**Catalogo dei modelli (Tier 1 — `database.db`):**
+
+| Modello | Campi Chiave | Vincoli / Indici | Scopo |
+|---|---|---|---|
+| `PlayerMatchStats` | 40+ campi: kills, ADR, rating, HLTV 2.0 components, trade metrics, utility breakdown | `UNIQUE(demo_name, player_name)`, `CHECK(avg_kills≥0)`, `CHECK(0≤rating≤5.0)` | Statistiche aggregate per partita per giocatore |
+| `PlayerTickState` | pos_x/y/z, view_x/y, health, armor, weapon, enemies_visible, round context | `INDEX(demo_name, tick)`, `INDEX(player_name, demo_name)` (P2-05) | Stato giocatore per-tick per addestramento ML |
+| `PlayerProfile` | player_name (unique), bio, role, profile_pic_path | `UNIQUE(player_name)` | Profilo utente con ruolo e bio |
+| `Ext_TeamRoundStats` | equipment_value, damage, kills, deaths, accuracy | `INDEX(match_id)`, `INDEX(map_name)` | Statistiche round da CSV esterni (tornei) |
+| `Ext_PlayerPlaystyle` | 6 probabilità ruolo, metriche aggregate, config utente (social, specs, cfg) | `UNIQUE(steam_id)` | Dati playstyle + profilo utente (tabella conflata, candidata a split futuro) |
+| `CoachingInsight` | title, severity, message, focus_area, user_id | `INDEX(player_name)`, `INDEX(demo_name)` | Feedback di coaching generati dal sistema |
+| `IngestionTask` | demo_path (unique), status, retry_count, error_message | `UNIQUE(demo_path)`, `INDEX(status)`, R2-05: auto-refresh `updated_at` | Coda di ingestione demo con retry tracking |
+| `TacticalKnowledge` | title, description, category, situation, embedding (384-dim JSON) | `INDEX(title)`, `INDEX(category)`, `INDEX(map_name)` | Base conoscenza RAG per coaching tattico |
+| `CoachState` | status, daemon tracking (3 daemon), epoch/loss, heartbeat, resource limits | `CHECK(id=1)` singleton (P2-01) | Stato pipeline ML per la GUI — esattamente 1 riga |
+| `ServiceNotification` | daemon, severity, message, is_read | `INDEX(daemon)`, `INDEX(is_read)` | Coda notifiche errori/eventi per la UI |
+| `RoundStats` | kills, deaths, assists, damage, utility, economy, round_won, round_rating | `INDEX(demo_name, player_name)`, `INDEX(demo_name, round_number)` (P2-05) | Isolamento statistiche per-round per-giocatore |
+| `CalibrationSnapshot` | calibration_type, parameters_json, sample_count, source | `INDEX(calibration_type)` | Storico calibrazione modello bayesiano |
+| `RoleThresholdRecord` | stat_name (unique), value, sample_count, source | `UNIQUE(stat_name)` | Soglie ruolo apprese da dati pro |
+
+**Modelli di match e pro (cross-tier):**
+
+| Modello | Tier | Campi Chiave | Scopo |
+|---|---|---|---|
+| `MatchResult` | Tier 1 | match_id (PK), team_a/b, winner, event_name | Metadati match |
+| `MapVeto` | Tier 1 | match_id (FK), map_name, action (pick/ban) | Veti mappe |
+| `CoachingExperience` | Tier 1 | context_hash, map/phase/side, game_state_json (16KB cap), action, outcome, embedding, effectiveness_score, feedback loop fields | Banca esperienze COPER con semantic search e feedback loop |
+| `ProTeam` | Tier 2 | hltv_id (unique), name, world_rank | Team professionistici |
+| `ProPlayer` | Tier 2 | hltv_id (unique), nickname, team_id (FK→ProTeam) | Giocatori professionisti |
+| `ProPlayerStatCard` | Tier 2 | player_id (FK), rating_2_0, kpr, adr, kast, detailed_stats_json | Schede statistiche HLTV con dati granulari |
+
+> **Nota architetturale:** `PlayerMatchStats.pro_player_id` è un riferimento **logico** (non una FK reale) a `ProPlayer.hltv_id` perché risiedono in database separati. SQLite non supporta FK cross-file — il join viene effettuato a livello applicativo.
+
+> **Nota (P2-01):** Il vincolo `CHECK(id=1)` su `CoachState` garantisce che esista esattamente una riga nel database, trasformandolo in un singleton persistente. Qualsiasi tentativo di inserire una seconda riga fallisce a livello di database, non solo a livello applicativo.
+
+### -DatabaseManager (`database.py`, 289 righe)
+
+Il **custode dell'archivio**: gestisce le connessioni SQLite con WAL mode obbligatorio, separando fisicamente il database monolite (Tier 1) dal database HLTV (Tier 2).
+
+> **Analogia:** Il DatabaseManager è come il **custode di un edificio con due archivi separati**. Uno è l'archivio principale (database.db) dove si conservano le cartelle cliniche di tutti i pazienti, e l'altro è l'archivio dei consulenti esterni (hltv_metadata.db) dove si conservano le schede dei medici specialisti stranieri. Il custode ha una regola ferrea: ogni volta che qualcuno apre un archivio, deve impostare la serratura in modalità "WAL" (Write-Ahead Logging), che permette a più persone di leggere contemporaneamente mentre una sola scrive. Se la serratura si blocca, il custode aspetta fino a 30 secondi prima di dichiarare fallimento.
+
+**Due classi, due database:**
+
+| Classe | Database | Tabelle | Engine |
+|---|---|---|---|
+| `DatabaseManager` | `database.db` | 17 tabelle (`_MONOLITH_TABLES`) | `pool_size=1`, `max_overflow=4` |
+| `HLTVDatabaseManager` | `hltv_metadata.db` | 3 tabelle (`_HLTV_TABLES`) | `pool_size=1`, `max_overflow=4` |
+
+**PRAGMA SQLite (applicati su ogni connessione via `@event.listens_for`):**
+
+| PRAGMA | Valore | Scopo |
+|---|---|---|
+| `journal_mode` | `WAL` | Letture concorrenti + singola scrittura |
+| `synchronous` | `NORMAL` | Bilanciamento performance/durabilità |
+| `busy_timeout` | `30000` (30s) | Timeout contesa WAL lock |
+
+**API pubblica:**
+
+| Metodo | Descrizione |
+|---|---|
+| `create_db_and_tables()` | Crea schema nel monolite (solo `_MONOLITH_TABLES`, non tutte le tabelle SQLModel) |
+| `get_session()` | Context manager transazionale: auto-commit su successo, auto-rollback su eccezione |
+| `upsert(model_instance)` | Upsert atomico; gestione speciale per `PlayerMatchStats` (lookup per demo_name + player_name) |
+| `get(model_class, pk)` | Lettura per chiave primaria |
+
+**Singleton:** `get_db_manager()` e `get_hltv_db_manager()` con double-checked locking (pattern identico). Evita la creazione di engine duplicati durante l'import da thread multipli.
+
+**Isolamento tabelle (critico):** La lista esplicita `_MONOLITH_TABLES` impedisce che i modelli per-match (`MatchTickState`, `MatchEventState`, `MatchMetadata`) vengano creati nel database monolite se i loro moduli sono importati prima di `create_db_and_tables()`. Senza questa guardia, ogni modello SQLModel globalmente registrato verrebbe creato in `database.db`.
+
+> **Nota sulla riconciliazione HLTV:** `HLTVDatabaseManager._reconcile_stale_schema()` rileva colonne mancanti in tabelle HLTV esistenti (schema aggiornato ma DB vecchio) e ricrea le tabelle interessate tramite `DROP TABLE` + `CREATE TABLE`, operando come una migrazione distruttiva di emergenza — accettabile perché i dati HLTV sono ri-scaricabili.
+
+### -MatchDataManager (`match_data_manager.py`, 748 righe)
+
+Il **sistema di telecamere di sicurezza** del progetto: ogni partita riceve il suo file SQLite dedicato (`match_{id}.db`) contenente la telemetria tick-by-tick — fino a **1,7 milioni di righe per partita**.
+
+> **Analogia:** Il MatchDataManager è come un **sistema di videosorveglianza dove ogni telecamera registra su il suo nastro dedicato**. Invece di registrare tutte le telecamere sullo stesso nastro (che diventerebbe enorme e impossibile da cercare), ogni telecamera (partita) ha il suo cassetto (file .db). Se vuoi rivedere la Partita #42, apri solo il cassetto #42 — le altre 500 partite non vengono toccate. Cancellare una partita? Cancella il file. Analizzare due partite in parallelo? Apri due cassetti contemporaneamente, nessuno blocca l'altro. Il sistema tiene anche una cache LRU di 50 cassetti aperti per velocità — i 50 più recentemente consultati restano aperti, gli altri vengono chiusi automaticamente.
+
+**3 modelli per-match (Tier 3):**
+
+| Modello | Campi | Scopo |
+|---|---|---|
+| `MatchTickState` | 40+ campi: posizione, stato, equipaggiamento, visibility, round context, cumulativi match | Stato giocatore ad ogni tick (128 Hz) |
+| `MatchEventState` | tick, event_type, player/victim info, position, weapon, damage, entity_id | Eventi di gioco per ricostruzione Player-POV |
+| `MatchMetadata` | match_id, demo_name, map_name, tick/round/player count, team names/scores | Metadati per accesso senza DB monolite |
+
+> **Nota (C-08):** `MatchEventState.entity_id` usa `-1` come sentinel (non `0`) per distinguere "ID non popolato dal parser" da "entity ID reale = 0", evitando accoppiamenti errati fumo/molotov.
+
+**Cache LRU (M-18):**
+
+```mermaid
+flowchart LR
+    REQ["Richiesta match_id=42"] --> CHECK{"Engine nella<br/>cache LRU?"}
+    CHECK -->|"Sì"| MTE["move_to_end(42)<br/>(mark recently used)"]
+    CHECK -->|"No"| SIZE{"Cache piena?<br/>(≥ 50 engines)"}
+    SIZE -->|"Sì"| EVICT["popitem(last=False)<br/>Evict LRU engine<br/>.dispose()"]
+    SIZE -->|"No"| CREATE["Crea engine per<br/>match_42.db"]
+    EVICT --> CREATE
+    CREATE --> PRAGMA["Applica WAL +<br/>busy_timeout"]
+    PRAGMA --> TABLES["create_all(tables=<br/>_MATCH_TABLES)"]
+    TABLES --> R203["R2-03: Verifica<br/>tabelle create"]
+    R203 --> CACHE["Aggiungi a cache<br/>_engines[42] = engine"]
+    MTE --> USE["Usa engine"]
+    CACHE --> USE
+
+    style EVICT fill:#ff6b6b,color:#fff
+    style R203 fill:#ffd43b,color:#000
+```
+
+> **Nota (R2-03):** Il filtro `tables=_MATCH_TABLES` nel `create_all()` è **critico**. Senza di esso, SQLModel creerebbe tutte le ~20 tabelle globali in ogni file per-match. Un controllo difensivo post-creazione verifica che solo le 3 tabelle attese esistano nel DB, loggando un warning se compaiono tabelle inaspettate.
+
+**API pubblica:**
+
+| Metodo | Descrizione |
+|---|---|
+| `get_match_session(match_id)` | Context manager transazionale per un match specifico |
+| `store_tick_batch(match_id, ticks)` | Inserimento batch di `MatchTickState` — ritorna conteggio |
+| `store_metadata(match_id, metadata)` | Upsert metadati match |
+| `get_ticks_for_round(match_id, round)` | Query tick per round specifico |
+| `get_player_ticks(match_id, player, start, end)` | Finestra tick per giocatore + intervallo |
+| `get_all_players_at_tick(match_id, tick)` | Snapshot tutti i giocatori a un tick |
+| `get_all_players_tick_window(match_id, start, end)` | Finestra tick per tutti i giocatori (addestramento RAP) |
+
+### -BackupManager (`backup_manager.py`, 220 righe)
+
+Il **responsabile della sicurezza dei dati**: crea copie di backup non-bloccanti tramite `VACUUM INTO` e le gestisce con una politica di rotazione.
+
+> **Analogia:** Il BackupManager è come un **sistema di backup di una banca**. Ogni notte (o quando richiesto), il sistema fa una copia del caveau (database) in una cassaforte secondaria. La copia è fatta con una tecnica speciale (`VACUUM INTO`) che non blocca le operazioni in corso — è come fotocopiare un libro senza toglierlo dallo scaffale. Dopo la copia, il sistema verifica che la fotocopia sia leggibile (`PRAGMA integrity_check`). Se fallisce il controllo, la copia viene distrutta. Le copie vecchie vengono eliminate con una politica di rotazione: 7 copie giornaliere + 4 copie settimanali. Questo bilancia sicurezza e spazio su disco.
+
+**Pipeline di backup:**
+
+```mermaid
+flowchart TB
+    TRIGGER["should_run_auto_backup()<br/>Controlla: esiste backup per oggi?"]
+    TRIGGER -->|"No backup oggi"| VACUUM["VACUUM INTO<br/>'backup_{label}_{timestamp}.db'"]
+    VACUUM --> EXISTS{"File creato?"}
+    EXISTS -->|"No"| FAIL["Errore: file mancante"]
+    EXISTS -->|"Sì"| INTEG["PRAGMA integrity_check<br/>sulla copia"]
+    INTEG -->|"ok"| LOG["Log: Backup Successful<br/>(dimensione MB)"]
+    INTEG -->|"Fallito"| DEL["Elimina backup corrotto"]
+    LOG --> PRUNE["_prune_backups()"]
+    subgraph RETENTION["Politica di Rotazione"]
+        KEEP1["Sempre: ultimo backup"]
+        KEEP2["Mantieni: 7 giornalieri<br/>(1 per giorno, ultimi 7 giorni)"]
+        KEEP3["Mantieni: 4 settimanali<br/>(1 per settimana, ultime 4 settimane)"]
+        PRUNE_OLD["Elimina: tutti gli altri"]
+    end
+    PRUNE --> RETENTION
+
+    style VACUUM fill:#4a9eff,color:#fff
+    style INTEG fill:#ffd43b,color:#000
+    style PRUNE_OLD fill:#ff6b6b,color:#fff
+```
+
+**Sicurezza path:** Il label del backup viene validato con regex `^[a-zA-Z0-9_\-]+$` e il path risolto viene verificato per prevenire path traversal attacks. Il path viene escapato per SQL injection (`'` → `''`).
+
+### -StorageManager (`storage_manager.py`, 258 righe)
+
+Gestore dello **storage locale** per demo CS2: cartelle di ingestione, archivio post-elaborazione, e quote disco.
+
+| Funzionalità | Dettaglio |
+|---|---|
+| **Cartella ingestione** | Path configurabile (`DEFAULT_DEMO_PATH`), fallback a `data/` in-project |
+| **Archivio** | `datasets/user_archive/` e `datasets/pro_archive/` nel "Brain Root" |
+| **Quote** | `MAX_DEMOS_PER_MONTH` e `MAX_TOTAL_DEMOS_PER_USER` da config |
+| **Quota disco** | `LOCAL_QUOTA_GB` (default 10 GB), verificata prima dell'archiviazione |
+| **Discovery** | `list_new_demos(is_pro)` — cerca `.dem` non ancora elaborati in `PRO_DEMO_PATH` o `DEFAULT_DEMO_PATH` |
+
+### -StateManager (`state_manager.py`, 206 righe)
+
+**DAO centralizzato** per il singleton `CoachState`: interfaccia thread-safe tra i daemon e la GUI.
+
+> **Analogia:** Il StateManager è come il **tabellone degli arrivi all'aeroporto**: ogni daemon (Hunter, Digester, Teacher) aggiorna il proprio stato sul tabellone, e la GUI lo legge per mostrare all'utente cosa sta succedendo. Un `threading.Lock()` impedisce che due daemon scrivano contemporaneamente sullo stesso campo, corrompendo il display.
+
+| Metodo | Descrizione |
+|---|---|
+| `get_state()` | Recupera il singleton (lo crea se non esiste, lock P0-04) |
+| `update_status(daemon, status, detail)` | Aggiorna stato di un daemon specifico (hunter/digester/teacher/global) |
+| `update_training_progress(epoch, total, train_loss, val_loss, eta)` | Progresso real-time addestramento per la GUI |
+| `update_parsing_progress(progress)` | Barra di progresso parsing demo (0.0–100.0) |
+| `push_notification(daemon, severity, message)` | Inserisce una `ServiceNotification` nella coda per la UI |
+| `get_unread_notifications(limit)` | Recupera notifiche non lette per visualizzazione |
+
+### -Servizi Storage Aggiuntivi
+
+**`stat_aggregator.py` (99 righe)** — Persistenza dati spider HLTV: `persist_player_card(card_data, player_hltv_id)` converte i dati estratti dallo spider in un `ProPlayerStatCard` e lo salva nel database HLTV. `persist_team(team_data)` salva/aggiorna un `ProTeam`.
+
+**`db_migrate.py` (112 righe)** — Orchestrazione migrazioni Alembic: `ensure_database_current()` viene chiamata all'avvio dell'applicazione per auto-aggiornare lo schema. Confronta `current_rev` vs `head_rev` e se diversi esegue `alembic.command.upgrade(cfg, "head")`. Se `alembic.ini` non esiste (sviluppo senza Alembic), ritorna `True` silenziosamente.
+
+**`maintenance.py` (53 righe)** — Manutenzione database: `prune_old_metadata(days=90)` elimina record vecchi in batch da 500 (`SQLITE_MAX_VARIABLE_NUMBER` safety), evitando query DELETE con migliaia di parametri che SQLite rifiuterebbe.
+
+**`remote_file_server.py` (213 righe)** — Servizio di backup remoto e gestione file: supporta sincronizzazione con drive esterno o backup cloud.
+
+```mermaid
+flowchart TB
+    subgraph STORAGE["ECOSISTEMA STORAGE (backend/storage/)"]
+        DBM["DatabaseManager<br/>(WAL, pool_size=1)"]
+        HLTV_DBM["HLTVDatabaseManager<br/>(database separato)"]
+        MDM["MatchDataManager<br/>(Tier 3, LRU cache 50)"]
+        BM["BackupManager<br/>(VACUUM INTO, 7d+4w)"]
+        SM["StorageManager<br/>(demo folders, quote)"]
+        STM["StateManager<br/>(CoachState singleton)"]
+        MODELS["db_models.py<br/>(20+ tabelle SQLModel)"]
+        MIG["db_migrate.py<br/>(Alembic auto-upgrade)"]
+    end
+    MODELS -->|"schema"| DBM
+    MODELS -->|"schema"| HLTV_DBM
+    DBM --> BM
+    DBM --> STM
+    MIG -->|"auto-upgrade"| DBM
+    SM -->|"demo paths"| MDM
+
+    style STORAGE fill:#e8f4f8
+```
+
+---
+
+## 12. Pipeline di Addestramento e Orchestrazione
+
+> **Analogia:** Se i modelli neurali (Sezione 1-2) sono gli strumenti dell'orchestra, il `TrainingOrchestrator` è il **direttore d'orchestra** che decide quando iniziare, controlla il tempo di ogni esecuzione, corregge le stonature (early stopping), e alla fine registra la performance migliore su disco (checkpoint). Senza di lui, gli strumenti produrrebbero solo caos.
+
+Il sottosistema di addestramento ha tre responsabilità distinte:
+
+1. **Orchestrazione** — Ciclo di vita completo: caricamento dati → epoche → checkpoint → arresto anticipato
+2. **Preparazione Tensori** — Conversione tick grezzi dal database in batch tensoriali pronti per il modello
+3. **Calcolo Target** — Generazione di etichette di addestramento: funzione vantaggio (continua) e ruolo tattico (10 classi)
+
+```mermaid
+flowchart TB
+    subgraph ORCH["ORCHESTRATORE (training_orchestrator.py)"]
+        INIT["__init__<br/>model_type dispatch"]
+        RUN["run_training()<br/>ciclo completo"]
+        FETCH["_fetch_batches()<br/>split train/val"]
+        PREP["_prepare_tensor_batch()<br/>JEPA vs RAP routing"]
+        EPOCH["_run_epoch()<br/>train/eval loop"]
+        CHECK["Checkpoint<br/>best + latest"]
+        ES["Early Stopping<br/>patience counter"]
+        CB["CallbackRegistry<br/>6 eventi lifecycle"]
+    end
+
+    INIT --> RUN
+    RUN --> FETCH
+    FETCH --> EPOCH
+    EPOCH --> PREP
+    EPOCH --> CHECK
+    CHECK --> ES
+    RUN --> CB
+
+    subgraph TARGETS["TARGET COMPUTATION"]
+        ADV["_compute_advantage()<br/>4-component [0,1]"]
+        ROLE["_classify_tactical_role()<br/>10 classi"]
+        RS["_fetch_round_stats_for_batch()<br/>G-01 concept labels"]
+    end
+
+    PREP --> ADV
+    PREP --> ROLE
+    PREP --> RS
+
+    style ORCH fill:#e8f4f8
+    style TARGETS fill:#fff3e0
+```
+
+### -TrainingOrchestrator (training_orchestrator.py, 890 righe)
+
+La classe centrale della pipeline di addestramento. Gestisce JEPA, VL-JEPA e RAP da un punto di ingresso unificato, con dispatch basato su `model_type`.
+
+**Costruttore e Configurazione:**
+
+| Parametro | Default | Descrizione |
+|---|---|---|
+| `model_type` | `"jepa"` | Routing: `"jepa"` → JEPATrainer, `"vl-jepa"` → JEPATrainer (VL mode), `"rap"` → RAPTrainer |
+| `max_epochs` | 100 | Limite superiore epoche |
+| `patience` | 10 | Epoche senza miglioramento prima di early stopping |
+| `batch_size` | 32 | Campioni per batch |
+| `callbacks` | `CallbackRegistry()` | Sistema plugin per TensorBoard, logging, etc. |
+
+Dettagli notevoli del costruttore:
+- **RNG deterministico** (F3-02): `np.random.default_rng(seed=42)` per il campionamento negativi JEPA — garantisce riproducibilità
+- **Contatori fallback** (F3-11): `_total_samples` e `_total_fallbacks` tracciano il tasso aggregato di tensori-zero nell'intero ciclo
+- **RAP gated**: Il modello RAP richiede `USE_RAP_MODEL=True` nelle impostazioni — se disabilitato, `ValueError` immediato
+- **Learning rate**: JEPA 1e-4, RAP 5e-5 (più conservativo per il multi-task)
+
+#### Ciclo di Vita: `run_training()`
+
+Il metodo principale esegue 6 fasi sequenziali:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Init: ModelFactory.get_model()
+    Init --> Resume: load_nn() try
+    Resume --> Fresh: FileNotFoundError / StaleCheckpointError
+    Resume --> DataFetch: success
+    Fresh --> DataFetch
+    DataFetch --> Abort: no train_data
+    DataFetch --> EpochLoop: train + val ready
+    EpochLoop --> Checkpoint: val_loss < best
+    EpochLoop --> PatienceInc: val_loss >= best
+    Checkpoint --> NextEpoch
+    PatienceInc --> EarlyStop: patience >= threshold
+    PatienceInc --> NextEpoch: patience < threshold
+    NextEpoch --> EpochLoop
+    EarlyStop --> Report
+    EpochLoop --> Report: max_epochs reached
+    Report --> [*]
+```
+
+1. **Init**: `ModelFactory.get_model(type)` istanzia il modello, poi tenta `load_nn()` per riprendere da checkpoint esistente. Gestisce 3 eccezioni: `FileNotFoundError` (primo addestramento), `StaleCheckpointError` (architettura cambiata), e generico (corruzione)
+2. **Data Fetch**: `_fetch_batches(is_train=True/False)` con split train/val
+3. **Epoch Loop**: Per ogni epoca, `_run_epoch()` in modalità train e poi eval. Il `context.check_state()` permette interruzione cooperativa (TrainingStopRequested)
+4. **Checkpoint**: Doppio salvataggio — `model_name` (best) e `model_name_latest` (sempre). Solo il best viene salvato quando `val_loss` migliora
+5. **Early Stopping**: Contatore `patience_counter` incrementato ad ogni epoca senza miglioramento
+6. **Report**: Callback `on_train_end` con metriche finali + log del tasso di fallback F3-11
+
+#### Preparazione Dati: `_fetch_batches()`
+
+Recupera tick dal database tramite il manager, rispettando lo split train/val:
+
+- Chiama `manager._fetch_jepa_ticks(is_pro, split)` per tutti i tipi di modello (RAP incluso — pipeline dati RAP-specifica non ancora implementata, con warning esplicito)
+- **Ordinamento temporale preservato** — nessuno shuffle, perché i modelli sono sequenziali
+- Suddivisione in batch di dimensione `self.batch_size`
+
+#### Routing Tensori: `_prepare_tensor_batch()`
+
+Il metodo più critico: converte oggetti `PlayerTickState` dal database in dizionari di tensori PyTorch.
+
+**Flusso JEPA (context/target/negatives):**
+
+| Tensore | Shape | Costruzione |
+|---|---|---|
+| `context` | `(1, 10, METADATA_DIM)` | Primi 10 tick del batch, padding se < 10 |
+| `target` | `(1, METADATA_DIM)` | Media dell'ultimo tick (next-item prediction) |
+| `negatives` | `(1, 5, METADATA_DIM)` | 5 campioni casuali dal batch (RNG deterministico) |
+
+Richiede almeno 5 campioni reali per i negativi contrastivi — se il batch è troppo piccolo, ritorna `None` (skip).
+
+> **Correzione G-01:** Per VL-JEPA, viene anche chiamato `_fetch_round_stats_for_batch()` per fornire etichette concettuali basate sugli esiti reali dei round (elimina label leakage da labeling euristico).
+
+**Flusso RAP (Player-POV completo):**
+
+Il percorso RAP è significativamente più complesso — delegato a `_prepare_rap_batch()`:
+
+```mermaid
+flowchart TB
+    INPUT["raw_items<br/>(PlayerTickState list)"]
+    FE["FeatureExtractor.extract_batch()<br/>→ metadata tensor"]
+    LOOP["Per ogni campione"]
+    MATCH{"match_id<br/>disponibile?"}
+    BUILD["_build_sample_knowledge()<br/>PlayerKnowledgeBuilder"]
+    FALLBACK["Zero-init<br/>(no POV data)"]
+    TF["TensorFactory<br/>map/view/motion 64×64"]
+    ADV["_compute_advantage()"]
+    ROLE["_classify_tactical_role()"]
+    FILTER{"F3-11: fallback_count > 0?"}
+    DROP["Drop zero-tensor samples"]
+    STACK["torch.stack()<br/>→ batch dict"]
+
+    INPUT --> FE --> LOOP
+    LOOP --> MATCH
+    MATCH -->|sì| BUILD
+    MATCH -->|no| FALLBACK
+    BUILD --> TF
+    FALLBACK --> TF
+    TF --> ADV
+    TF --> ROLE
+    ADV --> FILTER
+    ROLE --> FILTER
+    FILTER -->|sì| DROP --> STACK
+    FILTER -->|no| STACK
+
+    style BUILD fill:#51cf66,color:#000
+    style FALLBACK fill:#ff6b6b,color:#fff
+    style FILTER fill:#ffd43b,color:#000
+```
+
+Per ogni campione nel batch:
+
+1. **Risoluzione match_id** → query al `MatchDataManager` per tutti i giocatori al tick
+2. **PlayerKnowledgeBuilder** → modello sensoriale NO-WALLHACK (visibilità, suono, utilità)
+3. **TensorFactory** → tensori map/view/motion a 64×64 (risoluzione training)
+4. **Target computation** → advantage [0,1] + ruolo tattico (10 classi)
+
+**Cache per-batch** (4 dizionari) evitano query ridondanti sullo stesso match/tick:
+
+| Cache | Chiave | Valore |
+|---|---|---|
+| `_all_players_cache` | `(match_id, tick)` | Lista giocatori al tick |
+| `_window_cache` | `(match_id, tick)` | Storico 320 tick per enemy memory |
+| `_event_cache` | `(match_id, tick)` | Eventi nell'intervallo [-320, +64] |
+| `_metadata_cache` | `match_id` | Metadati match (mappa, etc.) |
+
+> **Correzione F3-11:** I campioni con fallback a zero-tensor vengono **scartati** (non usati per training). Il tasso aggregato viene tracciato e se supera il 10%, un warning viene emesso. Se l'intero batch è fallback, viene saltato completamente.
+
+#### Funzione Vantaggio: `_compute_advantage()`
+
+Formula continua [0, 1] che sostituisce il target binario vinto/perso (G-04):
+
+```
+advantage = 0.4 × alive_diff + 0.2 × hp_ratio + 0.2 × equip_ratio + 0.2 × bomb_factor
+```
+
+| Componente | Peso | Calcolo | Range |
+|---|---|---|---|
+| `alive_diff` | 0.4 | `(team_alive - enemy_alive + 5) / 10` | [0, 1] |
+| `hp_ratio` | 0.2 | `team_hp / (team_hp + enemy_hp)` | [0, 1] |
+| `equip_ratio` | 0.2 | `team_equip / (team_equip + enemy_equip)` | [0, 1] |
+| `bomb_factor` | 0.2 | Planted: T=0.7, CT=0.3 / Not planted: 0.5 | {0.3, 0.5, 0.7} |
+
+L'`alive_diff` ha il peso maggiore (0.4) perché la superiorità numerica è il singolo fattore più predittivo nel CS2. La normalizzazione `(diff + 5) / 10` mappa il range [-5, +5] (5v0 → 0v5) in [0, 1].
+
+#### Classificazione Ruolo Tattico: `_classify_tactical_role()`
+
+Assegna uno di 10 ruoli tattici ad ogni tick basandosi su euristiche informate dal `PlayerKnowledge`:
+
+| Indice | Ruolo | Condizione |
+|---|---|---|
+| 0 | Site Take | T default (nessuna condizione speciale) |
+| 1 | Rotation | — (riservato) |
+| 2 | Entry Frag | Nemici visibili + distanza < 800u |
+| 3 | Support | T + distanza media team < 500u + ≥2 compagni |
+| 4 | Anchor | CT + accovacciato |
+| 5 | Lurk | Distanza media dal team > 1500u + nessun nemico visibile |
+| 6 | Retake | CT + bomba piazzata |
+| 7 | Save | Equipaggiamento < $1500 (priorità massima) |
+| 8 | Aggressive Push | Nemici visibili + distanza ≥ 800u |
+| 9 | Passive Hold | CT default (senza knowledge) |
+
+La catena di priorità è: Save → Retake → Lurk → Entry Frag → Aggressive Push → Anchor/Passive Hold → Support → Site Take. Senza `PlayerKnowledge`, si ricade su default basati sul team (CT → Passive Hold, T → Site Take).
+
+#### Risoluzione Mappa: `_resolve_map_name()`
+
+Catena di fallback a 3 livelli per determinare la mappa di ogni campione:
+
+1. **Match metadata DB** → `MatchDataManager.get_metadata(match_id).map_name`
+2. **Regex su demo_name** → cerca nomi mappa noti (mirage, inferno, dust2, etc.)
+3. **Fallback statico** → `"de_mirage"` (mappa più giocata)
+
+#### Validazione Contrastiva (Evaluation)
+
+Durante la validazione, il calcolo della loss JEPA richiede un passaggio extra per i negativi:
+
+1. Raw negatives `[batch, n_neg, feat_dim]` → flatten a `[batch*n_neg, feat_dim]`
+2. Encode tramite `target_encoder` → `[batch*n_neg, latent_dim]`
+3. Reshape a `[batch, n_neg, latent_dim]`
+4. Calcolo `jepa_contrastive_loss(pred, target, neg_latent)`
+
+Per RAP, la validazione usa `trainer.criterion_val` (MSE su value_estimate vs target_val).
+
+### -JEPATrainer (jepa_trainer.py, 296 righe)
+
+Il trainer specializzato per l'architettura JEPA. Gestisce pre-training self-supervised, monitoraggio drift, e il protocollo VL-JEPA a tripla loss.
+
+> **Analogia:** Se l'Orchestratore è il direttore d'orchestra, il `JEPATrainer` è il **primo violino** — esegue il lavoro tecnico più delicato (InfoNCE, EMA update, drift detection) mentre il direttore controlla il tempo e decide quando fermarsi.
+
+**Costruttore:**
+
+| Parametro | Default | Dettaglio |
+|---|---|---|
+| `lr` | 1e-4 | Learning rate per AdamW |
+| `weight_decay` | 1e-4 | Regolarizzazione L2 |
+| `drift_threshold` | 2.5 | Soglia z-score per DriftMonitor |
+
+- **NN-36**: I parametri del `target_encoder` vengono **esclusi** dall'ottimizzatore — sono aggiornati solo via EMA (Exponential Moving Average), mai con gradienti diretti
+- **Scheduler**: `CosineAnnealingLR` con `T_max=100`, step una volta per epoca
+
+**Due modalità di training step:**
+
+```mermaid
+flowchart LR
+    subgraph JEPA["train_step() — JEPA Base"]
+        FWD1["forward_jepa_pretrain()"]
+        NEG1["Auto-encode negatives<br/>(se dim mismatch)"]
+        L1["jepa_contrastive_loss()"]
+        OPT1["backward + step"]
+        EMA1["update_target_encoder()"]
+        DIV1["_log_embedding_diversity()"]
+    end
+
+    subgraph VL["train_step_vl() — VL-JEPA"]
+        FWD2["forward_jepa_pretrain()"]
+        VL2["forward_vl() → concept_logits"]
+        LAB["ConceptLabeler<br/>(G-01: RoundStats preferred)"]
+        L2["InfoNCE + concept_loss<br/>+ diversity_loss"]
+        OPT2["backward + step"]
+        EMA2["update_target_encoder()"]
+    end
+
+    style JEPA fill:#e8f4f8
+    style VL fill:#fff3e0
+```
+
+**`train_step()` (JEPA base):**
+1. Forward → `pred_embedding`, `target_embedding`
+2. Auto-detect negativi raw (dim mismatch con `pred_embedding`) → encode via `target_encoder`
+3. `jepa_contrastive_loss(pred, target, negatives)` — InfoNCE
+4. Backward + optimizer step
+5. EMA update del target encoder
+6. **P9-02**: Monitoraggio varianza embeddings — warning se < 0.01 (rischio collapse)
+
+**`train_step_vl()` (VL-JEPA):**
+
+Tre componenti di loss:
+
+| Loss | Peso | Funzione |
+|---|---|---|
+| InfoNCE | 1.0 | Contrastive self-supervised |
+| Concept alignment | α = 0.5 | Allineamento concetti a etichette |
+| Diversity regularization | β = 0.1 | Previene concept collapse |
+
+> **Correzione G-01:** Le etichette concettuali vengono preferibilmente generate da `ConceptLabeler.label_from_round_stats(rs)` usando i dati reali di esito round. Solo come fallback viene usato il labeling euristico (con warning logged una volta sola).
+
+**Sistema Drift (Task 2.19.3):**
+
+- `check_val_drift(val_df, reference_stats)` → `DriftMonitor.check_drift()` con z-threshold 2.5
+- `should_retrain(history, window=5)` → True se drift persistente nelle ultime 5 epoche
+- `retrain_if_needed()` → ciclo completo di riaddestramento con scheduler resettato
+
+### -RAPTrainer (rap_coach/trainer.py, 110 righe)
+
+Il trainer multi-task per il modello RAP Coach. Gestisce 4 componenti di loss simultaneamente.
+
+> **Analogia:** Il RAPTrainer è come un **insegnante di guida** che valuta contemporaneamente la scelta di percorso (strategia), la valutazione del rischio (value), lo stile di guida (sparsità), e il parcheggio (posizionamento) — tutto in una singola lezione.
+
+**Loss Composition:**
+
+```mermaid
+flowchart TB
+    FWD["model(view, map, motion, metadata)"]
+    STRAT["Strategy Loss<br/>MSE(advice_probs, target_strat)"]
+    VAL["Value Loss<br/>0.5 × MSE(value_estimate, target_val)"]
+    SPAR["Sparsity Loss<br/>compute_sparsity_loss(gate_weights)"]
+    POS["Position Loss<br/>MSE + Z-penalty 2.0×"]
+
+    FWD --> STRAT
+    FWD --> VAL
+    FWD --> SPAR
+    FWD --> POS
+
+    TOTAL["total = strat + 0.5·val + sparsity + pos"]
+    STRAT --> TOTAL
+    VAL --> TOTAL
+    SPAR --> TOTAL
+    POS --> TOTAL
+
+    style STRAT fill:#4a9eff,color:#fff
+    style VAL fill:#51cf66,color:#000
+    style SPAR fill:#ffd43b,color:#000
+    style POS fill:#ff6b6b,color:#fff
+```
+
+| Loss | Peso | Criterio | Target |
+|---|---|---|---|
+| Strategy | 1.0 | MSE | `target_strat` (ruolo tattico one-hot, 10 classi) |
+| Value | 0.5 | MSE | `target_val` (advantage [0,1]) |
+| Sparsity | 1.0 | L1 su gate weights | Interpretabilità: pesi gate → ~0 |
+| Position | 1.0 | MSE + Z×2.0 | `target_pos` delta (opzionale) |
+
+**Task 2.17.1 — Penalità Z-axis:** La `compute_position_loss()` applica un peso 2× sull'errore asse Z (verticalità), perché nel CS2 gli errori di elevazione (es. nemico su una scala vs piano terra) sono tatticamente critici.
+
+**F3-07:** I `gate_weights` vengono passati esplicitamente a `compute_sparsity_loss()` anziché letti dall'istanza del modello — garantisce thread-safety.
+
+### -Punto di Ingresso Training (train.py, 275 righe)
+
+Modulo entry-point che fornisce la funzione `train_nn()` con dispatch automatico e funzioni standalone.
+
+**`train_nn(X, y, X_val, y_val, model, config_name, context)`:**
+
+| config_name | Percorso | Pipeline |
+|---|---|---|
+| `"jepa"` | `_train_jepa_self_supervised()` | Self-supervised, InfoNCE, 5 epoche prototype |
+| altro | `_execute_validated_loop()` | Supervised, MSE, DataLoader standard |
+
+**Funzioni helper:**
+
+| Funzione | Responsabilità |
+|---|---|
+| `_prepare_splits(X, y)` | Train/val split 80/20 con `random_state=42`. Rifiuta se < 20 campioni (P1-04) |
+| `_train_jepa_self_supervised()` | Prototipo JEPA: `SelfSupervisedDataset`, context_len=10, prediction_len=5, clip_grad=1.0 |
+| `_execute_validated_loop()` | Loop supervisionato con `EarlyStopping(patience=10)`, throttling configurabile |
+| `run_training()` | Standalone entry: usa `CoachTrainingManager` per fetch dati pro |
+
+> **Nota P1-02:** Tutti i percorsi chiamano `set_global_seed()` prima dell'addestramento per garantire riproducibilità. Il seed globale è configurato nel modulo `config.py`.
+
+### -WinProbabilityTrainer (win_probability_trainer.py, 124 righe)
+
+Modulo dedicato al modello di probabilità vittoria — la rete più semplice dell'ecosistema.
+
+**Architettura `WinProbabilityNN`:**
+
+```
+Input(9) → Linear(32) → ReLU → Linear(16) → ReLU → Linear(1) → Sigmoid
+```
+
+**9 Feature di Input:**
+
+| # | Feature | Tipo |
+|---|---|---|
+| 1 | `ct_alive` | Giocatori CT vivi |
+| 2 | `t_alive` | Giocatori T vivi |
+| 3 | `ct_health` | HP totale CT |
+| 4 | `t_health` | HP totale T |
+| 5 | `ct_armor` | Armatura totale CT |
+| 6 | `t_armor` | Armatura totale T |
+| 7 | `ct_eqp` | Valore equipaggiamento CT |
+| 8 | `t_eqp` | Valore equipaggiamento T |
+| 9 | `bomb_planted` | Bomba piazzata (0/1) |
+
+**Training:**
+- Loss: **BCELoss** (Binary Cross-Entropy — output è probabilità [0,1])
+- Optimizer: Adam (lr=0.001) — non AdamW, più semplice per questa rete
+- Early stopping: patience=10, min_delta=1e-4
+- Target: `did_ct_win` (binario)
+- Split: 80/20 con `random_state=42`
+- Minimo campioni: 20 (AR-6)
+- Salvataggio: `torch.save(state_dict, model_path)` — persistenza diretta, non tramite `save_nn()`
+
+**`predict_win_prob(model, state_dict)`** — Inferenza singola: costruisce il tensore dalle 9 feature e ritorna la probabilità CT-win come float.
+
+### -Utilità di Addestramento
+
+I seguenti moduli forniscono l'infrastruttura di supporto al ciclo di addestramento — configurazione, controllo, monitoraggio, dataset, e arresto anticipato.
+
+**`training_config.py` (69 righe)** — Dataclass centralizzate per iperparametri:
+
+| Dataclass | Parametri Chiave | Uso |
+|---|---|---|
+| `TrainingConfig` | `base_lr=1e-4`, `max_epochs=100`, `patience=10`, `batch_size=1`, `gradient_clip=1.0`, `ema_decay=0.999` | Configurazione base per tutti i modelli |
+| `JEPATrainingConfig` | Estende TrainingConfig + `latent_dim=256`, `contrastive_temperature=0.07`, `momentum_target=0.996`, `pretraining_epochs=50` | Specifica per JEPA self-supervised |
+
+**`training_controller.py` (160 righe)** — Gatekeeper che decide **se** un nuovo demo debba essere usato per addestramento:
+
+- **Quota mensile**: `MAX_DEMOS_PER_MONTH = 10` — conta i `PlayerMatchStats` processati negli ultimi 30 giorni
+- **Score di diversità**: Confronta il nuovo demo con gli ultimi 5 match via similarità coseno su 6 feature normalizzate (kills, deaths, ADR, HS%, utility, opening duels). Se `diversity < 0.3`, il demo viene rifiutato
+- Ritorna un `TrainingDecision(should_train, reason, diversity_score)` — il chiamante decide se procedere
+
+**`training_monitor.py` (123 righe)** — Persistenza metriche in JSON per monitoraggio real-time e analisi post-training. Traccia: epoche, train_loss, val_loss, learning_rate, best_val_loss, stato (in progress / early stopped / completed).
+
+**`early_stopping.py` (86 righe)** — Implementazione callable dell'arresto anticipato:
+
+```python
+stopper = EarlyStopping(patience=10, min_delta=1e-4)
+if stopper(val_loss):  # True = ferma l'addestramento
+    break
+```
+
+Logica: se `val_loss < best_loss - min_delta`, reset del contatore. Altrimenti incrementa. Quando `counter >= patience`, ritorna `True`. Usato da tutti i trainer (JEPA, RAP, Legacy, WinProb).
+
+**`dataset.py` (64 righe)** — Due Dataset PyTorch:
+
+| Dataset | Input | Output | Uso |
+|---|---|---|---|
+| `ProPerformanceDataset` | `(X, y)` tensori | `(x[i], y[i])` tuple | Training supervisionato Legacy |
+| `SelfSupervisedDataset` | `X` sequenziale | `(context, target)` finestre scorrevoli | JEPA self-supervised |
+
+Il `SelfSupervisedDataset` usa una **finestra scorrevole**: `context_len=10` tick come input, `prediction_len=5` tick come target. Il numero totale di campioni è `len(X) - context_len - prediction_len`. Solleva `ValueError` se i dati sono insufficienti (F3-34).
+
+### -Sistema di Callback (training_callbacks.py + tensorboard_callback.py)
+
+Architettura plugin a due livelli per l'osservabilità del training, senza modificare il loop principale.
+
+> **Analogia:** Il sistema di callback è come i **sensori di un'auto da corsa** — termometro olio, pressione pneumatici, G-force — che raccolgono dati senza mai interferire con la guida. Il pilota (orchestratore) corre, i sensori (callback) registrano.
+
+**Layer 1 — `training_callbacks.py` (110 righe):**
+
+`TrainingCallback` (ABC) definisce 7 hook di lifecycle:
+
+| Hook | Quando | Parametri |
+|---|---|---|
+| `on_train_start` | Prima della prima epoca | model, config dict |
+| `on_epoch_start` | Inizio di ogni epoca | epoch |
+| `on_batch_end` | Dopo ogni batch di training | batch_idx, loss, outputs dict |
+| `on_epoch_end` | Fine di ogni epoca | epoch, train_loss, val_loss, model, optimizer |
+| `on_validation_end` | Dopo il passaggio di validazione | epoch, val_loss, model |
+| `on_train_end` | Dopo il completamento | model, final_metrics dict |
+| `close` | Rilascio risorse | — |
+
+> **Nota F3-31:** Nessun metodo è `@abstractmethod` — pattern opt-in dove le sottoclassi implementano solo gli hook necessari. Tutti i metodi base sono no-op.
+
+`CallbackRegistry` è il dispatcher: `fire(event, **kwargs)` chiama l'hook corrispondente su ogni callback registrato. Errori nei callback vengono catturati e loggati — **mai crashano il training**.
+
+**Layer 2 — `tensorboard_callback.py` (228 righe):**
+
+```mermaid
+flowchart LR
+    subgraph HOOKS["Lifecycle Events"]
+        TS["on_train_start"]
+        BE["on_batch_end"]
+        EE["on_epoch_end"]
+        TE["on_train_end"]
+    end
+
+    subgraph TB["TensorBoard Writer"]
+        SCALARS["Scalars<br/>loss, lr, RAP metrics,<br/>JEPA losses, gate stats"]
+        HIST["Histograms<br/>params, grads, belief,<br/>gates, concept norms"]
+        LAYOUT["Custom Layout<br/>4 dashboard sections"]
+    end
+
+    TS --> LAYOUT
+    BE --> SCALARS
+    EE --> SCALARS
+    EE --> HIST
+    TE --> SCALARS
+
+    style HOOKS fill:#e8f4f8
+    style TB fill:#fff3e0
+```
+
+Segnali registrati per tipo di modello:
+
+| Categoria | Metriche | Tipo |
+|---|---|---|
+| Core | `loss/train`, `loss/val`, `loss/gap`, `loss/batch` | Scalari per-epoch/batch |
+| RAP | `rap/sparsity_ratio`, `rap/z_axis_error`, `rap/loss_position` | Scalari per-batch |
+| JEPA | `jepa/infonce_loss`, `jepa/concept_loss`, `jepa/diversity_loss` | Scalari per-batch |
+| Gates | `gates/mean_activation`, `gates/sparsity`, `gates/active_ratio` | Scalari per-batch |
+| Diagnostica | `params/*`, `grads/*`, `belief/vector`, `concepts/embedding_norms`, `gates/activations` | Istogrammi per-epoch |
+
+4 dashboard custom: **Coach Vital Signs**, **RAP Coach Internals**, **JEPA Self-Supervised**, **Superposition Gates**.
+
+Import graceful: se `tensorboard` non è installato, il callback diventa un no-op completo (`_TB_AVAILABLE = False`).
+
+---
+
+## 13. Funzioni di Perdita — Dettaglio Implementativo
+
+> **Analogia:** Le loss function sono il **sistema nervoso del dolore** dei modelli neurali — senza di esse, il modello non saprebbe mai se sta migliorando o peggiorando. Ogni tipo di loss è specializzata: il dolore acuto (contrastive) per JEPA, il dolore diffuso (MSE multi-task) per RAP, e il dolore binario (BCE) per la probabilità di vittoria.
+
+### Catalogo delle Loss Functions
+
+```mermaid
+flowchart TB
+    subgraph JEPA_LOSS["JEPA Loss Stack"]
+        INFONCE["jepa_contrastive_loss()<br/>InfoNCE + temperature 0.07"]
+        CONCEPT["vl_jepa_concept_loss()<br/>BCE + VICReg diversity"]
+    end
+
+    subgraph RAP_LOSS["RAP Loss Stack"]
+        STRAT["MSE(advice_probs, target_strat)<br/>Strategy"]
+        VAL2["0.5 × MSE(value_estimate, target_val)<br/>Value"]
+        SPARSE["L1(gate_weights) × λ<br/>Sparsity"]
+        POS2["MSE(δpos) + 2.0× MSE(δz)<br/>Position"]
+    end
+
+    subgraph OTHER["Altre Loss"]
+        BCE["BCELoss<br/>Win Probability"]
+        MSE_LEGACY["MSELoss<br/>Legacy TeacherRefinement"]
+    end
+
+    style JEPA_LOSS fill:#4a9eff,color:#fff
+    style RAP_LOSS fill:#51cf66,color:#000
+    style OTHER fill:#ffd43b,color:#000
+```
+
+### -jepa_contrastive_loss() — InfoNCE
+
+**File:** `jepa_model.py:326` | **Signature:** `(pred, target, negatives, temperature=0.07) → scalar`
+
+Formula InfoNCE (Noise Contrastive Estimation):
+
+```
+L = -log( exp(sim(pred, target) / τ) / (exp(sim(pred, target) / τ) + Σ exp(sim(pred, neg_i) / τ)) )
+```
+
+Passaggi:
+1. **Normalizzazione L2** di pred, target, negatives (cosine similarity space)
+2. **Similitudine positiva**: `pos_sim = (pred · target) / τ` con `τ = 0.07`
+3. **Similitudini negative**: `neg_sim = bmm(negatives, pred)` / τ
+4. **Cross-entropy**: concat `[pos_sim, neg_sim]` → `F.cross_entropy` con labels=0 (il positivo è sempre l'indice 0)
+
+La temperatura `τ = 0.07` è bassa, il che rende la loss **sensibile a piccole differenze** — appropriato per le embedding CS2 dove i tick consecutivi sono molto simili.
+
+### -vl_jepa_concept_loss() — Allineamento Concettuale
+
+**File:** `jepa_model.py:913` | **Signature:** `(concept_logits, concept_labels, concept_embeddings, α=0.5, β=0.1) → (total, concept, diversity)`
+
+Due componenti:
+
+| Componente | Formula | Peso | Scopo |
+|---|---|---|---|
+| Concept alignment | `BCE_with_logits(logits, labels)` | α = 0.5 | Multi-label: ogni concetto attivato indipendentemente |
+| Diversity (VICReg) | `-mean(std(emb_norm, dim=0))` | β = 0.1 | Previene collapse: penalizza bassa varianza delle embedding concettuali |
+
+I 16 concetti di coaching (`COACHING_CONCEPTS`) coprono: positioning (aggressivo/passivo/esposto), economy (eco/force/full), timing (trade/rotate/patience), utility (flash/smoke/molotov), e communication (info/callout).
+
+### -compute_sparsity_loss() — Sparsità Gate RAP
+
+**File:** `rap_coach/model.py:105` | **Signature:** `(gate_weights) → scalar`
+
+```
+L_sparsity = λ × mean(|gate_weights|)
+```
+
+L1 norm sui pesi del `ContextGate` (SuperpositionLayer). L'obiettivo è che la maggior parte dei gate sia vicina a 0, con poche attivazioni forti — questo rende il modello **interpretabile** (quali input influenzano davvero la decisione?).
+
+> **Nota F3-07:** I `gate_weights` vengono passati come parametro esplicito anziché letti da `self._last_gate_weights` — previene race condition in ambienti multi-thread.
+
+### -Position Loss RAP — Penalità Z-axis
+
+**File:** `rap_coach/trainer.py:89` | **Signature:** `(pred_delta, target_delta) → (loss, z_error)`
+
+```
+L_pos = MSE(Δx) + MSE(Δy) + 2.0 × MSE(Δz)
+```
+
+Il peso 2× sull'asse Z riflette l'importanza critica della verticalità nel CS2: confondere il piano terra con il primo piano (es. Nuke, Vertigo) porta a decisioni tattiche completamente errate.
+
+### -Loss Legacy e Win Probability
+
+- **TeacherRefinementNN**: `MSELoss` standard su predizioni supervised (train.py)
+- **WinProbabilityNN**: `BCELoss` per output sigmoid [0,1] → probabilità CT-win
 
 ---
