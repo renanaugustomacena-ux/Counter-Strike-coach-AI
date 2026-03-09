@@ -266,15 +266,13 @@ class PlayerKnowledgeBuilder:
         knowledge.own_pos_x = float(getattr(player_tick, "pos_x", 0))
         knowledge.own_pos_y = float(getattr(player_tick, "pos_y", 0))
         knowledge.own_pos_z = float(getattr(player_tick, "pos_z", 0))
-        # R4-14-01: Flag (0,0,0) positions as likely missing data
-        if (
-            knowledge.own_pos_x == 0.0
-            and knowledge.own_pos_y == 0.0
-            and knowledge.own_pos_z == 0.0
-        ):
+        # P-PK-03: Flag (0,0,*) positions as likely missing data.
+        # On CS2 maps, (0,0) is outside the playable area, so x=y=0
+        # is almost certainly missing/corrupt data regardless of z.
+        if knowledge.own_pos_x == 0.0 and knowledge.own_pos_y == 0.0:
             knowledge.position_is_fallback = True
             logger.debug(
-                "Zero position for player at tick %d — possible missing data",
+                "Zero XY position for player at tick %d — possible missing data",
                 int(getattr(player_tick, "tick", 0)),
             )
         knowledge.own_yaw = float(getattr(player_tick, "yaw", 0))
@@ -339,11 +337,22 @@ class PlayerKnowledgeBuilder:
                     e.pos_x,
                     e.pos_y,
                     self.fov_degrees,
+                    player_z=knowledge.own_pos_z,  # P-PK-01: pass Z for multi-level maps
+                    target_z=e.pos_z,
                 )
             ]
             in_fov.sort(key=lambda e: e.distance)
             knowledge.visible_enemies = in_fov[:enemies_visible_count]
             knowledge.visible_enemy_count = len(knowledge.visible_enemies)
+            # P-PK-04: Warn when FOV filter disagrees with game's visibility count
+            if len(in_fov) < enemies_visible_count:
+                logger.debug(
+                    "P-PK-04: FOV/visibility mismatch: game reports %d visible, "
+                    "but only %d in FOV cone (tick %d)",
+                    enemies_visible_count,
+                    len(in_fov),
+                    current_tick,
+                )
 
         # --- Last-known enemy positions (memory with temporal decay) ---
         if recent_all_players_history:

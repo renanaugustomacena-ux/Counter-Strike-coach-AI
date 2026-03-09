@@ -43,6 +43,9 @@ class FrameBuffer:
         resolution: Tuple[int, int] = (1920, 1080),
         buffer_size: int = 30,
     ) -> None:
+        # P-CVF-01: buffer_size must be > 0 to avoid modulo-by-zero in ring buffer
+        if buffer_size <= 0:
+            raise ValueError(f"buffer_size must be > 0, got {buffer_size}")
         self._resolution = resolution
         self._buffer_size = buffer_size
         self._lock = threading.Lock()
@@ -114,15 +117,18 @@ class FrameBuffer:
         """Return the *count* most recent frames (newest first).
 
         Returns fewer if the buffer contains less than *count* frames.
-        Always returns exactly min(count, buffered_frame_count) elements;
-        the `available` bound guarantees all accessed slots have been written.
+        P-CVF-02: Skips None slots to prevent returning unwritten frames
+        if internal bookkeeping is inconsistent.
         """
         with self._lock:
             available = min(count, min(self._count, self._buffer_size))
             result: List[np.ndarray] = []
             for i in range(available):
                 idx = (self._write_index - 1 - i) % self._buffer_size
-                result.append(self._frames[idx])
+                frame = self._frames[idx]
+                if frame is None:
+                    break  # P-CVF-02: stop at first unwritten slot
+                result.append(frame)
             return result
 
     # ------------------------------------------------------------------

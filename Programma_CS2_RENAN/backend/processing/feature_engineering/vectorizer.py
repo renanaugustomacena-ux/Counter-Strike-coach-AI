@@ -87,6 +87,9 @@ WEAPON_CLASS_MAP: Dict[str, float] = {
 _UNKNOWN_WEAPON_DEFAULT = 0.1
 _unknown_weapons_seen: set = set()
 
+# P-VEC-02: Track NaN/Inf occurrences for upstream bug visibility
+_nan_inf_clamp_count: int = 0
+
 
 # P-X-01: Feature schema names — single source of truth for train/infer parity.
 # Length MUST equal METADATA_DIM.  If you add/remove a feature, update BOTH.
@@ -316,10 +319,14 @@ class FeatureExtractor:
             weapon_name = weapon_name[7:]
         weapon_class = WEAPON_CLASS_MAP.get(weapon_name, None)
         if weapon_class is None:
-            # H-12: Log unknown weapons at WARNING on first occurrence for map completeness
-            if weapon_name not in _unknown_weapons_seen and weapon_name != "unknown":
-                _unknown_weapons_seen.add(weapon_name)
-                _logger.warning("H-12: Unknown weapon '%s' — add to WEAPON_CLASS_MAP", weapon_name)
+            # P-VEC-04 / H-12: Log unknown weapons at WARNING on first occurrence,
+            # then DEBUG only, to avoid log spam from repeated ticks.
+            if weapon_name != "unknown":
+                if weapon_name not in _unknown_weapons_seen:
+                    _unknown_weapons_seen.add(weapon_name)
+                    _logger.warning(
+                        "H-12: Unknown weapon '%s' — add to WEAPON_CLASS_MAP", weapon_name
+                    )
             weapon_class = _UNKNOWN_WEAPON_DEFAULT
         vec[19] = weapon_class
 
@@ -359,16 +366,19 @@ class FeatureExtractor:
             econ_val = ctx.get("team_economy", 0)
         vec[24] = min(float(econ_val or 0) / 16000.0, 1.0)
 
-        # R4-14-02: Non-finite values indicate upstream bugs. Log at ERROR (not
-        # WARNING) and track affected indices for root-cause analysis.
+        # P-VEC-02 / R4-14-02: Non-finite values indicate upstream bugs.
+        # Log at ERROR and track count so the problem cannot be silently ignored.
+        global _nan_inf_clamp_count
         if np.any(~np.isfinite(vec)):
             bad_indices = np.where(~np.isfinite(vec))[0].tolist()
             feature_names = FeatureExtractor.get_feature_names()
             bad_names = [feature_names[i] for i in bad_indices if i < len(feature_names)]
+            _nan_inf_clamp_count += 1
             _logger.error(
-                "R4-14-02: Feature vector contains NaN/Inf BEFORE clamp — "
-                "indices: %s, features: %s. Fix upstream normalisation.",
-                bad_indices, bad_names,
+                "P-VEC-02: Feature vector contains NaN/Inf BEFORE clamp "
+                "(occurrence #%d) — indices: %s, features: %s. "
+                "Clamping to defaults; fix upstream normalisation.",
+                _nan_inf_clamp_count, bad_indices, bad_names,
             )
         vec = np.nan_to_num(vec, nan=0.0, posinf=1.0, neginf=-1.0)
         return vec
