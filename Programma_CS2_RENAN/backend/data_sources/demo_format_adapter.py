@@ -46,7 +46,7 @@ DEMO_MAGIC_V2 = b"PBDEMS2\x00"
 DEMO_MAGIC_LEGACY = b"HL2DEMO\x00"
 
 # Reasonable size bounds (bytes)
-MIN_DEMO_SIZE = 1024  # 1 KB — anything smaller is corrupted
+MIN_DEMO_SIZE = 1024 * 1024  # R3-M01: 1 MB — real CS2 demos are 50+ MB
 MAX_DEMO_SIZE = 5 * 1024**3  # 5 GB — safety cap
 
 

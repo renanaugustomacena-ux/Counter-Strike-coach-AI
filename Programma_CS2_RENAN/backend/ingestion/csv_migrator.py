@@ -163,12 +163,16 @@ class CSVMigrator:
                         round_num = int(row["round_num"])
                         team_name = row["team_name"]
 
-                        # Check existence (Composite key: match_id + round + team)
-                        # NOTE: For speed, we might skip this check if we know db is empty,
-                        # but for safety we keep it or rely on unique constraints if added.
-                        # Doing a select for every row is slow.
-                        # Optimization: We'll assume for now we are adding new data.
-                        # Users can clear the table if re-running.
+                        # R3-H05: Idempotency check — skip if record already exists
+                        existing = session.exec(
+                            select(Ext_TeamRoundStats).where(
+                                Ext_TeamRoundStats.external_match_id == match_id,
+                                Ext_TeamRoundStats.round_num == round_num,
+                                Ext_TeamRoundStats.team_name == team_name,
+                            )
+                        ).first()
+                        if existing:
+                            continue
 
                         record = Ext_TeamRoundStats(
                             match_id=0,  # No internal match link yet

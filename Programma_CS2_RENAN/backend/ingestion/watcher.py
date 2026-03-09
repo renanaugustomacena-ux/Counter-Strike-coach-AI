@@ -17,7 +17,7 @@ logger = get_logger("cs2analyzer.watcher")
 # File stability constants
 FILE_STABILITY_CHECK_INTERVAL = 1.0  # seconds between size checks
 FILE_STABILITY_REQUIRED_CHECKS = 2  # file must be stable for this many checks
-FILE_MINIMUM_SIZE = 1024  # 1KB minimum to avoid empty/corrupt files
+FILE_MINIMUM_SIZE = 5 * 1024 * 1024  # R3-M20: 5MB minimum — real demos are 50+ MB
 # F6-16: Maximum total stability attempts before giving up (~30 seconds at 1s interval)
 _MAX_STABILITY_ATTEMPTS = 30
 

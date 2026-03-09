@@ -1,5 +1,6 @@
 import shutil
 import sqlite3
+import threading
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -107,6 +108,41 @@ class DatabaseGovernor:
                 res = session.execute(text("SELECT 1")).scalar()
                 results["monolith"] = res == 1
 
+        return results
+
+    def verify_integrity_async(self, timeout_seconds: float = 120.0) -> Dict[str, Optional[bool]]:
+        """R3-H07: Run PRAGMA quick_check in a background thread with timeout.
+
+        Returns immediately-available liveness result plus async integrity result.
+        If the background check doesn't complete within timeout_seconds, the result
+        is None (indeterminate).
+        """
+        # Run lightweight check synchronously first
+        results = self.verify_integrity(full=False)
+
+        # Run full check in background thread with timeout
+        full_result: Dict[str, Optional[bool]] = {"full_check": None}
+
+        def _run_full_check():
+            try:
+                full_res = self.verify_integrity(full=True)
+                full_result["full_check"] = full_res.get("monolith")
+            except Exception as e:
+                app_logger.error("Background integrity check failed: %s", e)
+                full_result["full_check"] = False
+
+        thread = threading.Thread(target=_run_full_check, daemon=True)
+        thread.start()
+        thread.join(timeout=timeout_seconds)
+
+        if thread.is_alive():
+            app_logger.warning(
+                "R3-H07: PRAGMA quick_check did not complete within %.0fs — "
+                "result indeterminate. DB may be too large for synchronous check.",
+                timeout_seconds,
+            )
+
+        results["full_check"] = full_result["full_check"]
         return results
 
     def prune_match_data(self, match_id: int) -> bool:

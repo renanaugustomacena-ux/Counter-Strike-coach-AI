@@ -96,7 +96,9 @@ class FlareSolverrClient:
         """Fetch *url* through FlareSolverr, returning the decoded HTML body.
 
         Returns ``None`` on any error (network, Cloudflare block, timeout).
+        R3-M12: Callers can check ``self.last_error`` for structured error details.
         """
+        self.last_error: str | None = None
         payload: dict = {
             "cmd": "request.get",
             "url": url,
@@ -119,26 +121,20 @@ class FlareSolverrClient:
                 if status_code == 200:
                     logger.info("FlareSolverr: OK for %s", url)
                     return solution.get("response", "")
-                logger.warning(
-                    "FlareSolverr: HTTP %s for %s",
-                    status_code,
-                    url,
-                )
+                self.last_error = f"HTTP {status_code} for {url}"
+                logger.warning("FlareSolverr: %s", self.last_error)
             else:
-                logger.error("FlareSolverr error: %s", data.get("message"))
+                self.last_error = f"FlareSolverr error: {data.get('message')}"
+                logger.error("%s", self.last_error)
 
         except requests.exceptions.ConnectionError:
-            logger.error(
-                "FlareSolverr non raggiungibile su %s — il container Docker e' attivo?",
-                self._base_url,
-            )
+            self.last_error = f"FlareSolverr unreachable at {self._base_url}"
+            logger.error("%s — is the Docker container running?", self.last_error)
         except requests.exceptions.Timeout:
-            logger.error(
-                "FlareSolverr timeout (%ss) per %s",
-                self._timeout,
-                url,
-            )
+            self.last_error = f"FlareSolverr timeout ({self._timeout}s) for {url}"
+            logger.error("%s", self.last_error)
         except Exception as exc:
-            logger.error("FlareSolverr request failed: %s", exc)
+            self.last_error = f"FlareSolverr request failed: {exc}"
+            logger.error("%s", self.last_error)
 
         return None

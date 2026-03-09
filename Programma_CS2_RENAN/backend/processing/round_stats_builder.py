@@ -62,10 +62,9 @@ def _build_round_boundaries(round_end_df: pd.DataFrame) -> List[Dict]:
     for i, (_, row) in enumerate(round_end_df.sort_values("tick").iterrows()):
         round_num = int(row.get("round", i + 1))
         end_tick = int(row["tick"])
-        # NOTE (F2-10): For the first round (i==0) start_tick=0 which may include
-        # warmup ticks before the match begins. demoparser2 typically strips warmup,
-        # but this is not guaranteed for all demo sources.
-        start_tick = ticks[i - 1] if i > 0 else 0
+        # H-18: Use previous end_tick + 1 as start to prevent overlap.
+        # Round i's end_tick and round i+1's start_tick no longer share a tick.
+        start_tick = ticks[i - 1] + 1 if i > 0 else 0
         winner = str(row.get("winner", "")).strip() if pd.notna(row.get("winner")) else None
 
         boundaries.append(
@@ -76,6 +75,16 @@ def _build_round_boundaries(round_end_df: pd.DataFrame) -> List[Dict]:
                 "winner": winner,
             }
         )
+
+    # H-06: Validate round boundary completeness
+    if boundaries:
+        expected_rounds = set(range(1, len(boundaries) + 1))
+        actual_rounds = {b["round_number"] for b in boundaries}
+        missing = expected_rounds - actual_rounds
+        if missing:
+            logger.warning("Missing round boundaries for rounds: %s", sorted(missing))
+        if any(b["start_tick"] > b["end_tick"] for b in boundaries):
+            logger.error("Inverted round boundary detected (start > end)")
 
     return boundaries
 
