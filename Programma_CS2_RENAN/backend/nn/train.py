@@ -1,3 +1,5 @@
+import random
+
 import torch
 import torch.nn as nn
 from sqlmodel import select
@@ -121,7 +123,7 @@ def _train_jepa_self_supervised(X, device, context=None):
                 neg_indices = []
                 for i in range(batch_size_actual):
                     candidates = [j for j in range(batch_size_actual) if j != i]
-                    selected = candidates[:num_negatives]
+                    selected = random.sample(candidates, k=num_negatives)
                     neg_indices.append(selected)
                 neg_indices = torch.tensor(neg_indices, device=device)
                 negatives = target_emb[neg_indices]

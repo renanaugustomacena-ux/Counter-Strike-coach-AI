@@ -14,6 +14,15 @@ logger = get_logger("cs2analyzer.nn_train")
 
 
 def run_training():
+    """H-13: DEPRECATED — Use CoachTrainingManager.run_full_cycle() instead."""
+    import warnings
+
+    warnings.warn(
+        "train_pipeline.run_training() is DEPRECATED. "
+        "Use CoachTrainingManager.run_full_cycle() for the canonical training path.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     db_manager = get_db_manager()
     X, y = _prepare_training_data(db_manager)
 

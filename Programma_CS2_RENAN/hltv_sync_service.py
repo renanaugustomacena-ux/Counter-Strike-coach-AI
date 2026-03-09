@@ -138,11 +138,32 @@ def run_sync_loop():
         os.remove(PID_FILE)
 
 
+def _is_pid_alive(pid: int) -> bool:
+    """Check if a process with the given PID is still running."""
+    try:
+        os.kill(pid, 0)
+        return True
+    except (OSError, ProcessLookupError):
+        return False
+
+
 def start_detached():
     """Starts the sync service as a detached background process."""
     if PID_FILE.exists():
-        logger.warning("Sync service already seems to be running.")
-        return
+        # DA-06-01: Check if stored PID is actually alive before rejecting
+        try:
+            stored_pid = int(PID_FILE.read_text().strip())
+            if _is_pid_alive(stored_pid):
+                logger.warning("Sync service already running (PID: %s).", stored_pid)
+                return
+            logger.warning(
+                "Stale PID file found (PID %s is dead). Removing and restarting.",
+                stored_pid,
+            )
+            PID_FILE.unlink()
+        except (ValueError, OSError) as e:
+            logger.warning("Corrupt PID file, removing: %s", e)
+            PID_FILE.unlink(missing_ok=True)
 
     python_exe = sys.executable
     main_script = SCRIPT_DIR / "main.py"

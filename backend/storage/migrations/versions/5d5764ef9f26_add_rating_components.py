@@ -100,5 +100,26 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Downgrade schema."""
-    pass
+    """Downgrade schema — R2-02: reverse all columns added in upgrade()."""
+    # ProPlayerStatCard columns
+    for col in ("multikill_round_pct", "clutch_win_count", "opening_duel_win_pct",
+                "opening_kill_ratio", "maps_played", "headshot_pct"):
+        try:
+            op.drop_column("proplayerstatcard", col)
+        except Exception:
+            pass  # Column may not exist if upgrade was partial
+
+    # PlayerTickState columns
+    try:
+        op.drop_index(op.f("ix_playertickstate_demo_name"), table_name="playertickstate")
+        op.drop_column("playertickstate", "demo_name")
+    except Exception:
+        pass
+
+    # PlayerMatchStats rating columns
+    for col in ("rating_adr", "rating_kpr", "rating_kast", "rating_survival",
+                "rating_impact", "dpr", "kpr"):
+        try:
+            op.drop_column("playermatchstats", col)
+        except Exception:
+            pass

@@ -323,10 +323,24 @@ def _teacher_daemon_loop():
         try:
             trigger_count = _check_retraining_trigger()
             if trigger_count > 0:
-                get_state_manager().update_status("teacher", "Learning")
-                from Programma_CS2_RENAN.backend.nn.coach_manager import CoachTrainingManager
+                # NN-02: Acquire module-level training lock to prevent
+                # concurrent training with Console-triggered MLController.
+                from Programma_CS2_RENAN.backend.control.ml_controller import _TRAINING_LOCK
 
-                CoachTrainingManager().run_full_cycle()
+                if not _TRAINING_LOCK.acquire(blocking=False):
+                    logger.warning(
+                        "Teacher daemon: training skipped — another session active."
+                    )
+                    _shutdown_event.wait(60)
+                    continue
+
+                try:
+                    get_state_manager().update_status("teacher", "Learning")
+                    from Programma_CS2_RENAN.backend.nn.coach_manager import CoachTrainingManager
+
+                    CoachTrainingManager().run_full_cycle()
+                finally:
+                    _TRAINING_LOCK.release()
 
                 # Update sample count AFTER successful training (not before)
                 _commit_trained_sample_count(trigger_count)

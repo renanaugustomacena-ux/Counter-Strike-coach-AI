@@ -86,9 +86,14 @@ class UserOnboardingManager:
             if now - cached_time < self._CACHE_TTL_SECONDS:
                 return cached_count
 
-        # Cache miss or expired: query DB
+        # Cache miss or expired: query DB (DA-16-01: filter by user, exclude pro demos)
         with self.db.get_session() as session:
-            count = session.exec(select(func.count(PlayerMatchStats.id))).one()
+            count = session.exec(
+                select(func.count(PlayerMatchStats.id)).where(
+                    PlayerMatchStats.player_name == user_id,
+                    PlayerMatchStats.is_pro == False,  # noqa: E712
+                )
+            ).one()
 
         # Update cache
         self._demo_count_cache[user_id] = (count, now)

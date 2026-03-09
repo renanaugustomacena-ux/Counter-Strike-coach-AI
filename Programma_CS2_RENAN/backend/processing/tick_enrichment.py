@@ -310,47 +310,38 @@ def _compute_enemies_visible(
 
         n_players = len(group)
 
-        for i in range(n_players):
-            if not alive[i]:
-                continue
+        # C-02: Numpy-vectorized FOV computation (replaces O(P²) Python loops)
+        # Pairwise direction vectors: dx[i,j] = pos_x[j] - pos_x[i]
+        dx = positions_x[np.newaxis, :] - positions_x[:, np.newaxis]
+        dy = positions_y[np.newaxis, :] - positions_y[:, np.newaxis]
+        dist = np.sqrt(dx ** 2 + dy ** 2)
 
-            player_x = positions_x[i]
-            player_y = positions_y[i]
-            player_yaw_rad = math.radians(yaws[i])
+        # Player look direction vectors
+        yaw_rad = np.radians(yaws)
+        look_dx = np.cos(yaw_rad)
+        look_dy = np.sin(yaw_rad)
 
-            # Direction vector from player's yaw
-            look_dx = math.cos(player_yaw_rad)
-            look_dy = math.sin(player_yaw_rad)
+        # Normalized direction from i to j (avoid division by zero)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            dx_n = np.where(dist > 1e-6, dx / dist, 0.0)
+            dy_n = np.where(dist > 1e-6, dy / dist, 0.0)
 
-            count = 0
-            for j in range(n_players):
-                if i == j or not alive[j]:
-                    continue
-                # Only count enemies (different team)
-                if teams[j] == teams[i]:
-                    continue
+        # Dot product: look[i] · direction[i→j]
+        dot = look_dx[:, np.newaxis] * dx_n + look_dy[:, np.newaxis] * dy_n
+        dot = np.clip(dot, -1.0, 1.0)
+        angle = np.arccos(dot)
 
-                # Vector from player to enemy
-                dx = positions_x[j] - player_x
-                dy = positions_y[j] - player_y
-                dist = math.sqrt(dx * dx + dy * dy)
+        # Boolean masks
+        not_self = ~np.eye(n_players, dtype=bool)
+        enemy_mask = teams[:, np.newaxis] != teams[np.newaxis, :]
+        alive_observer = alive[:, np.newaxis]
+        alive_target = alive[np.newaxis, :]
+        dist_ok = (dist <= max_distance) & (dist > 1e-6)
+        fov_ok = angle <= half_fov_rad
 
-                if dist > max_distance or dist < 1e-6:
-                    continue
-
-                # Normalize direction to enemy
-                dx_n = dx / dist
-                dy_n = dy / dist
-
-                # Angle between look direction and direction to enemy
-                dot = look_dx * dx_n + look_dy * dy_n
-                dot = max(-1.0, min(1.0, dot))  # Clamp for acos safety
-                angle = math.acos(dot)
-
-                if angle <= half_fov_rad:
-                    count += 1
-
-            enemies_visible[indices[i]] = count
+        visible = not_self & enemy_mask & alive_observer & alive_target & dist_ok & fov_ok
+        counts = visible.sum(axis=1)
+        enemies_visible[indices] = counts
 
         processed += 1
         if processed % 50000 == 0:

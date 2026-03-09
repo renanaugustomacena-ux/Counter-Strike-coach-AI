@@ -132,7 +132,8 @@ class StorageManager:
         """Move oldest .dem files to archive."""
         files = []
         # scan all local folders
-        for root in [self.local_path, self.ingest_dir, self.pro_ingest_dir]:
+        # M-27: Exclude pro_ingest_dir from archival — pro demos should not be archived
+        for root in [self.local_path, self.ingest_dir]:
             for f in root.glob("*.dem"):
                 stat_result = f.stat()
                 files.append((f, stat_result.st_mtime, stat_result.st_size))

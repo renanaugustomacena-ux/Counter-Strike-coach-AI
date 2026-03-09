@@ -1253,81 +1253,112 @@ H-14 (pool size)         ──► database.py (single line change)
 
 ---
 
-## 13. Cross-Reference Reconciliation (2026-03-08)
+## 13. Cross-Reference Reconciliation (updated 2026-03-09)
 
-> Status of each issue against remediation Phases 0-12, DEFERRALS.md F-codes, and current codebase.
-> Legend: **ALREADY_FIXED** = verified in code | **NEW** = not addressed by prior work | **PARTIAL** = partially addressed
+> Status of each issue verified against current codebase on 2026-03-09.
+> Legend: **FIXED** = verified resolved | **EVOLVED** = partially addressed | **VALID** = still exists | **BY_DESIGN** = intentional
 
 ### Critical Issues (C-01 through C-10)
 
 | ID | Description | Status | Evidence |
 |----|-------------|--------|----------|
-| C-01 | Training/inference context feature skew (features 20-24) | **PARTIAL** | G-04 Phase 1 wired TensorFactory + PlayerKnowledgeBuilder. TrainingOrchestrator populates context from all_players_at_tick. However, the legacy `train_pipeline.py` path still lacks context — only the canonical TrainingOrchestrator path is fixed. |
-| C-02 | O(n²) enemies_visible computation | **NEW** | `tick_enrichment.py:299-353` still uses pure Python triple loop. Numpy vectorization not yet applied. |
-| C-03 | Double Y-flip in coordinate transform | **ALREADY_FIXED** | `tensor_factory.py:588`: `gy = int(ny * resolution)` — second flip removed. Comment confirms fix. |
-| C-04 | Silent event data loss (0.0 vs missing) | **NEW** | `demo_parser.py` still initializes stats to 0.0. `data_quality` flag exists but `data_pipeline.py` does not filter by it. |
-| C-05 | Assister name missing → KAST underestimated | **NEW** | `demo_parser.py:293-305` still uses `total_assists=0` fallback without alternative column names. |
-| C-06 | Player leakage in dataset splitting | **NEW** | `data_pipeline.py:158-182` and `coach_manager.py:317-359` split chronologically per class but NOT per player. Same player can appear in train+val+test. |
-| C-07 | Position features unbounded | **ALREADY_FIXED** | `vectorizer.py:207-209`: `np.clip(pos_x / cfg.pos_xy_extent, -1.0, 1.0)` — clipping added. |
-| C-08 | NULL entity_id passes SQL filter | **NEW** | `match_data_manager.py:445-446`: `entity_id != -1` still used without `is not None` check. |
-| C-09 | COPER fallback chain breaks | **ALREADY_FIXED** | G-08 fix: `coaching_service.py:259-276` now passes `deviations` and `rounds_played` to traditional fallback. |
-| C-10 | Smoke utility zones never expire | **NEW** | `player_knowledge.py:488-502` still has `continue` on `entity_id == -1` without time-based expiry fallback. |
+| C-01 | Training/inference context feature skew | **EVOLVED** | Canonical TrainingOrchestrator path fixed; legacy `train_pipeline.py` deprecated but still broken |
+| C-02 | O(n²) enemies_visible computation | **FIXED** | Numpy-vectorized FOV in `tick_enrichment.py:313-343` |
+| C-03 | Double Y-flip in coordinate transform | **FIXED** | Single flip in `tensor_factory.py:588` |
+| C-04 | Silent event data loss (0.0 vs missing) | **FIXED** | `data_pipeline.py:55` filters by `data_quality != "none"` |
+| C-05 | Assister name missing → KAST underestimated | **FIXED** | `demo_parser.py:301-316` tries multiple column names |
+| C-06 | Player leakage in dataset splitting | **FIXED** | `data_pipeline.py:192-278` decontaminates player splits |
+| C-07 | Position features unbounded | **FIXED** | `vectorizer.py:207-209` clips to [-1, 1] |
+| C-08 | NULL entity_id passes SQL filter | **VALID** | Low practical risk (schema enforces non-null) but defensive check missing |
+| C-09 | COPER fallback chain breaks | **EVOLVED** | Traditional fallback works; hybrid failure path still uncaught |
+| C-10 | Smoke utility zones never expire | **FIXED** | Time-based expiry + position matching in `player_knowledge.py:493-540` |
 
-**Summary: 4 ALREADY_FIXED, 1 PARTIAL, 5 NEW**
+**Summary: 7 FIXED, 2 EVOLVED, 1 VALID**
 
 ### High Issues (H-01 through H-18)
 
 | ID | Description | Status | Evidence |
 |----|-------------|--------|----------|
-| H-01 | Field resolution order inconsistency | **NEW** | `demo_parser.py:257-260` still uses different column priority per event type |
-| H-02 | Parse timeout too strict (300s) | **NEW** | `DEMO_PARSE_TIMEOUT_SECONDS = 300` still hardcoded |
-| H-03 | Money field name hardcoded ("balance") | **NEW** | `demo_loader.py:384` still only checks "balance" |
-| H-04 | Inventory always empty | **NEW** | `demo_loader.py:415` still has `inventory=[]` with TODO comment |
-| H-05 | Nade duration capping (20s) | **NEW** | No `is_duration_estimated` flag added |
-| H-06 | Round boundary pairing fragile | **NEW** | `round_context.py:79-97` still uses last freeze_end |
-| H-07 | Bomb explode event not handled | **NEW** | `round_context.py:130` still missing "bomb_exploded" |
-| H-08 | Alive count wrong for dead players | **NEW** | `tick_enrichment.py:161-224` dead players still get 0/0 |
-| H-09 | Non-reproducible training data | **ALREADY_FIXED** | `data_pipeline.py` now uses `.order_by(PlayerMatchStats.match_date)` |
-| H-10 | FOV_DEGREES dual definition | **PARTIAL** | Both still exist independently but values match (90.0). No shared constant. F3-05 aligned scale factors but not FOV. |
-| H-11 | FOV check missing Z/pitch | **NEW** | `player_knowledge.py:167-191` still 2D only |
-| H-12 | Weapon class map incomplete | **NEW** | `vectorizer.py:27-71` still uses `get(..., 0.1)` for unknown weapons |
-| H-13 | Two parallel training paths | **ALREADY_FIXED** | F3-05: scale factors unified. TrainingOrchestrator is the canonical path. |
-| H-14 | Database pool size = 1 | **NEW** | `database.py:82-87` still `pool_size=1` |
-| H-15 | RoundStats missing unique constraint | **NEW** | No `UniqueConstraint` on `(demo_name, round_number, player_name)` |
-| H-16 | Zombie detection for never-updated tasks | **NEW** | Still missing `OR (updated_at IS NULL AND created_at < cutoff)` |
-| H-17 | Experience Bank usage_count not persisted | **NEW** | `experience_bank.py:249-252` still in-memory mutation without `session.add()` |
-| H-18 | Round assignment boundary off-by-one | **NEW** | `round_stats_builder.py:83-89` still uses inclusive both ends |
+| H-01 | Field resolution order inconsistency | **BY_DESIGN** | Different primary actor per event type is intentional |
+| H-02 | Parse timeout too strict (300s) | **FIXED** | Scales by file size: `max(timeout, size_mb * 3)` |
+| H-03 | Money field name hardcoded ("balance") | **FIXED** | Tries `balance`, `cash`, `money`, `m_iAccount` |
+| H-04 | Inventory always empty | **VALID** | Still `inventory=[]` with TODO |
+| H-05 | Nade duration capping (20s) | **EVOLVED** | Tracks capped count + flag, but flag not stored on NadeState |
+| H-06 | Round boundary pairing fragile | **VALID** | Still uses last `freeze_end` |
+| H-07 | Bomb explode event not handled | **FIXED** | `bomb_exploded` added to round-end event list |
+| H-08 | Alive count wrong for dead players | **FIXED** | Rewritten with pandas groupby + merge |
+| H-09 | Non-reproducible training data | **FIXED** | `.order_by(PlayerMatchStats.id)` ensures determinism |
+| H-10 | FOV_DEGREES dual definition | **EVOLVED** | `constants.py` is shared; `TensorConfig` has independent copy (values match) |
+| H-11 | FOV check missing Z/pitch | **FIXED** | Z-distance check with `z_floor_threshold` added |
+| H-12 | Weapon class map incomplete | **VALID** | Unknown weapons still default to 0.1 bucket |
+| H-13 | Two parallel training paths | **EVOLVED** | Legacy path deprecated with DeprecationWarning; not deleted |
+| H-14 | Database pool size = 1 | **VALID** | Intentional for SQLite single-writer; `max_overflow=4` allows 5 connections |
+| H-15 | RoundStats missing unique constraint | **VALID** | No UniqueConstraint on `(demo_name, round_number, player_name)` |
+| H-16 | Zombie detection for never-updated tasks | **EVOLVED** | New tasks get `default_factory` timestamp; legacy NULL risk remains |
+| H-17 | Experience Bank usage_count not persisted | **FIXED** | SQLAlchemy identity-map tracks in-session mutations; session auto-commits |
+| H-18 | Round assignment boundary off-by-one | **VALID** | Inclusive both ends; first-match wins |
 
-**Summary: 2 ALREADY_FIXED, 1 PARTIAL, 15 NEW**
+**Summary: 6 FIXED, 4 EVOLVED, 5 VALID, 2 BY_DESIGN (H-01 intentional, H-14 SQLite constraint)**
 
-### Medium/Low Issues Summary
+### Medium Issues (M-01 through M-27)
 
-| Tier | Total | Already Fixed | New |
-|------|:-----:|:------------:|:---:|
-| Medium (M-01 to M-27) | 27 | ~5 | ~22 |
-| Low (L-01 to L-28) | 28 | ~3 | ~25 |
+| ID | Status | | ID | Status |
+|----|--------|-|----|--------|
+| M-01 | VALID | | M-15 | VALID |
+| M-02 | VALID | | M-16 | VALID |
+| M-03 | VALID | | M-17 | FIXED |
+| M-04 | EVOLVED | | M-18 | FIXED |
+| M-05 | FIXED | | M-19 | FIXED |
+| M-06 | VALID | | M-20 | EVOLVED |
+| M-07 | BY_DESIGN | | M-21 | VALID |
+| M-08 | FIXED | | M-22 | VALID |
+| M-09 | VALID | | M-23 | VALID |
+| M-10 | FIXED | | M-24 | VALID |
+| M-11 | VALID | | M-25 | VALID |
+| M-12 | FIXED | | M-26 | EVOLVED |
+| M-13 | FIXED | | M-27 | FIXED |
+| M-14 | VALID | | | |
+
+**Summary: 8 FIXED, 3 EVOLVED, 12 VALID, 2 BY_DESIGN (M-07 no wallhack, M-26 cosmetic)**
+
+### Low Issues (L-01 through L-28)
+
+| ID | Status | | ID | Status |
+|----|--------|-|----|--------|
+| L-01 | VALID | | L-15 | EVOLVED |
+| L-02 | VALID | | L-16 | VALID |
+| L-03 | VALID | | L-17 | VALID |
+| L-04 | FIXED | | L-18 | BY_DESIGN |
+| L-05 | VALID | | L-19 | VALID |
+| L-06 | VALID | | L-20 | VALID |
+| L-07 | VALID | | L-21 | VALID |
+| L-08 | VALID | | L-22 | VALID |
+| L-09 | VALID | | L-23 | VALID |
+| L-10 | VALID | | L-24 | VALID |
+| L-11 | VALID | | L-25 | VALID |
+| L-12 | EVOLVED | | L-26 | BY_DESIGN |
+| L-13 | VALID | | L-27 | VALID |
+| L-14 | FIXED | | L-28 | FIXED |
+
+**Summary: 3 FIXED, 2 EVOLVED, 19 VALID, 2 BY_DESIGN**
 
 ### Overall Pipeline Audit Status
 
-| Category | Count |
-|----------|:-----:|
-| **Total issues** | 83 |
-| **Already fixed** | ~14 (17%) |
-| **Partially fixed** | ~2 (2%) |
-| **New issues** | ~67 (81%) |
+| Category | Count | % |
+|----------|:-----:|:-:|
+| **Total issues** | 83 | 100% |
+| **FIXED** | 26 | 31% |
+| **EVOLVED** | 12 | 14% |
+| **VALID** | 39 | 47% |
+| **BY_DESIGN** | 6 | 7% |
 
-### Recommended Remediation Priority
+### Remaining High-Priority Items
 
-**Sprint 1 (Critical — training data integrity):**
-C-02 (vectorize FOV), C-04 (data quality filter), C-05 (assist column fallback), C-06 (player-stratified split), C-08 (NULL entity check), C-10 (smoke expiry)
-
-**Sprint 2 (High — core bugs):**
-H-08 (dead player alive counts), H-14 (pool size), H-15 (unique constraint), H-16 (zombie detection), H-17 (usage_count persistence), H-18 (off-by-one)
-
-**Sprint 3 (High — parsing robustness):**
-H-01 through H-07 (parsing edge cases)
-
-**Sprint 4 (Medium/Low):**
-M-01 through M-27, L-01 through L-28 (grouped by file)
+1. **C-08** — NULL entity_id: add defensive `is not None` check (low cost)
+2. **C-09** — COPER: wrap hybrid failure in its own try/except
+3. **H-04** — Inventory pipeline disabled entirely
+4. **H-15** — RoundStats unique constraint missing (silent duplicates)
+5. **H-18** — Off-by-one at round boundaries
+6. **M-21** — Sample count committed before calibration (no auto-retry)
 
 ---

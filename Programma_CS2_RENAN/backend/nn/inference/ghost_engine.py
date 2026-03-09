@@ -100,8 +100,19 @@ class GhostEngine:
                 )
                 return (0.0, 0.0)
 
-            # Build PlayerKnowledge when game_state is available
-            knowledge = self._build_knowledge_from_game_state(tick_data, game_state)
+            # R4-04-01: POV tensors use different channel semantics than training
+            # (Ch0=teammates, Ch1=last-known enemies vs. training's Ch0=enemies,
+            # Ch1=teammates). Keep legacy mode by default for alignment.
+            # Set USE_POV_TENSORS=true in settings.json to enable POV mode
+            # (only valid if model was trained with POV tensors).
+            from Programma_CS2_RENAN.core.config import get_setting
+            use_pov = get_setting("USE_POV_TENSORS", False)
+            if use_pov:
+                knowledge = self._build_knowledge_from_game_state(tick_data, game_state)
+                if knowledge is not None:
+                    app_logger.debug("GhostEngine: POV tensor mode active")
+            else:
+                knowledge = None
 
             # A. Map Frame - tactical overlay (Player-POV when knowledge available)
             tick_list = [tick_data]

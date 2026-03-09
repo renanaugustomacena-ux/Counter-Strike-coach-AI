@@ -12,7 +12,12 @@ from typing import List, Optional
 
 
 class Team(Enum):
-    """Player team enum."""
+    """Player team enum (string values for demo parser compatibility).
+
+    R1-02: A separate NUMERIC Team enum exists in app_types.py (SPECTATOR=0,
+    T=1, CT=2) for DB/UI contexts. Use ``app_types.team_from_demo_frame()``
+    to convert between them. Never compare instances across enum types.
+    """
 
     CT = "ct"
     T = "t"
@@ -86,6 +91,7 @@ class NadeState:
     throw_tick: Optional[int] = None
     trajectory: List[tuple[float, float, float]] = field(default_factory=list)
     thrower_id: Optional[int] = None
+    is_duration_estimated: bool = False  # H-05: True when duration was capped heuristically
 
 
 class EventType(str, Enum):

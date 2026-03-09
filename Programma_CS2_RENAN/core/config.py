@@ -171,6 +171,7 @@ def load_user_settings():
             "USE_HYBRID_COACHING": False,
             "USE_JEPA_MODEL": False,
             "USE_OLLAMA_COACHING": False,
+            "USE_POV_TENSORS": False,
             "USE_RAG_COACHING": False,
             "USE_RAP_MODEL": False,
             "ZOMBIE_TASK_THRESHOLD_SECONDS": 300,

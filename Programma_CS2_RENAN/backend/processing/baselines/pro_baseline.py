@@ -81,15 +81,17 @@ def _load_pro_from_db(map_name: Optional[str] = None):
         with db.get_session() as s:
             query = select(ProPlayerStatCard).limit(5000)
             if map_name:
-                # Filter by map name for map-specific baseline
                 query = query.where(ProPlayerStatCard.map_name == map_name)
-            cards = s.exec(query).all()
-            if not cards:
-                return None
+            # R4-20-01: Stream results in batches of 500 to avoid loading
+            # all 5000 ORM objects into memory simultaneously.
+            result = s.exec(query)
+            cards_iter = result.yield_per(500)
+            has_data = False
 
             # Map DB cards to standard baseline structure, grouping by player_id first
             player_stats = {}
-            for c in cards:
+            for c in cards_iter:
+                has_data = True
                 pid = c.player_id if c.player_id else c.name
                 if pid not in player_stats:
                     player_stats[pid] = {
@@ -114,6 +116,9 @@ def _load_pro_from_db(map_name: Optional[str] = None):
                 stats["rating_impact"].append(c.impact)
                 stats["rating_survival"].append(1.0 - c.dpr)
                 stats["rating_kast"].append(c.kast)
+
+            if not has_data:
+                return None
 
             # Average per player, then flatten for global baseline
             data = {k: [] for k in player_stats[next(iter(player_stats))].keys()}
@@ -209,10 +214,13 @@ def get_pro_positions(map_name: str, max_positions: int = 10000) -> list[tuple[f
                     continue
 
                 # Fetch alive-player positions (sample every 64th tick for density)
+                # R4-20-01: Limit per-match to prevent a single large match
+                # from dominating memory (e.g. overtime matches with 50+ rounds).
                 ticks = session.exec(
                     sel(MatchTickState.pos_x, MatchTickState.pos_y)
                     .where(MatchTickState.is_alive == True)  # noqa: E712
                     .where(MatchTickState.tick % 64 == 0)
+                    .limit(5000)
                 ).all()
 
                 for row in ticks:

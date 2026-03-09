@@ -386,7 +386,9 @@ class DemoLoader:
             for _money_field in ("balance", "cash", "money", "m_iAccount"):
                 _raw = getattr(row, _money_field, None)
                 if _raw is not None:
-                    money_val = int(_raw or 0)
+                    # R3-02: Use int(_raw) directly — `_raw or 0` incorrectly
+                    # treated legitimate zero-money (eco round) as missing.
+                    money_val = int(_raw)
                     break
             else:
                 # R3-02: All money fields missing — log for data quality tracking

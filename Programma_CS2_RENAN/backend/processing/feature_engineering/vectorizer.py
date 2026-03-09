@@ -204,9 +204,9 @@ class FeatureExtractor:
             # this is logged at DEBUG to avoid false alarms.
             _logger.debug("Position data missing — all key variants (pos_x/x/X) returned 0")
 
-        vec[9] = pos_x / cfg.pos_xy_extent
-        vec[10] = pos_y / cfg.pos_xy_extent
-        vec[11] = pos_z / cfg.pos_z_extent
+        vec[9] = np.clip(pos_x / cfg.pos_xy_extent, -1.0, 1.0)
+        vec[10] = np.clip(pos_y / cfg.pos_xy_extent, -1.0, 1.0)
+        vec[11] = np.clip(pos_z / cfg.pos_z_extent, -1.0, 1.0)
 
         # View angles (12-14) - sin/cos encoding for yaw to avoid ±180° discontinuity
         yaw_deg = float(get_val("view_x", 0))
@@ -265,7 +265,11 @@ class FeatureExtractor:
         # Strip common prefixes demoparser2 may include (e.g. "weapon_ak47" -> "ak47")
         if weapon_name.startswith("weapon_"):
             weapon_name = weapon_name[7:]
-        vec[19] = WEAPON_CLASS_MAP.get(weapon_name, 0.1)  # 0.1 = unknown weapon default
+        weapon_class = WEAPON_CLASS_MAP.get(weapon_name, None)
+        if weapon_class is None:
+            _logger.debug("H-12: Unknown weapon '%s' — using default class 0.1", weapon_name)
+            weapon_class = 0.1
+        vec[19] = weapon_class
 
         # Context-dependent features (20-24): Read from tick_data first (enriched
         # during ingestion), fall back to context dict (DemoFrame at inference).

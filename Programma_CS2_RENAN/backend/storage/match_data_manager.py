@@ -20,6 +20,7 @@ Path Resolution:
 
 import os
 import threading
+from collections import OrderedDict
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Generator, List, Optional
@@ -220,8 +221,8 @@ class MatchDataManager:
         # Ensure match data directory exists
         os.makedirs(self.match_data_path, exist_ok=True)
 
-        # Cache of active engines
-        self._engines = {}
+        # M-18: True LRU cache using OrderedDict (was FIFO with plain dict)
+        self._engines: OrderedDict = OrderedDict()
         self._engine_lock = threading.Lock()
 
     def _get_match_db_path(self, match_id: int) -> str:
@@ -234,12 +235,13 @@ class MatchDataManager:
         """Get or create a SQLAlchemy engine for a match database."""
         with self._engine_lock:
             if match_id in self._engines:
+                self._engines.move_to_end(match_id)  # M-18: mark as recently used
                 return self._engines[match_id]
 
-            # LRU eviction: dispose oldest engines when cache is full
+            # M-18: True LRU eviction — dispose least recently used (first item)
             if len(self._engines) >= self._MAX_CACHED_ENGINES:
-                oldest_key = next(iter(self._engines))
-                self._engines.pop(oldest_key).dispose()
+                _, engine = self._engines.popitem(last=False)
+                engine.dispose()
 
             db_path = self._get_match_db_path(match_id)
             db_url = f"sqlite:///{db_path}"
@@ -258,17 +260,24 @@ class MatchDataManager:
                 cursor.close()
 
             # Create tables for this match.
-            # FRAGILE: The tables= filter MUST be kept. Removing it would cause all
-            # ~20 global SQLModel tables (from db_models.py) to be created in every
-            # per-match database file whenever those modules have been imported.
-            SQLModel.metadata.create_all(
-                engine,
-                tables=[
-                    MatchTickState.__table__,
-                    MatchEventState.__table__,
-                    MatchMetadata.__table__,
-                ],
-            )
+            # R2-03: The tables= filter is CRITICAL. Removing it causes all ~20
+            # global SQLModel tables to leak into every per-match database.
+            _MATCH_TABLES = [
+                MatchTickState.__table__,
+                MatchEventState.__table__,
+                MatchMetadata.__table__,
+            ]
+            SQLModel.metadata.create_all(engine, tables=_MATCH_TABLES)
+            # Defensive check: verify only expected tables were created
+            from sqlalchemy import inspect as sa_inspect
+            created = set(sa_inspect(engine).get_table_names())
+            expected = {t.name for t in _MATCH_TABLES}
+            unexpected = created - expected
+            if unexpected:
+                logger.warning(
+                    "R2-03: Unexpected tables in match DB %s: %s",
+                    match_id, unexpected,
+                )
 
             self._engines[match_id] = engine
             return engine

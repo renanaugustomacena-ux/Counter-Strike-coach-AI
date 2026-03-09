@@ -56,9 +56,11 @@ def _check_duplicate_demo(db_manager, demo_name: str) -> bool:
     """
     from sqlmodel import select
 
+    # R3-04: Normalize to stem (strip .dem extension) for consistent matching
+    normalized = Path(demo_name).stem if demo_name.endswith(".dem") else demo_name
+
     with db_manager.get_session() as session:
-        # Check for any PlayerMatchStats with this demo_name (Exact Match)
-        stmt = select(PlayerMatchStats).where(PlayerMatchStats.demo_name == demo_name)
+        stmt = select(PlayerMatchStats).where(PlayerMatchStats.demo_name == normalized)
         existing = session.exec(stmt).first()
 
         if existing:
@@ -491,6 +493,16 @@ def _interpolate_position(df_ticks):
             df_ticks[col] = df_ticks[col].interpolate(method="linear", limit_direction="both")
             df_ticks[col] = df_ticks[col].ffill().bfill()
             df_ticks[col] = df_ticks[col].fillna(0.0)
+
+    # R4-14-01: Count rows where all position axes fell back to (0,0,0)
+    if all(c in df_ticks.columns for c in ("X", "Y", "Z")):
+        _zero_pos = ((df_ticks["X"] == 0.0) & (df_ticks["Y"] == 0.0) & (df_ticks["Z"] == 0.0)).sum()
+        if _zero_pos > 0:
+            from Programma_CS2_RENAN.observability.logger_setup import get_logger as _gl
+            _gl("cs2analyzer.ingestion").warning(
+                "R4-14-01: %d/%d ticks have (0,0,0) position after interpolation (%.1f%%)",
+                _zero_pos, len(df_ticks), 100.0 * _zero_pos / max(len(df_ticks), 1),
+            )
 
     # CIRCULAR interpolation for angles (yaw wraps at 360, pitch wraps at 180)
     for col, wrap_range in [("yaw", 360.0), ("pitch", 180.0)]:
@@ -957,7 +969,9 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
     t_db = _time.monotonic()
 
     demo_name = demo_path.stem
-    match_id = int(hashlib.md5(demo_name.encode()).hexdigest(), 16) % (10**9)
+    # DA-03-01: SHA-256 with 63-bit modulo (~3 billion demos before 50%
+    # birthday-paradox collision). SQLite INTEGER supports signed 64-bit.
+    match_id = int(hashlib.sha256(demo_name.encode()).hexdigest(), 16) % (2**63 - 1)
     match_manager = get_match_data_manager()
 
     total_ticks = len(df_ticks)
@@ -1018,6 +1032,15 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
     for col, default in _bool_defaults.items():
         if col in df_ticks.columns:
             df_ticks[col] = df_ticks[col].fillna(default).astype(bool)
+
+    # R3-02: Warn about critical columns missing from demoparser2 output
+    _critical_cols = ["balance", "health", "X", "Y", "Z"]
+    _missing_critical = [c for c in _critical_cols if c not in df_ticks.columns]
+    if _missing_critical:
+        logger.warning(
+            "Critical columns absent from demo data (defaulted to 0): %s",
+            _missing_critical,
+        )
 
     # Fill missing health default (100, not 0)
     if "health" in df_ticks.columns:

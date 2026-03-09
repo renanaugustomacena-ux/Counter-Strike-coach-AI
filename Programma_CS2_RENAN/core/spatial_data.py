@@ -16,6 +16,11 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 _logger = get_logger("cs2analyzer.spatial_data")
 
+# Z-axis distance penalties for multi-level maps (Nuke, Vertigo).
+# Single source of truth — also imported by connect_map_context.py (R4-11-01).
+Z_LEVEL_THRESHOLD = 200    # Relative Z units separating level floors
+Z_PENALTY_FACTOR = 2.0     # Multiplier for cross-level distance
+
 
 @dataclass(frozen=True)
 class MapMetadata:

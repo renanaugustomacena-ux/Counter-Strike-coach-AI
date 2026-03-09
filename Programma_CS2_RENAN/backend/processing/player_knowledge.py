@@ -19,14 +19,20 @@ import math
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 
+from Programma_CS2_RENAN.core.constants import (
+    FOV_DEGREES,
+    FLASH_DURATION_TICKS,
+    MEMORY_CUTOFF_TICKS,
+    MEMORY_DECAY_TAU_TICKS,
+    Z_FLOOR_THRESHOLD,
+)
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.player_knowledge")
 
 # ============ Constants ============
-
-FOV_DEGREES = 90.0
-"""Standard CS2 horizontal field of view."""
+# H-10: FOV_DEGREES, MEMORY_DECAY_TAU, MEMORY_CUTOFF, FLASH_DURATION
+# now imported from core.constants (single source of truth).
 
 HEARING_RANGE_GUNFIRE = 2000.0
 """World units within which gunfire is audible."""
@@ -34,15 +40,8 @@ HEARING_RANGE_GUNFIRE = 2000.0
 HEARING_RANGE_FOOTSTEP = 1000.0
 """World units within which footsteps are audible."""
 
-MEMORY_DECAY_TAU = 160
-"""Exponential decay time constant in ticks (~1.73 s half-life at 64 tick/s).
-
-P3-08: Previous comment erroneously stated 2.5 s. Actual half-life =
-tau * ln(2) / tick_rate = 160 * 0.693 / 64 ≈ 1.73 s.
-"""
-
-MEMORY_CUTOFF_TICKS = 320
-"""Maximum memory window in ticks (5 seconds at 64 tick/s). Beyond this, memory is gone."""
+# Backward-compatible alias (M-08)
+MEMORY_DECAY_TAU = MEMORY_DECAY_TAU_TICKS
 
 SMOKE_RADIUS = 200.0
 """Approximate smoke cloud radius in world units."""
@@ -146,6 +145,9 @@ class PlayerKnowledge:
     bomb_pos_y: float = 0.0
     bomb_pos_z: float = 0.0
 
+    # R4-14-01: True when position is (0,0,0) fallback — likely missing data
+    position_is_fallback: bool = False
+
 
 # ============ Geometry Helpers ============
 
@@ -171,16 +173,24 @@ def _is_in_fov(
     target_x: float,
     target_y: float,
     fov_degrees: float = FOV_DEGREES,
+    player_z: float = 0.0,
+    target_z: float = 0.0,
+    z_floor_threshold: float = Z_FLOOR_THRESHOLD,
 ) -> bool:
     """Check if a target position is within the player's FOV cone.
 
     Uses atan2 for direction and handles yaw wraparound correctly.
+    H-11: Includes Z-distance check for multi-level maps (Nuke, Vertigo).
     """
+    # H-11: Z-level guard — players on different floors are not visible
+    if abs(player_z - target_z) > z_floor_threshold:
+        return False
+
     dx = target_x - player_x
     dy = target_y - player_y
 
     if abs(dx) < 0.01 and abs(dy) < 0.01:
-        return True  # Same position → considered visible
+        return True  # Same position considered visible
 
     # atan2 returns angle in radians, convert to degrees
     # CS2 yaw: 0=East, 90=North, 180=West, 270=South (counter-clockwise)
@@ -252,6 +262,17 @@ class PlayerKnowledgeBuilder:
         knowledge.own_pos_x = float(getattr(player_tick, "pos_x", 0))
         knowledge.own_pos_y = float(getattr(player_tick, "pos_y", 0))
         knowledge.own_pos_z = float(getattr(player_tick, "pos_z", 0))
+        # R4-14-01: Flag (0,0,0) positions as likely missing data
+        if (
+            knowledge.own_pos_x == 0.0
+            and knowledge.own_pos_y == 0.0
+            and knowledge.own_pos_z == 0.0
+        ):
+            knowledge.position_is_fallback = True
+            logger.debug(
+                "Zero position for player at tick %d — possible missing data",
+                int(getattr(player_tick, "tick", 0)),
+            )
         knowledge.own_yaw = float(getattr(player_tick, "yaw", 0))
         knowledge.own_health = int(getattr(player_tick, "health", 100))
         knowledge.own_armor = int(getattr(player_tick, "armor", 0))
@@ -483,14 +504,35 @@ class PlayerKnowledgeBuilder:
         (between start and end events), and recent flash detonations.
         """
         # Active utility: start events without matching end events
+        # C-10: Time-based expiry constants (in ticks at 64 Hz)
+        SMOKE_MAX_TICKS = 18 * 64   # 18 seconds
+        MOLOTOV_MAX_TICKS = 7 * 64  # 7 seconds
+
         active_starts = {}  # entity_id -> event
         for evt in events:
             evt_type = str(getattr(evt, "event_type", ""))
             evt_tick = int(getattr(evt, "tick", 0))
             entity_id = int(getattr(evt, "entity_id", -1))
 
-            # Skip events with sentinel entity_id — extraction failed to populate it
+            # C-10: For entity_id=-1 end events, try position-based matching
             if entity_id == -1:
+                if evt_type in ("smoke_end", "molotov_end") and evt_tick <= current_tick:
+                    evt_x = float(getattr(evt, "pos_x", 0))
+                    evt_y = float(getattr(evt, "pos_y", 0))
+                    best_match = None
+                    best_dist = float("inf")
+                    for eid, start_evt in active_starts.items():
+                        start_type = str(getattr(start_evt, "event_type", ""))
+                        if ("smoke" in evt_type) != ("smoke" in start_type):
+                            continue
+                        sx = float(getattr(start_evt, "pos_x", 0))
+                        sy = float(getattr(start_evt, "pos_y", 0))
+                        dist = math.sqrt((evt_x - sx) ** 2 + (evt_y - sy) ** 2)
+                        if dist < 50.0 and dist < best_dist:
+                            best_match = eid
+                            best_dist = dist
+                    if best_match is not None:
+                        del active_starts[best_match]
                 continue
 
             if evt_type in ("smoke_start", "molotov_start"):
@@ -499,6 +541,17 @@ class PlayerKnowledgeBuilder:
             elif evt_type in ("smoke_end", "molotov_end"):
                 if evt_tick <= current_tick and entity_id in active_starts:
                     del active_starts[entity_id]
+
+        # C-10: Expire stale utility zones that exceeded max duration
+        expired_ids = []
+        for eid, evt in active_starts.items():
+            evt_type = str(getattr(evt, "event_type", ""))
+            evt_tick = int(getattr(evt, "tick", 0))
+            max_dur = SMOKE_MAX_TICKS if "smoke" in evt_type else MOLOTOV_MAX_TICKS
+            if current_tick - evt_tick > max_dur:
+                expired_ids.append(eid)
+        for eid in expired_ids:
+            del active_starts[eid]
 
         for evt in active_starts.values():
             evt_type = str(getattr(evt, "event_type", ""))
@@ -515,12 +568,12 @@ class PlayerKnowledgeBuilder:
                 )
             )
 
-        # Recent flashes (within 2 seconds = 128 ticks)
+        # Recent flashes (M-12: tick-rate aware via FLASH_DURATION_TICKS)
         for evt in events:
             if str(getattr(evt, "event_type", "")) != "flash_detonate":
                 continue
             evt_tick = int(getattr(evt, "tick", 0))
-            if 0 <= (current_tick - evt_tick) <= 128:
+            if 0 <= (current_tick - evt_tick) <= FLASH_DURATION_TICKS:
                 knowledge.utility_zones.append(
                     UtilityZone(
                         pos_x=float(getattr(evt, "pos_x", 0)),
