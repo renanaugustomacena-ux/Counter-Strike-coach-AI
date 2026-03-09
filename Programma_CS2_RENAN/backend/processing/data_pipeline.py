@@ -67,21 +67,27 @@ class ProDataPipeline:
                 )
             df = pd.DataFrame([r.model_dump() for r in results])
 
-        # 1. Cleaning
-        df = df[df["avg_adr"] < 400]
-        # P3-11: IQR-based outlier detection instead of hardcoded threshold.
-        # Hardcoded 3.0 silently dropped legitimate high-performance matches.
-        q1, q3 = df["avg_kills"].quantile([0.25, 0.75])
-        iqr = q3 - q1
-        upper_bound = q3 + 3.0 * iqr  # 3x IQR for extreme outliers only
-        df = df[df["avg_kills"] < upper_bound]
-
-        # 2. Split FIRST to prevent data leakage (temporal split before scaling)
+        # 1. Temporal split FIRST — outlier thresholds must be computed from
+        # training data only to prevent data leakage (P-DP-01).
         df["stratify_col"] = df["is_pro"].astype(str) + "_" + df["user_id"].astype(str)
         train_df, val_df, test_df = self._split_data(df, temporal_split=True)
 
         if train_df.empty:
-            logger.warning("Training split is empty after cleaning. Cannot fit scaler.")
+            logger.warning("Training split is empty after splitting. Cannot fit scaler.")
+            return
+
+        # 2. Outlier removal — thresholds derived from TRAINING set only (P-DP-01).
+        # Applied to all splits so val/test stay distribution-consistent with train.
+        train_df = train_df[train_df["avg_adr"] < 400]
+        q1, q3 = train_df["avg_kills"].quantile([0.25, 0.75])
+        iqr = q3 - q1
+        upper_bound = q3 + 3.0 * iqr  # 3x IQR for extreme outliers only
+        train_df = train_df[train_df["avg_kills"] < upper_bound]
+        val_df = val_df[(val_df["avg_adr"] < 400) & (val_df["avg_kills"] < upper_bound)]
+        test_df = test_df[(test_df["avg_adr"] < 400) & (test_df["avg_kills"] < upper_bound)]
+
+        if train_df.empty:
+            logger.warning("Training split is empty after outlier removal. Cannot fit scaler.")
             return
 
         # 3. Fit scaler on TRAINING data ONLY, then transform all splits.

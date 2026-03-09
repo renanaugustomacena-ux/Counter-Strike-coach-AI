@@ -9,6 +9,7 @@ from demoparser2 import DemoParser
 
 from Programma_CS2_RENAN.backend.data_sources.demo_format_adapter import validate_demo_file
 from Programma_CS2_RENAN.core.demo_frame import (
+    BombState,
     DemoFrame,
     EventType,
     GameEvent,
@@ -20,6 +21,30 @@ from Programma_CS2_RENAN.core.demo_frame import (
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 app_logger = get_logger("cs2analyzer.demo_loader")
+
+
+# DS-01: Restricted unpickler — prevents arbitrary code execution from
+# crafted cache files.  Only allows demo_frame dataclasses and builtins.
+_ALLOWED_MODULES = {
+    "Programma_CS2_RENAN.core.demo_frame": {
+        "BombState", "DemoFrame", "EventType", "GameEvent",
+        "NadeState", "NadeType", "PlayerState", "Team",
+    },
+    "builtins": {"True", "False", "None"},
+}
+
+
+class _SafeUnpickler(pickle.Unpickler):
+    """Unpickler that rejects classes outside the demo_frame allowlist."""
+
+    def find_class(self, module: str, name: str):
+        allowed = _ALLOWED_MODULES.get(module)
+        if allowed is not None and name in allowed:
+            return super().find_class(module, name)
+        raise pickle.UnpicklingError(
+            f"DS-01: Blocked deserialization of {module}.{name} — "
+            f"not in cache allowlist"
+        )
 
 
 def _get_cache_hmac_key() -> bytes:
@@ -40,14 +65,20 @@ def _pickle_dump_signed(obj, path: str) -> None:
 
 
 def _pickle_load_verified(path: str):
-    """Load pickle data only after HMAC integrity verification."""
+    """Load pickle data only after HMAC integrity verification.
+
+    DS-01: Uses _SafeUnpickler instead of pickle.loads() to prevent
+    arbitrary code execution from crafted cache files.
+    """
     with open(path, "rb") as f:
         sig = f.read(32)
         data = f.read()
     expected = hmac.new(_get_cache_hmac_key(), data, hashlib.sha256).digest()
     if not hmac.compare_digest(sig, expected):
         raise ValueError("Cache file integrity check failed — HMAC mismatch")
-    return pickle.loads(data)
+    import io
+
+    return _SafeUnpickler(io.BytesIO(data)).load()
 
 
 class DemoLoader:
