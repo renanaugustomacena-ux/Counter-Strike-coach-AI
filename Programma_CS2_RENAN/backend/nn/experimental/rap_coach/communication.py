@@ -95,12 +95,12 @@ class RAPCommunication:
 
         # 2. Extract Top Signal
         with torch.no_grad():
-            scores = (
-                layer_outputs.squeeze().cpu().numpy()
-                if hasattr(layer_outputs, "squeeze")
-                else [0.1]
-            )
-            top_idx = int(np.argmax(scores)) if len(scores.shape) > 0 else 0
+            # NN-52: Handle both tensor and list fallback paths safely
+            if hasattr(layer_outputs, "squeeze"):
+                scores = layer_outputs.squeeze().cpu().numpy()
+            else:
+                scores = np.array([0.1])
+            top_idx = int(np.argmax(scores)) if scores.ndim > 0 else 0
 
             topics = ["positioning", "mechanics", "strategy"]
             topic = topics[top_idx % len(topics)]

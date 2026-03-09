@@ -52,8 +52,9 @@ class RAPCoachModel(nn.Module):
             metadata_dim, output_dim, hidden_dim, perception_dim,
         )
 
-    def forward(self, view_frame, map_frame, motion_diff, metadata, skill_vec=None):
+    def forward(self, view_frame, map_frame, motion_diff, metadata, skill_vec=None, hidden_state=None):
         # x metadata shape: (batch, seq_len, metadata_dim)
+        # NN-40: hidden_state allows persisting recurrent state across forward calls
         batch_size, seq_len, _ = metadata.shape
 
         # NN-39 fix: support both per-timestep [B,T,C,H,W] and static [B,C,H,W] visual input
@@ -73,8 +74,8 @@ class RAPCoachModel(nn.Module):
 
         lstm_in = torch.cat([z_spatial_seq, metadata], dim=2)
 
-        # Forward through Recurrent Belief State
-        hidden_seq, belief, _ = self.memory(lstm_in)
+        # NN-40: Forward through Recurrent Belief State with optional initial hidden state
+        hidden_seq, belief, new_hidden = self.memory(lstm_in, hidden=hidden_state)
 
         # Last hidden state for decision
         last_hidden = hidden_seq[:, -1, :]
@@ -100,6 +101,7 @@ class RAPCoachModel(nn.Module):
             "gate_weights": gate_weights,
             "optimal_pos": optimal_pos,
             "attribution": attribution,
+            "hidden_state": new_hidden,  # NN-40: expose for stateful inference
         }
 
     def compute_sparsity_loss(self, gate_weights: torch.Tensor = None) -> torch.Tensor:

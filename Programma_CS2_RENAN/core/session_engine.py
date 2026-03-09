@@ -296,9 +296,10 @@ def _digester_daemon_loop():
 
             if processed_pro == 0 and processed_user == 0:
                 get_state_manager().update_status("digester", "Idle")
-                # NN-89: Clear before wait to avoid lost-wakeup race.
-                # If signal_work_available() fires between clear() and wait(),
-                # the event stays set and wait() returns immediately.
+                # NN-89/NN-90: Event-driven idle with safety timeout.
+                # Primary wakeup: signal_work_available() sets the event.
+                # 2s timeout is a safety net for edge cases (e.g., missed signals),
+                # NOT a polling interval. Under normal load the event fires instantly.
                 _work_available_event.clear()
                 _work_available_event.wait(timeout=2.0)
             else:

@@ -136,25 +136,10 @@ def load_pro_demo_sequences(limit: int = 100) -> List[np.ndarray]:
                 sequence = _build_sequence_from_rounds(round_rows)
                 sequences.append(sequence)
             else:
-                # Fallback: match-aggregate features tiled (legacy behaviour)
+                # NN-32: Skip matches without RoundStats — np.tile produces
+                # constant sequences that poison temporal pre-training.
                 fallback_count += 1
-                base = [
-                    match.avg_kills,
-                    match.avg_deaths,
-                    match.avg_adr,
-                    match.avg_hs,
-                    match.avg_kast,
-                    match.kill_std,
-                    match.adr_std,
-                    match.kd_ratio,
-                    match.impact_rounds,
-                    match.accuracy,
-                    match.econ_rating,
-                    match.rating,
-                ]
-                features = np.array(base + [0.0] * (METADATA_DIM - len(base)))
-                sequence = np.tile(features, (20, 1))
-                sequences.append(sequence)
+                continue
 
     logger.info("Loaded %d pro demo sequences (%d from RoundStats, %d fallback-tiled)",
                 len(sequences), len(sequences) - fallback_count, fallback_count)
@@ -247,7 +232,18 @@ def train_jepa_pretrain(
 
     # Load pro demo data
     sequences = load_pro_demo_sequences(limit=100)
+
+    # NN-33: Guard against empty dataset
+    if not sequences:
+        logger.warning("No valid pro demo sequences found — skipping JEPA pre-training")
+        return
+
     dataset = JEPAPretrainDataset(sequences, context_len=10, target_len=10)
+
+    if len(dataset) == 0:
+        logger.warning("JEPAPretrainDataset is empty — skipping JEPA pre-training")
+        return
+
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True,
                             worker_init_fn=_worker_init)
 
