@@ -1,13 +1,19 @@
+import json
 import os
 
 from kivy.event import EventDispatcher
 from kivy.properties import StringProperty
 
+from Programma_CS2_RENAN.core.config import get_resource_path
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+_logger = get_logger("cs2analyzer.localization")
+
 # F7-28: os.path.expanduser('~') evaluated at import time. Acceptable for desktop app
 # where HOME is always set. Would need lazy evaluation in container/service context.
+_HOME_DIR = os.path.expanduser("~")
 
-# F6-23: Translations are hardcoded dicts. Migrate to JSON files in assets/i18n/
-# when localization is a priority (enables runtime locale switching without code changes).
+# Hardcoded TRANSLATIONS dict kept as fallback if JSON files fail to load.
 TRANSLATIONS = {
     "en": {
         "app_name": "Macena CS2 Analyzer",
@@ -111,6 +117,21 @@ TRANSLATIONS = {
         "search": "Search",
         # P10-03: Baseline degraded warning (was hardcoded Portuguese in hybrid_engine.py)
         "baseline_degraded_warning": "WARNING: baseline_quality=degraded \u2014 using static fallback; coaching precision reduced",
+        # F10-01: Dialog strings previously hardcoded in main.py
+        "dialog_edit_profile": "Edit Profile",
+        "dialog_cancel": "CANCEL",
+        "dialog_save": "SAVE",
+        "dialog_open_link": "Open External Link?",
+        "dialog_cancel_lower": "Cancel",
+        "dialog_open": "Open",
+        "dialog_select_drive": "Select Drive",
+        "dialog_ok": "OK",
+        "dialog_close": "CLOSE",
+        "dialog_tactical_lab": "Tactical Laboratory",
+        "dialog_reconstructing": "Reconstructing 2D Dynamics...",
+        "dialog_analysis_failed": "Analysis Failed",
+        "dialog_skill_radar": "Skill Radar Analysis",
+        "wizard_step2_hint": "Or paste demo folder path here",
     },
     "pt": {
         "app_name": "Macena CS2 Analisador",
@@ -214,6 +235,21 @@ TRANSLATIONS = {
         "search": "Buscar",
         # P10-03
         "baseline_degraded_warning": "AVISO: baseline_quality=degraded \u2014 usando valores est\u00e1ticos; precis\u00e3o do coaching reduzida",
+        # F10-01
+        "dialog_edit_profile": "Editar Perfil",
+        "dialog_cancel": "CANCELAR",
+        "dialog_save": "SALVAR",
+        "dialog_open_link": "Abrir Link Externo?",
+        "dialog_cancel_lower": "Cancelar",
+        "dialog_open": "Abrir",
+        "dialog_select_drive": "Selecionar Drive",
+        "dialog_ok": "OK",
+        "dialog_close": "FECHAR",
+        "dialog_tactical_lab": "Laboratório Tático",
+        "dialog_reconstructing": "Reconstruindo Dinâmicas 2D...",
+        "dialog_analysis_failed": "Análise Falhou",
+        "dialog_skill_radar": "Análise de Radar de Habilidades",
+        "wizard_step2_hint": "Ou cole o caminho da pasta de demos aqui",
     },
     "it": {
         "app_name": "Macena CS2 Analizzatore",
@@ -317,21 +353,68 @@ TRANSLATIONS = {
         "search": "Cerca",
         # P10-03
         "baseline_degraded_warning": "ATTENZIONE: baseline_quality=degraded \u2014 usando valori statici; precisione del coaching ridotta",
+        # F10-01
+        "dialog_edit_profile": "Modifica Profilo",
+        "dialog_cancel": "ANNULLA",
+        "dialog_save": "SALVA",
+        "dialog_open_link": "Aprire Link Esterno?",
+        "dialog_cancel_lower": "Annulla",
+        "dialog_open": "Apri",
+        "dialog_select_drive": "Seleziona Unità",
+        "dialog_ok": "OK",
+        "dialog_close": "CHIUDI",
+        "dialog_tactical_lab": "Laboratorio Tattico",
+        "dialog_reconstructing": "Ricostruzione Dinamiche 2D...",
+        "dialog_analysis_failed": "Analisi Fallita",
+        "dialog_skill_radar": "Analisi Radar Abilità",
+        "wizard_step2_hint": "O incolla qui il percorso della cartella demo",
     },
 }
+
+
+def _load_json_translations() -> dict:
+    """Load translations from JSON files in assets/i18n/."""
+    loaded = {}
+    i18n_dir = get_resource_path(os.path.join("assets", "i18n"))
+    for lang_code in ("en", "pt", "it"):
+        path = os.path.join(i18n_dir, f"{lang_code}.json")
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            # Expand {home_dir} placeholders
+            for k, v in data.items():
+                if isinstance(v, str) and "{home_dir}" in v:
+                    data[k] = v.format(home_dir=_HOME_DIR)
+            loaded[lang_code] = data
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            _logger.debug("JSON translation for '%s' unavailable: %s", lang_code, e)
+    return loaded
+
+
+# Load once at import time; fall back to hardcoded TRANSLATIONS per-key
+_JSON_TRANSLATIONS = _load_json_translations()
 
 
 class LocalizationManager(EventDispatcher):
     lang = StringProperty("en")
 
     def get_text(self, key, trigger=None):
-        """Returns translated text for the current language."""
+        """Returns translated text for the current language.
+
+        Checks JSON-loaded translations first, then hardcoded TRANSLATIONS fallback.
+        """
+        # JSON takes priority
+        json_lang = _JSON_TRANSLATIONS.get(self.lang, {})
+        value = json_lang.get(key)
+        if value is not None:
+            return value
+        # Fallback to hardcoded dict
         translations = TRANSLATIONS.get(self.lang, TRANSLATIONS["en"])
         return translations.get(key, key)
 
     def set_language(self, lang_code):
         """Updates the current language and triggers UI refresh."""
-        if lang_code in TRANSLATIONS:
+        if lang_code in TRANSLATIONS or lang_code in _JSON_TRANSLATIONS:
             self.lang = lang_code
 
 

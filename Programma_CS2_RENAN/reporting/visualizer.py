@@ -204,6 +204,26 @@ class MatchVisualizer:
         }
         return bounds_map.get(map_name, (-4000, 4000, -4000, 4000))
 
+    @staticmethod
+    def _build_critical_moments_legend():
+        """Build legend handles for severity + scale markers."""
+        from matplotlib.lines import Line2D
+
+        specs = [
+            ("^", "red", 10, "Critical Play"),
+            ("v", "red", 10, "Critical Mistake"),
+            ("o", "orange", 10, "Significant"),
+            ("o", "gold", 10, "Notable"),
+            ("o", "gray", 6, "Micro scale"),
+            ("o", "gray", 9, "Standard scale"),
+            ("o", "gray", 12, "Macro scale"),
+        ]
+        return [
+            Line2D([0], [0], marker=m, color="w", markerfacecolor=c,
+                   markersize=s, label=lbl)
+            for m, c, s, lbl in specs
+        ]
+
     def render_critical_moments(self, moments, map_name, title="Critical Moments"):
         """
         Render critical moments as labeled markers on a map image.
@@ -291,75 +311,7 @@ class MatchVisualizer:
                 zorder=11,
             )
 
-        # Legend (severity + scale)
-        from matplotlib.lines import Line2D
-
-        legend_elements = [
-            Line2D(
-                [0],
-                [0],
-                marker="^",
-                color="w",
-                markerfacecolor="red",
-                markersize=10,
-                label="Critical Play",
-            ),
-            Line2D(
-                [0],
-                [0],
-                marker="v",
-                color="w",
-                markerfacecolor="red",
-                markersize=10,
-                label="Critical Mistake",
-            ),
-            Line2D(
-                [0],
-                [0],
-                marker="o",
-                color="w",
-                markerfacecolor="orange",
-                markersize=10,
-                label="Significant",
-            ),
-            Line2D(
-                [0],
-                [0],
-                marker="o",
-                color="w",
-                markerfacecolor="gold",
-                markersize=10,
-                label="Notable",
-            ),
-            Line2D(
-                [0],
-                [0],
-                marker="o",
-                color="w",
-                markerfacecolor="gray",
-                markersize=6,
-                label="Micro scale",
-            ),
-            Line2D(
-                [0],
-                [0],
-                marker="o",
-                color="w",
-                markerfacecolor="gray",
-                markersize=9,
-                label="Standard scale",
-            ),
-            Line2D(
-                [0],
-                [0],
-                marker="o",
-                color="w",
-                markerfacecolor="gray",
-                markersize=12,
-                label="Macro scale",
-            ),
-        ]
-        ax.legend(handles=legend_elements, loc="lower right", fontsize=8)
+        ax.legend(handles=self._build_critical_moments_legend(), loc="lower right", fontsize=8)
 
         ax.set_title(f"{title} — {map_name}", fontsize=14)
 

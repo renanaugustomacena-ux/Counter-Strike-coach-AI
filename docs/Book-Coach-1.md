@@ -26,25 +26,32 @@ Spero che qualcosa lì dentro possa essere utile.
 
 1. [Riepilogo esecutivo](#1-executive-summary)
 2. [Panoramica dell'architettura di sistema](#2-system-architecture-overview)
+   - Principio NO-WALLHACK e Contratto 25-dim
 3. [Sottosistema 1 — Core della rete neurale (`backend/nn/`)](#3-subsystem-1--neural-network-core)
    - AdvancedCoachNN (LSTM + MoE)
    - JEPA (Auto-Supervisionato InfoNCE)
    - **VL-JEPA** (Visione-Linguaggio, 16 Concetti di Coaching, ConceptLabeler)
    - JEPATrainer (Addestramento + Monitoraggio Deriva)
    - Pipeline Standalone (jepa_train.py)
-   - SuperpositionLayer (Gating Contestuale)
+   - SuperpositionLayer (Gating Contestuale, Osservabilità Avanzata, Inizializzazione Kaiming)
    - Modulo EMA
    - CoachTrainingManager, TrainingOrchestrator, ModelFactory, Config
    - NeuralRoleHead (Classificazione Ruoli MLP)
-   - Coach Introspection Observatory
-4. [Sottosistema 2 — Modello di coach RAP (`backend/nn/rap_coach/`)](#4-subsystem-2--rap-coach-model)
+   - Coach Introspection Observatory (MaturityObservatory — Macchina a 5 Stati)
+4. [Sottosistema 2 — Modello di coach RAP (`backend/nn/experimental/rap_coach/`)](#4-subsystem-2--rap-coach-model)
+   - RAPCoachModel (Input Visivi Duali: per-timestep e statici)
+   - ChronovisorScanner (Rilevamento Momenti Critici Multi-Scala)
+   - GhostEngine (Pipeline Inferenza 4-Tensori con PlayerKnowledge)
 5. [Sottosistema 1B — Sorgenti Dati (`backend/data_sources/`)](#5-sottosistema-1b--sorgenti-dati)
    - Demo Parser + Demo Format Adapter
    - Event Registry (Schema CS2 Events)
    - Trade Kill Detector
    - Steam API + Steam Demo Finder
-   - HLTV Scraper + Metadata
+   - Modulo HLTV (stat_fetcher, FlareSolverr, Docker, Rate Limiter)
    - FACEIT API + Integration
+   - FrameBuffer (Buffer Circolare per Estrazione HUD)
+   - TensorFactory — Fabbrica dei Tensori (Percezione Player-POV NO-WALLHACK)
+   - Indice Vettoriale FAISS (Ricerca Semantica ad Alta Velocità)
 
 **Parte 2** — Servizi, Analisi, Knowledge, Processing, Database, Training, Loss Functions
 
@@ -76,7 +83,7 @@ flowchart LR
     style K fill:#51cf66,color:#fff
 ```
 
-> 1,249 source files · 75,800+ lines · 334 .py files · 8 AI subsystems + Observatory + Control Module + Quad-Daemon + Desktop UI (13 screens) + 35 Tools · 73 test files · 20 SQLModel tables · 370+ issues fixed across 12 remediation phases
+> 1,249 source files · 75,800+ lines · 334 .py files · 8 AI subsystems + Observatory + Control Module + Quad-Daemon + Desktop UI (13 screens) + 35 Tools · 73 test files · 20 SQLModel tables · Architettura tri-database (database.db + knowledge_base.db + hltv_metadata.db) · Indicizzazione vettoriale FAISS (IndexFlatIP 384-dim) · Internazionalizzazione i18n (EN/IT/PT) · Accessibilità WCAG 1.4.1 (theme.py) · 10 rapporti di audit comprensivi (incl. revisione letteratura 140KB, 30 articoli peer-reviewed) · 368 problemi risolti in 12 fasi di rimediazione sistematica
 
 ---
 
@@ -105,7 +112,10 @@ graph TB
         PARSER --> TF["Fabbrica Tensori<br/>(mappa, vista, raster movimento)"]
         FE --> VEC["Vettorizzatore Unificato<br/>(FeatureExtractor 25-dim)"]
         VEC --> SR["Ricostruttore di Stato"]
+        PARSER --> PK["PlayerKnowledge<br/>(NO-WALLHACK)"]
+        PK --> TF
         TF --> SR
+        FB["FrameBuffer<br/>(ring buffer 30 frame,<br/>estrazione HUD)"] -.-> TF
     end
 
     subgraph Addestramento
@@ -130,8 +140,10 @@ graph TB
 
     subgraph Conoscenza
         RAG["Base Conoscenza RAG<br/>(Sentence-BERT 384-dim)"]
+        FAISS_IDX["Indice FAISS<br/>(IndexFlatIP 384-dim,<br/>ricerca sub-lineare)"]
         EB["Banca Esperienze<br/>(Framework COPER)"]
-        KG["Grafo della Conoscenza<br/>(Triple SQLite)"]
+        KG["Grafo della Conoscenza<br/>(entità + relazioni SQLite)"]
+        RAG --> FAISS_IDX
     end
 
     subgraph Analisi["Analisi (10 Motori)"]
@@ -187,6 +199,14 @@ graph TB
     end
 
     EXP --> UI["GUI Kivy"]
+
+    subgraph Piattaforma["Piattaforma & Accessibilità"]
+        I18N["i18n<br/>(en.json, it.json, pt.json)"]
+        THEME["theme.py<br/>(WCAG 1.4.1,<br/>rating_color + rating_label)"]
+        PLAT["platform_utils.py<br/>(rilevamento drive<br/>cross-platform)"]
+    end
+    I18N --> UI
+    THEME --> UI
 
     style JEPA fill:#4a9eff,color:#fff
     style VLJEPA fill:#3b8ae6,color:#fff
@@ -246,6 +266,28 @@ flowchart TB
     DEM --> TICK2
 ```
 
+### Principio NO-WALLHACK e Contratto 25-dim
+
+Due invarianti architetturali fondamentali attraversano l'intero sistema:
+
+**1. Principio NO-WALLHACK:** Il coach AI **vede solo ciò che il giocatore legittimamente conosce**. Quando il modulo `PlayerKnowledge` è disponibile, i tensori generati dalla `TensorFactory` codificano esclusivamente informazioni legittime: compagni di squadra (sempre visibili), nemici in posizioni "last-known" (con decadimento temporale, τ = 2.5s), utilità propria e osservata. Nessuna informazione "wallhack" (posizioni nemiche reali non visibili) entra mai nel sistema di percezione. Quando `PlayerKnowledge` è `None`, il sistema ricade su una modalità legacy con tensori semplificati.
+
+> **Analogia:** Il principio NO-WALLHACK è come un **esame di guida dove l'istruttore vede solo ciò che l'allievo vede**. L'istruttore non ha accesso a una telecamera esterna che mostra tutti gli ostacoli nascosti — deve valutare le decisioni dell'allievo basandosi solo sulle informazioni effettivamente disponibili all'allievo. Se l'allievo ha commesso un errore perché non poteva vedere un ostacolo dietro una curva, l'istruttore non lo punisce per questo. Allo stesso modo, il coach AI valuta il posizionamento del giocatore solo in base a ciò che il giocatore poteva ragionevolmente sapere in quel momento.
+
+**2. Contratto 25-dim (`FeatureExtractor`):** Il `FeatureExtractor` in `vectorizer.py` definisce il vettore di feature canonico a 25 dimensioni (`METADATA_DIM = 25`) usato da **tutti** i modelli (AdvancedCoachNN, JEPA, VL-JEPA, RAP Coach) sia in addestramento che in inferenza. Qualsiasi modifica al vettore di feature avviene **esclusivamente** nel `FeatureExtractor` — nessun altro modulo può definire feature proprie. Questo garantisce coerenza dimensionale end-to-end.
+
+```
+ 0: health/100      1: armor/100       2: has_helmet      3: has_defuser
+ 4: equip/10000     5: is_crouching    6: is_scoped       7: is_blinded
+ 8: enemies_vis     9: pos_x/±extent  10: pos_y/±extent  11: pos_z/1024
+12: view_x_sin     13: view_x_cos     14: view_y/90      15: z_penalty
+16: kast_est       17: map_id         18: round_phase
+19: weapon_class   20: time_in_round/115  21: bomb_planted
+22: teammates_alive/4  23: enemies_alive/5  24: team_economy/16000
+```
+
+> **Analogia:** Il contratto 25-dim è come una **lingua franca** parlata da tutti nel sistema. Ogni modello, ogni pipeline di addestramento, ogni motore di inferenza "parla" esattamente la stessa lingua con 25 parole. Se un modulo iniziasse a usare 26 parole o un ordine diverso, la comunicazione si interromperebbe. Il `FeatureExtractor` è il **dizionario ufficiale** — la sola autorità per la definizione e l'ordine delle feature.
+
 ---
 
 ## 3. Sottosistema 1 — Nucleo della rete neurale
@@ -284,7 +326,7 @@ Definito in `model.py`, questo è il fondamento del coaching supervisionato.
 | **Config**                 | Dataclass `CoachNNConfig`: `input_dim=25`, `output_dim=25` (default), `hidden_dim=128`, `num_experts=3`, `num_lstm_layers=2`, `dropout=0.2`, `use_layer_norm=True`                                      |
 | **Livelli nascosti**       | LSTM a 2 livelli (128 nascosti,`batch_first=True`, dropout=0.2) con `LayerNorm` post-LSTM                                                                                                                           |
 | **Testa dell'esperto**     | 3 esperti lineari paralleli (configurabili), softmax-gated tramite una rete di gate appresa                                                                                                                             |
-| **Output**                 | Somma pesata degli output degli esperti → vettore del punteggio di coaching. Output_dim predefinito = METADATA_DIM (25) in `CoachNNConfig`; sovrascritto a OUTPUT_DIM (4) quando istanziato tramite `ModelFactory` |
+| **Output**                 | Somma pesata degli output degli esperti → vettore del punteggio di coaching. Output_dim = METADATA_DIM (25) sia in `CoachNNConfig` che quando istanziato tramite `ModelFactory` (corretto in P1-08: `OUTPUT_DIM = METADATA_DIM = 25` in `config.py`) |
 | **Bias di ruolo**          | Parametro `role_id` opzionale: `gate_weights = (gate_weights + role_bias) / 2.0` — orienta la selezione degli esperti verso conoscenze specifiche del ruolo                                                        |
 | **Validazione dell'input** | `_validate_input_dim()` rimodella automaticamente 1D → `unsqueeze(0).unsqueeze(0)` e 2D → `unsqueeze(0)` per la robustezza                                                                                      |
 
@@ -736,30 +778,71 @@ Modulo standalone che implementa un livello lineare con **gating dipendente dal 
 ```python
 class SuperpositionLayer(nn.Module):
     def __init__(self, in_features, out_features, context_dim=METADATA_DIM):
-        self.weight = nn.Parameter(randn(out_features, in_features))
+        self.weight = nn.Parameter(empty(out_features, in_features))
+        nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))  # P1-09: Kaiming init
         self.bias = nn.Parameter(zeros(out_features))
         self.context_gate = nn.Linear(context_dim, out_features)  # Superposition Controller
 
     def forward(self, x, context):
         gate = sigmoid(self.context_gate(context))  # [B, out_features]
+        self._last_gate_live = gate                  # Con gradiente (per sparsity loss)
+        self._last_gate_activations = gate.detach()  # Copia detached (per osservabilità)
         out = F.linear(x, self.weight, self.bias)
         return out * gate  # Modulazione contestuale
 ```
 
 **Meccanismo:** L'output di ogni neurone viene moltiplicato per un gate sigmoide condizionato sulle feature di contesto (25-dim). Questo permette al modello di "accendere" o "spegnere" neuroni dinamicamente in base alla situazione di gioco.
 
+**Inizializzazione Kaiming (P1-09):** I pesi vengono inizializzati con `kaiming_uniform_` (distribuzione Kaiming He, 2015) anziché `torch.randn()`. Questa inizializzazione garantisce che la varianza dei pesi sia proporzionale al fan-in del livello, prevenendo la scomparsa o l'esplosione dei gradienti nelle reti profonde. Il parametro `a=math.sqrt(5)` è il valore standard per livelli lineari in PyTorch.
+
+**Design dual-tensor (NN-24):** Il gate sigmoide viene memorizzato in **due copie separate** durante ogni forward pass:
+
+| Tensore | Gradiente | Scopo |
+|---|---|---|
+| `_last_gate_live` | **Sì** (mantiene il grafo computazionale) | Usato da `gate_sparsity_loss()` per backpropagation — il gradiente fluisce attraverso il gate verso `context_gate` |
+| `_last_gate_activations` | **No** (detached) | Usato da `get_gate_statistics()` per osservabilità — nessun costo di memoria per il grafo |
+
+Questa separazione risolve il conflitto tra la necessità di gradienti (per la loss di sparsità) e la necessità di osservabilità leggera (per logging e TensorBoard).
+
+```mermaid
+flowchart TB
+    CTX["contesto 25-dim"] --> CG["context_gate: Linear(25 → out_features)"]
+    CG --> SIG["sigmoid → gate"]
+    SIG --> LIVE["_last_gate_live<br/>(con gradiente, per loss)"]
+    SIG --> DET["_last_gate_activations<br/>(detached, per osservabilità)"]
+    LIVE --> SPARSITY["gate_sparsity_loss()<br/>L1: mean(|gate|)"]
+    DET --> STATS["get_gate_statistics()<br/>mean, std, sparsity,<br/>active_ratio, top/bottom 3"]
+    X["input x"] --> LIN["F.linear(x, weight, bias)"]
+    SIG --> MUL["output = linear × gate"]
+    LIN --> MUL
+    style LIVE fill:#ff6b6b,color:#fff
+    style DET fill:#51cf66,color:#fff
+```
+
 **Osservabilità integrata:**
 
 | Metodo | Ritorno | Descrizione |
 |---|---|---|
-| `get_gate_activations()` | `Tensor` o `None` | Ultime attivazioni del gate (detached) |
-| `get_gate_statistics()` | `Dict[str, float]` | `mean_activation`, `std_activation`, `sparsity`, `active_ratio`, `top_3_dims`, `bottom_3_dims` |
-| `gate_sparsity_loss()` | `Tensor` | Perdita L1 sulle attivazioni del gate per specializzazione degli esperti |
+| `get_gate_activations()` | `Tensor` o `None` | Ultime attivazioni del gate (`_last_gate_activations`, detached) |
+| `get_gate_statistics()` | `Dict[str, float]` | Statistiche complete del gate (vedi tabella sotto) |
+| `gate_sparsity_loss()` | `Tensor` | Perdita L1 `mean(|_last_gate_live|)` per specializzazione degli esperti |
 | `enable_tracing(interval)` | — | Log dettagliato del gate ogni `interval` passi |
+| `disable_tracing()` | — | Ripristina intervallo di logging a 100 |
 
-**Log periodico durante addestramento:** Ogni 100 forward pass (configurabile), logga dimensioni attive (gate_mean > 0.5), dimensioni sparse (gate_mean < 0.1) e media complessiva.
+**Campi di `get_gate_statistics()`:**
 
-> **Analogia:** Il SuperpositionLayer è come un **mixer audio con 256 canali** dove ogni slider è controllato automaticamente in base alla "scena" attuale. In un round eco, certi canali vengono abbassati (le feature relative al full-buy sono irrilevanti). In un retake post-plant, altri canali vengono alzati. Il `gate_sparsity_loss` è come un fonico che dice: "Usa il minor numero possibile di canali alla volta — se riesci a ottenere lo stesso suono con 50 canali invece di 200, il mix sarà più pulito e interpretabile".
+| Campo | Tipo | Significato |
+|---|---|---|
+| `mean_activation` | float | Media delle attivazioni del gate nel batch |
+| `std_activation` | float | Deviazione standard delle attivazioni |
+| `sparsity` | float | Frazione di dimensioni con media < 0.1 (più alto = più sparso) |
+| `active_ratio` | float | Frazione di dimensioni con media > 0.5 (più alto = più attivo) |
+| `top_3_dims` | List[int] | Le 3 dimensioni del gate più attive |
+| `bottom_3_dims` | List[int] | Le 3 dimensioni del gate meno attive |
+
+**Log periodico durante addestramento:** Ogni 100 forward pass (configurabile via `enable_tracing(interval)`), logga via logger strutturato: dimensioni attive (gate_mean > 0.5), dimensioni sparse (gate_mean < 0.1) e media complessiva.
+
+> **Analogia:** Il SuperpositionLayer è come un **mixer audio con 256 canali** dove ogni slider è controllato automaticamente in base alla "scena" attuale. In un round eco, certi canali vengono abbassati (le feature relative al full-buy sono irrilevanti). In un retake post-plant, altri canali vengono alzati. Il `gate_sparsity_loss` è come un fonico che dice: "Usa il minor numero possibile di canali alla volta — se riesci a ottenere lo stesso suono con 50 canali invece di 200, il mix sarà più pulito e interpretabile". L'inizializzazione Kaiming è come **accordare lo strumento prima di suonare** — senza una buona accordatura iniziale, anche il musicista più bravo produrrà note stonate. Il design dual-tensor è come avere **due copie del mix**: una "live" che il fonico può regolare (con gradienti), e una "registrata" che il critico può analizzare a posteriori (senza disturbare la performance in corso).
 
 #### Modulo EMA Standalone
 
@@ -884,13 +967,15 @@ flowchart TB
 
 | Tipo Costante                    | Classe Modello          | Nome Checkpoint      | Impostazioni predefinite di fabbrica                   |
 | -------------------------------- | ----------------------- | -------------------- | ------------------------------------------------------ |
-| `TYPE_LEGACY` ("default")      | `TeacherRefinementNN` | `"latest"`         | `input_dim=METADATA_DIM(25)`, `output_dim=4`, `hidden_dim=64` |
-| `TYPE_JEPA` ("jepa")           | `JEPACoachingModel`   | `"jepa_brain"`     | `input_dim=METADATA_DIM(25)`, `output_dim=4`       |
-| `TYPE_VL_JEPA` ("vl-jepa")     | `VLJEPACoachingModel` | `"vl_jepa_brain"`  | `input_dim=METADATA_DIM(25)`, `output_dim=4`       |
+| `TYPE_LEGACY` ("default")      | `TeacherRefinementNN` | `"latest"`         | `input_dim=METADATA_DIM(25)`, `output_dim=OUTPUT_DIM(25)`, `hidden_dim=HIDDEN_DIM(128)` |
+| `TYPE_JEPA` ("jepa")           | `JEPACoachingModel`   | `"jepa_brain"`     | `input_dim=METADATA_DIM(25)`, `output_dim=OUTPUT_DIM(25)`       |
+| `TYPE_VL_JEPA` ("vl-jepa")     | `VLJEPACoachingModel` | `"vl_jepa_brain"`  | `input_dim=METADATA_DIM(25)`, `output_dim=OUTPUT_DIM(25)`       |
 | `TYPE_RAP` ("rap")             | `RAPCoachModel`       | `"rap_coach"`      | `metadata_dim=METADATA_DIM(25)`, `output_dim=10`   |
 | `TYPE_ROLE_HEAD` ("role_head") | `NeuralRoleHead`      | `"role_head"`      | `input_dim=5`, `hidden_dim=32`, `output_dim=5`     |
 
-> **Nota:** il valore `hidden_dim=64` della factory per i modelli legacy è diverso dal valore predefinito `hidden_dim=128` di `CoachNNConfig`. La factory sovrascrive il valore predefinito della configurazione quando si istanziano i modelli tramite `get_model()`.
+> **Nota (P1-08):** In una versione precedente, la factory utilizzava `output_dim=4` e `hidden_dim=64` per i modelli legacy, creando un disallineamento con `CoachNNConfig`. Questo è stato corretto: ora `OUTPUT_DIM = METADATA_DIM = 25` e `HIDDEN_DIM = 128` sono allineati sia in `config.py` che in `factory.py`. Il modello RAP mantiene `output_dim=10` (10 probabilità di consiglio). Il modello RAP viene importato dal percorso canonico `backend/nn/experimental/rap_coach/model.py` (il vecchio `backend/nn/rap_coach/model.py` è uno shim di reindirizzamento).
+>
+> **StaleCheckpointError:** Se le dimensioni di un checkpoint salvato non corrispondono alla configurazione corrente del modello (ad esempio dopo un aggiornamento da `output_dim=4` a `output_dim=25`), il sistema solleva `StaleCheckpointError` anziché caricare silenziosamente pesi incompatibili, prevenendo corruzioni silenziose.
 
 > **Analogia:** La ModelFactory è come una **fabbrica di giocattoli** che può costruire cinque diversi tipi di robot. Gli dici "Voglio un robot JEPA" o "Mi serve un robot role_head" e lui sa esattamente quali parti usare e come assemblarlo. Ogni robot ha un'etichetta con il nome (nome del checkpoint) in modo da poterlo trovare in seguito sullo scaffale. Invece di ricordare come è costruito ogni robot, ti basta dire alla fabbrica "costruiscimi un jepa" e lei si occuperà di tutto.
 
@@ -919,20 +1004,29 @@ flowchart TB
 ### -Configurazione (`config.py`)
 
 ```python
-INPUT_DIM = METADATA_DIM = 25 # Vettore canonico a 25 dimensioni (era 19, era legacy 12)
-OUTPUT_DIM = 4 # Predefinito (sovrascritto per modello: RAP usa 10)
+GLOBAL_SEED = 42                    # Riproducibilità globale (AR-6, P1-02)
+INPUT_DIM = METADATA_DIM = 25      # Vettore canonico a 25 dimensioni (era 19, era legacy 12)
+OUTPUT_DIM = METADATA_DIM = 25     # P1-08: Allineato con METADATA_DIM (era 4, conflitto corretto)
+HIDDEN_DIM = 128                   # Dimensione nascosta per AdvancedCoachNN / TeacherRefinementNN
 BATCH_SIZE = 32
-LEARNING_RATE = 0,001
+LEARNING_RATE = 0.001
 EPOCHS = 50
+RAP_POSITION_SCALE = 500.0         # P9-01: Fattore di scala per delta posizione ([-1,1] → unità mondo)
 ```
 
-> **Nota:** `INPUT_DIM` non è definito direttamente in `config.py` ma è importato da `feature_engineering/__init__.py` dove `METADATA_DIM = 25`. Il commento nel codice sorgente specifica: "Canonical 25-dim feature vector (was 19, was legacy 12)".
+> **Nota:** `INPUT_DIM` è importato da `feature_engineering/__init__.py` dove `METADATA_DIM = 25`. `OUTPUT_DIM` è ora allineato a `METADATA_DIM = 25` (correzione P1-08 — precedentemente era 4, creando un conflitto con il modello). `RAP_POSITION_SCALE = 500.0` è il fattore canonico per convertire gli output normalizzati del modello RAP in spostamenti nelle unità mondo CS2.
 
-> **Analogia:** Questa è la **pagina delle impostazioni** per il cervello dell'IA. Proprio come un videogioco ha impostazioni per volume, luminosità e difficoltà, la rete neurale ha impostazioni per quante feature leggere (25), quanti punteggi produrre (4 per il modello base, 10 per RAP), quanti esempi studiare contemporaneamente (32 — la dimensione del batch), quanto velocemente apprende (0,001 — la velocità di apprendimento, come il selettore di velocità su un tapis roulant) e quante volte rivedere tutti i dati (50 epoche). Queste impostazioni sono scelte con cura: un apprendimento troppo rapido fa sì che il modello "vada oltre" e non si stabilizzi mai; troppo lento, ci vuole un'eternità.
+> **Analogia:** Questa è la **pagina delle impostazioni** per il cervello dell'IA. Proprio come un videogioco ha impostazioni per volume, luminosità e difficoltà, la rete neurale ha impostazioni per quante feature leggere (25), quanti punteggi produrre (25 per il modello base — uno per ogni feature — e 10 per RAP), quanti esempi studiare contemporaneamente (32 — la dimensione del batch), quanto velocemente apprende (0.001 — la velocità di apprendimento, come il selettore di velocità su un tapis roulant) e quante volte rivedere tutti i dati (50 epoche). Il `GLOBAL_SEED = 42` garantisce che ogni esecuzione di addestramento sia riproducibile — stesso seme, stessi risultati — tramite `set_global_seed()` che imposta random, numpy, torch e CUDA. Queste impostazioni sono scelte con cura: un apprendimento troppo rapido fa sì che il modello "vada oltre" e non si stabilizzi mai; troppo lento, ci vuole un'eternità.
 
-**Gestione dispositivi:** `get_device()` restituisce CUDA se disponibile, per poi passare alla CPU. Dimensionamento batch basato sull'intensità: Alto=128, Medio=32, Basso=8.
+**Gestione dispositivi:** `get_device()` implementa una **selezione GPU intelligente a 3 livelli**:
 
-> **Analogia:** Il gestore dispositivi verifica: "Ho un motore turbo (GPU/CUDA) disponibile o devo usare il motore standard (CPU)?". Una GPU può elaborare i dati da 10 a 100 volte più velocemente di una CPU per il calcolo delle reti neurali. Se si dispone di una scheda grafica per videogiochi (come una GTX 1650), il sistema la utilizza. In caso contrario, passa alla CPU, che è più lenta ma comunque funzionante. Anche il dimensionamento batch si adatta: con un motore turbo, è possibile gestire 128 esempi contemporaneamente; con il motore standard, solo 8 alla volta, come un camion delle consegne rispetto a una bicicletta per il trasporto dei pacchi.
+1. **Override utente:** Se configurato `CUDA_DEVICE` (es. "cuda:0" o "cpu"), usa quello
+2. **GPU discreta automatica:** `_select_best_cuda_device()` enumera tutti i dispositivi CUDA e seleziona quello con più VRAM, **penalizzando le GPU integrate** (Intel UHD, Iris) tramite keyword matching. Su sistemi multi-GPU (es. Intel UHD + NVIDIA GTX 1650), la GPU discreta vince sempre
+3. **Fallback CPU:** Se nessuna GPU CUDA è disponibile
+
+Dimensionamento batch basato sull'intensità ML: `Alto=128`, `Medio=32`, `Basso=8`. Il ritardo di throttling tra batch si adatta: `Alto=0.0s`, `Medio=0.05s`, `Basso=0.2s`.
+
+> **Analogia:** Il gestore dispositivi verifica: "Ho un motore turbo (GPU/CUDA) disponibile o devo usare il motore standard (CPU)?". La nuova logica di selezione è come un **concierge di noleggio auto** che, quando ci sono più auto disponibili (multiple GPU), sceglie automaticamente quella più potente e ignora le utilitarie. Se hai una GTX 1650 e una Intel UHD integrata, il sistema sa che la GTX è la "sportiva" e la sceglie. In caso contrario, passa alla CPU, che è più lenta ma comunque funzionante.
 
 ### -NeuralRoleHead (MLP per la classificazione dei ruoli)
 
@@ -1099,9 +1193,49 @@ punteggio_maturità = EMA(indice_convinzione, α=0,3)
 | **CONVICTION**    | `conviction > 0,6`, stabile (`std < 0,05` su 10 epoche)                                                 |
 | **MATURE**        | `conviction > 0,75`, stabile per oltre 20 epoche, `value_accuracy > 0,7`, `gate_specialization > 0,5` |
 
+**`MaturitySnapshot` dataclass:** Ogni epoca, l'Osservatorio produce un'istantanea immutabile:
+
+| Campo | Tipo | Descrizione |
+|---|---|---|
+| `epoch` | int | Numero dell'epoca |
+| `timestamp` | datetime | Momento della registrazione |
+| `belief_entropy` | float | Entropia di Shannon del vettore credenze |
+| `gate_specialization` | float | Specializzazione degli esperti |
+| `concept_focus` | float | Focalizzazione sui concetti di coaching |
+| `value_accuracy` | float | Accuratezza delle predizioni di valore |
+| `role_stability` | float | Stabilità della classificazione dei ruoli |
+| `conviction_index` | float | Indice composito pesato |
+| `maturity_score` | float | Punteggio EMA livellato (α=0.3) |
+| `state` | str | Stato corrente (DUBBIO/CRISI/APPRENDIMENTO/CONVINZIONE/MATURO) |
+
+**Estrazione dei 5 segnali neurali — come vengono calcolati:**
+
+| Segnale | Metodo | Fonte dati | Calcolo |
+|---|---|---|---|
+| `belief_entropy` | `_compute_belief_entropy()` | `model._last_belief_batch` | softmax(belief) → Shannon entropy / log(dim) → 1 - normalizzata |
+| `gate_specialization` | `_compute_gate_specialization()` | `strategy.superposition.get_gate_statistics()` | `1 - mean_activation` (più alto = esperti più specializzati) |
+| `concept_focus` | `_compute_concept_focus()` | `model.concept_embeddings.weight` | norme L2 → softmax → `1 - entropy` (più basso = più focalizzato) |
+| `value_accuracy` | `_compute_value_accuracy()` | Ciclo di validazione | `1 - (val_loss / initial_val_loss)`, clamped [0, 1] |
+| `role_stability` | `_compute_role_stability()` | Cronologia recente | `1 - std(ultimi 10 conviction_index) × 5`, clamped [0, 1] |
+
+**API pubblica:** `current_state` (proprietà → stringa stato), `current_conviction` (proprietà → float), `get_timeline()` (→ lista di `MaturitySnapshot` per esportazione/grafici).
+
+**Integrazione TensorBoard:** Ogni `on_epoch_end()` registra **7 scalari** su TensorBoard:
+
+```
+maturity/belief_entropy, maturity/gate_specialization, maturity/concept_focus,
+maturity/value_accuracy, maturity/role_stability,
+maturity/conviction_index, maturity/maturity_score
+```
+
+Più un log testuale dello stato corrente via logger strutturato.
+
+> **Analogia estesa:** Ogni segnale misura un aspetto diverso della "salute mentale" del modello. L'`entropia delle credenze` è come chiedere "Il tuo cervello è sicuro o confuso?". La `specializzazione del gate` è "I tuoi esperti hanno ruoli chiari o fanno tutti la stessa cosa?". Il `focus sui concetti` è "Stai usando i 16 vocaboli di coaching in modo distinto o li confondi?". L'`accuratezza del valore` è "Le tue stime di vantaggio corrispondono alla realtà?". La `stabilità dei ruoli` è "Cambi continuamente idea o sei coerente?". L'indice di convinzione combina tutto questo in un unico "voto di salute" e l'EMA lo livella per evitare oscillazioni — come un medico che non si allarma per un singolo battito anomalo ma guarda la tendenza.
+
 **Garanzie di progettazione:**
 
-- **Impatto zero se disabilitato:** Quando non vengono registrate callback, tutte le chiamate `CallbackRegistry.fire()` sono no-op. Nessuna allocazione di memoria, nessun overhead di calcolo. - **Isolamento degli errori:** Ogni callback è sottoposto individualmente a try/except-wrapping. Un errore di scrittura di TensorBoard o di calcolo UMAP non causa mai l'arresto anomalo del ciclo di training: l'errore viene registrato e il training continua.
+- **Impatto zero se disabilitato:** Quando non vengono registrate callback, tutte le chiamate `CallbackRegistry.fire()` sono no-op. Nessuna allocazione di memoria, nessun overhead di calcolo.
+- **Isolamento degli errori:** Ogni callback è sottoposto individualmente a try/except-wrapping. Un errore di scrittura di TensorBoard o di calcolo UMAP non causa mai l'arresto anomalo del ciclo di training: l'errore viene registrato e il training continua.
 - **Componibile:** È possibile aggiungere nuove callback sottoclassando `TrainingCallback` e registrandosi con `CallbackRegistry.add()`. Non è necessario modificare il codice di training.
 
 **Integrazione CLI:** Avviato tramite `run_full_training_cycle.py` con i flag:
@@ -1114,7 +1248,7 @@ punteggio_maturità = EMA(indice_convinzione, α=0,3)
 
   ## 4. Sottosistema 2 — Modello RAP Coach
 
-  **Directory:** `backend/nn/rap_coach/`
+  **Directory canonico:** `backend/nn/experimental/rap_coach/` (il vecchio percorso `backend/nn/rap_coach/` è uno shim di reindirizzamento)
   **File:** `model.py`, `perception.py`, `memory.py`, `strategy.py`, `pedagogy.py`, `communication.py`, `skill_model.py`, `trainer.py`, `chronovisor_scanner.py`
 
   Il RAP (Reasoning, Adaptation, Pedagogy) Coach è un'**architettura profonda con 6 componenti neurali apprendibili + 1 livello di comunicazione esterna**, appositamente progettata per il coaching CS2 in condizioni di osservabilità parziale (condizioni POMDP). La classe `RAPCoachModel` contiene Percezione (`RAPPerception`), Memoria (`RAPMemory` con LTC+Hopfield), Strategia (`RAPStrategy`), Pedagogia (`RAPPedagogy` con Value Critic e Skill Adapter), Attribuzione Causale (`CausalAttributor`) e una Testa di Posizionamento (`nn.Linear(256→3)`), tutti apprendibili. Il livello di Comunicazione (`communication.py`) opera esternamente come selettore di template di post-elaborazione. Il forward pass produce 6 output: `advice_probs`, `belief_state`, `value_estimate`, `gate_weights`, `optimal_pos` e `attribution`.
@@ -1411,28 +1545,50 @@ flowchart LR
 
 ### -Riepilogo del passaggio in avanti di RAPCoachModel
 
+**Fix NN-39 — Input Visivi Duali:** Il passaggio in avanti gestisce due formati di input visivo attraverso un controllo dimensionale esplicito:
+
+| Formato Input | Shape | Quando si usa | Comportamento |
+|---|---|---|---|
+| **Per-timestep** | `[B, T, C, H, W]` (5-dim) | Addestramento con sequenze temporali | Ogni timestep elaborato individualmente dalla CNN |
+| **Statico** | `[B, C, H, W]` (4-dim) | Inferenza in tempo reale (GhostEngine) | Singolo frame espanso su tutti i timestep |
+
+> **Analogia NN-39:** Immagina di mostrare un filmato al coach. Nel formato **per-timestep**, il coach guarda ogni fotogramma uno per uno, analizzandoli separatamente e costruendo una comprensione che evolve nel tempo — come un arbitro che rivede un'azione al rallentatore, fotogramma per fotogramma. Nel formato **statico**, il coach vede una singola fotografia della situazione e assume che la scena sia rimasta invariata per tutta la durata — come quando si analizza una posizione da una screenshot. Il fix NN-39 garantisce che entrambe le situazioni producano lo stesso formato di output (`[B, T, 128]`), così il resto del cervello (memoria, strategia, pedagogia) funziona identicamente in entrambi i casi.
+
 ```python
 def forward(view_frame, map_frame, motion_diff, metadata, skill_vec=None):
-z_spatial = self.perception(view_frame, map_frame, motion_diff) # [B, 128]
-z_spatial_seq = z_spatial.unsqueeze(1).repeat(1, seq_len, 1)
-lstm_in = cat([z_spatial_seq, metadata], dim=2) # [B, seq, 153]
-hidden_seq, belief, _ = self.memory(lstm_in) # [B, seq, 256], [B, seq, 64]
-last_hidden = hidden_seq[:, -1, :]
-prediction, gate_weights = self.strategy(last_hidden, context) # [B, 10], [B, 4]
-value_v = self.pedagogy(last_hidden, skill_vec) # [B, 1]
-optimal_pos = self.position_head(last_hidden) # [B, 3]
-attribution = self.attributor.diagnose(last_hidden, optimal_pos) # [B, 5]
-return {
-"advice_probs": prediction, # [B, 10]
-"belief_state": belief, # [B, seq, 64]
-"value_estimate": value_v, # [B, 1]
-"gate_weights": gate_weights, # [B, 4]
-"optimal_pos": optimal_pos, # [B, 3]
-"attribution": attribution # [B, 5]
-}
+    batch_size, seq_len, _ = metadata.shape
+
+    # NN-39 fix: supporta input visivo per-timestep [B,T,C,H,W] e statico [B,C,H,W]
+    if view_frame.dim() == 5:
+        # Per-timestep — elabora ogni timestep attraverso la CNN separatamente
+        z_frames = []
+        for t in range(view_frame.shape[1]):
+            z_t = self.perception(view_frame[:, t], map_frame[:, t], motion_diff[:, t])
+            z_frames.append(z_t)
+        z_spatial_seq = torch.stack(z_frames, dim=1)      # [B, T, 128]
+    else:
+        # Statico — singolo frame espanso su tutti i timestep
+        z_spatial = self.perception(view_frame, map_frame, motion_diff)  # [B, 128]
+        z_spatial_seq = z_spatial.unsqueeze(1).expand(-1, seq_len, -1)   # [B, T, 128]
+
+    lstm_in = cat([z_spatial_seq, metadata], dim=2)        # [B, seq, 153]
+    hidden_seq, belief, _ = self.memory(lstm_in)           # [B, seq, 256], [B, seq, 64]
+    last_hidden = hidden_seq[:, -1, :]
+    prediction, gate_weights = self.strategy(last_hidden, context)  # [B, 10], [B, 4]
+    value_v = self.pedagogy(last_hidden, skill_vec)        # [B, 1]
+    optimal_pos = self.position_head(last_hidden)          # [B, 3]
+    attribution = self.attributor.diagnose(last_hidden, optimal_pos) # [B, 5]
+    return {
+        "advice_probs": prediction,      # [B, 10]
+        "belief_state": belief,          # [B, seq, 64]
+        "value_estimate": value_v,       # [B, 1]
+        "gate_weights": gate_weights,    # [B, 4]
+        "optimal_pos": optimal_pos,      # [B, 3]
+        "attribution": attribution       # [B, 5]
+    }
 ```
 
-> **Analogia:** Questa è la **ricetta completa** di come pensa il RAP Coach, passo dopo passo: (1) **Occhi** — il livello Percezione esamina la vista, la mappa e le immagini in movimento e crea un riepilogo di 128 numeri di ciò che vede. (2) Questo riepilogo visivo viene combinato con 25 numeri di metadati (salute, posizione, economia, ecc.) per formare una descrizione di 153 numeri. (3) **Memoria** — la memoria LTC + Hopfield elabora la descrizione nel tempo, producendo uno stato nascosto di 256 numeri e un vettore di credenze di 64 numeri ("cosa penso stia accadendo"). (4) **Strategia** — 4 esperti esaminano lo stato nascosto e producono 10 probabilità di consiglio ("40% di probabilità che tu debba spingere, 30% di tenere premuto, ecc."). (5) **Insegnante** — il livello pedagogico stima "quanto è buona questa situazione?" (valore). (6) **GPS** — la testa di posizione prevede dove dovresti muoverti (coordinate 3D). (7) **Colpa** — l'attributore capisce perché le cose sono andate male (5 categorie). Tutti e 6 gli output vengono restituiti insieme come un dizionario: l'analisi completa dell'allenamento per un momento di gioco.
+> **Analogia:** Questa è la **ricetta completa** di come pensa il RAP Coach, passo dopo passo: (1) **Occhi** — il livello Percezione esamina la vista, la mappa e le immagini in movimento e crea un riepilogo di 128 numeri di ciò che vede. Il fix NN-39 permette due modalità: se riceve un filmato (5-dim), elabora ogni fotogramma separatamente; se riceve una foto (4-dim), la replica su tutti i timestep. (2) Questo riepilogo visivo viene combinato con 25 numeri di metadati (salute, posizione, economia, ecc.) per formare una descrizione di 153 numeri. (3) **Memoria** — la memoria LTC + Hopfield elabora la descrizione nel tempo, producendo uno stato nascosto di 256 numeri e un vettore di credenze di 64 numeri ("cosa penso stia accadendo"). (4) **Strategia** — 4 esperti esaminano lo stato nascosto e producono 10 probabilità di consiglio ("40% di probabilità che tu debba spingere, 30% di tenere premuto, ecc."). (5) **Insegnante** — il livello pedagogico stima "quanto è buona questa situazione?" (valore). (6) **GPS** — la testa di posizione prevede dove dovresti muoverti (coordinate 3D). (7) **Colpa** — l'attributore capisce perché le cose sono andate male (5 categorie). Tutti e 6 gli output vengono restituiti insieme come un dizionario: l'analisi completa dell'allenamento per un momento di gioco.
 
 ```mermaid
 flowchart LR
@@ -1506,26 +1662,93 @@ flowchart LR
 
 ### -GhostEngine (`inference/ghost_engine.py`)
 
-Inferenza in tempo reale per il "Ghost" — overlay della posizione ottimale del giocatore.
+Inferenza in tempo reale per il "Ghost" — overlay della posizione ottimale del giocatore. Il GhostEngine rappresenta il **punto finale** dell'intera catena neurale: è dove il RAP Coach Model produce output visibili all'utente sotto forma di un "giocatore fantasma" sulla mappa tattica.
 
-**Pipeline:** tick_data → FeatureExtractor.extract() → TensorFactory (view/map/motion) → RAPCoachModel → optimal_pos delta → scala di 500,0 → coordinate globali `(ghost_x, ghost_y)`.
+> **Analogia:** Il Ghost Engine è come un **ologramma "migliore te"** sullo schermo. In ogni momento durante la riproduzione, chiede al RAP Coach: "Data questa situazione esatta, dove DOVREBBE trovarsi il giocatore?" La risposta è un piccolo delta di posizione (ad esempio "5 pixel a destra e 3 pixel in alto"), che viene ridimensionato alle coordinate reali della mappa. Il risultato è un giocatore "fantasma" trasparente visualizzato sulla mappa tattica, che mostra la posizione ottimale. Se il fantasma è lontano da dove ti trovavi effettivamente, sai di essere in una brutta posizione. Se è vicino, ti sei posizionato bene.
 
-> **Analogia:** Il Ghost Engine è come un **ologramma "migliore te"** sullo schermo. In ogni momento durante la riproduzione, chiede al RAP Coach: "Data questa situazione esatta, dove DOVREBBE trovarsi il giocatore?" La risposta è un piccolo delta di posizione (ad esempio "5 pixel a destra e 3 pixel in alto"), che viene ridimensionato alle coordinate reali della mappa. Il risultato è un giocatore "fantasma" trasparente visualizzato sulla mappa tattica, che mostra la posizione ottimale. È come avere un motore di gioco che mostra "la mossa migliore" come un pezzo trasparente che fluttua sulla scacchiera. Se il fantasma è lontano da dove ti trovavi effettivamente, sai di essere in una brutta posizione. Se è vicino, ti sei posizionato bene.
+**Pipeline di Inferenza 4-Tensori con PlayerKnowledge:**
+
+La pipeline di inferenza opera in 5 fasi sequenziali per ogni tick di riproduzione:
+
+**Fase 1 — Caricamento Modello (`_load_brain()`)**
+- Verifica `USE_RAP_MODEL` da configurazione (interruttore generale)
+- `ModelFactory.get_model(ModelFactory.TYPE_RAP)` — istanzia il modello RAP
+- `load_nn(checkpoint_name, model)` — carica i pesi dal checkpoint su disco
+- `model.to(device)` → `model.eval()` — sposta su GPU/CPU e attiva modalità inferenza
+- In caso di fallimento: `model = None`, `is_trained = False` — disabilita previsioni
+
+**Fase 2 — Costruzione Tensori di Input**
+
+| Tensore | Metodo | Shape Output | Contenuto |
+|---|---|---|---|
+| **Map** | `tensor_factory.generate_map_tensor(ticks, map_name, knowledge)` | `[1, 3, 64, 64]` | Posizioni compagni, nemici visibili, utilità + bomba |
+| **View** | `tensor_factory.generate_view_tensor(ticks, map_name, knowledge)` | `[1, 3, 64, 64]` | Maschera FOV 90°, entità visibili, zone utilità |
+| **Motion** | `tensor_factory.generate_motion_tensor(ticks, map_name)` | `[1, 3, 64, 64]` | Traiettoria 32 tick, campo velocità, delta mirino |
+| **Metadata** | `FeatureExtractor.extract(tick_data, map_name, context)` | `[1, 1, 25]` | Vettore canonico 25-dim (salute, posizione, economia, ecc.) |
+
+Il **ponte PlayerKnowledge** (`_build_knowledge_from_game_state()`) filtra i dati secondo il principio NO-WALLHACK: solo le informazioni legittimamente disponibili al giocatore (compagni, nemici visibili, ultime posizioni note con decadimento) vengono codificate nei tensori mappa e vista. Se la costruzione della conoscenza fallisce, il sistema degrada alla modalità legacy (tensori vuoti).
+
+**Fase 3 — Inferenza Neurale**
+```python
+with torch.no_grad():
+    out = self.model(view_frame=view_t, map_frame=map_t,
+                     motion_diff=motion_t, metadata=meta_t)
+```
+`torch.no_grad()` disabilita il calcolo dei gradienti (solo inferenza, nessun addestramento).
+
+**Fase 4 — Decodifica e Scala Posizione**
+```python
+optimal_delta = out["optimal_pos"].cpu().numpy()[0]    # [dx, dy, dz]
+ghost_x = current_x + (optimal_delta[0] * RAP_POSITION_SCALE)  # × 500.0
+ghost_y = current_y + (optimal_delta[1] * RAP_POSITION_SCALE)  # × 500.0
+return (ghost_x, ghost_y)
+```
+Il modello produce un delta normalizzato in [-1, 1] che viene scalato a coordinate mondo tramite `RAP_POSITION_SCALE = 500.0` (da `config.py`). La costante è condivisa tra GhostEngine e overlay per garantire coerenza.
+
+**Fase 5 — Fallback Graduale (5 modalità)**
+
+| Modalità Fallback | Condizione | Comportamento |
+|---|---|---|
+| **Modello disabilitato** | `USE_RAP_MODEL=False` | Skip caricamento, ritorna `(0.0, 0.0)` |
+| **Checkpoint mancante** | Addestramento non completato | `model = None`, previsioni disabilitate |
+| **Nome mappa mancante** | Nessun contesto spaziale | Ritorna `(0.0, 0.0)` immediatamente |
+| **Errore PlayerKnowledge** | Costruzione conoscenza fallita | Degrada a tensori legacy (tutti zeri) |
+| **Errore di inferenza** | RuntimeError / CUDA OOM | Log errore, ritorna `(0.0, 0.0)` |
+
+> **Analogia del fallback:** Il fallback è come un GPS con 5 livelli di sicurezza: (1) "Modalità offline — non ho mappe caricate", (2) "Non ho mai imparato a navigare questa zona", (3) "Non so nemmeno in quale città siamo", (4) "So dove siamo ma non posso vedere intorno a noi — guido a memoria", (5) "Si è rotto qualcosa — ti dico semplicemente di restare dove sei". In ogni caso, il GPS **non manda mai l'auto contro un muro** — la risposta peggiore possibile è "resta fermo" (`(0.0, 0.0)`), che è infinitamente meglio di un crash dell'applicazione.
 
 ```mermaid
 flowchart TB
-    IN["Dati tick corrente"]
-    IN --> FE["FeatureExtractor.extract()<br/>vettore 25-dim"]
-    FE --> TF["TensorFactory<br/>immagini vista/mappa/movimento 64x64"]
-    TF --> RAP["RAPCoachModel.forward()"]
-    RAP --> DELTA["delta optimal_pos (dx, dy, dz)<br/>numeri piccoli"]
-    DELTA -->|"x 500.0<br/>(scala a coordinate mondo)"| GHOST["(ghost_x, ghost_y)<br/>dove DOVRESTI essere"]
-    GHOST --> RENDER["Renderizzato come giocatore trasparente<br/>sulla mappa tattica<br/>Il fantasma mostra la posizione ottimale"]
+    subgraph INIT["Fase 1: Inizializzazione"]
+        CFG["USE_RAP_MODEL?"] -->|Sì| LOAD["ModelFactory.get_model(TYPE_RAP)<br/>+ load_nn(checkpoint)"]
+        CFG -->|No| SKIP["model = None<br/>Previsioni disabilitate"]
+    end
+    subgraph BUILD["Fase 2: Costruzione Tensori"]
+        TD["tick_data + game_state"]
+        TD --> PK["PlayerKnowledgeBuilder<br/>(ponte NO-WALLHACK)"]
+        PK --> MAP_T["generate_map_tensor()<br/>[1, 3, 64, 64]"]
+        PK --> VIEW_T["generate_view_tensor()<br/>[1, 3, 64, 64]"]
+        TD --> MOT_T["generate_motion_tensor()<br/>[1, 3, 64, 64]"]
+        TD --> META_T["FeatureExtractor.extract()<br/>[1, 1, 25]"]
+    end
+    subgraph INFER["Fase 3-4: Inferenza + Scala"]
+        LOAD --> FWD["torch.no_grad()<br/>model.forward(view, map, motion, meta)"]
+        MAP_T --> FWD
+        VIEW_T --> FWD
+        MOT_T --> FWD
+        META_T --> FWD
+        FWD --> DELTA["optimal_pos delta (dx, dy)"]
+        DELTA -->|"× RAP_POSITION_SCALE<br/>(500.0)"| GHOST["(ghost_x, ghost_y)<br/>Posizione fantasma"]
+    end
+    subgraph FALLBACK["Fase 5: Fallback"]
+        ERR["Qualsiasi errore"] --> SAFE["(0.0, 0.0)<br/>Mai crash"]
+    end
+    GHOST --> RENDER["Overlay sulla mappa tattica"]
+
+    style SAFE fill:#ff6b6b,color:#fff
+    style GHOST fill:#51cf66,color:#fff
+    style PK fill:#ffd43b,color:#000
 ```
-
-**Fallback graduale:** Restituisce `(0.0, 0.0)` in caso di eccezione. Utilizza pesi casuali in caso di checkpoint mancante.
-
-> **Analogia:** Il fallback è come un GPS che dice "Non so dove dovresti andare" invece di mandare la tua auto contro un muro. Se qualcosa va storto – il modello non è caricato, i dati sono corrotti o CUDA esaurisce la memoria – il Ghost Engine restituisce silenziosamente (0,0) invece di mandare in crash l'applicazione. Se non esiste ancora un modello addestrato, utilizza pesi casuali (essenzialmente per ipotesi), il che produce posizioni fantasma prive di significato, ma almeno non si blocca. Questa filosofia del "mai crash, degrada sempre in modo graduale" permea l'intero sistema.
 
 ---
 
@@ -1691,13 +1914,85 @@ Auto-discovery delle demo CS2 dall'installazione Steam locale.
 
 > **Nota (F6-11):** La scoperta del percorso Steam è duplicata in `ingestion/steam_locator.py` (primario). Questo modulo è supplementare (scansiona directory replay). Consolidamento differito; assicurare stessa precedenza dei percorsi quando si modifica la risoluzione.
 
-### -HLTV Scraper e Metadata (`hltv_scraper.py`, `hltv_metadata.py`)
+### -Modulo HLTV (`backend/data_sources/hltv/`)
 
-**`hltv_scraper.py`:** Orchestratore del ciclo di sincronizzazione statistiche HLTV. La funzione `run_hltv_sync_cycle(limit=20)` importa `HLTVApiService` dalla pipeline di ingestione completa (`ingestion/hltv/`) e sincronizza le statistiche dei top player professionisti (Rating 2.0, K/D, ADR, KAST) per la baseline pro del coach.
+Il sottosistema HLTV è composto da 5 moduli specializzati che collaborano per estrarre statistiche professionistiche dal sito HLTV.org, superando le protezioni anti-scraping di Cloudflare:
 
-**`hltv_metadata.py`:** Script di debug per il salvataggio di pagine HLTV via Playwright (headless Chromium). Utilizzato durante lo sviluppo per ispezionare la struttura HTML delle pagine risultati HLTV e validare i selettori CSS del scraper.
+> **Analogia:** Il modulo HLTV è come una **squadra di spionaggio ben organizzata** che raccoglie informazioni sui migliori giocatori del mondo. Il `stat_fetcher` è l'agente sul campo che sa dove trovare i dati. Il `docker_manager` prepara il veicolo blindato (FlareSolverr) per superare i posti di blocco (Cloudflare). Il `flaresolverr_client` è il conducente specializzato. Il `rate_limiter` è il cronometrista che assicura che la squadra non attiri attenzione muovendosi troppo velocemente. I `selectors` sono la mappa che indica esattamente dove trovare ogni informazione sulla pagina.
 
-> **Nota architetturale:** Il sottosistema HLTV completo (con `HLTVApiService`, `CircuitBreaker`, `BrowserManager`, `CacheProxy`, `RateLimiter`, `collectors`, `selectors`) risiede in `ingestion/hltv/` ed è documentato in Part 3. I file in `data_sources/` sono entry point semplificati per l'uso da altri moduli.
+**`HLTVStatFetcher`** (`stat_fetcher.py`) — Orchestratore principale dello scraping:
+
+| Metodo | Descrizione |
+|---|---|
+| `fetch_top_players()` | Scraping pagina Top 50 giocatori → lista URL profili |
+| `fetch_and_save_player(url)` | Fetch completo statistiche giocatore + salvataggio DB |
+| `_fetch_player_stats(url)` | Deep-crawl: pagina principale + sotto-pagine (clutch, multikill, carriera) |
+| `_parse_overview(soup)` | Parsing statistiche principali (rating, KPR, ADR, ecc.) |
+| `_parse_trait_sections(soup)` | Parsing sezioni Firepower, Entrying, Utility |
+| `_parse_clutches(soup)` | Parsing vittorie clutch 1v1/1v2/1v3 |
+| `_parse_multikills(soup)` | Parsing conteggi 3K/4K/5K |
+| `_parse_career(soup)` | Parsing storico rating per anno |
+
+**Statistiche estratte e salvate in `ProPlayerStatCard`:**
+
+| Categoria | Statistiche |
+|---|---|
+| **Core** | `rating_2_0`, `kpr` (Kill/Round), `dpr` (Death/Round), `adr` (Damage/Round) |
+| **Efficienza** | `kast` (Kill/Assist/Survival/Trade %), `headshot_pct`, `impact` |
+| **Apertura** | `opening_kill_ratio`, `opening_duel_win_pct` |
+| **Tratti (JSON)** | Firepower (kpr_win, adr_win), Entrying (traded_deaths_pct), Utility (flash_assists) |
+| **Approfondimenti (JSON)** | Clutch (1on1/1on2/1on3), Multikill (3k/4k/5k), Carriera (rating per periodo) |
+
+**`RateLimiter`** (`rate_limit.py`) — Rate limiting a 4 livelli con jitter anti-rilevamento:
+
+| Livello | Ritardo Min–Max | Caso d'uso |
+|---|---|---|
+| **micro** | 2.0s – 3.5s | Richieste consecutive rapide |
+| **standard** | 4.0s – 8.0s | Navigazione tra profili giocatore |
+| **heavy** | 10.0s – 20.0s | Transizioni tra sezioni (principale → clutch → multikill → carriera) |
+| **backoff** | 45.0s – 90.0s | Sospetto blocco o fallimento (degradazione graduale) |
+
+> **Nota (F6-25):** Il jitter (`random.uniform(-0.5, 0.5)`) è **intenzionalmente non seminato** — un jitter deterministico verrebbe rilevato dai sistemi anti-scraping come pattern artificiale. Il pavimento minimo di 2.0s è sempre applicato.
+
+**`DockerManager`** (`docker_manager.py`) — Gestione container FlareSolverr con strategia di avvio a cascata:
+1. **Fast path:** Ritorna `True` se già in salute (health check su `http://localhost:8191/`)
+2. **Docker start:** Tenta `docker start flaresolverr` (timeout 15s)
+3. **Docker Compose fallback:** Tenta `docker-compose up -d` (timeout 60s)
+4. **Health polling:** Verifica disponibilità ogni 3s per max 45s
+
+**`FlareSolverrClient`** (`flaresolverr_client.py`) — Bypass automatico di Cloudflare JavaScript challenges. Tutte le richieste HTTP sono instradate attraverso FlareSolverr su `http://localhost:8191/`. L'HTML risolto viene passato a BeautifulSoup per il parsing.
+
+**`selectors`** (`selectors.py`) — Selettori CSS per lo scraping delle pagine HLTV, centralizzati per manutenibilità.
+
+```mermaid
+flowchart LR
+    subgraph FETCH["Pipeline HLTV"]
+        URL["URL Giocatore<br/>hltv.org/stats/..."]
+        URL --> FLARE["FlareSolverr<br/>(Docker container)<br/>Bypass Cloudflare"]
+        FLARE --> HTML["HTML Risolto"]
+        HTML --> BS["BeautifulSoup<br/>(selettori CSS)"]
+        BS --> STATS["Statistiche Estratte<br/>rating, kpr, adr, kast..."]
+    end
+    subgraph RATE["Rate Limiter"]
+        MICRO["micro: 2-3.5s"]
+        STD["standard: 4-8s"]
+        HEAVY["heavy: 10-20s"]
+        BACK["backoff: 45-90s"]
+    end
+    subgraph SAVE["Persistenza"]
+        STATS --> DB["ProPlayer + ProPlayerStatCard<br/>(hltv_metadata.db)"]
+    end
+    RATE -.->|"controlla ritmo"| FETCH
+
+    style FLARE fill:#ffd43b,color:#000
+    style DB fill:#4a9eff,color:#fff
+```
+
+> **Nota architetturale:** Il sottosistema HLTV completo (con `HLTVApiService`, `CircuitBreaker`, `BrowserManager`, `CacheProxy`, `collectors`) risiede in `ingestion/hltv/` ed è documentato in Part 3. I file in `data_sources/hltv/` sono l'implementazione a basso livello dello scraping e del rate limiting.
+
+**`hltv_scraper.py` / `hltv_metadata.py`** (entry point in `data_sources/`):
+- `run_hltv_sync_cycle(limit=20)` — Orchestratore del ciclo di sincronizzazione che importa `HLTVApiService` dalla pipeline completa
+- `hltv_metadata.py` — Script di debug per salvataggio pagine via Playwright (validazione selettori CSS)
 
 ### -FACEIT API e Integrazione (`faceit_api.py`, `faceit_integration.py`)
 
@@ -1716,5 +2011,203 @@ Auto-discovery delle demo CS2 dall'installazione Steam locale.
 - Eccezione dedicata `FACEITAPIError`
 
 > **Analogia:** FACEIT è come un **consulente esterno** che fornisce al coach una seconda opinione sul livello del giocatore. Mentre il sistema HLTV fornisce dati sui professionisti, FACEIT fornisce il ranking competitivo del giocatore utente (Elo e Level da 1 a 10). Il rate limiting è come un **appuntamento con il consulente**: non puoi chiamare più di 10 volte al minuto, altrimenti il consulente si rifiuta di rispondere (errore 429). Il sistema rispetta automaticamente questo limite, aspettando il tempo necessario tra una richiesta e l'altra.
+
+### -FrameBuffer — Buffer Circolare per Estrazione HUD (`backend/processing/cv_framebuffer.py`)
+
+Il **FrameBuffer** è un buffer circolare thread-safe per la cattura e l'analisi dei frame dello schermo di gioco. Funziona come la "retina" del sistema: cattura frame dallo schermo, li memorizza in un anello di dimensione fissa e permette l'estrazione delle regioni HUD (Head-Up Display) per l'analisi visiva.
+
+> **Analogia:** Il FrameBuffer è come un **registratore a nastro circolare** in una sala di sorveglianza. La telecamera (lo schermo di gioco) registra continuamente, ma il nastro ha solo spazio per 30 fotogrammi — quando è pieno, i nuovi fotogrammi sovrascrivono i più vecchi. Il guardiano (il sistema di analisi) può in qualsiasi momento chiedere "mostrami gli ultimi N fotogrammi" o "ingrandisci la zona del minimap in questo fotogramma". La cosa importante è che il registratore non si blocca mai: anche se il guardiano sta analizzando un fotogramma, la telecamera continua a registrare senza interruzioni grazie a un lucchetto (lock) che coordina gli accessi.
+
+**Configurazione:**
+
+| Parametro | Default | Descrizione |
+|---|---|---|
+| `resolution` | `(1920, 1080)` | Risoluzione target dei frame |
+| `buffer_size` | `30` | Capacità del buffer circolare (frame) |
+
+**Operazioni principali:**
+- `capture_frame(source)` — Ingerisce frame da file o array numpy → BGR→RGB, uint8, resize → push nel buffer circolare
+- `get_latest(count=1)` — Recupera gli N frame più recenti (dal più nuovo al più vecchio)
+- `extract_hud_elements(frame)` — Estrae tutte le regioni HUD in un dizionario
+
+**Regioni HUD (riferimento 1920×1080):**
+
+| Regione | Coordinate | Posizione | Contenuto |
+|---|---|---|---|
+| **Minimap** | `(0, 0, 320, 320)` | Alto-sinistra | Radar CS2 (posizioni giocatori) |
+| **Kill Feed** | `(1520, 0, 1920, 300)` | Alto-destra | Feed uccisioni ed eventi |
+| **Scoreboard** | `(760, 0, 1160, 60)` | Alto-centro | Punteggio squadre |
+
+**Adattamento risoluzione** (`_scale_region()`): Le coordinate sono definite per la risoluzione di riferimento 1920×1080. Per risoluzioni diverse, vengono scalate proporzionalmente: `sx = larghezza_frame / 1920`, `sy = altezza_frame / 1080`. Questo rende il sistema **agnostico alla risoluzione** — funziona identicamente su monitor 1080p, 1440p o 4K.
+
+**Thread-safety:** Un `threading.Lock()` protegge tutte le operazioni di lettura e scrittura sul buffer. L'indice di scrittura (`_write_index`) avanza circolarmente modulo `buffer_size`, garantendo O(1) per inserimento e recupero.
+
+```mermaid
+flowchart LR
+    subgraph INPUT["Cattura"]
+        SCR["Schermo/File"]
+        SCR --> BGR["BGR → RGB<br/>uint8"]
+        BGR --> RESIZE["Resize a<br/>1920×1080"]
+    end
+    subgraph RING["Buffer Circolare (30 slot)"]
+        S1["Frame 28"]
+        S2["Frame 29"]
+        S3["Frame 0<br/>(più vecchio)"]
+        S4["..."]
+    end
+    RESIZE -->|"Lock"| RING
+    subgraph HUD["Estrazione HUD"]
+        RING --> MINI["Minimap<br/>(0,0)→(320,320)"]
+        RING --> KILL["Kill Feed<br/>(1520,0)→(1920,300)"]
+        RING --> SCORE["Scoreboard<br/>(760,0)→(1160,60)"]
+    end
+
+    style RING fill:#4a9eff,color:#fff
+```
+
+### -TensorFactory — Fabbrica dei Tensori (`backend/processing/tensor_factory.py`)
+
+La **TensorFactory** è il **sistema percettivo** del RAP Coach: converte lo stato di gioco grezzo in 3 tensori-immagine che il modello neurale può "vedere". Ogni tensore è un'immagine a 3 canali che codifica una diversa dimensione della situazione tattica: **mappa** (dove sono tutti), **vista** (cosa può vedere il giocatore) e **movimento** (come si sta muovendo).
+
+> **Analogia:** La TensorFactory è come un **pittore di mappe tattiche militari** che riceve rapporti radio e disegna tre mappe separate per il comandante (il modello RAP). La prima mappa (**mappa tattica**) mostra le posizioni di alleati e nemici conosciuti. La seconda mappa (**mappa di visibilità**) mostra cosa il soldato può effettivamente vedere dal suo punto di vista — il cono di 90° davanti a lui. La terza mappa (**mappa di movimento**) mostra il percorso recente del soldato, la sua velocità e la direzione del suo mirino. Crucialmente, il pittore segue una regola ferrea: **non disegna mai la posizione di nemici che il soldato non ha visto** (principio NO-WALLHACK). Se un nemico è dietro un muro, non appare sulla mappa — esattamente come nella realtà del giocatore.
+
+**Configurazioni:**
+
+| Parametro | `TensorConfig` (Inferenza) | `TrainingTensorConfig` (Addestramento) |
+|---|---|---|
+| `map_resolution` | 128 × 128 | 64 × 64 |
+| `view_resolution` | 224 × 224 | 64 × 64 |
+| `sigma` (blur gaussiano) | 3.0 | 3.0 |
+| `fov_degrees` | 90° | 90° |
+| `view_distance` | 2000.0 unità mondo | 2000.0 unità mondo |
+
+> **Nota (F2-02):** `TrainingTensorConfig` riduce la risoluzione da 128/224 a 64/64, ottenendo un **risparmio di memoria di ~12×**. Il contratto `AdaptiveAvgPool2d` nella RAPPerception produce 128-dim indipendentemente dalla risoluzione di input, ma questa garanzia è implicita — un'asserzione a runtime è raccomandata.
+
+**Costanti di rasterizzazione:**
+
+| Costante | Valore | Scopo |
+|---|---|---|
+| `OWN_POSITION_INTENSITY` | 1.5 | Luminosità marcatore posizione propria |
+| `ENTITY_TEAMMATE_DIMMING` | 0.7 | Compagni renderizzati più scuri dei nemici |
+| `ENTITY_MIN_INTENSITY` | 0.2 | Intensità minima entità visibile |
+| `ENEMY_MIN_INTENSITY` | 0.3 | Intensità minima nemico visibile |
+| `BOMB_MARKER_RADIUS` | 50.0 | Raggio cerchio bomba (unità mondo) |
+| `BOMB_MARKER_INTENSITY` | 0.8 | Opacità cerchio bomba |
+| `TRAJECTORY_WINDOW` | 32 tick | Finestra traiettoria (~0.5s a 64 Hz) |
+| `VELOCITY_FALLOFF_RADIUS` | 20.0 | Celle griglia per sfumatura radiale velocità |
+| `MAX_SPEED_UNITS_PER_TICK` | 4.0 | Velocità massima CS2 (64 tick/s) |
+| `MAX_YAW_DELTA_DEG` | 45.0 | Soglia flick per rilevamento mira |
+
+**I 3 Rasterizzatori:**
+
+**1. Rasterizzatore Mappa** — `generate_map_tensor(ticks, map_name, knowledge)` → `Tensor(3, res, res)`
+
+| Canale | Modalità Player-POV (con PlayerKnowledge) | Modalità Legacy (senza knowledge) |
+|---|---|---|
+| **Ch0** | Compagni (sempre noti) + posizione propria (intensità 1.5) | Posizioni nemici |
+| **Ch1** | Nemici visibili (piena intensità) + ultimi nemici noti (decadimento esponenziale) | Posizioni compagni |
+| **Ch2** | Zone utilità (fumo/molotov) + overlay bomba | Posizione giocatore |
+
+**2. Rasterizzatore Vista** — `generate_view_tensor(ticks, map_name, knowledge)` → `Tensor(3, res, res)`
+
+| Canale | Modalità Player-POV | Modalità Legacy |
+|---|---|---|
+| **Ch0** | Maschera FOV (cono geometrico 90° dalla direzione di sguardo) | Maschera FOV |
+| **Ch1** | Entità visibili: compagni (dimmed ×0.7) + nemici visibili (intensità pesata per distanza) | Zona pericolo (aree NON coperte da FOV accumulato, capped a 8 tick) |
+| **Ch2** | Zone utilità attive (cerchi fumo/molotov in unità mondo) | Zona sicura (recentemente visibile ma non in FOV corrente) |
+
+**3. Codificatore Movimento** — `generate_motion_tensor(ticks, map_name)` → `Tensor(3, res, res)`
+
+| Canale | Contenuto |
+|---|---|
+| **Ch0** | Traiettoria ultimi 32 tick — intensità ∝ recenza (più nuovo = 1.0, più vecchio → 0) |
+| **Ch1** | Campo velocità — gradiente radiale dal giocatore, modulato dalla velocità corrente [0, 1] |
+| **Ch2** | Movimento mirino — magnitudine delta yaw come blob gaussiano sulla posizione giocatore |
+
+> **Nota (F2-03):** Le demo a 128 tick/s comprimono la velocità nella metà inferiore dell'intervallo [0, 1]; normalizzazione consapevole del tick-rate in attesa di implementazione.
+
+**Integrazione NO-WALLHACK:** Quando `PlayerKnowledge` è fornita, i rasterizzatori mappa e vista codificano **solo lo stato visibile al giocatore**. Le posizioni nemiche dell'ultimo avvistamento decadono esponenzialmente nel tempo. Le zone utilità sono visibili solo se nel FOV o note dal radar. Quando `knowledge=None`, il sistema degrada alla modalità legacy per retrocompatibilità.
+
+**Metodi helper:**
+- `_world_to_grid(x, y, meta, resolution)` — Conversione coordinate mondo → griglia. **Nota C-03:** Singolo Y-flip (`meta.pos_y - y`) per evitare doppia inversione
+- `_normalize(arr)` — Normalizzazione a [0, 1]. **Nota M-10:** `arr / max(max_val, 1.0)` per prevenire amplificazione del rumore in canali sparsi
+- `_generate_fov_mask(player_x, player_y, yaw, meta, resolution)` — Maschera conica 90° dalla direzione di sguardo, limitata per distanza (approssimazione 2D top-down)
+
+**Accesso Singleton:** `get_tensor_factory()` — double-checked locking, thread-safe.
+
+```mermaid
+flowchart TB
+    subgraph INPUT["Stato di Gioco"]
+        TICKS["tick_data<br/>(posizioni, salute, economia)"]
+        MAP["map_name<br/>(metadati spaziali)"]
+        PK["PlayerKnowledge<br/>(NO-WALLHACK)"]
+    end
+    subgraph FACTORY["TensorFactory — 3 Rasterizzatori"]
+        TICKS --> RMAP["Rasterizzatore MAPPA<br/>Ch0: compagni + sé<br/>Ch1: nemici visibili<br/>Ch2: utilità + bomba"]
+        TICKS --> RVIEW["Rasterizzatore VISTA<br/>Ch0: maschera FOV 90°<br/>Ch1: entità visibili<br/>Ch2: zone utilità"]
+        TICKS --> RMOT["Codificatore MOVIMENTO<br/>Ch0: traiettoria 32 tick<br/>Ch1: campo velocità<br/>Ch2: delta mirino"]
+        PK -.->|"filtra visibilità"| RMAP
+        PK -.->|"filtra visibilità"| RVIEW
+        MAP --> RMAP
+        MAP --> RVIEW
+        MAP --> RMOT
+    end
+    subgraph OUTPUT["Tensori Output"]
+        RMAP --> T1["map_tensor<br/>[3, 64, 64]"]
+        RVIEW --> T2["view_tensor<br/>[3, 64, 64]"]
+        RMOT --> T3["motion_tensor<br/>[3, 64, 64]"]
+    end
+    T1 --> RAP["RAPCoachModel"]
+    T2 --> RAP
+    T3 --> RAP
+
+    style PK fill:#ffd43b,color:#000
+    style FACTORY fill:#e8f4f8
+```
+
+### -Indice Vettoriale FAISS (`backend/knowledge/vector_index.py`)
+
+Il **VectorIndexManager** fornisce ricerca semantica ad alta velocità per il sistema di conoscenza RAG (Retrieval-Augmented Generation) del coach. Utilizza FAISS (Facebook AI Similarity Search) con `IndexFlatIP` su vettori L2-normalizzati, ottenendo efficacemente una **ricerca per similarità coseno** in tempo sub-lineare.
+
+> **Analogia:** L'indice FAISS è come il **sistema di ricerca della biblioteca** del coach. Invece di sfogliare ogni libro (conoscenza tattica) o ogni appunto (esperienza di coaching) uno per uno per trovare quello rilevante alla situazione corrente, il bibliotecario (FAISS) ha creato un **indice per concetti**: quando il coach chiede "qual è la strategia migliore per un retake B su Mirage con 2 giocatori?", l'indice trova istantaneamente i 5 documenti più simili a questa domanda, senza dover leggere tutti i 10.000 documenti nella biblioteca. Il trucco è che ogni documento e ogni domanda vengono convertiti in un vettore di 384 numeri (embedding), e FAISS confronta questi vettori tramite **prodotto interno** (equivalente alla similarità coseno dopo normalizzazione L2).
+
+**Indici Duali:**
+
+| Indice | Sorgente DB | Contenuto |
+|---|---|---|
+| `"knowledge"` | Tabella `TacticalKnowledge` | Embedding conoscenza tattica (strategie, posizioni, utilità) |
+| `"experience"` | Tabella `CoachingExperience` | Embedding esperienze di coaching (feedback, correzioni, consigli) |
+
+**Tipo di indice:** `faiss.IndexFlatIP` (Inner Product) su vettori L2-normalizzati. Poiché `cos(a, b) = a·b / (||a|| × ||b||)`, normalizzando i vettori a norma unitaria, il prodotto interno **equivale esattamente** alla similarità coseno. Intervallo risultante: [0, 1] dove 1 = identico.
+
+**API pubblica:**
+
+| Metodo | Descrizione |
+|---|---|
+| `search(index_name, query_vec, k)` | Ricerca i k vettori più simili. Lazy rebuild se dirty. Ritorna `List[(db_id, similarity)]` |
+| `rebuild_from_db(index_name)` | Ricostruzione completa dell'indice dalla tabella DB. Thread-safe. Ritorna conteggio vettori |
+| `mark_dirty(index_name)` | Marca l'indice per ricostruzione lazy (al prossimo `search()`) |
+| `index_size(index_name)` | Ritorna `index.ntotal` o 0 se non costruito |
+
+**Persistenza su disco:**
+- Formato: `{persist_dir}/{index_name}.faiss` + `{index_name}_ids.npy`
+- Salvataggio: `faiss.write_index()` + `np.save()`
+- Caricamento: automatico in `__init__` via `faiss.read_index()` + `np.load()`
+- Directory default: `~/.cs2analyzer/indexes/`
+
+**Thread-safety:** Un singolo `threading.Lock()` protegge tutte le operazioni di lettura/scrittura sugli indici, i flag dirty e le operazioni di rebuild. FAISS `IndexFlatIP` è thread-safe per letture concorrenti.
+
+**Ricostruzione lazy (`mark_dirty()`):** Quando nuovi dati vengono inseriti nelle tabelle Knowledge o Experience, l'indice viene marcato come "dirty" anziché ricostruito immediatamente. La ricostruzione avviene solo al prossimo `search()`, evitando rebuild multipli durante inserimenti batch.
+
+**Normalizzazione vettoriale:**
+```
+norms = ||embedding||₂ per riga
+normalized = embedding / max(norms, 1e-8)    # stabilità numerica
+IndexFlatIP.add(normalized)
+```
+
+**Fallback graduale:** Se `faiss-cpu` non è installato, il singleton `get_vector_index_manager()` ritorna `None` e il sistema degrada automaticamente alla ricerca brute-force (più lenta ma funzionalmente equivalente). Questo permette al programma di funzionare anche su sistemi dove FAISS non è disponibile.
+
+**Over-fetching:** Per gestire scenari di post-filtraggio, la ricerca recupera `k × OVERFETCH_KNOWLEDGE` (10×) o `k × OVERFETCH_EXPERIENCE` (20×) risultati, poi filtra e ritorna solo i top-k effettivi.
 
 ---

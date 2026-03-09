@@ -1,11 +1,47 @@
+import fcntl
+import os
 import threading
 import time
+from contextlib import contextmanager
 from typing import Dict, Optional
 
 from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.ml_controller")
+
+# NN-02: Module-level training mutex — prevents concurrent training across
+# all MLController instances and the Teacher daemon in session_engine.py.
+_TRAINING_LOCK = threading.Lock()
+
+
+def _get_training_lock_path() -> str:
+    """Return the path for the file-based training lock."""
+    from Programma_CS2_RENAN.core.constants import DATA_DIR
+    return os.path.join(DATA_DIR, "training.lock")
+
+
+@contextmanager
+def training_file_lock():
+    """Acquire a file-based lock for training (cross-process safety).
+
+    Non-blocking: raises ``RuntimeError`` if the lock is already held.
+    """
+    lock_path = _get_training_lock_path()
+    os.makedirs(os.path.dirname(lock_path), exist_ok=True)
+    fp = open(lock_path, "w")
+    try:
+        fcntl.flock(fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        fp.close()
+        raise RuntimeError("Another training process already holds the lock")
+    try:
+        fp.write(str(os.getpid()))
+        fp.flush()
+        yield
+    finally:
+        fcntl.flock(fp, fcntl.LOCK_UN)
+        fp.close()
 
 
 class TrainingStopRequested(Exception):
@@ -77,6 +113,11 @@ class MLController:
             logger.warning("MLController: Training already in progress.")
             return
 
+        # NN-02: Module-level lock prevents concurrent training across instances
+        if not _TRAINING_LOCK.acquire(blocking=False):
+            logger.warning("MLController: Another training session is active (lock held).")
+            return
+
         self._is_running = True
         self.context._stop_requested = False
         self.thread = threading.Thread(target=self._run_wrapper, daemon=True)
@@ -100,7 +141,6 @@ class MLController:
 
         try:
             manager = CoachTrainingManager()
-            # We will refactor run_full_cycle to accept context
             manager.run_full_cycle(context=self.context)
         except TrainingStopRequested:
             logger.info("MLController: Training stopped gracefully by operator.")
@@ -111,6 +151,11 @@ class MLController:
         finally:
             self._is_running = False
             self.thread = None
+            # NN-02: Release module-level lock so other callers can train
+            try:
+                _TRAINING_LOCK.release()
+            except RuntimeError:
+                pass  # Lock was not acquired (shouldn't happen)
 
     def get_status(self) -> Dict:
         return {

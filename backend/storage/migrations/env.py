@@ -53,45 +53,27 @@ target_metadata = SQLModel.metadata
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
 
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well.  By skipping the Engine creation
-    we don't even need a DBAPI to be available.
-
-    Calls to context.execute() here emit the given string to the
-    script output.
-
+    R2-01: DEPRECATED — this migration chain is superseded by the root
+    ``alembic/`` directory. Raising to prevent accidental execution.
     """
-    url = config.get_main_option("sqlalchemy.url")
-    context.configure(
-        url=url,
-        target_metadata=target_metadata,
-        literal_binds=True,
-        dialect_opts={"paramstyle": "named"},
+    raise RuntimeError(
+        "DEPRECATED: This legacy migration chain (backend/storage/migrations/) "
+        "is no longer active. Use the canonical chain at the project root: "
+        "  cd <project_root> && alembic upgrade head"
     )
-
-    with context.begin_transaction():
-        context.run_migrations()
 
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode.
 
-    In this scenario we need to create an Engine
-    and associate a connection with the context.
-
+    R2-01: DEPRECATED — this migration chain is superseded by the root
+    ``alembic/`` directory. Raising to prevent accidental execution.
     """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
+    raise RuntimeError(
+        "DEPRECATED: This legacy migration chain (backend/storage/migrations/) "
+        "is no longer active. Use the canonical chain at the project root: "
+        "  cd <project_root> && alembic upgrade head"
     )
-
-    with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
-
-        with context.begin_transaction():
-            context.run_migrations()
 
 
 if context.is_offline_mode():

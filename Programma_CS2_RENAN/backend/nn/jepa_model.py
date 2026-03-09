@@ -523,7 +523,6 @@ class ConceptLabeler:
         """
         labels = torch.zeros(NUM_COACHING_CONCEPTS)
 
-        # Original 19 features
         hp = features[self._HP].item()
         armor = features[self._ARMOR].item()
         equip = features[self._EQUIP].item()
@@ -533,104 +532,87 @@ class ConceptLabeler:
         enemies_vis = features[self._ENEMIES_VIS].item()
         kast = features[self._KAST].item()
         round_phase = features[self._ROUND_PHASE].item()
-        # New 6 features (indices 19-24, zero when not available from DB-only tick)
-        weapon_class = features[self._WEAPON_CLASS].item() if features.shape[0] > 19 else 0.0
-        time_in_round = features[self._TIME_IN_ROUND].item() if features.shape[0] > 20 else 0.0
-        bomb_planted = features[self._BOMB_PLANTED].item() if features.shape[0] > 21 else 0.0
-        teammates = features[self._TEAMMATES_ALIVE].item() if features.shape[0] > 22 else 1.0
-        enemies = features[self._ENEMIES_ALIVE].item() if features.shape[0] > 23 else 1.0
-        team_econ = features[self._TEAM_ECONOMY].item() if features.shape[0] > 24 else 0.0
+        n = features.shape[0]
+        weapon_class = features[self._WEAPON_CLASS].item() if n > 19 else 0.0
+        time_in_round = features[self._TIME_IN_ROUND].item() if n > 20 else 0.0
+        bomb_planted = features[self._BOMB_PLANTED].item() if n > 21 else 0.0
+        teammates = features[self._TEAMMATES_ALIVE].item() if n > 22 else 1.0
+        enemies = features[self._ENEMIES_ALIVE].item() if n > 23 else 1.0
+        team_econ = features[self._TEAM_ECONOMY].item() if n > 24 else 0.0
 
-        # 0: positioning_aggressive — not crouching, not scoped, seeing enemies
+        self._tick_positioning(labels, hp, crouching, scoped, enemies_vis, bomb_planted)
+        self._tick_utility_economy(labels, equip, blinded, enemies_vis, kast, round_phase, team_econ)
+        self._tick_engagement(labels, hp, armor, blinded, enemies_vis, teammates, enemies, kast)
+        self._tick_tactical(labels, crouching, scoped, enemies_vis, kast, round_phase,
+                            weapon_class, time_in_round, hp, bomb_planted)
+
+        return labels.clamp(0.0, 1.0)
+
+    @staticmethod
+    def _tick_positioning(labels, hp, crouching, scoped, enemies_vis, bomb_planted):
+        """Tick-level positioning concept labels (0-2)."""
         if crouching <= 0.5 and scoped <= 0.5 and enemies_vis > 0.4:
             labels[0] = min(0.5 + enemies_vis, 1.0)
-
-        # 1: positioning_passive — crouching or scoped, holding angle
         if crouching > 0.5 or scoped > 0.5:
             labels[1] = 0.6 + 0.2 * scoped + 0.2 * crouching
-
-        # 2: positioning_exposed — low HP, enemies visible, not in cover;
-        # late-round bomb pressure amplifies exposure (bomb_planted=1.0)
         if hp < 0.4 and enemies_vis > 0.2:
             labels[2] = min((1.0 - hp) * 0.8 + enemies_vis * 0.2 + bomb_planted * 0.1, 1.0)
 
-        # 3: utility_effective — enemies visible after utility (proxy: many enemies seen)
+    @staticmethod
+    def _tick_utility_economy(labels, equip, blinded, enemies_vis, kast, round_phase, team_econ):
+        """Tick-level utility and economy concept labels (3-6)."""
         if enemies_vis > 0.6:
             labels[3] = min(enemies_vis, 1.0)
-
-        # 4: utility_wasteful — blinded (own flash?) or low KAST with no visible enemies
         if blinded > 0.5:
             labels[4] = 0.6
         elif enemies_vis < 0.1 and kast < 0.3:
             labels[4] = 0.4
-
-        # 5: economy_efficient — equip matches round phase; also check team_econ alignment
-        if round_phase < 0.2:  # pistol
+        if round_phase < 0.2:
             labels[5] = 0.7 if equip < 0.15 else 0.3
-        elif round_phase > 0.8:  # full buy
+        elif round_phase > 0.8:
             labels[5] = 0.7 if equip > 0.3 else 0.3
         else:
             labels[5] = 0.5
-        # Boost if team economy is also aligned (consistent eco or buy)
         if team_econ > 0.0:
             labels[5] = min(labels[5].item() + 0.1 * team_econ, 1.0)
-
-        # 6: economy_wasteful — high equip in eco/pistol or low equip in full buy
         if round_phase < 0.2 and equip > 0.3:
             labels[6] = 0.7
         elif round_phase > 0.8 and equip < 0.15:
             labels[6] = 0.6
 
-        # 7: engagement_favorable — high HP + armor + enemies visible;
-        # numerical advantage (more teammates than enemies) amplifies signal
+    @staticmethod
+    def _tick_engagement(labels, hp, armor, blinded, enemies_vis, teammates, enemies, kast):
+        """Tick-level engagement and trade concept labels (7-10)."""
         if hp > 0.7 and armor > 0.5 and enemies_vis > 0.2:
             advantage = max(0.0, teammates - enemies)
             labels[7] = min(hp * 0.4 + armor * 0.3 + enemies_vis * 0.2 + advantage * 0.1, 1.0)
-
-        # 8: engagement_unfavorable — low HP or blinded with enemies;
-        # numerical disadvantage worsens it
         if hp < 0.3 and enemies_vis > 0.2:
             outnumbered = max(0.0, enemies - teammates)
             labels[8] = (1.0 - hp) * 0.6 + enemies_vis * 0.3 + outnumbered * 0.1
         elif blinded > 0.5 and enemies_vis > 0.2:
             labels[8] = 0.7
-
-        # 9: trade_responsive — high KAST (proxy for team play)
         if kast > 0.7:
             labels[9] = kast
-
-        # 10: trade_isolated — low KAST
         if kast < 0.3:
             labels[10] = min(1.0 - kast, 1.0)
 
-        # 11: rotation_fast — mobile player (not crouching/scoped);
-        # early round with time remaining = higher rotation signal
+    @staticmethod
+    def _tick_tactical(labels, crouching, scoped, enemies_vis, kast, round_phase,
+                       weapon_class, time_in_round, hp, bomb_planted):
+        """Tick-level tactical and psychology concept labels (11-15)."""
         if crouching <= 0.5 and scoped <= 0.5:
             labels[11] = 0.4 + (1.0 - time_in_round) * 0.2
-
-        # 12: information_gathered — many enemies visible
         if enemies_vis > 0.4:
             labels[12] = min(enemies_vis * 1.5, 1.0)
-
-        # 13: momentum_leveraged — high KAST + full buy (confident play);
-        # AWP-class weapon (weapon_class ≈ 0.9) with buy rounds boosts signal
         if kast > 0.6 and round_phase > 0.6:
             awp_bonus = 0.1 if weapon_class > 0.8 else 0.0
             labels[13] = min(kast * 0.6 + round_phase * 0.4 + awp_bonus, 1.0)
-
-        # 14: clutch_composed — few enemies visible, player alive, post-bomb-plant
-        # bomb_planted context is now available
         if hp > 0.3 and enemies_vis > 0.2 and enemies_vis < 0.5:
             labels[14] = 0.4 + bomb_planted * 0.2
-
-        # 15: aggression_calibrated — HP matches engagement level
         if hp > 0.6 and enemies_vis > 0.3:
             labels[15] = 0.5 + hp * 0.3
         elif hp < 0.3 and enemies_vis < 0.1:
-            labels[15] = 0.5  # passive when hurt = calibrated
-
-        # Safety clamp: all concept labels must be in [0, 1]
-        return labels.clamp(0.0, 1.0)
+            labels[15] = 0.5
 
     def label_from_round_stats(self, round_stats) -> torch.Tensor:
         """
@@ -656,7 +638,6 @@ class ConceptLabeler:
         deaths = getattr(round_stats, "deaths", 0)
         assists = getattr(round_stats, "assists", 0)
         damage = getattr(round_stats, "damage_dealt", 0)
-        hs_kills = getattr(round_stats, "headshot_kills", 0)
         trade_kills = getattr(round_stats, "trade_kills", 0)
         was_traded = getattr(round_stats, "was_traded", False)
         opening_kill = getattr(round_stats, "opening_kill", False)
@@ -672,100 +653,93 @@ class ConceptLabeler:
         survived = deaths == 0
         utility_total = he_dmg + molly_dmg + flashes * 20 + smokes * 15
 
-        # 0: positioning_aggressive — opening kill indicates aggressive positioning
+        self._label_rs_positioning(labels, kills, damage, survived, opening_kill, opening_death)
+        self._label_rs_utility(labels, utility_total, flashes, smokes, he_dmg, molly_dmg, round_won)
+        self._label_rs_economy(labels, equip, round_won)
+        self._label_rs_engagement(labels, kills, deaths, damage, survived, was_traded, trade_kills)
+        self._label_rs_tactical(labels, assists, flashes, kills, survived, round_won, rating, equip)
+
+        return labels
+
+    @staticmethod
+    def _label_rs_positioning(labels, kills, damage, survived, opening_kill, opening_death):
+        """Positioning concept labels (0-2) from round outcomes."""
         if opening_kill:
             labels[0] = 0.8 + min(kills * 0.05, 0.2)
         elif kills >= 2 and survived:
             labels[0] = 0.6
-
-        # 1: positioning_passive — survived without opening duel + low damage
         if survived and not opening_kill and not opening_death and damage < 60:
             labels[1] = 0.7
-
-        # 2: positioning_exposed — opening death or death with low damage output
         if opening_death:
             labels[2] = 0.8
-        elif deaths > 0 and damage < 40:
+        elif not survived and damage < 40:
             labels[2] = 0.6
 
-        # 3: utility_effective — high utility damage/info AND round won
+    @staticmethod
+    def _label_rs_utility(labels, utility_total, flashes, smokes, he_dmg, molly_dmg, round_won):
+        """Utility concept labels (3-4) from round outcomes."""
         if utility_total > 80 and round_won:
             labels[3] = min(0.5 + utility_total / 300, 1.0)
         elif flashes >= 2 and round_won:
             labels[3] = 0.6
-
-        # 4: utility_wasteful — no utility used, or utility + still lost
         if flashes == 0 and smokes == 0 and he_dmg == 0 and molly_dmg == 0:
             labels[4] = 0.5
         elif utility_total > 60 and not round_won:
             labels[4] = 0.4
 
-        # 5: economy_efficient — low equip + win (eco win) or normal equip + win
+    @staticmethod
+    def _label_rs_economy(labels, equip, round_won):
+        """Economy concept labels (5-6) from round outcomes."""
         if round_won:
             if equip < 2000:
-                labels[5] = 0.9  # Eco win = very efficient
+                labels[5] = 0.9
             elif equip < 4500:
                 labels[5] = 0.7
             else:
                 labels[5] = 0.5
         else:
             labels[5] = 0.3
-
-        # 6: economy_wasteful — high equip + loss
         if not round_won and equip > 4000:
             labels[6] = min(0.4 + equip / 16000, 1.0)
 
-        # 7: engagement_favorable — multi-kills, high damage, survived
+    @staticmethod
+    def _label_rs_engagement(labels, kills, deaths, damage, survived, was_traded, trade_kills):
+        """Engagement and trade concept labels (7-10) from round outcomes."""
         if kills >= 2 and survived:
             labels[7] = min(0.5 + kills * 0.15, 1.0)
         elif damage > 120 and survived:
             labels[7] = 0.7
-
-        # 8: engagement_unfavorable — died with low trade value
         if deaths > 0 and kills == 0 and damage < 50:
             labels[8] = 0.7
         elif deaths > 0 and not was_traded:
             labels[8] = 0.5
-
-        # 9: trade_responsive — got trade kills or was traded after death
         if trade_kills > 0:
             labels[9] = min(0.6 + trade_kills * 0.2, 1.0)
         elif was_traded:
             labels[9] = 0.5
-
-        # 10: trade_isolated — died without being traded, no trade kills
         if deaths > 0 and not was_traded and trade_kills == 0:
             labels[10] = 0.7
 
-        # 11: rotation_fast — proxy: assists suggest support/rotation plays
+    @staticmethod
+    def _label_rs_tactical(labels, assists, flashes, kills, survived, round_won, rating, equip):
+        """Tactical and psychology concept labels (11-15) from round outcomes."""
         if assists >= 1 and round_won:
             labels[11] = 0.6 + assists * 0.1
-
-        # 12: information_gathered — flashes + survived = gathering intel
         if flashes >= 2 and survived:
             labels[12] = 0.6
         elif flashes >= 1 and kills >= 1:
             labels[12] = 0.5
-
-        # 13: momentum_leveraged — high rating round (confident play)
         if rating > 1.5:
             labels[13] = min(rating / 2.5, 1.0)
         elif kills >= 3:
             labels[13] = 0.7
-
-        # 14: clutch_composed — proxy: kills + round_won when likely in clutch
-        # (high kills but deaths = 0 suggests last-man-standing performance)
         if kills >= 2 and survived and round_won:
             labels[14] = 0.6
-
-        # 15: aggression_calibrated — kills proportional to equipment investment
         if kills > 0 and equip > 0:
             efficiency = (kills * 1000) / max(equip, 1)
             labels[15] = min(efficiency * 0.5, 1.0)
         elif survived and round_won:
             labels[15] = 0.5
-
-        return labels
 
     def label_batch(self, features_batch: torch.Tensor) -> torch.Tensor:
         """

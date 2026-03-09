@@ -209,7 +209,7 @@ def detect_trade_kills(
             prior_tick = prior["tick"]
 
             # Stop searching if outside time window
-            if tick - prior_tick > trade_window:
+            if tick - prior_tick >= trade_window:  # M-05: inclusive boundary
                 break
 
             # Must be same round

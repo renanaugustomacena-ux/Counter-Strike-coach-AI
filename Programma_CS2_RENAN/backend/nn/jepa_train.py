@@ -12,6 +12,7 @@ Usage:
     python -m Programma_CS2_RENAN.backend.nn.jepa_train --mode finetune
 """
 
+import sys
 from typing import List
 
 import numpy as np
@@ -23,10 +24,13 @@ from torch.utils.data import DataLoader, Dataset
 from Programma_CS2_RENAN.backend.nn.jepa_model import JEPACoachingModel, jepa_contrastive_loss
 from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager
-from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
+from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats, RoundStats
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.jepa_train")
+
+# Minimum rounds needed for a meaningful JEPA sequence
+_MIN_ROUNDS_FOR_SEQUENCE = 6
 
 
 class JEPAPretrainDataset(Dataset):
@@ -56,9 +60,6 @@ class JEPAPretrainDataset(Dataset):
             context = sequence[: self.context_len]
             target = sequence[self.context_len : self.context_len + self.target_len]
         else:
-            # NOTE (F3-25): Uses unseeded global random state — window selection is
-            # non-reproducible across runs. For deterministic training, seed the DataLoader
-            # worker via worker_init_fn or use a Generator passed to DataLoader.
             start = np.random.randint(0, max_start)
             context = sequence[start : start + self.context_len]
             target = sequence[start + self.context_len : start + self.context_len + self.target_len]
@@ -66,9 +67,47 @@ class JEPAPretrainDataset(Dataset):
         return {"context": torch.FloatTensor(context), "target": torch.FloatTensor(target)}
 
 
+def _roundstats_to_features(rs: RoundStats) -> List[float]:
+    """Extract a feature vector from a single RoundStats row."""
+    return [
+        float(rs.kills),
+        float(rs.deaths),
+        float(rs.damage_dealt) / 100.0,  # normalise ADR-scale
+        float(rs.headshot_kills),
+        float(rs.assists),
+        float(rs.trade_kills),
+        float(1 if rs.was_traded else 0),
+        float(1 if rs.opening_kill else 0),
+        float(1 if rs.opening_death else 0),
+        float(rs.he_damage) / 100.0,
+        float(rs.molotov_damage) / 100.0,
+        float(rs.flashes_thrown),
+        float(rs.smokes_thrown),
+        float(rs.equipment_value) / 5000.0,  # normalise to typical buy range
+        float(1 if rs.round_won else 0),
+        float(rs.round_rating or 0.0),
+        float(1 if rs.side == "CT" else 0),
+    ]
+
+
+def _build_sequence_from_rounds(
+    round_rows: List[RoundStats],
+) -> np.ndarray:
+    """Build a [num_rounds, METADATA_DIM] array from RoundStats rows."""
+    n_features = len(_roundstats_to_features(round_rows[0]))
+    pad_len = max(0, METADATA_DIM - n_features)
+    rows = []
+    for rs in round_rows:
+        feats = _roundstats_to_features(rs)
+        rows.append(feats + [0.0] * pad_len)
+    return np.array(rows, dtype=np.float32)
+
+
 def load_pro_demo_sequences(limit: int = 100) -> List[np.ndarray]:
     """
-    Load pro demo sequences from database.
+    Load pro demo sequences from database using real per-round RoundStats.
+
+    Falls back to match-aggregate padding only when no RoundStats exist.
 
     Args:
         limit: Maximum number of matches to load
@@ -78,49 +117,106 @@ def load_pro_demo_sequences(limit: int = 100) -> List[np.ndarray]:
     """
     db = get_db_manager()
     sequences = []
+    fallback_count = 0
 
     with db.get_session() as session:
-        # Fetch pro matches
         stmt = select(PlayerMatchStats).where(PlayerMatchStats.is_pro == True).limit(limit)
-
         matches = session.exec(stmt).all()
 
         for match in matches:
-            # Match-aggregate features (12 values) padded to METADATA_DIM.
-            # Canonical tick-level pipeline uses full 19-dim via FeatureExtractor.
-            base = [
-                match.avg_kills,
-                match.avg_deaths,
-                match.avg_adr,
-                match.avg_hs,
-                match.avg_kast,
-                match.kill_std,
-                match.adr_std,
-                match.kd_ratio,
-                match.impact_rounds,
-                match.accuracy,
-                match.econ_rating,
-                match.rating,
-            ]
-            features = np.array(base + [0.0] * (METADATA_DIM - len(base)))
+            # Try real per-round data first (F3-08 fix)
+            round_rows = session.exec(
+                select(RoundStats)
+                .where(RoundStats.demo_name == match.demo_name)
+                .where(RoundStats.player_name == match.player_name)
+                .order_by(RoundStats.round_number)
+            ).all()
 
-            # WARNING (F3-08): np.tile creates 20 IDENTICAL frames from a single match-aggregate
-            # vector. JEPA context-target prediction is trivially solved (copy input) and the
-            # model learns an identity mapping — NOT temporal dynamics. This standalone script
-            # is functionally a no-op for representation learning.
-            # FIX: Replace with actual per-round RoundStats sequences for real temporal contrast.
-            # NOTE: TrainingOrchestrator uses real per-tick data and is NOT affected by this.
-            sequence = np.tile(features, (20, 1))  # 20 pseudo-rounds (no temporal contrast)
-            sequences.append(sequence)
+            if len(round_rows) >= _MIN_ROUNDS_FOR_SEQUENCE:
+                sequence = _build_sequence_from_rounds(round_rows)
+                sequences.append(sequence)
+            else:
+                # Fallback: match-aggregate features tiled (legacy behaviour)
+                fallback_count += 1
+                base = [
+                    match.avg_kills,
+                    match.avg_deaths,
+                    match.avg_adr,
+                    match.avg_hs,
+                    match.avg_kast,
+                    match.kill_std,
+                    match.adr_std,
+                    match.kd_ratio,
+                    match.impact_rounds,
+                    match.accuracy,
+                    match.econ_rating,
+                    match.rating,
+                ]
+                features = np.array(base + [0.0] * (METADATA_DIM - len(base)))
+                sequence = np.tile(features, (20, 1))
+                sequences.append(sequence)
 
-    logger.info("Loaded %s pro demo sequences", len(sequences))
-    if sequences:
+    logger.info("Loaded %d pro demo sequences (%d from RoundStats, %d fallback-tiled)",
+                len(sequences), len(sequences) - fallback_count, fallback_count)
+    if fallback_count > 0:
         logger.warning(
-            "load_pro_demo_sequences: sequences are built with np.tile (F3-08) — "
-            "JEPA will learn an identity mapping, NOT temporal dynamics. "
-            "Replace with per-round RoundStats for meaningful pre-training."
+            "%d/%d sequences used np.tile fallback (no RoundStats). "
+            "Ingest demos with RoundStats for meaningful temporal pre-training.",
+            fallback_count, len(sequences),
         )
     return sequences
+
+
+def load_user_match_sequences(limit: int = 200) -> tuple:
+    """
+    Load real user match sequences for JEPA fine-tuning.
+
+    Returns:
+        (X_train, y_train) where X_train is [N, seq_len, METADATA_DIM]
+        and y_train is [N, METADATA_DIM] (last-round features as target).
+    """
+    db = get_db_manager()
+    X_sequences = []
+    y_targets = []
+
+    with db.get_session() as session:
+        stmt = (
+            select(PlayerMatchStats)
+            .where(PlayerMatchStats.is_pro == False)
+            .order_by(PlayerMatchStats.match_date)
+            .limit(limit)
+        )
+        matches = session.exec(stmt).all()
+
+        for match in matches:
+            round_rows = session.exec(
+                select(RoundStats)
+                .where(RoundStats.demo_name == match.demo_name)
+                .where(RoundStats.player_name == match.player_name)
+                .order_by(RoundStats.round_number)
+            ).all()
+
+            if len(round_rows) < _MIN_ROUNDS_FOR_SEQUENCE:
+                continue
+
+            seq = _build_sequence_from_rounds(round_rows)
+            # Use all rounds as input, last round features as target
+            X_sequences.append(seq)
+            y_targets.append(seq[-1])
+
+    if not X_sequences:
+        return None, None
+
+    # Pad/truncate to uniform sequence length
+    max_len = max(s.shape[0] for s in X_sequences)
+    X_padded = []
+    for s in X_sequences:
+        if s.shape[0] < max_len:
+            pad = np.zeros((max_len - s.shape[0], METADATA_DIM), dtype=np.float32)
+            s = np.concatenate([s, pad], axis=0)
+        X_padded.append(s[:max_len])
+
+    return np.array(X_padded), np.array(y_targets)
 
 
 def train_jepa_pretrain(
@@ -146,10 +242,14 @@ def train_jepa_pretrain(
     set_global_seed()  # P1-02: Reproducible training
     logger.info("Starting JEPA pre-training...")
 
+    def _worker_init(worker_id: int) -> None:
+        set_global_seed(42 + worker_id)
+
     # Load pro demo data
     sequences = load_pro_demo_sequences(limit=100)
     dataset = JEPAPretrainDataset(sequences, context_len=10, target_len=10)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True,
+                            worker_init_fn=_worker_init)
 
     # Optimizer — target encoder is updated ONLY via EMA, never by gradient
     optimizer = torch.optim.AdamW(
@@ -176,15 +276,17 @@ def train_jepa_pretrain(
             # Forward pass
             pred, target = model.forward_jepa_pretrain(x_context, x_target)
 
-            # P1-05: Sample negatives from batch, excluding positive index for each sample
+            # P1-05 + NN-35: Sample negatives via randperm (O(B) instead of O(B²))
             batch_size_actual = pred.size(0)
             effective_negatives = min(num_negatives, batch_size_actual - 1)
             if effective_negatives > 0 and batch_size_actual > 1:
-                neg_indices = []
-                for i in range(batch_size_actual):
-                    candidates = [j for j in range(batch_size_actual) if j != i]
-                    neg_indices.append(candidates[:effective_negatives])
-                neg_indices = torch.tensor(neg_indices, device=device)
+                # For each sample i, shift a random permutation to exclude i
+                perm = torch.randperm(batch_size_actual - 1, device=device)
+                perm = perm.unsqueeze(0).expand(batch_size_actual, -1)
+                arange = torch.arange(batch_size_actual, device=device).unsqueeze(1)
+                # Shift indices >= i by +1 so index i is never selected
+                neg_indices = perm + (perm >= arange).long()
+                neg_indices = neg_indices[:, :effective_negatives]
             else:
                 neg_indices = torch.zeros(batch_size_actual, max(1, effective_negatives), dtype=torch.long, device=device)
             negatives = target[neg_indices]
@@ -266,8 +368,13 @@ def train_jepa_finetune(
     X_tensor = torch.FloatTensor(X_train)
     y_tensor = torch.FloatTensor(y_train)
 
+    def _worker_init(worker_id: int) -> None:
+        from Programma_CS2_RENAN.backend.nn.config import set_global_seed as _seed
+        _seed(42 + worker_id)
+
     dataset = torch.utils.data.TensorDataset(X_tensor, y_tensor)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True,
+                            worker_init_fn=_worker_init)
 
     for epoch in range(num_epochs):
         model.train()
@@ -335,11 +442,14 @@ if __name__ == "__main__":
         # Load pre-trained model
         model = load_jepa_model(args.model_path, input_dim=METADATA_DIM, output_dim=METADATA_DIM)
 
-        # WARNING (F3-26): Placeholder uses synthetic random data — violates the
-        # project's no-fabricated-data rule. Replace with real user match data before
-        # any production fine-tuning run.
-        X_train = np.random.randn(100, 15, METADATA_DIM)
-        y_train = np.random.randn(100, METADATA_DIM)
+        X_train, y_train = load_user_match_sequences(limit=200)
+        if X_train is None:
+            logger.error(
+                "No user match data with RoundStats found. "
+                "Ingest at least %d demos before fine-tuning.", _MIN_ROUNDS_FOR_SEQUENCE
+            )
+            sys.exit(1)
 
+        logger.info("Fine-tuning on %d user matches", len(X_train))
         model = train_jepa_finetune(model, X_train, y_train, num_epochs=30)
         save_jepa_model(model, args.model_path.replace(".pt", "_finetuned.pt"))

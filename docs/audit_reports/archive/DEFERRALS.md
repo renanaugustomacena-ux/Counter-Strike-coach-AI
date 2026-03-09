@@ -1,7 +1,7 @@
 # Macena CS2 Analyzer — F-Code Deferral Registry
 
 > **Last Updated:** 2026-03-08
-> **Total F-Codes:** 148
+> **Total F-Codes:** 170
 > **Authority:** Deep Code Audit + Remediation Phases 0–9
 > **Purpose:** Central registry of every audit finding annotation (F-code) in the codebase
 
@@ -52,7 +52,7 @@ F-codes are inline annotation markers placed during the deep code audit and subs
 | F2-08 | `backend/processing/player_knowledge.py:527` | ACCEPTED | MEDIUM | Using SMOKE_RADIUS (200 units) as proxy for flash effective radius — no official source |
 | F2-10 | `backend/processing/round_stats_builder.py:65` | ACCEPTED | LOW | First round (i==0) start_tick=0 may include warmup ticks |
 | F2-15 | `backend/processing/feature_engineering/vectorizer.py:203` | ACCEPTED | LOW | (0,0,0) could be valid position on some maps; sentinel check is heuristic |
-| F2-16 | `backend/processing/feature_engineering/vectorizer.py:307` | MONITORING | MEDIUM | NaN/Inf clamp is a safety net, not a substitute for fixing upstream anomalies |
+| F2-16 | `backend/processing/feature_engineering/vectorizer.py:307` | FIXED | MEDIUM | NaN/Inf clamp with explicit warning log when clamping occurs |
 | F2-19 | `backend/processing/baselines/role_thresholds.py:105` | MONITORING | MEDIUM | Threshold validation checks individual values but not inter-threshold consistency |
 | F2-20 | `backend/processing/feature_engineering/role_features.py:10` | ACCEPTED | LOW | Role signatures (aggression, entry, support) are heuristic approximations |
 | F2-22 | `backend/processing/data_pipeline.py:224` | FIXED | MEDIUM | GET+SET+ADD queries avoid SQLite session timeouts on large datasets |
@@ -60,15 +60,15 @@ F-codes are inline annotation markers placed during the deep code audit and subs
 | F2-26 | `backend/processing/validation/dem_validator.py:40` | FIXED | LOW | Backslash included in filename blocklist to prevent shell escape sequences |
 | F2-28 | `backend/processing/feature_engineering/base_features.py:160` | FIXED | HIGH | Old ADR formula summed averages incorrectly; corrected to proper weighted average |
 | F2-35 | `backend/processing/feature_engineering/kast.py:146` | ACCEPTED | LOW | KAST threshold is empirical observation at pro level; no formal statistical source |
-| F2-39 | `backend/processing/feature_engineering/rating.py:123` | MONITORING | LOW | `compute_hltv2_rating_regression` is dead code — never called in production |
+| F2-39 | `backend/processing/feature_engineering/rating.py:123` | ACCEPTED | LOW | `compute_hltv2_rating_regression` is dead code — intentionally retained for reference |
 | F2-40 | `backend/processing/feature_engineering/rating.py:115` | ACCEPTED | LOW | Per-component average deliberately diverges from official HLTV 2.0 formula |
 | F2-41 | `backend/processing/baselines/nickname_resolver.py:62` | ACCEPTED | MEDIUM | Substring + fuzzy lookup is O(n) per query, O(n²) total — acceptable for <1000 players |
 | F2-44 | `backend/processing/baselines/meta_drift.py:66` | FIXED | LOW | Guard filters incomplete/None tuples to ensure uniform shape |
 | F2-45 | `backend/processing/baselines/meta_drift.py:93` | ACCEPTED | LOW | 0/1e-6 = 0 keeps stat_drift at 0.0 in degenerate case — correct behavior |
 | F2-46 | `backend/processing/connect_map_context.py:9` | ACCEPTED | LOW | Distance normalisation constants are fixed per-map values |
-| F2-48 | `backend/processing/validation/schema.py:78` | MONITORING | MEDIUM | `int()` truncates floats (1.5→1), masking upstream parser bugs |
+| F2-48 | `backend/processing/validation/schema.py:78` | FIXED | MEDIUM | Non-integer floats validated before type cast; raises TypeError on truncation |
 
-**Total F2-xx: 21 codes** | FIXED: 5 | ACCEPTED: 12 | MONITORING: 4 | DEFERRED: 0
+**Total F2-xx: 21 codes** | FIXED: 7 | ACCEPTED: 13 | MONITORING: 1 | DEFERRED: 0
 
 ---
 
@@ -273,13 +273,13 @@ F-codes are inline annotation markers placed during the deep code audit and subs
 | Code | File:Line | Status | Severity | Description |
 |------|-----------|--------|----------|-------------|
 | F9-01 | `tests/test_db_backup.py:20` | ACCEPTED | MEDIUM | backup_monolith() may hang waiting on DB lock — test skipped by default |
-| F9-02 | `tests/test_onboarding_training.py:9` | MONITORING | MEDIUM | TestExtractFeatures creates synthetic data — borderline anti-fabrication |
+| F9-02 | `tests/test_onboarding_training.py:9` | ACCEPTED | MEDIUM | TestExtractFeatures creates synthetic PlayerMatchStats — classified COMPLIANT (formula unit tests) |
 | F9-04 | `tests/test_db_backup.py:20` | ACCEPTED | MEDIUM | DB lock contention risk — combined with F9-01 skip marker |
 | F9-08 | `tests/automated_suite/test_smoke.py:4` | ACCEPTED | LOW | Import-only smoke tests — verify modules load without crashing |
-| F9-09 | `tests/test_onboarding_training.py:9` | MONITORING | MEDIUM | Borderline anti-fabrication — synthetic data in test fixtures |
+| F9-09 | `tests/test_onboarding_training.py:9` | ACCEPTED | MEDIUM | Synthetic data in test fixtures — classified COMPLIANT (formula unit tests) |
 | F9-20 | `tests/test_rag_knowledge.py:221` | FIXED | LOW | Prefix isolates test rows from production data; teardown cleans up |
 
-**Total F9-xx: 6 codes** | FIXED: 1 | ACCEPTED: 3 | MONITORING: 2 | DEFERRED: 0
+**Total F9-xx: 6 codes** | FIXED: 1 | ACCEPTED: 5 | MONITORING: 0 | DEFERRED: 0
 
 ---
 
@@ -297,16 +297,16 @@ F-codes are inline annotation markers placed during the deep code audit and subs
 
 | Domain | Fixed | Accepted | Monitoring | Deferred | Total |
 |--------|-------|----------|------------|----------|-------|
-| F2-xx Processing | 5 | 12 | 4 | 0 | 21 |
+| F2-xx Processing | 7 | 13 | 1 | 0 | 21 |
 | F3-xx Neural/ML | 14 | 5 | 1 | 0 | 20 |
 | F4-xx Analysis | 3 | 1 | 0 | 0 | 4 |
 | F5-xx Services | 23 | 3 | 0 | 0 | 26 |
 | F6-xx Ingestion | 21 | 8 | 1 | 0 | 30 |
 | F7-xx Frontend | 25 | 9 | 0 | 0 | 34 |
 | F8-xx Tools | 16 | 10 | 2 | 0 | 28 |
-| F9-xx Tests | 1 | 3 | 2 | 0 | 6 |
+| F9-xx Tests | 1 | 5 | 0 | 0 | 6 |
 | F10-xx Phase 10 | 1 | 0 | 0 | 0 | 1 |
-| **Total** | **109** | **51** | **10** | **0** | **170** |
+| **Total** | **111** | **54** | **5** | **0** | **170** |
 
 ---
 
@@ -331,3 +331,6 @@ F-codes are inline annotation markers placed during the deep code audit and subs
 | F7-39 | Two FitImage textures for crossfade | UX quality tradeoff; ~20MB memory acceptable |
 | F8-07 | In-memory SQLite for schema validation | Speed vs fidelity tradeoff; WAL tested separately |
 | F8-19 | Goliath Hospital uses print() | Console diagnostic tool; structured logging unnecessary |
+| F2-39 | Dead code retained for reference | `compute_hltv2_rating_regression` intentionally kept for documentation |
+| F9-02 | Synthetic data in formula unit tests | COMPLIANT — tests exercise z-centering math, not domain behavior |
+| F9-09 | Synthetic data in test fixtures | COMPLIANT — formula unit tests, not ML pipeline assertions |

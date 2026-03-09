@@ -327,6 +327,20 @@ class TestSuperpositionLayer:
         assert loss.ndim == 0  # scalar
         assert loss.item() >= 0.0
 
+    def test_gate_sparsity_loss_gradient_flow(self):
+        """NN-24 regression: sparsity loss must retain grad for backpropagation."""
+        from Programma_CS2_RENAN.backend.nn.layers.superposition import SuperpositionLayer
+
+        layer = SuperpositionLayer(256, 128, METADATA_DIM)
+        layer.train()
+        layer(torch.randn(2, 256), torch.randn(2, METADATA_DIM))
+        loss = layer.gate_sparsity_loss()
+        assert loss.requires_grad, "sparsity loss must be differentiable"
+        loss.backward()
+        assert layer.context_gate.weight.grad is not None, (
+            "gradient must flow to context_gate"
+        )
+
     def test_gate_sparsity_loss_no_forward(self):
         from Programma_CS2_RENAN.backend.nn.layers.superposition import SuperpositionLayer
 

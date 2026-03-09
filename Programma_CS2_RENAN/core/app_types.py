@@ -89,7 +89,13 @@ def team_from_demo_frame(demo_team) -> Team:
 
     R1-02: Safe bridge between the two Team enum definitions.
     Accepts demo_frame.Team or a raw string ("ct", "t", "spectator").
+    Raises ValueError for unknown values (fail-fast instead of silent default).
     """
     _MAP = {"ct": Team.CT, "t": Team.T, "spectator": Team.SPECTATOR}
     val = demo_team.value if hasattr(demo_team, "value") else str(demo_team).lower()
-    return _MAP.get(val, Team.SPECTATOR)
+    result = _MAP.get(val)
+    if result is None:
+        raise ValueError(
+            f"R1-02: Unknown team value '{val}' — expected 'ct', 't', or 'spectator'"
+        )
+    return result

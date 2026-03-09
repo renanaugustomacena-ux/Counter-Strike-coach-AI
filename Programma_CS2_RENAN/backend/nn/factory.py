@@ -14,7 +14,7 @@ from typing import Any, Optional
 
 import torch.nn as nn
 
-from Programma_CS2_RENAN.backend.nn.config import INPUT_DIM, OUTPUT_DIM
+from Programma_CS2_RENAN.backend.nn.config import HIDDEN_DIM, INPUT_DIM, OUTPUT_DIM
 from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
 
 
@@ -77,7 +77,7 @@ class ModelFactory:
             return TeacherRefinementNN(
                 input_dim=kwargs.get("input_dim", METADATA_DIM),
                 output_dim=kwargs.get("output_dim", OUTPUT_DIM),
-                hidden_dim=kwargs.get("hidden_dim", 64),
+                hidden_dim=kwargs.get("hidden_dim", HIDDEN_DIM),
             )
 
         else:

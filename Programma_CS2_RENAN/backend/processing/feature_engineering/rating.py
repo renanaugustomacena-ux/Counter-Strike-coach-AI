@@ -21,12 +21,16 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 _rating_logger = get_logger("cs2analyzer.rating")
 
-# --- HLTV 2.0 Pro Baseline Constants ---
-# These represent the average professional player.
-# Dividing each component by its baseline normalizes to ~1.0 for an average pro.
+# --- HLTV 2.0 Rating Formula Normalization Constants ---
+# These are part of the reverse-engineered HLTV 2.0 rating formula, NOT
+# empirical population means. The formula normalizes each component by
+# its baseline so that an average pro player rates ~1.0.
+# The pro population mean KAST (~0.74 in pro_baseline.py) differs from
+# the formula constant (0.70) because HLTV uses a fixed denominator.
+# See: docs/strategic_insights/HLTV_RATING_2_0_REVERSE_ENGINEERING.md
 BASELINE_KPR = 0.679
 BASELINE_DPR_COMPLEMENT = 0.317  # 1 - avg_DPR
-BASELINE_KAST = 0.70
+BASELINE_KAST = 0.70  # R3-01: formula constant, not population mean
 BASELINE_IMPACT = 1.0
 BASELINE_ADR = 73.3
 

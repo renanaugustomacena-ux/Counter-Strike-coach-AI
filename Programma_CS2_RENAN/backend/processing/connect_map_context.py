@@ -2,13 +2,7 @@ from typing import List, Tuple, Union
 
 import numpy as np
 
-# Multi-level map configuration (Task 2.17.1: Verticality Awareness)
-# Maps with significant Z-axis gameplay (Nuke, Vertigo)
-Z_LEVEL_THRESHOLD = 200  # Units separating level floors
-Z_PENALTY_FACTOR = 2.0  # Multiplier for cross-level distance
-# NOTE (F2-46): Distance normalisation constants below are fixed per-map values.
-# If spatial_data.py is updated with new map scales/bounds, these constants must
-# be updated manually — there is no automatic synchronisation.
+from Programma_CS2_RENAN.core.spatial_data import Z_LEVEL_THRESHOLD, Z_PENALTY_FACTOR
 
 
 def distance_with_z_penalty(

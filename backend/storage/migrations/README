@@ -1,1 +1,15 @@
-Generic single-database configuration.
+DEPRECATED — Legacy Migration Chain
+====================================
+
+This migration directory is a LEGACY chain and MUST NOT be extended with new
+migrations. The canonical Alembic migration system lives at the project root:
+
+    alembic/          (canonical)
+    alembic.ini       (canonical config)
+
+Both chains target the same database.db, so adding migrations to both creates
+schema conflict risk (R2-01).
+
+Existing migrations here (b609a11e13cc, 5d5764ef9f26) are kept for historical
+schema tracking but should not be run independently. All future schema changes
+MUST go through the root alembic/ directory.

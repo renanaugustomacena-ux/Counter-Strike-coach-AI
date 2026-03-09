@@ -183,8 +183,14 @@ class FACEITIntegration:
             logger.info("No demo available for match %s", match_id)
             return None
 
+        # R3-09: Sanitize match_id to prevent directory traversal
+        safe_id = str(match_id).replace("/", "").replace("\\", "").replace("..", "")
+        if safe_id != str(match_id):
+            logger.warning("Rejected suspicious match_id: %s", match_id)
+            return None
+
         # Download demo file
-        output_path = output_dir / f"faceit_{match_id}.dem"
+        output_path = output_dir / f"faceit_{safe_id}.dem"
 
         try:
             response = requests.get(demo_url, stream=True, timeout=30)

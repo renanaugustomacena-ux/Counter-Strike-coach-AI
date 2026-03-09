@@ -56,12 +56,20 @@ class RAPCoachModel(nn.Module):
         # x metadata shape: (batch, seq_len, metadata_dim)
         batch_size, seq_len, _ = metadata.shape
 
-        # Process Perception per timestep (or sampled)
-        # Note: In production, we extract CNN features once per frame
-        z_spatial = self.perception(view_frame, map_frame, motion_diff)  # (batch, 128)
-
-        # Expand z_spatial to match seq_len if metadata is a sequence
-        z_spatial_seq = z_spatial.unsqueeze(1).repeat(1, seq_len, 1)
+        # NN-39 fix: support both per-timestep [B,T,C,H,W] and static [B,C,H,W] visual input
+        if view_frame.dim() == 5:
+            # Per-timestep visual input — process each timestep through CNN
+            z_frames = []
+            for t in range(view_frame.shape[1]):
+                z_t = self.perception(
+                    view_frame[:, t], map_frame[:, t], motion_diff[:, t]
+                )
+                z_frames.append(z_t)
+            z_spatial_seq = torch.stack(z_frames, dim=1)  # [B, T, 128]
+        else:
+            # Static spatial context — single frame expanded across timesteps
+            z_spatial = self.perception(view_frame, map_frame, motion_diff)  # [B, 128]
+            z_spatial_seq = z_spatial.unsqueeze(1).expand(-1, seq_len, -1)
 
         lstm_in = torch.cat([z_spatial_seq, metadata], dim=2)
 

@@ -30,6 +30,7 @@ class SuperpositionLayer(nn.Module):
 
         # Observable state
         self._last_gate_activations: Optional[torch.Tensor] = None
+        self._last_gate_live: Optional[torch.Tensor] = None
         self._gate_stats_log_interval = 100
         self._forward_count = 0
 
@@ -42,7 +43,9 @@ class SuperpositionLayer(nn.Module):
         # Generate a gating mask based on match context
         gate = torch.sigmoid(self.context_gate(context))
 
-        # Store for observability
+        # Store live tensor for sparsity loss (NN-24 fix: must retain grad)
+        self._last_gate_live = gate
+        # Detached copy for observability (no grad needed)
         self._last_gate_activations = gate.detach()
         self._forward_count += 1
 
@@ -91,9 +94,9 @@ class SuperpositionLayer(nn.Module):
 
     def gate_sparsity_loss(self) -> torch.Tensor:
         """L1 regularization loss on gate activations for expert specialization."""
-        if self._last_gate_activations is None:
-            return torch.tensor(0.0)
-        return self._last_gate_activations.abs().mean()
+        if self._last_gate_live is None:
+            return torch.tensor(0.0, device=self.weight.device)
+        return self._last_gate_live.abs().mean()
 
     def enable_tracing(self, interval: int = 1):
         """Enable verbose gate logging for debugging."""

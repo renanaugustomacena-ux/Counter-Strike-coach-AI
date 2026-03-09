@@ -50,7 +50,12 @@ class ProDataPipeline:
     def run_pipeline(self):
         db = get_db_manager()
         with db.get_session() as session:
-            statement = select(PlayerMatchStats).limit(_MAX_PIPELINE_ROWS)
+            statement = (
+                select(PlayerMatchStats)
+                .where(PlayerMatchStats.data_quality != "none")  # C-04: exclude failed parses
+                .order_by(PlayerMatchStats.id)  # H-09: deterministic ordering
+                .limit(_MAX_PIPELINE_ROWS)
+            )
             results = session.exec(statement).all()
             if not results:
                 return
@@ -184,6 +189,9 @@ class ProDataPipeline:
             val = pd.concat([p_val, u_val])
             test = pd.concat([p_test, u_test])
 
+            # C-06: Player-level decontamination — ensure no player spans splits
+            train, val, test = self._decontaminate_player_splits(train, val, test)
+
             # Log temporal boundaries for reproducibility
             for label, split_df in [("train", train), ("val", val), ("test", test)]:
                 if not split_df.empty and sort_col in split_df.columns:
@@ -216,6 +224,58 @@ class ProDataPipeline:
             val, test = train_test_split(temp, test_size=0.50, stratify=strat_temp, random_state=42)
 
             return train, val, test
+
+    @staticmethod
+    def _decontaminate_player_splits(train, val, test):
+        """C-06: Ensure each player appears in exactly one split.
+
+        For players whose matches span multiple splits, assign ALL their
+        matches to the split containing the majority. Ties go to train
+        (largest split, least impact on evaluation integrity).
+        """
+        if "player_name" not in train.columns:
+            return train, val, test
+
+        all_data = pd.concat([
+            train.assign(_split="train"),
+            val.assign(_split="val"),
+            test.assign(_split="test"),
+        ])
+
+        # Find which split has the most matches per player
+        player_split_counts = (
+            all_data.groupby(["player_name", "_split"])
+            .size()
+            .reset_index(name="count")
+        )
+        # Priority: train=0 (preferred on tie), val=1, test=2
+        split_priority = {"train": 0, "val": 1, "test": 2}
+        player_split_counts["priority"] = player_split_counts["_split"].map(split_priority)
+        player_split_counts = player_split_counts.sort_values(
+            ["player_name", "count", "priority"], ascending=[True, False, True]
+        )
+        player_dominant = player_split_counts.groupby("player_name").first()["_split"]
+
+        # Reassign all matches per player to their dominant split
+        all_data["_split"] = all_data["player_name"].map(player_dominant)
+
+        new_train = all_data[all_data["_split"] == "train"].drop(columns=["_split"])
+        new_val = all_data[all_data["_split"] == "val"].drop(columns=["_split"])
+        new_test = all_data[all_data["_split"] == "test"].drop(columns=["_split"])
+
+        # Count how many players were moved
+        multi_split_players = (
+            player_split_counts.groupby("player_name").size()
+        )
+        moved = (multi_split_players > 1).sum()
+        if moved > 0:
+            logger.info(
+                "C-06 player decontamination: %d players reassigned to single splits "
+                "(train=%d, val=%d, test=%d)",
+                moved, len(new_train), len(new_val), len(new_test),
+            )
+
+        return new_train, new_val, new_test
 
     def _update_splits_in_db(self, df, split_name):
         """Bulk-update dataset_split for all rows in the given split DataFrame.

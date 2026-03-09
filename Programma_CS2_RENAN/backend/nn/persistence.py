@@ -81,5 +81,19 @@ def load_nn(version, model, user_id=None):
         except Exception as e:
             logger.exception("Failed to load model from %s", path)
             raise
+    else:
+        # NN-14: No checkpoint found at any fallback location — never silently
+        # return a model with random weights.
+        logger.warning(
+            "No checkpoint found for version '%s' (user_id=%s). "
+            "Searched: %s, %s",
+            version, user_id,
+            get_model_path(version, user_id),
+            get_factory_model_path(version, user_id),
+        )
+        raise FileNotFoundError(
+            f"No checkpoint found for '{version}' (user_id={user_id}). "
+            f"Model has random weights — caller must handle this explicitly."
+        )
 
     return model

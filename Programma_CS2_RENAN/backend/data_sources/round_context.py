@@ -133,7 +133,11 @@ def extract_bomb_events(demo_path: str) -> pd.DataFrame:
 
     rows: List[dict] = []
 
-    for event_name, event_label in [("bomb_planted", "planted"), ("bomb_defused", "defused")]:
+    for event_name, event_label in [
+        ("bomb_planted", "planted"),
+        ("bomb_defused", "defused"),
+        ("bomb_exploded", "exploded"),  # H-07: Track bomb explosions
+    ]:
         try:
             res = parser.parse_events([event_name])
             if res:

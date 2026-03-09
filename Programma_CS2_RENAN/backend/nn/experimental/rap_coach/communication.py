@@ -1,9 +1,38 @@
+import math
+from typing import Optional
+
 import numpy as np
 import torch
 
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.nn.experimental.rap_coach.communication")
+
+# Relative angle sectors (degrees from facing direction)
+_ANGLE_SECTORS = [
+    ((-45, 45), "ahead"),
+    ((45, 135), "your left flank"),
+    ((-135, -45), "your right flank"),
+    ((135, 180), "behind you"),
+    ((-180, -135), "behind you"),
+]
+
+
+def _compute_relative_direction(
+    player_view_angle: float,
+    player_pos: tuple,
+    threat_pos: tuple,
+) -> str:
+    """Map a threat position to a human-readable direction relative to the player."""
+    dx = threat_pos[0] - player_pos[0]
+    dy = threat_pos[1] - player_pos[1]
+    threat_angle = math.degrees(math.atan2(dy, dx))
+    relative = (threat_angle - player_view_angle + 180) % 360 - 180
+
+    for (lo, hi), label in _ANGLE_SECTORS:
+        if lo <= relative < hi:
+            return label
+    return "the flank"
 
 
 class RAPCommunication:
@@ -34,9 +63,23 @@ class RAPCommunication:
             },
         }
 
-    def generate_advice(self, layer_outputs, confidence, skill_level: int = 5):
+    def generate_advice(
+        self,
+        layer_outputs,
+        confidence,
+        skill_level: int = 5,
+        game_context: Optional[dict] = None,
+    ):
         """
         Applies the 'Skill-Conditioned Explanation' rule.
+
+        Args:
+            layer_outputs: Neural network layer activations.
+            confidence: Model confidence [0, 1].
+            skill_level: Player skill level 1-10.
+            game_context: Optional dict with keys 'player_view_angle',
+                          'player_pos' (x,y), 'threat_pos' (x,y) for
+                          spatial angle computation.
         """
         if confidence < 0.7:
             logger.debug("Advice suppressed: confidence %.2f below threshold 0.7", confidence)
@@ -62,17 +105,31 @@ class RAPCommunication:
             topics = ["positioning", "mechanics", "strategy"]
             topic = topics[top_idx % len(topics)]
 
-            # 3. Format based on tier templates
+            # 3. Compute spatial angle from game context when available
+            angle = self._resolve_angle(game_context)
+
+            # 4. Format based on tier templates
             template = self.templates[tier][topic]
 
-            # NOTE (F3-37): `angle` always resolves to "the flank" — advice appears
-            # dynamic but is templated with a static value. Replace with an actual
-            # spatial analysis (e.g. nearest choke point from PlayerKnowledge) when
-            # game-context data is available at this call site.
             return template.format(
                 score=int(confidence * 100),
                 time=round(float(confidence * 2), 1),
                 error=int((1 - confidence) * 300),
-                angle="the flank",
+                angle=angle,
                 recommendation="conservative" if confidence > 0.8 else "aggressive",
             )
+
+    @staticmethod
+    def _resolve_angle(game_context: Optional[dict]) -> str:
+        """Resolve threat angle from spatial context, falling back to generic."""
+        if not game_context:
+            return "the flank"
+        view_angle = game_context.get("player_view_angle")
+        player_pos = game_context.get("player_pos")
+        threat_pos = game_context.get("threat_pos")
+        if view_angle is None or player_pos is None or threat_pos is None:
+            return "the flank"
+        try:
+            return _compute_relative_direction(float(view_angle), player_pos, threat_pos)
+        except (TypeError, ValueError):
+            return "the flank"

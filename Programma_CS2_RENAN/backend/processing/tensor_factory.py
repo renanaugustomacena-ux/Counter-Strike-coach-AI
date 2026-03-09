@@ -73,7 +73,7 @@ class TensorConfig:
     map_resolution: int = 128  # Output resolution for map tensor
     view_resolution: int = 224  # Output resolution for view tensor
     sigma: float = 3.0  # Gaussian blur for heatmaps
-    fov_degrees: float = 90.0  # Player field of view in degrees
+    fov_degrees: float = 90.0  # H-10: matches core.constants.FOV_DEGREES
     view_distance: float = 2000.0  # Max view distance in world units
 
 
@@ -347,10 +347,11 @@ class TensorFactory:
             if 0 <= gx < resolution and 0 <= gy < resolution:
                 teammate_ch[gy, gx] += 1.0
 
-        # Own position (brighter marker)
-        px, py = self._world_to_grid(knowledge.own_pos_x, knowledge.own_pos_y, meta, resolution)
-        if 0 <= px < resolution and 0 <= py < resolution:
-            teammate_ch[py, px] = max(teammate_ch[py, px], OWN_POSITION_INTENSITY)
+        # Own position (brighter marker) — skip if fallback (0,0,0)
+        if not getattr(knowledge, "position_is_fallback", False):
+            px, py = self._world_to_grid(knowledge.own_pos_x, knowledge.own_pos_y, meta, resolution)
+            if 0 <= px < resolution and 0 <= py < resolution:
+                teammate_ch[py, px] = max(teammate_ch[py, px], OWN_POSITION_INTENSITY)
 
         # --- Ch1: Enemies (visible = full, last-known = decayed) ---
         for enemy in knowledge.visible_enemies:
@@ -585,15 +586,21 @@ class TensorFactory:
         ny = (meta.pos_y - y) * scale_factor
 
         gx = int(nx * resolution)
-        gy = int((1.0 - ny) * resolution)  # Flip Y for tensor coordinates
+        gy = int(ny * resolution)  # C-03: single Y-flip only (meta.pos_y - y already inverts)
 
         return gx, gy
 
+    _MIN_NORMALIZATION_THRESHOLD = 1.0
+
     def _normalize(self, arr: np.ndarray) -> np.ndarray:
-        """Normalize array to [0, 1] range."""
+        """Normalize array to [0, 1] range.
+
+        M-10: Uses max(max_val, threshold) to prevent amplification of
+        noise in sparse channels (single non-zero pixel).
+        """
         max_val = np.max(arr)
         if max_val > 0:
-            return arr / max_val
+            return arr / max(max_val, self._MIN_NORMALIZATION_THRESHOLD)
         return arr
 
     def _draw_circle(
