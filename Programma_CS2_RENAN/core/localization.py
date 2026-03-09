@@ -9,9 +9,14 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 _logger = get_logger("cs2analyzer.localization")
 
-# F7-28: os.path.expanduser('~') evaluated at import time. Acceptable for desktop app
-# where HOME is always set. Would need lazy evaluation in container/service context.
+# LOC-01: Lazy home dir evaluation. The module-level constant is kept for backward
+# compatibility, but _get_home_dir() should be used for display-time evaluation.
 _HOME_DIR = os.path.expanduser("~")
+
+
+def _get_home_dir() -> str:
+    """Return current home directory (evaluated at call time, not import time)."""
+    return os.path.expanduser("~")
 
 # Hardcoded TRANSLATIONS dict kept as fallback if JSON files fail to load.
 TRANSLATIONS = {
@@ -384,7 +389,7 @@ def _load_json_translations() -> dict:
             # Expand {home_dir} placeholders
             for k, v in data.items():
                 if isinstance(v, str) and "{home_dir}" in v:
-                    data[k] = v.format(home_dir=_HOME_DIR)
+                    data[k] = v.format(home_dir=_get_home_dir())
             loaded[lang_code] = data
         except (FileNotFoundError, json.JSONDecodeError) as e:
             _logger.debug("JSON translation for '%s' unavailable: %s", lang_code, e)
@@ -401,16 +406,26 @@ class LocalizationManager(EventDispatcher):
     def get_text(self, key, trigger=None):
         """Returns translated text for the current language.
 
-        Checks JSON-loaded translations first, then hardcoded TRANSLATIONS fallback.
+        LOC-02: Priority chain: JSON (current lang) -> hardcoded (current lang)
+        -> hardcoded (English) -> raw key with warning.
         """
-        # JSON takes priority
+        # 1. JSON takes priority (most up-to-date)
         json_lang = _JSON_TRANSLATIONS.get(self.lang, {})
         value = json_lang.get(key)
         if value is not None:
             return value
-        # Fallback to hardcoded dict
-        translations = TRANSLATIONS.get(self.lang, TRANSLATIONS["en"])
-        return translations.get(key, key)
+        # 2. Hardcoded dict for current language
+        hardcoded_lang = TRANSLATIONS.get(self.lang, {})
+        value = hardcoded_lang.get(key)
+        if value is not None:
+            return value
+        # 3. Hardcoded English fallback
+        en_value = TRANSLATIONS.get("en", {}).get(key)
+        if en_value is not None:
+            return en_value
+        # LOC-03: Log missing key so developers can spot untranslated strings
+        _logger.debug("Missing translation key '%s' for lang '%s'", key, self.lang)
+        return key
 
     def set_language(self, lang_code):
         """Updates the current language and triggers UI refresh."""

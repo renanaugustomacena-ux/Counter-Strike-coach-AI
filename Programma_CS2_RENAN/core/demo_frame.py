@@ -6,6 +6,7 @@ These dataclasses provide a clean, typed representation of game state
 that the PlaybackEngine will interpolate between.
 """
 
+import math
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Optional
@@ -51,6 +52,14 @@ class PlayerState:
     is_crouching: bool = False
     is_scoped: bool = False
     equipment_value: int = 0
+
+    def __post_init__(self):
+        # DF-01: Sanitize NaN/Inf coordinates from demo parser bugs.
+        # Replace with 0.0 to prevent silent downstream failures in spatial calculations.
+        for attr in ("x", "y", "z"):
+            val = getattr(self, attr)
+            if math.isnan(val) or math.isinf(val):
+                object.__setattr__(self, attr, 0.0)
 
 
 @dataclass

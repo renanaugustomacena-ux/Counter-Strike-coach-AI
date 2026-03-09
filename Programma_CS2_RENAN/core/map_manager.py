@@ -9,6 +9,9 @@ from kivy.loader import Loader
 
 from Programma_CS2_RENAN.core.asset_manager import AssetAuthority, SmartAsset
 from Programma_CS2_RENAN.core.spatial_data import get_map_metadata
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+_logger = get_logger("cs2analyzer.map_manager")
 
 
 class MapManager:
@@ -65,8 +68,9 @@ class MapManager:
         asset = AssetAuthority.get_map_asset(map_name, theme)
 
         if asset.is_fallback:
-            # For fallback, we can't use Loader - return texture directly
-            # Schedule callback on next frame to maintain async semantics
+            # MM-01: Log warning when fallback asset is used — callers receive None
+            # instead of a ProxyImage, which may affect load-state tracking.
+            _logger.warning("MM-01: Map '%s' using fallback asset (no ProxyImage returned)", map_name)
             from kivy.clock import Clock
 
             Clock.schedule_once(lambda dt: callback(None, asset.texture), 0)

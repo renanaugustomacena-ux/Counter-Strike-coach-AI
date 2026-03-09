@@ -6,7 +6,7 @@ A SEPARATE Team enum exists in demo_frame.py with STRING values ("ct", "t").
 Never confuse the two — import the correct one for your context.
 """
 from enum import Enum, auto
-from typing import Any, Dict, List, NewType, Optional, Tuple, TypedDict
+from typing import Any, Dict, List, NewType, Optional, Tuple, TypedDict, Union
 
 MatchID = NewType("MatchID", int)
 Tick = NewType("Tick", int)
@@ -98,7 +98,7 @@ class PlayerStats(TypedDict):
     rating: float
 
 
-def team_from_demo_frame(demo_team) -> Team:
+def team_from_demo_frame(demo_team: Union[Enum, str]) -> Team:
     """Convert demo_frame.Team (string enum) to app_types.Team (int enum).
 
     R1-02: Safe bridge between the two Team enum definitions.
