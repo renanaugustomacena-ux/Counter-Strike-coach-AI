@@ -28,24 +28,23 @@ class MatplotlibWidget(Image):
 
     def update_plot(self, fig):
         """Renders the figure and updates the texture."""
-        self.figure = fig
+        # WG-02: Use context manager for BytesIO to prevent leaks on exception
+        try:
+            with io.BytesIO() as buf:
+                fig.savefig(buf, format="png", facecolor="#1a1a1a", edgecolor="none")
+                buf.seek(0)
 
-        # Render to buffer
-        buf = io.BytesIO()
-        fig.savefig(buf, format="png", facecolor="#1a1a1a", edgecolor="none")
-        buf.seek(0)
+                # Load into CoreImage for texture creation
+                from kivy.core.image import Image as CoreImage
 
-        # Load into CoreImage for texture creation
-        from kivy.core.image import Image as CoreImage
+                img_data = CoreImage(buf, ext="png")
 
-        img_data = CoreImage(buf, ext="png")
-        buf.close()
-
-        # Update widget texture safely on main thread
-        Clock.schedule_once(lambda dt: self._set_texture(img_data.texture), 0)
-
-        # Close figure to free memory
-        plt.close(fig)
+            # Update widget texture safely on main thread
+            Clock.schedule_once(lambda dt: self._set_texture(img_data.texture), 0)
+        finally:
+            # WG-01: Close figure and clear reference to free memory
+            plt.close(fig)
+            self.figure = None
 
     def _set_texture(self, texture):
         self.texture = texture

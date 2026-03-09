@@ -198,7 +198,8 @@ class WizardScreen(MDScreen):
     def validate_demo_step(self, *args):
         """Validate demo path and advance to finish step."""
         if hasattr(self, "demo_field") and self.demo_field.text:
-            self.demo_path = self.demo_field.text
+            # WZ-01: Normalize path to prevent traversal (same as brain_step)
+            self.demo_path = os.path.normpath(os.path.expanduser(self.demo_field.text.strip()))
 
         if not self.demo_path:
             # Skip is acceptable — demo path is optional
@@ -206,11 +207,15 @@ class WizardScreen(MDScreen):
             Clock.schedule_once(lambda dt: self.load_step("finish"), 0.1)
             return
 
+        # WZ-03: Only save setting if directory exists or was successfully created
         if not os.path.isdir(self.demo_path):
             try:
                 os.makedirs(self.demo_path, exist_ok=True)
             except OSError as e:
                 app_logger.warning("Cannot create demo path %s: %s", self.demo_path, e)
+                # Still proceed (demo path is optional) but don't save invalid path
+                Clock.schedule_once(lambda dt: self.load_step("finish"), 0.1)
+                return
 
         save_user_setting("DEFAULT_DEMO_PATH", self.demo_path)
         app_logger.debug("Demo path saved: %s", self.demo_path)
@@ -263,7 +268,23 @@ class WizardScreen(MDScreen):
             start_path = self.demo_path
 
         app_logger.debug("FileManager showing at %s", start_path)
-        self.file_manager.show(start_path)
+        # WZ-02: Guard against MDFileManager exceptions (e.g. path doesn't exist,
+        # permission denied, or Kivy internal errors)
+        try:
+            self.file_manager.show(start_path)
+        except Exception as e:
+            app_logger.error("FileManager failed to open %s: %s", start_path, e)
+            dlg = MDDialog(
+                MDDialogSupportingText(
+                    text=f"Cannot open file browser at {start_path}.\nPlease type the path manually."
+                ),
+                MDDialogButtonContainer(
+                    MDButton(
+                        MDButtonText(text="OK"), style="text", on_release=lambda x: dlg.dismiss()
+                    ),
+                ),
+            )
+            dlg.open()
 
     def select_path(self, path):
         path = os.path.normpath(path)
@@ -330,6 +351,9 @@ class WizardScreen(MDScreen):
             import errno
             if e.errno in (errno.EACCES, errno.EPERM):
                 user_docs = Path(os.path.expanduser("~")) / "Documents" / "DataCoach"
+                # WZ-04: Verify fallback suggestion is writable before recommending
+                if not os.access(user_docs.parent, os.W_OK):
+                    user_docs = Path(os.path.expanduser("~")) / "DataCoach"
                 err_msg = f"Permission Denied for {self.brain_path}.\n\nPlease try: {user_docs}"
             else:
                 err_msg = f"Error creating folder: {e}\n\nTry a different location (e.g. inside Documents)."

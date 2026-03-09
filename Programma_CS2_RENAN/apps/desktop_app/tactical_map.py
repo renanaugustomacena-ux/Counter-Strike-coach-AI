@@ -13,6 +13,7 @@ import math
 import os
 import threading
 import time
+from collections import OrderedDict
 from typing import List
 
 from kivy.graphics import Color, Ellipse, Line, PopMatrix, PushMatrix, Rectangle, Rotate
@@ -72,8 +73,8 @@ class TacticalMap(Widget):
         # self.selected_player_id = None  <-- Removed, handled by Property
         self._map_texture = None
         self._heatmap_texture = None
-        # DA-03-02: OrderedDict for LRU eviction (move_to_end on access)
-        self._name_textures: dict = {}
+        # TM-01: OrderedDict for proper LRU eviction (move_to_end on access)
+        self._name_textures: OrderedDict = OrderedDict()
 
         # --- Optimization: Render Layers ---
         self.map_group = InstructionGroup()
@@ -84,6 +85,9 @@ class TacticalMap(Widget):
         self.canvas.add(self.heatmap_group)
         self.canvas.add(self.dynamic_group)
 
+        # TM-02: Remove any pre-existing ghost widget before adding new one
+        if hasattr(self, "_ghost") and self._ghost.parent:
+            self.remove_widget(self._ghost)
         self._ghost = GhostPixelValidator()
         self.add_widget(self._ghost)
 
@@ -147,13 +151,15 @@ class TacticalMap(Widget):
         self.update_heatmap_async(events)
 
     def update_heatmap_async(self, events: List[GameEvent]):
+        # TM-03: Cancel any in-flight heatmap generation before starting a new one
+        self._heatmap_generation_id = id(events)
         self._heatmap_points = events
         self._heatmap_texture = None
         # Redraw immediately (clears old heatmap)
         self._update_static_layers()
-        threading.Thread(target=self._generate_heatmap_thread, args=(events,), daemon=True).start()
+        threading.Thread(target=self._generate_heatmap_thread, args=(events, self._heatmap_generation_id), daemon=True).start()
 
-    def _generate_heatmap_thread(self, events):
+    def _generate_heatmap_thread(self, events, generation_id):
         from kivy.clock import Clock
 
         from Programma_CS2_RENAN.backend.processing.heatmap_engine import HeatmapEngine
@@ -162,7 +168,8 @@ class TacticalMap(Widget):
         points = [(e.x, e.y) for e in events]
         data = HeatmapEngine.generate_heatmap_data(self.map_name, points)
 
-        if data:
+        # TM-03: Discard result if a newer generation was started while computing
+        if data and getattr(self, "_heatmap_generation_id", None) == generation_id:
             # 2. Schedule texture creation on Main Thread (OpenGL required)
             Clock.schedule_once(lambda dt: self._on_heatmap_data_ready(data), 0)
 
@@ -292,16 +299,15 @@ class TacticalMap(Widget):
 
         if name not in self._name_textures:
             if len(self._name_textures) >= self._NAME_TEXTURE_CACHE_LIMIT:
-                # DA-03-02: LRU eviction — remove least-recently-used entry.
-                lru_key = next(iter(self._name_textures))
-                del self._name_textures[lru_key]
+                # TM-01: LRU eviction — popitem(last=False) removes oldest entry
+                self._name_textures.popitem(last=False)
             # [VISUAL] Smaller font for smaller player icons
             lbl = CoreLabel(text=name, font_size=9, color=(1, 1, 1, 1))
             lbl.refresh()
             self._name_textures[name] = lbl.texture
         else:
-            # DA-03-02: Move to end on access (most-recently-used)
-            self._name_textures[name] = self._name_textures.pop(name)
+            # TM-01: Move to end on access (most-recently-used)
+            self._name_textures.move_to_end(name)
         tex = self._name_textures.get(name)
         if tex:
             group.add(Color(1, 1, 1, 1))
@@ -505,7 +511,8 @@ class TacticalMap(Widget):
         # Draw Apex Marker
         # Find index of max Z
         apex_idx = 0
-        cur_max = -99999
+        # TM-04: Use -inf instead of magic number to handle any coordinate range
+        cur_max = float("-inf")
         for i, pt in enumerate(nade.trajectory):
             if pt[2] > cur_max:
                 cur_max = pt[2]

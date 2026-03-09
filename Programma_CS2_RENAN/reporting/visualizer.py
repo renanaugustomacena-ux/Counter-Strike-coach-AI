@@ -92,7 +92,11 @@ class MatchVisualizer:
         # Try to load background image from config
         map_entry = self.map_config.get(map_name)
         if map_entry and "image_file" in map_entry:
-            img_path = self.assets_dir / map_entry["image_file"]
+            img_path = (self.assets_dir / map_entry["image_file"]).resolve()
+            # VZ-02: Prevent path traversal via malicious image_file in JSON config
+            if not str(img_path).startswith(str(self.assets_dir.resolve())):
+                _logger.warning("VZ-02: Map image path traversal blocked: %s", img_path)
+                return
             if img_path.exists():
                 try:
                     img = plt.imread(str(img_path))
@@ -132,61 +136,64 @@ class MatchVisualizer:
         if not user_positions or not pro_positions:
             return None
 
+        # VZ-01: try/finally ensures figure is closed even on savefig error
         fig, ax = plt.subplots(figsize=(10, 10))
-        self._setup_map_plot(map_name)
+        try:
+            self._setup_map_plot(map_name)
 
-        # Get map bounds for grid alignment
-        bounds = self._get_bounds(map_name)
-        x_min, x_max, y_min, y_max = bounds
+            # Get map bounds for grid alignment
+            bounds = self._get_bounds(map_name)
+            x_min, x_max, y_min, y_max = bounds
 
-        def positions_to_density(positions):
-            grid = np.zeros((resolution, resolution), dtype=np.float32)
-            for wx, wy in positions:
-                gx = int((wx - x_min) / (x_max - x_min) * (resolution - 1))
-                gy = int((wy - y_min) / (y_max - y_min) * (resolution - 1))
-                if 0 <= gx < resolution and 0 <= gy < resolution:
-                    grid[gy, gx] += 1.0
-            density = gaussian_filter(grid, sigma=sigma)
-            max_val = np.max(density)
-            if max_val > 0:
-                density /= max_val
-            return density
+            def positions_to_density(positions):
+                grid = np.zeros((resolution, resolution), dtype=np.float32)
+                for wx, wy in positions:
+                    gx = int((wx - x_min) / (x_max - x_min) * (resolution - 1))
+                    gy = int((wy - y_min) / (y_max - y_min) * (resolution - 1))
+                    if 0 <= gx < resolution and 0 <= gy < resolution:
+                        grid[gy, gx] += 1.0
+                density = gaussian_filter(grid, sigma=sigma)
+                max_val = np.max(density)
+                if max_val > 0:
+                    density /= max_val
+                return density
 
-        d_user = positions_to_density(user_positions)
-        d_pro = positions_to_density(pro_positions)
+            d_user = positions_to_density(user_positions)
+            d_pro = positions_to_density(pro_positions)
 
-        # Difference: positive = pro-heavy, negative = user-heavy
-        diff = d_pro - d_user
+            # Difference: positive = pro-heavy, negative = user-heavy
+            diff = d_pro - d_user
 
-        # Mask areas with no activity
-        activity = (d_user > 0.02) | (d_pro > 0.02)
-        masked_diff = np.ma.masked_where(~activity, diff)
+            # Mask areas with no activity
+            activity = (d_user > 0.02) | (d_pro > 0.02)
+            masked_diff = np.ma.masked_where(~activity, diff)
 
-        # Diverging colormap: blue (user) ← white → red (pro)
-        cmap = plt.cm.RdBu_r
-        norm = mcolors.TwoSlopeNorm(vmin=-1.0, vcenter=0.0, vmax=1.0)
+            # Diverging colormap: blue (user) ← white → red (pro)
+            cmap = plt.cm.RdBu_r
+            norm = mcolors.TwoSlopeNorm(vmin=-1.0, vcenter=0.0, vmax=1.0)
 
-        im = ax.imshow(
-            masked_diff,
-            extent=bounds,
-            origin="lower",
-            cmap=cmap,
-            norm=norm,
-            alpha=0.7,
-            zorder=5,
-            aspect="equal",
-        )
+            im = ax.imshow(
+                masked_diff,
+                extent=bounds,
+                origin="lower",
+                cmap=cmap,
+                norm=norm,
+                alpha=0.7,
+                zorder=5,
+                aspect="equal",
+            )
 
-        cbar = plt.colorbar(im, ax=ax, shrink=0.7, pad=0.02)
-        cbar.set_label("Pro-heavy ← → User-heavy", fontsize=10)
+            cbar = plt.colorbar(im, ax=ax, shrink=0.7, pad=0.02)
+            cbar.set_label("Pro-heavy ← → User-heavy", fontsize=10)
 
-        ax.set_title(f"{title} — {map_name}", fontsize=14)
+            ax.set_title(f"{title} — {map_name}", fontsize=14)
 
-        filename = f"{map_name}_differential_{title.lower().replace(' ', '_')}.png"
-        path = self.output_dir / filename
-        plt.savefig(str(path), dpi=150, bbox_inches="tight")
-        plt.close(fig)
-        return str(path)
+            filename = f"{map_name}_differential_{title.lower().replace(' ', '_')}.png"
+            path = self.output_dir / filename
+            plt.savefig(str(path), dpi=150, bbox_inches="tight")
+            return str(path)
+        finally:
+            plt.close(fig)
 
     def _get_bounds(self, map_name):
         """Returns (x_min, x_max, y_min, y_max) for a map."""
@@ -251,71 +258,74 @@ class MatchVisualizer:
             "macro": 350,
         }
 
+        # VZ-01: try/finally ensures figure is closed even on savefig error
         fig, ax = plt.subplots(figsize=(12, 10))
-        self._setup_map_plot(map_name)
+        try:
+            self._setup_map_plot(map_name)
 
-        bounds = self._get_bounds(map_name)
-        x_min, x_max, y_min, y_max = bounds
-        x_range = x_max - x_min
-        y_range = y_max - y_min
+            bounds = self._get_bounds(map_name)
+            x_min, x_max, y_min, y_max = bounds
+            x_range = x_max - x_min
+            y_range = y_max - y_min
 
-        for i, moment in enumerate(moments):
-            severity = moment.get("severity", "notable")
-            color = severity_colors.get(severity, "gold")
-            marker = type_markers.get(moment.get("type", "play"), "o")
+            for i, moment in enumerate(moments):
+                severity = moment.get("severity", "notable")
+                color = severity_colors.get(severity, "gold")
+                marker = type_markers.get(moment.get("type", "play"), "o")
 
-            # Use position if available, otherwise distribute markers evenly across map
-            pos = moment.get("position")
-            if pos and len(pos) == 2:
-                mx, my = pos
-            else:
-                # Place markers along a horizontal line at 80% map height
-                spacing = x_range / max(1, len(moments) + 1)
-                mx = x_min + spacing * (i + 1)
-                my = y_min + y_range * 0.8
+                # Use position if available, otherwise distribute markers evenly across map
+                pos = moment.get("position")
+                if pos and len(pos) == 2:
+                    mx, my = pos
+                else:
+                    # Place markers along a horizontal line at 80% map height
+                    spacing = x_range / max(1, len(moments) + 1)
+                    mx = x_min + spacing * (i + 1)
+                    my = y_min + y_range * 0.8
 
-            scale = moment.get("scale", "standard")
-            marker_size = scale_marker_sizes.get(scale, 200)
+                scale = moment.get("scale", "standard")
+                marker_size = scale_marker_sizes.get(scale, 200)
 
-            ax.scatter(
-                mx,
-                my,
-                c=color,
-                marker=marker,
-                s=marker_size,
-                zorder=10,
-                edgecolors="black",
-                linewidth=1.5,
-            )
+                ax.scatter(
+                    mx,
+                    my,
+                    c=color,
+                    marker=marker,
+                    s=marker_size,
+                    zorder=10,
+                    edgecolors="black",
+                    linewidth=1.5,
+                )
 
-            # Label with description
-            desc = moment.get("description", "")
-            tick = moment.get("tick", 0)
-            label = f"T{tick}: {desc}" if tick else desc
-            # Truncate long labels
-            if len(label) > 50:
-                label = label[:47] + "..."
+                # Label with description
+                desc = moment.get("description", "")
+                tick = moment.get("tick", 0)
+                label = f"T{tick}: {desc}" if tick else desc
+                # Truncate long labels
+                if len(label) > 50:
+                    label = label[:47] + "..."
 
-            ax.annotate(
-                label,
-                (mx, my),
-                textcoords="offset points",
-                xytext=(0, 15),
-                ha="center",
-                fontsize=7,
-                bbox=dict(boxstyle="round,pad=0.3", facecolor=color, alpha=0.3),
-                zorder=11,
-            )
+                ax.annotate(
+                    label,
+                    (mx, my),
+                    textcoords="offset points",
+                    xytext=(0, 15),
+                    ha="center",
+                    fontsize=7,
+                    bbox=dict(boxstyle="round,pad=0.3", facecolor=color, alpha=0.3),
+                    zorder=11,
+                )
 
-        ax.legend(handles=self._build_critical_moments_legend(), loc="lower right", fontsize=8)
+            ax.legend(handles=self._build_critical_moments_legend(), loc="lower right", fontsize=8)
 
-        ax.set_title(f"{title} — {map_name}", fontsize=14)
+            ax.set_title(f"{title} — {map_name}", fontsize=14)
 
-        filename = f"{map_name}_critical_moments.png"
-        path = self.output_dir / filename
-        plt.savefig(str(path), dpi=150, bbox_inches="tight")
-        plt.close(fig)
-        return str(path)
+            filename = f"{map_name}_critical_moments.png"
+            path = self.output_dir / filename
+            plt.savefig(str(path), dpi=150, bbox_inches="tight")
+            return str(path)
+        finally:
+            plt.close(fig)
 
 
 def generate_highlight_report(match_id, map_name="de_mirage"):
