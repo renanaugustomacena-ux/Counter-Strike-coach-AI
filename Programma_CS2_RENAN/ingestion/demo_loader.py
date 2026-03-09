@@ -397,11 +397,10 @@ class DemoLoader:
                     t,
                 )
 
-            # TODO: CRITICAL - inventory=[] is always empty, weapon tracking disabled
-            # Equipment-based features in ML models are all zero due to this
-            # Need to parse weapon purchase/pickup events or check if demoparser2
-            # provides inventory list. Current workaround: only track active_weapon.
-            # See: backend/processing/feature_engineering for impact on models
+            # R3-H01: Populate inventory with the active weapon. demoparser2 does
+            # not expose a full inventory list per tick, so active weapon only.
+            active_weapon = str(getattr(row, "active_weapon_name", "None"))
+            _inventory = [active_weapon] if active_weapon and active_weapon != "None" else []
             current_players.append(
                 PlayerState(
                     player_id=sid,
@@ -416,7 +415,7 @@ class DemoLoader:
                     is_alive=bool(getattr(row, "is_alive", False)),
                     is_flashed=float(getattr(row, "flash_duration", 0.0) or 0.0) > 0.5,
                     has_defuser=bool(getattr(row, "defuse_kit_owned", False)),
-                    weapon=str(getattr(row, "active_weapon_name", "None")),
+                    weapon=active_weapon,
                     is_crouching=bool(getattr(row, "is_crouching", False)),
                     is_scoped=bool(getattr(row, "is_scoped", False)),
                     equipment_value=int(getattr(row, "equipment_value", 0) or 0),
@@ -425,7 +424,7 @@ class DemoLoader:
                     deaths=int(getattr(row, "deaths_total", 0) or 0),
                     assists=int(getattr(row, "assists_total", 0) or 0),
                     mvps=int(getattr(row, "mvps", 0) or 0),
-                    inventory=[],  # DISABLED - see TODO above
+                    inventory=_inventory,
                 )
             )
 

@@ -17,13 +17,15 @@ logger = get_logger(LOGGER_NAME)
 
 # Statistical limits for CS2 per-round stats
 # Format: {column: (min, max)}
+# R4-24-04: KAST is stored as a ratio [0, 1] (e.g., 0.70 = 70%),
+# NOT as a percentage [0, 100]. estimate_kast_from_stats() returns ratio.
 LIMITS = {
     "kills": (0, 10),
     "deaths": (0, 10),
     "assists": (0, 10),
     "adr": (0.0, 200.0),
     "headshot_pct": (0.0, 100.0),
-    "kast": (0.0, 100.0),
+    "kast": (0.0, 1.0),
 }
 
 
