@@ -32,8 +32,9 @@ FLASH_WEAPONS = {"flashbang"}
 ALL_GRENADE_WEAPONS = HE_WEAPONS | FIRE_WEAPONS | SMOKE_WEAPONS | FLASH_WEAPONS
 
 # R4-07-01: Flash assist window — 2 seconds at default 64 tick.
-# Overridden per-demo in build_round_stats() from actual tick_rate.
-FLASH_ASSIST_WINDOW_TICKS = 128
+# P-RSB-01: This is now a DEFAULT only. build_round_stats() derives a
+# per-demo local value instead of mutating this global.
+_DEFAULT_FLASH_ASSIST_WINDOW_TICKS = 128
 
 
 def _parse_events_safe(parser, event_name: str) -> pd.DataFrame:
@@ -180,14 +181,13 @@ def build_round_stats(
     Returns:
         List of dicts, each representing one RoundStats row.
     """
-    # R4-07-01: Derive flash assist window from demo tick_rate
-    global FLASH_ASSIST_WINDOW_TICKS
+    # P-RSB-01: Derive flash assist window locally (no global mutation).
     try:
         header = parser.parse_header()
         tick_rate = int(float(header.get("tick_rate", 64) or 64))
-        FLASH_ASSIST_WINDOW_TICKS = tick_rate * 2  # 2-second window
+        flash_assist_window = tick_rate * 2  # 2-second window
     except Exception:
-        pass  # Keep default 128
+        flash_assist_window = _DEFAULT_FLASH_ASSIST_WINDOW_TICKS
 
     # Parse all needed events
     round_end_df = _parse_events_safe(parser, "round_end")
@@ -363,7 +363,7 @@ def build_round_stats(
             elif weapon in SMOKE_WEAPONS:
                 round_player_stats[key]["smokes_thrown"] += 1
 
-    # Flash assist detection: player_blind + kill within FLASH_ASSIST_WINDOW_TICKS
+    # Flash assist detection: player_blind + kill within flash_assist_window
     blind_df = _parse_events_safe(parser, "player_blind")
     if not blind_df.empty and not deaths_df.empty and "blind_duration" in blind_df.columns:
         blind_df = blind_df.sort_values("tick").reset_index(drop=True)
@@ -385,7 +385,7 @@ def build_round_stats(
                 kill_tick = int(kill["tick"])
                 if kill_tick < blind_tick:
                     continue
-                if kill_tick > blind_tick + FLASH_ASSIST_WINDOW_TICKS:
+                if kill_tick > blind_tick + flash_assist_window:
                     break
 
                 victim = str(kill.get("user_name", "")).strip().lower()

@@ -17,6 +17,7 @@ Adheres to GEMINI.md principles:
     - Clear separation of concerns
 """
 
+import binascii
 import hashlib
 import json
 from dataclasses import dataclass
@@ -333,7 +334,7 @@ class ExperienceBank:
                     try:
                         exp_vec = self._deserialize_embedding(exp.embedding)
                         similarity = self._cosine_similarity(query_embedding, exp_vec)
-                    except (json.JSONDecodeError, ValueError):
+                    except (json.JSONDecodeError, ValueError, binascii.Error):
                         similarity = 0.0
                 else:
                     similarity = 0.0
@@ -427,7 +428,7 @@ class ExperienceBank:
                         exp_vec = self._deserialize_embedding(exp.embedding)
                         similarity = self._cosine_similarity(query_embedding, exp_vec)
                         scored.append((exp, similarity))
-                    except (json.JSONDecodeError, ValueError):
+                    except (json.JSONDecodeError, ValueError, binascii.Error):
                         pass
 
             scored.sort(key=lambda x: x[1], reverse=True)

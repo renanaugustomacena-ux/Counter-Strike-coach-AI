@@ -201,7 +201,7 @@ def _cleanup_zombie_tasks():
             ).all()
             if zombies:
                 logger.warning("Found %s zombie tasks (>%ds old). Resetting to 'queued'.",
-                               len(zombies), _ZOMBIE_THRESHOLD_SECONDS)
+                               len(zombies), threshold)
                 for task in zombies:
                     task.status = "queued"
                     task.updated_at = datetime.now(timezone.utc)

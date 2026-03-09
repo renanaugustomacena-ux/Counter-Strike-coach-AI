@@ -30,6 +30,7 @@ class ProDataPipeline:
 
     def __init__(self):
         self.scaler = StandardScaler()
+        self._pipeline_executed = False  # P-DP-04: idempotency guard
         self.feature_cols = [
             "avg_kills",
             "avg_deaths",
@@ -48,6 +49,10 @@ class ProDataPipeline:
     SCALER_PATH = Path(__file__).parent.parent / "storage" / "fitted_scaler.joblib"
 
     def run_pipeline(self):
+        # P-DP-04: Prevent double-application of scaler if called twice.
+        if self._pipeline_executed:
+            logger.warning("P-DP-04: run_pipeline() already executed on this instance. Skipping.")
+            return
         db = get_db_manager()
         with db.get_session() as session:
             statement = (
@@ -116,6 +121,8 @@ class ProDataPipeline:
         self._update_splits_in_db(train_df, "train")
         self._update_splits_in_db(val_df, "val")
         self._update_splits_in_db(test_df, "test")
+
+        self._pipeline_executed = True
 
     def _save_scaler(self):
         """Persist fitted scaler with sklearn version for compatibility checks."""
