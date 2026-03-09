@@ -181,13 +181,24 @@ class IngestionManager:
             logger.info("IngestionManager: Digestion stopped.")
 
     def _recover_stuck_tasks(self):
-        """Reset tasks stuck in 'processing' back to 'queued' (crash recovery)."""
+        """Reset tasks stuck in 'processing' back to 'queued' (crash recovery).
+
+        IM-02: Only considers tasks whose updated_at is older than 5 minutes,
+        preventing recovery of tasks that are still actively being processed.
+        """
+        from datetime import timedelta
+
         from sqlmodel import select
 
         _MAX_RETRIES = 3
+        _STALE_THRESHOLD = timedelta(minutes=5)
+        cutoff = datetime.now(timezone.utc) - _STALE_THRESHOLD
         with self.db_manager.get_session() as session:
             stuck = session.exec(
-                select(IngestionTask).where(IngestionTask.status == "processing")
+                select(IngestionTask).where(
+                    IngestionTask.status == "processing",
+                    IngestionTask.updated_at < cutoff,
+                )
             ).all()
             if not stuck:
                 return

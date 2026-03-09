@@ -1,3 +1,4 @@
+import json as _json
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
@@ -9,6 +10,10 @@ from sqlmodel import Field, SQLModel
 # Maximum allowed size (bytes) for game_state_json in CoachingExperience.
 # 10 players × ~30 fields ≈ 5–10 KB per snapshot. Cap prevents unbounded DB growth.
 MAX_GAME_STATE_JSON_BYTES = 16_384  # 16 KB
+
+# DM-04: Maximum allowed size (bytes) for auxiliary JSON fields in Ext_PlayerPlaystyle.
+# Prevents unbounded growth from user-supplied profile data.
+MAX_AUX_JSON_BYTES = 8_192  # 8 KB
 
 
 # --- Enums for Data Integrity ---
@@ -197,6 +202,11 @@ class Ext_TeamRoundStats(SQLModel, table=True):
 class Ext_PlayerPlaystyle(SQLModel, table=True):
     """
     Stores aggregated playstyle roles from external sources (e.g. cs2_playstyle_roles_2024.csv).
+
+    DM-02: This table conflates CS2 playstyle statistics (role_*, tapd, oap, podt)
+    with user account metadata (social_links_json, pc_specs_json, steam_id, etc.).
+    A future schema migration should split these into separate tables. Until then,
+    treat playstyle fields and profile fields as logically distinct column groups.
     """
 
     __table_args__ = {"extend_existing": True}
@@ -232,6 +242,17 @@ class Ext_PlayerPlaystyle(SQLModel, table=True):
     social_links_json: Optional[str] = Field(default="{}")
     pc_specs_json: Optional[str] = Field(default="{}")
     graphic_settings_json: Optional[str] = Field(default="{}")
+
+    # DM-04: Cap auxiliary JSON fields to prevent unbounded DB growth.
+    @field_validator("social_links_json", "pc_specs_json", "graphic_settings_json")
+    @classmethod
+    def validate_aux_json_size(cls, v: Optional[str]) -> Optional[str]:
+        if v and len(v.encode("utf-8")) > MAX_AUX_JSON_BYTES:
+            raise ValueError(
+                f"Auxiliary JSON field exceeds {MAX_AUX_JSON_BYTES} bytes "
+                f"({len(v.encode('utf-8'))} bytes)"
+            )
+        return v
     cfg_file_path: Optional[str] = None
 
     steam_id: Optional[str] = Field(
@@ -490,6 +511,7 @@ class CoachingExperience(SQLModel, table=True):
     game_state_json: str = Field(default="{}")  # Full tick data at moment of experience
 
     # P2-02: Enforce MAX_GAME_STATE_JSON_BYTES to prevent unbounded DB growth
+    # DM-01: Also validate that the value is well-formed JSON (not arbitrary text).
     @field_validator("game_state_json")
     @classmethod
     def validate_json_size(cls, v: str) -> str:
@@ -498,6 +520,11 @@ class CoachingExperience(SQLModel, table=True):
                 f"game_state_json exceeds {MAX_GAME_STATE_JSON_BYTES} bytes "
                 f"({len(v.encode('utf-8'))} bytes)"
             )
+        if v and v != "{}":
+            try:
+                _json.loads(v)
+            except _json.JSONDecodeError as e:
+                raise ValueError(f"game_state_json is not valid JSON: {e}") from e
         return v
 
     # Action & Outcome

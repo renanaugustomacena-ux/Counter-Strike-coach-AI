@@ -120,6 +120,9 @@ class DatabaseManager:
                 session.commit()
             except Exception:
                 session.rollback()
+                # DB-02: Expire all cached instances after rollback so callers
+                # never see stale attribute values from a failed transaction.
+                session.expire_all()
                 raise
 
     def upsert(self, model_instance: T) -> T:
@@ -262,6 +265,7 @@ class HLTVDatabaseManager:
                 session.commit()
             except Exception:
                 session.rollback()
+                session.expire_all()
                 raise
 
     def upsert(self, model_instance: T) -> T:
