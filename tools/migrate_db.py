@@ -1,7 +1,5 @@
 import argparse
 import logging
-import os
-import shutil
 import sqlite3
 import sys
 from datetime import datetime
@@ -71,7 +69,9 @@ def setup_logging(log_dir: Path):
 
 
 class IndustrialDatabaseMigrator:
-    # Required schema state for the current version of the ML Brain
+    # R2-11: DEPRECATED — these columns are now managed by Alembic migrations
+    # (8c443d3d9523_triple_daemon_support + 3c6ecb5fe20e_add_fusion_plan_columns).
+    # Retained only as a safety net for databases that predate Alembic adoption.
     REQUIRED_COLUMNS = [
         ("current_epoch", "INTEGER DEFAULT 0"),
         ("total_epochs", "INTEGER DEFAULT 0"),
@@ -92,7 +92,11 @@ class IndustrialDatabaseMigrator:
         self.backup_dir = self.project_root / "backups" / "database"
 
     def create_backup(self) -> Optional[Path]:
-        """Creates a timestamped backup of the REAL database before migration."""
+        """Creates a timestamped backup of the REAL database before migration.
+
+        NN-82: Uses VACUUM INTO instead of shutil.copy2 to produce a
+        consistent snapshot even when WAL mode is active with concurrent readers.
+        """
         if not self.db_path.exists():
             return None
 
@@ -101,7 +105,9 @@ class IndustrialDatabaseMigrator:
         backup_path = self.backup_dir / f"database_pre_migration_{timestamp}.db"
 
         try:
-            shutil.copy2(self.db_path, backup_path)
+            conn = sqlite3.connect(self.db_path)
+            conn.execute("VACUUM INTO ?", (str(backup_path),))
+            conn.close()
             self.logger.info(f"Database backup created at {backup_path}")
             return backup_path
         except Exception as e:
@@ -132,6 +138,12 @@ class IndustrialDatabaseMigrator:
                 "[bold cyan]MACENA INDUSTRIAL DB MIGRATOR[/bold cyan]\n[dim]Schema Evolution & Data Integrity Guard[/dim]",
                 border_style="blue",
             )
+        )
+        # R2-11: Deprecation notice — prefer `alembic upgrade head`
+        console.print(
+            "[warning]NOTE: This tool is deprecated for schema migrations. "
+            "Use 'alembic upgrade head' instead. This tool only patches "
+            "pre-Alembic databases as a safety net.[/warning]"
         )
 
         if not self.db_path.exists():

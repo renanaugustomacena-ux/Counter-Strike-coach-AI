@@ -1,7 +1,7 @@
 """Add_Pro_Stats
 
 Revision ID: 89850b6e0a49
-Revises: cab9c431dfc6
+Revises: 7a30a0ea024e
 Create Date: 2026-01-11 15:56:10.926238
 
 """
@@ -15,7 +15,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "89850b6e0a49"
-down_revision: Union[str, Sequence[str], None] = "cab9c431dfc6"
+down_revision: Union[str, Sequence[str], None] = "7a30a0ea024e"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

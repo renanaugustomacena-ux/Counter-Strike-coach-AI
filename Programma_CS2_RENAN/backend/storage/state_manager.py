@@ -1,5 +1,6 @@
 import threading
 from datetime import datetime, timezone
+from enum import Enum
 
 from sqlmodel import select
 
@@ -8,6 +9,14 @@ from Programma_CS2_RENAN.backend.storage.db_models import CoachState, CoachStatu
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.state_manager")
+
+
+# R2-13: Typed enum for daemon names — prevents typo-driven bugs in status updates.
+class DaemonName(str, Enum):
+    HUNTER = "hunter"
+    DIGESTER = "digester"
+    TEACHER = "teacher"
+    GLOBAL = "global"
 
 
 class StateManager:
@@ -39,10 +48,12 @@ class StateManager:
         Updates the status of a specific daemon.
 
         Args:
-            daemon: 'hunter', 'digester', 'teacher', or 'global'
+            daemon: DaemonName value or string ('hunter', 'digester', 'teacher', 'global')
             status: Status string (e.g., 'Running', 'Idle', 'Error')
             detail: Optional detail message
         """
+        # R2-13: Normalize to string value (accepts both DaemonName enum and raw str)
+        daemon_key = daemon.value if isinstance(daemon, DaemonName) else daemon
         try:
             with self._lock, self.db.get_session() as session:
                 state = session.exec(select(CoachState)).first()
@@ -50,13 +61,13 @@ class StateManager:
                     state = CoachState()
                     session.add(state)
 
-                if daemon == "hunter":
+                if daemon_key == DaemonName.HUNTER:
                     state.hltv_status = status
-                elif daemon == "digester":
+                elif daemon_key == DaemonName.DIGESTER:
                     state.ingest_status = status
-                elif daemon == "teacher":
+                elif daemon_key == DaemonName.TEACHER:
                     state.ml_status = status
-                elif daemon == "global":
+                elif daemon_key == DaemonName.GLOBAL:
                     valid_statuses = {s.value for s in CoachStatus}
                     if status not in valid_statuses:
                         raise ValueError(
@@ -165,6 +176,7 @@ class StateManager:
 
     def get_status(self, daemon: str) -> dict:
         """Retrieves the current status and detail for a daemon."""
+        daemon_key = daemon.value if isinstance(daemon, DaemonName) else daemon
         try:
             with self.db.get_session() as session:
                 state = session.exec(select(CoachState)).first()
@@ -172,13 +184,13 @@ class StateManager:
                     return {"status": "Unknown", "detail": ""}
 
                 status = "Unknown"
-                if daemon == "hunter":
+                if daemon_key == DaemonName.HUNTER:
                     status = state.hltv_status
-                elif daemon == "digester":
+                elif daemon_key == DaemonName.DIGESTER:
                     status = state.ingest_status
-                elif daemon == "teacher":
+                elif daemon_key == DaemonName.TEACHER:
                     status = state.ml_status
-                elif daemon == "global":
+                elif daemon_key == DaemonName.GLOBAL:
                     status = state.status
 
                 return {"status": status, "detail": state.detail or ""}
