@@ -75,6 +75,17 @@ class AnalysisOrchestrator:
         # F5-14: per-module failure counter for observability of persistent silent failures.
         self._module_failure_counts: Dict[str, int] = {}
 
+    # Log suppression threshold: log first N failures, then every Mth.
+    _LOG_SUPPRESSION_INITIAL = 3
+    _LOG_SUPPRESSION_INTERVAL = 10
+
+    def _record_module_failure(self, module: str, error: Exception) -> None:
+        """Record and log module failure with suppression for repeated errors."""
+        n = self._module_failure_counts.get(module, 0) + 1
+        self._module_failure_counts[module] = n
+        if n <= self._LOG_SUPPRESSION_INITIAL or n % self._LOG_SUPPRESSION_INTERVAL == 0:
+            logger.error("%s analysis failed (consecutive=%s): %s", module, n, error)
+
     def analyze_match(
         self,
         player_name: str,
@@ -205,9 +216,7 @@ class AnalysisOrchestrator:
                 )
 
         except Exception as e:
-            n = self._module_failure_counts.get("momentum", 0) + 1
-            self._module_failure_counts["momentum"] = n
-            logger.error("Momentum analysis failed (consecutive=%s): %s", n, e)
+            self._record_module_failure("momentum", e)
 
         return insights
 
@@ -256,9 +265,7 @@ class AnalysisOrchestrator:
                 )
 
         except Exception as e:
-            n = self._module_failure_counts.get("deception", 0) + 1
-            self._module_failure_counts["deception"] = n
-            logger.error("Deception analysis failed (consecutive=%s): %s", n, e)
+            self._record_module_failure("deception", e)
 
         return insights
 
@@ -358,9 +365,7 @@ class AnalysisOrchestrator:
                 )
 
         except Exception as e:
-            n = self._module_failure_counts.get("utility_entropy", 0) + 1
-            self._module_failure_counts["utility_entropy"] = n
-            logger.error("Utility entropy analysis failed (consecutive=%s): %s", n, e)
+            self._record_module_failure("utility_entropy", e)
 
         return insights
 
@@ -416,9 +421,7 @@ class AnalysisOrchestrator:
                 )
 
         except Exception as e:
-            n = self._module_failure_counts.get("strategy", 0) + 1
-            self._module_failure_counts["strategy"] = n
-            logger.error("Strategy analysis failed (consecutive=%s): %s", n, e)
+            self._record_module_failure("strategy", e)
 
         return insights
 
@@ -527,9 +530,7 @@ class AnalysisOrchestrator:
             )
 
         except Exception as e:
-            n = self._module_failure_counts.get("engagement_range", 0) + 1
-            self._module_failure_counts["engagement_range"] = n
-            logger.error("Engagement range analysis failed (consecutive=%s): %s", n, e)
+            self._record_module_failure("engagement_range", e)
 
         return insights
 
