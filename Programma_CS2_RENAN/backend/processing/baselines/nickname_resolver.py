@@ -12,7 +12,7 @@ import re
 from difflib import SequenceMatcher
 from typing import List, Optional
 
-from sqlmodel import select
+from sqlmodel import func, select
 
 from Programma_CS2_RENAN.backend.storage.database import get_hltv_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import ProPlayer
@@ -51,8 +51,8 @@ class NicknameResolver:
         clean_name = NicknameResolver._clean(raw_name)
 
         with db.get_session() as session:
-            # 1. Exact Match
-            stmt = select(ProPlayer).where(ProPlayer.nickname == clean_name)
+            # 1. Exact Match (case-insensitive — SQLite default is case-sensitive)
+            stmt = select(ProPlayer).where(func.lower(ProPlayer.nickname) == clean_name)
             p = session.exec(stmt).first()
             if p:
                 return p.hltv_id

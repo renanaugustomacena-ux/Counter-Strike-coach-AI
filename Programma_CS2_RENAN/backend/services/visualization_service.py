@@ -105,10 +105,13 @@ class VisualizationService:
             raise
 
 
-_service = VisualizationService()
+_service = None
 
 
 def get_visualization_service():
+    global _service
+    if _service is None:
+        _service = VisualizationService()
     return _service
 
 
