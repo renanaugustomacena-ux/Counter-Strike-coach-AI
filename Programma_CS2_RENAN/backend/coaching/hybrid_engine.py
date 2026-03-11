@@ -32,8 +32,11 @@ logger = get_logger("cs2analyzer.hybrid_coaching")
 
 # H-03: Fallback baseline with version annotation so staleness is traceable.
 # Source: HLTV professional averages, January 2024 snapshot.
+# WARNING: Update these values periodically from fresh HLTV scrapes.
+# Staleness beyond 6 months degrades coaching accuracy.
 _FALLBACK_BASELINE_VERSION = "2024-01"
 _FALLBACK_BASELINE_SOURCE = "HLTV 2024 January professional averages"
+_FALLBACK_BASELINE_MAX_AGE_DAYS = 180
 _FALLBACK_BASELINE = {
     "avg_kills": 0.78,
     "avg_deaths": 0.62,
@@ -194,6 +197,18 @@ class HybridCoachingEngine:
                 _FALLBACK_BASELINE_VERSION,
                 _FALLBACK_BASELINE_SOURCE,
             )
+            from datetime import datetime
+            try:
+                baseline_date = datetime.strptime(_FALLBACK_BASELINE_VERSION, "%Y-%m")
+                age_days = (datetime.now() - baseline_date).days
+                if age_days > _FALLBACK_BASELINE_MAX_AGE_DAYS:
+                    logger.warning(
+                        "Fallback baseline is %d days old (max recommended: %d). "
+                        "Run HLTV scraper to refresh pro baselines.",
+                        age_days, _FALLBACK_BASELINE_MAX_AGE_DAYS,
+                    )
+            except ValueError:
+                pass
             return dict(_FALLBACK_BASELINE)
 
     def generate_insights(
@@ -502,8 +517,12 @@ class HybridCoachingEngine:
         KNOWLEDGE_WEIGHT = 0.4
         base_confidence = ml_confidence * ML_WEIGHT + knowledge_effectiveness * KNOWLEDGE_WEIGHT
 
-        # Apply Meta-Drift penalty
-        meta_adj = MetaDriftEngine.get_meta_confidence_adjustment()
+        # Apply Meta-Drift penalty (guard against engine failure)
+        try:
+            meta_adj = MetaDriftEngine.get_meta_confidence_adjustment()
+        except Exception:
+            logger.debug("MetaDriftEngine unavailable — using neutral adjustment")
+            meta_adj = 1.0
 
         return min(base_confidence * meta_adj, 1.0)
 
