@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from sqlmodel import func, select
 
-from Programma_CS2_RENAN.backend.nn.config import get_device
+from Programma_CS2_RENAN.backend.nn.config import RAP_POSITION_SCALE, get_device
 from Programma_CS2_RENAN.backend.nn.persistence import load_nn, save_nn
 from Programma_CS2_RENAN.backend.nn.train import train_nn
 from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
@@ -302,7 +302,7 @@ class CoachTrainingManager:
             if context:
                 context.check_state()
 
-            self._assign_dataset_splits()
+            self.assign_dataset_splits()
 
             if context:
                 context.check_state()
@@ -314,7 +314,7 @@ class CoachTrainingManager:
             get_state_manager().set_error("teacher", f"Cycle Failed: {e}")
             app_logger.error("Training Cycle Crash: %s", e, exc_info=True)
 
-    def _assign_dataset_splits(self):
+    def assign_dataset_splits(self):
         """Chronological 70/15/15 split. Prevents temporal data leakage.
 
         Splits pro and user matches independently to maintain class balance.
@@ -844,12 +844,13 @@ class CoachTrainingManager:
                 # Extract advantage and ghost position for each tick in window
                 for tick in window:
                     advantage = float(outputs["value_estimate"].cpu().numpy()[0])
-                    optimal_pos = outputs["optimal_pos"].cpu().numpy()[0]  # [dx, dy]
+                    # POS-2D: Model outputs [dx, dy, dz]; Z-axis unused (2D map coordinates).
+                    optimal_pos = outputs["optimal_pos"].cpu().numpy()[0]
                     attribution = outputs["attribution"].cpu().numpy()[0]  # [5] contents
 
                     # Convert normalized deltas to world coordinates
-                    ghost_x = tick.pos_x + (optimal_pos[0] * 1000)  # Scale factor
-                    ghost_y = tick.pos_y + (optimal_pos[1] * 1000)
+                    ghost_x = tick.pos_x + (optimal_pos[0] * RAP_POSITION_SCALE)
+                    ghost_y = tick.pos_y + (optimal_pos[1] * RAP_POSITION_SCALE)
 
                     overlay_results[tick.tick] = {
                         "advantage": advantage,
