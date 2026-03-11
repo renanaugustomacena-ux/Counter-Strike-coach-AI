@@ -13,6 +13,7 @@ Design:
     - Persists indexes to disk for fast startup
 """
 
+import base64
 import json
 import os
 import threading
@@ -26,6 +27,13 @@ from Programma_CS2_RENAN.backend.storage.database import get_db_manager
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.vector_index")
+
+
+def _deserialize_embedding(raw: str) -> np.ndarray:
+    """Deserialize embedding from base64 (current) or legacy JSON format."""
+    if raw.startswith("["):
+        return np.array(json.loads(raw), dtype=np.float32)
+    return np.frombuffer(base64.b64decode(raw), dtype=np.float32)
 
 try:
     import faiss
@@ -268,10 +276,10 @@ class VectorIndexManager:
                     if entry.id is None:
                         continue
                     try:
-                        vec = np.array(json.loads(entry.embedding), dtype=np.float32)
+                        vec = _deserialize_embedding(entry.embedding)
                         ids_list.append(entry.id)
                         vecs_list.append(vec)
-                    except (json.JSONDecodeError, ValueError):
+                    except Exception:
                         pass
 
                 offset += BATCH_SIZE

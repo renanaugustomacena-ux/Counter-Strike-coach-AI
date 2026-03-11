@@ -222,10 +222,11 @@ class SpatialConfigLoader:
         self.competitive_maps = _FALLBACK_COMPETITIVE_MAPS.copy()
 
     def reload(self):
-        """Force reload of configuration."""
-        SpatialConfigLoader._loaded = False
-        self._load_config()
-        SpatialConfigLoader._loaded = True
+        """Force reload of configuration (thread-safe)."""
+        with _loader_lock:
+            SpatialConfigLoader._loaded = False
+            self._load_config()
+            SpatialConfigLoader._loaded = True
 
 
 # Module-level accessor functions
