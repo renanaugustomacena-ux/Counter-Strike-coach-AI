@@ -36,6 +36,7 @@ except ImportError:
         print("CRITICAL: Security Module Missing.", file=sys.stderr)
         sys.exit(1)
 
+import copy
 import json
 import threading
 import traceback
@@ -65,8 +66,9 @@ try:
         dsn=get_setting("SENTRY_DSN", ""),
         enabled=get_setting("SENTRY_ENABLED", False),
     )
-except Exception:
-    pass  # Sentry is optional — never block startup
+except Exception as _sentry_err:
+    import logging as _log
+    _log.getLogger("cs2analyzer.main").debug("Sentry init skipped: %s", _sentry_err)
 
 # --- Resolution Settings (User Requested) ---
 from kivy.config import Config
@@ -464,8 +466,6 @@ class CS2AnalyzerApp(MDApp):
     lang_trigger = StringProperty("")
     upload_dialog = ObjectProperty(None, allownone=True)
     parsing_dialog = ObjectProperty(None, allownone=True)
-    _last_completed_tasks = []
-
     @property
     def sm(self) -> MDScreenManager:
         """Safe access to the ScreenManager, regardless of root layout structure."""
@@ -523,6 +523,8 @@ class CS2AnalyzerApp(MDApp):
         self.console = None
         self.parsing_dialog = None
         self.folder_picker_target = None  # P0-07: Initialize to prevent AttributeError
+        self._last_completed_tasks = []
+        self._nav_stack = []
 
     def _update_background_source(self):
         img = get_setting("BACKGROUND_IMAGE", "vertical_wallpaper_cs2_A.jpg")
@@ -598,8 +600,6 @@ class CS2AnalyzerApp(MDApp):
         self._update_background_source()
 
         # FIX: Enforce Resolution (Overrides saved config)
-        from kivy.core.window import Window
-
         Window.size = (1280, 720)
 
         # STARTUP LOCK CHECK (New Task 17 Feature)
@@ -1026,7 +1026,6 @@ class CS2AnalyzerApp(MDApp):
             Cache.remove("kv.texture")
         except Exception as e:
             app_logger.debug("Kivy cleanup error: %s", e)
-        import copy
 
         base = {"Small": 12, "Medium": 16, "Large": 20}.get(size, 16)
         scale = base / 16.0
@@ -1054,9 +1053,10 @@ class CS2AnalyzerApp(MDApp):
 
     def _deep_widget_refresh(self, widget, _max_depth=50):
         # F7-16: Iterative BFS to avoid stack overflow on deep widget trees
-        queue = [(widget, 0)]
+        from collections import deque
+        queue = deque([(widget, 0)])
         while queue:
-            current, depth = queue.pop(0)
+            current, depth = queue.popleft()
             if depth > _max_depth:
                 app_logger.warning("_deep_widget_refresh: max depth %s reached, stopping", _max_depth)
                 break
@@ -1685,8 +1685,10 @@ class CS2AnalyzerApp(MDApp):
         # Generate radar plot
         import atexit
         out_path = os.path.join(get_resource_path("data"), "temp_radar.png")
-        # F7-11: Register temp file for cleanup on app exit
-        atexit.register(lambda: os.path.exists(out_path) and os.unlink(out_path))
+        # F7-11: Register temp file for cleanup on app exit (guard against duplicate)
+        if not hasattr(self, "_radar_cleanup_registered"):
+            atexit.register(lambda p=out_path: os.unlink(p) if os.path.exists(p) else None)
+            self._radar_cleanup_registered = True
         try:
             generate_performance_radar(data["user_stats"], data["pro_baseline"], out_path)
         except Exception as e:
@@ -1835,7 +1837,6 @@ class CS2AnalyzerApp(MDApp):
         threading.Thread(target=_bg_update, daemon=True).start()
 
     # P4-10: Navigation back-stack for proper history-based back navigation
-    _nav_stack: list = []
 
     def switch_screen(self, n, push_history: bool = True):
         if self.root:

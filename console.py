@@ -20,6 +20,7 @@ import signal
 import sqlite3
 import subprocess
 import sys
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
@@ -103,7 +104,7 @@ _fh.setFormatter(
         '{"ts":"%(asctime)s","lvl":"%(levelname)s","mod":"%(name)s","msg":"%(message)s"}'
     )
 )
-logger = logging.getLogger("MacenaConsole")
+logger = logging.getLogger("cs2analyzer.console")
 logger.setLevel(logging.INFO)
 logger.addHandler(_fh)
 
@@ -335,7 +336,7 @@ def _cmd_ml_status(args):
         f"  Running:    {'[success]Yes[/success]' if ml['is_running'] else '[dim]No[/dim]'}",
         f"  Paused:     {'[warning]Yes[/warning]' if ml['paused'] else '[dim]No[/dim]'}",
         f"  Stop Req:   {'[error]Yes[/error]' if ml['stop_requested'] else '[dim]No[/dim]'}",
-        f"  Throttle:   {sc.ml_controller.context._throttle_factor:.1f}",
+        f"  Throttle:   {sc.ml_controller.context.throttle_factor:.1f}",
         f"  Teacher:    {teacher.get('status', 'N/A')}",
         f"  Detail:     {teacher.get('detail', 'N/A')}",
     ]
@@ -807,18 +808,22 @@ def _cmd_svc_spawn(args):
             _log_dir / f"spawn_{args[0].replace('.py', '')}_{datetime.now().strftime('%H%M%S')}.log"
         )
         stderr_file = open(spawn_log, "w", encoding="utf-8")
-        # F7-10: stderr_file intentionally not closed here — the spawned subprocess owns the
-        # handle and will use it beyond this function's scope. The OS closes it on process exit.
-        # Do NOT add finally: stderr_file.close() here.
-        subprocess.Popen(
+        proc = subprocess.Popen(
             [sys.executable, str(tool_path)],
             cwd=str(PROJECT_ROOT),
             creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
             stdout=subprocess.DEVNULL,
             stderr=stderr_file,
         )
-        return f"[success]Spawned '{args[0]}' in background. Errors logged to {spawn_log.name}[/success]"
+
+        # Close the parent's copy of the file handle — the child process
+        # inherited its own fd via Popen, so our copy is now redundant.
+        stderr_file.close()
+
+        return f"[success]Spawned '{args[0]}' (PID {proc.pid}) in background. Errors logged to {spawn_log.name}[/success]"
     except Exception as e:
+        if 'stderr_file' in locals() and not stderr_file.closed:
+            stderr_file.close()
         return f"[error]Spawn failed: {e}[/error]"
 
 
@@ -838,8 +843,9 @@ def _cmd_svc_status(args):
 
 # --- MAINT ---
 def _cmd_maint_clear_cache(args):
-    # F7-32: No dry-run flag. Safe operation (caches regenerate), but consider adding
-    # --dry-run flag for user confidence before deleting many directories.
+    # Safety: verify PROJECT_ROOT contains expected marker files before walking
+    if not (PROJECT_ROOT / "Programma_CS2_RENAN").is_dir() or not (PROJECT_ROOT / "console.py").is_file():
+        return "[error]PROJECT_ROOT safety check failed — refusing to walk tree.[/error]"
     count = 0
     for root, dirs, _ in os.walk(PROJECT_ROOT):
         for d in ("__pycache__", ".pytest_cache"):
@@ -1060,6 +1066,12 @@ class TUIRenderer:
         self._last_result = "Console v3.0 Ready."
         self._sys_cache: Dict[str, Any] = {"cpu": 0.0, "ram": None, "ts": 0.0}
         self._dirty = True  # Force first render
+
+    def is_dirty(self) -> bool:
+        return self._dirty
+
+    def clear_dirty(self):
+        self._dirty = False
 
     def mark_dirty(self):
         self._dirty = True
@@ -1285,8 +1297,6 @@ class TUIRenderer:
 #  STATUS POLLER (background thread — eliminates blocking in render loop)
 # ============================================================================
 
-import threading
-
 
 class StatusPoller:
     """Background thread that caches system status at a fixed interval.
@@ -1438,10 +1448,10 @@ def run_tui_mode():
                 # 3. Throttled refresh — ONLY when dirty AND interval elapsed
                 # No unconditional periodic refresh — status changes already mark dirty
                 elapsed = now - _last_refresh_time
-                if renderer._dirty and elapsed >= _min_refresh_interval:
+                if renderer.is_dirty() and elapsed >= _min_refresh_interval:
                     renderer.update_panels(layout, status, cmd_buffer)
                     live.refresh()
-                    renderer._dirty = False
+                    renderer.clear_dirty()
                     _last_refresh_time = now
 
                 time.sleep(TUI_INPUT_POLL_INTERVAL_S)

@@ -9,11 +9,6 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 _logger = get_logger("cs2analyzer.localization")
 
-# LOC-01: Lazy home dir evaluation. The module-level constant is kept for backward
-# compatibility, but _get_home_dir() should be used for display-time evaluation.
-_HOME_DIR = os.path.expanduser("~")
-
-
 def _get_home_dir() -> str:
     """Return current home directory (evaluated at call time, not import time)."""
     return os.path.expanduser("~")

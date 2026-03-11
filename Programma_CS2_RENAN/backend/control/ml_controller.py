@@ -1,9 +1,13 @@
-import fcntl
 import os
 import threading
 import time
 from contextlib import contextmanager
 from typing import Dict, Optional
+
+try:
+    import fcntl
+except ImportError:
+    fcntl = None  # type: ignore[assignment]  # Windows — use msvcrt fallback
 
 from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -17,7 +21,7 @@ _TRAINING_LOCK = threading.Lock()
 
 def _get_training_lock_path() -> str:
     """Return the path for the file-based training lock."""
-    from Programma_CS2_RENAN.core.constants import DATA_DIR
+    from Programma_CS2_RENAN.core.config import DATA_DIR
     return os.path.join(DATA_DIR, "training.lock")
 
 
@@ -26,12 +30,17 @@ def training_file_lock():
     """Acquire a file-based lock for training (cross-process safety).
 
     Non-blocking: raises ``RuntimeError`` if the lock is already held.
+    On Windows (no fcntl), uses msvcrt for file locking.
     """
     lock_path = _get_training_lock_path()
     os.makedirs(os.path.dirname(lock_path), exist_ok=True)
     fp = open(lock_path, "w")
     try:
-        fcntl.flock(fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        if fcntl is not None:
+            fcntl.flock(fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        else:
+            import msvcrt
+            msvcrt.locking(fp.fileno(), msvcrt.LK_NBLCK, 1)
     except OSError:
         fp.close()
         raise RuntimeError("Another training process already holds the lock")
@@ -40,7 +49,12 @@ def training_file_lock():
         fp.flush()
         yield
     finally:
-        fcntl.flock(fp, fcntl.LOCK_UN)
+        if fcntl is not None:
+            fcntl.flock(fp, fcntl.LOCK_UN)
+        else:
+            import msvcrt
+            fp.seek(0)
+            msvcrt.locking(fp.fileno(), msvcrt.LK_UNLCK, 1)
         fp.close()
 
 
@@ -93,6 +107,10 @@ class MLControlContext:
     def request_resume(self):
         self._pause_requested = False
         self._resume_event.set()  # Unblock check_state() callers
+
+    @property
+    def throttle_factor(self) -> float:
+        return self._throttle_factor
 
     def set_throttle(self, value: float):
         self._throttle_factor = value

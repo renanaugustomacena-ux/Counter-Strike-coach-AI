@@ -87,7 +87,11 @@ class DemoLoader:
     Implements caching and multi-map support.
     """
 
-    CACHE_DIR = os.path.join(os.path.dirname(__file__), "cache")
+    try:
+        from Programma_CS2_RENAN.core.config import DATA_DIR as _DATA_DIR
+        CACHE_DIR = os.path.join(_DATA_DIR, "demo_cache")
+    except ImportError:
+        CACHE_DIR = os.path.join(os.path.dirname(__file__), "cache")
     CACHE_VERSION = "v20_money_fix"  # Increment to invalidate old caches
 
     @staticmethod

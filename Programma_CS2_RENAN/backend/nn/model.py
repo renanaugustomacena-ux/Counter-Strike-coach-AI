@@ -2,7 +2,7 @@ import json
 import os
 import warnings
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 import torch
@@ -96,12 +96,10 @@ class AdvancedCoachNN(nn.Module):
 
     def _validate_input_dim(self, x):
         if x.dim() < 2:
-            warnings.warn(
-                "Input tensor has less than 2 dims, auto-unsqueezing. "
-                "This may mask batch dimension errors during training.",
-                UserWarning,
+            raise ValueError(
+                f"Input tensor must have at least 2 dims [batch, features], got {x.dim()}D. "
+                "Unsqueeze explicitly before calling forward()."
             )
-            return x.unsqueeze(0).unsqueeze(0)
         if x.dim() == 2:
             return x.unsqueeze(1)
         return x
@@ -126,7 +124,8 @@ def _compute_nn_output(experts, last_hidden, gate_weights):
     return torch.tanh(torch.sum(expert_outputs * gate_weights.unsqueeze(-1), dim=1))
 
 
-# Alias for backward compatibility if needed, but we'll use AdvancedCoachNN
+# NN-L-01: Deprecated alias — use AdvancedCoachNN directly.
+# Retained for backward compatibility with train_pipeline.py (also deprecated).
 TeacherRefinementNN = AdvancedCoachNN
 
 
@@ -144,7 +143,7 @@ class ModelManager:
         os.makedirs(model_dir, exist_ok=True)
 
     def save_version(self, model, metrics: dict):
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         v_name = f"brain_{timestamp}"
         path = os.path.join(self.model_dir, f"{v_name}.pt")
         torch.save(model.state_dict(), path)

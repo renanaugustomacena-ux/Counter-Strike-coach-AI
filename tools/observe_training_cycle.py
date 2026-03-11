@@ -14,6 +14,11 @@ import sys
 import time
 import traceback
 
+# Venv guard
+if sys.prefix == sys.base_prefix:
+    print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
+    sys.exit(2)
+
 # Force UTF-8 output on Windows
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -113,11 +118,12 @@ def phase_1_data_discovery():
 
         # Count ticks for TRAIN demos only
         if train_demo_names:
-            placeholders = ",".join([f"'{d}'" for d in train_demo_names])
+            placeholders = ",".join([":p" + str(i) for i in range(len(train_demo_names))])
+            params = {f"p{i}": d for i, d in enumerate(train_demo_names)}
             train_tick_query = text(
                 f"SELECT COUNT(*) FROM playertickstate WHERE demo_name IN ({placeholders})"
             )
-            train_ticks = session.exec(train_tick_query).one()[0]
+            train_ticks = session.exec(train_tick_query, params=params).one()[0]
             check("TRAIN split has tick data", train_ticks > 0, f"{train_ticks:,} ticks available for training")
             results["train_ticks"] = train_ticks
         else:

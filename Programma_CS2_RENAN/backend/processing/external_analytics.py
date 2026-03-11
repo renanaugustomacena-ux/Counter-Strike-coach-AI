@@ -78,8 +78,10 @@ class EliteAnalytics:
     def _prepare_tournament(self):
         if not self.tournament_df.empty:
             adv = ["accuracy", "econ_rating", "utility_value"]
-            self.tournament_baselines = self.tournament_df[adv].mean().to_dict()
-            self.tournament_stds = self.tournament_df[adv].std().to_dict()
+            avail = [c for c in adv if c in self.tournament_df.columns]
+            if avail:
+                self.tournament_baselines = self.tournament_df[avail].mean().to_dict()
+                self.tournament_stds = self.tournament_df[avail].std().to_dict()
 
     def analyze_user_vs_elite(self, user_stats):
         """Compares user metrics against Top 100 and Historical data."""

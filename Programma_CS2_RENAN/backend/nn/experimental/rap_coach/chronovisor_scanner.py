@@ -156,8 +156,7 @@ class ChronovisorScanner:
             model = RAPCoachModel()
             load_nn("rap_coach", model)
             model.to(self.device)
-            if model:
-                model.eval()
+            model.eval()
             return model
         except Exception as e:
             # NN-CV-01: Include exception details for actionable diagnostics

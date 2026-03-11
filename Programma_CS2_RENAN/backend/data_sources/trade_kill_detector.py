@@ -24,8 +24,10 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.trade_kill_detector")
 
-# 3 seconds at 64 tick = 192 ticks (CS2 standard tickrate)
-TRADE_WINDOW_TICKS: int = 192
+# Trade window in seconds; computed as ticks at runtime based on tick rate.
+TRADE_WINDOW_S: float = 3.0
+DEFAULT_TICK_RATE: int = 64
+TRADE_WINDOW_TICKS: int = int(TRADE_WINDOW_S * DEFAULT_TICK_RATE)
 
 
 @dataclass
@@ -139,7 +141,8 @@ def assign_round_numbers(death_ticks: pd.Series, round_boundaries: List[int]) ->
 def detect_trade_kills(
     deaths_df: pd.DataFrame,
     team_roster: Dict[str, int],
-    trade_window: int = TRADE_WINDOW_TICKS,
+    trade_window: Optional[int] = None,
+    tick_rate: int = DEFAULT_TICK_RATE,
 ) -> TradeKillResult:
     """
     Detect trade kills from a DataFrame of player_death events.
@@ -154,11 +157,15 @@ def detect_trade_kills(
     Args:
         deaths_df: DataFrame with columns: tick, attacker_name, user_name, round_num
         team_roster: Dict mapping lowercase player name to team number
-        trade_window: Maximum tick gap for a trade (default 192 = 3 seconds)
+        trade_window: Maximum tick gap for a trade. Computed from tick_rate if None.
+        tick_rate: Server tick rate (default 64). Used to compute trade_window.
 
     Returns:
         TradeKillResult with all trade kill data.
     """
+    if trade_window is None:
+        trade_window = int(TRADE_WINDOW_S * tick_rate)
+
     result = TradeKillResult()
 
     if deaths_df.empty or not team_roster:

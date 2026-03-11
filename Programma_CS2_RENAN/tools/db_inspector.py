@@ -21,6 +21,13 @@ VERSION = "1.0"
 SEP = " \u25aa "
 
 
+def _validate_table_name(name: str, allowed: set) -> str:
+    """Validate table name against whitelist to prevent SQL injection."""
+    if name not in allowed:
+        raise ValueError(f"Table name '{name}' not in allowed set")
+    return name
+
+
 # ─── Safe wrapper ─────────────────────────────────────────────────────────────
 
 
@@ -83,9 +90,11 @@ def collect_tables():
     all_tables = insp.get_table_names()
 
     table_counts = []
+    allowed = set(all_tables)
     with db.get_session() as s:
         for t in all_tables:
             try:
+                _validate_table_name(t, allowed)
                 row = s.exec(text(f"SELECT COUNT(*) FROM [{t}]")).first()
                 count = row[0] if row else 0
             except Exception:
@@ -312,8 +321,7 @@ def collect_table_schema(table_name):
     from sqlalchemy import text
 
     with db.get_session() as s:
-        # F8-12: table_name from SQLAlchemy introspection (not user input) — injection risk minimal.
-        # Bracket escaping is SQLite-specific; use sqlalchemy.sql.quoted_name for portability.
+        _validate_table_name(table_name, set(insp.get_table_names()))
         row = s.exec(text(f"SELECT COUNT(*) FROM [{table_name}]")).first()
         row_count = row[0] if row else 0
 

@@ -71,7 +71,7 @@ jobs:
           --cov=Programma_CS2_RENAN
           --cov-report=xml:coverage.xml
           --cov-report=term-missing
-          --cov-fail-under=30
+          --cov-fail-under=40
           -x
         env:
           VIRTUAL_ENV: "ci"
@@ -154,7 +154,7 @@ jobs:
       - name: Install security tools
         run: |
           python -m pip install --upgrade pip
-          pip install bandit
+          pip install bandit detect-secrets
 
       - name: Run Bandit security linter (full report)
         run: >
@@ -166,20 +166,24 @@ jobs:
           --exclude Programma_CS2_RENAN/tests,external_analysis
           || true
 
-      - name: Fail on HIGH-severity Bandit findings
+      - name: Fail on MEDIUM+ severity Bandit findings
         run: >
           bandit -r Programma_CS2_RENAN/
-          --severity-level high
-          --confidence-level high
+          --severity-level medium
+          --confidence-level medium
           --exclude Programma_CS2_RENAN/tests,external_analysis
           -f screen
 
-      - name: Check for hardcoded secrets
+      - name: Check for hardcoded secrets (detect-secrets)
         shell: bash
         run: |
-          if grep -rn "password\s*=\s*['\"]" Programma_CS2_RENAN/ --include="*.py" \
-             | grep -v "# noqa" | grep -v "test" | grep -v "example"; then
-            echo "ERROR: Possible hardcoded password found"
+          detect-secrets scan Programma_CS2_RENAN/ --exclude-files 'tests/' \
+            --exclude-files 'external_analysis/' \
+            > .secrets-report.json
+          RESULTS=$(python -c "import json; r=json.load(open('.secrets-report.json')); print(len(r.get('results',{})))")
+          if [ "$RESULTS" -gt 0 ]; then
+            echo "ERROR: detect-secrets found potential secrets in $RESULTS file(s):"
+            python -c "import json; r=json.load(open('.secrets-report.json')); [print(f'  {f}: {[s[\"type\"] for s in ss]}') for f,ss in r.get('results',{}).items()]"
             exit 1
           fi
 
@@ -194,6 +198,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════════════════════
   # STAGE 4b: TYPE CHECK (Parallel — informational, non-blocking)
   # P6-04 Phase A: Run mypy with current settings, report only.
+  # TODO: Make blocking once type hint coverage reaches 50% (see AUDIT_12)
   # ═══════════════════════════════════════════════════════════════════════════
   type-check:
     name: Type Check (informational)

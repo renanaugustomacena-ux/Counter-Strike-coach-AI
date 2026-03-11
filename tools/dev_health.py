@@ -23,7 +23,7 @@ CHECKS = {
         False,
     ),  # Non-critical for now
     "feature": ("tools/Feature_Audit.py", "Feature Alignment Audit", False),
-    "portability": ("tools/portability_test.py", "Cross-Platform Portability", False),
+    "portability": ("tools/portability_test.py", "Cross-Platform Portability", True),
 }
 
 

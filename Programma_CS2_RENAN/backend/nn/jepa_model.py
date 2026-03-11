@@ -19,11 +19,16 @@ References:
     - Yann LeCun's JEPA paper (2023)
 """
 
-from typing import Optional, Tuple
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple
+
+import logging
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+_logger = logging.getLogger("cs2analyzer.nn.jepa_model")
 
 
 class JEPAEncoder(nn.Module):
@@ -375,9 +380,6 @@ def jepa_contrastive_loss(
 # latent embeddings to interpretable coaching concept activations.
 # Inspired by Meta FAIR's VL-JEPA (2026) vision-language alignment.
 # ═══════════════════════════════════════════════════════════════════════
-
-from dataclasses import dataclass
-from typing import Dict, List
 
 NUM_COACHING_CONCEPTS = 16
 
@@ -763,12 +765,21 @@ class ConceptLabeler:
         """
         Generate concept labels for a batch of ticks.
 
+        WARNING: Uses label_tick() which derives labels from input features (label leakage).
+        Prefer label_from_round_stats() when RoundStats are available.
+
         Args:
             features_batch: [batch, 25] or [batch, seq_len, 25]
 
         Returns:
             [batch, NUM_COACHING_CONCEPTS] soft labels (averaged over seq if 3D).
         """
+        if not getattr(self, "_label_batch_warned", False):
+            _logger.warning(
+                "label_batch() uses heuristic labels derived from input features (label leakage risk). "
+                "Prefer label_from_round_stats() when RoundStats data is available."
+            )
+            self._label_batch_warned = True
         if features_batch.dim() == 3:
             # Average labels across sequence
             batch_size, seq_len, _ = features_batch.shape

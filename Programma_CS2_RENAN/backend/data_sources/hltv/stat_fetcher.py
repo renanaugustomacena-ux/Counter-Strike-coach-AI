@@ -31,6 +31,12 @@ from sqlmodel import select
 
 logger = get_logger("cs2analyzer.hltv_stat_fetcher")
 
+# D-23: Rate limiting for HLTV scraping — minimum delay (seconds) between requests.
+# Respects server load even though HLTV does not publish a machine-readable robots.txt
+# Crawl-delay. All requests go through FlareSolverr (headless browser), not raw HTTP.
+CRAWL_DELAY_MIN_SECONDS = 2
+CRAWL_DELAY_MAX_SECONDS = 7
+
 
 class HLTVStatFetcher:
     """
@@ -57,7 +63,7 @@ class HLTVStatFetcher:
         url = "https://www.hltv.org/stats/players?rankingFilter=Top50"
         logger.info("Auto-discovering Top 50 players from: %s", url)
         try:
-            time.sleep(random.uniform(2, 4))
+            time.sleep(random.uniform(CRAWL_DELAY_MIN_SECONDS, CRAWL_DELAY_MIN_SECONDS + 2))
             html = self._solver.get(url)
             if not html:
                 logger.error("FlareSolverr failed for Top 50 page")
@@ -108,7 +114,7 @@ class HLTVStatFetcher:
         """
         logger.info("Deep-Crawling stats for: %s", url)
         try:
-            time.sleep(random.uniform(3, 7))
+            time.sleep(random.uniform(CRAWL_DELAY_MIN_SECONDS + 1, CRAWL_DELAY_MAX_SECONDS))
             html = self._solver.get(url)
             if not html:
                 logger.error("FlareSolverr failed for %s", url)
@@ -225,7 +231,7 @@ class HLTVStatFetcher:
     def _fetch_sub_stats(self, url: str, parser_func) -> Dict[str, Any]:
         """Generic helper for sub-page fetching."""
         try:
-            time.sleep(random.uniform(2, 5))
+            time.sleep(random.uniform(CRAWL_DELAY_MIN_SECONDS, CRAWL_DELAY_MIN_SECONDS + 3))
             html = self._solver.get(url)
             if html:
                 return parser_func(BeautifulSoup(html, "html.parser"))
@@ -235,7 +241,10 @@ class HLTVStatFetcher:
         return {}
 
     def _safe_float(self, text: str) -> float:
-        """Robust float parsing handling 'N/A', '-', and commas."""
+        """Robust float parsing handling 'N/A', '-', and commas.
+
+        Returns 0.0 for missing/unparseable values (convention: 0.0 = unknown).
+        """
         if not text or text in ["-", "N/A", "nan"]:
             return 0.0
         try:
@@ -243,6 +252,7 @@ class HLTVStatFetcher:
             clean_text = clean_text.split()[0]
             return float(clean_text)
         except (ValueError, TypeError):
+            logger.debug("Unparseable stat value: %r", text)
             return 0.0
 
     def _parse_overview(self, soup: BeautifulSoup) -> Dict[str, Any]:

@@ -1,10 +1,13 @@
+import time
+
 import torch
 import torch.nn as nn
 from sqlmodel import select
 from torch.utils.data import DataLoader
 
-from Programma_CS2_RENAN.backend.nn.config import EPOCHS, LEARNING_RATE
+from Programma_CS2_RENAN.backend.nn.config import EPOCHS, LEARNING_RATE, get_throttling_delay
 from Programma_CS2_RENAN.backend.nn.dataset import ProPerformanceDataset
+from Programma_CS2_RENAN.backend.nn.early_stopping import EarlyStopping
 from Programma_CS2_RENAN.backend.nn.model import TeacherRefinementNN
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
@@ -173,11 +176,6 @@ def _prepare_splits(X, y, X_val, y_val):
 def _execute_validated_loop(
     model, train_loader, val_loader, optimizer, loss_fn, device, context=None
 ):
-    import time
-
-    from Programma_CS2_RENAN.backend.nn.config import get_throttling_delay
-    from Programma_CS2_RENAN.backend.nn.early_stopping import EarlyStopping
-
     delay = get_throttling_delay()
     early_stopper = EarlyStopping(patience=10, min_delta=1e-4)  # P1-01
 
@@ -209,8 +207,6 @@ def _execute_validated_loop(
 
 
 def _run_training_epoch(model, loader, optimizer, loss_fn, delay, device, context=None):
-    import time
-
     total_loss = 0.0
     for xb, yb in loader:
         if context:

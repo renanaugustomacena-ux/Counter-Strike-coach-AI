@@ -73,12 +73,12 @@ def ensure_flaresolverr(project_root: str | None = None) -> bool:
 
     if not _is_docker_available():
         logger.error(
-            "Docker non disponibile. Installa Docker Desktop o avvia il daemon Docker."
+            "Docker unavailable. Install Docker Desktop or start the Docker daemon."
         )
         return False
 
     # Try starting existing container
-    logger.info("Avvio container FlareSolverr...")
+    logger.info("Starting FlareSolverr container...")
     try:
         result = subprocess.run(
             ["docker", "start", "flaresolverr"],
@@ -87,9 +87,9 @@ def ensure_flaresolverr(project_root: str | None = None) -> bool:
             timeout=15,
         )
         if result.returncode == 0:
-            logger.info("Container FlareSolverr avviato. Attendo health-check...")
+            logger.info("FlareSolverr container started. Waiting for health-check...")
             if _wait_for_healthy():
-                logger.info("FlareSolverr pronto.")
+                logger.info("FlareSolverr ready.")
                 return True
     except (subprocess.TimeoutExpired, OSError) as exc:
         logger.debug("docker start failed: %s", exc)
@@ -104,7 +104,7 @@ def ensure_flaresolverr(project_root: str | None = None) -> bool:
             logger.debug("No docker-compose.yml in %s", _root)
         else:
             compose_file = _root / "docker-compose.yml"
-            logger.info("Container non trovato. Provo docker-compose up -d...")
+            logger.info("Container not found. Trying docker-compose up -d...")
             try:
                 result = subprocess.run(
                     ["docker-compose", "-f", str(compose_file), "up", "-d"],
@@ -115,17 +115,17 @@ def ensure_flaresolverr(project_root: str | None = None) -> bool:
                 )
                 if result.returncode == 0:
                     logger.info(
-                        "docker-compose up riuscito. Attendo health-check..."
+                        "docker-compose up succeeded. Waiting for health-check..."
                     )
                     if _wait_for_healthy():
-                        logger.info("FlareSolverr pronto via docker-compose.")
+                        logger.info("FlareSolverr ready via docker-compose.")
                         return True
             except (subprocess.TimeoutExpired, OSError) as exc:
                 logger.debug("docker-compose failed: %s", exc)
 
     logger.error(
-        "FlareSolverr non raggiungibile dopo tutti i tentativi. "
-        "Verifica che Docker Desktop sia in esecuzione."
+        "FlareSolverr unreachable after all attempts. "
+        "Verify that Docker Desktop is running."
     )
     return False
 

@@ -47,6 +47,7 @@ class MetaDriftEngine:
                 .where(PlayerMatchStats.is_pro == True)
                 .where(PlayerMatchStats.processed_at >= limit_date)
                 .where(PlayerTickState.tick % 128 == 0)
+                .limit(50_000)
             )
             recent_pts = s.exec(recent_stmt).all()
 
@@ -56,6 +57,7 @@ class MetaDriftEngine:
                 .where(PlayerMatchStats.is_pro == True)
                 .where(PlayerMatchStats.processed_at < limit_date)
                 .where(PlayerTickState.tick % 128 == 0)
+                .limit(50_000)
             )
             hist_pts = s.exec(hist_stmt).all()
 

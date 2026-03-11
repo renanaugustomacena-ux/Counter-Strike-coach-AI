@@ -71,7 +71,7 @@ def setup_logging(log_dir: Path):
     )
     file_handler.setFormatter(file_formatter)
 
-    logger = logging.getLogger("Goliath")
+    logger = logging.getLogger("cs2analyzer.goliath")
     logger.setLevel(logging.INFO)
     logger.addHandler(file_handler)
     return logger
@@ -99,11 +99,12 @@ class GoliathOrchestrator:
                 if proc.poll() is None:  # Still running
                     proc.terminate()
                     proc.wait(timeout=5)
-            except Exception:
+            except Exception as e:
+                logger.debug("Terminate failed for PID %s: %s", getattr(proc, 'pid', '?'), e)
                 try:
                     proc.kill()
-                except Exception:
-                    pass
+                except Exception as e2:
+                    logger.debug("Kill failed for PID %s: %s", getattr(proc, 'pid', '?'), e2)
         self._children.clear()
 
     def _signal_handler(self, sig, frame):

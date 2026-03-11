@@ -120,6 +120,11 @@ class FileInfo(BaseModel):
 @app.on_event("startup")
 async def startup_event():
     logger.info("Storage Server starting... Serving: %s", ARCHIVE_PATH)
+    if not API_KEY:
+        logger.warning(
+            "STORAGE_API_KEY is empty — all authenticated endpoints will return 503. "
+            "Set STORAGE_API_KEY in settings to enable file operations."
+        )
     if not ARCHIVE_PATH.exists():
         ARCHIVE_PATH.mkdir(parents=True, exist_ok=True)
 

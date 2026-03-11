@@ -58,12 +58,17 @@ class GameState:
 
 class WinProbabilityNN(nn.Module):
     """
-    Neural network for round win probability prediction.
+    Neural network for real-time round win probability prediction.
 
     Architecture:
-    - Input: 12 game state features
+    - Input: 12 normalized game state features
     - Hidden: 64 → 32 neurons with ReLU + Dropout
     - Output: Sigmoid (probability 0-1)
+
+    NOTE: This is the production predictor model. For the offline training
+    model (9 raw features, 32/16 hidden dims), see
+    backend/nn/win_probability_trainer.py::WinProbabilityTrainerNN.
+    Do NOT cross-load checkpoints between them.
 
     From Phase 1B Roadmap:
     Target accuracy: 72%+ on test set

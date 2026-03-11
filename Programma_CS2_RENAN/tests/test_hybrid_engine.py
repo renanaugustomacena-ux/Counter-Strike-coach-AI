@@ -16,7 +16,6 @@ from Programma_CS2_RENAN.backend.coaching.hybrid_engine import (
     InsightPriority,
     get_hybrid_engine,
 )
-from Programma_CS2_RENAN.backend.storage.database import get_db_manager, init_database
 from Programma_CS2_RENAN.backend.storage.db_models import CoachingInsight, TacticalKnowledge
 
 
@@ -160,9 +159,15 @@ class TestHybridCoachingEngine:
             priorities, reverse=True
         ), f"Insights not sorted by priority: {[i.priority.value for i in insights]}"
 
-    def test_save_insights_to_db(self):
-        """Test saving insights to database."""
-        engine = HybridCoachingEngine(use_jepa=False)
+    def test_save_insights_to_db(self, mock_db_manager):
+        """Test saving insights to in-memory database (no production DB access)."""
+        from unittest.mock import patch
+
+        with patch(
+            "Programma_CS2_RENAN.backend.coaching.hybrid_engine.get_db_manager",
+            return_value=mock_db_manager,
+        ):
+            engine = HybridCoachingEngine(use_jepa=False)
 
         insights = [
             HybridInsight(
@@ -179,25 +184,14 @@ class TestHybridCoachingEngine:
 
         engine.save_insights_to_db(insights, "test_player", "test_demo.dem")
 
-        # Verify saved
-        db = get_db_manager()
-        try:
-            with db.get_session() as session:
-                saved = session.exec(
-                    select(CoachingInsight).where(CoachingInsight.player_name == "test_player")
-                ).all()
+        # Verify saved in isolated in-memory DB
+        with mock_db_manager.get_session() as session:
+            saved = session.exec(
+                select(CoachingInsight).where(CoachingInsight.player_name == "test_player")
+            ).all()
 
-                assert len(saved) >= 1
-                assert saved[0].title == "Test Insight"
-        finally:
-            # Cleanup: remove test rows to avoid polluting production DB
-            with db.get_session() as session:
-                orphans = session.exec(
-                    select(CoachingInsight).where(CoachingInsight.player_name == "test_player")
-                ).all()
-                for row in orphans:
-                    session.delete(row)
-                session.commit()
+            assert len(saved) >= 1
+            assert saved[0].title == "Test Insight"
 
 
 @pytest.mark.integration

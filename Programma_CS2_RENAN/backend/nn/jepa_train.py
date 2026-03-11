@@ -143,18 +143,18 @@ def load_pro_demo_sequences(limit: int = 100) -> List[np.ndarray]:
                 sequence = _build_sequence_from_rounds(round_rows)
                 sequences.append(sequence)
             else:
-                # NN-32: Skip matches without RoundStats — np.tile produces
-                # constant sequences that poison temporal pre-training.
+                # NN-32: Skip matches without enough RoundStats — insufficient
+                # rounds cannot form meaningful temporal sequences.
                 fallback_count += 1
                 continue
 
-    logger.info("Loaded %d pro demo sequences (%d from RoundStats, %d fallback-tiled)",
-                len(sequences), len(sequences) - fallback_count, fallback_count)
+    logger.info("Loaded %d pro demo sequences from RoundStats (%d matches skipped — no RoundStats)",
+                len(sequences), fallback_count)
     if fallback_count > 0:
         logger.warning(
-            "%d/%d sequences used np.tile fallback (no RoundStats). "
+            "%d matches skipped (no RoundStats). "
             "Ingest demos with RoundStats for meaningful temporal pre-training.",
-            fallback_count, len(sequences),
+            fallback_count,
         )
     return sequences
 
@@ -268,6 +268,9 @@ def train_jepa_pretrain(
 
     early_stopper = EarlyStopping(patience=10, min_delta=1e-5)  # P1-01
 
+    # NN-L-15: Cosine LR schedule (matches JEPATrainer in jepa_trainer.py)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
+
     for epoch in range(num_epochs):
         model.train()
         total_loss = 0
@@ -312,6 +315,8 @@ def train_jepa_pretrain(
 
         if (epoch + 1) % 10 == 0:
             logger.info("Epoch %s/%s - Loss: %s", epoch + 1, num_epochs, format(avg_loss, ".4f"))
+
+        scheduler.step()
 
         # P1-01: Early stopping based on training loss (self-supervised, no val set)
         if early_stopper(avg_loss):

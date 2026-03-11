@@ -52,15 +52,15 @@ def run_sync_loop():
 
     project_root = str(Path(__file__).resolve().parent.parent)
     if not ensure_flaresolverr(project_root):
-        logger.error("FlareSolverr non avviabile automaticamente.")
+        logger.error("FlareSolverr could not be started automatically.")
         get_state_manager().update_status(
-            "hunter", "Blocked", "FlareSolverr/Docker non disponibile"
+            "hunter", "Blocked", "FlareSolverr/Docker unavailable"
         )
         get_state_manager().add_notification(
             "hunter",
             "error",
-            "HLTV sync bloccato: FlareSolverr non disponibile e auto-start fallito. "
-            "Verifica che Docker Desktop sia in esecuzione.",
+            "HLTV sync blocked: FlareSolverr unavailable and auto-start failed. "
+            "Verify that Docker Desktop is running.",
         )
         return
 
@@ -68,16 +68,16 @@ def run_sync_loop():
     solver = FlareSolverrClient()
     if not solver.is_available():
         logger.error(
-            "FlareSolverr non disponibile dopo auto-start! Avvialo con: docker start flaresolverr"
+            "FlareSolverr unavailable after auto-start! Run: docker start flaresolverr"
         )
         get_state_manager().update_status(
-            "hunter", "Blocked", "FlareSolverr non raggiungibile"
+            "hunter", "Blocked", "FlareSolverr unreachable"
         )
         get_state_manager().add_notification(
             "hunter",
             "error",
-            "HLTV sync bloccato: FlareSolverr non disponibile. "
-            "Esegui: docker start flaresolverr",
+            "HLTV sync blocked: FlareSolverr unavailable. "
+            "Run: docker start flaresolverr",
         )
         return
 
@@ -86,11 +86,11 @@ def run_sync_loop():
     test_html = solver.get("https://www.hltv.org/stats")
     if not test_html:
         logger.error(
-            "HLTV non raggiungibile nemmeno via FlareSolverr. Dormant mode (%s ore).",
+            "HLTV unreachable even via FlareSolverr. Dormant mode (%s hours).",
             _DORMANT_SLEEP_S // 3600,
         )
         get_state_manager().update_status(
-            "hunter", "Blocked", "HLTV non raggiungibile via FlareSolverr"
+            "hunter", "Blocked", "HLTV unreachable via FlareSolverr"
         )
         _dormant_sleep(_DORMANT_SLEEP_S)
         return

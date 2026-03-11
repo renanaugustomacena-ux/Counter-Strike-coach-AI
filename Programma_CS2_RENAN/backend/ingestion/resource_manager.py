@@ -136,7 +136,7 @@ class ResourceManager:
                 # 2. Check for python running main.py
                 if "python" in proc.info["name"].lower():
                     cmd = proc.info["cmdline"]
-                    if cmd and any("main.py" in arg for f, arg in enumerate(cmd)):
+                    if cmd and any("main.py" in arg for arg in cmd):
                         # Ensure it's NOT the current process (if service is py based)
                         if proc.pid != os.getpid():
                             return True

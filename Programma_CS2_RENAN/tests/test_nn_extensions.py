@@ -308,15 +308,13 @@ class TestAdvancedCoachNN:
             out = model(x, role_id=99)
         assert out.shape == (2, METADATA_DIM)
 
-    def test_validate_input_dim_1d(self):
+    def test_validate_input_dim_1d_raises(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
         model = self._make_model()
         x = torch.randn(METADATA_DIM)
-        import warnings
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", UserWarning)
-            out = model(x)
-        assert out.dim() == 2
+        import pytest
+        with pytest.raises(ValueError, match="at least 2 dims"):
+            model(x)
 
 
 class TestModelManager:

@@ -89,6 +89,6 @@ def _validate_column_type(df, column, expected_type):
 
     try:
         df[column].astype(expected_type)
-    except Exception:
+    except (ValueError, TypeError):
         logger.error("Column '%s' invalid type cast to %s", column, expected_type)
         raise TypeError(f"Column '{column}' invalid type")

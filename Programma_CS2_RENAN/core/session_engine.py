@@ -30,17 +30,21 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 logger = get_logger("cs2analyzer.session_engine")
 
 # File logging for session engine subprocess
+_session_fh = None
 try:
     from Programma_CS2_RENAN.core.config import LOG_DIR
 
     log_file = os.path.join(LOG_DIR, "session_engine.log")
-    fh = logging.FileHandler(log_file, mode="a", encoding="utf-8")
-    fh.setLevel(logging.DEBUG)
+    _session_fh = logging.FileHandler(log_file, mode="a", encoding="utf-8")
+    _session_fh.setLevel(logging.DEBUG)
     formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    fh.setFormatter(formatter)
-    logger.addHandler(fh)
+    _session_fh.setFormatter(formatter)
+    logger.addHandler(_session_fh)
     logger.info("Session Engine File Logging Initialized")
 except Exception as e:
+    if _session_fh is not None:
+        _session_fh.close()
+        _session_fh = None
     logger.warning("Failed to setup file logging: %s", e)
 
 
@@ -104,8 +108,8 @@ def run_session_loop():
             get_state_manager().add_notification(
                 "global", "WARNING", f"Automated backup failed: {e}"
             )
-        except Exception:
-            pass  # Best-effort; don't block startup
+        except Exception as notify_err:
+            logger.debug("Backup notification failed: %s", notify_err)
 
     # --- H-02: One-time knowledge base population (pro demo mining) ---
     try:
@@ -393,11 +397,8 @@ def _teacher_daemon_loop():
             get_state_manager().set_error("teacher", str(e))
             get_state_manager().update_status("teacher", "Error", str(e))
 
-        # Check stop signal more frequently than 300s sleep
-        for _ in range(300):
-            if _shutdown_event.is_set():
-                break
-            time.sleep(1)
+        # Wait up to 300s; returns immediately if shutdown is signaled
+        _shutdown_event.wait(300)
 
     logger.info("Teacher Daemon Stopped")
 
@@ -472,7 +473,7 @@ def _check_retraining_trigger() -> int:
 
     with db.get_session("default") as s_telemetry:
         pro_count = s_telemetry.exec(
-            select(func.count(PlayerMatchStats.id)).where(PlayerMatchStats.is_pro == True)
+            select(func.count(PlayerMatchStats.id)).where(PlayerMatchStats.is_pro.is_(True))
         ).one()
 
     state = get_state_manager().get_state()

@@ -456,6 +456,16 @@ class ProPlayerStatCard(SQLModel, table=True):
     time_span: str = Field(default="all_time")  # "last_3_months", "2024", etc.
     last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+    @field_validator("detailed_stats_json")
+    @classmethod
+    def validate_detailed_stats_size(cls, v: str) -> str:
+        if v and len(v.encode("utf-8")) > MAX_AUX_JSON_BYTES:
+            raise ValueError(
+                f"detailed_stats_json exceeds {MAX_AUX_JSON_BYTES} bytes "
+                f"({len(v.encode('utf-8'))} bytes)"
+            )
+        return v
+
 
 class MatchResult(SQLModel, table=True):
     __table_args__ = {"extend_existing": True}

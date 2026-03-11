@@ -81,7 +81,10 @@ class EmbeddingProjector(TrainingCallback):
         if _UMAP_AVAILABLE:
             logger.info("UMAP available — embedding projections enabled (interval=%d)", interval)
         else:
-            logger.info("umap-learn not installed — TensorBoard embedding projector only")
+            logger.warning(
+                "umap-learn not installed — UMAP embedding projections disabled. "
+                "Install with: pip install umap-learn"
+            )
 
     def on_epoch_end(
         self,

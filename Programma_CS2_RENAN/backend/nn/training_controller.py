@@ -36,11 +36,16 @@ class TrainingDecision:
 class TrainingController:
     """Controls when and how the Coach trains."""
 
-    MAX_DEMOS_PER_MONTH = 10
+    _DEFAULT_MAX_DEMOS_PER_MONTH = 10
     MIN_DIVERSITY_SCORE = 0.3  # Lower threshold for initial implementation
 
     def __init__(self):
         self.db = get_db_manager()
+        # NN-M-13: Configurable monthly demo limit via settings
+        from Programma_CS2_RENAN.core.config import get_setting
+        self.MAX_DEMOS_PER_MONTH = get_setting(
+            "MAX_DEMOS_PER_MONTH", default=self._DEFAULT_MAX_DEMOS_PER_MONTH
+        )
 
     def should_train_on_demo(
         self, demo_path: str, match_stats: PlayerMatchStats

@@ -193,14 +193,23 @@ class FACEITIntegration:
         output_path = output_dir / f"faceit_{safe_id}.dem"
 
         try:
+            from Programma_CS2_RENAN.backend.data_sources.demo_format_adapter import MAX_DEMO_SIZE
+
             response = requests.get(demo_url, stream=True, timeout=30)
             response.raise_for_status()
 
+            downloaded = 0
             with open(output_path, "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
+                    downloaded += len(chunk)
+                    if downloaded > MAX_DEMO_SIZE:
+                        logger.error("Demo download exceeds %s bytes, aborting", MAX_DEMO_SIZE)
+                        f.close()
+                        output_path.unlink(missing_ok=True)
+                        return None
                     f.write(chunk)
 
-            logger.info("Downloaded demo: %s", output_path)
+            logger.info("Downloaded demo: %s (%s bytes)", output_path, downloaded)
             return output_path
 
         except requests.RequestException as e:
