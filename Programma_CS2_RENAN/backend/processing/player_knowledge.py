@@ -37,9 +37,6 @@ logger = get_logger("cs2analyzer.player_knowledge")
 HEARING_RANGE_GUNFIRE = 2000.0
 """World units within which gunfire is audible."""
 
-HEARING_RANGE_FOOTSTEP = 1000.0
-"""World units within which footsteps are audible."""
-
 # P-PK-02: Hard cap on tracked enemies in memory dict.
 # CS2 is 5v5 so max 5 enemies; 10 allows for edge cases in parsed data.
 MAX_TRACKED_ENEMIES = 10
@@ -47,8 +44,15 @@ MAX_TRACKED_ENEMIES = 10
 # Backward-compatible alias (M-08)
 MEMORY_DECAY_TAU = MEMORY_DECAY_TAU_TICKS
 
+# RAP-M-10: Hard cap on history ticks traversed in _build_enemy_memory.
+# Prevents O(N*E) blowup when callers pass unbounded history dicts.
+MAX_HISTORY_TICKS = 512
+
 SMOKE_RADIUS = 200.0
 """Approximate smoke cloud radius in world units."""
+
+FLASH_RADIUS = 400.0
+"""Approximate flash effective blind radius in CS2 world units."""
 
 MOLOTOV_RADIUS = 100.0
 """Approximate molotov fire radius in world units."""
@@ -387,16 +391,21 @@ class PlayerKnowledgeBuilder:
         # Track: enemy_name -> (pos_x, pos_y, pos_z, last_visible_tick)
         enemy_last_seen: dict = {}
 
+        # RAP-M-10: Cap input to most recent ticks BEFORE indexing to bound memory.
+        all_ticks = sorted(recent_all_players_history.keys())
+        if len(all_ticks) > MAX_HISTORY_TICKS:
+            all_ticks = all_ticks[-MAX_HISTORY_TICKS:]
+
         # Pre-index: tick -> {player_name -> player_obj} for O(1) lookup
         indexed_history: dict = {}
-        for hist_tick, players_at_tick in recent_all_players_history.items():
+        for hist_tick in all_ticks:
             by_name: dict = {}
-            for p in players_at_tick:
+            for p in recent_all_players_history[hist_tick]:
                 by_name[str(getattr(p, "player_name", ""))] = p
             indexed_history[hist_tick] = by_name
 
         # Walk history from oldest to newest
-        sorted_ticks = sorted(indexed_history.keys())
+        sorted_ticks = all_ticks
         for hist_tick in sorted_ticks:
             by_name = indexed_history[hist_tick]
 
@@ -601,10 +610,7 @@ class PlayerKnowledgeBuilder:
                         pos_x=float(getattr(evt, "pos_x", 0)),
                         pos_y=float(getattr(evt, "pos_y", 0)),
                         pos_z=float(getattr(evt, "pos_z", 0)),
-                        # NOTE (F2-08): Using SMOKE_RADIUS (200 units) as a proxy for flash
-                        # effective radius. CS2 actual values: smoke ~288 units, flash
-                        # effective blind radius ~400 units. Accepted approximation for now.
-                        radius=SMOKE_RADIUS,
+                        radius=FLASH_RADIUS,
                         utility_type="flash",
                     )
                 )

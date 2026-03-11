@@ -169,7 +169,10 @@ class GhostEngine:
 
             # 3. Decode Output
             # Model output["optimal_pos"] is a delta [dx, dy] normalized
-            optimal_delta = out["optimal_pos"].cpu().numpy()[0]  # [dx, dy]
+            # POS-2D: Model outputs [dx, dy, dz] but CS2 maps are 2D-navigable.
+            # Z-axis (vertical) is unused because map radar/heatmap coordinates
+            # are 2D, and vertical coaching (e.g. Nuke levels) is out of scope.
+            optimal_delta = out["optimal_pos"].cpu().numpy()[0]
 
             # Use the canonical scale factor shared with the overlay code (F3-05).
             # Key name resolution: DB models use pos_x/pos_y; dict frames may use
