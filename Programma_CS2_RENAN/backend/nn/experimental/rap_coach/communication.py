@@ -45,20 +45,22 @@ class RAPCommunication:
 
     def __init__(self):
         # Level-stratified templates
+        # Template values derived from model confidence — NOT from actual game measurements.
+        # {score} = confidence %, {angle} = spatial direction, {recommendation} = confidence tier.
         self.templates = {
             "low": {  # Level 1-3: Direct, Concrete
-                "positioning": "Watch your back. You were exposed to {angle} for {time}s without checking.",
-                "mechanics": "Stop moving before you shoot. Your counter-strafing was off by {error}ms.",
+                "positioning": "Watch your back. You were exposed toward {angle} without checking.",
+                "mechanics": "Stop moving before you shoot. Focus on counter-strafing timing.",
                 "strategy": "Stick with the team. You are entering sites alone too often.",
             },
             "mid": {  # Level 4-7: Pattern-based
-                "positioning": "Your site anchoring is {score}% optimal, but you over-rotate when utility lands.",
-                "mechanics": "Burst control is solid, but your crosshair height dropped during the {time}s spray.",
+                "positioning": "Your positioning confidence is {score}%. Watch for over-rotation when utility lands.",
+                "mechanics": "Burst control is solid, but watch your crosshair height during sprays.",
                 "strategy": "Team economy suggests a {recommendation} play. Consider saving utility for the retake.",
             },
             "high": {  # Level 8-10: Strategic / Abstract
-                "positioning": "Professional positioning suggests a {angle} lurk here would have 2x advantage.",
-                "mechanics": "Flick stability is high, but you are favoring left-side peeks by {error}%.",
+                "positioning": "Professional positioning suggests a {angle} lurk here would improve your advantage.",
+                "mechanics": "Flick stability is high, but watch for left-side peek bias.",
                 "strategy": "Conditioning successful. They expect an A push; a {recommendation} pivot now is optimal.",
             },
         }
@@ -117,8 +119,6 @@ class RAPCommunication:
 
             return template.format(
                 score=int(confidence * 100),
-                time=round(float(confidence * 2), 1),
-                error=int((1 - confidence) * 300),
                 angle=angle,
                 recommendation="conservative" if confidence > 0.8 else "aggressive",
             )

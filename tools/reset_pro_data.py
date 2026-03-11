@@ -22,6 +22,11 @@ import sqlite3
 import sys
 from datetime import datetime
 
+# Venv guard
+if sys.prefix == sys.base_prefix:
+    print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
+    sys.exit(2)
+
 # Resolve project root and add to path
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
@@ -67,8 +72,21 @@ def log(msg: str, color: str = "") -> None:
     print(f"{color}{msg}{RESET}")
 
 
+# Allowlist of all tables that delete_rows() is permitted to operate on.
+_ALLOWED_TABLES = frozenset({
+    "playertickstate", "roundstats", "coachingexperience", "coachinginsight",
+    "calibrationsnapshot", "rolethresholdrecord", "servicenotification",
+    "tacticalknowledge", "mapveto", "proplayerstatcard", "playermatchstats",
+    "matchresult", "ingestiontask", "ext_teamroundstats", "ext_playerplaystyle",
+    "proplayer", "proteam",
+    "entities", "relations",
+})
+
+
 def delete_rows(conn: sqlite3.Connection, table: str) -> int:
     """DELETE all rows from a table. Returns count deleted."""
+    if table not in _ALLOWED_TABLES:
+        raise ValueError(f"Table '{table}' not in allowed set for deletion")
     try:
         cursor = conn.execute(f"SELECT COUNT(*) FROM [{table}]")
         count = cursor.fetchone()[0]

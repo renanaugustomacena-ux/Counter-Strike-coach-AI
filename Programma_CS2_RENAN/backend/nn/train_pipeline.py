@@ -1,3 +1,12 @@
+import warnings
+
+warnings.warn(
+    "train_pipeline is DEPRECATED — use CoachTrainingManager.run_full_cycle() instead. "
+    "This module uses legacy 12-feature extraction incompatible with METADATA_DIM=25.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
 import torch
 import torch.nn as nn
 from sqlmodel import select
@@ -15,14 +24,6 @@ logger = get_logger("cs2analyzer.nn_train")
 
 def run_training():
     """H-13: DEPRECATED — Use CoachTrainingManager.run_full_cycle() instead."""
-    import warnings
-
-    warnings.warn(
-        "train_pipeline.run_training() is DEPRECATED. "
-        "Use CoachTrainingManager.run_full_cycle() for the canonical training path.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
     db_manager = get_db_manager()
     X, y = _prepare_training_data(db_manager)
 

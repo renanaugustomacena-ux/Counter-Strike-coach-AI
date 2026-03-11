@@ -261,8 +261,8 @@ class Console:
                     logger.warning("Console: Hunter service status after boot: %s", hunter_status)
             else:
                 logger.warning(
-                    "Console: FlareSolverr non disponibile. Hunter non avviato. "
-                    "Avvia Docker Desktop e riprova."
+                    "Console: FlareSolverr unavailable. Hunter not started. "
+                    "Start Docker Desktop and retry."
                 )
         else:
             logger.info("Console: HLTV sync disabled (ENABLE_HLTV_SYNC=False). Hunter skipped.")

@@ -72,12 +72,11 @@ class RAPTrainer:
         z_error = 0.0
 
         if "target_pos" in batch:
-            # Calculate predicted absolute position or work with deltas?
-            # Model predicts optimal_pos (delta from current).
-            # Let's assume batch['target_pos'] is the TARGET DELTA (future - current).
             loss_pos, z_error = self.compute_position_loss(
                 outputs["optimal_pos"], batch["target_pos"]
             )
+        else:
+            logger.debug("target_pos absent from batch — position head receives no gradient")
 
         # NN-58: Use class-level loss weights for tunable multi-task balance
         total_loss = (
@@ -88,6 +87,7 @@ class RAPTrainer:
         )
 
         total_loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
         self.optimizer.step()
 
         logger.debug(

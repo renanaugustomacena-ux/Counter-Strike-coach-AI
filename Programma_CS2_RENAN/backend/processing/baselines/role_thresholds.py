@@ -12,7 +12,7 @@ Anti-Mock Principle:
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -173,7 +173,7 @@ class RoleThresholdStore:
         )
 
         # Calculate thresholds using percentile analysis
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
 
         # P-RT-01: Consistent 75th percentile for all role thresholds.
         # Players above the 75th pct are classified as role specialists.

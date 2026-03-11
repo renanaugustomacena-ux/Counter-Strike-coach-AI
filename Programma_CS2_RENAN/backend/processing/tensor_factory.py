@@ -14,6 +14,7 @@ When PlayerKnowledge is provided, tensors encode the player-POV experience.
 When PlayerKnowledge is None, falls back to legacy behavior for backward compat.
 """
 
+import math
 import threading
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
@@ -622,8 +623,8 @@ class TensorFactory:
         nx = (x - meta.pos_x) * scale_factor
         ny = (meta.pos_y - y) * scale_factor
 
-        gx = int(nx * resolution)
-        gy = int(ny * resolution)  # C-03: single Y-flip only (meta.pos_y - y already inverts)
+        gx = math.floor(nx * resolution)
+        gy = math.floor(ny * resolution)  # C-03: single Y-flip only (meta.pos_y - y already inverts)
 
         return gx, gy
 

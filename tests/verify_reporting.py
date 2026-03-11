@@ -3,13 +3,16 @@ import shutil
 import sys
 from pathlib import Path
 
+# --- Import Guard: standalone diagnostic, not a pytest test ---
+if __name__ != "__main__":
+    raise ImportError(
+        "verify_reporting.py is a standalone diagnostic. Run: python tests/verify_reporting.py"
+    )
+
 # --- Venv Guard ---
 if sys.prefix == sys.base_prefix:
-    if "pytest" in sys.modules:
-        pass  # Let pytest handle this
-    else:
-        print("ERROR: Not in venv.", file=sys.stderr)
-        sys.exit(2)
+    print("ERROR: Not in venv.", file=sys.stderr)
+    sys.exit(2)
 
 # Path setup — anchored to this file's location, not CWD
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent

@@ -3,13 +3,17 @@ import sqlite3
 import sys
 from pathlib import Path
 
+# --- Import Guard: This is a standalone utility, not a pytest test ---
+if __name__ != "__main__":
+    raise ImportError(
+        "setup_golden_data.py is a standalone utility, not importable. "
+        "Run: python tests/setup_golden_data.py"
+    )
+
 # --- Venv Guard ---
 if sys.prefix == sys.base_prefix:
-    if "pytest" in sys.modules:
-        pass  # Let pytest handle this
-    else:
-        print("ERROR: Not in venv.", file=sys.stderr)
-        sys.exit(2)
+    print("ERROR: Not in venv.", file=sys.stderr)
+    sys.exit(2)
 
 import pandas as pd
 from demoparser2 import DemoParser

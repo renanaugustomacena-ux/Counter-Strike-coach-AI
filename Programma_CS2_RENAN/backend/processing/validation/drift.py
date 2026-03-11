@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 
 import numpy as np
@@ -142,7 +142,7 @@ class DriftMonitor:
             is_drifted=is_drifted,
             drifted_features=drifted,
             max_z_score=max_z,
-            timestamp=datetime.now(),
+            timestamp=datetime.now(timezone.utc),
         )
 
 

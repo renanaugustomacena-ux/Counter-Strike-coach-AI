@@ -12,9 +12,17 @@ WIN_PROB_EPOCHS = 100
 WIN_PROB_MIN_SAMPLES = 20  # AR-6: Minimum samples for meaningful train/val split
 
 
-class WinProbabilityNN(nn.Module):
+class WinProbabilityTrainerNN(nn.Module):
+    """Lightweight win probability model for offline training on pro match DataFrames.
+
+    Uses 9 raw game-state features (alive, health, armor, equipment, bomb).
+    NOTE: This is separate from the real-time predictor WinProbabilityNN in
+    backend/analysis/win_probability.py (12 normalized features, 64/32 hidden dims).
+    Do NOT cross-load checkpoints between them.
+    """
+
     def __init__(self, input_dim=9):
-        super(WinProbabilityNN, self).__init__()
+        super().__init__()
         self.model = nn.Sequential(
             nn.Linear(input_dim, 32),
             nn.ReLU(),
@@ -26,6 +34,10 @@ class WinProbabilityNN(nn.Module):
 
     def forward(self, x):
         return self.model(x)
+
+
+# Backward-compatibility alias
+WinProbabilityNN = WinProbabilityTrainerNN
 
 
 def train_win_prob_model(data_df: pd.DataFrame, model_path: str):
@@ -69,7 +81,7 @@ def train_win_prob_model(data_df: pd.DataFrame, model_path: str):
     y_train = torch.tensor(y_train, dtype=torch.float32)
     y_val = torch.tensor(y_val, dtype=torch.float32)
 
-    model = WinProbabilityNN(input_dim=len(features))
+    model = WinProbabilityTrainerNN(input_dim=len(features))
     criterion = nn.BCELoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     early_stopper = EarlyStopping(patience=10, min_delta=1e-4)  # P1-01

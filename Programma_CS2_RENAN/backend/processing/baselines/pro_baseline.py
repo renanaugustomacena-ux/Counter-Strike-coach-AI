@@ -430,7 +430,7 @@ class TemporalBaselineDecay:
         try:
             db = get_hltv_db_manager()
             with db.get_session() as session:
-                query = select(ProPlayerStatCard)
+                query = select(ProPlayerStatCard).limit(5000)
                 cards = session.exec(query).all()
 
             if len(cards) >= 10:
@@ -509,7 +509,7 @@ class TemporalBaselineDecay:
             "impact": "rating_impact",
             "adr": "avg_adr",
             "headshot_pct": "avg_hs",
-            "opening_kill_ratio": "opening_duel_win_pct",
+            "opening_kill_ratio": "opening_kill_ratio",
             "opening_duel_win_pct": "opening_duel_win_pct",
         }
         return mapping.get(metric, metric)

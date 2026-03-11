@@ -134,7 +134,7 @@ class AppLifecycleManager:
 
         # Mutex is released automatically by OS on process exit,
         # but explicit close is good hygiene.
-        if self._instance_mutex:
+        if self._instance_mutex and sys.platform == "win32":
             try:
                 ctypes.windll.kernel32.CloseHandle(self._instance_mutex)
             except Exception as e:

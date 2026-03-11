@@ -122,7 +122,7 @@ def _is_profile_ready(db_manager, player_name):
             return False
         cnt = session.exec(
             select(func.count(PlayerMatchStats.id)).where(
-                PlayerMatchStats.player_name == player_name, PlayerMatchStats.is_pro == False
+                PlayerMatchStats.player_name == player_name, PlayerMatchStats.is_pro.is_(False)
             )
         ).one()
         return cnt >= MIN_DEMOS_FOR_COACHING
@@ -1157,7 +1157,7 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
     logger.info("DataFrame construction: %.2fs", _time.monotonic() - t_build)
 
     # --- Write to databases in chunks with progress tracking ---
-    match_engine = match_manager._get_or_create_engine(match_id)
+    match_engine = match_manager.get_engine(match_id)
     monolith_engine = db_manager.engine
     n_chunks = (total_ticks + BATCH_SIZE - 1) // BATCH_SIZE
 

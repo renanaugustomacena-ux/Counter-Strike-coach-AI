@@ -15,11 +15,15 @@ Usage:
 
 import argparse
 import os
+import re
 import shutil
 import sqlite3
 import sys
 from pathlib import Path
 from typing import Dict, List, Optional
+
+_IDENTIFIER_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
+_SAFE_COL_TYPE_RE = re.compile(r"^[A-Z]+(?: DEFAULT [0-9.]+)?$")
 
 # --- Path Stabilization ---
 PROJECT_ROOT = Path(__file__).parent.absolute()
@@ -35,6 +39,13 @@ class SchemaSuite:
     def __init__(self):
         self.db_path = DB_PATH
         self.knowledge_db_path = KNOWLEDGE_DB_PATH
+
+    @staticmethod
+    def _validate_identifier(name: str) -> str:
+        """Validate that a name is a safe SQL identifier (table/column)."""
+        if not _IDENTIFIER_RE.match(name):
+            raise ValueError(f"Unsafe SQL identifier rejected: {name!r}")
+        return name
 
     def _get_connection(self, db_path=None):
         target = db_path or self.db_path
@@ -64,7 +75,8 @@ class SchemaSuite:
         print(f"[*] Found {len(tables)} tables:")
 
         for table in tables:
-            cursor.execute(f"PRAGMA table_info({table})")
+            self._validate_identifier(table)
+            cursor.execute(f"PRAGMA table_info([{table}])")
             cols = cursor.fetchall()
             print(f"    - {table} ({len(cols)} columns)")
             # Optional: Print detail if few tables
@@ -101,14 +113,18 @@ class SchemaSuite:
         print("[*] Migration check complete.")
 
     def _apply_column_migration(self, table, col_name, col_type):
+        self._validate_identifier(table)
+        self._validate_identifier(col_name)
+        if not _SAFE_COL_TYPE_RE.match(col_type):
+            raise ValueError(f"Unsafe column type rejected: {col_type!r}")
         conn = self._get_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute(f"PRAGMA table_info({table})")
+            cursor.execute(f"PRAGMA table_info([{table}])")
             cols = [c[1] for c in cursor.fetchall()]
             if col_name not in cols:
                 print(f"[+] Migrating: Adding '{col_name}' to '{table}'...")
-                cursor.execute(f"ALTER TABLE {table} ADD COLUMN {col_name} {col_type}")
+                cursor.execute(f"ALTER TABLE [{table}] ADD COLUMN [{col_name}] {col_type}")
                 conn.commit()
                 print("    [DONE] Applied.")
             else:
@@ -150,23 +166,27 @@ class SchemaSuite:
 
     def _transfer_table(self, table, src, dest):
         try:
+            self._validate_identifier(table)
             # Check if table exists in both
             src_cur = src.cursor()
-            src_cur.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table}'")
+            src_cur.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+                (table,),
+            )
             if not src_cur.fetchone():
                 return
 
             print(f"    Processing '{table}'...")
-            src_cur.execute(f"SELECT * FROM {table}")
-            rows = src_cur.fetchall()
+            src_cur.execute(f"SELECT COUNT(*) FROM [{table}]")
+            row_count = src_cur.fetchone()[0]
 
             # Get columns
-            src_cur.execute(f"PRAGMA table_info({table})")
+            src_cur.execute(f"PRAGMA table_info([{table}])")
             cols = [c[1] for c in src_cur.fetchall()]
 
-            # Insert (Ignorning ID collisions for now, usually we'd filter)
-            # This is a naive import for the master suite prototype
-            print(f"    - Found {len(rows)} rows.")
+            # Ignoring ID collisions for now; usually we'd filter.
+            # This is a naive import for the master suite prototype.
+            print(f"    - Found {row_count} rows.")
 
         except Exception as e:
             print(f"    - Error processing {table}: {e}")
@@ -194,8 +214,16 @@ class SchemaSuite:
 
         if fix_type in ["sequences", "all"]:
             print("[*] Recalibrating SQLite Sequences...")
-            # Common fix for ID mismatches
+            print("[WARN] This resets all auto-increment counters. New rows may reuse old IDs.")
             conn = self._get_connection()
+            # Log current state before destructive operation
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM sqlite_sequence")
+            current = cursor.fetchall()
+            if current:
+                print(f"    Current sequences ({len(current)} tables):")
+                for row in current:
+                    print(f"      {row[0]}: seq={row[1]}")
             conn.execute("DELETE FROM sqlite_sequence")
             conn.commit()
             conn.close()
@@ -213,7 +241,7 @@ class SchemaSuite:
             try:
                 conn.execute("DROP TABLE alembic_version")
                 print("    [DONE] Dropped.")
-            except:
+            except Exception:
                 print("    [SKIP] Table not found.")
         elif target == "coach":
             print("[*] Clearing Coach State...")

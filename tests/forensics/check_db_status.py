@@ -18,6 +18,12 @@ root = os.path.dirname(os.path.dirname(script_dir))
 if root not in sys.path:
     sys.path.insert(0, root)
 
+if __name__ != "__main__":
+    raise ImportError(
+        "check_db_status.py is a diagnostic script, not a test module. "
+        "Run directly: python tests/forensics/check_db_status.py"
+    )
+
 from sqlmodel import func, select
 
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager

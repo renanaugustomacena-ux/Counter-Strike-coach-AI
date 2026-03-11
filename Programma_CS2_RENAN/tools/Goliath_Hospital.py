@@ -385,7 +385,12 @@ class GoliathHospital:
             import time as _t
 
             _t.sleep(max_seconds)
-            print(f"\nFATAL: Goliath Hospital exceeded {max_seconds}s timeout. Aborting.")
+            msg = f"FATAL: Goliath Hospital exceeded {max_seconds}s timeout. Aborting with os._exit(3)."
+            print(f"\n{msg}")
+            # T10-H2: Log to stderr before hard exit so the abort is diagnosable
+            print(msg, file=sys.stderr)
+            sys.stdout.flush()
+            sys.stderr.flush()
             os._exit(3)
 
         _wd = threading.Thread(target=_watchdog, args=(120,), daemon=True)

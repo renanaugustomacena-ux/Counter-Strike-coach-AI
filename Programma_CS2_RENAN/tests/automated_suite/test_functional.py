@@ -29,3 +29,6 @@ def test_config_persistence():
         # Restore original value to avoid test side-effects
         if original_val is not None:
             save_user_setting(test_key, original_val)
+        else:
+            # Original was unset; clear the test value to restore clean state
+            save_user_setting(test_key, "")

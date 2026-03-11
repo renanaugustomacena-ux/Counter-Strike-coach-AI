@@ -264,17 +264,17 @@ class TestIncrementMaturityCounter:
 
 
 class TestDatasetSplits:
-    """Tests for _assign_dataset_splits — chronological 70/15/15."""
+    """Tests for assign_dataset_splits — chronological 70/15/15."""
 
     def test_empty_db_no_crash(self, monkeypatch):
         mgr, _engine = _make_manager(monkeypatch)
-        mgr._assign_dataset_splits()  # Should not raise
+        mgr.assign_dataset_splits()  # Should not raise
 
     def test_splits_assigned_correctly_for_10_matches(self, monkeypatch):
         """10 matches → 7 train, 1 val, 2 test (int(10*0.70)=7, int(10*0.85)=8)."""
         mgr, engine = _make_manager(monkeypatch)
         _seed_matches(engine, pro_count=10)
-        mgr._assign_dataset_splits()
+        mgr.assign_dataset_splits()
         with Session(engine) as session:
             matches = session.exec(
                 select(PlayerMatchStats).order_by(PlayerMatchStats.match_date)
@@ -288,7 +288,7 @@ class TestDatasetSplits:
         """Train must come before val, val before test (temporal split)."""
         mgr, engine = _make_manager(monkeypatch)
         _seed_matches(engine, pro_count=20)
-        mgr._assign_dataset_splits()
+        mgr.assign_dataset_splits()
         with Session(engine) as session:
             matches = session.exec(
                 select(PlayerMatchStats).order_by(PlayerMatchStats.match_date)
@@ -312,7 +312,7 @@ class TestDatasetSplits:
         """Pro and user matches get independent splits."""
         mgr, engine = _make_manager(monkeypatch)
         _seed_matches(engine, pro_count=10, user_count=10)
-        mgr._assign_dataset_splits()
+        mgr.assign_dataset_splits()
         with Session(engine) as session:
             pros = session.exec(
                 select(PlayerMatchStats).where(PlayerMatchStats.is_pro == True)
@@ -334,7 +334,7 @@ class TestDatasetSplits:
         """1 match → int(1*0.70)=0 train, int(1*0.85)=0 val, 1 test."""
         mgr, engine = _make_manager(monkeypatch)
         _seed_matches(engine, pro_count=1)
-        mgr._assign_dataset_splits()
+        mgr.assign_dataset_splits()
         with Session(engine) as session:
             m = session.exec(select(PlayerMatchStats)).first()
             assert m.dataset_split == "test"
@@ -343,7 +343,7 @@ class TestDatasetSplits:
         """2 matches → int(2*0.70)=1 train, int(2*0.85)=1 val(=test), 1 test."""
         mgr, engine = _make_manager(monkeypatch)
         _seed_matches(engine, pro_count=2)
-        mgr._assign_dataset_splits()
+        mgr.assign_dataset_splits()
         with Session(engine) as session:
             matches = session.exec(
                 select(PlayerMatchStats).order_by(PlayerMatchStats.match_date)
@@ -618,7 +618,7 @@ class TestGetUserBaselineVector:
         mgr, engine = _make_manager(monkeypatch)
         _seed_matches(engine, user_count=10)
         # Assign splits so _fetch_training_data works
-        mgr._assign_dataset_splits()
+        mgr.assign_dataset_splits()
         with patch(
             "Programma_CS2_RENAN.backend.processing.baselines.pro_baseline.get_pro_baseline",
             return_value={},
@@ -694,7 +694,7 @@ class TestFetchTrainingData:
     def test_returns_only_matching_split_and_pro_flag(self, monkeypatch):
         mgr, engine = _make_manager(monkeypatch)
         _seed_matches(engine, pro_count=10, user_count=5)
-        mgr._assign_dataset_splits()
+        mgr.assign_dataset_splits()
         train_pro = mgr._fetch_training_data(is_pro=True, split="train")
         train_user = mgr._fetch_training_data(is_pro=False, split="train")
         # All returned records should be pro or user respectively

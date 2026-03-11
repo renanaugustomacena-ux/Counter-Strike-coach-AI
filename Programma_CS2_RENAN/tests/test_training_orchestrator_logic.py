@@ -71,55 +71,46 @@ class TestOrchestratorInit:
 
 
 class TestEarlyStopping:
-    """Verify early stopping triggers correctly."""
+    """Verify early stopping triggers correctly using the production EarlyStopping class."""
 
     def test_patience_counter_increments_on_no_improvement(self):
-        """When val_loss doesn't improve, patience_counter should increment."""
-        with patch("Programma_CS2_RENAN.backend.nn.training_orchestrator.get_device",
-                    return_value=torch.device("cpu")):
-            from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
+        """When val_loss doesn't improve, counter should increment."""
+        from Programma_CS2_RENAN.backend.nn.early_stopping import EarlyStopping
 
-            orch = TrainingOrchestrator(MagicMock(), model_type="jepa", patience=3)
-            orch.best_val_loss = 0.5
+        es = EarlyStopping(patience=3, min_delta=1e-4)
+        es(0.5)  # First call sets baseline
+        result = es(0.6)  # Worse — should increment counter, not stop
 
-            # Simulate: val_loss=0.6 (worse than best=0.5)
-            if 0.6 < orch.best_val_loss:
-                orch.best_val_loss = 0.6
-                orch.patience_counter = 0
-            else:
-                orch.patience_counter += 1
-
-            assert orch.patience_counter == 1
+        assert result is False
+        assert es.counter == 1
+        assert es.best_loss == 0.5
 
     def test_patience_resets_on_improvement(self):
-        with patch("Programma_CS2_RENAN.backend.nn.training_orchestrator.get_device",
-                    return_value=torch.device("cpu")):
-            from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
+        """When val_loss improves, counter should reset."""
+        from Programma_CS2_RENAN.backend.nn.early_stopping import EarlyStopping
 
-            orch = TrainingOrchestrator(MagicMock(), model_type="jepa", patience=3)
-            orch.best_val_loss = 0.5
-            orch.patience_counter = 2
+        es = EarlyStopping(patience=3, min_delta=1e-4)
+        es(0.5)  # Baseline
+        es(0.6)  # No improvement — counter=1
+        es(0.7)  # No improvement — counter=2
+        result = es(0.3)  # Improvement — counter should reset
 
-            # val_loss=0.3 (better than best=0.5)
-            if 0.3 < orch.best_val_loss:
-                orch.best_val_loss = 0.3
-                orch.patience_counter = 0
-            else:
-                orch.patience_counter += 1
-
-            assert orch.patience_counter == 0
-            assert orch.best_val_loss == 0.3
+        assert result is False
+        assert es.counter == 0
+        assert es.best_loss == 0.3
 
     def test_early_stop_triggers_at_patience_limit(self):
-        with patch("Programma_CS2_RENAN.backend.nn.training_orchestrator.get_device",
-                    return_value=torch.device("cpu")):
-            from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
+        """After patience epochs with no improvement, should_stop must be True."""
+        from Programma_CS2_RENAN.backend.nn.early_stopping import EarlyStopping
 
-            orch = TrainingOrchestrator(MagicMock(), model_type="jepa", patience=3)
-            orch.patience_counter = 3
+        es = EarlyStopping(patience=3, min_delta=1e-4)
+        es(0.5)  # Baseline
+        es(0.6)  # counter=1
+        es(0.7)  # counter=2
+        result = es(0.8)  # counter=3 — should trigger stop
 
-            should_stop = orch.patience_counter >= orch.patience
-            assert should_stop is True
+        assert result is True
+        assert es.should_stop is True
 
 
 class TestEmptyBatchHandling:

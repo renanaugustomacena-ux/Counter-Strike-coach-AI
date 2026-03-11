@@ -58,6 +58,11 @@ class CheckResult:
 _results: List[CheckResult] = []
 _t0 = time.perf_counter()
 
+if __name__ != "__main__":
+    raise ImportError(
+        "headless_validator.py is not importable. Run: python tools/headless_validator.py"
+    )
+
 
 def check(phase: str, name: str, fn):
     """Run fn(), record pass/fail, print inline."""
@@ -2121,8 +2126,8 @@ def verify_throttle_factor():
 
     ctx = MLControlContext()
     ctx.set_throttle(0.5)
-    if ctx._throttle_factor != 0.5:
-        raise AssertionError(f"Throttle = {ctx._throttle_factor}, expected 0.5")
+    if ctx.throttle_factor != 0.5:
+        raise AssertionError(f"Throttle = {ctx.throttle_factor}, expected 0.5")
 
 
 def verify_training_stop_requested_type():
@@ -2377,12 +2382,12 @@ def verify_gitignore_secrets():
         raise AssertionError(f".gitignore missing patterns: {missing}")
 
 
-warn("Integrity", "manifest hash sampling (10 files)", verify_manifest_hash_sampling)
+check("Integrity", "manifest hash sampling (10 files)", verify_manifest_hash_sampling)
 check("Integrity", "manifest structure (hashes + version)", verify_manifest_structure)
 check("Security", "no unsafe torch.load()", verify_no_unsafe_torch_load)
 check("Security", "no subprocess shell=True in production", verify_no_shell_true_in_production)
 check("Security", "RASP guard instantiation", verify_rasp_guard_instantiation)
-warn("Security", "bare assert audit (production code)", verify_no_bare_assert_in_production)
+check("Security", "bare assert audit (production code)", verify_no_bare_assert_in_production)
 check("Security", ".gitignore excludes secrets", verify_gitignore_secrets)
 
 

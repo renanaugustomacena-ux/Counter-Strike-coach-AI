@@ -349,8 +349,6 @@ class TrainingOrchestrator:
         For RAP model: builds real Player-POV tensors from per-match databases when available,
         with graceful fallback to legacy zero-init when match DB is unavailable.
         """
-        import numpy as np
-
         from Programma_CS2_RENAN.backend.processing.feature_engineering import (
             METADATA_DIM,
             FeatureExtractor,

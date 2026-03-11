@@ -60,7 +60,7 @@ def main():
     args = parser.parse_args()
 
     app_logger.info(
-        f"Training Cycle Initiated. Mode: {args.model_type.upper()} | Dry Run: {args.dry_run}"
+        "Training Cycle Initiated. Mode: %s | Dry Run: %s", args.model_type.upper(), args.dry_run
     )
 
     if args.dry_run:
@@ -78,7 +78,7 @@ def main():
     epochs = 1 if args.dry_run else args.epochs
 
     # Assign dataset splits before training (chronological 70/15/15)
-    manager._assign_dataset_splits()
+    manager.assign_dataset_splits()
 
     try:
         if args.model_type in ["all", "jepa"]:
@@ -106,7 +106,7 @@ def main():
         app_logger.info("Full Training Cycle Completed Successfully.")
 
     except Exception as e:
-        app_logger.critical(f"Training Cycle Failed: {e}", exc_info=True)
+        app_logger.critical("Training Cycle Failed: %s", e, exc_info=True)
         sys.exit(1)
     finally:
         callbacks.close_all()

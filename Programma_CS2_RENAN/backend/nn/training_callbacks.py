@@ -76,6 +76,10 @@ class CallbackRegistry:
         self.callbacks: List[TrainingCallback] = callbacks or []
 
     def add(self, callback: TrainingCallback) -> None:
+        # NN-L-13: Prevent duplicate callback registration
+        if callback in self.callbacks:
+            logger.debug("Callback %s already registered — skipping", callback.__class__.__name__)
+            return
         self.callbacks.append(callback)
 
     def fire(self, event: str, **kwargs) -> None:

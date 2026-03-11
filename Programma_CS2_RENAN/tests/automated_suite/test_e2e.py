@@ -56,6 +56,9 @@ def test_e2e_user_journey():
         print("E2E Backend Lifecycle Complete.")
 
     finally:
-        # Restore original player name
+        # Restore original player name — handle None case to avoid permanent pollution
         if original_name is not None:
             save_user_setting("CS2_PLAYER_NAME", original_name)
+        else:
+            # Original was unset; remove the test value to restore clean state
+            save_user_setting("CS2_PLAYER_NAME", "")

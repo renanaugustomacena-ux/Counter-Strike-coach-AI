@@ -6,6 +6,8 @@ for real-time monitoring and post-training analysis.
 """
 
 import json
+import os
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -75,9 +77,19 @@ class TrainingMonitor:
         self._save()
 
     def _save(self):
-        """Persist metrics to JSON file."""
-        with open(self.log_file, "w") as f:
-            json.dump(self.metrics, f, indent=2)
+        """Persist metrics to JSON file via atomic write (NN-L-12)."""
+        dir_path = self.log_file.parent
+        fd, tmp_path = tempfile.mkstemp(dir=str(dir_path), suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w") as f:
+                json.dump(self.metrics, f, indent=2)
+            os.replace(tmp_path, self.log_file)
+        except BaseException:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
 
     def get_summary(self):
         """Return a summary of training progress."""

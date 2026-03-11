@@ -55,7 +55,10 @@ class RAPMemory(nn.Module):
         # Monitor attention entropy in TensorBoard to verify pattern formation.
         # NN-MEM-01: Track whether Hopfield has been trained (via checkpoint load or
         # gradient updates). Until trained, forward() bypasses associative recall.
+        # RAP-M-04: Require ≥2 training forward passes before activating Hopfield,
+        # so at least one backward+step has shaped the stored patterns.
         self._hopfield_trained = False
+        self._training_forward_count = 0
         self.hopfield = Hopfield(
             input_size=hidden_dim,
             output_size=hidden_dim,
@@ -97,10 +100,13 @@ class RAPMemory(nn.Module):
         # We use the full sequence for training, but the last tick for decision
         belief = self.belief_head(combined_state)
 
-        # NN-MEM-01: After first training forward pass, mark Hopfield as active
+        # NN-MEM-01 + RAP-M-04: Activate Hopfield after ≥2 training forward passes,
+        # ensuring at least one backward+step has shaped the stored patterns.
         if self.training and not self._hopfield_trained:
-            self._hopfield_trained = True
-            logger.debug("NN-MEM-01: Hopfield marked as trained after first training forward")
+            self._training_forward_count += 1
+            if self._training_forward_count >= 2:
+                self._hopfield_trained = True
+                logger.debug("NN-MEM-01: Hopfield activated after %d training forwards", self._training_forward_count)
 
         return combined_state, belief, hidden
 

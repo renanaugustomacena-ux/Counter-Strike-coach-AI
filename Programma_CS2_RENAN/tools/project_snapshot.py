@@ -145,10 +145,11 @@ def collect_db():
     insp = sa_inspect(db.engine)
     all_tables = insp.get_table_names()
 
+    allowed = set(all_tables)
     with db.get_session() as s:
         for t in KEY_TABLES:
-            if t in all_tables:
-                row = s.exec(text(f"SELECT COUNT(*) FROM {t}")).first()
+            if t in allowed:
+                row = s.exec(text(f"SELECT COUNT(*) FROM [{t}]")).first()
                 result["counts"][t] = row[0] if row else 0
             else:
                 result["counts"][t] = -1
