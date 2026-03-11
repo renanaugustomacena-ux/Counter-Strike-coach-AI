@@ -12,6 +12,7 @@ Integration Points:
     - coaching_service.py: Existing push-coaching (unchanged, parallel capability)
 """
 
+import threading
 from typing import Dict, List, Optional
 
 from sqlmodel import desc, select
@@ -277,8 +278,8 @@ class CoachingDialogueEngine:
             map_name = self._player_context.get("map_name", "unknown")
             ctx = ExperienceContext(
                 map_name=map_name,
-                round_phase="full_buy",
-                side="T",
+                round_phase=self._player_context.get("round_phase", "unknown"),
+                side=self._player_context.get("side", "unknown"),
             )
             experiences = bank.retrieve_similar(ctx, top_k=self.RETRIEVAL_TOP_K)
             if experiences:
@@ -362,11 +363,15 @@ class CoachingDialogueEngine:
 # Module-level singleton
 # ---------------------------------------------------------------------------
 _engine: Optional[CoachingDialogueEngine] = None
+_engine_lock = threading.Lock()
 
 
 def get_dialogue_engine() -> CoachingDialogueEngine:
-    """Get or create the global CoachingDialogueEngine singleton."""
+    """Get or create the global CoachingDialogueEngine singleton (thread-safe)."""
     global _engine
-    if _engine is None:
-        _engine = CoachingDialogueEngine()
+    if _engine is not None:
+        return _engine
+    with _engine_lock:
+        if _engine is None:
+            _engine = CoachingDialogueEngine()
     return _engine
