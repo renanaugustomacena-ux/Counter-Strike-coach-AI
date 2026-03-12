@@ -57,7 +57,10 @@ class MatchHistoryViewModel(EventDispatcher):
             player = get_setting("CS2_PLAYER_NAME", "")
             if not player:
                 Clock.schedule_once(
-                    lambda dt: self._on_error("Set your player name in Settings first."), 0
+                    lambda dt: self._on_error(
+                        "Player name not set. Go to Settings \u2192 Profile to set your in-game name."
+                    ),
+                    0,
                 )
                 return
 
@@ -140,6 +143,16 @@ class MatchDetailViewModel(EventDispatcher):
     def _bg_load(self, demo_name: str):
         try:
             player = get_setting("CS2_PLAYER_NAME", "")
+            if not player:
+                Clock.schedule_once(
+                    lambda dt: self._on_error(
+                        "Player name not set. Go to Settings \u2192 Profile to set your in-game name."
+                    ),
+                    0,
+                )
+                return
+
+            from sqlmodel import select
 
             from Programma_CS2_RENAN.backend.storage.database import get_db_manager
             from Programma_CS2_RENAN.backend.storage.db_models import (
@@ -149,31 +162,27 @@ class MatchDetailViewModel(EventDispatcher):
             )
 
             with get_db_manager().get_session() as session:
-                match_stats = (
-                    session.query(PlayerMatchStats)
-                    .filter(
+                match_stats = session.exec(
+                    select(PlayerMatchStats).where(
                         PlayerMatchStats.demo_name == demo_name,
                         PlayerMatchStats.player_name == player,
                     )
-                    .first()
-                )
+                ).first()
 
-                rounds = (
-                    session.query(RoundStats)
-                    .filter(
+                rounds = session.exec(
+                    select(RoundStats)
+                    .where(
                         RoundStats.demo_name == demo_name,
                         RoundStats.player_name == player,
                     )
                     .order_by(RoundStats.round_number.asc())
-                    .all()
-                )
+                ).all()
 
-                insights = (
-                    session.query(CoachingInsight)
-                    .filter(CoachingInsight.demo_name == demo_name)
+                insights = session.exec(
+                    select(CoachingInsight)
+                    .where(CoachingInsight.demo_name == demo_name)
                     .order_by(CoachingInsight.created_at.desc())
-                    .all()
-                )
+                ).all()
 
                 # Detach from session
                 stats_dict = {}
@@ -272,7 +281,10 @@ class PerformanceViewModel(EventDispatcher):
             player = get_setting("CS2_PLAYER_NAME", "")
             if not player:
                 Clock.schedule_once(
-                    lambda dt: self._on_error("Set your player name in Settings first."), 0
+                    lambda dt: self._on_error(
+                        "Player name not set. Go to Settings \u2192 Profile to set your in-game name."
+                    ),
+                    0,
                 )
                 return
 

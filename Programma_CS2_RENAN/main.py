@@ -88,7 +88,7 @@ from kivy.core.text import LabelBase
 from kivy.core.window import Window
 from kivy.factory import Factory
 from kivy.lang import Builder
-from kivy.properties import BooleanProperty, NumericProperty, ObjectProperty, StringProperty
+from kivy.properties import BooleanProperty, ListProperty, NumericProperty, ObjectProperty, StringProperty
 from kivy.uix.screenmanager import FadeTransition, ScreenManager
 from kivy.utils import platform
 from kivymd.app import MDApp
@@ -160,9 +160,10 @@ class CoachScreen(MDScreen):
         return self._chat_vm
 
     def on_pre_enter(self):
-        self.refresh_insights()
-        # Trigger Graph Update
-        Clock.schedule_once(lambda dt: self.refresh_analytics(), 0.5)
+        # Show loading state immediately, fetch data in background threads
+        self._show_insights_placeholder("Loading coaching insights...")
+        threading.Thread(target=self._bg_refresh_insights, daemon=True).start()
+        threading.Thread(target=self._bg_refresh_analytics, daemon=True).start()
 
     def toggle_chat_panel(self):
         self.chat_expanded = not self.chat_expanded
@@ -233,68 +234,143 @@ class CoachScreen(MDScreen):
         if typing_label:
             typing_label.opacity = 1 if is_loading else 0
 
-    def refresh_analytics(self):
-        """Updates the analytic widgets (Graphs)."""
+    def _bg_refresh_analytics(self):
+        """Background thread: fetch analytics data, then apply on UI thread."""
+        try:
+            from Programma_CS2_RENAN.backend.reporting.analytics import analytics
+            from Programma_CS2_RENAN.core.config import get_setting
+
+            target_player = get_setting("CS2_PLAYER_NAME", "")
+            if not target_player:
+                return
+
+            df = analytics.get_player_trends(target_player)
+            skills = analytics.get_skill_radar(target_player)
+
+            trend_data = df if (df is not None and not df.empty) else None
+            Clock.schedule_once(lambda dt: self._apply_analytics(trend_data, skills), 0)
+        except Exception as e:
+            app_logger.error("coach.analytics_bg_failed: %s", e)
+            Clock.schedule_once(
+                lambda dt: self._apply_analytics_placeholder("Could not load analytics."), 0
+            )
+
+    def _apply_analytics(self, trend_df, skills):
+        """UI thread: populate graph containers with data or placeholders."""
         from Programma_CS2_RENAN.apps.desktop_app.widgets import RadarChartWidget, TrendGraphWidget
-        from Programma_CS2_RENAN.backend.reporting.analytics import analytics
-        from Programma_CS2_RENAN.core.config import get_setting
 
-        target_player = get_setting("CS2_PLAYER_NAME", "User")
-
-        # 1. Trend Graph
         container = self.ids.get("analytics_container")
         if container:
             container.clear_widgets()
-
-            # Get Data
-            df = analytics.get_player_trends(target_player)
-            if not df.empty:
+            if trend_df is not None:
                 trend_widget = TrendGraphWidget(size_hint_y=None, height="200dp")
-                trend_widget.plot(df)
+                trend_widget.plot(trend_df)
                 container.add_widget(trend_widget)
             else:
-                pass  # Show "No Data" placeholder later
+                container.add_widget(
+                    MDLabel(
+                        text="Play some matches to see your trend chart here.",
+                        halign="center",
+                        theme_text_color="Custom",
+                        text_color=(0.6, 0.6, 0.65, 1),
+                        adaptive_height=True,
+                    )
+                )
 
-        # 2. Skill Radar
-        # Radar is usually in a separate card or side-by-side
-        # For now, we add it to the same container or a specific ID if available
         radar_container = self.ids.get("radar_container")
         if radar_container:
             radar_container.clear_widgets()
-            skills = analytics.get_skill_radar(target_player)
             if skills:
                 radar = RadarChartWidget(size_hint_y=None, height="240dp")
                 radar.plot(skills)
                 radar_container.add_widget(radar)
-
-    def refresh_insights(self):
-        # DA-01-04: Guard against missing KV id
-        if not hasattr(self.ids, "insights_list"):
-            return
-        self.ids.insights_list.clear_widgets()
-        db = get_db_manager()
-        with db.get_session() as session:
-            # Use created_at instead of timestamp
-            insights = session.exec(
-                select(CoachingInsight).order_by(CoachingInsight.created_at.desc())
-            ).all()
-            for i in insights:
-                # Map database message -> message property
-                self.ids.insights_list.add_widget(
-                    CoachingCard(
-                        title=i.title,
-                        message=i.message,
-                        severity=i.severity,
-                        focus_area=i.focus_area,
-                    )
-                )
-            if not insights:
-                self.ids.insights_list.add_widget(
+            else:
+                radar_container.add_widget(
                     MDLabel(
-                        text=i18n.get_text("no_insights", MDApp.get_running_app().lang_trigger),
+                        text="Skill radar will appear after your first analyzed match.",
                         halign="center",
+                        theme_text_color="Custom",
+                        text_color=(0.6, 0.6, 0.65, 1),
+                        adaptive_height=True,
                     )
                 )
+
+    def _apply_analytics_placeholder(self, msg):
+        """UI thread: show error placeholder in both analytics containers."""
+        for cid in ("analytics_container", "radar_container"):
+            c = self.ids.get(cid)
+            if c:
+                c.clear_widgets()
+                c.add_widget(
+                    MDLabel(
+                        text=msg,
+                        halign="center",
+                        theme_text_color="Custom",
+                        text_color=(0.6, 0.6, 0.65, 1),
+                        adaptive_height=True,
+                    )
+                )
+
+    def _bg_refresh_insights(self):
+        """Background thread: fetch coaching insights, then apply on UI thread."""
+        try:
+            db = get_db_manager()
+            with db.get_session() as session:
+                raw = session.exec(
+                    select(CoachingInsight).order_by(CoachingInsight.created_at.desc())
+                ).all()
+                data = [
+                    {
+                        "title": i.title,
+                        "message": i.message,
+                        "severity": i.severity,
+                        "focus_area": i.focus_area,
+                    }
+                    for i in raw
+                ]
+            Clock.schedule_once(lambda dt: self._apply_insights(data), 0)
+        except Exception as e:
+            app_logger.error("coach.insights_bg_failed: %s", e)
+            Clock.schedule_once(
+                lambda dt: self._show_insights_placeholder("Could not load insights."), 0
+            )
+
+    def _apply_insights(self, data):
+        """UI thread: populate insights list with CoachingCard widgets."""
+        insights_list = self.ids.get("insights_list")
+        if not insights_list:
+            return
+        insights_list.clear_widgets()
+        if data:
+            for item in data:
+                insights_list.add_widget(
+                    CoachingCard(
+                        title=item["title"],
+                        message=item["message"],
+                        severity=item["severity"],
+                        focus_area=item["focus_area"],
+                    )
+                )
+        else:
+            self._show_insights_placeholder(
+                i18n.get_text("no_insights", MDApp.get_running_app().lang_trigger)
+            )
+
+    def _show_insights_placeholder(self, text):
+        """UI thread: show a placeholder message in the insights list."""
+        insights_list = self.ids.get("insights_list")
+        if not insights_list:
+            return
+        insights_list.clear_widgets()
+        insights_list.add_widget(
+            MDLabel(
+                text=text,
+                halign="center",
+                theme_text_color="Custom",
+                text_color=(0.6, 0.6, 0.65, 1),
+                adaptive_height=True,
+            )
+        )
 
 
 @registry.register("user_profile")
@@ -326,7 +402,7 @@ class UserProfileScreen(MDScreen):
 
     def _apply_profile_to_ui(self, p):
         self.ids.name_label.text = p["player_name"] or "Player"
-        self.ids.bio_label.text = p["bio"] or "..."
+        self.ids.bio_label.text = p["bio"] or "Tap the pencil icon to add your bio"
         self.ids.role_label.text = f"Role: {p['role']}"
         self._update_role_badge(p["role"])
         if p.get("steam_avatar_url"):
@@ -337,9 +413,14 @@ class UserProfileScreen(MDScreen):
                 specs = json.loads(p["pc_specs_json"])
             except (json.JSONDecodeError, TypeError):
                 specs = {}
-            self.ids.specs_label.text = (
-                f"CPU: {specs.get('cpu', 'N/A')} | GPU: {specs.get('gpu', 'N/A')}"
-            )
+            cpu = specs.get("cpu", "")
+            gpu = specs.get("gpu", "")
+            if cpu or gpu:
+                self.ids.specs_label.text = (
+                    f"CPU: {cpu or 'Unknown'} | GPU: {gpu or 'Unknown'}"
+                )
+            else:
+                self.ids.specs_label.text = "Hardware specs not detected yet"
 
     def _update_role_badge(self, r):
         # P3-01: Keys match canonical PlayerRole.value (lowercase) + legacy display names
@@ -410,12 +491,16 @@ class SettingsScreen(MDScreen):
     current_pro_folder = StringProperty("")
     current_font_size = StringProperty("Medium")
     current_font_type = StringProperty("Roboto")
+    current_theme = StringProperty("CS2")
+    current_language = StringProperty("en")
 
     def on_pre_enter(self):
         self.current_default_folder = get_setting("DEFAULT_DEMO_PATH", "Not Set")
         self.current_pro_folder = get_setting("PRO_DEMO_PATH", "Not Set")
         self.current_font_size = get_setting("FONT_SIZE", "Medium")
         self.current_font_type = get_setting("FONT_TYPE", "Roboto")
+        self.current_theme = get_setting("ACTIVE_THEME", "CS2")
+        self.current_language = get_setting("LANGUAGE", "en")
 
 
 @registry.register("profile")
@@ -452,6 +537,15 @@ class CS2AnalyzerApp(MDApp):
     train_loss = NumericProperty(0.0)
     val_loss = NumericProperty(0.0)
     eta_seconds = NumericProperty(0.0)
+
+    # Folder paths (displayed on Home Screen)
+    demo_folder_path = StringProperty("")
+    pro_folder_path = StringProperty("")
+
+    # Theme surface colors (bridged from theme.py palette registry)
+    theme_surface = ListProperty([0.08, 0.08, 0.12, 0.85])
+    theme_surface_alt = ListProperty([0.06, 0.06, 0.18, 0.9])
+    theme_accent_primary = ListProperty([0.85, 0.4, 0.0, 1])
 
     # Ingestion Control (Task 3)
     ingest_mode_auto = BooleanProperty(True)
@@ -592,7 +686,7 @@ class CS2AnalyzerApp(MDApp):
                     theme_text_color="Error",
                 )
             )
-            fallback.add_screen(err_screen)
+            fallback.add_widget(err_screen)
             return fallback
 
     def on_start(self):
@@ -655,6 +749,8 @@ class CS2AnalyzerApp(MDApp):
             sm.current = "home"
 
         self.refresh_quotas()
+        self.demo_folder_path = get_setting("DEFAULT_DEMO_PATH", "")
+        self.pro_folder_path = get_setting("PRO_DEMO_PATH", "")
         Clock.schedule_interval(self._update_ml_status, 10)
         Clock.schedule_interval(self._check_service_notifications, 15)
 
@@ -1073,6 +1169,8 @@ class CS2AnalyzerApp(MDApp):
                 queue.extend((child, depth + 1) for child in current.children)
 
     def apply_theme_styles(self, name):
+        from Programma_CS2_RENAN.apps.desktop_app.theme import get_color, set_active_theme
+
         # KivyMD 2.x requires hex colors or CSS color names (not old palette names)
         themes = {
             "CS2": "#FF9800",  # Orange 500
@@ -1093,10 +1191,18 @@ class CS2AnalyzerApp(MDApp):
 
         self.theme_cls.theme_style = "Dark"
 
+        # Update palette registry and bridge colors to KV properties
+        set_active_theme(name)
+        self.theme_surface = get_color("surface")
+        self.theme_surface_alt = get_color("surface_alt")
+        self.theme_accent_primary = get_color("accent_primary")
+
     def set_app_theme(self, name):
         save_user_setting("ACTIVE_THEME", name)
         self.apply_theme_styles(name)
         self._apply_theme_wallpaper(name)
+        if self.sm and self.sm.has_screen("settings"):
+            self.sm.get_screen("settings").current_theme = name
         self.show_success_dialog(
             i18n.get_text("visual_theme", self.lang_trigger), f"Switched to {name}"
         )
@@ -1109,6 +1215,8 @@ class CS2AnalyzerApp(MDApp):
     def set_font_size(self, name):
         save_user_setting("FONT_SIZE", name)
         self.apply_font_settings(name, get_setting("FONT_TYPE", "Roboto"))
+        if self.sm and self.sm.has_screen("settings"):
+            self.sm.get_screen("settings").current_font_size = name
         self.show_success_dialog(
             i18n.get_text("appearance", self.lang_trigger), i18n.get_text("save", self.lang_trigger)
         )
@@ -1117,6 +1225,8 @@ class CS2AnalyzerApp(MDApp):
         save_user_setting("FONT_TYPE", name)
         current_size = get_setting("FONT_SIZE", "Medium")
         self.apply_font_settings(current_size, name)
+        if self.sm and self.sm.has_screen("settings"):
+            self.sm.get_screen("settings").current_font_type = name
         self.show_success_dialog(
             i18n.get_text("appearance", self.lang_trigger), i18n.get_text("save", self.lang_trigger)
         )
@@ -1126,6 +1236,8 @@ class CS2AnalyzerApp(MDApp):
         i18n.set_language(l)
         self.lang_trigger = l
         self._refresh_ui_text()
+        if self.sm and self.sm.has_screen("settings"):
+            self.sm.get_screen("settings").current_language = l
         self.show_success_dialog(
             i18n.get_text("language", self.lang_trigger), i18n.get_text("save", self.lang_trigger)
         )
@@ -1403,6 +1515,11 @@ class CS2AnalyzerApp(MDApp):
             old_match_data_path = MATCH_DATA_PATH
 
         save_user_setting(k, path)
+        # Update reactive properties so Home Screen shows the new path
+        if k == "DEFAULT_DEMO_PATH":
+            self.demo_folder_path = path
+        else:
+            self.pro_folder_path = path
 
         # Migrate match_data if PRO_DEMO_PATH changed
         if k == "PRO_DEMO_PATH" and old_match_data_path is not None:
@@ -1481,7 +1598,8 @@ class CS2AnalyzerApp(MDApp):
                 quota_text = ""
                 if p and hasattr(p, "monthly_upload_count"):
                     quota_text = (
-                        f"Quota: {p.monthly_upload_count}/10 | Total: {p.total_upload_count}/100"
+                        f"This month: {p.monthly_upload_count} of 10 demos analyzed"
+                        f"  |  All time: {p.total_upload_count}"
                     )
                 Clock.schedule_once(
                     lambda dt: self._apply_quota_text(quota_text, status_text, task_data), 0
@@ -1717,10 +1835,10 @@ class CS2AnalyzerApp(MDApp):
     def show_interactive_overlay(self):
         """Shows tactical decision maps."""
         self.show_success_dialog(
-            "Tactical Overlay",
-            "Tactical Overlay is a planned feature for future releases.\n\n"
-            "Current Status: In Development\n"
-            "Expected: Phase 2 updates",
+            "Tactical Heatmap \u2014 Coming Soon",
+            "This feature will show interactive heatmaps of player positions, "
+            "grenade usage, and movement patterns on the map.\n\n"
+            "It is currently being developed and will be available in a future update.",
         )
 
     def show_pro_comparison_dialog(self):
@@ -1748,13 +1866,12 @@ class CS2AnalyzerApp(MDApp):
         if count < 10:
             Clock.schedule_once(
                 lambda dt: self.show_success_dialog(
-                    "Technical Audit: Decision Path",
-                    f"This view visualizes the [b]Explainable AI (XAI)[/b] trace.\n\n"
-                    "The path identifies which behavioral neurons are driving the current tactical advice. This requires high neural stability to generate.\n\n"
-                    "[color=FFAA00][b]CALIBRATION IN PROGRESS:[/b][/color]\n"
-                    "Ingesting professional matches to build neural baseline.\n"
-                    "(Steam/FACEIT connection NOT required for Pro Analysis)\n\n"
-                    f"[i]Current Pipeline Progress: {count} / 10 Matches[/i]",
+                    "Compare vs Pros",
+                    "This feature compares your gameplay decisions against professional players.\n\n"
+                    "[color=FFAA00][b]Not enough data yet:[/b][/color]\n"
+                    "The AI needs at least 10 pro matches to build a reliable baseline.\n\n"
+                    f"Progress: {count} / 10 matches analyzed\n\n"
+                    "Keep ingesting pro demos to unlock this feature.",
                 ),
                 0,
             )
@@ -1762,7 +1879,7 @@ class CS2AnalyzerApp(MDApp):
             Clock.schedule_once(
                 lambda dt: self.show_success_dialog(
                     i18n.get_text("pro_comparison", self.lang_trigger),
-                    "Visualizing Neural Activation Map...",
+                    "Loading comparison with pro player baseline...",
                 ),
                 0,
             )
@@ -1774,12 +1891,12 @@ class CS2AnalyzerApp(MDApp):
 
             ckpt = get_brain_dir() / ModelFactory.get_checkpoint_name(ModelFactory.TYPE_RAP)
             if ckpt.exists():
-                status = "ACTIVE (trained checkpoint found)"
+                status = "Ready \u2014 the AI has been trained on pro demos."
             else:
-                status = "NOT TRAINED (no checkpoint — predictions use random weights)"
+                status = "Not ready yet \u2014 ingest more pro demos to train the AI."
         except Exception:
-            status = "UNAVAILABLE (could not query brain status)"
-        self.show_success_dialog("The Brain", f"Neural Engine: {status}")
+            status = "Could not check AI status."
+        self.show_success_dialog("AI Status", status)
 
     def soft_restart_service(self):
         """Trigger a re-launch and PID cleanup for the background daemons."""

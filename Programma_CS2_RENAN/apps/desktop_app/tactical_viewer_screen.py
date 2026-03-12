@@ -52,6 +52,7 @@ class TacticalViewerScreen(MDScreen):
 
     segments = DictProperty({})
     ghost_active = BooleanProperty(False)
+    current_speed = NumericProperty(1.0)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -203,6 +204,7 @@ class TacticalViewerScreen(MDScreen):
 
     def set_speed(self, speed):
         """Set playback speed via ViewModel."""
+        self.current_speed = speed
         self._playback_vm.set_speed(speed)
 
     def on_seek(self, tick):

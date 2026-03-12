@@ -1,3 +1,14 @@
+# --- Import Guard: standalone diagnostic, not a pytest test ---
+# Lives in production tree for proximity to the model it validates.
+# Must NOT be collected by pytest (would pull heavy ML imports).
+import sys as _sys
+
+if "pytest" in _sys.modules:
+    raise ImportError(
+        "test_arch.py is a standalone architecture check, not a pytest test. "
+        "Run directly: python -m Programma_CS2_RENAN.backend.nn.experimental.rap_coach.test_arch"
+    )
+
 import torch
 
 from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.model import RAPCoachModel

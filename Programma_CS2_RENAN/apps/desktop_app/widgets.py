@@ -3,6 +3,7 @@ from kivy.clock import Clock
 from kivy.graphics.texture import Texture
 from kivy.uix.image import Image
 
+from Programma_CS2_RENAN.apps.desktop_app import theme as _theme
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 _logger = get_logger("cs2analyzer.widgets")
@@ -31,7 +32,7 @@ class MatplotlibWidget(Image):
         # WG-02: Use context manager for BytesIO to prevent leaks on exception
         try:
             with io.BytesIO() as buf:
-                fig.savefig(buf, format="png", facecolor="#1a1a1a", edgecolor="none")
+                fig.savefig(buf, format="png", facecolor=_theme.CHART_BG, edgecolor="none")
                 buf.seek(0)
 
                 # Load into CoreImage for texture creation
@@ -59,8 +60,8 @@ class TrendGraphWidget(MatplotlibWidget):
             return
 
         fig, ax1 = plt.subplots(figsize=(6, 3))
-        fig.patch.set_facecolor("#1a1a1a")
-        ax1.set_facecolor("#1a1a1a")
+        fig.patch.set_facecolor(_theme.CHART_BG)
+        ax1.set_facecolor(_theme.CHART_BG)
 
         # Plot Rating (Left Axis)
         idx = range(len(df))
@@ -85,6 +86,10 @@ class TrendGraphWidget(MatplotlibWidget):
 class RadarChartWidget(MatplotlibWidget):
     """Spider chart for skill attributes."""
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.keep_ratio = True  # Polar charts must not stretch
+
     def plot(self, skill_dict):
         if not skill_dict:
             self.texture = None
@@ -107,10 +112,10 @@ class RadarChartWidget(MatplotlibWidget):
         angles = np.linspace(0, 2 * np.pi, len(metrics), endpoint=True)
 
         fig = plt.figure(figsize=(4, 4))
-        fig.patch.set_facecolor("#1a1a1a")
+        fig.patch.set_facecolor(_theme.CHART_BG)
 
         ax = fig.add_subplot(111, polar=True)
-        ax.set_facecolor("#1a1a1a")
+        ax.set_facecolor(_theme.CHART_BG)
 
         # Style
         ax.plot(angles, values, color="#aa00ff", linewidth=2)
@@ -141,8 +146,8 @@ class EconomyGraphWidget(MatplotlibWidget):
             return
 
         fig, ax = plt.subplots(figsize=(6, 2.5))
-        fig.patch.set_facecolor("#1a1a1a")
-        ax.set_facecolor("#1a1a1a")
+        fig.patch.set_facecolor(_theme.CHART_BG)
+        ax.set_facecolor(_theme.CHART_BG)
 
         round_nums = [r.get("round_number", i + 1) for i, r in enumerate(rounds)]
         equip_vals = [r.get("equipment_value", 0) for r in rounds]
@@ -168,8 +173,8 @@ class MomentumGraphWidget(MatplotlibWidget):
             return
 
         fig, ax = plt.subplots(figsize=(6, 2.5))
-        fig.patch.set_facecolor("#1a1a1a")
-        ax.set_facecolor("#1a1a1a")
+        fig.patch.set_facecolor(_theme.CHART_BG)
+        ax.set_facecolor(_theme.CHART_BG)
 
         round_nums = []
         momentum = []
@@ -207,8 +212,8 @@ class RatingSparklineWidget(MatplotlibWidget):
             return
 
         fig, ax = plt.subplots(figsize=(6, 2.5))
-        fig.patch.set_facecolor("#1a1a1a")
-        ax.set_facecolor("#1a1a1a")
+        fig.patch.set_facecolor(_theme.CHART_BG)
+        ax.set_facecolor(_theme.CHART_BG)
 
         ratings = [h.get("rating", 1.0) if h.get("rating") is not None else 1.0 for h in history]
         idx = range(len(ratings))
@@ -240,8 +245,8 @@ class UtilityBarWidget(MatplotlibWidget):
             return
 
         fig, ax = plt.subplots(figsize=(6, 3.5))
-        fig.patch.set_facecolor("#1a1a1a")
-        ax.set_facecolor("#1a1a1a")
+        fig.patch.set_facecolor(_theme.CHART_BG)
+        ax.set_facecolor(_theme.CHART_BG)
 
         metrics = list(user_data.keys())
         user_vals = [user_data.get(m, 0) for m in metrics]

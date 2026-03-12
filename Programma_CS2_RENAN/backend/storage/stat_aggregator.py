@@ -12,7 +12,12 @@ from typing import Any, Dict
 from sqlmodel import select
 
 from Programma_CS2_RENAN.backend.storage.database import get_hltv_db_manager
-from Programma_CS2_RENAN.backend.storage.db_models import ProPlayer, ProPlayerStatCard, ProTeam
+from Programma_CS2_RENAN.backend.storage.db_models import (
+    MAX_AUX_JSON_BYTES,
+    ProPlayer,
+    ProPlayerStatCard,
+    ProTeam,
+)
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.stat_aggregator")
@@ -70,8 +75,19 @@ class StatCardAggregator:
             card.adr = core.get("adr", 0.0)
             card.kpr = core.get("kpr", 0.0)
 
-            # Store full blob in JSON for the Bridge to use later
-            card.detailed_stats_json = json.dumps(spider_data)
+            # S-07: Store spider blob with size guard — truncate to core
+            # stats if the full crawl exceeds the DB model's size cap.
+            full_json = json.dumps(spider_data)
+            if len(full_json.encode("utf-8")) > MAX_AUX_JSON_BYTES:
+                logger.warning(
+                    "S-07: detailed_stats_json for %s [%s] is %d bytes "
+                    "(limit %d) — storing core stats only",
+                    nickname, hltv_id,
+                    len(full_json.encode("utf-8")), MAX_AUX_JSON_BYTES,
+                )
+                core_only = {"core": core, "player_id": hltv_id, "nickname": nickname}
+                full_json = json.dumps(core_only)
+            card.detailed_stats_json = full_json
             card.last_updated = datetime.now(timezone.utc)
 
             session.commit()

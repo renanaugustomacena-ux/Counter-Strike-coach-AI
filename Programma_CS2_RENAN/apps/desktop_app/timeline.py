@@ -73,6 +73,22 @@ class TimelineScrubber(Widget):
         self.canvas.clear()
 
         if self.max_tick <= 0:
+            # Draw empty-state placeholder
+            with self.canvas:
+                Color(*self.COLOR_BG)
+                Rectangle(pos=self.pos, size=self.size)
+                # Centered placeholder text
+                lbl = CoreLabel(
+                    text="Load a demo to enable timeline",
+                    font_size=12,
+                    color=(0.5, 0.5, 0.5, 0.8),
+                )
+                lbl.refresh()
+                tex = lbl.texture
+                tx = self.x + (self.width - tex.width) / 2
+                ty = self.y + (self.height - tex.height) / 2
+                Color(1, 1, 1, 1)
+                Rectangle(texture=tex, pos=(tx, ty), size=tex.size)
             return
 
         with self.canvas:

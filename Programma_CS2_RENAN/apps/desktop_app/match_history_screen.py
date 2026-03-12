@@ -94,11 +94,11 @@ class MatchHistoryScreen(MDScreen):
         card = MDCard(
             style="elevated",
             size_hint_y=None,
-            height="80dp",
             padding="12dp",
             md_bg_color=_COLOR_CARD_BG,
             ripple_behavior=True,
         )
+        card.bind(minimum_height=card.setter("height"))
         demo_name = m.get("demo_name", "")
         card.bind(on_release=lambda inst, d=demo_name: self._on_match_selected(d))
 

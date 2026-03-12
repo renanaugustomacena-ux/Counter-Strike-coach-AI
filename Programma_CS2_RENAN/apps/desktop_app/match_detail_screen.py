@@ -220,7 +220,7 @@ class MatchDetailScreen(MDScreen):
                 )
                 row.add_widget(
                     MDLabel(
-                        text=component,
+                        text=component.replace("_", " ").title(),
                         font_style="Body",
                         role="small",
                         theme_text_color="Secondary",

@@ -321,7 +321,7 @@ class TestRoleThresholdStore:
     def test_get_threshold_sufficient_samples(self):
         store = self._make_store()
         store._thresholds["awp_kill_ratio"].value = 0.3
-        store._thresholds["awp_kill_ratio"].sample_count = 15
+        store._thresholds["awp_kill_ratio"].sample_count = 30  # >= MIN_SAMPLES_FOR_VALIDITY
         assert store.get_threshold("awp_kill_ratio") == 0.3
 
     def test_validate_consistency_placeholder(self):
