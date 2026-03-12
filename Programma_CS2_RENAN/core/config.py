@@ -159,6 +159,7 @@ def load_user_settings():
             "SENTRY_DSN": "",
             "SENTRY_ENABLED": False,
             "ENABLE_HLTV_SYNC": True,
+            "HLTV_SCRAPING_ENABLED": True,
             # --- Settings referenced via get_setting() across the codebase ---
             "COACH_SYSTEM_PROMPT": "",
             "COACH_WEIGHT_OVERRIDES": {},

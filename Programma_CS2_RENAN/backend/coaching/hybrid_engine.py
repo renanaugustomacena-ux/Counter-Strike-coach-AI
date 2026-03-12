@@ -16,6 +16,7 @@ From Phase 1B Roadmap:
 """
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
@@ -199,6 +200,22 @@ class HybridCoachingEngine:
                 )
                 return dict(HARD_DEFAULT_BASELINE)
             except Exception:
+                # C-41: Activate staleness check on last-resort fallback
+                try:
+                    baseline_date = datetime.strptime(
+                        _FALLBACK_BASELINE_VERSION, "%Y-%m"
+                    ).replace(tzinfo=timezone.utc)
+                    age_days = (datetime.now(timezone.utc) - baseline_date).days
+                    if age_days > _FALLBACK_BASELINE_MAX_AGE_DAYS:
+                        logger.critical(
+                            "C-41: Local fallback v%s is %d days old "
+                            "(max %d) — coaching quality severely degraded",
+                            _FALLBACK_BASELINE_VERSION,
+                            age_days,
+                            _FALLBACK_BASELINE_MAX_AGE_DAYS,
+                        )
+                except ValueError:
+                    age_days = -1
                 logger.critical(
                     "C-41: Cannot import HARD_DEFAULT_BASELINE — using local fallback v%s",
                     _FALLBACK_BASELINE_VERSION,

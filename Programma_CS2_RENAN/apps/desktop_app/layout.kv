@@ -58,7 +58,7 @@
    padding: ["16dp", "14dp"]
    orientation: "vertical"
    radius: [16, ]
-   md_bg_color: 0.08, 0.08, 0.12, 0.85
+   md_bg_color: app.theme_surface
    elevation: 2
    shadow_softness: 8
    shadow_color: 0, 0, 0, 0.3
@@ -253,21 +253,29 @@ FloatLayout:
                   role: "small"
                   theme_text_color: "Secondary"
                   adaptive_height: True
+               MDLabel:
+                  text: "Demo folder: " + (app.demo_folder_path if app.demo_folder_path else "Not set")
+                  font_style: "Body"
+                  role: "small"
+                  theme_text_color: "Hint"
+                  adaptive_height: True
                MDBoxLayout:
                   orientation: "horizontal"
                   spacing: "8dp"
                   adaptive_height: True
-                  padding: [0, "10dp", 0, 0]
+                  padding: [0, "4dp", 0, 0]
                   MDButton:
                      style: "elevated"
                      on_release: app.open_folder_picker(target="default")
                      MDButtonText:
-                        text: "Set Folder"
+                        text: "Set Demo Folder"
 
                # --- NEW Ingestion Progress Bar ---
                MDBoxLayout:
+                  id: parsing_progress_box
                   orientation: "vertical"
-                  adaptive_height: True
+                  size_hint_y: None
+                  height: self.minimum_height if (app.parsing_progress > 0 and app.parsing_progress < 100) else 0
                   spacing: "4dp"
                   opacity: 1 if (app.parsing_progress > 0 and app.parsing_progress < 100) else 0
                   MDLabel:
@@ -283,7 +291,7 @@ FloatLayout:
 
             # --- Pro Ingestion Hub ---
             DashboardCard:
-               md_bg_color: 0.06, 0.06, 0.18, 0.9
+               md_bg_color: app.theme_surface_alt
                MDBoxLayout:
                   adaptive_height: True
                   spacing: "8dp"
@@ -304,17 +312,23 @@ FloatLayout:
                   role: "small"
                   theme_text_color: "Secondary"
                   adaptive_height: True
+               MDLabel:
+                  text: "Pro folder: " + (app.pro_folder_path if app.pro_folder_path else "Not set")
+                  font_style: "Body"
+                  role: "small"
+                  theme_text_color: "Hint"
+                  adaptive_height: True
                MDBoxLayout:
                   orientation: "horizontal"
                   spacing: "8dp"
                   adaptive_height: True
-                  padding: [0, "5dp", 0, 0]
+                  padding: [0, "4dp", 0, 0]
                   MDButton:
                      style: "filled"
                      md_bg_color: 0.15, 0.35, 0.7, 1
                      on_release: app.open_folder_picker(target="pro")
                      MDButtonText:
-                        text: "Pro Folder"
+                        text: "Set Pro Folder"
 
                MDLabel:
                   text: i18n.get_text("ingestion_flux_speed", app.lang_trigger)  # F7-18
@@ -346,15 +360,26 @@ FloatLayout:
                      md_bg_color: 0.85, 0.2, 0.15, 1
                      on_release: app.set_pro_ingest_speed(0)
                      MDButtonText:
-                        text: "Turbo"
+                        text: "Turbo (Continuous)"
                         font_style: "Body"
                         role: "small"
-                  MDIconButton:
-                     icon: "play-circle" if not app.service_active else "stop-circle"
-                     style: "standard"
-                     theme_icon_color: "Custom"
-                     icon_color: (0.2, 0.9, 0.4, 1) if not app.service_active else (1, 0.3, 0.3, 1)
-                     on_release: app.toggle_ai_service()
+                  MDBoxLayout:
+                     orientation: "vertical"
+                     size_hint_x: None
+                     width: "60dp"
+                     adaptive_height: True
+                     MDIconButton:
+                        icon: "play-circle" if not app.service_active else "stop-circle"
+                        style: "standard"
+                        theme_icon_color: "Custom"
+                        icon_color: (0.2, 0.9, 0.4, 1) if not app.service_active else (1, 0.3, 0.3, 1)
+                        on_release: app.toggle_ai_service()
+                     MDLabel:
+                        text: "Start" if not app.service_active else "Stop"
+                        font_style: "Label"
+                        role: "small"
+                        halign: "center"
+                        adaptive_height: True
 
             # --- API & Profile Connectivity ---
             DashboardCard:
@@ -520,7 +545,7 @@ FloatLayout:
                padding: "16dp"
                orientation: "vertical"
                radius: [15, ]
-               md_bg_color: 0.1, 0.15, 0.25, 1
+               md_bg_color: app.theme_surface_alt
                MDLabel:
                   text: i18n.get_text("belief_state", app.lang_trigger)
                   bold: True
@@ -538,7 +563,7 @@ FloatLayout:
                   max: 100
                   pos_hint: {"center_y": .5}
                MDLabel:
-                  text: i18n.get_text("inference_stability", app.lang_trigger) + ("HIGH" if app.belief_confidence > 70 else "CALIBRATING...")
+                  text: i18n.get_text("inference_stability", app.lang_trigger) + (i18n.get_text("inference_high", app.lang_trigger) if app.belief_confidence > 70 else i18n.get_text("inference_low", app.lang_trigger))
                   font_style: "Body"
                   role: "small"
                   halign: "right"
@@ -552,7 +577,7 @@ FloatLayout:
                padding: "16dp"
                orientation: "vertical"
                radius: [15, ]
-               md_bg_color: 0.15, 0.1, 0.2, 1
+               md_bg_color: app.theme_surface
                MDLabel:
                   text: i18n.get_text("advanced_analytics", app.lang_trigger)  # F7-18
                   bold: True
@@ -564,14 +589,12 @@ FloatLayout:
                MDBoxLayout:
                   id: analytics_container
                   orientation: "vertical"
-                  size_hint_y: None
-                  height: "200dp"
+                  adaptive_height: True
 
                MDBoxLayout:
                   id: radar_container
                   orientation: "vertical"
-                  size_hint_y: None
-                  height: "240dp"
+                  adaptive_height: True
 
                MDBoxLayout:
                   orientation: "horizontal"
@@ -585,7 +608,7 @@ FloatLayout:
                      md_bg_color: 0.2, 0.6, 1, 1
                      on_release: app.show_interactive_overlay()
                      MDButtonText:
-                        text: "Tactical Overlay"
+                        text: "Tactical Heatmap (Coming Soon)"
 
 
             # --- Causal Audit ---
@@ -595,7 +618,7 @@ FloatLayout:
                padding: "12dp"
                orientation: "vertical"
                radius: [12, ]
-               md_bg_color: 0.1, 0.2, 0.3, 1
+               md_bg_color: app.theme_surface_alt
                MDLabel:
                   text: i18n.get_text("causal_advantage", app.lang_trigger)
                   bold: True
@@ -618,7 +641,7 @@ FloatLayout:
                padding: "16dp"
                orientation: "vertical"
                radius: [16, ]
-               md_bg_color: 0.07, 0.07, 0.1, 0.9
+               md_bg_color: app.theme_surface
                elevation: 1
                opacity: 1 if app.service_active else 0.4
                MDBoxLayout:
@@ -636,7 +659,7 @@ FloatLayout:
                      text_color: 0.3, 0.9, 0.5, 1
                      adaptive_height: True
                MDLabel:
-                  text: "Reservoir: {:,} experience ticks".format(app.knowledge_reservoir_ticks)
+                  text: "{:,} game ticks analyzed".format(app.knowledge_reservoir_ticks)
                   font_style: "Body"
                   role: "small"
                   theme_text_color: "Hint"
@@ -740,36 +763,42 @@ FloatLayout:
             adaptive_height: True
             opacity: 0
 
-         # Quick actions
-         MDBoxLayout:
-            orientation: "horizontal"
-            adaptive_height: True
-            spacing: "6dp"
-            padding: [0, "4dp", 0, "4dp"]
-            MDButton:
-               style: "outlined"
-               adaptive_width: True
-               on_release: root.send_quick_action(i18n.get_text("quick_action_positioning", app.lang_trigger))  # F7-17
-               MDButtonText:
-                  text: "Positioning"
-                  font_style: "Label"
-                  role: "small"
-            MDButton:
-               style: "outlined"
-               adaptive_width: True
-               on_release: root.send_quick_action(i18n.get_text("quick_action_utility", app.lang_trigger))  # F7-17
-               MDButtonText:
-                  text: "Utility"
-                  font_style: "Label"
-                  role: "small"
-            MDButton:
-               style: "outlined"
-               adaptive_width: True
-               on_release: root.send_quick_action(i18n.get_text("quick_action_focus", app.lang_trigger))  # F7-17
-               MDButtonText:
-                  text: "What to improve?"
-                  font_style: "Label"
-                  role: "small"
+         # Quick actions (horizontal scroll to prevent clipping)
+         ScrollView:
+            do_scroll_y: False
+            do_scroll_x: True
+            size_hint_y: None
+            height: "44dp"
+            MDBoxLayout:
+               orientation: "horizontal"
+               size_hint_x: None
+               width: self.minimum_width
+               spacing: "6dp"
+               padding: [0, "4dp", 0, "4dp"]
+               MDButton:
+                  style: "outlined"
+                  adaptive_width: True
+                  on_release: root.send_quick_action(i18n.get_text("quick_action_positioning", app.lang_trigger))  # F7-17
+                  MDButtonText:
+                     text: "Positioning"
+                     font_style: "Label"
+                     role: "small"
+               MDButton:
+                  style: "outlined"
+                  adaptive_width: True
+                  on_release: root.send_quick_action(i18n.get_text("quick_action_utility", app.lang_trigger))  # F7-17
+                  MDButtonText:
+                     text: "Utility"
+                     font_style: "Label"
+                     role: "small"
+               MDButton:
+                  style: "outlined"
+                  adaptive_width: True
+                  on_release: root.send_quick_action(i18n.get_text("quick_action_focus", app.lang_trigger))  # F7-17
+                  MDButtonText:
+                     text: "What to improve?"
+                     font_style: "Label"
+                     role: "small"
 
          # Input bar
          MDBoxLayout:
@@ -825,6 +854,13 @@ FloatLayout:
                      source: ""
                      radius: [60, ]
                      size: "120dp", "120dp"
+                  MDIcon:
+                     icon: "account-circle"
+                     font_size: "80dp"
+                     theme_text_color: "Custom"
+                     text_color: 0.4, 0.4, 0.45, 1
+                     pos_hint: {"center_x": .5, "center_y": .5}
+                     opacity: 0 if avatar_image.source else 1
                   MDCard:
                      id: role_badge
                      size_hint: None, None
@@ -869,7 +905,7 @@ FloatLayout:
                orientation: "vertical"
                padding: "16dp"
                adaptive_height: True
-               md_bg_color: 0.1, 0.1, 0.15, 1
+               md_bg_color: app.theme_surface
                MDLabel:
                   text: i18n.get_text("system_specs", app.lang_trigger)
                   bold: True
@@ -1083,7 +1119,7 @@ FloatLayout:
                valign: "top"
                adaptive_height: True
                padding: ["16dp", "16dp"]
-               markup: False
+               markup: True
 
 <SettingsScreen>:
    name: "settings"
@@ -1115,20 +1151,20 @@ FloatLayout:
                adaptive_height: True
                padding: [0, "4dp", 0, "8dp"]
                MDButton:
-                  style: "filled"
-                  md_bg_color: 0.85, 0.4, 0, 1
+                  style: "filled" if root.current_theme == "CS2" else "outlined"
+                  md_bg_color: (0.85, 0.4, 0, 1) if root.current_theme == "CS2" else (0.15, 0.15, 0.18, 1)
                   on_release: app.set_app_theme("CS2")
                   MDButtonText:
                      text: "CS2"
                MDButton:
-                  style: "filled"
-                  md_bg_color: 0.3, 0.4, 0.5, 1
+                  style: "filled" if root.current_theme == "CSGO" else "outlined"
+                  md_bg_color: (0.3, 0.4, 0.5, 1) if root.current_theme == "CSGO" else (0.15, 0.15, 0.18, 1)
                   on_release: app.set_app_theme("CSGO")
                   MDButtonText:
                      text: "CS:GO"
                MDButton:
-                  style: "filled"
-                  md_bg_color: 0.2, 0.5, 0.2, 1
+                  style: "filled" if root.current_theme == "CS1.6" else "outlined"
+                  md_bg_color: (0.2, 0.5, 0.2, 1) if root.current_theme == "CS1.6" else (0.15, 0.15, 0.18, 1)
                   on_release: app.set_app_theme("CS1.6")
                   MDButtonText:
                      text: "CS 1.6"
@@ -1181,17 +1217,17 @@ FloatLayout:
                spacing: "10dp"
                adaptive_height: True
                MDButton:
-                  style: "elevated"
+                  style: "filled" if root.current_font_size == "Small" else "outlined"
                   on_release: app.set_font_size("Small")
                   MDButtonText:
                      text: "Small"
                MDButton:
-                  style: "elevated"
+                  style: "filled" if root.current_font_size == "Medium" else "outlined"
                   on_release: app.set_font_size("Medium")
                   MDButtonText:
                      text: "Medium"
                MDButton:
-                  style: "elevated"
+                  style: "filled" if root.current_font_size == "Large" else "outlined"
                   on_release: app.set_font_size("Large")
                   MDButtonText:
                      text: "Large"
@@ -1272,45 +1308,52 @@ FloatLayout:
 
             MDDivider:
 
-            # --- Font Type Section (moved from Appearance) ---
-            MDLabel:
-               text: i18n.get_text("font_type", app.lang_trigger) + ": " + root.current_font_type
-               font_style: "Body"
-               role: "medium"
+            # --- Font Type Section ---
+            SectionHeader:
+               icon: "format-font"
+               title: i18n.get_text("font_type", app.lang_trigger) + ": " + root.current_font_type
             MDBoxLayout:
-               orientation: "horizontal"
-               spacing: "10dp"
+               orientation: "vertical"
                adaptive_height: True
-               MDButton:
-                  style: "elevated"
-                  on_release: app.set_font_type("Roboto")
-                  MDButtonText:
-                     text: "Roboto"
-               MDButton:
-                  style: "elevated"
-                  on_release: app.set_font_type("Arial")
-                  MDButtonText:
-                     text: "Arial"
-               MDButton:
-                  style: "elevated"
-                  on_release: app.set_font_type("JetBrains Mono")
-                  MDButtonText:
-                     text: "JetBrains"
-               MDButton:
-                  style: "elevated"
-                  on_release: app.set_font_type("New Hope")
-                  MDButtonText:
-                     text: "New Hope"
-               MDButton:
-                  style: "elevated"
-                  on_release: app.set_font_type("CS Regular")
-                  MDButtonText:
-                     text: "CS Regular"
-               MDButton:
-                  style: "elevated"
-                  on_release: app.set_font_type("YUPIX")
-                  MDButtonText:
-                     text: "YUPIX"
+               spacing: "6dp"
+               MDBoxLayout:
+                  orientation: "horizontal"
+                  spacing: "8dp"
+                  adaptive_height: True
+                  MDButton:
+                     style: "filled" if root.current_font_type == "Roboto" else "outlined"
+                     on_release: app.set_font_type("Roboto")
+                     MDButtonText:
+                        text: "Roboto"
+                  MDButton:
+                     style: "filled" if root.current_font_type == "Arial" else "outlined"
+                     on_release: app.set_font_type("Arial")
+                     MDButtonText:
+                        text: "Arial"
+                  MDButton:
+                     style: "filled" if root.current_font_type == "JetBrains Mono" else "outlined"
+                     on_release: app.set_font_type("JetBrains Mono")
+                     MDButtonText:
+                        text: "JetBrains"
+               MDBoxLayout:
+                  orientation: "horizontal"
+                  spacing: "8dp"
+                  adaptive_height: True
+                  MDButton:
+                     style: "filled" if root.current_font_type == "New Hope" else "outlined"
+                     on_release: app.set_font_type("New Hope")
+                     MDButtonText:
+                        text: "New Hope"
+                  MDButton:
+                     style: "filled" if root.current_font_type == "CS Regular" else "outlined"
+                     on_release: app.set_font_type("CS Regular")
+                     MDButtonText:
+                        text: "CS Regular"
+                  MDButton:
+                     style: "filled" if root.current_font_type == "YUPIX" else "outlined"
+                     on_release: app.set_font_type("YUPIX")
+                     MDButtonText:
+                        text: "YUPIX"
 
             MDDivider:
 
@@ -1324,20 +1367,20 @@ FloatLayout:
                adaptive_height: True
                padding: [0, "4dp", 0, "8dp"]
                MDButton:
-                  style: "filled"
-                  md_bg_color: 0.15, 0.25, 0.55, 1
+                  style: "filled" if root.current_language == "en" else "outlined"
+                  md_bg_color: (0.15, 0.25, 0.55, 1) if root.current_language == "en" else (0.15, 0.15, 0.18, 1)
                   on_release: app.set_language("en")
                   MDButtonText:
                      text: "English"
                MDButton:
-                  style: "filled"
-                  md_bg_color: 0.1, 0.45, 0.2, 1
+                  style: "filled" if root.current_language == "it" else "outlined"
+                  md_bg_color: (0.1, 0.45, 0.2, 1) if root.current_language == "it" else (0.15, 0.15, 0.18, 1)
                   on_release: app.set_language("it")
                   MDButtonText:
                      text: "Italiano"
                MDButton:
-                  style: "filled"
-                  md_bg_color: 0.1, 0.4, 0.15, 1
+                  style: "filled" if root.current_language == "pt" else "outlined"
+                  md_bg_color: (0.1, 0.4, 0.15, 1) if root.current_language == "pt" else (0.15, 0.15, 0.18, 1)
                   on_release: app.set_language("pt")
                   MDButtonText:
                      text: "Português"
@@ -1435,24 +1478,19 @@ FloatLayout:
                text: "Tick: 0"
                halign: "right"
                size_hint_x: 0.2
-            Switch:
+            MDSwitch:
                active: False
                on_active: tactical_map.debug_mode = self.active
-               size_hint_x: None
-               width: "48dp"
             MDLabel:
                text: i18n.get_text("debug", app.lang_trigger)
                font_style: "Body"
                role: "small"
-               size_hint_x: None
-               width: "40dp"
+               adaptive_width: True
 
-            Switch:
+            MDSwitch:
                id: ghost_switch
                active: root.ghost_active
                on_active: root.ghost_active = self.active
-               size_hint_x: None
-               width: "48dp"
             MDLabel:
                text: "GHOST"
                font_style: "Body"
@@ -1481,27 +1519,27 @@ FloatLayout:
                style: "standard"
                on_release: root.jump_to_next_cm()
             MDButton:
-               style: "elevated"
+               style: "filled" if root.current_speed == 0.5 else "elevated"
                on_release: root.set_speed(0.5)
                MDButtonText:
                   text: "0.5x"
             MDButton:
-               style: "elevated"
+               style: "filled" if root.current_speed == 0.75 else "elevated"
                on_release: root.set_speed(0.75)
                MDButtonText:
                   text: "0.75x"
             MDButton:
-               style: "elevated"
+               style: "filled" if root.current_speed == 1.0 else "elevated"
                on_release: root.set_speed(1.0)
                MDButtonText:
                   text: "1x"
             MDButton:
-               style: "elevated"
+               style: "filled" if root.current_speed == 2.0 else "elevated"
                on_release: root.set_speed(2.0)
                MDButtonText:
                   text: "2x"
             MDButton:
-               style: "elevated"
+               style: "filled" if root.current_speed == 4.0 else "elevated"
                on_release: root.set_speed(4.0)
                MDButtonText:
                   text: "4x"

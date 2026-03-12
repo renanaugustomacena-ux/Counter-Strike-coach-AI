@@ -32,16 +32,17 @@ logger = logging.getLogger("RealDataTest")
 class TestChronovisorReal(unittest.TestCase):
 
     def setUp(self):
-        self.match_manager = get_match_data_manager()
         self.scanner = ChronovisorScanner()
-        # Ensure model is NOT loaded if we want to test pure signal logic, or IS loaded if we want full integration.
-        # For this test, we accept either, but we focus on the data pipeline.
 
     def test_real_match_processing(self):
         print("\n[TEST] Real Data: Fetching Match Data...")
 
+        # D-23 fix: connect to match DB only when the test actually runs,
+        # not in setUp() — avoids unconditional production DB access.
+        match_manager = get_match_data_manager()
+
         # 1. Get Available Matches
-        matches = self.match_manager.list_available_matches()
+        matches = match_manager.list_available_matches()
         if not matches:
             self.skipTest("No real data found — run ingestion to populate the database.")
 
@@ -51,9 +52,9 @@ class TestChronovisorReal(unittest.TestCase):
         # 2. Extract Timeline for a Player
         # We need to find a player who actually played in this match.
         # We'll pull a chunk of ticks and see who is there.
-        ticks = self.match_manager.get_ticks_for_round(match_id, 1)
+        ticks = match_manager.get_ticks_for_round(match_id, 1)
         if not ticks:
-            ticks = self.match_manager.get_ticks_for_round(match_id, 2)
+            ticks = match_manager.get_ticks_for_round(match_id, 2)
 
         if not ticks:
             self.fail(f"Match {match_id} has no tick data in round 1 or 2.")

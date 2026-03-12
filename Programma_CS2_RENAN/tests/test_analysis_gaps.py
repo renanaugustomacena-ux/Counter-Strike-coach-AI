@@ -301,6 +301,8 @@ class TestRoleProfiles:
             ROLE_PROFILES,
         )
         for role in PlayerRole:
+            if role == PlayerRole.UNKNOWN:
+                continue  # UNKNOWN is a fallback, not a coaching-relevant role
             assert role in ROLE_PROFILES
 
     def test_fallback_tips_exist(self):
@@ -309,6 +311,8 @@ class TestRoleProfiles:
             _FALLBACK_TIPS,
         )
         for role in PlayerRole:
+            if role == PlayerRole.UNKNOWN:
+                continue  # UNKNOWN is a fallback, not a coaching-relevant role
             assert role in _FALLBACK_TIPS
             assert len(_FALLBACK_TIPS[role]) >= 1
 

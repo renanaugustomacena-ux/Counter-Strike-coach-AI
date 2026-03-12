@@ -113,17 +113,27 @@ class PerformanceScreen(MDScreen):
         card, content = self._section_card("Per-Map Performance")
 
         # Horizontal scroll of map cards
+        from kivy.uix.scrollview import ScrollView
+
+        h_scroll = ScrollView(
+            do_scroll_y=False,
+            do_scroll_x=True,
+            size_hint_y=None,
+            height=dp(140),
+        )
         scroll_row = MDBoxLayout(
             orientation="horizontal",
-            adaptive_height=True,
+            size_hint_x=None,
             spacing="8dp",
         )
+        scroll_row.bind(minimum_width=scroll_row.setter("width"))
 
         for map_name, stats in map_stats.items():
             map_card = self._build_map_card(map_name, stats)
             scroll_row.add_widget(map_card)
 
-        content.add_widget(scroll_row)
+        h_scroll.add_widget(scroll_row)
+        content.add_widget(h_scroll)
         container.add_widget(card)
 
     def _build_map_card(self, map_name: str, stats: dict) -> MDCard:
@@ -182,7 +192,7 @@ class PerformanceScreen(MDScreen):
         return card
 
     def _build_sw_section(self, container, sw: dict):
-        card, content = self._section_card("Strengths & Weaknesses (vs Pro)")
+        card, content = self._section_card("Strengths & Weaknesses (vs Pro Average)")
 
         row = MDBoxLayout(
             orientation="horizontal",
@@ -207,9 +217,10 @@ class PerformanceScreen(MDScreen):
             )
         )
         for name, z in sw.get("strengths", []):
+            display_name = name.replace("_", " ").title()
             str_col.add_widget(
                 MDLabel(
-                    text=f"+{z:.1f}σ  {name}",
+                    text=f"+{z:.1f} above avg \u2014 {display_name}",
                     font_style="Body",
                     role="small",
                     theme_text_color="Custom",
@@ -243,9 +254,10 @@ class PerformanceScreen(MDScreen):
             )
         )
         for name, z in sw.get("weaknesses", []):
+            display_name = name.replace("_", " ").title()
             weak_col.add_widget(
                 MDLabel(
-                    text=f"{z:.1f}σ  {name}",
+                    text=f"{z:.1f} below avg \u2014 {display_name}",
                     font_style="Body",
                     role="small",
                     theme_text_color="Custom",

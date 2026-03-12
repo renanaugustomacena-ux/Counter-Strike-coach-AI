@@ -201,6 +201,34 @@ class TacticalMap(Widget):
                     size=(map_size, map_size),
                 )
             )
+        else:
+            # Error surface: dark rectangle with map name when image fails to load
+            from kivy.core.text import Label as CoreLabel
+
+            map_size = min(self.width, self.height)
+            offset_x = (self.width - map_size) / 2
+            offset_y = (self.height - map_size) / 2
+            self.map_group.add(Color(0.1, 0.1, 0.12, 1))
+            self.map_group.add(
+                Rectangle(
+                    pos=(self.x + offset_x, self.y + offset_y),
+                    size=(map_size, map_size),
+                )
+            )
+            lbl = CoreLabel(
+                text=f"Map image not found: {self.map_name}",
+                font_size=14,
+                color=(0.6, 0.6, 0.6, 0.9),
+            )
+            lbl.refresh()
+            tex = lbl.texture
+            if tex:
+                tx = self.x + offset_x + (map_size - tex.width) / 2
+                ty = self.y + offset_y + (map_size - tex.height) / 2
+                self.map_group.add(Color(1, 1, 1, 1))
+                self.map_group.add(
+                    Rectangle(texture=tex, pos=(tx, ty), size=tex.size)
+                )
 
         # 2. Heatmap Layer
         self.heatmap_group.clear()

@@ -107,6 +107,14 @@ def run_sync_loop():
 
     while not STOP_SIGNAL.exists():
         try:
+            # D-23: Check config flag + robots.txt before each cycle
+            if not fetcher.preflight_check():
+                get_state_manager().update_status(
+                    "hunter", "Blocked", "Scraping disabled or disallowed by robots.txt"
+                )
+                _dormant_sleep(3600)
+                continue
+
             get_state_manager().update_status(
                 "hunter", "Running", f"Stats sync cycle active at {time.ctime()}"
             )

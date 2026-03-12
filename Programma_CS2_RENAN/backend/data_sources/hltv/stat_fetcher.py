@@ -8,12 +8,23 @@ Data scraped (text only — no file downloads):
     - Main stats: Rating 2.0, KPR, DPR, ADR, KAST, HS%, Impact
     - Trait sections: Firepower, Entrying, Utility
     - Sub-pages: Clutches, Multikills, Career history
+
+LEGAL/ETHICAL NOTICE (D-23):
+    This module scrapes publicly visible text data from HLTV.org.
+    HLTV's Terms of Service may restrict automated access. This scraper:
+    - Checks robots.txt before each sync cycle and aborts if disallowed
+    - Enforces 2-7 second random delays between requests
+    - Can be disabled entirely via HLTV_SCRAPING_ENABLED=false in settings
+    Use of this module is the operator's responsibility. Disable scraping
+    if you are unsure about compliance in your jurisdiction.
 """
 
 import json
 import random
 import re
 import time
+import urllib.request
+import urllib.robotparser
 from typing import Any, Dict, List, Optional
 
 try:
@@ -26,6 +37,7 @@ except ImportError:
 from Programma_CS2_RENAN.backend.data_sources.hltv.flaresolverr_client import FlareSolverrClient
 from Programma_CS2_RENAN.backend.storage.database import get_hltv_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import ProPlayer, ProPlayerStatCard
+from Programma_CS2_RENAN.core.config import get_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 from sqlmodel import select
 
@@ -36,6 +48,30 @@ logger = get_logger("cs2analyzer.hltv_stat_fetcher")
 # Crawl-delay. All requests go through FlareSolverr (headless browser), not raw HTTP.
 CRAWL_DELAY_MIN_SECONDS = 2
 CRAWL_DELAY_MAX_SECONDS = 7
+
+_HLTV_ROBOTS_URL = "https://www.hltv.org/robots.txt"
+_HLTV_BASE_URL = "https://www.hltv.org"
+
+
+def check_robots_txt(target_url: str = _HLTV_BASE_URL + "/stats") -> bool:
+    """Check HLTV robots.txt to verify scraping is not explicitly disallowed.
+
+    Returns True if scraping is allowed (or robots.txt is unreachable),
+    False if robots.txt explicitly disallows the target path.
+    """
+    rp = urllib.robotparser.RobotFileParser()
+    rp.set_url(_HLTV_ROBOTS_URL)
+    try:
+        rp.read()
+    except Exception as e:
+        # Cannot reach robots.txt — log warning but don't block
+        # (Cloudflare may block raw requests; FlareSolverr is used for actual scraping)
+        logger.warning("Could not fetch robots.txt from %s: %s — proceeding with caution", _HLTV_ROBOTS_URL, e)
+        return True
+    allowed = rp.can_fetch("*", target_url)
+    if not allowed:
+        logger.warning("robots.txt DISALLOWS scraping %s — aborting", target_url)
+    return allowed
 
 
 class HLTVStatFetcher:
@@ -57,6 +93,19 @@ class HLTVStatFetcher:
             )
         self._solver = FlareSolverrClient(timeout=60)
         self._hltv_db = get_hltv_db_manager()
+
+    def preflight_check(self) -> bool:
+        """D-23: Verify scraping is enabled and robots.txt allows it.
+
+        Returns True if scraping may proceed, False otherwise.
+        """
+        enabled = str(get_setting("HLTV_SCRAPING_ENABLED", "true")).lower()
+        if enabled not in ("1", "true", "yes"):
+            logger.info("HLTV scraping disabled via HLTV_SCRAPING_ENABLED setting")
+            return False
+        if not check_robots_txt():
+            return False
+        return True
 
     def fetch_top_players(self) -> List[str]:
         """Scrapes the Top 50 players page to get profile URLs."""
