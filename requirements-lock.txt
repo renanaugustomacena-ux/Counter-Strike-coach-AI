@@ -90,8 +90,6 @@ opencv-python==4.13.0.92
 opt_einsum==3.4.0
 packaging==25.0
 pandas==2.3.3
-pdfminer.six==20251230
-pdfplumber==0.11.9
 pefile==2024.8.26
 pexpect==4.9.0
 pillow==12.0.0
@@ -112,10 +110,7 @@ pyee==13.0.0
 Pygments==2.19.2
 pyinstaller==6.17.0
 pyinstaller-hooks-contrib==2025.11
-PyMuPDF==1.26.7
 pyparsing==3.3.1
-pypdf==6.7.0
-pypdfium2==5.4.0
 pypiwin32==223
 pyproject_hooks==1.2.0
 pytest==9.0.2

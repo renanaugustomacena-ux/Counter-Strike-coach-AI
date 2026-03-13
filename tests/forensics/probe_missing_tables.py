@@ -1,13 +1,17 @@
 import os
 import sys
 
+# --- Import Guard: standalone diagnostic, not a pytest test ---
+if __name__ != "__main__":
+    raise ImportError(
+        "probe_missing_tables.py is a standalone diagnostic. "
+        "Run: python tests/forensics/probe_missing_tables.py"
+    )
+
 # --- Venv Guard ---
 if sys.prefix == sys.base_prefix:
-    if "pytest" in sys.modules:
-        pass  # Let pytest handle this
-    else:
-        print("ERROR: Not in venv.", file=sys.stderr)
-        sys.exit(2)
+    print("ERROR: Not in venv.", file=sys.stderr)
+    sys.exit(2)
 
 from sqlalchemy import inspect
 

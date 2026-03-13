@@ -2,13 +2,17 @@ import os
 import sys
 from pathlib import Path
 
+# --- Import Guard: standalone diagnostic, not a pytest test ---
+if __name__ != "__main__":
+    raise ImportError(
+        "check_failed_tasks.py is a standalone diagnostic. "
+        "Run: python tests/forensics/check_failed_tasks.py"
+    )
+
 # --- Venv Guard ---
 if sys.prefix == sys.base_prefix:
-    if "pytest" in sys.modules:
-        pass  # Let pytest handle this
-    else:
-        print("ERROR: Not in venv.", file=sys.stderr)
-        sys.exit(2)
+    print("ERROR: Not in venv.", file=sys.stderr)
+    sys.exit(2)
 
 # --- Path Stabilization ---
 script_dir = os.path.dirname(os.path.abspath(__file__))
