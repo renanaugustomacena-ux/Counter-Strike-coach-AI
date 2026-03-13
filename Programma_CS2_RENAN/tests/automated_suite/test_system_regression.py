@@ -1,14 +1,12 @@
 import pytest
-from sqlmodel import Session, create_engine, select
+from sqlmodel import select
 
-from Programma_CS2_RENAN.backend.storage.database import get_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
 
 
 def test_database_schema_regression():
     """Regression Test: Ensure critical fields exist in the PlayerMatchStats model."""
-    db = get_db_manager()
-    # Check if we can create a record with all new fields
+    # Pure model validation — no database connection required.
     test_stats = PlayerMatchStats(
         player_name="Regression_Bot",
         demo_name="regression_test.dem",
@@ -32,12 +30,15 @@ def test_database_schema_regression():
     assert hasattr(test_stats, "accuracy")
 
 
+@pytest.mark.integration
 def test_full_system_ingestion_query():
     """System Test: Verify upsert and query logic using existing real data.
 
     Uses a skip-gate pattern: only runs if real data exists in the database.
     Does NOT inject synthetic records into the production database.
     """
+    from Programma_CS2_RENAN.backend.storage.database import get_db_manager
+
     db = get_db_manager()
 
     with db.get_session() as session:

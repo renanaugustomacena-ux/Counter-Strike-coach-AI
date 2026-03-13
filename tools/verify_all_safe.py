@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 
 # --- Venv Guard ---
-if sys.prefix == sys.base_prefix:
+if sys.prefix == sys.base_prefix and not os.environ.get("CI"):
     print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
     sys.exit(2)
 

@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 # Add project root to path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from Programma_CS2_RENAN.backend.nn.coach_manager import CoachTrainingManager
 from Programma_CS2_RENAN.backend.nn.training_callbacks import CallbackRegistry

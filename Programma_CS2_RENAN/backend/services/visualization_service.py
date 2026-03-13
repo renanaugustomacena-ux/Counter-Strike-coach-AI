@@ -58,11 +58,12 @@ class VisualizationService:
 
             # Save to file
             plt.savefig(output_path, transparent=True)
-            plt.close(fig)
             return output_path
         except Exception as e:
             logger.error("generate_performance_radar failed: %s", e)
             raise
+        finally:
+            plt.close(fig)
 
     def plot_comparison_v2(
         self, p1_name: str, p2_name: str, p1_stats: Dict[str, Any], p2_stats: Dict[str, Any]
@@ -97,12 +98,13 @@ class VisualizationService:
 
             buf = io.BytesIO()
             plt.savefig(buf, format="png")
-            plt.close(fig)
             buf.seek(0)
             return buf
         except Exception as e:
             logger.error("plot_comparison_v2 failed: %s", e)
             raise
+        finally:
+            plt.close(fig)
 
 
 _service = None
@@ -118,4 +120,4 @@ def get_visualization_service():
 def generate_performance_radar(
     user_stats: Dict[str, float], pro_stats: Dict[str, float], output_path: str
 ):
-    return _service.generate_performance_radar(user_stats, pro_stats, output_path)
+    return get_visualization_service().generate_performance_radar(user_stats, pro_stats, output_path)

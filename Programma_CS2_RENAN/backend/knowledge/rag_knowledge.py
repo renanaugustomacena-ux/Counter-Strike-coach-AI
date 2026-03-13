@@ -432,6 +432,17 @@ class KnowledgePopulator:
         logger.info("Populated %s knowledge entries from %s", count, json_path)
 
 
+_cached_retriever: Optional[KnowledgeRetriever] = None
+
+
+def _get_retriever() -> KnowledgeRetriever:
+    """Return a cached KnowledgeRetriever to avoid reloading SBERT per call."""
+    global _cached_retriever
+    if _cached_retriever is None:
+        _cached_retriever = KnowledgeRetriever()
+    return _cached_retriever
+
+
 def generate_rag_coaching_insight(
     player_stats: Dict[str, float], map_name: Optional[str] = None
 ) -> str:
@@ -445,7 +456,7 @@ def generate_rag_coaching_insight(
     Returns:
         Contextual coaching insight
     """
-    retriever = KnowledgeRetriever()
+    retriever = _get_retriever()
 
     # Construct query from stats
     query_parts = []

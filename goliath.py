@@ -144,13 +144,17 @@ class GoliathOrchestrator:
             sys.exit(1)
 
     def run_manifest(self):
-        from tools.generate_manifest import ManifestGenerator
+        import subprocess
 
         console.print("[command]>>> Initiating Integrity Subsystem[/command]")
-        gen = ManifestGenerator()
-        if gen.generate():
+        result = subprocess.run(
+            [sys.executable, "Programma_CS2_RENAN/tools/sync_integrity_manifest.py"],
+            capture_output=True, text=True, timeout=120,
+        )
+        if result.returncode == 0:
             logger.info("Manifest generation completed")
         else:
+            logger.error("Manifest generation failed: %s", result.stderr)
             sys.exit(1)
 
     def run_audit(self, demo_path: Optional[str]):

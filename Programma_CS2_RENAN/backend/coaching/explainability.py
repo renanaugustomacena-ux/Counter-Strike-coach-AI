@@ -66,11 +66,11 @@ class ExplanationGenerator:
             feature=feature.replace("avg_", "").replace("_", " "),
             delta=abs(int(delta * 100)),
             score=max(0, int(100 - abs(delta * 100))),
-            impact="missed opportunities",
-            location=ctx.get("location", "your current sector"),
-            time=ctx.get("time", "1.2"),
-            enemies=ctx.get("enemies", "multiple"),
-            weapon=ctx.get("weapon", "equipment"),
+            impact=ctx.get("impact", "reduced effectiveness"),
+            location=ctx.get("location", "key positions"),
+            time=ctx.get("time", "several"),
+            enemies=ctx.get("enemies", "nearby"),
+            weapon=ctx.get("weapon", "your equipment"),
             recommendation="conservative" if skill_level < 5 else "aggressive",
         )
 

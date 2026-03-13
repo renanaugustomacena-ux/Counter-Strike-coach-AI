@@ -34,12 +34,17 @@ class KnowledgeGraphManager:
     def __init__(self):
         self._init_db()
 
+    def _connect(self) -> sqlite3.Connection:
+        """Return a WAL-mode connection to the graph database."""
+        conn = sqlite3.connect(self.DB_PATH)
+        conn.execute("PRAGMA journal_mode=WAL")
+        return conn
+
     def _init_db(self):
         """Initialize the graph database schema."""
         os.makedirs(os.path.dirname(self.DB_PATH), exist_ok=True)
         try:
-            with sqlite3.connect(self.DB_PATH) as conn:
-                conn.execute("PRAGMA journal_mode=WAL")
+            with self._connect() as conn:
                 # Entities Table
                 conn.execute(
                     """
@@ -80,7 +85,7 @@ class KnowledgeGraphManager:
         """
         obs_json = json.dumps(observations or [])
         try:
-            with sqlite3.connect(self.DB_PATH) as conn:
+            with self._connect() as conn:
                 conn.execute(
                     """
                     INSERT INTO entities (name, type, observations)
@@ -107,7 +112,7 @@ class KnowledgeGraphManager:
         """
         meta_json = json.dumps(metadata or {})
         try:
-            with sqlite3.connect(self.DB_PATH) as conn:
+            with self._connect() as conn:
                 conn.execute(
                     """
                     INSERT OR IGNORE INTO relations (from_entity, to_entity, relation_type, metadata)
@@ -137,7 +142,7 @@ class KnowledgeGraphManager:
         result = {"entity": None, "neighbors": []}
 
         try:
-            with sqlite3.connect(self.DB_PATH) as conn:
+            with self._connect() as conn:
                 conn.row_factory = sqlite3.Row
 
                 # Fetch Central Entity

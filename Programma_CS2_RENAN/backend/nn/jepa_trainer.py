@@ -32,6 +32,7 @@ class JEPATrainer:
         lr: float = 1e-4,
         weight_decay: float = 1e-4,
         drift_threshold: float = 2.5,
+        t_max: int = 100,
     ):
         self.model = model
         # NN-36: Exclude target encoder (EMA-only, never receives gradients)
@@ -40,13 +41,36 @@ class JEPATrainer:
                 p.requires_grad = False
         trainable = [p for p in model.parameters() if p.requires_grad]
         self.optimizer = optim.AdamW(trainable, lr=lr, weight_decay=weight_decay)
-        self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=100)
+        self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=t_max)
 
         # Task 2.19.3: Drift monitoring for automatic retraining
         self.drift_monitor = DriftMonitor(z_threshold=drift_threshold)
         self.drift_history: List[DriftReport] = []
         self._needs_full_retrain = False
         self._reference_stats: Optional[dict] = None
+
+    def encode_raw_negatives(
+        self, negatives: torch.Tensor, seq_len: int
+    ) -> torch.Tensor:
+        """Encode raw feature negatives into latent space (NN-H-02).
+
+        Shared by both training and validation paths to ensure identical
+        encoding logic. Each negative is expanded to a full sequence, encoded
+        by the target encoder, then mean-pooled over the temporal dimension.
+
+        Args:
+            negatives: Raw features, shape (B, N, feat_dim)
+            seq_len: Context sequence length to expand negatives to
+
+        Returns:
+            Encoded negatives, shape (B, N, latent_dim)
+        """
+        with torch.no_grad():
+            b, n, d = negatives.shape
+            neg_seqs = negatives.reshape(b * n, 1, d)
+            neg_seqs = neg_seqs.expand(-1, seq_len, -1)
+            neg_encoded = self.model.target_encoder(neg_seqs).mean(dim=1)
+            return neg_encoded.reshape(b, n, -1)
 
     def train_step(
         self, x_context: torch.Tensor, x_target: torch.Tensor, negatives: torch.Tensor
@@ -90,13 +114,7 @@ class JEPATrainer:
 
         # 2. Encode raw negatives if from orchestrator batch (dimension mismatch = raw features)
         if negatives is not None and negatives.shape[-1] != pred_embedding.shape[-1]:
-            with torch.no_grad():
-                b, n, d = negatives.shape
-                # Treat each negative as a length-1 sequence, expand to match context seq_len
-                neg_seqs = negatives.reshape(b * n, 1, d)
-                neg_seqs = neg_seqs.expand(-1, x_context.shape[1], -1)
-                neg_encoded = self.model.target_encoder(neg_seqs).mean(dim=1)
-                negatives = neg_encoded.reshape(b, n, -1)
+            negatives = self.encode_raw_negatives(negatives, x_context.shape[1])
 
         # 3. Compute Loss
         loss = jepa_contrastive_loss(pred_embedding, target_embedding, negatives)

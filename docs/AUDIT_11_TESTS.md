@@ -1,7 +1,9 @@
 # Audit Report 11 — Tests
 
-**Scope:** 96 test files, ~19,345 lines | **Date:** 2026-03-10
-**Open findings:** 4 HIGH | 86 MEDIUM | 153 LOW
+**Scope:** 96 test files, ~19,345 lines | **Date:** 2026-03-10 | **Refreshed:** 2026-03-13
+**Open findings:** 4 HIGH | 80 MEDIUM | 150 LOW
+
+> **Note:** Test hygiene is important but secondary to getting the pipeline trained. These findings represent technical debt that should be addressed incrementally. The systemic patterns (unused imports, `__new__()` bypass, prod DB access) are batch-fixable.
 
 ---
 
@@ -9,16 +11,16 @@
 
 | ID | File | Finding |
 |---|---|---|
-| — | test_hybrid_engine.py:163 | `test_save_insights_to_db` writes to production DB via `get_db_manager()` |
 | — | test_services.py | Almost entirely smoke tests — no functional logic exercised |
-| — | test_training_orchestrator_logic.py:76 | Tautological: manually implements early stopping logic inline instead of testing production code |
-| — | test_e2e.py + test_functional.py | Operate on production DB/config (mitigated via `isolated_settings` but still risky) |
+| — | test_training_orchestrator_logic.py:76 | Tautological: manually implements early stopping logic instead of testing production code |
+| — | test_e2e.py + test_functional.py | Operate on production DB/config (mitigated via `isolated_settings` but risky) |
 | — | backend/nn/experimental/rap_coach/test_arch.py | Test file inside production source tree — packaged with prod code |
 | — | tests/forensics/check_db_status.py | Not a test — queries prod DB at module-load time |
 | — | tests/verify_chronovisor_real.py | Depends on real matches in production DB — always skips in CI |
 | — | tests/verify_reporting.py | Connects to prod DB, writes files on disk, `shutil.rmtree` risk |
+| T11-H1 | test_system_regression.py:10-11,41-44 | `test_database_schema_regression()` and `test_full_system_ingestion_query()` call `get_db_manager()` directly, connecting to production database. Should use `mock_db_manager` or `in_memory_db` fixtures. |
 
-## Systemic MEDIUM Patterns (86 total)
+## Systemic MEDIUM Patterns (80 total)
 
 ### `__new__()` Constructor Bypass (12 files)
 ExperienceBank, CoachingDialogueEngine, KnowledgeGraph, CoachingService, ChronovisorScanner, CoachTrainingManager, StateManager, DatabaseGovernor, TrainingController, ProfileService, ExperienceBank (round_utils), RAPStateReconstructor — all use `ClassName.__new__()` bypassing `__init__`, creating partially initialized objects that mask initialization bugs.
@@ -45,7 +47,7 @@ test_system_regression.py (module-level), test_onboarding.py, test_rag_knowledge
 - `torch.randn()` without seed — test_arch.py
 
 ### Other MEDIUM
-- Disjunctive assertion `"kills" in result or "below" in result` — test_coaching_engines.py
+- Disjunctive assertion — test_coaching_engines.py
 - Catches AttributeError but swallows all other exceptions — test_coaching_service_contracts.py
 - `sys.modules` patching to make imports fail — test_coaching_service_fallback.py
 - MagicMock without `spec=` (multiple files)
@@ -56,10 +58,10 @@ test_system_regression.py (module-level), test_onboarding.py, test_rag_knowledge
 - Mixed unittest.TestCase + pytest — verify_chronovisor_logic.py, verify_chronovisor_real.py
 - Diagnostic scripts masquerading as tests (9 files in tests/forensics/)
 
-## Systemic LOW Patterns (153 total)
+## Systemic LOW Patterns (150 total)
 
 ### Unused `import sys` (68 files)
-Remnant of per-file sys.path manipulation centralized to conftest.py. Trivial cleanup.
+Remnant of per-file sys.path manipulation centralized to conftest.py. Trivial batch cleanup.
 
 ### Coverage Gaps (~30 files)
 Missing edge cases, boundary tests, NaN/negative inputs, concurrent access tests, multi-model tests across many files.
@@ -70,6 +72,8 @@ Missing edge cases, boundary tests, NaN/negative inputs, concurrent access tests
 - Weak tolerance values in approx assertions
 - Always-skipped CI tests (7 files depend on real data)
 - Dead code in test files
+- `conftest.py` sets `KIVY_NO_ARGS` but not `KIVY_NO_WINDOW` — tests may attempt window creation in headless CI
+- `test_smoke.py` manually constructs `PROJECT_ROOT` and inserts `sys.path`, duplicating conftest.py logic
 
 ## Cross-Cutting
 
@@ -77,3 +81,7 @@ Missing edge cases, boundary tests, NaN/negative inputs, concurrent access tests
 2. **`__new__()` Bypass** — 12 files bypass constructors, masking `__init__` bugs. Replace with DI or `patch.__init__`.
 3. **68 Unused `import sys`** — Trivial batch cleanup with high hygiene value.
 4. **Scripts in Test Tree** — 9 diagnostic scripts in tests/forensics/ are not pytest-compatible. Move to tools/ or add ImportError guards.
+
+## Resolved Since 2026-03-10
+
+Removed 1 HIGH finding (test_hybrid_engine.py:163 — now uses mock_db_manager via patch, no prod DB access). Minor improvements to test_rap_coach.py conftest in commit f1e921f.

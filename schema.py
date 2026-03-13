@@ -32,7 +32,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 # Central DB Path
 DB_PATH = PROJECT_ROOT / "Programma_CS2_RENAN" / "backend" / "storage" / "database.db"
-KNOWLEDGE_DB_PATH = PROJECT_ROOT / "Programma_CS2_RENAN" / "backend" / "storage" / "knowledge.db"
+KNOWLEDGE_DB_PATH = PROJECT_ROOT / "Programma_CS2_RENAN" / "knowledge_graph.db"
 
 
 class SchemaSuite:
@@ -181,14 +181,15 @@ class SchemaSuite:
 
     def _transfer_table(self, table, src, dest):
         try:
-            self._validate_identifier(table)
-            # Check if table exists in both
+            safe_table = self._validate_identifier(table)
+            # Check if table exists in source
             src_cur = src.cursor()
             src_cur.execute(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
                 (table,),
             )
             if not src_cur.fetchone():
+                print(f"    - Table '{table}' not found in source. Skipping.")
                 return
 
             print(f"    Processing '{table}'...")
@@ -196,10 +197,28 @@ class SchemaSuite:
 
             # Get columns
             cols = [c[1] for c in self._safe_pragma_table_info(src_cur, table)]
+            if not cols:
+                print(f"    - No columns found for '{table}'. Skipping.")
+                return
 
-            # Ignoring ID collisions for now; usually we'd filter.
-            # This is a naive import for the master suite prototype.
             print(f"    - Found {row_count} rows.")
+            if row_count == 0:
+                return
+
+            # Fetch all rows from source and insert into destination
+            src_cur.execute(f"SELECT * FROM [{safe_table}]")
+            rows = src_cur.fetchall()
+
+            col_names = ", ".join(f"[{c}]" for c in cols)
+            placeholders = ", ".join(["?"] * len(cols))
+            dest_cur = dest.cursor()
+            dest_cur.executemany(
+                f"INSERT OR IGNORE INTO [{safe_table}] ({col_names}) VALUES ({placeholders})",
+                rows,
+            )
+            dest.commit()
+            transferred = dest_cur.rowcount if dest_cur.rowcount >= 0 else len(rows)
+            print(f"    - Transferred {transferred} rows (IGNORE on ID conflict).")
 
         except Exception as e:
             print(f"    - Error processing {table}: {e}")
@@ -210,26 +229,13 @@ class SchemaSuite:
         print("      MACENA SCHEMA - EMERGENCY FIX")
         print("=" * 60)
 
-        if fix_type in ["knowledge", "all"]:
-            print("[*] Fixing Knowledge DB Schema...")
-            if self.knowledge_db_path.exists():
-                k_conn = sqlite3.connect(self.knowledge_db_path)
-                try:
-                    k_conn.execute(
-                        "ALTER TABLE coachstate ADD COLUMN current_epoch INTEGER DEFAULT 0"
-                    )
-                    print("    [FIXED] Added current_epoch to knowledge DB.")
-                except Exception:
-                    print("    [OK] Knowledge DB schema appears correct.")
-                k_conn.close()
-            else:
-                print("    [SKIP] Knowledge DB not found.")
+        # NOTE: coachstate migrations are handled by _apply_column_migration()
+        # on the main database.db (line 128-129). No separate knowledge DB fix needed.
 
         if fix_type in ["sequences", "all"]:
             print("[*] Recalibrating SQLite Sequences...")
             print("[WARN] This resets all auto-increment counters. New rows may reuse old IDs.")
             conn = self._get_connection()
-            # Log current state before destructive operation
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM sqlite_sequence")
             current = cursor.fetchall()
@@ -237,6 +243,18 @@ class SchemaSuite:
                 print(f"    Current sequences ({len(current)} tables):")
                 for row in current:
                     print(f"      {row[0]}: seq={row[1]}")
+                # Backup before destructive DELETE
+                cursor.execute(
+                    "CREATE TABLE IF NOT EXISTS _sqlite_sequence_backup "
+                    "(name TEXT, seq INTEGER, backup_time TEXT)"
+                )
+                cursor.executemany(
+                    "INSERT INTO _sqlite_sequence_backup (name, seq, backup_time) "
+                    "VALUES (?, ?, datetime('now'))",
+                    current,
+                )
+                conn.commit()
+                print("    [BACKUP] Saved to _sqlite_sequence_backup table.")
             conn.execute("DELETE FROM sqlite_sequence")
             conn.commit()
             conn.close()

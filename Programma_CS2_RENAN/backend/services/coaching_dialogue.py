@@ -281,21 +281,29 @@ class CoachingDialogueEngine:
             )
 
             bank = get_experience_bank()  # Singleton — avoids re-loading SBERT model (F5-04)
-            map_name = self._player_context.get("map_name", "unknown")
-            ctx = ExperienceContext(
-                map_name=map_name,
-                round_phase=self._player_context.get("round_phase", "unknown"),
-                side=self._player_context.get("side", "unknown"),
-            )
-            experiences = bank.retrieve_similar(ctx, top_k=self.RETRIEVAL_TOP_K)
-            if experiences:
-                exp_lines = ["Similar experiences:"]
-                for exp in experiences:
-                    source = f"(pro: {exp.pro_player_name})" if exp.pro_player_name else ""
-                    exp_lines.append(
-                        f"- {exp.action_taken} → {exp.outcome} " f"on {exp.map_name} {source}"
-                    )
-                blocks.append("\n".join(exp_lines))
+            map_name = self._player_context.get("map_name")
+            side = self._player_context.get("side")
+            round_phase = self._player_context.get("round_phase")
+            # C-08: Skip retrieval when essential context is missing —
+            # "unknown" defaults bias SBERT similarity toward arbitrary results.
+            if not map_name or not side:
+                logger.debug("Skipping experience retrieval — missing map/side context")
+            else:
+                ctx = ExperienceContext(
+                    map_name=map_name,
+                    round_phase=round_phase or "unknown",
+                    side=side,
+                )
+                experiences = bank.retrieve_similar(ctx, top_k=self.RETRIEVAL_TOP_K)
+                if experiences:
+                    exp_lines = ["Similar experiences:"]
+                    for exp in experiences:
+                        source = f"(pro: {exp.pro_player_name})" if exp.pro_player_name else ""
+                        exp_lines.append(
+                            f"- {exp.action_taken} → {exp.outcome} "
+                            f"on {exp.map_name} {source}"
+                        )
+                    blocks.append("\n".join(exp_lines))
         except Exception as exc:
             logger.warning("Experience Bank retrieval failed: %s", exc)
 

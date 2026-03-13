@@ -10,8 +10,6 @@ Core logic for demo playback, including:
 from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional
 
-from kivy.clock import Clock
-
 from Programma_CS2_RENAN.core.demo_frame import DemoFrame, NadeState, PlayerState, Team
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -73,7 +71,7 @@ class PlaybackEngine:
         self._sub_tick: float = 0.0  # Normalized progress between current and next frame
         self._is_playing: bool = False
         self._speed: float = self.SPEED_NORMAL
-        self._clock_event: Optional[Clock] = None
+        self._clock_event: Optional[object] = None
         self._on_frame_update: Optional[Callable[[InterpolatedFrame], None]] = None
         self._tick_rate: int = 64
 
@@ -97,6 +95,8 @@ class PlaybackEngine:
 
             self._is_playing = True
             # Update at ~60 FPS
+            from kivy.clock import Clock
+
             self._clock_event = Clock.schedule_interval(self._tick, 1.0 / 60.0)
             logger.debug("Play")
 

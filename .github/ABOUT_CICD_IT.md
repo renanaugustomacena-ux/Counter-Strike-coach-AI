@@ -2,57 +2,68 @@
 
 > **[English](ABOUT_CICD.md)** | **[Italiano](ABOUT_CICD_IT.md)** | **[Português](ABOUT_CICD_PT.md)**
 
-Questa directory contiene i workflow di GitHub Actions e le configurazioni di automazione per il progetto Macena CS2 Analyzer.
+Questa directory contiene la pipeline CI/CD di GitHub Actions per il progetto Macena CS2 Analyzer.
 
-## Workflow
+## Panoramica della Pipeline
 
-La directory `.github/workflows/` contiene le pipeline CI/CD automatizzate:
+La pipeline viene eseguita ad **ogni push e pull request**, validando la qualita del codice su entrambe le piattaforme Linux e Windows. La build di distribuzione finale e destinata a Windows (dove si trovano i giocatori di CS2).
 
-### CI/CD Principale
-- **[build.yml](workflows/build.yml)** — Pipeline di verifica build
-  Eseguita ad ogni push e pull request per validare la qualità del codice:
-  - Controlli di linting e stile del codice (flake8, black)
-  - Esecuzione di test unitari e di integrazione (pytest)
-  - Scansione vulnerabilità di sicurezza (bandit, safety)
-  - Verifica delle dipendenze
-  - Generazione degli artifact di build
+**File del workflow:** [`.github/workflows/build.yml`](workflows/build.yml)
 
-### Automazione Gemini AI
-- **[gemini-dispatch.yml](workflows/gemini-dispatch.yml)** — Workflow di dispatch Gemini AI
-  Dispatcher centralizzato per instradare i task Gemini AI ai gestori appropriati
+## Stadi della Pipeline
 
-- **[gemini-invoke.yml](workflows/gemini-invoke.yml)** — Invocazione comandi Gemini
-  Esegue comandi Gemini AI per generazione automatica del codice e refactoring
+```
+lint ──┬── test (Ubuntu + Windows) ── integration (Ubuntu + Windows) ──┐
+       │                                                                ├── build-distribution (Windows, solo main)
+       ├── security ───────────────────────────────────────────────────┘
+       └── type-check (informativo, non bloccante)
+```
 
-- **[gemini-review.yml](workflows/gemini-review.yml)** — Revisione del codice basata su AI
-  Revisione automatica del codice usando Gemini per le pull request, verifica:
-  - Qualità del codice e aderenza ai principi ingegneristici
-  - Vulnerabilità di sicurezza e anti-pattern
-  - Completezza della documentazione
-  - Requisiti di copertura dei test
+### Stadio 1: Lint & Controllo Formato
+- **Runner:** Ubuntu
+- Hook pre-commit, formattazione Black, ordinamento import isort
 
-- **[gemini-triage.yml](workflows/gemini-triage.yml)** — Automazione triage issue
-  Categorizza, etichetta e prioritizza automaticamente le issue di GitHub usando Gemini AI
+### Stadio 2: Test Unitari + Copertura
+- **Runner:** Ubuntu + Windows (matrice)
+- pytest con tracciamento della copertura (soglia 30%)
+- Report di copertura caricati come artifact
 
-- **[gemini-scheduled-triage.yml](workflows/gemini-scheduled-triage.yml)** — Triage issue pianificato
-  Esegue triage periodico sulle issue aperte per mantenere l'igiene del progetto
+### Stadio 3: Integrazione
+- **Runner:** Ubuntu + Windows (matrice)
+- Validatore headless (gate a 23 fasi)
+- Controlli di coerenza cross-modulo (METADATA_DIM, PlayerRole)
+- Test di portabilita
+- Verifica del manifesto di integrita
 
-## Configurazione Comandi
+### Stadio 4: Scansione Sicurezza
+- **Runner:** Ubuntu (parallelo ai test)
+- Bandit security linter (severita MEDIUM+)
+- detect-secrets per credenziali hardcoded
 
-La directory `.github/commands/` contiene file di configurazione TOML per i workflow Gemini AI:
+### Stadio 4b: Controllo Tipi
+- **Runner:** Ubuntu (informativo, non bloccante)
+- Analisi statica dei tipi con mypy
 
-- **[gemini-invoke.toml](commands/gemini-invoke.toml)** — Configurazione comando invoke
-- **[gemini-review.toml](commands/gemini-review.toml)** — Configurazione comando review
-- **[gemini-triage.toml](commands/gemini-triage.toml)** — Configurazione comando triage
-- **[gemini-scheduled-triage.toml](commands/gemini-scheduled-triage.toml)** — Configurazione triage pianificato
+### Stadio 5: Build di Distribuzione
+- **Runner:** Windows (solo branch main, dopo il superamento di tutti i gate)
+- Build eseguibile PyInstaller
+- Audit di integrita post-build
+- Upload artifact (ritenzione 30 giorni)
+
+## Sicurezza della Supply Chain
+
+Tutte le GitHub Actions sono **pinned tramite SHA** (non riferimento a tag) per prevenire attacchi alla supply chain:
+- `actions/checkout` — pinnato a SHA v4
+- `actions/setup-python` — pinnato a SHA v5
+- `actions/upload-artifact` — pinnato a SHA v4
+
+## Strategia Cross-Platform
+
+| Piattaforma | Dipendenze | Scopo |
+|-------------|-----------|-------|
+| Linux | `requirements.txt` + indice CPU PyTorch | Sviluppo + validazione CI |
+| Windows | `requirements-ci.txt` (file di lock) | Build riproducibili + distribuzione |
 
 ## Documentazione
 
-- **[CICD_GUIDE.md](CICD_GUIDE.md)** — Documentazione completa della pipeline CI/CD
-  Guida dettagliata che copre trigger dei workflow, configurazione dell'ambiente, gestione dei segreti e risoluzione dei problemi
-
-## Utilizzo
-
-I workflow vengono attivati automaticamente dagli eventi del repository (push, pull request, creazione issue). Il dispatch manuale dei workflow è disponibile tramite l'interfaccia GitHub Actions per test e debug.
-
-Per informazioni dettagliate su ciascun workflow e opzioni di configurazione, consulta **[CICD_GUIDE.md](CICD_GUIDE.md)**.
+- **[CICD_GUIDE.md](CICD_GUIDE.md)** — Guida dettagliata della pipeline con test locali, risoluzione problemi e trigger dei workflow

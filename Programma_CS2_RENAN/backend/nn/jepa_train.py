@@ -401,6 +401,7 @@ def train_jepa_finetune(
             # Backward pass
             optimizer.zero_grad()
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)  # NN-H-01
             optimizer.step()
 
             total_loss += loss.item()

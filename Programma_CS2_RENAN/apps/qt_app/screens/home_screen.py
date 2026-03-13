@@ -38,7 +38,7 @@ class HomeScreen(QWidget):
             get_setting("DEFAULT_DEMO_PATH", "Not set")
         )
         self._pro_path_label.setText(
-            get_setting("PRO_DEMOS_PATH", "Not set")
+            get_setting("PRO_DEMO_PATH", "Not set")
         )
         if not self._connected:
             state = get_app_state()
@@ -204,23 +204,17 @@ class HomeScreen(QWidget):
 
         profile_btn = QPushButton("Player Profile")
         profile_btn.setCursor(Qt.PointingHandCursor)
-        profile_btn.clicked.connect(
-            lambda: self.window().switch_screen("user_profile")
-        )
+        profile_btn.clicked.connect(lambda: self._navigate("user_profile"))
         btn_row.addWidget(profile_btn)
 
         steam_btn = QPushButton("Steam Config")
         steam_btn.setCursor(Qt.PointingHandCursor)
-        steam_btn.clicked.connect(
-            lambda: self.window().switch_screen("steam_config")
-        )
+        steam_btn.clicked.connect(lambda: self._navigate("steam_config"))
         btn_row.addWidget(steam_btn)
 
         faceit_btn = QPushButton("FaceIT Config")
         faceit_btn.setCursor(Qt.PointingHandCursor)
-        faceit_btn.clicked.connect(
-            lambda: self.window().switch_screen("faceit_config")
-        )
+        faceit_btn.clicked.connect(lambda: self._navigate("faceit_config"))
         btn_row.addWidget(faceit_btn)
 
         btn_row.addStretch()
@@ -284,6 +278,11 @@ class HomeScreen(QWidget):
         lbl.setStyleSheet("color: #dcdcdc;")
         layout.addWidget(lbl)
         return card
+
+    def _navigate(self, screen_name: str):
+        win = self.window()
+        if win and hasattr(win, "switch_screen"):
+            win.switch_screen(screen_name)
 
     def _pick_demo_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Select Demo Folder")

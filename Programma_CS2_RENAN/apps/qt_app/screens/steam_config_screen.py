@@ -17,6 +17,13 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.qt_steam_config")
 
+try:
+    import keyring  # noqa: F401
+
+    _KEYRING_AVAILABLE = keyring is not None
+except ImportError:
+    _KEYRING_AVAILABLE = False
+
 
 class SteamConfigScreen(QWidget):
     """Configure Steam integration: SteamID64 and API key."""
@@ -51,6 +58,20 @@ class SteamConfigScreen(QWidget):
         content = QWidget()
         content_layout = QVBoxLayout(content)
         content_layout.setSpacing(16)
+
+        # ── Keyring Warning ──
+        if not _KEYRING_AVAILABLE:
+            warn = QLabel(
+                "System keyring unavailable — API keys will be stored in plaintext on disk. "
+                "Install the 'keyring' package for secure storage."
+            )
+            warn.setWordWrap(True)
+            warn.setStyleSheet(
+                "color: #ffcc00; background-color: #332b00; "
+                "border: 1px solid #665500; border-radius: 4px; "
+                "padding: 8px; font-size: 13px;"
+            )
+            content_layout.addWidget(warn)
 
         # ── SteamID64 Card ──
         id_card = self._make_card("SteamID64")

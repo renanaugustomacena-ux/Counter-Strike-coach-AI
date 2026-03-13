@@ -9,13 +9,17 @@ import os
 import sys
 import unittest
 
+# --- Import Guard: standalone diagnostic, not a pytest test ---
+if __name__ != "__main__":
+    raise ImportError(
+        "verify_chronovisor_real.py is a standalone diagnostic. "
+        "Run: python tests/verify_chronovisor_real.py"
+    )
+
 # --- Venv Guard ---
 if sys.prefix == sys.base_prefix:
-    if "pytest" in sys.modules:
-        pass  # Let pytest handle this
-    else:
-        print("ERROR: Not in venv.", file=sys.stderr)
-        sys.exit(2)
+    print("ERROR: Not in venv.", file=sys.stderr)
+    sys.exit(2)
 
 # Add project root to path
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
