@@ -15,6 +15,7 @@ import os
 import time
 import threading
 from collections import defaultdict
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -88,13 +89,28 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return response
 
 
-app = FastAPI(title="Macena Personal Cloud Storage")
-app.add_middleware(RateLimitMiddleware)
-
 # Configuration
 ARCHIVE_PATH = Path(get_setting("DEMO_ARCHIVE_PATH", "D:/CS2_Demos/Archive"))
 API_KEY = get_setting("STORAGE_API_KEY", "")
 API_KEY_NAME = "access_token"
+
+
+@asynccontextmanager
+async def _lifespan(_application: FastAPI):
+    """Modern lifespan handler (replaces deprecated @app.on_event)."""
+    logger.info("Storage Server starting... Serving: %s", ARCHIVE_PATH)
+    if not API_KEY:
+        logger.warning(
+            "STORAGE_API_KEY is empty — all authenticated endpoints will return 503. "
+            "Set STORAGE_API_KEY in settings to enable file operations."
+        )
+    if not ARCHIVE_PATH.exists():
+        ARCHIVE_PATH.mkdir(parents=True, exist_ok=True)
+    yield
+
+
+app = FastAPI(title="Macena Personal Cloud Storage", lifespan=_lifespan)
+app.add_middleware(RateLimitMiddleware)
 
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 
@@ -115,18 +131,6 @@ class FileInfo(BaseModel):
     filename: str
     size_bytes: int
     modified_at: float
-
-
-@app.on_event("startup")
-async def startup_event():
-    logger.info("Storage Server starting... Serving: %s", ARCHIVE_PATH)
-    if not API_KEY:
-        logger.warning(
-            "STORAGE_API_KEY is empty — all authenticated endpoints will return 503. "
-            "Set STORAGE_API_KEY in settings to enable file operations."
-        )
-    if not ARCHIVE_PATH.exists():
-        ARCHIVE_PATH.mkdir(parents=True, exist_ok=True)
 
 
 @app.get("/list", response_model=List[FileInfo])

@@ -23,7 +23,7 @@ if not exist packaging\cs2_analyzer_win.spec ( echo [!] Missing packaging\cs2_an
 echo [*] Checking Python dependencies...
 python -c "import keyring, kivymd, sqlmodel, alembic" >nul 2>&1
 if %ERRORLEVEL% neq 0 (
-    echo [!] Missing core dependencies in venv_win. Please run fix_environment.ps1.
+    echo [!] Missing core dependencies in venv_win. Please run Setup_Macena_CS2.ps1.
     pause
     exit /b 1
 )
