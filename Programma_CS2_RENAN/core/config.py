@@ -166,6 +166,7 @@ def load_user_settings():
             "CUDA_DEVICE": "auto",
             "DEMO_ARCHIVE_PATH": "",
             "INGEST_INTERVAL_MINUTES": 30,
+            "INGEST_MODE_AUTO": True,
             "LOCAL_QUOTA_GB": 10.0,
             "ML_INTENSITY": "Medium",
             "SETUP_COMPLETED": False,
