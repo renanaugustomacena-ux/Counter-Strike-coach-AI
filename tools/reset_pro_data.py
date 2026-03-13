@@ -23,7 +23,7 @@ import sys
 from datetime import datetime
 
 # Venv guard
-if sys.prefix == sys.base_prefix:
+if sys.prefix == sys.base_prefix and not os.environ.get("CI"):
     print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
     sys.exit(2)
 
@@ -80,6 +80,7 @@ _ALLOWED_TABLES = frozenset({
     "matchresult", "ingestiontask", "ext_teamroundstats", "ext_playerplaystyle",
     "proplayer", "proteam",
     "entities", "relations",
+    "hltv_player_cache",
 })
 
 

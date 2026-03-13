@@ -42,6 +42,12 @@ class TrainingOrchestrator:
         # Deterministic RNG for JEPA negative sampling (F3-02).
         # Seeded once at construction so training runs are reproducible.
         self._neg_rng = np.random.default_rng(seed=42)
+        # NN-H-03: Cross-match negative pool for contrastive learning.
+        # Stores feature vectors from previous batches so negatives come from
+        # different matches, not the same temporal sequence as context/target.
+        self._neg_pool: list = []
+        _NEG_POOL_MAX = 500  # Max features retained across batches
+        self._neg_pool_max = _NEG_POOL_MAX
         # F3-11: Aggregate zero-tensor fallback counters across entire training run
         self._total_samples = 0
         self._total_fallbacks = 0
@@ -103,7 +109,10 @@ class TrainingOrchestrator:
                 e,
             )
 
-        trainer = self.TrainerClass(model, lr=self.learning_rate)
+        trainer_kwargs = {"lr": self.learning_rate}
+        if self.model_type in ("jepa", "vl-jepa"):
+            trainer_kwargs["t_max"] = self.max_epochs  # NN-M-10: sync scheduler with epochs
+        trainer = self.TrainerClass(model, **trainer_kwargs)
 
         # 2. Prepare Data
         # Phase 5.2 Alignment: Using standardized fetching with splits
@@ -151,9 +160,8 @@ class TrainingOrchestrator:
                 val_loss = train_loss  # Fallback if no val data
 
             # C. Scheduler Step (if trainer has one)
-            if hasattr(trainer, "scheduler"):
-                # Note: JEPATrainer steps per batch, but we can also step per epoch if configured
-                pass
+            if hasattr(trainer, "scheduler") and trainer.scheduler is not None:
+                trainer.scheduler.step()
 
             # D. Logging & Reporting
             self._report_progress(epoch, train_loss, val_loss)
@@ -310,16 +318,11 @@ class TrainingOrchestrator:
                         )
                         from Programma_CS2_RENAN.backend.nn.jepa_model import jepa_contrastive_loss
 
-                        # Encode negatives into latent space (same as pred/target)
-                        # Expected shape: raw_neg [batch, n_neg, feat_dim]
-                        # Must produce neg_latent [batch, n_neg, latent_dim] for contrastive loss
+                        # NN-H-02: Use shared encode_raw_negatives() for consistency
+                        # with training path (3D sequence expansion + mean pooling).
                         raw_neg = tensor_batch.get("negatives")
-                        b, n_neg, feat_dim = raw_neg.shape
-                        # Flatten batch*n_neg, encode, then reshape back
-                        raw_neg_flat = raw_neg.reshape(b * n_neg, feat_dim)
-                        neg_encoded_flat = trainer.model.target_encoder(raw_neg_flat)
-                        latent_dim = neg_encoded_flat.shape[-1]
-                        neg_latent = neg_encoded_flat.reshape(b, n_neg, latent_dim)
+                        seq_len = tensor_batch["context"].shape[1]
+                        neg_latent = trainer.encode_raw_negatives(raw_neg, seq_len)
 
                         loss = jepa_contrastive_loss(pred, target, neg_latent).item()
                     else:
@@ -331,9 +334,15 @@ class TrainingOrchestrator:
                                 tensor_batch["motion"],
                                 tensor_batch["metadata"],
                             )
-                            loss = trainer.criterion_val(
-                                outputs["value_estimate"], tensor_batch["target_val"]
-                            ).item()
+                            val_mask = tensor_batch.get("val_mask")
+                            pred = outputs["value_estimate"]
+                            tgt = tensor_batch["target_val"]
+                            if val_mask is not None and val_mask.any() and not val_mask.all():
+                                loss = trainer.criterion_val(pred[val_mask], tgt[val_mask]).item()
+                            elif val_mask is not None and not val_mask.any():
+                                loss = 0.0
+                            else:
+                                loss = trainer.criterion_val(pred, tgt).item()
                         except (KeyError, TypeError) as e:
                             logger.warning("RAP validation failed (missing tensor key): %s", e)
                             continue
@@ -377,15 +386,30 @@ class TrainingOrchestrator:
             # Target: next item prediction — must be 3D (B, seq_len, input_dim)
             target = features_tensor[-1:].unsqueeze(0)  # (1, 1, METADATA_DIM)
 
-            # Negatives: random samples from batch — require at least 5 real samples
-            if b >= 5:
-                neg_indices = self._neg_rng.choice(b, 5, replace=False)
-                negatives = features_tensor[neg_indices].unsqueeze(0)  # (1, 5, METADATA_DIM)
+            # NN-H-03: Sample negatives from cross-match pool (not current batch)
+            # to avoid false negatives from same-match ticks.
+            n_neg = 5
+            if len(self._neg_pool) >= n_neg:
+                pool_tensor = torch.stack(self._neg_pool[-200:])  # Up to 200 candidates
+                pool_idx = self._neg_rng.choice(len(pool_tensor), n_neg, replace=False)
+                negatives = pool_tensor[pool_idx].unsqueeze(0)  # (1, 5, METADATA_DIM)
+            elif b >= n_neg:
+                # Pool warm-up: fall back to in-batch sampling until pool is populated
+                neg_indices = self._neg_rng.choice(b, n_neg, replace=False)
+                negatives = features_tensor[neg_indices].unsqueeze(0)
             else:
                 logger.debug(
-                    "JEPA batch too small for contrastive negatives (%d < 5) — skipping batch", b
+                    "JEPA batch too small for contrastive negatives (%d < %d) — skipping batch",
+                    b, n_neg,
                 )
                 return None
+
+            # Populate pool with current batch features (after sampling to avoid self-negatives)
+            step = max(1, b // 10)  # Store ~10 features per batch to limit pool growth
+            for i in range(0, b, step):
+                self._neg_pool.append(features_tensor[i].detach().cpu())
+            if len(self._neg_pool) > self._neg_pool_max:
+                self._neg_pool = self._neg_pool[-self._neg_pool_max:]
 
             result = {"context": context, "target": target, "negatives": negatives}
 
@@ -428,6 +452,7 @@ class TrainingOrchestrator:
         target_val_list = []
         target_strat_list = []
         had_real_pov = []
+        val_mask_list = []  # True = valid outcome, False = missing (NN-M-12)
 
         # Per-batch caches to avoid re-querying same match/tick
         _all_players_cache: dict = {}
@@ -491,9 +516,15 @@ class TrainingOrchestrator:
                     str(getattr(item, "team", "CT")),
                     knowledge.bomb_planted,
                 )
+                val_mask_list.append(True)
             else:
                 outcome = getattr(item, "round_outcome", None)
-                val = float(outcome) if outcome is not None else 0.5
+                if outcome is not None:
+                    val = float(outcome)
+                    val_mask_list.append(True)
+                else:
+                    val = 0.0  # Placeholder — masked out of loss by val_mask
+                    val_mask_list.append(False)
             target_val_list.append(val)
 
             # Tactical role label (10 classes)
@@ -529,6 +560,7 @@ class TrainingOrchestrator:
             motion_list = [m for m, ok in zip(motion_list, valid) if ok]
             target_val_list = [t for t, ok in zip(target_val_list, valid) if ok]
             target_strat_list = [t for t, ok in zip(target_strat_list, valid) if ok]
+            val_mask_list = [m for m, ok in zip(val_mask_list, valid) if ok]
 
             # Re-slice metadata to match filtered samples
             valid_indices = [i for i, ok in enumerate(valid) if ok]
@@ -541,6 +573,7 @@ class TrainingOrchestrator:
         motion_tensor = torch.stack(motion_list).to(self.device)
         target_val = torch.tensor(target_val_list, dtype=torch.float32).unsqueeze(1).to(self.device)
         target_strat = torch.stack(target_strat_list).to(self.device)
+        val_mask = torch.tensor(val_mask_list, dtype=torch.bool).to(self.device)
 
         return {
             "view": view,
@@ -549,6 +582,7 @@ class TrainingOrchestrator:
             "metadata": metadata.unsqueeze(1),
             "target_strat": target_strat,
             "target_val": target_val,
+            "val_mask": val_mask,  # NN-M-12: True = valid outcome, False = missing
         }
 
     def _build_sample_knowledge(

@@ -749,7 +749,11 @@ class CoachTrainingManager:
 
         vecs = [
             np.array(
-                [item.model_dump().get(f, 0.0) for f in MATCH_AGGREGATE_FEATURES], dtype=np.float32
+                [
+                    (v if (v := item.model_dump().get(f, 0.0)) is not None else 0.0)
+                    for f in MATCH_AGGREGATE_FEATURES
+                ],
+                dtype=np.float32,
             )
             for item in user_data
         ]

@@ -67,5 +67,13 @@ class HelpSystem:
         return sorted(results, key=lambda x: x["score"], reverse=True)
 
 
-# Global Instance
-help_system = HelpSystem()
+# Lazy singleton — avoids file I/O at import time (C-54)
+_help_system = None
+
+
+def get_help_system() -> HelpSystem:
+    """Return the cached HelpSystem singleton (lazy-initialized)."""
+    global _help_system
+    if _help_system is None:
+        _help_system = HelpSystem()
+    return _help_system

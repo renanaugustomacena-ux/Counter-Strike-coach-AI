@@ -16,6 +16,13 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.qt_faceit_config")
 
+try:
+    import keyring  # noqa: F401
+
+    _KEYRING_AVAILABLE = keyring is not None
+except ImportError:
+    _KEYRING_AVAILABLE = False
+
 
 class FaceitConfigScreen(QWidget):
     """Configure FaceIT integration: API key."""
@@ -42,6 +49,20 @@ class FaceitConfigScreen(QWidget):
         title.setObjectName("section_title")
         title.setFont(QFont("Roboto", 20, QFont.Bold))
         layout.addWidget(title)
+
+        # ── Keyring Warning ──
+        if not _KEYRING_AVAILABLE:
+            warn = QLabel(
+                "System keyring unavailable — API keys will be stored in plaintext on disk. "
+                "Install the 'keyring' package for secure storage."
+            )
+            warn.setWordWrap(True)
+            warn.setStyleSheet(
+                "color: #ffcc00; background-color: #332b00; "
+                "border: 1px solid #665500; border-radius: 4px; "
+                "padding: 8px; font-size: 13px;"
+            )
+            layout.addWidget(warn)
 
         # ── API Key Card ──
         card = QFrame()

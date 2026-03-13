@@ -2,7 +2,6 @@
 
 import math
 import os
-import time
 from typing import List, Optional
 
 from PySide6.QtCore import QPointF, QRectF, Qt, Signal
@@ -257,7 +256,7 @@ class TacticalMapWidget(QWidget):
                 p.setBrush(QColor(230, 230, 255, 26))
                 p.drawEllipse(QPointF(sx, sy), size * 0.4, size * 0.4)
             elif nade.nade_type == NadeType.MOLOTOV:
-                pulse = 0.5 + 0.15 * math.sin(time.time() * 8)
+                pulse = 0.5 + 0.15 * math.sin(self._current_tick / TICK_RATE * 8)
                 p.setPen(Qt.NoPen)
                 p.setBrush(QColor(255, 77, 0, int(pulse * 255)))
                 p.drawEllipse(QPointF(sx, sy), 25, 25)

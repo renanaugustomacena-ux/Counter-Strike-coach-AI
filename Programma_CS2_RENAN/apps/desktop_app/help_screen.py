@@ -6,12 +6,12 @@ from kivymd.uix.screen import MDScreen
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 try:
-    from Programma_CS2_RENAN.backend.knowledge_base.help_system import help_system
+    from Programma_CS2_RENAN.backend.knowledge_base.help_system import get_help_system
     _HELP_SYSTEM_AVAILABLE = True
 except ImportError:
     # F7-09: help_system module not yet implemented. HelpScreen will display
     # a placeholder until the module is created.
-    help_system = None
+    get_help_system = None
     _HELP_SYSTEM_AVAILABLE = False
 
 _logger = get_logger("cs2analyzer.help_screen")
@@ -29,7 +29,7 @@ class HelpScreen(MDScreen):
             self._populate_list([])
             return
         try:
-            topics = help_system.get_all_topics()
+            topics = get_help_system().get_all_topics()
         except Exception as e:
             _logger.error("Failed to load help topics: %s", e)
             topics = []
@@ -54,7 +54,7 @@ class HelpScreen(MDScreen):
         if not _HELP_SYSTEM_AVAILABLE:
             return
         try:
-            data = help_system.get_topic(topic_id)
+            data = get_help_system().get_topic(topic_id)
         except Exception as e:
             _logger.error("Failed to load topic %s: %s", topic_id, e)
             return
@@ -71,7 +71,7 @@ class HelpScreen(MDScreen):
             self._populate_list([])
             return
         try:
-            results = help_system.search_topics(query)
+            results = get_help_system().search_topics(query)
         except Exception as e:
             _logger.error("Help search failed for query '%s': %s", query, e)
             results = []

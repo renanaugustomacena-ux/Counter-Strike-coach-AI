@@ -1,8 +1,10 @@
-# Aplicação Desktop
+# Aplicacao Desktop (Legacy Kivy/KivyMD)
 
-> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
+> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Portugues](README_PT.md)**
 
-Aplicação desktop Kivy/KivyMD implementando arquitetura MVVM para análise tática CS2 e coaching de IA.
+> **Nota:** Este e o frontend legacy Kivy/KivyMD. Ainda esta funcional e mantido como fallback. O frontend primario e PySide6/Qt -- veja [qt_app/](../qt_app/).
+
+Aplicacao desktop Kivy/KivyMD implementando arquitetura MVVM para analise tatica CS2 e coaching de IA.
 
 ## Arquitetura
 

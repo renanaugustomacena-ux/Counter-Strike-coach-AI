@@ -19,7 +19,8 @@ OBSERVA (Ingestao) →  APRENDE (Treinamento) →  PENSA (Inferencia) →  FALA 
 
 ```
 Programma_CS2_RENAN/
-├── apps/desktop_app/       UI Desktop Kivy/KivyMD (padrao MVVM)
+├── apps/qt_app/            UI Desktop PySide6/Qt (primaria, padrao MVVM)
+├── apps/desktop_app/       UI Desktop Kivy/KivyMD (legacy fallback, padrao MVVM)
 ├── backend/                Camada de logica de negocios
 │   ├── analysis/           Teoria dos jogos, modelos de crenca, momentum
 │   ├── coaching/           Pipeline de coaching (COPER, Hibrido, RAG)
@@ -41,14 +42,15 @@ Programma_CS2_RENAN/
 
 | Arquivo | Proposito |
 |---------|-----------|
-| `apps/desktop_app/main.py` | Aplicacao desktop (GUI Kivy) |
+| `apps/qt_app/app.py` | Aplicacao desktop (GUI PySide6/Qt — primaria) |
+| `apps/desktop_app/main.py` | Aplicacao desktop (GUI Kivy — legacy fallback) |
 | `run_ingestion.py` | Pipeline de ingestao de demos |
 | `fetch_hltv_stats.py` | Scraping de metadados profissionais HLTV |
 | `hltv_sync_service.py` | Daemon de sincronizacao HLTV |
 
 ## Stack Tecnologico
 
-- **UI**: Kivy + KivyMD
+- **UI**: PySide6/Qt (primaria) + Kivy/KivyMD (legacy fallback)
 - **ML**: PyTorch, ncps (LTC), redes Hopfield
 - **Banco de Dados**: SQLite (modo WAL) via SQLModel
 - **Scraping**: Playwright (sync)

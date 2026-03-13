@@ -51,8 +51,17 @@ class RAPTrainer:
         loss_strat = self.criterion_strat(outputs["advice_probs"], batch["target_strat"])
 
         # 2. Pedagogy Loss (Value estimation)
-        # V(s) should approximate the eventual round outcome
-        loss_val = self.criterion_val(outputs["value_estimate"], batch["target_val"])
+        # V(s) should approximate the eventual round outcome.
+        # NN-M-12: mask out samples with missing outcome data.
+        val_mask = batch.get("val_mask")
+        if val_mask is not None and val_mask.any() and not val_mask.all():
+            masked_pred = outputs["value_estimate"][val_mask]
+            masked_target = batch["target_val"][val_mask]
+            loss_val = self.criterion_val(masked_pred, masked_target)
+        elif val_mask is not None and not val_mask.any():
+            loss_val = torch.tensor(0.0, device=loss_strat.device)
+        else:
+            loss_val = self.criterion_val(outputs["value_estimate"], batch["target_val"])
 
         # 3. Sparsity Loss (Interpretation) — pass gate_weights explicitly for thread-safety (F3-07)
         gate_weights = outputs.get("gate_weights")

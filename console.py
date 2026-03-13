@@ -463,7 +463,7 @@ def _cmd_build_verify(args):
 
 def _cmd_build_manifest(args):
     rich_con.print("[info]>>> Generating Integrity Manifest[/info]")
-    return _run_tool_live([sys.executable, "tools/generate_manifest.py"], timeout=120)
+    return _run_tool_live([sys.executable, "Programma_CS2_RENAN/tools/sync_integrity_manifest.py"], timeout=120)
 
 
 # --- TEST ---

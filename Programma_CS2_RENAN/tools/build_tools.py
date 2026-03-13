@@ -305,7 +305,7 @@ def cmd_manifest(args):
     print("  Generating integrity manifest...")
     try:
         result = subprocess.run(
-            ["python", str(PROJECT_ROOT / "tools" / "generate_manifest.py")],
+            ["python", str(PROJECT_ROOT / "Programma_CS2_RENAN" / "tools" / "sync_integrity_manifest.py")],
             capture_output=True,
             text=True,
             timeout=60,

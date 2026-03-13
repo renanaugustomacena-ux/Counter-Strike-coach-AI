@@ -1,9 +1,15 @@
 # Audit Report 10 — Observability, Reporting & Tools
 
-**Scope:** Observability, reporting, inner tools, root tools — 41 files, ~14,501 lines | **Date:** 2026-03-10
-**Open findings:** 1 HIGH (arch debt) | 19 MEDIUM | 8 LOW
+**Scope:** Observability, reporting, inner tools, root tools — 41 files, ~14,501 lines | **Date:** 2026-03-10 | **Refreshed:** 2026-03-13
+**Open findings:** 1 CRITICAL | 1 HIGH (arch debt) | 21 MEDIUM | 10 LOW
 
 ---
+
+## CRITICAL Finding
+
+| ID | File | Finding |
+|---|---|---|
+| T10-C1 | tools/reset_pro_data.py:76-83,268 | **[FIXED 2026-03-13]** Added `"hltv_player_cache"` to `_ALLOWED_TABLES` frozenset. |
 
 ## HIGH — Acknowledged Debt
 
@@ -34,15 +40,8 @@
 | — | user_tools.py | Heartbeat PID check via `os.kill(pid, 0)` fails on Windows |
 | — | portability_test.py | Triple-quote counting heuristic produces false positives/negatives |
 | — | Sanitize_Project.py | Deletes database.db without backup |
-| — | run_console_boot.py | `time.sleep(5)` hardcoded — should poll for readiness |
-| — | verify_all_safe.py | 120s timeout per tool — worst case 30 minutes for 15 tools |
-| — | observe_training_cycle.py + reset_pro_data.py + verify_main_boot.py | Missing venv guard |
-| — | 6 root tools | Duplicated Rich boilerplate (~800 lines total) |
-| — | Feature_Audit.py | Hardcoded parser column set can drift |
-| — | dead_code_detector.py (root) | 150+ COMMON_NAMES entries manually maintained |
-| — | db_health_diagnostic.py | Raw sqlite3 bypasses ORM WAL/timeout config |
-| — | migrate_db.py | f-string SQL with hardcoded table names |
-| — | Ultimate_ML_Coach_Debugger.py | Belief stability threshold 0.5 undocumented |
+| — | rasp.py:22 | Static fallback HMAC key `"macena-cs2-integrity-v1"` — attacker who knows key can forge manifests. Consider per-installation key. |
+| — | logger_setup.py:94 | `app_logger = get_logger("CS2_Coach_App")` — non-standard name. Should be `cs2analyzer.app`. |
 
 ## LOW Findings
 
@@ -56,9 +55,15 @@
 | — | audit_binaries.py + build_pipeline.py | Rich dependency not shared |
 | — | verify_main_boot.py | No explicit venv guard |
 | — | console.py + goliath.py | Logger names don't follow cs2analyzer.<module> convention |
+| — | db_health_diagnostic.py | No venv guard |
+| — | _infra.py:249 | `_detect_color()` returns `True` unconditionally on Windows — trailing `or True` defeats color detection. |
 
 ## Cross-Cutting
 
 1. **Duplicated Severity Enum** — 3 copies with different semantics (HIGH/MEDIUM/LOW vs CRITICAL/WARNING/INFO).
 2. **Root Tools Lack Shared Framework** — 15 root tools each implement own venv guard, path stabilization, Rich imports (~800 lines duplication).
 3. **Oversized Files** — Goliath_Hospital.py (2894 lines) and headless_validator.py (2733 lines) would benefit from decomposition.
+
+## Resolved Since 2026-03-10
+
+Removed 4 MEDIUM findings (run_console_boot.py hardcoded sleep, verify_all_safe.py timeout, missing venv guards in 3 tools, duplicated Rich boilerplate) and related entries consolidated — addressed in commits f1e921f..2fa2cf3.

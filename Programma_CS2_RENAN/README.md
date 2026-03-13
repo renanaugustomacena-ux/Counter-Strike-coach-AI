@@ -19,7 +19,8 @@ WATCH (Ingestion)  →  LEARN (Training)  →  THINK (Inference)  →  SPEAK (Di
 
 ```
 Programma_CS2_RENAN/
-├── apps/desktop_app/       Kivy/KivyMD desktop UI (MVVM pattern)
+├── apps/qt_app/            PySide6/Qt desktop UI (primary, MVVM pattern)
+├── apps/desktop_app/       Kivy/KivyMD desktop UI (legacy fallback, MVVM pattern)
 ├── backend/                Business logic layer
 │   ├── analysis/           Game theory, belief models, momentum
 │   ├── coaching/           Coaching pipeline (COPER, Hybrid, RAG)
@@ -41,14 +42,15 @@ Programma_CS2_RENAN/
 
 | File | Purpose |
 |------|---------|
-| `apps/desktop_app/main.py` | Desktop application (Kivy GUI) |
+| `apps/qt_app/app.py` | Desktop application (PySide6/Qt GUI — primary) |
+| `apps/desktop_app/main.py` | Desktop application (Kivy GUI — legacy fallback) |
 | `run_ingestion.py` | Demo ingestion pipeline |
 | `fetch_hltv_stats.py` | HLTV professional metadata scraping |
 | `hltv_sync_service.py` | Background HLTV sync daemon |
 
 ## Technology Stack
 
-- **UI**: Kivy + KivyMD
+- **UI**: PySide6/Qt (primary) + Kivy/KivyMD (legacy fallback)
 - **ML**: PyTorch, ncps (LTC), Hopfield networks
 - **Database**: SQLite (WAL mode) via SQLModel
 - **Scraping**: Playwright (sync)

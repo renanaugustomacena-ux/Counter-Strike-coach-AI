@@ -16,7 +16,7 @@ call venv_win\Scripts\activate
 
 :: 1.2 Pre-flight Validation
 echo [*] Running Pre-flight Validation...
-if not exist tools\generate_manifest.py ( echo [!] Missing tools\generate_manifest.py & pause & exit /b 1 )
+if not exist Programma_CS2_RENAN\tools\sync_integrity_manifest.py ( echo [!] Missing sync_integrity_manifest.py & pause & exit /b 1 )
 if not exist tools\audit_binaries.py ( echo [!] Missing tools\audit_binaries.py & pause & exit /b 1 )
 if not exist packaging\cs2_analyzer_win.spec ( echo [!] Missing packaging\cs2_analyzer_win.spec & pause & exit /b 1 )
 
@@ -43,7 +43,7 @@ if %ERRORLEVEL% neq 0 (
 
 :: 1.7 Generate Integrity Manifest (RASP)
 echo [*] Generating Integrity Manifest for RASP...
-python tools/generate_manifest.py
+python Programma_CS2_RENAN/tools/sync_integrity_manifest.py
 if %ERRORLEVEL% neq 0 (
     echo [!] Manifest generation failed! Build aborted.
     pause

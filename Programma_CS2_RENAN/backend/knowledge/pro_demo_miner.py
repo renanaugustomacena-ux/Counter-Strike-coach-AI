@@ -104,9 +104,10 @@ class ProStatsMiner:
                     f"{nickname} — Rating 2.0: {card.rating_2_0:.2f}, "
                     f"KPR: {card.kpr:.2f}, DPR: {card.dpr:.2f}, "
                     f"ADR: {card.adr:.1f}, "
-                    # AC-35-02: kast/hs_pct may be 0-1 or 0-100 depending on source
-                    f"KAST: {(card.kast * 100 if card.kast <= 1.0 else card.kast):.1f}%, "
-                    f"HS: {(card.headshot_pct * 100 if card.headshot_pct <= 1.0 else card.headshot_pct):.1f}%, "
+                    # AC-35-02: kast/hs_pct stored as ratio [0,1]; boundary at 1.5
+                    # handles edge cases (100% KAST = 1.0, rounding > 1.0).
+                    f"KAST: {(card.kast * 100 if card.kast < 1.5 else card.kast):.1f}%, "
+                    f"HS: {(card.headshot_pct * 100 if card.headshot_pct < 1.5 else card.headshot_pct):.1f}%, "
                     f"Impact: {card.impact:.2f}. "
                     f"Maps played: {card.maps_played}. "
                     f"Time span: {card.time_span}."

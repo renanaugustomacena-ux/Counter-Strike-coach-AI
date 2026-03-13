@@ -18,6 +18,7 @@ Adheres to GEMINI.md principles:
 """
 
 import binascii
+import threading
 import hashlib
 import json
 from dataclasses import dataclass
@@ -890,11 +891,14 @@ class ExperienceBank:
 
 
 _experience_bank_instance: Optional[ExperienceBank] = None
+_experience_bank_lock = threading.Lock()
 
 
 def get_experience_bank() -> ExperienceBank:
-    """Factory function for ExperienceBank singleton."""
+    """Factory function for ExperienceBank singleton (thread-safe, double-checked locking)."""
     global _experience_bank_instance
     if _experience_bank_instance is None:
-        _experience_bank_instance = ExperienceBank()
+        with _experience_bank_lock:
+            if _experience_bank_instance is None:
+                _experience_bank_instance = ExperienceBank()
     return _experience_bank_instance

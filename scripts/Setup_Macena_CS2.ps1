@@ -34,7 +34,7 @@ Write-Host "[*] Installing PyTorch (CPU optimized - Force Refresh)..." -Foregrou
 
 # Standard Requirements
 Write-Host "[*] Installing standard requirements..." -ForegroundColor Cyan
-& $pipPath install -r Programma_CS2_RENAN/requirements.txt
+& $pipPath install -r requirements.txt
 
 # 4. Database Initialization
 Write-Host "[*] Initializing local knowledge base..." -ForegroundColor Yellow

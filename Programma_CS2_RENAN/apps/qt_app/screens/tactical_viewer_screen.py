@@ -1,6 +1,6 @@
 """Tactical Viewer screen — 2D demo replay with playback controls."""
 
-from PySide6.QtCore import QRunnable, QThreadPool, Qt, QTimer, Signal, Slot
+from PySide6.QtCore import QObject, QRunnable, QThreadPool, Qt, QTimer, Signal, Slot
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -30,20 +30,12 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 logger = get_logger("cs2analyzer.qt_tactical_viewer")
 
 
-class _LoadWorkerSignals(Signal):
-    pass
-
-
 class _LoadWorker(QRunnable):
     """Background worker for demo parsing."""
 
-    class Signals(QWidget):
+    class Signals(QObject):
         result = Signal(object)
         error = Signal(str)
-
-        def __init__(self):
-            super().__init__()
-            self.setVisible(False)
 
     def __init__(self, path: str):
         super().__init__()
@@ -119,6 +111,12 @@ class TacticalViewerScreen(QWidget):
         title.setFont(QFont("Roboto", 18, QFont.Bold))
         header.addWidget(title)
         header.addStretch()
+
+        self._error_label = QLabel()
+        self._error_label.setStyleSheet("color: #ff5555; font-size: 13px;")
+        self._error_label.setWordWrap(True)
+        self._error_label.setVisible(False)
+        header.addWidget(self._error_label)
 
         open_btn = QPushButton("Open Demo")
         open_btn.setCursor(Qt.PointingHandCursor)
@@ -259,6 +257,7 @@ class TacticalViewerScreen(QWidget):
         self._full_demo_data = data
         self._play_btn.setEnabled(True)
         self._play_btn.setText("\u25b6")
+        self._error_label.setVisible(False)
 
         # Populate map combo
         self._map_combo.blockSignals(True)
@@ -278,6 +277,8 @@ class TacticalViewerScreen(QWidget):
         self._play_btn.setEnabled(True)
         self._play_btn.setText("\u25b6")
         logger.error("Demo load failed: %s", error)
+        self._error_label.setText(f"Error: {error}")
+        self._error_label.setVisible(True)
 
     # ── Map/Round Switching ──
 

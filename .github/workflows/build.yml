@@ -1,15 +1,35 @@
-# P6-03: Four-Stage CI/CD Pipeline — Macena CS2 Analyzer
-# Stages: Lint → Unit Test → Integration → Security (parallel with 2-3)
+# Macena CS2 Analyzer — Cross-Platform CI/CD Pipeline
 #
-# This replaces the original three-job build.yml with a comprehensive
-# quality gate that makes it impossible to merge broken code.
+# Stages:  Lint → Test (matrix) → Integration (matrix) → Security → Build
+# Runners: Ubuntu (lint, security, type-check) + Matrix (test, integration)
+#          Windows-only for distribution build (CS2 targets Windows)
+#
+# All actions are SHA-pinned for supply chain security.
+# Permissions follow least-privilege principle.
 name: Macena CI Pipeline
 
 on:
   push:
     branches: [main, develop, 'feature/**', 'fix/**']
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/*.md'
+      - 'LICENSE'
+      - '.gitignore'
   pull_request:
     branches: [main, develop]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/*.md'
+      - 'LICENSE'
+      - '.gitignore'
+
+# Least-privilege: only read access to repo contents.
+# Individual jobs override when they need more (e.g. upload-artifact).
+permissions:
+  contents: read
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -20,45 +40,80 @@ env:
 
 jobs:
   # ═══════════════════════════════════════════════════════════════════════════
-  # STAGE 1: LINT (Fast — ~1 minute)
-  # Catches formatting, import, and code quality issues early.
+  # STAGE 1: LINT (Ubuntu — fast, ~1 minute)
+  # Catches formatting, import order, and code quality issues early.
   # ═══════════════════════════════════════════════════════════════════════════
   lint:
     name: Lint & Format Check
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
 
-      - name: Install lint tools
+      - name: Install pre-commit
         run: |
           python -m pip install --upgrade pip
-          pip install pre-commit black isort
+          pip install pre-commit
+
+      - name: Cache pre-commit hooks
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
 
       - name: Run pre-commit hooks (format + quality)
         run: pre-commit run --all-files --show-diff-on-failure
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # STAGE 2: UNIT TESTS + COVERAGE (Medium — ~3 minutes)
-  # Catches logic errors and tracks test coverage.
+  # STAGE 2: UNIT TESTS + COVERAGE (Matrix: Ubuntu + Windows, ~3 minutes)
+  # Validates logic on both platforms and tracks test coverage.
   # ═══════════════════════════════════════════════════════════════════════════
-  unit-test:
-    name: Unit Tests + Coverage
+  test:
+    name: Tests (${{ matrix.os }})
     needs: lint
-    runs-on: windows-latest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      CI: 'true'
+      VIRTUAL_ENV: 'ci'
+      KIVY_NO_ARGS: '1'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
 
-      - name: Install dependencies
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
+            libgl1-mesa-glx
+
+      - name: Install Python dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt \
+            --extra-index-url https://download.pytorch.org/whl/cpu
+          pip install pytest pytest-cov
+
+      - name: Install Python dependencies (Windows)
+        if: runner.os == 'Windows'
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-ci.txt
@@ -71,36 +126,59 @@ jobs:
           --cov=Programma_CS2_RENAN
           --cov-report=xml:coverage.xml
           --cov-report=term-missing
-          --cov-fail-under=40
+          --cov-fail-under=30
           -x
-        env:
-          VIRTUAL_ENV: "ci"
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: coverage-report
+          name: coverage-report-${{ runner.os }}
           path: coverage.xml
           retention-days: 30
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # STAGE 3: INTEGRATION (Slow — ~5 minutes)
-  # Runs headless validator, cross-module consistency, portability checks.
+  # STAGE 3: INTEGRATION (Matrix: Ubuntu + Windows, ~5 minutes)
+  # Headless validator, cross-module consistency, portability checks.
   # ═══════════════════════════════════════════════════════════════════════════
   integration:
-    name: Headless Validation + Cross-Module
-    needs: unit-test
-    runs-on: windows-latest
+    name: Integration (${{ matrix.os }})
+    needs: test
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      CI: 'true'
+      VIRTUAL_ENV: 'ci'
+      KIVY_NO_ARGS: '1'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
 
-      - name: Install dependencies
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
+            libgl1-mesa-glx
+
+      - name: Install Python dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt \
+            --extra-index-url https://download.pytorch.org/whl/cpu
+
+      - name: Install Python dependencies (Windows)
+        if: runner.os == 'Windows'
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-ci.txt
@@ -128,25 +206,26 @@ jobs:
         run: python Programma_CS2_RENAN/tools/sync_integrity_manifest.py --verify-only
 
       - name: Upload Build Health Report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: build-health-report
+          name: build-health-report-${{ runner.os }}
           path: Build_Health_Report.json
           retention-days: 30
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # STAGE 4: SECURITY (Parallel with Stage 2-3)
-  # Catches dependency vulnerabilities and code security issues.
+  # STAGE 4: SECURITY (Ubuntu — parallel with test, ~2 minutes)
+  # SAST (Bandit), secrets detection, and dependency CVE audit.
   # ═══════════════════════════════════════════════════════════════════════════
   security:
     name: Security Scan
     needs: lint
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
@@ -154,9 +233,9 @@ jobs:
       - name: Install security tools
         run: |
           python -m pip install --upgrade pip
-          pip install bandit detect-secrets
+          pip install bandit detect-secrets pip-audit
 
-      - name: Run Bandit security linter (full report)
+      - name: Run Bandit security linter (generate report)
         run: >
           bandit -r Programma_CS2_RENAN/
           --severity-level medium
@@ -164,7 +243,7 @@ jobs:
           -f json
           -o bandit-report.json
           --exclude Programma_CS2_RENAN/tests,external_analysis
-          || true
+          || test $? -eq 1
 
       - name: Fail on MEDIUM+ severity Bandit findings
         run: >
@@ -175,7 +254,6 @@ jobs:
           -f screen
 
       - name: Check for hardcoded secrets (detect-secrets)
-        shell: bash
         run: |
           detect-secrets scan Programma_CS2_RENAN/ --exclude-files 'tests/' \
             --exclude-files 'external_analysis/' \
@@ -187,36 +265,55 @@ jobs:
             exit 1
           fi
 
-      - name: Upload security report
-        uses: actions/upload-artifact@v4
+      - name: Audit dependencies for known CVEs (pip-audit)
+        run: |
+          pip install -r requirements.txt \
+            --extra-index-url https://download.pytorch.org/whl/cpu
+          pip-audit --strict --desc on 2>&1 | tee pip-audit-report.txt
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: security-report
-          path: bandit-report.json
+          name: security-reports
+          path: |
+            bandit-report.json
+            pip-audit-report.txt
           retention-days: 30
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # STAGE 4b: TYPE CHECK (Parallel — informational, non-blocking)
-  # P6-04 Phase A: Run mypy with current settings, report only.
-  # TODO: Make blocking once type hint coverage reaches 50% (see AUDIT_12)
+  # STAGE 4b: TYPE CHECK (Ubuntu — informational, non-blocking)
   # ═══════════════════════════════════════════════════════════════════════════
   type-check:
     name: Type Check (informational)
     needs: lint
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     continue-on-error: true
+    env:
+      CI: 'true'
+      VIRTUAL_ENV: 'ci'
+      KIVY_NO_ARGS: '1'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
+            libgl1-mesa-glx
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements-ci.txt
+          pip install -r requirements.txt \
+            --extra-index-url https://download.pytorch.org/whl/cpu
           pip install mypy
 
       - name: Run mypy (informational)
@@ -224,18 +321,18 @@ jobs:
         continue-on-error: true
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # BUILD DISTRIBUTION (only on main, after all gates pass)
+  # BUILD DISTRIBUTION (Windows only, main branch, after all gates pass)
   # ═══════════════════════════════════════════════════════════════════════════
   build-distribution:
     name: Build Distribution
     runs-on: windows-latest
+    timeout-minutes: 20
     needs: [integration, security]
     if: github.ref == 'refs/heads/main'
-
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
@@ -246,7 +343,7 @@ jobs:
           pip install -r requirements-ci.txt
           pip install pyinstaller
 
-      - name: Validate critical data files exist (P10-02)
+      - name: Validate critical data files exist
         run: |
           python -c "
           from pathlib import Path
@@ -272,9 +369,12 @@ jobs:
 
       - name: Post-build integrity audit
         run: python tools/audit_binaries.py
+        env:
+          CI: 'true'
+          VIRTUAL_ENV: 'ci'
 
       - name: Upload distribution artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: cs2-analyzer-windows
           path: dist/

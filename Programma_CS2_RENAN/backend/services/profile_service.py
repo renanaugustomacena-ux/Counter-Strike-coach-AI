@@ -119,7 +119,7 @@ def _fetch_cs2_hours(key: str, steam_id: str) -> float:
         timeout=10,
     ).json()
     games = r.get("response", {}).get("games", [])
-    cs2 = next((g for g in games if g["appid"] == 730), None)
+    cs2 = next((g for g in games if g.get("appid") == 730), None)
     return cs2.get("playtime_forever", 0) / 60 if cs2 else 0
 
 

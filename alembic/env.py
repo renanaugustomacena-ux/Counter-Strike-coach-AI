@@ -23,13 +23,25 @@ PROJECT_ROOT = stabilize_paths()
 # Import SQLModel and your models
 from sqlmodel import SQLModel
 
-from Programma_CS2_RENAN.backend.storage.db_models import (
+from Programma_CS2_RENAN.backend.storage.db_models import (  # noqa: F401 — all needed for autogenerate
+    CalibrationSnapshot,
+    CoachingExperience,
     CoachingInsight,
     CoachState,
+    Ext_PlayerPlaystyle,
+    Ext_TeamRoundStats,
     IngestionTask,
+    MapVeto,
+    MatchResult,
     PlayerMatchStats,
     PlayerProfile,
     PlayerTickState,
+    ProPlayer,
+    ProPlayerStatCard,
+    ProTeam,
+    RoleThresholdRecord,
+    RoundStats,
+    ServiceNotification,
     TacticalKnowledge,
 )
 from Programma_CS2_RENAN.core.config import DATABASE_URL
