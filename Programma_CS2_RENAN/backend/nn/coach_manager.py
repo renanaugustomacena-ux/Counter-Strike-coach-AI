@@ -495,9 +495,11 @@ class CoachTrainingManager:
     def _fetch_jepa_ticks(self, is_pro: bool, split: str = "train"):
         """Fetch ticks for JEPA/RAP training with proper split filtering.
 
-        Now filters by demo_name to ensure proper train/val/test separation.
+        P4-A: Only uses demos whose per-match DB is marked match_complete=True,
+        preventing Teacher from training on half-written match data.
         """
-        from Programma_CS2_RENAN.core.config import get_setting
+        # P4-A: Build set of completed match demo names
+        completed_demos = self._get_completed_demo_names()
 
         # Fetch demo names that match the split
         with self.db.get_session() as session:
@@ -511,7 +513,17 @@ class CoachTrainingManager:
                 return []
 
             # Extract unique demo names from matches
-            demo_names = list(set([m.demo_name for m in matches if m.demo_name]))
+            all_demo_names = set(m.demo_name for m in matches if m.demo_name)
+            # P4-A: Only include demos whose per-match DB is fully written
+            if completed_demos is not None:
+                demo_names = list(all_demo_names & completed_demos)
+                skipped = len(all_demo_names) - len(demo_names)
+                if skipped > 0:
+                    app_logger.info(
+                        "P4-A: Skipped %d incomplete demos (match_complete=False)", skipped
+                    )
+            else:
+                demo_names = list(all_demo_names)
             app_logger.info(
                 "Loading ticks from %s %s demos (is_pro=%s)", len(demo_names), split, is_pro
             )
@@ -533,6 +545,105 @@ class CoachTrainingManager:
 
             app_logger.info("Loaded %s ticks for %s split", len(ticks), split)
             return ticks
+
+    def _fetch_rap_windows(
+        self, is_pro: bool, split: str = "train", window_size: int = 320
+    ):
+        """Fetch windowed tick data for RAP training from completed matches.
+
+        Unlike JEPA's flat tick fetcher, RAP needs contiguous temporal windows
+        with full all-player context.  This method:
+        1. Fetches only completed matches (match_complete == True)
+        2. Loads ticks from monolith grouped by match
+        3. Segments into contiguous windows of *window_size* ticks
+
+        Each returned window is a list of PlayerTickState objects from a single
+        demo, ordered by tick — ready to be treated as one RAP batch.
+
+        Returns:
+            List[List[PlayerTickState]]: one inner list per window.
+        """
+        completed_demos = self._get_completed_demo_names()
+
+        with self.db.get_session() as session:
+            stmt = select(PlayerMatchStats).where(
+                PlayerMatchStats.is_pro == is_pro,
+                PlayerMatchStats.dataset_split == split,
+            )
+            matches = session.exec(stmt).all()
+            if not matches:
+                app_logger.warning(
+                    "No %s matches for RAP (is_pro=%s)", split, is_pro
+                )
+                return []
+
+            all_demo_names = {m.demo_name for m in matches if m.demo_name}
+            if completed_demos is not None:
+                demo_names = sorted(all_demo_names & completed_demos)
+                skipped = len(all_demo_names) - len(demo_names)
+                if skipped > 0:
+                    app_logger.info(
+                        "P7: Skipped %d incomplete demos for RAP windows", skipped
+                    )
+            else:
+                demo_names = sorted(all_demo_names)
+
+            if not demo_names:
+                app_logger.warning("No completed demos available for RAP windows")
+                return []
+
+            windows: list = []
+            _PER_DEMO_TICK_CAP = 10_000
+
+            for demo_name in demo_names:
+                ticks = list(
+                    session.exec(
+                        select(PlayerTickState)
+                        .where(PlayerTickState.demo_name == demo_name)
+                        .order_by(PlayerTickState.tick)
+                        .limit(_PER_DEMO_TICK_CAP)
+                    ).all()
+                )
+
+                if len(ticks) < window_size:
+                    if ticks:
+                        windows.append(ticks)
+                    continue
+
+                # Segment into non-overlapping contiguous windows
+                for i in range(0, len(ticks) - window_size + 1, window_size):
+                    windows.append(ticks[i : i + window_size])
+
+            app_logger.info(
+                "RAP windows: %d windows of %d ticks from %d demos (%s split)",
+                len(windows),
+                window_size,
+                len(demo_names),
+                split,
+            )
+            return windows
+
+    @staticmethod
+    def _get_completed_demo_names():
+        """P4-A: Return set of demo_names whose per-match DB has match_complete=True.
+
+        Returns None if match data manager is unavailable (graceful degradation).
+        """
+        try:
+            from Programma_CS2_RENAN.backend.storage.match_data_manager import (
+                get_match_data_manager,
+            )
+
+            mdm = get_match_data_manager()
+            completed = set()
+            for match_id in mdm.list_available_matches():
+                meta = mdm.get_metadata(match_id)
+                if meta and getattr(meta, "match_complete", False):
+                    completed.add(meta.demo_name)
+            return completed if completed else None
+        except Exception as e:
+            app_logger.debug("P4-A: match completeness check unavailable: %s", e)
+            return None
 
     def _train_phase(self, is_pro=True, base_model=None, context=None):
         train_data = self._fetch_training_data(is_pro, split="train")

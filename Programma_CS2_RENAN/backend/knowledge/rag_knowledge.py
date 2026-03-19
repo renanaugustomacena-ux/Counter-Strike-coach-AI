@@ -16,6 +16,7 @@ Adheres to GEMINI.md principles:
 """
 
 import json
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -53,6 +54,10 @@ class KnowledgeEmbedder:
         try:
             from sentence_transformers import SentenceTransformer
 
+            if not self._is_model_cached(model_name):
+                logger.info("SBERT model '%s' not cached — download will start", model_name)
+                self._notify_download_start(model_name)
+
             self.model = SentenceTransformer(model_name)
             logger.info("Loaded embedding model: %s", model_name)
         except ImportError:
@@ -64,6 +69,31 @@ class KnowledgeEmbedder:
             logger.error("H-01: Failed to load embedding model %s: %s", model_name, e)
             self.embedding_dim = 100
             self._is_fallback = True
+
+    @staticmethod
+    def _is_model_cached(model_name: str) -> bool:
+        """Check if SBERT model is already downloaded."""
+        cache_dir = os.environ.get(
+            "SENTENCE_TRANSFORMERS_HOME",
+            os.path.join(os.path.expanduser("~"), ".cache", "torch", "sentence_transformers"),
+        )
+        model_path = os.path.join(cache_dir, model_name.replace("/", "_"))
+        return os.path.isdir(model_path)
+
+    @staticmethod
+    def _notify_download_start(model_name: str):
+        """Emit a toast notification about the SBERT download."""
+        try:
+            from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
+
+            get_state_manager().add_notification(
+                "knowledge",
+                "INFO",
+                f"Downloading AI language model ({model_name}). "
+                f"This only happens once (~400 MB).",
+            )
+        except Exception:
+            pass  # Don't block SBERT load over a notification failure
 
     def embed(self, text: str) -> np.ndarray:
         """

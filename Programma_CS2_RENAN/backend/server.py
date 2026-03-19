@@ -173,7 +173,7 @@ def _write_telemetry_to_disk(data: MatchTelemetry) -> None:
 
 @app.get("/api/insights", response_model=List[InsightRead])
 def get_insights():
-    if not get_db_manager:
+    if get_db_manager is None:
         # Return empty list when DB is not available instead of fake data
         app_logger.warning("Database not available - returning empty insights")
         return []

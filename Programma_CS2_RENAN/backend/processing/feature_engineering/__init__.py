@@ -20,6 +20,7 @@ _ROLE_NAMES = frozenset({
 })
 
 _VECTORIZER_NAMES = frozenset({
+    "DataQualityError",
     "FeatureExtractor",
     "FEATURE_NAMES",
     "METADATA_DIM",
@@ -46,6 +47,7 @@ def __getattr__(name: str):
 
 
 __all__ = [
+    "DataQualityError",
     "FeatureExtractor",
     "FEATURE_NAMES",
     "METADATA_DIM",

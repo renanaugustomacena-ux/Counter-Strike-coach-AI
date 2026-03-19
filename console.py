@@ -96,20 +96,10 @@ SUBPROCESS_DEFAULT_TIMEOUT_S = 120
 SUBPROCESS_BUILD_TIMEOUT_S = 600
 DEAD_CODE_DETECTOR_TIMEOUT_S = 220
 
-# --- Logging ---
-_log_dir = PROJECT_ROOT / "logs"
-_log_dir.mkdir(parents=True, exist_ok=True)
-_log_file = _log_dir / f"console_{datetime.now().strftime('%Y%m%d')}.json"
-_fh = logging.FileHandler(_log_file, encoding="utf-8")
-_fh.setLevel(logging.INFO)
-_fh.setFormatter(
-    logging.Formatter(
-        '{"ts":"%(asctime)s","lvl":"%(levelname)s","mod":"%(name)s","msg":"%(message)s"}'
-    )
-)
-logger = logging.getLogger("cs2analyzer.console")
-logger.setLevel(logging.INFO)
-logger.addHandler(_fh)
+# --- Logging (centralized) ---
+from Programma_CS2_RENAN.observability.logger_setup import get_tool_logger
+
+logger = get_tool_logger("console")
 
 # ============================================================================
 #  COMMAND REGISTRY

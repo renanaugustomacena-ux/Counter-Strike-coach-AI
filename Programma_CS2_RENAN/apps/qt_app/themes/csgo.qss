@@ -81,3 +81,43 @@ QToolBar { background-color: #141a24; border: none; spacing: 4px; padding: 4px; 
 QToolTip { background-color: #1c1e24; color: #dcdcdc; border: 1px solid #3a3e48; border-radius: 4px; }
 
 QLabel#placeholder_label { font-size: 24px; color: #3a3e48; }
+
+/* ── Toast Notifications ── */
+QFrame#toast_info {
+    background-color: rgba(26, 40, 60, 230);
+    border-left: 4px solid #617d8c;
+    border-radius: 4px;
+    margin-bottom: 4px;
+}
+QFrame#toast_warning {
+    background-color: rgba(60, 50, 20, 230);
+    border-left: 4px solid #c8a030;
+    border-radius: 4px;
+    margin-bottom: 4px;
+}
+QFrame#toast_error {
+    background-color: rgba(70, 20, 20, 230);
+    border-left: 4px solid #cc4444;
+    border-radius: 4px;
+    margin-bottom: 4px;
+}
+QFrame#toast_critical {
+    background-color: rgba(90, 10, 10, 240);
+    border-left: 4px solid #ee0000;
+    border-radius: 4px;
+    margin-bottom: 4px;
+}
+QLabel#toast_message {
+    color: #dcdcdc;
+    font-size: 13px;
+}
+QPushButton#toast_dismiss {
+    background: transparent;
+    color: #666666;
+    border: none;
+    font-size: 16px;
+    padding: 0 4px;
+}
+QPushButton#toast_dismiss:hover {
+    color: #dcdcdc;
+}

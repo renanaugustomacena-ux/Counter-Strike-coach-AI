@@ -41,7 +41,7 @@ class SteamConfigScreen(QWidget):
         api_key = get_credential("STEAM_API_KEY")
         if api_key and api_key != "PROTECTED_BY_WINDOWS_VAULT":
             self._api_key_input.setText(api_key)
-        self._saved_label.setVisible(False)
+        self._status_label.setVisible(False)
 
     def retranslate(self):
         """Update all translatable text when language changes."""

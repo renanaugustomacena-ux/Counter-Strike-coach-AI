@@ -1404,7 +1404,7 @@ def verify_dataset_split_enum():
 def verify_coach_status_enum():
     from Programma_CS2_RENAN.backend.storage.db_models import CoachStatus
 
-    expected = {"Paused", "Training", "Idle", "Error"}
+    expected = {"Paused", "Training", "Idle", "Error", "Booting", "Running", "ShuttingDown", "Offline"}
     actual = {e.value for e in CoachStatus}
     if actual != expected:
         raise AssertionError(f"CoachStatus values {actual} != expected {expected}")

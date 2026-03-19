@@ -45,30 +45,71 @@ logger = get_logger("cs2analyzer.ingestion_runner")
 
 
 def _check_duplicate_demo(db_manager, demo_name: str) -> bool:
-    """Check if a demo has already been ingested.
+    """Unified duplicate detection across all ingestion data stores.
+
+    Checks:
+    1. IngestionTask table (by stem, any status except 'error')
+    2. PlayerMatchStats table (by demo_name)
+    3. Per-match DB file existence
 
     Args:
         db_manager: Database manager instance
-        demo_name: Base name of the demo file (without extension)
+        demo_name: Base name of the demo file (with or without extension)
 
     Returns:
         True if demo was already ingested, False otherwise
     """
+    from sqlalchemy import func
     from sqlmodel import select
+
+    from Programma_CS2_RENAN.backend.storage.db_models import IngestionTask
 
     # R3-04: Normalize to stem (strip .dem extension) for consistent matching
     normalized = Path(demo_name).stem if demo_name.endswith(".dem") else demo_name
 
     with db_manager.get_session() as session:
-        stmt = select(PlayerMatchStats).where(PlayerMatchStats.demo_name == normalized)
-        existing = session.exec(stmt).first()
-
-        if existing:
+        # Check 1: IngestionTask (any non-error status means queued, processing, or done)
+        task_count = session.exec(
+            select(func.count(IngestionTask.id)).where(
+                IngestionTask.demo_path.contains(normalized),
+                IngestionTask.status != "error",
+            )
+        ).one()
+        if task_count > 0:
             logger.warning(
-                "Duplicate detected: Demo '%s' already ingested (found in PlayerMatchStats)",
+                "Duplicate detected: Demo '%s' has active IngestionTask (status != error)",
                 demo_name,
             )
             return True
+
+        # Check 2: PlayerMatchStats (already fully ingested)
+        stats_count = session.exec(
+            select(func.count(PlayerMatchStats.id)).where(
+                PlayerMatchStats.demo_name == normalized
+            )
+        ).one()
+        if stats_count > 0:
+            logger.warning(
+                "Duplicate detected: Demo '%s' already in PlayerMatchStats",
+                demo_name,
+            )
+            return True
+
+    # Check 3: Per-match DB file existence
+    import hashlib
+
+    match_id = int(hashlib.sha256(normalized.encode()).hexdigest(), 16) % (2**63 - 1)
+    try:
+        from Programma_CS2_RENAN.backend.storage.match_data_manager import get_match_data_manager
+        mdm = get_match_data_manager()
+        if match_id in mdm.list_available_matches():
+            logger.warning(
+                "Duplicate detected: match_%d.db exists for demo '%s'",
+                match_id, demo_name,
+            )
+            return True
+    except Exception:
+        pass  # Match data manager may not be initialized yet
 
     return False
 
@@ -495,68 +536,110 @@ def _sanitize_value(value, default, value_type=float):
 
 def _interpolate_position(df_ticks):
     """
-    Intelligent position interpolation:
-    For missing positions, interpolate between last known and next known positions.
-    Uses CIRCULAR interpolation for angles (yaw/pitch) to handle wrap-around correctly.
+    Intelligent position interpolation with alive-boundary safety.
+
+    Key invariants:
+    - Positions are ONLY interpolated within contiguous alive segments per player.
+      Dead players keep their last-known position; no bleed across death events.
+    - Angles (yaw/pitch) use circular interpolation (sin/cos decomposition)
+      to handle wrap-around correctly, also scoped per player + alive segment.
+    - After interpolation, any remaining (0,0,0) positions are marked as NaN
+      rather than passed as valid coordinates (0,0,0 is outside playable area
+      on every CS2 map and would poison training data).
     """
     import numpy as np
     import pandas as pd
+
+    from Programma_CS2_RENAN.observability.logger_setup import get_logger as _gl
+
+    _log = _gl("cs2analyzer.ingestion")
 
     # Convert to numeric, coercing errors to NaN
     for col in ["X", "Y", "Z", "yaw", "pitch", "health", "armor", "equipment_value"]:
         if col in df_ticks.columns:
             df_ticks[col] = pd.to_numeric(df_ticks[col], errors="coerce")
 
-    # Linear interpolation for position (X, Y, Z)
-    for col in ["X", "Y", "Z"]:
-        if col in df_ticks.columns:
-            df_ticks[col] = df_ticks[col].interpolate(method="linear", limit_direction="both")
-            df_ticks[col] = df_ticks[col].ffill().bfill()
-            df_ticks[col] = df_ticks[col].fillna(0.0)
+    # Determine alive state for boundary-aware interpolation
+    has_alive = "is_alive" in df_ticks.columns
+    has_player = "player_name" in df_ticks.columns or "name" in df_ticks.columns
+    player_col = "player_name" if "player_name" in df_ticks.columns else "name"
 
-    # R4-14-01: Count rows where all position axes fell back to (0,0,0)
+    if has_player and has_alive:
+        # Create alive-segment groups: each contiguous alive=True block per player
+        # gets its own segment ID, preventing interpolation across death boundaries.
+        df_ticks["_alive_segment"] = (
+            df_ticks.groupby(player_col)["is_alive"]
+            .transform(lambda s: s.fillna(True).astype(bool).ne(s.fillna(True).astype(bool).shift()).cumsum())
+        )
+        group_cols = [player_col, "_alive_segment"]
+    elif has_player:
+        group_cols = [player_col]
+    else:
+        group_cols = None
+
+    # --- Position interpolation (X, Y, Z) per alive segment ---
+    pos_cols = [c for c in ["X", "Y", "Z"] if c in df_ticks.columns]
+    if pos_cols:
+        if group_cols:
+            for col in pos_cols:
+                df_ticks[col] = (
+                    df_ticks.groupby(group_cols, sort=False)[col]
+                    .transform(lambda s: s.interpolate(method="linear", limit_direction="both").ffill().bfill())
+                )
+                # Only fill remaining NaN with NaN (NOT 0.0) — (0,0,0) poisons training
+                # NaN will be handled downstream by the vectorizer quality gate
+        else:
+            for col in pos_cols:
+                df_ticks[col] = df_ticks[col].interpolate(method="linear", limit_direction="both")
+                df_ticks[col] = df_ticks[col].ffill().bfill()
+
+    # R4-14-01: Count remaining (0,0,0) positions after alive-aware interpolation.
+    # These represent players who never had a valid position in any alive segment
+    # (warmup, bots, disconnected). They remain as 0.0 for DB storage (SQLite has
+    # no NaN) but the count is tracked for data quality monitoring.
     if all(c in df_ticks.columns for c in ("X", "Y", "Z")):
-        _zero_pos = ((df_ticks["X"] == 0.0) & (df_ticks["Y"] == 0.0) & (df_ticks["Z"] == 0.0)).sum()
+        # Fill any remaining NaN from interpolation gaps with 0.0 for DB compat
+        for col in ["X", "Y", "Z"]:
+            df_ticks[col] = df_ticks[col].fillna(0.0)
+        zero_pos_mask = (df_ticks["X"] == 0.0) & (df_ticks["Y"] == 0.0) & (df_ticks["Z"] == 0.0)
+        _zero_pos = zero_pos_mask.sum()
         if _zero_pos > 0:
-            from Programma_CS2_RENAN.observability.logger_setup import get_logger as _gl
-            _gl("cs2analyzer.ingestion").warning(
-                "R4-14-01: %d/%d ticks have (0,0,0) position after interpolation (%.1f%%)",
+            _log.warning(
+                "R4-14-01: %d/%d ticks have (0,0,0) position after alive-aware interpolation (%.1f%%)",
                 _zero_pos, len(df_ticks), 100.0 * _zero_pos / max(len(df_ticks), 1),
             )
 
-    # CIRCULAR interpolation for angles (yaw wraps at 360, pitch wraps at 180)
-    for col, wrap_range in [("yaw", 360.0), ("pitch", 180.0)]:
+    # --- Circular interpolation for angles (yaw/pitch) per alive segment ---
+    for col, _wrap in [("yaw", 360.0), ("pitch", 180.0)]:
         if col not in df_ticks.columns:
             continue
 
-        # Convert angles to unit circle coordinates (sin/cos)
         angles_rad = np.deg2rad(df_ticks[col].values)
-        sin_vals = pd.Series(np.sin(angles_rad))
-        cos_vals = pd.Series(np.cos(angles_rad))
+        sin_vals = pd.Series(np.sin(angles_rad), index=df_ticks.index)
+        cos_vals = pd.Series(np.cos(angles_rad), index=df_ticks.index)
 
-        # Interpolate sin and cos separately (they are continuous)
-        sin_interp = (
-            sin_vals.interpolate(method="linear", limit_direction="both")
-            .ffill()
-            .bfill()
-            .fillna(0.0)
-        )
-        cos_interp = (
-            cos_vals.interpolate(method="linear", limit_direction="both")
-            .ffill()
-            .bfill()
-            .fillna(1.0)
-        )
+        if group_cols:
+            sin_interp = (
+                sin_vals.groupby([df_ticks[g] for g in group_cols], sort=False)
+                .transform(lambda s: s.interpolate(method="linear", limit_direction="both").ffill().bfill().fillna(0.0))
+            )
+            cos_interp = (
+                cos_vals.groupby([df_ticks[g] for g in group_cols], sort=False)
+                .transform(lambda s: s.interpolate(method="linear", limit_direction="both").ffill().bfill().fillna(1.0))
+            )
+        else:
+            sin_interp = sin_vals.interpolate(method="linear", limit_direction="both").ffill().bfill().fillna(0.0)
+            cos_interp = cos_vals.interpolate(method="linear", limit_direction="both").ffill().bfill().fillna(1.0)
 
-        # Convert back to angles using arctan2
         angles_interp = np.rad2deg(np.arctan2(sin_interp.values, cos_interp.values))
-
-        # Normalize to positive range if needed (yaw: 0-360, pitch: -90 to 90)
         if col == "yaw":
             angles_interp = np.mod(angles_interp, 360.0)
-        # pitch remains in (-90, 90) which is correct for arctan2 output
 
         df_ticks[col] = angles_interp
+
+    # Clean up temporary column
+    if "_alive_segment" in df_ticks.columns:
+        df_ticks.drop(columns=["_alive_segment"], inplace=True)
 
     # Forward fill for integer fields (health, armor, equipment, WP6 fields)
     for col in [
@@ -1221,6 +1304,20 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
     # Only on fresh ingestion (start_tick == 0) to avoid duplicate events
     if start_tick == 0:
         _extract_and_store_events(demo_path, match_id, match_manager, df_ticks)
+
+    # P4-A: Mark match as complete AFTER all ticks + events are stored.
+    # Teacher daemon only trains on completed matches to prevent learning
+    # from half-written data.
+    try:
+        with match_manager.get_match_session(match_id) as session:
+            from sqlalchemy import text as sa_text
+            session.execute(
+                sa_text("UPDATE match_metadata SET match_complete = 1 WHERE match_id = :mid"),
+                {"mid": match_id},
+            )
+        logger.info("Match %s marked as complete", match_id)
+    except Exception as e:
+        logger.warning("Failed to mark match %s as complete: %s", match_id, e)
 
     return last_tick
 

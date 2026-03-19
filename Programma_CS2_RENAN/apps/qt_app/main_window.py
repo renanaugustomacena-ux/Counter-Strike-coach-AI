@@ -30,8 +30,6 @@ NAV_ITEMS = [
     ("match_history", "\u2630", "match_history_title"),
     ("performance", "\u2606", "advanced_analytics"),
     ("tactical_viewer", "\u2316", "tactical_analyzer"),
-    ("settings", "\u2699", "settings"),
-    ("help", "\u2753", "help"),
 ]
 
 
@@ -130,7 +128,7 @@ class MainWindow(QMainWindow):
         )
 
         # Version label at bottom
-        ver = QLabel("v1.0.0-qt")
+        ver = QLabel("v0.1.0-ea")
         ver.setObjectName("section_subtitle")
         ver.setAlignment(Qt.AlignCenter)
         sidebar_layout.addWidget(ver)
@@ -151,13 +149,24 @@ class MainWindow(QMainWindow):
         self._stack.setStyleSheet("QStackedWidget { background: transparent; }")
         overlay.addWidget(self._stack)
 
-        # Raise the stack above the background
-        overlay.setCurrentWidget(self._stack)
+        # Layer 2: toast notifications (topmost, transparent background)
+        from Programma_CS2_RENAN.apps.qt_app.widgets.toast import ToastContainer
+
+        self._toast_container = ToastContainer()
+        overlay.addWidget(self._toast_container)
+
+        # Raise the toast layer above everything
+        overlay.setCurrentWidget(self._toast_container)
 
         root_layout.addWidget(content_wrapper, 1)
 
         # Screen registry
         self._screens: dict[str, int] = {}
+
+        # Connect notification toasts
+        from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state
+
+        get_app_state().notification_received.connect(self._show_toast)
 
         # Connect i18n changes
         i18n.language_changed.connect(self._refresh_nav_labels)
@@ -192,6 +201,10 @@ class MainWindow(QMainWindow):
         btn = self.sender()
         if isinstance(btn, _NavButton):
             self.switch_screen(btn.screen_key)
+
+    def _show_toast(self, severity: str, message: str):
+        """Display a toast notification from the backend."""
+        self._toast_container.add_toast(severity, message)
 
     def _refresh_nav_labels(self, _lang: str):
         """Update button labels and screen content when language changes."""

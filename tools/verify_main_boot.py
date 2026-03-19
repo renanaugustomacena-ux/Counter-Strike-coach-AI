@@ -3,9 +3,15 @@ Headless dry-run of the Qt app structure.
 
 Verifies that the Qt entry point, MainWindow, all screens, and theme files
 are importable and structurally sound — without requiring a display server.
+
+Screen modules are auto-discovered from the filesystem (not hardcoded).
+MainWindow is validated against its required public interface.
+Theme files are checked for actual QSS content, not just file size.
 """
 
+import importlib
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -19,70 +25,144 @@ _PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-errors = []
+_SCREENS_DIR = (
+    Path(_PROJECT_ROOT) / "Programma_CS2_RENAN" / "apps" / "qt_app" / "screens"
+)
+_THEMES_DIR = (
+    Path(_PROJECT_ROOT) / "Programma_CS2_RENAN" / "apps" / "qt_app" / "themes"
+)
 
-# --- 1. Qt app entry point ---
-try:
-    print("[-] Importing Qt app module...")
-    from Programma_CS2_RENAN.apps.qt_app import app as qt_app_module
-
-    if not hasattr(qt_app_module, "main") or not callable(qt_app_module.main):
-        errors.append("qt_app.app missing callable 'main' function")
-    else:
-        print("[PASS] qt_app.app.main() exists and is callable.")
-except Exception as e:
-    errors.append(f"Failed to import qt_app.app: {e}")
-
-# --- 2. MainWindow class ---
-try:
-    print("[-] Importing MainWindow...")
-    from Programma_CS2_RENAN.apps.qt_app.main_window import MainWindow
-
-    print("[PASS] MainWindow class imported successfully.")
-except Exception as e:
-    errors.append(f"Failed to import MainWindow: {e}")
-
-# --- 3. All screen modules ---
-screen_modules = [
-    "home_screen", "coach_screen", "match_history_screen",
-    "performance_screen", "tactical_viewer_screen", "settings_screen",
-    "help_screen", "steam_config_screen", "user_profile_screen",
-    "profile_screen", "wizard_screen", "match_detail_screen",
-    "faceit_config_screen",
+# MainWindow must expose these attributes/methods.
+_REQUIRED_MW_ATTRS = [
+    "register_screen",
+    "switch_screen",
+    "screen_changed",
+    "set_wallpaper",
 ]
 
-print("[-] Importing all screen modules...")
-import importlib
+errors: list[str] = []
 
-for mod_name in screen_modules:
-    full = f"Programma_CS2_RENAN.apps.qt_app.screens.{mod_name}"
+
+def _check(condition: bool, msg: str) -> None:
+    if not condition:
+        errors.append(msg)
+        print(f"  [FAIL] {msg}")
+    else:
+        print(f"  [PASS] {msg}")
+
+
+def _discover_screen_modules() -> list[str]:
+    """Auto-discover *_screen.py modules from the screens directory."""
+    if not _SCREENS_DIR.is_dir():
+        return []
+    return sorted(
+        p.stem
+        for p in _SCREENS_DIR.glob("*_screen.py")
+        if not p.name.startswith("_")
+    )
+
+
+def main():
+    print("=" * 60)
+    print("       MACENA QT APP — BOOT STRUCTURE VALIDATOR")
+    print("=" * 60)
+
+    # --- 1. Qt app entry point ---
+    print("\n[Phase 1] Qt app entry point")
     try:
-        importlib.import_module(full)
+        from Programma_CS2_RENAN.apps.qt_app import app as qt_app_module
+
+        _check(
+            hasattr(qt_app_module, "main") and callable(qt_app_module.main),
+            "qt_app.app.main() exists and is callable",
+        )
     except Exception as e:
-        errors.append(f"Screen import failed: {full} — {e}")
+        errors.append(f"Failed to import qt_app.app: {e}")
+        print(f"  [FAIL] Import qt_app.app: {e}")
 
-if not any("Screen import failed" in e for e in errors):
-    print(f"[PASS] All {len(screen_modules)} screen modules imported.")
+    # --- 2. MainWindow class + public interface ---
+    print("\n[Phase 2] MainWindow class")
+    try:
+        from Programma_CS2_RENAN.apps.qt_app.main_window import MainWindow, NAV_ITEMS
 
-# --- 4. Theme files ---
-print("[-] Checking theme files...")
-themes_dir = Path(_PROJECT_ROOT) / "Programma_CS2_RENAN" / "apps" / "qt_app" / "themes"
-expected_themes = ["cs2.qss", "csgo.qss", "cs16.qss"]
-for theme_file in expected_themes:
-    path = themes_dir / theme_file
-    if not path.exists():
-        errors.append(f"Theme file missing: {theme_file}")
-    elif path.stat().st_size < 100:
-        errors.append(f"Theme file suspiciously small: {theme_file} ({path.stat().st_size} bytes)")
+        _check(True, "MainWindow class imported successfully")
 
-if not any("Theme file" in e for e in errors):
-    print(f"[PASS] All {len(expected_themes)} theme files present.")
+        for attr in _REQUIRED_MW_ATTRS:
+            _check(
+                hasattr(MainWindow, attr),
+                f"MainWindow has '{attr}'",
+            )
 
-# --- Summary ---
-if errors:
-    print(f"\n[CRITICAL FAILURE] {len(errors)} error(s):")
-    for e in errors:
-        print(f"  - {e}")
-    sys.exit(1)
-else:
-    print("\n[SUCCESS] Qt app is structurally sound and importable.")
+        # NAV_ITEMS must be a non-empty list of 3-tuples
+        _check(
+            isinstance(NAV_ITEMS, list) and len(NAV_ITEMS) > 0,
+            f"NAV_ITEMS is a non-empty list ({len(NAV_ITEMS)} entries)",
+        )
+        for i, item in enumerate(NAV_ITEMS):
+            _check(
+                isinstance(item, (list, tuple)) and len(item) == 3,
+                f"NAV_ITEMS[{i}] is a 3-tuple: {item!r:.60}",
+            )
+
+    except Exception as e:
+        errors.append(f"Failed to import MainWindow: {e}")
+        print(f"  [FAIL] Import MainWindow: {e}")
+
+    # --- 3. Auto-discovered screen modules ---
+    print("\n[Phase 3] Screen modules (auto-discovered)")
+    discovered = _discover_screen_modules()
+    _check(len(discovered) > 0, f"Discovered {len(discovered)} screen modules on disk")
+
+    imported_count = 0
+    for mod_name in discovered:
+        full = f"Programma_CS2_RENAN.apps.qt_app.screens.{mod_name}"
+        try:
+            importlib.import_module(full)
+            imported_count += 1
+        except Exception as e:
+            errors.append(f"Screen import failed: {full} — {e}")
+            print(f"  [FAIL] {full}: {e}")
+
+    _check(
+        imported_count == len(discovered),
+        f"All {len(discovered)} screen modules imported ({imported_count}/{len(discovered)})",
+    )
+
+    # --- 4. Theme files — actual QSS content validation ---
+    print("\n[Phase 4] Theme files (content validation)")
+    qss_files = sorted(_THEMES_DIR.glob("*.qss")) if _THEMES_DIR.is_dir() else []
+    _check(len(qss_files) >= 3, f"Found {len(qss_files)} .qss theme files (need >= 3)")
+
+    # QSS must contain actual selectors — at minimum a QWidget block.
+    _QSS_SELECTOR_RE = re.compile(r"Q\w+\s*\{")
+
+    for qss_path in qss_files:
+        name = qss_path.name
+        try:
+            content = qss_path.read_text(encoding="utf-8")
+            _check(
+                len(content) >= 200,
+                f"{name}: length {len(content)} chars (>= 200)",
+            )
+            _check(
+                bool(_QSS_SELECTOR_RE.search(content)),
+                f"{name}: contains QSS selectors (QWidget {{...}})",
+            )
+        except Exception as e:
+            errors.append(f"Theme read error: {name} — {e}")
+            print(f"  [FAIL] {name}: {e}")
+
+    # --- Summary ---
+    print("\n" + "=" * 60)
+    if errors:
+        print(f"VERDICT: FAIL — {len(errors)} error(s)")
+        for e in errors:
+            print(f"  - {e}")
+        sys.exit(1)
+    else:
+        print("VERDICT: PASS — Qt app structure validated")
+    print("=" * 60)
+
+
+if __name__ == "__main__":
+    main()

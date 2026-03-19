@@ -49,29 +49,17 @@ console = Console(theme=MTS_THEME)
 install_rich_traceback(console=console)
 
 
-# --- Logging Setup ---
-def setup_logging(log_dir: Path):
-    log_dir.mkdir(parents=True, exist_ok=True)
-    log_file = log_dir / f"feature_audit_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+# --- Logging (centralized) ---
+from Programma_CS2_RENAN.observability.logger_setup import get_tool_logger
 
-    file_handler = logging.FileHandler(log_file, encoding="utf-8")
-    file_handler.setLevel(logging.DEBUG)
-    file_formatter = logging.Formatter(
-        '{"timestamp": "%(asctime)s", "level": "%(levelname)s", "message": "%(message)s"}'
-    )
-    file_handler.setFormatter(file_formatter)
-
-    logger = logging.getLogger("FeatureAuditor")
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(file_handler)
-    return logger, log_file
+_tool_logger = get_tool_logger("feature_audit")
 
 
 class IndustrialFeatureAuditor:
     def __init__(self, demo_path: Optional[str] = None):
         self.project_root = project_root
         self.demo_path = Path(demo_path) if demo_path else None
-        self.logger, self.log_file = setup_logging(self.project_root / "logs")
+        self.logger = _tool_logger
 
         # We import real project modules to get the current truth
         try:

@@ -679,46 +679,73 @@ class ExperienceBank:
         Returns:
             True if feedback was recorded, False if experience not found.
         """
+        # Determine effectiveness from action/outcome match
+        positive_outcomes = {"kill", "trade", "objective", "survived"}
+        outcome_improved = player_outcome in positive_outcomes
+
+        # P4-C: Atomic SQL UPDATE eliminates read-modify-write TOCTOU race.
+        # We need action_match to compute effectiveness, but the action comparison
+        # requires reading the row first. Do a single read, then atomic update.
         with self.db.get_session() as session:
             experience = session.get(CoachingExperience, experience_id)
             if not experience:
                 logger.warning("Feedback target experience %s not found", experience_id)
                 return False
 
-            # Determine effectiveness
             action_match = player_action.lower() == experience.action_taken.lower()
-            positive_outcomes = {"kill", "trade", "objective", "survived"}
-            outcome_improved = player_outcome in positive_outcomes
 
-            # Effectiveness heuristic: single-trial outcomes are noisy signals.
-            # Use moderate values to avoid overconfidence from one event.
-            if action_match and outcome_improved:
-                effectiveness = 0.6  # Good signal, but one success != proven
-            elif action_match and not outcome_improved:
-                effectiveness = -0.3  # Moderate penalty — opponent may have been better
-            elif not action_match and outcome_improved:
-                effectiveness = 0.0  # Neutral — player found alternative approach
-            else:
-                effectiveness = -0.15  # Mild negative — didn't follow, didn't succeed
+        # Effectiveness heuristic: single-trial outcomes are noisy signals.
+        if action_match and outcome_improved:
+            effectiveness = 0.6
+        elif action_match and not outcome_improved:
+            effectiveness = -0.3
+        elif not action_match and outcome_improved:
+            effectiveness = 0.0
+        else:
+            effectiveness = -0.15
 
-            # Update experience with feedback (EMA)
-            experience.outcome_validated = True
-            # E-01-alt: Clamp effectiveness to [0, 1] — EMA drift over many
-            # feedback iterations can push the score outside valid bounds.
-            raw_eff = experience.effectiveness_score * 0.7 + effectiveness * 0.3
-            experience.effectiveness_score = max(0.0, min(1.0, raw_eff))
-            experience.follow_up_match_id = follow_up_match_id
-            experience.times_advice_given = (experience.times_advice_given or 0) + 1
+        # P4-C: Single atomic UPDATE with SQL expressions — no read-modify-write race.
+        from sqlalchemy import case, func as sa_func
+
+        now = datetime.now(timezone.utc)
+        ema_factor = 0.3
+        confidence_adj = effectiveness * 0.05
+
+        with self.db.get_session() as session:
+            # Build atomic update values using SQL expressions
+            update_values = {
+                CoachingExperience.outcome_validated: True,
+                CoachingExperience.follow_up_match_id: follow_up_match_id,
+                CoachingExperience.last_feedback_at: now,
+                # EMA: new_eff = clamp(old * 0.7 + effectiveness * 0.3, 0, 1)
+                CoachingExperience.effectiveness_score: sa_func.max(
+                    0.0,
+                    sa_func.min(
+                        1.0,
+                        CoachingExperience.effectiveness_score * (1 - ema_factor)
+                        + effectiveness * ema_factor,
+                    ),
+                ),
+                # confidence = clamp(old + effectiveness * 0.05, 0.1, 1.0)
+                CoachingExperience.confidence: sa_func.max(
+                    0.1,
+                    sa_func.min(
+                        1.0,
+                        CoachingExperience.confidence + confidence_adj,
+                    ),
+                ),
+                CoachingExperience.times_advice_given: CoachingExperience.times_advice_given + 1,
+            }
             if action_match:
-                experience.times_advice_followed = (experience.times_advice_followed or 0) + 1
-            experience.last_feedback_at = datetime.now(timezone.utc)
+                update_values[CoachingExperience.times_advice_followed] = (
+                    CoachingExperience.times_advice_followed + 1
+                )
 
-            # Adjust confidence based on feedback
-            confidence_adj = effectiveness * 0.05
-            experience.confidence = max(0.1, min(1.0, experience.confidence + confidence_adj))
-
-            session.add(experience)
-            session.commit()
+            session.execute(
+                update(CoachingExperience)
+                .where(CoachingExperience.id == experience_id)
+                .values(**update_values)
+            )
 
         logger.info(
             "Feedback recorded for experience %s: effectiveness=%.2f",

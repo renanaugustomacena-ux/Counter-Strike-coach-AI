@@ -37,8 +37,18 @@ def get_factory_model_path(version, user_id=None):
 
 
 def save_nn(model, version, user_id=None):
+    """Save model checkpoint with atomic write to prevent corruption on crash."""
     path = get_model_path(version, user_id)
-    torch.save(model.state_dict(), path)
+    tmp_path = path.with_suffix(".pt.tmp")
+    try:
+        torch.save(model.state_dict(), tmp_path)
+        tmp_path.replace(path)  # atomic on POSIX
+    except BaseException:
+        try:
+            tmp_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
 
 
 def load_nn(version, model, user_id=None):

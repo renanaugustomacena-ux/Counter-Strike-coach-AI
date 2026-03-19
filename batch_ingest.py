@@ -22,17 +22,10 @@ os.environ["KIVY_LOG_LEVEL"] = "warning"
 PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-# Set up file + console logging
-log_path = PROJECT_ROOT / "batch_ingest.log"
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | [%(processName)s] %(message)s",
-    handlers=[
-        logging.FileHandler(log_path, mode="a"),
-        logging.StreamHandler(sys.stdout),
-    ],
-)
-logger = logging.getLogger("batch_ingest")
+# Centralized logging
+from Programma_CS2_RENAN.observability.logger_setup import get_tool_logger
+
+logger = get_tool_logger("batch_ingest")
 
 
 def ingest_one_demo(demo_path_str: str) -> dict:

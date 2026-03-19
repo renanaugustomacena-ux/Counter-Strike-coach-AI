@@ -3,7 +3,7 @@ Reset Pro Data — Clean slate for fresh ingestion & training.
 
 Clears all stale data from:
   - database.db (all data tables + CoachState reset)
-  - hltv_metadata.db (pro players, teams, stats, matches)
+  - hltv_metadata.db (pro players, teams, stats, matches)  [skipped with --preserve-hltv]
   - knowledge_graph.db (entities, relations)
   - hltv_cache.db (player cache)
   - ingestion/cache/*.mcn (parsed demo cache)
@@ -12,9 +12,15 @@ Clears all stale data from:
   - data/hltv_sync_state.json (HLTV sync state)
   - match_data/*.db (per-match SQLite files)
 
+Flags:
+  --preserve-hltv   Skip wiping hltv_metadata.db and HLTV tables in monolith (default)
+  --wipe-hltv       Also wipe HLTV data (pro teams, players, stat cards)
+  --yes             Skip interactive confirmation prompt
+
 Idempotent: safe to run multiple times.
 """
 
+import argparse
 import glob
 import json
 import os
@@ -99,9 +105,11 @@ def delete_rows(conn: sqlite3.Connection, table: str) -> int:
         return 0
 
 
-def phase_main_database() -> dict:
+def phase_main_database(preserve_hltv: bool = True) -> dict:
     """Phase 1: Clear database.db tables and reset CoachState."""
     log("\n=== Phase 1: Main Database (database.db) ===", BOLD + CYAN)
+    if preserve_hltv:
+        log("  (preserving HLTV-linked tables: proplayerstatcard, proplayer, proteam)", CYAN)
     results = {}
 
     if not os.path.exists(DATABASE_PATH):
@@ -115,6 +123,9 @@ def phase_main_database() -> dict:
     except Exception:
         conn.close()
         raise
+
+    # Tables that hold HLTV-scraped data (separate from demo ingestion)
+    _HLTV_TABLES = {"proplayerstatcard", "proplayer", "proteam"}
 
     # Order matters: delete child tables before parent tables (FK constraints)
     tables_to_clear = [
@@ -138,6 +149,10 @@ def phase_main_database() -> dict:
     ]
 
     for table in tables_to_clear:
+        if preserve_hltv and table in _HLTV_TABLES:
+            log(f"  {table}: PRESERVED (HLTV data)", CYAN)
+            results[table] = "preserved"
+            continue
         count = delete_rows(conn, table)
         results[table] = count
         status = f"{count} rows" if count > 0 else "already empty"
@@ -188,10 +203,15 @@ def phase_main_database() -> dict:
     return results
 
 
-def phase_hltv_metadata() -> dict:
+def phase_hltv_metadata(preserve_hltv: bool = True) -> dict:
     """Phase 2: Clear hltv_metadata.db."""
     log("\n=== Phase 2: HLTV Metadata (hltv_metadata.db) ===", BOLD + CYAN)
     results = {}
+
+    if preserve_hltv:
+        log("  SKIPPED — HLTV data preserved (scraped from hltv.org, not from demos)", CYAN)
+        results["status"] = "preserved"
+        return results
 
     if not os.path.exists(HLTV_METADATA_PATH):
         log(f"  NOT FOUND: {HLTV_METADATA_PATH}", YELLOW)
@@ -426,7 +446,7 @@ def phase_vacuum() -> None:
         )
 
 
-def phase_verify() -> bool:
+def phase_verify(preserve_hltv: bool = True) -> bool:
     """Phase 8: Verify all data is cleared."""
     log("\n=== Phase 8: Verification ===", BOLD + CYAN)
     all_ok = True
@@ -459,7 +479,7 @@ def phase_verify() -> bool:
         conn.close()
 
     # Verify hltv_metadata.db
-    if os.path.exists(HLTV_METADATA_PATH):
+    if not preserve_hltv and os.path.exists(HLTV_METADATA_PATH):
         conn = sqlite3.connect(HLTV_METADATA_PATH)
         for table in ["proplayer", "proteam", "proplayerstatcard", "matchresult"]:
             try:
@@ -471,6 +491,8 @@ def phase_verify() -> bool:
             except sqlite3.OperationalError:
                 pass
         conn.close()
+    elif preserve_hltv:
+        log("  hltv_metadata.db: PRESERVED (not verified)", CYAN)
 
     # Verify knowledge_graph.db
     if os.path.exists(KNOWLEDGE_GRAPH_PATH):
@@ -544,14 +566,42 @@ def phase_verify() -> bool:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Reset CS2 Analyzer data for fresh ingestion & training.",
+    )
+    hltv_group = parser.add_mutually_exclusive_group()
+    hltv_group.add_argument(
+        "--preserve-hltv",
+        action="store_true",
+        default=True,
+        help="Preserve HLTV pro stats scraped from hltv.org (default)",
+    )
+    hltv_group.add_argument(
+        "--wipe-hltv",
+        action="store_true",
+        default=False,
+        help="Also wipe HLTV data (pro teams, players, stat cards)",
+    )
+    parser.add_argument(
+        "--yes", "-y",
+        action="store_true",
+        default=False,
+        help="Skip interactive confirmation prompt",
+    )
+    args = parser.parse_args()
+
+    preserve_hltv = not args.wipe_hltv
+
     log(f"\n{'=' * 60}", BOLD)
-    log("  Macena CS2 Analyzer — Pro Data Reset", BOLD + CYAN)
+    log("  Macena CS2 Analyzer — Data Reset", BOLD + CYAN)
     log(f"  {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", CYAN)
     log(f"{'=' * 60}", BOLD)
 
     log("\nThis will DELETE:", YELLOW + BOLD)
-    log("  - All data rows in database.db (stats, ticks, insights, tasks, pro tables)")
-    log("  - All rows in hltv_metadata.db (pro players, teams)")
+    log("  - All data rows in database.db (stats, ticks, insights, tasks)")
+    if not preserve_hltv:
+        log("  - All rows in hltv_metadata.db (pro players, teams)")
+        log("  - Pro tables in database.db (proplayerstatcard, proplayer, proteam)")
     log("  - All rows in knowledge_graph.db (entities, relations)")
     log("  - All rows in hltv_cache.db")
     log("  - All .mcn files in ingestion/cache/")
@@ -559,15 +609,20 @@ def main() -> int:
     log("  - Demo registry (.validated_cache.json)")
     log("  - HLTV sync state (hltv_sync_state.json)")
     log("  - All per-match SQLite files (match_data/*.db)")
-    log("\nPreserved: schema, user profile, settings, CSVs, knowledge base, migrations")
 
-    confirm = input(f"\n{BOLD}Proceed? [y/N]: {RESET}").strip().lower()
-    if confirm != "y":
-        log("\nAborted.", YELLOW)
-        return 1
+    preserved = ["schema", "user profile", "settings", "CSVs", "migrations"]
+    if preserve_hltv:
+        preserved.insert(0, "HLTV pro stats")
+    log(f"\nPreserved: {', '.join(preserved)}")
 
-    phase_main_database()
-    phase_hltv_metadata()
+    if not args.yes:
+        confirm = input(f"\n{BOLD}Proceed? [y/N]: {RESET}").strip().lower()
+        if confirm != "y":
+            log("\nAborted.", YELLOW)
+            return 1
+
+    phase_main_database(preserve_hltv=preserve_hltv)
+    phase_hltv_metadata(preserve_hltv=preserve_hltv)
     phase_knowledge_graph()
     phase_hltv_cache()
     phase_demo_cache()
@@ -575,7 +630,7 @@ def main() -> int:
     phase_match_data()
     phase_model_checkpoints()
     phase_vacuum()
-    ok = phase_verify()
+    ok = phase_verify(preserve_hltv=preserve_hltv)
 
     log(f"\n{'=' * 60}", BOLD)
     if ok:

@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 
 from Programma_CS2_RENAN.backend.nn.config import OUTPUT_DIM, RAP_POSITION_SCALE  # noqa: F401
-from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.memory import RAPMemory
 from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.pedagogy import CausalAttributor, RAPPedagogy
 from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.perception import RAPPerception
 from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.strategy import RAPStrategy
@@ -18,7 +17,8 @@ class RAPCoachModel(nn.Module):
     Layers: Perception, Prediction, Evaluation, Strategy, Memory, Pedagogy.
     """
 
-    def __init__(self, metadata_dim=METADATA_DIM, output_dim=OUTPUT_DIM, heuristic_config=None):
+    def __init__(self, metadata_dim=METADATA_DIM, output_dim=OUTPUT_DIM,
+                 heuristic_config=None, use_lite_memory=False):
         super().__init__()
         self.metadata_dim = metadata_dim
 
@@ -35,7 +35,12 @@ class RAPCoachModel(nn.Module):
 
         # 2. Memory Layer (Recurrent Belief State)
         hidden_dim = 256
-        self.memory = RAPMemory(perception_dim, metadata_dim, hidden_dim)
+        if use_lite_memory:
+            from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.memory import RAPMemoryLite
+            self.memory = RAPMemoryLite(perception_dim, metadata_dim, hidden_dim)
+        else:
+            from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.memory import RAPMemory
+            self.memory = RAPMemory(perception_dim, metadata_dim, hidden_dim)
 
         # 3. Strategy Layer (Decision Optimization)
         self.strategy = RAPStrategy(hidden_dim, output_dim, context_dim=metadata_dim)
