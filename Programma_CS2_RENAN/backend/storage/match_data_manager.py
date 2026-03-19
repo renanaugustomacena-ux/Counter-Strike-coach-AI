@@ -36,12 +36,17 @@ _logger = get_logger("cs2analyzer.match_data_manager")
 # ============ Per-Match Schema Versioning ============
 # Bump this when MatchTickState/MatchEventState/MatchMetadata models change.
 # Add migration steps to _MATCH_DB_MIGRATIONS for each version bump.
-MATCH_DB_SCHEMA_VERSION = 1
+MATCH_DB_SCHEMA_VERSION = 2
 
 # Registry: version_from -> list of (table, column, sa_type, default_value)
-# Example for future use:
-#   2: [("match_tick_state", "new_column", sa.Integer(), "0")],
-_MATCH_DB_MIGRATIONS: dict = {}
+# Each entry: (table_name, column_name, sa_type, default_value_sql)
+_MATCH_DB_MIGRATIONS: dict = {
+    # v1 → v2: Add match_complete flag + duration_estimated for quality tracking
+    1: [
+        ("match_metadata", "match_complete", sa.Boolean(), "0"),
+        ("match_event_state", "duration_estimated", sa.Boolean(), "0"),
+    ],
+}
 
 # ============ Per-Match Telemetry Model ============
 
@@ -172,6 +177,9 @@ class MatchEventState(SQLModel, table=True):
     # -1 is the sentinel for "entity_id not populated by parser" — avoids false pairing via default=0
     entity_id: int = Field(default=-1)
 
+    # P3-B: Flag for estimated (not exact) event durations — weight lower during training
+    duration_estimated: bool = Field(default=False)
+
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -200,8 +208,9 @@ class MatchMetadata(SQLModel, table=True):
 
     # Processing info
     parser_version: str = Field(default="v1")
-    schema_version: int = Field(default=1)
+    schema_version: int = Field(default=MATCH_DB_SCHEMA_VERSION)
     is_pro_match: bool = Field(default=False)
+    match_complete: bool = Field(default=False)
 
     # Timestamps
     match_date: Optional[datetime] = None

@@ -149,4 +149,4 @@ def add_breadcrumb(
             data=data if data else None,
         )
     except Exception as e:
-        _ = e  # Intentionally suppressed
+        logger.debug("Breadcrumb recording failed (non-fatal): %s", e)

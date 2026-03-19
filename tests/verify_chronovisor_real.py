@@ -4,7 +4,6 @@ This script rigorously tests the Chronovisor using ONLY real data from the local
 It forbids the use of synthetic or mock data.
 """
 
-import logging
 import os
 import sys
 import unittest
@@ -27,10 +26,9 @@ sys.path.insert(0, PROJECT_ROOT)
 
 from Programma_CS2_RENAN.backend.nn.rap_coach.chronovisor_scanner import ChronovisorScanner
 from Programma_CS2_RENAN.backend.storage.match_data_manager import get_match_data_manager
+from Programma_CS2_RENAN.observability.logger_setup import get_tool_logger
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("RealDataTest")
+logger = get_tool_logger("verify_chronovisor")
 
 
 class TestChronovisorReal(unittest.TestCase):

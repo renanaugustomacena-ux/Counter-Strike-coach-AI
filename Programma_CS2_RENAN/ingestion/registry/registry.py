@@ -103,12 +103,19 @@ def _execute_registry_load(path):
         try:
             with open(backup_path, "r") as f:
                 data = json.load(f)
-                logger.warning(
-                    "Registry recovered from backup: %s demos", len(data.get("processed_demos", []))
-                )
-                # Restore backup to primary
-                shutil.copy2(backup_path, path)
-                return data
+            # F6-REG: Verify backup structure before trusting it
+            if not isinstance(data, dict) or "processed_demos" not in data:
+                logger.error("Backup has invalid structure (missing 'processed_demos' key)")
+                raise ValueError("Invalid backup structure")
+            if not isinstance(data["processed_demos"], list):
+                logger.error("Backup 'processed_demos' is not a list")
+                raise ValueError("Invalid backup structure")
+            logger.warning(
+                "Registry recovered from backup: %s demos", len(data["processed_demos"])
+            )
+            # Restore backup to primary
+            shutil.copy2(backup_path, path)
+            return data
         except Exception as e:
             logger.error("Backup recovery also failed: %s", e)
 

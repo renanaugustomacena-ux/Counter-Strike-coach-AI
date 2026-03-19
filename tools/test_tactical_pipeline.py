@@ -26,6 +26,10 @@ if sys.prefix == sys.base_prefix and not os.environ.get("CI"):
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
+from Programma_CS2_RENAN.observability.logger_setup import get_tool_logger
+
+logger = get_tool_logger("test_tactical_pipeline")
+
 ERRORS: list[tuple[str, str]] = []
 WARNINGS: list[str] = []
 PASSES: list[str] = []
@@ -33,17 +37,20 @@ PASSES: list[str] = []
 
 def record_pass(label: str):
     PASSES.append(label)
+    logger.info("[PASS] %s", label)
     print(f"  [PASS] {label}")
 
 
 def record_error(label: str, exc: Exception | str):
     tb = traceback.format_exc() if isinstance(exc, Exception) else str(exc)
     ERRORS.append((label, tb))
+    logger.error("[FAIL] %s: %s", label, exc, exc_info=isinstance(exc, Exception))
     print(f"  [FAIL] {label}: {exc}")
 
 
 def record_warn(label: str, msg: str):
     WARNINGS.append(f"{label}: {msg}")
+    logger.warning("[WARN] %s: %s", label, msg)
     print(f"  [WARN] {label}: {msg}")
 
 

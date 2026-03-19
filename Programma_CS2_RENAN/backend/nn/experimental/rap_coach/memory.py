@@ -1,13 +1,23 @@
 import torch
 import torch.nn as nn
-from ncps.torch import LTC
-from ncps.wirings import AutoNCP
-
-from hflayers import Hopfield
 
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.nn.experimental.rap_coach.memory")
+
+# RAP memory layer requires ncps (LTC neurons) and hflayers (Hopfield associative memory).
+# These are niche academic libraries — make them optional so the rest of the codebase
+# can import without crashing when they're not installed (USE_RAP_MODEL=False default).
+try:
+    from ncps.torch import LTC
+    from ncps.wirings import AutoNCP
+    from hflayers import Hopfield
+    _RAP_DEPS_AVAILABLE = True
+except ImportError:
+    LTC = None
+    AutoNCP = None
+    Hopfield = None
+    _RAP_DEPS_AVAILABLE = False
 
 
 class RAPMemory(nn.Module):
@@ -20,6 +30,11 @@ class RAPMemory(nn.Module):
     """
 
     def __init__(self, perception_dim, metadata_dim, hidden_dim=256):
+        if not _RAP_DEPS_AVAILABLE:
+            raise ImportError(
+                "RAP memory layer requires 'ncps' and 'hflayers' packages. "
+                "Install with: pip install ncps hflayers"
+            )
         super().__init__()
 
         input_dim = perception_dim + metadata_dim
@@ -116,3 +131,40 @@ class RAPMemory(nn.Module):
         self._hopfield_trained = True
         logger.debug("NN-MEM-01: Hopfield marked as trained via checkpoint load")
         return result
+
+
+class RAPMemoryLite(nn.Module):
+    """
+    Lightweight memory layer using standard PyTorch LSTM.
+    Drop-in replacement for RAPMemory when ncps/hflayers are unavailable.
+
+    Same contract:
+      Input:  x [B, T, perception_dim + metadata_dim]  (153)
+      Output: (combined_state [B, T, 256], belief [B, T, 64], hidden)
+    """
+
+    def __init__(self, perception_dim, metadata_dim, hidden_dim=256):
+        super().__init__()
+        input_dim = perception_dim + metadata_dim  # 128 + 25 = 153
+
+        self.lstm = nn.LSTM(input_dim, hidden_dim, batch_first=True)
+
+        self.belief_head = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.SiLU(),
+            nn.Linear(hidden_dim, 64),
+        )
+
+        logger.debug(
+            "RAPMemoryLite initialized: input=%d, hidden=%d (LSTM-based)",
+            input_dim, hidden_dim,
+        )
+
+    def forward(self, x, hidden=None):
+        """
+        Processes sequential observation features.
+        x shape: (batch, seq_len, input_dim)
+        """
+        lstm_out, hidden = self.lstm(x, hidden)
+        belief = self.belief_head(lstm_out)
+        return lstm_out, belief, hidden

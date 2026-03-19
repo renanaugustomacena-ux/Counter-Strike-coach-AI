@@ -21,7 +21,7 @@ FILE_STABILITY_REQUIRED_CHECKS = 2  # file must be stable for this many checks
 # accepting files that the adapter will reject downstream.
 from Programma_CS2_RENAN.backend.data_sources.demo_format_adapter import MIN_DEMO_SIZE as FILE_MINIMUM_SIZE
 # F6-16: Maximum total stability attempts before giving up (~30 seconds at 1s interval)
-_MAX_STABILITY_ATTEMPTS = 30
+_MAX_STABILITY_ATTEMPTS = 120
 
 
 class DemoFileHandler(FileSystemEventHandler):

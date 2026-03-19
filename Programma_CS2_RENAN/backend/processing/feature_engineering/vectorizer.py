@@ -18,6 +18,12 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 _logger = get_logger("cs2analyzer.vectorizer")
 
+
+class DataQualityError(Exception):
+    """Raised when data quality falls below acceptable thresholds for training."""
+    pass
+
+
 # P-VEC-01: one-time warning flag for missing map_name during z_penalty
 _z_penalty_warned = False
 
@@ -131,7 +137,7 @@ WEAPON_CLASS_MAP: Dict[str, float] = {
 }
 
 # H-12: Sentinel for truly unknown weapons — logged at WARNING on first occurrence
-_UNKNOWN_WEAPON_DEFAULT = 0.1
+_UNKNOWN_WEAPON_DEFAULT = 0.5
 _unknown_weapons_seen: set = set()
 
 # P-VEC-02: Track NaN/Inf occurrences for upstream bug visibility
@@ -350,11 +356,11 @@ class FeatureExtractor:
         # 18: Round phase indicator (economic phase from equipment value)
         equip_val = float(get_val("equipment_value", 0))
         if equip_val > 0:
-            if equip_val < 1500:
+            if equip_val < cfg.round_phase_eco_threshold:
                 vec[18] = 0.0  # pistol
-            elif equip_val < 3000:
+            elif equip_val < cfg.round_phase_force_threshold:
                 vec[18] = 0.33  # eco
-            elif equip_val < 4000:
+            elif equip_val < cfg.round_phase_full_threshold:
                 vec[18] = 0.66  # force
             else:
                 vec[18] = 1.0  # full_buy
@@ -467,6 +473,9 @@ class FeatureExtractor:
         # P-VEC-03: Pass snapshotted config directly to each extract() call
         # instead of mutating class-level state. This prevents cross-batch
         # contamination when multiple threads call extract_batch() concurrently.
+        global _nan_inf_clamp_count
+        pre_clamp = _nan_inf_clamp_count
+
         result = np.array(
             [
                 FeatureExtractor.extract(t, map_name, ctx, _config_override=batch_config)
@@ -474,6 +483,20 @@ class FeatureExtractor:
             ],
             dtype=np.float32,
         )
+
+        # P3-A: Quality gate — refuse to produce batches with >5% NaN/Inf contamination.
+        post_clamp = _nan_inf_clamp_count
+        clamped_in_batch = post_clamp - pre_clamp
+        batch_size = len(tick_data_list)
+        if batch_size > 0 and clamped_in_batch > 0:
+            contamination_rate = clamped_in_batch / batch_size
+            if contamination_rate > 0.05:
+                raise DataQualityError(
+                    f"P3-A: NaN/Inf contamination rate {contamination_rate:.1%} "
+                    f"({clamped_in_batch}/{batch_size}) exceeds 5% threshold. "
+                    f"Fix upstream data before training."
+                )
+
         return result
 
     @staticmethod

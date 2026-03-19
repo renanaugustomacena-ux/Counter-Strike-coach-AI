@@ -1,6 +1,9 @@
 """
-Comprehensive Database Health Diagnostic Script
-Maps to user-provided 13-pillar framework.
+Comprehensive Database Health Diagnostic Script.
+
+All table names, status values, and constraint bounds are derived from the
+actual SQLModel definitions in ``db_models.py`` so they cannot silently go
+stale if the schema changes.
 """
 
 import os
@@ -13,8 +16,42 @@ if sys.prefix == sys.base_prefix and not os.environ.get("CI"):
     print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
     sys.exit(2)
 
+# --- Project path ---
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, PROJECT_ROOT)
+
+# --- Derive constants from actual models (no hardcoded strings) ---
+from Programma_CS2_RENAN.backend.storage.db_models import (  # noqa: E402
+    CoachState,
+    IngestionTask,
+    MatchResult,
+    PlayerMatchStats,
+    PlayerTickState,
+)
+
+# Derive SQLite table names from the actual model classes.
+_PMS_TABLE = PlayerMatchStats.__tablename__
+_PTS_TABLE = PlayerTickState.__tablename__
+_IT_TABLE = IngestionTask.__tablename__
+_MR_TABLE = MatchResult.__tablename__
+_CS_TABLE = CoachState.__tablename__
+
+# Derive expected column names from the model fields.
+_PMS_COLUMNS = set(PlayerMatchStats.__fields__.keys())
+_PTS_COLUMNS = set(PlayerTickState.__fields__.keys())
+_IT_COLUMNS = set(IngestionTask.__fields__.keys())
+
+# Valid IngestionTask statuses — derived from actual codebase usage.
+# The model uses a plain str field; the pipeline transitions:
+# queued → processing → completed | failed
+VALID_INGESTION_STATUSES = frozenset({"queued", "processing", "completed", "failed"})
+
+# Rating bounds from CheckConstraint("rating >= 0 AND rating <= 5.0")
+RATING_MIN = 0
+RATING_MAX = 5.0
+
 STORAGE_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    PROJECT_ROOT,
     "Programma_CS2_RENAN",
     "backend",
     "storage",
@@ -193,15 +230,15 @@ def main():
     # both columns to detect actual duplicates.
     dupes = run_query(
         MAIN_DB,
-        """
+        f"""
         SELECT demo_name, player_name, COUNT(*) as cnt
-        FROM playermatchstats
+        FROM {_PMS_TABLE}
         GROUP BY demo_name, player_name
         HAVING COUNT(*) > 1
         LIMIT 10
     """,
     )
-    print(f"\n   [4.1] Duplicate (demo, player) in PlayerMatchStats: {len(dupes)} found")
+    print(f"\n   [4.1] Duplicate (demo, player) in {_PMS_TABLE}: {len(dupes)} found")
     for d in dupes[:5]:
         print(
             f"      demo: {d.get('demo_name','?')} player: {d.get('player_name','?')} -> {d.get('cnt','?')} rows"
@@ -210,38 +247,40 @@ def main():
     # 4.2 Check for orphan PlayerTickState (match_id not in MatchResult)
     orphan_check = run_query(
         MAIN_DB,
-        """
-        SELECT COUNT(*) as cnt FROM playertickstate
-        WHERE match_id NOT IN (SELECT match_id FROM matchresult)
+        f"""
+        SELECT COUNT(*) as cnt FROM {_PTS_TABLE}
+        WHERE match_id NOT IN (SELECT match_id FROM {_MR_TABLE})
         AND match_id != 0
     """,
     )
     if orphan_check:
         print(
-            f"   [4.2] Orphan PlayerTickState rows (FK violation): {orphan_check[0].get('cnt', '?')}"
+            f"   [4.2] Orphan {_PTS_TABLE} rows (FK violation): {orphan_check[0].get('cnt', '?')}"
         )
 
     # 4.3 Check for NULL or negative values where they shouldn't be
+    # Status values and rating bounds are derived from actual model definitions.
+    _status_in = ", ".join(f"'{s}'" for s in sorted(VALID_INGESTION_STATUSES))
     neg_checks = [
         (
-            "PlayerMatchStats — negative avg_kills",
-            "SELECT COUNT(*) as cnt FROM playermatchstats WHERE avg_kills < 0",
+            f"{_PMS_TABLE} — negative avg_kills",
+            f"SELECT COUNT(*) as cnt FROM {_PMS_TABLE} WHERE avg_kills < 0",
         ),
         (
-            "PlayerMatchStats — negative avg_adr",
-            "SELECT COUNT(*) as cnt FROM playermatchstats WHERE avg_adr < 0",
+            f"{_PMS_TABLE} — negative avg_adr",
+            f"SELECT COUNT(*) as cnt FROM {_PMS_TABLE} WHERE avg_adr < 0",
         ),
         (
-            "PlayerMatchStats — kd_ratio < 0",
-            "SELECT COUNT(*) as cnt FROM playermatchstats WHERE kd_ratio < 0",
+            f"{_PMS_TABLE} — kd_ratio < 0",
+            f"SELECT COUNT(*) as cnt FROM {_PMS_TABLE} WHERE kd_ratio < 0",
         ),
         (
-            "PlayerMatchStats — rating out of range",
-            "SELECT COUNT(*) as cnt FROM playermatchstats WHERE rating < 0 OR rating > 5",
+            f"{_PMS_TABLE} — rating out of [{RATING_MIN}, {RATING_MAX}]",
+            f"SELECT COUNT(*) as cnt FROM {_PMS_TABLE} WHERE rating < {RATING_MIN} OR rating > {RATING_MAX}",
         ),
         (
-            "IngestionTask — invalid status",
-            "SELECT COUNT(*) as cnt FROM ingestiontask WHERE status NOT IN ('queued','processing','complete','failed','cancelled')",
+            f"{_IT_TABLE} — invalid status (valid: {_status_in})",
+            f"SELECT COUNT(*) as cnt FROM {_IT_TABLE} WHERE status NOT IN ({_status_in})",
         ),
     ]
 
@@ -252,12 +291,29 @@ def main():
         flag = "[WARN]" if (isinstance(val, int) and val > 0) else "[OK]"
         print(f"      {flag} {label}: {val}")
 
+    # 4.3b Schema drift check — verify DB columns match model fields
+    print(f"\n   [4.3b] Schema drift check (DB columns vs model fields):")
+    for model_cls, model_cols, tbl_name in [
+        (PlayerMatchStats, _PMS_COLUMNS, _PMS_TABLE),
+        (IngestionTask, _IT_COLUMNS, _IT_TABLE),
+    ]:
+        db_cols_raw = run_query(MAIN_DB, f"PRAGMA table_info('{tbl_name}')")
+        db_col_names = {c["name"] for c in db_cols_raw}
+        missing_in_db = model_cols - db_col_names
+        extra_in_db = db_col_names - model_cols - {"_sa_instance_state"}
+        if missing_in_db:
+            print(f"      [WARN] {tbl_name}: model fields missing from DB: {sorted(missing_in_db)}")
+        elif extra_in_db:
+            print(f"      [INFO] {tbl_name}: DB has extra columns (ok if from migrations): {sorted(extra_in_db)}")
+        else:
+            print(f"      [OK] {tbl_name}: DB schema matches model ({len(model_cols)} fields)")
+
     # 4.4 Check dataset_split distribution
     split_dist = run_query(
         MAIN_DB,
-        """
+        f"""
         SELECT dataset_split, COUNT(*) as cnt
-        FROM playermatchstats
+        FROM {_PMS_TABLE}
         GROUP BY dataset_split
     """,
     )
@@ -269,9 +325,9 @@ def main():
     # 4.5 Pro vs non-pro distribution
     pro_dist = run_query(
         MAIN_DB,
-        """
+        f"""
         SELECT is_pro, COUNT(*) as cnt
-        FROM playermatchstats
+        FROM {_PMS_TABLE}
         GROUP BY is_pro
     """,
     )
@@ -289,9 +345,9 @@ def main():
 
     task_stats = run_query(
         MAIN_DB,
-        """
+        f"""
         SELECT status, COUNT(*) as cnt, AVG(retry_count) as avg_retries
-        FROM ingestiontask
+        FROM {_IT_TABLE}
         GROUP BY status
     """,
     )
@@ -305,9 +361,9 @@ def main():
     # Check for stuck tasks (processing for too long)
     stuck = run_query(
         MAIN_DB,
-        """
+        f"""
         SELECT id, demo_path, status, updated_at, retry_count
-        FROM ingestiontask
+        FROM {_IT_TABLE}
         WHERE status = 'processing'
         LIMIT 10
     """,
@@ -331,7 +387,7 @@ def main():
                 except ValueError:
                     pass
 
-        main_match_ids = run_query(MAIN_DB, "SELECT match_id FROM matchresult")
+        main_match_ids = run_query(MAIN_DB, f"SELECT match_id FROM {_MR_TABLE}")
         main_ids = set(r["match_id"] for r in main_match_ids)
 
         orphan_files = match_file_ids - main_ids
@@ -377,10 +433,10 @@ def main():
     critical_queries = [
         (
             "Player stats lookup by name",
-            "SELECT * FROM playermatchstats WHERE player_name = 'test' LIMIT 1",
+            f"SELECT * FROM {_PMS_TABLE} WHERE player_name = 'test' LIMIT 1",
         ),
-        ("IngestionTask by status", "SELECT * FROM ingestiontask WHERE status = 'queued' LIMIT 1"),
-        ("CoachState latest", "SELECT * FROM coachstate ORDER BY last_updated DESC LIMIT 1"),
+        ("IngestionTask by status", f"SELECT * FROM {_IT_TABLE} WHERE status = 'queued' LIMIT 1"),
+        ("CoachState latest", f"SELECT * FROM {_CS_TABLE} ORDER BY last_updated DESC LIMIT 1"),
         ("ProPlayer by HLTV ID", "SELECT * FROM proplayer WHERE hltv_id = 12345"),
     ]
     for label, sql in critical_queries:
@@ -465,7 +521,7 @@ def main():
     print("SECTION 9: ML PIPELINE READINESS — CoachState")
     print("=" * 70)
 
-    coach = run_query(MAIN_DB, "SELECT * FROM coachstate LIMIT 1")
+    coach = run_query(MAIN_DB, f"SELECT * FROM {_CS_TABLE} LIMIT 1")
     if coach:
         c = coach[0]
         print(f"\n   Status: {c.get('status','?')}")

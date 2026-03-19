@@ -12,13 +12,15 @@ logger = get_logger("cs2analyzer.nn.orchestrator")
 class TrainingOrchestrator:
     """
     Unified Orchestrator for managing the details of the training lifecycle.
-    Implements:
-    - Epoch Loop
-    - Validation frequency
-    - Early Stopping
-    - Checkpointing (Best/Latest)
-    - Learning Rate Scheduling
-    - Real-time Progress Reporting
+
+    Supported model types:
+      - "jepa" / "vl-jepa": Self-supervised pre-training. Always available (pure PyTorch).
+      - "rap": Experimental RAP Coach. Requires USE_RAP_MODEL=True + ncps + hflayers.
+      - "rap-lite": Lightweight RAP variant. Requires USE_RAP_MODEL=True (pure PyTorch).
+
+    Implements: Epoch Loop, Validation frequency, Early Stopping,
+    Checkpointing (Best/Latest), Learning Rate Scheduling,
+    Real-time Progress Reporting.
     """
 
     def __init__(
@@ -82,6 +84,32 @@ class TrainingOrchestrator:
         """Execute the full training pipeline."""
         logger.info("Orchestrator Starting: %s Cycle", self.model_name.upper())
 
+        # GPU detection — warn early so user knows training will be slow
+        if not torch.cuda.is_available():
+            logger.warning(
+                "No NVIDIA GPU detected. Training will run on CPU and may be "
+                "10-50x slower. For faster training, use a machine with an NVIDIA GPU."
+            )
+            try:
+                from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
+                get_state_manager().add_notification(
+                    "training", "WARNING",
+                    "Training on CPU (no GPU detected). This will be slow."
+                )
+            except Exception:
+                pass  # Non-fatal — don't block training over a notification
+
+        # P3-D: Pre-training data quality gate
+        from Programma_CS2_RENAN.backend.nn.data_quality import run_pre_training_quality_check
+
+        quality_report = run_pre_training_quality_check()
+        if not quality_report.passed:
+            logger.error(
+                "P3-D: Training ABORTED — pre-training quality check FAILED.\n%s",
+                quality_report.summary(),
+            )
+            return
+
         # 1. Initialize Model via Factory
         # This unifies instantiation logic with Inference Engine
         from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
@@ -123,9 +151,20 @@ class TrainingOrchestrator:
             logger.warning("Training Aborted: Insufficient Training Data")
             return
 
+        # P3-C: Minimum sample threshold — refuse to train on tiny datasets
+        total_train_samples = len(train_data) * self.batch_size
+        _MIN_TRAINING_SAMPLES = 100
+        if total_train_samples < _MIN_TRAINING_SAMPLES:
+            logger.error(
+                "P3-C: Training aborted — only %d samples (minimum %d required). "
+                "Ingest more demos before training.",
+                total_train_samples, _MIN_TRAINING_SAMPLES,
+            )
+            return
+
         logger.info(
             "Training on %s samples, Validating on %s",
-            len(train_data) * self.batch_size,
+            total_train_samples,
             len(val_data) * self.batch_size if val_data else 0,
         )
 
@@ -192,9 +231,16 @@ class TrainingOrchestrator:
                 logger.info("Early Stopping Triggered at Epoch %s", epoch)
                 break
 
-        # F3-11: Log aggregate zero-tensor fallback summary
+        # P3-C: Hard gate — abort if aggregate fallback rate exceeds 30%
         if self._total_samples > 0 and self._total_fallbacks > 0:
             rate = self._total_fallbacks / self._total_samples * 100
+            if rate > 30:
+                logger.error(
+                    "P3-C: Training ABORTED — aggregate zero-tensor fallback rate %.1f%% "
+                    "(%d/%d samples) exceeds 30%% threshold. Match databases may be missing.",
+                    rate, self._total_fallbacks, self._total_samples,
+                )
+                return
             level = logger.warning if rate > 10 else logger.info
             level(
                 "Training complete — zero-tensor fallback rate: %.1f%% (%d/%d samples)",
@@ -223,36 +269,25 @@ class TrainingOrchestrator:
 
     def _fetch_batches(self, is_train=True):
         """Fetch and batch data from Manager."""
-        # Use manager's fetch logic (which now respects splits)
-        # For JEPA, use _fetch_jepa_ticks
-        # For RAP, use generic _fetch_training_data (needs updating to ticks likely)
-
         split = "train" if is_train else "val"
         is_pro = True  # Start with Pro baseline by default
 
-        raw_items = []
         if self.model_type in ("jepa", "vl-jepa"):
             raw_items = self.manager._fetch_jepa_ticks(is_pro=is_pro, split=split)
+            if not raw_items:
+                return []
+            # Temporal ordering preserved — no shuffle for sequence models
+            batches = []
+            for i in range(0, len(raw_items), self.batch_size):
+                batches.append(raw_items[i : i + self.batch_size])
+            return batches
         else:
-            # RAP data loading reuses JEPA tick fetcher (stub — Bug #5).
-            # RAP-specific data pipeline (windowed ticks) not yet implemented.
-            logger.warning(
-                "RAP data loading reuses JEPA tick fetcher (stub). "
-                "RAP-specific data pipeline not yet implemented."
+            # P7: RAP uses windowed data — each window is a contiguous
+            # 320-tick segment from a single match, already a batch.
+            windows = self.manager._fetch_rap_windows(
+                is_pro=is_pro, split=split
             )
-            raw_items = self.manager._fetch_jepa_ticks(is_pro=is_pro, split=split)
-
-        if not raw_items:
-            return []
-
-        # Temporal ordering preserved — no shuffle for sequence models (JEPA/RAP)
-
-        batches = []
-        for i in range(0, len(raw_items), self.batch_size):
-            batch = raw_items[i : i + self.batch_size]
-            batches.append(batch)
-
-        return batches
+            return windows if windows else []
 
     def _run_epoch(self, trainer, batches, is_train=True, context=None):
         """Run a single epoch (Train or Eval)."""
@@ -266,6 +301,11 @@ class TrainingOrchestrator:
         for batch_idx, batch in enumerate(batches):
             if context:
                 context.check_state()
+
+            # P3-E: Drop undersized batches — BatchNorm fails with size 1
+            if len(batch) < 2:
+                logger.debug("P3-E: Dropping batch %d (size %d < 2)", batch_idx, len(batch))
+                continue
 
             # Convert raw DB objects to Tensors
             tensor_batch = self._prepare_tensor_batch(batch)

@@ -56,25 +56,10 @@ console = Console(theme=MTS_THEME, record=True)
 install_rich_traceback(console=console)
 
 
-# --- Logging Setup ---
-def setup_logging(log_dir: Path):
-    log_dir.mkdir(parents=True, exist_ok=True)
-    log_file = log_dir / f"build_pipeline_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+# --- Logging (centralized) ---
+from Programma_CS2_RENAN.observability.logger_setup import get_tool_logger
 
-    # File Handler - JSON Structured
-    file_handler = logging.FileHandler(log_file, encoding="utf-8")
-    file_handler.setLevel(logging.DEBUG)
-    file_formatter = logging.Formatter(
-        '{"timestamp": "%(asctime)s", "level": "%(levelname)s", "logger": "%(name)s", "message": "%(message)s"}'
-    )
-    file_handler.setFormatter(file_formatter)
-
-    # Root Logger
-    logger = logging.getLogger("MacenaBuild")
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(file_handler)
-
-    return logger, log_file
+_tool_logger = get_tool_logger("build_pipeline")
 
 
 class IndustrialBuildPipeline:
@@ -84,7 +69,7 @@ class IndustrialBuildPipeline:
         self.build_dir = self.project_root / "build"
         self.log_dir = self.project_root / "logs"
         self.test_only = test_only
-        self.logger, self.log_file = setup_logging(self.log_dir)
+        self.logger = _tool_logger
 
         # Handle Ctrl+C
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -158,7 +143,7 @@ class IndustrialBuildPipeline:
     def execute(self):
         console.print(
             Panel.fit(
-                f"[bold cyan]MACENA CS2 ANALYZER[/bold cyan]\nIndustrial Build Pipeline v2.0\n[dim]Log: {self.log_file}[/dim]",
+                f"[bold cyan]MACENA CS2 ANALYZER[/bold cyan]\nIndustrial Build Pipeline v2.0",
                 title="System Init",
                 border_style="blue",
             )

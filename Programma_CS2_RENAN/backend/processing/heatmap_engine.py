@@ -121,7 +121,13 @@ class HeatmapEngine:
         Returns:
             kivy.graphics.texture.Texture
         """
-        from kivy.graphics.texture import Texture
+        try:
+            from kivy.graphics.texture import Texture
+        except ImportError:
+            raise RuntimeError(
+                "create_texture_from_data() requires Kivy. "
+                "Use generate_heatmap_data() for framework-agnostic RGBA output."
+            )
 
         texture = Texture.create(size=(data.resolution, data.resolution), colorfmt="rgba")
         texture.blit_buffer(data.rgba_bytes, colorfmt="rgba", bufferfmt="ubyte")

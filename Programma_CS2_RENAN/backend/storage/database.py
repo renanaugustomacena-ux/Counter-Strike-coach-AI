@@ -16,6 +16,8 @@ from .db_models import (
     CoachingExperience,
     CoachingInsight,
     CoachState,
+    DataLineage,
+    DataQualityMetric,
     Ext_PlayerPlaystyle,
     Ext_TeamRoundStats,
     IngestionTask,
@@ -42,6 +44,8 @@ _MONOLITH_TABLES = [
     CoachingExperience.__table__,
     CoachingInsight.__table__,
     CoachState.__table__,
+    DataLineage.__table__,
+    DataQualityMetric.__table__,
     Ext_PlayerPlaystyle.__table__,
     Ext_TeamRoundStats.__table__,
     IngestionTask.__table__,
@@ -135,31 +139,119 @@ class DatabaseManager:
             return session.merge(model_instance)
 
     def _upsert_player_stats(self, model_instance) -> Any:
+        """Upsert PlayerMatchStats using INSERT ... ON CONFLICT DO UPDATE.
+
+        Uses SQLite's native conflict resolution instead of SELECT-then-INSERT
+        to eliminate the TOCTOU race condition under concurrent daemon access.
+        """
+        from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+
+        data = model_instance.model_dump(exclude_unset=True)
+        # Remove 'id' — let DB auto-assign on INSERT, preserve existing on UPDATE
+        data.pop("id", None)
+
         with self.get_session() as session:
-            stmt = select(PlayerMatchStats).where(
-                PlayerMatchStats.demo_name == model_instance.demo_name,
-                PlayerMatchStats.player_name == model_instance.player_name,
+            stmt = sqlite_insert(PlayerMatchStats).values(**data)
+            # On conflict (demo_name, player_name), update all provided columns
+            update_cols = {k: stmt.excluded[k] for k in data if k not in ("demo_name", "player_name")}
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["demo_name", "player_name"],
+                set_=update_cols,
             )
-            existing = session.exec(stmt).first()
-
-            if not existing:
-                session.add(model_instance)
-                session.flush()
-                session.refresh(model_instance)
-                return model_instance
-
-            update_data = model_instance.model_dump(exclude_unset=True)
-            for key, value in update_data.items():
-                setattr(existing, key, value)
-            session.add(existing)
+            session.execute(stmt)
             session.flush()
-            session.refresh(existing)
-            return existing
+
+            # Return the persisted instance
+            result = session.exec(
+                select(PlayerMatchStats).where(
+                    PlayerMatchStats.demo_name == model_instance.demo_name,
+                    PlayerMatchStats.player_name == model_instance.player_name,
+                )
+            ).first()
+            return result
 
     def get(self, model_class: Type[T], pk: Any) -> T | None:
         """Retrieves a record."""
         with self.get_session() as session:
             return session.get(model_class, pk)
+
+    def delete_match_cascade(self, match_id: int, demo_name: str) -> dict:
+        """P5-A: Delete all data associated with a match across all stores.
+
+        FK-safe deletion order: children first, then parent.
+
+        Returns:
+            dict with keys: tables_cleared (list[str]), files_deleted (int)
+        """
+        result = {"tables_cleared": [], "files_deleted": 0}
+
+        with self.get_session() as session:
+            # Child tables (FK → MatchResult or demo_name reference)
+            for model, col, val in [
+                (MapVeto, MapVeto.match_id, match_id),
+                (CoachingExperience, CoachingExperience.pro_match_id, match_id),
+                (PlayerTickState, PlayerTickState.demo_name, demo_name),
+                (RoundStats, RoundStats.demo_name, demo_name),
+                (PlayerMatchStats, PlayerMatchStats.demo_name, demo_name),
+                (CoachingInsight, CoachingInsight.demo_name, demo_name),
+            ]:
+                deleted = session.query(model).filter(col == val).delete(synchronize_session=False)
+                if deleted:
+                    result["tables_cleared"].append(f"{model.__tablename__}({deleted})")
+
+            # Parent table
+            deleted = session.query(MatchResult).filter(
+                MatchResult.match_id == match_id
+            ).delete(synchronize_session=False)
+            if deleted:
+                result["tables_cleared"].append(f"matchresult({deleted})")
+
+        # Delete per-match DB file
+        try:
+            from Programma_CS2_RENAN.backend.storage.match_data_manager import (
+                get_match_data_manager,
+            )
+            mdm = get_match_data_manager()
+            if mdm.delete_match(match_id):
+                result["files_deleted"] += 1
+        except Exception as e:
+            logger.warning("P5-A: Could not delete match DB file for %s: %s", match_id, e)
+
+        logger.info("P5-A: Cascade delete match %s (%s): %s", match_id, demo_name, result)
+        return result
+
+    @staticmethod
+    def detect_orphans() -> dict:
+        """P5-B: Detect orphan match DBs without corresponding MatchResult.
+
+        Returns:
+            dict with keys: orphan_match_ids (list[int]), orphan_count (int)
+        """
+        try:
+            from Programma_CS2_RENAN.backend.storage.match_data_manager import (
+                get_match_data_manager,
+            )
+            mdm = get_match_data_manager()
+            file_match_ids = set(mdm.list_available_matches())
+
+            db = get_db_manager()
+            with db.get_session() as session:
+                db_match_ids = set(
+                    row[0] for row in session.exec(
+                        select(MatchResult.match_id)
+                    ).all()
+                )
+
+            orphans = sorted(file_match_ids - db_match_ids)
+            if orphans:
+                logger.warning(
+                    "P5-B: Found %d orphan match DB files without MatchResult: %s",
+                    len(orphans), orphans[:10],
+                )
+            return {"orphan_match_ids": orphans, "orphan_count": len(orphans)}
+        except Exception as e:
+            logger.error("P5-B: Orphan detection failed: %s", e)
+            return {"orphan_match_ids": [], "orphan_count": 0}
 
 
 # Lazy singleton — avoids import-time engine creation

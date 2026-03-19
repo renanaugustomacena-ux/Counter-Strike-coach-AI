@@ -27,12 +27,16 @@ class DatasetSplit(str, Enum):
 
 
 class CoachStatus(str, Enum):
-    """Valid status values for the ML coaching pipeline."""
+    """Valid status values for the global coaching pipeline lifecycle."""
 
     PAUSED = "Paused"
     TRAINING = "Training"
     IDLE = "Idle"
     ERROR = "Error"
+    BOOTING = "Booting"
+    RUNNING = "Running"
+    SHUTTING_DOWN = "ShuttingDown"
+    OFFLINE = "Offline"
 
 
 class PlayerMatchStats(SQLModel, table=True):
@@ -656,3 +660,44 @@ class RoleThresholdRecord(SQLModel, table=True):
     sample_count: int = Field(default=0)
     source: str = Field(default="unknown")  # "hltv", "demo_parser", "ml_model"
     last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class DataLineage(SQLModel, table=True):
+    """P5-D: Traces any data row back to its origin demo and pipeline step.
+
+    Append-only — never updated after creation.
+    """
+
+    __table_args__ = (
+        Index("ix_lineage_entity", "entity_type", "entity_id"),
+        {"extend_existing": True},
+    )
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+    entity_type: str = Field(index=True)  # "tick", "event", "match_stats", "round_stats"
+    entity_id: int  # PK in the target table
+    source_demo: str = Field(index=True)  # demo filename (stem)
+    source_tick: Optional[int] = None  # tick number (for tick/event rows)
+    pipeline_version: str = Field(default="v1")
+    processing_step: str = Field(default="ingestion")  # "ingestion", "enrichment", "training"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class DataQualityMetric(SQLModel, table=True):
+    """P5-E: Append-only metrics from ingestion/training runs.
+
+    One row per (run_id, metric_name) for post-hoc analysis.
+    """
+
+    __table_args__ = (
+        Index("ix_dqm_run", "run_id", "metric_name"),
+        {"extend_existing": True},
+    )
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+    run_id: str = Field(index=True)  # UUID or demo_name
+    run_type: str = Field(default="ingestion")  # "ingestion", "training"
+    metric_name: str = Field(index=True)  # "nan_rate", "zero_position_rate", etc.
+    metric_value: float = Field(default=0.0)
+    sample_count: int = Field(default=0)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

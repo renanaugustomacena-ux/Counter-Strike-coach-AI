@@ -1,9 +1,6 @@
 import json
 import os
 
-from kivy.event import EventDispatcher
-from kivy.properties import StringProperty
-
 from Programma_CS2_RENAN.core.config import get_resource_path
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -399,6 +396,16 @@ def _load_json_translations() -> dict:
 
 # Load once at import time; fall back to hardcoded TRANSLATIONS per-key
 _JSON_TRANSLATIONS = _load_json_translations()
+
+
+# Kivy-dependent base class — guarded for Qt compatibility.
+# When Kivy is absent, TRANSLATIONS and _JSON_TRANSLATIONS are still accessible.
+try:
+    from kivy.event import EventDispatcher
+    from kivy.properties import StringProperty
+except ImportError:
+    EventDispatcher = object
+    StringProperty = lambda default="": default
 
 
 class LocalizationManager(EventDispatcher):

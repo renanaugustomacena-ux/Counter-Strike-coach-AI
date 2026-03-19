@@ -28,17 +28,14 @@ if sys.platform == "win32":
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
-# ─── Configure verbose logging ──────────────────────────────────────────────
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s [%(levelname)-7s] %(name)s — %(message)s",
-    datefmt="%H:%M:%S",
-)
+# ─── Centralized logging ──────────────────────────────────────────────
+from Programma_CS2_RENAN.observability.logger_setup import get_tool_logger
+
+logger = get_tool_logger("observe_training")
+
 # Reduce noise from libraries
 for noisy in ("urllib3", "matplotlib", "PIL", "sentence_transformers", "transformers", "filelock"):
     logging.getLogger(noisy).setLevel(logging.WARNING)
-
-logger = logging.getLogger("observe_cycle")
 
 
 def section(title: str):
@@ -217,7 +214,7 @@ def phase_2_feature_extraction(demo_name: str):
 
         except Exception as e:
             check("FeatureExtractor.extract_batch() succeeded", False, str(e))
-            traceback.print_exc()
+            logger.exception("FeatureExtractor.extract_batch() failed")
             results["error"] = str(e)
 
     return results
@@ -249,7 +246,7 @@ def phase_3_model_instantiation():
             models[model_type] = model
         except Exception as e:
             check(f"ModelFactory.get_model('{model_type}')", False, str(e))
-            traceback.print_exc()
+            logger.exception("ModelFactory.get_model('%s') failed", model_type)
 
     return models
 
@@ -364,7 +361,7 @@ def phase_4_jepa_training():
     except Exception as e:
         elapsed = time.time() - t0
         check("JEPA training completed", False, f"Error after {elapsed:.2f}s: {e}")
-        traceback.print_exc()
+        logger.exception("JEPA training failed after %.2fs", elapsed)
         results["error"] = str(e)
 
     return results

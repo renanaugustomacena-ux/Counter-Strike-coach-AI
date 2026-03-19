@@ -1,0 +1,18 @@
+# CPU-only PyTorch lock file for distribution builds.
+# Overrides the CUDA versions in requirements-lock.txt.
+#
+# Usage:
+#   pip install -r requirements-lock-cpu.txt
+#
+# For GPU builds (developers):
+#   pip install -r requirements-lock.txt
+
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# Override torch packages from lock file with CPU-only variants
+torch==2.5.1+cpu
+torchaudio==2.5.1+cpu
+torchvision==0.20.1+cpu
+
+# Include all other locked dependencies
+-r requirements-lock.txt

@@ -1,13 +1,26 @@
 """Platform-specific utilities (drive detection, etc.)."""
 
 import os
+import sys
 from typing import List
-
-from kivy.utils import platform
 
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.platform_utils")
+
+
+def _get_platform() -> str:
+    """Platform detection without Kivy dependency."""
+    if sys.platform == "win32":
+        return "win"
+    elif sys.platform == "darwin":
+        return "macosx"
+    elif sys.platform.startswith("linux"):
+        return "linux"
+    return sys.platform
+
+
+platform = _get_platform()
 
 
 def get_available_drives() -> List[str]:
@@ -16,7 +29,7 @@ def get_available_drives() -> List[str]:
     PU-02: Handles win, linux, macosx explicitly. Other platforms fall back to home dir.
     PU-01: All fallback paths are validated with os.path.isdir().
     """
-    # PU-02: Explicit platform handling (Kivy platform strings)
+    # PU-02: Explicit platform handling
     if platform == "win":
         return _get_windows_drives()
     if platform in ("linux", "macosx"):

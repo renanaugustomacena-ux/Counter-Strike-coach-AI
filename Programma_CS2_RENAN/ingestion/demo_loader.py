@@ -57,12 +57,27 @@ def _get_cache_hmac_key() -> bytes:
 
 
 def _pickle_dump_signed(obj, path: str) -> None:
-    """Serialize with pickle and write an HMAC signature for integrity."""
+    """Serialize with pickle and write an HMAC signature for integrity.
+
+    Uses atomic write (temp file + fsync + os.replace) to prevent
+    cache corruption if the process crashes mid-write.
+    """
     data = pickle.dumps(obj)
     sig = hmac.new(_get_cache_hmac_key(), data, hashlib.sha256).digest()
-    with open(path, "wb") as f:
-        f.write(sig)  # first 32 bytes = HMAC-SHA256
-        f.write(data)
+    tmp_path = path + ".tmp"
+    try:
+        with open(tmp_path, "wb") as f:
+            f.write(sig)  # first 32 bytes = HMAC-SHA256
+            f.write(data)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, path)  # atomic on POSIX
+    except BaseException:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
 
 
 def _pickle_load_verified(path: str):
@@ -192,7 +207,7 @@ class DemoLoader:
                 t_pos = pos_by_tick.get(t_tick, {}).get(sid)
                 if not t_pos:
                     # Fallback: find nearest previous tick for this player
-                    for offset in range(1, 15):
+                    for offset in range(1, 33):  # 0.5s at 64 tick/s
                         tp = pos_by_tick.get(t_tick - offset, {}).get(sid)
                         if tp:
                             t_pos = tp

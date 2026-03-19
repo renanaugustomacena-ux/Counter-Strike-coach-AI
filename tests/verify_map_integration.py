@@ -17,6 +17,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import METADATA_DIM
 from Programma_CS2_RENAN.backend.processing.state_reconstructor import RAPStateReconstructor
+from Programma_CS2_RENAN.observability.logger_setup import get_tool_logger
+
+logger = get_tool_logger("verify_map_integration")
 
 
 # Mock PlayerTickState — duck-typed to satisfy FeatureExtractor and TensorFactory
@@ -110,8 +113,5 @@ if __name__ == "__main__":
         else:
             sys.exit(1)
     except Exception as e:
-        print(f"CRITICAL FAILURE: {e}")
-        import traceback
-
-        traceback.print_exc()
+        logger.exception("CRITICAL FAILURE: %s", e)
         sys.exit(1)

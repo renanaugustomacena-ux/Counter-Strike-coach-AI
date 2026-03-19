@@ -1,6 +1,38 @@
 import threading
 from typing import Dict, List, Optional
 
+from Programma_CS2_RENAN.observability.logger_setup import get_logger as _get_logger
+
+_timeout_logger = _get_logger("cs2analyzer.coaching.timeout")
+
+# Coaching generation timeout (seconds). Prevents UI hangs when
+# SBERT download, FAISS search, or Ollama polishing stalls.
+_COACHING_TIMEOUT = 30
+
+
+def _run_with_timeout(func, args=(), kwargs=None, timeout=_COACHING_TIMEOUT):
+    """Run function with timeout. Returns (result, timed_out)."""
+    result = [None]
+    exception = [None]
+
+    def target():
+        try:
+            result[0] = func(*args, **(kwargs or {}))
+        except Exception as e:
+            exception[0] = e
+
+    thread = threading.Thread(target=target, daemon=True)
+    thread.start()
+    thread.join(timeout=timeout)
+
+    if thread.is_alive():
+        _timeout_logger.warning("Function %s timed out after %ds", func.__name__, timeout)
+        return None, True
+    if exception[0]:
+        raise exception[0]
+    return result[0], False
+
+
 from Programma_CS2_RENAN.backend.coaching.correction_engine import generate_corrections
 from Programma_CS2_RENAN.backend.coaching.longitudinal_engine import generate_longitudinal_coaching
 from Programma_CS2_RENAN.backend.knowledge.round_utils import infer_round_phase  # F5-20: shared utility
@@ -116,10 +148,18 @@ class CoachingService:
             _coaching_logger.info(
                 "Coaching mode selected: COPER for player=%s demo=%s", player_name, demo_name
             )
-            self._generate_coper_insights(
-                player_name, demo_name, player_stats or {}, map_name, tick_data,
-                deviations=deviations, rounds_played=rounds_played,
+            _, timed_out = _run_with_timeout(
+                self._generate_coper_insights,
+                args=(player_name, demo_name, player_stats or {}, map_name, tick_data),
+                kwargs={"deviations": deviations, "rounds_played": rounds_played},
             )
+            if timed_out:
+                _coaching_logger.warning(
+                    "COPER timed out after %ds for %s, falling back to Traditional",
+                    _COACHING_TIMEOUT, player_name,
+                )
+                corrections = generate_corrections(deviations, rounds_played)
+                _save_corrections_as_insights(self.db_manager, player_name, demo_name, corrections)
         elif self.use_hybrid and player_stats:
             mode_used = "Hybrid"
             _coaching_logger.info(

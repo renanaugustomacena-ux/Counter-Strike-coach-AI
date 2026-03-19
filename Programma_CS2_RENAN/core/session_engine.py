@@ -29,24 +29,6 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.session_engine")
 
-# File logging for session engine subprocess
-_session_fh = None
-try:
-    from Programma_CS2_RENAN.core.config import LOG_DIR
-
-    log_file = os.path.join(LOG_DIR, "session_engine.log")
-    _session_fh = logging.FileHandler(log_file, mode="a", encoding="utf-8")
-    _session_fh.setLevel(logging.DEBUG)
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    _session_fh.setFormatter(formatter)
-    logger.addHandler(_session_fh)
-    logger.info("Session Engine File Logging Initialized")
-except Exception as e:
-    if _session_fh is not None:
-        _session_fh.close()
-        _session_fh = None
-    logger.warning("Failed to setup file logging: %s", e)
-
 
 # ResourceManager is used in _digester_daemon_loop
 from Programma_CS2_RENAN.backend.ingestion.resource_manager import ResourceManager
@@ -54,6 +36,10 @@ from Programma_CS2_RENAN.backend.ingestion.resource_manager import ResourceManag
 # Event-driven signaling for daemon coordination
 _shutdown_event = threading.Event()
 _work_available_event = threading.Event()
+
+# F6-SE: Backup failure flag — Teacher daemon skips training when True
+# to prevent training on data that has no backup safety net.
+_backup_failed = False
 
 
 def _monitor_stdin():
@@ -103,6 +89,9 @@ def run_session_loop():
             logger.info("Daily Backup already exists. Skipping.")
     except Exception as e:
         logger.exception("Backup Routine Failed")
+        # F6-SE: Set backup failure flag so Teacher daemon skips training
+        global _backup_failed
+        _backup_failed = True
         # SE-05: Surface backup failure to UI so user knows data is unprotected
         try:
             get_state_manager().add_notification(
@@ -179,9 +168,10 @@ def run_session_loop():
         logger.info("Session Engine Exiting")
 
 
-# R1-05: Configurable zombie threshold (default 300s = 5 minutes).
-# Registered in config.py defaults as ZOMBIE_TASK_THRESHOLD_SECONDS.
-_ZOMBIE_THRESHOLD_SECONDS = 300
+# P4-B: Configurable zombie threshold (default 1800s = 30 minutes).
+# Large demos legitimately take 10+ minutes. Previous 5-minute threshold
+# caused premature reset and duplicate processing.
+_ZOMBIE_THRESHOLD_SECONDS = 1800
 
 
 def _cleanup_zombie_tasks():
@@ -230,6 +220,27 @@ def _cleanup_zombie_tasks():
         logger.exception("Failed to cleanup zombie tasks")
 
 
+def _check_disk_space(path, min_gb=5):
+    """Warn if less than min_gb free on the drive containing path."""
+    import shutil
+    try:
+        usage = shutil.disk_usage(path)
+        free_gb = usage.free / (1024 ** 3)
+        if free_gb < min_gb:
+            logger.warning("Low disk space: %.1f GB free on %s", free_gb, path)
+            try:
+                from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
+                get_state_manager().add_notification(
+                    "storage", "WARNING",
+                    f"Low disk space: {free_gb:.1f} GB free. "
+                    f"Consider deleting old demos or moving data."
+                )
+            except Exception as notify_err:
+                logger.debug("Disk space notification failed: %s", notify_err)
+    except Exception as disk_err:
+        logger.debug("Disk space check failed: %s", disk_err)
+
+
 def _scanner_daemon_loop():
     """DAEMON A: File Scanner (The Gatekeeper)"""
     # Responsibility: File System -> DB Queue (Ticket Creation)
@@ -239,7 +250,9 @@ def _scanner_daemon_loop():
     from Programma_CS2_RENAN.run_ingestion import process_new_demos
 
     last_scan = 0
+    last_disk_check = 0
     SCAN_INTERVAL = 10  # Seconds between scans
+    DISK_CHECK_INTERVAL = 300  # Check disk every 5 minutes
 
     logger.info("Scanner Daemon Started")
     get_state_manager().update_status("hunter", "Active", "Scanner Running")
@@ -251,6 +264,14 @@ def _scanner_daemon_loop():
             # remains if the user changes paths mid-cycle, but the next cycle will
             # pick up the new values — acceptable for a MEDIUM-severity issue.
             refresh_settings()
+
+            # Periodic disk space check
+            current_time_disk = time.time()
+            if current_time_disk - last_disk_check > DISK_CHECK_INTERVAL:
+                from Programma_CS2_RENAN.core.config import get_setting as _gs
+                demo_path = _gs("DEFAULT_DEMO_PATH", os.path.expanduser("~"))
+                _check_disk_space(demo_path)
+                last_disk_check = current_time_disk
 
             # 2. Check Play/Pause State (Global Master Switch)
             state = get_state_manager().get_state()
@@ -346,6 +367,22 @@ def _teacher_daemon_loop():
 
     while not _shutdown_event.is_set():
         try:
+            # F6-SE: Warn if backup failed — training continues without safety net.
+            # Per-match SQLite isolation protects raw data; only checkpoints are at risk.
+            if _backup_failed:
+                logger.warning(
+                    "Teacher: backup failed at startup. Training continues WITHOUT "
+                    "backup safety. Data may be lost if training crashes."
+                )
+                try:
+                    from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
+                    get_state_manager().add_notification(
+                        "training", "WARNING",
+                        "Training running without backup. Consider freeing disk space."
+                    )
+                except Exception:
+                    pass
+
             trigger_count = _check_retraining_trigger()
             if trigger_count > 0:
                 # NN-02: Acquire module-level training lock to prevent

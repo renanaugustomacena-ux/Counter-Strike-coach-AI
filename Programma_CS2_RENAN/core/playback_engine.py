@@ -95,9 +95,14 @@ class PlaybackEngine:
 
             self._is_playing = True
             # Update at ~60 FPS
-            from kivy.clock import Clock
+            try:
+                from kivy.clock import Clock
 
-            self._clock_event = Clock.schedule_interval(self._tick, 1.0 / 60.0)
+                self._clock_event = Clock.schedule_interval(self._tick, 1.0 / 60.0)
+            except ImportError:
+                logger.warning("Kivy not available — subclass must override play()")
+                self._is_playing = False
+                return
             logger.debug("Play")
 
     def pause(self):

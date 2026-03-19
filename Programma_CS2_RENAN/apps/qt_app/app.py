@@ -24,6 +24,16 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("Macena CS2 Analyzer")
 
+    # Connect graceful shutdown early — active even if boot fails
+    def _on_app_quit():
+        from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state
+        from Programma_CS2_RENAN.backend.control.console import get_console
+
+        get_app_state().stop_polling()
+        get_console().shutdown()
+
+    app.aboutToQuit.connect(_on_app_quit)
+
     # Register custom fonts and apply theme + font
     theme = ThemeEngine()
     theme.register_fonts()
@@ -140,6 +150,11 @@ def main():
 
     # Store references for theme switching later
     window._theme_engine = theme
+
+    # Boot backend console (DB audit, conditional FlareSolverr/Hunter)
+    from Programma_CS2_RENAN.backend.control.console import get_console
+
+    get_console().boot()
 
     window.show()
 

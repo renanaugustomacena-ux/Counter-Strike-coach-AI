@@ -20,6 +20,9 @@ sys.path.insert(0, project_root)
 from Programma_CS2_RENAN.backend.nn.layers.superposition import SuperpositionLayer
 from Programma_CS2_RENAN.backend.nn.rap_coach.model import RAPCoachModel
 from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import METADATA_DIM
+from Programma_CS2_RENAN.observability.logger_setup import get_tool_logger
+
+logger = get_tool_logger("verify_superposition")
 
 
 def verify_superposition_logic():
@@ -103,8 +106,5 @@ if __name__ == "__main__":
         else:
             sys.exit(1)
     except Exception as e:
-        print(f"CRITICAL ERROR: {e}")
-        import traceback
-
-        traceback.print_exc()
+        logger.exception("CRITICAL ERROR: %s", e)
         sys.exit(1)

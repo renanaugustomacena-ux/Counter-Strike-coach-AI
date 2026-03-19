@@ -27,6 +27,7 @@ class ModelFactory:
     TYPE_JEPA = "jepa"
     TYPE_VL_JEPA = "vl-jepa"
     TYPE_RAP = "rap"
+    TYPE_RAP_LITE = "rap-lite"
     TYPE_ROLE_HEAD = "role_head"
 
     @staticmethod
@@ -62,6 +63,15 @@ class ModelFactory:
                 output_dim=kwargs.get("output_dim", 10),
             )
 
+        elif model_type == ModelFactory.TYPE_RAP_LITE:
+            from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.model import RAPCoachModel
+
+            return RAPCoachModel(
+                metadata_dim=kwargs.get("metadata_dim", METADATA_DIM),
+                output_dim=kwargs.get("output_dim", 10),
+                use_lite_memory=True,
+            )
+
         elif model_type == ModelFactory.TYPE_ROLE_HEAD:
             from Programma_CS2_RENAN.backend.nn.role_head import NeuralRoleHead
 
@@ -86,6 +96,7 @@ class ModelFactory:
                 ModelFactory.TYPE_JEPA,
                 ModelFactory.TYPE_VL_JEPA,
                 ModelFactory.TYPE_RAP,
+                ModelFactory.TYPE_RAP_LITE,
                 ModelFactory.TYPE_ROLE_HEAD,
             ]
             raise ValueError(
@@ -103,6 +114,8 @@ class ModelFactory:
             return "vl_jepa_brain"
         elif model_type == ModelFactory.TYPE_RAP:
             return "rap_coach"
+        elif model_type == ModelFactory.TYPE_RAP_LITE:
+            return "rap_lite_coach"
         elif model_type == ModelFactory.TYPE_ROLE_HEAD:
             return "role_head"
         elif model_type == ModelFactory.TYPE_LEGACY:
@@ -113,6 +126,7 @@ class ModelFactory:
                 ModelFactory.TYPE_JEPA,
                 ModelFactory.TYPE_VL_JEPA,
                 ModelFactory.TYPE_RAP,
+                ModelFactory.TYPE_RAP_LITE,
                 ModelFactory.TYPE_ROLE_HEAD,
             ]
             raise ValueError(

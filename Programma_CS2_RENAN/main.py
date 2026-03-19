@@ -53,7 +53,7 @@ try:
     from Programma_CS2_RENAN.backend.storage.db_migrate import ensure_database_current
 
     if not ensure_database_current():
-        print("WARNING: Database migration failed. Some features may not work correctly.")
+        app_logger.warning("Database migration failed. Some features may not work correctly.")
 except ImportError:
     pass  # Migration module not available (frozen build without alembic)
 
@@ -398,7 +398,7 @@ class UserProfileScreen(MDScreen):
                     }
                     Clock.schedule_once(lambda dt: self._apply_profile_to_ui(profile_data), 0)
         except Exception as e:
-            app_logger.debug("Profile Load Fail: %s", e)
+            app_logger.warning("Profile load failed — displaying defaults: %s", e)
 
     def _apply_profile_to_ui(self, p):
         self.ids.name_label.text = p["player_name"] or "Player"
@@ -482,7 +482,7 @@ class UserProfileScreen(MDScreen):
                 s.commit()
             Clock.schedule_once(lambda dt: self.load_profile_data(), 0)
         except Exception as e:
-            app_logger.debug("Profile Save Fail: %s", e)
+            app_logger.error("Profile save failed — user data may be lost: %s", e, exc_info=True)
 
 
 @registry.register("settings")

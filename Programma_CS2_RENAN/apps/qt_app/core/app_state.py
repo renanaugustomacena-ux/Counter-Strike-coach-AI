@@ -31,6 +31,7 @@ class AppState(QObject):
     belief_confidence_changed = Signal(float)
     total_matches_changed = Signal(int)
     training_changed = Signal(dict)
+    notification_received = Signal(str, str)  # (severity, message)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -80,6 +81,30 @@ class AppState(QObject):
                     hb = hb.replace(tzinfo=timezone.utc)
                 delta = (now - hb).total_seconds()
 
+            # Query unread notifications and mark them read
+            from Programma_CS2_RENAN.backend.storage.db_models import (
+                ServiceNotification,
+            )
+            from sqlalchemy import select
+
+            notifs = []
+            try:
+                rows = session.exec(
+                    select(ServiceNotification)
+                    .where(ServiceNotification.is_read == False)  # noqa: E712
+                    .order_by(ServiceNotification.created_at)
+                    .limit(5)
+                ).all()
+                for row in rows:
+                    notifs.append(
+                        {"severity": row.severity, "message": row.message}
+                    )
+                    row.is_read = True
+                if rows:
+                    session.commit()
+            except Exception as exc:
+                logger.debug("Notification poll skipped: %s", exc)
+
             return {
                 "service_active": delta < 300,
                 "coach_status": state.ingest_status or "Idle",
@@ -91,6 +116,7 @@ class AppState(QObject):
                 "train_loss": float(state.train_loss),
                 "val_loss": float(state.val_loss),
                 "eta_seconds": float(state.eta_seconds),
+                "notifications": notifs,
             }
 
     def _apply(self, data):
@@ -120,6 +146,10 @@ class AppState(QObject):
             self.training_changed.emit(
                 {k: data[k] for k in t_keys}
             )
+
+        # Emit any new notifications
+        for n in data.get("notifications", []):
+            self.notification_received.emit(n["severity"], n["message"])
 
         self._prev = data
 

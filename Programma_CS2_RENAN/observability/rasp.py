@@ -13,11 +13,10 @@ _MANIFEST_HMAC_KEY_RAW = os.environ.get("CS2_MANIFEST_KEY", "")
 if not _MANIFEST_HMAC_KEY_RAW:
     # RP-01: Warn when using the static fallback key. Builds targeting
     # end-users should set CS2_MANIFEST_KEY in the environment.
-    import warnings
-    warnings.warn(
-        "RP-01: CS2_MANIFEST_KEY not set — using static fallback HMAC key. "
-        "Set the environment variable for production builds.",
-        stacklevel=1,
+    import logging as _log
+    _log.getLogger("cs2analyzer.rasp").warning(
+        "[RP-01] CS2_MANIFEST_KEY not set — using static fallback HMAC key. "
+        "Set the environment variable for production builds."
     )
     _MANIFEST_HMAC_KEY_RAW = "macena-cs2-integrity-v1"
 _MANIFEST_HMAC_KEY = _MANIFEST_HMAC_KEY_RAW.encode("utf-8")
@@ -171,20 +170,23 @@ class RASPGuard:
 def run_rasp_audit(project_root: Path) -> bool:
     """
     Convenience function to run the RASP audit.
-    Logs violations to stdout/stderr.
+    Logs violations via the centralized logger.
     """
+    from Programma_CS2_RENAN.observability.logger_setup import get_logger
+    rasp_logger = get_logger("cs2analyzer.rasp")
+
     guard = RASPGuard(project_root)
 
     # Check binary environment
     if not guard.check_frozen_binary():
-        print("CRITICAL: Suspicious execution environment detected!", file=sys.stderr)
+        rasp_logger.critical("Suspicious execution environment detected!")
         return False
 
     success, violations = guard.verify_runtime_integrity()
     if not success:
-        print("--- INTEGRITY VIOLATION DETECTED ---", file=sys.stderr)
+        rasp_logger.critical("INTEGRITY VIOLATION DETECTED")
         for v in violations:
-            print(f" ! {v}", file=sys.stderr)
+            rasp_logger.critical("  Violation: %s", v)
         return False
 
     return True

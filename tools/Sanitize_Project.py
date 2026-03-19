@@ -50,30 +50,18 @@ MTS_THEME = Theme(
 console = Console(theme=MTS_THEME)
 install_rich_traceback(console=console)
 
+# --- Logging (centralized) ---
+from Programma_CS2_RENAN.observability.logger_setup import get_tool_logger
 
-# --- Logging Setup ---
-def setup_logging(log_dir: Path):
-    log_dir.mkdir(parents=True, exist_ok=True)
-    log_file = log_dir / f"sanitize_audit_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+_tool_logger = get_tool_logger("sanitizer")
 
-    file_handler = logging.FileHandler(log_file, encoding="utf-8")
-    file_handler.setLevel(logging.DEBUG)
-    file_formatter = logging.Formatter(
-        '{"timestamp": "%(asctime)s", "level": "%(levelname)s", "message": "%(message)s"}'
-    )
-    file_handler.setFormatter(file_formatter)
-
-    logger = logging.getLogger("Sanitizer")
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(file_handler)
-    return logger, log_file
 
 
 class IndustrialSanitizer:
     def __init__(self, force: bool = False):
         self.project_root = project_root
         self.force = force
-        self.logger, self.log_file = setup_logging(self.project_root / "logs")
+        self.logger = _tool_logger
 
         # Targets to sanitize
         self.app_dir = self.project_root / "Programma_CS2_RENAN"
@@ -174,10 +162,7 @@ class IndustrialSanitizer:
 
                     elif action == "CLEAR":
                         if path.is_dir():
-                            # We don't delete the logs dir itself to avoid breaking logger
                             for item in path.iterdir():
-                                if item == self.log_file:
-                                    continue  # Keep current log
                                 if item.is_file():
                                     item.unlink()
                                 elif item.is_dir():
