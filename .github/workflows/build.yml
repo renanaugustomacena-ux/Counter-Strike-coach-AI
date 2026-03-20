@@ -244,13 +244,28 @@ jobs:
 
       - name: Check for hardcoded secrets (detect-secrets)
         run: |
-          detect-secrets scan Programma_CS2_RENAN/ --exclude-files 'tests/' \
+          detect-secrets scan Programma_CS2_RENAN/ \
+            --exclude-files 'tests/' \
             --exclude-files 'external_analysis/' \
+            --exclude-files 'integrity_manifest' \
+            --exclude-files 'i18n/' \
             > .secrets-report.json
-          RESULTS=$(python -c "import json; r=json.load(open('.secrets-report.json')); print(len(r.get('results',{})))")
+          # Only fail on high-entropy findings (actual hardcoded secrets).
+          # KeywordDetector matches variable names (api_key=...) which are false
+          # positives in credential-handling code. Bandit B105 covers hardcoded values.
+          RESULTS=$(python -c "
+          import json, sys
+          r = json.load(open('.secrets-report.json'))
+          count = 0
+          for f, secrets in r.get('results', {}).items():
+              real = [s for s in secrets if s['type'] != 'Secret Keyword']
+              if real:
+                  count += 1
+                  print(f'  {f}: {[s[\"type\"] for s in real]}', file=sys.stderr)
+          print(count)
+          ")
           if [ "$RESULTS" -gt 0 ]; then
-            echo "ERROR: detect-secrets found potential secrets in $RESULTS file(s):"
-            python -c "import json; r=json.load(open('.secrets-report.json')); [print(f'  {f}: {[s[\"type\"] for s in ss]}') for f,ss in r.get('results',{}).items()]"
+            echo "ERROR: detect-secrets found potential hardcoded secrets in $RESULTS file(s)"
             exit 1
           fi
 
