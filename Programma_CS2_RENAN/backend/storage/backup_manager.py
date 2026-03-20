@@ -109,11 +109,11 @@ class BackupManager:
 
         try:
             conn = sqlite3.connect(db_path)
-            cursor = conn.cursor()
-            cursor.execute("PRAGMA quick_check")
-            result = cursor.fetchone()[0]
-            conn.close()
-            return result == "ok"
+            try:
+                result = conn.execute("PRAGMA quick_check").fetchone()[0]
+                return result == "ok"
+            finally:
+                conn.close()
         except Exception as e:
             logger.error("Integrity Check Error: %s", e)
             return False

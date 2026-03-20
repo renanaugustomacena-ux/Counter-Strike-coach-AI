@@ -53,7 +53,7 @@ try:
     from Programma_CS2_RENAN.backend.storage.db_migrate import ensure_database_current
 
     if not ensure_database_current():
-        app_logger.warning("Database migration failed. Some features may not work correctly.")
+        print("WARNING: Database migration failed. Some features may not work correctly.")
 except ImportError:
     pass  # Migration module not available (frozen build without alembic)
 
