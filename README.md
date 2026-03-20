@@ -38,6 +38,7 @@ Unlike static coaching tools with pre-written tips, this system builds its intel
 - [Documentation](#documentation)
 - [Feeding the Coach](#feeding-the-coach)
 - [Troubleshooting](#troubleshooting)
+- [Complete Documentation Index](#complete-documentation-index)
 - [License](#license)
 - [Author](#author)
 
@@ -794,6 +795,91 @@ Open [http://localhost:6006](http://localhost:6006) to monitor conviction index,
 | Per-match | `{PRO_DEMO_PATH}/match_data/match_*.db` | Tick-level match data |
 
 > For complete troubleshooting, see the [User Guide](docs/USER_GUIDE.md).
+
+---
+
+## Complete Documentation Index
+
+Every README and technical document in the project. Click any link to open the document.
+
+### Book Coach Series (PDF)
+
+- [Ultimate CS2 Coach — Sistema AI](docs/Book-Coach-1.pdf)
+- [Ultimate CS2 Coach — Parte 1A — Il Cervello](docs/Book-Coach-1A.pdf)
+- [Ultimate CS2 Coach — Parte 1B — I Sensi e lo Specialista](docs/Book-Coach-1B.pdf)
+- [Ultimate CS2 Coach — Parte 2 — Servizi, Analisi e Database](docs/Book-Coach-2.pdf)
+- [Ultimate CS2 Coach — Parte 3 — Programma, UI, Tools e Build](docs/Book-Coach-3.pdf)
+
+### Root
+
+- [README (EN)](README.md) — [Italiano](README_IT.md) — [Portugues](README_PT.md)
+
+### Infrastructure
+
+- [CI/CD Pipeline & GitHub Configuration](.github/README.md) — [Italiano](.github/README_IT.md) — [Portugues](.github/README_PT.md)
+- [Database Migration System — Alembic](alembic/README.md) — [Italiano](alembic/README_IT.md) — [Portugues](alembic/README_PT.md)
+- [Documentation Index](docs/README.md) — [Italiano](docs/README_IT.md) — [Portugues](docs/README_PT.md)
+- [The Studies — Bibliotheca](docs/Studies/README.md) — [Italiano](docs/Studies/README_IT.md) — [Portugues](docs/Studies/README_PT.md)
+- [Build and Setup Scripts](scripts/README.md) — [Italiano](scripts/README_IT.md) — [Portugues](scripts/README_PT.md)
+- [Root-Level Verification and Forensic Tests](tests/README.md) — [Italiano](tests/README_IT.md) — [Portugues](tests/README_PT.md)
+- [Root-Level Project Tools](tools/README.md) — [Italiano](tools/README_IT.md) — [Portugues](tools/README_PT.md)
+- [Packaging — Build & Distribution](packaging/README.md) — [Italiano](packaging/README_IT.md) — [Portugues](packaging/README_PT.md)
+
+### Main Package
+
+- [Programma_CS2_RENAN](Programma_CS2_RENAN/README.md) — [Italiano](Programma_CS2_RENAN/README_IT.md) — [Portugues](Programma_CS2_RENAN/README_PT.md)
+- [Core Systems](Programma_CS2_RENAN/core/README.md) — [Italiano](Programma_CS2_RENAN/core/README_IT.md) — [Portugues](Programma_CS2_RENAN/core/README_PT.md)
+- [Data — Application Data & Configuration](Programma_CS2_RENAN/data/README.md) — [Italiano](Programma_CS2_RENAN/data/README_IT.md) — [Portugues](Programma_CS2_RENAN/data/README_PT.md)
+- [Assets — Static Resources](Programma_CS2_RENAN/assets/README.md) — [Italiano](Programma_CS2_RENAN/assets/README_IT.md) — [Portugues](Programma_CS2_RENAN/assets/README_PT.md)
+- [Models — Neural Network Checkpoint Storage](Programma_CS2_RENAN/models/README.md) — [Italiano](Programma_CS2_RENAN/models/README_IT.md) — [Portugues](Programma_CS2_RENAN/models/README_PT.md)
+- [Validation and Diagnostic Tools](Programma_CS2_RENAN/tools/README.md) — [Italiano](Programma_CS2_RENAN/tools/README_IT.md) — [Portugues](Programma_CS2_RENAN/tools/README_PT.md)
+- [Test Suite](Programma_CS2_RENAN/tests/README.md) — [Italiano](Programma_CS2_RENAN/tests/README_IT.md) — [Portugues](Programma_CS2_RENAN/tests/README_PT.md)
+
+### Apps — User Interface
+
+- [Apps — User Interface Layer](Programma_CS2_RENAN/apps/README.md) — [Italiano](Programma_CS2_RENAN/apps/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/README_PT.md)
+- [Qt Desktop Application (Primary)](Programma_CS2_RENAN/apps/qt_app/README.md) — [Italiano](Programma_CS2_RENAN/apps/qt_app/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/qt_app/README_PT.md)
+- [Desktop Application (Legacy Kivy/KivyMD)](Programma_CS2_RENAN/apps/desktop_app/README.md) — [Italiano](Programma_CS2_RENAN/apps/desktop_app/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/desktop_app/README_PT.md)
+
+### Backend
+
+- [Backend](Programma_CS2_RENAN/backend/README.md) — [Italiano](Programma_CS2_RENAN/backend/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/README_PT.md)
+- [Analysis — Game Theory & Statistical Engines](Programma_CS2_RENAN/backend/analysis/README.md) — [Italiano](Programma_CS2_RENAN/backend/analysis/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/analysis/README_PT.md)
+- [Coaching — Multi-Mode Coaching Pipeline](Programma_CS2_RENAN/backend/coaching/README.md) — [Italiano](Programma_CS2_RENAN/backend/coaching/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/coaching/README_PT.md)
+- [Control — Application Orchestration & Daemon Management](Programma_CS2_RENAN/backend/control/README.md) — [Italiano](Programma_CS2_RENAN/backend/control/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/control/README_PT.md)
+- [Data Sources — External Integrations](Programma_CS2_RENAN/backend/data_sources/README.md) — [Italiano](Programma_CS2_RENAN/backend/data_sources/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/data_sources/README_PT.md)
+- [HLTV Professional Data Scraping](Programma_CS2_RENAN/backend/data_sources/hltv/README.md) — [Italiano](Programma_CS2_RENAN/backend/data_sources/hltv/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/data_sources/hltv/README_PT.md)
+- [Backend Ingestion — File Watching & Resource Governance](Programma_CS2_RENAN/backend/ingestion/README.md) — [Italiano](Programma_CS2_RENAN/backend/ingestion/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/ingestion/README_PT.md)
+- [Knowledge — RAG & Experience Bank](Programma_CS2_RENAN/backend/knowledge/README.md) — [Italiano](Programma_CS2_RENAN/backend/knowledge/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/knowledge/README_PT.md)
+- [Knowledge Base — In-App Help System](Programma_CS2_RENAN/backend/knowledge_base/README.md) — [Italiano](Programma_CS2_RENAN/backend/knowledge_base/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/knowledge_base/README_PT.md)
+- [Onboarding — New User Flow Management](Programma_CS2_RENAN/backend/onboarding/README.md) — [Italiano](Programma_CS2_RENAN/backend/onboarding/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/onboarding/README_PT.md)
+- [Progress — Longitudinal Performance Tracking](Programma_CS2_RENAN/backend/progress/README.md) — [Italiano](Programma_CS2_RENAN/backend/progress/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/progress/README_PT.md)
+- [Reporting — Dashboard Analytics Engine](Programma_CS2_RENAN/backend/reporting/README.md) — [Italiano](Programma_CS2_RENAN/backend/reporting/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/reporting/README_PT.md)
+- [Application Service Layer](Programma_CS2_RENAN/backend/services/README.md) — [Italiano](Programma_CS2_RENAN/backend/services/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/services/README_PT.md)
+- [Database Storage Layer](Programma_CS2_RENAN/backend/storage/README.md) — [Italiano](Programma_CS2_RENAN/backend/storage/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/storage/README_PT.md)
+
+### Neural Networks
+
+- [Neural Network Subsystem](Programma_CS2_RENAN/backend/nn/README.md) — [Italiano](Programma_CS2_RENAN/backend/nn/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/nn/README_PT.md)
+- [RAP Coach — 7-Layer Recurrent Architecture](Programma_CS2_RENAN/backend/nn/rap_coach/README.md) — [Italiano](Programma_CS2_RENAN/backend/nn/rap_coach/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/nn/rap_coach/README_PT.md)
+- [Advanced — Experimental Module Stub](Programma_CS2_RENAN/backend/nn/advanced/README.md) — [Italiano](Programma_CS2_RENAN/backend/nn/advanced/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/nn/advanced/README_PT.md)
+
+### Processing & Feature Engineering
+
+- [Processing — Data Pipeline & Feature Engineering](Programma_CS2_RENAN/backend/processing/README.md) — [Italiano](Programma_CS2_RENAN/backend/processing/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/processing/README_PT.md)
+- [Professional Baselines & Meta Drift Detection](Programma_CS2_RENAN/backend/processing/baselines/README.md) — [Italiano](Programma_CS2_RENAN/backend/processing/baselines/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/processing/baselines/README_PT.md)
+- [Feature Engineering — Unified Feature Extraction](Programma_CS2_RENAN/backend/processing/feature_engineering/README.md) — [Italiano](Programma_CS2_RENAN/backend/processing/feature_engineering/README_IT.md) — [Portugues](Programma_CS2_RENAN/backend/processing/feature_engineering/README_PT.md)
+
+### Ingestion Pipelines
+
+- [Demo Ingestion Pipelines](Programma_CS2_RENAN/ingestion/README.md) — [Italiano](Programma_CS2_RENAN/ingestion/README_IT.md) — [Portugues](Programma_CS2_RENAN/ingestion/README_PT.md)
+- [Ingestion Pipeline Implementations](Programma_CS2_RENAN/ingestion/pipelines/README.md) — [Italiano](Programma_CS2_RENAN/ingestion/pipelines/README_IT.md) — [Portugues](Programma_CS2_RENAN/ingestion/pipelines/README_PT.md)
+- [Demo File Registry & Lifecycle Management](Programma_CS2_RENAN/ingestion/registry/README.md) — [Italiano](Programma_CS2_RENAN/ingestion/registry/README_IT.md) — [Portugues](Programma_CS2_RENAN/ingestion/registry/README_PT.md)
+
+### Observability & Reporting
+
+- [Observability & Runtime Protection](Programma_CS2_RENAN/observability/README.md) — [Italiano](Programma_CS2_RENAN/observability/README_IT.md) — [Portugues](Programma_CS2_RENAN/observability/README_PT.md)
+- [Visualization & Report Generation](Programma_CS2_RENAN/reporting/README.md) — [Italiano](Programma_CS2_RENAN/reporting/README_IT.md) — [Portugues](Programma_CS2_RENAN/reporting/README_PT.md)
 
 ---
 
