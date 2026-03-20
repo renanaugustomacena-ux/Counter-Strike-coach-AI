@@ -14,6 +14,8 @@ from Programma_CS2_RENAN.backend.processing.external_analytics import EliteAnaly
 class TestIntegration:
     def test_analytics_engine(self):
         analytics = EliteAnalytics()
+        if not analytics.is_healthy():
+            pytest.skip("External CSV data not available (not tracked in git)")
 
         # Test player role lookup
         role = analytics.get_player_role("NiKo")
