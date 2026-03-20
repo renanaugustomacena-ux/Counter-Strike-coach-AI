@@ -16,6 +16,9 @@ import sys
 import pytest
 import torch
 
+# RAP Coach architecture requires ncps + hflayers — skip entire module if absent.
+pytest.importorskip("ncps", reason="RAP deps (ncps, hflayers) not installed")
+
 from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
 
 
