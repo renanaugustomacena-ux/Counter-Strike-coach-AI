@@ -139,4 +139,4 @@ tzdata==2025.3
 urllib3==2.6.2
 uvicorn==0.40.0
 virtualenv==20.35.4
-zipp==23.0
+zipp==3.23.0
