@@ -190,9 +190,15 @@ def load_user_settings():
             try:
                 with open(SETTINGS_PATH, "r") as f:
                     data = json.load(f)
-                    current.update(data)
+                    if isinstance(data, dict):
+                        current.update(data)
+                    else:
+                        app_logger.error(
+                            "Settings file %s contains %s instead of dict — using defaults",
+                            SETTINGS_PATH, type(data).__name__,
+                        )
             except Exception as e:
-                app_logger.warning("Failed to load user settings from %s: %s", SETTINGS_PATH, e)
+                app_logger.error("Failed to load user settings from %s: %s", SETTINGS_PATH, e)
 
         # C-05: Retrieve from keyring; if the disk value is the mask sentinel, treat as empty
         # so that a failed keyring doesn't return the literal mask string to callers.

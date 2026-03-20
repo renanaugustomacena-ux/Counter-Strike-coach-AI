@@ -108,8 +108,10 @@ class VectorIndexManager:
         # Normalize query for cosine similarity via inner product
         qvec = query_vec.astype(np.float32).reshape(1, -1).copy()
         norm = np.linalg.norm(qvec)
-        if norm > 0:
-            qvec /= norm
+        if norm == 0:
+            logger.warning("Zero-norm query vector — no semantic content to search")
+            return None
+        qvec /= norm
 
         # Clamp k to index size
         actual_k = min(k, idx.ntotal)
