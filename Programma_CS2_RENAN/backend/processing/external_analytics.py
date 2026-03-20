@@ -15,7 +15,9 @@ class EliteAnalytics:
         self._prepare_data()
 
     def _load_datasets(self):
-        self.players_df = self._read_safe("top_100_players.csv").dropna(subset=["Name"])
+        self.players_df = self._read_safe("top_100_players.csv")
+        if "Name" in self.players_df.columns:
+            self.players_df = self.players_df.dropna(subset=["Name"])
         self.match_players_df = self._read_safe("match_players.csv")
         self.maps_df = self._read_safe("maps_statistics.csv").fillna(0)
         self.weapons_df = self._read_safe("weapons_statistics.csv").fillna(0)
@@ -123,6 +125,8 @@ class EliteAnalytics:
         return _compute_t_z_scores(user_stats, self.tournament_baselines, self.tournament_stds)
 
     def get_player_role(self, player_name):
+        if self.roles_df.empty or "player_name" not in self.roles_df.columns:
+            return "Unknown"
         match = self.roles_df[self.roles_df["player_name"].str.lower() == player_name.lower()]
         return match.iloc[0]["role_overall"] if not match.empty else "Unknown"
 
