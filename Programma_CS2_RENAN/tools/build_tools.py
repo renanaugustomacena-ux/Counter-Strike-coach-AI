@@ -33,7 +33,7 @@ def run_command(cmd, label, cwd=None, capture=False):
     try:
         result = subprocess.run(
             cmd,
-            shell=True,
+            shell=True,  # nosec B602 — internal build tool, not user input
             cwd=cwd or str(PROJECT_ROOT),
             capture_output=capture,
             text=True,
@@ -240,7 +240,7 @@ def cmd_debug_build(args):
     errors = []
     process = subprocess.Popen(
         cmd,
-        shell=True,
+        shell=True,  # nosec B602 — internal build tool, not user input
         cwd=str(PROJECT_ROOT),
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,

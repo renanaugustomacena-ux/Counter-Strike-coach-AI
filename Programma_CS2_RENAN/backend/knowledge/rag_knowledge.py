@@ -124,7 +124,7 @@ class KnowledgeEmbedder:
 
         vec = np.zeros(self.embedding_dim, dtype=np.float32)
         for word in text.lower().split():
-            h = int(hashlib.md5(word.encode()).hexdigest()[:8], 16)
+            h = int(hashlib.md5(word.encode(), usedforsecurity=False).hexdigest()[:8], 16)
             idx = h % self.embedding_dim
             sign = 1.0 if (h // self.embedding_dim) % 2 == 0 else -1.0
             vec[idx] += sign

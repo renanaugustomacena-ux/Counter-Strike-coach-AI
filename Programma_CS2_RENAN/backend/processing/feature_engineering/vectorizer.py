@@ -371,7 +371,7 @@ class FeatureExtractor:
         # NOTE: Python's built-in hash() is NOT deterministic across sessions
         # (PYTHONHASHSEED randomization). Use hashlib for reproducibility.
         if map_name:
-            h = int(hashlib.md5(map_name.encode()).hexdigest(), 16)
+            h = int(hashlib.md5(map_name.encode(), usedforsecurity=False).hexdigest(), 16)
             vec[17] = (h % 10000) / 10000.0
 
         # 18: Round phase indicator (economic phase from equipment value)

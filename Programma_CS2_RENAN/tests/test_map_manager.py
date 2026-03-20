@@ -10,6 +10,8 @@ import sys
 
 import pytest
 
+kivy = pytest.importorskip("kivy", reason="Kivy not available in CI")
+
 from Programma_CS2_RENAN.core.asset_manager import AssetAuthority, SmartAsset
 from Programma_CS2_RENAN.core.map_manager import MapManager
 
