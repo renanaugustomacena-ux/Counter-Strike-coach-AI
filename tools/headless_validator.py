@@ -45,6 +45,13 @@ PROJECT_ROOT = stabilize_paths()
 
 VERBOSE = "--verbose" in sys.argv or "-v" in sys.argv
 
+# Detect optional dependencies — downgrade checks to warnings when absent.
+_HAS_KIVY = importlib.util.find_spec("kivy") is not None
+_HAS_RAP_DEPS = (
+    importlib.util.find_spec("ncps") is not None
+    and importlib.util.find_spec("hflayers") is not None
+)
+
 
 @dataclass
 class CheckResult:
@@ -171,21 +178,31 @@ CORE_IMPORTS = [
     "Programma_CS2_RENAN.core.spatial_engine",
     "Programma_CS2_RENAN.core.demo_frame",
     "Programma_CS2_RENAN.core.lifecycle",
-    "Programma_CS2_RENAN.core.asset_manager",
     "Programma_CS2_RENAN.core.logger",
-    "Programma_CS2_RENAN.core.map_manager",
-    "Programma_CS2_RENAN.core.playback",
-    "Programma_CS2_RENAN.core.playback_engine",
-    "Programma_CS2_RENAN.core.registry",
     "Programma_CS2_RENAN.core.session_engine",
     "Programma_CS2_RENAN.observability.logger_setup",
     "Programma_CS2_RENAN.observability.rasp",
     "Programma_CS2_RENAN.ingestion.integrity",
 ]
 
+# Kivy-dependent modules — warn (not fail) when Kivy is absent.
+_KIVY_IMPORTS = [
+    "Programma_CS2_RENAN.core.asset_manager",
+    "Programma_CS2_RENAN.core.map_manager",
+    "Programma_CS2_RENAN.core.playback",
+    "Programma_CS2_RENAN.core.playback_engine",
+    "Programma_CS2_RENAN.core.registry",
+]
+
+_check_kivy = check if _HAS_KIVY else warn
+
 for mod in CORE_IMPORTS:
     short = mod.split(".")[-1]
     check("Core", f"import {short}", try_import(mod))
+
+for mod in _KIVY_IMPORTS:
+    short = mod.split(".")[-1]
+    _check_kivy("Core", f"import {short}", try_import(mod))
 
 
 # ── Phase 3: Backend Storage Imports ─────────────────────────────────────────
@@ -2017,9 +2034,11 @@ def verify_rap_position_scale():
         raise AssertionError(f"RAP_POSITION_SCALE = {RAP_POSITION_SCALE}, expected 500.0")
 
 
-check("RAP", "RAPCoachModel full forward pass", verify_rap_coach_forward)
+_check_rap = check if _HAS_RAP_DEPS else warn
+
+_check_rap("RAP", "RAPCoachModel full forward pass", verify_rap_coach_forward)
 check("RAP", "RAPPerception output (batch, 128) invariant", verify_perception_output_invariant)
-check("RAP", "compute_sparsity_loss safety (None + valid)", verify_sparsity_loss_safety)
+_check_rap("RAP", "compute_sparsity_loss safety (None + valid)", verify_sparsity_loss_safety)
 check("RAP", "RAP_POSITION_SCALE == 500.0", verify_rap_position_scale)
 
 
