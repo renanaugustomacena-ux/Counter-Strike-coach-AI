@@ -29,6 +29,8 @@ EXPECTED_VENV = "cs2analyzer"
 
 def require_venv():
     """Bail out early if not running inside a virtual environment."""
+    if os.environ.get("CI"):
+        return  # CI runners install deps globally — no venv needed
     if sys.prefix == sys.base_prefix:
         print(
             f"ERROR: Not running inside a virtual environment.\n"
