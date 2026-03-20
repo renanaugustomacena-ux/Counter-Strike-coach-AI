@@ -59,12 +59,12 @@ These volumes detail the heavy engineering required to run the intelligence.
     *   *Key Concepts:* `Normalization`, `One-Hot Encoding`, `Vector Space`.
 
 *   **[Studio 10: Architettura del Database e Storage](Studio_10_Database_Storage.md)**
-    *   *Topic:* The "Memory Bank". Storing millions of events efficiently using SQLite, WAL mode, and Zstd compression.
-    *   *Key Concepts:* `SQLModel`, `WAL (Write-Ahead Log)`, `Blob Storage`.
+    *   *Topic:* The "Memory Bank". Tri-Database architecture (monolith + HLTV + per-match) using SQLite WAL mode.
+    *   *Key Concepts:* `SQLAlchemy`, `WAL (Write-Ahead Log)`, `Application-Level Sharding`.
 
 *   **[Studio 11: Tri-Daemon Engine e Architettura di Sistema](Studio_11_Tri_Daemon_Engine.md)**
-    *   *Topic:* The "Nervous System". The multi-process architecture (GUI, Parser, Sync) that keeps the app responsive.
-    *   *Key Concepts:* `Multiprocessing`, `PID Locks`, `Watchdogs`.
+    *   *Topic:* The "Nervous System". The Quad-Daemon architecture (Scanner, Digester, Teacher, Pulse) that keeps the app responsive.
+    *   *Key Concepts:* `Threading`, `Session Engine`, `Watchdogs`, `Self-Healing`.
 
 *   **[Studio 12: Valutazione, Validazione e Falsificazione](Studio_12_Valutazione_Falsificazione.md)**
     *   *Topic:* The "Conscience". Proving the AI is right. Anti-hallucination protocols and decision quality metrics.
@@ -77,7 +77,7 @@ These volumes detail the heavy engineering required to run the intelligence.
 These volumes explore the interaction between Man and Machine.
 
 *   **[Studio 13: Spiegabilità, Coaching e Interfaccia Umano-AI](Studio_13_Spiegabilita_Coaching_Interfaccia.md)**
-    *   *Topic:* The "Voice". Translating tensors into natural language advice. The UX of the dashboard.
+    *   *Topic:* The "Voice". Translating tensors into natural language advice. The UX of the dashboard (PySide6/Qt primary, Kivy legacy).
     *   *Key Concepts:* `Explainable AI (XAI)`, `Cognitive Load`, `Pedagogical Tone`.
 
 *   **[Studio 14: Etica, Privacy e Integrità Competitiva](Studio_14_Etica_Privacy_Integrita.md)**

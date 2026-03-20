@@ -202,10 +202,25 @@ Usiamo:
 
 ## 9. Implementazione nel Codice Macena: `jepa_model.py`
 
-Il file `backend/nn/jepa_model.py` contiene la classe `JEPACoachingModel`.
-*   Contiene l'`encoder` (la CNN/Transformer).
-*   Contiene il `predictor` (il modello del mondo).
-*   Implementa la loss `InfoNCE` per l'addestramento.
+Il file `backend/nn/jepa_model.py` contiene la classe `JEPACoachingModel` (~1066 righe).
+
+> **Nota di Aggiornamento (2026-03-20):** I valori specifici dell'implementazione attuale sono:
+
+| Parametro | Valore | Note |
+|-----------|--------|------|
+| `INPUT_DIM` | 25 | METADATA_DIM dal vectorizer |
+| `latent_dim` | 256 | Dimensione dello spazio latente |
+| Predictor hidden | 512 → 256 | Rete a due strati |
+| LSTM coaching hidden | 128 | 2 layers |
+| EMA momentum ($\tau$) | 0.996 | Target encoder update |
+| Selective Decoding threshold | 0.05 | Distanza coseno per skip |
+| InfoNCE temperature | 0.07 | Contrastive loss |
+| `NUM_COACHING_CONCEPTS` | 16 | VL-JEPA alignment head |
+
+*   Contiene l'`encoder` (MLP per feature spaziali, non CNN data la natura vettoriale dell'input a 25-dim).
+*   Contiene il `predictor` (il modello del mondo nel latent space).
+*   Implementa la loss `InfoNCE` per l'addestramento contrastivo.
+*   Il `target_encoder` ha `requires_grad=False` e viene aggiornato via EMA con `.clone()` obbligatorio sui shadow tensors.
 
 È un codice PyTorch altamente ottimizzato, che usa `LayerNorm` invece di `BatchNorm` per stabilità su batch piccoli (tipici dell'inferenza locale).
 

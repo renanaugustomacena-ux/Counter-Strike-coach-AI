@@ -70,9 +70,9 @@ L'interfaccia è divisa in tre livelli di densità, basati sul contesto temporal
     *   *Obiettivo:* Studio approfondito (Tempo infinito).
 
 ### 2.2 Il "Regista" delle Transizioni
-Tecnicamente, questo è gestito dallo `MDScreenManager` di Kivy.
+Tecnicamente, nella versione legacy (Kivy) questo era gestito dallo `MDScreenManager`. Nella versione attuale (PySide6/Qt, `apps/qt_app/`), la navigazione e' gestita da un `QStackedWidget` con transizioni fluide.
 L'app non è una serie di finestre statiche, ma un teatro dinamico.
-Il passaggio da "Wizard" a "Home" a "Coach View" è gestito da transizioni fluide (`FadeTransition`), che mantengono il senso di continuità spaziale. L'utente non deve mai sentirsi "perso" nella navigazione.
+Il passaggio da "Wizard" a "Home" a "Coach View" è gestito da transizioni che mantengono il senso di continuità spaziale. L'utente non deve mai sentirsi "perso" nella navigazione.
 
 ---
 
@@ -165,12 +165,14 @@ L'utente preme "?" e cerca "Upload"; il sistema mostra la guida formattata con g
 
 ---
 
-## 7. Implementazione Tecnica: KivyMD e OpenGL
+## 7. Implementazione Tecnica: PySide6/Qt (primaria) e KivyMD (legacy)
 
-La scelta tecnologica di usare **Kivy** (Python) invece di Electron (JavaScript) è stata strategica.
-1.  **Integrazione Python:** L'IA è in PyTorch (Python). L'interfaccia è in Kivy (Python). Non c'è bisogno di bridge complessi o API REST locali. I tensori passano dalla memoria dell'IA alla memoria della UI senza serializzazione.
-2.  **Performance Grafica:** Kivy usa OpenGL direttamente. Possiamo disegnare 10.000 particelle (per le heatmap) a 60 FPS su un laptop integrato.
-3.  **Matplotlib Bridge:** Per i grafici statici (Trend, Radar), usiamo un ponte (`widgets.py`) che renderizza Matplotlib in un buffer di memoria (`io.BytesIO`) e lo proietta come texture Kivy. Questo ci dà la potenza statistica di Pandas con la velocità di render di un videogioco.
+> **Nota di Aggiornamento (2026-03-20):** L'interfaccia primaria e' stata migrata da KivyMD a **PySide6/Qt** (`apps/qt_app/`). L'implementazione Kivy (`apps/desktop_app/`) rimane come legacy. I principi architetturali descritti qui si applicano a entrambe le implementazioni.
+
+La scelta tecnologica di usare **Python** invece di Electron (JavaScript) è stata strategica.
+1.  **Integrazione Python:** L'IA è in PyTorch (Python). L'interfaccia è in PySide6 (Python). Non c'è bisogno di bridge complessi o API REST locali. I tensori passano dalla memoria dell'IA alla memoria della UI senza serializzazione.
+2.  **Performance Grafica:** PySide6 usa il rendering Qt nativo con supporto GPU. Per le heatmap, si usano widget personalizzati con QPainter o OpenGL context. La versione Kivy legacy usa OpenGL direttamente.
+3.  **Matplotlib Bridge:** Per i grafici statici (Trend, Radar), il rendering Matplotlib viene integrato tramite il backend Qt (`FigureCanvasQTAgg`) o, nella versione legacy, tramite buffer di memoria (`io.BytesIO`) proiettato come texture Kivy.
 
 ---
 

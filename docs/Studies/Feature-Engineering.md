@@ -240,11 +240,15 @@ Abbiamo scelto **Rust** (`demoparser2`) invece di Python o C++.
 Usare C++ per l'IA sarebbe stato un incubo di gestione delle dipendenze.
 L'architettura ibrida (Rust per i dati, Python per l'intelligenza) è lo standard industriale moderno.
 
-### 8.3 Perché Apache Arrow per lo Storage?
+### 8.3 Perché SQLite con Sharding per lo Storage?
 Abbiamo rifiutato CSV e JSON per i dati tensoriali.
-**Apache Arrow** (e Parquet) permette:
-*   **Zero-Copy**: Possiamo passare i dati dalla RAM di Rust alla RAM di Python senza copiarli. Risparmia gigabyte di banda di memoria.
-*   **Compressione**: Parquet comprime i tensori meglio di qualsiasi zip, riducendo lo spazio su disco dell'80%.
+
+> **Nota di Aggiornamento (2026-03-20):** L'implementazione attuale usa **SQLite con sharding per-match** (un database per partita) invece di Apache Parquet/Arrow. Questa scelta si e' dimostrata sufficientemente performante per le esigenze correnti, con il vantaggio della semplicita' e della portabilita' (un file `.db` e' autocontenuto). Apache Arrow resta nel design come architettura target per scenari di scala superiore.
+
+L'architettura SQLite con sharding permette:
+*   **Isolamento**: Ogni partita e' un file `.db` indipendente (~50MB). Nessun "Telemetry Cliff".
+*   **Portabilita'**: Un file `.db` puo' essere copiato, spostato o cancellato come un documento.
+*   **Concorrenza**: WAL mode permette lettura e scrittura simultanee senza lock.
 
 ### 8.4 L'Ordine di Ingegneria (Fase 0-8)
 Non si costruisce un grattacielo partendo dall'attico.
@@ -263,7 +267,7 @@ Solo alla Fase 6 arriviamo all'Interfaccia Utente. La GUI è solo la pelle; i mu
 Tutto questo non è teoria. È codice.
 
 ### 9.1 `vectorizer.py`
-Questo è il cuore. La classe `FeatureExtractor` prende lo stato del gioco e restituisce un `numpy.array` di dimensione 19 (`METADATA_DIM = 19`).
+Questo è il cuore. La classe `FeatureExtractor` prende lo stato del gioco e restituisce un `numpy.array` di dimensione 25 (`METADATA_DIM = 25`).
 Implementa:
 *   La normalizzazione delle coordinate (Divisione per 4096).
 *   L'embedding trigonometrico dello sguardo (`np.sin`, `np.cos`).

@@ -282,11 +282,12 @@ Un consiglio "teoricamente perfetto" ma "umanamente impossibile" è un consiglio
 
 Tutta questa teoria è codificata in Python.
 
-### 11.1 `backend/nn/rap_coach/`
-Questa è la casa del cervello.
-*   `model.py`: Contiene l'architettura Actor-Critic.
-*   `policy_head.py`: Implementa il PPO e la gestione delle azioni.
-*   `value_head.py`: Calcola il $V(s)$.
+### 11.1 `backend/nn/rap_coach/` e `backend/nn/model.py`
+Questa è la casa del cervello. L'architettura primaria e' `AdvancedCoachNN` (`model.py`) con `INPUT_DIM=25`, `OUTPUT_DIM=10`, `HIDDEN_DIM=128`, LSTM a 2 layer e Mixture of Experts a 3 esperti.
+Il modulo `rap_coach/` contiene la variante RAP (Reasoning-Augmented Policy) con hidden_dim=256 e integrazione LTC-Hopfield:
+*   `model.py`: Contiene l'architettura RAP con perception, memory e strategy layers.
+*   `memory.py`: Integra LTC (ncps) e Hopfield (hflayers) per la memoria associativa.
+*   `trainer.py`: Training loop con loss MSE supervisionata.
 
 ### 11.2 `backend/coaching/curriculum.py`
 Gestisce gli stadi di apprendimento. Legge le tue statistiche e decide se sei pronto per passare dallo Stage 1 allo Stage 2.

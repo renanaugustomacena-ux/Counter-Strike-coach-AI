@@ -9,6 +9,8 @@ fonti_pdf_sintetizzate: 2
 stato: "COMPLETO"
 ---
 
+> **Nota di Aggiornamento (2026-03-20):** Il sistema utilizza ora un'architettura **Tri-Database**: (1) `database.db` (monolite con 17 tabelle per training, coaching e stato), (2) `hltv_metadata.db` (statistiche pro da hltv.org), (3) file per-match in `match_data/`. Lo schema e' stato arricchito con tabelle per il coaching COPER (`CoachingExperience`, `TacticalKnowledge`), data lineage (`DataLineage`, `DataQualityMetric`), e backup automatici. I riferimenti a `app_state.db` nel testo originale corrispondono a `database.db`.
+
 # Studio 10: Architettura del Database e Storage
 
 > **Autore**: Renan Augusto Macena
@@ -93,7 +95,7 @@ Dobbiamo garantire le proprietà **ACID**:
 *   **Durabilità**: Una volta che il sistema dice "Salvato", il dato deve essere sul disco, anche se salta la corrente un millisecondo dopo.
 
 ### 3.1 Gestione delle Transazioni in Python
-Usiamo `SQLModel` (un wrapper sopra SQLAlchemy) per gestire le transazioni.
+Usiamo **SQLAlchemy** (con il pattern Declarative Base) per gestire le transazioni.
 Il codice di ingestione (`demo_loader.py`) segue questo pattern rigoroso:
 
 ```python
@@ -161,7 +163,16 @@ Lo schema (`db_models.py`) segue una gerarchia naturale:
     *   Questa è la tabella "Mostro". Contiene il 99% dei dati totali.
 5.  **Livello Esterno: `Ext_TeamRoundStats`** (dati tornei)
     *   Statistiche a livello squadra per i round dei match pro (punteggi, economia totale).
-    *   Popolata dal modulo di ingestione HLTV per i dati esterni.
+6.  **Livello Coaching e Knowledge:**
+    *   `CoachState`: Stato singleton della pipeline di coaching (heartbeat, PID, carico sistema, contatori training).
+    *   `CoachingExperience`: Experience Bank del framework COPER (hash contesto, stato di gioco JSON, azione, esito).
+    *   `TacticalKnowledge`: Knowledge base RAG (titolo, descrizione, situazione, embedding a 384 dimensioni via Sentence-BERT).
+    *   `IngestionTask`: Coda di processing dei file demo (stato, percorso, flag `is_pro`).
+7.  **Livello Audit e Qualita':**
+    *   `DataLineage`: Tracciamento dell'origine dei dati (tipo entita', ID, demo sorgente, step della pipeline).
+    *   `DataQualityMetric`: Metriche di qualita' append-only per ogni ingestione.
+    *   `CalibrationSnapshot`: Storico della calibrazione del modello di credenza.
+    *   `ServiceNotification`: Coda errori dal backend verso l'interfaccia utente.
 
 ### 5.2 Relazioni e Vincoli (Foreign Keys)
 Tutte queste tabelle sono legate da **Foreign Keys**.
@@ -197,8 +208,9 @@ Un'unica tabella SQLite con 1.7 miliardi di righe diventa lenta. Gli indici (B-T
 ### 7.1 La Soluzione: Application-Level Sharding
 Abbiamo deciso di non usare un unico database per la telemetria.
 Usiamo la strategia del **Partitioning Manuale (Sharding)**.
-*   Esiste un database centrale leggero (`app_state.db`) che contiene solo i metadati (Chi, Dove, Quando, Chi ha vinto).
-*   **Per ogni singola partita**, creiamo un database separato (`match_data/match_UUID.db`).
+*   Esiste un database centrale **monolite** (`database.db`) che contiene metadati, statistiche aggregate, stato del coaching e dati di training (17 tabelle).
+*   Un database separato **HLTV** (`hltv_metadata.db`) che contiene le statistiche dei giocatori professionisti scaricate da hltv.org (tabelle `ProPlayer`, `ProTeam`, `ProPlayerStatCard`).
+*   **Per ogni singola partita**, creiamo un database separato (`match_data/<demo_name>.db`).
 
 ### 7.2 I Vantaggi dello Sharding
 1.  **Velocità Infinita**: Quando apri una partita, il programma apre solo quel piccolo file da 50MB. È istantaneo. Non deve cercare in un mare di miliardi di righe.
@@ -251,7 +263,7 @@ Quando l'utente decide di "archiviare" o cancellare vecchie partite per fare spa
 Il sistema esegue una **Distillazione**.
 1.  Legge i dati ad alta frequenza (64 tick/s).
 2.  Calcola le statistiche aggregate (Heatmap, medie, trend).
-3.  Salva queste statistiche compresse nel database centrale (`app_state.db`).
+3.  Salva queste statistiche compresse nel database centrale (`database.db`).
 4.  Cancella il file pesante della partita (`match_UUID.db`).
 
 In questo modo, l'utente perde la possibilità di rivedere il replay "movimento per movimento", ma mantiene tutta la saggezza statistica derivata da quella partita. La memoria a breve termine (Dettagli) diventa memoria a lungo termine (Concetti).
@@ -269,7 +281,7 @@ Lo spazio su disco aggiuntivo è gestito dallo Sharding per-partita (Sezione 7) 
 Analizziamo il codice reale che implementa tutto questo.
 
 ### 10.1 `db_models.py`
-Qui definiamo lo schema usando `SQLModel`.
+Qui definiamo lo schema usando **SQLAlchemy Declarative Base**.
 Notare l'uso di `Field(index=True)` sulle colonne che usiamo per filtrare (es. `match_id`, `steam_id`). Questo crea automaticamente gli indici B-Tree necessari per la velocità.
 Notare anche i tipi di dati: usiamo `float` per le coordinate ma `int` per i soldi. La precisione dei tipi risparmia spazio e previene errori di arrotondamento.
 
@@ -302,7 +314,7 @@ Abbiamo un database che è:
 1.  **Veloce**: Grazie a WAL e Pragma ottimizzati.
 2.  **Scalabile**: Grazie allo Sharding per partita.
 3.  **Intelligente**: Grazie agli indici spaziali R-Tree.
-4.  **Efficiente**: Grazie alla decimazione e alla distillazione.
+4.  **Efficiente**: Grazie alla distillazione e alla compressione.
 
 Questo database è il fondamento su cui poggiano tutti gli altri moduli.
 *   Il **Feature Engineering (Studio 09)** legge da qui per calcolare i vettori.
