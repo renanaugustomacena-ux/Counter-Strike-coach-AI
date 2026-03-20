@@ -25,6 +25,7 @@ on:
       - '.github/*.md'
       - 'LICENSE'
       - '.gitignore'
+  workflow_dispatch:
 
 # Least-privilege: only read access to repo contents.
 # Individual jobs override when they need more (e.g. upload-artifact).
