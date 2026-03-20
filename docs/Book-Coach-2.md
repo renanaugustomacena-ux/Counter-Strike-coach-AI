@@ -507,6 +507,8 @@ Implementa una pipeline di **generazione aumentata dal recupero** utilizzando la
 | **Categorie**                 | 11: obiettivo, posizionamento, utilità, movimento, economia, strategia, posizionamento del mirino, comunicazione, mentale, senso del gioco, trading |
 
 > **Analogia:** RAG funziona come un **motore di ricerca intelligente per il cervello dell'allenatore**. Quando l'allenatore ha bisogno di consigli sul posizionamento su Dust2 come CT AWPer, non cerca per parole chiave come Google. Invece, converte la domanda in un "vettore di significato" di 384 numeri e trova suggerimenti memorizzati i cui vettori di significato puntano nella stessa direzione (somiglianza del coseno). È come se ogni libro in una biblioteca avesse una coordinata GPS che ne rappresenta l'argomento e, invece di cercare per titolo, si fornissero le coordinate GPS e si trovassero i 5 libri più vicini. Il moltiplicatore di rilevanza 1,2x è come dire "i libri dello stesso scaffale (stessa mappa/lato/tipo di arrotondamento) ottengono punti bonus". Il filtro di deduplicazione (soglia 0,85) impedisce di restituire 5 copie sostanzialmente dello stesso suggerimento.
+>
+> **Correzione M-07 — Rifiuto vettore norma-zero:** `VectorIndex.search()` valida la norma del vettore query prima della ricerca. Se la norma è zero (tipicamente dovuto a un embedding fallback vuoto o a un input corrotto), il metodo ritorna `None` con un warning nel log anziché propagare un errore di divisione per zero nella similarità del coseno. Questo protegge il pipeline RAG da query degenerate senza interrompere il flusso di coaching.
 
 ```mermaid
 flowchart TB
@@ -701,7 +703,7 @@ Rete neurale a 12 funzioni che stima P(round_win | game_state):
 
 > **Analogia:** Il predittore di Probabilità di Vittoria è come un **tabellone segnapunti in tempo reale in una partita di basket** che mostra "La squadra di casa ha il 72% di probabilità di vincere". Considera 12 fattori relativi al momento attuale – quanti soldi ha ciascuna squadra, quanti giocatori sono ancora vivi, se la bomba è stata piazzata, quanto tempo rimane – e ne prevede le probabilità. Utilizza una piccola rete neurale (molto più piccola del RAP Coach) perché deve essere veloce, aggiornandosi ogni pochi secondi durante l'analisi in tempo reale.
 
-**Architettura:** `Lineare(12, 64) → ReLU → Dropout → Lineare(64, 32) → ReLU → Lineare(32, 1) → Sigmoide`.
+**Architettura:** `Lineare(12, 64) → ReLU → Dropout(0,2) → Lineare(64, 32) → ReLU → Dropout(0,1) → Lineare(32, 1) → Sigmoide`.
 
 **12 Caratteristiche:**
 
@@ -713,16 +715,18 @@ Rete neurale a 12 funzioni che stima P(round_win | game_state):
 | 4  | giocatori_vivi                    | /5                       |
 | 5  | nemici_vivi                       | /5                       |
 | 6  | differenziale conteggio giocatori | (vivi−nemico)/5         |
-| 7  | utilità\_rimanente               | /10                      |
+| 7  | utilità\_rimanente               | /5                       |
 | 8  | percentuale_controllo_mappa       | [0, 1]                   |
 | 9  | tempo_rimanente                   | /115                     |
 | 10 | bomba_piantata                    | binario                  |
 | 11 | is_ct                             | binario                  |
 | 12 | rapporto valore equipaggiamento   | min(squadra/nemico, 2)/2 |
 
-**Override euristici:** 3+ vantaggio → limite minimo all'85%, 3+ svantaggio → limite massimo al 15%, 0 vivi → 0%, aggiustamenti bomba piazzata (T: ×1,2, CT: ×0,85), limiti economici di ±8000$.
+**Override euristici:** 3+ vantaggio → limite minimo all'85%, 3+ svantaggio → limite massimo al 15%, 0 vivi → 0%, aggiustamenti bomba piazzata (T: +0,10, CT: −0,10) — additivi sulla probabilità base, limiti economici di ±8000$.
 
 > **Analogia:** Gli override euristici sono **barriere di sicurezza basate sul buon senso**. Anche se la rete neurale si blocca e prevede una probabilità di vittoria del 50% quando l'intera squadra è morta, la barra di sicurezza dice "No — 0 giocatori vivi = 0% di probabilità. Punto." Allo stesso modo, se hai 3 giocatori in più in vita rispetto al nemico, la regola di sicurezza recita: "Hai ALMENO l'85% di probabilità di vincere, indipendentemente da ciò che pensa la rete neurale". Queste regole codificano le conoscenze di gioco più basilari che non dovrebbero mai essere violate, fungendo da controllo di sanità mentale sulle previsioni dell'IA.
+>
+> **Nota A-12 — Guard cross-load:** Questo predittore a 12 feature (`WinProbabilityNN`) è un modello *separato e incompatibile* rispetto al `WinProbabilityTrainerNN` a 9 feature descritto nella Sezione 12. I checkpoint non sono intercambiabili: al caricamento viene validata la dimensionalità del `state_dict` e, in caso di mismatch, il modello viene reinizializzato da zero con un warning nel log.
 
 ### -Albero di gioco Expectiminimax (`game_tree.py`, ~445 righe)
 
@@ -759,7 +763,7 @@ flowchart TB
     style RESULT fill:#51cf66,color:#fff
 ```
 
-### -Stimatore Bayesiano di Morte (`belief_model.py`, ~150 righe)
+### -Stimatore Bayesiano di Morte (`belief_model.py`, ~486 righe)
 
 Modelli P(morte | credenza, HP, armatura, classe_arma):
 
@@ -915,7 +919,7 @@ flowchart TB
     style R7 fill:#51cf66,color:#fff
 ```
 
-### -Analizzatore distanza di ingaggio (`engagement_range.py`, ~427 righe)
+### -Analizzatore distanza di ingaggio (`engagement_range.py`, ~442 righe)
 
 Analizza le distanze di uccisione per costruire **profili di ingaggio** specifici per ruolo e posizione:
 
@@ -941,7 +945,7 @@ Analizza le distanze di uccisione per costruire **profili di ingaggio** specific
 
 **Soglia di deviazione:** Una differenza >15% rispetto alla baseline del ruolo genera un'osservazione di coaching (es. "Più uccisioni ravvicinate del tipico AWPer — considera angoli più lunghi").
 
-**Mappe supportate:** de_mirage, de_inferno, de_dust2, de_anubis, de_nuke, de_ancient, de_overpass, de_vertigo, de_train (espandibile via JSON).
+**Mappe supportate:** de_mirage, de_inferno, de_dust2, de_anubis, de_nuke, de_ancient, de_overpass, de_vertigo, de_train (non nell'Active Duty pool attuale, supportata per demo storiche/workshop) — espandibile via JSON.
 
 ```mermaid
 flowchart TB
@@ -979,15 +983,15 @@ flowchart LR
 | # | Motore | File | Input | Output | Complessità |
 |---|---|---|---|---|---|
 | 1 | Classificatore Ruoli | `role_classifier.py` | PlayerMatchStats | Ruolo (6 classi) + confidenza | O(n) features |
-| 2 | Probabilità Vittoria | `win_probability_trainer.py` | 9 feature stato round | P(CT win) ∈ [0,1] | O(1) forward pass |
+| 2 | Probabilità Vittoria | `win_probability.py` | 12 feature stato round | P(CT win) ∈ [0,1] | O(1) forward pass |
 | 3 | Albero di Gioco | `game_tree.py` | Stato round + azioni | Nodo ottimale (minimax) | O(b^d) branching |
-| 4 | Morte Bayesiana | `bayesian_death.py` | Posizione + tempo + round | P(morte) + fattori rischio | O(n) prior update |
+| 4 | Morte Bayesiana | `belief_model.py` | Posizione + tempo + round | P(morte) + fattori rischio | O(n) prior update |
 | 5 | Indice Inganno | `deception_index.py` | Storico round + posizioni | Score imprevedibilità [0,1] | O(n×m) pattern match |
-| 6 | Tracker Momentum | `momentum_tracker.py` | Sequenza round | Stato hot/cold/neutral | O(n) sliding window |
-| 7 | Analizzatore Entropia | `entropy_analyzer.py` | Danni utility per tipo | Score efficacia vs pro | O(k) per tipo utility |
-| 8 | Rilevatore Punti Ciechi | `blind_spot.py` | Posizioni morte + angoli | Pattern ripetuti | O(n²) clustering |
+| 6 | Tracker Momentum | `momentum.py` | Sequenza round | Stato hot/cold/neutral | O(n) sliding window |
+| 7 | Analizzatore Entropia | `entropy_analysis.py` | Danni utility per tipo | Score efficacia vs pro | O(k) per tipo utility |
+| 8 | Rilevatore Punti Ciechi | `blind_spots.py` | Posizioni morte + angoli | Pattern ripetuti | O(n²) clustering |
 | 9 | Utilità ed Economia | `utility_economy.py` | Economia round + utility | Consiglio acquisto + rating | O(1) threshold check |
-| 10 | Analizzatore Ingaggio | `engagement_analyzer.py` | Kill events 3D | Profilo distanza (4 fasce) | O(n) euclidean dist |
+| 10 | Analizzatore Ingaggio | `engagement_range.py` | Kill events 3D | Profilo distanza (4 fasce) | O(n) euclidean dist |
 
 ---
 
@@ -1209,6 +1213,8 @@ flowchart TB
 - [**sanity.py**](http://sanity.py)** / dem\_[validator.py](http://validator.py):** Controlli di integrità dei dati e dei file demo
 
 > **Analogia:** Il sottosistema di convalida è l'**ispettore del controllo qualità** in fabbrica. Il rilevamento della deriva verifica: "I dati che riceviamo oggi sono simili a quelli su cui ci siamo formati o le cose sono cambiate?" (come controllare se la ricetta di un biscotto ha ancora lo stesso sapore del lotto del mese scorso). Controlli di convalida dello schema: "Ogni record del database ha tutti i campi obbligatori nel formato corretto?" (come assicurarsi che ogni modulo sia compilato completamente). I controlli di integrità verificano che i file demo siano reali, completi e non corrotti (come scuotere una scatola per assicurarsi che non sia vuota prima di spedirla).
+
+**Copertura quantitativa:** Il progetto comprende **1.506 test** distribuiti su 78 file di test e **291+ controlli headless validator** articolati su 24+ fasi di validazione. Questa copertura spazia dall'integrità dello schema DB alla coerenza dei vettori di embedding, dalla correttezza delle pipeline di addestramento alla validazione end-to-end dei flussi di coaching.
 
 ### -PlayerKnowledge — Sistema Percettivo NO-WALLHACK (`player_knowledge.py`, 527 righe)
 
@@ -1433,6 +1439,10 @@ sequenceDiagram
 | `_training_data_cache` | 120s | Progresso demo (pro/user processed, on disk, trained_on) |
 
 **Shutdown graceful:** `shutdown()` → ferma hunter → ferma ingestion → ferma ML training → attende max 5s per conferma → log warning se timeout.
+
+> **Correzione M-08 — Validazione file impostazioni:** `load_user_settings()` valida la struttura JSON al caricamento: verifica che il payload sia un `dict` (non una lista o un tipo primitivo), logga un errore dettagliato se la struttura è invalida, e applica un fallback graceful ai valori predefiniti. Questo impedisce che un file `settings.json` corrotto o manomesso provochi crash a cascata nel modulo di configurazione.
+>
+> **Correzione C-09 — Bootstrap anticipato:** Le fasi di bootstrap precedenti all'inizializzazione del logger utilizzano `print()` per i messaggi diagnostici. Questo evita il `NameError` che si verificava quando il codice tentava di chiamare `logger.info()` prima che il logger fosse stato configurato.
 
 **Aggregazione health report:** `get_system_status()` → timestamp, state, services, teacher, ml_controller, ingestion, storage, baseline, training_data. Ogni sottosistema è isolato con `_safe_call()` — un errore in un sottosistema non impedisce il report degli altri.
 
@@ -1790,7 +1800,9 @@ flowchart LR
 
 Il **responsabile della sicurezza dei dati**: crea copie di backup non-bloccanti tramite `VACUUM INTO` e le gestisce con una politica di rotazione.
 
-> **Analogia:** Il BackupManager è come un **sistema di backup di una banca**. Ogni notte (o quando richiesto), il sistema fa una copia del caveau (database) in una cassaforte secondaria. La copia è fatta con una tecnica speciale (`VACUUM INTO`) che non blocca le operazioni in corso — è come fotocopiare un libro senza toglierlo dallo scaffale. Dopo la copia, il sistema verifica che la fotocopia sia leggibile (`PRAGMA integrity_check`). Se fallisce il controllo, la copia viene distrutta. Le copie vecchie vengono eliminate con una politica di rotazione: 7 copie giornaliere + 4 copie settimanali. Questo bilancia sicurezza e spazio su disco.
+> **Analogia:** Il BackupManager è come un **sistema di backup di una banca**. Ogni notte (o quando richiesto), il sistema fa una copia del caveau (database) in una cassaforte secondaria. La copia è fatta con una tecnica speciale (`VACUUM INTO`) che non blocca le operazioni in corso — è come fotocopiare un libro senza toglierlo dallo scaffale. Dopo la copia, il sistema verifica che la fotocopia sia leggibile (`PRAGMA quick_check`). Se fallisce il controllo, la copia viene distrutta. Le copie vecchie vengono eliminate con una politica di rotazione: 7 copie giornaliere + 4 copie settimanali. Questo bilancia sicurezza e spazio su disco.
+>
+> **Correzione H-02 — DB handle leak:** `_verify_integrity()` utilizza un blocco `try/finally` per garantire la chiusura della connessione `sqlite3` anche in caso di errore. Il PRAGMA utilizzato è `quick_check` (non `integrity_check`) per ridurre il tempo di verifica sui database di grandi dimensioni — `quick_check` omette la validazione degli indici, sufficiente per verificare l'integrità strutturale delle pagine del backup.
 
 **Pipeline di backup:**
 
@@ -1800,7 +1812,7 @@ flowchart TB
     TRIGGER -->|"No backup oggi"| VACUUM["VACUUM INTO<br/>'backup_{label}_{timestamp}.db'"]
     VACUUM --> EXISTS{"File creato?"}
     EXISTS -->|"No"| FAIL["Errore: file mancante"]
-    EXISTS -->|"Sì"| INTEG["PRAGMA integrity_check<br/>sulla copia"]
+    EXISTS -->|"Sì"| INTEG["PRAGMA quick_check<br/>sulla copia"]
     INTEG -->|"ok"| LOG["Log: Backup Successful<br/>(dimensione MB)"]
     INTEG -->|"Fallito"| DEL["Elimina backup corrotto"]
     LOG --> PRUNE["_prune_backups()"]
@@ -2054,6 +2066,8 @@ Per ogni campione nel batch:
 | `_metadata_cache` | `match_id` | Metadati match (mappa, etc.) |
 
 > **Correzione F3-11:** I campioni con fallback a zero-tensor vengono **scartati** (non usati per training). Il tasso aggregato viene tracciato e se supera il 10%, un warning viene emesso. Se l'intero batch è fallback, viene saltato completamente.
+>
+> **Correzione H-03 — Rimozione batch swallowing silenzioso:** I loop di training e validazione del RAP non contengono più il blocco `except (KeyError, TypeError): continue` che mascherava silenziosamente errori nei dati. Ora `train_step()` deve restituire un `dict` con chiave `'loss'` o viene sollevato un `ValueError` esplicito. Questo garantisce che errori strutturali nei batch vengano rilevati immediatamente anziché ignorati, migliorando la diagnosticabilità del pipeline di addestramento.
 
 #### Funzione Vantaggio: `_compute_advantage()`
 
@@ -2245,11 +2259,11 @@ Modulo entry-point che fornisce la funzione `train_nn()` con dispatch automatico
 
 > **Nota P1-02:** Tutti i percorsi chiamano `set_global_seed()` prima dell'addestramento per garantire riproducibilità. Il seed globale è configurato nel modulo `config.py`.
 
-### -WinProbabilityTrainer (win_probability_trainer.py, 124 righe)
+### -WinProbabilityTrainer (win_probability_trainer.py, ~138 righe)
 
 Modulo dedicato al modello di probabilità vittoria — la rete più semplice dell'ecosistema.
 
-**Architettura `WinProbabilityNN`:**
+**Architettura `WinProbabilityTrainerNN`:**
 
 ```
 Input(9) → Linear(32) → ReLU → Linear(16) → ReLU → Linear(1) → Sigmoid
@@ -2279,6 +2293,8 @@ Input(9) → Linear(32) → ReLU → Linear(16) → ReLU → Linear(1) → Sigmo
 - Salvataggio: `torch.save(state_dict, model_path)` — persistenza diretta, non tramite `save_nn()`
 
 **`predict_win_prob(model, state_dict)`** — Inferenza singola: costruisce il tensore dalle 9 feature e ritorna la probabilità CT-win come float.
+
+> **Nota A-12 — Architetture distinte:** Questo `WinProbabilityTrainerNN` (9 feature, addestramento offline) è un modello *separato e incompatibile* rispetto al `WinProbabilityNN` a 12 feature descritto nella Sezione 7. Il primo viene addestrato sui dati aggregati delle demo; il secondo opera in tempo reale durante l'analisi live. I checkpoint non sono intercambiabili.
 
 ### -Utilità di Addestramento
 
