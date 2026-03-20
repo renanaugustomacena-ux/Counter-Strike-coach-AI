@@ -79,7 +79,7 @@ ninja==1.13.0
 numpy==2.2.6
 opencv-python==4.13.0.92
 opt_einsum==3.4.0
-packaging==25.0
+packaging==26.0
 pandas==2.3.3
 pefile==2024.8.26
 pexpect==4.9.0
