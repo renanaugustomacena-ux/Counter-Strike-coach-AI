@@ -93,7 +93,7 @@ psutil==7.2.0
 ptyprocess==0.7.0
 pyarrow==22.0.0
 pycairo==1.29.0
-pycparser==2.23
+pycparser==3.0
 pydantic==2.12.5
 pydantic_core==2.41.5
 pyee==13.0.0
