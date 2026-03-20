@@ -125,7 +125,7 @@ jobs:
           -x
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         if: always()
         with:
           name: coverage-report-${{ runner.os }}
@@ -194,7 +194,7 @@ jobs:
         run: python Programma_CS2_RENAN/tools/sync_integrity_manifest.py --verify-only
 
       - name: Upload Build Health Report
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         if: always()
         with:
           name: build-health-report-${{ runner.os }}
@@ -259,7 +259,7 @@ jobs:
           pip-audit --strict --desc on 2>&1 | tee pip-audit-report.txt
 
       - name: Upload security reports
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         if: always()
         with:
           name: security-reports
@@ -365,7 +365,7 @@ jobs:
           VIRTUAL_ENV: 'ci'
 
       - name: Upload distribution artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: cs2-analyzer-windows
           path: dist/
