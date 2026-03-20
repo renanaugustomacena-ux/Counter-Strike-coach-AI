@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from unittest.mock import patch
 
 import pytest
+from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from Programma_CS2_RENAN.backend.storage.db_models import CoachingInsight, PlayerMatchStats
@@ -40,8 +41,18 @@ class _InMemoryDBManager:
 
 @pytest.fixture
 def db_engine():
-    """In-memory SQLite engine with all tables."""
-    engine = create_engine("sqlite:///:memory:")
+    """In-memory SQLite engine with all tables.
+
+    Uses StaticPool so all threads share the same connection — required
+    because COPER coaching runs _generate_coper_insights in a separate
+    thread via _run_with_timeout.  SingletonThreadPool (the default for
+    :memory:) gives each thread its own empty database.
+    """
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     SQLModel.metadata.create_all(engine)
     return engine
 

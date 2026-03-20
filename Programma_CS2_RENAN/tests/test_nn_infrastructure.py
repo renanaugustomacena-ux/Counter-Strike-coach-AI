@@ -253,7 +253,7 @@ class TestPersistence:
         with pytest.raises(pers.StaleCheckpointError):
             pers.load_nn("stale_v1", model_new)
 
-    def test_load_missing_model(self, tmp_path, monkeypatch):
+    def test_load_missing_model_raises(self, tmp_path, monkeypatch):
         import Programma_CS2_RENAN.backend.nn.persistence as pers
 
         monkeypatch.setattr(pers, "BASE_NN_DIR", tmp_path)
@@ -264,10 +264,9 @@ class TestPersistence:
             lambda version, user_id=None: tmp_path / "no_exist" / f"{version}.pt",
         )
         model = nn.Linear(10, 5)
-        original_weight = model.weight.data.clone()
-        loaded = pers.load_nn("nonexistent_v99", model)
-        # Model should be returned with its original (random) weights
-        assert torch.allclose(loaded.weight.data, original_weight)
+        # NN-14: load_nn now raises FileNotFoundError for missing checkpoints
+        with pytest.raises(FileNotFoundError):
+            pers.load_nn("nonexistent_v99", model)
 
 
 # ---------------------------------------------------------------------------

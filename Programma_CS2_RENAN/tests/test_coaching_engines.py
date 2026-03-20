@@ -182,8 +182,9 @@ class TestPlayerCardAssimilator:
 
         card = self._make_card(kpr=0.75, dpr=0.60, adr=85.0)
         baseline = PlayerCardAssimilator(card).get_coach_baseline()
-        assert baseline["avg_kills"] == pytest.approx(0.75 * ESTIMATED_ROUNDS_PER_MATCH)
-        assert baseline["avg_deaths"] == pytest.approx(0.60 * ESTIMATED_ROUNDS_PER_MATCH)
+        # P3-02: get_coach_baseline now returns per-round rates directly (not multiplied)
+        assert baseline["avg_kills"] == pytest.approx(0.75)
+        assert baseline["avg_deaths"] == pytest.approx(0.60)
         assert baseline["avg_adr"] == 85.0
 
     def test_kd_ratio_zero_dpr(self):

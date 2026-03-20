@@ -382,8 +382,8 @@ class TestCalculateDeltas:
         player_vec[2] = 60.0  # ADR below baseline
 
         deltas = mgr._calculate_deltas(player_vec, pro_vec)
-        # TARGET_INDICES[1] = 2 (avg_adr) → delta should be positive (target - current > 0)
-        adr_delta = deltas[1]
+        # TARGET_INDICES[2] = 2 (avg_adr) → delta should be positive (target - current > 0)
+        adr_delta = deltas[2]
         assert adr_delta > 0, f"ADR delta should be positive (need improvement), got {adr_delta}"
 
     def test_deltas_clipped_to_minus_one_plus_one(self, monkeypatch):
@@ -681,6 +681,12 @@ class TestGetInteractiveOverlayData:
     def test_calibrating_returns_locked(self, monkeypatch):
         mgr, engine = _make_manager(monkeypatch)
         _seed_coach_state(engine, total_matches=10)
+        # USE_RAP_MODEL defaults to False → returns "disabled" before reaching maturity gate.
+        # Patch it to True so the function reaches the calibration check.
+        monkeypatch.setattr(
+            "Programma_CS2_RENAN.core.config.get_setting",
+            lambda key, default=None: True if key == "USE_RAP_MODEL" else default,
+        )
         result = mgr.get_interactive_overlay_data(match_id=1)
         assert result["status"] == "calibrating"
         assert "locked" in result["message"].lower() or "10/200" in result["message"]

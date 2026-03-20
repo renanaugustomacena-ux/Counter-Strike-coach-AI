@@ -728,9 +728,9 @@ class ExperienceBank:
                 CoachingExperience.outcome_validated: True,
                 CoachingExperience.follow_up_match_id: follow_up_match_id,
                 CoachingExperience.last_feedback_at: now,
-                # EMA: new_eff = clamp(old * 0.7 + effectiveness * 0.3, 0, 1)
+                # EMA: new_eff = clamp(old * 0.7 + effectiveness * 0.3, -1, 1)
                 CoachingExperience.effectiveness_score: sa_func.max(
-                    0.0,
+                    -1.0,
                     sa_func.min(
                         1.0,
                         CoachingExperience.effectiveness_score * (1 - ema_factor)
@@ -755,7 +755,7 @@ class ExperienceBank:
             session.execute(
                 update(CoachingExperience)
                 .where(CoachingExperience.id == experience_id)
-                .values(**update_values)
+                .values(update_values)
             )
 
         logger.info(

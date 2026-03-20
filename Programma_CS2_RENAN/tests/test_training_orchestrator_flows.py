@@ -436,7 +436,7 @@ class TestPrepareTensorBatchJEPA:
         orch = _make_orchestrator(model_type="jepa")
         items = self._make_tick_items(10)
         result = orch._prepare_tensor_batch(items)
-        assert result["target"].shape == (1, METADATA_DIM)
+        assert result["target"].shape == (1, 1, METADATA_DIM)
 
     def test_jepa_batch_negatives_shape(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
