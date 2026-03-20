@@ -332,13 +332,16 @@ class TrainingOrchestrator:
                         )
                         loss = result["loss"] if isinstance(result, dict) else result
                 else:
-                    # RAP signature: batch dict directly — returns dict with "loss" key
-                    try:
-                        result = trainer.train_step(tensor_batch)
-                        loss = result["loss"] if isinstance(result, dict) else result
-                    except (KeyError, TypeError) as e:
-                        logger.warning("RAP train_step failed (missing tensor key): %s", e)
-                        continue
+                    # RAP signature: batch dict directly — returns dict with "loss" key.
+                    # KeyError here is a programming bug (not data) — let it propagate.
+                    result = trainer.train_step(tensor_batch)
+                    if not isinstance(result, dict) or "loss" not in result:
+                        raise ValueError(
+                            f"RAP train_step must return dict with 'loss' key, "
+                            f"got {type(result).__name__}: "
+                            f"{list(result.keys()) if isinstance(result, dict) else result}"
+                        )
+                    loss = result["loss"]
 
                 # Fire: on_batch_end (training batches only)
                 batch_outputs = result if isinstance(result, dict) else {"loss": float(loss)}
@@ -366,26 +369,22 @@ class TrainingOrchestrator:
 
                         loss = jepa_contrastive_loss(pred, target, neg_latent).item()
                     else:
-                        # RAP validation (Bug #5: guard against missing tensor keys)
-                        try:
-                            outputs = trainer.model(
-                                tensor_batch["view"],
-                                tensor_batch["map"],
-                                tensor_batch["motion"],
-                                tensor_batch["metadata"],
-                            )
-                            val_mask = tensor_batch.get("val_mask")
-                            pred = outputs["value_estimate"]
-                            tgt = tensor_batch["target_val"]
-                            if val_mask is not None and val_mask.any() and not val_mask.all():
-                                loss = trainer.criterion_val(pred[val_mask], tgt[val_mask]).item()
-                            elif val_mask is not None and not val_mask.any():
-                                loss = 0.0
-                            else:
-                                loss = trainer.criterion_val(pred, tgt).item()
-                        except (KeyError, TypeError) as e:
-                            logger.warning("RAP validation failed (missing tensor key): %s", e)
-                            continue
+                        # RAP validation — KeyError = programming bug, let it propagate.
+                        outputs = trainer.model(
+                            tensor_batch["view"],
+                            tensor_batch["map"],
+                            tensor_batch["motion"],
+                            tensor_batch["metadata"],
+                        )
+                        val_mask = tensor_batch.get("val_mask")
+                        pred = outputs["value_estimate"]
+                        tgt = tensor_batch["target_val"]
+                        if val_mask is not None and val_mask.any() and not val_mask.all():
+                            loss = trainer.criterion_val(pred[val_mask], tgt[val_mask]).item()
+                        elif val_mask is not None and not val_mask.any():
+                            loss = 0.0
+                        else:
+                            loss = trainer.criterion_val(pred, tgt).item()
 
             total_loss += loss
 
