@@ -7,7 +7,7 @@ Runtime foundation providing daemon orchestration, asset management, spatial int
 ## Key Components
 
 ### Session Engine (`session_engine.py`)
-**Tri-Daemon Engine** orchestrating three concurrent worker threads:
+**Quad-Daemon Engine** (historically Tri-Daemon) orchestrating four concurrent worker threads:
 - **Hunter** — File system scanner detecting new demo files
 - **Digester** — Demo processor extracting tactical data and persisting to database
 - **Teacher** — Model retrainer with temporal baseline tracking and meta-shift detection

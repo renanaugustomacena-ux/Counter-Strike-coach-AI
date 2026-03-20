@@ -2,7 +2,7 @@
 
 # Suite di Test
 
-Suite di test completa con oltre 390 test seguendo la piramide di test (unit > integration > e2e).
+Suite di test completa con oltre 1,515 test seguendo la piramide di test (unit > integration > e2e).
 
 ## Principi Fondamentali
 

@@ -34,7 +34,7 @@ Programma_CS2_RENAN/
 ├── ingestion/              Demo ingestion pipelines (Steam)
 ├── observability/          RASP integrity, telemetry, Sentry
 ├── reporting/              Visualization, PDF generation
-├── tests/                  Test suite (390+ tests)
+├── tests/                  Test suite (1,515+ tests)
 └── tools/                  Validation and diagnostic tools
 ```
 

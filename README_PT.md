@@ -323,7 +323,7 @@ Script standalone que executa um ciclo de treinamento completo fora do daemon en
 | Ferramenta | Escopo | Comando | Verificacoes |
 |------------|--------|---------|--------------|
 | Headless Validator | Gate de regressao primario | `python tools/headless_validator.py` | 291+ checks |
-| Suite Pytest | Testes logicos e integracao | `python -m pytest Programma_CS2_RENAN/tests/ -x -q` | 390+ testes |
+| Suite Pytest | Testes logicos e integracao | `python -m pytest Programma_CS2_RENAN/tests/ -x -q` | 1,515+ testes |
 | Feature Audit | Integridade de feature engineering | `python tools/Feature_Audit.py` | Dimensoes de vetor, ranges |
 | Portability Test | Compatibilidade cross-platform | `python tools/portability_test.py` | Checks de importacao, caminhos |
 | Safety Verifier | Verificacoes de seguranca | `python tools/verify_all_safe.py` | RASP, varredura de segredos |

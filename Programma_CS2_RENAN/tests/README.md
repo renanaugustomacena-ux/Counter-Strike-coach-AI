@@ -2,7 +2,7 @@
 
 # Test Suite
 
-Comprehensive test suite with 390+ tests following the test pyramid (unit > integration > e2e).
+Comprehensive test suite with 1,515+ tests following the test pyramid (unit > integration > e2e).
 
 ## Key Principles
 

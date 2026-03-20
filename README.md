@@ -463,7 +463,7 @@ Counter-Strike-coach-AI/
 |   |   +-- visualizer.py             Chart and diagram rendering
 |   |   +-- pdf_generator.py          PDF report generation
 |   |
-|   +-- tests/                         Test suite (390+ tests)
+|   +-- tests/                         Test suite (1,515+ tests)
 |   +-- data/                          Static data (seed knowledge base, external datasets)
 |
 +-- docs/                              Documentation
@@ -570,7 +570,7 @@ The project maintains a multi-level validation hierarchy:
 | Tool | Scope | Command | Checks |
 |------|-------|---------|--------|
 | Headless Validator | Primary regression gate | `python tools/headless_validator.py` | 291+ checks |
-| Pytest Suite | Logic and integration tests | `python -m pytest Programma_CS2_RENAN/tests/ -x -q` | 390+ tests |
+| Pytest Suite | Logic and integration tests | `python -m pytest Programma_CS2_RENAN/tests/ -x -q` | 1,515+ tests |
 | Feature Audit | Feature engineering integrity | `python tools/Feature_Audit.py` | Vector dimensions, ranges |
 | Portability Test | Cross-platform compatibility | `python tools/portability_test.py` | Import checks, paths |
 | Dev Health | Development environment | `python tools/dev_health.py` | Dependencies, config |

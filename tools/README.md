@@ -6,7 +6,7 @@ Root-level project tools for validation, diagnostics, and maintenance.
 
 ## Validation Tools
 
-- `headless_validator.py` — Headless validation gate (245+ checks across 23 phases, mandatory pre-commit)
+- `headless_validator.py` — Headless validation gate (291+ checks across 23 phases, mandatory pre-commit)
 - `dead_code_detector.py` — Detect orphan modules, duplicate definitions, stale imports
 - `verify_all_safe.py` — Safety verification across all modules
 - `portability_test.py` — Cross-platform portability checks

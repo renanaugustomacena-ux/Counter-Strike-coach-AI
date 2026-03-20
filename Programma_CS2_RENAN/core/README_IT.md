@@ -7,7 +7,7 @@ Fondazione runtime che fornisce orchestrazione dei daemon, gestione asset, intel
 ## Componenti Chiave
 
 ### Session Engine (`session_engine.py`)
-**Tri-Daemon Engine** che orchestra tre thread worker concorrenti:
+**Quad-Daemon Engine** (storicamente Tri-Daemon) che orchestra quattro thread worker concorrenti:
 - **Hunter** — Scanner del file system che rileva nuovi file demo
 - **Digester** — Processore demo che estrae dati tattici e persiste nel database
 - **Teacher** — Retrainer del modello con tracciamento baseline temporale e rilevamento meta-shift

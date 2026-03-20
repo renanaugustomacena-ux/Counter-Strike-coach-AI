@@ -16,6 +16,16 @@
 - **Integrity Check**: The scanner ignores corrupted demos or those without a valid header. Ensure your files are complete `.dem` files.
 - **Processing Queue**: If you just added 50+ demos, the scanner may take a few minutes to index them before they appear in the history.
 
+## UI & Launch Issues
+
+### 6. "ModuleNotFoundError: No module named 'PySide6'"
+- **Cause**: The Qt UI framework is not installed.
+- **Solution**: Run `pip install PySide6` in your virtual environment.
+
+### 7. App Opens but Shows Blank Screen
+- **Qt UI**: Ensure you are running from the project root directory. Launch with: `python -m Programma_CS2_RENAN.apps.qt_app.app`
+- **Legacy Kivy UI**: Verify the layout file exists at `Programma_CS2_RENAN/apps/desktop_app/layout.kv` and run with `python Programma_CS2_RENAN/main.py`.
+
 ## Performance & System
 
 ### 4. Application Lag / High CPU

@@ -9,6 +9,8 @@ fonti_pdf_sintetizzate: 0
 stato: "COMPLETO"
 ---
 
+> **Nota di Aggiornamento (2026-03-20):** I riferimenti a "19 canali" in questo studio riflettono l'architettura v1.0.0. Il vettore di stato e' stato successivamente espanso a **25 dimensioni** con l'aggiunta di 6 feature contestuali (classe arma, tempo nel round, bomba piazzata, compagni/nemici vivi, economia team). Vedere Studio 09 v2.0.0 per la tabella aggiornata.
+
 # Studio 05: Architettura Percettiva e Corteccia Visiva
 
 > **Autore**: Renan Augusto Macena
