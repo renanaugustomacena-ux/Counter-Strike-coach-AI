@@ -57,7 +57,7 @@ CS2 Ultimate è un **sistema di coaching basato su IA ibrido** per Counter-Strik
 2. **Addestra** più modelli di reti neurali attraverso un programma a fasi con limiti di maturità (a 3 livelli: CALIBRAZIONE → APPRENDIMENTO → MATURO). 3. **Inferisce** consigli di allenamento fondendo le previsioni di apprendimento automatico con conoscenze tattiche recuperate semanticamente tramite una catena di fallback a 4 livelli (COPER → Ibrido → RAG → Base).
 3. **Spiega** il suo ragionamento tramite attribuzione causale, narrazioni basate su template, confronti tra giocatori professionisti e un'opzionale rifinitura LLM (Ollama).
 
-Il sistema contiene **≈ 97.400 righe di Python** distribuite su ~5.270 file sorgente (429 `.py`, di cui 371 sotto `Programma_CS2_RENAN/`), che si estendono su **otto sottosistemi logici AI** (NN Core con VL-JEPA, RAP Coach, Coaching Services, Knowledge & Retrieval, Analysis Engines, Processing & Feature Engineering, Sorgenti Dati, Motori di Coaching), un Osservatorio di addestramento, un modulo di Controllo (Console, DB Governor, Ingest Manager, ML Controller), un'architettura Quad-Daemon per l'automazione in background (Hunter, Digester, Teacher, Pulse), un'interfaccia desktop Qt/PySide6 con 13 schermi e pattern MVVM (migrata da Kivy nel marzo 2026), un sistema completo di ingestione (con sottosistema HLTV dedicato: HLTVApiService, CircuitBreaker, RateLimiter), storage e reporting, una **Tools Suite** con 33 script di validazione e diagnostica (Goliath Hospital, Brain Verification, headless validator, Ultimate ML Coach Debugger), un'architettura tri-database specializzata con 19 tabelle SQLModel nel monolite più database per-match separati, e una **Test Suite** con 79 file di test organizzati in 6 categorie: analysis/theory, coaching/training, ML/models, data/storage, UI/playback, integration/misc. Il progetto ha attraversato un processo di **rimediazione sistematica in 13 fasi** che ha risolto 412+ problemi di qualità del codice, correttezza ML, sicurezza e architettura, inclusa l'eliminazione di label leakage nell'addestramento (G-01), l'implementazione della zona di pericolo visiva nel tensore vista (G-02), la calibrazione automatica dello stimatore bayesiano (G-07), e la correzione del fallback del coaching COPER (G-08). La pipeline end-to-end è stata completata il 12 marzo 2026: 11 demo professionali ingerite, 17.3M righe tick, 6.4GB database, JEPA dry-run completato con successo (train loss 0.9506, val loss 1.8248).
+Il sistema contiene **≈ 86.300 righe di Python** distribuite su 377 file `.py` sotto `Programma_CS2_RENAN/`, che si estendono su **otto sottosistemi logici AI** (NN Core con VL-JEPA, RAP Coach + RAP Lite, Coaching Services, Knowledge & Retrieval, Analysis Engines, Processing & Feature Engineering, Sorgenti Dati, Motori di Coaching), un Osservatorio di addestramento, un modulo di Controllo (Console, DB Governor, Ingest Manager, ML Controller), un'architettura Quad-Daemon per l'automazione in background (Hunter, Digester, Teacher, Pulse), un'interfaccia desktop Qt/PySide6 con 13 schermi e pattern MVVM (migrata da Kivy nel marzo 2026), un sistema completo di ingestione (con sottosistema HLTV dedicato: HLTVApiService, CircuitBreaker, RateLimiter), storage e reporting, una **Tools Suite** con 17 script Python di validazione e diagnostica (Goliath Hospital, Brain Verification, headless validator, Ultimate ML Coach Debugger), un'architettura tri-database specializzata con 19 tabelle SQLModel nel monolite più database per-match separati, e una **Test Suite** con 81 file di test organizzati in 6 categorie: analysis/theory, coaching/training, ML/models, data/storage, UI/playback, integration/misc. Il progetto ha attraversato un processo di **rimediazione sistematica in 13 fasi** che ha risolto 412+ problemi di qualità del codice, correttezza ML, sicurezza e architettura, inclusa l'eliminazione di label leakage nell'addestramento (G-01), l'implementazione della zona di pericolo visiva nel tensore vista (G-02), la calibrazione automatica dello stimatore bayesiano (G-07), e la correzione del fallback del coaching COPER (G-08), seguita da una **seconda ondata di rimediazione** che ha risolto ulteriori 162 problemi (31 HIGH + 131 MEDIUM) relativi a thread safety, schema drift, Qt lifecycle, e hardening dell'osservabilità. La pipeline end-to-end è stata completata il 12 marzo 2026: 11 demo professionali ingerite, 17.3M righe tick, 6.4GB database, JEPA dry-run completato con successo (train loss 0.9506, val loss 1.8248).
 
 > **Analogia:** Immagina di avere un allenatore robot super intelligente che guarda le tue partite di calcio in video. Innanzitutto, **guarda** centinaia di partite professionistiche e le tue, prendendo appunti su ogni singola mossa (questa è la parte di "ingestione", gestita dal daemon Hunter che scansiona le cartelle e dal daemon Digester che elabora i file). Poi, **studia** quegli appunti e impara cosa fanno i grandi giocatori in modo diverso dai principianti, come uno studente che affronta i vari livelli scolastici (CALIBRARE è l'asilo, APPRENDERE è la scuola media, MATURARE è il diploma) — questo lo fa il daemon Teacher in background. Quando è il momento di darti un consiglio, non si limita a tirare a indovinare: controlla il suo **quaderno di suggerimenti**, la sua **memoria delle sessioni di allenamento passate** e cosa farebbero i **professionisti** nella tua esatta situazione, scegliendo la fonte di cui si fida di più. Infine, **spiega** perché ti sta dicendo di fare qualcosa, non solo "fai questo", ma "fai questo *perché* continui a essere colto alla sprovvista". È come avere un allenatore che ha visto ogni partita professionistica mai giocata, ricorda ogni sessione di allenamento che hai fatto e può spiegarti esattamente perché dovresti cambiare strategia. Nel frattempo, l'interfaccia desktop Qt/PySide6 ti mostra tutto in tempo reale: una mappa tattica 2D con il tuo "fantasma" ottimale, grafici radar delle tue abilità, e una dashboard che ti dice esattamente a che punto è il tuo allenatore nel suo processo di apprendimento. Il daemon Pulse assicura che il sistema sia sempre vigile con un battito cardiaco costante.
 
@@ -73,7 +73,7 @@ flowchart LR
     style K fill:#51cf66,color:#fff
 ```
 
-> ~5.270 source files · 97.400+ lines · 429 .py files · 8 AI subsystems + Observatory + Control Module + Quad-Daemon + Desktop UI Qt/PySide6 (13 screens) + 33 Tools · 79 test files · 19 SQLModel tables · Architettura tri-database (database.db + knowledge_base.db + hltv_metadata.db) · Indicizzazione vettoriale FAISS (IndexFlatIP 384-dim) · Internazionalizzazione i18n (EN/IT/PT) · Accessibilità WCAG 1.4.1 (theme.py) · 12 rapporti di audit comprensivi (incl. revisione letteratura 140KB, 30 articoli peer-reviewed) · 412+ problemi risolti in 13 fasi di rimediazione sistematica · Pipeline end-to-end completata (11 demo pro, 17.3M tick rows, 6.4GB DB)
+> 377 .py files · 86.300+ lines · 8 AI subsystems + Observatory + Control Module + Quad-Daemon + Desktop UI Qt/PySide6 (13 screens) + 17 Tools · 81 test files · 19 SQLModel tables · Architettura tri-database (database.db + knowledge_base.db + hltv_metadata.db) · Indicizzazione vettoriale FAISS (IndexFlatIP 384-dim) · Internazionalizzazione i18n (EN/IT/PT) · Accessibilità WCAG 1.4.1 (theme.py) · 12 rapporti di audit comprensivi (incl. revisione letteratura 140KB, 30 articoli peer-reviewed) · 574+ problemi risolti (412 in 13 fasi + 162 in seconda ondata) · Pipeline end-to-end completata (11 demo pro, 17.3M tick rows, 6.4GB DB)
 
 ---
 
@@ -269,11 +269,15 @@ Due invarianti architetturali fondamentali attraversano l'intero sistema:
 ```
  0: health/100      1: armor/100       2: has_helmet      3: has_defuser
  4: equip/10000     5: is_crouching    6: is_scoped       7: is_blinded
- 8: enemies_vis     9: pos_x/±extent  10: pos_y/±extent  11: pos_z/1024
+ 8: enemies_vis     9: pos_x/4096     10: pos_y/4096     11: pos_z/1024
 12: view_x_sin     13: view_x_cos     14: view_y/90      15: z_penalty
 16: kast_est       17: map_id         18: round_phase
 19: weapon_class   20: time_in_round/115  21: bomb_planted
 22: teammates_alive/4  23: enemies_alive/5  24: team_economy/16000
+
+Normalizzazione posizione: `np.clip(pos_x / cfg.pos_xy_extent, -1.0, 1.0)` dove
+`pos_xy_extent=4096.0` (default, configurabile per mappa). Il clip a [-1,1] protegge
+da coordinate fuori range che produrrebbero feature > 1.0 in moduli non normalizzati.
 ```
 
 > **Analogia:** Il contratto 25-dim è come una **lingua franca** parlata da tutti nel sistema. Ogni modello, ogni pipeline di addestramento, ogni motore di inferenza "parla" esattamente la stessa lingua con 25 parole. Se un modulo iniziasse a usare 26 parole o un ordine diverso, la comunicazione si interromperebbe. Il `FeatureExtractor` è il **dizionario ufficiale** — la sola autorità per la definizione e l'ordine delle feature.
@@ -285,9 +289,9 @@ Due invarianti architetturali fondamentali attraversano l'intero sistema:
 **Cartella nel programma:** `backend/nn/`
 **File chiave:** `model.py`, `jepa_model.py`, `jepa_train.py`, `jepa_trainer.py`, `coach_manager.py`, `training_orchestrator.py`, `config.py`, `factory.py`, `persistence.py`, `role_head.py`, `training_callbacks.py`, `tensorboard_callback.py`, `maturity_observatory.py`, `embedding_projector.py`
 
-Questo sottosistema contiene tutti i modelli di rete neurale, il "cervello" del sistema di coaching. Include cinque distinte architetture di modelli, un gestore di training, un Osservatorio di Introspezione del Coach e utilità per la creazione e la persistenza dei modelli.
+Questo sottosistema contiene tutti i modelli di rete neurale, il "cervello" del sistema di coaching. Include sei distinte architetture di modelli (AdvancedCoachNN, JEPA, VL-JEPA, RAP Coach, RAP Lite, NeuralRoleHead), un gestore di training, un Osservatorio di Introspezione del Coach e utilità per la creazione e la persistenza dei modelli.
 
-> **Analogia:** Questo è il **reparto cervello** della fabbrica. Contiene cinque diversi tipi di cervelli (AdvancedCoachNN, JEPA, VL-JEPA, RAP Coach e NeuralRoleHead), ognuno strutturato in modo diverso e specializzato in ambiti diversi, come ad esempio un cervello matematico, uno linguistico, uno creativo, uno per le competenze interpersonali e uno per l'identificazione dei ruoli, tutti in sinergia. Il Training Manager è come il **preside della scuola**: decide quale cervello può studiare cosa e quando, e tiene traccia dei voti di tutti. L'**Osservatorio** è l'ufficio di controllo qualità della scuola: monitora la "pagella" di ogni cervello durante la formazione, individuando segnali di confusione, panico, crescita o padronanza.
+> **Analogia:** Questo è il **reparto cervello** della fabbrica. Contiene sei diversi tipi di cervelli (AdvancedCoachNN, JEPA, VL-JEPA, RAP Coach, RAP Lite e NeuralRoleHead), ognuno strutturato in modo diverso e specializzato in ambiti diversi, come ad esempio un cervello matematico, uno linguistico, uno creativo, uno per le competenze interpersonali, uno portatile che funziona ovunque e uno per l'identificazione dei ruoli, tutti in sinergia. Il Training Manager è come il **preside della scuola**: decide quale cervello può studiare cosa e quando, e tiene traccia dei voti di tutti. L'**Osservatorio** è l'ufficio di controllo qualità della scuola: monitora la "pagella" di ogni cervello durante la formazione, individuando segnali di confusione, panico, crescita o padronanza.
 
 ```mermaid
 flowchart TB
@@ -313,10 +317,10 @@ Definito in `model.py`, questo è il fondamento del coaching supervisionato.
 | Componente                       | Dettaglio                                                                                                                                                                                                               |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Dimensione di input**    | 25 funzionalità (`METADATA_DIM` da vectorizer.py)                                                                                                                                                                    |
-| **Config**                 | Dataclass `CoachNNConfig`: `input_dim=25`, `output_dim=25` (default), `hidden_dim=128`, `num_experts=3`, `num_lstm_layers=2`, `dropout=0.2`, `use_layer_norm=True`                                      |
+| **Config**                 | Dataclass `CoachNNConfig`: `input_dim=25`, `output_dim=METADATA_DIM` (default 25, ma sovrascritto a `OUTPUT_DIM=10` dalla `ModelFactory`), `hidden_dim=128`, `num_experts=3`, `num_lstm_layers=2`, `dropout=0.2`, `use_layer_norm=True`                                      |
 | **Livelli nascosti**       | LSTM a 2 livelli (128 nascosti,`batch_first=True`, dropout=0.2) con `LayerNorm` post-LSTM                                                                                                                           |
 | **Testa dell'esperto**     | 3 esperti lineari paralleli (configurabili), softmax-gated tramite una rete di gate appresa                                                                                                                             |
-| **Output**                 | Somma pesata degli output degli esperti → vettore del punteggio di coaching. Output_dim = METADATA_DIM (25) sia in `CoachNNConfig` che quando istanziato tramite `ModelFactory` (corretto in P1-08: `OUTPUT_DIM = METADATA_DIM = 25` in `config.py`) |
+| **Output**                 | Somma pesata degli output degli esperti → vettore del punteggio di coaching a 10 dimensioni. La `CoachNNConfig` definisce `output_dim=METADATA_DIM` (25) come default, ma la `ModelFactory` sovrascrive con `OUTPUT_DIM=10` in produzione. L'alias `TeacherRefinementNN = AdvancedCoachNN` è mantenuto per retrocompatibilità |
 | **Bias di ruolo**          | Parametro `role_id` opzionale: `gate_weights = (gate_weights + role_bias) / 2.0` — orienta la selezione degli esperti verso conoscenze specifiche del ruolo                                                        |
 | **Validazione dell'input** | `_validate_input_dim()` rimodella automaticamente 1D → `unsqueeze(0).unsqueeze(0)` e 2D → `unsqueeze(0)` per la robustezza                                                                                      |
 
@@ -428,7 +432,7 @@ flowchart TB
 
 ### -VL-JEPA: Architettura di Allineamento Visione-Linguaggio con Concetti di Coaching
 
-Definito nella seconda metà di `jepa_model.py` (righe 355-963). Il VL-JEPA (**Vision-Language JEPA**) è un'**estensione fondamentale** del JEPACoachingModel che aggiunge un **meccanismo di allineamento tra embedding latenti e concetti di coaching interpretabili**. Ispirato al VL-JEPA di Meta FAIR (2026), mappa le rappresentazioni latenti in uno spazio concettuale strutturato con 16 concetti di coaching predefiniti.
+Definito nella seconda metà di `jepa_model.py` (1044 righe totali, righe 355+). Il VL-JEPA (**Vision-Language JEPA**) è un'**estensione fondamentale** del JEPACoachingModel che aggiunge un **meccanismo di allineamento tra embedding latenti e concetti di coaching interpretabili**. Ispirato al VL-JEPA di Meta FAIR (2026), mappa le rappresentazioni latenti in uno spazio concettuale strutturato con 16 concetti di coaching predefiniti.
 
 > **Analogia:** Se JEPA è un allenatore che "capisce" il gioco osservandolo (apprendimento auto-supervisionato), VL-JEPA è lo stesso allenatore che ha anche imparato il **vocabolario specifico del coaching**. Non solo capisce i pattern del gioco, ma sa etichettarli con concetti come "posizionamento aggressivo", "economia inefficiente" o "scambio reattivo". È come la differenza tra un critico cinematografico che "sente" quando un film funziona e uno che sa articolare il perché: "la fotografia è eccellente, il ritmo è lento nel secondo atto, il colpo di scena è prevedibile". Il VL-JEPA traduce la comprensione latente in linguaggio di coaching specifico.
 
@@ -610,7 +614,7 @@ La classe `ConceptLabeler` genera **etichette soft multi-label** (`[0, 1]^16`) p
 
 **1. `jepa_contrastive_loss()` — InfoNCE (già documentata sopra)**
 
-Formula: `-log(exp(sim(pred, target)/τ) / (exp(sim(pred, target)/τ) + Σ exp(sim(pred, neg_i)/τ)))` con τ=0.07.
+Formula: `-log(exp(sim(pred, target)/τ) / (exp(sim(pred, target)/τ) + Σ exp(sim(pred, neg_i)/τ)))` con τ=0.07. L'implementazione PyTorch utilizza un trucco efficiente: concatena la similarità positiva e le similarità negative in un vettore di logits `[pos_sim, neg_sim_1, ..., neg_sim_N]` e applica `F.cross_entropy(logits, labels=0)` — dove l'etichetta `0` indica che il primo elemento (la similarità positiva) è la classe corretta. Questo è matematicamente equivalente alla formula InfoNCE ma sfrutta la numericamente stabile `log_softmax` interna di PyTorch.
 
 **2. `vl_jepa_concept_loss()` — Allineamento Concetti + Diversità VICReg**
 
@@ -687,7 +691,7 @@ flowchart TB
 
 #### JEPATrainer: Addestramento con Monitoraggio Deriva
 
-Definito in `jepa_trainer.py` (276 righe). Gestisce sia l'addestramento JEPA standard che VL-JEPA, con riaddestramento automatico basato sulla deriva.
+Definito in `jepa_trainer.py` (354 righe). Gestisce sia l'addestramento JEPA standard che VL-JEPA, con riaddestramento automatico basato sulla deriva.
 
 | Parametro | Default | Scopo |
 |---|---|---|
@@ -696,13 +700,20 @@ Definito in `jepa_trainer.py` (276 righe). Gestisce sia l'addestramento JEPA sta
 | **DriftMonitor** | z_threshold=2.5 | Rileva drift delle feature oltre 2.5σ |
 | **drift_history** | `List[DriftReport]` | Storico dei report di drift |
 
+**Codifica negativi condivisa — `encode_raw_negatives(negatives, seq_len)` (NN-H-02):**
+
+Metodo condiviso che codifica negativi grezzi (feature space) nello spazio latente. Quando l'orchestrator invia negativi dal cross-match pool (dimensione `METADATA_DIM`), questi devono essere trasformati in embedding latenti per il calcolo della loss contrastiva. Il metodo: reshape `[B*N, 1, D]` → expand per `seq_len` → encode via `target_encoder` con `torch.no_grad()` → mean pool → reshape `[B, N, latent_dim]`. Questa logica era precedentemente duplicata tra trainer e orchestrator; la centralizzazione (NN-H-02) previene disallineamenti.
+
 **Ciclo di addestramento — `train_step(x_context, x_target, negatives)`:**
 
 1. Forward pass JEPA: `pred, target = model.forward_jepa_pretrain(context, target)`
-2. **Auto-detect negativi grezzi:** Se `negatives.shape[-1] ≠ latent_dim`, i negativi sono feature grezze → vengono auto-codificati via `target_encoder` con `torch.no_grad()` (reshape `[B*N, 1, D]` → expand → encode → mean pool → reshape)
+2. **Auto-detect negativi grezzi:** Se `negatives.shape[-1] ≠ latent_dim`, i negativi sono feature grezze → vengono auto-codificati via `encode_raw_negatives()` (NN-H-02)
 3. Loss InfoNCE su embedding normalizzati
 4. Backward + optimizer step
 5. **Aggiornamento EMA target encoder** (deve avvenire DOPO `optimizer.step()`)
+6. **Monitoraggio diversità embedding (P9-02):** Calcola la varianza media delle dimensioni latenti. Se `variance < 0.01`, emette un warning di potenziale collasso degli embedding — il modello sta convergendo a una rappresentazione degenere dove tutti gli input producono lo stesso vettore
+
+**Guardia batch degenere (NN-JT-01):** In modalità in-batch negatives, se `batch_size < 2` il batch viene saltato — non è possibile costruire negativi escludendo se stessi da un batch di un solo elemento. Questo previene errori nell'indicizzazione dei negativi durante le fasi iniziali dell'addestramento con pochi dati.
 
 **Training step VL-JEPA — `train_step_vl()`:** Estende `train_step` con:
 
@@ -732,7 +743,7 @@ Definito in `jepa_trainer.py` (276 righe). Gestisce sia l'addestramento JEPA sta
 
 #### Pipeline di Addestramento Standalone (`jepa_train.py`)
 
-Script standalone per pre-addestramento e fine-tuning JEPA, eseguibile da CLI:
+Script standalone (464 righe) per pre-addestramento e fine-tuning JEPA, eseguibile da CLI:
 
 ```bash
 python -m Programma_CS2_RENAN.backend.nn.jepa_train --mode pretrain
@@ -751,9 +762,15 @@ Per ogni campione, seleziona un punto di partenza casuale nella sequenza e resti
 
 > **Nota (F3-25):** Il punto di partenza usa `np.random.randint()` con stato globale non seedato → finestre non riproducibili tra run. Per addestramento deterministico, usare `worker_init_fn` o un `Generator` dedicato nel `DataLoader`.
 
-**`load_pro_demo_sequences(limit=100)`:** Carica sequenze demo professionali dal database. Estrae 12 feature aggregate a livello di match da `PlayerMatchStats`, paddate a `METADATA_DIM` con zeri.
+**`_roundstats_to_features(rs: RoundStats)` → `List[float]`:** Estrae un vettore di **16 feature** da una singola riga `RoundStats`: `[kills, deaths, damage_dealt/100, headshot_kills, assists, trade_kills, was_traded, opening_kill, opening_death, he_damage/100, molotov_damage/100, flashes_thrown, smokes_thrown, equipment_value/5000, round_rating, side_CT]`. Il vettore viene poi paddato a `METADATA_DIM` (25) con zeri.
 
-> **⚠️ Avvertimento Critico (F3-08):** Lo script standalone usa `np.tile(features, (20, 1))` per creare 20 frame identici da un singolo vettore aggregato. Questo rende il pre-addestramento JEPA **un'operazione identità** — il modello impara semplicemente a copiare l'input, non le dinamiche temporali. Il `TrainingOrchestrator` nel percorso di produzione **non è affetto** da questo problema e usa dati per-tick reali.
+> **Esclusione `round_won` (P-RSB-03):** Il campo `round_won` è **deliberatamente escluso** dal vettore feature. Includerlo causerebbe data leakage: il modello vedrebbe il risultato del round nei dati di input, permettendogli di predire banalmente gli esiti dal risultato stesso. `round_won` è correttamente utilizzato come **label** in `label_from_round_stats()` (jepa_model.py), dove genera le etichette di supervisione per il ramo VL-JEPA.
+
+**`_MIN_ROUNDS_FOR_SEQUENCE = 6`:** Requisito minimo di round per costruire una sequenza di addestramento valida. Partite con meno di 6 round non forniscono abbastanza contesto temporale per apprendere pattern tattici significativi e vengono scartate silenziosamente.
+
+**`load_pro_demo_sequences(limit=100)`:** Carica sequenze demo professionali dal database. Utilizza `_roundstats_to_features()` per estrarre feature reali per-round da `RoundStats`, con fallback a 12 feature aggregate a livello di match da `PlayerMatchStats` (paddate a `METADATA_DIM` con zeri) solo quando `RoundStats` non è disponibile.
+
+> **⚠️ Avvertimento Critico (F3-08):** Nel percorso di fallback match-aggregate, lo script usa `np.tile(features, (20, 1))` per creare 20 frame identici da un singolo vettore aggregato. Questo rende il pre-addestramento JEPA **un'operazione identità** — il modello impara semplicemente a copiare l'input, non le dinamiche temporali. Il percorso primario con `RoundStats` reali e il `TrainingOrchestrator` nel percorso di produzione **non sono affetti** da questo problema e usano dati per-round/per-tick reali.
 
 **`train_jepa_pretrain()`:** 50 epoche, batch_size=16, lr=1e-4, 8 negativi in-batch. L'optimizer include SOLO `context_encoder` e `predictor` — il `target_encoder` è aggiornato esclusivamente via EMA.
 
@@ -848,13 +865,13 @@ with torch.no_grad():
 - L'aggiornamento EMA avviene **sempre dopo** `optimizer.step()` — mai prima, altrimenti i gradienti non sono ancora applicati
 - Il target encoder **non riceve mai gradienti** diretti — solo aggiornamenti EMA
 - Il momentum 0.996 significa che il target encoder "assorbe" solo lo 0.4% dei pesi dell'encoder online a ogni passo — aggiornamento molto conservativo
-- `state_dict()` del modello restituisce tensori **clonati** per prevenire aliasing accidentale
+- `state_dict()` del modello restituisce tensori **clonati** (`.clone()`) per prevenire aliasing accidentale — un bug reale corretto durante l'audit dove `state_dict()` restituiva riferimenti diretti ai tensori del modello anziché copie, causando corruzione quando il chiamante modificava il dizionario
 
 > **Analogia:** L'EMA è come un **mentore che impara lentamente dall'allievo**. L'allievo (context encoder) impara velocemente dai dati e cambia molto a ogni lezione. Il mentore (target encoder) osserva l'allievo e aggiorna le proprie conoscenze molto lentamente — solo lo 0.4% per lezione. Questo impedisce al mentore di "dimenticare" ciò che sapeva prima, creando un obiettivo stabile per l'apprendimento. Senza EMA, entrambi i cervelli cambierebbero troppo velocemente e il sistema potrebbe "collassare" — un fenomeno noto come mode collapse dove entrambi gli encoder producono lo stesso output indipendentemente dall'input.
 
 ### -CoachTrainingManager (Orchestrazione)
 
-Definito in `coach_manager.py` (663 righe). Questo è il **cervello del processo di formazione**, che gestisce un rigoroso **ciclo di formazione a 3 livelli, basato sulla maturità**, suddiviso in 4 fasi:
+Definito in `coach_manager.py` (1035 righe). Questo è il **cervello del processo di formazione**, che gestisce un rigoroso **ciclo di formazione a 3 livelli, basato sulla maturità**, suddiviso in 4 fasi:
 
 > **Analogia adatta ai bambini:** CoachTrainingManager è come il **preside** che decide la classe di ogni studente e quali materie può seguire. Uno studente nuovo di zecca (CALIBRAZIONE) può frequentare solo corsi introduttivi. Uno studente che ha superato un numero sufficiente di corsi (APPRENDIMENTO) può frequentare corsi avanzati. E uno studente dell'ultimo anno (MATURE) ha accesso a tutto. Il preside impone anche una regola: "Non puoi iniziare alcun corso finché non hai partecipato ad almeno 10 sessioni di orientamento". Questo impedisce al sistema di provare a insegnare quando non ha praticamente dati da cui imparare.
 
@@ -917,23 +934,27 @@ teammates_alive, enemies_alive, team_economy
 
 > **Analogia:** Queste 25 caratteristiche sono come una **lista di controllo di 25 domande** che l'allenatore pone a un giocatore in ogni singolo momento di una partita: "Quanto sei in salute? Hai un'armatura? Un casco? Un kit di disinnesco? Quanto costa il tuo equipaggiamento? Sei accovacciato? Usi un mirino? Sei accecato? Quanti nemici riesci a vedere? Dove ti trovi (coordinate x, y, z)? In che direzione stai guardando (suddiviso in sin/cos per evitare stranezze angolari)? Sei al piano sbagliato di una mappa multilivello? Come ti sei comportato (KAST)? Di che mappa si tratta? È un round per pistola, eco, forza o full buy? Che tipo di arma stai usando? Quanto tempo è passato nel round? La bomba è stata piantata? Quanti compagni di squadra sono ancora vivi? Quanti nemici sono vivi? Qual è l'economia media della tua squadra?" Le ultime 6 domande (indici 19-24) forniscono al modello una consapevolezza tattica del contesto di gioco — queste feature hanno valore predefinito 0.0 durante l'addestramento dal database e vengono popolate dal contesto DemoFrame al momento dell'inferenza. Ogni modello nel sistema parla esattamente lo stesso "linguaggio da 25 domande" — questo è il contratto di addestramento. Se una qualsiasi parte del sistema utilizzasse domande diverse, le risposte non corrisponderebbero e tutto si interromperebbe.
 
-**Indici target:** `[0, 2, 4, 11]` = `[avg_kills, avg_adr, avg_kast, rating]` — il modello prevede delta di miglioramento per queste 4 metriche aggregate a livello di partita.
+**Indici target:** `TARGET_INDICES = list(range(OUTPUT_DIM))` = `[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]` — il modello prevede delta di miglioramento per le prime **10 metriche aggregate** a livello di partita: `[avg_kills, avg_deaths, avg_adr, avg_hs, avg_kast, kill_std, adr_std, kd_ratio, impact_rounds, accuracy]`.
 
-> **Analogia:** Delle 25 feature aggregate a livello di partita, il modello si concentra sulla previsione di miglioramenti solo per 4: **media uccisioni** (stai ottenendo più eliminazioni?), **media ADR** (stai infliggendo più danni per round?), **media KAST** (stai contribuendo più spesso ai round?) e **rating** (il tuo punteggio complessivo sta migliorando?). Questi 4 sono stati scelti perché catturano le metriche di prestazione aggregate più significative secondo lo standard HLTV 2.0: le uccisioni misurano l'output offensivo, l'ADR misura l'impatto in termini di danni, il KAST misura la consistenza di contributo, e il rating è la metrica composita che li sintetizza tutti. È come un allenatore di basket che tiene traccia di centinaia di statistiche ma concentra il feedback su: punti segnati, assist, rimbalzi e la valutazione PER — i 4 aspetti più rilevanti per il miglioramento complessivo.
+> **Analogia:** Delle 25 feature aggregate a livello di partita, il modello si concentra sulla previsione di miglioramenti per le prime 10: **media uccisioni** (stai ottenendo più eliminazioni?), **media morti** (stai morendo meno?), **media ADR** (stai infliggendo più danni per round?), **media HS%** (la tua mira alla testa sta migliorando?), **media KAST** (stai contribuendo più spesso ai round?), **varianza uccisioni e ADR** (sei più consistente?), **rapporto K/D** (il bilancio è positivo?), **round di impatto** (stai influenzando più round critici?) e **precisione** (i tuoi colpi vanno a segno?). Queste 10 metriche coprono le dimensioni di prestazione più azionabili secondo lo standard HLTV 2.0: l'output offensivo, la sopravvivenza, l'impatto sui danni, la consistenza (varianza bassa = giocatore affidabile), e la precisione meccanica. Le restanti 15 feature aggregate (economia, rating composito, statistiche avanzate) sono usate come input contestuale ma non sono target diretti di predizione — il modello le usa per capire la situazione ma non suggerisce miglioramenti specifici su di esse. È come un allenatore di basket che tiene traccia di centinaia di statistiche ma concentra il feedback sui 10 fondamentali: punti segnati, assist, rimbalzi, percentuale dal campo, palle perse, palle rubate, blocchi, plus-minus, efficienza e minuti giocati.
 
 ### -TrainingOrchestrator
 
-Definito in `training_orchestrator.py`. Ciclo di epoche unificato, convalida, arresto anticipato e checkpoint per i modelli JEPA e RAP.
+Definito in `training_orchestrator.py` (960 righe). Ciclo di epoche unificato, convalida, arresto anticipato e checkpoint per i modelli JEPA, VL-JEPA, RAP e RAP Lite.
 
 | Parametro      | Predefinito | Scopo                                                                        |
 | -------------- | ----------- | ---------------------------------------------------------------------------- |
-| `model_type` | "jepa"      | Percorsi verso il trainer JEPA, VL-JEPA o RAP                                |
+| `model_type` | "jepa"      | Percorsi verso il trainer JEPA, VL-JEPA, RAP o RAP Lite                      |
 | `max_epochs` | 100         | Limite massimo di allenamento                                                |
 | `patience`   | 10          | Pazienza nell'arresto anticipato                                             |
 | `batch_size` | 32          | Campioni per batch                                                           |
 | `callbacks`  | `None`    | Elenco di istanze di `TrainingCallback` per l'integrazione con Observatory |
 
 L'orchestrator si integra con Observatory tramite `CallbackRegistry`. Attiva eventi del ciclo di vita in **5 punti**: `on_train_start` (prima della prima epoca), `on_epoch_start` (inizio di ogni epoca), `on_batch_end` (dopo ogni batch di addestramento, include output di perdita e trainer), `on_epoch_end` (dopo la convalida, include modello e perdite), `on_train_end` (dopo il completamento dell'addestramento o l'interruzione anticipata). Quando non vengono registrate callback, tutte le chiamate `fire()` sono operazioni senza costi. Gli errori di callback vengono rilevati e registrati, senza mai causare l'arresto anomalo del ciclo di addestramento.
+
+**Pool negativi cross-match (NN-H-03):** L'orchestrator mantiene un pool di feature vectors da batch precedenti (`_neg_pool`, max 500 vettori). I negativi contrastivi vengono campionati da questo pool anziché dal batch corrente, garantendo che i negativi provengano da **partite diverse** e non dalla stessa sequenza temporale di contesto/target. Quando il pool è ancora vuoto (warm-up), il sistema ricade su in-batch sampling. Questo evita falsi negativi: due tick dalla stessa azione di gioco sarebbero troppo simili per essere negativi utili.
+
+**Gate di qualità pre-addestramento (P3-D):** Prima di iniziare qualsiasi addestramento, l'orchestrator esegue `run_pre_training_quality_check()`. Se il report di qualità non passa (dati insufficienti, distribuzioni anomale, feature mancanti), l'addestramento viene **abortito** con un log di errore esplicativo. Questo impedisce di sprecare GPU su dati che produrrebbero un modello inutile.
 
 > **Analogia:** TrainingOrchestrator è come un **allenatore di palestra con un cronometro e un commentatore sportivo in diretta**. Il trainer esegue il ciclo: "Esegui un passaggio completo su tutti i dati (epoca), controlla i punteggi del quiz (validazione) e, se non hai migliorato in 10 tentativi (pazienza), fermati: hai finito, non ha senso sovrallenarsi". Salva anche la versione migliore del modello su disco (checkpoint), come quando si salvano i progressi di gioco. La nuova aggiunta è il **commentatore in diretta** (callback): se qualcuno sta ascoltando, il trainer annuncia "Addestramento iniziato!", "Epoca 5 in corso!", "Batch 12 completato, perdita 0,03!", "Epoca 5 terminata, val_loss migliorato!", "Addestramento completato!". Questi annunci alimentano la registrazione TensorBoard, il monitoraggio della maturità e le proiezioni di incorporamento dell'Osservatorio. Se nessuno sta ascoltando, il commentatore rimane in silenzio, senza alcun sovraccarico.
 
@@ -957,17 +978,18 @@ flowchart TB
 
 | Tipo Costante                    | Classe Modello          | Nome Checkpoint      | Impostazioni predefinite di fabbrica                   |
 | -------------------------------- | ----------------------- | -------------------- | ------------------------------------------------------ |
-| `TYPE_LEGACY` ("default")      | `TeacherRefinementNN` | `"latest"`         | `input_dim=METADATA_DIM(25)`, `output_dim=OUTPUT_DIM(25)`, `hidden_dim=HIDDEN_DIM(128)` |
-| `TYPE_JEPA` ("jepa")           | `JEPACoachingModel`   | `"jepa_brain"`     | `input_dim=METADATA_DIM(25)`, `output_dim=OUTPUT_DIM(25)`       |
-| `TYPE_VL_JEPA` ("vl-jepa")     | `VLJEPACoachingModel` | `"vl_jepa_brain"`  | `input_dim=METADATA_DIM(25)`, `output_dim=OUTPUT_DIM(25)`       |
+| `TYPE_LEGACY` ("default")      | `TeacherRefinementNN` | `"latest"`         | `input_dim=METADATA_DIM(25)`, `output_dim=OUTPUT_DIM(10)`, `hidden_dim=HIDDEN_DIM(128)` |
+| `TYPE_JEPA` ("jepa")           | `JEPACoachingModel`   | `"jepa_brain"`     | `input_dim=METADATA_DIM(25)`, `output_dim=OUTPUT_DIM(10)`       |
+| `TYPE_VL_JEPA` ("vl-jepa")     | `VLJEPACoachingModel` | `"vl_jepa_brain"`  | `input_dim=METADATA_DIM(25)`, `output_dim=OUTPUT_DIM(10)`       |
 | `TYPE_RAP` ("rap")             | `RAPCoachModel`       | `"rap_coach"`      | `metadata_dim=METADATA_DIM(25)`, `output_dim=10`   |
+| `TYPE_RAP_LITE` ("rap-lite")   | `RAPCoachModel`       | `"rap_lite_coach"` | `metadata_dim=METADATA_DIM(25)`, `output_dim=10`, `use_lite_memory=True` |
 | `TYPE_ROLE_HEAD` ("role_head") | `NeuralRoleHead`      | `"role_head"`      | `input_dim=5`, `hidden_dim=32`, `output_dim=5`     |
 
-> **Nota (P1-08):** In una versione precedente, la factory utilizzava `output_dim=4` e `hidden_dim=64` per i modelli legacy, creando un disallineamento con `CoachNNConfig`. Questo è stato corretto: ora `OUTPUT_DIM = METADATA_DIM = 25` e `HIDDEN_DIM = 128` sono allineati sia in `config.py` che in `factory.py`. Il modello RAP mantiene `output_dim=10` (10 probabilità di consiglio). Il modello RAP viene importato dal percorso canonico `backend/nn/experimental/rap_coach/model.py` (il vecchio `backend/nn/rap_coach/model.py` è uno shim di reindirizzamento).
+> **Nota (P1-08):** In una versione precedente, la factory utilizzava `output_dim=4` e `hidden_dim=64` per i modelli legacy, creando un disallineamento con `CoachNNConfig`. Questo è stato corretto: ora tutti i modelli di coaching (Legacy, JEPA, VL-JEPA) utilizzano `OUTPUT_DIM = 10` — le prime 10 feature core aggregate su cui il modello predice aggiustamenti delta. `HIDDEN_DIM = 128` è allineato sia in `config.py` che in `factory.py`. Il modello RAP e RAP Lite condividono la stessa classe `RAPCoachModel`, ma RAP Lite attiva `use_lite_memory=True`, sostituendo la memoria LTC-Hopfield con un fallback LSTM puro in PyTorch (utile quando le dipendenze `ncps`/`hflayers` non sono disponibili). Il modello RAP viene importato dal percorso canonico `backend/nn/experimental/rap_coach/model.py` (il vecchio `backend/nn/rap_coach/model.py` è uno shim di reindirizzamento).
 >
-> **StaleCheckpointError:** Se le dimensioni di un checkpoint salvato non corrispondono alla configurazione corrente del modello (ad esempio dopo un aggiornamento da `output_dim=4` a `output_dim=25`), il sistema solleva `StaleCheckpointError` anziché caricare silenziosamente pesi incompatibili, prevenendo corruzioni silenziose.
+> **StaleCheckpointError:** Se le dimensioni di un checkpoint salvato non corrispondono alla configurazione corrente del modello (ad esempio dopo un aggiornamento da `output_dim=4` a `output_dim=10`), il sistema solleva `StaleCheckpointError` anziché caricare silenziosamente pesi incompatibili, prevenendo corruzioni silenziose.
 
-> **Analogia:** La ModelFactory è come una **fabbrica di giocattoli** che può costruire cinque diversi tipi di robot. Gli dici "Voglio un robot JEPA" o "Mi serve un robot role_head" e lui sa esattamente quali parti usare e come assemblarlo. Ogni robot ha un'etichetta con il nome (nome del checkpoint) in modo da poterlo trovare in seguito sullo scaffale. Invece di ricordare come è costruito ogni robot, ti basta dire alla fabbrica "costruiscimi un jepa" e lei si occuperà di tutto.
+> **Analogia:** La ModelFactory è come una **fabbrica di giocattoli** che può costruire sei diversi tipi di robot. Gli dici "Voglio un robot JEPA" o "Mi serve un robot role_head" e lui sa esattamente quali parti usare e come assemblarlo. Il RAP Lite è come la versione "portatile" del robot RAP — stesse funzionalità esterne, ma con un motore interno più semplice (LSTM al posto di LTC+Hopfield) che funziona ovunque senza componenti speciali. Ogni robot ha un'etichetta con il nome (nome del checkpoint) in modo da poterlo trovare in seguito sullo scaffale. Invece di ricordare come è costruito ogni robot, ti basta dire alla fabbrica "costruiscimi un jepa" e lei si occuperà di tutto.
 
 **Persistenza** (`persistence.py`): Salva/carica con `weights_only=True` (sicurezza), catena di fallback elegante (specifica dell'utente → globale → salta), gestione delle dimensioni non corrispondenti.
 
@@ -975,12 +997,13 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    subgraph FACTORY["Fabbrica Modelli - Scegli il Tuo Cervello (5 Tipi)"]
+    subgraph FACTORY["Fabbrica Modelli - Scegli il Tuo Cervello (6 Tipi)"]
         CREATE["ModelFactory.get_model(tipo)"]
         CREATE -->|"'default'"| LEGACY["TeacherRefinementNN<br/>salvato come: latest"]
         CREATE -->|"'jepa'"| JMODEL["JEPACoachingModel<br/>salvato come: jepa_brain"]
         CREATE -->|"'vl-jepa'"| VLJMODEL["VLJEPACoachingModel<br/>salvato come: vl_jepa_brain"]
         CREATE -->|"'rap'"| RMODEL["RAPCoachModel<br/>salvato come: rap_coach"]
+        CREATE -->|"'rap-lite'"| RLMODEL["RAPCoachModel (Lite)<br/>salvato come: rap_lite_coach"]
         CREATE -->|"'role_head'"| RHMODEL["NeuralRoleHead<br/>salvato come: role_head"]
     end
     subgraph PERSIST["Persistenza - Catena Salvataggio e Caricamento"]
@@ -996,7 +1019,7 @@ flowchart TB
 ```python
 GLOBAL_SEED = 42                    # Riproducibilità globale (AR-6, P1-02)
 INPUT_DIM = METADATA_DIM = 25      # Vettore canonico a 25 dimensioni (era 19, era legacy 12)
-OUTPUT_DIM = METADATA_DIM = 25     # P1-08: Allineato con METADATA_DIM (era 4, conflitto corretto)
+OUTPUT_DIM = 10                    # Le prime 10 feature core su cui il modello predice aggiustamenti
 HIDDEN_DIM = 128                   # Dimensione nascosta per AdvancedCoachNN / TeacherRefinementNN
 BATCH_SIZE = 32
 LEARNING_RATE = 0.001
@@ -1004,9 +1027,11 @@ EPOCHS = 50
 RAP_POSITION_SCALE = 500.0         # P9-01: Fattore di scala per delta posizione ([-1,1] → unità mondo)
 ```
 
-> **Nota:** `INPUT_DIM` è importato da `feature_engineering/__init__.py` dove `METADATA_DIM = 25`. `OUTPUT_DIM` è ora allineato a `METADATA_DIM = 25` (correzione P1-08 — precedentemente era 4, creando un conflitto con il modello). `RAP_POSITION_SCALE = 500.0` è il fattore canonico per convertire gli output normalizzati del modello RAP in spostamenti nelle unità mondo CS2.
+> **Nota:** `INPUT_DIM` è importato da `feature_engineering/__init__.py` dove `METADATA_DIM = 25`. `OUTPUT_DIM = 10` definisce il numero di feature su cui il modello produce predizioni di aggiustamento — le prime 10 feature aggregate di match (avg_kills, avg_deaths, avg_adr, avg_hs, avg_kast, kill_std, adr_std, kd_ratio, impact_rounds, accuracy). Questa scelta progettuale concentra la capacità predittiva del modello sulle metriche di prestazione più azionabili, anziché tentare di predire tutte le 25 feature (molte delle quali sono contestuali e non direttamente migliorabili dal giocatore). `RAP_POSITION_SCALE = 500.0` è il fattore canonico per convertire gli output normalizzati del modello RAP (nell'intervallo [-1, 1]) in spostamenti nelle unità mondo CS2.
+>
+> **Nota architetturale:** La `CoachNNConfig` dataclass in `model.py` definisce `output_dim = METADATA_DIM` (25) come default, ma la `ModelFactory` sovrascrive sempre questo valore con `OUTPUT_DIM = 10` durante l'istanziazione. L'output_dim effettivo in produzione per tutti i modelli (Legacy, JEPA, VL-JEPA, RAP, RAP Lite) è quindi **10**, non 25. Storicamente, `OUTPUT_DIM` era 4 (4 metriche selezionate), poi è stato portato a 10 per coprire le feature aggregate più rilevanti.
 
-> **Analogia:** Questa è la **pagina delle impostazioni** per il cervello dell'IA. Proprio come un videogioco ha impostazioni per volume, luminosità e difficoltà, la rete neurale ha impostazioni per quante feature leggere (25), quanti punteggi produrre (25 per il modello base — uno per ogni feature — e 10 per RAP), quanti esempi studiare contemporaneamente (32 — la dimensione del batch), quanto velocemente apprende (0.001 — la velocità di apprendimento, come il selettore di velocità su un tapis roulant) e quante volte rivedere tutti i dati (50 epoche). Il `GLOBAL_SEED = 42` garantisce che ogni esecuzione di addestramento sia riproducibile — stesso seme, stessi risultati — tramite `set_global_seed()` che imposta random, numpy, torch e CUDA. Queste impostazioni sono scelte con cura: un apprendimento troppo rapido fa sì che il modello "vada oltre" e non si stabilizzi mai; troppo lento, ci vuole un'eternità.
+> **Analogia:** Questa è la **pagina delle impostazioni** per il cervello dell'IA. Proprio come un videogioco ha impostazioni per volume, luminosità e difficoltà, la rete neurale ha impostazioni per quante feature leggere (25), quanti punteggi produrre (10 — le metriche di prestazione più importanti su cui il modello può suggerire miglioramenti), quanti esempi studiare contemporaneamente (32 — la dimensione del batch), quanto velocemente apprende (0.001 — la velocità di apprendimento, come il selettore di velocità su un tapis roulant) e quante volte rivedere tutti i dati (50 epoche). Il `GLOBAL_SEED = 42` garantisce che ogni esecuzione di addestramento sia riproducibile — stesso seme, stessi risultati — tramite `set_global_seed()` che imposta random, numpy, torch e CUDA. Queste impostazioni sono scelte con cura: un apprendimento troppo rapido fa sì che il modello "vada oltre" e non si stabilizzi mai; troppo lento, ci vuole un'eternità.
 
 **Gestione dispositivi:** `get_device()` implementa una **selezione GPU intelligente a 3 livelli**:
 
@@ -1020,7 +1045,7 @@ Dimensionamento batch basato sull'intensità ML: `Alto=128`, `Medio=32`, `Basso=
 
 ### -NeuralRoleHead (MLP per la classificazione dei ruoli)
 
-Definito in `role_head.py` (~309 righe). Un MLP leggero che prevede le probabilità di ruolo dei giocatori in base a 5 parametri di stile di gioco, operando come **opinione secondaria** insieme all'euristica `RoleClassifier`. La logica di consenso in `role_classifier.py` unisce entrambe le opinioni per produrre la classificazione finale.
+Definito in `role_head.py` (326 righe). Un MLP leggero che prevede le probabilità di ruolo dei giocatori in base a 5 parametri di stile di gioco, operando come **opinione secondaria** insieme all'euristica `RoleClassifier`. La logica di consenso in `role_classifier.py` unisce entrambe le opinioni per produrre la classificazione finale.
 
 > **Analogia:** NeuralRoleHead è come un **quiz a sorpresa**: pone solo 5 domande su come giochi ("Quanto spesso sopravvivi ai round?", "Quanto spesso ottieni la prima uccisione?", "Quanto spesso le tue morti vengono scambiate?", "Quanto sei influente?", "Quanto sei aggressivo?") e indovina istantaneamente il tuo ruolo in meno di un millisecondo. Funziona insieme al normale classificatore di ruoli (che utilizza regole di soglia), come due insegnanti che valutano lo stesso studente in modo indipendente, per poi confrontare le loro valutazioni. Se entrambi sono d'accordo, la fiducia aumenta. In caso di disaccordo, l'opinione neurale vince se è chiaramente più sicura.
 
@@ -1242,13 +1267,13 @@ La Parte 1A ha documentato il **nucleo cognitivo** del sistema di coaching — l
 
 | Componente | Ruolo | Dettagli Chiave |
 |---|---|---|
-| **AdvancedCoachNN** | Coaching supervisionato base | LSTM a 2 livelli + 3 esperti MoE, input/output 25-dim |
+| **AdvancedCoachNN** | Coaching supervisionato base | LSTM a 2 livelli + 3 esperti MoE, input 25-dim, output 10-dim |
 | **JEPA** | Pre-addestramento auto-supervisionato | Encoder online/target (EMA τ=0.996), InfoNCE contrastivo |
 | **VL-JEPA** | Allineamento visione-linguaggio | 16 concetti di coaching in 5 dimensioni tattiche |
 | **SuperpositionLayer** | Gating contestuale | Modulazione dipendente dal contesto 25-dim con osservabilità integrata |
 | **CoachTrainingManager** | Orchestrazione addestramento | 3 livelli di maturità (CALIBRAZIONE→APPRENDIMENTO→MATURO) |
-| **TrainingOrchestrator** | Ciclo di epoche unificato | Early stopping, checkpoint, integrazione callback |
-| **ModelFactory** | Istanziazione modelli | 5 tipi di modello con persistenza e fallback |
+| **TrainingOrchestrator** | Ciclo di epoche unificato | Early stopping, checkpoint, callback, pool negativi cross-match, quality gate |
+| **ModelFactory** | Istanziazione modelli | 6 tipi di modello (+ RAP Lite) con persistenza e fallback |
 | **NeuralRoleHead** | Classificazione ruoli | MLP 5→32→16→5, consenso con euristica |
 | **MaturityObservatory** | Introspezione addestramento | 5 segnali → indice di convinzione → 5 stati di maturità |
 

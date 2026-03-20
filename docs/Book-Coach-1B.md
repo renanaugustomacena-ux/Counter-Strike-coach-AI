@@ -155,10 +155,11 @@ Questa parte affronta la sfida fondamentale che il CS2 coach è un **Processo de
 **Rete a costante di tempo liquida (LTC) con cablaggio AutoNCP:**
 
 - Input: 153 dim (128 percezione + 25 metadati)
-- Unità NCP: 288 (hidden_dim 256 + 32 interneuroni)
+- Unità NCP: **512** (`hidden_dim * 2` = 256 × 2) — rapporto 2:1 che garantisce abbastanza inter-neuroni per il cablaggio sparso AutoNCP
 - Output: stato nascosto a 256 dim
 - Utilizza la libreria `ncps` con pattern di connettività sparsi, simili a quelli del cervello
 - Adatta la risoluzione temporale al ritmo del gioco (impostazioni lente vs. scontri a fuoco rapidi)
+- Seeding deterministico (NN-MEM-02): numpy + torch RNG seedati a 42 durante la creazione del wiring AutoNCP, con ripristino dello stato RNG originale dopo l'inizializzazione — garantisce portabilità dei checkpoint tra diverse esecuzioni
 
 > **Analogia:** La rete LTC è come un **cervello vivo e respirante**: a differenza delle normali reti neurali che elaborano il tempo a intervalli fissi (come un orologio che ticchetta ogni secondo), la LTC adatta la sua velocità a ciò che accade. Durante una lenta preparazione (i giocatori camminano silenziosamente), l'elaborazione avviene al rallentatore. Durante uno scontro a fuoco veloce, accelera, come il battito cardiaco accelerato quando si è eccitati. Il "cablaggio AutoNCP" fa sì che le connessioni tra i neuroni siano sparse e strutturate come in un vero cervello: non tutto si collega a tutto il resto. Questo è più efficiente e biologicamente più realistico.
 
@@ -170,10 +171,35 @@ Questa parte affronta la sfida fondamentale che il CS2 coach è un **Processo de
 
 > **Analogia:** La memoria di Hopfield è come un **album fotografico di giocate famose**. Durante l'allenamento, memorizza i "round prototipo" – schemi classici come "una perfetta ripresa del sito B in Inferno" o "una corsa fallita nel fumo in Dust2". Quando arriva un nuovo momento di gioco, la rete di Hopfield chiede: "Questo mi ricorda qualche foto nel mio album?" Se trova una corrispondenza, recupera il ricordo associato, come un detective della polizia che sfoglia le foto segnaletiche e dice: "Ho già visto questa faccia!". Ha 4 "teste" (teste di attenzione) in modo da poter cercare 4 diversi tipi di schemi contemporaneamente.
 
+**Ritardo di attivazione Hopfield (NN-MEM-01 + RAP-M-04):**
+
+La rete di Hopfield **non si attiva immediatamente** durante l'addestramento. I pattern memorizzati partono da inizializzazione casuale (`torch.randn * 0.02`) e l'attenzione sarebbe quasi uniforme su tutti gli slot, aggiungendo rumore anziché segnale. Per questo motivo:
+
+- `_training_forward_count` conta i passaggi forward durante il training
+- `_hopfield_trained` (flag booleano) rimane `False` fino a ≥2 forward pass di addestramento
+- Prima dell'attivazione, il forward pass restituisce `torch.zeros_like(ltc_out)` al posto dell'output Hopfield
+- Dopo ≥2 forward (garantendo almeno un backward + optimizer.step abbia modellato i pattern), Hopfield si attiva e contribuisce al combined_state
+- Il caricamento di un checkpoint (`load_state_dict`) imposta `_hopfield_trained = True` immediatamente, assumendo che il modello sia già stato addestrato
+
+> **Analogia:** È come un **nuovo dipendente che osserva per i primi 2 giorni** prima di poter prendere decisioni. L'album fotografico della Hopfield è vuoto all'inizio — le foto sono sfocate e casuali. Sarebbe dannoso consultare un album di foto illeggibili per prendere decisioni tattiche. Dopo 2 passaggi di addestramento, il dipendente ha visto abbastanza esempi da avere almeno qualche foto significativa nell'album, e da quel momento inizia a contribuire attivamente.
+
+**RAPMemoryLite — Fallback LSTM puro:**
+
+Modulo sostitutivo leggero per `RAPMemory`, utilizzato quando le dipendenze `ncps`/`hflayers` non sono disponibili o quando si desidera un modello più portabile:
+
+- LSTM standard PyTorch: `nn.LSTM(153, 256, batch_first=True)`
+- Stesso contratto I/O: Input `[B, T, 153]` → Output `(combined_state [B, T, 256], belief [B, T, 64], hidden)`
+- Stessa testa di credenze: `Linear(256→256) → SiLU → Linear(256→64)`
+- Nessun seeding RNG necessario (niente AutoNCP)
+- Nessun Hopfield training delay (niente pattern memorizzati)
+- Istanziato via `ModelFactory.TYPE_RAP_LITE` ("rap-lite") con `use_lite_memory=True`
+
+> **Analogia:** RAPMemoryLite è come un **generatore di riserva** che funziona con carburante più semplice. Non ha il "cervello liquido" (LTC) che si adatta al ritmo del gioco, né l'album fotografico (Hopfield) che ricorda le giocate famose. Usa invece una memoria LSTM tradizionale — meno sofisticata, ma affidabile e funzionante ovunque senza componenti speciali. È il piano B per quando il laboratorio sperimentale non è accessibile.
+
 ```mermaid
 flowchart TB
     IN["Input: 153-dim<br/>(128 visione + 25 metadati)"]
-    IN --> LTC["Rete LTC (288 unità)<br/>Memoria a breve termine<br/>Si adatta al ritmo di gioco<br/>Cablaggio sparso simile al cervello"]
+    IN --> LTC["Rete LTC (512 unità NCP, 256 output)<br/>Memoria a breve termine<br/>Si adatta al ritmo di gioco<br/>Cablaggio sparso simile al cervello"]
     LTC -->|"256-dim"| HOP["Memoria Hopfield (4 teste)<br/>Corrispondenza pattern a lungo termine<br/>L'ho già visto prima?<br/>Cerca nell'album fotografico di round prototipo"]
     LTC -->|"256-dim"| ADD["ADD (Residuale)<br/>LTC + Hopfield combinati"]
     HOP -->|"256-dim"| ADD
@@ -248,7 +274,7 @@ Due sottomoduli:
 | 0      | **Posizionamento**            | norm(position_delta)                       |
 | 1      | **Posizionamento del mirino** | norm(view_delta)                           |
 | 2      | **Aggressione**               | 0,5 × position_delta                      |
-| 3      | **Utilità**                  | sigmoid(hidden.mean()) — segnale dinamico |
+| 3      | **Utilità**                  | `sigmoid(hidden.mean())` — segnale **appreso e dipendente dal contesto**: produce un'attivazione alta quando la rete rileva situazioni dove l'uso dell'utilità era rilevante, bassa quando il contesto tattico rende l'utilità secondaria. Non è un placeholder statico, ma una funzione non-lineare dello stato nascosto che si adatta durante l'addestramento |
 | 4      | **Rotazione**                 | 0,8 × position_delta                      |
 
 Fusione: `attribuzione = context_weights × mechanical_errors` dove context_weights deriva da `Lineare(256→32) → ReLU → Lineare(32→5) → Sigmoide`.
@@ -341,6 +367,8 @@ flowchart LR
 
 ### -Riepilogo del passaggio in avanti di RAPCoachModel
 
+**Firma:** `forward(view_frame, map_frame, motion_diff, metadata, skill_vec=None, hidden_state=None)` — il parametro `hidden_state` (NN-40) permette di passare lo stato ricorrente della memoria da una chiamata all'altra, abilitando **inferenza continua** senza cold-start: il GhostEngine può mantenere la memoria tra tick consecutivi anziché ripartire da zero ad ogni valutazione.
+
 **Fix NN-39 — Input Visivi Duali:** Il passaggio in avanti gestisce due formati di input visivo attraverso un controllo dimensionale esplicito:
 
 | Formato Input | Shape | Quando si usa | Comportamento |
@@ -368,7 +396,7 @@ def forward(view_frame, map_frame, motion_diff, metadata, skill_vec=None):
         z_spatial_seq = z_spatial.unsqueeze(1).expand(-1, seq_len, -1)   # [B, T, 128]
 
     lstm_in = cat([z_spatial_seq, metadata], dim=2)        # [B, seq, 153]
-    hidden_seq, belief, _ = self.memory(lstm_in)           # [B, seq, 256], [B, seq, 64]
+    hidden_seq, belief, new_hidden = self.memory(lstm_in, hidden=hidden_state)  # [B, seq, 256], [B, seq, 64]
     last_hidden = hidden_seq[:, -1, :]
     prediction, gate_weights = self.strategy(last_hidden, context)  # [B, 10], [B, 4]
     value_v = self.pedagogy(last_hidden, skill_vec)        # [B, 1]
@@ -380,11 +408,12 @@ def forward(view_frame, map_frame, motion_diff, metadata, skill_vec=None):
         "value_estimate": value_v,       # [B, 1]
         "gate_weights": gate_weights,    # [B, 4]
         "optimal_pos": optimal_pos,      # [B, 3]
-        "attribution": attribution       # [B, 5]
+        "attribution": attribution,      # [B, 5]
+        "hidden_state": new_hidden,      # NN-40: stato ricorrente per inferenza continua
     }
 ```
 
-> **Analogia:** Questa è la **ricetta completa** di come pensa il RAP Coach, passo dopo passo: (1) **Occhi** — il livello Percezione esamina la vista, la mappa e le immagini in movimento e crea un riepilogo di 128 numeri di ciò che vede. Il fix NN-39 permette due modalità: se riceve un filmato (5-dim), elabora ogni fotogramma separatamente; se riceve una foto (4-dim), la replica su tutti i timestep. (2) Questo riepilogo visivo viene combinato con 25 numeri di metadati (salute, posizione, economia, ecc.) per formare una descrizione di 153 numeri. (3) **Memoria** — la memoria LTC + Hopfield elabora la descrizione nel tempo, producendo uno stato nascosto di 256 numeri e un vettore di credenze di 64 numeri ("cosa penso stia accadendo"). (4) **Strategia** — 4 esperti esaminano lo stato nascosto e producono 10 probabilità di consiglio ("40% di probabilità che tu debba spingere, 30% di tenere premuto, ecc."). (5) **Insegnante** — il livello pedagogico stima "quanto è buona questa situazione?" (valore). (6) **GPS** — la testa di posizione prevede dove dovresti muoverti (coordinate 3D). (7) **Colpa** — l'attributore capisce perché le cose sono andate male (5 categorie). Tutti e 6 gli output vengono restituiti insieme come un dizionario: l'analisi completa dell'allenamento per un momento di gioco.
+> **Analogia:** Questa è la **ricetta completa** di come pensa il RAP Coach, passo dopo passo: (1) **Occhi** — il livello Percezione esamina la vista, la mappa e le immagini in movimento e crea un riepilogo di 128 numeri di ciò che vede. Il fix NN-39 permette due modalità: se riceve un filmato (5-dim), elabora ogni fotogramma separatamente; se riceve una foto (4-dim), la replica su tutti i timestep. (2) Questo riepilogo visivo viene combinato con 25 numeri di metadati (salute, posizione, economia, ecc.) per formare una descrizione di 153 numeri. (3) **Memoria** — la memoria LTC + Hopfield elabora la descrizione nel tempo, producendo uno stato nascosto di 256 numeri e un vettore di credenze di 64 numeri ("cosa penso stia accadendo"). (4) **Strategia** — 4 esperti esaminano lo stato nascosto e producono 10 probabilità di consiglio ("40% di probabilità che tu debba spingere, 30% di tenere premuto, ecc."). (5) **Insegnante** — il livello pedagogico stima "quanto è buona questa situazione?" (valore). (6) **GPS** — la testa di posizione prevede dove dovresti muoverti (coordinate 3D). (7) **Colpa** — l'attributore capisce perché le cose sono andate male (5 categorie). Tutti e **7** gli output vengono restituiti insieme come un dizionario: l'analisi completa dell'allenamento per un momento di gioco. Il settimo output, `hidden_state` (NN-40), è lo stato ricorrente della memoria — permette al GhostEngine di mantenere la "memoria" tra tick consecutivi, come un coach che non dimentica cosa è successo 5 secondi fa quando valuta la posizione attuale.
 
 ```mermaid
 flowchart LR
@@ -409,6 +438,7 @@ flowchart LR
         MEM --> ATTR["Attribuzione, attribution [5]<br/>perché è importante"]
         MEM --> BEL["belief_state [64]<br/>cosa penso"]
         MEM --> GATE["gate_weights [4]<br/>quale esperto ha parlato?"]
+        MEM --> HID["hidden_state (NN-40)<br/>memoria per il prossimo tick"]
     end
 ```
 
@@ -437,6 +467,27 @@ Un **modulo di elaborazione del segnale multi-scala** che identifica i momenti c
 5. La **soppressione non massima** impedisce rilevamenti duplicati.
 6. Classifica ogni picco come **"gioco"** (gradiente positivo, vantaggio acquisito) o **"errore"** (negativo, vantaggio perso).
 7. Restituisce istanze della classe di dati `CriticalMoment` con `(match_id, start_tick, peak_tick, end_tick, severity [0-1], type, description, scale)`.
+
+**Limite di sicurezza tick (F3-21):** `_MAX_TICKS_PER_SCAN = 50.000` — le partite con più di 50K tick (possibile con overtime estesi o match molto lunghi) vengono **troncate** con un warning (NN-CV-02) anziché saturare la RAM. Il sistema preleva `_MAX_TICKS_PER_SCAN + 1` tick per rilevare la troncatura e avvisa che i momenti critici della fase finale della partita potrebbero essere persi.
+
+**Deduplicazione cross-scala:** Quando lo stesso momento viene rilevato a scale diverse (es. un peek critico visibile sia nella scala micro che standard), la deduplicazione assegna priorità **micro > standard > macro** (la scala più fine vince). `MIN_GAP_TICKS = 64` (~1 secondo) definisce la distanza minima tra due momenti: se due picchi sono più vicini di 64 tick, vengono considerati lo stesso evento e viene mantenuto solo quello a scala più fine.
+
+**Etichette di severità:** La severità (0-1) viene classificata automaticamente per il `MatchVisualizer`:
+- `severity > 0.3` → **"critical"** (momento che cambia la partita)
+- `severity > 0.15` → **"significant"** (momento rilevante)
+- altrimenti → **"notable"** (momento degno di nota)
+
+**`ScanResult` dataclass:** Tipo di ritorno strutturato che distingue successo da fallimento:
+
+| Campo | Tipo | Descrizione |
+|---|---|---|
+| `critical_moments` | `List[CriticalMoment]` | Momenti critici rilevati |
+| `success` | `bool` | True se la scansione è completata (anche con 0 momenti) |
+| `error_message` | `Optional[str]` | Dettaglio errore se `success=False` |
+| `model_loaded` | `bool` | Se il modello RAP era disponibile |
+| `ticks_analyzed` | `int` | Numero di tick effettivamente analizzati |
+
+Proprietà di utilità: `is_empty_success` (scansione riuscita ma nessun momento critico trovato), `is_failure` (scansione fallita — modello non caricato, errore DB, ecc.).
 
 > **Analogia della pipeline:** Ecco la procedura passo dopo passo: (1) Il modello RAP osserva ogni momento e assegna un "punteggio di vantaggio" (come un cardiofrequenzimetro). (2) Per ciascuna delle 3 scale, confronta ogni momento con ciò che è accaduto N tick prima (16, 64 o 128 tick a seconda della scala) — "le cose sono migliorate o peggiorate?" (3) Se il cambiamento supera la soglia della scala, si tratta di un evento significativo — come un picco di frequenza cardiaca. (4) Ingrandisce la finestra attorno al picco per trovare il momento di picco esatto. (5) Filtra i rilevamenti duplicati — se due picchi sono troppo vicini tra loro, mantiene solo quello più grande. (6) Etichetta ogni picco: "gioco" (hai fatto qualcosa di eccezionale) o "errore" (hai commesso un errore). (7) Confeziona tutto in una scheda di valutazione ordinata per ogni momento critico, con punteggi di gravità da 0 (minore) a 1 (che cambia il gioco) e la scala di rilevamento (micro/standard/macro).
 
@@ -484,13 +535,24 @@ La pipeline di inferenza opera in 5 fasi sequenziali per ogni tick di riproduzio
 
 Il **ponte PlayerKnowledge** (`_build_knowledge_from_game_state()`) filtra i dati secondo il principio NO-WALLHACK: solo le informazioni legittimamente disponibili al giocatore (compagni, nemici visibili, ultime posizioni note con decadimento) vengono codificate nei tensori mappa e vista. Se la costruzione della conoscenza fallisce, il sistema degrada alla modalità legacy (tensori vuoti).
 
+**Fase 2b — Modalità POV (R4-04-01):**
+
+| Modalità | Condizione | Comportamento |
+|---|---|---|
+| **POV Mode** | `USE_POV_TENSORS=True` + `game_state` fornito | Costruisce `PlayerKnowledge` dal game state → tensori POV con semantica canale dedicata |
+| **Legacy Mode** | `USE_POV_TENSORS=False` (default) | Tensori standard allineati con i dati di addestramento |
+
+> **Attenzione (R4-04-01):** I tensori POV utilizzano una semantica dei canali diversa (Ch0=compagni, Ch1=nemici ultimi noti) rispetto ai dati di addestramento standard (Ch0=nemici, Ch1=compagni). Usare tensori POV con un modello addestrato in modalità legacy produrrà risultati **inaffidabili**. La modalità POV è valida solo se il modello è stato addestrato con dati POV.
+
 **Fase 3 — Inferenza Neurale**
 ```python
 with torch.no_grad():
     out = self.model(view_frame=view_t, map_frame=map_t,
-                     motion_diff=motion_t, metadata=meta_t)
+                     motion_diff=motion_t, metadata=meta_t,
+                     hidden_state=self._last_hidden)  # NN-40: stato persistente
+self._last_hidden = out["hidden_state"]  # Mantieni per il prossimo tick
 ```
-`torch.no_grad()` disabilita il calcolo dei gradienti (solo inferenza, nessun addestramento).
+`torch.no_grad()` disabilita il calcolo dei gradienti (solo inferenza, nessun addestramento). Il parametro `hidden_state` (NN-40) permette di mantenere lo stato ricorrente della memoria tra tick consecutivi, evitando il cold-start ad ogni valutazione.
 
 **Fase 4 — Decodifica e Scala Posizione**
 ```python
@@ -624,7 +686,7 @@ Livello di resilienza per la gestione di versioni diverse del formato demo CS2.
 |---|---|---|
 | `DEMO_MAGIC_V2` | `b"PBDEMS2\x00"` | Magic bytes CS2 (Source 2 Protobuf) |
 | `DEMO_MAGIC_LEGACY` | `b"HL2DEMO\x00"` | Magic bytes CS:GO legacy (non supportato) |
-| `MIN_DEMO_SIZE` | 1,024 bytes (1 KB) | File più piccoli sono corrotti |
+| `MIN_DEMO_SIZE` | 10 × 1024² (10 MB) | DS-12: demo CS2 reali sono 50+ MB, file più piccoli sono certamente corrotti o incompleti |
 | `MAX_DEMO_SIZE` | 5 × 1024³ (5 GB) | Cap di sicurezza |
 
 **Dataclass:**
@@ -672,7 +734,7 @@ Identifica i **trade kill** — uccisioni di ritorsione entro una finestra tempo
 - `total_kills`, `trade_kills`, `players_traded`, `trade_details`
 - Proprietà calcolate: `trade_kill_ratio`, `was_traded_ratio`
 
-**Algoritmo (derivato da cstat-main):** Per ogni uccisione K al tick T: guarda indietro nel tempo per uccisioni effettuate dalla vittima. Se la vittima ha ucciso un compagno di squadra dell'uccisore di K entro `TRADE_WINDOW_TICKS`, segna K come trade kill e la vittima originale come "was traded".
+**Algoritmo (derivato da cstat-main):** Per ogni uccisione K al tick T: guarda indietro nel tempo per uccisioni effettuate dalla vittima. Se la vittima ha ucciso un compagno di squadra dell'uccisore di K entro `TRADE_WINDOW_TICKS`, segna K come trade kill e la vittima originale come "was traded". **Vincolo same-round:** Le uccisioni candidate per il trade devono appartenere allo **stesso round** (`round_num` identico). I trade cross-round non vengono conteggiati — questa è una distinzione tattica importante perché un trade ha significato strategico solo all'interno dello stesso round, dove influenza direttamente l'economia numerica dello scontro.
 
 **`build_team_roster(parser)`:** Costruisce mappatura `player_name → team_num` dai tick iniziali della partita (usa il 10° percentile dei tick per stabilità dell'assegnazione).
 
@@ -1004,7 +1066,7 @@ IndexFlatIP.add(normalized)
 
 **Fallback graduale:** Se `faiss-cpu` non è installato, il singleton `get_vector_index_manager()` ritorna `None` e il sistema degrada automaticamente alla ricerca brute-force (più lenta ma funzionalmente equivalente). Questo permette al programma di funzionare anche su sistemi dove FAISS non è disponibile.
 
-**Over-fetching:** Per gestire scenari di post-filtraggio, la ricerca recupera `k × OVERFETCH_KNOWLEDGE` (10×) o `k × OVERFETCH_EXPERIENCE` (20×) risultati, poi filtra e ritorna solo i top-k effettivi.
+**Over-fetching con costanti esplicite:** Per gestire scenari di post-filtraggio (category, map_name, confidence, outcome), la ricerca recupera più risultati del necessario: `k × OVERFETCH_KNOWLEDGE = k × 10` per la Knowledge Base (filtro per categoria + mappa), `k × OVERFETCH_EXPERIENCE = k × 20` per l'Experience Bank (filtro per mappa + confidence + outcome + scoring composito). Il moltiplicatore 20× per le esperienze è doppio rispetto alla conoscenza perché i filtri sono più restrittivi (4 criteri vs 2), quindi serve un pool iniziale più ampio per garantire abbastanza risultati dopo il filtraggio.
 
 ### -Contesto dei Round (`round_context.py`, 224 righe)
 
@@ -1068,7 +1130,7 @@ La Parte 1B ha documentato i **due pilastri percettivi e diagnostici** del siste
 
 | Sottosistema | Ruolo | Componenti Chiave |
 |---|---|---|
-| **2. RAP Coach** | Il **medico specialista** — architettura a 7 componenti per coaching completo in condizioni POMDP | Percezione (ResNet a 3 flussi, 24 conv), Memoria (LTC 288 unità + Hopfield 4 teste), Strategia (4 esperti MoE + SuperpositionLayer), Pedagogia (Value Critic + Skill Adapter), Attribuzione Causale (5 categorie), Posizionamento (Linear 256→3), Comunicazione (template), ChronovisorScanner (3 scale temporali), GhostEngine (pipeline 4-tensori con fallback a 5 livelli) |
+| **2. RAP Coach** | Il **medico specialista** — architettura a 7 componenti per coaching completo in condizioni POMDP | Percezione (ResNet a 3 flussi, 24 conv), Memoria (LTC **512** unità NCP + Hopfield 4 teste + ritardo attivazione NN-MEM-01 + **RAPMemoryLite** fallback LSTM), Strategia (4 esperti MoE + SuperpositionLayer), Pedagogia (Value Critic + Skill Adapter), Attribuzione Causale (5 categorie, segnale utilità appreso), Posizionamento (Linear 256→3), Comunicazione (template), ChronovisorScanner (3 scale temporali + 50K tick safety limit + deduplicazione cross-scala + ScanResult strutturato), GhostEngine (pipeline 4-tensori con POV mode R4-04-01, hidden_state NN-40, fallback a 5 livelli) |
 | **1B. Sorgenti Dati** | I **sensi** — acquisiscono e strutturano dati dal mondo esterno | Demo Parser (demoparser2 + HLTV 2.0 rating), Demo Format Adapter (magic bytes PBDEMS2), Event Registry (schema CS2 completo), Trade Kill Detector (finestra 192 tick), Steam API (retry + backoff), Steam Demo Finder (cross-platform), HLTV (FlareSolverr + rate limiting 4 livelli), FACEIT API, FrameBuffer (ring buffer 30 frame), TensorFactory (3 rasterizzatori NO-WALLHACK), FAISS (IndexFlatIP 384-dim), Round Context (merge_asof O(n log m)) |
 
 > **Analogia finale:** Se il sistema di coaching fosse un **essere umano**, la Parte 1A ha descritto il suo cervello (le reti neurali che imparano e il sistema di maturità che decide quando sono pronte), e la Parte 1B ha descritto i suoi occhi e orecchie (le sorgenti dati che acquisiscono informazioni dal mondo esterno), il suo sistema nervoso specializzato (il RAP Coach che integra percezione, memoria e decisione), e il suo sistema di comunicazione (che traduce la comprensione in consigli leggibili). Ma un cervello con sensi da solo non basta: ha bisogno di un **corpo** per agire. La **Parte 2** documenta quel corpo — i servizi che sintetizzano i consigli, i motori di analisi che investigano ogni aspetto del gameplay, i sistemi di conoscenza che memorizzano la saggezza accumulata, la pipeline di elaborazione che prepara i dati, il database che preserva tutto, e la pipeline di addestramento che insegna ai modelli.
