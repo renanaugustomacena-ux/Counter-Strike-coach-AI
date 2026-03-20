@@ -9,7 +9,18 @@ Covers:
 import sys
 from unittest.mock import MagicMock, patch
 
+import pytest
 import torch
+
+
+def _has_rap_deps():
+    """Check if RAP optional dependencies (ncps, hflayers) are installed."""
+    try:
+        import ncps  # noqa: F401
+        import hflayers  # noqa: F401
+        return True
+    except ImportError:
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -93,6 +104,10 @@ class TestDatabaseGovernor:
 # ---------------------------------------------------------------------------
 # E2E: ModelFactory → RAP Coach → Forward
 # ---------------------------------------------------------------------------
+@pytest.mark.skipif(
+    not _has_rap_deps(),
+    reason="RAP deps (ncps, hflayers) not installed — install via requirements-rap.txt",
+)
 class TestE2EPipeline:
     """End-to-end tests for the RAP Coach inference pipeline."""
 
