@@ -20,7 +20,6 @@ if PROJECT_ROOT not in sys.path:
 def test_imports():
     """Smoke Test: Verify all major modules can be imported."""
     try:
-        import kivy
         import pandas
         import torch
 
@@ -29,6 +28,12 @@ def test_imports():
         from Programma_CS2_RENAN.core.localization import i18n
     except ImportError as e:
         pytest.fail(f"Smoke Test Failed: Could not import Programma_CS2_RENAN.core module: {e}")
+
+    # Kivy is optional — only available when a display server is present
+    try:
+        import kivy
+    except ImportError:
+        pass
 
 
 def test_database_init():
