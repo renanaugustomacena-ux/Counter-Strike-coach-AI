@@ -1,5 +1,10 @@
 # Macena CS2 Analyzer
 
+[![CI Pipeline](https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI/actions/workflows/build.yml/badge.svg)](https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI/actions/workflows/build.yml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-Proprietary%20%7C%20Apache--2.0-green.svg)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-1523%20passed-brightgreen.svg)]()
+
 **AI-Powered Tactical Coach for Counter-Strike 2**
 
 > **[Italiano](README_IT.md)** | **[Portugues](README_PT.md)**
@@ -171,7 +176,29 @@ python -c "import PySide6; print(f'PySide6: {PySide6.__version__}')"
 python -c "from Programma_CS2_RENAN.backend.nn.config import get_device; print(f'Device: {get_device()}')"
 ```
 
-### 6. Launch
+### 6. Optional: Pro Coaching Baseline
+
+To build coaching baselines from professional match data, two additional components are needed:
+
+**Docker + FlareSolverr** (for automated HLTV pro stats scraping):
+
+```bash
+# Install Docker Desktop: https://docs.docker.com/desktop/
+# Then start FlareSolverr:
+docker compose up -d
+```
+
+FlareSolverr bypasses Cloudflare protection on hltv.org. Without it, the Hunter daemon cannot scrape professional player statistics. You can still use the coach with your own demo files — pro baselines enhance coaching quality but are not required.
+
+**RAP Coach dependencies** (optional experimental architecture):
+
+```bash
+pip install -r requirements-rap.txt
+```
+
+Required only if you enable `USE_RAP_MODEL=True` in settings. The default JEPA model works without these.
+
+### 7. Launch
 
 ```bash
 # Desktop application (Qt GUI — primary)

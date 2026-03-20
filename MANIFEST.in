@@ -1,0 +1,19 @@
+include LICENSE
+include README.md
+include CHANGELOG.md
+include CONTRIBUTING.md
+include SECURITY.md
+include requirements.txt
+include requirements-rap.txt
+include pyproject.toml
+
+recursive-include Programma_CS2_RENAN/data *.json
+recursive-include Programma_CS2_RENAN/assets *.json *.png *.jpg
+recursive-include Programma_CS2_RENAN/PHOTO_GUI *.png *.jpg
+recursive-include Programma_CS2_RENAN/backend/knowledge *.json
+recursive-include alembic *.py *.mako *.ini
+recursive-include docs *.md
+
+recursive-exclude * __pycache__
+recursive-exclude * *.pyc
+recursive-exclude * *.pyo
