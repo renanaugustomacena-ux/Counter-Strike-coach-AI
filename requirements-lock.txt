@@ -70,7 +70,7 @@ mdurl==0.1.2
 meson==1.10.0
 ml_dtypes==0.5.4
 more-itertools==10.8.0
-mpmath==1.3.0
+mpmath==1.4.1
 msgpack==1.1.2
 # ncps==1.0.1  # Optional: RAP Coach only (USE_RAP_MODEL=True). Install manually: pip install ncps hflayers
 nest-asyncio==1.6.0
