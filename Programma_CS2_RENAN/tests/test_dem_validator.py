@@ -8,7 +8,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-
 import pytest
 
 from Programma_CS2_RENAN.backend.processing.validation.dem_validator import (

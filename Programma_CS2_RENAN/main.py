@@ -68,6 +68,7 @@ try:
     )
 except Exception as _sentry_err:
     import logging as _log
+
     _log.getLogger("cs2analyzer.main").debug("Sentry init skipped: %s", _sentry_err)
 
 # --- Resolution Settings (User Requested) ---
@@ -88,7 +89,13 @@ from kivy.core.text import LabelBase
 from kivy.core.window import Window
 from kivy.factory import Factory
 from kivy.lang import Builder
-from kivy.properties import BooleanProperty, ListProperty, NumericProperty, ObjectProperty, StringProperty
+from kivy.properties import (
+    BooleanProperty,
+    ListProperty,
+    NumericProperty,
+    ObjectProperty,
+    StringProperty,
+)
 from kivy.uix.screenmanager import FadeTransition, ScreenManager
 from kivy.utils import platform
 from kivymd.app import MDApp
@@ -416,9 +423,7 @@ class UserProfileScreen(MDScreen):
             cpu = specs.get("cpu", "")
             gpu = specs.get("gpu", "")
             if cpu or gpu:
-                self.ids.specs_label.text = (
-                    f"CPU: {cpu or 'Unknown'} | GPU: {gpu or 'Unknown'}"
-                )
+                self.ids.specs_label.text = f"CPU: {cpu or 'Unknown'} | GPU: {gpu or 'Unknown'}"
             else:
                 self.ids.specs_label.text = "Hardware specs not detected yet"
 
@@ -560,6 +565,7 @@ class CS2AnalyzerApp(MDApp):
     lang_trigger = StringProperty("")
     upload_dialog = ObjectProperty(None, allownone=True)
     parsing_dialog = ObjectProperty(None, allownone=True)
+
     @property
     def sm(self) -> MDScreenManager:
         """Safe access to the ScreenManager, regardless of root layout structure."""
@@ -825,7 +831,9 @@ class CS2AnalyzerApp(MDApp):
     def start_manual_ingestion(self):
         """Manually triggers the ingestion cycle."""
         if not self.console:
-            self.show_error_dialog("Service Offline", "Backend not initialized yet. Wait for startup to complete.")
+            self.show_error_dialog(
+                "Service Offline", "Backend not initialized yet. Wait for startup to complete."
+            )
             return
         app_logger.info("Starting manual ingestion")
         self.console.ingest_manager.scan_all(high_priority=False)
@@ -938,13 +946,16 @@ class CS2AnalyzerApp(MDApp):
                     # Materialize to plain dicts while session is open to avoid
                     # DetachedInstanceError when Clock callback fires after close.
                     active_tasks = [
-                        {"demo_path": t.demo_path, "status": t.status}
-                        for t in raw_tasks
+                        {"demo_path": t.demo_path, "status": t.status} for t in raw_tasks
                     ]
-                    knowledge_ticks = s_q.exec(
-                        select(func.sum(IngestionTask.last_tick_processed))
-                        .where(IngestionTask.status == "complete")
-                    ).one() or 0
+                    knowledge_ticks = (
+                        s_q.exec(
+                            select(func.sum(IngestionTask.last_tick_processed)).where(
+                                IngestionTask.status == "complete"
+                            )
+                        ).one()
+                        or 0
+                    )
             except Exception as e_q:
                 app_logger.debug("Queue Status Fail: %s", e_q)
 
@@ -1150,11 +1161,14 @@ class CS2AnalyzerApp(MDApp):
     def _deep_widget_refresh(self, widget, _max_depth=50):
         # F7-16: Iterative BFS to avoid stack overflow on deep widget trees
         from collections import deque
+
         queue = deque([(widget, 0)])
         while queue:
             current, depth = queue.popleft()
             if depth > _max_depth:
-                app_logger.warning("_deep_widget_refresh: max depth %s reached, stopping", _max_depth)
+                app_logger.warning(
+                    "_deep_widget_refresh: max depth %s reached, stopping", _max_depth
+                )
                 break
             if hasattr(current, "font_style"):
                 s = current.font_style
@@ -1389,6 +1403,7 @@ class CS2AnalyzerApp(MDApp):
         # instead of jumping to a potentially trapped folder
         if platform == "win":
             from Programma_CS2_RENAN.core.platform_utils import get_available_drives
+
             drives = get_available_drives()
             if len(drives) > 1:
                 # Show Drive Selection Dialog
@@ -1465,7 +1480,9 @@ class CS2AnalyzerApp(MDApp):
                 # P0-02: get_session() auto-commits on successful exit (database.py:120).
                 # No explicit session.commit() needed.
                 session.add(IngestionTask(demo_path=path, is_pro=self.is_pro))
-            self.show_success_dialog("Queued", f"Demo queued for analysis: {os.path.basename(path)}")
+            self.show_success_dialog(
+                "Queued", f"Demo queued for analysis: {os.path.basename(path)}"
+            )
         except Exception as e:
             self.show_error_dialog("Error", f"Failed to queue demo: {e}")
 
@@ -1709,7 +1726,8 @@ class CS2AnalyzerApp(MDApp):
         content.add_widget(
             MDLabel(
                 text=i18n.get_text("dialog_reconstructing", self.lang_trigger),
-                halign="center", theme_text_color="Secondary",
+                halign="center",
+                theme_text_color="Secondary",
             )
         )
         self.parsing_dialog = MDDialog(
@@ -1770,9 +1788,7 @@ class CS2AnalyzerApp(MDApp):
             MDDialogHeadlineText(text=t),
             MDDialogSupportingText(text=txt),
             MDDialogButtonContainer(
-                MDButton(
-                    MDButtonText(text=ok), style="filled", on_release=lambda x: dlg.dismiss()
-                ),
+                MDButton(MDButtonText(text=ok), style="filled", on_release=lambda x: dlg.dismiss()),
             ),
         )
         dlg.open()
@@ -1802,6 +1818,7 @@ class CS2AnalyzerApp(MDApp):
 
         # Generate radar plot
         import atexit
+
         out_path = os.path.join(get_resource_path("data"), "temp_radar.png")
         # F7-11: Register temp file for cleanup on app exit (guard against duplicate)
         if not hasattr(self, "_radar_cleanup_registered"):
@@ -1826,7 +1843,8 @@ class CS2AnalyzerApp(MDApp):
             MDDialogButtonContainer(
                 MDButton(
                     MDButtonText(text=i18n.get_text("dialog_close", self.lang_trigger)),
-                    style="text", on_release=lambda x: dlg.dismiss(),
+                    style="text",
+                    on_release=lambda x: dlg.dismiss(),
                 ),
             ),
         )
@@ -1919,8 +1937,8 @@ class CS2AnalyzerApp(MDApp):
 
     def save_hardware_budget(self, budget_type, value):
         """Update global hardware limits in the database. DEPRECATED - Sliders should be removed from UI."""
-        import warnings
         import threading
+        import warnings
         from datetime import datetime, timezone  # F7-04: timezone for utcnow replacement
 
         # F7-08: deprecation warning — kept for backward compatibility
@@ -1945,7 +1963,9 @@ class CS2AnalyzerApp(MDApp):
                             state.ram_limit = val
                         elif budget_type == "gpu":
                             state.gpu_limit = val
-                        state.last_updated = datetime.now(timezone.utc)  # F7-04: utcnow() deprecated
+                        state.last_updated = datetime.now(
+                            timezone.utc
+                        )  # F7-04: utcnow() deprecated
                         s.add(state)
                         s.commit()
             except Exception as e:

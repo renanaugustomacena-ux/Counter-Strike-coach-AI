@@ -35,9 +35,9 @@ class MetaDriftEngine:
         with db.get_session() as s:
             # P3-30: Use COUNT instead of fetching all IDs (avoids unbounded result set)
             pro_count = s.exec(
-                select(func.count()).select_from(PlayerMatchStats).where(
-                    PlayerMatchStats.is_pro == True
-                )
+                select(func.count())
+                .select_from(PlayerMatchStats)
+                .where(PlayerMatchStats.is_pro == True)
             ).one()
             if not pro_count:
                 return 0.0
@@ -68,8 +68,16 @@ class MetaDriftEngine:
 
             # 3. Compare Distributions (Simplified Centroid Drift)
             # Guard: filter incomplete/None tuples and ensure uniform shape (F2-44)
-            recent_clean = [p for p in recent_pts if p is not None and len(p) == 2 and all(v is not None for v in p)]
-            hist_clean = [p for p in hist_pts if p is not None and len(p) == 2 and all(v is not None for v in p)]
+            recent_clean = [
+                p
+                for p in recent_pts
+                if p is not None and len(p) == 2 and all(v is not None for v in p)
+            ]
+            hist_clean = [
+                p
+                for p in hist_pts
+                if p is not None and len(p) == 2 and all(v is not None for v in p)
+            ]
             if not recent_clean or not hist_clean:
                 return 0.0
 

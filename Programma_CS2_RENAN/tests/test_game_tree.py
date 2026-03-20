@@ -11,8 +11,6 @@ Covers:
 import sys
 
 
-
-
 # ---------------------------------------------------------------------------
 # OpponentModel
 # ---------------------------------------------------------------------------
@@ -21,6 +19,7 @@ class TestOpponentModelEconomy:
 
     def _make(self):
         from Programma_CS2_RENAN.backend.analysis.game_tree import OpponentModel
+
         return OpponentModel()
 
     def test_eco_round_favors_push(self):
@@ -65,6 +64,7 @@ class TestOpponentModelSideAdjustments:
 
     def _make(self):
         from Programma_CS2_RENAN.backend.analysis.game_tree import OpponentModel
+
         return OpponentModel()
 
     def test_ct_side_opponent_is_t(self):
@@ -88,20 +88,25 @@ class TestOpponentModelPlayerAdvantage:
 
     def _make(self):
         from Programma_CS2_RENAN.backend.analysis.game_tree import OpponentModel
+
         return OpponentModel()
 
     def test_enemy_disadvantage_holds_more(self):
         """Outnumbered enemy holds more."""
         om = self._make()
         base = om.get_opponent_probs({"enemy_economy": 5000, "alive_players": 5, "enemy_alive": 5})
-        outnumbered = om.get_opponent_probs({"enemy_economy": 5000, "alive_players": 5, "enemy_alive": 3})
+        outnumbered = om.get_opponent_probs(
+            {"enemy_economy": 5000, "alive_players": 5, "enemy_alive": 3}
+        )
         assert outnumbered["hold"] > base["hold"]
 
     def test_enemy_advantage_pushes_more(self):
         """Enemy with more players pushes more."""
         om = self._make()
         base = om.get_opponent_probs({"enemy_economy": 5000, "alive_players": 5, "enemy_alive": 5})
-        advantage = om.get_opponent_probs({"enemy_economy": 5000, "alive_players": 3, "enemy_alive": 5})
+        advantage = om.get_opponent_probs(
+            {"enemy_economy": 5000, "alive_players": 3, "enemy_alive": 5}
+        )
         assert advantage["push"] > base["push"]
 
 
@@ -110,6 +115,7 @@ class TestOpponentModelTimePressure:
 
     def _make(self):
         from Programma_CS2_RENAN.backend.analysis.game_tree import OpponentModel
+
         return OpponentModel()
 
     def test_low_time_pushes_more(self):
@@ -130,6 +136,7 @@ class TestOpponentModelNormalization:
 
     def _make(self):
         from Programma_CS2_RENAN.backend.analysis.game_tree import OpponentModel
+
         return OpponentModel()
 
     def test_probs_sum_to_one(self):
@@ -159,6 +166,7 @@ class TestOpponentModelLearning:
 
     def _make(self):
         from Programma_CS2_RENAN.backend.analysis.game_tree import OpponentModel
+
         return OpponentModel()
 
     def test_learn_from_match_stores_profiles(self):
@@ -237,6 +245,7 @@ class TestGameNode:
 
     def test_creation(self):
         from Programma_CS2_RENAN.backend.analysis.game_tree import GameNode
+
         node = GameNode(node_type="max", state={"alive_players": 5})
         assert node.node_type == "max"
         assert node.state["alive_players"] == 5
@@ -246,11 +255,13 @@ class TestGameNode:
 
     def test_is_leaf_no_children(self):
         from Programma_CS2_RENAN.backend.analysis.game_tree import GameNode
+
         node = GameNode(node_type="max", state={})
         assert node.is_leaf is True
 
     def test_is_leaf_with_children(self):
         from Programma_CS2_RENAN.backend.analysis.game_tree import GameNode
+
         child = GameNode(node_type="chance", state={})
         parent = GameNode(node_type="max", state={}, children=[child])
         assert parent.is_leaf is False
@@ -264,6 +275,7 @@ class TestExpectiminimaxBuildTree:
 
     def _make_search(self, **kwargs):
         from Programma_CS2_RENAN.backend.analysis.game_tree import ExpectiminimaxSearch
+
         return ExpectiminimaxSearch(**kwargs)
 
     def test_build_tree_returns_root(self):
@@ -301,6 +313,7 @@ class TestApplyAction:
 
     def _make_search(self):
         from Programma_CS2_RENAN.backend.analysis.game_tree import ExpectiminimaxSearch
+
         return ExpectiminimaxSearch()
 
     def test_push_reduces_players(self):
@@ -376,6 +389,7 @@ class TestEvaluate:
 
     def _make_search(self):
         from Programma_CS2_RENAN.backend.analysis.game_tree import ExpectiminimaxSearch
+
         return ExpectiminimaxSearch(node_budget=200)
 
     def test_evaluate_leaf_all_enemy_dead(self):
@@ -429,6 +443,7 @@ class TestBestActionAndStrategy:
 
     def _make_search(self):
         from Programma_CS2_RENAN.backend.analysis.game_tree import ExpectiminimaxSearch
+
         return ExpectiminimaxSearch(node_budget=200)
 
     def test_get_best_action_returns_tuple(self):
@@ -441,6 +456,7 @@ class TestBestActionAndStrategy:
 
     def test_get_best_action_empty_root(self):
         from Programma_CS2_RENAN.backend.analysis.game_tree import GameNode
+
         s = self._make_search()
         empty_root = GameNode(node_type="max", state={})
         action, value = s.get_best_action(empty_root)
@@ -468,6 +484,7 @@ class TestBestActionAndStrategy:
             ExpectiminimaxSearch,
             OpponentModel,
         )
+
         om = OpponentModel()
         s = ExpectiminimaxSearch(node_budget=200, opponent_model=om)
         state = {"alive_players": 5, "enemy_alive": 5, "enemy_economy": 4000}
@@ -497,14 +514,16 @@ class TestOpponentProbsProperty:
 
     def test_default_probs(self):
         from Programma_CS2_RENAN.backend.analysis.game_tree import (
-            ExpectiminimaxSearch,
             _DEFAULT_OPPONENT_PROBS,
+            ExpectiminimaxSearch,
         )
+
         s = ExpectiminimaxSearch()
         assert s.opponent_probs == _DEFAULT_OPPONENT_PROBS
 
     def test_custom_probs(self):
         from Programma_CS2_RENAN.backend.analysis.game_tree import ExpectiminimaxSearch
+
         custom = {"push": 0.5, "hold": 0.2, "rotate": 0.2, "use_utility": 0.1}
         s = ExpectiminimaxSearch(opponent_probs=custom)
         assert s.opponent_probs == custom
@@ -518,16 +537,19 @@ class TestGameTreeFactory:
 
     def test_factory_default_adaptive(self):
         from Programma_CS2_RENAN.backend.analysis.game_tree import get_game_tree_search
+
         s = get_game_tree_search()
         assert s._opponent_model is not None
 
     def test_factory_static(self):
         from Programma_CS2_RENAN.backend.analysis.game_tree import get_game_tree_search
+
         s = get_game_tree_search(use_adaptive=False)
         assert s._opponent_model is None
 
     def test_factory_with_map(self):
         from Programma_CS2_RENAN.backend.analysis.game_tree import get_game_tree_search
+
         s = get_game_tree_search(map_name="de_mirage")
         assert s._map_name == "de_mirage"
 
@@ -540,12 +562,15 @@ class TestGameTreeConstants:
 
     def test_default_node_budget(self):
         from Programma_CS2_RENAN.backend.analysis.game_tree import DEFAULT_NODE_BUDGET
+
         assert DEFAULT_NODE_BUDGET == 1000
 
     def test_max_actions(self):
         from Programma_CS2_RENAN.backend.analysis.game_tree import _MAX_ACTIONS
+
         assert set(_MAX_ACTIONS) == {"push", "hold", "rotate", "use_utility"}
 
     def test_default_opponent_probs_sum_to_one(self):
         from Programma_CS2_RENAN.backend.analysis.game_tree import _DEFAULT_OPPONENT_PROBS
+
         assert abs(sum(_DEFAULT_OPPONENT_PROBS.values()) - 1.0) < 1e-6

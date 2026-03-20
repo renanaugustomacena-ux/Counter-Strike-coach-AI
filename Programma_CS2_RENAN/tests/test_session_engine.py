@@ -5,10 +5,8 @@ retraining triggers, meta-shift detection, and IPC.
 CI-portable: uses in-memory SQLite with monkeypatched get_db_manager.
 """
 
-import sys
-
-
 import io
+import sys
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
@@ -22,10 +20,10 @@ from Programma_CS2_RENAN.backend.storage.db_models import (
     PlayerMatchStats,
 )
 
-
 # ---------------------------------------------------------------------------
 # In-memory DB manager
 # ---------------------------------------------------------------------------
+
 
 class _InMemoryDBManager:
     def __init__(self, engine):
@@ -411,10 +409,7 @@ class TestMonitorStdin:
     """Tests for _monitor_stdin — IPC via stdin pipe."""
 
     def test_stop_command_sets_shutdown(self, monkeypatch):
-        from Programma_CS2_RENAN.core.session_engine import (
-            _monitor_stdin,
-            _shutdown_event,
-        )
+        from Programma_CS2_RENAN.core.session_engine import _monitor_stdin, _shutdown_event
 
         _shutdown_event.clear()
 
@@ -429,10 +424,7 @@ class TestMonitorStdin:
         _shutdown_event.clear()
 
     def test_eof_sets_shutdown(self, monkeypatch):
-        from Programma_CS2_RENAN.core.session_engine import (
-            _monitor_stdin,
-            _shutdown_event,
-        )
+        from Programma_CS2_RENAN.core.session_engine import _monitor_stdin, _shutdown_event
 
         _shutdown_event.clear()
 

@@ -13,10 +13,10 @@ from PySide6.QtWidgets import (
 
 # Severity → (icon, auto-dismiss milliseconds; 0 = manual dismiss only)
 _SEVERITY_CONFIG = {
-    "INFO": ("\u2139", 5000),       # i
-    "WARNING": ("\u26A0", 8000),    # warning triangle
-    "ERROR": ("\u2716", 12000),     # X mark
-    "CRITICAL": ("\u2620", 0),      # skull
+    "INFO": ("\u2139", 5000),  # i
+    "WARNING": ("\u26A0", 8000),  # warning triangle
+    "ERROR": ("\u2716", 12000),  # X mark
+    "CRITICAL": ("\u2620", 0),  # skull
 }
 
 _MAX_VISIBLE = 3

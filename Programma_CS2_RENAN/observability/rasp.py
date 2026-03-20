@@ -14,6 +14,7 @@ if not _MANIFEST_HMAC_KEY_RAW:
     # RP-01: Warn when using the static fallback key. Builds targeting
     # end-users should set CS2_MANIFEST_KEY in the environment.
     import logging as _log
+
     _log.getLogger("cs2analyzer.rasp").warning(
         "[RP-01] CS2_MANIFEST_KEY not set — using static fallback HMAC key. "
         "Set the environment variable for production builds."
@@ -145,9 +146,7 @@ class RASPGuard:
         manifest.pop("hmac_signature", None)
 
         canonical = json.dumps(manifest, sort_keys=True, separators=(",", ":"))
-        sig = hmac.new(
-            _MANIFEST_HMAC_KEY, canonical.encode("utf-8"), hashlib.sha256
-        ).hexdigest()
+        sig = hmac.new(_MANIFEST_HMAC_KEY, canonical.encode("utf-8"), hashlib.sha256).hexdigest()
         manifest["hmac_signature"] = sig
 
         with open(manifest_path, "w", encoding="utf-8") as f:
@@ -173,6 +172,7 @@ def run_rasp_audit(project_root: Path) -> bool:
     Logs violations via the centralized logger.
     """
     from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
     rasp_logger = get_logger("cs2analyzer.rasp")
 
     guard = RASPGuard(project_root)

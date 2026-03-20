@@ -1,5 +1,6 @@
 import os
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeoutError
 from typing import Dict, Optional
 
 import pandas as pd
@@ -332,7 +333,8 @@ def _add_event_stats_safe(parser, df, total_rounds):
             logger.warning(
                 "%d/%d players have PARTIAL event data (0.0 = missing, not measured). "
                 "Training pipeline should filter or weight these samples.",
-                partial_count, len(df),
+                partial_count,
+                len(df),
             )
         logger.info("Event stats extracted for %d/%d players", players_with_data, len(df))
 
@@ -365,7 +367,10 @@ def parse_sequential_ticks(
         file_size_mb = os.path.getsize(demo_path) / (1024 * 1024)
         logger.info(
             "Parsing demo: %s (%.1f MB, target=%s, start_tick=%d)",
-            os.path.basename(demo_path), file_size_mb, target_player, start_tick,
+            os.path.basename(demo_path),
+            file_size_mb,
+            target_player,
+            start_tick,
         )
         t_start = _time.monotonic()
 
@@ -433,7 +438,8 @@ def parse_sequential_ticks(
             except FutureTimeoutError:
                 logger.error(
                     "Demo parser timed out after %ds for %s — skipping demo.",
-                    _get_parse_timeout(demo_path), demo_path,
+                    _get_parse_timeout(demo_path),
+                    demo_path,
                 )
                 return pd.DataFrame()
 
@@ -447,9 +453,15 @@ def parse_sequential_ticks(
         mem_mb = df.memory_usage(deep=True).sum() / (1024 * 1024)
         logger.info(
             "Parser completed in %.2fs: %s rows, %d cols, %.1f MB RAM, %d players",
-            parse_elapsed, f"{len(df):,}", len(df.columns), mem_mb,
-            df["player_name"].nunique() if "player_name" in df.columns
-            else (df["name"].nunique() if "name" in df.columns else -1),
+            parse_elapsed,
+            f"{len(df):,}",
+            len(df.columns),
+            mem_mb,
+            (
+                df["player_name"].nunique()
+                if "player_name" in df.columns
+                else (df["name"].nunique() if "name" in df.columns else -1)
+            ),
         )
 
         p_col = next((c for c in ["player_name", "name"] if c in df.columns), None)
@@ -482,7 +494,8 @@ def parse_sequential_ticks(
 
         logger.info(
             "After filtering: %s rows (total parse pipeline: %.2fs)",
-            f"{len(df):,}", _time.monotonic() - t_start,
+            f"{len(df):,}",
+            _time.monotonic() - t_start,
         )
         return df
     except Exception as e:

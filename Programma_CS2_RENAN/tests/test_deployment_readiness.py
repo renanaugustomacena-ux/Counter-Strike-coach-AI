@@ -161,9 +161,7 @@ class TestForwardPassReliability:
             if _has_nan_or_inf(tensor):
                 nan_count += 1
 
-        assert nan_count == 0, (
-            f"{model_type}: {nan_count}/{self.N_PASSES} passes produced NaN/Inf"
-        )
+        assert nan_count == 0, f"{model_type}: {nan_count}/{self.N_PASSES} passes produced NaN/Inf"
 
 
 class TestInferenceLatency:
@@ -222,7 +220,10 @@ class TestBatchSizeInvariance:
 
         assert out1 is not None and out4 is not None
         torch.testing.assert_close(
-            out4[0:1], out1, atol=1e-5, rtol=1e-5,
+            out4[0:1],
+            out1,
+            atol=1e-5,
+            rtol=1e-5,
             msg=f"{model_type}: batch=4[0] != batch=1 output",
         )
 
@@ -251,9 +252,7 @@ class TestDeterministicReproducibility:
         ref = outputs[0]
         for i, out in enumerate(outputs[1:], 1):
             max_diff = torch.max(torch.abs(out - ref)).item()
-            assert max_diff < 1e-6, (
-                f"{model_type} run {i}: max diff {max_diff:.2e} >= 1e-6"
-            )
+            assert max_diff < 1e-6, f"{model_type} run {i}: max diff {max_diff:.2e} >= 1e-6"
 
 
 class TestOODGracefulHandling:
@@ -277,9 +276,7 @@ class TestOODGracefulHandling:
 
         tensor = _extract_tensor(result)
         assert tensor is not None, f"{model_type} returned no tensor for {ood_case}"
-        assert not _has_nan_or_inf(tensor), (
-            f"{model_type} produced NaN/Inf for {ood_case} input"
-        )
+        assert not _has_nan_or_inf(tensor), f"{model_type} produced NaN/Inf for {ood_case} input"
 
     @pytest.mark.parametrize(
         "model_type",
@@ -340,10 +337,13 @@ class TestDeploymentVerdict:
                     break
             else:
                 ok = nan_count == 0
-                results.append(_SubCheck(
-                    f"reliability_{mt}", ok,
-                    f"{nan_count}/10 NaN" if not ok else "ok",
-                ))
+                results.append(
+                    _SubCheck(
+                        f"reliability_{mt}",
+                        ok,
+                        f"{nan_count}/10 NaN" if not ok else "ok",
+                    )
+                )
 
             # Sub-check: output shape
             torch.manual_seed(SEED)
@@ -385,6 +385,4 @@ class TestDeploymentVerdict:
                     nan_count += 1
 
             ratio = nan_count / n_passes
-            assert ratio <= 0.10, (
-                f"{mt}: NaN red flag — {nan_count}/{n_passes} ({ratio:.0%}) > 10%"
-            )
+            assert ratio <= 0.10, f"{mt}: NaN red flag — {nan_count}/{n_passes} ({ratio:.0%}) > 10%"

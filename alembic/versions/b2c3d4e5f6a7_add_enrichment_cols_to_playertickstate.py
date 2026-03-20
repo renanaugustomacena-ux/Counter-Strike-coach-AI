@@ -46,9 +46,7 @@ def upgrade() -> None:
         if not _column_exists("playertickstate", col_name):
             op.add_column(
                 "playertickstate",
-                sa.Column(
-                    col_name, col_type, nullable=True, server_default=default_val
-                ),
+                sa.Column(col_name, col_type, nullable=True, server_default=default_val),
             )
 
 

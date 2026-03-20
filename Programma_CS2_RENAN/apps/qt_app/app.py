@@ -59,45 +59,19 @@ def main():
     placeholders = create_placeholder_screens()
 
     # ── Phase 2: Real data screens ──
-    from Programma_CS2_RENAN.apps.qt_app.screens.match_history_screen import (
-        MatchHistoryScreen,
-    )
-    from Programma_CS2_RENAN.apps.qt_app.screens.match_detail_screen import (
-        MatchDetailScreen,
-    )
-    from Programma_CS2_RENAN.apps.qt_app.screens.performance_screen import (
-        PerformanceScreen,
-    )
-    from Programma_CS2_RENAN.apps.qt_app.screens.settings_screen import (
-        SettingsScreen,
-    )
-    from Programma_CS2_RENAN.apps.qt_app.screens.wizard_screen import (
-        WizardScreen,
-    )
-    from Programma_CS2_RENAN.apps.qt_app.screens.user_profile_screen import (
-        UserProfileScreen,
-    )
-    from Programma_CS2_RENAN.apps.qt_app.screens.profile_screen import (
-        ProfileScreen,
-    )
-    from Programma_CS2_RENAN.apps.qt_app.screens.home_screen import (
-        HomeScreen,
-    )
-    from Programma_CS2_RENAN.apps.qt_app.screens.coach_screen import (
-        CoachScreen,
-    )
-    from Programma_CS2_RENAN.apps.qt_app.screens.steam_config_screen import (
-        SteamConfigScreen,
-    )
-    from Programma_CS2_RENAN.apps.qt_app.screens.faceit_config_screen import (
-        FaceitConfigScreen,
-    )
-    from Programma_CS2_RENAN.apps.qt_app.screens.help_screen import (
-        HelpScreen,
-    )
-    from Programma_CS2_RENAN.apps.qt_app.screens.tactical_viewer_screen import (
-        TacticalViewerScreen,
-    )
+    from Programma_CS2_RENAN.apps.qt_app.screens.coach_screen import CoachScreen
+    from Programma_CS2_RENAN.apps.qt_app.screens.faceit_config_screen import FaceitConfigScreen
+    from Programma_CS2_RENAN.apps.qt_app.screens.help_screen import HelpScreen
+    from Programma_CS2_RENAN.apps.qt_app.screens.home_screen import HomeScreen
+    from Programma_CS2_RENAN.apps.qt_app.screens.match_detail_screen import MatchDetailScreen
+    from Programma_CS2_RENAN.apps.qt_app.screens.match_history_screen import MatchHistoryScreen
+    from Programma_CS2_RENAN.apps.qt_app.screens.performance_screen import PerformanceScreen
+    from Programma_CS2_RENAN.apps.qt_app.screens.profile_screen import ProfileScreen
+    from Programma_CS2_RENAN.apps.qt_app.screens.settings_screen import SettingsScreen
+    from Programma_CS2_RENAN.apps.qt_app.screens.steam_config_screen import SteamConfigScreen
+    from Programma_CS2_RENAN.apps.qt_app.screens.tactical_viewer_screen import TacticalViewerScreen
+    from Programma_CS2_RENAN.apps.qt_app.screens.user_profile_screen import UserProfileScreen
+    from Programma_CS2_RENAN.apps.qt_app.screens.wizard_screen import WizardScreen
 
     match_history = MatchHistoryScreen()
     match_detail = MatchDetailScreen()

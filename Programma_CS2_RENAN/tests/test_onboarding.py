@@ -7,7 +7,6 @@ Tests the stage determination logic directly with controlled scalar inputs
 
 import sys
 
-
 import pytest
 
 from Programma_CS2_RENAN.backend.onboarding.new_user_flow import (

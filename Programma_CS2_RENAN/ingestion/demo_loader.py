@@ -28,8 +28,14 @@ app_logger = get_logger("cs2analyzer.demo_loader")
 # crafted cache files.  Only allows demo_frame dataclasses and builtins.
 _ALLOWED_MODULES = {
     "Programma_CS2_RENAN.core.demo_frame": {
-        "BombState", "DemoFrame", "EventType", "GameEvent",
-        "NadeState", "NadeType", "PlayerState", "Team",
+        "BombState",
+        "DemoFrame",
+        "EventType",
+        "GameEvent",
+        "NadeState",
+        "NadeType",
+        "PlayerState",
+        "Team",
     },
     "builtins": {"True", "False", "None"},
 }
@@ -43,8 +49,7 @@ class _SafeUnpickler(pickle.Unpickler):
         if allowed is not None and name in allowed:
             return super().find_class(module, name)
         raise pickle.UnpicklingError(
-            f"DS-01: Blocked deserialization of {module}.{name} — "
-            f"not in cache allowlist"
+            f"DS-01: Blocked deserialization of {module}.{name} — " f"not in cache allowlist"
         )
 
 
@@ -105,6 +110,7 @@ class DemoLoader:
 
     try:
         from Programma_CS2_RENAN.core.config import DATA_DIR as _DATA_DIR
+
         CACHE_DIR = os.path.join(_DATA_DIR, "demo_cache")
     except ImportError:
         CACHE_DIR = os.path.join(os.path.dirname(__file__), "cache")
@@ -419,7 +425,8 @@ class DemoLoader:
             # --- Team: vectorized string classification ---
             _tu = rows_df["team_name"].fillna("").astype(str).str.upper()
             rows_df["team_resolved"] = np.where(
-                _tu.str.contains("CT", na=False), "CT",
+                _tu.str.contains("CT", na=False),
+                "CT",
                 np.where(_tu.str.contains("TER", na=False), "T", "SPEC"),
             )
 
@@ -428,17 +435,25 @@ class DemoLoader:
                 _rs_arr = np.array(round_starts)
                 rows_df["round_resolved"] = np.clip(
                     np.searchsorted(_rs_arr, rows_df["tick"].values, side="right"),
-                    1, len(_rs_arr),
+                    1,
+                    len(_rs_arr),
                 )
             else:
                 rows_df["round_resolved"] = 1
 
             # --- NaN-safe numeric fills (one vectorized pass instead of per-row getattr) ---
             _fill_map = {
-                "X": 0.0, "Y": 0.0, "Z": 0.0, "yaw": 0.0,
-                "armor_value": 0, "flash_duration": 0.0,
-                "equipment_value": 0, "kills_total": 0, "deaths_total": 0,
-                "assists_total": 0, "mvps": 0,
+                "X": 0.0,
+                "Y": 0.0,
+                "Z": 0.0,
+                "yaw": 0.0,
+                "armor_value": 0,
+                "flash_duration": 0.0,
+                "equipment_value": 0,
+                "kills_total": 0,
+                "deaths_total": 0,
+                "assists_total": 0,
+                "mvps": 0,
             }
             for _col, _default in _fill_map.items():
                 if _col in rows_df.columns:

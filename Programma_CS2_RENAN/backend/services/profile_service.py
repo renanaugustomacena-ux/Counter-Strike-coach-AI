@@ -7,6 +7,7 @@ from sqlmodel import select
 
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import PlayerProfile
+
 # F5-22: API keys are loaded from env vars / keyring in config.py — not hard-coded.
 # Verify STEAM_API_KEY and FACEIT_API_KEY are set via environment or secrets manager, never in source.
 from Programma_CS2_RENAN.core.config import get_credential, get_setting
@@ -89,7 +90,7 @@ def _execute_steam_fetch(key: str, steam_id: str) -> Dict[str, Any]:
         except requests.exceptions.RequestException as e:
             last_error = e
             if attempt < _MAX_RETRIES - 1:
-                time.sleep(min(2 ** attempt, 10))
+                time.sleep(min(2**attempt, 10))
             continue
         except Exception as e:
             return {"error": f"Steam Fetch Failed: {str(e)}"}
@@ -144,7 +145,9 @@ def _persist_profile_update(profile):
     # F5-21: get_session() context manager auto-commits on clean exit and
     # rolls back on exception — explicit session.commit() is not required here.
     with db.get_session() as session:
-        stmt = select(PlayerProfile).where(PlayerProfile.player_name == get_setting("CS2_PLAYER_NAME", ""))
+        stmt = select(PlayerProfile).where(
+            PlayerProfile.player_name == get_setting("CS2_PLAYER_NAME", "")
+        )
         existing = session.exec(stmt).first()
         _update_or_add_profile(session, existing, profile)
 

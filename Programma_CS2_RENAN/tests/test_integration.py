@@ -1,10 +1,12 @@
 import sys
 
-
 import pytest
 import torch
 
-from Programma_CS2_RENAN.backend.nn.win_probability_trainer import WinProbabilityTrainerNN, predict_win_prob
+from Programma_CS2_RENAN.backend.nn.win_probability_trainer import (
+    WinProbabilityTrainerNN,
+    predict_win_prob,
+)
 from Programma_CS2_RENAN.backend.processing.baselines.pro_baseline import get_pro_baseline
 from Programma_CS2_RENAN.backend.processing.external_analytics import EliteAnalytics
 
@@ -64,5 +66,3 @@ class TestIntegration:
         for ds in datasets:
             assert isinstance(ds, str), f"Dataset entry should be str, got {type(ds)}"
             assert len(ds) > 0, "Dataset name should not be empty"
-
-

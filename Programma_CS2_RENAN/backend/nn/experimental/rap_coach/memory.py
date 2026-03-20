@@ -11,7 +11,9 @@ logger = get_logger("cs2analyzer.nn.experimental.rap_coach.memory")
 try:
     from ncps.torch import LTC
     from ncps.wirings import AutoNCP
+
     from hflayers import Hopfield
+
     _RAP_DEPS_AVAILABLE = True
 except ImportError:
     LTC = None
@@ -50,6 +52,7 @@ class RAPMemory(nn.Module):
         # checkpoint-portable NCP wiring. AutoNCP uses numpy internally, but
         # downstream LTC init may use torch — save/restore both to isolate side effects.
         import numpy as np
+
         np_rng_state = np.random.get_state()
         torch_rng_state = torch.random.get_rng_state()
         np.random.seed(42)
@@ -90,7 +93,9 @@ class RAPMemory(nn.Module):
         )
         logger.debug(
             "RAPMemory initialized: input=%d, hidden=%d, ncp_units=%d, hopfield_heads=4",
-            input_dim, hidden_dim, ncp_units,
+            input_dim,
+            hidden_dim,
+            ncp_units,
         )
 
     def forward(self, x, hidden=None):
@@ -121,7 +126,10 @@ class RAPMemory(nn.Module):
             self._training_forward_count += 1
             if self._training_forward_count >= 2:
                 self._hopfield_trained = True
-                logger.debug("NN-MEM-01: Hopfield activated after %d training forwards", self._training_forward_count)
+                logger.debug(
+                    "NN-MEM-01: Hopfield activated after %d training forwards",
+                    self._training_forward_count,
+                )
 
         return combined_state, belief, hidden
 
@@ -157,7 +165,8 @@ class RAPMemoryLite(nn.Module):
 
         logger.debug(
             "RAPMemoryLite initialized: input=%d, hidden=%d (LSTM-based)",
-            input_dim, hidden_dim,
+            input_dim,
+            hidden_dim,
         )
 
     def forward(self, x, hidden=None):

@@ -31,8 +31,10 @@ def _get_gaussian_filter():
     global _gaussian_filter
     if _gaussian_filter is None:
         from scipy.ndimage import gaussian_filter as _gf
+
         _gaussian_filter = _gf
     return _gaussian_filter
+
 
 from Programma_CS2_RENAN.backend.processing.player_knowledge import PlayerKnowledge
 from Programma_CS2_RENAN.backend.storage.db_models import PlayerTickState
@@ -199,8 +201,7 @@ class TensorFactory:
         )
         # P-X-02: Shape assertion on generated map tensor
         assert result.shape == (3, resolution, resolution), (
-            f"P-X-02: map_tensor shape {result.shape}, "
-            f"expected (3, {resolution}, {resolution})"
+            f"P-X-02: map_tensor shape {result.shape}, " f"expected (3, {resolution}, {resolution})"
         )
         return result
 
@@ -258,9 +259,7 @@ class TensorFactory:
         accumulated_fov = fov_mask.copy()
         for tick in ticks[:-1][-_LEGACY_TICK_CAP:]:
             tick_yaw = getattr(tick, "view_x", getattr(tick, "yaw", 0.0))
-            tick_fov = self._generate_fov_mask(
-                tick.pos_x, tick.pos_y, tick_yaw, meta, resolution
-            )
+            tick_fov = self._generate_fov_mask(tick.pos_x, tick.pos_y, tick_yaw, meta, resolution)
             accumulated_fov = np.maximum(accumulated_fov, tick_fov)
         danger_zone = np.clip(1.0 - accumulated_fov, 0, 1)
         safe_zone = np.clip(1.0 - fov_mask - danger_zone, 0, 1)
@@ -624,7 +623,9 @@ class TensorFactory:
         ny = (meta.pos_y - y) * scale_factor
 
         gx = math.floor(nx * resolution)
-        gy = math.floor(ny * resolution)  # C-03: single Y-flip only (meta.pos_y - y already inverts)
+        gy = math.floor(
+            ny * resolution
+        )  # C-03: single Y-flip only (meta.pos_y - y already inverts)
 
         return gx, gy
 

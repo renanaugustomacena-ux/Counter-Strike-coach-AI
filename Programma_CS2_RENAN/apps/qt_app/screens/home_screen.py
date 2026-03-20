@@ -35,12 +35,8 @@ class HomeScreen(QWidget):
 
     def on_enter(self):
         """Called by MainWindow.switch_screen — refresh paths and connect signals."""
-        self._demo_path_label.setText(
-            get_setting("DEFAULT_DEMO_PATH", "Not set")
-        )
-        self._pro_path_label.setText(
-            get_setting("PRO_DEMO_PATH", "Not set")
-        )
+        self._demo_path_label.setText(get_setting("DEFAULT_DEMO_PATH", "Not set"))
+        self._pro_path_label.setText(get_setting("PRO_DEMO_PATH", "Not set"))
         if not self._connected:
             state = get_app_state()
             state.service_active_changed.connect(self._on_service_active)
@@ -352,15 +348,9 @@ class HomeScreen(QWidget):
             return
 
         self._epoch_label.setText(f"Epoch: {epoch} / {total}")
-        self._train_loss_label.setText(
-            f"Train Loss: {data.get('train_loss', 0):.4f}"
-        )
-        self._val_loss_label.setText(
-            f"Val Loss: {data.get('val_loss', 0):.4f}"
-        )
-        self._eta_label.setText(
-            f"ETA: {self._format_eta(data.get('eta_seconds', 0))}"
-        )
+        self._train_loss_label.setText(f"Train Loss: {data.get('train_loss', 0):.4f}")
+        self._val_loss_label.setText(f"Val Loss: {data.get('val_loss', 0):.4f}")
+        self._eta_label.setText(f"ETA: {self._format_eta(data.get('eta_seconds', 0))}")
 
     def _on_total_matches(self, count: int):
         self._matches_label.setText(f"Matches: {count}")

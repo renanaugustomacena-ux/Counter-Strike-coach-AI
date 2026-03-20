@@ -35,12 +35,8 @@ class PlaceholderScreen(QWidget):
 def create_placeholder_screens() -> dict:
     """Create all 13 placeholder screens. Returns {name: widget}."""
     return {
-        "home": PlaceholderScreen(
-            "Dashboard", "Training status, coaching hub, connectivity"
-        ),
-        "coach": PlaceholderScreen(
-            "AI Coach", "Coaching insights and interactive chat"
-        ),
+        "home": PlaceholderScreen("Dashboard", "Training status, coaching hub, connectivity"),
+        "coach": PlaceholderScreen("AI Coach", "Coaching insights and interactive chat"),
         "match_history": PlaceholderScreen(
             "Match History", "Your analyzed matches with HLTV ratings"
         ),
@@ -53,25 +49,11 @@ def create_placeholder_screens() -> dict:
         "tactical_viewer": PlaceholderScreen(
             "Tactical Analyzer", "2D map visualization with playback"
         ),
-        "settings": PlaceholderScreen(
-            "Settings", "Theme, paths, language, ingestion config"
-        ),
-        "wizard": PlaceholderScreen(
-            "Setup Wizard", "First-time configuration"
-        ),
-        "profile": PlaceholderScreen(
-            "Player Profile", "View player stats and role analysis"
-        ),
-        "user_profile": PlaceholderScreen(
-            "Edit Profile", "Avatar, bio, system specs"
-        ),
-        "steam_config": PlaceholderScreen(
-            "Steam Integration", "SteamID64 and API key"
-        ),
-        "faceit_config": PlaceholderScreen(
-            "FaceIT Integration", "FaceIT API key"
-        ),
-        "help": PlaceholderScreen(
-            "Help", "Searchable documentation and FAQ"
-        ),
+        "settings": PlaceholderScreen("Settings", "Theme, paths, language, ingestion config"),
+        "wizard": PlaceholderScreen("Setup Wizard", "First-time configuration"),
+        "profile": PlaceholderScreen("Player Profile", "View player stats and role analysis"),
+        "user_profile": PlaceholderScreen("Edit Profile", "Avatar, bio, system specs"),
+        "steam_config": PlaceholderScreen("Steam Integration", "SteamID64 and API key"),
+        "faceit_config": PlaceholderScreen("FaceIT Integration", "FaceIT API key"),
+        "help": PlaceholderScreen("Help", "Searchable documentation and FAQ"),
     }

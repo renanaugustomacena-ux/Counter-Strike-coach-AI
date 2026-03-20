@@ -1,6 +1,6 @@
 """Coach screen — AI coaching dashboard with collapsible chat panel."""
 
-from PySide6.QtCore import QTimer, Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QFrame,
@@ -18,9 +18,7 @@ from PySide6.QtWidgets import (
 from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 from Programma_CS2_RENAN.apps.qt_app.viewmodels.coach_vm import CoachViewModel
-from Programma_CS2_RENAN.apps.qt_app.viewmodels.coaching_chat_vm import (
-    CoachingChatViewModel,
-)
+from Programma_CS2_RENAN.apps.qt_app.viewmodels.coaching_chat_vm import CoachingChatViewModel
 from Programma_CS2_RENAN.core.config import get_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -178,9 +176,7 @@ class CoachScreen(QWidget):
 
     def _build_chat_panel(self) -> QFrame:
         panel = QFrame()
-        panel.setStyleSheet(
-            "QFrame { background-color: #0f0f1a; border-top: 1px solid #2a2a3a; }"
-        )
+        panel.setStyleSheet("QFrame { background-color: #0f0f1a; border-top: 1px solid #2a2a3a; }")
         panel.setFixedHeight(420)
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(12, 8, 12, 8)
@@ -290,9 +286,12 @@ class CoachScreen(QWidget):
         return card, lbl
 
     def _scroll_chat_bottom(self):
-        QTimer.singleShot(50, lambda: self._msg_scroll.verticalScrollBar().setValue(
-            self._msg_scroll.verticalScrollBar().maximum()
-        ))
+        QTimer.singleShot(
+            50,
+            lambda: self._msg_scroll.verticalScrollBar().setValue(
+                self._msg_scroll.verticalScrollBar().maximum()
+            ),
+        )
 
     # ── Actions ──
 
@@ -341,7 +340,9 @@ class CoachScreen(QWidget):
                 w.deleteLater()
 
         if not insights:
-            self._insights_placeholder.setText("No insights yet. Analyze demos to generate coaching advice.")
+            self._insights_placeholder.setText(
+                "No insights yet. Analyze demos to generate coaching advice."
+            )
             self._insights_placeholder.setVisible(True)
             return
 
@@ -382,9 +383,7 @@ class CoachScreen(QWidget):
             focus = insight.get("focus_area", "")
             if focus:
                 focus_lbl = QLabel(focus)
-                focus_lbl.setStyleSheet(
-                    "color: #5a5a8a; font-size: 11px; background: transparent;"
-                )
+                focus_lbl.setStyleSheet("color: #5a5a8a; font-size: 11px; background: transparent;")
                 meta_row.addWidget(focus_lbl)
             meta_row.addStretch()
             date_lbl = QLabel(insight.get("created_at", ""))
@@ -419,17 +418,14 @@ class CoachScreen(QWidget):
 
             bubble = QFrame()
             bubble.setStyleSheet(
-                "QFrame { background: %s; border-radius: 10px; padding: 8px; }"
-                % bg_color
+                "QFrame { background: %s; border-radius: 10px; padding: 8px; }" % bg_color
             )
             bubble.setMaximumWidth(500)
             b_layout = QVBoxLayout(bubble)
             b_layout.setContentsMargins(10, 6, 10, 6)
             lbl = QLabel(msg.get("content", ""))
             lbl.setWordWrap(True)
-            lbl.setStyleSheet(
-                f"color: {text_color}; font-size: 13px; background: transparent;"
-            )
+            lbl.setStyleSheet(f"color: {text_color}; font-size: 13px; background: transparent;")
             lbl.setTextInteractionFlags(Qt.TextSelectableByMouse)
             b_layout.addWidget(lbl)
 

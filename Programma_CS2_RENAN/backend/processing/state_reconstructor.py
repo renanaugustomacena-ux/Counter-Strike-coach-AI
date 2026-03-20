@@ -93,9 +93,7 @@ class RAPStateReconstructor:
         ]
 
         # Use UNIFIED FeatureExtractor for metadata (Critical for consistency)
-        metadata = FeatureExtractor.extract_batch(
-            ticks, map_name=self.map_name, contexts=contexts
-        )
+        metadata = FeatureExtractor.extract_batch(ticks, map_name=self.map_name, contexts=contexts)
         # P-SR-01: Validate feature parity at training boundary
         FeatureExtractor.validate_feature_parity(metadata, label="training")
         metadata_tensor = torch.tensor(metadata, dtype=torch.float32).unsqueeze(0)

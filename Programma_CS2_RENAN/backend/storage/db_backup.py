@@ -79,7 +79,9 @@ def backup_monolith(target_dir: Optional[Path] = None) -> Path:
         verify_conn.close()
 
     size_mb = backup_path.stat().st_size / (1024 * 1024)
-    logger.info("Monolith backup created and verified: %s (%s MB)", backup_path, format(size_mb, ".2f"))
+    logger.info(
+        "Monolith backup created and verified: %s (%s MB)", backup_path, format(size_mb, ".2f")
+    )
     return backup_path
 
 

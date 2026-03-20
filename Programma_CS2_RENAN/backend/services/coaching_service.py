@@ -35,7 +35,9 @@ def _run_with_timeout(func, args=(), kwargs=None, timeout=_COACHING_TIMEOUT):
 
 from Programma_CS2_RENAN.backend.coaching.correction_engine import generate_corrections
 from Programma_CS2_RENAN.backend.coaching.longitudinal_engine import generate_longitudinal_coaching
-from Programma_CS2_RENAN.backend.knowledge.round_utils import infer_round_phase  # F5-20: shared utility
+from Programma_CS2_RENAN.backend.knowledge.round_utils import (  # F5-20: shared utility
+    infer_round_phase,
+)
 from Programma_CS2_RENAN.backend.progress.longitudinal import FeatureTrend
 from Programma_CS2_RENAN.backend.progress.trend_analysis import compute_trend
 from Programma_CS2_RENAN.backend.services.ollama_writer import get_ollama_writer
@@ -156,7 +158,8 @@ class CoachingService:
             if timed_out:
                 _coaching_logger.warning(
                     "COPER timed out after %ds for %s, falling back to Traditional",
-                    _COACHING_TIMEOUT, player_name,
+                    _COACHING_TIMEOUT,
+                    player_name,
                 )
                 corrections = generate_corrections(deviations, rounds_played)
                 _save_corrections_as_insights(self.db_manager, player_name, demo_name, corrections)
@@ -322,7 +325,9 @@ class CoachingService:
                         demo_name,
                     )
                     _save_generic_insight(
-                        self.db_manager, player_name, demo_name,
+                        self.db_manager,
+                        player_name,
+                        demo_name,
                         title="General Performance Review",
                         message=(
                             "Detailed coaching data was unavailable for this demo. "
@@ -492,7 +497,9 @@ class CoachingService:
             for feat in ("avg_kills", "avg_adr", "avg_kast", "accuracy"):
                 values = [getattr(h, feat, 0) for h in reversed(history)]
                 slope, vol, conf = compute_trend(values)
-                trends.append(FeatureTrend(feature=feat, slope=slope, volatility=vol, confidence=conf))
+                trends.append(
+                    FeatureTrend(feature=feat, slope=slope, volatility=vol, confidence=conf)
+                )
 
             nn_signals = {"stability_warning": any(t.volatility > 0.2 for t in trends)}
             long_insights = generate_longitudinal_coaching(trends, nn_signals)
@@ -500,14 +507,16 @@ class CoachingService:
             if long_insights:
                 with self.db_manager.get_session() as session:
                     for li in long_insights:
-                        session.add(CoachingInsight(
-                            player_name=player_name,
-                            demo_name=demo_name,
-                            title=li["title"],
-                            severity=li["severity"],
-                            message=li["message"],
-                            focus_area=li["focus_area"],
-                        ))
+                        session.add(
+                            CoachingInsight(
+                                player_name=player_name,
+                                demo_name=demo_name,
+                                title=li["title"],
+                                severity=li["severity"],
+                                message=li["message"],
+                                focus_area=li["focus_area"],
+                            )
+                        )
                     session.commit()
                 _coaching_logger.info(
                     "Longitudinal coaching: %d trend insights saved for %s",
@@ -550,7 +559,9 @@ class CoachingService:
                 map_name,
             )
             _save_generic_insight(
-                self.db_manager, player_name, demo_name,
+                self.db_manager,
+                player_name,
+                demo_name,
                 title="General Performance Review",
                 message=(
                     "The advanced coaching engine encountered an issue. "
@@ -772,8 +783,7 @@ def _create_insight_obj(p_name, d_name, c):
     )
 
 
-def _save_generic_insight(db_manager, player_name: str, demo_name: str,
-                          title: str, message: str):
+def _save_generic_insight(db_manager, player_name: str, demo_name: str, title: str, message: str):
     """Persist a fallback coaching insight when the primary pipeline fails (C-01)."""
     insight = CoachingInsight(
         player_name=player_name,

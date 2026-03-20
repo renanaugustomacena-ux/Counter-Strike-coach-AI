@@ -34,12 +34,13 @@ try:
 except ImportError:
     _HAS_BS4 = False
 
+from sqlmodel import select
+
 from Programma_CS2_RENAN.backend.data_sources.hltv.flaresolverr_client import FlareSolverrClient
 from Programma_CS2_RENAN.backend.storage.database import get_hltv_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import ProPlayer, ProPlayerStatCard
 from Programma_CS2_RENAN.core.config import get_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
-from sqlmodel import select
 
 logger = get_logger("cs2analyzer.hltv_stat_fetcher")
 
@@ -66,7 +67,9 @@ def check_robots_txt(target_url: str = _HLTV_BASE_URL + "/stats") -> bool:
     except Exception as e:
         # Cannot reach robots.txt — log warning but don't block
         # (Cloudflare may block raw requests; FlareSolverr is used for actual scraping)
-        logger.warning("Could not fetch robots.txt from %s: %s — proceeding with caution", _HLTV_ROBOTS_URL, e)
+        logger.warning(
+            "Could not fetch robots.txt from %s: %s — proceeding with caution", _HLTV_ROBOTS_URL, e
+        )
         return True
     allowed = rp.can_fetch("*", target_url)
     if not allowed:
@@ -189,9 +192,9 @@ class HLTVStatFetcher:
                 detailed.update(self._parse_trait_sections(soup))
 
                 # Sub-pages
-                clutch_url = url.replace(
-                    "/stats/players/", "/stats/players/clutches/"
-                ).replace(f"/{p_id}/", f"/{p_id}/all/")
+                clutch_url = url.replace("/stats/players/", "/stats/players/clutches/").replace(
+                    f"/{p_id}/", f"/{p_id}/all/"
+                )
                 detailed["clutches"] = self._fetch_sub_stats(clutch_url, self._parse_clutches)
 
                 multikill_url = url.replace(
@@ -217,9 +220,7 @@ class HLTVStatFetcher:
         try:
             with self._hltv_db.get_session() as session:
                 # Upsert ProPlayer
-                player = session.exec(
-                    select(ProPlayer).where(ProPlayer.hltv_id == hltv_id)
-                ).first()
+                player = session.exec(select(ProPlayer).where(ProPlayer.hltv_id == hltv_id)).first()
 
                 if not player:
                     player = ProPlayer(hltv_id=hltv_id, nickname=nickname)
@@ -234,9 +235,7 @@ class HLTVStatFetcher:
 
                 # Upsert ProPlayerStatCard
                 card = session.exec(
-                    select(ProPlayerStatCard).where(
-                        ProPlayerStatCard.player_id == hltv_id
-                    )
+                    select(ProPlayerStatCard).where(ProPlayerStatCard.player_id == hltv_id)
                 ).first()
 
                 detailed_json_str = "{}"

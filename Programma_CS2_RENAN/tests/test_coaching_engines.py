@@ -11,8 +11,6 @@ Covers:
 """
 
 import sys
-
-
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -26,10 +24,12 @@ class TestExplanationGenerator:
 
     def _gen(self):
         from Programma_CS2_RENAN.backend.coaching.explainability import ExplanationGenerator
+
         return ExplanationGenerator
 
     def _axes(self):
         from Programma_CS2_RENAN.backend.nn.rap_coach.skill_model import SkillAxes
+
         return SkillAxes
 
     def test_silence_threshold_returns_empty(self):
@@ -66,7 +66,9 @@ class TestExplanationGenerator:
     def test_utility_with_context(self):
         Gen = self._gen()
         Axes = self._axes()
-        result = Gen.generate_narrative(Axes.UTILITY, "flashbang", -0.6, {"weapon": "flashbang", "enemies": "3"})
+        result = Gen.generate_narrative(
+            Axes.UTILITY, "flashbang", -0.6, {"weapon": "flashbang", "enemies": "3"}
+        )
         assert "flashbang" in result
 
     def test_timing_negative(self):
@@ -94,18 +96,22 @@ class TestExplanationGenerator:
 
     def test_classify_severity_high(self):
         from Programma_CS2_RENAN.backend.coaching.explainability import ExplanationGenerator
+
         assert ExplanationGenerator.classify_insight_severity(2.0) == "High"
 
     def test_classify_severity_medium(self):
         from Programma_CS2_RENAN.backend.coaching.explainability import ExplanationGenerator
+
         assert ExplanationGenerator.classify_insight_severity(1.0) == "Medium"
 
     def test_classify_severity_low(self):
         from Programma_CS2_RENAN.backend.coaching.explainability import ExplanationGenerator
+
         assert ExplanationGenerator.classify_insight_severity(0.3) == "Low"
 
     def test_classify_severity_negative(self):
         from Programma_CS2_RENAN.backend.coaching.explainability import ExplanationGenerator
+
         assert ExplanationGenerator.classify_insight_severity(-2.0) == "High"
 
     def test_constants(self):
@@ -114,6 +120,7 @@ class TestExplanationGenerator:
             SEVERITY_MEDIUM_BOUNDARY,
             SILENCE_THRESHOLD,
         )
+
         assert SILENCE_THRESHOLD == 0.2
         assert SEVERITY_HIGH_BOUNDARY == 1.5
         assert SEVERITY_MEDIUM_BOUNDARY == 0.8
@@ -133,29 +140,33 @@ class TestPlayerCardAssimilator:
         card.kast = kwargs.get("kast", 0.72)
         card.impact = kwargs.get("impact", 1.1)
         card.rating_2_0 = kwargs.get("rating_2_0", 1.15)
-        card.detailed_stats_json = kwargs.get("detailed_stats_json", '{}')
+        card.detailed_stats_json = kwargs.get("detailed_stats_json", "{}")
         return card
 
     def test_init_valid_json(self):
         from Programma_CS2_RENAN.backend.coaching.pro_bridge import PlayerCardAssimilator
+
         card = self._make_card(detailed_stats_json='{"core": {"headshot_pct": 0.55}}')
         assimilator = PlayerCardAssimilator(card)
         assert assimilator.details["core"]["headshot_pct"] == 0.55
 
     def test_init_invalid_json(self):
         from Programma_CS2_RENAN.backend.coaching.pro_bridge import PlayerCardAssimilator
+
         card = self._make_card(detailed_stats_json="INVALID JSON")
         assimilator = PlayerCardAssimilator(card)
         assert assimilator.details == {}
 
     def test_init_none_json(self):
         from Programma_CS2_RENAN.backend.coaching.pro_bridge import PlayerCardAssimilator
+
         card = self._make_card(detailed_stats_json=None)
         assimilator = PlayerCardAssimilator(card)
         assert assimilator.details == {}
 
     def test_get_coach_baseline_keys(self):
         from Programma_CS2_RENAN.backend.coaching.pro_bridge import PlayerCardAssimilator
+
         card = self._make_card()
         baseline = PlayerCardAssimilator(card).get_coach_baseline()
         assert "avg_kills" in baseline
@@ -168,6 +179,7 @@ class TestPlayerCardAssimilator:
             ESTIMATED_ROUNDS_PER_MATCH,
             PlayerCardAssimilator,
         )
+
         card = self._make_card(kpr=0.75, dpr=0.60, adr=85.0)
         baseline = PlayerCardAssimilator(card).get_coach_baseline()
         assert baseline["avg_kills"] == pytest.approx(0.75 * ESTIMATED_ROUNDS_PER_MATCH)
@@ -176,24 +188,28 @@ class TestPlayerCardAssimilator:
 
     def test_kd_ratio_zero_dpr(self):
         from Programma_CS2_RENAN.backend.coaching.pro_bridge import PlayerCardAssimilator
+
         card = self._make_card(kpr=0.80, dpr=0.0)
         baseline = PlayerCardAssimilator(card).get_coach_baseline()
         assert baseline["kd_ratio"] == 0.80
 
     def test_extract_hs_ratio_from_details(self):
         from Programma_CS2_RENAN.backend.coaching.pro_bridge import PlayerCardAssimilator
+
         card = self._make_card(detailed_stats_json='{"core": {"headshot_pct": 0.58}}')
         assimilator = PlayerCardAssimilator(card)
         assert assimilator._extract_hs_ratio() == 0.58
 
     def test_extract_hs_ratio_default(self):
         from Programma_CS2_RENAN.backend.coaching.pro_bridge import PlayerCardAssimilator
+
         card = self._make_card()
         assimilator = PlayerCardAssimilator(card)
         assert assimilator._extract_hs_ratio() == 0.45
 
     def test_map_detailed_metrics_with_data(self):
         from Programma_CS2_RENAN.backend.coaching.pro_bridge import PlayerCardAssimilator
+
         card = self._make_card(
             detailed_stats_json='{"individual": {"total_opening_kills": "150", "utility_damage_per_round": "52.3"}}'
         )
@@ -204,6 +220,7 @@ class TestPlayerCardAssimilator:
 
     def test_map_detailed_metrics_invalid_values(self):
         from Programma_CS2_RENAN.backend.coaching.pro_bridge import PlayerCardAssimilator
+
         card = self._make_card(
             detailed_stats_json='{"individual": {"total_opening_kills": "INVALID", "utility_damage_per_round": "bad"}}'
         )
@@ -213,34 +230,41 @@ class TestPlayerCardAssimilator:
 
     def test_archetype_star_fragger(self):
         from Programma_CS2_RENAN.backend.coaching.pro_bridge import PlayerCardAssimilator
+
         card = self._make_card(impact=1.4)
         assert PlayerCardAssimilator(card).get_player_archetype() == "Star Fragger"
 
     def test_archetype_support_anchor(self):
         from Programma_CS2_RENAN.backend.coaching.pro_bridge import PlayerCardAssimilator
+
         card = self._make_card(impact=1.0, kast=0.80)
         assert PlayerCardAssimilator(card).get_player_archetype() == "Support Anchor"
 
     def test_archetype_awper(self):
         from Programma_CS2_RENAN.backend.coaching.pro_bridge import PlayerCardAssimilator
+
         card = self._make_card(
-            impact=1.0, kast=0.70,
-            detailed_stats_json='{"weapons": {"AWP": 500, "AK-47": 200, "M4A4": 100}}'
+            impact=1.0,
+            kast=0.70,
+            detailed_stats_json='{"weapons": {"AWP": 500, "AK-47": 200, "M4A4": 100}}',
         )
         assert PlayerCardAssimilator(card).get_player_archetype() == "Sniper Specialist"
 
     def test_archetype_all_rounder(self):
         from Programma_CS2_RENAN.backend.coaching.pro_bridge import PlayerCardAssimilator
+
         card = self._make_card(impact=1.0, kast=0.70)
         assert PlayerCardAssimilator(card).get_player_archetype() == "All-Rounder"
 
     def test_is_awper_no_weapons(self):
         from Programma_CS2_RENAN.backend.coaching.pro_bridge import PlayerCardAssimilator
+
         card = self._make_card()
         assert PlayerCardAssimilator(card)._is_awper() is False
 
     def test_factory_function(self):
         from Programma_CS2_RENAN.backend.coaching.pro_bridge import get_pro_baseline_for_coach
+
         card = self._make_card()
         baseline = get_pro_baseline_for_coach(card)
         assert isinstance(baseline, dict)
@@ -255,6 +279,7 @@ class TestTokenResolverHelpers:
 
     def _make_resolver_shell(self):
         from Programma_CS2_RENAN.backend.coaching.token_resolver import PlayerTokenResolver
+
         resolver = PlayerTokenResolver.__new__(PlayerTokenResolver)
         resolver.db = MagicMock()
         return resolver
@@ -279,7 +304,7 @@ class TestTokenResolverHelpers:
         card.opening_kill_ratio = 1.45
         card.clutch_win_count = 120
         card.multikill_round_pct = 0.18
-        card.detailed_stats_json = '{}'
+        card.detailed_stats_json = "{}"
         card.last_updated = MagicMock()
         card.last_updated.isoformat.return_value = "2025-01-15T10:30:00"
         card.time_span = "2024"
@@ -350,6 +375,7 @@ class TestNNRefinement:
 
     def test_basic_refinement(self):
         from Programma_CS2_RENAN.backend.coaching.nn_refinement import apply_nn_refinement
+
         corrections = [{"feature": "avg_adr", "weighted_z": 1.0}]
         nn_adj = {"avg_adr_weight": 0.5}
         result = apply_nn_refinement(corrections, nn_adj)
@@ -358,6 +384,7 @@ class TestNNRefinement:
 
     def test_no_matching_adjustment(self):
         from Programma_CS2_RENAN.backend.coaching.nn_refinement import apply_nn_refinement
+
         corrections = [{"feature": "avg_hs", "weighted_z": 2.0}]
         nn_adj = {"avg_adr_weight": 0.5}
         result = apply_nn_refinement(corrections, nn_adj)
@@ -365,6 +392,7 @@ class TestNNRefinement:
 
     def test_multiple_corrections(self):
         from Programma_CS2_RENAN.backend.coaching.nn_refinement import apply_nn_refinement
+
         corrections = [
             {"feature": "avg_adr", "weighted_z": 1.0},
             {"feature": "avg_hs", "weighted_z": -0.5},
@@ -376,6 +404,7 @@ class TestNNRefinement:
 
     def test_preserves_other_fields(self):
         from Programma_CS2_RENAN.backend.coaching.nn_refinement import apply_nn_refinement
+
         corrections = [{"feature": "avg_adr", "weighted_z": 1.0, "extra": "data"}]
         result = apply_nn_refinement(corrections, {})
         assert result[0]["extra"] == "data"
@@ -389,14 +418,17 @@ class TestCorrectionEngine:
 
     def test_get_feature_importance_default(self):
         from Programma_CS2_RENAN.backend.coaching.correction_engine import get_feature_importance
+
         assert get_feature_importance("avg_kast") == 1.5
 
     def test_get_feature_importance_unknown(self):
         from Programma_CS2_RENAN.backend.coaching.correction_engine import get_feature_importance
+
         assert get_feature_importance("nonexistent") == 1.0
 
     def test_generate_corrections_basic(self):
         from Programma_CS2_RENAN.backend.coaching.correction_engine import generate_corrections
+
         deviations = {"avg_adr": 1.5, "avg_hs": -0.8, "avg_kast": 2.0, "accuracy": 0.3}
         result = generate_corrections(deviations, rounds_played=300)
         assert len(result) <= 3
@@ -405,6 +437,7 @@ class TestCorrectionEngine:
 
     def test_generate_corrections_sorted_by_importance(self):
         from Programma_CS2_RENAN.backend.coaching.correction_engine import generate_corrections
+
         deviations = {"avg_adr": 1.0, "avg_kast": 1.0}
         result = generate_corrections(deviations, rounds_played=300)
         # Both have same z but different importance, should be sorted
@@ -412,6 +445,7 @@ class TestCorrectionEngine:
 
     def test_generate_corrections_confidence_scaling(self):
         from Programma_CS2_RENAN.backend.coaching.correction_engine import generate_corrections
+
         # 150 rounds / 300 ceiling = 0.5 confidence
         result_low = generate_corrections({"avg_adr": 1.0}, rounds_played=150)
         result_high = generate_corrections({"avg_adr": 1.0}, rounds_played=300)
@@ -419,6 +453,7 @@ class TestCorrectionEngine:
 
     def test_generate_corrections_tuple_input(self):
         from Programma_CS2_RENAN.backend.coaching.correction_engine import generate_corrections
+
         deviations = {"avg_adr": (1.5, 10.0)}
         result = generate_corrections(deviations, rounds_played=300)
         # Should use the first element of the tuple
@@ -426,6 +461,7 @@ class TestCorrectionEngine:
 
     def test_generate_corrections_with_nn(self):
         from Programma_CS2_RENAN.backend.coaching.correction_engine import generate_corrections
+
         deviations = {"avg_adr": 1.0}
         nn_adj = {"avg_adr_weight": 0.5}
         result = generate_corrections(deviations, rounds_played=300, nn_adjustments=nn_adj)
@@ -434,6 +470,7 @@ class TestCorrectionEngine:
 
     def test_confidence_ceiling(self):
         from Programma_CS2_RENAN.backend.coaching.correction_engine import CONFIDENCE_ROUNDS_CEILING
+
         assert CONFIDENCE_ROUNDS_CEILING == 300
 
 
@@ -451,7 +488,10 @@ class TestLongitudinalEngine:
         return t
 
     def test_regression_insight(self):
-        from Programma_CS2_RENAN.backend.coaching.longitudinal_engine import generate_longitudinal_coaching
+        from Programma_CS2_RENAN.backend.coaching.longitudinal_engine import (
+            generate_longitudinal_coaching,
+        )
+
         trends = [self._make_trend(slope=-0.5, confidence=0.8)]
         result = generate_longitudinal_coaching(trends, {})
         assert len(result) == 1
@@ -459,7 +499,10 @@ class TestLongitudinalEngine:
         assert result[0]["severity"] == "Medium"
 
     def test_improvement_insight(self):
-        from Programma_CS2_RENAN.backend.coaching.longitudinal_engine import generate_longitudinal_coaching
+        from Programma_CS2_RENAN.backend.coaching.longitudinal_engine import (
+            generate_longitudinal_coaching,
+        )
+
         trends = [self._make_trend(slope=0.5, confidence=0.8)]
         result = generate_longitudinal_coaching(trends, {})
         assert len(result) == 1
@@ -467,30 +510,45 @@ class TestLongitudinalEngine:
         assert result[0]["severity"] == "Positive"
 
     def test_low_confidence_filtered(self):
-        from Programma_CS2_RENAN.backend.coaching.longitudinal_engine import generate_longitudinal_coaching
+        from Programma_CS2_RENAN.backend.coaching.longitudinal_engine import (
+            generate_longitudinal_coaching,
+        )
+
         trends = [self._make_trend(confidence=0.3)]
         result = generate_longitudinal_coaching(trends, {})
         assert len(result) == 0
 
     def test_stability_warning_upgrades_severity(self):
-        from Programma_CS2_RENAN.backend.coaching.longitudinal_engine import generate_longitudinal_coaching
+        from Programma_CS2_RENAN.backend.coaching.longitudinal_engine import (
+            generate_longitudinal_coaching,
+        )
+
         trends = [self._make_trend(slope=-0.5, confidence=0.8)]
         result = generate_longitudinal_coaching(trends, {"stability_warning": True})
         assert result[0]["severity"] == "High"
 
     def test_max_three_insights(self):
-        from Programma_CS2_RENAN.backend.coaching.longitudinal_engine import generate_longitudinal_coaching
+        from Programma_CS2_RENAN.backend.coaching.longitudinal_engine import (
+            generate_longitudinal_coaching,
+        )
+
         trends = [self._make_trend(feature=f"stat_{i}", slope=-0.5) for i in range(10)]
         result = generate_longitudinal_coaching(trends, {})
         assert len(result) <= 3
 
     def test_empty_trends(self):
-        from Programma_CS2_RENAN.backend.coaching.longitudinal_engine import generate_longitudinal_coaching
+        from Programma_CS2_RENAN.backend.coaching.longitudinal_engine import (
+            generate_longitudinal_coaching,
+        )
+
         result = generate_longitudinal_coaching([], {})
         assert result == []
 
     def test_zero_slope_no_insight(self):
-        from Programma_CS2_RENAN.backend.coaching.longitudinal_engine import generate_longitudinal_coaching
+        from Programma_CS2_RENAN.backend.coaching.longitudinal_engine import (
+            generate_longitudinal_coaching,
+        )
+
         trends = [self._make_trend(slope=0.0, confidence=0.9)]
         result = generate_longitudinal_coaching(trends, {})
         assert len(result) == 0

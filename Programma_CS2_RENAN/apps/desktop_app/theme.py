@@ -1,9 +1,9 @@
 """Shared UI theme constants and palette registry for the desktop app."""
 
 # Rating color coding
-COLOR_GREEN = (0.30, 0.69, 0.31, 1)   # #4CAF50
-COLOR_YELLOW = (1.0, 0.60, 0.0, 1)    # #FF9800
-COLOR_RED = (0.96, 0.26, 0.21, 1)     # #F44336
+COLOR_GREEN = (0.30, 0.69, 0.31, 1)  # #4CAF50
+COLOR_YELLOW = (1.0, 0.60, 0.0, 1)  # #FF9800
+COLOR_RED = (0.96, 0.26, 0.21, 1)  # #F44336
 COLOR_CARD_BG = (0.12, 0.12, 0.14, 1)
 
 # Standard HLTV rating thresholds
@@ -19,19 +19,19 @@ _PALETTES = {
     "CS2": {
         "surface": [0.08, 0.08, 0.12, 0.85],
         "surface_alt": [0.06, 0.06, 0.18, 0.9],
-        "accent_primary": [0.85, 0.4, 0.0, 1],      # Orange
+        "accent_primary": [0.85, 0.4, 0.0, 1],  # Orange
         "chart_bg": "#1a1a1a",
     },
     "CSGO": {
         "surface": [0.10, 0.11, 0.13, 0.85],
         "surface_alt": [0.08, 0.10, 0.14, 0.9],
-        "accent_primary": [0.38, 0.49, 0.55, 1],     # BlueGray
+        "accent_primary": [0.38, 0.49, 0.55, 1],  # BlueGray
         "chart_bg": "#1c1e20",
     },
     "CS1.6": {
         "surface": [0.07, 0.10, 0.07, 0.85],
         "surface_alt": [0.05, 0.14, 0.08, 0.9],
-        "accent_primary": [0.30, 0.69, 0.31, 1],     # Green
+        "accent_primary": [0.30, 0.69, 0.31, 1],  # Green
         "chart_bg": "#181e18",
     },
 }

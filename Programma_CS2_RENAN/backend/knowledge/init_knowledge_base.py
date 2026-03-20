@@ -73,9 +73,7 @@ def initialize_knowledge_base():
 
     with db.get_session() as session:
         # Use COUNT query — avoid loading all rows into memory (F5-03).
-        total_count = session.exec(
-            select(func.count()).select_from(TacticalKnowledge)
-        ).one()
+        total_count = session.exec(select(func.count()).select_from(TacticalKnowledge)).one()
 
         # Count by category (aggregate, no full table scan)
         cat_rows = session.exec(
@@ -110,7 +108,9 @@ def initialize_knowledge_base():
         if index_mgr:
             k_count = index_mgr.rebuild_from_db("knowledge")
             e_count = index_mgr.rebuild_from_db("experience")
-            logger.info("FAISS indexes built: %d knowledge, %d experience vectors", k_count, e_count)
+            logger.info(
+                "FAISS indexes built: %d knowledge, %d experience vectors", k_count, e_count
+            )
     except Exception as e:
         logger.warning("FAISS index build skipped (non-fatal): %s", e)
 

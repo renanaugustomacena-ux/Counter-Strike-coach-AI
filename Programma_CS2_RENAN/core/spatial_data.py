@@ -18,8 +18,8 @@ _logger = get_logger("cs2analyzer.spatial_data")
 
 # Z-axis distance penalties for multi-level maps (Nuke, Vertigo).
 # Single source of truth — also imported by connect_map_context.py (R4-11-01).
-Z_LEVEL_THRESHOLD = 200    # Relative Z units separating level floors
-Z_PENALTY_FACTOR = 2.0     # Multiplier for cross-level distance
+Z_LEVEL_THRESHOLD = 200  # Relative Z units separating level floors
+Z_PENALTY_FACTOR = 2.0  # Multiplier for cross-level distance
 
 
 @dataclass(frozen=True)
@@ -190,7 +190,8 @@ class SpatialConfigLoader:
                     except (TypeError, ValueError, KeyError) as conv_err:
                         _logger.warning(
                             "SD-02: Skipping map '%s' — invalid numeric fields: %s",
-                            map_name, conv_err,
+                            map_name,
+                            conv_err,
                         )
                         continue
                     self.registry[map_name] = MapMetadata(
@@ -287,7 +288,8 @@ def get_map_metadata(map_name: str) -> MapMetadata | None:
     if len(candidates) > 1:
         _logger.warning(
             "SD-03: Ambiguous partial match for '%s' — matched %s. Returning first.",
-            clean_name, [c[0] for c in candidates],
+            clean_name,
+            [c[0] for c in candidates],
         )
         return candidates[0][1]
 

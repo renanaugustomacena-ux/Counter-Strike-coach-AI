@@ -147,9 +147,7 @@ class ProDataPipeline:
                 # P-DP-05: Compare major.minor (not just major) — minor releases
                 # can change scaler internals (e.g. StandardScaler dtype handling).
                 current_mm = tuple(sklearn.__version__.split(".")[:2])
-                saved_mm = (
-                    tuple(saved_ver.split(".")[:2]) if saved_ver != "unknown" else current_mm
-                )
+                saved_mm = tuple(saved_ver.split(".")[:2]) if saved_ver != "unknown" else current_mm
                 if saved_mm != current_mm:
                     logger.warning(
                         "Scaler sklearn version mismatch: saved=%s, current=%s — refit recommended",
@@ -258,20 +256,20 @@ class ProDataPipeline:
         if "player_name" not in train.columns:
             return train, val, test
 
-        all_data = pd.concat([
-            train.assign(_split="train"),
-            val.assign(_split="val"),
-            test.assign(_split="test"),
-        ])
+        all_data = pd.concat(
+            [
+                train.assign(_split="train"),
+                val.assign(_split="val"),
+                test.assign(_split="test"),
+            ]
+        )
 
         # P-DP-02: Assign each player to their earliest split to preserve
         # temporal ordering. Priority: train=0 < val=1 < test=2, so the
         # min-priority split is the earliest in time.
         split_priority = {"train": 0, "val": 1, "test": 2}
         player_split_counts = (
-            all_data.groupby(["player_name", "_split"])
-            .size()
-            .reset_index(name="count")
+            all_data.groupby(["player_name", "_split"]).size().reset_index(name="count")
         )
         player_split_counts["priority"] = player_split_counts["_split"].map(split_priority)
         # Sort by player, then by priority (earliest split first)
@@ -286,20 +284,12 @@ class ProDataPipeline:
             columns=["_split", "_assigned"]
         )
 
-        new_train = decontaminated[
-            decontaminated["player_name"].map(player_earliest) == "train"
-        ]
-        new_val = decontaminated[
-            decontaminated["player_name"].map(player_earliest) == "val"
-        ]
-        new_test = decontaminated[
-            decontaminated["player_name"].map(player_earliest) == "test"
-        ]
+        new_train = decontaminated[decontaminated["player_name"].map(player_earliest) == "train"]
+        new_val = decontaminated[decontaminated["player_name"].map(player_earliest) == "val"]
+        new_test = decontaminated[decontaminated["player_name"].map(player_earliest) == "test"]
 
         # Count how many players had cross-split data dropped
-        multi_split_players = (
-            player_split_counts.groupby("player_name").size()
-        )
+        multi_split_players = player_split_counts.groupby("player_name").size()
         moved = (multi_split_players > 1).sum()
         if moved > 0:
             dropped = len(all_data) - len(decontaminated)
@@ -307,7 +297,11 @@ class ProDataPipeline:
                 "P-DP-02 player decontamination: %d multi-split players resolved, "
                 "%d rows dropped from later splits "
                 "(train=%d, val=%d, test=%d)",
-                moved, dropped, len(new_train), len(new_val), len(new_test),
+                moved,
+                dropped,
+                len(new_train),
+                len(new_val),
+                len(new_test),
             )
 
         return new_train, new_val, new_test

@@ -100,7 +100,8 @@ def classify_role(player_stats: Dict[str, float]) -> Tuple[PlayerRole, float]:
         logger.warning(
             "P-RF-02: RoleClassifier.classify() failed (%s: %s), "
             "falling back to heuristic classification",
-            type(e).__name__, e,
+            type(e).__name__,
+            e,
         )
         return _heuristic_classify_role(player_stats)
 

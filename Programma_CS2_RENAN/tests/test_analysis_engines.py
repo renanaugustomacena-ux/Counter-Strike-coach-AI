@@ -6,7 +6,6 @@ Tests Win Probability, Role Classifier, Utility Analyzer, and Economy Optimizer.
 
 import sys
 
-
 import pytest
 import torch
 
@@ -263,4 +262,3 @@ class TestEconomyOptimizer:
         )
 
         assert decision.action in ["force-buy", "half-buy"]
-

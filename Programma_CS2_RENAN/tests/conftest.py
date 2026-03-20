@@ -20,8 +20,13 @@ from pathlib import Path
 
 # --- Venv Guard ---
 # P6-03: Allow CI runners (no venv) via CI/GITHUB_ACTIONS env vars
-if sys.prefix == sys.base_prefix and not os.environ.get("CI") and not os.environ.get("GITHUB_ACTIONS"):
+if (
+    sys.prefix == sys.base_prefix
+    and not os.environ.get("CI")
+    and not os.environ.get("GITHUB_ACTIONS")
+):
     import pytest
+
     pytest.exit("Not running in virtualenv — activate before running tests", returncode=2)
 
 import pytest
@@ -36,9 +41,7 @@ os.environ["KIVY_NO_ARGS"] = "1"
 
 
 def pytest_configure(config):
-    config.addinivalue_line(
-        "markers", "integration: tests that read/write production database.db"
-    )
+    config.addinivalue_line("markers", "integration: tests that read/write production database.db")
 
 
 def pytest_collection_modifyitems(config, items):
@@ -100,9 +103,7 @@ def seeded_db_session():
 
     with Session(engine) as session:
         # --- PlayerProfile ---
-        session.add(
-            PlayerProfile(player_name="TestPlayer", role="Entry", bio="Test profile")
-        )
+        session.add(PlayerProfile(player_name="TestPlayer", role="Entry", bio="Test profile"))
 
         # --- PlayerMatchStats: 6 records across 3 demos, 2 players ---
         _fixed_dt = datetime(2024, 6, 15, 14, 0, 0, tzinfo=timezone.utc)
@@ -116,34 +117,103 @@ def seeded_db_session():
                 "player_name": "TestPlayer",
                 "stats": [
                     # dust2: solid game
-                    dict(avg_kills=22.0, avg_deaths=16.0, avg_adr=85.3, avg_hs=0.52,
-                         avg_kast=0.72, accuracy=0.28, econ_rating=1.12, kd_ratio=1.375,
-                         kpr=0.75, dpr=0.55, rating=1.15, opening_duel_win_pct=0.55,
-                         clutch_win_pct=0.33, trade_kill_ratio=0.18, was_traded_ratio=0.25),
+                    dict(
+                        avg_kills=22.0,
+                        avg_deaths=16.0,
+                        avg_adr=85.3,
+                        avg_hs=0.52,
+                        avg_kast=0.72,
+                        accuracy=0.28,
+                        econ_rating=1.12,
+                        kd_ratio=1.375,
+                        kpr=0.75,
+                        dpr=0.55,
+                        rating=1.15,
+                        opening_duel_win_pct=0.55,
+                        clutch_win_pct=0.33,
+                        trade_kill_ratio=0.18,
+                        was_traded_ratio=0.25,
+                    ),
                     # mirage: average game
-                    dict(avg_kills=17.0, avg_deaths=18.0, avg_adr=72.1, avg_hs=0.45,
-                         avg_kast=0.65, accuracy=0.24, econ_rating=0.95, kd_ratio=0.944,
-                         kpr=0.62, dpr=0.65, rating=0.94, opening_duel_win_pct=0.40,
-                         clutch_win_pct=0.00, trade_kill_ratio=0.12, was_traded_ratio=0.33),
+                    dict(
+                        avg_kills=17.0,
+                        avg_deaths=18.0,
+                        avg_adr=72.1,
+                        avg_hs=0.45,
+                        avg_kast=0.65,
+                        accuracy=0.24,
+                        econ_rating=0.95,
+                        kd_ratio=0.944,
+                        kpr=0.62,
+                        dpr=0.65,
+                        rating=0.94,
+                        opening_duel_win_pct=0.40,
+                        clutch_win_pct=0.00,
+                        trade_kill_ratio=0.12,
+                        was_traded_ratio=0.33,
+                    ),
                     # inferno: great game
-                    dict(avg_kills=28.0, avg_deaths=14.0, avg_adr=98.7, avg_hs=0.60,
-                         avg_kast=0.80, accuracy=0.31, econ_rating=1.25, kd_ratio=2.0,
-                         kpr=0.90, dpr=0.45, rating=1.45, opening_duel_win_pct=0.65,
-                         clutch_win_pct=0.50, trade_kill_ratio=0.22, was_traded_ratio=0.14),
+                    dict(
+                        avg_kills=28.0,
+                        avg_deaths=14.0,
+                        avg_adr=98.7,
+                        avg_hs=0.60,
+                        avg_kast=0.80,
+                        accuracy=0.31,
+                        econ_rating=1.25,
+                        kd_ratio=2.0,
+                        kpr=0.90,
+                        dpr=0.45,
+                        rating=1.45,
+                        opening_duel_win_pct=0.65,
+                        clutch_win_pct=0.50,
+                        trade_kill_ratio=0.22,
+                        was_traded_ratio=0.14,
+                    ),
                 ],
             },
             {
                 "player_name": "Teammate1",
                 "stats": [
-                    dict(avg_kills=15.0, avg_deaths=19.0, avg_adr=65.0, avg_hs=0.38,
-                         avg_kast=0.60, accuracy=0.22, econ_rating=0.88, kd_ratio=0.789,
-                         kpr=0.54, dpr=0.68, rating=0.82),
-                    dict(avg_kills=20.0, avg_deaths=15.0, avg_adr=80.0, avg_hs=0.50,
-                         avg_kast=0.70, accuracy=0.26, econ_rating=1.05, kd_ratio=1.333,
-                         kpr=0.71, dpr=0.54, rating=1.10),
-                    dict(avg_kills=12.0, avg_deaths=20.0, avg_adr=55.0, avg_hs=0.35,
-                         avg_kast=0.55, accuracy=0.20, econ_rating=0.75, kd_ratio=0.6,
-                         kpr=0.43, dpr=0.71, rating=0.68),
+                    dict(
+                        avg_kills=15.0,
+                        avg_deaths=19.0,
+                        avg_adr=65.0,
+                        avg_hs=0.38,
+                        avg_kast=0.60,
+                        accuracy=0.22,
+                        econ_rating=0.88,
+                        kd_ratio=0.789,
+                        kpr=0.54,
+                        dpr=0.68,
+                        rating=0.82,
+                    ),
+                    dict(
+                        avg_kills=20.0,
+                        avg_deaths=15.0,
+                        avg_adr=80.0,
+                        avg_hs=0.50,
+                        avg_kast=0.70,
+                        accuracy=0.26,
+                        econ_rating=1.05,
+                        kd_ratio=1.333,
+                        kpr=0.71,
+                        dpr=0.54,
+                        rating=1.10,
+                    ),
+                    dict(
+                        avg_kills=12.0,
+                        avg_deaths=20.0,
+                        avg_adr=55.0,
+                        avg_hs=0.35,
+                        avg_kast=0.55,
+                        accuracy=0.20,
+                        econ_rating=0.75,
+                        kd_ratio=0.6,
+                        kpr=0.43,
+                        dpr=0.71,
+                        rating=0.68,
+                    ),
                 ],
             },
         ]

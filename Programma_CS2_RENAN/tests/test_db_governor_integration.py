@@ -7,8 +7,6 @@ Covers:
 """
 
 import sys
-
-
 from unittest.mock import MagicMock, patch
 
 import torch
@@ -46,8 +44,10 @@ class TestDatabaseGovernor:
         gov.match_manager.list_available_matches.return_value = []
         gov.match_manager.get_total_storage_bytes.return_value = 0
 
-        with patch("Programma_CS2_RENAN.backend.control.db_governor.DB_DIR", str(tmp_path)), \
-             patch("Programma_CS2_RENAN.backend.control.db_governor.CORE_DB_DIR", str(tmp_path)):
+        with (
+            patch("Programma_CS2_RENAN.backend.control.db_governor.DB_DIR", str(tmp_path)),
+            patch("Programma_CS2_RENAN.backend.control.db_governor.CORE_DB_DIR", str(tmp_path)),
+        ):
             report = gov.audit_storage()
         assert any("not found" in a for a in report["anomalies"])
 
@@ -98,6 +98,7 @@ class TestE2EPipeline:
 
     def test_factory_creates_rap_model(self):
         from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
+
         model = ModelFactory.get_model("rap")
         assert model is not None
         assert hasattr(model, "forward")
@@ -105,7 +106,9 @@ class TestE2EPipeline:
     def test_rap_forward_full_pipeline(self):
         """Full forward pass: perception → memory → strategy → pedagogy."""
         from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
-        from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import METADATA_DIM
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import (
+            METADATA_DIM,
+        )
 
         torch.manual_seed(42)
         model = ModelFactory.get_model("rap")
@@ -132,7 +135,9 @@ class TestE2EPipeline:
     def test_skill_vec_modulates_output(self):
         """Different skill vectors should produce different outputs."""
         from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
-        from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import METADATA_DIM
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import (
+            METADATA_DIM,
+        )
 
         torch.manual_seed(42)
         model = ModelFactory.get_model("rap")
@@ -156,7 +161,9 @@ class TestE2EPipeline:
     def test_rap_no_nan_in_output(self):
         """No NaN values in any output tensor."""
         from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
-        from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import METADATA_DIM
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import (
+            METADATA_DIM,
+        )
 
         torch.manual_seed(0)
         model = ModelFactory.get_model("rap")
@@ -180,7 +187,9 @@ class TestE2EPipeline:
     def test_sparsity_loss_with_gate(self):
         """compute_sparsity_loss should return scalar when gate_weights present."""
         from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
-        from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import METADATA_DIM
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import (
+            METADATA_DIM,
+        )
 
         torch.manual_seed(42)
         model = ModelFactory.get_model("rap")

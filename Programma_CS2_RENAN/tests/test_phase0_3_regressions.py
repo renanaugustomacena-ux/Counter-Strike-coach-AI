@@ -22,7 +22,6 @@ from sqlmodel import Session, SQLModel, create_engine, select
 
 from Programma_CS2_RENAN.backend.storage.db_models import CoachState
 
-
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
@@ -96,9 +95,9 @@ class TestP0_04_CoachStateSingleton:
         # Verify exactly 1 row exists
         with Session(engine) as session:
             rows = session.exec(select(CoachState)).all()
-            assert len(rows) == 1, (
-                f"P0-04 REGRESSION: Expected exactly 1 CoachState row, got {len(rows)}"
-            )
+            assert (
+                len(rows) == 1
+            ), f"P0-04 REGRESSION: Expected exactly 1 CoachState row, got {len(rows)}"
 
         # All results should reference the same id
         ids = [r for r in results if isinstance(r, int)]
@@ -215,7 +214,9 @@ class TestP0_06_ConnectionLeakOnCheckpoint:
         except Exception:
             pass  # Expected
 
-        assert close_called, "P0-06 REGRESSION: Connection.close() was not called after checkpoint failure"
+        assert (
+            close_called
+        ), "P0-06 REGRESSION: Connection.close() was not called after checkpoint failure"
 
 
 # ===========================================================================
@@ -258,12 +259,12 @@ class TestP1_01_EarlyStoppingWired:
         from Programma_CS2_RENAN.backend.nn import train
 
         source = inspect.getsource(train)
-        assert "EarlyStopping" in source, (
-            "P1-01 REGRESSION: EarlyStopping is not referenced in train.py"
-        )
-        assert "early_stopper" in source, (
-            "P1-01 REGRESSION: early_stopper variable not found in train.py"
-        )
+        assert (
+            "EarlyStopping" in source
+        ), "P1-01 REGRESSION: EarlyStopping is not referenced in train.py"
+        assert (
+            "early_stopper" in source
+        ), "P1-01 REGRESSION: early_stopper variable not found in train.py"
 
 
 # ===========================================================================
@@ -276,7 +277,6 @@ class TestP1_03_JEPACollapseDetection:
 
     def test_embedding_diversity(self):
         from Programma_CS2_RENAN.backend.nn.config import INPUT_DIM
-
         from Programma_CS2_RENAN.backend.nn.jepa_model import JEPAEncoder
 
         encoder = JEPAEncoder(input_dim=INPUT_DIM, latent_dim=256)
@@ -368,9 +368,9 @@ class TestP1_05_NegativeSamplingExclusion:
             candidates = [j for j in range(batch_size) if j != i]
             selected = candidates[:num_negatives]
 
-            assert i not in selected, (
-                f"P1-05 REGRESSION: Positive index {i} found in negative samples {selected}"
-            )
+            assert (
+                i not in selected
+            ), f"P1-05 REGRESSION: Positive index {i} found in negative samples {selected}"
             assert len(selected) == min(num_negatives, batch_size - 1)
 
     def test_negatives_exclude_positive_edge_case_batch_2(self):
@@ -407,12 +407,14 @@ class TestP3_01_PlayerRoleUnification:
         )
 
     def test_role_classifier_uses_canonical_enum(self):
-        from Programma_CS2_RENAN.backend.analysis.role_classifier import PlayerRole as RoleFromClassifier
+        from Programma_CS2_RENAN.backend.analysis.role_classifier import (
+            PlayerRole as RoleFromClassifier,
+        )
         from Programma_CS2_RENAN.core.app_types import PlayerRole as Canonical
 
-        assert RoleFromClassifier is Canonical, (
-            "P3-01 REGRESSION: role_classifier.PlayerRole is not the canonical enum from core.app_types"
-        )
+        assert (
+            RoleFromClassifier is Canonical
+        ), "P3-01 REGRESSION: role_classifier.PlayerRole is not the canonical enum from core.app_types"
 
     def test_role_features_uses_canonical_enum(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering.role_features import (
@@ -420,9 +422,9 @@ class TestP3_01_PlayerRoleUnification:
         )
         from Programma_CS2_RENAN.core.app_types import PlayerRole as Canonical
 
-        assert RoleFromFeatures is Canonical, (
-            "P3-01 REGRESSION: role_features.PlayerRole is not the canonical enum from core.app_types"
-        )
+        assert (
+            RoleFromFeatures is Canonical
+        ), "P3-01 REGRESSION: role_features.PlayerRole is not the canonical enum from core.app_types"
 
     def test_str_enum_for_db_serialization(self):
         """PlayerRole(str, Enum) ensures values are serialization-safe strings."""
@@ -463,8 +465,7 @@ class TestP3_02_AvgKillsScaleConsistency:
             f"should be KPR (0.75), not multiplied by rounds"
         )
         assert baseline["avg_deaths"] == 0.60, (
-            f"P3-02 REGRESSION: avg_deaths={baseline['avg_deaths']} "
-            f"should be DPR (0.60)"
+            f"P3-02 REGRESSION: avg_deaths={baseline['avg_deaths']} " f"should be DPR (0.60)"
         )
 
     def test_z_scores_are_sensible(self):
@@ -476,8 +477,7 @@ class TestP3_02_AvgKillsScaleConsistency:
 
         z = (user_kpr - pro_mean) / pro_std
         assert abs(z) < 5, (
-            f"P3-02 REGRESSION: z-score {z:.2f} is unreasonably large. "
-            f"Scale mismatch likely."
+            f"P3-02 REGRESSION: z-score {z:.2f} is unreasonably large. " f"Scale mismatch likely."
         )
 
 

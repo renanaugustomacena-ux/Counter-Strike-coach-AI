@@ -192,7 +192,9 @@ class SteamDemoFinder:
             "filename": filepath.name,
             "filepath": str(filepath),
             "size_mb": filepath.stat().st_size / (1024 * 1024),
-            "modified": datetime.fromtimestamp(filepath.stat().st_mtime, tz=timezone.utc).isoformat(),
+            "modified": datetime.fromtimestamp(
+                filepath.stat().st_mtime, tz=timezone.utc
+            ).isoformat(),
         }
 
         # Try to extract map name

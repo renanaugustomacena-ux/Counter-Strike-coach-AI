@@ -88,9 +88,7 @@ class ProStatsMiner:
         logger.info("Total knowledge mined: %s entries", total_knowledge)
         return total_knowledge
 
-    def _generate_player_knowledge(
-        self, card: ProPlayerStatCard, nickname: str
-    ) -> List[Dict]:
+    def _generate_player_knowledge(self, card: ProPlayerStatCard, nickname: str) -> List[Dict]:
         """Generate knowledge entries from a player's stat card."""
         knowledge = []
 

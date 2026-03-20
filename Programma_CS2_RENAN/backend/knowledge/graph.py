@@ -74,7 +74,9 @@ class KnowledgeGraphManager:
         except Exception as e:
             logger.error("Failed to initialize Knowledge Graph DB: %s", e)
 
-    def add_entity(self, name: str, entity_type: str, observations: List[str] = None):  # F5-30: renamed from `type` to avoid shadowing builtin
+    def add_entity(
+        self, name: str, entity_type: str, observations: List[str] = None
+    ):  # F5-30: renamed from `type` to avoid shadowing builtin
         """
         Upsert an entity.
 

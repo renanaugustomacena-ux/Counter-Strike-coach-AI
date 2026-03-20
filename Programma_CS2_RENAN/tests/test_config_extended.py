@@ -7,11 +7,9 @@ Covers:
                constants, DATABASE_URL format
 """
 
-import sys
-
-
 import json
 import os
+import sys
 
 import pytest
 
@@ -24,28 +22,33 @@ class TestPaths:
 
     def test_stabilize_paths_returns_string(self):
         from Programma_CS2_RENAN.core.config import stabilize_paths
+
         root = stabilize_paths()
         assert isinstance(root, str)
         assert os.path.isdir(root)
 
     def test_stabilize_paths_adds_to_sys_path(self):
         from Programma_CS2_RENAN.core.config import stabilize_paths
+
         root = stabilize_paths()
         assert root in sys.path
 
     def test_get_base_dir_returns_string(self):
         from Programma_CS2_RENAN.core.config import get_base_dir
+
         bd = get_base_dir()
         assert isinstance(bd, str)
         assert os.path.isdir(bd)
 
     def test_base_dir_is_programma_parent(self):
         from Programma_CS2_RENAN.core.config import BASE_DIR
+
         # BASE_DIR should be parent of Programma_CS2_RENAN
         assert os.path.isdir(os.path.join(BASE_DIR, "core"))
 
     def test_get_resource_path(self):
         from Programma_CS2_RENAN.core.config import get_resource_path
+
         path = get_resource_path("core")
         assert isinstance(path, str)
         assert "core" in path
@@ -59,11 +62,13 @@ class TestMaskSecret:
 
     def test_short_secret(self):
         from Programma_CS2_RENAN.core.config import mask_secret
+
         assert mask_secret("abc") == "****"
         assert mask_secret("") == "****"
 
     def test_long_secret(self):
         from Programma_CS2_RENAN.core.config import mask_secret
+
         result = mask_secret("ABCDEFGH12345678")
         assert result.startswith("ABCD")
         assert result.endswith("5678")
@@ -71,11 +76,13 @@ class TestMaskSecret:
 
     def test_exactly_8_chars(self):
         from Programma_CS2_RENAN.core.config import mask_secret
+
         result = mask_secret("12345678")
         assert result == "1234...5678"
 
     def test_none_input(self):
         from Programma_CS2_RENAN.core.config import mask_secret
+
         assert mask_secret(None) == "****"
 
 
@@ -87,22 +94,26 @@ class TestSettings:
 
     def test_get_setting_existing(self):
         from Programma_CS2_RENAN.core.config import get_setting
+
         # LANGUAGE always exists in defaults
         lang = get_setting("LANGUAGE")
         assert isinstance(lang, str)
 
     def test_get_setting_default(self):
         from Programma_CS2_RENAN.core.config import get_setting
+
         result = get_setting("NONEXISTENT_KEY_XYZ", "fallback")
         assert result == "fallback"
 
     def test_get_setting_none_default(self):
         from Programma_CS2_RENAN.core.config import get_setting
+
         result = get_setting("NONEXISTENT_KEY_XYZ")
         assert result is None
 
     def test_get_all_settings_returns_dict(self):
         from Programma_CS2_RENAN.core.config import get_all_settings
+
         s = get_all_settings()
         assert isinstance(s, dict)
         assert "LANGUAGE" in s
@@ -110,6 +121,7 @@ class TestSettings:
 
     def test_get_all_settings_is_copy(self):
         from Programma_CS2_RENAN.core.config import get_all_settings
+
         s1 = get_all_settings()
         s2 = get_all_settings()
         assert s1 is not s2  # Must be a copy
@@ -152,24 +164,29 @@ class TestConstants:
 
     def test_min_demos_for_coaching(self):
         from Programma_CS2_RENAN.core.config import MIN_DEMOS_FOR_COACHING
+
         assert MIN_DEMOS_FOR_COACHING == 10
 
     def test_max_demos_per_month(self):
         from Programma_CS2_RENAN.core.config import MAX_DEMOS_PER_MONTH
+
         assert MAX_DEMOS_PER_MONTH == 10
 
     def test_database_url_format(self):
         from Programma_CS2_RENAN.core.config import DATABASE_URL
+
         assert DATABASE_URL.startswith("sqlite:///")
         assert "database.db" in DATABASE_URL
 
     def test_dirs_exist(self):
-        from Programma_CS2_RENAN.core.config import DB_DIR, LOG_DIR, DATA_DIR, MODELS_DIR
+        from Programma_CS2_RENAN.core.config import DATA_DIR, DB_DIR, LOG_DIR, MODELS_DIR
+
         for d in [DB_DIR, LOG_DIR, DATA_DIR, MODELS_DIR]:
             assert os.path.isdir(d)
 
     def test_get_writeable_dir(self):
         from Programma_CS2_RENAN.core.config import get_writeable_dir
+
         wd = get_writeable_dir()
         assert isinstance(wd, str)
         assert os.path.isdir(wd)

@@ -97,9 +97,9 @@ def load_nn(version, model, user_id=None):
         # NN-14: No checkpoint found at any fallback location — never silently
         # return a model with random weights.
         logger.warning(
-            "No checkpoint found for version '%s' (user_id=%s). "
-            "Searched: %s, %s",
-            version, user_id,
+            "No checkpoint found for version '%s' (user_id=%s). " "Searched: %s, %s",
+            version,
+            user_id,
             get_model_path(version, user_id),
             get_factory_model_path(version, user_id),
         )

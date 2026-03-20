@@ -8,10 +8,8 @@ Covers:
   ExperienceBank private helpers — _health_to_range, _action_to_focus, _cosine_similarity
 """
 
-import sys
-
-
 import hashlib
+import sys
 
 import numpy as np
 import pytest
@@ -25,6 +23,7 @@ class TestInferRoundPhase:
 
     def _infer(self, tick_data):
         from Programma_CS2_RENAN.backend.knowledge.round_utils import infer_round_phase
+
         return infer_round_phase(tick_data)
 
     def test_pistol_round(self):
@@ -82,6 +81,7 @@ class TestExperienceContext:
 
     def _make_ctx(self, **kwargs):
         from Programma_CS2_RENAN.backend.knowledge.experience_bank import ExperienceContext
+
         defaults = {
             "map_name": "de_mirage",
             "round_phase": "full_buy",
@@ -170,6 +170,7 @@ class TestExperienceContext:
 
     def test_defaults(self):
         from Programma_CS2_RENAN.backend.knowledge.experience_bank import ExperienceContext
+
         ctx = ExperienceContext(map_name="de_inferno", round_phase="eco", side="T")
         assert ctx.position_area is None
         assert ctx.health_range == "full"
@@ -186,6 +187,7 @@ class TestSynthesizedAdvice:
 
     def test_creation(self):
         from Programma_CS2_RENAN.backend.knowledge.experience_bank import SynthesizedAdvice
+
         advice = SynthesizedAdvice(
             narrative="Test narrative",
             pro_references=["s1mple (held_angle -> kill)"],
@@ -201,6 +203,7 @@ class TestSynthesizedAdvice:
 
     def test_empty_references(self):
         from Programma_CS2_RENAN.backend.knowledge.experience_bank import SynthesizedAdvice
+
         advice = SynthesizedAdvice(
             narrative="No refs",
             pro_references=[],
@@ -221,6 +224,7 @@ class TestExperienceBankHelpers:
     def _make_bank_shell(self):
         """Create a minimal ExperienceBank without real DB or embedder init."""
         from Programma_CS2_RENAN.backend.knowledge.experience_bank import ExperienceBank
+
         bank = ExperienceBank.__new__(ExperienceBank)
         return bank
 

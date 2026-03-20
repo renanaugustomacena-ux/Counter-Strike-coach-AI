@@ -10,7 +10,6 @@ Validates:
 
 import sys
 
-
 import pytest
 
 from Programma_CS2_RENAN.backend.processing.round_stats_builder import (

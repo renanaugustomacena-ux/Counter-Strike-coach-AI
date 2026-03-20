@@ -29,8 +29,12 @@ def run_tool(path_str, relative_name):
         # We run as subprocess to ensure clean environment for each
         cmd = [sys.executable, path_str] + args
         res = subprocess.run(
-            cmd, capture_output=True, encoding="utf-8", errors="replace",
-            cwd=_project_root, timeout=120,
+            cmd,
+            capture_output=True,
+            encoding="utf-8",
+            errors="replace",
+            cwd=_project_root,
+            timeout=120,
         )
 
         duration = time.time() - start

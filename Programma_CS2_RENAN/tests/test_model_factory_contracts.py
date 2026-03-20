@@ -26,9 +26,9 @@ class TestValidModelTypes:
         model = ModelFactory.get_model("default")
         from Programma_CS2_RENAN.backend.nn.model import TeacherRefinementNN
 
-        assert isinstance(model, TeacherRefinementNN), (
-            f"'default' type should return TeacherRefinementNN, got {type(model).__name__}"
-        )
+        assert isinstance(
+            model, TeacherRefinementNN
+        ), f"'default' type should return TeacherRefinementNN, got {type(model).__name__}"
 
     def test_jepa_type(self):
         from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
@@ -36,9 +36,9 @@ class TestValidModelTypes:
         model = ModelFactory.get_model("jepa")
         from Programma_CS2_RENAN.backend.nn.jepa_model import JEPACoachingModel
 
-        assert isinstance(model, JEPACoachingModel), (
-            f"'jepa' type should return JEPACoachingModel, got {type(model).__name__}"
-        )
+        assert isinstance(
+            model, JEPACoachingModel
+        ), f"'jepa' type should return JEPACoachingModel, got {type(model).__name__}"
 
     def test_vl_jepa_type(self):
         from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
@@ -46,9 +46,9 @@ class TestValidModelTypes:
         model = ModelFactory.get_model("vl-jepa")
         from Programma_CS2_RENAN.backend.nn.jepa_model import VLJEPACoachingModel
 
-        assert isinstance(model, VLJEPACoachingModel), (
-            f"'vl-jepa' type should return VLJEPACoachingModel, got {type(model).__name__}"
-        )
+        assert isinstance(
+            model, VLJEPACoachingModel
+        ), f"'vl-jepa' type should return VLJEPACoachingModel, got {type(model).__name__}"
 
     def test_rap_type(self):
         pytest.importorskip("ncps", reason="ncps not installed")
@@ -57,9 +57,9 @@ class TestValidModelTypes:
         model = ModelFactory.get_model("rap")
         from Programma_CS2_RENAN.backend.nn.rap_coach.model import RAPCoachModel
 
-        assert isinstance(model, RAPCoachModel), (
-            f"'rap' type should return RAPCoachModel, got {type(model).__name__}"
-        )
+        assert isinstance(
+            model, RAPCoachModel
+        ), f"'rap' type should return RAPCoachModel, got {type(model).__name__}"
 
     def test_role_head_type(self):
         from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
@@ -67,9 +67,9 @@ class TestValidModelTypes:
         model = ModelFactory.get_model("role_head")
         from Programma_CS2_RENAN.backend.nn.role_head import NeuralRoleHead
 
-        assert isinstance(model, NeuralRoleHead), (
-            f"'role_head' type should return NeuralRoleHead, got {type(model).__name__}"
-        )
+        assert isinstance(
+            model, NeuralRoleHead
+        ), f"'role_head' type should return NeuralRoleHead, got {type(model).__name__}"
 
     def test_all_valid_types_are_nn_modules(self):
         """Every valid type must return an nn.Module instance (types with available deps only)."""
@@ -79,15 +79,16 @@ class TestValidModelTypes:
         types_to_test = ["default", "jepa", "vl-jepa"]
         try:
             import ncps  # noqa: F401
+
             types_to_test.append("rap")
         except ImportError:
             pass
 
         for model_type in types_to_test:
             model = ModelFactory.get_model(model_type)
-            assert isinstance(model, nn.Module), (
-                f"Type '{model_type}' returned {type(model)}, not nn.Module"
-            )
+            assert isinstance(
+                model, nn.Module
+            ), f"Type '{model_type}' returned {type(model)}, not nn.Module"
 
 
 class TestInvalidModelTypes:
@@ -153,9 +154,9 @@ class TestDimensionPropagation:
 
         model = ModelFactory.get_model("default", input_dim=10, output_dim=3, hidden_dim=32)
         # Verify by checking the LSTM input size
-        assert model.lstm.input_size == 10, (
-            f"input_dim not propagated: expected 10, got {model.lstm.input_size}"
-        )
+        assert (
+            model.lstm.input_size == 10
+        ), f"input_dim not propagated: expected 10, got {model.lstm.input_size}"
 
     def test_legacy_default_dimensions(self):
         """Default dimensions should match METADATA_DIM and OUTPUT_DIM from config."""
@@ -164,9 +165,9 @@ class TestDimensionPropagation:
         from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
 
         model = ModelFactory.get_model("default")
-        assert model.lstm.input_size == METADATA_DIM, (
-            f"Default input_dim should be METADATA_DIM={METADATA_DIM}, got {model.lstm.input_size}"
-        )
+        assert (
+            model.lstm.input_size == METADATA_DIM
+        ), f"Default input_dim should be METADATA_DIM={METADATA_DIM}, got {model.lstm.input_size}"
 
     def test_jepa_custom_dimensions(self):
         from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
@@ -191,9 +192,9 @@ class TestCheckpointNameResolution:
         }
         for model_type, expected_name in expected.items():
             actual = ModelFactory.get_checkpoint_name(model_type)
-            assert actual == expected_name, (
-                f"Checkpoint for '{model_type}': expected '{expected_name}', got '{actual}'"
-            )
+            assert (
+                actual == expected_name
+            ), f"Checkpoint for '{model_type}': expected '{expected_name}', got '{actual}'"
 
     def test_unknown_checkpoint_name_raises_error(self):
         """Unknown type should raise ValueError for checkpoint name too."""
@@ -232,6 +233,6 @@ class TestTypeConstants:
                 if model_type in skip_types:
                     continue
                 model = ModelFactory.get_model(model_type)
-                assert isinstance(model, nn.Module), (
-                    f"TYPE constant '{attr_name}' = '{model_type}' failed to produce a valid model"
-                )
+                assert isinstance(
+                    model, nn.Module
+                ), f"TYPE constant '{attr_name}' = '{model_type}' failed to produce a valid model"

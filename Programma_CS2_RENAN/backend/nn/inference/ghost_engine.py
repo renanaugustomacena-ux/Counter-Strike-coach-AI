@@ -4,9 +4,9 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import torch
 
+from Programma_CS2_RENAN.backend.nn.config import RAP_POSITION_SCALE
 from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
 from Programma_CS2_RENAN.backend.nn.persistence import load_nn
-from Programma_CS2_RENAN.backend.nn.config import RAP_POSITION_SCALE
 from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import FeatureExtractor
 from Programma_CS2_RENAN.backend.processing.tensor_factory import get_tensor_factory
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -106,6 +106,7 @@ class GhostEngine:
             # Set USE_POV_TENSORS=true in settings.json to enable POV mode
             # (only valid if model was trained with POV tensors).
             from Programma_CS2_RENAN.core.config import get_setting
+
             use_pov = get_setting("USE_POV_TENSORS", False)
             if use_pov:
                 knowledge = self._build_knowledge_from_game_state(tick_data, game_state)

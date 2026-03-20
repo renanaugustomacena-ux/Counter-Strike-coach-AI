@@ -63,9 +63,7 @@ _FONT_FILES = {
 
 def rgba_to_qcolor(rgba: List[float]) -> QColor:
     """Convert [r, g, b, a] (0-1 floats) to QColor."""
-    return QColor.fromRgbF(
-        rgba[0], rgba[1], rgba[2], rgba[3] if len(rgba) > 3 else 1.0
-    )
+    return QColor.fromRgbF(rgba[0], rgba[1], rgba[2], rgba[3] if len(rgba) > 3 else 1.0)
 
 
 def rating_color(rating: float) -> QColor:
@@ -128,7 +126,7 @@ class ThemeEngine:
             # Append font rule AFTER QSS so it wins the cascade (same specificity, last wins)
             font_rule = (
                 f'\nQWidget {{ font-family: "{self._font_family}", "Segoe UI", "Arial", sans-serif; '
-                f'font-size: {self._font_size}px; }}\n'
+                f"font-size: {self._font_size}px; }}\n"
             )
             target.setStyleSheet(qss + font_rule)
 
@@ -201,8 +199,7 @@ class ThemeEngine:
 
         # Pick the first vertical wallpaper, or first image found
         images = sorted(
-            f for f in os.listdir(theme_dir)
-            if f.lower().endswith((".jpg", ".jpeg", ".png"))
+            f for f in os.listdir(theme_dir) if f.lower().endswith((".jpg", ".jpeg", ".png"))
         )
         # Prefer vertical wallpapers (they match the app's portrait-ish layout better)
         vertical = [f for f in images if "vertical" in f.lower()]
@@ -220,8 +217,7 @@ class ThemeEngine:
         if not theme_dir.is_dir():
             return []
         return sorted(
-            f for f in os.listdir(theme_dir)
-            if f.lower().endswith((".jpg", ".jpeg", ".png"))
+            f for f in os.listdir(theme_dir) if f.lower().endswith((".jpg", ".jpeg", ".png"))
         )
 
     def set_wallpaper(self, filename: str):

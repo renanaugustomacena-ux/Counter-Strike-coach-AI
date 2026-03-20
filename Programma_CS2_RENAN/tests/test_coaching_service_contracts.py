@@ -23,8 +23,12 @@ class TestCoachingModeSelection:
 
     def _make_service(self, use_coper=True, use_hybrid=False, use_rag=False):
         """Create a CoachingService with controlled settings."""
-        with patch("Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager"), \
-             patch("Programma_CS2_RENAN.backend.services.coaching_service.get_setting") as mock_setting:
+        with (
+            patch("Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager"),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_setting"
+            ) as mock_setting,
+        ):
 
             def setting_side_effect(key, default=None):
                 return {
@@ -68,8 +72,13 @@ class TestHealthRangeClassification:
     """Verify the health to categorical range conversion."""
 
     def test_full_health(self):
-        with patch("Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager"), \
-             patch("Programma_CS2_RENAN.backend.services.coaching_service.get_setting", return_value=False):
+        with (
+            patch("Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager"),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_setting",
+                return_value=False,
+            ),
+        ):
             from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
             svc = CoachingService()
@@ -77,8 +86,13 @@ class TestHealthRangeClassification:
             assert svc._health_to_range(80) == "full"
 
     def test_damaged_health(self):
-        with patch("Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager"), \
-             patch("Programma_CS2_RENAN.backend.services.coaching_service.get_setting", return_value=False):
+        with (
+            patch("Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager"),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_setting",
+                return_value=False,
+            ),
+        ):
             from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
             svc = CoachingService()
@@ -86,8 +100,13 @@ class TestHealthRangeClassification:
             assert svc._health_to_range(40) == "damaged"
 
     def test_critical_health(self):
-        with patch("Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager"), \
-             patch("Programma_CS2_RENAN.backend.services.coaching_service.get_setting", return_value=False):
+        with (
+            patch("Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager"),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_setting",
+                return_value=False,
+            ),
+        ):
             from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
             svc = CoachingService()
@@ -108,8 +127,12 @@ class TestCoperTickDataValidation:
 
         CURRENTLY: tick_data.get() raises AttributeError on non-dict objects.
         """
-        with patch("Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager"), \
-             patch("Programma_CS2_RENAN.backend.services.coaching_service.get_setting") as mock_setting:
+        with (
+            patch("Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager"),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_setting"
+            ) as mock_setting,
+        ):
 
             def setting_side_effect(key, default=None):
                 return {
@@ -137,9 +160,7 @@ class TestCoperTickDataValidation:
                 )
                 # If no exception, the fallback chain handled it
             except AttributeError as e:
-                pytest.fail(
-                    f"BUG #8: COPER crashed with AttributeError on non-dict tick_data: {e}"
-                )
+                pytest.fail(f"BUG #8: COPER crashed with AttributeError on non-dict tick_data: {e}")
 
     def test_coper_with_empty_dict_tick_data(self):
         """An empty dict {} is falsy in the condition check, so COPER won't trigger.
@@ -147,8 +168,12 @@ class TestCoperTickDataValidation:
         This is actually correct behavior — empty tick_data shouldn't trigger COPER.
         But it means `tick_data={}` silently skips COPER without explanation.
         """
-        with patch("Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager"), \
-             patch("Programma_CS2_RENAN.backend.services.coaching_service.get_setting") as mock_setting:
+        with (
+            patch("Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager"),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_setting"
+            ) as mock_setting,
+        ):
 
             def setting_side_effect(key, default=None):
                 return {
@@ -171,9 +196,17 @@ class TestCoperTickDataValidation:
 
         This tests the happy path to ensure the test infrastructure works.
         """
-        with patch("Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager") as mock_db, \
-             patch("Programma_CS2_RENAN.backend.services.coaching_service.get_setting") as mock_setting, \
-             patch("Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer") as mock_writer:
+        with (
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager"
+            ) as mock_db,
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_setting"
+            ) as mock_setting,
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer"
+            ) as mock_writer,
+        ):
 
             def setting_side_effect(key, default=None):
                 return {
@@ -187,7 +220,9 @@ class TestCoperTickDataValidation:
 
             # Mock DB session
             mock_session = MagicMock()
-            mock_db.return_value.get_session.return_value.__enter__ = MagicMock(return_value=mock_session)
+            mock_db.return_value.get_session.return_value.__enter__ = MagicMock(
+                return_value=mock_session
+            )
             mock_db.return_value.get_session.return_value.__exit__ = MagicMock(return_value=False)
 
             from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
@@ -219,63 +254,86 @@ class TestCoperTickDataValidation:
                 # COPER may fail due to missing ExperienceBank/SBERT, but
                 # the fallback to traditional coaching should catch it
                 if "AttributeError" in type(e).__name__:
-                    pytest.fail(
-                        f"COPER should not raise AttributeError: {e}"
-                    )
+                    pytest.fail(f"COPER should not raise AttributeError: {e}")
 
 
 class TestBaselineContextNote:
     """Verify the baseline comparison note generation."""
 
     def test_empty_player_stats_returns_empty(self):
-        with patch("Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager"), \
-             patch("Programma_CS2_RENAN.backend.services.coaching_service.get_setting", return_value=False):
+        with (
+            patch("Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager"),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_setting",
+                return_value=False,
+            ),
+        ):
             from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
             result = CoachingService._baseline_context_note({}, {"rating": 1.05}, "positioning")
             assert result == ""
 
     def test_empty_baseline_returns_empty(self):
-        with patch("Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager"), \
-             patch("Programma_CS2_RENAN.backend.services.coaching_service.get_setting", return_value=False):
+        with (
+            patch("Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager"),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_setting",
+                return_value=False,
+            ),
+        ):
             from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
             result = CoachingService._baseline_context_note({"rating": 0.95}, {}, "positioning")
             assert result == ""
 
     def test_valid_comparison_produces_note(self):
-        with patch("Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager"), \
-             patch("Programma_CS2_RENAN.backend.services.coaching_service.get_setting", return_value=False):
+        with (
+            patch("Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager"),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_setting",
+                return_value=False,
+            ),
+        ):
             from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
             player_stats = {"rating": 0.85}
             baseline = {"rating": {"mean": 1.05}}
 
             result = CoachingService._baseline_context_note(player_stats, baseline, "positioning")
-            assert "below" in result.lower(), (
-                f"0.85 is below pro average 1.05, note should say 'below': {result}"
-            )
+            assert (
+                "below" in result.lower()
+            ), f"0.85 is below pro average 1.05, note should say 'below': {result}"
 
     def test_above_average_produces_correct_note(self):
-        with patch("Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager"), \
-             patch("Programma_CS2_RENAN.backend.services.coaching_service.get_setting", return_value=False):
+        with (
+            patch("Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager"),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_setting",
+                return_value=False,
+            ),
+        ):
             from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
             player_stats = {"rating": 1.25}
             baseline = {"rating": {"mean": 1.05}}
 
             result = CoachingService._baseline_context_note(player_stats, baseline, "positioning")
-            assert "above" in result.lower(), (
-                f"1.25 is above pro average 1.05, note should say 'above': {result}"
-            )
+            assert (
+                "above" in result.lower()
+            ), f"1.25 is above pro average 1.05, note should say 'above': {result}"
 
 
 class TestSingletonFactory:
     """Verify the singleton coaching service factory."""
 
     def test_singleton_returns_same_instance(self):
-        with patch("Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager"), \
-             patch("Programma_CS2_RENAN.backend.services.coaching_service.get_setting", return_value=False):
+        with (
+            patch("Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager"),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_setting",
+                return_value=False,
+            ),
+        ):
             import Programma_CS2_RENAN.backend.services.coaching_service as mod
 
             # Reset singleton

@@ -11,14 +11,12 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.screen import MDScreen
 
 from Programma_CS2_RENAN.apps.desktop_app.data_viewmodels import MatchDetailViewModel
-from Programma_CS2_RENAN.apps.desktop_app.theme import (
-    COLOR_CARD_BG as _COLOR_CARD_BG,
-    COLOR_GREEN as _COLOR_GREEN,
-    COLOR_RED as _COLOR_RED,
-    COLOR_YELLOW as _COLOR_YELLOW,
-    rating_color as _rating_color,
-    rating_label as _rating_label,
-)
+from Programma_CS2_RENAN.apps.desktop_app.theme import COLOR_CARD_BG as _COLOR_CARD_BG
+from Programma_CS2_RENAN.apps.desktop_app.theme import COLOR_GREEN as _COLOR_GREEN
+from Programma_CS2_RENAN.apps.desktop_app.theme import COLOR_RED as _COLOR_RED
+from Programma_CS2_RENAN.apps.desktop_app.theme import COLOR_YELLOW as _COLOR_YELLOW
+from Programma_CS2_RENAN.apps.desktop_app.theme import rating_color as _rating_color
+from Programma_CS2_RENAN.apps.desktop_app.theme import rating_label as _rating_label
 from Programma_CS2_RENAN.core.registry import registry
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -75,8 +73,10 @@ class MatchDetailScreen(MDScreen):
             self._show_placeholder("No match data available.")
             return
         self._populate_sections(
-            dict(stats), list(self._vm.rounds),
-            list(self._vm.insights), dict(self._vm.hltv_breakdown),
+            dict(stats),
+            list(self._vm.rounds),
+            list(self._vm.insights),
+            dict(self._vm.hltv_breakdown),
         )
 
     def _on_vm_error(self, instance, msg):

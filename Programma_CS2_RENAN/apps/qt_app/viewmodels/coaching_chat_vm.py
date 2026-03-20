@@ -31,9 +31,7 @@ class CoachingChatViewModel(QObject):
 
     def _ensure_engine(self):
         if self._engine is None:
-            from Programma_CS2_RENAN.backend.services.coaching_dialogue import (
-                get_dialogue_engine,
-            )
+            from Programma_CS2_RENAN.backend.services.coaching_dialogue import get_dialogue_engine
 
             self._engine = get_dialogue_engine()
 
@@ -118,14 +116,16 @@ class CoachingChatViewModel(QObject):
         elif not available:
             # Show a system message so the user knows why chat won't work
             with self._lock:
-                self._messages.append({
-                    "role": "system",
-                    "content": (
-                        "Coach is offline. Make sure Ollama is running:\n"
-                        "  1. ollama serve\n"
-                        "  2. ollama pull llama3.2:3b"
-                    ),
-                })
+                self._messages.append(
+                    {
+                        "role": "system",
+                        "content": (
+                            "Coach is offline. Make sure Ollama is running:\n"
+                            "  1. ollama serve\n"
+                            "  2. ollama pull llama3.2:3b"
+                        ),
+                    }
+                )
             self.messages_changed.emit(list(self._messages))
 
     def _on_session_started(self, opening):
@@ -147,9 +147,11 @@ class CoachingChatViewModel(QObject):
     def _on_error(self, msg):
         logger.error("coaching_chat_vm error: %s", msg)
         with self._lock:
-            self._messages.append({
-                "role": "system",
-                "content": f"Error: {msg}",
-            })
+            self._messages.append(
+                {
+                    "role": "system",
+                    "content": f"Error: {msg}",
+                }
+            )
         self.messages_changed.emit(list(self._messages))
         self.is_loading_changed.emit(False)

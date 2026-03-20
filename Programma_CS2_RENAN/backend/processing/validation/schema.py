@@ -79,9 +79,7 @@ def _validate_column_type(df, column, expected_type):
     if expected_type is int:
         non_integer_mask = df[column].dropna().mod(1) != 0
         if non_integer_mask.any():
-            logger.error(
-                "Column '%s' has non-integer float values where int is expected", column
-            )
+            logger.error("Column '%s' has non-integer float values where int is expected", column)
             raise TypeError(
                 f"Column '{column}' must contain integer values, but fractional values found"
             )

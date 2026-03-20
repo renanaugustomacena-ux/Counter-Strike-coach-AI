@@ -295,14 +295,10 @@ class PerformanceViewModel(EventDispatcher):
             sw = analytics.get_strength_weakness(player)
             utility = analytics.get_utility_breakdown(player)
 
-            Clock.schedule_once(
-                lambda dt: self._on_loaded(history, map_stats, sw, utility), 0
-            )
+            Clock.schedule_once(lambda dt: self._on_loaded(history, map_stats, sw, utility), 0)
         except Exception as e:
             logger.error("performance_vm.load_failed: %s", e)
-            Clock.schedule_once(
-                lambda dt: self._on_error("Error loading performance data."), 0
-            )
+            Clock.schedule_once(lambda dt: self._on_error("Error loading performance data."), 0)
         finally:
             # Guarantee is_loading resets even on early return or unexpected error
             Clock.schedule_once(lambda dt: setattr(self, "is_loading", False), 0)

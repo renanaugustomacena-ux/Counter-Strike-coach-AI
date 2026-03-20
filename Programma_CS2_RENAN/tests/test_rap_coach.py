@@ -13,7 +13,6 @@ Covers all 7 layers of the RAPCoachModel:
 
 import sys
 
-
 import pytest
 import torch
 
@@ -299,59 +298,82 @@ class TestRAPCoachModel:
 
     def test_forward_output_keys(self, rap_model, rap_inputs, torch_no_grad):
         out = rap_model(
-            rap_inputs["view"], rap_inputs["map"], rap_inputs["motion"],
-            rap_inputs["metadata"], rap_inputs["skill_vec"],
+            rap_inputs["view"],
+            rap_inputs["map"],
+            rap_inputs["motion"],
+            rap_inputs["metadata"],
+            rap_inputs["skill_vec"],
         )
-        expected_keys = {"advice_probs", "belief_state", "value_estimate",
-                         "gate_weights", "optimal_pos", "attribution",
-                         "hidden_state"}
+        expected_keys = {
+            "advice_probs",
+            "belief_state",
+            "value_estimate",
+            "gate_weights",
+            "optimal_pos",
+            "attribution",
+            "hidden_state",
+        }
         assert set(out.keys()) == expected_keys
 
     def test_advice_probs_shape(self, rap_model, rap_inputs, torch_no_grad):
         out = rap_model(
-            rap_inputs["view"], rap_inputs["map"], rap_inputs["motion"],
+            rap_inputs["view"],
+            rap_inputs["map"],
+            rap_inputs["motion"],
             rap_inputs["metadata"],
         )
         assert out["advice_probs"].shape == (2, 10)
 
     def test_belief_state_shape(self, rap_model, rap_inputs, torch_no_grad):
         out = rap_model(
-            rap_inputs["view"], rap_inputs["map"], rap_inputs["motion"],
+            rap_inputs["view"],
+            rap_inputs["map"],
+            rap_inputs["motion"],
             rap_inputs["metadata"],
         )
         assert out["belief_state"].shape == (2, 5, 64)
 
     def test_value_estimate_shape(self, rap_model, rap_inputs, torch_no_grad):
         out = rap_model(
-            rap_inputs["view"], rap_inputs["map"], rap_inputs["motion"],
+            rap_inputs["view"],
+            rap_inputs["map"],
+            rap_inputs["motion"],
             rap_inputs["metadata"],
         )
         assert out["value_estimate"].shape == (2, 1)
 
     def test_gate_weights_shape(self, rap_model, rap_inputs, torch_no_grad):
         out = rap_model(
-            rap_inputs["view"], rap_inputs["map"], rap_inputs["motion"],
+            rap_inputs["view"],
+            rap_inputs["map"],
+            rap_inputs["motion"],
             rap_inputs["metadata"],
         )
         assert out["gate_weights"].shape == (2, 4)
 
     def test_optimal_pos_shape(self, rap_model, rap_inputs, torch_no_grad):
         out = rap_model(
-            rap_inputs["view"], rap_inputs["map"], rap_inputs["motion"],
+            rap_inputs["view"],
+            rap_inputs["map"],
+            rap_inputs["motion"],
             rap_inputs["metadata"],
         )
         assert out["optimal_pos"].shape == (2, 3)
 
     def test_attribution_shape(self, rap_model, rap_inputs, torch_no_grad):
         out = rap_model(
-            rap_inputs["view"], rap_inputs["map"], rap_inputs["motion"],
+            rap_inputs["view"],
+            rap_inputs["map"],
+            rap_inputs["motion"],
             rap_inputs["metadata"],
         )
         assert out["attribution"].shape == (2, 5)
 
     def test_sparsity_loss_with_gate(self, rap_model, rap_inputs, torch_no_grad):
         out = rap_model(
-            rap_inputs["view"], rap_inputs["map"], rap_inputs["motion"],
+            rap_inputs["view"],
+            rap_inputs["map"],
+            rap_inputs["motion"],
             rap_inputs["metadata"],
         )
         loss = rap_model.compute_sparsity_loss(out["gate_weights"])
@@ -364,7 +386,9 @@ class TestRAPCoachModel:
 
     def test_no_nan_in_outputs(self, rap_model, rap_inputs, torch_no_grad):
         out = rap_model(
-            rap_inputs["view"], rap_inputs["map"], rap_inputs["motion"],
+            rap_inputs["view"],
+            rap_inputs["map"],
+            rap_inputs["motion"],
             rap_inputs["metadata"],
         )
         for key, tensor in out.items():
@@ -377,22 +401,27 @@ class TestRAPCoachModel:
         m1 = RAPCoachModel()
         m1.eval()
         with torch.no_grad():
-            out1 = m1(rap_inputs["view"], rap_inputs["map"], rap_inputs["motion"],
-                       rap_inputs["metadata"])
+            out1 = m1(
+                rap_inputs["view"], rap_inputs["map"], rap_inputs["motion"], rap_inputs["metadata"]
+            )
 
         torch.manual_seed(123)
         m2 = RAPCoachModel()
         m2.eval()
         with torch.no_grad():
-            out2 = m2(rap_inputs["view"], rap_inputs["map"], rap_inputs["motion"],
-                       rap_inputs["metadata"])
+            out2 = m2(
+                rap_inputs["view"], rap_inputs["map"], rap_inputs["motion"], rap_inputs["metadata"]
+            )
 
         assert torch.allclose(out1["advice_probs"], out2["advice_probs"], atol=1e-5)
 
     def test_without_skill_vec(self, rap_model, rap_inputs, torch_no_grad):
         out = rap_model(
-            rap_inputs["view"], rap_inputs["map"], rap_inputs["motion"],
-            rap_inputs["metadata"], skill_vec=None,
+            rap_inputs["view"],
+            rap_inputs["map"],
+            rap_inputs["motion"],
+            rap_inputs["metadata"],
+            skill_vec=None,
         )
         assert out["value_estimate"].shape == (2, 1)
 

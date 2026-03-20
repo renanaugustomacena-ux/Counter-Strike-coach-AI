@@ -295,13 +295,15 @@ class MatchDataManager:
 
             # Defensive check: verify only expected tables were created
             from sqlalchemy import inspect as sa_inspect
+
             created = set(sa_inspect(engine).get_table_names())
             expected = {t.name for t in _MATCH_TABLES}
             unexpected = created - expected
             if unexpected:
                 _logger.warning(
                     "R2-03: Unexpected tables in match DB %s: %s",
-                    match_id, unexpected,
+                    match_id,
+                    unexpected,
                 )
 
             self._engines[match_id] = engine
@@ -331,9 +333,7 @@ class MatchDataManager:
                 conn.commit()
 
             # Step 2: read current version (no row = new DB, schema is current)
-            row = conn.execute(
-                sa.text("SELECT schema_version FROM match_metadata LIMIT 1")
-            ).first()
+            row = conn.execute(sa.text("SELECT schema_version FROM match_metadata LIMIT 1")).first()
 
             if row is None:
                 return  # new DB, metadata not yet stored
@@ -360,9 +360,7 @@ class MatchDataManager:
                     {"v": current_version},
                 )
                 conn.commit()
-                _logger.info(
-                    "Match %s: migrated to schema v%d", match_id, current_version
-                )
+                _logger.info("Match %s: migrated to schema v%d", match_id, current_version)
 
     def get_engine(self, match_id: int):
         """Public API to get or create a SQLAlchemy engine for a match database."""

@@ -22,7 +22,6 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-
 # ---------------------------------------------------------------------------
 # Module-level state
 # ---------------------------------------------------------------------------
@@ -161,7 +160,8 @@ def _create_file_handler(log_path: str, formatter: logging.Formatter) -> logging
         handler = logging.FileHandler(log_path, mode="a", encoding="utf-8")
         logging.getLogger("cs2analyzer.logger_setup").warning(
             "[LS-01] RotatingFileHandler unavailable (PermissionError) — "
-            "using plain FileHandler for %s. Log rotation is disabled.", log_path,
+            "using plain FileHandler for %s. Log rotation is disabled.",
+            log_path,
         )
     handler.setFormatter(formatter)
     return handler
@@ -191,9 +191,7 @@ def get_logger(name: str) -> logging.Logger:
     log_dir = _log_dir or "logs"
     os.makedirs(log_dir, exist_ok=True)
 
-    file_handler = _create_file_handler(
-        os.path.join(log_dir, "cs2_analyzer.log"), formatter
-    )
+    file_handler = _create_file_handler(os.path.join(log_dir, "cs2_analyzer.log"), formatter)
 
     # Console handler uses human-readable format, WARNING threshold
     console_formatter = logging.Formatter(

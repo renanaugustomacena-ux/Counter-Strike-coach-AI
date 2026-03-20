@@ -8,8 +8,6 @@ Covers:
 """
 
 import sys
-
-
 from unittest.mock import patch
 
 import pytest
@@ -23,6 +21,7 @@ class TestProfileServiceGuards:
 
     def _make_service(self, steam_key="", faceit_key=""):
         from Programma_CS2_RENAN.backend.services.profile_service import ProfileService
+
         svc = ProfileService.__new__(ProfileService)
         svc.steam_key = steam_key
         svc.faceit_key = faceit_key
@@ -52,6 +51,7 @@ class TestParseSteamResponse:
 
     def _parse(self, resp, key="k", steam_id="12345"):
         from Programma_CS2_RENAN.backend.services.profile_service import _parse_steam_response
+
         return _parse_steam_response(resp, key, steam_id)
 
     def test_player_not_found(self):
@@ -66,7 +66,9 @@ class TestParseSteamResponse:
         result = self._parse({"response": {}})
         assert result["error"] == "Player not found"
 
-    @patch("Programma_CS2_RENAN.backend.services.profile_service._fetch_cs2_hours", return_value=1500.0)
+    @patch(
+        "Programma_CS2_RENAN.backend.services.profile_service._fetch_cs2_hours", return_value=1500.0
+    )
     def test_valid_response(self, mock_hours):
         resp = {
             "response": {

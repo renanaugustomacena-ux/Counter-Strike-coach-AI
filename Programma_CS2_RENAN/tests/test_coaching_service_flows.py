@@ -9,8 +9,6 @@ Uses in-memory SQLite with monkeypatched get_db_manager for CI portability.
 """
 
 import sys
-
-
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from unittest.mock import patch
@@ -19,7 +17,6 @@ import pytest
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from Programma_CS2_RENAN.backend.storage.db_models import CoachingInsight, PlayerMatchStats
-
 
 # ============ Fixtures ============
 
@@ -58,8 +55,13 @@ def mock_db(db_engine):
 @pytest.fixture
 def coaching_service(mock_db):
     """CoachingService with in-memory DB and controlled settings."""
-    with patch("Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager", return_value=mock_db), \
-         patch("Programma_CS2_RENAN.backend.services.coaching_service.get_setting") as mock_setting:
+    with (
+        patch(
+            "Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager",
+            return_value=mock_db,
+        ),
+        patch("Programma_CS2_RENAN.backend.services.coaching_service.get_setting") as mock_setting,
+    ):
 
         def setting_side_effect(key, default=None):
             return {
@@ -124,7 +126,9 @@ class TestFormatCoperMessage:
             focus_area="aim",
             experiences_used=2,
         )
-        msg = coaching_service._format_coper_message(advice, baseline_note="Your HS is 15% below pro.")
+        msg = coaching_service._format_coper_message(
+            advice, baseline_note="Your HS is 15% below pro."
+        )
         assert "Your HS is 15% below pro." in msg
 
     def test_zero_confidence_displayed(self, coaching_service):
@@ -151,8 +155,14 @@ class TestTraditionalCoachin:
 
     def test_generate_new_insights_traditional_saves_to_db(self, coaching_service, mock_db):
         """Traditional mode saves correction insights to DB."""
-        with patch("Programma_CS2_RENAN.backend.services.coaching_service.generate_corrections") as mock_corr, \
-             patch("Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer") as mock_writer:
+        with (
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.generate_corrections"
+            ) as mock_corr,
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer"
+            ) as mock_writer,
+        ):
 
             mock_corr.return_value = [
                 {"feature": "avg_adr", "weighted_z": -2.5},
@@ -179,8 +189,14 @@ class TestTraditionalCoachin:
 
     def test_empty_deviations_empty_corrections(self, coaching_service, mock_db):
         """Empty deviations produce zero corrections."""
-        with patch("Programma_CS2_RENAN.backend.services.coaching_service.generate_corrections") as mock_corr, \
-             patch("Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer") as mock_writer:
+        with (
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.generate_corrections"
+            ) as mock_corr,
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer"
+            ) as mock_writer,
+        ):
 
             mock_corr.return_value = []
             mock_writer.return_value.polish.return_value = "polished"
@@ -207,10 +223,21 @@ class TestCoperFallbackChain:
 
     def test_coper_failure_falls_back_to_traditional(self, mock_db):
         """When COPER throws, fallback to traditional coaching."""
-        with patch("Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager", return_value=mock_db), \
-             patch("Programma_CS2_RENAN.backend.services.coaching_service.get_setting") as mock_setting, \
-             patch("Programma_CS2_RENAN.backend.services.coaching_service.generate_corrections") as mock_corr, \
-             patch("Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer") as mock_writer:
+        with (
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager",
+                return_value=mock_db,
+            ),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_setting"
+            ) as mock_setting,
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.generate_corrections"
+            ) as mock_corr,
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer"
+            ) as mock_writer,
+        ):
 
             def setting_side_effect(key, default=None):
                 return {
@@ -252,10 +279,21 @@ class TestCoperFallbackChain:
         completes normally (no fallback to traditional). This is by design:
         invalid tick_data is logged as a warning and silently skipped.
         """
-        with patch("Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager", return_value=mock_db), \
-             patch("Programma_CS2_RENAN.backend.services.coaching_service.get_setting") as mock_setting, \
-             patch("Programma_CS2_RENAN.backend.services.coaching_service.generate_corrections") as mock_corr, \
-             patch("Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer") as mock_writer:
+        with (
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager",
+                return_value=mock_db,
+            ),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_setting"
+            ) as mock_setting,
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.generate_corrections"
+            ) as mock_corr,
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer"
+            ) as mock_writer,
+        ):
 
             def setting_side_effect(key, default=None):
                 return {
@@ -298,14 +336,26 @@ class TestGetLatestInsights:
     def test_returns_correct_player(self, coaching_service, mock_db):
         """Only returns insights for the requested player."""
         with mock_db.get_session() as session:
-            session.add(CoachingInsight(
-                player_name="PlayerA", demo_name="a.dem",
-                title="T1", severity="Medium", message="M1", focus_area="aim",
-            ))
-            session.add(CoachingInsight(
-                player_name="PlayerB", demo_name="b.dem",
-                title="T2", severity="Medium", message="M2", focus_area="aim",
-            ))
+            session.add(
+                CoachingInsight(
+                    player_name="PlayerA",
+                    demo_name="a.dem",
+                    title="T1",
+                    severity="Medium",
+                    message="M1",
+                    focus_area="aim",
+                )
+            )
+            session.add(
+                CoachingInsight(
+                    player_name="PlayerB",
+                    demo_name="b.dem",
+                    title="T2",
+                    severity="Medium",
+                    message="M2",
+                    focus_area="aim",
+                )
+            )
 
         results = coaching_service.get_latest_insights("PlayerA")
         assert len(results) == 1
@@ -315,10 +365,16 @@ class TestGetLatestInsights:
         """Limit parameter restricts result count."""
         with mock_db.get_session() as session:
             for i in range(10):
-                session.add(CoachingInsight(
-                    player_name="TestP", demo_name=f"d{i}.dem",
-                    title=f"T{i}", severity="Medium", message=f"M{i}", focus_area="aim",
-                ))
+                session.add(
+                    CoachingInsight(
+                        player_name="TestP",
+                        demo_name=f"d{i}.dem",
+                        title=f"T{i}",
+                        severity="Medium",
+                        message=f"M{i}",
+                        focus_area="aim",
+                    )
+                )
 
         results = coaching_service.get_latest_insights("TestP", limit=3)
         assert len(results) == 3
@@ -329,13 +385,21 @@ class TestGetLatestInsights:
 
         with mock_db.get_session() as session:
             older = CoachingInsight(
-                player_name="TestP", demo_name="old.dem",
-                title="Old", severity="Medium", message="old", focus_area="aim",
+                player_name="TestP",
+                demo_name="old.dem",
+                title="Old",
+                severity="Medium",
+                message="old",
+                focus_area="aim",
                 created_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
             )
             newer = CoachingInsight(
-                player_name="TestP", demo_name="new.dem",
-                title="New", severity="Medium", message="new", focus_area="aim",
+                player_name="TestP",
+                demo_name="new.dem",
+                title="New",
+                severity="Medium",
+                message="new",
+                focus_area="aim",
                 created_at=datetime(2024, 6, 1, tzinfo=timezone.utc),
             )
             session.add(older)
@@ -354,10 +418,14 @@ class TestSaveCorrections:
 
     def test_saves_basic_correction(self, mock_db):
         """Basic correction creates CoachingInsight with correct fields."""
-        with patch("Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer") as mock_writer:
+        with patch(
+            "Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer"
+        ) as mock_writer:
             mock_writer.return_value.polish.side_effect = lambda **kw: kw.get("message", "polished")
 
-            from Programma_CS2_RENAN.backend.services.coaching_service import _save_corrections_as_insights
+            from Programma_CS2_RENAN.backend.services.coaching_service import (
+                _save_corrections_as_insights,
+            )
 
             corrections = [{"feature": "avg_adr", "weighted_z": -2.5}]
             _save_corrections_as_insights(mock_db, "Player1", "demo.dem", corrections)
@@ -371,10 +439,14 @@ class TestSaveCorrections:
 
     def test_saves_rag_correction(self, mock_db):
         """RAG-enhanced correction uses rag_title and rag_description."""
-        with patch("Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer") as mock_writer:
+        with patch(
+            "Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer"
+        ) as mock_writer:
             mock_writer.return_value.polish.side_effect = lambda **kw: kw.get("message", "polished")
 
-            from Programma_CS2_RENAN.backend.services.coaching_service import _save_corrections_as_insights
+            from Programma_CS2_RENAN.backend.services.coaching_service import (
+                _save_corrections_as_insights,
+            )
 
             corrections = [
                 {
@@ -395,10 +467,14 @@ class TestSaveCorrections:
 
     def test_severity_medium_for_small_z(self, mock_db):
         """Z-score < 2 → severity Medium."""
-        with patch("Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer") as mock_writer:
+        with patch(
+            "Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer"
+        ) as mock_writer:
             mock_writer.return_value.polish.side_effect = lambda **kw: kw.get("message", "polished")
 
-            from Programma_CS2_RENAN.backend.services.coaching_service import _save_corrections_as_insights
+            from Programma_CS2_RENAN.backend.services.coaching_service import (
+                _save_corrections_as_insights,
+            )
 
             corrections = [{"feature": "avg_hs", "weighted_z": -1.5}]
             _save_corrections_as_insights(mock_db, "P", "d.dem", corrections)
@@ -409,10 +485,14 @@ class TestSaveCorrections:
 
     def test_severity_high_for_large_z(self, mock_db):
         """Z-score >= 2 → severity High."""
-        with patch("Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer") as mock_writer:
+        with patch(
+            "Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer"
+        ) as mock_writer:
             mock_writer.return_value.polish.side_effect = lambda **kw: kw.get("message", "polished")
 
-            from Programma_CS2_RENAN.backend.services.coaching_service import _save_corrections_as_insights
+            from Programma_CS2_RENAN.backend.services.coaching_service import (
+                _save_corrections_as_insights,
+            )
 
             corrections = [{"feature": "avg_adr", "weighted_z": -3.0}]
             _save_corrections_as_insights(mock_db, "P", "d.dem", corrections)
@@ -431,12 +511,18 @@ class TestLongitudinalCoaching:
     def test_not_enough_history_no_insights(self, coaching_service, mock_db):
         """< 3 matches → no longitudinal insights generated."""
         with mock_db.get_session() as session:
-            session.add(PlayerMatchStats(
-                player_name="TestP", demo_name="d1.dem",
-                avg_kills=20.0, avg_adr=85.0, avg_kast=0.70, accuracy=0.28,
-                match_date=datetime(2024, 6, 1, tzinfo=timezone.utc),
-                processed_at=datetime(2024, 6, 1, tzinfo=timezone.utc),
-            ))
+            session.add(
+                PlayerMatchStats(
+                    player_name="TestP",
+                    demo_name="d1.dem",
+                    avg_kills=20.0,
+                    avg_adr=85.0,
+                    avg_kast=0.70,
+                    accuracy=0.28,
+                    match_date=datetime(2024, 6, 1, tzinfo=timezone.utc),
+                    processed_at=datetime(2024, 6, 1, tzinfo=timezone.utc),
+                )
+            )
 
         coaching_service._run_longitudinal_coaching("TestP", "d1.dem")
 
@@ -450,16 +536,18 @@ class TestLongitudinalCoaching:
         """>= 3 matches should attempt longitudinal analysis without crash."""
         with mock_db.get_session() as session:
             for i in range(5):
-                session.add(PlayerMatchStats(
-                    player_name="TestP",
-                    demo_name=f"d{i}.dem",
-                    avg_kills=18.0 + i,
-                    avg_adr=75.0 + i * 2,
-                    avg_kast=0.65 + i * 0.02,
-                    accuracy=0.24 + i * 0.01,
-                    match_date=datetime(2024, 6, i + 1, tzinfo=timezone.utc),
-                    processed_at=datetime(2024, 6, i + 1, tzinfo=timezone.utc),
-                ))
+                session.add(
+                    PlayerMatchStats(
+                        player_name="TestP",
+                        demo_name=f"d{i}.dem",
+                        avg_kills=18.0 + i,
+                        avg_adr=75.0 + i * 2,
+                        avg_kast=0.65 + i * 0.02,
+                        accuracy=0.24 + i * 0.01,
+                        match_date=datetime(2024, 6, i + 1, tzinfo=timezone.utc),
+                        processed_at=datetime(2024, 6, i + 1, tzinfo=timezone.utc),
+                    )
+                )
 
         # Should not crash; may or may not produce insights depending on trend
         coaching_service._run_longitudinal_coaching("TestP", "d4.dem")

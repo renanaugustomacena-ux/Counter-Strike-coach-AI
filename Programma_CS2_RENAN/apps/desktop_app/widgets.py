@@ -99,9 +99,7 @@ class RadarChartWidget(MatplotlibWidget):
         values = list(skill_dict.values())
 
         if len(metrics) < 3:  # F7-36: radar chart needs at least 3 points for a meaningful polygon
-            _logger.warning(
-                "RadarChartWidget: need at least 3 attributes, got %s", len(metrics)
-            )
+            _logger.warning("RadarChartWidget: need at least 3 attributes, got %s", len(metrics))
             self.texture = None
             return
 

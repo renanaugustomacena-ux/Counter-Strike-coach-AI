@@ -7,7 +7,6 @@ using fields that actually feed into calculate_skill_vector.
 
 import sys
 
-
 import pytest
 import torch
 
@@ -188,4 +187,3 @@ class TestSkillTensor:
         for i in range(10):
             if i != level - 1:
                 assert tensor[0, i].item() == 0.0
-

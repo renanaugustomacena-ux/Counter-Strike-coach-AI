@@ -79,8 +79,11 @@ def phase_1_data_discovery():
 
         # 1b. Ticks per demo
         from sqlalchemy import text
+
         demo_ticks = session.exec(
-            text("SELECT demo_name, COUNT(*) as cnt FROM playertickstate GROUP BY demo_name ORDER BY cnt DESC")
+            text(
+                "SELECT demo_name, COUNT(*) as cnt FROM playertickstate GROUP BY demo_name ORDER BY cnt DESC"
+            )
         ).fetchall()
         print("\n  Ticks per demo:")
         for demo_name, cnt in demo_ticks:
@@ -121,7 +124,11 @@ def phase_1_data_discovery():
                 f"SELECT COUNT(*) FROM playertickstate WHERE demo_name IN ({placeholders})"
             )
             train_ticks = session.exec(train_tick_query, params=params).one()[0]
-            check("TRAIN split has tick data", train_ticks > 0, f"{train_ticks:,} ticks available for training")
+            check(
+                "TRAIN split has tick data",
+                train_ticks > 0,
+                f"{train_ticks:,} ticks available for training",
+            )
             results["train_ticks"] = train_ticks
         else:
             check("TRAIN split has tick data", False, "No TRAIN demos found!")
@@ -129,9 +136,7 @@ def phase_1_data_discovery():
 
         # 1e. Check UNASSIGNED demos (pipeline gap)
         unassigned = session.exec(
-            select(PlayerMatchStats.demo_name).where(
-                PlayerMatchStats.dataset_split == "UNASSIGNED"
-            )
+            select(PlayerMatchStats.demo_name).where(PlayerMatchStats.dataset_split == "UNASSIGNED")
         ).all()
         if unassigned:
             print(f"\n  ⚠ UNASSIGNED demos (pipeline gap): {list(set(unassigned))}")
@@ -163,12 +168,14 @@ def phase_2_feature_extraction(demo_name: str):
     with db.get_session() as session:
         # Load a sample of ticks from the target demo
         ticks = session.exec(
-            select(PlayerTickState)
-            .where(PlayerTickState.demo_name == demo_name)
-            .limit(100)
+            select(PlayerTickState).where(PlayerTickState.demo_name == demo_name).limit(100)
         ).all()
 
-        check("Ticks loaded for feature extraction", len(ticks) > 0, f"{len(ticks)} ticks from '{demo_name}'")
+        check(
+            "Ticks loaded for feature extraction",
+            len(ticks) > 0,
+            f"{len(ticks)} ticks from '{demo_name}'",
+        )
         if not ticks:
             return results
 
@@ -309,12 +316,19 @@ def phase_4_jepa_training():
             epoch = kwargs.get("epoch", 0)
             train_loss = kwargs.get("train_loss", 0.0)
             val_loss = kwargs.get("val_loss", 0.0)
-            print(f"  [CALLBACK] on_epoch_end: epoch={epoch}, train_loss={train_loss:.6f}, val_loss={val_loss:.6f}")
-            self.events.append(("epoch_end", {
-                "epoch": epoch,
-                "train_loss": train_loss,
-                "val_loss": val_loss,
-            }))
+            print(
+                f"  [CALLBACK] on_epoch_end: epoch={epoch}, train_loss={train_loss:.6f}, val_loss={val_loss:.6f}"
+            )
+            self.events.append(
+                (
+                    "epoch_end",
+                    {
+                        "epoch": epoch,
+                        "train_loss": train_loss,
+                        "val_loss": val_loss,
+                    },
+                )
+            )
 
         def on_train_end(self, **kwargs):
             metrics = kwargs.get("final_metrics", {})
@@ -449,7 +463,9 @@ def phase_6_knowledge():
 
         # Coach State
         try:
-            state = session.exec(text("SELECT status, detail, last_trained_sample_count FROM coachstate")).one()
+            state = session.exec(
+                text("SELECT status, detail, last_trained_sample_count FROM coachstate")
+            ).one()
             print(f"\n  Coach State:")
             print(f"    Status: {state[0]}")
             print(f"    Detail: {state[1]}")
@@ -476,6 +492,7 @@ def main():
     # Find the best available demo with TRAIN split
     target_demo = None
     from sqlmodel import select
+
     from Programma_CS2_RENAN.backend.storage.database import get_db_manager
     from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
 
@@ -529,7 +546,9 @@ def main():
         print("  ✓ Pipeline executed a complete training cycle!")
         if train_results.get("losses"):
             print(f"    Batches: {len(train_results['losses'])}")
-            print(f"    Loss range: [{min(train_results['losses']):.6f}, {max(train_results['losses']):.6f}]")
+            print(
+                f"    Loss range: [{min(train_results['losses']):.6f}, {max(train_results['losses']):.6f}]"
+            )
     else:
         print("  ✗ Training cycle did NOT complete successfully")
         if "error" in train_results:

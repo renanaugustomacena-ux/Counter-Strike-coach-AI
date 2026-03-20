@@ -10,7 +10,6 @@ Covers:
 
 import sys
 
-
 import numpy as np
 import pytest
 import torch
@@ -24,6 +23,7 @@ class TestNeuralRoleHead:
 
     def _make_model(self):
         from Programma_CS2_RENAN.backend.nn.role_head import NeuralRoleHead
+
         return NeuralRoleHead()
 
     def test_forward_shape(self):
@@ -55,6 +55,7 @@ class TestNeuralRoleHead:
 
     def test_constants(self):
         from Programma_CS2_RENAN.backend.nn.role_head import NeuralRoleHead
+
         assert NeuralRoleHead.ROLE_INPUT_DIM == 5
         assert NeuralRoleHead.ROLE_OUTPUT_DIM == 5
 
@@ -65,6 +66,7 @@ class TestNeuralRoleHead:
             MIN_TRAINING_SAMPLES,
             ROLE_OUTPUT_ORDER,
         )
+
         assert FLEX_CONFIDENCE_THRESHOLD == 0.35
         assert MIN_TRAINING_SAMPLES == 20
         assert LABEL_SMOOTHING_EPS == 0.02
@@ -72,6 +74,7 @@ class TestNeuralRoleHead:
 
     def test_custom_dimensions(self):
         from Programma_CS2_RENAN.backend.nn.role_head import NeuralRoleHead
+
         model = NeuralRoleHead(input_dim=10, hidden_dim=64, output_dim=3)
         x = torch.randn(2, 10)
         out = model(x)
@@ -91,6 +94,7 @@ class TestExtractRoleFeaturesFromStats:
 
     def test_valid_stats(self):
         from Programma_CS2_RENAN.backend.nn.role_head import extract_role_features_from_stats
+
         stats = {
             "rounds_played": 100,
             "rounds_survived": 45,
@@ -105,16 +109,19 @@ class TestExtractRoleFeaturesFromStats:
 
     def test_zero_rounds_returns_none(self):
         from Programma_CS2_RENAN.backend.nn.role_head import extract_role_features_from_stats
+
         result = extract_role_features_from_stats({"rounds_played": 0})
         assert result is None
 
     def test_missing_rounds_returns_none(self):
         from Programma_CS2_RENAN.backend.nn.role_head import extract_role_features_from_stats
+
         result = extract_role_features_from_stats({})
         assert result is None
 
     def test_missing_optional_stats_use_defaults(self):
         from Programma_CS2_RENAN.backend.nn.role_head import extract_role_features_from_stats
+
         stats = {"rounds_played": 50}
         result = extract_role_features_from_stats(stats)
         assert result is not None
@@ -129,6 +136,7 @@ class TestNNConfig:
 
     def test_get_device_returns_torch_device(self):
         from Programma_CS2_RENAN.backend.nn.config import get_device
+
         dev = get_device()
         assert isinstance(dev, torch.device)
 
@@ -142,6 +150,7 @@ class TestNNConfig:
             OUTPUT_DIM,
             WEIGHT_CLAMP,
         )
+
         assert BATCH_SIZE == 32
         assert INPUT_DIM > 0
         assert OUTPUT_DIM == 10
@@ -152,18 +161,21 @@ class TestNNConfig:
 
     def test_get_throttling_delay(self):
         from Programma_CS2_RENAN.backend.nn.config import get_throttling_delay
+
         delay = get_throttling_delay()
         assert isinstance(delay, float)
         assert delay >= 0.0
 
     def test_get_intensity_batch_size(self):
         from Programma_CS2_RENAN.backend.nn.config import get_intensity_batch_size
+
         bs = get_intensity_batch_size()
         assert isinstance(bs, int)
         assert bs > 0
 
     def test_integrated_gpu_keywords(self):
         from Programma_CS2_RENAN.backend.nn.config import _INTEGRATED_GPU_KEYWORDS
+
         assert "uhd" in _INTEGRATED_GPU_KEYWORDS
         assert "iris" in _INTEGRATED_GPU_KEYWORDS
 
@@ -176,6 +188,7 @@ class TestProPerformanceDataset:
 
     def test_from_tensors(self):
         from Programma_CS2_RENAN.backend.nn.dataset import ProPerformanceDataset
+
         X = torch.randn(10, 25)
         y = torch.randn(10, 4)
         ds = ProPerformanceDataset(X, y)
@@ -186,6 +199,7 @@ class TestProPerformanceDataset:
 
     def test_from_numpy(self):
         from Programma_CS2_RENAN.backend.nn.dataset import ProPerformanceDataset
+
         X = np.random.randn(5, 10).astype(np.float32)
         y = np.random.randn(5, 3).astype(np.float32)
         ds = ProPerformanceDataset(X, y)
@@ -193,6 +207,7 @@ class TestProPerformanceDataset:
 
     def test_dtype_is_float32(self):
         from Programma_CS2_RENAN.backend.nn.dataset import ProPerformanceDataset
+
         X = torch.randn(3, 5)
         y = torch.randn(3, 2)
         ds = ProPerformanceDataset(X, y)
@@ -205,12 +220,14 @@ class TestSelfSupervisedDataset:
 
     def test_basic_creation(self):
         from Programma_CS2_RENAN.backend.nn.dataset import SelfSupervisedDataset
+
         X = torch.randn(50, 25)
         ds = SelfSupervisedDataset(X, context_len=10, prediction_len=5)
         assert len(ds) == 35  # 50 - 10 - 5
 
     def test_getitem_shapes(self):
         from Programma_CS2_RENAN.backend.nn.dataset import SelfSupervisedDataset
+
         X = torch.randn(30, 10)
         ds = SelfSupervisedDataset(X, context_len=8, prediction_len=4)
         context, target = ds[0]
@@ -219,12 +236,14 @@ class TestSelfSupervisedDataset:
 
     def test_too_short_raises_error(self):
         from Programma_CS2_RENAN.backend.nn.dataset import SelfSupervisedDataset
+
         X = torch.randn(10, 5)
         with pytest.raises(ValueError, match="too short"):
             SelfSupervisedDataset(X, context_len=10, prediction_len=5)
 
     def test_from_numpy(self):
         from Programma_CS2_RENAN.backend.nn.dataset import SelfSupervisedDataset
+
         X = np.random.randn(40, 15).astype(np.float32)
         ds = SelfSupervisedDataset(X, context_len=10, prediction_len=5)
         assert len(ds) == 25
@@ -238,6 +257,7 @@ class TestCoachNNConfig:
 
     def test_defaults(self):
         from Programma_CS2_RENAN.backend.nn.model import CoachNNConfig
+
         cfg = CoachNNConfig()
         assert cfg.hidden_dim == 128
         assert cfg.num_experts == 3
@@ -247,6 +267,7 @@ class TestCoachNNConfig:
 
     def test_custom(self):
         from Programma_CS2_RENAN.backend.nn.model import CoachNNConfig
+
         cfg = CoachNNConfig(hidden_dim=64, num_experts=5, dropout=0.3)
         assert cfg.hidden_dim == 64
         assert cfg.num_experts == 5
@@ -258,10 +279,12 @@ class TestAdvancedCoachNN:
     def _make_model(self, **kwargs):
         from Programma_CS2_RENAN.backend.nn.model import AdvancedCoachNN
         from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
+
         return AdvancedCoachNN(input_dim=METADATA_DIM, output_dim=METADATA_DIM, **kwargs)
 
     def test_forward_3d_input(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
+
         model = self._make_model()
         x = torch.randn(2, 5, METADATA_DIM)
         out = model(x)
@@ -269,6 +292,7 @@ class TestAdvancedCoachNN:
 
     def test_forward_2d_input(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
+
         model = self._make_model()
         x = torch.randn(2, METADATA_DIM)
         out = model(x)
@@ -276,6 +300,7 @@ class TestAdvancedCoachNN:
 
     def test_forward_with_role_id(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
+
         model = self._make_model()
         x = torch.randn(2, 5, METADATA_DIM)
         out = model(x, role_id=1)
@@ -283,6 +308,7 @@ class TestAdvancedCoachNN:
 
     def test_forward_output_bounded(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
+
         model = self._make_model()
         x = torch.randn(4, 5, METADATA_DIM)
         out = model(x)
@@ -292,6 +318,7 @@ class TestAdvancedCoachNN:
 
     def test_from_config(self):
         from Programma_CS2_RENAN.backend.nn.model import AdvancedCoachNN, CoachNNConfig
+
         cfg = CoachNNConfig(hidden_dim=64, num_experts=2)
         model = AdvancedCoachNN(config=cfg)
         x = torch.randn(2, 5, cfg.input_dim)
@@ -300,9 +327,11 @@ class TestAdvancedCoachNN:
 
     def test_role_id_out_of_bounds_clamps(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
+
         model = self._make_model()
         x = torch.randn(2, 5, METADATA_DIM)
         import warnings
+
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)
             out = model(x, role_id=99)
@@ -310,9 +339,11 @@ class TestAdvancedCoachNN:
 
     def test_validate_input_dim_1d_raises(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
+
         model = self._make_model()
         x = torch.randn(METADATA_DIM)
         import pytest
+
         with pytest.raises(ValueError, match="at least 2 dims"):
             model(x)
 
@@ -323,11 +354,13 @@ class TestModelManager:
     def test_save_version(self, tmp_path):
         from Programma_CS2_RENAN.backend.nn.model import AdvancedCoachNN, ModelManager
         from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
+
         mgr = ModelManager(model_dir=str(tmp_path))
         model = AdvancedCoachNN(input_dim=METADATA_DIM, output_dim=METADATA_DIM)
         path = mgr.save_version(model, {"loss": 0.05})
         assert path.endswith(".pt")
         import os
+
         assert os.path.exists(path)
         # Metadata JSON should also exist
         meta_path = path.replace(".pt", ".json")
@@ -335,9 +368,11 @@ class TestModelManager:
 
     def test_model_dir_created(self, tmp_path):
         from Programma_CS2_RENAN.backend.nn.model import ModelManager
+
         model_dir = str(tmp_path / "new_models")
         mgr = ModelManager(model_dir=model_dir)
         import os
+
         assert os.path.isdir(model_dir)
 
 
@@ -346,4 +381,5 @@ class TestTeacherRefinementNNAlias:
 
     def test_alias_exists(self):
         from Programma_CS2_RENAN.backend.nn.model import AdvancedCoachNN, TeacherRefinementNN
+
         assert TeacherRefinementNN is AdvancedCoachNN

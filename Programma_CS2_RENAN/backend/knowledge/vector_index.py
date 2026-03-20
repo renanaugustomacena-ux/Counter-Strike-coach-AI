@@ -35,6 +35,7 @@ def _deserialize_embedding(raw: str) -> np.ndarray:
         return np.array(json.loads(raw), dtype=np.float32)
     return np.frombuffer(base64.b64decode(raw), dtype=np.float32)
 
+
 try:
     import faiss
 
@@ -153,7 +154,9 @@ class VectorIndexManager:
             return 0
 
         self._build_index(index_name, ids, embeddings)
-        logger.info("Built '%s' index: %d vectors (%d-dim)", index_name, len(ids), embeddings.shape[1])
+        logger.info(
+            "Built '%s' index: %d vectors (%d-dim)", index_name, len(ids), embeddings.shape[1]
+        )
         return len(ids)
 
     def mark_dirty(self, index_name: str) -> None:
@@ -167,9 +170,7 @@ class VectorIndexManager:
 
     # ── Internal: Index Build ───────────────────────────────────────────
 
-    def _build_index(
-        self, index_name: str, ids: np.ndarray, embeddings: np.ndarray
-    ) -> None:
+    def _build_index(self, index_name: str, ids: np.ndarray, embeddings: np.ndarray) -> None:
         """Build FAISS IndexFlatIP from vectors and persist."""
         dim = embeddings.shape[1]
 
@@ -217,9 +218,7 @@ class VectorIndexManager:
                     id_map = np.load(str(ids_path))
                     self._indexes[name] = idx
                     self._id_maps[name] = id_map
-                    logger.info(
-                        "Loaded '%s' index from disk: %d vectors", name, idx.ntotal
-                    )
+                    logger.info("Loaded '%s' index from disk: %d vectors", name, idx.ntotal)
                 except Exception as e:
                     logger.warning("Failed to load '%s' index: %s", name, e)
 

@@ -20,8 +20,8 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 
 from Programma_CS2_RENAN.core.constants import (
-    FOV_DEGREES,
     FLASH_DURATION_TICKS,
+    FOV_DEGREES,
     MEMORY_CUTOFF_TICKS,
     MEMORY_DECAY_TAU_TICKS,
     Z_FLOOR_THRESHOLD,
@@ -532,7 +532,7 @@ class PlayerKnowledgeBuilder:
         """
         # Active utility: start events without matching end events
         # C-10: Time-based expiry constants (in ticks at 64 Hz)
-        SMOKE_MAX_TICKS = 18 * 64   # 18 seconds
+        SMOKE_MAX_TICKS = 18 * 64  # 18 seconds
         MOLOTOV_MAX_TICKS = 7 * 64  # 7 seconds
 
         active_starts = {}  # entity_id -> event

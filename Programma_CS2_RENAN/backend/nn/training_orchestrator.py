@@ -92,9 +92,9 @@ class TrainingOrchestrator:
             )
             try:
                 from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
+
                 get_state_manager().add_notification(
-                    "training", "WARNING",
-                    "Training on CPU (no GPU detected). This will be slow."
+                    "training", "WARNING", "Training on CPU (no GPU detected). This will be slow."
                 )
             except Exception:
                 pass  # Non-fatal — don't block training over a notification
@@ -158,7 +158,8 @@ class TrainingOrchestrator:
             logger.error(
                 "P3-C: Training aborted — only %d samples (minimum %d required). "
                 "Ingest more demos before training.",
-                total_train_samples, _MIN_TRAINING_SAMPLES,
+                total_train_samples,
+                _MIN_TRAINING_SAMPLES,
             )
             return
 
@@ -238,7 +239,9 @@ class TrainingOrchestrator:
                 logger.error(
                     "P3-C: Training ABORTED — aggregate zero-tensor fallback rate %.1f%% "
                     "(%d/%d samples) exceeds 30%% threshold. Match databases may be missing.",
-                    rate, self._total_fallbacks, self._total_samples,
+                    rate,
+                    self._total_fallbacks,
+                    self._total_samples,
                 )
                 return
             level = logger.warning if rate > 10 else logger.info
@@ -284,9 +287,7 @@ class TrainingOrchestrator:
         else:
             # P7: RAP uses windowed data — each window is a contiguous
             # 320-tick segment from a single match, already a batch.
-            windows = self.manager._fetch_rap_windows(
-                is_pro=is_pro, split=split
-            )
+            windows = self.manager._fetch_rap_windows(is_pro=is_pro, split=split)
             return windows if windows else []
 
     def _run_epoch(self, trainer, batches, is_train=True, context=None):
@@ -439,7 +440,8 @@ class TrainingOrchestrator:
             else:
                 logger.debug(
                     "JEPA batch too small for contrastive negatives (%d < %d) — skipping batch",
-                    b, n_neg,
+                    b,
+                    n_neg,
                 )
                 return None
 
@@ -448,7 +450,7 @@ class TrainingOrchestrator:
             for i in range(0, b, step):
                 self._neg_pool.append(features_tensor[i].detach().cpu())
             if len(self._neg_pool) > self._neg_pool_max:
-                self._neg_pool = self._neg_pool[-self._neg_pool_max:]
+                self._neg_pool = self._neg_pool[-self._neg_pool_max :]
 
             result = {"context": context, "target": target, "negatives": negatives}
 

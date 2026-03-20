@@ -9,7 +9,6 @@ No MagicMock, no @patch on non-HTTP targets.
 import sys
 from pathlib import Path
 
-
 import pandas as pd
 import pytest
 
@@ -183,4 +182,3 @@ class TestDemoParserIntegration:
         if not result.empty:
             assert "health" in result.columns
             assert "X" in result.columns
-

@@ -8,13 +8,11 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.screen import MDScreen
 
 from Programma_CS2_RENAN.apps.desktop_app.data_viewmodels import PerformanceViewModel
-from Programma_CS2_RENAN.apps.desktop_app.theme import (
-    COLOR_CARD_BG as _COLOR_CARD_BG,
-    COLOR_GREEN as _COLOR_GREEN,
-    COLOR_RED as _COLOR_RED,
-    rating_color as _rating_color,
-    rating_label as _rating_label,
-)
+from Programma_CS2_RENAN.apps.desktop_app.theme import COLOR_CARD_BG as _COLOR_CARD_BG
+from Programma_CS2_RENAN.apps.desktop_app.theme import COLOR_GREEN as _COLOR_GREEN
+from Programma_CS2_RENAN.apps.desktop_app.theme import COLOR_RED as _COLOR_RED
+from Programma_CS2_RENAN.apps.desktop_app.theme import rating_color as _rating_color
+from Programma_CS2_RENAN.apps.desktop_app.theme import rating_label as _rating_label
 from Programma_CS2_RENAN.core.registry import registry
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -40,8 +38,10 @@ class PerformanceScreen(MDScreen):
     def _on_vm_data_changed(self, instance, history):
         # DA-PS-01: Always call _populate — it handles empty data with a placeholder
         self._populate(
-            list(history), dict(self._vm.map_stats),
-            dict(self._vm.strength_weakness), dict(self._vm.utility),
+            list(history),
+            dict(self._vm.map_stats),
+            dict(self._vm.strength_weakness),
+            dict(self._vm.utility),
         )
 
     def _on_vm_error(self, instance, msg):

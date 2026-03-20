@@ -11,7 +11,6 @@ import re
 import sys
 from pathlib import Path
 
-
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent

@@ -1,12 +1,6 @@
 """Momentum chart — cumulative K-D delta with green/red fill."""
 
-from PySide6.QtCharts import (
-    QAreaSeries,
-    QChart,
-    QChartView,
-    QLineSeries,
-    QValueAxis,
-)
+from PySide6.QtCharts import QAreaSeries, QChart, QChartView, QLineSeries, QValueAxis
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QBrush, QColor, QPainter, QPen
 

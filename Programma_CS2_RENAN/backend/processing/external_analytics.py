@@ -26,8 +26,13 @@ class EliteAnalytics:
         self._loaded_dataset_count = sum(
             1
             for df in [
-                self.players_df, self.match_players_df, self.maps_df,
-                self.weapons_df, self.roles_df, self.best_players_df, self.tournament_df,
+                self.players_df,
+                self.match_players_df,
+                self.maps_df,
+                self.weapons_df,
+                self.roles_df,
+                self.best_players_df,
+                self.tournament_df,
             ]
             if not df.empty
         )

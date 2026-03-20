@@ -9,18 +9,21 @@ Verifies:
 5. RAP path behavior
 """
 
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 import pytest
 import torch
-from unittest.mock import MagicMock, patch
 
 
 class TestOrchestratorInit:
     """Verify constructor validation and state initialization."""
 
     def test_valid_jepa_type_accepted(self):
-        with patch("Programma_CS2_RENAN.backend.nn.training_orchestrator.get_device",
-                    return_value=torch.device("cpu")):
+        with patch(
+            "Programma_CS2_RENAN.backend.nn.training_orchestrator.get_device",
+            return_value=torch.device("cpu"),
+        ):
             from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
             manager = MagicMock()
@@ -29,8 +32,10 @@ class TestOrchestratorInit:
             assert orch.model_name == "jepa_brain"
 
     def test_valid_vl_jepa_type_accepted(self):
-        with patch("Programma_CS2_RENAN.backend.nn.training_orchestrator.get_device",
-                    return_value=torch.device("cpu")):
+        with patch(
+            "Programma_CS2_RENAN.backend.nn.training_orchestrator.get_device",
+            return_value=torch.device("cpu"),
+        ):
             from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
             manager = MagicMock()
@@ -40,10 +45,16 @@ class TestOrchestratorInit:
 
     def test_valid_rap_type_accepted(self):
         pytest.importorskip("ncps", reason="ncps not installed")
-        with patch("Programma_CS2_RENAN.backend.nn.training_orchestrator.get_device",
-                    return_value=torch.device("cpu")), \
-             patch("Programma_CS2_RENAN.core.config.get_setting",
-                    side_effect=lambda key, default=None: True if key == "USE_RAP_MODEL" else default):
+        with (
+            patch(
+                "Programma_CS2_RENAN.backend.nn.training_orchestrator.get_device",
+                return_value=torch.device("cpu"),
+            ),
+            patch(
+                "Programma_CS2_RENAN.core.config.get_setting",
+                side_effect=lambda key, default=None: True if key == "USE_RAP_MODEL" else default,
+            ),
+        ):
             from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
             manager = MagicMock()
@@ -53,8 +64,10 @@ class TestOrchestratorInit:
 
     def test_invalid_type_raises_value_error(self):
         """TrainingOrchestrator CORRECTLY rejects unknown types (unlike ModelFactory)."""
-        with patch("Programma_CS2_RENAN.backend.nn.training_orchestrator.get_device",
-                    return_value=torch.device("cpu")):
+        with patch(
+            "Programma_CS2_RENAN.backend.nn.training_orchestrator.get_device",
+            return_value=torch.device("cpu"),
+        ):
             from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
             manager = MagicMock()
@@ -62,8 +75,10 @@ class TestOrchestratorInit:
                 TrainingOrchestrator(manager, model_type="invalid")
 
     def test_default_patience(self):
-        with patch("Programma_CS2_RENAN.backend.nn.training_orchestrator.get_device",
-                    return_value=torch.device("cpu")):
+        with patch(
+            "Programma_CS2_RENAN.backend.nn.training_orchestrator.get_device",
+            return_value=torch.device("cpu"),
+        ):
             from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
             orch = TrainingOrchestrator(MagicMock(), model_type="jepa")
@@ -120,8 +135,10 @@ class TestEmptyBatchHandling:
 
     def test_prepare_tensor_batch_returns_none_for_empty(self):
         """_prepare_tensor_batch must return None for empty input, never all-zero tensors."""
-        with patch("Programma_CS2_RENAN.backend.nn.training_orchestrator.get_device",
-                    return_value=torch.device("cpu")):
+        with patch(
+            "Programma_CS2_RENAN.backend.nn.training_orchestrator.get_device",
+            return_value=torch.device("cpu"),
+        ):
             from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
             orch = TrainingOrchestrator(MagicMock(), model_type="jepa")
@@ -130,8 +147,10 @@ class TestEmptyBatchHandling:
 
     def test_fetch_batches_empty_when_no_data(self):
         """_fetch_batches should return empty list when manager has no data."""
-        with patch("Programma_CS2_RENAN.backend.nn.training_orchestrator.get_device",
-                    return_value=torch.device("cpu")):
+        with patch(
+            "Programma_CS2_RENAN.backend.nn.training_orchestrator.get_device",
+            return_value=torch.device("cpu"),
+        ):
             from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
             manager = MagicMock()
@@ -146,16 +165,20 @@ class TestDeterministicNegativeSampling:
     """Verify reproducibility of negative sampling RNG."""
 
     def test_neg_rng_is_seeded(self):
-        with patch("Programma_CS2_RENAN.backend.nn.training_orchestrator.get_device",
-                    return_value=torch.device("cpu")):
+        with patch(
+            "Programma_CS2_RENAN.backend.nn.training_orchestrator.get_device",
+            return_value=torch.device("cpu"),
+        ):
             from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
             orch = TrainingOrchestrator(MagicMock(), model_type="jepa")
             assert orch._neg_rng is not None
 
     def test_neg_rng_produces_reproducible_results(self):
-        with patch("Programma_CS2_RENAN.backend.nn.training_orchestrator.get_device",
-                    return_value=torch.device("cpu")):
+        with patch(
+            "Programma_CS2_RENAN.backend.nn.training_orchestrator.get_device",
+            return_value=torch.device("cpu"),
+        ):
             from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
             orch1 = TrainingOrchestrator(MagicMock(), model_type="jepa")

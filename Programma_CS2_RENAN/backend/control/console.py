@@ -174,7 +174,8 @@ class ServiceSupervisor:
                     ErrorCode.CO_03,
                     "Supervisor: Service '%s' killed after %ss monitor timeout",
                 ),
-                name, self._MONITOR_TIMEOUT_S,
+                name,
+                self._MONITOR_TIMEOUT_S,
             )
 
         exit_code = process.returncode
@@ -192,7 +193,11 @@ class ServiceSupervisor:
 
             # Auto-restart: max _MAX_RETRIES in _RETRY_RESET_WINDOW_S, then give up.
             last_start = svc.get("last_start")
-            if last_start and (datetime.now(timezone.utc) - last_start).total_seconds() > self._RETRY_RESET_WINDOW_S:
+            if (
+                last_start
+                and (datetime.now(timezone.utc) - last_start).total_seconds()
+                > self._RETRY_RESET_WINDOW_S
+            ):
                 svc["retries"] = 0
 
             # R3-H06: Guard against duplicate restart timers
@@ -203,7 +208,9 @@ class ServiceSupervisor:
                 svc["restart_pending"] = True
                 logger.warning(
                     "Supervisor: Auto-restarting '%s' (attempt %s/%s)...",
-                    name, svc["retries"], self._MAX_RETRIES,
+                    name,
+                    svc["retries"],
+                    self._MAX_RETRIES,
                 )
                 # D5: Store timer reference so stop_service() can cancel it
                 timer = threading.Timer(self._RESTART_DELAY_S, self.start_service, args=(name,))
@@ -216,7 +223,8 @@ class ServiceSupervisor:
                         "Supervisor: Service '%s' exceeded max retries (%s). "
                         "Manual restart required.",
                     ),
-                    name, self._MAX_RETRIES,
+                    name,
+                    self._MAX_RETRIES,
                 )
 
     def get_status(self) -> Dict:
@@ -384,7 +392,10 @@ class Console:
                 logger.error("Console: Failed to stop %s during shutdown: %s", label, e)
 
         try:
-            from Programma_CS2_RENAN.backend.data_sources.hltv.docker_manager import stop_flaresolverr
+            from Programma_CS2_RENAN.backend.data_sources.hltv.docker_manager import (
+                stop_flaresolverr,
+            )
+
             stop_flaresolverr()
         except Exception as e:
             logger.error("Console: Failed to stop FlareSolverr during shutdown: %s", e)
@@ -579,10 +590,14 @@ class Console:
 
         with db.get_session() as session:
             pro_processed = session.exec(
-                select(func.count(PlayerMatchStats.id)).where(PlayerMatchStats.is_pro == True)  # noqa: E712
+                select(func.count(PlayerMatchStats.id)).where(
+                    PlayerMatchStats.is_pro == True
+                )  # noqa: E712
             ).one()
             user_processed = session.exec(
-                select(func.count(PlayerMatchStats.id)).where(PlayerMatchStats.is_pro == False)  # noqa: E712
+                select(func.count(PlayerMatchStats.id)).where(
+                    PlayerMatchStats.is_pro == False
+                )  # noqa: E712
             ).one()
             trained_on = session.exec(
                 select(func.count(PlayerMatchStats.id)).where(

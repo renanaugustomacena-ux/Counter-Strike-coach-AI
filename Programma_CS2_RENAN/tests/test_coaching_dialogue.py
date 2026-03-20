@@ -10,7 +10,6 @@ Covers:
 
 import sys
 
-
 import pytest
 
 
@@ -19,12 +18,20 @@ class TestFormatCoperMessage:
 
     def _make_service_shell(self):
         from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
+
         svc = CoachingService.__new__(CoachingService)
         return svc
 
-    def _make_advice(self, narrative="Test advice", pro_refs=None,
-                     confidence=0.8, focus="positioning", experiences=5):
+    def _make_advice(
+        self,
+        narrative="Test advice",
+        pro_refs=None,
+        confidence=0.8,
+        focus="positioning",
+        experiences=5,
+    ):
         from Programma_CS2_RENAN.backend.knowledge.experience_bank import SynthesizedAdvice
+
         return SynthesizedAdvice(
             narrative=narrative,
             pro_references=pro_refs or [],
@@ -76,6 +83,7 @@ class TestBaselineContextNote:
 
     def _note(self, player_stats, baseline, focus_area):
         from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
+
         return CoachingService._baseline_context_note(player_stats, baseline, focus_area)
 
     def test_empty_stats(self):
@@ -109,6 +117,7 @@ class TestCoachingServiceHealthRange:
 
     def _make_service_shell(self):
         from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
+
         svc = CoachingService.__new__(CoachingService)
         return svc
 
@@ -133,6 +142,7 @@ class TestCoachingServiceInferRoundPhase:
 
     def _make_service_shell(self):
         from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
+
         svc = CoachingService.__new__(CoachingService)
         return svc
 

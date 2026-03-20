@@ -200,9 +200,9 @@ class ToolReport:
         # value directly on >=3.12; handle both plus the legacy _value_ dict format.
         for r in d["results"]:
             sev = r["severity"]
-            if hasattr(sev, "value"):          # Enum instance (Python <3.12)
+            if hasattr(sev, "value"):  # Enum instance (Python <3.12)
                 r["severity"] = sev.value
-            elif isinstance(sev, dict):        # Legacy dict format with _value_ key
+            elif isinstance(sev, dict):  # Legacy dict format with _value_ key
                 r["severity"] = sev.get("_value_", sev.get("value", str(sev)))
             # else: already a primitive (string/int), leave unchanged
         return json.dumps(d, indent=indent, default=str)

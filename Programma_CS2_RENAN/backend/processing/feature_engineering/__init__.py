@@ -6,25 +6,31 @@ thread is active. Python's import lock is not reentrant across threads,
 so eager top-level imports cause deadlocks in multi-threaded Kivy apps.
 """
 
-_KAST_NAMES = frozenset({
-    "calculate_kast_for_round",
-    "calculate_kast_percentage",
-    "estimate_kast_from_stats",
-})
+_KAST_NAMES = frozenset(
+    {
+        "calculate_kast_for_round",
+        "calculate_kast_percentage",
+        "estimate_kast_from_stats",
+    }
+)
 
-_ROLE_NAMES = frozenset({
-    "PlayerRole",
-    "classify_role",
-    "extract_role_features",
-    "get_role_coaching_focus",
-})
+_ROLE_NAMES = frozenset(
+    {
+        "PlayerRole",
+        "classify_role",
+        "extract_role_features",
+        "get_role_coaching_focus",
+    }
+)
 
-_VECTORIZER_NAMES = frozenset({
-    "DataQualityError",
-    "FeatureExtractor",
-    "FEATURE_NAMES",
-    "METADATA_DIM",
-})
+_VECTORIZER_NAMES = frozenset(
+    {
+        "DataQualityError",
+        "FeatureExtractor",
+        "FEATURE_NAMES",
+        "METADATA_DIM",
+    }
+)
 
 
 def __getattr__(name: str):

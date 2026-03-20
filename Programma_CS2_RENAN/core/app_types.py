@@ -5,6 +5,7 @@ R1-02 WARNING: This module defines a NUMERIC Team enum (SPECTATOR=0, T=1, CT=2).
 A SEPARATE Team enum exists in demo_frame.py with STRING values ("ct", "t").
 Never confuse the two — import the correct one for your context.
 """
+
 from enum import Enum, auto
 from typing import Any, Dict, List, NewType, Optional, Tuple, TypedDict, Union
 
@@ -27,9 +28,11 @@ class Team(Enum):
 
     def __eq__(self, other):
         # AT-01: Fail-fast on cross-enum comparison to prevent silent mismatches.
-        if (isinstance(other, Enum)
-                and type(other).__name__ == "Team"
-                and type(other).__module__ != type(self).__module__):
+        if (
+            isinstance(other, Enum)
+            and type(other).__name__ == "Team"
+            and type(other).__module__ != type(self).__module__
+        ):
             raise TypeError(
                 f"AT-01: Cannot compare {type(self).__module__}.Team with "
                 f"{type(other).__module__}.Team — use team_from_demo_frame() to convert"
@@ -109,7 +112,5 @@ def team_from_demo_frame(demo_team: Union[Enum, str]) -> Team:
     val = demo_team.value if hasattr(demo_team, "value") else str(demo_team).lower()
     result = _MAP.get(val)
     if result is None:
-        raise ValueError(
-            f"R1-02: Unknown team value '{val}' — expected 'ct', 't', or 'spectator'"
-        )
+        raise ValueError(f"R1-02: Unknown team value '{val}' — expected 'ct', 't', or 'spectator'")
     return result

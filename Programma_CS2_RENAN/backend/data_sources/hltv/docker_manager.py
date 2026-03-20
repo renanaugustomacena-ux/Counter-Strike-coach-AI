@@ -72,9 +72,7 @@ def ensure_flaresolverr(project_root: str | None = None) -> bool:
         return True
 
     if not _is_docker_available():
-        logger.error(
-            "Docker unavailable. Install Docker Desktop or start the Docker daemon."
-        )
+        logger.error("Docker unavailable. Install Docker Desktop or start the Docker daemon.")
         return False
 
     # Try starting existing container
@@ -114,9 +112,7 @@ def ensure_flaresolverr(project_root: str | None = None) -> bool:
                     cwd=str(_root),
                 )
                 if result.returncode == 0:
-                    logger.info(
-                        "docker compose up succeeded. Waiting for health-check..."
-                    )
+                    logger.info("docker compose up succeeded. Waiting for health-check...")
                     if _wait_for_healthy():
                         logger.info("FlareSolverr ready via docker-compose.")
                         return True
@@ -124,8 +120,7 @@ def ensure_flaresolverr(project_root: str | None = None) -> bool:
                 logger.debug("docker compose failed: %s", exc)
 
     logger.error(
-        "FlareSolverr unreachable after all attempts. "
-        "Verify that Docker Desktop is running."
+        "FlareSolverr unreachable after all attempts. " "Verify that Docker Desktop is running."
     )
     return False
 

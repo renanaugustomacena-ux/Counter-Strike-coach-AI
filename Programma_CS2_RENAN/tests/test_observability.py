@@ -20,11 +20,7 @@ import pytest
 # Ensure project root is importable
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
-from Programma_CS2_RENAN.observability.error_codes import (
-    ErrorCode,
-    get_all_codes,
-    log_with_code,
-)
+from Programma_CS2_RENAN.observability.error_codes import ErrorCode, get_all_codes, log_with_code
 from Programma_CS2_RENAN.observability.logger_setup import (
     JSONFormatter,
     _CorrelationFilter,
@@ -36,7 +32,6 @@ from Programma_CS2_RENAN.observability.logger_setup import (
     get_tool_logger,
     set_correlation_id,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -145,8 +140,13 @@ class TestCorrelationID:
         set_correlation_id("test-cid")
         filt = _CorrelationFilter()
         record = logging.LogRecord(
-            name="test", level=logging.INFO,
-            pathname="", lineno=0, msg="", args=(), exc_info=None,
+            name="test",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg="",
+            args=(),
+            exc_info=None,
         )
         filt.filter(record)
         assert record.correlation_id == "test-cid"  # type: ignore[attr-defined]
@@ -155,8 +155,13 @@ class TestCorrelationID:
         set_correlation_id("json-cid")
         formatter = JSONFormatter()
         record = logging.LogRecord(
-            name="test", level=logging.INFO,
-            pathname="", lineno=0, msg="msg", args=(), exc_info=None,
+            name="test",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg="msg",
+            args=(),
+            exc_info=None,
         )
         # Manually apply filter
         filt = _CorrelationFilter()
@@ -249,7 +254,9 @@ class TestErrorCodeRegistry:
 
     def test_no_duplicate_codes(self):
         codes = [m.value.code for m in ErrorCode]
-        assert len(codes) == len(set(codes)), f"Duplicate codes: {[c for c in codes if codes.count(c) > 1]}"
+        assert len(codes) == len(
+            set(codes)
+        ), f"Duplicate codes: {[c for c in codes if codes.count(c) > 1]}"
 
     def test_get_all_codes_returns_list(self):
         result = get_all_codes()

@@ -22,9 +22,9 @@ def test_rap_lite():
     # 2. Verify memory is the lite variant (not the full LTC+Hopfield)
     from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.memory import RAPMemoryLite
 
-    assert isinstance(model.memory, RAPMemoryLite), (
-        f"Expected RAPMemoryLite, got {type(model.memory).__name__}"
-    )
+    assert isinstance(
+        model.memory, RAPMemoryLite
+    ), f"Expected RAPMemoryLite, got {type(model.memory).__name__}"
     print(f"[OK] Memory layer is RAPMemoryLite (LSTM-based)")
 
     # 3. Dimensional contracts

@@ -404,17 +404,9 @@ def _cmd_ingest_scan(args):
     lines = [
         "[bold]Scan Configuration:[/bold]",
         f"  User demos: [path]{storage.ingest_dir}[/path]"
-        + (
-            " [success]\u2713[/]"
-            if storage.ingest_dir.exists()
-            else " [error]NOT FOUND[/]"
-        ),
+        + (" [success]\u2713[/]" if storage.ingest_dir.exists() else " [error]NOT FOUND[/]"),
         f"  Pro demos:  [path]{storage.pro_ingest_dir}[/path]"
-        + (
-            " [success]\u2713[/]"
-            if storage.pro_ingest_dir.exists()
-            else " [error]NOT FOUND[/]"
-        ),
+        + (" [success]\u2713[/]" if storage.pro_ingest_dir.exists() else " [error]NOT FOUND[/]"),
     ]
     user_demos = storage.list_new_demos(is_pro=False)
     pro_demos = storage.list_new_demos(is_pro=True)
@@ -456,7 +448,9 @@ def _cmd_build_verify(args):
 
 def _cmd_build_manifest(args):
     rich_con.print("[info]>>> Generating Integrity Manifest[/info]")
-    return _run_tool_live([sys.executable, "Programma_CS2_RENAN/tools/sync_integrity_manifest.py"], timeout=120)
+    return _run_tool_live(
+        [sys.executable, "Programma_CS2_RENAN/tools/sync_integrity_manifest.py"], timeout=120
+    )
 
 
 # --- TEST ---
@@ -695,10 +689,21 @@ def _cmd_set_faceit(args):
 
 
 _ALLOWED_CONFIG_KEYS = {
-    "PLAYER_NAME", "STEAM_ID", "STEAM_API_KEY", "FACEIT_API_KEY",
-    "DEFAULT_DEMO_PATH", "PRO_DEMO_PATH", "ACTIVE_THEME", "FONT_SIZE",
-    "FONT_TYPE", "LANGUAGE", "BACKGROUND_IMAGE", "ENABLE_SLIDESHOW",
-    "BRAIN_DATA_ROOT", "SETUP_COMPLETED", "COACH_WEIGHT_OVERRIDES",
+    "PLAYER_NAME",
+    "STEAM_ID",
+    "STEAM_API_KEY",
+    "FACEIT_API_KEY",
+    "DEFAULT_DEMO_PATH",
+    "PRO_DEMO_PATH",
+    "ACTIVE_THEME",
+    "FONT_SIZE",
+    "FONT_TYPE",
+    "LANGUAGE",
+    "BACKGROUND_IMAGE",
+    "ENABLE_SLIDESHOW",
+    "BRAIN_DATA_ROOT",
+    "SETUP_COMPLETED",
+    "COACH_WEIGHT_OVERRIDES",
     "CS2_PLAYER_NAME",
 }
 
@@ -815,7 +820,7 @@ def _cmd_svc_spawn(args):
 
         return f"[success]Spawned '{args[0]}' (PID {proc.pid}) in background. Errors logged to {spawn_log.name}[/success]"
     except Exception as e:
-        if 'stderr_file' in locals() and not stderr_file.closed:
+        if "stderr_file" in locals() and not stderr_file.closed:
             stderr_file.close()
         return f"[error]Spawn failed: {e}[/error]"
 
@@ -837,7 +842,10 @@ def _cmd_svc_status(args):
 # --- MAINT ---
 def _cmd_maint_clear_cache(args):
     # Safety: verify PROJECT_ROOT contains expected marker files before walking
-    if not (PROJECT_ROOT / "Programma_CS2_RENAN").is_dir() or not (PROJECT_ROOT / "console.py").is_file():
+    if (
+        not (PROJECT_ROOT / "Programma_CS2_RENAN").is_dir()
+        or not (PROJECT_ROOT / "console.py").is_file()
+    ):
         return "[error]PROJECT_ROOT safety check failed — refusing to walk tree.[/error]"
     count = 0
     for root, dirs, _ in os.walk(PROJECT_ROOT):

@@ -10,7 +10,6 @@ Covers:
 
 import sys
 
-
 import pytest
 import torch
 import torch.nn as nn
@@ -260,7 +259,8 @@ class TestPersistence:
         monkeypatch.setattr(pers, "BASE_NN_DIR", tmp_path)
         # Monkeypatch get_resource_path to return a non-existent path too
         monkeypatch.setattr(
-            pers, "get_factory_model_path",
+            pers,
+            "get_factory_model_path",
             lambda version, user_id=None: tmp_path / "no_exist" / f"{version}.pt",
         )
         model = nn.Linear(10, 5)
@@ -337,9 +337,7 @@ class TestSuperpositionLayer:
         loss = layer.gate_sparsity_loss()
         assert loss.requires_grad, "sparsity loss must be differentiable"
         loss.backward()
-        assert layer.context_gate.weight.grad is not None, (
-            "gradient must flow to context_gate"
-        )
+        assert layer.context_gate.weight.grad is not None, "gradient must flow to context_gate"
 
     def test_gate_sparsity_loss_no_forward(self):
         from Programma_CS2_RENAN.backend.nn.layers.superposition import SuperpositionLayer

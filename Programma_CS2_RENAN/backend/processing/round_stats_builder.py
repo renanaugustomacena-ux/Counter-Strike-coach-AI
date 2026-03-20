@@ -454,7 +454,10 @@ def build_round_stats(
     result = list(round_player_stats.values())
     logger.info(
         "Built %d round stats entries (%d rounds x %d players) for %s",
-        len(result), len(boundaries), len(all_players), demo_name,
+        len(result),
+        len(boundaries),
+        len(all_players),
+        demo_name,
     )
     return result
 
@@ -562,6 +565,8 @@ def enrich_from_demo(
 
     logger.info(
         "Enrichment complete for %s: %d players, %d round entries",
-        demo_name, len(enrichment_by_player), len(round_stats),
+        demo_name,
+        len(enrichment_by_player),
+        len(round_stats),
     )
     return enrichment_by_player, round_stats

@@ -39,7 +39,10 @@ def _map_and_pipeline_user(demo_path, rounds_df, db_manager, processed_dir):
     # R3-04: Use .stem (without .dem extension) for consistent demo_name normalization
     demo_name = demo_path.stem
     match_stats = PlayerMatchStats(
-        player_name=get_setting("CS2_PLAYER_NAME", ""), demo_name=demo_name, is_pro=False, **match_stats_dict
+        player_name=get_setting("CS2_PLAYER_NAME", ""),
+        demo_name=demo_name,
+        is_pro=False,
+        **match_stats_dict,
     )
     db_manager.upsert(match_stats)
     _trigger_ml_pipeline(db_manager, demo_name, match_stats_dict)

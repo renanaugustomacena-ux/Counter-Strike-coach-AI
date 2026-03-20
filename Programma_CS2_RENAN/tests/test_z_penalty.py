@@ -11,7 +11,6 @@ Z-cutoff values:
 
 import sys
 
-
 import pytest
 
 from Programma_CS2_RENAN.core.spatial_data import classify_vertical_level, compute_z_penalty

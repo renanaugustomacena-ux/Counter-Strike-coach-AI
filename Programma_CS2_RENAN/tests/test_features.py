@@ -8,7 +8,6 @@ F9-08: Pure-logic tests only — no DB or model dependency.
 
 import sys
 
-
 import numpy as np
 import pandas as pd
 import pytest
@@ -76,4 +75,3 @@ class TestBaseFeatures:
         assert stats["kd_ratio"] == 0.0
         assert stats["accuracy"] == 0.0
         assert stats["econ_rating"] == 0.0
-

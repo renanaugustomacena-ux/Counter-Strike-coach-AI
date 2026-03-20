@@ -69,9 +69,7 @@ class TestModeSelection:
         "Programma_CS2_RENAN.backend.services.coaching_service.generate_corrections",
         return_value=[],
     )
-    def test_traditional_mode_when_all_flags_off(
-        self, mock_gen, coaching_service, deviations
-    ):
+    def test_traditional_mode_when_all_flags_off(self, mock_gen, coaching_service, deviations):
         """With all modes disabled, Traditional is used (generate_corrections called)."""
         coaching_service.generate_new_insights(
             player_name="TestPlayer",
@@ -94,9 +92,7 @@ class TestModeSelection:
         """With USE_RAG_COACHING=True, _enhance_with_rag is called."""
         coaching_service.use_rag = True
 
-        with patch.object(
-            coaching_service, "_enhance_with_rag", return_value=[]
-        ) as mock_rag:
+        with patch.object(coaching_service, "_enhance_with_rag", return_value=[]) as mock_rag:
             coaching_service.generate_new_insights(
                 player_name="TestPlayer",
                 demo_name="test.dem",
@@ -219,9 +215,7 @@ class TestFallbackChain:
             "sys.modules",
             {"Programma_CS2_RENAN.backend.knowledge.experience_bank": None},
         ):
-            with patch.object(
-                coaching_service, "_generate_hybrid_insights"
-            ) as mock_hybrid:
+            with patch.object(coaching_service, "_generate_hybrid_insights") as mock_hybrid:
                 coaching_service.generate_new_insights(
                     player_name="TestPlayer",
                     demo_name="test.dem",
@@ -294,8 +288,6 @@ class TestArchitecturalDocumentation:
 
     def test_singleton_factory_exists(self):
         """get_coaching_service() singleton factory must exist."""
-        from Programma_CS2_RENAN.backend.services.coaching_service import (
-            get_coaching_service,
-        )
+        from Programma_CS2_RENAN.backend.services.coaching_service import get_coaching_service
 
         assert callable(get_coaching_service)

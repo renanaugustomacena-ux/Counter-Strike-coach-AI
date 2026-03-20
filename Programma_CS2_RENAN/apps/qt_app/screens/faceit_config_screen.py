@@ -1,15 +1,8 @@
 """FaceIT configuration screen — API key setup."""
 
-from PySide6.QtCore import QTimer, Qt, QUrl
+from PySide6.QtCore import Qt, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices, QFont
-from PySide6.QtWidgets import (
-    QFrame,
-    QLabel,
-    QLineEdit,
-    QPushButton,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtWidgets import QFrame, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget
 
 from Programma_CS2_RENAN.core.config import get_credential, save_user_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -86,9 +79,7 @@ class FaceitConfigScreen(QWidget):
         link_btn = QPushButton("Get FaceIT API Key")
         link_btn.setCursor(Qt.PointingHandCursor)
         link_btn.clicked.connect(
-            lambda: QDesktopServices.openUrl(
-                QUrl("https://developers.faceit.com/")
-            )
+            lambda: QDesktopServices.openUrl(QUrl("https://developers.faceit.com/"))
         )
         card_layout.addWidget(link_btn)
 

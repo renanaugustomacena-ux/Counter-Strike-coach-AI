@@ -179,10 +179,7 @@ def _compute_alive_counts(df: pd.DataFrame) -> pd.DataFrame:
     # Count alive players per (tick, team)
     alive_mask = df["is_alive"] == True
     alive_per_tick_team = (
-        df[alive_mask]
-        .groupby(["tick", "team_name"])
-        .size()
-        .reset_index(name="alive_count")
+        df[alive_mask].groupby(["tick", "team_name"]).size().reset_index(name="alive_count")
     )
 
     # Merge alive counts for own team
@@ -201,12 +198,7 @@ def _compute_alive_counts(df: pd.DataFrame) -> pd.DataFrame:
     # For enemies: we need the opposing team's alive count
     # Get unique teams per tick — CS2 has exactly 2 teams (CT, T + possibly spectators)
     # Approach: total alive per tick minus own team alive = enemy alive
-    total_alive_per_tick = (
-        df[alive_mask]
-        .groupby("tick")
-        .size()
-        .reset_index(name="total_alive")
-    )
+    total_alive_per_tick = df[alive_mask].groupby("tick").size().reset_index(name="total_alive")
     df = df.merge(total_alive_per_tick, on="tick", how="left")
 
     # Re-merge own team alive count for enemy calculation
@@ -237,11 +229,7 @@ def _compute_team_economy(df: pd.DataFrame) -> pd.DataFrame:
         df["team_economy"] = 0
         return df
 
-    team_econ = (
-        df.groupby(["tick", "team_name"])["balance"]
-        .sum()
-        .reset_index(name="team_economy")
-    )
+    team_econ = df.groupby(["tick", "team_name"])["balance"].sum().reset_index(name="team_economy")
 
     df = df.merge(team_econ, on=["tick", "team_name"], how="left")
     df["team_economy"] = df["team_economy"].fillna(0).astype(int)
@@ -314,7 +302,7 @@ def _compute_enemies_visible(
         # Pairwise direction vectors: dx[i,j] = pos_x[j] - pos_x[i]
         dx = positions_x[np.newaxis, :] - positions_x[:, np.newaxis]
         dy = positions_y[np.newaxis, :] - positions_y[:, np.newaxis]
-        dist = np.sqrt(dx ** 2 + dy ** 2)
+        dist = np.sqrt(dx**2 + dy**2)
 
         # Player look direction vectors
         yaw_rad = np.radians(yaws)
@@ -347,7 +335,9 @@ def _compute_enemies_visible(
         if processed % 50000 == 0:
             logger.info(
                 "enemies_visible progress: %d/%d ticks (%.1f%%)",
-                processed, total_ticks, processed / total_ticks * 100,
+                processed,
+                total_ticks,
+                processed / total_ticks * 100,
             )
 
     df["enemies_visible"] = enemies_visible

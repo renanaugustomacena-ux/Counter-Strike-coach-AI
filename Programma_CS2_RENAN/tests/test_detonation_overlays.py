@@ -10,7 +10,6 @@ Validates:
 
 import sys
 
-
 import pytest
 
 from Programma_CS2_RENAN.core.demo_frame import NadeType

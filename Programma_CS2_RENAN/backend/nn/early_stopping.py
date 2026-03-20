@@ -67,6 +67,7 @@ class EarlyStopping:
 # Example usage
 if __name__ == "__main__":
     from Programma_CS2_RENAN.observability.logger_setup import get_logger as _get_logger
+
     _logger_es = _get_logger("cs2analyzer.nn.early_stopping")
 
     early_stopper = EarlyStopping(patience=3, min_delta=0.01)

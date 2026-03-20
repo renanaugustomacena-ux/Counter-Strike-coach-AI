@@ -21,14 +21,14 @@ from typing import Any, Dict, List, Optional
 from Programma_CS2_RENAN.backend.services.llm_service import check_ollama_status, get_llm_service
 
 # F5-18: Named thresholds — no magic numbers in lesson generation logic.
-_ADR_STRONG_THRESHOLD: float = 75.0       # ADR above this = "good impact"
-_ADR_WEAK_THRESHOLD: float = 60.0         # ADR below this = needs improvement
-_HS_STRONG_THRESHOLD: float = 0.40        # HS% above this = "strong aim"
-_HS_WEAK_THRESHOLD: float = 0.35          # HS% below this = needs work
-_RATING_ABOVE_AVG: float = 1.0            # Rating above this = above average
-_KAST_STRONG_THRESHOLD: float = 0.70      # KAST above this = "consistent"
-_DEATH_RATIO_WARNING: float = 1.5         # deaths > kills * this ratio = over-dying
-_MIN_DEATHS_FOR_WARNING: int = 15         # Minimum deaths before ratio warning applies
+_ADR_STRONG_THRESHOLD: float = 75.0  # ADR above this = "good impact"
+_ADR_WEAK_THRESHOLD: float = 60.0  # ADR below this = needs improvement
+_HS_STRONG_THRESHOLD: float = 0.40  # HS% above this = "strong aim"
+_HS_WEAK_THRESHOLD: float = 0.35  # HS% below this = needs work
+_RATING_ABOVE_AVG: float = 1.0  # Rating above this = above average
+_KAST_STRONG_THRESHOLD: float = 0.70  # KAST above this = "consistent"
+_DEATH_RATIO_WARNING: float = 1.5  # deaths > kills * this ratio = over-dying
+_MIN_DEATHS_FOR_WARNING: int = 15  # Minimum deaths before ratio warning applies
 
 
 class LessonGenerator:

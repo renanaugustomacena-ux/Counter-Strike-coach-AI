@@ -6,7 +6,6 @@ Tests ML-RAG synthesis, confidence scoring, and priority classification.
 
 import sys
 
-
 import pytest
 from sqlmodel import select
 

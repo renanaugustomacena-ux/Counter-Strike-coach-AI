@@ -38,9 +38,7 @@ def prune_old_metadata(days_threshold: int = 30):
             demo_list = list(old_demo_names)
             for i in range(0, len(demo_list), _CHUNK_SIZE):
                 chunk = demo_list[i : i + _CHUNK_SIZE]
-                delete_stmt = delete(PlayerTickState).where(
-                    PlayerTickState.demo_name.in_(chunk)
-                )
+                delete_stmt = delete(PlayerTickState).where(PlayerTickState.demo_name.in_(chunk))
                 result = session.execute(delete_stmt)
                 ticks_removed += result.rowcount
 
@@ -49,5 +47,3 @@ def prune_old_metadata(days_threshold: int = 30):
 
     except Exception as e:
         logger.error("Metadata pruning failed: %s", e)
-
-

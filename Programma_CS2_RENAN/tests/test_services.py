@@ -7,7 +7,6 @@ Skips gracefully when no real data is available.
 
 import sys
 
-
 import pytest
 
 

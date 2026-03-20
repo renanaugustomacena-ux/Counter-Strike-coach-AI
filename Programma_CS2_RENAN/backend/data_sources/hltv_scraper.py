@@ -48,9 +48,7 @@ def run_hltv_sync_cycle(limit=50):
 
     except ImportError as e:
         logger.error("Failed to import HLTVStatFetcher: %s", e)
-        logger.error(
-            "Ensure beautifulsoup4 is installed: pip install beautifulsoup4"
-        )
+        logger.error("Ensure beautifulsoup4 is installed: pip install beautifulsoup4")
         return 0
     except Exception as e:
         logger.error("HLTV Statistics Sync failed: %s", e)

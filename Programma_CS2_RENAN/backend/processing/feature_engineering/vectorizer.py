@@ -21,6 +21,7 @@ _logger = get_logger("cs2analyzer.vectorizer")
 
 class DataQualityError(Exception):
     """Raised when data quality falls below acceptable thresholds for training."""
+
     pass
 
 
@@ -147,12 +148,30 @@ _nan_inf_clamp_count: int = 0
 # P-X-01: Feature schema names — single source of truth for train/infer parity.
 # Length MUST equal METADATA_DIM.  If you add/remove a feature, update BOTH.
 FEATURE_NAMES: tuple = (
-    "health", "armor", "has_helmet", "has_defuser", "equipment_value",
-    "is_crouching", "is_scoped", "is_blinded", "enemies_visible",
-    "pos_x", "pos_y", "pos_z",
-    "view_yaw_sin", "view_yaw_cos", "view_pitch",
-    "z_penalty", "kast_estimate", "map_id", "round_phase", "weapon_class",
-    "time_in_round", "bomb_planted", "teammates_alive", "enemies_alive",
+    "health",
+    "armor",
+    "has_helmet",
+    "has_defuser",
+    "equipment_value",
+    "is_crouching",
+    "is_scoped",
+    "is_blinded",
+    "enemies_visible",
+    "pos_x",
+    "pos_y",
+    "pos_z",
+    "view_yaw_sin",
+    "view_yaw_cos",
+    "view_pitch",
+    "z_penalty",
+    "kast_estimate",
+    "map_id",
+    "round_phase",
+    "weapon_class",
+    "time_in_round",
+    "bomb_planted",
+    "teammates_alive",
+    "enemies_alive",
     "team_economy",
 )
 assert len(FEATURE_NAMES) == METADATA_DIM, (
@@ -323,8 +342,10 @@ class FeatureExtractor:
             # Callers SHOULD provide map_name for feature parity with training.
             global _z_penalty_warned
             if not _z_penalty_warned:
-                _logger.warning("P-VEC-01: map_name not provided — z_penalty defaults to 0.0. "
-                                "Feature parity with training may be degraded.")
+                _logger.warning(
+                    "P-VEC-01: map_name not provided — z_penalty defaults to 0.0. "
+                    "Feature parity with training may be degraded."
+                )
                 _z_penalty_warned = True
             vec[15] = 0.0
 
@@ -431,7 +452,9 @@ class FeatureExtractor:
                 "P-VEC-02: Feature vector contains NaN/Inf BEFORE clamp "
                 "(occurrence #%d) — indices: %s, features: %s. "
                 "Clamping to defaults; fix upstream normalisation.",
-                _nan_inf_clamp_count, bad_indices, bad_names,
+                _nan_inf_clamp_count,
+                bad_indices,
+                bad_names,
             )
         vec = np.nan_to_num(vec, nan=0.0, posinf=1.0, neginf=-1.0)
         return vec
@@ -465,6 +488,7 @@ class FeatureExtractor:
             from Programma_CS2_RENAN.backend.processing.feature_engineering.base_features import (
                 HeuristicConfig,
             )
+
             batch_config = HeuristicConfig()
 
         if contexts is None:

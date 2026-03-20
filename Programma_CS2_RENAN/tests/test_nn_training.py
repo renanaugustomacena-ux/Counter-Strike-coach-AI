@@ -9,7 +9,6 @@ Covers:
 
 import sys
 
-
 import numpy as np
 import pytest
 
@@ -22,6 +21,7 @@ class TestEarlyStopping:
 
     def _make(self, patience=3, min_delta=0.01):
         from Programma_CS2_RENAN.backend.nn.early_stopping import EarlyStopping
+
         return EarlyStopping(patience=patience, min_delta=min_delta)
 
     def test_first_call_never_stops(self):
@@ -86,6 +86,7 @@ class TestEarlyStopping:
 
     def test_default_params(self):
         from Programma_CS2_RENAN.backend.nn.early_stopping import EarlyStopping
+
         es = EarlyStopping()
         assert es.patience == 10
         assert es.min_delta == 1e-4
@@ -99,6 +100,7 @@ class TestTrainingDecision:
 
     def test_creation(self):
         from Programma_CS2_RENAN.backend.nn.training_controller import TrainingDecision
+
         td = TrainingDecision(should_train=True, reason="Good diversity", diversity_score=0.75)
         assert td.should_train is True
         assert td.reason == "Good diversity"
@@ -106,6 +108,7 @@ class TestTrainingDecision:
 
     def test_default_diversity(self):
         from Programma_CS2_RENAN.backend.nn.training_controller import TrainingDecision
+
         td = TrainingDecision(should_train=False, reason="Monthly limit")
         assert td.diversity_score == 0.0
 
@@ -118,6 +121,7 @@ class TestTrainingControllerHelpers:
 
     def _make_controller_shell(self):
         from Programma_CS2_RENAN.backend.nn.training_controller import TrainingController
+
         ctrl = TrainingController.__new__(TrainingController)
         return ctrl
 
@@ -181,5 +185,6 @@ class TestTrainingControllerHelpers:
 
     def test_constants(self):
         from Programma_CS2_RENAN.backend.nn.training_controller import TrainingController
+
         assert TrainingController._DEFAULT_MAX_DEMOS_PER_MONTH == 10
         assert TrainingController.MIN_DIVERSITY_SCORE == 0.3

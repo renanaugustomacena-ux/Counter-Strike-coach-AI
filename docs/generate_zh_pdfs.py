@@ -27,7 +27,9 @@ PUPPETEER_CFG = {
 FONT_REGULAR = str(Path.home() / ".local/share/fonts/atkinson/AtkinsonHyperlegible-Regular.ttf")
 FONT_BOLD = str(Path.home() / ".local/share/fonts/atkinson/AtkinsonHyperlegible-Bold.ttf")
 FONT_ITALIC = str(Path.home() / ".local/share/fonts/atkinson/AtkinsonHyperlegible-Italic.ttf")
-FONT_BOLD_ITALIC = str(Path.home() / ".local/share/fonts/atkinson/AtkinsonHyperlegible-BoldItalic.ttf")
+FONT_BOLD_ITALIC = str(
+    Path.home() / ".local/share/fonts/atkinson/AtkinsonHyperlegible-BoldItalic.ttf"
+)
 
 CSS = f"""
 @font-face {{
@@ -150,17 +152,33 @@ def render_mermaid(mermaid_code: str, svg_path: Path) -> bool:
     mmd_tmp = None
     cfg_tmp = None
     try:
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.mmd', delete=False, encoding='utf-8') as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".mmd", delete=False, encoding="utf-8"
+        ) as f:
             f.write(mermaid_code)
             mmd_tmp = f.name
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, encoding="utf-8"
+        ) as f:
             json.dump(PUPPETEER_CFG, f)
             cfg_tmp = f.name
         r = subprocess.run(
-            [str(MMDC), '-i', mmd_tmp, '-o', str(svg_path),
-             '--width', '750', '--backgroundColor', 'transparent',
-             '-p', cfg_tmp],
-            capture_output=True, text=True, timeout=45
+            [
+                str(MMDC),
+                "-i",
+                mmd_tmp,
+                "-o",
+                str(svg_path),
+                "--width",
+                "750",
+                "--backgroundColor",
+                "transparent",
+                "-p",
+                cfg_tmp,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=45,
         )
         return r.returncode == 0 and svg_path.exists()
     except Exception as exc:
@@ -182,10 +200,10 @@ def process_markdown(md_path: Path, out_dir: Path) -> str:
     """
     import markdown as md_lib
 
-    text = md_path.read_text(encoding='utf-8')
+    text = md_path.read_text(encoding="utf-8")
     counter = [0]
 
-    mermaid_re = re.compile(r'```mermaid\r?\n(.*?)\r?\n```', re.DOTALL)
+    mermaid_re = re.compile(r"```mermaid\r?\n(.*?)\r?\n```", re.DOTALL)
 
     def replace(m):
         counter[0] += 1
@@ -202,12 +220,18 @@ def process_markdown(md_path: Path, out_dir: Path) -> str:
 
     processed = mermaid_re.sub(replace, text)
 
-    converter = md_lib.Markdown(extensions=[
-        'tables', 'fenced_code', 'toc', 'nl2br',
-        'markdown.extensions.codehilite',
-    ], extension_configs={
-        'codehilite': {'guess_lang': False, 'noclasses': True},
-    })
+    converter = md_lib.Markdown(
+        extensions=[
+            "tables",
+            "fenced_code",
+            "toc",
+            "nl2br",
+            "markdown.extensions.codehilite",
+        ],
+        extension_configs={
+            "codehilite": {"guess_lang": False, "noclasses": True},
+        },
+    )
     return converter.convert(processed)
 
 
@@ -250,7 +274,7 @@ def main():
             continue
         print(f"\n[{part_num}/3] Processing {fname} ...")
         html = process_markdown(src, OUT_DIR)
-        pdf_out = OUT_DIR / fname.replace('.md', '.pdf')
+        pdf_out = OUT_DIR / fname.replace(".md", ".pdf")
         to_pdf(html, pdf_out, title, part_num)
 
     print("\nDone. PDFs in:", OUT_DIR)

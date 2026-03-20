@@ -9,8 +9,6 @@ CI-portable: uses mocks for external dependencies.
 """
 
 import sys
-
-
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -24,9 +22,7 @@ def _make_orchestrator(model_type="jepa", **kwargs):
         "Programma_CS2_RENAN.backend.nn.training_orchestrator.get_device",
         return_value=torch.device("cpu"),
     ):
-        from Programma_CS2_RENAN.backend.nn.training_orchestrator import (
-            TrainingOrchestrator,
-        )
+        from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
         manager = MagicMock()
         return TrainingOrchestrator(manager, model_type=model_type, **kwargs)
@@ -41,9 +37,7 @@ class TestResolveMapName:
     """Tests for _resolve_map_name — static method for map name resolution."""
 
     def test_from_metadata(self):
-        from Programma_CS2_RENAN.backend.nn.training_orchestrator import (
-            TrainingOrchestrator,
-        )
+        from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
         match_mgr = MagicMock()
         meta = SimpleNamespace(map_name="de_inferno")
@@ -54,9 +48,7 @@ class TestResolveMapName:
         assert result == "de_inferno"
 
     def test_from_metadata_adds_de_prefix(self):
-        from Programma_CS2_RENAN.backend.nn.training_orchestrator import (
-            TrainingOrchestrator,
-        )
+        from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
         match_mgr = MagicMock()
         meta = SimpleNamespace(map_name="mirage")
@@ -67,33 +59,25 @@ class TestResolveMapName:
         assert result == "de_mirage"
 
     def test_from_demo_name_pattern(self):
-        from Programma_CS2_RENAN.backend.nn.training_orchestrator import (
-            TrainingOrchestrator,
-        )
+        from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
         result = TrainingOrchestrator._resolve_map_name(None, "faze_vs_navi_dust2.dem", None, {})
         assert result == "de_dust2"
 
     def test_from_demo_name_case_insensitive(self):
-        from Programma_CS2_RENAN.backend.nn.training_orchestrator import (
-            TrainingOrchestrator,
-        )
+        from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
         result = TrainingOrchestrator._resolve_map_name(None, "MATCH_INFERNO_2024.dem", None, {})
         assert result == "de_inferno"
 
     def test_fallback_to_mirage(self):
-        from Programma_CS2_RENAN.backend.nn.training_orchestrator import (
-            TrainingOrchestrator,
-        )
+        from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
         result = TrainingOrchestrator._resolve_map_name(None, "unknown_demo.dem", None, {})
         assert result == "de_mirage"
 
     def test_metadata_cache_prevents_requery(self):
-        from Programma_CS2_RENAN.backend.nn.training_orchestrator import (
-            TrainingOrchestrator,
-        )
+        from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
         match_mgr = MagicMock()
         meta = SimpleNamespace(map_name="de_nuke")
@@ -108,9 +92,7 @@ class TestResolveMapName:
         match_mgr.get_metadata.assert_not_called()
 
     def test_metadata_exception_falls_back_to_demo_name(self):
-        from Programma_CS2_RENAN.backend.nn.training_orchestrator import (
-            TrainingOrchestrator,
-        )
+        from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
         match_mgr = MagicMock()
         match_mgr.get_metadata.side_effect = RuntimeError("DB error")
@@ -120,11 +102,18 @@ class TestResolveMapName:
         assert result == "de_ancient"
 
     def test_all_known_maps_detected(self):
-        from Programma_CS2_RENAN.backend.nn.training_orchestrator import (
-            TrainingOrchestrator,
-        )
+        from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
-        known_maps = ["mirage", "inferno", "dust2", "ancient", "nuke", "anubis", "overpass", "vertigo"]
+        known_maps = [
+            "mirage",
+            "inferno",
+            "dust2",
+            "ancient",
+            "nuke",
+            "anubis",
+            "overpass",
+            "vertigo",
+        ]
         for m in known_maps:
             result = TrainingOrchestrator._resolve_map_name(None, f"demo_{m}_2024.dem", None, {})
             assert result == f"de_{m}", f"Failed to detect {m}"
@@ -139,14 +128,10 @@ class TestComputeAdvantage:
     """Tests for _compute_advantage — continuous advantage [0, 1]."""
 
     def _make_player(self, team, health=100, equip=4000, is_alive=True):
-        return SimpleNamespace(
-            team=team, health=health, equipment_value=equip, is_alive=is_alive
-        )
+        return SimpleNamespace(team=team, health=health, equipment_value=equip, is_alive=is_alive)
 
     def test_balanced_returns_around_half(self):
-        from Programma_CS2_RENAN.backend.nn.training_orchestrator import (
-            TrainingOrchestrator,
-        )
+        from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
         players = [
             self._make_player("CT", 100, 4000),
@@ -158,9 +143,7 @@ class TestComputeAdvantage:
         assert 0.45 <= adv <= 0.55, f"Balanced game should be ~0.5, got {adv}"
 
     def test_numerical_advantage_increases_score(self):
-        from Programma_CS2_RENAN.backend.nn.training_orchestrator import (
-            TrainingOrchestrator,
-        )
+        from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
         players = [
             self._make_player("CT", 100, 4000),
@@ -172,9 +155,7 @@ class TestComputeAdvantage:
         assert adv > 0.55, f"3v1 should be > 0.55, got {adv}"
 
     def test_numerical_disadvantage_decreases_score(self):
-        from Programma_CS2_RENAN.backend.nn.training_orchestrator import (
-            TrainingOrchestrator,
-        )
+        from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
         players = [
             self._make_player("CT", 100, 4000),
@@ -186,9 +167,7 @@ class TestComputeAdvantage:
         assert adv < 0.45, f"1v3 should be < 0.45, got {adv}"
 
     def test_bomb_planted_advantage_for_t(self):
-        from Programma_CS2_RENAN.backend.nn.training_orchestrator import (
-            TrainingOrchestrator,
-        )
+        from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
         players = [
             self._make_player("CT", 100, 4000),
@@ -199,9 +178,7 @@ class TestComputeAdvantage:
         assert adv_bomb > adv_no_bomb, "Bomb planted should increase T advantage"
 
     def test_bomb_planted_disadvantage_for_ct(self):
-        from Programma_CS2_RENAN.backend.nn.training_orchestrator import (
-            TrainingOrchestrator,
-        )
+        from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
         players = [
             self._make_player("CT", 100, 4000),
@@ -212,9 +189,7 @@ class TestComputeAdvantage:
         assert adv_bomb < adv_no_bomb, "Bomb planted should decrease CT advantage"
 
     def test_dead_players_not_counted(self):
-        from Programma_CS2_RENAN.backend.nn.training_orchestrator import (
-            TrainingOrchestrator,
-        )
+        from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
         players = [
             self._make_player("CT", 100, 4000, is_alive=True),
@@ -225,9 +200,7 @@ class TestComputeAdvantage:
         assert adv > 0.6, f"1v0 should be strong advantage, got {adv}"
 
     def test_result_always_in_0_1_range(self):
-        from Programma_CS2_RENAN.backend.nn.training_orchestrator import (
-            TrainingOrchestrator,
-        )
+        from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
         # Extreme case: 5v0
         players = [self._make_player("CT", 100, 10000) for _ in range(5)]
@@ -240,9 +213,7 @@ class TestComputeAdvantage:
         assert 0.0 <= adv <= 1.0
 
     def test_no_players_returns_safe_value(self):
-        from Programma_CS2_RENAN.backend.nn.training_orchestrator import (
-            TrainingOrchestrator,
-        )
+        from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
         adv = TrainingOrchestrator._compute_advantage([], "CT", bomb_planted=False)
         assert 0.0 <= adv <= 1.0
@@ -512,16 +483,10 @@ class TestRunTrainingEdgeCases:
         mock_trainer = MagicMock()
         orch.TrainerClass = MagicMock(return_value=mock_trainer)
 
-        with patch(
-            "Programma_CS2_RENAN.backend.nn.factory.ModelFactory"
-        ) as mock_factory:
+        with patch("Programma_CS2_RENAN.backend.nn.factory.ModelFactory") as mock_factory:
             mock_factory.get_model.return_value = mock_model
-            with patch(
-                "Programma_CS2_RENAN.backend.nn.training_orchestrator.load_nn"
-            ):
-                with patch(
-                    "Programma_CS2_RENAN.backend.nn.training_orchestrator.save_nn"
-                ):
+            with patch("Programma_CS2_RENAN.backend.nn.training_orchestrator.load_nn"):
+                with patch("Programma_CS2_RENAN.backend.nn.training_orchestrator.save_nn"):
                     orch.run_training()  # Should not crash
 
     def test_report_progress_delegates_to_manager(self):
@@ -542,9 +507,7 @@ class TestConstants:
     """Verify training orchestrator constants are valid."""
 
     def test_advantage_weights_sum_to_one(self):
-        from Programma_CS2_RENAN.backend.nn.training_orchestrator import (
-            TrainingOrchestrator,
-        )
+        from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
         total = (
             TrainingOrchestrator._ADV_W_ALIVE
@@ -555,9 +518,7 @@ class TestConstants:
         assert total == pytest.approx(1.0), f"Advantage weights sum to {total}, expected 1.0"
 
     def test_role_indices_unique_and_contiguous(self):
-        from Programma_CS2_RENAN.backend.nn.training_orchestrator import (
-            TrainingOrchestrator,
-        )
+        from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
         roles = [
             TrainingOrchestrator.ROLE_SITE_TAKE,

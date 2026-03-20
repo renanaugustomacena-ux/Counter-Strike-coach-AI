@@ -56,7 +56,6 @@ from Programma_CS2_RENAN.observability.logger_setup import get_tool_logger
 _tool_logger = get_tool_logger("sanitizer")
 
 
-
 class IndustrialSanitizer:
     def __init__(self, force: bool = False):
         self.project_root = project_root

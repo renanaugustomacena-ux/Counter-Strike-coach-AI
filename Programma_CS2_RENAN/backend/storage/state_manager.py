@@ -5,7 +5,11 @@ from enum import Enum
 from sqlmodel import select
 
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager
-from Programma_CS2_RENAN.backend.storage.db_models import CoachState, CoachStatus, ServiceNotification
+from Programma_CS2_RENAN.backend.storage.db_models import (
+    CoachState,
+    CoachStatus,
+    ServiceNotification,
+)
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.state_manager")
@@ -128,7 +132,8 @@ class StateManager:
             if self._telemetry_fail_count >= self._TELEMETRY_ESCALATION_THRESHOLD:
                 logger.error(
                     "SM-02: Telemetry update failed %d consecutive times: %s",
-                    self._telemetry_fail_count, e,
+                    self._telemetry_fail_count,
+                    e,
                 )
             else:
                 logger.warning("Telemetry update failed: %s", e)
@@ -169,9 +174,8 @@ class StateManager:
 
                 # SM-03: Check total count and prune if exceeding cap
                 from sqlmodel import func
-                count = session.exec(
-                    select(func.count()).select_from(ServiceNotification)
-                ).one()
+
+                count = session.exec(select(func.count()).select_from(ServiceNotification)).one()
                 if count > self._MAX_NOTIFICATIONS:
                     self.prune_old_notifications()
         except Exception as e:
@@ -190,14 +194,14 @@ class StateManager:
         cutoff = datetime.now(timezone.utc) - timedelta(days=max_age_days)
         try:
             with self.db.get_session() as session:
-                stmt = delete(ServiceNotification).where(
-                    ServiceNotification.created_at < cutoff
-                )
+                stmt = delete(ServiceNotification).where(ServiceNotification.created_at < cutoff)
                 result = session.exec(stmt)
                 session.commit()
                 deleted = result.rowcount  # type: ignore[union-attr]
                 if deleted:
-                    logger.info("Pruned %d old notifications (older than %d days)", deleted, max_age_days)
+                    logger.info(
+                        "Pruned %d old notifications (older than %d days)", deleted, max_age_days
+                    )
                 return deleted
         except Exception as e:
             logger.error("Failed to prune notifications: %s", e)

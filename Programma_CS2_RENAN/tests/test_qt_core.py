@@ -20,6 +20,7 @@ if str(_project_root) not in sys.path:
 
 # ── QApplication fixture ──
 
+
 @pytest.fixture(scope="session")
 def qapp():
     """Provide a QApplication instance for the entire test session."""
@@ -71,9 +72,7 @@ class TestI18nBridge:
         assert i18n.lang == original  # should not change
 
     def test_json_translations_loaded(self, qapp):
-        from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import (
-            _JSON_TRANSLATIONS,
-        )
+        from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import _JSON_TRANSLATIONS
 
         # At least English should be loaded from assets/i18n/en.json
         assert "en" in _JSON_TRANSLATIONS
@@ -126,17 +125,13 @@ class TestScreenContracts:
     @pytest.mark.parametrize("module_name", _ALL_SCREEN_MODULES)
     def test_screen_module_importable(self, module_name):
         """Every screen module must import without error."""
-        mod = importlib.import_module(
-            f"Programma_CS2_RENAN.apps.qt_app.screens.{module_name}"
-        )
+        mod = importlib.import_module(f"Programma_CS2_RENAN.apps.qt_app.screens.{module_name}")
         assert mod is not None
 
     @pytest.mark.parametrize("module_name,class_name", _SIMPLE_SCREENS)
     def test_screen_has_on_enter(self, module_name, class_name):
         """Every screen class must have an on_enter method."""
-        mod = importlib.import_module(
-            f"Programma_CS2_RENAN.apps.qt_app.screens.{module_name}"
-        )
+        mod = importlib.import_module(f"Programma_CS2_RENAN.apps.qt_app.screens.{module_name}")
         cls = getattr(mod, class_name)
         assert hasattr(cls, "on_enter"), f"{class_name} missing on_enter()"
         assert callable(getattr(cls, "on_enter"))
@@ -144,9 +139,7 @@ class TestScreenContracts:
     @pytest.mark.parametrize("module_name,class_name", _SIMPLE_SCREENS)
     def test_screen_constructable(self, qapp, module_name, class_name):
         """Screens with (parent=None) signature must construct without error."""
-        mod = importlib.import_module(
-            f"Programma_CS2_RENAN.apps.qt_app.screens.{module_name}"
-        )
+        mod = importlib.import_module(f"Programma_CS2_RENAN.apps.qt_app.screens.{module_name}")
         cls = getattr(mod, class_name)
         widget = cls(parent=None)
         assert widget is not None
@@ -154,18 +147,14 @@ class TestScreenContracts:
 
     def test_settings_screen_has_on_enter(self):
         """SettingsScreen (requires theme_engine) must have on_enter."""
-        from Programma_CS2_RENAN.apps.qt_app.screens.settings_screen import (
-            SettingsScreen,
-        )
+        from Programma_CS2_RENAN.apps.qt_app.screens.settings_screen import SettingsScreen
 
         assert hasattr(SettingsScreen, "on_enter")
 
     def test_settings_screen_constructable(self, qapp):
         """SettingsScreen constructs with a ThemeEngine instance."""
         from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import ThemeEngine
-        from Programma_CS2_RENAN.apps.qt_app.screens.settings_screen import (
-            SettingsScreen,
-        )
+        from Programma_CS2_RENAN.apps.qt_app.screens.settings_screen import SettingsScreen
 
         engine = ThemeEngine()
         widget = SettingsScreen(theme_engine=engine, parent=None)
@@ -174,9 +163,7 @@ class TestScreenContracts:
 
     def test_placeholder_screen_constructable(self, qapp):
         """PlaceholderScreen constructs with title arg."""
-        from Programma_CS2_RENAN.apps.qt_app.screens.placeholder import (
-            PlaceholderScreen,
-        )
+        from Programma_CS2_RENAN.apps.qt_app.screens.placeholder import PlaceholderScreen
 
         widget = PlaceholderScreen(title="Test", description="desc")
         assert widget is not None
@@ -263,19 +250,21 @@ class TestAppStateApply:
         received = []
         state.coach_status_changed.connect(lambda s: received.append(s))
 
-        state._apply({
-            "service_active": True,
-            "coach_status": "Training",
-            "parsing_progress": 0.0,
-            "belief_confidence": 0.0,
-            "total_matches": 0,
-            "current_epoch": 1,
-            "total_epochs": 10,
-            "train_loss": 0.5,
-            "val_loss": 0.6,
-            "eta_seconds": 120.0,
-            "notifications": [],
-        })
+        state._apply(
+            {
+                "service_active": True,
+                "coach_status": "Training",
+                "parsing_progress": 0.0,
+                "belief_confidence": 0.0,
+                "total_matches": 0,
+                "current_epoch": 1,
+                "total_epochs": 10,
+                "train_loss": 0.5,
+                "val_loss": 0.6,
+                "eta_seconds": 120.0,
+                "notifications": [],
+            }
+        )
 
         assert "Training" in received
 
@@ -313,25 +302,25 @@ class TestAppStateApply:
     def test_apply_notifications(self, qapp):
         state = self._make_app_state()
         received = []
-        state.notification_received.connect(
-            lambda sev, msg: received.append((sev, msg))
-        )
+        state.notification_received.connect(lambda sev, msg: received.append((sev, msg)))
 
-        state._apply({
-            "service_active": False,
-            "coach_status": "Idle",
-            "parsing_progress": 0.0,
-            "belief_confidence": 0.0,
-            "total_matches": 0,
-            "current_epoch": 0,
-            "total_epochs": 0,
-            "train_loss": 0.0,
-            "val_loss": 0.0,
-            "eta_seconds": 0.0,
-            "notifications": [
-                {"severity": "info", "message": "Demo ingested successfully"},
-            ],
-        })
+        state._apply(
+            {
+                "service_active": False,
+                "coach_status": "Idle",
+                "parsing_progress": 0.0,
+                "belief_confidence": 0.0,
+                "total_matches": 0,
+                "current_epoch": 0,
+                "total_epochs": 0,
+                "train_loss": 0.0,
+                "val_loss": 0.0,
+                "eta_seconds": 0.0,
+                "notifications": [
+                    {"severity": "info", "message": "Demo ingested successfully"},
+                ],
+            }
+        )
 
         assert ("info", "Demo ingested successfully") in received
 
@@ -359,20 +348,14 @@ class TestThemeEngine:
             assert required.issubset(set(palette.keys())), f"{name} missing slots"
 
     def test_rating_color_good(self, qapp):
-        from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import (
-            COLOR_GREEN,
-            rating_color,
-        )
+        from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import COLOR_GREEN, rating_color
 
         color = rating_color(1.20)
         # Should be green
         assert color.greenF() > color.redF()
 
     def test_rating_color_bad(self, qapp):
-        from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import (
-            COLOR_RED,
-            rating_color,
-        )
+        from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import COLOR_RED, rating_color
 
         color = rating_color(0.80)
         # Should be red

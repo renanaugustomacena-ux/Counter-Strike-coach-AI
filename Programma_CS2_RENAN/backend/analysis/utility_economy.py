@@ -154,7 +154,9 @@ class UtilityAnalyzer:
             UtilityType.SMOKE: "Use all smokes each round. Learn 3+ lineups per map.",
         }
         # Emoji stripped — presentation is UI concern
-        return f"{util_type.value.title()}: {recommendations.get(util_type, 'Improve utility usage')}"
+        return (
+            f"{util_type.value.title()}: {recommendations.get(util_type, 'Improve utility usage')}"
+        )
 
     def _calculate_economy_impact(self, utility_stats: Dict) -> float:
         """Calculate dollar value of utility efficiency."""

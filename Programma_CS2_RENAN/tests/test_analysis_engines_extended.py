@@ -8,10 +8,8 @@ Covers:
   WinProbabilityNN / WinProbabilityPredictor (win_probability.py)
 """
 
-import sys
-
-
 import math
+import sys
 
 import numpy as np
 import pandas as pd
@@ -229,10 +227,17 @@ class TestDeathProbabilityEstimator:
         from Programma_CS2_RENAN.backend.analysis.belief_model import DeathProbabilityEstimator
 
         est = DeathProbabilityEstimator()
-        df = pd.DataFrame({
-            "health": [90] * 50 + [50] * 50 + [20] * 50,
-            "died": [False] * 40 + [True] * 10 + [False] * 25 + [True] * 25 + [False] * 10 + [True] * 40,
-        })
+        df = pd.DataFrame(
+            {
+                "health": [90] * 50 + [50] * 50 + [20] * 50,
+                "died": [False] * 40
+                + [True] * 10
+                + [False] * 25
+                + [True] * 25
+                + [False] * 10
+                + [True] * 40,
+            }
+        )
         est.calibrate(df)
         assert est._calibrated is True
         # Full HP bracket should have lower rate than critical
@@ -342,9 +347,12 @@ class TestGameState:
         from Programma_CS2_RENAN.backend.analysis.win_probability import GameState
 
         gs = GameState(
-            team_economy=8000, enemy_economy=2000,
-            alive_players=4, enemy_alive=2,
-            bomb_planted=True, is_ct=False,
+            team_economy=8000,
+            enemy_economy=2000,
+            alive_players=4,
+            enemy_alive=2,
+            bomb_planted=True,
+            is_ct=False,
         )
         assert gs.bomb_planted is True
         assert gs.is_ct is False

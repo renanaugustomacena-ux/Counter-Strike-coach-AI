@@ -232,9 +232,7 @@ class WizardScreen(QWidget):
             self._brain_path_label.setText(f"Selected: {path}")
 
     def _pick_demo_folder(self):
-        path = QFileDialog.getExistingDirectory(
-            self, "Select Demo Folder", os.path.expanduser("~")
-        )
+        path = QFileDialog.getExistingDirectory(self, "Select Demo Folder", os.path.expanduser("~"))
         if path:
             self._demo_input.setText(path)
             self._demo_path = path

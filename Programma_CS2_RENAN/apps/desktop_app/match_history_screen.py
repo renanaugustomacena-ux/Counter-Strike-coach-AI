@@ -9,11 +9,9 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.screen import MDScreen
 
 from Programma_CS2_RENAN.apps.desktop_app.data_viewmodels import MatchHistoryViewModel
-from Programma_CS2_RENAN.apps.desktop_app.theme import (
-    COLOR_CARD_BG as _COLOR_CARD_BG,
-    rating_color as _rating_color,
-    rating_label as _rating_label,
-)
+from Programma_CS2_RENAN.apps.desktop_app.theme import COLOR_CARD_BG as _COLOR_CARD_BG
+from Programma_CS2_RENAN.apps.desktop_app.theme import rating_color as _rating_color
+from Programma_CS2_RENAN.apps.desktop_app.theme import rating_label as _rating_label
 from Programma_CS2_RENAN.core.registry import registry
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 

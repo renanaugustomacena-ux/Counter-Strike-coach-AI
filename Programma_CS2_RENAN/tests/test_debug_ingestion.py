@@ -7,7 +7,6 @@ Validates extract_match_stats with controlled scalar inputs
 
 import sys
 
-
 import pandas as pd
 import pytest
 
