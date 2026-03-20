@@ -163,6 +163,7 @@ class TestModelFactory:
         assert model is not None
 
     def test_get_model_rap(self):
+        pytest.importorskip("ncps", reason="RAP model requires ncps package")
         from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
 
         model = ModelFactory.get_model("rap")
