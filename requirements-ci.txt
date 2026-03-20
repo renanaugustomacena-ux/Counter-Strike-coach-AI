@@ -1,9 +1,12 @@
-# CI-specific requirements overlay
-# Forces CPU-only PyTorch (GitHub Actions runners have no GPU)
+# CI-specific requirements for GitHub Actions (CPU-only runners)
+# Forces CPU-only PyTorch — no GPU available on CI runners.
+#
+# Uses version ranges (requirements.txt) rather than the lock file to avoid
+# conflicts between CUDA-pinned versions and CPU index resolution.
+# For reproducible distribution builds, use requirements-lock-cpu.txt instead.
+#
 # Usage: pip install -r requirements-ci.txt
 
 --extra-index-url https://download.pytorch.org/whl/cpu
 
-# Install all locked dependencies, but pip will resolve torch/torchaudio/torchvision
-# from the CPU index above (overriding the cu121 versions in the lock file)
--r requirements-lock.txt
+-r requirements.txt
