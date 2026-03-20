@@ -69,6 +69,9 @@ jobs:
           key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
 
       - name: Run pre-commit hooks (format + quality)
+        env:
+          # Skip system hooks that need full project deps — covered by integration stage
+          SKIP: integrity-manifest-check,dev-health-quick
         run: pre-commit run --all-files --show-diff-on-failure
 
   # ═══════════════════════════════════════════════════════════════════════════
@@ -87,7 +90,7 @@ jobs:
     env:
       CI: 'true'
       VIRTUAL_ENV: 'ci'
-      KIVY_NO_ARGS: '1'
+      KIVY_NO_ARGS: '1'  # Transitional: needed while 24 Kivy files remain
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
@@ -96,6 +99,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
 
+      # Transitional: SDL2 needed while Kivy code remains (remove after full Qt migration)
       - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -110,14 +114,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt \
             --extra-index-url https://download.pytorch.org/whl/cpu
-          pip install pytest pytest-cov
+          pip install pytest pytest-cov pytest-timeout
 
       - name: Install Python dependencies (Windows)
         if: runner.os == 'Windows'
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-ci.txt
-          pip install pytest pytest-cov
+          pip install pytest pytest-cov pytest-timeout
 
       - name: Run pytest with coverage
         run: >
@@ -126,7 +130,7 @@ jobs:
           --cov=Programma_CS2_RENAN
           --cov-report=xml:coverage.xml
           --cov-report=term-missing
-          --cov-fail-under=30
+          --cov-fail-under=35
           -x
 
       - name: Upload coverage report
@@ -153,7 +157,7 @@ jobs:
     env:
       CI: 'true'
       VIRTUAL_ENV: 'ci'
-      KIVY_NO_ARGS: '1'
+      KIVY_NO_ARGS: '1'  # Transitional: needed while 24 Kivy files remain
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
@@ -162,6 +166,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
 
+      # Transitional: SDL2 needed while Kivy code remains (remove after full Qt migration)
       - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -293,7 +298,7 @@ jobs:
     env:
       CI: 'true'
       VIRTUAL_ENV: 'ci'
-      KIVY_NO_ARGS: '1'
+      KIVY_NO_ARGS: '1'  # Transitional: needed while 24 Kivy files remain
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
@@ -302,6 +307,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
 
+      # Transitional: SDL2 needed while Kivy code remains (remove after full Qt migration)
       - name: Install system dependencies
         run: |
           sudo apt-get update -qq
@@ -348,12 +354,16 @@ jobs:
           python -c "
           from pathlib import Path
           critical = [
-              'Programma_CS2_RENAN/apps/desktop_app/layout.kv',
+              'Programma_CS2_RENAN/apps/qt_app/app.py',
+              'Programma_CS2_RENAN/apps/qt_app/themes',
+              'Programma_CS2_RENAN/assets/i18n',
               'Programma_CS2_RENAN/PHOTO_GUI',
               'Programma_CS2_RENAN/data/map_config.json',
               'Programma_CS2_RENAN/core/integrity_manifest.json',
               'Programma_CS2_RENAN/backend/knowledge/tactical_knowledge.json',
+              'Programma_CS2_RENAN/data/docs',
               'alembic',
+              'packaging/cs2_analyzer_win.spec',
           ]
           missing = [f for f in critical if not Path(f).exists()]
           if missing:
