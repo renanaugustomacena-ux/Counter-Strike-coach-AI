@@ -2708,6 +2708,44 @@ warn("Quality-Adv", "type hint coverage >= 50%", verify_type_hint_coverage)
 warn("Quality-Adv", "no mutable global state in nn/", verify_no_mutable_global_state_in_nn)
 
 
+# ── Phase 24: Qt Frontend Import Validation ──────────────────────────────────
+
+print("\n[Phase 24] Qt Frontend Import Validation")
+
+# Core Qt modules
+for mod_name in [
+    "Programma_CS2_RENAN.apps.qt_app.core.app_state",
+    "Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge",
+    "Programma_CS2_RENAN.apps.qt_app.core.theme_engine",
+    "Programma_CS2_RENAN.apps.qt_app.core.worker",
+]:
+    check("Qt-Import", f"import {mod_name.split('.')[-1]}", try_import(mod_name))
+
+# All 14 screen modules (13 screens + placeholder)
+for screen in [
+    "home_screen", "coach_screen", "match_history_screen", "match_detail_screen",
+    "performance_screen", "tactical_viewer_screen", "settings_screen",
+    "help_screen", "user_profile_screen", "profile_screen",
+    "steam_config_screen", "faceit_config_screen", "wizard_screen", "placeholder",
+]:
+    check(
+        "Qt-Import",
+        f"import screen.{screen}",
+        try_import(f"Programma_CS2_RENAN.apps.qt_app.screens.{screen}"),
+    )
+
+# All viewmodel modules
+for vm in [
+    "coach_vm", "coaching_chat_vm", "match_detail_vm",
+    "match_history_vm", "performance_vm", "tactical_vm", "user_profile_vm",
+]:
+    check(
+        "Qt-Import",
+        f"import viewmodel.{vm}",
+        try_import(f"Programma_CS2_RENAN.apps.qt_app.viewmodels.{vm}"),
+    )
+
+
 # ── Summary ──────────────────────────────────────────────────────────────────
 
 elapsed = time.perf_counter() - _t0

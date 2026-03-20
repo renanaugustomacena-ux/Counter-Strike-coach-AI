@@ -75,15 +75,17 @@ def load_nn(version, model, user_id=None):
             model.load_state_dict(state_dict, strict=True)
             model.eval()
         except RuntimeError as re:
-            # Handle size mismatch (common during architecture upgrades)
-            if "size mismatch" in str(re):
+            # Handle architecture incompatibility (size mismatch, missing/unexpected keys).
+            # All load_state_dict errors contain "state_dict" in the message.
+            err_msg = str(re)
+            if "size mismatch" in err_msg or "state_dict" in err_msg:
                 logger.warning(
-                    "Architecture Mismatch: Model at %s is stale (old dims). "
+                    "Architecture Mismatch: Model at %s is stale. "
                     "Checkpoint is incompatible with current architecture.",
                     path,
                 )
                 raise StaleCheckpointError(
-                    f"Checkpoint at {path} has incompatible dimensions. "
+                    f"Checkpoint at {path} is incompatible. "
                     f"Model needs re-training. Original error: {re}"
                 ) from re
             else:

@@ -39,7 +39,7 @@ _work_available_event = threading.Event()
 
 # F6-SE: Backup failure flag — Teacher daemon skips training when True
 # to prevent training on data that has no backup safety net.
-_backup_failed = False
+_backup_failed = threading.Event()
 
 
 def _monitor_stdin():
@@ -90,8 +90,7 @@ def run_session_loop():
     except Exception as e:
         logger.exception("Backup Routine Failed")
         # F6-SE: Set backup failure flag so Teacher daemon skips training
-        global _backup_failed
-        _backup_failed = True
+        _backup_failed.set()
         # SE-05: Surface backup failure to UI so user knows data is unprotected
         try:
             get_state_manager().add_notification(
@@ -369,7 +368,7 @@ def _teacher_daemon_loop():
         try:
             # F6-SE: Warn if backup failed — training continues without safety net.
             # Per-match SQLite isolation protects raw data; only checkpoints are at risk.
-            if _backup_failed:
+            if _backup_failed.is_set():
                 logger.warning(
                     "Teacher: backup failed at startup. Training continues WITHOUT "
                     "backup safety. Data may be lost if training crashes."
