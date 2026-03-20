@@ -9,7 +9,14 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
+  "scripts": {
+    "pdf": "node md2pdf.mjs --batch .",
+    "pdf:1a": "node md2pdf.mjs Book-Coach-1A.md",
+    "pdf:1b": "node md2pdf.mjs Book-Coach-1B.md",
+    "pdf:2": "node md2pdf.mjs Book-Coach-2.md",
+    "pdf:3": "node md2pdf.mjs Book-Coach-3.md"
+  },
   "dependencies": {
     "marked": "^17.0.3",
     "puppeteer": "^24.37.5"
