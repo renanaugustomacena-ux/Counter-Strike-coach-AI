@@ -912,14 +912,14 @@ class CoachTrainingManager:
             model = RAPCoachModel()
             try:
                 load_nn("rap_coach", model)
-            except StaleCheckpointError:
+            except (StaleCheckpointError, FileNotFoundError):
                 app_logger.warning(
-                    "RAP checkpoint stale (architecture changed). "
-                    "Overlay unavailable until model is retrained."
+                    "RAP checkpoint missing or stale (architecture changed). "
+                    "Overlay unavailable until model is trained."
                 )
                 return {
                     "status": "error",
-                    "message": "Model checkpoint outdated — retraining required.",
+                    "message": "Model checkpoint missing or outdated — training required.",
                     "overlay_results": {},
                 }
             model.to(device)

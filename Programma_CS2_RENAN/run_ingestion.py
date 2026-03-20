@@ -48,13 +48,13 @@ def _check_duplicate_demo(db_manager, demo_name: str) -> bool:
     """Unified duplicate detection across all ingestion data stores.
 
     Checks:
-    1. IngestionTask table (by stem, any status except 'error')
-    2. PlayerMatchStats table (by demo_name)
+    1. IngestionTask table (exact path, excludes error/processing)
+    2. PlayerMatchStats table (by demo_name stem)
     3. Per-match DB file existence
 
     Args:
         db_manager: Database manager instance
-        demo_name: Base name of the demo file (with or without extension)
+        demo_name: Full path or base name of the demo file
 
     Returns:
         True if demo was already ingested, False otherwise
@@ -64,15 +64,16 @@ def _check_duplicate_demo(db_manager, demo_name: str) -> bool:
 
     from Programma_CS2_RENAN.backend.storage.db_models import IngestionTask
 
-    # R3-04: Normalize to stem (strip .dem extension) for consistent matching
-    normalized = Path(demo_name).stem if demo_name.endswith(".dem") else demo_name
+    # R3-04: Extract stem for PlayerMatchStats and match DB checks
+    normalized = Path(demo_name).stem
 
     with db_manager.get_session() as session:
-        # Check 1: IngestionTask (any non-error status means queued, processing, or done)
+        # Check 1: IngestionTask — exact path match.
+        # Exclude "error" (retryable) and "processing" (current task).
         task_count = session.exec(
             select(func.count(IngestionTask.id)).where(
-                IngestionTask.demo_path.contains(normalized),
-                IngestionTask.status != "error",
+                IngestionTask.demo_path == demo_name,
+                IngestionTask.status.notin_(["error", "processing"]),
             )
         ).one()
         if task_count > 0:
@@ -366,6 +367,9 @@ def process_queued_tasks(db_manager, storage, is_pro, high_priority, limit=0):
     if not tasks:
         return 0
 
+    if limit > 0:
+        tasks = tasks[:limit]
+
     processed_count = 0
     total_tasks = len(tasks)
     for task in tasks:
@@ -392,7 +396,7 @@ def process_queued_tasks(db_manager, storage, is_pro, high_priority, limit=0):
         demo_path = Path(task.demo_path)
         demo_basename = demo_path.stem  # Filename without extension
 
-        if _check_duplicate_demo(db_manager, demo_basename):
+        if _check_duplicate_demo(db_manager, str(demo_path)):
             logger.info("Skipping duplicate demo: %s", demo_basename)
             with db_manager.get_session() as session:
                 session.add(task)
