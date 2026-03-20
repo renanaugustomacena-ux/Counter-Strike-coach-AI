@@ -9,11 +9,9 @@ Covers:
   - Subgraph queries (1-hop)
 """
 
-import sys
-
-
 import json
 import sqlite3
+import sys
 
 import pytest
 
@@ -35,9 +33,7 @@ class TestKnowledgeGraphManager:
     def test_init_creates_tables(self, tmp_path):
         graph = self._make_graph(tmp_path)
         conn = sqlite3.connect(graph.DB_PATH)
-        cursor = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
-        )
+        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
         tables = {row[0] for row in cursor.fetchall()}
         conn.close()
         assert "entities" in tables
@@ -67,9 +63,7 @@ class TestKnowledgeGraphManager:
         graph = self._make_graph(tmp_path)
         graph.add_entity("Mirage/Window", "Spot", ["Key control point"])
         conn = sqlite3.connect(graph.DB_PATH)
-        row = conn.execute(
-            "SELECT * FROM entities WHERE name = ?", ("Mirage/Window",)
-        ).fetchone()
+        row = conn.execute("SELECT * FROM entities WHERE name = ?", ("Mirage/Window",)).fetchone()
         conn.close()
         assert row is not None
         assert row[0] == "Mirage/Window"

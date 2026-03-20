@@ -48,9 +48,13 @@ class UserProfileViewModel(QObject):
         player = get_setting("CS2_PLAYER_NAME", "")
 
         with get_db_manager().get_session() as session:
-            profile = session.exec(
-                select(PlayerProfile).where(PlayerProfile.player_name == player)
-            ).first() if player else None
+            profile = (
+                session.exec(
+                    select(PlayerProfile).where(PlayerProfile.player_name == player)
+                ).first()
+                if player
+                else None
+            )
 
             if profile:
                 return {

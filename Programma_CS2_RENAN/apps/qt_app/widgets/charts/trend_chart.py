@@ -1,11 +1,6 @@
 """Rating + ADR dual-axis trend chart — replaces TrendGraphWidget (matplotlib)."""
 
-from PySide6.QtCharts import (
-    QChart,
-    QChartView,
-    QLineSeries,
-    QValueAxis,
-)
+from PySide6.QtCharts import QChart, QChartView, QLineSeries, QValueAxis
 from PySide6.QtCore import QMargins, Qt
 from PySide6.QtGui import QColor, QPainter, QPen
 
@@ -67,9 +62,7 @@ class TrendChart(QChartView):
         # Rating Y axis (left)
         ratings = [h.get("rating", 1.0) or 1.0 for h in history]
         ax_rating = QValueAxis()
-        ax_rating.setRange(
-            max(0, min(ratings) - 0.1), max(ratings) + 0.1
-        )
+        ax_rating.setRange(max(0, min(ratings) - 0.1), max(ratings) + 0.1)
         ax_rating.setTitleText("Rating")
         ax_rating.setTitleBrush(QColor("#00ccff"))
         ax_rating.setLabelsColor(QColor("#00ccff"))
@@ -80,9 +73,7 @@ class TrendChart(QChartView):
         # ADR Y axis (right)
         adrs = [h.get("avg_adr", 0) or 0 for h in history]
         ax_adr = QValueAxis()
-        ax_adr.setRange(
-            max(0, min(adrs) - 10), max(adrs) + 10
-        )
+        ax_adr.setRange(max(0, min(adrs) - 10), max(adrs) + 10)
         ax_adr.setTitleText("ADR")
         ax_adr.setTitleBrush(QColor("#ffaa00"))
         ax_adr.setLabelsColor(QColor("#ffaa00"))

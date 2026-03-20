@@ -73,10 +73,7 @@ def run_pre_training_quality_check(
         from sqlmodel import func, select
 
         from Programma_CS2_RENAN.backend.storage.database import get_db_manager
-        from Programma_CS2_RENAN.backend.storage.db_models import (
-            PlayerMatchStats,
-            PlayerTickState,
-        )
+        from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats, PlayerTickState
 
         db = get_db_manager()
 
@@ -90,9 +87,9 @@ def run_pre_training_quality_check(
         with db.get_session() as session:
             for split_name in ("train", "val", "test"):
                 count = session.exec(
-                    select(func.count()).select_from(PlayerMatchStats).where(
-                        PlayerMatchStats.dataset_split == split_name
-                    )
+                    select(func.count())
+                    .select_from(PlayerMatchStats)
+                    .where(PlayerMatchStats.dataset_split == split_name)
                 ).one()
                 setattr(report, f"{split_name}_rows", count)
 
@@ -101,7 +98,9 @@ def run_pre_training_quality_check(
             sample_total = min(report.total_tick_rows, 10000)
             if sample_total > 0:
                 zero_count = session.exec(
-                    select(func.count()).select_from(PlayerTickState).where(
+                    select(func.count())
+                    .select_from(PlayerTickState)
+                    .where(
                         PlayerTickState.pos_x == 0.0,
                         PlayerTickState.pos_y == 0.0,
                         PlayerTickState.pos_z == 0.0,

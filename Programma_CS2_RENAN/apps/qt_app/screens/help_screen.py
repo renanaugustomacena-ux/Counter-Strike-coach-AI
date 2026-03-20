@@ -195,8 +195,7 @@ class HelpScreen(QWidget):
         self._content_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self._content_label.setFont(QFont("Roboto", 14))
         self._content_label.setStyleSheet(
-            "color: #e0e0e0; line-height: 1.6; padding: 16px; "
-            "background: transparent;"
+            "color: #e0e0e0; line-height: 1.6; padding: 16px; " "background: transparent;"
         )
         right_scroll.setWidget(self._content_label)
 
@@ -244,8 +243,8 @@ class HelpScreen(QWidget):
             return
 
         filtered = [
-            t for t in self._topics
-            if query in t.get("title", "").lower()
-            or query in t.get("content", "").lower()
+            t
+            for t in self._topics
+            if query in t.get("title", "").lower() or query in t.get("content", "").lower()
         ]
         self._populate_list(filtered)

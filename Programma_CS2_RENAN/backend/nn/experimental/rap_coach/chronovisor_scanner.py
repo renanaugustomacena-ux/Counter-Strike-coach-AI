@@ -162,7 +162,8 @@ class ChronovisorScanner:
             # NN-CV-01: Include exception details for actionable diagnostics
             logger.exception(
                 "NN-CV-01: Chronovisor model load failed: %s: %s",
-                type(e).__name__, e,
+                type(e).__name__,
+                e,
             )
             self._last_model_error = str(e)
             return None
@@ -194,7 +195,9 @@ class ChronovisorScanner:
                     select(PlayerTickState)
                     .where(PlayerTickState.match_id == match_id)
                     .order_by(PlayerTickState.tick)
-                    .limit(_MAX_TICKS_PER_SCAN + 1)  # NN-CV-02: fetch one extra to detect truncation
+                    .limit(
+                        _MAX_TICKS_PER_SCAN + 1
+                    )  # NN-CV-02: fetch one extra to detect truncation
                 ).all()
 
             # NN-CV-02: Detect and warn about tick truncation
@@ -203,7 +206,8 @@ class ChronovisorScanner:
                 logger.warning(
                     "NN-CV-02: Match %d has >%d ticks — analysis truncated. "
                     "Late-match critical moments may be missed.",
-                    match_id, _MAX_TICKS_PER_SCAN,
+                    match_id,
+                    _MAX_TICKS_PER_SCAN,
                 )
                 ticks = ticks[:_MAX_TICKS_PER_SCAN]
 
@@ -333,7 +337,8 @@ class ChronovisorScanner:
                 if peak_idx >= len(ticks):
                     logger.debug(
                         "NN-CV-03: peak_idx %d out of bounds (ticks=%d), skipping moment",
-                        peak_idx, len(ticks),
+                        peak_idx,
+                        len(ticks),
                     )
                     i = j
                     continue

@@ -349,6 +349,7 @@ class WizardScreen(MDScreen):
             app_logger.error("OSError creating brain folder: %s", e)
             # DA-WZ-02: Use errno codes instead of locale-dependent string matching
             import errno
+
             if e.errno in (errno.EACCES, errno.EPERM):
                 user_docs = Path(os.path.expanduser("~")) / "Documents" / "DataCoach"
                 # WZ-04: Verify fallback suggestion is writable before recommending

@@ -5,10 +5,8 @@ Complements test_experience_bank_logic.py (which covers data structures only).
 Uses in-memory SQLite with monkeypatched get_db_manager for CI portability.
 """
 
-import sys
-
-
 import json
+import sys
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 
@@ -22,7 +20,6 @@ from Programma_CS2_RENAN.backend.knowledge.experience_bank import (
     SynthesizedAdvice,
 )
 from Programma_CS2_RENAN.backend.storage.db_models import CoachingExperience
-
 
 # ============ Fixtures ============
 
@@ -212,9 +209,7 @@ class TestRetrieveSimilar:
             context=sample_context, action_taken="held_angle", outcome="death", confidence=0.8
         )
 
-        results = experience_bank.retrieve_similar(
-            sample_context, outcome_filter="kill"
-        )
+        results = experience_bank.retrieve_similar(sample_context, outcome_filter="kill")
         assert len(results) == 1
         assert results[0].outcome == "kill"
 
@@ -636,7 +631,16 @@ class TestExtractFromDemo:
 
     def test_death_event_creates_experience(self, experience_bank):
         """player_death event where player is victim → experience with 'death' outcome."""
-        tick_data = [{"tick": 200, "pos_x": -1500, "pos_y": 600, "map_name": "de_dust2", "team": "T", "health": 50}]
+        tick_data = [
+            {
+                "tick": 200,
+                "pos_x": -1500,
+                "pos_y": 600,
+                "map_name": "de_dust2",
+                "team": "T",
+                "health": 50,
+            }
+        ]
         events = [
             {
                 "event_type": "player_death",
@@ -677,7 +681,14 @@ class TestExtractFromDemo:
     def test_pro_demo_higher_confidence(self, experience_bank):
         """Pro demo experiences have confidence=0.7 (vs 0.5 for user)."""
         tick_data = [{"tick": 100, "map_name": "de_mirage", "team": "CT", "health": 100}]
-        events = [{"event_type": "player_death", "tick": 100, "user_name": "Enemy1", "attacker_name": "ProPlayer"}]
+        events = [
+            {
+                "event_type": "player_death",
+                "tick": 100,
+                "user_name": "Enemy1",
+                "attacker_name": "ProPlayer",
+            }
+        ]
 
         experience_bank.extract_experiences_from_demo(
             demo_name="pro.dem",

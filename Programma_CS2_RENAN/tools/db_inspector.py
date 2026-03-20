@@ -249,7 +249,9 @@ def collect_splits():
             for split, cnt in rows:
                 result["splits"][split or "null"] = cnt
         except Exception as e:
-            logger.debug("collect_splits query suppressed: %s", e)  # F8-23/F8-24: log instead of silent suppress
+            logger.debug(
+                "collect_splits query suppressed: %s", e
+            )  # F8-23/F8-24: log instead of silent suppress
 
         # Pro vs user
         try:

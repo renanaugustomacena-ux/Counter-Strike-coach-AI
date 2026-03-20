@@ -4,7 +4,7 @@ Main window — QMainWindow with navigation sidebar and QStackedWidget.
 Replaces the Kivy ScreenManager + layout.kv root FloatLayout.
 """
 
-from PySide6.QtCore import Signal, Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QHBoxLayout,
@@ -20,7 +20,6 @@ from PySide6.QtWidgets import (
 )
 
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
-
 
 # ── Navigation definition ──
 # (screen_key, icon_char, i18n_key)
@@ -123,9 +122,7 @@ class MainWindow(QMainWindow):
             sidebar_layout.addWidget(btn)
             self._nav_buttons[key] = btn
 
-        sidebar_layout.addItem(
-            QSpacerItem(0, 0, QSizePolicy.Minimum, QSizePolicy.Expanding)
-        )
+        sidebar_layout.addItem(QSpacerItem(0, 0, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
         # Version label at bottom
         ver = QLabel("v0.1.0-ea")
@@ -210,9 +207,7 @@ class MainWindow(QMainWindow):
         """Update button labels and screen content when language changes."""
         for key, icon, i18n_key in NAV_ITEMS:
             if key in self._nav_buttons:
-                self._nav_buttons[key].setText(
-                    f"  {icon}  {i18n.get_text(i18n_key)}"
-                )
+                self._nav_buttons[key].setText(f"  {icon}  {i18n.get_text(i18n_key)}")
         # Notify all screens
         for i in range(self._stack.count()):
             widget = self._stack.widget(i)

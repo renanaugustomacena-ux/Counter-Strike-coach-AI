@@ -99,9 +99,7 @@ class ModelFactory:
                 ModelFactory.TYPE_RAP_LITE,
                 ModelFactory.TYPE_ROLE_HEAD,
             ]
-            raise ValueError(
-                f"Unknown model type: '{model_type}'. Valid types: {valid_types}"
-            )
+            raise ValueError(f"Unknown model type: '{model_type}'. Valid types: {valid_types}")
 
     @staticmethod
     def get_checkpoint_name(model_type: str) -> str:

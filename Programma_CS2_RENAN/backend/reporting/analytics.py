@@ -29,7 +29,8 @@ class AnalyticsEngine:
             stmt = (
                 select(PlayerMatchStats)
                 .where(
-                    PlayerMatchStats.player_name == player_name, PlayerMatchStats.is_pro == False  # noqa: E712
+                    PlayerMatchStats.player_name == player_name,
+                    PlayerMatchStats.is_pro == False,  # noqa: E712
                 )
                 .order_by(PlayerMatchStats.processed_at.desc())
                 .limit(limit)

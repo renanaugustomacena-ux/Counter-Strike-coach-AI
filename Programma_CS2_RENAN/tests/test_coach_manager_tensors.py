@@ -42,16 +42,16 @@ class TestFeatureListIntegrity:
     def test_no_duplicate_training_features(self):
         from Programma_CS2_RENAN.backend.nn.coach_manager import TRAINING_FEATURES
 
-        assert len(TRAINING_FEATURES) == len(set(TRAINING_FEATURES)), (
-            "TRAINING_FEATURES contains duplicates"
-        )
+        assert len(TRAINING_FEATURES) == len(
+            set(TRAINING_FEATURES)
+        ), "TRAINING_FEATURES contains duplicates"
 
     def test_no_duplicate_match_aggregate_features(self):
         from Programma_CS2_RENAN.backend.nn.coach_manager import MATCH_AGGREGATE_FEATURES
 
-        assert len(MATCH_AGGREGATE_FEATURES) == len(set(MATCH_AGGREGATE_FEATURES)), (
-            "MATCH_AGGREGATE_FEATURES contains duplicates"
-        )
+        assert len(MATCH_AGGREGATE_FEATURES) == len(
+            set(MATCH_AGGREGATE_FEATURES)
+        ), "MATCH_AGGREGATE_FEATURES contains duplicates"
 
     def test_target_indices_within_bounds(self):
         from Programma_CS2_RENAN.backend.nn.coach_manager import (
@@ -157,9 +157,9 @@ class TestPrepareTensorsNoneHandling:
         d = stats.model_dump()
         vec = np.array([d.get(f, 0.0) for f in MATCH_AGGREGATE_FEATURES], dtype=np.float32)
 
-        assert vec.shape == (METADATA_DIM,), (
-            f"Feature vector should be ({METADATA_DIM},), got {vec.shape}"
-        )
+        assert vec.shape == (
+            METADATA_DIM,
+        ), f"Feature vector should be ({METADATA_DIM},), got {vec.shape}"
 
 
 class TestDemoTiersAndConfidence:
@@ -186,16 +186,12 @@ class TestDemoTiersAndConfidence:
         from Programma_CS2_RENAN.backend.nn.coach_manager import TIER_CONFIDENCE
 
         for tier, conf in TIER_CONFIDENCE.items():
-            assert 0.0 <= conf <= 1.0, (
-                f"Confidence for {tier} is {conf}, must be in [0, 1]"
-            )
+            assert 0.0 <= conf <= 1.0, f"Confidence for {tier} is {conf}, must be in [0, 1]"
 
     def test_mature_tier_has_full_confidence(self):
         from Programma_CS2_RENAN.backend.nn.coach_manager import TIER_CONFIDENCE
 
-        assert TIER_CONFIDENCE["MATURE"] == 1.0, (
-            "MATURE tier should have 1.0 confidence"
-        )
+        assert TIER_CONFIDENCE["MATURE"] == 1.0, "MATURE tier should have 1.0 confidence"
 
     def test_calibrating_has_lowest_confidence(self):
         from Programma_CS2_RENAN.backend.nn.coach_manager import TIER_CONFIDENCE
@@ -203,9 +199,9 @@ class TestDemoTiersAndConfidence:
         calibrating = TIER_CONFIDENCE["CALIBRATING"]
         for tier, conf in TIER_CONFIDENCE.items():
             if tier != "CALIBRATING":
-                assert calibrating <= conf, (
-                    f"CALIBRATING ({calibrating}) should be <= {tier} ({conf})"
-                )
+                assert (
+                    calibrating <= conf
+                ), f"CALIBRATING ({calibrating}) should be <= {tier} ({conf})"
 
 
 class TestProBaselineVector:
@@ -217,17 +213,32 @@ class TestProBaselineVector:
 
         # Extracted from _get_pro_baseline_vector source
         defaults = {
-            "avg_kills": 0.75, "avg_deaths": 0.65, "avg_adr": 80.0, "avg_hs": 0.50,
-            "avg_kast": 0.72, "kill_std": 0.15, "adr_std": 12.0, "kd_ratio": 1.15,
-            "impact_rounds": 0.7, "accuracy": 0.50, "econ_rating": 0.75, "rating": 1.05,
-            "opening_duel_win_pct": 0.50, "clutch_win_pct": 0.10, "trade_kill_ratio": 0.15,
-            "flash_assists": 0.10, "positional_aggression_score": 0.50, "kpr": 0.75,
-            "dpr": 0.65, "rating_impact": 1.10, "rating_survival": 0.35,
-            "he_damage_per_round": 5.0, "smokes_per_round": 0.40,
-            "unused_utility_per_round": 0.30, "thrusmoke_kill_pct": 0.02,
+            "avg_kills": 0.75,
+            "avg_deaths": 0.65,
+            "avg_adr": 80.0,
+            "avg_hs": 0.50,
+            "avg_kast": 0.72,
+            "kill_std": 0.15,
+            "adr_std": 12.0,
+            "kd_ratio": 1.15,
+            "impact_rounds": 0.7,
+            "accuracy": 0.50,
+            "econ_rating": 0.75,
+            "rating": 1.05,
+            "opening_duel_win_pct": 0.50,
+            "clutch_win_pct": 0.10,
+            "trade_kill_ratio": 0.15,
+            "flash_assists": 0.10,
+            "positional_aggression_score": 0.50,
+            "kpr": 0.75,
+            "dpr": 0.65,
+            "rating_impact": 1.10,
+            "rating_survival": 0.35,
+            "he_damage_per_round": 5.0,
+            "smokes_per_round": 0.40,
+            "unused_utility_per_round": 0.30,
+            "thrusmoke_kill_pct": 0.02,
         }
 
         missing = [f for f in MATCH_AGGREGATE_FEATURES if f not in defaults]
-        assert len(missing) == 0, (
-            f"Pro baseline defaults missing features: {missing}"
-        )
+        assert len(missing) == 0, f"Pro baseline defaults missing features: {missing}"

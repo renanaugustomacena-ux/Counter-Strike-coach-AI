@@ -117,7 +117,8 @@ def cmd_build(args):
                 # Linux/macOS: ELF/Mach-O binaries have no extension; find
                 # executable files one level deep (PyInstaller dist/<name>/<name>)
                 binaries = [
-                    p for p in dist_dir.rglob("*")
+                    p
+                    for p in dist_dir.rglob("*")
                     if p.is_file() and os.access(str(p), os.X_OK) and "." not in p.name
                 ]
             for exe in binaries:
@@ -305,7 +306,10 @@ def cmd_manifest(args):
     print("  Generating integrity manifest...")
     try:
         result = subprocess.run(
-            ["python", str(PROJECT_ROOT / "Programma_CS2_RENAN" / "tools" / "sync_integrity_manifest.py")],
+            [
+                "python",
+                str(PROJECT_ROOT / "Programma_CS2_RENAN" / "tools" / "sync_integrity_manifest.py"),
+            ],
             capture_output=True,
             text=True,
             timeout=60,

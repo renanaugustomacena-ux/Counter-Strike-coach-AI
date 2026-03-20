@@ -163,13 +163,13 @@ class RoleThresholdStore:
 
         # P-RT-02: Count unique players, not total data points, for sample_count.
         # Same player across tournaments should not inflate statistical confidence.
-        _unique_players = len({
-            s.get("player_id") or s.get("player_name", id(s))
-            for s in pro_stats
-        })
+        _unique_players = len(
+            {s.get("player_id") or s.get("player_name", id(s)) for s in pro_stats}
+        )
         logger.info(
             "Learning thresholds from %d pro player records (%d unique players)",
-            len(pro_stats), _unique_players,
+            len(pro_stats),
+            _unique_players,
         )
 
         # Calculate thresholds using percentile analysis

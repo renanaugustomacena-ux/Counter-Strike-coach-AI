@@ -79,15 +79,30 @@ def log(msg: str, color: str = "") -> None:
 
 
 # Allowlist of all tables that delete_rows() is permitted to operate on.
-_ALLOWED_TABLES = frozenset({
-    "playertickstate", "roundstats", "coachingexperience", "coachinginsight",
-    "calibrationsnapshot", "rolethresholdrecord", "servicenotification",
-    "tacticalknowledge", "mapveto", "proplayerstatcard", "playermatchstats",
-    "matchresult", "ingestiontask", "ext_teamroundstats", "ext_playerplaystyle",
-    "proplayer", "proteam",
-    "entities", "relations",
-    "hltv_player_cache",
-})
+_ALLOWED_TABLES = frozenset(
+    {
+        "playertickstate",
+        "roundstats",
+        "coachingexperience",
+        "coachinginsight",
+        "calibrationsnapshot",
+        "rolethresholdrecord",
+        "servicenotification",
+        "tacticalknowledge",
+        "mapveto",
+        "proplayerstatcard",
+        "playermatchstats",
+        "matchresult",
+        "ingestiontask",
+        "ext_teamroundstats",
+        "ext_playerplaystyle",
+        "proplayer",
+        "proteam",
+        "entities",
+        "relations",
+        "hltv_player_cache",
+    }
+)
 
 
 def delete_rows(conn: sqlite3.Connection, table: str) -> int:
@@ -366,6 +381,7 @@ def phase_match_data() -> list:
     # Also check user-configured match_data path
     try:
         from Programma_CS2_RENAN.core.config import MATCH_DATA_PATH
+
         extra_dirs = [MATCH_DATA_PATH] if MATCH_DATA_PATH else []
     except Exception:
         extra_dirs = []
@@ -390,7 +406,10 @@ def phase_match_data() -> list:
             os.remove(f)
             deleted.append(os.path.basename(f))
 
-        log(f"  DELETED {len(db_files)} files from {match_dir} ({total_bytes / 1024 / 1024:.1f} MB)", YELLOW)
+        log(
+            f"  DELETED {len(db_files)} files from {match_dir} ({total_bytes / 1024 / 1024:.1f} MB)",
+            YELLOW,
+        )
 
     if not deleted:
         log("  No per-match files found", GREEN)
@@ -583,7 +602,8 @@ def main() -> int:
         help="Also wipe HLTV data (pro teams, players, stat cards)",
     )
     parser.add_argument(
-        "--yes", "-y",
+        "--yes",
+        "-y",
         action="store_true",
         default=False,
         help="Skip interactive confirmation prompt",

@@ -2,7 +2,10 @@ import torch
 import torch.nn as nn
 
 from Programma_CS2_RENAN.backend.nn.config import OUTPUT_DIM, RAP_POSITION_SCALE  # noqa: F401
-from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.pedagogy import CausalAttributor, RAPPedagogy
+from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.pedagogy import (
+    CausalAttributor,
+    RAPPedagogy,
+)
 from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.perception import RAPPerception
 from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.strategy import RAPStrategy
 from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
@@ -17,8 +20,13 @@ class RAPCoachModel(nn.Module):
     Layers: Perception, Prediction, Evaluation, Strategy, Memory, Pedagogy.
     """
 
-    def __init__(self, metadata_dim=METADATA_DIM, output_dim=OUTPUT_DIM,
-                 heuristic_config=None, use_lite_memory=False):
+    def __init__(
+        self,
+        metadata_dim=METADATA_DIM,
+        output_dim=OUTPUT_DIM,
+        heuristic_config=None,
+        use_lite_memory=False,
+    ):
         super().__init__()
         self.metadata_dim = metadata_dim
 
@@ -37,9 +45,11 @@ class RAPCoachModel(nn.Module):
         hidden_dim = 256
         if use_lite_memory:
             from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.memory import RAPMemoryLite
+
             self.memory = RAPMemoryLite(perception_dim, metadata_dim, hidden_dim)
         else:
             from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.memory import RAPMemory
+
             self.memory = RAPMemory(perception_dim, metadata_dim, hidden_dim)
 
         # 3. Strategy Layer (Decision Optimization)
@@ -55,22 +65,28 @@ class RAPCoachModel(nn.Module):
 
         logger.info(
             "RAPCoachModel initialized: metadata_dim=%d, output_dim=%d, hidden=%d, perception=%d",
-            metadata_dim, output_dim, hidden_dim, perception_dim,
+            metadata_dim,
+            output_dim,
+            hidden_dim,
+            perception_dim,
         )
 
-    def forward(self, view_frame, map_frame, motion_diff, metadata, skill_vec=None, hidden_state=None):
+    def forward(
+        self, view_frame, map_frame, motion_diff, metadata, skill_vec=None, hidden_state=None
+    ):
         # P-X-02: Input shape assertions — catch misaligned tensors before they
         # propagate into cryptic LSTM/CNN errors.
         assert metadata.ndim == 3 and metadata.shape[-1] == self.metadata_dim, (
             f"P-X-02: metadata shape {metadata.shape}, "
             f"expected (B, seq_len, {self.metadata_dim})"
         )
-        assert view_frame.ndim in (4, 5), (
-            f"P-X-02: view_frame must be 4D (B,C,H,W) or 5D (B,T,C,H,W), got {view_frame.ndim}D"
-        )
-        assert metadata.shape[1] >= 1, (
-            f"NN-RM-02: metadata seq_len must be >= 1, got {metadata.shape[1]}"
-        )
+        assert view_frame.ndim in (
+            4,
+            5,
+        ), f"P-X-02: view_frame must be 4D (B,C,H,W) or 5D (B,T,C,H,W), got {view_frame.ndim}D"
+        assert (
+            metadata.shape[1] >= 1
+        ), f"NN-RM-02: metadata seq_len must be >= 1, got {metadata.shape[1]}"
         # NN-40: hidden_state allows persisting recurrent state across forward calls
         batch_size, seq_len, _ = metadata.shape
 
@@ -79,9 +95,7 @@ class RAPCoachModel(nn.Module):
             # Per-timestep visual input — process each timestep through CNN
             z_frames = []
             for t in range(view_frame.shape[1]):
-                z_t = self.perception(
-                    view_frame[:, t], map_frame[:, t], motion_diff[:, t]
-                )
+                z_t = self.perception(view_frame[:, t], map_frame[:, t], motion_diff[:, t])
                 z_frames.append(z_t)
             z_spatial_seq = torch.stack(z_frames, dim=1)  # [B, T, 128]
         else:
@@ -114,7 +128,8 @@ class RAPCoachModel(nn.Module):
             elif skill_vec.shape[0] != batch_size:
                 logger.warning(
                     "NN-RM-01: skill_vec batch=%d != metadata batch=%d, ignoring",
-                    skill_vec.shape[0], batch_size,
+                    skill_vec.shape[0],
+                    batch_size,
                 )
                 skill_vec = None
 

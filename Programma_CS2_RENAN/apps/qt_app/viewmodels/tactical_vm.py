@@ -134,9 +134,7 @@ class TacticalGhostVM(QObject):
     def _ensure_loaded(self):
         if not self._engine and self._ghost_active:
             try:
-                from Programma_CS2_RENAN.backend.nn.inference.ghost_engine import (
-                    GhostEngine,
-                )
+                from Programma_CS2_RENAN.backend.nn.inference.ghost_engine import GhostEngine
 
                 self._engine = GhostEngine()
                 self._is_loaded = True

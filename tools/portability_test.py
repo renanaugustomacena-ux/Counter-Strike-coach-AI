@@ -180,72 +180,160 @@ class PortabilityVerifier:
     # Patterns that are safe at module level (not import-time side effects)
     SAFE_IMPORT_PATTERNS = [
         # Standard library / framework
-        "Path(", "os.path.", "os.makedirs(", "os.environ", "logging.", "getLogger",
+        "Path(",
+        "os.path.",
+        "os.makedirs(",
+        "os.environ",
+        "logging.",
+        "getLogger",
         # Type annotations
-        "Optional[", "List[", "Dict[", "Tuple[", "Union[", "Type[",
-        "TypeVar(", "Callable[",
+        "Optional[",
+        "List[",
+        "Dict[",
+        "Tuple[",
+        "Union[",
+        "Type[",
+        "TypeVar(",
+        "Callable[",
         # Dataclass / enum
-        "dataclass", "field(", "Enum)", "namedtuple(",
-        "IntEnum)", "StrEnum)", "auto()",
+        "dataclass",
+        "field(",
+        "Enum)",
+        "namedtuple(",
+        "IntEnum)",
+        "StrEnum)",
+        "auto()",
         # Project-specific safe patterns
-        "get_logger(", "get_setting(", "get_base_dir(", "get_writeable_dir(",
-        "get_resource_path(", "stabilize_paths(", "get_db_manager(",
-        "get_match_data_manager(", "get_experience_bank(",
+        "get_logger(",
+        "get_setting(",
+        "get_base_dir(",
+        "get_writeable_dir(",
+        "get_resource_path(",
+        "stabilize_paths(",
+        "get_db_manager(",
+        "get_match_data_manager(",
+        "get_experience_bank(",
         # SQLAlchemy / SQLModel
-        "create_engine(", "Column(", "Field(", "Relationship(",
-        "event.listens_for", "select(",
+        "create_engine(",
+        "Column(",
+        "Field(",
+        "Relationship(",
+        "event.listens_for",
+        "select(",
         # Kivy properties
-        "ObjectProperty(", "StringProperty(", "NumericProperty(",
-        "BooleanProperty(", "ListProperty(", "DictProperty(",
-        "Builder.load", "Factory.register",
+        "ObjectProperty(",
+        "StringProperty(",
+        "NumericProperty(",
+        "BooleanProperty(",
+        "ListProperty(",
+        "DictProperty(",
+        "Builder.load",
+        "Factory.register",
         # Constants / config
-        "re.compile(", "threading.", "functools.", "collections.",
+        "re.compile(",
+        "threading.",
+        "functools.",
+        "collections.",
         # Data structure constructors (module-level constants)
-        "NamedPosition(", "MapMetadata(", "GameEventSpec(",
-        "CoachingConcept(", "RoleProfile(", "EngagementProfile(",
-        "FormatVersion(", "ProtoChange(", "ScaleConfig(", "TrainingConfig(",
+        "NamedPosition(",
+        "MapMetadata(",
+        "GameEventSpec(",
+        "CoachingConcept(",
+        "RoleProfile(",
+        "EngagementProfile(",
+        "FormatVersion(",
+        "ProtoChange(",
+        "ScaleConfig(",
+        "TrainingConfig(",
         # System / process (entry point scripts)
-        "sys.path.insert(", "sys.path.append(", "sys.exit(", "print(",
+        "sys.path.insert(",
+        "sys.path.append(",
+        "sys.exit(",
+        "print(",
         # Kivy / GUI config
-        "Config.set(", "Config.read(", "matplotlib.use(",
+        "Config.set(",
+        "Config.read(",
+        "matplotlib.use(",
         # Argparse
-        "ArgumentParser(", "parse_args(",
+        "ArgumentParser(",
+        "parse_args(",
         # Standard lib
-        "warnings.warn(", "_warnings.warn(",
-        "defaultdict(", "OrderedDict(", "deque(",
+        "warnings.warn(",
+        "_warnings.warn(",
+        "defaultdict(",
+        "OrderedDict(",
+        "deque(",
         "raise ",
         # Register / decorators
         ".register(",
         # Threading primitives
-        "Lock(", "Event(", "Semaphore(", "Condition(",
+        "Lock(",
+        "Event(",
+        "Semaphore(",
+        "Condition(",
         # Type construction
         "NewType(",
         # Environment / sys introspection
-        "os.getenv(", "getattr(sys", "getattr(os",
+        "os.getenv(",
+        "getattr(sys",
+        "getattr(os",
         # FastAPI / ASGI
-        "FastAPI(", "APIKeyHeader(", "APIRouter(", "@app.",
+        "FastAPI(",
+        "APIKeyHeader(",
+        "APIRouter(",
+        "@app.",
         # Pytest
-        "@pytest.mark.", "pytest.mark.",
+        "@pytest.mark.",
+        "pytest.mark.",
         # Logging setup
-        "addHandler(", "setFormatter(", "fileConfig(",
-        "logger.info(", "logger.warning(", "logger.critical(",
-        "logger.debug(", "logger.error(", "app_logger.",
+        "addHandler(",
+        "setFormatter(",
+        "fileConfig(",
+        "logger.info(",
+        "logger.warning(",
+        "logger.critical(",
+        "logger.debug(",
+        "logger.error(",
+        "app_logger.",
         # Project entry-point helpers
-        "path_stabilize(", "init_sentry(", "run_rasp_audit(",
+        "path_stabilize(",
+        "init_sentry(",
+        "run_rasp_audit(",
         # Alembic
-        "run_migrations_offline(", "run_migrations_online(", "is_offline_mode(",
+        "run_migrations_offline(",
+        "run_migrations_online(",
+        "is_offline_mode(",
         # Module-level builtins (constant computation)
-        "float(", "int(", "str(", "len(", "set(", "list(",
-        "dict(", "tuple(", "bool(", "max(", "min(", "abs(", "round(",
+        "float(",
+        "int(",
+        "str(",
+        "len(",
+        "set(",
+        "list(",
+        "dict(",
+        "tuple(",
+        "bool(",
+        "max(",
+        "min(",
+        "abs(",
+        "round(",
         # Module-level singletons (service locator pattern)
-        "= HelpSystem(", "= AnalyticsEngine(", "= StateManager(",
-        "= VisualizationService(", "= AppLifecycleManager(",
-        "= LocalizationManager(", "= ScreenRegistry(",
-        "= RateLimiter(", "= Console(",
-        "hook(", "stdlib_module_names",
+        "= HelpSystem(",
+        "= AnalyticsEngine(",
+        "= StateManager(",
+        "= VisualizationService(",
+        "= AppLifecycleManager(",
+        "= LocalizationManager(",
+        "= ScreenRegistry(",
+        "= RateLimiter(",
+        "= Console(",
+        "hook(",
+        "stdlib_module_names",
         # Config module bootstrap
-        "load_user_settings(", "_settings.get(",
-        "_resolve_match_data_path(", "configure_log_dir(",
+        "load_user_settings(",
+        "_settings.get(",
+        "_resolve_match_data_path(",
+        "configure_log_dir(",
         "ensure_database_current(",
     ]
 
@@ -303,6 +391,7 @@ class PortabilityVerifier:
 
         # --- Pathlib / operator already in use → correct, not a violation ---
         import re as _re
+
         # Pattern: `variable / f"..."` — pathlib division operator
         if _re.search(r'\w\s*/\s*f["\']', line):
             return True
@@ -310,7 +399,7 @@ class PortabilityVerifier:
         # --- Positive evidence for file path construction ---
         # A genuine file path f-string typically has a file extension
         file_ext_pattern = _re.compile(
-            r'\.(py|json|db|txt|csv|pt|pth|log|cfg|ini|yaml|yml|toml|md|html|kv|png|jpg|bak)\b'
+            r"\.(py|json|db|txt|csv|pt|pth|log|cfg|ini|yaml|yml|toml|md|html|kv|png|jpg|bak)\b"
         )
         if file_ext_pattern.search(line):
             return False  # Likely genuine path construction — flag it
@@ -320,7 +409,19 @@ class PortabilityVerifier:
         if "\\" in stripped:
             test = stripped
             # Remove all known Python escape sequences
-            for esc in ("\\n", "\\t", "\\r", "\\\\", "\\'", '\\"', "\\0", "\\a", "\\b", "\\f", "\\v"):
+            for esc in (
+                "\\n",
+                "\\t",
+                "\\r",
+                "\\\\",
+                "\\'",
+                '\\"',
+                "\\0",
+                "\\a",
+                "\\b",
+                "\\f",
+                "\\v",
+            ):
                 test = test.replace(esc, "")
             # Remove unicode escapes (\uXXXX) and hex escapes (\xXX)
             test = _re.sub(r"\\u[0-9a-fA-F]{4}", "", test)
@@ -340,11 +441,11 @@ class PortabilityVerifier:
             prev_stripped = prev_line.strip()
             prev_indent = len(prev_line) - len(prev_line.lstrip())
             if prev_indent < current_indent and re.search(
-                r'''if\s+os\.name\s*==\s*["']nt["']''', prev_stripped
+                r"""if\s+os\.name\s*==\s*["']nt["']""", prev_stripped
             ):
                 return True
             if prev_indent < current_indent and re.search(
-                r'''if\s+.*sys\.platform.*==.*["']win''', prev_stripped
+                r"""if\s+.*sys\.platform.*==.*["']win""", prev_stripped
             ):
                 return True
         return False
@@ -431,7 +532,7 @@ class PortabilityVerifier:
 
                             # Skip regex pattern strings (e.g., r"C:\\Users" in security scanners)
                             stripped = line.strip()
-                            if re.search(r'''[rb]?["'].*\\\\.*["']''', stripped):
+                            if re.search(r"""[rb]?["'].*\\\\.*["']""", stripped):
                                 continue
 
                             # Skip platform-guarded code (inside if os.name == "nt": blocks)
@@ -584,9 +685,7 @@ class PortabilityVerifier:
                 # Check for dangerous platform-specific imports
                 rel_path_for_danger = str(pyfile.relative_to(self.project_root))
                 content_lines = content.split("\n")
-                self._check_dangerous_imports(
-                    content_lines, rel_path_for_danger, local_violations
-                )
+                self._check_dangerous_imports(content_lines, rel_path_for_danger, local_violations)
 
                 # Check for import-time function calls (side effects)
                 tree = ast.parse(content)

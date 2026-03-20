@@ -10,8 +10,6 @@ All tests are CI-portable: no database, no real demo files, no GPU required.
 
 import sys
 import threading
-
-
 from types import SimpleNamespace
 
 import numpy as np
@@ -37,7 +35,6 @@ from Programma_CS2_RENAN.backend.processing.tensor_factory import (
     get_tensor_factory,
 )
 from Programma_CS2_RENAN.core.spatial_data import MapMetadata
-
 
 # ============ Helpers ============
 
@@ -458,10 +455,7 @@ class TestMotionTensor:
 
     def test_trajectory_channel_with_many_ticks(self, factory):
         """Trajectory channel (Ch0) plots recent positions."""
-        ticks = [
-            _make_tick(pos_x=-2000 + i * 10, pos_y=800, tick=i)
-            for i in range(10)
-        ]
+        ticks = [_make_tick(pos_x=-2000 + i * 10, pos_y=800, tick=i) for i in range(10)]
         result = factory.generate_motion_tensor(ticks, map_name="de_mirage")
         assert result[0].max() > 0, "Trajectory channel should have trail"
 
@@ -659,12 +653,14 @@ class TestFOVMask:
 
     @pytest.fixture
     def factory(self):
-        return TensorFactory(config=TensorConfig(
-            view_resolution=32,
-            fov_degrees=90.0,
-            view_distance=2000.0,
-            sigma=0.0,
-        ))
+        return TensorFactory(
+            config=TensorConfig(
+                view_resolution=32,
+                fov_degrees=90.0,
+                view_distance=2000.0,
+                sigma=0.0,
+            )
+        )
 
     def test_output_shape(self, factory):
         """FOV mask has shape (resolution, resolution)."""
@@ -763,7 +759,9 @@ class TestSingleton:
 
         assert not errors, f"Thread errors: {errors}"
         assert len(instances) == 10
-        assert all(inst is instances[0] for inst in instances), "All threads should get same instance"
+        assert all(
+            inst is instances[0] for inst in instances
+        ), "All threads should get same instance"
 
 
 # ============ Gaussian Blur (sigma > 0) ============

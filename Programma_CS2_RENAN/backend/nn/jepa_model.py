@@ -19,10 +19,9 @@ References:
     - Yann LeCun's JEPA paper (2023)
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
-
-import logging
 
 import torch
 import torch.nn as nn
@@ -515,12 +514,12 @@ class ConceptLabeler:
     _KAST = 16
     _ROUND_PHASE = 18
     # Feature indices — new 6 added when METADATA_DIM was upgraded 19 → 25
-    _WEAPON_CLASS = 19    # Normalised weapon class (e.g. AWP=0.9, rifle=0.7, pistol=0.3)
-    _TIME_IN_ROUND = 20   # Elapsed round time / 115 s
-    _BOMB_PLANTED = 21    # 0/1 flag
+    _WEAPON_CLASS = 19  # Normalised weapon class (e.g. AWP=0.9, rifle=0.7, pistol=0.3)
+    _TIME_IN_ROUND = 20  # Elapsed round time / 115 s
+    _BOMB_PLANTED = 21  # 0/1 flag
     _TEAMMATES_ALIVE = 22  # alive_ct_or_t / 4.0
-    _ENEMIES_ALIVE = 23   # alive_opponents / 5.0
-    _TEAM_ECONOMY = 24    # team equip value / 16000
+    _ENEMIES_ALIVE = 23  # alive_opponents / 5.0
+    _TEAM_ECONOMY = 24  # team equip value / 16000
 
     def label_tick(self, features: torch.Tensor) -> torch.Tensor:
         """
@@ -561,10 +560,22 @@ class ConceptLabeler:
         team_econ = vals[self._TEAM_ECONOMY] if n > 24 else 0.0
 
         self._tick_positioning(labels, hp, crouching, scoped, enemies_vis, bomb_planted)
-        self._tick_utility_economy(labels, equip, blinded, enemies_vis, kast, round_phase, team_econ)
+        self._tick_utility_economy(
+            labels, equip, blinded, enemies_vis, kast, round_phase, team_econ
+        )
         self._tick_engagement(labels, hp, armor, blinded, enemies_vis, teammates, enemies, kast)
-        self._tick_tactical(labels, crouching, scoped, enemies_vis, kast, round_phase,
-                            weapon_class, time_in_round, hp, bomb_planted)
+        self._tick_tactical(
+            labels,
+            crouching,
+            scoped,
+            enemies_vis,
+            kast,
+            round_phase,
+            weapon_class,
+            time_in_round,
+            hp,
+            bomb_planted,
+        )
 
         return labels.clamp(0.0, 1.0)
 
@@ -617,8 +628,18 @@ class ConceptLabeler:
             labels[10] = min(1.0 - kast, 1.0)
 
     @staticmethod
-    def _tick_tactical(labels, crouching, scoped, enemies_vis, kast, round_phase,
-                       weapon_class, time_in_round, hp, bomb_planted):
+    def _tick_tactical(
+        labels,
+        crouching,
+        scoped,
+        enemies_vis,
+        kast,
+        round_phase,
+        weapon_class,
+        time_in_round,
+        hp,
+        bomb_planted,
+    ):
         """Tick-level tactical and psychology concept labels (11-15)."""
         if crouching <= 0.5 and scoped <= 0.5:
             labels[11] = 0.4 + (1.0 - time_in_round) * 0.2

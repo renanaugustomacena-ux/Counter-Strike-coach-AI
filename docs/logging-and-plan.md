@@ -1,13 +1,13 @@
 Logging & Error Handling Audit Report
-Project: Counter-Strike Coach AI (Programma_CS2_RENAN) Date: 2026-03-18 Scope: All 
+Project: Counter-Strike Coach AI (Programma_CS2_RENAN) Date: 2026-03-18 Scope: All
 .py
  files — core app, backend, tools, tests
 
 Executive Summary
 Dimension	Rating	Verdict
-Centralized Logging	⭐⭐⭐⭐	Solid foundation via 
+Centralized Logging	⭐⭐⭐⭐	Solid foundation via
 logger_setup.py
-Structured Logging	⭐⭐⭐	JSON in 
+Structured Logging	⭐⭐⭐	JSON in
 console.py
 , plain text elsewhere
 Error Code System	⭐⭐	Exists as inline comments, no formal registry
@@ -17,15 +17,15 @@ Catch-all proliferation	⭐⭐	50+ bare except Exception blocks
 Consistency	⭐⭐	Mixed print() / traceback.print_exc() / logger
 Runtime Integrity (RASP)	⭐⭐⭐⭐	HMAC-signed manifests, SHA-256 file integrity
 Log Rotation & Retention	⭐⭐⭐⭐	5 MB rotation, 3 backups, fallback handler
-Debug Level Control	⭐⭐⭐⭐	
+Debug Level Control	⭐⭐⭐⭐
 configure_log_level()
  for runtime switching
-Overall professionalism: Intermediate-to-Advanced. The infrastructure components (logger_setup, sentry_setup, 
+Overall professionalism: Intermediate-to-Advanced. The infrastructure components (logger_setup, sentry_setup,
 rasp.py
 ) are production-caliber. Enforcement across the codebase is incomplete — tools, tests, and standalone scripts bypass the centralized system.
 
 1. Centralized Logging Infrastructure
-1.1 Core: 
+1.1 Core:
 logger_setup.py
 Strengths:
 
@@ -35,35 +35,35 @@ Consistent format: %(asctime)s | %(levelname)s | %(name)s | [%(threadName)s] | %
 Thread name in log format — essential for this multi-threaded daemon architecture.
 configure_log_level()
  enables runtime log level switching for all cs2analyzer.* loggers.
-Circular-dependency-safe: 
+Circular-dependency-safe:
 configure_log_dir()
  breaks the config↔logger import cycle.
 Gaps:
 
 Console handler set to WARNING — INFO/DEBUG messages are invisible on stdout. Acceptable for end-user apps, but complicates developer debugging without file log inspection.
-No structlog or JSON output from the centralized logger. 
+No structlog or JSON output from the centralized logger.
 console.py
  has its own JSON handler, creating format divergence.
-1.2 Console Module: 
+1.2 Console Module:
 console.py
  (Lines 99–112)
 python
 # JSON structured logging — GOOD
 '{"ts":"%(asctime)s","lvl":"%(levelname)s","mod":"%(name)s","msg":"%(message)s"}'
 Date-rotated log files (console_20260318.json) — sensible for an interactive CLI.
-Conflict: Uses its own logging.FileHandler instead of the centralized 
+Conflict: Uses its own logging.FileHandler instead of the centralized
 get_logger()
-. This means 
+. This means
 console.py
- logs go to logs/console_*.json while the rest of the app logs to 
+ logs go to logs/console_*.json while the rest of the app logs to
 logs/cs2_analyzer.log
  with a different format.
-1.3 Session Engine: 
+1.3 Session Engine:
 session_engine.py
  (Lines 32–48)
-Adds a second FileHandler (to session_engine.log) on top of the one 
+Adds a second FileHandler (to session_engine.log) on top of the one
 get_logger()
- already attaches. Produces duplicate writes to 
+ already attaches. Produces duplicate writes to
 cs2_analyzer.log
  AND session_engine.log.
 Different format string from the centralized one: %(asctime)s - %(name)s - %(levelname)s - %(message)s vs %(asctime)s | %(levelname)s | %(name)s | [%(threadName)s] | %(message)s.
@@ -83,30 +83,30 @@ batch_ingest.py
 batch_ingest	❌
 goliath.py
 cs2analyzer.goliath	✅
-Tools: 
+Tools:
 Sanitize_Project.py
 Sanitizer	❌
-Tools: 
+Tools:
 audit_binaries.py
 BinaryAuditor	❌
-Tools: 
+Tools:
 Feature_Audit.py
 FeatureAuditor	❌
-Tools: 
+Tools:
 build_pipeline.py
 MacenaBuild	❌
-Tools: 
+Tools:
 migrate_db.py
 DBMigrator	❌
-Tools: 
+Tools:
 observe_training_cycle.py
 observe_cycle	❌
-Tests: 
+Tests:
 verify_chronovisor_real.py
 RealDataTest	❌
 logger_setup.py
  singleton	CS2_Coach_App	❌
-Verdict: Core app follows the cs2analyzer.* hierarchy. All tools and tests use ad-hoc names, making 
+Verdict: Core app follows the cs2analyzer.* hierarchy. All tools and tests use ad-hoc names, making
 configure_log_level()
  (which filters on cs2analyzer prefix) ineffective for them.
 
@@ -148,16 +148,16 @@ Exception	Module	Purpose
 IntegrityError
 observability/rasp.py
 Runtime integrity violation
-DataQualityError	
+DataQualityError
 backend/processing/feature_engineering/vectorizer.py
 Feature engineering validation
-DEMValidationError	
+DEMValidationError
 backend/processing/validation/dem_validator.py
 Demo file parsing failures
-FACEITAPIError	
+FACEITAPIError
 backend/data_sources/faceit_integration.py
 FACEIT API errors
-SteamNotFoundError	
+SteamNotFoundError
 backend/data_sources/steam_demo_finder.py
 Steam installation missing
 Assessment: Domain-scoped exception classes exist for critical subsystems. However, the project overwhelmingly catches Exception rather than these specific types, negating their diagnostic value.
@@ -198,7 +198,7 @@ Three files call logging.basicConfig():
 batch_ingest.py
 tests/verify_chronovisor_real.py
 tools/observe_training_cycle.py
-This conflicts with the centralized 
+This conflicts with the centralized
 get_logger()
  setup if both are active in the same process, because basicConfig modifies the root logger.
 
@@ -228,7 +228,7 @@ rasp.py
 HMAC-signed manifest with hmac.compare_digest() (timing-safe comparison).
 SHA-256 per-file hash verification.
 Environment-aware: Production (frozen PyInstaller) vs. development mode with different strictness.
-Build-time 
+Build-time
 sign_manifest()
  workflow.
 Frozen binary environment validation.
@@ -254,7 +254,7 @@ console.py:735 — Masks API keys in config display (**** + last 4 chars).
 
 console.py:665–677 — Secure key input via getpass, explicit warning against CLI arguments.
 
-Assessment: Security-conscious for a local desktop app. The comment P7-01 acknowledges the remaining gap (plaintext 
+Assessment: Security-conscious for a local desktop app. The comment P7-01 acknowledges the remaining gap (plaintext
 settings.json
 ).
 
@@ -267,11 +267,11 @@ C3	Silent except Exception: pass in disk check + notification	Operational blind 
 High (Should Fix)
 #	Issue	Impact
 H1	No formal error code registry	Error codes are undiscoverable without grep
-H2	Logger naming inconsistency across tools	
+H2	Logger naming inconsistency across tools
 configure_log_level()
  doesn't reach tools
 H3	logging.basicConfig() in 3 scripts	Root logger pollution when imported
-H4	
+H4
 session_engine.py
  adds duplicate FileHandler	Double-writes to log files
 Medium (Improve)
@@ -283,7 +283,7 @@ M4	Inconsistent log format strings	Parsing requires per-file regex
 M5	No error metrics / counter	No dashboards possible
 Low (Polish)
 #	Issue	Impact
-L1	app_logger singleton in 
+L1	app_logger singleton in
 logger_setup.py
  named CS2_Coach_App	Doesn't match cs2analyzer.* convention
 L2	Exit codes not documented	CI/CD scripts can't distinguish failure modes
@@ -292,12 +292,12 @@ L3	No log level env var override	Requires code change for DEBUG in production
 Create ERROR_CODES.md — formalize the 24+ inline codes into a searchable registry with severity, module, and remediation.
 Standardize logger names — rename all tools from Sanitizer/MacenaBuild/etc. to cs2analyzer.tools.*.
 Promote DEBUG catches to WARNING/ERROR — Profile Load Fail and Profile Save Fail must be visible.
-Remove duplicate handlers in 
+Remove duplicate handlers in
 session_engine.py
- — use 
+ — use
 get_logger()
  exclusively.
-Replace print(stderr) in tools/tests with 
+Replace print(stderr) in tools/tests with
 get_logger()
  or at minimum logging.getLogger(__name__).
 Add a LOG_LEVEL env var to override log level without code changes.
@@ -310,7 +310,7 @@ This plan addresses every dimension from the audit report's rating table, detail
 Current State → Target State
 Dimension	Current	Target	Key Gaps
 Centralized Logging	⭐⭐⭐⭐	⭐⭐⭐⭐⭐	Console & session engine bypass central logger
-Structured Logging	⭐⭐⭐	⭐⭐⭐⭐⭐	Only 
+Structured Logging	⭐⭐⭐	⭐⭐⭐⭐⭐	Only
 console.py
  has JSON; rest is plaintext
 Error Code System	⭐⭐	⭐⭐⭐⭐⭐	Inline-only, no registry, no machine-parseable enum
@@ -323,13 +323,13 @@ Log Rotation & Retention	⭐⭐⭐⭐	⭐⭐⭐⭐⭐	Duplicate handlers, no ret
 Debug Level Control	⭐⭐⭐⭐	⭐⭐⭐⭐⭐	No env var override, tools not wired
 Proposed Changes
 Component 1: Centralized Logger Factory — The Foundation
-Everything flows from this component. The current 
+Everything flows from this component. The current
 logger_setup.py
  is good but needs to become the single source of truth for every module in the project, including tools and tests.
 
-[MODIFY] 
+[MODIFY]
 logger_setup.py
-Goal: Upgrade 
+Goal: Upgrade
 get_logger()
  to produce structured JSON logs, support env var overrides, add correlation ID threading, and expose a tool-specific factory.
 
@@ -386,7 +386,7 @@ get_tool_logger() Factory — Dedicated function for standalone tool scripts, en
 python
 def get_tool_logger(tool_name: str) -> logging.Logger:
     """Logger factory for standalone tool scripts.
-    
+
     Produces a logger named cs2analyzer.tools.<tool_name> with:
     - JSON file handler in logs/tools/<tool_name>_<timestamp>.json
     - Console handler at WARNING (for Rich-based tools that own stdout)
@@ -395,18 +395,18 @@ def get_tool_logger(tool_name: str) -> logging.Logger:
     logger = logging.getLogger(canonical_name)
     if logger.handlers:
         return logger
-    
+
     logger.setLevel(_resolve_log_level())
-    
+
     tool_log_dir = os.path.join(_log_dir or "logs", "tools")
     os.makedirs(tool_log_dir, exist_ok=True)
-    
+
     from datetime import datetime
     log_file = os.path.join(
         tool_log_dir,
         f"{tool_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
     )
-    
+
     fh = logging.FileHandler(log_file, encoding="utf-8")
     fh.setFormatter(JSONFormatter())
     logger.addHandler(fh)
@@ -417,15 +417,15 @@ Fix the singleton — Rename app_logger = get_logger("CS2_Coach_App") to app_log
 
 Add the JSON and uuid imports at the top of the file.
 
-Integrate CorrelationFilter into the main 
+Integrate CorrelationFilter into the main
 get_logger()
  function — add logger.addFilter(CorrelationFilter()) after handler setup.
 
-Switch 
+Switch
 _create_file_handler
  to use JSONFormatter instead of the plaintext formatter.
 
-[NEW] 
+[NEW]
 error_codes.py
 Goal: Machine-parseable error code registry. Every known inline code gets a formal definition with severity, module, description, and remediation.
 
@@ -434,7 +434,7 @@ python
 Centralized Error Code Registry for the CS2 Analyzer project.
 Usage:
     from Programma_CS2_RENAN.observability.error_codes import ErrorCode, log_with_code
-    
+
     logger.warning(
         log_with_code(ErrorCode.LS_01, "RotatingFileHandler unavailable for %s"),
         log_path,
@@ -455,7 +455,7 @@ class ErrorCodeDef(NamedTuple):
     remediation: str
 class ErrorCode(Enum):
     """Every error code used across the project.
-    
+
     Naming convention: <MODULE_PREFIX>_<NUMBER>
     - LS: Logger Setup
     - RP: RASP
@@ -468,28 +468,28 @@ class ErrorCode(Enum):
     - G: Game Analysis
     - H: Knowledge/HLTV
     """
-    
+
     # --- Logger Setup ---
     LS_01 = ErrorCodeDef(
         "LS-01", Severity.MEDIUM, "observability.logger_setup",
         "RotatingFileHandler unavailable — using plain FileHandler",
         "Check file permissions. On Windows, close other processes holding the log file.",
     )
-    
+
     # --- RASP ---
     RP_01 = ErrorCodeDef(
         "RP-01", Severity.HIGH, "observability.rasp",
         "CS2_MANIFEST_KEY not set — using static fallback HMAC key",
         "Set CS2_MANIFEST_KEY environment variable for production builds.",
     )
-    
+
     # --- Data Access ---
     DA_01_03 = ErrorCodeDef(
         "DA-01-03", Severity.LOW, "main",
         "Malformed JSON from database (pc_specs_json)",
         "Re-run hardware detection or manually edit player profile.",
     )
-    
+
     # --- Pipeline ---
     P0_07 = ErrorCodeDef(
         "P0-07", Severity.LOW, "main",
@@ -516,7 +516,7 @@ class ErrorCode(Enum):
         "Secret sanitization in error messages",
         "Ensure all secret keys are listed in the sanitization loop.",
     )
-    
+
     # --- Feature/Fix codes ---
     F6_03 = ErrorCodeDef(
         "F6-03", Severity.LOW, "core.session_engine",
@@ -548,7 +548,7 @@ class ErrorCode(Enum):
         "API key masking shows last 4 characters",
         "Acceptable until keyring is integrated.",
     )
-    
+
     # --- Session Engine ---
     SE_02 = ErrorCodeDef(
         "SE-02", Severity.MEDIUM, "core.session_engine",
@@ -575,35 +575,35 @@ class ErrorCode(Enum):
         "Settings reload once per scan cycle (TOCTOU window)",
         "Acceptable for MEDIUM severity. Next cycle picks up new values.",
     )
-    
+
     # --- Ingestion Manager ---
     IM_03 = ErrorCodeDef(
         "IM-03", Severity.MEDIUM, "core.session_engine",
         "Event wait/clear ordering to prevent lost wakeup signals",
         "No user action needed.",
     )
-    
+
     # --- Neural Network ---
     NN_02 = ErrorCodeDef(
         "NN-02", Severity.MEDIUM, "core.session_engine",
         "Module-level training lock prevents concurrent training",
         "No user action needed.",
     )
-    
+
     # --- Game Analysis ---
     G_07 = ErrorCodeDef(
         "G-07", Severity.LOW, "core.session_engine",
         "Belief calibration wired to Teacher daemon",
         "No user action needed.",
     )
-    
+
     # --- Knowledge/HLTV ---
     H_02 = ErrorCodeDef(
         "H-02", Severity.LOW, "core.session_engine",
         "One-time knowledge base population from pro demos",
         "No user action needed.",
     )
-    
+
     # --- Manifest ---
     R1_12 = ErrorCodeDef(
         "R1-12", Severity.HIGH, "observability.rasp",
@@ -612,7 +612,7 @@ class ErrorCode(Enum):
     )
 def log_with_code(error_code: ErrorCode, message: str) -> str:
     """Prefix a log message with its formal error code.
-    
+
     Usage:
         logger.warning(log_with_code(ErrorCode.LS_01, "Handler unavailable for %s"), path)
     """
@@ -630,14 +630,14 @@ def get_all_codes() -> list[dict]:
         }
         for e in ErrorCode
     ]
-[NEW] 
+[NEW]
 ERROR_CODES.md
 Goal: Human-readable reference generated from the enum above. Auto-generated via a script or maintained manually initially.
 
 This file will contain a markdown table with all error codes, their severity, module, description, and remediation steps. Organized by module prefix.
 
 Component 2: Eliminate Dual/Conflicting Logging
-[MODIFY] 
+[MODIFY]
 console.py
 Lines 99–112: Replace the standalone FileHandler + custom JSON formatter with a call to get_tool_logger("console").
 
@@ -662,15 +662,15 @@ After:
 python
 from Programma_CS2_RENAN.observability.logger_setup import get_tool_logger
 logger = get_tool_logger("console")
-This removes the format inconsistency and ensures 
+This removes the format inconsistency and ensures
 console.py
  logs go through the centralized JSON formatter with correlation ID support.
 
-[MODIFY] 
+[MODIFY]
 session_engine.py
-Lines 32–48: Remove the duplicate FileHandler addition. The 
+Lines 32–48: Remove the duplicate FileHandler addition. The
 get_logger("cs2analyzer.session_engine")
- call on line 30 already provides 
+ call on line 30 already provides
 cs2_analyzer.log
  via the centralized setup — that is sufficient. The session engine should not add its own second handler.
 
@@ -700,7 +700,7 @@ python
 logger = get_logger("cs2analyzer.session_engine")
 That's it. All 18 lines of duplicate handler setup removed. The centralized logger already handles file output.
 
-[MODIFY] 
+[MODIFY]
 batch_ingest.py
 Lines 27–35: Replace logging.basicConfig() with get_tool_logger().
 
@@ -724,20 +724,20 @@ logger = get_tool_logger("batch_ingest")
 NOTE
 
 batch_ingest.py
- uses multiprocessing. Each worker subprocess will need its own logger setup inside 
+ uses multiprocessing. Each worker subprocess will need its own logger setup inside
 ingest_one_demo()
 . The get_tool_logger() call is safe to use in workers because it creates per-logger handlers, not root-level basicConfig.
 
 Component 3: Tools Migration — Standardize All 8 Tool Loggers
-Every tool in the tools/ directory follows the same boilerplate pattern: custom 
+Every tool in the tools/ directory follows the same boilerplate pattern: custom
 setup_logging()
  function, ad-hoc logger name, own JSON format. All 8 must be migrated to get_tool_logger().
 
-[MODIFY] 
+[MODIFY]
 Sanitize_Project.py
-Remove: The entire 
+Remove: The entire
 setup_logging()
- function (lines 55–69) and the logger setup in 
+ function (lines 55–69) and the logger setup in
 init
  (line 76).
 
@@ -747,36 +747,36 @@ python
 from Programma_CS2_RENAN.observability.logger_setup import get_tool_logger
 # In IndustrialSanitizer.__init__:
 self.logger = get_tool_logger("sanitizer")
-[MODIFY] 
+[MODIFY]
 build_pipeline.py
-Same pattern: Remove 
+Same pattern: Remove
 setup_logging()
  (lines 60–77), replace with get_tool_logger("build_pipeline").
 
-[MODIFY] 
+[MODIFY]
 audit_binaries.py
 Replace logger name BinaryAuditor → get_tool_logger("audit_binaries").
 
-[MODIFY] 
+[MODIFY]
 Feature_Audit.py
 Replace logger name FeatureAuditor → get_tool_logger("feature_audit").
 
-[MODIFY] 
+[MODIFY]
 migrate_db.py
 Replace logger name DBMigrator → get_tool_logger("migrate_db").
 
-[MODIFY] 
+[MODIFY]
 observe_training_cycle.py
 Replace logging.basicConfig() + observe_cycle logger → get_tool_logger("observe_training").
 
 Also replace all 3 instances of traceback.print_exc() with logger.exception("...").
 
-[MODIFY] 
+[MODIFY]
 test_tactical_pipeline.py
 Replace traceback.format_exc() usage with logger.exception().
 
 Component 4: Exception Hierarchy — Typed Error Handling
-[NEW] 
+[NEW]
 exceptions.py
 Goal: Centralized exception hierarchy. All existing domain exceptions stay where they are but inherit from a common CS2AnalyzerError base. New code catches specific types instead of bare Exception.
 
@@ -792,7 +792,7 @@ This enables:
 from Programma_CS2_RENAN.observability.error_codes import ErrorCode
 class CS2AnalyzerError(Exception):
     """Base exception for all CS2 Analyzer errors."""
-    
+
     def __init__(self, message: str, error_code: ErrorCode | None = None):
         self.error_code = error_code
         super().__init__(message)
@@ -817,17 +817,17 @@ class UIError(CS2AnalyzerError):
 Component 5: Catch-All Cleanup — The Largest Changeset
 This is the most labor-intensive component. The strategy is:
 
-Critical path except Exception blocks (in 
+Critical path except Exception blocks (in
 main.py
-, 
+,
 session_engine.py
-, 
+,
 console.py
 ) get upgraded to catch specific types with a final except Exception fallback that logs at ERROR/CRITICAL with exc_info=True.
 Profile load/save DEBUG logs get promoted to WARNING/ERROR.
 Silent pass blocks get a logger.debug() minimum.
 print(stderr) patterns — replace with logger.error() where feasible.
-[MODIFY] 
+[MODIFY]
 main.py
 Critical Fix 1 — Line 401: Profile load logged at DEBUG is invisible.
 
@@ -849,7 +849,7 @@ Line 14: print("ERROR: Not in venv...") — this is pre-logger, must stay as pri
 
 Lines 29, 32, 36: RASP pre-logger prints — must stay as print(stderr). No change. These fire before any import can succeed; using print here is the correct choice.
 
-[MODIFY] 
+[MODIFY]
 session_engine.py
 Line 256–258: Silent pass in disk check notification.
 
@@ -865,9 +865,9 @@ diff
 -        pass  # Don't crash the scanner over a disk check
 +    except Exception as disk_err:
 +        logger.debug("Disk space check failed: %s", disk_err)
-[MODIFY] 
+[MODIFY]
 sentry_setup.py
-Line 152: Silent exception suppression in 
+Line 152: Silent exception suppression in
 add_breadcrumb
 .
 
@@ -877,13 +877,13 @@ diff
 +    except Exception as e:
 +        logger.debug("Breadcrumb recording failed (non-fatal): %s", e)
 Component 6: RASP Logger Integration
-[MODIFY] 
+[MODIFY]
 rasp.py
-Goal: Replace print(stderr) calls in 
+Goal: Replace print(stderr) calls in
 run_rasp_audit()
  with proper logger usage, while keeping print(stderr) as a fallback for frozen builds where the logger might not be available.
 
-Lines 180, 185–187: The 
+Lines 180, 185–187: The
 run_rasp_audit()
  function uses print(file=sys.stderr).
 
@@ -891,13 +891,13 @@ diff
 def run_rasp_audit(project_root: Path) -> bool:
 +    from Programma_CS2_RENAN.observability.logger_setup import get_logger
 +    rasp_logger = get_logger("cs2analyzer.rasp")
-+    
++  
      guard = RASPGuard(project_root)
      if not guard.check_frozen_binary():
 -        print("CRITICAL: Suspicious execution environment detected!", file=sys.stderr)
 +        rasp_logger.critical("Suspicious execution environment detected!")
          return False
- 
+
      success, violations = guard.verify_runtime_integrity()
      if not success:
 -        print("--- INTEGRITY VIOLATION DETECTED ---", file=sys.stderr)
@@ -936,7 +936,7 @@ verify_map_integration.py
 verify_superposition.py
  — Replace traceback.print_exc() with logger.exception().
 Component 8: Log Retention Policy & Exit Codes
-[MODIFY] 
+[MODIFY]
 logger_setup.py
 Log retention: The RotatingFileHandler with 5 MB × 3 backups is good. Add a TimedRotatingFileHandler as an alternative for daily rotation with configurable retention.
 
@@ -945,17 +945,17 @@ Add a configure_retention() function:
 python
 def configure_retention(max_days: int = 30) -> None:
     """Purge log files older than max_days from the log directory.
-    
+
     Called at application startup to enforce retention policy.
     Safe to call multiple times.
     """
     log_dir = _log_dir or "logs"
     if not os.path.isdir(log_dir):
         return
-    
+
     import time
     cutoff = time.time() - (max_days * 86400)
-    
+
     for f in os.listdir(log_dir):
         fp = os.path.join(log_dir, f)
         if os.path.isfile(fp) and f.endswith((".log", ".json")):
@@ -964,46 +964,46 @@ def configure_retention(max_days: int = 30) -> None:
                     os.remove(fp)
                 except OSError:
                     pass  # Best-effort cleanup
-[NEW] 
+[NEW]
 EXIT_CODES.md
 Goal: Document all exit codes for CI/CD and operator reference.
 
 Code	Meaning	Used By
-0	Success / Duplicate instance	
+0	Success / Duplicate instance
 main.py
 , all tools
-1	Runtime failure / integrity failure / build failure	
+1	Runtime failure / integrity failure / build failure
 main.py
-, 
+,
 rasp.py
-, 
+,
 console.py
 , tools
-2	Not in virtualenv	
+2	Not in virtualenv
 main.py
-, 
+,
 console.py
 , all tools
 Component 9: Observability Test Suite
 There are currently zero tests for the observability module. We need a test file that verifies the logging infrastructure behaves correctly.
 
-[NEW] 
+[NEW]
 test_observability.py
 Test cases:
 
-test_get_logger_returns_same_instance — 
+test_get_logger_returns_same_instance —
 get_logger("cs2analyzer.test")
  called twice returns the same logger with no duplicate handlers.
-test_json_formatter_output — Capture log output and json.loads() it; verify fields 
+test_json_formatter_output — Capture log output and json.loads() it; verify fields
 ts
-, lvl, 
+, lvl,
 mod
-, 
+,
 thread
 , msg are present.
 test_json_formatter_includes_exception — Log with exc_info=True; verify exc_type, exc_msg, traceback fields exist in JSON.
 test_correlation_id_filter — Set a correlation ID, log a message, verify cid field appears in JSON output.
-test_configure_log_level_changes_all_cs2analyzer_loggers — Create loggers, call 
+test_configure_log_level_changes_all_cs2analyzer_loggers — Create loggers, call
 configure_log_level(logging.DEBUG)
 , verify all changed.
 test_log_level_env_var_override — Set CS2_LOG_LEVEL=DEBUG env var, create a new logger, verify it's at DEBUG.
@@ -1018,20 +1018,20 @@ Scope decision: The print("ERROR: Not in venv", file=sys.stderr) pattern appears
 
 WARNING
 
-Breaking change potential: Changing the log format from plaintext to JSON affects any scripts or tools that parse 
+Breaking change potential: Changing the log format from plaintext to JSON affects any scripts or tools that parse
 cs2_analyzer.log
  with regex. If there are any external log parsers or monitoring tools that consume the current plaintext format, they will need updating.
 
 IMPORTANT
 
 batch_ingest.py
- multiprocessing: Each worker subprocess currently calls logging.basicConfig() which modifies the root logger. Replacing with get_tool_logger() in the main process is safe, but the 
+ multiprocessing: Each worker subprocess currently calls logging.basicConfig() which modifies the root logger. Replacing with get_tool_logger() in the main process is safe, but the
 ingest_one_demo()
  worker function runs in a separate process and needs its own logger setup. The plan accounts for this by keeping a simple logging.getLogger() call inside the worker with a local handler, since get_tool_logger() relies on imports that may have import-lock issues under fork().
 
 File Change Summary
 Action	File	Component
-MODIFY	
+MODIFY
 Programma_CS2_RENAN/observability/logger_setup.py
 1 (Foundation)
 NEW	Programma_CS2_RENAN/observability/error_codes.py	1 (Error Registry)
@@ -1039,52 +1039,52 @@ NEW	Programma_CS2_RENAN/observability/exceptions.py	4 (Exception Hierarchy)
 NEW	docs/ERROR_CODES.md	1 (Documentation)
 NEW	docs/EXIT_CODES.md	8 (Documentation)
 NEW	Programma_CS2_RENAN/tests/test_observability.py	9 (Tests)
-MODIFY	
+MODIFY
 console.py
 2 (Eliminate Dual Logging)
-MODIFY	
+MODIFY
 Programma_CS2_RENAN/core/session_engine.py
 2, 5 (Eliminate Dual, Catch-all)
-MODIFY	
+MODIFY
 batch_ingest.py
 2 (Eliminate basicConfig)
-MODIFY	
+MODIFY
 Programma_CS2_RENAN/main.py
 5 (Critical Log Level Promotions)
-MODIFY	
+MODIFY
 Programma_CS2_RENAN/observability/sentry_setup.py
 5 (Silent Suppression)
-MODIFY	
+MODIFY
 Programma_CS2_RENAN/observability/rasp.py
 6 (Logger Integration)
-MODIFY	
+MODIFY
 tools/Sanitize_Project.py
 3 (Tool Migration)
-MODIFY	
+MODIFY
 tools/build_pipeline.py
 3
-MODIFY	
+MODIFY
 tools/audit_binaries.py
 3
-MODIFY	
+MODIFY
 tools/Feature_Audit.py
 3
-MODIFY	
+MODIFY
 tools/migrate_db.py
 3
-MODIFY	
+MODIFY
 tools/observe_training_cycle.py
 3, 5
-MODIFY	
+MODIFY
 tools/test_tactical_pipeline.py
 3, 5
-MODIFY	
+MODIFY
 tests/verify_chronovisor_real.py
 7
-MODIFY	
+MODIFY
 tests/verify_map_integration.py
 7
-MODIFY	
+MODIFY
 tests/verify_superposition.py
 7
 Total: 6 new files, 16 modified files.
@@ -1112,11 +1112,11 @@ python -m pytest Programma_CS2_RENAN/tests/ -x -q
 This ensures none of the logging changes break existing functionality.
 
 Manual Verification
-JSON log output: After changes, run python console.py help and inspect logs/tools/console_*.json — verify each line is valid JSON with 
+JSON log output: After changes, run python console.py help and inspect logs/tools/console_*.json — verify each line is valid JSON with
 ts
-, lvl, 
+, lvl,
 mod
-, 
+,
 thread
 , msg fields.
 
@@ -1124,13 +1124,13 @@ Correlation ID: Run python console.py sys status and inspect the log file — ve
 
 Environment variable override: Run CS2_LOG_LEVEL=DEBUG python console.py sys status and check that DEBUG-level messages appear in the log file.
 
-Error code in logs: After wiring log_with_code() into 
+Error code in logs: After wiring log_with_code() into
 rasp.py
 , set CS2_MANIFEST_KEY="" and import the module — verify log contains [RP-01] prefix.
 
-Log retention: Create a dummy 
+Log retention: Create a dummy
 .log
- file in 
+ file in
 logs/
  with an old modification time (touch -t 202501011200 logs/old_test.log), call configure_retention(max_days=1), verify it is deleted.
 

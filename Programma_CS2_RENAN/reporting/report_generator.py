@@ -15,6 +15,7 @@ class MatchReportGenerator:
         self.viz = MatchVisualizer()
         # DA-RG-01: Use absolute path anchored to config, not relative to cwd
         from Programma_CS2_RENAN.core.config import USER_DATA_ROOT
+
         self.output_dir = Path(USER_DATA_ROOT).resolve() / "reports"
         # RG-01: Validate output_dir stays under USER_DATA_ROOT
         if not str(self.output_dir).startswith(str(Path(USER_DATA_ROOT).resolve())):
@@ -60,7 +61,9 @@ class MatchReportGenerator:
                     deaths.append({"x": p.pos_x, "y": p.pos_y})
 
         if not player_positions:
-            _logger.warning("Cannot generate report: no player positions extracted from %s", demo_path)
+            _logger.warning(
+                "Cannot generate report: no player positions extracted from %s", demo_path
+            )
             return None
 
         # 3. Generate Visuals
@@ -81,7 +84,9 @@ class MatchReportGenerator:
                 f.write("This map shows your primary areas of operation.\n")
                 # RG-02: Use relative path to avoid exposing absolute filesystem structure
                 try:
-                    rel_heatmap = Path(heatmap_path).resolve().relative_to(report_path.parent.resolve())
+                    rel_heatmap = (
+                        Path(heatmap_path).resolve().relative_to(report_path.parent.resolve())
+                    )
                 except ValueError:
                     rel_heatmap = Path(heatmap_path).name
                 f.write(f"![Heatmap]({rel_heatmap})\n\n")

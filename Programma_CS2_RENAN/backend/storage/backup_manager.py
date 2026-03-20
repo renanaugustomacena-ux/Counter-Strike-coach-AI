@@ -130,7 +130,10 @@ class BackupManager:
         # DG-03: Validate path is within backup directory to prevent traversal.
         resolved = os.path.realpath(backup_path)
         backup_dir_resolved = os.path.realpath(self.backup_dir)
-        if not resolved.startswith(backup_dir_resolved + os.sep) and resolved != backup_dir_resolved:
+        if (
+            not resolved.startswith(backup_dir_resolved + os.sep)
+            and resolved != backup_dir_resolved
+        ):
             logger.error("DG-03: Backup path escapes backup directory: %s", backup_path)
             return False
         if not os.path.exists(backup_path):

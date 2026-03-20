@@ -8,7 +8,6 @@ map images, handles fallbacks, and provides spatial metadata.
 import os
 import sys
 
-
 import pytest
 
 from Programma_CS2_RENAN.core.asset_manager import AssetAuthority, SmartAsset

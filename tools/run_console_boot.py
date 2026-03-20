@@ -21,11 +21,7 @@ _PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from Programma_CS2_RENAN.backend.control.console import (
-    ServiceStatus,
-    SystemState,
-    get_console,
-)
+from Programma_CS2_RENAN.backend.control.console import ServiceStatus, SystemState, get_console
 
 # Derive valid values from the actual enums — never hardcode.
 _VALID_STATES = {s.value for s in SystemState}
@@ -33,8 +29,15 @@ _VALID_SVC_STATUSES = {s.value for s in ServiceStatus}
 
 # Required top-level keys in the status dict (from get_system_status()).
 _REQUIRED_STATUS_KEYS = {
-    "timestamp", "state", "services", "teacher",
-    "ml_controller", "ingestion", "storage", "baseline", "training_data",
+    "timestamp",
+    "state",
+    "services",
+    "teacher",
+    "ml_controller",
+    "ingestion",
+    "storage",
+    "baseline",
+    "training_data",
 }
 
 errors: list[str] = []
@@ -128,7 +131,9 @@ def main():
         print("\n[Phase 5] Baseline")
         baseline = status.get("baseline", {})
         if isinstance(baseline, dict):
-            _check("stat_cards" in baseline, f"baseline has 'stat_cards': {baseline.get('stat_cards')}")
+            _check(
+                "stat_cards" in baseline, f"baseline has 'stat_cards': {baseline.get('stat_cards')}"
+            )
             _check(
                 baseline.get("mode") in ("temporal", "legacy", "unavailable"),
                 f"baseline mode='{baseline.get('mode')}' is valid",

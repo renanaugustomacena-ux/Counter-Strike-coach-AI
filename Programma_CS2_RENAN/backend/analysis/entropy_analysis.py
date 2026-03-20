@@ -87,7 +87,7 @@ class EntropyAnalyzer:
 
         # E-01: Acquire lock when reusing the shared buffer to prevent concurrent corruption.
         # For non-default resolutions a fresh array is allocated (no lock needed).
-        use_shared = (res == self.grid_resolution)
+        use_shared = res == self.grid_resolution
         if use_shared:
             self._buffer_lock.acquire()
         try:

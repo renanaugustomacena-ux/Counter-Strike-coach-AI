@@ -24,9 +24,9 @@ import numpy as np
 import torch
 
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager, get_hltv_db_manager
-from Programma_CS2_RENAN.core.localization import i18n
 from Programma_CS2_RENAN.backend.storage.db_models import CoachingInsight, TacticalKnowledge
 from Programma_CS2_RENAN.core.config import get_setting
+from Programma_CS2_RENAN.core.localization import i18n
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.hybrid_coaching")
@@ -142,6 +142,7 @@ class HybridCoachingEngine:
         """AC-15-01: Lazy-load SBERT model on first query instead of at init."""
         if self._retriever is None:
             from Programma_CS2_RENAN.backend.knowledge.rag_knowledge import KnowledgeRetriever
+
             self._retriever = KnowledgeRetriever()
         return self._retriever
 
@@ -195,6 +196,7 @@ class HybridCoachingEngine:
                 from Programma_CS2_RENAN.backend.processing.baselines.pro_baseline import (
                     HARD_DEFAULT_BASELINE,
                 )
+
                 logger.warning(
                     "C-41: Using HARD_DEFAULT_BASELINE (includes std values for Z-scores)"
                 )
@@ -202,9 +204,9 @@ class HybridCoachingEngine:
             except Exception:
                 # C-41: Activate staleness check on last-resort fallback
                 try:
-                    baseline_date = datetime.strptime(
-                        _FALLBACK_BASELINE_VERSION, "%Y-%m"
-                    ).replace(tzinfo=timezone.utc)
+                    baseline_date = datetime.strptime(_FALLBACK_BASELINE_VERSION, "%Y-%m").replace(
+                        tzinfo=timezone.utc
+                    )
                     age_days = (datetime.now(timezone.utc) - baseline_date).days
                     if age_days > _FALLBACK_BASELINE_MAX_AGE_DAYS:
                         logger.critical(
@@ -448,9 +450,11 @@ class HybridCoachingEngine:
             USAGE_COUNT_NORMALIZER = 100
             knowledge_effectiveness = min(
                 1.0,
-                np.mean([k.usage_count for k in matching_knowledge]) / USAGE_COUNT_NORMALIZER
-                if matching_knowledge
-                else 0,
+                (
+                    np.mean([k.usage_count for k in matching_knowledge]) / USAGE_COUNT_NORMALIZER
+                    if matching_knowledge
+                    else 0
+                ),
             )
             confidence = self._calculate_confidence(z_score, knowledge_effectiveness)
 
@@ -603,12 +607,16 @@ class HybridCoachingEngine:
         # Knowledge-derived insight
         if knowledge:
             best_knowledge = knowledge[0]
-            message_parts.append(f"\nPro tip: {best_knowledge.description}")  # Emoji stripped — presentation is UI concern
+            message_parts.append(
+                f"\nPro tip: {best_knowledge.description}"
+            )  # Emoji stripped — presentation is UI concern
 
         # Pro examples
         pro_examples = [k.pro_example for k in knowledge if k.pro_example]
         if pro_examples:
-            message_parts.append(f"\nReference: {pro_examples[0]}")  # Emoji stripped — presentation is UI concern
+            message_parts.append(
+                f"\nReference: {pro_examples[0]}"
+            )  # Emoji stripped — presentation is UI concern
 
         # TASK 2.7.1: Add Reference Clip info to message if available
         if tick_range and demo_name:

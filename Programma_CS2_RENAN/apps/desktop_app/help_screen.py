@@ -7,6 +7,7 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 try:
     from Programma_CS2_RENAN.backend.knowledge_base.help_system import get_help_system
+
     _HELP_SYSTEM_AVAILABLE = True
 except ImportError:
     # F7-09: help_system module not yet implemented. HelpScreen will display

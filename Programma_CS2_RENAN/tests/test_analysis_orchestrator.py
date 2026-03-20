@@ -7,7 +7,6 @@ analysis modules and produces structured CoachingInsight objects.
 
 import sys
 
-
 import pytest
 
 

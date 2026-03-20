@@ -110,9 +110,7 @@ def _execute_registry_load(path):
             if not isinstance(data["processed_demos"], list):
                 logger.error("Backup 'processed_demos' is not a list")
                 raise ValueError("Invalid backup structure")
-            logger.warning(
-                "Registry recovered from backup: %s demos", len(data["processed_demos"])
-            )
+            logger.warning("Registry recovered from backup: %s demos", len(data["processed_demos"]))
             # Restore backup to primary
             shutil.copy2(backup_path, path)
             return data

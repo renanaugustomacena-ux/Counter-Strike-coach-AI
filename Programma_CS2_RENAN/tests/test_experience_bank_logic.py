@@ -33,28 +33,18 @@ class TestExperienceContext:
     def test_context_hash_deterministic(self):
         from Programma_CS2_RENAN.backend.knowledge.experience_bank import ExperienceContext
 
-        ctx1 = ExperienceContext(
-            map_name="de_mirage", round_phase="full_buy", side="CT"
-        )
-        ctx2 = ExperienceContext(
-            map_name="de_mirage", round_phase="full_buy", side="CT"
-        )
-        assert ctx1.compute_hash() == ctx2.compute_hash(), (
-            "Same context should produce same hash"
-        )
+        ctx1 = ExperienceContext(map_name="de_mirage", round_phase="full_buy", side="CT")
+        ctx2 = ExperienceContext(map_name="de_mirage", round_phase="full_buy", side="CT")
+        assert ctx1.compute_hash() == ctx2.compute_hash(), "Same context should produce same hash"
 
     def test_different_context_different_hash(self):
         from Programma_CS2_RENAN.backend.knowledge.experience_bank import ExperienceContext
 
-        ctx1 = ExperienceContext(
-            map_name="de_mirage", round_phase="full_buy", side="CT"
-        )
-        ctx2 = ExperienceContext(
-            map_name="de_dust2", round_phase="eco", side="T"
-        )
-        assert ctx1.compute_hash() != ctx2.compute_hash(), (
-            "Different contexts should produce different hashes"
-        )
+        ctx1 = ExperienceContext(map_name="de_mirage", round_phase="full_buy", side="CT")
+        ctx2 = ExperienceContext(map_name="de_dust2", round_phase="eco", side="T")
+        assert (
+            ctx1.compute_hash() != ctx2.compute_hash()
+        ), "Different contexts should produce different hashes"
 
     def test_query_string_contains_key_info(self):
         from Programma_CS2_RENAN.backend.knowledge.experience_bank import ExperienceContext
@@ -87,16 +77,14 @@ class TestExperienceContext:
             health_range="full",  # default — should not appear in query
         )
         query = ctx.to_query_string()
-        assert "full health" not in query, (
-            "Default health_range ('full') should not appear in query string"
-        )
+        assert (
+            "full health" not in query
+        ), "Default health_range ('full') should not appear in query string"
 
     def test_context_defaults(self):
         from Programma_CS2_RENAN.backend.knowledge.experience_bank import ExperienceContext
 
-        ctx = ExperienceContext(
-            map_name="de_mirage", round_phase="full_buy", side="CT"
-        )
+        ctx = ExperienceContext(map_name="de_mirage", round_phase="full_buy", side="CT")
         assert ctx.position_area is None
         assert ctx.health_range == "full"
         assert ctx.equipment_tier == "full"

@@ -16,9 +16,7 @@ from PySide6.QtWidgets import (
 )
 
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
-from Programma_CS2_RENAN.apps.qt_app.viewmodels.user_profile_vm import (
-    UserProfileViewModel,
-)
+from Programma_CS2_RENAN.apps.qt_app.viewmodels.user_profile_vm import UserProfileViewModel
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.qt_user_profile")
@@ -155,9 +153,7 @@ class UserProfileScreen(QWidget):
         # Role with color
         color = _ROLE_COLORS.get(role.lower(), "#808080")
         self._role_label.setText(role)
-        self._role_label.setStyleSheet(
-            f"color: {color}; font-size: 14px; font-weight: bold;"
-        )
+        self._role_label.setStyleSheet(f"color: {color}; font-size: 14px; font-weight: bold;")
 
         # Avatar fallback: first letter of name
         if name:

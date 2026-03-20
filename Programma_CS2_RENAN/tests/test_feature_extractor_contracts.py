@@ -28,9 +28,9 @@ class TestFeatureVectorDimensions:
         tick = {"health": 100, "armor": 100, "pos_x": 500, "pos_y": -300, "pos_z": 50}
         vec = FeatureExtractor.extract(tick)
 
-        assert vec.shape == (METADATA_DIM,), (
-            f"Output shape should be ({METADATA_DIM},), got {vec.shape}"
-        )
+        assert vec.shape == (
+            METADATA_DIM,
+        ), f"Output shape should be ({METADATA_DIM},), got {vec.shape}"
 
     def test_output_dtype_is_float32(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import (
@@ -89,8 +89,13 @@ class TestFeatureValueRanges:
         vec = FeatureExtractor.extract(tick)
 
         # has_helmet=vec[2], has_defuser=vec[3], is_crouching=vec[5], is_scoped=vec[6], is_blinded=vec[7]
-        for idx, name in [(2, "has_helmet"), (3, "has_defuser"), (5, "is_crouching"),
-                          (6, "is_scoped"), (7, "is_blinded")]:
+        for idx, name in [
+            (2, "has_helmet"),
+            (3, "has_defuser"),
+            (5, "is_crouching"),
+            (6, "is_scoped"),
+            (7, "is_blinded"),
+        ]:
             assert vec[idx] in (0.0, 1.0), f"{name} (idx={idx}) should be 0 or 1, got {vec[idx]}"
 
     def test_view_angles_sin_cos_range(self):
@@ -126,9 +131,9 @@ class TestFeatureValueRanges:
         )
 
         vec = FeatureExtractor.extract({"active_weapon": "weapon_ak47"})
-        assert vec[19] == pytest.approx(0.6), (
-            f"weapon_ak47 should strip prefix and map to 0.6, got {vec[19]}"
-        )
+        assert vec[19] == pytest.approx(
+            0.6
+        ), f"weapon_ak47 should strip prefix and map to 0.6, got {vec[19]}"
 
 
 class TestNoNaNInOutput:
@@ -140,9 +145,9 @@ class TestNoNaNInOutput:
         )
 
         vec = FeatureExtractor.extract({})
-        assert np.all(np.isfinite(vec)), (
-            f"Empty input should not produce NaN/Inf. Non-finite at: {np.where(~np.isfinite(vec))}"
-        )
+        assert np.all(
+            np.isfinite(vec)
+        ), f"Empty input should not produce NaN/Inf. Non-finite at: {np.where(~np.isfinite(vec))}"
 
     def test_all_zeros_no_nan(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import (
@@ -184,7 +189,9 @@ class TestContextFeatures:
         vec = FeatureExtractor.extract({"health": 100}, context=None)
         # Features 20-24 should be 0.0 when no context
         for idx in range(20, 25):
-            assert vec[idx] == 0.0, f"Context feature {idx} should be 0.0 without context, got {vec[idx]}"
+            assert (
+                vec[idx] == 0.0
+            ), f"Context feature {idx} should be 0.0 without context, got {vec[idx]}"
 
     def test_context_features_with_values(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import (
@@ -219,9 +226,10 @@ class TestBatchExtraction:
         ticks = [{"health": 100}, {"health": 50}, {"health": 0}]
         result = FeatureExtractor.extract_batch(ticks)
 
-        assert result.shape == (3, METADATA_DIM), (
-            f"Batch shape should be (3, {METADATA_DIM}), got {result.shape}"
-        )
+        assert result.shape == (
+            3,
+            METADATA_DIM,
+        ), f"Batch shape should be (3, {METADATA_DIM}), got {result.shape}"
 
     def test_batch_matches_individual_extraction(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import (
@@ -234,8 +242,9 @@ class TestBatchExtraction:
         for i, tick in enumerate(ticks):
             individual = FeatureExtractor.extract(tick)
             np.testing.assert_array_equal(
-                batch_result[i], individual,
-                err_msg=f"Batch[{i}] differs from individual extraction"
+                batch_result[i],
+                individual,
+                err_msg=f"Batch[{i}] differs from individual extraction",
             )
 
 
@@ -249,9 +258,9 @@ class TestFeatureNames:
         )
 
         names = FeatureExtractor.get_feature_names()
-        assert len(names) == METADATA_DIM, (
-            f"Feature names count ({len(names)}) != METADATA_DIM ({METADATA_DIM})"
-        )
+        assert (
+            len(names) == METADATA_DIM
+        ), f"Feature names count ({len(names)}) != METADATA_DIM ({METADATA_DIM})"
 
     def test_no_duplicate_feature_names(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import (

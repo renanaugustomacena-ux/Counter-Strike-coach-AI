@@ -9,7 +9,6 @@ import os
 import sys
 import tempfile
 
-
 import pytest
 
 from Programma_CS2_RENAN.backend.data_sources.demo_format_adapter import (

@@ -21,7 +21,11 @@ def train_nn(X, y, X_val=None, y_val=None, model=None, config_name="default", co
     ML-Audited Training Entry Point with GPU support.
     Supports Model Factory selection (Legacy vs JEPA).
     """
-    from Programma_CS2_RENAN.backend.nn.config import get_device, get_intensity_batch_size, set_global_seed
+    from Programma_CS2_RENAN.backend.nn.config import (
+        get_device,
+        get_intensity_batch_size,
+        set_global_seed,
+    )
     from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
 
     set_global_seed()  # P1-02: Reproducible training
@@ -44,7 +48,9 @@ def train_nn(X, y, X_val=None, y_val=None, model=None, config_name="default", co
     train_loader = DataLoader(
         train_ds, batch_size=min(effective_batch, len(train_ds)), shuffle=True
     )
-    val_loader = DataLoader(val_ds, batch_size=min(len(val_ds), 256), shuffle=False)  # P1-11: Cap val batch size
+    val_loader = DataLoader(
+        val_ds, batch_size=min(len(val_ds), 256), shuffle=False
+    )  # P1-11: Cap val batch size
 
     # Use Factory to get model instance (if not provided)
     if model is None:
@@ -121,7 +127,9 @@ def _train_jepa_self_supervised(X, device, context=None):
             num_negatives = min(8, batch_size_actual - 1)
             if num_negatives > 0 and batch_size_actual > 1:
                 # NN-61: Vectorized negative sampling using torch.randperm (replaces O(B²) Python loops)
-                neg_indices = torch.zeros(batch_size_actual, num_negatives, dtype=torch.long, device=device)
+                neg_indices = torch.zeros(
+                    batch_size_actual, num_negatives, dtype=torch.long, device=device
+                )
                 for i in range(batch_size_actual):
                     perm = torch.randperm(batch_size_actual - 1, device=device)[:num_negatives]
                     # Map indices: skip index i (the positive sample)
@@ -167,7 +175,8 @@ def _prepare_splits(X, y, X_val, y_val):
         # P1-04: Refuse to train with insufficient data instead of using train=val
         logger.warning(
             "Insufficient training data (%d < %d). Cannot create meaningful train/val split.",
-            len(X), MIN_TRAINING_SAMPLES,
+            len(X),
+            MIN_TRAINING_SAMPLES,
         )
         return None, None, None, None
     return train_test_split(X, y, test_size=0.2, random_state=42)
@@ -202,7 +211,11 @@ def _execute_validated_loop(
 
         # P1-01: Early stopping based on validation loss
         if early_stopper(avg_v_loss):
-            logger.info("Early stopping triggered at epoch %d (patience=%d)", epoch + 1, early_stopper.patience)
+            logger.info(
+                "Early stopping triggered at epoch %d (patience=%d)",
+                epoch + 1,
+                early_stopper.patience,
+            )
             break
 
 
@@ -216,7 +229,9 @@ def _run_training_epoch(model, loader, optimizer, loss_fn, delay, device, contex
         pred = model(xb)
         loss = loss_fn(pred, yb)
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)  # P1-06: Prevent exploding gradients in LSTM
+        torch.nn.utils.clip_grad_norm_(
+            model.parameters(), max_norm=1.0
+        )  # P1-06: Prevent exploding gradients in LSTM
         optimizer.step()
         total_loss += loss.item()
         if delay > 0:

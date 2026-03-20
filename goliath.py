@@ -100,11 +100,11 @@ class GoliathOrchestrator:
                     proc.terminate()
                     proc.wait(timeout=5)
             except Exception as e:
-                logger.debug("Terminate failed for PID %s: %s", getattr(proc, 'pid', '?'), e)
+                logger.debug("Terminate failed for PID %s: %s", getattr(proc, "pid", "?"), e)
                 try:
                     proc.kill()
                 except Exception as e2:
-                    logger.debug("Kill failed for PID %s: %s", getattr(proc, 'pid', '?'), e2)
+                    logger.debug("Kill failed for PID %s: %s", getattr(proc, "pid", "?"), e2)
         self._children.clear()
 
     def _signal_handler(self, sig, frame):
@@ -149,7 +149,9 @@ class GoliathOrchestrator:
         console.print("[command]>>> Initiating Integrity Subsystem[/command]")
         result = subprocess.run(
             [sys.executable, "Programma_CS2_RENAN/tools/sync_integrity_manifest.py"],
-            capture_output=True, text=True, timeout=120,
+            capture_output=True,
+            text=True,
+            timeout=120,
         )
         if result.returncode == 0:
             logger.info("Manifest generation completed")

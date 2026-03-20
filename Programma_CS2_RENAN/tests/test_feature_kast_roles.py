@@ -8,8 +8,6 @@ Covers:
 """
 
 import sys
-
-
 from unittest.mock import MagicMock
 
 import pytest
@@ -22,52 +20,115 @@ class TestCalculateKastForRound:
     """Tests for calculate_kast_for_round."""
 
     def test_kill_achieves_kast(self):
-        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import calculate_kast_for_round
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
+            calculate_kast_for_round,
+        )
+
         events = [
-            {"type": "player_death", "attacker": "Player1", "victim": "Enemy1", "assister": "", "tick": 100},
+            {
+                "type": "player_death",
+                "attacker": "Player1",
+                "victim": "Enemy1",
+                "assister": "",
+                "tick": 100,
+            },
         ]
         assert calculate_kast_for_round("Player1", events) is True
 
     def test_assist_achieves_kast(self):
-        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import calculate_kast_for_round
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
+            calculate_kast_for_round,
+        )
+
         events = [
-            {"type": "player_death", "attacker": "Teammate", "victim": "Enemy1", "assister": "Player1", "tick": 100},
+            {
+                "type": "player_death",
+                "attacker": "Teammate",
+                "victim": "Enemy1",
+                "assister": "Player1",
+                "tick": 100,
+            },
         ]
         assert calculate_kast_for_round("Player1", events) is True
 
     def test_survive_achieves_kast(self):
-        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import calculate_kast_for_round
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
+            calculate_kast_for_round,
+        )
+
         events = [
-            {"type": "player_death", "attacker": "Enemy1", "victim": "Teammate", "assister": "", "tick": 100},
+            {
+                "type": "player_death",
+                "attacker": "Enemy1",
+                "victim": "Teammate",
+                "assister": "",
+                "tick": 100,
+            },
         ]
         # Player1 survived (not in any victim field)
         assert calculate_kast_for_round("Player1", events) is True
 
     def test_traded_achieves_kast(self):
-        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import calculate_kast_for_round
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
+            calculate_kast_for_round,
+        )
+
         events = [
-            {"type": "player_death", "attacker": "Enemy1", "victim": "Player1", "assister": "", "tick": 100},
-            {"type": "player_death", "attacker": "Teammate", "victim": "Enemy1", "assister": "", "tick": 200},
+            {
+                "type": "player_death",
+                "attacker": "Enemy1",
+                "victim": "Player1",
+                "assister": "",
+                "tick": 100,
+            },
+            {
+                "type": "player_death",
+                "attacker": "Teammate",
+                "victim": "Enemy1",
+                "assister": "",
+                "tick": 200,
+            },
         ]
         # Player1 died at tick 100, Enemy1 died at tick 200 (within 320-tick window at 64tps)
         assert calculate_kast_for_round("Player1", events) is True
 
     def test_not_traded_too_late(self):
-        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import calculate_kast_for_round
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
+            calculate_kast_for_round,
+        )
+
         events = [
-            {"type": "player_death", "attacker": "Enemy1", "victim": "Player1", "assister": "", "tick": 100},
-            {"type": "player_death", "attacker": "Teammate", "victim": "Enemy1", "assister": "", "tick": 500},
+            {
+                "type": "player_death",
+                "attacker": "Enemy1",
+                "victim": "Player1",
+                "assister": "",
+                "tick": 100,
+            },
+            {
+                "type": "player_death",
+                "attacker": "Teammate",
+                "victim": "Enemy1",
+                "assister": "",
+                "tick": 500,
+            },
         ]
         # 400 ticks gap > 320 tick window
         assert calculate_kast_for_round("Player1", events) is False
 
     def test_no_events_survives(self):
-        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import calculate_kast_for_round
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
+            calculate_kast_for_round,
+        )
+
         # No deaths → player survived
         assert calculate_kast_for_round("Player1", []) is True
 
     def test_non_death_events_ignored(self):
-        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import calculate_kast_for_round
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
+            calculate_kast_for_round,
+        )
+
         events = [
             {"type": "weapon_fire", "attacker": "Player1"},
             {"type": "hurt_event", "victim": "Enemy1"},
@@ -75,19 +136,43 @@ class TestCalculateKastForRound:
         assert calculate_kast_for_round("Player1", events) is True
 
     def test_self_kill_not_counted(self):
-        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import calculate_kast_for_round
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
+            calculate_kast_for_round,
+        )
+
         events = [
-            {"type": "player_death", "attacker": "Player1", "victim": "Player1", "assister": "", "tick": 100},
+            {
+                "type": "player_death",
+                "attacker": "Player1",
+                "victim": "Player1",
+                "assister": "",
+                "tick": 100,
+            },
         ]
         # Self-kill: attacker == victim == player → K not counted (victim == player_name)
         # Player also died, so S not achieved
         assert calculate_kast_for_round("Player1", events) is False
 
     def test_custom_tick_rate(self):
-        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import calculate_kast_for_round
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
+            calculate_kast_for_round,
+        )
+
         events = [
-            {"type": "player_death", "attacker": "Enemy1", "victim": "Player1", "assister": "", "tick": 100},
-            {"type": "player_death", "attacker": "Teammate", "victim": "Enemy1", "assister": "", "tick": 500},
+            {
+                "type": "player_death",
+                "attacker": "Enemy1",
+                "victim": "Player1",
+                "assister": "",
+                "tick": 100,
+            },
+            {
+                "type": "player_death",
+                "attacker": "Teammate",
+                "victim": "Enemy1",
+                "assister": "",
+                "tick": 500,
+            },
         ]
         # At 128 tps: window = 5 * 128 = 640 ticks, so 400 tick gap is within
         assert calculate_kast_for_round("Player1", events, ticks_per_second=128) is True
@@ -97,22 +182,55 @@ class TestCalculateKastPercentage:
     """Tests for calculate_kast_percentage."""
 
     def test_empty_rounds(self):
-        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import calculate_kast_percentage
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
+            calculate_kast_percentage,
+        )
+
         assert calculate_kast_percentage("Player1", []) == 0.0
 
     def test_all_kast_rounds(self):
-        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import calculate_kast_percentage
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
+            calculate_kast_percentage,
+        )
+
         rounds = [
-            [{"type": "player_death", "attacker": "Player1", "victim": "Enemy", "assister": "", "tick": 100}],
+            [
+                {
+                    "type": "player_death",
+                    "attacker": "Player1",
+                    "victim": "Enemy",
+                    "assister": "",
+                    "tick": 100,
+                }
+            ],
             [],  # survived
         ]
         assert calculate_kast_percentage("Player1", rounds) == 1.0
 
     def test_partial_kast(self):
-        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import calculate_kast_percentage
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
+            calculate_kast_percentage,
+        )
+
         rounds = [
-            [{"type": "player_death", "attacker": "Player1", "victim": "Enemy", "assister": "", "tick": 100}],
-            [{"type": "player_death", "attacker": "Enemy", "victim": "Player1", "assister": "", "tick": 100}],
+            [
+                {
+                    "type": "player_death",
+                    "attacker": "Player1",
+                    "victim": "Enemy",
+                    "assister": "",
+                    "tick": 100,
+                }
+            ],
+            [
+                {
+                    "type": "player_death",
+                    "attacker": "Enemy",
+                    "victim": "Player1",
+                    "assister": "",
+                    "tick": 100,
+                }
+            ],
         ]
         # Round 1: kill → KAST. Round 2: died, not traded → no KAST
         assert calculate_kast_percentage("Player1", rounds) == 0.5
@@ -122,24 +240,36 @@ class TestEstimateKastFromStats:
     """Tests for estimate_kast_from_stats."""
 
     def test_zero_rounds(self):
-        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import estimate_kast_from_stats
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
+            estimate_kast_from_stats,
+        )
+
         assert estimate_kast_from_stats(10, 5, 8, 0) == 0.0
 
     def test_perfect_stats(self):
-        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import estimate_kast_from_stats
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
+            estimate_kast_from_stats,
+        )
+
         # Many kills, few deaths → high KAST
         result = estimate_kast_from_stats(kills=25, assists=5, deaths=5, rounds_played=30)
         assert 0.0 <= result <= 1.0
         assert result > 0.7
 
     def test_poor_stats(self):
-        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import estimate_kast_from_stats
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
+            estimate_kast_from_stats,
+        )
+
         # Few kills, many deaths → lower KAST
         result = estimate_kast_from_stats(kills=3, assists=1, deaths=25, rounds_played=30)
         assert 0.0 <= result <= 1.0
 
     def test_bounded_output(self):
-        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import estimate_kast_from_stats
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
+            estimate_kast_from_stats,
+        )
+
         result = estimate_kast_from_stats(kills=1000, assists=500, deaths=0, rounds_played=10)
         assert result <= 1.0
 
@@ -155,12 +285,16 @@ class TestClassifyRole:
             PlayerRole,
             classify_role,
         )
+
         role, conf = classify_role({})
         assert role == PlayerRole.UNKNOWN
         assert conf == 0.0
 
     def test_entry_stats(self):
-        from Programma_CS2_RENAN.backend.processing.feature_engineering.role_features import _heuristic_classify_role
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.role_features import (
+            _heuristic_classify_role,
+        )
+
         stats = {
             "opening_attempts_per_round": 0.35,
             "first_kill_pct": 0.18,
@@ -173,7 +307,10 @@ class TestClassifyRole:
         assert 0.0 <= conf <= 1.0
 
     def test_awper_stats(self):
-        from Programma_CS2_RENAN.backend.processing.feature_engineering.role_features import _heuristic_classify_role
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.role_features import (
+            _heuristic_classify_role,
+        )
+
         stats = {
             "opening_attempts_per_round": 0.25,
             "first_kill_pct": 0.20,
@@ -185,7 +322,10 @@ class TestClassifyRole:
         assert role.value == "awper"
 
     def test_support_stats(self):
-        from Programma_CS2_RENAN.backend.processing.feature_engineering.role_features import _heuristic_classify_role
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.role_features import (
+            _heuristic_classify_role,
+        )
+
         stats = {
             "opening_attempts_per_round": 0.15,
             "first_kill_pct": 0.08,
@@ -197,7 +337,10 @@ class TestClassifyRole:
         assert role.value == "support"
 
     def test_confidence_bounded(self):
-        from Programma_CS2_RENAN.backend.processing.feature_engineering.role_features import classify_role
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.role_features import (
+            classify_role,
+        )
+
         stats = {"kpr": 0.5, "adr": 60.0}
         _, conf = classify_role(stats)
         assert 0.0 <= conf <= 1.0
@@ -207,7 +350,10 @@ class TestExtractRoleFeatures:
     """Tests for extract_role_features function."""
 
     def test_auto_detect_role(self):
-        from Programma_CS2_RENAN.backend.processing.feature_engineering.role_features import extract_role_features
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.role_features import (
+            extract_role_features,
+        )
+
         stats = {
             "opening_attempts_per_round": 0.35,
             "first_kill_pct": 0.18,
@@ -224,6 +370,7 @@ class TestExtractRoleFeatures:
             PlayerRole,
             extract_role_features,
         )
+
         stats = {"opening_attempts_per_round": 0.2, "kpr": 0.7}
         features = extract_role_features(stats, role=PlayerRole.AWPER)
         assert features["detected_role"] == "awper"
@@ -233,6 +380,7 @@ class TestExtractRoleFeatures:
             PlayerRole,
             extract_role_features,
         )
+
         features = extract_role_features({}, role=PlayerRole.UNKNOWN)
         assert features == {}
 
@@ -241,6 +389,7 @@ class TestExtractRoleFeatures:
             PlayerRole,
             extract_role_features,
         )
+
         stats = {"opening_attempts_per_round": 0.70}  # Double the entry baseline (0.35)
         features = extract_role_features(stats, role=PlayerRole.ENTRY)
         assert features["opening_attempts_per_round_deviation"] == pytest.approx(1.0)
@@ -256,6 +405,7 @@ class TestGetRoleCoachingFocus:
             PlayerRole,
             get_role_coaching_focus,
         )
+
         focus = get_role_coaching_focus(PlayerRole.ENTRY)
         assert "first_kill_pct" in focus
 
@@ -264,6 +414,7 @@ class TestGetRoleCoachingFocus:
             PlayerRole,
             get_role_coaching_focus,
         )
+
         focus = get_role_coaching_focus(PlayerRole.AWPER)
         assert "awp_kills_pct" in focus
 
@@ -272,6 +423,7 @@ class TestGetRoleCoachingFocus:
             PlayerRole,
             get_role_coaching_focus,
         )
+
         focus = get_role_coaching_focus(PlayerRole.UNKNOWN)
         assert "kpr" in focus
         assert "adr" in focus
@@ -281,15 +433,23 @@ class TestGetRoleCoachingFocus:
             PlayerRole,
             get_role_coaching_focus,
         )
-        for role in [PlayerRole.ENTRY, PlayerRole.AWPER, PlayerRole.SUPPORT, PlayerRole.LURKER, PlayerRole.IGL]:
+
+        for role in [
+            PlayerRole.ENTRY,
+            PlayerRole.AWPER,
+            PlayerRole.SUPPORT,
+            PlayerRole.LURKER,
+            PlayerRole.IGL,
+        ]:
             focus = get_role_coaching_focus(role)
             assert len(focus) >= 3
 
     def test_role_signatures_exist(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering.role_features import (
-            PlayerRole,
             ROLE_SIGNATURES,
+            PlayerRole,
         )
+
         assert PlayerRole.ENTRY in ROLE_SIGNATURES
         assert PlayerRole.AWPER in ROLE_SIGNATURES
         assert PlayerRole.SUPPORT in ROLE_SIGNATURES
@@ -305,6 +465,7 @@ class TestCoachingDialogueIntent:
 
     def _make_engine_shell(self):
         from Programma_CS2_RENAN.backend.services.coaching_dialogue import CoachingDialogueEngine
+
         engine = CoachingDialogueEngine.__new__(CoachingDialogueEngine)
         engine._llm = MagicMock()
         engine._player_context = {}
@@ -339,6 +500,7 @@ class TestCoachingDialogueSystemPrompt:
 
     def _make_engine_shell(self):
         from Programma_CS2_RENAN.backend.services.coaching_dialogue import CoachingDialogueEngine
+
         engine = CoachingDialogueEngine.__new__(CoachingDialogueEngine)
         engine._llm = MagicMock()
         engine._player_context = {"player_name": "TestPlayer", "demo_name": "match123.dem"}
@@ -377,6 +539,7 @@ class TestCoachingDialogueChatMessages:
 
     def _make_engine_shell(self):
         from Programma_CS2_RENAN.backend.services.coaching_dialogue import CoachingDialogueEngine
+
         engine = CoachingDialogueEngine.__new__(CoachingDialogueEngine)
         engine._llm = MagicMock()
         engine._player_context = {}
@@ -410,6 +573,7 @@ class TestCoachingDialogueOffline:
 
     def _make_engine_shell(self):
         from Programma_CS2_RENAN.backend.services.coaching_dialogue import CoachingDialogueEngine
+
         engine = CoachingDialogueEngine.__new__(CoachingDialogueEngine)
         engine._llm = MagicMock()
         engine._player_context = {"player_name": "TestPlayer"}
@@ -466,6 +630,7 @@ class TestCoachingDialogueConstants:
 
     def test_intent_keywords(self):
         from Programma_CS2_RENAN.backend.services.coaching_dialogue import INTENT_KEYWORDS
+
         assert "positioning" in INTENT_KEYWORDS
         assert "utility" in INTENT_KEYWORDS
         assert "economy" in INTENT_KEYWORDS
@@ -473,8 +638,10 @@ class TestCoachingDialogueConstants:
 
     def test_max_context_turns(self):
         from Programma_CS2_RENAN.backend.services.coaching_dialogue import CoachingDialogueEngine
+
         assert CoachingDialogueEngine.MAX_CONTEXT_TURNS == 6
 
     def test_retrieval_top_k(self):
         from Programma_CS2_RENAN.backend.services.coaching_dialogue import CoachingDialogueEngine
+
         assert CoachingDialogueEngine.RETRIEVAL_TOP_K == 3

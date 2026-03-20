@@ -102,9 +102,7 @@ def fetch_steam_profile(steam_id, api_key):
 
     # R3-M04: Validate Steam64 ID format (17-digit numeric starting with 765)
     if not (steam_id.isdigit() and len(steam_id) == 17):
-        raise ValueError(
-            f"Invalid Steam64 ID: '{steam_id}'. Expected 17-digit numeric string."
-        )
+        raise ValueError(f"Invalid Steam64 ID: '{steam_id}'. Expected 17-digit numeric string.")
 
     url = "https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/"
     params = {"key": api_key, "steamids": steam_id}

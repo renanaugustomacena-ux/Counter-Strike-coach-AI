@@ -154,9 +154,7 @@ class MatchHistoryScreen(QWidget):
         for m in matches:
             card = MatchCard(m)
             card.clicked.connect(self._on_match_clicked)
-            self._container_layout.insertWidget(
-                self._container_layout.count() - 1, card
-            )
+            self._container_layout.insertWidget(self._container_layout.count() - 1, card)
 
     def _on_error(self, msg: str):
         if msg:

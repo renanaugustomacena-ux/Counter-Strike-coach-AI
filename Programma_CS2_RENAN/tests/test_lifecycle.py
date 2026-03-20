@@ -8,10 +8,8 @@ Covers:
   - shutdown without daemon (no-op safety)
 """
 
-import sys
-
-
 import os
+import sys
 
 import pytest
 
@@ -21,6 +19,7 @@ class TestAppLifecycleManager:
 
     def _make_lifecycle(self):
         from Programma_CS2_RENAN.core.lifecycle import AppLifecycleManager
+
         return AppLifecycleManager()
 
     def test_init_mutex_name(self):
@@ -62,6 +61,7 @@ class TestAppLifecycleManager:
     def test_shutdown_with_already_exited_daemon(self):
         """Shutdown with a daemon that already exited should not crash."""
         from unittest.mock import MagicMock
+
         lm = self._make_lifecycle()
         fake_proc = MagicMock()
         fake_proc.poll.return_value = 0  # Already exited
@@ -74,6 +74,7 @@ class TestAppLifecycleManager:
     def test_launch_daemon_missing_script(self):
         """launch_daemon with nonexistent script path returns None."""
         from pathlib import Path
+
         lm = self._make_lifecycle()
         lm.project_root = Path("/nonexistent/path")
         result = lm.launch_daemon()

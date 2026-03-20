@@ -23,7 +23,9 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 from sqlmodel import select
 
-from Programma_CS2_RENAN.backend.knowledge.round_utils import infer_round_phase  # F5-20: shared utility
+from Programma_CS2_RENAN.backend.knowledge.round_utils import (  # F5-20: shared utility
+    infer_round_phase,
+)
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import TacticalKnowledge
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -149,7 +151,10 @@ class KnowledgeEmbedder:
             logger.warning(
                 "R-01-alt: Embedding dimension mismatch: stored=%d, current=%d "
                 "(model=%s, version=%s). Reembedding recommended.",
-                stored_dim, self.embedding_dim, self.model_name, self.CURRENT_VERSION,
+                stored_dim,
+                self.embedding_dim,
+                self.model_name,
+                self.CURRENT_VERSION,
             )
             return False
         return True
@@ -254,7 +259,8 @@ class KnowledgeRetriever:
         if query_embedding.shape[0] != self.embedder.embedding_dim:
             logger.error(
                 "H-02: Query embedding dim %d != expected %d — dimension mismatch",
-                query_embedding.shape[0], self.embedder.embedding_dim,
+                query_embedding.shape[0],
+                self.embedder.embedding_dim,
             )
             return []
 
@@ -508,7 +514,9 @@ def generate_rag_coaching_insight(
     # Generate contextual insight
     insight_parts = []
     for k in knowledge:
-        insight_parts.append(f"{k.title}: {k.description}")  # Emoji stripped — presentation is UI concern
+        insight_parts.append(
+            f"{k.title}: {k.description}"
+        )  # Emoji stripped — presentation is UI concern
         if k.pro_example:
             insight_parts.append(f"   Pro example: {k.pro_example}")
 

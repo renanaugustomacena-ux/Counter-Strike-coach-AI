@@ -55,12 +55,18 @@ class _PlayerItem(QFrame):
         layout.addLayout(info, 1)
 
         self._weapon_label = QLabel()
-        self._weapon_label.setStyleSheet("color: #808090; font-size: 10px; background: transparent;")
+        self._weapon_label.setStyleSheet(
+            "color: #808090; font-size: 10px; background: transparent;"
+        )
         self._weapon_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         layout.addWidget(self._weapon_label)
 
     def update_data(self, player: InterpolatedPlayerState, is_selected: bool):
-        is_ct = player.team == Team.CT if isinstance(player.team, Team) else "CT" in str(player.team).upper()
+        is_ct = (
+            player.team == Team.CT
+            if isinstance(player.team, Team)
+            else "CT" in str(player.team).upper()
+        )
 
         if not player.is_alive:
             self._icon_label.setText("\u2620")

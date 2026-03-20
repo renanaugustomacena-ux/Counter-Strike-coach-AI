@@ -36,6 +36,7 @@ def evaluate_adjustments(model, X_sample, role_id=None):
     # 2. Explanation (SHAP)
     shap_values = None
     if _HAS_SHAP:
+
         def model_wrapper(x):
             t = torch.tensor(x, dtype=torch.float32)
             with torch.no_grad():
@@ -45,11 +46,17 @@ def evaluate_adjustments(model, X_sample, role_id=None):
         # Zero-vector inflates importance of features with non-zero values
         # (e.g., position always > 0). The sample mean centres attributions
         # relative to a realistic reference point.
-        baseline = np.mean(X_sample, axis=0, keepdims=True) if len(X_sample) > 1 else np.zeros((1, X_tensor.shape[1]))
+        baseline = (
+            np.mean(X_sample, axis=0, keepdims=True)
+            if len(X_sample) > 1
+            else np.zeros((1, X_tensor.shape[1]))
+        )
         explainer = shap.KernelExplainer(model_wrapper, baseline)
         shap_values = explainer.shap_values(X_tensor.numpy())
     else:
-        logger.warning("shap not installed — SHAP explanations unavailable. Install with: pip install shap")
+        logger.warning(
+            "shap not installed — SHAP explanations unavailable. Install with: pip install shap"
+        )
 
     # Build adjustment dict for the first OUTPUT_DIM features (10 of 25).
     # Remaining features have no NN adjustment. Keys follow "{feature}_weight".

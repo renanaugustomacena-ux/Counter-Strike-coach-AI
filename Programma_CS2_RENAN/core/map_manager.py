@@ -70,7 +70,9 @@ class MapManager:
         if asset.is_fallback:
             # MM-01: Log warning when fallback asset is used — callers receive None
             # instead of a ProxyImage, which may affect load-state tracking.
-            _logger.warning("MM-01: Map '%s' using fallback asset (no ProxyImage returned)", map_name)
+            _logger.warning(
+                "MM-01: Map '%s' using fallback asset (no ProxyImage returned)", map_name
+            )
             from kivy.clock import Clock
 
             Clock.schedule_once(lambda dt: callback(None, asset.texture), 0)

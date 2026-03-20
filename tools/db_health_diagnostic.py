@@ -304,7 +304,9 @@ def main():
         if missing_in_db:
             print(f"      [WARN] {tbl_name}: model fields missing from DB: {sorted(missing_in_db)}")
         elif extra_in_db:
-            print(f"      [INFO] {tbl_name}: DB has extra columns (ok if from migrations): {sorted(extra_in_db)}")
+            print(
+                f"      [INFO] {tbl_name}: DB has extra columns (ok if from migrations): {sorted(extra_in_db)}"
+            )
         else:
             print(f"      [OK] {tbl_name}: DB schema matches model ({len(model_cols)} fields)")
 

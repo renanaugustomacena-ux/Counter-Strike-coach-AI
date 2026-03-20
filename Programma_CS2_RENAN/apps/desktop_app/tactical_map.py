@@ -157,7 +157,11 @@ class TacticalMap(Widget):
         self._heatmap_texture = None
         # Redraw immediately (clears old heatmap)
         self._update_static_layers()
-        threading.Thread(target=self._generate_heatmap_thread, args=(events, self._heatmap_generation_id), daemon=True).start()
+        threading.Thread(
+            target=self._generate_heatmap_thread,
+            args=(events, self._heatmap_generation_id),
+            daemon=True,
+        ).start()
 
     def _generate_heatmap_thread(self, events, generation_id):
         from kivy.clock import Clock
@@ -226,9 +230,7 @@ class TacticalMap(Widget):
                 tx = self.x + offset_x + (map_size - tex.width) / 2
                 ty = self.y + offset_y + (map_size - tex.height) / 2
                 self.map_group.add(Color(1, 1, 1, 1))
-                self.map_group.add(
-                    Rectangle(texture=tex, pos=(tx, ty), size=tex.size)
-                )
+                self.map_group.add(Rectangle(texture=tex, pos=(tx, ty), size=tex.size))
 
         # 2. Heatmap Layer
         self.heatmap_group.clear()
@@ -499,7 +501,9 @@ class TacticalMap(Widget):
         fade_start = nade.starting_tick + (3 * self.TICK_RATE)
         base_alpha = 0.5
         if self._current_tick > fade_start:
-            base_alpha = max(0, 0.5 - (self._current_tick - fade_start) / (2 * float(self.TICK_RATE)))
+            base_alpha = max(
+                0, 0.5 - (self._current_tick - fade_start) / (2 * float(self.TICK_RATE))
+            )
 
         if base_alpha <= 0:
             return

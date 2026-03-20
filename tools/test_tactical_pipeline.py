@@ -56,9 +56,7 @@ def record_warn(label: str, msg: str):
 
 def find_demo() -> str:
     """Find a .dem file to test with."""
-    demo_dir = os.path.join(
-        os.path.dirname(PROJECT_ROOT), "DEMO_PRO_PLAYERS"
-    )
+    demo_dir = os.path.join(os.path.dirname(PROJECT_ROOT), "DEMO_PRO_PLAYERS")
     if os.path.isdir(demo_dir):
         for f in sorted(os.listdir(demo_dir)):
             if f.endswith(".dem"):
@@ -88,6 +86,7 @@ def main():
     t0 = time.time()
     try:
         from Programma_CS2_RENAN.ingestion.demo_loader import DemoLoader
+
         loader = DemoLoader()
         raw_data = loader.load_demo(demo_path)
         elapsed = time.time() - t0
@@ -107,15 +106,14 @@ def main():
     record_pass(f"output is dict with {len(raw_data)} keys: {list(raw_data.keys())}")
 
     # ── Filter map_tensors (as the real code does) ──
-    map_data = {
-        k: v for k, v in raw_data.items()
-        if isinstance(v, tuple) and len(v) == 3
-    }
+    map_data = {k: v for k, v in raw_data.items() if isinstance(v, tuple) and len(v) == 3}
     non_map_keys = [k for k in raw_data if k not in map_data]
     if non_map_keys:
         record_warn("non-map keys filtered", str(non_map_keys))
     if not map_data:
-        record_error("no map data", "All keys filtered out — no valid (frames, events, segments) tuples")
+        record_error(
+            "no map data", "All keys filtered out — no valid (frames, events, segments) tuples"
+        )
         _print_summary()
         sys.exit(1)
     record_pass(f"{len(map_data)} map(s) after filtering: {list(map_data.keys())}")
@@ -130,15 +128,21 @@ def main():
         # ── Frames ──
         try:
             from Programma_CS2_RENAN.core.demo_frame import DemoFrame
+
             assert len(frames) > 0, "No frames"
-            assert isinstance(frames[0], DemoFrame), f"First frame is {type(frames[0])}, not DemoFrame"
-            record_pass(f"frames: {len(frames)} DemoFrame objects, ticks {frames[0].tick}..{frames[-1].tick}")
+            assert isinstance(
+                frames[0], DemoFrame
+            ), f"First frame is {type(frames[0])}, not DemoFrame"
+            record_pass(
+                f"frames: {len(frames)} DemoFrame objects, ticks {frames[0].tick}..{frames[-1].tick}"
+            )
         except Exception as e:
             record_error(f"{map_name} frames", e)
 
         # ── Events ──
         try:
             from Programma_CS2_RENAN.core.demo_frame import GameEvent
+
             for i, ev in enumerate(events[:5]):
                 assert isinstance(ev, GameEvent), f"Event {i} is {type(ev)}"
             record_pass(f"events: {len(events)} GameEvent objects")
@@ -158,10 +162,27 @@ def main():
         print(f"\n[Stage 4] Player field access test ({map_name})")
         sample_frames = [frames[0], frames[len(frames) // 2], frames[-1]]
         player_fields = [
-            "player_id", "name", "team", "x", "y", "z", "yaw",
-            "hp", "armor", "is_alive", "is_flashed", "weapon",
-            "money", "kills", "deaths", "assists", "mvps",
-            "inventory", "is_crouching", "is_scoped", "equipment_value",
+            "player_id",
+            "name",
+            "team",
+            "x",
+            "y",
+            "z",
+            "yaw",
+            "hp",
+            "armor",
+            "is_alive",
+            "is_flashed",
+            "weapon",
+            "money",
+            "kills",
+            "deaths",
+            "assists",
+            "mvps",
+            "inventory",
+            "is_crouching",
+            "is_scoped",
+            "equipment_value",
         ]
         field_errors = []
         for fi, frame in enumerate(sample_frames):
@@ -180,13 +201,22 @@ def main():
             for fe in field_errors:
                 record_error("player field", fe)
         else:
-            record_pass(f"all {len(player_fields)} player fields accessible on {len(sample_frames)*10} samples")
+            record_pass(
+                f"all {len(player_fields)} player fields accessible on {len(sample_frames)*10} samples"
+            )
 
         # ── Nade data completeness ──
         print(f"\n[Stage 5] Grenade field access test ({map_name})")
         nade_fields = [
-            "base_id", "nade_type", "x", "y", "z",
-            "starting_tick", "ending_tick", "throw_tick", "trajectory",
+            "base_id",
+            "nade_type",
+            "x",
+            "y",
+            "z",
+            "starting_tick",
+            "ending_tick",
+            "throw_tick",
+            "trajectory",
         ]
         total_nades = 0
         nade_errors = []
@@ -205,14 +235,16 @@ def main():
             for ne in nade_errors:
                 record_error("nade field", ne)
         else:
-            record_pass(f"all nade fields accessible ({total_nades} nades in samples, types: {nade_type_counts})")
+            record_pass(
+                f"all nade fields accessible ({total_nades} nades in samples, types: {nade_type_counts})"
+            )
 
         # ══════════════════════════════════════════════════════════
         # STAGE 6: PlaybackEngine — load + interpolate
         # ══════════════════════════════════════════════════════════
         print(f"\n[Stage 6] PlaybackEngine interpolation ({map_name})")
         try:
-            from Programma_CS2_RENAN.core.playback_engine import PlaybackEngine, InterpolatedFrame
+            from Programma_CS2_RENAN.core.playback_engine import InterpolatedFrame, PlaybackEngine
 
             engine = PlaybackEngine()
             engine.load_frames(frames)
@@ -221,13 +253,18 @@ def main():
             engine.set_on_frame_update(lambda f: received_frames.append(f))
 
             # Simulate seeking to several points
-            test_ticks = [0, frames[len(frames) // 4].tick, frames[len(frames) // 2].tick, frames[-1].tick]
+            test_ticks = [
+                0,
+                frames[len(frames) // 4].tick,
+                frames[len(frames) // 2].tick,
+                frames[-1].tick,
+            ]
             for tick in test_ticks:
                 engine.seek_to_tick(tick)
 
-            assert len(received_frames) == len(test_ticks), (
-                f"Expected {len(test_ticks)} frames, got {len(received_frames)}"
-            )
+            assert len(received_frames) == len(
+                test_ticks
+            ), f"Expected {len(test_ticks)} frames, got {len(received_frames)}"
             record_pass(f"seek + emit works for {len(test_ticks)} test points")
 
             # Validate InterpolatedFrame structure
@@ -248,7 +285,9 @@ def main():
                     # Access every field the map widget uses
                     _ = p.x, p.y, p.yaw, p.hp, p.is_alive, p.team, p.name
                     _ = p.is_ghost
-                record_pass(f"interpolated frame: {len(iframe.players)} players, {len(iframe.nades)} nades")
+                record_pass(
+                    f"interpolated frame: {len(iframe.players)} players, {len(iframe.nades)} nades"
+                )
             else:
                 record_error("interpolation", "No frame emitted after _emit_frame()")
 
@@ -260,14 +299,19 @@ def main():
         # ══════════════════════════════════════════════════════════
         print(f"\n[Stage 7] SpatialEngine coordinate transform ({map_name})")
         try:
-            from Programma_CS2_RENAN.core.spatial_engine import SpatialEngine
             from Programma_CS2_RENAN.core.spatial_data import get_map_metadata
+            from Programma_CS2_RENAN.core.spatial_engine import SpatialEngine
 
             meta = get_map_metadata(map_name)
             if meta is None:
-                record_warn("spatial", f"No MapMetadata for '{map_name}' — map will render without background")
+                record_warn(
+                    "spatial",
+                    f"No MapMetadata for '{map_name}' — map will render without background",
+                )
             else:
-                record_pass(f"MapMetadata found: pos=({meta.pos_x}, {meta.pos_y}), scale={meta.scale}")
+                record_pass(
+                    f"MapMetadata found: pos=({meta.pos_x}, {meta.pos_y}), scale={meta.scale}"
+                )
 
                 # Transform a sample of player positions
                 test_players = frames[len(frames) // 2].players[:3]
@@ -294,7 +338,14 @@ def main():
         print(f"\n[Stage 8] Map image resolution ({map_name})")
         try:
             from Programma_CS2_RENAN.core.config import get_resource_path
-            clean = map_name.lower().strip().replace(".dem", "").replace(".vpk", "").replace("maps/", "")
+
+            clean = (
+                map_name.lower()
+                .strip()
+                .replace(".dem", "")
+                .replace(".vpk", "")
+                .replace("maps/", "")
+            )
             maps_dir = get_resource_path(os.path.join("PHOTO_GUI", "maps"))
             found_image = None
             for candidate in [clean, f"de_{clean}"]:
@@ -309,7 +360,9 @@ def main():
                         break
             if found_image:
                 sz = os.path.getsize(found_image)
-                record_pass(f"map image found: {os.path.basename(found_image)} ({sz / 1024:.0f} KB)")
+                record_pass(
+                    f"map image found: {os.path.basename(found_image)} ({sz / 1024:.0f} KB)"
+                )
             else:
                 record_warn("map image", f"No PNG found for '{clean}' in {maps_dir}")
         except Exception as e:
@@ -320,8 +373,8 @@ def main():
         # ══════════════════════════════════════════════════════════
         print(f"\n[Stage 9] Simulate rendering calls ({map_name})")
         try:
-            from Programma_CS2_RENAN.core.playback_engine import InterpolatedPlayerState
             from Programma_CS2_RENAN.core.demo_frame import NadeType, Team
+            from Programma_CS2_RENAN.core.playback_engine import InterpolatedPlayerState
 
             # Simulate _world_to_screen for players
             if meta:
@@ -334,7 +387,11 @@ def main():
                         ms = 600
                         sx, sy = nx * ms, ny * ms
                         # Simulate team check (as map_widget does)
-                        is_ct = p.team == Team.CT if isinstance(p.team, Team) else "CT" in str(p.team).upper()
+                        is_ct = (
+                            p.team == Team.CT
+                            if isinstance(p.team, Team)
+                            else "CT" in str(p.team).upper()
+                        )
                         # Simulate FoV rotation calc
                         rotation = 90 - p.yaw
                     except Exception as e:
@@ -345,7 +402,12 @@ def main():
                         nx, ny = SpatialEngine.world_to_normalized(nade.x, nade.y, map_name)
                         sx, sy = nx * ms, ny * ms
                         # Check nade_type is valid NadeType
-                        _ = nade.nade_type in (NadeType.SMOKE, NadeType.MOLOTOV, NadeType.FLASH, NadeType.HE)
+                        _ = nade.nade_type in (
+                            NadeType.SMOKE,
+                            NadeType.MOLOTOV,
+                            NadeType.FLASH,
+                            NadeType.HE,
+                        )
                         # Check trajectory access
                         if nade.trajectory:
                             for pt in nade.trajectory[:3]:

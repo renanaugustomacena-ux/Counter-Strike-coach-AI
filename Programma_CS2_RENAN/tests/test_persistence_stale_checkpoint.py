@@ -47,7 +47,9 @@ def large_model():
 class TestStaleCheckpointDetection:
     """Verify that load_nn correctly detects architecture mismatches."""
 
-    def test_dimension_mismatch_raises_stale_checkpoint_error(self, model_dir, small_model, large_model):
+    def test_dimension_mismatch_raises_stale_checkpoint_error(
+        self, model_dir, small_model, large_model
+    ):
         """When loading a checkpoint saved with different dimensions,
         load_nn must raise StaleCheckpointError."""
         from Programma_CS2_RENAN.backend.nn.persistence import StaleCheckpointError
@@ -80,9 +82,9 @@ class TestStaleCheckpointDetection:
             with pytest.raises(StaleCheckpointError) as exc_info:
                 load_nn("latest", large_model)
 
-            assert str(checkpoint_path) in str(exc_info.value), (
-                "Error message should contain the checkpoint path"
-            )
+            assert str(checkpoint_path) in str(
+                exc_info.value
+            ), "Error message should contain the checkpoint path"
 
     def test_stale_error_chains_original_runtime_error(self, model_dir, small_model, large_model):
         """StaleCheckpointError must chain the original RuntimeError via __cause__."""
@@ -100,9 +102,9 @@ class TestStaleCheckpointDetection:
             with pytest.raises(StaleCheckpointError) as exc_info:
                 load_nn("latest", large_model)
 
-            assert exc_info.value.__cause__ is not None, (
-                "StaleCheckpointError should chain the original RuntimeError"
-            )
+            assert (
+                exc_info.value.__cause__ is not None
+            ), "StaleCheckpointError should chain the original RuntimeError"
             assert isinstance(exc_info.value.__cause__, RuntimeError)
 
     def test_normal_load_succeeds(self, model_dir, small_model):
@@ -120,9 +122,9 @@ class TestStaleCheckpointDetection:
 
             result = load_nn("latest", fresh_model)
 
-        assert not getattr(result, "_stale_checkpoint", False), (
-            "Successful load should NOT have stale flag"
-        )
+        assert not getattr(
+            result, "_stale_checkpoint", False
+        ), "Successful load should NOT have stale flag"
 
     def test_model_weights_differ_after_successful_load(self, model_dir, small_model):
         """After a successful load, model weights should match the checkpoint, not be random."""
@@ -140,9 +142,9 @@ class TestStaleCheckpointDetection:
             result = load_nn("latest", fresh_model)
 
         for p_loaded, p_original in zip(result.parameters(), small_model.parameters()):
-            assert torch.allclose(p_loaded, p_original), (
-                "Loaded model weights should match checkpoint"
-            )
+            assert torch.allclose(
+                p_loaded, p_original
+            ), "Loaded model weights should match checkpoint"
 
     def test_no_checkpoint_returns_model_unchanged(self, model_dir):
         """When no checkpoint exists, model should be returned with its initial weights."""
@@ -150,20 +152,23 @@ class TestStaleCheckpointDetection:
         initial_weight = model[0].weight.clone()
 
         nonexistent = model_dir / "nonexistent.pt"
-        with patch(
-            "Programma_CS2_RENAN.backend.nn.persistence.get_model_path",
-            return_value=nonexistent,
-        ), patch(
-            "Programma_CS2_RENAN.backend.nn.persistence.get_factory_model_path",
-            return_value=nonexistent,
+        with (
+            patch(
+                "Programma_CS2_RENAN.backend.nn.persistence.get_model_path",
+                return_value=nonexistent,
+            ),
+            patch(
+                "Programma_CS2_RENAN.backend.nn.persistence.get_factory_model_path",
+                return_value=nonexistent,
+            ),
         ):
             from Programma_CS2_RENAN.backend.nn.persistence import load_nn
 
             result = load_nn("latest", model)
 
-        assert torch.allclose(result[0].weight, initial_weight), (
-            "Model should be unchanged when no checkpoint exists"
-        )
+        assert torch.allclose(
+            result[0].weight, initial_weight
+        ), "Model should be unchanged when no checkpoint exists"
 
 
 class TestStaleCheckpointPreventsInference:

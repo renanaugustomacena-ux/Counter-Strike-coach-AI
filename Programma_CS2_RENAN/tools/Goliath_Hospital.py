@@ -29,18 +29,18 @@ import importlib.util
 import json
 import os
 import re
+import signal
 import sys
+import threading
 import time
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeoutError
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-
-import signal
-import threading
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 
 # Centralized path stabilization (handles sys.path, encoding, KIVY_NO_ARGS)
 from _infra import path_stabilize
@@ -929,9 +929,7 @@ class GoliathHospital:
             from sqlmodel import func, select
 
             from Programma_CS2_RENAN.backend.storage.database import get_db_manager
-            from Programma_CS2_RENAN.backend.storage.db_models import (
-                PlayerMatchStats,
-            )
+            from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
 
             db = get_db_manager()
             with db.get_session() as session:
@@ -1466,7 +1464,9 @@ class GoliathHospital:
                 out = model(dummy)
             return str(out.shape)
 
-        ok, result = self._timeout_guard(_check_teacher_nn, timeout_sec=15, label="TeacherRefinementNN")
+        ok, result = self._timeout_guard(
+            _check_teacher_nn, timeout_sec=15, label="TeacherRefinementNN"
+        )
         if ok:
             findings.append(
                 self._create_finding(
@@ -1497,7 +1497,9 @@ class GoliathHospital:
             from Programma_CS2_RENAN.backend.nn.jepa_model import JEPACoachingModel
             from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
 
-            jepa = JEPACoachingModel(input_dim=METADATA_DIM, output_dim=METADATA_DIM, latent_dim=128)
+            jepa = JEPACoachingModel(
+                input_dim=METADATA_DIM, output_dim=METADATA_DIM, latent_dim=128
+            )
             x = torch.randn(1, 5, METADATA_DIM)
             with torch.no_grad():
                 pred = jepa(x)
@@ -1888,7 +1890,9 @@ class GoliathHospital:
                 continue
             if "test" in rel_path.lower():
                 continue
-            if "/tools/" in rel_path or rel_path.startswith("tools/"):  # F8-22: match Programma_CS2_RENAN/tools/ and root tools/
+            if "/tools/" in rel_path or rel_path.startswith(
+                "tools/"
+            ):  # F8-22: match Programma_CS2_RENAN/tools/ and root tools/
                 continue  # Tools are standalone
 
             # Convert path to import format
@@ -2016,30 +2020,78 @@ class GoliathHospital:
             # Storage
             ("Database", "Programma_CS2_RENAN.backend.storage.database", "get_db_manager"),
             ("DB Models", "Programma_CS2_RENAN.backend.storage.db_models", "PlayerMatchStats"),
-            ("Match Data Mgr", "Programma_CS2_RENAN.backend.storage.match_data_manager", "get_match_data_manager"),
+            (
+                "Match Data Mgr",
+                "Programma_CS2_RENAN.backend.storage.match_data_manager",
+                "get_match_data_manager",
+            ),
             # Neural Networks
             ("Model Factory", "Programma_CS2_RENAN.backend.nn.factory", "ModelFactory"),
             ("NN Config", "Programma_CS2_RENAN.backend.nn.config", "get_device"),
             # Processing
-            ("Feature Extractor", "Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer", "FeatureExtractor"),
-            ("Tensor Factory", "Programma_CS2_RENAN.backend.processing.tensor_factory", "TensorFactory"),
+            (
+                "Feature Extractor",
+                "Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer",
+                "FeatureExtractor",
+            ),
+            (
+                "Tensor Factory",
+                "Programma_CS2_RENAN.backend.processing.tensor_factory",
+                "TensorFactory",
+            ),
             # Services
-            ("Coaching Service", "Programma_CS2_RENAN.backend.services.coaching_service", "CoachingService"),
-            ("Analysis Orchestrator", "Programma_CS2_RENAN.backend.services.analysis_orchestrator", "AnalysisOrchestrator"),
+            (
+                "Coaching Service",
+                "Programma_CS2_RENAN.backend.services.coaching_service",
+                "CoachingService",
+            ),
+            (
+                "Analysis Orchestrator",
+                "Programma_CS2_RENAN.backend.services.analysis_orchestrator",
+                "AnalysisOrchestrator",
+            ),
             # Coaching
-            ("Hybrid Engine", "Programma_CS2_RENAN.backend.coaching.hybrid_engine", "HybridCoachingEngine"),
+            (
+                "Hybrid Engine",
+                "Programma_CS2_RENAN.backend.coaching.hybrid_engine",
+                "HybridCoachingEngine",
+            ),
             # Knowledge
-            ("Knowledge Graph", "Programma_CS2_RENAN.backend.knowledge.graph", "KnowledgeGraphManager"),
-            ("Knowledge Retriever", "Programma_CS2_RENAN.backend.knowledge.rag_knowledge", "KnowledgeRetriever"),
-            ("Experience Bank", "Programma_CS2_RENAN.backend.knowledge.experience_bank", "ExperienceBank"),
+            (
+                "Knowledge Graph",
+                "Programma_CS2_RENAN.backend.knowledge.graph",
+                "KnowledgeGraphManager",
+            ),
+            (
+                "Knowledge Retriever",
+                "Programma_CS2_RENAN.backend.knowledge.rag_knowledge",
+                "KnowledgeRetriever",
+            ),
+            (
+                "Experience Bank",
+                "Programma_CS2_RENAN.backend.knowledge.experience_bank",
+                "ExperienceBank",
+            ),
             # Analysis
-            ("Role Classifier", "Programma_CS2_RENAN.backend.analysis.role_classifier", "RoleClassifier"),
-            ("Win Probability", "Programma_CS2_RENAN.backend.analysis.win_probability", "WinProbabilityPredictor"),
+            (
+                "Role Classifier",
+                "Programma_CS2_RENAN.backend.analysis.role_classifier",
+                "RoleClassifier",
+            ),
+            (
+                "Win Probability",
+                "Programma_CS2_RENAN.backend.analysis.win_probability",
+                "WinProbabilityPredictor",
+            ),
             # Control
             ("Console", "Programma_CS2_RENAN.backend.control.console", "Console"),
             ("DB Governor", "Programma_CS2_RENAN.backend.control.db_governor", "DatabaseGovernor"),
             ("ML Controller", "Programma_CS2_RENAN.backend.control.ml_controller", "MLController"),
-            ("Ingestion Manager", "Programma_CS2_RENAN.backend.control.ingest_manager", "IngestionManager"),
+            (
+                "Ingestion Manager",
+                "Programma_CS2_RENAN.backend.control.ingest_manager",
+                "IngestionManager",
+            ),
             # Observability
             ("Logger Setup", "Programma_CS2_RENAN.observability.logger_setup", "get_logger"),
         ]
@@ -2723,8 +2775,8 @@ class GoliathHospital:
                     Console.finding(f, verbose=True)
 
     # F8-05: Health rating thresholds — adjust if project error/warning baseline changes
-    _HEALTH_ERROR_THRESHOLD = 3   # >N errors → ERROR rating
-    _HEALTH_WARN_THRESHOLD = 10   # >N warnings → WARNING rating (when errors == 0)
+    _HEALTH_ERROR_THRESHOLD = 3  # >N errors → ERROR rating
+    _HEALTH_WARN_THRESHOLD = 10  # >N warnings → WARNING rating (when errors == 0)
 
     def _calculate_overall_health(self):
         """Calculate overall project health based on all departments."""
@@ -2793,7 +2845,9 @@ class GoliathHospital:
         report_dir = self.project_root / "reports"
         report_dir.mkdir(exist_ok=True)
 
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")  # F8-38: UTC for unambiguous filenames
+        timestamp = datetime.now(timezone.utc).strftime(
+            "%Y%m%d_%H%M%S"
+        )  # F8-38: UTC for unambiguous filenames
         report_path = report_dir / f"goliath_hospital_{timestamp}.json"
 
         # Convert to dict

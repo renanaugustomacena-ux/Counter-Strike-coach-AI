@@ -8,6 +8,9 @@ _warnings.warn(
     stacklevel=2,
 )
 
-from Programma_CS2_RENAN.observability.logger_setup import app_logger, get_logger  # noqa: F401, E402
+from Programma_CS2_RENAN.observability.logger_setup import (  # noqa: F401, E402
+    app_logger,
+    get_logger,
+)
 
 setup_logger = get_logger  # legacy alias

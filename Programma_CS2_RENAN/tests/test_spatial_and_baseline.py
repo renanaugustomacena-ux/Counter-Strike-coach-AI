@@ -5,7 +5,6 @@ outlier trimming, and maturity tier classification.
 
 import sys
 
-
 import numpy as np
 import pandas as pd
 import pytest
@@ -125,4 +124,3 @@ class TestSoftGate:
         for tier_name in DEMO_TIERS:
             assert tier_name in TIER_CONFIDENCE, f"Missing confidence for tier {tier_name}"
             assert 0.0 < TIER_CONFIDENCE[tier_name] <= 1.0
-

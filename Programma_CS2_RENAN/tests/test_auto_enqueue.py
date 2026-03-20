@@ -8,7 +8,6 @@ import sys
 import time
 from datetime import datetime, timezone
 
-
 import pytest
 from sqlmodel import select
 
@@ -138,4 +137,3 @@ class TestAutoEnqueue:
 
             ordered_ids = [t.id for t in tasks if t.id in task_ids]
             assert ordered_ids == task_ids
-

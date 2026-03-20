@@ -49,9 +49,7 @@ class JEPATrainer:
         self._needs_full_retrain = False
         self._reference_stats: Optional[dict] = None
 
-    def encode_raw_negatives(
-        self, negatives: torch.Tensor, seq_len: int
-    ) -> torch.Tensor:
+    def encode_raw_negatives(self, negatives: torch.Tensor, seq_len: int) -> torch.Tensor:
         """Encode raw feature negatives into latent space (NN-H-02).
 
         Shared by both training and validation paths to ensure identical
@@ -164,7 +162,9 @@ class JEPATrainer:
             # NN-JT-01: In-batch negatives require batch_size > 1 (can't exclude self
             # from a single-element batch). Skip training on degenerate batches.
             if batch_size < 2:
-                logger.debug("NN-JT-01: Skipping batch with size %d (need >= 2 for negatives)", batch_size)
+                logger.debug(
+                    "NN-JT-01: Skipping batch with size %d (need >= 2 for negatives)", batch_size
+                )
                 continue
 
             with torch.no_grad():
@@ -187,7 +187,9 @@ class JEPATrainer:
 
         # NN-TR-02: Warn if dataloader was empty (no batches processed)
         if count == 0:
-            logger.warning("NN-TR-02: train_epoch completed with 0 batches — dataloader may be empty")
+            logger.warning(
+                "NN-TR-02: train_epoch completed with 0 batches — dataloader may be empty"
+            )
 
         return total_loss / max(1, count)
 

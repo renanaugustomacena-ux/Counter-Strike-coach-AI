@@ -10,7 +10,6 @@ Covers:
 
 import sys
 
-
 import numpy as np
 
 
@@ -22,6 +21,7 @@ class TestScanResult:
 
     def _make(self, **kwargs):
         from Programma_CS2_RENAN.backend.nn.rap_coach.chronovisor_scanner import ScanResult
+
         defaults = {
             "critical_moments": [],
             "success": True,
@@ -38,10 +38,18 @@ class TestScanResult:
 
     def test_not_empty_success(self):
         from Programma_CS2_RENAN.backend.nn.rap_coach.chronovisor_scanner import CriticalMoment
+
         cm = CriticalMoment(
-            match_id=1, start_tick=0, peak_tick=50, end_tick=100,
-            severity=0.5, type="anomaly", description="Test",
-            scale="micro", context_ticks=64, suggested_review="Watch replay",
+            match_id=1,
+            start_tick=0,
+            peak_tick=50,
+            end_tick=100,
+            severity=0.5,
+            type="anomaly",
+            description="Test",
+            scale="micro",
+            context_ticks=64,
+            suggested_review="Watch replay",
         )
         sr = self._make(critical_moments=[cm])
         assert sr.is_empty_success is False
@@ -63,6 +71,7 @@ class TestCriticalMoment:
 
     def _make_moment(self, **kwargs):
         from Programma_CS2_RENAN.backend.nn.rap_coach.chronovisor_scanner import CriticalMoment
+
         defaults = {
             "match_id": 42,
             "start_tick": 1000,
@@ -119,9 +128,13 @@ class TestScaleConfig:
 
     def test_scale_config_creation(self):
         from Programma_CS2_RENAN.backend.nn.rap_coach.chronovisor_scanner import ScaleConfig
+
         sc = ScaleConfig(
-            name="test", window_ticks=128, lag=32,
-            threshold=0.12, description="Test scale",
+            name="test",
+            window_ticks=128,
+            lag=32,
+            threshold=0.12,
+            description="Test scale",
         )
         assert sc.name == "test"
         assert sc.window_ticks == 128
@@ -130,6 +143,7 @@ class TestScaleConfig:
 
     def test_analysis_scales_defined(self):
         from Programma_CS2_RENAN.backend.nn.rap_coach.chronovisor_scanner import ANALYSIS_SCALES
+
         assert len(ANALYSIS_SCALES) == 3
         names = [s.name for s in ANALYSIS_SCALES]
         assert "micro" in names
@@ -138,6 +152,7 @@ class TestScaleConfig:
 
     def test_micro_scale_values(self):
         from Programma_CS2_RENAN.backend.nn.rap_coach.chronovisor_scanner import ANALYSIS_SCALES
+
         micro = [s for s in ANALYSIS_SCALES if s.name == "micro"][0]
         assert micro.window_ticks == 64
         assert micro.lag == 16
@@ -151,17 +166,23 @@ class TestDeduplication:
     """Tests for the static deduplication method."""
 
     def _dedup(self, moments):
-        from Programma_CS2_RENAN.backend.nn.rap_coach.chronovisor_scanner import (
-            ChronovisorScanner,
-        )
+        from Programma_CS2_RENAN.backend.nn.rap_coach.chronovisor_scanner import ChronovisorScanner
+
         return ChronovisorScanner._deduplicate_across_scales(moments)
 
     def _make_cm(self, peak_tick, severity=0.5, scale="micro"):
         from Programma_CS2_RENAN.backend.nn.rap_coach.chronovisor_scanner import CriticalMoment
+
         return CriticalMoment(
-            match_id=1, start_tick=peak_tick - 32, peak_tick=peak_tick,
-            end_tick=peak_tick + 32, severity=severity, type="test",
-            description="test", scale=scale, context_ticks=64,
+            match_id=1,
+            start_tick=peak_tick - 32,
+            peak_tick=peak_tick,
+            end_tick=peak_tick + 32,
+            severity=severity,
+            type="test",
+            description="test",
+            scale=scale,
+            context_ticks=64,
             suggested_review="watch",
         )
 
@@ -196,17 +217,20 @@ class TestAnalyzeSignalAtScale:
     """Tests for single-scale signal analysis without model dependencies."""
 
     def _make_scanner_shell(self):
-        from Programma_CS2_RENAN.backend.nn.rap_coach.chronovisor_scanner import (
-            ChronovisorScanner,
-        )
+        from Programma_CS2_RENAN.backend.nn.rap_coach.chronovisor_scanner import ChronovisorScanner
+
         scanner = ChronovisorScanner.__new__(ChronovisorScanner)
         return scanner
 
     def _make_scale(self, **kwargs):
         from Programma_CS2_RENAN.backend.nn.rap_coach.chronovisor_scanner import ScaleConfig
+
         defaults = {
-            "name": "test", "window_ticks": 10, "lag": 3,
-            "threshold": 0.15, "description": "Test",
+            "name": "test",
+            "window_ticks": 10,
+            "lag": 3,
+            "threshold": 0.15,
+            "description": "Test",
         }
         defaults.update(kwargs)
         return ScaleConfig(**defaults)

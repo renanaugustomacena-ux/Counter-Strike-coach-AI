@@ -120,9 +120,7 @@ class IngestionManager:
 
                 # Enqueue newly discovered files
                 if total_files > 0:
-                    logger.info(
-                        "IngestionManager: Found %s new files to enqueue.", total_files
-                    )
+                    logger.info("IngestionManager: Found %s new files to enqueue.", total_files)
                     for demo_path, is_pro in all_new_files:
                         if self._stop_requested:
                             break
@@ -254,7 +252,9 @@ class IngestionManager:
 
             self._current_file = demo_path.name
             logger.info("Ingesting: %s (Pro=%s)", self._current_file, is_pro)
-            get_state_manager().update_status("digester", "Processing", f"Parsing {self._current_file}")
+            get_state_manager().update_status(
+                "digester", "Processing", f"Parsing {self._current_file}"
+            )
 
             # Reset Progress
             get_state_manager().update_parsing_progress(0.0)

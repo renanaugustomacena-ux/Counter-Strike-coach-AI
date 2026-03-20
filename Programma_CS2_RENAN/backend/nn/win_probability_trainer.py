@@ -70,7 +70,8 @@ def train_win_prob_model(data_df: pd.DataFrame, model_path: str):
     if len(X_all) < WIN_PROB_MIN_SAMPLES:
         logger.warning(
             "Insufficient training data (%d < %d). Skipping win probability training.",
-            len(X_all), WIN_PROB_MIN_SAMPLES,
+            len(X_all),
+            WIN_PROB_MIN_SAMPLES,
         )
         return None
 
@@ -104,7 +105,12 @@ def train_win_prob_model(data_df: pd.DataFrame, model_path: str):
             val_loss = criterion(val_outputs, y_val).item()
 
         if epoch % 20 == 0:
-            logger.info("Epoch %s, Train Loss: %s, Val Loss: %s", epoch, format(loss.item(), ".4f"), format(val_loss, ".4f"))
+            logger.info(
+                "Epoch %s, Train Loss: %s, Val Loss: %s",
+                epoch,
+                format(loss.item(), ".4f"),
+                format(val_loss, ".4f"),
+            )
 
         # P1-01: Early stopping based on validation loss
         if early_stopper(val_loss):

@@ -51,7 +51,9 @@ def cmd_personalize(args):
     steam_key = input("Steam Web API Key (leave blank to skip): ").strip()
     if steam_key:
         save_user_setting("STEAM_API_KEY", steam_key)
-        print(f"  Saved STEAM_API_KEY = ***")  # F8-10: no key fragment — avoids partial credential exposure
+        print(
+            f"  Saved STEAM_API_KEY = ***"
+        )  # F8-10: no key fragment — avoids partial credential exposure
 
     faceit_key = input("FACEIT API Key (leave blank to skip): ").strip()
     if faceit_key:

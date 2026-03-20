@@ -937,13 +937,22 @@ def verify_qt_app_imports():
 
     # Verify all screen modules import cleanly
     screen_modules = [
-        "home_screen", "coach_screen", "match_history_screen",
-        "performance_screen", "tactical_viewer_screen", "settings_screen",
-        "help_screen", "steam_config_screen", "user_profile_screen",
-        "profile_screen", "wizard_screen", "match_detail_screen",
+        "home_screen",
+        "coach_screen",
+        "match_history_screen",
+        "performance_screen",
+        "tactical_viewer_screen",
+        "settings_screen",
+        "help_screen",
+        "steam_config_screen",
+        "user_profile_screen",
+        "profile_screen",
+        "wizard_screen",
+        "match_detail_screen",
         "faceit_config_screen",
     ]
     import importlib
+
     for mod_name in screen_modules:
         full = f"Programma_CS2_RENAN.apps.qt_app.screens.{mod_name}"
         importlib.import_module(full)
@@ -1404,7 +1413,16 @@ def verify_dataset_split_enum():
 def verify_coach_status_enum():
     from Programma_CS2_RENAN.backend.storage.db_models import CoachStatus
 
-    expected = {"Paused", "Training", "Idle", "Error", "Booting", "Running", "ShuttingDown", "Offline"}
+    expected = {
+        "Paused",
+        "Training",
+        "Idle",
+        "Error",
+        "Booting",
+        "Running",
+        "ShuttingDown",
+        "Offline",
+    }
     actual = {e.value for e in CoachStatus}
     if actual != expected:
         raise AssertionError(f"CoachStatus values {actual} != expected {expected}")
@@ -1722,7 +1740,9 @@ warn("Structure", "__init__.py completeness", verify_init_py_in_packages)
 check("Structure", "coaching_knowledge_base.json valid", verify_coaching_knowledge_json)
 check("Structure", "integrity_manifest.json valid", verify_integrity_manifest_json)
 check("Structure", "settings.json valid", verify_settings_json)
-check("Structure", "Qt app structure (app.py, main_window, themes, screens)", verify_qt_app_structure)
+check(
+    "Structure", "Qt app structure (app.py, main_window, themes, screens)", verify_qt_app_structure
+)
 check("Structure", "alembic/env.py imports db_models", verify_alembic_env)
 
 
@@ -1947,13 +1967,9 @@ def verify_rap_coach_forward():
                 f"advice_probs shape {out['advice_probs'].shape}, expected (2, 10)"
             )
         if out["optimal_pos"].shape != (2, 3):
-            raise AssertionError(
-                f"optimal_pos shape {out['optimal_pos'].shape}, expected (2, 3)"
-            )
+            raise AssertionError(f"optimal_pos shape {out['optimal_pos'].shape}, expected (2, 3)")
         if out["attribution"].shape != (2, 5):
-            raise AssertionError(
-                f"attribution shape {out['attribution'].shape}, expected (2, 5)"
-            )
+            raise AssertionError(f"attribution shape {out['attribution'].shape}, expected (2, 5)")
 
 
 def verify_perception_output_invariant():
@@ -1998,9 +2014,7 @@ def verify_rap_position_scale():
     from Programma_CS2_RENAN.backend.nn.config import RAP_POSITION_SCALE
 
     if RAP_POSITION_SCALE != 500.0:
-        raise AssertionError(
-            f"RAP_POSITION_SCALE = {RAP_POSITION_SCALE}, expected 500.0"
-        )
+        raise AssertionError(f"RAP_POSITION_SCALE = {RAP_POSITION_SCALE}, expected 500.0")
 
 
 check("RAP", "RAPCoachModel full forward pass", verify_rap_coach_forward)
@@ -2023,9 +2037,7 @@ def verify_belief_state():
 
 
 def verify_death_probability_estimator():
-    from Programma_CS2_RENAN.backend.analysis.belief_model import (
-        DeathProbabilityEstimator,
-    )
+    from Programma_CS2_RENAN.backend.analysis.belief_model import DeathProbabilityEstimator
 
     estimator = DeathProbabilityEstimator()
     if not hasattr(estimator, "estimate"):
@@ -2033,9 +2045,7 @@ def verify_death_probability_estimator():
 
 
 def verify_adaptive_belief_calibrator():
-    from Programma_CS2_RENAN.backend.analysis.belief_model import (
-        AdaptiveBeliefCalibrator,
-    )
+    from Programma_CS2_RENAN.backend.analysis.belief_model import AdaptiveBeliefCalibrator
 
     cal = AdaptiveBeliefCalibrator()
     if not hasattr(cal, "auto_calibrate"):
@@ -2043,10 +2053,7 @@ def verify_adaptive_belief_calibrator():
 
 
 def verify_game_tree_solver():
-    from Programma_CS2_RENAN.backend.analysis.game_tree import (
-        ExpectiminimaxSearch,
-        OpponentModel,
-    )
+    from Programma_CS2_RENAN.backend.analysis.game_tree import ExpectiminimaxSearch, OpponentModel
 
     if not hasattr(OpponentModel, "learn_from_match"):
         raise AssertionError("OpponentModel missing learn_from_match() method")
@@ -2056,9 +2063,7 @@ def verify_game_tree_solver():
 
 def verify_analysis_module_contracts():
     from Programma_CS2_RENAN.backend.analysis.blind_spots import BlindSpotDetector
-    from Programma_CS2_RENAN.backend.analysis.engagement_range import (
-        EngagementRangeAnalyzer,
-    )
+    from Programma_CS2_RENAN.backend.analysis.engagement_range import EngagementRangeAnalyzer
     from Programma_CS2_RENAN.backend.analysis.utility_economy import UtilityAnalyzer
 
     for cls, method in [
@@ -2216,12 +2221,7 @@ def verify_manifest_hash_sampling():
     """Spot-check integrity manifest hashes against actual file checksums."""
     import hashlib
 
-    manifest_path = (
-        Path(PROJECT_ROOT)
-        / "Programma_CS2_RENAN"
-        / "core"
-        / "integrity_manifest.json"
-    )
+    manifest_path = Path(PROJECT_ROOT) / "Programma_CS2_RENAN" / "core" / "integrity_manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     hashes = manifest.get("hashes", {})
 
@@ -2242,19 +2242,13 @@ def verify_manifest_hash_sampling():
             mismatches.append(f"{rel_path} (hash mismatch)")
     if mismatches:
         raise AssertionError(
-            f"Integrity check failed for {len(mismatches)} files: "
-            + ", ".join(mismatches[:5])
+            f"Integrity check failed for {len(mismatches)} files: " + ", ".join(mismatches[:5])
         )
 
 
 def verify_manifest_structure():
     """Manifest has required keys and non-empty hashes."""
-    manifest_path = (
-        Path(PROJECT_ROOT)
-        / "Programma_CS2_RENAN"
-        / "core"
-        / "integrity_manifest.json"
-    )
+    manifest_path = Path(PROJECT_ROOT) / "Programma_CS2_RENAN" / "core" / "integrity_manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     for key in ("hashes", "version"):
         if key not in manifest:
@@ -2293,9 +2287,7 @@ def verify_no_unsafe_torch_load():
             if not has_weights_only:
                 violations.append(f"{f.name}:{node.lineno}")
     if violations:
-        raise AssertionError(
-            f"torch.load() without weights_only=True: {', '.join(violations[:5])}"
-        )
+        raise AssertionError(f"torch.load() without weights_only=True: {', '.join(violations[:5])}")
 
 
 def verify_no_shell_true_in_production():
@@ -2458,9 +2450,7 @@ def verify_critical_constants_cross_module():
 
 def verify_settings_defaults_completeness():
     """All get_setting() calls reference keys that have defaults in config.py."""
-    config_path = (
-        Path(PROJECT_ROOT) / "Programma_CS2_RENAN" / "core" / "config.py"
-    )
+    config_path = Path(PROJECT_ROOT) / "Programma_CS2_RENAN" / "core" / "config.py"
     config_text = config_path.read_text(encoding="utf-8")
 
     # Extract default keys from the defaults dict in config.py
@@ -2502,9 +2492,7 @@ def verify_settings_defaults_completeness():
     # Keys referenced but not in defaults (get_setting has a default param, so this is a warn)
     undefined = referenced_keys - default_keys
     if undefined:
-        raise AssertionError(
-            f"Settings used but not in config defaults: {sorted(undefined)}"
-        )
+        raise AssertionError(f"Settings used but not in config defaults: {sorted(undefined)}")
 
 
 check("Config-Deep", "map_config.json per-map schema", verify_map_config_schema_depth)
@@ -2609,15 +2597,11 @@ def verify_no_critical_todos():
         for py_file in full.rglob("*.py"):
             if "__pycache__" in str(py_file):
                 continue
-            for i, line in enumerate(
-                py_file.read_text(encoding="utf-8").split("\n"), 1
-            ):
+            for i, line in enumerate(py_file.read_text(encoding="utf-8").split("\n"), 1):
                 if critical_pattern.search(line):
                     violations.append(f"{py_file.name}:{i}")
     if violations:
-        raise AssertionError(
-            f"CRITICAL TODO/FIXME in core paths: {', '.join(violations[:5])}"
-        )
+        raise AssertionError(f"CRITICAL TODO/FIXME in core paths: {', '.join(violations[:5])}")
 
 
 def verify_type_hint_coverage():
@@ -2645,11 +2629,7 @@ def verify_type_hint_coverage():
                 # Check if return annotation exists
                 has_return = node.returns is not None
                 # Check if all params have annotations (skip 'self', 'cls')
-                params = [
-                    a
-                    for a in node.args.args
-                    if a.arg not in ("self", "cls")
-                ]
+                params = [a for a in node.args.args if a.arg not in ("self", "cls")]
                 has_param_types = all(a.annotation is not None for a in params)
                 if has_return or has_param_types:
                     typed_funcs += 1
@@ -2659,8 +2639,7 @@ def verify_type_hint_coverage():
     coverage = typed_funcs / total_funcs
     if coverage < 0.5:
         raise AssertionError(
-            f"Type hint coverage: {coverage:.0%} ({typed_funcs}/{total_funcs}), "
-            f"expected >= 50%"
+            f"Type hint coverage: {coverage:.0%} ({typed_funcs}/{total_funcs}), " f"expected >= 50%"
         )
 
 
@@ -2684,14 +2663,10 @@ def verify_no_mutable_global_state_in_nn():
                         # Check if value is a mutable literal (list/dict/set)
                         if isinstance(node.value, (ast.List, ast.Set)):
                             if len(getattr(node.value, "elts", [])) > 0:
-                                violations.append(
-                                    f"{f.name}:{node.lineno} ({target.id})"
-                                )
+                                violations.append(f"{f.name}:{node.lineno} ({target.id})")
                         elif isinstance(node.value, ast.Dict):
                             if len(getattr(node.value, "keys", [])) > 0:
-                                violations.append(
-                                    f"{f.name}:{node.lineno} ({target.id})"
-                                )
+                                violations.append(f"{f.name}:{node.lineno} ({target.id})")
 
     # Allow some (constants like COACHING_CONCEPTS, TRAINING_FEATURES, etc.)
     if len(violations) > 15:
@@ -2723,10 +2698,20 @@ for mod_name in [
 
 # All 14 screen modules (13 screens + placeholder)
 for screen in [
-    "home_screen", "coach_screen", "match_history_screen", "match_detail_screen",
-    "performance_screen", "tactical_viewer_screen", "settings_screen",
-    "help_screen", "user_profile_screen", "profile_screen",
-    "steam_config_screen", "faceit_config_screen", "wizard_screen", "placeholder",
+    "home_screen",
+    "coach_screen",
+    "match_history_screen",
+    "match_detail_screen",
+    "performance_screen",
+    "tactical_viewer_screen",
+    "settings_screen",
+    "help_screen",
+    "user_profile_screen",
+    "profile_screen",
+    "steam_config_screen",
+    "faceit_config_screen",
+    "wizard_screen",
+    "placeholder",
 ]:
     check(
         "Qt-Import",
@@ -2736,8 +2721,13 @@ for screen in [
 
 # All viewmodel modules
 for vm in [
-    "coach_vm", "coaching_chat_vm", "match_detail_vm",
-    "match_history_vm", "performance_vm", "tactical_vm", "user_profile_vm",
+    "coach_vm",
+    "coaching_chat_vm",
+    "match_detail_vm",
+    "match_history_vm",
+    "performance_vm",
+    "tactical_vm",
+    "user_profile_vm",
 ]:
     check(
         "Qt-Import",

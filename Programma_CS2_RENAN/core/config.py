@@ -195,7 +195,8 @@ def load_user_settings():
                     else:
                         app_logger.error(
                             "Settings file %s contains %s instead of dict — using defaults",
-                            SETTINGS_PATH, type(data).__name__,
+                            SETTINGS_PATH,
+                            type(data).__name__,
                         )
             except Exception as e:
                 app_logger.error("Failed to load user settings from %s: %s", SETTINGS_PATH, e)
@@ -387,6 +388,7 @@ def save_user_setting(key, value):
                 backup_path = SETTINGS_PATH + ".corrupt"
                 try:
                     import shutil
+
                     shutil.copy2(SETTINGS_PATH, backup_path)
                     app_logger.warning("Corrupted settings backed up to %s", backup_path)
                 except Exception:

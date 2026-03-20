@@ -546,9 +546,7 @@ class CoachTrainingManager:
             app_logger.info("Loaded %s ticks for %s split", len(ticks), split)
             return ticks
 
-    def _fetch_rap_windows(
-        self, is_pro: bool, split: str = "train", window_size: int = 320
-    ):
+    def _fetch_rap_windows(self, is_pro: bool, split: str = "train", window_size: int = 320):
         """Fetch windowed tick data for RAP training from completed matches.
 
         Unlike JEPA's flat tick fetcher, RAP needs contiguous temporal windows
@@ -572,9 +570,7 @@ class CoachTrainingManager:
             )
             matches = session.exec(stmt).all()
             if not matches:
-                app_logger.warning(
-                    "No %s matches for RAP (is_pro=%s)", split, is_pro
-                )
+                app_logger.warning("No %s matches for RAP (is_pro=%s)", split, is_pro)
                 return []
 
             all_demo_names = {m.demo_name for m in matches if m.demo_name}
@@ -582,9 +578,7 @@ class CoachTrainingManager:
                 demo_names = sorted(all_demo_names & completed_demos)
                 skipped = len(all_demo_names) - len(demo_names)
                 if skipped > 0:
-                    app_logger.info(
-                        "P7: Skipped %d incomplete demos for RAP windows", skipped
-                    )
+                    app_logger.info("P7: Skipped %d incomplete demos for RAP windows", skipped)
             else:
                 demo_names = sorted(all_demo_names)
 

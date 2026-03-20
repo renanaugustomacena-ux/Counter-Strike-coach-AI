@@ -101,7 +101,10 @@ class RAPTrainer:
 
         logger.debug(
             "train_step: loss=%.4f sparsity=%.3f pos_loss=%.4f z_err=%.4f",
-            total_loss.item(), sparsity_ratio, loss_pos.item(), z_error,
+            total_loss.item(),
+            sparsity_ratio,
+            loss_pos.item(),
+            z_error,
         )
 
         # Return dict with metrics for the Orchestrator to log

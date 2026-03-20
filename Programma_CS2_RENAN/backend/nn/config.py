@@ -23,6 +23,7 @@ def set_global_seed(seed: int = GLOBAL_SEED):
     torch.backends.cudnn.benchmark = False
     logger.info("Global seed set to %d", seed)
 
+
 # --- Hardware Allocation ---
 _device_logged = False
 _cached_device = None

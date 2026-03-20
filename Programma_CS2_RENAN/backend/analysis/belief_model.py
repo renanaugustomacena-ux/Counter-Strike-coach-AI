@@ -121,7 +121,7 @@ class DeathProbabilityEstimator:
         # AdaptiveBeliefCalibrator.auto_calibrate() calibrates priors and lethality
         # but not these weights directly — future: grid search over weight space.
         log_odds = math.log(prior / max(1e-6, 1.0 - prior))
-        log_odds += threat * 2.0        # threat sensitivity
+        log_odds += threat * 2.0  # threat sensitivity
         log_odds += (weapon_mult - 1.0) * 1.5  # weapon lethality amplification
         log_odds += (armor_factor - 1.0) * -1.0  # armor damage reduction
         log_odds += (exposure_factor - 0.5) * 1.0  # positional exposure risk
@@ -151,7 +151,8 @@ class DeathProbabilityEstimator:
             logger.warning(
                 "AC-05-01: Insufficient death events for calibration (%d < %d). "
                 "Keeping default priors to avoid overfitting to sparse data.",
-                len(historical_rounds), self.MIN_CALIBRATION_SAMPLES,
+                len(historical_rounds),
+                self.MIN_CALIBRATION_SAMPLES,
             )
             return
 
@@ -252,7 +253,8 @@ class AdaptiveBeliefCalibrator:
             # AC-05-01: Warn (not info) — sparse data leaves posterior dominated by prior
             logger.warning(
                 "Insufficient samples for HP calibration: %d < %d",
-                len(death_events), self.MIN_SAMPLES,
+                len(death_events),
+                self.MIN_SAMPLES,
             )
             return {}
 

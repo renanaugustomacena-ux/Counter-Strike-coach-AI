@@ -40,9 +40,9 @@ class HeuristicConfig:
     pitch_max: float = 90.0  # Max pitch angle in degrees.      Range: [90, 90]
 
     # --- Round Phase Thresholds (equipment value breakpoints) ---
-    round_phase_eco_threshold: float = 1500.0   # Below = pistol round.       Range: [1000, 2000]
+    round_phase_eco_threshold: float = 1500.0  # Below = pistol round.       Range: [1000, 2000]
     round_phase_force_threshold: float = 3000.0  # Below = eco round.          Range: [2500, 3500]
-    round_phase_full_threshold: float = 4000.0   # Below = force buy.          Range: [3500, 5000]
+    round_phase_full_threshold: float = 4000.0  # Below = force buy.          Range: [3500, 5000]
 
     # --- Model Hyperparameters ---
     context_gate_l1_weight: float = 1e-4  # L1 sparsity weight on context gate. Range: [1e-6, 1e-2]

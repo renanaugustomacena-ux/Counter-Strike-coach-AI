@@ -83,8 +83,9 @@ class TestFeatureExtractorObjectInput:
         vec_obj = FeatureExtractor.extract(tick_obj)
 
         np.testing.assert_array_almost_equal(
-            vec_dict, vec_obj,
-            err_msg="Dict and object input should produce identical feature vectors"
+            vec_dict,
+            vec_obj,
+            err_msg="Dict and object input should produce identical feature vectors",
         )
 
     def test_missing_attribute_uses_default(self):
@@ -119,9 +120,9 @@ class TestRoundPhaseEncoding:
         )
 
         vec = FeatureExtractor.extract({"equipment_value": 2000})
-        assert vec[18] == pytest.approx(0.33), (
-            f"Equipment value 2000 should be eco (0.33), got {vec[18]}"
-        )
+        assert vec[18] == pytest.approx(
+            0.33
+        ), f"Equipment value 2000 should be eco (0.33), got {vec[18]}"
 
     def test_force_buy(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import (
@@ -129,9 +130,9 @@ class TestRoundPhaseEncoding:
         )
 
         vec = FeatureExtractor.extract({"equipment_value": 3500})
-        assert vec[18] == pytest.approx(0.66), (
-            f"Equipment value 3500 should be force (0.66), got {vec[18]}"
-        )
+        assert vec[18] == pytest.approx(
+            0.66
+        ), f"Equipment value 3500 should be force (0.66), got {vec[18]}"
 
     def test_full_buy(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import (
@@ -139,9 +140,7 @@ class TestRoundPhaseEncoding:
         )
 
         vec = FeatureExtractor.extract({"equipment_value": 5000})
-        assert vec[18] == 1.0, (
-            f"Equipment value 5000 should be full_buy (1.0), got {vec[18]}"
-        )
+        assert vec[18] == 1.0, f"Equipment value 5000 should be full_buy (1.0), got {vec[18]}"
 
 
 class TestMapIdEncoding:
@@ -186,6 +185,6 @@ class TestMapIdEncoding:
             vec = FeatureExtractor.extract({"health": 100}, map_name="de_inferno")
             results.add(vec[17])
 
-        assert len(results) == 1, (
-            f"Map hash should be deterministic, got {len(results)} different values"
-        )
+        assert (
+            len(results) == 1
+        ), f"Map hash should be deterministic, got {len(results)} different values"

@@ -1,13 +1,6 @@
 """Economy bar chart — equipment value per round, CT/T color-coded."""
 
-from PySide6.QtCharts import (
-    QBarCategoryAxis,
-    QBarSeries,
-    QBarSet,
-    QChart,
-    QChartView,
-    QValueAxis,
-)
+from PySide6.QtCharts import QBarCategoryAxis, QBarSeries, QBarSet, QChart, QChartView, QValueAxis
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QPainter
 

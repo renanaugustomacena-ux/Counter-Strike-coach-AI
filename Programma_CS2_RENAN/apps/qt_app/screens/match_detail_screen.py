@@ -293,9 +293,7 @@ class MatchDetailScreen(QWidget):
 
                 layout.addWidget(card)
         else:
-            layout.addWidget(
-                QLabel("No coaching insights for this match yet.")
-            )
+            layout.addWidget(QLabel("No coaching insights for this match yet."))
 
         # Momentum chart
         if rounds:

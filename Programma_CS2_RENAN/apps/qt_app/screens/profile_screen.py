@@ -2,13 +2,7 @@
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import (
-    QLabel,
-    QLineEdit,
-    QPushButton,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtWidgets import QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget
 
 from Programma_CS2_RENAN.core.config import get_setting, save_user_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger

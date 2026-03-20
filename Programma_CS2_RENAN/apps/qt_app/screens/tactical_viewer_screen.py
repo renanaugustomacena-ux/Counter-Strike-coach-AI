@@ -2,7 +2,7 @@
 
 import os
 
-from PySide6.QtCore import QThreadPool, Qt, QTimer
+from PySide6.QtCore import Qt, QThreadPool, QTimer
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -101,9 +101,7 @@ class TacticalViewerScreen(QWidget):
         if parent:
             pw, ph = parent.width(), parent.height()
             ow, oh = min(500, pw - 40), min(200, ph - 40)
-            self._empty_overlay.setGeometry(
-                (pw - ow) // 2, (ph - oh) // 2, ow, oh
-            )
+            self._empty_overlay.setGeometry((pw - ow) // 2, (ph - oh) // 2, ow, oh)
 
     # ── UI Construction ──
 
@@ -181,9 +179,7 @@ class TacticalViewerScreen(QWidget):
 
     def _build_controls(self) -> QFrame:
         panel = QFrame()
-        panel.setStyleSheet(
-            "QFrame { background-color: #0f0f1a; border-top: 1px solid #2a2a3a; }"
-        )
+        panel.setStyleSheet("QFrame { background-color: #0f0f1a; border-top: 1px solid #2a2a3a; }")
         panel.setFixedHeight(130)
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(12, 6, 12, 6)
@@ -286,7 +282,8 @@ class TacticalViewerScreen(QWidget):
             "This may take several minutes for large demos.\n"
             "Cached demos load instantly on subsequent opens.",
             None,  # No cancel button
-            0, 0,  # Indeterminate (0, 0 = pulsing bar)
+            0,
+            0,  # Indeterminate (0, 0 = pulsing bar)
             self,
         )
         self._progress_dialog.setWindowTitle("Loading Demo")
@@ -313,10 +310,7 @@ class TacticalViewerScreen(QWidget):
             self._progress_dialog = None
 
         # Filter out non-map keys (e.g., "map_tensors" injected by DemoLoader)
-        map_data = {
-            k: v for k, v in data.items()
-            if isinstance(v, tuple) and len(v) == 3
-        }
+        map_data = {k: v for k, v in data.items() if isinstance(v, tuple) and len(v) == 3}
 
         if not map_data:
             self._on_demo_error("No valid map data found in demo file.")

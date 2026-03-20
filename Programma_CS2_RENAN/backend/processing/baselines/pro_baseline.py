@@ -181,7 +181,8 @@ def _load_pro_from_csv(path):
 
         _logger.info(
             "CSV baseline loaded: %d columns from CSV (%s), %d from defaults",
-            len(loaded_from_csv), loaded_from_csv,
+            len(loaded_from_csv),
+            loaded_from_csv,
             len(baseline) - len(loaded_from_csv),
         )
         return baseline
@@ -475,16 +476,8 @@ class TemporalBaselineDecay:
                 continue
             if not isinstance(new_val, (int, float, dict)):
                 continue
-            old_mean = (
-                old_val.get("mean", 0)
-                if isinstance(old_val, dict)
-                else old_val
-            )
-            new_mean = (
-                new_val.get("mean", 0)
-                if isinstance(new_val, dict)
-                else new_val
-            )
+            old_mean = old_val.get("mean", 0) if isinstance(old_val, dict) else old_val
+            new_mean = new_val.get("mean", 0) if isinstance(new_val, dict) else new_val
 
             if old_mean == 0:
                 continue

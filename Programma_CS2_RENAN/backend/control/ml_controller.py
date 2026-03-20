@@ -22,6 +22,7 @@ _TRAINING_LOCK = threading.Lock()
 def _get_training_lock_path() -> str:
     """Return the path for the file-based training lock."""
     from Programma_CS2_RENAN.core.config import DATA_DIR
+
     return os.path.join(DATA_DIR, "training.lock")
 
 
@@ -40,6 +41,7 @@ def training_file_lock():
             fcntl.flock(fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
         else:
             import msvcrt
+
             msvcrt.locking(fp.fileno(), msvcrt.LK_NBLCK, 1)
     except OSError:
         fp.close()
@@ -53,6 +55,7 @@ def training_file_lock():
             fcntl.flock(fp, fcntl.LOCK_UN)
         else:
             import msvcrt
+
             fp.seek(0)
             msvcrt.locking(fp.fileno(), msvcrt.LK_UNLCK, 1)
         fp.close()

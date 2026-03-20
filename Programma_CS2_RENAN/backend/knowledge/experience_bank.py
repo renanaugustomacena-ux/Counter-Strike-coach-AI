@@ -18,9 +18,9 @@ Adheres to GEMINI.md principles:
 """
 
 import binascii
-import threading
 import hashlib
 import json
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
@@ -29,7 +29,9 @@ import numpy as np
 from sqlalchemy import update
 from sqlmodel import Session, func, select
 
-from Programma_CS2_RENAN.backend.knowledge.round_utils import infer_round_phase  # F5-20: shared utility
+from Programma_CS2_RENAN.backend.knowledge.round_utils import (  # F5-20: shared utility
+    infer_round_phase,
+)
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import CoachingExperience, PlayerMatchStats
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -124,6 +126,7 @@ class ExperienceBank:
     def _serialize_embedding(vec: np.ndarray) -> str:
         """Serialize embedding to base64-encoded float32 bytes."""
         import base64
+
         return base64.b64encode(vec.astype(np.float32).tobytes()).decode("ascii")
 
     @staticmethod
@@ -132,6 +135,7 @@ class ExperienceBank:
         if raw.startswith("["):
             return np.array(json.loads(raw), dtype=np.float32)
         import base64
+
         return np.frombuffer(base64.b64decode(raw), dtype=np.float32)
 
     def add_experience(
@@ -239,16 +243,24 @@ class ExperienceBank:
             faiss_results = index_mgr.search("experience", query_embedding, overfetch_k)
             if faiss_results:
                 result = self._score_and_filter_faiss(
-                    faiss_results, context, context_hash,
-                    min_confidence, outcome_filter, top_k,
+                    faiss_results,
+                    context,
+                    context_hash,
+                    min_confidence,
+                    outcome_filter,
+                    top_k,
                 )
                 if result is not None:
                     return result
 
         # Brute-force fallback
         return self._brute_force_retrieve_similar(
-            query_embedding, context_hash, context.map_name,
-            min_confidence, outcome_filter, top_k,
+            query_embedding,
+            context_hash,
+            context.map_name,
+            min_confidence,
+            outcome_filter,
+            top_k,
         )
 
     def _score_and_filter_faiss(
@@ -274,9 +286,9 @@ class ExperienceBank:
 
             # Post-filter by metadata
             filtered = [
-                e for e in entries
-                if e.map_name == context.map_name
-                and e.confidence >= min_confidence
+                e
+                for e in entries
+                if e.map_name == context.map_name and e.confidence >= min_confidence
             ]
             if outcome_filter:
                 filtered = [e for e in filtered if e.outcome == outcome_filter]
@@ -419,9 +431,7 @@ class ExperienceBank:
                     ).all()
 
                     if entries:
-                        entries.sort(
-                            key=lambda e: faiss_scores.get(e.id, 0), reverse=True
-                        )
+                        entries.sort(key=lambda e: faiss_scores.get(e.id, 0), reverse=True)
                         return entries[:top_k]
 
         # Brute-force fallback
@@ -705,7 +715,8 @@ class ExperienceBank:
             effectiveness = -0.15
 
         # P4-C: Single atomic UPDATE with SQL expressions — no read-modify-write race.
-        from sqlalchemy import case, func as sa_func
+        from sqlalchemy import case
+        from sqlalchemy import func as sa_func
 
         now = datetime.now(timezone.utc)
         ema_factor = 0.3
@@ -829,11 +840,15 @@ class ExperienceBank:
         cutoff = datetime.now(timezone.utc) - timedelta(days=max_age_days)
 
         with self.db.get_session() as session:
-            stmt = select(CoachingExperience).where(
-                CoachingExperience.outcome_validated == False,  # noqa: E712
-                CoachingExperience.usage_count > 0,
-                CoachingExperience.created_at < cutoff,
-            ).limit(1000)  # F5-10: cap to prevent OOM on large experience banks
+            stmt = (
+                select(CoachingExperience)
+                .where(
+                    CoachingExperience.outcome_validated == False,  # noqa: E712
+                    CoachingExperience.usage_count > 0,
+                    CoachingExperience.created_at < cutoff,
+                )
+                .limit(1000)
+            )  # F5-10: cap to prevent OOM on large experience banks
             stale = session.exec(stmt).all()
 
             for exp in stale:

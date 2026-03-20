@@ -239,9 +239,7 @@ class PerformanceScreen(QWidget):
         lbl.setStyleSheet("color: #dcdcdc;")
         layout.addWidget(lbl)
 
-        self._content_layout.insertWidget(
-            self._content_layout.count() - 1, card
-        )
+        self._content_layout.insertWidget(self._content_layout.count() - 1, card)
         return card
 
     def _show_status(self, text: str):

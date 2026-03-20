@@ -1,6 +1,6 @@
 """Settings screen — theme, paths, appearance, ingestion, font, language."""
 
-from PySide6.QtCore import QThreadPool, Qt
+from PySide6.QtCore import Qt, QThreadPool
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QApplication,
@@ -15,10 +15,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from Programma_CS2_RENAN.apps.qt_app.core.worker import Worker
-
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import ThemeEngine
+from Programma_CS2_RENAN.apps.qt_app.core.worker import Worker
 from Programma_CS2_RENAN.core.config import get_setting, save_user_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -186,9 +185,12 @@ class SettingsScreen(QWidget):
     def _update_wallpaper_toggles(self, current_path: str):
         """Highlight the active wallpaper button."""
         import os
+
         accent = self._theme_engine.get_color("accent_primary").name()
         for filename, btn in self._wallpaper_buttons.items():
-            is_active = current_path.endswith(os.sep + filename) or current_path.endswith("/" + filename)
+            is_active = current_path.endswith(os.sep + filename) or current_path.endswith(
+                "/" + filename
+            )
             if is_active:
                 btn.setStyleSheet(
                     f"QPushButton {{ background-color: {accent}; color: white; "
@@ -457,6 +459,7 @@ class SettingsScreen(QWidget):
 
         def _run_ingestion():
             from Programma_CS2_RENAN.run_ingestion import process_new_demos
+
             results = []
             if pro_path:
                 results.append(("pro", process_new_demos(is_pro=True)))

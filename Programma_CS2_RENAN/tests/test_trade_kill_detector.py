@@ -10,7 +10,6 @@ Covers:
 
 import sys
 
-
 import pandas as pd
 import pytest
 
@@ -23,6 +22,7 @@ class TestTradeKillResult:
 
     def _make(self, **kwargs):
         from Programma_CS2_RENAN.backend.data_sources.trade_kill_detector import TradeKillResult
+
         return TradeKillResult(**kwargs)
 
     def test_defaults(self):
@@ -61,7 +61,10 @@ class TestAssignRoundNumbers:
     """Tests for round number assignment from tick boundaries."""
 
     def _assign(self, ticks, boundaries):
-        from Programma_CS2_RENAN.backend.data_sources.trade_kill_detector import assign_round_numbers
+        from Programma_CS2_RENAN.backend.data_sources.trade_kill_detector import (
+            assign_round_numbers,
+        )
+
         return assign_round_numbers(pd.Series(ticks), boundaries)
 
     def test_single_round(self):
@@ -84,7 +87,10 @@ class TestAssignRoundNumbers:
 
     def test_preserves_index(self):
         ticks = pd.Series([500, 1500], index=[10, 20])
-        from Programma_CS2_RENAN.backend.data_sources.trade_kill_detector import assign_round_numbers
+        from Programma_CS2_RENAN.backend.data_sources.trade_kill_detector import (
+            assign_round_numbers,
+        )
+
         rounds = assign_round_numbers(ticks, [0, 1000])
         assert list(rounds.index) == [10, 20]
 
@@ -97,11 +103,13 @@ class TestDetectTradeKills:
 
     def _detect(self, deaths_data, roster, trade_window=192):
         from Programma_CS2_RENAN.backend.data_sources.trade_kill_detector import detect_trade_kills
+
         df = pd.DataFrame(deaths_data)
         return detect_trade_kills(df, roster, trade_window)
 
     def test_empty_dataframe(self):
         from Programma_CS2_RENAN.backend.data_sources.trade_kill_detector import detect_trade_kills
+
         result = detect_trade_kills(pd.DataFrame(), {"alice": 2})
         assert result.total_kills == 0
         assert result.trade_kills == 0
@@ -113,6 +121,7 @@ class TestDetectTradeKills:
 
     def test_missing_columns(self):
         from Programma_CS2_RENAN.backend.data_sources.trade_kill_detector import detect_trade_kills
+
         df = pd.DataFrame({"tick": [100], "some_col": ["x"]})
         result = detect_trade_kills(df, {"alice": 2})
         assert result.total_kills == 0
@@ -232,6 +241,7 @@ class TestGetPlayerTradeStats:
 
     def _make_result(self, details):
         from Programma_CS2_RENAN.backend.data_sources.trade_kill_detector import TradeKillResult
+
         return TradeKillResult(
             total_kills=len(details) * 2,
             trade_kills=len(details),
@@ -240,7 +250,10 @@ class TestGetPlayerTradeStats:
         )
 
     def _get_stats(self, result, roster):
-        from Programma_CS2_RENAN.backend.data_sources.trade_kill_detector import get_player_trade_stats
+        from Programma_CS2_RENAN.backend.data_sources.trade_kill_detector import (
+            get_player_trade_stats,
+        )
+
         return get_player_trade_stats(result, roster)
 
     def test_empty_details(self):
@@ -248,6 +261,7 @@ class TestGetPlayerTradeStats:
             TradeKillResult,
             get_player_trade_stats,
         )
+
         result = TradeKillResult()
         roster = {"alice": 2, "bob": 3}
         stats = get_player_trade_stats(result, roster)
@@ -256,15 +270,17 @@ class TestGetPlayerTradeStats:
         assert stats["alice"]["times_traded"] == 0
 
     def test_single_trade(self):
-        details = [{
-            "trade_tick": 1100,
-            "trade_killer": "alice",
-            "original_killer": "bob",
-            "original_victim": "charlie",
-            "original_tick": 1000,
-            "response_ticks": 100,
-            "round": 1,
-        }]
+        details = [
+            {
+                "trade_tick": 1100,
+                "trade_killer": "alice",
+                "original_killer": "bob",
+                "original_victim": "charlie",
+                "original_tick": 1000,
+                "response_ticks": 100,
+                "round": 1,
+            }
+        ]
         result = self._make_result(details)
         roster = {"alice": 2, "bob": 3, "charlie": 2}
         stats = self._get_stats(result, roster)
@@ -276,12 +292,22 @@ class TestGetPlayerTradeStats:
     def test_multiple_trades_same_player(self):
         details = [
             {
-                "trade_tick": 1100, "trade_killer": "alice", "original_killer": "bob",
-                "original_victim": "charlie", "original_tick": 1000, "response_ticks": 100, "round": 1,
+                "trade_tick": 1100,
+                "trade_killer": "alice",
+                "original_killer": "bob",
+                "original_victim": "charlie",
+                "original_tick": 1000,
+                "response_ticks": 100,
+                "round": 1,
             },
             {
-                "trade_tick": 2100, "trade_killer": "alice", "original_killer": "dave",
-                "original_victim": "charlie", "original_tick": 2000, "response_ticks": 50, "round": 2,
+                "trade_tick": 2100,
+                "trade_killer": "alice",
+                "original_killer": "dave",
+                "original_victim": "charlie",
+                "original_tick": 2000,
+                "response_ticks": 50,
+                "round": 2,
             },
         ]
         result = self._make_result(details)
@@ -294,11 +320,17 @@ class TestGetPlayerTradeStats:
 
     def test_unknown_trader_ignored(self):
         """If trade_killer is not in roster, stats remain zero."""
-        details = [{
-            "trade_tick": 1100, "trade_killer": "unknown",
-            "original_killer": "bob", "original_victim": "charlie",
-            "original_tick": 1000, "response_ticks": 100, "round": 1,
-        }]
+        details = [
+            {
+                "trade_tick": 1100,
+                "trade_killer": "unknown",
+                "original_killer": "bob",
+                "original_victim": "charlie",
+                "original_tick": 1000,
+                "response_ticks": 100,
+                "round": 1,
+            }
+        ]
         result = self._make_result(details)
         roster = {"alice": 2, "bob": 3, "charlie": 2}
         stats = self._get_stats(result, roster)
@@ -310,6 +342,7 @@ class TestGetPlayerTradeStats:
             TradeKillResult,
             get_player_trade_stats,
         )
+
         result = TradeKillResult()
         roster = {"p1": 2, "p2": 2, "p3": 3, "p4": 3, "p5": 3}
         stats = get_player_trade_stats(result, roster)
@@ -329,4 +362,5 @@ class TestTradeKillConstants:
 
     def test_trade_window_ticks(self):
         from Programma_CS2_RENAN.backend.data_sources.trade_kill_detector import TRADE_WINDOW_TICKS
+
         assert TRADE_WINDOW_TICKS == 192  # 3 seconds at 64 tick

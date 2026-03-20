@@ -33,7 +33,9 @@ class CoachingChatViewModel(EventDispatcher):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._engine = None
-        self._messages_lock = threading.Lock()  # F7-24: protect messages list from concurrent access
+        self._messages_lock = (
+            threading.Lock()
+        )  # F7-24: protect messages list from concurrent access
 
     # ------------------------------------------------------------------
     # Lazy engine access (avoids heavy import at startup)

@@ -7,10 +7,8 @@ Covers:
   StatCardAggregator (stat_aggregator.py) — pro player card persistence
 """
 
-import sys
-
-
 import json
+import sys
 from datetime import datetime, timezone
 from unittest.mock import patch
 
@@ -89,8 +87,11 @@ class TestDatabaseManager:
         db = self._make_db_manager(tmp_path)
         db.create_db_and_tables()
         stats = PlayerMatchStats(
-            player_name="Tester", demo_name="test.dem",
-            avg_kills=20.0, avg_deaths=15.0, avg_adr=80.0,
+            player_name="Tester",
+            demo_name="test.dem",
+            avg_kills=20.0,
+            avg_deaths=15.0,
+            avg_adr=80.0,
         )
         result = db.upsert(stats)
         assert result is not None
@@ -105,11 +106,15 @@ class TestDatabaseManager:
         db = self._make_db_manager(tmp_path)
         db.create_db_and_tables()
         stats1 = PlayerMatchStats(
-            player_name="Updater", demo_name="test.dem", avg_kills=10.0,
+            player_name="Updater",
+            demo_name="test.dem",
+            avg_kills=10.0,
         )
         db.upsert(stats1)
         stats2 = PlayerMatchStats(
-            player_name="Updater", demo_name="test.dem", avg_kills=25.0,
+            player_name="Updater",
+            demo_name="test.dem",
+            avg_kills=25.0,
         )
         db.upsert(stats2)
         with db.get_session() as session:
@@ -230,7 +235,9 @@ class TestStateManager:
 
         sm = self._make_state_manager()
         sm.get_state()
-        sm.update_training_progress(epoch=5, total_epochs=20, train_loss=0.45, val_loss=0.52, eta=120.0)
+        sm.update_training_progress(
+            epoch=5, total_epochs=20, train_loss=0.45, val_loss=0.52, eta=120.0
+        )
         with sm.db.get_session() as session:
             state = session.exec(select(CoachState)).first()
             assert state.current_epoch == 5
@@ -325,7 +332,14 @@ class TestStatCardAggregator:
         spider_data = {
             "player_id": 7998,
             "nickname": "s1mple",
-            "core": {"rating_2_0": 1.30, "dpr": 0.62, "kast": 73.5, "impact": 1.30, "adr": 87.2, "kpr": 0.85},
+            "core": {
+                "rating_2_0": 1.30,
+                "dpr": 0.62,
+                "kast": 73.5,
+                "impact": 1.30,
+                "adr": 87.2,
+                "kpr": 0.85,
+            },
         }
         agg.persist_player_card(spider_data)
         with Session(engine) as session:
@@ -344,7 +358,8 @@ class TestStatCardAggregator:
 
         agg, engine = self._make_aggregator()
         spider_data = {
-            "player_id": 7998, "nickname": "s1mple",
+            "player_id": 7998,
+            "nickname": "s1mple",
             "core": {"rating_2_0": 1.20},
         }
         agg.persist_player_card(spider_data)
@@ -393,7 +408,14 @@ class TestStatCardAggregator:
         from Programma_CS2_RENAN.backend.storage.db_models import ProPlayerStatCard
 
         agg, engine = self._make_aggregator()
-        core = {"rating_2_0": 1.15, "dpr": 0.70, "kast": 68.0, "impact": 1.10, "adr": 78.5, "kpr": 0.72}
+        core = {
+            "rating_2_0": 1.15,
+            "dpr": 0.70,
+            "kast": 68.0,
+            "impact": 1.10,
+            "adr": 78.5,
+            "kpr": 0.72,
+        }
         agg.persist_player_card({"player_id": 100, "nickname": "TestPro", "core": core})
         with Session(engine) as session:
             card = session.exec(select(ProPlayerStatCard)).first()

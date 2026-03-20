@@ -106,9 +106,7 @@ def run_session_loop():
         from Programma_CS2_RENAN.backend.storage.db_models import TacticalKnowledge
 
         with get_db_manager().get_session() as s:
-            kb_count = s.exec(
-                select(func.count()).select_from(TacticalKnowledge)
-            ).one()
+            kb_count = s.exec(select(func.count()).select_from(TacticalKnowledge)).one()
 
         if kb_count == 0:
             logger.info("Knowledge base empty — running first-time initialization...")
@@ -142,7 +140,12 @@ def run_session_loop():
 
     # SE-02: Store daemon thread references for graceful join on shutdown.
     _daemon_threads = []
-    for target in (_scanner_daemon_loop, _digester_daemon_loop, _teacher_daemon_loop, _pulse_daemon_loop):
+    for target in (
+        _scanner_daemon_loop,
+        _digester_daemon_loop,
+        _teacher_daemon_loop,
+        _pulse_daemon_loop,
+    ):
         t = threading.Thread(target=target, daemon=True)
         t.start()
         _daemon_threads.append(t)
@@ -184,19 +187,24 @@ def _cleanup_zombie_tasks():
     db = get_db_manager()
     try:
         from Programma_CS2_RENAN.backend.storage.db_models import IngestionTask
-
         from Programma_CS2_RENAN.core.config import get_setting
+
         threshold = get_setting("ZOMBIE_TASK_THRESHOLD_SECONDS", default=_ZOMBIE_THRESHOLD_SECONDS)
         # SE-04: Validate type and range
         try:
             threshold = int(threshold)
         except (TypeError, ValueError):
-            logger.warning("Invalid ZOMBIE_TASK_THRESHOLD_SECONDS=%r, using default %d",
-                           threshold, _ZOMBIE_THRESHOLD_SECONDS)
+            logger.warning(
+                "Invalid ZOMBIE_TASK_THRESHOLD_SECONDS=%r, using default %d",
+                threshold,
+                _ZOMBIE_THRESHOLD_SECONDS,
+            )
             threshold = _ZOMBIE_THRESHOLD_SECONDS
         if threshold <= 0:
-            logger.warning("ZOMBIE_TASK_THRESHOLD_SECONDS must be positive, using default %d",
-                           _ZOMBIE_THRESHOLD_SECONDS)
+            logger.warning(
+                "ZOMBIE_TASK_THRESHOLD_SECONDS must be positive, using default %d",
+                _ZOMBIE_THRESHOLD_SECONDS,
+            )
             threshold = _ZOMBIE_THRESHOLD_SECONDS
         cutoff = datetime.now(timezone.utc) - timedelta(seconds=threshold)
 
@@ -208,8 +216,11 @@ def _cleanup_zombie_tasks():
                 )
             ).all()
             if zombies:
-                logger.warning("Found %s zombie tasks (>%ds old). Resetting to 'queued'.",
-                               len(zombies), threshold)
+                logger.warning(
+                    "Found %s zombie tasks (>%ds old). Resetting to 'queued'.",
+                    len(zombies),
+                    threshold,
+                )
                 for task in zombies:
                     task.status = "queued"
                     task.updated_at = datetime.now(timezone.utc)
@@ -222,17 +233,20 @@ def _cleanup_zombie_tasks():
 def _check_disk_space(path, min_gb=5):
     """Warn if less than min_gb free on the drive containing path."""
     import shutil
+
     try:
         usage = shutil.disk_usage(path)
-        free_gb = usage.free / (1024 ** 3)
+        free_gb = usage.free / (1024**3)
         if free_gb < min_gb:
             logger.warning("Low disk space: %.1f GB free on %s", free_gb, path)
             try:
                 from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
+
                 get_state_manager().add_notification(
-                    "storage", "WARNING",
+                    "storage",
+                    "WARNING",
                     f"Low disk space: {free_gb:.1f} GB free. "
-                    f"Consider deleting old demos or moving data."
+                    f"Consider deleting old demos or moving data.",
                 )
             except Exception as notify_err:
                 logger.debug("Disk space notification failed: %s", notify_err)
@@ -268,6 +282,7 @@ def _scanner_daemon_loop():
             current_time_disk = time.time()
             if current_time_disk - last_disk_check > DISK_CHECK_INTERVAL:
                 from Programma_CS2_RENAN.core.config import get_setting as _gs
+
                 demo_path = _gs("DEFAULT_DEMO_PATH", os.path.expanduser("~"))
                 _check_disk_space(demo_path)
                 last_disk_check = current_time_disk
@@ -375,9 +390,11 @@ def _teacher_daemon_loop():
                 )
                 try:
                     from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
+
                     get_state_manager().add_notification(
-                        "training", "WARNING",
-                        "Training running without backup. Consider freeing disk space."
+                        "training",
+                        "WARNING",
+                        "Training running without backup. Consider freeing disk space.",
                     )
                 except Exception:
                     pass
@@ -389,9 +406,7 @@ def _teacher_daemon_loop():
                 from Programma_CS2_RENAN.backend.control.ml_controller import _TRAINING_LOCK
 
                 if not _TRAINING_LOCK.acquire(blocking=False):
-                    logger.warning(
-                        "Teacher daemon: training skipped — another session active."
-                    )
+                    logger.warning("Teacher daemon: training skipped — another session active.")
                     # SE-06: Short wait (5s) instead of 60s for faster shutdown response
                     _shutdown_event.wait(5)
                     continue

@@ -40,11 +40,12 @@ def ingest_one_demo(demo_path_str: str) -> dict:
 
     sys.path.insert(0, str(Path(__file__).parent))
 
-    from Programma_CS2_RENAN.backend.storage.database import get_db_manager
-    from Programma_CS2_RENAN.backend.storage.storage_manager import StorageManager
-    from Programma_CS2_RENAN.backend.storage.db_models import IngestionTask
-    from Programma_CS2_RENAN.run_ingestion import _ingest_single_demo
     from sqlmodel import select
+
+    from Programma_CS2_RENAN.backend.storage.database import get_db_manager
+    from Programma_CS2_RENAN.backend.storage.db_models import IngestionTask
+    from Programma_CS2_RENAN.backend.storage.storage_manager import StorageManager
+    from Programma_CS2_RENAN.run_ingestion import _ingest_single_demo
 
     demo_path = Path(demo_path_str)
     t0 = time.time()
@@ -101,9 +102,10 @@ def ingest_one_demo(demo_path_str: str) -> dict:
 
 def get_already_ingested():
     """Return set of demo stems already in PlayerMatchStats."""
+    from sqlmodel import select
+
     from Programma_CS2_RENAN.backend.storage.database import get_db_manager
     from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
-    from sqlmodel import select
 
     db = get_db_manager()
     with db.get_session() as session:
@@ -117,7 +119,9 @@ def main():
 
     parser = argparse.ArgumentParser(description="Parallel batch ingest pro demos")
     parser.add_argument(
-        "--workers", type=int, default=0,
+        "--workers",
+        type=int,
+        default=0,
         help="Number of parallel workers (0=auto, based on RAM)",
     )
     parser.add_argument("--limit", type=int, default=0, help="Max demos to process (0=all)")
@@ -143,7 +147,9 @@ def main():
     logger.info("Total demos available: %d", len(all_demos))
     logger.info("Already ingested: %d", len(already_ingested))
     logger.info("Pending: %d", len(pending))
-    logger.info("Workers: %d (RAM: %.0f GB, CPUs: %d)", workers, total_ram_gb, multiprocessing.cpu_count())
+    logger.info(
+        "Workers: %d (RAM: %.0f GB, CPUs: %d)", workers, total_ram_gb, multiprocessing.cpu_count()
+    )
     logger.info("=" * 70)
 
     if not pending:
@@ -157,10 +163,7 @@ def main():
     # Use maxtasksperchild=1 to prevent memory leaks from accumulating DataFrames
     with ProcessPoolExecutor(max_workers=workers, max_tasks_per_child=1) as executor:
         # Submit all jobs
-        future_to_demo = {
-            executor.submit(ingest_one_demo, str(demo)): demo
-            for demo in pending
-        }
+        future_to_demo = {executor.submit(ingest_one_demo, str(demo)): demo for demo in pending}
 
         for i, future in enumerate(as_completed(future_to_demo), 1):
             demo = future_to_demo[future]
@@ -173,13 +176,19 @@ def main():
                 success_count += 1
                 logger.info(
                     "[%d/%d] SUCCESS in %.1fs — %s",
-                    i, len(pending), result["elapsed"], result["demo"],
+                    i,
+                    len(pending),
+                    result["elapsed"],
+                    result["demo"],
                 )
             else:
                 fail_count += 1
                 logger.error(
                     "[%d/%d] FAILED in %.1fs — %s: %s",
-                    i, len(pending), result["elapsed"], result["demo"],
+                    i,
+                    len(pending),
+                    result["elapsed"],
+                    result["demo"],
                     result["msg"][:200],
                 )
 
@@ -188,8 +197,11 @@ def main():
             remaining = (len(pending) - i) / demos_per_sec if demos_per_sec > 0 else 0
             logger.info(
                 "Progress: %d/%d (%.0f%%) | %.1f demos/min | ETA: %.0f min",
-                i, len(pending), i / len(pending) * 100,
-                demos_per_sec * 60, remaining / 60,
+                i,
+                len(pending),
+                i / len(pending) * 100,
+                demos_per_sec * 60,
+                remaining / 60,
             )
 
     batch_elapsed = time.time() - batch_start
@@ -235,6 +247,7 @@ def run_training_after_ingestion():
     logger.info("Step 3: Pro baseline training (supervised)...")
     try:
         from Programma_CS2_RENAN.backend.nn.persistence import save_nn
+
         pro_model = manager._train_phase(is_pro=True)
         if pro_model:
             save_nn(pro_model, "latest", user_id=None)

@@ -1,6 +1,5 @@
 import sys
 
-
 import pytest
 
 from Programma_CS2_RENAN.backend.analysis.utility_economy import (
@@ -76,4 +75,3 @@ class TestTacticalFeatures:
         decision = optimizer.recommend(current_money=5000, round_number=13, is_ct=True)
         assert decision.action == "full-buy"
         assert len(decision.recommended_weapons) == 2
-

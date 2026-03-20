@@ -9,8 +9,6 @@ CI-portable: uses in-memory SQLite with monkeypatched get_db_manager.
 """
 
 import sys
-
-
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
@@ -36,10 +34,10 @@ from Programma_CS2_RENAN.backend.storage.db_models import (
     PlayerProfile,
 )
 
-
 # ---------------------------------------------------------------------------
 # In-memory DB manager (same pattern as test_experience_bank_db.py)
 # ---------------------------------------------------------------------------
+
 
 class _InMemoryDBManager:
     def __init__(self, engine):

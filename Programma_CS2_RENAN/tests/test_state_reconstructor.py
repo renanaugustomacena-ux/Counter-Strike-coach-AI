@@ -9,7 +9,6 @@ Covers:
 
 import sys
 
-
 import pytest
 
 
@@ -17,9 +16,8 @@ class TestSegmentMatchIntoWindows:
     """Tests for temporal windowing logic (no DB or tensor deps)."""
 
     def _make_reconstructor(self, seq_len=32):
-        from Programma_CS2_RENAN.backend.processing.state_reconstructor import (
-            RAPStateReconstructor,
-        )
+        from Programma_CS2_RENAN.backend.processing.state_reconstructor import RAPStateReconstructor
+
         recon = RAPStateReconstructor.__new__(RAPStateReconstructor)
         recon.sequence_length = seq_len
         return recon
@@ -93,12 +91,11 @@ class TestRAPStateReconstructorInit:
     """Tests for constructor defaults."""
 
     def test_default_sequence_length(self):
-        from Programma_CS2_RENAN.backend.processing.state_reconstructor import (
-            RAPStateReconstructor,
-        )
         from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import (
             METADATA_DIM,
         )
+        from Programma_CS2_RENAN.backend.processing.state_reconstructor import RAPStateReconstructor
+
         recon = RAPStateReconstructor.__new__(RAPStateReconstructor)
         recon.sequence_length = 32
         recon.metadata_dim = METADATA_DIM

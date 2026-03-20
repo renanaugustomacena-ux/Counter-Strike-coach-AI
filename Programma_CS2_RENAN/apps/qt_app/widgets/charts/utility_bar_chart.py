@@ -2,10 +2,10 @@
 
 from PySide6.QtCharts import (
     QBarCategoryAxis,
+    QBarSet,
     QChart,
     QChartView,
     QHorizontalBarSeries,
-    QBarSet,
     QValueAxis,
 )
 from PySide6.QtCore import Qt

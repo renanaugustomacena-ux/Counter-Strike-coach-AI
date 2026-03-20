@@ -7,10 +7,8 @@ Covers:
   role_thresholds.py — LearnedThreshold, RoleThresholdStore
 """
 
-import sys
-
-
 import math
+import sys
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -26,15 +24,23 @@ class TestHardDefaultBaseline:
         from Programma_CS2_RENAN.backend.processing.baselines.pro_baseline import (
             HARD_DEFAULT_BASELINE,
         )
+
         assert isinstance(HARD_DEFAULT_BASELINE, dict)
 
     def test_baseline_has_expected_keys(self):
         from Programma_CS2_RENAN.backend.processing.baselines.pro_baseline import (
             HARD_DEFAULT_BASELINE,
         )
+
         expected = {
-            "rating", "kd_ratio", "avg_kills", "avg_deaths", "avg_adr",
-            "avg_hs", "avg_kast", "accuracy",
+            "rating",
+            "kd_ratio",
+            "avg_kills",
+            "avg_deaths",
+            "avg_adr",
+            "avg_hs",
+            "avg_kast",
+            "accuracy",
         }
         assert expected.issubset(set(HARD_DEFAULT_BASELINE.keys()))
 
@@ -42,6 +48,7 @@ class TestHardDefaultBaseline:
         from Programma_CS2_RENAN.backend.processing.baselines.pro_baseline import (
             HARD_DEFAULT_BASELINE,
         )
+
         for key, val in HARD_DEFAULT_BASELINE.items():
             assert "mean" in val, f"Missing 'mean' for {key}"
             assert "std" in val, f"Missing 'std' for {key}"
@@ -50,6 +57,7 @@ class TestHardDefaultBaseline:
         from Programma_CS2_RENAN.backend.processing.baselines.pro_baseline import (
             HARD_DEFAULT_BASELINE,
         )
+
         for key, val in HARD_DEFAULT_BASELINE.items():
             assert val["std"] > 0, f"std <= 0 for {key}"
 
@@ -61,6 +69,7 @@ class TestGetDefaultProBaseline:
         from Programma_CS2_RENAN.backend.processing.baselines.pro_baseline import (
             _get_default_pro_baseline,
         )
+
         result = _get_default_pro_baseline()
         assert isinstance(result, dict)
         assert result.get("_provenance") == "hard_default"
@@ -70,6 +79,7 @@ class TestGetDefaultProBaseline:
             HARD_DEFAULT_BASELINE,
             _get_default_pro_baseline,
         )
+
         result = _get_default_pro_baseline()
         for key in HARD_DEFAULT_BASELINE:
             assert key in result
@@ -85,6 +95,7 @@ class TestCalculateDeviations:
         from Programma_CS2_RENAN.backend.processing.baselines.pro_baseline import (
             calculate_deviations,
         )
+
         return calculate_deviations(player, baseline)
 
     def test_basic_z_score(self):
@@ -147,6 +158,7 @@ class TestTemporalBaselineDecay:
         from Programma_CS2_RENAN.backend.processing.baselines.pro_baseline import (
             TemporalBaselineDecay,
         )
+
         return TemporalBaselineDecay()
 
     def test_compute_weight_today(self):
@@ -240,6 +252,7 @@ class TestTemporalBaselineDecay:
         from Programma_CS2_RENAN.backend.processing.baselines.pro_baseline import (
             TemporalBaselineDecay,
         )
+
         assert TemporalBaselineDecay._metric_to_baseline_key("rating_2_0") == "rating"
         assert TemporalBaselineDecay._metric_to_baseline_key("kpr") == "avg_kills"
         assert TemporalBaselineDecay._metric_to_baseline_key("dpr") == "avg_deaths"
@@ -249,6 +262,7 @@ class TestTemporalBaselineDecay:
         from Programma_CS2_RENAN.backend.processing.baselines.pro_baseline import (
             TemporalBaselineDecay,
         )
+
         assert TemporalBaselineDecay._metric_to_baseline_key("unknown_metric") == "unknown_metric"
 
     def test_half_life_constant(self):
@@ -270,6 +284,7 @@ class TestLearnedThreshold:
         from Programma_CS2_RENAN.backend.processing.baselines.role_thresholds import (
             LearnedThreshold,
         )
+
         lt = LearnedThreshold()
         assert lt.value is None
         assert lt.sample_count == 0
@@ -280,6 +295,7 @@ class TestLearnedThreshold:
         from Programma_CS2_RENAN.backend.processing.baselines.role_thresholds import (
             LearnedThreshold,
         )
+
         now = datetime.now()
         lt = LearnedThreshold(value=0.42, sample_count=100, last_updated=now, source="hltv")
         assert lt.value == 0.42
@@ -297,6 +313,7 @@ class TestRoleThresholdStore:
         from Programma_CS2_RENAN.backend.processing.baselines.role_thresholds import (
             RoleThresholdStore,
         )
+
         return RoleThresholdStore()
 
     def test_cold_start_initial(self):
@@ -344,9 +361,15 @@ class TestRoleThresholdStore:
     def test_expected_threshold_keys(self):
         store = self._make_store()
         expected = {
-            "awp_kill_ratio", "entry_rate", "assist_rate", "survival_rate",
-            "solo_kill_rate", "first_death_rate", "utility_damage_rate",
-            "clutch_rate", "trade_rate",
+            "awp_kill_ratio",
+            "entry_rate",
+            "assist_rate",
+            "survival_rate",
+            "solo_kill_rate",
+            "first_death_rate",
+            "utility_damage_rate",
+            "clutch_rate",
+            "trade_rate",
         }
         assert set(store._thresholds.keys()) == expected
 
@@ -361,15 +384,17 @@ class TestRoleThresholdStore:
         store = self._make_store()
         pro_stats = []
         for i in range(20):
-            pro_stats.append({
-                "awp_kills": 5 + i,
-                "total_kills": 50 + i,
-                "entry_frags": 3 + i % 5,
-                "rounds_played": 30,
-                "assists": 4 + i % 3,
-                "rounds_survived": 15 + i % 10,
-                "solo_kills": 2 + i % 4,
-            })
+            pro_stats.append(
+                {
+                    "awp_kills": 5 + i,
+                    "total_kills": 50 + i,
+                    "entry_frags": 3 + i % 5,
+                    "rounds_played": 30,
+                    "assists": 4 + i % 3,
+                    "rounds_survived": 15 + i % 10,
+                    "solo_kills": 2 + i % 4,
+                }
+            )
         store.learn_from_pro_data(pro_stats)
         # At least 3 valid thresholds → no longer cold start
         assert store.is_cold_start() is False
@@ -378,9 +403,15 @@ class TestRoleThresholdStore:
     def test_learn_from_pro_data_updates_values(self):
         store = self._make_store()
         pro_stats = [
-            {"awp_kills": 10, "total_kills": 50, "entry_frags": 5,
-             "rounds_played": 30, "assists": 4, "rounds_survived": 20,
-             "solo_kills": 3}
+            {
+                "awp_kills": 10,
+                "total_kills": 50,
+                "entry_frags": 5,
+                "rounds_played": 30,
+                "assists": 4,
+                "rounds_survived": 20,
+                "solo_kills": 3,
+            }
         ] * 15  # 15 identical records
         store.learn_from_pro_data(pro_stats)
         # awp_kill_ratio = 10/50 = 0.2 for all → 75th percentile = 0.2

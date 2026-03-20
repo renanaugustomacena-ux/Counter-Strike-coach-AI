@@ -39,7 +39,12 @@ class VisualizationService:
 
             # Plot Pro Data
             ax.plot(
-                angles, pro_vals, linewidth=1, linestyle="solid", label="Pro Baseline", color="#1f77b4"
+                angles,
+                pro_vals,
+                linewidth=1,
+                linestyle="solid",
+                label="Pro Baseline",
+                color="#1f77b4",
             )
             ax.fill(angles, pro_vals, "#1f77b4", alpha=0.1)
 
@@ -120,4 +125,6 @@ def get_visualization_service():
 def generate_performance_radar(
     user_stats: Dict[str, float], pro_stats: Dict[str, float], output_path: str
 ):
-    return get_visualization_service().generate_performance_radar(user_stats, pro_stats, output_path)
+    return get_visualization_service().generate_performance_radar(
+        user_stats, pro_stats, output_path
+    )

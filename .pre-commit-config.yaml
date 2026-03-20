@@ -33,7 +33,7 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-        stages: [commit]
+        stages: [pre-commit]
         description: "Verify that integrity_manifest.json is up-to-date with critical files"
 
       # Build health validation
@@ -43,7 +43,7 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-        stages: [commit]
+        stages: [pre-commit]
         description: "Run critical health checks (fast)"
 
   # Standard code quality hooks

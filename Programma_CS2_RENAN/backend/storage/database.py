@@ -153,7 +153,9 @@ class DatabaseManager:
         with self.get_session() as session:
             stmt = sqlite_insert(PlayerMatchStats).values(**data)
             # On conflict (demo_name, player_name), update all provided columns
-            update_cols = {k: stmt.excluded[k] for k in data if k not in ("demo_name", "player_name")}
+            update_cols = {
+                k: stmt.excluded[k] for k in data if k not in ("demo_name", "player_name")
+            }
             stmt = stmt.on_conflict_do_update(
                 index_elements=["demo_name", "player_name"],
                 set_=update_cols,
@@ -200,9 +202,11 @@ class DatabaseManager:
                     result["tables_cleared"].append(f"{model.__tablename__}({deleted})")
 
             # Parent table
-            deleted = session.query(MatchResult).filter(
-                MatchResult.match_id == match_id
-            ).delete(synchronize_session=False)
+            deleted = (
+                session.query(MatchResult)
+                .filter(MatchResult.match_id == match_id)
+                .delete(synchronize_session=False)
+            )
             if deleted:
                 result["tables_cleared"].append(f"matchresult({deleted})")
 
@@ -211,6 +215,7 @@ class DatabaseManager:
             from Programma_CS2_RENAN.backend.storage.match_data_manager import (
                 get_match_data_manager,
             )
+
             mdm = get_match_data_manager()
             if mdm.delete_match(match_id):
                 result["files_deleted"] += 1
@@ -231,22 +236,22 @@ class DatabaseManager:
             from Programma_CS2_RENAN.backend.storage.match_data_manager import (
                 get_match_data_manager,
             )
+
             mdm = get_match_data_manager()
             file_match_ids = set(mdm.list_available_matches())
 
             db = get_db_manager()
             with db.get_session() as session:
                 db_match_ids = set(
-                    row[0] for row in session.exec(
-                        select(MatchResult.match_id)
-                    ).all()
+                    row[0] for row in session.exec(select(MatchResult.match_id)).all()
                 )
 
             orphans = sorted(file_match_ids - db_match_ids)
             if orphans:
                 logger.warning(
                     "P5-B: Found %d orphan match DB files without MatchResult: %s",
-                    len(orphans), orphans[:10],
+                    len(orphans),
+                    orphans[:10],
                 )
             return {"orphan_match_ids": orphans, "orphan_count": len(orphans)}
         except Exception as e:
@@ -328,7 +333,8 @@ class HLTVDatabaseManager:
                 missing = model_cols - db_cols
                 logger.warning(
                     "HLTV table '%s' missing columns %s — recreating with current schema.",
-                    tbl_name, missing,
+                    tbl_name,
+                    missing,
                 )
                 table.drop(self.engine, checkfirst=True)
         # Also drop tables that don't belong in the HLTV database

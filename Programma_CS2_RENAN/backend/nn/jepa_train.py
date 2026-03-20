@@ -148,8 +148,11 @@ def load_pro_demo_sequences(limit: int = 100) -> List[np.ndarray]:
                 fallback_count += 1
                 continue
 
-    logger.info("Loaded %d pro demo sequences from RoundStats (%d matches skipped — no RoundStats)",
-                len(sequences), fallback_count)
+    logger.info(
+        "Loaded %d pro demo sequences from RoundStats (%d matches skipped — no RoundStats)",
+        len(sequences),
+        fallback_count,
+    )
     if fallback_count > 0:
         logger.warning(
             "%d matches skipped (no RoundStats). "
@@ -251,8 +254,9 @@ def train_jepa_pretrain(
         logger.warning("JEPAPretrainDataset is empty — skipping JEPA pre-training")
         return
 
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True,
-                            worker_init_fn=_worker_init)
+    dataloader = DataLoader(
+        dataset, batch_size=batch_size, shuffle=True, worker_init_fn=_worker_init
+    )
 
     # Optimizer — target encoder is updated ONLY via EMA, never by gradient
     optimizer = torch.optim.AdamW(
@@ -294,7 +298,9 @@ def train_jepa_pretrain(
                 neg_indices = perm + (perm >= arange).long()
                 neg_indices = neg_indices[:, :effective_negatives]
             else:
-                neg_indices = torch.zeros(batch_size_actual, max(1, effective_negatives), dtype=torch.long, device=device)
+                neg_indices = torch.zeros(
+                    batch_size_actual, max(1, effective_negatives), dtype=torch.long, device=device
+                )
             negatives = target[neg_indices]
 
             # Contrastive loss
@@ -378,11 +384,13 @@ def train_jepa_finetune(
 
     def _worker_init(worker_id: int) -> None:
         from Programma_CS2_RENAN.backend.nn.config import set_global_seed as _seed
+
         _seed(42 + worker_id)
 
     dataset = torch.utils.data.TensorDataset(X_tensor, y_tensor)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True,
-                            worker_init_fn=_worker_init)
+    dataloader = DataLoader(
+        dataset, batch_size=batch_size, shuffle=True, worker_init_fn=_worker_init
+    )
 
     for epoch in range(num_epochs):
         model.train()
@@ -455,7 +463,8 @@ if __name__ == "__main__":
         if X_train is None:
             logger.error(
                 "No user match data with RoundStats found. "
-                "Ingest at least %d demos before fine-tuning.", _MIN_ROUNDS_FOR_SEQUENCE
+                "Ingest at least %d demos before fine-tuning.",
+                _MIN_ROUNDS_FOR_SEQUENCE,
             )
             sys.exit(1)
 

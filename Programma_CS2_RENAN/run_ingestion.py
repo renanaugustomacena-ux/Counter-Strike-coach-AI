@@ -85,9 +85,7 @@ def _check_duplicate_demo(db_manager, demo_name: str) -> bool:
 
         # Check 2: PlayerMatchStats (already fully ingested)
         stats_count = session.exec(
-            select(func.count(PlayerMatchStats.id)).where(
-                PlayerMatchStats.demo_name == normalized
-            )
+            select(func.count(PlayerMatchStats.id)).where(PlayerMatchStats.demo_name == normalized)
         ).one()
         if stats_count > 0:
             logger.warning(
@@ -102,11 +100,13 @@ def _check_duplicate_demo(db_manager, demo_name: str) -> bool:
     match_id = int(hashlib.sha256(normalized.encode()).hexdigest(), 16) % (2**63 - 1)
     try:
         from Programma_CS2_RENAN.backend.storage.match_data_manager import get_match_data_manager
+
         mdm = get_match_data_manager()
         if match_id in mdm.list_available_matches():
             logger.warning(
                 "Duplicate detected: match_%d.db exists for demo '%s'",
-                match_id, demo_name,
+                match_id,
+                demo_name,
             )
             return True
     except Exception:
@@ -213,7 +213,9 @@ def _execute_rap_logic(db_manager, player_name, skill_level: int = 5):
     try:
         model = load_nn("latest_rap", model, user_id=player_name)
     except Exception:
-        logger.warning("RAP model checkpoint incompatible for %s. Skipping RAP insights.", player_name)
+        logger.warning(
+            "RAP model checkpoint incompatible for %s. Skipping RAP insights.", player_name
+        )
         return []
     windows = recon.segment_match_into_windows(ticks)
     insights = []
@@ -494,6 +496,7 @@ def _save_player_stats(db_manager, row, demo_name, is_pro):
 
     # R3-H09: Sanitize NaN/Inf in aggregate stats before DB insertion
     import math
+
     for key, val in list(stats_dict.items()):
         if isinstance(val, float) and (math.isnan(val) or math.isinf(val)):
             logger.warning("Sanitized NaN/Inf in '%s' for player '%s'", key, p_name)
@@ -505,7 +508,9 @@ def _save_player_stats(db_manager, row, demo_name, is_pro):
         raw_rating = stats_dict["rating"]
         stats_dict["rating"] = max(0.0, min(5.0, float(raw_rating)))
         if raw_rating != stats_dict["rating"]:
-            logger.info("Clamped rating %.3f → %.3f for '%s'", raw_rating, stats_dict["rating"], p_name)
+            logger.info(
+                "Clamped rating %.3f → %.3f for '%s'", raw_rating, stats_dict["rating"], p_name
+            )
 
     # Clamp avg_kills and avg_adr to >= 0 (DB CHECK constraints)
     for field in ("avg_kills", "avg_adr"):
@@ -571,9 +576,8 @@ def _interpolate_position(df_ticks):
     if has_player and has_alive:
         # Create alive-segment groups: each contiguous alive=True block per player
         # gets its own segment ID, preventing interpolation across death boundaries.
-        df_ticks["_alive_segment"] = (
-            df_ticks.groupby(player_col)["is_alive"]
-            .transform(lambda s: s.fillna(True).astype(bool).ne(s.fillna(True).astype(bool).shift()).cumsum())
+        df_ticks["_alive_segment"] = df_ticks.groupby(player_col)["is_alive"].transform(
+            lambda s: s.fillna(True).astype(bool).ne(s.fillna(True).astype(bool).shift()).cumsum()
         )
         group_cols = [player_col, "_alive_segment"]
     elif has_player:
@@ -586,9 +590,8 @@ def _interpolate_position(df_ticks):
     if pos_cols:
         if group_cols:
             for col in pos_cols:
-                df_ticks[col] = (
-                    df_ticks.groupby(group_cols, sort=False)[col]
-                    .transform(lambda s: s.interpolate(method="linear", limit_direction="both").ffill().bfill())
+                df_ticks[col] = df_ticks.groupby(group_cols, sort=False)[col].transform(
+                    lambda s: s.interpolate(method="linear", limit_direction="both").ffill().bfill()
                 )
                 # Only fill remaining NaN with NaN (NOT 0.0) — (0,0,0) poisons training
                 # NaN will be handled downstream by the vectorizer quality gate
@@ -610,7 +613,9 @@ def _interpolate_position(df_ticks):
         if _zero_pos > 0:
             _log.warning(
                 "R4-14-01: %d/%d ticks have (0,0,0) position after alive-aware interpolation (%.1f%%)",
-                _zero_pos, len(df_ticks), 100.0 * _zero_pos / max(len(df_ticks), 1),
+                _zero_pos,
+                len(df_ticks),
+                100.0 * _zero_pos / max(len(df_ticks), 1),
             )
 
     # --- Circular interpolation for angles (yaw/pitch) per alive segment ---
@@ -623,17 +628,31 @@ def _interpolate_position(df_ticks):
         cos_vals = pd.Series(np.cos(angles_rad), index=df_ticks.index)
 
         if group_cols:
-            sin_interp = (
-                sin_vals.groupby([df_ticks[g] for g in group_cols], sort=False)
-                .transform(lambda s: s.interpolate(method="linear", limit_direction="both").ffill().bfill().fillna(0.0))
+            sin_interp = sin_vals.groupby([df_ticks[g] for g in group_cols], sort=False).transform(
+                lambda s: s.interpolate(method="linear", limit_direction="both")
+                .ffill()
+                .bfill()
+                .fillna(0.0)
             )
-            cos_interp = (
-                cos_vals.groupby([df_ticks[g] for g in group_cols], sort=False)
-                .transform(lambda s: s.interpolate(method="linear", limit_direction="both").ffill().bfill().fillna(1.0))
+            cos_interp = cos_vals.groupby([df_ticks[g] for g in group_cols], sort=False).transform(
+                lambda s: s.interpolate(method="linear", limit_direction="both")
+                .ffill()
+                .bfill()
+                .fillna(1.0)
             )
         else:
-            sin_interp = sin_vals.interpolate(method="linear", limit_direction="both").ffill().bfill().fillna(0.0)
-            cos_interp = cos_vals.interpolate(method="linear", limit_direction="both").ffill().bfill().fillna(1.0)
+            sin_interp = (
+                sin_vals.interpolate(method="linear", limit_direction="both")
+                .ffill()
+                .bfill()
+                .fillna(0.0)
+            )
+            cos_interp = (
+                cos_vals.interpolate(method="linear", limit_direction="both")
+                .ffill()
+                .bfill()
+                .fillna(1.0)
+            )
 
         angles_interp = np.rad2deg(np.arctan2(sin_interp.values, cos_interp.values))
         if col == "yaw":
@@ -1051,7 +1070,11 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
     # Apply intelligent interpolation to fill missing positions
     df_ticks = _interpolate_position(df_ticks)
 
-    logger.info("Interpolation completed in %.2fs for %s rows", _time.monotonic() - t_interp, f"{len(df_ticks):,}")
+    logger.info(
+        "Interpolation completed in %.2fs for %s rows",
+        _time.monotonic() - t_interp,
+        f"{len(df_ticks):,}",
+    )
 
     # PROGRESS: 25% - Tick Enrichment (cross-player features)
     get_state_manager().update_parsing_progress(25.0)
@@ -1110,21 +1133,40 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
     t_build = _time.monotonic()
 
     _int_defaults = {
-        "round_number": 1, "player_steamid": 0, "armor": 0,
-        "equipment_value": 0, "balance": 0, "enemies_visible": 0,
-        "ping": 0, "kills_this_round": 0, "deaths_this_round": 0,
-        "assists_this_round": 0, "headshot_kills_this_round": 0,
-        "damage_this_round": 0, "utility_damage_this_round": 0,
-        "enemies_flashed_this_round": 0, "kills_total": 0,
-        "deaths_total": 0, "assists_total": 0, "headshot_kills_total": 0,
-        "mvps": 0, "score": 0, "cash_spent_this_round": 0,
+        "round_number": 1,
+        "player_steamid": 0,
+        "armor": 0,
+        "equipment_value": 0,
+        "balance": 0,
+        "enemies_visible": 0,
+        "ping": 0,
+        "kills_this_round": 0,
+        "deaths_this_round": 0,
+        "assists_this_round": 0,
+        "headshot_kills_this_round": 0,
+        "damage_this_round": 0,
+        "utility_damage_this_round": 0,
+        "enemies_flashed_this_round": 0,
+        "kills_total": 0,
+        "deaths_total": 0,
+        "assists_total": 0,
+        "headshot_kills_total": 0,
+        "mvps": 0,
+        "score": 0,
+        "cash_spent_this_round": 0,
         "total_cash_spent": 0,
-        "teammates_alive": 4, "enemies_alive": 5, "team_economy": 0,
+        "teammates_alive": 4,
+        "enemies_alive": 5,
+        "team_economy": 0,
     }
     _float_defaults = {"X": 0.0, "Y": 0.0, "Z": 0.0, "yaw": 0.0, "pitch": 0.0, "time_in_round": 0.0}
     _bool_defaults = {
-        "is_crouching": False, "is_scoped": False, "is_blinded": False,
-        "has_helmet": False, "has_defuser": False, "bomb_planted": False,
+        "is_crouching": False,
+        "is_scoped": False,
+        "is_blinded": False,
+        "has_helmet": False,
+        "has_defuser": False,
+        "bomb_planted": False,
     }
 
     # Fill NaN/None with defaults (vectorized, ~100ms for 2.4M rows)
@@ -1134,7 +1176,12 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
             numeric = pd.to_numeric(df_ticks[col], errors="coerce")
             coerced_count = numeric.isna().sum() - original_na
             if coerced_count > 0:
-                logger.warning("Column '%s': %d non-numeric values coerced to default %s", col, coerced_count, default)
+                logger.warning(
+                    "Column '%s': %d non-numeric values coerced to default %s",
+                    col,
+                    coerced_count,
+                    default,
+                )
             df_ticks[col] = numeric.fillna(default).astype(int)
     for col, default in _float_defaults.items():
         if col in df_ticks.columns:
@@ -1142,7 +1189,12 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
             numeric = pd.to_numeric(df_ticks[col], errors="coerce")
             coerced_count = numeric.isna().sum() - original_na
             if coerced_count > 0:
-                logger.warning("Column '%s': %d non-numeric values coerced to default %s", col, coerced_count, default)
+                logger.warning(
+                    "Column '%s': %d non-numeric values coerced to default %s",
+                    col,
+                    coerced_count,
+                    default,
+                )
             df_ticks[col] = numeric.fillna(default).astype(float)
     for col, default in _bool_defaults.items():
         if col in df_ticks.columns:
@@ -1159,7 +1211,9 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
 
     # Fill missing health default (100, not 0)
     if "health" in df_ticks.columns:
-        df_ticks["health"] = pd.to_numeric(df_ticks["health"], errors="coerce").fillna(100).astype(int)
+        df_ticks["health"] = (
+            pd.to_numeric(df_ticks["health"], errors="coerce").fillna(100).astype(int)
+        )
     # Fill is_alive default (True)
     if "is_alive" in df_ticks.columns:
         df_ticks["is_alive"] = df_ticks["is_alive"].fillna(True).astype(bool)
@@ -1177,53 +1231,113 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
         df_ticks["map_name"] = _meta_map_name
 
     # Build MatchTickState DataFrame with renamed columns (ALL players)
-    df_match = pd.DataFrame({
-        "tick": df_ticks["tick"].astype(int),
-        "round_number": df_ticks.get("round_number", pd.Series(1, index=df_ticks.index)).astype(int),
-        "player_name": df_ticks["player_name"],
-        "steamid": df_ticks.get("player_steamid", pd.Series(0, index=df_ticks.index)).astype(int),
-        "team": df_ticks.get("team_name", pd.Series("CT", index=df_ticks.index)),
-        "pos_x": df_ticks["X"].astype(float),
-        "pos_y": df_ticks["Y"].astype(float),
-        "pos_z": df_ticks["Z"].astype(float),
-        "yaw": df_ticks["yaw"].astype(float),
-        "health": df_ticks["health"].astype(int),
-        "armor": df_ticks.get("armor", pd.Series(0, index=df_ticks.index)).astype(int),
-        "is_alive": df_ticks.get("is_alive", pd.Series(True, index=df_ticks.index)).astype(bool),
-        "is_crouching": df_ticks.get("is_crouching", pd.Series(False, index=df_ticks.index)).astype(bool),
-        "is_scoped": df_ticks.get("is_scoped", pd.Series(False, index=df_ticks.index)).astype(bool),
-        "is_blinded": df_ticks.get("is_blinded", pd.Series(False, index=df_ticks.index)).astype(bool),
-        "active_weapon": df_ticks.get("active_weapon", pd.Series("unknown", index=df_ticks.index)),
-        "equipment_value": df_ticks.get("equipment_value", pd.Series(0, index=df_ticks.index)).astype(int),
-        "money": df_ticks.get("balance", pd.Series(0, index=df_ticks.index)).astype(int),
-        "enemies_visible": df_ticks.get("enemies_visible", pd.Series(0, index=df_ticks.index)).astype(int),
-        "has_helmet": df_ticks.get("has_helmet", pd.Series(False, index=df_ticks.index)).astype(bool),
-        "has_defuser": df_ticks.get("has_defuser", pd.Series(False, index=df_ticks.index)).astype(bool),
-        "ping": df_ticks.get("ping", pd.Series(0, index=df_ticks.index)).astype(int),
-        "kills_this_round": df_ticks.get("kills_this_round", pd.Series(0, index=df_ticks.index)).astype(int),
-        "deaths_this_round": df_ticks.get("deaths_this_round", pd.Series(0, index=df_ticks.index)).astype(int),
-        "assists_this_round": df_ticks.get("assists_this_round", pd.Series(0, index=df_ticks.index)).astype(int),
-        "headshot_kills_this_round": df_ticks.get("headshot_kills_this_round", pd.Series(0, index=df_ticks.index)).astype(int),
-        "damage_this_round": df_ticks.get("damage_this_round", pd.Series(0, index=df_ticks.index)).astype(int),
-        "utility_damage_this_round": df_ticks.get("utility_damage_this_round", pd.Series(0, index=df_ticks.index)).astype(int),
-        "enemies_flashed_this_round": df_ticks.get("enemies_flashed_this_round", pd.Series(0, index=df_ticks.index)).astype(int),
-        "kills_total": df_ticks.get("kills_total", pd.Series(0, index=df_ticks.index)).astype(int),
-        "deaths_total": df_ticks.get("deaths_total", pd.Series(0, index=df_ticks.index)).astype(int),
-        "assists_total": df_ticks.get("assists_total", pd.Series(0, index=df_ticks.index)).astype(int),
-        "headshot_kills_total": df_ticks.get("headshot_kills_total", pd.Series(0, index=df_ticks.index)).astype(int),
-        "mvps": df_ticks.get("mvps", pd.Series(0, index=df_ticks.index)).astype(int),
-        "score": df_ticks.get("score", pd.Series(0, index=df_ticks.index)).astype(int),
-        "cash_spent_this_round": df_ticks.get("cash_spent_this_round", pd.Series(0, index=df_ticks.index)).astype(int),
-        "cash_spent_total": df_ticks.get("total_cash_spent", pd.Series(0, index=df_ticks.index)).astype(int),
-        # --- Enriched features ---
-        "pitch": df_ticks.get("pitch", pd.Series(0.0, index=df_ticks.index)).astype(float),
-        "time_in_round": df_ticks.get("time_in_round", pd.Series(0.0, index=df_ticks.index)).astype(float),
-        "bomb_planted": df_ticks.get("bomb_planted", pd.Series(False, index=df_ticks.index)).astype(bool),
-        "teammates_alive": df_ticks.get("teammates_alive", pd.Series(4, index=df_ticks.index)).astype(int),
-        "enemies_alive": df_ticks.get("enemies_alive", pd.Series(5, index=df_ticks.index)).astype(int),
-        "team_economy": df_ticks.get("team_economy", pd.Series(0, index=df_ticks.index)).astype(int),
-        "map_name": df_ticks["map_name"],
-    })
+    df_match = pd.DataFrame(
+        {
+            "tick": df_ticks["tick"].astype(int),
+            "round_number": df_ticks.get("round_number", pd.Series(1, index=df_ticks.index)).astype(
+                int
+            ),
+            "player_name": df_ticks["player_name"],
+            "steamid": df_ticks.get("player_steamid", pd.Series(0, index=df_ticks.index)).astype(
+                int
+            ),
+            "team": df_ticks.get("team_name", pd.Series("CT", index=df_ticks.index)),
+            "pos_x": df_ticks["X"].astype(float),
+            "pos_y": df_ticks["Y"].astype(float),
+            "pos_z": df_ticks["Z"].astype(float),
+            "yaw": df_ticks["yaw"].astype(float),
+            "health": df_ticks["health"].astype(int),
+            "armor": df_ticks.get("armor", pd.Series(0, index=df_ticks.index)).astype(int),
+            "is_alive": df_ticks.get("is_alive", pd.Series(True, index=df_ticks.index)).astype(
+                bool
+            ),
+            "is_crouching": df_ticks.get(
+                "is_crouching", pd.Series(False, index=df_ticks.index)
+            ).astype(bool),
+            "is_scoped": df_ticks.get("is_scoped", pd.Series(False, index=df_ticks.index)).astype(
+                bool
+            ),
+            "is_blinded": df_ticks.get("is_blinded", pd.Series(False, index=df_ticks.index)).astype(
+                bool
+            ),
+            "active_weapon": df_ticks.get(
+                "active_weapon", pd.Series("unknown", index=df_ticks.index)
+            ),
+            "equipment_value": df_ticks.get(
+                "equipment_value", pd.Series(0, index=df_ticks.index)
+            ).astype(int),
+            "money": df_ticks.get("balance", pd.Series(0, index=df_ticks.index)).astype(int),
+            "enemies_visible": df_ticks.get(
+                "enemies_visible", pd.Series(0, index=df_ticks.index)
+            ).astype(int),
+            "has_helmet": df_ticks.get("has_helmet", pd.Series(False, index=df_ticks.index)).astype(
+                bool
+            ),
+            "has_defuser": df_ticks.get(
+                "has_defuser", pd.Series(False, index=df_ticks.index)
+            ).astype(bool),
+            "ping": df_ticks.get("ping", pd.Series(0, index=df_ticks.index)).astype(int),
+            "kills_this_round": df_ticks.get(
+                "kills_this_round", pd.Series(0, index=df_ticks.index)
+            ).astype(int),
+            "deaths_this_round": df_ticks.get(
+                "deaths_this_round", pd.Series(0, index=df_ticks.index)
+            ).astype(int),
+            "assists_this_round": df_ticks.get(
+                "assists_this_round", pd.Series(0, index=df_ticks.index)
+            ).astype(int),
+            "headshot_kills_this_round": df_ticks.get(
+                "headshot_kills_this_round", pd.Series(0, index=df_ticks.index)
+            ).astype(int),
+            "damage_this_round": df_ticks.get(
+                "damage_this_round", pd.Series(0, index=df_ticks.index)
+            ).astype(int),
+            "utility_damage_this_round": df_ticks.get(
+                "utility_damage_this_round", pd.Series(0, index=df_ticks.index)
+            ).astype(int),
+            "enemies_flashed_this_round": df_ticks.get(
+                "enemies_flashed_this_round", pd.Series(0, index=df_ticks.index)
+            ).astype(int),
+            "kills_total": df_ticks.get("kills_total", pd.Series(0, index=df_ticks.index)).astype(
+                int
+            ),
+            "deaths_total": df_ticks.get("deaths_total", pd.Series(0, index=df_ticks.index)).astype(
+                int
+            ),
+            "assists_total": df_ticks.get(
+                "assists_total", pd.Series(0, index=df_ticks.index)
+            ).astype(int),
+            "headshot_kills_total": df_ticks.get(
+                "headshot_kills_total", pd.Series(0, index=df_ticks.index)
+            ).astype(int),
+            "mvps": df_ticks.get("mvps", pd.Series(0, index=df_ticks.index)).astype(int),
+            "score": df_ticks.get("score", pd.Series(0, index=df_ticks.index)).astype(int),
+            "cash_spent_this_round": df_ticks.get(
+                "cash_spent_this_round", pd.Series(0, index=df_ticks.index)
+            ).astype(int),
+            "cash_spent_total": df_ticks.get(
+                "total_cash_spent", pd.Series(0, index=df_ticks.index)
+            ).astype(int),
+            # --- Enriched features ---
+            "pitch": df_ticks.get("pitch", pd.Series(0.0, index=df_ticks.index)).astype(float),
+            "time_in_round": df_ticks.get(
+                "time_in_round", pd.Series(0.0, index=df_ticks.index)
+            ).astype(float),
+            "bomb_planted": df_ticks.get(
+                "bomb_planted", pd.Series(False, index=df_ticks.index)
+            ).astype(bool),
+            "teammates_alive": df_ticks.get(
+                "teammates_alive", pd.Series(4, index=df_ticks.index)
+            ).astype(int),
+            "enemies_alive": df_ticks.get(
+                "enemies_alive", pd.Series(5, index=df_ticks.index)
+            ).astype(int),
+            "team_economy": df_ticks.get("team_economy", pd.Series(0, index=df_ticks.index)).astype(
+                int
+            ),
+            "map_name": df_ticks["map_name"],
+        }
+    )
 
     # Build legacy PlayerTickState DataFrame — filtered to target_player
     # for user demos, ALL players for pro demos
@@ -1234,33 +1348,65 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
             df_ticks["player_name"].astype(str).str.strip().str.lower() == target_lower
         ]
 
-    df_legacy = pd.DataFrame({
-        "demo_name": demo_name,
-        "tick": df_legacy_source["tick"].astype(int),
-        "player_name": df_legacy_source["player_name"],
-        "pos_x": df_legacy_source["X"].astype(float),
-        "pos_y": df_legacy_source["Y"].astype(float),
-        "pos_z": df_legacy_source["Z"].astype(float),
-        "view_x": df_legacy_source["yaw"].astype(float),
-        "view_y": df_legacy_source.get("pitch", pd.Series(0.0, index=df_legacy_source.index)).astype(float),
-        "health": df_legacy_source["health"].astype(int),
-        "armor": df_legacy_source.get("armor", pd.Series(0, index=df_legacy_source.index)).astype(int),
-        "is_crouching": df_legacy_source.get("is_crouching", pd.Series(False, index=df_legacy_source.index)).astype(bool),
-        "is_scoped": df_legacy_source.get("is_scoped", pd.Series(False, index=df_legacy_source.index)).astype(bool),
-        "active_weapon": df_legacy_source.get("active_weapon", pd.Series("unknown", index=df_legacy_source.index)),
-        "equipment_value": df_legacy_source.get("equipment_value", pd.Series(0, index=df_legacy_source.index)).astype(int),
-        "enemies_visible": df_legacy_source.get("enemies_visible", pd.Series(0, index=df_legacy_source.index)).astype(int),
-        "is_blinded": df_legacy_source.get("is_blinded", pd.Series(False, index=df_legacy_source.index)).astype(bool),
-        # --- Enriched features ---
-        "round_number": df_legacy_source.get("round_number", pd.Series(1, index=df_legacy_source.index)).astype(int),
-        "time_in_round": df_legacy_source.get("time_in_round", pd.Series(0.0, index=df_legacy_source.index)).astype(float),
-        "bomb_planted": df_legacy_source.get("bomb_planted", pd.Series(False, index=df_legacy_source.index)).astype(bool),
-        "teammates_alive": df_legacy_source.get("teammates_alive", pd.Series(4, index=df_legacy_source.index)).astype(int),
-        "enemies_alive": df_legacy_source.get("enemies_alive", pd.Series(5, index=df_legacy_source.index)).astype(int),
-        "team_economy": df_legacy_source.get("team_economy", pd.Series(0, index=df_legacy_source.index)).astype(int),
-        "map_name": df_legacy_source.get("map_name", pd.Series(_meta_map_name, index=df_legacy_source.index)),
-        "created_at": datetime.now(timezone.utc),
-    })
+    df_legacy = pd.DataFrame(
+        {
+            "demo_name": demo_name,
+            "tick": df_legacy_source["tick"].astype(int),
+            "player_name": df_legacy_source["player_name"],
+            "pos_x": df_legacy_source["X"].astype(float),
+            "pos_y": df_legacy_source["Y"].astype(float),
+            "pos_z": df_legacy_source["Z"].astype(float),
+            "view_x": df_legacy_source["yaw"].astype(float),
+            "view_y": df_legacy_source.get(
+                "pitch", pd.Series(0.0, index=df_legacy_source.index)
+            ).astype(float),
+            "health": df_legacy_source["health"].astype(int),
+            "armor": df_legacy_source.get(
+                "armor", pd.Series(0, index=df_legacy_source.index)
+            ).astype(int),
+            "is_crouching": df_legacy_source.get(
+                "is_crouching", pd.Series(False, index=df_legacy_source.index)
+            ).astype(bool),
+            "is_scoped": df_legacy_source.get(
+                "is_scoped", pd.Series(False, index=df_legacy_source.index)
+            ).astype(bool),
+            "active_weapon": df_legacy_source.get(
+                "active_weapon", pd.Series("unknown", index=df_legacy_source.index)
+            ),
+            "equipment_value": df_legacy_source.get(
+                "equipment_value", pd.Series(0, index=df_legacy_source.index)
+            ).astype(int),
+            "enemies_visible": df_legacy_source.get(
+                "enemies_visible", pd.Series(0, index=df_legacy_source.index)
+            ).astype(int),
+            "is_blinded": df_legacy_source.get(
+                "is_blinded", pd.Series(False, index=df_legacy_source.index)
+            ).astype(bool),
+            # --- Enriched features ---
+            "round_number": df_legacy_source.get(
+                "round_number", pd.Series(1, index=df_legacy_source.index)
+            ).astype(int),
+            "time_in_round": df_legacy_source.get(
+                "time_in_round", pd.Series(0.0, index=df_legacy_source.index)
+            ).astype(float),
+            "bomb_planted": df_legacy_source.get(
+                "bomb_planted", pd.Series(False, index=df_legacy_source.index)
+            ).astype(bool),
+            "teammates_alive": df_legacy_source.get(
+                "teammates_alive", pd.Series(4, index=df_legacy_source.index)
+            ).astype(int),
+            "enemies_alive": df_legacy_source.get(
+                "enemies_alive", pd.Series(5, index=df_legacy_source.index)
+            ).astype(int),
+            "team_economy": df_legacy_source.get(
+                "team_economy", pd.Series(0, index=df_legacy_source.index)
+            ).astype(int),
+            "map_name": df_legacy_source.get(
+                "map_name", pd.Series(_meta_map_name, index=df_legacy_source.index)
+            ),
+            "created_at": datetime.now(timezone.utc),
+        }
+    )
 
     logger.info("DataFrame construction: %.2fs", _time.monotonic() - t_build)
 
@@ -1279,10 +1425,18 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
 
         # Write chunk to per-match database
         df_match.iloc[start:end].to_sql(
-            "matchtickstate", match_engine, if_exists="append", index=False,         )
+            "matchtickstate",
+            match_engine,
+            if_exists="append",
+            index=False,
+        )
         # Write chunk to legacy monolith
         df_legacy.iloc[start:end].to_sql(
-            "playertickstate", monolith_engine, if_exists="append", index=False,         )
+            "playertickstate",
+            monolith_engine,
+            if_exists="append",
+            index=False,
+        )
 
     db_elapsed = _time.monotonic() - t_db
 
@@ -1300,8 +1454,11 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
     logger.info(
         "Ingestion complete for %s: %s ticks, %d chunks, "
         "DB insertion %.1fs, total pipeline %.1fs",
-        demo_name, f"{total_ticks:,}", n_chunks,
-        db_elapsed, total_elapsed,
+        demo_name,
+        f"{total_ticks:,}",
+        n_chunks,
+        db_elapsed,
+        total_elapsed,
     )
 
     # Extract and persist game events (Player-POV Perception System)
@@ -1315,6 +1472,7 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
     try:
         with match_manager.get_match_session(match_id) as session:
             from sqlalchemy import text as sa_text
+
             session.execute(
                 sa_text("UPDATE match_metadata SET match_complete = 1 WHERE match_id = :mid"),
                 {"mid": match_id},

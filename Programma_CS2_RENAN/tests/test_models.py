@@ -1,7 +1,6 @@
 import sys
 from datetime import datetime
 
-
 import pytest
 
 from Programma_CS2_RENAN.backend.storage.db_models import (
@@ -72,4 +71,3 @@ class TestDBModels:
         assert team.name == "ProTeam"
         assert player.nickname == "ProPlayer"
         assert player.team_id == 123
-

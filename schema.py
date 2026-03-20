@@ -65,9 +65,7 @@ class SchemaSuite:
         safe_col = self._validate_identifier(col_name)
         if not _SAFE_COL_TYPE_RE.match(col_type):
             raise ValueError(f"Unsafe column type rejected: {col_type!r}")
-        cursor.execute(
-            f"ALTER TABLE [{safe_table}] ADD COLUMN [{safe_col}] {col_type}"
-        )
+        cursor.execute(f"ALTER TABLE [{safe_table}] ADD COLUMN [{safe_col}] {col_type}")
 
     def _get_connection(self, db_path=None):
         target = db_path or self.db_path

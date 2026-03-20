@@ -54,7 +54,9 @@ class PlayerMatchStats(SQLModel, table=True):
     match_date: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc), index=True
     )  # Task 2.17.2: Chronological Sort
-    processed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
+    processed_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc), nullable=False
+    )
     dataset_split: DatasetSplit = Field(
         default=DatasetSplit.UNASSIGNED, index=True
     )  # Enum-validated
@@ -111,13 +113,17 @@ class PlayerMatchStats(SQLModel, table=True):
     sample_weight: float = Field(default=1.0)
     is_pro: bool = Field(default=False)
     rating: float = Field(default=0.0)
-    pro_player_id: Optional[int] = Field(default=None, index=True)  # Logical ref to ProPlayer.hltv_id (separate DB — no FK)
+    pro_player_id: Optional[int] = Field(
+        default=None, index=True
+    )  # Logical ref to ProPlayer.hltv_id (separate DB — no FK)
 
 
 class PlayerTickState(SQLModel, table=True):
     __table_args__ = (
         Index("ix_tick_demo_tick", "demo_name", "tick"),
-        Index("ix_pts_player_demo", "player_name", "demo_name"),  # P2-05: Composite index for common query pattern
+        Index(
+            "ix_pts_player_demo", "player_name", "demo_name"
+        ),  # P2-05: Composite index for common query pattern
         {"extend_existing": True},
     )
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -125,7 +131,12 @@ class PlayerTickState(SQLModel, table=True):
     # R2-07: ON DELETE SET NULL — ticks survive match deletion
     match_id: Optional[int] = Field(
         default=None,
-        sa_column=Column(Integer, ForeignKey("matchresult.match_id", ondelete="SET NULL"), index=True, nullable=True),
+        sa_column=Column(
+            Integer,
+            ForeignKey("matchresult.match_id", ondelete="SET NULL"),
+            index=True,
+            nullable=True,
+        ),
     )
     tick: int = Field(index=True)
     player_name: str = Field(index=True)
@@ -257,6 +268,7 @@ class Ext_PlayerPlaystyle(SQLModel, table=True):
                 f"({len(v.encode('utf-8'))} bytes)"
             )
         return v
+
     cfg_file_path: Optional[str] = None
 
     steam_id: Optional[str] = Field(
@@ -302,7 +314,6 @@ class IngestionTask(SQLModel, table=True):
         default_factory=lambda: datetime.now(timezone.utc),
         sa_column_kwargs={"onupdate": lambda: datetime.now(timezone.utc)},
     )
-
 
 
 class TacticalKnowledge(SQLModel, table=True):
@@ -417,7 +428,9 @@ class ProPlayer(SQLModel, table=True):
     # R2-07: ON DELETE SET NULL — player survives team deletion
     team_id: Optional[int] = Field(
         default=None,
-        sa_column=Column(Integer, ForeignKey("proteam.hltv_id", ondelete="SET NULL"), nullable=True),
+        sa_column=Column(
+            Integer, ForeignKey("proteam.hltv_id", ondelete="SET NULL"), nullable=True
+        ),
     )
     last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -432,7 +445,9 @@ class ProPlayerStatCard(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     # R2-07: ON DELETE CASCADE — stat card meaningless without player
     player_id: int = Field(
-        sa_column=Column(Integer, ForeignKey("proplayer.hltv_id", ondelete="CASCADE"), index=True, nullable=False),
+        sa_column=Column(
+            Integer, ForeignKey("proplayer.hltv_id", ondelete="CASCADE"), index=True, nullable=False
+        ),
     )
 
     # Core Stats (Main Page)
@@ -489,7 +504,12 @@ class MapVeto(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     # R2-07: ON DELETE CASCADE — veto meaningless without match
     match_id: int = Field(
-        sa_column=Column(Integer, ForeignKey("matchresult.match_id", ondelete="CASCADE"), index=True, nullable=False),
+        sa_column=Column(
+            Integer,
+            ForeignKey("matchresult.match_id", ondelete="CASCADE"),
+            index=True,
+            nullable=False,
+        ),
     )
     map_name: str
     action: str = Field(default="unknown")  # 'pick', 'ban', 'leftover'
@@ -554,7 +574,9 @@ class CoachingExperience(SQLModel, table=True):
     # R2-07: ON DELETE SET NULL — experience survives match deletion
     pro_match_id: Optional[int] = Field(
         default=None,
-        sa_column=Column(Integer, ForeignKey("matchresult.match_id", ondelete="SET NULL"), nullable=True),
+        sa_column=Column(
+            Integer, ForeignKey("matchresult.match_id", ondelete="SET NULL"), nullable=True
+        ),
     )
     pro_player_name: Optional[str] = Field(default=None, index=True)
 
@@ -586,9 +608,13 @@ class RoundStats(SQLModel, table=True):
 
     __table_args__ = (
         Index("ix_rs_demo_player", "demo_name", "player_name"),
-        Index("ix_rs_demo_round", "demo_name", "round_number"),  # P2-05: Composite index for round queries
+        Index(
+            "ix_rs_demo_round", "demo_name", "round_number"
+        ),  # P2-05: Composite index for round queries
         # H-15: Prevent duplicate round stats for the same player/demo/round
-        UniqueConstraint("demo_name", "round_number", "player_name", name="ux_roundstats_demo_round_player"),
+        UniqueConstraint(
+            "demo_name", "round_number", "player_name", name="ux_roundstats_demo_round_player"
+        ),
         {"extend_existing": True},
     )
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

@@ -6,9 +6,11 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 _logger = get_logger("cs2analyzer.localization")
 
+
 def _get_home_dir() -> str:
     """Return current home directory (evaluated at call time, not import time)."""
     return os.path.expanduser("~")
+
 
 # Hardcoded TRANSLATIONS dict kept as fallback if JSON files fail to load.
 TRANSLATIONS = {

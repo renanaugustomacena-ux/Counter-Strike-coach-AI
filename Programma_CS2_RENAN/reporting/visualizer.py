@@ -222,8 +222,7 @@ class MatchVisualizer:
             ("o", "gray", 12, "Macro scale"),
         ]
         return [
-            Line2D([0], [0], marker=m, color="w", markerfacecolor=c,
-                   markersize=s, label=lbl)
+            Line2D([0], [0], marker=m, color="w", markerfacecolor=c, markersize=s, label=lbl)
             for m, c, s, lbl in specs
         ]
 

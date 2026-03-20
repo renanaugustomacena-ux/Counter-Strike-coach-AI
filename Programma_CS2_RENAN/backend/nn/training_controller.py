@@ -43,6 +43,7 @@ class TrainingController:
         self.db = get_db_manager()
         # NN-M-13: Configurable monthly demo limit via settings
         from Programma_CS2_RENAN.core.config import get_setting
+
         self.MAX_DEMOS_PER_MONTH = get_setting(
             "MAX_DEMOS_PER_MONTH", default=self._DEFAULT_MAX_DEMOS_PER_MONTH
         )

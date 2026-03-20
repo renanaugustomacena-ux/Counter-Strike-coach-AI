@@ -19,7 +19,10 @@ FILE_STABILITY_CHECK_INTERVAL = 1.0  # seconds between size checks
 FILE_STABILITY_REQUIRED_CHECKS = 2  # file must be stable for this many checks
 # R3-M20: Use the canonical MIN_DEMO_SIZE from demo_format_adapter to prevent
 # accepting files that the adapter will reject downstream.
-from Programma_CS2_RENAN.backend.data_sources.demo_format_adapter import MIN_DEMO_SIZE as FILE_MINIMUM_SIZE
+from Programma_CS2_RENAN.backend.data_sources.demo_format_adapter import (
+    MIN_DEMO_SIZE as FILE_MINIMUM_SIZE,
+)
+
 # F6-16: Maximum total stability attempts before giving up (~30 seconds at 1s interval)
 _MAX_STABILITY_ATTEMPTS = 120
 

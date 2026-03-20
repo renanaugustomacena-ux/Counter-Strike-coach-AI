@@ -82,10 +82,9 @@ class AppState(QObject):
                 delta = (now - hb).total_seconds()
 
             # Query unread notifications and mark them read
-            from Programma_CS2_RENAN.backend.storage.db_models import (
-                ServiceNotification,
-            )
             from sqlalchemy import select
+
+            from Programma_CS2_RENAN.backend.storage.db_models import ServiceNotification
 
             notifs = []
             try:
@@ -96,9 +95,7 @@ class AppState(QObject):
                     .limit(5)
                 ).all()
                 for row in rows:
-                    notifs.append(
-                        {"severity": row.severity, "message": row.message}
-                    )
+                    notifs.append({"severity": row.severity, "message": row.message})
                     row.is_read = True
                 if rows:
                     session.commit()
@@ -143,9 +140,7 @@ class AppState(QObject):
         # Training bundle — emit if any training field changed
         t_keys = ("current_epoch", "total_epochs", "train_loss", "val_loss", "eta_seconds")
         if any(data.get(k) != prev.get(k) for k in t_keys):
-            self.training_changed.emit(
-                {k: data[k] for k in t_keys}
-            )
+            self.training_changed.emit({k: data[k] for k in t_keys})
 
         # Emit any new notifications
         for n in data.get("notifications", []):

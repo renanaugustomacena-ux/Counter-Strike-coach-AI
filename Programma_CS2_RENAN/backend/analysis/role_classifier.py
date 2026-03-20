@@ -322,7 +322,8 @@ class RoleClassifier:
             if probs.dim() != 1 or probs.shape[0] != len(ROLE_OUTPUT_ORDER):
                 logger.error(
                     "R-03: Neural classifier output shape mismatch: expected (%d,), got %s",
-                    len(ROLE_OUTPUT_ORDER), tuple(probs.shape),
+                    len(ROLE_OUTPUT_ORDER),
+                    tuple(probs.shape),
                 )
                 return None
 

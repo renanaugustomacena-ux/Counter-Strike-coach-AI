@@ -300,8 +300,7 @@ class CoachingDialogueEngine:
                     for exp in experiences:
                         source = f"(pro: {exp.pro_player_name})" if exp.pro_player_name else ""
                         exp_lines.append(
-                            f"- {exp.action_taken} → {exp.outcome} "
-                            f"on {exp.map_name} {source}"
+                            f"- {exp.action_taken} → {exp.outcome} " f"on {exp.map_name} {source}"
                         )
                     blocks.append("\n".join(exp_lines))
         except Exception as exc:

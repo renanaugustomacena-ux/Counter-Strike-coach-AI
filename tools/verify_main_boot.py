@@ -25,12 +25,8 @@ _PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-_SCREENS_DIR = (
-    Path(_PROJECT_ROOT) / "Programma_CS2_RENAN" / "apps" / "qt_app" / "screens"
-)
-_THEMES_DIR = (
-    Path(_PROJECT_ROOT) / "Programma_CS2_RENAN" / "apps" / "qt_app" / "themes"
-)
+_SCREENS_DIR = Path(_PROJECT_ROOT) / "Programma_CS2_RENAN" / "apps" / "qt_app" / "screens"
+_THEMES_DIR = Path(_PROJECT_ROOT) / "Programma_CS2_RENAN" / "apps" / "qt_app" / "themes"
 
 # MainWindow must expose these attributes/methods.
 _REQUIRED_MW_ATTRS = [
@@ -55,11 +51,7 @@ def _discover_screen_modules() -> list[str]:
     """Auto-discover *_screen.py modules from the screens directory."""
     if not _SCREENS_DIR.is_dir():
         return []
-    return sorted(
-        p.stem
-        for p in _SCREENS_DIR.glob("*_screen.py")
-        if not p.name.startswith("_")
-    )
+    return sorted(p.stem for p in _SCREENS_DIR.glob("*_screen.py") if not p.name.startswith("_"))
 
 
 def main():
@@ -83,7 +75,7 @@ def main():
     # --- 2. MainWindow class + public interface ---
     print("\n[Phase 2] MainWindow class")
     try:
-        from Programma_CS2_RENAN.apps.qt_app.main_window import MainWindow, NAV_ITEMS
+        from Programma_CS2_RENAN.apps.qt_app.main_window import NAV_ITEMS, MainWindow
 
         _check(True, "MainWindow class imported successfully")
 

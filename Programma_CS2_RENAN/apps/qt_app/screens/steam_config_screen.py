@@ -1,6 +1,6 @@
 """Steam configuration screen — SteamID64 and API key setup."""
 
-from PySide6.QtCore import QThreadPool, QTimer, Qt, QUrl
+from PySide6.QtCore import Qt, QThreadPool, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices, QFont
 from PySide6.QtWidgets import (
     QFrame,
@@ -123,9 +123,7 @@ class SteamConfigScreen(QWidget):
         self._key_link_btn = QPushButton(i18n.get_text("get_steam_key"))
         self._key_link_btn.setCursor(Qt.PointingHandCursor)
         self._key_link_btn.clicked.connect(
-            lambda: QDesktopServices.openUrl(
-                QUrl("https://steamcommunity.com/dev/apikey")
-            )
+            lambda: QDesktopServices.openUrl(QUrl("https://steamcommunity.com/dev/apikey"))
         )
         key_layout.addWidget(self._key_link_btn)
 
@@ -240,8 +238,6 @@ class SteamConfigScreen(QWidget):
 
     def _show_status(self, text: str, color: str):
         self._status_label.setText(text)
-        self._status_label.setStyleSheet(
-            f"color: {color}; font-size: 14px; font-weight: bold;"
-        )
+        self._status_label.setStyleSheet(f"color: {color}; font-size: 14px; font-weight: bold;")
         self._status_label.setVisible(True)
         QTimer.singleShot(8000, lambda: self._status_label.setVisible(False))

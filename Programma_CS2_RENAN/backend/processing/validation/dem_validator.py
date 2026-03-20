@@ -73,7 +73,19 @@ class DEMValidator:
         if name.count(".") > 1:
             # Basic check for things like 'payload.sh.dem'
             parts = name.split(".")
-            if parts[-2].lower() in ["sh", "exe", "bat", "cmd", "ps1", "php", "js", "py", "vbs", "rb", "pl"]:
+            if parts[-2].lower() in [
+                "sh",
+                "exe",
+                "bat",
+                "cmd",
+                "ps1",
+                "php",
+                "js",
+                "py",
+                "vbs",
+                "rb",
+                "pl",
+            ]:
                 raise DEMValidationError(f"Suspicious double extension detected: {name}")
 
     def _check_file_exists(self, filepath: Path):

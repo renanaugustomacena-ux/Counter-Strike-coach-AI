@@ -169,7 +169,11 @@ class TacticalMapWidget(QWidget):
     def _draw_player(self, p: QPainter, player: InterpolatedPlayerState, is_ghost=False):
         px, py = self._world_to_screen(player.x, player.y)
 
-        is_ct = player.team == Team.CT if isinstance(player.team, Team) else "CT" in str(player.team).upper()
+        is_ct = (
+            player.team == Team.CT
+            if isinstance(player.team, Team)
+            else "CT" in str(player.team).upper()
+        )
 
         if not player.is_alive:
             color = QColor(DEAD_COLOR)
@@ -206,11 +210,13 @@ class TacticalMapWidget(QWidget):
             p.setBrush(cone_color)
 
             # Triangle pointing up (-Y in Qt = north on map)
-            cone = QPolygonF([
-                QPointF(0, 0),
-                QPointF(-15, -30),
-                QPointF(15, -30),
-            ])
+            cone = QPolygonF(
+                [
+                    QPointF(0, 0),
+                    QPointF(-15, -30),
+                    QPointF(15, -30),
+                ]
+            )
             p.drawPolygon(cone)
             p.restore()
 

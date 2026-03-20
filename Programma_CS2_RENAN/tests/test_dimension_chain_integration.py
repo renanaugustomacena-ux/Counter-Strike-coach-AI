@@ -122,6 +122,6 @@ class TestDimensionChainAlignment:
         with torch.no_grad():
             output = model(test_input)
 
-        assert output.shape[-1] == OUTPUT_DIM, (
-            f"Model output dim ({output.shape[-1]}) != OUTPUT_DIM ({OUTPUT_DIM})"
-        )
+        assert (
+            output.shape[-1] == OUTPUT_DIM
+        ), f"Model output dim ({output.shape[-1]}) != OUTPUT_DIM ({OUTPUT_DIM})"

@@ -234,9 +234,7 @@ class TacticalChronovisorViewModel(EventDispatcher):
 
                 if not get_setting("USE_RAP_MODEL", default=False):
                     Clock.schedule_once(
-                        lambda dt: self._on_scan_error(
-                            "RAP model disabled (USE_RAP_MODEL=False)"
-                        ),
+                        lambda dt: self._on_scan_error("RAP model disabled (USE_RAP_MODEL=False)"),
                         0,
                     )
                     return

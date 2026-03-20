@@ -82,8 +82,10 @@ class StatCardAggregator:
                 logger.warning(
                     "S-07: detailed_stats_json for %s [%s] is %d bytes "
                     "(limit %d) — storing core stats only",
-                    nickname, hltv_id,
-                    len(full_json.encode("utf-8")), MAX_AUX_JSON_BYTES,
+                    nickname,
+                    hltv_id,
+                    len(full_json.encode("utf-8")),
+                    MAX_AUX_JSON_BYTES,
                 )
                 core_only = {"core": core, "player_id": hltv_id, "nickname": nickname}
                 full_json = json.dumps(core_only)

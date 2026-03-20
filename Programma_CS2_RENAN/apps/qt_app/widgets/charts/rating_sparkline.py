@@ -1,12 +1,6 @@
 """Rating sparkline — compact trend with reference lines."""
 
-from PySide6.QtCharts import (
-    QAreaSeries,
-    QChart,
-    QChartView,
-    QLineSeries,
-    QValueAxis,
-)
+from PySide6.QtCharts import QAreaSeries, QChart, QChartView, QLineSeries, QValueAxis
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QBrush, QColor, QPainter, QPen
 
@@ -34,10 +28,7 @@ class RatingSparkline(QChartView):
         if not history:
             return
 
-        ratings = [
-            h.get("rating", 1.0) if h.get("rating") is not None else 1.0
-            for h in history
-        ]
+        ratings = [h.get("rating", 1.0) if h.get("rating") is not None else 1.0 for h in history]
         n = len(ratings)
 
         # Rating line

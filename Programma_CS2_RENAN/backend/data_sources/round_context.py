@@ -80,10 +80,7 @@ def extract_round_context(demo_path: str) -> pd.DataFrame:
         # that is also after the previous round_end (or 0 for round 1)
         prev_round_end = round_end_ticks[i - 1] if i > 0 else 0
 
-        matching_freeze = [
-            t for t in freeze_end_ticks
-            if prev_round_end <= t < round_end
-        ]
+        matching_freeze = [t for t in freeze_end_ticks if prev_round_end <= t < round_end]
 
         if matching_freeze:
             round_start = matching_freeze[-1]
@@ -93,14 +90,17 @@ def extract_round_context(demo_path: str) -> pd.DataFrame:
             if i > 0:
                 logger.debug(
                     "No freeze_end found for round %d, using prev round_end=%d as start",
-                    round_number, round_start,
+                    round_number,
+                    round_start,
                 )
 
-        rows.append({
-            "round_number": round_number,
-            "round_start_tick": round_start,
-            "round_end_tick": round_end,
-        })
+        rows.append(
+            {
+                "round_number": round_number,
+                "round_start_tick": round_start,
+                "round_end_tick": round_end,
+            }
+        )
 
     result = pd.DataFrame(rows)
     logger.info(

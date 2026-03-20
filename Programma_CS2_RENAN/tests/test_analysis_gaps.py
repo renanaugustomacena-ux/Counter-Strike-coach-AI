@@ -7,8 +7,6 @@ Covers:
 """
 
 import sys
-
-
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -24,12 +22,14 @@ class TestRoleClassifierColdStart:
 
     def _make_classifier_cold(self):
         from Programma_CS2_RENAN.backend.analysis.role_classifier import RoleClassifier
+
         store = MagicMock()
         store.is_cold_start.return_value = True
         return RoleClassifier(threshold_store=store)
 
     def test_cold_start_returns_flex(self):
         from Programma_CS2_RENAN.backend.analysis.role_classifier import PlayerRole
+
         clf = self._make_classifier_cold()
         role, confidence, profile = clf.classify({"total_kills": 100})
         assert role == PlayerRole.FLEX
@@ -41,6 +41,7 @@ class TestRoleClassifierWarm:
 
     def _make_classifier(self):
         from Programma_CS2_RENAN.backend.analysis.role_classifier import RoleClassifier
+
         store = MagicMock()
         store.is_cold_start.return_value = False
         store.get_threshold.return_value = None  # No specific thresholds → use linear
@@ -53,6 +54,7 @@ class TestRoleClassifierWarm:
 
     def test_classify_awper_high_awp_kills(self):
         from Programma_CS2_RENAN.backend.analysis.role_classifier import PlayerRole
+
         clf = self._make_classifier()
         stats = {"awp_kills": 80, "total_kills": 100, "rounds_played": 100}
         role, conf, _ = clf.classify(stats)
@@ -60,6 +62,7 @@ class TestRoleClassifierWarm:
 
     def test_classify_entry_fragger(self):
         from Programma_CS2_RENAN.backend.analysis.role_classifier import PlayerRole
+
         clf = self._make_classifier()
         stats = {
             "entry_frags": 30,
@@ -77,6 +80,7 @@ class TestRoleClassifierWarm:
 
     def test_classify_lurker_high_solo(self):
         from Programma_CS2_RENAN.backend.analysis.role_classifier import PlayerRole
+
         clf = self._make_classifier()
         stats = {
             "solo_kills": 60,
@@ -100,12 +104,20 @@ class TestRoleClassifierWarm:
 
     def test_scores_normalized(self):
         clf = self._make_classifier()
-        scores = clf._calculate_role_scores({
-            "total_kills": 100, "rounds_played": 100,
-            "awp_kills": 20, "entry_frags": 15, "assists": 10,
-            "rounds_survived": 40, "solo_kills": 10, "first_deaths": 10,
-            "kd_ratio": 1.0, "utility_damage_avg": 30,
-        })
+        scores = clf._calculate_role_scores(
+            {
+                "total_kills": 100,
+                "rounds_played": 100,
+                "awp_kills": 20,
+                "entry_frags": 15,
+                "assists": 10,
+                "rounds_survived": 40,
+                "solo_kills": 10,
+                "first_deaths": 10,
+                "kd_ratio": 1.0,
+                "utility_damage_avg": 30,
+            }
+        )
         total = sum(scores.values())
         assert abs(total - 1.0) < 1e-6
 
@@ -115,6 +127,7 @@ class TestRoleClassifierScoring:
 
     def _make_classifier_with_threshold(self, threshold_val=None):
         from Programma_CS2_RENAN.backend.analysis.role_classifier import RoleClassifier
+
         store = MagicMock()
         store.is_cold_start.return_value = False
         store.get_threshold.return_value = threshold_val
@@ -158,25 +171,22 @@ class TestConsensus:
 
     def test_agree_boosts_confidence(self):
         from Programma_CS2_RENAN.backend.analysis.role_classifier import PlayerRole, RoleClassifier
-        role, conf = RoleClassifier._consensus(
-            PlayerRole.AWPER, 0.7, PlayerRole.AWPER, 0.8
-        )
+
+        role, conf = RoleClassifier._consensus(PlayerRole.AWPER, 0.7, PlayerRole.AWPER, 0.8)
         assert role == PlayerRole.AWPER
         assert conf == pytest.approx(min((0.7 + 0.8) / 2 + 0.1, 1.0))
 
     def test_disagree_neural_wins(self):
         from Programma_CS2_RENAN.backend.analysis.role_classifier import PlayerRole, RoleClassifier
-        role, conf = RoleClassifier._consensus(
-            PlayerRole.SUPPORT, 0.4, PlayerRole.AWPER, 0.6
-        )
+
+        role, conf = RoleClassifier._consensus(PlayerRole.SUPPORT, 0.4, PlayerRole.AWPER, 0.6)
         # neural (0.6) > heuristic (0.4) + 0.1 → neural wins
         assert role == PlayerRole.AWPER
 
     def test_disagree_heuristic_wins_tie(self):
         from Programma_CS2_RENAN.backend.analysis.role_classifier import PlayerRole, RoleClassifier
-        role, conf = RoleClassifier._consensus(
-            PlayerRole.SUPPORT, 0.5, PlayerRole.AWPER, 0.55
-        )
+
+        role, conf = RoleClassifier._consensus(PlayerRole.SUPPORT, 0.5, PlayerRole.AWPER, 0.55)
         # neural (0.55) NOT > heuristic (0.5) + 0.1 → heuristic wins
         assert role == PlayerRole.SUPPORT
 
@@ -186,6 +196,7 @@ class TestClassifyTeam:
 
     def _make_classifier(self):
         from Programma_CS2_RENAN.backend.analysis.role_classifier import RoleClassifier
+
         store = MagicMock()
         store.is_cold_start.return_value = False
         store.get_threshold.return_value = None
@@ -194,19 +205,44 @@ class TestClassifyTeam:
     def test_team_classification_returns_dict(self):
         clf = self._make_classifier()
         team = [
-            {"name": "p1", "awp_kills": 60, "total_kills": 80, "rounds_played": 100, "impact_rating": 1.2},
-            {"name": "p2", "entry_frags": 25, "total_kills": 70, "rounds_played": 100, "impact_rating": 1.0},
+            {
+                "name": "p1",
+                "awp_kills": 60,
+                "total_kills": 80,
+                "rounds_played": 100,
+                "impact_rating": 1.2,
+            },
+            {
+                "name": "p2",
+                "entry_frags": 25,
+                "total_kills": 70,
+                "rounds_played": 100,
+                "impact_rating": 1.0,
+            },
         ]
         results = clf.classify_team(team)
         assert len(results) == 2
 
     def test_no_duplicate_awper(self):
         from Programma_CS2_RENAN.backend.analysis.role_classifier import PlayerRole
+
         clf = self._make_classifier()
         # Two players that would both be AWPers
         team = [
-            {"name": "p1", "awp_kills": 70, "total_kills": 80, "rounds_played": 100, "impact_rating": 1.3},
-            {"name": "p2", "awp_kills": 65, "total_kills": 80, "rounds_played": 100, "impact_rating": 1.1},
+            {
+                "name": "p1",
+                "awp_kills": 70,
+                "total_kills": 80,
+                "rounds_played": 100,
+                "impact_rating": 1.3,
+            },
+            {
+                "name": "p2",
+                "awp_kills": 65,
+                "total_kills": 80,
+                "rounds_played": 100,
+                "impact_rating": 1.1,
+            },
         ]
         results = clf.classify_team(team)
         awper_count = sum(1 for _, (r, c) in results.items() if r == PlayerRole.AWPER)
@@ -218,6 +254,7 @@ class TestAuditTeamBalance:
 
     def _make_classifier(self):
         from Programma_CS2_RENAN.backend.analysis.role_classifier import RoleClassifier
+
         store = MagicMock()
         store.is_cold_start.return_value = False
         store.get_threshold.return_value = None
@@ -225,6 +262,7 @@ class TestAuditTeamBalance:
 
     def test_balanced_team_no_issues(self):
         from Programma_CS2_RENAN.backend.analysis.role_classifier import PlayerRole
+
         clf = self._make_classifier()
         roles = {
             "p1": (PlayerRole.AWPER, 0.8),
@@ -238,6 +276,7 @@ class TestAuditTeamBalance:
 
     def test_multiple_awpers_flagged(self):
         from Programma_CS2_RENAN.backend.analysis.role_classifier import PlayerRole
+
         clf = self._make_classifier()
         roles = {
             "p1": (PlayerRole.AWPER, 0.8),
@@ -248,6 +287,7 @@ class TestAuditTeamBalance:
 
     def test_no_entry_flagged(self):
         from Programma_CS2_RENAN.backend.analysis.role_classifier import PlayerRole
+
         clf = self._make_classifier()
         roles = {
             "p1": (PlayerRole.AWPER, 0.8),
@@ -259,6 +299,7 @@ class TestAuditTeamBalance:
 
     def test_no_support_flagged(self):
         from Programma_CS2_RENAN.backend.analysis.role_classifier import PlayerRole
+
         clf = self._make_classifier()
         roles = {
             "p1": (PlayerRole.AWPER, 0.8),
@@ -270,6 +311,7 @@ class TestAuditTeamBalance:
 
     def test_all_same_role_critical(self):
         from Programma_CS2_RENAN.backend.analysis.role_classifier import PlayerRole
+
         clf = self._make_classifier()
         roles = {
             "p1": (PlayerRole.LURKER, 0.5),
@@ -281,6 +323,7 @@ class TestAuditTeamBalance:
 
     def test_multiple_lurkers_flagged(self):
         from Programma_CS2_RENAN.backend.analysis.role_classifier import PlayerRole
+
         clf = self._make_classifier()
         roles = {
             "p1": (PlayerRole.LURKER, 0.7),
@@ -296,20 +339,16 @@ class TestRoleProfiles:
     """Tests for role profile constants and fallback tips."""
 
     def test_all_roles_have_profiles(self):
-        from Programma_CS2_RENAN.backend.analysis.role_classifier import (
-            PlayerRole,
-            ROLE_PROFILES,
-        )
+        from Programma_CS2_RENAN.backend.analysis.role_classifier import ROLE_PROFILES, PlayerRole
+
         for role in PlayerRole:
             if role == PlayerRole.UNKNOWN:
                 continue  # UNKNOWN is a fallback, not a coaching-relevant role
             assert role in ROLE_PROFILES
 
     def test_fallback_tips_exist(self):
-        from Programma_CS2_RENAN.backend.analysis.role_classifier import (
-            PlayerRole,
-            _FALLBACK_TIPS,
-        )
+        from Programma_CS2_RENAN.backend.analysis.role_classifier import _FALLBACK_TIPS, PlayerRole
+
         for role in PlayerRole:
             if role == PlayerRole.UNKNOWN:
                 continue  # UNKNOWN is a fallback, not a coaching-relevant role
@@ -325,6 +364,7 @@ class TestDeceptionMetrics:
 
     def test_defaults(self):
         from Programma_CS2_RENAN.backend.analysis.deception_index import DeceptionMetrics
+
         m = DeceptionMetrics()
         assert m.fake_flash_rate == 0.0
         assert m.rotation_feint_rate == 0.0
@@ -333,6 +373,7 @@ class TestDeceptionMetrics:
 
     def test_custom_values(self):
         from Programma_CS2_RENAN.backend.analysis.deception_index import DeceptionMetrics
+
         m = DeceptionMetrics(fake_flash_rate=0.5, composite_index=0.8)
         assert m.fake_flash_rate == 0.5
         assert m.composite_index == 0.8
@@ -343,6 +384,7 @@ class TestDeceptionAnalyzer:
 
     def _make_analyzer(self):
         from Programma_CS2_RENAN.backend.analysis.deception_index import DeceptionAnalyzer
+
         return DeceptionAnalyzer()
 
     def test_empty_round(self):
@@ -365,20 +407,29 @@ class TestDeceptionAnalyzer:
 
     def test_flash_baits_all_ineffective(self):
         analyzer = self._make_analyzer()
-        df = pd.DataFrame({
-            "event_type": ["flashbang_throw", "flashbang_throw"],
-            "tick": [100, 200],
-        })
+        df = pd.DataFrame(
+            {
+                "event_type": ["flashbang_throw", "flashbang_throw"],
+                "tick": [100, 200],
+            }
+        )
         result = analyzer._detect_flash_baits(df)
         # No blinds → 100% bait rate
         assert result == pytest.approx(1.0)
 
     def test_flash_baits_all_effective(self):
         analyzer = self._make_analyzer()
-        df = pd.DataFrame({
-            "event_type": ["flashbang_throw", "player_blind", "flashbang_throw", "player_blind"],
-            "tick": [100, 110, 200, 210],
-        })
+        df = pd.DataFrame(
+            {
+                "event_type": [
+                    "flashbang_throw",
+                    "player_blind",
+                    "flashbang_throw",
+                    "player_blind",
+                ],
+                "tick": [100, 110, 200, 210],
+            }
+        )
         result = analyzer._detect_flash_baits(df)
         assert result == pytest.approx(0.0)
 
@@ -397,10 +448,12 @@ class TestDeceptionAnalyzer:
     def test_rotation_feints_straight_line(self):
         analyzer = self._make_analyzer()
         n = 100
-        df = pd.DataFrame({
-            "pos_x": np.linspace(0, 100, n),
-            "pos_y": np.linspace(0, 100, n),
-        })
+        df = pd.DataFrame(
+            {
+                "pos_x": np.linspace(0, 100, n),
+                "pos_y": np.linspace(0, 100, n),
+            }
+        )
         result = analyzer._detect_rotation_feints(df)
         # Straight line = no direction changes
         assert result < 0.3
@@ -428,13 +481,15 @@ class TestDeceptionAnalyzer:
     def test_composite_bounded(self):
         analyzer = self._make_analyzer()
         # Create a round with some events
-        df = pd.DataFrame({
-            "event_type": ["flashbang_throw"] * 10,
-            "tick": list(range(100, 200, 10)),
-            "pos_x": np.linspace(0, 200, 10),
-            "pos_y": np.linspace(0, 200, 10),
-            "is_crouching": [False] * 10,
-        })
+        df = pd.DataFrame(
+            {
+                "event_type": ["flashbang_throw"] * 10,
+                "tick": list(range(100, 200, 10)),
+                "pos_x": np.linspace(0, 200, 10),
+                "pos_y": np.linspace(0, 200, 10),
+                "is_crouching": [False] * 10,
+            }
+        )
         result = analyzer.analyze_round(df)
         assert 0.0 <= result.composite_index <= 1.0
 
@@ -444,10 +499,12 @@ class TestDeceptionCompareToBaseline:
 
     def _make_analyzer(self):
         from Programma_CS2_RENAN.backend.analysis.deception_index import DeceptionAnalyzer
+
         return DeceptionAnalyzer()
 
     def _metrics(self, composite=0.5, rotation=0.3):
         from Programma_CS2_RENAN.backend.analysis.deception_index import DeceptionMetrics
+
         return DeceptionMetrics(composite_index=composite, rotation_feint_rate=rotation)
 
     def test_above_baseline(self):
@@ -485,6 +542,7 @@ class TestDeceptionFactory:
 
     def test_get_deception_analyzer(self):
         from Programma_CS2_RENAN.backend.analysis.deception_index import get_deception_analyzer
+
         analyzer = get_deception_analyzer()
         assert analyzer is not None
 
@@ -497,6 +555,7 @@ class TestDeceptionFactory:
             W_ROTATION_FEINT,
             W_SOUND_DECEPTION,
         )
+
         assert FAKE_EXECUTE_WINDOW == 5.0
         assert UTILITY_FOLLOWUP_WINDOW == 3.0
         assert FLASH_BLIND_WINDOW_TICKS == 128
