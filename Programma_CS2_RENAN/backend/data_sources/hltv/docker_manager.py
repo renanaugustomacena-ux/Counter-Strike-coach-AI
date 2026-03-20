@@ -2,7 +2,7 @@
 FlareSolverr Docker lifecycle manager.
 
 Ensures the FlareSolverr container is running before HLTV sync starts.
-Provides auto-start via `docker start` or `docker-compose up -d`,
+Provides auto-start via `docker start` or `docker compose up -d`,
 and graceful shutdown via `docker stop`.
 """
 
@@ -63,7 +63,7 @@ def ensure_flaresolverr(project_root: str | None = None) -> bool:
     Strategy:
     1. Already healthy? Return True immediately.
     2. Docker available? Try ``docker start flaresolverr``.
-    3. Container doesn't exist? Try ``docker-compose up -d``.
+    3. Container doesn't exist? Try ``docker compose up -d``.
     4. Wait for health check.
     """
     # Fast path: already running
@@ -104,10 +104,10 @@ def ensure_flaresolverr(project_root: str | None = None) -> bool:
             logger.debug("No docker-compose.yml in %s", _root)
         else:
             compose_file = _root / "docker-compose.yml"
-            logger.info("Container not found. Trying docker-compose up -d...")
+            logger.info("Container not found. Trying docker compose up -d...")
             try:
                 result = subprocess.run(
-                    ["docker-compose", "-f", str(compose_file), "up", "-d"],
+                    ["docker", "compose", "-f", str(compose_file), "up", "-d"],
                     capture_output=True,
                     text=True,
                     timeout=60,
@@ -115,13 +115,13 @@ def ensure_flaresolverr(project_root: str | None = None) -> bool:
                 )
                 if result.returncode == 0:
                     logger.info(
-                        "docker-compose up succeeded. Waiting for health-check..."
+                        "docker compose up succeeded. Waiting for health-check..."
                     )
                     if _wait_for_healthy():
                         logger.info("FlareSolverr ready via docker-compose.")
                         return True
             except (subprocess.TimeoutExpired, OSError) as exc:
-                logger.debug("docker-compose failed: %s", exc)
+                logger.debug("docker compose failed: %s", exc)
 
     logger.error(
         "FlareSolverr unreachable after all attempts. "

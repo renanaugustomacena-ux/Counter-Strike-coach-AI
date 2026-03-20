@@ -5,11 +5,11 @@ FlareSolverr runs as a Docker container on port 8191 and exposes a REST API
 that handles Cloudflare challenges automatically using a headless browser.
 
 Setup:
-    docker pull ghcr.io/flaresolverr/flaresolverr:latest
+    docker pull ghcr.io/flaresolverr/flaresolverr:v3.4.6
     docker run -d --name flaresolverr -p 8191:8191 \
-        -e LOG_LEVEL=info -e TZ=Europe/Rome \
+        -e LOG_LEVEL=info -e TZ=America/Sao_Paulo \
         --restart unless-stopped \
-        ghcr.io/flaresolverr/flaresolverr:latest
+        ghcr.io/flaresolverr/flaresolverr:v3.4.6
 """
 
 from __future__ import annotations
