@@ -59,7 +59,7 @@ Il cuore pulsante del backend è diviso in quattro entità funzionali, ognuna co
 ### 2.1 The Hunter (Il Cacciatore)
 *   **Ruolo**: Acquisizione Dati.
 *   **Obiettivo**: Trovare nuove prede (file `.dem`).
-*   **Comportamento**: Il Cacciatore è un segugio. Scansiona costantemente le cartelle di Steam, interroga le API di FaceIT e HLTV. Non appena rileva un nuovo file, lo "marca" (lo inserisce nel database come `IngestionTask`) e torna a cercare. Non tocca il file, non lo apre. Lo trova e basta.
+*   **Comportamento**: Il Cacciatore è un segugio. Scansiona costantemente le cartelle di Steam alla ricerca di nuovi file `.dem`. Non appena rileva un file, lo "marca" (lo inserisce nel database come `IngestionTask`) e torna a cercare. Non tocca il file, non lo apre. Lo trova e basta. Coordina inoltre il servizio HLTV per lo scraping delle statistiche dei giocatori professionisti (un'operazione separata dal parsing demo).
 *   **Filosofia**: "Nessuna demo lasciata indietro". Anche se l'utente sposta i file, il Cacciatore li ritrova grazie agli hash SHA-256.
 
 ### 2.2 The Digester (Il Digestore)
@@ -86,7 +86,7 @@ Questa separazione a quattro daemon garantisce che se il Digestore si blocca su 
 
 ## 3. Il Direttore d'Orchestra: Orchestrazione dei Processi Backend (`session_engine.py`)
 
-Chi gestisce questi tre mostri? Il `SessionEngine`.
+Chi gestisce questi quattro mostri? Il `SessionEngine`.
 Questo modulo è il sistema nervoso centrale.
 
 ### 3.1 Loop Paralleli e Threading
@@ -108,7 +108,7 @@ Questo rende l'app "invisibile". Non ti accorgi che sta lavorando finché non ap
 ### 3.3 Self-Healing (Autoguarigione)
 All'avvio, il Direttore esegue una routine di pulizia: `_cleanup_zombie_tasks()`.
 Se il PC si è spento improvvisamente mentre il Digestore lavorava, nel database rimarrà un task segnato come "Processing".
-Il Direttore lo vede e dice: "Ehi, questo task è vecchio di 2 ore e non è finito. Probabilmente siamo crashati. Resettalo a 'Queued' e riprova".
+Il Direttore lo vede e dice: "Ehi, questo task è vecchio di 30 minuti e non è finito. Probabilmente siamo crashati. Resettalo a 'Queued' e riprova". (La soglia attuale in `session_engine.py` e' `ZOMBIE_TASK_THRESHOLD_SECONDS = 1800`, cioe' 30 minuti).
 Nessun dato viene mai perso o bloccato in un limbo eterno.
 
 ---
@@ -253,7 +253,7 @@ Tutta questa architettura vive nella cartella `core/`.
 In questo studio, abbiamo visto il **Sistema Nervoso** e lo **Scheletro** di Macena.
 Non è l'IA (Cervello), non sono i Dati (Memoria), non è la GUI (Faccia).
 È ciò che tiene tutto insieme.
-Il **Tri-Daemon Engine** permette all'app di fare tre cose pesanti contemporaneamente senza sudare.
+Il **Quad-Daemon Engine** permette all'app di fare quattro cose pesanti contemporaneamente senza sudare.
 Il **Playback Engine** crea l'illusione del tempo continuo.
 Il **Cacciatore** e il **Lifecycle** rendono l'app autonoma e robusta.
 

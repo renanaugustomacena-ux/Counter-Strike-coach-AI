@@ -327,7 +327,7 @@ La funzione `calculate_fov_mask` implementa matematicamente il Frustum del gioca
 Questo garantisce che la rete neurale "veda" solo ciò che il giocatore vedeva.
 
 ### 9.3 La Ricostruzione Forense in Rust/Python
-Il modulo `backend/ingestion/demo_parser.py` e lo script `run_ingestion.py` utilizzano la libreria `demoparser2` (scritta in Rust) per l'estrazione a basso livello.
+Il modulo `backend/data_sources/demo_parser.py` e lo script `run_ingestion.py` utilizzano la libreria `demoparser2` (scritta in Rust) per l'estrazione a basso livello.
 Notate l'uso di `parse_events` e `parse_ticks` con parametri specifici per estrarre ogni singolo tick senza decimarli (saltarli).
 La funzione `_sanitize_value` in `demo_parser.py` applica il rigore sui tipi di dati (float vs int), ma rispetta i valori grezzi, rifiutando di "pulire" i dati in modo aggressivo che potrebbe cancellare anomalie reali.
 
@@ -335,11 +335,12 @@ La funzione `_sanitize_value` in `demo_parser.py` applica il rigore sui tipi di 
 I file `Volume_01_Introduzione.md` e `Volume_02_Il_Core.md` descrivono come il sistema identifica l'utente (tramite SteamID) per costruire il suo profilo psicometrico nel tempo.
 Ma, seguendo l'etica della "Data Sovereignty", questi dati sono salvati in database locali (`match_data/*.db`), non inviati a un server cloud centrale. Il giocatore possiede i suoi dati. Il suo "Stato di Credenza" e i suoi errori sono privati.
 
-### 9.5 Il Tri-Daemon Engine
-L'architettura a tre demoni (Hunter, Digester, Teacher) descritta in `session_engine.py` riflette la separazione dei compiti:
-*   **Hunter**: Trova i dati grezzi (Esplorazione).
+### 9.5 Il Quad-Daemon Engine
+L'architettura a quattro demoni (Scanner, Digester, Teacher, Pulse) descritta in `session_engine.py` riflette la separazione dei compiti:
+*   **Scanner**: Trova i dati grezzi — file demo e statistiche HLTV (Esplorazione).
 *   **Digester**: Trasforma i dati in $S_t$ (Ricostruzione Forense).
 *   **Teacher**: Trasforma $S_t$ in $b_t$ e Consigli (Analisi Cognitiva).
+*   **Pulse**: Monitora la salute del sistema (heartbeat, metriche CPU/RAM).
 Questa separazione impedisce che la logica di acquisizione contamini la logica di analisi.
 
 ---

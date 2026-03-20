@@ -183,25 +183,24 @@ Inoltre, usiamo i **Signed Distance Fields (SDF)** per normalizzare le distanze 
 Dove mettiamo tutti questi dati? Non possiamo tenerli in RAM.
 Usiamo un'architettura ibrida SQL + Colonnare.
 
-### 6.1 Feature Store (Apache Arrow / Parquet)
-Come spiegato in `07_The_Feature_Store_Architecture.md`, i database tradizionali (SQL) sono lenti per leggere matrici giganti.
-Usiamo **Apache Parquet**. È un formato "Colonnare".
-Invece di salvare i dati riga per riga (Tick 1: Player1, Player2...), li salva colonna per colonna (Tutti i Tick di Player1).
-Questo è perfetto per il Machine Learning, che spesso vuole leggere "Tutte le posizioni X di tutti i giocatori" in una volta sola per calcolare le statistiche.
-Parquet ci permette di leggere gigabyte di dati al secondo, saturando la banda degli SSD NVMe moderni.
+### 6.1 Storage Attuale: SQLite Tri-Database con Sharding
 
-### 6.2 Zero-Copy IPC
-Per passare i dati dal processo di Ingestione (Python/Rust) al processo di Training (PyTorch), usiamo **Zero-Copy IPC (Inter-Process Communication)** con Apache Arrow.
-Normalmente, passare dati tra processi richiede di copiarli e serializzarli (lento).
-Con Arrow, scriviamo i dati in una zona di memoria condivisa (Shared Memory).
-Il processo di Training "mappa" quella memoria e la legge direttamente, senza copiare nulla.
-È come passare un foglio di carta al compagno di banco invece di dettargli il contenuto. La latenza scende da millisecondi a nanosecondi.
+> **Nota di Aggiornamento (2026-03-20):** L'implementazione attuale usa esclusivamente **SQLite** per tutto lo storage, non Apache Parquet/Arrow. La sezione originale descriveva l'architettura target; la realta' implementata e' piu' semplice e altrettanto performante grazie allo sharding per-match.
 
-### 6.3 SQLite in modalità WAL (Volume 18, 19)
-Per i metadati (chi ha vinto, punteggio, ID partita), usiamo **SQLite**.
-Ma lo configuriamo in modalità **WAL (Write-Ahead Logging)**.
-Questo permette di scrivere nuovi dati (dal Demone di Ingestione) mentre l'utente legge i dati vecchi (dalla Dashboard) senza bloccare il database ("Database Locked Error").
+L'architettura di storage e' basata su tre database SQLite (vedi Studio 10 per i dettagli):
+1.  **`database.db`** (monolite): Contiene 17 tabelle per training, statistiche aggregate, stato coaching, knowledge base.
+2.  **`hltv_metadata.db`**: Statistiche dei giocatori professionisti scrapped da hltv.org.
+3.  **`match_data/<demo>.db`** (sharding per-match): Un database SQLite per partita contenente i tick grezzi.
+
+Questa architettura evita il "Telemetry Cliff" (troppe righe in una tabella) isolando i dati pesanti per partita. L'accesso a una singola partita e' O(1): apri il file, non cerchi in miliardi di righe.
+
+### 6.2 SQLite in modalita' WAL (Volume 18, 19)
+Tutti e tre i database sono configurati in modalita' **WAL (Write-Ahead Logging)** via `@event.listens_for` su ogni connessione SQLAlchemy.
+Questo permette di scrivere nuovi dati (dal Demone Digester) mentre l'utente legge i dati vecchi (dalla Dashboard) senza bloccare il database ("Database Locked Error").
 La concorrenza è gestita scrivendo le modifiche in un file a parte (.wal) che viene integrato periodicamente.
+
+### 6.3 Architettura Target: Feature Store Colonnare (Non Implementata)
+Per scenari futuri ad alta intensita' (migliaia di match, training distribuito), il design prevede un **Feature Store** basato su Apache Parquet (formato colonnare) con Zero-Copy IPC tramite Apache Arrow. Questo permetterebbe di leggere gigabyte di dati al secondo saturando la banda degli SSD NVMe. Al momento, lo sharding SQLite e' sufficiente per le esigenze del progetto.
 
 ---
 
@@ -233,8 +232,10 @@ Il jitter sfoca i dati quel tanto che basta per costringere l'IA a imparare conc
 ## 8. Il Demone di Ingestione Autonomo e l'Ingestione Hardware-Aware
 
 Chi fa tutto questo lavoro?
-Il **Demone di Ingestione** (`hltv_sync_service.py`).
-È un processo invisibile che gira in background.
+Il **Demone di Ingestione**, implementato dal **Digester Daemon** in `session_engine.py`.
+È un thread invisibile che gira in background, consumando task dalla coda `IngestionTask` creata dallo **Scanner Daemon**.
+
+> **Nota:** Il file `hltv_sync_service.py` e' un modulo separato che si occupa esclusivamente di scraping delle statistiche dei giocatori professionisti da hltv.org. **Non ha nessuna relazione con il parsing dei file demo o con l'ingestione dei dati di gioco.** Il demone di ingestione demo opera interamente tramite i daemon Scanner e Digester del `SessionEngine`.
 
 ### 8.1 Work-Stealing Queue
 Il parsing di una demo è pesante. Se lo facciamo su un solo core, ci vuole troppo.
@@ -296,10 +297,10 @@ Non mischiamo mai dati di epoche geologiche diverse senza un adattamento esplici
 
 Tutto questo si traduce in codice concreto.
 
-*   `backend/ingestion/demo_parser.py`: Il wrapper Python per la libreria Rust. Gestisce gli errori di parsing e la prima sanitizzazione.
-*   `backend/storage/feature_store.py`: Gestisce i file Parquet/Arrow. Implementa la lettura Zero-Copy.
-*   `backend/processing/normalizer.py`: Contiene le classi per la Trasformazione Quantile e l'Huber-Sigmoid.
-*   `tools/verify_all_safe.py`: Uno script di diagnostica che controlla l'integrità di tutti i file nel Feature Store, ricalcolando i checksum per garantire che non ci sia "Bit Rot" (degrado dei dati su disco).
+*   `backend/data_sources/demo_parser.py`: Il wrapper Python per la libreria Rust `demoparser2`. Gestisce gli errori di parsing e la prima sanitizzazione.
+*   `backend/processing/feature_engineering/vectorizer.py`: Il `FeatureExtractor` che trasforma i dati grezzi nel vettore a 25 dimensioni (`METADATA_DIM = 25`).
+*   `backend/storage/match_data_manager.py`: Gestisce lo sharding per-match (apertura lazy, cache connessioni, pulizia).
+*   `tools/verify_all_safe.py`: Uno script di diagnostica che controlla l'integrita' dei file del progetto, ricalcolando i checksum per garantire che non ci sia "Bit Rot" (degrado dei dati su disco).
 
 ---
 
@@ -316,7 +317,7 @@ Come presentiamo tutto questo all'umano? Come trasformiamo questi tensori e grad
 Nei prossimi studi (Batch 4: 09-12), esploreremo l'applicazione pratica di queste tecnologie:
 *   Lo **Studio 09** approfondirà le Feature specifiche (HLTV Rating 2.0).
 *   Lo **Studio 10** scenderà nei dettagli del Database SQL.
-*   Lo **Studio 11** analizzerà l'architettura di sistema complessiva (Tri-Daemon).
+*   Lo **Studio 11** analizzerà l'architettura di sistema complessiva (Quad-Daemon).
 *   Lo **Studio 12** definirà come validiamo e testiamo tutto questo (Falsificabilità).
 
 Il viaggio continua. Dalla matematica pura all'ingegneria del software.
