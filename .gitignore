@@ -98,5 +98,8 @@ training_progress.json
 validator_out.txt
 identifier.sqlite
 
+# Corrupted git objects backup (filesystem artifact, safe to delete)
+.git_corrupted/
+
 # Node modules (docs PDF generation)
 docs/node_modules/
