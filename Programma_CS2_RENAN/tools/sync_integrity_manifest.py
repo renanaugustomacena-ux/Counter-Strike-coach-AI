@@ -40,7 +40,7 @@ def _compute_hashes() -> dict:
         if "__pycache__" in str(f):
             continue
         try:
-            content = f.read_bytes()
+            content = f.read_bytes().replace(b"\r\n", b"\n")
             h = hashlib.sha256(content).hexdigest()
             hashes[rel.as_posix()] = h
         except (OSError, PermissionError):
