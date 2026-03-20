@@ -2253,11 +2253,9 @@ def verify_manifest_hash_sampling():
         if not full_path.exists():
             mismatches.append(f"{rel_path} (missing)")
             continue
-        h = hashlib.sha256()
-        with open(full_path, "rb") as f:
-            for chunk in iter(lambda: f.read(4096), b""):
-                h.update(chunk)
-        if h.hexdigest() != expected_hash:
+        # Normalize CRLF→LF to match manifest hashing (cross-platform)
+        content = full_path.read_bytes().replace(b"\r\n", b"\n")
+        if hashlib.sha256(content).hexdigest() != expected_hash:
             mismatches.append(f"{rel_path} (hash mismatch)")
     if mismatches:
         raise AssertionError(
