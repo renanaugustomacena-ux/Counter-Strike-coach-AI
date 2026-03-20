@@ -1,15 +1,15 @@
 ## 9. Schema del database e ciclo di vita dei dati
 
-Il progetto utilizza **SQLModel** (Pydantic + SQLAlchemy) con SQLite (modalità WAL) e un'**architettura dual-database** specializzata. 19 tabelle SQLModel principali distribuite su 2 database:
+Il progetto utilizza **SQLModel** (Pydantic + SQLAlchemy) con SQLite (modalità WAL) e un'**architettura dual-database** specializzata. 21 tabelle SQLModel principali distribuite su 2 database:
 
-1. **`database.db`** — Database monolite principale dell'applicazione (16 tabelle). Contiene tutte le tabelle core: statistiche giocatori, stato del coach, task di ingestione, insight di coaching, profili utente, notifiche di sistema, base RAG (`TacticalKnowledge`), banca esperienze COPER (`CoachingExperience`), risultati partite, calibrazioni e soglie di ruolo.
+1. **`database.db`** — Database monolite principale dell'applicazione (18 tabelle). Contiene tutte le tabelle core: statistiche giocatori, stato del coach, task di ingestione, insight di coaching, profili utente, notifiche di sistema, base RAG (`TacticalKnowledge`), banca esperienze COPER (`CoachingExperience`), risultati partite, calibrazioni e soglie di ruolo.
 2. **`hltv_metadata.db`** — Database dei metadati professionali (3 tabelle). Contiene i profili dei giocatori pro (`ProPlayer`, `ProTeam`) e le schede statistiche (`ProPlayerStatCard`). Separato dal monolite perché viene scritto da un processo separato (HLTV sync service) per eliminare la contesa WAL con i daemon del session engine.
 
 Questa separazione garantisce che le operazioni di scrittura intensive del session engine (ingestione demo, addestramento ML → `database.db`) non contendano lock WAL con lo scraping HLTV in processo separato (`hltv_metadata.db`).
 
 ```mermaid
 flowchart TB
-    subgraph DB1["database.db (Core + Conoscenza — 16 tabelle)"]
+    subgraph DB1["database.db (Core + Conoscenza — 18 tabelle)"]
         PMS_DB["PlayerMatchStats"]
         RS_DB["RoundStats"]
         CS_DB["CoachState"]
@@ -24,6 +24,8 @@ flowchart TB
         EXT_DB["Ext_PlayerPlaystyle +<br/>Ext_TeamRoundStats"]
         MATCH_DB["MatchResult + MapVeto"]
         PTS_DB["PlayerTickState"]
+        DL_DB["DataLineage<br/>(append-only)"]
+        DQM_DB["DataQualityMetric<br/>(append-only)"]
     end
     subgraph DB2["hltv_metadata.db (Dati Pro — 3 tabelle)"]
         PRO_DB["ProPlayer"]
@@ -35,7 +37,7 @@ flowchart TB
     style DB2 fill:#ffd43b,color:#000
 ```
 
-> **Analogia:** Il database è l'**archivio** del sistema: ogni informazione ha un cassetto e una cartella specifici. L'architettura dual-database è come avere **due archivi specializzati**: l'archivio principale (dati del gioco, conoscenze tattiche, esperienze di coaching — tutto in un unico grande schedario WAL) e lo schedario dei professionisti (dati HLTV, aggiornato da un processo separato per evitare contesa). Separandoli, il processo principale può scrivere e leggere dall'archivio generale mentre il servizio HLTV aggiorna lo schedario dei pro senza bloccarsi a vicenda. SQLite in modalità WAL consente a più programmi di leggere ciascun archivio contemporaneamente. SQLModel combina Pydantic (per la convalida dei dati: "assicurati che il campo età sia effettivamente un numero") con SQLAlchemy (per le operazioni sul database: "salva questo nella tabella giusta"). Le 19 tabelle sono organizzate come l'archivio scolastico: profili degli studenti, punteggi dei test, appunti di classe, valutazioni degli insegnanti e libri della biblioteca.
+> **Analogia:** Il database è l'**archivio** del sistema: ogni informazione ha un cassetto e una cartella specifici. L'architettura dual-database è come avere **due archivi specializzati**: l'archivio principale (dati del gioco, conoscenze tattiche, esperienze di coaching — tutto in un unico grande schedario WAL) e lo schedario dei professionisti (dati HLTV, aggiornato da un processo separato per evitare contesa). Separandoli, il processo principale può scrivere e leggere dall'archivio generale mentre il servizio HLTV aggiorna lo schedario dei pro senza bloccarsi a vicenda. SQLite in modalità WAL consente a più programmi di leggere ciascun archivio contemporaneamente. SQLModel combina Pydantic (per la convalida dei dati: "assicurati che il campo età sia effettivamente un numero") con SQLAlchemy (per le operazioni sul database: "salva questo nella tabella giusta"). Le 21 tabelle sono organizzate come l'archivio scolastico: profili degli studenti, punteggi dei test, appunti di classe, valutazioni degli insegnanti e libri della biblioteca.
 
 ```mermaid
 erDiagram
@@ -178,9 +180,25 @@ erDiagram
         float value
         int sample_count
     }
+    DataLineage {
+        int id PK
+        string entity_type "indexed"
+        int entity_id "indexed"
+        string source_demo
+        string pipeline_version
+        string processing_step
+    }
+    DataQualityMetric {
+        int id PK
+        string run_id "indexed"
+        string run_type "indexed"
+        string metric_name
+        float metric_value
+        int sample_count
+    }
 ```
 
-> **Spiegazione del diagramma ER:** Ogni riquadro rappresenta un **tipo di record** nel database. `PlayerMatchStats` è come una **pagella** per ogni giocatore in ogni partita (quante uccisioni, morti, la loro valutazione, ecc.). `PlayerTickState` è come un **diario fotogramma per fotogramma**: 128 voci al secondo che registrano esattamente dove si trovava il giocatore, quanto era in salute, in che direzione stava guardando. `RoundStats` è la **scomposizione per domanda**: valutazioni individuali per ogni round (uccisioni, morti, danni, uccisioni noscope, assist flash, valutazione del round), consentendo analisi dettagliate. `CoachingExperience` è il **diario** dell'allenatore: ogni momento di allenamento, se i consigli hanno funzionato e quanto sono stati efficaci. `CoachingInsight` è il **consiglio effettivo** fornito al giocatore. `TacticalKnowledge` è il **libro di testo**: suggerimenti e strategie che l'allenatore può consultare. `RoleThresholdRecord` è la **rubrica di valutazione**, ovvero le soglie apprese per classificare i ruoli dei giocatori. `CalibrationSnapshot` è il **registro di controllo dello strumento**, che registra quando il modello di credenza è stato ricalibrato e con quanti campioni. `Ext_PlayerPlaystyle` è il **report di scouting esterno**, ovvero le metriche dello stile di gioco ricavate dai dati CSV utilizzati per addestrare NeuralRoleHead. `ServiceNotification` è il **sistema di interfono**, ovvero i messaggi di errore ed evento provenienti dai daemon in background mostrati nell'interfaccia utente. Le linee tra le tabelle mostrano le relazioni: ogni record di partita è collegato al profilo di un giocatore, le esperienze di allenamento sono collegate a partite specifiche e RoundStats è collegato a PlayerMatchStats tramite demo_name.
+> **Spiegazione del diagramma ER:** Ogni riquadro rappresenta un **tipo di record** nel database. `PlayerMatchStats` è come una **pagella** per ogni giocatore in ogni partita (quante uccisioni, morti, la loro valutazione, ecc.). `PlayerTickState` è come un **diario fotogramma per fotogramma**: 128 voci al secondo che registrano esattamente dove si trovava il giocatore, quanto era in salute, in che direzione stava guardando. `RoundStats` è la **scomposizione per domanda**: valutazioni individuali per ogni round (uccisioni, morti, danni, uccisioni noscope, assist flash, valutazione del round), consentendo analisi dettagliate. `CoachingExperience` è il **diario** dell'allenatore: ogni momento di allenamento, se i consigli hanno funzionato e quanto sono stati efficaci. `CoachingInsight` è il **consiglio effettivo** fornito al giocatore. `TacticalKnowledge` è il **libro di testo**: suggerimenti e strategie che l'allenatore può consultare. `RoleThresholdRecord` è la **rubrica di valutazione**, ovvero le soglie apprese per classificare i ruoli dei giocatori. `CalibrationSnapshot` è il **registro di controllo dello strumento**, che registra quando il modello di credenza è stato ricalibrato e con quanti campioni. `Ext_PlayerPlaystyle` è il **report di scouting esterno**, ovvero le metriche dello stile di gioco ricavate dai dati CSV utilizzati per addestrare NeuralRoleHead. `ServiceNotification` è il **sistema di interfono**, ovvero i messaggi di errore ed evento provenienti dai daemon in background mostrati nell'interfaccia utente. Le linee tra le tabelle mostrano le relazioni: ogni record di partita è collegato al profilo di un giocatore, le esperienze di allenamento sono collegate a partite specifiche e RoundStats è collegato a PlayerMatchStats tramite demo_name. `DataLineage` è il **registro di provenienza**: traccia quale demo ha originato ogni entità e attraverso quale step del pipeline è stata elaborata (append-only, per audit trail completo). `DataQualityMetric` è il **pannello metriche qualità**: registra valori numerici di qualità per ogni esecuzione del pipeline (es. percentuale campioni scartati, tasso fallback zero-tensor), consentendo il monitoraggio della salute del sistema nel tempo.
 
 **Ciclo di vita dei dati:**
 
@@ -198,6 +216,8 @@ erDiagram
 | Apprendimento delle soglie di ruolo | `RoleThresholdRecord`                                                           | 9 soglie                               |
 | Calibrazione delle convinzioni      | `CalibrationSnapshot` (dopo il riaddestramento)                                 | 1 per ogni calibrazione eseguita       |
 | Telemetria di sistema               | `CoachState`, `ServiceNotification`, `IngestionTask`                        | Continuo                               |
+| Tracciamento provenienza            | `DataLineage` (append-only per ogni entità processata)                          | ~N righe per demo ingerita             |
+| Metriche qualità pipeline           | `DataQualityMetric` (append-only per ogni esecuzione pipeline)                  | ~5-10 metriche per run                 |
 | Backup                              | Automatizzato tramite `BackupManager` (7 rotazioni giornaliere + 4 settimanali) | Copia completa del database            |
 
 **Indici e ottimizzazione query:**
@@ -214,6 +234,8 @@ Le tabelle più interrogate hanno indici strategici per garantire query veloci:
 | `CoachingInsight` | `idx_ci_player` | `player_name` | Insight per giocatore |
 | `TacticalKnowledge` | `idx_tk_category` | `category` | Ricerca RAG per categoria |
 | `ProPlayer` | `idx_pp_name` | `nickname` | Ricerca pro per nome |
+| `DataLineage` | `idx_dl_entity` | `entity_type, entity_id` | Tracciamento provenienza per entità |
+| `DataQualityMetric` | `idx_dqm_run` | `run_id, run_type` | Metriche qualità per esecuzione |
 
 **Vincoli di integrità:**
 
@@ -530,7 +552,7 @@ Questo capitolo documenta la **logica completa** di Macena CS2 Analyzer, dal mom
 ```mermaid
 flowchart TB
     subgraph CITY["LA CITTA' - MACENA CS2 ANALYZER"]
-        MUNI["Municipio<br/>(Kivy UI - Processo Principale)"]
+        MUNI["Municipio<br/>(Qt/Kivy UI - Processo Principale)"]
         CENT["Centrale Operativa Sotterranea<br/>(Session Engine - 4 Daemon)"]
         ARCH["Archivio Comunale<br/>(SQLite WAL - database.db)"]
         POST["Ufficio Postale<br/>(Pipeline Ingestione)"]
@@ -556,11 +578,41 @@ flowchart TB
 
 ---
 
-### 12.1 Punto di Ingresso e Sequenza di Avvio (`main.py`)
+### 12.1 Punto di Ingresso e Sequenza di Avvio
+
+Il sistema dispone di **due entry point principali** (Qt primario, Kivy legacy) e tre entry point di utilità:
+
+| # | Entry Point | Comando | Ruolo |
+|---|---|---|---|
+| 1 | **Qt (primario)** | `python -m Programma_CS2_RENAN.apps.qt_app.app` | UI desktop PySide6 |
+| 2 | Kivy (legacy) | `python -m Programma_CS2_RENAN.main` | UI desktop Kivy/KivyMD |
+| 3 | Session Engine | `python -m Programma_CS2_RENAN.backend.console` | Backend headless |
+| 4 | Headless Validator | `python -m Programma_CS2_RENAN.tools.headless_validator` | Validazione CI/CD |
+| 5 | HLTV Sync | `python -m Programma_CS2_RENAN.tools.hltv_sync` | Scraping dati pro |
+
+#### 12.1.1 Entry Point Qt (Primario) — `apps/qt_app/app.py`
+
+**File:** `Programma_CS2_RENAN/apps/qt_app/app.py`
+
+La sequenza di avvio Qt segue un approccio più moderno basato su **QApplication** e **signal/slot** anziché il loop eventi Kivy:
+
+1. **High-DPI setup** — Abilita scaling automatico per display ad alta densità
+2. **QApplication** — Crea l'istanza applicazione Qt con gestione args
+3. **Tema e font** — Registra i 3 temi (CS2, CSGO, CS1.6) via QSS e i font personalizzati
+4. **MainWindow** — Costruisce `QMainWindow` con sidebar + `QStackedWidget` (13 schermate)
+5. **Signal wiring** — Connette i segnali Qt tra sidebar, schermate e backend
+6. **First-run gate** — Se `SETUP_COMPLETED=False`, mostra il wizard; altrimenti la home
+7. **Backend console boot** — Lancia il Session Engine come subprocess
+8. **Window show** — Mostra la finestra e avvia il loop eventi Qt
+9. **CoachState polling** — Timer Qt per aggiornamento periodico dello stato
+
+> **Analogia:** L'avvio Qt è come l'**accensione di un'auto moderna con start/stop elettronico**. Un singolo pulsante (QApplication) avvia la sequenza: il computer di bordo configura il display (High-DPI), carica il tema del cruscotto (QSS), assembla tutti gli strumenti (13 schermate nel QStackedWidget), collega i sensori (signal wiring), verifica se è il primo avvio (first-run gate), accende il motore (backend console) e infine illumina il cruscotto (window show).
+
+#### 12.1.2 Entry Point Kivy (Legacy) — `main.py`
 
 **File:** `Programma_CS2_RENAN/main.py`
 
-Quando l'utente lancia l'applicazione, `main.py` orchestra una **sequenza di avvio a 9 fasi** rigorosamente ordinata. Ogni fase deve completarsi con successo prima che la successiva possa iniziare. Se una fase critica fallisce, l'applicazione termina con un messaggio esplicito — mai silenziosamente.
+Quando l'utente lancia l'applicazione tramite l'entry point legacy, `main.py` orchestra una **sequenza di avvio a 9 fasi** rigorosamente ordinata. Ogni fase deve completarsi con successo prima che la successiva possa iniziare. Se una fase critica fallisce, l'applicazione termina con un messaggio esplicito — mai silenziosamente.
 
 > **Analogia:** L'avvio del programma è come la **checklist di pre-volo di un aereo**. Prima che l'aereo possa decollare, il pilota (main.py) deve completare una serie di controlli in ordine: verificare l'integrità della fusoliera (audit RASP), impostare gli strumenti (configurazione percorsi), controllare il carburante (migrazione database), accendere i motori (inizializzazione Kivy), caricare i passeggeri (registrazione schermate), attivare il pilota automatico (lancio daemon) e infine decollare (mostrare l'interfaccia). Se un controllo fallisce — ad esempio il carburante è insufficiente (database corrotto) — il volo viene cancellato, non si prova a decollare sperando che vada bene.
 
@@ -619,7 +671,7 @@ L'`AppLifecycleManager` è un **Singleton** che gestisce il ciclo di vita dell'i
 
 ```mermaid
 flowchart LR
-    subgraph MAIN["Processo Principale (Kivy UI)"]
+    subgraph MAIN["Processo Principale (Qt/Kivy UI)"]
         LIFE["AppLifecycleManager"]
         LIFE -->|"1. Verifica mutex"| LOCK["Single Instance Lock"]
         LIFE -->|"2. Lancia subprocess"| DAEMON["Session Engine"]
@@ -765,7 +817,7 @@ flowchart TB
 
 ```mermaid
 sequenceDiagram
-    participant UI as Kivy UI (Main)
+    participant UI as Qt/Kivy UI (Main)
     participant LC as Lifecycle Manager
     participant SE as Session Engine
     participant H as Hunter
@@ -810,14 +862,44 @@ Ogni daemon è protetto da un `try/except` globale. Se un daemon crasha:
 
 ---
 
-### 12.5 Interfaccia Desktop (`apps/desktop_app/`)
+### 12.5 Interfaccia Desktop
+
+L'interfaccia desktop ha due implementazioni: **Qt/PySide6** (primaria) e **Kivy/KivyMD** (legacy). Entrambe seguono il pattern **MVVM** (Model-View-ViewModel).
+
+#### 12.5.1 Interfaccia Qt (Primaria) — `apps/qt_app/`
+
+**Directory:** `Programma_CS2_RENAN/apps/qt_app/`
+**File chiave:** `app.py`, `main_window.py`, `core/i18n_bridge.py`, `core/theme_engine.py`, `screens/`
+
+L'interfaccia Qt è costruita con **PySide6 (Qt 6)** e utilizza un pattern **MVVM con Qt Signals/Slots**. La `MainWindow` (`QMainWindow`) è composta da una **sidebar di navigazione** e un **`QStackedWidget`** che ospita le 13 schermate.
+
+> **Analogia:** L'interfaccia Qt è come un **cruscotto digitale di un'auto sportiva moderna**. Il cruscotto (QStackedWidget) ha diverse modalità di visualizzazione selezionabili dalla barra laterale: la vista "Viaggio" (Home), la vista "Navigazione" (Tactical Viewer con QPainter), la vista "Diagnostica" (Coach), la vista "Impostazioni" (Settings). Il pattern MVVM con Signals/Slots garantisce che ogni interazione utente emetta un "segnale" che viene catturato dallo "slot" appropriato — come i sensori dell'auto che comunicano con il computer di bordo tramite il bus CAN.
+
+| Specifica | Dettaglio |
+|---|---|
+| **Framework** | PySide6 (Qt 6 per Python) |
+| **Pattern** | MVVM con Qt Signals/Slots |
+| **Piattaforme** | Windows, macOS, Linux |
+| **Risoluzione** | Adattiva, High-DPI nativo |
+| **Temi** | 3: CS2 (arancione), CSGO (blu-grigio), CS1.6 (verde) — QSS + QPalette |
+| **i18n** | 3 lingue: EN, IT, PT — JSON + `QtLocalizationManager` |
+| **Grafici** | QPainter per mappa tattica, widget nativi Qt per chart |
+
+**Sistema i18n:** Il `QtLocalizationManager` (`core/i18n_bridge.py`) carica file JSON per lingua (`en.json`, `it.json`, `pt.json`) e gestisce il cambio lingua a runtime tramite segnali Qt. Ogni stringa UI viene risolta dinamicamente tramite chiave di localizzazione.
+
+**Sistema temi:** Il `ThemeEngine` (`core/theme_engine.py`) applica fogli di stile QSS e configura la `QPalette` Qt per ciascun tema:
+- **CS2** — Palette arancione (#FF6600) con sfondo scuro, ispirata alla UI di CS2
+- **CSGO** — Palette blu-grigio (#4A90D9) con toni freddi, ispirata a CS:GO
+- **CS1.6** — Palette verde (#33CC33) su sfondo nero, ispirata al look retrò di CS 1.6
+
+#### 12.5.2 Interfaccia Kivy (Legacy) — `apps/desktop_app/`
 
 **Directory:** `Programma_CS2_RENAN/apps/desktop_app/`
 **File chiave:** `layout.kv`, `wizard_screen.py`, `player_sidebar.py`, `tactical_viewer_screen.py`, `tactical_viewmodels.py`, `tactical_map.py`, `timeline.py`, `widgets.py`, `help_screen.py`, `ghost_pixel.py`
 
-L'interfaccia desktop è costruita con **Kivy + KivyMD** e segue il pattern **MVVM** (Model-View-ViewModel). Lo `ScreenManager` gestisce la navigazione tra le schermate con transizioni `FadeTransition`.
+L'interfaccia legacy è costruita con **Kivy + KivyMD** e segue il pattern **MVVM** (Model-View-ViewModel). Lo `ScreenManager` gestisce la navigazione tra le schermate con transizioni `FadeTransition`.
 
-> **Analogia:** L'interfaccia desktop è come un **cruscotto di un'auto sportiva**. Il cruscotto (ScreenManager) ha diverse modalità di visualizzazione che puoi selezionare: la vista "Viaggio" (Home — dashboard generale), la vista "Navigazione" (Tactical Viewer — mappa 2D), la vista "Diagnostica" (Coach — analisi dettagliata), la vista "Impostazioni" (Settings — personalizzazione). Ogni vista ha i suoi indicatori specializzati. Il pattern MVVM garantisce che il "motore" (ViewModel) e il "display" (View) siano separati: se cambi il design del cruscotto, il motore continua a funzionare identicamente, e viceversa.
+> **Analogia:** L'interfaccia Kivy è come un **cruscotto di un'auto sportiva classica**. Il cruscotto (ScreenManager) ha diverse modalità di visualizzazione che puoi selezionare: la vista "Viaggio" (Home — dashboard generale), la vista "Navigazione" (Tactical Viewer — mappa 2D), la vista "Diagnostica" (Coach — analisi dettagliata), la vista "Impostazioni" (Settings — personalizzazione). Ogni vista ha i suoi indicatori specializzati. Il pattern MVVM garantisce che il "motore" (ViewModel) e il "display" (View) siano separati: se cambi il design del cruscotto, il motore continua a funzionare identicamente, e viceversa.
 
 ```mermaid
 flowchart TB
@@ -873,7 +955,7 @@ flowchart TB
 | Widget | File | Funzione |
 | ------ | ---- | -------- |
 | `PlayerSidebar` | `player_sidebar.py` | Lista CT/T con icone ruolo, salute/armatura, arma corrente, denaro, e stato vivo/morto |
-| `TacticalMap` | `tactical_map.py` | Canvas Kivy 2D con rendering multilivello: texture mappa → heatmap → giocatori → granate → fantasma |
+| `TacticalMap` | `tactical_map.py` | Canvas 2D con rendering multilivello: texture mappa → heatmap → giocatori → granate → fantasma (QPainter in Qt, Canvas Kivy in legacy) |
 | `Timeline` | `timeline.py` | Scrubber orizzontale con tick numbers, marcatori eventi colorati, drag-to-seek, double-click jump |
 | `GhostPixel` | `ghost_pixel.py` | Rendering del cerchio fantasma semi-trasparente (posizione ottimale predetta da RAP) |
 
@@ -1213,11 +1295,11 @@ Il sistema di aiuto integrato fornisce supporto contestuale all'utente:
 
 Il sistema di storage utilizza un'architettura **dual-database** basata su SQLite in modalità WAL (Write-Ahead Logging), che consente letture e scritture concorrenti senza blocchi.
 
-> **Analogia:** L'architettura di storage è come un **sistema bibliotecario a 2 piani**. Il **piano terra** (`database.db`, 16 tabelle) contiene il catalogo generale, le schede di tutti i lettori (giocatori), la base di conoscenza tattica (RAG), la banca esperienze COPER, le recensioni dei critici (insight di coaching) e il registro dei prestiti (task di ingestione) — tutto in un unico grande schedario sempre disponibile. Lo **schedario separato** (`hltv_metadata.db`, 3 tabelle) contiene i profili dei giocatori professionisti e le loro statistiche — separato perché viene aggiornato da un processo diverso (HLTV sync) per evitare contesa di lock. Oltre a questi, i **database per-match** (`match_XXXX.db`) contengono i manoscritti originali completi (dati tick-per-tick delle partite) — ciascuno in una scatola separata per evitare che lo schedario principale diventi troppo pesante. La modalità WAL è come avere una **porta girevole**: molte persone possono entrare a leggere contemporaneamente, e qualcuno può scrivere senza bloccare l'ingresso.
+> **Analogia:** L'architettura di storage è come un **sistema bibliotecario a 2 piani**. Il **piano terra** (`database.db`, 18 tabelle) contiene il catalogo generale, le schede di tutti i lettori (giocatori), la base di conoscenza tattica (RAG), la banca esperienze COPER, le recensioni dei critici (insight di coaching) e il registro dei prestiti (task di ingestione) — tutto in un unico grande schedario sempre disponibile. Lo **schedario separato** (`hltv_metadata.db`, 3 tabelle) contiene i profili dei giocatori professionisti e le loro statistiche — separato perché viene aggiornato da un processo diverso (HLTV sync) per evitare contesa di lock. Oltre a questi, i **database per-match** (`match_XXXX.db`) contengono i manoscritti originali completi (dati tick-per-tick delle partite) — ciascuno in una scatola separata per evitare che lo schedario principale diventi troppo pesante. La modalità WAL è come avere una **porta girevole**: molte persone possono entrare a leggere contemporaneamente, e qualcuno può scrivere senza bloccare l'ingresso.
 
 ```mermaid
 flowchart TB
-    subgraph T12["database.db (Monolite SQLite WAL — 16 tabelle)"]
+    subgraph T12["database.db (Monolite SQLite WAL — 18 tabelle)"]
         PMS["PlayerMatchStats<br/>(32 campi per giocatore/partita)"]
         CS["CoachState<br/>(stato globale del sistema)"]
         IT["IngestionTask<br/>(coda di lavoro)"]
@@ -1230,6 +1312,8 @@ flowchart TB
         EXT["Ext_PlayerPlaystyle +<br/>Ext_TeamRoundStats"]
         CALIB_ST["CalibrationSnapshot +<br/>RoleThresholdRecord"]
         MATCH_ST["MatchResult + MapVeto"]
+        DL_ST["DataLineage<br/>(provenienza append-only)"]
+        DQM_ST["DataQualityMetric<br/>(metriche qualità append-only)"]
     end
     subgraph T_HLTV["hltv_metadata.db (Dati Pro — 3 tabelle)"]
         PRO["ProPlayer + ProTeam +<br/>ProPlayerStatCard"]
@@ -1245,7 +1329,7 @@ flowchart TB
     style T3 fill:#868e96,color:#fff
 ```
 
-**Le 19 tabelle SQLModel:**
+**Le 21 tabelle SQLModel:**
 
 | # | Tabella | Database | Categoria | Descrizione |
 | - | ------- | -------- | --------- | ----------- |
@@ -1268,6 +1352,8 @@ flowchart TB
 | 17 | `MapVeto` | database.db | Partite | Storico selezione mappe |
 | 18 | `CalibrationSnapshot` | database.db | Sistema | Registro di calibrazione del modello di credenza (timestamp, campioni, risultato) |
 | 19 | `RoleThresholdRecord` | database.db | Sistema | Soglie apprese per la classificazione dei ruoli (persistite tra i riavvii) |
+| 20 | `DataLineage` | database.db | Provenienza | Registro append-only di provenienza dati: entity_type, entity_id, source_demo, pipeline_version, processing_step |
+| 21 | `DataQualityMetric` | database.db | Provenienza | Metriche qualità append-only per run: run_id, run_type, metric_name, metric_value, sample_count |
 
 **Enum di supporto (non tabelle):**
 
@@ -1390,7 +1476,7 @@ Il sistema di playback tattico consente all'utente di **rivivere le proprie part
 ```mermaid
 flowchart TB
     subgraph VIEWER["TACTICAL VIEWER - COMPONENTI"]
-        MAP["TacticalMap (Canvas Kivy)<br/>Rendering 2D: giocatori (cerchi colorati),<br/>granate (overlay HE/molotov/fumo/flash),<br/>heatmap (sfondo calore gaussiano),<br/>fantasma AI (cerchio trasparente posizione ottimale)"]
+        MAP["TacticalMap (QPainter Qt / Canvas Kivy)<br/>Rendering 2D: giocatori (cerchi colorati),<br/>granate (overlay HE/molotov/fumo/flash),<br/>heatmap (sfondo calore gaussiano),<br/>fantasma AI (cerchio trasparente posizione ottimale)"]
         TIMELINE["Timeline (Scrubber)<br/>Barra di scorrimento con tick numbers,<br/>marcatori eventi (uccisioni, piazzamenti),<br/>drag per cercare, double-click per saltare"]
         SIDEBAR["PlayerSidebar (CT + T)<br/>Lista giocatori per squadra,<br/>salute, armatura, arma, denaro,<br/>giocatore selezionato evidenziato"]
         CONTROLS["Controlli Playback<br/>Play/Pause, velocità (0.25x → 8x),<br/>selettore round/segmento,<br/>toggle fantasma on/off"]
@@ -1416,7 +1502,7 @@ flowchart TB
 
 **PlaybackEngine — Architettura interna:**
 
-Il PlaybackEngine gestisce la riproduzione frame-by-frame con interpolazione temporale:
+Il PlaybackEngine gestisce la riproduzione frame-by-frame con interpolazione temporale. Nell'implementazione Qt, il timer di aggiornamento utilizza `QTimer` anziché `Kivy Clock.schedule_interval`, mantenendo la stessa logica di interpolazione e buffering:
 
 | Caratteristica | Dettaglio |
 | -------------- | --------- |
@@ -1761,6 +1847,11 @@ flowchart TB
 | Browser Playwright crash | BrowserManager: ricrea istanza, retry operazione | Nessuna — scraping HLTV ritardato |
 | Conflitto WAL (lock contention) | Timeout 30s con retry automatico | Nessuna — operazione ritardata |
 | Checkpoint ML corrotto | Fallback a checkpoint precedente (versionamento) | Parziale — perde ultimo training |
+| Vettore query norma-zero (M-07) | `VectorIndex.search()` ritorna `None` con warning — pipeline RAG continua senza crash | Nessuna — risultato RAG vuoto |
+| File settings.json corrotto (M-08) | `load_user_settings()` valida struttura, fallback a default se non-dict | Nessuna — impostazioni predefinite |
+| Logger non inizializzato (C-09) | Bootstrap anticipato usa `print()` prima dell'init del logger | Nessuna — messaggi su stdout |
+| DB handle leak su integrity check (H-02) | `_verify_integrity()` usa `try/finally` + `PRAGMA quick_check` | Nessuna — connessione sempre chiusa |
+| Errori batch mascherati in RAP training (H-03) | Rimosso `except (KeyError, TypeError): continue` — `train_step()` richiede dict con key `'loss'` | Nessuna — errori ora visibili |
 
 **Degradazione graduale — La Catena di Fallback:**
 
@@ -1810,7 +1901,7 @@ Questa sezione descrive i **4 flussi principali** che un utente attraversa duran
 ```mermaid
 sequenceDiagram
     participant U as Utente
-    participant UI as Kivy UI
+    participant UI as Qt/Kivy UI
     participant H as Hunter Daemon
     participant D as Digester Daemon
     participant CS as CoachingService
@@ -2033,7 +2124,7 @@ flowchart TB
 | 1 | **Ambiente** | Python ≥ 3.10, dipendenze critiche presenti (torch, kivy, sqlmodel, demoparser2) |
 | 2 | **Import Core** | `config.py`, `spatial_data.py`, `lifecycle.py` — i moduli fondamentali si caricano senza errori |
 | 3 | **Import Backend** | `nn/`, `processing/`, `storage/`, `services/`, `coaching/` — tutti i sottosistemi backend importabili |
-| 4 | **Schema DB** | Le 19 tabelle SQLModel si creano correttamente, le relazioni sono valide |
+| 4 | **Schema DB** | Le 21 tabelle SQLModel si creano correttamente, le relazioni sono valide |
 | 5 | **Configurazione** | `METADATA_DIM`, percorsi, costanti — valori coerenti e raggiungibili |
 | 6 | **ML Smoke** | Istanziazione modelli (JEPA, RAP, MoE) con pesi casuali — verificano dimensioni e forward pass |
 | 7 | **Osservabilità** | `get_logger()` funzionante, `StateManager` inizializzabile, log path scrivibile |
@@ -2127,7 +2218,7 @@ Questo strumento esegue un audit a **3 fasi** sulla pipeline ML:
 | `dead_code_detector.py` | `tools/` | Identifica codice morto non referenziato |
 | `sync_integrity_manifest.py` | `tools/` | Aggiorna `integrity_manifest.json` con hash SHA-256 |
 | `project_snapshot.py` | `tools/` | Snapshot completo dello stato del progetto |
-| `ui_diagnostic.py` | `tools/` | Diagnostica specifica Kivy/KivyMD |
+| `ui_diagnostic.py` | `tools/` | Diagnostica specifica UI (Qt/Kivy) |
 | `build_pipeline.py` | Root `tools/` | Pipeline di build completa |
 | `Feature_Audit.py` | Root | Audit del feature vector 25-dim |
 | `Sanitize_Project.py` | Root | Pulizia file temporanei, cache, artifacts |
@@ -2212,7 +2303,7 @@ Script di verifica one-shot per validare specifici aspetti del sistema:
 | ------ | -------- |
 | `verify_feature_pipeline.py` | METADATA_DIM=25 rispettato in tutti i percorsi |
 | `verify_training_cycle.py` | 4 fasi training completano senza errore |
-| `verify_db_schema.py` | 19 tabelle presenti con schema corretto |
+| `verify_db_schema.py` | 21 tabelle presenti con schema corretto |
 | `verify_coaching_pipeline.py` | Demo → insight path end-to-end |
 | `verify_imports.py` | Tutti i moduli importabili senza errori circolari |
 | `verify_rag_index.py` | Knowledge base indexata con dimensioni corrette (384-dim) |
@@ -2888,7 +2979,7 @@ La funzione `infer_round_phase(equipment_value)` è un'**utilità condivisa** ut
 13. **Per-Round Statistical Isolation** — Il modello `RoundStats` impedisce la contaminazione tra round, consentendo un coaching granulare a livello di round e valutazioni HLTV 2.0 per round.
 14. **Architettura Quad-Daemon** — Separazione completa tra GUI e lavoro pesante, con shutdown coordinato e zombie task cleanup automatico.
 15. **Degradazione graduale pervasiva** — Ogni componente ha un piano di fallback: il sistema non crasha mai, degrada sempre in modo controllato.
-16. **Architettura Dual-Database** — Separazione di `database.db` (core + conoscenza, 16 tabelle) e `hltv_metadata.db` (dati pro, 3 tabelle) per eliminare la contesa WAL tra le operazioni del session engine e lo scraping HLTV in processo separato.
+16. **Architettura Dual-Database** — Separazione di `database.db` (core + conoscenza, 18 tabelle) e `hltv_metadata.db` (dati pro, 3 tabelle) per eliminare la contesa WAL tra le operazioni del session engine e lo scraping HLTV in processo separato.
 17. **Calibrazione Bayesiana Live (G-07)** — Lo stimatore di morte si auto-calibra con `extract_death_events_from_db()` → `auto_calibrate()`, trasformandosi da modello statico a sistema adattivo.
 18. **Controllo Live Addestramento (MLControlContext)** — Pause/resume/stop/throttle in tempo reale del training via `threading.Event`, con eccezione custom `TrainingStopRequested` al posto di `StopIteration`.
 19. **Circuit Breaker Resiliente** — `_CircuitBreaker` per API esterne (HLTV) con MAX_FAILURES=10, RESET_WINDOW_S=3600, previene cascade failure con pattern CLOSED→OPEN→HALF_OPEN.
@@ -2941,11 +3032,12 @@ Modelli documentati: **6** (AdvancedCoachNN/TeacherRefinementNN, JEPA, VL-JEPA, 
 Motori di analisi documentati: **10** (Ruolo, WinProb, GameTree, Credenza, Inganno, Momentum, Entropia, Punti Ciechi, Utilità ed Economia, Distanza di Ingaggio)
 Motori di coaching documentati: **7** (HybridEngine, CorrectionEngine, ExplainabilityGenerator, NNRefinement, ProBridge, TokenResolver, LongitudinalEngine)
 Servizi aggiuntivi documentati: **7** (CoachingDialogue, LessonGenerator, LLMService, VisualizationService, ProfileService, AnalysisService, TelemetryClient)
-Tabelle di database documentate: **19** (distribuite su architettura dual-database: `database.db`, `hltv_metadata.db`)
-Schermate UI documentate: **13** (Wizard, Home, Coach, Tactical Viewer, Settings, Help, Match History, Match Detail, Performance, User Profile, Profile, Steam Config, FACEIT Config)
+Tabelle di database documentate: **21** (distribuite su architettura dual-database: `database.db`, `hltv_metadata.db`)
+Schermate UI documentate: **13** (Wizard, Home, Coach, Tactical Viewer, Settings, Help, Match History, Match Detail, Performance, User Profile, Profile, Steam Config, FACEIT Config) — Qt/PySide6 (primario) + Kivy/KivyMD (legacy)
 Daemon documentati: **4** (Hunter, Digester, Teacher, Pulse)
 Strumenti di validazione documentati: **35** (Headless Validator, Brain Verify, Goliath Hospital, DB Inspector, Demo Inspector, ML Coach Debugger, Backend Validator, Dead Code Detector, etc.)
-File di test documentati: **73** (+ conftest.py, 10 forensics, 15 verification scripts)
+File di test documentati: **78** (+ conftest.py, 10 forensics, 15 verification scripts) — 1.506 test totali
+Fasi headless validator: **24+** (291+ controlli automatizzati)
 Pre-commit hooks documentati: **10** (4 locali custom + 6 standard)
 Pilastri architetturali: **24** (inclusi Dual-Database, Calibrazione Bayesiana Live, Controllo Live Training, Circuit Breaker, Piramide Validazione, RASP Guard, Pre-commit Gate, ResourceManager HW-aware, Forensics)
 Problemi risolti tramite rimediazione: **368** (in 12 fasi sistematiche)
@@ -2976,7 +3068,7 @@ flowchart TB
         P2_CT["Control Module<br/>(Console, Governor, ML)"]
     end
     subgraph PART3["PARTE 3 — Programma Completo"]
-        P3_DB["Database<br/>(19 tabelle, dual-DB)"]
+        P3_DB["Database<br/>(21 tabelle, dual-DB)"]
         P3_TR["Training Regime<br/>(4 fasi, VL-JEPA 2-stage)"]
         P3_UI["Desktop UI<br/>(13 schermate, MVVM)"]
         P3_SE["Session Engine<br/>(4 daemon)"]
