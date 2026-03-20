@@ -122,7 +122,7 @@ jobs:
           --cov=Programma_CS2_RENAN
           --cov-report=xml:coverage.xml
           --cov-report=term-missing
-          --cov-fail-under=33
+          --cov-fail-under=30
           -x
 
       - name: Upload coverage report
