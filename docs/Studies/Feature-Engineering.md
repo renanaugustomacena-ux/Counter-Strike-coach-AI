@@ -1,13 +1,16 @@
 ---
 titolo: "Studio 09: Feature Engineering e Spazio Vettoriale"
 autore: "Renan Augusto Macena"
-versione: "1.0.0"
-data: "2026-02-21"
+versione: "2.0.0"
+data: "2026-03-20"
+data_originale: "2026-02-21"
 parole_target: 12000
 fonti_md_sintetizzate: 5
 fonti_pdf_sintetizzate: 2
-stato: "COMPLETO"
+stato: "AGGIORNATO"
 ---
+
+> **Nota di Aggiornamento v2.0.0 (2026-03-20):** Il vettore unificato e' stato espanso da 19 a **25 dimensioni** dopo la pubblicazione originale (v1.0.0, 2026-02-21). Sono stati aggiunti 6 nuovi indici (19-24): `weapon_class`, `time_in_round`, `bomb_planted`, `teammates_alive`, `enemies_alive`, `team_economy`. Tutte le tabelle e i riferimenti dimensionali in questo studio sono stati aggiornati di conseguenza. Il codice di riferimento e' `vectorizer.py` con `METADATA_DIM = 25`.
 
 # Studio 09: Feature Engineering e Spazio Vettoriale
 
@@ -22,7 +25,7 @@ stato: "COMPLETO"
 ## Indice
 
 1. Introduzione e Contesto: La Raffineria dei Dati
-2. Il Vettore Unificato a 19 Dimensioni: Architettura del FeatureExtractor
+2. Il Vettore Unificato a 25 Dimensioni: Architettura del FeatureExtractor
 3. Reverse Engineering del Rating HLTV 2.0: Metodologia e Scoperta
 4. La Formula HLTV 2.0: Coefficienti e Validazione (R²=0.995)
 5. Interpretazione dei Coefficienti e Implicazioni per il Coaching
@@ -44,7 +47,7 @@ Nel Macena CS2 Analyzer, il Feature Engineering è la raffineria che prende il p
 Senza questa raffineria, l'Intelligenza Artificiale annegherebbe nel rumore.
 
 In questo studio, ci concentreremo su tre pilastri:
-1.  **Il Vettore Tattico**: Come riduciamo la complessità di un giocatore a 19 numeri essenziali.
+1.  **Il Vettore Tattico**: Come riduciamo la complessità di un giocatore a 25 numeri essenziali.
 2.  **L'Oracolo HLTV**: Come abbiamo reverse-ingegnerizzato la formula segreta del rating più famoso del mondo (HLTV 2.0) per dare al nostro Coach un metro di giudizio "ufficiale".
 3.  **La Visualizzazione**: Come trasformiamo numeri astratti in mappe di calore intuitive che l'occhio umano può leggere in un istante.
 
@@ -52,13 +55,13 @@ Questa è la scienza di trasformare i dati in significato.
 
 ---
 
-## 2. Il Vettore Unificato a 19 Dimensioni: Architettura del FeatureExtractor
+## 2. Il Vettore Unificato a 25 Dimensioni: Architettura del FeatureExtractor
 
 L'IA non può ragionare su "Renan". Deve ragionare su un vettore numerico che *rappresenta* Renan in un dato istante.
-Abbiamo definito il **Vettore Unificato a 19 Dimensioni** come interfaccia standard tra il motore di gioco e il cervello neurale.
+Abbiamo definito il **Vettore Unificato a 25 Dimensioni** come interfaccia standard tra il motore di gioco e il cervello neurale.
 
 ### 2.1 Anatomia del Vettore
-Ogni tick (istante di gioco), il sistema estrae questi 19 valori per ogni giocatore:
+Ogni tick (istante di gioco), il sistema estrae questi 25 valori per ogni giocatore:
 
 | Indice | Feature | Tipo | Range | Normalizzazione | Significato Tattico |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -78,14 +81,20 @@ Ogni tick (istante di gioco), il sistema estrae questi 19 valori per ogni giocat
 | 16 | `kast_estimate` | Float | $[0, 1]$ | Stima | Stima KAST (Kill/Assist/Survive/Trade) per tick. |
 | 17 | `map_id` | Float | $[0, 1]$ | $/ N_{mappe}$ | Identificativo numerico della mappa attiva. |
 | 18 | `round_phase` | Float | $[0, 1]$ | Encoding | Fase del round (freeze, live, planted, over). |
+| 19 | `weapon_class` | Float | $[0, 1]$ | Categoriale | Classe dell'arma (0=knife, 0.2=pistol, 0.4=SMG, 0.6=rifle, 0.8=sniper, 1.0=heavy). |
+| 20 | `time_in_round` | Float | $[0, 1]$ | $/ 115$ | Secondi trascorsi nel round (normalizzati sulla durata massima). |
+| 21 | `bomb_planted` | Binary | $\{0, 1\}$ | - | Se la bomba e' stata piazzata in questo tick. |
+| 22 | `teammates_alive` | Float | $[0, 1]$ | $/ 4$ | Compagni di squadra vivi (normalizzato su 4). |
+| 23 | `enemies_alive` | Float | $[0, 1]$ | $/ 5$ | Nemici vivi (normalizzato su 5). |
+| 24 | `team_economy` | Float | $[0, 1]$ | $/ 16000$ | Media economica del team (normalizzata). |
 
-### 2.2 Perché questi 19?
-Non sono stati scelti a caso. Ogni feature risponde a una domanda specifica del "JEPA Brain" (Studio 07).
+### 2.2 Perché questi 25?
+Non sono state scelte a caso. Ogni feature risponde a una domanda specifica del "JEPA Brain" (Studio 07).
 *   **Perché Sin/Cos per la vista?** (12-13): L'angolo $359^\circ$ è vicinissimo a $1^\circ$, ma numericamente sono lontani ($|359-1|=358$). Usando Seno e Coseno, manteniamo la continuità circolare. L'IA capisce che girare la testa da 359 a 1 è un movimento piccolo.
 *   **Perché l'Equipaggiamento è normalizzato?** (4): Il valore massimo di un loadout è circa $10.000 (AWP + Armor + Granate). Dividendo per 10.000, otteniamo un numero tra 0 e 1 che l'IA può gestire senza esplodere (Gradient Explosion).
 *   **Perché Helmet separato da Armor?** (2): In CS2, l'elmetto cambia radicalmente la dinamica. Senza elmetto, una pistola da 300$ ti uccide con un colpo. Con l'elmetto, no. È una distinzione binaria critica.
 
-Questo vettore è la "Lingua Franca" del sistema. Il Parser (`demoparser2`, libreria Rust con binding Python) parla in coordinate grezze, l'IA parla PyTorch, ma entrambi si incontrano su questo vettore a 19 dimensioni definito in `vectorizer.py`.
+Questo vettore è la "Lingua Franca" del sistema. Il Parser (`demoparser2`, libreria Rust con binding Python) parla in coordinate grezze, l'IA parla PyTorch, ma entrambi si incontrano su questo vettore a 25 dimensioni definito in `vectorizer.py` (`METADATA_DIM = 25`).
 
 ---
 
@@ -273,7 +282,7 @@ Questa funzione è usata ovunque: nei report post-partita, nella dashboard, e pe
 ## 10. Sintesi e Connessioni con gli Altri Studi
 
 In questo studio, abbiamo trasformato i dati grezzi in **Informazione Strutturata**.
-Abbiamo definito il linguaggio (Vettore 19-dim) con cui l'IA parla.
+Abbiamo definito il linguaggio (Vettore 25-dim) con cui l'IA parla.
 Abbiamo definito il metro di giudizio (Rating 2.0) con cui l'IA valuta.
 Abbiamo definito la visualizzazione (Heatmap) con cui l'IA comunica all'uomo.
 

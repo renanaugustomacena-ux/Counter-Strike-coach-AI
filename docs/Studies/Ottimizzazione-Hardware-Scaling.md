@@ -9,6 +9,8 @@ fonti_pdf_sintetizzate: 0
 stato: "COMPLETO"
 ---
 
+> **Nota di Aggiornamento (2026-03-20):** I riferimenti a "19 canali semantici" in questo studio riflettono l'architettura v1.0.0. Il vettore di stato e' stato successivamente espanso a **25 dimensioni**. Vedere Studio 09 v2.0.0.
+
 # Studio 15: Ottimizzazione Hardware, Deployment e Scaling
 
 > **Autore**: Renan Augusto Macena

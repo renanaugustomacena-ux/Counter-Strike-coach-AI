@@ -25,7 +25,7 @@ Estensione Vision-Language di JEPA per comprensione tattica visivo-linguistica.
 AdvancedCoachNN legacy con routing Mixture of Experts per coaching multi-dominio.
 
 ### Neural Role Head (`role_head.py`)
-Input di meta-feature a 70 dimensioni per consenso soft a 4 ruoli (Entry Fragger / Lurker / Support / AWPer).
+Input di meta-feature a 70 dimensioni per consenso soft a 5 ruoli (Entry Fragger / Lurker / Support / AWPer / Anchor).
 
 ### Win Probability Model (`win_probability.py`)
 Previsione della probabilità di vincita del round basata su economia, posizionamento e stato del momentum.

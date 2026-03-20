@@ -9,6 +9,8 @@ fonti_pdf_sintetizzate: 6
 stato: "COMPLETO"
 ---
 
+> **Nota di Aggiornamento (2026-03-20):** I riferimenti a "tensore a 19 canali" in questo studio riflettono l'architettura v1.0.0. Il vettore di stato e' stato successivamente espanso a **25 dimensioni**. Vedere Studio 09 v2.0.0 per la tabella aggiornata.
+
 # Studio 06: Architettura Cognitiva, POMDP e Decisione
 
 > **Autore**: Renan Augusto Macena

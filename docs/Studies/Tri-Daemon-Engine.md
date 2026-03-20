@@ -9,6 +9,8 @@ fonti_pdf_sintetizzate: 0
 stato: "COMPLETO"
 ---
 
+> **Nota di Aggiornamento (2026-03-20):** Il sistema e' stato formalmente rinominato **Quad-Daemon Engine** nei README del progetto per riflettere i 4 daemon operativi (Hunter, Digester, Teacher, Pulse). Il nome storico "Tri-Daemon" e' mantenuto nel titolo di questo studio per coerenza bibliografica.
+
 # Studio 11: Tri-Daemon Engine e Architettura di Sistema
 
 > **Autore**: Renan Augusto Macena

@@ -40,8 +40,8 @@ Guida completa per installare, configurare e utilizzare il Macena CS2 Analyzer s
 ### 2.1 Clonare il Repository
 
 ```bash
-git clone https://github.com/renanaugustomacena-ux/Macena_cs2_analyzer.git
-cd Macena_cs2_analyzer
+git clone https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI.git
+cd Counter-Strike-coach-AI
 ```
 
 ### 2.2 Windows (Configurazione Automatica)
@@ -111,7 +111,10 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 
 # Installa le dipendenze (ignora kivy-deps specifici per Windows se pip si lamenta)
 pip install -r Programma_CS2_RENAN/requirements.txt
-pip install Kivy==2.3.0 KivyMD==1.2.0
+pip install PySide6
+
+# Opzionale: UI legacy Kivy come fallback (non richiesta)
+# pip install Kivy==2.3.0 KivyMD==1.2.0
 
 # Inizializza il database
 python -c "import sys; sys.path.append('.'); from Programma_CS2_RENAN.backend.storage.database import init_database; init_database()"
@@ -126,14 +129,14 @@ python -m playwright install chromium
 ```bash
 # Attiva prima il tuo venv, poi:
 python -c "import torch; print(f'PyTorch: {torch.__version__}')"
-python -c "import kivy; print(f'Kivy: {kivy.__version__}')"
+python -c "import PySide6; print(f'PySide6: {PySide6.__version__}')"
 python -c "from Programma_CS2_RENAN.backend.nn.config import get_device; print(f'Device: {get_device()}')"
 ```
 
 Output atteso (esempio con GPU):
 ```
 PyTorch: 2.5.1+cu121
-Kivy: 2.3.0
+PySide6: 6.8.0
 Device: cuda:0
 ```
 
@@ -141,19 +144,21 @@ Device: cuda:0
 
 ```bash
 # Windows
-.\venv_win\Scripts\python.exe Programma_CS2_RENAN/main.py
+.\venv_win\Scripts\python.exe -m Programma_CS2_RENAN.apps.qt_app.app
 
 # Linux
-./venv_linux/bin/python Programma_CS2_RENAN/main.py
+./venv_linux/bin/python -m Programma_CS2_RENAN.apps.qt_app.app
 ```
 
 La finestra si apre a 1280x720. Al **primo avvio**, vedrai la Procedura Guidata di Configurazione (Setup Wizard).
+
+> **UI Legacy Kivy (fallback):** Se preferisci l'interfaccia originale basata su Kivy, avvia con `python Programma_CS2_RENAN/main.py`. Richiede Kivy e KivyMD installati.
 
 ---
 
 ## 3. Primo Avvio e Procedura Guidata di Configurazione
 
-Quando esegui main.py per la prima volta, l'app mostra una **procedura guidata di configurazione in 3 passaggi**.
+Quando avvii l'app per la prima volta, mostra una **procedura guidata di configurazione in 3 passaggi**.
 
 ### Passaggio 1: Schermata di Benvenuto
 
@@ -439,9 +444,16 @@ Mostra il tuo avatar, nome, ruolo e biografia. Clicca l'**icona della matita** p
 
 ## 13. Risoluzione dei Problemi
 
-### "ModuleNotFoundError: No module named 'kivy'"
+### "ModuleNotFoundError: No module named 'PySide6'"
 
-Le dipendenze di Kivy non sono installate. Su Windows:
+PySide6 (il framework dell'interfaccia Qt) non e' installato:
+```bash
+pip install PySide6
+```
+
+### UI Legacy: "ModuleNotFoundError: No module named 'kivy'"
+
+Necessario solo se stai usando l'interfaccia legacy Kivy come fallback. Su Windows:
 ```bash
 pip install kivy-deps.glew==0.3.1 kivy-deps.sdl2==0.7.0 kivy-deps.angle==0.4.0
 pip install Kivy==2.3.0 KivyMD==1.2.0
@@ -480,9 +492,9 @@ pip install sentence-transformers
 ```
 La prima esecuzione scarica un modello di ~80MB — questo e' previsto.
 
-### L'app si blocca all'avvio con errore Kivy GL
+### UI Legacy: L'app si blocca all'avvio con errore Kivy GL
 
-Su Windows, prova:
+Questo si applica solo all'interfaccia legacy Kivy (`python Programma_CS2_RENAN/main.py`). Su Windows, prova:
 ```bash
 set KIVY_GL_BACKEND=angle_sdl2
 python Programma_CS2_RENAN/main.py
@@ -492,6 +504,8 @@ Su Linux:
 export KIVY_GL_BACKEND=sdl2
 python Programma_CS2_RENAN/main.py
 ```
+
+> **Suggerimento:** Se stai usando l'interfaccia Qt principale, questo errore non si applica. Avvia con `python -m Programma_CS2_RENAN.apps.qt_app.app`.
 
 ### Errore di blocco database ("database is locked")
 
@@ -518,7 +532,9 @@ Questo e' un avviso in modalita' sviluppo proveniente dall'audit di sicurezza RA
 
 ### L'app si apre ma mostra una schermata bianca/vuota
 
-Il file di layout KV non e' riuscito a caricarsi. Controlla:
+**UI Qt:** Assicurati di eseguire dalla directory principale del progetto (non dall'interno di `Programma_CS2_RENAN/`). Prova: `python -m Programma_CS2_RENAN.apps.qt_app.app`
+
+**UI Legacy Kivy:** Il file di layout KV non e' riuscito a caricarsi. Controlla:
 1. Stai eseguendo dalla directory principale del progetto (non dall'interno di `Programma_CS2_RENAN/`)
 2. Il file `Programma_CS2_RENAN/apps/desktop_app/layout.kv` esiste
 3. Esegui: `python Programma_CS2_RENAN/main.py` (non `python main.py`)
@@ -549,7 +565,7 @@ La procedura guidata di configurazione apparira' di nuovo al prossimo avvio.
 
 | Azione | Come |
 |--------|------|
-| Avvia l'app | `python Programma_CS2_RENAN/main.py` |
+| Avvia l'app | `python -m Programma_CS2_RENAN.apps.qt_app.app` |
 | Riesegui la procedura guidata | Elimina `user_settings.json`, riavvia |
 | Cambia cartella demo | Impostazioni (Settings) > Percorsi di Analisi (Analysis Paths) > Cambia (Change) |
 | Aggiungi chiave Steam | Schermata Principale (Home) > Personalizzazione (Personalization) > Steam |

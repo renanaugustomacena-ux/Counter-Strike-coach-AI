@@ -1,5 +1,12 @@
 # Getting Started with Macena CS2 Analyzer
 
+## 0. Launching the Application
+Launch the primary Qt interface from the project root:
+```bash
+python -m Programma_CS2_RENAN.apps.qt_app.app
+```
+> *Legacy fallback:* `python Programma_CS2_RENAN/main.py` (requires Kivy/KivyMD)
+
 ## 1. Initial Setup & Requirements
 The setup wizard guides you through the core configuration. For the analyzer to function at peak precision, ensure:
 - **Default Demo Path**: Points to your CS2 demo folder (e.g., `...\game\csgo\demos`).

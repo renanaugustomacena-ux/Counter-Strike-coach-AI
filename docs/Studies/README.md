@@ -33,7 +33,7 @@ These volumes define how the machine learns and thinks.
     *   *Key Concepts:* `PPO-Clip`, `GAE (Generalized Advantage Estimation)`, `Curriculum Learning`.
 
 *   **[Studio 05: Architettura Percettiva e Corteccia Visiva](Studio_05_Architettura_Percettiva.md)**
-    *   *Topic:* The "Eyes". The 19-channel tensor retina that processes wall-control, smoke-density, and enemy-belief.
+    *   *Topic:* The "Eyes". The 25-channel tensor retina that processes wall-control, smoke-density, and enemy-belief (expanded from 19 to 25 dimensions post-v1.0.0).
     *   *Key Concepts:* `Semantic Channels`, `Occlusion Masks`, `Visual Cortex`.
 
 *   **[Studio 06: Architettura Cognitiva e POMDP](Studio_06_Architettura_Cognitiva.md)**

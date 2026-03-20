@@ -2,7 +2,7 @@
 
 # Suíte de Testes
 
-Suíte de testes abrangente com mais de 390 testes seguindo a pirâmide de testes (unit > integration > e2e).
+Suíte de testes abrangente com mais de 1,515 testes seguindo a pirâmide de testes (unit > integration > e2e).
 
 ## Princípios Fundamentais
 
