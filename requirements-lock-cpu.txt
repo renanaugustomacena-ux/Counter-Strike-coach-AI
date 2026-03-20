@@ -48,7 +48,7 @@ httpx==0.28.1
 humanize==4.15.0
 idna==3.11
 ImageIO==2.37.2
-importlib_metadata==8.7.1
+importlib_metadata==9.0.0
 importlib_resources==6.5.2
 iniconfig==2.3.0
 jaraco.classes==3.4.0
