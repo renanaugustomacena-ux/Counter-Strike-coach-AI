@@ -8,6 +8,7 @@ Covers:
 """
 
 import sys
+import threading
 from unittest.mock import MagicMock
 
 import pytest
@@ -349,9 +350,17 @@ class TestClassifyRole:
 class TestExtractRoleFeatures:
     """Tests for extract_role_features function."""
 
-    def test_auto_detect_role(self):
+    def test_auto_detect_role(self, monkeypatch):
         from Programma_CS2_RENAN.backend.processing.feature_engineering.role_features import (
+            _heuristic_classify_role,
             extract_role_features,
+        )
+
+        # Route classify_role to the heuristic fallback — real production code
+        # that works without learned thresholds (CI has no database).
+        monkeypatch.setattr(
+            "Programma_CS2_RENAN.backend.processing.feature_engineering.role_features.classify_role",
+            _heuristic_classify_role,
         )
 
         stats = {
@@ -361,9 +370,13 @@ class TestExtractRoleFeatures:
             "kpr": 0.78,
             "adr": 85.0,
         }
+        # No role argument — auto-detection via heuristic must classify as ENTRY
+        # (stats are an exact match for ROLE_SIGNATURES[ENTRY], distance = 0).
         features = extract_role_features(stats)
-        assert "detected_role" in features
+        assert features["detected_role"] == "entry"
         assert len(features) > 1
+        # Verify deviation features are present (proves role-specific extraction worked)
+        assert "opening_attempts_per_round_deviation" in features
 
     def test_with_explicit_role(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering.role_features import (
@@ -472,6 +485,7 @@ class TestCoachingDialogueIntent:
         engine._system_prompt = ""
         engine._history = []
         engine._session_active = False
+        engine._state_lock = threading.Lock()
         return engine
 
     def test_positioning_intent(self):
@@ -507,6 +521,7 @@ class TestCoachingDialogueSystemPrompt:
         engine._system_prompt = ""
         engine._history = []
         engine._session_active = False
+        engine._state_lock = threading.Lock()
         return engine
 
     def test_system_prompt_contains_player_name(self):
@@ -546,6 +561,7 @@ class TestCoachingDialogueChatMessages:
         engine._system_prompt = ""
         engine._history = []
         engine._session_active = True
+        engine._state_lock = threading.Lock()
         return engine
 
     def test_empty_history(self):
@@ -580,6 +596,7 @@ class TestCoachingDialogueOffline:
         engine._system_prompt = ""
         engine._history = []
         engine._session_active = False
+        engine._state_lock = threading.Lock()
         return engine
 
     def test_offline_opening(self):

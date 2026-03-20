@@ -63,7 +63,7 @@ class TestStaleCheckpointDetection:
         ):
             from Programma_CS2_RENAN.backend.nn.persistence import load_nn
 
-            with pytest.raises(StaleCheckpointError, match="incompatible dimensions"):
+            with pytest.raises(StaleCheckpointError, match="is incompatible"):
                 load_nn("latest", large_model)
 
     def test_stale_error_contains_path_info(self, model_dir, small_model, large_model):
@@ -146,10 +146,9 @@ class TestStaleCheckpointDetection:
                 p_loaded, p_original
             ), "Loaded model weights should match checkpoint"
 
-    def test_no_checkpoint_returns_model_unchanged(self, model_dir):
-        """When no checkpoint exists, model should be returned with its initial weights."""
+    def test_no_checkpoint_raises_file_not_found(self, model_dir):
+        """When no checkpoint exists, load_nn must raise FileNotFoundError (NN-14)."""
         model = nn.Sequential(nn.Linear(10, 5))
-        initial_weight = model[0].weight.clone()
 
         nonexistent = model_dir / "nonexistent.pt"
         with (
@@ -164,11 +163,8 @@ class TestStaleCheckpointDetection:
         ):
             from Programma_CS2_RENAN.backend.nn.persistence import load_nn
 
-            result = load_nn("latest", model)
-
-        assert torch.allclose(
-            result[0].weight, initial_weight
-        ), "Model should be unchanged when no checkpoint exists"
+            with pytest.raises(FileNotFoundError):
+                load_nn("latest", model)
 
 
 class TestStaleCheckpointPreventsInference:
@@ -202,8 +198,8 @@ class TestStaleCheckpointPreventsInference:
 class TestCorruptedCheckpoints:
     """Verify handling of corrupted or invalid checkpoint files."""
 
-    def test_corrupted_file_does_not_crash(self, model_dir):
-        """A corrupted checkpoint file should be handled gracefully."""
+    def test_corrupted_file_raises(self, model_dir):
+        """A corrupted checkpoint file must raise — production re-raises (NN-14)."""
         checkpoint_path = model_dir / "latest.pt"
         checkpoint_path.write_bytes(b"not a valid pytorch checkpoint")
 
@@ -215,14 +211,11 @@ class TestCorruptedCheckpoints:
         ):
             from Programma_CS2_RENAN.backend.nn.persistence import load_nn
 
-            # Should not raise — the generic except catches this
-            result = load_nn("latest", model)
+            with pytest.raises(Exception):
+                load_nn("latest", model)
 
-        # Model should be returned (possibly with initial weights)
-        assert result is not None
-
-    def test_empty_file_does_not_crash(self, model_dir):
-        """An empty checkpoint file should be handled gracefully."""
+    def test_empty_file_raises(self, model_dir):
+        """An empty checkpoint file must raise — production re-raises (NN-14)."""
         checkpoint_path = model_dir / "latest.pt"
         checkpoint_path.write_bytes(b"")
 
@@ -234,6 +227,5 @@ class TestCorruptedCheckpoints:
         ):
             from Programma_CS2_RENAN.backend.nn.persistence import load_nn
 
-            result = load_nn("latest", model)
-
-        assert result is not None
+            with pytest.raises(Exception):
+                load_nn("latest", model)

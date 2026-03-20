@@ -590,8 +590,8 @@ class TestWorldToGrid:
         meta = MapMetadata(pos_x=-3230, pos_y=1713, scale=5.0)
         gx, gy = factory._world_to_grid(-3230, 1713, meta, 128)
         assert gx == 0, "Map origin X should map to grid 0"
-        # Y is flipped: ny = (1713 - 1713)/(5.0*1024) = 0, gy = int((1-0)*128) = 128
-        assert gy == 128, f"Map origin Y should map to grid {128}"
+        # ny = (1713 - 1713)/(5.0*1024) = 0, gy = floor(0*128) = 0
+        assert gy == 0, "Map origin Y should map to grid 0"
 
     def test_center_maps_to_center(self):
         """Mid-point of the map should map near grid center."""

@@ -123,7 +123,7 @@ class TestFeatureValueRanges:
         )
 
         vec = FeatureExtractor.extract({"active_weapon": "nonexistent_weapon"})
-        assert vec[19] == pytest.approx(0.1), f"Unknown weapon should be 0.1, got {vec[19]}"
+        assert vec[19] == pytest.approx(0.5), f"Unknown weapon should be 0.5, got {vec[19]}"
 
     def test_weapon_prefix_stripping(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import (

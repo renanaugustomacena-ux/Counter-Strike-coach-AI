@@ -383,9 +383,10 @@ class TestRoleThresholdStore:
         """Realistic pro stats → thresholds learned, exits cold start."""
         store = self._make_store()
         pro_stats = []
-        for i in range(20):
+        for i in range(35):
             pro_stats.append(
                 {
+                    "player_name": f"pro_{i}",
                     "awp_kills": 5 + i,
                     "total_kills": 50 + i,
                     "entry_frags": 3 + i % 5,
@@ -404,6 +405,7 @@ class TestRoleThresholdStore:
         store = self._make_store()
         pro_stats = [
             {
+                "player_name": f"pro_{i}",
                 "awp_kills": 10,
                 "total_kills": 50,
                 "entry_frags": 5,
@@ -412,14 +414,15 @@ class TestRoleThresholdStore:
                 "rounds_survived": 20,
                 "solo_kills": 3,
             }
-        ] * 15  # 15 identical records
+            for i in range(35)
+        ]
         store.learn_from_pro_data(pro_stats)
         # awp_kill_ratio = 10/50 = 0.2 for all → 75th percentile = 0.2
         t = store._thresholds["awp_kill_ratio"]
         assert t.value is not None
-        assert t.sample_count == 15
+        assert t.sample_count == 35
         assert t.source == "hltv"
 
     def test_min_samples_constant(self):
         store = self._make_store()
-        assert store.MIN_SAMPLES_FOR_VALIDITY == 10
+        assert store.MIN_SAMPLES_FOR_VALIDITY == 30

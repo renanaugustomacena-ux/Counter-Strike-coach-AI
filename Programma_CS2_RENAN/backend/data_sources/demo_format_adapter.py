@@ -219,8 +219,8 @@ class DemoFormatAdapter:
 
         # Pattern 2: Extremely small file relative to typical match
         # A full match is usually > 50 MB
-        if file_size < 1024 * 1024:  # < 1 MB
-            warnings.append("File under 1 MB — may be a partial/corrupted recording")
+        if file_size < 50 * 1024 * 1024:  # < 50 MB
+            warnings.append("File under 50 MB — may be a partial/corrupted recording")
 
         return warnings
 

@@ -138,7 +138,7 @@ class TestJEPAComponents:
         loss.backward()
 
         # Check gradients exist (only for JEPA components)
-        jepa_params = ["context_encoder", "target_encoder", "predictor"]
+        jepa_params = ["context_encoder", "predictor"]  # target_encoder is EMA — no gradients
         for name, param in model.named_parameters():
             if param.requires_grad and any(comp in name for comp in jepa_params):
                 assert param.grad is not None, f"No gradient for {name}"

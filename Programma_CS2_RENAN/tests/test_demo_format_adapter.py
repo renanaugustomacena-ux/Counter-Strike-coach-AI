@@ -34,7 +34,7 @@ def _make_temp_demo(content: bytes, suffix: str = ".dem") -> str:
     return path
 
 
-def _make_cs2_demo(size: int = 2048) -> str:
+def _make_cs2_demo(size: int = MIN_DEMO_SIZE) -> str:
     """Create a temp file with valid CS2 header and specified size."""
     header = DEMO_MAGIC_V2
     padding = b"\x00" * (size - len(header))
@@ -79,13 +79,13 @@ class TestValidation:
             os.unlink(path)
 
     def test_validate_valid_cs2_header(self):
-        path = _make_cs2_demo(size=2048)
+        path = _make_cs2_demo()
         try:
             result = DemoFormatAdapter().validate_demo(path)
             assert result["valid"] is True
             assert result["error"] is None
             assert result["version"] == "cs2_protobuf"
-            assert result["file_size"] == 2048
+            assert result["file_size"] == MIN_DEMO_SIZE
         finally:
             os.unlink(path)
 
@@ -114,8 +114,8 @@ class TestValidation:
             os.unlink(path)
 
     def test_corruption_warning_unaligned(self):
-        # Size 2049 is not divisible by 4
-        path = _make_cs2_demo(size=2049)
+        # MIN_DEMO_SIZE + 1 is not divisible by 4
+        path = _make_cs2_demo(size=MIN_DEMO_SIZE + 1)
         try:
             result = DemoFormatAdapter().validate_demo(path)
             assert result["valid"] is True
@@ -126,12 +126,12 @@ class TestValidation:
             os.unlink(path)
 
     def test_corruption_warning_small_file(self):
-        # Size 2048 is < 1 MB threshold for small-file warning
-        path = _make_cs2_demo(size=2048)
+        # MIN_DEMO_SIZE (10 MB) is < 50 MB threshold for small-file warning
+        path = _make_cs2_demo()
         try:
             result = DemoFormatAdapter().validate_demo(path)
             assert result["valid"] is True
-            small_warnings = [w for w in result["warnings"] if "1 mb" in w.lower()]
+            small_warnings = [w for w in result["warnings"] if "50 mb" in w.lower()]
             assert len(small_warnings) >= 1
         finally:
             os.unlink(path)
@@ -225,7 +225,7 @@ class TestIntegration:
         from Programma_CS2_RENAN.ingestion.integrity import validate_dem_file
 
         # CS2 demo should pass
-        cs2_path = _make_cs2_demo(size=2048)
+        cs2_path = _make_cs2_demo()
         try:
             validate_dem_file(cs2_path)  # Should not raise
         finally:
@@ -242,7 +242,7 @@ class TestIntegration:
 
     def test_validate_demo_file_convenience(self):
         """Convenience function produces same result as class method."""
-        path = _make_cs2_demo(size=4096)
+        path = _make_cs2_demo()
         try:
             result_func = validate_demo_file(path)
             result_class = DemoFormatAdapter().validate_demo(path)
