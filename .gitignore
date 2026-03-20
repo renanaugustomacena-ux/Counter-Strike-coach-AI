@@ -16,6 +16,7 @@ __pycache__/
 dist/
 build/
 *.spec
+!packaging/*.spec
 *.zip
 *.tar.gz
 
