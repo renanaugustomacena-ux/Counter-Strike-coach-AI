@@ -7,10 +7,14 @@ Requires PySide6 installed. No pytest-qt dependency needed.
 """
 
 import importlib
+import os
 import sys
 from pathlib import Path
 
 import pytest
+
+# Must be set BEFORE any PySide6 import — enables headless CI (no display server).
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 # ── Path stabilization (same pattern as headless_validator) ──
 _project_root = Path(__file__).parent.parent.parent
