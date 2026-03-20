@@ -6,7 +6,6 @@ Covers:
   E2E: ModelFactory → RAPCoachModel → forward, skill_vec curriculum
 """
 
-import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -17,7 +16,9 @@ def _has_rap_deps():
     """Check if RAP optional dependencies (ncps, hflayers) are installed."""
     try:
         import ncps  # noqa: F401
+
         import hflayers  # noqa: F401
+
         return True
     except ImportError:
         return False
