@@ -1,55 +1,145 @@
-# Visualização & Geração de Relatórios
+# Visualizacao & Geracao de Relatorios
 
 > **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
-## Visão Geral
+**Autoridade:** `Programma_CS2_RENAN/reporting/`
+**Proprietario:** camada de apresentacao do Macena CS2 Analyzer
 
-Motor de visualização baseado em Matplotlib e geração de relatórios PDF. Produz heatmaps, mapas de engajamento, gráficos de momentum, detalhamentos de utilitários e relatórios de desempenho multi-seção.
+## Introducao
 
-## Componentes Principais
+Este pacote transforma dados brutos de analise de partida em artefatos visuais legiveis
+e relatorios estruturados. Ele se situa na camada mais externa da arquitetura, consumindo
+saidas das pipelines de processamento, analise e coaching para produzir heatmaps,
+overlays diferenciais, anotacoes de momentos criticos e relatorios Markdown
+multi-secao. Todo o rendering e suportado por Matplotlib com gerenciamento
+deterministico do ciclo de vida das figuras para prevenir vazamentos de memoria.
 
-### `visualizer.py`
-- **`MatchVisualizer`** — Classe de visualização principal para análise de partida
-- **Geração de heatmap** — Localizações de morte, zonas de engajamento, uso de utilitários sobrepostos em layouts de mapa
-- **Mapas de engajamento** — Posicionamento de jogadores durante momentos críticos com marcadores scale-aware (micro/standard/macro)
-- **Gráficos de momentum** — Linha do tempo de momentum round-por-round com anotações de vitória/derrota
-- **Legenda de escala** — Indicador visual para escala de momento crítico (micro=100px, standard=200px, macro=350px)
-- Gerenciamento de figuras Matplotlib com controle de DPI para saída de alta qualidade
+## Inventario de Arquivos
 
-### `report_generator.py`
-- **Geração de relatórios PDF** — Relatórios multi-página com seções: Overview, Round Breakdown, Economy Timeline, Highlights
-- **Visualização de rating HLTV 2.0** — Gráficos de barras comparando usuário vs baseline pro
-- **Detalhamento de utilitários** — Gráficos de barras para HE, molotov, smokes, flashes, utilitários não usados
-- **Cards de desempenho por-mapa** — Rating, K/D, ADR, KAST% por mapa
-- **Forças/Fraquezas** — Comparação de Z-score contra baseline profissional
+| Arquivo | Proposito | Exports Principais |
+|---------|-----------|-------------------|
+| `visualizer.py` | Motor de visualizacao de mapas baseado em Matplotlib | `MatchVisualizer`, `generate_highlight_report()` |
+| `report_generator.py` | Construtor de relatorios de partida multi-secao | `MatchReportGenerator` |
+| `__init__.py` | Marcador de pacote | -- |
 
-### `backend/reporting/analytics.py`
-- **`get_rating_history()`** — Tendência de rating ao longo do tempo para renderização de sparkline
-- **`get_per_map_stats()`** — Estatísticas de desempenho agregadas agrupadas por mapa
-- **`get_strength_weakness()`** — Identifica top 3 forças e fraquezas via Z-score
-- **`get_utility_breakdown()`** — Comparação de uso de utilitários usuário vs pro com métricas de eficácia
-- **`get_hltv2_breakdown()`** — Detalhamento de componentes de rating HLTV 2.0 (K, S, KAST)
+## Arquitetura & Conceitos
 
-## Padrões de Visualização
+### Motor de Visualizacao de Mapas (`visualizer.py`)
 
-Todas as visualizações usam:
-- **Projeção de coordenadas map-aware** — Coordenadas de tick → coordenadas de pixel via `SpatialData`
-- **Tratamento de Z-cutoff** — Mapas multi-nível (Nuke, Vertigo) com separação de planos verticais
-- **Consistência de cores** — Cores de time (CT=azul, T=laranja), cores de severidade (crítico=vermelho, warning=amarelo)
-- **Saída de alta DPI** — 300 DPI para incorporação em PDF, 150 DPI para preview de UI
+`MatchVisualizer` e a classe central de rendering. Ela produz tres categorias de saida
+visual:
 
-## Renderização de Momentos Críticos
+1. **Heatmaps de Posicao** (`generate_heatmap`) -- histograma 2D das posicoes de
+   jogadores sobreposto ao fundo do mapa. Usa uma grade de 64 bins com colourmap
+   `"magma"` e limite minimo de contagem (`cmin=1`) para suprimir bins vazios.
 
-- **Escala micro** (1-3 ticks): marcador 100px, contorno laranja
-- **Escala padrão** (4-10 ticks): marcador 200px, contorno vermelho
-- **Escala macro** (>10 ticks): marcador 350px, preenchimento vermelho escuro
+2. **Overlays Diferenciais** (`render_differential_overlay`) -- heatmap divergente
+   comparando posicionamento do usuario contra baselines profissionais. O algoritmo:
+   - Converte cada conjunto de posicoes em uma grade de densidade com `resolution`
+     configuravel (padrao 128).
+   - Aplica desfoque Gaussiano (`sigma=5.0`) via `scipy.ndimage.gaussian_filter`.
+   - Normaliza cada densidade independentemente, depois computa a diferenca.
+   - Mascara regioes com atividade insignificante (limiar `< 0.02`).
+   - Renderiza com colourmap divergente `RdBu_r` e `TwoSlopeNorm` centrado em zero.
+   - Regioes azuis indicam posicionamento pesado do usuario; regioes vermelhas indicam
+     posicionamento pesado de profissionais.
 
-## Integração
+3. **Mapas de Momentos Criticos** (`render_critical_moments`) -- scatter plot anotado
+   de eventos-chave identificados pelo `ChronovisorScanner`. Cada momento e renderizado
+   como marcador colorido por severidade, formatado por tipo e dimensionado por escala:
 
-Usado por `VisualizationService` para orquestração e telas de UI (`PerformanceScreen`, `MatchDetailScreen`) para renderização de gráficos inline.
+   | Severidade | Cor | Tipo | Marcador | Escala | Pixels |
+   |------------|-----|------|----------|--------|--------|
+   | critical | vermelho | play | `^` (triangulo para cima) | macro | 350 |
+   | critical | vermelho | mistake | `v` (triangulo para baixo) | standard | 200 |
+   | significant | laranja | play/mistake | `^` / `v` | standard | 200 |
+   | notable | ouro | play/mistake | `o` (circulo) | micro | 100 |
 
-## Formatos de Saída
+4. **Graficos de Erros por Round** (`plot_round_errors`) -- scatter plot marcando
+   localizacoes de morte (vermelho `x`) e decisoes ruins sinalizadas pelo coach
+   (laranja `P`) para um unico round.
 
-- PNG para exibição em UI
-- PDF para exportação de relatórios
-- SVG para incorporação web (futuro)
+Todos os metodos de rendering seguem o padrao **try/finally** (`DA-VZ-01`),
+garantindo `plt.close(fig)` mesmo quando `savefig` lanca excecao. Isso previne
+vazamentos de figuras Matplotlib em condicoes de erro.
+
+#### Fundo do Mapa & Limites
+
+Imagens de fundo sao carregadas de `assets/maps/` usando caminhos definidos em
+`data/map_tensors.json`. Uma guarda de path traversal (`VZ-02`) valida que o caminho
+de imagem resolvido permaneca dentro de `assets_dir` antes do carregamento. Seis mapas
+possuem limites hardcoded em `_get_bounds()`: `de_mirage`, `de_inferno`, `de_dust2`,
+`de_nuke`, `de_overpass` e `de_ancient`. Mapas desconhecidos recaem para bounding box
+`(-4000, 4000, -4000, 4000)`.
+
+### Gerador de Relatorios (`report_generator.py`)
+
+`MatchReportGenerator` orquestra a pipeline completa de relatorios:
+
+1. **Parse** -- carrega o arquivo demo via `DemoLoader`.
+2. **Extracao** -- itera os frames parseados para coletar posicoes de jogadores e
+   eventos de morte.
+3. **Visualizacao** -- chama `MatchVisualizer.generate_heatmap()` para produzir a
+   heatmap de posicionamento.
+4. **Escrita** -- produz um arquivo de relatorio Markdown com timestamp contendo:
+   - Nome do mapa e data de geracao.
+   - Imagem heatmap incorporada (caminho relativo, `RG-02`).
+   - Secao de analise de erros fundamentais.
+
+O diretorio de saida e ancorado a `USER_DATA_ROOT/reports` com guarda de escape de
+caminho (`RG-01`) garantindo que o relatorio permaneca sob a raiz de dados do usuario.
+
+#### Anotacoes de Seguranca
+
+| Codigo | Guarda |
+|--------|--------|
+| `DA-VZ-01` | Fechamento de figuras `try/finally` para prevenir vazamentos de memoria |
+| `VZ-02` | Prevencao de path traversal para imagens de fundo de mapa |
+| `DA-RG-01` | Ancoragem de caminho absoluto para diretorio de saida de relatorios |
+| `RG-01` | Validacao de escape de caminho garantindo saida sob `USER_DATA_ROOT` |
+| `RG-02` | Caminho relativo em Markdown para evitar exposicao da estrutura do filesystem |
+
+### Integracao de Highlight Report (`generate_highlight_report`)
+
+A funcao a nivel de modulo `generate_highlight_report(match_id, map_name)` conecta
+o modelo RAP Coach com o motor de visualizacao. Ela:
+
+1. Verifica se o modelo RAP esta habilitado via `get_setting("USE_RAP_MODEL")`.
+2. Instancia `ChronovisorScanner` e escaneia a partida em busca de momentos criticos.
+3. Converte cada `CriticalMoment` em um dict de anotacao highlight.
+4. Renderiza a imagem de mapa anotada via `render_critical_moments()`.
+
+Esta funcao e guardada por um amplo `try/except` com logging de erros, garantindo que
+falhas de visualizacao nunca causem crash da pipeline chamadora.
+
+## Integracao
+
+| Consumidor | Uso |
+|------------|-----|
+| `apps/qt_app/screens/` | Rendering de graficos inline em `PerformanceScreen`, `MatchDetailScreen` |
+| `backend/services/analysis_orchestrator.py` | Chama `generate_highlight_report()` durante pos-analise |
+| `backend/nn/rap_coach/chronovisor_scanner.py` | Fornece objetos `CriticalMoment` para rendering |
+| `ingestion/demo_loader.py` | Fornece frames parseados consumidos por `MatchReportGenerator` |
+| `core/config.py` | `USER_DATA_ROOT` para ancoragem de caminho de saida de relatorios |
+
+## Formatos de Saida
+
+| Formato | DPI | Caso de Uso |
+|---------|-----|-------------|
+| PNG | 150 | Exibicao em UI, previews inline |
+| PNG (alta resolucao) | 300 | Incorporacao em PDF, arquivamento |
+| Markdown | -- | Relatorios de texto estruturado com referencias de imagens incorporadas |
+
+## Notas de Desenvolvimento
+
+- **Ciclo de vida das figuras**: cada figura Matplotlib deve ser criada e fechada no
+  mesmo escopo de metodo. Nunca armazene referencias de figuras como atributos de
+  instancia.
+- **Saida deterministica**: nomes de arquivo incluem nome do mapa e timestamp para
+  prevenir colisoes. Bins de heatmap e colourmap sao fixos para reprodutibilidade.
+- **Isolamento de dependencias**: `scipy.ndimage.gaussian_filter` e a unica importacao
+  do SciPy; `numpy` e usado para computacao de grade. Ambos sao dependencias
+  obrigatorias.
+- **Testes**: testes do visualizer usam `matplotlib.use("Agg")` para evitar requisitos
+  de backend GUI. Testes do report generator fazem mock do `DemoLoader` e verificam
+  a saida de arquivos.

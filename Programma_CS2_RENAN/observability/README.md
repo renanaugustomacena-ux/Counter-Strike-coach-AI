@@ -2,66 +2,129 @@
 
 > **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
-## Overview
+**Authority:** `Programma_CS2_RENAN/observability/`
+**Owner:** Macena CS2 Analyzer core infrastructure
 
-Runtime application self-protection (RASP), structured logging with correlation IDs, and Sentry error tracking with PII scrubbing. Provides comprehensive observability for debugging, security auditing, and production monitoring.
+## Introduction
 
-## Key Components
+This package provides the three pillars of runtime observability for the CS2 Analyzer:
+structured logging, integrity protection, and remote error tracking. Every module in the
+project routes its diagnostics through this package, ensuring a single, consistent
+observability surface. The design prioritises deterministic behaviour, zero silent
+failures, and strict PII isolation before any data leaves the process boundary.
 
-### `rasp.py`
-- **`RASPGuard`** — Runtime integrity verification via file hash checking
-- **`run_rasp_audit()`** — Scans Python source files and compares against integrity manifest
-- **`IntegrityError`** — Custom exception raised when hash mismatch detected
-- Detects unauthorized code modifications, supply chain attacks, and file corruption
-- Audit results logged with severity levels (CRITICAL, ERROR, WARNING)
+## File Inventory
 
-### `logger_setup.py`
-- **`get_logger(name)`** — Factory function for structured loggers
-- Correlation ID injection for request tracing across modules
-- JSON-formatted log output for machine parsing
-- Log level filtering by module namespace
-- Automatic redaction of sensitive fields (PII, secrets, tokens)
-- File rotation with compression and retention policy
+| File | Purpose | Key Exports |
+|------|---------|-------------|
+| `logger_setup.py` | Centralised structured JSON logging with correlation IDs | `get_logger()`, `get_tool_logger()`, `set_correlation_id()`, `configure_log_dir()`, `configure_retention()` |
+| `rasp.py` | Runtime Application Self-Protection integrity guard | `RASPGuard`, `run_rasp_audit()`, `IntegrityError` |
+| `sentry_setup.py` | Sentry SDK integration with double opt-in and PII scrubbing | `init_sentry()`, `add_breadcrumb()` |
+| `error_codes.py` | Centralised error code registry with severity and remediation | `ErrorCode`, `log_with_code()`, `get_all_codes()` |
+| `exceptions.py` | Domain exception hierarchy rooted at `CS2AnalyzerError` | `CS2AnalyzerError`, `ConfigurationError`, `DatabaseError`, `IngestionError`, `TrainingError`, `IntegrationError`, `UIError` |
+| `__init__.py` | Package marker | -- |
 
-### `sentry_setup.py`
-- **`init_sentry()`** — Initializes Sentry SDK with environment-specific DSN
-- **`add_breadcrumb()`** — Contextual breadcrumb logging for error reports
-- **PII scrubbing** — Automatic removal of sensitive data from stack traces
-- Performance monitoring with transaction sampling
-- Release tagging for version tracking
-- Environment separation (development/staging/production)
+## Architecture & Concepts
 
-## Structured Logging Pattern
+### Structured Logging (`logger_setup.py`)
 
-```python
-from observability.logger_setup import get_logger
+All loggers are created via `get_logger("cs2analyzer.<module>")`. The factory wires
+each logger to two handlers:
 
-logger = get_logger("cs2analyzer.mymodule")
-logger.info("Processing match", extra={"match_id": 12345, "map": "de_dust2"})
-logger.error("Ingestion failed", extra={"file": "demo.dem", "error_code": "PARSE_ERROR"})
-```
+1. **File handler** -- `RotatingFileHandler` writing JSON lines to `cs2_analyzer.log`
+   (5 MB rotation, 3 backups). Falls back to plain `FileHandler` when a
+   `PermissionError` occurs (Windows lock contention, annotated as `LS-01`).
+2. **Console handler** -- human-readable format at `WARNING` threshold, keeping
+   stdout clean during normal operation.
 
-## RASP Audit Integration
+Every log record is enriched by `_CorrelationFilter`, which injects the thread-local
+`correlation_id` set via `set_correlation_id()`. This enables end-to-end tracing of a
+single ingestion job, training cycle, or coaching session across all modules.
 
-RASP audit runs:
-- On application startup (if `config.ENABLE_RASP=True`)
-- Via CLI: `python macena.py sys rasp-audit`
-- In CI/CD pipeline via `Goliath_Hospital.py` security checks
+The log level is resolved at logger creation time from the `CS2_LOG_LEVEL` environment
+variable (e.g. `CS2_LOG_LEVEL=DEBUG`), allowing zero-code debug sessions without
+modifying source files. Runtime reconfiguration is also possible via
+`configure_log_level(logging.DEBUG)`.
 
-## Sentry Integration
+Standalone CLI tools (validators, diagnostics) use `get_tool_logger(tool_name)`, which
+writes to a dedicated `logs/tools/<tool_name>_<timestamp>.json` file to avoid
+polluting the main application log.
 
-Error tracking configuration:
-- `SENTRY_DSN` loaded from environment variable
-- Sample rate: 100% in development, 10% in production
-- Traces sample rate: 10% for performance monitoring
-- PII scrubbing via `before_send` hook
+`configure_retention(max_days=30)` enforces a log lifecycle policy by purging `.log`
+and `.json` files older than the retention window. Best-effort -- OS errors are silently
+ignored to avoid crashing the application over housekeeping.
 
-## Correlation IDs
+### RASP Integrity Guard (`rasp.py`)
 
-All log entries include `correlation_id` for request tracing. Generated at ingestion/analysis/coaching entry points and propagated through call chain.
+`RASPGuard` verifies that no Python source file has been tampered with since the last
+build or manifest generation. It reads `core/integrity_manifest.json`, which maps
+relative file paths to their SHA-256 hashes, and compares each entry against the live
+filesystem.
 
-## Log Retention
+Key behaviours:
 
-- Development: 7 days
-- Production: 90 days
-- Critical errors: permanent retention in Sentry
+- **HMAC signing** (`R1-12`): the manifest itself is signed with an HMAC-SHA256 key.
+  Production builds inject the key via `CS2_MANIFEST_KEY`; development falls back to
+  a static key with a logged warning (`RP-01`).
+- **Frozen binary support**: when running inside a PyInstaller bundle, the manifest
+  is resolved from `sys._MEIPASS` with multiple candidate paths.
+- **Convenience entry point**: `run_rasp_audit(project_root)` instantiates the guard,
+  runs the check, and logs all violations at `CRITICAL` level.
+
+### Sentry Error Tracking (`sentry_setup.py`)
+
+Remote error reporting follows a **double opt-in** model: both `enabled=True` and a
+valid `dsn` string must be provided. This prevents accidental telemetry leaks.
+
+PII is stripped in the `_before_send` hook before any event leaves the process:
+
+- `server_name` is replaced with `"redacted"`.
+- Stack-trace filenames containing the user home directory are scrubbed.
+- Breadcrumb messages and data fields are sanitised identically.
+
+The SDK is initialised with `send_default_pii=False` and a 10% `traces_sample_rate`
+for lightweight performance monitoring. The `LoggingIntegration` captures WARNING-level
+breadcrumbs and escalates ERROR-level records to full Sentry events.
+
+`add_breadcrumb()` is a no-op when Sentry is not initialised, making it safe to call
+unconditionally throughout the codebase.
+
+### Error Code Registry (`error_codes.py`)
+
+Every annotated error code in the project (e.g. `LS-01`, `RP-01`, `SE-04`) is
+registered as an `ErrorCode` enum member carrying severity, owning module, description,
+and remediation guidance. `log_with_code(ErrorCode.LS_01, "message")` prefixes the
+message with the formal code for machine-parseable log grepping.
+
+### Exception Hierarchy (`exceptions.py`)
+
+All domain exceptions inherit from `CS2AnalyzerError`, which accepts an optional
+`error_code` parameter for structured logging. Subtypes include
+`ConfigurationError`, `DatabaseError`, `IngestionError`, `TrainingError`,
+`IntegrationError`, and `UIError`.
+
+## Integration
+
+| Consumer | Usage |
+|----------|-------|
+| `core/session_engine.py` | `set_correlation_id()` at daemon cycle start; `run_rasp_audit()` at boot |
+| `core/config.py` | `configure_log_dir(LOG_DIR)` after path resolution to break circular import |
+| `ingestion/` pipeline | `get_logger()` + correlation IDs for per-demo tracing |
+| `backend/nn/` training | `get_logger()` for epoch/loss logging; `add_breadcrumb()` at checkpoints |
+| `apps/qt_app/` | `init_sentry()` at application startup with user-consented DSN |
+| `tools/` scripts | `get_tool_logger()` for isolated tool diagnostics |
+| Pre-commit hooks | `run_rasp_audit()` via `tools/headless_validator.py` |
+
+## Development Notes
+
+- **Circular import guard**: `config.py` needs `get_logger()` at import time, but
+  `get_logger()` must not import from `config`. The solution is `configure_log_dir()`,
+  called by `config.py` after `LOG_DIR` is computed.
+- **Thread safety**: `_correlation_local` uses `threading.local()`, so correlation IDs
+  are isolated per thread. Daemon threads in the Quad-Daemon engine each set their
+  own ID at cycle start.
+- **Testing**: in test suites, `CS2_LOG_LEVEL=DEBUG` and `configure_log_dir(tmp_path)`
+  redirect all output to a temporary directory. Sentry is automatically skipped when
+  `pytest` is detected in `sys.modules`.
+- **Pre-commit**: the `integrity-manifest` hook regenerates and signs the manifest;
+  `headless_validator.py` runs `run_rasp_audit()` to verify it.

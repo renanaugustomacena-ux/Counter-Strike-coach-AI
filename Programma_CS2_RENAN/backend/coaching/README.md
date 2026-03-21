@@ -1,35 +1,173 @@
 > **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
-# Coaching — Multi-Mode Coaching Pipeline
+# Coaching -- Multi-Mode Coaching Pipeline
 
-Coaching pipeline orchestration with four operational modes: COPER (Experience Bank + RAG + Pro References), Hybrid (ML + RAG synthesis), RAG (knowledge retrieval only), and Neural Network (pure ML).
+> **Authority:** `backend/coaching/`
+> **Skill:** `/ml-check`, `/api-contract-review`
+> **Owner module:** `backend/services/coaching_service.py`
 
-## Core Engines
+## Overview
 
-### Primary Orchestration
-- **hybrid_engine.py** — `HybridCoachingEngine` — Synthesizes machine learning predictions with RAG knowledge retrieval for balanced coaching insights
+The coaching package is the intelligence layer that transforms raw analysis data into
+actionable player feedback. It implements a **four-mode coaching pipeline** where each
+mode offers a different trade-off between knowledge-driven advice and neural-network
+predictions. The default mode is **COPER** (Contextual Observation Pattern Experience
+Retrieval), which combines an Experience Bank, RAG knowledge retrieval, and professional
+player reference data to produce coaching output grounded in real match evidence.
 
-### Correction & Refinement
-- **correction_engine.py** — `generate_corrections()` — Generates tactical corrections from performance deviations against pro baselines
-- **nn_refinement.py** — `apply_nn_refinement()` — Neural network refinement layer for heuristic corrections with confidence scoring
+All coaching modes are consumed by a single entry point --
+`backend/services/coaching_service.py` -- which selects the active mode based on the
+feature flags `USE_COPER_COACHING`, `USE_HYBRID_COACHING`, `USE_RAG_COACHING`, and
+`USE_JEPA_MODEL` / `USE_RAP_MODEL` in `core/config.py`.
 
-### Longitudinal Analysis
-- **longitudinal_engine.py** — `generate_longitudinal_coaching()` — Tracks performance trends over time with temporal baseline decay integration
+## The Four Coaching Modes
 
-### Explainability & Integration
-- **explainability.py** — `ExplanationGenerator` — Converts ML predictions into human-readable explanations with causal attribution
-- **pro_bridge.py** — `PlayerCardAssimilator` — Links professional player data to coaching insights via role-based comparison
-- **token_resolver.py** — `PlayerTokenResolver` — Player name canonicalization with fuzzy matching and leet-speak normalization
+| # | Mode | Flag | Description |
+|---|------|------|-------------|
+| 1 | **COPER** | `USE_COPER_COACHING=True` (default) | Experience Bank semantic retrieval + RAG knowledge + Pro References. No ML model required. |
+| 2 | **Hybrid** | `USE_HYBRID_COACHING=True` | Neural network predictions synthesized with RAG context for blended output. |
+| 3 | **RAG** | `USE_RAG_COACHING=True` | Pure knowledge retrieval from indexed pro demo patterns. No ML inference. |
+| 4 | **Neural** | `USE_JEPA_MODEL=True` or `USE_RAP_MODEL=True` | Pure ML predictions without knowledge augmentation. Requires a trained model checkpoint. |
 
-## Coaching Modes
+### Coaching Fallback Flow
 
-1. **COPER** (Default) — Experience Bank semantic retrieval + RAG knowledge + Pro References
-2. **Hybrid** — ML predictions synthesized with RAG context
-3. **RAG** — Pure knowledge retrieval from pro demo patterns
-4. **Neural** — Pure ML predictions without knowledge augmentation
+When a higher-fidelity mode is unavailable (missing model, empty knowledge base, etc.),
+the pipeline degrades gracefully through the following chain:
 
-## Integration
-Used by `backend/services/coaching_service.py` with temporal baseline context from `backend/processing/baselines/temporal_decay.py`.
+```
+Neural (pure ML)
+   |  [model checkpoint missing or inference error]
+   v
+Hybrid (ML + RAG)
+   |  [RAG index empty or ML unavailable]
+   v
+COPER (Experience Bank + RAG + Pro)
+   |  [experience bank empty]
+   v
+RAG (knowledge retrieval only)
+   |  [knowledge index empty]
+   v
+Heuristic corrections (correction_engine.py fallback)
+```
+
+Each transition is logged at WARNING level with a structured JSON message containing
+the reason for degradation, so the operator always knows which mode is active.
+
+## File Inventory
+
+| File | Primary Export | Purpose |
+|------|---------------|---------|
+| `__init__.py` | Package API | Re-exports `HybridCoachingEngine`, `generate_corrections`, `ExplanationGenerator`, `PlayerCardAssimilator`, `get_pro_baseline_for_coach` |
+| `hybrid_engine.py` | `HybridCoachingEngine` | Central orchestrator that synthesizes ML predictions with RAG knowledge retrieval for balanced coaching insights |
+| `correction_engine.py` | `generate_corrections()` | Generates tactical corrections by comparing player performance deviations against professional baselines |
+| `nn_refinement.py` | `apply_nn_refinement()` | Neural network refinement layer that enhances heuristic corrections with confidence scoring from trained models |
+| `longitudinal_engine.py` | `generate_longitudinal_coaching()` | Tracks performance trends over time using temporal baseline decay integration for long-term improvement advice |
+| `explainability.py` | `ExplanationGenerator` | Converts opaque ML prediction tensors into human-readable explanations with causal attribution chains |
+| `pro_bridge.py` | `PlayerCardAssimilator` | Links professional player stat cards to coaching insights via role-based comparison (entry fragger, AWPer, etc.) |
+| `token_resolver.py` | `PlayerTokenResolver` | Canonicalizes player names using fuzzy matching, leet-speak normalization, and alias resolution |
+
+## Module Descriptions
+
+### hybrid_engine.py -- HybridCoachingEngine
+
+The `HybridCoachingEngine` is the primary orchestrator for the Hybrid coaching mode.
+It accepts a 25-dimensional feature vector (see `METADATA_DIM` in `nn/config.py`),
+runs ML inference through the active model (JEPA or RAP), retrieves relevant knowledge
+from the RAG index, and merges both signals into a unified coaching response. The
+engine applies a confidence-weighted blending strategy: high-confidence ML predictions
+dominate, while low-confidence ones defer to RAG knowledge.
+
+### correction_engine.py -- generate_corrections()
+
+Stateless function that takes a player's round performance snapshot and compares it
+against the professional baseline (provided by `pro_bridge.py`). Deviations exceeding
+configurable thresholds produce correction entries with severity (info/warning/critical),
+a human-readable description, and the specific metric that triggered the correction.
+This module is the final fallback when all higher-fidelity coaching modes are unavailable.
+
+### nn_refinement.py -- apply_nn_refinement()
+
+Post-processing layer that takes heuristic corrections from `correction_engine.py` and
+refines them using a trained neural network. Each correction is scored with a confidence
+value (0.0--1.0). Corrections below the confidence threshold are suppressed to reduce
+noise. The refinement step is optional and only activates when a trained model checkpoint
+is available.
+
+### longitudinal_engine.py -- generate_longitudinal_coaching()
+
+Generates coaching advice based on performance trends across multiple matches or sessions.
+Uses temporal baseline decay from `backend/processing/baselines/temporal_decay.py` to
+weight recent performance more heavily than older data. Produces trend direction indicators
+(improving/declining/stable) for each tracked metric and tailors advice accordingly.
+
+### explainability.py -- ExplanationGenerator
+
+Implements model explainability by decomposing neural network predictions into
+human-readable explanations. Uses feature attribution (which of the 25 input dimensions
+contributed most to the prediction) and causal reasoning chains to explain *why* the
+model recommends a particular action. Critical for building player trust in ML-driven
+coaching advice.
+
+### pro_bridge.py -- PlayerCardAssimilator
+
+Bridges the gap between professional player statistics (from `hltv_metadata.db`) and
+the coaching pipeline. The `PlayerCardAssimilator` loads pro player stat cards and
+performs role-based comparison: if the user plays as an entry fragger, their stats are
+compared against professional entry fraggers. The `get_pro_baseline_for_coach()` helper
+provides a ready-to-use baseline dictionary for the correction engine.
+
+### token_resolver.py -- PlayerTokenResolver
+
+Resolves ambiguous player name references to canonical identities. Handles common
+challenges in CS2 naming: leet-speak substitutions (e.g., "s1mple" vs "simple"),
+clan tag prefixes, Unicode homoglyphs, and partial name matches. Uses fuzzy string
+matching with configurable similarity thresholds. Essential for matching user-provided
+names to entries in the professional player database.
+
+## Integration with Services Layer
+
+```
+coaching_service.py
+    |
+    +-- selects coaching mode (COPER / Hybrid / RAG / Neural)
+    |
+    +-- calls hybrid_engine.py (Hybrid mode)
+    |       |-- ML inference (JEPA or RAP model)
+    |       +-- RAG retrieval (knowledge/)
+    |
+    +-- calls correction_engine.py (all modes)
+    |       +-- pro_bridge.py (professional baseline)
+    |
+    +-- calls nn_refinement.py (if model available)
+    |
+    +-- calls longitudinal_engine.py (if historical data present)
+    |
+    +-- calls explainability.py (if ML predictions used)
+    |
+    +-- returns CoachingResponse to UI layer
+```
+
+The `coaching_service.py` orchestrator also injects temporal baseline context from
+`backend/processing/baselines/temporal_decay.py`, ensuring that coaching advice accounts
+for how the player's skill level has evolved over recent sessions.
+
+## Development Notes
+
+- **Feature flag discipline:** Never bypass feature flags. The coaching mode is selected
+  exclusively through `core/config.py` flags. Hard-coding a mode causes test failures.
+- **25-dim contract:** Any module that touches the feature vector must respect
+  `METADATA_DIM=25`. See the Dimensional Contract table in the project root `CLAUDE.md`.
+- **Structured logging:** All modules use `get_logger("cs2analyzer.coaching.<module>")`.
+  Fallback transitions log at WARNING level with correlation IDs.
+- **Thread safety:** The coaching pipeline may be invoked from the Quad-Daemon's Teacher
+  thread. All shared state must be accessed through thread-safe accessors, never module-level
+  globals.
+- **Testing:** Tests live in `Programma_CS2_RENAN/tests/`. Use the `mock_db_manager` and
+  `torch_no_grad` fixtures for coaching tests.
 
 ## Dependencies
-PyTorch, sentence-transformers (embeddings), SQLModel (experience persistence).
+
+- **PyTorch** -- Neural network inference for Hybrid and Neural modes
+- **sentence-transformers** -- Embedding generation for RAG and Experience Bank retrieval
+- **SQLModel** -- Experience Bank persistence
+- **scikit-learn** -- Similarity metrics for token resolution (optional)
