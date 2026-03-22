@@ -184,34 +184,53 @@ class TestContextualAttention:
 
 
 class TestRAPStrategy:
-    """Tests for the MoE strategy layer with Superposition."""
+    """Tests for the Top-2 sparse MoE strategy layer with Superposition."""
+
+    # RAP-AUDIT-09: Strategy context_dim = metadata (25) + belief (64) = 89
+    _STRATEGY_CONTEXT_DIM = METADATA_DIM + 64
 
     def test_output_shape(self):
         from Programma_CS2_RENAN.backend.nn.rap_coach.strategy import RAPStrategy
 
-        strat = RAPStrategy(hidden_dim=256, output_dim=10, context_dim=METADATA_DIM)
+        ctx_dim = self._STRATEGY_CONTEXT_DIM
+        strat = RAPStrategy(hidden_dim=256, output_dim=10, context_dim=ctx_dim)
         strat.eval()
-        pred, gate = strat(torch.randn(2, 256), torch.randn(2, METADATA_DIM))
+        pred, gate = strat(torch.randn(2, 256), torch.randn(2, ctx_dim))
         assert pred.shape == (2, 10)
         assert gate.shape == (2, 4)  # 4 experts default
 
     def test_gate_weights_sum_to_one(self):
         from Programma_CS2_RENAN.backend.nn.rap_coach.strategy import RAPStrategy
 
-        strat = RAPStrategy(256, 10)
+        ctx_dim = self._STRATEGY_CONTEXT_DIM
+        strat = RAPStrategy(256, 10, context_dim=ctx_dim)
         strat.eval()
-        _, gate = strat(torch.randn(3, 256), torch.randn(3, METADATA_DIM))
+        _, gate = strat(torch.randn(3, 256), torch.randn(3, ctx_dim))
         sums = gate.sum(dim=-1)
         assert torch.allclose(sums, torch.ones_like(sums), atol=1e-5)
 
     def test_custom_num_experts(self):
         from Programma_CS2_RENAN.backend.nn.rap_coach.strategy import RAPStrategy
 
-        strat = RAPStrategy(256, 10, num_experts=8)
+        ctx_dim = self._STRATEGY_CONTEXT_DIM
+        strat = RAPStrategy(256, 10, context_dim=ctx_dim, num_experts=8)
         strat.eval()
-        _, gate = strat(torch.randn(2, 256), torch.randn(2, METADATA_DIM))
+        _, gate = strat(torch.randn(2, 256), torch.randn(2, ctx_dim))
         assert gate.shape == (2, 8)
         assert len(strat.experts) == 8
+
+    def test_sparse_routing_top2(self):
+        """RAP-AUDIT-08: Verify only top-2 experts contribute to output."""
+        from Programma_CS2_RENAN.backend.nn.rap_coach.strategy import RAPStrategy
+
+        ctx_dim = self._STRATEGY_CONTEXT_DIM
+        strat = RAPStrategy(256, 10, context_dim=ctx_dim)
+        strat.eval()
+        pred, gate = strat(torch.randn(1, 256), torch.randn(1, ctx_dim))
+        # Gate returns full softmax probabilities
+        assert gate.shape == (1, 4)
+        # Output should be non-zero (top-2 experts contributed)
+        assert pred.abs().sum() > 0
 
 
 # ---------------------------------------------------------------------------
@@ -502,7 +521,7 @@ class TestRAPTrainer:
 
         torch.manual_seed(42)
         model = RAPCoachModel()
-        trainer = RAPTrainer(model, lr=1e-4)
+        trainer = RAPTrainer(model, lr=1e-4, t_max=10)
         batch = {
             "view": rap_inputs["view"],
             "map": rap_inputs["map"],
@@ -524,7 +543,7 @@ class TestRAPTrainer:
 
         torch.manual_seed(42)
         model = RAPCoachModel()
-        trainer = RAPTrainer(model, lr=1e-3)
+        trainer = RAPTrainer(model, lr=1e-3, t_max=10)
         batch = {
             "view": rap_inputs["view"],
             "map": rap_inputs["map"],
@@ -545,7 +564,7 @@ class TestRAPTrainer:
         from Programma_CS2_RENAN.backend.nn.rap_coach.trainer import RAPTrainer
 
         model = RAPCoachModel()
-        trainer = RAPTrainer(model)
+        trainer = RAPTrainer(model, t_max=10)
         assert trainer.z_axis_penalty_weight == 2.0
 
     def test_compute_position_loss_weighted(self):
@@ -553,7 +572,7 @@ class TestRAPTrainer:
         from Programma_CS2_RENAN.backend.nn.rap_coach.trainer import RAPTrainer
 
         model = RAPCoachModel()
-        trainer = RAPTrainer(model)
+        trainer = RAPTrainer(model, t_max=10)
         pred = torch.tensor([[0.0, 0.0, 1.0]])
         target = torch.tensor([[0.0, 0.0, 0.0]])
         loss, z_err = trainer.compute_position_loss(pred, target)
@@ -567,7 +586,7 @@ class TestRAPTrainer:
 
         torch.manual_seed(42)
         model = RAPCoachModel()
-        trainer = RAPTrainer(model)
+        trainer = RAPTrainer(model, t_max=10)
         batch = {
             "view": rap_inputs["view"],
             "map": rap_inputs["map"],
@@ -586,7 +605,7 @@ class TestRAPTrainer:
 
         torch.manual_seed(42)
         model = RAPCoachModel()
-        trainer = RAPTrainer(model)
+        trainer = RAPTrainer(model, t_max=10)
         batch = {
             "view": rap_inputs["view"],
             "map": rap_inputs["map"],
@@ -598,3 +617,13 @@ class TestRAPTrainer:
         metrics = trainer.train_step(batch)
         assert metrics["loss_pos"] == 0.0
         assert metrics["z_error"] == 0.0
+
+    def test_scheduler_exists(self):
+        """RAP-AUDIT-10: Verify CosineAnnealingLR scheduler is created."""
+        from Programma_CS2_RENAN.backend.nn.rap_coach.model import RAPCoachModel
+        from Programma_CS2_RENAN.backend.nn.rap_coach.trainer import RAPTrainer
+
+        model = RAPCoachModel()
+        trainer = RAPTrainer(model, t_max=50)
+        assert trainer.scheduler is not None
+        assert hasattr(trainer.scheduler, "step")

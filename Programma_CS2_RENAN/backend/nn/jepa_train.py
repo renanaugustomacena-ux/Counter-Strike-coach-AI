@@ -22,15 +22,20 @@ from sqlmodel import select
 from torch.utils.data import DataLoader, Dataset
 
 from Programma_CS2_RENAN.backend.nn.jepa_model import JEPACoachingModel, jepa_contrastive_loss
-from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
+from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM, FeatureExtractor
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager
-from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats, RoundStats
+from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats, PlayerTickState
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.jepa_train")
 
-# Minimum rounds needed for a meaningful JEPA sequence
-_MIN_ROUNDS_FOR_SEQUENCE = 6
+# J-1 FIX: Tick-level sequence constants.
+# context_len + target_len = 20 minimum ticks for one training sample.
+_MIN_TICKS_FOR_SEQUENCE = 20
+
+# Memory bound: cap per player-demo to avoid OOM on large demos (~1.5M ticks each).
+# 500 ticks ≈ 25 potential context+target pairs per sequence.
+_MAX_TICKS_PER_SEQUENCE = 500
 
 
 class JEPAPretrainDataset(Dataset):
@@ -67,108 +72,91 @@ class JEPAPretrainDataset(Dataset):
         return {"context": torch.FloatTensor(context), "target": torch.FloatTensor(target)}
 
 
-def _roundstats_to_features(rs: RoundStats) -> List[float]:
-    """Extract a feature vector from a single RoundStats row.
-
-    P-RSB-03: ``round_won`` is deliberately EXCLUDED — it is a future-looking
-    outcome label, not an observable feature.  Including it would leak the
-    round result into the training input, allowing the model to trivially
-    predict outcomes from the outcome itself.  ``round_won`` is correctly
-    used as a LABEL in ``label_from_round_stats()`` (jepa_model.py).
-    """
-    return [
-        float(rs.kills),
-        float(rs.deaths),
-        float(rs.damage_dealt) / 100.0,  # normalise ADR-scale
-        float(rs.headshot_kills),
-        float(rs.assists),
-        float(rs.trade_kills),
-        float(1 if rs.was_traded else 0),
-        float(1 if rs.opening_kill else 0),
-        float(1 if rs.opening_death else 0),
-        float(rs.he_damage) / 100.0,
-        float(rs.molotov_damage) / 100.0,
-        float(rs.flashes_thrown),
-        float(rs.smokes_thrown),
-        float(rs.equipment_value) / 5000.0,  # normalise to typical buy range
-        # P-RSB-03: round_won removed — outcome label, not a feature
-        float(rs.round_rating or 0.0),
-        float(1 if rs.side == "CT" else 0),
-    ]
-
-
-def _build_sequence_from_rounds(
-    round_rows: List[RoundStats],
+def _load_tick_sequence(
+    session,
+    demo_name: str,
+    player_name: str,
+    max_ticks: int = _MAX_TICKS_PER_SEQUENCE,
 ) -> np.ndarray:
-    """Build a [num_rounds, METADATA_DIM] array from RoundStats rows."""
-    n_features = len(_roundstats_to_features(round_rows[0]))
-    pad_len = max(0, METADATA_DIM - n_features)
-    rows = []
-    for rs in round_rows:
-        feats = _roundstats_to_features(rs)
-        rows.append(feats + [0.0] * pad_len)
-    return np.array(rows, dtype=np.float32)
+    """Load tick-level features for one player in one demo via FeatureExtractor.
+
+    J-1 FIX: Uses the same FeatureExtractor as the orchestrator (Path A),
+    producing the canonical 25-dim tick-level vector (health/100, armor/100,
+    pos_x/4096, ...). This eliminates the semantic collision where round-
+    aggregate features (kills, deaths, ...) occupied the same indices.
+
+    Academic justification: I-JEPA (Assran et al., CVPR 2023) operates on
+    observation-level data, not aggregated summaries.
+
+    Returns:
+        np.ndarray of shape (num_ticks, METADATA_DIM), or empty array if
+        insufficient ticks.
+    """
+    ticks = session.exec(
+        select(PlayerTickState)
+        .where(PlayerTickState.demo_name == demo_name)
+        .where(PlayerTickState.player_name == player_name)
+        .order_by(PlayerTickState.tick)
+        .limit(max_ticks)
+    ).all()
+
+    if len(ticks) < _MIN_TICKS_FOR_SEQUENCE:
+        return np.array([], dtype=np.float32)
+
+    map_name = ticks[0].map_name if ticks else None
+    features = FeatureExtractor.extract_batch(ticks, map_name=map_name)
+    return features
 
 
 def load_pro_demo_sequences(limit: int = 100) -> List[np.ndarray]:
     """
-    Load pro demo sequences from database using real per-round RoundStats.
+    Load pro demo sequences as tick-level features via FeatureExtractor.
 
-    Falls back to match-aggregate padding only when no RoundStats exist.
+    J-1 FIX: Queries PlayerTickState (tick-level) instead of RoundStats
+    (round-aggregate), producing the canonical 25-dim vector that matches
+    the orchestrator's Path A. Eliminates feature-index semantic collision.
 
     Args:
         limit: Maximum number of matches to load
 
     Returns:
-        List of match sequences [num_rounds, num_features]
+        List of match sequences [num_ticks, METADATA_DIM]
     """
     db = get_db_manager()
     sequences = []
-    fallback_count = 0
+    skipped = 0
 
     with db.get_session() as session:
         stmt = select(PlayerMatchStats).where(PlayerMatchStats.is_pro == True).limit(limit)
         matches = session.exec(stmt).all()
 
         for match in matches:
-            # Try real per-round data first (F3-08 fix)
-            round_rows = session.exec(
-                select(RoundStats)
-                .where(RoundStats.demo_name == match.demo_name)
-                .where(RoundStats.player_name == match.player_name)
-                .order_by(RoundStats.round_number)
-            ).all()
-
-            if len(round_rows) >= _MIN_ROUNDS_FOR_SEQUENCE:
-                sequence = _build_sequence_from_rounds(round_rows)
-                sequences.append(sequence)
-            else:
-                # NN-32: Skip matches without enough RoundStats — insufficient
-                # rounds cannot form meaningful temporal sequences.
-                fallback_count += 1
+            features = _load_tick_sequence(
+                session, match.demo_name, match.player_name
+            )
+            if features.size == 0:
+                skipped += 1
                 continue
+            sequences.append(features)
 
     logger.info(
-        "Loaded %d pro demo sequences from RoundStats (%d matches skipped — no RoundStats)",
+        "Loaded %d pro demo tick sequences via FeatureExtractor (%d skipped — insufficient ticks)",
         len(sequences),
-        fallback_count,
+        skipped,
     )
-    if fallback_count > 0:
-        logger.warning(
-            "%d matches skipped (no RoundStats). "
-            "Ingest demos with RoundStats for meaningful temporal pre-training.",
-            fallback_count,
-        )
     return sequences
 
 
 def load_user_match_sequences(limit: int = 200) -> tuple:
     """
-    Load real user match sequences for JEPA fine-tuning.
+    Load real user match tick sequences for JEPA fine-tuning.
+
+    J-1 FIX: Uses tick-level features via FeatureExtractor (same pipeline
+    as orchestrator Path A) instead of round-aggregate RoundStats features.
 
     Returns:
         (X_train, y_train) where X_train is [N, seq_len, METADATA_DIM]
-        and y_train is [N, METADATA_DIM] (last-round features as target).
+        and y_train is [N, METADATA_DIM] (last-tick features as target).
     """
     db = get_db_manager()
     X_sequences = []
@@ -184,20 +172,14 @@ def load_user_match_sequences(limit: int = 200) -> tuple:
         matches = session.exec(stmt).all()
 
         for match in matches:
-            round_rows = session.exec(
-                select(RoundStats)
-                .where(RoundStats.demo_name == match.demo_name)
-                .where(RoundStats.player_name == match.player_name)
-                .order_by(RoundStats.round_number)
-            ).all()
-
-            if len(round_rows) < _MIN_ROUNDS_FOR_SEQUENCE:
+            features = _load_tick_sequence(
+                session, match.demo_name, match.player_name
+            )
+            if features.size == 0:
                 continue
 
-            seq = _build_sequence_from_rounds(round_rows)
-            # Use all rounds as input, last round features as target
-            X_sequences.append(seq)
-            y_targets.append(seq[-1])
+            X_sequences.append(features)
+            y_targets.append(features[-1])
 
     if not X_sequences:
         return None, None
@@ -262,7 +244,7 @@ def train_jepa_pretrain(
     optimizer = torch.optim.AdamW(
         [{"params": model.context_encoder.parameters()}, {"params": model.predictor.parameters()}],
         lr=learning_rate,
-        weight_decay=1e-4,
+        weight_decay=1e-2,  # J-7: Loshchilov & Hutter (ICLR 2019) AdamW default
     )
 
     from Programma_CS2_RENAN.backend.nn.config import get_device
@@ -274,6 +256,13 @@ def train_jepa_pretrain(
 
     # NN-L-15: Cosine LR schedule (matches JEPATrainer in jepa_trainer.py)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
+
+    # J-6: EMA cosine momentum schedule (Assran et al., CVPR 2023, Section 3.2)
+    import math as _math
+
+    _ema_base = 0.996
+    _ema_total = num_epochs * len(dataloader)  # total training steps
+    _ema_step = 0
 
     for epoch in range(num_epochs):
         model.train()
@@ -312,8 +301,11 @@ def train_jepa_pretrain(
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)  # P1-06
             optimizer.step()
 
-            # EMA update for target encoder (must happen after optimizer.step)
-            model.update_target_encoder()
+            # J-6: EMA update with cosine momentum schedule
+            _progress = min(_ema_step / max(1, _ema_total), 1.0)
+            _momentum = 1.0 - (1.0 - _ema_base) * (_math.cos(_math.pi * _progress) + 1) / 2
+            model.update_target_encoder(momentum=_momentum)
+            _ema_step += 1
 
             total_loss += loss.item()
 
@@ -462,9 +454,9 @@ if __name__ == "__main__":
         X_train, y_train = load_user_match_sequences(limit=200)
         if X_train is None:
             logger.error(
-                "No user match data with RoundStats found. "
-                "Ingest at least %d demos before fine-tuning.",
-                _MIN_ROUNDS_FOR_SEQUENCE,
+                "No user match data with sufficient tick data found. "
+                "Ingest demos with at least %d ticks before fine-tuning.",
+                _MIN_TICKS_FOR_SEQUENCE,
             )
             sys.exit(1)
 

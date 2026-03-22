@@ -53,7 +53,14 @@ class RAPCoachModel(nn.Module):
             self.memory = RAPMemory(perception_dim, metadata_dim, hidden_dim)
 
         # 3. Strategy Layer (Decision Optimization)
-        self.strategy = RAPStrategy(hidden_dim, output_dim, context_dim=metadata_dim)
+        # RAP-AUDIT-09: Strategy context = metadata (25) + belief (64) = 89 dimensions.
+        # Previously only metadata was passed, so the belief head's output was computed
+        # but never consumed by any downstream layer — wasted computation with no
+        # contribution to task losses. Fusing belief into context lets expert routing
+        # adapt to the model's learned game-state representation.
+        belief_dim = 64
+        strategy_context_dim = metadata_dim + belief_dim
+        self.strategy = RAPStrategy(hidden_dim, output_dim, context_dim=strategy_context_dim)
 
         # 4. Pedagogy Layer (Causal Attribution)
         self.pedagogy = RAPPedagogy(hidden_dim)
@@ -72,7 +79,14 @@ class RAPCoachModel(nn.Module):
         )
 
     def forward(
-        self, view_frame, map_frame, motion_diff, metadata, skill_vec=None, hidden_state=None
+        self,
+        view_frame,
+        map_frame,
+        motion_diff,
+        metadata,
+        skill_vec=None,
+        hidden_state=None,
+        timespans=None,
     ):
         # P-X-02: Input shape assertions — catch misaligned tensors before they
         # propagate into cryptic LSTM/CNN errors.
@@ -106,14 +120,21 @@ class RAPCoachModel(nn.Module):
         lstm_in = torch.cat([z_spatial_seq, metadata], dim=2)
 
         # NN-40: Forward through Recurrent Belief State with optional initial hidden state
-        hidden_seq, belief, new_hidden = self.memory(lstm_in, hidden=hidden_state)
+        # RAP-AUDIT-05: Pass timespans for proper continuous-time ODE dynamics
+        hidden_seq, belief, new_hidden = self.memory(
+            lstm_in, hidden=hidden_state, timespans=timespans
+        )
 
         # Last hidden state for decision
         last_hidden = hidden_seq[:, -1, :]
 
         # Strategy Execution
-        # We pass the last metadata frame as context for Superposition
-        context = metadata[:, -1, :]
+        # RAP-AUDIT-09: Fuse metadata + belief as strategy context.
+        # metadata[:, -1, :] = raw game state (25-dim)
+        # belief[:, -1, :] = learned game-state representation (64-dim)
+        # Together they give the expert router both explicit and latent context.
+        last_belief = belief[:, -1, :]
+        context = torch.cat([metadata[:, -1, :], last_belief], dim=-1)  # [B, 89]
         prediction, gate_weights = self.strategy(last_hidden, context)
 
         # NN-RM-01: Validate skill_vec shape before passing to pedagogy adapter.
@@ -154,8 +175,16 @@ class RAPCoachModel(nn.Module):
 
     def compute_sparsity_loss(self, gate_weights: torch.Tensor = None) -> torch.Tensor:
         """
-        Computes L1 Regularization loss on the Context Gate activations.
-        Enforces sparsity (interpretability) in decision making.
+        Computes entropy-based sparsity loss on MoE gate activations.
+        Encourages expert specialization by penalizing uniform gate distributions.
+
+        RAP-AUDIT-04: The previous L1 norm on softmax outputs was mathematically
+        constant (always 1/num_experts = 0.25) because softmax outputs are
+        non-negative and sum to 1, making |g_i| = g_i and mean(g) = 1/N always.
+        Zero useful gradient. Entropy regularization produces meaningful gradients:
+          - High entropy (uniform) -> large loss -> push toward specialization
+          - Low entropy (peaked) -> small loss -> one expert dominates (desired)
+        Range: [0, log(num_experts)] = [0, 1.386] for 4 experts.
 
         Args:
             gate_weights: Gate weight tensor from the last forward() call.
@@ -169,7 +198,7 @@ class RAPCoachModel(nn.Module):
             logger.debug("NN-RM-03: gate_weights is None, returning 0.0 sparsity loss")
             return torch.tensor(0.0)
 
-        # L1 Norm: Mean of absolute values
-        # We want gate values to be mostly near 0, with few strong activations
-        l1_loss = torch.mean(torch.abs(gate_weights))
-        return self.context_gate_l1_weight * l1_loss
+        # Negative entropy: H = -sum(p_i * log(p_i))
+        # High entropy = uniform (bad for specialization), low = peaked (good)
+        entropy = -(gate_weights * torch.log(gate_weights + 1e-8)).sum(dim=-1).mean()
+        return self.context_gate_l1_weight * entropy

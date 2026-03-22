@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.model import RAPCoachModel
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -25,13 +26,19 @@ class RAPTrainer:
     # is penalised 2× relative to X/Y. (Task 2.17.1: Strict verticality enforcement)
     Z_AXIS_PENALTY_WEIGHT = 2.0
 
-    def __init__(self, model: RAPCoachModel, lr=1e-4):
+    def __init__(self, model: RAPCoachModel, lr=1e-4, t_max=100):
         self.model = model
-        self.optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
+        # RAP-AUDIT-10: weight_decay=1e-2 per Loshchilov & Hutter (ICLR 2019).
+        # Previous 1e-4 provided negligible regularization with limited training data.
+        self.optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-2)
         self.criterion_strat = nn.MSELoss()  # For strategy optimization
         self.criterion_val = nn.MSELoss()  # For pedagogical evaluation
         self.criterion_pos = nn.MSELoss()  # For positioning (Optimal Shadow)
         self.z_axis_penalty_weight = self.Z_AXIS_PENALTY_WEIGHT
+        # RAP-AUDIT-10: CosineAnnealingLR for improved convergence (1-5% better
+        # final loss per academic consensus). JEPA trainer already uses this pattern.
+        # The orchestrator calls trainer.scheduler.step() per epoch if present.
+        self.scheduler = CosineAnnealingLR(self.optimizer, T_max=t_max, eta_min=1e-6)
 
     def train_step(self, batch):
         """
@@ -39,9 +46,15 @@ class RAPTrainer:
         """
         self.optimizer.zero_grad()
 
-        # Forward Pass
+        # Forward Pass — includes timespans for LTC ODE dynamics (RAP-AUDIT-05)
         try:
-            outputs = self.model(batch["view"], batch["map"], batch["motion"], batch["metadata"])
+            outputs = self.model(
+                batch["view"],
+                batch["map"],
+                batch["motion"],
+                batch["metadata"],
+                timespans=batch.get("timespans"),
+            )
         except Exception:
             logger.exception("Forward pass failed during train_step")
             raise

@@ -1,3 +1,4 @@
+import math
 from typing import List, Optional
 
 import torch
@@ -30,7 +31,7 @@ class JEPATrainer:
         self,
         model: JEPACoachingModel,
         lr: float = 1e-4,
-        weight_decay: float = 1e-4,
+        weight_decay: float = 1e-2,  # J-7: Loshchilov & Hutter (ICLR 2019) AdamW default
         drift_threshold: float = 2.5,
         t_max: int = 100,
     ):
@@ -43,11 +44,32 @@ class JEPATrainer:
         self.optimizer = optim.AdamW(trainable, lr=lr, weight_decay=weight_decay)
         self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=t_max)
 
+        # J-6: EMA cosine momentum schedule (Assran et al., CVPR 2023, Section 3.2).
+        # τ(t) = 1 - (1 - τ_base) · (cos(πt/T) + 1) / 2
+        # Starts at 0.996 (fast tracking) → 1.0 (frozen target) over training.
+        self._ema_base_momentum: float = 0.996
+        self._ema_step: int = 0
+        self._ema_total_steps: int = t_max  # proxy for total training steps
+
         # Task 2.19.3: Drift monitoring for automatic retraining
         self.drift_monitor = DriftMonitor(z_threshold=drift_threshold)
         self.drift_history: List[DriftReport] = []
         self._needs_full_retrain = False
         self._reference_stats: Optional[dict] = None
+
+    def _scheduled_ema_momentum(self) -> float:
+        """Compute EMA momentum from cosine schedule (J-6).
+
+        Assran et al. (CVPR 2023), Section 3.2:
+            τ(t) = 1 - (1 - τ_base) · (cos(πt/T) + 1) / 2
+
+        At t=0: τ = τ_base (0.996) — target tracks context quickly.
+        At t=T: τ → 1.0 — target freezes for maximum stability.
+        """
+        progress = min(self._ema_step / max(1, self._ema_total_steps), 1.0)
+        momentum = 1.0 - (1.0 - self._ema_base_momentum) * (math.cos(math.pi * progress) + 1) / 2
+        self._ema_step += 1
+        return momentum
 
     def encode_raw_negatives(self, negatives: torch.Tensor, seq_len: int) -> torch.Tensor:
         """Encode raw feature negatives into latent space (NN-H-02).
@@ -121,8 +143,8 @@ class JEPATrainer:
         loss.backward()
         self.optimizer.step()
 
-        # 5. Update Target Encoder (EMA)
-        self.model.update_target_encoder()
+        # 5. Update Target Encoder (EMA with cosine momentum schedule — J-6)
+        self.model.update_target_encoder(momentum=self._scheduled_ema_momentum())
 
         # 6. Embedding diversity monitoring (P9-02 acceptance criterion)
         embedding_variance = self._log_embedding_diversity(pred_embedding)
@@ -316,17 +338,30 @@ class JEPATrainer:
                     batch_labels.append(torch.full((16,), 0.5))
             concept_labels = torch.stack(batch_labels).to(x_context.device)
         else:
-            # NN-JT-02: Legacy heuristic fallback — label leakage risk.
-            # Escalated from warning to error-level because heuristic labels derive
-            # directly from input features, allowing the model to shortcut learning.
-            if not getattr(self, "_concept_label_warning_logged", False):
-                logger.error(
-                    "NN-JT-02: VL-JEPA concept alignment using heuristic labels (label leakage). "
-                    "Model may learn input reconstruction rather than coaching concepts. "
-                    "Provide RoundStats data for outcome-based labeling."
+            # J-2 FIX: Hard-gate heuristic fallback — skip concept alignment entirely.
+            # The heuristic labeler (label_batch/label_tick) derives labels directly from
+            # the input feature vector, causing label leakage: the model can learn a
+            # near-linear mapping (concept[0] ≈ 0.5 + features[8]) instead of actual
+            # coaching concepts. InfoNCE loss alone is sufficient for JEPA pre-training;
+            # concept alignment is an additive enhancement that requires outcome labels.
+            if not getattr(self, "_concept_skip_logged", False):
+                logger.warning(
+                    "J-2: VL-JEPA concept alignment SKIPPED — no RoundStats available. "
+                    "InfoNCE loss will be used alone (no label leakage risk)."
                 )
-                self._concept_label_warning_logged = True
-            concept_labels = labeler.label_batch(x_context).to(x_context.device)
+                self._concept_skip_logged = True
+
+            # Return InfoNCE loss only, no concept alignment
+            total_loss = infonce_loss
+            total_loss.backward()
+            self.optimizer.step()
+            self.model.update_target_encoder(momentum=self._scheduled_ema_momentum())
+            return {
+                "total_loss": total_loss.item(),
+                "infonce_loss": infonce_loss.item(),
+                "concept_loss": 0.0,
+                "diversity_loss": 0.0,
+            }
 
         # 5. Concept loss + diversity
         concept_total, concept_loss, diversity_loss = vl_jepa_concept_loss(
@@ -345,8 +380,8 @@ class JEPATrainer:
         self.optimizer.step()
         # Note: scheduler.step() is called once per epoch in train_epoch(), not per batch
 
-        # 8. EMA update for target encoder
-        self.model.update_target_encoder()
+        # 8. EMA update for target encoder (cosine schedule — J-6)
+        self.model.update_target_encoder(momentum=self._scheduled_ema_momentum())
 
         return {
             "total_loss": total_loss.item(),

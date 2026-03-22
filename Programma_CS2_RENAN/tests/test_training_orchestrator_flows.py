@@ -453,15 +453,17 @@ class TestPrepareTensorBatchJEPA:
         result = orch._prepare_tensor_batch(items)
         assert result is None
 
-    def test_jepa_context_padded_when_small(self):
-        from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
+    def test_jepa_short_batch_skipped_instead_of_padded(self):
+        """J-5 FIX: Batches with < 10 ticks return None instead of zero-padding.
 
+        Zero vectors encode physically impossible game states (health=0, pos=origin).
+        Skipping short batches prevents position-dependent encoder bias.
+        """
         orch = _make_orchestrator(model_type="jepa")
         items = self._make_tick_items(6)
         result = orch._prepare_tensor_batch(items)
-        assert result is not None
-        # Context should be padded to 10
-        assert result["context"].shape == (1, 10, METADATA_DIM)
+        # J-5: short batches are now skipped, not zero-padded
+        assert result is None
 
 
 # ===========================================================================
