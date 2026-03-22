@@ -104,7 +104,15 @@ def _load_tick_sequence(
         return np.array([], dtype=np.float32)
 
     map_name = ticks[0].map_name if ticks else None
-    features = FeatureExtractor.extract_batch(ticks, map_name=map_name)
+    # V-4 FIX: extract_batch() can raise DataQualityError (>5% NaN/Inf).
+    # Without try/except, one corrupt demo crashes the entire data loading run.
+    try:
+        features = FeatureExtractor.extract_batch(ticks, map_name=map_name)
+    except Exception as e:
+        logger.warning(
+            "Skipping %s/%s — extract_batch failed: %s", demo_name, player_name, e
+        )
+        return np.array([], dtype=np.float32)
     return features
 
 

@@ -70,10 +70,19 @@ class StatCardAggregator:
             # Map core columns
             card.rating_2_0 = core.get("rating_2_0", 0.0)
             card.dpr = core.get("dpr", 0.0)
-            card.kast = core.get("kast", 0.0)
             card.impact = core.get("impact", 0.0)
             card.adr = core.get("adr", 0.0)
             card.kpr = core.get("kpr", 0.0)
+
+            # V-2 FIX: Defensive normalization for KAST and headshot_pct.
+            # HLTV and seed tools may provide percentages (68.0%) or ratios (0.68).
+            # System standard is ratio [0, 1]. Boundary: values > 1.0 are percentages.
+            card.kast = core.get("kast", 0.0)
+            if card.kast > 1.0:
+                card.kast /= 100.0
+            card.headshot_pct = core.get("headshot_pct", 0.0)
+            if card.headshot_pct > 1.0:
+                card.headshot_pct /= 100.0
 
             # S-07: Store spider blob with size guard — truncate to core
             # stats if the full crawl exceeds the DB model's size cap.

@@ -420,7 +420,8 @@ class TestStatCardAggregator:
         with Session(engine) as session:
             card = session.exec(select(ProPlayerStatCard)).first()
             assert abs(card.dpr - 0.70) < 1e-5
-            assert abs(card.kast - 68.0) < 1e-1
+            # V-2: stat_aggregator now normalizes KAST to ratio [0, 1]
+            assert abs(card.kast - 0.68) < 1e-3
             assert abs(card.impact - 1.10) < 1e-5
             assert abs(card.kpr - 0.72) < 1e-5
             blob = json.loads(card.detailed_stats_json)

@@ -599,11 +599,11 @@ class CoachTrainingManager:
                     ).all()
                 )
 
-                # T-1 FIX: Skip demos shorter than one RAP temporal window (32 ticks).
-                # Previously kept short demos, wasting DB I/O on windows that get
-                # discarded by _prepare_rap_batch (which requires seq_len=32 minimum).
-                _MIN_RAP_TICKS = 32
-                if len(ticks) < _MIN_RAP_TICKS:
+                # T-1 + V-5 FIX: Skip demos shorter than one full segmentation window.
+                # V-5: Previous threshold of 32 was wrong — the segmentation loop at
+                # line 610 uses window_size (default 320), so demos with 32-319 ticks
+                # passed the check but produced zero windows (dead I/O).
+                if len(ticks) < window_size:
                     continue
 
                 # Segment into non-overlapping contiguous windows
