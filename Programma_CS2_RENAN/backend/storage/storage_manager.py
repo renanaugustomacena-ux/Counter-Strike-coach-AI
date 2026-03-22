@@ -182,7 +182,8 @@ class StorageManager:
         Professional Check: uses both filename and path to prevent duplicates if files are moved.
         """
         target = self.get_ingest_dir(is_pro)
-        all_dems = list(target.glob("*.dem"))
+        # rglob: search recursively so demos inside match subfolders are found
+        all_dems = list(target.rglob("*.dem"))
 
         from sqlmodel import select
 
