@@ -7,7 +7,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QProgressBar,
     QPushButton,
     QScrollArea,
     QSizePolicy,
@@ -17,6 +16,8 @@ from PySide6.QtWidgets import (
 
 from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.progress_ring import ProgressRing
 from Programma_CS2_RENAN.apps.qt_app.viewmodels.coach_vm import CoachViewModel
 from Programma_CS2_RENAN.apps.qt_app.viewmodels.coaching_chat_vm import CoachingChatViewModel
 from Programma_CS2_RENAN.core.config import get_setting
@@ -64,10 +65,10 @@ class CoachScreen(QWidget):
     def retranslate(self):
         """Update all translatable text when language changes."""
         self._title_label.setText(i18n.get_text("rap_coach_dashboard"))
-        self._belief_card_title.setText(i18n.get_text("belief_state"))
+        self._belief_card.set_title(i18n.get_text("belief_state"))
         self._belief_desc_label.setText(i18n.get_text("belief_desc"))
-        self._insights_card_title.setText(i18n.get_text("recent_insights"))
-        self._analytics_card_title.setText(i18n.get_text("advanced_analytics"))
+        self._insights_card.set_title(i18n.get_text("recent_insights"))
+        self._analytics_card.set_title(i18n.get_text("advanced_analytics"))
         self._typing_label.setText(i18n.get_text("coach_thinking"))
         self._chat_input.setPlaceholderText(i18n.get_text("ask_your_coach"))
 
@@ -124,31 +125,29 @@ class CoachScreen(QWidget):
     # ── Belief Confidence ──
 
     def _build_belief_card(self):
-        card, self._belief_card_title = self._make_card("belief_state")
-        layout = card.layout()
+        card = Card(title=i18n.get_text("belief_state"))
+        self._belief_card = card
+        layout = card.content_layout
 
         self._belief_desc_label = QLabel(i18n.get_text("belief_desc"))
         self._belief_desc_label.setWordWrap(True)
         self._belief_desc_label.setStyleSheet("color: #a0a0b0; font-size: 13px;")
         layout.addWidget(self._belief_desc_label)
 
-        self._belief_bar = QProgressBar()
-        self._belief_bar.setRange(0, 100)
-        self._belief_bar.setValue(0)
-        self._belief_bar.setFixedHeight(20)
-        layout.addWidget(self._belief_bar)
-
-        self._belief_label = QLabel("0%")
-        self._belief_label.setStyleSheet("color: #dcdcdc; font-size: 13px;")
-        layout.addWidget(self._belief_label)
+        ring_row = QHBoxLayout()
+        self._belief_ring = ProgressRing(value=0.0, size=80, thickness=8)
+        ring_row.addWidget(self._belief_ring)
+        ring_row.addStretch()
+        layout.addLayout(ring_row)
 
         self._content_layout.addWidget(card)
 
     # ── Insights Card ──
 
     def _build_insights_card(self):
-        card, self._insights_card_title = self._make_card("recent_insights")
-        self._insights_container = card.layout()
+        card = Card(title=i18n.get_text("recent_insights"))
+        self._insights_card = card
+        self._insights_container = card.content_layout
 
         self._insights_placeholder = QLabel(i18n.get_text("loading_insights"))
         self._insights_placeholder.setStyleSheet("color: #a0a0b0; font-size: 13px;")
@@ -160,8 +159,9 @@ class CoachScreen(QWidget):
     # ── Analytics Placeholder ──
 
     def _build_analytics_placeholder(self):
-        card, self._analytics_card_title = self._make_card("advanced_analytics")
-        layout = card.layout()
+        card = Card(title=i18n.get_text("advanced_analytics"))
+        self._analytics_card = card
+        layout = card.content_layout
         lbl = QLabel(
             "Trend graphs and radar charts will appear here after demo analysis.\n"
             "Analyze matches to populate this section."
@@ -274,17 +274,6 @@ class CoachScreen(QWidget):
 
     # ── Helpers ──
 
-    def _make_card(self, i18n_key: str) -> tuple[QFrame, QLabel]:
-        card = QFrame()
-        card.setObjectName("dashboard_card")
-        layout = QVBoxLayout(card)
-        layout.setSpacing(8)
-        lbl = QLabel(i18n.get_text(i18n_key))
-        lbl.setFont(QFont("Roboto", 14, QFont.Bold))
-        lbl.setStyleSheet("color: #dcdcdc;")
-        layout.addWidget(lbl)
-        return card, lbl
-
     def _scroll_chat_bottom(self):
         QTimer.singleShot(
             50,
@@ -323,9 +312,7 @@ class CoachScreen(QWidget):
     # ── Signal Slots ──
 
     def _on_belief(self, confidence: float):
-        pct = int(confidence)
-        self._belief_bar.setValue(pct)
-        self._belief_label.setText(f"{pct}%")
+        self._belief_ring.set_value(confidence / 100.0)
 
     def _on_insights(self, insights: list):
         # Remove placeholder

@@ -10,6 +10,7 @@ from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import QWidget
 
+from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 _logger = get_logger("cs2analyzer.qt_radar_chart")
@@ -33,9 +34,11 @@ class RadarChart(QWidget):
         self.update()
 
     def paintEvent(self, event):
+        tokens = get_tokens()
+
         if not self._data:
             painter = QPainter(self)
-            painter.setPen(QColor("#3a3a5a"))
+            painter.setPen(QColor(tokens.text_tertiary))
             painter.drawText(self.rect(), Qt.AlignCenter, "Not enough data")
             painter.end()
             return
@@ -44,7 +47,7 @@ class RadarChart(QWidget):
         painter.setRenderHint(QPainter.Antialiasing)
 
         # Background
-        painter.fillRect(self.rect(), QColor("#1a1a1a"))
+        painter.fillRect(self.rect(), QColor(tokens.chart_bg))
 
         metrics = list(self._data.keys())
         values = list(self._data.values())
@@ -85,16 +88,16 @@ class RadarChart(QWidget):
         data_points.append(data_points[0])
 
         # Fill
-        fill_color = QColor("#aa00ff")
+        fill_color = QColor(tokens.accent_primary)
         fill_color.setAlphaF(0.25)
         painter.setBrush(QBrush(fill_color))
-        painter.setPen(QPen(QColor("#aa00ff"), 2))
+        painter.setPen(QPen(QColor(tokens.accent_primary), 2))
         painter.drawPolygon(data_points)
 
         # Labels
         label_font = QFont("Roboto", 10)
         painter.setFont(label_font)
-        painter.setPen(QColor("#dcdcdc"))
+        painter.setPen(QColor(tokens.text_primary))
         for i, a in enumerate(angles):
             lx = cx + (radius + 20) * math.cos(a)
             ly = cy + (radius + 20) * math.sin(a)
@@ -106,7 +109,7 @@ class RadarChart(QWidget):
 
         # Value labels on points
         painter.setFont(QFont("Roboto", 8))
-        painter.setPen(QColor("#ffffff"))
+        painter.setPen(QColor(tokens.text_inverse))
         for i, a in enumerate(angles):
             v = max(0, min(values[i], 100))
             r = radius * v / 100

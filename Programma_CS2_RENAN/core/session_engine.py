@@ -139,21 +139,48 @@ def run_session_loop():
         logger.exception("Failed to start IngestionWatcher")
 
     # SE-02: Store daemon thread references for graceful join on shutdown.
-    _daemon_threads = []
-    for target in (
+    _daemon_targets = (
         _scanner_daemon_loop,
         _digester_daemon_loop,
         _teacher_daemon_loop,
         _pulse_daemon_loop,
-    ):
+    )
+    _daemon_names = ("Scanner", "Digester", "Teacher", "Pulse")
+    _daemon_threads = []
+    for target in _daemon_targets:
         t = threading.Thread(target=target, daemon=True)
         t.start()
         _daemon_threads.append(t)
 
-    # Main Keep-Alive (Event Driven)
+    # SE-WD: Watchdog health check interval (seconds).
+    _WATCHDOG_INTERVAL = 30
+    _watchdog_counter = 0
+
+    # Main Keep-Alive (Event Driven) with daemon watchdog
     try:
         while not _shutdown_event.is_set():
             _shutdown_event.wait(timeout=1.0)
+            _watchdog_counter += 1
+
+            # SE-WD: Periodic daemon health check — restart dead daemons
+            if _watchdog_counter >= _WATCHDOG_INTERVAL:
+                _watchdog_counter = 0
+                for i, (t, name, target) in enumerate(
+                    zip(_daemon_threads, _daemon_names, _daemon_targets)
+                ):
+                    if not t.is_alive() and not _shutdown_event.is_set():
+                        logger.error(
+                            "Daemon %s died unexpectedly — restarting",
+                            name,
+                        )
+                        get_state_manager().add_notification(
+                            name.lower(),
+                            "ERROR",
+                            f"{name} daemon crashed and was restarted.",
+                        )
+                        new_t = threading.Thread(target=target, daemon=True)
+                        new_t.start()
+                        _daemon_threads[i] = new_t
 
     except KeyboardInterrupt:
         logger.info("Session Engine stopping via KeyboardInterrupt")

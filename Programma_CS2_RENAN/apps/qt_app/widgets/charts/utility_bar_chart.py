@@ -11,18 +11,21 @@ from PySide6.QtCharts import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QPainter
 
+from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+
 
 class UtilityBarChart(QChartView):
     """Horizontal grouped bars: user metrics vs pro average."""
 
     def __init__(self, parent=None):
         chart = QChart()
-        chart.setBackgroundBrush(QColor("#1a1a1a"))
+        tokens = get_tokens()
+        chart.setBackgroundBrush(QColor(tokens.chart_bg))
         chart.setBackgroundRoundness(8)
         chart.setTitle("Utility: You vs Pro")
-        chart.setTitleBrush(QColor("#ffffff"))
+        chart.setTitleBrush(QColor(tokens.text_inverse))
         chart.legend().setVisible(True)
-        chart.legend().setLabelColor(QColor("#dcdcdc"))
+        chart.legend().setLabelColor(QColor(tokens.text_primary))
         chart.legend().setAlignment(Qt.AlignBottom)
         super().__init__(chart, parent)
         self.setRenderHint(QPainter.Antialiasing)
@@ -40,12 +43,13 @@ class UtilityBarChart(QChartView):
         if not user_data:
             return
 
+        tokens = get_tokens()
         metrics = list(user_data.keys())
 
         user_set = QBarSet("You")
-        user_set.setColor(QColor("#00ccff"))
+        user_set.setColor(QColor(tokens.chart_line_primary))
         pro_set = QBarSet("Pro Avg")
-        pro_set.setColor(QColor("#ffaa00"))
+        pro_set.setColor(QColor(tokens.chart_line_secondary))
 
         for m in metrics:
             user_set.append(user_data.get(m, 0))
@@ -59,7 +63,7 @@ class UtilityBarChart(QChartView):
         # Y axis (categories — metric names)
         ax_cat = QBarCategoryAxis()
         ax_cat.append([m.replace("_", " ").title() for m in metrics])
-        ax_cat.setLabelsColor(QColor("#dcdcdc"))
+        ax_cat.setLabelsColor(QColor(tokens.text_primary))
         chart.addAxis(ax_cat, Qt.AlignLeft)
         series.attachAxis(ax_cat)
 
@@ -68,8 +72,8 @@ class UtilityBarChart(QChartView):
         ax_val = QValueAxis()
         ax_val.setRange(0, max(all_vals) * 1.15 if all_vals else 10)
         ax_val.setTitleText("Value")
-        ax_val.setTitleBrush(QColor("#aaaaaa"))
-        ax_val.setLabelsColor(QColor("#aaaaaa"))
+        ax_val.setTitleBrush(QColor(tokens.text_secondary))
+        ax_val.setLabelsColor(QColor(tokens.text_secondary))
         ax_val.setGridLineColor(QColor(255, 255, 255, 20))
         chart.addAxis(ax_val, Qt.AlignBottom)
         series.attachAxis(ax_val)

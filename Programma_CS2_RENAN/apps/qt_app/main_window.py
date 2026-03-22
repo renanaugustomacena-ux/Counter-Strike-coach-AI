@@ -1,35 +1,22 @@
 """
-Main window — QMainWindow with navigation sidebar and QStackedWidget.
+Main window — QMainWindow with collapsible navigation sidebar and QStackedWidget.
 
 Replaces the Kivy ScreenManager + layout.kv root FloatLayout.
 """
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QIcon, QPainter, QPixmap
+from PySide6.QtGui import QPainter, QPixmap
 from PySide6.QtWidgets import (
     QHBoxLayout,
-    QLabel,
     QMainWindow,
-    QPushButton,
-    QSizePolicy,
-    QSpacerItem,
     QStackedLayout,
     QStackedWidget,
-    QVBoxLayout,
     QWidget,
 )
 
+from Programma_CS2_RENAN.apps.qt_app.core.animation import Animator
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
-
-# ── Navigation definition ──
-# (screen_key, icon_char, i18n_key)
-NAV_ITEMS = [
-    ("home", "\u2302", "dashboard"),
-    ("coach", "\u2691", "rap_coach_dashboard"),
-    ("match_history", "\u2630", "match_history_title"),
-    ("performance", "\u2606", "advanced_analytics"),
-    ("tactical_viewer", "\u2316", "tactical_analyzer"),
-]
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.nav_sidebar import NavSidebar
 
 
 class _BackgroundWidget(QWidget):
@@ -70,26 +57,20 @@ class _BackgroundWidget(QWidget):
         super().paintEvent(event)
 
 
-class _NavButton(QPushButton):
-    """Checkable sidebar button for navigation."""
-
-    def __init__(self, icon_char: str, label: str, key: str):
-        super().__init__(f"  {icon_char}  {label}")
-        self.screen_key = key
-        self.setObjectName("nav_button")
-        self.setCheckable(True)
-        self.setCursor(Qt.PointingHandCursor)
-        self.setFixedHeight(40)
-
-
 class MainWindow(QMainWindow):
-    """Root application window with sidebar navigation."""
+    """Root application window with collapsible sidebar navigation."""
 
     screen_changed = Signal(str)
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Macena CS2 Analyzer")
+        from importlib.metadata import PackageNotFoundError, version
+
+        try:
+            _v = version("macena-cs2-analyzer")
+        except PackageNotFoundError:
+            _v = "1.0.0"
+        self.setWindowTitle(f"Macena CS2 Analyzer v{_v}")
         self.setMinimumSize(1280, 720)
 
         # Central container
@@ -100,37 +81,9 @@ class MainWindow(QMainWindow):
         root_layout.setSpacing(0)
 
         # ── Sidebar ──
-        self._sidebar = QWidget()
-        self._sidebar.setObjectName("nav_sidebar")
-        self._sidebar.setFixedWidth(220)
-        sidebar_layout = QVBoxLayout(self._sidebar)
-        sidebar_layout.setContentsMargins(8, 16, 8, 16)
-        sidebar_layout.setSpacing(4)
-
-        # App title
-        title = QLabel("MACENA CS2")
-        title.setObjectName("accent_label")
-        title.setAlignment(Qt.AlignCenter)
-        sidebar_layout.addWidget(title)
-        sidebar_layout.addSpacing(20)
-
-        # Nav buttons
-        self._nav_buttons: dict[str, _NavButton] = {}
-        for key, icon, i18n_key in NAV_ITEMS:
-            btn = _NavButton(icon, i18n.get_text(i18n_key), key)
-            btn.clicked.connect(self._on_nav_clicked)
-            sidebar_layout.addWidget(btn)
-            self._nav_buttons[key] = btn
-
-        sidebar_layout.addItem(QSpacerItem(0, 0, QSizePolicy.Minimum, QSizePolicy.Expanding))
-
-        # Version label at bottom
-        ver = QLabel("v0.1.0-ea")
-        ver.setObjectName("section_subtitle")
-        ver.setAlignment(Qt.AlignCenter)
-        sidebar_layout.addWidget(ver)
-
-        root_layout.addWidget(self._sidebar)
+        self._nav_sidebar = NavSidebar()
+        self._nav_sidebar.nav_clicked.connect(self.switch_screen)
+        root_layout.addWidget(self._nav_sidebar)
 
         # ── Content area with background image ──
         content_wrapper = QWidget()
@@ -178,36 +131,42 @@ class MainWindow(QMainWindow):
         self._screens[name] = idx
 
     def switch_screen(self, name: str):
-        """Navigate to a named screen."""
+        """Navigate to a named screen with a fade transition."""
         if name not in self._screens:
             return
-        self._stack.setCurrentIndex(self._screens[name])
 
-        # Update button states
-        for key, btn in self._nav_buttons.items():
-            btn.setChecked(key == name)
+        new_idx = self._screens[name]
+        old_idx = self._stack.currentIndex()
+
+        # Update sidebar active state
+        self._nav_sidebar.set_active(name)
+
+        if old_idx == new_idx:
+            # Same screen — just notify
+            widget = self._stack.currentWidget()
+            if hasattr(widget, "on_enter"):
+                widget.on_enter()
+            return
+
+        new_widget = self._stack.widget(new_idx)
+
+        # Fade in the new screen
+        self._stack.setCurrentIndex(new_idx)
+        Animator.fade_in(new_widget, duration=200)
 
         # Notify the screen
-        widget = self._stack.currentWidget()
-        if hasattr(widget, "on_enter"):
-            widget.on_enter()
+        if hasattr(new_widget, "on_enter"):
+            new_widget.on_enter()
 
         self.screen_changed.emit(name)
-
-    def _on_nav_clicked(self):
-        btn = self.sender()
-        if isinstance(btn, _NavButton):
-            self.switch_screen(btn.screen_key)
 
     def _show_toast(self, severity: str, message: str):
         """Display a toast notification from the backend."""
         self._toast_container.add_toast(severity, message)
 
     def _refresh_nav_labels(self, _lang: str):
-        """Update button labels and screen content when language changes."""
-        for key, icon, i18n_key in NAV_ITEMS:
-            if key in self._nav_buttons:
-                self._nav_buttons[key].setText(f"  {icon}  {i18n.get_text(i18n_key)}")
+        """Update sidebar labels and screen content when language changes."""
+        self._nav_sidebar.retranslate()
         # Notify all screens
         for i in range(self._stack.count()):
             widget = self._stack.widget(i)

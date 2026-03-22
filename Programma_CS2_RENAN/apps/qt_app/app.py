@@ -5,14 +5,72 @@ Usage:
     python -m Programma_CS2_RENAN.apps.qt_app.app
 """
 
+import logging
 import sys
+from importlib.metadata import PackageNotFoundError, version
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication
+from PySide6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPixmap
+from PySide6.QtWidgets import QApplication, QMessageBox, QSplashScreen
 
 from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import ThemeEngine
 from Programma_CS2_RENAN.apps.qt_app.main_window import MainWindow
 from Programma_CS2_RENAN.apps.qt_app.screens.placeholder import create_placeholder_screens
+
+
+def _create_splash(app_version: str) -> QSplashScreen:
+    """Create a themed splash screen with gradient background and branding."""
+    width, height = 520, 320
+    pixmap = QPixmap(width, height)
+
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.Antialiasing)
+
+    # Dark gradient background matching CS2 theme
+    gradient = QLinearGradient(0, 0, 0, height)
+    gradient.setColorAt(0.0, QColor("#14141e"))
+    gradient.setColorAt(1.0, QColor("#0a0a14"))
+    painter.fillRect(0, 0, width, height, gradient)
+
+    # Accent bar at top (CS2 orange)
+    painter.fillRect(0, 0, width, 4, QColor("#d96600"))
+
+    # App title
+    painter.setPen(QColor("#dcdcdc"))
+    painter.setFont(QFont("Roboto", 22, QFont.Bold))
+    painter.drawText(0, 70, width, 40, Qt.AlignCenter, "MACENA CS2 ANALYZER")
+
+    # Subtitle
+    painter.setPen(QColor("#a0a0b0"))
+    painter.setFont(QFont("Roboto", 11))
+    painter.drawText(0, 110, width, 25, Qt.AlignCenter, "AI-Powered Coaching Platform")
+
+    # Version
+    painter.setPen(QColor("#3a3a5a"))
+    painter.setFont(QFont("JetBrains Mono", 9))
+    painter.drawText(0, 145, width, 20, Qt.AlignCenter, f"v{app_version}")
+
+    # Divider accent line
+    painter.fillRect(160, 180, 200, 1, QColor("#d96600"))
+
+    # Bottom border
+    painter.fillRect(0, height - 2, width, 2, QColor("#d96600"))
+
+    painter.end()
+
+    splash = QSplashScreen(pixmap)
+    splash.setWindowFlags(Qt.SplashScreen | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+    return splash
+
+
+def _splash_status(splash: QSplashScreen, message: str) -> None:
+    """Update splash screen status message and process events."""
+    splash.showMessage(
+        f"  {message}",
+        Qt.AlignBottom | Qt.AlignLeft,
+        QColor("#a0a0b0"),
+    )
+    QApplication.processEvents()
 
 
 def main():
@@ -22,7 +80,19 @@ def main():
     )
 
     app = QApplication(sys.argv)
-    app.setApplicationName("Macena CS2 Analyzer")
+
+    try:
+        _version = version("macena-cs2-analyzer")
+    except PackageNotFoundError:
+        _version = "1.0.0"
+
+    app.setApplicationName(f"Macena CS2 Analyzer v{_version}")
+    app.setApplicationVersion(_version)
+
+    # Show splash screen immediately
+    splash = _create_splash(_version)
+    splash.show()
+    QApplication.processEvents()
 
     # Connect graceful shutdown early — active even if boot fails
     def _on_app_quit():
@@ -35,6 +105,7 @@ def main():
     app.aboutToQuit.connect(_on_app_quit)
 
     # Register custom fonts and apply theme + font
+    _splash_status(splash, "Loading theme engine...")
     theme = ThemeEngine()
     theme.register_fonts()
 
@@ -50,6 +121,7 @@ def main():
     theme.apply_theme(active_theme, app)
 
     # Create main window
+    _splash_status(splash, "Creating main window...")
     window = MainWindow()
 
     # Set initial wallpaper
@@ -59,6 +131,7 @@ def main():
     placeholders = create_placeholder_screens()
 
     # ── Phase 2: Real data screens ──
+    _splash_status(splash, "Initializing screens...")
     from Programma_CS2_RENAN.apps.qt_app.screens.coach_screen import CoachScreen
     from Programma_CS2_RENAN.apps.qt_app.screens.faceit_config_screen import FaceitConfigScreen
     from Programma_CS2_RENAN.apps.qt_app.screens.help_screen import HelpScreen
@@ -113,6 +186,7 @@ def main():
     wizard.setup_completed.connect(lambda: window.switch_screen("home"))
 
     # Register all screens
+    _splash_status(splash, "Registering screens...")
     for name, widget in placeholders.items():
         window.register_screen(name, widget)
 
@@ -126,11 +200,25 @@ def main():
     window._theme_engine = theme
 
     # Boot backend console (DB audit, conditional FlareSolverr/Hunter)
+    _splash_status(splash, "Starting backend services...")
     from Programma_CS2_RENAN.backend.control.console import get_console
 
-    get_console().boot()
+    try:
+        get_console().boot()
+    except Exception:
+        logging.exception("Backend boot failed")
+        QMessageBox.warning(
+            window,
+            "Backend Startup Error",
+            "The backend failed to initialize.\n\n"
+            "The application will continue, but some features "
+            "(demo ingestion, coaching) may not work.\n\n"
+            "Check the log file for details.",
+        )
 
+    _splash_status(splash, "Ready!")
     window.show()
+    splash.finish(window)
 
     # Start background CoachState polling (10s interval)
     from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state
