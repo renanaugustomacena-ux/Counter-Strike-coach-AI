@@ -1,6 +1,9 @@
 """Toast notification widgets — displays ephemeral status messages."""
 
 from PySide6.QtCore import Qt, QTimer, Signal
+
+from Programma_CS2_RENAN.apps.qt_app.core.animation import Animator
+
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -68,6 +71,10 @@ class ToastWidget(QFrame):
             QTimer.singleShot(auto_ms, self._remove)
 
     def _remove(self):
+        Animator.fade_out(self, duration=200, hide_on_finish=True)
+        QTimer.singleShot(220, self._cleanup)
+
+    def _cleanup(self):
         self.setParent(None)
         self.deleteLater()
         self.dismissed.emit()
@@ -98,6 +105,7 @@ class ToastContainer(QWidget):
         toast.dismissed.connect(lambda t=toast: self._on_dismissed(t))
         self.layout().addWidget(toast)
         self._toasts.append(toast)
+        Animator.fade_in(toast, duration=200)
 
     def _on_dismissed(self, toast: ToastWidget):
         if toast in self._toasts:

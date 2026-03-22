@@ -4,10 +4,10 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QScrollArea,
-    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -22,7 +22,9 @@ from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import (
 )
 from Programma_CS2_RENAN.apps.qt_app.viewmodels.performance_vm import PerformanceViewModel
 from Programma_CS2_RENAN.apps.qt_app.widgets.charts.rating_sparkline import RatingSparkline
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
 from Programma_CS2_RENAN.apps.qt_app.widgets.charts.utility_bar_chart import UtilityBarChart
+from Programma_CS2_RENAN.apps.qt_app.widgets.skeleton import SkeletonTable
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.qt_performance")
@@ -51,12 +53,17 @@ class PerformanceScreen(QWidget):
         self._title_label.setFont(QFont("Roboto", 20, QFont.Bold))
         layout.addWidget(self._title_label)
 
-        # Status
+        # Status (error / empty — NOT used for loading)
         self._status = QLabel("")
         self._status.setAlignment(Qt.AlignCenter)
         self._status.setStyleSheet("color: #a0a0b0; font-size: 14px;")
         self._status.setVisible(False)
         layout.addWidget(self._status)
+
+        # Skeleton loader
+        self._skeleton = SkeletonTable(row_count=3)
+        self._skeleton.setVisible(False)
+        layout.addWidget(self._skeleton)
 
         # Scrollable content
         self._scroll = QScrollArea()
@@ -70,7 +77,7 @@ class PerformanceScreen(QWidget):
         layout.addWidget(self._scroll, 1)
 
     def on_enter(self):
-        self._show_status("Loading performance data...")
+        self._show_loading()
         self._vm.load_performance()
 
     def retranslate(self):
@@ -79,10 +86,12 @@ class PerformanceScreen(QWidget):
 
     def _on_loading(self, loading: bool):
         if loading:
-            self._show_status("Loading performance data...")
+            self._show_loading()
 
     def _on_data(self, history: list, map_stats: dict, sw: dict, utility: dict):
+        self._skeleton.setVisible(False)
         self._status.setVisible(False)
+        self._scroll.setVisible(True)
         self._clear_content()
 
         if not history and not map_stats:
@@ -106,6 +115,7 @@ class PerformanceScreen(QWidget):
 
     def _on_error(self, msg: str):
         if msg:
+            self._skeleton.setVisible(False)
             self._show_status(msg)
 
     # ── Section builders ──
@@ -124,20 +134,18 @@ class PerformanceScreen(QWidget):
     def _build_map_stats(self, map_stats: dict):
         card = self._section("Per-Map Performance")
 
-        row_widget = QWidget()
-        row_layout = QHBoxLayout(row_widget)
-        row_layout.setSpacing(12)
+        grid = QGridLayout()
+        grid.setSpacing(12)
+        cols = 3
 
-        for map_name, stats in map_stats.items():
+        for idx, (map_name, stats) in enumerate(map_stats.items()):
             map_card = QFrame()
             map_card.setObjectName("dashboard_card")
-            map_card.setFixedSize(170, 120)
             mc_layout = QVBoxLayout(map_card)
-            mc_layout.setSpacing(2)
+            mc_layout.setSpacing(4)
 
             name = QLabel(map_name.replace("de_", "").title())
             name.setFont(QFont("Roboto", 12, QFont.Bold))
-            name.setStyleSheet("color: #dcdcdc;")
             mc_layout.addWidget(name)
 
             r = stats.get("rating", 1.0)
@@ -150,26 +158,17 @@ class PerformanceScreen(QWidget):
             adr = stats.get("adr", 0)
             kd = stats.get("kd", 0)
             detail = QLabel(f"ADR: {adr:.0f}  K/D: {kd:.2f}")
-            detail.setStyleSheet("color: #a0a0b0; font-size: 10px;")
+            detail.setObjectName("section_subtitle")
             mc_layout.addWidget(detail)
 
             matches_n = stats.get("matches", 0)
             count = QLabel(f"{matches_n} matches")
-            count.setStyleSheet("color: #666666; font-size: 10px;")
+            count.setObjectName("section_subtitle")
             mc_layout.addWidget(count)
 
-            row_layout.addWidget(map_card)
+            grid.addWidget(map_card, idx // cols, idx % cols)
 
-        row_layout.addStretch()
-
-        # Wrap in horizontal scroll
-        h_scroll = QScrollArea()
-        h_scroll.setWidgetResizable(True)
-        h_scroll.setFixedHeight(140)
-        h_scroll.setFrameShape(QFrame.NoFrame)
-        h_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        h_scroll.setWidget(row_widget)
-        card.layout().addWidget(h_scroll)
+        card.layout().addLayout(grid)
 
     def _build_sw(self, sw: dict):
         card = self._section("Strengths & Weaknesses (vs Pro Average)")
@@ -227,23 +226,22 @@ class PerformanceScreen(QWidget):
 
     # ── Helpers ──
 
-    def _section(self, title: str) -> QFrame:
+    def _section(self, title: str) -> Card:
         """Create a titled card section and add it to the content layout."""
-        card = QFrame()
-        card.setObjectName("dashboard_card")
-        layout = QVBoxLayout(card)
-        layout.setSpacing(8)
-
-        lbl = QLabel(title)
-        lbl.setFont(QFont("Roboto", 14, QFont.Bold))
-        lbl.setStyleSheet("color: #dcdcdc;")
-        layout.addWidget(lbl)
-
+        card = Card(title=title)
         self._content_layout.insertWidget(self._content_layout.count() - 1, card)
         return card
 
+    def _show_loading(self):
+        self._clear_content()
+        self._status.setVisible(False)
+        self._scroll.setVisible(False)
+        self._skeleton.setVisible(True)
+
     def _show_status(self, text: str):
         self._clear_content()
+        self._skeleton.setVisible(False)
+        self._scroll.setVisible(True)
         self._status.setText(text)
         self._status.setVisible(True)
 

@@ -15,7 +15,9 @@ from PySide6.QtWidgets import (
 )
 
 from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state
+from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
 from Programma_CS2_RENAN.core.config import get_setting, save_user_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -89,29 +91,54 @@ class HomeScreen(QWidget):
         layout = QHBoxLayout(bar)
         layout.setContentsMargins(12, 8, 12, 8)
         layout.setSpacing(16)
+        tokens = get_tokens()
 
-        self._status_label = QLabel("Coach Status: Idle")
+        self._status_label = QLabel()
+        self._status_label.setTextFormat(Qt.RichText)
         self._status_label.setFont(QFont("Roboto", 13))
-        self._status_label.setStyleSheet("color: #a0a0b0;")
+        self._update_status_dot("Idle")
         layout.addWidget(self._status_label)
 
-        self._service_label = QLabel("Service: Offline")
+        self._service_label = QLabel()
+        self._service_label.setTextFormat(Qt.RichText)
         self._service_label.setFont(QFont("Roboto", 13))
-        self._service_label.setStyleSheet("color: #ff5555;")
+        self._update_service_dot(False)
         layout.addWidget(self._service_label)
 
         self._matches_label = QLabel("Matches: 0")
         self._matches_label.setFont(QFont("Roboto", 13))
-        self._matches_label.setStyleSheet("color: #a0a0b0;")
+        self._matches_label.setStyleSheet(f"color: {tokens.text_secondary};")
         layout.addWidget(self._matches_label)
 
         layout.addStretch()
         return bar
 
+    def _update_status_dot(self, status: str):
+        tokens = get_tokens()
+        dot_color = tokens.warning if status != "Idle" else tokens.text_tertiary
+        self._status_label.setText(
+            f'<span style="color:{dot_color}">\u25CF</span> '
+            f'<span style="color:{tokens.text_secondary}">Coach: {status}</span>'
+        )
+
+    def _update_service_dot(self, active: bool):
+        tokens = get_tokens()
+        if active:
+            dot_color = tokens.success
+            text = "Online"
+        else:
+            dot_color = tokens.error
+            text = "Offline"
+        self._service_label.setText(
+            f'<span style="color:{dot_color}">\u25CF</span> '
+            f'<span style="color:{tokens.text_secondary}">Service: {text}</span>'
+        )
+
     # ── Card 1: Demo Analysis ──
 
     def _build_demo_card(self):
-        card, self._demo_card_title = self._make_card("demo_analysis")
+        card = Card(title=i18n.get_text("demo_analysis"))
+        self._demo_card = card
         layout = card.layout()
 
         self._demo_desc = QLabel(i18n.get_text("demo_analysis_desc"))
@@ -148,7 +175,8 @@ class HomeScreen(QWidget):
     # ── Card 2: Pro Ingestion Hub ──
 
     def _build_pro_card(self):
-        card, self._pro_card_title = self._make_card("pro_demo_ingestion")
+        card = Card(title=i18n.get_text("pro_demo_ingestion"))
+        self._pro_card = card
         layout = card.layout()
 
         self._pro_desc = QLabel(i18n.get_text("pro_demo_ingestion_desc"))
@@ -193,7 +221,8 @@ class HomeScreen(QWidget):
     # ── Card 3: API & Profile Connectivity ──
 
     def _build_connectivity_card(self):
-        card, self._conn_card_title = self._make_card("connectivity")
+        card = Card(title=i18n.get_text("connectivity"))
+        self._conn_card = card
         layout = card.layout()
 
         btn_row = QHBoxLayout()
@@ -222,7 +251,8 @@ class HomeScreen(QWidget):
     # ── Card 4: Tactical Analysis ──
 
     def _build_tactical_card(self):
-        card, self._tact_card_title = self._make_card("tactical_analysis")
+        card = Card(title=i18n.get_text("tactical_analysis"))
+        self._tact_card = card
         layout = card.layout()
 
         self._tact_desc = QLabel(i18n.get_text("tactical_desc"))
@@ -241,7 +271,7 @@ class HomeScreen(QWidget):
     # ── Training Status Card (hidden until training active) ──
 
     def _build_training_card(self):
-        self._training_card, self._training_card_title = self._make_card("training_status")
+        self._training_card = Card(title=i18n.get_text("training_status"))
         layout = self._training_card.layout()
 
         self._epoch_label = QLabel("Epoch: 0 / 0")
@@ -265,17 +295,6 @@ class HomeScreen(QWidget):
 
     # ── Helpers ──
 
-    def _make_card(self, i18n_key: str) -> tuple[QFrame, QLabel]:
-        card = QFrame()
-        card.setObjectName("dashboard_card")
-        layout = QVBoxLayout(card)
-        layout.setSpacing(8)
-        lbl = QLabel(i18n.get_text(i18n_key))
-        lbl.setFont(QFont("Roboto", 14, QFont.Bold))
-        lbl.setStyleSheet("color: #dcdcdc;")
-        layout.addWidget(lbl)
-        return card, lbl
-
     def _navigate(self, screen_name: str):
         win = self.window()
         if win and hasattr(win, "switch_screen"):
@@ -285,11 +304,11 @@ class HomeScreen(QWidget):
         """Update all translatable text when language changes."""
         self._title_label.setText(i18n.get_text("dashboard"))
         # Card titles
-        self._demo_card_title.setText(i18n.get_text("demo_analysis"))
-        self._pro_card_title.setText(i18n.get_text("pro_demo_ingestion"))
-        self._conn_card_title.setText(i18n.get_text("connectivity"))
-        self._tact_card_title.setText(i18n.get_text("tactical_analysis"))
-        self._training_card_title.setText(i18n.get_text("training_status"))
+        self._demo_card.set_title(i18n.get_text("demo_analysis"))
+        self._pro_card.set_title(i18n.get_text("pro_demo_ingestion"))
+        self._conn_card.set_title(i18n.get_text("connectivity"))
+        self._tact_card.set_title(i18n.get_text("tactical_analysis"))
+        self._training_card.set_title(i18n.get_text("training_status"))
         # Descriptions
         self._demo_desc.setText(i18n.get_text("demo_analysis_desc"))
         self._pro_desc.setText(i18n.get_text("pro_demo_ingestion_desc"))
@@ -321,15 +340,10 @@ class HomeScreen(QWidget):
     # ── Signal Slots ──
 
     def _on_service_active(self, active: bool):
-        if active:
-            self._service_label.setText("Service: Online")
-            self._service_label.setStyleSheet("color: #4caf50; font-size: 13px;")
-        else:
-            self._service_label.setText("Service: Offline")
-            self._service_label.setStyleSheet("color: #ff5555; font-size: 13px;")
+        self._update_service_dot(active)
 
     def _on_coach_status(self, status: str):
-        self._status_label.setText(f"Coach Status: {status}")
+        self._update_status_dot(status)
 
     def _on_parsing_progress(self, progress: float):
         if 0 < progress < 100:

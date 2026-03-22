@@ -4,18 +4,21 @@ from PySide6.QtCharts import QBarCategoryAxis, QBarSeries, QBarSet, QChart, QCha
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QPainter
 
+from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+
 
 class EconomyChart(QChartView):
     """Bar chart: equipment value per round, blue=CT, gold=T."""
 
     def __init__(self, parent=None):
         chart = QChart()
-        chart.setBackgroundBrush(QColor("#1a1a1a"))
+        tokens = get_tokens()
+        chart.setBackgroundBrush(QColor(tokens.chart_bg))
         chart.setBackgroundRoundness(8)
         chart.setTitle("Economy per Round")
-        chart.setTitleBrush(QColor("#ffffff"))
+        chart.setTitleBrush(QColor(tokens.text_inverse))
         chart.legend().setVisible(True)
-        chart.legend().setLabelColor(QColor("#dcdcdc"))
+        chart.legend().setLabelColor(QColor(tokens.text_primary))
         chart.legend().setAlignment(Qt.AlignBottom)
         super().__init__(chart, parent)
         self.setRenderHint(QPainter.Antialiasing)
@@ -31,10 +34,12 @@ class EconomyChart(QChartView):
         if not rounds:
             return
 
+        tokens = get_tokens()
+
         ct_set = QBarSet("CT")
-        ct_set.setColor(QColor("#5C9EE8"))
+        ct_set.setColor(QColor(tokens.chart_line_primary))
         t_set = QBarSet("T")
-        t_set.setColor(QColor("#E8C95C"))
+        t_set.setColor(QColor(tokens.chart_line_secondary))
 
         categories = []
         for r in rounds:
@@ -59,7 +64,7 @@ class EconomyChart(QChartView):
         step = max(1, len(categories) // 15)
         display_cats = [c if i % step == 0 else "" for i, c in enumerate(categories)]
         ax_x.append(display_cats)
-        ax_x.setLabelsColor(QColor("#aaaaaa"))
+        ax_x.setLabelsColor(QColor(tokens.text_secondary))
         chart.addAxis(ax_x, Qt.AlignBottom)
         series.attachAxis(ax_x)
 
@@ -68,8 +73,8 @@ class EconomyChart(QChartView):
         ax_y = QValueAxis()
         ax_y.setRange(0, max_val * 1.1)
         ax_y.setTitleText("Equipment ($)")
-        ax_y.setTitleBrush(QColor("#aaaaaa"))
-        ax_y.setLabelsColor(QColor("#aaaaaa"))
+        ax_y.setTitleBrush(QColor(tokens.text_secondary))
+        ax_y.setLabelsColor(QColor(tokens.text_secondary))
         ax_y.setGridLineColor(QColor(255, 255, 255, 20))
         chart.addAxis(ax_y, Qt.AlignLeft)
         series.attachAxis(ax_y)

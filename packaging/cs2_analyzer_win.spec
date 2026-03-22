@@ -27,8 +27,7 @@ datas = [
     (str(APP_DIR / "PHOTO_GUI"), "Programma_CS2_RENAN/PHOTO_GUI"),
     # Config / data files
     (str(APP_DIR / "data" / "map_config.json"), "Programma_CS2_RENAN/data"),
-    (str(APP_DIR / "data" / "pro_baseline.csv"), "Programma_CS2_RENAN/data"),
-    (str(APP_DIR / "data" / "dataset.csv"), "Programma_CS2_RENAN/data"),
+(str(APP_DIR / "data" / "dataset.csv"), "Programma_CS2_RENAN/data"),
     (str(APP_DIR / "data" / "external"), "Programma_CS2_RENAN/data/external"),
     (str(APP_DIR / "core" / "integrity_manifest.json"), "Programma_CS2_RENAN/core"),
     # Knowledge base

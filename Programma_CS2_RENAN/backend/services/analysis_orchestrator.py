@@ -58,10 +58,14 @@ class AnalysisOrchestrator:
             get_blind_spot_detector,
             get_death_estimator,
             get_deception_analyzer,
+            get_economy_optimizer,
             get_engagement_range_analyzer,
             get_entropy_analyzer,
             get_game_tree_search,
             get_momentum_tracker,
+            get_role_classifier,
+            get_utility_analyzer,
+            get_win_predictor,
         )
 
         self.belief_estimator = get_death_estimator()
@@ -71,6 +75,10 @@ class AnalysisOrchestrator:
         self.game_tree = get_game_tree_search()
         self.blind_spot_detector = get_blind_spot_detector()
         self.engagement_analyzer = get_engagement_range_analyzer()
+        self.win_predictor = get_win_predictor()
+        self.role_classifier = get_role_classifier()
+        self.utility_analyzer = get_utility_analyzer()
+        self.economy_optimizer = get_economy_optimizer()
 
         # F5-14: per-module failure counter for observability of persistent silent failures.
         self._module_failure_counts: Dict[str, int] = {}
@@ -85,6 +93,18 @@ class AnalysisOrchestrator:
         self._module_failure_counts[module] = n
         if n <= self._LOG_SUPPRESSION_INITIAL or n % self._LOG_SUPPRESSION_INTERVAL == 0:
             logger.error("%s analysis failed (consecutive=%s): %s", module, n, error)
+        # Notify user when failures are persistent (>3 consecutive)
+        if n == self._LOG_SUPPRESSION_INITIAL:
+            try:
+                from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
+
+                get_state_manager().add_notification(
+                    "analysis",
+                    "WARNING",
+                    f"{module} analysis failing repeatedly ({n} times).",
+                )
+            except Exception:
+                pass
 
     def analyze_match(
         self,
@@ -93,6 +113,7 @@ class AnalysisOrchestrator:
         round_outcomes: List[Dict],
         tick_data: Optional[pd.DataFrame] = None,
         game_states: Optional[List[Dict]] = None,
+        player_stats: Optional[Dict[str, float]] = None,
     ) -> MatchAnalysis:
         """
         Run full Phase 6 analysis suite on match data.
@@ -140,6 +161,26 @@ class AnalysisOrchestrator:
                 tick_data,
             )
             analysis.match_insights.extend(range_insights)
+
+        # 6. Win probability (requires game_states)
+        if game_states:
+            wp_insights = self._analyze_win_probability(player_name, demo_name, game_states)
+            analysis.match_insights.extend(wp_insights)
+
+        # 7. Role classification (requires player_stats)
+        if player_stats:
+            role_insights = self._analyze_role(player_name, demo_name, player_stats)
+            analysis.match_insights.extend(role_insights)
+
+        # 8. Utility usage analysis (requires player_stats with utility fields)
+        if player_stats:
+            util_insights = self._analyze_utility(player_name, demo_name, player_stats)
+            analysis.match_insights.extend(util_insights)
+
+        # 9. Economy optimization (requires game_states with economy data)
+        if game_states:
+            econ_insights = self._analyze_economy(player_name, demo_name, game_states)
+            analysis.match_insights.extend(econ_insights)
 
         logger.info(
             "Analysis complete for %s on %s: %d insights generated",
@@ -530,13 +571,273 @@ class AnalysisOrchestrator:
 
         return insights
 
+    def _analyze_win_probability(
+        self,
+        player_name: str,
+        demo_name: str,
+        game_states: List[Dict],
+    ) -> List[CoachingInsight]:
+        """Analyze win probability across key moments in the match."""
+        insights: List[CoachingInsight] = []
+
+        try:
+            if not game_states:
+                return insights
+
+            from Programma_CS2_RENAN.backend.analysis.win_probability import GameState
+
+            critical_moments = []
+            prev_prob = 0.5
+
+            for state_dict in game_states:
+                gs = state_dict.get("game_state", state_dict)
+                prob, explanation = self.win_predictor.predict_from_dict(gs)
+                swing = abs(prob - prev_prob)
+
+                if swing > 0.2:
+                    round_num = gs.get("round_number", 0)
+                    critical_moments.append(
+                        {
+                            "round": round_num,
+                            "prob": prob,
+                            "swing": swing,
+                            "explanation": explanation,
+                        }
+                    )
+                prev_prob = prob
+
+            if not critical_moments:
+                return insights
+
+            critical_moments.sort(key=lambda m: m["swing"], reverse=True)
+            top_moments = critical_moments[:3]
+
+            parts = ["Significant win probability swings detected:"]
+            for m in top_moments:
+                direction = "jumped" if m["prob"] > 0.5 else "dropped"
+                parts.append(
+                    f"  Round {m['round']}: Win chance {direction} by "
+                    f"{m['swing']:.0%} ({m['explanation']})"
+                )
+
+            heuristic_note = ""
+            if not self.win_predictor._checkpoint_loaded:
+                heuristic_note = (
+                    "\n\n(Note: Predictions are heuristic-based. "
+                    "Accuracy will improve once the win probability model is trained.)"
+                )
+
+            insights.append(
+                CoachingInsight(
+                    player_name=player_name,
+                    demo_name=demo_name,
+                    title="Win Probability: Critical Moments",
+                    severity="Medium" if any(m["swing"] > 0.3 for m in top_moments) else "Info",
+                    message="\n".join(parts) + heuristic_note,
+                    focus_area="win_probability",
+                )
+            )
+
+        except Exception as e:
+            self._record_module_failure("win_probability", e)
+
+        return insights
+
+    def _analyze_role(
+        self,
+        player_name: str,
+        demo_name: str,
+        player_stats: Dict[str, float],
+    ) -> List[CoachingInsight]:
+        """Classify player role and provide role-specific coaching."""
+        insights: List[CoachingInsight] = []
+
+        try:
+            role, confidence, profile = self.role_classifier.classify(player_stats)
+
+            # Cold start guard: confidence 0.0 means no learned thresholds
+            if confidence == 0.0:
+                logger.debug(
+                    "Role classification in cold start for %s — skipping insight",
+                    player_name,
+                )
+                return insights
+
+            if confidence < 0.3:
+                return insights
+
+            map_name = player_stats.get("map_name")
+            tips = self.role_classifier.get_role_coaching(role, map_name)
+
+            parts = [
+                f"Your playstyle most closely matches the {role.value.upper()} role "
+                f"({confidence:.0%} confidence).",
+                f"Role description: {profile.description}.",
+            ]
+
+            if tips:
+                parts.append("\nRole-specific coaching:")
+                for tip in tips[:3]:
+                    parts.append(f"  - {tip}")
+
+            insights.append(
+                CoachingInsight(
+                    player_name=player_name,
+                    demo_name=demo_name,
+                    title=f"Role: {role.value.title()} Detected",
+                    severity="Info",
+                    message="\n".join(parts),
+                    focus_area="role",
+                )
+            )
+
+        except Exception as e:
+            self._record_module_failure("role_classifier", e)
+
+        return insights
+
+    def _analyze_utility(
+        self,
+        player_name: str,
+        demo_name: str,
+        player_stats: Dict[str, float],
+    ) -> List[CoachingInsight]:
+        """Analyze utility usage effectiveness."""
+        insights: List[CoachingInsight] = []
+
+        try:
+            utility_keys = [
+                "smoke_thrown",
+                "flash_thrown",
+                "molotov_thrown",
+                "he_grenade_thrown",
+            ]
+            has_utility_data = any(player_stats.get(k, 0) > 0 for k in utility_keys)
+
+            if not has_utility_data:
+                return insights
+
+            report = self.utility_analyzer.analyze(player_stats)
+
+            parts = [f"Overall utility effectiveness: {report.overall_score:.0%}"]
+
+            for util_type, stats in report.utility_stats.items():
+                if stats.total_thrown > 0:
+                    parts.append(
+                        f"  {util_type.value.title()}: {stats.total_thrown} thrown, "
+                        f"effectiveness {stats.effectiveness_score:.0%}"
+                    )
+
+            if report.recommendations:
+                parts.append("\nRecommendations:")
+                for rec in report.recommendations:
+                    parts.append(f"  - {rec}")
+
+            parts.append(f"\nEstimated economy value of your utility: ${report.economy_impact:.0f}")
+
+            severity = (
+                "High"
+                if report.overall_score < 0.3
+                else ("Medium" if report.overall_score < 0.6 else "Info")
+            )
+
+            insights.append(
+                CoachingInsight(
+                    player_name=player_name,
+                    demo_name=demo_name,
+                    title="Utility: Usage Effectiveness",
+                    severity=severity,
+                    message="\n".join(parts),
+                    focus_area="utility",
+                )
+            )
+
+        except Exception as e:
+            self._record_module_failure("utility_analysis", e)
+
+        return insights
+
+    def _analyze_economy(
+        self,
+        player_name: str,
+        demo_name: str,
+        game_states: List[Dict],
+    ) -> List[CoachingInsight]:
+        """Analyze economy decisions and provide buy recommendations."""
+        insights: List[CoachingInsight] = []
+
+        try:
+            if not game_states:
+                return insights
+
+            suboptimal_buys = []
+
+            for state_dict in game_states:
+                gs = state_dict.get("game_state", state_dict)
+
+                money = gs.get("team_economy") or gs.get("current_money")
+                if money is None:
+                    continue
+
+                round_num = gs.get("round_number", 0)
+                is_ct = gs.get("is_ct", True)
+                score_diff = gs.get("score_diff", 0)
+                loss_bonus = gs.get("loss_bonus", 1900)
+                actual_buy = gs.get("buy_type", "")
+
+                decision = self.economy_optimizer.recommend(
+                    current_money=money,
+                    round_number=round_num,
+                    is_ct=is_ct,
+                    score_diff=score_diff,
+                    loss_bonus=loss_bonus,
+                )
+
+                if actual_buy and actual_buy != decision.action and decision.confidence > 0.7:
+                    suboptimal_buys.append(
+                        {
+                            "round": round_num,
+                            "actual": actual_buy,
+                            "recommended": decision.action,
+                            "reasoning": decision.reasoning,
+                            "confidence": decision.confidence,
+                        }
+                    )
+
+            if not suboptimal_buys:
+                return insights
+
+            parts = [f"Detected {len(suboptimal_buys)} potentially suboptimal buy decision(s):"]
+            for buy in suboptimal_buys[:3]:
+                parts.append(
+                    f"  Round {buy['round']}: You chose '{buy['actual']}' "
+                    f"but '{buy['recommended']}' was recommended "
+                    f"({buy['reasoning']}, {buy['confidence']:.0%} confidence)"
+                )
+
+            insights.append(
+                CoachingInsight(
+                    player_name=player_name,
+                    demo_name=demo_name,
+                    title="Economy: Buy Decision Review",
+                    severity="Medium" if len(suboptimal_buys) > 2 else "Info",
+                    message="\n".join(parts),
+                    focus_area="economy",
+                )
+            )
+
+        except Exception as e:
+            self._record_module_failure("economy", e)
+
+        return insights
+
 
 _orchestrator: AnalysisOrchestrator = None  # type: ignore[assignment]
 _orchestrator_lock = threading.Lock()  # AC-21-01: thread-safe singleton
 
 
 def get_analysis_orchestrator() -> AnalysisOrchestrator:
-    """Singleton factory — avoids re-instantiating 7 analysis modules per call (F5-37)."""
+    """Singleton factory — avoids re-instantiating 11 analysis modules per call (F5-37)."""
     global _orchestrator
     if _orchestrator is None:
         with _orchestrator_lock:

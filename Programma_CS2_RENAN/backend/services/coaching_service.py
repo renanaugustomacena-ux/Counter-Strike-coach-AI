@@ -34,6 +34,8 @@ def _run_with_timeout(func, args=(), kwargs=None, timeout=_COACHING_TIMEOUT):
 
 
 from Programma_CS2_RENAN.backend.coaching.correction_engine import generate_corrections
+from Programma_CS2_RENAN.backend.coaching.explainability import ExplanationGenerator
+from Programma_CS2_RENAN.backend.processing.skill_assessment import SkillAxes
 from Programma_CS2_RENAN.backend.coaching.longitudinal_engine import generate_longitudinal_coaching
 from Programma_CS2_RENAN.backend.knowledge.round_utils import (  # F5-20: shared utility
     infer_round_phase,
@@ -42,11 +44,51 @@ from Programma_CS2_RENAN.backend.progress.longitudinal import FeatureTrend
 from Programma_CS2_RENAN.backend.progress.trend_analysis import compute_trend
 from Programma_CS2_RENAN.backend.services.ollama_writer import get_ollama_writer
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager
+from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
 from Programma_CS2_RENAN.backend.storage.db_models import CoachingInsight, PlayerMatchStats
 from Programma_CS2_RENAN.core.config import get_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 _coaching_logger = get_logger("cs2analyzer.coaching.temporal")
+
+# Feature name → SkillAxes mapping for ExplanationGenerator narratives.
+_FEATURE_TO_AXIS = {
+    "avg_hs": SkillAxes.MECHANICS,
+    "accuracy": SkillAxes.MECHANICS,
+    "avg_kills": SkillAxes.MECHANICS,
+    "rating_survival": SkillAxes.POSITIONING,
+    "rating_kast": SkillAxes.POSITIONING,
+    "positional_aggression_score": SkillAxes.POSITIONING,
+    "utility_blind_time": SkillAxes.UTILITY,
+    "utility_enemies_blinded": SkillAxes.UTILITY,
+    "opening_duel_win_pct": SkillAxes.TIMING,
+    "avg_kast": SkillAxes.DECISION,
+    "avg_adr": SkillAxes.DECISION,
+    "impact_rounds": SkillAxes.DECISION,
+    "clutch_win_pct": SkillAxes.DECISION,
+    "econ_rating": SkillAxes.DECISION,
+    "rating_impact": SkillAxes.DECISION,
+}
+
+# Human-readable names for internal feature keys.
+_FEATURE_HUMAN_NAMES = {
+    "avg_hs": "Headshot Percentage",
+    "accuracy": "Aim Accuracy",
+    "avg_kills": "Average Kills",
+    "avg_deaths": "Average Deaths",
+    "avg_adr": "Average Damage per Round",
+    "avg_kast": "KAST Rating",
+    "impact_rounds": "Impact Rounds",
+    "positional_aggression_score": "Positional Aggression",
+    "econ_rating": "Economy Rating",
+    "rating_survival": "Survival Rating",
+    "rating_kast": "KAST Component",
+    "utility_blind_time": "Flash Blind Duration",
+    "utility_enemies_blinded": "Enemies Flashed",
+    "opening_duel_win_pct": "Opening Duel Win Rate",
+    "clutch_win_pct": "Clutch Win Rate",
+    "rating_impact": "Impact Rating",
+}
 
 
 class CoachingService:
@@ -161,6 +203,11 @@ class CoachingService:
                     _COACHING_TIMEOUT,
                     player_name,
                 )
+                get_state_manager().add_notification(
+                    "coaching",
+                    "WARNING",
+                    "COPER coaching timed out. Using Traditional mode.",
+                )
                 corrections = generate_corrections(deviations, rounds_played)
                 _save_corrections_as_insights(self.db_manager, player_name, demo_name, corrections)
         elif self.use_hybrid and player_stats:
@@ -184,7 +231,7 @@ class CoachingService:
             _save_corrections_as_insights(self.db_manager, player_name, demo_name, corrections)
 
         # Phase 6 Advanced Analysis (runs after main coaching, non-blocking)
-        self._generate_advanced_insights(player_name, demo_name, tick_data)
+        self._generate_advanced_insights(player_name, demo_name, tick_data, player_stats=player_stats)
 
         # Longitudinal tracking (C-02: was imported but never called)
         self._run_longitudinal_coaching(player_name, demo_name)
@@ -195,6 +242,17 @@ class CoachingService:
             mode_used,
             player_name,
             demo_name,
+        )
+        # Surface coaching mode to the UI so the user knows what quality they got
+        _mode_labels = {
+            "COPER": "Level 1 (COPER) — highest fidelity",
+            "Hybrid": "Level 2 (Hybrid) — ML + knowledge",
+            "Traditional+RAG": "Level 3 (Traditional + RAG)",
+            "Traditional": "Level 4 (Traditional) — basic",
+        }
+        mode_label = _mode_labels.get(mode_used, mode_used)
+        get_state_manager().add_notification(
+            "coaching", "INFO", f"Coaching complete: {mode_label}"
         )
 
     def _generate_coper_insights(
@@ -301,6 +359,11 @@ class CoachingService:
 
             logger = get_logger("cs2analyzer.coaching")
             logger.exception("COPER coaching failed")
+            get_state_manager().add_notification(
+                "coaching",
+                "WARNING",
+                f"COPER coaching failed: {e}. Falling back to alternative mode.",
+            )
             # Fallback to hybrid or traditional
             if self.use_hybrid and player_stats:
                 self._generate_hybrid_insights(player_name, demo_name, player_stats, map_name)
@@ -407,7 +470,11 @@ class CoachingService:
         return "critical"
 
     def _generate_advanced_insights(
-        self, player_name: str, demo_name: str, tick_data: Optional[Dict] = None
+        self,
+        player_name: str,
+        demo_name: str,
+        tick_data: Optional[Dict] = None,
+        player_stats: Optional[Dict[str, float]] = None,
     ):
         """
         Run Phase 6 advanced analysis modules (momentum, deception, entropy, game theory).
@@ -448,6 +515,7 @@ class CoachingService:
                 round_outcomes=round_outcomes,
                 tick_data=tick_df,
                 game_states=game_states,
+                player_stats=player_stats,
             )
 
             # Save all generated insights to database
@@ -467,6 +535,11 @@ class CoachingService:
 
             logger = get_logger("cs2analyzer.coaching")
             logger.warning("Phase 6 advanced analysis failed (non-fatal): %s", e)
+            get_state_manager().add_notification(
+                "analysis",
+                "INFO",
+                "Advanced analysis partially unavailable for this match.",
+            )
 
     def _run_longitudinal_coaching(self, player_name: str, demo_name: str):
         """
@@ -550,6 +623,11 @@ class CoachingService:
 
             logger = get_logger("cs2analyzer.coaching")
             logger.exception("Hybrid coaching failed")
+            get_state_manager().add_notification(
+                "coaching",
+                "WARNING",
+                f"Hybrid coaching failed: {e}. Using basic coaching.",
+            )
 
             # C-01: Fallback to Traditional — save a generic insight so the
             # user is never left with zero coaching output from this pipeline.
@@ -762,9 +840,31 @@ def _create_insight_obj(p_name, d_name, c):
         message = f"{c['rag_description']}\n\nPro example: {c.get('rag_pro_example', 'N/A')}"
         severity = "Info"
     else:
-        title = f"Improve your {c['feature']}"
-        message = f"Your {c['feature']} deviates from pro baseline. Z: {c['weighted_z']:.2f}"
-        severity = "Medium" if abs(c["weighted_z"]) < 2 else "High"
+        feature = c["feature"]
+        weighted_z = c["weighted_z"]
+        human_name = _FEATURE_HUMAN_NAMES.get(
+            feature, feature.replace("avg_", "").replace("_", " ").title()
+        )
+        axis = _FEATURE_TO_AXIS.get(feature, SkillAxes.MECHANICS)
+
+        # Use ExplanationGenerator for rich narrative instead of raw Z-scores
+        narrative = ExplanationGenerator.generate_narrative(
+            category=axis,
+            feature=human_name,
+            delta=weighted_z,
+        )
+
+        if narrative:
+            message = narrative
+        else:
+            # Delta below silence threshold (|z| < 0.2) — still provide feedback
+            message = (
+                f"Your {human_name} is close to the professional baseline. "
+                f"Keep refining for consistency."
+            )
+
+        title = f"Improve your {human_name}"
+        severity = ExplanationGenerator.classify_insight_severity(weighted_z)
 
     polished = get_ollama_writer().polish(
         title=title,

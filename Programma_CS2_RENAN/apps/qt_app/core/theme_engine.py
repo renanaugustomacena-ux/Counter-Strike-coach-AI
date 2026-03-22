@@ -9,8 +9,19 @@ import os
 from pathlib import Path
 from typing import List, Optional
 
+from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QColor, QFontDatabase, QPalette
 from PySide6.QtWidgets import QApplication
+
+from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import (
+    DesignTokens,
+    get_tokens,
+    set_active_theme,
+)
+from Programma_CS2_RENAN.apps.qt_app.core.qss_generator import (
+    invalidate_cache,
+    render_qss,
+)
 
 # ── Palette data (mirrored from desktop_app/theme.py to avoid Kivy import chain) ──
 
@@ -86,10 +97,14 @@ def rating_label(rating: float) -> str:
     return "Below Avg"
 
 
-class ThemeEngine:
+class ThemeEngine(QObject):
     """Loads and applies QSS themes + QPalette colors + fonts + wallpapers."""
 
-    def __init__(self):
+    # Emitted after a theme switch. Widgets can connect to update custom painting.
+    theme_changed = Signal(str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self._active: str = "CS2"
         self._fonts_registered = False
         self._wallpaper_path: str = ""
@@ -101,8 +116,13 @@ class ThemeEngine:
         return self._active
 
     @property
+    def tokens(self) -> DesignTokens:
+        """Return the active theme's DesignTokens."""
+        return get_tokens(self._active)
+
+    @property
     def chart_bg(self) -> str:
-        return PALETTES.get(self._active, PALETTES["CS2"])["chart_bg"]
+        return self.tokens.chart_bg
 
     def get_color(self, slot: str) -> QColor:
         """Return QColor for a palette slot (surface, surface_alt, accent_primary)."""
@@ -111,24 +131,25 @@ class ThemeEngine:
         return rgba_to_qcolor(rgba)
 
     def apply_theme(self, name: str, app: Optional[QApplication] = None):
-        """Switch to a named theme. Loads QSS and sets QPalette."""
+        """Switch to a named theme. Renders QSS from template and sets QPalette."""
         if name not in PALETTES:
             return
         self._active = name
+        set_active_theme(name)
         target = app or QApplication.instance()
         if target is None:
             return
 
-        # Load QSS stylesheet with font injection
-        qss_file = _THEMES_DIR / f"{name.lower().replace('.', '')}.qss"
-        if qss_file.exists():
-            qss = qss_file.read_text(encoding="utf-8")
-            # Append font rule AFTER QSS so it wins the cascade (same specificity, last wins)
-            font_rule = (
-                f'\nQWidget {{ font-family: "{self._font_family}", "Segoe UI", "Arial", sans-serif; '
-                f"font-size: {self._font_size}px; }}\n"
-            )
-            target.setStyleSheet(qss + font_rule)
+        # Render QSS from the design-token template
+        tokens = self.tokens
+        qss = render_qss(tokens)
+
+        # Append font rule AFTER QSS so it wins the cascade (same specificity, last wins)
+        font_rule = (
+            f'\nQWidget {{ font-family: "{self._font_family}", "Segoe UI", "Arial", sans-serif; '
+            f"font-size: {self._font_size}px; }}\n"
+        )
+        target.setStyleSheet(qss + font_rule)
 
         # Set QPalette for widgets that don't use QSS
         palette_data = PALETTES[name]
@@ -160,12 +181,16 @@ class ThemeEngine:
         # Update wallpaper for the new theme
         self._update_wallpaper(name)
 
+        # Notify widgets that the theme changed
+        self.theme_changed.emit(name)
+
     # ── Font Management ──
 
     def set_font(self, family: str, size_pt: int):
         """Change the app font and re-apply stylesheet to propagate everywhere."""
         self._font_family = family
         self._font_size = size_pt
+        invalidate_cache()  # Font rule is appended after QSS, so re-render
         self.apply_theme(self._active)
 
     def register_fonts(self):

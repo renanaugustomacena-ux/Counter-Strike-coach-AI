@@ -4,16 +4,19 @@ from PySide6.QtCharts import QAreaSeries, QChart, QChartView, QLineSeries, QValu
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QBrush, QColor, QPainter, QPen
 
+from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+
 
 class RatingSparkline(QChartView):
     """Rating trend with 1.0/1.1/0.9 reference lines and filled area."""
 
     def __init__(self, parent=None):
         chart = QChart()
-        chart.setBackgroundBrush(QColor("#1a1a1a"))
+        tokens = get_tokens()
+        chart.setBackgroundBrush(QColor(tokens.chart_bg))
         chart.setBackgroundRoundness(8)
         chart.setTitle("Rating Trend")
-        chart.setTitleBrush(QColor("#ffffff"))
+        chart.setTitleBrush(QColor(tokens.text_inverse))
         chart.legend().setVisible(False)
         super().__init__(chart, parent)
         self.setRenderHint(QPainter.Antialiasing)
@@ -28,12 +31,13 @@ class RatingSparkline(QChartView):
         if not history:
             return
 
+        tokens = get_tokens()
         ratings = [h.get("rating", 1.0) if h.get("rating") is not None else 1.0 for h in history]
         n = len(ratings)
 
         # Rating line
         line = QLineSeries()
-        line.setPen(QPen(QColor("#00ccff"), 2))
+        line.setPen(QPen(QColor(tokens.chart_line_primary), 2))
         for i, r in enumerate(ratings):
             line.append(i, r)
 
@@ -43,7 +47,7 @@ class RatingSparkline(QChartView):
         for i in range(n):
             baseline.append(i, floor)
         area = QAreaSeries(line, baseline)
-        fill = QColor("#00ccff")
+        fill = QColor(tokens.chart_line_primary)
         fill.setAlphaF(0.15)
         area.setBrush(QBrush(fill))
         area.setPen(QPen(Qt.NoPen))
@@ -53,9 +57,9 @@ class RatingSparkline(QChartView):
 
         # Reference lines
         for ref_val, ref_color, style in [
-            (1.0, "#ffffff", Qt.DashLine),
-            (1.1, "#4CAF50", Qt.DashLine),
-            (0.9, "#F44336", Qt.DashLine),
+            (1.0, tokens.text_inverse, Qt.DashLine),
+            (1.1, tokens.chart_fill_positive, Qt.DashLine),
+            (0.9, tokens.chart_fill_negative, Qt.DashLine),
         ]:
             ref = QLineSeries()
             pen = QPen(QColor(ref_color), 1, style)
@@ -69,7 +73,7 @@ class RatingSparkline(QChartView):
         # Axes
         ax_x = QValueAxis()
         ax_x.setRange(0, max(n - 1, 1))
-        ax_x.setLabelsColor(QColor("#aaaaaa"))
+        ax_x.setLabelsColor(QColor(tokens.text_secondary))
         ax_x.setGridLineColor(QColor(255, 255, 255, 20))
         ax_x.setLabelFormat("%d")
         chart.addAxis(ax_x, Qt.AlignBottom)
@@ -77,8 +81,8 @@ class RatingSparkline(QChartView):
         ax_y = QValueAxis()
         ax_y.setRange(floor, max(ratings) + 0.05)
         ax_y.setTitleText("Rating")
-        ax_y.setTitleBrush(QColor("#aaaaaa"))
-        ax_y.setLabelsColor(QColor("#aaaaaa"))
+        ax_y.setTitleBrush(QColor(tokens.text_secondary))
+        ax_y.setLabelsColor(QColor(tokens.text_secondary))
         ax_y.setGridLineColor(QColor(255, 255, 255, 20))
         chart.addAxis(ax_y, Qt.AlignLeft)
 

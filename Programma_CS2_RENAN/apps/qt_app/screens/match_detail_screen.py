@@ -22,7 +22,9 @@ from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import (
     rating_label,
     rgba_to_qcolor,
 )
+from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.viewmodels.match_detail_vm import MatchDetailViewModel
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.stat_badge import StatBadge
 from Programma_CS2_RENAN.apps.qt_app.widgets.charts.economy_chart import EconomyChart
 from Programma_CS2_RENAN.apps.qt_app.widgets.charts.momentum_chart import MomentumChart
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -103,7 +105,7 @@ class MatchDetailScreen(QWidget):
             return
 
         # Tab 1: Overview
-        self._tabs.addTab(self._build_overview(stats, hltv), "Overview")
+        self._tabs.addTab(self._build_overview(stats, hltv, rounds), "Overview")
 
         # Tab 2: Rounds
         if rounds:
@@ -124,24 +126,18 @@ class MatchDetailScreen(QWidget):
 
     # ── Tab builders ──
 
-    def _build_overview(self, stats: dict, hltv: dict) -> QWidget:
+    def _build_overview(self, stats: dict, hltv: dict, rounds: list) -> QWidget:
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
         content = QWidget()
         layout = QVBoxLayout(content)
-        layout.setSpacing(8)
+        layout.setSpacing(12)
+        tokens = get_tokens()
 
         rating = stats.get("rating", 1.0) or 1.0
-        r_color = rating_color(rating)
 
-        # Rating header
-        header = QHBoxLayout()
-        badge = QLabel(f"{rating:.2f} ({rating_label(rating)})")
-        badge.setFont(QFont("Roboto", 24, QFont.Bold))
-        badge.setStyleSheet(f"color: {r_color.name()};")
-        header.addWidget(badge)
-
+        # Map + date header
         map_name = _extract_map_name(stats.get("demo_name", ""))
         date_str = ""
         if stats.get("match_date"):
@@ -151,41 +147,71 @@ class MatchDetailScreen(QWidget):
                 date_str = str(stats["match_date"])
         info = QLabel(f"{map_name}  |  {date_str}")
         info.setFont(QFont("Roboto", 14))
-        info.setStyleSheet("color: #dcdcdc;")
-        header.addWidget(info)
-        header.addStretch()
-        layout.addLayout(header)
+        layout.addWidget(info)
 
-        # Stats row
+        # StatBadge row
         kd = stats.get("kd_ratio", 0.0)
         adr = stats.get("avg_adr", 0.0)
         kast = stats.get("avg_kast", 0.0)
         hs = stats.get("avg_hs", 0.0)
-        kills = stats.get("avg_kills", 0.0)
-        deaths = stats.get("avg_deaths", 0.0)
 
-        stats_lbl = QLabel(
-            f"K/D: {kd:.2f}   ADR: {adr:.1f}   "
-            f"KAST: {kast * 100:.0f}%   HS: {hs * 100:.0f}%   "
-            f"Avg Kills: {kills:.1f}   Avg Deaths: {deaths:.1f}"
-        )
-        stats_lbl.setFont(QFont("Roboto", 11))
-        stats_lbl.setStyleSheet("color: #a0a0b0;")
-        stats_lbl.setWordWrap(True)
-        layout.addWidget(stats_lbl)
+        badge_row = QHBoxLayout()
+        badge_row.setSpacing(16)
 
-        # HLTV breakdown
+        badge_row.addWidget(StatBadge(
+            value=f"{rating:.2f}",
+            label=f"Rating ({rating_label(rating)})",
+            sentiment="positive" if rating >= 1.0 else "negative",
+        ))
+        badge_row.addWidget(StatBadge(
+            value=f"{kd:.2f}", label="K/D Ratio",
+            sentiment="positive" if kd >= 1.0 else "negative",
+        ))
+        badge_row.addWidget(StatBadge(
+            value=f"{adr:.1f}", label="ADR",
+            sentiment="positive" if adr >= 70 else "negative" if adr < 50 else "neutral",
+        ))
+        badge_row.addWidget(StatBadge(
+            value=f"{kast * 100:.0f}%", label="KAST",
+            sentiment="positive" if kast >= 0.7 else "negative" if kast < 0.5 else "neutral",
+        ))
+        badge_row.addWidget(StatBadge(
+            value=f"{hs * 100:.0f}%", label="Headshot %", sentiment="neutral",
+        ))
+        badge_row.addStretch()
+        layout.addLayout(badge_row)
+
+        # Round outcome strip (green/red dots per round)
+        if rounds:
+            strip_row = QHBoxLayout()
+            strip_row.setSpacing(3)
+            strip_lbl = QLabel("Rounds:")
+            strip_lbl.setFont(QFont("Roboto", 11))
+            strip_lbl.setStyleSheet(f"color: {tokens.text_secondary};")
+            strip_row.addWidget(strip_lbl)
+            for r in rounds:
+                won = r.get("round_won", False)
+                dot = QLabel("\u25CF")
+                dot.setStyleSheet(
+                    f"color: {tokens.success if won else tokens.error}; font-size: 10px;"
+                )
+                dot.setFixedWidth(12)
+                strip_row.addWidget(dot)
+            strip_row.addStretch()
+            layout.addLayout(strip_row)
+
+        # HLTV breakdown with bar indicators
         if hltv:
             sep = QLabel("HLTV 2.0 Components")
             sep.setFont(QFont("Roboto", 14, QFont.Bold))
-            sep.setStyleSheet("color: #dcdcdc; margin-top: 12px;")
+            sep.setStyleSheet(f"color: {tokens.text_primary}; margin-top: 12px;")
             layout.addWidget(sep)
 
             for comp, val in hltv.items():
                 row = QHBoxLayout()
                 name_lbl = QLabel(comp.replace("_", " ").title())
                 name_lbl.setFixedWidth(180)
-                name_lbl.setStyleSheet("color: #a0a0b0;")
+                name_lbl.setStyleSheet(f"color: {tokens.text_secondary};")
                 row.addWidget(name_lbl)
 
                 val_color = rating_color(val)
@@ -193,6 +219,22 @@ class MatchDetailScreen(QWidget):
                 val_lbl.setStyleSheet(f"color: {val_color.name()};")
                 val_lbl.setFont(QFont("Roboto", 11, QFont.Bold))
                 row.addWidget(val_lbl)
+
+                # Inline bar indicator (0.0–2.0 mapped to bar width)
+                bar_bg = QFrame()
+                bar_bg.setFixedHeight(6)
+                bar_bg.setFixedWidth(120)
+                bar_bg.setStyleSheet(
+                    f"background: {tokens.surface_raised}; border-radius: 3px;"
+                )
+                bar_fill = QFrame(bar_bg)
+                fill_w = max(1, min(120, int(val / 2.0 * 120)))
+                bar_fill.setGeometry(0, 0, fill_w, 6)
+                bar_fill.setStyleSheet(
+                    f"background: {val_color.name()}; border-radius: 3px;"
+                )
+                row.addWidget(bar_bg)
+
                 row.addStretch()
                 layout.addLayout(row)
 

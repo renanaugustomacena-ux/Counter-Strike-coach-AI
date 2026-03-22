@@ -14,9 +14,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from Programma_CS2_RENAN.apps.qt_app.core.animation import Animator
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import rating_color, rating_label
 from Programma_CS2_RENAN.apps.qt_app.viewmodels.match_history_vm import MatchHistoryViewModel
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.empty_state import EmptyState
+from Programma_CS2_RENAN.apps.qt_app.widgets.skeleton import SkeletonTable
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.qt_match_history")
@@ -114,12 +117,25 @@ class MatchHistoryScreen(QWidget):
         self._title_label.setFont(QFont("Roboto", 20, QFont.Bold))
         layout.addWidget(self._title_label)
 
-        # Status label (loading / error / empty)
+        # Status label (error / empty — NOT used for loading anymore)
         self._status = QLabel("")
         self._status.setAlignment(Qt.AlignCenter)
         self._status.setStyleSheet("color: #a0a0b0; font-size: 14px;")
         self._status.setVisible(False)
         layout.addWidget(self._status)
+
+        # Skeleton loader (shown during data fetch)
+        self._skeleton = SkeletonTable(row_count=4)
+        self._skeleton.setVisible(False)
+        layout.addWidget(self._skeleton)
+
+        # Empty state
+        self._empty_state = EmptyState(
+            title="No matches found",
+            description="Play some games and they'll appear here.",
+        )
+        self._empty_state.setVisible(False)
+        layout.addWidget(self._empty_state)
 
         # Scrollable match list
         scroll = QScrollArea()
@@ -131,6 +147,7 @@ class MatchHistoryScreen(QWidget):
         self._container_layout.setSpacing(6)
         self._container_layout.addStretch()
         scroll.setWidget(self._container)
+        self._scroll = scroll
         layout.addWidget(scroll, 1)
 
     def retranslate(self):
@@ -138,33 +155,48 @@ class MatchHistoryScreen(QWidget):
         self._title_label.setText(i18n.get_text("match_history_title"))
 
     def on_enter(self):
-        self._show_status("Loading matches...")
+        self._show_loading()
         self._vm.load_matches()
 
     def _on_loading_changed(self, loading: bool):
         if loading:
-            self._show_status("Loading matches...")
+            self._show_loading()
 
     def _on_matches_loaded(self, matches: list):
         self._clear_container()
+        self._skeleton.setVisible(False)
         if not matches:
-            self._show_status("No matches found. Play some games!")
+            self._scroll.setVisible(False)
+            self._empty_state.setVisible(True)
             return
         self._status.setVisible(False)
+        self._empty_state.setVisible(False)
+        self._scroll.setVisible(True)
         for m in matches:
             card = MatchCard(m)
             card.clicked.connect(self._on_match_clicked)
             self._container_layout.insertWidget(self._container_layout.count() - 1, card)
+        Animator.fade_in(self._container, duration=200)
 
     def _on_error(self, msg: str):
         if msg:
+            self._skeleton.setVisible(False)
             self._show_status(msg)
 
     def _on_match_clicked(self, demo_name: str):
         self.match_selected.emit(demo_name)
 
+    def _show_loading(self):
+        self._clear_container()
+        self._status.setVisible(False)
+        self._empty_state.setVisible(False)
+        self._scroll.setVisible(False)
+        self._skeleton.setVisible(True)
+
     def _show_status(self, text: str):
         self._clear_container()
+        self._skeleton.setVisible(False)
+        self._scroll.setVisible(True)
         self._status.setText(text)
         self._status.setVisible(True)
 
