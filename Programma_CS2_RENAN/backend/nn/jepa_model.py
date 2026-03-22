@@ -132,7 +132,12 @@ class JEPACoachingModel(nn.Module):
             [self._create_expert(hidden_dim, output_dim) for _ in range(num_experts)]
         )
 
-        self.gate = nn.Sequential(nn.Linear(hidden_dim, num_experts), nn.Softmax(dim=-1))
+        # J-3 FIX: Raw logits gate for Top-2 sparse routing (Shazeer et al. 2017,
+        # Fedus et al. 2021). Dense softmax causes all experts to converge to
+        # near-identical functions. Sparse routing enables expert specialization.
+        self.gate = nn.Linear(hidden_dim, num_experts)
+        self.num_experts = num_experts
+        self._output_dim = output_dim
 
         self.latent_dim = latent_dim
         self.is_pretrained = False
@@ -182,6 +187,44 @@ class JEPACoachingModel(nn.Module):
 
         return s_target_pred, s_target_pooled
 
+    def _sparse_moe(self, last_hidden: torch.Tensor, role_id: Optional[int] = None) -> torch.Tensor:
+        """Top-2 sparse MoE routing (J-3 fix).
+
+        Only the top-2 experts execute per input, enabling specialization.
+        Per Shazeer et al. (ICLR 2017) and Fedus et al. (JMLR 2021).
+
+        Args:
+            last_hidden: LSTM output [batch, hidden_dim]
+            role_id: Optional role bias for gating
+
+        Returns:
+            Weighted expert output [batch, output_dim]
+        """
+        gate_logits = self.gate(last_hidden)  # (B, num_experts)
+
+        if role_id is not None:
+            gate_logits = self._apply_role_bias(gate_logits, role_id)
+
+        # Top-2 selection
+        top_k = min(2, self.num_experts)
+        top_vals, top_idx = torch.topk(gate_logits, top_k, dim=-1)  # (B, 2)
+        top_weights = F.softmax(top_vals, dim=-1)  # normalize over selected
+
+        # Execute only selected experts
+        batch_size = last_hidden.size(0)
+        output = torch.zeros(batch_size, self._output_dim, device=last_hidden.device)
+
+        for k in range(top_k):
+            expert_indices = top_idx[:, k]  # (B,)
+            weights_k = top_weights[:, k]  # (B,)
+            for e_idx in range(self.num_experts):
+                mask = expert_indices == e_idx
+                if mask.any():
+                    expert_out = self.experts[e_idx](last_hidden[mask])
+                    output[mask] += weights_k[mask].unsqueeze(-1) * expert_out
+
+        return output
+
     def forward_coaching(self, x: torch.Tensor, role_id: Optional[int] = None) -> torch.Tensor:
         """
         Coaching inference (after pre-training).
@@ -201,17 +244,8 @@ class JEPACoachingModel(nn.Module):
         lstm_out, _ = self.lstm(embeddings)
         last_hidden = lstm_out[:, -1, :]
 
-        # MoE gating
-        gate_weights = self.gate(last_hidden)
-
-        if role_id is not None:
-            gate_weights = self._apply_role_bias(gate_weights, role_id)
-
-        # Compute expert outputs
-        expert_outputs = torch.stack([expert(last_hidden) for expert in self.experts], dim=1)
-
-        # Weighted combination
-        output = torch.sum(expert_outputs * gate_weights.unsqueeze(-1), dim=1)
+        # J-3 FIX: Top-2 sparse MoE routing
+        output = self._sparse_moe(last_hidden, role_id)
 
         return torch.tanh(output)
 
@@ -269,29 +303,24 @@ class JEPACoachingModel(nn.Module):
             lstm_out, _ = self.lstm(curr_embedding)
             last_hidden = lstm_out[:, -1, :]
 
-            # MoE gating
-            gate_weights = self.gate(last_hidden)
-
-            if role_id is not None:
-                gate_weights = self._apply_role_bias(gate_weights, role_id)
-
-            # Expert execution
-            expert_outputs = torch.stack([expert(last_hidden) for expert in self.experts], dim=1)
-
-            # Weighted combination
-            output = torch.sum(expert_outputs * gate_weights.unsqueeze(-1), dim=1)
+            # J-3 FIX: Top-2 sparse MoE routing
+            output = self._sparse_moe(last_hidden, role_id)
             prediction = torch.tanh(output)
 
         return prediction, curr_embedding, should_decode
 
-    def _apply_role_bias(self, gate_weights: torch.Tensor, role_id: int) -> torch.Tensor:
-        """Apply role bias to gating (same as AdvancedCoachNN)."""
-        role_id = max(0, min(int(role_id), len(self.experts) - 1))
+    def _apply_role_bias(self, gate_logits: torch.Tensor, role_id: int) -> torch.Tensor:
+        """Apply role bias to gate logits before top-k selection.
 
-        role_bias = torch.zeros_like(gate_weights)
-        role_bias[:, role_id] = 1.0
+        Adds a positive logit bias to the specified expert, making it more
+        likely to be selected during top-k routing.
+        """
+        role_id = max(0, min(int(role_id), self.num_experts - 1))
 
-        return (gate_weights + role_bias) / 2.0
+        role_bias = torch.zeros_like(gate_logits)
+        role_bias[:, role_id] = 2.0  # strong bias in logit space
+
+        return gate_logits + role_bias
 
     def freeze_encoders(self):
         """Freeze JEPA encoders after pre-training."""

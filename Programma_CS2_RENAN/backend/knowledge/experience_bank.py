@@ -38,6 +38,12 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.experience_bank")
 
+# C-2 FIX: Minimum feedback trials before effectiveness_score influences retrieval.
+# With EMA factor 0.3, each observation shifts the running average by 30%.
+# Two consecutive bad rounds can flip a +0.6 to negative. 5 trials gives
+# a more stable signal before using effectiveness for scoring.
+_MIN_EFFECTIVENESS_TRIALS = 5
+
 # Confidence thresholds for experience quality classification.
 MIN_RETRIEVAL_CONFIDENCE = 0.3  # Minimum acceptable experience quality for retrieval
 PRO_EXPERIENCE_CONFIDENCE = 0.7  # Confidence assigned to pro-sourced experiences
@@ -297,6 +303,7 @@ class ExperienceBank:
                 return None
 
             # Composite scoring: FAISS similarity + hash bonus + effectiveness
+            # C-2 FIX: Gate effectiveness behind _MIN_EFFECTIVENESS_TRIALS
             scored = []
             for exp in filtered:
                 similarity = faiss_scores.get(exp.id, 0.0)
@@ -305,6 +312,7 @@ class ExperienceBank:
                 if (
                     getattr(exp, "outcome_validated", False)
                     and getattr(exp, "effectiveness_score", 0) > 0
+                    and getattr(exp, "times_advice_given", 0) >= _MIN_EFFECTIVENESS_TRIALS
                 ):
                     effectiveness_bonus = exp.effectiveness_score * 0.4
                 score = (similarity + hash_bonus + effectiveness_bonus) * exp.confidence
@@ -368,6 +376,7 @@ class ExperienceBank:
                 if (
                     getattr(exp, "outcome_validated", False)
                     and getattr(exp, "effectiveness_score", 0) > 0
+                    and getattr(exp, "times_advice_given", 0) >= _MIN_EFFECTIVENESS_TRIALS
                 ):
                     effectiveness_bonus = exp.effectiveness_score * 0.4
 
