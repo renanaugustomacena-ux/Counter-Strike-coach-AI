@@ -215,7 +215,7 @@ class TestTemporalBaselineDecay:
             rating_2_0 = 1.25
             kpr = 0.80
             dpr = 0.60
-            kast = 72.0
+            kast = 0.72
             impact = 1.15
             adr = 85.0
             headshot_pct = 0.55

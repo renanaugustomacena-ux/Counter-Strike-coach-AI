@@ -67,9 +67,9 @@ class TestProStatsMiner:
         kpr=0.75,
         dpr=0.65,
         adr=80.0,
-        kast=70.0,
+        kast=0.70,
         impact=1.05,
-        headshot_pct=50.0,
+        headshot_pct=0.50,
         maps_played=100,
     ):
         """Helper: create ProPlayer + ProPlayerStatCard and track for cleanup."""
@@ -126,8 +126,8 @@ class TestProStatsMiner:
             player_id=99999,
             rating_2_0=1.25,
             impact=1.20,
-            kast=72.0,
-            headshot_pct=55.0,
+            kast=0.72,
+            headshot_pct=0.55,
             opening_duel_win_pct=50.0,
         )
         assert miner._classify_archetype(card) == "Star Fragger"
@@ -139,8 +139,8 @@ class TestProStatsMiner:
             player_id=99999,
             rating_2_0=1.00,
             impact=0.95,
-            kast=75.0,
-            headshot_pct=50.0,
+            kast=0.75,
+            headshot_pct=0.50,
             opening_duel_win_pct=45.0,
         )
         assert miner._classify_archetype(card) == "Support Anchor"
@@ -154,9 +154,9 @@ class TestProStatsMiner:
             kpr=0.80,
             dpr=0.62,
             adr=85.0,
-            kast=72.0,
+            kast=0.72,
             impact=1.10,
-            headshot_pct=52.0,
+            headshot_pct=0.52,
             maps_played=200,
             opening_kill_ratio=1.2,
             opening_duel_win_pct=54.0,

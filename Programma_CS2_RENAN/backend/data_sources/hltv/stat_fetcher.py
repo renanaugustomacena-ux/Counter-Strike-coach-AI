@@ -252,7 +252,8 @@ class HLTVStatFetcher:
                     # system stores as ratio [0, 1] (e.g. 0.74).
                     "kast": data.get("kast_pct", 0.0) / 100.0,
                     "impact": data.get("impact_rating", 0.0),
-                    "headshot_pct": data.get("hs_pct", 0.0),
+                    # V-2 FIX: Normalize headshot_pct to ratio [0, 1] (same as KAST above).
+                    "headshot_pct": data.get("hs_pct", 0.0) / 100.0,
                     "maps_played": data.get("maps_played", 0),
                     "opening_kill_ratio": data.get("opening_kill_ratio", 0.0),
                     "opening_duel_win_pct": data.get("opening_duel_win_pct", 0.0),

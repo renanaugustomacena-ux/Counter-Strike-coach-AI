@@ -44,7 +44,8 @@ class PlayerCardAssimilator:
             "avg_deaths": self.card.dpr,
             "avg_adr": self.card.adr,
             "avg_hs": self._extract_hs_ratio(),
-            "avg_kast": self.card.kast,
+            # V-2: Defensive normalization for old DB records with percentage values.
+            "avg_kast": self.card.kast / 100.0 if self.card.kast > 1.0 else self.card.kast,
             "kd_ratio": self.card.kpr / self.card.dpr if self.card.dpr > 0 else self.card.kpr,
             "impact_rounds": self.card.impact,
             "rating": self.card.rating_2_0,
@@ -61,7 +62,9 @@ class PlayerCardAssimilator:
         # Core overview usually provides HS %
         # In our spider, we saved it in card_data["core"]["headshot_pct"]
         # which might be in detailed_stats_json if not a direct column
-        return self.details.get("core", {}).get("headshot_pct", 0.45)
+        # V-2: Defensive normalization — JSON details may contain raw percentages.
+        raw = self.details.get("core", {}).get("headshot_pct", 0.45)
+        return raw / 100.0 if raw > 1.0 else raw
 
     def _map_detailed_metrics(self) -> Dict[str, float]:
         """

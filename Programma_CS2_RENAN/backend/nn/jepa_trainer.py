@@ -266,6 +266,12 @@ class JEPATrainer:
         # Reset learning rate scheduler for fresh training
         self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=epochs)
 
+        # V-3 FIX: Reset EMA cosine momentum schedule for fresh retraining.
+        # Without this, _ema_step accumulates from previous training, causing
+        # progress > 1.0 (clamped) → momentum ≈ 1.0 (frozen target encoder).
+        self._ema_step = 0
+        self._ema_total_steps = epochs * len(full_dataloader)
+
         for epoch in range(epochs):
             avg_loss = self.train_epoch(full_dataloader, device)
             logger.info("Retrain epoch %d/%d: loss=%.4f", epoch + 1, epochs, avg_loss)

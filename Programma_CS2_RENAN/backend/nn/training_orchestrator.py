@@ -415,24 +415,28 @@ class TrainingOrchestrator:
         features_tensor = torch.tensor(features, dtype=torch.float32).to(self.device)
 
         if self.model_type in ("jepa", "vl-jepa"):
-            # J-5 FIX: Skip batches with fewer than 10 ticks instead of zero-padding.
-            # Zero vectors encode a physically impossible game state (health=0, pos=origin,
-            # teammates=0, enemies=0), creating position-dependent encoder bias.
-            # The orchestrator fetches up to 5000 ticks — batches this small are rare.
+            # J-5 + V-1 FIX: Require context_len + 1 ticks minimum.
+            # J-5: Zero vectors encode physically impossible game states.
+            # V-1: With only context_len ticks, target = context[-1] (overlap —
+            # model learns to "predict" what it already sees). With b >> context_len,
+            # target was ticks[-1] (distant future, not next-step prediction).
+            # Fix: target is the tick immediately AFTER the context window.
             _JEPA_CONTEXT_LEN = 10
-            if b < _JEPA_CONTEXT_LEN:
+            if b < _JEPA_CONTEXT_LEN + 1:
                 logger.debug(
-                    "J-5: JEPA batch too short (%d < %d) — skipping to avoid zero-padding",
+                    "V-1: JEPA batch too short (%d < %d) — need context + target tick",
                     b,
-                    _JEPA_CONTEXT_LEN,
+                    _JEPA_CONTEXT_LEN + 1,
                 )
                 return None
 
             # JEPA expects context (sequence), target, and negatives
             context = features_tensor[:_JEPA_CONTEXT_LEN].unsqueeze(0)  # (1, 10, METADATA_DIM)
 
-            # Target: next item prediction — must be 3D (B, seq_len, input_dim)
-            target = features_tensor[-1:].unsqueeze(0)  # (1, 1, METADATA_DIM)
+            # V-1 FIX: Target is tick immediately after context — correct next-step prediction.
+            # Previously used features_tensor[-1:] which overlapped with context when b=10
+            # and was distant (89+ ticks away) when b>>10.
+            target = features_tensor[_JEPA_CONTEXT_LEN:_JEPA_CONTEXT_LEN + 1].unsqueeze(0)  # (1, 1, METADATA_DIM)
 
             # NN-H-03: Sample negatives from cross-match pool (not current batch)
             # to avoid false negatives from same-match ticks.
