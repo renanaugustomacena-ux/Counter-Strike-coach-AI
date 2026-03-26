@@ -38,9 +38,12 @@ class UltimateMLDebugger:
     def __init__(self):
         self.db = get_db_manager()
         self.recon = RAPStateReconstructor()
+        from Programma_CS2_RENAN.backend.nn.config import OUTPUT_DIM
         from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
 
-        self.model = ModelFactory.get_model("default", input_dim=METADATA_DIM, output_dim=4)
+        self.model = ModelFactory.get_model(
+            "default", input_dim=METADATA_DIM, output_dim=OUTPUT_DIM
+        )
         self.report = []
 
     def run_diagnostic_cycle(self, player_name="MCIV_PROBE"):

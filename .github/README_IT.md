@@ -15,6 +15,11 @@ Questa directory contiene la pipeline CI/CD di GitHub Actions e la relativa docu
 | `ABOUT_CICD_IT.md` | Panoramica pipeline (Italiano) |
 | `ABOUT_CICD_PT.md` | Panoramica pipeline (Portoghese) |
 | `CICD_GUIDE.md` | Guida tecnica dettagliata |
+| `PIPELINE.md` | Documentazione architettura pipeline |
+| `dependabot.yml` | Configurazione Dependabot per aggiornamento dipendenze |
+| `pull_request_template.md` | Template PR |
+| `ISSUE_TEMPLATE/bug_report.md` | Template issue segnalazione bug |
+| `ISSUE_TEMPLATE/feature_request.md` | Template issue richiesta funzionalita |
 
 ## Architettura della Pipeline
 
@@ -27,7 +32,7 @@ Push / PR
     │       └── pytest --cov-fail-under=30
     │
     ├── Fase 3: INTEGRATION (matrice Ubuntu + Windows, ~5 min)
-    │       ├── headless_validator.py (gate a 23 fasi)
+    │       ├── headless_validator.py (gate a 24 fasi, 319 controlli)
     │       ├── Coerenza cross-modulo (METADATA_DIM == INPUT_DIM)
     │       ├── Test di portabilita
     │       └── Verifica manifesto di integrita

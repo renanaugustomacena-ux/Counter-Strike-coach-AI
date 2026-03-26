@@ -20,7 +20,6 @@ import pytest
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
-
 # ============ Shared Fixtures ============
 
 
@@ -48,9 +47,7 @@ class _InMemoryStateManager:
         self.notifications: list[dict] = []
 
     def add_notification(self, daemon: str, severity: str, message: str):
-        self.notifications.append(
-            {"daemon": daemon, "severity": severity, "message": message}
-        )
+        self.notifications.append({"daemon": daemon, "severity": severity, "message": message})
 
     def update_status(self, daemon: str, status: str, detail: str = ""):
         pass
@@ -89,22 +86,16 @@ class TestExperienceContext:
     """Pure dataclass — zero dependencies."""
 
     def test_query_string_basic(self):
-        from Programma_CS2_RENAN.backend.knowledge.experience_bank import (
-            ExperienceContext,
-        )
+        from Programma_CS2_RENAN.backend.knowledge.experience_bank import ExperienceContext
 
-        ctx = ExperienceContext(
-            map_name="de_mirage", round_phase="pistol", side="T"
-        )
+        ctx = ExperienceContext(map_name="de_mirage", round_phase="pistol", side="T")
         qs = ctx.to_query_string()
         assert "de_mirage" in qs
         assert "T-side" in qs
         assert "pistol" in qs
 
     def test_query_string_includes_position(self):
-        from Programma_CS2_RENAN.backend.knowledge.experience_bank import (
-            ExperienceContext,
-        )
+        from Programma_CS2_RENAN.backend.knowledge.experience_bank import ExperienceContext
 
         ctx = ExperienceContext(
             map_name="de_dust2",
@@ -116,9 +107,7 @@ class TestExperienceContext:
         assert "A-site" in qs
 
     def test_query_string_includes_health_when_not_full(self):
-        from Programma_CS2_RENAN.backend.knowledge.experience_bank import (
-            ExperienceContext,
-        )
+        from Programma_CS2_RENAN.backend.knowledge.experience_bank import ExperienceContext
 
         ctx = ExperienceContext(
             map_name="de_inferno",
@@ -130,20 +119,14 @@ class TestExperienceContext:
         assert "critical health" in qs
 
     def test_query_string_omits_health_when_full(self):
-        from Programma_CS2_RENAN.backend.knowledge.experience_bank import (
-            ExperienceContext,
-        )
+        from Programma_CS2_RENAN.backend.knowledge.experience_bank import ExperienceContext
 
-        ctx = ExperienceContext(
-            map_name="de_nuke", round_phase="force", side="CT"
-        )
+        ctx = ExperienceContext(map_name="de_nuke", round_phase="force", side="CT")
         qs = ctx.to_query_string()
         assert "health" not in qs
 
     def test_query_string_includes_alive_counts(self):
-        from Programma_CS2_RENAN.backend.knowledge.experience_bank import (
-            ExperienceContext,
-        )
+        from Programma_CS2_RENAN.backend.knowledge.experience_bank import ExperienceContext
 
         ctx = ExperienceContext(
             map_name="de_ancient",
@@ -156,35 +139,23 @@ class TestExperienceContext:
         assert "3v2" in qs
 
     def test_compute_hash_deterministic(self):
-        from Programma_CS2_RENAN.backend.knowledge.experience_bank import (
-            ExperienceContext,
-        )
+        from Programma_CS2_RENAN.backend.knowledge.experience_bank import ExperienceContext
 
-        ctx = ExperienceContext(
-            map_name="de_mirage", round_phase="eco", side="CT"
-        )
+        ctx = ExperienceContext(map_name="de_mirage", round_phase="eco", side="CT")
         h1 = ctx.compute_hash()
         h2 = ctx.compute_hash()
         assert h1 == h2
         assert len(h1) == 16  # SHA256[:16]
 
     def test_different_contexts_different_hashes(self):
-        from Programma_CS2_RENAN.backend.knowledge.experience_bank import (
-            ExperienceContext,
-        )
+        from Programma_CS2_RENAN.backend.knowledge.experience_bank import ExperienceContext
 
-        ctx_a = ExperienceContext(
-            map_name="de_mirage", round_phase="eco", side="CT"
-        )
-        ctx_b = ExperienceContext(
-            map_name="de_mirage", round_phase="eco", side="T"
-        )
+        ctx_a = ExperienceContext(map_name="de_mirage", round_phase="eco", side="CT")
+        ctx_b = ExperienceContext(map_name="de_mirage", round_phase="eco", side="T")
         assert ctx_a.compute_hash() != ctx_b.compute_hash()
 
     def test_hash_uses_sha256(self):
-        from Programma_CS2_RENAN.backend.knowledge.experience_bank import (
-            ExperienceContext,
-        )
+        from Programma_CS2_RENAN.backend.knowledge.experience_bank import ExperienceContext
 
         ctx = ExperienceContext(
             map_name="de_mirage",
@@ -204,9 +175,7 @@ class TestSynthesizedAdvice:
     """Pure dataclass — verify structure."""
 
     def test_creation(self):
-        from Programma_CS2_RENAN.backend.knowledge.experience_bank import (
-            SynthesizedAdvice,
-        )
+        from Programma_CS2_RENAN.backend.knowledge.experience_bank import SynthesizedAdvice
 
         advice = SynthesizedAdvice(
             narrative="Test narrative",
@@ -228,49 +197,37 @@ class TestInferRoundPhase:
     """Pure function — zero dependencies."""
 
     def test_pistol_round(self):
-        from Programma_CS2_RENAN.backend.knowledge.round_utils import (
-            infer_round_phase,
-        )
+        from Programma_CS2_RENAN.backend.knowledge.round_utils import infer_round_phase
 
         assert infer_round_phase({"equipment_value": 800}) == "pistol"
         assert infer_round_phase({"equipment_value": 0}) == "pistol"
         assert infer_round_phase({"equipment_value": 1499}) == "pistol"
 
     def test_eco_round(self):
-        from Programma_CS2_RENAN.backend.knowledge.round_utils import (
-            infer_round_phase,
-        )
+        from Programma_CS2_RENAN.backend.knowledge.round_utils import infer_round_phase
 
         assert infer_round_phase({"equipment_value": 1500}) == "eco"
         assert infer_round_phase({"equipment_value": 2999}) == "eco"
 
     def test_force_buy(self):
-        from Programma_CS2_RENAN.backend.knowledge.round_utils import (
-            infer_round_phase,
-        )
+        from Programma_CS2_RENAN.backend.knowledge.round_utils import infer_round_phase
 
         assert infer_round_phase({"equipment_value": 3000}) == "force"
         assert infer_round_phase({"equipment_value": 3999}) == "force"
 
     def test_full_buy(self):
-        from Programma_CS2_RENAN.backend.knowledge.round_utils import (
-            infer_round_phase,
-        )
+        from Programma_CS2_RENAN.backend.knowledge.round_utils import infer_round_phase
 
         assert infer_round_phase({"equipment_value": 4000}) == "full_buy"
         assert infer_round_phase({"equipment_value": 10000}) == "full_buy"
 
     def test_missing_key_defaults_to_pistol(self):
-        from Programma_CS2_RENAN.backend.knowledge.round_utils import (
-            infer_round_phase,
-        )
+        from Programma_CS2_RENAN.backend.knowledge.round_utils import infer_round_phase
 
         assert infer_round_phase({}) == "pistol"
 
     def test_non_dict_returns_full_buy(self):
-        from Programma_CS2_RENAN.backend.knowledge.round_utils import (
-            infer_round_phase,
-        )
+        from Programma_CS2_RENAN.backend.knowledge.round_utils import infer_round_phase
 
         assert infer_round_phase("not a dict") == "full_buy"
         assert infer_round_phase(None) == "full_buy"
@@ -288,9 +245,7 @@ class TestCorrectionEngine:
             "Programma_CS2_RENAN.backend.coaching.correction_engine.get_setting",
             return_value={},
         ):
-            from Programma_CS2_RENAN.backend.coaching.correction_engine import (
-                generate_corrections,
-            )
+            from Programma_CS2_RENAN.backend.coaching.correction_engine import generate_corrections
 
             devs = {
                 "avg_adr": -2.0,
@@ -307,9 +262,7 @@ class TestCorrectionEngine:
             "Programma_CS2_RENAN.backend.coaching.correction_engine.get_setting",
             return_value={},
         ):
-            from Programma_CS2_RENAN.backend.coaching.correction_engine import (
-                generate_corrections,
-            )
+            from Programma_CS2_RENAN.backend.coaching.correction_engine import generate_corrections
 
             devs = {"avg_adr": -2.0}
 
@@ -326,9 +279,7 @@ class TestCorrectionEngine:
             "Programma_CS2_RENAN.backend.coaching.correction_engine.get_setting",
             return_value={},
         ):
-            from Programma_CS2_RENAN.backend.coaching.correction_engine import (
-                generate_corrections,
-            )
+            from Programma_CS2_RENAN.backend.coaching.correction_engine import generate_corrections
 
             devs = {"avg_adr": (-2.0, 5.0)}  # (z_score, raw_dev)
             result = generate_corrections(devs, rounds_played=100)
@@ -342,9 +293,7 @@ class TestCorrectionEngine:
             "Programma_CS2_RENAN.backend.coaching.correction_engine.get_setting",
             return_value={},
         ):
-            from Programma_CS2_RENAN.backend.coaching.correction_engine import (
-                generate_corrections,
-            )
+            from Programma_CS2_RENAN.backend.coaching.correction_engine import generate_corrections
 
             devs = {"avg_adr": [-1.5, 3.0]}
             result = generate_corrections(devs, rounds_played=200)
@@ -356,9 +305,7 @@ class TestCorrectionEngine:
             "Programma_CS2_RENAN.backend.coaching.correction_engine.get_setting",
             return_value={},
         ):
-            from Programma_CS2_RENAN.backend.coaching.correction_engine import (
-                generate_corrections,
-            )
+            from Programma_CS2_RENAN.backend.coaching.correction_engine import generate_corrections
 
             devs = {"avg_adr": -3.0, "avg_hs": -0.1}
             result = generate_corrections(devs, rounds_played=300)
@@ -373,86 +320,54 @@ class TestExplainability:
     """Pure static methods — zero external dependencies."""
 
     def test_silence_threshold(self):
-        from Programma_CS2_RENAN.backend.coaching.explainability import (
-            ExplanationGenerator,
-        )
-        from Programma_CS2_RENAN.backend.processing.skill_assessment import (
-            SkillAxes,
-        )
+        from Programma_CS2_RENAN.backend.coaching.explainability import ExplanationGenerator
+        from Programma_CS2_RENAN.backend.processing.skill_assessment import SkillAxes
 
         # Delta below 0.2 → silence (empty string)
-        result = ExplanationGenerator.generate_narrative(
-            SkillAxes.MECHANICS, "avg_hs", 0.1
-        )
+        result = ExplanationGenerator.generate_narrative(SkillAxes.MECHANICS, "avg_hs", 0.1)
         assert result == ""
 
     def test_negative_generates_narrative(self):
-        from Programma_CS2_RENAN.backend.coaching.explainability import (
-            ExplanationGenerator,
-        )
-        from Programma_CS2_RENAN.backend.processing.skill_assessment import (
-            SkillAxes,
-        )
+        from Programma_CS2_RENAN.backend.coaching.explainability import ExplanationGenerator
+        from Programma_CS2_RENAN.backend.processing.skill_assessment import SkillAxes
 
-        result = ExplanationGenerator.generate_narrative(
-            SkillAxes.MECHANICS, "avg_hs", -0.5
-        )
+        result = ExplanationGenerator.generate_narrative(SkillAxes.MECHANICS, "avg_hs", -0.5)
         assert len(result) > 0
         assert "below" in result.lower() or "focus" in result.lower()
 
     def test_positive_generates_narrative(self):
-        from Programma_CS2_RENAN.backend.coaching.explainability import (
-            ExplanationGenerator,
-        )
-        from Programma_CS2_RENAN.backend.processing.skill_assessment import (
-            SkillAxes,
-        )
+        from Programma_CS2_RENAN.backend.coaching.explainability import ExplanationGenerator
+        from Programma_CS2_RENAN.backend.processing.skill_assessment import SkillAxes
 
-        result = ExplanationGenerator.generate_narrative(
-            SkillAxes.MECHANICS, "avg_hs", 0.8
-        )
+        result = ExplanationGenerator.generate_narrative(SkillAxes.MECHANICS, "avg_hs", 0.8)
         assert len(result) > 0
         assert "peak" in result.lower() or "level" in result.lower()
 
     def test_classify_severity_high(self):
-        from Programma_CS2_RENAN.backend.coaching.explainability import (
-            ExplanationGenerator,
-        )
+        from Programma_CS2_RENAN.backend.coaching.explainability import ExplanationGenerator
 
         assert ExplanationGenerator.classify_insight_severity(2.0) == "High"
         assert ExplanationGenerator.classify_insight_severity(-2.0) == "High"
 
     def test_classify_severity_medium(self):
-        from Programma_CS2_RENAN.backend.coaching.explainability import (
-            ExplanationGenerator,
-        )
+        from Programma_CS2_RENAN.backend.coaching.explainability import ExplanationGenerator
 
         assert ExplanationGenerator.classify_insight_severity(1.0) == "Medium"
 
     def test_classify_severity_low(self):
-        from Programma_CS2_RENAN.backend.coaching.explainability import (
-            ExplanationGenerator,
-        )
+        from Programma_CS2_RENAN.backend.coaching.explainability import ExplanationGenerator
 
         assert ExplanationGenerator.classify_insight_severity(0.5) == "Low"
 
     def test_unknown_category_returns_fallback(self):
-        from Programma_CS2_RENAN.backend.coaching.explainability import (
-            ExplanationGenerator,
-        )
+        from Programma_CS2_RENAN.backend.coaching.explainability import ExplanationGenerator
 
-        result = ExplanationGenerator.generate_narrative(
-            "NONEXISTENT", "some_feature", -1.0
-        )
+        result = ExplanationGenerator.generate_narrative("NONEXISTENT", "some_feature", -1.0)
         assert "analysis" in result.lower() or "patterns" in result.lower()
 
     def test_low_skill_level_simplifies_output(self):
-        from Programma_CS2_RENAN.backend.coaching.explainability import (
-            ExplanationGenerator,
-        )
-        from Programma_CS2_RENAN.backend.processing.skill_assessment import (
-            SkillAxes,
-        )
+        from Programma_CS2_RENAN.backend.coaching.explainability import ExplanationGenerator
+        from Programma_CS2_RENAN.backend.processing.skill_assessment import SkillAxes
 
         result = ExplanationGenerator.generate_narrative(
             SkillAxes.MECHANICS, "avg_hs", -0.5, skill_level=2
@@ -467,9 +382,7 @@ class TestEmbeddingSerialization:
     """Test compact base64 serialization for experience embeddings."""
 
     def test_round_trip(self):
-        from Programma_CS2_RENAN.backend.knowledge.experience_bank import (
-            ExperienceBank,
-        )
+        from Programma_CS2_RENAN.backend.knowledge.experience_bank import ExperienceBank
 
         vec = np.array([0.1, 0.2, 0.3, -0.5], dtype=np.float32)
         serialized = ExperienceBank._serialize_embedding(vec)
@@ -478,9 +391,7 @@ class TestEmbeddingSerialization:
 
     def test_legacy_json_format(self):
         """Backward compatibility: old JSON-encoded embeddings still work."""
-        from Programma_CS2_RENAN.backend.knowledge.experience_bank import (
-            ExperienceBank,
-        )
+        from Programma_CS2_RENAN.backend.knowledge.experience_bank import ExperienceBank
 
         legacy = "[0.1, 0.2, 0.3]"
         result = ExperienceBank._deserialize_embedding(legacy)
@@ -496,9 +407,7 @@ class TestExperienceBankDB:
 
     def _make_bank(self, mock_db):
         """Create ExperienceBank with mocked dependencies."""
-        from Programma_CS2_RENAN.backend.knowledge.experience_bank import (
-            ExperienceBank,
-        )
+        from Programma_CS2_RENAN.backend.knowledge.experience_bank import ExperienceBank
 
         bank = ExperienceBank.__new__(ExperienceBank)
         bank.db = mock_db
@@ -511,13 +420,9 @@ class TestExperienceBankDB:
         return bank
 
     def _make_context(self, map_name="de_mirage", side="T", phase="full_buy"):
-        from Programma_CS2_RENAN.backend.knowledge.experience_bank import (
-            ExperienceContext,
-        )
+        from Programma_CS2_RENAN.backend.knowledge.experience_bank import ExperienceContext
 
-        return ExperienceContext(
-            map_name=map_name, round_phase=phase, side=side
-        )
+        return ExperienceContext(map_name=map_name, round_phase=phase, side=side)
 
     def test_add_experience_persists(self, mock_db):
         bank = self._make_bank(mock_db)
@@ -719,9 +624,7 @@ class TestExperienceBankDB:
                 pro_player_name="NiKo",
             )
 
-            advice = bank.synthesize_advice(
-                ctx, user_action="held_angle", user_outcome="death"
-            )
+            advice = bank.synthesize_advice(ctx, user_action="held_angle", user_outcome="death")
 
         assert advice.experiences_used > 0
         assert advice.confidence > 0.0
@@ -803,7 +706,10 @@ class TestExperienceBankDB:
             return_value=None,
         ):
             bank.add_experience(
-                context=ctx, action_taken="a", outcome="kill", confidence=0.5,
+                context=ctx,
+                action_taken="a",
+                outcome="kill",
+                confidence=0.5,
             )
             bank.add_experience(
                 context=ctx,
@@ -826,9 +732,7 @@ class TestExperienceBankHelpers:
     """Test private helper methods on ExperienceBank."""
 
     def _make_bank(self):
-        from Programma_CS2_RENAN.backend.knowledge.experience_bank import (
-            ExperienceBank,
-        )
+        from Programma_CS2_RENAN.backend.knowledge.experience_bank import ExperienceBank
 
         return ExperienceBank.__new__(ExperienceBank)
 
@@ -896,18 +800,14 @@ class TestRunWithTimeout:
     """Threading timeout utility."""
 
     def test_returns_result_on_success(self):
-        from Programma_CS2_RENAN.backend.services.coaching_service import (
-            _run_with_timeout,
-        )
+        from Programma_CS2_RENAN.backend.services.coaching_service import _run_with_timeout
 
         result, timed_out = _run_with_timeout(lambda: 42, timeout=5)
         assert result == 42
         assert timed_out is False
 
     def test_timeout_returns_none(self):
-        from Programma_CS2_RENAN.backend.services.coaching_service import (
-            _run_with_timeout,
-        )
+        from Programma_CS2_RENAN.backend.services.coaching_service import _run_with_timeout
 
         def slow_func():
             time.sleep(10)
@@ -917,9 +817,7 @@ class TestRunWithTimeout:
         assert timed_out is True
 
     def test_exception_is_reraised(self):
-        from Programma_CS2_RENAN.backend.services.coaching_service import (
-            _run_with_timeout,
-        )
+        from Programma_CS2_RENAN.backend.services.coaching_service import _run_with_timeout
 
         def failing_func():
             raise ValueError("test error")
@@ -928,16 +826,12 @@ class TestRunWithTimeout:
             _run_with_timeout(failing_func, timeout=5)
 
     def test_passes_args_and_kwargs(self):
-        from Programma_CS2_RENAN.backend.services.coaching_service import (
-            _run_with_timeout,
-        )
+        from Programma_CS2_RENAN.backend.services.coaching_service import _run_with_timeout
 
         def add(a, b, extra=0):
             return a + b + extra
 
-        result, _ = _run_with_timeout(
-            add, args=(3, 4), kwargs={"extra": 10}, timeout=5
-        )
+        result, _ = _run_with_timeout(add, args=(3, 4), kwargs={"extra": 10}, timeout=5)
         assert result == 17
 
 
@@ -949,30 +843,34 @@ class TestCoachingServiceModeSelection:
 
     def test_coper_selected_when_enabled_with_map_and_ticks(self, mock_db, mock_state):
         """COPER should be selected when all conditions met."""
-        with patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager",
-            return_value=mock_db,
-        ), patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_state_manager",
-            return_value=mock_state,
-        ), patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_setting",
-            side_effect=lambda k, default=None: {
-                "USE_COPER_COACHING": True,
-                "USE_HYBRID_COACHING": False,
-                "USE_RAG_COACHING": False,
-            }.get(k, default),
-        ), patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service._run_with_timeout",
-            return_value=(None, False),  # Simulates successful COPER
-        ) as mock_timeout, patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer",
-        ) as mock_ollama:
+        with (
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager",
+                return_value=mock_db,
+            ),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_state_manager",
+                return_value=mock_state,
+            ),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_setting",
+                side_effect=lambda k, default=None: {
+                    "USE_COPER_COACHING": True,
+                    "USE_HYBRID_COACHING": False,
+                    "USE_RAG_COACHING": False,
+                }.get(k, default),
+            ),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service._run_with_timeout",
+                return_value=(None, False),  # Simulates successful COPER
+            ) as mock_timeout,
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer",
+            ) as mock_ollama,
+        ):
             mock_ollama.return_value.polish.side_effect = lambda **kw: kw["message"]
 
-            from Programma_CS2_RENAN.backend.services.coaching_service import (
-                CoachingService,
-            )
+            from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
             svc = CoachingService()
             svc.generate_new_insights(
@@ -987,35 +885,35 @@ class TestCoachingServiceModeSelection:
             # Verify COPER was called
             mock_timeout.assert_called_once()
             # Verify mode label shows Level 1
-            mode_notifs = [
-                n for n in mock_state.notifications
-                if "Level 1" in n["message"]
-            ]
+            mode_notifs = [n for n in mock_state.notifications if "Level 1" in n["message"]]
             assert len(mode_notifs) == 1
 
     def test_traditional_selected_when_coper_disabled(self, mock_db, mock_state):
         """Without COPER, should fall back to Traditional."""
-        with patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager",
-            return_value=mock_db,
-        ), patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_state_manager",
-            return_value=mock_state,
-        ), patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_setting",
-            side_effect=lambda k, default=None: {
-                "USE_COPER_COACHING": False,
-                "USE_HYBRID_COACHING": False,
-                "USE_RAG_COACHING": False,
-            }.get(k, default),
-        ), patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer",
-        ) as mock_ollama:
+        with (
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager",
+                return_value=mock_db,
+            ),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_state_manager",
+                return_value=mock_state,
+            ),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_setting",
+                side_effect=lambda k, default=None: {
+                    "USE_COPER_COACHING": False,
+                    "USE_HYBRID_COACHING": False,
+                    "USE_RAG_COACHING": False,
+                }.get(k, default),
+            ),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer",
+            ) as mock_ollama,
+        ):
             mock_ollama.return_value.polish.side_effect = lambda **kw: kw["message"]
 
-            from Programma_CS2_RENAN.backend.services.coaching_service import (
-                CoachingService,
-            )
+            from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
             svc = CoachingService()
             svc.generate_new_insights(
@@ -1025,35 +923,35 @@ class TestCoachingServiceModeSelection:
                 rounds_played=10,
             )
 
-            mode_notifs = [
-                n for n in mock_state.notifications
-                if "Level 4" in n["message"]
-            ]
+            mode_notifs = [n for n in mock_state.notifications if "Level 4" in n["message"]]
             assert len(mode_notifs) == 1
 
     def test_coper_missing_map_falls_to_traditional(self, mock_db, mock_state):
         """COPER requires map_name — without it, should fall to Traditional."""
-        with patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager",
-            return_value=mock_db,
-        ), patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_state_manager",
-            return_value=mock_state,
-        ), patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_setting",
-            side_effect=lambda k, default=None: {
-                "USE_COPER_COACHING": True,
-                "USE_HYBRID_COACHING": False,
-                "USE_RAG_COACHING": False,
-            }.get(k, default),
-        ), patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer",
-        ) as mock_ollama:
+        with (
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager",
+                return_value=mock_db,
+            ),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_state_manager",
+                return_value=mock_state,
+            ),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_setting",
+                side_effect=lambda k, default=None: {
+                    "USE_COPER_COACHING": True,
+                    "USE_HYBRID_COACHING": False,
+                    "USE_RAG_COACHING": False,
+                }.get(k, default),
+            ),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer",
+            ) as mock_ollama,
+        ):
             mock_ollama.return_value.polish.side_effect = lambda **kw: kw["message"]
 
-            from Programma_CS2_RENAN.backend.services.coaching_service import (
-                CoachingService,
-            )
+            from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
             svc = CoachingService()
             svc.generate_new_insights(
@@ -1065,38 +963,39 @@ class TestCoachingServiceModeSelection:
                 tick_data={"team": "T"},
             )
 
-            mode_notifs = [
-                n for n in mock_state.notifications
-                if "Level 4" in n["message"]
-            ]
+            mode_notifs = [n for n in mock_state.notifications if "Level 4" in n["message"]]
             assert len(mode_notifs) == 1
 
     def test_coper_timeout_falls_to_traditional(self, mock_db, mock_state):
         """COPER timeout should produce Traditional fallback + warning."""
-        with patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager",
-            return_value=mock_db,
-        ), patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_state_manager",
-            return_value=mock_state,
-        ), patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_setting",
-            side_effect=lambda k, default=None: {
-                "USE_COPER_COACHING": True,
-                "USE_HYBRID_COACHING": False,
-                "USE_RAG_COACHING": False,
-            }.get(k, default),
-        ), patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service._run_with_timeout",
-            return_value=(None, True),  # Timeout!
-        ), patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer",
-        ) as mock_ollama:
+        with (
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager",
+                return_value=mock_db,
+            ),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_state_manager",
+                return_value=mock_state,
+            ),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_setting",
+                side_effect=lambda k, default=None: {
+                    "USE_COPER_COACHING": True,
+                    "USE_HYBRID_COACHING": False,
+                    "USE_RAG_COACHING": False,
+                }.get(k, default),
+            ),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service._run_with_timeout",
+                return_value=(None, True),  # Timeout!
+            ),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer",
+            ) as mock_ollama,
+        ):
             mock_ollama.return_value.polish.side_effect = lambda **kw: kw["message"]
 
-            from Programma_CS2_RENAN.backend.services.coaching_service import (
-                CoachingService,
-            )
+            from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
             svc = CoachingService()
             svc.generate_new_insights(
@@ -1110,16 +1009,14 @@ class TestCoachingServiceModeSelection:
 
             # Should emit timeout warning
             warnings = [
-                n for n in mock_state.notifications
+                n
+                for n in mock_state.notifications
                 if n["severity"] == "WARNING" and "timed out" in n["message"]
             ]
             assert len(warnings) >= 1
 
             # Mode label should still say COPER (that's what was attempted)
-            mode_notifs = [
-                n for n in mock_state.notifications
-                if "Level 1" in n["message"]
-            ]
+            mode_notifs = [n for n in mock_state.notifications if "Level 1" in n["message"]]
             assert len(mode_notifs) == 1
 
 
@@ -1131,27 +1028,30 @@ class TestCoperInsightsGuards:
 
     def test_non_dict_tick_data_is_rejected(self, mock_db, mock_state):
         """C-02: tick_data must be dict."""
-        with patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager",
-            return_value=mock_db,
-        ), patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_state_manager",
-            return_value=mock_state,
-        ), patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_setting",
-            side_effect=lambda k, default=None: {
-                "USE_COPER_COACHING": True,
-                "USE_HYBRID_COACHING": False,
-                "USE_RAG_COACHING": False,
-            }.get(k, default),
-        ), patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer",
-        ) as mock_ollama:
+        with (
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager",
+                return_value=mock_db,
+            ),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_state_manager",
+                return_value=mock_state,
+            ),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_setting",
+                side_effect=lambda k, default=None: {
+                    "USE_COPER_COACHING": True,
+                    "USE_HYBRID_COACHING": False,
+                    "USE_RAG_COACHING": False,
+                }.get(k, default),
+            ),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer",
+            ) as mock_ollama,
+        ):
             mock_ollama.return_value.polish.side_effect = lambda **kw: kw["message"]
 
-            from Programma_CS2_RENAN.backend.services.coaching_service import (
-                CoachingService,
-            )
+            from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
             svc = CoachingService()
             # Should NOT crash — the guard clause in _generate_coper_insights
@@ -1173,17 +1073,13 @@ class TestBaselineContextNote:
     """Test the static _baseline_context_note method."""
 
     def test_empty_inputs(self):
-        from Programma_CS2_RENAN.backend.services.coaching_service import (
-            CoachingService,
-        )
+        from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
         assert CoachingService._baseline_context_note({}, {}, "aim") == ""
         assert CoachingService._baseline_context_note(None, {"rating": 1.0}, "aim") == ""
 
     def test_calculates_delta(self):
-        from Programma_CS2_RENAN.backend.services.coaching_service import (
-            CoachingService,
-        )
+        from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
         note = CoachingService._baseline_context_note(
             {"rating": 0.8},
@@ -1194,9 +1090,7 @@ class TestBaselineContextNote:
         assert "20%" in note
 
     def test_above_baseline(self):
-        from Programma_CS2_RENAN.backend.services.coaching_service import (
-            CoachingService,
-        )
+        from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
         note = CoachingService._baseline_context_note(
             {"rating": 1.2},
@@ -1207,9 +1101,7 @@ class TestBaselineContextNote:
         assert "20%" in note
 
     def test_missing_metric_returns_empty(self):
-        from Programma_CS2_RENAN.backend.services.coaching_service import (
-            CoachingService,
-        )
+        from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
         note = CoachingService._baseline_context_note(
             {"avg_kills": 1.5},  # No "rating" key
@@ -1227,12 +1119,8 @@ class TestFormatCoperMessage:
     """Test the _format_coper_message method."""
 
     def test_basic_format(self):
-        from Programma_CS2_RENAN.backend.knowledge.experience_bank import (
-            SynthesizedAdvice,
-        )
-        from Programma_CS2_RENAN.backend.services.coaching_service import (
-            CoachingService,
-        )
+        from Programma_CS2_RENAN.backend.knowledge.experience_bank import SynthesizedAdvice
+        from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
         svc = CoachingService.__new__(CoachingService)
         advice = SynthesizedAdvice(
@@ -1249,12 +1137,8 @@ class TestFormatCoperMessage:
         assert "5 similar situations" in msg
 
     def test_with_baseline_note(self):
-        from Programma_CS2_RENAN.backend.knowledge.experience_bank import (
-            SynthesizedAdvice,
-        )
-        from Programma_CS2_RENAN.backend.services.coaching_service import (
-            CoachingService,
-        )
+        from Programma_CS2_RENAN.backend.knowledge.experience_bank import SynthesizedAdvice
+        from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
         svc = CoachingService.__new__(CoachingService)
         advice = SynthesizedAdvice(
@@ -1268,12 +1152,8 @@ class TestFormatCoperMessage:
         assert "20% below pro avg" in msg
 
     def test_no_pro_references(self):
-        from Programma_CS2_RENAN.backend.knowledge.experience_bank import (
-            SynthesizedAdvice,
-        )
-        from Programma_CS2_RENAN.backend.services.coaching_service import (
-            CoachingService,
-        )
+        from Programma_CS2_RENAN.backend.knowledge.experience_bank import SynthesizedAdvice
+        from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
         svc = CoachingService.__new__(CoachingService)
         advice = SynthesizedAdvice(

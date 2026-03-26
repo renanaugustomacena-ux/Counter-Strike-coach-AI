@@ -1,4 +1,4 @@
-"""Setup Wizard — first-run 4-step flow for brain path and demo path configuration."""
+"""Setup Wizard — first-run 5-step flow: Name → Brain Path → Demo Path → Finish."""
 
 import errno
 import os
@@ -25,7 +25,7 @@ _BRAIN_SUBDIRS = ("knowledge", "models", "datasets")
 
 
 class WizardScreen(QWidget):
-    """4-step setup wizard: Intro → Brain Path → Demo Path → Finish."""
+    """5-step setup wizard: Intro → Player Name → Brain Path → Demo Path → Finish."""
 
     setup_completed = Signal()
 
@@ -33,6 +33,7 @@ class WizardScreen(QWidget):
         super().__init__(parent)
         self._brain_path = ""
         self._demo_path = ""
+        self._player_name = ""
 
         self._build_ui()
 
@@ -41,6 +42,10 @@ class WizardScreen(QWidget):
         self._stack.setCurrentIndex(0)
         self._next_btn.setText("Get Started")
         self._next_btn.setVisible(True)
+
+    def retranslate(self):
+        """Update translatable text when language changes."""
+        pass  # Wizard labels are English-only; wire i18n when translations added
 
     # ── UI Construction ──
 
@@ -54,12 +59,13 @@ class WizardScreen(QWidget):
         title.setFont(QFont("Roboto", 20, QFont.Bold))
         layout.addWidget(title)
 
-        # 4-page stack
+        # 5-page stack
         self._stack = QStackedWidget()
-        self._stack.addWidget(self._build_intro_page())
-        self._stack.addWidget(self._build_brain_page())
-        self._stack.addWidget(self._build_demo_page())
-        self._stack.addWidget(self._build_finish_page())
+        self._stack.addWidget(self._build_intro_page())  # 0
+        self._stack.addWidget(self._build_name_page())  # 1
+        self._stack.addWidget(self._build_brain_page())  # 2
+        self._stack.addWidget(self._build_demo_page())  # 3
+        self._stack.addWidget(self._build_finish_page())  # 4
         layout.addWidget(self._stack, 1)
 
         # Bottom bar with Next button
@@ -86,15 +92,43 @@ class WizardScreen(QWidget):
         lay.addWidget(welcome)
 
         desc = QLabel(
-            "This wizard will help you configure the essential paths.\n\n"
-            "You'll choose where to store your AI models and knowledge base,\n"
-            "and optionally point to your CS2 demo folder."
+            "This wizard will help you set up the essentials.\n\n"
+            "You'll enter your in-game name, choose where to store\n"
+            "AI models and knowledge base, and optionally point to\n"
+            "your CS2 demo folder."
         )
         desc.setAlignment(Qt.AlignCenter)
         desc.setWordWrap(True)
         desc.setStyleSheet("color: #a0a0b0; font-size: 14px;")
         lay.addWidget(desc)
 
+        return page
+
+    def _build_name_page(self) -> QWidget:
+        page = QWidget()
+        lay = QVBoxLayout(page)
+        lay.setSpacing(12)
+
+        desc = QLabel(
+            "Enter your CS2 in-game name.\n"
+            "This must match the name shown in demo files so the analyzer\n"
+            "can identify your stats."
+        )
+        desc.setWordWrap(True)
+        desc.setStyleSheet("color: #a0a0b0; font-size: 13px;")
+        lay.addWidget(desc)
+
+        self._name_input = QLineEdit()
+        self._name_input.setPlaceholderText("Your in-game nickname (e.g. s1mple)")
+        self._name_input.returnPressed.connect(self._on_next)
+        lay.addWidget(self._name_input)
+
+        self._name_error = QLabel("")
+        self._name_error.setStyleSheet("color: #f44336; font-size: 12px;")
+        self._name_error.setVisible(False)
+        lay.addWidget(self._name_error)
+
+        lay.addStretch()
         return page
 
     def _build_brain_page(self) -> QWidget:
@@ -190,8 +224,8 @@ class WizardScreen(QWidget):
         lay.addWidget(done)
 
         info = QLabel(
-            "Your brain data and demo paths have been configured.\n"
-            "You can change these anytime in Settings."
+            "Your player name, brain data, and demo paths have been configured.\n"
+            "You can change these anytime in Settings or Profile."
         )
         info.setAlignment(Qt.AlignCenter)
         info.setWordWrap(True)
@@ -208,13 +242,16 @@ class WizardScreen(QWidget):
             self._go_to(1)
             self._next_btn.setText("Next")
         elif step == 1:
-            if self._validate_brain():
+            if self._validate_name():
                 self._go_to(2)
         elif step == 2:
-            self._validate_demo()
-            self._go_to(3)
-            self._next_btn.setText("Launch App")
+            if self._validate_brain():
+                self._go_to(3)
         elif step == 3:
+            self._validate_demo()
+            self._go_to(4)
+            self._next_btn.setText("Launch App")
+        elif step == 4:
             self._finish()
 
     def _go_to(self, index: int):
@@ -239,6 +276,19 @@ class WizardScreen(QWidget):
             self._demo_path_label.setText(f"Selected: {path}")
 
     # ── Validation ──
+
+    def _validate_name(self) -> bool:
+        """Validate and save the player name. Returns True on success."""
+        self._name_error.setVisible(False)
+        name = self._name_input.text().strip()
+        if not name:
+            self._name_error.setText("Please enter your CS2 in-game name.")
+            self._name_error.setVisible(True)
+            return False
+        self._player_name = name
+        save_user_setting("CS2_PLAYER_NAME", name)
+        logger.info("Player name set to %s", name)
+        return True
 
     def _validate_brain(self) -> bool:
         """Validate brain path, create subdirectories. Returns True on success."""
@@ -322,6 +372,25 @@ class WizardScreen(QWidget):
     # ── Finish ──
 
     def _finish(self):
+        # Create PlayerProfile in DB so coaching pipeline can find it
+        if self._player_name:
+            try:
+                from sqlmodel import select
+
+                from Programma_CS2_RENAN.backend.storage.database import get_db_manager
+                from Programma_CS2_RENAN.backend.storage.db_models import PlayerProfile
+
+                with get_db_manager().get_session() as session:
+                    existing = session.exec(
+                        select(PlayerProfile).where(PlayerProfile.player_name == self._player_name)
+                    ).first()
+                    if not existing:
+                        session.add(PlayerProfile(player_name=self._player_name))
+                        session.commit()
+                        logger.info("Created PlayerProfile for '%s'", self._player_name)
+            except Exception:
+                logger.exception("Failed to create PlayerProfile during wizard finish")
+
         save_user_setting("SETUP_COMPLETED", True)
         logger.info("Setup wizard completed")
         self.setup_completed.emit()

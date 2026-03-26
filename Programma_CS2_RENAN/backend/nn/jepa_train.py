@@ -22,7 +22,10 @@ from sqlmodel import select
 from torch.utils.data import DataLoader, Dataset
 
 from Programma_CS2_RENAN.backend.nn.jepa_model import JEPACoachingModel, jepa_contrastive_loss
-from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM, FeatureExtractor
+from Programma_CS2_RENAN.backend.processing.feature_engineering import (
+    METADATA_DIM,
+    FeatureExtractor,
+)
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats, PlayerTickState
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -109,9 +112,7 @@ def _load_tick_sequence(
     try:
         features = FeatureExtractor.extract_batch(ticks, map_name=map_name)
     except Exception as e:
-        logger.warning(
-            "Skipping %s/%s — extract_batch failed: %s", demo_name, player_name, e
-        )
+        logger.warning("Skipping %s/%s — extract_batch failed: %s", demo_name, player_name, e)
         return np.array([], dtype=np.float32)
     return features
 
@@ -139,9 +140,7 @@ def load_pro_demo_sequences(limit: int = 100) -> List[np.ndarray]:
         matches = session.exec(stmt).all()
 
         for match in matches:
-            features = _load_tick_sequence(
-                session, match.demo_name, match.player_name
-            )
+            features = _load_tick_sequence(session, match.demo_name, match.player_name)
             if features.size == 0:
                 skipped += 1
                 continue
@@ -180,9 +179,7 @@ def load_user_match_sequences(limit: int = 200) -> tuple:
         matches = session.exec(stmt).all()
 
         for match in matches:
-            features = _load_tick_sequence(
-                session, match.demo_name, match.player_name
-            )
+            features = _load_tick_sequence(session, match.demo_name, match.player_name)
             if features.size == 0:
                 continue
 
@@ -210,6 +207,7 @@ def train_jepa_pretrain(
     batch_size: int = 16,
     learning_rate: float = 1e-4,
     num_negatives: int = 8,
+    log_dir: str = "runs/jepa_pretrain",
 ):
     """
     JEPA pre-training on pro demos (self-supervised).
@@ -220,12 +218,19 @@ def train_jepa_pretrain(
         batch_size: Batch size
         learning_rate: Learning rate
         num_negatives: Number of negative samples for contrastive loss
+        log_dir: TensorBoard log directory
     """
     from Programma_CS2_RENAN.backend.nn.config import set_global_seed
     from Programma_CS2_RENAN.backend.nn.early_stopping import EarlyStopping
+    from Programma_CS2_RENAN.backend.nn.tensorboard_callback import TensorBoardCallback
+    from Programma_CS2_RENAN.backend.nn.training_callbacks import CallbackRegistry
 
     set_global_seed()  # P1-02: Reproducible training
     logger.info("Starting JEPA pre-training...")
+
+    # ── Callback Registry (TensorBoard + any future callbacks) ──
+    tb_callback = TensorBoardCallback(log_dir=log_dir, model_type="jepa_pretrain")
+    callbacks = CallbackRegistry([tb_callback])
 
     def _worker_init(worker_id: int) -> None:
         set_global_seed(42 + worker_id)
@@ -236,19 +241,25 @@ def train_jepa_pretrain(
     # NN-33: Guard against empty dataset
     if not sequences:
         logger.warning("No valid pro demo sequences found — skipping JEPA pre-training")
+        callbacks.close_all()
         return
 
     dataset = JEPAPretrainDataset(sequences, context_len=10, target_len=10)
 
     if len(dataset) == 0:
         logger.warning("JEPAPretrainDataset is empty — skipping JEPA pre-training")
+        callbacks.close_all()
         return
 
     dataloader = DataLoader(
         dataset, batch_size=batch_size, shuffle=True, worker_init_fn=_worker_init
     )
 
-    # Optimizer — target encoder is updated ONLY via EMA, never by gradient
+    # NN-JM-04: Target encoder is updated ONLY via EMA, never by gradient.
+    # Freeze it before training so update_target_encoder() safety check passes.
+    for param in model.target_encoder.parameters():
+        param.requires_grad = False
+
     optimizer = torch.optim.AdamW(
         [{"params": model.context_encoder.parameters()}, {"params": model.predictor.parameters()}],
         lr=learning_rate,
@@ -272,11 +283,32 @@ def train_jepa_pretrain(
     _ema_total = num_epochs * len(dataloader)  # total training steps
     _ema_step = 0
 
+    # Training metadata for checkpoint
+    loss_history = []
+    best_loss = float("inf")
+    final_epoch = 0
+
+    # ── Fire on_train_start ──
+    train_config = {
+        "model_type": "jepa_pretrain",
+        "num_epochs": num_epochs,
+        "batch_size": batch_size,
+        "learning_rate": learning_rate,
+        "num_negatives": num_negatives,
+        "num_sequences": len(sequences),
+        "num_batches": len(dataloader),
+        "device": str(device),
+    }
+    callbacks.fire("on_train_start", model=model, config=train_config)
+
     for epoch in range(num_epochs):
         model.train()
         total_loss = 0
+        final_epoch = epoch
 
-        for batch in dataloader:
+        callbacks.fire("on_epoch_start", epoch=epoch)
+
+        for batch_idx, batch in enumerate(dataloader):
             x_context = batch["context"].to(device)
             x_target = batch["target"].to(device)
 
@@ -317,12 +349,32 @@ def train_jepa_pretrain(
 
             total_loss += loss.item()
 
+            callbacks.fire(
+                "on_batch_end",
+                batch_idx=batch_idx,
+                loss=loss.item(),
+                outputs={"infonce_loss": loss.item(), "ema_momentum": _momentum},
+            )
+
         avg_loss = total_loss / len(dataloader)
+        loss_history.append(avg_loss)
+        if avg_loss < best_loss:
+            best_loss = avg_loss
 
         if (epoch + 1) % 10 == 0:
             logger.info("Epoch %s/%s - Loss: %s", epoch + 1, num_epochs, format(avg_loss, ".4f"))
 
         scheduler.step()
+
+        # Fire on_epoch_end (self-supervised: val_loss = train_loss)
+        callbacks.fire(
+            "on_epoch_end",
+            epoch=epoch,
+            train_loss=avg_loss,
+            val_loss=avg_loss,
+            model=model,
+            optimizer=optimizer,
+        )
 
         # P1-01: Early stopping based on training loss (self-supervised, no val set)
         if early_stopper(avg_loss):
@@ -331,8 +383,30 @@ def train_jepa_pretrain(
 
     logger.info("JEPA pre-training complete")
 
+    # Fire on_train_end with final metrics
+    callbacks.fire(
+        "on_train_end",
+        model=model,
+        final_metrics={
+            "final_loss": loss_history[-1] if loss_history else 0.0,
+            "best_loss": best_loss,
+            "total_epochs": final_epoch + 1,
+            "num_sequences": len(sequences),
+        },
+    )
+    callbacks.close_all()
+
     # Freeze encoders for fine-tuning
     model.freeze_encoders()
+
+    # Attach training metadata for save_jepa_model
+    model._training_metadata = {
+        "loss_history": loss_history,
+        "best_loss": best_loss,
+        "final_epoch": final_epoch + 1,
+        "num_sequences": len(sequences),
+        "training_config": train_config,
+    }
 
     return model
 
@@ -424,19 +498,63 @@ def train_jepa_finetune(
     return model
 
 
-def save_jepa_model(model: JEPACoachingModel, path: str):
-    """Save JEPA model checkpoint."""
-    torch.save({"model_state_dict": model.state_dict(), "is_pretrained": model.is_pretrained}, path)
-    logger.info("Saved JEPA model to %s", path)
+def save_jepa_model(model: JEPACoachingModel, path: str, optimizer=None):
+    """Save JEPA model checkpoint with full training metadata.
+
+    Checkpoint contents:
+        - model_state_dict: Model weights
+        - is_pretrained: Pre-training flag
+        - optimizer_state_dict: Optimizer state (if provided)
+        - training_metadata: Loss history, epoch count, config (if available)
+        - input_dim / output_dim: Model architecture dimensions
+        - param_count: Total parameter count
+        - save_timestamp: ISO 8601 save time
+    """
+    import datetime
+
+    checkpoint = {
+        "model_state_dict": model.state_dict(),
+        "is_pretrained": model.is_pretrained,
+        "input_dim": model.input_dim,
+        "output_dim": model.output_dim,
+        "param_count": sum(p.numel() for p in model.parameters()),
+        "save_timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    }
+
+    if optimizer is not None:
+        checkpoint["optimizer_state_dict"] = optimizer.state_dict()
+
+    metadata = getattr(model, "_training_metadata", None)
+    if metadata:
+        checkpoint["training_metadata"] = metadata
+
+    torch.save(checkpoint, path)
+    logger.info(
+        "Saved JEPA model to %s (%d params, pretrained=%s)",
+        path,
+        checkpoint["param_count"],
+        model.is_pretrained,
+    )
 
 
 def load_jepa_model(path: str, input_dim: int, output_dim: int) -> JEPACoachingModel:
-    """Load JEPA model checkpoint."""
+    """Load JEPA model checkpoint.
+
+    Returns the model with training metadata attached (if present in checkpoint)
+    as model._training_metadata.
+    """
     model = JEPACoachingModel(input_dim, output_dim)
     checkpoint = torch.load(path, map_location="cpu", weights_only=True)
     model.load_state_dict(checkpoint["model_state_dict"])
-    model.is_pretrained = checkpoint["is_pretrained"]
-    logger.info("Loaded JEPA model from %s", path)
+    model.is_pretrained = checkpoint.get("is_pretrained", False)
+
+    metadata = checkpoint.get("training_metadata")
+    if metadata:
+        model._training_metadata = metadata
+
+    param_count = checkpoint.get("param_count", "?")
+    timestamp = checkpoint.get("save_timestamp", "unknown")
+    logger.info("Loaded JEPA model from %s (%s params, saved %s)", path, param_count, timestamp)
     return model
 
 

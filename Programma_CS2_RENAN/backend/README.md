@@ -193,7 +193,7 @@ Layer 5 (Orchestration): services/  reporting/  control/
 
 ### Testing
 
-- Framework: `pytest`, 79 test files in `tests/`.
+- Framework: `pytest`, 87 test files in `tests/`.
 - Integration tests require `CS2_INTEGRATION_TESTS=1`.
 - Key fixtures: `in_memory_db`, `seeded_db_session`, `mock_db_manager`, `torch_no_grad`.
 

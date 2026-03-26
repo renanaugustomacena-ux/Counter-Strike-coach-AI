@@ -3,6 +3,11 @@
 import os
 import sys
 
+# --- Venv Guard ---
+if sys.prefix == sys.base_prefix and not os.environ.get("CI"):
+    print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
+    sys.exit(2)
+
 # Add project root to path
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)

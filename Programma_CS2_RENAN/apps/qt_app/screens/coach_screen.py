@@ -16,10 +16,10 @@ from PySide6.QtWidgets import (
 
 from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
-from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
-from Programma_CS2_RENAN.apps.qt_app.widgets.components.progress_ring import ProgressRing
 from Programma_CS2_RENAN.apps.qt_app.viewmodels.coach_vm import CoachViewModel
 from Programma_CS2_RENAN.apps.qt_app.viewmodels.coaching_chat_vm import CoachingChatViewModel
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.progress_ring import ProgressRing
 from Programma_CS2_RENAN.core.config import get_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -47,6 +47,7 @@ class CoachScreen(QWidget):
         self._chat_vm = CoachingChatViewModel()
         self._state_connected = False
         self._chat_open = False
+        self._insight_frames: list = []
 
         # Connect VM signals
         self._coach_vm.insights_loaded.connect(self._on_insights)
@@ -61,6 +62,10 @@ class CoachScreen(QWidget):
             get_app_state().belief_confidence_changed.connect(self._on_belief)
             self._state_connected = True
         self._coach_vm.load_insights()
+
+    def on_leave(self):
+        """Clean up when navigating away."""
+        self._typing_label.setVisible(False)
 
     def retranslate(self):
         """Update all translatable text when language changes."""
@@ -319,12 +324,11 @@ class CoachScreen(QWidget):
         if self._insights_placeholder is not None:
             self._insights_placeholder.setVisible(False)
 
-        # Remove old insight widgets (keep title label at index 0 and placeholder at 1)
-        while self._insights_container.count() > 2:
-            item = self._insights_container.takeAt(2)
-            w = item.widget()
-            if w:
-                w.deleteLater()
+        # Remove old insight widgets using tracked list (safe regardless of layout indices)
+        for frame in self._insight_frames:
+            self._insights_container.removeWidget(frame)
+            frame.deleteLater()
+        self._insight_frames.clear()
 
         if not insights:
             self._insights_placeholder.setText(
@@ -379,6 +383,7 @@ class CoachScreen(QWidget):
             item_layout.addLayout(meta_row)
 
             self._insights_container.addWidget(item_frame)
+            self._insight_frames.append(item_frame)
 
     def _render_messages(self, messages: list):
         # Clear existing bubbles (keep the stretch at index 0)

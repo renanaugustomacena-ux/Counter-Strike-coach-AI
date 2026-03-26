@@ -212,7 +212,7 @@ def load_user_settings():
 
 
 # --- Constants ---
-MIN_DEMOS_FOR_COACHING = 10
+MIN_DEMOS_FOR_COACHING = 1
 MAX_DEMOS_PER_MONTH = 10
 MAX_TOTAL_DEMOS_PER_USER = 100
 

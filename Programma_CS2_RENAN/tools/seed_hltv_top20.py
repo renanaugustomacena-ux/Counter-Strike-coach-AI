@@ -1362,7 +1362,11 @@ def main():
                 # V-2 FIX: Normalize to ratio [0, 1]. Seed data uses percentages.
                 "kast": stats["kast"] / 100.0 if stats["kast"] > 1.0 else stats["kast"],
                 "impact": stats["impact"],
-                "headshot_pct": stats["headshot_pct"] / 100.0 if stats["headshot_pct"] > 1.0 else stats["headshot_pct"],
+                "headshot_pct": (
+                    stats["headshot_pct"] / 100.0
+                    if stats["headshot_pct"] > 1.0
+                    else stats["headshot_pct"]
+                ),
                 "maps_played": stats["maps_played"],
                 "opening_kill_ratio": stats["opening_kill_ratio"],
                 "opening_duel_win_pct": stats["opening_duel_win_pct"],

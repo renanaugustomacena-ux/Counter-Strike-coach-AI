@@ -29,6 +29,7 @@ do `core/`.
 | `constants.py` | Constantes globais: tick rate, FOV, durações de utilitários, janela de trade |
 | `demo_frame.py` | Tipos de dados core: `PlayerState`, `GhostState`, `NadeState`, `DemoFrame` |
 | `asset_manager.py` | `SmartAsset` (lazy loading), `AssetAuthority` (registro centralizado) |
+| `playback.py` | `TimelineController`: controlador centralizado Kivy para playback de partida |
 | `playback_engine.py` | `PlaybackEngine`: replay de demo interpolado com blending de frames |
 | `localization.py` | `LocalizationManager`: tabelas de strings em Inglês, Italiano, Português |
 | `platform_utils.py` | Detecção de drives cross-platform (Windows, Linux, macOS) |

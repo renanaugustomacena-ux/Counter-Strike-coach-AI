@@ -18,8 +18,8 @@ I quattro livelli sono progettati per essere eseguiti in ordine crescente di pro
 
 | Livello | Strumento | Controlli | Tempo | Scopo |
 |---------|-----------|-----------|-------|-------|
-| 1 | `headless_validator.py` | 291+ in 7 fasi | <20s | Gate di regressione rapido (obbligatorio prima del completamento task) |
-| 2 | Suite pytest | 1.515+ test in 79 file | ~2min | Validazione logica, asserzioni di contratto |
+| 1 | `headless_validator.py` | 319 in 24 fasi | <20s | Gate di regressione rapido (obbligatorio prima del completamento task) |
+| 2 | Suite pytest | 1.515+ test in 87 file | ~2min | Validazione logica, asserzioni di contratto |
 | 3 | `backend_validator.py` | 40 in 7 sezioni | ~30s | Salute build, zoo modelli, pipeline coaching |
 | 4 | `Goliath_Hospital.py` | 10 reparti | ~60s | Diagnostica clinica completa |
 

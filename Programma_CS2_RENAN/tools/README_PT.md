@@ -17,8 +17,8 @@ Os quatro niveis sao projetados para serem executados em ordem crescente de prof
 
 | Nivel | Ferramenta | Verificacoes | Tempo | Proposito |
 |-------|------------|-------------|-------|-----------|
-| 1 | `headless_validator.py` | 291+ em 7 fases | <20s | Gate de regressao rapido (obrigatorio antes da conclusao de tarefas) |
-| 2 | Suite pytest | 1.515+ testes em 79 arquivos | ~2min | Validacao logica, assercoes de contrato |
+| 1 | `headless_validator.py` | 319 em 24 fases | <20s | Gate de regressao rapido (obrigatorio antes da conclusao de tarefas) |
+| 2 | Suite pytest | 1.515+ testes em 87 arquivos | ~2min | Validacao logica, assercoes de contrato |
 | 3 | `backend_validator.py` | 40 em 7 secoes | ~30s | Saude do build, zoo de modelos, pipeline de coaching |
 | 4 | `Goliath_Hospital.py` | 10 departamentos | ~60s | Diagnostico clinico abrangente |
 

@@ -22,8 +22,8 @@ from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import (
 )
 from Programma_CS2_RENAN.apps.qt_app.viewmodels.performance_vm import PerformanceViewModel
 from Programma_CS2_RENAN.apps.qt_app.widgets.charts.rating_sparkline import RatingSparkline
-from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
 from Programma_CS2_RENAN.apps.qt_app.widgets.charts.utility_bar_chart import UtilityBarChart
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
 from Programma_CS2_RENAN.apps.qt_app.widgets.skeleton import SkeletonTable
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -79,6 +79,9 @@ class PerformanceScreen(QWidget):
     def on_enter(self):
         self._show_loading()
         self._vm.load_performance()
+
+    def on_leave(self):
+        pass  # No pending work to cancel; skeleton hides on next on_enter
 
     def retranslate(self):
         """Update all translatable text when language changes."""

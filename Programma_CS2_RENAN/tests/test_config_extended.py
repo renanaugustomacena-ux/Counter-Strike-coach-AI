@@ -165,7 +165,7 @@ class TestConstants:
     def test_min_demos_for_coaching(self):
         from Programma_CS2_RENAN.core.config import MIN_DEMOS_FOR_COACHING
 
-        assert MIN_DEMOS_FOR_COACHING == 10
+        assert MIN_DEMOS_FOR_COACHING == 1
 
     def test_max_demos_per_month(self):
         from Programma_CS2_RENAN.core.config import MAX_DEMOS_PER_MONTH

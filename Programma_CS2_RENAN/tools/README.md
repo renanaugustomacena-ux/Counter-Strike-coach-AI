@@ -17,8 +17,8 @@ The four levels are designed to be run in order of increasing depth and time cos
 
 | Level | Tool | Checks | Time | Purpose |
 |-------|------|--------|------|---------|
-| 1 | `headless_validator.py` | 291+ across 7 phases | <20s | Fast regression gate (mandatory before task completion) |
-| 2 | pytest suite | 1,515+ tests in 79 files | ~2min | Logic validation, contract assertions |
+| 1 | `headless_validator.py` | 319 across 24 phases | <20s | Fast regression gate (mandatory before task completion) |
+| 2 | pytest suite | 1,515+ tests in 87 files | ~2min | Logic validation, contract assertions |
 | 3 | `backend_validator.py` | 40 across 7 sections | ~30s | Build health, model zoo, coaching pipeline |
 | 4 | `Goliath_Hospital.py` | 10 departments | ~60s | Comprehensive clinical diagnostic |
 

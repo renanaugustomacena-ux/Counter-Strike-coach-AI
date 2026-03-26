@@ -39,11 +39,13 @@ class PerformanceViewModel(QObject):
     def _bg_load(self):
         player = get_setting("CS2_PLAYER_NAME", "")
         if not player:
-            raise ValueError(
-                "Player name not set. Go to Settings \u2192 Profile to set your in-game name."
-            )
+            raise ValueError("Player name not set. Go to Profile or run the Setup Wizard.")
 
-        from Programma_CS2_RENAN.backend.reporting.analytics import analytics
+        try:
+            from Programma_CS2_RENAN.backend.reporting.analytics import analytics
+        except ImportError as exc:
+            logger.warning("Analytics module unavailable: %s", exc)
+            return ([], {}, {}, {})
 
         history = analytics.get_rating_history(player, limit=50)
         map_stats = analytics.get_per_map_stats(player)

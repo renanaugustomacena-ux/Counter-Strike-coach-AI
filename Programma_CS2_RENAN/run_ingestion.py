@@ -152,6 +152,12 @@ def run_ml_pipeline(db_manager, player_name: str, current_demo_name: str, stats:
 
 
 def _is_profile_ready(db_manager, player_name):
+    """Check whether the player has enough data for coaching.
+
+    Requires a PlayerProfile row (player_name only — Steam/Faceit
+    connections are optional enrichment, not prerequisites) and at
+    least MIN_DEMOS_FOR_COACHING non-pro demos ingested.
+    """
     from sqlmodel import func, select
 
     from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats, PlayerProfile
@@ -160,7 +166,7 @@ def _is_profile_ready(db_manager, player_name):
         p = session.exec(
             select(PlayerProfile).where(PlayerProfile.player_name == player_name)
         ).first()
-        if not p or not (p.steam_connected or p.faceit_connected):
+        if not p:
             return False
         cnt = session.exec(
             select(func.count(PlayerMatchStats.id)).where(

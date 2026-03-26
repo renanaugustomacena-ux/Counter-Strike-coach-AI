@@ -46,9 +46,7 @@ class MatchHistoryViewModel(QObject):
     def _bg_load(self):
         player = get_setting("CS2_PLAYER_NAME", "")
         if not player:
-            raise ValueError(
-                "Player name not set. Go to Settings \u2192 Profile to set your in-game name."
-            )
+            raise ValueError("Player name not set. Go to Profile or run the Setup Wizard.")
 
         from sqlmodel import select
 

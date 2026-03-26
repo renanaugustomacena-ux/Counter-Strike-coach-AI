@@ -12,6 +12,7 @@ Build and setup scripts for creating production-ready executables of the Macena 
 |------|---------|----------|
 | `build_exe.bat` | Development build — creates standalone executable | Windows |
 | `build_production.bat` | Production build — optimized and stripped | Windows |
+| `Setup_Macena_CS2.ps1` | PowerShell setup script for environment configuration | Windows |
 
 ## Build Architecture
 

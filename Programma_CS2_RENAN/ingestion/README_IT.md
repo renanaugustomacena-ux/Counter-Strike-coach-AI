@@ -2,7 +2,25 @@
 
 > **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
-Infrastruttura di ingestion demo per demo CS2 professionali e utente con integrazione Steam e arricchimento statistico a livello di round.
+Infrastruttura di ingestion demo per demo CS2 professionali e utente con integrazione Steam, validazione di integrità e arricchimento statistico a livello di round.
+
+## Struttura Directory
+
+```
+ingestion/
+├── __init__.py
+├── demo_loader.py          # Orchestratore principale caricamento demo
+├── integrity.py            # Validazione integrità file demo
+├── steam_locator.py        # Rilevamento installazione Steam
+├── cache/                  # Cache demo parsate (file .mcn)
+├── pipelines/              # Implementazioni pipeline di ingestion
+│   ├── user_ingest.py      # Pipeline ingestion demo utente
+│   └── json_tournament_ingestor.py  # Importazione batch JSON torneo
+└── registry/               # Tracciamento e ciclo di vita file demo
+    ├── lifecycle.py         # Macchina a stati ciclo di vita demo
+    ├── registry.py          # Registry file demo
+    └── schema.sql           # Schema database registry
+```
 
 ## Componenti Principali
 
@@ -11,7 +29,7 @@ Infrastruttura di ingestion demo per demo CS2 professionali e utente con integra
 **`demo_loader.py`** — Orchestratore principale caricamento demo
 - Coordina parsing file demo con demoparser2
 - Validazione integrità via `integrity.py`
-- Delega a user_ingest.py o pro_ingest.py in base alla sorgente demo
+- Delega alle implementazioni pipeline in base alla sorgente demo
 - Tracciamento progresso e recupero errori
 
 **`steam_locator.py`** — Rilevamento installazione Steam
@@ -19,21 +37,9 @@ Infrastruttura di ingestion demo per demo CS2 professionali e utente con integra
 - Parsing registry (Windows) e scansione filesystem
 - Auto-rilevamento cartella demo
 
-**`hltv_orchestrator.py`** — Orchestratore sincronizzazione statistiche giocatori professionisti HLTV
-- Coordina scraping statistiche giocatori professionisti da hltv.org (Rating 2.0, K/D, ADR, ecc.)
-- Applicazione rate limiting
-- Gestione cache
-- Ciclo di vita automazione browser
-- **NOTA:** Questo NON gestisce file demo o metadati demo — solo statistiche giocatori professionisti
-
-**`downloader.py`** — Downloader file demo
-- Download HTTP/HTTPS con logica retry
-- Verifica integrità (checksum)
-- Gestione download concorrenti
-
 **`integrity.py`** — Validazione integrità file demo
-- Verifica formato file
-- Parsing header
+- Verifica formato file (magic bytes PBDEMS2)
+- Parsing header e validazione dimensioni
 - Rilevamento corruzione
 
 ## Sub-Package
@@ -46,59 +52,34 @@ Infrastruttura di ingestion demo per demo CS2 professionali e utente con integra
 - Arricchimento con `enrich_from_demo()` (kill noscope/blind, flash assist, utilizzo utility)
 - Persistenza su tabelle RoundStats + PlayerMatchStats
 
-**`pro_ingest.py`** — Pipeline ingestion demo professionali
-- Parsing demo professionali con arricchimento statistico a livello di round
-- Arricchimento statistico a livello di round
-- Generazione record conoscenza per sistema RAG
-- Aggiornamento baseline statistiche pro
-
 **`json_tournament_ingestor.py`** — Ingestion batch JSON torneo
 - Importazione massiva da export dati torneo
 - Validazione schema
 - Risoluzione conflitti
 
-### `hltv/`
-
-Infrastruttura scraping HLTV con rate limiting e caching.
-
-**`hltv_api_service.py`** — Client API HLTV
-- Interfaccia RESTful a dati HLTV
-- Gestione autenticazione
-- Parsing e normalizzazione risposte
-
-**`rate_limit.py`** — Rate limiter
-- Algoritmo token bucket
-- Rate limit per endpoint
-- Backoff esponenziale su risposte 429
-
-**`selectors.py`** — Selettori CSS e builder URL
-- Definizioni selettori Playwright
-- Costruzione URL per partite, giocatori, team, eventi
-
-**`browser/`** — Automazione Playwright
-- Gestione browser headless
-- Pattern interazione pagina
-- Persistenza cookie
-
-**`collectors/`** — Collector dati
-- Collector metadati partite
-- Collector statistiche giocatori
-- Collector roster team
-- Collector eventi/tornei
-
-**`cache/`** — Caching risposte
-- Cache file-based con TTL
-- Strategie invalidazione cache
-- Generazione chiavi cache
-
-### `hltv_api/`
-
-Wrapper API HLTV di terze parti (servizio esterno basato su Go).
-
 ### `registry/`
 
-Registry file demo e gestione ciclo di vita
-- Tracciamento file demo (processati, pending, falliti)
-- Rilevamento duplicati
-- Politiche retention
+Registry file demo e gestione ciclo di vita.
+
+**`registry.py`** — Tracciamento file demo
+- Traccia stato processing demo (pending, processing, completed, failed)
+- Rilevamento duplicati via hash file
+- Interfaccia query per stato demo
+
+**`lifecycle.py`** — Macchina a stati ciclo di vita demo
+- Transizioni di stato per processing demo
+- Applicazione politiche retention
 - Automazione pulizia
+
+**`schema.sql`** — Definizione schema database registry
+
+### `cache/`
+
+Directory cache demo parsate. Archivia file intermedi `.mcn` per evitare ri-parsing di demo precedentemente processate.
+
+## Note Importanti
+
+- Lo **scraping HLTV** risiede in `backend/data_sources/hltv/`, NON in questo package
+- La funzione principale di orchestrazione ingestion `_ingest_single_demo()` risiede in `run_ingestion.py` alla root del package
+- L'ingestion demo pro utilizza la stessa pipeline core delle demo utente, con arricchimento statistico aggiuntivo
+- La scoperta demo e il processing batch sono gestiti da `batch_ingest.py` alla root del progetto

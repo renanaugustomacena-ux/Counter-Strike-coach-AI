@@ -9,10 +9,9 @@ logger = get_logger("cs2analyzer.nn.experimental.rap_coach.memory")
 # These are niche academic libraries — make them optional so the rest of the codebase
 # can import without crashing when they're not installed (USE_RAP_MODEL=False default).
 try:
+    from hflayers import HopfieldLayer
     from ncps.torch import LTC
     from ncps.wirings import AutoNCP
-
-    from hflayers import HopfieldLayer
 
     _RAP_DEPS_AVAILABLE = True
 except ImportError:

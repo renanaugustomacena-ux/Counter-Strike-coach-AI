@@ -3,7 +3,7 @@
 [![CI Pipeline](https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI/actions/workflows/build.yml/badge.svg)](https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI/actions/workflows/build.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Proprietary%20%7C%20Apache--2.0-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-1523%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-319%20validator%20checks-brightgreen.svg)]()
 
 **AI-Powered Tactical Coach for Counter-Strike 2**
 
@@ -498,14 +498,15 @@ Counter-Strike-coach-AI/
 |   +-- USER_GUIDE.md                  Complete user guide (EN)
 |   +-- USER_GUIDE_IT.md               User guide (Italian)
 |   +-- USER_GUIDE_PT.md               User guide (Portuguese)
-|   +-- AI-cs2-coach-part1.md          Architecture documentation (Part 1)
-|   +-- AI-cs2-coach-part2.md          Architecture documentation (Part 2)
-|   +-- AI-cs2-coach-part3.md          Architecture documentation (Part 3)
+|   +-- Book-Coach-1A.md               Vision book — Neural core
+|   +-- Book-Coach-1B.md               Vision book — RAP Coach & data sources
+|   +-- Book-Coach-2.md                Vision book — Services & infrastructure
+|   +-- Book-Coach-3.md                Vision book — Program logic & UI
 |   +-- cybersecurity.md               Security analysis
 |   +-- Studies/                        17 research papers
 |
 +-- tools/                             Validation and diagnostic tools
-|   +-- headless_validator.py          Primary regression gate (291+ checks)
+|   +-- headless_validator.py          Primary regression gate (319 checks, 24 phases)
 |   +-- Feature_Audit.py              Feature engineering audit
 |   +-- portability_test.py           Cross-platform compatibility checks
 |   +-- dead_code_detector.py         Unused code scanning
@@ -597,7 +598,7 @@ The project maintains a multi-level validation hierarchy:
 
 | Tool | Scope | Command | Checks |
 |------|-------|---------|--------|
-| Headless Validator | Primary regression gate | `python tools/headless_validator.py` | 291+ checks |
+| Headless Validator | Primary regression gate | `python tools/headless_validator.py` | 319 checks, 24 phases |
 | Pytest Suite | Logic and integration tests | `python -m pytest Programma_CS2_RENAN/tests/ -x -q` | 1,515+ tests |
 | Feature Audit | Feature engineering integrity | `python tools/Feature_Audit.py` | Vector dimensions, ranges |
 | Portability Test | Cross-platform compatibility | `python tools/portability_test.py` | Import checks, paths |
@@ -688,9 +689,10 @@ Not all subsystems are equally mature. The default coaching mode (COPER) is prod
 
 | Document | Description |
 |----------|-------------|
-| [Architecture Part 1](docs/AI-cs2-coach-part1.md) | System design and core architecture |
-| [Architecture Part 2](docs/AI-cs2-coach-part2.md) | Neural network subsystems |
-| [Architecture Part 3](docs/AI-cs2-coach-part3.md) | Coaching pipeline and knowledge management |
+| [Book-Coach-1A](docs/Book-Coach-1A.md) | Neural core: JEPA, VL-JEPA, AdvancedCoachNN, MaturityObservatory |
+| [Book-Coach-1B](docs/Book-Coach-1B.md) | RAP Coach (7 components), data sources (demo, HLTV, Steam, FACEIT) |
+| [Book-Coach-2](docs/Book-Coach-2.md) | Services, analysis engines, knowledge/COPER, database, training |
+| [Book-Coach-3](docs/Book-Coach-3.md) | Full program logic, Qt UI, ingestion, tools, tests, build |
 | [Cybersecurity Analysis](docs/cybersecurity.md) | Security posture and threat model |
 
 ### Research Papers (17 Studies)

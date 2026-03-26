@@ -36,7 +36,6 @@ data/
 ├── dataset.csv                      # Dataset di training
 ├── map_config.json                  # Configurazione spaziale mappe (257 linee)
 ├── map_tensors.json                 # Definizioni coordinate tensore 3D
-├── pro_baseline.csv                 # Statistiche baseline professionistiche
 └── hltv_sync_state.json            # Stato sincronizzazione scraper HLTV
 ```
 
@@ -95,7 +94,8 @@ Dati CSV di terze parti utilizzati per analisi di riferimento e calibrazione del
 | `maps_statistics.csv` | Percentuali vittorie e giocabilità mappe | Analisi contesto mappe |
 | `weapons_statistics.csv` | Dati danno/precisione armi | Feature classi armi |
 | `Maps01_RoundOutcomes.csv` | Distribuzioni esiti round | Training probabilità vittoria |
-| `Maps01_BombPlantOutcomes01.csv` | Dati esiti piazzamento bomba | Analisi economia |
+| `Maps01_BombPlantOutcomes01.csv` | Dati esiti piazzamento bomba (dataset 1) | Analisi economia |
+| `Maps02_BombPlantOutcomes.csv` | Dati esiti piazzamento bomba (dataset 2) | Analisi economia |
 | `csgo_games.csv` | Dati storici partite CS:GO | Riferimento legacy |
 | `hltv_stats_urls.txt` | URL profili giocatori HLTV | Input scraper HLTV |
 
@@ -145,4 +145,4 @@ File Markdown serviti da `backend/knowledge_base/help_system.py`:
 - I CSV esterni sono dati di riferimento statici — aggiornarli manualmente quando nuovi dati sono disponibili
 - `hltv_sync_state.json` traccia il progresso dello scraper — un `{}` vuoto significa nessuna sincronizzazione attiva
 - I file di conoscenza sono la base intellettuale del coaching — modificare con cura
-- `dataset.csv` e `pro_baseline.csv` sono generati dalla pipeline di training, non modificati manualmente
+- `dataset.csv` e generato dalla pipeline di training, non modificato manualmente

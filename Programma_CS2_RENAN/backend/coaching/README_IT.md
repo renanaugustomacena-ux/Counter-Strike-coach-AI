@@ -102,7 +102,7 @@ checkpoint di modello addestrato e disponibile.
 
 Genera consigli di coaching basati su trend di performance attraverso piu partite o
 sessioni. Usa il decay baseline temporale da
-`backend/processing/baselines/temporal_decay.py` per pesare le performance recenti piu
+`backend/processing/baselines/pro_baseline.py` (`TemporalBaselineDecay`) per pesare le performance recenti piu
 delle precedenti. Produce indicatori di direzione del trend
 (miglioramento/peggioramento/stabile) per ogni metrica tracciata e adatta i consigli
 di conseguenza.
@@ -156,7 +156,7 @@ coaching_service.py
 ```
 
 L'orchestratore `coaching_service.py` inietta anche contesto di baseline temporale da
-`backend/processing/baselines/temporal_decay.py`, assicurando che i consigli di coaching
+`backend/processing/baselines/pro_baseline.py` (`TemporalBaselineDecay`), assicurando che i consigli di coaching
 tengano conto di come il livello di abilita del giocatore si e evoluto nelle sessioni
 recenti.
 

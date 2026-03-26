@@ -207,6 +207,15 @@ def main():
         get_console().boot()
     except Exception:
         logging.exception("Backend boot failed")
+
+    _splash_status(splash, "Ready!")
+    window.show()
+    splash.finish(window)
+
+    # Show boot failure warning AFTER window is visible (modal dialog needs parent)
+    try:
+        get_console()  # already created above
+    except Exception:
         QMessageBox.warning(
             window,
             "Backend Startup Error",
@@ -216,14 +225,19 @@ def main():
             "Check the log file for details.",
         )
 
-    _splash_status(splash, "Ready!")
-    window.show()
-    splash.finish(window)
-
     # Start background CoachState polling (10s interval)
     from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state
 
     get_app_state().start_polling()
+
+    # Install global exception handler for uncaught exceptions in signal/slot dispatch
+    _original_excepthook = sys.excepthook
+
+    def _qt_excepthook(exc_type, exc_value, exc_tb):
+        logging.error("Uncaught exception in Qt", exc_info=(exc_type, exc_value, exc_tb))
+        _original_excepthook(exc_type, exc_value, exc_tb)
+
+    sys.excepthook = _qt_excepthook
 
     sys.exit(app.exec())
 

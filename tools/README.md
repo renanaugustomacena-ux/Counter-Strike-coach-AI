@@ -11,7 +11,7 @@ Root-level project tools for validation, diagnostics, build orchestration, and m
 
 | File | Purpose | Category |
 |------|---------|----------|
-| `headless_validator.py` | 291+ regression checks across 23 phases | Validation |
+| `headless_validator.py` | 319 regression checks across 24 phases | Validation |
 | `dead_code_detector.py` | Orphan modules, duplicate definitions, stale imports | Validation |
 | `verify_all_safe.py` | Safety verification across all modules | Validation |
 | `portability_test.py` | Cross-platform portability checks | Validation |
@@ -28,10 +28,11 @@ Root-level project tools for validation, diagnostics, build orchestration, and m
 | `observe_training_cycle.py` | Training metrics monitoring | Observability |
 | `test_rap_lite.py` | RAP model lite testing | Testing |
 | `test_tactical_pipeline.py` | Tactical inference pipeline testing | Testing |
+| `validate_coaching_pipeline.py` | End-to-end coaching pipeline validation | Testing |
 
 ## `headless_validator.py` --- The Regression Gate
 
-This is the single most important tool in the project. It runs **291+ automated checks across 23 phases** and must exit with code 0 before any commit. It is also wired as a pre-commit hook.
+This is the single most important tool in the project. It runs **319 automated checks across 24 phases** and must exit with code 0 before any commit. It is also wired as a pre-commit hook.
 
 ### Validation Phases
 

@@ -55,12 +55,13 @@ def record_warn(label: str, msg: str):
 
 
 def find_demo() -> str:
-    """Find a .dem file to test with."""
+    """Find a .dem file to test with (searches recursively in per-match subfolders)."""
     demo_dir = os.path.join(os.path.dirname(PROJECT_ROOT), "DEMO_PRO_PLAYERS")
     if os.path.isdir(demo_dir):
-        for f in sorted(os.listdir(demo_dir)):
-            if f.endswith(".dem"):
-                return os.path.join(demo_dir, f)
+        for root, _dirs, files in os.walk(demo_dir):
+            for f in sorted(files):
+                if f.endswith(".dem"):
+                    return os.path.join(root, f)
     return ""
 
 

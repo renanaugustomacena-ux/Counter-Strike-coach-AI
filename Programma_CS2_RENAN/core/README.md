@@ -28,6 +28,7 @@ Every other package in the project depends on at least one module from `core/`.
 | `constants.py` | Project-wide constants: tick rate, FOV, utility durations, trade window |
 | `demo_frame.py` | Core data types: `PlayerState`, `GhostState`, `NadeState`, `DemoFrame` |
 | `asset_manager.py` | `SmartAsset` (lazy loading), `AssetAuthority` (centralized registry) |
+| `playback.py` | `TimelineController`: centralized Kivy-based match playback controller |
 | `playback_engine.py` | `PlaybackEngine`: interpolated demo replay with frame blending |
 | `localization.py` | `LocalizationManager`: English, Italian, Portuguese string tables |
 | `platform_utils.py` | Cross-platform drive detection (Windows, Linux, macOS) |

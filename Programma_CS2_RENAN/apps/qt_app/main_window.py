@@ -4,19 +4,16 @@ Main window — QMainWindow with collapsible navigation sidebar and QStackedWidg
 Replaces the Kivy ScreenManager + layout.kv root FloatLayout.
 """
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QPainter, QPixmap
-from PySide6.QtWidgets import (
-    QHBoxLayout,
-    QMainWindow,
-    QStackedLayout,
-    QStackedWidget,
-    QWidget,
-)
+from PySide6.QtCore import QEvent, Qt, Signal
+from PySide6.QtGui import QKeySequence, QPainter, QPixmap, QShortcut
+from PySide6.QtWidgets import QHBoxLayout, QMainWindow, QStackedLayout, QStackedWidget, QWidget
 
 from Programma_CS2_RENAN.apps.qt_app.core.animation import Animator
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.nav_sidebar import NavSidebar
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+logger = get_logger("cs2analyzer.qt_main_window")
 
 
 class _BackgroundWidget(QWidget):
@@ -99,16 +96,18 @@ class MainWindow(QMainWindow):
         self._stack.setStyleSheet("QStackedWidget { background: transparent; }")
         overlay.addWidget(self._stack)
 
-        # Layer 2: toast notifications (topmost, transparent background)
-        from Programma_CS2_RENAN.apps.qt_app.widgets.toast import ToastContainer
-
-        self._toast_container = ToastContainer()
-        overlay.addWidget(self._toast_container)
-
-        # Raise the toast layer above everything
-        overlay.setCurrentWidget(self._toast_container)
+        # Screen stack is the topmost interactive layer
+        overlay.setCurrentWidget(self._stack)
 
         root_layout.addWidget(content_wrapper, 1)
+
+        # Toast notifications — floating child of content_wrapper, NOT in the
+        # QStackedLayout.  Hides itself when empty so it never blocks events.
+        from Programma_CS2_RENAN.apps.qt_app.widgets.toast import ToastContainer
+
+        self._toast_container = ToastContainer(content_wrapper)
+        self._content_wrapper = content_wrapper
+        content_wrapper.installEventFilter(self)
 
         # Screen registry
         self._screens: dict[str, int] = {}
@@ -120,6 +119,20 @@ class MainWindow(QMainWindow):
 
         # Connect i18n changes
         i18n.language_changed.connect(self._refresh_nav_labels)
+
+        # Keyboard shortcuts for sidebar nav items
+        _nav_shortcuts = [
+            ("Ctrl+1", "home"),
+            ("Ctrl+2", "coach"),
+            ("Ctrl+3", "match_history"),
+            ("Ctrl+4", "performance"),
+            ("Ctrl+5", "tactical_viewer"),
+            ("Ctrl+,", "settings"),
+            ("F1", "help"),
+        ]
+        for keys, screen in _nav_shortcuts:
+            shortcut = QShortcut(QKeySequence(keys), self)
+            shortcut.activated.connect(lambda s=screen: self.switch_screen(s))
 
     def set_wallpaper(self, path: str):
         """Set the background wallpaper image path."""
@@ -133,6 +146,7 @@ class MainWindow(QMainWindow):
     def switch_screen(self, name: str):
         """Navigate to a named screen with a fade transition."""
         if name not in self._screens:
+            logger.warning("switch_screen: unknown screen '%s'", name)
             return
 
         new_idx = self._screens[name]
@@ -147,6 +161,11 @@ class MainWindow(QMainWindow):
             if hasattr(widget, "on_enter"):
                 widget.on_enter()
             return
+
+        # Notify old screen it's leaving
+        old_widget = self._stack.widget(old_idx)
+        if old_widget is not None and hasattr(old_widget, "on_leave"):
+            old_widget.on_leave()
 
         new_widget = self._stack.widget(new_idx)
 
@@ -172,3 +191,10 @@ class MainWindow(QMainWindow):
             widget = self._stack.widget(i)
             if hasattr(widget, "retranslate"):
                 widget.retranslate()
+
+    def eventFilter(self, obj, event):
+        """Reposition toast overlay when content area resizes."""
+        if obj is self._content_wrapper and event.type() == QEvent.Type.Resize:
+            if self._toast_container.isVisible():
+                self._toast_container._refit()
+        return super().eventFilter(obj, event)

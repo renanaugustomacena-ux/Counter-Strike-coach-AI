@@ -75,7 +75,7 @@ def main():
     # --- 2. MainWindow class + public interface ---
     print("\n[Phase 2] MainWindow class")
     try:
-        from Programma_CS2_RENAN.apps.qt_app.main_window import NAV_ITEMS, MainWindow
+        from Programma_CS2_RENAN.apps.qt_app.main_window import MainWindow
 
         _check(True, "MainWindow class imported successfully")
 
@@ -85,7 +85,9 @@ def main():
                 f"MainWindow has '{attr}'",
             )
 
-        # NAV_ITEMS must be a non-empty list of 3-tuples
+        # NAV_ITEMS now lives in widgets/components/nav_sidebar.py
+        from Programma_CS2_RENAN.apps.qt_app.widgets.components.nav_sidebar import NAV_ITEMS
+
         _check(
             isinstance(NAV_ITEMS, list) and len(NAV_ITEMS) > 0,
             f"NAV_ITEMS is a non-empty list ({len(NAV_ITEMS)} entries)",

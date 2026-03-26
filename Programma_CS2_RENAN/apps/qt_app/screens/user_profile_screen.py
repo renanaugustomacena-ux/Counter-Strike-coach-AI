@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -62,10 +63,19 @@ class UserProfileScreen(QWidget):
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(8)
 
+        # Back button + title
+        title_row = QHBoxLayout()
+        title_row.setSpacing(8)
+        back_btn = QPushButton("\u2190 Back")
+        back_btn.setCursor(Qt.PointingHandCursor)
+        back_btn.setFixedWidth(80)
+        back_btn.clicked.connect(lambda: self._navigate("home"))
+        title_row.addWidget(back_btn)
         self._title_label = QLabel(i18n.get_text("profile"))
         self._title_label.setObjectName("section_title")
         self._title_label.setFont(QFont("Roboto", 20, QFont.Bold))
-        layout.addWidget(self._title_label)
+        title_row.addWidget(self._title_label, 1)
+        layout.addLayout(title_row)
 
         self._status = QLabel("")
         self._status.setAlignment(Qt.AlignCenter)
@@ -168,6 +178,11 @@ class UserProfileScreen(QWidget):
         if loading:
             self._status.setText("Loading profile...")
             self._status.setVisible(True)
+
+    def _navigate(self, screen_name: str):
+        win = self.window()
+        if win and hasattr(win, "switch_screen"):
+            win.switch_screen(screen_name)
 
     # ── Edit Dialog ──
 

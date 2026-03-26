@@ -35,17 +35,17 @@ def _run_with_timeout(func, args=(), kwargs=None, timeout=_COACHING_TIMEOUT):
 
 from Programma_CS2_RENAN.backend.coaching.correction_engine import generate_corrections
 from Programma_CS2_RENAN.backend.coaching.explainability import ExplanationGenerator
-from Programma_CS2_RENAN.backend.processing.skill_assessment import SkillAxes
 from Programma_CS2_RENAN.backend.coaching.longitudinal_engine import generate_longitudinal_coaching
 from Programma_CS2_RENAN.backend.knowledge.round_utils import (  # F5-20: shared utility
     infer_round_phase,
 )
+from Programma_CS2_RENAN.backend.processing.skill_assessment import SkillAxes
 from Programma_CS2_RENAN.backend.progress.longitudinal import FeatureTrend
 from Programma_CS2_RENAN.backend.progress.trend_analysis import compute_trend
 from Programma_CS2_RENAN.backend.services.ollama_writer import get_ollama_writer
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager
-from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
 from Programma_CS2_RENAN.backend.storage.db_models import CoachingInsight, PlayerMatchStats
+from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
 from Programma_CS2_RENAN.core.config import get_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -231,7 +231,9 @@ class CoachingService:
             _save_corrections_as_insights(self.db_manager, player_name, demo_name, corrections)
 
         # Phase 6 Advanced Analysis (runs after main coaching, non-blocking)
-        self._generate_advanced_insights(player_name, demo_name, tick_data, player_stats=player_stats)
+        self._generate_advanced_insights(
+            player_name, demo_name, tick_data, player_stats=player_stats
+        )
 
         # Longitudinal tracking (C-02: was imported but never called)
         self._run_longitudinal_coaching(player_name, demo_name)
@@ -251,9 +253,7 @@ class CoachingService:
             "Traditional": "Level 4 (Traditional) — basic",
         }
         mode_label = _mode_labels.get(mode_used, mode_used)
-        get_state_manager().add_notification(
-            "coaching", "INFO", f"Coaching complete: {mode_label}"
-        )
+        get_state_manager().add_notification("coaching", "INFO", f"Coaching complete: {mode_label}")
 
     def _generate_coper_insights(
         self,

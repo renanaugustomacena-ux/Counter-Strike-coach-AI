@@ -12,7 +12,6 @@ import pytest
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
-
 # ============ Fixtures ============
 
 
@@ -40,9 +39,7 @@ class _InMemoryStateManager:
         self.notifications: list[dict] = []
 
     def add_notification(self, daemon: str, severity: str, message: str):
-        self.notifications.append(
-            {"daemon": daemon, "severity": severity, "message": message}
-        )
+        self.notifications.append({"daemon": daemon, "severity": severity, "message": message})
 
     def update_status(self, daemon: str, status: str, detail: str = ""):
         pass
@@ -83,27 +80,30 @@ class TestCoachingLevelNotifications:
 
     def test_traditional_mode_emits_level_4_notification(self, mock_db, mock_state):
         """Traditional coaching should emit a Level 4 notification."""
-        with patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager",
-            return_value=mock_db,
-        ), patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_state_manager",
-            return_value=mock_state,
-        ), patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_setting",
-            side_effect=lambda k, default=None: {
-                "USE_COPER_COACHING": False,
-                "USE_HYBRID_COACHING": False,
-                "USE_RAG_COACHING": False,
-            }.get(k, default),
-        ), patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer",
-        ) as mock_ollama:
+        with (
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager",
+                return_value=mock_db,
+            ),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_state_manager",
+                return_value=mock_state,
+            ),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_setting",
+                side_effect=lambda k, default=None: {
+                    "USE_COPER_COACHING": False,
+                    "USE_HYBRID_COACHING": False,
+                    "USE_RAG_COACHING": False,
+                }.get(k, default),
+            ),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer",
+            ) as mock_ollama,
+        ):
             mock_ollama.return_value.polish.side_effect = lambda **kw: kw["message"]
 
-            from Programma_CS2_RENAN.backend.services.coaching_service import (
-                CoachingService,
-            )
+            from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
             svc = CoachingService()
             svc.generate_new_insights(
@@ -124,30 +124,34 @@ class TestCoachingLevelNotifications:
 
     def test_coper_timeout_emits_warning(self, mock_db, mock_state):
         """COPER timeout should emit a WARNING notification."""
-        with patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager",
-            return_value=mock_db,
-        ), patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_state_manager",
-            return_value=mock_state,
-        ), patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_setting",
-            side_effect=lambda k, default=None: {
-                "USE_COPER_COACHING": True,
-                "USE_HYBRID_COACHING": False,
-                "USE_RAG_COACHING": False,
-            }.get(k, default),
-        ), patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service._run_with_timeout",
-            return_value=(None, True),  # Simulate timeout
-        ), patch(
-            "Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer",
-        ) as mock_ollama:
+        with (
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_db_manager",
+                return_value=mock_db,
+            ),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_state_manager",
+                return_value=mock_state,
+            ),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_setting",
+                side_effect=lambda k, default=None: {
+                    "USE_COPER_COACHING": True,
+                    "USE_HYBRID_COACHING": False,
+                    "USE_RAG_COACHING": False,
+                }.get(k, default),
+            ),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service._run_with_timeout",
+                return_value=(None, True),  # Simulate timeout
+            ),
+            patch(
+                "Programma_CS2_RENAN.backend.services.coaching_service.get_ollama_writer",
+            ) as mock_ollama,
+        ):
             mock_ollama.return_value.polish.side_effect = lambda **kw: kw["message"]
 
-            from Programma_CS2_RENAN.backend.services.coaching_service import (
-                CoachingService,
-            )
+            from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
             svc = CoachingService()
             svc.generate_new_insights(
@@ -254,9 +258,7 @@ class TestCoachingServiceUtilities:
 
     def test_health_to_range_full(self):
         """Health >= 80 should return 'full'."""
-        from Programma_CS2_RENAN.backend.services.coaching_service import (
-            CoachingService,
-        )
+        from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
         svc = CoachingService.__new__(CoachingService)
         assert svc._health_to_range(100) == "full"
@@ -264,9 +266,7 @@ class TestCoachingServiceUtilities:
 
     def test_health_to_range_damaged(self):
         """Health 40-79 should return 'damaged'."""
-        from Programma_CS2_RENAN.backend.services.coaching_service import (
-            CoachingService,
-        )
+        from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
         svc = CoachingService.__new__(CoachingService)
         assert svc._health_to_range(79) == "damaged"
@@ -274,9 +274,7 @@ class TestCoachingServiceUtilities:
 
     def test_health_to_range_critical(self):
         """Health < 40 should return 'critical'."""
-        from Programma_CS2_RENAN.backend.services.coaching_service import (
-            CoachingService,
-        )
+        from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
         svc = CoachingService.__new__(CoachingService)
         assert svc._health_to_range(39) == "critical"
@@ -284,18 +282,14 @@ class TestCoachingServiceUtilities:
 
     def test_baseline_context_note_empty_on_missing_data(self):
         """Empty stats/baseline should return empty string."""
-        from Programma_CS2_RENAN.backend.services.coaching_service import (
-            CoachingService,
-        )
+        from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
         assert CoachingService._baseline_context_note({}, {}, "aim") == ""
         assert CoachingService._baseline_context_note(None, {"rating": 1.0}, "aim") == ""
 
     def test_baseline_context_note_calculates_delta(self):
         """Should calculate percentage delta from pro baseline."""
-        from Programma_CS2_RENAN.backend.services.coaching_service import (
-            CoachingService,
-        )
+        from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
         note = CoachingService._baseline_context_note(
             {"rating": 0.8},
@@ -307,9 +301,7 @@ class TestCoachingServiceUtilities:
 
     def test_infer_round_phase_delegates(self):
         """Should delegate to shared utility."""
-        from Programma_CS2_RENAN.backend.services.coaching_service import (
-            CoachingService,
-        )
+        from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
 
         svc = CoachingService.__new__(CoachingService)
         result = svc._infer_round_phase({"time_in_round": 50})
@@ -330,10 +322,7 @@ class TestExceptions:
 
     def test_ingestion_error_exists(self):
         """IngestionError should be importable and subclass CS2AnalyzerError."""
-        from Programma_CS2_RENAN.observability.exceptions import (
-            CS2AnalyzerError,
-            IngestionError,
-        )
+        from Programma_CS2_RENAN.observability.exceptions import CS2AnalyzerError, IngestionError
 
         assert issubclass(IngestionError, CS2AnalyzerError)
 
@@ -375,10 +364,7 @@ class TestDesignTokens:
         assert tokens.radius_md > 0
 
     def test_set_active_theme_changes_default(self):
-        from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import (
-            get_tokens,
-            set_active_theme,
-        )
+        from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens, set_active_theme
 
         set_active_theme("CSGO")
         assert get_tokens().theme_name == "CSGO"
@@ -444,10 +430,7 @@ class TestSplashScreen:
             if app is None:
                 app = QApplication([])
 
-            from Programma_CS2_RENAN.apps.qt_app.app import (
-                _create_splash,
-                _splash_status,
-            )
+            from Programma_CS2_RENAN.apps.qt_app.app import _create_splash, _splash_status
 
             splash = _create_splash("1.0.0")
             _splash_status(splash, "Testing...")
@@ -472,8 +455,6 @@ class TestErrorCodes:
 
         # Should have at least some error codes defined
         codes = [
-            attr
-            for attr in dir(error_codes)
-            if not attr.startswith("_") and attr != "ErrorCode"
+            attr for attr in dir(error_codes) if not attr.startswith("_") and attr != "ErrorCode"
         ]
         assert len(codes) > 0

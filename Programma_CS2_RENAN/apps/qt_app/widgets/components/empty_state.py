@@ -39,8 +39,10 @@ class EmptyState(QWidget):
         layout.setAlignment(Qt.AlignCenter)
         layout.setSpacing(tokens.spacing_md)
         layout.setContentsMargins(
-            tokens.spacing_xxl, tokens.spacing_xxxl,
-            tokens.spacing_xxl, tokens.spacing_xxxl,
+            tokens.spacing_xxl,
+            tokens.spacing_xxxl,
+            tokens.spacing_xxl,
+            tokens.spacing_xxxl,
         )
 
         # Icon area
@@ -57,9 +59,7 @@ class EmptyState(QWidget):
         self._title_label = QLabel(title)
         self._title_label.setAlignment(Qt.AlignCenter)
         self._title_label.setFont(QFont("Roboto", tokens.font_size_title, QFont.Bold))
-        self._title_label.setStyleSheet(
-            f"color: {tokens.text_primary}; background: transparent;"
-        )
+        self._title_label.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
         self._title_label.setWordWrap(True)
         layout.addWidget(self._title_label)
 
@@ -67,9 +67,7 @@ class EmptyState(QWidget):
         self._desc_label = QLabel(description)
         self._desc_label.setAlignment(Qt.AlignCenter)
         self._desc_label.setFont(QFont("Roboto", tokens.font_size_body))
-        self._desc_label.setStyleSheet(
-            f"color: {tokens.text_secondary}; background: transparent;"
-        )
+        self._desc_label.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
         self._desc_label.setWordWrap(True)
         if description:
             layout.addWidget(self._desc_label)

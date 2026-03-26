@@ -39,9 +39,7 @@ class SectionHeader(QWidget):
 
         self._title_label = QLabel(title)
         self._title_label.setFont(QFont("Roboto", tokens.font_size_title, QFont.Bold))
-        self._title_label.setStyleSheet(
-            f"color: {tokens.text_primary}; background: transparent;"
-        )
+        self._title_label.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
         left.addWidget(self._title_label)
 
         self._subtitle_label = QLabel(subtitle)

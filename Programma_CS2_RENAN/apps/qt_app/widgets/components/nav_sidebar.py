@@ -12,18 +12,11 @@ from PySide6.QtCore import (
     QEasingCurve,
     QParallelAnimationGroup,
     QPropertyAnimation,
+    QSize,
     Qt,
     Signal,
 )
-from PySide6.QtCore import QSize
-from PySide6.QtWidgets import (
-    QLabel,
-    QPushButton,
-    QSizePolicy,
-    QSpacerItem,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtWidgets import QLabel, QPushButton, QSizePolicy, QSpacerItem, QVBoxLayout, QWidget
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
@@ -37,6 +30,8 @@ NAV_ITEMS = [
     ("match_history", IconProvider.list_icon, "match_history_title"),
     ("performance", IconProvider.chart, "advanced_analytics"),
     ("tactical_viewer", IconProvider.crosshair, "tactical_analyzer"),
+    ("settings", IconProvider.gear, "settings"),
+    ("help", IconProvider.help_circle, "help_center"),
 ]
 
 _EXPANDED_WIDTH = 220
