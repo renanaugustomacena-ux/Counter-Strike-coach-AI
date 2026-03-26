@@ -12,6 +12,7 @@ Scripts de build e setup para criar executáveis prontos para produção da apli
 |---------|------------|------------|
 | `build_exe.bat` | Build de desenvolvimento — cria executável standalone | Windows |
 | `build_production.bat` | Build de produção — otimizado e reduzido | Windows |
+| `Setup_Macena_CS2.ps1` | Script PowerShell para configuração de ambiente | Windows |
 
 ## Arquitetura de Build
 

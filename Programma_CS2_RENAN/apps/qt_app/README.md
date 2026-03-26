@@ -6,7 +6,7 @@
 
 ## Overview
 
-PySide6/Qt desktop application implementing Model-View-ViewModel (MVVM) architecture with Qt Signal/Slot for CS2 tactical analysis and AI coaching. This is the **primary frontend** (46 Python files), replacing the legacy Kivy/KivyMD app at [`desktop_app/`](../desktop_app/). The application features 13 screens, 7 ViewModels, 6 chart widgets, 3 tactical widgets, toast notifications, 3 QSS themes (CS2, CSGO, CS1.6), background wallpaper rendering, internationalization (English/Italian/Portuguese), and a graceful shutdown sequence.
+PySide6/Qt desktop application implementing Model-View-ViewModel (MVVM) architecture with Qt Signal/Slot for CS2 tactical analysis and AI coaching. This is the **primary frontend** (56 Python files), replacing the legacy Kivy/KivyMD app at [`desktop_app/`](../desktop_app/). The application features 13 screens, 7 ViewModels, 6 chart widgets, 3 tactical widgets, toast notifications, 3 QSS themes (CS2, CSGO, CS1.6), background wallpaper rendering, internationalization (English/Italian/Portuguese), and a graceful shutdown sequence.
 
 ## Entry Point
 
@@ -37,6 +37,10 @@ qt_app/
 ├── core/
 │   ├── app_state.py                # AppState singleton: polls CoachState DB every 10s, emits Signals
 │   ├── theme_engine.py             # ThemeEngine: QSS loading, QPalette, fonts, wallpaper management
+│   ├── design_tokens.py            # Design token definitions for the Qt component system
+│   ├── qss_generator.py            # Programmatic QSS generation from design tokens
+│   ├── animation.py                # Shared animation utilities and easing helpers
+│   ├── icons.py                    # Icon registry and SVG/icon asset loader
 │   ├── worker.py                   # Worker QRunnable + WorkerSignals for background tasks
 │   ├── asset_bridge.py             # QtAssetBridge: loads map images as QPixmap (singleton)
 │   ├── i18n_bridge.py              # QtLocalizationManager: JSON-based i18n with Signal on language change
@@ -69,6 +73,7 @@ qt_app/
 │   └── __init__.py
 ├── widgets/
 │   ├── toast.py                    # ToastWidget + ToastContainer: ephemeral notifications (4 severities)
+│   ├── skeleton.py                 # Skeleton loading placeholder widgets
 │   ├── charts/
 │   │   ├── radar_chart.py          # RadarChartWidget: multi-dimensional performance radar
 │   │   ├── momentum_chart.py       # MomentumGraphWidget: team momentum evolution per round
@@ -77,6 +82,15 @@ qt_app/
 │   │   ├── trend_chart.py          # TrendGraphWidget: time-series trend visualization
 │   │   ├── utility_bar_chart.py    # UtilityBarWidget: utility usage comparison (user vs pro baseline)
 │   │   └── __init__.py
+│   ├── components/                 # Reusable UI components (design system)
+│   │   ├── __init__.py             # Component exports
+│   │   ├── card.py                 # Card container widget
+│   │   ├── stat_badge.py           # Stat badge with label and value
+│   │   ├── empty_state.py          # Empty state placeholder with icon and message
+│   │   ├── section_header.py       # Section header with title and optional action
+│   │   ├── progress_ring.py        # Circular progress ring indicator
+│   │   ├── icon_widget.py          # Icon display widget (SVG/pixmap)
+│   │   └── nav_sidebar.py          # Navigation sidebar component
 │   ├── tactical/
 │   │   ├── map_widget.py           # MapWidget: pixel-accurate 2D tactical map rendering
 │   │   ├── player_sidebar.py       # PlayerSidebar: real-time player state display (health, armor, weapons)
@@ -239,6 +253,10 @@ All signal emissions are wrapped in `try/except RuntimeError` to handle the case
 | `QtAssetBridge` | `core/asset_bridge.py` | Singleton that loads map images as `QPixmap` with caching and magenta/black checkerboard fallback |
 | `QtLocalizationManager` | `core/i18n_bridge.py` | Singleton (`i18n`) providing `get_text(key)` with JSON priority, hardcoded fallback, and `language_changed` Signal |
 | `QtPlaybackEngine` | `core/qt_playback_engine.py` | Subclass of `PlaybackEngine` using `QTimer` at 16ms interval (~60 FPS) instead of Kivy Clock |
+| `DesignTokens` | `core/design_tokens.py` | Design token definitions (spacing, radius, elevation) for the Qt component system |
+| `QSSGenerator` | `core/qss_generator.py` | Programmatic QSS stylesheet generation from design tokens |
+| `Animation` | `core/animation.py` | Shared animation utilities and easing helpers for widget transitions |
+| `Icons` | `core/icons.py` | Icon registry and SVG/icon asset loader for the component system |
 
 ## Development Notes
 

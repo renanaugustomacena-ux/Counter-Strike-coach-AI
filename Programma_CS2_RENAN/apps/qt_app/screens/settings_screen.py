@@ -163,6 +163,8 @@ class SettingsScreen(QWidget):
             if w:
                 w.deleteLater()
 
+        if self._theme_engine is None:
+            return
         wallpapers = self._theme_engine.get_available_wallpapers()
         current_path = self._theme_engine.wallpaper_path
         for filename in wallpapers:
@@ -310,9 +312,7 @@ class SettingsScreen(QWidget):
         self._start_btn.clicked.connect(self._on_start_ingestion)
         action_row.addWidget(self._start_btn)
         self._ingest_status_label = QLabel("")
-        self._ingest_status_label.setStyleSheet(
-            f"color: {tokens.text_secondary}; font-size: 13px;"
-        )
+        self._ingest_status_label.setStyleSheet(f"color: {tokens.text_secondary}; font-size: 13px;")
         action_row.addWidget(self._ingest_status_label)
         action_row.addStretch()
         self._ingestion_card.layout().addLayout(action_row)
@@ -471,17 +471,13 @@ class SettingsScreen(QWidget):
         demo_path = get_setting("DEFAULT_DEMO_PATH", "")
         if not pro_path and not demo_path:
             self._ingest_status_label.setText("Set a demo path first")
-            self._ingest_status_label.setStyleSheet(
-                f"color: {tokens.error}; font-size: 13px;"
-            )
+            self._ingest_status_label.setStyleSheet(f"color: {tokens.error}; font-size: 13px;")
             return
 
         self._start_btn.setEnabled(False)
         self._start_btn.setText("Ingesting...")
         self._ingest_status_label.setText("Scanning for demos...")
-        self._ingest_status_label.setStyleSheet(
-            f"color: {tokens.warning}; font-size: 13px;"
-        )
+        self._ingest_status_label.setStyleSheet(f"color: {tokens.warning}; font-size: 13px;")
 
         def _run_ingestion():
             from Programma_CS2_RENAN.run_ingestion import process_new_demos
@@ -505,9 +501,7 @@ class SettingsScreen(QWidget):
         self._start_btn.setText("Start Ingestion")
         tokens = get_tokens()
         self._ingest_status_label.setText("Ingestion complete")
-        self._ingest_status_label.setStyleSheet(
-            f"color: {tokens.success}; font-size: 13px;"
-        )
+        self._ingest_status_label.setStyleSheet(f"color: {tokens.success}; font-size: 13px;")
         logger.info("Ingestion completed: %s", results)
 
     def _on_ingestion_error(self, error):
@@ -516,7 +510,5 @@ class SettingsScreen(QWidget):
         self._start_btn.setText("Start Ingestion")
         tokens = get_tokens()
         self._ingest_status_label.setText(f"Error: {error}")
-        self._ingest_status_label.setStyleSheet(
-            f"color: {tokens.error}; font-size: 13px;"
-        )
+        self._ingest_status_label.setStyleSheet(f"color: {tokens.error}; font-size: 13px;")
         logger.error("Ingestion failed: %s", error)

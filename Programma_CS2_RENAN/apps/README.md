@@ -60,6 +60,10 @@ apps/
     │   ├── app_state.py         # AppState singleton — polls CoachState every 10s
     │   ├── worker.py            # Background Worker (QRunnable) pattern
     │   ├── theme_engine.py      # QSS themes (CS2, CSGO, CS1.6), palettes, fonts
+    │   ├── design_tokens.py     # Design token definitions for the Qt component system
+    │   ├── qss_generator.py     # Programmatic QSS generation from design tokens
+    │   ├── animation.py         # Shared animation utilities and easing helpers
+    │   ├── icons.py             # Icon registry and SVG/icon asset loader
     │   ├── i18n_bridge.py       # Localization (en, pt, it) via JSON + fallback
     │   ├── asset_bridge.py      # Map image loader (QPixmap), fallback textures
     │   └── qt_playback_engine.py # QTimer-based demo playback (replaces Kivy Clock)
@@ -91,6 +95,7 @@ apps/
     │
     ├── widgets/                 # Reusable widget library
     │   ├── toast.py             # Toast notification overlay
+    │   ├── skeleton.py          # Skeleton loading placeholder widgets
     │   ├── charts/              # QtCharts-based visualizations
     │   │   ├── radar_chart.py       # Skill radar (6-axis spider chart)
     │   │   ├── economy_chart.py     # Round-by-round economy graph
@@ -98,6 +103,15 @@ apps/
     │   │   ├── rating_sparkline.py  # Inline rating mini-chart
     │   │   ├── trend_chart.py       # Multi-match trend lines
     │   │   └── utility_bar_chart.py # Utility usage bar chart
+    │   ├── components/          # Reusable UI components (design system)
+    │   │   ├── __init__.py          # Component exports
+    │   │   ├── card.py              # Card container widget
+    │   │   ├── stat_badge.py        # Stat badge with label and value
+    │   │   ├── empty_state.py       # Empty state placeholder with icon and message
+    │   │   ├── section_header.py    # Section header with title and optional action
+    │   │   ├── progress_ring.py     # Circular progress ring indicator
+    │   │   ├── icon_widget.py       # Icon display widget (SVG/pixmap)
+    │   │   └── nav_sidebar.py       # Navigation sidebar component
     │   └── tactical/            # Tactical viewer components
     │       ├── map_widget.py        # 2D map renderer (QGraphicsView)
     │       ├── player_sidebar.py    # Player info panel
@@ -122,7 +136,7 @@ apps/
 | **Assets** | `AssetAuthority` (Kivy Texture) | `QtAssetBridge` (QPixmap) |
 | **Playback** | `PlaybackEngine` + Kivy Clock | `QtPlaybackEngine` + QTimer |
 | **Screens** | 13 (in `layout.kv`) | 14 (individual `.py` files) |
-| **Python files** | 16 | 46 |
+| **Python files** | 16 | 56 |
 
 ## MVVM Architecture
 
@@ -287,5 +301,5 @@ to update their labels dynamically.
 ## File Count
 
 - `desktop_app/`: 16 Python files + 1 KV layout (legacy, frozen)
-- `qt_app/`: 46 Python files across `core/`, `screens/`, `viewmodels/`, `widgets/` + 3 QSS themes
+- `qt_app/`: 56 Python files across `core/`, `screens/`, `viewmodels/`, `widgets/` + 3 QSS themes
 - `apps/` root: 1 standalone tool (`spatial_debugger.py`)

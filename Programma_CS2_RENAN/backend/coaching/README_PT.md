@@ -99,7 +99,7 @@ de modelo treinado esta disponivel.
 
 Gera conselhos de coaching baseados em tendencias de desempenho ao longo de multiplas
 partidas ou sessoes. Usa o decaimento temporal de baseline de
-`backend/processing/baselines/temporal_decay.py` para pesar o desempenho recente mais
+`backend/processing/baselines/pro_baseline.py` (`TemporalBaselineDecay`) para pesar o desempenho recente mais
 do que dados antigos. Produz indicadores de direcao de tendencia
 (melhorando/piorando/estavel) para cada metrica rastreada e adapta os conselhos de
 acordo.
@@ -153,7 +153,7 @@ coaching_service.py
 ```
 
 O orquestrador `coaching_service.py` tambem injeta contexto de baseline temporal de
-`backend/processing/baselines/temporal_decay.py`, garantindo que os conselhos de coaching
+`backend/processing/baselines/pro_baseline.py` (`TemporalBaselineDecay`), garantindo que os conselhos de coaching
 considerem como o nivel de habilidade do jogador evoluiu nas sessoes recentes.
 
 ## Notas de Desenvolvimento

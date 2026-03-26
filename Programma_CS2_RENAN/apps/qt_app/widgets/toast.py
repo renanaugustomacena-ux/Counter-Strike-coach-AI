@@ -1,9 +1,6 @@
 """Toast notification widgets — displays ephemeral status messages."""
 
 from PySide6.QtCore import Qt, QTimer, Signal
-
-from Programma_CS2_RENAN.apps.qt_app.core.animation import Animator
-
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -13,6 +10,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+from Programma_CS2_RENAN.apps.qt_app.core.animation import Animator
 
 # Severity → (icon, auto-dismiss milliseconds; 0 = manual dismiss only)
 _SEVERITY_CONFIG = {
@@ -81,12 +80,19 @@ class ToastWidget(QFrame):
 
 
 class ToastContainer(QWidget):
-    """Manages a vertical stack of toast notifications (top-right overlay)."""
+    """Floating toast stack positioned at the top-right of its parent.
+
+    This widget is NOT placed inside a layout manager.  It floats as a direct
+    child, manually sized to tightly fit visible toasts and hidden when empty,
+    so it never blocks mouse events on the underlying UI.
+    """
+
+    _CONTAINER_WIDTH = 520
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setAttribute(Qt.WA_TransparentForMouseEvents, False)
         self.setStyleSheet("background: transparent;")
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
 
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignTop | Qt.AlignRight)
@@ -94,6 +100,7 @@ class ToastContainer(QWidget):
         layout.setSpacing(6)
 
         self._toasts: list[ToastWidget] = []
+        self.hide()  # Hidden until first toast — zero event interception
 
     def add_toast(self, severity: str, message: str):
         """Add a toast notification. Oldest removed if exceeding max visible."""
@@ -106,7 +113,26 @@ class ToastContainer(QWidget):
         self.layout().addWidget(toast)
         self._toasts.append(toast)
         Animator.fade_in(toast, duration=200)
+        self._refit()
 
     def _on_dismissed(self, toast: ToastWidget):
         if toast in self._toasts:
             self._toasts.remove(toast)
+        self._refit()
+
+    def _refit(self):
+        """Resize and reposition to tightly fit visible toasts."""
+        if not self._toasts:
+            self.hide()
+            return
+        self.show()
+        n = len(self._toasts)
+        # 12px top margin + 50px per toast + 6px spacing between + 6px pad
+        h = 12 + n * 50 + max(0, n - 1) * 6 + 6
+        w = self._CONTAINER_WIDTH
+        parent = self.parentWidget()
+        if parent:
+            self.setGeometry(max(0, parent.width() - w), 0, w, h)
+        else:
+            self.resize(w, h)
+        self.raise_()

@@ -44,6 +44,7 @@ CORE_DB_DIR = os.path.join(BASE_DIR, "backend", "storage")
 
 DATABASE_PATH = os.path.join(CORE_DB_DIR, "database.db")
 HLTV_METADATA_PATH = os.path.join(CORE_DB_DIR, "hltv_metadata.db")
+# Legacy path — file may not exist on fresh installs, but code handles "NOT FOUND" gracefully
 KNOWLEDGE_GRAPH_PATH = os.path.join(PROJECT_ROOT, "data", "knowledge_graph.db")
 HLTV_CACHE_PATH = os.path.join(BASE_DIR, "data", "hltv_cache.db")
 

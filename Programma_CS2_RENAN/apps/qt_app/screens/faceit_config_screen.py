@@ -2,7 +2,15 @@
 
 from PySide6.QtCore import Qt, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices, QFont
-from PySide6.QtWidgets import QFrame, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from Programma_CS2_RENAN.core.config import get_credential, save_user_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -31,6 +39,10 @@ class FaceitConfigScreen(QWidget):
             self._api_key_input.setText(api_key)
         self._saved_label.setVisible(False)
 
+    def retranslate(self):
+        """Update translatable text when language changes."""
+        pass  # All labels are English-only for now; wire i18n when translations added
+
     # ── UI ──
 
     def _build_ui(self):
@@ -38,10 +50,19 @@ class FaceitConfigScreen(QWidget):
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(12)
 
+        # Back button + title
+        title_row = QHBoxLayout()
+        title_row.setSpacing(8)
+        back_btn = QPushButton("\u2190 Back")
+        back_btn.setCursor(Qt.PointingHandCursor)
+        back_btn.setFixedWidth(80)
+        back_btn.clicked.connect(lambda: self._navigate("home"))
+        title_row.addWidget(back_btn)
         title = QLabel("FaceIT Competitive Stats")
         title.setObjectName("section_title")
         title.setFont(QFont("Roboto", 20, QFont.Bold))
-        layout.addWidget(title)
+        title_row.addWidget(title, 1)
+        layout.addLayout(title_row)
 
         # ── Keyring Warning ──
         if not _KEYRING_AVAILABLE:
@@ -104,6 +125,11 @@ class FaceitConfigScreen(QWidget):
         layout.addWidget(self._saved_label)
 
         layout.addStretch()
+
+    def _navigate(self, screen_name: str):
+        win = self.window()
+        if win and hasattr(win, "switch_screen"):
+            win.switch_screen(screen_name)
 
     # ── Actions ──
 

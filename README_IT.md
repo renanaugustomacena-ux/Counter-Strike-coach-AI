@@ -3,7 +3,7 @@
 [![CI Pipeline](https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI/actions/workflows/build.yml/badge.svg)](https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI/actions/workflows/build.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Proprietary%20%7C%20Apache--2.0-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-1523%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-319%20validator%20checks-brightgreen.svg)]()
 
 **Coach Tattico basato su IA per Counter-Strike 2**
 
@@ -328,7 +328,7 @@ Script standalone che esegue un ciclo di training completo fuori dal daemon engi
 
 | Strumento | Ambito | Comando | Check |
 |-----------|--------|---------|-------|
-| Headless Validator | Gate di regressione primario | `python tools/headless_validator.py` | 291+ check |
+| Headless Validator | Gate di regressione primario | `python tools/headless_validator.py` | 319 check, 24 fasi |
 | Suite Pytest | Test logici e integrazione | `python -m pytest Programma_CS2_RENAN/tests/ -x -q` | 1,515+ test |
 | Feature Audit | Integrita feature engineering | `python tools/Feature_Audit.py` | Dimensioni vettore, range |
 | Portability Test | Compatibilita cross-platform | `python tools/portability_test.py` | Check importazione, percorsi |
@@ -381,9 +381,10 @@ La lingua puo essere cambiata a runtime dalle Impostazioni senza riavviare l'app
 | [Guida Utente (IT)](docs/USER_GUIDE_IT.md) | Installazione, setup wizard, API key, tutte le schermate, troubleshooting |
 | [User Guide (EN)](docs/USER_GUIDE.md) | Guida utente completa in inglese |
 | [Guia do Usuario (PT)](docs/USER_GUIDE_PT.md) | Guida utente in portoghese |
-| [Architettura Parte 1](docs/AI-cs2-coach-part1.md) | Design del sistema e architettura core |
-| [Architettura Parte 2](docs/AI-cs2-coach-part2.md) | Sottosistemi reti neurali |
-| [Architettura Parte 3](docs/AI-cs2-coach-part3.md) | Pipeline di coaching e gestione della conoscenza |
+| [Book-Coach-1A](docs/Book-Coach-1A.md) | Core neurale: JEPA, VL-JEPA, AdvancedCoachNN, MaturityObservatory |
+| [Book-Coach-1B](docs/Book-Coach-1B.md) | RAP Coach (7 componenti), sorgenti dati (demo, HLTV, Steam, FACEIT) |
+| [Book-Coach-2](docs/Book-Coach-2.md) | Servizi, motori analisi, knowledge/COPER, database, training |
+| [Book-Coach-3](docs/Book-Coach-3.md) | Logica programma completa, UI Qt, ingestion, tools, test, build |
 
 La cartella `docs/Studies/` contiene 17 paper di ricerca sulle fondamenta teoriche di ogni sottosistema.
 

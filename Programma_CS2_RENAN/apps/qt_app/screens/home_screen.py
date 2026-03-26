@@ -1,6 +1,6 @@
 """Home / Dashboard screen — central hub with 4 cards and live CoachState polling."""
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QThreadPool
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QFileDialog,
@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
+from Programma_CS2_RENAN.apps.qt_app.core.worker import Worker
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
 from Programma_CS2_RENAN.core.config import get_setting, save_user_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -33,6 +34,7 @@ class HomeScreen(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._connected = False
+        self._ingestion_worker = None
         self._build_ui()
 
     def on_enter(self):
@@ -164,11 +166,27 @@ class HomeScreen(QWidget):
         self._parsing_bar.setFixedHeight(18)
         layout.addWidget(self._parsing_bar)
 
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(8)
+
         self._demo_btn = QPushButton(i18n.get_text("select_demo_folder"))
         self._demo_btn.setCursor(Qt.PointingHandCursor)
         self._demo_btn.setFixedWidth(180)
         self._demo_btn.clicked.connect(self._pick_demo_folder)
-        layout.addWidget(self._demo_btn)
+        btn_row.addWidget(self._demo_btn)
+
+        self._analyze_btn = QPushButton("Analyze Demos")
+        self._analyze_btn.setCursor(Qt.PointingHandCursor)
+        self._analyze_btn.setFixedWidth(160)
+        self._analyze_btn.clicked.connect(self._on_start_analysis)
+        btn_row.addWidget(self._analyze_btn)
+
+        self._analyze_status = QLabel("")
+        self._analyze_status.setStyleSheet("color: #a0a0b0; font-size: 12px;")
+        btn_row.addWidget(self._analyze_status, 1)
+
+        btn_row.addStretch()
+        layout.addLayout(btn_row)
 
         self._cards_layout.addWidget(card)
 
@@ -210,11 +228,22 @@ class HomeScreen(QWidget):
         speed_row.addStretch()
         layout.addLayout(speed_row)
 
+        # Pro folder picker
+        pro_btn_row = QHBoxLayout()
+        pro_btn_row.setSpacing(8)
+        self._pro_folder_btn = QPushButton(i18n.get_text("select_demo_folder"))
+        self._pro_folder_btn.setCursor(Qt.PointingHandCursor)
+        self._pro_folder_btn.setFixedWidth(180)
+        self._pro_folder_btn.clicked.connect(self._pick_pro_folder)
+        pro_btn_row.addWidget(self._pro_folder_btn)
+
         toggle_btn = QPushButton("Start / Stop")
         toggle_btn.setEnabled(False)
         toggle_btn.setToolTip(_DISABLED_TIP_ENGINE)
         toggle_btn.setFixedWidth(140)
-        layout.addWidget(toggle_btn)
+        pro_btn_row.addWidget(toggle_btn)
+        pro_btn_row.addStretch()
+        layout.addLayout(pro_btn_row)
 
         self._cards_layout.addWidget(card)
 
@@ -320,12 +349,76 @@ class HomeScreen(QWidget):
         self._steam_btn.setText(i18n.get_text("steam_config"))
         self._faceit_btn.setText(i18n.get_text("faceit_config"))
 
+    def _on_start_analysis(self):
+        """Trigger demo ingestion from the Home screen."""
+        if self._ingestion_worker is not None:
+            return  # Already running
+
+        demo_path = get_setting("DEFAULT_DEMO_PATH", "")
+        if not demo_path:
+            tokens = get_tokens()
+            self._analyze_status.setText("Set a demo folder first")
+            self._analyze_status.setStyleSheet(f"color: {tokens.error}; font-size: 12px;")
+            return
+
+        self._analyze_btn.setEnabled(False)
+        self._analyze_btn.setText("Analyzing...")
+        self._analyze_status.setText("Scanning for demos...")
+        tokens = get_tokens()
+        self._analyze_status.setStyleSheet(f"color: {tokens.warning}; font-size: 12px;")
+
+        def _run():
+            from Programma_CS2_RENAN.run_ingestion import process_new_demos
+
+            process_new_demos(is_pro=False)
+
+        worker = Worker(_run)
+        worker.signals.result.connect(self._on_analysis_done)
+        worker.signals.error.connect(self._on_analysis_error)
+        self._ingestion_worker = worker
+        QThreadPool.globalInstance().start(worker)
+
+    def _on_analysis_done(self, _result):
+        self._ingestion_worker = None
+        self._analyze_btn.setEnabled(True)
+        self._analyze_btn.setText("Analyze Demos")
+        tokens = get_tokens()
+        self._analyze_status.setText("Analysis complete")
+        self._analyze_status.setStyleSheet(f"color: {tokens.success}; font-size: 12px;")
+        logger.info("Home screen demo analysis completed")
+
+        from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state
+
+        get_app_state().notification_received.emit(
+            "INFO", "Demo analysis complete — check Match History for results"
+        )
+
+    def _on_analysis_error(self, error):
+        self._ingestion_worker = None
+        self._analyze_btn.setEnabled(True)
+        self._analyze_btn.setText("Analyze Demos")
+        tokens = get_tokens()
+        self._analyze_status.setText(f"Error: {error}")
+        self._analyze_status.setStyleSheet(f"color: {tokens.error}; font-size: 12px;")
+        logger.error("Home screen demo analysis failed: %s", error)
+
+        from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state
+
+        get_app_state().notification_received.emit("ERROR", f"Demo analysis failed: {error}")
+
     def _pick_demo_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Select Demo Folder")
         if folder:
             save_user_setting("DEFAULT_DEMO_PATH", folder)
             self._demo_path_label.setText(folder)
             logger.info("Demo folder set: %s", folder)
+
+    def _pick_pro_folder(self):
+        folder = QFileDialog.getExistingDirectory(self, "Select Pro Demo Folder")
+        if folder:
+            save_user_setting("PRO_DEMO_PATH", folder)
+            self._pro_path_label.setText(folder)
+            logger.info("Pro demo folder set: %s", folder)
 
     @staticmethod
     def _format_eta(seconds: float) -> str:

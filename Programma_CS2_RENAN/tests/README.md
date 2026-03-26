@@ -4,7 +4,7 @@
 
 **Authority:** `Programma_CS2_RENAN/tests/` -- Comprehensive regression and correctness suite for the Macena CS2 Analyzer.
 
-The test suite contains 1,515+ tests distributed across 79 files, following the test pyramid
+The test suite contains 1,515+ tests distributed across 87 files, following the test pyramid
 (unit > integration > e2e). Every subsystem -- from the 25-dim feature vector through the
 neural networks, coaching engine, database layer, and UI screens -- is covered by deterministic,
 reproducible assertions. Tests run under pytest with a mandatory virtual-environment guard and
@@ -39,7 +39,10 @@ optional integration-test gating via the `CS2_INTEGRATION_TESTS` environment var
 | `test_coach_manager_flows.py` | Core | `CoachManager` session lifecycle |
 | `test_coach_manager_tensors.py` | Core | Tensor shape validation in coach pipeline |
 | `test_config_extended.py` | Core | `config.py` resolution, overrides, thread safety |
+| `test_config_resolution.py` | Core | Config resolution hierarchy tests |
+| `test_coper_pathway.py` | Coaching | COPER coaching pathway end-to-end chain |
 | `test_database_layer.py` | Storage | ORM models, migrations, WAL enforcement |
+| `test_database_wal_enforcement.py` | Storage | WAL mode enforcement tests |
 | `test_data_pipeline_contracts.py` | Processing | Feature pipeline input/output contracts |
 | `test_db_backup.py` | Storage | Database backup and restore logic |
 | `test_db_governor_integration.py` | Storage | Database governor concurrency tests |
@@ -59,13 +62,16 @@ optional integration-test gating via the `CS2_INTEGRATION_TESTS` environment var
 | `test_game_theory.py` | Analysis | Game-theoretic models (Nash, minimax) |
 | `test_game_tree.py` | Analysis | Game tree construction and traversal |
 | `test_hybrid_engine.py` | Coaching | Hybrid coaching engine fusion logic |
+| `test_ingestion_pipeline.py` | Ingestion | Ingestion pipeline integration tests |
 | `test_integration.py` | Integration | Cross-module integration with real DB |
 | `test_jepa_model.py` | NN | JEPA encoder, coaching head, EMA target encoder |
+| `test_jepa_training_pipeline.py` | NN | JEPA training pipeline tests |
 | `test_knowledge_graph.py` | Knowledge | RAG knowledge graph queries |
 | `test_lifecycle.py` | Core | Application lifecycle (boot, shutdown, recovery) |
 | `test_map_manager.py` | Core | Map geometry, callout resolution, spatial queries |
 | `test_model_factory_contracts.py` | NN | `ModelFactory` instantiation contracts |
 | `test_models.py` | Storage | SQLModel ORM model validation |
+| `test_nn_config_reproducibility.py` | NN | Neural network config reproducibility tests |
 | `test_nn_extensions.py` | NN | LTC neurons, Hopfield memory extensions |
 | `test_nn_infrastructure.py` | NN | Training infrastructure (DataLoader, checkpoints) |
 | `test_nn_training.py` | NN | Training loop, loss convergence, gradient checks |
@@ -85,6 +91,7 @@ optional integration-test gating via the `CS2_INTEGRATION_TESTS` environment var
 | `test_security.py` | Security | Shell injection, `.env` protection, secret detection |
 | `test_services.py` | Services | `CoachingService`, `AnalysisService`, `DialogueEngine` |
 | `test_session_engine.py` | Core | Quad-Daemon session engine lifecycle |
+| `test_skill_assessment.py` | NN | Skill assessment module tests |
 | `test_skill_model.py` | NN | Skill model forward pass and output shape |
 | `test_spatial_and_baseline.py` | Analysis | Spatial engine + baseline integration |
 | `test_spatial_engine.py` | Analysis | Spatial engine coordinate transforms |
@@ -93,8 +100,10 @@ optional integration-test gating via the `CS2_INTEGRATION_TESTS` environment var
 | `test_temporal_baseline.py` | Analysis | 20 temporal baseline decay tests |
 | `test_tensor_factory.py` | NN | `TensorFactory` shape and dtype contracts |
 | `test_trade_kill_detector.py` | Analysis | Trade kill detection logic |
+| `test_training_callbacks.py` | NN | Training callback registry tests |
 | `test_training_orchestrator_flows.py` | Services | Training orchestrator end-to-end flows |
 | `test_training_orchestrator_logic.py` | Services | Training orchestrator decision logic |
+| `test_v1_blockers.py` | Regression | V1 production readiness blocker fixes |
 | `test_z_penalty.py` | Processing | `compute_z_penalty()` edge cases |
 | `automated_suite/` | Infrastructure | Automated test runner (smoke, unit, functional, e2e, regression) |
 | `data/` | Infrastructure | Test data fixtures and sample files |

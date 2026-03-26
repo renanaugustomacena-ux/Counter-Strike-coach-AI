@@ -96,7 +96,7 @@ is available.
 ### longitudinal_engine.py -- generate_longitudinal_coaching()
 
 Generates coaching advice based on performance trends across multiple matches or sessions.
-Uses temporal baseline decay from `backend/processing/baselines/temporal_decay.py` to
+Uses `TemporalBaselineDecay` from `backend/processing/baselines/pro_baseline.py` to
 weight recent performance more heavily than older data. Produces trend direction indicators
 (improving/declining/stable) for each tracked metric and tailors advice accordingly.
 
@@ -148,7 +148,7 @@ coaching_service.py
 ```
 
 The `coaching_service.py` orchestrator also injects temporal baseline context from
-`backend/processing/baselines/temporal_decay.py`, ensuring that coaching advice accounts
+`backend/processing/baselines/pro_baseline.py` (`TemporalBaselineDecay`), ensuring that coaching advice accounts
 for how the player's skill level has evolved over recent sessions.
 
 ## Development Notes

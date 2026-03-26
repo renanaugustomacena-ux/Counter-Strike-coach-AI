@@ -38,10 +38,23 @@ HARD_DEFAULT_BASELINE = {
 
 def get_pro_baseline(map_name: Optional[str] = None):
     """
-    Returns the pro baseline statistics.
+    Returns the pro baseline statistics by **fusing** all available sources.
 
-    Task 2.18.1: Now supports map-specific baselines for more accurate
-    per-map coaching comparisons (e.g., AWP stats differ Dust2 vs Inferno).
+    Instead of a strict cascade (first-wins), this layers all available data
+    so each source contributes its unique metrics and stronger data overrides
+    weaker fallbacks.
+
+    Layer order (ascending priority — later layers override earlier):
+      1. HARD_DEFAULT_BASELINE (hardcoded fallback, guaranteed coverage)
+      2. External CSV file (historical broad data)
+      3. Ingested pro demo PlayerMatchStats (real match data, ground truth)
+      4. HLTV ProPlayerStatCard (scraped web data, largest sample)
+
+    The result is a comprehensive baseline where:
+    - HLTV provides opening duels, clutch stats, impact (unique to HLTV)
+    - Demo stats provide accuracy (unique to demos)
+    - CSV fills any remaining gaps
+    - Hardcoded ensures every metric has a value
 
     Args:
         map_name: Optional CS2 map name (e.g., 'de_mirage', 'de_nuke').
@@ -51,20 +64,49 @@ def get_pro_baseline(map_name: Optional[str] = None):
     Returns:
         dict: Baseline statistics with 'mean' and 'std' for each metric.
     """
-    db_baseline = _load_pro_from_db(map_name=map_name)
-    if db_baseline:
-        return db_baseline
+    # Layer 1: Hardcoded defaults (guaranteed coverage)
+    baseline = dict(HARD_DEFAULT_BASELINE)
+    sources_used = ["hard_default"]
 
+    # Layer 2: CSV (broad historical data)
     csv_path = os.path.join(EXTERNAL_DATA_DIR, "all_Time_best_Players_Stats.csv")
     if os.path.exists(csv_path):
-        _logger.info("DB baseline empty — falling back to CSV: %s", csv_path)
-        return _load_pro_from_csv(csv_path)
-    _logger.warning(
-        "No DB or CSV pro data found (path checked: %s). "
-        "Falling back to HARD_DEFAULT_BASELINE — coaching quality is degraded.",
-        csv_path,
-    )
-    return _get_default_pro_baseline()
+        csv_data = _load_pro_from_csv(csv_path)
+        if csv_data:
+            for k, v in csv_data.items():
+                if not k.startswith("_"):
+                    baseline[k] = v
+            sources_used.append("csv")
+
+    # Layer 3: Demo stats (real match data from ingested pro demos)
+    demo_data = _load_pro_from_demo_stats(map_name=map_name)
+    if demo_data:
+        for k, v in demo_data.items():
+            if not k.startswith("_"):
+                baseline[k] = v
+        sources_used.append("demo_stats")
+
+    # Layer 4: HLTV (professional player stats, largest N)
+    hltv_data = _load_pro_from_db(map_name=map_name)
+    if hltv_data:
+        for k, v in hltv_data.items():
+            if not k.startswith("_"):
+                baseline[k] = v
+        sources_used.append("hltv")
+
+    baseline["_provenance"] = "+".join(sources_used)
+
+    if len(sources_used) == 1:
+        _logger.warning("Only HARD_DEFAULT_BASELINE available — coaching quality is degraded.")
+    else:
+        _logger.info(
+            "Pro baseline fused from %d sources: %s (%d total metrics)",
+            len(sources_used),
+            baseline["_provenance"],
+            len([k for k in baseline if not k.startswith("_")]),
+        )
+
+    return baseline
 
 
 def _load_pro_from_db(map_name: Optional[str] = None):
@@ -80,8 +122,9 @@ def _load_pro_from_db(map_name: Optional[str] = None):
     try:
         with db.get_session() as s:
             query = select(ProPlayerStatCard).limit(5000)
-            if map_name:
-                query = query.where(ProPlayerStatCard.map_name == map_name)
+            # Note: ProPlayerStatCard has no map_name column.
+            # Map-specific data may exist in detailed_stats_json but
+            # is not suitable for SQL filtering. Skip map filter here.
             # R4-20-01: Stream results in batches of 500 to avoid loading
             # all 5000 ORM objects into memory simultaneously.
             result = s.exec(query)
@@ -145,6 +188,107 @@ def _load_pro_from_db(map_name: Optional[str] = None):
             return baseline
     except Exception as e:
         _logger.error("Failed to load pro baseline from DB: %s", e)
+        return None
+
+
+def _load_pro_from_demo_stats(map_name: Optional[str] = None):
+    """
+    Compute pro baseline from ingested pro demo PlayerMatchStats.
+
+    This uses the actual match statistics extracted from professional .dem files
+    (PlayerMatchStats with is_pro=True) to build a baseline. More accurate than
+    hardcoded defaults since it reflects real tournament-level play.
+
+    Requires at least 10 records to avoid thin/noisy baselines.
+
+    Args:
+        map_name: Optional map filter. Matches demo_name containing the map
+                  (e.g., 'mirage' matches 'furia-vs-vitality-m1-mirage').
+    """
+    from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
+
+    db = get_db_manager()
+    try:
+        with db.get_session() as s:
+            query = select(PlayerMatchStats).where(PlayerMatchStats.is_pro == True)  # noqa: E712
+            if map_name:
+                # Strip 'de_' prefix for flexible matching
+                clean_map = map_name.replace("de_", "")
+                query = query.where(PlayerMatchStats.demo_name.contains(clean_map))
+            records = s.exec(query).all()
+
+        if len(records) < 10:
+            return None
+
+        # Compute per-player averages first, then global mean/std
+        # (prevents players with more matches from dominating)
+        player_avgs: dict = {}
+        for r in records:
+            pid = r.player_name
+            if pid not in player_avgs:
+                player_avgs[pid] = {
+                    "rating": [],
+                    "avg_kills": [],
+                    "avg_deaths": [],
+                    "avg_adr": [],
+                    "avg_hs": [],
+                    "avg_kast": [],
+                    "accuracy": [],
+                }
+            player_avgs[pid]["rating"].append(r.rating or 0.0)
+            player_avgs[pid]["avg_kills"].append(r.avg_kills or 0.0)
+            player_avgs[pid]["avg_deaths"].append(r.avg_deaths or 0.0)
+            player_avgs[pid]["avg_adr"].append(r.avg_adr or 0.0)
+            player_avgs[pid]["avg_hs"].append(r.avg_hs or 0.0)
+            player_avgs[pid]["avg_kast"].append(r.avg_kast or 0.0)
+            player_avgs[pid]["accuracy"].append(r.accuracy or 0.0)
+
+        # Flatten: one average per player per metric
+        metric_keys = list(next(iter(player_avgs.values())).keys())
+        flattened: dict = {k: [] for k in metric_keys}
+        for pid, metrics in player_avgs.items():
+            for key, values in metrics.items():
+                flattened[key].append(float(np.mean(values)))
+
+        # Also compute kd_ratio from avg_kills / avg_deaths
+        kd_ratios = []
+        for pid, metrics in player_avgs.items():
+            avg_k = float(np.mean(metrics["avg_kills"]))
+            avg_d = float(np.mean(metrics["avg_deaths"]))
+            if avg_d > 0.01:
+                kd_ratios.append(avg_k / avg_d)
+        if kd_ratios:
+            flattened["kd_ratio"] = kd_ratios
+
+        baseline = {}
+        for feat, vals in flattened.items():
+            std_val = float(np.std(vals))
+            if std_val == 0.0:
+                _logger.warning(
+                    "Demo baseline std=0 for '%s' (%d players) — metric skipped",
+                    feat,
+                    len(vals),
+                )
+            baseline[feat] = {"mean": float(np.mean(vals)), "std": max(std_val, 0.01)}
+
+        # Merge with HARD defaults for metrics not available in demo stats
+        defaults = HARD_DEFAULT_BASELINE
+        for k, v in defaults.items():
+            if k not in baseline:
+                baseline[k] = v
+
+        baseline["_provenance"] = "demo_stats"
+        _logger.info(
+            "Pro baseline computed from %d players across %d demo records "
+            "(%d metrics from demos, %d from defaults)",
+            len(player_avgs),
+            len(records),
+            len(flattened),
+            len(baseline) - len(flattened) - 1,  # -1 for _provenance
+        )
+        return baseline
+    except Exception as e:
+        _logger.error("Failed to load pro baseline from demo stats: %s", e)
         return None
 
 

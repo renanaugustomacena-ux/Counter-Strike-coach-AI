@@ -119,6 +119,9 @@ class JEPACoachingModel(nn.Module):
     ):
         super().__init__()
 
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+
         # JEPA Components (for pre-training)
         self.context_encoder = JEPAEncoder(input_dim, latent_dim)
         self.target_encoder = JEPAEncoder(input_dim, latent_dim)

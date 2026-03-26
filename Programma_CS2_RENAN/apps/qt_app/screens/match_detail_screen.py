@@ -8,12 +8,14 @@ from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QPushButton,
     QScrollArea,
     QTabWidget,
     QVBoxLayout,
     QWidget,
 )
 
+from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import (
     COLOR_GREEN,
     COLOR_RED,
@@ -22,11 +24,10 @@ from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import (
     rating_label,
     rgba_to_qcolor,
 )
-from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.viewmodels.match_detail_vm import MatchDetailViewModel
-from Programma_CS2_RENAN.apps.qt_app.widgets.components.stat_badge import StatBadge
 from Programma_CS2_RENAN.apps.qt_app.widgets.charts.economy_chart import EconomyChart
 from Programma_CS2_RENAN.apps.qt_app.widgets.charts.momentum_chart import MomentumChart
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.stat_badge import StatBadge
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.qt_match_detail")
@@ -62,11 +63,19 @@ class MatchDetailScreen(QWidget):
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(8)
 
-        # Title
+        # Back button + Title
+        title_row = QHBoxLayout()
+        title_row.setSpacing(8)
+        back_btn = QPushButton("\u2190 Back")
+        back_btn.setCursor(Qt.PointingHandCursor)
+        back_btn.setFixedWidth(80)
+        back_btn.clicked.connect(lambda: self._navigate("match_history"))
+        title_row.addWidget(back_btn)
         self._title = QLabel("Match Detail")
         self._title.setObjectName("section_title")
         self._title.setFont(QFont("Roboto", 20, QFont.Bold))
-        layout.addWidget(self._title)
+        title_row.addWidget(self._title, 1)
+        layout.addLayout(title_row)
 
         # Status
         self._status = QLabel("")
@@ -92,6 +101,10 @@ class MatchDetailScreen(QWidget):
     def on_enter(self):
         if self._demo_name:
             self.load_demo(self._demo_name)
+
+    def retranslate(self):
+        """Update translatable text when language changes."""
+        pass  # Tab labels are English-only; wire i18n when translations added
 
     def _on_data(self, stats: dict, rounds: list, insights: list, hltv: dict):
         self._status.setVisible(False)
@@ -123,6 +136,11 @@ class MatchDetailScreen(QWidget):
             self._status.setText(msg)
             self._status.setVisible(True)
             self._tabs.setVisible(False)
+
+    def _navigate(self, screen_name: str):
+        win = self.window()
+        if win and hasattr(win, "switch_screen"):
+            win.switch_screen(screen_name)
 
     # ── Tab builders ──
 
@@ -158,26 +176,41 @@ class MatchDetailScreen(QWidget):
         badge_row = QHBoxLayout()
         badge_row.setSpacing(16)
 
-        badge_row.addWidget(StatBadge(
-            value=f"{rating:.2f}",
-            label=f"Rating ({rating_label(rating)})",
-            sentiment="positive" if rating >= 1.0 else "negative",
-        ))
-        badge_row.addWidget(StatBadge(
-            value=f"{kd:.2f}", label="K/D Ratio",
-            sentiment="positive" if kd >= 1.0 else "negative",
-        ))
-        badge_row.addWidget(StatBadge(
-            value=f"{adr:.1f}", label="ADR",
-            sentiment="positive" if adr >= 70 else "negative" if adr < 50 else "neutral",
-        ))
-        badge_row.addWidget(StatBadge(
-            value=f"{kast * 100:.0f}%", label="KAST",
-            sentiment="positive" if kast >= 0.7 else "negative" if kast < 0.5 else "neutral",
-        ))
-        badge_row.addWidget(StatBadge(
-            value=f"{hs * 100:.0f}%", label="Headshot %", sentiment="neutral",
-        ))
+        badge_row.addWidget(
+            StatBadge(
+                value=f"{rating:.2f}",
+                label=f"Rating ({rating_label(rating)})",
+                sentiment="positive" if rating >= 1.0 else "negative",
+            )
+        )
+        badge_row.addWidget(
+            StatBadge(
+                value=f"{kd:.2f}",
+                label="K/D Ratio",
+                sentiment="positive" if kd >= 1.0 else "negative",
+            )
+        )
+        badge_row.addWidget(
+            StatBadge(
+                value=f"{adr:.1f}",
+                label="ADR",
+                sentiment="positive" if adr >= 70 else "negative" if adr < 50 else "neutral",
+            )
+        )
+        badge_row.addWidget(
+            StatBadge(
+                value=f"{kast * 100:.0f}%",
+                label="KAST",
+                sentiment="positive" if kast >= 0.7 else "negative" if kast < 0.5 else "neutral",
+            )
+        )
+        badge_row.addWidget(
+            StatBadge(
+                value=f"{hs * 100:.0f}%",
+                label="Headshot %",
+                sentiment="neutral",
+            )
+        )
         badge_row.addStretch()
         layout.addLayout(badge_row)
 
@@ -224,15 +257,11 @@ class MatchDetailScreen(QWidget):
                 bar_bg = QFrame()
                 bar_bg.setFixedHeight(6)
                 bar_bg.setFixedWidth(120)
-                bar_bg.setStyleSheet(
-                    f"background: {tokens.surface_raised}; border-radius: 3px;"
-                )
+                bar_bg.setStyleSheet(f"background: {tokens.surface_raised}; border-radius: 3px;")
                 bar_fill = QFrame(bar_bg)
                 fill_w = max(1, min(120, int(val / 2.0 * 120)))
                 bar_fill.setGeometry(0, 0, fill_w, 6)
-                bar_fill.setStyleSheet(
-                    f"background: {val_color.name()}; border-radius: 3px;"
-                )
+                bar_fill.setStyleSheet(f"background: {val_color.name()}; border-radius: 3px;")
                 row.addWidget(bar_bg)
 
                 row.addStretch()

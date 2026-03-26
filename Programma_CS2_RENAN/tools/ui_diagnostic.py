@@ -5,7 +5,7 @@ UI Diagnostic — Headless UI validation for Macena CS2 Analyzer.
 Merges and supersedes:
   gui_health_check, Omni_UI_Diagnostic, coordinate_audit, verify_setpos
 
-Sections: Resources, Localization, Assets, KV Validation, Spatial Coordinates.
+Sections: Resources, Localization, Assets, KV Validation, Qt Frontend, Spatial Coordinates.
 
 Exit codes: 0 = PASS, 1 = FAIL
 """
@@ -30,13 +30,14 @@ class UIDiagnostic(BaseValidator):
         self._check_localization()
         self._check_assets()
         self._check_kv_validation()
+        self._check_qt_frontend()
         self._check_spatial_coordinates()
 
     # -----------------------------------------------------------------
     # Section 1: Resources
     # -----------------------------------------------------------------
     def _check_resources(self):
-        self.console.section("Resources", 1, 5)
+        self.console.section("Resources", 1, 6)
 
         kv = SOURCE_ROOT / "apps" / "desktop_app" / "layout.kv"
         self.check("Resources", "layout.kv exists", kv.exists())
@@ -67,7 +68,7 @@ class UIDiagnostic(BaseValidator):
     # Section 2: Localization
     # -----------------------------------------------------------------
     def _check_localization(self):
-        self.console.section("Localization", 2, 5)
+        self.console.section("Localization", 2, 6)
 
         try:
             from Programma_CS2_RENAN.core.localization import TRANSLATIONS
@@ -110,7 +111,7 @@ class UIDiagnostic(BaseValidator):
     # Section 3: Assets
     # -----------------------------------------------------------------
     def _check_assets(self):
-        self.console.section("Assets", 3, 5)
+        self.console.section("Assets", 3, 6)
 
         gui = SOURCE_ROOT / "PHOTO_GUI"
         if not gui.exists():
@@ -152,7 +153,7 @@ class UIDiagnostic(BaseValidator):
     # Section 4: KV Validation
     # -----------------------------------------------------------------
     def _check_kv_validation(self):
-        self.console.section("KV Validation", 4, 5)
+        self.console.section("KV Validation", 4, 6)
 
         kv_path = SOURCE_ROOT / "apps" / "desktop_app" / "layout.kv"
         if not kv_path.exists():
@@ -221,10 +222,93 @@ class UIDiagnostic(BaseValidator):
             )
 
     # -----------------------------------------------------------------
-    # Section 5: Spatial Coordinates
+    # Section 5: Qt Frontend (primary UI)
+    # -----------------------------------------------------------------
+    def _check_qt_frontend(self):
+        self.console.section("Qt Frontend", 5, 6)
+
+        qt_app_dir = SOURCE_ROOT / "apps" / "qt_app"
+        self.check("Qt", "qt_app directory exists", qt_app_dir.exists() and qt_app_dir.is_dir())
+
+        if not qt_app_dir.exists():
+            return
+
+        # Screen modules
+        screens_dir = qt_app_dir / "screens"
+        if screens_dir.exists():
+            screen_files = list(screens_dir.glob("*_screen.py"))
+            self.check(
+                "Qt",
+                "Screen modules discovered",
+                len(screen_files) >= 10,
+                detail=f"{len(screen_files)} screen modules",
+            )
+
+            # Verify each screen module is importable (AST parse only)
+            import ast
+
+            parse_errors = []
+            for sf in screen_files:
+                try:
+                    ast.parse(sf.read_text(encoding="utf-8"))
+                except SyntaxError as e:
+                    parse_errors.append(f"{sf.name}: {e}")
+            self.check(
+                "Qt",
+                "Screen modules syntax valid",
+                len(parse_errors) == 0,
+                detail=f"{len(screen_files)} parsed OK" if not parse_errors else None,
+                error="; ".join(parse_errors[:3]) if parse_errors else "",
+            )
+        else:
+            self.check("Qt", "screens/ directory", False)
+
+        # QSS theme files
+        qss_dir = qt_app_dir / "themes"
+        if qss_dir.exists():
+            qss_files = list(qss_dir.glob("*.qss"))
+            self.check(
+                "Qt",
+                "QSS theme files",
+                len(qss_files) >= 1,
+                detail=f"{len(qss_files)} themes",
+            )
+
+            # Verify QSS files contain actual styling
+            for qf in qss_files:
+                content = qf.read_text(encoding="utf-8").strip()
+                has_rules = "{" in content and "}" in content
+                self.check(
+                    "Qt",
+                    f"QSS '{qf.stem}' has rules",
+                    has_rules,
+                    severity=Severity.WARNING,
+                )
+        else:
+            self.check("Qt", "themes/ directory", False, severity=Severity.WARNING)
+
+        # ViewModels
+        vm_dir = qt_app_dir / "viewmodels"
+        if vm_dir.exists():
+            vm_files = list(vm_dir.glob("*_vm.py"))
+            self.check(
+                "Qt",
+                "ViewModel modules",
+                len(vm_files) >= 5,
+                detail=f"{len(vm_files)} viewmodels",
+            )
+        else:
+            self.check("Qt", "viewmodels/ directory", False, severity=Severity.WARNING)
+
+        # app.py entry point
+        app_py = qt_app_dir / "app.py"
+        self.check("Qt", "app.py entry point exists", app_py.exists())
+
+    # -----------------------------------------------------------------
+    # Section 6: Spatial Coordinates
     # -----------------------------------------------------------------
     def _check_spatial_coordinates(self):
-        self.console.section("Spatial Coordinates", 5, 5)
+        self.console.section("Spatial Coordinates", 6, 6)
 
         try:
             from Programma_CS2_RENAN.core.spatial_data import SPATIAL_REGISTRY

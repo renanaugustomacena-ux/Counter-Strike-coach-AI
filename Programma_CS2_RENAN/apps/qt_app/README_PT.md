@@ -6,7 +6,7 @@
 
 ## Visao Geral
 
-Aplicacao desktop PySide6/Qt implementando arquitetura Model-View-ViewModel (MVVM) com Qt Signal/Slot para analise tatica CS2 e coaching de IA. Este e o **frontend primario** (46 arquivos Python), substituindo o app legacy Kivy/KivyMD em [`desktop_app/`](../desktop_app/). A aplicacao conta com 13 telas, 7 ViewModels, 6 widgets de graficos, 3 widgets taticos, notificacoes toast, 3 temas QSS (CS2, CSGO, CS1.6), renderizacao de wallpaper de fundo, internacionalizacao (Ingles/Italiano/Portugues) e uma sequencia de encerramento controlado.
+Aplicacao desktop PySide6/Qt implementando arquitetura Model-View-ViewModel (MVVM) com Qt Signal/Slot para analise tatica CS2 e coaching de IA. Este e o **frontend primario** (56 arquivos Python), substituindo o app legacy Kivy/KivyMD em [`desktop_app/`](../desktop_app/). A aplicacao conta com 13 telas, 7 ViewModels, 6 widgets de graficos, 3 widgets taticos, notificacoes toast, 3 temas QSS (CS2, CSGO, CS1.6), renderizacao de wallpaper de fundo, internacionalizacao (Ingles/Italiano/Portugues) e uma sequencia de encerramento controlado.
 
 ## Ponto de Entrada
 
@@ -37,6 +37,10 @@ qt_app/
 ├── core/
 │   ├── app_state.py                # Singleton AppState: consulta CoachState DB a cada 10s, emite Signals
 │   ├── theme_engine.py             # ThemeEngine: carregamento QSS, QPalette, fontes, gerenciamento wallpaper
+│   ├── design_tokens.py            # Definicoes de design tokens para o sistema de componentes Qt
+│   ├── qss_generator.py            # Geracao programatica de QSS a partir dos design tokens
+│   ├── animation.py                # Utilitarios de animacao compartilhados e helpers de easing
+│   ├── icons.py                    # Registro de icones e carregador de assets SVG/icones
 │   ├── worker.py                   # Worker QRunnable + WorkerSignals para tarefas em background
 │   ├── asset_bridge.py             # QtAssetBridge: carrega imagens de mapa como QPixmap (singleton)
 │   ├── i18n_bridge.py              # QtLocalizationManager: i18n baseado em JSON com Signal na troca de idioma
@@ -69,6 +73,7 @@ qt_app/
 │   └── __init__.py
 ├── widgets/
 │   ├── toast.py                    # ToastWidget + ToastContainer: notificacoes efemeras (4 severidades)
+│   ├── skeleton.py                 # Widgets placeholder de carregamento skeleton
 │   ├── charts/
 │   │   ├── radar_chart.py          # RadarChartWidget: radar de desempenho multidimensional
 │   │   ├── momentum_chart.py       # MomentumGraphWidget: evolucao do momentum da equipe por round
@@ -77,6 +82,15 @@ qt_app/
 │   │   ├── trend_chart.py          # TrendGraphWidget: visualizacao de tendencias de series temporais
 │   │   ├── utility_bar_chart.py    # UtilityBarWidget: comparacao de uso de utilitarios (usuario vs baseline pro)
 │   │   └── __init__.py
+│   ├── components/                 # Componentes de UI reutilizaveis (design system)
+│   │   ├── __init__.py             # Exports dos componentes
+│   │   ├── card.py                 # Widget container de card
+│   │   ├── stat_badge.py           # Badge de estatistica com label e valor
+│   │   ├── empty_state.py          # Placeholder de estado vazio com icone e mensagem
+│   │   ├── section_header.py       # Cabecalho de secao com titulo e acao opcional
+│   │   ├── progress_ring.py        # Indicador de anel de progresso circular
+│   │   ├── icon_widget.py          # Widget de exibicao de icone (SVG/pixmap)
+│   │   └── nav_sidebar.py          # Componente de barra lateral de navegacao
 │   ├── tactical/
 │   │   ├── map_widget.py           # MapWidget: renderizacao de mapa tatico 2D pixel-accurate
 │   │   ├── player_sidebar.py       # PlayerSidebar: estado do jogador em tempo real (vida, armadura, armas)
@@ -239,6 +253,10 @@ Todas as emissoes de signal sao protegidas por `try/except RuntimeError` para li
 | `QtAssetBridge` | `core/asset_bridge.py` | Singleton que carrega imagens de mapa como `QPixmap` com cache e fallback de tabuleiro xadrez magenta/preto |
 | `QtLocalizationManager` | `core/i18n_bridge.py` | Singleton (`i18n`) que fornece `get_text(key)` com prioridade JSON, fallback hardcoded, e Signal `language_changed` |
 | `QtPlaybackEngine` | `core/qt_playback_engine.py` | Subclasse de `PlaybackEngine` usando `QTimer` com intervalo de 16ms (~60 FPS) em vez de Kivy Clock |
+| `DesignTokens` | `core/design_tokens.py` | Definicoes de design tokens (espacamento, raio, elevacao) para o sistema de componentes Qt |
+| `QSSGenerator` | `core/qss_generator.py` | Geracao programatica de folhas de estilo QSS a partir dos design tokens |
+| `Animation` | `core/animation.py` | Utilitarios de animacao compartilhados e helpers de easing para transicoes de widgets |
+| `Icons` | `core/icons.py` | Registro de icones e carregador de assets SVG/icones para o sistema de componentes |
 
 ## Notas de Desenvolvimento
 

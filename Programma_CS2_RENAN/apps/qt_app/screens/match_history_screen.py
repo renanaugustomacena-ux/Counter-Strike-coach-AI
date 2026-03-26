@@ -158,6 +158,9 @@ class MatchHistoryScreen(QWidget):
         self._show_loading()
         self._vm.load_matches()
 
+    def on_leave(self):
+        self._vm.cancel()
+
     def _on_loading_changed(self, loading: bool):
         if loading:
             self._show_loading()

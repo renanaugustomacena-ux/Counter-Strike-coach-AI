@@ -41,7 +41,9 @@ _STANDALONE_SCRIPTS = [
     SOURCE_DIR / "backend" / "ingestion" / "csv_migrator.py",
     SOURCE_DIR / "backend" / "nn" / "rap_coach" / "test_arch.py",
     SOURCE_DIR / "core" / "frozen_hook.py",
-    SOURCE_DIR / "Train_ML_Cycle.py",
+    SOURCE_DIR / "fetch_hltv_stats.py",
+    project_root / "run_full_training_cycle.py",
+    project_root / "batch_ingest.py",
 ]
 for script in _STANDALONE_SCRIPTS:
     ENTRY_POINTS.add(script)
@@ -70,7 +72,10 @@ EXCLUDE_DIRS = {
     # Alembic migration directories (entry points managed by Alembic)
     "versions",
 }
-EXCLUDE_FILES = {"__init__.py"}
+# Files excluded from ORPHAN detection only (not from scanning for references).
+# __init__.py re-exports modules — they must still be scanned as reference sources.
+EXCLUDE_FROM_ORPHAN_CHECK = {"__init__.py"}
+EXCLUDE_FILES: set[str] = set()  # No files excluded from scanning
 COMMON_NAMES = {
     # Python dunder methods
     "__init__",
@@ -299,6 +304,12 @@ def scan_orphans(all_files: List[Path]) -> List[str]:
 
     for f in all_files:
         if f in ENTRY_POINTS:
+            non_orphans.add(f)
+            continue
+
+        # __init__.py files are package markers — never orphans, but still
+        # scanned as reference sources (they re-export modules).
+        if f.name in EXCLUDE_FROM_ORPHAN_CHECK:
             non_orphans.add(f)
             continue
 

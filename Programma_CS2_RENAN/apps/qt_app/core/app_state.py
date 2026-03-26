@@ -62,59 +62,73 @@ class AppState(QObject):
 
     @staticmethod
     def _bg_read():
-        """Background thread: read CoachState singleton row."""
+        """Background thread: read CoachState singleton row.
+
+        Returns None if the DB is unavailable or CoachState row doesn't exist.
+        """
         from datetime import datetime, timezone
 
-        from Programma_CS2_RENAN.backend.storage.database import get_db_manager
-        from Programma_CS2_RENAN.backend.storage.db_models import CoachState
+        try:
+            from Programma_CS2_RENAN.backend.storage.database import get_db_manager
+            from Programma_CS2_RENAN.backend.storage.db_models import CoachState
+        except Exception:
+            return None
 
-        with get_db_manager().get_session() as session:
-            state = session.get(CoachState, 1)
-            if state is None:
-                return None
+        try:
+            with get_db_manager().get_session() as session:
+                try:
+                    state = session.get(CoachState, 1)
+                except Exception as exc:
+                    logger.debug("AppState: CoachState query failed: %s", exc)
+                    return None
+                if state is None:
+                    return None
 
-            delta = 9999.0
-            if state.last_heartbeat is not None:
-                now = datetime.now(timezone.utc)
-                hb = state.last_heartbeat
-                if hb.tzinfo is None:
-                    hb = hb.replace(tzinfo=timezone.utc)
-                delta = (now - hb).total_seconds()
+                delta = 9999.0
+                if state.last_heartbeat is not None:
+                    now = datetime.now(timezone.utc)
+                    hb = state.last_heartbeat
+                    if hb.tzinfo is None:
+                        hb = hb.replace(tzinfo=timezone.utc)
+                    delta = (now - hb).total_seconds()
 
-            # Query unread notifications and mark them read
-            from sqlalchemy import select
+                # Query unread notifications and mark them read
+                from sqlalchemy import select
 
-            from Programma_CS2_RENAN.backend.storage.db_models import ServiceNotification
+                from Programma_CS2_RENAN.backend.storage.db_models import ServiceNotification
 
-            notifs = []
-            try:
-                rows = session.exec(
-                    select(ServiceNotification)
-                    .where(ServiceNotification.is_read == False)  # noqa: E712
-                    .order_by(ServiceNotification.created_at)
-                    .limit(5)
-                ).all()
-                for row in rows:
-                    notifs.append({"severity": row.severity, "message": row.message})
-                    row.is_read = True
-                if rows:
-                    session.commit()
-            except Exception as exc:
-                logger.debug("Notification poll skipped: %s", exc)
+                notifs = []
+                try:
+                    rows = session.exec(
+                        select(ServiceNotification)
+                        .where(ServiceNotification.is_read == False)  # noqa: E712
+                        .order_by(ServiceNotification.created_at)
+                        .limit(5)
+                    ).all()
+                    for row in rows:
+                        notifs.append({"severity": row.severity, "message": row.message})
+                        row.is_read = True
+                    if rows:
+                        session.commit()
+                except Exception as exc:
+                    logger.debug("Notification poll skipped: %s", exc)
 
-            return {
-                "service_active": delta < 300,
-                "coach_status": state.ingest_status or "Idle",
-                "parsing_progress": float(state.parsing_progress),
-                "belief_confidence": float(state.belief_confidence),
-                "total_matches": int(state.total_matches_processed),
-                "current_epoch": int(state.current_epoch),
-                "total_epochs": int(state.total_epochs),
-                "train_loss": float(state.train_loss),
-                "val_loss": float(state.val_loss),
-                "eta_seconds": float(state.eta_seconds),
-                "notifications": notifs,
-            }
+                return {
+                    "service_active": delta < 300,
+                    "coach_status": state.ingest_status or "Idle",
+                    "parsing_progress": float(state.parsing_progress),
+                    "belief_confidence": float(state.belief_confidence),
+                    "total_matches": int(state.total_matches_processed),
+                    "current_epoch": int(state.current_epoch),
+                    "total_epochs": int(state.total_epochs),
+                    "train_loss": float(state.train_loss),
+                    "val_loss": float(state.val_loss),
+                    "eta_seconds": float(state.eta_seconds),
+                    "notifications": notifs,
+                }
+        except Exception as exc:
+            logger.debug("AppState: DB read failed: %s", exc)
+            return None
 
     def _apply(self, data):
         if data is None:

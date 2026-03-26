@@ -12,6 +12,7 @@ Script di build e setup per creare eseguibili pronti per la produzione dell'appl
 |------|-------|-------------|
 | `build_exe.bat` | Build di sviluppo — crea eseguibile standalone | Windows |
 | `build_production.bat` | Build di produzione — ottimizzato e ridotto | Windows |
+| `Setup_Macena_CS2.ps1` | Script PowerShell per configurazione ambiente | Windows |
 
 ## Architettura di Build
 

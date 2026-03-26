@@ -4,7 +4,7 @@ Replaces horizontal progress bars with a modern circular design.
 Draws a background arc and a foreground arc proportional to the value.
 """
 
-from PySide6.QtCore import Qt, QRectF
+from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import QWidget
 
@@ -71,8 +71,6 @@ class ProgressRing(QWidget):
             painter.setPen(QColor(tokens.text_primary))
             font_size = max(9, side // 5)
             painter.setFont(QFont("Roboto", font_size, QFont.Bold))
-            painter.drawText(
-                self.rect(), Qt.AlignCenter, f"{int(self._value * 100)}%"
-            )
+            painter.drawText(self.rect(), Qt.AlignCenter, f"{int(self._value * 100)}%")
 
         painter.end()

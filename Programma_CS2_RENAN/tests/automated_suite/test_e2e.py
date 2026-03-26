@@ -8,8 +8,13 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
+from Programma_CS2_RENAN.backend.nn.coach_manager import CoachTrainingManager
 from Programma_CS2_RENAN.backend.storage.database import init_database
-from Programma_CS2_RENAN.Train_ML_Cycle import run_training_cycle
+
+
+def run_training_cycle():
+    manager = CoachTrainingManager()
+    manager.run_full_cycle()
 
 
 @pytest.mark.integration

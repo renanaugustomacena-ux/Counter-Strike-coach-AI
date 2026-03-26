@@ -436,7 +436,9 @@ class TrainingOrchestrator:
             # V-1 FIX: Target is tick immediately after context — correct next-step prediction.
             # Previously used features_tensor[-1:] which overlapped with context when b=10
             # and was distant (89+ ticks away) when b>>10.
-            target = features_tensor[_JEPA_CONTEXT_LEN:_JEPA_CONTEXT_LEN + 1].unsqueeze(0)  # (1, 1, METADATA_DIM)
+            target = features_tensor[_JEPA_CONTEXT_LEN : _JEPA_CONTEXT_LEN + 1].unsqueeze(
+                0
+            )  # (1, 1, METADATA_DIM)
 
             # NN-H-03: Sample negatives from cross-match pool (not current batch)
             # to avoid false negatives from same-match ticks.

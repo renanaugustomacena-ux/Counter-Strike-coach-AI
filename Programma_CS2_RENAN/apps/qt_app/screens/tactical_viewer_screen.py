@@ -310,7 +310,14 @@ class TacticalViewerScreen(QWidget):
             self._progress_dialog = None
 
         # Filter out non-map keys (e.g., "map_tensors" injected by DemoLoader)
-        map_data = {k: v for k, v in data.items() if isinstance(v, tuple) and len(v) == 3}
+        map_data = {}
+        for k, v in data.items():
+            if isinstance(v, tuple) and len(v) == 3:
+                map_data[k] = v
+            else:
+                logger.debug(
+                    "Filtered non-map key from demo data: %r (type=%s)", k, type(v).__name__
+                )
 
         if not map_data:
             self._on_demo_error("No valid map data found in demo file.")

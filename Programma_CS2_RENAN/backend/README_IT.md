@@ -194,7 +194,7 @@ Livello 5 (Orchestrazione): services/  reporting/  control/
 
 ### Testing
 
-- Framework: `pytest`, 79 file di test in `tests/`.
+- Framework: `pytest`, 87 file di test in `tests/`.
 - I test di integrazione richiedono `CS2_INTEGRATION_TESTS=1`.
 - Fixture chiave: `in_memory_db`, `seeded_db_session`, `mock_db_manager`, `torch_no_grad`.
 

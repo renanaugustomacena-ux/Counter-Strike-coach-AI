@@ -18,10 +18,10 @@ from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import (
     get_tokens,
     set_active_theme,
 )
-from Programma_CS2_RENAN.apps.qt_app.core.qss_generator import (
-    invalidate_cache,
-    render_qss,
-)
+from Programma_CS2_RENAN.apps.qt_app.core.qss_generator import invalidate_cache, render_qss
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+_logger = get_logger("cs2analyzer.qt_theme_engine")
 
 # ── Palette data (mirrored from desktop_app/theme.py to avoid Kivy import chain) ──
 
@@ -202,9 +202,9 @@ class ThemeEngine(QObject):
             if path.exists():
                 font_id = QFontDatabase.addApplicationFont(str(path))
                 if font_id < 0:
-                    print(f"Warning: Failed to load font {name} from {path}")
+                    _logger.warning("Failed to load font %s from %s", name, path)
             else:
-                print(f"Warning: Font file not found: {path}")
+                _logger.warning("Font file not found: %s", path)
         self._fonts_registered = True
 
     # ── Wallpaper ──

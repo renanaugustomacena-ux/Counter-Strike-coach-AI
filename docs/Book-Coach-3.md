@@ -2064,7 +2064,7 @@ sequenceDiagram
     participant FS as Filesystem
 
     OP->>TOOL: python tools/headless_validator.py
-    TOOL->>TOOL: 7 fasi (ambiente, import, schema, config, ML, observ.)
+    TOOL->>TOOL: 23 fasi, 319 controlli (ambiente, import, schema, config, ML, observ., ...)
     alt Tutte le fasi PASS
         TOOL->>OP: Exit code 0 — Sistema sano ✓
     else Almeno una fase FAIL
@@ -2098,13 +2098,13 @@ sequenceDiagram
 
 La suite di strumenti è una **raccolta di 35 script** che formano una piramide di validazione multi-livello. Ogni strumento ha uno scopo preciso e può essere eseguito indipendentemente, ma insieme formano un sistema di garanzia della qualità che copre ogni aspetto del progetto.
 
-> **Analogia:** La suite di strumenti è come il **reparto di controllo qualità di una fabbrica automobilistica**. Ogni veicolo (build del progetto) attraversa una serie di stazioni di ispezione, ciascuna specializzata in un aspetto: il **Headless Validator** è la stazione di collaudo rapido che verifica che il motore si accenda e le ruote girino (regression gate in 7 fasi). Il **DB Inspector** è il meccanico che smonta e controlla il motore pezzo per pezzo (ispezione database). Il **Demo Inspector** è il tecnico che verifica la carrozzeria (integrità file demo). Il **Brain Verify** è il neurologo che testa ogni funzione cognitiva (118 regole di qualità dell'intelligenza). Il **Goliath Hospital** è l'ospedale completo con 10 reparti specializzati. Nessun veicolo esce dalla fabbrica senza aver superato tutti i controlli.
+> **Analogia:** La suite di strumenti è come il **reparto di controllo qualità di una fabbrica automobilistica**. Ogni veicolo (build del progetto) attraversa una serie di stazioni di ispezione, ciascuna specializzata in un aspetto: il **Headless Validator** è la stazione di collaudo rapido che verifica che il motore si accenda e le ruote girino (regression gate in 23 fasi, 319 controlli). Il **DB Inspector** è il meccanico che smonta e controlla il motore pezzo per pezzo (ispezione database). Il **Demo Inspector** è il tecnico che verifica la carrozzeria (integrità file demo). Il **Brain Verify** è il neurologo che testa ogni funzione cognitiva (118 regole di qualità dell'intelligenza). Il **Goliath Hospital** è l'ospedale completo con 10 reparti specializzati. Nessun veicolo esce dalla fabbrica senza aver superato tutti i controlli.
 
 ```mermaid
 flowchart TB
     subgraph PYRAMID["PIRAMIDE DI VALIDAZIONE (dal più veloce al più profondo)"]
-        L1["LIVELLO 1: Headless Validator<br/>7 fasi, ~10 secondi<br/>Gate di regressione obbligatorio<br/>Exit code 0 = PASS"]
-        L2["LIVELLO 2: pytest Suite<br/>73 file di test<br/>Unit + Integration + E2E<br/>~2-5 minuti"]
+        L1["LIVELLO 1: Headless Validator<br/>23 fasi, 319 controlli, ~10 secondi<br/>Gate di regressione obbligatorio<br/>Exit code 0 = PASS"]
+        L2["LIVELLO 2: pytest Suite<br/>87 file di test<br/>Unit + Integration + E2E<br/>~2-5 minuti"]
         L3["LIVELLO 3: Backend Validator<br/>Verifica import, schema,<br/>coerenza interfacce<br/>~30 secondi"]
         L4["LIVELLO 4: Goliath Hospital<br/>10 reparti diagnostici<br/>Audit profondo multisistema<br/>~1-3 minuti"]
         L5["LIVELLO 5: Brain Verify<br/>118 regole qualità intelligence<br/>16 sezioni di verifica<br/>~2-5 minuti"]
@@ -2117,7 +2117,7 @@ flowchart TB
     style L5 fill:#ff6b6b,color:#fff
 ```
 
-**Headless Validator** (`tools/headless_validator.py`, 320 righe) — il gate di regressione obbligatorio (Dev Rule 9). Eseguito dopo **ogni** task di sviluppo:
+**Headless Validator** (`tools/headless_validator.py`, 2.783 righe) — il gate di regressione obbligatorio (Dev Rule 9). Eseguito dopo **ogni** task di sviluppo con 23 fasi e 319 controlli:
 
 | Fase | Verifica | Dettaglio |
 | ---- | -------- | --------- |
@@ -2229,7 +2229,7 @@ Questo strumento esegue un audit a **3 fasi** sulla pipeline ML:
 ### 12.18 Architettura della Test Suite (`tests/`)
 
 **Directory:** `Programma_CS2_RENAN/tests/`
-**File totali:** 73 file di test + `conftest.py` + 10 script forensics + 15 script di verifica
+**File totali:** 87 file di test + `conftest.py` + 10 script forensics + 15 script di verifica
 
 La test suite è organizzata secondo il **principio della piramide dei test**: molti unit test (veloci, isolati), meno integration test (più lenti, con dipendenze reali), e pochi end-to-end test (completi ma costosi).
 
@@ -2237,10 +2237,10 @@ La test suite è organizzata secondo il **principio della piramide dei test**: m
 
 ```mermaid
 flowchart TB
-    subgraph PYRAMID["PIRAMIDE DEI TEST (73 FILE)"]
-        UNIT["UNIT TEST (~40 file)<br/>Testano singole funzioni/classi<br/>Mock per I/O esterno<br/>Velocità: <1s per test"]
-        INTEG["INTEGRATION TEST (~20 file)<br/>Testano pipeline complete<br/>DB SQLite reale (in-memory o temp)<br/>Velocità: 1-10s per test"]
-        E2E["E2E / SMOKE TEST (~13 file)<br/>Testano flussi utente completi<br/>Tutte le dipendenze reali<br/>Velocità: 10-60s per test"]
+    subgraph PYRAMID["PIRAMIDE DEI TEST (87 FILE)"]
+        UNIT["UNIT TEST (~50 file)<br/>Testano singole funzioni/classi<br/>Mock per I/O esterno<br/>Velocità: <1s per test"]
+        INTEG["INTEGRATION TEST (~23 file)<br/>Testano pipeline complete<br/>DB SQLite reale (in-memory o temp)<br/>Velocità: 1-10s per test"]
+        E2E["E2E / SMOKE TEST (~14 file)<br/>Testano flussi utente completi<br/>Tutte le dipendenze reali<br/>Velocità: 10-60s per test"]
     end
     E2E --> INTEG --> UNIT
     style UNIT fill:#51cf66,color:#fff
@@ -2445,7 +2445,7 @@ Il progetto utilizza un sistema di **pre-commit hooks** che si attivano automati
 
 | Hook | Script | Timeout | Descrizione |
 | ---- | ------ | ------- | ----------- |
-| `headless-validator` | `tools/headless_validator.py` | 20s | 7 fasi regression gate — il più importante |
+| `headless-validator` | `tools/headless_validator.py` | 20s | 23 fasi, 319 controlli regression gate — il più importante |
 | `dead-code-detector` | `tools/dead_code_detector.py` | 15s | Identifica import e funzioni non referenziati |
 | `integrity-manifest-check` | `tools/sync_integrity_manifest.py` | 10s | Verifica coerenza hash SHA-256 del manifesto |
 | `dev-health-quick` | `tools/dev_health.py` | 10s | Quick check salute progetto |
@@ -2466,7 +2466,7 @@ flowchart LR
     DEV["Developer: git commit"]
     DEV --> HOOKS["Pre-Commit Hooks<br/>(automatici)"]
     HOOKS --> BF["black + isort<br/>(formattazione)"]
-    HOOKS --> VALID["headless-validator<br/>(7 fasi)"]
+    HOOKS --> VALID["headless-validator<br/>(23 fasi, 319 controlli)"]
     HOOKS --> DEAD["dead-code-detector<br/>(pulizia)"]
     HOOKS --> INTEG["integrity-manifest<br/>(hash SHA-256)"]
     HOOKS --> HEALTH["dev-health-quick<br/>(salute)"]
@@ -2485,11 +2485,11 @@ flowchart LR
 
 ### 12.21 Build, Packaging e Deployment
 
-**File chiave:** `packaging/windows_installer.iss`, `run_build.py`, `setup_new_pc.bat`, `export_env.bat`
+**File chiave:** `packaging/windows_installer.iss`, `setup_new_pc.bat`, `export_env.bat`
 
 Il progetto include un sistema di build e packaging per la distribuzione dell'applicazione desktop su Windows.
 
-> **Analogia:** Il sistema di build è come una **catena di montaggio automobilistica**. `run_build.py` è il **capolinea di assemblaggio**: prende tutti i componenti (sorgenti Python, modelli ML, asset UI) e li assembla in un unico pacchetto eseguibile. `windows_installer.iss` (Inno Setup) è la **carrozzeria**: avvolge il pacchetto in un installer professionale con wizard di installazione, icone e collegamento desktop. I 3 file requirements sono le **distinte dei materiali**: specificano esattamente quali pezzi servono per ogni tipo di assemblaggio.
+> **Analogia:** Il sistema di build è come una **catena di montaggio automobilistica**. Il processo di build prende tutti i componenti (sorgenti Python, modelli ML, asset UI) e li assembla in un unico pacchetto eseguibile. `windows_installer.iss` (Inno Setup) è la **carrozzeria**: avvolge il pacchetto in un installer professionale con wizard di installazione, icone e collegamento desktop. I 3 file requirements sono le **distinte dei materiali**: specificano esattamente quali pezzi servono per ogni tipo di assemblaggio.
 
 **3 File Requirements:**
 
@@ -2513,7 +2513,7 @@ Il progetto include un sistema di build e packaging per la distribuzione dell'ap
 | ------ | ----- |
 | `setup_new_pc.bat` | Configurazione ambiente da zero: Python, pip, venv, dipendenze |
 | `export_env.bat` | Esportazione variabili d'ambiente necessarie |
-| `run_build.py` | Automazione completa: lint → test → PyInstaller → Inno Setup |
+| `run_full_training_cycle.py` | Orchestrazione ciclo completo di addestramento ML |
 
 ---
 
@@ -3036,8 +3036,8 @@ Tabelle di database documentate: **21** (distribuite su architettura dual-databa
 Schermate UI documentate: **13** (Wizard, Home, Coach, Tactical Viewer, Settings, Help, Match History, Match Detail, Performance, User Profile, Profile, Steam Config, FACEIT Config) — Qt/PySide6 (primario) + Kivy/KivyMD (legacy)
 Daemon documentati: **4** (Hunter, Digester, Teacher, Pulse)
 Strumenti di validazione documentati: **35** (Headless Validator, Brain Verify, Goliath Hospital, DB Inspector, Demo Inspector, ML Coach Debugger, Backend Validator, Dead Code Detector, etc.)
-File di test documentati: **78** (+ conftest.py, 10 forensics, 15 verification scripts) — 1.506 test totali
-Fasi headless validator: **24+** (291+ controlli automatizzati)
+File di test documentati: **87** (+ conftest.py, 10 forensics, 15 verification scripts) — 1.515+ test totali
+Fasi headless validator: **23** (319 controlli automatizzati)
 Pre-commit hooks documentati: **10** (4 locali custom + 6 standard)
 Pilastri architetturali: **24** (inclusi Dual-Database, Calibrazione Bayesiana Live, Controllo Live Training, Circuit Breaker, Piramide Validazione, RASP Guard, Pre-commit Gate, ResourceManager HW-aware, Forensics)
 Problemi risolti tramite rimediazione: **368** (in 12 fasi sistematiche)
@@ -3073,7 +3073,7 @@ flowchart TB
         P3_UI["Desktop UI<br/>(13 schermate, MVVM)"]
         P3_SE["Session Engine<br/>(4 daemon)"]
         P3_TL["Tools Suite<br/>(35 strumenti)"]
-        P3_TS["Test Suite<br/>(73 file)"]
+        P3_TS["Test Suite<br/>(87 file)"]
     end
 
     P1_NN -->|"Modelli usati da"| P2_CE

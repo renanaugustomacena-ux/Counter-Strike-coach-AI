@@ -2493,7 +2493,7 @@ class GoliathHospital:
         print("  Validating system integration: entry points, migrations, configs...")
 
         # 1. Entry point validation
-        entry_points = ["main.py", "run_build.py", "run_ingestion.py", "run_worker.py"]
+        entry_points = ["main.py", "run_ingestion.py", "run_worker.py", "hltv_sync_service.py"]
         for ep in entry_points:
             ep_path = self.target_dir / ep
             if ep_path.exists():

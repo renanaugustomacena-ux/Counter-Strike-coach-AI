@@ -32,8 +32,9 @@ class StatBadge(QWidget):
         tokens = get_tokens()
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(tokens.spacing_sm, tokens.spacing_sm,
-                                  tokens.spacing_sm, tokens.spacing_sm)
+        layout.setContentsMargins(
+            tokens.spacing_sm, tokens.spacing_sm, tokens.spacing_sm, tokens.spacing_sm
+        )
         layout.setSpacing(2)
         layout.setAlignment(Qt.AlignCenter)
 
@@ -47,9 +48,7 @@ class StatBadge(QWidget):
         self._label = QLabel(label)
         self._label.setAlignment(Qt.AlignCenter)
         self._label.setFont(QFont("Roboto", tokens.font_size_caption))
-        self._label.setStyleSheet(
-            f"color: {tokens.text_secondary}; background: transparent;"
-        )
+        self._label.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
         layout.addWidget(self._label)
 
         self.set_sentiment(sentiment)
@@ -71,6 +70,4 @@ class StatBadge(QWidget):
             "neutral": tokens.text_primary,
         }
         color = color_map.get(sentiment, tokens.text_primary)
-        self._value_label.setStyleSheet(
-            f"color: {color}; background: transparent;"
-        )
+        self._value_label.setStyleSheet(f"color: {color}; background: transparent;")

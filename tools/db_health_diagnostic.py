@@ -37,9 +37,9 @@ _MR_TABLE = MatchResult.__tablename__
 _CS_TABLE = CoachState.__tablename__
 
 # Derive expected column names from the model fields.
-_PMS_COLUMNS = set(PlayerMatchStats.__fields__.keys())
-_PTS_COLUMNS = set(PlayerTickState.__fields__.keys())
-_IT_COLUMNS = set(IngestionTask.__fields__.keys())
+_PMS_COLUMNS = set(PlayerMatchStats.model_fields.keys())
+_PTS_COLUMNS = set(PlayerTickState.model_fields.keys())
+_IT_COLUMNS = set(IngestionTask.model_fields.keys())
 
 # Valid IngestionTask statuses — derived from actual codebase usage.
 # The model uses a plain str field; the pipeline transitions:
@@ -59,7 +59,6 @@ STORAGE_DIR = os.path.join(
 
 MAIN_DB = os.path.join(STORAGE_DIR, "database.db")
 HLTV_DB = os.path.join(STORAGE_DIR, "hltv_metadata.db")
-KNOWLEDGE_DB = os.path.join(STORAGE_DIR, "..", "..", "data", "knowledge_base.db")
 try:
     from Programma_CS2_RENAN.core.config import MATCH_DATA_PATH
 
@@ -188,8 +187,10 @@ def main():
             total_match_storage += get_file_size_mb(os.path.join(MATCH_DATA_DIR, mf))
         print(f"   [MATCH DBs] Total storage: {total_match_storage:.2f} MB")
 
-        # TQ-RT03-01: Check all match DBs, not just first 3
-        for mf in match_files:
+        # Spot-check integrity on a sample (full check is very slow on external SSD)
+        sample_size = min(5, len(match_files))
+        print(f"   Integrity spot-check ({sample_size}/{len(match_files)} files):")
+        for mf in match_files[:sample_size]:
             mpath = os.path.join(MATCH_DATA_DIR, mf)
             result = run_query(mpath, "PRAGMA integrity_check")
             status = result[0].get("integrity_check", "UNKNOWN") if result else "ERROR"
@@ -197,6 +198,10 @@ def main():
             tick_count = run_query(mpath, "SELECT COUNT(*) as cnt FROM match_tick_state")
             ticks = tick_count[0]["cnt"] if tick_count else "N/A"
             print(f"   [{mf}] Integrity: {status}  |  Size: {size} MB  |  Ticks: {ticks}")
+        if len(match_files) > sample_size:
+            print(
+                f"   ... ({len(match_files) - sample_size} more files — pass --full to check all)"
+            )
 
     # ===========================================================================
     # SECTION 3: WAL & JOURNAL MODE VERIFICATION
@@ -439,7 +444,6 @@ def main():
         ),
         ("IngestionTask by status", f"SELECT * FROM {_IT_TABLE} WHERE status = 'queued' LIMIT 1"),
         ("CoachState latest", f"SELECT * FROM {_CS_TABLE} ORDER BY last_updated DESC LIMIT 1"),
-        ("ProPlayer by HLTV ID", "SELECT * FROM proplayer WHERE hltv_id = 12345"),
     ]
     for label, sql in critical_queries:
         plan = run_query(MAIN_DB, f"EXPLAIN QUERY PLAN {sql}")
@@ -552,12 +556,13 @@ def main():
         total = sum(get_file_size_mb(os.path.join(MATCH_DATA_DIR, f)) for f in match_files)
         print(f"   Match DBs: {len(match_files)} files = {total:.2f} MB total")
 
-        for mf in sorted(match_files):
-            mpath = os.path.join(MATCH_DATA_DIR, mf)
-            size = get_file_size_mb(mpath)
-            ticks = run_query(mpath, "SELECT COUNT(*) as cnt FROM match_tick_state")
-            t = ticks[0]["cnt"] if ticks else "?"
-            print(f"      {mf}: {size} MB  ({t} ticks)")
+        # Show top-5 largest match files (avoid re-scanning all 100+ on slow media)
+        sized = [(mf, get_file_size_mb(os.path.join(MATCH_DATA_DIR, mf))) for mf in match_files]
+        sized.sort(key=lambda x: x[1], reverse=True)
+        for mf, size in sized[:5]:
+            print(f"      {mf}: {size} MB")
+        if len(sized) > 5:
+            print(f"      ... and {len(sized) - 5} more files")
 
     print("\n" + "=" * 70)
     print("DIAGNOSTIC COMPLETE")

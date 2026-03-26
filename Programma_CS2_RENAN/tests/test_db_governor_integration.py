@@ -15,9 +15,8 @@ import torch
 def _has_rap_deps():
     """Check if RAP optional dependencies (ncps, hflayers) are installed."""
     try:
-        import ncps  # noqa: F401
-
         import hflayers  # noqa: F401
+        import ncps  # noqa: F401
 
         return True
     except ImportError:

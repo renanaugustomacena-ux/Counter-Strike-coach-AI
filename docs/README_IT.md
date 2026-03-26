@@ -4,7 +4,7 @@
 
 > **Autorità:** Regola 8 (Governance della Documentazione)
 
-Questa directory contiene la documentazione completa per il progetto Macena CS2 Analyzer — un'applicazione sofisticata di analisi tattica e coaching AI per Counter-Strike 2. La documentazione è organizzata in guide utente, specifiche tecniche, articoli di ricerca e script di utilità.
+Questa directory contiene la documentazione completa per il progetto Macena CS2 Analyzer — un'applicazione sofisticata di analisi tattica e coaching AI per Counter-Strike 2. La documentazione è organizzata in guide utente, specifiche tecniche, articoli di ricerca, libri sulla visione e script di utilità.
 
 ## Struttura della Directory
 
@@ -13,22 +13,26 @@ docs/
 ├── USER_GUIDE.md                       # Guida utente completa (Inglese)
 ├── USER_GUIDE_IT.md                    # Guida utente completa (Italiano)
 ├── USER_GUIDE_PT.md                    # Guia do usuário completo (Portoghese)
-├── Progetto-Renan-Cs2-AI-Coach.md      # Specifica completa dell'architettura
+├── QUICKSTART.md                       # Guida rapida all'avvio
 ├── AI_ARCHITECTURE_ANALYSIS.md         # Analisi approfondita architettura AI (Inglese)
 ├── AI_ARCHITECTURE_ANALYSIS_IT.md      # Analisi approfondita architettura AI (Italiano)
 ├── AI_ARCHITECTURE_ANALYSIS_PT.md      # Análise da arquitetura AI (Portoghese)
 ├── ERROR_CODES.md                      # Riferimento codici di errore
 ├── EXIT_CODES.md                       # Riferimento codici di uscita
-├── HLTV_SYNC_SERVICE_SPEC.md           # Specifica del servizio di sincronizzazione HLTV
 ├── INDUSTRY_STANDARDS_AUDIT.md         # Audit di conformità agli standard industriali
+├── MISSION_RULES.md                    # Missione del progetto e regole
+├── PRODUCT_VIABILITY_ASSESSMENT.md     # Analisi di fattibilità del prodotto
+├── PROJECT_SURGERY_PLAN.md             # Piano di chirurgia dell'architettura
+├── cybersecurity.md                    # Valutazione di cybersicurezza
 ├── prompt.md                           # Guida ai prompt per assistenti AI
-├── generate_manual_pdf_it.py           # Utilità per generazione manuale PDF
 ├── logging-and-plan.md                 # Documentazione architettura di logging
+├── Book-Coach-1A.md/pdf               # Libro visione parte 1A — Nucleo neurale
+├── Book-Coach-1B.md/pdf               # Libro visione parte 1B — RAP Coach e sorgenti dati
+├── Book-Coach-2.md/pdf                # Libro visione parte 2 — Servizi e infrastruttura
+├── Book-Coach-3.md/pdf                # Libro visione parte 3 — Logica del programma e UI
 ├── Studies/                            # 17 articoli di ricerca (approfondimenti)
-├── Book-Coach-1A*.md/pdf               # Libro visione parte 1A
-├── Book-Coach-1B*.md/pdf               # Libro visione parte 1B
-├── Book-Coach-2*.md/pdf                # Libro visione parte 2
-├── Book-Coach-3*.md/pdf                # Libro visione parte 3
+├── generate_zh_pdfs.py                 # Utilità per generazione PDF in cinese
+├── md2pdf.mjs                          # Convertitore da Markdown a PDF (Node.js)
 └── package.json                        # Strumenti docs (markdownlint, ecc.)
 ```
 
@@ -41,6 +45,7 @@ Le guide utente coprono installazione, configurazione, procedure guidate delle f
 - **[USER_GUIDE.md](USER_GUIDE.md)** — Guida utente completa (Inglese)
 - **[USER_GUIDE_IT.md](USER_GUIDE_IT.md)** — Guida utente completa (Italiano)
 - **[USER_GUIDE_PT.md](USER_GUIDE_PT.md)** — Guia do usuário completo (Portoghese)
+- **[QUICKSTART.md](QUICKSTART.md)** — Guida rapida per essere operativi velocemente
 
 Ogni guida copre:
 1. Installazione e configurazione dell'ambiente
@@ -54,14 +59,6 @@ Ogni guida copre:
 
 ### Specifiche dell'Architettura
 
-- **[Progetto-Renan-Cs2-AI-Coach.md](Progetto-Renan-Cs2-AI-Coach.md)** — Specifica completa dell'architettura in 12 sezioni (Italiano)
-  - Architettura del sistema e diagrammi di flusso dei dati (Mermaid)
-  - Modelli di reti neurali (RAP Coach, JEPA, NeuralRoleHead)
-  - Sistemi di memoria (ibrido LTC-Hopfield)
-  - Pipeline di coaching (modalità COPER)
-  - Schema del database e architettura dello storage
-  - Pattern di progettazione UI/UX (MVVM)
-
 - **Analisi dell'Architettura AI** — Approfondimento sul sottosistema AI
   - [Inglese](AI_ARCHITECTURE_ANALYSIS.md) | [Italiano](AI_ARCHITECTURE_ANALYSIS_IT.md) | [Portoghese](AI_ARCHITECTURE_ANALYSIS_PT.md)
 
@@ -71,8 +68,11 @@ Ogni guida copre:
 |-----------|-------|
 | [ERROR_CODES.md](ERROR_CODES.md) | Tutti i codici di errore con cause e rimedi |
 | [EXIT_CODES.md](EXIT_CODES.md) | Codici di uscita per script e daemon |
-| [HLTV_SYNC_SERVICE_SPEC.md](HLTV_SYNC_SERVICE_SPEC.md) | Specifica dello scraper di statistiche pro HLTV |
 | [INDUSTRY_STANDARDS_AUDIT.md](INDUSTRY_STANDARDS_AUDIT.md) | Audit di conformità agli standard industriali |
+| [MISSION_RULES.md](MISSION_RULES.md) | Dichiarazione di missione del progetto e regole di sviluppo |
+| [PRODUCT_VIABILITY_ASSESSMENT.md](PRODUCT_VIABILITY_ASSESSMENT.md) | Analisi di fattibilità e mercato del prodotto |
+| [PROJECT_SURGERY_PLAN.md](PROJECT_SURGERY_PLAN.md) | Piano di chirurgia e refactoring dell'architettura |
+| [cybersecurity.md](cybersecurity.md) | Valutazione di cybersicurezza e modello delle minacce |
 | [logging-and-plan.md](logging-and-plan.md) | Architettura di logging strutturato e roadmap |
 
 ### Integrazione con Assistenti AI
@@ -83,14 +83,14 @@ Ogni guida copre:
 
 I "Coach Books" descrivono la visione completa del prodotto, l'architettura tecnica e la strategia di business:
 
-| Libro | Focus |
-|-------|-------|
-| Book-Coach-1A | Fondamenta: definizione del problema, analisi di mercato, visione del prodotto |
-| Book-Coach-1B | Tecnico: architetture neurali, pipeline di training, modello dati |
-| Book-Coach-2 | Implementazione: modalità di coaching, UI/UX, punti di integrazione |
-| Book-Coach-3 | Strategia: monetizzazione, licenza SDK, modello open-core |
+| Libro | Focus | Dimensione |
+|-------|-------|------------|
+| [Book-Coach-1A](Book-Coach-1A.md) | Nucleo neurale: JEPA, VL-JEPA, AdvancedCoachNN, MaturityObservatory | 1.315 righe |
+| [Book-Coach-1B](Book-Coach-1B.md) | RAP Coach (7 componenti), sorgenti dati (demo, HLTV, Steam, FACEIT, FAISS) | 1.176 righe |
+| [Book-Coach-2](Book-Coach-2.md) | Servizi, 10 motori di analisi, knowledge/RAG/COPER, database, pipeline di training | 2.492 righe |
+| [Book-Coach-3](Book-Coach-3.md) | Logica completa del programma, Qt UI (13 schermate), ingestione, strumenti, test, build | 3.143 righe |
 
-Disponibili in formato Markdown e PDF, in inglese, italiano e portoghese.
+Disponibili in formato Markdown e PDF.
 
 ## Ricerca e Approfondimenti
 
@@ -108,26 +108,30 @@ La directory **[Studies/](Studies/)** contiene 17 articoli di ricerca tecnica ap
 
 ## Utilità
 
-### `generate_manual_pdf_it.py`
+### `generate_zh_pdfs.py`
 
-Converte la guida utente italiana (`USER_GUIDE_IT.md`) in un manuale PDF formattato utilizzando la conversione markdown-to-PDF. Eseguire dalla root del progetto:
+Genera versioni PDF in cinese della documentazione. Eseguire dalla root del progetto:
 
 ```bash
-python docs/generate_manual_pdf_it.py
+python docs/generate_zh_pdfs.py
+```
+
+### `md2pdf.mjs`
+
+Convertitore da Markdown a PDF basato su Node.js. Richiede le dipendenze npm:
+
+```bash
+cd docs && npm install && node md2pdf.mjs
 ```
 
 ### `package.json`
 
-Configurazione degli strumenti per i documenti, incluso markdownlint e altri controlli di qualità del Markdown. Installare con:
-
-```bash
-cd docs && npm install
-```
+Configurazione degli strumenti per i documenti, incluso markdownlint e generazione PDF.
 
 ## Per Iniziare
 
-1. Inizia con **[USER_GUIDE.md](USER_GUIDE.md)** per installazione e configurazione
-2. Consulta **[Progetto-Renan-Cs2-AI-Coach.md](Progetto-Renan-Cs2-AI-Coach.md)** per l'architettura del sistema
+1. Inizia con **[QUICKSTART.md](QUICKSTART.md)** o **[USER_GUIDE.md](USER_GUIDE.md)** per installazione e configurazione
+2. Leggi i **Libri sulla Visione** (1A → 1B → 2 → 3) per l'architettura completa del sistema
 3. Esplora **[Studies/](Studies/)** per una comprensione tecnica approfondita
 4. Consulta **[ERROR_CODES.md](ERROR_CODES.md)** per la risoluzione dei problemi
 
@@ -135,6 +139,5 @@ cd docs && npm install
 
 - Tutta la documentazione è in formato Markdown per la massima portabilità
 - I termini tecnici, i nomi delle classi e i riferimenti al codice rimangono in inglese in tutte le traduzioni
-- I diagrammi Mermaid sono utilizzati per la visualizzazione dell'architettura e del flusso dei dati
-- La generazione dei PDF richiede i pacchetti Python `markdown` e `weasyprint`
+- La generazione dei PDF richiede la toolchain Node.js o i pacchetti Python
 - Il file `CLAUDE.md` nella root del progetto contiene i principi ingegneristici e le linee guida di sviluppo
