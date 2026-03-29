@@ -3,7 +3,7 @@
 [![CI Pipeline](https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI/actions/workflows/build.yml/badge.svg)](https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI/actions/workflows/build.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Proprietary%20%7C%20Apache--2.0-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-319%20validator%20checks-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-313%20validator%20%7C%201794%20pytest-brightgreen.svg)]()
 
 **AI-Powered Tactical Coach for Counter-Strike 2**
 
@@ -81,7 +81,7 @@ Unlike static coaching tools with pre-written tips, this system builds its intel
 
 ### Desktop Application
 
-- **Dual UI Architecture** — PySide6/Qt frontend (primary) with legacy Kivy/KivyMD fallback, both following MVVM pattern
+- **Qt Desktop Application** — PySide6/Qt frontend (primary) with MVVM pattern. Legacy Kivy/KivyMD retained for reference only
 - **2D Tactical Viewer** — Real-time demo replay with player positions, kill events, bomb indicators, and AI ghost predictions
 - **Match History** — Scrollable match list with color-coded ratings
 - **Performance Dashboard** — Rating trends, per-map stats, strength/weakness analysis, utility breakdown
@@ -169,7 +169,14 @@ python -c "import sys; sys.path.append('.'); from Programma_CS2_RENAN.backend.st
 pip install playwright && python -m playwright install chromium
 ```
 
-### 5. Verify Installation
+### 5. Configure Environment
+
+```bash
+cp .env.example .env
+# Edit .env with your Steam API key and preferences (see comments in file)
+```
+
+### 6. Verify Installation
 
 ```bash
 python -c "import torch; print(f'PyTorch: {torch.__version__}')"
@@ -177,7 +184,7 @@ python -c "import PySide6; print(f'PySide6: {PySide6.__version__}')"
 python -c "from Programma_CS2_RENAN.backend.nn.config import get_device; print(f'Device: {get_device()}')"
 ```
 
-### 6. Optional: Pro Coaching Baseline
+### 7. Optional: Pro Coaching Baseline
 
 To build coaching baselines from professional match data, two additional components are needed:
 
@@ -199,14 +206,14 @@ pip install -r requirements-rap.txt
 
 Required only if you enable `USE_RAP_MODEL=True` in settings. The default JEPA model works without these.
 
-### 7. Launch
+### 8. Launch
 
 ```bash
-# Desktop application (Qt GUI — primary)
-python -m Programma_CS2_RENAN.apps.qt_app.app
+# Desktop application (Qt GUI — recommended)
+./launch.sh
 
-# Desktop application (Kivy GUI — legacy fallback)
-python Programma_CS2_RENAN/main.py
+# Or manually:
+python -m Programma_CS2_RENAN.apps.qt_app.app
 
 # Interactive console (live TUI with real-time panels)
 python console.py
@@ -368,16 +375,14 @@ Multi-level maps (Nuke, Vertigo) use Z-axis cutoffs to separate upper and lower 
 | **Recurrent Networks** | ncps | Latest | Liquid Time-Constant (LTC) networks |
 | **Associative Memory** | hopfield-layers | Latest | Hopfield network layers for memory |
 | **Demo Parsing** | demoparser2 | 0.40.2 | Tick-level CS2 demo file parsing |
-| **CS2 Utilities** | awpy | 1.2.3 | CS2 analysis utilities |
 | **UI Framework (primary)** | PySide6 | 6.8+ | Qt-based cross-platform desktop GUI |
-| **UI Framework (legacy)** | Kivy + KivyMD | 2.3.0 / 1.2.0 | Legacy fallback GUI |
+| **UI Framework (legacy)** | Kivy + KivyMD | 2.3.0 / 1.2.0 | Legacy reference only |
 | **Database ORM** | SQLAlchemy + SQLModel | Latest | Database models and queries |
 | **Migrations** | Alembic | Latest | Database schema migrations |
 | **Web Scraping** | Playwright | 1.57.0 | Headless browser for HLTV |
 | **HTTP Client** | HTTPX | 0.28.1 | Async HTTP requests |
 | **Data Science** | NumPy, Pandas, SciPy, scikit-learn | Latest | Numerical computation and analysis |
 | **Visualization** | Matplotlib | Latest | Chart generation |
-| **Geometry** | Shapely | 2.1.2 | Spatial analysis |
 | **Graphs** | NetworkX | Latest | Graph-based analysis |
 | **Security** | cryptography | 46.0.3 | Credential encryption |
 | **TUI** | Rich | 14.2.0 | Terminal UI for console mode |
@@ -506,7 +511,7 @@ Counter-Strike-coach-AI/
 |   +-- Studies/                        17 research papers
 |
 +-- tools/                             Validation and diagnostic tools
-|   +-- headless_validator.py          Primary regression gate (319 checks, 24 phases)
+|   +-- headless_validator.py          Primary regression gate (313 checks, 24 phases)
 |   +-- Feature_Audit.py              Feature engineering audit
 |   +-- portability_test.py           Cross-platform compatibility checks
 |   +-- dead_code_detector.py         Unused code scanning
@@ -598,8 +603,8 @@ The project maintains a multi-level validation hierarchy:
 
 | Tool | Scope | Command | Checks |
 |------|-------|---------|--------|
-| Headless Validator | Primary regression gate | `python tools/headless_validator.py` | 319 checks, 24 phases |
-| Pytest Suite | Logic and integration tests | `python -m pytest Programma_CS2_RENAN/tests/ -x -q` | 1,515+ tests |
+| Headless Validator | Primary regression gate | `python tools/headless_validator.py` | 313 checks, 24 phases |
+| Pytest Suite | Logic and integration tests | `python -m pytest Programma_CS2_RENAN/tests/ -x -q` | 1,794+ tests |
 | Feature Audit | Feature engineering integrity | `python tools/Feature_Audit.py` | Vector dimensions, ranges |
 | Portability Test | Cross-platform compatibility | `python tools/portability_test.py` | Import checks, paths |
 | Dev Health | Development environment | `python tools/dev_health.py` | Dependencies, config |
@@ -815,6 +820,10 @@ Every README and technical document in the project. Click any link to open the d
 ### Root
 
 - [README (EN)](README.md) — [Italiano](README_IT.md) — [Portugues](README_PT.md)
+
+### Engineering
+
+- [Engineering Handoff](docs/ENGINEERING_HANDOFF.md) — Master reference: full codebase audit, 75 work items, execution plan, product roadmap
 
 ### Infrastructure
 

@@ -3,7 +3,7 @@
 [![CI Pipeline](https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI/actions/workflows/build.yml/badge.svg)](https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI/actions/workflows/build.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Proprietary%20%7C%20Apache--2.0-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-319%20validator%20checks-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-313%20validator%20%7C%201794%20pytest-brightgreen.svg)]()
 
 **Coach Tatico com IA para Counter-Strike 2**
 
@@ -81,7 +81,7 @@ Diferente de ferramentas de coaching estaticas com dicas pre-escritas, este sist
 
 ### Aplicacao Desktop
 
-- **Arquitetura Dual UI** -- Frontend PySide6/Qt (primario) com fallback legacy Kivy/KivyMD, ambos com padrao MVVM
+- **Aplicativo Desktop Qt** -- Frontend PySide6/Qt (primario) com padrao MVVM. Kivy/KivyMD legacy mantido apenas como referencia
 - **Visualizador Tatico 2D** -- Replay de demo em tempo real com posicoes de jogadores, eventos de kill, indicadores de bomba e predicoes AI ghost
 - **Historico de Partidas** -- Lista rolavel de partidas recentes com ratings codificados por cor
 - **Dashboard de Desempenho** -- Tendencias de rating, estatisticas por mapa, analise de forcas/fraquezas, analise de utilitarios
@@ -328,8 +328,8 @@ Script standalone que executa um ciclo de treinamento completo fora do daemon en
 
 | Ferramenta | Escopo | Comando | Verificacoes |
 |------------|--------|---------|--------------|
-| Headless Validator | Gate de regressao primario | `python tools/headless_validator.py` | 319 checks, 24 fases |
-| Suite Pytest | Testes logicos e integracao | `python -m pytest Programma_CS2_RENAN/tests/ -x -q` | 1,515+ testes |
+| Headless Validator | Gate de regressao primario | `python tools/headless_validator.py` | 313 checks, 24 fases |
+| Suite Pytest | Testes logicos e integracao | `python -m pytest Programma_CS2_RENAN/tests/ -x -q` | 1,794+ testes |
 | Feature Audit | Integridade de feature engineering | `python tools/Feature_Audit.py` | Dimensoes de vetor, ranges |
 | Portability Test | Compatibilidade cross-platform | `python tools/portability_test.py` | Checks de importacao, caminhos |
 | Safety Verifier | Verificacoes de seguranca | `python tools/verify_all_safe.py` | RASP, varredura de segredos |
