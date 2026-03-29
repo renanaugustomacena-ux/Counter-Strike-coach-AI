@@ -193,7 +193,7 @@ python console.py
 python goliath.py
 ```
 
-> Para o guia completo com configuracao de API, walkthroughs de funcionalidades e solucao de problemas, consulte o [Guia do Usuario](docs/USER_GUIDE_PT.md).
+> Para o guia completo com configuracao de API, walkthroughs de funcionalidades e solucao de problemas, consulte o [Guia do Usuario](docs/guides/USER_GUIDE_PT.md).
 
 ---
 
@@ -343,9 +343,9 @@ Script standalone que executa um ciclo de treinamento completo fora do daemon en
 
 | Idioma | UI | Guia do Usuario | README |
 |--------|----|----------------|--------|
-| English | Completo | [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | [README.md](README.md) |
-| Italiano | Completo | [docs/USER_GUIDE_IT.md](docs/USER_GUIDE_IT.md) | [README_IT.md](README_IT.md) |
-| Portugues | Completo | [docs/USER_GUIDE_PT.md](docs/USER_GUIDE_PT.md) | [README_PT.md](README_PT.md) |
+| English | Completo | [docs/guides/USER_GUIDE.md](docs/guides/USER_GUIDE.md) | [README.md](README.md) |
+| Italiano | Completo | [docs/guides/USER_GUIDE_IT.md](docs/guides/USER_GUIDE_IT.md) | [README_IT.md](README_IT.md) |
+| Portugues | Completo | [docs/guides/USER_GUIDE_PT.md](docs/guides/USER_GUIDE_PT.md) | [README_PT.md](README_PT.md) |
 
 O idioma pode ser alterado em tempo de execucao nas Configuracoes sem reiniciar a aplicacao.
 
@@ -378,13 +378,13 @@ O idioma pode ser alterado em tempo de execucao nas Configuracoes sem reiniciar 
 
 | Documento | Descricao |
 |-----------|-----------|
-| [Guia do Usuario (PT)](docs/USER_GUIDE_PT.md) | Instalacao, setup wizard, chaves API, todas as telas, solucao de problemas |
-| [User Guide (EN)](docs/USER_GUIDE.md) | Guia completo do usuario em ingles |
-| [Guida Utente (IT)](docs/USER_GUIDE_IT.md) | Guia do usuario em italiano |
-| [Book-Coach-1A](docs/Book-Coach-1A.md) | Core neural: JEPA, VL-JEPA, AdvancedCoachNN, MaturityObservatory |
-| [Book-Coach-1B](docs/Book-Coach-1B.md) | RAP Coach (7 componentes), fontes de dados (demo, HLTV, Steam, FACEIT) |
-| [Book-Coach-2](docs/Book-Coach-2.md) | Servicos, motores de analise, knowledge/COPER, banco de dados, treinamento |
-| [Book-Coach-3](docs/Book-Coach-3.md) | Logica completa do programa, UI Qt, ingestao, ferramentas, testes, build |
+| [Guia do Usuario (PT)](docs/guides/USER_GUIDE_PT.md) | Instalacao, setup wizard, chaves API, todas as telas, solucao de problemas |
+| [User Guide (EN)](docs/guides/USER_GUIDE.md) | Guia completo do usuario em ingles |
+| [Guida Utente (IT)](docs/guides/USER_GUIDE_IT.md) | Guia do usuario em italiano |
+| [Book-Coach-1A](docs/books/Book-Coach-1A.md) | Core neural: JEPA, VL-JEPA, AdvancedCoachNN, MaturityObservatory |
+| [Book-Coach-1B](docs/books/Book-Coach-1B.md) | RAP Coach (7 componentes), fontes de dados (demo, HLTV, Steam, FACEIT) |
+| [Book-Coach-2](docs/books/Book-Coach-2.md) | Servicos, motores de analise, knowledge/COPER, banco de dados, treinamento |
+| [Book-Coach-3](docs/books/Book-Coach-3.md) | Logica completa do programa, UI Qt, ingestao, ferramentas, testes, build |
 
 A pasta `docs/Studies/` contem 17 papers de pesquisa sobre as fundacoes teoricas de cada subsistema.
 
@@ -429,11 +429,11 @@ Todos os READMEs e documentos tecnicos do projeto. Clique em qualquer link para 
 
 ### Serie Book Coach (PDF)
 
-- [Ultimate CS2 Coach — Sistema AI](docs/Book-Coach-1.pdf)
-- [Ultimate CS2 Coach — Parte 1A — Il Cervello](docs/Book-Coach-1A.pdf)
-- [Ultimate CS2 Coach — Parte 1B — I Sensi e lo Specialista](docs/Book-Coach-1B.pdf)
-- [Ultimate CS2 Coach — Parte 2 — Servizi, Analisi e Database](docs/Book-Coach-2.pdf)
-- [Ultimate CS2 Coach — Parte 3 — Programma, UI, Tools e Build](docs/Book-Coach-3.pdf)
+- [Ultimate CS2 Coach — Sistema AI](docs/books/Book-Coach-1.pdf)
+- [Ultimate CS2 Coach — Parte 1A — Il Cervello](docs/books/Book-Coach-1A.pdf)
+- [Ultimate CS2 Coach — Parte 1B — I Sensi e lo Specialista](docs/books/Book-Coach-1B.pdf)
+- [Ultimate CS2 Coach — Parte 2 — Servizi, Analisi e Database](docs/books/Book-Coach-2.pdf)
+- [Ultimate CS2 Coach — Parte 3 — Programma, UI, Tools e Build](docs/books/Book-Coach-3.pdf)
 
 ### Raiz
 

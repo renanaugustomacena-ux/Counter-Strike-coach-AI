@@ -215,7 +215,7 @@ python console.py
 python goliath.py
 ```
 
-> For the complete guide with API configuration, feature walkthroughs, and troubleshooting, see the [User Guide](docs/USER_GUIDE.md).
+> For the complete guide with API configuration, feature walkthroughs, and troubleshooting, see the [User Guide](docs/guides/USER_GUIDE.md).
 
 ---
 
@@ -618,9 +618,9 @@ The application supports 3 languages across the entire UI:
 
 | Language | UI | User Guide | README |
 |----------|-----|-----------|--------|
-| English | Complete | [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | [README.md](README.md) |
-| Italiano | Complete | [docs/USER_GUIDE_IT.md](docs/USER_GUIDE_IT.md) | [README_IT.md](README_IT.md) |
-| Portugues | Complete | [docs/USER_GUIDE_PT.md](docs/USER_GUIDE_PT.md) | [README_PT.md](README_PT.md) |
+| English | Complete | [docs/guides/USER_GUIDE.md](docs/guides/USER_GUIDE.md) | [README.md](README.md) |
+| Italiano | Complete | [docs/guides/USER_GUIDE_IT.md](docs/guides/USER_GUIDE_IT.md) | [README_IT.md](README_IT.md) |
+| Portugues | Complete | [docs/guides/USER_GUIDE_PT.md](docs/guides/USER_GUIDE_PT.md) | [README_PT.md](README_PT.md) |
 
 Language can be changed at runtime from Settings without restarting the application.
 
@@ -681,19 +681,19 @@ Not all subsystems are equally mature. The default coaching mode (COPER) is prod
 
 | Document | Description |
 |----------|-------------|
-| [User Guide (EN)](docs/USER_GUIDE.md) | Complete installation, setup wizard, API keys, all screens, demo acquisition, troubleshooting |
-| [Guida Utente (IT)](docs/USER_GUIDE_IT.md) | Full user guide in Italian |
-| [Guia do Usuario (PT)](docs/USER_GUIDE_PT.md) | Full user guide in Portuguese |
+| [User Guide (EN)](docs/guides/USER_GUIDE.md) | Complete installation, setup wizard, API keys, all screens, demo acquisition, troubleshooting |
+| [Guida Utente (IT)](docs/guides/USER_GUIDE_IT.md) | Full user guide in Italian |
+| [Guia do Usuario (PT)](docs/guides/USER_GUIDE_PT.md) | Full user guide in Portuguese |
 
 ### Architecture Documentation
 
 | Document | Description |
 |----------|-------------|
-| [Book-Coach-1A](docs/Book-Coach-1A.md) | Neural core: JEPA, VL-JEPA, AdvancedCoachNN, MaturityObservatory |
-| [Book-Coach-1B](docs/Book-Coach-1B.md) | RAP Coach (7 components), data sources (demo, HLTV, Steam, FACEIT) |
-| [Book-Coach-2](docs/Book-Coach-2.md) | Services, analysis engines, knowledge/COPER, database, training |
-| [Book-Coach-3](docs/Book-Coach-3.md) | Full program logic, Qt UI, ingestion, tools, tests, build |
-| [Cybersecurity Analysis](docs/cybersecurity.md) | Security posture and threat model |
+| [Book-Coach-1A](docs/books/Book-Coach-1A.md) | Neural core: JEPA, VL-JEPA, AdvancedCoachNN, MaturityObservatory |
+| [Book-Coach-1B](docs/books/Book-Coach-1B.md) | RAP Coach (7 components), data sources (demo, HLTV, Steam, FACEIT) |
+| [Book-Coach-2](docs/books/Book-Coach-2.md) | Services, analysis engines, knowledge/COPER, database, training |
+| [Book-Coach-3](docs/books/Book-Coach-3.md) | Full program logic, Qt UI, ingestion, tools, tests, build |
+| [Cybersecurity Analysis](docs/archive/cybersecurity.md) | Security posture and threat model |
 
 ### Research Papers (17 Studies)
 
@@ -770,7 +770,7 @@ tensorboard --logdir runs/coach_training
 
 Open [http://localhost:6006](http://localhost:6006) to monitor conviction index, maturity state transitions, gate specialization, and training loss curves.
 
-> For the complete step-by-step coaching cycle checklist and detailed storage guide, see the [User Guide](docs/USER_GUIDE.md).
+> For the complete step-by-step coaching cycle checklist and detailed storage guide, see the [User Guide](docs/guides/USER_GUIDE.md).
 
 ---
 
@@ -796,7 +796,7 @@ Open [http://localhost:6006](http://localhost:6006) to monitor conviction index,
 | Knowledge | `Programma_CS2_RENAN/data/knowledge_base.db` | RAG knowledge base |
 | Per-match | `{PRO_DEMO_PATH}/match_data/match_*.db` | Tick-level match data |
 
-> For complete troubleshooting, see the [User Guide](docs/USER_GUIDE.md).
+> For complete troubleshooting, see the [User Guide](docs/guides/USER_GUIDE.md).
 
 ---
 
@@ -806,11 +806,11 @@ Every README and technical document in the project. Click any link to open the d
 
 ### Book Coach Series (PDF)
 
-- [Ultimate CS2 Coach — Sistema AI](docs/Book-Coach-1.pdf)
-- [Ultimate CS2 Coach — Parte 1A — Il Cervello](docs/Book-Coach-1A.pdf)
-- [Ultimate CS2 Coach — Parte 1B — I Sensi e lo Specialista](docs/Book-Coach-1B.pdf)
-- [Ultimate CS2 Coach — Parte 2 — Servizi, Analisi e Database](docs/Book-Coach-2.pdf)
-- [Ultimate CS2 Coach — Parte 3 — Programma, UI, Tools e Build](docs/Book-Coach-3.pdf)
+- [Ultimate CS2 Coach — Sistema AI](docs/books/Book-Coach-1.pdf)
+- [Ultimate CS2 Coach — Parte 1A — Il Cervello](docs/books/Book-Coach-1A.pdf)
+- [Ultimate CS2 Coach — Parte 1B — I Sensi e lo Specialista](docs/books/Book-Coach-1B.pdf)
+- [Ultimate CS2 Coach — Parte 2 — Servizi, Analisi e Database](docs/books/Book-Coach-2.pdf)
+- [Ultimate CS2 Coach — Parte 3 — Programma, UI, Tools e Build](docs/books/Book-Coach-3.pdf)
 
 ### Root
 
