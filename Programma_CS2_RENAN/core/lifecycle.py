@@ -75,6 +75,11 @@ class AppLifecycleManager:
             env = os.environ.copy()
             env["PYTHONPATH"] = str(self.project_root) + os.pathsep + env.get("PYTHONPATH", "")
 
+            # CORE-12: Close old handles before opening new ones on re-launch
+            for handle in (self._out_log, self._err_log):
+                if handle and not handle.closed:
+                    handle.close()
+
             # Redirect Output — keep handles for cleanup
             self._out_log = open(self.project_root / "daemon_out.log", "w")
             self._err_log = open(self.project_root / "daemon_err.log", "w")

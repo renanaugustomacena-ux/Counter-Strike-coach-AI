@@ -404,11 +404,14 @@ def _teacher_daemon_loop():
     # Cache baseline snapshot for meta-shift detection (Proposal 11)
     _last_baseline = _get_current_baseline_snapshot()
 
+    _backup_warned = False
+
     while not _shutdown_event.is_set():
         try:
             # F6-SE: Warn if backup failed — training continues without safety net.
-            # Per-match SQLite isolation protects raw data; only checkpoints are at risk.
-            if _backup_failed.is_set():
+            # CORE-06: Log once only, not every 300s cycle.
+            if _backup_failed.is_set() and not _backup_warned:
+                _backup_warned = True
                 logger.warning(
                     "Teacher: backup failed at startup. Training continues WITHOUT "
                     "backup safety. Data may be lost if training crashes."

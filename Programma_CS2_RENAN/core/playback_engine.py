@@ -243,6 +243,11 @@ class PlaybackEngine:
 
     @staticmethod
     def _interpolate_angle(a, b, t):
+        # CORE-10: Sanitize NaN yaw — DF-01 covers x/y/z but not angles
+        import math
+
+        if math.isnan(a) or math.isnan(b):
+            return b if not math.isnan(b) else (a if not math.isnan(a) else 0.0)
         diff = b - a
         while diff > 180:
             diff -= 360

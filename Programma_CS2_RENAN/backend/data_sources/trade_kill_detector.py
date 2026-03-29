@@ -350,8 +350,13 @@ def analyze_demo_trades(parser) -> Tuple[TradeKillResult, Dict[str, Dict[str, fl
         logger.warning("Death events missing columns for trade detection: %s", missing)
         return TradeKillResult(), {}
 
-    # Step 4: Detect trade kills
-    result = detect_trade_kills(deaths_df, roster)
+    # Step 4: Detect trade kills (DS-07: use actual tick_rate from demo header)
+    try:
+        header = parser.parse_header()
+        tick_rate = int(float(header.get("tick_rate", DEFAULT_TICK_RATE) or DEFAULT_TICK_RATE))
+    except Exception:
+        tick_rate = DEFAULT_TICK_RATE
+    result = detect_trade_kills(deaths_df, roster, tick_rate=tick_rate)
 
     # Step 5: Per-player aggregation
     per_player = get_player_trade_stats(result, roster)
