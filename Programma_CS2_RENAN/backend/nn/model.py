@@ -8,6 +8,7 @@ from typing import Optional
 import torch
 import torch.nn as nn
 
+from Programma_CS2_RENAN.backend.nn.config import OUTPUT_DIM
 from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
 
 
@@ -16,7 +17,7 @@ class CoachNNConfig:
     """Configuration for AdvancedCoachNN. Centralizes hyperparameters."""
 
     input_dim: int = METADATA_DIM  # Canonical 25-dim feature vector (METADATA_DIM=25)
-    output_dim: int = METADATA_DIM
+    output_dim: int = OUTPUT_DIM  # Coaching output dimension (OUTPUT_DIM=10)
     hidden_dim: int = 128
     num_experts: int = 3
     num_lstm_layers: int = 2

@@ -197,6 +197,10 @@ def _is_in_fov(
     dx = target_x - player_x
     dy = target_y - player_y
 
+    # PROC-02: Reject (0,0) fallback positions — both at origin means no real position data
+    if abs(player_x) < 0.01 and abs(player_y) < 0.01 and abs(target_x) < 0.01 and abs(target_y) < 0.01:
+        return False
+
     if abs(dx) < 0.01 and abs(dy) < 0.01:
         return True  # Same position considered visible
 

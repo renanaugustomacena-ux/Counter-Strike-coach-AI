@@ -51,11 +51,17 @@ class NicknameResolver:
         clean_name = NicknameResolver._clean(raw_name)
 
         with db.get_session() as session:
-            # 1. Exact Match (case-insensitive — SQLite default is case-sensitive)
+            # 1. Exact Match — compare cleaned forms of both query and DB value
+            # PROC-03: _clean() strips separators from query; do the same for DB values
             stmt = select(ProPlayer).where(func.lower(ProPlayer.nickname) == clean_name)
             p = session.exec(stmt).first()
             if p:
                 return p.hltv_id
+            # Also try cleaning DB nicknames (handles "k0nfig" vs "k0n.fig" etc.)
+            all_players = session.exec(select(ProPlayer)).all()
+            for player in all_players:
+                if NicknameResolver._clean(player.nickname) == clean_name:
+                    return player.hltv_id
 
             # 2. Substring Match (e.g. "Spirit donk" -> "donk")
             # Fetch all pro players for advanced matching.

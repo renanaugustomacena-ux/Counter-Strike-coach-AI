@@ -198,18 +198,38 @@ class CoachingService:
                 kwargs={"deviations": deviations, "rounds_played": rounds_played},
             )
             if timed_out:
-                _coaching_logger.warning(
-                    "COPER timed out after %ds for %s, falling back to Traditional",
-                    _COACHING_TIMEOUT,
-                    player_name,
-                )
-                get_state_manager().add_notification(
-                    "coaching",
-                    "WARNING",
-                    "COPER coaching timed out. Using Traditional mode.",
-                )
-                corrections = generate_corrections(deviations, rounds_played)
-                _save_corrections_as_insights(self.db_manager, player_name, demo_name, corrections)
+                if self.use_hybrid and player_stats:
+                    _coaching_logger.warning(
+                        "COPER timed out after %ds for %s, falling back to Hybrid",
+                        _COACHING_TIMEOUT,
+                        player_name,
+                    )
+                    mode_used = "Hybrid"
+                    self._generate_hybrid_insights(player_name, demo_name, player_stats, map_name)
+                else:
+                    _coaching_logger.warning(
+                        "COPER timed out after %ds for %s, falling back to Traditional",
+                        _COACHING_TIMEOUT,
+                        player_name,
+                    )
+                    get_state_manager().add_notification(
+                        "coaching",
+                        "WARNING",
+                        "COPER coaching timed out. Using Traditional mode.",
+                    )
+                    corrections = generate_corrections(deviations, rounds_played)
+                    _save_corrections_as_insights(
+                        self.db_manager, player_name, demo_name, corrections
+                    )
+                    if not corrections:
+                        _save_generic_insight(
+                            self.db_manager,
+                            player_name,
+                            demo_name,
+                            "Match Analysis Complete",
+                            "COPER timed out and no specific corrections found. "
+                            "More data will improve coaching quality.",
+                        )
         elif self.use_hybrid and player_stats:
             mode_used = "Hybrid"
             _coaching_logger.info(
