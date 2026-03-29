@@ -332,7 +332,8 @@ def refresh_settings():
     """Reloads settings from disk. Critical for background process sync."""
     global _settings, CS2_PLAYER_NAME, STEAM_ID, STEAM_API_KEY, FACEIT_API_KEY
     global DEFAULT_DEMO_PATH, PRO_DEMO_PATH, CUSTOM_STORAGE_PATH, LANGUAGE
-    global MATCH_DATA_PATH
+    global MATCH_DATA_PATH, ACTIVE_THEME, BACKGROUND_IMAGE, FONT_SIZE, FONT_TYPE
+    global BRAIN_DATA_ROOT
 
     with _settings_lock:
         _settings = load_user_settings()
@@ -344,6 +345,12 @@ def refresh_settings():
         PRO_DEMO_PATH = _settings.get("PRO_DEMO_PATH", os.path.expanduser("~"))
         CUSTOM_STORAGE_PATH = _settings.get("CUSTOM_STORAGE_PATH", "")
         LANGUAGE = _settings.get("LANGUAGE", "en")
+        # CORE-01: These were missing — asymmetric with save_user_setting()
+        ACTIVE_THEME = _settings.get("ACTIVE_THEME", "CS2")
+        BACKGROUND_IMAGE = _settings.get("BACKGROUND_IMAGE", "")
+        FONT_SIZE = _settings.get("FONT_SIZE", 14)
+        FONT_TYPE = _settings.get("FONT_TYPE", "Roboto")
+        BRAIN_DATA_ROOT = _settings.get("BRAIN_DATA_ROOT", "")
         MATCH_DATA_PATH = _resolve_match_data_path()
 
 

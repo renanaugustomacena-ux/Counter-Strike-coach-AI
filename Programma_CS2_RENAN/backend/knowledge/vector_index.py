@@ -97,8 +97,10 @@ class VectorIndexManager:
         Returns:
             List of (db_id, similarity_score), or None if index unavailable.
         """
-        # Lazy rebuild if dirty
-        if self._dirty.get(index_name, False):
+        # KNW-04: Atomic dirty check + rebuild to prevent concurrent rebuilds
+        with self._lock:
+            needs_rebuild = self._dirty.get(index_name, False)
+        if needs_rebuild:
             self.rebuild_from_db(index_name)
 
         idx = self._indexes.get(index_name)

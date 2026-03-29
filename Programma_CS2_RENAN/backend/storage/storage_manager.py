@@ -214,8 +214,8 @@ class StorageManager:
 
             # Use base filename comparison
             # Build dedup set from known filenames. Use stem (no extension) for reliable matching.
-            # Previous logic split on '_' which broke filenames containing underscores.
-            known_names_set = {os.path.basename(n) for n in known_filenames}
+            # STOR-07: Explicit .dem suffix removal to prevent re-ingestion if convention changes.
+            known_names_set = {os.path.basename(n).removesuffix(".dem") for n in known_filenames}
             known_paths_set = set(known_paths)
 
         # Compare using stem (no extension) since PlayerMatchStats stores stems
