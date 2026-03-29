@@ -182,6 +182,13 @@ class AnalysisOrchestrator:
             econ_insights = self._analyze_economy(player_name, demo_name, game_states)
             analysis.match_insights.extend(econ_insights)
 
+        # 10. Bayesian death probability (requires tick data with HP/armor/visibility)
+        if tick_data is not None and not tick_data.empty:
+            death_insights = self._analyze_death_probability(
+                player_name, demo_name, tick_data
+            )
+            analysis.match_insights.extend(death_insights)
+
         logger.info(
             "Analysis complete for %s on %s: %d insights generated",
             player_name,
@@ -828,6 +835,91 @@ class AnalysisOrchestrator:
 
         except Exception as e:
             self._record_module_failure("economy", e)
+
+        return insights
+
+    def _analyze_death_probability(
+        self,
+        player_name: str,
+        demo_name: str,
+        tick_data: pd.DataFrame,
+    ) -> List[CoachingInsight]:
+        """SVC-04: Bayesian death probability analysis from tick-level state."""
+        insights: List[CoachingInsight] = []
+
+        try:
+            from Programma_CS2_RENAN.backend.analysis.belief_model import BeliefState
+
+            required = {"health", "armor", "enemies_visible"}
+            if not required.issubset(tick_data.columns):
+                return insights
+
+            # Sample high-risk moments: low HP with enemies visible
+            risk_ticks = tick_data[
+                (tick_data["health"] > 0)
+                & (tick_data["health"] <= 50)
+                & (tick_data["enemies_visible"] >= 1)
+            ]
+
+            if risk_ticks.empty:
+                return insights
+
+            # Compute average death probability across high-risk ticks
+            total_prob = 0.0
+            count = 0
+            for _, row in risk_ticks.head(200).iterrows():
+                belief = BeliefState(
+                    visible_enemies=int(row.get("enemies_visible", 0)),
+                    positional_exposure=0.5,
+                )
+                has_armor = bool(row.get("armor", 0) > 0)
+                weapon_class = str(row.get("weapon_class", "rifle"))
+                prob = self.belief_estimator.estimate(
+                    belief, int(row["health"]), has_armor, weapon_class
+                )
+                total_prob += prob
+                count += 1
+
+            if count == 0:
+                return insights
+
+            avg_death_prob = total_prob / count
+            risk_count = len(risk_ticks)
+
+            if avg_death_prob > 0.6:
+                insights.append(
+                    CoachingInsight(
+                        player_name=player_name,
+                        demo_name=demo_name,
+                        title="Survival: High Death Probability in Key Moments",
+                        severity="High",
+                        message=(
+                            f"Across {risk_count} high-risk ticks (HP ≤ 50 with enemies visible), "
+                            f"your average survival probability was {1 - avg_death_prob:.0%}. "
+                            f"Consider repositioning to cover before engaging at low HP — "
+                            f"trading at low HP is rarely worth it unless the round depends on it."
+                        ),
+                        focus_area="survival",
+                    )
+                )
+            elif avg_death_prob < 0.35 and risk_count > 20:
+                insights.append(
+                    CoachingInsight(
+                        player_name=player_name,
+                        demo_name=demo_name,
+                        title="Survival: Good Risk Management",
+                        severity="Info",
+                        message=(
+                            f"Even in {risk_count} high-risk situations, your estimated "
+                            f"survival probability remained at {1 - avg_death_prob:.0%}. "
+                            f"Your positioning under pressure is strong."
+                        ),
+                        focus_area="survival",
+                    )
+                )
+
+        except Exception as e:
+            self._record_module_failure("death_probability", e)
 
         return insights
 
