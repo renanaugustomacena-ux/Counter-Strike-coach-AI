@@ -193,7 +193,7 @@ python console.py
 python goliath.py
 ```
 
-> Per la guida completa con configurazione API, walkthrough delle funzionalita e troubleshooting, consulta la [Guida Utente](docs/USER_GUIDE_IT.md).
+> Per la guida completa con configurazione API, walkthrough delle funzionalita e troubleshooting, consulta la [Guida Utente](docs/guides/USER_GUIDE_IT.md).
 
 ---
 
@@ -343,9 +343,9 @@ Script standalone che esegue un ciclo di training completo fuori dal daemon engi
 
 | Lingua | UI | Guida Utente | README |
 |--------|----|-------------|--------|
-| English | Completa | [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | [README.md](README.md) |
-| Italiano | Completa | [docs/USER_GUIDE_IT.md](docs/USER_GUIDE_IT.md) | [README_IT.md](README_IT.md) |
-| Portugues | Completa | [docs/USER_GUIDE_PT.md](docs/USER_GUIDE_PT.md) | [README_PT.md](README_PT.md) |
+| English | Completa | [docs/guides/USER_GUIDE.md](docs/guides/USER_GUIDE.md) | [README.md](README.md) |
+| Italiano | Completa | [docs/guides/USER_GUIDE_IT.md](docs/guides/USER_GUIDE_IT.md) | [README_IT.md](README_IT.md) |
+| Portugues | Completa | [docs/guides/USER_GUIDE_PT.md](docs/guides/USER_GUIDE_PT.md) | [README_PT.md](README_PT.md) |
 
 La lingua puo essere cambiata a runtime dalle Impostazioni senza riavviare l'applicazione.
 
@@ -378,13 +378,13 @@ La lingua puo essere cambiata a runtime dalle Impostazioni senza riavviare l'app
 
 | Documento | Descrizione |
 |-----------|-------------|
-| [Guida Utente (IT)](docs/USER_GUIDE_IT.md) | Installazione, setup wizard, API key, tutte le schermate, troubleshooting |
-| [User Guide (EN)](docs/USER_GUIDE.md) | Guida utente completa in inglese |
-| [Guia do Usuario (PT)](docs/USER_GUIDE_PT.md) | Guida utente in portoghese |
-| [Book-Coach-1A](docs/Book-Coach-1A.md) | Core neurale: JEPA, VL-JEPA, AdvancedCoachNN, MaturityObservatory |
-| [Book-Coach-1B](docs/Book-Coach-1B.md) | RAP Coach (7 componenti), sorgenti dati (demo, HLTV, Steam, FACEIT) |
-| [Book-Coach-2](docs/Book-Coach-2.md) | Servizi, motori analisi, knowledge/COPER, database, training |
-| [Book-Coach-3](docs/Book-Coach-3.md) | Logica programma completa, UI Qt, ingestion, tools, test, build |
+| [Guida Utente (IT)](docs/guides/USER_GUIDE_IT.md) | Installazione, setup wizard, API key, tutte le schermate, troubleshooting |
+| [User Guide (EN)](docs/guides/USER_GUIDE.md) | Guida utente completa in inglese |
+| [Guia do Usuario (PT)](docs/guides/USER_GUIDE_PT.md) | Guida utente in portoghese |
+| [Book-Coach-1A](docs/books/Book-Coach-1A.md) | Core neurale: JEPA, VL-JEPA, AdvancedCoachNN, MaturityObservatory |
+| [Book-Coach-1B](docs/books/Book-Coach-1B.md) | RAP Coach (7 componenti), sorgenti dati (demo, HLTV, Steam, FACEIT) |
+| [Book-Coach-2](docs/books/Book-Coach-2.md) | Servizi, motori analisi, knowledge/COPER, database, training |
+| [Book-Coach-3](docs/books/Book-Coach-3.md) | Logica programma completa, UI Qt, ingestion, tools, test, build |
 
 La cartella `docs/Studies/` contiene 17 paper di ricerca sulle fondamenta teoriche di ogni sottosistema.
 
@@ -429,11 +429,11 @@ Tutti i README e documenti tecnici del progetto. Clicca su qualsiasi link per ap
 
 ### Serie Book Coach (PDF)
 
-- [Ultimate CS2 Coach — Sistema AI](docs/Book-Coach-1.pdf)
-- [Ultimate CS2 Coach — Parte 1A — Il Cervello](docs/Book-Coach-1A.pdf)
-- [Ultimate CS2 Coach — Parte 1B — I Sensi e lo Specialista](docs/Book-Coach-1B.pdf)
-- [Ultimate CS2 Coach — Parte 2 — Servizi, Analisi e Database](docs/Book-Coach-2.pdf)
-- [Ultimate CS2 Coach — Parte 3 — Programma, UI, Tools e Build](docs/Book-Coach-3.pdf)
+- [Ultimate CS2 Coach — Sistema AI](docs/books/Book-Coach-1.pdf)
+- [Ultimate CS2 Coach — Parte 1A — Il Cervello](docs/books/Book-Coach-1A.pdf)
+- [Ultimate CS2 Coach — Parte 1B — I Sensi e lo Specialista](docs/books/Book-Coach-1B.pdf)
+- [Ultimate CS2 Coach — Parte 2 — Servizi, Analisi e Database](docs/books/Book-Coach-2.pdf)
+- [Ultimate CS2 Coach — Parte 3 — Programma, UI, Tools e Build](docs/books/Book-Coach-3.pdf)
 
 ### Radice
 

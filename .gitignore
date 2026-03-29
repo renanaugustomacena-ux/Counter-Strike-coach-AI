@@ -104,3 +104,5 @@ identifier.sqlite
 
 # Node modules (docs PDF generation)
 docs/node_modules/
+docs/tooling/node_modules/
+docs/tooling/pdf_zh_output/
