@@ -7,7 +7,7 @@ from typing import Dict, List, Optional
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 app_logger = get_logger("cs2analyzer.db_governor")
-from Programma_CS2_RENAN.backend.storage.database import get_db_manager
+from Programma_CS2_RENAN.backend.storage.database import get_db_manager, get_hltv_db_manager
 from Programma_CS2_RENAN.backend.storage.match_data_manager import get_match_data_manager
 from Programma_CS2_RENAN.core.config import CORE_DB_DIR, DB_DIR
 
@@ -61,12 +61,10 @@ class DatabaseGovernor:
                         f"WARNING: hltv_metadata.db missing, auto-restore failed: {e}"
                     )
             else:
-                # Create empty DB with WAL mode so downstream code doesn't crash
+                # Create DB with proper schema so downstream queries don't crash
                 try:
-                    conn = sqlite3.connect(str(hltv_path))
-                    conn.execute("PRAGMA journal_mode=WAL")
-                    conn.close()
-                    app_logger.info("Created empty hltv_metadata.db (no backup available).")
+                    get_hltv_db_manager().create_db_and_tables()
+                    app_logger.info("Created hltv_metadata.db with schema (no backup available).")
                 except Exception as e:
                     app_logger.error("Failed to create hltv_metadata.db: %s", e)
                     report["anomalies"].append(

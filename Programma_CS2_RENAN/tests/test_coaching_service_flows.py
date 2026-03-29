@@ -219,11 +219,13 @@ class TestTraditionalCoachin:
                 rounds_played=0,
             )
 
+            # C-01: Empty corrections now produce a generic fallback insight
             with mock_db.get_session() as session:
                 insights = session.exec(
                     select(CoachingInsight).where(CoachingInsight.player_name == "TestPlayer")
                 ).all()
-                assert len(insights) == 0
+                assert len(insights) == 1
+                assert insights[0].title == "Match Analysis Complete"
 
 
 # ============ COPER Fallback Chain ============

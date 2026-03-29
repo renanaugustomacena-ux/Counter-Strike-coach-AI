@@ -7,6 +7,7 @@ Implements rate limiting and error handling per GEMINI.md backend principles.
 API Documentation: https://developers.faceit.com/docs/
 """
 
+import os
 import time
 from datetime import datetime
 from pathlib import Path
@@ -89,7 +90,7 @@ class FACEITIntegration:
                     raise FACEITAPIError(
                         f"Rate limit exceeded {MAX_429_RETRIES} times for {endpoint}"
                     )
-                retry_after = int(response.headers.get("Retry-After", 60))
+                retry_after = min(int(response.headers.get("Retry-After", 60)), 300)
                 logger.warning(
                     "Rate limit exceeded (attempt %d/%d). Waiting %ds",
                     _retry_count + 1,
@@ -184,7 +185,7 @@ class FACEITIntegration:
             return None
 
         # R3-09: Sanitize match_id to prevent directory traversal
-        safe_id = str(match_id).replace("/", "").replace("\\", "").replace("..", "")
+        safe_id = os.path.basename(str(match_id))
         if safe_id != str(match_id):
             logger.warning("Rejected suspicious match_id: %s", match_id)
             return None

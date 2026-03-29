@@ -149,21 +149,22 @@ class HybridCoachingEngine:
     def _load_model(self):
         """Load ML model (JEPA or AdvancedCoachNN).
 
-        Uses METADATA_DIM from vectorizer.py to ensure dimension consistency.
+        Uses METADATA_DIM for input and OUTPUT_DIM for output to match trained checkpoints.
         """
+        from Programma_CS2_RENAN.backend.nn.config import OUTPUT_DIM
         from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
 
         try:
             if self.use_jepa:
                 from Programma_CS2_RENAN.backend.nn.jepa_model import JEPACoachingModel
 
-                model = JEPACoachingModel(input_dim=METADATA_DIM, output_dim=METADATA_DIM)
-                logger.info("Loaded JEPA model for hybrid coaching (dim=%s)", METADATA_DIM)
+                model = JEPACoachingModel(input_dim=METADATA_DIM, output_dim=OUTPUT_DIM)
+                logger.info("Loaded JEPA model for hybrid coaching (in=%s, out=%s)", METADATA_DIM, OUTPUT_DIM)
             else:
                 from Programma_CS2_RENAN.backend.nn.model import AdvancedCoachNN
 
-                model = AdvancedCoachNN(input_dim=METADATA_DIM, output_dim=METADATA_DIM)
-                logger.info("Loaded AdvancedCoachNN for hybrid coaching (dim=%s)", METADATA_DIM)
+                model = AdvancedCoachNN(input_dim=METADATA_DIM, output_dim=OUTPUT_DIM)
+                logger.info("Loaded AdvancedCoachNN for hybrid coaching (in=%s, out=%s)", METADATA_DIM, OUTPUT_DIM)
             return model
         except Exception as e:
             logger.error("Failed to load ML model: %s", e)

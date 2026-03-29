@@ -212,7 +212,7 @@ def assign_round_to_ticks(
     if "round_start_tick" in merged.columns:
         merged["time_in_round"] = (
             (merged["tick"] - merged["round_start_tick"].fillna(0)) / tick_rate
-        ).clip(lower=0.0, upper=175.0)
+        ).clip(lower=0.0, upper=115.0)
     else:
         merged["time_in_round"] = 0.0
 

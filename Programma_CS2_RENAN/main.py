@@ -951,7 +951,7 @@ class CS2AnalyzerApp(MDApp):
                     knowledge_ticks = (
                         s_q.exec(
                             select(func.sum(IngestionTask.last_tick_processed)).where(
-                                IngestionTask.status == "complete"
+                                IngestionTask.status == "completed"
                             )
                         ).one()
                         or 0

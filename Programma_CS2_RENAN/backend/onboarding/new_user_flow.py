@@ -131,5 +131,11 @@ class UserOnboardingManager:
             return "✅ Coach is ready! Personalized analysis active."
 
 
+_onboarding_manager: UserOnboardingManager | None = None
+
+
 def get_onboarding_manager() -> UserOnboardingManager:
-    return UserOnboardingManager()
+    global _onboarding_manager
+    if _onboarding_manager is None:
+        _onboarding_manager = UserOnboardingManager()
+    return _onboarding_manager

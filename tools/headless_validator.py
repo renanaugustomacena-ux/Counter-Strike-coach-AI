@@ -178,7 +178,6 @@ CORE_IMPORTS = [
     "Programma_CS2_RENAN.core.spatial_engine",
     "Programma_CS2_RENAN.core.demo_frame",
     "Programma_CS2_RENAN.core.lifecycle",
-    "Programma_CS2_RENAN.core.logger",
     "Programma_CS2_RENAN.core.session_engine",
     "Programma_CS2_RENAN.observability.logger_setup",
     "Programma_CS2_RENAN.observability.rasp",
@@ -189,7 +188,6 @@ CORE_IMPORTS = [
 _KIVY_IMPORTS = [
     "Programma_CS2_RENAN.core.asset_manager",
     "Programma_CS2_RENAN.core.map_manager",
-    "Programma_CS2_RENAN.core.playback",
     "Programma_CS2_RENAN.core.playback_engine",
     "Programma_CS2_RENAN.core.registry",
 ]
@@ -290,7 +288,6 @@ NN_IMPORTS = [
     "Programma_CS2_RENAN.backend.nn.training_controller",
     "Programma_CS2_RENAN.backend.nn.training_monitor",
     "Programma_CS2_RENAN.backend.nn.training_orchestrator",
-    "Programma_CS2_RENAN.backend.nn.train_pipeline",
     "Programma_CS2_RENAN.backend.nn.jepa_trainer",
     "Programma_CS2_RENAN.backend.nn.jepa_train",
     # Layers
@@ -426,8 +423,6 @@ DATASOURCE_IMPORTS = [
     "Programma_CS2_RENAN.backend.data_sources.faceit_integration",
     # HLTV package (restructured from hltv_metadata.py)
     "Programma_CS2_RENAN.backend.data_sources.hltv",
-    "Programma_CS2_RENAN.backend.data_sources.hltv.selectors",
-    "Programma_CS2_RENAN.backend.data_sources.hltv.rate_limit",
     "Programma_CS2_RENAN.backend.data_sources.hltv.flaresolverr_client",
     "Programma_CS2_RENAN.backend.data_sources.hltv.docker_manager",
     "Programma_CS2_RENAN.backend.data_sources.hltv.stat_fetcher",
@@ -2223,7 +2218,6 @@ for mod in ADDITIONAL_IMPORTS:
 # Optional dependency modules (warn, not fail)
 OPTIONAL_IMPORTS = [
     "Programma_CS2_RENAN.backend.nn.tensorboard_callback",
-    "Programma_CS2_RENAN.backend.processing.cv_framebuffer",  # requires cv2 (OpenCV)
 ]
 
 for mod in OPTIONAL_IMPORTS:

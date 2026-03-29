@@ -49,13 +49,17 @@ class JEPATrainer:
         # Starts at 0.996 (fast tracking) → 1.0 (frozen target) over training.
         self._ema_base_momentum: float = 0.996
         self._ema_step: int = 0
-        self._ema_total_steps: int = t_max  # proxy for total training steps
+        self._ema_total_steps: int = t_max  # default; updated when dataloader length is known
 
         # Task 2.19.3: Drift monitoring for automatic retraining
         self.drift_monitor = DriftMonitor(z_threshold=drift_threshold)
         self.drift_history: List[DriftReport] = []
         self._needs_full_retrain = False
         self._reference_stats: Optional[dict] = None
+
+    def set_total_steps(self, epochs: int, batches_per_epoch: int) -> None:
+        """Set actual total training steps for EMA schedule (NN-04b)."""
+        self._ema_total_steps = max(1, epochs * batches_per_epoch)
 
     def _scheduled_ema_momentum(self) -> float:
         """Compute EMA momentum from cosine schedule (J-6).

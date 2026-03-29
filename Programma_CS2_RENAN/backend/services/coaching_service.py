@@ -229,6 +229,16 @@ class CoachingService:
             if self.use_rag and map_name:
                 corrections = self._enhance_with_rag(corrections, deviations, map_name)
             _save_corrections_as_insights(self.db_manager, player_name, demo_name, corrections)
+            # C-01: Never output zero coaching — save generic insight if corrections empty
+            if not corrections:
+                _save_generic_insight(
+                    self.db_manager,
+                    player_name,
+                    demo_name,
+                    "Match Analysis Complete",
+                    "Your performance in this match was close to baseline. "
+                    "Keep playing and we'll identify specific improvement areas as more data builds up.",
+                )
 
         # Phase 6 Advanced Analysis (runs after main coaching, non-blocking)
         self._generate_advanced_insights(
