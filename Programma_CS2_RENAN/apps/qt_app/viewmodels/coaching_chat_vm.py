@@ -82,7 +82,12 @@ class CoachingChatViewModel(QObject):
 
     def clear_session(self):
         self._ensure_engine()
-        self._engine.clear_session()
+        # QT-02: Wrap engine call in Worker to avoid main-thread freeze
+        worker = Worker(self._engine.clear_session)
+        worker.signals.finished.connect(self._on_session_cleared)
+        QThreadPool.globalInstance().start(worker)
+
+    def _on_session_cleared(self):
         with self._lock:
             self._messages.clear()
         self._session_active = False

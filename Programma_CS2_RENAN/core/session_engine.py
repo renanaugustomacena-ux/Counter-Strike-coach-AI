@@ -23,7 +23,7 @@ from Programma_CS2_RENAN.backend.storage.db_models import (
     IngestionTask,
     PlayerMatchStats,
 )
-from Programma_CS2_RENAN.observability.logger_setup import get_logger
+from Programma_CS2_RENAN.observability.logger_setup import get_logger, set_correlation_id
 
 logger = get_logger("cs2analyzer.session_engine")
 
@@ -35,8 +35,9 @@ from Programma_CS2_RENAN.backend.ingestion.resource_manager import ResourceManag
 _shutdown_event = threading.Event()
 _work_available_event = threading.Event()
 
-# F6-SE: Backup failure flag — Teacher daemon skips training when True
-# to prevent training on data that has no backup safety net.
+# F6-SE: Backup failure flag — Teacher daemon warns (once) when set.
+# Training continues without backup safety net; per-match SQLite isolation
+# protects raw data, only checkpoints are at risk.
 _backup_failed = threading.Event()
 
 
@@ -297,6 +298,7 @@ def _scanner_daemon_loop():
 
     while not _shutdown_event.is_set():
         try:
+            set_correlation_id()  # OBS-07: Tracing context per cycle
             # SE-07: Reload settings once per cycle. Folder paths are read inside
             # process_new_demos() from the refreshed globals. A narrow TOCTOU window
             # remains if the user changes paths mid-cycle, but the next cycle will
@@ -363,6 +365,7 @@ def _digester_daemon_loop():
 
     while not _shutdown_event.is_set():
         try:
+            set_correlation_id()  # OBS-07: Tracing context per cycle
             # Check for High Performance Mode requirement
             # (If queue is large, we might want to boost priority,
             # but for now we stick to simple queue consumption)
@@ -408,6 +411,7 @@ def _teacher_daemon_loop():
 
     while not _shutdown_event.is_set():
         try:
+            set_correlation_id()  # OBS-07: Tracing context per cycle
             # F6-SE: Warn if backup failed — training continues without safety net.
             # CORE-06: Log once only, not every 300s cycle.
             if _backup_failed.is_set() and not _backup_warned:

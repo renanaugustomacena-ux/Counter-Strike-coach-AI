@@ -1633,6 +1633,12 @@ def run_cli_mode(argv: List[str]):
     elif args.category == "tool" and subcmd == "user":
         handler_args = [args.subcommand]
 
+    # ROOT-08: Boot services before dispatch so commands that need them work
+    try:
+        _get_sys_console().boot()
+    except Exception as e:
+        rich_con.print(f"[yellow]Warning: boot failed ({e}). Some commands may not work.[/yellow]")
+
     result = registry.dispatch(args.category, subcmd, handler_args)
     if result:
         rich_con.print(result)

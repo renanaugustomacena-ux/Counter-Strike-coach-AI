@@ -353,6 +353,11 @@ class Console:
             # 3. Check DB Integrity
             self._audit_databases()
 
+            # 4. OBS-06: Enforce log retention policy (purge old log files)
+            from Programma_CS2_RENAN.observability.logger_setup import configure_retention
+
+            configure_retention()
+
             logger.info("Console: System boot complete.")
             sm.update_status(DaemonName.GLOBAL, "Running", "System boot complete")
         except Exception:

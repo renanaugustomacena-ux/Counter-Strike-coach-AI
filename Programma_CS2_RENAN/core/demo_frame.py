@@ -68,7 +68,7 @@ class GhostState:
 
     player_id: int
     name: str
-    team: str
+    team: Team
     x: float
     y: float
     yaw: float

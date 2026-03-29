@@ -31,6 +31,11 @@ def run_hltv_sync_cycle(limit=50):
         logger.info("Starting HLTV Statistics Sync (limit=%s)", limit)
         fetcher = HLTVStatFetcher()
 
+        # DS-06: Verify scraping is enabled and robots.txt allows it
+        if not fetcher.preflight_check():
+            logger.info("HLTV preflight check failed — scraping aborted")
+            return 0
+
         # Discover top players
         player_urls = fetcher.fetch_top_players()
         if not player_urls:
