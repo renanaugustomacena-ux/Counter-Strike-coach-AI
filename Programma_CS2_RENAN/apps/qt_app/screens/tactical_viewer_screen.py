@@ -309,7 +309,7 @@ class TacticalViewerScreen(QWidget):
             self._progress_dialog.close()
             self._progress_dialog = None
 
-        # Filter out non-map keys (e.g., "map_tensors" injected by DemoLoader)
+        # Filter out _-prefixed metadata keys (e.g., _map_tensors, _quality_flags)
         map_data = {}
         for k, v in data.items():
             if isinstance(v, tuple) and len(v) == 3:

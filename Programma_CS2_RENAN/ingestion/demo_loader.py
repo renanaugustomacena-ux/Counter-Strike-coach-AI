@@ -585,10 +585,10 @@ class DemoLoader:
                 with open(map_tensors_path, "r") as f:
                     map_tensors = json.load(f)
 
-                # Attach map-specific tensors if available
+                # Attach map-specific tensors under _-prefixed key (ING-02)
                 if default_map in map_tensors:
                     app_logger.debug("Loaded map tensors for %s", default_map)
-                    result["map_tensors"] = map_tensors[default_map]
+                    result["_map_tensors"] = map_tensors[default_map]
                 else:
                     app_logger.debug("No specific tensors found for %s", default_map)
             else:

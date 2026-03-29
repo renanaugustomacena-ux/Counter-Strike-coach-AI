@@ -119,14 +119,12 @@ class MetaDriftEngine:
                 stat_drift = 0.0
             else:
                 limit_date = datetime.now(timezone.utc) - timedelta(days=30)
-                recent_avg = (
-                    s.exec(
-                        select(func.avg(ProPlayerStatCard.rating_2_0)).where(
-                            ProPlayerStatCard.last_updated >= limit_date
-                        )
-                    ).one()
-                    or hist_avg
-                )
+                recent_avg_raw = s.exec(
+                    select(func.avg(ProPlayerStatCard.rating_2_0)).where(
+                        ProPlayerStatCard.last_updated >= limit_date
+                    )
+                ).one()
+                recent_avg = recent_avg_raw if recent_avg_raw is not None else hist_avg
                 stat_drift = min((abs(recent_avg - hist_avg) / hist_avg) / 0.20, 1.0)
 
         # 2. Spatial Drift (if map provided)

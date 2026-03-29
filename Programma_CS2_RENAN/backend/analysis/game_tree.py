@@ -9,6 +9,7 @@ Governance: Rule 1 §8.1 (Game-theoretic foundations), Rule 2 §9.1 (Bounded com
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
@@ -49,7 +50,7 @@ def _state_hash(state: Dict) -> int:
         state.get("utility_remaining", 4),
         state.get("is_ct", True),
     )
-    return hash(key)
+    return int(hashlib.md5(str(key).encode()).hexdigest(), 16)
 
 
 class OpponentModel:

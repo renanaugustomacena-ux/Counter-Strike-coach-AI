@@ -202,6 +202,8 @@ class TrainingOrchestrator:
                 val_loss = self._run_epoch(trainer, val_data, is_train=False, context=context)
             else:
                 val_loss = train_loss  # Fallback if no val data
+                if epoch == 1:
+                    logger.warning("No validation data — overfitting detection disabled (val_loss = train_loss)")
 
             # C. Scheduler Step (if trainer has one)
             if hasattr(trainer, "scheduler") and trainer.scheduler is not None:

@@ -22,8 +22,6 @@ from Programma_CS2_RENAN.backend.storage.db_models import (
     CoachState,
     IngestionTask,
     PlayerMatchStats,
-    PlayerProfile,
-    PlayerTickState,
 )
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 

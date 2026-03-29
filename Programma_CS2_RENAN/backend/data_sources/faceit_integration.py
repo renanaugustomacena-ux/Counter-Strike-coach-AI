@@ -196,6 +196,11 @@ class FACEITIntegration:
         try:
             from Programma_CS2_RENAN.backend.data_sources.demo_format_adapter import MAX_DEMO_SIZE
 
+            # DS-08: Validate URL scheme to prevent SSRF via crafted API responses
+            if not demo_url.startswith("https://"):
+                logger.warning("Rejected non-HTTPS demo URL: %s", demo_url[:80])
+                return None
+
             response = requests.get(demo_url, stream=True, timeout=30)
             response.raise_for_status()
 
