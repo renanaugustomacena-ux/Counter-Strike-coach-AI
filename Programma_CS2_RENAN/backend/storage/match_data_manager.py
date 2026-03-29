@@ -682,9 +682,10 @@ class MatchDataManager:
 
     def close_all(self) -> None:
         """Close all cached engines."""
-        for engine in self._engines.values():
-            engine.dispose()
-        self._engines.clear()
+        with self._engine_lock:
+            for engine in self._engines.values():
+                engine.dispose()
+            self._engines.clear()
 
 
 # ============ Singleton Instance ============

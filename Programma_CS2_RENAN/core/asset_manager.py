@@ -16,7 +16,10 @@ import os
 from dataclasses import dataclass, field
 from typing import Dict, Optional
 
-from kivy.graphics.texture import Texture
+try:
+    from kivy.graphics.texture import Texture
+except ImportError:
+    Texture = None  # Headless / Qt-only mode — Kivy texture ops unavailable
 
 from Programma_CS2_RENAN.core.config import get_resource_path
 from Programma_CS2_RENAN.core.spatial_data import SPATIAL_REGISTRY, get_map_metadata

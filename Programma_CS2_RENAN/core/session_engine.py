@@ -423,8 +423,8 @@ def _teacher_daemon_loop():
                         "WARNING",
                         "Training running without backup. Consider freeing disk space.",
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning("Failed to send backup warning notification: %s", e)
 
             trigger_count = _check_retraining_trigger()
             if trigger_count > 0:

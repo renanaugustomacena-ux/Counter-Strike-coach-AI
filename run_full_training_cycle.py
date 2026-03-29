@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from Programma_CS2_RENAN.backend.nn.coach_manager import CoachTrainingManager
 from Programma_CS2_RENAN.backend.nn.training_callbacks import CallbackRegistry
 from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
-from Programma_CS2_RENAN.core.logger import app_logger
+from Programma_CS2_RENAN.observability.logger_setup import app_logger
 
 
 def _build_callbacks(args) -> CallbackRegistry:

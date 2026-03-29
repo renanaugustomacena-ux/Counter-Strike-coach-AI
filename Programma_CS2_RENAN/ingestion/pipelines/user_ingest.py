@@ -45,16 +45,21 @@ def _map_and_pipeline_user(demo_path, rounds_df, db_manager, processed_dir):
         **match_stats_dict,
     )
     db_manager.upsert(match_stats)
-    _trigger_ml_pipeline(db_manager, demo_name, match_stats_dict)
-    # R3-H03: Only archive after all pipeline steps succeed — if we get here, no exception was raised
+    pipeline_ran = _trigger_ml_pipeline(db_manager, demo_name, match_stats_dict)
+    if not pipeline_ran:
+        logger.warning("ML pipeline skipped for %s — demo NOT archived (can be reprocessed)", demo_name)
+        return
+    # R3-H03: Only archive after all pipeline steps succeed
     _archive_user_demo(demo_path, processed_dir)
     logger.info("Demo archived after successful pipeline: %s", demo_path.name)
 
 
-def _trigger_ml_pipeline(db_manager, demo_name, stats):
+def _trigger_ml_pipeline(db_manager, demo_name, stats) -> bool:
     from Programma_CS2_RENAN.run_ingestion import run_ml_pipeline
 
-    run_ml_pipeline(db_manager, get_setting("CS2_PLAYER_NAME", ""), demo_name, stats)
+    result = run_ml_pipeline(db_manager, get_setting("CS2_PLAYER_NAME", ""), demo_name, stats)
+    # run_ml_pipeline returns None on early exit (profile not ready) — treat as incomplete
+    return result is not None
 
 
 def _archive_user_demo(demo_path, processed_dir):

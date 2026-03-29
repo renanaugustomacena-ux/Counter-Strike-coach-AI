@@ -802,8 +802,10 @@ def _cmd_svc_spawn(args):
     if not tool_path.exists():
         return f"[error]Tool not found: {args[0]}[/error]"
     try:
+        log_dir = PROJECT_ROOT / "logs"
+        log_dir.mkdir(exist_ok=True)
         spawn_log = (
-            _log_dir / f"spawn_{args[0].replace('.py', '')}_{datetime.now().strftime('%H%M%S')}.log"
+            log_dir / f"spawn_{args[0].replace('.py', '')}_{datetime.now().strftime('%H%M%S')}.log"
         )
         stderr_file = open(spawn_log, "w", encoding="utf-8")
         proc = subprocess.Popen(

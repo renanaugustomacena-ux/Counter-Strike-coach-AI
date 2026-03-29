@@ -164,6 +164,7 @@ class DemoLoader:
         app_logger.info("Pass 1 - Extracting player positions")
         fields = ["tick", "steamid", "X", "Y", "Z"]
         pos_by_tick = {}  # tick -> {steamid -> (x,y,z)}
+        pass1_failed = False
         try:
             rows_df = parser.parse_ticks(fields)
             for row in rows_df.itertuples():
@@ -183,7 +184,8 @@ class DemoLoader:
                     )
             del rows_df
         except Exception as e:
-            app_logger.error("Error in Pass 1 (player positions): %s", e)
+            app_logger.error("Error in Pass 1 (player positions): %s — grenade trajectories will be empty", e)
+            pass1_failed = True
 
         # --- 2. NADE EVENTS ---
         app_logger.info("Pass 2 - Linking grenades via baseline")
@@ -568,6 +570,9 @@ class DemoLoader:
                     segments["Overtime"] = tick
 
         result = {default_map: (frames, game_events, segments)}
+
+        if pass1_failed:
+            result["_quality_flags"] = {"pass1_positions_failed": True}
 
         # --- 4. MAP TENSORS INJECTION ---
         try:

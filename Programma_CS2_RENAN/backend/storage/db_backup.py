@@ -193,6 +193,15 @@ def restore_backup(backup_path: Path, target_path: Path) -> bool:
         shutil.copy2(str(target_path), str(rollback_path))
 
     try:
+        # Remove WAL/SHM files before restoring — SQLite would replay stale WAL
+        # transactions on top of the restored backup, corrupting it (STOR-01).
+        wal_path = target_path.with_suffix(".db-wal")
+        shm_path = target_path.with_suffix(".db-shm")
+        if wal_path.exists():
+            wal_path.unlink()
+        if shm_path.exists():
+            shm_path.unlink()
+
         shutil.copy2(str(backup_path), str(target_path))
 
         # Integrity check on the restored database

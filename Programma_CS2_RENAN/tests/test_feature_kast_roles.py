@@ -578,8 +578,8 @@ class TestCoachingDialogueChatMessages:
             {"role": "assistant", "content": "Hold angles."},
         ]
         messages = engine._build_chat_messages("What about utility?")
-        # _history[:-1] = 2 items (drops last), + 1 new user message = 3
-        assert len(messages) == 3
+        # Full history (3 items) + 1 new augmented user message = 4
+        assert len(messages) == 4
         assert messages[-1]["role"] == "user"
         assert messages[-1]["content"] == "What about utility?"
 

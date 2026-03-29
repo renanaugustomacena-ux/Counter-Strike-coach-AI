@@ -181,6 +181,10 @@ class TrainingOrchestrator:
             },
         )
 
+        # NN-04b: Set actual total training steps for EMA schedule
+        if hasattr(trainer, "set_total_steps"):
+            trainer.set_total_steps(self.max_epochs, len(train_data))
+
         # 3. Epoch Loop
         for epoch in range(1, self.max_epochs + 1):
             if context:
@@ -471,7 +475,7 @@ class TrainingOrchestrator:
             # G-01: For VL-JEPA, fetch RoundStats to provide outcome-based concept labels
             # (eliminates label leakage from heuristic labeling)
             if self._use_vl:
-                round_stats = self._fetch_round_stats_for_batch(raw_items[:context_len])
+                round_stats = self._fetch_round_stats_for_batch(raw_items[:_JEPA_CONTEXT_LEN])
                 if round_stats is not None:
                     result["round_stats"] = round_stats
 

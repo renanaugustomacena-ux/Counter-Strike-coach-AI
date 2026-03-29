@@ -4,35 +4,15 @@ import threading
 from dataclasses import is_dataclass, replace
 from typing import List, Optional, Tuple
 
-from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal, Slot
+from PySide6.QtCore import QObject, QThreadPool, Signal
 
+from Programma_CS2_RENAN.apps.qt_app.core.worker import Worker
 from Programma_CS2_RENAN.core.playback_engine import InterpolatedFrame
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.qt_tactical_vm")
 
 CM_NAVIGATION_BUFFER_TICKS = 32
-
-
-class _WorkerSignals(QObject):
-    result = Signal(object)
-    error = Signal(str)
-
-
-class _Worker(QRunnable):
-    def __init__(self, fn, *args):
-        super().__init__()
-        self.fn = fn
-        self.args = args
-        self.signals = _WorkerSignals()
-
-    @Slot()
-    def run(self):
-        try:
-            result = self.fn(*self.args)
-            self.signals.result.emit(result)
-        except Exception as e:
-            self.signals.error.emit(str(e))
 
 
 # ── Playback ViewModel ──
@@ -215,7 +195,7 @@ class TacticalChronovisorVM(QObject):
                 return cms
             raise RuntimeError(result.error_message)
 
-        worker = _Worker(_do_scan)
+        worker = Worker(_do_scan)
         worker.signals.result.connect(self._on_scan_done)
         worker.signals.error.connect(self._on_scan_error)
         QThreadPool.globalInstance().start(worker)

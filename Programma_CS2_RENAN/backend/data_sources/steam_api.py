@@ -56,7 +56,9 @@ def _request_with_retry(url, params, timeout=5, max_total_timeout=20):
             time.sleep(delay)
         except requests.exceptions.HTTPError:
             raise  # Don't retry on 4xx/5xx — let caller handle
-    raise last_exc
+    raise last_exc or requests.exceptions.ConnectionError(
+        f"Steam API request failed after {MAX_RETRIES} attempts (timeout={max_total_timeout}s)"
+    )
 
 
 def resolve_vanity_url(vanity_url, api_key):

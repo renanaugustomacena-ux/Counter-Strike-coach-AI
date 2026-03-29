@@ -310,11 +310,11 @@ class CoachingDialogueEngine:
 
     def _build_chat_messages(self, augmented_user: str) -> List[Dict[str, str]]:
         """Build message array for Ollama with sliding context window."""
-        # Take the last MAX_CONTEXT_TURNS * 2 messages from history
-        # (excluding the user message we just appended — it goes in augmented form)
+        # Take the last MAX_CONTEXT_TURNS * 2 messages from history.
+        # F5-06: history is NOT yet mutated when this is called — no need to
+        # skip the last element (the user message is appended after LLM reply).
         window_size = self.MAX_CONTEXT_TURNS * 2
-        # History already has the user message appended; slice before it
-        prior = self._history[:-1][-window_size:]
+        prior = self._history[-window_size:]
 
         messages: List[Dict[str, str]] = list(prior)
         messages.append({"role": "user", "content": augmented_user})
