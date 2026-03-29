@@ -143,6 +143,7 @@ _unknown_weapons_seen: set = set()
 
 # P-VEC-02: Track NaN/Inf occurrences for upstream bug visibility
 _nan_inf_clamp_count: int = 0
+_nan_inf_lock = __import__("threading").Lock()
 
 
 # P-X-01: Feature schema names — single source of truth for train/infer parity.
@@ -447,12 +448,14 @@ class FeatureExtractor:
             bad_indices = np.where(~np.isfinite(vec))[0].tolist()
             feature_names = FeatureExtractor.get_feature_names()
             bad_names = [feature_names[i] for i in bad_indices if i < len(feature_names)]
-            _nan_inf_clamp_count += 1
+            with _nan_inf_lock:
+                _nan_inf_clamp_count += 1
+                count_snapshot = _nan_inf_clamp_count
             _logger.error(
                 "P-VEC-02: Feature vector contains NaN/Inf BEFORE clamp "
                 "(occurrence #%d) — indices: %s, features: %s. "
                 "Clamping to defaults; fix upstream normalisation.",
-                _nan_inf_clamp_count,
+                count_snapshot,
                 bad_indices,
                 bad_names,
             )

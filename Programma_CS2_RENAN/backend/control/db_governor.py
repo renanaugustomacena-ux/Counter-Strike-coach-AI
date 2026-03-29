@@ -76,8 +76,6 @@ class DatabaseGovernor:
         report["tier3_count"] = len(available_matches)
         report["tier3_total_size"] = self.match_manager.get_total_storage_bytes()
 
-        # 3. Detect orphaned files (files on disk not in metadata)
-        # This is a key governance feature
         return report
 
     def _run_pragma_quick_check(self) -> bool:

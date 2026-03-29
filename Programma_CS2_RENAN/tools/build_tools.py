@@ -29,11 +29,14 @@ console = Console()
 
 
 def run_command(cmd, label, cwd=None, capture=False):
-    """Execute a shell command with status reporting."""
+    """Execute a command with status reporting."""
+    import shlex
+
+    cmd_list = shlex.split(cmd) if isinstance(cmd, str) else cmd
     try:
         result = subprocess.run(
-            cmd,
-            shell=True,  # nosec B602 — internal build tool, not user input
+            cmd_list,
+            shell=False,
             cwd=cwd or str(PROJECT_ROOT),
             capture_output=capture,
             text=True,

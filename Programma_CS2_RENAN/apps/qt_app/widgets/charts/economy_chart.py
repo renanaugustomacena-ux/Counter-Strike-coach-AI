@@ -71,7 +71,7 @@ class EconomyChart(QChartView):
         # Y axis
         max_val = max(r.get("equipment_value", 0) for r in rounds)
         ax_y = QValueAxis()
-        ax_y.setRange(0, max_val * 1.1)
+        ax_y.setRange(0, max(max_val * 1.1, 100))
         ax_y.setTitleText("Equipment ($)")
         ax_y.setTitleBrush(QColor(tokens.text_secondary))
         ax_y.setLabelsColor(QColor(tokens.text_secondary))

@@ -60,11 +60,13 @@ def backup_monolith(target_dir: Optional[Path] = None) -> Path:
 
     logger.info("Creating backup via SQLite Online Backup API...")
     source = sqlite3.connect(str(_MONOLITH_DB), timeout=10)
-    dest = sqlite3.connect(str(backup_path))
     try:
-        source.backup(dest)
+        dest = sqlite3.connect(str(backup_path))
+        try:
+            source.backup(dest)
+        finally:
+            dest.close()
     finally:
-        dest.close()
         source.close()
 
     # P2-08: Verify backup integrity after creation
