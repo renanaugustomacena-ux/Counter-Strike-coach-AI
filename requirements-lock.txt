@@ -102,7 +102,7 @@ pydantic==2.12.5
 pydantic_core==2.41.5
 pyee==13.0.0
 Pygments==2.19.2
-pyinstaller==6.17.0
+pyinstaller==6.19.0
 pyinstaller-hooks-contrib==2025.11
 pyparsing==3.3.1
 pypiwin32==223; sys_platform == "win32"
