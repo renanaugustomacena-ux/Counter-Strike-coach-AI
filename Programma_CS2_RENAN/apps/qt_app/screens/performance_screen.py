@@ -267,4 +267,5 @@ class PerformanceScreen(QWidget):
             item = self._content_layout.takeAt(0)
             w = item.widget()
             if w:
-                w.deleteLater()
+                w.setVisible(False)
+                w.setParent(None)  # Immediate detach, avoids GPU segfault from deleteLater()
