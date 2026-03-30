@@ -49,6 +49,13 @@ class HomeScreen(QWidget):
             state.training_changed.connect(self._on_training)
             state.total_matches_changed.connect(self._on_total_matches)
             self._connected = True
+        # Read current values immediately (signals only fire on CHANGE,
+        # but boot may have set values before we connected)
+        prev = get_app_state()._prev
+        if prev.get("total_matches", 0) > 0:
+            self._on_total_matches(prev["total_matches"])
+        if "service_active" in prev:
+            self._on_service_active(prev["service_active"])
 
     # ── UI Construction ──
 
