@@ -282,11 +282,23 @@ class HomeScreen(QWidget):
         self._tact_desc.setStyleSheet("color: #a0a0b0; font-size: 13px;")
         layout.addWidget(self._tact_desc)
 
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(8)
+
         self._tact_btn = QPushButton(i18n.get_text("open_tactical_viewer"))
         self._tact_btn.setCursor(Qt.PointingHandCursor)
         self._tact_btn.setFixedWidth(200)
         self._tact_btn.clicked.connect(lambda: self._navigate("tactical_viewer"))
-        layout.addWidget(self._tact_btn)
+        btn_row.addWidget(self._tact_btn)
+
+        self._compare_btn = QPushButton("Compare Pro Players")
+        self._compare_btn.setCursor(Qt.PointingHandCursor)
+        self._compare_btn.setFixedWidth(200)
+        self._compare_btn.clicked.connect(lambda: self._navigate("pro_comparison"))
+        btn_row.addWidget(self._compare_btn)
+
+        btn_row.addStretch()
+        layout.addLayout(btn_row)
 
         self._cards_layout.addWidget(card)
 
