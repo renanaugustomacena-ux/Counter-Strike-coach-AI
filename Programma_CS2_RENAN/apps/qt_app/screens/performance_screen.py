@@ -21,8 +21,6 @@ from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import (
     rgba_to_qcolor,
 )
 from Programma_CS2_RENAN.apps.qt_app.viewmodels.performance_vm import PerformanceViewModel
-from Programma_CS2_RENAN.apps.qt_app.widgets.charts.rating_sparkline import RatingSparkline
-from Programma_CS2_RENAN.apps.qt_app.widgets.charts.utility_bar_chart import UtilityBarChart
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
 from Programma_CS2_RENAN.apps.qt_app.widgets.skeleton import SkeletonTable
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -143,10 +141,35 @@ class PerformanceScreen(QWidget):
             card.layout().addWidget(QLabel("Not enough data for trend analysis."))
             return
 
-        chart = RatingSparkline()
-        chart.setMinimumHeight(250)
-        chart.plot(history)
-        card.layout().addWidget(chart)
+        # Text-based trend display (QChartView causes segfault on some Linux GPU drivers)
+        ratings = [h.get("rating", 0) for h in history if h.get("rating") is not None]
+        if not ratings:
+            card.layout().addWidget(QLabel("No rating data available."))
+            return
+
+        avg_r = sum(ratings) / len(ratings)
+        min_r = min(ratings)
+        max_r = max(ratings)
+        recent_5 = ratings[-5:] if len(ratings) >= 5 else ratings
+        avg_recent = sum(recent_5) / len(recent_5)
+
+        trend_text = (
+            f"Matches analyzed: {len(ratings)}\n"
+            f"Average rating: {avg_r:.2f}\n"
+            f"Range: {min_r:.2f} — {max_r:.2f}\n"
+            f"Recent trend ({len(recent_5)} matches): {avg_recent:.2f}"
+        )
+
+        if avg_recent > avg_r + 0.05:
+            trend_text += "  ▲ Improving"
+        elif avg_recent < avg_r - 0.05:
+            trend_text += "  ▼ Declining"
+        else:
+            trend_text += "  ─ Stable"
+
+        lbl = QLabel(trend_text)
+        lbl.setStyleSheet("font-size: 14px; line-height: 1.6;")
+        card.layout().addWidget(lbl)
 
     def _build_map_stats(self, map_stats: dict):
         card = self._section("Per-Map Performance")
@@ -232,14 +255,35 @@ class PerformanceScreen(QWidget):
         card = self._section("Utility Effectiveness (vs Pro)")
 
         user = utility.get("user", {})
+        pro = utility.get("pro", {})
         if not user or all(v == 0 for v in user.values()):
             card.layout().addWidget(QLabel("No utility data available yet."))
             return
 
-        chart = UtilityBarChart()
-        chart.setMinimumHeight(280)
-        chart.plot(utility)
-        card.layout().addWidget(chart)
+        # Text-based utility comparison (QChartView causes segfault on some Linux GPU drivers)
+        labels = {
+            "he_damage": "HE Damage/Round",
+            "molotov_damage": "Molotov Damage/Round",
+            "smokes_per_round": "Smokes/Round",
+            "flash_blind_time": "Flash Blind Time",
+            "flash_assists": "Flash Assists",
+            "unused_utility": "Unused Utility",
+        }
+        for key, display_name in labels.items():
+            u_val = user.get(key, 0)
+            p_val = pro.get(key, 0) if pro else 0
+            comparison = ""
+            if p_val > 0:
+                pct = ((u_val - p_val) / p_val) * 100 if p_val != 0 else 0
+                if pct > 10:
+                    comparison = f"  (▲ {pct:+.0f}% vs pro)"
+                elif pct < -10:
+                    comparison = f"  (▼ {pct:+.0f}% vs pro)"
+                else:
+                    comparison = f"  (≈ pro level)"
+            lbl = QLabel(f"{display_name}: {u_val:.2f}{comparison}")
+            lbl.setStyleSheet("font-size: 13px;")
+            card.layout().addWidget(lbl)
 
     # ── Helpers ──
 
