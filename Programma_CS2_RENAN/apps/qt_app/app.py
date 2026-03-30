@@ -142,6 +142,7 @@ def main():
     from Programma_CS2_RENAN.apps.qt_app.screens.profile_screen import ProfileScreen
     from Programma_CS2_RENAN.apps.qt_app.screens.settings_screen import SettingsScreen
     from Programma_CS2_RENAN.apps.qt_app.screens.steam_config_screen import SteamConfigScreen
+    from Programma_CS2_RENAN.apps.qt_app.screens.pro_comparison_screen import ProComparisonScreen
     from Programma_CS2_RENAN.apps.qt_app.screens.tactical_viewer_screen import TacticalViewerScreen
     from Programma_CS2_RENAN.apps.qt_app.screens.user_profile_screen import UserProfileScreen
     from Programma_CS2_RENAN.apps.qt_app.screens.wizard_screen import WizardScreen
@@ -159,6 +160,7 @@ def main():
     faceit_config = FaceitConfigScreen()
     help_screen = HelpScreen()
     tactical_viewer = TacticalViewerScreen()
+    pro_comparison = ProComparisonScreen()
 
     # Wire match selection: history → detail
     def _on_match_selected(demo_name: str):
@@ -181,6 +183,7 @@ def main():
     placeholders["faceit_config"] = faceit_config
     placeholders["help"] = help_screen
     placeholders["tactical_viewer"] = tactical_viewer
+    placeholders["pro_comparison"] = pro_comparison
 
     # Wire wizard completion: wizard → home
     wizard.setup_completed.connect(lambda: window.switch_screen("home"))
