@@ -44,25 +44,23 @@ class MatchHistoryViewModel(QObject):
         self._cancel.set()
 
     def _bg_load(self):
-        player = get_setting("CS2_PLAYER_NAME", "")
-        if not player:
-            raise ValueError("Player name not set. Go to Profile or run the Setup Wizard.")
-
         from sqlmodel import select
 
         from Programma_CS2_RENAN.backend.storage.database import get_db_manager
         from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
 
+        player = get_setting("CS2_PLAYER_NAME", "")
+
         with get_db_manager().get_session() as session:
-            results = session.exec(
-                select(PlayerMatchStats)
-                .where(
-                    PlayerMatchStats.player_name == player,
-                    PlayerMatchStats.is_pro == False,  # noqa: E712
+            # Show user matches first (filtered by player name), then all pro matches
+            query = select(PlayerMatchStats)
+            if player:
+                query = query.where(
+                    (PlayerMatchStats.player_name == player)
+                    | (PlayerMatchStats.is_pro == True)  # noqa: E712
                 )
-                .order_by(PlayerMatchStats.match_date.desc())
-                .limit(50)
-            ).all()
+            query = query.order_by(PlayerMatchStats.match_date.desc()).limit(50)
+            results = session.exec(query).all()
             match_data = [
                 {
                     "demo_name": m.demo_name,

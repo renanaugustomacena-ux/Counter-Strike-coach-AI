@@ -358,6 +358,31 @@ class Console:
 
             configure_retention()
 
+            # 5. Compute and persist belief confidence from current match count
+            try:
+                from sqlmodel import func, select
+
+                from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
+
+                with get_db_manager().get_session() as s:
+                    match_count = s.exec(
+                        select(func.count(PlayerMatchStats.id))
+                    ).one() or 0
+
+                if match_count >= 200:
+                    confidence = 100.0
+                elif match_count >= 50:
+                    confidence = 80.0
+                elif match_count > 0:
+                    confidence = 50.0
+                else:
+                    confidence = 0.0
+
+                sm.update_belief_confidence(confidence)
+                logger.info("Console: Belief confidence set to %.0f%% (%d matches)", confidence, match_count)
+            except Exception as e:
+                logger.warning("Console: Could not compute belief confidence: %s", e)
+
             logger.info("Console: System boot complete.")
             sm.update_status(DaemonName.GLOBAL, "Running", "System boot complete")
         except Exception:
