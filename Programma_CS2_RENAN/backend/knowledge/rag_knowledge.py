@@ -360,14 +360,18 @@ class KnowledgeRetriever:
         return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-8)
 
     def _update_usage_counts(self, knowledge_ids: List[int]):
-        """Increment usage count for retrieved knowledge."""
+        """Increment usage count for retrieved knowledge (batch update)."""
+        if not knowledge_ids:
+            return
+        from sqlmodel import update
+
         with self.db.get_session() as session:
-            for kid in knowledge_ids:
-                entry = session.get(TacticalKnowledge, kid)
-                if entry:
-                    entry.usage_count += 1
-                    session.add(entry)
-            session.commit()
+            # Single UPDATE instead of N individual SELECTs (WR-61)
+            session.exec(
+                update(TacticalKnowledge)
+                .where(TacticalKnowledge.id.in_(knowledge_ids))
+                .values(usage_count=TacticalKnowledge.usage_count + 1)
+            )
 
 
 class KnowledgePopulator:
