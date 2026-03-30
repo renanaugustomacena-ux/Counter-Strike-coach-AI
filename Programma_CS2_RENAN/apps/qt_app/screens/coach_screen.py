@@ -351,6 +351,21 @@ class CoachScreen(QWidget):
             item_layout.setContentsMargins(8, 6, 8, 6)
             item_layout.setSpacing(4)
 
+            # Pro match context (if this insight is from a pro player's match)
+            if insight.get("is_pro"):
+                pro_name = insight.get("player_name", "Pro")
+                demo = insight.get("demo_name", "")
+                # Extract map name from demo filename
+                import re
+                map_match = re.search(r"(mirage|inferno|dust2|overpass|ancient|anubis|nuke|vertigo|train)", demo.lower())
+                map_tag = map_match.group(1).title() if map_match else ""
+                context_text = f"Pro Analysis: {pro_name}"
+                if map_tag:
+                    context_text += f" on {map_tag}"
+                ctx_lbl = QLabel(context_text)
+                ctx_lbl.setStyleSheet("color: #d96600; font-size: 11px; font-style: italic; background: transparent;")
+                item_layout.addWidget(ctx_lbl)
+
             # Title + severity
             title_row = QHBoxLayout()
             title_lbl = QLabel(insight.get("title", "Insight"))
