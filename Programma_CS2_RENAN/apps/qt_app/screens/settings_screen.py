@@ -300,6 +300,10 @@ class SettingsScreen(QWidget):
         set_btn.setFixedWidth(60)
         set_btn.clicked.connect(self._on_interval_set)
         interval_row.addWidget(set_btn)
+        self._interval_error = QLabel("")
+        self._interval_error.setStyleSheet("color: #ff5555; font-size: 11px;")
+        self._interval_error.setVisible(False)
+        interval_row.addWidget(self._interval_error)
         interval_row.addStretch()
         self._ingestion_card.layout().addLayout(interval_row)
 
@@ -436,8 +440,10 @@ class SettingsScreen(QWidget):
         try:
             val = max(1, int(text))
         except (ValueError, TypeError):
-            logger.warning("Invalid interval input: %s", text)
+            self._interval_error.setText("Enter a valid number (1-999)")
+            self._interval_error.setVisible(True)
             return
+        self._interval_error.setVisible(False)
         save_user_setting("INGEST_INTERVAL_MINUTES", val)
         self._interval_input.setText(str(val))
         logger.info("Ingest interval set to %d min", val)
