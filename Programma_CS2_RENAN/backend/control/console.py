@@ -348,7 +348,11 @@ class Console:
             else:
                 logger.info("Console: HLTV sync disabled (ENABLE_HLTV_SYNC=False). Hunter skipped.")
 
-            # 2. Ingestion auto-start disabled (user requested manual control)
+            # 2. Initialize database schema (creates missing tables + adds missing columns)
+            from Programma_CS2_RENAN.backend.storage.database import init_database
+
+            init_database()
+            logger.info("Console: Database schema initialized.")
 
             # 3. Check DB Integrity
             self._audit_databases()
