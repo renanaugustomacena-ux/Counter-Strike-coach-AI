@@ -169,11 +169,9 @@ class MainWindow(QMainWindow):
 
         new_widget = self._stack.widget(new_idx)
 
-        # Switch screen — skip fade animation if widget hasn't been painted yet
-        # (avoids QPainter errors when QGraphicsOpacityEffect is applied too early)
+        # Switch screen (fade animation disabled — QGraphicsOpacityEffect causes
+        # QPainter errors on Linux when applied during widget layout/repaint)
         self._stack.setCurrentIndex(new_idx)
-        if new_widget.isVisible() and old_idx >= 0:
-            Animator.fade_in(new_widget, duration=200)
 
         # Notify the screen
         if hasattr(new_widget, "on_enter"):

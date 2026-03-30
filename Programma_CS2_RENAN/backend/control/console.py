@@ -328,23 +328,27 @@ class Console:
             from Programma_CS2_RENAN.core.config import get_setting
 
             if get_setting("ENABLE_HLTV_SYNC", False):
-                from Programma_CS2_RENAN.backend.data_sources.hltv.docker_manager import (
-                    ensure_flaresolverr,
-                )
-
-                docker_ok = ensure_flaresolverr(str(self.project_root))
-                if docker_ok:
-                    self.supervisor.start_service("hunter")
-                    time.sleep(1)
-                    svcs = self.supervisor.get_status()
-                    hunter_status = svcs.get("hunter", {}).get("status", "unknown")
-                    if hunter_status != "running":
-                        logger.warning("Console: Hunter status after boot: %s", hunter_status)
-                else:
-                    logger.warning(
-                        "Console: FlareSolverr unavailable. Hunter not started. "
-                        "Start Docker Desktop and retry."
+                try:
+                    from Programma_CS2_RENAN.backend.data_sources.hltv.docker_manager import (
+                        ensure_flaresolverr,
                     )
+
+                    docker_ok = ensure_flaresolverr(str(self.project_root))
+                    if docker_ok:
+                        self.supervisor.start_service("hunter")
+                        time.sleep(1)
+                        svcs = self.supervisor.get_status()
+                        hunter_status = svcs.get("hunter", {}).get("status", "unknown")
+                        if hunter_status != "running":
+                            logger.warning("Console: Hunter status after boot: %s", hunter_status)
+                    else:
+                        logger.info(
+                            "Console: HLTV sync enabled but Docker/FlareSolverr not available. "
+                            "Pro player stats will use cached baselines. "
+                            "Install Docker to enable live HLTV scraping."
+                        )
+                except Exception:
+                    logger.info("Console: HLTV sync skipped (Docker not available).")
             else:
                 logger.info("Console: HLTV sync disabled (ENABLE_HLTV_SYNC=False). Hunter skipped.")
 
