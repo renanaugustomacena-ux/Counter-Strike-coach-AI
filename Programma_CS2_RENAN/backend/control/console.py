@@ -362,9 +362,10 @@ class Console:
             try:
                 from sqlmodel import func, select
 
+                from Programma_CS2_RENAN.backend.storage.database import get_db_manager as _get_db
                 from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
 
-                with get_db_manager().get_session() as s:
+                with _get_db().get_session() as s:
                     match_count = s.exec(
                         select(func.count(PlayerMatchStats.id))
                     ).one() or 0

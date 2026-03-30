@@ -169,9 +169,11 @@ class MainWindow(QMainWindow):
 
         new_widget = self._stack.widget(new_idx)
 
-        # Fade in the new screen
+        # Switch screen — skip fade animation if widget hasn't been painted yet
+        # (avoids QPainter errors when QGraphicsOpacityEffect is applied too early)
         self._stack.setCurrentIndex(new_idx)
-        Animator.fade_in(new_widget, duration=200)
+        if new_widget.isVisible() and old_idx >= 0:
+            Animator.fade_in(new_widget, duration=200)
 
         # Notify the screen
         if hasattr(new_widget, "on_enter"):
