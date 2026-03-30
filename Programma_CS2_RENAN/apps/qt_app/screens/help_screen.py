@@ -19,7 +19,7 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.qt_help")
 
-# help_system is NOT YET IMPLEMENTED — import guard
+# Help system loads real docs from Programma_CS2_RENAN/data/docs/*.md
 try:
     from Programma_CS2_RENAN.backend.knowledge_base.help_system import get_help_system
 
@@ -208,9 +208,15 @@ class HelpScreen(QWidget):
         if _HELP_AVAILABLE:
             try:
                 hs = get_help_system()
-                self._topics = hs.get_all_topics()
-            except Exception:
-                logger.warning("help_system failed, using fallback topics")
+                real_topics = hs.get_all_topics()
+                if real_topics:
+                    self._topics = real_topics
+                    logger.info("Loaded %d help topics from knowledge base", len(real_topics))
+                else:
+                    logger.info("Knowledge base returned empty — using fallback topics")
+                    self._topics = list(_FALLBACK_TOPICS)
+            except Exception as e:
+                logger.warning("help_system failed (%s), using fallback topics", e)
                 self._topics = list(_FALLBACK_TOPICS)
         else:
             self._topics = list(_FALLBACK_TOPICS)
