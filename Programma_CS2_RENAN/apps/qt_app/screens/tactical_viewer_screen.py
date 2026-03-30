@@ -276,12 +276,13 @@ class TacticalViewerScreen(QWidget):
         self._play_btn.setEnabled(False)
         self._error_label.setVisible(False)
 
-        # Show loading dialog with indeterminate progress bar
+        # Show loading dialog with cancel button
+        self._demo_cancelled = False
         self._progress_dialog = QProgressDialog(
             f"Parsing {os.path.basename(path)}...\n\n"
             "This may take several minutes for large demos.\n"
             "Cached demos load instantly on subsequent opens.",
-            None,  # No cancel button
+            "Cancel",
             0,
             0,  # Indeterminate (0, 0 = pulsing bar)
             self,
@@ -289,6 +290,7 @@ class TacticalViewerScreen(QWidget):
         self._progress_dialog.setWindowTitle("Loading Demo")
         self._progress_dialog.setWindowModality(Qt.WindowModal)
         self._progress_dialog.setMinimumDuration(0)
+        self._progress_dialog.canceled.connect(self._on_demo_cancel)
         self._progress_dialog.show()
 
         def _parse_demo(demo_path):
@@ -303,11 +305,25 @@ class TacticalViewerScreen(QWidget):
         self._current_worker = worker  # Prevent GC of signal source
         QThreadPool.globalInstance().start(worker)
 
+    def _on_demo_cancel(self):
+        """User cancelled demo loading — ignore the result when it arrives."""
+        self._demo_cancelled = True
+        self._current_worker = None
+        self._progress_dialog = None
+        self._play_btn.setEnabled(True)
+        self._play_btn.setText("Play")
+        logger.info("Demo loading cancelled by user")
+
     def _on_demo_loaded(self, data: dict):
         self._current_worker = None
         if self._progress_dialog:
             self._progress_dialog.close()
             self._progress_dialog = None
+
+        # If user cancelled while parsing was in progress, discard the result
+        if self._demo_cancelled:
+            self._demo_cancelled = False
+            return
 
         # Filter out _-prefixed metadata keys (e.g., _map_tensors, _quality_flags)
         map_data = {}
