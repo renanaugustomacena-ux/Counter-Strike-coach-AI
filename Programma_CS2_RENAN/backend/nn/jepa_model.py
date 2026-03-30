@@ -250,7 +250,9 @@ class JEPACoachingModel(nn.Module):
         # J-3 FIX: Top-2 sparse MoE routing
         output = self._sparse_moe(last_hidden, role_id)
 
-        return torch.tanh(output)
+        # WR-52: sigmoid for [0,1] targets instead of tanh [-1,1].
+        # tanh causes systematic underprediction for values near 1.0.
+        return torch.sigmoid(output)
 
     def forward_selective(
         self,
@@ -308,7 +310,7 @@ class JEPACoachingModel(nn.Module):
 
             # J-3 FIX: Top-2 sparse MoE routing
             output = self._sparse_moe(last_hidden, role_id)
-            prediction = torch.tanh(output)
+            prediction = torch.sigmoid(output)  # WR-52: sigmoid for [0,1] targets
 
         return prediction, curr_embedding, should_decode
 

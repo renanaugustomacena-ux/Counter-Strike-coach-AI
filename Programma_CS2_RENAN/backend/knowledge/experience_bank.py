@@ -804,6 +804,11 @@ class ExperienceBank:
 
         feedback_count = 0
         for exp in pending_experiences:
+            # WR-60: Only match experiences to temporally relevant events.
+            # Filter events by round_phase and side to prevent unrelated matching.
+            exp_phase = exp.round_phase or "unknown"
+            exp_side = exp.side or "unknown"
+
             for event in events:
                 if event.get("event_type") != "player_death":
                     continue
@@ -813,6 +818,17 @@ class ExperienceBank:
 
                 if victim != player_name and attacker != player_name:
                     continue
+
+                # WR-60: Check round phase/side proximity — skip events from
+                # different tactical contexts (eco vs buy round, T vs CT)
+                event_phase = event.get("round_phase", "unknown")
+                event_side = event.get("side", "unknown")
+                if exp_phase != "unknown" and event_phase != "unknown":
+                    if exp_phase != event_phase:
+                        continue
+                if exp_side != "unknown" and event_side != "unknown":
+                    if exp_side != event_side:
+                        continue
 
                 if attacker == player_name:
                     action = self._infer_action(event, is_victim=False)
