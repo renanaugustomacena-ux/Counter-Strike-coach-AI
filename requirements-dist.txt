@@ -75,7 +75,7 @@ simplejson==3.20.2
 six==1.17.0
 soupsieve==2.8.1
 SQLAlchemy==2.0.45
-sqlmodel==0.0.31
+sqlmodel==0.0.37
 starlette==0.50.0
 sympy==1.13.1
 textdistance==4.6.3
