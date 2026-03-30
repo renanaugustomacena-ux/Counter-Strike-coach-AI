@@ -16,22 +16,46 @@ class AnalyticsEngine:
     """
     Centralized math engine for Dashboard Analytics.
     Decouples data aggregation from UI rendering.
+
+    When the user has no personal matches (is_pro=False), queries fall back
+    to ALL matches (including pro) so the Performance screen shows data
+    rather than an empty state.
     """
 
     def __init__(self):
         self.db = get_db_manager()
 
+    def _player_filter(self, player_name: str):
+        """Build WHERE clause: user matches first, fallback to all matches."""
+        from sqlmodel import select as _sel
+
+        with self.db.get_session() as session:
+            user_count = session.exec(
+                _sel(func.count(PlayerMatchStats.id)).where(
+                    PlayerMatchStats.player_name == player_name,
+                    PlayerMatchStats.is_pro == False,  # noqa: E712
+                )
+            ).one()
+
+        if user_count and user_count > 0:
+            # User has personal matches — filter to those
+            return (
+                PlayerMatchStats.player_name == player_name,
+                PlayerMatchStats.is_pro == False,  # noqa: E712
+            )
+        else:
+            # No personal matches — show all data (pro overview mode)
+            return (True,)  # No filter — all rows
+
     def get_player_trends(self, player_name: str, limit: int = 20) -> pd.DataFrame:
         """
         Fetches historical performance metrics for the trend graph.
         """
+        filters = self._player_filter(player_name)
         with self.db.get_session() as session:
             stmt = (
                 select(PlayerMatchStats)
-                .where(
-                    PlayerMatchStats.player_name == player_name,
-                    PlayerMatchStats.is_pro == False,  # noqa: E712
-                )
+                .where(*filters)
                 .order_by(PlayerMatchStats.processed_at.desc())
                 .limit(limit)
             )
@@ -112,6 +136,7 @@ class AnalyticsEngine:
     def get_rating_history(self, player_name: str, limit: int = 50) -> list:
         """Returns list of {rating, match_date, demo_name} ordered chronologically."""
         try:
+            filters = self._player_filter(player_name)
             with self.db.get_session() as session:
                 stmt = (
                     select(
@@ -119,10 +144,7 @@ class AnalyticsEngine:
                         PlayerMatchStats.match_date,
                         PlayerMatchStats.demo_name,
                     )
-                    .where(
-                        PlayerMatchStats.player_name == player_name,
-                        PlayerMatchStats.is_pro == False,  # noqa: E712
-                    )
+                    .where(*filters)
                     .order_by(PlayerMatchStats.match_date.desc())
                     .limit(limit)
                 )
@@ -134,26 +156,36 @@ class AnalyticsEngine:
                     for r in reversed(results)
                 ]
         except Exception as e:
-            logger.error("analytics.get_rating_history failed", error=str(e))
+            logger.error("analytics.get_rating_history failed: %s", e)
             return []
 
     def get_per_map_stats(self, player_name: str) -> dict:
         """Aggregates per-map performance: {map_name: {rating, adr, kd, matches}}."""
+        # Match standard CS2 map names (de_mirage, cs_office) and also
+        # map names embedded in demo filenames like "furia-vs-navi-m1-mirage.dem"
+        _KNOWN_MAPS = {"mirage", "inferno", "dust2", "overpass", "ancient", "anubis", "nuke", "vertigo", "train", "cache", "office"}
         _MAP_PATTERN = re.compile(r"(de_\w+|cs_\w+|ar_\w+)")
         try:
+            filters = self._player_filter(player_name)
             with self.db.get_session() as session:
-                stmt = select(PlayerMatchStats).where(
-                    PlayerMatchStats.player_name == player_name,
-                    PlayerMatchStats.is_pro == False,  # noqa: E712
-                )
+                stmt = select(PlayerMatchStats).where(*filters)
                 results = session.exec(stmt).all()
                 if not results:
                     return {}
 
                 map_groups: dict[str, list] = {}
                 for m in results:
-                    match = _MAP_PATTERN.search(m.demo_name or "")
-                    map_name = match.group(1) if match else "unknown"
+                    demo = (m.demo_name or "").lower()
+                    match = _MAP_PATTERN.search(demo)
+                    if match:
+                        map_name = match.group(1)
+                    else:
+                        # Try known map names in the demo filename (e.g., "m1-mirage.dem")
+                        map_name = "unknown"
+                        for known in _KNOWN_MAPS:
+                            if known in demo:
+                                map_name = f"de_{known}"
+                                break
                     map_groups.setdefault(map_name, []).append(m)
 
                 per_map = {}
@@ -169,7 +201,7 @@ class AnalyticsEngine:
                     }
                 return per_map
         except Exception as e:
-            logger.error("analytics.get_per_map_stats failed", error=str(e))
+            logger.error("analytics.get_per_map_stats failed: %s", e)
             return {}
 
     def get_strength_weakness(self, player_name: str) -> dict:
@@ -180,6 +212,7 @@ class AnalyticsEngine:
         )
 
         try:
+            filters = self._player_filter(player_name)
             with self.db.get_session() as session:
                 stmt = select(
                     func.avg(PlayerMatchStats.rating).label("rating"),
@@ -190,10 +223,7 @@ class AnalyticsEngine:
                     func.avg(PlayerMatchStats.accuracy).label("accuracy"),
                     func.avg(PlayerMatchStats.clutch_win_pct).label("clutch_win_pct"),
                     func.avg(PlayerMatchStats.opening_duel_win_pct).label("opening_duel_win_pct"),
-                ).where(
-                    PlayerMatchStats.player_name == player_name,
-                    PlayerMatchStats.is_pro == False,  # noqa: E712
-                )
+                ).where(*filters)
                 row = session.exec(stmt).first()
                 if not row or row[0] is None:
                     return {"strengths": [], "weaknesses": []}
@@ -235,12 +265,13 @@ class AnalyticsEngine:
             weaknesses.sort(key=lambda x: x[1])
             return {"strengths": strengths[:5], "weaknesses": weaknesses[:5]}
         except Exception as e:
-            logger.error("analytics.get_strength_weakness failed", error=str(e))
+            logger.error("analytics.get_strength_weakness failed: %s", e)
             return {"strengths": [], "weaknesses": []}
 
     def get_utility_breakdown(self, player_name: str) -> dict:
         """Per-utility comparison: user vs pro baseline for 6 utility metrics."""
         try:
+            filters = self._player_filter(player_name)
             with self.db.get_session() as session:
                 stmt = select(
                     func.avg(PlayerMatchStats.he_damage_per_round).label("he_dmg"),
@@ -249,10 +280,7 @@ class AnalyticsEngine:
                     func.avg(PlayerMatchStats.utility_blind_time).label("flash_blind"),
                     func.avg(PlayerMatchStats.flash_assists).label("flash_assists"),
                     func.avg(PlayerMatchStats.unused_utility_per_round).label("unused_util"),
-                ).where(
-                    PlayerMatchStats.player_name == player_name,
-                    PlayerMatchStats.is_pro == False,  # noqa: E712
-                )
+                ).where(*filters)
                 row = session.exec(stmt).first()
                 if not row or row[0] is None:
                     return {}
@@ -296,7 +324,7 @@ class AnalyticsEngine:
                 pro = {}
             return {"user": user, "pro": pro}
         except Exception as e:
-            logger.error("analytics.get_utility_breakdown failed", error=str(e))
+            logger.error("analytics.get_utility_breakdown failed: %s", e)
             return {}
 
     def get_hltv2_breakdown(self, player_name: str) -> dict:
@@ -312,16 +340,14 @@ class AnalyticsEngine:
         )
 
         try:
+            filters = self._player_filter(player_name)
             with self.db.get_session() as session:
                 stmt = select(
                     func.avg(PlayerMatchStats.kpr).label("kpr"),
                     func.avg(PlayerMatchStats.dpr).label("dpr"),
                     func.avg(PlayerMatchStats.avg_kast).label("kast"),
                     func.avg(PlayerMatchStats.avg_adr).label("adr"),
-                ).where(
-                    PlayerMatchStats.player_name == player_name,
-                    PlayerMatchStats.is_pro == False,  # noqa: E712
-                )
+                ).where(*filters)
                 row = session.exec(stmt).first()
                 if not row or row[0] is None:
                     return {}
@@ -344,7 +370,7 @@ class AnalyticsEngine:
                 "Damage": round(adr / BASELINE_ADR, 3) if BASELINE_ADR else 0,
             }
         except Exception as e:
-            logger.error("analytics.get_hltv2_breakdown failed", error=str(e))
+            logger.error("analytics.get_hltv2_breakdown failed: %s", e)
             return {}
 
 
