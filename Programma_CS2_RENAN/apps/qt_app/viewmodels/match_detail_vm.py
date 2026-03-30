@@ -41,8 +41,6 @@ class MatchDetailViewModel(QObject):
 
     def _bg_load(self, demo_name: str):
         player = get_setting("CS2_PLAYER_NAME", "")
-        if not player:
-            raise ValueError("Player name not set. Go to Profile or run the Setup Wizard.")
 
         from sqlmodel import select
 
@@ -54,18 +52,30 @@ class MatchDetailViewModel(QObject):
         )
 
         with get_db_manager().get_session() as session:
-            match_stats = session.exec(
-                select(PlayerMatchStats).where(
-                    PlayerMatchStats.demo_name == demo_name,
-                    PlayerMatchStats.player_name == player,
-                )
-            ).first()
+            # Try user's name first, then any player in that demo
+            match_stats = None
+            if player:
+                match_stats = session.exec(
+                    select(PlayerMatchStats).where(
+                        PlayerMatchStats.demo_name == demo_name,
+                        PlayerMatchStats.player_name == player,
+                    )
+                ).first()
+            if match_stats is None:
+                match_stats = session.exec(
+                    select(PlayerMatchStats).where(
+                        PlayerMatchStats.demo_name == demo_name,
+                    )
+                ).first()
+
+            # Use the actual player name from the match for round/insight queries
+            effective_player = match_stats.player_name if match_stats else player
 
             rounds = session.exec(
                 select(RoundStats)
                 .where(
                     RoundStats.demo_name == demo_name,
-                    RoundStats.player_name == player,
+                    RoundStats.player_name == effective_player,
                 )
                 .order_by(RoundStats.round_number.asc())
             ).all()
