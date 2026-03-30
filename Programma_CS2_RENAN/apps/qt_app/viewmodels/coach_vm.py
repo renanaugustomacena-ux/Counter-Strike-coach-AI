@@ -39,16 +39,26 @@ class CoachViewModel(QObject):
         from Programma_CS2_RENAN.core.config import get_setting
 
         player = get_setting("CS2_PLAYER_NAME", "")
-        if not player:
-            return []
 
         with get_db_manager().get_session() as session:
-            results = session.exec(
-                select(CoachingInsight)
-                .where(CoachingInsight.player_name == player)
-                .order_by(CoachingInsight.created_at.desc())
-                .limit(10)
-            ).all()
+            # Try user's own insights first
+            results = []
+            if player:
+                results = session.exec(
+                    select(CoachingInsight)
+                    .where(CoachingInsight.player_name == player)
+                    .order_by(CoachingInsight.created_at.desc())
+                    .limit(10)
+                ).all()
+
+            # Fall back to all insights (pro match analysis) if user has none
+            if not results:
+                results = session.exec(
+                    select(CoachingInsight)
+                    .order_by(CoachingInsight.created_at.desc())
+                    .limit(10)
+                ).all()
+
             return [
                 {
                     "title": r.title,
@@ -56,6 +66,9 @@ class CoachViewModel(QObject):
                     "severity": r.severity,
                     "focus_area": r.focus_area,
                     "created_at": str(r.created_at)[:16],
+                    "player_name": r.player_name,
+                    "demo_name": r.demo_name,
+                    "is_pro": r.player_name != player,
                 }
                 for r in results
             ]
