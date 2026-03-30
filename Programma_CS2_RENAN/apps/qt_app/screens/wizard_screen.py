@@ -68,8 +68,19 @@ class WizardScreen(QWidget):
         self._stack.addWidget(self._build_finish_page())  # 4
         layout.addWidget(self._stack, 1)
 
-        # Bottom bar with Next button
+        # Bottom bar with Back + Next buttons
         bottom = QHBoxLayout()
+        self._back_btn = QPushButton("Back")
+        self._back_btn.setFixedHeight(40)
+        self._back_btn.setMinimumWidth(100)
+        self._back_btn.setCursor(Qt.PointingHandCursor)
+        self._back_btn.clicked.connect(self._on_back)
+        self._back_btn.setVisible(False)  # Hidden on intro page
+        bottom.addWidget(self._back_btn)
+        bottom.addStretch()
+        self._step_label = QLabel("Step 1 of 5")
+        self._step_label.setStyleSheet("color: #a0a0b0; font-size: 12px;")
+        bottom.addWidget(self._step_label)
         bottom.addStretch()
         self._next_btn = QPushButton("Get Started")
         self._next_btn.setFixedHeight(40)
@@ -240,7 +251,6 @@ class WizardScreen(QWidget):
         step = self._stack.currentIndex()
         if step == 0:
             self._go_to(1)
-            self._next_btn.setText("Next")
         elif step == 1:
             if self._validate_name():
                 self._go_to(2)
@@ -250,12 +260,25 @@ class WizardScreen(QWidget):
         elif step == 3:
             self._validate_demo()
             self._go_to(4)
-            self._next_btn.setText("Launch App")
         elif step == 4:
             self._finish()
 
+    def _on_back(self):
+        step = self._stack.currentIndex()
+        if step > 0:
+            self._go_to(step - 1)
+
     def _go_to(self, index: int):
         self._stack.setCurrentIndex(index)
+        # Update button visibility and labels
+        self._back_btn.setVisible(index > 0)
+        self._step_label.setText(f"Step {index + 1} of 5")
+        if index == 0:
+            self._next_btn.setText("Get Started")
+        elif index == 4:
+            self._next_btn.setText("Launch App")
+        else:
+            self._next_btn.setText("Next")
 
     # ── Folder Pickers ──
 

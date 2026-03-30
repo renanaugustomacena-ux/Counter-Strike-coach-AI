@@ -220,21 +220,6 @@ class HomeScreen(QWidget):
         path_row.addWidget(self._pro_path_label, 1)
         layout.addLayout(path_row)
 
-        # Speed buttons (disabled — session engine not connected)
-        speed_row = QHBoxLayout()
-        speed_row.setSpacing(8)
-        speed_lbl = QLabel("Ingest Speed:")
-        speed_lbl.setStyleSheet("color: #a0a0b0; font-size: 13px;")
-        speed_row.addWidget(speed_lbl)
-        for label in ("Turbo", "Normal", "Pause"):
-            btn = QPushButton(label)
-            btn.setEnabled(False)
-            btn.setToolTip(_DISABLED_TIP_ENGINE)
-            btn.setFixedWidth(80)
-            speed_row.addWidget(btn)
-        speed_row.addStretch()
-        layout.addLayout(speed_row)
-
         # Pro folder picker
         pro_btn_row = QHBoxLayout()
         pro_btn_row.setSpacing(8)
@@ -243,14 +228,15 @@ class HomeScreen(QWidget):
         self._pro_folder_btn.setFixedWidth(180)
         self._pro_folder_btn.clicked.connect(self._pick_pro_folder)
         pro_btn_row.addWidget(self._pro_folder_btn)
-
-        toggle_btn = QPushButton("Start / Stop")
-        toggle_btn.setEnabled(False)
-        toggle_btn.setToolTip(_DISABLED_TIP_ENGINE)
-        toggle_btn.setFixedWidth(140)
-        pro_btn_row.addWidget(toggle_btn)
         pro_btn_row.addStretch()
         layout.addLayout(pro_btn_row)
+
+        # Info: automated ingestion coming in future version
+        auto_info = QLabel("Automated background ingestion coming in a future update. "
+                           "For now, use Settings > Start Ingestion to process pro demos.")
+        auto_info.setWordWrap(True)
+        auto_info.setStyleSheet("color: #a0a0b0; font-size: 11px; font-style: italic;")
+        layout.addWidget(auto_info)
 
         self._cards_layout.addWidget(card)
 
