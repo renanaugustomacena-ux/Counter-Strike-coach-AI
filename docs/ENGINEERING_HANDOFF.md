@@ -1997,6 +1997,44 @@ The RAP Coach stays behind `USE_RAP_MODEL=False` until ALL of these are met:
 
 ---
 
+## 32. Coach HLTV Awareness (Future Task)
+
+> **Status:** NOT STARTED. Added 2026-03-30 after HLTV database population (100 players seeded).
+
+### Requirement
+
+The AI coaching engine should have **optional, non-forced awareness** of the HLTV pro player database (`hltv_metadata.db`). This is NOT a hard-wired baseline dependency — it is a **reference library** the coach can consult when it judges the information relevant.
+
+### Architecture Principle
+
+The HLTV data (ProPlayer + ProPlayerStatCard) is a **supplementary knowledge source**, not a mandatory pipeline stage. The coach should:
+
+1. **Decide autonomously** how much weight to give HLTV data during analysis, training, and advice generation
+2. **Never force** HLTV stats into the pro baseline — the baseline remains derived from demo analysis (`PlayerMatchStats`)
+3. **Reference specific pros** when contextually relevant (e.g., "donk holds this angle 60% of the time on Mirage — you hold it 20%")
+4. **Degrade gracefully** if the HLTV database is empty or unavailable — coaching quality is reduced but never broken
+
+### Technical Approach
+
+- Add an optional `hltv_context` parameter to `CoachingService.generate_new_insights()` that, when provided, allows the coaching pipeline to query `ProPlayerStatCard` for relevant comparisons
+- The coaching engine decides whether to include HLTV references based on: (a) availability of HLTV data, (b) relevance to the current coaching context (map, role, situation), (c) confidence in the data freshness
+- HLTV references appear as supplementary notes in coaching insights, not as the primary advice driver
+- The pro baseline (`pro_baseline.py`) remains independent — it uses demo-derived statistics, not HLTV scrapes
+
+### Relationship to Existing Features
+
+- **Pro Comparison Screen** (implemented 2026-03-30): user-initiated side-by-side comparison. The user explicitly chooses to compare against a pro.
+- **Coach HLTV Awareness** (this task): coach-initiated references. The coach decides when a pro comparison is relevant and includes it in advice.
+- These are complementary — one is user-driven, the other is AI-driven.
+
+### Prerequisite
+
+- HLTV database populated (DONE — 100 players, 39 with verified stats)
+- Coaching pipeline producing insights (DONE — 70 insights from 22 pro matches)
+- Pro Comparison screen working (DONE — Pro vs Pro and Me vs Pro modes)
+
+---
+
 # APPENDICES
 
 ## A. Error Code Registry
