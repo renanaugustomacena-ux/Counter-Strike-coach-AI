@@ -101,20 +101,34 @@ class PerformanceScreen(QWidget):
             self._show_status("No performance data. Play some matches!")
             return
 
+        # Each section is wrapped in try/except so a chart rendering crash
+        # doesn't kill the entire app (segfaults on some Linux GPU drivers).
         # Section 1: Rating Trend
-        self._build_trend(history)
+        try:
+            self._build_trend(history)
+        except Exception as e:
+            logger.error("Failed to build rating trend: %s", e)
 
         # Section 2: Per-Map Stats
         if map_stats:
-            self._build_map_stats(map_stats)
+            try:
+                self._build_map_stats(map_stats)
+            except Exception as e:
+                logger.error("Failed to build map stats: %s", e)
 
         # Section 3: Strengths & Weaknesses
         if sw and (sw.get("strengths") or sw.get("weaknesses")):
-            self._build_sw(sw)
+            try:
+                self._build_sw(sw)
+            except Exception as e:
+                logger.error("Failed to build strengths/weaknesses: %s", e)
 
         # Section 4: Utility
         if utility and utility.get("user"):
-            self._build_utility(utility)
+            try:
+                self._build_utility(utility)
+            except Exception as e:
+                logger.error("Failed to build utility breakdown: %s", e)
 
     def _on_error(self, msg: str):
         if msg:
