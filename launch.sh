@@ -22,4 +22,8 @@ fi
 # Clear stale bytecode before launch
 find Programma_CS2_RENAN -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
+# Force software rendering for Qt charts (prevents segfault on some Linux GPU drivers)
+export QT_QUICK_BACKEND=software
+export QTWEBENGINE_CHROMIUM_FLAGS="--disable-gpu"
+
 exec "$VENV_PYTHON" -m Programma_CS2_RENAN.apps.qt_app.app "$@"
