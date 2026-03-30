@@ -95,6 +95,19 @@ class StateManager:
         except Exception as e:
             logger.error("Failed to update status for %s: %s", daemon, e)
 
+    def update_belief_confidence(self, confidence: float):
+        """Updates CoachState.belief_confidence (0.0 - 100.0 scale for UI display)."""
+        try:
+            with self._lock, self.db.get_session() as session:
+                state = session.exec(select(CoachState)).first()
+                if state:
+                    state.belief_confidence = confidence
+                    state.last_updated = datetime.now(timezone.utc)
+                    session.add(state)
+                    session.commit()
+        except Exception as e:
+            logger.error("Failed to update belief confidence: %s", e)
+
     def update_parsing_progress(self, progress: float):
         """Updates the progress percentage of the current file (0.0 - 100.0)."""
         try:

@@ -105,12 +105,59 @@ class DatabaseManager:
         return self.engine
 
     def create_db_and_tables(self):
-        """Creates schema in the Monolith."""
+        """Creates schema in the Monolith, adding missing columns to existing tables."""
         try:
             SQLModel.metadata.create_all(self.engine, tables=_MONOLITH_TABLES)
+            self._add_missing_columns()
         except Exception as e:
             logger.critical("Failed to initialize database schema: %s", e, exc_info=True)
             raise
+
+    def _add_missing_columns(self):
+        """Add columns that exist in the ORM model but not in the database.
+
+        SQLAlchemy's create_all() only creates missing TABLES, not missing columns.
+        This handles schema evolution for databases created with older code.
+        """
+        from sqlalchemy import inspect as sa_inspect, text
+
+        inspector = sa_inspect(self.engine)
+        existing_tables = inspector.get_table_names()
+
+        for table in _MONOLITH_TABLES:
+            if table.name not in existing_tables:
+                continue
+
+            db_cols = {c["name"] for c in inspector.get_columns(table.name)}
+            model_cols = {c.name for c in table.columns}
+            missing = model_cols - db_cols
+
+            if not missing:
+                continue
+
+            with self.engine.connect() as conn:
+                for col_name in missing:
+                    col = table.columns[col_name]
+                    col_type = col.type.compile(self.engine.dialect)
+                    # Only use simple scalar defaults — skip callables/server defaults
+                    default = ""
+                    if col.default is not None and col.default.arg is not None:
+                        arg = col.default.arg
+                        if isinstance(arg, (int, float, str, bool)):
+                            default = f" DEFAULT {arg!r}"
+                    elif not col.nullable:
+                        default = " DEFAULT ''"
+
+                    sql = f'ALTER TABLE "{table.name}" ADD COLUMN "{col_name}" {col_type}{default}'
+                    try:
+                        conn.execute(text(sql))
+                        logger.info("Schema: added column %s.%s (%s)", table.name, col_name, col_type)
+                    except Exception as e:
+                        if "duplicate column" in str(e).lower():
+                            pass
+                        else:
+                            logger.warning("Schema: failed to add %s.%s: %s", table.name, col_name, e)
+                conn.commit()
 
     @contextmanager
     def get_session(self, engine_key: str = "default") -> Generator[Session, None, None]:
