@@ -109,6 +109,19 @@ def get_device() -> torch.device:
     if not _device_logged:
         logger.info("ML Device: CPU (no CUDA GPU detected)")
         _device_logged = True
+        # WR-09: Notify user that training will use CPU (slower but functional).
+        # Guarded because StateManager DB may not be ready in tests or early boot.
+        try:
+            from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
+
+            get_state_manager().add_notification(
+                "training",
+                "INFO",
+                "No GPU detected — training will use CPU. "
+                "This is slower but fully functional.",
+            )
+        except Exception:
+            pass  # DB not ready yet; log message above is sufficient
     _cached_device = torch.device("cpu")
     return _cached_device
 
