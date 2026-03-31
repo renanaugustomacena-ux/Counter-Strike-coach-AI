@@ -82,6 +82,13 @@ def run_sync_loop():
             _DORMANT_SLEEP_S // 3600,
         )
         get_state_manager().update_status("hunter", "Blocked", "HLTV unreachable via FlareSolverr")
+        # WR-15: Notify user that HLTV is unreachable and scraper is dormant
+        get_state_manager().add_notification(
+            "hunter",
+            "WARNING",
+            f"HLTV unreachable via FlareSolverr. "
+            f"Retrying in {_DORMANT_SLEEP_S // 3600} hours.",
+        )
         _dormant_sleep(_DORMANT_SLEEP_S)
         return
 
@@ -101,6 +108,13 @@ def run_sync_loop():
             if not fetcher.preflight_check():
                 get_state_manager().update_status(
                     "hunter", "Blocked", "Scraping disabled or disallowed by robots.txt"
+                )
+                # WR-15: Notify user that scraping is blocked
+                get_state_manager().add_notification(
+                    "hunter",
+                    "INFO",
+                    "HLTV scraping paused: disabled in settings or blocked by robots.txt. "
+                    "Retrying in 1 hour.",
                 )
                 _dormant_sleep(3600)
                 continue
@@ -122,6 +136,16 @@ def run_sync_loop():
                     synced += 1
 
             logger.info("Cycle complete: %s players synced. Sleeping for 1 hour...", synced)
+            get_state_manager().update_status(
+                "hunter", "Idle", f"Sync complete: {synced} players. Next cycle in 1 hour."
+            )
+            if synced > 0:
+                # WR-15: Notify user of successful sync with count
+                get_state_manager().add_notification(
+                    "hunter",
+                    "INFO",
+                    f"HLTV sync complete: {synced} pro player stats updated.",
+                )
             _dormant_sleep(3600)
 
         except Exception as e:
