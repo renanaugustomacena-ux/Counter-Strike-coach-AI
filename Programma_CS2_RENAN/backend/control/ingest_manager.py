@@ -29,6 +29,10 @@ class IngestionManager:
     Unified queue processor with re-scan loop for TIMED/CONTINUOUS modes.
     """
 
+    # WR-07: Maximum demos processed per cycle. Prevents CPU hogging when
+    # hundreds of demos are queued. Remaining demos process in the next cycle.
+    _MAX_BATCH_SIZE: int = 10
+
     def __init__(self):
         self._lock = threading.Lock()
         self._stop_requested = False
@@ -42,6 +46,8 @@ class IngestionManager:
         self._interval_minutes = 30
         # F5-35: Event-based stop signal — avoids 1-second polling in wait loops.
         self._stop_event = threading.Event()
+        # WR-07: Semaphore caps concurrent parses (future-proofing for parallel ingestion)
+        self._parse_semaphore = threading.BoundedSemaphore(self._MAX_BATCH_SIZE)
         self.db_manager = get_db_manager()
         self.storage = StorageManager()
 
@@ -227,7 +233,17 @@ class IngestionManager:
         else:
             ResourceManager.set_low_priority()
 
+        batch_count = 0
         while not self._stop_requested:
+            # WR-07: Cap demos per cycle to prevent CPU hogging
+            if batch_count >= self._MAX_BATCH_SIZE:
+                logger.info(
+                    "IngestionManager: Batch limit reached (%d). "
+                    "Remaining demos will process in next cycle.",
+                    self._MAX_BATCH_SIZE,
+                )
+                break
+
             # Fetch NEXT task regardless of type (FIFO)
             with self.db_manager.get_session() as session:
                 task = session.exec(
@@ -261,6 +277,7 @@ class IngestionManager:
 
             # Execute real ingestion
             success, msg = _ingest_single_demo(self.db_manager, self.storage, demo_path, is_pro)
+            batch_count += 1
 
             with self.db_manager.get_session() as session:
                 # Re-fetch task to avoid stale object issues
