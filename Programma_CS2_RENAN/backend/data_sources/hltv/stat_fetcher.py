@@ -97,6 +97,35 @@ class HLTVStatFetcher:
         self._solver = FlareSolverrClient(timeout=60)
         self._hltv_db = get_hltv_db_manager()
 
+    @staticmethod
+    def _select_fallback(
+        soup: "BeautifulSoup",
+        selectors: List[str],
+        description: str,
+    ) -> list:
+        """Try multiple CSS selectors in order, return first non-empty result.
+
+        Logs a warning when the primary selector fails and a fallback activates,
+        so HLTV layout changes are detected early without breaking scraping.
+        """
+        for i, selector in enumerate(selectors):
+            result = soup.select(selector)
+            if result:
+                if i > 0:
+                    logger.warning(
+                        "CSS fallback activated for '%s': primary '%s' failed, "
+                        "using '%s' (%d results)",
+                        description,
+                        selectors[0],
+                        selector,
+                        len(result),
+                    )
+                return result
+        logger.warning(
+            "All CSS selectors failed for '%s'. Tried: %s", description, selectors
+        )
+        return []
+
     def preflight_check(self) -> bool:
         """D-23: Verify scraping is enabled and robots.txt allows it.
 
@@ -124,9 +153,13 @@ class HLTVStatFetcher:
             soup = BeautifulSoup(html, "html.parser")
             player_links = []
 
-            rows = soup.select(".stats-table tbody tr")
+            rows = self._select_fallback(
+                soup,
+                [".stats-table tbody tr", "table.stats tbody tr", "table tbody tr"],
+                "top 50 player rows",
+            )
             for row in rows:
-                link_tag = row.select_one(".playerCol a")
+                link_tag = row.select_one(".playerCol a") or row.select_one("td a[href*='/players/']")
                 if link_tag and link_tag.get("href"):
                     full_url = "https://www.hltv.org" + link_tag["href"]
                     player_links.append(full_url)
@@ -154,7 +187,11 @@ class HLTVStatFetcher:
                 return []
 
             soup = BeautifulSoup(html, "html.parser")
-            ranked_teams = soup.select(".ranked-team")[:count]
+            ranked_teams = self._select_fallback(
+                soup,
+                [".ranked-team", ".team-ranking", "div[class*='ranked']"],
+                "team ranking entries",
+            )[:count]
 
             results = []
             for team_el in ranked_teams:
@@ -430,7 +467,11 @@ class HLTVStatFetcher:
     def _parse_overview(self, soup: BeautifulSoup) -> Dict[str, Any]:
         """Parses the player overview page."""
         stats = {}
-        rows = soup.select(".stats-row")
+        rows = self._select_fallback(
+            soup,
+            [".stats-row", ".summary-row", ".stat-row", "div[class*='stats'] .row"],
+            "player overview stats",
+        )
         for row in rows:
             spans = row.find_all("span")
             if len(spans) == 2:
@@ -471,9 +512,14 @@ class HLTVStatFetcher:
         else:
             mapped["kd_ratio"] = 0.0
 
-        # Player nickname
+        # Player nickname (fallback chain for HLTV layout variants)
         player_name = None
-        name_tag = soup.select_one(".player-nickname") or soup.select_one("h1.summaryNickname")
+        name_tag = (
+            soup.select_one(".player-nickname")
+            or soup.select_one("h1.summaryNickname")
+            or soup.select_one(".playerNick")
+            or soup.select_one("h1[class*='nick']")
+        )
         if name_tag:
             player_name = name_tag.text.strip()
         if not player_name:
