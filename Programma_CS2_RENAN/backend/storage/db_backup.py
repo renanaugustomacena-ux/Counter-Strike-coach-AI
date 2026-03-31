@@ -12,6 +12,7 @@ import os
 import shutil
 import sqlite3
 import tarfile
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -109,23 +110,36 @@ def backup_match_data(target_dir: Optional[Path] = None) -> Path:
 
     skip_extensions = {".db-wal", ".db-shm"}
 
+    # WR-33: Use sqlite3.backup() for .db files to eliminate TOCTOU race
+    # between WAL checkpoint and tar.add(). The backup API holds locks while
+    # copying, producing a consistent snapshot regardless of concurrent writes.
     with tarfile.open(str(archive_path), "w:gz") as tar:
         for entry in match_data_dir.iterdir():
             if entry.suffix in skip_extensions:
                 logger.debug("Skipping transient file: %s", entry.name)
                 continue
-            # WAL checkpoint each .db file before archiving to flush pending writes
+
             if entry.suffix == ".db":
-                # P0-06: Wrap in try/finally to prevent connection leak on checkpoint failure.
+                # Atomic backup via sqlite3.backup() into a temp file
                 try:
-                    conn = sqlite3.connect(str(entry), timeout=10)
+                    src = sqlite3.connect(str(entry), timeout=10)
+                    fd, tmp_path = tempfile.mkstemp(suffix=".db")
+                    os.close(fd)
                     try:
-                        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                        dst = sqlite3.connect(tmp_path)
+                        try:
+                            src.backup(dst)
+                        finally:
+                            dst.close()
+                        tar.add(tmp_path, arcname=entry.name)
                     finally:
-                        conn.close()
+                        src.close()
+                        if os.path.exists(tmp_path):
+                            os.unlink(tmp_path)
                 except Exception as e:
-                    logger.warning("WAL checkpoint failed for %s: %s", entry.name, e)
-            tar.add(str(entry), arcname=entry.name)
+                    logger.warning("Atomic backup failed for %s: %s", entry.name, e)
+            else:
+                tar.add(str(entry), arcname=entry.name)
 
     size_mb = archive_path.stat().st_size / (1024 * 1024)
     logger.info("Match data backup created: %s (%s MB)", archive_path, format(size_mb, ".2f"))
