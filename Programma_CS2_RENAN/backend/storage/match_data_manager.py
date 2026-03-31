@@ -242,6 +242,14 @@ class MatchDataManager:
         # Ensure match data directory exists
         os.makedirs(self.match_data_path, exist_ok=True)
 
+        # WR-14: Record filesystem device ID to detect SSD/drive disconnect.
+        # os.stat().st_dev returns the device number (Linux) or drive number (Windows).
+        # If the device changes, the mount point was replaced (drive disconnected).
+        try:
+            self._initial_dev = os.stat(self.match_data_path).st_dev
+        except OSError:
+            self._initial_dev = None
+
         # M-18: True LRU cache using OrderedDict (was FIFO with plain dict)
         self._engines: OrderedDict = OrderedDict()
         self._engine_lock = threading.Lock()
@@ -249,6 +257,19 @@ class MatchDataManager:
     def _get_match_db_path(self, match_id: int) -> str:
         """Get the path to a match's database file."""
         return os.path.join(self.match_data_path, f"match_{match_id}.db")
+
+    def _verify_storage(self) -> bool:
+        """WR-14: Check that match_data storage is still on the original device.
+
+        Returns False if the drive was disconnected or the mount point changed.
+        """
+        if self._initial_dev is None:
+            return True  # Cannot verify — allow writes (defensive)
+        try:
+            current_dev = os.stat(self.match_data_path).st_dev
+            return current_dev == self._initial_dev
+        except OSError:
+            return False
 
     _MAX_CACHED_ENGINES = 50
 
@@ -258,6 +279,33 @@ class MatchDataManager:
             if match_id in self._engines:
                 self._engines.move_to_end(match_id)  # M-18: mark as recently used
                 return self._engines[match_id]
+
+            # WR-14: Verify storage is still on the original device before
+            # creating a new match DB. Prevents silent writes to wrong location
+            # when an external SSD disconnects mid-parse.
+            if not self._verify_storage():
+                _logger.error(
+                    "WR-14: Match data storage disconnected or moved! "
+                    "Path: %s (expected device %s)",
+                    self.match_data_path,
+                    self._initial_dev,
+                )
+                try:
+                    from Programma_CS2_RENAN.backend.storage.state_manager import (
+                        get_state_manager,
+                    )
+
+                    get_state_manager().add_notification(
+                        "storage",
+                        "ERROR",
+                        "Match data drive disconnected. "
+                        "Reconnect the drive and restart ingestion.",
+                    )
+                except Exception:
+                    pass
+                raise IOError(
+                    f"Match data storage disconnected: {self.match_data_path}"
+                )
 
             # M-18: True LRU eviction — dispose least recently used (first item)
             if len(self._engines) >= self._MAX_CACHED_ENGINES:
