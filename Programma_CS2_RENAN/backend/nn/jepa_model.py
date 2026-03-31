@@ -1052,8 +1052,11 @@ if __name__ == "__main__":
     print("=== JEPA Model Test ===\n")
 
     # Model initialization
+    from Programma_CS2_RENAN.backend.nn.config import OUTPUT_DIM
+
+    # WR-63: Use OUTPUT_DIM (10) to match inference expectations
     model = JEPACoachingModel(
-        input_dim=METADATA_DIM, output_dim=METADATA_DIM, latent_dim=128, hidden_dim=64
+        input_dim=METADATA_DIM, output_dim=OUTPUT_DIM, latent_dim=128, hidden_dim=64
     )
 
     print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
