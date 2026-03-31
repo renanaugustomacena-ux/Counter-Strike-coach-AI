@@ -303,9 +303,7 @@ class AdaptiveBeliefCalibrator:
                 calibrated[weapon_class] = bounded
 
         if calibrated:
-            logger.info(
-                "Weapon lethality calibrated (returned, not applied globally): %s", calibrated
-            )
+            logger.info("Weapon lethality calibrated: %s", calibrated)
 
         return calibrated
 
@@ -395,6 +393,19 @@ class AdaptiveBeliefCalibrator:
 
         if "information_age" in death_events.columns:
             summary["threat_decay"] = self.calibrate_threat_decay(death_events)
+
+        # WR-65: Apply calibrated values to the live estimator so they
+        # affect subsequent death-probability and threat-level calculations.
+        # (HP priors are already applied inside calibrate_hp_brackets.)
+        if summary["weapon_lethality"]:
+            _WEAPON_LETHALITY.update(summary["weapon_lethality"])
+            logger.info("Applied weapon lethality calibration to live estimator")
+
+        if summary["threat_decay"] is not None:
+            BeliefState.THREAT_DECAY_LAMBDA = summary["threat_decay"]
+            logger.info(
+                "Applied threat decay lambda=%.4f to BeliefState", summary["threat_decay"]
+            )
 
         # Persist calibration snapshot with sample count
         self._save_snapshot(summary, sample_count=len(death_events))
