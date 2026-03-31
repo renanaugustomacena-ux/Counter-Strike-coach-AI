@@ -123,11 +123,24 @@ def run_sync_loop():
                 "hunter", "Running", f"Stats sync cycle active at {time.ctime()}"
             )
 
-            # 1. Discover Top 50 players
-            logger.info("Discovering Top 50 players...")
-            player_urls = fetcher.fetch_top_players()
+            # 1. Discover top 30 teams and their rosters from HLTV ranking
+            logger.info("Discovering top 30 teams and rosters...")
+            teams = fetcher.fetch_top_teams(count=30)
 
-            # 2. Deep crawl each player's stats
+            if teams:
+                # 2. Persist teams and players, get URLs needing stat scraping
+                player_urls = fetcher.save_teams_and_players(teams)
+                logger.info(
+                    "%d teams saved, %d players need stat scraping",
+                    len(teams),
+                    len(player_urls),
+                )
+            else:
+                # Fallback: use legacy top-50 individual discovery
+                logger.warning("Team discovery returned 0 — falling back to top 50 individuals")
+                player_urls = fetcher.fetch_top_players()
+
+            # 3. Deep crawl each player's stats
             synced = 0
             for url in player_urls:
                 if STOP_SIGNAL.exists():
