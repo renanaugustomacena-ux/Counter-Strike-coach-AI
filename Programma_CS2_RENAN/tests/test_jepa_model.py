@@ -22,6 +22,7 @@ from Programma_CS2_RENAN.backend.nn.jepa_model import (
     jepa_contrastive_loss,
     vl_jepa_concept_loss,
 )
+from Programma_CS2_RENAN.backend.nn.config import OUTPUT_DIM
 from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
 
 
@@ -51,7 +52,7 @@ class TestJEPAComponents:
     def test_jepa_model_initialization(self):
         """Test JEPA model can be initialized."""
         model = JEPACoachingModel(
-            input_dim=METADATA_DIM, output_dim=METADATA_DIM, latent_dim=128, hidden_dim=64
+            input_dim=METADATA_DIM, output_dim=OUTPUT_DIM, latent_dim=128, hidden_dim=64
         )
 
         assert model.latent_dim == 128
@@ -60,7 +61,7 @@ class TestJEPAComponents:
 
     def test_jepa_pretrain_forward(self):
         """Test JEPA pre-training forward pass."""
-        model = JEPACoachingModel(input_dim=METADATA_DIM, output_dim=METADATA_DIM, latent_dim=128)
+        model = JEPACoachingModel(input_dim=METADATA_DIM, output_dim=OUTPUT_DIM, latent_dim=128)
 
         x_context = torch.randn(4, 10, METADATA_DIM)
         x_target = torch.randn(4, 10, METADATA_DIM)
@@ -74,27 +75,27 @@ class TestJEPAComponents:
 
     def test_jepa_coaching_forward(self):
         """Test coaching inference forward pass."""
-        model = JEPACoachingModel(input_dim=METADATA_DIM, output_dim=METADATA_DIM, latent_dim=128)
+        model = JEPACoachingModel(input_dim=METADATA_DIM, output_dim=OUTPUT_DIM, latent_dim=128)
 
         x = torch.randn(4, 15, METADATA_DIM)
         output = model.forward_coaching(x)
 
-        assert output.shape == (4, METADATA_DIM)
+        assert output.shape == (4, OUTPUT_DIM)
         assert not torch.isnan(output).any()
 
     def test_jepa_coaching_with_role(self):
         """Test coaching with role bias."""
-        model = JEPACoachingModel(input_dim=METADATA_DIM, output_dim=METADATA_DIM, latent_dim=128)
+        model = JEPACoachingModel(input_dim=METADATA_DIM, output_dim=OUTPUT_DIM, latent_dim=128)
 
         x = torch.randn(4, 15, METADATA_DIM)
         output = model.forward_coaching(x, role_id=1)
 
-        assert output.shape == (4, METADATA_DIM)
+        assert output.shape == (4, OUTPUT_DIM)
         assert not torch.isnan(output).any()
 
     def test_freeze_unfreeze_encoders(self):
         """Test encoder freezing/unfreezing."""
-        model = JEPACoachingModel(input_dim=METADATA_DIM, output_dim=METADATA_DIM)
+        model = JEPACoachingModel(input_dim=METADATA_DIM, output_dim=OUTPUT_DIM)
 
         # Initially unfrozen
         assert all(p.requires_grad for p in model.context_encoder.parameters())
@@ -126,7 +127,7 @@ class TestJEPAComponents:
 
     def test_backward_pass(self):
         """Test that gradients flow correctly."""
-        model = JEPACoachingModel(input_dim=METADATA_DIM, output_dim=METADATA_DIM, latent_dim=128)
+        model = JEPACoachingModel(input_dim=METADATA_DIM, output_dim=OUTPUT_DIM, latent_dim=128)
 
         x_context = torch.randn(2, 10, METADATA_DIM)
         x_target = torch.randn(2, 10, METADATA_DIM)
@@ -149,7 +150,7 @@ class TestJEPAIntegration:
 
     def test_full_training_cycle(self):
         """Test complete pre-train → freeze → fine-tune cycle."""
-        model = JEPACoachingModel(input_dim=METADATA_DIM, output_dim=METADATA_DIM, latent_dim=64)
+        model = JEPACoachingModel(input_dim=METADATA_DIM, output_dim=OUTPUT_DIM, latent_dim=64)
 
         # Pre-training
         x_context = torch.randn(8, 10, METADATA_DIM)
@@ -171,7 +172,7 @@ class TestJEPAIntegration:
         """Test model can be saved and loaded."""
         import tempfile
 
-        model = JEPACoachingModel(input_dim=METADATA_DIM, output_dim=METADATA_DIM)
+        model = JEPACoachingModel(input_dim=METADATA_DIM, output_dim=OUTPUT_DIM)
         model.freeze_encoders()
 
         # Save
@@ -183,7 +184,7 @@ class TestJEPAIntegration:
 
             # Load
             checkpoint = torch.load(f.name, weights_only=True)
-            model2 = JEPACoachingModel(input_dim=METADATA_DIM, output_dim=METADATA_DIM)
+            model2 = JEPACoachingModel(input_dim=METADATA_DIM, output_dim=OUTPUT_DIM)
             model2.load_state_dict(checkpoint["model_state_dict"])
             model2.is_pretrained = checkpoint["is_pretrained"]
 
@@ -197,7 +198,7 @@ class TestVLJEPAComponents:
         """VLJEPACoachingModel initializes and is a JEPACoachingModel subclass."""
         model = VLJEPACoachingModel(
             input_dim=METADATA_DIM,
-            output_dim=METADATA_DIM,
+            output_dim=OUTPUT_DIM,
             latent_dim=128,
             hidden_dim=64,
         )
@@ -209,7 +210,7 @@ class TestVLJEPAComponents:
         """forward_vl returns dict with correct tensor shapes."""
         model = VLJEPACoachingModel(
             input_dim=METADATA_DIM,
-            output_dim=METADATA_DIM,
+            output_dim=OUTPUT_DIM,
             latent_dim=64,
         )
         x = torch.randn(4, 10, METADATA_DIM)
@@ -225,7 +226,7 @@ class TestVLJEPAComponents:
         """Softmax concept probabilities sum to ~1 per sample."""
         model = VLJEPACoachingModel(
             input_dim=METADATA_DIM,
-            output_dim=METADATA_DIM,
+            output_dim=OUTPUT_DIM,
             latent_dim=64,
         )
         x = torch.randn(8, 5, METADATA_DIM)
@@ -237,7 +238,7 @@ class TestVLJEPAComponents:
         """top_concepts returns valid (name, probability) tuples."""
         model = VLJEPACoachingModel(
             input_dim=METADATA_DIM,
-            output_dim=METADATA_DIM,
+            output_dim=OUTPUT_DIM,
             latent_dim=64,
         )
         x = torch.randn(2, 5, METADATA_DIM)
@@ -253,7 +254,7 @@ class TestVLJEPAComponents:
         """Lightweight concept-only path returns correct shape."""
         model = VLJEPACoachingModel(
             input_dim=METADATA_DIM,
-            output_dim=METADATA_DIM,
+            output_dim=OUTPUT_DIM,
             latent_dim=64,
         )
         x = torch.randn(4, 10, METADATA_DIM)
@@ -265,7 +266,7 @@ class TestVLJEPAComponents:
         """All inherited forward paths work unchanged."""
         model = VLJEPACoachingModel(
             input_dim=METADATA_DIM,
-            output_dim=METADATA_DIM,
+            output_dim=OUTPUT_DIM,
             latent_dim=64,
         )
         x = torch.randn(2, 10, METADATA_DIM)
@@ -397,7 +398,7 @@ class TestVLJEPATraining:
         """Gradients flow through concept alignment head."""
         model = VLJEPACoachingModel(
             input_dim=METADATA_DIM,
-            output_dim=METADATA_DIM,
+            output_dim=OUTPUT_DIM,
             latent_dim=64,
         )
         x = torch.randn(2, 5, METADATA_DIM)
@@ -426,14 +427,14 @@ class TestVLJEPACheckpointMigration:
         """JEPA state_dict loads into VLJEPACoachingModel with strict=False."""
         jepa = JEPACoachingModel(
             input_dim=METADATA_DIM,
-            output_dim=METADATA_DIM,
+            output_dim=OUTPUT_DIM,
             latent_dim=64,
         )
         state = jepa.state_dict()
 
         vl = VLJEPACoachingModel(
             input_dim=METADATA_DIM,
-            output_dim=METADATA_DIM,
+            output_dim=OUTPUT_DIM,
             latent_dim=64,
         )
         missing, unexpected = vl.load_state_dict(state, strict=False)
@@ -449,14 +450,14 @@ class TestVLJEPACheckpointMigration:
         """VL-JEPA produces valid output after loading JEPA checkpoint."""
         jepa = JEPACoachingModel(
             input_dim=METADATA_DIM,
-            output_dim=METADATA_DIM,
+            output_dim=OUTPUT_DIM,
             latent_dim=64,
         )
         state = jepa.state_dict()
 
         vl = VLJEPACoachingModel(
             input_dim=METADATA_DIM,
-            output_dim=METADATA_DIM,
+            output_dim=OUTPUT_DIM,
             latent_dim=64,
         )
         vl.load_state_dict(state, strict=False)
@@ -474,7 +475,7 @@ class TestVLJEPAIntegration:
         """Complete VL-JEPA lifecycle preserves correctness."""
         model = VLJEPACoachingModel(
             input_dim=METADATA_DIM,
-            output_dim=METADATA_DIM,
+            output_dim=OUTPUT_DIM,
             latent_dim=64,
             hidden_dim=32,
         )

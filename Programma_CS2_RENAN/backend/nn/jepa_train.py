@@ -566,6 +566,7 @@ def load_jepa_model(path: str, input_dim: int, output_dim: int) -> JEPACoachingM
 if __name__ == "__main__":
     import argparse
 
+    from Programma_CS2_RENAN.backend.nn.config import OUTPUT_DIM
     from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
 
     parser = argparse.ArgumentParser()
@@ -574,13 +575,14 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.mode == "pretrain":
-        model = JEPACoachingModel(input_dim=METADATA_DIM, output_dim=METADATA_DIM)
+        # WR-63: Use OUTPUT_DIM (10) so checkpoints are compatible with inference
+        model = JEPACoachingModel(input_dim=METADATA_DIM, output_dim=OUTPUT_DIM)
         model = train_jepa_pretrain(model, num_epochs=50)
         save_jepa_model(model, args.model_path)
 
     elif args.mode == "finetune":
         # Load pre-trained model
-        model = load_jepa_model(args.model_path, input_dim=METADATA_DIM, output_dim=METADATA_DIM)
+        model = load_jepa_model(args.model_path, input_dim=METADATA_DIM, output_dim=OUTPUT_DIM)
 
         X_train, y_train = load_user_match_sequences(limit=200)
         if X_train is None:
