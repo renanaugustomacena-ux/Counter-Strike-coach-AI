@@ -165,7 +165,9 @@ class ProComparisonScreen(QWidget):
         self._combo_a.clear()
         self._combo_b.clear()
         for p in players:
-            label = f"{p['nickname']} ({p['team']})"
+            rank = p.get("team_rank", 0)
+            rank_prefix = f"#{rank} " if rank and rank < 999 else ""
+            label = f"{p['nickname']} ({rank_prefix}{p['team']})"
             self._combo_a.addItem(label, p["hltv_id"])
             self._combo_b.addItem(label, p["hltv_id"])
 
