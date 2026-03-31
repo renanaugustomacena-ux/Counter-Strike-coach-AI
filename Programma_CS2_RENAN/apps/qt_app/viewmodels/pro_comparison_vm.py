@@ -62,23 +62,41 @@ class ProComparisonViewModel(QObject):
         from sqlmodel import select
 
         from Programma_CS2_RENAN.backend.storage.database import get_hltv_db_manager
-        from Programma_CS2_RENAN.backend.storage.db_models import ProPlayer, ProTeam
+        from Programma_CS2_RENAN.backend.storage.db_models import (
+            ProPlayer,
+            ProPlayerStatCard,
+            ProTeam,
+        )
 
         with get_hltv_db_manager().get_session() as s:
-            players = s.exec(
-                select(ProPlayer).order_by(ProPlayer.nickname)
+            # Only show players that have stat cards (avoid empty comparisons)
+            players_with_stats = s.exec(
+                select(ProPlayer)
+                .where(
+                    ProPlayer.hltv_id.in_(  # type: ignore[union-attr]
+                        select(ProPlayerStatCard.player_id)
+                    )
+                )
+                .order_by(ProPlayer.nickname)
             ).all()
-            # Fetch team names
-            teams = {t.hltv_id: t.name for t in s.exec(select(ProTeam)).all()}
+            # Fetch team names + world rank for sorting
+            teams = {}
+            for t in s.exec(select(ProTeam)).all():
+                teams[t.hltv_id] = {"name": t.name, "rank": t.world_rank or 999}
 
-            return [
-                {
+            result = []
+            for p in players_with_stats:
+                team_info = teams.get(p.team_id, {"name": "—", "rank": 999})
+                result.append({
                     "hltv_id": p.hltv_id,
                     "nickname": p.nickname,
-                    "team": teams.get(p.team_id, "—"),
-                }
-                for p in players
-            ]
+                    "team": team_info["name"],
+                    "team_rank": team_info["rank"],
+                })
+
+            # Sort by team world rank, then by nickname within team
+            result.sort(key=lambda x: (x["team_rank"], x["nickname"]))
+            return result
 
     @staticmethod
     def _bg_compare_pros(id_a: int, id_b: int):
