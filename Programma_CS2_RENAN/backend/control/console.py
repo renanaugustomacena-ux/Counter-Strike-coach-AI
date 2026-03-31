@@ -347,8 +347,22 @@ class Console:
                             "Pro player stats will use cached baselines. "
                             "Install Docker to enable live HLTV scraping."
                         )
+                        # WR-13: Surface Docker requirement to the user
+                        sm.add_notification(
+                            "hunter",
+                            "INFO",
+                            "Docker not found — pro player stats use cached baselines. "
+                            "Install Docker to enable live HLTV scraping.",
+                        )
                 except Exception:
                     logger.info("Console: HLTV sync skipped (Docker not available).")
+                    # WR-13: Surface Docker requirement to the user
+                    sm.add_notification(
+                        "hunter",
+                        "INFO",
+                        "Docker not available — HLTV sync skipped. "
+                        "Install Docker for live pro player stats.",
+                    )
             else:
                 logger.info("Console: HLTV sync disabled (ENABLE_HLTV_SYNC=False). Hunter skipped.")
 
