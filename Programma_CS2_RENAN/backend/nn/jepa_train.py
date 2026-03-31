@@ -190,11 +190,16 @@ def load_user_match_sequences(limit: int = 200) -> tuple:
         return None, None
 
     # Pad/truncate to uniform sequence length
+    # WR-53: Repeat last valid tick instead of zero-padding.
+    # Zero vectors encode physically impossible game states (health=0,
+    # position at origin) that corrupt the LSTM hidden state.
     max_len = max(s.shape[0] for s in X_sequences)
     X_padded = []
     for s in X_sequences:
         if s.shape[0] < max_len:
-            pad = np.zeros((max_len - s.shape[0], METADATA_DIM), dtype=np.float32)
+            pad_len = max_len - s.shape[0]
+            last_tick = s[-1:]  # [1, METADATA_DIM]
+            pad = np.repeat(last_tick, pad_len, axis=0)
             s = np.concatenate([s, pad], axis=0)
         X_padded.append(s[:max_len])
 
