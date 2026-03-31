@@ -32,12 +32,23 @@ class KnowledgeGraphManager:
     DB_PATH = str(Path(USER_DATA_ROOT) / "knowledge_graph.db")
 
     def __init__(self):
+        self._conn: Optional[sqlite3.Connection] = None
         self._init_db()
 
     def _connect(self) -> sqlite3.Connection:
-        """Return a WAL-mode connection to the graph database."""
+        """Return a WAL-mode connection to the graph database.
+
+        WR-62: Reuses a cached connection instead of opening a new one per
+        call. Enforces the same PRAGMAs as the tri-database layer (WAL,
+        synchronous=NORMAL, busy_timeout) for consistency.
+        """
+        if self._conn is not None:
+            return self._conn
         conn = sqlite3.connect(self.DB_PATH)
         conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
+        conn.execute("PRAGMA busy_timeout=30000")
+        self._conn = conn
         return conn
 
     def _init_db(self):
@@ -198,6 +209,15 @@ class KnowledgeGraphManager:
             logger.error("Graph query failed for %s: %s", central_entity, e)
 
         return result
+
+    def close(self):
+        """Close the cached connection (called during shutdown)."""
+        if self._conn is not None:
+            try:
+                self._conn.close()
+            except Exception:
+                pass
+            self._conn = None
 
 
 # Singleton
