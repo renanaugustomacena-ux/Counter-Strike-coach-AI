@@ -329,6 +329,20 @@ def _scanner_daemon_loop():
                     process_new_demos(is_pro=True, limit=0)
                     # is_pro=False scan
                     process_new_demos(is_pro=False, limit=0)
+
+                    # Steam auto-discovery (user demos only)
+                    try:
+                        from Programma_CS2_RENAN.ingestion.steam_locator import (
+                            find_cs2_replays,
+                            sync_steam_demos,
+                        )
+
+                        steam_dir = find_cs2_replays()
+                        if steam_dir:
+                            sync_steam_demos(steam_dir)
+                    except Exception as steam_err:
+                        logger.debug("[Scanner] Steam auto-discovery skipped: %s", steam_err)
+
                 except Exception as scan_err:
                     logger.exception("[Scanner] Scan Cycle Failed")
                     get_state_manager().set_error("hunter", str(scan_err))
