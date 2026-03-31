@@ -386,6 +386,35 @@ class DemoLoader:
         except Exception as e:
             app_logger.warning("Failed to parse round_freeze_end events: %s", e)
 
+        # --- Bomb events (WR-40) ---
+        _bomb_plant_events = []  # [(tick, x, y, z), ...]
+        _bomb_defuse_ticks = []  # [tick, ...]
+        try:
+            for _evt_name in ["bomb_planted", "bomb_defused"]:
+                res = parser.parse_events([_evt_name])
+                if res:
+                    df_evt = res[0][1] if isinstance(res[0], tuple) else pd.DataFrame(res)
+                    if not df_evt.empty and "tick" in df_evt.columns:
+                        for row in df_evt.itertuples():
+                            t = int(row.tick)
+                            if _evt_name == "bomb_planted":
+                                bx = float(getattr(row, "x", 0.0) or 0.0)
+                                by = float(getattr(row, "y", 0.0) or 0.0)
+                                bz = float(getattr(row, "z", 0.0) or 0.0)
+                                _bomb_plant_events.append((t, bx, by, bz))
+                            else:
+                                _bomb_defuse_ticks.append(t)
+            _bomb_plant_events.sort()
+            _bomb_defuse_ticks.sort()
+            if _bomb_plant_events:
+                app_logger.info(
+                    "Parsed %d bomb plant(s) and %d defuse(s)",
+                    len(_bomb_plant_events),
+                    len(_bomb_defuse_ticks),
+                )
+        except Exception as e:
+            app_logger.warning("Failed to parse bomb events: %s", e)
+
         # Detect Map Changes (via rounded start or gaps if map_name is unavailable per tick)
         # For now, we use the default map but structure it as a dict.
         # If demoparser2 allowed 'map_name' in parse_ticks, we'd use that.
@@ -470,6 +499,13 @@ class DemoLoader:
             _rs_list = round_starts if round_starts else []
             _team_map = {"CT": Team.CT, "T": Team.T, "SPEC": Team.SPECTATOR}
 
+            # Bomb state tracking (WR-40): pointer-based forward scan
+            _bomb_is_planted = False
+            _bomb_pos = (0.0, 0.0, 0.0)
+            _bomb_plant_idx = 0
+            _bomb_defuse_idx = 0
+            _rs_bomb_idx = 0  # Pointer into _rs_list for round resets
+
             for tick_val, group in rows_df.groupby("tick", sort=True):
                 tick_int = int(tick_val)
                 r_idx = int(group.iloc[0]["round_resolved"])
@@ -515,6 +551,36 @@ class DemoLoader:
                         )
                     )
 
+                # WR-40: Track bomb state using sorted pointer scan
+                while _rs_bomb_idx < len(_rs_list) and _rs_list[_rs_bomb_idx] <= tick_int:
+                    _bomb_is_planted = False
+                    _rs_bomb_idx += 1
+
+                while (
+                    _bomb_plant_idx < len(_bomb_plant_events)
+                    and _bomb_plant_events[_bomb_plant_idx][0] <= tick_int
+                ):
+                    _bomb_is_planted = True
+                    _bomb_pos = _bomb_plant_events[_bomb_plant_idx][1:]
+                    _bomb_plant_idx += 1
+
+                while (
+                    _bomb_defuse_idx < len(_bomb_defuse_ticks)
+                    and _bomb_defuse_ticks[_bomb_defuse_idx] <= tick_int
+                ):
+                    _bomb_is_planted = False
+                    _bomb_defuse_idx += 1
+
+                _bomb_state = None
+                if _bomb_is_planted:
+                    _bomb_state = BombState(
+                        x=_bomb_pos[0],
+                        y=_bomb_pos[1],
+                        z=_bomb_pos[2],
+                        is_planted=True,
+                        is_defused=False,
+                    )
+
                 frames.append(
                     DemoFrame(
                         tick=tick_int,
@@ -523,7 +589,7 @@ class DemoLoader:
                         map_name=default_map,
                         players=players,
                         nades=nades_by_tick.get(tick_int, []),
-                        bomb=None,
+                        bomb=_bomb_state,
                     )
                 )
 
