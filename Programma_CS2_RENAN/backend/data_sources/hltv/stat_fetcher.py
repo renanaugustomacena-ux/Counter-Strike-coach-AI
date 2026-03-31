@@ -38,7 +38,7 @@ from sqlmodel import select
 
 from Programma_CS2_RENAN.backend.data_sources.hltv.flaresolverr_client import FlareSolverrClient
 from Programma_CS2_RENAN.backend.storage.database import get_hltv_db_manager
-from Programma_CS2_RENAN.backend.storage.db_models import ProPlayer, ProPlayerStatCard
+from Programma_CS2_RENAN.backend.storage.db_models import ProPlayer, ProPlayerStatCard, ProTeam
 from Programma_CS2_RENAN.core.config import get_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -136,6 +136,129 @@ class HLTVStatFetcher:
         except Exception:
             logger.exception("Error discovering top players")
             return []
+
+    def fetch_top_teams(self, count: int = 30) -> List[Dict[str, Any]]:
+        """Scrape the HLTV world ranking page to discover top teams and their rosters.
+
+        Returns a list of dicts, each with:
+            hltv_id (int), name (str), world_rank (int),
+            players: [{hltv_id, nickname, profile_url}, ...]
+        """
+        url = "https://www.hltv.org/ranking/teams/"
+        logger.info("Discovering top %d teams from: %s", count, url)
+        try:
+            time.sleep(random.uniform(CRAWL_DELAY_MIN_SECONDS, CRAWL_DELAY_MIN_SECONDS + 2))
+            html = self._solver.get(url)
+            if not html:
+                logger.error("FlareSolverr failed for team ranking page")
+                return []
+
+            soup = BeautifulSoup(html, "html.parser")
+            ranked_teams = soup.select(".ranked-team")[:count]
+
+            results = []
+            for team_el in ranked_teams:
+                try:
+                    name_el = team_el.select_one(".name")
+                    rank_el = team_el.select_one(".position")
+                    link_el = team_el.select_one("a.moreLink")
+
+                    if not name_el or not link_el:
+                        continue
+
+                    team_name = name_el.text.strip()
+                    rank_text = rank_el.text.strip().lstrip("#") if rank_el else "0"
+                    rank_num = int(re.sub(r"\D", "", rank_text) or 0)
+
+                    href = link_el.get("href", "")
+                    m = re.search(r"/team/(\d+)/", href)
+                    team_hltv_id = int(m.group(1)) if m else 0
+
+                    # Extract roster from ranking page (avoids extra HTTP request)
+                    players = []
+                    for player_el in team_el.select("td.player-holder a.pointer"):
+                        nick_el = player_el.select_one("div.nick")
+                        p_href = player_el.get("href", "")
+                        pm = re.search(r"/player/(\d+)/", p_href)
+                        if nick_el and pm:
+                            players.append({
+                                "hltv_id": int(pm.group(1)),
+                                "nickname": nick_el.text.strip(),
+                                "profile_url": _HLTV_BASE_URL + "/stats/players/"
+                                + pm.group(1) + "/" + nick_el.text.strip().lower(),
+                            })
+
+                    results.append({
+                        "hltv_id": team_hltv_id,
+                        "name": team_name,
+                        "world_rank": rank_num,
+                        "players": players,
+                    })
+                except Exception as e:
+                    logger.warning("Failed to parse team element: %s", e)
+
+            logger.info("Discovered %d teams with %d total players.",
+                        len(results), sum(len(t["players"]) for t in results))
+            return results
+        except Exception:
+            logger.exception("Error discovering top teams")
+            return []
+
+    def save_teams_and_players(self, teams: List[Dict[str, Any]]) -> int:
+        """Persist discovered teams and link players to their teams.
+
+        Returns the number of NEW player stat URLs to scrape.
+        """
+        db = get_hltv_db_manager()
+        new_player_urls = []
+
+        with db.get_session() as session:
+            for team_data in teams:
+                # Upsert team
+                existing = session.exec(
+                    select(ProTeam).where(ProTeam.hltv_id == team_data["hltv_id"])
+                ).first()
+                if existing:
+                    existing.name = team_data["name"]
+                    existing.world_rank = team_data["world_rank"]
+                    session.add(existing)
+                else:
+                    session.add(ProTeam(
+                        hltv_id=team_data["hltv_id"],
+                        name=team_data["name"],
+                        world_rank=team_data["world_rank"],
+                    ))
+
+                # Upsert players and link to team
+                for p in team_data["players"]:
+                    player = session.exec(
+                        select(ProPlayer).where(ProPlayer.hltv_id == p["hltv_id"])
+                    ).first()
+                    if player:
+                        player.team_id = team_data["hltv_id"]
+                        player.nickname = p["nickname"]
+                        session.add(player)
+                    else:
+                        session.add(ProPlayer(
+                            hltv_id=p["hltv_id"],
+                            nickname=p["nickname"],
+                            team_id=team_data["hltv_id"],
+                        ))
+
+                    # Check if we need to scrape this player's stats
+                    has_stats = session.exec(
+                        select(ProPlayerStatCard).where(
+                            ProPlayerStatCard.player_id == p["hltv_id"]
+                        )
+                    ).first()
+                    if not has_stats:
+                        new_player_urls.append(p["profile_url"])
+
+            session.commit()
+
+        logger.info("Saved %d teams. %d players need stat scraping.",
+                     len(teams), len(new_player_urls))
+        return new_player_urls
 
     def fetch_and_save_player(self, url: str) -> bool:
         """
