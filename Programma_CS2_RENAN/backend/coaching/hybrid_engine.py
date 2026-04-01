@@ -261,8 +261,10 @@ class HybridCoachingEngine:
 
         # Step 0: Resolve Contextual Pro Baseline
         active_baseline = self.pro_baseline
+        pro_name: Optional[str] = None
         if pro_reference_id:
             active_baseline = self._get_contextual_pro_baseline(pro_reference_id)
+            pro_name = self._get_pro_name(pro_reference_id)
 
         # Step 1: Calculate deviations from the active baseline
         deviations = self._calculate_deviations(player_stats, active_baseline)
@@ -282,6 +284,7 @@ class HybridCoachingEngine:
             active_baseline,
             demo_name=demo_name,
             tick_data=tick_data or {},
+            pro_name=pro_name,
         )
 
         # Step 4b: Tag insights when the baseline is a stale hardcoded fallback (F4-02).
@@ -318,6 +321,21 @@ class HybridCoachingEngine:
             logger.error("Failed to fetch pro card %s: %s", pro_id, e)
 
         return self.pro_baseline  # Fallback
+
+    @staticmethod
+    def _get_pro_name(pro_id: int) -> Optional[str]:
+        """Fetch the nickname of a pro player from the HLTV database."""
+        from sqlmodel import select
+
+        from Programma_CS2_RENAN.backend.storage.db_models import ProPlayer
+
+        try:
+            with get_hltv_db_manager().get_session() as s:
+                player = s.exec(select(ProPlayer).where(ProPlayer.hltv_id == pro_id)).first()
+                return player.nickname if player else None
+        except Exception as e:
+            logger.debug("Could not fetch pro name for ID %s: %s", pro_id, e)
+            return None
 
     def _calculate_deviations(
         self, player_stats: Dict[str, float], baseline_override: Optional[Dict[str, float]] = None
@@ -422,6 +440,7 @@ class HybridCoachingEngine:
         active_baseline: Dict[str, float],
         demo_name: Optional[str] = None,  # TASK 2.7.1: Demo name for Reference Clip
         tick_data: Optional[Dict[str, Tuple[int, int]]] = None,  # TASK 2.7.1: feature -> tick range
+        pro_name: Optional[str] = None,
     ) -> List[HybridInsight]:
         """
         Synthesize ML and RAG into unified insights.
@@ -478,6 +497,7 @@ class HybridCoachingEngine:
                 active_baseline,
                 tick_range=feature_tick_range,
                 demo_name=demo_name,
+                pro_name=pro_name,
             )
 
             insights.append(insight)
@@ -568,6 +588,7 @@ class HybridCoachingEngine:
         active_baseline: Dict[str, float],
         tick_range: Optional[Tuple[int, int]] = None,  # TASK 2.7.1: Reference Clip tick range
         demo_name: Optional[str] = None,  # TASK 2.7.1: Demo file name
+        pro_name: Optional[str] = None,
     ) -> HybridInsight:
         """
         Generate a single hybrid insight.
@@ -594,14 +615,15 @@ class HybridCoachingEngine:
         baseline = (
             baseline_entry["mean"] if isinstance(baseline_entry, dict) else float(baseline_entry)
         )
+        ref_label = pro_name if pro_name else "pro average"
         if z_score < 0:
             message_parts.append(
-                f"Your {feature_name.lower()} is below pro level "
+                f"Your {feature_name.lower()} is below {ref_label} "
                 f"(Z-score: {z_score:.1f}). Target: {baseline:.1f}"
             )
         else:
             message_parts.append(
-                f"Your {feature_name.lower()} exceeds pro average "
+                f"Your {feature_name.lower()} exceeds {ref_label} "
                 f"(Z-score: +{z_score:.1f}). Keep it up!"
             )
 
