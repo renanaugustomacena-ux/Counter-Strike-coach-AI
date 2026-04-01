@@ -394,15 +394,33 @@ class FeatureExtractor:
             weapon_name = weapon_name[7:]
         weapon_class = WEAPON_CLASS_MAP.get(weapon_name, None)
         if weapon_class is None:
-            # P-VEC-04 / H-12: Log unknown weapons at WARNING on first occurrence,
-            # then DEBUG only, to avoid log spam from repeated ticks.
-            if weapon_name != "unknown":
-                if weapon_name not in _unknown_weapons_seen:
-                    _unknown_weapons_seen.add(weapon_name)
-                    _logger.warning(
-                        "H-12: Unknown weapon '%s' — add to WEAPON_CLASS_MAP", weapon_name
+            # H-12: Distinguish numeric entity handles (old ingestion artifact) from
+            # genuinely unknown weapon strings. demoparser2 versions prior to ~0.40
+            # returned the active-weapon entity handle (a large 32-bit integer such as
+            # 13205906) instead of the display name. Those values are irrecoverable
+            # without the original entity table, so we fall back silently at DEBUG.
+            # 0xFFFFFF (16777215) is CS2's "no weapon equipped" sentinel — map to 0.0
+            # (same class as knife/empty hand) to avoid polluting the feature with 0.5.
+            try:
+                numeric_val = int(weapon_name)
+                if numeric_val == 0xFFFFFF:  # 16777215 — CS2 "no weapon" sentinel
+                    weapon_class = 0.0
+                else:
+                    # Unknown numeric handle: old data, re-ingestion required.
+                    _logger.debug(
+                        "H-12: Numeric weapon handle %s — legacy ingestion data, re-ingest to fix",
+                        weapon_name,
                     )
-            weapon_class = _UNKNOWN_WEAPON_DEFAULT
+                    weapon_class = _UNKNOWN_WEAPON_DEFAULT
+            except (ValueError, TypeError):
+                # Not numeric — genuinely unknown weapon string.
+                if weapon_name != "unknown":
+                    if weapon_name not in _unknown_weapons_seen:
+                        _unknown_weapons_seen.add(weapon_name)
+                        _logger.warning(
+                            "H-12: Unknown weapon '%s' — add to WEAPON_CLASS_MAP", weapon_name
+                        )
+                weapon_class = _UNKNOWN_WEAPON_DEFAULT
         vec[19] = weapon_class
 
         # Context-dependent features (20-24): Read from tick_data first (enriched

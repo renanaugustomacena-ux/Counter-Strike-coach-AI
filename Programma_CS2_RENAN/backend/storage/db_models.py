@@ -62,6 +62,24 @@ class PlayerMatchStats(SQLModel, table=True):
     )  # Enum-validated
     data_quality: str = Field(default="partial")  # C-04: "none", "partial", "complete"
 
+    @field_validator("data_quality", mode="before")
+    @classmethod
+    def _coerce_data_quality(cls, v: object) -> str:
+        """Coerce legacy numeric quality scores to string labels.
+
+        Older ingestion code stored a float ratio (0.0–1.0) instead of the
+        canonical labels ("none", "partial", "complete").  Reading those rows
+        back from SQLite triggers a Pydantic serialization warning; this
+        validator normalises them transparently.
+        """
+        if isinstance(v, float):
+            if v >= 1.0:
+                return "complete"
+            if v <= 0.0:
+                return "none"
+            return "partial"
+        return str(v) if v is not None else "partial"
+
     avg_kills: float = Field(default=0.0)
     avg_deaths: float = Field(default=0.0)
     avg_adr: float = Field(default=0.0)

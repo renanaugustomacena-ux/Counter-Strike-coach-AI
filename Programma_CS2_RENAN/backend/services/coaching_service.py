@@ -629,6 +629,41 @@ class CoachingService:
         except Exception as e:
             _coaching_logger.warning("Longitudinal coaching failed (non-fatal): %s", e)
 
+    def _find_best_match_pro(self, player_stats: Dict[str, float]) -> Optional[int]:
+        """Find the HLTV pro whose rating_2_0 is closest to the user's rating.
+
+        Returns the pro's hltv_id, or None if the HLTV DB is empty or unavailable.
+        """
+        from sqlmodel import select
+
+        from Programma_CS2_RENAN.backend.storage.database import get_hltv_db_manager
+        from Programma_CS2_RENAN.backend.storage.db_models import ProPlayerStatCard
+
+        user_rating = player_stats.get("rating", 0.0) or 0.0
+        if user_rating == 0.0:
+            return None
+
+        best_id: Optional[int] = None
+        best_dist = float("inf")
+        try:
+            with get_hltv_db_manager().get_session() as s:
+                for card in s.exec(select(ProPlayerStatCard)).all():
+                    dist = abs(card.rating_2_0 - user_rating)
+                    if dist < best_dist:
+                        best_dist = dist
+                        best_id = card.player_id
+        except Exception as e:
+            _coaching_logger.warning("Pro auto-selection failed: %s", e)
+
+        if best_id:
+            _coaching_logger.info(
+                "Auto-selected pro reference hltv_id=%s (rating_delta=%.3f) for user rating=%.2f",
+                best_id,
+                best_dist,
+                user_rating,
+            )
+        return best_id
+
     def _generate_hybrid_insights(
         self, player_name: str, demo_name: str, player_stats: Dict[str, float], map_name: str = None
     ):
@@ -643,7 +678,10 @@ class CoachingService:
 
                 self._hybrid_engine = HybridCoachingEngine()
             engine = self._hybrid_engine
-            insights = engine.generate_insights(player_stats, map_name=map_name)
+            pro_reference_id = self._find_best_match_pro(player_stats)
+            insights = engine.generate_insights(
+                player_stats, map_name=map_name, pro_reference_id=pro_reference_id
+            )
 
             # Save to database
             engine.save_insights_to_db(insights, player_name, demo_name)

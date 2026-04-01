@@ -341,12 +341,16 @@ class MatchDataManager:
             # Auto-migrate existing match DBs to current schema version
             self._ensure_match_schema(engine, match_id)
 
-            # Defensive check: verify only expected tables were created
+            # Defensive check: verify only expected tables were created.
+            # R2-03: Known legacy table names from schema versions before __tablename__
+            # was set explicitly (e.g. "matchtickstate" predates "match_tick_state").
+            # These are inert orphan tables that cause no functional harm.
+            _LEGACY_MATCH_TABLES = {"matchtickstate", "matcheventstate", "matchmetadata"}
             from sqlalchemy import inspect as sa_inspect
 
             created = set(sa_inspect(engine).get_table_names())
             expected = {t.name for t in _MATCH_TABLES}
-            unexpected = created - expected
+            unexpected = created - expected - _LEGACY_MATCH_TABLES
             if unexpected:
                 _logger.warning(
                     "R2-03: Unexpected tables in match DB %s: %s",
