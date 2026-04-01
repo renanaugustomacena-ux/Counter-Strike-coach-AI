@@ -92,7 +92,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 | Aspecto | `tests/` (raiz) | `Programma_CS2_RENAN/tests/` (principal) |
 |--------|-----------------|--------------------------------------|
 | Foco | Integracao, E2E, forense | Testes unitarios, testes de modulo |
-| Quantidade de testes | ~18 scripts | 1.515+ testes em 87 arquivos |
+| Quantidade de testes | ~18 scripts | 1.794+ testes em 89 arquivos |
 | Dados | Demos reais, DB de producao | DB em memoria, mocks, fixtures |
 | Framework | pytest + scripts standalone | pytest com rico ecossistema de fixtures |
 | Frequencia de execucao | Sob demanda, debugging | Cada commit (hooks pre-commit) |

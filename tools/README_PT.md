@@ -11,7 +11,7 @@ Ferramentas de projeto no nivel raiz para validacao, diagnostico, orquestracao d
 
 | Arquivo | Proposito | Categoria |
 |---------|-----------|-----------|
-| `headless_validator.py` | 319 verificacoes de regressao em 24 fases | Validacao |
+| `headless_validator.py` | 313 verificações de regressão em 24 fases | Validação |
 | `dead_code_detector.py` | Modulos orfaos, definicoes duplicadas, imports obsoletos | Validacao |
 | `verify_all_safe.py` | Verificacao de seguranca em todos os modulos | Validacao |
 | `portability_test.py` | Verificacoes de portabilidade multiplataforma | Validacao |
@@ -32,7 +32,7 @@ Ferramentas de projeto no nivel raiz para validacao, diagnostico, orquestracao d
 
 ## `headless_validator.py` --- O Gate de Regressao
 
-Esta e a ferramenta mais importante de todo o projeto. Executa **319 verificacoes automatizadas em 24 fases** e deve terminar com codigo de saida 0 antes de qualquer commit. Tambem esta conectado como hook pre-commit.
+Esta e a ferramenta mais importante de todo o projeto. Executa **313 verificações automatizadas em 24 fases** e deve terminar com codigo de saida 0 antes de qualquer commit. Tambem esta conectado como hook pre-commit.
 
 ### Fases de Validacao
 
