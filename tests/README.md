@@ -92,7 +92,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 | Aspect | `tests/` (root) | `Programma_CS2_RENAN/tests/` (main) |
 |--------|-----------------|--------------------------------------|
 | Focus | Integration, E2E, forensics | Unit tests, module tests |
-| Test count | ~18 scripts | 1,515+ tests in 87 files |
+| Test count | ~18 scripts | 1,794+ tests in 89 files |
 | Data | Real demos, production DB | In-memory DB, mocks, fixtures |
 | Framework | pytest + standalone scripts | pytest with rich fixture ecosystem |
 | Run frequency | On demand, debugging | Every commit (pre-commit hooks) |

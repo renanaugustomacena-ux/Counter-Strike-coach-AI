@@ -11,7 +11,7 @@ Strumenti di progetto a livello root per validazione, diagnostica, orchestrazion
 
 | File | Scopo | Categoria |
 |------|-------|-----------|
-| `headless_validator.py` | 319 controlli di regressione in 24 fasi | Validazione |
+| `headless_validator.py` | 313 controlli di regressione in 24 fasi | Validazione |
 | `dead_code_detector.py` | Moduli orfani, definizioni duplicate, import obsoleti | Validazione |
 | `verify_all_safe.py` | Verifica di sicurezza su tutti i moduli | Validazione |
 | `portability_test.py` | Controlli di portabilita cross-platform | Validazione |
@@ -32,7 +32,7 @@ Strumenti di progetto a livello root per validazione, diagnostica, orchestrazion
 
 ## `headless_validator.py` --- Il Gate di Regressione
 
-Questo e lo strumento piu importante dell'intero progetto. Esegue **319 controlli automatizzati in 24 fasi** e deve terminare con codice di uscita 0 prima di qualsiasi commit. E inoltre collegato come hook pre-commit.
+Questo e lo strumento piu importante dell'intero progetto. Esegue **313 controlli automatizzati in 24 fasi** e deve terminare con codice di uscita 0 prima di qualsiasi commit. E inoltre collegato come hook pre-commit.
 
 ### Fasi di Validazione
 

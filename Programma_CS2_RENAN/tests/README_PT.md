@@ -4,7 +4,7 @@
 
 **Autoridade:** `Programma_CS2_RENAN/tests/` -- Suite abrangente de regressao e corretude para o Macena CS2 Analyzer.
 
-A suite de testes contem mais de 1.515 testes distribuidos em 87 arquivos, seguindo a piramide
+A suite de testes contem mais de 1.794 testes distribuidos em 89 arquivos, seguindo a piramide
 de testes (unit > integration > e2e). Cada subsistema -- do vetor de features de 25 dimensoes
 passando pelas redes neurais, motor de coaching, camada de banco de dados e telas de UI -- e
 coberto por assercoes deterministicas e reprodutiveis. Os testes rodam sob pytest com uma guarda
