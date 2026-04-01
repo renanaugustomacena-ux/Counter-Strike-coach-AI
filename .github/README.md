@@ -30,10 +30,10 @@ Push / PR
     |       +-- pre-commit run --all-files
     |
     +-- Stage 2: TEST (matrix Ubuntu + Windows, ~3 min)
-    |       +-- pytest --cov-fail-under=30
+    |       +-- pytest --cov-fail-under=33
     |
     +-- Stage 3: INTEGRATION (matrix Ubuntu + Windows, ~5 min)
-    |       +-- headless_validator.py (319 checks, 24 phases)
+    |       +-- headless_validator.py (313 checks, 24 phases)
     |       +-- Cross-module consistency (METADATA_DIM == INPUT_DIM)
     |       +-- Portability tests
     |       +-- Integrity manifest verification
@@ -94,7 +94,7 @@ Before pushing, run these commands locally to catch issues early:
 pre-commit run --all-files
 
 # 2. Tests (like Stage 2)
-pytest Programma_CS2_RENAN/tests/ tests/ --cov=Programma_CS2_RENAN --cov-fail-under=30 -v
+pytest Programma_CS2_RENAN/tests/ tests/ --cov=Programma_CS2_RENAN --cov-fail-under=33 -v
 
 # 3. Headless validator (like Stage 3)
 python tools/headless_validator.py

@@ -79,7 +79,7 @@ Programma_CS2_RENAN/
 ├── assets/                     # Static assets (i18n, maps)
 ├── data/                       # Runtime data (demos, knowledge, configs)
 ├── models/                     # Trained model checkpoints
-├── tests/                      # Test suite (1,515+ tests in 87 files)
+├── tests/                      # Test suite (1,794+ tests in 89 files)
 ├── tools/                      # Package-level validation tools
 ├── __init__.py                 # Package init (__version__ = "1.0.0")
 ├── run_ingestion.py            # Demo ingestion entry point

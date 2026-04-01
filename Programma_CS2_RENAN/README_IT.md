@@ -79,7 +79,7 @@ Programma_CS2_RENAN/
 ├── assets/                     # Asset statici (i18n, mappe)
 ├── data/                       # Dati runtime (demo, conoscenza, configurazioni)
 ├── models/                     # Checkpoint dei modelli addestrati
-├── tests/                      # Suite di test (1,515+ test in 87 file)
+├── tests/                      # Suite di test (1,794+ test in 89 file)
 ├── tools/                      # Strumenti di validazione a livello pacchetto
 ├── __init__.py                 # Init del pacchetto (__version__ = "1.0.0")
 ├── run_ingestion.py            # Punto di ingresso ingestione demo

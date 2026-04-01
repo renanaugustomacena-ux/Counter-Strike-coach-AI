@@ -439,9 +439,9 @@ Counter-Strike-coach-AI/
 |   |   |
 |   |   +-- data_sources/              External data integration
 |   |   |   +-- demo_parser.py          demoparser2 wrapper (tick-level extraction)
-|   |   |   +-- hltv_api_service.py     HLTV professional metadata scraping
-|   |   |   +-- steam_api_service.py    Steam profile and match data
-|   |   |   +-- faceit_api_service.py   FaceIT match data integration
+|   |   |   +-- hltv_scraper.py         HLTV professional metadata scraping
+|   |   |   +-- steam_api.py            Steam profile and match data
+|   |   |   +-- faceit_api.py           FaceIT match data integration
 |   |   |
 |   |   +-- nn/                         Neural network subsystems
 |   |   |   +-- config.py               Global NN config (dimensions, lr, batch size, device)
@@ -473,8 +473,8 @@ Counter-Strike-coach-AI/
 |   |   |
 |   |   +-- storage/                   Database layer
 |   |       +-- database.py            SQLite WAL-mode connection management
-|   |       +-- models.py              SQLAlchemy/SQLModel ORM definitions
-|   |       +-- backup.py              Automated database backup
+|   |       +-- db_models.py           SQLAlchemy/SQLModel ORM definitions
+|   |       +-- backup_manager.py      Automated database backup
 |   |       +-- match_data_manager.py  Per-match SQLite database management
 |   |
 |   +-- core/                          Core application services
@@ -496,7 +496,7 @@ Counter-Strike-coach-AI/
 |   |   +-- visualizer.py             Chart and diagram rendering
 |   |   +-- pdf_generator.py          PDF report generation
 |   |
-|   +-- tests/                         Test suite (1,515+ tests)
+|   +-- tests/                         Test suite (1,794+ tests)
 |   +-- data/                          Static data (seed knowledge base, external datasets)
 |
 +-- docs/                              Documentation
