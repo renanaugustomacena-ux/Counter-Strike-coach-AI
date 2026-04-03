@@ -162,6 +162,8 @@ class JEPATrainer:
         should be > 0.01; below that indicates potential representation collapse.
         """
         with torch.no_grad():
+            if embeddings.shape[0] < 2:
+                return 0.0
             variance = embeddings.var(dim=0).mean().item()
             if variance < 0.01:
                 logger.warning(

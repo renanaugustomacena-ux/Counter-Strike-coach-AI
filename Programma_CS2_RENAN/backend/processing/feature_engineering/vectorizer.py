@@ -287,6 +287,15 @@ class FeatureExtractor:
                 return tick_data.get(key, default)
             return getattr(tick_data, key, default)
 
+        # P-VEC-01 fix: Auto-resolve map_name from tick_data when caller omits it.
+        # training_orchestrator calls extract_batch() without map_name, but each
+        # PlayerTickState has map_name as an attribute. This ensures z_penalty and
+        # map_id are computed during training, not just inference.
+        if map_name is None:
+            _auto_map = get_val("map_name", None)
+            if _auto_map and _auto_map != "de_unknown":
+                map_name = _auto_map
+
         vec = np.zeros(METADATA_DIM, dtype=np.float32)
 
         # Core vitals (0-4)
