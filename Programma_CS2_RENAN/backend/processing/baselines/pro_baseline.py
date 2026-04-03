@@ -318,8 +318,7 @@ def _load_pro_from_csv(path):
                     loaded_from_csv.append(csv_col)
 
         # Merge with HARD defaults for any missing keys
-        defaults = _get_default_pro_baseline()
-        for k, v in defaults.items():
+        for k, v in HARD_DEFAULT_BASELINE.items():
             if k not in baseline:
                 baseline[k] = v
 
@@ -332,7 +331,7 @@ def _load_pro_from_csv(path):
         return baseline
     except Exception as e:
         _logger.error("Failed to load pro baseline from CSV '%s': %s", path, e)
-        return _get_default_pro_baseline()
+        return None
 
 
 def _get_default_pro_baseline():

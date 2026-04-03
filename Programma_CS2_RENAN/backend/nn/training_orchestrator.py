@@ -371,6 +371,8 @@ class TrainingOrchestrator:
                         # NN-H-02: Use shared encode_raw_negatives() for consistency
                         # with training path (3D sequence expansion + mean pooling).
                         raw_neg = tensor_batch.get("negatives")
+                        if raw_neg is not None:
+                            raw_neg = raw_neg.to(next(trainer.model.parameters()).device)
                         seq_len = tensor_batch["context"].shape[1]
                         neg_latent = trainer.encode_raw_negatives(raw_neg, seq_len)
 
@@ -450,7 +452,7 @@ class TrainingOrchestrator:
             # to avoid false negatives from same-match ticks.
             n_neg = 5
             if len(self._neg_pool) >= n_neg:
-                pool_tensor = torch.stack(self._neg_pool[-200:])  # Up to 200 candidates
+                pool_tensor = torch.stack(self._neg_pool[-200:]).to(self.device)
                 pool_idx = self._neg_rng.choice(len(pool_tensor), n_neg, replace=False)
                 negatives = pool_tensor[pool_idx].unsqueeze(0)  # (1, 5, METADATA_DIM)
             elif b >= n_neg:
