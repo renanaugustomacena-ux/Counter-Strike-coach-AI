@@ -645,7 +645,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", choices=["pretrain", "finetune"], required=True)
-    parser.add_argument("--model-path", default="models/jepa_model.pt")
+    # L3 FIX: Resolve relative to project root so the path is stable regardless
+    # of the working directory when invoked via `python -m`.
+    parser.add_argument(
+        "--model-path", default=str(_PROJECT_ROOT / "models" / "jepa_model.pt")
+    )
     args = parser.parse_args()
 
     if args.mode == "pretrain":
