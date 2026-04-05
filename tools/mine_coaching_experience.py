@@ -71,6 +71,8 @@ def main() -> None:
     init_database()
 
     conn = sqlite3.connect(DB_PATH, timeout=30)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=30000")
     conn.row_factory = sqlite3.Row
 
     # Check current state
@@ -235,6 +237,8 @@ def main() -> None:
                 confidence=PRO_EXPERIENCE_CONFIDENCE,
             )
             inserted += 1
+        except sqlite3.IntegrityError:
+            skipped += 1
         except Exception as e:
             if "UNIQUE" in str(e).upper() or "duplicate" in str(e).lower():
                 skipped += 1
@@ -246,6 +250,8 @@ def main() -> None:
 
     # Final report
     conn2 = sqlite3.connect(DB_PATH, timeout=10)
+    conn2.execute("PRAGMA journal_mode=WAL")
+    conn2.execute("PRAGMA busy_timeout=30000")
     final = conn2.execute("SELECT COUNT(*) FROM coachingexperience").fetchone()[0]
     conn2.close()
 

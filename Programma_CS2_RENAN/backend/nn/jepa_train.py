@@ -34,6 +34,16 @@ _DB_PATH = str(_PROJECT_ROOT / "Programma_CS2_RENAN" / "backend" / "storage" / "
 
 logger = get_logger("cs2analyzer.jepa_train")
 
+
+def _open_db(row_factory: bool = False) -> sqlite3.Connection:
+    """Open monolith DB with WAL mode and busy timeout enforced."""
+    conn = sqlite3.connect(_DB_PATH, check_same_thread=False)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=30000")
+    if row_factory:
+        conn.row_factory = sqlite3.Row
+    return conn
+
 # J-1 FIX: Tick-level sequence constants.
 # context_len + target_len = 20 minimum ticks for one training sample.
 _MIN_TICKS_FOR_SEQUENCE = 20
@@ -53,6 +63,14 @@ class JEPAPretrainDataset(Dataset):
     def __init__(
         self, match_sequences: List[np.ndarray], context_len: int = 10, target_len: int = 10
     ):
+        # M2 FIX: Enforce that min ticks constant covers context + target windows.
+        # Without this, changes to context/target lengths could silently produce
+        # under-sized tensors that crash DataLoader collation.
+        required = context_len + target_len
+        assert _MIN_TICKS_FOR_SEQUENCE >= required, (
+            f"_MIN_TICKS_FOR_SEQUENCE ({_MIN_TICKS_FOR_SEQUENCE}) must be >= "
+            f"context_len + target_len ({required})"
+        )
         self.sequences = match_sequences
         self.context_len = context_len
         self.target_len = target_len
@@ -100,8 +118,7 @@ def _load_tick_sequence(
         np.ndarray of shape (num_ticks, METADATA_DIM), or empty array if
         insufficient ticks.
     """
-    conn = sqlite3.connect(_DB_PATH, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
+    conn = _open_db(row_factory=True)
     try:
         rows = conn.execute(
             "SELECT * FROM playertickstate "
@@ -109,6 +126,16 @@ def _load_tick_sequence(
             "ORDER BY tick LIMIT ?",
             (demo_name, player_name, max_ticks),
         ).fetchall()
+
+        # KAST FIX: Inject avg_kast from playermatchstats so feature #16 is non-zero.
+        # Without this, kast_estimate is always 0.0 because playertickstate has no
+        # kast fields and the vectorizer's estimate_kast_from_stats() fallback also
+        # gets all zeros (no kills/deaths columns in tick data).
+        row_kast = conn.execute(
+            "SELECT avg_kast FROM playermatchstats "
+            "WHERE demo_name = ? AND LOWER(player_name) = LOWER(?)",
+            (demo_name, player_name),
+        ).fetchone()
     finally:
         conn.close()
 
@@ -119,22 +146,10 @@ def _load_tick_sequence(
     tick_dicts = [dict(row) for row in rows]
     map_name = tick_dicts[0].get("map_name")
 
-    # KAST FIX: Inject avg_kast from playermatchstats so feature #16 is non-zero.
-    # Without this, kast_estimate is always 0.0 because playertickstate has no
-    # kast fields and the vectorizer's estimate_kast_from_stats() fallback also
-    # gets all zeros (no kills/deaths columns in tick data).
-    conn2 = sqlite3.connect(_DB_PATH, check_same_thread=False)
-    try:
-        row_kast = conn2.execute(
-            "SELECT avg_kast FROM playermatchstats "
-            "WHERE demo_name = ? AND LOWER(player_name) = LOWER(?)",
-            (demo_name, player_name),
-        ).fetchone()
-        avg_kast = float(row_kast[0]) if row_kast and row_kast[0] is not None else 0.0
-    finally:
-        conn2.close()
-
-    if avg_kast > 0:
+    # Inject KAST if available (even 0.0 is valid — it means the player had no
+    # positive-impact rounds, distinct from "no data available")
+    if row_kast is not None and row_kast[0] is not None:
+        avg_kast = float(row_kast[0])
         for td in tick_dicts:
             td["kast"] = avg_kast
 
@@ -166,7 +181,7 @@ def load_pro_demo_sequences(limit: int = 100) -> List[np.ndarray]:
     Returns:
         List of match sequences [num_ticks, METADATA_DIM]
     """
-    conn = sqlite3.connect(_DB_PATH, check_same_thread=False)
+    conn = _open_db()
     try:
         rows = conn.execute(
             "SELECT demo_name, player_name FROM playermatchstats "
@@ -206,11 +221,11 @@ def load_user_match_sequences(limit: int = 200) -> tuple:
         (X_train, y_train) where X_train is [N, seq_len, METADATA_DIM]
         and y_train is [N, METADATA_DIM] (last-tick features as target).
     """
-    conn = sqlite3.connect(_DB_PATH, check_same_thread=False)
+    conn = _open_db()
     try:
         rows = conn.execute(
             "SELECT demo_name, player_name FROM playermatchstats "
-            "WHERE is_pro = 0 "
+            "WHERE is_pro = 0 AND sample_weight > 0 "
             "ORDER BY match_date "
             "LIMIT ?",
             (limit,),
@@ -363,10 +378,15 @@ def train_jepa_pretrain(
             # Forward pass
             pred, target = model.forward_jepa_pretrain(x_context, x_target)
 
-            # P1-05 + NN-35: Sample negatives via randperm (O(B) instead of O(B²))
+            # M1 FIX: Skip degenerate single-sample batches where positive==negative
+            # produces zero contrastive loss (no learning signal).
             batch_size_actual = pred.size(0)
+            if batch_size_actual < 2:
+                continue
+
+            # P1-05 + NN-35: Sample negatives via randperm (O(B) instead of O(B²))
             effective_negatives = min(num_negatives, batch_size_actual - 1)
-            if effective_negatives > 0 and batch_size_actual > 1:
+            if effective_negatives > 0:
                 # For each sample i, shift a random permutation to exclude i
                 perm = torch.randperm(batch_size_actual - 1, device=device)
                 perm = perm.unsqueeze(0).expand(batch_size_actual, -1)
@@ -576,7 +596,18 @@ def save_jepa_model(model: JEPACoachingModel, path: str, optimizer=None):
     if metadata:
         checkpoint["training_metadata"] = metadata
 
-    torch.save(checkpoint, path)
+    # M3 FIX: Atomic write — save to temp file then os.replace() so a crash
+    # mid-save doesn't leave a corrupt checkpoint that breaks the next load.
+    import os
+    import tempfile
+
+    save_dir = os.path.dirname(os.path.abspath(path))
+    os.makedirs(save_dir, exist_ok=True)
+    with tempfile.NamedTemporaryFile(dir=save_dir, delete=False, suffix=".tmp") as tmp:
+        torch.save(checkpoint, tmp.name)
+        tmp_path = tmp.name
+    os.replace(tmp_path, path)
+
     logger.info(
         "Saved JEPA model to %s (%d params, pretrained=%s)",
         path,

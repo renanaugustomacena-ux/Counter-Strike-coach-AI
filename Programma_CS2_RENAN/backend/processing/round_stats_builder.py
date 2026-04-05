@@ -242,11 +242,12 @@ def build_round_stats(
     all_players.discard("")
 
     # Initialize per-round, per-player accumulators
+    # M6 FIX: Sort players for deterministic iteration order across runs.
     round_player_stats: Dict[Tuple[int, str], Dict] = {}
 
     for b in boundaries:
         rn = b["round_number"]
-        for player in all_players:
+        for player in sorted(all_players):
             team_num = team_roster.get(player, 0)
             # P-RSB-02: Skip players without a valid team assignment.
             if team_num not in (2, 3):
