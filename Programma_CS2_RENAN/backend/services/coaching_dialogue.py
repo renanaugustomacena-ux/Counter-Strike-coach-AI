@@ -73,6 +73,15 @@ INTENT_KEYWORDS: Dict[str, List[str]] = {
         "sens",
         "sensitivity",
     ],
+    "player_query": [
+        "tell me about",
+        "who is",
+        "stats for",
+        "profile",
+        "nationality",
+        "country",
+        "what team",
+    ],
 }
 
 SYSTEM_PROMPT_TEMPLATE = """\
@@ -86,9 +95,17 @@ Guidelines:
 - Reference the player's actual stats and recent coaching insights when relevant.
 - If the player asks about positioning, utility, economy, or aim, give concrete examples.
 - Keep responses concise (2-4 sentences for simple questions, up to a short paragraph for complex ones).
-- When referencing pro players or techniques, be specific about what to do.
 - Do NOT repeat raw numbers — interpret and explain them.
-- If you don't have enough information to answer, say so honestly.\
+
+CRITICAL RULES FOR FACTUAL ACCURACY:
+- When player data is provided in a "VERIFIED PLAYER DATA" block, use ONLY that data.
+- NEVER guess or fabricate a player's team, nationality, real name, or statistics.
+- If no verified data is available for a player, say: \
+"I don't have verified data for that player in my database."
+- Do NOT confuse different players — each player profile is distinct.
+- When comparing players, only use data explicitly provided — do not invent statistics.
+- If the user asks about a player and no VERIFIED PLAYER DATA block is present, \
+say you don't have information on that player rather than guessing.\
 """
 
 
@@ -100,6 +117,7 @@ class CoachingDialogueEngine:
 
     def __init__(self):
         self._llm = get_llm_service()
+        self._player_lookup = None  # Lazy init to avoid import cost at startup
         self._player_context: Dict = {}
         self._system_prompt: str = ""
         self._history: List[Dict[str, str]] = []
@@ -241,21 +259,53 @@ class CoachingDialogueEngine:
         player_context_str = "\n".join(parts)
         return SYSTEM_PROMPT_TEMPLATE.format(player_context=player_context_str)
 
+    def _get_player_lookup(self):
+        """Lazy-init PlayerLookupService to avoid import cost at startup."""
+        if self._player_lookup is None:
+            from Programma_CS2_RENAN.backend.services.player_lookup import PlayerLookupService
+
+            self._player_lookup = PlayerLookupService()
+        return self._player_lookup
+
     def _classify_intent(self, message: str) -> str:
-        """Keyword-based intent classification for retrieval routing."""
+        """Keyword-based intent classification with player entity detection."""
         message_lower = message.lower()
         scores: Dict[str, int] = {}
         for intent, keywords in INTENT_KEYWORDS.items():
             scores[intent] = sum(1 for kw in keywords if kw in message_lower)
         best = max(scores, key=scores.get)  # type: ignore[arg-type]
-        return best if scores[best] > 0 else "general"
+        intent = best if scores[best] > 0 else "general"
+
+        # Player entity detection: if the message mentions a known pro player,
+        # override to player_query so we inject verified data instead of guessing.
+        if intent in ("general", "player_query"):
+            try:
+                mentions = self._get_player_lookup().detect_player_mentions(message)
+                if mentions:
+                    return "player_query"
+            except Exception as exc:
+                logger.debug("Player detection failed: %s", exc)
+
+        return intent
 
     def _retrieve_context(self, user_message: str, intent: str) -> str:
         """Retrieve RAG knowledge and experiences relevant to the question."""
         blocks: List[str] = []
 
+        # Player-specific factual context (structured DB lookup, not RAG)
+        if intent == "player_query":
+            try:
+                lookup = self._get_player_lookup()
+                mentions = lookup.detect_player_mentions(user_message)
+                for name in mentions:
+                    profile = lookup.lookup_player(name)
+                    if profile:
+                        blocks.append(lookup.format_player_context(profile))
+            except Exception as exc:
+                logger.warning("Player lookup failed: %s", exc)
+
         # RAG tactical knowledge
-        category = intent if intent != "general" else None
+        category = intent if intent not in ("general", "player_query") else None
         try:
             from Programma_CS2_RENAN.backend.knowledge.rag_knowledge import KnowledgeRetriever
 

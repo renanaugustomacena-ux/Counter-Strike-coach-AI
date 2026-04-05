@@ -12,13 +12,14 @@ Pipeline:
     4. Add to RAG knowledge base
 """
 
+from collections import defaultdict
 from typing import Dict, List
 
 from sqlmodel import select
 
 from Programma_CS2_RENAN.backend.knowledge.rag_knowledge import KnowledgePopulator
 from Programma_CS2_RENAN.backend.storage.database import get_hltv_db_manager
-from Programma_CS2_RENAN.backend.storage.db_models import ProPlayer, ProPlayerStatCard
+from Programma_CS2_RENAN.backend.storage.db_models import ProPlayer, ProPlayerStatCard, ProTeam
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.pro_demo_miner")
@@ -28,6 +29,11 @@ _STAR_FRAGGER_IMPACT = 1.15
 _SNIPER_HS_THRESHOLD = 0.35
 _SUPPORT_KAST_THRESHOLD = 0.72
 _ENTRY_OPENING_THRESHOLD = 0.52
+
+_KNOWN_MAPS = {"mirage", "dust2", "inferno", "nuke", "overpass", "ancient", "anubis", "vertigo"}
+
+# Minimum rounds on a (map, side) combination for map-specific knowledge
+_MIN_MAP_ROUNDS = 10
 
 
 class ProStatsMiner:
@@ -73,8 +79,21 @@ class ProStatsMiner:
                 ).first()
                 nickname = player.nickname if player else f"Player_{card.player_id}"
 
+                # Fetch team + identity metadata for richer knowledge entries
+                team_name = None
+                country = player.country if player else None
+                real_name = player.real_name if player else None
+                if player and player.team_id:
+                    team = session.exec(
+                        select(ProTeam).where(ProTeam.hltv_id == player.team_id)
+                    ).first()
+                    if team:
+                        team_name = team.name
+
                 try:
-                    entries = self._generate_player_knowledge(card, nickname)
+                    entries = self._generate_player_knowledge(
+                        card, nickname, team_name, country, real_name
+                    )
                     for entry in entries:
                         try:
                             self.populator.add_knowledge(**entry)
@@ -88,18 +107,35 @@ class ProStatsMiner:
         logger.info("Total knowledge mined: %s entries", total_knowledge)
         return total_knowledge
 
-    def _generate_player_knowledge(self, card: ProPlayerStatCard, nickname: str) -> List[Dict]:
+    def _generate_player_knowledge(
+        self,
+        card: ProPlayerStatCard,
+        nickname: str,
+        team_name: str = None,
+        country: str = None,
+        real_name: str = None,
+    ) -> List[Dict]:
         """Generate knowledge entries from a player's stat card."""
         knowledge = []
 
         archetype = self._classify_archetype(card)
+
+        # Build identity prefix with available metadata
+        identity_parts = [nickname]
+        if real_name:
+            identity_parts.append(f"({real_name})")
+        if country:
+            identity_parts.append(f"— {country}")
+        if team_name:
+            identity_parts.append(f"— Team: {team_name}")
+        identity = " ".join(identity_parts)
 
         # Baseline knowledge entry
         knowledge.append(
             {
                 "title": f"Pro baseline: {nickname} ({archetype})",
                 "description": (
-                    f"{nickname} — Rating 2.0: {card.rating_2_0:.2f}, "
+                    f"{identity} — Rating 2.0: {card.rating_2_0:.2f}, "
                     f"KPR: {card.kpr:.2f}, DPR: {card.dpr:.2f}, "
                     f"ADR: {card.adr:.1f}, "
                     # C-3 FIX: Use 1.0 as discriminator (unambiguous boundary).
@@ -155,6 +191,118 @@ class ProStatsMiner:
 
         return knowledge
 
+    def mine_map_specific_knowledge(self) -> int:
+        """
+        Generate map-specific tactical knowledge from RoundStats demo data.
+
+        Aggregates per-(player, map, side) performance from the monolith DB's
+        roundstats table and creates TacticalKnowledge entries for standout
+        performances (avg_rating >= 1.0, minimum rounds threshold).
+
+        Returns:
+            Number of knowledge entries created.
+        """
+        import sqlite3
+        from pathlib import Path
+
+        db_path = str(
+            Path(__file__).resolve().parent.parent / "storage" / "database.db"
+        )
+        conn = sqlite3.connect(db_path, timeout=30)
+
+        # Load all roundstats grouped by (demo_name, player, side)
+        rows = conn.execute("""
+            SELECT demo_name, player_name, side,
+                   SUM(kills) as total_kills,
+                   SUM(damage_dealt) as total_dmg,
+                   CAST(SUM(kast) AS REAL) / COUNT(*) as kast_rate,
+                   CAST(SUM(opening_kill) AS REAL) / COUNT(*) as ok_rate,
+                   AVG(round_rating) as avg_rating,
+                   COUNT(*) as rounds_played
+            FROM roundstats
+            GROUP BY demo_name, player_name, side
+        """).fetchall()
+        conn.close()
+
+        # Re-group by (map, player, side) across demos
+        aggregates: Dict[tuple, dict] = defaultdict(
+            lambda: {
+                "total_kills": 0,
+                "total_dmg": 0,
+                "kast_sum": 0.0,
+                "ok_sum": 0.0,
+                "rating_sum": 0.0,
+                "rounds": 0,
+                "demos": 0,
+            }
+        )
+
+        for demo_name, player, side, t_kills, t_dmg, kast, ok, rating, rnds in rows:
+            map_name = None
+            for part in reversed(demo_name.split("-")):
+                if part in _KNOWN_MAPS:
+                    map_name = part
+                    break
+            if not map_name:
+                continue
+
+            key = (map_name, player, side)
+            a = aggregates[key]
+            a["total_kills"] += t_kills
+            a["total_dmg"] += t_dmg
+            a["kast_sum"] += kast * rnds
+            a["ok_sum"] += ok * rnds
+            a["rating_sum"] += rating * rnds
+            a["rounds"] += rnds
+            a["demos"] += 1
+
+        # Generate knowledge for standout performances
+        entries_created = 0
+        for (map_name, player, side), a in aggregates.items():
+            if a["rounds"] < _MIN_MAP_ROUNDS:
+                continue
+
+            avg_rating = a["rating_sum"] / a["rounds"]
+            kast_rate = a["kast_sum"] / a["rounds"]
+            ok_rate = a["ok_sum"] / a["rounds"]
+            kpr = a["total_kills"] / a["rounds"]
+            adr = a["total_dmg"] / a["rounds"]
+
+            # Only notable performances
+            if avg_rating < 1.0:
+                continue
+
+            display_name = player.title()
+            title = f"{display_name}: {map_name.title()} {side}-side reference"
+            description = (
+                f"{display_name} on {map_name.title()} ({side}-side): "
+                f"Rating {avg_rating:.2f}, KPR {kpr:.2f}, ADR {adr:.0f}, "
+                f"KAST {kast_rate * 100:.0f}%, "
+                f"Opening duel rate {ok_rate * 100:.0f}%. "
+                f"Based on {a['rounds']} rounds across {a['demos']} demos."
+            )
+            situation = f"{side}-side play on {map_name.title()}"
+
+            try:
+                self.populator.add_knowledge(
+                    title=title,
+                    description=description,
+                    category="pro_map_reference",
+                    situation=situation,
+                    map_name=map_name,
+                    pro_example=f"{display_name} ({map_name} stats)",
+                )
+                entries_created += 1
+            except Exception as e:
+                logger.warning("Failed to add map knowledge for %s: %s", title, e)
+
+        logger.info(
+            "Map-specific knowledge: %d entries from %d aggregates",
+            entries_created,
+            len(aggregates),
+        )
+        return entries_created
+
     def _classify_archetype(self, card: ProPlayerStatCard) -> str:
         """Classify player archetype based on stat profile."""
         if card.impact >= _STAR_FRAGGER_IMPACT and card.rating_2_0 >= 1.10:
@@ -187,6 +335,12 @@ def auto_populate_from_pro_demos(limit: int = 50) -> int:
 
 
 if __name__ == "__main__":
-    logger.info("=== Pro Stats Mining Test ===\n")
-    count = auto_populate_from_pro_demos(limit=10)
+    from Programma_CS2_RENAN.backend.storage.database import init_database
+
+    init_database()
+    logger.info("=== Pro Stats Mining ===\n")
+    miner = ProStatsMiner()
+    count = miner.mine_all_pro_stats(limit=50)
     logger.info("Mined %s knowledge entries from pro stats", count)
+    map_count = miner.mine_map_specific_knowledge()
+    logger.info("Mined %s map-specific knowledge entries", map_count)

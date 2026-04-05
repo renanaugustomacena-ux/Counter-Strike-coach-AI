@@ -284,6 +284,7 @@ def build_round_stats(
                 "equipment_value": 0,
                 "round_won": round_won,
                 "mvp": False,
+                "kast": False,
                 "round_rating": None,
             }
 
@@ -447,8 +448,15 @@ def build_round_stats(
     except Exception as e:
         logger.warning("Trade kill integration into round stats skipped: %s", e)
 
-    # Compute per-round HLTV 2.0 rating for each entry
+    # Compute per-round KAST flag and HLTV 2.0 rating for each entry
     for key, stats in round_player_stats.items():
+        survived = stats["deaths"] == 0
+        stats["kast"] = bool(
+            stats["kills"] > 0
+            or stats["assists"] > 0
+            or survived
+            or stats["was_traded"]
+        )
         stats["round_rating"] = compute_round_rating(stats)
 
     result = list(round_player_stats.values())

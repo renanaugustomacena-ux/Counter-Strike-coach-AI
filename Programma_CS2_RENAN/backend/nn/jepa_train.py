@@ -12,13 +12,14 @@ Usage:
     python -m Programma_CS2_RENAN.backend.nn.jepa_train --mode finetune
 """
 
+import sqlite3
 import sys
+from pathlib import Path
 from typing import List
 
 import numpy as np
 import torch
 import torch.nn as nn
-from sqlmodel import select
 from torch.utils.data import DataLoader, Dataset
 
 from Programma_CS2_RENAN.backend.nn.jepa_model import JEPACoachingModel, jepa_contrastive_loss
@@ -26,9 +27,10 @@ from Programma_CS2_RENAN.backend.processing.feature_engineering import (
     METADATA_DIM,
     FeatureExtractor,
 )
-from Programma_CS2_RENAN.backend.storage.database import get_db_manager
-from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats, PlayerTickState
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+_DB_PATH = str(_PROJECT_ROOT / "Programma_CS2_RENAN" / "backend" / "storage" / "database.db")
 
 logger = get_logger("cs2analyzer.jepa_train")
 
@@ -76,12 +78,15 @@ class JEPAPretrainDataset(Dataset):
 
 
 def _load_tick_sequence(
-    session,
     demo_name: str,
     player_name: str,
     max_ticks: int = _MAX_TICKS_PER_SEQUENCE,
 ) -> np.ndarray:
     """Load tick-level features for one player in one demo via FeatureExtractor.
+
+    Uses raw sqlite3 (no ORM overhead) with the composite index
+    idx_pts_demo_player_tick for O(max_ticks) query cost instead of a full
+    demo scan.
 
     J-1 FIX: Uses the same FeatureExtractor as the orchestrator (Path A),
     producing the canonical 25-dim tick-level vector (health/100, armor/100,
@@ -95,22 +100,48 @@ def _load_tick_sequence(
         np.ndarray of shape (num_ticks, METADATA_DIM), or empty array if
         insufficient ticks.
     """
-    ticks = session.exec(
-        select(PlayerTickState)
-        .where(PlayerTickState.demo_name == demo_name)
-        .where(PlayerTickState.player_name == player_name)
-        .order_by(PlayerTickState.tick)
-        .limit(max_ticks)
-    ).all()
+    conn = sqlite3.connect(_DB_PATH, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute(
+            "SELECT * FROM playertickstate "
+            "WHERE demo_name = ? AND player_name = ? "
+            "ORDER BY tick LIMIT ?",
+            (demo_name, player_name, max_ticks),
+        ).fetchall()
+    finally:
+        conn.close()
 
-    if len(ticks) < _MIN_TICKS_FOR_SEQUENCE:
+    if len(rows) < _MIN_TICKS_FOR_SEQUENCE:
         return np.array([], dtype=np.float32)
 
-    map_name = ticks[0].map_name if ticks else None
+    # Convert sqlite3.Row → dict so FeatureExtractor.extract() uses .get() path
+    tick_dicts = [dict(row) for row in rows]
+    map_name = tick_dicts[0].get("map_name")
+
+    # KAST FIX: Inject avg_kast from playermatchstats so feature #16 is non-zero.
+    # Without this, kast_estimate is always 0.0 because playertickstate has no
+    # kast fields and the vectorizer's estimate_kast_from_stats() fallback also
+    # gets all zeros (no kills/deaths columns in tick data).
+    conn2 = sqlite3.connect(_DB_PATH, check_same_thread=False)
+    try:
+        row_kast = conn2.execute(
+            "SELECT avg_kast FROM playermatchstats "
+            "WHERE demo_name = ? AND LOWER(player_name) = LOWER(?)",
+            (demo_name, player_name),
+        ).fetchone()
+        avg_kast = float(row_kast[0]) if row_kast and row_kast[0] is not None else 0.0
+    finally:
+        conn2.close()
+
+    if avg_kast > 0:
+        for td in tick_dicts:
+            td["kast"] = avg_kast
+
     # V-4 FIX: extract_batch() can raise DataQualityError (>5% NaN/Inf).
     # Without try/except, one corrupt demo crashes the entire data loading run.
     try:
-        features = FeatureExtractor.extract_batch(ticks, map_name=map_name)
+        features = FeatureExtractor.extract_batch(tick_dicts, map_name=map_name)
     except Exception as e:
         logger.warning("Skipping %s/%s — extract_batch failed: %s", demo_name, player_name, e)
         return np.array([], dtype=np.float32)
@@ -120,6 +151,10 @@ def _load_tick_sequence(
 def load_pro_demo_sequences(limit: int = 100) -> List[np.ndarray]:
     """
     Load pro demo sequences as tick-level features via FeatureExtractor.
+
+    Uses raw sqlite3 for match listing and tick extraction — avoids ORM
+    instantiation overhead for potentially 100 × 500 = 50K row objects.
+    Ghost players (sample_weight=0.0) are excluded from training data.
 
     J-1 FIX: Queries PlayerTickState (tick-level) instead of RoundStats
     (round-aggregate), producing the canonical 25-dim vector that matches
@@ -131,20 +166,26 @@ def load_pro_demo_sequences(limit: int = 100) -> List[np.ndarray]:
     Returns:
         List of match sequences [num_ticks, METADATA_DIM]
     """
-    db = get_db_manager()
+    conn = sqlite3.connect(_DB_PATH, check_same_thread=False)
+    try:
+        rows = conn.execute(
+            "SELECT demo_name, player_name FROM playermatchstats "
+            "WHERE is_pro = 1 AND sample_weight > 0 "
+            "LIMIT ?",
+            (limit,),
+        ).fetchall()
+    finally:
+        conn.close()
+
     sequences = []
     skipped = 0
 
-    with db.get_session() as session:
-        stmt = select(PlayerMatchStats).where(PlayerMatchStats.is_pro == True).limit(limit)
-        matches = session.exec(stmt).all()
-
-        for match in matches:
-            features = _load_tick_sequence(session, match.demo_name, match.player_name)
-            if features.size == 0:
-                skipped += 1
-                continue
-            sequences.append(features)
+    for demo_name, player_name in rows:
+        features = _load_tick_sequence(demo_name, player_name)
+        if features.size == 0:
+            skipped += 1
+            continue
+        sequences.append(features)
 
     logger.info(
         "Loaded %d pro demo tick sequences via FeatureExtractor (%d skipped — insufficient ticks)",
@@ -165,26 +206,28 @@ def load_user_match_sequences(limit: int = 200) -> tuple:
         (X_train, y_train) where X_train is [N, seq_len, METADATA_DIM]
         and y_train is [N, METADATA_DIM] (last-tick features as target).
     """
-    db = get_db_manager()
+    conn = sqlite3.connect(_DB_PATH, check_same_thread=False)
+    try:
+        rows = conn.execute(
+            "SELECT demo_name, player_name FROM playermatchstats "
+            "WHERE is_pro = 0 "
+            "ORDER BY match_date "
+            "LIMIT ?",
+            (limit,),
+        ).fetchall()
+    finally:
+        conn.close()
+
     X_sequences = []
     y_targets = []
 
-    with db.get_session() as session:
-        stmt = (
-            select(PlayerMatchStats)
-            .where(PlayerMatchStats.is_pro == False)
-            .order_by(PlayerMatchStats.match_date)
-            .limit(limit)
-        )
-        matches = session.exec(stmt).all()
+    for demo_name, player_name in rows:
+        features = _load_tick_sequence(demo_name, player_name)
+        if features.size == 0:
+            continue
 
-        for match in matches:
-            features = _load_tick_sequence(session, match.demo_name, match.player_name)
-            if features.size == 0:
-                continue
-
-            X_sequences.append(features)
-            y_targets.append(features[-1])
+        X_sequences.append(features)
+        y_targets.append(features[-1])
 
     if not X_sequences:
         return None, None
