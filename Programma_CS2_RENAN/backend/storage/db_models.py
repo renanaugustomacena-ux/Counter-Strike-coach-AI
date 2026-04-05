@@ -170,6 +170,8 @@ class PlayerTickState(SQLModel, table=True):
     armor: int = Field(default=0)
     is_crouching: bool = Field(default=False)
     is_scoped: bool = Field(default=False)
+    has_helmet: bool = Field(default=False)
+    has_defuser: bool = Field(default=False)
     active_weapon: str = Field(default="unknown")
     equipment_value: int = Field(default=0)
 
@@ -671,6 +673,7 @@ class RoundStats(SQLModel, table=True):
     # Outcome
     round_won: bool = Field(default=False)
     mvp: bool = Field(default=False)
+    kast: bool = Field(default=False)  # Kill/Assist/Survive/Trade — per-round binary flag
 
     # Computed
     round_rating: Optional[float] = Field(default=None)

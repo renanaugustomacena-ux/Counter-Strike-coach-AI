@@ -526,8 +526,24 @@ def _save_player_stats(db_manager, row, demo_name, is_pro):
     # Use clean stem to align with PlayerTickState and enable AI Coach linking
     clean_demo_name = Path(demo_name).stem if str(demo_name).endswith(".dem") else demo_name
 
+    # Resolve pro_player_id from HLTV database via NicknameResolver
+    resolved_pro_id = None
+    if is_pro:
+        try:
+            from Programma_CS2_RENAN.backend.processing.baselines.pro_player_linker import (
+                ProPlayerLinker,
+            )
+
+            resolved_pro_id = ProPlayerLinker().link_player(p_name)
+        except Exception as exc:
+            logger.warning("Pro player linking failed for '%s': %s", p_name, exc)
+
     match_stats = PlayerMatchStats(
-        player_name=p_name, demo_name=clean_demo_name, is_pro=is_pro, **stats_dict
+        player_name=p_name,
+        demo_name=clean_demo_name,
+        is_pro=is_pro,
+        pro_player_id=resolved_pro_id,
+        **stats_dict,
     )
     db_manager.upsert(match_stats)
     current_name = get_setting("CS2_PLAYER_NAME")
@@ -1370,11 +1386,20 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
             "armor": df_legacy_source.get(
                 "armor", pd.Series(0, index=df_legacy_source.index)
             ).astype(int),
+            # ducking is the correct demoparser2 field for crouch state
             "is_crouching": df_legacy_source.get(
-                "is_crouching", pd.Series(False, index=df_legacy_source.index)
+                "ducking", df_legacy_source.get(
+                    "is_crouching", pd.Series(False, index=df_legacy_source.index)
+                )
             ).astype(bool),
             "is_scoped": df_legacy_source.get(
                 "is_scoped", pd.Series(False, index=df_legacy_source.index)
+            ).astype(bool),
+            "has_helmet": df_legacy_source.get(
+                "has_helmet", pd.Series(False, index=df_legacy_source.index)
+            ).astype(bool),
+            "has_defuser": df_legacy_source.get(
+                "has_defuser", pd.Series(False, index=df_legacy_source.index)
             ).astype(bool),
             "active_weapon": df_legacy_source.get(
                 "active_weapon", pd.Series("unknown", index=df_legacy_source.index)
@@ -1385,8 +1410,11 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
             "enemies_visible": df_legacy_source.get(
                 "enemies_visible", pd.Series(0, index=df_legacy_source.index)
             ).astype(int),
-            "is_blinded": df_legacy_source.get(
-                "is_blinded", pd.Series(False, index=df_legacy_source.index)
+            # flash_duration > 0 is the correct demoparser2 signal for blind state
+            "is_blinded": (
+                df_legacy_source.get(
+                    "flash_duration", pd.Series(0.0, index=df_legacy_source.index)
+                ).astype(float) > 0
             ).astype(bool),
             # --- Enriched features ---
             "round_number": df_legacy_source.get(
