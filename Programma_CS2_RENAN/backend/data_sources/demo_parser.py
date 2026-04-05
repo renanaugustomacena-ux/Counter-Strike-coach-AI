@@ -399,8 +399,10 @@ def parse_sequential_ticks(
             "life_state",
             # Tactical State
             "is_crouching",
+            "ducking",  # demoparser2 actual field for crouch state
             "is_scoped",
             "is_blinded",
+            "flash_duration",  # demoparser2 actual field for blind state (float > 0 = blinded)
             # Equipment & Economy
             "weapon_name",
             "current_equip_value",
