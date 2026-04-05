@@ -46,6 +46,13 @@ external_libs/*.tar.gz
 # User settings (machine-specific paths and preferences)
 user_settings.json
 
+# Secrets & credentials (defense-in-depth — never commit these)
+*.env
+!.env.example
+*.key
+*.pem
+*.secret
+
 # Model checkpoints (binary, regenerable via training)
 *.pt
 

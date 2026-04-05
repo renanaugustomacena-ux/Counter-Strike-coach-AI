@@ -209,6 +209,8 @@ class ProStatsMiner:
             Path(__file__).resolve().parent.parent / "storage" / "database.db"
         )
         conn = sqlite3.connect(db_path, timeout=30)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=30000")
 
         # Load all roundstats grouped by (demo_name, player, side)
         rows = conn.execute("""

@@ -359,23 +359,15 @@ class FeatureExtractor:
                 _z_penalty_warned = True
             vec[15] = 0.0
 
-        # 16: KAST estimate (Kill/Assist/Survive/Trade participation ratio)
+        # 16: KAST (Kill/Assist/Survive/Trade participation ratio)
+        # Uses real KAST data when available (injected by training pipeline from
+        # playermatchstats.avg_kast, or from round-level computation).
+        # Defaults to 0.0 when no KAST data exists — the old estimate_kast_from_stats()
+        # heuristic was systematically inflated (0.91 vs real 0.71) and is retired.
         kast_val = get_val("kast", get_val("avg_kast", None))
         if kast_val is not None:
             vec[16] = float(kast_val)
-        else:
-            kills = float(get_val("kills", get_val("kills_total", 0)))
-            assists = float(get_val("assists", get_val("assists_total", 0)))
-            deaths = float(get_val("deaths", get_val("deaths_total", 0)))
-            rounds_played = float(get_val("rounds_played", 1))
-            if rounds_played > 0 and (kills + assists + deaths) > 0:
-                from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
-                    estimate_kast_from_stats,
-                )
-
-                vec[16] = estimate_kast_from_stats(
-                    int(kills), int(assists), int(deaths), int(rounds_played)
-                )
+        # else: vec[16] stays 0.0 (no heuristic fallback)
 
         # 17: Map identity encoding (deterministic hash for map-specific learning)
         # NOTE: Python's built-in hash() is NOT deterministic across sessions
