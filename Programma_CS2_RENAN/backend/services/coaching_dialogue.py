@@ -84,6 +84,11 @@ INTENT_KEYWORDS: Dict[str, List[str]] = {
     ],
 }
 
+_CS2_MAP_NAMES = frozenset({
+    "mirage", "dust2", "inferno", "overpass", "nuke",
+    "ancient", "anubis", "vertigo", "train",
+})
+
 SYSTEM_PROMPT_TEMPLATE = """\
 You are an expert CS2 tactical coach in an interactive session with a player.
 
@@ -124,6 +129,16 @@ class CoachingDialogueEngine:
         self._session_active: bool = False
         # C-06: Protect mutable session state from concurrent UI thread access
         self._state_lock = threading.Lock()
+
+        # Ensure hand-curated tactical knowledge is in the DB for RAG retrieval
+        try:
+            from Programma_CS2_RENAN.backend.knowledge.rag_knowledge import (
+                ensure_seed_knowledge_loaded,
+            )
+
+            ensure_seed_knowledge_loaded()
+        except Exception as exc:
+            logger.debug("Seed knowledge check skipped: %s", exc)
 
     # ------------------------------------------------------------------
     # Session lifecycle
@@ -211,6 +226,12 @@ class CoachingDialogueEngine:
         """Fetch recent coaching insights and stats from DB."""
         context: Dict = {"player_name": player_name, "demo_name": demo_name}
 
+        # Infer map_name from demo filename (e.g. "navi-vs-faze-m1-mirage.dem")
+        if demo_name:
+            detected_map = self._detect_map_mention(demo_name)
+            if detected_map:
+                context["map_name"] = detected_map
+
         try:
             db = get_db_manager()
             with db.get_session() as session:
@@ -222,6 +243,17 @@ class CoachingDialogueEngine:
                 )
                 recent_insights = session.exec(stmt).all()
 
+                # Fall back to pro player insights as coaching reference
+                if not recent_insights:
+                    pro_stmt = (
+                        select(CoachingInsight)
+                        .order_by(desc(CoachingInsight.created_at))
+                        .limit(5)
+                    )
+                    recent_insights = session.exec(pro_stmt).all()
+                    if recent_insights:
+                        context["using_pro_reference"] = True
+
                 if recent_insights:
                     context["recent_insights"] = [
                         {
@@ -229,6 +261,7 @@ class CoachingDialogueEngine:
                             "focus_area": i.focus_area,
                             "severity": i.severity,
                             "message": i.message[:200],
+                            "player_name": i.player_name,
                         }
                         for i in recent_insights
                     ]
@@ -252,9 +285,21 @@ class CoachingDialogueEngine:
 
         insights = self._player_context.get("recent_insights", [])
         if insights:
-            parts.append("Recent coaching insights:")
-            for ins in insights[:3]:
-                parts.append(f"  - [{ins['severity']}] {ins['title']}: " f"{ins['message'][:120]}")
+            if self._player_context.get("using_pro_reference"):
+                parts.append("Pro player analysis (use as coaching reference):")
+                for ins in insights[:3]:
+                    pro = ins.get("player_name", "Pro")
+                    parts.append(
+                        f"  - [{ins['severity']}] {pro} — {ins['title']}: "
+                        f"{ins['message'][:120]}"
+                    )
+            else:
+                parts.append("Recent coaching insights:")
+                for ins in insights[:3]:
+                    parts.append(
+                        f"  - [{ins['severity']}] {ins['title']}: "
+                        f"{ins['message'][:120]}"
+                    )
 
         player_context_str = "\n".join(parts)
         return SYSTEM_PROMPT_TEMPLATE.format(player_context=player_context_str)
@@ -288,6 +333,18 @@ class CoachingDialogueEngine:
 
         return intent
 
+    @staticmethod
+    def _detect_map_mention(text: str) -> Optional[str]:
+        """Extract a CS2 map name from free text, if mentioned."""
+        text_lower = text.lower()
+        for map_name in _CS2_MAP_NAMES:
+            if map_name in text_lower:
+                return map_name
+        # Handle common variants
+        if "dust 2" in text_lower or "dust_2" in text_lower:
+            return "dust2"
+        return None
+
     def _retrieve_context(self, user_message: str, intent: str) -> str:
         """Retrieve RAG knowledge and experiences relevant to the question."""
         blocks: List[str] = []
@@ -315,6 +372,14 @@ class CoachingDialogueEngine:
                 top_k=self.RETRIEVAL_TOP_K,
                 category=category,
             )
+            # Category mismatch fallback: DB categories (pro_baseline, pro_map_reference,
+            # opening_duels) don't match intent categories (positioning, utility, etc.).
+            # Retry without filter — semantic search handles relevance ranking.
+            if not entries and category:
+                entries = retriever.retrieve(
+                    query=user_message,
+                    top_k=self.RETRIEVAL_TOP_K,
+                )
             if entries:
                 rag_lines = ["Tactical knowledge:"]
                 for e in entries:
@@ -323,7 +388,7 @@ class CoachingDialogueEngine:
         except Exception as exc:
             logger.warning("RAG retrieval failed: %s", exc)
 
-        # Experience Bank
+        # Experience Bank — retrieve pro experiences for grounding
         try:
             from Programma_CS2_RENAN.backend.knowledge.experience_bank import (
                 ExperienceContext,
@@ -331,28 +396,34 @@ class CoachingDialogueEngine:
             )
 
             bank = get_experience_bank()  # Singleton — avoids re-loading SBERT model (F5-04)
-            map_name = self._player_context.get("map_name")
+            # Try map from session context first, then detect from user message
+            map_name = self._player_context.get("map_name") or self._detect_map_mention(
+                user_message
+            )
             side = self._player_context.get("side")
             round_phase = self._player_context.get("round_phase")
-            # C-08: Skip retrieval when essential context is missing —
-            # "unknown" defaults bias SBERT similarity toward arbitrary results.
-            if not map_name or not side:
-                logger.debug("Skipping experience retrieval — missing map/side context")
-            else:
+
+            if map_name:
+                # Contextual retrieval — map known (side defaults to "T" if unknown)
                 ctx = ExperienceContext(
                     map_name=map_name,
                     round_phase=round_phase or "unknown",
-                    side=side,
+                    side=side or "T",
                 )
                 experiences = bank.retrieve_similar(ctx, top_k=self.RETRIEVAL_TOP_K)
-                if experiences:
-                    exp_lines = ["Similar experiences:"]
-                    for exp in experiences:
-                        source = f"(pro: {exp.pro_player_name})" if exp.pro_player_name else ""
-                        exp_lines.append(
-                            f"- {exp.action_taken} → {exp.outcome} " f"on {exp.map_name} {source}"
-                        )
-                    blocks.append("\n".join(exp_lines))
+            else:
+                # Semantic-only retrieval — no map context, search all experiences
+                experiences = bank.retrieve_by_text(user_message, top_k=self.RETRIEVAL_TOP_K)
+
+            if experiences:
+                exp_lines = ["Similar pro experiences:"]
+                for exp in experiences:
+                    source = f"(pro: {exp.pro_player_name})" if exp.pro_player_name else ""
+                    exp_lines.append(
+                        f"- {exp.action_taken} → {exp.outcome} "
+                        f"on {exp.map_name} {source}"
+                    )
+                blocks.append("\n".join(exp_lines))
         except Exception as exc:
             logger.warning("Experience Bank retrieval failed: %s", exc)
 

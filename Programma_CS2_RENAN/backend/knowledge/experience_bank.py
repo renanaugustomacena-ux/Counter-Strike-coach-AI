@@ -269,6 +269,99 @@ class ExperienceBank:
             top_k,
         )
 
+    def retrieve_by_text(
+        self,
+        query_text: str,
+        top_k: int = 3,
+        min_confidence: float = MIN_RETRIEVAL_CONFIDENCE,
+    ) -> List[CoachingExperience]:
+        """
+        Semantic-only retrieval using raw query text.
+
+        Unlike retrieve_similar(), this does NOT require map/side context.
+        Used by the coaching chat when the user hasn't specified a map or
+        situation — searches all experiences by embedding similarity.
+
+        Args:
+            query_text: Free-text query to embed and match
+            top_k: Number of experiences to retrieve
+            min_confidence: Minimum confidence threshold
+
+        Returns:
+            List of semantically similar CoachingExperience records
+        """
+        query_embedding = self.embedder.embed(query_text)
+
+        # FAISS fast-path
+        from Programma_CS2_RENAN.backend.knowledge.vector_index import (
+            OVERFETCH_EXPERIENCE,
+            get_vector_index_manager,
+        )
+
+        index_mgr = get_vector_index_manager()
+        if index_mgr is not None:
+            overfetch_k = top_k * OVERFETCH_EXPERIENCE
+            faiss_results = index_mgr.search("experience", query_embedding, overfetch_k)
+            if faiss_results:
+                candidate_ids = [db_id for db_id, _ in faiss_results]
+                faiss_scores = {db_id: score for db_id, score in faiss_results}
+                with self.db.get_session() as session:
+                    entries = session.exec(
+                        select(CoachingExperience).where(
+                            CoachingExperience.id.in_(candidate_ids),
+                            CoachingExperience.confidence >= min_confidence,
+                        )
+                    ).all()
+                    if entries:
+                        entries.sort(
+                            key=lambda e: faiss_scores.get(e.id, 0), reverse=True
+                        )
+                        results = entries[:top_k]
+                        result_ids = [e.id for e in results if e.id is not None]
+                        if result_ids:
+                            session.execute(
+                                update(CoachingExperience)
+                                .where(CoachingExperience.id.in_(result_ids))
+                                .values(usage_count=CoachingExperience.usage_count + 1)
+                            )
+                            session.commit()
+                        return results
+
+        # Brute-force fallback (no map filter)
+        with self.db.get_session() as session:
+            candidates = session.exec(
+                select(CoachingExperience)
+                .where(CoachingExperience.confidence >= min_confidence)
+                .limit(100)
+            ).all()
+
+            if not candidates:
+                return []
+
+            scored = []
+            for exp in candidates:
+                if exp.embedding:
+                    try:
+                        exp_vec = self._deserialize_embedding(exp.embedding)
+                        similarity = self._cosine_similarity(query_embedding, exp_vec)
+                        scored.append((exp, similarity * exp.confidence))
+                    except (json.JSONDecodeError, ValueError, binascii.Error):
+                        pass
+
+            scored.sort(key=lambda x: x[1], reverse=True)
+            results = [exp for exp, _ in scored[:top_k]]
+
+            result_ids = [e.id for e in results if e.id is not None]
+            if result_ids:
+                session.execute(
+                    update(CoachingExperience)
+                    .where(CoachingExperience.id.in_(result_ids))
+                    .values(usage_count=CoachingExperience.usage_count + 1)
+                )
+                session.commit()
+
+            return results
+
     def _score_and_filter_faiss(
         self,
         faiss_results: List,

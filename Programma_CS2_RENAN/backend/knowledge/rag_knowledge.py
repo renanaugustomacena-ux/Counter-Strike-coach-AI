@@ -473,6 +473,38 @@ class KnowledgePopulator:
 
 
 _cached_retriever: Optional[KnowledgeRetriever] = None
+_seed_checked: bool = False
+
+
+def ensure_seed_knowledge_loaded():
+    """Load hand-curated seed knowledge if DB lacks intent-category entries.
+
+    Checks once per process. Only creates KnowledgePopulator (and loads SBERT)
+    when seed data actually needs to be written.
+    """
+    global _seed_checked
+    if _seed_checked:
+        return
+    _seed_checked = True
+
+    db = get_db_manager()
+    with db.get_session() as session:
+        existing = session.exec(
+            select(TacticalKnowledge)
+            .where(TacticalKnowledge.category == "positioning")
+            .limit(1)
+        ).first()
+        if existing:
+            return  # Seed data already present
+
+    seed_path = Path(__file__).parent / "tactical_knowledge.json"
+    if not seed_path.exists():
+        logger.debug("Seed knowledge file not found: %s", seed_path)
+        return
+
+    populator = KnowledgePopulator()
+    populator.populate_from_json(seed_path)
+    logger.info("Loaded seed tactical knowledge (%s)", seed_path.name)
 
 
 def _get_retriever() -> KnowledgeRetriever:
