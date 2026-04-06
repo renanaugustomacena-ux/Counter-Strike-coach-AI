@@ -88,12 +88,19 @@ def main():
     print("[2/5] Discovering demo files...")
     save_user_setting("PRO_DEMO_PATH", str(DEMO_BASE))
 
+    def _is_duplicate_folder(p: Path) -> bool:
+        """Reject download-duplicate folders like 'spirit-vs-faze-bo3-...(1)'."""
+        return any(part.endswith(")") and "(" in part for part in p.parts)
+
     if full_rebuild:
         # Scan everywhere including ingested/
-        all_demos = sorted(DEMO_BASE.rglob("*.dem"))
+        all_demos = sorted(p for p in DEMO_BASE.rglob("*.dem") if not _is_duplicate_folder(p))
     else:
         # Skip the ingested/ subfolder
-        all_demos = [p for p in DEMO_BASE.rglob("*.dem") if "ingested" not in p.parts]
+        all_demos = [
+            p for p in DEMO_BASE.rglob("*.dem")
+            if "ingested" not in p.parts and not _is_duplicate_folder(p)
+        ]
 
     print(f"  Found {len(all_demos)} demo(s) on disk.")
 

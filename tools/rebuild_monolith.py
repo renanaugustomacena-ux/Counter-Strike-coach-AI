@@ -100,6 +100,8 @@ def rebuild_tick_data(db_manager, all_demos: list[Path], incremental: bool = Fal
 
         try:
             conn = sqlite3.connect(str(match_db_path))
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA busy_timeout=30000")
             # Check which table exists
             tables = pd.read_sql("SELECT name FROM sqlite_master WHERE type='table'", conn)
             table_names = tables["name"].tolist()

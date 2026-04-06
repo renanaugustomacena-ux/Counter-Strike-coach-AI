@@ -166,7 +166,7 @@ class TestJEPAIntegration:
         # Fine-tuning
         x_finetune = torch.randn(8, 15, METADATA_DIM)
         output = model.forward_coaching(x_finetune)
-        assert output.shape == (8, METADATA_DIM)
+        assert output.shape == (8, OUTPUT_DIM)
 
     def test_model_save_load(self):
         """Test model can be saved and loaded."""
@@ -218,7 +218,7 @@ class TestVLJEPAComponents:
 
         assert result["concept_probs"].shape == (4, NUM_COACHING_CONCEPTS)
         assert result["concept_logits"].shape == (4, NUM_COACHING_CONCEPTS)
-        assert result["coaching_output"].shape == (4, METADATA_DIM)
+        assert result["coaching_output"].shape == (4, OUTPUT_DIM)
         assert result["latent"].shape == (4, 64)
         assert not torch.isnan(result["concept_probs"]).any()
 
@@ -273,11 +273,11 @@ class TestVLJEPAComponents:
 
         # forward (delegates to forward_coaching)
         out = model(x)
-        assert out.shape == (2, METADATA_DIM)
+        assert out.shape == (2, OUTPUT_DIM)
 
         # forward_coaching with role
         out_role = model.forward_coaching(x, role_id=1)
-        assert out_role.shape == (2, METADATA_DIM)
+        assert out_role.shape == (2, OUTPUT_DIM)
 
         # forward_jepa_pretrain
         pred, tgt = model.forward_jepa_pretrain(x, x)
@@ -510,7 +510,7 @@ class TestVLJEPAIntegration:
 
         x_ft = torch.randn(4, 15, METADATA_DIM)
         coaching_out = model.forward_coaching(x_ft)
-        assert coaching_out.shape == (4, METADATA_DIM)
+        assert coaching_out.shape == (4, OUTPUT_DIM)
 
         # Concepts still work after freeze
         result2 = model.forward_vl(x_ft)

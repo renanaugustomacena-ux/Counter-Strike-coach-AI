@@ -726,49 +726,61 @@ def _extract_and_store_events(demo_path, match_id, match_manager, df_ticks):
         logger.error("Failed to create DemoParser for event extraction: %s", e)
         return 0
 
-    # F6-14: Bounded state_lookup to prevent OOM on large match files (>50k tick rows).
-    _STATE_LOOKUP_CAP = 50_000
-    # Build a lookup: (tick, player_name_lower) -> {health, armor, equipment_value, team}
-    # for cross-referencing player state at event time
-    state_lookup = {}
+    # F6-14-v2: Indexed DataFrame lookup replaces the old bounded dict.
+    # Pro demos have 1.5M+ ticks — iterrows() into a 50K-capped dict caused
+    # endless eviction warnings and O(n) build time. A MultiIndex DataFrame
+    # gives O(1) lookups with zero pre-materialization cost.
+    _state_index = None
+    _STATE_COLS = ["health", "armor", "equipment_value", "team_name"]
     if not df_ticks.empty and "player_name" in df_ticks.columns:
-        for _, row in df_ticks.iterrows():
-            if len(state_lookup) >= _STATE_LOOKUP_CAP:
-                logger.warning(
-                    "state_lookup hit cap (%s); older entries evicted to prevent OOM",
-                    _STATE_LOOKUP_CAP,
-                )
-                keys = list(state_lookup.keys())
-                for k in keys[: len(keys) // 2]:
-                    del state_lookup[k]
-            key = (int(row["tick"]), str(row["player_name"]).strip().lower())
-            state_lookup[key] = {
+        _df_state = df_ticks[["tick", "player_name"] + [
+            c for c in _STATE_COLS if c in df_ticks.columns
+        ]].copy()
+        _df_state["_pname"] = _df_state["player_name"].str.strip().str.lower()
+        _df_state = _df_state.set_index(["tick", "_pname"])
+        _df_state = _df_state[~_df_state.index.duplicated(keep="last")]
+        _state_index = _df_state
+
+    # Build steamid -> player_name mapping from tick data (vectorized)
+    sid_to_name = {}
+    if not df_ticks.empty and "player_steamid" in df_ticks.columns:
+        _sid_df = df_ticks[["player_steamid", "player_name"]].dropna(subset=["player_steamid"])
+        _sid_df = _sid_df[_sid_df["player_steamid"] != 0]
+        if not _sid_df.empty:
+            _sid_df["player_steamid"] = _sid_df["player_steamid"].astype(int)
+            _sid_df["player_name"] = _sid_df["player_name"].str.strip()
+            sid_to_name = dict(zip(_sid_df["player_steamid"], _sid_df["player_name"]))
+
+    _DEFAULT_STATE = {"health": 100, "armor": 0, "equipment_value": 0, "team": ""}
+
+    def _lookup_state(tick, player_name):
+        """Get player state at a tick, with nearest-tick fallback."""
+        if _state_index is None:
+            return _DEFAULT_STATE
+        pname = player_name.strip().lower()
+        # Exact match
+        key = (tick, pname)
+        if key in _state_index.index:
+            row = _state_index.loc[key]
+            return {
                 "health": int(row.get("health", 100)),
                 "armor": int(row.get("armor", 0)),
                 "equipment_value": int(row.get("equipment_value", 0)),
                 "team": str(row.get("team_name", "")),
             }
-
-    # Build steamid -> player_name mapping from tick data
-    sid_to_name = {}
-    if not df_ticks.empty and "player_steamid" in df_ticks.columns:
-        for _, row in df_ticks.iterrows():
-            sid = int(row.get("player_steamid", 0))
-            if sid:
-                sid_to_name[sid] = str(row["player_name"]).strip()
-
-    def _lookup_state(tick, player_name):
-        """Get player state at a tick, with nearest-tick fallback."""
-        key = (tick, player_name.strip().lower())
-        if key in state_lookup:
-            return state_lookup[key]
         # Fallback: search within ±5 ticks
         for offset in range(1, 6):
             for t in (tick - offset, tick + offset):
-                fallback_key = (t, player_name.strip().lower())
-                if fallback_key in state_lookup:
-                    return state_lookup[fallback_key]
-        return {"health": 100, "armor": 0, "equipment_value": 0, "team": ""}
+                fb_key = (t, pname)
+                if fb_key in _state_index.index:
+                    row = _state_index.loc[fb_key]
+                    return {
+                        "health": int(row.get("health", 100)),
+                        "armor": int(row.get("armor", 0)),
+                        "equipment_value": int(row.get("equipment_value", 0)),
+                        "team": str(row.get("team_name", "")),
+                    }
+        return _DEFAULT_STATE
 
     def _resolve_name(row, name_cols):
         """Resolve player name from event row trying multiple column names."""
