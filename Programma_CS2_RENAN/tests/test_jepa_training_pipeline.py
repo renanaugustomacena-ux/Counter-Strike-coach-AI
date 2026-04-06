@@ -627,15 +627,16 @@ class TestEndToEndSmoke:
         model = train_jepa_pretrain(model, num_epochs=3, batch_size=4)
 
         model.eval()
+        device = next(model.parameters()).device
         with torch.no_grad():
-            x = torch.randn(4, 10, metadata_dim)
+            x = torch.randn(4, 10, metadata_dim, device=device)
             emb = model.context_encoder(x)
             variance = emb.var().item()
             assert variance > 0.001, f"Embedding variance too low: {variance} (collapse detected)"
 
             # Different inputs should produce different embeddings
-            x1 = torch.randn(1, 10, metadata_dim)
-            x2 = torch.randn(1, 10, metadata_dim)
+            x1 = torch.randn(1, 10, metadata_dim, device=device)
+            x2 = torch.randn(1, 10, metadata_dim, device=device)
             e1 = model.context_encoder(x1).mean(1)
             e2 = model.context_encoder(x2).mean(1)
             cosine = torch.nn.functional.cosine_similarity(e1, e2).item()

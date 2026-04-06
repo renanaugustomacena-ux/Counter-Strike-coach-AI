@@ -152,28 +152,34 @@ class TestModelFactory:
 
     def test_get_model_jepa(self):
         from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
+        from Programma_CS2_RENAN.backend.nn.jepa_model import JEPACoachingModel
 
         model = ModelFactory.get_model("jepa")
-        assert model is not None
+        assert isinstance(model, nn.Module)
+        assert isinstance(model, JEPACoachingModel)
 
     def test_get_model_vl_jepa(self):
         from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
+        from Programma_CS2_RENAN.backend.nn.jepa_model import VLJEPACoachingModel
 
         model = ModelFactory.get_model("vl-jepa")
-        assert model is not None
+        assert isinstance(model, nn.Module)
+        assert isinstance(model, VLJEPACoachingModel)
 
     def test_get_model_rap(self):
         pytest.importorskip("ncps", reason="RAP model requires ncps package")
         from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
 
         model = ModelFactory.get_model("rap")
-        assert model is not None
+        assert isinstance(model, nn.Module)
 
     def test_get_model_role_head(self):
         from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
+        from Programma_CS2_RENAN.backend.nn.role_head import NeuralRoleHead
 
         model = ModelFactory.get_model("role_head")
-        assert model is not None
+        assert isinstance(model, nn.Module)
+        assert isinstance(model, NeuralRoleHead)
 
     def test_get_model_invalid_type(self):
         from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
@@ -204,7 +210,11 @@ class TestModelFactory:
         from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
 
         model = ModelFactory.get_model("default", input_dim=10, output_dim=5, hidden_dim=32)
-        assert model is not None
+        assert isinstance(model, nn.Module)
+        # Verify the custom dims actually took effect (LSTM expects 3D input)
+        x = torch.randn(1, 4, 10)
+        out = model(x)
+        assert out.shape == (1, 5)
 
 
 # ---------------------------------------------------------------------------

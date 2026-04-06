@@ -25,6 +25,7 @@ class TestKnowledgeGraphManager:
 
         graph = KnowledgeGraphManager.__new__(KnowledgeGraphManager)
         graph.DB_PATH = str(tmp_path / "test_kg.db")
+        graph._conn = None
         graph._init_db()
         return graph
 
