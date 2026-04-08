@@ -1,0 +1,148 @@
+{
+  "knowledge": [
+    {
+      "title": "Anubis A site: heaven hold with one-way smoke",
+      "description": "CT setup: one player heaven (above A main), one player site behind statue. Heaven uses a one-way smoke at A main entry that lets the heaven player see feet while T entries cannot see up. This single utility setup wins ~70% of A holds against fast hits.",
+      "category": "positioning",
+      "situation": "CT-side A defense, fast A hit",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: heaven one-way smoke is the single most-used Anubis A defensive setup"
+    },
+    {
+      "title": "Anubis B site: water entrance trade setup",
+      "description": "CT B setup: one player on platform (close angle), one player water connector (off-angle). Water player traps the second T through B halls, platform player traps the first. Avoid both players on platform — easy double frag from B halls smoke wallbang.",
+      "category": "positioning",
+      "situation": "CT-side B defense, B halls execute",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: water-platform crossfire wins ~65% of B defaults"
+    },
+    {
+      "title": "Anubis mid: window control = round control",
+      "description": "Whoever controls the mid window has line of sight into both bridges and can rotate to either site. CTs should hold window with utility. Ts must smoke window before any mid-to-A or mid-to-B split. Losing window control on Anubis predicts a round loss ~60% of the time.",
+      "category": "positioning",
+      "situation": "Mid control battle",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: window control predicts round outcome better than any other Anubis stat"
+    },
+    {
+      "title": "Anubis A execute: smoke connector + window + molly statue",
+      "description": "Standard A execute: smoke connector (cuts mid rotate), smoke window (cuts heaven), molly behind statue (clears default plant spot), flash over palace for entries. Plant default; one player lurks connector for late rotations. ~72% plant rate with full utility.",
+      "category": "utility",
+      "situation": "T-side A execute, full buy",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: full-utility A execute is the most reliable Anubis T-side strat"
+    },
+    {
+      "title": "Anubis B execute: smoke heaven + molly platform + flash water",
+      "description": "B execute: smoke heaven (cuts the rotate from A), molly platform (clears the close angle), flash from water for the entry. Plant for the water angle so the lurker can hold from B halls. Avoid plants under platform — too close for retake angles.",
+      "category": "utility",
+      "situation": "T-side B execute, full buy",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: water-side plant outperforms platform-side plant by ~9 points on Anubis"
+    },
+    {
+      "title": "Anubis CT utility: pre-throw molly A main on T spawn",
+      "description": "Pre-throw molly to A main entry within the first 5 seconds. This delays any fast A rush by ~3 seconds and forces Ts to use a flash to push through. Cheap, consistent, and pairs with the heaven hold setup.",
+      "category": "utility",
+      "situation": "CT-side A defense, anti-rush",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: pre-throw A main molly is standard CT setup on Anubis"
+    },
+    {
+      "title": "Anubis pistol: CTs prefer A stack",
+      "description": "On pistol round Ts often hit A main fast for the open layout. CTs should stack 3 A (heaven, site, connector) and play 2 B passive. Mid is rotational only on pistol — do not commit to mid until rifle rounds.",
+      "category": "economy",
+      "situation": "Pistol round, CT setup",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: 3A-2B stack wins ~60% of pistols on Anubis CT side"
+    },
+    {
+      "title": "Anubis force buy: target B site",
+      "description": "Force buys on Anubis hit B more reliably than A — the water entry creates two sightlines that punish a stacked CT side. Force with armor + Galils + flashes for water push. Avoid A force on Anubis: heaven punishes under-buys hard.",
+      "category": "economy",
+      "situation": "Anubis T-side force buy decision",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: B-side force success on Anubis is ~10 points higher than A-side force"
+    },
+    {
+      "title": "Anubis save discipline: AWP retention via T spawn",
+      "description": "Anubis save routes back through T spawn are short and safe. If you have an AWP and the round is lost, fall back to T spawn within 8 seconds — exit frag attempts on Anubis save rounds have one of the lowest success rates of all active duty maps.",
+      "category": "economy",
+      "situation": "Anubis save round, AWP retention",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: Anubis save round AWP retention >75% for tier-1 teams"
+    },
+    {
+      "title": "Anubis A main: jiggle peek before commit",
+      "description": "A main has a wide entry that gives you a free jiggle peek to clear pit and palace angles before committing. Jiggle peek (tap A or D for one frame) at the corner — it's a no-risk information peek. Most Anubis A main deaths happen from blind pushes.",
+      "category": "aim_and_duels",
+      "situation": "T pushing A main, dying to default angles",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: jiggle peeks reduce A main entry deaths by ~30%"
+    },
+    {
+      "title": "Anubis mid window duel: pre-aim for the lean",
+      "description": "Mid window duels are decided by who pre-aims the right pixel. The window opens just above head level — pre-aim slightly high. Most mid window AWP duels go to whoever already had the crosshair on the gap.",
+      "category": "aim_and_duels",
+      "situation": "AWP mid window duel",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: top AWPers hold mid window with crosshair pre-aimed >90% of contact moments"
+    },
+    {
+      "title": "Anubis B halls: shoulder peek to bait first AWP shot",
+      "description": "Before committing to B halls, shoulder peek to bait the CT AWP. If you draw the shot, push immediately — the AWPer is in scope-out animation for ~0.4s. If no shot, you've at least confirmed there is no AWP holding the angle.",
+      "category": "aim_and_duels",
+      "situation": "T B halls push, AWP suspected",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: shoulder peek + commit on no-shot wins ~55% of B halls AWP duels"
+    },
+    {
+      "title": "Anubis mid-round: window contact = commit to opposite site",
+      "description": "If you make contact in mid window and trade, the CT side has rotated mid players. Commit to whichever site the contact is FURTHEST from. Window contact is a hard trigger — do not slow play after a mid trade on Anubis.",
+      "category": "mid_round",
+      "situation": "Mid contact, deciding next move",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: post-mid-contact opposite-site execute wins ~62% on Anubis"
+    },
+    {
+      "title": "Anubis IGL: information from connector defines the call",
+      "description": "On a default round, send one player to connector for an early read on the CT setup. Connector gives you sound cues for both sites within 25 seconds. This is the highest-value information point on Anubis for an IGL deciding to commit A or B.",
+      "category": "mid_round",
+      "situation": "IGL building map information",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: connector info player is standard role on Anubis tier-1 defaults"
+    },
+    {
+      "title": "Anubis fake A: 30 second commit window",
+      "description": "An effective Anubis A fake commits utility for ~30 seconds (smokes, flashes, gunfire) then re-rotates to B. The CT will burn rotation cooldowns and B will be soft. Fakes shorter than 25 seconds do not pull rotates and waste utility.",
+      "category": "mid_round",
+      "situation": "Fake execute strategy",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: 30-second A fake to B execute success rate ~58% on Anubis"
+    },
+    {
+      "title": "Anubis A retake: smoke palace + flash from connector",
+      "description": "A retake: smoke palace (denies the lurk angle), flash from connector blind, push as a 3-stack. The retake difficulty on Anubis A comes from how many angles a planted T can hold — utility-driven retakes outperform aim retakes by ~20 points.",
+      "category": "retakes_post_plant",
+      "situation": "CT retake A, full retake utility",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: utility retakes on Anubis A win ~48%, aim retakes win ~28%"
+    },
+    {
+      "title": "Anubis B post-plant: hold from B halls lurk",
+      "description": "Post-plant on B, the optimal lurk is back at B halls — you can pre-fire any CT pushing through halls AND see anyone rotating from A. The platform lurk is a trap: you get traded by retake utility.",
+      "category": "retakes_post_plant",
+      "situation": "T post-plant B, choosing lurk",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: B halls post-plant outperforms platform post-plant by ~12 points on Anubis"
+    },
+    {
+      "title": "Anubis A plant default: behind statue, exposed to heaven",
+      "description": "Default A plant on Anubis is behind statue, exposed to heaven. This forces the CT to defuse from the most punished angle on the site. Avoid plants in connector corner — heaven cannot punish the defuse there.",
+      "category": "retakes_post_plant",
+      "situation": "T A plant location",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: behind-statue plant has highest post-plant win rate of all Anubis A plant spots"
+    }
+  ]
+}

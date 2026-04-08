@@ -44,8 +44,11 @@ class KnowledgeEmbedder:
     and trigger automatic re-embedding when the model changes.
     """
 
-    # Increment when embedding model changes (Task 2.10.1)
-    CURRENT_VERSION = "v2"
+    # Increment when embedding model changes OR seed knowledge corpus is materially refreshed.
+    # v2 → v3: Coach Book refactor (2026-04, Premier S4 active duty alignment, +categories
+    # mid_round / retakes_post_plant / aim_and_duels). Existing v2 rows must be re-embedded
+    # via trigger_reembedding() — see init_knowledge_base.initialize_knowledge_base().
+    CURRENT_VERSION = "v3"
 
     def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
         self.model_name = model_name
@@ -443,33 +446,94 @@ class KnowledgePopulator:
         logger.info("Added knowledge: %s", title)
         return knowledge
 
-    def populate_from_json(self, json_path: Path):
-        """
-        Populate knowledge from JSON file.
+    # Allow-list for kwargs splat into add_knowledge() — protects against
+    # forward-compat fields (e.g. tags, revision) appearing in book JSON files.
+    _ALLOWED_ENTRY_KEYS = frozenset(
+        ("title", "description", "category", "situation", "map_name", "pro_example")
+    )
 
-        Expected format:
-        {
-            "knowledge": [
-                {
-                    "title": "...",
-                    "description": "...",
-                    "category": "...",
-                    "situation": "...",
-                    "map_name": "...",
-                    "pro_example": "..."
-                }
-            ]
-        }
+    def populate_from_json(self, json_path: Path) -> int:
         """
+        Populate knowledge from a JSON file or a Coach Book index file.
+
+        Two accepted formats:
+
+        1. **Legacy single-file format** — `{"knowledge": [{...}, ...]}`.
+           Used by `tactical_knowledge.json` (kept as a fallback).
+
+        2. **Coach Book index format** — `{"version": "...", "files": ["a.json", ...]}`.
+           Used by `book/index.json`. Each referenced file is itself a legacy single-file
+           JSON (`{"knowledge": [...]}`) and is loaded relative to the index file.
+
+        Entries are filtered against `_ALLOWED_ENTRY_KEYS` so unknown fields in book
+        files do not crash the loader (forward-compat).
+
+        Returns:
+            Number of knowledge entries successfully added.
+        """
+        json_path = Path(json_path)
         with open(json_path, "r") as f:
             data = json.load(f)
 
-        count = 0
-        for entry in data.get("knowledge", []):
-            self.add_knowledge(**entry)
-            count += 1
+        # Coach Book index detection: presence of "files" key (no "knowledge" key).
+        if "files" in data and "knowledge" not in data:
+            book_dir = json_path.parent
+            version = data.get("version", "unknown")
+            file_list = data.get("files", [])
+            logger.info(
+                "Loading Coach Book index version=%s with %d file(s) from %s",
+                version,
+                len(file_list),
+                book_dir,
+            )
+            total = 0
+            for rel_name in file_list:
+                child_path = book_dir / rel_name
+                if not child_path.exists():
+                    logger.error(
+                        "Coach Book file missing: %s (referenced by %s)", child_path, json_path
+                    )
+                    continue
+                total += self._populate_single_file(child_path)
+            logger.info(
+                "Coach Book load complete: %d entries from %d file(s)", total, len(file_list)
+            )
+            return total
 
-        logger.info("Populated %s knowledge entries from %s", count, json_path)
+        # Legacy single-file path
+        return self._populate_single_file(json_path, _data=data)
+
+    def _populate_single_file(self, json_path: Path, _data: Optional[Dict[str, Any]] = None) -> int:
+        """Load a single `{"knowledge": [...]}` file. Returns count added."""
+        if _data is None:
+            with open(json_path, "r") as f:
+                _data = json.load(f)
+
+        count = 0
+        for entry in _data.get("knowledge", []):
+            # Strip unknown keys before kwargs splat (forward-compat).
+            filtered = {k: v for k, v in entry.items() if k in self._ALLOWED_ENTRY_KEYS}
+            unknown = set(entry.keys()) - self._ALLOWED_ENTRY_KEYS
+            if unknown:
+                logger.debug(
+                    "Stripped unknown keys %s from entry '%s' in %s",
+                    sorted(unknown),
+                    entry.get("title", "<no-title>"),
+                    json_path.name,
+                )
+            try:
+                self.add_knowledge(**filtered)
+                count += 1
+            except TypeError as e:
+                logger.error(
+                    "Failed to add entry '%s' from %s: %s",
+                    entry.get("title", "<no-title>"),
+                    json_path.name,
+                    e,
+                )
+
+        logger.info("Populated %s knowledge entries from %s", count, json_path.name)
+        return count
 
 
 _cached_retriever: Optional[KnowledgeRetriever] = None
@@ -490,9 +554,7 @@ def ensure_seed_knowledge_loaded():
     db = get_db_manager()
     with db.get_session() as session:
         existing = session.exec(
-            select(TacticalKnowledge)
-            .where(TacticalKnowledge.category == "positioning")
-            .limit(1)
+            select(TacticalKnowledge).where(TacticalKnowledge.category == "positioning").limit(1)
         ).first()
         if existing:
             return  # Seed data already present

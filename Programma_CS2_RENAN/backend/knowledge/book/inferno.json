@@ -1,0 +1,148 @@
+{
+  "knowledge": [
+    {
+      "title": "Inferno A site: pit + balcony crossfire",
+      "description": "CT A: one player pit (close angle on apartments exit), one player site/balcony (long angle from CT spawn). Pit traps apps push, balcony trades. Avoid both on site — apps push frags both with one molly.",
+      "category": "positioning",
+      "situation": "CT A defense, apartments threat",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: pit-balcony is standard CT A setup on Inferno"
+    },
+    {
+      "title": "Inferno B site: car + new box anchor",
+      "description": "CT B: one player car (close angle on banana), one player new box (back of site). Car traps banana push, new box trades. The off-angle behind banana smoke is also viable but riskier.",
+      "category": "positioning",
+      "situation": "CT B defense, banana threat",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: car-newbox crossfire is the dominant Inferno B setup"
+    },
+    {
+      "title": "Inferno banana: top banana CT with utility",
+      "description": "CT banana player holds top banana with molly + flash. The molly delays T banana push by ~3 seconds; the flash supports a peek for the first frag. Losing top banana control loses ~30% of B round win expectation.",
+      "category": "positioning",
+      "situation": "CT banana defense",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: top banana control predicts B round outcome on Inferno"
+    },
+    {
+      "title": "Inferno A execute: smoke CT + smoke library + molly pit",
+      "description": "A execute: smoke CT (cuts rotate from CT spawn), smoke library (cuts the long angle), molly pit (clears the close hold), flash from short for entry. ~72% plant rate on Inferno A with full utility.",
+      "category": "utility",
+      "situation": "T-side A execute",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: full-utility A execute is the canonical Inferno T A strat"
+    },
+    {
+      "title": "Inferno B execute: smoke CT + smoke coffin + molly newbox",
+      "description": "B execute from banana: smoke CT (cuts the rotate), smoke coffin (cuts the off-angle), molly newbox (clears the anchor), flash from banana entry. Plant for banana angle. ~70% plant rate with full B execute.",
+      "category": "utility",
+      "situation": "T-side B execute via banana",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: full-utility B execute is most reliable Inferno B strat"
+    },
+    {
+      "title": "Inferno banana molly: deny top banana control",
+      "description": "Throw a molly to top banana before any T banana push. The molly delays the CT hold by ~3 seconds and burns CT utility (they often respond with a flash or smoke). Cheap, high-value setup utility.",
+      "category": "utility",
+      "situation": "T banana push",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: top banana molly is in ~80% of T banana pushes on Inferno"
+    },
+    {
+      "title": "Inferno pistol: CT A stack",
+      "description": "Inferno T pistol typically goes B (banana is the easier pistol push) so CTs should stack 3 B with banana molly + close-angle holds. 2 A passive. T A pistol pushes are rare and CT can rotate.",
+      "category": "economy",
+      "situation": "Pistol round CT setup",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: T pistol B push rate on Inferno is ~70%"
+    },
+    {
+      "title": "Inferno force buy: B through banana with molly",
+      "description": "Inferno B force buys (Galil + flash + molly) work because banana is utility-driven, not aim-driven. A forces on Inferno have low success — apartments has too many angles to clear under-buy.",
+      "category": "economy",
+      "situation": "T force buy decision on Inferno",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: Inferno B force wins ~40%, A force ~22%"
+    },
+    {
+      "title": "Inferno save: exit through CT spawn rotates",
+      "description": "Lost-round saves on Inferno: route back through CT spawn or T ramp. Avoid banana saves — CT pushes on lost rounds catch banana savers from above. ~70% rifle retention rate possible with disciplined saves.",
+      "category": "economy",
+      "situation": "Inferno save round",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: tier-1 Inferno save retention rate ~70%"
+    },
+    {
+      "title": "Inferno apartments duel: pre-aim head level on balcony exit",
+      "description": "Apartments-to-A push: pre-aim head level on the balcony exit angle. The CT will be holding from balcony or pit — both are head-level pre-aims at common spots. Mis-aimed crosshair = automatic loss.",
+      "category": "aim_and_duels",
+      "situation": "T apps to A push",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: top players hold apps angles with head-level pre-aim >90%"
+    },
+    {
+      "title": "Inferno banana duel: shoulder peek bait the AWP",
+      "description": "Before banana push, shoulder peek to bait the CT AWP. If you draw the shot, push immediately — the AWPer is in scope-out for ~0.4s. Banana AWP duels are decided by who initiates with bait.",
+      "category": "aim_and_duels",
+      "situation": "Banana AWP duel",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: shoulder peek + commit on no-shot wins ~55% of banana AWP duels"
+    },
+    {
+      "title": "Inferno close site: spray through smoke is standard",
+      "description": "Inferno sites have so many smokes thrown that wallbang spray accounts for ~15% of site frags. Spray through smokes at chest level on a re-entry — if the CT is repositioning, you'll catch them in the smoke transit.",
+      "category": "aim_and_duels",
+      "situation": "Site retake or entry through smokes",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: smoke wallbang accounts for ~15% of Inferno site frags"
+    },
+    {
+      "title": "Inferno apps contact: commit to A or fall back to mid",
+      "description": "If you take a trade in apps, commit to A within 5 seconds — the CT has rotated. Slow play after apps contact gives time for CT re-rotates. Commit or fall back, never sit.",
+      "category": "mid_round",
+      "situation": "Apps trade, deciding next move",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: post-apps-contact A commit wins ~58% on Inferno"
+    },
+    {
+      "title": "Inferno IGL: banana info is the highest-value read",
+      "description": "On every default round, send a banana player for early info. Banana sound cues confirm CT B count and trigger the A vs B commit. Banana info is the highest-value information point on Inferno.",
+      "category": "mid_round",
+      "situation": "T default information gathering",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: tier-1 Inferno IGLs base ~60% of commit calls on banana info"
+    },
+    {
+      "title": "Inferno B fake: 25-second commit",
+      "description": "Inferno B fakes commit utility for 25 seconds (smokes + molly + gunfire) then re-rotate to A through apps. CT will burn rotates. A becomes 4v3 with full utility. 25 seconds is the sweet spot — shorter fakes don't pull rotates.",
+      "category": "mid_round",
+      "situation": "B fake into A execute",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: 25-second B fake to A execute wins ~58% on Inferno"
+    },
+    {
+      "title": "Inferno A retake: from arch + library with smoke + flash",
+      "description": "A retake from arch and library with smoke (cuts the lurk) + flash + 3-stack. Avoid pit retakes — pit is the worst angle to push from on Inferno. Arch retakes win ~50% with full utility.",
+      "category": "retakes_post_plant",
+      "situation": "CT retake A site",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: arch retakes win ~50% on Inferno A"
+    },
+    {
+      "title": "Inferno B post-plant: hold from coffin or banana lurk",
+      "description": "Post-plant B: lurk back to coffin OR back to banana corner. Coffin holds the CT close angle; banana lurk holds the rotate from A. Choose based on which retake direction the CT is most likely to take.",
+      "category": "retakes_post_plant",
+      "situation": "T post-plant B, choosing lurk",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: coffin and banana lurks both outperform site-hold by ~10 points"
+    },
+    {
+      "title": "Inferno A plant: in front of pit, exposed to balcony",
+      "description": "Default A plant is in front of pit, exposed to balcony. The lurker can pre-fire balcony defuse. Avoid plants behind site — the CT defuses from cover.",
+      "category": "retakes_post_plant",
+      "situation": "T A plant location",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: front-of-pit plant has highest post-plant WR on Inferno A"
+    }
+  ]
+}

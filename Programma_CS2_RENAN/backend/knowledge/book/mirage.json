@@ -1,0 +1,148 @@
+{
+  "knowledge": [
+    {
+      "title": "Mirage A site: ticket + jungle anchor",
+      "description": "CT A: one player ticket (close angle on A main exit), one player jungle (long angle from CT spawn). Ticket traps A main entries, jungle trades. Both on site = double frag from a flash over A main.",
+      "category": "positioning",
+      "situation": "CT A defense, full buy",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: ticket-jungle is the canonical Mirage A setup, ~74% A hold rate"
+    },
+    {
+      "title": "Mirage B site: bench + market anchor",
+      "description": "CT B: one player bench (close angle on apartments exit), one player market (long angle from B short). Bench traps apps push, market trades the second player. Mirage B crossfire is one of the most consistent setups in CS2.",
+      "category": "positioning",
+      "situation": "CT B defense",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: bench-market crossfire is standard Mirage B"
+    },
+    {
+      "title": "Mirage mid: connector AWP",
+      "description": "CT AWP from connector covers mid sightline AND can rotate to A in 4 seconds. Top mid is a higher-risk angle reserved for early-round picks. Connector is the safer default position.",
+      "category": "positioning",
+      "situation": "CT AWP positioning, mid",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: connector AWP averages ~1.2 mid kills per round on Mirage"
+    },
+    {
+      "title": "Mirage A execute: smoke CT + smoke jungle + molly stairs",
+      "description": "Standard A execute: smoke CT (cuts rotate from CT spawn), smoke jungle (cuts long angle), molly stairs (clears default plant area), flash over A main x2 for entries. ~73% plant rate on Mirage A with full utility.",
+      "category": "utility",
+      "situation": "T-side A execute, full buy",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: full-utility A execute is the canonical Mirage T A strat"
+    },
+    {
+      "title": "Mirage B execute: smoke CT + smoke window + molly bench",
+      "description": "B execute from apartments: smoke CT (cuts rotate), smoke market window (cuts long angle), molly bench (clears the close hold), flash from apps for entry. Plant for short angle. ~70% plant rate.",
+      "category": "utility",
+      "situation": "T-side B execute via apartments",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: apps B execute is most reliable Mirage B strat"
+    },
+    {
+      "title": "Mirage mid smoke: window smoke wins mid duels",
+      "description": "Smoke window before any mid push. Window smoke neutralizes the connector AWP and opens A or B split options. The smoke takes ~3 seconds to expand — throw before commit, not after.",
+      "category": "utility",
+      "situation": "T mid push",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: window smoke is in ~85% of T mid pushes on Mirage"
+    },
+    {
+      "title": "Mirage pistol: T A ramp stack",
+      "description": "Mirage T pistol: stack 4-5 A ramp + 1 mid for fast A hit. Plant default; mid player rotates as a trade. ~58% T pistol win rate with the ramp stack.",
+      "category": "economy",
+      "situation": "T pistol round strategy",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: A ramp stack is the highest-WR Mirage T pistol"
+    },
+    {
+      "title": "Mirage force buy: A through ramp with armor + Galils",
+      "description": "Mirage force buys hit A through ramp — the same angles as the pistol stack but with rifles. B forces have lower success because apartments has too many angles to clear under-buy.",
+      "category": "economy",
+      "situation": "T force buy decision on Mirage",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: Mirage A ramp force wins ~40%, B force ~25%"
+    },
+    {
+      "title": "Mirage save: AWP through palace or connector",
+      "description": "Mirage AWP saves: route back through palace (slow, safe) or connector (fast but exposed). Choose connector when you have a teammate trading for you, palace when alone.",
+      "category": "economy",
+      "situation": "Mirage save round, AWP retention",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: tier-1 Mirage AWP retention >75%"
+    },
+    {
+      "title": "Mirage A main: jiggle peek before commit",
+      "description": "A main gives a free jiggle peek to clear ticket and jungle. Tap A for one frame at the corner — bait the shot, then push. Most A main entry deaths come from blind pushes into ticket holds.",
+      "category": "aim_and_duels",
+      "situation": "T A main push",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: jiggle peek + commit reduces A main entry deaths by ~30%"
+    },
+    {
+      "title": "Mirage window AWP duel: pre-aim head level on the gap",
+      "description": "Window AWP duels are decided by pre-aim. The window opens at head level — pre-aim the gap as you peek. Most window AWP duels go to whoever already had the crosshair on it.",
+      "category": "aim_and_duels",
+      "situation": "AWP window duel",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: top AWPers hold window with pre-aimed crosshair >95%"
+    },
+    {
+      "title": "Mirage apps duel: spray transfer is standard",
+      "description": "Apps-to-B duels are close range — spray transfer (kill one, walk crosshair to the next) wins more than tap firing. Apps duels happen at <8m and reward muscle memory spray.",
+      "category": "aim_and_duels",
+      "situation": "Apartments close-range duel",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: spray-transfer kills account for ~40% of apps frags"
+    },
+    {
+      "title": "Mirage mid contact: rotate to A on a win",
+      "description": "If your mid player wins the first contact (window or top mid), commit to A within 5 seconds. The mid kill takes a CT off the rotate; A becomes 4v3 with full utility.",
+      "category": "mid_round",
+      "situation": "Mid contact win, deciding next call",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: mid-pick into A execute wins ~62% on Mirage"
+    },
+    {
+      "title": "Mirage IGL: connector info gates the call",
+      "description": "Send a connector player on every default round. Connector gives sound cues for both sites within 25 seconds and is the highest-value information point on Mirage.",
+      "category": "mid_round",
+      "situation": "T default information gathering",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: tier-1 Mirage IGLs base ~60% of commits on connector info"
+    },
+    {
+      "title": "Mirage A fake: 30-second commit",
+      "description": "A fakes on Mirage commit utility for 30 seconds (smokes + flashes + gunfire) then re-rotate to B through apps. CT will burn rotates. 30 seconds is the standard pull-time on Mirage.",
+      "category": "mid_round",
+      "situation": "A fake into B execute",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: 30-second A fake to B execute wins ~58% on Mirage"
+    },
+    {
+      "title": "Mirage A retake: from connector with smoke + flash",
+      "description": "A retake from connector with smoke (cuts ticket) + flash + 3-stack push. Avoid jungle retakes — jungle is exposed to A main lurk. Connector retakes win ~50%.",
+      "category": "retakes_post_plant",
+      "situation": "CT retake A site",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: connector retakes win ~50% on Mirage A"
+    },
+    {
+      "title": "Mirage B post-plant: hold from short lurk",
+      "description": "Post-plant B: lurk back to B short corner to hold the retake from market AND see the rotate from A. Avoid sitting bench — bench is the first angle the retake utility hits.",
+      "category": "retakes_post_plant",
+      "situation": "T post-plant B",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: short lurk post-plant outperforms bench by ~12 points"
+    },
+    {
+      "title": "Mirage A plant: default behind ticket box",
+      "description": "Default A plant is behind ticket box, exposed to jungle and connector. The lurker can pre-fire jungle defuse. Avoid plants in the open — CT can defuse from cover behind the column.",
+      "category": "retakes_post_plant",
+      "situation": "T A plant location",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: behind-ticket plant has highest post-plant WR on Mirage A"
+    }
+  ]
+}

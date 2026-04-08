@@ -1,0 +1,204 @@
+{
+  "knowledge": [
+    {
+      "title": "Pistol round: Armor vs full utility",
+      "description": "Buy kevlar + P250 + one nade as a default. Skip armor only if your role is pure entry on a fast rush where the first duel decides the round. Armor reduces damage from a P2000/USP body shot from 24 to 16 — enough to win one extra exchange per pistol round on average across a long sample.",
+      "category": "economy",
+      "situation": "Pistol round, deciding between armor and utility",
+      "map_name": null,
+      "pro_example": "Tier-1 meta: ~85% of CTs and ~70% of Ts buy armor on pistol when not committed to a 5-stack rush"
+    },
+    {
+      "title": "Anti-eco discipline: do not over-peek",
+      "description": "When the enemy is on a save (no rifles), the rifle side should NOT push aggressively into hold positions. Anti-eco losses are economy double-hits: you give them a free $3250 reward AND lose 1-2 rifles. Hold defaults at default angles, trade in 2s, and let them come to you.",
+      "category": "economy",
+      "situation": "Holding versus a force/eco round, full rifles",
+      "map_name": null,
+      "pro_example": "Pro meta: anti-eco round win rate drops below 70% when CTs over-rotate or stack one site"
+    },
+    {
+      "title": "Force buy: round 3 after pistol loss + lost conversion",
+      "description": "If you lose pistol AND lose the round-2 anti-eco (0-2), force buy with armor + Galil/FAMAS + a flash. Goal is NOT to win — it's to deal $3000+ damage and deny the enemy round-3 full buy. A force win flips momentum; a force loss costs you nothing because you were already broken.",
+      "category": "economy",
+      "situation": "Down 0-2, broke economy, deciding force vs save",
+      "map_name": null,
+      "pro_example": "Pro meta: round 3 force success ~30%, but enemy economy suppression converts ~55% of round 4s"
+    },
+    {
+      "title": "Save round discipline: no individual heroics",
+      "description": "On a save round, exit-frag from off-angles only if it costs zero risk. Do not push for ego frags. Saving even one rifle changes next round from a force buy to a half buy (rifle for one player), which raises the team's expected round-4 win probability by ~15%.",
+      "category": "economy",
+      "situation": "Save round, weapon retention priority",
+      "map_name": null,
+      "pro_example": "Pro meta: rifle retention rate on save rounds is ~65% for tier-1 teams, ~45% for tier-3"
+    },
+    {
+      "title": "Crosshair placement: head level, pre-aimed at angles",
+      "description": "Keep your crosshair at head height and pre-aimed at the next angle you will see. The single largest source of lost duels at intermediate skill is crosshair re-targeting time. If your crosshair is already on the angle when the enemy appears, your reaction time effectively drops by 100-150 ms.",
+      "category": "aim_and_duels",
+      "situation": "Holding angles, clearing corners, low headshot percentage",
+      "map_name": null,
+      "pro_example": "Pro meta: top AWPers maintain head-level crosshair >95% of the time when moving through known sightlines"
+    },
+    {
+      "title": "Spray control: first 7 bullets are everything",
+      "description": "AK and M4 sprays are decisive in the first 7 bullets. Practice pulling down hard then slightly left for 3 bullets, then drift right. After 10 bullets, accuracy collapses — burst tap the rest. 90% of spray kills happen inside the first 7 bullets at <20m range.",
+      "category": "aim_and_duels",
+      "situation": "Losing close-range rifle duels, low spray accuracy",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 AK spray accuracy in first 7 bullets is ~80% at 10m"
+    },
+    {
+      "title": "Counter-strafe before every shot",
+      "description": "Tap the opposite movement key for one frame before shooting to instantly stop your model. Without counter-strafe your first bullet has up to 10× the inaccuracy spread. This is the single highest-leverage mechanical habit at intermediate skill levels.",
+      "category": "aim_and_duels",
+      "situation": "Missing first shots while peeking, low first-bullet accuracy",
+      "map_name": null,
+      "pro_example": "Pro meta: 100% of tier-1 players counter-strafe; the habit is automatic after a few months of practice"
+    },
+    {
+      "title": "Trade kills > survival in 2v2 retakes",
+      "description": "In a retake, the second player's job is to trade the first player's death within 2 seconds, NOT to stay alive. A traded death turns a 1v2 into a 1v1 with bomb time pressure on the enemy. Untraded deaths bleed retake win rate from ~50% to ~15%.",
+      "category": "retakes_post_plant",
+      "situation": "CT retake, deciding whether to push together or stagger",
+      "map_name": null,
+      "pro_example": "Pro meta: 2v2 retakes with successful trade win ~52%, untraded retakes win ~17%"
+    },
+    {
+      "title": "Mid-round calling: information triggers, not impulses",
+      "description": "Mid-round calls should be based on hard information triggers — confirmed enemy positions, utility usage, or timing reads — not gut feelings. Define your team's triggers before the round (e.g., 'no smoke on connector by 0:50 = rotate B'). Impulse rotates leak round win rate.",
+      "category": "mid_round",
+      "situation": "IGL deciding to rotate or commit mid-round",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 IGLs make ~3 mid-round calls per round, ~80% based on a confirmed trigger"
+    },
+    {
+      "title": "Default setup: 2-1-2 by default, adapt by buy",
+      "description": "On a default round with full buys both sides, the standard CT setup is 2 A, 1 mid/connector, 2 B. Adapt by economy: if Ts are on a force, stack the most valuable site (the one they typically hit on forces). If CTs are on a force, flatten utility on chokes and play for time.",
+      "category": "positioning",
+      "situation": "CT default setup, deciding spread",
+      "map_name": null,
+      "pro_example": "Pro meta: 2-1-2 is the most common CT base on 6 of 7 active duty maps"
+    },
+    {
+      "title": "Damage callouts: number, location, weapon",
+      "description": "Always call damage as 'NN damage, location, weapon' — e.g. '85 in 2, long, AK'. Teammates use this to make immediate decisions: a 15 HP enemy is a free trade target. Generic 'one shot' callouts waste 1-2 seconds of decision-making time per engagement.",
+      "category": "mid_round",
+      "situation": "Team coordination after a damage trade",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 IGL teams make damage callouts on >90% of confirmed hits"
+    },
+    {
+      "title": "Utility economy: do not waste smokes on contact",
+      "description": "Smokes are the highest-value utility in the buy menu ($300 each). Throwing a smoke after first contact, where it cuts no rotation and isolates no angle, is a wasted $300. Save smokes for execute timings, post-plant cutoffs, or pre-fire denial of common sightlines.",
+      "category": "utility",
+      "situation": "Mid-round, deciding whether to throw a smoke reactively",
+      "map_name": null,
+      "pro_example": "Pro meta: average smoke cost per kill is ~$120 for tier-1, ~$210 for tier-3 — efficiency matters"
+    },
+    {
+      "title": "Post-plant: hold the angle the bomb plant favors",
+      "description": "After plant, your job is NOT to hunt — it's to hold the angle that forces the CT to defuse from the worst possible position. On most plants there is one 'lurk angle' where you can pre-fire the defuser. Find it for each common plant spot and rehearse it.",
+      "category": "retakes_post_plant",
+      "situation": "T post-plant, deciding where to hold",
+      "map_name": null,
+      "pro_example": "Pro meta: ~70% of post-plant T wins come from a single pre-aimed lurk angle"
+    },
+    {
+      "title": "Bomb plant placement: maximize defuse exposure",
+      "description": "Always plant where the defuser is exposed to your hold angle, not where it's fastest to plant. A 'safe plant' that lets the CT defuse behind cover is an automatic round loss in 2v3 and worse situations. The 1-second extra plant time is worth it.",
+      "category": "retakes_post_plant",
+      "situation": "T executing, deciding plant spot",
+      "map_name": null,
+      "pro_example": "Pro meta: optimal plant spots improve post-plant win rate by 8-12 percentage points"
+    },
+    {
+      "title": "1vX clutch: separate them with time, not space",
+      "description": "In a clutch, the goal is to create time gaps between the enemies — not necessarily distance. Use a corner that forces them to cross a chokepoint one at a time. Sound discipline (walk!) and isolation are worth more than aim in 1v3+.",
+      "category": "retakes_post_plant",
+      "situation": "1vX clutch scenario, low clutch win rate",
+      "map_name": null,
+      "pro_example": "Pro meta: 1v2 clutch win rate is ~22% for tier-1, dropping to ~8% in 1v3"
+    },
+    {
+      "title": "AWPer positioning: one shot, then reposition",
+      "description": "After firing your AWP, immediately reposition. The enemy team now knows your angle and will throw utility or peek with numbers. Holding the same angle for a second shot is the #1 cause of AWPer deaths at intermediate skill.",
+      "category": "positioning",
+      "situation": "Playing AWP, dying after the second peek",
+      "map_name": null,
+      "pro_example": "Pro meta: top AWPers reposition within 3 seconds of firing >85% of the time"
+    },
+    {
+      "title": "Movement: walk at every information-sensitive moment",
+      "description": "Walking is silent. Running is broadcast. Walk in the last 5 meters of any rotation, in any post-plant approach, and any time you do not want to give a free position read. The 1-second walk window is worth more than the 1-second time save of running.",
+      "category": "positioning",
+      "situation": "Rotating or repositioning, getting picked off",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 players walk for ~30% of round time, vs ~10% for tier-3"
+    },
+    {
+      "title": "Utility usage timing: stagger, do not stack",
+      "description": "When executing a site, stagger your utility over 4-6 seconds: smoke first, then molly, then flash on entry. Stacking all utility in the same second wastes the cover window and gives the CT a single 'wait' moment instead of three decision points.",
+      "category": "utility",
+      "situation": "T execute, utility stacking up",
+      "map_name": null,
+      "pro_example": "Pro meta: optimal utility stagger improves entry frag rate by ~12%"
+    },
+    {
+      "title": "Map control: slow defaults beat fast hits on equal economy",
+      "description": "When both teams are full buy, slow defaults (60-80 second build-up with map control) outperform fast hits by ~8 percentage points. Fast hits work as a punish or against overstacks — not as a default strategy.",
+      "category": "mid_round",
+      "situation": "T-side, full buy, choosing pace",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 teams use fast hits on ~15% of full-buy rounds; the rest are slow defaults"
+    },
+    {
+      "title": "Smoke timing: throw before you need cover, not after",
+      "description": "Smokes have a 1.5s deploy time — they only block vision after fully expanding. Throwing a smoke as you're already in the open is too late; you'll die before it covers you. Pre-throw smokes 2 seconds before you need them.",
+      "category": "utility",
+      "situation": "Dying while smoke is still expanding",
+      "map_name": null,
+      "pro_example": "Pro meta: optimal smoke deploys land 2.0-2.5s before the cover is needed"
+    },
+    {
+      "title": "Trading discipline: stand close enough to get the trade",
+      "description": "If you're more than ~5 meters from your teammate when they peek, you cannot trade them in time. Common error: entry fragger pushes 10m ahead while support 'covers' from too far back. Stay tight on entries.",
+      "category": "positioning",
+      "situation": "Entry fraggers dying without trades",
+      "map_name": null,
+      "pro_example": "Pro meta: average trade distance for successful trades is ~4m, ~7m for failed trades"
+    },
+    {
+      "title": "Eco round exit fragging: one player, one angle",
+      "description": "On an eco, send one player to a single off-angle for an exit frag. Sending multiple players for ego frags loses 2-3 weapons that could have been saved. Pro teams treat eco rounds as economy management, not gambling.",
+      "category": "economy",
+      "situation": "Eco round, deciding exit frag commitment",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 eco round exit frag commitment is ~1 player on ~60% of ecos"
+    },
+    {
+      "title": "Bomb time management: 35-second plant rule",
+      "description": "Plant the bomb before 0:35 remaining. Earlier plants give you a full 40-second post-plant where the CT must come to you. Plants after 0:35 leave too little time for the bomb to tick down — you may have to defend a retake under time pressure.",
+      "category": "retakes_post_plant",
+      "situation": "T execute timing, slow plants",
+      "map_name": null,
+      "pro_example": "Pro meta: post-plant win rate drops ~15% for plants after 0:30"
+    },
+    {
+      "title": "CT rotation: rotate on confirmation, not suspicion",
+      "description": "Do not rotate off your site based on a single sound cue. Rotate when at least two cues confirm the enemy commitment (e.g., utility usage + footsteps + damage on a teammate). False rotates leak ~20% of CT rounds at intermediate skill.",
+      "category": "mid_round",
+      "situation": "CT-side, deciding to rotate",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 CT rotation accuracy (correct rotates / total rotates) is >85%"
+    },
+    {
+      "title": "First contact economics: do not commit utility on a pick",
+      "description": "When your AWPer takes a pick, do NOT immediately follow up with smokes/flashes. The pick has already created the advantage; spending utility doubles down on a round you've already won. Save the utility for the next site execute.",
+      "category": "utility",
+      "situation": "After a successful opening pick",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 teams use ~30% less utility on rounds with a successful opening pick"
+    }
+  ]
+}

@@ -43,21 +43,35 @@ def initialize_knowledge_base():
     init_database()
 
     # Step 2: Load manual knowledge
+    # Coach Book v3 (2026-04): prefer book/index.json over the legacy single-file
+    # tactical_knowledge.json. Legacy file is kept as fallback for one cycle.
     logger.info("Step 2: Loading manual tactical knowledge...")
     populator = KnowledgePopulator()
 
-    json_path = (
-        PROJECT_ROOT / "Programma_CS2_RENAN" / "backend" / "knowledge" / "tactical_knowledge.json"
-    )
+    knowledge_dir = PROJECT_ROOT / "Programma_CS2_RENAN" / "backend" / "knowledge"
+    book_index = knowledge_dir / "book" / "index.json"
+    legacy_path = knowledge_dir / "tactical_knowledge.json"
 
-    if json_path.exists():
+    if book_index.exists():
+        json_path = book_index
+        source_label = "Coach Book index"
+    elif legacy_path.exists():
+        json_path = legacy_path
+        source_label = "legacy tactical_knowledge.json (FALLBACK)"
+        logger.warning(
+            "Coach Book index not found at %s — falling back to legacy seed file", book_index
+        )
+    else:
+        json_path = None
+        source_label = None
+        logger.warning("No knowledge source found (checked %s and %s)", book_index, legacy_path)
+
+    if json_path is not None:
         try:
             populator.populate_from_json(json_path)
-            logger.info("✓ Loaded manual knowledge from %s", json_path)
+            logger.info("✓ Loaded manual knowledge from %s (%s)", json_path, source_label)
         except Exception as e:
             logger.error("Failed to load manual knowledge: %s", e)
-    else:
-        logger.warning("Manual knowledge file not found: %s", json_path)
 
     # Step 3: Mine pro demos
     logger.info("Step 3: Mining knowledge from pro demos...")

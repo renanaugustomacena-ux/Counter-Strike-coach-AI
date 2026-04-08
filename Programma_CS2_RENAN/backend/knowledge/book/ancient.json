@@ -1,0 +1,148 @@
+{
+  "knowledge": [
+    {
+      "title": "Ancient A site: donut crossfire",
+      "description": "CT A setup: one player donut (close angle behind cover), one player elbow (long angle from connector). Donut traps the entry, elbow trades. Donut alone is exposed to flashes from A main; elbow alone gets killed by the boost. Both is the standard, ~72% A hold rate on full buys.",
+      "category": "positioning",
+      "situation": "CT-side A defense",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: donut-elbow crossfire is the dominant Ancient A setup"
+    },
+    {
+      "title": "Ancient B site: cave hold with off-angle",
+      "description": "CT B setup: one player default (behind boxes), one player off-angle in cave entry (the deep corner). Cave off-angle catches the first T through. Avoid the obvious cave hold — Ts pre-fire it 80% of the time.",
+      "category": "positioning",
+      "situation": "CT-side B defense, anti-rush",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: cave off-angle holds first contact ~60% on Ancient B"
+    },
+    {
+      "title": "Ancient mid: top mid AWP from CT",
+      "description": "CT AWP top mid holds the entire mid sightline plus a clip into A main. This is the single highest-value AWP angle on Ancient. After the first shot, reposition to elbow — Ts will utility the angle on the second peek.",
+      "category": "positioning",
+      "situation": "CT AWP positioning",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: top mid AWP averages ~1.4 opening kills per round on Ancient"
+    },
+    {
+      "title": "Ancient A execute: smoke ramp + smoke elbow + molly donut",
+      "description": "A execute: smoke ramp (cuts CT rotate), smoke elbow (cuts long angle), molly donut (clears the close hold), flash over from A main. Plant default; lurk from connector. ~70% plant rate with full A execute on Ancient.",
+      "category": "utility",
+      "situation": "T-side A execute, full buy",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: full-utility A execute is most reliable T-side strat on Ancient"
+    },
+    {
+      "title": "Ancient B execute: smoke A connector + molly cave + flash main",
+      "description": "B execute: smoke A connector (cuts A rotate), molly cave (clears the off-angle hold), flash B main for entry. Plant for ramp angle so post-plant lurker can hold from cave. Ancient B is one of the harder sites to retake when planted correctly.",
+      "category": "utility",
+      "situation": "T-side B execute, full buy",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: ramp-side plant outperforms cave-side by ~8 points on Ancient B"
+    },
+    {
+      "title": "Ancient mid smoke: top mid smoke wins mid duels",
+      "description": "Smoke top mid before any mid push. The top mid smoke takes ~3 seconds to expand fully — throw before you commit, not after. This single smoke neutralizes the AWP and opens A split options.",
+      "category": "utility",
+      "situation": "T mid push, AWP top mid",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: top mid smoke is in ~80% of Ancient T mid pushes"
+    },
+    {
+      "title": "Ancient pistol: CT 2A-1mid-2B with deagle utility",
+      "description": "Ancient pistol favors CT — the close angles reward kevlar and disciplined holds. Standard 2A-1mid-2B with mid player rotating to first contact. Buy P250s + flash + smoke; skip armor only on a stacked rush call.",
+      "category": "economy",
+      "situation": "Pistol round, Ancient CT setup",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: CT pistol win rate on Ancient is ~58%, top of active duty"
+    },
+    {
+      "title": "Ancient force buy: target A through ramp",
+      "description": "Ancient force buys hit A through ramp more reliably than B. Ramp execute creates 2 clean sightlines that force CT trades. B forces on Ancient have low success — too many off-angles to clear with limited utility.",
+      "category": "economy",
+      "situation": "T force buy decision on Ancient",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: Ancient ramp force buy wins ~38%, B force wins ~22%"
+    },
+    {
+      "title": "Ancient AWP retention: cave + tunnel save",
+      "description": "Cave and tunnel give Ancient AWPers safe save routes back to T spawn. Always save the AWP if you have time — Ancient is heavily AWP-dependent on T side, and losing the AWP costs ~20% of next round's win expectation.",
+      "category": "economy",
+      "situation": "Ancient save round, AWP retention",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: Ancient AWP retention rate >70% for tier-1 teams"
+    },
+    {
+      "title": "Ancient elbow duel: pre-aim head level on the gap",
+      "description": "The elbow angle from A connector is a head-level gap. Pre-aim the gap as you peek — this is one of the highest-leverage pre-aim spots on the map. Mis-aimed crosshair = automatic loss to a held angle.",
+      "category": "aim_and_duels",
+      "situation": "Aim duel from elbow",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: top players hold elbow with head-level pre-aim >95% of duels"
+    },
+    {
+      "title": "Ancient B main: bait smoke before pushing",
+      "description": "B main has a long sightline into cave. Throw a B main smoke (or flash) before any push — the cave off-angle will drop you in your tracks otherwise. This is the most common B-side death cause on Ancient at intermediate skill.",
+      "category": "aim_and_duels",
+      "situation": "T B main push, off-angle deaths",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: B main smoke usage on Ancient correlates with ~25% lower entry death rate"
+    },
+    {
+      "title": "Ancient close-quarter A: spray > tap on entry",
+      "description": "A site close-quarter fights happen at <5m range — spray, do not tap. The site has so much cover that tap-firing rewards the defender. Spray transfer is the standard kill pattern on Ancient A entries.",
+      "category": "aim_and_duels",
+      "situation": "Close-range A site duel",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: spray-transfer kills account for ~40% of A site frags on Ancient"
+    },
+    {
+      "title": "Ancient mid contact: rotate to A on first contact win",
+      "description": "If your mid player wins the first contact in mid, immediately commit to A through ramp. The mid kill takes a CT off the rotate and A becomes 4v3 with full utility. This is Ancient's strongest mid-round trigger.",
+      "category": "mid_round",
+      "situation": "Mid contact win, deciding next call",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: mid-pick into A execute wins ~63% on Ancient"
+    },
+    {
+      "title": "Ancient default tempo: slow controls A connector",
+      "description": "Slow defaults on Ancient should pressure A connector for mid information. A connector gives sound cues for both sites and forces a CT response. ~30 second build before the IGL commits is the standard pace.",
+      "category": "mid_round",
+      "situation": "T default round pacing",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: tier-1 Ancient T defaults average ~32 seconds before commit"
+    },
+    {
+      "title": "Ancient anti-strat: stack opposite of last round's hit",
+      "description": "Ancient T sides tend to hit the same site twice in a row when successful. CT IGL: stack opposite of last round's hit on the round AFTER a T win — pro patterns show ~58% repeat rate on Ancient successful executes.",
+      "category": "mid_round",
+      "situation": "CT anti-strat after T site win",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: Ancient T site repeat rate after a win is ~58%"
+    },
+    {
+      "title": "Ancient A retake: 3-stack from connector with smoke + flash",
+      "description": "A retake from connector with smoke (cuts donut hold), flash, and a 3-man push wins ~50% of full-utility retakes. Avoid main retakes — A main into a planted T is suicide on Ancient.",
+      "category": "retakes_post_plant",
+      "situation": "CT retake A site",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: connector retakes on Ancient win ~50%, main retakes ~22%"
+    },
+    {
+      "title": "Ancient B post-plant: hold from cave deep angle",
+      "description": "After plant on B, lurk back into cave deep — you can pre-fire any CT retake from main and see the rotate from A. Avoid sitting on site — the retake utility from CT spawn punishes static post-plants.",
+      "category": "retakes_post_plant",
+      "situation": "T post-plant B, choosing lurk",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: cave-deep post-plant outperforms site-hold by ~15 points on Ancient B"
+    },
+    {
+      "title": "Ancient A plant: behind temple wall",
+      "description": "Plant the bomb behind the temple wall on A — this exposes the defuser to elbow AND the lurker angle from connector. Avoid plants in the open: the CT can defuse from cover and you cannot pre-fire.",
+      "category": "retakes_post_plant",
+      "situation": "T A plant location",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: temple-wall plant has highest post-plant win rate on Ancient A"
+    }
+  ]
+}
