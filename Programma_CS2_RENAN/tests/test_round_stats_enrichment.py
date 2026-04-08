@@ -39,6 +39,8 @@ def _make_round_stat(
     smokes_thrown=0,
     flash_assists=0,
     round_won=True,
+    blind_time_on_enemies=0.0,
+    enemies_blinded=None,
 ):
     return {
         "demo_name": "test.dem",
@@ -63,6 +65,10 @@ def _make_round_stat(
         "flashes_thrown": flashes_thrown,
         "smokes_thrown": smokes_thrown,
         "flash_assists": flash_assists,
+        # Q1-01: Utility blind metrics — sum of enemy blind durations and the
+        # set of distinct enemies blinded this round.
+        "blind_time_on_enemies": blind_time_on_enemies,
+        "enemies_blinded": set(enemies_blinded) if enemies_blinded else set(),
         "equipment_value": 4750,
         "round_won": round_won,
         "mvp": False,
@@ -186,6 +192,67 @@ class TestAggregateRoundStatsToMatch:
         ]
         result = aggregate_round_stats_to_match(rounds, "testplayer")
         assert "opening_duel_win_pct" not in result
+
+    def test_utility_blind_time_sums_across_rounds(self):
+        """utility_blind_time = sum of blind_time_on_enemies across all rounds."""
+        rounds = [
+            _make_round_stat(blind_time_on_enemies=1.5, enemies_blinded={"enemy_a"}),
+            _make_round_stat(
+                blind_time_on_enemies=2.3,
+                enemies_blinded={"enemy_b", "enemy_c"},
+                round_number=2,
+            ),
+            _make_round_stat(blind_time_on_enemies=0.0, round_number=3),
+        ]
+        result = aggregate_round_stats_to_match(rounds, "testplayer")
+        assert result["utility_blind_time"] == pytest.approx(3.8)
+
+    def test_utility_enemies_blinded_is_distinct_union(self):
+        """utility_enemies_blinded = count of distinct enemies blinded across the match.
+
+        The same enemy blinded in multiple rounds must count only once.
+        """
+        rounds = [
+            _make_round_stat(enemies_blinded={"enemy_a", "enemy_b"}),
+            _make_round_stat(
+                enemies_blinded={"enemy_b", "enemy_c"}, round_number=2
+            ),  # enemy_b is a duplicate
+            _make_round_stat(enemies_blinded={"enemy_a"}, round_number=3),  # enemy_a duplicate
+        ]
+        result = aggregate_round_stats_to_match(rounds, "testplayer")
+        # Distinct union: {enemy_a, enemy_b, enemy_c} = 3
+        assert result["utility_enemies_blinded"] == pytest.approx(3.0)
+
+    def test_utility_blind_metrics_zero_when_no_blinds(self):
+        """Missing blind data should produce 0.0, not raise."""
+        rounds = [
+            _make_round_stat(),  # no blind_time_on_enemies / enemies_blinded
+        ]
+        result = aggregate_round_stats_to_match(rounds, "testplayer")
+        assert result["utility_blind_time"] == 0.0
+        assert result["utility_enemies_blinded"] == 0.0
+
+    def test_utility_blind_metrics_per_player_isolation(self):
+        """utility_blind_time/enemies_blinded must not leak between players."""
+        rounds = [
+            _make_round_stat(
+                player_name="alice",
+                blind_time_on_enemies=2.0,
+                enemies_blinded={"x", "y"},
+            ),
+            _make_round_stat(
+                player_name="bob",
+                blind_time_on_enemies=1.0,
+                enemies_blinded={"z"},
+                round_number=2,
+            ),
+        ]
+        alice = aggregate_round_stats_to_match(rounds, "alice")
+        bob = aggregate_round_stats_to_match(rounds, "bob")
+        assert alice["utility_blind_time"] == pytest.approx(2.0)
+        assert alice["utility_enemies_blinded"] == pytest.approx(2.0)
+        assert bob["utility_blind_time"] == pytest.approx(1.0)
+        assert bob["utility_enemies_blinded"] == pytest.approx(1.0)
 
     def test_enrichment_keys_are_playermatchstats_fields(self):
         """All returned keys must correspond to PlayerMatchStats fields."""

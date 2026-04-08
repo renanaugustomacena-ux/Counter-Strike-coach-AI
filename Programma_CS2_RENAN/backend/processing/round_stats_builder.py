@@ -24,11 +24,18 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.round_stats_builder")
 
-# Grenade weapon identifiers in demoparser2
-HE_WEAPONS = {"hegrenade"}
-FIRE_WEAPONS = {"inferno", "molotov", "incgrenade"}
-SMOKE_WEAPONS = {"smokegrenade"}
-FLASH_WEAPONS = {"flashbang"}
+# Grenade weapon identifiers in demoparser2.
+#
+# Q1-03: demoparser2 uses inconsistent weapon naming across event types:
+#   - `player_hurt.weapon` emits unprefixed names: "hegrenade", "inferno"
+#   - `weapon_fire.weapon`  emits `weapon_`-prefixed names: "weapon_smokegrenade",
+#     "weapon_flashbang", "weapon_hegrenade", "weapon_molotov", "weapon_incgrenade"
+# The sets below include BOTH forms so the same match check works for either
+# event type without requiring the caller to normalize.
+HE_WEAPONS = {"hegrenade", "weapon_hegrenade"}
+FIRE_WEAPONS = {"inferno", "molotov", "incgrenade", "weapon_molotov", "weapon_incgrenade"}
+SMOKE_WEAPONS = {"smokegrenade", "weapon_smokegrenade"}
+FLASH_WEAPONS = {"flashbang", "weapon_flashbang"}
 ALL_GRENADE_WEAPONS = HE_WEAPONS | FIRE_WEAPONS | SMOKE_WEAPONS | FLASH_WEAPONS
 
 # R4-07-01: Flash assist window — 2 seconds at default 64 tick.
@@ -282,6 +289,11 @@ def build_round_stats(
                 "flashes_thrown": 0,
                 "smokes_thrown": 0,
                 "flash_assists": 0,
+                # Q1-01: Utility blind metrics — sum of flash durations inflicted on
+                # enemies and the set of distinct enemy names blinded this round.
+                # Aggregated to match level in aggregate_round_stats_to_match().
+                "blind_time_on_enemies": 0.0,
+                "enemies_blinded": set(),
                 "equipment_value": 0,
                 "round_won": round_won,
                 "mvp": False,
@@ -368,7 +380,14 @@ def build_round_stats(
             elif weapon in FIRE_WEAPONS:
                 round_player_stats[key]["molotov_damage"] += dmg
 
-    # Process weapon_fire events for flash/smoke throw counting
+    # Process weapon_fire events for flash/smoke throw counting.
+    # Q1-04: demoparser2's weapon_fire DataFrame has columns
+    # ["silenced", "tick", "user_name", "user_steamid", "weapon"] — note that
+    # the actor column is "user_name", NOT "player_name". Reading the wrong key
+    # produced an empty string and the lookup `key not in round_player_stats`
+    # always short-circuited, leaving smokes_thrown / flashes_thrown at 0 across
+    # the entire dataset. We try user_name first and fall back to player_name
+    # for any future demos parsed by a different extractor.
     fire_df = _parse_events_safe(parser, "weapon_fire")
     if not fire_df.empty and "weapon" in fire_df.columns:
         for _, fire in fire_df.iterrows():
@@ -376,7 +395,7 @@ def build_round_stats(
             rn = _assign_round(tick, boundaries)
             if rn is None:
                 continue
-            player = str(fire.get("player_name", "")).strip().lower()
+            player = str(fire.get("user_name", fire.get("player_name", ""))).strip().lower()
             weapon = str(fire.get("weapon", "")).strip().lower()
 
             key = (rn, player)
@@ -388,11 +407,15 @@ def build_round_stats(
             elif weapon in SMOKE_WEAPONS:
                 round_player_stats[key]["smokes_thrown"] += 1
 
-    # Flash assist detection: player_blind + kill within flash_assist_window
+    # Utility blind metrics + flash assist detection from player_blind events.
+    # Q1-01: Always process blind events for blind_time_on_enemies and enemies_blinded
+    # even when no kills occur. Flash assist cross-reference still requires deaths.
     blind_df = _parse_events_safe(parser, "player_blind")
-    if not blind_df.empty and not deaths_df.empty and "blind_duration" in blind_df.columns:
+    if not blind_df.empty and "blind_duration" in blind_df.columns:
         blind_df = blind_df.sort_values("tick").reset_index(drop=True)
-        deaths_sorted = deaths_df.sort_values("tick").reset_index(drop=True)
+        deaths_sorted = (
+            deaths_df.sort_values("tick").reset_index(drop=True) if not deaths_df.empty else None
+        )
 
         for _, blind_event in blind_df.iterrows():
             blind_tick = int(blind_event["tick"])
@@ -406,8 +429,29 @@ def build_round_stats(
                 continue
 
             blinder_team = team_roster.get(blinder, 0)
+            blinded_team = team_roster.get(blinded_player, 0)
 
-            # Look for kills of the blinded player within the assist window
+            # Q1-01: Only count ENEMY blinds for utility metrics. Teammate blinds
+            # are misthrows and should not reward the blinder's utility score.
+            is_enemy_blind = (
+                blinder_team in (2, 3) and blinded_team in (2, 3) and blinder_team != blinded_team
+            )
+
+            if is_enemy_blind:
+                key = (rn, blinder)
+                if key in round_player_stats:
+                    try:
+                        duration = float(blind_event.get("blind_duration", 0.0) or 0.0)
+                    except (TypeError, ValueError):
+                        duration = 0.0
+                    round_player_stats[key]["blind_time_on_enemies"] += duration
+                    round_player_stats[key]["enemies_blinded"].add(blinded_player)
+
+            # Flash assist cross-reference: kill of the blinded player within the
+            # assist window by a teammate of the blinder.
+            if deaths_sorted is None:
+                continue
+
             for _, kill in deaths_sorted.iterrows():
                 kill_tick = int(kill["tick"])
                 if kill_tick < blind_tick:
@@ -453,10 +497,7 @@ def build_round_stats(
     for key, stats in round_player_stats.items():
         survived = stats["deaths"] == 0
         stats["kast"] = bool(
-            stats["kills"] > 0
-            or stats["assists"] > 0
-            or survived
-            or stats["was_traded"]
+            stats["kills"] > 0 or stats["assists"] > 0 or survived or stats["was_traded"]
         )
         stats["round_rating"] = compute_round_rating(stats)
 
@@ -496,6 +537,11 @@ def aggregate_round_stats_to_match(
     total_kills = sum(rs["kills"] for rs in player_rounds)
     total_deaths = sum(rs["deaths"] for rs in player_rounds)
 
+    # Q1-01: Union of enemies blinded across all rounds for distinct count.
+    enemies_blinded_union: set = set()
+    for rs in player_rounds:
+        enemies_blinded_union.update(rs.get("enemies_blinded", set()))
+
     enrichment = {
         # Trade kill metrics (Proposal 1)
         "trade_kill_ratio": sum(rs["trade_kills"] for rs in player_rounds) / max(1, total_kills),
@@ -514,6 +560,12 @@ def aggregate_round_stats_to_match(
         / max(1, num_rounds),
         "smokes_per_round": sum(rs["smokes_thrown"] for rs in player_rounds) / max(1, num_rounds),
         "flash_assists": float(sum(rs["flash_assists"] for rs in player_rounds)),
+        # Q1-01: Utility blind metrics — sum of flash durations inflicted on enemies
+        # and count of distinct enemies blinded across the match.
+        "utility_blind_time": float(
+            sum(rs.get("blind_time_on_enemies", 0.0) for rs in player_rounds)
+        ),
+        "utility_enemies_blinded": float(len(enemies_blinded_union)),
     }
 
     # Opening duel win % (only count rounds where player was in an opening duel)

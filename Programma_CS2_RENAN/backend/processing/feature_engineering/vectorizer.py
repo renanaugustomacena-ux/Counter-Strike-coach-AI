@@ -314,7 +314,16 @@ class FeatureExtractor:
         # Movement/Stance (5-7)
         vec[5] = 1.0 if get_val("is_crouching", False) else 0.0
         vec[6] = 1.0 if get_val("is_scoped", False) else 0.0
-        vec[7] = 1.0 if get_val("is_blinded", False) else 0.0
+        # Feature #7 (is_blinded): demoparser2 does not populate is_blinded as a
+        # tick property; it populates flash_duration (float seconds >= 0). Prefer
+        # flash_duration > 0 as the source of truth, falling back to is_blinded for
+        # legacy demos that may have been parsed with a different extractor.
+        _flash_dur = get_val("flash_duration", 0.0)
+        try:
+            _flash_dur = float(_flash_dur) if _flash_dur is not None else 0.0
+        except (TypeError, ValueError):
+            _flash_dur = 0.0
+        vec[7] = 1.0 if (_flash_dur > 0.0 or get_val("is_blinded", False)) else 0.0
 
         # Awareness (8)
         enemies_visible = float(get_val("enemies_visible", 0))
