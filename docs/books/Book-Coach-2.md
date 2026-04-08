@@ -209,7 +209,7 @@ Servizio di integrazione Ollama per inferenza LLM locale:
 | Parametro | Valore | Descrizione |
 |---|---|---|
 | `OLLAMA_URL` | `http://localhost:11434` | Endpoint Ollama (env: `OLLAMA_URL`) |
-| `DEFAULT_MODEL` | `llama3.2:3b` | Modello piccolo e veloce (env: `OLLAMA_MODEL`) |
+| `DEFAULT_MODEL` | `llama3.1:8b` | Modello 8B general-purpose (env: `OLLAMA_MODEL`) |
 | `_AVAILABILITY_TTL` | 60s | Cache di disponibilità |
 | `temperature` | 0.7 | Creatività delle risposte |
 | `top_p` | 0.9 | Nucleus sampling |

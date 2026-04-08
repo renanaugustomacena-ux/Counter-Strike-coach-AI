@@ -22,7 +22,7 @@ logger = get_logger("cs2analyzer.llm_service")
 
 # Default Ollama configuration
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
-DEFAULT_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")  # Small, fast model
+DEFAULT_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1:8b")  # 8B general-purpose model
 
 
 class LLMService:

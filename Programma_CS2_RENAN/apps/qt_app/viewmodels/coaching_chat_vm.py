@@ -127,7 +127,7 @@ class CoachingChatViewModel(QObject):
                         "content": (
                             "Coach is offline. Make sure Ollama is running:\n"
                             "  1. ollama serve\n"
-                            "  2. ollama pull llama3.2:3b"
+                            "  2. ollama pull llama3.1:8b"
                         ),
                     }
                 )
