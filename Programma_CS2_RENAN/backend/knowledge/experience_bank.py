@@ -313,9 +313,7 @@ class ExperienceBank:
                         )
                     ).all()
                     if entries:
-                        entries.sort(
-                            key=lambda e: faiss_scores.get(e.id, 0), reverse=True
-                        )
+                        entries.sort(key=lambda e: faiss_scores.get(e.id, 0), reverse=True)
                         results = entries[:top_k]
                         result_ids = [e.id for e in results if e.id is not None]
                         if result_ids:
