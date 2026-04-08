@@ -2144,7 +2144,7 @@ All error codes registered in `Programma_CS2_RENAN/observability/error_codes.py`
 | `STEAM_API_KEY` | — | steam_api.py | Steam Web API authentication |
 | `STEAM_ID` | — | steam_api.py | Target Steam64 ID |
 | `OLLAMA_URL` | `http://localhost:11434` | llm_service.py | Local LLM endpoint |
-| `OLLAMA_MODEL` | `llama3.2:3b` | llm_service.py | LLM model name |
+| `OLLAMA_MODEL` | `llama3.1:8b` | llm_service.py | LLM model name |
 | `CS2_LOG_LEVEL` | `""` | logger_setup.py | Override log level |
 | `CS2_MANIFEST_KEY` | `""` | rasp.py | HMAC key for integrity |
 | `CS2_TELEMETRY_URL` | `http://127.0.0.1:8000` | telemetry_client.py | Telemetry endpoint |
