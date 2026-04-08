@@ -84,10 +84,19 @@ INTENT_KEYWORDS: Dict[str, List[str]] = {
     ],
 }
 
-_CS2_MAP_NAMES = frozenset({
-    "mirage", "dust2", "inferno", "overpass", "nuke",
-    "ancient", "anubis", "vertigo", "train",
-})
+_CS2_MAP_NAMES = frozenset(
+    {
+        "mirage",
+        "dust2",
+        "inferno",
+        "overpass",
+        "nuke",
+        "ancient",
+        "anubis",
+        "vertigo",
+        "train",
+    }
+)
 
 SYSTEM_PROMPT_TEMPLATE = """\
 You are an expert CS2 tactical coach in an interactive session with a player.
@@ -246,9 +255,7 @@ class CoachingDialogueEngine:
                 # Fall back to pro player insights as coaching reference
                 if not recent_insights:
                     pro_stmt = (
-                        select(CoachingInsight)
-                        .order_by(desc(CoachingInsight.created_at))
-                        .limit(5)
+                        select(CoachingInsight).order_by(desc(CoachingInsight.created_at)).limit(5)
                     )
                     recent_insights = session.exec(pro_stmt).all()
                     if recent_insights:
@@ -297,8 +304,7 @@ class CoachingDialogueEngine:
                 parts.append("Recent coaching insights:")
                 for ins in insights[:3]:
                     parts.append(
-                        f"  - [{ins['severity']}] {ins['title']}: "
-                        f"{ins['message'][:120]}"
+                        f"  - [{ins['severity']}] {ins['title']}: " f"{ins['message'][:120]}"
                     )
 
         player_context_str = "\n".join(parts)
@@ -420,8 +426,7 @@ class CoachingDialogueEngine:
                 for exp in experiences:
                     source = f"(pro: {exp.pro_player_name})" if exp.pro_player_name else ""
                     exp_lines.append(
-                        f"- {exp.action_taken} → {exp.outcome} "
-                        f"on {exp.map_name} {source}"
+                        f"- {exp.action_taken} → {exp.outcome} " f"on {exp.map_name} {source}"
                     )
                 blocks.append("\n".join(exp_lines))
         except Exception as exc:
