@@ -1,0 +1,148 @@
+{
+  "knowledge": [
+    {
+      "title": "Overpass A site: heaven + connector crossfire",
+      "description": "CT A: one player heaven (above site), one player connector (close angle from CT spawn). Heaven covers long A, connector traps the entry. Both on site = double frag from a long smoke.",
+      "category": "positioning",
+      "situation": "CT A defense, full buy",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: heaven-connector crossfire is standard Overpass A"
+    },
+    {
+      "title": "Overpass B site: pillar + bench anchor",
+      "description": "CT B: one player pillar (close angle on tunnels exit), one player bench (off-angle from monster). Pillar traps the tunnel push, bench trades. Avoid both on site — monster molly frags both.",
+      "category": "positioning",
+      "situation": "CT B defense",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: pillar-bench crossfire is standard Overpass B"
+    },
+    {
+      "title": "Overpass monster: monster control with utility",
+      "description": "CT monster player holds monster with molly + flash. Molly delays the T monster push by ~3 seconds; flash supports a peek. Losing monster control loses ~25% of B round win expectation.",
+      "category": "positioning",
+      "situation": "CT monster defense",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: monster control predicts B round outcome on Overpass"
+    },
+    {
+      "title": "Overpass A execute: smoke heaven + smoke long + molly site",
+      "description": "A execute: smoke heaven (cuts the high angle), smoke long (cuts long A), molly site (clears the close hold), flash from short for entry. ~70% plant rate with full A execute on Overpass.",
+      "category": "utility",
+      "situation": "T-side A execute",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: full-utility A execute is standard Overpass T A strat"
+    },
+    {
+      "title": "Overpass B execute: smoke heaven + molly bench + flash entry",
+      "description": "B execute from monster: smoke heaven (cuts the rotate), molly bench (clears the off-angle), flash from monster for entry. Plant for tunnels angle. ~68% plant rate with full B execute.",
+      "category": "utility",
+      "situation": "T-side B execute via monster",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: full-utility B execute is most reliable Overpass B strat"
+    },
+    {
+      "title": "Overpass long molly: deny long A control",
+      "description": "Throw a molly to long A within the first 10 seconds. Molly delays any long push by ~3 seconds and burns CT utility. Cheap, consistent setup utility.",
+      "category": "utility",
+      "situation": "T anti-long control",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: long molly is in ~75% of T A hits on Overpass"
+    },
+    {
+      "title": "Overpass pistol: T B monster fast push",
+      "description": "T pistol on Overpass: stack 4 monster + 1 connector for fast B hit. Plant for tunnels angle. CTs cannot rotate from A in time. ~58% T pistol WR with monster stack.",
+      "category": "economy",
+      "situation": "T pistol round on Overpass",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: monster stack is the highest-WR Overpass T pistol"
+    },
+    {
+      "title": "Overpass force buy: B monster with armor + Galils",
+      "description": "Overpass B forces work because monster execute is utility-driven and short. A forces have low success — long A punishes under-buys.",
+      "category": "economy",
+      "situation": "T force buy decision",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: Overpass B force wins ~40%, A force ~22%"
+    },
+    {
+      "title": "Overpass save: route through T spawn or playground",
+      "description": "Overpass saves route back through T spawn or playground (the side route). Avoid long A saves — long is the most punished save route. Tier-1 retention rate ~70%.",
+      "category": "economy",
+      "situation": "Overpass save round",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: tier-1 Overpass save retention ~70%"
+    },
+    {
+      "title": "Overpass long duel: pre-aim head level on bombsite corner",
+      "description": "Long A duels are decided by pre-aim. The bombsite corner is head-level for both sides. Pre-aim the corner as you peek long.",
+      "category": "aim_and_duels",
+      "situation": "Long A duel",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: top players hold long with head-level pre-aim >95%"
+    },
+    {
+      "title": "Overpass monster duel: spray transfer through smoke",
+      "description": "Monster duels happen at close range and often through smoke. Spray transfer (kill one, walk crosshair) wins more than tap. Monster fights reward muscle-memory spray.",
+      "category": "aim_and_duels",
+      "situation": "Monster close-range duel",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: spray-transfer accounts for ~40% of monster frags"
+    },
+    {
+      "title": "Overpass connector duel: jiggle peek for the AWP",
+      "description": "Connector AWP duels are decided by who shoulder peeks first. Bait the AWP shot, then push within 0.4 seconds while the AWPer is in scope-out animation.",
+      "category": "aim_and_duels",
+      "situation": "Connector AWP duel",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: shoulder peek + commit wins ~55% of connector AWP duels"
+    },
+    {
+      "title": "Overpass long contact: rotate to B on a trade",
+      "description": "If you take a long A trade, rotate to B through monster within 6 seconds. The long contact pulls CT A players; B opens up. Slow play after long contact wastes the rotation window.",
+      "category": "mid_round",
+      "situation": "Long contact, deciding next call",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: post-long-contact B execute wins ~58% on Overpass"
+    },
+    {
+      "title": "Overpass IGL: monster info gates the call",
+      "description": "Send a monster player on every default round. Monster sound cues confirm CT B count and trigger A vs B commit. Highest-value information point on Overpass.",
+      "category": "mid_round",
+      "situation": "T default information gathering",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: tier-1 Overpass IGLs base ~60% of commits on monster info"
+    },
+    {
+      "title": "Overpass A fake: 25-second commit",
+      "description": "A fakes on Overpass commit utility for 25 seconds (long smoke + heaven flash + gunfire) then re-rotate to B through monster. 25 seconds is the sweet spot — shorter fakes don't pull rotates.",
+      "category": "mid_round",
+      "situation": "A fake into B execute",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: 25-second A fake to B execute wins ~58% on Overpass"
+    },
+    {
+      "title": "Overpass A retake: from connector with smoke + flash",
+      "description": "A retake from connector with smoke (cuts the lurker), flash, 3-stack push. Avoid heaven retakes — heaven is exposed to long lurk. Connector retakes win ~50%.",
+      "category": "retakes_post_plant",
+      "situation": "CT retake A site",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: connector retakes win ~50% on Overpass A"
+    },
+    {
+      "title": "Overpass B post-plant: hold from monster lurk",
+      "description": "Post-plant B: lurk back through monster to hold the retake from heaven AND see the rotate from A. Avoid sitting on site — bench molly hits site first.",
+      "category": "retakes_post_plant",
+      "situation": "T post-plant B",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: monster lurk outperforms site-hold by ~12 points on Overpass B"
+    },
+    {
+      "title": "Overpass A plant: behind party box, exposed to heaven",
+      "description": "Default A plant is behind party box, exposed to heaven. The lurker can pre-fire heaven defuse from long. Avoid plants in the open — CT defuses from cover.",
+      "category": "retakes_post_plant",
+      "situation": "T A plant location",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: behind-party plant has highest post-plant WR on Overpass A"
+    }
+  ]
+}

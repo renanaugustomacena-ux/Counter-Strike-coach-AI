@@ -1,0 +1,38 @@
+{
+  "version": "v3",
+  "schema_version": 1,
+  "description": "Coach Book — tactical knowledge corpus for the COPER coaching engine. Per-map files containing positioning, utility, economy, aim_and_duels, mid_round, and retakes_post_plant entries. Aligned to CS2 Premier Season 4 active duty pool (2026-01).",
+  "active_duty_pool": [
+    "de_anubis",
+    "de_ancient",
+    "de_dust2",
+    "de_inferno",
+    "de_mirage",
+    "de_nuke",
+    "de_overpass"
+  ],
+  "categories": [
+    "positioning",
+    "utility",
+    "economy",
+    "aim_and_duels",
+    "mid_round",
+    "retakes_post_plant"
+  ],
+  "files": [
+    "general.json",
+    "anubis.json",
+    "ancient.json",
+    "dust2.json",
+    "inferno.json",
+    "mirage.json",
+    "nuke.json",
+    "overpass.json"
+  ],
+  "notes": [
+    "Each file uses the same schema as the legacy tactical_knowledge.json: {\"knowledge\": [{...}]}.",
+    "Allowed entry fields: title, description, category, situation, map_name, pro_example.",
+    "Unknown fields are stripped by the loader for forward-compat.",
+    "Embedding version is tracked separately in KnowledgeEmbedder.CURRENT_VERSION."
+  ]
+}

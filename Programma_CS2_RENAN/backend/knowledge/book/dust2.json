@@ -1,0 +1,148 @@
+{
+  "knowledge": [
+    {
+      "title": "Dust2 A site: pit + default crossfire",
+      "description": "CT A: one player pit (long doors close angle), one player default site (back of A behind goose). Pit traps long pushes, default trades. Both on site = double frag from long. Both in pit = no trade if pit dies.",
+      "category": "positioning",
+      "situation": "CT A defense, full buy",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: pit-default crossfire is the canonical Dust2 A setup, ~75% A hold rate"
+    },
+    {
+      "title": "Dust2 B site: tunnels watcher + site anchor",
+      "description": "CT B: one player B doors (close angle on tunnels exit), one player site behind plat. Doors player traps the tunnel exit, plat player trades. Doors alone gets killed by smoked tunnels; plat alone has no early info.",
+      "category": "positioning",
+      "situation": "CT B defense",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: doors-plat crossfire is standard CT B setup"
+    },
+    {
+      "title": "Dust2 mid: AWP from window or xbox",
+      "description": "CT mid AWP from window (high angle on mid doors) or xbox (low angle, close range). Window is safer but slower to rotate; xbox is risky but reaches both sites in 4 seconds. Choose based on which site is less stacked.",
+      "category": "positioning",
+      "situation": "CT AWP positioning, mid",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: window AWP averages ~1.1 mid kills per round on Dust2"
+    },
+    {
+      "title": "Dust2 long execute: smoke cross + smoke car + molly pit",
+      "description": "Long execute: smoke cross (cuts CT cross from pit), smoke car (cuts default angle), molly pit (clears the pit hold), flash long for entry. Plant default; lurk car. ~74% plant rate with full long execute on Dust2.",
+      "category": "utility",
+      "situation": "T-side long A execute",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: full-utility long execute is the most reliable Dust2 T strat"
+    },
+    {
+      "title": "Dust2 B execute: smoke window + smoke door + molly back plat",
+      "description": "B execute: smoke mid window (cuts AWP), smoke B doors (cuts the doors hold), molly back plat (clears default), flash from tunnels for entry. Plant for tunnels angle. Tunnels execute is one of the most reliable B-site executes in CS2.",
+      "category": "utility",
+      "situation": "T-side B execute, full buy",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: full-utility B tunnels execute on Dust2 has ~70% plant rate"
+    },
+    {
+      "title": "Dust2 short A: smoke top mid + flash short",
+      "description": "Short A push: smoke top mid (cuts xbox AWP), flash over short for entry. Short is the fastest A entry but has the worst angles — only push short with full utility AND a plan to commit, never as a re-aggression.",
+      "category": "utility",
+      "situation": "T short A push",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: short A push is in <20% of T A executes on Dust2"
+    },
+    {
+      "title": "Dust2 pistol: T fast B tunnels stack",
+      "description": "Pistol round T: stack 5 tunnels for a fast B hit. Tunnels exit before 0:1:30, plant on tunnels angle. CTs cannot rotate from A in time. ~62% T pistol win rate with the stack on Dust2.",
+      "category": "economy",
+      "situation": "T pistol round strategy",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: B tunnels stack is the highest-WR Dust2 T pistol on tier-1"
+    },
+    {
+      "title": "Dust2 force buy: B tunnels with armor + Galils",
+      "description": "Dust2 force buys hit B tunnels — same logic as the pistol stack but with rifles. The execute is muscle memory at this point. A long forces have low success on Dust2 because pit punishes under-buys.",
+      "category": "economy",
+      "situation": "T force buy decision",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: Dust2 B tunnels force wins ~42%, A long force ~25%"
+    },
+    {
+      "title": "Dust2 save: AWP through cat or tunnels",
+      "description": "AWP saves on Dust2 should exit through cat (back to T spawn) or tunnels (back to T spawn). Both are short safe routes. Avoid mid saves — CTs can hold xbox or window from far.",
+      "category": "economy",
+      "situation": "Dust2 save round, AWP",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: Dust2 AWP retention >75% for tier-1"
+    },
+    {
+      "title": "Dust2 long doors: jiggle peek the corner",
+      "description": "Long doors corner is a free jiggle peek — tap A for one frame to bait the pit shot. If pit shoots, push immediately; if no shot, you've cleared the angle. Most long deaths at intermediate skill come from blind pushes.",
+      "category": "aim_and_duels",
+      "situation": "T long doors push",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: jiggle peek + commit reduces long entry deaths by ~30%"
+    },
+    {
+      "title": "Dust2 mid doors: spray through smoke",
+      "description": "When mid doors is smoked, spray the smoke at chest level — there is a 70% chance someone is crossing or holding the smoke edge. Wallbang spray accounts for ~10% of mid kills on Dust2.",
+      "category": "aim_and_duels",
+      "situation": "Mid doors smoked, suspected crossings",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: smoke wallbang frags average ~0.3 per round on Dust2 mid"
+    },
+    {
+      "title": "Dust2 close A duel: tap test on entry",
+      "description": "On A entries, tap-fire the first 2 bullets — if you hit, switch to spray for the trade. The close range rewards tap-burst over full spray for the first kill.",
+      "category": "aim_and_duels",
+      "situation": "A site entry duel",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: tap-then-spray pattern on A entries has ~12% higher accuracy than pure spray"
+    },
+    {
+      "title": "Dust2 mid contact: rotate to short A",
+      "description": "If a mid trade happens (catwalk-xbox duel), the next call is short A. Mid contact pulls CT mid players, short opens up. This is the strongest Dust2 mid-round trigger.",
+      "category": "mid_round",
+      "situation": "Mid contact, deciding next call",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: mid trade into short A wins ~60% on Dust2"
+    },
+    {
+      "title": "Dust2 lurker A long info",
+      "description": "On default rounds, send the lurker to long doors at 0:1:00 for a sound read on pit. Long doors info confirms whether pit is held or rotated, which decides the A vs B commit.",
+      "category": "mid_round",
+      "situation": "Default round info gathering",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: tier-1 IGLs use long info to call ~60% of their A vs B commits on Dust2"
+    },
+    {
+      "title": "Dust2 fast B fake: 20-second commit",
+      "description": "Dust2 fast B fakes can be shorter than other maps — 20 seconds is enough to pull a CT from A long. Shorter fakes do not pull rotations; longer fakes give the CT time to re-rotate.",
+      "category": "mid_round",
+      "situation": "B fake into A execute",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: 20-second B fake to A long execute success rate ~60% on Dust2"
+    },
+    {
+      "title": "Dust2 A retake: from short with smoke + flash",
+      "description": "A retake should come from short, not long. Smoke long (cuts the lurker), flash short, push 3-stack. Long retakes on Dust2 are punished by the lurker — short retakes win ~50% with full utility.",
+      "category": "retakes_post_plant",
+      "situation": "CT retake A site",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: short retakes win ~50%, long retakes ~25% on Dust2 A"
+    },
+    {
+      "title": "Dust2 B post-plant: hold from doors lurk",
+      "description": "Post-plant B, lurk back through doors corner to hold the retake from tunnels OR to pre-fire mid rotations. Avoid sitting on plat — retake utility hits plat first.",
+      "category": "retakes_post_plant",
+      "situation": "T post-plant B",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: doors lurk post-plant outperforms plat hold by ~10 points on Dust2 B"
+    },
+    {
+      "title": "Dust2 A plant: behind goose, exposed to short",
+      "description": "Default A plant is behind goose, exposed to short. This forces CT defuse from short, where the lurker can pre-fire. Avoid plants in the open or behind ramp — the lurker cannot punish the defuse.",
+      "category": "retakes_post_plant",
+      "situation": "T A plant location",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: behind-goose plant has highest post-plant WR on Dust2 A"
+    }
+  ]
+}

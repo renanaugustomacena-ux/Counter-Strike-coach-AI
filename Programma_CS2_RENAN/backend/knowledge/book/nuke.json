@@ -1,0 +1,148 @@
+{
+  "knowledge": [
+    {
+      "title": "Nuke A site (upper): heaven + rafters crossfire",
+      "description": "CT A: one player heaven (above site), one player rafters (off-angle from CT spawn). Heaven covers the entry from outside/squeaky, rafters traps the silo push. Both on site = double frag from a heaven smoke.",
+      "category": "positioning",
+      "situation": "CT A defense, full buy",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: heaven-rafters crossfire is standard Nuke A setup"
+    },
+    {
+      "title": "Nuke B site (lower): close + ramp anchor",
+      "description": "CT B: one player on B (close angle on doors), one player ramp room (off-angle on the second push). B player traps the entry, ramp player traps the trade. CT spawn rotation is ~6 seconds — fast holds matter.",
+      "category": "positioning",
+      "situation": "CT B defense",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: B-rampoom crossfire is standard Nuke B setup"
+    },
+    {
+      "title": "Nuke outside: outside player with AWP",
+      "description": "CT outside player holds outside with AWP from the silo angle. Outside is the highest-value AWP position on Nuke — it covers heaven access AND outside rotates. Reposition after first shot.",
+      "category": "positioning",
+      "situation": "CT AWP outside",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: outside AWP averages ~1.5 opening kills per round on Nuke"
+    },
+    {
+      "title": "Nuke A execute (outside route): smoke heaven + molly silo + flash entry",
+      "description": "A execute via outside: smoke heaven (cuts the high angle), molly silo (clears close hold), flash from outside for entry. This is the canonical Nuke A take — outside route opens 3 entry points.",
+      "category": "utility",
+      "situation": "T-side A execute via outside",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: outside A execute is the most reliable Nuke T strat"
+    },
+    {
+      "title": "Nuke B execute: smoke vent + smoke ladder + molly newbox",
+      "description": "B execute: smoke vent (cuts the rotate from CT), smoke ladder room (cuts trade from above), molly newbox (clears the close hold), flash from main for entry. ~68% plant rate with full B execute on Nuke.",
+      "category": "utility",
+      "situation": "T-side B execute, full buy",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: full-utility B execute is most reliable Nuke B strat"
+    },
+    {
+      "title": "Nuke ramp control utility: smoke + flash for ramp room",
+      "description": "T ramp control: smoke ramp room (cuts the trade from above), flash for the entry. Ramp control opens 3 site hit options — without ramp, T side is forced into outside-only commits.",
+      "category": "utility",
+      "situation": "T ramp control",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: ramp control predicts T round win on Nuke better than mid control on most other maps"
+    },
+    {
+      "title": "Nuke pistol: CT outside stack",
+      "description": "Nuke CT pistol: stack outside with the outside player + 1 secondary pistol player. T side has the worst pistol economy on Nuke — the long sightlines reward kevlar and pre-aim. ~62% CT pistol WR.",
+      "category": "economy",
+      "situation": "Nuke CT pistol",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: Nuke CT pistol WR is the highest of any active duty map"
+    },
+    {
+      "title": "Nuke force buy: B through main with utility",
+      "description": "Nuke B forces work because B is utility-driven and the entry is short. A forces have very low success on Nuke — outside is too punishing under-buys.",
+      "category": "economy",
+      "situation": "T force buy decision on Nuke",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: Nuke B force wins ~38%, A force <20%"
+    },
+    {
+      "title": "Nuke save: route through T spawn, never through outside",
+      "description": "Nuke saves: always route back through T spawn. Outside saves are the worst-case scenario — outside CTs catch savers with AWPs from far. Strict T spawn discipline only.",
+      "category": "economy",
+      "situation": "Nuke save round",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: Nuke save retention drops ~25% if savers route outside"
+    },
+    {
+      "title": "Nuke outside duel: pre-aim head level on the silo angle",
+      "description": "Outside duels are decided by pre-aim — the silo angle is head-level for both sides. Whoever has the crosshair on the gap wins. Most outside deaths at intermediate skill come from low crosshair.",
+      "category": "aim_and_duels",
+      "situation": "Outside silo AWP duel",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: top outside AWPers pre-aim head level >95%"
+    },
+    {
+      "title": "Nuke heaven push: walk and pre-aim ladder",
+      "description": "Pushing heaven from CT side: walk silently and pre-aim the ladder exit. The T player coming up the ladder has zero info — you have all the time. Slow plays beat aim plays here.",
+      "category": "aim_and_duels",
+      "situation": "CT heaven push from CT spawn",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: walked heaven pushes win ~70% vs ran heaven pushes ~45%"
+    },
+    {
+      "title": "Nuke ramp duel: spray transfer through smoke",
+      "description": "Ramp duels are close range and often through smoke. Spray transfer (kill one, walk crosshair to next) wins ramp fights more than tap firing.",
+      "category": "aim_and_duels",
+      "situation": "Ramp room duel",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: spray-transfer accounts for ~45% of ramp room frags"
+    },
+    {
+      "title": "Nuke outside contact: rotate to inside on a trade",
+      "description": "If you take a trade outside, rotate inside (lobby or main) immediately. The outside trade pulls the CT outside player; inside opens up. Slow play after outside contact gives the CT time to re-rotate.",
+      "category": "mid_round",
+      "situation": "Outside contact, deciding next call",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: post-outside-contact inside commit wins ~60% on Nuke"
+    },
+    {
+      "title": "Nuke IGL: outside info gates everything",
+      "description": "Outside info on Nuke is the master variable. Whoever wins outside controls round options. Send 1-2 players outside on every default and base your call on outside outcome.",
+      "category": "mid_round",
+      "situation": "T default information gathering",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: tier-1 Nuke IGLs base ~70% of commits on outside outcome"
+    },
+    {
+      "title": "Nuke A fake: 25-second commit",
+      "description": "Nuke A fakes commit utility for 25 seconds (heaven smoke, silo molly, gunfire) then re-rotate to B through main. CT will burn rotates. 25-second window is the sweet spot on Nuke.",
+      "category": "mid_round",
+      "situation": "A fake into B execute",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: 25-second A fake to B execute wins ~55% on Nuke"
+    },
+    {
+      "title": "Nuke A retake: from heaven with smoke + flash",
+      "description": "A retake from heaven (rotate from CT spawn) with smoke (cuts the lurker), flash, push. Heaven retake is the only viable A retake on Nuke — site retakes from below get traded by the lurker.",
+      "category": "retakes_post_plant",
+      "situation": "CT retake A site",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: heaven retakes win ~52% on Nuke A"
+    },
+    {
+      "title": "Nuke B post-plant: hold from secret or main lurk",
+      "description": "Post-plant B: lurk back through secret (cuts the rotate from CT spawn) or through main (holds the main retake). Both outperform sitting on site by ~12 points.",
+      "category": "retakes_post_plant",
+      "situation": "T post-plant B",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: secret/main lurks outperform site-hold by ~12 points on Nuke B"
+    },
+    {
+      "title": "Nuke A plant: in front of silo, exposed to heaven",
+      "description": "Default A plant is in front of silo, exposed to heaven. Heaven defuse is the worst angle for the CT — your post-plant lurker can pre-fire the defuse from outside.",
+      "category": "retakes_post_plant",
+      "situation": "T A plant location",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: front-of-silo plant has highest post-plant WR on Nuke A"
+    }
+  ]
+}
