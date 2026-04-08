@@ -1,10 +1,20 @@
 #!/usr/bin/env python3
 """
-Populate the RoundStats table from all ingested pro .dem files.
+Populate the RoundStats table + enrich PlayerMatchStats from ingested pro .dem files.
 
 Reads each .dem file via demoparser2, builds per-round per-player stats using
-round_stats_builder, enriches with equipment_value from playertickstate, and
-bulk-inserts into the roundstats table.
+round_stats_builder, enriches with equipment_value from playertickstate, bulk-inserts
+into the roundstats table, AND writes match-level enrichment fields into
+playermatchstats (kill-type percentages, utility-per-round metrics, flash assists,
+blind time / distinct enemies blinded, trade kill ratios, opening duel win rate).
+
+Previously (Q1-02 bug): the enrichment dict returned by enrich_from_demo() was
+discarded via `_, round_stats_dicts = ...` and playermatchstats never saw the
+match-level aggregates. This caused 11 columns (thrusmoke_kill_pct, wallbang_kill_pct,
+noscope_kill_pct, blind_kill_pct, he_damage_per_round, molotov_damage_per_round,
+smokes_per_round, flash_assists, utility_blind_time, utility_enemies_blinded,
+trade_kill_ratio/was_traded_ratio) to be 0.0 across all rows. Fixed by capturing
+the enrichment dict and issuing an UPDATE for every (demo_name, player_name) pair.
 
 Idempotent: skips demos that already have RoundStats rows (can be re-run safely).
 Use --full to re-process all demos regardless.
@@ -13,6 +23,7 @@ Usage:
     python tools/populate_round_stats.py            # skip already-processed demos
     python tools/populate_round_stats.py --full     # re-process all demos
 """
+
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -21,9 +32,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 DEMO_BASE = Path("/media/renan/New Volume/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS")
-DB_PATH = str(
-    PROJECT_ROOT / "Programma_CS2_RENAN" / "backend" / "storage" / "database.db"
-)
+DB_PATH = str(PROJECT_ROOT / "Programma_CS2_RENAN" / "backend" / "storage" / "database.db")
 
 # RoundStats model columns we populate from the builder dict.
 # Fields absent from the model (noscope_kills, blind_kills, flash_assists) are excluded.
@@ -62,6 +71,25 @@ _INSERT_SQL = (
     + ", ".join("?" * len(_COLUMNS))
     + ")"
 )
+
+# Q1-02: Enrichment keys (from round_stats_builder.aggregate_round_stats_to_match)
+# mapped to playermatchstats columns. These are the fields we UPDATE after the
+# roundstats INSERT. Any enrichment key NOT in this list is ignored.
+_ENRICHMENT_TO_PLAYERMATCHSTATS = {
+    "trade_kill_ratio": "trade_kill_ratio",
+    "was_traded_ratio": "was_traded_ratio",
+    "thrusmoke_kill_pct": "thrusmoke_kill_pct",
+    "wallbang_kill_pct": "wallbang_kill_pct",
+    "noscope_kill_pct": "noscope_kill_pct",
+    "blind_kill_pct": "blind_kill_pct",
+    "he_damage_per_round": "he_damage_per_round",
+    "molotov_damage_per_round": "molotov_damage_per_round",
+    "smokes_per_round": "smokes_per_round",
+    "flash_assists": "flash_assists",
+    "utility_blind_time": "utility_blind_time",
+    "utility_enemies_blinded": "utility_enemies_blinded",
+    "opening_duel_win_pct": "opening_duel_win_pct",
+}
 
 
 def _build_demo_path_map() -> dict:
@@ -135,16 +163,16 @@ def main() -> None:
                 "SELECT COUNT(*) FROM roundstats WHERE demo_name = ?", (demo_name,)
             ).fetchone()[0]
             if existing > 0:
-                print(
-                    f"[{i:02d}/{len(demo_names)}] SKIP ({existing} rows exist): {demo_name}"
-                )
+                print(f"[{i:02d}/{len(demo_names)}] SKIP ({existing} rows exist): {demo_name}")
                 total_skipped += existing
                 continue
 
         print(f"[{i:02d}/{len(demo_names)}] Processing: {demo_name} ...", end=" ", flush=True)
 
-        # Build round stats from the .dem file
-        _, round_stats_dicts = enrich_from_demo(str(dem_path), demo_name)
+        # Build round stats AND match-level enrichment from the .dem file.
+        # Q1-02: The enrichment dict was previously discarded; it is now used to
+        # UPDATE playermatchstats below.
+        enrichment_by_player, round_stats_dicts = enrich_from_demo(str(dem_path), demo_name)
         if not round_stats_dicts:
             print("WARN: no round stats built — demo may lack round_end events")
             total_failed += 1
@@ -165,33 +193,35 @@ def main() -> None:
             rnum = stats.get("round_number", 0)
             ev = equip_map.get((player, rnum), 0)
 
-            rows_to_insert.append((
-                stats.get("demo_name", demo_name),
-                rnum,
-                player,
-                stats.get("side", "unknown"),
-                int(stats.get("kills", 0)),
-                int(stats.get("deaths", 0)),
-                int(stats.get("assists", 0)),
-                int(stats.get("damage_dealt", 0)),
-                int(stats.get("headshot_kills", 0)),
-                int(stats.get("trade_kills", 0)),
-                int(bool(stats.get("was_traded", False))),
-                int(stats.get("thrusmoke_kills", 0)),
-                int(stats.get("wallbang_kills", 0)),
-                int(bool(stats.get("opening_kill", False))),
-                int(bool(stats.get("opening_death", False))),
-                float(stats.get("he_damage", 0.0)),
-                float(stats.get("molotov_damage", 0.0)),
-                int(stats.get("flashes_thrown", 0)),
-                int(stats.get("smokes_thrown", 0)),
-                int(ev),
-                int(bool(stats.get("round_won", False))),
-                int(bool(stats.get("mvp", False))),
-                int(bool(stats.get("kast", False))),
-                stats.get("round_rating"),
-                now_str,
-            ))
+            rows_to_insert.append(
+                (
+                    stats.get("demo_name", demo_name),
+                    rnum,
+                    player,
+                    stats.get("side", "unknown"),
+                    int(stats.get("kills", 0)),
+                    int(stats.get("deaths", 0)),
+                    int(stats.get("assists", 0)),
+                    int(stats.get("damage_dealt", 0)),
+                    int(stats.get("headshot_kills", 0)),
+                    int(stats.get("trade_kills", 0)),
+                    int(bool(stats.get("was_traded", False))),
+                    int(stats.get("thrusmoke_kills", 0)),
+                    int(stats.get("wallbang_kills", 0)),
+                    int(bool(stats.get("opening_kill", False))),
+                    int(bool(stats.get("opening_death", False))),
+                    float(stats.get("he_damage", 0.0)),
+                    float(stats.get("molotov_damage", 0.0)),
+                    int(stats.get("flashes_thrown", 0)),
+                    int(stats.get("smokes_thrown", 0)),
+                    int(ev),
+                    int(bool(stats.get("round_won", False))),
+                    int(bool(stats.get("mvp", False))),
+                    int(bool(stats.get("kast", False))),
+                    stats.get("round_rating"),
+                    now_str,
+                )
+            )
 
         conn.executemany(_INSERT_SQL, rows_to_insert)
         conn.commit()
@@ -201,7 +231,38 @@ def main() -> None:
             "SELECT COUNT(*) FROM roundstats WHERE demo_name = ?", (demo_name,)
         ).fetchone()[0]
         newly_inserted = after - (0 if full_rebuild else 0)
-        print(f"inserted {len(rows_to_insert)} rows ({after} total for this demo)")
+
+        # Q1-02: Update playermatchstats with match-level enrichment for every
+        # (demo_name, player_name) pair that has a row. UPDATE with no matching
+        # row is a no-op, so players without existing stats are silently skipped
+        # (they will be enriched when their playermatchstats row is created by
+        # whichever ingestion pipeline owns that table).
+        pms_updates = 0
+        for player_name, enrichment in enrichment_by_player.items():
+            # Build column list from whatever enrichment keys are present
+            set_clauses = []
+            values = []
+            for enrich_key, col_name in _ENRICHMENT_TO_PLAYERMATCHSTATS.items():
+                if enrich_key in enrichment:
+                    set_clauses.append(f"{col_name} = ?")
+                    values.append(float(enrichment[enrich_key]))
+            if not set_clauses:
+                continue
+            values.extend([demo_name, player_name])
+            conn.execute(
+                f"UPDATE playermatchstats SET {', '.join(set_clauses)} "
+                f"WHERE demo_name = ? AND player_name = ?",
+                values,
+            )
+            if conn.total_changes:
+                pms_updates += 1
+        conn.commit()
+
+        print(
+            f"inserted {len(rows_to_insert)} roundstats rows, "
+            f"enriched {pms_updates}/{len(enrichment_by_player)} playermatchstats "
+            f"({after} total roundstats for this demo)"
+        )
         total_inserted += len(rows_to_insert)
 
     conn.close()
@@ -214,9 +275,7 @@ def main() -> None:
     # Final count
     conn2 = sqlite3.connect(DB_PATH, timeout=10)
     total_rows = conn2.execute("SELECT COUNT(*) FROM roundstats").fetchone()[0]
-    demos_covered = conn2.execute(
-        "SELECT COUNT(DISTINCT demo_name) FROM roundstats"
-    ).fetchone()[0]
+    demos_covered = conn2.execute("SELECT COUNT(DISTINCT demo_name) FROM roundstats").fetchone()[0]
     conn2.close()
     print(f"\n  Total roundstats rows: {total_rows:,}")
     print(f"  Demos covered: {demos_covered}")
