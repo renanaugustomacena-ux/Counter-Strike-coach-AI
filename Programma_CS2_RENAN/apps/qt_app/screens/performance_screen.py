@@ -89,7 +89,9 @@ class PerformanceScreen(QWidget):
         if loading:
             self._show_loading()
 
-    def _on_data(self, history: list, map_stats: dict, sw: dict, utility: dict):
+    def _on_data(
+        self, history: list, map_stats: dict, sw: dict, utility: dict, is_pro_overview: bool = False
+    ):
         self._skeleton.setVisible(False)
         self._status.setVisible(False)
         self._scroll.setVisible(True)
@@ -99,23 +101,37 @@ class PerformanceScreen(QWidget):
             self._show_status("No performance data. Play some matches!")
             return
 
+        # Provenance banner when showing pro data as reference
+        if is_pro_overview:
+            banner = QLabel(
+                "No personal demos analyzed yet. Showing aggregated stats from all "
+                "parsed pro matches (multiple players across multiple teams). "
+                "Analyze your own demos to see your personal analytics."
+            )
+            banner.setWordWrap(True)
+            banner.setStyleSheet(
+                "color: #d96600; background: #1a1200; border: 1px solid #3a2a00; "
+                "border-radius: 6px; padding: 10px; font-size: 13px;"
+            )
+            self._content_layout.insertWidget(0, banner)
+
         # Each section is wrapped in try/except so a chart rendering crash
         # doesn't kill the entire app (segfaults on some Linux GPU drivers).
         # Section 1: Rating Trend
         try:
-            self._build_trend(history)
+            self._build_trend(history, is_pro_overview)
         except Exception as e:
             logger.error("Failed to build rating trend: %s", e)
 
         # Section 2: Per-Map Stats
         if map_stats:
             try:
-                self._build_map_stats(map_stats)
+                self._build_map_stats(map_stats, is_pro_overview)
             except Exception as e:
                 logger.error("Failed to build map stats: %s", e)
 
-        # Section 3: Strengths & Weaknesses
-        if sw and (sw.get("strengths") or sw.get("weaknesses")):
+        # Section 3: Strengths & Weaknesses — hidden in pro overview (Z-scores are meaningless)
+        if not is_pro_overview and sw and (sw.get("strengths") or sw.get("weaknesses")):
             try:
                 self._build_sw(sw)
             except Exception as e:
@@ -124,7 +140,7 @@ class PerformanceScreen(QWidget):
         # Section 4: Utility
         if utility and utility.get("user"):
             try:
-                self._build_utility(utility)
+                self._build_utility(utility, is_pro_overview)
             except Exception as e:
                 logger.error("Failed to build utility breakdown: %s", e)
 
@@ -135,8 +151,9 @@ class PerformanceScreen(QWidget):
 
     # ── Section builders ──
 
-    def _build_trend(self, history: list):
-        card = self._section("Rating Trend")
+    def _build_trend(self, history: list, is_pro_overview: bool = False):
+        title = "Rating Trend (Pro Reference Data)" if is_pro_overview else "Rating Trend"
+        card = self._section(title)
         if not history:
             card.layout().addWidget(QLabel("Not enough data for trend analysis."))
             return
@@ -171,8 +188,11 @@ class PerformanceScreen(QWidget):
         lbl.setStyleSheet("font-size: 14px; line-height: 1.6;")
         card.layout().addWidget(lbl)
 
-    def _build_map_stats(self, map_stats: dict):
-        card = self._section("Per-Map Performance")
+    def _build_map_stats(self, map_stats: dict, is_pro_overview: bool = False):
+        title = (
+            "Per-Map Performance (Pro Reference Data)" if is_pro_overview else "Per-Map Performance"
+        )
+        card = self._section(title)
 
         grid = QGridLayout()
         grid.setSpacing(12)
@@ -251,8 +271,13 @@ class PerformanceScreen(QWidget):
         row.addLayout(weak_col)
         card.layout().addLayout(row)
 
-    def _build_utility(self, utility: dict):
-        card = self._section("Utility Effectiveness (vs Pro)")
+    def _build_utility(self, utility: dict, is_pro_overview: bool = False):
+        title = (
+            "Utility Effectiveness (Pro Reference Data)"
+            if is_pro_overview
+            else "Utility Effectiveness (vs Pro)"
+        )
+        card = self._section(title)
 
         user = utility.get("user", {})
         pro = utility.get("pro", {})

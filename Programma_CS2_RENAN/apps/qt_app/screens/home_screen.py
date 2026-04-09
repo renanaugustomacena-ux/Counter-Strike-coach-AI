@@ -220,7 +220,6 @@ class HomeScreen(QWidget):
         path_row.addWidget(self._pro_path_label, 1)
         layout.addLayout(path_row)
 
-        # Pro folder picker
         pro_btn_row = QHBoxLayout()
         pro_btn_row.setSpacing(8)
         self._pro_folder_btn = QPushButton(i18n.get_text("select_demo_folder"))
@@ -228,15 +227,19 @@ class HomeScreen(QWidget):
         self._pro_folder_btn.setFixedWidth(180)
         self._pro_folder_btn.clicked.connect(self._pick_pro_folder)
         pro_btn_row.addWidget(self._pro_folder_btn)
+
+        self._analyze_pro_btn = QPushButton("Analyze Pro Demos")
+        self._analyze_pro_btn.setCursor(Qt.PointingHandCursor)
+        self._analyze_pro_btn.setFixedWidth(180)
+        self._analyze_pro_btn.clicked.connect(self._on_start_pro_analysis)
+        pro_btn_row.addWidget(self._analyze_pro_btn)
+
+        self._pro_analyze_status = QLabel("")
+        self._pro_analyze_status.setStyleSheet("color: #a0a0b0; font-size: 12px;")
+        pro_btn_row.addWidget(self._pro_analyze_status, 1)
+
         pro_btn_row.addStretch()
         layout.addLayout(pro_btn_row)
-
-        # Info: automated ingestion coming in future version
-        auto_info = QLabel("Automated background ingestion coming in a future update. "
-                           "For now, use Settings > Start Ingestion to process pro demos.")
-        auto_info.setWordWrap(True)
-        auto_info.setStyleSheet("color: #a0a0b0; font-size: 11px; font-style: italic;")
-        layout.addWidget(auto_info)
 
         self._cards_layout.addWidget(card)
 
@@ -367,6 +370,7 @@ class HomeScreen(QWidget):
             return
 
         self._analyze_btn.setEnabled(False)
+        self._analyze_pro_btn.setEnabled(False)
         self._analyze_btn.setText("Analyzing...")
         self._analyze_status.setText("Scanning for demos...")
         tokens = get_tokens()
@@ -386,6 +390,7 @@ class HomeScreen(QWidget):
     def _on_analysis_done(self, _result):
         self._ingestion_worker = None
         self._analyze_btn.setEnabled(True)
+        self._analyze_pro_btn.setEnabled(True)
         self._analyze_btn.setText("Analyze Demos")
         tokens = get_tokens()
         self._analyze_status.setText("Analysis complete")
@@ -401,6 +406,7 @@ class HomeScreen(QWidget):
     def _on_analysis_error(self, error):
         self._ingestion_worker = None
         self._analyze_btn.setEnabled(True)
+        self._analyze_pro_btn.setEnabled(True)
         self._analyze_btn.setText("Analyze Demos")
         tokens = get_tokens()
         self._analyze_status.setText(f"Error: {error}")
@@ -410,6 +416,58 @@ class HomeScreen(QWidget):
         from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state
 
         get_app_state().notification_received.emit("ERROR", f"Demo analysis failed: {error}")
+
+    def _on_start_pro_analysis(self):
+        """Trigger pro demo ingestion from the Home screen."""
+        if self._ingestion_worker is not None:
+            return  # Already running
+
+        pro_path = get_setting("PRO_DEMO_PATH", "")
+        if not pro_path:
+            tokens = get_tokens()
+            self._pro_analyze_status.setText("Set a pro demo folder first")
+            self._pro_analyze_status.setStyleSheet(f"color: {tokens.error}; font-size: 12px;")
+            return
+
+        self._analyze_pro_btn.setEnabled(False)
+        self._analyze_btn.setEnabled(False)
+        self._analyze_pro_btn.setText("Analyzing...")
+        self._pro_analyze_status.setText("Scanning for pro demos...")
+        tokens = get_tokens()
+        self._pro_analyze_status.setStyleSheet(f"color: {tokens.warning}; font-size: 12px;")
+
+        def _run():
+            from Programma_CS2_RENAN.run_ingestion import process_new_demos
+
+            process_new_demos(is_pro=True)
+
+        worker = Worker(_run)
+        worker.signals.result.connect(self._on_pro_analysis_done)
+        worker.signals.error.connect(self._on_pro_analysis_error)
+        self._ingestion_worker = worker
+        QThreadPool.globalInstance().start(worker)
+
+    def _on_pro_analysis_done(self, _result):
+        self._ingestion_worker = None
+        self._analyze_pro_btn.setEnabled(True)
+        self._analyze_btn.setEnabled(True)
+        self._analyze_pro_btn.setText("Analyze Pro Demos")
+        tokens = get_tokens()
+        self._pro_analyze_status.setText("Pro analysis complete")
+        self._pro_analyze_status.setStyleSheet(f"color: {tokens.success}; font-size: 12px;")
+        logger.info("Home screen pro demo analysis completed")
+        get_app_state().notification_received.emit("INFO", "Pro demo analysis complete")
+
+    def _on_pro_analysis_error(self, error):
+        self._ingestion_worker = None
+        self._analyze_pro_btn.setEnabled(True)
+        self._analyze_btn.setEnabled(True)
+        self._analyze_pro_btn.setText("Analyze Pro Demos")
+        tokens = get_tokens()
+        self._pro_analyze_status.setText(f"Error: {error}")
+        self._pro_analyze_status.setStyleSheet(f"color: {tokens.error}; font-size: 12px;")
+        logger.error("Home screen pro demo analysis failed: %s", error)
+        get_app_state().notification_received.emit("ERROR", f"Pro analysis failed: {error}")
 
     def _pick_demo_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Select Demo Folder")

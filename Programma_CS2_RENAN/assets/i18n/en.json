@@ -111,7 +111,7 @@
   "dialog_skill_radar": "Skill Radar Analysis",
   "wizard_step2_hint": "Or paste demo folder path here",
   "demo_analysis": "Demo Analysis",
-  "demo_analysis_desc": "Select your demo folder to analyze your matches.",
+  "demo_analysis_desc": "Parse your .dem replay files and extract stats (kills, deaths, ADR, utility) into the database for coaching analysis.",
   "select_demo_folder": "Select Demo Folder",
   "pro_demo_ingestion": "Pro Demo Ingestion",
   "pro_demo_ingestion_desc": "Ingest professional demo files to build the coaching baseline.",

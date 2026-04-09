@@ -113,12 +113,27 @@ class AppState(QObject):
                 except Exception as exc:
                     logger.debug("Notification poll skipped: %s", exc)
 
+                # Count actual analyzed demos (distinct demo files in PlayerMatchStats)
+                from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
+
+                try:
+                    from sqlalchemy import func as sa_func
+
+                    demo_count = (
+                        session.exec(
+                            select(sa_func.count(sa_func.distinct(PlayerMatchStats.demo_name)))
+                        ).one()
+                        or 0
+                    )
+                except Exception:
+                    demo_count = int(state.total_matches_processed)
+
                 return {
                     "service_active": delta < 300,
                     "coach_status": state.ingest_status or "Idle",
                     "parsing_progress": float(state.parsing_progress),
                     "belief_confidence": float(state.belief_confidence),
-                    "total_matches": int(state.total_matches_processed),
+                    "total_matches": int(demo_count),
                     "current_epoch": int(state.current_epoch),
                     "total_epochs": int(state.total_epochs),
                     "train_loss": float(state.train_loss),
