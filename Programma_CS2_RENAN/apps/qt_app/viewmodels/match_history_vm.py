@@ -71,6 +71,8 @@ class MatchHistoryViewModel(QObject):
                     "avg_adr": m.avg_adr,
                     "avg_kast": m.avg_kast,
                     "kd_ratio": m.kd_ratio,
+                    "is_pro": m.is_pro,
+                    "player_name": m.player_name,
                 }
                 for m in results
             ]

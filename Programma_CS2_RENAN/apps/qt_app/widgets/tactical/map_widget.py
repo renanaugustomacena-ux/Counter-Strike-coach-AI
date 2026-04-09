@@ -45,6 +45,8 @@ class TacticalMapWidget(QWidget):
         super().__init__(parent)
         self._map_name = "de_dust2"
         self._map_pixmap: Optional[QPixmap] = None
+        self._scaled_pixmap: Optional[QPixmap] = None
+        self._cached_map_size: int = 0
         self._players: List[InterpolatedPlayerState] = []
         self._ghosts: List[InterpolatedPlayerState] = []
         self._nades: List = []
@@ -90,8 +92,13 @@ class TacticalMapWidget(QWidget):
 
     # ── Map Loading ──
 
+    def resizeEvent(self, event):
+        self._scaled_pixmap = None  # Invalidate cache on resize
+        super().resizeEvent(event)
+
     def _load_map_image(self):
         """Load map radar image as QPixmap — no Kivy dependency."""
+        self._scaled_pixmap = None  # Invalidate cache on map change
         clean = self._map_name.lower().strip()
         clean = clean.replace(".dem", "").replace(".vpk", "").replace("maps/", "")
 
@@ -135,12 +142,15 @@ class TacticalMapWidget(QWidget):
         painter.setRenderHint(QPainter.Antialiasing)
         ms, ox, oy = self._map_geometry()
 
-        # Layer 1: Map image
+        # Layer 1: Map image (cached rescale — only recomputed on resize/map change)
         if self._map_pixmap and not self._map_pixmap.isNull():
-            scaled = self._map_pixmap.scaled(
-                int(ms), int(ms), Qt.KeepAspectRatio, Qt.SmoothTransformation
-            )
-            painter.drawPixmap(int(ox), int(oy), scaled)
+            ms_int = int(ms)
+            if self._scaled_pixmap is None or self._cached_map_size != ms_int:
+                self._scaled_pixmap = self._map_pixmap.scaled(
+                    ms_int, ms_int, Qt.KeepAspectRatio, Qt.SmoothTransformation
+                )
+                self._cached_map_size = ms_int
+            painter.drawPixmap(int(ox), int(oy), self._scaled_pixmap)
         else:
             painter.fillRect(QRectF(ox, oy, ms, ms), QColor(25, 25, 30))
             painter.setPen(QColor(150, 150, 150))

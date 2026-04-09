@@ -31,10 +31,10 @@ _SEVERITY_COLORS = {
     "low": "#4caf50",
 }
 
-_QUICK_ACTIONS = [
-    "How can I improve my positioning?",
-    "Analyze my utility usage",
-    "What should I focus on?",
+_QUICK_ACTION_KEYS = [
+    ("quick_action_positioning", "How can I improve positioning?"),
+    ("quick_action_utility", "Analyze utility usage"),
+    ("quick_action_focus", "What should I focus on improving?"),
 ]
 
 
@@ -81,6 +81,9 @@ class CoachScreen(QWidget):
         self._analytics_card.set_title(i18n.get_text("advanced_analytics"))
         self._typing_label.setText(i18n.get_text("coach_thinking"))
         self._chat_input.setPlaceholderText(i18n.get_text("ask_your_coach"))
+        if hasattr(self, "_qa_buttons"):
+            for btn, i18n_key in self._qa_buttons:
+                btn.setText(i18n.get_text(i18n_key))
 
     # ── UI Construction ──
 
@@ -250,8 +253,9 @@ class CoachScreen(QWidget):
         # Quick actions
         qa_row = QHBoxLayout()
         qa_row.setSpacing(8)
-        for action_text in _QUICK_ACTIONS:
-            btn = QPushButton(action_text)
+        self._qa_buttons = []
+        for i18n_key, payload in _QUICK_ACTION_KEYS:
+            btn = QPushButton(i18n.get_text(i18n_key))
             btn.setCursor(Qt.PointingHandCursor)
             btn.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
             btn.setStyleSheet(
@@ -259,8 +263,9 @@ class CoachScreen(QWidget):
                 "padding: 4px 10px; color: #a0a0b0; font-size: 12px; background: transparent; }"
                 "QPushButton:hover { border-color: #5a5a8a; color: #dcdcdc; }"
             )
-            btn.clicked.connect(lambda checked, t=action_text: self._send_quick(t))
+            btn.clicked.connect(lambda checked, t=payload: self._send_quick(t))
             qa_row.addWidget(btn)
+            self._qa_buttons.append((btn, i18n_key))
         qa_row.addStretch()
         layout.addLayout(qa_row)
 
@@ -357,13 +362,19 @@ class CoachScreen(QWidget):
                 demo = insight.get("demo_name", "")
                 # Extract map name from demo filename
                 import re
-                map_match = re.search(r"(mirage|inferno|dust2|overpass|ancient|anubis|nuke|vertigo|train)", demo.lower())
+
+                map_match = re.search(
+                    r"(mirage|inferno|dust2|overpass|ancient|anubis|nuke|vertigo|train)",
+                    demo.lower(),
+                )
                 map_tag = map_match.group(1).title() if map_match else ""
                 context_text = f"Pro Analysis: {pro_name}"
                 if map_tag:
                     context_text += f" on {map_tag}"
                 ctx_lbl = QLabel(context_text)
-                ctx_lbl.setStyleSheet("color: #d96600; font-size: 11px; font-style: italic; background: transparent;")
+                ctx_lbl.setStyleSheet(
+                    "color: #d96600; font-size: 11px; font-style: italic; background: transparent;"
+                )
                 item_layout.addWidget(ctx_lbl)
 
             # Title + severity

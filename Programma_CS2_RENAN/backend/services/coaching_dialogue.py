@@ -99,15 +99,15 @@ _CS2_MAP_NAMES = frozenset(
 )
 
 SYSTEM_PROMPT_TEMPLATE = """\
-You are an expert CS2 tactical coach in an interactive session with a player.
+You are an expert CS2 tactical coach in an interactive session.
 
 Player context:
 {player_context}
 
 Guidelines:
 - Be specific, actionable, and encouraging.
-- Reference the player's actual stats and recent coaching insights when relevant.
-- If the player asks about positioning, utility, economy, or aim, give concrete examples.
+- Reference actual stats and recent coaching insights when relevant.
+- If the user asks about positioning, utility, economy, or aim, give concrete examples.
 - Keep responses concise (2-4 sentences for simple questions, up to a short paragraph for complex ones).
 - Do NOT repeat raw numbers — interpret and explain them.
 
@@ -119,7 +119,15 @@ CRITICAL RULES FOR FACTUAL ACCURACY:
 - Do NOT confuse different players — each player profile is distinct.
 - When comparing players, only use data explicitly provided — do not invent statistics.
 - If the user asks about a player and no VERIFIED PLAYER DATA block is present, \
-say you don't have information on that player rather than guessing.\
+say you don't have information on that player rather than guessing.
+
+CRITICAL RULES FOR DATA PROVENANCE:
+- If the player context says "pro reference data", these insights come from \
+professional players, NOT from the user's personal matches.
+- NEVER say "your stats show" or "your utility usage" when referencing pro data. \
+Instead say "the pro data shows" or "based on pro match analysis".
+- Only use possessive framing ("your", "you") when the context explicitly confirms \
+the data comes from the user's personal matches.\
 """
 
 
@@ -282,7 +290,13 @@ class CoachingDialogueEngine:
 
     def _build_system_prompt(self) -> str:
         """Create system prompt with player context embedded."""
-        parts = [f"Player: {self._player_context.get('player_name', 'Unknown')}"]
+        player_name = self._player_context.get("player_name", "Unknown")
+        using_pro = self._player_context.get("using_pro_reference", False)
+
+        if using_pro:
+            parts = [f"User: {player_name} (no personal match data yet — using pro reference data)"]
+        else:
+            parts = [f"Player: {player_name}"]
 
         if self._player_context.get("demo_name"):
             parts.append(f"Current demo: {self._player_context['demo_name']}")

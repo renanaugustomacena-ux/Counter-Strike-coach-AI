@@ -228,23 +228,41 @@ class PlayerLookupService:
         self._cache_loaded_at: float = 0.0
 
     def _ensure_cache(self):
-        """Load/refresh the nickname cache from HLTV DB."""
-        if (
-            self._nickname_cache
-            and (time.monotonic() - self._cache_loaded_at) < self._CACHE_TTL
-        ):
+        """Load/refresh the nickname cache from HLTV DB + PlayerMatchStats fallback."""
+        if self._nickname_cache and (time.monotonic() - self._cache_loaded_at) < self._CACHE_TTL:
             return
 
+        names: set = set()
+
+        # Primary source: HLTV ProPlayer nicknames
         try:
             hltv_db = get_hltv_db_manager()
             with hltv_db.get_session() as session:
                 players = session.exec(select(ProPlayer.nickname)).all()
-                self._nickname_cache = [n for n in players if n]
-                self._nickname_set_lower = {n.lower() for n in self._nickname_cache}
-                self._cache_loaded_at = time.monotonic()
-                logger.debug("Refreshed nickname cache: %d players", len(self._nickname_cache))
+                names.update(n for n in players if n)
         except Exception as exc:
-            logger.warning("Failed to refresh nickname cache: %s", exc)
+            logger.warning("HLTV nickname cache failed: %s", exc)
+
+        # Fallback: player names from parsed demos (covers players not in HLTV DB)
+        try:
+            from sqlalchemy import func as sa_func
+
+            db = get_db_manager()
+            with db.get_session() as session:
+                demo_names = session.exec(
+                    select(sa_func.distinct(PlayerMatchStats.player_name)).where(
+                        PlayerMatchStats.is_pro == True  # noqa: E712
+                    )
+                ).all()
+                names.update(n for n in demo_names if n)
+        except Exception as exc:
+            logger.warning("PlayerMatchStats nickname fallback failed: %s", exc)
+
+        if names:
+            self._nickname_cache = sorted(names)
+            self._nickname_set_lower = {n.lower() for n in self._nickname_cache}
+            self._cache_loaded_at = time.monotonic()
+            logger.debug("Refreshed nickname cache: %d players", len(self._nickname_cache))
 
     def detect_player_mentions(self, message: str) -> List[str]:
         """Extract player names mentioned in a chat message.
@@ -308,9 +326,7 @@ class PlayerLookupService:
                 if best_match and best_match.lower() not in found_lower:
                     found.append(best_match)
                     found_lower.add(best_match.lower())
-                    logger.debug(
-                        "Fuzzy-matched '%s' -> '%s' (%.2f)", token, best_match, best_ratio
-                    )
+                    logger.debug("Fuzzy-matched '%s' -> '%s' (%.2f)", token, best_match, best_ratio)
 
         return found
 
@@ -327,17 +343,47 @@ class PlayerLookupService:
             ProPlayerProfile if found, None otherwise.
         """
         # Step 1: Find ProPlayer in HLTV DB
+        hltv_id = None
         try:
             from Programma_CS2_RENAN.backend.processing.baselines.nickname_resolver import (
                 NicknameResolver,
             )
 
             hltv_id = NicknameResolver.find_pro_player_id(name)
-            if hltv_id is None:
-                logger.debug("No HLTV match for '%s'", name)
-                return None
         except Exception as exc:
             logger.warning("NicknameResolver failed for '%s': %s", name, exc)
+
+        # Fallback: if HLTV ID not found, try building a profile from demo stats alone
+        if hltv_id is None:
+            try:
+                db = get_db_manager()
+                with db.get_session() as session:
+                    from sqlalchemy import func as sa_func
+
+                    demo_stats = session.exec(
+                        select(PlayerMatchStats).where(
+                            sa_func.lower(PlayerMatchStats.player_name) == name.lower(),
+                            PlayerMatchStats.is_pro == True,  # noqa: E712
+                        )
+                    ).all()
+                    if demo_stats:
+                        profile = ProPlayerProfile(nickname=name, hltv_id=0)
+                        profile.demo_matches = len(demo_stats)
+                        ratings = [s.rating for s in demo_stats if s.rating and s.rating > 0]
+                        adrs = [s.avg_adr for s in demo_stats if s.avg_adr and s.avg_adr > 0]
+                        if ratings:
+                            profile.demo_avg_rating = sum(ratings) / len(ratings)
+                        if adrs:
+                            profile.demo_avg_adr = sum(adrs) / len(adrs)
+                        logger.info(
+                            "Built profile for '%s' from %d demo matches (no HLTV ID)",
+                            name,
+                            len(demo_stats),
+                        )
+                        return profile
+            except Exception as exc:
+                logger.warning("Demo-only profile fallback failed for '%s': %s", name, exc)
+            logger.debug("No HLTV match and no demo data for '%s'", name)
             return None
 
         # Step 2: Fetch identity + team from HLTV DB
@@ -346,9 +392,7 @@ class PlayerLookupService:
         try:
             hltv_db = get_hltv_db_manager()
             with hltv_db.get_session() as session:
-                player = session.exec(
-                    select(ProPlayer).where(ProPlayer.hltv_id == hltv_id)
-                ).first()
+                player = session.exec(select(ProPlayer).where(ProPlayer.hltv_id == hltv_id)).first()
 
                 if player:
                     profile.nickname = player.nickname
@@ -389,9 +433,7 @@ class PlayerLookupService:
             db = get_db_manager()
             with db.get_session() as session:
                 demo_stats = session.exec(
-                    select(PlayerMatchStats).where(
-                        PlayerMatchStats.pro_player_id == hltv_id
-                    )
+                    select(PlayerMatchStats).where(PlayerMatchStats.pro_player_id == hltv_id)
                 ).all()
 
                 if demo_stats:
@@ -434,9 +476,7 @@ class PlayerLookupService:
 
         # Format KAST/HS% consistently (ratio vs percentage)
         kast_pct = profile.kast * 100 if profile.kast <= 1.0 else profile.kast
-        hs_pct = (
-            profile.headshot_pct * 100 if profile.headshot_pct <= 1.0 else profile.headshot_pct
-        )
+        hs_pct = profile.headshot_pct * 100 if profile.headshot_pct <= 1.0 else profile.headshot_pct
 
         lines.append(
             f"HLTV Stats: Rating 2.0: {profile.rating_2_0:.2f} | "

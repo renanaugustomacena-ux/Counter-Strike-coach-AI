@@ -25,11 +25,33 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 logger = get_logger("cs2analyzer.qt_match_history")
 
 _MAP_PATTERN = re.compile(r"(de_\w+|cs_\w+|ar_\w+)")
+_KNOWN_MAPS = frozenset(
+    {
+        "mirage",
+        "inferno",
+        "dust2",
+        "overpass",
+        "ancient",
+        "anubis",
+        "nuke",
+        "vertigo",
+        "train",
+        "cache",
+        "office",
+    }
+)
 
 
 def _extract_map_name(demo_name: str) -> str:
     m = _MAP_PATTERN.search(demo_name)
-    return m.group(1) if m else "Unknown Map"
+    if m:
+        return m.group(1)
+    # Fallback: match bare map names in pro demo filenames (e.g. "m1-mirage.dem")
+    demo_lower = demo_name.lower()
+    for known in _KNOWN_MAPS:
+        if known in demo_lower:
+            return f"de_{known}"
+    return "Unknown Map"
 
 
 class MatchCard(QFrame):
@@ -42,7 +64,7 @@ class MatchCard(QFrame):
         self._demo_name = match.get("demo_name", "")
         self.setObjectName("dashboard_card")
         self.setCursor(QCursor(Qt.PointingHandCursor))
-        self.setFixedHeight(70)
+        self.setFixedHeight(90)
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(12, 8, 12, 8)
@@ -58,6 +80,20 @@ class MatchCard(QFrame):
         badge.setStyleSheet(f"color: {r_color.name()}; background: transparent;")
         layout.addWidget(badge)
 
+        # PRO badge (if pro match)
+        is_pro = match.get("is_pro", False)
+        if is_pro:
+            pro_badge = QLabel("PRO")
+            pro_badge.setAlignment(Qt.AlignCenter)
+            pro_badge.setFixedWidth(40)
+            pro_badge.setFixedHeight(20)
+            pro_badge.setFont(QFont("Roboto", 9, QFont.Bold))
+            pro_badge.setStyleSheet(
+                "color: #ff9900; background: #2a1a00; border-radius: 4px; "
+                "border: 1px solid #ff9900; padding: 2px 4px;"
+            )
+            layout.addWidget(pro_badge)
+
         # Info column
         info = QVBoxLayout()
         info.setSpacing(2)
@@ -70,7 +106,12 @@ class MatchCard(QFrame):
             except Exception:
                 date_str = str(match["match_date"])
 
-        top = QLabel(f"{map_name}  |  {date_str}")
+        if is_pro:
+            pro_player = match.get("player_name", "")
+            top_text = f"{map_name}  |  {pro_player}  |  {date_str}"
+        else:
+            top_text = f"{map_name}  |  {date_str}"
+        top = QLabel(top_text)
         top.setFont(QFont("Roboto", 12))
         top.setStyleSheet("color: #dcdcdc; background: transparent;")
         info.addWidget(top)
@@ -172,6 +213,21 @@ class MatchHistoryScreen(QWidget):
             self._scroll.setVisible(False)
             self._empty_state.setVisible(True)
             return
+
+        # Show banner when all matches are pro (no personal data yet)
+        has_personal = any(not m.get("is_pro", False) for m in matches)
+        if not has_personal:
+            banner = QLabel(
+                "No personal matches yet — showing pro reference matches below. "
+                "Analyze your own demos from the Dashboard to see your match history."
+            )
+            banner.setWordWrap(True)
+            banner.setStyleSheet(
+                "color: #d96600; background: #1a1200; border: 1px solid #3a2a00; "
+                "border-radius: 6px; padding: 10px; font-size: 13px;"
+            )
+            self._container_layout.insertWidget(0, banner)
+
         self._status.setVisible(False)
         self._empty_state.setVisible(False)
         self._scroll.setVisible(True)
