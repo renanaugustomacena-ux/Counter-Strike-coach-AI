@@ -81,7 +81,8 @@ class LLMService:
             "options": {
                 "temperature": 0.7,
                 "top_p": 0.9,
-                "num_predict": 500,  # Limit response length
+                "num_predict": -1,
+                "num_ctx": 16384,
             },
         }
 
@@ -89,15 +90,17 @@ class LLMService:
             payload["system"] = system_prompt
 
         try:
-            response = requests.post(f"{self.base_url}/api/generate", json=payload, timeout=60)
+            response = requests.post(f"{self.base_url}/api/generate", json=payload, timeout=600)
 
             if response.status_code == 200:
                 return response.json().get("response", "")
             else:
                 return f"[LLM Error] Status {response.status_code}"
 
-        except (requests.ConnectionError, requests.Timeout) as e:
-            self._available = False  # Mark as unavailable
+        except requests.Timeout as e:
+            return f"[LLM Timeout] Generation took too long: {str(e)}"
+        except requests.ConnectionError as e:
+            self._available = False
             return f"[LLM Connection Error] {str(e)}"
         except Exception as e:
             return f"[LLM Error] {str(e)}"
@@ -132,7 +135,8 @@ class LLMService:
             "options": {
                 "temperature": 0.7,
                 "top_p": 0.9,
-                "num_predict": 500,
+                "num_predict": -1,
+                "num_ctx": 16384,
             },
         }
 
@@ -140,7 +144,7 @@ class LLMService:
             response = requests.post(
                 f"{self.base_url}/api/chat",
                 json=payload,
-                timeout=60,
+                timeout=600,
             )
 
             if response.status_code == 200:
@@ -149,7 +153,11 @@ class LLMService:
             else:
                 return f"[LLM Error] Status {response.status_code}"
 
-        except (requests.ConnectionError, requests.Timeout) as e:
+        except requests.Timeout as e:
+            # Timeout does NOT mean Ollama is down — just a slow generation.
+            # Do NOT poison the availability cache.
+            return f"[LLM Timeout] Generation took too long: {str(e)}"
+        except requests.ConnectionError as e:
             self._available = False
             return f"[LLM Connection Error] {str(e)}"
         except Exception as e:
