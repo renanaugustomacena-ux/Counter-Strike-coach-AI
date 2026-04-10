@@ -48,7 +48,7 @@ def initialize_knowledge_base():
     logger.info("Step 2: Loading manual tactical knowledge...")
     populator = KnowledgePopulator()
 
-    knowledge_dir = PROJECT_ROOT / "Programma_CS2_RENAN" / "backend" / "knowledge"
+    knowledge_dir = PROJECT_ROOT / "backend" / "knowledge"
     book_index = knowledge_dir / "book" / "index.json"
     legacy_path = knowledge_dir / "tactical_knowledge.json"
 
