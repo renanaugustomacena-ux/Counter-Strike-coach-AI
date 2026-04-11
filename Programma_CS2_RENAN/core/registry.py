@@ -5,7 +5,7 @@ Handles decoupling of Screens, Models, and Tasks.
 """
 
 import threading
-from typing import Any, Dict, Optional, Type
+from typing import Dict, Optional, Type
 
 from kivymd.uix.screen import MDScreen
 

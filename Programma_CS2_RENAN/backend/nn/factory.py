@@ -10,8 +10,6 @@ Supports:
 3. RAP (RAPCoachModel) - The dormant grand vision model.
 """
 
-from typing import Any, Optional
-
 import torch.nn as nn
 
 from Programma_CS2_RENAN.backend.nn.config import HIDDEN_DIM, INPUT_DIM, OUTPUT_DIM

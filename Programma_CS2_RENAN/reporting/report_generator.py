@@ -1,7 +1,6 @@
 from datetime import datetime
 from pathlib import Path
 
-from Programma_CS2_RENAN.backend.processing.state_reconstructor import RAPStateReconstructor
 from Programma_CS2_RENAN.ingestion.demo_loader import DemoLoader
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 from Programma_CS2_RENAN.reporting.visualizer import MatchVisualizer

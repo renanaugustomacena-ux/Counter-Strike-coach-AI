@@ -1,6 +1,6 @@
 """ProComparisonViewModel — loads pro player stats for side-by-side comparison."""
 
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from PySide6.QtCore import QObject, QThreadPool, Signal
 
@@ -87,12 +87,14 @@ class ProComparisonViewModel(QObject):
             result = []
             for p in players_with_stats:
                 team_info = teams.get(p.team_id, {"name": "—", "rank": 999})
-                result.append({
-                    "hltv_id": p.hltv_id,
-                    "nickname": p.nickname,
-                    "team": team_info["name"],
-                    "team_rank": team_info["rank"],
-                })
+                result.append(
+                    {
+                        "hltv_id": p.hltv_id,
+                        "nickname": p.nickname,
+                        "team": team_info["name"],
+                        "team_rank": team_info["rank"],
+                    }
+                )
 
             # Sort by team world rank, then by nickname within team
             result.sort(key=lambda x: (x["team_rank"], x["nickname"]))
@@ -118,9 +120,7 @@ class ProComparisonViewModel(QObject):
         from Programma_CS2_RENAN.backend.storage.db_models import ProPlayer, ProPlayerStatCard
 
         with get_hltv_db_manager().get_session() as s:
-            player = s.exec(
-                select(ProPlayer).where(ProPlayer.hltv_id == hltv_id)
-            ).first()
+            player = s.exec(select(ProPlayer).where(ProPlayer.hltv_id == hltv_id)).first()
             card = s.exec(
                 select(ProPlayerStatCard).where(ProPlayerStatCard.player_id == hltv_id)
             ).first()
@@ -179,8 +179,14 @@ class ProComparisonViewModel(QObject):
             return {}, player
 
         field_names = [
-            "rating_2_0", "kpr", "dpr", "adr", "kast",
-            "headshot_pct", "opening_duel_win_pct", "clutch_win_count",
+            "rating_2_0",
+            "kpr",
+            "dpr",
+            "adr",
+            "kast",
+            "headshot_pct",
+            "opening_duel_win_pct",
+            "clutch_win_count",
         ]
         stats = {}
         for i, name in enumerate(field_names):

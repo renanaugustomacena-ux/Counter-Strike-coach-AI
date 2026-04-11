@@ -23,17 +23,17 @@ import json
 import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 from sqlalchemy import update
-from sqlmodel import Session, func, select
+from sqlmodel import func, select
 
 from Programma_CS2_RENAN.backend.knowledge.round_utils import (  # F5-20: shared utility
     infer_round_phase,
 )
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager
-from Programma_CS2_RENAN.backend.storage.db_models import CoachingExperience, PlayerMatchStats
+from Programma_CS2_RENAN.backend.storage.db_models import CoachingExperience
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.experience_bank")
@@ -815,7 +815,6 @@ class ExperienceBank:
             effectiveness = -0.15
 
         # P4-C: Single atomic UPDATE with SQL expressions — no read-modify-write race.
-        from sqlalchemy import case
         from sqlalchemy import func as sa_func
 
         now = datetime.now(timezone.utc)

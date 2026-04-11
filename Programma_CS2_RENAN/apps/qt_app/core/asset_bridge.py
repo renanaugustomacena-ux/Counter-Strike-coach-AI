@@ -8,7 +8,7 @@ import os
 from typing import Optional
 
 from PySide6.QtCore import QObject, Signal
-from PySide6.QtGui import QColor, QImage, QPainter, QPixmap
+from PySide6.QtGui import QColor, QImage, QPixmap
 
 from Programma_CS2_RENAN.core.config import get_resource_path
 from Programma_CS2_RENAN.observability.logger_setup import get_logger

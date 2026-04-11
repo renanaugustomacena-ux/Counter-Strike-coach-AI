@@ -16,9 +16,9 @@ from collections import defaultdict
 from typing import List, Optional
 
 import uvicorn
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from pydantic import BaseModel
-from sqlmodel import Session, select
+from sqlmodel import select
 
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 

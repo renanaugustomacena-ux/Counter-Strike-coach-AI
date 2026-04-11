@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from typing import Any, Generator, Type, TypeVar
 
 import sqlalchemy
-from sqlalchemy import Pool, event
+from sqlalchemy import event
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from Programma_CS2_RENAN.core.config import DATABASE_URL, HLTV_DATABASE_URL
@@ -119,7 +119,8 @@ class DatabaseManager:
         SQLAlchemy's create_all() only creates missing TABLES, not missing columns.
         This handles schema evolution for databases created with older code.
         """
-        from sqlalchemy import inspect as sa_inspect, text
+        from sqlalchemy import inspect as sa_inspect
+        from sqlalchemy import text
 
         inspector = sa_inspect(self.engine)
         existing_tables = inspector.get_table_names()
@@ -151,12 +152,16 @@ class DatabaseManager:
                     sql = f'ALTER TABLE "{table.name}" ADD COLUMN "{col_name}" {col_type}{default}'
                     try:
                         conn.execute(text(sql))
-                        logger.info("Schema: added column %s.%s (%s)", table.name, col_name, col_type)
+                        logger.info(
+                            "Schema: added column %s.%s (%s)", table.name, col_name, col_type
+                        )
                     except Exception as e:
                         if "duplicate column" in str(e).lower():
                             pass
                         else:
-                            logger.warning("Schema: failed to add %s.%s: %s", table.name, col_name, e)
+                            logger.warning(
+                                "Schema: failed to add %s.%s: %s", table.name, col_name, e
+                            )
                 conn.commit()
 
     @contextmanager

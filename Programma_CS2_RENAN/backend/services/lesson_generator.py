@@ -12,10 +12,8 @@ Usage:
     lesson = generator.generate_lesson(demo_path)
 """
 
-import json
 import os
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from Programma_CS2_RENAN.backend.services.llm_service import check_ollama_status, get_llm_service

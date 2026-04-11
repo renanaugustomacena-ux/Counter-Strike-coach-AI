@@ -22,7 +22,7 @@ except ImportError:
     Texture = None  # Headless / Qt-only mode — Kivy texture ops unavailable
 
 from Programma_CS2_RENAN.core.config import get_resource_path
-from Programma_CS2_RENAN.core.spatial_data import SPATIAL_REGISTRY, get_map_metadata
+from Programma_CS2_RENAN.core.spatial_data import SPATIAL_REGISTRY
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 _logger = get_logger("cs2analyzer.asset_manager")

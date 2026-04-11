@@ -8,7 +8,7 @@ Governance: Rule 1 §7.2 (Game-theoretic analysis), Rule 2 §8.1 (Novel metrics 
 """
 
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List
 
 import numpy as np
 import pandas as pd

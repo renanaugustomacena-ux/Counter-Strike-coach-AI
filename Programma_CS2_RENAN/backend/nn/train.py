@@ -8,9 +8,6 @@ from torch.utils.data import DataLoader
 from Programma_CS2_RENAN.backend.nn.config import EPOCHS, LEARNING_RATE, get_throttling_delay
 from Programma_CS2_RENAN.backend.nn.dataset import ProPerformanceDataset
 from Programma_CS2_RENAN.backend.nn.early_stopping import EarlyStopping
-from Programma_CS2_RENAN.backend.nn.model import TeacherRefinementNN
-from Programma_CS2_RENAN.backend.storage.database import get_db_manager
-from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.nn_train")

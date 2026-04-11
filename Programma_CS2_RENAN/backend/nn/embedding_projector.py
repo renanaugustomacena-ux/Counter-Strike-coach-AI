@@ -15,7 +15,7 @@ Usage:
     # ... pass to CallbackRegistry ...
 """
 
-from typing import Any, Dict, List, Optional
+from typing import List
 
 import torch
 

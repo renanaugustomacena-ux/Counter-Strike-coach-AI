@@ -9,7 +9,7 @@ Governance: Rule 1 §7.3 (Behavioral modeling), Rule 2 §6.1 (Temporal decay fun
 
 import math
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List
 
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 

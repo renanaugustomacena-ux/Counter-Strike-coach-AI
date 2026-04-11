@@ -3,11 +3,11 @@ import time
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict
 
 from Programma_CS2_RENAN.backend.ingestion.resource_manager import ResourceManager
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager
-from Programma_CS2_RENAN.backend.storage.db_models import CoachState, IngestionTask
+from Programma_CS2_RENAN.backend.storage.db_models import IngestionTask
 from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
 from Programma_CS2_RENAN.backend.storage.storage_manager import StorageManager
 from Programma_CS2_RENAN.core.config import refresh_settings

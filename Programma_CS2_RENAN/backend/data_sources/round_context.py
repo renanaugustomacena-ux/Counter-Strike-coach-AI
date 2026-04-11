@@ -9,7 +9,7 @@ Uses the same demoparser2 event parsing patterns proven in:
 - round_stats_builder.py (_build_round_boundaries for round ends)
 """
 
-from typing import List, Tuple
+from typing import List
 
 import pandas as pd
 from demoparser2 import DemoParser

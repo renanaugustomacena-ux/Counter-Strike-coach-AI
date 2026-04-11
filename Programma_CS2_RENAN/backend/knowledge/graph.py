@@ -12,7 +12,7 @@ import json
 import os
 import sqlite3
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from Programma_CS2_RENAN.core.config import USER_DATA_ROOT
 from Programma_CS2_RENAN.observability.logger_setup import get_logger

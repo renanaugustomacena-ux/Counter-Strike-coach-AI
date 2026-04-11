@@ -1,7 +1,7 @@
 """Pro Player Comparison Screen — side-by-side stats for Pro vs Pro or User vs Pro."""
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QFont
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QComboBox,
     QFrame,
@@ -204,8 +204,10 @@ class ProComparisonScreen(QWidget):
         # Header
         header_card = Card(title=f"{name_a}  vs  {name_b}")
         if no_data_a and self._mode == "me_vs_pro":
-            info = QLabel("You don't have personal match data yet. "
-                          "Import and analyze your demos to see your stats here.")
+            info = QLabel(
+                "You don't have personal match data yet. "
+                "Import and analyze your demos to see your stats here."
+            )
             info.setWordWrap(True)
             info.setStyleSheet("color: #d96600; font-size: 12px; font-style: italic;")
             header_card.layout().addWidget(info)
@@ -221,7 +223,9 @@ class ProComparisonScreen(QWidget):
         grid.addWidget(self._header_label(name_a), 0, 1)
         grid.addWidget(self._header_label(name_b), 0, 2)
 
-        for row_idx, (field, display_name, lower_is_better) in enumerate(COMPARISON_METRICS, start=1):
+        for row_idx, (field, display_name, lower_is_better) in enumerate(
+            COMPARISON_METRICS, start=1
+        ):
             val_a = stats_a.get(field, 0.0)
             val_b = stats_b.get(field, 0.0)
 

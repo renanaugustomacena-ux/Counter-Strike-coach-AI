@@ -26,10 +26,9 @@ Usage:
 """
 
 import os
-import struct
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 

@@ -1,6 +1,4 @@
-from typing import Dict, List, Optional
-
-import numpy as np
+from typing import Dict
 
 from Programma_CS2_RENAN.backend.processing.skill_assessment import SkillAxes
 

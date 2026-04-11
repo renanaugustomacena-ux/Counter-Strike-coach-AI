@@ -9,10 +9,8 @@ if __name__ == "__main__":
     project_root = Path(__file__).resolve().parents[3]  # .../Macena_cs2_analyzer
     sys.path.insert(0, str(project_root))
 
-from datetime import datetime
-from typing import List, Optional
 
-from sqlmodel import Session, select
+from sqlmodel import select
 
 from Programma_CS2_RENAN.backend.storage.database import DatabaseManager
 from Programma_CS2_RENAN.backend.storage.db_models import Ext_PlayerPlaystyle, Ext_TeamRoundStats
