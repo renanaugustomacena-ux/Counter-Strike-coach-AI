@@ -1,4 +1,5 @@
 import re
+
 import numpy as np
 import torch
 from sqlmodel import func, select
@@ -297,7 +298,8 @@ class CoachTrainingManager:
         check_passed, reason = self.check_prerequisites()
         if not check_passed:
             get_state_manager().update_status("teacher", "Idle", detail=reason)
-            return app_logger.warning("ML Training Skipped: %s", reason)
+            app_logger.warning("ML Training Skipped: %s", reason)
+            return
 
         try:
             init_database()
@@ -414,7 +416,8 @@ class CoachTrainingManager:
                 get_state_manager().update_status(
                     "teacher", "Idle", "Failed Professional Baseline Establishment"
                 )
-                return app_logger.error("Failed to establish Professional Baseline.")
+                app_logger.error("Failed to establish Professional Baseline.")
+                return
 
             save_nn(global_m, "latest", user_id=None)
 
@@ -523,9 +526,7 @@ class CoachTrainingManager:
             # WR-76: Strip legacy ".dem_{player}" suffix so these names match the
             # plain-stem format used in PlayerTickState.demo_name.
             all_demo_names = set(
-                _MATCH_STATS_DEMO_SUFFIX_RE.sub("", m.demo_name)
-                for m in matches
-                if m.demo_name
+                _MATCH_STATS_DEMO_SUFFIX_RE.sub("", m.demo_name) for m in matches if m.demo_name
             )
             # P4-A: Only include demos whose per-match DB is fully written
             if completed_demos is not None:

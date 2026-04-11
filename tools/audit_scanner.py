@@ -79,7 +79,7 @@ def extract_public_api(filepath: str) -> dict:
             if not node.name.startswith("_"):
                 has_docstring = (
                     isinstance(node.body[0], ast.Expr)
-                    and isinstance(node.body[0].value, (ast.Constant, ast.Str))
+                    and isinstance(node.body[0].value, (ast.Constant,))
                     if node.body
                     else False
                 )
@@ -90,7 +90,7 @@ def extract_public_api(filepath: str) -> dict:
             if not node.name.startswith("_"):
                 has_docstring = (
                     isinstance(node.body[0], ast.Expr)
-                    and isinstance(node.body[0].value, (ast.Constant, ast.Str))
+                    and isinstance(node.body[0].value, (ast.Constant,))
                     if node.body
                     else False
                 )
@@ -102,9 +102,7 @@ def extract_public_api(filepath: str) -> dict:
                 if isinstance(target, ast.Name) and target.id == "__all__":
                     if isinstance(node.value, (ast.List, ast.Tuple)):
                         result["all_exports"] = [
-                            elt.value
-                            for elt in node.value.elts
-                            if isinstance(elt, (ast.Constant, ast.Str))
+                            elt.value for elt in node.value.elts if isinstance(elt, (ast.Constant,))
                         ]
     return result
 
@@ -145,7 +143,14 @@ def compute_complexity(filepath: str) -> list[dict]:
                     complexity += 1
                 elif isinstance(child, ast.ExceptHandler):
                     complexity += 1
-                elif isinstance(child, ast.With, ) if hasattr(ast, "With") else False:
+                elif (
+                    isinstance(
+                        child,
+                        ast.With,
+                    )
+                    if hasattr(ast, "With")
+                    else False
+                ):
                     pass  # with doesn't add branches
                 elif isinstance(child, ast.BoolOp):
                     complexity += len(child.values) - 1
@@ -289,7 +294,9 @@ def audit_subsystem(subsystem_path: Path, find_callers_flag: bool = True) -> dic
         internal_imports = [
             imp
             for imp in imports
-            if imp.startswith("Programma_CS2_RENAN") or imp.startswith("core") or imp.startswith("backend")
+            if imp.startswith("Programma_CS2_RENAN")
+            or imp.startswith("core")
+            or imp.startswith("backend")
         ]
 
         # Track high complexity
@@ -395,7 +402,9 @@ def format_markdown(report: dict) -> str:
         lines.append("| File | Function | Line | Complexity |")
         lines.append("|------|----------|------|------------|")
         for hc in sorted(report["high_complexity"], key=lambda x: -x["complexity"]):
-            lines.append(f"| `{hc['file']}` | `{hc['function']}` | {hc['line']} | {hc['complexity']} |")
+            lines.append(
+                f"| `{hc['file']}` | `{hc['function']}` | {hc['line']} | {hc['complexity']} |"
+            )
 
     if report["todos"]:
         lines.append(f"\n## TODO/FIXME/HACK Markers\n")
@@ -431,9 +440,7 @@ def main():
     parser.add_argument("subsystem", help="Path to subsystem directory (relative to project root)")
     parser.add_argument("--format", choices=["json", "markdown"], default="json")
     parser.add_argument("--output", "-o", help="Output file path (default: stdout)")
-    parser.add_argument(
-        "--no-callers", action="store_true", help="Skip caller analysis (faster)"
-    )
+    parser.add_argument("--no-callers", action="store_true", help="Skip caller analysis (faster)")
     args = parser.parse_args()
 
     subsystem_path = PROJECT_ROOT / args.subsystem
