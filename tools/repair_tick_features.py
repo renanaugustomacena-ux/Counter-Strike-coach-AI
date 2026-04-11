@@ -21,16 +21,14 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-DEMO_BASE = Path("/media/renan/New Volume/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS")
-DB_PATH = str(
-    PROJECT_ROOT / "Programma_CS2_RENAN" / "backend" / "storage" / "database.db"
-)
+DEMO_BASE = Path("/media/admin/usb-ssd/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS")
+DB_PATH = str(PROJECT_ROOT / "Programma_CS2_RENAN" / "backend" / "storage" / "database.db")
 
 # Fields we need from demoparser2 to repair
 _REPAIR_FIELDS = [
     "player_name",
-    "ducking",        # → is_crouching
-    "flash_duration", # → is_blinded (> 0)
+    "ducking",  # → is_crouching
+    "flash_duration",  # → is_blinded (> 0)
     "has_helmet",
     "has_defuser",
 ]
@@ -96,13 +94,16 @@ def main() -> None:
         # Compute corrected columns
         df["player_name"] = df["player_name"].astype(str).str.strip().str.lower()
         df["_cr"] = df.get("ducking", pd.Series(0, index=df.index)).astype(bool).astype(int)
-        df["_bl"] = (df.get("flash_duration", pd.Series(0.0, index=df.index)).astype(float) > 0).astype(int)
+        df["_bl"] = (
+            df.get("flash_duration", pd.Series(0.0, index=df.index)).astype(float) > 0
+        ).astype(int)
         df["_hm"] = df.get("has_helmet", pd.Series(False, index=df.index)).astype(bool).astype(int)
         df["_df"] = df.get("has_defuser", pd.Series(False, index=df.index)).astype(bool).astype(int)
 
         # Strategy: load into temp table, then UPDATE FROM (SQLite 3.33+)
         conn.execute("DROP TABLE IF EXISTS _repair")
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TEMP TABLE _repair (
                 player_name TEXT NOT NULL,
                 tick INTEGER NOT NULL,
@@ -111,24 +112,28 @@ def main() -> None:
                 hm INTEGER NOT NULL,
                 df INTEGER NOT NULL
             )
-        """)
+        """
+        )
 
         # Bulk INSERT into temp table
-        repair_data = list(zip(
-            df["player_name"],
-            df["tick"].astype(int),
-            df["_cr"],
-            df["_bl"],
-            df["_hm"],
-            df["_df"],
-        ))
+        repair_data = list(
+            zip(
+                df["player_name"],
+                df["tick"].astype(int),
+                df["_cr"],
+                df["_bl"],
+                df["_hm"],
+                df["_df"],
+            )
+        )
         conn.executemany(
             "INSERT INTO _repair(player_name, tick, cr, bl, hm, df) VALUES (?,?,?,?,?,?)",
             repair_data,
         )
 
         # Single UPDATE FROM — joins on (player_name, tick) within this demo
-        conn.execute("""
+        conn.execute(
+            """
             UPDATE playertickstate
             SET is_crouching = r.cr,
                 is_blinded   = r.bl,
@@ -138,7 +143,9 @@ def main() -> None:
             WHERE playertickstate.demo_name = ?
               AND playertickstate.player_name = r.player_name
               AND playertickstate.tick = r.tick
-        """, (demo_name,))
+        """,
+            (demo_name,),
+        )
 
         conn.execute("DROP TABLE _repair")
         conn.commit()

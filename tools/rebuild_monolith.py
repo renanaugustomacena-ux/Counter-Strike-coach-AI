@@ -23,7 +23,7 @@ import pandas as pd
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-DEMO_BASE = Path("/media/renan/New Volume/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS")
+DEMO_BASE = Path("/media/admin/usb-ssd/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS")
 MATCH_DATA_DIR = DEMO_BASE / "match_data"
 
 # Column mapping: per-match matchtickstate → monolith playertickstate
@@ -68,9 +68,7 @@ def rebuild_tick_data(db_manager, all_demos: list[Path], incremental: bool = Fal
     if incremental:
         # Skip demos already in monolith
         with db_manager.get_session() as session:
-            existing = session.exec(text(
-                "SELECT DISTINCT demo_name FROM playertickstate"
-            )).all()
+            existing = session.exec(text("SELECT DISTINCT demo_name FROM playertickstate")).all()
             existing_stems = {row[0] for row in existing}
         print(f"  Incremental mode: {len(existing_stems)} demos already in monolith.")
     else:
@@ -147,17 +145,38 @@ def rebuild_tick_data(db_manager, all_demos: list[Path], incremental: bool = Fal
                 chunk["created_at"] = datetime.now(timezone.utc)
 
                 # Fill missing monolith columns with defaults
-                for col in ["round_number", "time_in_round", "bomb_planted",
-                            "teammates_alive", "enemies_alive", "team_economy"]:
+                for col in [
+                    "round_number",
+                    "time_in_round",
+                    "bomb_planted",
+                    "teammates_alive",
+                    "enemies_alive",
+                    "team_economy",
+                ]:
                     if col not in chunk.columns:
                         default = 0.0 if col == "time_in_round" else 0
                         chunk[col] = default
 
                 # Infer map_name from demo stem if not in per-match DB
-                if "map_name" not in chunk.columns or chunk["map_name"].iloc[0] in (None, "", "de_unknown"):
-                    known_maps = {"mirage", "dust2", "inferno", "nuke", "overpass", "anubis", "ancient", "vertigo"}
+                if "map_name" not in chunk.columns or chunk["map_name"].iloc[0] in (
+                    None,
+                    "",
+                    "de_unknown",
+                ):
+                    known_maps = {
+                        "mirage",
+                        "dust2",
+                        "inferno",
+                        "nuke",
+                        "overpass",
+                        "anubis",
+                        "ancient",
+                        "vertigo",
+                    }
                     parts = stem.split("-")
-                    inferred = next((f"de_{p}" for p in reversed(parts) if p in known_maps), "de_unknown")
+                    inferred = next(
+                        (f"de_{p}" for p in reversed(parts) if p in known_maps), "de_unknown"
+                    )
                     chunk["map_name"] = inferred
 
                 chunk.to_sql(
@@ -183,13 +202,12 @@ def rebuild_tick_data(db_manager, all_demos: list[Path], incremental: bool = Fal
 
 def rebuild_match_stats(db_manager, all_demos: list[Path]):
     """Parse .dem files for aggregate stats and write PlayerMatchStats."""
-    from Programma_CS2_RENAN.backend.data_sources.demo_parser import parse_demo
-    from Programma_CS2_RENAN.run_ingestion import _save_player_stats
-
     # Clear existing pro stats
     from sqlmodel import select
 
+    from Programma_CS2_RENAN.backend.data_sources.demo_parser import parse_demo
     from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
+    from Programma_CS2_RENAN.run_ingestion import _save_player_stats
 
     with db_manager.get_session() as session:
         old_stats = session.exec(
@@ -253,7 +271,9 @@ def main():
     t_start = time.monotonic()
     demos_done, tick_total = rebuild_tick_data(db, all_demos, incremental=incremental)
     t_ticks = time.monotonic() - t_start
-    print(f"\n  Phase 1 complete: {tick_total:,} new ticks from {demos_done} demos ({t_ticks:.1f}s)\n")
+    print(
+        f"\n  Phase 1 complete: {tick_total:,} new ticks from {demos_done} demos ({t_ticks:.1f}s)\n"
+    )
 
     # Phase 2: Aggregate stats from .dem files (parse_demo is fast for headers)
     print("--- Phase 2: Rebuilding PlayerMatchStats from .dem files ---")
@@ -280,12 +300,14 @@ def main():
     # Summary
     with db.get_session() as session:
         final_ticks = session.exec(text("SELECT COUNT(*) FROM playertickstate")).scalar() or 0
-        final_demos = session.exec(text(
-            "SELECT COUNT(DISTINCT demo_name) FROM playertickstate"
-        )).scalar() or 0
-        final_stats = session.exec(text(
-            "SELECT COUNT(*) FROM playermatchstats WHERE is_pro = 1"
-        )).scalar() or 0
+        final_demos = (
+            session.exec(text("SELECT COUNT(DISTINCT demo_name) FROM playertickstate")).scalar()
+            or 0
+        )
+        final_stats = (
+            session.exec(text("SELECT COUNT(*) FROM playermatchstats WHERE is_pro = 1")).scalar()
+            or 0
+        )
 
     print("=== Summary ===")
     print(f"  PlayerTickState:  {final_ticks:,} ticks from {final_demos} demos")

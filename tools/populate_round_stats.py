@@ -31,7 +31,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-DEMO_BASE = Path("/media/renan/New Volume/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS")
+DEMO_BASE = Path("/media/admin/usb-ssd/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS")
 DB_PATH = str(PROJECT_ROOT / "Programma_CS2_RENAN" / "backend" / "storage" / "database.db")
 
 # RoundStats model columns we populate from the builder dict.
