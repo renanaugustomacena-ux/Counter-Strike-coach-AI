@@ -506,6 +506,7 @@ def _pulse_daemon_loop():
 
     while not _shutdown_event.is_set():
         try:
+            set_correlation_id()  # OBS-07: Tracing context per cycle (WR-29)
             get_state_manager().heartbeat()
         except Exception as e:
             logger.warning("Heartbeat failed: %s", e)

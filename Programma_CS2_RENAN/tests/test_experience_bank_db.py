@@ -5,6 +5,7 @@ Complements test_experience_bank_logic.py (which covers data structures only).
 Uses in-memory SQLite with monkeypatched get_db_manager for CI portability.
 """
 
+import hashlib
 import json
 import sys
 from contextlib import contextmanager
@@ -20,6 +21,35 @@ from Programma_CS2_RENAN.backend.knowledge.experience_bank import (
     SynthesizedAdvice,
 )
 from Programma_CS2_RENAN.backend.storage.db_models import CoachingExperience
+
+
+class _DeterministicEmbedder:
+    """Mock embedder that produces deterministic 384-dim embeddings without SBERT.
+
+    WR-88: Uses text hashing to produce distinct, reproducible vectors so tests
+    don't depend on the 400MB SBERT model download and run in milliseconds.
+    """
+
+    CURRENT_VERSION = "test-v1"
+
+    def __init__(self):
+        self.embedding_dim = 384
+
+    def embed(self, text: str) -> np.ndarray:
+        """Hash text into a deterministic 384-dim unit vector."""
+        h = hashlib.sha512(text.encode()).digest()
+        # Expand hash to 384 floats using repeated hashing
+        raw = []
+        seed = text.encode()
+        while len(raw) < 384:
+            seed = hashlib.sha256(seed).digest()
+            raw.extend(b / 255.0 - 0.5 for b in seed)
+        vec = np.array(raw[:384], dtype=np.float32)
+        norm = np.linalg.norm(vec)
+        if norm > 0:
+            vec /= norm
+        return vec
+
 
 # ============ Fixtures ============
 
@@ -62,10 +92,9 @@ def experience_bank(monkeypatch):
     )
 
     bank = ExperienceBank.__new__(ExperienceBank)
-    from Programma_CS2_RENAN.backend.knowledge.rag_knowledge import KnowledgeEmbedder
 
     bank.db = mock_db
-    bank.embedder = KnowledgeEmbedder()
+    bank.embedder = _DeterministicEmbedder()
     return bank
 
 
