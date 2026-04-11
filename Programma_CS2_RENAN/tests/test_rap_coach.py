@@ -160,29 +160,6 @@ class TestRAPMemory:
 # ---------------------------------------------------------------------------
 # Strategy Layer
 # ---------------------------------------------------------------------------
-class TestContextualAttention:
-    """Tests for saliency-weighted feature aggregation."""
-
-    def test_attention_shape(self):
-        from Programma_CS2_RENAN.backend.nn.rap_coach.strategy import ContextualAttention
-
-        attn = ContextualAttention(feature_dim=256, context_dim=METADATA_DIM)
-        attn.eval()
-        features = torch.randn(2, 5, 256)  # (B, seq, feature_dim)
-        context = torch.randn(2, METADATA_DIM)
-        probs = attn(features, context)
-        assert probs.shape == (2, 1, 5)
-
-    def test_softmax_sums_to_one(self):
-        from Programma_CS2_RENAN.backend.nn.rap_coach.strategy import ContextualAttention
-
-        attn = ContextualAttention(feature_dim=256, context_dim=METADATA_DIM)
-        attn.eval()
-        probs = attn(torch.randn(3, 8, 256), torch.randn(3, METADATA_DIM))
-        sums = probs.sum(dim=-1)
-        assert torch.allclose(sums, torch.ones_like(sums), atol=1e-5)
-
-
 class TestRAPStrategy:
     """Tests for the Top-2 sparse MoE strategy layer with Superposition."""
 

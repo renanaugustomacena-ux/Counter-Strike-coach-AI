@@ -33,7 +33,6 @@ O pipeline de treinamento foi validado de ponta a ponta em 12 de março de 2026:
 | `training_controller.py` | `TrainingController` -- deduplicação de demos, verificações de diversidade, gerenciamento de cota mensal, lógica start-stop |
 | `coach_manager.py` | `CoachTrainingManager` -- orquestração de alto nível com portão de maturidade de 3 estágios (doubt / learning / conviction) |
 | `train.py` | `train_nn()` -- ponto de entrada legado para treinamento do `AdvancedCoachNN` |
-| `train_pipeline.py` | Pipeline de treinamento end-to-end legado (depreciado, mantido para compatibilidade) |
 | `training_callbacks.py` | `TrainingCallback` (ABC, hooks opt-in) e `CallbackRegistry` (despachante de eventos com isolamento de erros) |
 | `tensorboard_callback.py` | `TensorBoardCallback` -- registra 9+ sinais escalares, histogramas de parâmetros/gradientes, layouts escalares personalizados |
 | `maturity_observatory.py` | `MaturityObservatory` -- índice de convicção de 5 sinais (belief entropy, gate specialization, concept focus, value accuracy, role stability), máquina de 5 estados (doubt / crisis / learning / conviction / mature) |
