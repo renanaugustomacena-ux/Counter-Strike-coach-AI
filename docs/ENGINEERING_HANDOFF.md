@@ -1872,9 +1872,9 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 
 | ID | Area | Description | Files | Effort | Status |
 |----|------|-------------|-------|--------|--------|
-| WR-81 | **NN** | **BUG #2: ModelFactory silently returns legacy model for unknown model_type.** `get_model("nonexistent")` returns a default `AdvancedCoachNN` instead of raising. Callers assume they got the requested model type. | `backend/nn/factory.py` | 15 min | OPEN |
-| WR-82 | **Coaching** | **BUG #4: `dict.get(key, 0.0)` returns None when key exists with None value in `_prepare_tensors`.** DB rows with explicit NULL for a field bypass the default. Feature vector gets NaN, poisoning downstream models silently. | `backend/nn/coach_manager.py` | 30 min | OPEN |
-| WR-83 | **Coaching** | **BUG #8: COPER path crashes with AttributeError on non-dict tick_data.** `_run_coper_coaching()` calls `.get()` on tick_data without type checking. Non-dict input (list, None) raises unhandled `AttributeError`. | `backend/services/coaching_service.py` | 15 min | OPEN |
+| WR-81 | **NN** | **BUG #2: ModelFactory silently returns legacy model for unknown model_type.** | `backend/nn/factory.py` | 15 min | **FIXED** — raises `ValueError` for unknown types |
+| WR-82 | **Coaching** | **BUG #4: `dict.get(key, 0.0)` returns None when key exists with None value in `_prepare_tensors`.** | `backend/nn/coach_manager.py` | 30 min | **FIXED** — walrus operator + None guard |
+| WR-83 | **Coaching** | **BUG #8: COPER path crashes with AttributeError on non-dict tick_data.** | `backend/services/coaching_service.py` | 15 min | **FIXED** — `isinstance(tick_data, dict)` guard |
 | WR-84 | Control | Console Phase 4: Wire REST API endpoints to Console singleton | `backend/onboarding/server.py`, `backend/control/console.py` | 2-3 days | OPEN |
 | WR-85 | Docs | Coach Books refactor — 4 books, 8K+ lines IT markdown, section collisions, content drift, coverage gaps. Plan in `docs/books/REFACTOR_PLAN.md`. | `docs/books/Book-Coach-*.md` | 8 sessions | OPEN |
 | WR-86 | Ingestion | In-code TODO: Add `duration_capped` flag to NadeState for transparency | `ingestion/demo_loader.py:231` | 15 min | OPEN |
