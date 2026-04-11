@@ -1,8 +1,12 @@
 """
-NN Refinement
+Correction Weight Scaling (DA-03: renamed from "NN Refinement")
 
-Applies neural-network weight adjustments to pre-computed coaching corrections,
-scaling each correction's weighted Z-score by the NN-suggested feature weight.
+Scales pre-computed coaching correction Z-scores by feature-specific weight
+adjustments. Despite the historical module name, this function performs simple
+scalar multiplication — it does NOT invoke any neural network, load any model,
+or perform inference. The nn_adjustments dict is expected to contain float
+weights keyed by "{feature}_weight"; these may originate from an NN model's
+output, but this module itself is a pure arithmetic scaling step.
 """
 
 from typing import Any, Dict, List

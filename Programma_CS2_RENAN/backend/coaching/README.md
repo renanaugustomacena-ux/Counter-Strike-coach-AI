@@ -60,7 +60,7 @@ the reason for degradation, so the operator always knows which mode is active.
 | `__init__.py` | Package API | Re-exports `HybridCoachingEngine`, `generate_corrections`, `ExplanationGenerator`, `PlayerCardAssimilator`, `get_pro_baseline_for_coach` |
 | `hybrid_engine.py` | `HybridCoachingEngine` | Central orchestrator that synthesizes ML predictions with RAG knowledge retrieval for balanced coaching insights |
 | `correction_engine.py` | `generate_corrections()` | Generates tactical corrections by comparing player performance deviations against professional baselines |
-| `nn_refinement.py` | `apply_nn_refinement()` | Neural network refinement layer that enhances heuristic corrections with confidence scoring from trained models |
+| `nn_refinement.py` | `apply_nn_refinement()` | Correction weight scaling — multiplies Z-score deviations by feature-specific weights. Does NOT perform NN inference (historical name) |
 | `longitudinal_engine.py` | `generate_longitudinal_coaching()` | Tracks performance trends over time using temporal baseline decay integration for long-term improvement advice |
 | `explainability.py` | `ExplanationGenerator` | Converts opaque ML prediction tensors into human-readable explanations with causal attribution chains |
 | `pro_bridge.py` | `PlayerCardAssimilator` | Links professional player stat cards to coaching insights via role-based comparison (entry fragger, AWPer, etc.) |
@@ -87,11 +87,13 @@ This module is the final fallback when all higher-fidelity coaching modes are un
 
 ### nn_refinement.py -- apply_nn_refinement()
 
-Post-processing layer that takes heuristic corrections from `correction_engine.py` and
-refines them using a trained neural network. Each correction is scored with a confidence
-value (0.0--1.0). Corrections below the confidence threshold are suppressed to reduce
-noise. The refinement step is optional and only activates when a trained model checkpoint
-is available.
+Correction weight scaling step (DA-03: historical name is misleading). Takes heuristic
+corrections from `correction_engine.py` and multiplies each `weighted_z` by
+`(1 + feature_weight)` from a provided adjustments dict. This is pure arithmetic — no
+neural network is loaded, no model inference occurs, no confidence scoring is performed.
+The adjustments dict *may* originate from an NN model's output upstream, but this module
+itself is a scalar multiplication. Called conditionally by `correction_engine.py` only
+when `nn_adjustments` is non-empty.
 
 ### longitudinal_engine.py -- generate_longitudinal_coaching()
 

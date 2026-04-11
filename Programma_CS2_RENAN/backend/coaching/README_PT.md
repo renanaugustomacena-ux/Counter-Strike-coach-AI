@@ -62,7 +62,7 @@ contendo a razao da degradacao, para que o operador sempre saiba qual modo esta 
 | `__init__.py` | API do Pacote | Re-exporta `HybridCoachingEngine`, `generate_corrections`, `ExplanationGenerator`, `PlayerCardAssimilator`, `get_pro_baseline_for_coach` |
 | `hybrid_engine.py` | `HybridCoachingEngine` | Orquestrador central que sintetiza previsoes ML com recuperacao de conhecimento RAG para insights de coaching equilibrados |
 | `correction_engine.py` | `generate_corrections()` | Gera correcoes taticas comparando desvios de desempenho do jogador contra baselines profissionais |
-| `nn_refinement.py` | `apply_nn_refinement()` | Camada de refinamento de rede neural que aprimora correcoes heuristicas com pontuacao de confianca de modelos treinados |
+| `nn_refinement.py` | `apply_nn_refinement()` | Escalonamento de pesos de correcao — multiplica desvios Z-score por pesos por-feature. NAO executa inferencia NN (nome historico) |
 | `longitudinal_engine.py` | `generate_longitudinal_coaching()` | Rastreia tendencias de desempenho ao longo do tempo usando integracao de decaimento temporal de baseline para conselhos de melhoria a longo prazo |
 | `explainability.py` | `ExplanationGenerator` | Converte tensores de previsao ML opacos em explicacoes legiveis por humanos com cadeias de atribuicao causal |
 | `pro_bridge.py` | `PlayerCardAssimilator` | Conecta stat cards de jogadores profissionais a insights de coaching via comparacao baseada em funcao (entry fragger, AWPer, etc.) |
