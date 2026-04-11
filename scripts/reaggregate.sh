@@ -18,7 +18,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 echo "=== Re-aggregation Pipeline ==="
 echo "Working directory: $(pwd)"
-echo "Python: $(which python)"
+echo "Python: $(which python3)"
 echo "Start time: $(date)"
 echo ""
 
@@ -26,26 +26,26 @@ echo ""
 echo "=== Step 1/4: Populate RoundStats (--full rebuild) ==="
 echo "This re-parses all demos via demoparser2 and writes roundstats + enrichment fields."
 echo ""
-python tools/populate_round_stats.py --full
+python3 tools/populate_round_stats.py --full
 echo ""
 
 # Step 2: Mine coaching experiences from roundstats
 echo "=== Step 2/4: Mine Coaching Experiences ==="
 echo "Scans roundstats for tactical scenarios (entry frags, multi-kills, eco forces, etc.)"
 echo ""
-python tools/mine_coaching_experience.py
+python3 tools/mine_coaching_experience.py
 echo ""
 
 # Step 3: Rebuild knowledge base + FAISS indexes
 echo "=== Step 3/4: Rebuild Knowledge Base ==="
 echo "Loads tactical_knowledge.json, mines pro stat cards, rebuilds FAISS vector indexes."
 echo ""
-python -m Programma_CS2_RENAN.backend.knowledge.init_knowledge_base
+python3 -m Programma_CS2_RENAN.backend.knowledge.init_knowledge_base
 echo ""
 
 # Step 4: Verify row counts
 echo "=== Step 4/4: Verification ==="
-python -c "
+python3 -c "
 import sqlite3
 db = 'Programma_CS2_RENAN/backend/storage/database.db'
 conn = sqlite3.connect(db)
