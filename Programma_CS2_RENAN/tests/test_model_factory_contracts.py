@@ -52,6 +52,7 @@ class TestValidModelTypes:
 
     def test_rap_type(self):
         pytest.importorskip("ncps", reason="ncps not installed")
+        pytest.importorskip("hflayers", reason="hflayers not installed")
         from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
 
         model = ModelFactory.get_model("rap")
@@ -78,6 +79,7 @@ class TestValidModelTypes:
         # Only test types whose dependencies are available
         types_to_test = ["default", "jepa", "vl-jepa"]
         try:
+            import hflayers  # noqa: F401
             import ncps  # noqa: F401
 
             types_to_test.append("rap")
@@ -220,12 +222,14 @@ class TestTypeConstants:
         """Every TYPE_* constant must be a valid input to get_model (with available deps)."""
         from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
 
-        # Skip types that require optional dependencies
+        # Skip types that require optional dependencies (ncps + hflayers)
         skip_types = set()
         try:
+            import hflayers  # noqa: F401
             import ncps  # noqa: F401
         except ImportError:
             skip_types.add("rap")
+            skip_types.add("rap-lite")
 
         for attr_name in dir(ModelFactory):
             if attr_name.startswith("TYPE_"):
