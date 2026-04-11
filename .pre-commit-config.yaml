@@ -70,7 +70,7 @@ repos:
     rev: 24.1.1
     hooks:
       - id: black
-        language_version: python3.10
+        language_version: python3.12
         args: ['--line-length=100']
         exclude: |
           (?x)^(
@@ -93,4 +93,4 @@ repos:
 
 # Configuration for specific file types
 default_language_version:
-  python: python3.10
+  python: python3.12
