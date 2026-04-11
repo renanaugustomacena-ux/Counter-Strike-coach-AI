@@ -221,49 +221,18 @@ class GoliathOrchestrator:
             logger.error("Baseline check failed: %s", e)  # F7-07
 
     def run_hospital(self, department: Optional[str]):
-        # The Hospital is complex and internal, we wrap it simply
+        """Run the Goliath Hospital diagnostic (v3 BaseValidator API)."""
+        import subprocess
+
         console.print("[command]>>> Paging Dr. Goliath...[/command]")
-        try:
-            from Programma_CS2_RENAN.tools.Goliath_Hospital import Department, GoliathHospital
-
-            target = PROJECT_ROOT / "Programma_CS2_RENAN"
-            hospital = GoliathHospital(target_dir=target, verbose=True)
-
-            if department:
-                dept_key = department.upper()
-                if dept_key in Department.__members__:
-                    dept_enum = Department[dept_key]
-                    console.print(f"[info]Examining Department: {dept_enum.value}[/info]")
-                    # Map enum members to methods manually if needed, or rely on hospital logic
-                    # For now, let's just trigger full diagnostic if specific dept dispatch is complex
-                    # or map what we know from the old script:
-                    dept_map = {
-                        "ER": hospital._run_emergency_room,
-                        "RADIOLOGY": hospital._run_radiology,
-                        "PATHOLOGY": hospital._run_pathology,
-                        "CARDIOLOGY": hospital._run_cardiology,
-                        "NEUROLOGY": hospital._run_neurology,
-                        "ONCOLOGY": hospital._run_oncology,
-                        "PEDIATRICS": hospital._run_pediatrics,
-                        "ICU": hospital._run_icu,
-                        "PHARMACY": hospital._run_pharmacy,
-                        "TOOL_CLINIC": hospital._run_tool_clinic,
-                        "ENDOCRINOLOGY": hospital._run_endocrinology,
-                    }
-                    if dept_key in dept_map:
-                        dept_map[dept_key]()
-                    else:
-                        console.print(
-                            f"[warning]Department {dept_key} logic not mapped. Running full scan.[/warning]"
-                        )
-                        hospital.run_full_diagnostic()
-                else:
-                    console.print(f"[error]Unknown department: {department}[/error]")
-            else:
-                hospital.run_full_diagnostic()
-
-        except ImportError as e:
-            console.print(f"[error]Hospital unavailable:[/error] {e}")
+        cmd = [sys.executable, "Programma_CS2_RENAN/tools/Goliath_Hospital.py"]
+        if department:
+            dept_key = department.upper()
+            cmd.extend(["--department", dept_key])
+            console.print(f"[info]Examining Department: {dept_key}[/info]")
+        result = subprocess.run(cmd, timeout=180)
+        if result.returncode != 0:
+            logger.error("Hospital diagnostic exited with code %s", result.returncode)
 
 
 def main():
