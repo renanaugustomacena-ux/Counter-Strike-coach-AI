@@ -54,4 +54,16 @@ def test_e2e_user_journey(isolated_settings):
     except Exception as e:
         pytest.fail(f"E2E Lifecycle Failed during Training: {e}")
 
-    print("E2E Backend Lifecycle Complete.")
+    # 5. Verify training produced observable effects
+    from Programma_CS2_RENAN.backend.storage.db_models import CoachState
+    from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
+
+    sm = get_state_manager()
+    state = sm.get_coach_state()
+    # Coach state must exist and reflect a completed or active training
+    assert state is not None, "CoachState missing after training cycle"
+    assert state.status is not None, "CoachState.status is None after training"
+
+    # At least one epoch must have run (current_epoch >= 1 or total_loss set)
+    if hasattr(state, "current_epoch") and state.current_epoch is not None:
+        assert state.current_epoch >= 1, f"Expected at least 1 epoch, got {state.current_epoch}"
