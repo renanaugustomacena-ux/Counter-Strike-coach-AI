@@ -21,6 +21,8 @@ pytest.importorskip("ncps", reason="RAP deps (ncps, hflayers) not installed")
 
 from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
 
+pytestmark = pytest.mark.timeout(60)
+
 
 # ---------------------------------------------------------------------------
 # Perception Layer

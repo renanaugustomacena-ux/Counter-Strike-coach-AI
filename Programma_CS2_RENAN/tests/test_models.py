@@ -15,6 +15,8 @@ from Programma_CS2_RENAN.backend.storage.db_models import (
     ServiceNotification,
 )
 
+pytestmark = pytest.mark.timeout(60)
+
 
 class TestDBModels:
     def test_player_match_stats_defaults(self):

@@ -15,6 +15,8 @@ import numpy as np
 import pytest
 import torch
 
+pytestmark = pytest.mark.timeout(60)
+
 
 class TestOrchestratorInit:
     """Verify constructor validation and state initialization."""

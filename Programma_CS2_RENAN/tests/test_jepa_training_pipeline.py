@@ -20,16 +20,18 @@ import torch
 from Programma_CS2_RENAN.backend.nn.config import GLOBAL_SEED, INPUT_DIM
 from Programma_CS2_RENAN.backend.nn.jepa_model import JEPACoachingModel, jepa_contrastive_loss
 from Programma_CS2_RENAN.backend.nn.jepa_train import (
-    JEPAPretrainDataset,
-    _load_tick_sequence,
     _MAX_TICKS_PER_SEQUENCE,
     _MIN_TICKS_FOR_SEQUENCE,
+    JEPAPretrainDataset,
+    _load_tick_sequence,
+    load_jepa_model,
     load_user_match_sequences,
     save_jepa_model,
-    load_jepa_model,
     train_jepa_finetune,
     train_jepa_pretrain,
 )
+
+pytestmark = pytest.mark.timeout(60)
 
 
 # ─── Fixtures ──────────────────────────────────────────────────────────
@@ -256,9 +258,7 @@ class TestNegativeSampling:
         num_negatives = 8
         effective_negatives = min(num_negatives, batch_size - 1)  # = 0
 
-        neg_indices = torch.zeros(
-            batch_size, max(1, effective_negatives), dtype=torch.long
-        )
+        neg_indices = torch.zeros(batch_size, max(1, effective_negatives), dtype=torch.long)
         assert neg_indices.shape == (1, 1)
 
 
@@ -357,9 +357,7 @@ class TestCheckpointSaveLoad:
             loaded = load_jepa_model(path, input_dim=metadata_dim, output_dim=metadata_dim)
             assert loaded.is_pretrained is True
             # Compare parameters
-            for (n1, p1), (n2, p2) in zip(
-                model.state_dict().items(), loaded.state_dict().items()
-            ):
+            for (n1, p1), (n2, p2) in zip(model.state_dict().items(), loaded.state_dict().items()):
                 assert n1 == n2
                 assert torch.equal(p1.cpu(), p2.cpu()), f"Parameter {n1} differs"
         finally:
@@ -447,9 +445,7 @@ class TestTrainJepaPretrain:
     def test_pretrain_target_encoder_updated_by_ema(self, mock_load, model, dummy_sequences):
         """Target encoder should be different from its initial state after EMA."""
         # Record initial target weights
-        initial_target = {
-            n: p.clone() for n, p in model.target_encoder.named_parameters()
-        }
+        initial_target = {n: p.clone() for n, p in model.target_encoder.named_parameters()}
         mock_load.return_value = dummy_sequences
         result = train_jepa_pretrain(model, num_epochs=2, batch_size=4)
         # At least some parameters should have changed
@@ -486,9 +482,7 @@ class TestTrainJepaFinetune:
 
     def test_finetune_updates_lstm(self, pretrained_model, metadata_dim):
         """LSTM head should be updated during fine-tuning."""
-        lstm_before = {
-            n: p.clone() for n, p in pretrained_model.lstm.named_parameters()
-        }
+        lstm_before = {n: p.clone() for n, p in pretrained_model.lstm.named_parameters()}
         X = np.random.randn(8, 20, metadata_dim).astype(np.float32)
         y = np.random.randn(8, metadata_dim).astype(np.float32)
         result = train_jepa_finetune(pretrained_model, X, y, num_epochs=3, batch_size=4)
