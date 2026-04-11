@@ -12,10 +12,10 @@ if [ ! -f "$VENV_PYTHON" ]; then
     exit 1
 fi
 
-# Verify Python version (must be 3.10.x)
-PY_VERSION=$("$VENV_PYTHON" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
-if [ "$PY_VERSION" != "3.10" ]; then
-    echo "ERROR: Expected Python 3.10, got $PY_VERSION"
+# Verify Python version (must be >= 3.10)
+PY_MINOR=$("$VENV_PYTHON" -c "import sys; print(sys.version_info.minor)")
+if [ "$PY_MINOR" -lt 10 ]; then
+    echo "ERROR: Requires Python >= 3.10, got $("$VENV_PYTHON" --version)"
     exit 1
 fi
 
