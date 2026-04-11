@@ -28,7 +28,7 @@ A **fully offline, privacy-first** CS2 coaching desktop app that beats cloud com
 
 **Phase:** Teaching the Coach (pro data only, no user demos, no active coaching)
 **Demos:** 97 .dem files on USB SSD, 564 per-match DBs, ~68 aggregated into production tables. Re-aggregation script ready.
-**Models:** JEPA unblocked but **zero training epochs** run. RAP disabled. LLM = Llama 3.1 8B via Ollama (no fine-tuning).
+**Models:** JEPA **partially trained** (10-50 epochs across multiple restarts, not converged — see Deep Audit Phase 3 weight forensics). RAP disabled. LLM = Llama 3.1 8B via Ollama (no fine-tuning).
 **Coach Book:** v3 shipped (151 entries). Target is 1500.
 **Hardware:** AMD Ryzen 9 9950X + RX 9070 XT (16GB VRAM) with ROCm 7.2. PyTorch 2.9.1+rocm6.3 GPU working. Local 8B LoRA fine-tuning is now feasible.
 **Environment:** Python 3.12, venv at `~/.venvs/cs2analyzer/`, FlareSolverr running, 308/313 validator checks pass (5 warnings: kivy/kivymd optional, shap optional, ncps/hflayers optional for RAP).
@@ -99,7 +99,7 @@ Also fixed this session:
 ### Coach Intelligence
 | # | Problem | Status | Effort |
 |---|---------|--------|--------|
-| CI-01 | JEPA model: trainer ready, data ready, zero epochs run | Ready to run | 1 session (GPU hrs) |
+| CI-01 | JEPA model: partially trained (not converged), needs full 50-100 epoch run on production data | Ready to run | 1 session (GPU hrs) |
 | CI-02 | No CS2 eval benchmark — can't measure coaching quality | Not started | Multi-session |
 | CI-03 | No LLM fine-tuning scaffolding (LoRA/PEFT) | Not started | Multi-session |
 | CI-04 | Coach Book at 151 entries, target 1500 | Not started | Several sessions |
