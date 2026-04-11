@@ -14,7 +14,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-DEMO_BASE = Path("/media/renan/New Volume/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS")
+DEMO_BASE = Path("/media/admin/usb-ssd/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS")
 
 
 def _run_retraining():
@@ -32,12 +32,11 @@ def _run_retraining():
 
     # Report current data
     with db.get_session() as session:
-        demo_count = session.exec(text(
-            "SELECT COUNT(DISTINCT demo_name) FROM playertickstate"
-        )).scalar() or 0
-        tick_count = session.exec(text(
-            "SELECT COUNT(*) FROM playertickstate"
-        )).scalar() or 0
+        demo_count = (
+            session.exec(text("SELECT COUNT(DISTINCT demo_name) FROM playertickstate")).scalar()
+            or 0
+        )
+        tick_count = session.exec(text("SELECT COUNT(*) FROM playertickstate")).scalar() or 0
     print(f"  Monolith has {tick_count:,} ticks from {demo_count} demos.\n")
 
     if tick_count == 0:
@@ -98,7 +97,8 @@ def main():
     else:
         # Skip the ingested/ subfolder
         all_demos = [
-            p for p in DEMO_BASE.rglob("*.dem")
+            p
+            for p in DEMO_BASE.rglob("*.dem")
             if "ingested" not in p.parts and not _is_duplicate_folder(p)
         ]
 
@@ -132,7 +132,9 @@ def main():
 
         # Clear pro PlayerTickState rows (use raw SQL for bulk delete)
         with db.get_session() as session:
-            tick_count_before = session.exec(text("SELECT COUNT(*) FROM playertickstate")).scalar() or 0
+            tick_count_before = (
+                session.exec(text("SELECT COUNT(*) FROM playertickstate")).scalar() or 0
+            )
             if tick_count_before > 0:
                 session.exec(text("DELETE FROM playertickstate"))
                 session.commit()
