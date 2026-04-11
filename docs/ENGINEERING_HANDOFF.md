@@ -1729,7 +1729,7 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 | ID | Area | Description | Files | Effort | Status |
 |----|------|-------------|-------|--------|--------|
 | WR-21 | Core | `refresh_settings()` doesn't update theme/font/BRAIN globals | `config.py:331-347` | 30 min | **FIXED** |
-| WR-22 | Core | `asset_manager.py` hard Kivy import blocks headless use | `asset_manager.py:19` | 30 min | OPEN |
+| WR-22 | Core | `asset_manager.py` hard Kivy import blocks headless use | `asset_manager.py:19` | 30 min | **FIXED** — try/except guard |
 | WR-23 | Core | Silent `except Exception: pass` in Teacher notification | `session_engine.py:427` | 5 min | **FIXED** — not silent; logs + updates state |
 | WR-24 | Core | Delete dead code `playback.py` (zero importers) | `playback.py` | 5 min | **FIXED** — file already deleted |
 | WR-25 | Core | Delete deprecated `logger.py` shim (1 importer left) | `logger.py`, `run_full_training_cycle.py` | 10 min | **FIXED** — file already deleted |
@@ -1758,8 +1758,8 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 | ID | Area | Description | Files | Effort | Status |
 |----|------|-------------|-------|--------|--------|
 | WR-35 | Processing | Smoke/molotov start events with `entity_id=-1` silently dropped | `player_knowledge.py:567` | 1 hr | **FIXED** |
-| WR-36 | Processing | Phantom enemy sightings at (0,0) fallback positions | `player_knowledge.py:438` | 30 min | OPEN |
-| WR-37 | Processing | `nickname_resolver.py` exact match separator stripping asymmetry | `nickname_resolver.py:55` | 30 min | OPEN |
+| WR-36 | Processing | Phantom enemy sightings at (0,0) fallback positions | `player_knowledge.py:438` | 30 min | **FIXED** — fallback detection |
+| WR-37 | Processing | `nickname_resolver.py` exact match separator stripping asymmetry | `nickname_resolver.py:55` | 30 min | **FIXED** — symmetric `_clean()` |
 | WR-38 | Processing | Delete dead code `cv_framebuffer.py` (zero production imports) | `cv_framebuffer.py` | 5 min | **FIXED** — file already deleted |
 | WR-39 | Processing | `round_stats_builder.py:build_round_stats()` complexity 68 | `round_stats_builder.py:171` | 4+ hrs | OPEN |
 
@@ -1768,9 +1768,9 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 | ID | Area | Description | Files | Effort | Status |
 |----|------|-------------|-------|--------|--------|
 | WR-40 | **Ingestion** | **`bomb` always None — feature 21 (bomb_planted) is always 0 in DemoLoader training data** | `demo_loader.py:524` | 2-3 hrs | **FIXED** |
-| WR-41 | **Ingestion** | **`map_tensors` in result dict breaks callers that unpack tuples** | `demo_loader.py:586` | 30 min | OPEN |
-| WR-42 | Ingestion | ML pipeline silent return causes premature demo archiving (data loss) | `user_ingest.py:48-51` | 30 min | OPEN |
-| WR-43 | Ingestion | Pass 1 exception swallowed — grenade trajectories silently empty | `demo_loader.py:185-186` | 30 min | OPEN |
+| WR-41 | **Ingestion** | **`map_tensors` in result dict breaks callers that unpack tuples** | `demo_loader.py:586` | 30 min | **FIXED** — `_map_tensors` key |
+| WR-42 | Ingestion | ML pipeline silent return causes premature demo archiving (data loss) | `user_ingest.py:48-51` | 30 min | **FIXED** — early return guard |
+| WR-43 | Ingestion | Pass 1 exception swallowed — grenade trajectories silently empty | `demo_loader.py:185-186` | 30 min | **FIXED** — quality flag |
 
 ### From Audit: backend/data_sources/ (2026-03-29)
 
@@ -1800,7 +1800,7 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 |----|------|-------------|-------|--------|--------|
 | WR-56 | **Services** | **Dialogue context drops last assistant message (F5-06 regression)** | `coaching_dialogue.py:311-321` | 10 min | **FIXED** |
 | WR-57 | Services | Traditional mode C-01 gap — can produce zero coaching | `coaching_service.py:228-231` | 15 min | **FIXED** |
-| WR-58 | Services | COPER timeout skips Hybrid level | `coaching_service.py:195-212` | 30 min | OPEN |
+| WR-58 | Services | COPER timeout skips Hybrid level | `coaching_service.py:195-212` | 30 min | **FIXED** — falls back to Hybrid |
 | WR-59 | Services | `belief_estimator` instantiated but NEVER called — Bayesian death analysis unused | `analysis_orchestrator.py:71` | 1-2 hrs | **FIXED** |
 
 ### From Audit: backend/knowledge/ (2026-03-29)
@@ -1808,7 +1808,7 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 | ID | Area | Description | Files | Effort | Status |
 |----|------|-------------|-------|--------|--------|
 | WR-60 | **Knowledge** | **Feedback matches experiences to UNRELATED events — corrupts effectiveness scores** | `experience_bank.py:806-831` | 2-3 hrs | **FIXED** |
-| WR-61 | Knowledge | N+1 query pattern in usage count updates | `rag_knowledge.py:362-370` | 30 min | OPEN |
+| WR-61 | Knowledge | N+1 query pattern in usage count updates | `rag_knowledge.py:362-370` | 30 min | **FIXED** — batched `WHERE IN` |
 | WR-62 | Knowledge | Knowledge graph uses raw sqlite3, no WAL/pooling | `graph.py:37-40` | 1 hr | OPEN |
 
 ### From Audit: backend/coaching/ (2026-03-29)
@@ -1822,7 +1822,7 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 
 | ID | Area | Description | Files | Effort | Status |
 |----|------|-------------|-------|--------|--------|
-| WR-65 | Analysis | Weapon/threat-decay calibration computed but never applied to live estimator | `belief_model.py:297-310,364-370` | 1 hr | OPEN |
+| WR-65 | Analysis | Weapon/threat-decay calibration computed but never applied to live estimator | `belief_model.py:297-310,364-370` | 1 hr | **FIXED** — applied in `auto_calibrate()` |
 | WR-66 | Analysis | `hash()` used instead of `hashlib.md5` (convention violation) | `game_tree.py:52` | 15 min | **FIXED** — uses `hashlib.md5` |
 
 ### From Audit: backend/control/ (2026-03-29)
@@ -1835,7 +1835,7 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 
 | ID | Area | Description | Files | Effort | Status |
 |----|------|-------------|-------|--------|--------|
-| WR-68 | Qt | Duplicate `_Worker` missing autoDelete — memory leak + crash risk | `tactical_vm.py:22-35` | 15 min | OPEN |
+| WR-68 | Qt | Duplicate `_Worker` missing autoDelete — memory leak + crash risk | `tactical_vm.py:22-35` | 15 min | **FIXED** — uses `core/worker.py` |
 | WR-69 | Qt | Wire toast system into coaching fallback + ingestion notifications | `coaching_service.py`, `app_state.py` | 2-3 hrs | OPEN |
 | WR-70 | Tools | 3 unused inner tool copies (headless_validator, dead_code_detector, dev_health) | `Programma_CS2_RENAN/tools/` | 30 min | OPEN |
 
@@ -1845,9 +1845,9 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 |----|------|-------------|-------|--------|--------|
 | WR-71 | **Console** | **`_log_dir` undefined — NameError crash on `svc spawn` command** | `console.py:806` | 5 min | **FIXED** |
 | WR-72 | Main | `"complete"` should be `"completed"` — knowledge ticks always 0 | `main.py:954` | 5 min | **FIXED** |
-| WR-73 | Main | `self.lang_trigger` AttributeError on UserProfileScreen edit | `main.py:455,459,464` | 10 min | OPEN |
+| WR-73 | Main | `self.lang_trigger` AttributeError on UserProfileScreen edit | `main.py:455,459,464` | 10 min | **FIXED** |
 | WR-74 | Ingestion | `batch_ingest.py` hardcoded path + non-recursive glob | `batch_ingest.py:130-131` | 15 min | **FIXED** |
-| WR-75 | Onboarding | `get_onboarding_manager()` lacks singleton — cache defeated | `new_user_flow.py:134` | 10 min | OPEN |
+| WR-75 | Onboarding | `get_onboarding_manager()` lacks singleton — cache defeated | `new_user_flow.py:134` | 10 min | **FIXED** — lazy singleton |
 
 ### From Smoke Test: Coaching Chat Quality Gaps (2026-04-10)
 
@@ -1877,8 +1877,8 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 | WR-83 | **Coaching** | **BUG #8: COPER path crashes with AttributeError on non-dict tick_data.** | `backend/services/coaching_service.py` | 15 min | **FIXED** — `isinstance(tick_data, dict)` guard |
 | WR-84 | Control | Console Phase 4: Wire REST API endpoints to Console singleton | `backend/onboarding/server.py`, `backend/control/console.py` | 2-3 days | OPEN |
 | WR-85 | Docs | Coach Books refactor — 4 books, 8K+ lines IT markdown, section collisions, content drift, coverage gaps. Plan in `docs/books/REFACTOR_PLAN.md`. | `docs/books/Book-Coach-*.md` | 8 sessions | OPEN |
-| WR-86 | Ingestion | In-code TODO: Add `duration_capped` flag to NadeState for transparency | `ingestion/demo_loader.py:231` | 15 min | OPEN |
-| WR-87 | Knowledge | In-code TODO: Move inline `__main__` test block to proper test file | `backend/knowledge/rag_knowledge.py:627` | 15 min | OPEN |
+| WR-86 | Ingestion | In-code TODO: Add `duration_capped` flag to NadeState for transparency | `ingestion/demo_loader.py:231` | 15 min | **FIXED** — `is_duration_estimated` field exists |
+| WR-87 | Knowledge | In-code TODO: Move inline `__main__` test block to proper test file | `backend/knowledge/rag_knowledge.py:627` | 15 min | **FIXED** — `__main__` block removed |
 | WR-88 | Testing | Pre-existing test failure: `test_top_k_limits_results` returns 2 instead of 3 | `tests/test_experience_bank_db.py` | 30 min | OPEN |
 
 #### Architecture Note: The Round Reconstructor Concept

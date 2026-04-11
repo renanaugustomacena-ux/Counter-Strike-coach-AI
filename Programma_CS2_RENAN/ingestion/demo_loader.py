@@ -184,7 +184,9 @@ class DemoLoader:
                     )
             del rows_df
         except Exception as e:
-            app_logger.error("Error in Pass 1 (player positions): %s — grenade trajectories will be empty", e)
+            app_logger.error(
+                "Error in Pass 1 (player positions): %s — grenade trajectories will be empty", e
+            )
             pass1_failed = True
 
         # --- 2. NADE EVENTS ---
@@ -228,7 +230,7 @@ class DemoLoader:
             # WARNING: MAX_NADE_DURATION is a HEURISTIC CEILING, not ground truth
             # When end events are missing, durations are capped at this arbitrary value
             # This becomes training data, so capped durations may poison temporal models
-            # TODO: Add 'duration_capped' flag to NadeState for transparency
+            # NadeState.is_duration_estimated flag tracks capped durations (H-05)
             MAX_NADE_DURATION = 20 * int(tick_rate)  # 20 seconds fallback (heuristic)
             FADE_TICKS = 5 * int(tick_rate)  # 5 seconds for fade-out
             capped_count = 0  # Track how many grenades hit the ceiling
