@@ -163,7 +163,13 @@ class ProDataPipeline:
             return True
         return False
 
-    def _split_data(self, df, temporal_split=True):
+    def _split_data(
+        self,
+        df,
+        temporal_split=True,
+        train_cutoff_date=None,
+        val_cutoff_date=None,
+    ):
         """
         Splits data into Train (70%), Validation (15%), and Test (15%).
 
@@ -171,6 +177,10 @@ class ProDataPipeline:
             df: Input DataFrame
             temporal_split: If True, splits chronologically to prevent leakage.
                            If False, uses random stratified split (legacy).
+            train_cutoff_date: Optional datetime boundary for train/val split.
+                When provided with val_cutoff_date, uses date-based growing-window
+                splitting instead of fixed 70/15/15 ratios.
+            val_cutoff_date: Optional datetime boundary for val/test split.
         """
         if temporal_split:
             # Chronological Split with Stratification
@@ -186,10 +196,29 @@ class ProDataPipeline:
             pros = df[df["is_pro"] == True].sort_values(by=sort_col)
             users = df[df["is_pro"] == False].sort_values(by=sort_col)
 
+            # Growing-window split by date boundaries (Knowledge Transfer §1.4)
+            use_date_boundaries = (
+                train_cutoff_date is not None
+                and val_cutoff_date is not None
+                and sort_col in df.columns
+            )
+
             def time_slice(sub_df):
                 n = len(sub_df)
                 if n == 0:
                     return sub_df, sub_df, sub_df
+
+                if use_date_boundaries:
+                    train_mask = sub_df[sort_col] < train_cutoff_date
+                    val_mask = (sub_df[sort_col] >= train_cutoff_date) & (
+                        sub_df[sort_col] < val_cutoff_date
+                    )
+                    test_mask = sub_df[sort_col] >= val_cutoff_date
+                    return (
+                        sub_df[train_mask],
+                        sub_df[val_mask],
+                        sub_df[test_mask],
+                    )
 
                 train_idx = int(n * 0.70)
                 val_idx = int(n * 0.85)
@@ -327,3 +356,53 @@ class ProDataPipeline:
                 )
             session.commit()
         logger.debug("Split '%s': updated %d records in DB.", split_name, len(ids))
+
+
+def generate_growing_windows(
+    match_dates,
+    n_windows: int = 5,
+    train_ratio: float = 0.70,
+    val_ratio: float = 0.15,
+):
+    """
+    Generate growing-window temporal split boundaries for cross-validation.
+
+    Implements the growing-window protocol from Counter_Strike_ML.pdf (Section 5.1.4):
+    each successive window grows the training set forward in time while the
+    validation and test sets slide forward as well.
+
+    Args:
+        match_dates: Sorted sequence of datetime values (one per match).
+        n_windows: Number of validation windows to generate.
+        train_ratio: Base fraction of data used for training in the first window.
+        val_ratio: Fraction of data used for validation in each window.
+
+    Yields:
+        Tuples of (train_cutoff_date, val_cutoff_date) suitable for passing
+        to ProDataPipeline._split_data().
+
+    Example:
+        dates = sorted(df["match_date"])
+        for train_cut, val_cut in generate_growing_windows(dates, n_windows=5):
+            pipeline._split_data(df, train_cutoff_date=train_cut, val_cutoff_date=val_cut)
+    """
+    sorted_dates = sorted(match_dates)
+    n = len(sorted_dates)
+    if n < 10:
+        return  # Not enough data for growing-window splits
+
+    # Step size: how much the window grows per iteration
+    remaining = 1.0 - train_ratio - val_ratio
+    step = remaining / max(n_windows, 1)
+
+    for i in range(n_windows):
+        train_end_ratio = train_ratio + i * step
+        val_end_ratio = train_end_ratio + val_ratio
+
+        if val_end_ratio > 1.0:
+            break
+
+        train_end_idx = min(int(n * train_end_ratio), n - 2)
+        val_end_idx = min(int(n * val_end_ratio), n - 1)
+
+        yield sorted_dates[train_end_idx], sorted_dates[val_end_idx]
