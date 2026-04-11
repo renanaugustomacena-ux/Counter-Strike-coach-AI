@@ -1780,8 +1780,8 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 | WR-45 | **Data** | **`raise None` bug when `max_total_timeout=0`** | `steam_api.py:59` | 10 min | **FIXED** |
 | WR-46 | Data | Unbounded sleep on HTTP 429 — malicious Retry-After blocks thread | `faceit_integration.py:99` | 5 min | **FIXED** |
 | WR-47 | Data | Incomplete path traversal sanitization in FaceIT integration | `faceit_integration.py:187` | 10 min | **FIXED** |
-| WR-48 | Data | URL parameter injection via FaceIT nickname | `faceit_api.py:20` | 10 min | OPEN |
-| WR-49 | Data | HLTV scraper skips robots.txt preflight check | `hltv_scraper.py:35` | 15 min | OPEN |
+| WR-48 | Data | URL parameter injection via FaceIT nickname | `faceit_api.py:20` | 10 min | **FIXED** — uses `params=` dict |
+| WR-49 | Data | HLTV scraper skips robots.txt preflight check | `hltv_scraper.py:35` | 15 min | **FIXED** — `preflight_check()` called |
 | WR-50 | Data | Delete dead code: `hltv/rate_limit.py` + `hltv/selectors.py` | 2 files | 5 min | **FIXED** — files already deleted |
 
 ### From Audit: backend/nn/ (2026-03-29)
@@ -1823,7 +1823,7 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 | ID | Area | Description | Files | Effort | Status |
 |----|------|-------------|-------|--------|--------|
 | WR-65 | Analysis | Weapon/threat-decay calibration computed but never applied to live estimator | `belief_model.py:297-310,364-370` | 1 hr | OPEN |
-| WR-66 | Analysis | `hash()` used instead of `hashlib.md5` (convention violation) | `game_tree.py:52` | 15 min | OPEN |
+| WR-66 | Analysis | `hash()` used instead of `hashlib.md5` (convention violation) | `game_tree.py:52` | 15 min | **FIXED** — uses `hashlib.md5` |
 
 ### From Audit: backend/control/ (2026-03-29)
 
