@@ -23,7 +23,9 @@ import pandas as pd
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-DEMO_BASE = Path("/media/admin/usb-ssd/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS")
+from Programma_CS2_RENAN.core.config import get_pro_demo_base
+
+DEMO_BASE = get_pro_demo_base()
 MATCH_DATA_DIR = DEMO_BASE / "match_data"
 
 # Column mapping: per-match matchtickstate → monolith playertickstate

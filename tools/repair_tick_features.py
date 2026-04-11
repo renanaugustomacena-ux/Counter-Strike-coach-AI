@@ -21,7 +21,9 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-DEMO_BASE = Path("/media/admin/usb-ssd/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS")
+from Programma_CS2_RENAN.core.config import get_pro_demo_base
+
+DEMO_BASE = get_pro_demo_base()
 DB_PATH = str(PROJECT_ROOT / "Programma_CS2_RENAN" / "backend" / "storage" / "database.db")
 
 # Fields we need from demoparser2 to repair
