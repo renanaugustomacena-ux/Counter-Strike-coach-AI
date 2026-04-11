@@ -54,6 +54,13 @@ def experience_bank(monkeypatch):
         lambda: mock_db,
     )
 
+    # Disable FAISS vector index so tests use brute-force retrieval against
+    # the in-memory DB instead of rebuilding an index from production data.
+    monkeypatch.setattr(
+        "Programma_CS2_RENAN.backend.knowledge.vector_index.get_vector_index_manager",
+        lambda: None,
+    )
+
     bank = ExperienceBank.__new__(ExperienceBank)
     from Programma_CS2_RENAN.backend.knowledge.rag_knowledge import KnowledgeEmbedder
 

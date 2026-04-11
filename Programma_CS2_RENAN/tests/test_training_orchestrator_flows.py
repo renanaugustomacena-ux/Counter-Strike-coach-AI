@@ -506,6 +506,7 @@ class TestPrepareTensorBatchJEPA:
 class TestRunTrainingEdgeCases:
     """Tests for run_training edge cases."""
 
+    @pytest.mark.timeout(15)
     def test_aborts_when_no_training_data(self):
         """run_training should exit gracefully when no data is available."""
         orch = _make_orchestrator(model_type="jepa")
@@ -517,11 +518,15 @@ class TestRunTrainingEdgeCases:
         mock_trainer = MagicMock()
         orch.TrainerClass = MagicMock(return_value=mock_trainer)
 
-        with patch("Programma_CS2_RENAN.backend.nn.factory.ModelFactory") as mock_factory:
-            mock_factory.get_model.return_value = mock_model
-            with patch("Programma_CS2_RENAN.backend.nn.training_orchestrator.load_nn"):
-                with patch("Programma_CS2_RENAN.backend.nn.training_orchestrator.save_nn"):
-                    orch.run_training()  # Should not crash
+        with patch(
+            "Programma_CS2_RENAN.backend.nn.data_quality.run_pre_training_quality_check"
+        ) as mock_qc:
+            mock_qc.return_value = MagicMock(passed=True)
+            with patch("Programma_CS2_RENAN.backend.nn.factory.ModelFactory") as mock_factory:
+                mock_factory.get_model.return_value = mock_model
+                with patch("Programma_CS2_RENAN.backend.nn.training_orchestrator.load_nn"):
+                    with patch("Programma_CS2_RENAN.backend.nn.training_orchestrator.save_nn"):
+                        orch.run_training()  # Should not crash
 
     def test_report_progress_delegates_to_manager(self):
         orch = _make_orchestrator(model_type="jepa", max_epochs=50)
