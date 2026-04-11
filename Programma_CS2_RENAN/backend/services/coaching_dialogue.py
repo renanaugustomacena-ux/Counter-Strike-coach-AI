@@ -30,6 +30,10 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.coaching_dialogue")
 
+# WR-06: Timeout for interactive LLM dialogue calls (seconds).
+# Prevents UI hangs when Ollama stalls or is overloaded.
+_DIALOGUE_TIMEOUT = 45
+
 # Intent classification keywords for retrieval routing
 INTENT_KEYWORDS: Dict[str, List[str]] = {
     "positioning": [
@@ -236,8 +240,12 @@ class CoachingDialogueEngine:
 
             # F5-06: append user message only after we have a valid response so that
             # an LLM exception cannot leave the history in an inconsistent state.
+            # WR-06: timeout protection prevents UI hangs.
             try:
-                response = self._llm.chat(messages, system_prompt=self._system_prompt)
+                response = self._chat_with_timeout(messages, self._system_prompt)
+            except TimeoutError:
+                logger.warning("Dialogue response timed out for user query")
+                response = self._fallback_response(user_message, intent)
             except Exception as exc:
                 logger.error("LLM chat raised an exception: %s", exc)
                 response = self._fallback_response(user_message, intent)
@@ -269,6 +277,41 @@ class CoachingDialogueEngine:
     def is_available(self) -> bool:
         """True when Ollama is reachable."""
         return self._llm.is_available()
+
+    def _chat_with_timeout(
+        self,
+        messages: List[Dict[str, str]],
+        system_prompt: str,
+        timeout: int = _DIALOGUE_TIMEOUT,
+    ) -> str:
+        """Run LLM chat with timeout protection (WR-06).
+
+        Prevents UI hangs when Ollama stalls or network I/O blocks.
+        Returns the LLM response or raises TimeoutError.
+        """
+        result: List[Optional[str]] = [None]
+        exc_holder: List[Optional[Exception]] = [None]
+
+        def target():
+            try:
+                result[0] = self._llm.chat(messages, system_prompt=system_prompt)
+            except Exception as e:
+                exc_holder[0] = e
+
+        thread = threading.Thread(target=target, daemon=True)
+        thread.start()
+        thread.join(timeout=timeout)
+
+        if thread.is_alive():
+            logger.warning(
+                "LLM dialogue timed out after %ds (%d messages in context)",
+                timeout,
+                len(messages),
+            )
+            raise TimeoutError(f"LLM chat timed out after {timeout}s")
+        if exc_holder[0]:
+            raise exc_holder[0]
+        return result[0] or ""
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -750,7 +793,11 @@ class CoachingDialogueEngine:
             )
 
         messages = [{"role": "user", "content": " ".join(prompt_parts)}]
-        response = self._llm.chat(messages, system_prompt=self._system_prompt)
+        try:
+            response = self._chat_with_timeout(messages, self._system_prompt, timeout=30)
+        except (TimeoutError, Exception) as exc:
+            logger.warning("Opening generation failed: %s", exc)
+            return self._offline_opening()
 
         if response.startswith("[LLM"):
             return self._offline_opening()
@@ -795,7 +842,7 @@ class CoachingDialogueEngine:
                         ),
                     }
                 ]
-                response = self._llm.chat(messages, system_prompt=system)
+                response = self._chat_with_timeout(messages, system, timeout=15)
                 if not response.startswith("[LLM"):
                     return response
             except Exception as exc:
