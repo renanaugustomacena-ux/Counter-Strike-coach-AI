@@ -33,6 +33,10 @@ from Programma_CS2_RENAN.backend.analysis.game_tree import (
     get_game_tree_search,
 )
 from Programma_CS2_RENAN.backend.analysis.momentum import MomentumTracker, get_momentum_tracker
+from Programma_CS2_RENAN.backend.analysis.movement_quality import (
+    MovementQualityAnalyzer,
+    get_movement_quality_analyzer,
+)
 from Programma_CS2_RENAN.backend.analysis.role_classifier import (
     ROLE_PROFILES,
     PlayerRole,
@@ -84,6 +88,7 @@ __all__ = [
     "ExpectiminimaxSearch",
     "BlindSpotDetector",
     "EngagementRangeAnalyzer",
+    "MovementQualityAnalyzer",
     # Phase 6 Analysis Engines — factory functions
     "get_death_estimator",
     "get_deception_analyzer",
@@ -92,4 +97,5 @@ __all__ = [
     "get_game_tree_search",
     "get_blind_spot_detector",
     "get_engagement_range_analyzer",
+    "get_movement_quality_analyzer",
 ]
