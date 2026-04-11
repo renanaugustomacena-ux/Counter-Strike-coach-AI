@@ -93,7 +93,7 @@ This project is a desktop application that analyzes Counter-Strike 2 professiona
 - Headless validator: **308/313 PASS** (5 warnings for optional deps: kivy, kivymd, shap, ncps, hflayers)
 - Test suite: **87 test files**, 30%+ coverage enforced
 - All 13 Qt screens have dedicated implementations (100-514 lines each)
-- JEPA pre-trained: `jepa_brain.pt` checkpoint exists (3.7 MB) — zero training epochs on production data
+- JEPA pre-trained: `jepa_brain.pt` checkpoint exists (3.7 MB) — partially trained (10-50 epochs across restarts, not converged; see Deep Audit Phase 3)
 - COPER coaching: **enabled by default**, 4-level fallback (never outputs zero coaching)
 - CI/CD: 6-stage pipeline, SHA-pinned Actions, cross-platform (Ubuntu + Windows)
 - **Demo corpus:** 97 .dem files, 564 per-match DBs, ~68 aggregated (re-aggregation script ready)
