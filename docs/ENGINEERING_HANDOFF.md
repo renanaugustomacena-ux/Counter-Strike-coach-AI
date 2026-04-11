@@ -1859,9 +1859,9 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 
 | ID | Area | Description | Files | Effort | Status |
 |----|------|-------------|-------|--------|--------|
-| WR-76 | **Coaching** | **Round Reconstructor missing — tick data never reaches LLM.** The coaching chat retrieves round-level aggregates (kills, deaths, damage) but never queries `playertickstate` for the selected rounds. The LLM receives a stat line and hallucinates tactical narrative ("he used A-site long info", "well-placed flash-bang against the AWP'er") that has zero grounding in data. **Fix:** Build a Round Reconstructor module that, given a (demo_name, round_number, player_name), pulls tick data and produces a structured timeline: position-as-callout, weapon sequence, engagement timing, health deltas, teammates_alive context. This structured narrative becomes LLM context instead of raw stats. | New: `backend/processing/round_reconstructor.py`; modify `coaching_dialogue.py` retrieval | 3-5 days | OPEN |
-| WR-77 | **Coaching** | **Coordinate-to-callout mapping missing.** Tick data contains `pos_x`, `pos_y`, `pos_z` and `map_name`, but no layer translates coordinates to human-readable callouts (ramp, secret, B main, jungle, etc.). Without this, even if tick data reaches the LLM, positions are meaningless numbers. **Fix:** Build a callout lookup for the 7 active-duty maps. Each map needs a polygon/region-to-name table. Can start with rectangular bounding boxes for major areas, refine later. | New: `core/map_callouts.py` or extend `core/map_manager.py` | 2-3 days | OPEN |
-| WR-78 | **Coaching** | **LLM hallucinates tactical details when data is insufficient.** Llama 3.1 8B is not prompted to distinguish "data says X" from "I'm inferring X" from "I'm inventing X." When asked for detail it doesn't have, it generates plausible-sounding CS2 text instead of saying "the data doesn't show this." Copy-paste syndrome: multiple rounds get near-identical descriptions with numbers swapped. **Fix:** Add explicit prompt constraints — (1) only narrate what the data contains, (2) mark inferences explicitly, (3) say "I don't have this detail" when the data is absent. Consider a structured output format (JSON timeline) that the LLM converts to prose, not free-generation. | `backend/services/coaching_dialogue.py`, system prompt templates | 1 day | OPEN |
+| WR-76 | **Coaching** | **FIXED** (commit `d7969cf`) **Round Reconstructor missing — tick data never reaches LLM.** The coaching chat retrieves round-level aggregates (kills, deaths, damage) but never queries `playertickstate` for the selected rounds. The LLM receives a stat line and hallucinates tactical narrative ("he used A-site long info", "well-placed flash-bang against the AWP'er") that has zero grounding in data. **Fix:** Build a Round Reconstructor module that, given a (demo_name, round_number, player_name), pulls tick data and produces a structured timeline: position-as-callout, weapon sequence, engagement timing, health deltas, teammates_alive context. This structured narrative becomes LLM context instead of raw stats. | New: `backend/processing/round_reconstructor.py`; modify `coaching_dialogue.py` retrieval | 3-5 days | OPEN |
+| WR-77 | **Coaching** | **FIXED** (commit `ef978a1`) **Coordinate-to-callout mapping missing.** Tick data contains `pos_x`, `pos_y`, `pos_z` and `map_name`, but no layer translates coordinates to human-readable callouts (ramp, secret, B main, jungle, etc.). Without this, even if tick data reaches the LLM, positions are meaningless numbers. **Fix:** Build a callout lookup for the 7 active-duty maps. Each map needs a polygon/region-to-name table. Can start with rectangular bounding boxes for major areas, refine later. | New: `core/map_callouts.py` or extend `core/map_manager.py` | 2-3 days | OPEN |
+| WR-78 | **Coaching** | **FIXED** (commit `023a08d`) **LLM hallucinates tactical details when data is insufficient.** Llama 3.1 8B is not prompted to distinguish "data says X" from "I'm inferring X" from "I'm inventing X." When asked for detail it doesn't have, it generates plausible-sounding CS2 text instead of saying "the data doesn't show this." Copy-paste syndrome: multiple rounds get near-identical descriptions with numbers swapped. **Fix:** Add explicit prompt constraints — (1) only narrate what the data contains, (2) mark inferences explicitly, (3) say "I don't have this detail" when the data is absent. Consider a structured output format (JSON timeline) that the LLM converts to prose, not free-generation. | `backend/services/coaching_dialogue.py`, system prompt templates | 1 day | OPEN |
 | WR-79 | **Coaching** | **"Knowledge_mc" name leak in chat output.** The coach addresses the user as "Knowledge_mc" — likely a retrieval artifact (experience bank entry or RAG chunk) leaking into the system prompt or being treated as the user's name. **Fix:** Trace the source of "Knowledge_mc" in the retrieval pipeline and sanitize. Ensure retrieved context is clearly delimited from the user's identity. | `coaching_dialogue.py`, experience bank retrieval | 30 min | **FIXED** |
 | WR-80 | **Coaching** | **"Neural network analysis shows" — false attribution.** The coach claims its neural networks analyzed the rounds, but no NN is invoked during chat queries. The LLM is generating this phrasing on its own. **Fix:** Remove or constrain NN-attribution language in the system prompt. Only claim NN analysis when an actual model (JEPA, RAP, AdvancedCoachNN) was queried and returned a result for that specific response. | System prompt in `coaching_dialogue.py` | 30 min | **FIXED** |
 
@@ -1879,7 +1879,101 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 | WR-85 | Docs | Coach Books refactor — 4 books, 8K+ lines IT markdown, section collisions, content drift, coverage gaps. Plan in `docs/books/REFACTOR_PLAN.md`. | `docs/books/Book-Coach-*.md` | 8 sessions | OPEN |
 | WR-86 | Ingestion | In-code TODO: Add `duration_capped` flag to NadeState for transparency | `ingestion/demo_loader.py:231` | 15 min | **FIXED** — `is_duration_estimated` field exists |
 | WR-87 | Knowledge | In-code TODO: Move inline `__main__` test block to proper test file | `backend/knowledge/rag_knowledge.py:627` | 15 min | **FIXED** — `__main__` block removed |
-| WR-88 | Testing | Pre-existing test failure: `test_top_k_limits_results` returns 2 instead of 3 | `tests/test_experience_bank_db.py` | 30 min | OPEN |
+| WR-88 | Testing | Pre-existing test failure: `test_top_k_limits_results` returns 2 instead of 3 | `tests/test_experience_bank_db.py` | 30 min | **FIXED** — mock embedder replaces SBERT |
+
+### From PyCharm Static Analysis (2026-04-11)
+
+> **Context:** Full project inspection via PyCharm 2025.1 with all Python inspections enabled.
+> 10 inspection categories exported. Findings filtered to production code only (excluding
+> legacy `desktop_app/`, test files, and dev tools).
+
+#### Incorrect Call Arguments (WARNING — potential runtime crashes)
+
+| ID | File | Issue | Effort | Status |
+|----|------|-------|--------|--------|
+| SA-01 | `backend/knowledge/vector_index.py:123` | FAISS `search()` called with missing `distances`, `k`, `labels` params | 30 min | OPEN |
+| SA-02 | `backend/knowledge/vector_index.py:185` | FAISS `add()` called with missing `n` param | 15 min | OPEN |
+| SA-03 | `backend/reporting/analytics.py:78,217,276,298` | `select()` with 5+ aggregate columns — SQLModel type stub limitation, verify runtime | 1 hr | OPEN |
+| SA-04 | `apps/qt_app/widgets/components/section_header.py:75` | Unexpected `alignment` kwarg | 15 min | OPEN |
+
+#### Deprecated API Usage (WARNING — future breakage)
+
+| ID | File | Issue | Effort | Status |
+|----|------|-------|--------|--------|
+| SA-05 | `db_governor.py:90,119,169`, `experience_bank.py:320,354,418,483,855`, `database.py:210,247,253`, `maintenance.py:42`, `run_ingestion.py:1522` | `session.execute()`/`session.query()` → `session.exec()` (SQLModel deprecation) | 2 hrs | OPEN |
+| SA-06 | `backend/server.py:103` | FastAPI `on_event()` → lifespan event handlers | 30 min | OPEN |
+| SA-07 | `main.py:757-759` | Deprecated `save_hardware_budget()` — use `save_user_setting('HARDWARE_BUDGET', ...)` | 15 min | OPEN |
+| SA-08 | `console.py:602`, `goliath.py:174` | `migrate_db.py` deprecated (R2-11) — use `alembic upgrade head` | 15 min | OPEN |
+| SA-09 | `tools/audit_scanner.py:82,93,107` | `ast.Str` removed in Python 3.14 — use `ast.Constant` | 15 min | OPEN |
+| SA-10 | `tests/test_round_stats_enrichment.py:272` | `__fields__` → `model_fields` (Pydantic v2 deprecation) | 5 min | OPEN |
+
+#### Non-Callable Object (WARNING)
+
+| ID | File | Issue | Effort | Status |
+|----|------|-------|--------|--------|
+| SA-11 | `backend/nn/experimental/rap_coach/memory.py:86` | `HopfieldLayer(...)` is None when `hflayers` not installed — crash if RAP flag enabled without deps | 15 min | OPEN |
+
+#### None-Returning Function Assignments (WEAK WARNING — logic bugs)
+
+| ID | File | Issue | Effort | Status |
+|----|------|-------|--------|--------|
+| SA-12 | `core/asset_manager.py:56,66,68` | `_generate_checkered_texture()` doesn't return — `self._texture = None` silently | 30 min | OPEN |
+| SA-13 | `backend/nn/coach_manager.py:300,417` | `logger.warning()/error()` return value assigned | 10 min | OPEN |
+
+#### Type Checker Issues — High-Density Files (WARNING)
+
+| ID | File | Issue Count | Key Issues | Status |
+|----|------|-------------|------------|--------|
+| SA-14 | `backend/storage/match_data_manager.py` | 17 | `list[Row[Any]]` instead of typed model lists, path type mismatches | OPEN |
+| SA-15 | `core/config.py` | 16 | `os.path.join()` LiteralString narrowing, path type mismatches | OPEN |
+| SA-16 | `backend/knowledge/pro_demo_miner.py` | 13 | Dict key type mismatches (`tuple` vs `str`) | OPEN |
+| SA-17 | `ingestion/demo_loader.py` | 10 | `Any | None` passed as `int/str`, path type issues | OPEN |
+| SA-18 | `backend/data_sources/hltv/stat_fetcher.py` | 10 | `Any | None` → `str` in HLTV field parsing (8 consecutive lines 499-506) | OPEN |
+| SA-19 | `backend/analysis/belief_model.py` | 7 | Dict value type mismatches in calibration | OPEN |
+
+#### Unused Imports — Production Code (~120 instances)
+
+| ID | Scope | Key Files | Effort | Status |
+|----|-------|-----------|--------|--------|
+| SA-20 | 75 production files | `explainability.py` (3 unused: List, Optional, numpy), `db_governor.py` (sqlite3, List), `ingest_manager.py` (time, List, Optional, Tuple, CoachState), `coach_manager.py` (get_device, load_nn, RAPStateReconstructor, add_breadcrumb), `train.py` (select, TeacherRefinementNN, get_db_manager, PlayerMatchStats) | 2-3 hrs | OPEN |
+
+#### Inconsistent Returns (WEAK WARNING)
+
+| ID | File | Line | Issue | Status |
+|----|------|------|-------|--------|
+| SA-21 | `apps/qt_app/widgets/tactical/map_widget.py` | 417,419 | `return` without value / missing return | OPEN |
+| SA-22 | `backend/nn/jepa_train.py` | 308,315 | `return` without value inconsistent with typed return | OPEN |
+| SA-23 | `backend/nn/train.py` | 268 | Missing return on some paths | OPEN |
+
+#### Protected Member Access (WEAK WARNING — encapsulation)
+
+| ID | File | Line | Member | Status |
+|----|------|------|--------|--------|
+| SA-24 | `apps/qt_app/main_window.py` | 199 | `_toast_container._refit` | OPEN |
+| SA-25 | `apps/qt_app/screens/coach_screen.py` | 66 | `get_app_state()._prev` | OPEN |
+| SA-26 | `apps/qt_app/screens/home_screen.py` | 54 | `get_app_state()._prev` | OPEN |
+| SA-27 | `backend/knowledge/rag_knowledge.py` | 230 | `_is_fallback` | OPEN |
+
+#### Broad Exception Handling (WEAK WARNING — 20+ instances in production)
+
+Key files: `apps/qt_app/app.py:211,221`, `apps/qt_app/core/app_state.py:74,128`, `backend/coaching/hybrid_engine.py`, `backend/analysis/game_tree.py`. These catch `Exception` where more specific types would improve debugging.
+
+#### PEP 8 Naming (WEAK WARNING — ~30 instances)
+
+UPPERCASE locals used as function-scoped constants in `hybrid_engine.py`, `pro_bridge.py`, `faceit_integration.py`, `rag_knowledge.py`. These are intentional style choices for inline constants, not bugs.
+
+#### Architecture Note: This Session's Fixes
+
+The following WR items were resolved in the April 11 session:
+- **WR-76**: Round Reconstructor — tick data → structured LLM timelines (commit `d7969cf`)
+- **WR-77**: Map callout system — 160 positions across 9 maps (commit `ef978a1`)
+- **WR-78**: LLM prompt honesty constraints (commit `023a08d`)
+- **WR-29**: Pulse daemon correlation IDs (commit `e5e3425`)
+- **WR-30**: Log retention at startup (commit `e5e3425`)
+- **WR-88**: Test embedder fix (commit `e5e3425`)
+- **WR-26**: Lazy app_logger (commit `390ab62`)
+- **New**: MovementQualityAnalyzer — 4 MLMove coaching mistake detectors (commit `37aa23c`)
+- **New**: Growing-window temporal validation (commit `d51fc62`)
 
 #### Architecture Note: The Round Reconstructor Concept
 
