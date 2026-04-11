@@ -3,22 +3,26 @@
 > **Audit started:** 2026-04-11
 > **Auditor:** Claude Opus (independent, zero-trust, no assumptions from prior reports)
 > **Goal:** Answer one question — does real data flow end-to-end, or is this placebo?
-> **Status:** Phases 1-6 complete. Phases 7-10 pending.
+> **Status:** ALL 10 PHASES COMPLETE.
 
 ---
 
-# EXECUTIVE VERDICT (Phases 1-6)
+# EXECUTIVE VERDICT (All 10 Phases Complete)
 
 **This is NOT placebo. The system is REAL, with honest limitations.**
 
-| Subsystem | Verdict | Confidence |
-|-----------|---------|------------|
-| Data Ingestion | REAL | 95% — 118.5M tick records from actual demoparser2 |
-| Database Layer | REAL | 90% — 23 tables, 42GB, proper schema. 10 zero columns need re-aggregation |
-| Neural Networks | PARTIALLY TRAINED | 80% — Checkpoints show training evidence despite docs saying "zero epochs" |
-| Game Theory Engines | REAL but HARDCODED | 70% — Real computation with ~60-70% hardcoded parameters |
-| Coaching Pipeline | REAL and FUNCTIONAL | 85% — Produces meaningful output, degrades gracefully |
-| Knowledge Base/RAG | REAL and POPULATED | 95% — 22,202 experiences, 701 knowledge entries, FAISS working |
+| Phase | Subsystem | Verdict | Confidence |
+|-------|-----------|---------|------------|
+| 1 | Data Ingestion | REAL | 95% — 118.5M tick records from actual demoparser2 |
+| 2 | Database Layer | REAL | 90% — 23 tables, 42GB, proper schema. 10 zero columns need re-aggregation |
+| 3 | Neural Networks | PARTIALLY TRAINED | 80% — Checkpoints show training evidence despite docs saying "zero epochs" |
+| 4 | Game Theory Engines | REAL but HARDCODED | 70% — Real computation with ~60-70% hardcoded parameters |
+| 5 | Coaching Pipeline | REAL and FUNCTIONAL | 85% — Produces meaningful output, degrades gracefully |
+| 6 | Knowledge Base/RAG | REAL and POPULATED | 95% — 22,202 experiences, 701 knowledge entries, FAISS working |
+| 7 | RAP Coach | DEAD CODE | 100% — Disabled, missing deps, no production paths |
+| 8 | External Sources | MIXED | HLTV=REAL (151 players), Steam/FACEIT=STUBS |
+| 9 | Frontend | REAL | 90% — All viewmodels query real DB, connect to real backend |
+| 10 | Validators/Meta | REAL but SHALLOW | 85% — 90% instantiation checks, 10% output quality |
 
 **The prior documentation was WRONG about one critical claim:** "zero training epochs on production data" is false. Training evidence includes:
 - training_progress.json showing multiple 0-10 epoch cycles since January 2026
@@ -171,14 +175,65 @@ The coaching output is **hybrid: partially data-driven, partially template-media
 
 ---
 
-# WHAT'S LEFT (Phases 7-10)
+## Phase 7: RAP Coach and Experimental Models
 
-| Phase | Status | Expected Impact |
-|-------|--------|----------------|
-| 7. RAP Coach | Pending | Likely dead code (USE_RAP_MODEL=False, ncps/hflayers unavailable) |
-| 8. External Data Sources | Pending | HLTV scraper works (151 players scraped). Steam/FACEIT likely stubs. |
-| 9. Frontend | Pending | Qt screens exist, need to verify they query real data |
-| 10. Meta-Audit | Pending | Validator checks are real (confirmed in exploration) |
+**Verdict: DEAD CODE**
+
+RAP Coach is architecturally complete but **completely disabled at runtime**:
+- `USE_RAP_MODEL = False` in config.py — never overridden
+- Required dependencies (`ncps`, `hflayers`) not installed on Python 3.12
+- Production RAP files are deprecated shims re-exporting from `experimental/rap_coach/`
+- No production code path invokes RAP outside of tests
+- Validator downgrades RAP checks to warnings, not failures
+
+**What would it take to enable:** Install ncps/hflayers (blocked on Python 3.12 compatibility), set `USE_RAP_MODEL=True`, train from scratch (thousands of demos needed).
+
+---
+
+## Phase 8: External Data Sources
+
+**Verdict: HLTV REAL, Steam/FACEIT STUBS**
+
+| Source | Status | Evidence |
+|--------|--------|----------|
+| HLTV Scraper | REAL | 151 players, 140 stat cards in hltv_metadata.db. BeautifulSoup + FlareSolverr. robots.txt compliant. |
+| Steam API | STUB | Only retry logic infrastructure. No actual API calls implemented. |
+| FACEIT API | STUB | Returns empty dict without API key. Skeleton code only. |
+
+HLTV data feeds into pro baselines, knowledge base mining, and coaching comparisons. Steam/FACEIT have UI config screens but backend integration is incomplete.
+
+---
+
+## Phase 9: Frontend and User-Facing Output
+
+**Verdict: REAL — all viewmodels query actual database**
+
+- **CoachViewModel:** Queries `CoachingInsight` rows from real database via `get_db_manager()`
+- **CoachingChatViewModel:** Connects to real `CoachingDialogueEngine` → Ollama LLM + RAG
+- **MatchDetailViewModel:** Loads `PlayerMatchStats` + `RoundStats` from DB
+- **Coach Screen:** Renders severity-colored insight cards with real timestamps
+
+No hardcoded/placeholder data in any viewmodel. Full pipeline: Database → ViewModel → Qt Signals → UI.
+
+---
+
+## Phase 10: Validators, Tools, and Meta-Audit
+
+**Verdict: REAL CHECKS but 90% INSTANTIATION, 10% OUTPUT QUALITY**
+
+| Check Type | Count | What It Verifies |
+|------------|-------|-----------------|
+| Import/instantiation | ~280 | "Can we import and construct this?" |
+| Schema/contract | ~20 | "Do tables exist? Do dimensions match?" |
+| ML smoke test | ~8 | "Can model do forward pass? Is output shape correct?" |
+| Output quality | ~3 | "Does softmax sum to 1? Is loss tensor valid shape?" |
+| Security | ~5 | "No unsafe torch.load? No shell=True subprocess?" |
+
+**The validator does NOT test:** coaching quality, training convergence, inference correctness, or real end-to-end data flow. It verifies the system **can be assembled**, not that it **produces good output**.
+
+**E2E test** (`test_e2e.py`) does call `CoachTrainingManager().run_full_cycle()` with real data but is gated behind 5+ PlayerMatchStats rows.
+
+**dead_code_detector.py** performs real AST-based orphan detection with entry point analysis.
 
 ---
 
