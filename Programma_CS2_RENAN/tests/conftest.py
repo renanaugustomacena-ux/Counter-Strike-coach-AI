@@ -441,3 +441,209 @@ def isolated_settings(tmp_path, monkeypatch):
     config._settings.update(settings_snapshot)
     for key, val in globals_snapshot.items():
         setattr(config, key, val)
+
+
+# =============================================================================
+# HLTV Metadata DB Fixture
+# =============================================================================
+
+
+@pytest.fixture
+def seeded_hltv_session():
+    """In-memory DB pre-populated with realistic HLTV pro player data.
+
+    CI-portable: works on any machine without hltv_metadata.db.
+    Contains: 2 ProTeams, 4 ProPlayers, 4 ProPlayerStatCards.
+    Data values derived from real HLTV top-20 player statistics.
+    """
+    from sqlmodel import Session, SQLModel, create_engine
+
+    from Programma_CS2_RENAN.backend.storage.database import _HLTV_TABLES
+    from Programma_CS2_RENAN.backend.storage.db_models import ProPlayer, ProPlayerStatCard, ProTeam
+
+    engine = create_engine("sqlite:///:memory:")
+    SQLModel.metadata.create_all(engine, tables=_HLTV_TABLES)
+
+    with Session(engine) as session:
+        session.add(ProTeam(hltv_id=4608, name="Natus Vincere", world_rank=1))
+        session.add(ProTeam(hltv_id=6667, name="FaZe Clan", world_rank=2))
+
+        session.add(
+            ProPlayer(
+                hltv_id=11893,
+                nickname="s1mple",
+                real_name="Oleksandr Kostyliev",
+                country="Ukraine",
+                age=26,
+                team_id=4608,
+            )
+        )
+        session.add(
+            ProPlayer(
+                hltv_id=7998,
+                nickname="NiKo",
+                real_name="Nikola Kovac",
+                country="Bosnia",
+                age=27,
+                team_id=6667,
+            )
+        )
+        session.add(
+            ProPlayer(
+                hltv_id=18053,
+                nickname="m0NESY",
+                real_name="Ilya Osipov",
+                country="Russia",
+                age=19,
+                team_id=6667,
+            )
+        )
+        session.add(
+            ProPlayer(
+                hltv_id=18987,
+                nickname="donk",
+                real_name="Danil Kryshkovets",
+                country="Russia",
+                age=17,
+                team_id=None,
+            )
+        )
+
+        session.add(
+            ProPlayerStatCard(
+                player_id=11893,
+                rating_2_0=1.28,
+                dpr=0.62,
+                kast=73.8,
+                impact=1.35,
+                adr=87.5,
+                kpr=0.85,
+                headshot_pct=38.5,
+                maps_played=150,
+                time_span="last_3_months",
+            )
+        )
+        session.add(
+            ProPlayerStatCard(
+                player_id=7998,
+                rating_2_0=1.15,
+                dpr=0.65,
+                kast=70.2,
+                impact=1.18,
+                adr=82.3,
+                kpr=0.78,
+                headshot_pct=50.2,
+                maps_played=180,
+                time_span="last_3_months",
+            )
+        )
+        session.add(
+            ProPlayerStatCard(
+                player_id=18053,
+                rating_2_0=1.35,
+                dpr=0.58,
+                kast=75.1,
+                impact=1.45,
+                adr=91.2,
+                kpr=0.90,
+                headshot_pct=42.8,
+                maps_played=120,
+                time_span="last_3_months",
+            )
+        )
+        session.add(
+            ProPlayerStatCard(
+                player_id=18987,
+                rating_2_0=1.40,
+                dpr=0.55,
+                kast=77.3,
+                impact=1.50,
+                adr=93.0,
+                kpr=0.92,
+                headshot_pct=55.0,
+                maps_played=80,
+                time_span="2024",
+            )
+        )
+
+        session.commit()
+        yield session
+
+
+# =============================================================================
+# Per-Match Data Fixture
+# =============================================================================
+
+
+@pytest.fixture
+def match_data_dir(tmp_path):
+    """Seeded per-match DB directory with one realistic match.
+
+    Creates a MatchDataManager backed by tmp_path with:
+    - 1 match (demo_name=test_match.dem, map=de_dust2)
+    - 10 tick rows (2 players x 5 ticks)
+    - Basic match metadata
+
+    Returns (MatchDataManager, match_db_path).
+    """
+    import sqlite3
+
+    match_id = "test_match"
+    db_path = tmp_path / f"match_{match_id}.db"
+
+    conn = sqlite3.connect(str(db_path))
+    conn.execute("PRAGMA journal_mode=WAL")
+
+    # Create tick table matching MatchDataManager schema
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS matchtickstate (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tick INTEGER NOT NULL,
+            round_number INTEGER DEFAULT 1,
+            player_name TEXT NOT NULL,
+            steamid INTEGER,
+            team TEXT,
+            pos_x REAL DEFAULT 0, pos_y REAL DEFAULT 0, pos_z REAL DEFAULT 0,
+            health INTEGER DEFAULT 100, armor INTEGER DEFAULT 100,
+            is_alive INTEGER DEFAULT 1,
+            active_weapon TEXT DEFAULT 'ak47',
+            equipment_value INTEGER DEFAULT 4750,
+            map_name TEXT DEFAULT 'de_dust2'
+        )
+    """
+    )
+
+    # Seed 10 ticks (2 players x 5 ticks)
+    rows = []
+    for tick in range(100, 600, 100):
+        for pname, team, sid in [("Player1", "CT", 12345), ("Player2", "T", 67890)]:
+            rows.append(
+                (
+                    tick,
+                    1,
+                    pname,
+                    sid,
+                    team,
+                    float(tick),
+                    float(tick * 2),
+                    0.0,
+                    100,
+                    100,
+                    1,
+                    "ak47",
+                    4750,
+                    "de_dust2",
+                )
+            )
+
+    conn.executemany(
+        "INSERT INTO matchtickstate (tick, round_number, player_name, steamid, team, "
+        "pos_x, pos_y, pos_z, health, armor, is_alive, active_weapon, equipment_value, map_name) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        rows,
+    )
+    conn.commit()
+    conn.close()
+
+    yield tmp_path, db_path
