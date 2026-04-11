@@ -1,5 +1,5 @@
 {
-  "file_count": 288,
+  "file_count": 289,
   "generator": "sync_integrity_manifest.py",
   "hashes": {
     "__init__.py": "d3074031129007f4a6dd65765a0faaad39df9ba8ee41ebe0c94c7f18598c12d0",
@@ -208,6 +208,7 @@
     "backend/processing/feature_engineering/vectorizer.py": "499f67688d60c42f810fb553a9698b9aebc5a4a86e1dc4b54d0c718033cd9fad",
     "backend/processing/heatmap_engine.py": "b0a01489560ee4850287610560907da30c328309039abb9d2487b4719a04e09c",
     "backend/processing/player_knowledge.py": "1bfa982ad91451cafdacd1858e7fdf47b3de237ae22c12e9866e829c49baf454",
+    "backend/processing/round_reconstructor.py": "ad2b049b15c9a3b812bc00a754f7e8f364e169366eae859316c4c09cc5c15a8c",
     "backend/processing/round_stats_builder.py": "240f332d572d21d3864101098c932478effcad81d0f2f1d05b929e2d9b05439f",
     "backend/processing/skill_assessment.py": "6f98c107af80d0376f965a3e6a61d4931a13c43c53116733e95bb867688b37b6",
     "backend/processing/state_reconstructor.py": "b4da9589bdcc6996a989017ea28f346faf0f8620519f579e40b89639fab3eb12",
@@ -227,7 +228,7 @@
     "backend/services/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "backend/services/analysis_orchestrator.py": "5b96cc853431c807fd07779646257f8b3d5ba3944778c48edca9b66e2a43df1c",
     "backend/services/analysis_service.py": "bbfa48184a42455a71f47a340ed4a48ee21e044b72f5781386367af2b9253645",
-    "backend/services/coaching_dialogue.py": "c6ea714024acbf03a08cb91c074f4c27dd446493e80a5b5d2e9f6e2961335328",
+    "backend/services/coaching_dialogue.py": "e59d035eed9d6cf8e8547bdce3e8e44f62e5f775ee6befaf6b37d933d8b0b4b6",
     "backend/services/coaching_service.py": "f71d5563d3e68c7773c3ccf1edc0c00fa2b7079cd0c86e3acf0488d964026bd1",
     "backend/services/lesson_generator.py": "57812f6d4fd15ac8cb6da31181a0e4a307c23678dc86f10eaaf0ab8a64e63727",
     "backend/services/llm_service.py": "aa95891c1f7b5d7bdaeef367347f1a29b987a4f0f482f57973c878736a702d7c",
