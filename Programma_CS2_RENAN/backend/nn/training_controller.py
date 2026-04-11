@@ -14,7 +14,6 @@ Adheres to GEMINI.md:
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional, Tuple
 
 import numpy as np
 from sqlmodel import col, func, select

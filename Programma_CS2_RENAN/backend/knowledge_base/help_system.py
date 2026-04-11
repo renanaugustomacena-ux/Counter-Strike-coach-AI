@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 
 from Programma_CS2_RENAN.core.config import get_resource_path
 

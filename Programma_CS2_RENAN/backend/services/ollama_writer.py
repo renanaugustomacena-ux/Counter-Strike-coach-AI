@@ -9,8 +9,7 @@ Integration:
     coaching_service.py calls polish() after generating each CoachingInsight.
 """
 
-from functools import lru_cache
-from typing import Dict, Optional
+from typing import Optional
 
 from Programma_CS2_RENAN.core.config import get_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger

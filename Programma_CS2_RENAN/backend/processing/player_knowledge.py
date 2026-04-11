@@ -17,7 +17,7 @@ Sensorial model:
 
 import math
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 from Programma_CS2_RENAN.core.constants import (
     FLASH_DURATION_TICKS,
@@ -198,7 +198,12 @@ def _is_in_fov(
     dy = target_y - player_y
 
     # PROC-02: Reject (0,0) fallback positions — both at origin means no real position data
-    if abs(player_x) < 0.01 and abs(player_y) < 0.01 and abs(target_x) < 0.01 and abs(target_y) < 0.01:
+    if (
+        abs(player_x) < 0.01
+        and abs(player_y) < 0.01
+        and abs(target_x) < 0.01
+        and abs(target_y) < 0.01
+    ):
         return False
 
     if abs(dx) < 0.01 and abs(dy) < 0.01:

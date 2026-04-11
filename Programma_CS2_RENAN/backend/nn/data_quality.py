@@ -7,7 +7,7 @@ to decide whether to proceed or abort.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 

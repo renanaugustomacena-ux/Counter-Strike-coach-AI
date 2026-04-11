@@ -1,6 +1,6 @@
 """Player sidebar — team roster with widget pooling and live detail card."""
 
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont

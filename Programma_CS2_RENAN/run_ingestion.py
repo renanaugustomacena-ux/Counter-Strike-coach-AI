@@ -1,7 +1,5 @@
 import hashlib
 import os
-import shutil
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -38,7 +36,6 @@ from Programma_CS2_RENAN.backend.storage.state_manager import (  # NEW: For prog
 )
 from Programma_CS2_RENAN.backend.storage.storage_manager import StorageManager
 from Programma_CS2_RENAN.core.config import MIN_DEMOS_FOR_COACHING, get_setting, refresh_settings
-from Programma_CS2_RENAN.ingestion.steam_locator import sync_steam_demos
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.ingestion_runner")
@@ -733,9 +730,9 @@ def _extract_and_store_events(demo_path, match_id, match_manager, df_ticks):
     _state_index = None
     _STATE_COLS = ["health", "armor", "equipment_value", "team_name"]
     if not df_ticks.empty and "player_name" in df_ticks.columns:
-        _df_state = df_ticks[["tick", "player_name"] + [
-            c for c in _STATE_COLS if c in df_ticks.columns
-        ]].copy()
+        _df_state = df_ticks[
+            ["tick", "player_name"] + [c for c in _STATE_COLS if c in df_ticks.columns]
+        ].copy()
         _df_state["_pname"] = _df_state["player_name"].str.strip().str.lower()
         _df_state = _df_state.set_index(["tick", "_pname"])
         _df_state = _df_state[~_df_state.index.duplicated(keep="last")]
@@ -1400,9 +1397,10 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
             ).astype(int),
             # ducking is the correct demoparser2 field for crouch state
             "is_crouching": df_legacy_source.get(
-                "ducking", df_legacy_source.get(
+                "ducking",
+                df_legacy_source.get(
                     "is_crouching", pd.Series(False, index=df_legacy_source.index)
-                )
+                ),
             ).astype(bool),
             "is_scoped": df_legacy_source.get(
                 "is_scoped", pd.Series(False, index=df_legacy_source.index)
@@ -1426,7 +1424,8 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
             "is_blinded": (
                 df_legacy_source.get(
                     "flash_duration", pd.Series(0.0, index=df_legacy_source.index)
-                ).astype(float) > 0
+                ).astype(float)
+                > 0
             ).astype(bool),
             # --- Enriched features ---
             "round_number": df_legacy_source.get(

@@ -8,7 +8,7 @@ Core logic for demo playback, including:
 """
 
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional
+from typing import Callable, List, Optional
 
 from Programma_CS2_RENAN.core.demo_frame import DemoFrame, NadeState, PlayerState, Team
 from Programma_CS2_RENAN.observability.logger_setup import get_logger

@@ -16,7 +16,7 @@ Usage:
 
 import math
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from Programma_CS2_RENAN.core.map_callouts import (  # noqa: F401 — re-exported
     NamedPosition,

@@ -3,7 +3,7 @@
 from typing import Callable, List, Optional
 
 from PySide6.QtCore import QRectF, Qt
-from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter
+from PySide6.QtGui import QColor, QFont, QPainter
 from PySide6.QtWidgets import QWidget
 
 from Programma_CS2_RENAN.core.demo_frame import EventType, GameEvent

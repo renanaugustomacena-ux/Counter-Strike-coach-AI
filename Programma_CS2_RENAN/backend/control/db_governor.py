@@ -1,8 +1,7 @@
 import shutil
-import sqlite3
 import threading
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 

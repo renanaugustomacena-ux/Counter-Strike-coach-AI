@@ -8,7 +8,6 @@ from PySide6.QtCore import QEvent, Qt, Signal
 from PySide6.QtGui import QKeySequence, QPainter, QPixmap, QShortcut
 from PySide6.QtWidgets import QHBoxLayout, QMainWindow, QStackedLayout, QStackedWidget, QWidget
 
-from Programma_CS2_RENAN.apps.qt_app.core.animation import Animator
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.nav_sidebar import NavSidebar
 from Programma_CS2_RENAN.observability.logger_setup import get_logger

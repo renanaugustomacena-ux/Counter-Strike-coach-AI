@@ -4,7 +4,6 @@ if __name__ == "__main__":
     multiprocessing.freeze_support()
 
 import os
-import subprocess
 import sys
 from pathlib import Path
 

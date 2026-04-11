@@ -1,7 +1,6 @@
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional
 
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager
 from Programma_CS2_RENAN.core.config import CORE_DB_DIR, USER_DATA_ROOT

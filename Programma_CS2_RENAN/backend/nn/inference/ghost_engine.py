@@ -1,7 +1,6 @@
 import os
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
-import numpy as np
 import torch
 
 from Programma_CS2_RENAN.backend.nn.config import RAP_POSITION_SCALE

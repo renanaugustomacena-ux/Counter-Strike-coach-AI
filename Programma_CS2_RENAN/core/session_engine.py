@@ -1,4 +1,3 @@
-import logging
 import os
 import sys
 import threading
@@ -13,7 +12,6 @@ root = os.path.dirname(os.path.dirname(os.path.dirname(current)))
 if root not in sys.path:
     sys.path.insert(0, root)
 
-from pathlib import Path
 
 from sqlmodel import select
 

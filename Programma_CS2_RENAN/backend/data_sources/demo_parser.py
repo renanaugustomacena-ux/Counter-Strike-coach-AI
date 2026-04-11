@@ -1,7 +1,7 @@
 import os
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeoutError
-from typing import Dict, Optional
+from typing import Optional
 
 import pandas as pd
 from demoparser2 import DemoParser
