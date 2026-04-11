@@ -83,7 +83,10 @@ class RAPMemory(nn.Module):
         # so at least one backward+step has shaped the stored patterns.
         self._hopfield_trained = False
         self._training_forward_count = 0
-        self.hopfield = HopfieldLayer(
+        # SA-11: HopfieldLayer is None when hflayers not installed, but the
+        # _RAP_DEPS_AVAILABLE guard at __init__ entry (line 33) raises ImportError
+        # before this line is reachable. PyCharm can't see this control flow.
+        self.hopfield = HopfieldLayer(  # type: ignore[misc]
             input_size=hidden_dim,
             output_size=hidden_dim,
             num_heads=4,
