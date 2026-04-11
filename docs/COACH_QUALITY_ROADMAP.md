@@ -103,12 +103,15 @@ For *right now*, before you test the chat: I'd say **test the chat first** with 
 - ❌ **Any RLHF / DPO scaffolding.**
 - ❌ **Cloud GPU automation.** No `train_on_runpod.sh`, no Vast.ai launcher.
 
-### Hardware (verified `nvidia-smi`)
+### Hardware
 
-- **GPU:** NVIDIA GeForce GTX 1650 Mobile (Max-Q) — 4 GB VRAM
-- **CUDA:** 13.0 driver, runtime via `torch==2.5.1+cu121`
-- **System:** CPU-side has plenty of RAM and disk; the bottleneck is exclusively VRAM
-- **Implication:** local 8B fine-tuning is **not feasible**. See §2.5 for the three documented paths.
+> **Updated 2026-04-11:** Workstation upgraded from Lenovo laptop (GTX 1650 4GB) to desktop.
+
+- **CPU:** AMD Ryzen 9 9950X (16-core)
+- **GPU:** AMD Radeon RX 9070 XT — **16 GB VRAM** (RDNA 4, gfx1200)
+- **Compute:** ROCm 7.2, PyTorch 2.9.1+rocm6.3 (GPU verified working)
+- **System:** NVMe root + 448 GB USB SSD (project + venv)
+- **Implication:** local 8B 4-bit LoRA fine-tuning is **now feasible** (needs ~12 GB VRAM, we have 16 GB). Cloud GPU (§2.5 Path A) is still an option for faster iteration but no longer the only path.
 
 ## 2.2 Demo corpus reality (verified 2026-04-08)
 
@@ -428,9 +431,11 @@ Re-run the eval harness from §2.3 against `cs2coach:8b-v1`. Compare to:
 
 ### Hardware reality and the three paths
 
-The local GPU is a **GTX 1650 Mobile, 4 GB VRAM**. This is below the floor for local 4-bit LoRA on 8B (which wants ~12 GB VRAM minimum). Three documented paths:
+> **Updated 2026-04-11:** Workstation upgraded to RX 9070 XT 16 GB VRAM. Path B is now the **primary** path (local 8B LoRA). Path A is optional for faster runs.
 
-#### Path A — Cloud GPU rental (recommended)
+The local GPU is now an **RX 9070 XT, 16 GB VRAM** (ROCm 7.2, PyTorch 2.9.1+rocm6.3). This clears the ~12 GB floor for local 4-bit LoRA on 8B. Three paths remain documented for reference:
+
+#### Path A — Cloud GPU rental (optional, for faster iteration)
 
 | Provider | GPU | Cost/hr | One full run cost (8h) | Notes |
 |---|---|---|---|---|
@@ -451,9 +456,9 @@ Workflow:
 
 Total cycle time: ~12 hours for one experiment, ~$5 cost.
 
-#### Path B — Pivot to a smaller base model (local fallback)
+#### Path B — Local 8B LoRA on RX 9070 XT (recommended)
 
-If you want to iterate locally without paying for cloud, fine-tune a smaller base model that fits in 4 GB VRAM:
+With 16 GB VRAM and ROCm, local 4-bit LoRA on Llama 3.1 8B is feasible. Smaller models can also be used for faster iteration:
 
 | Model | Params | 4-bit VRAM | Quality vs Llama 3.1 8B |
 |---|---|---|---|

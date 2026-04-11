@@ -5,8 +5,8 @@ to populate all features correctly. This guide covers the complete pipeline.
 
 ## Prerequisites
 
-- Python 3.10+ with the project venv activated
-- All 38 pro .dem files in `DEMO_PRO_PLAYERS/` directory
+- Python 3.10+ with the project venv activated (`source ~/.venvs/cs2analyzer/bin/activate`)
+- Pro .dem files in `DEMO_PRO_PLAYERS/` directory (97 files as of 2026-04-11; 564 per-match DBs already parsed)
 - ~25 GB free disk space (19.5 GB monolith DB + per-match DBs)
 
 ## Step-by-Step
@@ -26,7 +26,7 @@ print('Schema initialized.')
 "
 ```
 
-### 2. Full re-ingestion of all 38 pro demos
+### 2. Full re-ingestion of all pro demos
 
 This re-parses every .dem file with the corrected field mappings (ducking, flash_duration,
 has_helmet, has_defuser) and rebuilds the monolith playertickstate table.
@@ -38,7 +38,7 @@ has_helmet, has_defuser) and rebuilds the monolith playertickstate table.
 python tools/ingest_pro_demos.py --full
 ```
 
-**Expected output:** ~70M playertickstate rows across 38 demos, ~382 playermatchstats rows.
+**Expected output:** playertickstate rows across all demos, playermatchstats rows (scales with demo count).
 **Expected time:** 1-3 hours depending on disk speed.
 
 ### 3. Build the composite index (if not already present)
@@ -67,7 +67,7 @@ conn.close()
 python tools/populate_round_stats.py
 ```
 
-**Expected output:** ~8,000-9,000 roundstats rows across 38 demos with per-round KAST flags.
+**Expected output:** roundstats rows across all demos with per-round KAST flags (scales with demo count; ~24K+ expected with full 97-demo corpus).
 
 ### 5. Repair KAST in PlayerMatchStats
 
@@ -102,7 +102,7 @@ print(f'Map-specific entries created: {count}')
 
 ```bash
 python tools/headless_validator.py
-# Must show: 313/313 passed, VERDICT: PASS
+# Must show: VERDICT: PASS (308/313 passed, 5 warnings for optional deps is OK)
 ```
 
 ### 9. JEPA Pre-training
@@ -111,7 +111,7 @@ python tools/headless_validator.py
 python -m Programma_CS2_RENAN.backend.nn.jepa_train --mode pretrain
 ```
 
-**Expected:** 50 epochs on ~380 pro player sequences (500 ticks each, 25-dim vectors).
+**Expected:** 50 epochs on pro player sequences (500 ticks each, 25-dim vectors). Sequence count scales with demo corpus.
 Model saved to `models/jepa_model.pt`.
 
 ### 10. (Optional) JEPA Fine-tuning on user demos

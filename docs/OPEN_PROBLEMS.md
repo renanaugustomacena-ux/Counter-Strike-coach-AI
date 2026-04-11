@@ -31,7 +31,7 @@ A **fully offline, privacy-first** CS2 coaching desktop app that beats cloud com
 **Models:** JEPA unblocked but **zero training epochs** run. RAP disabled. LLM = Llama 3.1 8B via Ollama (no fine-tuning).
 **Coach Book:** v3 shipped (151 entries). Target is 1500.
 **Hardware:** AMD Ryzen 9 9950X + RX 9070 XT (16GB VRAM) with ROCm 7.2. PyTorch 2.9.1+rocm6.3 GPU working. Local 8B LoRA fine-tuning is now feasible.
-**Environment:** Python 3.12, venv at `~/.venvs/cs2analyzer/`, FlareSolverr running, all 308/313 validator checks pass.
+**Environment:** Python 3.12, venv at `~/.venvs/cs2analyzer/`, FlareSolverr running, 308/313 validator checks pass (5 warnings: kivy/kivymd optional, shap optional, ncps/hflayers optional for RAP).
 
 ---
 
@@ -71,6 +71,9 @@ The following bugs from the previous OPEN_PROBLEMS were verified as **already fi
 | JT-05 | Same as WR-52 (sigmoid) |
 | JT-06 | Same as WR-53 (repeat-last-tick) |
 
+| WR-79 | "Knowledge_mc" name leak sanitized in coaching prompt | `b9d4acf` |
+| WR-80 | False NN attribution removed from coaching system prompt | `b9d4acf` |
+
 Also fixed this session:
 - 5 tools with hardcoded `/media/renan/` paths → updated to USB SSD path
 - `user_settings.json` PRO_DEMO_PATH and DEFAULT_DEMO_PATH set
@@ -104,8 +107,6 @@ Also fixed this session:
 | WR-76 | Round Reconstructor missing — tick data never reaches LLM | Not started | 3-5 days |
 | WR-77 | Coordinate-to-callout mapping missing | Not started | 2-3 days |
 | WR-78 | LLM hallucinates when data insufficient | Not started | 1 day |
-| WR-79 | "Knowledge_mc" name leak in coaching responses | Not started | 30 min |
-| WR-80 | False NN attribution in coach responses | Not started | 30 min |
 
 ### Frontend
 | # | Problem | Status | Effort |
@@ -125,7 +126,7 @@ Also fixed this session:
 ## Recommended Session Order (path to v0.1)
 
 1. **Run re-aggregation** — `bash scripts/reaggregate.sh` (30-90 min). Unblocks everything downstream.
-2. **WR-79 + WR-80** — Quick coaching quality wins (1 hr total).
+2. ~~**WR-79 + WR-80** — Quick coaching quality wins.~~ **DONE** (commit `b9d4acf`).
 3. **CI-04** — Expand Coach Book to 500+ entries. Biggest cheap quality win.
 4. **DP-02** — Wire per-player/per-match retrieval into coaching chat.
 5. **DP-04** — HLTV scraping session (test FlareSolverr, verify CSS selectors).
