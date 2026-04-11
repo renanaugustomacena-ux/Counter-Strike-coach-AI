@@ -227,7 +227,7 @@
     "backend/services/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "backend/services/analysis_orchestrator.py": "5b96cc853431c807fd07779646257f8b3d5ba3944778c48edca9b66e2a43df1c",
     "backend/services/analysis_service.py": "bbfa48184a42455a71f47a340ed4a48ee21e044b72f5781386367af2b9253645",
-    "backend/services/coaching_dialogue.py": "f725bfed97c920d813ac901e15e9f239010112d4b36b956eb83a5cd4186b37ce",
+    "backend/services/coaching_dialogue.py": "c6ea714024acbf03a08cb91c074f4c27dd446493e80a5b5d2e9f6e2961335328",
     "backend/services/coaching_service.py": "f71d5563d3e68c7773c3ccf1edc0c00fa2b7079cd0c86e3acf0488d964026bd1",
     "backend/services/lesson_generator.py": "57812f6d4fd15ac8cb6da31181a0e4a307c23678dc86f10eaaf0ab8a64e63727",
     "backend/services/llm_service.py": "aa95891c1f7b5d7bdaeef367347f1a29b987a4f0f482f57973c878736a702d7c",
