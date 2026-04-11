@@ -367,7 +367,7 @@ def rebuild_match_stats(db_manager, all_demos: list[Path]):
     all_columns = [row[1] for row in col_info if row[1] != "id"]
 
     stats_insert_sql = (
-        f"INSERT INTO playermatchstats ({','.join(all_columns)}) "
+        f"INSERT OR REPLACE INTO playermatchstats ({','.join(all_columns)}) "
         f"VALUES ({','.join('?' * len(all_columns))})"
     )
 
