@@ -152,7 +152,7 @@
     "backend/nn/experimental/rap_coach/chronovisor_scanner.py": "bdce702845cbb68af459aa041f27eaaa2435f690057c735e3904373efcd144cc",
     "backend/nn/experimental/rap_coach/communication.py": "0a50b5b64a8f697176ea9644d36508488bcc45e79d2b8ccb4541210018442e8a",
     "backend/nn/experimental/rap_coach/conftest.py": "b62eaaef7a1b4bc59e9e6a1605eab63dffb788e9152e60f8f6af3977a3d3e66d",
-    "backend/nn/experimental/rap_coach/memory.py": "d03b605044f7c2b44a9d90110030de90ce2ece8d9bf0e6972a87fb1da4a4d303",
+    "backend/nn/experimental/rap_coach/memory.py": "711257457bce1262a97aa2e657ee0586e4931915e0d9630f21591f2f52c8210f",
     "backend/nn/experimental/rap_coach/model.py": "c3b02ec6e53a70b7be54d80e74d4378f210a49396249f6808121eb1a0ca174f1",
     "backend/nn/experimental/rap_coach/pedagogy.py": "bb58a662ee7c1cf53e4d0d1d401665f0785158b409caeb6ad639cbe152ba32ef",
     "backend/nn/experimental/rap_coach/perception.py": "2258ed421c26d1b76f838ce8e6fb1910d92cd70aa5173935ee6fbae744ba3819",
