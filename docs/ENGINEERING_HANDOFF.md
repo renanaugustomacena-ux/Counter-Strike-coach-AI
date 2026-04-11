@@ -1730,9 +1730,9 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 |----|------|-------------|-------|--------|--------|
 | WR-21 | Core | `refresh_settings()` doesn't update theme/font/BRAIN globals | `config.py:331-347` | 30 min | **FIXED** |
 | WR-22 | Core | `asset_manager.py` hard Kivy import blocks headless use | `asset_manager.py:19` | 30 min | OPEN |
-| WR-23 | Core | Silent `except Exception: pass` in Teacher notification | `session_engine.py:427` | 5 min | OPEN |
-| WR-24 | Core | Delete dead code `playback.py` (zero importers) | `playback.py` | 5 min | OPEN |
-| WR-25 | Core | Delete deprecated `logger.py` shim (1 importer left) | `logger.py`, `run_full_training_cycle.py` | 10 min | OPEN |
+| WR-23 | Core | Silent `except Exception: pass` in Teacher notification | `session_engine.py:427` | 5 min | **FIXED** — not silent; logs + updates state |
+| WR-24 | Core | Delete dead code `playback.py` (zero importers) | `playback.py` | 5 min | **FIXED** — file already deleted |
+| WR-25 | Core | Delete deprecated `logger.py` shim (1 importer left) | `logger.py`, `run_full_training_cycle.py` | 10 min | **FIXED** — file already deleted |
 
 ### From Audit: observability/ (2026-03-29)
 
@@ -1760,7 +1760,7 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 | WR-35 | Processing | Smoke/molotov start events with `entity_id=-1` silently dropped | `player_knowledge.py:567` | 1 hr | **FIXED** |
 | WR-36 | Processing | Phantom enemy sightings at (0,0) fallback positions | `player_knowledge.py:438` | 30 min | OPEN |
 | WR-37 | Processing | `nickname_resolver.py` exact match separator stripping asymmetry | `nickname_resolver.py:55` | 30 min | OPEN |
-| WR-38 | Processing | Delete dead code `cv_framebuffer.py` (zero production imports) | `cv_framebuffer.py` | 5 min | OPEN |
+| WR-38 | Processing | Delete dead code `cv_framebuffer.py` (zero production imports) | `cv_framebuffer.py` | 5 min | **FIXED** — file already deleted |
 | WR-39 | Processing | `round_stats_builder.py:build_round_stats()` complexity 68 | `round_stats_builder.py:171` | 4+ hrs | OPEN |
 
 ### From Audit: ingestion/ (2026-03-29)
@@ -1782,7 +1782,7 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 | WR-47 | Data | Incomplete path traversal sanitization in FaceIT integration | `faceit_integration.py:187` | 10 min | **FIXED** |
 | WR-48 | Data | URL parameter injection via FaceIT nickname | `faceit_api.py:20` | 10 min | OPEN |
 | WR-49 | Data | HLTV scraper skips robots.txt preflight check | `hltv_scraper.py:35` | 15 min | OPEN |
-| WR-50 | Data | Delete dead code: `hltv/rate_limit.py` + `hltv/selectors.py` | 2 files | 5 min | OPEN |
+| WR-50 | Data | Delete dead code: `hltv/rate_limit.py` + `hltv/selectors.py` | 2 files | 5 min | **FIXED** — files already deleted |
 
 ### From Audit: backend/nn/ (2026-03-29)
 
@@ -1792,7 +1792,7 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 | WR-52 | **NN** | **tanh on coaching output causes systematic underprediction during fine-tuning** | `jepa_model.py:253`, `jepa_train.py:449` | 1 hr | **FIXED** |
 | WR-53 | **NN** | **Zero-padded LSTM corrupts hidden state during fine-tuning** | `jepa_train.py:193-201` | 2 hrs | **FIXED** |
 | WR-54 | NN | EMA schedule initialized to LR period, not actual training steps | `jepa_trainer.py:52` | 30 min | **FIXED** |
-| WR-55 | NN | Delete dead `ContextualAttention` class + deprecated `train_pipeline.py` | `strategy.py:12-33`, `train_pipeline.py` | 10 min | OPEN |
+| WR-55 | NN | Delete dead `ContextualAttention` class + deprecated `train_pipeline.py` | `strategy.py:12-33`, `train_pipeline.py` | 10 min | **FIXED** |
 
 ### From Audit: backend/services/ (2026-03-29)
 

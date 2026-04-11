@@ -9,30 +9,6 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 logger = get_logger("cs2analyzer.nn.experimental.rap_coach.strategy")
 
 
-class ContextualAttention(nn.Module):
-    """
-    Saliency-Weighted Feature Aggregation (CNN Layer 3 foundation).
-    Answers "What matters right now?"
-    """
-
-    def __init__(self, feature_dim, context_dim):
-        super().__init__()
-        self.query_net = nn.Linear(context_dim, feature_dim)
-        self.key_net = nn.Linear(feature_dim, feature_dim)
-        self.scale = feature_dim**-0.5
-
-    def forward(self, features, context):
-        # query from LSTM context (Memory layer)
-        query = self.query_net(context).unsqueeze(1)
-        # key/value from CNN features (Perception layer)
-        keys = self.key_net(features)
-
-        attn_weights = torch.bmm(query, keys.transpose(1, 2)) * self.scale
-        attn_probs = F.softmax(attn_weights, dim=-1)
-
-        return attn_probs
-
-
 class RAPStrategy(nn.Module):
     """
     Decision Optimization Layer with Top-2 Sparse MoE Routing.

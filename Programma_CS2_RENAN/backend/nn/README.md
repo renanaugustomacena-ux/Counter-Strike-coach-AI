@@ -33,7 +33,6 @@ The training pipeline was validated end-to-end on March 12, 2026: 11 pro demos i
 | `training_controller.py` | `TrainingController` -- demo deduplication, diversity checks, monthly quota management, stop-start logic |
 | `coach_manager.py` | `CoachTrainingManager` -- high-level orchestration with 3-stage maturity gate (doubt / learning / conviction) |
 | `train.py` | `train_nn()` -- legacy training entry point for `AdvancedCoachNN` |
-| `train_pipeline.py` | Legacy end-to-end training pipeline (deprecated, retained for backward compatibility) |
 | `training_callbacks.py` | `TrainingCallback` (ABC, opt-in hooks) and `CallbackRegistry` (event dispatcher with error isolation) |
 | `tensorboard_callback.py` | `TensorBoardCallback` -- logs 9+ scalar signals, parameter/gradient histograms, custom scalar layouts |
 | `maturity_observatory.py` | `MaturityObservatory` -- 5-signal conviction index (belief entropy, gate specialization, concept focus, value accuracy, role stability), 5-state machine (doubt / crisis / learning / conviction / mature) |

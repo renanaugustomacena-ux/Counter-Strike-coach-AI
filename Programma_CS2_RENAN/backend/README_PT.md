@@ -37,7 +37,7 @@ Nenhuma logica de UI reside aqui. O backend expoe suas funcionalidades atraves d
 | 5 | `ingestion/` | 4 | Monitoramento runtime de arquivos para novas demos, migracao CSV de formatos legacy, governanca de recursos do OS | `watcher.py`, `resource_manager.py`, `csv_migrator.py` |
 | 6 | `knowledge/` | 8 | Knowledge base RAG com indice vetorial FAISS, banco de experiencias COPER, mineracao de demos pro, grafo de conhecimento tatico | `rag_knowledge.py`, `experience_bank.py`, `vector_index.py` |
 | 7 | `knowledge_base/` | 2 | Sistema de ajuda in-app: tooltips contextuais, glossario, guias passo a passo para a interface | `help_system.py` |
-| 8 | `nn/` | 53 | Arquiteturas de redes neurais (6 tipos de modelo), pipeline de training, inferencia, EMA, early stopping, data quality, RAP Coach, JEPA | `jepa_model.py`, `rap_coach/`, `train_pipeline.py`, `config.py` |
+| 8 | `nn/` | 53 | Arquiteturas de redes neurais (6 tipos de modelo), pipeline de training, inferencia, EMA, early stopping, data quality, RAP Coach, JEPA | `jepa_model.py`, `rap_coach/`, `train.py`, `config.py` |
 | 9 | `onboarding/` | 2 | Fluxo de progressao de novos usuarios: avaliacao de habilidades, solicitacoes de coleta de demos, calibracao inicial | `new_user_flow.py` |
 | 10 | `processing/` | 16+ | Feature engineering (vetor 25-dim), computacao de baselines, baselines pro, geracao de heatmap, validacao, enriquecimento de ticks | `feature_engineering/vectorizer.py`, `baselines/`, `validation/` |
 | 11 | `progress/` | 3 | Rastreamento longitudinal de training: tendencias de sessao, metricas de melhoria, analise de curva de habilidade | `longitudinal.py`, `trend_analysis.py` |

@@ -126,7 +126,6 @@ def _compute_nn_output(experts, last_hidden, gate_weights):
 
 
 # NN-L-01: Deprecated alias — use AdvancedCoachNN directly.
-# Retained for backward compatibility with train_pipeline.py (also deprecated).
 TeacherRefinementNN = AdvancedCoachNN
 
 

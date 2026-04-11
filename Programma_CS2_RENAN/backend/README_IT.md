@@ -37,7 +37,7 @@ Nessuna logica UI risiede qui. Il backend espone le sue funzionalita attraverso 
 | 5 | `ingestion/` | 4 | Monitoraggio file runtime per nuove demo, migrazione CSV da formati legacy, governance risorse OS | `watcher.py`, `resource_manager.py`, `csv_migrator.py` |
 | 6 | `knowledge/` | 8 | Knowledge base RAG con indice vettoriale FAISS, banca esperienze COPER, mining demo pro, grafo di conoscenza tattica | `rag_knowledge.py`, `experience_bank.py`, `vector_index.py` |
 | 7 | `knowledge_base/` | 2 | Sistema di aiuto in-app: tooltip contestuali, glossario, guide passo-passo per l'interfaccia | `help_system.py` |
-| 8 | `nn/` | 53 | Architetture reti neurali (6 tipi di modello), pipeline di training, inferenza, EMA, early stopping, data quality, RAP Coach, JEPA | `jepa_model.py`, `rap_coach/`, `train_pipeline.py`, `config.py` |
+| 8 | `nn/` | 53 | Architetture reti neurali (6 tipi di modello), pipeline di training, inferenza, EMA, early stopping, data quality, RAP Coach, JEPA | `jepa_model.py`, `rap_coach/`, `train.py`, `config.py` |
 | 9 | `onboarding/` | 2 | Flusso di progressione nuovi utenti: valutazione abilita, richieste raccolta demo, calibrazione iniziale | `new_user_flow.py` |
 | 10 | `processing/` | 16+ | Feature engineering (vettore 25-dim), calcolo baseline, baseline pro, generazione heatmap, validazione, arricchimento tick | `feature_engineering/vectorizer.py`, `baselines/`, `validation/` |
 | 11 | `progress/` | 3 | Tracciamento training longitudinale: trend sessioni, metriche di miglioramento, analisi curva di abilita | `longitudinal.py`, `trend_analysis.py` |
