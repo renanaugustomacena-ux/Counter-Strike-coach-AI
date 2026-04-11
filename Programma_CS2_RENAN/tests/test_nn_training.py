@@ -12,6 +12,8 @@ import sys
 import numpy as np
 import pytest
 
+pytestmark = pytest.mark.timeout(60)
+
 
 # ---------------------------------------------------------------------------
 # EarlyStopping

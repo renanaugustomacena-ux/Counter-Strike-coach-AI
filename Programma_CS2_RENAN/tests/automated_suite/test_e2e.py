@@ -11,6 +11,8 @@ if PROJECT_ROOT not in sys.path:
 from Programma_CS2_RENAN.backend.nn.coach_manager import CoachTrainingManager
 from Programma_CS2_RENAN.backend.storage.database import init_database
 
+pytestmark = pytest.mark.timeout(120)
+
 
 def run_training_cycle():
     manager = CoachTrainingManager()

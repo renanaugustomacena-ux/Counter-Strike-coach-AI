@@ -15,6 +15,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 import torch
 
+pytestmark = pytest.mark.timeout(60)
+
 
 def _make_orchestrator(model_type="jepa", **kwargs):
     """Create a TrainingOrchestrator with mocked device and manager."""

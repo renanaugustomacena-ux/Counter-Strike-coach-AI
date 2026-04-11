@@ -10,6 +10,8 @@ from Programma_CS2_RENAN.backend.nn.win_probability_trainer import (
 from Programma_CS2_RENAN.backend.processing.baselines.pro_baseline import get_pro_baseline
 from Programma_CS2_RENAN.backend.processing.external_analytics import EliteAnalytics
 
+pytestmark = pytest.mark.timeout(120)
+
 
 class TestIntegration:
     def test_analytics_engine(self):

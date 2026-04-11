@@ -28,6 +28,8 @@ import torch.nn as nn
 from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
 from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
 
+pytestmark = pytest.mark.timeout(60)
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
