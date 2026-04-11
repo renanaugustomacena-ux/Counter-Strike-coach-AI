@@ -316,6 +316,16 @@ def get_setting(key, default=None):
         return _settings.get(key, default)
 
 
+def get_pro_demo_base() -> Path:
+    """Resolve the pro demo base directory from settings.
+
+    Returns the PRO_DEMO_PATH from user_settings.json, falling back to HOME.
+    Tools should call this instead of hardcoding paths.
+    """
+    raw = get_setting("PRO_DEMO_PATH", os.path.expanduser("~"))
+    return Path(raw) if raw else Path(os.path.expanduser("~"))
+
+
 def get_credential(key: str) -> str:
     """Thread-safe credential lookup for daemon/background threads (C-01).
 

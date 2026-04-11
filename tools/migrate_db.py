@@ -1,16 +1,39 @@
+"""DEPRECATED (R2-11): Use 'alembic upgrade head' for all schema migrations.
+
+This tool only patches pre-Alembic databases by adding 5 columns to CoachState.
+Since Alembic migrations 8c443d3d9523 and 3c6ecb5fe20e now manage this schema,
+this script is retained only as an archive for historical reference.
+"""
+
 import argparse
 import logging
 import os
 import sqlite3
 import sys
+import warnings
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Tuple
+
+# Emit deprecation warning on import
+warnings.warn(
+    "migrate_db.py is deprecated (R2-11). Use 'alembic upgrade head' instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 # --- Venv Guard ---
 if sys.prefix == sys.base_prefix and not os.environ.get("CI"):
     print("ERROR: Not in venv. Run: source ~/.venvs/cs2analyzer/bin/activate", file=sys.stderr)
     sys.exit(2)
+
+# --- When invoked directly, print notice and exit cleanly ---
+if __name__ == "__main__":
+    print("DEPRECATED (R2-11): migrate_db.py is superseded by Alembic.")
+    print("Run instead: alembic upgrade head")
+    print()
+    print("This tool is retained as an archive for pre-Alembic databases only.")
+    sys.exit(0)
 
 # --- Path Stabilization ---
 script_dir = Path(__file__).parent.absolute()
@@ -23,7 +46,7 @@ if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
 
-# --- Rich & Logging Imports ---
+# --- Rich Imports (optional — don't hard-fail on deprecated tool) ---
 try:
     from rich.console import Console
     from rich.panel import Panel
@@ -32,8 +55,7 @@ try:
     from rich.theme import Theme
     from rich.traceback import install as install_rich_traceback
 except ImportError:
-    print("CRITICAL: 'rich' library not found. Please run 'pip install rich'.")
-    sys.exit(1)
+    Console = Panel = Confirm = Table = Theme = install_rich_traceback = None
 
 # --- Configuration ---
 MTS_THEME = Theme(
