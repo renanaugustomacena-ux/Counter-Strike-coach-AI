@@ -89,13 +89,15 @@ This project is a desktop application that analyzes Counter-Strike 2 professiona
 
 **The strategic decision:** Ship the game theory engines and the COPER coaching pipeline (Experience Bank + RAG + Pro References) as v0.1. Defer the RAP Coach behind a feature flag (`USE_RAP_MODEL=False`). The game theory engines produce specific, actionable, personalized coaching insights from raw match data and published CS2 knowledge — no neural network required. The RAP Coach is a research-grade architecture that would require thousands of demos, months of training, and careful tuning to produce output that beats what the game theory engines already deliver for free.
 
-**Current state (2026-03-28):**
-- Headless validator: **319/319 PASS** (exit 0)
+**Current state (updated 2026-04-11):**
+- Headless validator: **308/313 PASS** (5 warnings for optional deps: kivy, kivymd, shap, ncps, hflayers)
 - Test suite: **87 test files**, 30%+ coverage enforced
 - All 13 Qt screens have dedicated implementations (100-514 lines each)
-- JEPA pre-trained: `jepa_brain.pt` checkpoint exists (3.7 MB)
+- JEPA pre-trained: `jepa_brain.pt` checkpoint exists (3.7 MB) — zero training epochs on production data
 - COPER coaching: **enabled by default**, 4-level fallback (never outputs zero coaching)
 - CI/CD: 6-stage pipeline, SHA-pinned Actions, cross-platform (Ubuntu + Windows)
+- **Demo corpus:** 97 .dem files, 564 per-match DBs, ~68 aggregated (re-aggregation script ready)
+- **Hardware:** AMD Ryzen 9 9950X + RX 9070 XT 16GB VRAM (ROCm 7.2)
 
 ---
 
@@ -1682,170 +1684,170 @@ NN-H-03 ──blocks (batch size)──►  NN-M-10
 
 ## 21. Open Work Registry
 
-All remaining work items consolidated from previous surgery plans, sorted by priority. Items will be updated as subsystem audits discover new work.
+All remaining work items consolidated from previous surgery plans, sorted by priority.
 
-> **Note:** Additional items will be appended here as the subsystem-by-subsystem audit progresses.
-> Track audit progress in `docs/AUDIT_PROGRESS.md`.
+> **Status key:** OPEN = not yet addressed, **FIXED** = verified resolved (commit ref in OPEN_PROBLEMS.md §Resolved).
+> **Last reconciled:** 2026-04-11 against OPEN_PROBLEMS.md and git log.
 
 ### Priority 1: Ship-Blocking
 
-| ID | Area | Description | Files | Effort | Troubleshooting |
-|----|------|-------------|-------|--------|----------------|
-| WR-01 | Dependencies | Switch to CPU-only PyTorch for distribution (2.5 GB -> 1.6 GB) | `requirements-dist.txt` (create) | 1 day | If Linux install crashes: platform markers missing |
-| WR-02 | Dependencies | Add platform markers to Windows-only packages | `requirements-lock.txt` | 0.5 day | Check `kivy-deps.angle`, `pywin32` |
-| WR-03 | Dependencies | Remove phantom PDF deps (pdfminer, pdfplumber, PyMuPDF, pypdf) | `requirements*.txt` | 0.5 day | ~50 MB wasted in bundle |
-| WR-04 | Dependencies | Verify `demoparser2` license before commercial release | — | 1 day | Legal blocker |
-| WR-05 | Frontend | Error toast system for coaching fallback + ingestion errors | `apps/qt_app/widgets/toast.py`, `app_state.py` | 3-5 days | Signal: `AppState.toast_requested(str, str)` |
-| WR-06 | Frontend | Coaching generation timeout (30s) with spinner | `coaching_service.py`, coach screen | 1 day | Timeout wraps entire generation, not just LLM |
-| WR-07 | Backend | Ingestion rate limiting (max 10 concurrent) | `IngestionManager` | 2-3 days | `threading.Semaphore(10)` |
-| WR-08 | NN | Verify NN-M-12 (sentinel for missing target values) | `dataset.py` | 0.5 day | Needs deeper inspection |
+| ID | Area | Description | Files | Effort | Status |
+|----|------|-------------|-------|--------|--------|
+| WR-01 | Dependencies | Switch to CPU-only PyTorch for distribution (2.5 GB -> 1.6 GB) | `requirements-dist.txt` (create) | 1 day | OPEN |
+| WR-02 | Dependencies | Add platform markers to Windows-only packages | `requirements-lock.txt` | 0.5 day | OPEN |
+| WR-03 | Dependencies | Remove phantom PDF deps (pdfminer, pdfplumber, PyMuPDF, pypdf) | `requirements*.txt` | 0.5 day | OPEN |
+| WR-04 | Dependencies | Verify `demoparser2` license before commercial release | — | 1 day | OPEN |
+| WR-05 | Frontend | Error toast system for coaching fallback + ingestion errors | `apps/qt_app/widgets/toast.py`, `app_state.py` | 3-5 days | OPEN |
+| WR-06 | Frontend | Coaching generation timeout (30s) with spinner | `coaching_service.py`, coach screen | 1 day | OPEN |
+| WR-07 | Backend | Ingestion rate limiting (max 10 concurrent) | `IngestionManager` | 2-3 days | OPEN |
+| WR-08 | NN | Verify NN-M-12 (sentinel for missing target values) | `dataset.py` | 0.5 day | OPEN |
 
 ### Priority 2: Quality
 
-| ID | Area | Description | Files | Effort | Troubleshooting |
-|----|------|-------------|-------|--------|----------------|
-| WR-09 | Frontend | GPU detection warning toast | training screens | 1 day | `torch.cuda.is_available()` check |
-| WR-10 | Frontend | SBERT download progress bar (or TF-IDF fallback) | experience_bank.py, Qt widget | 2 days | 400 MB download freezes UI |
-| WR-11 | Frontend | Remove Kivy from `platform_utils.py` | `core/platform_utils.py` | 1 day | Replace with Qt equivalents |
-| WR-12 | Backend | Make backup failure non-fatal for training | `session_engine.py` | 1 day | `_backup_failed` flag stops Teacher daemon |
-| WR-13 | Backend | Surface Docker requirement for HLTV sync in UI | Settings screen | 1 day | Pre-compute baseline CSV as workaround |
-| WR-14 | Backend | Detect external SSD disconnect mid-parse | match_data_manager.py | 2 days | Falls back silently to wrong storage |
-| WR-15 | Backend | Surface HLTV rate-limit status in UI | HLTV sync UI | 1 day | HTTP 429 pauses scraper silently |
+| ID | Area | Description | Files | Effort | Status |
+|----|------|-------------|-------|--------|--------|
+| WR-09 | Frontend | GPU detection warning toast | training screens | 1 day | OPEN |
+| WR-10 | Frontend | SBERT download progress bar (or TF-IDF fallback) | experience_bank.py, Qt widget | 2 days | OPEN |
+| WR-11 | Frontend | Remove Kivy from `platform_utils.py` | `core/platform_utils.py` | 1 day | OPEN |
+| WR-12 | Backend | Make backup failure non-fatal for training | `session_engine.py` | 1 day | OPEN |
+| WR-13 | Backend | Surface Docker requirement for HLTV sync in UI | Settings screen | 1 day | OPEN |
+| WR-14 | Backend | Detect external SSD disconnect mid-parse | match_data_manager.py | 2 days | OPEN |
+| WR-15 | Backend | Surface HLTV rate-limit status in UI | HLTV sync UI | 1 day | OPEN |
 
 ### Priority 3: Packaging
 
-| ID | Area | Description | Files | Effort | Troubleshooting |
-|----|------|-------------|-------|--------|----------------|
-| WR-16 | Build | PyInstaller: exclude Kivy + RAP optional deps | `cs2_analyzer_win.spec` | 1 day | `excludes=['kivy', 'kivymd', 'ncps', 'hflayers']` |
-| WR-17 | Build | PyInstaller: include map textures and fonts | `cs2_analyzer_win.spec` | 0.5 day | `datas=[('assets/maps/*.dds', ...)]` |
-| WR-18 | Build | Add RAP to optional dependency group in pyproject.toml | `pyproject.toml` | 0.5 day | `[project.optional-dependencies] rap = [...]` |
-| WR-19 | Governance | Create `.env.example` with all 25 env vars | project root | 1 day | See Appendix C |
-| WR-20 | Governance | Add git version tag `v0.1.0` | — | 10 min | Enables GitHub Releases |
+| ID | Area | Description | Files | Effort | Status |
+|----|------|-------------|-------|--------|--------|
+| WR-16 | Build | PyInstaller: exclude Kivy + RAP optional deps | `cs2_analyzer_win.spec` | 1 day | OPEN |
+| WR-17 | Build | PyInstaller: include map textures and fonts | `cs2_analyzer_win.spec` | 0.5 day | OPEN |
+| WR-18 | Build | Add RAP to optional dependency group in pyproject.toml | `pyproject.toml` | 0.5 day | OPEN |
+| WR-19 | Governance | Create `.env.example` with all 25 env vars | project root | 1 day | OPEN |
+| WR-20 | Governance | Add git version tag `v0.1.0` | — | 10 min | OPEN |
 
 ### From Audit: core/ (2026-03-28)
 
-| ID | Area | Description | Files | Effort | Troubleshooting |
-|----|------|-------------|-------|--------|----------------|
-| WR-21 | Core | `refresh_settings()` doesn't update theme/font/BRAIN globals | `config.py:331-347` | 30 min | Add missing keys to refresh loop |
-| WR-22 | Core | `asset_manager.py` hard Kivy import blocks headless use | `asset_manager.py:19` | 30 min | Guard with try/except |
-| WR-23 | Core | Silent `except Exception: pass` in Teacher notification | `session_engine.py:427` | 5 min | Replace with `logger.warning()` |
-| WR-24 | Core | Delete dead code `playback.py` (zero importers) | `playback.py` | 5 min | Confirm zero importers first |
-| WR-25 | Core | Delete deprecated `logger.py` shim (1 importer left) | `logger.py`, `run_full_training_cycle.py` | 10 min | Update importer to use `observability.logger_setup` |
+| ID | Area | Description | Files | Effort | Status |
+|----|------|-------------|-------|--------|--------|
+| WR-21 | Core | `refresh_settings()` doesn't update theme/font/BRAIN globals | `config.py:331-347` | 30 min | **FIXED** |
+| WR-22 | Core | `asset_manager.py` hard Kivy import blocks headless use | `asset_manager.py:19` | 30 min | OPEN |
+| WR-23 | Core | Silent `except Exception: pass` in Teacher notification | `session_engine.py:427` | 5 min | OPEN |
+| WR-24 | Core | Delete dead code `playback.py` (zero importers) | `playback.py` | 5 min | OPEN |
+| WR-25 | Core | Delete deprecated `logger.py` shim (1 importer left) | `logger.py`, `run_full_training_cycle.py` | 10 min | OPEN |
 
 ### From Audit: observability/ (2026-03-29)
 
-| ID | Area | Description | Files | Effort | Troubleshooting |
-|----|------|-------------|-------|--------|----------------|
-| WR-26 | Observability | `app_logger` created before log dir configured — writes to wrong path | `logger_setup.py:298` | 1 hr | Defer creation or re-wire after `configure_log_dir()` |
-| WR-27 | Observability | 23/27 error codes defined but never used via `log_with_code()` | `error_codes.py` | 2-3 hrs | Wire inline `[CODE]` annotations to formal registry |
-| WR-28 | Observability | `exceptions.py` hierarchy is dead code (zero production usage) | `exceptions.py` | 4+ hrs | Adopt in production or remove |
-| WR-29 | Observability | Daemon threads lack correlation IDs despite docs claiming otherwise | `session_engine.py` | 30 min | Add `set_correlation_id()` at daemon cycle start |
-| WR-30 | Observability | `configure_retention()` never called — logs accumulate indefinitely | `main.py` | 15 min | Call from boot sequence |
+| ID | Area | Description | Files | Effort | Status |
+|----|------|-------------|-------|--------|--------|
+| WR-26 | Observability | `app_logger` created before log dir configured — writes to wrong path | `logger_setup.py:298` | 1 hr | OPEN |
+| WR-27 | Observability | 23/27 error codes defined but never used via `log_with_code()` | `error_codes.py` | 2-3 hrs | OPEN |
+| WR-28 | Observability | `exceptions.py` hierarchy is dead code (zero production usage) | `exceptions.py` | 4+ hrs | OPEN |
+| WR-29 | Observability | Daemon threads lack correlation IDs despite docs claiming otherwise | `session_engine.py` | 30 min | OPEN |
+| WR-30 | Observability | `configure_retention()` never called — logs accumulate indefinitely | `main.py` | 15 min | OPEN |
 
 ### From Audit: backend/storage/ (2026-03-29)
 
-| ID | Area | Description | Files | Effort | Troubleshooting |
-|----|------|-------------|-------|--------|----------------|
-| WR-31 | **Storage** | **CRITICAL: `restore_backup()` doesn't delete WAL/SHM files — potential DB corruption** | `db_backup.py:189-222` | 30 min | Delete `*.db-wal` and `*.db-shm` before restore |
-| WR-32 | Storage | `close_all()` race condition — iterates engines dict without lock | `match_data_manager.py:683-688` | 15 min | Acquire `_engine_lock` in `close_all()` |
-| WR-33 | Storage | `backup_match_data()` TOCTOU race between checkpoint and tar.add | `db_backup.py:110-127` | 2 hrs | Use `sqlite3.backup()` API instead |
-| WR-34 | Storage | Two backup systems coexist (VACUUM INTO + sqlite3.backup) | `backup_manager.py`, `db_backup.py` | 4+ hrs | Consolidate into one |
+| ID | Area | Description | Files | Effort | Status |
+|----|------|-------------|-------|--------|--------|
+| WR-31 | **Storage** | **CRITICAL: `restore_backup()` doesn't delete WAL/SHM files — potential DB corruption** | `db_backup.py:189-222` | 30 min | **FIXED** |
+| WR-32 | Storage | `close_all()` race condition — iterates engines dict without lock | `match_data_manager.py:683-688` | 15 min | **FIXED** |
+| WR-33 | Storage | `backup_match_data()` TOCTOU race between checkpoint and tar.add | `db_backup.py:110-127` | 2 hrs | OPEN |
+| WR-34 | Storage | Two backup systems coexist (VACUUM INTO + sqlite3.backup) | `backup_manager.py`, `db_backup.py` | 4+ hrs | OPEN |
 
 ### From Audit: backend/processing/ (2026-03-29)
 
-| ID | Area | Description | Files | Effort | Troubleshooting |
-|----|------|-------------|-------|--------|----------------|
-| WR-35 | Processing | Smoke/molotov start events with `entity_id=-1` silently dropped | `player_knowledge.py:567` | 1 hr | Add fallback position-based start tracking |
-| WR-36 | Processing | Phantom enemy sightings at (0,0) fallback positions | `player_knowledge.py:438` | 30 min | Check `position_is_fallback` before memory |
-| WR-37 | Processing | `nickname_resolver.py` exact match separator stripping asymmetry | `nickname_resolver.py:55` | 30 min | Apply `_clean()` to DB values too |
-| WR-38 | Processing | Delete dead code `cv_framebuffer.py` (zero production imports) | `cv_framebuffer.py` | 5 min | Confirm zero importers first |
-| WR-39 | Processing | `round_stats_builder.py:build_round_stats()` complexity 68 | `round_stats_builder.py:171` | 4+ hrs | Decompose into sub-functions |
+| ID | Area | Description | Files | Effort | Status |
+|----|------|-------------|-------|--------|--------|
+| WR-35 | Processing | Smoke/molotov start events with `entity_id=-1` silently dropped | `player_knowledge.py:567` | 1 hr | **FIXED** |
+| WR-36 | Processing | Phantom enemy sightings at (0,0) fallback positions | `player_knowledge.py:438` | 30 min | OPEN |
+| WR-37 | Processing | `nickname_resolver.py` exact match separator stripping asymmetry | `nickname_resolver.py:55` | 30 min | OPEN |
+| WR-38 | Processing | Delete dead code `cv_framebuffer.py` (zero production imports) | `cv_framebuffer.py` | 5 min | OPEN |
+| WR-39 | Processing | `round_stats_builder.py:build_round_stats()` complexity 68 | `round_stats_builder.py:171` | 4+ hrs | OPEN |
 
 ### From Audit: ingestion/ (2026-03-29)
 
-| ID | Area | Description | Files | Effort | Troubleshooting |
-|----|------|-------------|-------|--------|----------------|
-| WR-40 | **Ingestion** | **`bomb` always None — feature 21 (bomb_planted) is always 0 in DemoLoader training data** | `demo_loader.py:524` | 2-3 hrs | Parse bomb events in Pass 3 |
-| WR-41 | **Ingestion** | **`map_tensors` in result dict breaks callers that unpack tuples** | `demo_loader.py:586` | 30 min | Separate return value |
-| WR-42 | Ingestion | ML pipeline silent return causes premature demo archiving (data loss) | `user_ingest.py:48-51` | 30 min | Raise on pipeline failure |
-| WR-43 | Ingestion | Pass 1 exception swallowed — grenade trajectories silently empty | `demo_loader.py:185-186` | 30 min | Propagate or flag |
+| ID | Area | Description | Files | Effort | Status |
+|----|------|-------------|-------|--------|--------|
+| WR-40 | **Ingestion** | **`bomb` always None — feature 21 (bomb_planted) is always 0 in DemoLoader training data** | `demo_loader.py:524` | 2-3 hrs | **FIXED** |
+| WR-41 | **Ingestion** | **`map_tensors` in result dict breaks callers that unpack tuples** | `demo_loader.py:586` | 30 min | OPEN |
+| WR-42 | Ingestion | ML pipeline silent return causes premature demo archiving (data loss) | `user_ingest.py:48-51` | 30 min | OPEN |
+| WR-43 | Ingestion | Pass 1 exception swallowed — grenade trajectories silently empty | `demo_loader.py:185-186` | 30 min | OPEN |
 
 ### From Audit: backend/data_sources/ (2026-03-29)
 
-| ID | Area | Description | Files | Effort | Troubleshooting |
-|----|------|-------------|-------|--------|----------------|
-| WR-44 | **Data** | **`time_in_round` clips at 175 but vectorizer normalizes by 115 — features > 1.0 violating [0,1]** | `round_context.py:215` | 15 min | Clip at 115.0 |
-| WR-45 | **Data** | **`raise None` bug when `max_total_timeout=0`** | `steam_api.py:59` | 10 min | Initialize `last_exc` |
-| WR-46 | Data | Unbounded sleep on HTTP 429 — malicious Retry-After blocks thread | `faceit_integration.py:99` | 5 min | Cap at `min(val, 300)` |
-| WR-47 | Data | Incomplete path traversal sanitization in FaceIT integration | `faceit_integration.py:187` | 10 min | Use `os.path.basename()` |
-| WR-48 | Data | URL parameter injection via FaceIT nickname | `faceit_api.py:20` | 10 min | Use `params=` dict |
-| WR-49 | Data | HLTV scraper skips robots.txt preflight check | `hltv_scraper.py:35` | 15 min | Call `preflight_check()` |
-| WR-50 | Data | Delete dead code: `hltv/rate_limit.py` + `hltv/selectors.py` | 2 files | 5 min | Never imported |
+| ID | Area | Description | Files | Effort | Status |
+|----|------|-------------|-------|--------|--------|
+| WR-44 | **Data** | **`time_in_round` clips at 175 but vectorizer normalizes by 115 — features > 1.0 violating [0,1]** | `round_context.py:215` | 15 min | **FIXED** |
+| WR-45 | **Data** | **`raise None` bug when `max_total_timeout=0`** | `steam_api.py:59` | 10 min | **FIXED** |
+| WR-46 | Data | Unbounded sleep on HTTP 429 — malicious Retry-After blocks thread | `faceit_integration.py:99` | 5 min | **FIXED** |
+| WR-47 | Data | Incomplete path traversal sanitization in FaceIT integration | `faceit_integration.py:187` | 10 min | **FIXED** |
+| WR-48 | Data | URL parameter injection via FaceIT nickname | `faceit_api.py:20` | 10 min | OPEN |
+| WR-49 | Data | HLTV scraper skips robots.txt preflight check | `hltv_scraper.py:35` | 15 min | OPEN |
+| WR-50 | Data | Delete dead code: `hltv/rate_limit.py` + `hltv/selectors.py` | 2 files | 5 min | OPEN |
 
 ### From Audit: backend/nn/ (2026-03-29)
 
-| ID | Area | Description | Files | Effort | Troubleshooting |
-|----|------|-------------|-------|--------|----------------|
-| WR-51 | **NN** | **`NameError: context_len` crashes VL-JEPA training** | `training_orchestrator.py:474` | 5 min | Replace with `_JEPA_CONTEXT_LEN` |
-| WR-52 | **NN** | **tanh on coaching output causes systematic underprediction during fine-tuning** | `jepa_model.py:253`, `jepa_train.py:449` | 1 hr | Use sigmoid for [0,1] or remove activation |
-| WR-53 | **NN** | **Zero-padded LSTM corrupts hidden state during fine-tuning** | `jepa_train.py:193-201` | 2 hrs | Use `pack_padded_sequence` |
-| WR-54 | NN | EMA schedule initialized to LR period, not actual training steps | `jepa_trainer.py:52` | 30 min | Init from `epochs * dataloader_len` |
-| WR-55 | NN | Delete dead `ContextualAttention` class + deprecated `train_pipeline.py` | `strategy.py:12-33`, `train_pipeline.py` | 10 min | Never used in forward path |
+| ID | Area | Description | Files | Effort | Status |
+|----|------|-------------|-------|--------|--------|
+| WR-51 | **NN** | **`NameError: context_len` crashes VL-JEPA training** | `training_orchestrator.py:474` | 5 min | **FIXED** |
+| WR-52 | **NN** | **tanh on coaching output causes systematic underprediction during fine-tuning** | `jepa_model.py:253`, `jepa_train.py:449` | 1 hr | **FIXED** |
+| WR-53 | **NN** | **Zero-padded LSTM corrupts hidden state during fine-tuning** | `jepa_train.py:193-201` | 2 hrs | **FIXED** |
+| WR-54 | NN | EMA schedule initialized to LR period, not actual training steps | `jepa_trainer.py:52` | 30 min | **FIXED** |
+| WR-55 | NN | Delete dead `ContextualAttention` class + deprecated `train_pipeline.py` | `strategy.py:12-33`, `train_pipeline.py` | 10 min | OPEN |
 
 ### From Audit: backend/services/ (2026-03-29)
 
-| ID | Area | Description | Files | Effort | Troubleshooting |
-|----|------|-------------|-------|--------|----------------|
-| WR-56 | **Services** | **Dialogue context drops last assistant message (F5-06 regression)** | `coaching_dialogue.py:311-321` | 10 min | Change `[:-1][-window:]` to `[-window:]` |
-| WR-57 | Services | Traditional mode C-01 gap — can produce zero coaching | `coaching_service.py:228-231` | 15 min | Add `_save_generic_insight()` fallback |
-| WR-58 | Services | COPER timeout skips Hybrid level | `coaching_service.py:195-212` | 30 min | Route timeout to Hybrid first |
-| WR-59 | Services | `belief_estimator` instantiated but NEVER called — Bayesian death analysis unused | `analysis_orchestrator.py:71` | 1-2 hrs | Wire into `analyze_match()` |
+| ID | Area | Description | Files | Effort | Status |
+|----|------|-------------|-------|--------|--------|
+| WR-56 | **Services** | **Dialogue context drops last assistant message (F5-06 regression)** | `coaching_dialogue.py:311-321` | 10 min | **FIXED** |
+| WR-57 | Services | Traditional mode C-01 gap — can produce zero coaching | `coaching_service.py:228-231` | 15 min | **FIXED** |
+| WR-58 | Services | COPER timeout skips Hybrid level | `coaching_service.py:195-212` | 30 min | OPEN |
+| WR-59 | Services | `belief_estimator` instantiated but NEVER called — Bayesian death analysis unused | `analysis_orchestrator.py:71` | 1-2 hrs | **FIXED** |
 
 ### From Audit: backend/knowledge/ (2026-03-29)
 
-| ID | Area | Description | Files | Effort | Troubleshooting |
-|----|------|-------------|-------|--------|----------------|
-| WR-60 | **Knowledge** | **Feedback matches experiences to UNRELATED events — corrupts effectiveness scores** | `experience_bank.py:806-831` | 2-3 hrs | Add round-number + temporal proximity filters |
-| WR-61 | Knowledge | N+1 query pattern in usage count updates | `rag_knowledge.py:362-370` | 30 min | Batch UPDATE with WHERE IN |
-| WR-62 | Knowledge | Knowledge graph uses raw sqlite3, no WAL/pooling | `graph.py:37-40` | 1 hr | Migrate to SQLAlchemy engine |
+| ID | Area | Description | Files | Effort | Status |
+|----|------|-------------|-------|--------|--------|
+| WR-60 | **Knowledge** | **Feedback matches experiences to UNRELATED events — corrupts effectiveness scores** | `experience_bank.py:806-831` | 2-3 hrs | **FIXED** |
+| WR-61 | Knowledge | N+1 query pattern in usage count updates | `rag_knowledge.py:362-370` | 30 min | OPEN |
+| WR-62 | Knowledge | Knowledge graph uses raw sqlite3, no WAL/pooling | `graph.py:37-40` | 1 hr | OPEN |
 
 ### From Audit: backend/coaching/ (2026-03-29)
 
-| ID | Area | Description | Files | Effort | Troubleshooting |
-|----|------|-------------|-------|--------|----------------|
-| WR-63 | **Coaching** | **`output_dim=METADATA_DIM` (25) instead of `OUTPUT_DIM` (10) — checkpoint load failure** | `hybrid_engine.py:160-165` | 5 min | Change to `OUTPUT_DIM` |
-| WR-64 | **Coaching** | **Extra unsqueeze creates wrong tensor shape for AdvancedCoachNN** | `hybrid_engine.py:350-352` | 15 min | Remove unsqueeze for non-JEPA |
+| ID | Area | Description | Files | Effort | Status |
+|----|------|-------------|-------|--------|--------|
+| WR-63 | **Coaching** | **`output_dim=METADATA_DIM` (25) instead of `OUTPUT_DIM` (10) — checkpoint load failure** | `hybrid_engine.py:160-165` | 5 min | **FIXED** |
+| WR-64 | **Coaching** | **Extra unsqueeze creates wrong tensor shape for AdvancedCoachNN** | `hybrid_engine.py:350-352` | 15 min | **FIXED** |
 
 ### From Audit: backend/analysis/ (2026-03-29)
 
-| ID | Area | Description | Files | Effort | Troubleshooting |
-|----|------|-------------|-------|--------|----------------|
-| WR-65 | Analysis | Weapon/threat-decay calibration computed but never applied to live estimator | `belief_model.py:297-310,364-370` | 1 hr | Apply calibrated values after `auto_calibrate()` |
-| WR-66 | Analysis | `hash()` used instead of `hashlib.md5` (convention violation) | `game_tree.py:52` | 15 min | Use `hashlib.md5` |
+| ID | Area | Description | Files | Effort | Status |
+|----|------|-------------|-------|--------|--------|
+| WR-65 | Analysis | Weapon/threat-decay calibration computed but never applied to live estimator | `belief_model.py:297-310,364-370` | 1 hr | OPEN |
+| WR-66 | Analysis | `hash()` used instead of `hashlib.md5` (convention violation) | `game_tree.py:52` | 15 min | OPEN |
 
 ### From Audit: backend/control/ (2026-03-29)
 
-| ID | Area | Description | Files | Effort | Troubleshooting |
-|----|------|-------------|-------|--------|----------------|
-| WR-67 | Control | Empty HLTV DB created without tables — "table not found" downstream | `db_governor.py:64-69` | 15 min | Call `HLTVDatabaseManager.init_database()` |
+| ID | Area | Description | Files | Effort | Status |
+|----|------|-------------|-------|--------|--------|
+| WR-67 | Control | Empty HLTV DB created without tables — "table not found" downstream | `db_governor.py:64-69` | 15 min | **FIXED** |
 
 ### From Audit: apps/qt_app/ + tools/ (2026-03-29)
 
-| ID | Area | Description | Files | Effort | Troubleshooting |
-|----|------|-------------|-------|--------|----------------|
-| WR-68 | Qt | Duplicate `_Worker` missing autoDelete — memory leak + crash risk | `tactical_vm.py:22-35` | 15 min | Use `core/worker.py` Worker |
-| WR-69 | Qt | Wire toast system into coaching fallback + ingestion notifications | `coaching_service.py`, `app_state.py` | 2-3 hrs | Toast widget exists, needs signal connections |
-| WR-70 | Tools | 3 unused inner tool copies (headless_validator, dead_code_detector, dev_health) | `Programma_CS2_RENAN/tools/` | 30 min | Migrate pre-commit or delete copies |
+| ID | Area | Description | Files | Effort | Status |
+|----|------|-------------|-------|--------|--------|
+| WR-68 | Qt | Duplicate `_Worker` missing autoDelete — memory leak + crash risk | `tactical_vm.py:22-35` | 15 min | OPEN |
+| WR-69 | Qt | Wire toast system into coaching fallback + ingestion notifications | `coaching_service.py`, `app_state.py` | 2-3 hrs | OPEN |
+| WR-70 | Tools | 3 unused inner tool copies (headless_validator, dead_code_detector, dev_health) | `Programma_CS2_RENAN/tools/` | 30 min | OPEN |
 
 ### From Audit: Remaining Subsystems + Root Scripts (2026-03-29)
 
-| ID | Area | Description | Files | Effort | Troubleshooting |
-|----|------|-------------|-------|--------|----------------|
-| WR-71 | **Console** | **`_log_dir` undefined — NameError crash on `svc spawn` command** | `console.py:806` | 5 min | Define `_log_dir = PROJECT_ROOT / "logs"` |
-| WR-72 | Main | `"complete"` should be `"completed"` — knowledge ticks always 0 | `main.py:954` | 5 min | Fix string literal |
-| WR-73 | Main | `self.lang_trigger` AttributeError on UserProfileScreen edit | `main.py:455,459,464` | 10 min | Use `MDApp.get_running_app().lang_trigger` |
-| WR-74 | Ingestion | `batch_ingest.py` hardcoded path + non-recursive glob | `batch_ingest.py:130-131` | 15 min | Use `get_setting()` + `rglob("*.dem")` |
-| WR-75 | Onboarding | `get_onboarding_manager()` lacks singleton — cache defeated | `new_user_flow.py:134` | 10 min | Add lazy singleton |
+| ID | Area | Description | Files | Effort | Status |
+|----|------|-------------|-------|--------|--------|
+| WR-71 | **Console** | **`_log_dir` undefined — NameError crash on `svc spawn` command** | `console.py:806` | 5 min | **FIXED** |
+| WR-72 | Main | `"complete"` should be `"completed"` — knowledge ticks always 0 | `main.py:954` | 5 min | **FIXED** |
+| WR-73 | Main | `self.lang_trigger` AttributeError on UserProfileScreen edit | `main.py:455,459,464` | 10 min | OPEN |
+| WR-74 | Ingestion | `batch_ingest.py` hardcoded path + non-recursive glob | `batch_ingest.py:130-131` | 15 min | **FIXED** |
+| WR-75 | Onboarding | `get_onboarding_manager()` lacks singleton — cache defeated | `new_user_flow.py:134` | 10 min | OPEN |
 
 ### From Smoke Test: Coaching Chat Quality Gaps (2026-04-10)
 
@@ -1855,13 +1857,29 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 > LLM-generated narratives are fabricated — the system has rich tick data but never passes it
 > to the LLM, so the model hallucinates tactical details to fill the gap.
 
-| ID | Area | Description | Files | Effort | Troubleshooting |
-|----|------|-------------|-------|--------|----------------|
-| WR-76 | **Coaching** | **Round Reconstructor missing — tick data never reaches LLM.** The coaching chat retrieves round-level aggregates (kills, deaths, damage) but never queries `playertickstate` for the selected rounds. The LLM receives a stat line and hallucinates tactical narrative ("he used A-site long info", "well-placed flash-bang against the AWP'er") that has zero grounding in data. **Fix:** Build a Round Reconstructor module that, given a (demo_name, round_number, player_name), pulls tick data and produces a structured timeline: position-as-callout, weapon sequence, engagement timing, health deltas, teammates_alive context. This structured narrative becomes LLM context instead of raw stats. | New: `backend/processing/round_reconstructor.py`; modify `coaching_dialogue.py` retrieval | 3-5 days | Core architectural gap — highest-impact single improvement for coaching quality |
-| WR-77 | **Coaching** | **Coordinate-to-callout mapping missing.** Tick data contains `pos_x`, `pos_y`, `pos_z` and `map_name`, but no layer translates coordinates to human-readable callouts (ramp, secret, B main, jungle, etc.). Without this, even if tick data reaches the LLM, positions are meaningless numbers. **Fix:** Build a callout lookup for the 7 active-duty maps. Each map needs a polygon/region-to-name table. Can start with rectangular bounding boxes for major areas, refine later. | New: `core/map_callouts.py` or extend `core/map_manager.py` | 2-3 days | Community resources exist (parsed radar files, open-source callout datasets). Don't hand-draw from scratch. |
-| WR-78 | **Coaching** | **LLM hallucinates tactical details when data is insufficient.** Llama 3.1 8B is not prompted to distinguish "data says X" from "I'm inferring X" from "I'm inventing X." When asked for detail it doesn't have, it generates plausible-sounding CS2 text instead of saying "the data doesn't show this." Copy-paste syndrome: multiple rounds get near-identical descriptions with numbers swapped. **Fix:** Add explicit prompt constraints — (1) only narrate what the data contains, (2) mark inferences explicitly, (3) say "I don't have this detail" when the data is absent. Consider a structured output format (JSON timeline) that the LLM converts to prose, not free-generation. | `backend/services/coaching_dialogue.py`, system prompt templates | 1 day | Prompt engineering — test with the same 5-round ropz query as regression benchmark |
-| WR-79 | **Coaching** | **"Knowledge_mc" name leak in chat output.** The coach addresses the user as "Knowledge_mc" — likely a retrieval artifact (experience bank entry or RAG chunk) leaking into the system prompt or being treated as the user's name. **Fix:** Trace the source of "Knowledge_mc" in the retrieval pipeline and sanitize. Ensure retrieved context is clearly delimited from the user's identity. | `coaching_dialogue.py`, experience bank retrieval | 30 min | Grep for "Knowledge_mc" in DB tables and knowledge files |
-| WR-80 | **Coaching** | **"Neural network analysis shows" — false attribution.** The coach claims its neural networks analyzed the rounds, but no NN is invoked during chat queries. The LLM is generating this phrasing on its own. **Fix:** Remove or constrain NN-attribution language in the system prompt. Only claim NN analysis when an actual model (JEPA, RAP, AdvancedCoachNN) was queried and returned a result for that specific response. | System prompt in `coaching_dialogue.py` | 30 min | Part of the broader honesty/grounding prompt rework (WR-78) |
+| ID | Area | Description | Files | Effort | Status |
+|----|------|-------------|-------|--------|--------|
+| WR-76 | **Coaching** | **Round Reconstructor missing — tick data never reaches LLM.** The coaching chat retrieves round-level aggregates (kills, deaths, damage) but never queries `playertickstate` for the selected rounds. The LLM receives a stat line and hallucinates tactical narrative ("he used A-site long info", "well-placed flash-bang against the AWP'er") that has zero grounding in data. **Fix:** Build a Round Reconstructor module that, given a (demo_name, round_number, player_name), pulls tick data and produces a structured timeline: position-as-callout, weapon sequence, engagement timing, health deltas, teammates_alive context. This structured narrative becomes LLM context instead of raw stats. | New: `backend/processing/round_reconstructor.py`; modify `coaching_dialogue.py` retrieval | 3-5 days | OPEN |
+| WR-77 | **Coaching** | **Coordinate-to-callout mapping missing.** Tick data contains `pos_x`, `pos_y`, `pos_z` and `map_name`, but no layer translates coordinates to human-readable callouts (ramp, secret, B main, jungle, etc.). Without this, even if tick data reaches the LLM, positions are meaningless numbers. **Fix:** Build a callout lookup for the 7 active-duty maps. Each map needs a polygon/region-to-name table. Can start with rectangular bounding boxes for major areas, refine later. | New: `core/map_callouts.py` or extend `core/map_manager.py` | 2-3 days | OPEN |
+| WR-78 | **Coaching** | **LLM hallucinates tactical details when data is insufficient.** Llama 3.1 8B is not prompted to distinguish "data says X" from "I'm inferring X" from "I'm inventing X." When asked for detail it doesn't have, it generates plausible-sounding CS2 text instead of saying "the data doesn't show this." Copy-paste syndrome: multiple rounds get near-identical descriptions with numbers swapped. **Fix:** Add explicit prompt constraints — (1) only narrate what the data contains, (2) mark inferences explicitly, (3) say "I don't have this detail" when the data is absent. Consider a structured output format (JSON timeline) that the LLM converts to prose, not free-generation. | `backend/services/coaching_dialogue.py`, system prompt templates | 1 day | OPEN |
+| WR-79 | **Coaching** | **"Knowledge_mc" name leak in chat output.** The coach addresses the user as "Knowledge_mc" — likely a retrieval artifact (experience bank entry or RAG chunk) leaking into the system prompt or being treated as the user's name. **Fix:** Trace the source of "Knowledge_mc" in the retrieval pipeline and sanitize. Ensure retrieved context is clearly delimited from the user's identity. | `coaching_dialogue.py`, experience bank retrieval | 30 min | **FIXED** |
+| WR-80 | **Coaching** | **"Neural network analysis shows" — false attribution.** The coach claims its neural networks analyzed the rounds, but no NN is invoked during chat queries. The LLM is generating this phrasing on its own. **Fix:** Remove or constrain NN-attribution language in the system prompt. Only claim NN analysis when an actual model (JEPA, RAP, AdvancedCoachNN) was queried and returned a result for that specific response. | System prompt in `coaching_dialogue.py` | 30 min | **FIXED** |
+
+### From Cross-Referencing Audit (2026-04-11)
+
+> **Context:** Full project documentation sweep. Found bugs exposed in test files, in-code TODOs,
+> and architectural work items tracked in satellite docs but never captured in this registry.
+
+| ID | Area | Description | Files | Effort | Status |
+|----|------|-------------|-------|--------|--------|
+| WR-81 | **NN** | **BUG #2: ModelFactory silently returns legacy model for unknown model_type.** `get_model("nonexistent")` returns a default `AdvancedCoachNN` instead of raising. Callers assume they got the requested model type. | `backend/nn/factory.py` | 15 min | OPEN |
+| WR-82 | **Coaching** | **BUG #4: `dict.get(key, 0.0)` returns None when key exists with None value in `_prepare_tensors`.** DB rows with explicit NULL for a field bypass the default. Feature vector gets NaN, poisoning downstream models silently. | `backend/nn/coach_manager.py` | 30 min | OPEN |
+| WR-83 | **Coaching** | **BUG #8: COPER path crashes with AttributeError on non-dict tick_data.** `_run_coper_coaching()` calls `.get()` on tick_data without type checking. Non-dict input (list, None) raises unhandled `AttributeError`. | `backend/services/coaching_service.py` | 15 min | OPEN |
+| WR-84 | Control | Console Phase 4: Wire REST API endpoints to Console singleton | `backend/onboarding/server.py`, `backend/control/console.py` | 2-3 days | OPEN |
+| WR-85 | Docs | Coach Books refactor — 4 books, 8K+ lines IT markdown, section collisions, content drift, coverage gaps. Plan in `docs/books/REFACTOR_PLAN.md`. | `docs/books/Book-Coach-*.md` | 8 sessions | OPEN |
+| WR-86 | Ingestion | In-code TODO: Add `duration_capped` flag to NadeState for transparency | `ingestion/demo_loader.py:231` | 15 min | OPEN |
+| WR-87 | Knowledge | In-code TODO: Move inline `__main__` test block to proper test file | `backend/knowledge/rag_knowledge.py:627` | 15 min | OPEN |
+| WR-88 | Testing | Pre-existing test failure: `test_top_k_limits_results` returns 2 instead of 3 | `tests/test_experience_bank_db.py` | 30 min | OPEN |
 
 #### Architecture Note: The Round Reconstructor Concept
 
@@ -2863,10 +2881,20 @@ See Section 40 (Dependency Audit) for the full license matrix.
 | `f9a46b3` | Complete data curation pipeline (RoundStats, KAST, CoachingExperience, TacticalKnowledge) |
 | `5bbd2b3` | Harden training pipeline — 17-pass audit fixes (WAL, atomic save, KAST parity, batch guard) |
 | `b2a4ef5` | Add re-ingestion guide + model path fix |
+| `434d95c` | Fix coach data normalization — populate 9 of 11 zero columns in playermatchstats |
+| `d8593c1` | Frontend honesty pass: phase-aware labeling, pro badges, coach provenance, viewer perf |
+| `68565c0` | Wire neural networks into coaching chat and uncap response length |
+| `720eca5` | Fix hardcoded demo paths for Linux workstation and add re-aggregation script |
+| `b9d4acf` | Fix coaching prompt honesty (WR-79, WR-80) and update OPEN_PROBLEMS |
+| `d80d3cf` | Document coaching smoke test findings (WR-76..WR-80) and fix LICENSE corruption |
 
 ### Resolved Finding IDs
 
 D-1, D-2, D-3, C-1, C-2, C-3, ML-1, DA-1 through DA-8, CFG-2, L6
+
+### Resolved WR Items (April 2026)
+
+WR-21, WR-31, WR-32, WR-35, WR-40, WR-44, WR-45, WR-46, WR-47, WR-51, WR-52, WR-53, WR-54, WR-56, WR-57, WR-59, WR-60, WR-63, WR-64, WR-67, WR-71, WR-72, WR-74, WR-79, WR-80
 
 ### New Files Created
 
@@ -2904,4 +2932,4 @@ D-1, D-2, D-3, C-1, C-2, C-3, ML-1, DA-1 through DA-8, CFG-2, L6
 
 ---
 
-*Document generated 2026-03-28. Last updated 2026-04-10. 100% codebase coverage achieved. Verified against codebase at commit `f51336d`. Coaching smoke test findings (WR-76..WR-80) added 2026-04-10.*
+*Document generated 2026-03-28. Last updated 2026-04-11. 100% codebase coverage achieved. Work registry reconciled: 25 WR items marked FIXED, 8 new items (WR-81..WR-88) added from cross-referencing audit. 43 OPEN items remain.*
