@@ -1,5 +1,5 @@
 {
-  "file_count": 287,
+  "file_count": 288,
   "generator": "sync_integrity_manifest.py",
   "hashes": {
     "__init__.py": "d3074031129007f4a6dd65765a0faaad39df9ba8ee41ebe0c94c7f18598c12d0",
@@ -87,7 +87,7 @@
     "backend/analysis/belief_model.py": "ccf7d19c2c9804ec0ca91671690973ce0a777e9cdd57406e098ba354055336be",
     "backend/analysis/blind_spots.py": "9471036b4e460ac3461f850f5c1d22cbe9cf67c6ce112b147c72ce37b16ec89f",
     "backend/analysis/deception_index.py": "c990b65583bb2bb6c8d2b7139c63f87479bc12f350ffc1d21b74bc3d9e58f3c6",
-    "backend/analysis/engagement_range.py": "dc399c9feba45a4547d44b1870ee2539512237574dfa78e3160f65036b3d0a16",
+    "backend/analysis/engagement_range.py": "886a95d6fa8841c0214e0d7b3fff382408899cea999b151dd4db299cd4209f1a",
     "backend/analysis/entropy_analysis.py": "78153638941cb0954a0a5b329d80ef0b7cad1cf91fb4eca73be7148a592c2b24",
     "backend/analysis/game_tree.py": "454695a1f9f694ba130a2bab72a26775ca8b09238c28bc93f0da5c4f6fcc3376",
     "backend/analysis/momentum.py": "fbbfd500ed4ff074b6ae6ccd8b2186c383bb986959871fd74926aab7965b130c",
@@ -258,6 +258,7 @@
     "core/frozen_hook.py": "53ada3203f40f5cf5071a73766207ab43903b38dc9aba9e9ec8c29d8908197bf",
     "core/lifecycle.py": "e821194f637392b595beae13ecd32be987e358f808e922684ea39f7f75e057fa",
     "core/localization.py": "f92bfa050faa827ba6625c29a038376786d1ae98acd26b6ca2f1b07507bcec2e",
+    "core/map_callouts.py": "425ea95f61b4aa317969e15953b3216d224088bacfac4c75e2e1fa3fa94ef901",
     "core/map_manager.py": "39a438cb339b3085c12ad5b9f6ef87c28871f9c6ffe890eec484bc0443731edd",
     "core/platform_utils.py": "a5ea3d3dcb36d978f00538f02564774344db2653968579d9df630561710ca859",
     "core/playback_engine.py": "86eba2fecc9624fffb11df649dc90c9040022c02c31dc30451ac13502f76e617",
