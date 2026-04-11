@@ -1,5 +1,5 @@
 {
-  "file_count": 289,
+  "file_count": 290,
   "generator": "sync_integrity_manifest.py",
   "hashes": {
     "__init__.py": "d3074031129007f4a6dd65765a0faaad39df9ba8ee41ebe0c94c7f18598c12d0",
@@ -83,7 +83,7 @@
     "apps/qt_app/widgets/toast.py": "fe01c9415e653b922b41832d4d4b5c67d70100605d30504715a8c242dacd9534",
     "apps/spatial_debugger.py": "e44081c6258a09f4a35b8f3e98edb396066bf125d6fb9bbd4219a9226779acde",
     "backend/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "backend/analysis/__init__.py": "1f820219f434ce73c9534421fdc846c3045036685b542aff73760c39c29c5b07",
+    "backend/analysis/__init__.py": "8b49c37e19be2c3de425b1ce585f39a5073a21319361d8846cf97bbaef0fa31e",
     "backend/analysis/belief_model.py": "ccf7d19c2c9804ec0ca91671690973ce0a777e9cdd57406e098ba354055336be",
     "backend/analysis/blind_spots.py": "9471036b4e460ac3461f850f5c1d22cbe9cf67c6ce112b147c72ce37b16ec89f",
     "backend/analysis/deception_index.py": "c990b65583bb2bb6c8d2b7139c63f87479bc12f350ffc1d21b74bc3d9e58f3c6",
@@ -91,6 +91,7 @@
     "backend/analysis/entropy_analysis.py": "78153638941cb0954a0a5b329d80ef0b7cad1cf91fb4eca73be7148a592c2b24",
     "backend/analysis/game_tree.py": "454695a1f9f694ba130a2bab72a26775ca8b09238c28bc93f0da5c4f6fcc3376",
     "backend/analysis/momentum.py": "fbbfd500ed4ff074b6ae6ccd8b2186c383bb986959871fd74926aab7965b130c",
+    "backend/analysis/movement_quality.py": "e9b59c48b170c774bb36255df5ec9d0949ca4d90bcac9200e08d15c171f0b409",
     "backend/analysis/role_classifier.py": "1b8ffefa7b5171040ff060f51971f875b3e4a308ef31f78800b6dbb61422cd7f",
     "backend/analysis/utility_economy.py": "13a3622c74308355a9a5b034fc9f2f56db79317310ad96f935bb5057561a6be5",
     "backend/analysis/win_probability.py": "461edfcc04ea49e5122bf7fb865ec5024b3fd4961b90192671038cd7b85046c8",
