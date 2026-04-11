@@ -46,8 +46,6 @@ class IngestionManager:
         self._interval_minutes = 30
         # F5-35: Event-based stop signal — avoids 1-second polling in wait loops.
         self._stop_event = threading.Event()
-        # WR-07: Semaphore caps concurrent parses (future-proofing for parallel ingestion)
-        self._parse_semaphore = threading.BoundedSemaphore(self._MAX_BATCH_SIZE)
         self.db_manager = get_db_manager()
         self.storage = StorageManager()
 

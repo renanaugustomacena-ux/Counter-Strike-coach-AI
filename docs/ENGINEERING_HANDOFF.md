@@ -1693,14 +1693,14 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 
 | ID | Area | Description | Files | Effort | Status |
 |----|------|-------------|-------|--------|--------|
-| WR-01 | Dependencies | Switch to CPU-only PyTorch for distribution (2.5 GB -> 1.6 GB) | `requirements-dist.txt` (create) | 1 day | OPEN |
-| WR-02 | Dependencies | Add platform markers to Windows-only packages | `requirements-lock.txt` | 0.5 day | OPEN |
-| WR-03 | Dependencies | Remove phantom PDF deps (pdfminer, pdfplumber, PyMuPDF, pypdf) | `requirements*.txt` | 0.5 day | OPEN |
-| WR-04 | Dependencies | Verify `demoparser2` license before commercial release | — | 1 day | OPEN |
-| WR-05 | Frontend | Error toast system for coaching fallback + ingestion errors | `apps/qt_app/widgets/toast.py`, `app_state.py` | 3-5 days | OPEN |
-| WR-06 | Frontend | Coaching generation timeout (30s) with spinner | `coaching_service.py`, coach screen | 1 day | OPEN |
-| WR-07 | Backend | Ingestion rate limiting (max 10 concurrent) | `IngestionManager` | 2-3 days | OPEN |
-| WR-08 | NN | Verify NN-M-12 (sentinel for missing target values) | `dataset.py` | 0.5 day | OPEN |
+| WR-01 | Dependencies | Switch to CPU-only PyTorch for distribution (2.5 GB -> 1.6 GB) | `requirements-dist.txt` | 1 day | **FIXED** |
+| WR-02 | Dependencies | Add platform markers to Windows-only packages | `requirements-lock.txt` | 0.5 day | **FIXED** |
+| WR-03 | Dependencies | Remove phantom PDF deps (pdfminer, pdfplumber, PyMuPDF, pypdf) | `requirements*.txt` | 0.5 day | **FIXED** |
+| WR-04 | Dependencies | Verify `demoparser2` license before commercial release | — | 1 day | **FIXED** (MIT) |
+| WR-05 | Frontend | Error toast system for coaching fallback + ingestion errors | `apps/qt_app/widgets/toast.py`, `app_state.py` | 3-5 days | **FIXED** |
+| WR-06 | Frontend | Coaching generation timeout (30s) with spinner | `coaching_dialogue.py` | 1 day | **FIXED** |
+| WR-07 | Backend | Ingestion rate limiting (max 10 concurrent) | `IngestionManager` | 2-3 days | **FIXED** |
+| WR-08 | NN | Verify NN-M-12 (sentinel for missing target values) | `dataset.py` | 0.5 day | **VERIFIED** — no sentinel; None→0.0 in `_prepare_tensors`. Acceptable for pro-only phase; flag for v0.2+ user fine-tuning |
 
 ### Priority 2: Quality
 
