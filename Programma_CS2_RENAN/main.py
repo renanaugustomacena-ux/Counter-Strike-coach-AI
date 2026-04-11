@@ -2083,6 +2083,11 @@ if __name__ == "__main__":
         # Standard Mode: Boot Console (which handles background services and DB)
         console.boot()
 
+        # WR-30: Enforce log retention policy (purge logs older than 30 days)
+        from Programma_CS2_RENAN.observability.logger_setup import configure_retention
+
+        configure_retention(max_days=30)
+
         CS2AnalyzerApp().run()
     except Exception:
         app_logger.critical("Fatal error:\n%s", traceback.format_exc())
