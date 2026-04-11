@@ -1847,6 +1847,72 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 | WR-74 | Ingestion | `batch_ingest.py` hardcoded path + non-recursive glob | `batch_ingest.py:130-131` | 15 min | Use `get_setting()` + `rglob("*.dem")` |
 | WR-75 | Onboarding | `get_onboarding_manager()` lacks singleton — cache defeated | `new_user_flow.py:134` | 10 min | Add lazy singleton |
 
+### From Smoke Test: Coaching Chat Quality Gaps (2026-04-10)
+
+> **Context:** Manual smoke test of coaching chat after Session 1 data quality fixes (Q1-01..Q1-04).
+> The chat was asked to describe 5 rounds where ropz made the difference via decision-making,
+> then to break them down in detail. Data retrieval works (real rounds, correct stats). But the
+> LLM-generated narratives are fabricated — the system has rich tick data but never passes it
+> to the LLM, so the model hallucinates tactical details to fill the gap.
+
+| ID | Area | Description | Files | Effort | Troubleshooting |
+|----|------|-------------|-------|--------|----------------|
+| WR-76 | **Coaching** | **Round Reconstructor missing — tick data never reaches LLM.** The coaching chat retrieves round-level aggregates (kills, deaths, damage) but never queries `playertickstate` for the selected rounds. The LLM receives a stat line and hallucinates tactical narrative ("he used A-site long info", "well-placed flash-bang against the AWP'er") that has zero grounding in data. **Fix:** Build a Round Reconstructor module that, given a (demo_name, round_number, player_name), pulls tick data and produces a structured timeline: position-as-callout, weapon sequence, engagement timing, health deltas, teammates_alive context. This structured narrative becomes LLM context instead of raw stats. | New: `backend/processing/round_reconstructor.py`; modify `coaching_dialogue.py` retrieval | 3-5 days | Core architectural gap — highest-impact single improvement for coaching quality |
+| WR-77 | **Coaching** | **Coordinate-to-callout mapping missing.** Tick data contains `pos_x`, `pos_y`, `pos_z` and `map_name`, but no layer translates coordinates to human-readable callouts (ramp, secret, B main, jungle, etc.). Without this, even if tick data reaches the LLM, positions are meaningless numbers. **Fix:** Build a callout lookup for the 7 active-duty maps. Each map needs a polygon/region-to-name table. Can start with rectangular bounding boxes for major areas, refine later. | New: `core/map_callouts.py` or extend `core/map_manager.py` | 2-3 days | Community resources exist (parsed radar files, open-source callout datasets). Don't hand-draw from scratch. |
+| WR-78 | **Coaching** | **LLM hallucinates tactical details when data is insufficient.** Llama 3.1 8B is not prompted to distinguish "data says X" from "I'm inferring X" from "I'm inventing X." When asked for detail it doesn't have, it generates plausible-sounding CS2 text instead of saying "the data doesn't show this." Copy-paste syndrome: multiple rounds get near-identical descriptions with numbers swapped. **Fix:** Add explicit prompt constraints — (1) only narrate what the data contains, (2) mark inferences explicitly, (3) say "I don't have this detail" when the data is absent. Consider a structured output format (JSON timeline) that the LLM converts to prose, not free-generation. | `backend/services/coaching_dialogue.py`, system prompt templates | 1 day | Prompt engineering — test with the same 5-round ropz query as regression benchmark |
+| WR-79 | **Coaching** | **"Knowledge_mc" name leak in chat output.** The coach addresses the user as "Knowledge_mc" — likely a retrieval artifact (experience bank entry or RAG chunk) leaking into the system prompt or being treated as the user's name. **Fix:** Trace the source of "Knowledge_mc" in the retrieval pipeline and sanitize. Ensure retrieved context is clearly delimited from the user's identity. | `coaching_dialogue.py`, experience bank retrieval | 30 min | Grep for "Knowledge_mc" in DB tables and knowledge files |
+| WR-80 | **Coaching** | **"Neural network analysis shows" — false attribution.** The coach claims its neural networks analyzed the rounds, but no NN is invoked during chat queries. The LLM is generating this phrasing on its own. **Fix:** Remove or constrain NN-attribution language in the system prompt. Only claim NN analysis when an actual model (JEPA, RAP, AdvancedCoachNN) was queried and returned a result for that specific response. | System prompt in `coaching_dialogue.py` | 30 min | Part of the broader honesty/grounding prompt rework (WR-78) |
+
+#### Architecture Note: The Round Reconstructor Concept
+
+The coaching system's most impactful missing piece is a **data-to-narrative bridge** between
+the database and the LLM. The current pipeline:
+
+```
+roundstats (kills, deaths, damage)  →  LLM  →  hallucinated tactical narrative
+```
+
+The target pipeline:
+
+```
+roundstats (select rounds)
+    → playertickstate (pull ticks for those rounds)
+    → Round Reconstructor (timeline: callouts, weapons, timing, engagements)
+    → Structured context (grounded facts + explicit unknowns)
+    → LLM (narrates real events, flags what it can't determine)
+    → Honest, data-grounded coaching response
+```
+
+The tick data already exists — positions every few ticks, weapon state, health, armor,
+enemies_visible, crouching, scoped, bomb_planted, teammates/enemies alive. This is enough
+to reconstruct: where a player was, what they held, when they took fights, how fast they
+got kills, whether they repositioned, whether they were in a 1vX. What it cannot tell:
+voice comms, teammate callouts, opponent intent, off-screen information. The reconstructor
+must make this boundary explicit so the LLM doesn't fill the gap with fiction.
+
+**Dependency chain:** WR-77 (callouts) feeds into WR-76 (reconstructor). WR-78 (prompt
+honesty) is independent and should ship first as a quick win. WR-79 and WR-80 are
+standalone fixes.
+
+#### Pending: Re-aggregation Commands
+
+The following 4 commands must be run sequentially to bring the monolith DB, roundstats,
+experience bank, and knowledge base up to date with all 110+ pro demos:
+
+```bash
+# 1. Rebuild monolith from per-match DBs (~188 files → playertickstate + playermatchstats)
+python tools/rebuild_monolith.py --full
+
+# 2. Re-populate roundstats from .dem files (idempotent, use --full to re-process all)
+python tools/populate_round_stats.py --full
+
+# 3. Re-mine coaching experience bank
+python tools/mine_coaching_experience.py --rebuild-all
+
+# 4. Rebuild knowledge base (picks up v3 book + new pro stats)
+python -m Programma_CS2_RENAN.backend.knowledge.init_knowledge_base
+```
+
 ---
 
 ## 22. Validation Protocol
@@ -2838,4 +2904,4 @@ D-1, D-2, D-3, C-1, C-2, C-3, ML-1, DA-1 through DA-8, CFG-2, L6
 
 ---
 
-*Document generated 2026-03-28. Last updated 2026-03-29. 100% codebase coverage achieved. Verified against codebase at commit `f51336d`.*
+*Document generated 2026-03-28. Last updated 2026-04-10. 100% codebase coverage achieved. Verified against codebase at commit `f51336d`. Coaching smoke test findings (WR-76..WR-80) added 2026-04-10.*
