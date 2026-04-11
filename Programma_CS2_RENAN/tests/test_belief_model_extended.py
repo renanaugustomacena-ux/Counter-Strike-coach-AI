@@ -33,15 +33,13 @@ class TestExtractDeathEventsEmptyDB:
 
         from Programma_CS2_RENAN.backend.analysis import belief_model
 
+        # The function does `from ...database import get_db_manager` inside its
+        # body (deferred import), so we patch at the source module.
         monkeypatch.setattr(
-            "Programma_CS2_RENAN.backend.analysis.belief_model.get_db_manager",
+            "Programma_CS2_RENAN.backend.storage.database.get_db_manager",
             lambda: mock_db_manager,
         )
 
-        # The function uses a lazy import of get_db_manager; patch it at the
-        # call site inside extract_death_events_from_db. Since the function
-        # does `from ... import get_db_manager` inside its body, we must also
-        # ensure the patched name resolves correctly.
         df = belief_model.extract_death_events_from_db()
 
         assert isinstance(df, pd.DataFrame)

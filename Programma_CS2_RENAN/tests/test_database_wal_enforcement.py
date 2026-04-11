@@ -156,3 +156,17 @@ class TestSessionManagement:
                 select(PlayerProfile).where(PlayerProfile.player_name == "RollbackTest")
             ).first()
             assert result is None, "Data should have been rolled back"
+
+
+class TestMatchDataManagerWAL:
+    """Verify per-match DBs created by match_data_dir fixture use WAL mode."""
+
+    def test_match_data_manager_wal_mode(self, match_data_dir):
+        """Per-match DB must enforce journal_mode=WAL."""
+        import sqlite3
+
+        _, db_path = match_data_dir
+        conn = sqlite3.connect(str(db_path))
+        mode = conn.execute("PRAGMA journal_mode").fetchone()[0]
+        conn.close()
+        assert mode == "wal", f"Expected WAL mode, got {mode}"
