@@ -452,16 +452,22 @@ class UserProfileScreen(MDScreen):
         content.add_widget(self.bio_f)
         content.add_widget(self.role_f)
         self.edit_dialog = MDDialog(
-            MDDialogHeadlineText(text=i18n.get_text("dialog_edit_profile", self.lang_trigger)),
+            MDDialogHeadlineText(
+                text=i18n.get_text("dialog_edit_profile", MDApp.get_running_app().lang_trigger)
+            ),
             MDDialogContentContainer(content),
             MDDialogButtonContainer(
                 MDButton(
-                    MDButtonText(text=i18n.get_text("dialog_cancel", self.lang_trigger)),
+                    MDButtonText(
+                        text=i18n.get_text("dialog_cancel", MDApp.get_running_app().lang_trigger)
+                    ),
                     style="text",
                     on_release=lambda x: self.edit_dialog.dismiss(),
                 ),
                 MDButton(
-                    MDButtonText(text=i18n.get_text("dialog_save", self.lang_trigger)),
+                    MDButtonText(
+                        text=i18n.get_text("dialog_save", MDApp.get_running_app().lang_trigger)
+                    ),
                     style="filled",
                     on_release=lambda x: self.save_profile(),
                 ),

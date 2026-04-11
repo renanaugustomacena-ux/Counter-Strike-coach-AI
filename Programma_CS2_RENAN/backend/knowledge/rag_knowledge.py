@@ -621,47 +621,6 @@ def generate_rag_coaching_insight(
     return "\n".join(insight_parts)
 
 
-if __name__ == "__main__":
-    # F5-27: NOTE — this __main__ block is a development self-test only.
-    # The hardcoded knowledge entries below are SYNTHETIC test data, not real match data.
-    # TODO: move this to tests/knowledge/test_rag_knowledge.py when a test harness is available.
-    logger.info("=== RAG Knowledge Base Test (synthetic data — not for production) ===\n")
-
-    # Populate sample knowledge
-    populator = KnowledgePopulator()
-
-    populator.add_knowledge(
-        title="Mirage T-side: Control mid early",
-        description="Pro teams boost ADR by taking mid control in first 30 seconds. Use connector smoke and window flash.",
-        category="positioning",
-        situation="T-side, low ADR",
-        map_name="de_mirage",
-        pro_example="Team Liquid vs NAVI - IEM Katowice 2024",
-    )
-
-    populator.add_knowledge(
-        title="Economy management: Force buy timing",
-        description="Force buy on round 3 if you lost pistol and first gun round. Maximize utility damage.",
-        category="economy",
-        situation="Lost pistol round",
-        map_name=None,
-    )
-
-    # Test retrieval
-    retriever = KnowledgeRetriever()
-    results = retriever.retrieve("low ADR on Mirage", top_k=1, map_name="de_mirage")
-
-    logger.info("Found %s results:", len(results))
-    for r in results:
-        logger.info("  - %s", r.title)
-        logger.info("    %s", r.description)
-
-    # Test RAG coaching
-    stats = {"avg_adr": 65, "avg_kills": 15}
-    insight = generate_rag_coaching_insight(stats, map_name="de_mirage")
-    logger.info("RAG Insight: %s", insight)
-
-
 def generate_unified_coaching_insight(
     player_stats: Dict[str, float],
     tick_data: Optional[Dict[str, Any]] = None,
