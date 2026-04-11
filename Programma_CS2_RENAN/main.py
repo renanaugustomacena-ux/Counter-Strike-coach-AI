@@ -753,10 +753,10 @@ class CS2AnalyzerApp(MDApp):
             self.start_slideshow()
         if not get_setting("SETUP_COMPLETED"):
             sm.current = "wizard"
-            # Default High Performance for new users
-            self.save_hardware_budget("cpu", 100)
-            self.save_hardware_budget("ram", 100)
-            self.save_hardware_budget("gpu", 100)
+            # SA-07: Default High Performance for new users
+            save_user_setting("HARDWARE_BUDGET_CPU", 100)
+            save_user_setting("HARDWARE_BUDGET_RAM", 100)
+            save_user_setting("HARDWARE_BUDGET_GPU", 100)
         else:
             sm.current = "home"
 
