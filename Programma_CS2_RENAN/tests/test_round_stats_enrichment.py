@@ -269,7 +269,7 @@ class TestAggregateRoundStatsToMatch:
             ),
         ]
         result = aggregate_round_stats_to_match(rounds, "testplayer")
-        pms_fields = set(PlayerMatchStats.__fields__.keys())
+        pms_fields = set(PlayerMatchStats.model_fields.keys())
 
         for key in result:
             assert key in pms_fields, f"Enrichment key '{key}' not in PlayerMatchStats"
