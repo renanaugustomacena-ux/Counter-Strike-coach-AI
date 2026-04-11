@@ -292,7 +292,21 @@ def configure_retention(max_days: int = 30) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Singleton logger instance
+# Lazy app_logger — WR-26: Deferred to avoid creating file handlers before
+# configure_log_dir() has been called by config.py.
 # ---------------------------------------------------------------------------
 
-app_logger = get_logger("cs2analyzer.app")
+
+def _get_app_logger() -> logging.Logger:
+    """Return the app logger, created lazily after log dir is configured."""
+    return get_logger("cs2analyzer.app")
+
+
+class _LazyAppLogger:
+    """Proxy that defers logger creation until first use (WR-26)."""
+
+    def __getattr__(self, name: str):
+        return getattr(_get_app_logger(), name)
+
+
+app_logger = _LazyAppLogger()  # type: ignore[assignment]
