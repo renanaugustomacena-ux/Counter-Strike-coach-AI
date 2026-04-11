@@ -284,7 +284,7 @@
     "observability/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "observability/error_codes.py": "6d9fb3121151e7ad64b9d1098ba2a33b09618374ae4a981687d8b0b1d45d3309",
     "observability/exceptions.py": "a7d9fb88846a6edddbea4ce5c0fec8150ecdf1446bb40112d49da656040c33f7",
-    "observability/logger_setup.py": "fe49a5686610866cec3acad456868beae0f552f15acd55f7c09ee73c41b7381b",
+    "observability/logger_setup.py": "13a2f508052efd1c1116ce194976c569e63cf22acf13b1329639648687304445",
     "observability/rasp.py": "978ce8dc560eb32ba48cfde3ccb5c51e4945cb2065e641750d7b40900d2adf70",
     "observability/sentry_setup.py": "4b48bfde7725f132fc37f4db416c44eb7ec060ad808dd908d2676f9bb938ff52",
     "reporting/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
