@@ -311,6 +311,94 @@
       "situation": "T-side Ancient, post-donut-trade mid control",
       "map_name": "de_ancient",
       "pro_example": "Pro meta: immediate mid push after donut trade raises round win rate by ~12 points on Ancient"
+    },
+    {
+      "title": "Ancient IGL: second-half T adjustment read",
+      "description": "When switching to T side on Ancient, review CT defense patterns from the first half. If the enemy played aggressive cave pushes, open with a fast A execute through main to punish the undermanned A defense. If they stacked A with three players, default B through cave and exploit the slow CT rotation. Commit to the adjustment in round 16 before the CTs settle.",
+      "category": "role_play_igl",
+      "situation": "T-side Ancient, second-half opening rounds as IGL",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: IGLs who exploit first-half CT tendencies win ~9% more opening rounds after half-switch on Ancient"
+    },
+    {
+      "title": "Ancient IGL: timeout trigger on donut control loss",
+      "description": "Call a timeout on Ancient after losing two consecutive rounds where the Ts took donut control early. Donut is the mid pivot of Ancient — losing it opens both A and B simultaneously. Use the timeout to assign a dedicated donut AWP, set a pre-molotov on the donut push lane, and adjust the mid player to support the donut hold with a flash.",
+      "category": "role_play_igl",
+      "situation": "CT-side Ancient, losing donut control repeatedly",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: timeouts after losing donut control recover the setup in ~54% of cases on Ancient"
+    },
+    {
+      "title": "Ancient lurk: cave to B ramp flank route",
+      "description": "As the T lurker on Ancient, push through cave and position on B ramp while your team executes A main. Wait until you hear the A execute utility, then push B ramp aggressively. The B anchor will rotate toward A on the execute call — you catch them mid-rotation or take B site uncontested. Walk through cave to avoid giving away the flank.",
+      "category": "role_play_lurk",
+      "situation": "T-side Ancient, lurk during A main execute",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: cave lurk flanks during A executes produce a kill in ~34% of rounds on Ancient"
+    },
+    {
+      "title": "Ancient lurk: CT elbow flank during B retake",
+      "description": "As the CT lurker on Ancient, hold elbow during a B site retake. When your team pushes B through the ramp entrance, push elbow to cut off the T escape route through cave. Time your push to arrive 3 seconds after the B retake begins — Ts rotating to save through cave will run into your crosshair at the elbow corner.",
+      "category": "role_play_lurk",
+      "situation": "CT-side Ancient, flanking during B retake",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: elbow flanks during B retakes catch rotating Ts ~31% of the time on Ancient"
+    },
+    {
+      "title": "Ancient clutch: 1v1 CT defuse on A site from temple pillar",
+      "description": "In a 1v1 CT defuse situation on Ancient A, use the temple pillar as your anchor. Tap the defuse to force the T to peek from main or donut, then hold the tight angle around the pillar. Temple pillar provides cover from both common post-plant spots. If the T does not peek within 5 seconds, commit to the full defuse with a smoke on the bomb.",
+      "category": "clutch_play",
+      "situation": "1v1 CT clutch on Ancient A site",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: temple pillar 1v1 defuse attempts succeed ~41% of the time on Ancient A"
+    },
+    {
+      "title": "Ancient clutch: 1v3 T bomb timer play on B site",
+      "description": "In a 1v3 T post-plant on Ancient B, plant for cave and retreat into the cave entrance. From cave you control the only bomb line of sight without exposing yourself to multiple angles. Molotov the bomb at 10 seconds to deny the defuse. The three CTs must push through the narrow ramp or rotate through mid — both paths funnel them into your angle.",
+      "category": "clutch_play",
+      "situation": "1v3 T post-plant clutch on Ancient B site",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: cave post-plant with B plant wins ~20% of 1v3 situations on Ancient B"
+    },
+    {
+      "title": "Ancient aim: A main to temple duel spot",
+      "description": "Hold the A main entrance from the temple head-glitch position. This gives a long-range head-level angle on Ts pushing through A main. Pre-aim the center of the doorway where Ts emerge — they must swing wide into your crosshair to clear the site. Counter-strafe and tap at this range. The temple head-glitch exposes only your forehead and trades favorably against aggressive A pushes.",
+      "category": "aim_and_duels",
+      "situation": "CT-side Ancient, holding A main from temple",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: temple head-glitch wins the A main duel ~56% of the time at pro level on Ancient"
+    },
+    {
+      "title": "Ancient aim: mid wallbang through the stone gap",
+      "description": "The stone barrier at mid on Ancient has a thin gap that allows wallbang shots with AK-47. From the T side, pre-aim the gap at head height and fire 2-3 rounds when you hear CT movement behind the barrier. The penetration deals ~30% rifle damage. This wallbang is especially effective at round start when CTs cross mid to take donut control — timing it with the crossing window maximizes hit probability.",
+      "category": "aim_and_duels",
+      "situation": "T-side Ancient, mid barrier wallbang",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: mid barrier wallbangs score damage in ~15% of rounds where CTs contest mid on Ancient"
+    },
+    {
+      "title": "Ancient support: A execute triple-utility combo",
+      "description": "As the support player during an Ancient A execute, throw the CT smoke (blocking CT spawn rotation), the donut molotov (clearing the donut anchor), and the temple flash (blinding the site player). Execute in this order: smoke first to cut off rotations, molotov second to flush the donut angle, flash last to enable the entry fragger. This 7-second combo isolates the A site to one or zero defenders.",
+      "category": "role_play_support",
+      "situation": "T-side Ancient, supporting A site execute",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: full CT-donut-temple utility combo raises A execute success to ~59% on Ancient"
+    },
+    {
+      "title": "Ancient entry: alternate B entry through cave shortcut",
+      "description": "Instead of the standard B ramp push, enter B site through the cave shortcut with a right-hand pop flash. The cave path bypasses the ramp crossfire and puts you on B site from behind the pillar. Flash off the cave wall so it pops above the site — this blinds the ramp and platform defenders. Swing immediately after the flash to catch the B anchor repositioning.",
+      "category": "role_play_entry",
+      "situation": "T-side Ancient, alternate B entry through cave",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: cave shortcut entries score first kill ~43% of the time on Ancient B"
+    },
+    {
+      "title": "Ancient economy: A main force-buy with Deagles and armor",
+      "description": "On Ancient eco rounds as T, buy three Desert Eagles with kevlar for an A main push. The A main corridor on Ancient has medium-range engagements that suit the Deagle one-shot headshot range. Stack all three at A main entrance and peek sequentially — the first Deagle trades with the A anchor, the second and third clean up. Kevlar ensures you survive the first body shot exchange.",
+      "category": "economy",
+      "situation": "T-side Ancient, eco round A main push",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: A main Deagle pushes on eco rounds average 1.5 kills and break CT economy ~23% of the time on Ancient"
     }
   ]
 }

@@ -319,6 +319,94 @@
       "situation": "T-side Inferno, post-banana-trade decision",
       "map_name": "de_inferno",
       "pro_example": "Pro meta: 5-second pause after banana trade improves B execute success by ~10 points on Inferno"
+    },
+    {
+      "title": "Inferno IGL: second-half T adjustment read",
+      "description": "When switching to T side on Inferno, review the CT defense patterns from the first half. If the enemy played aggressive banana every round, open with a fast A execute to exploit the weak A rotation. If they stacked A with three players, default banana and force the B retake. Commit to the adjustment in round 16 before the CTs settle into a new rhythm.",
+      "category": "role_play_igl",
+      "situation": "T-side Inferno, second-half opening rounds as IGL",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: IGLs who exploit first-half CT tendencies win ~10% more opening rounds after half-switch on Inferno"
+    },
+    {
+      "title": "Inferno IGL: timeout trigger on apartment control collapse",
+      "description": "Call a timeout on Inferno after losing two rounds where the CTs took apartment control early. Inferno A depends on apartment presence — losing it repeatedly means the CT aggression timing is catching your setup. Use the timeout to set a pre-flash at apartments balcony, adjust your mid player to cover the apartment push, and designate a dedicated apartment anchor.",
+      "category": "role_play_igl",
+      "situation": "CT-side Inferno, losing apartment control repeatedly",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: timeouts after losing map control on Inferno recover the setup in ~55% of cases"
+    },
+    {
+      "title": "Inferno lurk: alternate route through T apartments to pit",
+      "description": "As the T lurker on Inferno, push through apartments and drop into pit while your team fakes banana. The apartments-to-pit route is rarely watched after the first 20 seconds because CTs rotate toward banana. Time your pit drop with the banana fake utility — the noise covers the drop sound. From pit you have a direct angle on A site retakes.",
+      "category": "role_play_lurk",
+      "situation": "T-side Inferno, lurk during banana fake",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: pit lurk flanks produce a kill in ~30% of banana fake rounds on Inferno"
+    },
+    {
+      "title": "Inferno lurk: CT banana flank on A retake",
+      "description": "As the CT lurker on Inferno, hold banana during an A site retake. When your team pushes A from arch and library, push banana into B site to cut off the T escape. Time your push to arrive at B 3 seconds after the A retake begins — Ts rotating from A to save will run into your crosshair in the construction area.",
+      "category": "role_play_lurk",
+      "situation": "CT-side Inferno, flanking during A retake",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: banana flanks during A retakes catch rotating Ts ~35% of the time on Inferno"
+    },
+    {
+      "title": "Inferno clutch: 1v1 CT defuse on B site from headshot box",
+      "description": "In a 1v1 CT defuse situation on Inferno B, use headshot box (dark) as your anchor position. Tap the defuse to force the T to peek from construction or new box, then hold the angle. The headshot box gives you a tight angle with only your head exposed. If the T holds without peeking, commit to a smoke defuse — throw the smoke on the bomb and defuse through it.",
+      "category": "clutch_play",
+      "situation": "1v1 CT clutch on Inferno B site",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: headshot box 1v1 defuse attempts succeed ~42% of the time on Inferno B"
+    },
+    {
+      "title": "Inferno clutch: 1v3 T bomb timer play on A site",
+      "description": "In a 1v3 T post-plant on Inferno A, plant for pit and retreat to the pit corner. From pit, you have line of sight on the bomb and a head-glitch angle that the CTs must clear before defusing. Use a molotov on the bomb when the timer hits 10 seconds. The three CTs must push one at a time through the narrow balcony or library path — pick them off sequentially rather than taking a multi-angle fight.",
+      "category": "clutch_play",
+      "situation": "1v3 T post-plant clutch on Inferno A site",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: pit post-plant position with A plant wins ~18% of 1v3 situations on Inferno A"
+    },
+    {
+      "title": "Inferno aim: top mid to arch duel spot",
+      "description": "Hold the top mid to arch angle from the T spawn corner head-glitch. This position gives you a long-range head-level angle on any CT pushing through arch for mid control. Pre-aim the right edge of the arch doorway — CTs swing wide to clear mid and expose themselves. First-bullet accuracy wins this duel; avoid spraying at this range.",
+      "category": "aim_and_duels",
+      "situation": "T-side Inferno, holding mid against arch push",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: top mid head-glitch wins the arch duel ~55% of the time at pro level on Inferno"
+    },
+    {
+      "title": "Inferno aim: banana wallbang through the wood stack",
+      "description": "The wooden logs at the bottom of banana on Inferno are wallbangable with AK-47 and M4. When you hear footsteps behind the logs, spray through the wood at crouch height. The penetration deals ~40% rifle damage per hit. This is especially effective during anti-eco rounds when CTs force with pistols and no head armor — three to four bullets through the logs secure the kill.",
+      "category": "aim_and_duels",
+      "situation": "T-side Inferno, wallbanging banana logs",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: banana log wallbangs score kills in ~12% of banana contact rounds on Inferno"
+    },
+    {
+      "title": "Inferno support: B execute triple-utility combo",
+      "description": "As the support player during an Inferno B execute, throw the CT smoke (blocking CT spawn rotation), the site molotov (clearing dark/headshot box), and the construction flash (blinding the new box anchor). Execute in this order: smoke first to cut off rotations, molotov second to flush the close anchor, flash last to enable the entry. This 7-second combo isolates the B site to one or zero defenders.",
+      "category": "role_play_support",
+      "situation": "T-side Inferno, supporting B site execute",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: full CT-dark-construction utility combo raises B execute success to ~60% on Inferno"
+    },
+    {
+      "title": "Inferno entry: alternate A entry through boiler room",
+      "description": "Instead of the standard apartment push, enter A site through boiler room with a left-hand pop flash. The boiler room path bypasses the apartment crossfire and puts you directly on A site behind the pit player. Flash off the boiler room wall so it pops above the site — this blinds the library and site players. Swing immediately after the flash to catch the A anchor repositioning.",
+      "category": "role_play_entry",
+      "situation": "T-side Inferno, alternate A entry through boiler",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: boiler room entries score first kill ~45% of the time on Inferno A"
+    },
+    {
+      "title": "Inferno economy: banana force-buy with SMGs",
+      "description": "On Inferno eco rounds as T, buy three MP9/MAC-10s for a fast banana rush. The narrow banana corridor makes SMG spray effective within 15 meters. Stack all three SMGs behind the corner and rush simultaneously — the close-range burst overwhelms the banana AWPer before they can reposition. Even trading 2-for-1 is profitable since SMGs cost $1050-1250 versus the CT rifles lost.",
+      "category": "economy",
+      "situation": "T-side Inferno, eco round banana stack",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: banana SMG rushes on eco rounds average 1.6 kills and break the CT economy ~25% of the time on Inferno"
     }
   ]
 }

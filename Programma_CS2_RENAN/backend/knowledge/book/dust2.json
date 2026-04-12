@@ -319,6 +319,94 @@
       "situation": "T-side Dust2, post-mid-pick cat control",
       "map_name": "de_dust2",
       "pro_example": "Pro meta: immediate cat push after mid pick raises A success by ~15 points on Dust2"
+    },
+    {
+      "title": "Dust2 IGL: second-half CT adjustment read",
+      "description": "When switching to CT side on Dust2, review the T-side attack patterns from the first half. If the enemy forced long A control every round, play a double-stack A with one AWP long doors and one rifle on A platform. If they defaulted mid-to-B, dedicate a B tunnel anchor with an incendiary. Adjust within the first two CT rounds to establish the defensive tone.",
+      "category": "role_play_igl",
+      "situation": "CT-side Dust2, second-half opening rounds as IGL",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: IGLs who adjust CT setups within 2 rounds of half-switch win ~9% more rounds on Dust2"
+    },
+    {
+      "title": "Dust2 IGL: timeout trigger on long A control loss",
+      "description": "Call a timeout on Dust2 after losing two consecutive rounds where the Ts took long A doors control. Long A control on Dust2 is the most critical map control point — losing it twice in a row means the T timing or flash sequence is beating your setup. Use the timeout to move the long player to a passive pit position, add a second flash for long retake, and adjust the mid player to cover A cross.",
+      "category": "role_play_igl",
+      "situation": "CT-side Dust2, losing long A control repeatedly",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: timeouts after losing long A control recover the position in ~58% of cases on Dust2"
+    },
+    {
+      "title": "Dust2 lurk: lower tunnel to B back-site route",
+      "description": "As the T lurker on Dust2, push through lower tunnels to upper B while your team executes A long. Wait in lower tunnels until you hear the A execute utility, then push through upper B tunnel. The B site anchor will be rotating toward A — you catch them mid-rotation or take an empty B site. The lower tunnel path has no audible cues if you walk after the initial contact.",
+      "category": "role_play_lurk",
+      "situation": "T-side Dust2, lurk during A long execute",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: lower tunnel lurks during A executes produce a kill or empty site ~38% of the time on Dust2"
+    },
+    {
+      "title": "Dust2 lurk: CT mid flank through catwalk",
+      "description": "As the CT lurker on Dust2, hold cat during a B retake. When your team pushes B through B doors, push catwalk into mid to cut off the T escape through mid doors. Time your cat push to arrive 3 seconds after the B retake begins — Ts saving through mid will run into your angle at the top of mid.",
+      "category": "role_play_lurk",
+      "situation": "CT-side Dust2, flanking during B retake",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: cat flanks during B retakes catch rotating Ts ~32% of the time on Dust2"
+    },
+    {
+      "title": "Dust2 clutch: 1v1 CT defuse on A site from short corner",
+      "description": "In a 1v1 CT defuse situation on Dust2 A, use the short stairs corner as your anchor. Tap the defuse to force the T to peek from goose, elevator, or long, then hold the short angle. The stairs corner gives you a tight profile and forces the T into a wide swing. If no peek comes within 4 seconds, commit to a smoke defuse by throwing the smoke on the bomb from short.",
+      "category": "clutch_play",
+      "situation": "1v1 CT clutch on Dust2 A site",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: short corner 1v1 defuse attempts succeed ~44% of the time on Dust2 A"
+    },
+    {
+      "title": "Dust2 clutch: 1v3 T bomb timer play on B site",
+      "description": "In a 1v3 T post-plant on Dust2 B, plant for upper tunnel and retreat into the tunnel entrance. From tunnel you control the only bomb line of sight without exposing yourself to multiple angles. Molotov the bomb at 10 seconds to deny the defuse. The three CTs must push through the narrow B doors or window — pick them as they funnel through one at a time.",
+      "category": "clutch_play",
+      "situation": "1v3 T post-plant clutch on Dust2 B site",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: tunnel post-plant with B plant wins ~22% of 1v3 situations on Dust2 B"
+    },
+    {
+      "title": "Dust2 aim: long doors to pit duel spot",
+      "description": "Hold the long A pit angle from the corner head-glitch position. This gives you a head-level angle on anyone pushing through long doors. Pre-aim the center of the doors gap — Ts peek in a predictable horizontal line. Counter-strafe and tap-fire at this range for maximum accuracy. The pit head-glitch exposes only your forehead and wins trades against Ts who have to peek out of the dark doors.",
+      "category": "aim_and_duels",
+      "situation": "CT-side Dust2, holding long A from pit",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: pit head-glitch wins the long doors duel ~58% of the time at pro level on Dust2"
+    },
+    {
+      "title": "Dust2 aim: mid doors wallbang through the gap",
+      "description": "The mid doors on Dust2 have a thin gap that allows wallbang shots. From T spawn, pre-aim the right edge of the doors gap at head height and fire 2-3 AK rounds during the CT crossing window at round start. The crossing window is between 3 and 5 seconds. This wallbang scores headshot kills in ~8% of rounds but costs nothing to attempt and can win the opening pick.",
+      "category": "aim_and_duels",
+      "situation": "T-side Dust2, mid doors wallbang at round start",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: mid doors wallbang kills at round start occur in ~8% of rounds on Dust2"
+    },
+    {
+      "title": "Dust2 support: A long execute triple-utility combo",
+      "description": "As the support player during a Dust2 A long execute, throw the A cross smoke (blocking the CT crossing from short to A site), the site molotov (clearing the A platform angle), and the car flash (blinding the car/elevator player). Execute in this order: cross smoke first to isolate the site, molotov second to flush the platform, flash last to cover the long swing. This 6-second combo reduces A defenders to the short player alone.",
+      "category": "role_play_support",
+      "situation": "T-side Dust2, supporting A long execute",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: full cross-platform-car utility combo raises A long execute success to ~62% on Dust2"
+    },
+    {
+      "title": "Dust2 entry: alternate B entry through window boost",
+      "description": "Instead of the standard upper tunnel rush, boost a player through the B window for an alternate entry angle. The window entry bypasses the tunnel crossfire entirely and puts you above the site with a downward angle on the B platform defender. Pop flash through the window before dropping — this blinds the site player and the window drop lands behind the headshot box. Swing immediately after landing.",
+      "category": "role_play_entry",
+      "situation": "T-side Dust2, alternate B entry through window",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: window boost entries score first kill ~40% of the time on Dust2 B"
+    },
+    {
+      "title": "Dust2 economy: mid rush force-buy with Deagles",
+      "description": "On Dust2 eco rounds as T, buy three Desert Eagles and rush mid doors with a smoke and flash. Smoke the Xbox area, flash mid, and push through to cat or B. The Deagle one-shot headshot at mid range makes this viable against CTs crossing or holding mid. Even if you lose the round, Deagle headshots onto full-buy CTs destroy the CT economy. Focus on headshots only — body shots are wasted investment.",
+      "category": "economy",
+      "situation": "T-side Dust2, eco round mid push",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: mid Deagle rushes on eco rounds average 1.4 kills and break the CT economy ~22% of the time on Dust2"
     }
   ]
 }

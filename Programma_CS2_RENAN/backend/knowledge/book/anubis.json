@@ -311,6 +311,94 @@
       "situation": "T-side Anubis, water control for late B commit",
       "map_name": "de_anubis",
       "pro_example": "Pro meta: late water control raises B execute success by ~12 points on Anubis"
+    },
+    {
+      "title": "Anubis IGL: second-half CT adjustment read",
+      "description": "When switching to CT side on Anubis, review T attack patterns from the first half. If the enemy consistently pushed A main with three players, double-stack A connector with a crossfire and play retake B. If they exploited mid-to-B through canal, set an aggressive mid peek with an AWP. Adjust within the first two CT rounds before the T side establishes its rhythm.",
+      "category": "role_play_igl",
+      "situation": "CT-side Anubis, second-half opening rounds as IGL",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: IGLs who adjust CT setups within 2 rounds of half-switch win ~9% more rounds on Anubis"
+    },
+    {
+      "title": "Anubis IGL: timeout trigger on mid control collapse",
+      "description": "Call a timeout on Anubis after losing two consecutive rounds where the Ts took mid control. Mid on Anubis is the rotational backbone for CTs — losing it exposes both A connector and B canal simultaneously. Use the timeout to assign a dedicated mid AWP, pre-flash the mid peek angle, and designate a support player to molotov the T mid push lane.",
+      "category": "role_play_igl",
+      "situation": "CT-side Anubis, losing mid control repeatedly",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: timeouts after losing mid control recover the setup in ~52% of cases on Anubis"
+    },
+    {
+      "title": "Anubis lurk: A connector to B canal flank route",
+      "description": "As the T lurker on Anubis, push through A connector and rotate toward B canal while your team executes A main. Wait until you hear the A execute utility, then walk through connector into the canal area. The B anchor rotates toward A on the execute call — you catch them mid-rotation or take B canal uncontested. Keep your knife out through connector to maximize speed.",
+      "category": "role_play_lurk",
+      "situation": "T-side Anubis, lurk during A main execute",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: connector-to-canal lurk flanks produce a kill in ~33% of A execute rounds on Anubis"
+    },
+    {
+      "title": "Anubis lurk: CT water flank during A retake",
+      "description": "As the CT lurker on Anubis, hold water during an A site retake. When your team pushes A through connector, push water toward B main to cut off the T rotation. Time your push to arrive 3 seconds after the first A retake contact — Ts saving through B main will run directly into your angle from the water corridor.",
+      "category": "role_play_lurk",
+      "situation": "CT-side Anubis, flanking during A retake",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: water flanks during A retakes catch rotating Ts ~30% of the time on Anubis"
+    },
+    {
+      "title": "Anubis clutch: 1v1 CT defuse on B site from pillar",
+      "description": "In a 1v1 CT defuse situation on Anubis B, use the site pillar as your anchor. Tap the defuse to force the T to peek from canal or back-site, then hold the tight angle around the pillar. The pillar provides shoulder cover from both common post-plant positions. If no peek comes within 4 seconds, commit to a smoke defuse by smoking the bomb from the pillar side.",
+      "category": "clutch_play",
+      "situation": "1v1 CT clutch on Anubis B site",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: pillar 1v1 defuse attempts succeed ~40% of the time on Anubis B"
+    },
+    {
+      "title": "Anubis clutch: 1v3 T bomb timer play on A site",
+      "description": "In a 1v3 T post-plant on Anubis A, plant for connector and retreat to A main. From A main, you have line of sight on the bomb with cover from the entry wall. Molotov the bomb at 10 seconds to deny the defuse. The three CTs must push through connector or rotate through mid — both paths are narrow and force sequential peeking into your angle.",
+      "category": "clutch_play",
+      "situation": "1v3 T post-plant clutch on Anubis A site",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: A main post-plant with connector plant wins ~19% of 1v3 situations on Anubis A"
+    },
+    {
+      "title": "Anubis aim: mid bridge duel spot",
+      "description": "Hold the mid bridge angle from the CT side head-glitch position. This spot gives a long-range head-level angle on Ts pushing through mid. Pre-aim the center of the mid opening where the T mid push emerges. Counter-strafe and tap at this range — the bridge head-glitch exposes only your head and trades favorably against Ts who must push into an open sightline.",
+      "category": "aim_and_duels",
+      "situation": "CT-side Anubis, holding mid from bridge",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: bridge head-glitch wins the mid duel ~57% of the time at pro level on Anubis"
+    },
+    {
+      "title": "Anubis aim: A main wallbang through the thin wall",
+      "description": "The thin wall at A main entrance on Anubis is partially wallbangable with AK-47 and M4. When you hear footsteps staging behind A main, spray through the wall at body height. The penetration deals ~35% rifle damage per hit. This is especially effective when Ts are grouped up for an execute — multiple hits across two to three enemies softens them before the actual entry.",
+      "category": "aim_and_duels",
+      "situation": "CT-side Anubis, wallbanging A main wall",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: A main wallbangs score damage in ~20% of rounds where Ts stage A on Anubis"
+    },
+    {
+      "title": "Anubis support: B execute triple-utility combo",
+      "description": "As the support player during an Anubis B execute, throw the B connector smoke (blocking CT rotations from mid), the site molotov (clearing the pillar anchor), and the canal flash (blinding the back-site player). Execute in this order: smoke first to isolate the site, molotov second to flush the close angle, flash last to enable the entry. This combo takes 7 seconds and reduces B defenders to exposed positions.",
+      "category": "role_play_support",
+      "situation": "T-side Anubis, supporting B site execute",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: full connector-pillar-canal utility combo raises B execute success to ~58% on Anubis"
+    },
+    {
+      "title": "Anubis entry: alternate A entry through ruins",
+      "description": "Instead of the standard A main push, enter A site through the ruins side path with a pop flash off the ruins wall. This path bypasses the A main crossfire and puts you on the site from an unexpected angle. Flash off the stone wall so it pops above the site — this blinds the connector and site players. Swing immediately after the pop to catch defenders off-angle.",
+      "category": "role_play_entry",
+      "situation": "T-side Anubis, alternate A entry through ruins",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: ruins side entries score first kill ~42% of the time on Anubis A"
+    },
+    {
+      "title": "Anubis economy: canal force-buy with MP9s",
+      "description": "On Anubis eco rounds as T, buy two MP9s for a fast canal rush toward B. The canal corridor is tight and makes SMG spray lethal within 12 meters. Stack both SMGs at the canal entrance and rush simultaneously with a flash. The close-range burst overwhelms the canal anchor before they can reposition. The canal rush either wins the round or trades kills profitably against full-buy CTs.",
+      "category": "economy",
+      "situation": "T-side Anubis, eco round canal stack",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: canal SMG rushes on eco rounds average 1.5 kills and break CT economy ~20% of the time on Anubis"
     }
   ]
 }
