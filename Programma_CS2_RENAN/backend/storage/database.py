@@ -232,6 +232,28 @@ class DatabaseManager:
         with self.get_session() as session:
             return session.get(model_class, pk)
 
+    def record_lineage(
+        self,
+        entity_type: str,
+        entity_id: int,
+        source_demo: str,
+        processing_step: str = "ingestion",
+        source_tick: int | None = None,
+        pipeline_version: str = "v1",
+    ) -> None:
+        """DL-1: Record data provenance in the DataLineage audit trail."""
+        with self.get_session() as session:
+            session.add(
+                DataLineage(
+                    entity_type=entity_type,
+                    entity_id=entity_id,
+                    source_demo=source_demo,
+                    source_tick=source_tick,
+                    pipeline_version=pipeline_version,
+                    processing_step=processing_step,
+                )
+            )
+
     def delete_match_cascade(self, match_id: int, demo_name: str) -> dict:
         """P5-A: Delete all data associated with a match across all stores.
 
