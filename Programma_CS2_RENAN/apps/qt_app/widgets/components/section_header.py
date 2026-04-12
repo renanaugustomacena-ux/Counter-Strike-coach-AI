@@ -72,4 +72,4 @@ class SectionHeader(QWidget):
             self.layout().removeWidget(self._action_widget)
             self._action_widget.setParent(None)
         self._action_widget = widget
-        self.layout().addWidget(widget, alignment=Qt.AlignRight | Qt.AlignVCenter)
+        self.layout().addWidget(widget, 0, Qt.AlignRight | Qt.AlignVCenter)

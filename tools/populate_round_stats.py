@@ -96,7 +96,7 @@ _ENRICHMENT_TO_PLAYERMATCHSTATS = {
 
 def _build_demo_path_map() -> dict:
     """Scan DEMO_BASE for all .dem files, keyed by stem (demo_name)."""
-    return {p.stem: p for p in DEMO_BASE.rglob("*.dem")}
+    return {p.stem: p for p in DEMO_BASE.rglob("*.dem") if not p.is_symlink()}
 
 
 def _fetch_equipment_value_by_round(conn, demo_name: str) -> dict:

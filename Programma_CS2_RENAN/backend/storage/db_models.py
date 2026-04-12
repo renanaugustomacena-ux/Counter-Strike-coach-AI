@@ -142,6 +142,8 @@ class PlayerTickState(SQLModel, table=True):
         Index(
             "ix_pts_player_demo", "player_name", "demo_name"
         ),  # P2-05: Composite index for common query pattern
+        Index("ix_pts_has_helmet", "has_helmet"),  # D-4: Column-level index for filter queries
+        Index("ix_pts_has_defuser", "has_defuser"),  # D-4: Column-level index for filter queries
         {"extend_existing": True},
     )
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -631,6 +633,7 @@ class RoundStats(SQLModel, table=True):
         Index(
             "ix_rs_demo_round", "demo_name", "round_number"
         ),  # P2-05: Composite index for round queries
+        Index("ix_rs_kast", "kast"),  # D-4: Index for KAST filter/aggregation queries
         # H-15: Prevent duplicate round stats for the same player/demo/round
         UniqueConstraint(
             "demo_name", "round_number", "player_name", name="ux_roundstats_demo_round_player"

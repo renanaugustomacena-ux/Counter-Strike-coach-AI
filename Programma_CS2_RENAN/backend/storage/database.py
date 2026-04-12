@@ -1,5 +1,7 @@
+import os
 import threading
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Any, Generator, Type, TypeVar
 
 import sqlalchemy
@@ -437,6 +439,16 @@ def get_hltv_db_manager() -> HLTVDatabaseManager:
     return _hltv_db_manager
 
 
+def _restrict_db_permissions(url: str) -> None:
+    """Set DB file to owner-only read/write (CFG-1: was world-readable 644)."""
+    if url.startswith("sqlite:///"):
+        db_path = Path(url.replace("sqlite:///", ""))
+        if db_path.exists() and os.name != "nt":
+            os.chmod(db_path, 0o600)
+
+
 def init_database():
     get_db_manager().create_db_and_tables()
     get_hltv_db_manager().create_db_and_tables()
+    _restrict_db_permissions(DATABASE_URL)
+    _restrict_db_permissions(HLTV_DATABASE_URL)

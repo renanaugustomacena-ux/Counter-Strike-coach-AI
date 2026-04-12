@@ -37,7 +37,7 @@ _REPAIR_FIELDS = [
 
 
 def _build_demo_path_map() -> dict:
-    return {p.stem: p for p in DEMO_BASE.rglob("*.dem")}
+    return {p.stem: p for p in DEMO_BASE.rglob("*.dem") if not p.is_symlink()}
 
 
 def main() -> None:

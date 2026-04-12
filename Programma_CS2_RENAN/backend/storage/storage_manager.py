@@ -182,7 +182,7 @@ class StorageManager:
         """
         target = self.get_ingest_dir(is_pro)
         # rglob: search recursively so demos inside match subfolders are found
-        all_dems = list(target.rglob("*.dem"))
+        all_dems = [p for p in target.rglob("*.dem") if not p.is_symlink()]
 
         from sqlmodel import select
 
