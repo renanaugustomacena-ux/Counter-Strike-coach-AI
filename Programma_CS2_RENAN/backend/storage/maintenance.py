@@ -39,7 +39,7 @@ def prune_old_metadata(days_threshold: int = 30):
             for i in range(0, len(demo_list), _CHUNK_SIZE):
                 chunk = demo_list[i : i + _CHUNK_SIZE]
                 delete_stmt = delete(PlayerTickState).where(PlayerTickState.demo_name.in_(chunk))
-                result = session.execute(delete_stmt)
+                result = session.exec(delete_stmt)
                 ticks_removed += result.rowcount
 
             logger.info("Pruning complete. Removed %s non-essential tick records.", ticks_removed)

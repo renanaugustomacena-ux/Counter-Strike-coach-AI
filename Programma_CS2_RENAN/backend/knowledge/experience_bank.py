@@ -317,7 +317,7 @@ class ExperienceBank:
                         results = entries[:top_k]
                         result_ids = [e.id for e in results if e.id is not None]
                         if result_ids:
-                            session.execute(
+                            session.exec(
                                 update(CoachingExperience)
                                 .where(CoachingExperience.id.in_(result_ids))
                                 .values(usage_count=CoachingExperience.usage_count + 1)
@@ -351,7 +351,7 @@ class ExperienceBank:
 
             result_ids = [e.id for e in results if e.id is not None]
             if result_ids:
-                session.execute(
+                session.exec(
                     update(CoachingExperience)
                     .where(CoachingExperience.id.in_(result_ids))
                     .values(usage_count=CoachingExperience.usage_count + 1)
@@ -415,7 +415,7 @@ class ExperienceBank:
             # Atomic usage_count increment (prevents race in concurrent retrieval)
             result_ids = [exp.id for exp in results if exp.id is not None]
             if result_ids:
-                session.execute(
+                session.exec(
                     update(CoachingExperience)
                     .where(CoachingExperience.id.in_(result_ids))
                     .values(usage_count=CoachingExperience.usage_count + 1)
@@ -480,7 +480,7 @@ class ExperienceBank:
             # Atomic usage_count increment (prevents race in concurrent retrieval)
             result_ids = [exp.id for exp in results if exp.id is not None]
             if result_ids:
-                session.execute(
+                session.exec(
                     update(CoachingExperience)
                     .where(CoachingExperience.id.in_(result_ids))
                     .values(usage_count=CoachingExperience.usage_count + 1)
@@ -851,7 +851,7 @@ class ExperienceBank:
                     CoachingExperience.times_advice_followed + 1
                 )
 
-            session.execute(
+            session.exec(
                 update(CoachingExperience)
                 .where(CoachingExperience.id == experience_id)
                 .values(update_values)
