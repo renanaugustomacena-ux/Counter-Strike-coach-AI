@@ -59,12 +59,16 @@ class KnowledgeEmbedder:
         try:
             from sentence_transformers import SentenceTransformer
 
-            if not self._is_model_cached(model_name):
+            needs_download = not self._is_model_cached(model_name)
+            if needs_download:
                 logger.info("SBERT model '%s' not cached — download will start", model_name)
                 self._notify_download_start(model_name)
 
             self.model = SentenceTransformer(model_name)
             logger.info("Loaded embedding model: %s", model_name)
+
+            if needs_download:
+                self._notify_download_complete(model_name)
         except ImportError:
             logger.warning("sentence-transformers not installed. Using fallback embeddings.")
             self.embedding_dim = 100  # Fallback dimension
@@ -104,6 +108,20 @@ class KnowledgeEmbedder:
             )
         except Exception:
             pass  # Don't block SBERT load over a notification failure
+
+    @staticmethod
+    def _notify_download_complete(model_name: str):
+        """WR-10: Emit toast notification after SBERT download completes."""
+        try:
+            from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
+
+            get_state_manager().add_notification(
+                "knowledge",
+                "INFO",
+                f"AI language model ({model_name}) downloaded and ready.",
+            )
+        except Exception:
+            pass
 
     def embed(self, text: str) -> np.ndarray:
         """

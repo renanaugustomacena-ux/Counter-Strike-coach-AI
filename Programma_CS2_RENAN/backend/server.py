@@ -195,7 +195,57 @@ def get_insights():
 
 @app.get("/api/status")
 def get_status():
-    return {"status": "operational", "version": "2.0.0-electron"}
+    """WR-84: System status via Console singleton."""
+    try:
+        from Programma_CS2_RENAN.backend.control.console import Console
+
+        console = Console()
+        return {
+            "status": "operational",
+            "version": "2.0.0",
+            "daemons": {
+                "scanner": getattr(console, "_scanner_alive", False),
+                "digester": getattr(console, "_digester_alive", False),
+                "teacher": getattr(console, "_teacher_alive", False),
+            },
+            "project_root": str(getattr(console, "project_root", "")),
+        }
+    except Exception as e:
+        app_logger.warning("Console not available: %s", e)
+        return {"status": "operational", "version": "2.0.0"}
+
+
+@app.post("/api/console/coaching", status_code=200)
+async def trigger_coaching(request: Request):
+    """WR-84: Trigger coaching generation via Console."""
+    client_ip = request.client.host if request.client else "unknown"
+    if not telemetry_rate_limiter.is_allowed(client_ip):
+        raise HTTPException(status_code=429, detail="Rate limited")
+    try:
+        from Programma_CS2_RENAN.backend.control.console import Console
+
+        console = Console()
+        result = console.run_coaching()
+        return {"status": "ok", "result": str(result)}
+    except Exception as e:
+        app_logger.error("Coaching trigger failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/console/health")
+def console_health():
+    """WR-84: Console health check — verifies singleton is alive."""
+    try:
+        from Programma_CS2_RENAN.backend.control.console import Console
+
+        console = Console()
+        return {
+            "healthy": True,
+            "db_manager": console.db is not None,
+            "ml_controller": console.ml is not None,
+        }
+    except Exception as e:
+        return {"healthy": False, "error": str(e)}
 
 
 if __name__ == "__main__":

@@ -175,63 +175,42 @@ def compute_round_rating(stats: Dict) -> float:
     return compute_hltv2_rating(kpr=kpr, dpr=dpr, kast=kast, avg_adr=adr)
 
 
-def build_round_stats(
-    parser,
-    demo_name: str,
-    team_roster: Optional[Dict[str, int]] = None,
-) -> List[Dict]:
-    """
-    Build per-round, per-player statistics from a parsed demo.
+def _derive_flash_assist_window(parser) -> int:
+    """Derive per-demo flash assist window from header tick_rate.
 
-    Args:
-        parser: demoparser2.DemoParser instance.
-        demo_name: Name of the demo file for DB linking.
-        team_roster: Optional pre-built team roster. If None, built from parser.
+    P-RSB-01: Computed locally per demo (no global mutation).
+    P-RSB-05: tick_rate validated to [32, 256]; falls back to default.
 
     Returns:
-        List of dicts, each representing one RoundStats row.
+        Flash assist window in ticks (tick_rate * 2 = 2-second window).
     """
-    # P-RSB-01: Derive flash assist window locally (no global mutation).
     try:
         header = parser.parse_header()
         tick_rate = int(float(header.get("tick_rate", 64) or 64))
-        # P-RSB-05: Validate tick_rate range (32–256) to prevent absurd windows.
         if not (32 <= tick_rate <= 256):
             logger.warning(
                 "P-RSB-05: tick_rate %d outside valid range [32, 256], using default",
                 tick_rate,
             )
-            flash_assist_window = _DEFAULT_FLASH_ASSIST_WINDOW_TICKS
-        else:
-            flash_assist_window = tick_rate * 2  # 2-second window
+            return _DEFAULT_FLASH_ASSIST_WINDOW_TICKS
+        return tick_rate * 2
     except Exception:
-        flash_assist_window = _DEFAULT_FLASH_ASSIST_WINDOW_TICKS
+        return _DEFAULT_FLASH_ASSIST_WINDOW_TICKS
 
-    # Parse all needed events
-    round_end_df = _parse_events_safe(parser, "round_end")
-    deaths_df = _parse_events_safe(parser, "player_death")
-    hurt_df = _parse_events_safe(parser, "player_hurt")
 
-    if round_end_df.empty:
-        logger.warning("No round_end events — cannot build round stats")
-        return []
+def _collect_player_names(
+    deaths_df: pd.DataFrame,
+    team_roster: Dict[str, int],
+) -> set:
+    """Collect all unique player names from death events and the team roster.
 
-    # Build round boundaries
-    boundaries = _build_round_boundaries(round_end_df)
-    if not boundaries:
-        return []
+    P-RSB-02: Only roster entries with valid team_num (2 or 3) are included;
+    team_num 0 means unassigned/spectator and produces unreliable stats.
 
-    # Get team roster
-    if team_roster is None:
-        team_roster = _get_team_roster(parser)
-
-    # R4-07-02: Validate team mapping — all team_num values should be 0, 2, or 3
-    invalid_teams = {v for v in team_roster.values() if v not in (0, 2, 3)}
-    if invalid_teams:
-        logger.warning("R4-07-02: Unexpected team_num values in roster: %s", invalid_teams)
-
-    # Collect all unique player names from deaths (both attacker and victim)
-    all_players = set()
+    Returns:
+        Set of lowercase, stripped player name strings (empty string excluded).
+    """
+    all_players: set = set()
     if not deaths_df.empty:
         if "attacker_name" in deaths_df.columns:
             all_players.update(
@@ -241,27 +220,37 @@ def build_round_stats(
             all_players.update(
                 deaths_df["user_name"].dropna().astype(str).str.strip().str.lower().unique()
             )
-    # Also from roster — P-RSB-02: only include players with valid team_num (2 or 3).
-    # team_num 0 means unassigned/spectator, which produces unreliable stats.
     for name, tnum in team_roster.items():
         if tnum in (2, 3):
             all_players.add(name)
     all_players.discard("")
+    return all_players
 
-    # Initialize per-round, per-player accumulators
-    # M6 FIX: Sort players for deterministic iteration order across runs.
+
+def _init_round_player_accumulators(
+    boundaries: List[Dict],
+    all_players: set,
+    team_roster: Dict[str, int],
+    demo_name: str,
+) -> Dict[Tuple[int, str], Dict]:
+    """Initialize zeroed stat accumulators for every (round, player) pair.
+
+    M6 FIX: Players are sorted for deterministic iteration order.
+    P-RSB-02: Players without a valid team assignment (2 or 3) are skipped.
+
+    Returns:
+        Dict keyed by (round_number, player_name) with zeroed stat dicts.
+    """
     round_player_stats: Dict[Tuple[int, str], Dict] = {}
 
     for b in boundaries:
         rn = b["round_number"]
         for player in sorted(all_players):
             team_num = team_roster.get(player, 0)
-            # P-RSB-02: Skip players without a valid team assignment.
             if team_num not in (2, 3):
                 continue
             side = _team_num_to_side(team_num, rn)
 
-            # Determine if player's side won this round
             round_won = False
             if b["winner"] and side != "unknown":
                 round_won = b["winner"].upper() == side
@@ -301,179 +290,228 @@ def build_round_stats(
                 "round_rating": None,
             }
 
-    # Process deaths
-    if not deaths_df.empty:
-        deaths_df = deaths_df.sort_values("tick").reset_index(drop=True)
+    return round_player_stats
 
-        # Diagnostic: check if demoparser2 resolved assister (int) → assister_name (str)
-        if "assister_name" not in deaths_df.columns:
-            logger.info(
-                "player_death events lack 'assister_name' — assists counted from other sources only"
-            )
 
-        # Track first death per round for opening duel detection
-        first_death_per_round: Dict[int, bool] = {}
+def _process_death_events(
+    deaths_df: pd.DataFrame,
+    boundaries: List[Dict],
+    round_player_stats: Dict[Tuple[int, str], Dict],
+) -> None:
+    """Accumulate kills, deaths, assists, and opening duels from player_death events.
 
-        for _, death in deaths_df.iterrows():
-            tick = int(death["tick"])
-            rn = _assign_round(tick, boundaries)
-            if rn is None:
-                continue  # P-RSB-04: skip warmup/overtime deaths
+    Mutates *round_player_stats* in place.
+    P-RSB-04: Ticks outside all round boundaries (warmup/overtime) are skipped.
+    """
+    if deaths_df.empty:
+        return
 
-            attacker = str(death.get("attacker_name", "")).strip().lower()
-            victim = str(death.get("user_name", "")).strip().lower()
+    deaths_df = deaths_df.sort_values("tick").reset_index(drop=True)
 
-            # Kills for attacker
-            key_a = (rn, attacker)
-            if key_a in round_player_stats:
-                round_player_stats[key_a]["kills"] += 1
-                if death.get("headshot", False):
-                    round_player_stats[key_a]["headshot_kills"] += 1
-                if death.get("thrusmoke", False):
-                    round_player_stats[key_a]["thrusmoke_kills"] += 1
-                if int(death.get("penetrated", 0)) > 0:
-                    round_player_stats[key_a]["wallbang_kills"] += 1
-                if death.get("noscope", False):
-                    round_player_stats[key_a]["noscope_kills"] += 1
-                if death.get("attackerblind", False):
-                    round_player_stats[key_a]["blind_kills"] += 1
-
-            # Death for victim
-            key_v = (rn, victim)
-            if key_v in round_player_stats:
-                round_player_stats[key_v]["deaths"] += 1
-
-            # Assists
-            assister = str(death.get("assister_name", "")).strip().lower()
-            key_assist = (rn, assister)
-            if assister and key_assist in round_player_stats:
-                round_player_stats[key_assist]["assists"] += 1
-
-            # Opening duel (first death in each round)
-            if rn not in first_death_per_round:
-                first_death_per_round[rn] = True
-                if key_a in round_player_stats:
-                    round_player_stats[key_a]["opening_kill"] = True
-                if key_v in round_player_stats:
-                    round_player_stats[key_v]["opening_death"] = True
-
-    # Process damage (hurt events)
-    if not hurt_df.empty and "dmg_health" in hurt_df.columns:
-        for _, hurt in hurt_df.iterrows():
-            tick = int(hurt["tick"])
-            rn = _assign_round(tick, boundaries)
-            if rn is None:
-                continue
-            attacker = str(hurt.get("attacker_name", "")).strip().lower()
-            weapon = str(hurt.get("weapon", "")).strip().lower()
-            dmg = int(hurt.get("dmg_health", 0))
-
-            key = (rn, attacker)
-            if key not in round_player_stats:
-                continue
-
-            round_player_stats[key]["damage_dealt"] += dmg
-
-            # Utility damage breakdown
-            if weapon in HE_WEAPONS:
-                round_player_stats[key]["he_damage"] += dmg
-            elif weapon in FIRE_WEAPONS:
-                round_player_stats[key]["molotov_damage"] += dmg
-
-    # Process weapon_fire events for flash/smoke throw counting.
-    # Q1-04: demoparser2's weapon_fire DataFrame has columns
-    # ["silenced", "tick", "user_name", "user_steamid", "weapon"] — note that
-    # the actor column is "user_name", NOT "player_name". Reading the wrong key
-    # produced an empty string and the lookup `key not in round_player_stats`
-    # always short-circuited, leaving smokes_thrown / flashes_thrown at 0 across
-    # the entire dataset. We try user_name first and fall back to player_name
-    # for any future demos parsed by a different extractor.
-    fire_df = _parse_events_safe(parser, "weapon_fire")
-    if not fire_df.empty and "weapon" in fire_df.columns:
-        for _, fire in fire_df.iterrows():
-            tick = int(fire["tick"])
-            rn = _assign_round(tick, boundaries)
-            if rn is None:
-                continue
-            player = str(fire.get("user_name", fire.get("player_name", ""))).strip().lower()
-            weapon = str(fire.get("weapon", "")).strip().lower()
-
-            key = (rn, player)
-            if key not in round_player_stats:
-                continue
-
-            if weapon in FLASH_WEAPONS:
-                round_player_stats[key]["flashes_thrown"] += 1
-            elif weapon in SMOKE_WEAPONS:
-                round_player_stats[key]["smokes_thrown"] += 1
-
-    # Utility blind metrics + flash assist detection from player_blind events.
-    # Q1-01: Always process blind events for blind_time_on_enemies and enemies_blinded
-    # even when no kills occur. Flash assist cross-reference still requires deaths.
-    blind_df = _parse_events_safe(parser, "player_blind")
-    if not blind_df.empty and "blind_duration" in blind_df.columns:
-        blind_df = blind_df.sort_values("tick").reset_index(drop=True)
-        deaths_sorted = (
-            deaths_df.sort_values("tick").reset_index(drop=True) if not deaths_df.empty else None
+    if "assister_name" not in deaths_df.columns:
+        logger.info(
+            "player_death events lack 'assister_name' — assists counted from other sources only"
         )
 
-        for _, blind_event in blind_df.iterrows():
-            blind_tick = int(blind_event["tick"])
-            blinder = str(blind_event.get("attacker_name", "")).strip().lower()
-            blinded_player = str(blind_event.get("user_name", "")).strip().lower()
-            rn = _assign_round(blind_tick, boundaries)
-            if rn is None:
+    first_death_per_round: Dict[int, bool] = {}
+
+    for _, death in deaths_df.iterrows():
+        tick = int(death["tick"])
+        rn = _assign_round(tick, boundaries)
+        if rn is None:
+            continue
+
+        attacker = str(death.get("attacker_name", "")).strip().lower()
+        victim = str(death.get("user_name", "")).strip().lower()
+
+        # Kills + kill enrichment for attacker
+        key_a = (rn, attacker)
+        if key_a in round_player_stats:
+            round_player_stats[key_a]["kills"] += 1
+            if death.get("headshot", False):
+                round_player_stats[key_a]["headshot_kills"] += 1
+            if death.get("thrusmoke", False):
+                round_player_stats[key_a]["thrusmoke_kills"] += 1
+            if int(death.get("penetrated", 0)) > 0:
+                round_player_stats[key_a]["wallbang_kills"] += 1
+            if death.get("noscope", False):
+                round_player_stats[key_a]["noscope_kills"] += 1
+            if death.get("attackerblind", False):
+                round_player_stats[key_a]["blind_kills"] += 1
+
+        # Death for victim
+        key_v = (rn, victim)
+        if key_v in round_player_stats:
+            round_player_stats[key_v]["deaths"] += 1
+
+        # Assists
+        assister = str(death.get("assister_name", "")).strip().lower()
+        key_assist = (rn, assister)
+        if assister and key_assist in round_player_stats:
+            round_player_stats[key_assist]["assists"] += 1
+
+        # Opening duel (first death in each round)
+        if rn not in first_death_per_round:
+            first_death_per_round[rn] = True
+            if key_a in round_player_stats:
+                round_player_stats[key_a]["opening_kill"] = True
+            if key_v in round_player_stats:
+                round_player_stats[key_v]["opening_death"] = True
+
+
+def _process_damage_events(
+    hurt_df: pd.DataFrame,
+    boundaries: List[Dict],
+    round_player_stats: Dict[Tuple[int, str], Dict],
+) -> None:
+    """Accumulate damage_dealt, he_damage, and molotov_damage from player_hurt events.
+
+    Mutates *round_player_stats* in place.
+    """
+    if hurt_df.empty or "dmg_health" not in hurt_df.columns:
+        return
+
+    for _, hurt in hurt_df.iterrows():
+        tick = int(hurt["tick"])
+        rn = _assign_round(tick, boundaries)
+        if rn is None:
+            continue
+        attacker = str(hurt.get("attacker_name", "")).strip().lower()
+        weapon = str(hurt.get("weapon", "")).strip().lower()
+        dmg = int(hurt.get("dmg_health", 0))
+
+        key = (rn, attacker)
+        if key not in round_player_stats:
+            continue
+
+        round_player_stats[key]["damage_dealt"] += dmg
+
+        if weapon in HE_WEAPONS:
+            round_player_stats[key]["he_damage"] += dmg
+        elif weapon in FIRE_WEAPONS:
+            round_player_stats[key]["molotov_damage"] += dmg
+
+
+def _process_utility_throws(
+    parser,
+    boundaries: List[Dict],
+    round_player_stats: Dict[Tuple[int, str], Dict],
+) -> None:
+    """Count flash and smoke throws from weapon_fire events.
+
+    Q1-04: demoparser2 weapon_fire uses 'user_name' (not 'player_name') as the
+    actor column. We try user_name first and fall back to player_name.
+    Mutates *round_player_stats* in place.
+    """
+    fire_df = _parse_events_safe(parser, "weapon_fire")
+    if fire_df.empty or "weapon" not in fire_df.columns:
+        return
+
+    for _, fire in fire_df.iterrows():
+        tick = int(fire["tick"])
+        rn = _assign_round(tick, boundaries)
+        if rn is None:
+            continue
+        player = str(fire.get("user_name", fire.get("player_name", ""))).strip().lower()
+        weapon = str(fire.get("weapon", "")).strip().lower()
+
+        key = (rn, player)
+        if key not in round_player_stats:
+            continue
+
+        if weapon in FLASH_WEAPONS:
+            round_player_stats[key]["flashes_thrown"] += 1
+        elif weapon in SMOKE_WEAPONS:
+            round_player_stats[key]["smokes_thrown"] += 1
+
+
+def _process_blind_events(
+    parser,
+    deaths_df: pd.DataFrame,
+    boundaries: List[Dict],
+    team_roster: Dict[str, int],
+    flash_assist_window: int,
+    round_player_stats: Dict[Tuple[int, str], Dict],
+) -> None:
+    """Accumulate blind metrics and detect flash assists from player_blind events.
+
+    Q1-01: Always processes blind events for blind_time_on_enemies and
+    enemies_blinded even when no kills occur. Only ENEMY blinds are counted;
+    teammate blinds are ignored.
+    Mutates *round_player_stats* in place.
+    """
+    blind_df = _parse_events_safe(parser, "player_blind")
+    if blind_df.empty or "blind_duration" not in blind_df.columns:
+        return
+
+    blind_df = blind_df.sort_values("tick").reset_index(drop=True)
+    deaths_sorted = (
+        deaths_df.sort_values("tick").reset_index(drop=True) if not deaths_df.empty else None
+    )
+
+    for _, blind_event in blind_df.iterrows():
+        blind_tick = int(blind_event["tick"])
+        blinder = str(blind_event.get("attacker_name", "")).strip().lower()
+        blinded_player = str(blind_event.get("user_name", "")).strip().lower()
+        rn = _assign_round(blind_tick, boundaries)
+        if rn is None:
+            continue
+
+        if not blinder or not blinded_player:
+            continue
+
+        blinder_team = team_roster.get(blinder, 0)
+        blinded_team = team_roster.get(blinded_player, 0)
+
+        is_enemy_blind = (
+            blinder_team in (2, 3) and blinded_team in (2, 3) and blinder_team != blinded_team
+        )
+
+        if is_enemy_blind:
+            key = (rn, blinder)
+            if key in round_player_stats:
+                try:
+                    duration = float(blind_event.get("blind_duration", 0.0) or 0.0)
+                except (TypeError, ValueError):
+                    duration = 0.0
+                round_player_stats[key]["blind_time_on_enemies"] += duration
+                round_player_stats[key]["enemies_blinded"].add(blinded_player)
+
+        # Flash assist cross-reference: kill of the blinded player within the
+        # assist window by a teammate of the blinder.
+        if deaths_sorted is None:
+            continue
+
+        for _, kill in deaths_sorted.iterrows():
+            kill_tick = int(kill["tick"])
+            if kill_tick < blind_tick:
+                continue
+            if kill_tick > blind_tick + flash_assist_window:
+                break
+
+            victim = str(kill.get("user_name", "")).strip().lower()
+            killer = str(kill.get("attacker_name", "")).strip().lower()
+
+            if victim != blinded_player:
                 continue
 
-            if not blinder or not blinded_player:
-                continue
-
-            blinder_team = team_roster.get(blinder, 0)
-            blinded_team = team_roster.get(blinded_player, 0)
-
-            # Q1-01: Only count ENEMY blinds for utility metrics. Teammate blinds
-            # are misthrows and should not reward the blinder's utility score.
-            is_enemy_blind = (
-                blinder_team in (2, 3) and blinded_team in (2, 3) and blinder_team != blinded_team
-            )
-
-            if is_enemy_blind:
+            killer_team = team_roster.get(killer, 0)
+            if killer_team == blinder_team and killer != blinder and killer_team in (2, 3):
                 key = (rn, blinder)
                 if key in round_player_stats:
-                    try:
-                        duration = float(blind_event.get("blind_duration", 0.0) or 0.0)
-                    except (TypeError, ValueError):
-                        duration = 0.0
-                    round_player_stats[key]["blind_time_on_enemies"] += duration
-                    round_player_stats[key]["enemies_blinded"].add(blinded_player)
+                    round_player_stats[key]["flash_assists"] += 1
+                break  # Only count one assist per blind event
 
-            # Flash assist cross-reference: kill of the blinded player within the
-            # assist window by a teammate of the blinder.
-            if deaths_sorted is None:
-                continue
 
-            for _, kill in deaths_sorted.iterrows():
-                kill_tick = int(kill["tick"])
-                if kill_tick < blind_tick:
-                    continue
-                if kill_tick > blind_tick + flash_assist_window:
-                    break
+def _integrate_trade_kills(
+    parser,
+    round_player_stats: Dict[Tuple[int, str], Dict],
+) -> None:
+    """Integrate trade kill / was-traded flags from the trade kill detector.
 
-                victim = str(kill.get("user_name", "")).strip().lower()
-                killer = str(kill.get("attacker_name", "")).strip().lower()
-
-                if victim != blinded_player:
-                    continue
-
-                # Killer must be a teammate of the blinder (same team, not the blinder)
-                killer_team = team_roster.get(killer, 0)
-                if killer_team == blinder_team and killer != blinder and killer_team in (2, 3):
-                    key = (rn, blinder)
-                    if key in round_player_stats:
-                        round_player_stats[key]["flash_assists"] += 1
-                    break  # Only count one assist per blind event
-
-    # Integrate trade kill data
+    Mutates *round_player_stats* in place. Failures are logged and skipped
+    (trade data is enrichment, not critical path).
+    """
     try:
         from Programma_CS2_RENAN.backend.data_sources.trade_kill_detector import analyze_demo_trades
 
@@ -493,13 +531,84 @@ def build_round_stats(
     except Exception as e:
         logger.warning("Trade kill integration into round stats skipped: %s", e)
 
-    # Compute per-round KAST flag and HLTV 2.0 rating for each entry
-    for key, stats in round_player_stats.items():
+
+def _compute_kast_and_ratings(
+    round_player_stats: Dict[Tuple[int, str], Dict],
+) -> None:
+    """Compute per-round KAST flag and HLTV 2.0 rating for each entry.
+
+    KAST = True if the player got a Kill, Assist, Survived, or was Traded.
+    Mutates *round_player_stats* in place.
+    """
+    for _key, stats in round_player_stats.items():
         survived = stats["deaths"] == 0
         stats["kast"] = bool(
             stats["kills"] > 0 or stats["assists"] > 0 or survived or stats["was_traded"]
         )
         stats["round_rating"] = compute_round_rating(stats)
+
+
+def build_round_stats(
+    parser,
+    demo_name: str,
+    team_roster: Optional[Dict[str, int]] = None,
+) -> List[Dict]:
+    """
+    Build per-round, per-player statistics from a parsed demo.
+
+    Orchestrates event parsing and delegates to focused sub-functions:
+    _derive_flash_assist_window, _collect_player_names,
+    _init_round_player_accumulators, _process_death_events,
+    _process_damage_events, _process_utility_throws,
+    _process_blind_events, _integrate_trade_kills,
+    _compute_kast_and_ratings.
+
+    Args:
+        parser: demoparser2.DemoParser instance.
+        demo_name: Name of the demo file for DB linking.
+        team_roster: Optional pre-built team roster. If None, built from parser.
+
+    Returns:
+        List of dicts, each representing one RoundStats row.
+    """
+    flash_assist_window = _derive_flash_assist_window(parser)
+
+    # Parse all needed events
+    round_end_df = _parse_events_safe(parser, "round_end")
+    deaths_df = _parse_events_safe(parser, "player_death")
+    hurt_df = _parse_events_safe(parser, "player_hurt")
+
+    if round_end_df.empty:
+        logger.warning("No round_end events — cannot build round stats")
+        return []
+
+    boundaries = _build_round_boundaries(round_end_df)
+    if not boundaries:
+        return []
+
+    # Get team roster
+    if team_roster is None:
+        team_roster = _get_team_roster(parser)
+
+    # R4-07-02: Validate team mapping — all team_num values should be 0, 2, or 3
+    invalid_teams = {v for v in team_roster.values() if v not in (0, 2, 3)}
+    if invalid_teams:
+        logger.warning("R4-07-02: Unexpected team_num values in roster: %s", invalid_teams)
+
+    all_players = _collect_player_names(deaths_df, team_roster)
+
+    round_player_stats = _init_round_player_accumulators(
+        boundaries, all_players, team_roster, demo_name
+    )
+
+    _process_death_events(deaths_df, boundaries, round_player_stats)
+    _process_damage_events(hurt_df, boundaries, round_player_stats)
+    _process_utility_throws(parser, boundaries, round_player_stats)
+    _process_blind_events(
+        parser, deaths_df, boundaries, team_roster, flash_assist_window, round_player_stats
+    )
+    _integrate_trade_kills(parser, round_player_stats)
+    _compute_kast_and_ratings(round_player_stats)
 
     result = list(round_player_stats.values())
     logger.info(
