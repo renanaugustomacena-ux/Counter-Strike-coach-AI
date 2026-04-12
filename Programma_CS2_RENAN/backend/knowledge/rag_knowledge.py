@@ -55,7 +55,7 @@ class KnowledgeEmbedder:
         self.model = None
         self.embedding_dim = 384
 
-        self._is_fallback = False
+        self._is_fallback = False  # exposed via is_fallback property (SA-27)
         try:
             from sentence_transformers import SentenceTransformer
 
@@ -74,6 +74,11 @@ class KnowledgeEmbedder:
             logger.error("H-01: Failed to load embedding model %s: %s", model_name, e)
             self.embedding_dim = 100
             self._is_fallback = True
+
+    @property
+    def is_fallback(self) -> bool:
+        """Whether embedder is using degraded fallback (SA-27: public accessor)."""
+        return self._is_fallback
 
     @staticmethod
     def _is_model_cached(model_name: str) -> bool:
@@ -227,7 +232,7 @@ class KnowledgeRetriever:
         self.db = get_db_manager()
         self.embedder = KnowledgeEmbedder()
         # H-01: Surface degraded embedder state to retriever consumers
-        if self.embedder._is_fallback:
+        if self.embedder.is_fallback:
             logger.warning(
                 "H-01: KnowledgeRetriever using fallback embeddings (dim=%d). "
                 "RAG retrieval quality will be degraded.",

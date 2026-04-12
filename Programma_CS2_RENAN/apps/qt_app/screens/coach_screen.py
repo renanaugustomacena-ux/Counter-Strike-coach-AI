@@ -64,7 +64,7 @@ class CoachScreen(QWidget):
             self._state_connected = True
         # Read current confidence immediately (signal only fires on CHANGE,
         # but the value may already be set from boot before we connected)
-        current = get_app_state()._prev.get("belief_confidence", 0.0)
+        current = get_app_state().cached_state.get("belief_confidence", 0.0)
         if current > 0:
             self._on_belief(current)
         self._coach_vm.load_insights()

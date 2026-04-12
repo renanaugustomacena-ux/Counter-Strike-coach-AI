@@ -258,7 +258,8 @@ def run_training():
     # We leverage the manager's preparation logic to ensure feature consistency
     raw_pro = manager._fetch_training_data(is_pro=True, split="train")
     if not raw_pro:
-        return logger.error("No Pro data found.")
+        logger.error("No Pro data found.")
+        return
 
     X, y = manager._prepare_tensors(raw_pro)
     model = train_nn(X, y)

@@ -51,7 +51,7 @@ class HomeScreen(QWidget):
             self._connected = True
         # Read current values immediately (signals only fire on CHANGE,
         # but boot may have set values before we connected)
-        prev = get_app_state()._prev
+        prev = get_app_state().cached_state
         if prev.get("total_matches", 0) > 0:
             self._on_total_matches(prev["total_matches"])
         if "service_active" in prev:
