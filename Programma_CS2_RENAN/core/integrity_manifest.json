@@ -47,7 +47,7 @@
     "apps/qt_app/screens/profile_screen.py": "7167bc4f885a809cbc15fc8b6b6846cb65955ea43fcbf917cba508fc6728b725",
     "apps/qt_app/screens/settings_screen.py": "6a0c712ef830dc63a9b1f3748daf856627f1a1880b92d86570f447e1bd8f2877",
     "apps/qt_app/screens/steam_config_screen.py": "4822fb70a8f13abd3e8fc5f18f69e4ecb52356219ab83593404e08f24b1bffca",
-    "apps/qt_app/screens/tactical_viewer_screen.py": "fa754f85917ba3d20f37c57246e9c5596364989b54d9edf3727438e605048f87",
+    "apps/qt_app/screens/tactical_viewer_screen.py": "543093d50218515c1ba073cfff2eefcf07253c30fe509b9f9c096141171dd2e0",
     "apps/qt_app/screens/user_profile_screen.py": "d6776fdd9b75f0c5d1b58c0e89d97846f4d4bc37d3b077c5f7323be72ed05a03",
     "apps/qt_app/screens/wizard_screen.py": "dbdd0c5a9cb2a9a92033dd117cc45ca97d1e8829a7012cce4b229849d116511a",
     "apps/qt_app/viewmodels/__init__.py": "c46537b0823a16844ca52e881caccd49830d6fdd3101dd2bc4eb9a6e3ad9471d",

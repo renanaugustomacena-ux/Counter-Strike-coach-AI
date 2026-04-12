@@ -596,13 +596,11 @@ def _cmd_sys_baseline(args):
 
 
 def _cmd_sys_db(args):
-    force = "-y" in args or "--yes" in args
-    rich_con.print("[info]>>> Database Migration[/info]")
+    rich_con.print("[info]>>> Database Migration (Alembic)[/info]")
     try:
-        from tools.migrate_db import IndustrialDatabaseMigrator
+        from Programma_CS2_RENAN.backend.storage.db_migrate import ensure_database_current
 
-        migrator = IndustrialDatabaseMigrator(force=force)
-        result = migrator.migrate()
+        result = ensure_database_current()
         if result is False:
             return "[warning]Migration reported issues — check output above.[/warning]"
         return "[success]Migration complete.[/success]"

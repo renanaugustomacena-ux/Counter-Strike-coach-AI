@@ -171,11 +171,10 @@ class GoliathOrchestrator:
             sys.exit(1)
 
     def run_db(self, force: bool):
-        from tools.migrate_db import IndustrialDatabaseMigrator
+        from Programma_CS2_RENAN.backend.storage.db_migrate import ensure_database_current
 
-        console.print("[command]>>> Initiating Database Subsystem[/command]")
-        migrator = IndustrialDatabaseMigrator(force=force)
-        if migrator.migrate():
+        console.print("[command]>>> Initiating Database Subsystem (Alembic)[/command]")
+        if ensure_database_current():
             logger.info("Database migration completed")
         else:
             sys.exit(1)
