@@ -123,6 +123,27 @@ class KnowledgeEmbedder:
         except Exception:
             pass
 
+    @staticmethod
+    def is_model_cached(model_name: str = "all-MiniLM-L6-v2") -> bool:
+        """WR-10: Public check — is the SBERT model already downloaded?"""
+        return KnowledgeEmbedder._is_model_cached(model_name)
+
+    @staticmethod
+    def download_model(model_name: str = "all-MiniLM-L6-v2") -> bool:
+        """WR-10: Download SBERT model if not cached. Returns True on success."""
+        if KnowledgeEmbedder._is_model_cached(model_name):
+            return True
+        try:
+            from sentence_transformers import SentenceTransformer
+
+            logger.info("WR-10: Pre-downloading SBERT model '%s'...", model_name)
+            SentenceTransformer(model_name)
+            logger.info("WR-10: SBERT model '%s' downloaded successfully", model_name)
+            return True
+        except Exception as e:
+            logger.error("WR-10: SBERT download failed: %s", e)
+            return False
+
     def embed(self, text: str) -> np.ndarray:
         """
         Generate embedding for text.
