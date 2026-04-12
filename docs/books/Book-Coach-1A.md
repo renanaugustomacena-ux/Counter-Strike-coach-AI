@@ -43,7 +43,7 @@ Spero che qualcosa lì dentro possa essere utile.
 
 **Parte 1B** — I Sensi e lo Specialista: Modello RAP Coach (architettura 7 componenti, ChronovisorScanner, GhostEngine), Sorgenti Dati (Demo Parser, HLTV, Steam, FACEIT, TensorFactory, FAISS)
 
-**Parte 2** — Sezioni 5-13: Servizi di Coaching, Coaching Engines, Conoscenza e Recupero, Motori di Analisi (10), Elaborazione e Feature Engineering, Modulo di Controllo, Progresso e Tendenze, Database e Storage (Tri-Tier), Pipeline di Addestramento e Orchestrazione, Funzioni di Perdita
+**Parte 2** — Sezioni 5-13: Servizi di Coaching, Coaching Engines, Conoscenza e Recupero, Motori di Analisi (11), Elaborazione e Feature Engineering, Modulo di Controllo, Progresso e Tendenze, Database e Storage (Tri-Tier), Pipeline di Addestramento e Orchestrazione, Funzioni di Perdita
 
 **Parte 3** — Logica Programma, UI, Ingestion, Tools, Tests, Build, Remediation
 
@@ -57,7 +57,7 @@ CS2 Ultimate è un **sistema di coaching basato su IA ibrido** per Counter-Strik
 2. **Addestra** più modelli di reti neurali attraverso un programma a fasi con limiti di maturità (a 3 livelli: CALIBRAZIONE → APPRENDIMENTO → MATURO). 3. **Inferisce** consigli di allenamento fondendo le previsioni di apprendimento automatico con conoscenze tattiche recuperate semanticamente tramite una catena di fallback a 4 livelli (COPER → Ibrido → RAG → Base).
 3. **Spiega** il suo ragionamento tramite attribuzione causale, narrazioni basate su template, confronti tra giocatori professionisti e un'opzionale rifinitura LLM (Ollama).
 
-Il sistema contiene **≈ 96.000 righe di Python** distribuite su 391 file `.py` sotto `Programma_CS2_RENAN/`, che si estendono su **otto sottosistemi logici AI** (NN Core con VL-JEPA, RAP Coach + RAP Lite, Coaching Services, Knowledge & Retrieval, Analysis Engines, Processing & Feature Engineering, Sorgenti Dati, Motori di Coaching), un Osservatorio di addestramento, un modulo di Controllo (Console, DB Governor, Ingest Manager, ML Controller), un'architettura Quad-Daemon per l'automazione in background (Hunter, Digester, Teacher, Pulse), un'interfaccia desktop Qt/PySide6 con 13 schermi e pattern MVVM (migrata da Kivy nel marzo 2026), un sistema completo di ingestione (con sottosistema HLTV dedicato: HLTVApiService, CircuitBreaker, RateLimiter), storage e reporting, una **Tools Suite** con 36 script Python di validazione e diagnostica (20 root + 16 nel pacchetto — Goliath Hospital, Brain Verification, headless validator, Ultimate ML Coach Debugger, validate_coaching_pipeline, ingest_pro_demos), un'architettura tri-database specializzata con 19 tabelle SQLModel nel monolite più database per-match separati, e una **Test Suite** con 91 file di test organizzati in 6 categorie: analysis/theory, coaching/training, ML/models, data/storage, UI/playback, integration/misc. Il progetto ha attraversato un processo di **rimediazione sistematica in 13 fasi** che ha risolto 412+ problemi di qualità del codice, correttezza ML, sicurezza e architettura, inclusa l'eliminazione di label leakage nell'addestramento (G-01), l'implementazione della zona di pericolo visiva nel tensore vista (G-02), la calibrazione automatica dello stimatore bayesiano (G-07), e la correzione del fallback del coaching COPER (G-08), seguita da una **seconda ondata di rimediazione** che ha risolto ulteriori 162 problemi (31 HIGH + 131 MEDIUM) relativi a thread safety, schema drift, Qt lifecycle, e hardening dell'osservabilità. La pipeline end-to-end è stata completata il 12 marzo 2026: 11 demo professionali ingerite, 17.3M righe tick, 6.4GB database, JEPA pre-addestrato (train loss 0.9506, val loss 1.8248). Aggiornamento aprile 2026: 156 database per-match, AdvancedCoachNN completamente addestrato (`latest.pt`), database HLTV popolato con **151 giocatori professionisti reali** (30 team, 140 stat card), HybridCoachingEngine potenziato con selezione automatica del pro di riferimento per nome nei feedback di coaching.
+Il sistema contiene **≈ 102.000 righe di Python** distribuite su 406 file `.py` sotto `Programma_CS2_RENAN/`, che si estendono su **otto sottosistemi logici AI** (NN Core con VL-JEPA, RAP Coach + RAP Lite, Coaching Services, Knowledge & Retrieval, Analysis Engines (11), Processing & Feature Engineering, Sorgenti Dati, Motori di Coaching), un Osservatorio di addestramento, un modulo di Controllo (Console con REST API, DB Governor, Ingest Manager, ML Controller), un'architettura Quad-Daemon per l'automazione in background (Hunter, Digester, Teacher, Pulse), un'interfaccia desktop Qt/PySide6 con 15 schermi e pattern MVVM (migrata da Kivy nel marzo 2026), un sistema completo di ingestione (con sottosistema HLTV dedicato: HLTVApiService, CircuitBreaker, RateLimiter), storage e reporting, una **Tools Suite** con 41 script Python di validazione e diagnostica (29 root + 12 nel pacchetto — Goliath Hospital, headless validator, Ultimate ML Coach Debugger, validate_coaching_pipeline, ingest_pro_demos, dead_code_detector, dev_health, rebuild_monolith, tick_census), un'architettura tri-database specializzata con 21 tabelle SQLModel nel monolite (+ 3 nelle database per-match separate), e una **Test Suite** con 94 file di test organizzati in 6 categorie: analysis/theory, coaching/training, ML/models, data/storage, UI/playback, integration/misc. Il progetto ha attraversato un processo di **rimediazione sistematica in 13 fasi** che ha risolto 412+ problemi di qualità del codice, correttezza ML, sicurezza e architettura, inclusa l'eliminazione di label leakage nell'addestramento (G-01), l'implementazione della zona di pericolo visiva nel tensore vista (G-02), la calibrazione automatica dello stimatore bayesiano (G-07), e la correzione del fallback del coaching COPER (G-08), seguita da una **seconda ondata di rimediazione** che ha risolto ulteriori 162 problemi (31 HIGH + 131 MEDIUM) relativi a thread safety, schema drift, Qt lifecycle, e hardening dell'osservabilità, e da una **terza ondata** (aprile 2026) che ha affrontato 40+ problemi aggiuntivi inclusi type safety (SA-14–SA-27), dependency pinning (DEP-1), checkpoint security (CTF-1/2), DataLineage audit trail (DL-1), e correzioni UI/UX (UX-1/2/3). La pipeline end-to-end è stata completata il 12 marzo 2026: 11 demo professionali ingerite, 17.3M righe tick, 6.4GB database, JEPA pre-addestrato (train loss 0.9506, val loss 1.8248). Aggiornamento aprile 2026: 156 database per-match, AdvancedCoachNN completamente addestrato (`latest.pt`), database HLTV popolato con **161 giocatori professionisti reali** (32 team, 156 stat card), HybridCoachingEngine potenziato con selezione automatica del pro di riferimento per nome nei feedback di coaching, **Coach Book v4** espanso a **502 voci** di conoscenza tattica in 8 file JSON (7 mappe + generale) con 13 categorie, **CoachingDialogueEngine** per coaching multi-turno con drill-down per-giocatore e per-round, **MovementQualityAnalyzer** (11° motore di analisi), **EloAugmentedPredictor** per probabilità vittoria con feature Elo, **PlusMinus rating metric**, potenziamenti COPER (incertezza TrueSkill, semantica CRUD, replay priorizzato), codifica posizione relativa al bombsite, prioritizzazione demo per varianza di coaching con scoring qualità via modello Huber, e **CS2 Coach Bench** benchmark di valutazione a 200 domande.
 
 > **Analogia:** Immagina di avere un allenatore robot super intelligente che guarda le tue partite di calcio in video. Innanzitutto, **guarda** centinaia di partite professionistiche e le tue, prendendo appunti su ogni singola mossa (questa è la parte di "ingestione", gestita dal daemon Hunter che scansiona le cartelle e dal daemon Digester che elabora i file). Poi, **studia** quegli appunti e impara cosa fanno i grandi giocatori in modo diverso dai principianti, come uno studente che affronta i vari livelli scolastici (CALIBRARE è l'asilo, APPRENDERE è la scuola media, MATURARE è il diploma) — questo lo fa il daemon Teacher in background. Quando è il momento di darti un consiglio, non si limita a tirare a indovinare: controlla il suo **quaderno di suggerimenti**, la sua **memoria delle sessioni di allenamento passate** e cosa farebbero i **professionisti** nella tua esatta situazione, scegliendo la fonte di cui si fida di più. Infine, **spiega** perché ti sta dicendo di fare qualcosa, non solo "fai questo", ma "fai questo *perché* continui a essere colto alla sprovvista". È come avere un allenatore che ha visto ogni partita professionistica mai giocata, ricorda ogni sessione di allenamento che hai fatto e può spiegarti esattamente perché dovresti cambiare strategia. Nel frattempo, l'interfaccia desktop Qt/PySide6 ti mostra tutto in tempo reale: una mappa tattica 2D con il tuo "fantasma" ottimale, grafici radar delle tue abilità, e una dashboard che ti dice esattamente a che punto è il tuo allenatore nel suo processo di apprendimento. Il daemon Pulse assicura che il sistema sia sempre vigile con un battito cardiaco costante.
 
@@ -73,7 +73,7 @@ flowchart LR
     style K fill:#51cf66,color:#fff
 ```
 
-> 391 .py files · 96.000+ lines · 8 AI subsystems + Observatory + Control Module + Quad-Daemon + Desktop UI Qt/PySide6 (13 screens) + 36 Tools (20 root + 16 inner) · 91 test files · 19 SQLModel tables · Architettura tri-database (database.db + knowledge_base.db + hltv_metadata.db) · Indicizzazione vettoriale FAISS (IndexFlatIP 384-dim) · Internazionalizzazione i18n (EN/IT/PT) · Accessibilità WCAG 1.4.1 (theme.py) · 12 rapporti di audit comprensivi (incl. revisione letteratura 140KB, 30 articoli peer-reviewed) · 574+ problemi risolti (412 in 13 fasi + 162 in seconda ondata) · Pipeline end-to-end completata (156 per-match DB · JEPA + AdvancedCoachNN addestrati · 151 giocatori HLTV reali, 30 team, 140 stat card)
+> 406 .py files · 102.000+ lines · 8 AI subsystems + Observatory + Control Module (REST API) + Quad-Daemon + Desktop UI Qt/PySide6 (15 screens) + 41 Tools (29 root + 12 inner) · 94 test files · 21 SQLModel tables (monolite) + 3 per-match · Architettura tri-database (database.db + hltv_metadata.db + database per-match) · Indicizzazione vettoriale FAISS (IndexFlatIP 384-dim) · Internazionalizzazione i18n (EN/IT/PT) · Accessibilità WCAG 1.4.1 (theme.py) · 12 rapporti di audit comprensivi (incl. revisione letteratura 140KB, 30 articoli peer-reviewed) · 610+ problemi risolti (412 in 13 fasi + 162 in seconda ondata + 40+ in terza ondata) · Pipeline end-to-end completata (156 per-match DB · JEPA + AdvancedCoachNN addestrati · 161 giocatori HLTV reali, 32 team, 156 stat card · Coach Book v4: 502 voci, 8 file, 13 categorie · CS2 Coach Bench: 200 domande)
 
 ---
 
@@ -136,17 +136,18 @@ graph TB
         RAG --> FAISS_IDX
     end
 
-    subgraph Analisi["Analisi (10 Motori)"]
+    subgraph Analisi["Analisi (11 Motori)"]
         GT["Expectiminimax<br/>Albero di Gioco - profondità 3"]
         BM["Stimatore Bayesiano<br/>Probabilità Morte +<br/>Calibratore Adattivo"]
         DI["Indice Inganno<br/>3 sotto-metriche"]
         RC["Classificatore Ruoli<br/>6 ruoli + Consenso Neurale"]
-        WP["Predittore Probabilità<br/>Vittoria - 12 feature NN"]
+        WP["Predittore Probabilità<br/>Vittoria - NN + EloAugmented"]
         MOM["Tracker Momentum<br/>Rilevamento Tilt/Hot"]
         ENT["Analizzatore Entropia<br/>Impatto utilità Shannon"]
         BS["Rilevatore Punti Ciechi"]
         UE["Utilità ed Economia<br/>Ottimizzatore acquisti"]
         ER["Analizzatore Ingaggio<br/>50+ posizioni 8 mappe"]
+        MQ["Qualità Movimento<br/>Analisi traiettoria + economia"]
     end
 
     subgraph Coaching_Engines["Motori di Coaching"]
@@ -172,11 +173,12 @@ graph TB
         FACEIT_DATA --> PB
         STEAM_PROFILE --> PB
         HE --> OLLAMA["OllamaCoachWriter<br/>(Rifinitura NL Opzionale)"]
+        HE --> DLG["CoachingDialogueEngine<br/>(Multi-turno, drill-down)"]
         HE --> EXP["Livello Spiegabilità"]
     end
 
     subgraph Controllo["Modulo di Controllo"]
-        CTRL_CONSOLE["Console di Sistema<br/>(TUI Rich, CLI)"]
+        CTRL_CONSOLE["Console di Sistema<br/>(TUI Rich, CLI, REST API)"]
         CTRL_DB["DB Governor<br/>(WAL audit, Tier 1-3)"]
         CTRL_INGEST["Ingest Manager<br/>(Thread-safe, 30min re-scan)"]
         CTRL_ML["ML Controller<br/>(Throttle, Stop)"]
@@ -1292,7 +1294,7 @@ flowchart LR
     end
     subgraph PARTE2["PARTE 2 — Servizi e Infrastruttura"]
         SVC["Servizi di Coaching<br/>(fallback 4 livelli)"]
-        ANL["Motori di Analisi<br/>(10 specialisti)"]
+        ANL["Motori di Analisi<br/>(11 specialisti)"]
         KB["Conoscenza<br/>(RAG + COPER)"]
         DB["Database<br/>(Tri-Tier SQLite)"]
     end
