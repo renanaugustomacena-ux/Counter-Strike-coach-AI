@@ -1,0 +1,200 @@
+{"id": "map-001", "category": "map_tactics", "question": "On Anubis, the T side has lost connector control. What is the highest-EV B execute from canal?", "map": "de_anubis", "difficulty": "medium"}
+{"id": "map-002", "category": "map_tactics", "question": "On Mirage, you are CT holding A with 2 players. The T has smoked CT and jungle. What positions should you fall back to?", "map": "de_mirage", "difficulty": "medium"}
+{"id": "map-003", "category": "map_tactics", "question": "On Inferno, your team is T-side and wants to split A from apartments and short. What utility sequence do you need?", "map": "de_inferno", "difficulty": "hard"}
+{"id": "map-004", "category": "map_tactics", "question": "On Dust2, the CT has been stacking B with 3 players for 4 rounds. How do you counter this as T?", "map": "de_dust2", "difficulty": "medium"}
+{"id": "map-005", "category": "map_tactics", "question": "On Nuke, what is the standard CT setup for outside defense and when should you rotate the outside player to A?", "map": "de_nuke", "difficulty": "medium"}
+{"id": "map-006", "category": "map_tactics", "question": "On Overpass, describe the optimal T-side B execute through monster with full utility.", "map": "de_overpass", "difficulty": "hard"}
+{"id": "map-007", "category": "map_tactics", "question": "On Ancient, the CT is playing aggressive cave. How should the T side punish this?", "map": "de_ancient", "difficulty": "medium"}
+{"id": "map-008", "category": "map_tactics", "question": "On Mirage, what are the three most important smokes for a T A execute and what does each one cut?", "map": "de_mirage", "difficulty": "easy"}
+{"id": "map-009", "category": "map_tactics", "question": "On Inferno, your AWP player died at banana. It is a 4v5 with bomb at B. Should you still execute B or rotate to A?", "map": "de_inferno", "difficulty": "hard"}
+{"id": "map-010", "category": "map_tactics", "question": "On Dust2, explain the catwalk-to-A split: timing, utility needed, and what each player does.", "map": "de_dust2", "difficulty": "hard"}
+{"id": "map-011", "category": "map_tactics", "question": "On Anubis, what is the best CT retake approach for A site when the bomb is planted behind statue?", "map": "de_anubis", "difficulty": "hard"}
+{"id": "map-012", "category": "map_tactics", "question": "On Nuke, the T has ramp control. As CT, should you retake ramp or play for a B retake?", "map": "de_nuke", "difficulty": "hard"}
+{"id": "map-013", "category": "map_tactics", "question": "On Overpass, your team is CT with 2 on A and 1 connector. Where should the AWP play by default?", "map": "de_overpass", "difficulty": "easy"}
+{"id": "map-014", "category": "map_tactics", "question": "On Ancient, describe the optimal CT B defense setup with 2 players.", "map": "de_ancient", "difficulty": "medium"}
+{"id": "map-015", "category": "map_tactics", "question": "On Mirage, your team won mid control. What is the highest-percentage play from here?", "map": "de_mirage", "difficulty": "medium"}
+{"id": "map-016", "category": "map_tactics", "question": "On Inferno, explain how to fake B and rotate to A. How long should the fake commitment be?", "map": "de_inferno", "difficulty": "medium"}
+{"id": "map-017", "category": "map_tactics", "question": "On Dust2, what is the standard CT A defense setup and which positions form the crossfire?", "map": "de_dust2", "difficulty": "easy"}
+{"id": "map-018", "category": "map_tactics", "question": "On Nuke, explain the vent drop play during a T A execute. Timing, risk, and when to use it.", "map": "de_nuke", "difficulty": "hard"}
+{"id": "map-019", "category": "map_tactics", "question": "On Anubis, what utility do you need to take mid control as T and what does each piece do?", "map": "de_anubis", "difficulty": "medium"}
+{"id": "map-020", "category": "map_tactics", "question": "On Overpass, the T keeps pushing A long against your CT defense. What anti-strat do you run?", "map": "de_overpass", "difficulty": "medium"}
+{"id": "map-021", "category": "map_tactics", "question": "On Mirage, you are in a 2v2 CT retake on B. Bomb is planted for short. What is the optimal retake approach?", "map": "de_mirage", "difficulty": "hard"}
+{"id": "map-022", "category": "map_tactics", "question": "On Inferno, what are the two standard CT banana setups and when do you use each one?", "map": "de_inferno", "difficulty": "medium"}
+{"id": "map-023", "category": "map_tactics", "question": "On Dust2, the T team keeps rushing B through upper tunnels every round. What CT adjustment stops this?", "map": "de_dust2", "difficulty": "medium"}
+{"id": "map-024", "category": "map_tactics", "question": "On Ancient, what is the fastest T rotate from A cave to B main and how long does it take?", "map": "de_ancient", "difficulty": "medium"}
+{"id": "map-025", "category": "map_tactics", "question": "On Nuke, describe the outside smoke wall that T needs to cross safely. How many smokes and where?", "map": "de_nuke", "difficulty": "hard"}
+{"id": "map-026", "category": "map_tactics", "question": "On Overpass, explain the playground control play for T-side A splits.", "map": "de_overpass", "difficulty": "medium"}
+{"id": "map-027", "category": "map_tactics", "question": "On Mirage, what is the palace entry technique and how does it coordinate with an A ramp push?", "map": "de_mirage", "difficulty": "medium"}
+{"id": "map-028", "category": "map_tactics", "question": "On Inferno, you have a 3v5 as CT after losing banana. What is the optimal save or retake decision?", "map": "de_inferno", "difficulty": "hard"}
+{"id": "map-029", "category": "map_tactics", "question": "On Anubis, describe the water approach to B site. When is it better than canal?", "map": "de_anubis", "difficulty": "medium"}
+{"id": "map-030", "category": "map_tactics", "question": "On Dust2, what is the one-way smoke from xbox and how do you use it for mid control?", "map": "de_dust2", "difficulty": "medium"}
+{"id": "map-031", "category": "map_tactics", "question": "On Nuke, the CT is playing 3 inside and 2 outside. How should T exploit the outside weakness?", "map": "de_nuke", "difficulty": "medium"}
+{"id": "map-032", "category": "map_tactics", "question": "On Overpass, describe the CT B retake approach from CT spawn when monster is still held by T.", "map": "de_overpass", "difficulty": "hard"}
+{"id": "map-033", "category": "map_tactics", "question": "On Ancient, what does an effective T-side mid default look like in the first 30 seconds?", "map": "de_ancient", "difficulty": "medium"}
+{"id": "map-034", "category": "map_tactics", "question": "On Mirage, how does the underpass lurk work during A executes and what is the ideal timing?", "map": "de_mirage", "difficulty": "medium"}
+{"id": "map-035", "category": "map_tactics", "question": "On Inferno, your support player has one smoke and one flash left for retake. Where does each go?", "map": "de_inferno", "difficulty": "hard"}
+{"id": "map-036", "category": "map_tactics", "question": "On Dust2, explain the A long entry with flash technique. What wall do you bounce the flash off?", "map": "de_dust2", "difficulty": "medium"}
+{"id": "map-037", "category": "map_tactics", "question": "On Nuke, what are the differences between holding B from ramp versus holding from back site?", "map": "de_nuke", "difficulty": "medium"}
+{"id": "map-038", "category": "map_tactics", "question": "On Anubis, the CT rotations are very fast through mid. How long must a T fake commit to draw a rotation?", "map": "de_anubis", "difficulty": "medium"}
+{"id": "map-039", "category": "map_tactics", "question": "On Overpass, what is the bathroom lurk and how does it work during B executes?", "map": "de_overpass", "difficulty": "medium"}
+{"id": "map-040", "category": "map_tactics", "question": "On Ancient, describe the optimal CT A site retake when bomb is planted behind temple wall.", "map": "de_ancient", "difficulty": "hard"}
+{"id": "eco-001", "category": "economy", "question": "Your team is down 0-3. You have $1750 each. Should you force buy, half buy, or full save? Why?", "difficulty": "medium"}
+{"id": "eco-002", "category": "economy", "question": "What is the CS2 loss bonus progression? How much does a team earn after 5 consecutive losses?", "difficulty": "easy"}
+{"id": "eco-003", "category": "economy", "question": "You won the pistol round. What should your team buy in round 2 and why?", "difficulty": "easy"}
+{"id": "eco-004", "category": "economy", "question": "Your AWP player has $4750 but the team average is $3200. Should they buy the AWP or a rifle with utility?", "difficulty": "medium"}
+{"id": "eco-005", "category": "economy", "question": "Explain the double eco into full buy strategy. When is it better than a single force into eco?", "difficulty": "medium"}
+{"id": "eco-006", "category": "economy", "question": "Your team has $16000 max economy. What is the optimal way to spend it to help teammates?", "difficulty": "easy"}
+{"id": "eco-007", "category": "economy", "question": "On an anti-eco round, should you use rifles or SMGs? What are the kill reward differences?", "difficulty": "medium"}
+{"id": "eco-008", "category": "economy", "question": "Your team lost pistol and the second round force buy. What is the standard strategy for round 3?", "difficulty": "medium"}
+{"id": "eco-009", "category": "economy", "question": "The enemy just lost 3 rounds in a row. What is their expected economy and what should you prepare for?", "difficulty": "hard"}
+{"id": "eco-010", "category": "economy", "question": "Your team is CT on an eco round. One player saved a rifle. Who should get it and why?", "difficulty": "medium"}
+{"id": "eco-011", "category": "economy", "question": "Explain pistol round buy strategy for T-side. Armor vs utility tradeoff.", "difficulty": "medium"}
+{"id": "eco-012", "category": "economy", "question": "You are 12-13 down with $2400 each. Force buy or save for a full buy at 12-14?", "difficulty": "hard"}
+{"id": "eco-013", "category": "economy", "question": "What is the economic impact of losing an AWP on a lost round? Quantify the team economy damage.", "difficulty": "hard"}
+{"id": "eco-014", "category": "economy", "question": "Your support player has $4200. Should they buy M4 with no utility or FAMAS with full utility?", "difficulty": "medium"}
+{"id": "eco-015", "category": "economy", "question": "Explain the concept of economic damage on a force buy round. What is the goal besides winning?", "difficulty": "medium"}
+{"id": "eco-016", "category": "economy", "question": "When should the IGL call a force buy versus a full save? Give 3 specific criteria.", "difficulty": "hard"}
+{"id": "eco-017", "category": "economy", "question": "The enemy has been forcing every round after losing. How does this affect your CT economy planning?", "difficulty": "hard"}
+{"id": "eco-018", "category": "economy", "question": "On a half-buy round with $2800, what is the best weapon and utility combination for T-side?", "difficulty": "medium"}
+{"id": "eco-019", "category": "economy", "question": "Your team has 4 rifles saved from a lost round. Should you force with these rifles or save and add utility?", "difficulty": "hard"}
+{"id": "eco-020", "category": "economy", "question": "What is the break point economy where forcing is mathematically better than saving? Explain the calculation.", "difficulty": "hard"}
+{"id": "eco-021", "category": "economy", "question": "On a save round, how many players should attempt exit frags and how many should hide?", "difficulty": "medium"}
+{"id": "eco-022", "category": "economy", "question": "Explain how defuse kit purchasing should be distributed across the CT team on buy rounds.", "difficulty": "medium"}
+{"id": "eco-023", "category": "economy", "question": "The bomb was planted on your eco round and 2 Ts died. Should the surviving Ts save or play for the round?", "difficulty": "hard"}
+{"id": "eco-024", "category": "economy", "question": "Your lurker saved an AK from a lost round but your star player has only a pistol. Who gets the AK?", "difficulty": "medium"}
+{"id": "eco-025", "category": "economy", "question": "What is the cost difference between a Galil force buy and a full AK buy? When does each make sense?", "difficulty": "easy"}
+{"id": "eco-026", "category": "economy", "question": "Explain the round 2 after pistol loss economy for CT side. What can you afford?", "difficulty": "medium"}
+{"id": "eco-027", "category": "economy", "question": "Your team is T on 9-6. Two players have $7000+, three have $3500. Plan the team buy.", "difficulty": "hard"}
+{"id": "eco-028", "category": "economy", "question": "When should a CT player buy a P250 instead of keeping the default USP-S?", "difficulty": "easy"}
+{"id": "eco-029", "category": "economy", "question": "How does the MP9 kill reward compare to an M4 kill reward? When does this matter for team economy?", "difficulty": "medium"}
+{"id": "eco-030", "category": "economy", "question": "Your team is T and won 4 rounds in a row. The CT keeps saving. What economic advantage do you press?", "difficulty": "medium"}
+{"id": "eco-031", "category": "economy", "question": "Explain why buying a helmet on CT full buy is important even though AK headshot is always a kill.", "difficulty": "medium"}
+{"id": "eco-032", "category": "economy", "question": "You have $5500 on CT. M4A1-S or M4A4? Factor in economy and playstyle.", "difficulty": "medium"}
+{"id": "eco-033", "category": "economy", "question": "A teammate disconnected for 2 rounds and reconnected with $800. How should the team handle their economy?", "difficulty": "hard"}
+{"id": "eco-034", "category": "economy", "question": "What is the optimal pistol round buy for CT side on Nuke versus Mirage? Do they differ and why?", "difficulty": "hard"}
+{"id": "eco-035", "category": "economy", "question": "Explain the deagle eco round strategy. When to buy it and how to play it.", "difficulty": "medium"}
+{"id": "eco-036", "category": "economy", "question": "Your team is 14-14 in overtime. Everyone has $10000. What is the optimal buy?", "difficulty": "easy"}
+{"id": "eco-037", "category": "economy", "question": "The enemy AWPer has been getting 3+ kills per round. Should you buy more utility or rifles to counter?", "difficulty": "hard"}
+{"id": "eco-038", "category": "economy", "question": "Explain how the bomb plant bonus affects T-side economy on an otherwise lost round.", "difficulty": "medium"}
+{"id": "eco-039", "category": "economy", "question": "Is it ever correct to drop a weapon to an enemy on a lost save round to deny the kill reward? Explain.", "difficulty": "hard"}
+{"id": "eco-040", "category": "economy", "question": "You are CT with $3100. You can buy: FAMAS+kevlar, MP9+full util+kevlar, or save. Which and why?", "difficulty": "medium"}
+{"id": "mid-001", "category": "mid_round", "question": "Your entry fragger just got a pick on A. It is 5v4 with 1:15 left. Should you fast execute A or slow it down?", "difficulty": "medium"}
+{"id": "mid-002", "category": "mid_round", "question": "You are CT and hear 4 footsteps at B. One teammate is rotating from A. Should you wait or retake now?", "difficulty": "medium"}
+{"id": "mid-003", "category": "mid_round", "question": "The T team has used 4 smokes and 3 flashes on A but has not executed. Is this a fake?", "difficulty": "hard"}
+{"id": "mid-004", "category": "mid_round", "question": "It is 3v3, bomb not planted, 0:45 remaining. You are T. What is the optimal play?", "difficulty": "hard"}
+{"id": "mid-005", "category": "mid_round", "question": "Your team got an entry frag but the entry fragger died. It is 4v4. Should you trade or pull back?", "difficulty": "medium"}
+{"id": "mid-006", "category": "mid_round", "question": "It is 2v4 as CT, bomb not planted, 0:50 left. Should you play aggressive or passive?", "difficulty": "medium"}
+{"id": "mid-007", "category": "mid_round", "question": "The T team has been defaulting for 40 seconds with no utility used. What information can you infer?", "difficulty": "hard"}
+{"id": "mid-008", "category": "mid_round", "question": "You are IGL on T-side. Your lurker reports 2 CTs rotating through mid. What do you call?", "difficulty": "medium"}
+{"id": "mid-009", "category": "mid_round", "question": "It is a 1v1, you are T with bomb planted for 20 seconds. The CT has a defuse kit. What do you do?", "difficulty": "medium"}
+{"id": "mid-010", "category": "mid_round", "question": "Your team won the first 3 rounds. The enemy is forcing. What mid-round adjustments prevent an upset?", "difficulty": "medium"}
+{"id": "mid-011", "category": "mid_round", "question": "As CT, you have a 4v3 advantage with bomb not planted. Explain the correct way to play this.", "difficulty": "medium"}
+{"id": "mid-012", "category": "mid_round", "question": "The T team is running and gunning through your smokes. How do you adapt your defense mid-round?", "difficulty": "hard"}
+{"id": "mid-013", "category": "mid_round", "question": "You are T-side and the clock hits 0:30 with no bomb plant. Analyze your options.", "difficulty": "hard"}
+{"id": "mid-014", "category": "mid_round", "question": "Your teammate gets a 2K in the first 15 seconds. How does this change the round approach?", "difficulty": "medium"}
+{"id": "mid-015", "category": "mid_round", "question": "When should a CT rotate based on sound cues alone versus waiting for visual confirmation?", "difficulty": "hard"}
+{"id": "mid-016", "category": "mid_round", "question": "The T team has been hitting the same site for 3 rounds. Should you stack it or play default?", "difficulty": "medium"}
+{"id": "mid-017", "category": "mid_round", "question": "It is 3v5 as T with bomb. Where do you plant and how do you set up the post-plant?", "difficulty": "hard"}
+{"id": "mid-018", "category": "mid_round", "question": "Your AWPer is getting aggressive picks but dying 40% of the time. Should you change the approach mid-half?", "difficulty": "medium"}
+{"id": "mid-019", "category": "mid_round", "question": "The enemy IGL called a timeout after your 4th round win. What adjustments should you expect?", "difficulty": "hard"}
+{"id": "mid-020", "category": "mid_round", "question": "You hear a bomb plant on A from CT spawn. Describe the optimal rotation and retake timing.", "difficulty": "medium"}
+{"id": "mid-021", "category": "mid_round", "question": "It is 2v2 post-plant as T. Both CTs are alive but you do not know their positions. How do you play?", "difficulty": "hard"}
+{"id": "mid-022", "category": "mid_round", "question": "Your team is on a 5-round losing streak as CT. What tactical and mental adjustments should you make?", "difficulty": "medium"}
+{"id": "mid-023", "category": "mid_round", "question": "The T lurker gets a kill behind your rotate path. How do you adapt for the rest of the round?", "difficulty": "hard"}
+{"id": "mid-024", "category": "mid_round", "question": "You are T and the CT just pushed out of the site aggressively. Do you punish or reset?", "difficulty": "medium"}
+{"id": "mid-025", "category": "mid_round", "question": "Explain the concept of time management on T-side. When should you plant the bomb relative to the timer?", "difficulty": "medium"}
+{"id": "mid-026", "category": "mid_round", "question": "It is a 1v3 as CT, bomb planted, you have a defuse kit. Calculate whether you have time to defuse.", "difficulty": "hard"}
+{"id": "mid-027", "category": "mid_round", "question": "Your team gets a pick but the killed player called the position. How does the enemy adaptation change your plan?", "difficulty": "hard"}
+{"id": "mid-028", "category": "mid_round", "question": "When should a CT player aggressively push out of their site versus holding passive?", "difficulty": "medium"}
+{"id": "mid-029", "category": "mid_round", "question": "The T team is defaulting and your info player died early. How do you defend without information?", "difficulty": "hard"}
+{"id": "mid-030", "category": "mid_round", "question": "It is 4v4, the T has bomb control, and 1:00 left on the clock. Break down the decision tree.", "difficulty": "hard"}
+{"id": "mid-031", "category": "mid_round", "question": "Your team has a number advantage but the enemy has better positioning. Trade time for position or push?", "difficulty": "hard"}
+{"id": "mid-032", "category": "mid_round", "question": "Explain what triggers should an IGL set before each round for mid-round adaptation.", "difficulty": "medium"}
+{"id": "mid-033", "category": "mid_round", "question": "You are in a 1v1 as CT without a kit. Bomb was planted 25 seconds ago. What is your play?", "difficulty": "medium"}
+{"id": "mid-034", "category": "mid_round", "question": "The T team is splitting your defense every round. What defensive adjustment counters splits?", "difficulty": "medium"}
+{"id": "mid-035", "category": "mid_round", "question": "Your flash blinded a teammate during the execute. How do you recover the round?", "difficulty": "medium"}
+{"id": "mid-036", "category": "mid_round", "question": "It is 3v3, bomb not planted, 0:20 left. You are T. Rush or save?", "difficulty": "hard"}
+{"id": "mid-037", "category": "mid_round", "question": "The CT molly and smoke have just faded on your B push. Should you wait for them to reposition or push now?", "difficulty": "medium"}
+{"id": "mid-038", "category": "mid_round", "question": "Your teammate reports hearing a defuse but you cannot see the bomb. Should you peek?", "difficulty": "medium"}
+{"id": "mid-039", "category": "mid_round", "question": "Explain the difference between taking fights for information versus taking fights for kills mid-round.", "difficulty": "medium"}
+{"id": "mid-040", "category": "mid_round", "question": "Your team has been playing too slow and losing rounds to the clock. What mid-round pace changes help?", "difficulty": "medium"}
+{"id": "pro-001", "category": "pro_knowledge", "question": "How does ZywOo's AWP positioning on Dust2 long differ from s1mple's? What can a player learn from each style?", "difficulty": "hard"}
+{"id": "pro-002", "category": "pro_knowledge", "question": "What makes donk's playstyle unique compared to other young star players like m0NESY?", "difficulty": "hard"}
+{"id": "pro-003", "category": "pro_knowledge", "question": "Describe NiKo's role in the current Falcons roster. How does his positioning compare to his FaZe era?", "difficulty": "hard"}
+{"id": "pro-004", "category": "pro_knowledge", "question": "What is karrigan's IGL style and how does it differ from other IGLs like Aleksib or gla1ve?", "difficulty": "hard"}
+{"id": "pro-005", "category": "pro_knowledge", "question": "Which team is currently ranked #1 in the world and what is their primary map pool?", "difficulty": "easy"}
+{"id": "pro-006", "category": "pro_knowledge", "question": "What makes ropz's positioning on Mirage A site different from the average pro player?", "difficulty": "hard"}
+{"id": "pro-007", "category": "pro_knowledge", "question": "Describe the current Natus Vincere roster and their playstyle in 2026.", "difficulty": "medium"}
+{"id": "pro-008", "category": "pro_knowledge", "question": "What is the typical headshot percentage for a tier-1 entry fragger versus a support player?", "difficulty": "medium"}
+{"id": "pro-009", "category": "pro_knowledge", "question": "How does FURIA's aggressive T-side style work and what maps does it suit best?", "difficulty": "medium"}
+{"id": "pro-010", "category": "pro_knowledge", "question": "Explain the concept of KAST rating. What is a good KAST percentage for a tier-1 player?", "difficulty": "medium"}
+{"id": "pro-011", "category": "pro_knowledge", "question": "Who are the top 3 AWPers in CS2 right now and how do their stats compare?", "difficulty": "medium"}
+{"id": "pro-012", "category": "pro_knowledge", "question": "What is the difference between Rating 2.0 and traditional K/D ratio? Why does HLTV use Rating 2.0?", "difficulty": "medium"}
+{"id": "pro-013", "category": "pro_knowledge", "question": "How does Vitality play Anubis? What is their default CT setup?", "difficulty": "hard"}
+{"id": "pro-014", "category": "pro_knowledge", "question": "What is the typical ADR (average damage per round) for a tier-1 player? How about tier-3?", "difficulty": "easy"}
+{"id": "pro-015", "category": "pro_knowledge", "question": "Explain how a support player's value is different from their K/D ratio. Use a pro example.", "difficulty": "medium"}
+{"id": "pro-016", "category": "pro_knowledge", "question": "What tournament circuit does competitive CS2 follow in 2026? BLAST, ESL Pro League, Majors?", "difficulty": "medium"}
+{"id": "pro-017", "category": "pro_knowledge", "question": "How does sh1ro's playstyle differ when playing CT versus T side?", "difficulty": "hard"}
+{"id": "pro-018", "category": "pro_knowledge", "question": "What is the average opening duel win percentage for professional entry fraggers?", "difficulty": "medium"}
+{"id": "pro-019", "category": "pro_knowledge", "question": "Describe how MOUZ plays Mirage. What makes their mid control different?", "difficulty": "hard"}
+{"id": "pro-020", "category": "pro_knowledge", "question": "Which pro player would you study to learn lurking? Why?", "difficulty": "medium"}
+{"id": "pro-021", "category": "pro_knowledge", "question": "What is the average round win rate for tier-1 CT sides across all maps? How about T sides?", "difficulty": "medium"}
+{"id": "pro-022", "category": "pro_knowledge", "question": "How did the Nuke meta change from 2024 to 2026 in professional play?", "difficulty": "hard"}
+{"id": "pro-023", "category": "pro_knowledge", "question": "What are the key statistics that differentiate an IGL from other players in a team?", "difficulty": "medium"}
+{"id": "pro-024", "category": "pro_knowledge", "question": "Name 3 pro players known for clutching and explain what makes them effective in 1vX situations.", "difficulty": "hard"}
+{"id": "pro-025", "category": "pro_knowledge", "question": "How does frozen's entry fragging style complement ropz's anchoring on Vitality?", "difficulty": "hard"}
+{"id": "pro-026", "category": "pro_knowledge", "question": "What is the trade kill ratio and how does it compare between tier-1 and tier-3 teams?", "difficulty": "medium"}
+{"id": "pro-027", "category": "pro_knowledge", "question": "Which maps are considered CT-sided in the current meta and which are T-sided?", "difficulty": "medium"}
+{"id": "pro-028", "category": "pro_knowledge", "question": "Explain what impact rating measures in HLTV stats. How is it different from plain kills?", "difficulty": "medium"}
+{"id": "pro-029", "category": "pro_knowledge", "question": "What is Spirit's approach to Nuke and why are they considered one of the best Nuke teams?", "difficulty": "hard"}
+{"id": "pro-030", "category": "pro_knowledge", "question": "How does the current Astralis roster compare to the legendary 2018-2019 Astralis era?", "difficulty": "hard"}
+{"id": "pro-031", "category": "pro_knowledge", "question": "What is the average utility damage per round for a top support player?", "difficulty": "medium"}
+{"id": "pro-032", "category": "pro_knowledge", "question": "Which pro player has the best KAST rating across 2025-2026 and what does that tell us?", "difficulty": "hard"}
+{"id": "pro-033", "category": "pro_knowledge", "question": "Describe the differences between European and CIS (Russian/Ukrainian) playstyles in CS2.", "difficulty": "hard"}
+{"id": "pro-034", "category": "pro_knowledge", "question": "What role does the coach play in professional CS2 and how has it changed since the coaching bug era?", "difficulty": "medium"}
+{"id": "pro-035", "category": "pro_knowledge", "question": "How does b1t's role in NaVi differ from his early career?", "difficulty": "hard"}
+{"id": "pro-036", "category": "pro_knowledge", "question": "What is the Esports World Cup and how does it fit into the CS2 competitive calendar?", "difficulty": "easy"}
+{"id": "pro-037", "category": "pro_knowledge", "question": "Compare G2's aggressive playstyle with Vitality's more structured approach.", "difficulty": "hard"}
+{"id": "pro-038", "category": "pro_knowledge", "question": "What makes a good map veto strategy? How do teams like FaZe approach the veto?", "difficulty": "hard"}
+{"id": "pro-039", "category": "pro_knowledge", "question": "What is the significance of 1v1 clutch win rate as a player statistic?", "difficulty": "medium"}
+{"id": "pro-040", "category": "pro_knowledge", "question": "How does the Flash Assist statistic work and why is it important for evaluating support players?", "difficulty": "medium"}
+{"id": "mech-001", "category": "mechanics", "question": "Explain the CS2 sub-tick system. How does it change peeking compared to CSGO?", "difficulty": "hard"}
+{"id": "mech-002", "category": "mechanics", "question": "What is counter-strafing and why is it essential for accurate shooting in CS2?", "difficulty": "easy"}
+{"id": "mech-003", "category": "mechanics", "question": "Describe the AK-47 spray pattern for the first 10 bullets. How should you compensate?", "difficulty": "medium"}
+{"id": "mech-004", "category": "mechanics", "question": "What is the peeker's advantage in online CS2 and how do you counter it as a defender?", "difficulty": "medium"}
+{"id": "mech-005", "category": "mechanics", "question": "Explain the difference between a pop flash and a regular flash. How do you throw each?", "difficulty": "easy"}
+{"id": "mech-006", "category": "mechanics", "question": "What is the exact bomb timer in CS2? How long is a defuse with and without a kit?", "difficulty": "easy"}
+{"id": "mech-007", "category": "mechanics", "question": "Explain the jiggle peek technique. When should you use it and what information does it give?", "difficulty": "medium"}
+{"id": "mech-008", "category": "mechanics", "question": "How does the wide angle vs tight angle advantage work in CS2? Which player sees the other first?", "difficulty": "medium"}
+{"id": "mech-009", "category": "mechanics", "question": "What is the smoke extinguish mechanic in CS2? Can you throw a smoke on a molotov?", "difficulty": "easy"}
+{"id": "mech-010", "category": "mechanics", "question": "Explain burst fire versus spray at different ranges. When should you use each?", "difficulty": "medium"}
+{"id": "mech-011", "category": "mechanics", "question": "What is the first bullet accuracy of the AK-47 while standing still vs moving? Quantify the difference.", "difficulty": "hard"}
+{"id": "mech-012", "category": "mechanics", "question": "How does the AWP scoping work? Quick-scope vs hard-scope vs no-scope — when to use each?", "difficulty": "medium"}
+{"id": "mech-013", "category": "mechanics", "question": "Explain how sound works in CS2. What is the hearing radius and what sounds can enemies hear?", "difficulty": "medium"}
+{"id": "mech-014", "category": "mechanics", "question": "What is a headglitch position and why does it give an advantage?", "difficulty": "easy"}
+{"id": "mech-015", "category": "mechanics", "question": "How does the M4A1-S compare to the M4A4 in CS2? Damage, fire rate, accuracy, magazine size.", "difficulty": "medium"}
+{"id": "mech-016", "category": "mechanics", "question": "Explain the shoulder peek. What is the purpose and what should your crosshair placement be?", "difficulty": "medium"}
+{"id": "mech-017", "category": "mechanics", "question": "What is the running accuracy of SMGs versus rifles in CS2? How does this affect eco rounds?", "difficulty": "medium"}
+{"id": "mech-018", "category": "mechanics", "question": "How do molotovs work in CS2? Spread area, duration, damage per tick, and line-of-sight rules.", "difficulty": "hard"}
+{"id": "mech-019", "category": "mechanics", "question": "Explain how the CS2 grenade damage model works. How does distance affect HE grenade damage?", "difficulty": "hard"}
+{"id": "mech-020", "category": "mechanics", "question": "What is the optimal warmup routine before competitive play? Duration and exercises.", "difficulty": "medium"}
+{"id": "mech-021", "category": "mechanics", "question": "How does sensitivity affect aim in CS2? What range do most professionals play at?", "difficulty": "medium"}
+{"id": "mech-022", "category": "mechanics", "question": "Explain the concept of spray transfer. When should you transfer versus reset and retap?", "difficulty": "medium"}
+{"id": "mech-023", "category": "mechanics", "question": "How long does a CS2 flashbang blind last at full effect? How about at the edge of the flash?", "difficulty": "medium"}
+{"id": "mech-024", "category": "mechanics", "question": "What is the bunny hop mechanic in CS2? Does it still work and when is it useful?", "difficulty": "medium"}
+{"id": "mech-025", "category": "mechanics", "question": "Explain the concept of crosshair placement. Where should your crosshair be when moving through the map?", "difficulty": "easy"}
+{"id": "mech-026", "category": "mechanics", "question": "How does armor damage reduction work in CS2? What is the difference between kevlar only vs kevlar+helmet?", "difficulty": "medium"}
+{"id": "mech-027", "category": "mechanics", "question": "What is the movement speed difference between walking, running, and running with different weapons?", "difficulty": "hard"}
+{"id": "mech-028", "category": "mechanics", "question": "Explain how the decoy grenade works in CS2. Does it show on the enemy radar?", "difficulty": "easy"}
+{"id": "mech-029", "category": "mechanics", "question": "How does the bomb plant mechanic work? Can you plant while crouched? Does it change the animation time?", "difficulty": "medium"}
+{"id": "mech-030", "category": "mechanics", "question": "What is the tagging mechanic in CS2? How does getting hit affect your movement speed?", "difficulty": "hard"}
+{"id": "mech-031", "category": "mechanics", "question": "Explain the mechanics of a flash assist in CS2. How close does the flash need to be to count?", "difficulty": "medium"}
+{"id": "mech-032", "category": "mechanics", "question": "How do smoke grenades work in CS2? Duration, one-way visibility, and how players can exploit them.", "difficulty": "medium"}
+{"id": "mech-033", "category": "mechanics", "question": "What is the Deagle accuracy reset time? How long should you wait between shots for accuracy?", "difficulty": "hard"}
+{"id": "mech-034", "category": "mechanics", "question": "Explain the trade kill mechanic. What is the time window for a kill to count as a trade?", "difficulty": "medium"}
+{"id": "mech-035", "category": "mechanics", "question": "How does the Zeus (taser) work? Range, damage, and when it makes sense to buy one.", "difficulty": "easy"}
+{"id": "mech-036", "category": "mechanics", "question": "What movement techniques can you use to make yourself harder to hit while peeking?", "difficulty": "medium"}
+{"id": "mech-037", "category": "mechanics", "question": "Explain the concept of angle isolation. How do you clear one angle at a time when entering a site?", "difficulty": "medium"}
+{"id": "mech-038", "category": "mechanics", "question": "How does the AK-47 one-tap damage compare to the M4A4 at different ranges? Why does this matter?", "difficulty": "medium"}
+{"id": "mech-039", "category": "mechanics", "question": "What is the difference between the Galil and the AK-47 in CS2? When is the Galil the right choice?", "difficulty": "medium"}
+{"id": "mech-040", "category": "mechanics", "question": "Explain how elevation gives an advantage in CS2 duels. What is the head-level offset at different heights?", "difficulty": "hard"}
