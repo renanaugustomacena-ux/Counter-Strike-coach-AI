@@ -2960,7 +2960,14 @@ See Section 40 (Dependency Audit) for the full license matrix.
 | KT-10 | Approx. Equivariance | Bombsite-relative coordinate encoding | OPEN | 2 days |
 | KT-11 | Robust PPI | Demo quality scoring via Huber contamination model | OPEN | 1 day |
 
-**Total engineering effort: ~25 hours. Research backlog: ~15 days (phased across releases).**
+**Remaining engineering effort: ~18 hours (type safety + refactoring + UI). Research backlog: ~15 days (phased across releases).**
+
+**Deferred to next session (multi-hour items requiring focused attention):**
+- SA-14-19: Type checker issues across 6 files (~73 annotations, ~7 hrs)
+- WR-39: round_stats_builder refactor (334 lines, 4+ hrs)
+- WR-10: SBERT download progress bar (2 days)
+- WR-84: REST API Console integration (2-3 days)
+- DL-1: DataLineage audit trail (2 hrs)
 
 ---
 
