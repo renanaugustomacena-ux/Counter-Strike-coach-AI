@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Generator, Type, TypeVar
 
 import sqlalchemy
+from sqlalchemy import delete as sa_delete
 from sqlalchemy import event
 from sqlmodel import Session, SQLModel, create_engine, select
 
@@ -251,18 +252,17 @@ class DatabaseManager:
                 (PlayerMatchStats, PlayerMatchStats.demo_name, demo_name),
                 (CoachingInsight, CoachingInsight.demo_name, demo_name),
             ]:
-                deleted = session.query(model).filter(col == val).delete(synchronize_session=False)
-                if deleted:
-                    result["tables_cleared"].append(f"{model.__tablename__}({deleted})")
+                del_result = session.exec(sa_delete(model).where(col == val))
+                deleted_count = del_result.rowcount
+                if deleted_count:
+                    result["tables_cleared"].append(f"{model.__tablename__}({deleted_count})")
 
             # Parent table
-            deleted = (
-                session.query(MatchResult)
-                .filter(MatchResult.match_id == match_id)
-                .delete(synchronize_session=False)
+            del_result = session.exec(
+                sa_delete(MatchResult).where(MatchResult.match_id == match_id)
             )
-            if deleted:
-                result["tables_cleared"].append(f"matchresult({deleted})")
+            if del_result.rowcount:
+                result["tables_cleared"].append(f"matchresult({del_result.rowcount})")
 
         # Delete per-match DB file
         try:
