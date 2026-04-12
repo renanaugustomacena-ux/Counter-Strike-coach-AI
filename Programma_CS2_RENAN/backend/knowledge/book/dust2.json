@@ -143,6 +143,182 @@
       "situation": "T A plant location",
       "map_name": "de_dust2",
       "pro_example": "Pro meta: behind-goose plant has highest post-plant WR on Dust2 A"
+    },
+    {
+      "title": "Dust2 anti-strat: counter long aggression with smoke + molly",
+      "description": "If the T keeps pushing long aggressively, smoke long doors and molly the corner behind it. The smoke blocks vision while the molly punishes anyone standing behind it. This 2-utility combo denies long control for 15+ seconds, forcing the T to waste time.",
+      "category": "anti_strat",
+      "situation": "CT defending against repeated long pushes on Dust2",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: smoke + molly long doors denies T long control ~80% of the time"
+    },
+    {
+      "title": "Dust2 anti-strat: counter B rush with tunnels molly",
+      "description": "If the T keeps rushing B through tunnels, molly the tunnels exit at round start. This forces the rush to wait or run through fire. Follow with a flash from plat to counter-peek the damaged rushers. The molly costs $400 and denies the fastest T strat.",
+      "category": "anti_strat",
+      "situation": "CT defending against B tunnel rushes on Dust2",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: tunnels exit molly drops B rush success from ~55% to ~25%"
+    },
+    {
+      "title": "Dust2 entry: long doors entry with flash",
+      "description": "Entry through long doors requires a pop flash that bounces off the right wall and blinds pit. Push immediately after the flash — the pit player is either blind or has turned away. Never dry peek long doors; the pit AWP wins every dry duel.",
+      "category": "role_play_entry",
+      "situation": "Entry fragger on Dust2 long push",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: flash-assisted long entry wins ~58% vs ~30% dry peek against pit"
+    },
+    {
+      "title": "Dust2 AWP: mid doors pick from T spawn",
+      "description": "The T AWP can pick through mid doors from T spawn in the first 5 seconds. Pre-aim the gap at head level and time the peek to catch the CT crossing from B to A. This is the iconic Dust2 AWP play — high risk, high reward.",
+      "category": "role_play_awp",
+      "situation": "T AWP opening play on Dust2 mid",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: mid doors T AWP pick hits ~25% of the time; the economic impact is massive when it lands"
+    },
+    {
+      "title": "Dust2 lurk: long lurk during B execute",
+      "description": "When the team executes B through tunnels, the lurker holds long doors. CTs rotating from A through CT mid walk past the long sightline. The lurk timing is 8-10 seconds after the B smoke lands.",
+      "category": "role_play_lurk",
+      "situation": "Lurker on Dust2 T-side during B execute",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: long lurk catches A-to-B rotators ~40% of the time on Dust2"
+    },
+    {
+      "title": "Dust2 support: tunnels flash for B entry",
+      "description": "The support player on Dust2 B executes throws the tunnels flash — a pop flash that bounces off the upper wall and blinds the B doors player. Time it to pop as the entry fragger exits tunnels. This flash is the single highest-impact support utility on Dust2.",
+      "category": "role_play_support",
+      "situation": "Support player on Dust2 B execute",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: tunnels pop flash enables ~65% of successful B entries on Dust2"
+    },
+    {
+      "title": "Dust2 clutch: 1v1 A site — plant for long, hold from short",
+      "description": "In a 1v1 as T on Dust2 A, plant the bomb in the open (exposed to long and short). Then hold from short — the CT must run across the open site to defuse. If they come from long, you see them crossing; if from short, you are already there.",
+      "category": "clutch_play",
+      "situation": "1v1 clutch on Dust2 A as T",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: short-angle plant on Dust2 A wins ~55% of 1v1 T clutches"
+    },
+    {
+      "title": "Dust2: CT aggressive short push for info",
+      "description": "Sending one CT through cat/short early round can catch the T mid player off guard. If you get a kill, fall back immediately. If no one is there, you have confirmed they are on A long or B tunnels. The info changes the entire round.",
+      "category": "positioning",
+      "situation": "CT Dust2 need info on T setup",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: early CT cat push on Dust2 provides useful info ~55% of rounds"
+    },
+    {
+      "title": "Dust2: B retake from window with smoke tunnels",
+      "description": "CT retaking B should smoke tunnels (cuts the lurk and exit path) and push from window/door simultaneously. The smoke isolates the T players on site from reinforcements. With utility, B retake succeeds ~45% on Dust2.",
+      "category": "retakes_post_plant",
+      "situation": "CT retake B site on Dust2",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: tunnels smoke + coordinated push retake B ~45% on Dust2"
+    },
+    {
+      "title": "Dust2: T-side catwalk split to A",
+      "description": "Take catwalk control with a smoke + flash, then split A from short while 2 players push long simultaneously. The crossfire from long and short collapses the A defense. This is the highest-EV T call on Dust2 when you have mid control.",
+      "category": "mid_round",
+      "situation": "T-side Dust2, mid control secured",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: long + short A split has ~72% plant rate when both entries are synchronized"
+    },
+    {
+      "title": "Dust2 IGL: long vs short A commit timing read",
+      "description": "At the 0:30 mark, assess long doors info and mid control simultaneously. If long is contested and mid is free, commit short A. If long is open and mid is contested, commit long. Never split the call after 0:45 — choose one path and commit full utility.",
+      "category": "role_play_igl",
+      "situation": "T-side Dust2, IGL deciding A approach path",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: single-path A commits after clear reads win ~62% vs ~40% for split-path indecision on Dust2"
+    },
+    {
+      "title": "Dust2 support: A retake flash from CT spawn",
+      "description": "Save one flash for A retakes. Throw a CT-spawn pop flash that bounces off the back wall and blinds anyone on site facing short or long. Time the flash to pop as the retake stack pushes from short. This single flash raises A retake success by ~10 points.",
+      "category": "role_play_support",
+      "situation": "Support player holding utility for A retake on Dust2",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: CT spawn retake flash on Dust2 A raises success from ~45% to ~55%"
+    },
+    {
+      "title": "Dust2 clutch: 1v2 B site — plant for tunnels, hold window",
+      "description": "In a 1v2 on Dust2 B as T, plant for tunnels and fall back to window room. CTs retaking from door and CT must both expose themselves to reach the bomb. Window gives you sight on the bomb and cover from both approach angles. Force them to check you last.",
+      "category": "clutch_play",
+      "situation": "1v2 clutch on Dust2 B site as T",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: window room post-plant on Dust2 B wins ~24% of 1v2 T clutches"
+    },
+    {
+      "title": "Dust2 AWP: long cross pick from pit",
+      "description": "Hold the long cross from pit with the AWP. The pit angle covers the entire long corridor and catches Ts crossing from doors to A site. After the first kill, drop behind the pit wall — the T team will smoke or flash the angle. Repeeking the same angle costs the AWP ~35% of the time.",
+      "category": "role_play_awp",
+      "situation": "CT AWP holding long from pit on Dust2",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: pit AWP averages 0.8 long kills per half on Dust2"
+    },
+    {
+      "title": "Dust2 anti-strat: counter mid-to-B split with xbox push",
+      "description": "If the T keeps splitting B through mid, push one player aggressively through xbox at the 0:15 mark to contest mid control early. The xbox player trades or gathers info before the T mid split forms. Follow with a short flash from CT for the trading partner.",
+      "category": "anti_strat",
+      "situation": "CT losing B to mid-to-B splits on Dust2",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: early xbox contest disrupts T mid splits ~50% of the time on Dust2"
+    },
+    {
+      "title": "Dust2 entry: short A push with catwalk flash",
+      "description": "Entry through short A requires a catwalk flash — bounce it off the left wall so it pops at the top of short stairs. Push immediately after the flash. The short entry clears the crosshair angle and the close A site hold. Without the flash, the crosshair player kills entries ~55% of the time.",
+      "category": "role_play_entry",
+      "situation": "Entry fragger pushing short A on Dust2",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: catwalk flash short entry succeeds ~48% vs ~25% dry on Dust2"
+    },
+    {
+      "title": "Dust2 lurk: cat lurk during B execute",
+      "description": "When the team executes B through tunnels, lurk on cat near the xbox box. CTs rotating from A through CT mid pass the cat sightline. Time the peek for 6-8 seconds after the B execute starts. One kill here forces the CT into a 3v4 B retake.",
+      "category": "role_play_lurk",
+      "situation": "Lurker on T-side Dust2 during B execute, cat position",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: cat lurk catches A-to-B rotators ~38% of the time on Dust2"
+    },
+    {
+      "title": "Dust2 economy: anti-eco long control with SMGs",
+      "description": "On anti-eco rounds, push long aggressively with MP9s or MAC-10s. The long corridor forces eco players into aim duels at SMG-favorable range. Do not give eco players time to set up ambushes — the T spawn to long push should complete before 0:1:15.",
+      "category": "economy",
+      "situation": "Anti-eco round strategy on Dust2",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: aggressive long push on anti-eco wins ~75% on Dust2"
+    },
+    {
+      "title": "Dust2 positioning: B retake anchor from platform",
+      "description": "Hold B platform as the retake anchor. When the T plants, fall back behind platform box and wait for retake utility from your teammates before peeking. Platform anchor should never dry-peek a planted B — wait for the smoke on tunnels and the flash from window before pushing.",
+      "category": "positioning",
+      "situation": "CT B anchor waiting for retake on Dust2",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: patient platform anchor contributes to B retake in ~55% of rounds on Dust2"
+    },
+    {
+      "title": "Dust2 A retake: long push with utility for default plant",
+      "description": "Retake A from long doors with a smoke on goose and a flash over the wall. Push long while the goose smoke blocks the post-plant angle. This forces the T to reposition from the default plant spot, giving you a 2-second window to reach site. Coordinate with a short player for the crossfire.",
+      "category": "retakes_post_plant",
+      "situation": "CT retaking A from long on Dust2",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: long retake with goose smoke succeeds ~42% on Dust2 A"
+    },
+    {
+      "title": "Dust2 utility: mid doors one-way smoke from xbox",
+      "description": "Throw a one-way smoke on mid doors from the xbox position. The smoke lets you see T feet through mid doors while they cannot see you. Hold this angle with a rifle for 15 seconds — the one-way expires but typically catches 1 kill before fading. Do not hold it with an AWP — the narrow gap rewards rifles.",
+      "category": "utility",
+      "situation": "CT mid control with one-way smoke on Dust2",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: xbox one-way smoke catches mid crossers in ~30% of rounds on Dust2"
+    },
+    {
+      "title": "Dust2 mid-round: cat control after mid pick",
+      "description": "After winning a mid pick, take cat control within 5 seconds. Cat control splits the CT defense and creates a short-A threat that forces a rotate. Do not sit mid after a pick — the value decays every second. Push cat, clear the corner, and hold for the A commit call.",
+      "category": "mid_round",
+      "situation": "T-side Dust2, post-mid-pick cat control",
+      "map_name": "de_dust2",
+      "pro_example": "Pro meta: immediate cat push after mid pick raises A success by ~15 points on Dust2"
     }
   ]
 }

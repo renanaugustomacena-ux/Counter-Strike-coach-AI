@@ -143,6 +143,174 @@
       "situation": "T A plant location",
       "map_name": "de_ancient",
       "pro_example": "Pro meta: temple-wall plant has highest post-plant win rate on Ancient A"
+    },
+    {
+      "title": "Ancient anti-strat: counter A cave push with molly cave exit",
+      "description": "If the T keeps pushing A through cave, molly the cave exit at the 0:40 mark. This is when most cave pushes time their execute. The molly forces a 7-second delay and the CT can re-stack A. Follow with a flash from temple for the counter-peek.",
+      "category": "anti_strat",
+      "situation": "CT defending against repeated cave pushes on Ancient",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: timed cave exit molly reduces T A success to ~30%"
+    },
+    {
+      "title": "Ancient anti-strat: counter B main rush with smoke + crossfire",
+      "description": "If the T rushes B main, smoke the B main exit and play a crossfire behind it — one player site left, one player right. The smoke forces the T to push blind into a crossfire. This is the most effective anti-rush setup on Ancient B.",
+      "category": "anti_strat",
+      "situation": "CT defending against B main rushes on Ancient",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: smoke + crossfire B main reduces rush success to ~20%"
+    },
+    {
+      "title": "Ancient entry: mid push with double utility",
+      "description": "Entry through Ancient mid requires smoke + flash: smoke the CT mid angle, flash over for the peek. Mid on Ancient is the most contested area — dry pushes through mid die to the AWP ~60% of the time. Always use utility.",
+      "category": "role_play_entry",
+      "situation": "Entry fragger on Ancient mid push",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: utility-assisted mid entry on Ancient succeeds ~50% vs ~25% dry"
+    },
+    {
+      "title": "Ancient AWP: mid pillar AWP hold",
+      "description": "The CT AWP on Ancient holds mid from the pillar — it covers both T mid approaches and can rotate to either site in 5 seconds. The pillar provides cover for repositioning. This is the default AWP position on Ancient.",
+      "category": "role_play_awp",
+      "situation": "AWP player on CT Ancient, default position",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: mid pillar AWP on Ancient controls ~65% of T mid approach paths"
+    },
+    {
+      "title": "Ancient lurk: elbow lurk during A execute",
+      "description": "When the team executes A, the lurker holds elbow or connector. CTs rotating from B through mid pass the lurk position. Ancient has fast rotations — time the ambush for 6-8 seconds after the A execute smokes land.",
+      "category": "role_play_lurk",
+      "situation": "Lurker on T-side Ancient during A execute",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: elbow lurk catches rotating CTs ~40% of the time on Ancient"
+    },
+    {
+      "title": "Ancient support: A retake smoke cave + flash",
+      "description": "Support on Ancient CT should save a smoke and flash for A retakes. Smoke cave (cuts the lurk from T), flash from temple for the retake push. Without the cave smoke, the T lurker gets free kills on retaking CTs.",
+      "category": "role_play_support",
+      "situation": "Support player utility for Ancient A retake",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: A retake with cave smoke + flash succeeds ~50% on Ancient"
+    },
+    {
+      "title": "Ancient clutch: 1v2 B site — use ramp angle",
+      "description": "In a 1v2 on Ancient B as T post-plant, hold from ramp. The ramp angle watches the defuse from range and has cover from the B main approach. CTs have to clear ramp last because it is the deepest angle on the site.",
+      "category": "clutch_play",
+      "situation": "1v2 clutch on Ancient B as T",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: ramp angle post-plant on Ancient B wins ~25% of 1v2 T clutches"
+    },
+    {
+      "title": "Ancient: CT cave aggression for info",
+      "description": "Sending one CT aggressively into cave early can catch the T setup off guard. If you spot 3+ Ts in cave, call the A stack and rotate the B player. Cave info is the highest-value early-round read on Ancient.",
+      "category": "positioning",
+      "situation": "CT Ancient, need info on T setup",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: early CT cave aggression provides useful info ~55% of rounds on Ancient"
+    },
+    {
+      "title": "Ancient: B retake from site with smoke B main",
+      "description": "CT retaking B must smoke B main to cut the T reinforcement path. Push from site back into the plant area with a flash. Without the B main smoke, T players cycle through B main for free kills on retaking CTs.",
+      "category": "retakes_post_plant",
+      "situation": "CT retake B site on Ancient",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: B retake with B main smoke succeeds ~45% vs ~20% without on Ancient"
+    },
+    {
+      "title": "Ancient IGL: cave read timing for B commit",
+      "description": "At the 0:20 mark, listen for cave footsteps and utility. Heavy cave activity at 0:20 signals a fast B hit — rotate a third player to B immediately. If cave is silent until 0:40, the T is likely defaulting A or mid. Base your stack on the cave timing, not the mid contact.",
+      "category": "role_play_igl",
+      "situation": "CT-side Ancient, IGL reading cave timing for B defense",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: cave audio timing correctly predicts B commits in ~58% of T defaults on Ancient"
+    },
+    {
+      "title": "Ancient support: B retake flash from CT spawn",
+      "description": "Save one flash for B retakes. Throw a CT-spawn pop flash that bounces off the back wall and blinds anyone on site facing ramp or cave. Push from CT spawn immediately after the flash pops. This single flash raises B retake success by ~10 points.",
+      "category": "role_play_support",
+      "situation": "Support player holding utility for B retake on Ancient",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: CT spawn flash B retake succeeds ~42% vs ~28% dry on Ancient"
+    },
+    {
+      "title": "Ancient clutch: 1v1 A site — use temple wall angle",
+      "description": "In a 1v1 on Ancient A as T post-plant, hold from behind the temple wall. The temple wall gives you sight on the bomb and cover from both connector and main approaches. CTs must commit to the open site to defuse — you have the first shot from cover.",
+      "category": "clutch_play",
+      "situation": "1v1 clutch on Ancient A site as T",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: temple wall post-plant on Ancient A wins ~55% of 1v1 T clutches"
+    },
+    {
+      "title": "Ancient AWP: mid elbow angle from CT",
+      "description": "Hold the mid elbow angle from the CT side with the AWP. The elbow creates a narrow sightline that catches T mid pushes before they reach A connector. After the first kill, reposition to donut — the T will flash or smoke the elbow on their next attempt.",
+      "category": "role_play_awp",
+      "situation": "CT AWP holding mid elbow on Ancient",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: mid elbow AWP averages 0.9 opening kills per half on Ancient"
+    },
+    {
+      "title": "Ancient anti-strat: counter A split with donut aggression",
+      "description": "If the T keeps splitting A from main and connector simultaneously, push one player aggressively to donut at the 0:15 mark. The donut player contests the connector approach and disrupts the split timing. Fall back to site after one kill or after gathering info on the split direction.",
+      "category": "anti_strat",
+      "situation": "CT losing A to repeated splits on Ancient",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: donut aggression disrupts A splits ~48% of the time on Ancient"
+    },
+    {
+      "title": "Ancient entry: B through main with pre-flash",
+      "description": "Entry through B main requires a pop flash that bounces off the right wall and blinds the cave off-angle. Push immediately after the flash — the cave player is blind for 1.5 seconds. Without the flash, the cave off-angle kills entries ~55% of the time on Ancient B.",
+      "category": "role_play_entry",
+      "situation": "Entry fragger pushing B main on Ancient",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: pop flash B main entry succeeds ~50% vs ~28% dry on Ancient"
+    },
+    {
+      "title": "Ancient lurk: cave lurk during A execute",
+      "description": "When the team executes A, lurk in cave entrance. CTs rotating from B through mid pass the cave sightline. Time the ambush for 7-9 seconds after the A execute smokes land. The cave lurk on Ancient catches B rotators from an unexpected angle.",
+      "category": "role_play_lurk",
+      "situation": "Lurker on T-side Ancient during A execute, cave position",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: cave lurk catches B-to-A rotators ~35% of the time on Ancient"
+    },
+    {
+      "title": "Ancient economy: force buy mid push with Galils",
+      "description": "On force buy rounds, push mid aggressively with armor + Galils. Ancient mid favors the aggressor — the angles are close enough for Galil spray and the mid control opens both sites. Avoid force-buying into A main or B main where the CT AWP dominates.",
+      "category": "economy",
+      "situation": "T force buy decision on Ancient",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: mid force push with Galils wins ~36% on Ancient — highest force buy WR for the map"
+    },
+    {
+      "title": "Ancient positioning: A donut defense with off-angle",
+      "description": "Hold A donut from the deep off-angle behind the pillar, not the obvious donut top. The deep angle catches T entries as they clear the standard donut position and look away. Fall back to site after one kill — staying donut after contact exposes you to the trade.",
+      "category": "positioning",
+      "situation": "CT A donut positioning on Ancient",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: deep donut off-angle wins first contact ~58% on Ancient A"
+    },
+    {
+      "title": "Ancient B retake: ramp push with cave smoke",
+      "description": "Retake B from ramp with a smoke on cave to isolate the T lurker. Push from ramp toward site with a flash from CT spawn. The ramp approach avoids the B main post-plant angles. Without the cave smoke, T players in cave get free kills on retaking CTs.",
+      "category": "retakes_post_plant",
+      "situation": "CT retaking B from ramp on Ancient",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: ramp retake with cave smoke succeeds ~44% on Ancient B"
+    },
+    {
+      "title": "Ancient utility: cave smoke for safe B approach",
+      "description": "Throw a cave smoke from T spawn that blocks the cave defender sightline. This single smoke enables safe passage through cave to B site. Without the smoke, the cave off-angle picks T entries in ~40% of B pushes. The cave smoke is the most cost-effective T utility on Ancient.",
+      "category": "utility",
+      "situation": "T-side Ancient, safe cave passage",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: cave smoke reduces T entry deaths from ~40% to ~10% on Ancient B approaches"
+    },
+    {
+      "title": "Ancient mid-round: mid control after donut trade",
+      "description": "After winning a donut trade, take mid control within 5 seconds. Mid control from donut opens both A ramp and B cave options. Do not slow play after the donut trade — the value decays as the CT repositions. Push mid, clear elbow, and hold for the IGL commit call.",
+      "category": "mid_round",
+      "situation": "T-side Ancient, post-donut-trade mid control",
+      "map_name": "de_ancient",
+      "pro_example": "Pro meta: immediate mid push after donut trade raises round win rate by ~12 points on Ancient"
     }
   ]
 }

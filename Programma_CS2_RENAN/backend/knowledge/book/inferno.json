@@ -143,6 +143,182 @@
       "situation": "T A plant location",
       "map_name": "de_inferno",
       "pro_example": "Pro meta: front-of-pit plant has highest post-plant WR on Inferno A"
+    },
+    {
+      "title": "Inferno anti-strat: counter banana stack with apps split",
+      "description": "If the CT keeps stacking 3 banana, send 4 through apps to A and 1 lurk banana. The banana lurk uses utility to fake a B push while the main team takes the underdefended A site. CTs burning utility on banana waste their retake resources.",
+      "category": "anti_strat",
+      "situation": "CT stacking banana with 3 players on Inferno",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: apps split against banana stack has ~65% A plant rate on Inferno"
+    },
+    {
+      "title": "Inferno anti-strat: counter apps push with pit molly",
+      "description": "If the T keeps hitting A through apps, molly the apps exit at the 0:45 mark — this is when most apps pushes time their execute. The molly forces a 7-second delay, giving the CT time to reset crossfire. Follow with a flash to pit for the counter-peek.",
+      "category": "anti_strat",
+      "situation": "CT losing A site to apps pushes on Inferno",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: timed apps exit molly reduces T A success to ~35%"
+    },
+    {
+      "title": "Inferno entry: banana entry with trade setup",
+      "description": "Entry through banana requires a 2-man push: first player peeks car angle, second trades from sandbags. The entry always checks car first (highest threat), then sweeps to site. Never solo-push banana — the crossfire from car + new box kills solo entries every time.",
+      "category": "role_play_entry",
+      "situation": "Entry fragger on Inferno B push through banana",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: 2-man banana push with trade setup succeeds ~55% vs ~25% solo"
+    },
+    {
+      "title": "Inferno AWP: banana AWP from top banana",
+      "description": "The CT AWP from top banana controls the entire chokepoint. Hold from the left side of the wall for minimal exposure. After one kill, drop back to car or B site — staying top banana after firing is a death sentence against a coordinated push.",
+      "category": "role_play_awp",
+      "situation": "AWP player holding banana on Inferno CT",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: top banana AWP averages 0.7 opening kills per half"
+    },
+    {
+      "title": "Inferno lurk: second mid lurk during B execute",
+      "description": "When the team executes B through banana, the lurker holds second mid (near archside). CTs rotating from A through arch walk into the lurk. Time the ambush for 6-8 seconds after the B execute smokes land.",
+      "category": "role_play_lurk",
+      "situation": "Lurker role on T-side Inferno during B execute",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: second mid lurk catches rotating CTs ~40% of the time on Inferno"
+    },
+    {
+      "title": "Inferno support: banana utility sequencing",
+      "description": "On Inferno T-side, the support player is responsible for banana utility: molly top banana first (clear the CT hold), then smoke the half-wall angle, then flash for the entry push. This 3-piece sequence is the foundation of every B execute.",
+      "category": "role_play_support",
+      "situation": "Support role on T-side Inferno banana push",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: full utility sequence banana push plant rate is ~70% vs ~40% with incomplete utility"
+    },
+    {
+      "title": "Inferno clutch: 1v2 B site use coffin angle",
+      "description": "In a 1v2 on Inferno B as T post-plant, hide behind coffin. CTs retaking from CT spawn must check coffin last — giving you time to hear the defuse and peek. If they split from banana and CT, the coffin angle lets you see both approaches at different timings.",
+      "category": "clutch_play",
+      "situation": "1v2 clutch on Inferno B site as T",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: coffin angle post-plant on Inferno B wins ~28% of 1v2 T clutches"
+    },
+    {
+      "title": "Inferno: CT mid aggression for info",
+      "description": "Sending one CT aggressively through second mid early-round can catch the T lurker off guard and provide critical info on whether Ts are splitting A or stacking banana. The info player should peek once and fall back, never commit to a fight.",
+      "category": "positioning",
+      "situation": "CT-side Inferno, need info on T setup",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: early CT mid aggression on Inferno provides useful info ~60% of rounds"
+    },
+    {
+      "title": "Inferno: T-side apps control for A split",
+      "description": "Take apartments early and hold it passively until the team is ready to commit. Apartments control gives you a flanking path to A — the split from apps + short catches the pit player from two angles. Do not push through apps without the team ready to commit from short.",
+      "category": "mid_round",
+      "situation": "T-side Inferno, planning an A split",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: apps + short A split has ~68% plant rate when both entries are synchronized"
+    },
+    {
+      "title": "Inferno: B retake utility — smoke banana, molly dark",
+      "description": "CT retaking B must smoke banana (cuts the lurk) and molly dark corner (clears the off-angle). Without these two pieces, the retake faces 3+ angles simultaneously. Save at least 1 smoke and 1 molly for B retakes as the support player.",
+      "category": "retakes_post_plant",
+      "situation": "CT retake B site on Inferno",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: B retakes with smoke+molly succeed ~48% vs ~22% without utility on Inferno"
+    },
+    {
+      "title": "Inferno IGL: banana timing calls for B read",
+      "description": "Listen for banana utility at the 0:15 and 0:35 marks. Early banana molly at 0:15 signals a fast B take; utility at 0:35 indicates a slow default with late commit. Adjust your B stack based on which timing you hear — early utility means rotate a third player B immediately.",
+      "category": "role_play_igl",
+      "situation": "CT-side Inferno, IGL reading banana timing for B defense",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: banana utility timing correctly predicts B execute speed in ~60% of T defaults"
+    },
+    {
+      "title": "Inferno support: A retake smoke arch + flash for push",
+      "description": "Save one smoke and one flash for A retakes. Smoke the arch entrance to isolate the A lurker from reinforcements, then flash from library for the retake push. This two-piece combo isolates the T post-plant players and raises A retake success by ~12 points.",
+      "category": "role_play_support",
+      "situation": "Support player holding utility for A retake on Inferno",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: arch smoke + library flash A retake succeeds ~52% vs ~35% dry on Inferno"
+    },
+    {
+      "title": "Inferno clutch: 1v1 A site — use pit angle post-plant",
+      "description": "In a 1v1 on Inferno A as T post-plant, plant for pit and hold from pit corner. The CT must cross the open site to reach the bomb, and pit gives you the first-shot advantage. If they approach from library, you hear them before they see you.",
+      "category": "clutch_play",
+      "situation": "1v1 clutch on Inferno A site as T",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: pit angle post-plant on Inferno A wins ~58% of 1v1 T clutches"
+    },
+    {
+      "title": "Inferno AWP: arch angle from site",
+      "description": "Hold the arch exit from A site with the AWP. The arch opening is narrow and the T must fully commit to exit. Position behind the short-side pillar for minimal exposure. After one kill, reposition to balcony — the T team will utility the arch angle on the next attempt.",
+      "category": "role_play_awp",
+      "situation": "CT AWP holding arch on Inferno A side",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: arch AWP catches T rotators ~35% of the time on Inferno"
+    },
+    {
+      "title": "Inferno anti-strat: counter apps push with balcony aggression",
+      "description": "If the T keeps pushing through apps to A, send one player aggressively to balcony to hold the apps exit from above. The elevation advantage gives you the first shot. Fall back to site after one kill — staying balcony after contact exposes you to the second T entry.",
+      "category": "anti_strat",
+      "situation": "CT losing A to repeated apps pushes on Inferno",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: balcony aggression counters apps pushes ~50% of the time on Inferno"
+    },
+    {
+      "title": "Inferno entry: second mid push for A split",
+      "description": "Enter through second mid toward arch for an A split. Clear the corner at the second mid entrance, then push toward arch with a flash. The A split from apps + arch catches the pit player from two angles. Never push second mid without the apps team ready to commit simultaneously.",
+      "category": "role_play_entry",
+      "situation": "Entry fragger pushing second mid for A split on Inferno",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: second mid A split entry succeeds ~50% when synchronized with apps push"
+    },
+    {
+      "title": "Inferno lurk: arch lurk during B execute",
+      "description": "When the team executes B through banana, lurk at arch side. CTs rotating from A through CT spawn pass the arch sightline. Time the ambush for 7-9 seconds after the B execute smokes — this is when the A players begin their rotate.",
+      "category": "role_play_lurk",
+      "situation": "Lurker on T-side Inferno during B execute, arch position",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: arch lurk catches A-to-B rotators ~38% of the time on Inferno"
+    },
+    {
+      "title": "Inferno economy: pistol round T banana with upgraded pistol",
+      "description": "On T pistol, buy P250 + flash and hit banana. The P250 two-taps at banana distances and the flash enables the push past car. Stack 4 banana with utility, leave 1 passive apps for a late A fake. Plant for banana angle and play post-plant.",
+      "category": "economy",
+      "situation": "T pistol round strategy on Inferno",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: P250 banana stack on T pistol wins ~55% on Inferno"
+    },
+    {
+      "title": "Inferno positioning: mid control from CT arch side",
+      "description": "Hold mid from the arch-side angle behind the wall. This position covers second mid and the T passage toward A without exposing you to the banana sightline. One player mid with this angle frees the team to stack 2-2 on sites instead of 2-1-2.",
+      "category": "positioning",
+      "situation": "CT mid control on Inferno",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: arch-side mid hold provides info on T movement in ~55% of rounds"
+    },
+    {
+      "title": "Inferno B retake: dark corner molly + CT push",
+      "description": "CT retaking B must molly dark corner before pushing from CT spawn. Dark is the highest-probability post-plant position on B. Follow the molly with a flash and push from CT spawn. Without the dark molly, the post-plant T gets a free kill ~45% of the time.",
+      "category": "retakes_post_plant",
+      "situation": "CT retaking B site from CT spawn on Inferno",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: dark molly + CT push retake succeeds ~45% on Inferno B"
+    },
+    {
+      "title": "Inferno utility: banana flash chain for entry",
+      "description": "Chain two flashes in banana — the first pops at car to blind the close hold, the second pops at half-wall to blind the deep angle. Space them 1.5 seconds apart. The double flash creates a 3-second blind window where the entry fragger pushes through banana unchallenged.",
+      "category": "utility",
+      "situation": "T banana push with flash chain on Inferno",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: double flash banana chain enables entry kills in ~55% of B pushes"
+    },
+    {
+      "title": "Inferno mid-round: speed control after banana trade",
+      "description": "After winning a banana trade, wait 5 seconds before committing to B site. The 5-second pause lets you hear the CT rotate and decide whether to execute B or fall back. Instant B commits after a banana trade run into stacked retakes ~40% of the time.",
+      "category": "mid_round",
+      "situation": "T-side Inferno, post-banana-trade decision",
+      "map_name": "de_inferno",
+      "pro_example": "Pro meta: 5-second pause after banana trade improves B execute success by ~10 points on Inferno"
     }
   ]
 }

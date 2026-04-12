@@ -143,6 +143,182 @@
       "situation": "T A plant location",
       "map_name": "de_mirage",
       "pro_example": "Pro meta: behind-ticket plant has highest post-plant WR on Mirage A"
+    },
+    {
+      "title": "Mirage anti-strat: counter A ramp rush with jungle molly",
+      "description": "If the T team keeps rushing A ramp, molly the ramp exit on round start. This forces the rush to wait 7 seconds or run through fire (50+ damage). Follow with a flash to ticket — the delayed rush arrives disorganized and low HP.",
+      "category": "anti_strat",
+      "situation": "CT defending against repeated A ramp rushes on Mirage",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: ramp molotov delays A rushes by 7-10 seconds, dropping T success rate to ~30%"
+    },
+    {
+      "title": "Mirage anti-strat: counter mid aggression with connector flash",
+      "description": "If the T team keeps taking mid control with an aggressive push, throw a connector flash that pops at window/top mid. The flash blinds the peek and gives your AWPer a free shot. Repeat for 2-3 rounds before they adapt.",
+      "category": "anti_strat",
+      "situation": "CT losing mid control every round on Mirage",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: connector flash + AWP counter-peek wins the mid duel ~65% of the time"
+    },
+    {
+      "title": "Mirage anti-strat: counter B apps push with market smoke",
+      "description": "If the T keeps pushing B through apps, smoke the apps exit from market and hold a close angle. The T enters the smoke blind — you see them first. One player market angle, one bench with crossfire through the smoke.",
+      "category": "anti_strat",
+      "situation": "CT losing B to apps pushes on Mirage",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: apps exit smoke reduces T B push success to ~25%"
+    },
+    {
+      "title": "Mirage entry: palace entry for A split",
+      "description": "Palace entry on Mirage is a flanking path to A site. Clear the corner inside palace first, then peek balcony. Palace entry works best when the main team is pressuring A ramp simultaneously — the crossfire from two angles collapses the A defense.",
+      "category": "role_play_entry",
+      "situation": "T-side Mirage, entry fragger assigned to palace for A split",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: A splits through palace + ramp have ~68% plant rate on Mirage"
+    },
+    {
+      "title": "Mirage AWP: window hold for mid control",
+      "description": "The CT AWP from window controls mid and denies T info plays. Position at the back of window for maximum cover. After one kill, reposition to connector or jungle — window is checked first on any mid retake.",
+      "category": "role_play_awp",
+      "situation": "AWP player on CT Mirage, mid control",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: window AWP averages 0.9 opening kills per half when unpredictable"
+    },
+    {
+      "title": "Mirage lurk: underpass lurk during A execute",
+      "description": "When the team executes A, the lurker holds underpass (below mid). CTs rotating from B through mid walk directly into the lurk. Time the ambush for 5-8 seconds after the A execute begins — that is when the B anchor starts rotating.",
+      "category": "role_play_lurk",
+      "situation": "Lurker role on T-side Mirage during A execute",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: underpass lurk catches rotating CTs ~45% of the time on Mirage"
+    },
+    {
+      "title": "Mirage clutch: 1v1 B site — use short for cover",
+      "description": "In a 1v1 on Mirage B as T, plant for short and hide behind the B short corner. The CT must expose themselves to defuse and you have a clear angle from short. If CT comes from market, the short position covers both defuse and the market peek.",
+      "category": "clutch_play",
+      "situation": "1v1 clutch on Mirage B site as T",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: short-corner plant on Mirage B wins ~55% of 1v1 T clutches"
+    },
+    {
+      "title": "Mirage support: A site retake smoke + flash combo",
+      "description": "Support on Mirage CT should save a smoke and flash for A retakes. Smoke A ramp exit (cuts lurk), flash from connector for the retake push. This 2-piece utility package raises A retake success from ~40% to ~55%.",
+      "category": "role_play_support",
+      "situation": "Support player utility for Mirage A retake",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: retake utility usage on Mirage A is the highest-ROI support play"
+    },
+    {
+      "title": "Mirage: T-side mid split through connector",
+      "description": "After taking mid control, send 2 players through connector to A while 3 push A ramp. The connector players arrive behind the jungle player — crossfire from two sides collapses A defense. Connector split is the highest-EV Mirage T call after winning mid.",
+      "category": "positioning",
+      "situation": "T-side Mirage, mid control secured",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: connector split after mid control has ~70% A plant rate"
+    },
+    {
+      "title": "Mirage: CT rotate timing — A to B in 12 seconds",
+      "description": "The A-to-B rotate through CT spawn takes 12 seconds walking, 8 running. Factor this into retake decisions: if the bomb was planted 15 seconds ago on B and you are on A, you have 25 seconds minus travel. With kit, you can still make it; without kit, it is too late.",
+      "category": "mid_round",
+      "situation": "CT rotation timing on Mirage",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: understanding exact rotate times is fundamental to Mirage IGL calling"
+    },
+    {
+      "title": "Mirage IGL: connector timing reads for mid split detection",
+      "description": "Listen for connector footsteps at the 0:25 and 0:45 marks. Two sets of footsteps at 0:25 indicates a fast mid split; a single set at 0:45 signals a late lurk. Adjust your A/B stack based on the count and timing of connector audio cues.",
+      "category": "role_play_igl",
+      "situation": "CT-side Mirage, IGL reading T mid split timing",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: connector audio reads correctly predict T mid splits in ~65% of default rounds"
+    },
+    {
+      "title": "Mirage support: B retake smoke apps + flash from market",
+      "description": "Save one smoke and one flash for B retakes. Smoke the apps exit to isolate the lurker, then throw a market pop flash that blinds anyone on site facing short. Push from market with the flash — this two-piece retake utility raises B retake success by ~15 points.",
+      "category": "role_play_support",
+      "situation": "Support player holding utility for B retake on Mirage",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: apps smoke + market flash B retake succeeds ~48% vs ~30% dry on Mirage"
+    },
+    {
+      "title": "Mirage clutch: 1v2 A site — isolate from palace",
+      "description": "In a 1v2 on Mirage A as T post-plant, fall back to palace and hold the palace-to-site angle. CTs must clear palace last because it is the deepest angle. Force them to defuse under pressure from a position where you see the bomb but they cannot see you without committing.",
+      "category": "clutch_play",
+      "situation": "1v2 clutch on Mirage A site as T",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: palace angle post-plant on Mirage A wins ~22% of 1v2 T clutches — highest for the site"
+    },
+    {
+      "title": "Mirage AWP: palace angle from ticket booth",
+      "description": "Hold the palace exit from ticket booth with the AWP. The angle is narrow and the T must fully expose themselves to exit palace. After the first shot, reposition to jungle — palace players will flash the angle on the second attempt.",
+      "category": "role_play_awp",
+      "situation": "CT AWP holding palace on Mirage",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: ticket booth AWP on palace catches T palace entries ~40% of the time"
+    },
+    {
+      "title": "Mirage anti-strat: counter mid-to-B split with window push",
+      "description": "If the T keeps splitting B through mid, push one player aggressively through window into top mid at the 0:20 mark. This catches the mid splitters before they reach B short and disrupts the timing. Follow with a connector flash for the second player trading.",
+      "category": "anti_strat",
+      "situation": "CT losing B to mid-to-B splits on Mirage",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: aggressive window push counters mid-to-B splits ~55% of the time on Mirage"
+    },
+    {
+      "title": "Mirage entry: B apartments push with pre-flash",
+      "description": "Pop flash the apartments corridor before entering B. The flash bounces off the left wall and blinds the bench hold. Push immediately after the flash pops — bench is blind for 1.5 seconds. Without the flash, bench kills entries ~60% of the time.",
+      "category": "role_play_entry",
+      "situation": "Entry fragger pushing B through apartments on Mirage",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: pop flash apps entry succeeds ~55% vs ~30% dry on Mirage B"
+    },
+    {
+      "title": "Mirage lurk: T spawn lurk during B execute",
+      "description": "When the team executes B, hold T spawn near mid. CTs rotating from A through CT spawn to B pass the mid sightline. Time the peek for 8-10 seconds after the B execute begins — this is when the A anchor starts the rotate. One kill here makes B a 4v3 retake.",
+      "category": "role_play_lurk",
+      "situation": "Lurker role on T-side Mirage during B execute",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: T spawn mid lurk catches B rotators ~35% of the time on Mirage"
+    },
+    {
+      "title": "Mirage economy: half-buy B rush with armor and MP9s",
+      "description": "On a half-buy round, rush B through apartments with armor and MP9s. The close-range apartments corridors favor SMGs over rifles. Buy flashes over smokes — speed matters more than site control on a half-buy. Plant fast and play for the round bonus.",
+      "category": "economy",
+      "situation": "T half-buy decision on Mirage",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: MP9 armor B rush on half-buy wins ~35% on Mirage — highest half-buy WR for the map"
+    },
+    {
+      "title": "Mirage positioning: A ramp defense with close angle",
+      "description": "Hold A ramp from the close angle behind the ramp wall, not from the open site. The close angle forces the T entry into a 1v1 duel at your range. Fall back to site after the first kill — staying ramp after contact exposes you to the trade from palace.",
+      "category": "positioning",
+      "situation": "CT defending A ramp on Mirage",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: close ramp angle wins the first duel ~60% vs ~40% from open site on Mirage"
+    },
+    {
+      "title": "Mirage A retake: jungle push with pop flash from CT",
+      "description": "Retake A from jungle by throwing a CT-spawn pop flash that blinds ramp and site. Push through jungle immediately after the flash. Coordinate with a connector player pushing simultaneously — the two-angle retake from jungle and connector is the highest-EV A retake.",
+      "category": "retakes_post_plant",
+      "situation": "CT retaking A from jungle on Mirage",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: jungle + connector dual-push retake succeeds ~52% with flash on Mirage A"
+    },
+    {
+      "title": "Mirage utility: palace pop flash for entry",
+      "description": "Throw a right-hand pop flash inside palace that bounces off the inner wall and blinds anyone holding the palace exit from ticket or site. The flash must pop at the doorway, not inside palace. Time your exit to coincide with the pop — 0.3 seconds after the throw.",
+      "category": "utility",
+      "situation": "T flashing out of palace on Mirage",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: palace pop flash enables entry kills in ~45% of A palace pushes"
+    },
+    {
+      "title": "Mirage mid-round: time management after 1:00 mark",
+      "description": "After the 1:00 mark on Mirage T-side, commit within 15 seconds or accept a save. Mirage has long rotation times — late commits give CTs time to stack the target site. If you have no info by 0:50, default to the site where you spent the least utility.",
+      "category": "mid_round",
+      "situation": "T-side Mirage, clock management after 1:00",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: T round win rate drops ~8% for every 10 seconds of indecision after 1:00 on Mirage"
     }
   ]
 }
