@@ -85,7 +85,7 @@ pefile==2024.8.26
 pexpect==4.9.0
 pillow==12.0.0
 platformdirs==4.5.1
-playwright==1.57.0
+playwright==1.58.0
 pluggy==1.6.0
 PySide6==6.10.2
 PySide6_Addons==6.10.2
