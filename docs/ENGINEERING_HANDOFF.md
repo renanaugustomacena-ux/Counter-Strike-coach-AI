@@ -89,7 +89,7 @@ This project is a desktop application that analyzes Counter-Strike 2 professiona
 
 **The strategic decision:** Ship the game theory engines and the COPER coaching pipeline (Experience Bank + RAG + Pro References) as v0.1. Defer the RAP Coach behind a feature flag (`USE_RAP_MODEL=False`). The game theory engines produce specific, actionable, personalized coaching insights from raw match data and published CS2 knowledge — no neural network required. The RAP Coach is a research-grade architecture that would require thousands of demos, months of training, and careful tuning to produce output that beats what the game theory engines already deliver for free.
 
-**Current state (updated 2026-04-11):**
+**Current state (updated 2026-04-12):**
 - Headless validator: **308/313 PASS** (5 warnings for optional deps: kivy, kivymd, shap, ncps, hflayers)
 - Test suite: **87 test files**, 30%+ coverage enforced
 - All 13 Qt screens have dedicated implementations (100-514 lines each)
@@ -112,7 +112,7 @@ This project is a desktop application that analyzes Counter-Strike 2 professiona
 | Test LOC | 25,792 | `wc -l` 2026-03-28 |
 | Total LOC | ~94,851 | sum |
 | Test files | 87 | `find` 2026-03-28 |
-| Validator checks | 319 / 319 PASS | headless_validator.py |
+| Validator checks | 308 / 313 PASS (5 optional dep warnings) | headless_validator.py |
 | Coverage gate | 33% (roadmap: 33 -> 50 -> 70) | pyproject.toml |
 
 ### Architecture
@@ -1423,30 +1423,32 @@ All unresolved findings from all audits, deduplicated and prioritized.
 
 ### Critical (Must Fix Before Ship)
 
-| ID | File | Issue | Fix | Blocks |
-|----|------|-------|-----|--------|
-| C1 | `main.py` | Profile Load Fail logged at DEBUG — invisible to user | Promote to WARNING | — |
-| C2 | `main.py` | Profile Save Fail logged at DEBUG — data loss invisible | Promote to WARNING | — |
-| C3 | `session_engine.py` | Silent `except Exception: pass` in disk check | Log at WARNING, surface to UI | — |
+**All critical findings resolved.**
+
+| ID | File | Issue | Status |
+|----|------|-------|--------|
+| C1 | `main.py` | Profile Load Fail logged at DEBUG | **FIXED** — now WARNING (`main.py:408`) |
+| C2 | `main.py` | Profile Save Fail logged at DEBUG | **FIXED** — now ERROR (`main.py:490`) |
+| C3 | `session_engine.py` | Silent `except Exception: pass` in disk check | **FIXED** — logs at WARNING + updates state |
 
 ### High (Should Fix Before Ship)
 
-| ID | File | Issue | Fix |
-|----|------|-------|-----|
-| H1 | `observability/error_codes.py` | Error codes exist as inline comments, no formal registry | Formalize into enum + searchable module |
-| H2 | `tools/*` | Logger naming inconsistency — `configure_log_level()` doesn't reach tools | Standardize to `cs2analyzer.tools.*` |
-| H3 | `batch_ingest.py`, tests | `logging.basicConfig()` in 3 scripts — root logger pollution | Replace with `get_logger()` calls |
-| H4 | `session_engine.py` | Duplicate FileHandler — double-writes to log files | Remove duplicate handler setup |
+| ID | File | Issue | Fix | Status |
+|----|------|-------|-----|--------|
+| H1 | `observability/error_codes.py` | Error codes exist as inline comments, no formal registry | Formalize into enum + searchable module | **PARTIAL** — formal registry exists, `log_with_code()` used in 13 locations; universal adoption pending |
+| H2 | `tools/*` | Logger naming inconsistency — `configure_log_level()` doesn't reach tools | Standardize to `cs2analyzer.tools.*` | **FIXED** — `get_tool_logger()` creates `cs2analyzer.tools.*` loggers |
+| H3 | `batch_ingest.py`, tests | `logging.basicConfig()` in 3 scripts — root logger pollution | Replace with `get_logger()` calls | **FIXED** — no `logging.basicConfig()` calls remain |
+| H4 | `session_engine.py` | Duplicate FileHandler — double-writes to log files | Remove duplicate handler setup | **FIXED** — no duplicate handlers found |
 
 ### Medium (Fix After Ship)
 
-| ID | File | Issue | Fix |
-|----|------|-------|-----|
-| M1 | tools/tests | 40+ `print(stderr)` bypassing logging pipeline | Replace with logger calls |
-| M2 | 5+ files | `traceback.print_exc()` — unstructured error output | Replace with `logger.exception()` |
-| M3 | global | No log correlation IDs | Add request/operation ID propagation |
-| M4 | global | Inconsistent log format strings | Standardize via centralized formatter |
-| M5 | global | No error metrics/counters | Add Prometheus-style counters |
+| ID | File | Issue | Fix | Status |
+|----|------|-------|-----|--------|
+| M1 | tools/tests | 40+ `print(stderr)` bypassing logging pipeline | Replace with logger calls | OPEN |
+| M2 | 5+ files | `traceback.print_exc()` — unstructured error output | Replace with `logger.exception()` | OPEN |
+| M3 | global | No log correlation IDs | Add request/operation ID propagation | **FIXED** (WR-29, commit `e5e3425`) |
+| M4 | global | Inconsistent log format strings | Standardize via centralized formatter | OPEN |
+| M5 | global | No error metrics/counters | Add Prometheus-style counters | OPEN |
 
 ---
 
@@ -1454,24 +1456,25 @@ All unresolved findings from all audits, deduplicated and prioritized.
 
 ### Current vs Target
 
-| Dimension | Current | Target | Gap |
-|-----------|---------|--------|-----|
-| Centralized Logging | 4/5 | 5/5 | Console + session engine bypass central logger |
-| Structured Logging | 3/5 | 5/5 | Only `console.py` has JSON; rest is plaintext |
-| Error Code System | 2/5 | 5/5 | Inline-only, no registry, no machine-parseable enum |
-| Custom Exceptions | 3/5 | 5/5 | Exist but underused; catch-all `Exception` everywhere |
-| Error Reporting (Sentry) | 5/5 | 5/5 | **Already production-grade** — maintain |
-| Catch-all Proliferation | 2/5 | 5/5 | 50+ bare `except Exception` blocks |
-| Runtime Integrity (RASP) | 4/5 | 5/5 | Missing logger integration |
-| Log Rotation | 4/5 | 5/5 | Duplicate handlers, no retention policy |
+| Dimension | Current | Target | Gap | Updated |
+|-----------|---------|--------|-----|---------|
+| Centralized Logging | 4/5 | 5/5 | Console + session engine bypass central logger | — |
+| Structured Logging | 3/5 | 5/5 | Only `console.py` has JSON; rest is plaintext | — |
+| Error Code System | 3/5 | 5/5 | Formal registry exists (`log_with_code()`); adoption at 13/27 codes | Improved (was 2/5) |
+| Custom Exceptions | 3/5 | 5/5 | Exist and used; catch-all `Exception` still widespread | — |
+| Error Reporting (Sentry) | 5/5 | 5/5 | **Already production-grade** — maintain | — |
+| Catch-all Proliferation | 2/5 | 5/5 | 50+ bare `except Exception` blocks | — |
+| Runtime Integrity (RASP) | 4/5 | 5/5 | Missing logger integration | — |
+| Log Rotation | 5/5 | 5/5 | **FIXED** — `configure_retention()` called at startup (WR-30) | Resolved |
+| Correlation IDs | 5/5 | 5/5 | **FIXED** — daemon threads call `set_correlation_id()` (WR-29) | Resolved |
 
-### Remediation Priority
+### Remediation Priority (updated 2026-04-12)
 
-1. **Promote Profile Load/Save logging to WARNING** (C1, C2) — 30 minutes
-2. **Remove duplicate FileHandler** in `session_engine.py` (H4) — 15 minutes
-3. **Formalize error code registry** (H1) — 2-4 hours
-4. **Replace `logging.basicConfig()`** in 3 scripts (H3) — 1 hour
-5. **Standardize tool logger names** (H2) — 2 hours
+1. ~~**Promote Profile Load/Save logging to WARNING** (C1, C2)~~ — **DONE**
+2. ~~**Remove duplicate FileHandler** in `session_engine.py` (H4)~~ — **DONE**
+3. **Formalize error code registry** (H1) — remaining: wire remaining 14/27 codes to `log_with_code()`
+4. ~~**Replace `logging.basicConfig()`** in 3 scripts (H3)~~ — **DONE**
+5. ~~**Standardize tool logger names** (H2)~~ — **DONE**
 
 ---
 
@@ -1479,15 +1482,20 @@ All unresolved findings from all audits, deduplicated and prioritized.
 
 All 13 screens are now implemented with dedicated files (100-514 LOC each). The `PlaceholderScreen` fallback class remains for resilience.
 
+**Resolved frontend work (April 2026):**
+
+| Area | Status | Evidence |
+|------|--------|----------|
+| Error toast system | **FIXED** | WR-05, WR-69 — toast system wired to coaching fallback + ingestion |
+| Coaching timeout indicator | **FIXED** | WR-06 — 30s spinner implemented |
+| GPU detection warning | **FIXED** | WR-09 — GPU toast notification implemented |
+| Kivy removal from `platform_utils.py` | **FIXED** | WR-11 — no Kivy imports remain |
+
 **Remaining frontend work:**
 
 | Area | Priority | Effort | Description |
 |------|----------|--------|-------------|
-| Error toast system | High | 3-5 days | Surface coaching fallback notifications, ingestion errors |
-| Coaching timeout indicator | High | 1 day | Show progress/timeout when coaching takes > 30s |
-| SBERT download progress | High | 2 days | Progress bar for 400 MB model download (or TF-IDF fallback) |
-| GPU detection warning | Medium | 1 day | Warn user when training falls back to CPU |
-| Kivy removal from `platform_utils.py` | Medium | 1 day | Remove legacy Kivy references |
+| SBERT download progress | High | 2 days | Progress bar for 400 MB model download (toast exists, no progress UI) |
 | Screen integration testing | Medium | 2-3 days | End-to-end navigation and data flow testing |
 
 ---
@@ -1648,37 +1656,12 @@ NN-H-03 ──blocks (batch size)──►  NN-M-10
 
 ---
 
-## 19. Phase 0: Infrastructure Fixes [COMPLETED]
+## 19-20. Completed Phases (Historical)
 
-> **STATUS: COMPLETED** (verified 2026-03-28). All items fixed and passing.
-> Retained as historical reference for regression awareness.
-
-| Step | ID | Fix | Status |
-|------|----|-----|--------|
-| 0.1 | INF-C2 | Resolve knowledge DB identity crisis | FIXED — config-based path in `graph.py:32` |
-| 0.2 | T10-C1 | Add `hltv_player_cache` to `_ALLOWED_TABLES` | FIXED — `reset_pro_data.py:104` |
-| 0.3 | S-52 | Fix `run_fix("knowledge")` wrong DB target | FIXED — `schema.py:230-231` |
-| 0.4 | S-49 | Add backup before sequence DELETE | FIXED — backup table at `schema.py:244-255` |
-| 0.5 | S-48 | Add INSERT logic to `_transfer_table()` | FIXED |
-| 0.6 | C-50 | Fix `visualization_service` uninitialized singleton | OK — no singleton issues found |
-| 0.7 | C-48 | Fix `profile_service` KeyError | OK — proper `.get()` error handling |
-| 0.8 | C-49 | Fix `experience_bank` thread-safe singleton | OK — threading imported, locks present |
-
----
-
-## 20. Phase 1: Neural Network Fixes [COMPLETED]
-
-> **STATUS: COMPLETED** (verified 2026-03-28). 5/6 items fixed. 1 item (NN-M-12) needs deeper verification.
-> Retained as historical reference for regression awareness.
-
-| Step | ID | Fix | Status |
-|------|----|-----|--------|
-| 1.1 | NN-M-03 | Fix NaN in `_get_user_baseline_vector` | FIXED — walrus operator guard in `coach_manager.py:676-680` |
-| 1.2 | NN-M-12 | Sentinel for missing target values (not 0.5) | UNCLEAR — needs deeper dataset.py inspection |
-| 1.3 | NN-H-03 | Cross-match negative sampling | FIXED — `encode_raw_negatives()` in `jepa_trainer.py:74-93` |
-| 1.4 | NN-M-10 | Step scheduler + parameterize T_max | FIXED |
-| 1.5 | NN-H-01 | Gradient clipping in finetune loop | FIXED — `clip_grad_norm_` in `jepa_train.py:486`, `train.py:145` |
-| 1.6 | NN-H-02 | Unify negative encoding paths | FIXED — shared `encode_raw_negatives()` confirmed |
+> **Phase 0 (Infrastructure) and Phase 1 (Neural Network) — BOTH COMPLETED** (2026-03-28).
+> Phase 0: 8/8 items fixed (INF-C2, T10-C1, S-52, S-49, S-48, C-50, C-48, C-49).
+> Phase 1: 5/6 items fixed (NN-M-03, NN-H-03, NN-M-10, NN-H-01, NN-H-02). NN-M-12 verified acceptable for pro-only phase (WR-08).
+> Full details in Fix History (section 53).
 
 ---
 
@@ -1706,22 +1689,22 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 
 | ID | Area | Description | Files | Effort | Status |
 |----|------|-------------|-------|--------|--------|
-| WR-09 | Frontend | GPU detection warning toast | training screens | 1 day | OPEN |
+| WR-09 | Frontend | GPU detection warning toast | training screens | 1 day | **FIXED** |
 | WR-10 | Frontend | SBERT download progress bar (or TF-IDF fallback) | experience_bank.py, Qt widget | 2 days | OPEN |
-| WR-11 | Frontend | Remove Kivy from `platform_utils.py` | `core/platform_utils.py` | 1 day | OPEN |
-| WR-12 | Backend | Make backup failure non-fatal for training | `session_engine.py` | 1 day | OPEN |
-| WR-13 | Backend | Surface Docker requirement for HLTV sync in UI | Settings screen | 1 day | OPEN |
-| WR-14 | Backend | Detect external SSD disconnect mid-parse | match_data_manager.py | 2 days | OPEN |
-| WR-15 | Backend | Surface HLTV rate-limit status in UI | HLTV sync UI | 1 day | OPEN |
+| WR-11 | Frontend | Remove Kivy from `platform_utils.py` | `core/platform_utils.py` | 1 day | **FIXED** |
+| WR-12 | Backend | Make backup failure non-fatal for training | `session_engine.py` | 1 day | **FIXED** |
+| WR-13 | Backend | Surface Docker requirement for HLTV sync in UI | Settings screen | 1 day | **FIXED** |
+| WR-14 | Backend | Detect external SSD disconnect mid-parse | match_data_manager.py | 2 days | **FIXED** |
+| WR-15 | Backend | Surface HLTV rate-limit status in UI | HLTV sync UI | 1 day | **FIXED** |
 
 ### Priority 3: Packaging
 
 | ID | Area | Description | Files | Effort | Status |
 |----|------|-------------|-------|--------|--------|
-| WR-16 | Build | PyInstaller: exclude Kivy + RAP optional deps | `cs2_analyzer_win.spec` | 1 day | OPEN |
-| WR-17 | Build | PyInstaller: include map textures and fonts | `cs2_analyzer_win.spec` | 0.5 day | OPEN |
-| WR-18 | Build | Add RAP to optional dependency group in pyproject.toml | `pyproject.toml` | 0.5 day | OPEN |
-| WR-19 | Governance | Create `.env.example` with all 25 env vars | project root | 1 day | OPEN |
+| WR-16 | Build | PyInstaller: exclude Kivy + RAP optional deps | `cs2_analyzer_win.spec` | 1 day | **FIXED** |
+| WR-17 | Build | PyInstaller: include map textures and fonts | `cs2_analyzer_win.spec` | 0.5 day | **FIXED** |
+| WR-18 | Build | Add RAP to optional dependency group in pyproject.toml | `pyproject.toml` | 0.5 day | **FIXED** |
+| WR-19 | Governance | Create `.env.example` with all 25 env vars | project root | 1 day | **FIXED** |
 | WR-20 | Governance | Add git version tag `v0.1.0` | — | 10 min | OPEN |
 
 ### From Audit: core/ (2026-03-28)
@@ -1738,11 +1721,11 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 
 | ID | Area | Description | Files | Effort | Status |
 |----|------|-------------|-------|--------|--------|
-| WR-26 | Observability | `app_logger` created before log dir configured — writes to wrong path | `logger_setup.py:298` | 1 hr | OPEN |
-| WR-27 | Observability | 23/27 error codes defined but never used via `log_with_code()` | `error_codes.py` | 2-3 hrs | OPEN |
-| WR-28 | Observability | `exceptions.py` hierarchy is dead code (zero production usage) | `exceptions.py` | 4+ hrs | OPEN |
-| WR-29 | Observability | Daemon threads lack correlation IDs despite docs claiming otherwise | `session_engine.py` | 30 min | OPEN |
-| WR-30 | Observability | `configure_retention()` never called — logs accumulate indefinitely | `main.py` | 15 min | OPEN |
+| WR-26 | Observability | `app_logger` created before log dir configured — writes to wrong path | `logger_setup.py:298` | 1 hr | **FIXED** (commit `390ab62` — lazy app_logger) |
+| WR-27 | Observability | 23/27 error codes defined but never used via `log_with_code()` | `error_codes.py` | 2-3 hrs | **PARTIAL** — 13/27 codes now wired; 14 remaining |
+| WR-28 | Observability | `exceptions.py` hierarchy is dead code (zero production usage) | `exceptions.py` | 4+ hrs | **OBSOLETE** — exceptions now actively used in production |
+| WR-29 | Observability | Daemon threads lack correlation IDs despite docs claiming otherwise | `session_engine.py` | 30 min | **FIXED** (commit `e5e3425`) |
+| WR-30 | Observability | `configure_retention()` never called — logs accumulate indefinitely | `main.py` | 15 min | **FIXED** (commit `e5e3425`) |
 
 ### From Audit: backend/storage/ (2026-03-29)
 
@@ -1750,8 +1733,8 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 |----|------|-------------|-------|--------|--------|
 | WR-31 | **Storage** | **CRITICAL: `restore_backup()` doesn't delete WAL/SHM files — potential DB corruption** | `db_backup.py:189-222` | 30 min | **FIXED** |
 | WR-32 | Storage | `close_all()` race condition — iterates engines dict without lock | `match_data_manager.py:683-688` | 15 min | **FIXED** |
-| WR-33 | Storage | `backup_match_data()` TOCTOU race between checkpoint and tar.add | `db_backup.py:110-127` | 2 hrs | OPEN |
-| WR-34 | Storage | Two backup systems coexist (VACUUM INTO + sqlite3.backup) | `backup_manager.py`, `db_backup.py` | 4+ hrs | OPEN |
+| WR-33 | Storage | `backup_match_data()` TOCTOU race between checkpoint and tar.add | `db_backup.py:110-127` | 2 hrs | **FIXED** — uses `sqlite3.backup()` with atomic locking |
+| WR-34 | Storage | Two backup systems coexist (VACUUM INTO + sqlite3.backup) | `backup_manager.py`, `db_backup.py` | 4+ hrs | **FIXED** — consolidated to single unified backup system |
 
 ### From Audit: backend/processing/ (2026-03-29)
 
@@ -1809,7 +1792,7 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 |----|------|-------------|-------|--------|--------|
 | WR-60 | **Knowledge** | **Feedback matches experiences to UNRELATED events — corrupts effectiveness scores** | `experience_bank.py:806-831` | 2-3 hrs | **FIXED** |
 | WR-61 | Knowledge | N+1 query pattern in usage count updates | `rag_knowledge.py:362-370` | 30 min | **FIXED** — batched `WHERE IN` |
-| WR-62 | Knowledge | Knowledge graph uses raw sqlite3, no WAL/pooling | `graph.py:37-40` | 1 hr | OPEN |
+| WR-62 | Knowledge | Knowledge graph uses raw sqlite3, no WAL/pooling | `graph.py:37-40` | 1 hr | **FIXED** — WAL + connection reuse enforced |
 
 ### From Audit: backend/coaching/ (2026-03-29)
 
@@ -1836,8 +1819,8 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 | ID | Area | Description | Files | Effort | Status |
 |----|------|-------------|-------|--------|--------|
 | WR-68 | Qt | Duplicate `_Worker` missing autoDelete — memory leak + crash risk | `tactical_vm.py:22-35` | 15 min | **FIXED** — uses `core/worker.py` |
-| WR-69 | Qt | Wire toast system into coaching fallback + ingestion notifications | `coaching_service.py`, `app_state.py` | 2-3 hrs | OPEN |
-| WR-70 | Tools | 3 unused inner tool copies (headless_validator, dead_code_detector, dev_health) | `Programma_CS2_RENAN/tools/` | 30 min | OPEN |
+| WR-69 | Qt | Wire toast system into coaching fallback + ingestion notifications | `coaching_service.py`, `app_state.py` | 2-3 hrs | **FIXED** — `state_manager.add_notification()` wired throughout |
+| WR-70 | Tools | 3 unused inner tool copies (headless_validator, dead_code_detector, dev_health) | `Programma_CS2_RENAN/tools/` | 30 min | **FIXED** — duplicate copies removed |
 
 ### From Audit: Remaining Subsystems + Root Scripts (2026-03-29)
 
@@ -1859,9 +1842,9 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 
 | ID | Area | Description | Files | Effort | Status |
 |----|------|-------------|-------|--------|--------|
-| WR-76 | **Coaching** | **FIXED** (commit `d7969cf`) **Round Reconstructor missing — tick data never reaches LLM.** The coaching chat retrieves round-level aggregates (kills, deaths, damage) but never queries `playertickstate` for the selected rounds. The LLM receives a stat line and hallucinates tactical narrative ("he used A-site long info", "well-placed flash-bang against the AWP'er") that has zero grounding in data. **Fix:** Build a Round Reconstructor module that, given a (demo_name, round_number, player_name), pulls tick data and produces a structured timeline: position-as-callout, weapon sequence, engagement timing, health deltas, teammates_alive context. This structured narrative becomes LLM context instead of raw stats. | New: `backend/processing/round_reconstructor.py`; modify `coaching_dialogue.py` retrieval | 3-5 days | OPEN |
-| WR-77 | **Coaching** | **FIXED** (commit `ef978a1`) **Coordinate-to-callout mapping missing.** Tick data contains `pos_x`, `pos_y`, `pos_z` and `map_name`, but no layer translates coordinates to human-readable callouts (ramp, secret, B main, jungle, etc.). Without this, even if tick data reaches the LLM, positions are meaningless numbers. **Fix:** Build a callout lookup for the 7 active-duty maps. Each map needs a polygon/region-to-name table. Can start with rectangular bounding boxes for major areas, refine later. | New: `core/map_callouts.py` or extend `core/map_manager.py` | 2-3 days | OPEN |
-| WR-78 | **Coaching** | **FIXED** (commit `023a08d`) **LLM hallucinates tactical details when data is insufficient.** Llama 3.1 8B is not prompted to distinguish "data says X" from "I'm inferring X" from "I'm inventing X." When asked for detail it doesn't have, it generates plausible-sounding CS2 text instead of saying "the data doesn't show this." Copy-paste syndrome: multiple rounds get near-identical descriptions with numbers swapped. **Fix:** Add explicit prompt constraints — (1) only narrate what the data contains, (2) mark inferences explicitly, (3) say "I don't have this detail" when the data is absent. Consider a structured output format (JSON timeline) that the LLM converts to prose, not free-generation. | `backend/services/coaching_dialogue.py`, system prompt templates | 1 day | OPEN |
+| WR-76 | **Coaching** | **FIXED** (commit `d7969cf`) **Round Reconstructor missing — tick data never reaches LLM.** The coaching chat retrieves round-level aggregates (kills, deaths, damage) but never queries `playertickstate` for the selected rounds. The LLM receives a stat line and hallucinates tactical narrative ("he used A-site long info", "well-placed flash-bang against the AWP'er") that has zero grounding in data. **Fix:** Build a Round Reconstructor module that, given a (demo_name, round_number, player_name), pulls tick data and produces a structured timeline: position-as-callout, weapon sequence, engagement timing, health deltas, teammates_alive context. This structured narrative becomes LLM context instead of raw stats. | New: `backend/processing/round_reconstructor.py`; modify `coaching_dialogue.py` retrieval | 3-5 days | **FIXED** |
+| WR-77 | **Coaching** | **FIXED** (commit `ef978a1`) **Coordinate-to-callout mapping missing.** Tick data contains `pos_x`, `pos_y`, `pos_z` and `map_name`, but no layer translates coordinates to human-readable callouts (ramp, secret, B main, jungle, etc.). Without this, even if tick data reaches the LLM, positions are meaningless numbers. **Fix:** Build a callout lookup for the 7 active-duty maps. Each map needs a polygon/region-to-name table. Can start with rectangular bounding boxes for major areas, refine later. | New: `core/map_callouts.py` or extend `core/map_manager.py` | 2-3 days | **FIXED** |
+| WR-78 | **Coaching** | **FIXED** (commit `023a08d`) **LLM hallucinates tactical details when data is insufficient.** Llama 3.1 8B is not prompted to distinguish "data says X" from "I'm inferring X" from "I'm inventing X." When asked for detail it doesn't have, it generates plausible-sounding CS2 text instead of saying "the data doesn't show this." Copy-paste syndrome: multiple rounds get near-identical descriptions with numbers swapped. **Fix:** Add explicit prompt constraints — (1) only narrate what the data contains, (2) mark inferences explicitly, (3) say "I don't have this detail" when the data is absent. Consider a structured output format (JSON timeline) that the LLM converts to prose, not free-generation. | `backend/services/coaching_dialogue.py`, system prompt templates | 1 day | **FIXED** |
 | WR-79 | **Coaching** | **"Knowledge_mc" name leak in chat output.** The coach addresses the user as "Knowledge_mc" — likely a retrieval artifact (experience bank entry or RAG chunk) leaking into the system prompt or being treated as the user's name. **Fix:** Trace the source of "Knowledge_mc" in the retrieval pipeline and sanitize. Ensure retrieved context is clearly delimited from the user's identity. | `coaching_dialogue.py`, experience bank retrieval | 30 min | **FIXED** |
 | WR-80 | **Coaching** | **"Neural network analysis shows" — false attribution.** The coach claims its neural networks analyzed the rounds, but no NN is invoked during chat queries. The LLM is generating this phrasing on its own. **Fix:** Remove or constrain NN-attribution language in the system prompt. Only claim NN analysis when an actual model (JEPA, RAP, AdvancedCoachNN) was queried and returned a result for that specific response. | System prompt in `coaching_dialogue.py` | 30 min | **FIXED** |
 
@@ -1876,7 +1859,7 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 | WR-82 | **Coaching** | **BUG #4: `dict.get(key, 0.0)` returns None when key exists with None value in `_prepare_tensors`.** | `backend/nn/coach_manager.py` | 30 min | **FIXED** — walrus operator + None guard |
 | WR-83 | **Coaching** | **BUG #8: COPER path crashes with AttributeError on non-dict tick_data.** | `backend/services/coaching_service.py` | 15 min | **FIXED** — `isinstance(tick_data, dict)` guard |
 | WR-84 | Control | Console Phase 4: Wire REST API endpoints to Console singleton | `backend/onboarding/server.py`, `backend/control/console.py` | 2-3 days | OPEN |
-| WR-85 | Docs | Coach Books refactor — 4 books, 8K+ lines IT markdown, section collisions, content drift, coverage gaps. Plan in `docs/books/REFACTOR_PLAN.md`. | `docs/books/Book-Coach-*.md` | 8 sessions | OPEN |
+| WR-85 | Docs | Coach Books refactor — 4 books, 8K+ lines IT markdown, section collisions, content drift, coverage gaps. Plan in `docs/books/REFACTOR_PLAN.md`. | `docs/books/Book-Coach-*.md` | 8 sessions | **FIXED** — Coach Book v3 restructured (commit `34b14c3`) |
 | WR-86 | Ingestion | In-code TODO: Add `duration_capped` flag to NadeState for transparency | `ingestion/demo_loader.py:231` | 15 min | **FIXED** — `is_duration_estimated` field exists |
 | WR-87 | Knowledge | In-code TODO: Move inline `__main__` test block to proper test file | `backend/knowledge/rag_knowledge.py:627` | 15 min | **FIXED** — `__main__` block removed |
 | WR-88 | Testing | Pre-existing test failure: `test_top_k_limits_results` returns 2 instead of 3 | `tests/test_experience_bank_db.py` | 30 min | **FIXED** — mock embedder replaces SBERT |
@@ -1902,23 +1885,23 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 |----|------|-------|--------|--------|
 | SA-05 | `db_governor.py:90,119,169`, `experience_bank.py:320,354,418,483,855`, `database.py:210,247,253`, `maintenance.py:42`, `run_ingestion.py:1522` | `session.execute()`/`session.query()` → `session.exec()` (SQLModel deprecation) | 2 hrs | OPEN |
 | SA-06 | `backend/server.py:103` | FastAPI `on_event()` → lifespan event handlers | 30 min | OPEN |
-| SA-07 | `main.py:757-759` | Deprecated `save_hardware_budget()` — use `save_user_setting('HARDWARE_BUDGET', ...)` | 15 min | OPEN |
+| SA-07 | `main.py:757-759` | Deprecated `save_hardware_budget()` — use `save_user_setting('HARDWARE_BUDGET', ...)` | 15 min | **FIXED** (commit `eba2dca`) |
 | SA-08 | `console.py:602`, `goliath.py:174` | `migrate_db.py` deprecated (R2-11) — use `alembic upgrade head` | 15 min | OPEN |
-| SA-09 | `tools/audit_scanner.py:82,93,107` | `ast.Str` removed in Python 3.14 — use `ast.Constant` | 15 min | OPEN |
-| SA-10 | `tests/test_round_stats_enrichment.py:272` | `__fields__` → `model_fields` (Pydantic v2 deprecation) | 5 min | OPEN |
+| SA-09 | `tools/audit_scanner.py:82,93,107` | `ast.Str` removed in Python 3.14 — use `ast.Constant` | 15 min | **FIXED** (commit `eba2dca`) |
+| SA-10 | `tests/test_round_stats_enrichment.py:272` | `__fields__` → `model_fields` (Pydantic v2 deprecation) | 5 min | **FIXED** (commit `748dc68`) |
 
 #### Non-Callable Object (WARNING)
 
 | ID | File | Issue | Effort | Status |
 |----|------|-------|--------|--------|
-| SA-11 | `backend/nn/experimental/rap_coach/memory.py:86` | `HopfieldLayer(...)` is None when `hflayers` not installed — crash if RAP flag enabled without deps | 15 min | OPEN |
+| SA-11 | `backend/nn/experimental/rap_coach/memory.py:86` | `HopfieldLayer(...)` is None when `hflayers` not installed — crash if RAP flag enabled without deps | 15 min | **FIXED** — false positive; None guard already safe (commit `3c5a1ca`) |
 
 #### None-Returning Function Assignments (WEAK WARNING — logic bugs)
 
 | ID | File | Issue | Effort | Status |
 |----|------|-------|--------|--------|
-| SA-12 | `core/asset_manager.py:56,66,68` | `_generate_checkered_texture()` doesn't return — `self._texture = None` silently | 30 min | OPEN |
-| SA-13 | `backend/nn/coach_manager.py:300,417` | `logger.warning()/error()` return value assigned | 10 min | OPEN |
+| SA-12 | `core/asset_manager.py:56,66,68` | `_generate_checkered_texture()` doesn't return — `self._texture = None` silently | 30 min | **FIXED** — function returns `Texture` object |
+| SA-13 | `backend/nn/coach_manager.py:300,417` | `logger.warning()/error()` return value assigned | 10 min | **FIXED** (commit `eba2dca`) |
 
 #### Type Checker Issues — High-Density Files (WARNING)
 
@@ -1935,7 +1918,7 @@ All remaining work items consolidated from previous surgery plans, sorted by pri
 
 | ID | Scope | Key Files | Effort | Status |
 |----|-------|-----------|--------|--------|
-| SA-20 | 75 production files | `explainability.py` (3 unused: List, Optional, numpy), `db_governor.py` (sqlite3, List), `ingest_manager.py` (time, List, Optional, Tuple, CoachState), `coach_manager.py` (get_device, load_nn, RAPStateReconstructor, add_breadcrumb), `train.py` (select, TeacherRefinementNN, get_db_manager, PlayerMatchStats) | 2-3 hrs | OPEN |
+| SA-20 | 75 production files | `explainability.py` (3 unused: List, Optional, numpy), `db_governor.py` (sqlite3, List), `ingest_manager.py` (time, List, Optional, Tuple, CoachState), `coach_manager.py` (get_device, load_nn, RAPStateReconstructor, add_breadcrumb), `train.py` (select, TeacherRefinementNN, get_db_manager, PlayerMatchStats) | 2-3 hrs | **FIXED** — 100+ unused imports removed from 53 files (commit `04a1fd0`) |
 
 #### Inconsistent Returns (WEAK WARNING)
 
@@ -1962,20 +1945,7 @@ Key files: `apps/qt_app/app.py:211,221`, `apps/qt_app/core/app_state.py:74,128`,
 
 UPPERCASE locals used as function-scoped constants in `hybrid_engine.py`, `pro_bridge.py`, `faceit_integration.py`, `rag_knowledge.py`. These are intentional style choices for inline constants, not bugs.
 
-#### Architecture Note: This Session's Fixes
-
-The following WR items were resolved in the April 11 session:
-- **WR-76**: Round Reconstructor — tick data → structured LLM timelines (commit `d7969cf`)
-- **WR-77**: Map callout system — 160 positions across 9 maps (commit `ef978a1`)
-- **WR-78**: LLM prompt honesty constraints (commit `023a08d`)
-- **WR-29**: Pulse daemon correlation IDs (commit `e5e3425`)
-- **WR-30**: Log retention at startup (commit `e5e3425`)
-- **WR-88**: Test embedder fix (commit `e5e3425`)
-- **WR-26**: Lazy app_logger (commit `390ab62`)
-- **New**: MovementQualityAnalyzer — 4 MLMove coaching mistake detectors (commit `37aa23c`)
-- **New**: Growing-window temporal validation (commit `d51fc62`)
-
-#### Architecture Note: The Round Reconstructor Concept
+#### Architecture Note: The Round Reconstructor Concept (WR-76, FIXED)
 
 The coaching system's most impactful missing piece is a **data-to-narrative bridge** between
 the database and the LLM. The current pipeline:
@@ -2002,9 +1972,8 @@ got kills, whether they repositioned, whether they were in a 1vX. What it cannot
 voice comms, teammate callouts, opponent intent, off-screen information. The reconstructor
 must make this boundary explicit so the LLM doesn't fill the gap with fiction.
 
-**Dependency chain:** WR-77 (callouts) feeds into WR-76 (reconstructor). WR-78 (prompt
-honesty) is independent and should ship first as a quick win. WR-79 and WR-80 are
-standalone fixes.
+**Dependency chain (all resolved):** WR-77 (callouts) feeds into WR-76 (reconstructor). WR-78 (prompt
+honesty) shipped first as a quick win. WR-79 and WR-80 were standalone fixes. All five items FIXED as of April 2026.
 
 #### Pending: Re-aggregation Commands
 
@@ -2943,25 +2912,55 @@ See Section 40 (Dependency Audit) for the full license matrix.
 
 ---
 
-## 52. Open Findings — Not Yet Fixed
+## 52. Open Findings — Not Yet Fixed (Canonical List, updated 2026-04-12)
+
+### Engineering (code fixes)
 
 | ID | Sev | Finding | Prescribed Fix | Effort |
 |----|-----|---------|---------------|--------|
 | CTF-1 | HIGH | torch.load path trust (no checkpoint hash validation) | Add SHA-256 hash registry; validate before loading | 2h |
-| S-1 | MEDIUM | f-string SQL in 4 diagnostic tools | Parameterize table names via allowlist | 1h |
+| S-1/S-2 | MEDIUM | f-string SQL in 6 diagnostic tools | Parameterize table names via allowlist | 1h |
 | DL-1 | MEDIUM | No DataLineage audit trail | Write provenance records in repair/population tools | 2h |
 | DEP-1 | MEDIUM | Range-pinned dependencies | Pin exact versions in `requirements.txt` | 1h |
 | UX-1 | MEDIUM | No destructive action confirmation dialogs | Add `QMessageBox.warning()` before reset/clear | 1h |
 | UX-2 | MEDIUM | Tactical viewer no loading indicator | Add loading state signal + spinner | 30m |
-| D-4 | MEDIUM | No indexes on `has_helmet`, `has_defuser`, `kast` | `CREATE INDEX` if query patterns emerge | 15m |
+| D-4 | MEDIUM | No indexes on `has_helmet`, `has_defuser`, `kast` | `CREATE INDEX IF NOT EXISTS` | 15m |
+| WR-10 | MEDIUM | SBERT download progress bar (toast exists, no progress UI) | Add Qt progress widget during SBERT download | 2 days |
+| WR-39 | LOW | round_stats_builder complexity ~61 | Break into sub-functions | 4+h |
+| SA-01 | LOW | FAISS search() missing params | Fix call in `vector_index.py:123` | 30m |
+| SA-02 | LOW | FAISS add() missing n param | Fix call in `vector_index.py:185` | 15m |
+| SA-03 | LOW | SQLModel select() type limitation | Verify runtime correctness in `analytics.py` | 1h |
+| SA-04 | LOW | Unexpected alignment kwarg | Fix `section_header.py:75` | 15m |
+| SA-05 | LOW | session.execute() deprecated | Migrate 12 call sites to session.exec() | 2h |
+| SA-06 | LOW | FastAPI on_event() deprecated | Replace with lifespan in `server.py:103` | 30m |
+| SA-08 | LOW | migrate_db.py deprecated references | Replace in `console.py:602`, `goliath.py:174` | 15m |
+| SA-14–19 | LOW | Type checker issues in 6 high-density files | ~73 type annotations to fix | 7h |
+| SA-21–23 | LOW | Inconsistent returns in 3 files | Fix return paths | 1h |
+| SA-24–27 | LOW | Protected member access in 4 files | Expose via public API or document | 30m |
 | CTF-2 | LOW | rglob follows symlinks | Add `is_symlink()` filter | 15m |
 | CFG-1 | LOW | DB files 644 permissions | `chmod 600` in init_database | 15m |
 | UX-3 | LOW | Wizard English-only labels | Wire i18n when translations added | 1h |
-| — | INFO | demoparser2 license unknown | Check GitHub repo | 10m |
-| — | INFO | mypy/pylint/bandit not installed | `pip install` + CI integration | 30m |
-| — | INFO | Test failure in test_top_k_limits_results | Investigate fixture isolation | 30m |
+| WR-84 | LOW | REST API Console integration | Wire API endpoints to Console singleton | 2-3 days |
+| — | INFO | demoparser2 license unknown | Check GitHub repo (likely MIT) | 10m |
+| — | INFO | Test failure in test_top_k_limits_results | **FIXED** (WR-88, commit `e5e3425`) | — |
 
-**Total estimated effort: ~10 hours**
+### Research backlog (from KNOWLEDGE_TRANSFER_TO_CS2_COACH.md)
+
+| ID | Source | Gap | Status | Effort |
+|----|--------|-----|--------|--------|
+| KT-01 | COPER paper (ICLR 2026) | TrueSkill uncertainty, CRUD semantics, prioritized replay | OPEN | 3-5 days |
+| KT-02 | LTC+MHN paper (ICLR 2026) | Learnable alpha/delta coupling (replaces binary Hopfield bypass) | DEFERRED (v0.5, gated by RAP reactivation) | 1 day |
+| KT-03 | MLMove (SIGGRAPH 2024) | 4 coaching mistake detectors — movement quality | PARTIALLY DONE (commit `37aa23c`) | 1 day remaining |
+| KT-04 | Growing-window validation | Temporal validation for dataset splits | **DONE** (commit `d51fc62`) | — |
+| KT-05 | VL-JEPA (Meta FAIR) | Learnable masking, concept grounding, 0.05x LR for concepts | OPEN | 1 day |
+| KT-06 | Rating paper (UNSW) | PlusMinus metric, role-specific Bayesian priors | OPEN | 2 days |
+| KT-07 | CS:GO ML (CTU 2022) | Elo features + recency weighting for win probability | OPEN | 1-2 days |
+| KT-08 | GOEI (ICLR 2026) | Game tree state reduction via DP clustering | OPEN | 3+ days |
+| KT-09 | NAIT (ICLR 2026) | Demo prioritization by coaching-capability variance | OPEN | 2 days |
+| KT-10 | Approx. Equivariance | Bombsite-relative coordinate encoding | OPEN | 2 days |
+| KT-11 | Robust PPI | Demo quality scoring via Huber contamination model | OPEN | 1 day |
+
+**Total engineering effort: ~25 hours. Research backlog: ~15 days (phased across releases).**
 
 ---
 
@@ -2981,14 +2980,31 @@ See Section 40 (Dependency Audit) for the full license matrix.
 | `720eca5` | Fix hardcoded demo paths for Linux workstation and add re-aggregation script |
 | `b9d4acf` | Fix coaching prompt honesty (WR-79, WR-80) and update OPEN_PROBLEMS |
 | `d80d3cf` | Document coaching smoke test findings (WR-76..WR-80) and fix LICENSE corruption |
+| `d7969cf` | WR-76: Round Reconstructor — tick data to structured LLM timelines |
+| `ef978a1` | WR-77: Map callout system — 160 positions across 9 maps |
+| `023a08d` | WR-78/79/80: LLM prompt honesty + name leak + NN attribution fixes |
+| `e5e3425` | WR-29/30/88: Correlation IDs, log retention, test embedder |
+| `390ab62` | WR-26/19: Lazy app_logger + .env.example |
+| `37aa23c` | New: MovementQualityAnalyzer — 4 MLMove coaching mistake detectors |
+| `d51fc62` | New: Growing-window temporal validation for dataset splits |
+| `04a1fd0` | SA-20: Remove 100+ unused imports from 53 production files |
+| `eba2dca` | SA-07/09/13: Deprecated call, ast.Str, logger return fixes |
+| `748dc68` | SA-10: Replace __fields__ with model_fields (Pydantic v2) |
+| `3c5a1ca` | SA-11: Document HopfieldLayer None guard as false positive |
+| `1c33979` | Fix UNIQUE constraint crash in rebuild_monolith Phase 2 |
 
 ### Resolved Finding IDs
 
-D-1, D-2, D-3, C-1, C-2, C-3, ML-1, DA-1 through DA-8, CFG-2, L6
+D-1, D-2, D-3, C-1, C-2, C-3, ML-1, DA-1 through DA-8, CFG-2, L6,
+SA-07, SA-09, SA-10, SA-11, SA-12, SA-13, SA-20
 
 ### Resolved WR Items (April 2026)
 
-WR-21, WR-31, WR-32, WR-35, WR-40, WR-44, WR-45, WR-46, WR-47, WR-51, WR-52, WR-53, WR-54, WR-56, WR-57, WR-59, WR-60, WR-63, WR-64, WR-67, WR-71, WR-72, WR-74, WR-79, WR-80
+WR-01 through WR-09, WR-11 through WR-19, WR-21 through WR-26, WR-29 through WR-35,
+WR-37, WR-38, WR-40 through WR-60, WR-62 through WR-78, WR-80 through WR-83,
+WR-85 through WR-88
+
+**WR-28**: Reclassified as **OBSOLETE** — `exceptions.py` hierarchy is now actively used in production.
 
 ### New Files Created
 
@@ -3026,4 +3042,4 @@ WR-21, WR-31, WR-32, WR-35, WR-40, WR-44, WR-45, WR-46, WR-47, WR-51, WR-52, WR-
 
 ---
 
-*Document generated 2026-03-28. Last updated 2026-04-11. 100% codebase coverage achieved. Work registry reconciled: 25 WR items marked FIXED, 8 new items (WR-81..WR-88) added from cross-referencing audit. 43 OPEN items remain.*
+*Document generated 2026-03-28. Last updated 2026-04-12. 100% codebase coverage achieved. Work registry fully reconciled: 75+ WR items FIXED, 7 SA items FIXED, 1 WR item OBSOLETE. 24 engineering OPEN items remain (~25 hours). 11 research backlog items added from KNOWLEDGE_TRANSFER (phased across v0.1-v1.0+).*
