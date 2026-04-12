@@ -36,7 +36,7 @@
 
 **Parte 1A** — Il Cervello: Core della Rete Neurale (JEPA, VL-JEPA, AdvancedCoachNN, SuperpositionLayer, EMA, CoachTrainingManager, TrainingOrchestrator, ModelFactory, NeuralRoleHead, MaturityObservatory)
 
-**Parte 2** — Sezioni 5-13: Servizi di Coaching, Coaching Engines, Conoscenza e Recupero, Motori di Analisi (10), Elaborazione e Feature Engineering, Modulo di Controllo, Progresso e Tendenze, Database e Storage (Tri-Tier), Pipeline di Addestramento e Orchestrazione, Funzioni di Perdita
+**Parte 2** — Sezioni 5-13: Servizi di Coaching, Coaching Engines, Conoscenza e Recupero, Motori di Analisi (11), Elaborazione e Feature Engineering, Modulo di Controllo, Progresso e Tendenze, Database e Storage (Tri-Tier), Pipeline di Addestramento e Orchestrazione, Funzioni di Perdita
 
 **Parte 3** — Logica Programma, UI, Ingestion, Tools, Tests, Build, Remediation
 
@@ -848,7 +848,7 @@ flowchart LR
 
 > **Nota architetturale:** Il sottosistema HLTV completo (con `HLTVApiService`, `CircuitBreaker`, `BrowserManager`, `CacheProxy`, `collectors`) risiede in `ingestion/hltv/` ed è documentato in Part 3. I file in `data_sources/hltv/` sono l'implementazione a basso livello dello scraping e del rate limiting.
 
-> **Stato del database HLTV (aprile 2026):** Il database `hltv_metadata.db` contiene **151 giocatori professionisti reali**, **30 team** e **140 stat card** raccolti dallo scraping live di hltv.org tramite FlareSolverr. I selettori CSS in `selectors.py` sono dotati di catene di fallback per resistere ai cambiamenti di layout del sito. Il `HybridCoachingEngine` utilizza questi dati per la selezione automatica del pro di riferimento: quando genera un'analisi, trova automaticamente il giocatore pro il cui `rating_2_0` è più vicino a quello dell'utente e lo nomina nei feedback ("la tua ADR è inferiore a quella di [nome pro]"), via `_find_best_match_pro()` in `coaching_service.py` e `_get_pro_name()` in `hybrid_engine.py`.
+> **Stato del database HLTV (aprile 2026):** Il database `hltv_metadata.db` contiene **161 giocatori professionisti reali**, **32 team** e **156 stat card** raccolti dallo scraping live di hltv.org tramite FlareSolverr. I selettori CSS in `selectors.py` sono dotati di catene di fallback per resistere ai cambiamenti di layout del sito. Il `HybridCoachingEngine` utilizza questi dati per la selezione automatica del pro di riferimento: quando genera un'analisi, trova automaticamente il giocatore pro il cui `rating_2_0` è più vicino a quello dell'utente e lo nomina nei feedback ("la tua ADR è inferiore a quella di [nome pro]"), via `_find_best_match_pro()` in `coaching_service.py` e `_get_pro_name()` in `hybrid_engine.py`.
 
 **`hltv_scraper.py` / `hltv_metadata.py`** (entry point in `data_sources/`):
 - `run_hltv_sync_cycle(limit=20)` — Orchestratore del ciclo di sincronizzazione che importa `HLTVApiService` dalla pipeline completa
@@ -1133,7 +1133,7 @@ La Parte 1B ha documentato i **due pilastri percettivi e diagnostici** del siste
 | Sottosistema | Ruolo | Componenti Chiave |
 |---|---|---|
 | **2. RAP Coach** | Il **medico specialista** — architettura a 7 componenti per coaching completo in condizioni POMDP | Percezione (ResNet a 3 flussi, 24 conv), Memoria (LTC **512** unità NCP + Hopfield 4 teste + ritardo attivazione NN-MEM-01 + **RAPMemoryLite** fallback LSTM), Strategia (4 esperti MoE + SuperpositionLayer), Pedagogia (Value Critic + Skill Adapter), Attribuzione Causale (5 categorie, segnale utilità appreso), Posizionamento (Linear 256→3), Comunicazione (template), ChronovisorScanner (3 scale temporali + 50K tick safety limit + deduplicazione cross-scala + ScanResult strutturato), GhostEngine (pipeline 4-tensori con POV mode R4-04-01, hidden_state NN-40, fallback a 5 livelli) |
-| **1B. Sorgenti Dati** | I **sensi** — acquisiscono e strutturano dati dal mondo esterno | Demo Parser (demoparser2 + HLTV 2.0 rating), Demo Format Adapter (magic bytes PBDEMS2), Event Registry (schema CS2 completo), Trade Kill Detector (finestra 192 tick), Steam API (retry + backoff), Steam Demo Finder (cross-platform), HLTV (FlareSolverr + rate limiting 4 livelli + selettori CSS con fallback chain — **151 giocatori pro reali, 30 team, 140 stat card** in hltv_metadata.db), FACEIT API, FrameBuffer (ring buffer 30 frame), TensorFactory (3 rasterizzatori NO-WALLHACK), FAISS (IndexFlatIP 384-dim), Round Context (merge_asof O(n log m)) |
+| **1B. Sorgenti Dati** | I **sensi** — acquisiscono e strutturano dati dal mondo esterno | Demo Parser (demoparser2 + HLTV 2.0 rating), Demo Format Adapter (magic bytes PBDEMS2), Event Registry (schema CS2 completo), Trade Kill Detector (finestra 192 tick), Steam API (retry + backoff), Steam Demo Finder (cross-platform), HLTV (FlareSolverr + rate limiting 4 livelli + selettori CSS con fallback chain — **161 giocatori pro reali, 32 team, 156 stat card** in hltv_metadata.db), FACEIT API, FrameBuffer (ring buffer 30 frame), TensorFactory (3 rasterizzatori NO-WALLHACK), FAISS (IndexFlatIP 384-dim), Round Context (merge_asof O(n log m)) |
 
 > **Analogia finale:** Se il sistema di coaching fosse un **essere umano**, la Parte 1A ha descritto il suo cervello (le reti neurali che imparano e il sistema di maturità che decide quando sono pronte), e la Parte 1B ha descritto i suoi occhi e orecchie (le sorgenti dati che acquisiscono informazioni dal mondo esterno), il suo sistema nervoso specializzato (il RAP Coach che integra percezione, memoria e decisione), e il suo sistema di comunicazione (che traduce la comprensione in consigli leggibili). Ma un cervello con sensi da solo non basta: ha bisogno di un **corpo** per agire. La **Parte 2** documenta quel corpo — i servizi che sintetizzano i consigli, i motori di analisi che investigano ogni aspetto del gameplay, i sistemi di conoscenza che memorizzano la saggezza accumulata, la pipeline di elaborazione che prepara i dati, il database che preserva tutto, e la pipeline di addestramento che insegna ai modelli.
 
@@ -1151,7 +1151,7 @@ flowchart LR
     end
     subgraph PARTE2["PARTE 2 — Servizi e Infrastruttura"]
         SVC["Servizi di Coaching<br/>(fallback 4 livelli)"]
-        ANL["Motori di Analisi<br/>(10 specialisti)"]
+        ANL["Motori di Analisi<br/>(11 specialisti)"]
         KB["Conoscenza<br/>(RAG + COPER)"]
         PROC["Elaborazione<br/>(Feature Engineering)"]
         DB["Database<br/>(Tri-Tier SQLite)"]
@@ -1175,4 +1175,4 @@ flowchart LR
     style PARTE2 fill:#f0f8e8
 ```
 
-> **Continua nella Parte 2** — *Servizi di Coaching, Coaching Engines, Conoscenza e Recupero, Motori di Analisi (10), Elaborazione e Feature Engineering, Modulo di Controllo, Progresso e Tendenze, Database e Storage (Tri-Tier), Pipeline di Addestramento e Orchestrazione, Funzioni di Perdita*
+> **Continua nella Parte 2** — *Servizi di Coaching, Coaching Engines, Conoscenza e Recupero, Motori di Analisi (11), Elaborazione e Feature Engineering, Modulo di Controllo, Progresso e Tendenze, Database e Storage (Tri-Tier), Pipeline di Addestramento e Orchestrazione, Funzioni di Perdita*
