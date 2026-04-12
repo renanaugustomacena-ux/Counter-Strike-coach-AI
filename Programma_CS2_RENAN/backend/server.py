@@ -195,57 +195,142 @@ def get_insights():
 
 @app.get("/api/status")
 def get_status():
-    """WR-84: System status via Console singleton."""
+    """WR-84: Full system status via Console singleton."""
     try:
-        from Programma_CS2_RENAN.backend.control.console import Console
+        from Programma_CS2_RENAN.backend.control.console import get_console
 
-        console = Console()
-        return {
-            "status": "operational",
-            "version": "2.0.0",
-            "daemons": {
-                "scanner": getattr(console, "_scanner_alive", False),
-                "digester": getattr(console, "_digester_alive", False),
-                "teacher": getattr(console, "_teacher_alive", False),
-            },
-            "project_root": str(getattr(console, "project_root", "")),
-        }
+        return get_console().get_system_status()
     except Exception as e:
         app_logger.warning("Console not available: %s", e)
-        return {"status": "operational", "version": "2.0.0"}
-
-
-@app.post("/api/console/coaching", status_code=200)
-async def trigger_coaching(request: Request):
-    """WR-84: Trigger coaching generation via Console."""
-    client_ip = request.client.host if request.client else "unknown"
-    if not telemetry_rate_limiter.is_allowed(client_ip):
-        raise HTTPException(status_code=429, detail="Rate limited")
-    try:
-        from Programma_CS2_RENAN.backend.control.console import Console
-
-        console = Console()
-        result = console.run_coaching()
-        return {"status": "ok", "result": str(result)}
-    except Exception as e:
-        app_logger.error("Coaching trigger failed: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"status": "unavailable", "error": str(e)}
 
 
 @app.get("/api/console/health")
 def console_health():
     """WR-84: Console health check — verifies singleton is alive."""
     try:
-        from Programma_CS2_RENAN.backend.control.console import Console
+        from Programma_CS2_RENAN.backend.control.console import get_console
 
-        console = Console()
+        console = get_console()
         return {
             "healthy": True,
-            "db_manager": console.db is not None,
-            "ml_controller": console.ml is not None,
+            "db_governor": console.db_governor is not None,
+            "ml_controller": console.ml_controller is not None,
+            "ingest_manager": console.ingest_manager is not None,
         }
     except Exception as e:
         return {"healthy": False, "error": str(e)}
+
+
+# --- ML Training Control ---
+
+
+@app.post("/api/training/start")
+async def start_training(request: Request):
+    """WR-84: Start ML training via Console."""
+    client_ip = request.client.host if request.client else "unknown"
+    if not telemetry_rate_limiter.is_allowed(client_ip):
+        raise HTTPException(status_code=429, detail="Rate limited")
+    try:
+        from Programma_CS2_RENAN.backend.control.console import get_console
+
+        result = get_console().start_training()
+        return {"status": "ok", "training": result}
+    except Exception as e:
+        app_logger.error("Training start failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/training/stop")
+async def stop_training(request: Request):
+    """WR-84: Stop ML training via Console."""
+    client_ip = request.client.host if request.client else "unknown"
+    if not telemetry_rate_limiter.is_allowed(client_ip):
+        raise HTTPException(status_code=429, detail="Rate limited")
+    try:
+        from Programma_CS2_RENAN.backend.control.console import get_console
+
+        result = get_console().stop_training()
+        return {"status": "ok", "training": result}
+    except Exception as e:
+        app_logger.error("Training stop failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/training/pause")
+async def pause_training(request: Request):
+    """WR-84: Pause ML training via Console."""
+    client_ip = request.client.host if request.client else "unknown"
+    if not telemetry_rate_limiter.is_allowed(client_ip):
+        raise HTTPException(status_code=429, detail="Rate limited")
+    try:
+        from Programma_CS2_RENAN.backend.control.console import get_console
+
+        result = get_console().pause_training()
+        return {"status": "ok", "training": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/training/resume")
+async def resume_training(request: Request):
+    """WR-84: Resume ML training via Console."""
+    client_ip = request.client.host if request.client else "unknown"
+    if not telemetry_rate_limiter.is_allowed(client_ip):
+        raise HTTPException(status_code=429, detail="Rate limited")
+    try:
+        from Programma_CS2_RENAN.backend.control.console import get_console
+
+        result = get_console().resume_training()
+        return {"status": "ok", "training": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- HLTV Service Control ---
+
+
+@app.post("/api/services/hunter/start")
+async def start_hunter(request: Request):
+    """WR-84: Start HLTV scraper service via Console supervisor."""
+    client_ip = request.client.host if request.client else "unknown"
+    if not telemetry_rate_limiter.is_allowed(client_ip):
+        raise HTTPException(status_code=429, detail="Rate limited")
+    try:
+        from Programma_CS2_RENAN.backend.control.console import get_console
+
+        get_console().supervisor.start_service("hunter")
+        return {"status": "ok", "service": "hunter", "action": "started"}
+    except Exception as e:
+        app_logger.error("Hunter start failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/services/hunter/stop")
+async def stop_hunter(request: Request):
+    """WR-84: Stop HLTV scraper service via Console supervisor."""
+    client_ip = request.client.host if request.client else "unknown"
+    if not telemetry_rate_limiter.is_allowed(client_ip):
+        raise HTTPException(status_code=429, detail="Rate limited")
+    try:
+        from Programma_CS2_RENAN.backend.control.console import get_console
+
+        get_console().supervisor.stop_service("hunter")
+        return {"status": "ok", "service": "hunter", "action": "stopped"}
+    except Exception as e:
+        app_logger.error("Hunter stop failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/services/status")
+def services_status():
+    """WR-84: Get all supervised services status."""
+    try:
+        from Programma_CS2_RENAN.backend.control.console import get_console
+
+        return get_console().supervisor.get_status()
+    except Exception as e:
+        return {"error": str(e)}
 
 
 if __name__ == "__main__":

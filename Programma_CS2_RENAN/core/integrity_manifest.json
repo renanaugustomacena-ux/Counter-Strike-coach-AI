@@ -225,7 +225,7 @@
     "backend/progress/trend_analysis.py": "50aaa1d31b0b518be576b6a669e080101cb728b5db4b0cf383c7e0248df81a16",
     "backend/reporting/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "backend/reporting/analytics.py": "5f7c53feb120d455c9e3aa1edeecafbbbdb87f25afaeab522315db796f9596a4",
-    "backend/server.py": "446d86803e75b4719902e2b753c93265ca01cf4a376054a8289ef7579bd907a2",
+    "backend/server.py": "61c96272b9157517607d07e42244aa0397d0b7f48e042b8b9cd533b77cce4dd4",
     "backend/services/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "backend/services/analysis_orchestrator.py": "5b96cc853431c807fd07779646257f8b3d5ba3944778c48edca9b66e2a43df1c",
     "backend/services/analysis_service.py": "bbfa48184a42455a71f47a340ed4a48ee21e044b72f5781386367af2b9253645",
