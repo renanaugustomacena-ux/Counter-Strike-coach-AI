@@ -136,17 +136,19 @@ Oltre ai tre servizi principali (CoachingService, OllamaCoachWriter, AnalysisOrc
 
 > **Analogia:** Se CoachingService è il **direttore dell'ospedale**, i servizi aggiuntivi sono i **reparti specializzati**: c'è il reparto di dialogo (coaching interattivo), il reparto lezioni (formazione strutturata), il laboratorio linguistico (LLM), il reparto imaging (visualizzazioni), l'anagrafe (profili), il reparto analisi (coordinamento) e il sistema di telemetria (monitoraggio remoto).
 
-#### CoachingDialogueEngine (`coaching_dialogue.py`, 373 righe)
+#### CoachingDialogueEngine (`coaching_dialogue.py`, ~500 righe)
 
 Motore di dialogo multi-turno con augmentazione RAG e Experience Bank. Evolve il single-shot OllamaCoachWriter in una **sessione interattiva** dove i giocatori possono fare domande follow-up sulle loro prestazioni.
 
 | Componente | Dettaglio |
 |---|---|
-| **Classificazione intent** | Keyword-based: 4 categorie (positioning, utility, economy, aim) + general fallback |
+| **Classificazione intent** | Keyword-based: 7 categorie (positioning, utility, economy, aim, player_query, round_query, match_query) + general fallback |
 | **Contesto sliding window** | `MAX_CONTEXT_TURNS = 6` (12 messaggi: 6 user + 6 assistant) |
 | **Retrieval augmentation** | RAG top-3 + Experience Bank top-3, iniettati nel messaggio utente |
+| **Player entity detection** | Integrazione con `PlayerLookupService` per rilevare menzioni di giocatori professionisti nel messaggio utente e iniettare blocchi "VERIFIED PLAYER DATA" nel contesto LLM |
 | **Fallback offline** | Template-based con RAG-only quando Ollama non è disponibile |
 | **Singleton** | `get_dialogue_engine()` — factory module-level |
+| **Anti-hallucination (WR-78/79)** | System prompt con regole: "use ONLY verified data", provenance markers ("pro data" vs "user data"), mai fabbricare narrative tattiche |
 
 **Pipeline di risposta:**
 
@@ -160,7 +162,7 @@ sequenceDiagram
     participant LLM as LLMService (Ollama)
     U->>DE: respond("Come miglioro il positioning?")
     DE->>IC: _classify_intent()
-    IC-->>DE: intent = "positioning"
+    IC-->>DE: intent = "positioning" (o player_query/round_query/match_query)
     DE->>RAG: retrieve(query, top_k=3, category="positioning")
     RAG-->>DE: 3 tactical knowledge entries
     DE->>EB: retrieve_similar(context, top_k=3)
@@ -262,6 +264,34 @@ Client async per invio metriche a server centrale:
 - Fallback graceful se httpx non installato (feature opzionale)
 - **Anti-fabrication compliant:** nessun dato sintetico nel self-test
 
+#### PlayerLookupService (`player_lookup.py`, 503 righe)
+
+Servizio di ricerca giocatori professionisti che previene l'allucinazione LLM iniettando dati verificati nel contesto del dialogo di coaching:
+
+> **Analogia:** Il PlayerLookupService è come un **archivista che controlla i fatti** prima che l'allenatore parli. Quando un giocatore chiede "Parlami di s1mple", l'archivista va a controllare nelle cartelle cliniche reali (database HLTV + Monolith) e consegna una scheda verificata all'allenatore: "Ecco i dati reali su s1mple: rating 1.29, team Natus Vincere, ecc.". L'allenatore è obbligato a usare SOLO questi dati verificati, non può inventare statistiche. Senza l'archivista, l'LLM potrebbe "allucinare" statistiche plausibili ma false.
+
+| Componente | Dettaglio |
+|---|---|
+| **Matching a 3 livelli** | Esatto (case-insensitive) → Fuzzy (SequenceMatcher ≥ 0.75) → Pattern (regex nickname) |
+| **Cache nickname** | TTL 60s, carica tutti i `ProPlayer.nickname` dal DB HLTV all'avvio |
+| **Stop-word filter** | 89 parole comuni inglesi filtrate per evitare falsi positivi |
+| **Output** | `ProPlayerProfile` dataclass: nickname, hltv_id, real_name, country, team, statistiche HLTV (rating, KPR, ADR, KAST), performance da demo locali |
+| **Integrazione** | `CoachingDialogueEngine` → `detect_player_mentions()` → `lookup_player()` → `format_player_context()` → blocco "VERIFIED PLAYER DATA" iniettato nel contesto LLM |
+| **Singleton** | `get_player_lookup_service()` |
+
+**Pipeline anti-allucinazione:**
+
+```mermaid
+flowchart TB
+    MSG["Messaggio utente:<br/>Come gioca s1mple?"] --> DETECT["detect_player_mentions()<br/>Trova 's1mple' nel messaggio"]
+    DETECT --> LOOKUP["lookup_player('s1mple')<br/>Query HLTV DB + Monolith DB"]
+    LOOKUP --> FORMAT["format_player_context()<br/>Blocco testo strutturato"]
+    FORMAT --> INJECT["Inietta nel contesto LLM:<br/>VERIFIED PLAYER DATA:<br/>s1mple, Rating: 1.29, ADR: 87.8..."]
+    INJECT --> LLM_RESP["LLM risponde usando<br/>SOLO dati verificati"]
+    style INJECT fill:#51cf66,color:#fff
+    style LLM_RESP fill:#4a9eff,color:#fff
+```
+
 ```mermaid
 flowchart LR
     subgraph SERVICES["ECOSISTEMA SERVIZI (backend/services/)"]
@@ -275,12 +305,16 @@ flowchart LR
         PS["ProfileService<br/>(Steam + FACEIT sync)"]
         AS["AnalysisService<br/>(drift detection)"]
         TC["TelemetryClient<br/>(metrics export)"]
+        PL["PlayerLookupService<br/>(anti-hallucination)"]
     end
     CS --> OW
     CS --> AO
     CD --> LLM
+    CD --> PL
+    PL -->|"query HLTV"| HLTV_DB["HLTV DB"]
+    PL -->|"query monolith"| DB["Database"]
     LG --> LLM
-    PS -->|"sync"| DB["Database"]
+    PS -->|"sync"| DB
     AS -->|"query"| DB
     TC -->|"httpx POST"| SRV["Server Centrale"]
 ```
@@ -408,21 +442,25 @@ Modulo leggero che scala le correzioni dal `CorrectionEngine` usando pesi appres
 | `PlayerCardAssimilator` | Converte `ProPlayerStatCard` → baseline coach-compatible |
 | `get_pro_baseline_for_coach()` | Factory function diretta |
 
-**Costante chiave:** `ESTIMATED_ROUNDS_PER_MATCH = 24.0` — utilizzata per convertire KPR/DPR in avg_kills/avg_deaths.
+**Costante legacy:** `ESTIMATED_ROUNDS_PER_MATCH = 24.0` — presente nel codice ma **non più utilizzata** per la conversione KPR/DPR dopo la correzione P3-02.
 
 **Mappatura metriche:**
 
 | Metrica HLTV | Metrica Coach | Trasformazione |
 |---|---|---|
-| `card.kpr` | `avg_kills` | `kpr × 24` |
-| `card.dpr` | `avg_deaths` | `dpr × 24` |
+| `card.kpr` | `avg_kills` | **diretto** (P3-02: NON moltiplicato per 24) |
+| `card.dpr` | `avg_deaths` | **diretto** (P3-02: NON moltiplicato per 24) |
 | `card.adr` | `avg_adr` | diretto |
-| `card.kast` | `avg_kast` | diretto |
+| `card.kast` | `avg_kast` | V-2: normalizzazione difensiva (`/100` se `kast > 1.0`, altrimenti diretto) |
 | `card.impact` | `impact_rounds` | diretto |
 | `card.rating_2_0` | `rating` | diretto |
-| `detailed_stats.headshot_pct` | `avg_hs` | diretto (default 0.45) |
+| `detailed_stats.headshot_pct` | `avg_hs` | V-2: normalizzazione difensiva (`/100` se `> 1.0`, default 0.45) |
 | `detailed_stats.total_opening_kills` | `entry_rate` | `/100` (euristica) |
 | `detailed_stats.utility_damage_per_round` | `utility_damage` | diretto (default 45.0) |
+
+> **Correzione P3-02 — Scala KPR/DPR:** Il codice precedente moltiplicava `kpr × 24` e `dpr × 24`, producendo uccisioni/morti totali per partita (valori 15-20) anziché valori per-round (0.6-0.8). Questo rendeva tutti gli z-score di confronto invalidi poiché le statistiche utente estratte da `base_features.py` e `pro_baseline.py` sono già in scala per-round. Dopo la rimediazione, `get_coach_baseline()` usa direttamente i tassi per-round.
+>
+> **Correzione V-2 — Normalizzazione difensiva legacy:** I record HLTV più vecchi nel database potrebbero contenere valori percentuali (es. `kast=72.0` anziché `kast=0.72`). La normalizzazione condizionale (`/100 se > 1.0`) gestisce entrambi i formati in modo trasparente.
 
 **Classificazione archetipo:** `get_player_archetype()` → Star Fragger (impact>1.3), Support Anchor (kast>0.75), Sniper Specialist (AWP kills>40%), All-Rounder (default).
 
@@ -503,8 +541,8 @@ Implementa una pipeline di **generazione aumentata dal recupero** utilizzando la
 | **Archiviazione**             | Tabella SQLite `TacticalKnowledge` (embedding memorizzato come array float codificato in JSON)                                                     |
 | **Recupero**                  | Similarità del coseno tramite `scipy.spatial.distance.cosine`                                                                                     |
 | **Top-k**                     | Configurabile, predefinito k=5                                                                                                                       |
-| **Versioning**                | `CURRENT_VERSION = "v2"`; incorporamenti obsoleti ricalcolati al momento del rilascio della versione                                               |
-| **Categorie**                 | 11: obiettivo, posizionamento, utilità, movimento, economia, strategia, posizionamento del mirino, comunicazione, mentale, senso del gioco, trading |
+| **Versioning**                | `CURRENT_VERSION = "v3"` (2026-04, Coach Book refactor, Premier S4 active duty alignment); incorporamenti obsoleti v2 ricalcolati automaticamente via `trigger_reembedding()` |
+| **Categorie**                 | 14: obiettivo, posizionamento, utilità, movimento, economia, strategia, posizionamento del mirino, comunicazione, mentale, senso del gioco, trading, **mid_round**, **retakes_post_plant**, **aim_and_duels** |
 
 > **Analogia:** RAG funziona come un **motore di ricerca intelligente per il cervello dell'allenatore**. Quando l'allenatore ha bisogno di consigli sul posizionamento su Dust2 come CT AWPer, non cerca per parole chiave come Google. Invece, converte la domanda in un "vettore di significato" di 384 numeri e trova suggerimenti memorizzati i cui vettori di significato puntano nella stessa direzione (somiglianza del coseno). È come se ogni libro in una biblioteca avesse una coordinata GPS che ne rappresenta l'argomento e, invece di cercare per titolo, si fornissero le coordinate GPS e si trovassero i 5 libri più vicini. Il moltiplicatore di rilevanza 1,2x è come dire "i libri dello stesso scaffale (stessa mappa/lato/tipo di arrotondamento) ottengono punti bonus". Il filtro di deduplicazione (soglia 0,85) impedisce di restituire 5 copie sostanzialmente dello stesso suggerimento.
 >
@@ -533,9 +571,9 @@ flowchart TB
 
 **Costruzione query:** query dinamiche in linguaggio naturale da statistiche giocatore, mappa, lato, ruolo. Gli elementi che corrispondono al contesto ottengono un moltiplicatore di rilevanza 1,2x. La deduplicazione filtra gli elementi con una similarità >0,85 rispetto ai risultati già selezionati.
 
-### -Banca Esperienza (`experience_bank.py`) — Framework COPER
+### -Banca Esperienza (`experience_bank.py`) — Framework COPER (KT-01 Enhanced)
 
-Implementa il framework **Osservazione–Previsione–Esperienza–Recupero Contestuale (COPER)**:
+Implementa il framework **Osservazione–Previsione–Esperienza–Recupero Contestuale (COPER)** con semantica CRUD, replay prioritizzato e integrazione TrueSkill:
 
 > **Analogia:** COPER è il **diario personale dell'allenatore con superpoteri**. Ogni volta che l'allenatore dà un consiglio durante una partita, scrive una voce di diario: "In Dust2, round eco lato T, il giocatore era nei tunnel B con 60 HP e un Deagle. Gli ho detto di mantenere l'angolazione. Sono sopravvissuti e hanno ottenuto 2 uccisioni. Questo consiglio HA FUNZIONATO!" Più tardi, quando si presenta una situazione simile, l'allenatore sfoglia il suo diario e trova quella voce. Ma è ancora più intelligente: controlla anche cosa hanno fatto i giocatori professionisti in situazioni simili, cerca degli schemi ("Questo giocatore continua ad avere difficoltà nei round eco sul lato T") e adatta la fiducia in base alla data di convalida del consiglio.
 
@@ -591,6 +629,41 @@ flowchart TB
 ```
 
 **Estrazione dell'esperienza dalle demo:** Raggruppa gli eventi per tick, identifica le uccisioni/morti dei giocatori, crea il contesto a partire da un'istantanea del tick, deduce l'azione (scoped_hold, crouch_peek, pushed, held_angle), determina l'esito.
+
+**Miglioramenti KT-01 — Semantica CRUD e Replay Prioritizzato:**
+
+| Costante | Valore | Scopo |
+|---|---|---|
+| `DUPLICATE_SIMILARITY_THRESHOLD` | 0.9 | Similarità coseno per rilevamento duplicati |
+| `CRUD_EMA_FACTOR` | 0.3 | Peso EMA per merge effectiveness su UPDATE |
+| `REPLAY_ALPHA` | 0.6 | Esponente priorità replay (più basso = più uniforme) |
+| `REPLAY_GATE` | 0.4 | Confidenza minima per essere eleggibile al replay |
+| `_MIN_EFFECTIVENESS_TRIALS` | 5 | Trial minimi prima che effectiveness influenzi il retrieval |
+
+**Decisione CRUD al momento dell'inserimento:**
+
+```mermaid
+flowchart TB
+    NEW["Nuova esperienza<br/>(contesto + azione + esito)"] --> DUP{"Duplicato trovato?<br/>(cosine sim ≥ 0.9)"}
+    DUP -->|"No"| CREATE["CREATE<br/>Inserimento standard"]
+    DUP -->|"Sì, stessa azione"| UPDATE["UPDATE<br/>EMA merge: eff = 0.7×old + 0.3×new<br/>Aggiorna outcome, delta_win_prob"]
+    DUP -->|"Sì, azione diversa"| CMP{"Nuovo delta_win_prob<br/>migliore?"}
+    CMP -->|"Sì"| DISCARD_CREATE["DISCARD + CREATE<br/>Elimina vecchia, inserisci nuova"]
+    CMP -->|"No"| KEEP["KEEP vecchia<br/>(nuova scartata)"]
+    style CREATE fill:#51cf66,color:#fff
+    style UPDATE fill:#4a9eff,color:#fff
+    style DISCARD_CREATE fill:#ffd43b,color:#000
+```
+
+> **Analogia CRUD:** In precedenza, il diario dell'allenatore aggiungeva sempre una nuova voce, anche se era quasi identica a una precedente. Con KT-01, il diario è diventato intelligente: (1) **Se la stessa situazione ha prodotto lo stesso consiglio**, aggiorna la voce esistente con una media ponderata dei risultati (UPDATE). (2) **Se la stessa situazione suggerisce un consiglio diverso e migliore**, sostituisce la vecchia voce (DISCARD+CREATE). (3) **Se il nuovo consiglio è peggiore**, lo scarta silenziosamente (KEEP). Questo previene la crescita illimitata del diario mantenendo solo le esperienze più utili.
+
+**Replay Prioritizzato (KT-01):** Le esperienze vengono campionate per il replay con probabilità proporzionale a `priority^REPLAY_ALPHA`, dove `priority = effectiveness_score × confidence_score`. Solo esperienze con `confidence_score ≥ REPLAY_GATE` sono eleggibili. Questo bilancia exploitation (esperienze efficaci) con exploration (esperienze meno testate).
+
+**Integrazione TrueSkill (KT-01):** Campi `mu_skill` e `sigma_skill` per tracking bayesiano della competenza del giocatore nella situazione specifica. I prior TrueSkill influenzano il peso dell'esperienza nel retrieval: esperienze con alta incertezza (`sigma` alto) sono penalizzate rispetto a quelle con segnale stabile.
+
+**Compressione Embedding:** Gli embedding 384-dim sono ora codificati come `base64(float32)` anziché JSON array, ottenendo una compressione 4× sullo spazio di archiviazione nel database senza perdita di precisione.
+
+**Linking Riferimento Pro:** Ogni esperienza può includere `pro_player_name`, `pro_match_id`, `source_demo` per collegare direttamente a come un professionista specifico ha gestito una situazione analoga.
 
 ### -Knowledge Graph
 
@@ -654,15 +727,15 @@ Utility condivisa per classificazione fase economica del round, estratta per eli
 ## 7. Sottosistema 5 — Motori di analisi
 
 **cartella nella repo:** `backend/analysis/`
-**10 file, ~2.100 righe di codice di produzione**
+**11 file, ~2.600 righe di codice di produzione**
 
-Questo sottosistema contiene **10 motori di analisi specializzati**, ognuno progettato per indagare una diversa dimensione del gameplay. Funzionano come analisi di Fase 6, fornendo approfondimenti che vanno oltre ciò che le sole reti neurali possono offrire.
+Questo sottosistema contiene **11 motori di analisi specializzati**, ognuno progettato per indagare una diversa dimensione del gameplay. Funzionano come analisi di Fase 6, fornendo approfondimenti che vanno oltre ciò che le sole reti neurali possono offrire.
 
-> **Analogia:** Pensate a questi 10 motori di analisi come a un **team di 10 diversi scienziati sportivi**, ognuno con la propria specializzazione. Uno scienziato studia le vostre meccaniche di tiro, un altro le vostre capacità decisionali sotto pressione, un altro ancora la vostra capacità di essere imprevedibili e così via. Ogni scienziato produce la propria mini-pagella e insieme dipingono un quadro completo dei vostri punti di forza e di debolezza. Nessuno scienziato da solo vede tutto, ma insieme coprono tutti gli aspetti importanti del gioco competitivo in CS2.
+> **Analogia:** Pensate a questi 11 motori di analisi come a un **team di 11 diversi scienziati sportivi**, ognuno con la propria specializzazione. Uno scienziato studia le vostre meccaniche di tiro, un altro le vostre capacità decisionali sotto pressione, un altro ancora la vostra capacità di essere imprevedibili e così via. Ogni scienziato produce la propria mini-pagella e insieme dipingono un quadro completo dei vostri punti di forza e di debolezza. Nessuno scienziato da solo vede tutto, ma insieme coprono tutti gli aspetti importanti del gioco competitivo in CS2.
 
 ```mermaid
 flowchart TB
-    subgraph ENGINES["I 10 MOTORI DI ANALISI - IL TUO TEAM DI SPECIALISTI"]
+    subgraph ENGINES["I 11 MOTORI DI ANALISI - IL TUO TEAM DI SPECIALISTI"]
         E1["1. Classificatore Ruoli - Che posizione giochi?"]
         E2["2. Probabilità Vittoria - Quali sono le probabilità ora?"]
         E3["3. Albero di Gioco - Qual è la mossa migliore?"]
@@ -673,6 +746,7 @@ flowchart TB
         E8["8. Rilevatore Punti Ciechi - Che errore ripeti?"]
         E9["9. Utilità ed Economia - Ottimizzatore acquisti"]
         E10["10. Analizzatore Ingaggio - A che distanza combatti meglio?"]
+        E11["11. Qualità Movimento - Fai errori di posizionamento?"]
     end
 ```
 
@@ -727,6 +801,41 @@ Rete neurale a 12 funzioni che stima P(round_win | game_state):
 > **Analogia:** Gli override euristici sono **barriere di sicurezza basate sul buon senso**. Anche se la rete neurale si blocca e prevede una probabilità di vittoria del 50% quando l'intera squadra è morta, la barra di sicurezza dice "No — 0 giocatori vivi = 0% di probabilità. Punto." Allo stesso modo, se hai 3 giocatori in più in vita rispetto al nemico, la regola di sicurezza recita: "Hai ALMENO l'85% di probabilità di vincere, indipendentemente da ciò che pensa la rete neurale". Queste regole codificano le conoscenze di gioco più basilari che non dovrebbero mai essere violate, fungendo da controllo di sanità mentale sulle previsioni dell'IA.
 >
 > **Nota A-12 — Guard cross-load:** Questo predittore a 12 feature (`WinProbabilityNN`) è un modello *separato e incompatibile* rispetto al `WinProbabilityTrainerNN` a 9 feature descritto nella Sezione 12. I checkpoint non sono intercambiabili: al caricamento viene validata la dimensionalità del `state_dict` e, in caso di mismatch, il modello viene reinizializzato da zero con un warning nel log.
+
+**Predittore Aumentato con Elo (KT-07):**
+
+L'`EloAugmentedPredictor` avvolge il `WinProbabilityNN` base con un sistema Elo opzionale per sfruttare lo storico delle partite:
+
+> **Analogia:** L'integrazione Elo è come aggiungere la **reputazione del giocatore** alla previsione. Se sai che la squadra A ha vinto 80% delle partite recenti, la tua previsione dovrebbe riflettere questo anche prima che il round inizi. L'Elo cattura questa "reputazione accumulata" che il modello a 12 feature non può vedere perché guarda solo lo stato corrente del round.
+
+| Costante | Valore | Descrizione |
+|---|---|---|
+| `_ELO_INITIAL` | 1500.0 | Elo iniziale per giocatori senza storico |
+| `_ELO_K_FACTOR` | 32.0 | Fattore K base per la magnitudine degli aggiornamenti |
+| `_ELO_RECENCY_HALF_LIFE` | 20 partite | Il peso di una partita dimezza ogni 20 partite |
+
+**Formula di aggiornamento Elo con peso di recenza:**
+
+```
+new_elo = old_elo + K × w × (S - E)
+
+dove:
+  S = punteggio effettivo (1 per vittoria, 0 per sconfitta)
+  E = punteggio atteso = 1 / (1 + 10^((opp_elo - elo) / 400))
+  w = peso recenza = 2^((match_index - N + 1) / half_life)
+```
+
+Il peso di recenza (adattato da Glickman, 1999) garantisce che le partite recenti contribuiscano di più al rating finale. Una partita di 20 match fa contribuisce la metà del K-factor rispetto all'ultima partita.
+
+**Blending NN + Elo:**
+
+```
+final_prob = (1 - α) × nn_prob + α × elo_prob    (α = 0.15 default)
+```
+
+Il `compute_elo_differential(team_histories, enemy_histories)` calcola il differenziale Elo medio tra le due squadre, normalizzato per 400 (una "classe" Elo), e lo converte in probabilità tramite la formula logistica standard. Il blending è conservativo (α = 0.15) perché l'Elo cattura solo informazione storica, mentre la NN vede lo stato corrente del round.
+
+**Nota:** L'Elo è un'**augmentazione opzionale** — l'architettura base a 12 feature del `WinProbabilityNN` rimane invariata. Se lo storico non è disponibile, il predittore ricade sulla probabilità NN pura.
 
 ### -Albero di gioco Expectiminimax (`game_tree.py`, ~445 righe)
 
@@ -978,7 +1087,64 @@ flowchart LR
     style FULL fill:#51cf66,color:#fff
 ```
 
-### Riepilogo dei 10 Motori di Analisi
+### -Analizzatore Qualità Movimento (`movement_quality.py`, ~539 righe)
+
+Rileva 4 errori comuni di posizionamento basandosi sul paper MLMove (SIGGRAPH 2024, Stanford/Activision/NVIDIA):
+
+> **Analogia:** L'Analizzatore di Qualità Movimento è come un **allenatore di calcio che rivede le registrazioni del gioco al rallentatore**. Non guarda solo dove sei morto, ma analizza i tuoi movimenti momento per momento: "Eri in una posizione elevata dominante e l'hai abbandonata senza motivo — errore #1. Il tuo compagno di squadra è stato ucciso e tu hai fatto un push solitario suicida — errore #3. In un'altra situazione, il tuo compagno ha creato un'apertura ma tu non ti sei mosso per supportarlo — errore #4." Ogni errore viene classificato per tipo, gravità, round e posizione esatta sulla mappa (callout).
+
+**4 Tipologie di errore rilevate:**
+
+| # | Tipo | Condizione di rilevamento | Descrizione |
+|---|---|---|---|
+| 1 | `high_ground_abandoned` | Discesa ≥100 unità senza contesto di combattimento | Abbandono high ground senza necessità |
+| 2 | `position_abandoned` | Posizione tenuta ≥3s lasciata senza nuove info nemiche | Abbandono posizione consolidata |
+| 3 | `over_aggressive_trade` | Push solitario dopo morte teammate con <2 compagni rimasti | Trading troppo aggressivo |
+| 4 | `over_passive_support` | Immobile quando teammate crea apertura + vantaggio numerico | Supporto troppo passivo |
+
+**Soglie chiave:**
+
+| Costante | Valore | Significato |
+|---|---|---|
+| `_ESTABLISHED_HOLD_TICKS` | 384 (3s) | Tempo minimo per "posizione consolidata" |
+| `_HIGH_GROUND_DROP` | 100.0 unità | Discesa minima per flag high ground |
+| `_TRADE_WINDOW_TICKS` | 640 (5s) | Finestra temporale per analisi trade |
+| `_AUDIO_RANGE_DISTANCE` | 1500.0 unità | Distanza massima per "entro portata audio" |
+| `_MOVEMENT_THRESHOLD` | 300.0 unità | Spostamento minimo per contare come "mosso" |
+| `_COMBAT_PROXIMITY_TICKS` | 64 (~0.5s) | Tick intorno a un evento kill/death per contesto "in combattimento" |
+
+**Dataclass di output:**
+
+- `MovementMistake`: tipo, round, tick, tempo nel round, descrizione, callout (posizione mappa), severità [0-1]
+- `MovementMetrics`: map_coverage_score, high_ground_utilization, position_stability, total_rounds_analyzed, lista mistakes + proprietà `mistakes_per_round`
+
+**API pubblica:**
+
+| Metodo | Input | Output |
+|---|---|---|
+| `analyze_round_ticks(ticks, map_name, player, round)` | Tick di un round | `List[MovementMistake]` |
+| `analyze_match_ticks(all_ticks, map_name, player)` | Tutti i tick della partita | `MovementMetrics` (aggregato) |
+| `get_movement_quality_analyzer()` | — | Singleton `MovementQualityAnalyzer` |
+
+**ADDITIVE:** NON modifica METADATA_DIM=25. Le metriche di movimento sono calcolate come feature derivate dai dati tick esistenti, memorizzate nei risultati di analisi.
+
+```mermaid
+flowchart TB
+    TICKS["Tick Data<br/>(posizioni 3D per-tick)"] --> HOLD["Detect posizioni<br/>consolidate (≥3s)"]
+    TICKS --> HG["Detect high ground<br/>(elevazione relativa)"]
+    TICKS --> TEAM["Detect eventi team<br/>(morti/kill compagni)"]
+    HOLD --> ABN["Posizione abbandonata<br/>senza nuove info?"]
+    HG --> DROP["High ground abbandonato<br/>senza combattimento?"]
+    TEAM --> AGG["Push solitario dopo<br/>morte compagno? (aggressivo)"]
+    TEAM --> PAS["Immobile durante<br/>apertura compagno? (passivo)"]
+    ABN --> MM["MovementMetrics<br/>+ lista MovementMistake"]
+    DROP --> MM
+    AGG --> MM
+    PAS --> MM
+    style MM fill:#51cf66,color:#fff
+```
+
+### Riepilogo degli 11 Motori di Analisi
 
 | # | Motore | File | Input | Output | Complessità |
 |---|---|---|---|---|---|
@@ -992,6 +1158,7 @@ flowchart LR
 | 8 | Rilevatore Punti Ciechi | `blind_spots.py` | Posizioni morte + angoli | Pattern ripetuti | O(n²) clustering |
 | 9 | Utilità ed Economia | `utility_economy.py` | Economia round + utility | Consiglio acquisto + rating | O(1) threshold check |
 | 10 | Analizzatore Ingaggio | `engagement_range.py` | Kill events 3D | Profilo distanza (4 fasce) | O(n) euclidean dist |
+| 11 | Qualità Movimento | `movement_quality.py` | Tick data 3D per-round | MovementMetrics (4 tipi errore) | O(n) per-tick scan |
 
 ---
 
@@ -1069,6 +1236,57 @@ R_damage = ADR / 73,3
 
 Utilizzato da: demo_parser.py (analisi), base_features.py (aggregazione), coaching_service.py (insight).
 
+### -Metriche PlusMinus e Rating Role-Adjusted (`rating.py`, 231 righe) — KT-06
+
+Modulo complementare alla valutazione HLTV 2.0 che fornisce due metriche aggiuntive progettate per catturare aspetti che il Rating 2.0 trascura:
+
+> **Analogia:** Se il Rating HLTV 2.0 è il **GPA** di uno studente (media complessiva), PlusMinus è la **differenza punti** di un giocatore di basket (+/-, quanto la squadra guadagna quando sei in campo) e il Rating Role-Adjusted è come un **voto aggiustato per la difficoltà del corso**: un 85 in Fisica Avanzata conta più di un 90 in Introduzione alla Musica. Un support con 0.85 K/D non è peggiore di un entry fragger con 1.10 K/D — sta semplicemente facendo un lavoro diverso. Questo modulo cattura esattamente questo.
+
+**PlusMinus:**
+
+```
+PlusMinus = (kills - deaths) / max(rounds_played, 1) + team_contribution_bonus
+```
+
+| Componente | Formula | Range tipico |
+|---|---|---|
+| Net frag differential | `(kills - deaths) / rounds` | [-1.0, +1.0] |
+| Team contribution bonus | `_TEAM_CONTRIBUTION_SCALE × (team_win_rate - 0.5)` | [-0.05, +0.05] |
+| `_TEAM_CONTRIBUTION_SCALE` | 0.10 | — |
+
+Il bonus di contribuzione squadra premia i giocatori nelle squadre vincenti e penalizza quelli nelle squadre perdenti, analogamente al +/- nel basket/hockey.
+
+**Rating Role-Adjusted (Bayesian):**
+
+Applica prior bayesiani specifici per ruolo in modo che AWPer non siano penalizzati per KAST inferiore e support non siano penalizzati per K/D inferiore:
+
+| Ruolo | K/D Prior | KAST Prior | ADR Prior | Weight |
+|---|---|---|---|---|
+| AWPer | 1.15 | 0.68 | 75.0 | 5.0 |
+| Entry | 0.95 | 0.72 | 80.0 | 5.0 |
+| Support | 0.90 | 0.78 | 65.0 | 5.0 |
+| Lurker | 1.05 | 0.70 | 72.0 | 5.0 |
+| IGL | 0.88 | 0.74 | 68.0 | 5.0 |
+
+Prior calibrati dai dati medi dei team top-30 HLTV (stagione 2024-2025). Formula composita:
+
+```
+adj_metric = (n × observed + weight × prior) / (n + weight)
+role_adjusted_rating = 0.40 × adj_kd + 0.35 × adj_kast + 0.25 × adj_adr_norm
+```
+
+Dove `adj_adr_norm = adj_adr / 120` normalizza l'ADR in [0, 1]. Il framework è ispirato a TrueSkill (Herbrich et al., NeurIPS 2006) — quando il campione è piccolo (`n` basso), il prior domina; quando il campione è grande, i dati osservati dominano.
+
+```mermaid
+flowchart TB
+    STATS["Player Stats<br/>(kills, deaths, adr, kast)"] --> PM["compute_plus_minus()<br/>Net frag/round + team bonus"]
+    STATS --> RA["compute_role_adjusted_rating()<br/>Prior bayesiano per ruolo"]
+    ROLE["Ruolo rilevato<br/>(da RoleClassifier)"] --> RA
+    PM --> OUT["Metriche complementari:<br/>PlusMinus: +0.35<br/>Role-Adjusted: 1.12"]
+    RA --> OUT
+    style OUT fill:#51cf66,color:#fff
+```
+
 ### -Tensor Factory (`tensor_factory.py`)
 
 Converte i dati tick grezzi in tensori di immagini 64x64 per il livello di percezione RAP:
@@ -1120,6 +1338,77 @@ Mappe di occupazione gaussiane ad alte prestazioni per la visualizzazione tattic
 5. **Mantieni** la colonna `dataset_split` sul posto
 
 > **Analogia:** Data Pipeline è come un **ufficio ammissioni scolastico** che prepara i fascicoli degli studenti per le lezioni. Per prima cosa, **estrae tutti i file** dal database. Quindi **rimuove gli imbroglioni**, ovvero chiunque abbia statistiche incredibilmente alte (un ADR superiore a 400 significa che probabilmente hanno usato hack o che i dati sono corrotti). Successivamente, **standardizza i voti** in modo che tutto sia sulla stessa scala. Quindi **ordina gli studenti cronologicamente** e assegna il 70% alla "classe di apprendimento" (formazione), il 15% alla "classe di quiz" (validazione) e il 15% alla "classe di esame finale" (test). La suddivisione temporale è fondamentale: significa che il modello non vede mai dati "futuri" durante l'addestramento, impedendo imbrogli dovuti ai viaggi nel tempo.
+
+### -Scorer Qualità Demo (`demo_quality.py`, 409 righe) — KT-09
+
+Valuta la qualità dei dati delle demo ingerite utilizzando metodi statistici robusti basati sul **modello di contaminazione di Huber** (1981):
+
+> **Analogia:** Lo Scorer di Qualità Demo è come un **ispettore sanitario per i dati**. Prima di permettere a un alimento (demo) di entrare nella cucina (pipeline di addestramento), l'ispettore lo esamina: "Questo ingrediente è fresco? (copertura tick sufficiente?) È completo? (tutti i campi hanno valori?) Ha un aspetto strano? (statistiche sospettamente alte o basse?)". Se l'ispezione fallisce, l'ingrediente viene marcato come "da revisionare" o "da scartare" — mai usato direttamente in cucina senza controllo.
+
+| Componente | Peso | Metodo |
+|---|---|---|
+| **Copertura Tick** | 45% | `tick_count / _EXPECTED_TICKS_PER_DEMO` (1.6M) |
+| **Completezza Feature** | 35% | Frazione di valori non-zero in health, armor, pos_x/y/z, equipment_value |
+| **Penalità Outlier** | 20% | Rilevamento IQR su avg_kills, avg_deaths, avg_adr, kd_ratio, avg_kast |
+
+**Rilevamento outlier (metodo IQR di Tukey):**
+
+| Severità | Moltiplicatore IQR | Significato |
+|---|---|---|
+| Moderata | 1.5× | Statistiche insolite — da revisionare |
+| Estrema | 3.0× | Statistiche altamente sospette — probabile corruzione |
+
+**Classificazione qualità:**
+
+| Score | Raccomandazione | Condizioni |
+|---|---|---|
+| ≥ 0.7 | `"use"` | Qualità sufficiente + nessun flag estremo |
+| ≥ 0.4 | `"review"` | Qualità incerta — revisione manuale consigliata |
+| < 0.4 | `"skip"` | Qualità insufficiente — escluso dall'addestramento |
+
+La robustezza del metodo IQR garantisce un breakdown point del 25% (modello epsilon-contamination di Huber): fino al 25% dei dati può essere corrotto senza invalidare il rilevamento.
+
+### -Prioritizzatore Demo (`demo_prioritizer.py`, 345 righe) — KT-09
+
+Classifica le demo disponibili per valore di coaching atteso, ispirato ai principi di **Active Learning** (Settles, 2009):
+
+> **Analogia:** Il Prioritizzatore Demo è come un **insegnante che sceglie quali compiti correggere per primi**. Invece di correggere in ordine cronologico, l'insegnante guarda brevemente ogni compito e decide: "Questo sembra facile — il mio modello mentale lo capisce bene (bassa varianza). Quest'altro sembra strano — non sono sicuro di come valutarlo (alta varianza). Correggerò quello strano per primo, perché imparerò di più da esso!" In termini ML: le demo dove il modello è più incerto sono quelle che forniscono più segnale di apprendimento.
+
+**Due strategie di ranking:**
+
+| Strategia | Condizione | Metodo | Metrica |
+|---|---|---|---|
+| **Varianza** (primaria) | Modello JEPA caricato | Varianza predizioni latent-space su tick della demo | Alta varianza = alto valore coaching |
+| **Diversità** (fallback) | Nessun modello disponibile | Score composito: 40% giocatori unici + 30% completezza + 30% rarità giocatore | Massimizza copertura distribuzione |
+
+**Costanti:**
+
+| Costante | Valore | Scopo |
+|---|---|---|
+| `_MIN_TICKS_FOR_VARIANCE` | 64 | Tick minimi per varianza significativa |
+| `_MAX_TICKS_SAMPLE` | 2048 | Limite campionamento per evitare OOM |
+
+### -Codifica Bombsite-Relativa (`bombsite_encoding.py`, 193 righe) — KT-10
+
+Codifica posizioni relative ai bombsite per ottenere **equivarianza approssimata** sotto la simmetria CT/T:
+
+> **Analogia:** Invece di descrivere la tua posizione con coordinate assolute ("sono a x=1200, y=800"), la codifica bombsite-relativa la descrive come "sono a 400 unità dal sito A e 1200 unità dal sito B". Questo è più informativo tatticamente: sapere quanto sei vicino a un obiettivo è più utile che sapere le coordinate grezze. Inoltre, invertendo il segno per lato T vs CT, il modello capisce che "vicino al sito A" ha significati tattici opposti per attaccanti e difensori.
+
+**Coordinate bombsite per 9 mappe** (da texture radar DDS + callout della community):
+
+de_dust2, de_mirage, de_inferno, de_nuke, de_overpass, de_anubis, de_vertigo, de_ancient, de_train.
+
+**Funzioni chiave:**
+
+| Funzione | Output | Descrizione |
+|---|---|---|
+| `get_bombsite_distances(pos_x, pos_y, map)` | `(dist_A, dist_B)` | Distanze euclidee ai centri dei bombsite |
+| `normalize_position_equivariant(pos_x, pos_y, map, side)` | `[-1, 1]` | Differenziale firmato: CT positivo, T negato |
+| `compute_site_proximity(pos_x, pos_y, map)` | `(site, dist_norm)` | Sito più vicino + distanza normalizzata |
+
+**Design equivariante:** Per la simmetria discreta di CS2 (|G| = 2, CT vs T), la codifica è banalmente economica: basta negare l'output per il lato opposto. Questo permette al modello di apprendere che "essere vicino al sito A come CT" (difesa) ha semantica opposta a "essere vicino al sito A come T" (attacco).
+
+**ADDITIVE:** NON modifica METADATA_DIM=25. Le feature bombsite-relative sono calcolate come valori derivati che possono opzionalmente sostituire pos_x/pos_y nel vettore feature tramite flag di configurazione, o essere usate come contesto supplementare nell'analisi di coaching.
 
 ### -Generatore di statistiche per round (`round_stats_builder.py`)
 
@@ -1214,7 +1503,7 @@ flowchart TB
 
 > **Analogia:** Il sottosistema di convalida è l'**ispettore del controllo qualità** in fabbrica. Il rilevamento della deriva verifica: "I dati che riceviamo oggi sono simili a quelli su cui ci siamo formati o le cose sono cambiate?" (come controllare se la ricetta di un biscotto ha ancora lo stesso sapore del lotto del mese scorso). Controlli di convalida dello schema: "Ogni record del database ha tutti i campi obbligatori nel formato corretto?" (come assicurarsi che ogni modulo sia compilato completamente). I controlli di integrità verificano che i file demo siano reali, completi e non corrotti (come scuotere una scatola per assicurarsi che non sia vuota prima di spedirla).
 
-**Copertura quantitativa:** Il progetto comprende **1.515+ test** distribuiti su 87 file di test e **319 controlli headless validator** articolati su 24+ fasi di validazione. Questa copertura spazia dall'integrità dello schema DB alla coerenza dei vettori di embedding, dalla correttezza delle pipeline di addestramento alla validazione end-to-end dei flussi di coaching.
+**Copertura quantitativa:** Il progetto comprende **1.515+ test** distribuiti su 94 file di test e **319+ controlli headless validator** articolati su 24+ fasi di validazione. Questa copertura spazia dall'integrità dello schema DB alla coerenza dei vettori di embedding, dalla correttezza delle pipeline di addestramento alla validazione end-to-end dei flussi di coaching.
 
 ### -PlayerKnowledge — Sistema Percettivo NO-WALLHACK (`player_knowledge.py`, 527 righe)
 
@@ -2139,7 +2428,16 @@ Il trainer specializzato per l'architettura JEPA. Gestisce pre-training self-sup
 | `drift_threshold` | 2.5 | Soglia z-score per DriftMonitor |
 
 - **NN-36**: I parametri del `target_encoder` vengono **esclusi** dall'ottimizzatore — sono aggiornati solo via EMA (Exponential Moving Average), mai con gradienti diretti
+- **KT-05**: I parametri dei layer `concept` ricevono un **moltiplicatore LR 0.05×** (5% del learning rate base) tramite gruppi di parametri separati nell'ottimizzatore. Questo previene il collapse delle embedding concettuali durante il training VL-JEPA (per VL-JEPA paper, Section 4.6, Assran et al.)
 - **Scheduler**: `CosineAnnealingLR` con `T_max=100`, step una volta per epoca
+
+**Schedule EMA Momentum (J-6):**
+
+```
+τ(t) = 1 - (1 - τ_base) · (cos(πt/T) + 1) / 2
+```
+
+Con `τ_base = 0.996`, il momentum parte da 0.996 (tracking veloce del target encoder) e converge a 1.0 (target encoder congelato) durante il training. Questo schedule coseno, adattato da Assran et al. (CVPR 2023, Section 3.2), permette al target encoder di tracciare rapidamente l'online encoder nelle prime fasi, poi stabilizzarsi per fornire target consistenti nella fase avanzata dell'addestramento.
 
 **Due modalità di training step:**
 
