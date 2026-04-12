@@ -26,10 +26,7 @@ import torch
 
 from Programma_CS2_RENAN.backend.nn.config import INPUT_DIM, get_device
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager
-from Programma_CS2_RENAN.backend.storage.db_models import (
-    PlayerMatchStats,
-    PlayerTickState,
-)
+from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats, PlayerTickState
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.processing.demo_prioritizer")
@@ -99,17 +96,13 @@ class DemoPrioritizer:
         if self._model is not None:
             results = self._rank_by_variance(demo_names)
         else:
-            logger.info(
-                "No model loaded — falling back to diversity-based ranking"
-            )
+            logger.info("No model loaded — falling back to diversity-based ranking")
             results = self._rank_by_diversity(demo_names)
 
         # Sort descending by priority score.
         results.sort(key=lambda r: r.priority_score, reverse=True)
 
-        ranked = [
-            (r.demo_name, r.priority_score) for r in results[:top_k]
-        ]
+        ranked = [(r.demo_name, r.priority_score) for r in results[:top_k]]
         logger.info(
             "Ranked %d/%d demos (top_k=%d, method=%s)",
             len(ranked),
@@ -123,9 +116,7 @@ class DemoPrioritizer:
     # Variance-based ranking (primary)
     # ------------------------------------------------------------------
 
-    def _rank_by_variance(
-        self, demo_names: list[str]
-    ) -> list[DemoPriorityResult]:
+    def _rank_by_variance(self, demo_names: list[str]) -> list[DemoPriorityResult]:
         """Compute prediction variance per demo using the loaded model."""
         results: list[DemoPriorityResult] = []
 
@@ -158,9 +149,7 @@ class DemoPrioritizer:
 
         return results
 
-    def _compute_demo_variance(
-        self, demo_name: str
-    ) -> Tuple[float, int]:
+    def _compute_demo_variance(self, demo_name: str) -> Tuple[float, int]:
         """Compute mean prediction variance for a single demo.
 
         Loads tick data from the database, feeds it through the model in
@@ -238,9 +227,9 @@ class DemoPrioritizer:
                 t.pos_x / 4096.0,
                 t.pos_y / 4096.0,
                 t.pos_z / 1024.0,
-                np.sin(np.radians(t.view_y)),   # view_yaw_sin
-                np.cos(np.radians(t.view_y)),   # view_yaw_cos
-                t.view_x / 90.0,                # view_pitch
+                np.sin(np.radians(t.view_y)),  # view_yaw_sin
+                np.cos(np.radians(t.view_y)),  # view_yaw_cos
+                t.view_x / 90.0,  # view_pitch
                 0.0,  # z_penalty (requires map context)
                 0.0,  # kast_estimate
                 0.0,  # map_id
@@ -259,9 +248,7 @@ class DemoPrioritizer:
     # Diversity-based ranking (fallback)
     # ------------------------------------------------------------------
 
-    def _rank_by_diversity(
-        self, demo_names: list[str]
-    ) -> list[DemoPriorityResult]:
+    def _rank_by_diversity(self, demo_names: list[str]) -> list[DemoPriorityResult]:
         """Rank demos by player/map diversity and data completeness.
 
         Diversity score components (each in [0, 1]):
@@ -308,9 +295,7 @@ class DemoPrioritizer:
 
         # Build results.
         results: list[DemoPriorityResult] = []
-        max_players = max(
-            (len(m["players"]) for m in demo_meta.values()), default=1
-        )
+        max_players = max((len(m["players"]) for m in demo_meta.values()), default=1)
 
         for demo_name in demo_names:
             meta = demo_meta.get(demo_name)
@@ -330,25 +315,22 @@ class DemoPrioritizer:
             player_score = n_players / max(max_players, 1)
 
             # Component 2: Data completeness (mean quality).
-            quality_score = float(np.mean(meta["quality_scores"])) if meta["quality_scores"] else 0.0
+            quality_score = (
+                float(np.mean(meta["quality_scores"])) if meta["quality_scores"] else 0.0
+            )
 
             # Component 3: Player rarity — demos with rare players score higher.
             if player_demo_count:
                 max_count = max(player_demo_count.values())
                 rarity_scores = [
-                    1.0 - (player_demo_count[p] - 1) / max(max_count, 1)
-                    for p in meta["players"]
+                    1.0 - (player_demo_count[p] - 1) / max(max_count, 1) for p in meta["players"]
                 ]
                 rarity_score = float(np.mean(rarity_scores))
             else:
                 rarity_score = 0.5
 
             # Weighted combination.
-            priority = (
-                0.4 * player_score
-                + 0.3 * quality_score
-                + 0.3 * rarity_score
-            )
+            priority = 0.4 * player_score + 0.3 * quality_score + 0.3 * rarity_score
 
             results.append(
                 DemoPriorityResult(
