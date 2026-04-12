@@ -1,3 +1,5 @@
+import hashlib
+import json
 import os
 from pathlib import Path
 
@@ -36,6 +38,58 @@ def get_factory_model_path(version, user_id=None):
     return Path(get_resource_path(rel_path))
 
 
+def _hash_registry_path() -> Path:
+    """Path to the checkpoint hash registry (CTF-1: defense-in-depth)."""
+    return BASE_NN_DIR / "checkpoint_hashes.json"
+
+
+def _compute_file_hash(path: Path) -> str:
+    """Compute SHA-256 hash of a checkpoint file."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _register_checkpoint_hash(path: Path) -> None:
+    """Store SHA-256 hash of a checkpoint after saving."""
+    registry_path = _hash_registry_path()
+    registry = {}
+    if registry_path.exists():
+        try:
+            registry = json.loads(registry_path.read_text())
+        except (json.JSONDecodeError, OSError):
+            pass
+    registry[str(path)] = _compute_file_hash(path)
+    registry_path.write_text(json.dumps(registry, indent=2))
+
+
+def _verify_checkpoint_hash(path: Path) -> bool:
+    """Verify a checkpoint against its registered hash. Returns True if valid or unregistered."""
+    registry_path = _hash_registry_path()
+    if not registry_path.exists():
+        return True  # no registry yet — skip verification
+    try:
+        registry = json.loads(registry_path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return True
+    expected = registry.get(str(path))
+    if expected is None:
+        return True  # checkpoint not in registry (e.g., factory-bundled) — allow
+    actual = _compute_file_hash(path)
+    if actual != expected:
+        logger.error(
+            "CTF-1: Checkpoint hash mismatch for %s — expected %s, got %s. "
+            "File may be corrupted or tampered with.",
+            path,
+            expected[:16],
+            actual[:16],
+        )
+        return False
+    return True
+
+
 def save_nn(model, version, user_id=None):
     """Save model checkpoint with atomic write to prevent corruption on crash."""
     path = get_model_path(version, user_id)
@@ -43,6 +97,7 @@ def save_nn(model, version, user_id=None):
     try:
         torch.save(model.state_dict(), tmp_path)
         tmp_path.replace(path)  # atomic on POSIX
+        _register_checkpoint_hash(path)
     except BaseException:
         try:
             tmp_path.unlink(missing_ok=True)
@@ -68,6 +123,12 @@ def load_nn(version, model, user_id=None):
         path = get_factory_model_path(version, None)
 
     if path.exists():
+        # CTF-1: Verify checkpoint integrity before loading
+        if not _verify_checkpoint_hash(path):
+            raise RuntimeError(
+                f"Checkpoint integrity check failed for {path}. "
+                "File hash does not match registry. Refusing to load."
+            )
         try:
             state_dict = torch.load(path, map_location=torch.device("cpu"), weights_only=True)
             # Strict validation: Only load if dimensions match.
