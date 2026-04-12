@@ -383,7 +383,7 @@ class AdaptiveBeliefCalibrator:
         Returns:
             Dict summarizing what was calibrated.
         """
-        summary = {"hp_priors": {}, "weapon_lethality": {}, "threat_decay": None}
+        summary: Dict[str, Any] = {"hp_priors": {}, "weapon_lethality": {}, "threat_decay": None}
 
         if "health" in death_events.columns and "died" in death_events.columns:
             summary["hp_priors"] = self.calibrate_hp_brackets(death_events)
@@ -403,9 +403,7 @@ class AdaptiveBeliefCalibrator:
 
         if summary["threat_decay"] is not None:
             BeliefState.THREAT_DECAY_LAMBDA = summary["threat_decay"]
-            logger.info(
-                "Applied threat decay lambda=%.4f to BeliefState", summary["threat_decay"]
-            )
+            logger.info("Applied threat decay lambda=%.4f to BeliefState", summary["threat_decay"])
 
         # Persist calibration snapshot with sample count
         self._save_snapshot(summary, sample_count=len(death_events))

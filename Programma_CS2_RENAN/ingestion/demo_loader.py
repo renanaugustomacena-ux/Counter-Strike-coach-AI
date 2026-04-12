@@ -85,7 +85,7 @@ def _pickle_dump_signed(obj, path: str) -> None:
         raise
 
 
-def _pickle_load_verified(path: str):
+def _pickle_load_verified(path: str) -> object:
     """Load pickle data only after HMAC integrity verification.
 
     DS-01: Uses _SafeUnpickler instead of pickle.loads() to prevent

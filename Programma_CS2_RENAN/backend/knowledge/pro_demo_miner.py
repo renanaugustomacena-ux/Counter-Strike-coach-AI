@@ -13,7 +13,7 @@ Pipeline:
 """
 
 from collections import defaultdict
-from typing import Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 
 from sqlmodel import select
 
@@ -111,10 +111,10 @@ class ProStatsMiner:
         self,
         card: ProPlayerStatCard,
         nickname: str,
-        team_name: str = None,
-        country: str = None,
-        real_name: str = None,
-    ) -> List[Dict]:
+        team_name: Optional[str] = None,
+        country: Optional[str] = None,
+        real_name: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
         """Generate knowledge entries from a player's stat card."""
         knowledge = []
 
@@ -205,15 +205,14 @@ class ProStatsMiner:
         import sqlite3
         from pathlib import Path
 
-        db_path = str(
-            Path(__file__).resolve().parent.parent / "storage" / "database.db"
-        )
+        db_path = str(Path(__file__).resolve().parent.parent / "storage" / "database.db")
         conn = sqlite3.connect(db_path, timeout=30)
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA busy_timeout=30000")
 
         # Load all roundstats grouped by (demo_name, player, side)
-        rows = conn.execute("""
+        rows = conn.execute(
+            """
             SELECT demo_name, player_name, side,
                    SUM(kills) as total_kills,
                    SUM(damage_dealt) as total_dmg,
@@ -223,11 +222,12 @@ class ProStatsMiner:
                    COUNT(*) as rounds_played
             FROM roundstats
             GROUP BY demo_name, player_name, side
-        """).fetchall()
+        """
+        ).fetchall()
         conn.close()
 
         # Re-group by (map, player, side) across demos
-        aggregates: Dict[tuple, dict] = defaultdict(
+        aggregates: Dict[Tuple[str, str, str], Dict[str, Any]] = defaultdict(
             lambda: {
                 "total_kills": 0,
                 "total_dmg": 0,
