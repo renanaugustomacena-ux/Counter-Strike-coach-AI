@@ -155,6 +155,17 @@ def main():
         updated = repair_demo(conn, demo)
         total_updated += updated
 
+        # DL-1: Record provenance for equipment value repair
+        if updated > 0:
+            from Programma_CS2_RENAN.backend.storage.database import get_db_manager
+
+            get_db_manager().record_lineage(
+                entity_type="batch_equipment_repair",
+                entity_id=updated,
+                source_demo=demo,
+                processing_step="equipment_value_repair",
+            )
+
     # Verification
     print(f"\n=== Verification ===")
     c = conn.cursor()

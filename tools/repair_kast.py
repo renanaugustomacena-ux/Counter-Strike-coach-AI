@@ -17,9 +17,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-DB_PATH = str(
-    PROJECT_ROOT / "Programma_CS2_RENAN" / "backend" / "storage" / "database.db"
-)
+DB_PATH = str(PROJECT_ROOT / "Programma_CS2_RENAN" / "backend" / "storage" / "database.db")
 
 
 def main() -> None:
@@ -42,12 +40,15 @@ def main() -> None:
         "SELECT COUNT(*), AVG(avg_kast), MIN(avg_kast), MAX(avg_kast) "
         "FROM playermatchstats WHERE is_pro = 1"
     ).fetchone()
-    print(f"BEFORE: {before[0]} pro rows, avg_kast={before[1]:.4f}, "
-          f"min={before[2]:.4f}, max={before[3]:.4f}")
+    print(
+        f"BEFORE: {before[0]} pro rows, avg_kast={before[1]:.4f}, "
+        f"min={before[2]:.4f}, max={before[3]:.4f}"
+    )
 
     # ── Compute correct KAST from roundstats ──
     # For each (demo_name, player_name): avg_kast = SUM(kast) / COUNT(*)
-    repair_data = conn.execute("""
+    repair_data = conn.execute(
+        """
         SELECT r.demo_name, r.player_name,
                CAST(SUM(r.kast) AS REAL) / COUNT(*) AS avg_kast,
                COUNT(*) AS rounds_played
@@ -56,7 +57,8 @@ def main() -> None:
             ON r.demo_name = p.demo_name AND LOWER(r.player_name) = LOWER(p.player_name)
         WHERE p.is_pro = 1
         GROUP BY r.demo_name, r.player_name
-    """).fetchall()
+    """
+    ).fetchall()
 
     print(f"\nFound {len(repair_data)} (demo, player) pairs to repair.")
 
@@ -85,12 +87,15 @@ def main() -> None:
         "FROM playermatchstats WHERE is_pro = 1"
     ).fetchone()
 
-    print(f"\nAFTER:  {after[0]} pro rows, avg_kast={after[1]:.4f}, "
-          f"min={after[2]:.4f}, max={after[3]:.4f}")
+    print(
+        f"\nAFTER:  {after[0]} pro rows, avg_kast={after[1]:.4f}, "
+        f"min={after[2]:.4f}, max={after[3]:.4f}"
+    )
     print(f"\nUpdated: {updated} rows {'(dry run)' if dry_run else ''}")
 
     # Sanity: show distribution
-    dist = conn.execute("""
+    dist = conn.execute(
+        """
         SELECT
             CASE
                 WHEN avg_kast < 0.5 THEN '<0.50'
@@ -103,12 +108,24 @@ def main() -> None:
             COUNT(*)
         FROM playermatchstats WHERE is_pro = 1
         GROUP BY bucket ORDER BY bucket
-    """).fetchall()
+    """
+    ).fetchall()
     print("\nKAST distribution:")
     for bucket, count in dist:
         print(f"  {bucket}: {count}")
 
     conn.close()
+
+    # DL-1: Record provenance for KAST repair
+    if not dry_run and updated > 0:
+        from Programma_CS2_RENAN.backend.storage.database import get_db_manager
+
+        get_db_manager().record_lineage(
+            entity_type="batch_kast_repair",
+            entity_id=updated,
+            source_demo="all_pro_demos",
+            processing_step="kast_repair",
+        )
 
 
 if __name__ == "__main__":

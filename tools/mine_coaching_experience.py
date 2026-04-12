@@ -18,9 +18,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-DB_PATH = str(
-    PROJECT_ROOT / "Programma_CS2_RENAN" / "backend" / "storage" / "database.db"
-)
+DB_PATH = str(PROJECT_ROOT / "Programma_CS2_RENAN" / "backend" / "storage" / "database.db")
 
 KNOWN_MAPS = {"mirage", "dust2", "inferno", "nuke", "overpass", "ancient", "anubis", "vertigo"}
 
@@ -57,9 +55,9 @@ def main() -> None:
     import sqlite3
 
     from Programma_CS2_RENAN.backend.knowledge.experience_bank import (
+        PRO_EXPERIENCE_CONFIDENCE,
         ExperienceBank,
         ExperienceContext,
-        PRO_EXPERIENCE_CONFIDENCE,
     )
     from Programma_CS2_RENAN.backend.storage.database import init_database
 
@@ -80,7 +78,8 @@ def main() -> None:
     print(f"Existing CoachingExperience records: {existing}")
 
     # Load all round stats
-    rows = conn.execute("""
+    rows = conn.execute(
+        """
         SELECT demo_name, round_number, player_name, side,
                kills, deaths, assists, damage_dealt,
                headshot_kills, trade_kills, was_traded,
@@ -89,7 +88,8 @@ def main() -> None:
                equipment_value, round_won, kast, round_rating
         FROM roundstats
         ORDER BY demo_name, round_number, player_name
-    """).fetchall()
+    """
+    ).fetchall()
 
     print(f"RoundStats rows to scan: {len(rows)}")
 
@@ -127,81 +127,94 @@ def main() -> None:
 
         # Scenario 1: Entry Frag (opening kill)
         if row["opening_kill"]:
-            scenarios.append({
-                "context": {**base_ctx},
-                "action": "entry_frag",
-                "outcome": "kill",
-                "delta": 0.15,
-                "game_state": game_state,
-                "player": player,
-                "demo": demo_name,
-            })
+            scenarios.append(
+                {
+                    "context": {**base_ctx},
+                    "action": "entry_frag",
+                    "outcome": "kill",
+                    "delta": 0.15,
+                    "game_state": game_state,
+                    "player": player,
+                    "demo": demo_name,
+                }
+            )
 
         # Scenario 2: Entry Death (opening death)
         if row["opening_death"]:
-            scenarios.append({
-                "context": {**base_ctx},
-                "action": "entry_frag",
-                "outcome": "death",
-                "delta": -0.15,
-                "game_state": game_state,
-                "player": player,
-                "demo": demo_name,
-            })
+            scenarios.append(
+                {
+                    "context": {**base_ctx},
+                    "action": "entry_frag",
+                    "outcome": "death",
+                    "delta": -0.15,
+                    "game_state": game_state,
+                    "player": player,
+                    "demo": demo_name,
+                }
+            )
 
         # Scenario 3: Multi-kill round win
         if row["kills"] >= 2 and row["round_won"]:
-            scenarios.append({
-                "context": {**base_ctx},
-                "action": "multi_kill",
-                "outcome": "round_win",
-                "delta": 0.25,
-                "game_state": game_state,
-                "player": player,
-                "demo": demo_name,
-            })
+            scenarios.append(
+                {
+                    "context": {**base_ctx},
+                    "action": "multi_kill",
+                    "outcome": "round_win",
+                    "delta": 0.25,
+                    "game_state": game_state,
+                    "player": player,
+                    "demo": demo_name,
+                }
+            )
 
         # Scenario 4: Trade death (died but was traded)
         if row["was_traded"] and row["deaths"] == 1:
-            scenarios.append({
-                "context": {**base_ctx},
-                "action": "aggressive_push",
-                "outcome": "traded",
-                "delta": -0.05,
-                "game_state": game_state,
-                "player": player,
-                "demo": demo_name,
-            })
+            scenarios.append(
+                {
+                    "context": {**base_ctx},
+                    "action": "aggressive_push",
+                    "outcome": "traded",
+                    "delta": -0.05,
+                    "game_state": game_state,
+                    "player": player,
+                    "demo": demo_name,
+                }
+            )
 
         # Scenario 5: Eco upset (low equipment, still won)
         if 0 < ev < 2000 and row["round_won"] and rnum not in (1, 13):
-            scenarios.append({
-                "context": {**base_ctx},
-                "action": "eco_force",
-                "outcome": "upset_win",
-                "delta": 0.30,
-                "game_state": game_state,
-                "player": player,
-                "demo": demo_name,
-            })
+            scenarios.append(
+                {
+                    "context": {**base_ctx},
+                    "action": "eco_force",
+                    "outcome": "upset_win",
+                    "delta": 0.30,
+                    "game_state": game_state,
+                    "player": player,
+                    "demo": demo_name,
+                }
+            )
 
         # Scenario 6: Utility impact (significant grenade damage in a win)
         nade_dmg = (row["he_damage"] or 0) + (row["molotov_damage"] or 0)
         if nade_dmg >= 50 and row["round_won"]:
-            scenarios.append({
-                "context": {**base_ctx},
-                "action": "utility_damage",
-                "outcome": "round_win",
-                "delta": 0.10,
-                "game_state": game_state,
-                "player": player,
-                "demo": demo_name,
-            })
+            scenarios.append(
+                {
+                    "context": {**base_ctx},
+                    "action": "utility_damage",
+                    "outcome": "round_win",
+                    "delta": 0.10,
+                    "game_state": game_state,
+                    "player": player,
+                    "demo": demo_name,
+                }
+            )
 
     conn.close()
 
     # Scenario summary
     from collections import Counter
+
     action_counts = Counter(s["action"] for s in scenarios)
     print(f"\nMined {len(scenarios)} scenarios:")
     for action, count in sorted(action_counts.items()):
@@ -259,6 +272,17 @@ def main() -> None:
     print(f"  Inserted: {inserted}")
     print(f"  Skipped (duplicate): {skipped}")
     print(f"  Total CoachingExperience records: {final}")
+
+    # DL-1: Record provenance for experience mining
+    if inserted > 0:
+        from Programma_CS2_RENAN.backend.storage.database import get_db_manager
+
+        get_db_manager().record_lineage(
+            entity_type="batch_experience_mining",
+            entity_id=inserted,
+            source_demo="roundstats_aggregate",
+            processing_step="experience_mining",
+        )
 
 
 if __name__ == "__main__":

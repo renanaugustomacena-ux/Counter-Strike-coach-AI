@@ -15,9 +15,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from Programma_CS2_RENAN.backend.processing.feature_engineering.rating import (
-    compute_hltv2_rating,
-)
+from Programma_CS2_RENAN.backend.processing.feature_engineering.rating import compute_hltv2_rating
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager, init_database
 from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
 
@@ -50,7 +48,9 @@ def repair_zero_ratings():
             adr = rec.avg_adr or 0.0
 
             if kpr == 0.0 and dpr == 0.0 and adr == 0.0:
-                print(f"  SKIP {rec.player_name:20s} | {rec.demo_name[:40]} — all stats are zero (ghost player)")
+                print(
+                    f"  SKIP {rec.player_name:20s} | {rec.demo_name[:40]} — all stats are zero (ghost player)"
+                )
                 skipped += 1
                 continue
 
@@ -76,7 +76,11 @@ def repair_zero_ratings():
 
             impact = compute_impact_rating(kpr, adr, dpr=dpr)
             rec.rating_kpr = kpr / BASELINE_KPR if BASELINE_KPR else 0.0
-            rec.rating_survival = compute_survival_rating(dpr) / BASELINE_DPR_COMPLEMENT if BASELINE_DPR_COMPLEMENT else 0.0
+            rec.rating_survival = (
+                compute_survival_rating(dpr) / BASELINE_DPR_COMPLEMENT
+                if BASELINE_DPR_COMPLEMENT
+                else 0.0
+            )
             rec.rating_kast = kast / BASELINE_KAST if BASELINE_KAST else 0.0
             rec.rating_impact = impact / BASELINE_IMPACT if BASELINE_IMPACT else 0.0
             rec.rating_adr = adr / BASELINE_ADR if BASELINE_ADR else 0.0
@@ -90,6 +94,15 @@ def repair_zero_ratings():
         session.commit()
 
     print(f"\nDone: {repaired} repaired, {skipped} skipped")
+
+    # DL-1: Record provenance for rating repair
+    if repaired > 0:
+        db.record_lineage(
+            entity_type="batch_rating_repair",
+            entity_id=repaired,
+            source_demo="zero_rating_records",
+            processing_step="rating_repair",
+        )
 
 
 if __name__ == "__main__":
