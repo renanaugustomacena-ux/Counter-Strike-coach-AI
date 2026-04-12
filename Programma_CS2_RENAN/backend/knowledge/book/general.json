@@ -199,6 +199,1008 @@
       "situation": "After a successful opening pick",
       "map_name": null,
       "pro_example": "Pro meta: tier-1 teams use ~30% less utility on rounds with a successful opening pick"
+    },
+
+    {
+      "title": "Anti-strat: read the opponent default, counter next round",
+      "description": "After losing a round, study what the opponent ran. Did they default slow or rush? Did they commit utility to a specific chokepoint? If they ran the same A execute twice, stack A next round. Most teams repeat their highest-confidence call under pressure — punish it.",
+      "category": "anti_strat",
+      "situation": "Lost two rounds to the same setup, no adjustment made",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 IGLs adjust defensive positioning after 2 consecutive executes to the same site"
+    },
+    {
+      "title": "Anti-strat: punish repetitive utility usage",
+      "description": "If the enemy smokes the same chokepoint 3+ rounds in a row, push through it next round with a flash. Repetitive utility becomes predictable timing — your team can time a push to arrive as the smoke blooms. The smoke is wasted and you win a numbers advantage.",
+      "category": "anti_strat",
+      "situation": "Enemy keeps smoking the same angle every round",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 teams counter-push through predictable smokes ~35% of the time after identifying the pattern"
+    },
+    {
+      "title": "Anti-strat: counter fast rushes with anti-flash positioning",
+      "description": "Against fast B rushes, play with your back to the wall so entry flashes do not blind you. Pre-aim the entry chokepoint from a position where the flash trajectory cannot hit your field of view. Trade the first entry for 2 kills before repositioning.",
+      "category": "anti_strat",
+      "situation": "Enemy keeps fast-rushing a site with flashes",
+      "map_name": null,
+      "pro_example": "Pro meta: anti-flash positions reduce flash-blinded deaths by ~60% on average"
+    },
+    {
+      "title": "Anti-strat: counter aggressive AWP with utility chains",
+      "description": "If the enemy AWP keeps getting opening picks from an aggressive angle, throw a molotov or HE grenade at the angle before your team peeks. Follow with a smoke to cut the retreat. The AWP either takes damage, repositions, or is trapped behind utility.",
+      "category": "anti_strat",
+      "situation": "Enemy AWPer keeps getting early picks from the same spot",
+      "map_name": null,
+      "pro_example": "Pro meta: double utility (molly + smoke) clears an aggressive AWP angle ~80% of the time"
+    },
+    {
+      "title": "Anti-strat: counter lurk plays with information utility",
+      "description": "If the enemy has a player who consistently lurks behind your rotate, throw a flash or smoke into the lurk path after the execute starts. Even better: leave one player anchored with a crossfire on the expected lurk route. Denying the lurk turns their 4v5 site hit into a real 4v5.",
+      "category": "anti_strat",
+      "situation": "Getting killed by a lurker during site retake",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 CTs assign a dedicated lurk-watcher when they identify a consistent lurk pattern"
+    },
+    {
+      "title": "Anti-strat: counter eco rushes with layered crossfire",
+      "description": "On anti-eco, do NOT push into the enemy. Set up a 3-deep crossfire at the chokepoint they are most likely to rush. First player gets 1-2, second trades, third mops up. Even a 5-man eco rush fails against a properly layered crossfire.",
+      "category": "anti_strat",
+      "situation": "Losing to enemy eco round rushes with full buy",
+      "map_name": null,
+      "pro_example": "Pro meta: anti-eco round win rate exceeds 85% when CTs hold default positions with crossfire"
+    },
+    {
+      "title": "Anti-strat: adapt to enemy utility expenditure mid-round",
+      "description": "Track how much utility the enemy has used in the first 30 seconds. If they dumped 4+ utility on A without executing, they are faking — hold B positions firm. If they spent zero utility, expect a late-round fast hit with full nades.",
+      "category": "anti_strat",
+      "situation": "CT-side, unsure if the T utility usage means commitment or fake",
+      "map_name": null,
+      "pro_example": "Pro meta: 4+ utility spent without execute = fake ~70% of the time at tier-1"
+    },
+    {
+      "title": "Anti-strat: counter stack defenses with fast splits",
+      "description": "If the CT keeps stacking 3 on one site, split from two sides simultaneously. A split forces the 3-stack to choose which angle to cover — one will always be open. Timing is everything: both entry paths must arrive within 2 seconds of each other.",
+      "category": "anti_strat",
+      "situation": "T-side, enemy keeps stacking one site with 3 players",
+      "map_name": null,
+      "pro_example": "Pro meta: well-timed splits against 3-stacks have ~65% plant rate, vs ~40% for single-entry executes"
+    },
+    {
+      "title": "Anti-strat: counter aggressive CT pushes with passive holds",
+      "description": "If the CT keeps pushing out of their site early, hold a passive off-angle and let them walk into your crosshair. Aggressive CTs expect to find you at default angles — a 10-meter deeper hold turns their aggression into a free kill.",
+      "category": "anti_strat",
+      "situation": "T-side, CT keeps pushing out of the site early in the round",
+      "map_name": null,
+      "pro_example": "Pro meta: passive holds against aggressive CTs convert ~70% of first contacts"
+    },
+    {
+      "title": "Anti-strat: use tactical timeouts to break momentum",
+      "description": "When the enemy wins 3+ rounds in a row with the same strat, call a tactical timeout. The timeout breaks their rhythm and gives you time to explicitly plan a counter. A well-timed timeout reverses 3-round streaks ~45% of the time.",
+      "category": "anti_strat",
+      "situation": "Losing consecutive rounds, enemy has momentum",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 teams use tactical timeouts after 3-round losing streaks ~60% of the time"
+    },
+    {
+      "title": "Anti-strat: identify and counter force buy patterns",
+      "description": "Most teams have a default force buy strat — usually a fast execute with pistol + utility. Scout for it: if they forced Galil + armor round 3, expect an A execute with 2 flashes. Position to deny the entry path they always use on force rounds.",
+      "category": "anti_strat",
+      "situation": "Losing to enemy force buys repeatedly",
+      "map_name": null,
+      "pro_example": "Pro meta: force buy executes hit the same site >60% of the time per team — study the pattern"
+    },
+
+    {
+      "title": "Entry fragger: your job is to die for information, not survive",
+      "description": "The entry fragger creates space by being first through the door. Your job is to get the first frag OR die in a tradeable position. If you die but your support trades it, the team is up 4v4 with site control — that is a win for you.",
+      "category": "role_play_entry",
+      "situation": "Entry fragger dies without getting a kill, feels useless",
+      "map_name": null,
+      "pro_example": "Pro meta: top entry fraggers have ~48% opening duel win rate — the trade is what matters"
+    },
+    {
+      "title": "Entry fragger: always peek with utility, never dry",
+      "description": "A dry peek against a holding CT gives them ~200ms advantage (they are pre-aimed, you must acquire). A flash before your peek reverses this — they turn away, you have a free kill window. Never dry peek unless you are counter-strafing a known weak angle.",
+      "category": "role_play_entry",
+      "situation": "Losing opening duels as entry, low opening kill rate",
+      "map_name": null,
+      "pro_example": "Pro meta: entry frags with flash assist have ~62% success rate vs ~41% dry peek"
+    },
+    {
+      "title": "Entry fragger: wide swing vs shoulder peek",
+      "description": "Wide swing when you have a flash covering you — the momentum catches the CT off guard. Shoulder peek when scouting for utility or checking if the angle is held. Never wide swing into an unknown angle without information — that is gambling, not entry fragging.",
+      "category": "role_play_entry",
+      "situation": "Entry fragger, choosing peek style",
+      "map_name": null,
+      "pro_example": "Pro meta: wide swings with utility win ~58% of duels; wide swings without utility win ~35%"
+    },
+    {
+      "title": "Entry fragger: call your angle before peeking",
+      "description": "Before you peek, tell your support exactly which angle you will clear. 'I'm swinging left, you trade right.' This ensures the trade is instant. Without a call, the support player guesses — and guessing wastes the 1-second trade window.",
+      "category": "role_play_entry",
+      "situation": "Entry fragger dying without being traded",
+      "map_name": null,
+      "pro_example": "Pro meta: pre-called entries have ~75% trade rate vs ~50% without a call"
+    },
+    {
+      "title": "Entry fragger: after getting the frag, call and plant",
+      "description": "After winning the opening duel, immediately call the site clear level and plant the bomb. Do not chase the second kill — your job transitions from entry to plant. Every second of delay gives the CT time to rotate. Plant > frag in the post-entry window.",
+      "category": "role_play_entry",
+      "situation": "Entry fragger wins opening duel but does not plant",
+      "map_name": null,
+      "pro_example": "Pro meta: bomb plant within 5 seconds of entry frag increases round win rate by ~12%"
+    },
+    {
+      "title": "Entry fragger: pistol round entry is different",
+      "description": "On pistol, entry frags are about momentum, not trading. Lead the rush with a flash, strafe-peek the first angle, and rely on pistol headshots. The entry fragger on pistol should buy armor + pistol, NOT utility — your support buys the flashes.",
+      "category": "role_play_entry",
+      "situation": "Pistol round, entry fragger role",
+      "map_name": null,
+      "pro_example": "Pro meta: pistol round entry fraggers buy kevlar + P250 ~80% of the time"
+    },
+    {
+      "title": "Entry fragger: spacing is everything — stay within trade distance",
+      "description": "The entry fragger should be 3-5 meters ahead of the support. Too close: both die to the same spray. Too far: the trade is impossible. The support player should see the entry fragger's back at all times during the push.",
+      "category": "role_play_entry",
+      "situation": "Entry fragger dying too far from support",
+      "map_name": null,
+      "pro_example": "Pro meta: optimal entry-support spacing is 3-5 meters; trade success drops 30% beyond 7m"
+    },
+    {
+      "title": "Entry fragger: eco role — sacrifice play",
+      "description": "On eco rounds, the entry fragger's job is to close the distance and get a pistol kill for a weapon pickup. Prioritize getting close to the enemy without dying at range. Run through smokes, flash yourself in, and force a close-range duel where the pistol has a chance.",
+      "category": "role_play_entry",
+      "situation": "Entry fragger on eco round",
+      "map_name": null,
+      "pro_example": "Pro meta: eco entry success rate at <5m range is ~35% vs ~12% at >15m"
+    },
+
+    {
+      "title": "AWP: economic discipline — $4750 is a team investment",
+      "description": "The AWP costs $4750. If you die and lose it, the team loses a full-buy rifle's worth of economy. Before buying, ask: can the team afford to lose this weapon? If the team is on a thin buy, a rifle + utility is more valuable than an AWP with no utility.",
+      "category": "role_play_awp",
+      "situation": "Deciding whether to buy AWP on a borderline economy",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 AWPers skip the AWP on ~25% of buyable rounds due to team economy"
+    },
+    {
+      "title": "AWP: passive vs aggressive positioning",
+      "description": "Passive AWP (holding a deep angle) wins ~65% of duels against a peeking enemy. Aggressive AWP (pushing forward for a pick) wins ~55% but gives the enemy more info if you die. Default passive; go aggressive only when you need information or a momentum swing.",
+      "category": "role_play_awp",
+      "situation": "AWP player, choosing between aggressive and passive style",
+      "map_name": null,
+      "pro_example": "Pro meta: passive AWP positions average ~0.8 kills per death, aggressive average ~0.6"
+    },
+    {
+      "title": "AWP: early round picks — calculated gamble",
+      "description": "An early AWP pick (first 15 seconds) gives the team a massive advantage. But if you die, the team plays 4v5 with a rifle deficit. Take early picks only from positions where you can reposition into cover within 1 second of firing.",
+      "category": "role_play_awp",
+      "situation": "AWP player, deciding whether to take an aggressive early peek",
+      "map_name": null,
+      "pro_example": "Pro meta: early AWP picks succeed ~45% of the time; the risk-reward is positive if the AWP survives on miss"
+    },
+    {
+      "title": "AWP: reposition after every shot",
+      "description": "After firing, the enemy knows your position. Hold the same angle = die to a coordinated peek, a flash, or a trade. Move to a secondary angle within 3 seconds. Have 2-3 pre-planned AWP positions per site — cycle between them.",
+      "category": "role_play_awp",
+      "situation": "AWP player dying after taking a shot",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 AWPers reposition within 3s of firing >85% of the time"
+    },
+    {
+      "title": "AWP: off-angle surprise factor",
+      "description": "Hold unexpected angles that the enemy does not pre-aim. An off-angle gives you 200-400ms of free aim time because the enemy's crosshair is pointed elsewhere. But off-angles only work once per half — after the enemy sees it, pre-aim it next round.",
+      "category": "role_play_awp",
+      "situation": "AWP player using the same angle every round",
+      "map_name": null,
+      "pro_example": "Pro meta: off-angle AWP first kill success rate is ~70% on first use, ~40% on repeat use same half"
+    },
+    {
+      "title": "AWP: T-side create space, do not overpeek",
+      "description": "On T-side, the AWP creates space by holding a sightline that prevents CT aggression. You do not need to get kills — just holding the angle forces the CT to play passive. Peek for picks only when the team is ready to capitalize on the advantage.",
+      "category": "role_play_awp",
+      "situation": "T-side AWP, feeling useless without kills",
+      "map_name": null,
+      "pro_example": "Pro meta: T-side AWP space creation (holding a sightline) denies CT info plays in ~75% of rounds"
+    },
+    {
+      "title": "AWP: save priority — never lose the AWP",
+      "description": "If the round is clearly lost, save the AWP immediately. Do not fight for a heroic kill. An AWP saved is $4750 the team does not have to spend next round. Run to a corner, hide, and survive. Every lost AWP on a lost round costs the team an average of $2000 in extra buys.",
+      "category": "role_play_awp",
+      "situation": "Round is lost, holding AWP in danger",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 AWPers save their weapon on lost rounds ~80% of the time"
+    },
+    {
+      "title": "AWP: retake discipline — hold the angle, do not push",
+      "description": "On retake, the AWP holds the longest angle and lets rifle players entry. The AWP's one-shot kill is maximized at range, not in close-quarters chaos. Cover the plant area from as far back as possible and let your teammates clear the close angles.",
+      "category": "role_play_awp",
+      "situation": "AWP in a retake, pushing into the site",
+      "map_name": null,
+      "pro_example": "Pro meta: AWP retake kills average at 15-25m range; AWP dies within 5m on >60% of retake pushes"
+    },
+
+    {
+      "title": "Support: your flashes win rounds, not your frags",
+      "description": "The support player's primary weapon is utility, not the rifle. Throw flashes for your entry fragger, smoke the rotate path, molly the close angle. If your entry gets 2 kills off your flash, you contributed more than any frag would have.",
+      "category": "role_play_support",
+      "situation": "Support player feeling useless with low kill count",
+      "map_name": null,
+      "pro_example": "Pro meta: top support players average 4.5 flash assists per match, directly enabling ~35% of team's entry kills"
+    },
+    {
+      "title": "Support: time your flash with entry movement",
+      "description": "Throw the flash so it pops as your entry fragger is mid-swing. Too early: the CT recovers before your entry arrives. Too late: your entry is already dead. Practice the timing — a well-timed flash is the single highest-impact play for a support player.",
+      "category": "role_play_support",
+      "situation": "Support player flash timing off, entry dying before flash pops",
+      "map_name": null,
+      "pro_example": "Pro meta: optimal flash pop time is 0.3-0.5s before the entry commits to the swing"
+    },
+    {
+      "title": "Support: fill the gap after entry death",
+      "description": "When your entry fragger dies, you become the next entry. Do not hesitate — the momentum window is 2-3 seconds. Use the information from the entry's death (angle, position) to pre-aim and finish the fight. Hesitation turns a traded kill into a lost round.",
+      "category": "role_play_support",
+      "situation": "Entry fragger dies, support player freezes",
+      "map_name": null,
+      "pro_example": "Pro meta: trade kills happen within 2s of entry death in >75% of successful trade scenarios"
+    },
+    {
+      "title": "Support: trade kills are your primary stat",
+      "description": "Track your trade kill rate, not your K/D. A support player with 15 kills and 12 trade kills is vastly more valuable than one with 20 kills and 3 trade kills. Trade kills maintain round advantage; solo kills often just delay the inevitable.",
+      "category": "role_play_support",
+      "situation": "Support player focused on K/D ratio",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 support players have ~65% trade kill rate; below 50% indicates positioning errors"
+    },
+    {
+      "title": "Support: economy priority — full utility over a better weapon",
+      "description": "If you have $4200, buy an M4 + no utility, or a FAMAS + full utility? Buy the FAMAS + utility. Your utility enables the team's entry — without it, the entry fragger faces a dry peek. A support without utility is just a worse rifler.",
+      "category": "role_play_support",
+      "situation": "Support player buying weapon over utility on tight economy",
+      "map_name": null,
+      "pro_example": "Pro meta: support players prioritize full utility on ~85% of tier-1 force buys"
+    },
+    {
+      "title": "Support: anchor retake utility",
+      "description": "On CT side, the support player saves 1 smoke and 1 molly for retake. Do not dump all utility on the initial defense — the retake requires utility to isolate angles and clear the plant area. A support with retake utility raises team retake win rate by ~15%.",
+      "category": "role_play_support",
+      "situation": "CT retake with no utility remaining",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 CTs retain 40-50% of total utility for retake scenarios"
+    },
+    {
+      "title": "Support: post-plant smoke timing",
+      "description": "After plant on T-side, the support's job is to smoke the defuse position at the right time. Throw too early: smoke fades before defuse. Throw too late: CT defuses behind it. Time the smoke to bloom when the CT is most likely to start the defuse — usually 8-12 seconds after plant.",
+      "category": "role_play_support",
+      "situation": "T post-plant, support player unsure when to smoke",
+      "map_name": null,
+      "pro_example": "Pro meta: optimal post-plant smoke timing is 8-15 seconds after plant, covering the 40s bomb timer"
+    },
+
+    {
+      "title": "Lurk: appear after the execute starts, not before",
+      "description": "The lurk player times their rotation to arrive behind the CT rotate path 5-10 seconds after the main execute begins. Too early: you get picked before the team commits. Too late: the retake is already set. The ideal timing catches rotating CTs mid-sprint.",
+      "category": "role_play_lurk",
+      "situation": "Lurk player timing their rotation",
+      "map_name": null,
+      "pro_example": "Pro meta: optimal lurk timing is 5-10 seconds after execute starts; CTs in sprint mode are easiest targets"
+    },
+    {
+      "title": "Lurk: position behind the rotate path",
+      "description": "Set up where the CT will rotate through, not where they start. If your team hits A, the CT rotates from B through mid — hold mid. The lurk position should give you backs or flanks on rotating players, never face-to-face duels.",
+      "category": "role_play_lurk",
+      "situation": "Lurk player, choosing where to hold",
+      "map_name": null,
+      "pro_example": "Pro meta: lurk kills from behind/flank have ~80% success rate vs ~45% from face-to-face"
+    },
+    {
+      "title": "Lurk: report information without engaging",
+      "description": "If you see 2 CTs rotating, call it immediately but do NOT shoot. The information is worth more than the kill: your team now knows the retake numbers. Shoot only when the timing guarantees a kill AND survival, or when your team needs the frag to win.",
+      "category": "role_play_lurk",
+      "situation": "Lurk player spotting rotating CTs",
+      "map_name": null,
+      "pro_example": "Pro meta: lurk info calls that prevent over-rotation save more rounds than lurk kills on average"
+    },
+    {
+      "title": "Lurk: discipline — do NOT chase kills",
+      "description": "After getting a lurk kill, do NOT chase the second. Reposition immediately. The enemy now knows your location. Chasing turns a successful lurk play into a traded death 60% of the time. Get one, hide, and let the numbers advantage play out.",
+      "category": "role_play_lurk",
+      "situation": "Lurk player chasing kills after getting one",
+      "map_name": null,
+      "pro_example": "Pro meta: lurk players who reposition after first kill have 2.1x survival rate vs chasers"
+    },
+    {
+      "title": "Lurk: fake to draw a rotation",
+      "description": "Throw a flash + a decoy or fire a few shots at a chokepoint to make the CTs rotate toward you — then go silent. Your team hits the now-weakened site. The fake lurk is one of the most effective mid-round calls when the CTs are overstacking one site.",
+      "category": "role_play_lurk",
+      "situation": "T-side, CTs are stacking one site heavily",
+      "map_name": null,
+      "pro_example": "Pro meta: fake lurk plays draw at least one CT rotate ~55% of the time at tier-1"
+    },
+    {
+      "title": "Lurk: sound discipline — walk everywhere",
+      "description": "The lurk player walks for 90% of the round. Any running sound gives away your position and kills the surprise. You are a ghost until the moment you appear. Even when time is low, walking 5 more seconds to maintain silence is worth the trade-off.",
+      "category": "role_play_lurk",
+      "situation": "Lurk player getting spotted due to sound cues",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 lurk players walk >80% of round time; sound discipline is their #1 skill"
+    },
+
+    {
+      "title": "IGL: read enemy economy, plan the round accordingly",
+      "description": "Before the round starts, calculate the enemy's expected economy. Are they on a full buy, force, or save? This determines your round plan: play aggressive vs saves, default vs full buys, anti-force vs forces. An IGL who gets the economy read wrong wastes the team's entire round.",
+      "category": "role_play_igl",
+      "situation": "IGL planning the round without checking enemy economy",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 IGLs make correct economy reads ~90% of the time; tier-3 ~65%"
+    },
+    {
+      "title": "IGL: call by information, not by script",
+      "description": "Scripted calls work for the first 3 rounds. After that, the enemy adapts. The IGL must shift from script to reads: what did we see? Where did they spend utility? Where are they NOT? Real-time reads beat rehearsed plays by round 5 of any half.",
+      "category": "role_play_igl",
+      "situation": "IGL running the same play every round, getting countered",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 IGLs use scripted calls in ~20% of rounds; the rest are read-based adaptations"
+    },
+    {
+      "title": "IGL: manage team tilt",
+      "description": "When the team loses 3+ rounds and energy drops, the IGL must address it directly. Call a timeout, simplify the next call ('just do defaults, play your game'), or tell the star player to make a play. Ignoring tilt compounds it. One calm sentence from the IGL resets the mood.",
+      "category": "role_play_igl",
+      "situation": "Team on a losing streak, morale dropping",
+      "map_name": null,
+      "pro_example": "Pro meta: teams that call timeout within 1 round of 3-streak reverse the momentum ~45% of the time"
+    },
+    {
+      "title": "IGL: default then read then call sequence",
+      "description": "Every round should follow this loop: (1) run the default setup to gather info, (2) read what the info tells you, (3) call the execute based on the read. Calling the execute before the default finishes wastes info. Calling no execute after the default wastes time.",
+      "category": "role_play_igl",
+      "situation": "IGL calling executes too early or too late",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 T-side rounds average 45-60 seconds of default play before execute commitment"
+    },
+    {
+      "title": "IGL: mid-round adaptation triggers",
+      "description": "Define explicit triggers before the round: 'if no smoke on mid by 0:50, hit B.' 'If we get a pick, fast rotate to the opened site.' 'If they push our lurk, go 4-stack opposite site.' Triggers remove hesitation from mid-round calls.",
+      "category": "role_play_igl",
+      "situation": "IGL freezing during mid-round decision",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 IGLs define 2-3 triggers per round; triggers fire on ~40% of rounds"
+    },
+    {
+      "title": "IGL: confidence in calls over perfect calls",
+      "description": "A bad call made with confidence is better than a perfect call made with hesitation. The team executes a confident call cleanly; a hesitant call causes desync, late utility, and staggered entries. Commit fully — you can fix the call next round, but you cannot fix a split team.",
+      "category": "role_play_igl",
+      "situation": "IGL second-guessing their own call mid-round",
+      "map_name": null,
+      "pro_example": "Pro meta: teams that commit to the IGL's call win ~8% more rounds than teams with mid-round indecision"
+    },
+    {
+      "title": "IGL: economy management — when to force",
+      "description": "Force buy when: (1) a win breaks the enemy's economy, (2) you have 2+ players with $2000+ and can get armor + pistol/SMG + some utility, (3) the scoreline demands it (e.g., 13-14). Do NOT force when: saving this round buys a full buy next round that you can win cleanly.",
+      "category": "role_play_igl",
+      "situation": "IGL deciding force buy vs full save",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 IGLs force buy ~30% of potential save rounds; force success rate ~25-35%"
+    },
+    {
+      "title": "IGL: set plays vs defaults ratio",
+      "description": "Run 2-3 set plays per half (specific utility + timing executes) and default the rest. Too many set plays makes you predictable; too few means you never have a rehearsed answer when the read is unclear. Defaults gather info, set plays close rounds.",
+      "category": "role_play_igl",
+      "situation": "IGL wondering how many set plays to prepare",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 teams run set plays on ~20-30% of rounds, defaults on the rest"
+    },
+
+    {
+      "title": "Clutch 1v1: time is your weapon",
+      "description": "In a 1v1, the player with more time wins. As CT: delay and force the T to peek you under bomb timer pressure. As T: plant and make the CT defuse under your crosshair. Never rush a 1v1 — use every second of the clock to force the opponent into a disadvantaged position.",
+      "category": "clutch_play",
+      "situation": "1v1 clutch scenario",
+      "map_name": null,
+      "pro_example": "Pro meta: the player who forces the other to peek first wins ~65% of 1v1 clutches"
+    },
+    {
+      "title": "Clutch 1v2: isolate them into two 1v1s",
+      "description": "In a 1v2, the goal is to separate the two enemies into individual fights. Use corners, sound, and bomb timer to create sequential 1v1s. If both enemies can see you at the same time, you lose every time. Isolate, fight one, reposition, fight the other.",
+      "category": "clutch_play",
+      "situation": "1v2 clutch scenario",
+      "map_name": null,
+      "pro_example": "Pro meta: 1v2 clutch rate at tier-1 is ~22% when isolated into two 1v1s, ~8% when simultaneous"
+    },
+    {
+      "title": "Clutch 1v3: bomb time is everything",
+      "description": "In a 1v3 as T, plant the bomb immediately. You cannot kill all 3 in a firefight. Plant, hide, and let the bomb timer force them to defuse one at a time while you hold the angle. As CT in 1v3, play for time — do NOT push into 3 players.",
+      "category": "clutch_play",
+      "situation": "1v3 clutch scenario",
+      "map_name": null,
+      "pro_example": "Pro meta: 1v3 T clutch with bomb planted wins ~12%; without plant wins ~3%"
+    },
+    {
+      "title": "Clutch as CT: use defuse fakes",
+      "description": "Tap the defuse for 0.5 seconds and immediately stop. The T will either peek to stop the defuse (giving you a fight on your terms) or wait (giving you free seconds). Use defuse fakes when you suspect the T is holding a close angle on the bomb.",
+      "category": "clutch_play",
+      "situation": "CT clutch, T holding the bomb angle",
+      "map_name": null,
+      "pro_example": "Pro meta: defuse fakes draw out the T player ~40% of the time; the info gained is always valuable"
+    },
+    {
+      "title": "Clutch as T: plant position decides everything",
+      "description": "In a clutch, plant the bomb where you can watch the defuse from a single angle with cover. A bad plant forces you to expose yourself to check the defuse. The 3 seconds you spend choosing the right plant position are the most important 3 seconds of the round.",
+      "category": "clutch_play",
+      "situation": "T clutch, choosing where to plant",
+      "map_name": null,
+      "pro_example": "Pro meta: optimal plant spot selection improves T clutch win rate by ~15% vs random plant"
+    },
+    {
+      "title": "Clutch: sound is your radar",
+      "description": "In clutch scenarios, every sound tells a story. Footsteps = position. Reload = timing window. Scope = AWP angle. Defuse sound = 5-second window. Walk slowly, listen actively, and let the enemy's sounds guide your decisions. The player with better sound reads wins.",
+      "category": "clutch_play",
+      "situation": "Clutch, not using sound cues",
+      "map_name": null,
+      "pro_example": "Pro meta: clutch specialists use sound cues to pre-aim ~70% of their clutch kills"
+    },
+    {
+      "title": "Clutch: preserve utility for the endgame",
+      "description": "If the round is trending toward a clutch, stop throwing utility mid-round. A smoke in a 1v2 is worth 10x what it was in a 5v5. One well-placed smoke can isolate an enemy, block a sightline while you defuse, or fake a position. Save at least 1 nade for clutch time.",
+      "category": "clutch_play",
+      "situation": "Running out of utility in clutch scenarios",
+      "map_name": null,
+      "pro_example": "Pro meta: clutch players with 1+ utility piece remaining win ~30% more clutches than those without"
+    },
+    {
+      "title": "Clutch: shoulder peek for info",
+      "description": "Before committing to a fight in a clutch, shoulder peek the angle. Expose your shoulder for 1 frame, then pull back. This baits the enemy into shooting (revealing their position) without taking damage. One shoulder peek can turn a blind fight into a pre-aimed kill.",
+      "category": "clutch_play",
+      "situation": "Clutch, unsure where the enemy is",
+      "map_name": null,
+      "pro_example": "Pro meta: shoulder peeks bait an enemy shot ~50% of the time, providing free position info"
+    },
+    {
+      "title": "Clutch: know the bomb timer precisely",
+      "description": "The bomb timer is exactly 40 seconds. A defuse without kit takes 10 seconds. With kit: 5 seconds. This means: without kit, you must start defusing at 10s remaining. With kit, 5s. If the timer is at 7s and you have no kit, do NOT defuse — fight instead.",
+      "category": "clutch_play",
+      "situation": "Misjudging bomb timer in clutch",
+      "map_name": null,
+      "pro_example": "Pro meta: failed defuses due to timer miscalculation account for ~8% of lost CT clutch rounds"
+    },
+    {
+      "title": "Clutch: mental composure under pressure",
+      "description": "In a clutch, slow your breathing and your crosshair. Panic aim loses clutches. Your mechanical skill does not change in a 1v3 — only your decision-making does. Take 1 extra second to think before every action. The player who panics less wins more clutches.",
+      "category": "clutch_play",
+      "situation": "Panicking in clutch situations, making bad decisions",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 clutch specialists report that slowing down decision-making improves their clutch rate by ~20%"
+    },
+
+    {
+      "title": "Jiggle peeking: gather info without committing",
+      "description": "Tap A-D rapidly to expose your model for 1-2 frames at the edge of an angle. This reveals enemy positions without giving them a shootable target. Use jiggle peeks to scout angles before committing to a wide swing or a push. Every angle should be jiggle-checked first.",
+      "category": "aim_and_duels",
+      "situation": "Peeking unknown angles, getting killed immediately",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 players jiggle peek ~80% of angles before committing to a fight"
+    },
+    {
+      "title": "Angle advantage: the wider angle wins",
+      "description": "The player holding the wider angle (further from the corner) sees the peeking player first due to perspective geometry. If you are close to a corner and the enemy swings wide, they see you 50-100ms before you see them. Play wider angles or swing aggressively to counteract.",
+      "category": "aim_and_duels",
+      "situation": "Losing duels when holding tight angles",
+      "map_name": null,
+      "pro_example": "Pro meta: wide-angle holders win ~58% of equal-skill duels vs tight-angle holders"
+    },
+    {
+      "title": "Peekers advantage: online lag benefits the aggressor",
+      "description": "In online CS2, the peeking player has a 20-80ms advantage due to network latency. This means: if you are holding an angle, the peeker sees you before their model renders on your screen. Counter this by playing off-angles, jiggling, or shoulder-peeking to bait the shot.",
+      "category": "aim_and_duels",
+      "situation": "Dying to peeks before seeing the enemy",
+      "map_name": null,
+      "pro_example": "Pro meta: peeker's advantage is real and documented; off-angles reduce its impact by ~40%"
+    },
+    {
+      "title": "Crossfire setup: two angles, one kill zone",
+      "description": "A crossfire places two players on different sides of the same kill zone. The enemy can only check one angle at a time — the other player gets a free shot. Crossfires multiply your holding power: a 2-player crossfire is worth ~3 single-angle holds.",
+      "category": "positioning",
+      "situation": "Setting up site defense with two players",
+      "map_name": null,
+      "pro_example": "Pro meta: crossfire setups hold sites at ~78% success rate vs ~55% for parallel positioning"
+    },
+    {
+      "title": "Off-angle plays: surprise positioning",
+      "description": "An off-angle is a position the enemy does not pre-aim when entering the site. It gives you 200-400ms of free aim time. But off-angles only work 1-2 times before the enemy starts checking them. Rotate off-angles every 2-3 rounds to maintain the surprise.",
+      "category": "positioning",
+      "situation": "CT defense, playing the same angle every round",
+      "map_name": null,
+      "pro_example": "Pro meta: off-angle first kill rate is ~65% first use, drops to ~35% by third use same half"
+    },
+    {
+      "title": "Molotov lineup: clear common positions without peeking",
+      "description": "Learn 2-3 molotov lineups per site that clear the most common close-hold positions. A molotov forces the CT out of cover without requiring you to peek. Combined with a flash, it creates a 3-second window where the site is partially cleared for free.",
+      "category": "utility",
+      "situation": "Dying to close-hold positions on site entry",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 teams use molotovs to clear close positions on ~75% of full-buy executes"
+    },
+    {
+      "title": "Double flash technique: pop flash into team flash",
+      "description": "Throw a pop flash (short fuse, high trajectory) followed by a second flash (longer fuse, different angle). The first flash forces the CT to turn away — the second catches them turning back. This 2-flash combo blinds for 3-4 seconds total, guaranteeing the entry.",
+      "category": "utility",
+      "situation": "Single flash not effective enough for entries",
+      "map_name": null,
+      "pro_example": "Pro meta: double flash entries succeed ~68% vs ~52% for single flash entries"
+    },
+    {
+      "title": "Economy: double eco into force buy comeback",
+      "description": "After two consecutive eco rounds (saving both), the team has $7000-8000 per player — enough for a full buy with full utility. This 'double eco into full' strategy is more reliable than a mid-round force that risks extending the deficit.",
+      "category": "economy",
+      "situation": "After losing pistol, deciding save strategy",
+      "map_name": null,
+      "pro_example": "Pro meta: double eco + full buy wins ~55% of the buy round; single force + eco + buy wins ~45%"
+    },
+    {
+      "title": "Economy: rifle drop priority",
+      "description": "When one teammate has an AK/M4 and another has a pistol, the better aimer gets the rifle — not the player who saved it. Ego drops (keeping the rifle because 'I saved it') cost the team an average of 2 rounds per half.",
+      "category": "economy",
+      "situation": "Teammate saved a rifle, deciding who uses it",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 teams always drop the rifle to the highest-rated player; no ego about saves"
+    },
+    {
+      "title": "Number advantage: play safe, trade time for frags",
+      "description": "When your team has a numbers advantage (e.g., 3v2), do NOT rush. Play slow, trade time for position, and force the disadvantaged team to come to you. Pushing into a 2v3 as the 3-player side is the #1 way to throw an advantage.",
+      "category": "mid_round",
+      "situation": "Team has numbers advantage but pushes and loses it",
+      "map_name": null,
+      "pro_example": "Pro meta: 3v2 round win rate is ~80% when played patiently, ~60% when the advantage team pushes"
+    },
+    {
+      "title": "Retake: defuse kit priority",
+      "description": "If you are CT retaking with a kit, you have 5 seconds to defuse instead of 10. This changes the entire retake calculus: with a kit you can trade a teammate, wait 3 seconds, and still defuse. Without a kit, every second counts. Buy kits on every buy round.",
+      "category": "retakes_post_plant",
+      "situation": "CT retake, no defuse kits bought",
+      "map_name": null,
+      "pro_example": "Pro meta: CT teams with 3+ kits win retakes ~12% more often than teams with 0-1 kits"
+    },
+    {
+      "title": "Retake: utility before push, always",
+      "description": "Never dry retake a site. Smoke the plant, molly a common post-plant position, flash the entry. Even one piece of utility raises your retake success rate by 15-20%. Retaking without utility is gambling — retaking with utility is strategy.",
+      "category": "retakes_post_plant",
+      "situation": "CT dry retaking and losing",
+      "map_name": null,
+      "pro_example": "Pro meta: retakes with 2+ utility pieces succeed ~55%; dry retakes succeed ~25%"
+    },
+
+    {
+      "title": "Anti-strat: track enemy AWP player tendencies",
+      "description": "Every AWPer has 2-3 favorite angles per map. After 3-4 rounds, you know their default. Counter with: (1) utility the angle before peeking, (2) double peek to bait the shot, (3) avoid the angle entirely and hit the other site. Neutralizing the AWP wins the economy war.",
+      "category": "anti_strat",
+      "situation": "Enemy AWPer consistently getting kills from the same positions",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 IGLs adjust utility usage against the enemy AWP after 2-3 data points"
+    },
+    {
+      "title": "Anti-strat: mirror the enemy if they are winning",
+      "description": "If the enemy's setup is beating your approach, mirror it. Copy their utility timing, their positioning, their aggression level. Mirroring forces them to counter their own strat — and since they designed it, they know the weaknesses. Use it until they adapt.",
+      "category": "anti_strat",
+      "situation": "Losing to a specific enemy setup repeatedly, no counter found",
+      "map_name": null,
+      "pro_example": "Pro meta: mirroring the opponent's CT setup forces them to innovate, breaking their rhythm"
+    },
+    {
+      "title": "Entry fragger: read the CT setup on first contact",
+      "description": "Your first contact as entry tells the team everything: how many CTs are here, which angles they hold, whether they pushed or played passive. Call what you see instantly — even if you die, the callout wins the round for the team.",
+      "category": "role_play_entry",
+      "situation": "Entry fragger making first contact but not calling info",
+      "map_name": null,
+      "pro_example": "Pro meta: entry fraggers who call info on death enable ~15% more round wins than silent deaths"
+    },
+    {
+      "title": "Entry fragger: play for opening picks on CT side too",
+      "description": "Entry fraggers are not T-only. On CT side, aggressive early peeks for opening picks create the same advantage. The CT entry goes for a pick in the first 15 seconds and immediately falls back to site — never overcommit on CT entry plays.",
+      "category": "role_play_entry",
+      "situation": "Entry fragger passive on CT side",
+      "map_name": null,
+      "pro_example": "Pro meta: CT aggressive opening picks succeed ~40% and create a 5v4 advantage on successful rounds"
+    },
+    {
+      "title": "AWP: dual AWP setup coordination",
+      "description": "Two AWPs work only if they hold different sightlines covering each other's weakness. Both AWPs on the same angle = double investment for one kill. One A long, one B — or one passive, one aggressive. Communicate who holds which angle every round.",
+      "category": "role_play_awp",
+      "situation": "Team running double AWP, both dying to the same push",
+      "map_name": null,
+      "pro_example": "Pro meta: dual AWP setups with separate sightlines have ~70% combined survival rate per round"
+    },
+    {
+      "title": "AWP: no-scope range discipline",
+      "description": "At ranges under 5 meters, hip-fire the AWP. The no-scope accuracy is reasonable at point-blank. At 5-15 meters, quick-scope (scope + shoot immediately). Beyond 15 meters, hard scope. Most AWP close-range deaths come from trying to hard-scope at point-blank.",
+      "category": "role_play_awp",
+      "situation": "AWP player dying to close-range enemies",
+      "map_name": null,
+      "pro_example": "Pro meta: no-scope AWP kills average ~15% hit rate at <5m; quick-scope ~45% at 5-15m"
+    },
+    {
+      "title": "Support: call utility before throwing",
+      "description": "Always call 'flashing' or 'smoking' before you throw. A teammate mid-peek who gets blinded by your flash costs the team a life. The 0.5-second call gives teammates time to avert their eyes or position for the utility.",
+      "category": "role_play_support",
+      "situation": "Support player blinding teammates with flash",
+      "map_name": null,
+      "pro_example": "Pro meta: called flashes reduce team-flash incidents by ~80%"
+    },
+    {
+      "title": "Support: learn 3 retake smokes per site",
+      "description": "Each site has 3 smoke positions that isolate the T post-plant: (1) cut the lurk path, (2) block the plant area sightline, (3) isolate the close corner. Learn these 3 smokes for every site on your map pool. This is the highest-ROI practice for support players.",
+      "category": "role_play_support",
+      "situation": "Support player with no retake smoke knowledge",
+      "map_name": null,
+      "pro_example": "Pro meta: support players with retake smoke knowledge increase team retake win rate by ~18%"
+    },
+    {
+      "title": "Lurk: eco round lurk is your best role",
+      "description": "On eco rounds, the lurker's job is to find a hiding spot and survive with a rifle for the next round. While the team rushes and dies, the lurker saves the most expensive weapon. One saved rifle changes the next round's economy entirely.",
+      "category": "role_play_lurk",
+      "situation": "Lurk player role on eco rounds",
+      "map_name": null,
+      "pro_example": "Pro meta: lurk players save rifles on eco rounds ~70% of the time at tier-1"
+    },
+    {
+      "title": "Lurk: CT-side lurk for info flanks",
+      "description": "On CT side, the lurk player rotates through flanking paths after the bomb is spotted. Instead of running directly to the site, take the long way around to catch T players from behind. CT lurk kills during retakes have the highest impact per frag in the game.",
+      "category": "role_play_lurk",
+      "situation": "CT lurk player during retake",
+      "map_name": null,
+      "pro_example": "Pro meta: CT flank kills during retakes contribute to ~25% of successful retakes at tier-1"
+    },
+    {
+      "title": "IGL: map veto strategy — ban what you can't counter",
+      "description": "In the veto, ban the map where the enemy has the highest win rate that your team cannot counter. Do NOT ban your worst map if the enemy never picks it. Study the opponent's map pool and ban their best — not your worst.",
+      "category": "role_play_igl",
+      "situation": "IGL preparing map veto",
+      "map_name": null,
+      "pro_example": "Pro meta: optimal vetoes target the opponent's best map, not the team's worst; the difference is ~5% series win rate"
+    },
+    {
+      "title": "IGL: half-time adjustments based on data",
+      "description": "At half-time, review three things: (1) which site did we lose most often, (2) which enemy player is carrying and from where, (3) did our economy allow us to execute our strats? Adjust site stacks, counter the star player, and plan economy around what actually happened.",
+      "category": "role_play_igl",
+      "situation": "IGL making half-time adjustments",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 teams that make targeted half-time adjustments win the next 3 rounds ~55% of the time"
+    },
+    {
+      "title": "Clutch: ninja defuse conditions",
+      "description": "A ninja defuse works when: (1) the T has no visual on the bomb, (2) the defuse starts before the T can rotate, (3) smoke covers the defuse or the T is distracted. With kit, you need 5 seconds of uninterrupted defuse. Without kit, 10 seconds — ninja without kit is almost never viable.",
+      "category": "clutch_play",
+      "situation": "Attempting ninja defuse, failing",
+      "map_name": null,
+      "pro_example": "Pro meta: ninja defuses succeed ~5% of the time; with kit in smoke, ~15%"
+    },
+    {
+      "title": "Clutch: use the bomb as bait",
+      "description": "In a T clutch, plant the bomb and use the ticking sound as bait. The CT must come to the bomb — you choose the angle. If time is low, plant and hide in the closest off-angle. If time is high, plant and rotate to a far angle for a surprise peek.",
+      "category": "clutch_play",
+      "situation": "T clutch, deciding to plant vs fight",
+      "map_name": null,
+      "pro_example": "Pro meta: T clutch with bomb planted wins ~18% vs ~8% without plant"
+    },
+    {
+      "title": "HE grenade: aim for feet, not body",
+      "description": "HE grenades do maximum damage when they detonate at feet level. Throwing an HE at chest height reduces damage because the blast center is above the target. Aim low — throw at the ground where the enemy stands, not at the enemy directly.",
+      "category": "utility",
+      "situation": "HE grenades doing low damage",
+      "map_name": null,
+      "pro_example": "Pro meta: feet-level HE averages 65-80 damage vs 40-55 damage for chest-level throws"
+    },
+    {
+      "title": "Flash discipline: do not flash your own team",
+      "description": "Before throwing a flash, check if any teammate is looking toward the flash trajectory. A team-flash turns a 5v5 into a 4v5 for 2-3 seconds. Call 'flashing [location]' every time. Turn your back to friendly flashes — the 0.3s turn costs less than 2s of blindness.",
+      "category": "utility",
+      "situation": "Team flashing each other during executes",
+      "map_name": null,
+      "pro_example": "Pro meta: team flash rate is ~12% at tier-3, ~3% at tier-1"
+    },
+    {
+      "title": "Decoy grenade: not useless in CS2",
+      "description": "The CS2 decoy shows as a radar blip to enemies — it simulates a player presence. Throw a decoy + one flash at the fake site while the team hits the real site. The decoy appears as a fifth player on the enemy's radar, drawing a rotation for $50.",
+      "category": "utility",
+      "situation": "Ignoring decoy grenades entirely",
+      "map_name": null,
+      "pro_example": "Pro meta: decoy fakes combined with a flash draw a CT rotation ~25% of the time"
+    },
+    {
+      "title": "Economy: $16000 cap — stop saving",
+      "description": "When any player hits $16000 (the economy cap), they must buy everything: rifle, full utility, kit. Saving at max economy is wasted money. Drop rifles to teammates, buy full utility for the team. Capped players should be the team's primary weapon donors.",
+      "category": "economy",
+      "situation": "Team has max economy but still saving utility",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 teams spend 95%+ of capped player economy; never leave money on the table"
+    },
+    {
+      "title": "Economy: loss bonus tracking",
+      "description": "CS2 loss bonus increments: $1400, $1900, $2400, $2900, $3400. After 5 consecutive losses, the team earns $3400 per player. A win resets the bonus. Track the loss bonus to predict when the enemy can afford a buy after consecutive losses.",
+      "category": "economy",
+      "situation": "Surprised by enemy economy after losses",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 IGLs track loss bonus to within $200 accuracy every round"
+    },
+    {
+      "title": "Movement: bunny hop for speed, not for style",
+      "description": "Bunny hopping in CS2 preserves momentum from jumps — a successful chain of bhops moves you 10-15% faster than running. Use it for rotations, save rounds, and surprise peeks. But a missed bhop slows you to walking speed. Only bhop when speed is critical and failure is acceptable.",
+      "category": "aim_and_duels",
+      "situation": "Slow rotations, not using movement techniques",
+      "map_name": null,
+      "pro_example": "Pro meta: bhop usage in saves and rotations is standard at tier-1, ~15% speed advantage"
+    },
+    {
+      "title": "Positioning: playing headglitch spots",
+      "description": "A headglitch is a position where only your head is visible to the enemy, but you can see their entire body. This gives you a massive accuracy advantage — they have a tiny target, you have a large one. Learn the headglitch spots on every site for your map pool.",
+      "category": "positioning",
+      "situation": "Dying from exposed positions during defense",
+      "map_name": null,
+      "pro_example": "Pro meta: headglitch positions win duels ~70% of the time against equal-skill opponents at range"
+    },
+    {
+      "title": "Positioning: do not hold angles where you can be mollied",
+      "description": "If your position can be reached by a molotov, the enemy will molly you out within 2-3 rounds. Play positions where a molotov cannot reach you, or play positions where you can sidestep the molly without giving up the angle.",
+      "category": "positioning",
+      "situation": "Getting mollied out of the same position every round",
+      "map_name": null,
+      "pro_example": "Pro meta: molly-proof positions have ~20% higher survival rate over the course of a half"
+    },
+    {
+      "title": "Mid-round: play the clock — time management",
+      "description": "Each round has 1:55. As T: plant before 0:35 to give a full 40s post-plant. As CT: deny plant until 0:30 to force a rushed execute. Time management is the #2 skill after aim at intermediate levels. Every second has value.",
+      "category": "mid_round",
+      "situation": "Rounds expiring without plant, or rushing without need",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 teams average bomb plant at 0:48 remaining; tier-3 teams at 0:32"
+    },
+    {
+      "title": "Mid-round: man advantage discipline",
+      "description": "Up one player? Play passive and force the disadvantaged team to push you. Up two players? You can afford to push one angle while holding the rest. Never push when you are down on numbers unless the bomb timer forces it.",
+      "category": "mid_round",
+      "situation": "Throwing man advantage by being aggressive",
+      "map_name": null,
+      "pro_example": "Pro meta: 4v3 passive play wins ~82% of rounds; 4v3 aggressive play wins ~65%"
+    },
+    {
+      "title": "Retakes: prioritize site entry over frag hunting",
+      "description": "In a retake, the goal is to reach the bomb and defuse, not to kill every T. If you can isolate the bomb area with utility and defuse under cover, do it even if 2 Ts are still alive. Frag hunting during retakes wastes time and gets you killed by crossfires.",
+      "category": "retakes_post_plant",
+      "situation": "CT retake, hunting for kills instead of defusing",
+      "map_name": null,
+      "pro_example": "Pro meta: retakes focused on bomb access succeed ~15% more than frag-focused retakes"
+    },
+    {
+      "title": "Retakes: timing the push — all at once, not staggered",
+      "description": "Retake pushes must be simultaneous. If 3 CTs push at 3 different times, the T handles 3 separate 1v1s and wins each. If all 3 push simultaneously, the T faces a 1v3 crossfire. Count down '3, 2, 1, go' before every retake push.",
+      "category": "retakes_post_plant",
+      "situation": "CT retake staggered, losing 1v1s",
+      "map_name": null,
+      "pro_example": "Pro meta: synchronized retakes win ~50%; staggered retakes win ~20%"
+    },
+    {
+      "title": "Aim: warmup routine — 10 minutes is enough",
+      "description": "Before competitive play, do a 10-minute warmup: 3 minutes aim trainer (flicks), 3 minutes spray control (workshop map), 4 minutes deathmatch (real movement + aim). More than 10 minutes causes fatigue that hurts your first match. Less than 5 minutes means cold aim.",
+      "category": "aim_and_duels",
+      "situation": "Losing first match of the session, cold aim",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 pros warm up 15-30 minutes; for non-pros, 10 minutes captures 90% of the benefit"
+    },
+    {
+      "title": "Aim: sensitivity consistency matters more than value",
+      "description": "There is no 'correct' sensitivity — what matters is consistency. Pick a sensitivity between 400 DPI / 1.5 in-game and 800 DPI / 1.0 in-game, and never change it. Muscle memory takes 2-3 weeks to build and resets on every change.",
+      "category": "aim_and_duels",
+      "situation": "Constantly changing sensitivity, inconsistent aim",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 pros use sensitivities between 1.0-2.0 at 400 DPI; most stay within a 10% range for years"
+    },
+
+    {
+      "title": "CT side: play for information before committing to defense",
+      "description": "In the first 20 seconds of a CT round, gather info without fighting. Send utility for early reads (molly a common T path, listen for footsteps). Only commit to a stack or rotation after you have at least one data point. Blind stacking without info loses ~20% of rounds.",
+      "category": "mid_round",
+      "situation": "CT stacking a site with no information",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 CTs gather info before committing on ~85% of rounds"
+    },
+    {
+      "title": "T side: default setup wins more than rushing",
+      "description": "On full buy rounds, run a default (spread across the map for info) before committing to a site. Defaults win ~8% more rounds than fast hits because they reveal CT positioning. Rush only on force buys or as a specific counter-strat.",
+      "category": "mid_round",
+      "situation": "T-side always rushing, not defaulting",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 T default rounds win ~52%, fast hits win ~44% on full buys"
+    },
+    {
+      "title": "Anti-strat: punish predictable CT aggression with patience",
+      "description": "If the CT pushes the same spot aggressively every round, set up a crossfire and wait for them to push into it. Patient play against aggressive CTs converts ~70% of first contacts because the CT is moving into your pre-aimed angles.",
+      "category": "anti_strat",
+      "situation": "CT pushing out of the site early every round",
+      "map_name": null,
+      "pro_example": "Pro meta: crossfire traps against predictable CT pushes convert ~70% of first contacts"
+    },
+    {
+      "title": "Anti-strat: shift from A to B after half-time",
+      "description": "If you won the first half hitting one site, the opponent will adjust. Open the second half hitting the opposite site. The adjustment period (2-3 rounds) gives you free rounds before they re-adapt. Never repeat a half's strategy into the next half.",
+      "category": "anti_strat",
+      "situation": "Losing rounds after half-time because the opponent adapted",
+      "map_name": null,
+      "pro_example": "Pro meta: teams that change target site after half-time win the first 2 rounds ~60% of the time"
+    },
+    {
+      "title": "Entry fragger: deagle eco round discipline",
+      "description": "On eco rounds with a Deagle, hold a close angle and go for one headshot. Do not commit to multiple peeks. The Deagle one-taps at any range but punishes missed first shots with wild inaccuracy. One shot, one kill opportunity — then hide if you miss.",
+      "category": "role_play_entry",
+      "situation": "Entry fragger on eco round with Deagle",
+      "map_name": null,
+      "pro_example": "Pro meta: Deagle first-shot headshot rate is ~25% at tier-1; the weapon punishes spray and rewards patience"
+    },
+    {
+      "title": "Entry fragger: adapt to CT reads",
+      "description": "If the CT is reading your entry angle (holding exactly where you peek), change your approach. Push a different angle, throw utility from a new position, or go to the other site entirely. Repeating the same entry against an adapted CT is -EV after the second time.",
+      "category": "role_play_entry",
+      "situation": "Entry fragger dying to the same CT hold repeatedly",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 entry fraggers change approach after 2 consecutive failed entries to the same spot"
+    },
+    {
+      "title": "AWP: switching to rifle on eco defense",
+      "description": "On CT eco rounds where the team cannot afford utility, consider buying a rifle instead of saving for the AWP. A rifle + utility is more versatile on eco defense than an AWP with no utility. The AWP without smokes or flashes is a sitting target.",
+      "category": "role_play_awp",
+      "situation": "AWP player on a thin CT economy",
+      "map_name": null,
+      "pro_example": "Pro meta: rifle + full utility wins ~15% more eco defense rounds than AWP alone"
+    },
+    {
+      "title": "AWP: peek timing vs scope timing",
+      "description": "Scope in BEFORE you peek, not during. The scope animation takes 0.3 seconds — peeking while scoping gives the enemy a free window. Pre-scope around the corner, then step out already zoomed. The difference between pre-scope and mid-peek scope is 200ms of vulnerability.",
+      "category": "role_play_awp",
+      "situation": "AWP player getting killed while scoping in",
+      "map_name": null,
+      "pro_example": "Pro meta: pre-scoped peeks have ~60% kill rate vs ~35% for mid-peek scope-ins"
+    },
+    {
+      "title": "Support: when to drop weapons for teammates",
+      "description": "Drop a weapon when: (1) a teammate has a pistol and you have $5000+, (2) the team's star player needs a rifle and you can buy again next round, (3) you are the support player and the entry needs the weapon more. Never drop if it leaves you unable to buy next round.",
+      "category": "role_play_support",
+      "situation": "Support player deciding when to drop weapons",
+      "map_name": null,
+      "pro_example": "Pro meta: correct weapon drops raise team round win rate by ~8% on force buys"
+    },
+    {
+      "title": "Support: information grenades over kill grenades",
+      "description": "Throw utility to gather information, not just to deal damage. A molotov in a common hiding spot tells you if someone is there (they run). A flash that draws no gunfire confirms the angle is empty. Information from utility is worth more than 50 HP of random damage.",
+      "category": "role_play_support",
+      "situation": "Support player throwing utility randomly",
+      "map_name": null,
+      "pro_example": "Pro meta: information-driven utility usage correlates with ~10% higher team round win rate"
+    },
+    {
+      "title": "Lurk: know when to give up the lurk",
+      "description": "If the team is losing rounds because the lurk player is not contributing to the execute, stop lurking and play as the 5th entry. Lurking only works when the team can win 4v5 site hits. If the team needs you on site, be there.",
+      "category": "role_play_lurk",
+      "situation": "Lurk player hurting the team by not being on site",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 lurkers abandon the lurk and join the execute on ~20% of rounds based on situation"
+    },
+    {
+      "title": "Lurk: delay the enemy rotate, even without kills",
+      "description": "The lurk player does not need kills to be effective. Simply being present on the rotate path forces the CT to slow down, check angles, and arrive at the site 3-5 seconds later. That delay is often enough for the team to plant and set up post-plant.",
+      "category": "role_play_lurk",
+      "situation": "Lurk player judging effectiveness by kill count",
+      "map_name": null,
+      "pro_example": "Pro meta: lurk presence delays CT rotates by 3-5 seconds on average even without engagement"
+    },
+    {
+      "title": "IGL: read the scoreboard for economy predictions",
+      "description": "Check the scoreboard after every round. A player with 0-0-3 on the enemy team has been saving and likely has $8000+. A player with 15-8 has been dying and may be on a thin buy. Use these reads to predict which site the enemy can utility-stack.",
+      "category": "role_play_igl",
+      "situation": "IGL not checking scoreboard for economy reads",
+      "map_name": null,
+      "pro_example": "Pro meta: IGLs who track individual enemy economy make correct utility predictions ~75% of the time"
+    },
+    {
+      "title": "IGL: communicate the plan, not just the call",
+      "description": "Do not just say 'hit A.' Say 'hit A, smoke CT, molly stairs, flash entry, plant default, lurk mid.' The full plan ensures everyone knows their role. Vague calls cause individual improvisation, which leads to desync.",
+      "category": "role_play_igl",
+      "situation": "IGL giving vague calls, team not coordinating",
+      "map_name": null,
+      "pro_example": "Pro meta: detailed IGL calls with specific roles raise execute success by ~12% vs one-word calls"
+    },
+    {
+      "title": "Clutch: when to save instead of clutching",
+      "description": "In a 1v3+ with no bomb planted and less than 20 seconds, save the weapon. The economic value of saving a rifle ($2700) outweighs the ~5% chance of winning a 1v3. Clutch only when: (1) bomb is planted, (2) you have kit + time, or (3) you have a realistic path to the bomb.",
+      "category": "clutch_play",
+      "situation": "Trying to clutch an unwinnable round instead of saving",
+      "map_name": null,
+      "pro_example": "Pro meta: weapon saves on unwinnable clutch situations recover $2000+ in team economy per save"
+    },
+    {
+      "title": "Clutch: play the bomb, not the enemy",
+      "description": "In any clutch scenario, the bomb is the objective, not the kills. As T: plant and hide. As CT: reach the bomb and defuse. Fights are only worth taking if they are between you and the bomb. Going hunting wastes time and positions you away from the objective.",
+      "category": "clutch_play",
+      "situation": "Clutch player chasing kills instead of playing the objective",
+      "map_name": null,
+      "pro_example": "Pro meta: objective-focused clutch players win ~25% more clutches than frag-focused players"
+    },
+    {
+      "title": "Positioning: rotate with cover, never in the open",
+      "description": "When rotating between sites, always use the route that provides the most cover. Running through the open saves 2 seconds but gets you killed by the lurker ~15% of the time. The safe rotate path is always worth the extra time.",
+      "category": "positioning",
+      "situation": "Getting killed during rotation through open areas",
+      "map_name": null,
+      "pro_example": "Pro meta: covered rotation paths reduce rotate deaths by ~60% vs open rotations"
+    },
+    {
+      "title": "Positioning: the first angle you see is the first angle that sees you",
+      "description": "When moving through the map, the first angle you become visible to is also the first angle you must clear. Pre-aim that angle before you expose yourself. Most mid-round deaths come from not clearing the first visible angle on a rotation or push.",
+      "category": "positioning",
+      "situation": "Getting killed from unchecked angles while rotating or pushing",
+      "map_name": null,
+      "pro_example": "Pro meta: pre-aiming the first visible angle reduces rotation deaths by ~30%"
+    },
+    {
+      "title": "Economy: kill reward differences matter",
+      "description": "Rifle kills award $300, SMG kills $600, shotgun kills $900, knife kills $1500. On anti-eco, consider using an SMG for the double kill reward. 5 SMG kills on anti-eco = $3000 extra team economy, equivalent to a free rifle for a teammate next round.",
+      "category": "economy",
+      "situation": "Not considering kill rewards in weapon choice",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 teams use SMGs on anti-eco ~30% of the time for the $600 kill reward"
+    },
+    {
+      "title": "Economy: second-round buy after winning pistol",
+      "description": "After winning pistol, buy SMG + armor (not a rifle). The SMG $600 kill reward maximizes economic damage to the enemy. The enemy is on eco — they have pistols. An SMG kills pistol players just as fast as a rifle does, but earns twice the money.",
+      "category": "economy",
+      "situation": "Buying rifle on round 2 after winning pistol",
+      "map_name": null,
+      "pro_example": "Pro meta: tier-1 teams buy SMGs in 90%+ of second rounds after winning pistol"
+    },
+    {
+      "title": "Utility: smoke extinguish — molotov through smoke",
+      "description": "In CS2, throwing a smoke on a molotov extinguishes the fire. If the enemy mollies your position, throw a smoke to put it out. This costs $300 to counter a $400 molotov — economically favorable and lets you hold your position.",
+      "category": "utility",
+      "situation": "Getting mollied out of position with no counter",
+      "map_name": null,
+      "pro_example": "Pro meta: smoke extinguishing molotovs is a standard CS2 mechanic used on ~15% of defensive mollies"
+    },
+    {
+      "title": "Utility: bounce flash for pop flash effect",
+      "description": "Throw the flash so it bounces off a wall or floor and pops the instant it becomes visible to the enemy. A pop flash gives the enemy zero reaction time to turn away. Practice wall-bounce flashes for every major choke point — the bounce angle determines the pop timing.",
+      "category": "utility",
+      "situation": "Throwing flashes that enemies can easily avoid",
+      "map_name": null,
+      "pro_example": "Pro meta: pop flashes (< 0.3s visible) fully blind enemies; high-arc flashes (> 1s visible) blind <40%"
+    },
+    {
+      "title": "Aim: first bullet accuracy — stand still",
+      "description": "In CS2, the first bullet is perfectly accurate only when you are completely still. Moving, even at walk speed, adds spread. Counter-strafe to a complete stop before shooting. The difference between still and walking first-bullet accuracy is ~5x spread at 20 meters.",
+      "category": "aim_and_duels",
+      "situation": "Missing first bullets while moving",
+      "map_name": null,
+      "pro_example": "Pro meta: standing still first-bullet accuracy is ~95% at 20m; walking is ~65%"
+    },
+    {
+      "title": "Aim: burst fire at medium range",
+      "description": "At 15-30 meters, burst fire (2-4 bullets) is more effective than spray or tap. The first 2-4 bullets of the AK/M4 follow a predictable vertical pattern — pull down slightly and reset. Full spray at medium range wastes ammo and gives away your position.",
+      "category": "aim_and_duels",
+      "situation": "Missing at medium range, full spraying",
+      "map_name": null,
+      "pro_example": "Pro meta: 2-4 bullet bursts have ~70% accuracy at 20m vs ~35% for full spray"
+    },
+    {
+      "title": "Positioning: play one angle at a time",
+      "description": "Never expose yourself to two angles simultaneously. Clear one angle, then reposition to clear the next. If you can be shot from two directions at once, you lose no matter how good your aim is. Isolating angles is the core of smart positioning.",
+      "category": "positioning",
+      "situation": "Dying to crossfires, exposed to multiple angles",
+      "map_name": null,
+      "pro_example": "Pro meta: players who isolate angles win ~65% of duels; players exposed to 2+ angles win ~30%"
+    },
+    {
+      "title": "Positioning: verticality — use elevation when available",
+      "description": "Higher positions win duels because the enemy must look up (unnatural crosshair placement). On any map where you can get elevation (boxes, ledges, scaffolding), use it. The first 1-2 uses of a new elevation spot are essentially free kills.",
+      "category": "positioning",
+      "situation": "Always playing ground-level angles",
+      "map_name": null,
+      "pro_example": "Pro meta: elevation positions win first contact ~62% vs ~48% for ground-level on equal-skill duels"
     }
   ]
 }
