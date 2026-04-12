@@ -195,5 +195,5 @@ class MainWindow(QMainWindow):
         """Reposition toast overlay when content area resizes."""
         if obj is self._content_wrapper and event.type() == QEvent.Type.Resize:
             if self._toast_container.isVisible():
-                self._toast_container._refit()
+                self._toast_container.refit()
         return super().eventFilter(obj, event)

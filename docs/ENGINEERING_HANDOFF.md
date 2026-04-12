@@ -2929,14 +2929,14 @@ See Section 40 (Dependency Audit) for the full license matrix.
 | WR-39 | LOW | round_stats_builder complexity ~61 | Break into sub-functions | 4+h |
 | SA-01 | LOW | FAISS search() missing params | Fix call in `vector_index.py:123` | 30m |
 | SA-02 | LOW | FAISS add() missing n param | Fix call in `vector_index.py:185` | 15m |
-| SA-03 | LOW | SQLModel select() type limitation | Verify runtime correctness in `analytics.py` | 1h |
+| ~~SA-03~~ | ~~LOW~~ | ~~SQLModel select() type limitation~~ | **FALSE POSITIVE** — runtime correct; PyCharm type stub limitation with 5+ aggregate columns | — |
 | ~~SA-04~~ | ~~LOW~~ | ~~Unexpected alignment kwarg~~ | **FIXED** (commit `ffc6796`) | — |
 | SA-05 | LOW | session.execute() deprecated | Migrate 12 call sites to session.exec() | 2h |
 | SA-06 | LOW | FastAPI on_event() deprecated | Replace with lifespan in `server.py:103` | 30m |
 | ~~SA-08~~ | ~~LOW~~ | ~~migrate_db.py deprecated references~~ | **FIXED** (commit `3483cbb`) | — |
 | SA-14–19 | LOW | Type checker issues in 6 high-density files | ~73 type annotations to fix | 7h |
-| SA-21–23 | LOW | Inconsistent returns in 3 files | Fix return paths | 1h |
-| SA-24–27 | LOW | Protected member access in 4 files | Expose via public API or document | 30m |
+| ~~SA-21–23~~ | ~~LOW~~ | ~~Inconsistent returns in 3 files~~ | **FIXED** — SA-21/22 are idiomatic (bare return = None); SA-23 `return logger.error()` split into two statements | — |
+| ~~SA-24–27~~ | ~~LOW~~ | ~~Protected member access in 4 files~~ | **FIXED** — SA-24: `_refit()`→`refit()` public; SA-25/26: `_prev`→`cached_state` property; SA-27: `_is_fallback`→`is_fallback` property | — |
 | ~~CTF-2~~ | ~~LOW~~ | ~~rglob follows symlinks~~ | **FIXED** (commit `ffc6796`) | — |
 | ~~CFG-1~~ | ~~LOW~~ | ~~DB files 644 permissions~~ | **FIXED** (commit `ffc6796`) | — |
 | UX-3 | LOW | Wizard English-only labels | Wire i18n when translations added | 1h |

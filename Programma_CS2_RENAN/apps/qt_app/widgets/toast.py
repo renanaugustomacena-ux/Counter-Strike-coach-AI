@@ -113,15 +113,15 @@ class ToastContainer(QWidget):
         self.layout().addWidget(toast)
         self._toasts.append(toast)
         Animator.fade_in(toast, duration=200)
-        self._refit()
+        self.refit()
 
     def _on_dismissed(self, toast: ToastWidget):
         if toast in self._toasts:
             self._toasts.remove(toast)
-        self._refit()
+        self.refit()
 
-    def _refit(self):
-        """Resize and reposition to tightly fit visible toasts."""
+    def refit(self):
+        """Resize and reposition to tightly fit visible toasts (SA-24: public API)."""
         if not self._toasts:
             self.hide()
             return

@@ -38,6 +38,11 @@ class AppState(QObject):
         self._prev: dict = {}
         self._timer: QTimer | None = None
 
+    @property
+    def cached_state(self) -> dict:
+        """Public accessor for last-polled state snapshot (SA-25/26)."""
+        return self._prev
+
     def start_polling(self):
         """Start the 10-second poll loop. Call once from app.py after show()."""
         if self._timer is not None:
