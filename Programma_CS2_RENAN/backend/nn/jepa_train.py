@@ -44,6 +44,7 @@ def _open_db(row_factory: bool = False) -> sqlite3.Connection:
         conn.row_factory = sqlite3.Row
     return conn
 
+
 # J-1 FIX: Tick-level sequence constants.
 # context_len + target_len = 20 minimum ticks for one training sample.
 _MIN_TICKS_FOR_SEQUENCE = 20
@@ -298,8 +299,9 @@ def train_jepa_pretrain(
     def _worker_init(worker_id: int) -> None:
         set_global_seed(42 + worker_id)
 
-    # Load pro demo data
-    sequences = load_pro_demo_sequences(limit=100)
+    # Load pro demo data — scan all pro entries since many PlayerMatchStats rows
+    # lack tick data in the monolith (only demos with .dem files parsed have ticks).
+    sequences = load_pro_demo_sequences(limit=2000)
 
     # NN-33: Guard against empty dataset
     if not sequences:
@@ -647,9 +649,7 @@ if __name__ == "__main__":
     parser.add_argument("--mode", choices=["pretrain", "finetune"], required=True)
     # L3 FIX: Resolve relative to project root so the path is stable regardless
     # of the working directory when invoked via `python -m`.
-    parser.add_argument(
-        "--model-path", default=str(_PROJECT_ROOT / "models" / "jepa_model.pt")
-    )
+    parser.add_argument("--model-path", default=str(_PROJECT_ROOT / "models" / "jepa_model.pt"))
     args = parser.parse_args()
 
     if args.mode == "pretrain":
