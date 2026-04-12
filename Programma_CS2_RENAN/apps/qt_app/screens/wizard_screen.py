@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 from Programma_CS2_RENAN.core.config import save_user_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 

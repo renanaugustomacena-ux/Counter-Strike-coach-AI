@@ -169,7 +169,7 @@ class DeathProbabilityEstimator:
         for bracket, group in df.groupby("bracket"):
             if len(group) >= 10:
                 rate = group["died"].mean()
-                self.priors[bracket] = float(rate)
+                self.priors[str(bracket)] = float(rate)
 
         self._calibrated = True
         logger.info("Calibrated death priors: %s", self.priors)
@@ -295,12 +295,12 @@ class AdaptiveBeliefCalibrator:
         rifle_count = weapon_counts.get("rifle", 1)
 
         calibrated = {}
-        for weapon_class, count in weapon_counts.items():
-            if count >= 10:  # Minimum per-class samples
-                raw_mult = count / max(1, rifle_count)
+        for weapon_class, count in weapon_counts.items():  # type: ignore[assignment]
+            if int(count) >= 10:  # Minimum per-class samples
+                raw_mult = int(count) / max(1, int(rifle_count))
                 # Apply safety bounds
                 bounded = max(self._LETHALITY_BOUNDS[0], min(self._LETHALITY_BOUNDS[1], raw_mult))
-                calibrated[weapon_class] = bounded
+                calibrated[str(weapon_class)] = bounded
 
         if calibrated:
             logger.info("Weapon lethality calibrated: %s", calibrated)
@@ -410,7 +410,7 @@ class AdaptiveBeliefCalibrator:
 
         return summary
 
-    def _save_snapshot(self, summary: Dict, sample_count: int = 0) -> None:
+    def _save_snapshot(self, summary: Dict[str, Any], sample_count: int = 0) -> None:
         """Persist calibration parameters to DB for observability."""
         try:
             import json

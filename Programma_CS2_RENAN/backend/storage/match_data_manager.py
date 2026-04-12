@@ -40,7 +40,7 @@ MATCH_DB_SCHEMA_VERSION = 2
 
 # Registry: version_from -> list of (table, column, sa_type, default_value)
 # Each entry: (table_name, column_name, sa_type, default_value_sql)
-_MATCH_DB_MIGRATIONS: dict = {
+_MATCH_DB_MIGRATIONS: Dict[int, list] = {
     # v1 → v2: Add match_complete flag + duration_estimated for quality tracking
     1: [
         ("match_metadata", "match_complete", sa.Boolean(), "0"),
@@ -246,12 +246,12 @@ class MatchDataManager:
         # os.stat().st_dev returns the device number (Linux) or drive number (Windows).
         # If the device changes, the mount point was replaced (drive disconnected).
         try:
-            self._initial_dev = os.stat(self.match_data_path).st_dev
+            self._initial_dev: Optional[int] = os.stat(self.match_data_path).st_dev
         except OSError:
             self._initial_dev = None
 
         # M-18: True LRU cache using OrderedDict (was FIFO with plain dict)
-        self._engines: OrderedDict = OrderedDict()
+        self._engines: OrderedDict[int, sa.engine.Engine] = OrderedDict()
         self._engine_lock = threading.Lock()
 
     def _get_match_db_path(self, match_id: int) -> str:
@@ -386,7 +386,7 @@ class MatchDataManager:
             if row is None:
                 return  # new DB, metadata not yet stored
 
-            current_version = row[0] if row[0] is not None else 1
+            current_version: int = int(row[0]) if row[0] is not None else 1
 
             # Step 3: apply migrations incrementally
             while current_version < MATCH_DB_SCHEMA_VERSION:
@@ -642,7 +642,7 @@ class MatchDataManager:
         match_id: int,
         center_tick: int,
         window_size: int = 320,
-    ) -> Dict[int, list]:
+    ) -> Dict[int, List[MatchTickState]]:
         """Get ALL players' states within a tick window.
 
         Returns a dict mapping tick -> List[MatchTickState] for building
@@ -671,7 +671,7 @@ class MatchDataManager:
                 ).all()
             )
 
-        tick_groups: dict = {}
+        tick_groups: Dict[int, List[MatchTickState]] = {}
         for r in results:
             tick_groups.setdefault(r.tick, []).append(r)
         return tick_groups
