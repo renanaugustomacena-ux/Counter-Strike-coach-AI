@@ -1,11 +1,12 @@
 ## 9. Schema del database e ciclo di vita dei dati
 
-Il progetto utilizza **SQLModel** (Pydantic + SQLAlchemy) con SQLite (modalità WAL) e un'**architettura dual-database** specializzata. 21 tabelle SQLModel principali distribuite su 2 database:
+Il progetto utilizza **SQLModel** (Pydantic + SQLAlchemy) con SQLite (modalità WAL) e un'**architettura three-tier storage** specializzata. 21 tabelle SQLModel principali distribuite su 3 tier di storage:
 
 1. **`database.db`** — Database monolite principale dell'applicazione (18 tabelle). Contiene tutte le tabelle core: statistiche giocatori, stato del coach, task di ingestione, insight di coaching, profili utente, notifiche di sistema, base RAG (`TacticalKnowledge`), banca esperienze COPER (`CoachingExperience`), risultati partite, calibrazioni e soglie di ruolo.
 2. **`hltv_metadata.db`** — Database dei metadati professionali (3 tabelle). Contiene i profili dei giocatori pro (`ProPlayer`, `ProTeam`) e le schede statistiche (`ProPlayerStatCard`). Separato dal monolite perché viene scritto da un processo separato (HLTV sync service) per eliminare la contesa WAL con i daemon del session engine.
+3. **`match_data/{id}.db`** — Database per-match di telemetria (Tier 3). Ogni partita ha il proprio file SQLite dedicato contenente i dati tick-per-tick (`PlayerTickState`, ~100.000 righe per partita). Gestito da `MatchDataManager`. Questa separazione risolve il problema dello "Telemetry Cliff" — evita che il database monolite cresca indefinitamente con dati ad alta frequenza.
 
-Questa separazione garantisce che le operazioni di scrittura intensive del session engine (ingestione demo, addestramento ML → `database.db`) non contendano lock WAL con lo scraping HLTV in processo separato (`hltv_metadata.db`).
+Questa separazione a tre livelli garantisce che le operazioni di scrittura intensive del session engine (ingestione demo, addestramento ML → `database.db`) non contendano lock WAL con lo scraping HLTV in processo separato (`hltv_metadata.db`), e che la telemetria ad alta frequenza per-match non appesantisca il monolite (`match_data/{id}.db`).
 
 ```mermaid
 flowchart TB
@@ -32,12 +33,17 @@ flowchart TB
         TEAM_DB["ProTeam"]
         STAT_DB["ProPlayerStatCard"]
     end
+    subgraph DB3["match_data/{id}.db (Per-Match Telemetria)"]
+        PTS_MATCH["PlayerTickState<br/>(~100.000 righe/partita)<br/>Posizione, salute, arma<br/>ogni 1/128 di secondo"]
+    end
     DB2 -->|"baseline pro per<br/>confronto coaching"| DB1
+    DB1 -->|"riferimento per<br/>telemetria match"| DB3
     style DB1 fill:#4a9eff,color:#fff
     style DB2 fill:#ffd43b,color:#000
+    style DB3 fill:#868e96,color:#fff
 ```
 
-> **Analogia:** Il database è l'**archivio** del sistema: ogni informazione ha un cassetto e una cartella specifici. L'architettura dual-database è come avere **due archivi specializzati**: l'archivio principale (dati del gioco, conoscenze tattiche, esperienze di coaching — tutto in un unico grande schedario WAL) e lo schedario dei professionisti (dati HLTV, aggiornato da un processo separato per evitare contesa). Separandoli, il processo principale può scrivere e leggere dall'archivio generale mentre il servizio HLTV aggiorna lo schedario dei pro senza bloccarsi a vicenda. SQLite in modalità WAL consente a più programmi di leggere ciascun archivio contemporaneamente. SQLModel combina Pydantic (per la convalida dei dati: "assicurati che il campo età sia effettivamente un numero") con SQLAlchemy (per le operazioni sul database: "salva questo nella tabella giusta"). Le 21 tabelle sono organizzate come l'archivio scolastico: profili degli studenti, punteggi dei test, appunti di classe, valutazioni degli insegnanti e libri della biblioteca.
+> **Analogia:** Il database è l'**archivio** del sistema: ogni informazione ha un cassetto e una cartella specifici. L'architettura three-tier storage è come avere **tre archivi specializzati**: l'archivio principale (dati del gioco, conoscenze tattiche, esperienze di coaching — tutto in un unico grande schedario WAL), lo schedario dei professionisti (dati HLTV, aggiornato da un processo separato per evitare contesa), e i **fascicoli per-partita** (telemetria tick-per-tick, ciascuno in un file separato per evitare che l'archivio principale diventi troppo pesante). Separandoli, il processo principale può scrivere e leggere dall'archivio generale mentre il servizio HLTV aggiorna lo schedario dei pro e i dati di telemetria restano isolati per partita, senza bloccarsi a vicenda. SQLite in modalità WAL consente a più programmi di leggere ciascun archivio contemporaneamente. SQLModel combina Pydantic (per la convalida dei dati: "assicurati che il campo età sia effettivamente un numero") con SQLAlchemy (per le operazioni sul database: "salva questo nella tabella giusta"). Le 21 tabelle sono organizzate come l'archivio scolastico: profili degli studenti, punteggi dei test, appunti di classe, valutazioni degli insegnanti e libri della biblioteca.
 
 ```mermaid
 erDiagram
@@ -93,6 +99,10 @@ erDiagram
         string outcome "indexed"
         string embedding "384-dim JSON"
         int pro_match_id FK
+        float mu_skill "TrueSkill mu posterior (KT-01)"
+        float sigma_skill "TrueSkill sigma uncertainty (KT-01)"
+        int times_retrieved "replay priority counter (KT-01)"
+        int times_validated "user confirmation count (KT-01)"
     }
     TacticalKnowledge {
         int id PK
@@ -313,8 +323,12 @@ La ricerca semantica RAG funziona calcolando la **cosine similarity** tra l'embe
 | `times_advice_given` | Integer | Quante volte il consiglio è stato dato |
 | `times_advice_followed` | Integer | Quante volte il consiglio è stato seguito |
 | `last_feedback_at` | DateTime | Ultimo feedback ricevuto |
+| `mu_skill` | Float | TrueSkill μ posterior — stima della qualità dell'esperienza (KT-01) |
+| `sigma_skill` | Float | TrueSkill σ uncertainty — incertezza sulla qualità (KT-01) |
+| `times_retrieved` | Integer | Contatore replay priority — quante volte recuperata (KT-01) |
+| `times_validated` | Integer | Contatore conferme utente — quante volte validata (KT-01) |
 
-Il sistema COPER utilizza queste esperienze per **imparare dai propri consigli**: il campo `context_hash` consente il lookup rapido di situazioni simili, `outcome` e `delta_win_prob` misurano l'efficacia dell'azione, e il ciclo di feedback (`outcome_validated`, `times_advice_given/followed`, `effectiveness_score`) consente al sistema di prioritizzare consigli che hanno storicamente prodotto risultati positivi. Il campo `game_state_json` è limitato a 16KB per prevenire crescita incontrollata del database.
+Il sistema COPER utilizza queste esperienze per **imparare dai propri consigli**: il campo `context_hash` consente il lookup rapido di situazioni simili, `outcome` e `delta_win_prob` misurano l'efficacia dell'azione, e il ciclo di feedback (`outcome_validated`, `times_advice_given/followed`, `effectiveness_score`) consente al sistema di prioritizzare consigli che hanno storicamente prodotto risultati positivi. Il campo `game_state_json` è limitato a 16KB per prevenire crescita incontrollata del database. I campi TrueSkill `mu_skill`/`sigma_skill` (KT-01) forniscono una stima bayesiana della qualità dell'esperienza, usata per la prioritizzazione del replay: `confidence_score = mu_skill - κ × sigma_skill`. Il contatore `times_retrieved` implementa la replay priority, mentre `times_validated` traccia le conferme utente per il CRUD semantico.
 
 > **Analogia:** Il ciclo di vita dei dati mostra **come le informazioni fluiscono attraverso il sistema nel tempo**, come il tracciamento di un pacco dalla fabbrica alla consegna. Prima arrivano le registrazioni delle partite (100.000 punti dati per partita!). Poi le statistiche dei giocatori professionisti vengono estratte da HLTV (come scaricare un almanacco sportivo). Vengono importati file CSV esterni (come ottenere dati storici). L'IA elabora tutto, genera consigli per gli allenatori, apprende le soglie di ruolo e registra costantemente lo stato di salute del sistema. I backup vengono eseguiti automaticamente: 7 copie giornaliere e 4 copie settimanali, come se salvassi i tuoi compiti sia sul computer che su un'unità USB, per ogni evenienza.
 
@@ -599,14 +613,14 @@ La sequenza di avvio Qt segue un approccio più moderno basato su **QApplication
 1. **High-DPI setup** — Abilita scaling automatico per display ad alta densità
 2. **QApplication** — Crea l'istanza applicazione Qt con gestione args
 3. **Tema e font** — Registra i 3 temi (CS2, CSGO, CS1.6) via QSS e i font personalizzati
-4. **MainWindow** — Costruisce `QMainWindow` con sidebar + `QStackedWidget` (13 schermate)
+4. **MainWindow** — Costruisce `QMainWindow` con sidebar + `QStackedWidget` (14 schermate)
 5. **Signal wiring** — Connette i segnali Qt tra sidebar, schermate e backend
 6. **First-run gate** — Se `SETUP_COMPLETED=False`, mostra il wizard; altrimenti la home
 7. **Backend console boot** — Lancia il Session Engine come subprocess
 8. **Window show** — Mostra la finestra e avvia il loop eventi Qt
 9. **CoachState polling** — Timer Qt per aggiornamento periodico dello stato
 
-> **Analogia:** L'avvio Qt è come l'**accensione di un'auto moderna con start/stop elettronico**. Un singolo pulsante (QApplication) avvia la sequenza: il computer di bordo configura il display (High-DPI), carica il tema del cruscotto (QSS), assembla tutti gli strumenti (13 schermate nel QStackedWidget), collega i sensori (signal wiring), verifica se è il primo avvio (first-run gate), accende il motore (backend console) e infine illumina il cruscotto (window show).
+> **Analogia:** L'avvio Qt è come l'**accensione di un'auto moderna con start/stop elettronico**. Un singolo pulsante (QApplication) avvia la sequenza: il computer di bordo configura il display (High-DPI), carica il tema del cruscotto (QSS), assembla tutti gli strumenti (14 schermate nel QStackedWidget), collega i sensori (signal wiring), verifica se è il primo avvio (first-run gate), accende il motore (backend console) e infine illumina il cruscotto (window show).
 
 #### 12.1.2 Entry Point Kivy (Legacy) — `main.py`
 
@@ -729,7 +743,7 @@ flowchart TB
 | Costante | Valore | File | Scopo |
 | -------- | ------ | ---- | ----- |
 | `METADATA_DIM` | 25 | `config.py` | Dimensione del feature vector — contratto unificato |
-| `SCAN_INTERVAL` | 10 | `config.py` | Intervallo scansione Hunter (secondi) |
+| `SCAN_INTERVAL` | 10 | `config.py` | Intervallo scansione Scanner (secondi) |
 | `MAX_DEMOS_PER_MONTH` | 10 | `config.py` | Quota mensile upload demo |
 | `MAX_TOTAL_DEMOS` | 100 | `config.py` | Limite totale demo a vita |
 | `MIN_DEMOS_FOR_COACHING` | 10 | `config.py` | Soglia per coaching personalizzato completo |
@@ -770,12 +784,12 @@ Il sistema gestisce percorsi con un'attenzione particolare alla **portabilità W
 
 Il Session Engine è il **cuore pulsante** dell'automazione del sistema. Vive come subprocess separato e ospita **4 daemon thread** che lavorano in parallelo, ciascuno con una responsabilità ben definita. Questo design separa completamente il lavoro pesante (parsing demo, addestramento ML) dall'interfaccia utente, garantendo che la GUI Kivy rimanga sempre reattiva.
 
-> **Analogia:** Il Session Engine è come una **centrale nucleare sotterranea** che alimenta l'intera città. Ha 4 reattori (daemon), ciascuno che produce un diverso tipo di energia. Il Reattore 1 (Hunter) è lo **scanner radar**: scansiona costantemente l'orizzonte cercando nuove demo da processare. Il Reattore 2 (Digester) è la **raffineria**: prende le demo grezze e le trasforma in dati strutturati. Il Reattore 3 (Teacher) è il **laboratorio di ricerca**: usa i dati raffinati per addestrare il cervello dell'allenatore. Il Reattore 4 (Pulse) è il **sistema di monitoraggio cardiaco**: emette un battito ogni 5 secondi per confermare che la centrale è viva. Se la città in superficie (GUI Kivy) viene distrutta da un terremoto (crash), la centrale rileva la perdita di comunicazione e si spegne in modo sicuro.
+> **Analogia:** Il Session Engine è come una **centrale nucleare sotterranea** che alimenta l'intera città. Ha 4 reattori (daemon), ciascuno che produce un diverso tipo di energia. Il Reattore 1 (Scanner) è lo **scanner radar**: scansiona costantemente l'orizzonte cercando nuove demo da processare. Il Reattore 2 (Digester) è la **raffineria**: prende le demo grezze e le trasforma in dati strutturati. Il Reattore 3 (Teacher) è il **laboratorio di ricerca**: usa i dati raffinati per addestrare il cervello dell'allenatore. Il Reattore 4 (Pulse) è il **sistema di monitoraggio cardiaco**: emette un battito ogni 5 secondi per confermare che la centrale è viva. Se la città in superficie (GUI Kivy) viene distrutta da un terremoto (crash), la centrale rileva la perdita di comunicazione e si spegne in modo sicuro.
 
 ```mermaid
 flowchart TB
     subgraph SE["SESSION ENGINE (Subprocess Separato)"]
-        HUNTER["DAEMON A: HUNTER (Scanner)<br/>Ogni 10s: scansiona cartelle demo<br/>Crea IngestionTask in coda<br/>Stato: Scanning / Paused"]
+        SCANNER["DAEMON A: SCANNER<br/>Ogni 10s: scansiona cartelle demo<br/>Crea IngestionTask in coda<br/>Stato: Scanning / Paused"]
         DIGESTER["DAEMON B: DIGESTER (Worker)<br/>Continuo: processa 1 task alla volta<br/>demoparser2 → feature → DB<br/>Stato: Processing / Idle"]
         TEACHER["DAEMON C: TEACHER (Trainer ML)<br/>Ogni 5min: controlla se riaddestramento<br/>necessario (crescita pro 10%)<br/>Stato: Learning / Idle"]
         PULSE["DAEMON D: PULSE (Heartbeat)<br/>Ogni 5s: aggiorna last_heartbeat<br/>in CoachState DB<br/>Stato: Always Active"]
@@ -785,16 +799,16 @@ flowchart TB
         EVENT["_shutdown_event (Threading.Event)"]
         DB_STATE["CoachState tabella DB (stato condiviso)"]
     end
-    HUNTER -->|"IngestionTask(status=queued)"| DIGESTER
+    SCANNER -->|"IngestionTask(status=queued)"| DIGESTER
     DIGESTER -->|"PlayerMatchStats"| TEACHER
     TEACHER -->|"modelli .pt aggiornati"| MODELS["Checkpoint Modelli"]
     PULSE -->|"heartbeat"| DB_STATE
     STDIN -->|"STOP"| EVENT
-    EVENT -.->|"segnale arresto"| HUNTER
+    EVENT -.->|"segnale arresto"| SCANNER
     EVENT -.->|"segnale arresto"| DIGESTER
     EVENT -.->|"segnale arresto"| TEACHER
     EVENT -.->|"segnale arresto"| PULSE
-    style HUNTER fill:#4a9eff,color:#fff
+    style SCANNER fill:#4a9eff,color:#fff
     style DIGESTER fill:#228be6,color:#fff
     style TEACHER fill:#ff6b6b,color:#fff
     style PULSE fill:#51cf66,color:#fff
@@ -804,8 +818,8 @@ flowchart TB
 
 | Daemon | Intervallo | Lavoro per ciclo | Trigger |
 | ------ | ---------- | ---------------- | ------- |
-| **Hunter** | 10 secondi | Scansiona cartelle pro e utente, crea `IngestionTask` per nuovi `.dem` | Sempre attivo (se stato = Scanning) |
-| **Digester** | Continuo | Preleva 1 task dalla coda, esegue parsing completo | `_work_available_event` (segnalato da Hunter) |
+| **Scanner** | 10 secondi | Scansiona cartelle pro e utente, crea `IngestionTask` per nuovi `.dem` | Sempre attivo (se stato = Scanning) |
+| **Digester** | Continuo | Preleva 1 task dalla coda, esegue parsing completo | `_work_available_event` (segnalato da Scanner) |
 | **Teacher** | 300 secondi (5 min) | Controlla crescita sample pro; se ≥10% → `run_full_cycle()` | `pro_count >= last_count × 1.10` |
 | **Pulse** | 5 secondi | Aggiorna `CoachState.last_heartbeat` nel database | Sempre attivo |
 
@@ -820,7 +834,7 @@ sequenceDiagram
     participant UI as Qt/Kivy UI (Main)
     participant LC as Lifecycle Manager
     participant SE as Session Engine
-    participant H as Hunter
+    participant H as Scanner
     participant D as Digester
     participant T as Teacher
     participant P as Pulse
@@ -840,10 +854,10 @@ sequenceDiagram
 
 | Daemon | Metodo Principale | Loop Interno | Condizione di Uscita |
 | ------ | ----------------- | ------------ | -------------------- |
-| **Hunter** | `_hunter_loop()` | `while not _shutdown_event.is_set()` → `scan_all_paths()` → `sleep(10)` | `_shutdown_event` set |
-| **Digester** | `_digester_loop()` | `while not _shutdown_event.is_set()` → `_work_available_event.wait(2)` → `process_next_task()` | `_shutdown_event` set |
-| **Teacher** | `_teacher_loop()` | `while not _shutdown_event.is_set()` → `_check_retrain_needed()` → `sleep(300)` | `_shutdown_event` set |
-| **Pulse** | `_pulse_loop()` | `while not _shutdown_event.is_set()` → `state_mgr.heartbeat()` → `sleep(5)` | `_shutdown_event` set |
+| **Scanner** | `_scanner_daemon_loop()` | `while not _shutdown_event.is_set()` → `scan_all_paths()` → `sleep(10)` | `_shutdown_event` set |
+| **Digester** | `_digester_daemon_loop()` | `while not _shutdown_event.is_set()` → `_work_available_event.wait(2)` → `process_next_task()` | `_shutdown_event` set |
+| **Teacher** | `_teacher_daemon_loop()` | `while not _shutdown_event.is_set()` → `_check_retrain_needed()` → `sleep(300)` | `_shutdown_event` set |
+| **Pulse** | `_pulse_daemon_loop()` | `while not _shutdown_event.is_set()` → `state_mgr.heartbeat()` → `sleep(5)` | `_shutdown_event` set |
 
 **Gestione errori nei daemon:**
 
@@ -871,7 +885,7 @@ L'interfaccia desktop ha due implementazioni: **Qt/PySide6** (primaria) e **Kivy
 **Directory:** `Programma_CS2_RENAN/apps/qt_app/`
 **File chiave:** `app.py`, `main_window.py`, `core/i18n_bridge.py`, `core/theme_engine.py`, `screens/`
 
-L'interfaccia Qt è costruita con **PySide6 (Qt 6)** e utilizza un pattern **MVVM con Qt Signals/Slots**. La `MainWindow` (`QMainWindow`) è composta da una **sidebar di navigazione** e un **`QStackedWidget`** che ospita le 13 schermate.
+L'interfaccia Qt è costruita con **PySide6 (Qt 6)** e utilizza un pattern **MVVM con Qt Signals/Slots**. La `MainWindow` (`QMainWindow`) è composta da una **sidebar di navigazione** e un **`QStackedWidget`** che ospita le 14 schermate.
 
 > **Analogia:** L'interfaccia Qt è come un **cruscotto digitale di un'auto sportiva moderna**. Il cruscotto (QStackedWidget) ha diverse modalità di visualizzazione selezionabili dalla barra laterale: la vista "Viaggio" (Home), la vista "Navigazione" (Tactical Viewer con QPainter), la vista "Diagnostica" (Coach), la vista "Impostazioni" (Settings). Il pattern MVVM con Signals/Slots garantisce che ogni interazione utente emetta un "segnale" che viene catturato dallo "slot" appropriato — come i sensori dell'auto che comunicano con il computer di bordo tramite il bus CAN.
 
@@ -917,12 +931,14 @@ flowchart TB
     SM --> PROF["profile<br/>Profilo pubblico giocatore"]
     SM --> STEAM["steam_config<br/>Configurazione Steam API"]
     SM --> FACEIT["faceit_config<br/>Configurazione FACEIT"]
+    SM --> PROCOMP["pro_comparison<br/>Confronto con Pro<br/>(benchmark HLTV)"]
 
     WIZ -->|"SETUP_COMPLETED=True"| HOME
     HOME -->|"Upload demo"| COACH
     HOME -->|"Tactical Viewer"| TV
     UP -->|"Configura Steam"| STEAM
     UP -->|"Configura FACEIT"| FACEIT
+    PERF -->|"Confronta con Pro"| PROCOMP
 
     style WIZ fill:#ffd43b,color:#000
     style HOME fill:#4a9eff,color:#fff
@@ -930,7 +946,7 @@ flowchart TB
     style TV fill:#ff6b6b,color:#fff
 ```
 
-**13 schermate dell'interfaccia:**
+**14 schermate dell'interfaccia:**
 
 | Schermata | Ruolo | Componenti chiave |
 | --------- | ----- | ----------------- |
@@ -946,6 +962,7 @@ flowchart TB
 | **User Profile** | Profilo utente | Bio, ruolo preferito, sincronizzazione Steam/FACEIT |
 | **Profile** | Profilo pubblico | Visualizzazione profilo pubblico del giocatore |
 | **Steam Config** | Configurazione Steam | Inserimento e validazione API key Steam |
+| **Pro Comparison** | Confronto pro | Confronto statistiche utente con giocatori professionisti HLTV, benchmark prestazionale |
 | **FACEIT Config** | Configurazione FACEIT | Inserimento e validazione API key FACEIT |
 
 > **Analogia della Home Screen:** La Home è come la **plancia di comando di una nave spaziale**. L'indicatore di quota ("5/10 demo questo mese") è il **misuratore di carburante**. Lo stato del servizio (verde/rosso) è il **pannello dei sistemi vitali**: verde = tutti i sistemi operativi, rosso = allarme. La fiducia delle credenze (0.0-1.0) è il **livello di stabilità dell'IA**: 0.0 = l'IA non sa nulla, 1.0 = l'IA è sicura delle sue analisi. Il contatore delle partite processate è l'**odometro**: quanta strada ha percorso il sistema.
@@ -1031,14 +1048,14 @@ flowchart TB
 **Directory:** `Programma_CS2_RENAN/ingestion/`
 **File chiave:** `demo_loader.py`, `steam_locator.py`, `integrity.py`, `registry/`, `pipelines/user_ingest.py`, `pipelines/json_tournament_ingestor.py`
 
-La pipeline di ingestione è il **percorso completo** che un file `.dem` compie dal filesystem fino a diventare insight di coaching nel database. È orchestrata dal daemon Hunter (scoperta) e dal daemon Digester (elaborazione).
+La pipeline di ingestione è il **percorso completo** che un file `.dem` compie dal filesystem fino a diventare insight di coaching nel database. È orchestrata dal daemon Scanner (scoperta) e dal daemon Digester (elaborazione).
 
-> **Analogia:** La pipeline di ingestione è come il **percorso di una lettera attraverso l'ufficio postale**. (1) Il postino (Hunter) raccoglie la lettera (file .dem) dalla cassetta postale (cartella demo). (2) L'ufficio smistamento (DemoLoader) apre la busta e ne estrae il contenuto (parsing con demoparser2). (3) L'archivista (FeatureExtractor) misura e cataloga ogni dettaglio (25 feature per tick). (4) Lo storico (RoundStatsBuilder) scrive un riassunto per capitolo (statistiche per round). (5) Il bibliotecario (data_pipeline) classifica e ordina il materiale (normalizzazione, split dataset). (6) Il medico (CoachingService) esamina tutto e scrive una diagnosi (insight di coaching). (7) Infine, tutto viene archiviato (persistenza in database) per consultazione futura.
+> **Analogia:** La pipeline di ingestione è come il **percorso di una lettera attraverso l'ufficio postale**. (1) Il postino (Scanner) raccoglie la lettera (file .dem) dalla cassetta postale (cartella demo). (2) L'ufficio smistamento (DemoLoader) apre la busta e ne estrae il contenuto (parsing con demoparser2). (3) L'archivista (FeatureExtractor) misura e cataloga ogni dettaglio (25 feature per tick). (4) Lo storico (RoundStatsBuilder) scrive un riassunto per capitolo (statistiche per round). (5) Il bibliotecario (data_pipeline) classifica e ordina il materiale (normalizzazione, split dataset). (6) Il medico (CoachingService) esamina tutto e scrive una diagnosi (insight di coaching). (7) Infine, tutto viene archiviato (persistenza in database) per consultazione futura.
 
 ```mermaid
 flowchart TB
     DEM[".dem file<br/>(nel filesystem)"]
-    DEM -->|"1. Hunter scansiona"| TASK["IngestionTask<br/>status=queued"]
+    DEM -->|"1. Scanner scansiona"| TASK["IngestionTask<br/>status=queued"]
     TASK -->|"2. Digester preleva"| LOADER["DemoLoader.load_demo()<br/>demoparser2 → DemoData<br/>(frames, eventi)"]
     LOADER -->|"3. Estrazione"| FE["FeatureExtractor<br/>25-dim per tick<br/>(vectorizer.py)"]
     LOADER -->|"3b. Arricchimento"| ENRICH["enrich_from_demo()<br/>noscope, blind, flash_assist,<br/>trade_kills, thrusmoke, wallbang"]
@@ -1203,7 +1220,7 @@ flowchart TB
 1. `ServiceSupervisor` avvia il servizio "hunter" (HLTV sync) come processo monitorato
 2. `DatabaseGovernor` esegue un audit di integrità: verifica tutte le tabelle, conta record, controlla schema
 3. `MLController` resta in stato di attesa — il training è gestito dal daemon Teacher
-4. `IngestionManager` resta idle — il lavoro attivo è gestito dai daemon Hunter/Digester
+4. `IngestionManager` resta idle — il lavoro attivo è gestito dai daemon Scanner/Digester
 
 **MLControlContext — Controllo Live dell'Addestramento:**
 
@@ -1293,9 +1310,9 @@ Il sistema di aiuto integrato fornisce supporto contestuale all'utente:
 **Directory:** `Programma_CS2_RENAN/backend/storage/`
 **File chiave:** `database.py`, `db_models.py`, `match_data_manager.py`, `storage_manager.py`, `maintenance.py`, `state_manager.py`, `stat_aggregator.py`, `backup.py`
 
-Il sistema di storage utilizza un'architettura **dual-database** basata su SQLite in modalità WAL (Write-Ahead Logging), che consente letture e scritture concorrenti senza blocchi.
+Il sistema di storage utilizza un'architettura **three-tier storage** basata su SQLite in modalità WAL (Write-Ahead Logging), che consente letture e scritture concorrenti senza blocchi.
 
-> **Analogia:** L'architettura di storage è come un **sistema bibliotecario a 2 piani**. Il **piano terra** (`database.db`, 18 tabelle) contiene il catalogo generale, le schede di tutti i lettori (giocatori), la base di conoscenza tattica (RAG), la banca esperienze COPER, le recensioni dei critici (insight di coaching) e il registro dei prestiti (task di ingestione) — tutto in un unico grande schedario sempre disponibile. Lo **schedario separato** (`hltv_metadata.db`, 3 tabelle) contiene i profili dei giocatori professionisti e le loro statistiche — separato perché viene aggiornato da un processo diverso (HLTV sync) per evitare contesa di lock. Oltre a questi, i **database per-match** (`match_XXXX.db`) contengono i manoscritti originali completi (dati tick-per-tick delle partite) — ciascuno in una scatola separata per evitare che lo schedario principale diventi troppo pesante. La modalità WAL è come avere una **porta girevole**: molte persone possono entrare a leggere contemporaneamente, e qualcuno può scrivere senza bloccare l'ingresso.
+> **Analogia:** L'architettura di storage è come un **sistema bibliotecario a 3 livelli**. Il **piano terra** (`database.db`, 18 tabelle) contiene il catalogo generale, le schede di tutti i lettori (giocatori), la base di conoscenza tattica (RAG), la banca esperienze COPER, le recensioni dei critici (insight di coaching) e il registro dei prestiti (task di ingestione) — tutto in un unico grande schedario sempre disponibile. Lo **schedario separato** (`hltv_metadata.db`, 3 tabelle) contiene i profili dei giocatori professionisti e le loro statistiche — separato perché viene aggiornato da un processo diverso (HLTV sync) per evitare contesa di lock. Oltre a questi, i **database per-match** (`match_XXXX.db`) contengono i manoscritti originali completi (dati tick-per-tick delle partite) — ciascuno in una scatola separata per evitare che lo schedario principale diventi troppo pesante. La modalità WAL è come avere una **porta girevole**: molte persone possono entrare a leggere contemporaneamente, e qualcuno può scrivere senza bloccare l'ingresso.
 
 ```mermaid
 flowchart TB
@@ -1338,7 +1355,7 @@ flowchart TB
 | 3 | `PlayerProfile` | database.db | Utente | Profilo utente (nome, ruolo, Steam ID, quota mensile) |
 | 4 | `RoundStats` | database.db | Core | Statistiche isolate per round (uccisioni, valutazione, arricchimento) |
 | 5 | `CoachingInsight` | database.db | Coaching | Consigli generati dal servizio di coaching |
-| 6 | `CoachingExperience` | database.db | Coaching | Banca esperienze COPER (contesto, esito, efficacia) |
+| 6 | `CoachingExperience` | database.db | Coaching | Banca esperienze COPER (contesto, esito, efficacia, TrueSkill μ/σ, replay priority — KT-01) |
 | 7 | `IngestionTask` | database.db | Sistema | Coda di lavoro per il daemon Digester |
 | 8 | `CoachState` | database.db | Sistema | Stato globale (training metrics, heartbeat, status) |
 | 9 | `ServiceNotification` | database.db | Sistema | Messaggi di errore/evento dei daemon → UI |
@@ -1646,7 +1663,7 @@ Gestisce il caricamento delle texture delle mappe e degli asset UI:
 
 Il sistema di osservabilità garantisce che ogni evento significativo sia **tracciabile, strutturato e persistente**. Il client di telemetria (`telemetry_client.py`) utilizza **`httpx`** (HTTP asincrono) per l'invio non bloccante di metriche e eventi, evitando che latenze di rete influiscano sulle prestazioni dell'applicazione.
 
-> **Analogia:** L'osservabilità è come il **sistema di telecamere di sicurezza e registri di un edificio**. Il logging strutturato (`get_logger()`) è la telecamera che registra tutto con timestamp e etichette ("chi ha fatto cosa, dove e quando"). Lo StateManager è la **lavagna nella hall** che mostra lo stato attuale di ogni piano (daemon): "Piano 1 (Hunter): Scanning. Piano 2 (Digester): Idle. Piano 3 (Teacher): Learning." Le ServiceNotification sono gli **annunci interfono** che informano i residenti (l'utente) di eventi importanti o errori.
+> **Analogia:** L'osservabilità è come il **sistema di telecamere di sicurezza e registri di un edificio**. Il logging strutturato (`get_logger()`) è la telecamera che registra tutto con timestamp e etichette ("chi ha fatto cosa, dove e quando"). Lo StateManager è la **lavagna nella hall** che mostra lo stato attuale di ogni piano (daemon): "Piano 1 (Scanner): Scanning. Piano 2 (Digester): Idle. Piano 3 (Teacher): Learning." Le ServiceNotification sono gli **annunci interfono** che informano i residenti (l'utente) di eventi importanti o errori.
 
 ```mermaid
 flowchart TB
@@ -1679,7 +1696,7 @@ flowchart TB
 
 | Daemon | Campo in CoachState | Valori tipici |
 | ------ | ------------------- | ------------- |
-| Hunter (scanner) | `hltv_status` | "Scanning", "Paused", "Error" |
+| Scanner | `hltv_status` | "Scanning", "Paused", "Error" |
 | Digester (worker) | `ingest_status` | "Processing", "Idle", "Error" |
 | Teacher (trainer) | `ml_status` | "Learning", "Idle", "Error" |
 | Globale | `status` | "Paused", "Training", "Idle", "Error" |
@@ -1902,7 +1919,7 @@ Questa sezione descrive i **4 flussi principali** che un utente attraversa duran
 sequenceDiagram
     participant U as Utente
     participant UI as Qt/Kivy UI
-    participant H as Hunter Daemon
+    participant H as Scanner Daemon
     participant D as Digester Daemon
     participant CS as CoachingService
     participant DB as Database
@@ -2093,10 +2110,10 @@ sequenceDiagram
 
 ### 12.17 Suite di Strumenti — Validazione e Diagnostica (`tools/`)
 
-**Directory:** `Programma_CS2_RENAN/tools/`
-**File principali:** `headless_validator.py`, `db_inspector.py`, `demo_inspector.py`, `brain_verify.py`, `Goliath_Hospital.py`, `Ultimate_ML_Coach_Debugger.py`, `_infra.py`
+**Directory:** `tools/` (root) + `Programma_CS2_RENAN/tools/`
+**File principali:** `headless_validator.py`, `db_inspector.py`, `demo_inspector.py`, `brain_verify.py` *(pianificato, non ancora implementato)*, `Goliath_Hospital.py`, `Ultimate_ML_Coach_Debugger.py`, `_infra.py`
 
-La suite di strumenti è una **raccolta di 35 script** che formano una piramide di validazione multi-livello. Ogni strumento ha uno scopo preciso e può essere eseguito indipendentemente, ma insieme formano un sistema di garanzia della qualità che copre ogni aspetto del progetto.
+La suite di strumenti è una **raccolta di 41 script** distribuiti su due directory (`tools/` root con 29 script e `Programma_CS2_RENAN/tools/` con 12 script) che formano una piramide di validazione multi-livello. Ogni strumento ha uno scopo preciso e può essere eseguito indipendentemente, ma insieme formano un sistema di garanzia della qualità che copre ogni aspetto del progetto.
 
 > **Analogia:** La suite di strumenti è come il **reparto di controllo qualità di una fabbrica automobilistica**. Ogni veicolo (build del progetto) attraversa una serie di stazioni di ispezione, ciascuna specializzata in un aspetto: il **Headless Validator** è la stazione di collaudo rapido che verifica che il motore si accenda e le ruote girino (regression gate in 23 fasi, 319 controlli). Il **DB Inspector** è il meccanico che smonta e controlla il motore pezzo per pezzo (ispezione database). Il **Demo Inspector** è il tecnico che verifica la carrozzeria (integrità file demo). Il **Brain Verify** è il neurologo che testa ogni funzione cognitiva (118 regole di qualità dell'intelligenza). Il **Goliath Hospital** è l'ospedale completo con 10 reparti specializzati. Nessun veicolo esce dalla fabbrica senza aver superato tutti i controlli.
 
@@ -2104,10 +2121,10 @@ La suite di strumenti è una **raccolta di 35 script** che formano una piramide 
 flowchart TB
     subgraph PYRAMID["PIRAMIDE DI VALIDAZIONE (dal più veloce al più profondo)"]
         L1["LIVELLO 1: Headless Validator<br/>23 fasi, 319 controlli, ~10 secondi<br/>Gate di regressione obbligatorio<br/>Exit code 0 = PASS"]
-        L2["LIVELLO 2: pytest Suite<br/>87 file di test<br/>Unit + Integration + E2E<br/>~2-5 minuti"]
+        L2["LIVELLO 2: pytest Suite<br/>94 file di test<br/>Unit + Integration + E2E<br/>~2-5 minuti"]
         L3["LIVELLO 3: Backend Validator<br/>Verifica import, schema,<br/>coerenza interfacce<br/>~30 secondi"]
         L4["LIVELLO 4: Goliath Hospital<br/>10 reparti diagnostici<br/>Audit profondo multisistema<br/>~1-3 minuti"]
-        L5["LIVELLO 5: Brain Verify<br/>118 regole qualità intelligence<br/>16 sezioni di verifica<br/>~2-5 minuti"]
+        L5["LIVELLO 5: Brain Verify (pianificato)<br/>118 regole qualità intelligence<br/>16 sezioni di verifica<br/>~2-5 minuti"]
     end
     L1 --> L2 --> L3 --> L4 --> L5
     style L1 fill:#51cf66,color:#fff
@@ -2117,7 +2134,7 @@ flowchart TB
     style L5 fill:#ff6b6b,color:#fff
 ```
 
-**Headless Validator** (`tools/headless_validator.py`, 2.783 righe) — il gate di regressione obbligatorio (Dev Rule 9). Eseguito dopo **ogni** task di sviluppo con 23 fasi e 319 controlli:
+**Headless Validator** (`tools/headless_validator.py`, 2.777 righe) — il gate di regressione obbligatorio (Dev Rule 9). Eseguito dopo **ogni** task di sviluppo con 23 fasi e 319 controlli:
 
 | Fase | Verifica | Dettaglio |
 | ---- | -------- | --------- |
@@ -2156,9 +2173,9 @@ flowchart TB
 - Rileva corruzione parziale (troncamento, header danneggiato)
 - Output: report sulla validità della demo con dettagli errore se invalida
 
-**Brain Verify** (`tools/brain_verify.py` + `brain_verification/`, 16 sezioni):
+**Brain Verify** (`tools/brain_verify.py` + `brain_verification/`, 16 sezioni) — *(pianificato, non ancora implementato)*:
 
-Il sistema di verifica dell'intelligenza è organizzato in **16 sezioni tematiche** che coprono **118 regole** di qualità:
+Il sistema di verifica dell'intelligenza è progettato con **16 sezioni tematiche** che copriranno **118 regole** di qualità:
 
 ```mermaid
 flowchart TB
@@ -2229,7 +2246,7 @@ Questo strumento esegue un audit a **3 fasi** sulla pipeline ML:
 ### 12.18 Architettura della Test Suite (`tests/`)
 
 **Directory:** `Programma_CS2_RENAN/tests/`
-**File totali:** 87 file di test + `conftest.py` + 10 script forensics + 15 script di verifica
+**File totali:** 94 file di test + `conftest.py` + 10 script forensics + 15 script di verifica
 
 La test suite è organizzata secondo il **principio della piramide dei test**: molti unit test (veloci, isolati), meno integration test (più lenti, con dipendenze reali), e pochi end-to-end test (completi ma costosi).
 
@@ -2237,7 +2254,7 @@ La test suite è organizzata secondo il **principio della piramide dei test**: m
 
 ```mermaid
 flowchart TB
-    subgraph PYRAMID["PIRAMIDE DEI TEST (87 FILE)"]
+    subgraph PYRAMID["PIRAMIDE DEI TEST (94 FILE)"]
         UNIT["UNIT TEST (~50 file)<br/>Testano singole funzioni/classi<br/>Mock per I/O esterno<br/>Velocità: <1s per test"]
         INTEG["INTEGRATION TEST (~23 file)<br/>Testano pipeline complete<br/>DB SQLite reale (in-memory o temp)<br/>Velocità: 1-10s per test"]
         E2E["E2E / SMOKE TEST (~14 file)<br/>Testano flussi utente completi<br/>Tutte le dipendenze reali<br/>Velocità: 10-60s per test"]
@@ -2450,27 +2467,32 @@ Il progetto utilizza un sistema di **pre-commit hooks** che si attivano automati
 | `integrity-manifest-check` | `tools/sync_integrity_manifest.py` | 10s | Verifica coerenza hash SHA-256 del manifesto |
 | `dev-health-quick` | `tools/dev_health.py` | 10s | Quick check salute progetto |
 
-**Hook Standard (da repository esterni):**
+**Hook Standard (7 da `pre-commit/pre-commit-hooks` + 2 Python):**
 
 | Hook | Sorgente | Descrizione |
 | ---- | -------- | ----------- |
-| `black` | `psf/black-pre-commit-mirror` | Formattazione automatica Python (line length 100) |
-| `isort` | `pycqa/isort` | Ordinamento automatico import (profilo black) |
-| `check-yaml` | `pre-commit/pre-commit-hooks` | Validazione sintassi YAML |
-| `end-of-file-fixer` | `pre-commit/pre-commit-hooks` | Newline finale obbligatorio |
 | `trailing-whitespace` | `pre-commit/pre-commit-hooks` | Rimozione spazi bianchi finali |
-| `check-added-large-files` | `pre-commit/pre-commit-hooks` | Blocca file >500KB (previene `.pt` accidentali) |
+| `end-of-file-fixer` | `pre-commit/pre-commit-hooks` | Newline finale obbligatorio |
+| `check-yaml` | `pre-commit/pre-commit-hooks` | Validazione sintassi YAML |
+| `check-json` | `pre-commit/pre-commit-hooks` | Validazione sintassi JSON |
+| `check-added-large-files` | `pre-commit/pre-commit-hooks` | Blocca file >1MB (previene `.pt` accidentali) |
+| `check-merge-conflict` | `pre-commit/pre-commit-hooks` | Rileva marcatori di conflitto merge non risolti |
+| `detect-private-key` | `pre-commit/pre-commit-hooks` | Blocca commit di chiavi private |
+| `black` | `psf/black` | Formattazione automatica Python (line length 100, target py3.12) |
+| `isort` | `pycqa/isort` | Ordinamento automatico import (profilo black, line length 100) |
 
 ```mermaid
 flowchart LR
     DEV["Developer: git commit"]
     DEV --> HOOKS["Pre-Commit Hooks<br/>(automatici)"]
     HOOKS --> BF["black + isort<br/>(formattazione)"]
+    HOOKS --> STD["7 hook standard<br/>(whitespace, YAML, JSON,<br/>large files, merge conflict,<br/>private key, EOF)"]
     HOOKS --> VALID["headless-validator<br/>(23 fasi, 319 controlli)"]
     HOOKS --> DEAD["dead-code-detector<br/>(pulizia)"]
     HOOKS --> INTEG["integrity-manifest<br/>(hash SHA-256)"]
     HOOKS --> HEALTH["dev-health-quick<br/>(salute)"]
     BF -->|"PASS"| OK{"Tutti OK?"}
+    STD -->|"PASS"| OK
     VALID -->|"PASS"| OK
     DEAD -->|"PASS"| OK
     INTEG -->|"PASS"| OK
@@ -2847,7 +2869,7 @@ flowchart TB
         KNOWLEDGE["Conoscenza (RAG, COPER)"]
     end
     subgraph L4["LIVELLO 4: PERSISTENZA"]
-        SQLITE["SQLite WAL Dual-Database<br/>(database.db + hltv_metadata.db<br/>+ match_XXXX.db)"]
+        SQLITE["SQLite WAL Three-Tier<br/>(database.db + hltv_metadata.db<br/>+ match_XXXX.db)"]
         FILES["Filesystem<br/>(checkpoint .pt, log, demo)"]
     end
     subgraph L5["LIVELLO 5: INFRASTRUTTURA"]
@@ -2912,14 +2934,14 @@ flowchart TB
 | Processo | Tipo | Responsabilità | Comunicazione |
 | -------- | ---- | -------------- | ------------- |
 | **Main** | Kivy GUI | Interfaccia utente, rendering, interazione | Polling DB ogni 10-15s |
-| **Daemon** | Subprocess (Session Engine) | Hunter, Digester, Teacher, Pulse | stdin pipe (IPC) + DB condiviso |
+| **Daemon** | Subprocess (Session Engine) | Scanner, Digester, Teacher, Pulse | stdin pipe (IPC) + DB condiviso |
 | **Servizi Opzionali** | Processi esterni | HLTV sync, Ollama LLM locale | HTTP/API + supervisione Console |
 
 **Flussi dati principali:**
 
 ```mermaid
 flowchart LR
-    FILE[".dem File"] -->|"Hunter → Queue"| QUEUE["IngestionTask"]
+    FILE[".dem File"] -->|"Scanner → Queue"| QUEUE["IngestionTask"]
     QUEUE -->|"Digester → Parse"| STATS["PlayerMatchStats"]
     STATS -->|"Teacher → Train"| MODEL["RAP Coach .pt"]
     STATS -->|"CoachingService"| INSIGHT["CoachingInsight"]
@@ -2979,13 +3001,13 @@ La funzione `infer_round_phase(equipment_value)` è un'**utilità condivisa** ut
 13. **Per-Round Statistical Isolation** — Il modello `RoundStats` impedisce la contaminazione tra round, consentendo un coaching granulare a livello di round e valutazioni HLTV 2.0 per round.
 14. **Architettura Quad-Daemon** — Separazione completa tra GUI e lavoro pesante, con shutdown coordinato e zombie task cleanup automatico.
 15. **Degradazione graduale pervasiva** — Ogni componente ha un piano di fallback: il sistema non crasha mai, degrada sempre in modo controllato.
-16. **Architettura Dual-Database** — Separazione di `database.db` (core + conoscenza, 18 tabelle) e `hltv_metadata.db` (dati pro, 3 tabelle) per eliminare la contesa WAL tra le operazioni del session engine e lo scraping HLTV in processo separato.
+16. **Architettura Three-Tier Storage** — Separazione di `database.db` (core + conoscenza, 18 tabelle), `hltv_metadata.db` (dati pro, 3 tabelle) e `match_data/{id}.db` (telemetria per-match) per eliminare la contesa WAL e prevenire la crescita incontrollata del monolite.
 17. **Calibrazione Bayesiana Live (G-07)** — Lo stimatore di morte si auto-calibra con `extract_death_events_from_db()` → `auto_calibrate()`, trasformandosi da modello statico a sistema adattivo.
 18. **Controllo Live Addestramento (MLControlContext)** — Pause/resume/stop/throttle in tempo reale del training via `threading.Event`, con eccezione custom `TrainingStopRequested` al posto di `StopIteration`.
 19. **Circuit Breaker Resiliente** — `_CircuitBreaker` per API esterne (HLTV) con MAX_FAILURES=10, RESET_WINDOW_S=3600, previene cascade failure con pattern CLOSED→OPEN→HALF_OPEN.
 20. **Piramide di Validazione a 5 Livelli** — Headless Validator → pytest → Backend Validator → Goliath Hospital → Brain Verify: ogni livello progressivamente più profondo, dal quick smoke test (10s) all'audit completo di 118 regole.
 21. **RASP Guard** — Runtime Application Self-Protection con manifesto SHA-256: verifica integrità del codice sorgente all'avvio, previene manomissioni accidentali e intenzionali.
-22. **Pre-commit Gate a 10 Hook** — 4 hook custom + 6 standard impediscono che codice non conforme raggiunga il repository. Formattazione, validazione, dead code e integrità verificati automaticamente.
+22. **Pre-commit Gate a 13 Hook** — 4 hook custom + 7 standard + 2 Python impediscono che codice non conforme raggiunga il repository. Formattazione, validazione, dead code, integrità, merge conflict e private key verificati automaticamente.
 23. **ResourceManager Hardware-Aware** — Throttling automatico CPU/RAM durante ingestione: il sistema rallenta autonomamente se le risorse hardware sono sotto pressione, senza intervento umano.
 24. **Test Forensics** — 10 script di indagine post-mortem per diagnosticare training failure, weight anomalies, coaching path traces e DB consistency — la "scatola nera" del sistema.
 
@@ -3007,13 +3029,13 @@ flowchart TB
         P13["13. Isolamento Per-Round - Valuta ogni domanda, non solo il test"]
         P14["14. Architettura Quad-Daemon - GUI reattiva, lavoro pesante in background"]
         P15["15. Degradazione Graduale - Il sistema non crasha mai"]
-        P16["16. Dual-Database - Nessuna contesa tra scrittura e lettura"]
+        P16["16. Three-Tier Storage - Nessuna contesa tra scrittura e lettura"]
         P17["17. Calibrazione Bayesiana Live - Si auto-calibra con i dati"]
         P18["18. Controllo Live Training - Pausa/Stop senza perdita"]
         P19["19. Circuit Breaker - Resilienza API esterne"]
         P20["20. Piramide Validazione 5 livelli - Dal quick test al deep audit"]
         P21["21. RASP Guard SHA-256 - Integrità runtime garantita"]
-        P22["22. Pre-commit 10 hook - Zero codice non conforme"]
+        P22["22. Pre-commit 13 hook - Zero codice non conforme"]
         P23["23. ResourceManager HW-aware - Auto-throttling risorse"]
         P24["24. Forensics 10 script - Scatola nera post-mortem"]
     end
@@ -3023,23 +3045,22 @@ flowchart TB
 
 **Fine documento — Guida completa di Macena CS2 Analyzer**
 
-Totale file sorgente analizzati: **1.249**
-Totale righe di codice Python verificate: **≈ 75.800+**
-Totale file `.py` nel progetto: **~326**
+Totale file `.py` nel progetto: **~406** (in `Programma_CS2_RENAN/`, ~480 project-wide)
+Totale righe di codice Python verificate: **≈ 102.000+**
 Sottosistemi AI coperti: **8** (NN Core, VL-JEPA, RAP Coach, Servizi di Coaching, Motori di Coaching, Conoscenza, Analisi, Elaborazione + Osservatorio Addestramento)
 Sottosistemi programma coperti: **18** (Avvio, Lifecycle, Configurazione, Session Engine, UI Desktop, Ingestione, Storage, Osservabilità, Console di Controllo, RASP Guard, HLTV Sync, Orchestratore Ingestione, ResourceManager, Tools Suite, Test Suite, Pre-commit, Build/Packaging, Migrazioni Alembic)
 Modelli documentati: **6** (AdvancedCoachNN/TeacherRefinementNN, JEPA, VL-JEPA, RAPCoachModel, NeuralRoleHead, WinProbabilityNN)
 Motori di analisi documentati: **10** (Ruolo, WinProb, GameTree, Credenza, Inganno, Momentum, Entropia, Punti Ciechi, Utilità ed Economia, Distanza di Ingaggio)
 Motori di coaching documentati: **7** (HybridEngine, CorrectionEngine, ExplainabilityGenerator, NNRefinement, ProBridge, TokenResolver, LongitudinalEngine)
 Servizi aggiuntivi documentati: **7** (CoachingDialogue, LessonGenerator, LLMService, VisualizationService, ProfileService, AnalysisService, TelemetryClient)
-Tabelle di database documentate: **21** (distribuite su architettura dual-database: `database.db`, `hltv_metadata.db`)
-Schermate UI documentate: **13** (Wizard, Home, Coach, Tactical Viewer, Settings, Help, Match History, Match Detail, Performance, User Profile, Profile, Steam Config, FACEIT Config) — Qt/PySide6 (primario) + Kivy/KivyMD (legacy)
-Daemon documentati: **4** (Hunter, Digester, Teacher, Pulse)
-Strumenti di validazione documentati: **35** (Headless Validator, Brain Verify, Goliath Hospital, DB Inspector, Demo Inspector, ML Coach Debugger, Backend Validator, Dead Code Detector, etc.)
-File di test documentati: **87** (+ conftest.py, 10 forensics, 15 verification scripts) — 1.515+ test totali
+Tabelle di database documentate: **21** (distribuite su architettura three-tier storage: `database.db`, `hltv_metadata.db`, `match_data/{id}.db`)
+Schermate UI documentate: **14** (Wizard, Home, Coach, Tactical Viewer, Settings, Help, Match History, Match Detail, Performance, User Profile, Profile, Pro Comparison, Steam Config, FACEIT Config) — Qt/PySide6 (primario) + Kivy/KivyMD (legacy)
+Daemon documentati: **4** (Scanner, Digester, Teacher, Pulse)
+Strumenti di validazione documentati: **41** (Headless Validator, Brain Verify, Goliath Hospital, DB Inspector, Demo Inspector, ML Coach Debugger, Backend Validator, Dead Code Detector, Dev Health, Feature Audit, etc.)
+File di test documentati: **94** (+ conftest.py, 10 forensics, 15 verification scripts)
 Fasi headless validator: **23** (319 controlli automatizzati)
-Pre-commit hooks documentati: **10** (4 locali custom + 6 standard)
-Pilastri architetturali: **24** (inclusi Dual-Database, Calibrazione Bayesiana Live, Controllo Live Training, Circuit Breaker, Piramide Validazione, RASP Guard, Pre-commit Gate, ResourceManager HW-aware, Forensics)
+Pre-commit hooks documentati: **13** (4 locali custom + 7 standard + 2 Python)
+Pilastri architetturali: **24** (inclusi Three-Tier Storage, Calibrazione Bayesiana Live, Controllo Live Training, Circuit Breaker, Piramide Validazione, RASP Guard, Pre-commit Gate, ResourceManager HW-aware, Forensics)
 Problemi risolti tramite rimediazione: **368** (in 12 fasi sistematiche)
 Fasi di rimediazione documentate: **12** (con codici G-XX e F-XX)
 
@@ -3068,12 +3089,12 @@ flowchart TB
         P2_CT["Control Module<br/>(Console, Governor, ML)"]
     end
     subgraph PART3["PARTE 3 — Programma Completo"]
-        P3_DB["Database<br/>(21 tabelle, dual-DB)"]
+        P3_DB["Database<br/>(21 tabelle, three-tier)"]
         P3_TR["Training Regime<br/>(4 fasi, VL-JEPA 2-stage)"]
-        P3_UI["Desktop UI<br/>(13 schermate, MVVM)"]
+        P3_UI["Desktop UI<br/>(14 schermate, MVVM)"]
         P3_SE["Session Engine<br/>(4 daemon)"]
-        P3_TL["Tools Suite<br/>(35 strumenti)"]
-        P3_TS["Test Suite<br/>(87 file)"]
+        P3_TL["Tools Suite<br/>(41 strumenti)"]
+        P3_TS["Test Suite<br/>(94 file)"]
     end
 
     P1_NN -->|"Modelli usati da"| P2_CE
