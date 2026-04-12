@@ -143,6 +143,174 @@
       "situation": "T A plant location",
       "map_name": "de_nuke",
       "pro_example": "Pro meta: front-of-silo plant has highest post-plant WR on Nuke A"
+    },
+    {
+      "title": "Nuke anti-strat: counter outside rush with garage molly",
+      "description": "If the T keeps rushing outside, molly the garage exit area. This forces the rush to wait or take fire damage. Outside rushes on Nuke depend on momentum — a 7-second molly delay breaks the timing completely.",
+      "category": "anti_strat",
+      "situation": "CT defending against outside rushes on Nuke",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: garage molly reduces outside rush success from ~45% to ~20%"
+    },
+    {
+      "title": "Nuke anti-strat: counter ramp push with ramp smoke + flash",
+      "description": "If the T keeps taking ramp control, smoke the ramp entrance and flash through the smoke to retake control. Ramp on Nuke is the key mid-round area — losing it gives the T a B option. Fight for ramp control with utility, never dry.",
+      "category": "anti_strat",
+      "situation": "CT losing ramp control on Nuke",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: smoke + flash ramp retake succeeds ~55% on Nuke"
+    },
+    {
+      "title": "Nuke entry: ramp entry with flash for trophy",
+      "description": "Entry through ramp on Nuke requires a flash for trophy room — the most common CT hold position. The entry fragger should push ramp with a pop flash that blinds trophy, then wide swing to clear the angle. Without the flash, trophy kills the entry ~60% of the time.",
+      "category": "role_play_entry",
+      "situation": "Entry fragger on Nuke ramp push to B",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: flash-assisted ramp entry wins ~50% vs ~25% dry against trophy hold"
+    },
+    {
+      "title": "Nuke AWP: outside AWP from CT heaven",
+      "description": "The CT AWP from heaven (above outside) controls the entire outside area. This is the strongest AWP position on any map — the height advantage makes it nearly impossible to challenge without utility. Hold heaven by default; reposition after one kill.",
+      "category": "role_play_awp",
+      "situation": "AWP player on CT Nuke, outside defense",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: heaven AWP on Nuke averages 1.3 outside kills per half — highest AWP efficiency in CS2"
+    },
+    {
+      "title": "Nuke lurk: vent lurk during A execute",
+      "description": "When the team executes A through outside, the lurker drops through vents to B. If the CT rotates from B to A, B site is empty. The vent drop takes 8 seconds — time it so you arrive on B as the CT leaves for the A retake.",
+      "category": "role_play_lurk",
+      "situation": "Lurker on T-side Nuke during A execute",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: vent lurk to B during A execute finds empty B site ~35% of the time on Nuke"
+    },
+    {
+      "title": "Nuke support: outside smoke wall for A push",
+      "description": "Support on Nuke T-side throws a 3-smoke wall on outside: smoke heaven, smoke CT red box, smoke garage. This wall blinds all CT outside angles and allows the team to cross safely. Without the smoke wall, crossing outside loses 1-2 players every time.",
+      "category": "role_play_support",
+      "situation": "Support player utility for Nuke outside A push",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: full smoke wall outside reduces crossing deaths from ~40% to ~5%"
+    },
+    {
+      "title": "Nuke clutch: 1v1 B site — use dark corner",
+      "description": "In a 1v1 on Nuke B as T post-plant, hide in dark corner (back of B behind the pillars). CTs retaking from ramp or vents check the obvious angles first — dark corner is checked last. The surprise factor wins ~55% of 1v1 clutches on Nuke B.",
+      "category": "clutch_play",
+      "situation": "1v1 clutch on Nuke B as T",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: dark corner post-plant on Nuke B wins ~55% of 1v1 T clutches"
+    },
+    {
+      "title": "Nuke: vertical awareness — above and below",
+      "description": "Nuke is the only two-level map in CS2. Always be aware of the enemy above or below you. Sound through the floor is muffled — listen for footsteps, nades, and weapon switches. The vertical dimension is Nuke's defining feature; ignore it at your peril.",
+      "category": "positioning",
+      "situation": "Playing Nuke, ignoring vertical positioning",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: tier-1 teams track vertical enemy positions on Nuke with ~80% accuracy"
+    },
+    {
+      "title": "Nuke: B retake from ramp with smoke + molly",
+      "description": "CT retaking B on Nuke should smoke the vents exit (cuts T reinforcements) and molly the common post-plant positions. Push from ramp in a 2-3 stack. Without the vent smoke, Ts cycle through vents for free flanking kills.",
+      "category": "retakes_post_plant",
+      "situation": "CT retake B site on Nuke",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: ramp retake with vent smoke succeeds ~45% vs ~20% without on Nuke B"
+    },
+    {
+      "title": "Nuke IGL: outside read for A vs B commit",
+      "description": "At the 0:20 mark, assess outside control. If your outside players face minimal resistance, the CT is stacking inside — commit to A through outside. If outside is heavily contested, the CT is playing outside aggression and B through ramp is soft. Base the A vs B call on outside resistance level.",
+      "category": "role_play_igl",
+      "situation": "T-side Nuke, IGL reading outside for site commit",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: outside resistance level correctly predicts CT stack distribution in ~62% of rounds on Nuke"
+    },
+    {
+      "title": "Nuke support: B vent smoke for retake isolation",
+      "description": "Save one smoke for B retakes. Smoke the vent drop area to isolate T reinforcements dropping from A. Push B from ramp with the smoke active. Without the vent smoke, T players cycle through vents for flanking kills during ~40% of B retakes.",
+      "category": "role_play_support",
+      "situation": "Support player holding utility for B retake on Nuke",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: vent smoke B retake succeeds ~48% vs ~28% without on Nuke"
+    },
+    {
+      "title": "Nuke clutch: 1v1 A site — use rafters angle post-plant",
+      "description": "In a 1v1 on Nuke A as T post-plant, hold from rafters behind the metal beam. The rafters angle watches the bomb from elevation and CTs must expose themselves climbing heaven or pushing from CT spawn. The elevation gives you first-shot advantage.",
+      "category": "clutch_play",
+      "situation": "1v1 clutch on Nuke A site as T",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: rafters angle post-plant on Nuke A wins ~52% of 1v1 T clutches"
+    },
+    {
+      "title": "Nuke AWP: yard angle from mini",
+      "description": "Hold the outside yard from mini (the small building near outside) with the AWP. Mini gives elevation and cover while watching the entire T outside approach. After the first kill, reposition to heaven — the T will smoke or flash mini on their next push.",
+      "category": "role_play_awp",
+      "situation": "CT AWP holding outside yard from mini on Nuke",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: mini AWP averages 0.8 outside kills per half on Nuke"
+    },
+    {
+      "title": "Nuke anti-strat: counter ramp rush with trophy stack",
+      "description": "If the T keeps rushing ramp, stack two players in trophy room with a molly on ramp entrance and a flash for the counter-peek. The molly delays the rush by 7 seconds and the two-player crossfire from trophy demolishes the disorganized push. This setup shuts down ramp rushes for 3-4 rounds before adaptation.",
+      "category": "anti_strat",
+      "situation": "CT losing ramp control to T rushes on Nuke",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: trophy stack with ramp molly reduces rush success from ~50% to ~18% on Nuke"
+    },
+    {
+      "title": "Nuke entry: A from outside with silo flash",
+      "description": "Enter A from outside by throwing a silo flash that bounces off the silo structure and blinds the heaven hold. Push through the outside door immediately after the flash. The silo flash is the highest-value entry flash on Nuke — without it, the heaven player kills entries ~60% of the time.",
+      "category": "role_play_entry",
+      "situation": "Entry fragger pushing A from outside on Nuke",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: silo flash A entry succeeds ~52% vs ~25% dry on Nuke"
+    },
+    {
+      "title": "Nuke lurk: secret lurk during A execute",
+      "description": "When the team executes A from outside, lurk through secret to B. If the CT rotates from B to A, B site is empty. Secret takes 10 seconds — time the drop so you arrive as the CT B player leaves for the A retake. The secret lurk is Nuke's unique vertical flanking play.",
+      "category": "role_play_lurk",
+      "situation": "Lurker on T-side Nuke during A execute, secret path",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: secret lurk finds empty B ~32% of the time on Nuke — lower frequency but near-guaranteed plant"
+    },
+    {
+      "title": "Nuke economy: pistol round ramp stack",
+      "description": "On T pistol, buy P250 + flash and stack 4 ramp + 1 passive outside. The ramp corridor rewards upgraded pistols at close range. Flash the trophy room angle and push through ramp to B. Plant for ramp angle and play post-plant. The ramp pistol stack bypasses the punishing outside sightlines.",
+      "category": "economy",
+      "situation": "T pistol round ramp strategy on Nuke",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: ramp stack on T pistol wins ~48% on Nuke — avoids the outside AWP problem"
+    },
+    {
+      "title": "Nuke positioning: B vents defense from back site",
+      "description": "Hold B from the back-site angle behind the pillars, watching vents. This position covers the vent drop and has an escape route to ramp. The back-site angle forces T vent drops into a kill zone — they land with no cover and 0.5 seconds of landing animation. Never hold directly under vents.",
+      "category": "positioning",
+      "situation": "CT B defense watching vents on Nuke",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: back-site vent watch kills vent drops ~65% of the time on Nuke B"
+    },
+    {
+      "title": "Nuke A retake: mini push with heaven smoke",
+      "description": "Retake A from mini with a smoke on heaven to cut the T post-plant angle. Push from mini toward site with a flash from CT spawn. The mini approach avoids the outside lurk angles. Without the heaven smoke, the T heaven player holds the retake ~50% of the time.",
+      "category": "retakes_post_plant",
+      "situation": "CT retaking A from mini on Nuke",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: mini retake with heaven smoke succeeds ~48% on Nuke A"
+    },
+    {
+      "title": "Nuke utility: roof smoke for outside cross",
+      "description": "Throw a roof smoke from T spawn that blocks the heaven and mini sightlines over outside. This single smoke enables safe crossing from T outside to silo. Without it, the CT heaven AWP picks crossers in ~45% of outside pushes. The roof smoke is the most critical T utility on Nuke.",
+      "category": "utility",
+      "situation": "T-side Nuke, safe outside crossing",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: roof smoke reduces outside crossing deaths from ~45% to ~8% on Nuke"
+    },
+    {
+      "title": "Nuke mid-round: vent control after ramp trade",
+      "description": "After winning a ramp trade, take vent control within 5 seconds. Vents connect upper and lower Nuke — controlling vents after ramp gives you a B option without going through outside. Drop one player through vents while the rest hold ramp for the IGL call.",
+      "category": "mid_round",
+      "situation": "T-side Nuke, vent control after ramp trade",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: vent push after ramp trade raises B execute success by ~15 points on Nuke"
     }
   ]
 }

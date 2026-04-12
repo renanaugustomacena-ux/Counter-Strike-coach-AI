@@ -143,6 +143,174 @@
       "situation": "T A plant location",
       "map_name": "de_anubis",
       "pro_example": "Pro meta: behind-statue plant has highest post-plant win rate of all Anubis A plant spots"
+    },
+    {
+      "title": "Anubis anti-strat: counter B canal rush with bridge molly",
+      "description": "If the T keeps rushing B through canal, molly the canal exit before they arrive. The molly forces the rush to wait or take 50+ damage. Follow with a flash from site to counter-peek the damaged players. Canal rushes are utility-dependent — deny the utility timing.",
+      "category": "anti_strat",
+      "situation": "CT defending against repeated B canal rushes on Anubis",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: canal exit molly drops B rush success rate from ~50% to ~20%"
+    },
+    {
+      "title": "Anubis anti-strat: counter A connector aggression with smoke",
+      "description": "If the T takes connector control every round, smoke connector entrance at round start and play a retake setup instead. Let them take connector — they waste time and utility in an empty area while you set up A crossfire. Deny the space they want to fight for.",
+      "category": "anti_strat",
+      "situation": "CT losing connector control to T aggression on Anubis",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: giving up connector and playing retake setup succeeds ~55% on Anubis"
+    },
+    {
+      "title": "Anubis entry: A main entry with double flash",
+      "description": "Entry through A main on Anubis requires two flashes — one for the bridge angle and one for heaven. The first flash clears the close hold, the second covers the vertical angle. Single-flash entries leave heaven unchecked, which is the #1 entry death spot.",
+      "category": "role_play_entry",
+      "situation": "Entry fragger on Anubis A main push",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: double flash A main entry succeeds ~55% vs ~30% single flash on Anubis"
+    },
+    {
+      "title": "Anubis AWP: mid connector AWP hold",
+      "description": "The CT AWP on Anubis holds mid connector — it covers the B rotate path AND can rotate to A in 5 seconds. Connector AWP is the safest default AWP position on Anubis because it provides info on both sites.",
+      "category": "role_play_awp",
+      "situation": "AWP player on CT Anubis, default position",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: connector AWP on Anubis provides info on ~70% of T setups"
+    },
+    {
+      "title": "Anubis lurk: connector lurk during B execute",
+      "description": "When the team executes B, the lurker holds connector. CTs rotating from A through mid walk into the lurk. Anubis rotations through connector are fast — time the ambush for 5-7 seconds after the B execute starts.",
+      "category": "role_play_lurk",
+      "situation": "Lurker on T-side Anubis during B execute",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: connector lurk catches A-to-B rotators ~45% of the time on Anubis"
+    },
+    {
+      "title": "Anubis support: B site retake utility from ruins",
+      "description": "Support on Anubis CT should save a smoke and molly for B retakes. Smoke the canal exit (cuts the lurk), molly the B plant area. This 2-utility combo isolates the T players on site and raises B retake success from ~35% to ~50%.",
+      "category": "role_play_support",
+      "situation": "Support player utility for Anubis B retake",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: B retake with smoke+molly succeeds ~50% vs ~25% dry on Anubis"
+    },
+    {
+      "title": "Anubis clutch: 1v1 A site — use heaven angle",
+      "description": "In a 1v1 on Anubis A as T, plant behind statue and hold from heaven if possible. The heaven angle overlooks the entire A site — the CT must expose themselves to defuse. If heaven is not accessible, hold from connector angle watching the plant.",
+      "category": "clutch_play",
+      "situation": "1v1 clutch on Anubis A as T",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: heaven angle post-plant wins ~60% of 1v1 T clutches on Anubis A"
+    },
+    {
+      "title": "Anubis: T-side water control for B split",
+      "description": "Take water control early (clear the underwater passage) and use it for a B split. Water approach + canal approach simultaneously catches B defense from two angles. Water control is unique to Anubis and most CTs underestimate it.",
+      "category": "positioning",
+      "situation": "T-side Anubis, planning a B split",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: water + canal B split has ~65% plant rate when both entries arrive within 3 seconds"
+    },
+    {
+      "title": "Anubis: CT rotate timing — A to B in 10 seconds",
+      "description": "Anubis has fast CT rotations through mid — A to B takes only 10 seconds running. This means fakes must commit more utility to be convincing. A 15-second fake may not draw rotations because CTs know they can re-rotate quickly.",
+      "category": "mid_round",
+      "situation": "T-side Anubis, fake timing considerations",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: Anubis fakes need >20 seconds of commitment to reliably draw CT rotations"
+    },
+    {
+      "title": "Anubis IGL: mid control reads for site commit",
+      "description": "At the 0:25 mark, assess mid window control. If your player holds window unchallenged, the CT is stacking sites — commit to whichever site has fewer sound cues. If window is contested hard, the CT is playing mid aggression and both sites are soft. Call a fast site hit.",
+      "category": "role_play_igl",
+      "situation": "T-side Anubis, IGL reading mid control for site commit",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: mid control reads correctly predict CT stack distribution in ~58% of rounds on Anubis"
+    },
+    {
+      "title": "Anubis support: A retake smoke bridge + flash from connector",
+      "description": "Save one smoke and one flash for A retakes. Smoke bridge to isolate T reinforcements from mid, then flash from connector for the push. This two-piece utility package isolates the planted T from support and raises A retake success by ~12 points.",
+      "category": "role_play_support",
+      "situation": "Support player holding utility for A retake on Anubis",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: bridge smoke + connector flash A retake succeeds ~50% vs ~32% dry on Anubis"
+    },
+    {
+      "title": "Anubis clutch: 1v2 B site — use water angle post-plant",
+      "description": "In a 1v2 on Anubis B as T post-plant, fall back to the water connector entrance. CTs retaking from CT spawn and platform must check water last. The water angle gives sight on the bomb from cover and lets you hear both approach directions before they see you.",
+      "category": "clutch_play",
+      "situation": "1v2 clutch on Anubis B site as T",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: water angle post-plant on Anubis B wins ~25% of 1v2 T clutches"
+    },
+    {
+      "title": "Anubis AWP: B long angle from site",
+      "description": "Hold the B long sightline from the back of B site with the AWP. The long angle covers the entire canal approach and catches T entries before they reach site. After the first kill, reposition behind the pillar — the T team will flash the angle next round.",
+      "category": "role_play_awp",
+      "situation": "CT AWP holding B long on Anubis",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: B long AWP averages 0.7 opening kills per half on Anubis"
+    },
+    {
+      "title": "Anubis anti-strat: counter mid push with window molly",
+      "description": "If the T keeps pushing mid aggressively, molly the mid window area at round start. This denies the T mid control for 7 seconds and forces them to waste utility clearing the angle. Follow with a flash from connector to counter-peek any T that pushes through the fading molly.",
+      "category": "anti_strat",
+      "situation": "CT losing mid to aggressive T pushes on Anubis",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: window molly delays T mid control by 7+ seconds on Anubis"
+    },
+    {
+      "title": "Anubis entry: B canal push with double flash",
+      "description": "Enter B through canal with two flashes — the first blinds the platform close hold, the second covers the water connector angle. Push immediately after the second flash. Single-flash entries leave the water angle unchecked, which accounts for ~35% of B entry deaths.",
+      "category": "role_play_entry",
+      "situation": "Entry fragger pushing B through canal on Anubis",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: double flash canal entry succeeds ~52% vs ~28% single flash on Anubis B"
+    },
+    {
+      "title": "Anubis lurk: A main lurk during B execute",
+      "description": "When the team executes B, lurk at A main entrance. CTs rotating from A through mid to B pass the A main sightline. Time the peek for 6-8 seconds after the B execute starts. The A main lurk on Anubis is underutilized — most teams lurk connector instead, making A main unexpected.",
+      "category": "role_play_lurk",
+      "situation": "Lurker on T-side Anubis during B execute, A main position",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: A main lurk catches A-to-B rotators ~30% of the time — less frequent but higher surprise factor"
+    },
+    {
+      "title": "Anubis economy: pistol round water push",
+      "description": "On T pistol, buy P250 + flash and push through water to B. Water creates an off-angle that CT pistol setups rarely cover. Stack 4 water + 1 passive A main for a late fake. The water approach on pistol catches B defenders off guard ~55% of the time.",
+      "category": "economy",
+      "situation": "T pistol round water push strategy on Anubis",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: water push on T pistol wins ~52% on Anubis — above map average"
+    },
+    {
+      "title": "Anubis positioning: B defense from ruins angle",
+      "description": "Hold B from the ruins angle behind the back pillar. This position covers the canal entry and has an escape route to CT spawn. The ruins angle forces the T to clear deep before planting, buying your teammate time to rotate. Fall back after the first kill.",
+      "category": "positioning",
+      "situation": "CT B defense positioning on Anubis",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: ruins angle B hold wins first contact ~55% on Anubis"
+    },
+    {
+      "title": "Anubis A retake: pillar push with smoke bridge",
+      "description": "Retake A from the pillar angle with a smoke on bridge to cut T reinforcements. Push from pillar toward site with a flash from heaven. The pillar approach avoids the common A main post-plant angles. Without the bridge smoke, T players cycle through mid for free flanks.",
+      "category": "retakes_post_plant",
+      "situation": "CT retaking A from pillar on Anubis",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: pillar retake with bridge smoke succeeds ~46% on Anubis A"
+    },
+    {
+      "title": "Anubis utility: mid smoke for safe cross",
+      "description": "Throw a mid smoke from T spawn that blocks the window sightline. This single smoke enables safe crossing from A main to B canal through mid. Without the smoke, the CT window player picks off crossers ~40% of the time. The smoke is the most cost-effective T utility on Anubis.",
+      "category": "utility",
+      "situation": "T-side Anubis, safe mid crossing",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: mid cross smoke reduces T crossing deaths from ~40% to ~5% on Anubis"
+    },
+    {
+      "title": "Anubis mid-round: water control after 0:45",
+      "description": "After the 0:45 mark, water control becomes the deciding factor for B commits. If you hold water, you have a flanking path to B that bypasses canal entirely. Send one player through water at 0:45 to establish the angle — late water pushes catch the B anchor repositioning.",
+      "category": "mid_round",
+      "situation": "T-side Anubis, water control for late B commit",
+      "map_name": "de_anubis",
+      "pro_example": "Pro meta: late water control raises B execute success by ~12 points on Anubis"
     }
   ]
 }

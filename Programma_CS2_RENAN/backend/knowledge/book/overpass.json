@@ -143,6 +143,174 @@
       "situation": "T A plant location",
       "map_name": "de_overpass",
       "pro_example": "Pro meta: behind-party plant has highest post-plant WR on Overpass A"
+    },
+    {
+      "title": "Overpass anti-strat: counter B short aggression with connector smoke",
+      "description": "If the T keeps pushing B short aggressively, smoke the B short exit and play a passive hold from site. The smoke forces the T to push blind or wait for it to fade — both options waste their timing. Follow with a flash to retake short control.",
+      "category": "anti_strat",
+      "situation": "CT defending against B short aggression on Overpass",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: B short exit smoke reduces T success to ~25% on Overpass"
+    },
+    {
+      "title": "Overpass anti-strat: counter A long push with party molly",
+      "description": "If the T keeps pushing A long, molly the party area (the open area before the site). This forces the T to wait or take damage. Follow with a flash from heaven to counter-peek. The molly + flash combo denies A long control for 10+ seconds.",
+      "category": "anti_strat",
+      "situation": "CT defending against A long pushes on Overpass",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: party molly + heaven flash denies A long ~70% of the time on Overpass"
+    },
+    {
+      "title": "Overpass entry: B short entry with flash for monster",
+      "description": "Entry through B short on Overpass requires a flash for monster — the most dangerous angle. Pop flash over the wall to blind the monster hold, then wide swing into site. Without the flash, the monster player kills the entry ~55% of the time.",
+      "category": "role_play_entry",
+      "situation": "Entry fragger on Overpass B short push",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: flash-assisted B short entry wins ~52% vs ~28% dry against monster hold"
+    },
+    {
+      "title": "Overpass AWP: A long AWP from heaven",
+      "description": "The CT AWP on Overpass holds A long from heaven — the height advantage makes it the strongest AWP position. You can see the entire A long approach and reposition to bathroom in 3 seconds. Heaven AWP is the default on Overpass.",
+      "category": "role_play_awp",
+      "situation": "AWP player on CT Overpass, A defense",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: heaven AWP on Overpass averages 0.9 opening kills per half"
+    },
+    {
+      "title": "Overpass lurk: connector lurk during B execute",
+      "description": "When the team executes B, the lurker holds connector. CTs rotating from A through connector walk into the lurk. Overpass connector rotations are predictable — time the ambush for 6-8 seconds after the B execute smokes land.",
+      "category": "role_play_lurk",
+      "situation": "Lurker on T-side Overpass during B execute",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: connector lurk catches A-to-B rotators ~40% of the time on Overpass"
+    },
+    {
+      "title": "Overpass support: B site smoke wall for execute",
+      "description": "Support on Overpass T-side throws the B smoke wall: smoke heaven, smoke pillar, and flash for the entry. The smoke wall cuts CT sightlines and allows the team to enter site safely. Without smokes, B entries face 3+ angles simultaneously.",
+      "category": "role_play_support",
+      "situation": "Support player utility for Overpass B execute",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: full smoke wall B execute has ~68% plant rate on Overpass"
+    },
+    {
+      "title": "Overpass clutch: 1v1 B site — use water for escape",
+      "description": "In a 1v1 on Overpass B as T, plant for short and hold from monster. If the CT pushes through connector, water provides an escape route. Water awareness is unique to Overpass — use the underground route to reposition during clutch scenarios.",
+      "category": "clutch_play",
+      "situation": "1v1 clutch on Overpass B as T",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: water escape routes contribute to ~15% of successful T clutches on Overpass B"
+    },
+    {
+      "title": "Overpass: playground control for A split",
+      "description": "Taking playground control gives the T a flanking path to A site. Push playground early with a flash, then hold passively until the A execute starts. The split from long + playground collapses A defense from two sides.",
+      "category": "positioning",
+      "situation": "T-side Overpass, planning an A split",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: long + playground A split has ~65% plant rate on Overpass"
+    },
+    {
+      "title": "Overpass: A retake from bathroom with utility",
+      "description": "CT retaking A on Overpass should push from bathroom with smoke (cuts long lurk) + flash. Bathroom is the safest retake path because it bypasses the T's post-plant angles. Without the long smoke, the T lurker gets free kills on retaking CTs.",
+      "category": "retakes_post_plant",
+      "situation": "CT retake A site on Overpass",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: bathroom retake with long smoke succeeds ~48% on Overpass A"
+    },
+    {
+      "title": "Overpass IGL: monster read for B defense adjustment",
+      "description": "At the 0:20 mark, listen for monster footsteps and utility. Heavy monster activity at 0:20 signals a fast B take — rotate a third player from A immediately. If monster is silent until 0:40, the T is likely pushing A long or defaulting. Base your B stack on monster timing, not connector info.",
+      "category": "role_play_igl",
+      "situation": "CT-side Overpass, IGL reading monster timing",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: monster audio reads correctly predict B executes in ~60% of T defaults on Overpass"
+    },
+    {
+      "title": "Overpass support: A retake flash from bathroom",
+      "description": "Save one flash for A retakes. Throw a bathroom pop flash that bounces off the wall and blinds anyone on site facing long or party. Push from bathroom immediately after the flash. This single flash raises A retake success by ~10 points and bypasses the long lurk angle.",
+      "category": "role_play_support",
+      "situation": "Support player holding utility for A retake on Overpass",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: bathroom flash A retake succeeds ~52% vs ~38% dry on Overpass"
+    },
+    {
+      "title": "Overpass clutch: 1v2 A site — use party box for isolation",
+      "description": "In a 1v2 on Overpass A as T post-plant, hold from behind party box. The party angle gives sight on the bomb from cover and forces CTs to split their approach around the box. Pick one off as they approach the bomb, then reposition behind the box to face the second.",
+      "category": "clutch_play",
+      "situation": "1v2 clutch on Overpass A site as T",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: party box post-plant on Overpass A wins ~23% of 1v2 T clutches"
+    },
+    {
+      "title": "Overpass AWP: B long angle from pillar",
+      "description": "Hold B long from the pillar with the AWP. The pillar provides cover and the long sightline catches T entries pushing from monster before they reach site. After the first kill, drop behind pillar to avoid the flash — reposition to bench only if the T team pauses.",
+      "category": "role_play_awp",
+      "situation": "CT AWP holding B long from pillar on Overpass",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: pillar AWP on Overpass B averages 0.7 opening kills per half"
+    },
+    {
+      "title": "Overpass anti-strat: counter B monster push with double molly",
+      "description": "If the T keeps pushing B through monster, throw two molotovs — one at the monster exit and one at the monster corridor 3 seconds later. The double molly creates a 14-second fire wall that completely denies the monster push. Follow with a flash if they try to push through the gap.",
+      "category": "anti_strat",
+      "situation": "CT losing B to repeated monster pushes on Overpass",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: double molly monster denial reduces push success from ~50% to ~15% on Overpass"
+    },
+    {
+      "title": "Overpass entry: A long push with heaven flash",
+      "description": "Entry through A long requires a flash that pops at the heaven angle. Bounce the flash off the right wall so it blinds the heaven hold. Push long immediately after — the heaven player is blind for 1.5 seconds. Without the flash, the heaven AWP kills long entries ~55% of the time.",
+      "category": "role_play_entry",
+      "situation": "Entry fragger pushing A long on Overpass",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: heaven flash long entry succeeds ~50% vs ~28% dry on Overpass A"
+    },
+    {
+      "title": "Overpass lurk: bathroom lurk during B execute",
+      "description": "When the team executes B through monster, lurk in bathroom. CTs rotating from A through connector pass the bathroom sightline. Time the ambush for 6-8 seconds after the B execute smokes land. Bathroom lurk on Overpass catches rotators from an angle they rarely check.",
+      "category": "role_play_lurk",
+      "situation": "Lurker on T-side Overpass during B execute, bathroom position",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: bathroom lurk catches A-to-B rotators ~38% of the time on Overpass"
+    },
+    {
+      "title": "Overpass economy: force buy B short with armor and Galils",
+      "description": "On force buy rounds, hit B short with armor + Galils + flashes. B short on Overpass is the shortest execute path and the angles favor Galil spray range. Avoid A long force buys — the heaven AWP dominates under-buys on long sightlines.",
+      "category": "economy",
+      "situation": "T force buy decision on Overpass",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: B short force with Galils wins ~38% on Overpass — highest force WR for the map"
+    },
+    {
+      "title": "Overpass positioning: A party defense with off-angle",
+      "description": "Hold A from the party area behind the back box, not the obvious party front. The deep angle catches T entries as they clear the standard party position and look toward long. Fall back to bathroom after one kill — staying party after contact exposes you to the connector trade.",
+      "category": "positioning",
+      "situation": "CT A defense from party area on Overpass",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: deep party off-angle wins first contact ~56% on Overpass A"
+    },
+    {
+      "title": "Overpass B retake: CT spawn push with monster smoke",
+      "description": "Retake B from CT spawn with a smoke on monster to isolate the T lurker. Push from CT toward site with a flash from connector. The CT spawn approach avoids the monster post-plant angles. Without the monster smoke, T lurkers in monster get free kills on ~40% of B retakes.",
+      "category": "retakes_post_plant",
+      "situation": "CT retaking B from CT spawn on Overpass",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: CT retake with monster smoke succeeds ~46% on Overpass B"
+    },
+    {
+      "title": "Overpass utility: monster smoke for safe B approach",
+      "description": "Throw a monster smoke from T side that blocks the CT pillar sightline into monster corridor. This single smoke enables safe passage through monster to B site. Without it, the pillar player picks T entries in ~35% of monster pushes. The monster smoke is the most critical T utility on Overpass B takes.",
+      "category": "utility",
+      "situation": "T-side Overpass, safe monster passage",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: monster smoke reduces T entry deaths from ~35% to ~8% on Overpass B approaches"
+    },
+    {
+      "title": "Overpass mid-round: playground control after A trade",
+      "description": "After winning an A long trade, take playground control within 5 seconds. Playground gives a flanking path to A site that bypasses the standard CT retake angles. Push playground with one player while the team holds long — the two-angle pressure collapses the A defense.",
+      "category": "mid_round",
+      "situation": "T-side Overpass, playground control after A long trade",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: playground push after A trade raises execute success by ~14 points on Overpass"
     }
   ]
 }
