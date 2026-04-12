@@ -617,6 +617,16 @@ class CoachingExperience(SQLModel, table=True):
     times_advice_followed: int = Field(default=0)
     last_feedback_at: Optional[datetime] = Field(default=None)
 
+    # KT-01: TrueSkill uncertainty tracking for COPER CRUD & prioritized replay
+    mu_skill: float = Field(default=0.5)  # TrueSkill posterior mean
+    sigma_skill: float = Field(default=0.5)  # TrueSkill posterior std
+    times_retrieved: int = Field(default=0)  # Total retrieval count (for replay priority)
+    times_validated: int = Field(default=0)  # User-confirmed good advice count
+
+    def confidence_score(self, kappa: float = 1.0) -> float:
+        """Lower-bound confidence: mu - kappa * sigma (pessimistic estimate)."""
+        return self.mu_skill - kappa * self.sigma_skill
+
 
 class RoundStats(SQLModel, table=True):
     """
