@@ -89,7 +89,7 @@ PySide6_Essentials==6.10.2
 polars==1.36.1
 polars-runtime-32==1.36.1
 protobuf==6.33.2
-psutil==7.2.0
+psutil==7.2.2
 ptyprocess==0.7.0
 pyarrow==22.0.0
 pycairo==1.29.0
