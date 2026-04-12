@@ -54,23 +54,54 @@ _HLTV_ROBOTS_URL = "https://www.hltv.org/robots.txt"
 _HLTV_BASE_URL = "https://www.hltv.org"
 
 
-def check_robots_txt(target_url: str = _HLTV_BASE_URL + "/stats") -> bool:
+def check_robots_txt(target_url: str = _HLTV_BASE_URL + "/stats/players") -> bool:
     """Check HLTV robots.txt to verify scraping is not explicitly disallowed.
 
     Returns True if scraping is allowed (or robots.txt is unreachable),
     False if robots.txt explicitly disallows the target path.
+
+    DP-04 FIX: HLTV is behind Cloudflare. Raw urllib cannot fetch robots.txt
+    (gets an HTML JS-challenge page, not valid robots.txt). When the response
+    is not parseable as robots.txt, we treat it as unreachable and proceed
+    with caution — the same behavior documented for network errors.
+
+    HLTV's real robots.txt (verified 2026-04-12 via FlareSolverr) disallows:
+    - /stats?*rankingFilter* (our old discovery URL)
+    - /stats/players/career/*? and /stats/players/clutches/*
+    - Various query parameter combinations on /stats, /results, /matches
+    Individual player pages like /stats/players/12345/name are ALLOWED.
     """
     rp = urllib.robotparser.RobotFileParser()
     rp.set_url(_HLTV_ROBOTS_URL)
     try:
         rp.read()
     except Exception as e:
-        # Cannot reach robots.txt — log warning but don't block
-        # (Cloudflare may block raw requests; FlareSolverr is used for actual scraping)
         logger.warning(
-            "Could not fetch robots.txt from %s: %s — proceeding with caution", _HLTV_ROBOTS_URL, e
+            "Could not fetch robots.txt from %s: %s — proceeding with caution",
+            _HLTV_ROBOTS_URL,
+            e,
         )
         return True
+
+    # DP-04: Cloudflare returns HTML instead of robots.txt to raw urllib.
+    # The robotparser silently accepts the HTML and can_fetch() returns False
+    # because no valid rules were parsed. Detect this by checking if the
+    # parser has any entries at all — a valid robots.txt always has at least
+    # one User-agent line.
+    try:
+        # RobotFileParser stores entries internally; if none parsed, the
+        # response was not valid robots.txt (likely Cloudflare HTML).
+        if not rp.entries and not rp.default_entry:
+            logger.warning(
+                "robots.txt from %s was not parseable (likely Cloudflare challenge) "
+                "— proceeding with caution",
+                _HLTV_ROBOTS_URL,
+            )
+            return True
+    except AttributeError:
+        # Older Python versions may not expose these attributes
+        pass
+
     allowed = rp.can_fetch("*", target_url)
     if not allowed:
         logger.warning("robots.txt DISALLOWS scraping %s — aborting", target_url)
@@ -138,9 +169,34 @@ class HLTVStatFetcher:
         return True
 
     def fetch_top_players(self) -> List[str]:
-        """Scrapes the Top 50 players page to get profile URLs."""
-        url = "https://www.hltv.org/stats/players?rankingFilter=Top50"
-        logger.info("Auto-discovering Top 50 players from: %s", url)
+        """Discover player stat page URLs for the top ranked teams' rosters.
+
+        DP-04: The old URL /stats/players?rankingFilter=Top50 is disallowed
+        by HLTV robots.txt. Instead, we use fetch_top_teams() to get rosters
+        from the team ranking page (/ranking/teams/ — allowed), then build
+        stat URLs for each player. This is both robots.txt compliant and
+        discovers more players (150+ vs 50).
+        """
+        # First try: discover via team ranking page (robots.txt compliant)
+        teams = self.fetch_top_teams(count=30)
+        if teams:
+            player_urls = []
+            for team in teams:
+                for p in team.get("players", []):
+                    url = p.get("profile_url", "")
+                    if url and url not in player_urls:
+                        player_urls.append(url)
+            if player_urls:
+                logger.info(
+                    "Discovered %d players from %d teams via ranking page",
+                    len(player_urls),
+                    len(teams),
+                )
+                return player_urls
+
+        # Fallback: direct stats page (may be blocked by robots.txt)
+        url = "https://www.hltv.org/stats/players"
+        logger.info("Fallback: discovering players from %s (no query params)", url)
         try:
             time.sleep(random.uniform(CRAWL_DELAY_MIN_SECONDS, CRAWL_DELAY_MIN_SECONDS + 2))
             html = self._solver.get(url)
