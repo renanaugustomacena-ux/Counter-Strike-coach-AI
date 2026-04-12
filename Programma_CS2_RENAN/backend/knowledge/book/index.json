@@ -1,7 +1,7 @@
 {
   "version": "v3",
   "schema_version": 1,
-  "description": "Coach Book — tactical knowledge corpus for the COPER coaching engine. Per-map files containing positioning, utility, economy, aim_and_duels, mid_round, and retakes_post_plant entries. Aligned to CS2 Premier Season 4 active duty pool (2026-01).",
+  "description": "Coach Book v4 — tactical knowledge corpus for the COPER coaching engine. Per-map and cross-map files covering 13 categories: positioning, utility, economy, aim_and_duels, mid_round, retakes_post_plant, anti_strat, role_play (entry/awp/support/lurk/igl), and clutch_play. Aligned to CS2 Premier Season 4 active duty pool (2026-01).",
   "active_duty_pool": [
     "de_anubis",
     "de_ancient",
@@ -17,7 +17,14 @@
     "economy",
     "aim_and_duels",
     "mid_round",
-    "retakes_post_plant"
+    "retakes_post_plant",
+    "anti_strat",
+    "role_play_entry",
+    "role_play_awp",
+    "role_play_support",
+    "role_play_lurk",
+    "role_play_igl",
+    "clutch_play"
   ],
   "files": [
     "general.json",
