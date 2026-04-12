@@ -125,7 +125,9 @@ def main():
         help="Number of parallel workers (0=auto, based on RAM)",
     )
     parser.add_argument("--limit", type=int, default=0, help="Max demos to process (0=all)")
-    parser.add_argument("--demo-dir", type=str, default="", help="Demo directory (default: PRO_DEMO_PATH setting)")
+    parser.add_argument(
+        "--demo-dir", type=str, default="", help="Demo directory (default: PRO_DEMO_PATH setting)"
+    )
     args = parser.parse_args()
 
     if args.demo_dir:
@@ -134,7 +136,7 @@ def main():
         from Programma_CS2_RENAN.core.config import get_setting
 
         demo_dir = Path(get_setting("PRO_DEMO_PATH", os.path.expanduser("~")))
-    all_demos = sorted(demo_dir.rglob("*.dem"))
+    all_demos = sorted(p for p in demo_dir.rglob("*.dem") if not p.is_symlink())
 
     already_ingested = get_already_ingested()
     pending = [d for d in all_demos if d.stem not in already_ingested]
