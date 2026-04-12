@@ -3,6 +3,7 @@ import os
 import sys
 import threading
 from pathlib import Path
+from typing import Any
 
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -13,7 +14,7 @@ IS_FROZEN = getattr(sys, "frozen", False)
 _settings_lock = threading.RLock()
 
 
-def stabilize_paths():
+def stabilize_paths() -> str:
     """
     Standardizes sys.path and returns the project root.
     Ensures that root-level imports and asset paths are bit-perfect.
@@ -26,7 +27,7 @@ def stabilize_paths():
     return root
 
 
-def get_base_dir():
+def get_base_dir() -> str:
     if IS_FROZEN:
         return os.path.dirname(sys.executable)
     # Parent of core/ folder
@@ -36,7 +37,7 @@ def get_base_dir():
 BASE_DIR = get_base_dir()
 
 
-def get_writeable_dir():
+def get_writeable_dir() -> str:
     """Returns a directory where the application has write permissions."""
     if IS_FROZEN:
         app_data = os.path.join(
@@ -53,7 +54,7 @@ STORAGE_ROOT = get_writeable_dir()
 SETTINGS_PATH = os.path.join(get_writeable_dir(), "user_settings.json")
 
 
-def get_resource_path(relative_path):
+def get_resource_path(relative_path: str) -> str:
     """Returns absolute path to a read-only resource."""
     if IS_FROZEN:
         # PyInstaller temporary extraction folder
@@ -235,7 +236,7 @@ BRAIN_DATA_ROOT = _settings.get("BRAIN_DATA_ROOT", "")
 
 def _resolve_match_data_path() -> str:
     """Resolve match_data directory: PRO_DEMO_PATH/match_data if available, else in-project."""
-    pro_path = _settings.get("PRO_DEMO_PATH", "")
+    pro_path = str(_settings.get("PRO_DEMO_PATH", ""))
     if pro_path and os.path.isdir(pro_path):
         return os.path.join(pro_path, "match_data")
     return os.path.join(os.path.join(get_base_dir(), "backend", "storage"), "match_data")
@@ -310,7 +311,7 @@ KNOWLEDGE_DATABASE_URL = f"sqlite:///{os.path.join(DATA_DIR, 'knowledge_base.db'
 HLTV_DATABASE_URL = f"sqlite:///{os.path.join(CORE_DB_DIR, 'hltv_metadata.db')}"
 
 
-def get_setting(key: str, default: object = None) -> object:
+def get_setting(key: str, default: Any = None) -> Any:
     """Thread-safe dynamic setting lookup. Safe for daemon/background threads."""
     with _settings_lock:
         return _settings.get(key, default)
@@ -323,7 +324,7 @@ def get_pro_demo_base() -> Path:
     Tools should call this instead of hardcoding paths.
     """
     raw = get_setting("PRO_DEMO_PATH", os.path.expanduser("~"))
-    return Path(raw) if raw else Path(os.path.expanduser("~"))
+    return Path(str(raw)) if raw else Path(os.path.expanduser("~"))
 
 
 def get_credential(key: str) -> str:
@@ -335,7 +336,7 @@ def get_credential(key: str) -> str:
     background threads see values written by ``refresh_settings()``.
     """
     with _settings_lock:
-        return _settings.get(key, "")
+        return str(_settings.get(key, ""))
 
 
 def refresh_settings():
@@ -386,12 +387,12 @@ _SETTING_NAME_TO_GLOBAL = {
 }
 
 
-def save_user_setting(key: str, value: object) -> None:
+def save_user_setting(key: str, value: Any) -> None:
     """Saves setting without importing external modules to avoid loops."""
     original_value = value
     with _settings_lock:
         if key in ["STEAM_API_KEY", "FACEIT_API_KEY"]:
-            if set_secret(key, value):
+            if set_secret(key, str(value)):
                 value = "PROTECTED_BY_WINDOWS_VAULT"
 
         data = {}

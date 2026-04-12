@@ -205,7 +205,7 @@ class ProStatsMiner:
         import sqlite3
         from pathlib import Path
 
-        db_path = str(Path(__file__).resolve().parent.parent / "storage" / "database.db")
+        db_path: str = str(Path(__file__).resolve().parent.parent / "storage" / "database.db")
         conn = sqlite3.connect(db_path, timeout=30)
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA busy_timeout=30000")
@@ -250,25 +250,26 @@ class ProStatsMiner:
 
             key = (map_name, player, side)
             a = aggregates[key]
-            a["total_kills"] += t_kills
-            a["total_dmg"] += t_dmg
-            a["kast_sum"] += kast * rnds
-            a["ok_sum"] += ok * rnds
-            a["rating_sum"] += rating * rnds
-            a["rounds"] += rnds
+            a["total_kills"] += int(t_kills or 0)
+            a["total_dmg"] += int(t_dmg or 0)
+            a["kast_sum"] += float(kast or 0) * int(rnds or 0)
+            a["ok_sum"] += float(ok or 0) * int(rnds or 0)
+            a["rating_sum"] += float(rating or 0) * int(rnds or 0)
+            a["rounds"] += int(rnds or 0)
             a["demos"] += 1
 
         # Generate knowledge for standout performances
         entries_created = 0
         for (map_name, player, side), a in aggregates.items():
-            if a["rounds"] < _MIN_MAP_ROUNDS:
+            rounds_played: int = int(a["rounds"])
+            if rounds_played < _MIN_MAP_ROUNDS:
                 continue
 
-            avg_rating = a["rating_sum"] / a["rounds"]
-            kast_rate = a["kast_sum"] / a["rounds"]
-            ok_rate = a["ok_sum"] / a["rounds"]
-            kpr = a["total_kills"] / a["rounds"]
-            adr = a["total_dmg"] / a["rounds"]
+            avg_rating = float(a["rating_sum"]) / rounds_played
+            kast_rate = float(a["kast_sum"]) / rounds_played
+            ok_rate = float(a["ok_sum"]) / rounds_played
+            kpr = int(a["total_kills"]) / rounds_played
+            adr = int(a["total_dmg"]) / rounds_played
 
             # Only notable performances
             if avg_rating < 1.0:
@@ -281,7 +282,7 @@ class ProStatsMiner:
                 f"Rating {avg_rating:.2f}, KPR {kpr:.2f}, ADR {adr:.0f}, "
                 f"KAST {kast_rate * 100:.0f}%, "
                 f"Opening duel rate {ok_rate * 100:.0f}%. "
-                f"Based on {a['rounds']} rounds across {a['demos']} demos."
+                f"Based on {rounds_played} rounds across {int(a['demos'])} demos."
             )
             situation = f"{side}-side play on {map_name.title()}"
 

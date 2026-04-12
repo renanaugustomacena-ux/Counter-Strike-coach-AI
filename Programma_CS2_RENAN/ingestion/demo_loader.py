@@ -142,13 +142,13 @@ class DemoLoader:
             app_logger.info("Loading cached simulation from %s", cache_name)
             try:
                 data = _pickle_load_verified(cache_path)
-                return data
+                return data  # type: ignore[return-value]
             except Exception as e:
                 app_logger.warning("Cache load failed, re-parsing: %s", e)
 
         # Pre-parse validation via DemoFormatAdapter (Proposal 12)
         validation = validate_demo_file(path)
-        if not validation["valid"]:
+        if not validation.get("valid", False):
             raise ValueError(f"Demo validation failed: {validation['error']}")
         for warning in validation.get("warnings", []):
             app_logger.warning("Demo format warning: %s", warning)
@@ -157,8 +157,8 @@ class DemoLoader:
         parser = DemoParser(path)
 
         header = parser.parse_header()
-        tick_rate = float(header.get("tick_rate", 64.0) or 64.0)
-        default_map = header.get("map_name", "unknown")
+        tick_rate: float = float(header.get("tick_rate", 64.0) or 64.0)
+        default_map: str = str(header.get("map_name", "unknown") or "unknown")
 
         # --- 1. EXTRACT PLAYER POSITIONS (Two-Pass Baseline) ---
         app_logger.info("Pass 1 - Extracting player positions")
@@ -640,7 +640,7 @@ class DemoLoader:
         result = {default_map: (frames, game_events, segments)}
 
         if pass1_failed:
-            result["_quality_flags"] = {"pass1_positions_failed": True}
+            result["_quality_flags"] = {"pass1_positions_failed": True}  # type: ignore[assignment]  # type: ignore[assignment]
 
         # --- 4. MAP TENSORS INJECTION ---
         try:
@@ -656,7 +656,7 @@ class DemoLoader:
                 # Attach map-specific tensors under _-prefixed key (ING-02)
                 if default_map in map_tensors:
                     app_logger.debug("Loaded map tensors for %s", default_map)
-                    result["_map_tensors"] = map_tensors[default_map]
+                    result["_map_tensors"] = map_tensors[default_map]  # type: ignore[assignment]  # type: ignore[assignment]
                 else:
                     app_logger.debug("No specific tensors found for %s", default_map)
             else:

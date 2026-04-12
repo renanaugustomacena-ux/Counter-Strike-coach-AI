@@ -160,7 +160,7 @@ class HLTVStatFetcher:
 
         Returns True if scraping may proceed, False otherwise.
         """
-        enabled = str(get_setting("HLTV_SCRAPING_ENABLED", "true")).lower()
+        enabled = str(get_setting("HLTV_SCRAPING_ENABLED", "true") or "true").lower()
         if enabled not in ("1", "true", "yes"):
             logger.info("HLTV scraping disabled via HLTV_SCRAPING_ENABLED setting")
             return False
@@ -217,7 +217,7 @@ class HLTVStatFetcher:
                     "td a[href*='/players/']"
                 )
                 if link_tag and link_tag.get("href"):
-                    full_url = "https://www.hltv.org" + link_tag["href"]
+                    full_url = "https://www.hltv.org" + str(link_tag["href"])
                     player_links.append(full_url)
 
             logger.info("Discovered %s players.", len(player_links))
@@ -263,7 +263,7 @@ class HLTVStatFetcher:
                     rank_text = rank_el.text.strip().lstrip("#") if rank_el else "0"
                     rank_num = int(re.sub(r"\D", "", rank_text) or 0)
 
-                    href = link_el.get("href", "")
+                    href = str(link_el.get("href", ""))
                     m = re.search(r"/team/(\d+)/", href)
                     team_hltv_id = int(m.group(1)) if m else 0
 
@@ -271,7 +271,7 @@ class HLTVStatFetcher:
                     players = []
                     for player_el in team_el.select("td.player-holder a.pointer"):
                         nick_el = player_el.select_one("div.nick")
-                        p_href = player_el.get("href", "")
+                        p_href = str(player_el.get("href", ""))
                         pm = re.search(r"/player/(\d+)/", p_href)
                         if nick_el and pm:
                             players.append(
@@ -307,7 +307,7 @@ class HLTVStatFetcher:
             logger.exception("Error discovering top teams")
             return []
 
-    def save_teams_and_players(self, teams: List[Dict[str, Any]]) -> int:
+    def save_teams_and_players(self, teams: List[Dict[str, Any]]) -> List[str]:
         """Persist discovered teams and link players to their teams.
 
         Returns the number of NEW player stat URLs to scrape.
@@ -518,7 +518,7 @@ class HLTVStatFetcher:
             logger.warning("Sub-stat fetch failed for %s: %s", url, e)
         return {}
 
-    def _safe_float(self, text: str | None) -> float:
+    def _safe_float(self, text: Optional[str]) -> float:
         """Robust float parsing handling 'N/A', '-', and commas.
 
         Returns 0.0 for missing/unparseable values (convention: 0.0 = unknown).
