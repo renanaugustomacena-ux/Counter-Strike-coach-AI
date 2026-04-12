@@ -184,10 +184,13 @@ class AnalysisOrchestrator:
 
         # 10. Bayesian death probability (requires tick data with HP/armor/visibility)
         if tick_data is not None and not tick_data.empty:
-            death_insights = self._analyze_death_probability(
-                player_name, demo_name, tick_data
-            )
+            death_insights = self._analyze_death_probability(player_name, demo_name, tick_data)
             analysis.match_insights.extend(death_insights)
+
+        # 11. Movement quality analysis (KT-03, requires tick data)
+        if tick_data is not None and not tick_data.empty:
+            movement_insights = self._analyze_movement_quality(player_name, demo_name, tick_data)
+            analysis.match_insights.extend(movement_insights)
 
         logger.info(
             "Analysis complete for %s on %s: %d insights generated",
@@ -920,6 +923,88 @@ class AnalysisOrchestrator:
 
         except Exception as e:
             self._record_module_failure("death_probability", e)
+
+        return insights
+
+    def _analyze_movement_quality(
+        self,
+        player_name: str,
+        demo_name: str,
+        tick_data: pd.DataFrame,
+    ) -> List[CoachingInsight]:
+        """KT-03: Detect 4 MLMove positioning mistakes from tick data."""
+        insights: List[CoachingInsight] = []
+        try:
+            from Programma_CS2_RENAN.backend.analysis.movement_quality import (
+                get_movement_quality_analyzer,
+            )
+
+            analyzer = get_movement_quality_analyzer()
+
+            # Convert DataFrame to list of dicts for the analyzer
+            tick_dicts = tick_data.to_dict("records") if not tick_data.empty else []
+            if not tick_dicts:
+                return insights
+
+            # Determine map name from tick data
+            map_name = ""
+            if "map_name" in tick_data.columns:
+                map_name = str(tick_data["map_name"].iloc[0])
+
+            metrics = analyzer.analyze_match_ticks(tick_dicts, map_name, player_name)
+
+            if metrics.mistakes:
+                # Group by mistake type for summary insight
+                type_counts: Dict[str, int] = {}
+                for m in metrics.mistakes:
+                    type_counts[m.mistake_type] = type_counts.get(m.mistake_type, 0) + 1
+
+                # Generate one insight per mistake type
+                for mtype, count in type_counts.items():
+                    label = mtype.replace("_", " ").title()
+                    examples = [m for m in metrics.mistakes if m.mistake_type == mtype][:3]
+                    example_text = "; ".join(
+                        f"R{e.round_number} at {e.callout} ({e.time_in_round:.0f}s)"
+                        for e in examples
+                    )
+
+                    severity = "High" if count >= 5 else "Medium" if count >= 2 else "Low"
+                    insights.append(
+                        CoachingInsight(
+                            player_name=player_name,
+                            demo_name=demo_name,
+                            title=f"Movement: {label} ({count}x)",
+                            severity=severity,
+                            message=(
+                                f"Detected {count} instances of '{label}' "
+                                f"across {metrics.total_rounds_analyzed} rounds. "
+                                f"Examples: {example_text}. "
+                                f"Map coverage: {metrics.map_coverage_score:.0%}, "
+                                f"position stability: {metrics.position_stability:.1f}s avg."
+                            ),
+                            focus_area="movement",
+                        )
+                    )
+
+            # Coverage insight
+            if metrics.map_coverage_score < 0.3 and metrics.total_rounds_analyzed >= 5:
+                insights.append(
+                    CoachingInsight(
+                        player_name=player_name,
+                        demo_name=demo_name,
+                        title="Movement: Low Map Coverage",
+                        severity="Medium",
+                        message=(
+                            f"You visited only {metrics.map_coverage_score:.0%} of map positions "
+                            f"across {metrics.total_rounds_analyzed} rounds. "
+                            f"Professional players use the full map to create unpredictability."
+                        ),
+                        focus_area="movement",
+                    )
+                )
+
+        except Exception as e:
+            self._record_module_failure("movement_quality", e)
 
         return insights
 
