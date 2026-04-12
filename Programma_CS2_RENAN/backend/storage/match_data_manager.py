@@ -23,7 +23,7 @@ import threading
 from collections import OrderedDict
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from typing import Generator, List, Optional
+from typing import Any, Dict, Generator, List, Optional
 
 import sqlalchemy as sa
 from sqlalchemy import event
@@ -273,7 +273,7 @@ class MatchDataManager:
 
     _MAX_CACHED_ENGINES = 50
 
-    def _get_or_create_engine(self, match_id: int):
+    def _get_or_create_engine(self, match_id: int) -> "sa.engine.Engine":
         """Get or create a SQLAlchemy engine for a match database."""
         with self._engine_lock:
             if match_id in self._engines:
@@ -291,9 +291,7 @@ class MatchDataManager:
                     self._initial_dev,
                 )
                 try:
-                    from Programma_CS2_RENAN.backend.storage.state_manager import (
-                        get_state_manager,
-                    )
+                    from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
 
                     get_state_manager().add_notification(
                         "storage",
@@ -303,9 +301,7 @@ class MatchDataManager:
                     )
                 except Exception:
                     pass
-                raise IOError(
-                    f"Match data storage disconnected: {self.match_data_path}"
-                )
+                raise IOError(f"Match data storage disconnected: {self.match_data_path}")
 
             # M-18: True LRU eviction — dispose least recently used (first item)
             if len(self._engines) >= self._MAX_CACHED_ENGINES:
@@ -362,7 +358,7 @@ class MatchDataManager:
             return engine
 
     @staticmethod
-    def _ensure_match_schema(engine, match_id: int) -> None:
+    def _ensure_match_schema(engine: "sa.engine.Engine", match_id: int) -> None:
         """Auto-migrate a per-match DB to the current schema version.
 
         Runs once per engine creation (cached by LRU afterwards).
@@ -414,7 +410,7 @@ class MatchDataManager:
                 conn.commit()
                 _logger.info("Match %s: migrated to schema v%d", match_id, current_version)
 
-    def get_engine(self, match_id: int):
+    def get_engine(self, match_id: int) -> "sa.engine.Engine":
         """Public API to get or create a SQLAlchemy engine for a match database."""
         return self._get_or_create_engine(match_id)
 
@@ -646,7 +642,7 @@ class MatchDataManager:
         match_id: int,
         center_tick: int,
         window_size: int = 320,
-    ) -> dict:
+    ) -> Dict[int, list]:
         """Get ALL players' states within a tick window.
 
         Returns a dict mapping tick -> List[MatchTickState] for building
@@ -815,8 +811,8 @@ def reset_match_data_manager() -> None:
 def migrate_match_data(
     old_path: str,
     new_path: str,
-    logger=None,
-) -> dict:
+    logger: Optional[Any] = None,
+) -> Dict[str, Any]:
     """
     Migrate match_data files from old location to new location.
 
@@ -831,7 +827,7 @@ def migrate_match_data(
     """
     import shutil
 
-    result: dict = {"moved": 0, "skipped": 0, "errors": []}
+    result: Dict[str, Any] = {"moved": 0, "skipped": 0, "errors": []}
 
     if not os.path.isdir(old_path):
         return result

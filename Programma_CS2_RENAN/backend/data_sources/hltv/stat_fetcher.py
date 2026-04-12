@@ -121,9 +121,7 @@ class HLTVStatFetcher:
                         len(result),
                     )
                 return result
-        logger.warning(
-            "All CSS selectors failed for '%s'. Tried: %s", description, selectors
-        )
+        logger.warning("All CSS selectors failed for '%s'. Tried: %s", description, selectors)
         return []
 
     def preflight_check(self) -> bool:
@@ -159,7 +157,9 @@ class HLTVStatFetcher:
                 "top 50 player rows",
             )
             for row in rows:
-                link_tag = row.select_one(".playerCol a") or row.select_one("td a[href*='/players/']")
+                link_tag = row.select_one(".playerCol a") or row.select_one(
+                    "td a[href*='/players/']"
+                )
                 if link_tag and link_tag.get("href"):
                     full_url = "https://www.hltv.org" + link_tag["href"]
                     player_links.append(full_url)
@@ -218,24 +218,34 @@ class HLTVStatFetcher:
                         p_href = player_el.get("href", "")
                         pm = re.search(r"/player/(\d+)/", p_href)
                         if nick_el and pm:
-                            players.append({
-                                "hltv_id": int(pm.group(1)),
-                                "nickname": nick_el.text.strip(),
-                                "profile_url": _HLTV_BASE_URL + "/stats/players/"
-                                + pm.group(1) + "/" + nick_el.text.strip().lower(),
-                            })
+                            players.append(
+                                {
+                                    "hltv_id": int(pm.group(1)),
+                                    "nickname": nick_el.text.strip(),
+                                    "profile_url": _HLTV_BASE_URL
+                                    + "/stats/players/"
+                                    + pm.group(1)
+                                    + "/"
+                                    + nick_el.text.strip().lower(),
+                                }
+                            )
 
-                    results.append({
-                        "hltv_id": team_hltv_id,
-                        "name": team_name,
-                        "world_rank": rank_num,
-                        "players": players,
-                    })
+                    results.append(
+                        {
+                            "hltv_id": team_hltv_id,
+                            "name": team_name,
+                            "world_rank": rank_num,
+                            "players": players,
+                        }
+                    )
                 except Exception as e:
                     logger.warning("Failed to parse team element: %s", e)
 
-            logger.info("Discovered %d teams with %d total players.",
-                        len(results), sum(len(t["players"]) for t in results))
+            logger.info(
+                "Discovered %d teams with %d total players.",
+                len(results),
+                sum(len(t["players"]) for t in results),
+            )
             return results
         except Exception:
             logger.exception("Error discovering top teams")
@@ -260,11 +270,13 @@ class HLTVStatFetcher:
                     existing.world_rank = team_data["world_rank"]
                     session.add(existing)
                 else:
-                    session.add(ProTeam(
-                        hltv_id=team_data["hltv_id"],
-                        name=team_data["name"],
-                        world_rank=team_data["world_rank"],
-                    ))
+                    session.add(
+                        ProTeam(
+                            hltv_id=team_data["hltv_id"],
+                            name=team_data["name"],
+                            world_rank=team_data["world_rank"],
+                        )
+                    )
 
                 # Upsert players and link to team
                 for p in team_data["players"]:
@@ -276,25 +288,26 @@ class HLTVStatFetcher:
                         player.nickname = p["nickname"]
                         session.add(player)
                     else:
-                        session.add(ProPlayer(
-                            hltv_id=p["hltv_id"],
-                            nickname=p["nickname"],
-                            team_id=team_data["hltv_id"],
-                        ))
+                        session.add(
+                            ProPlayer(
+                                hltv_id=p["hltv_id"],
+                                nickname=p["nickname"],
+                                team_id=team_data["hltv_id"],
+                            )
+                        )
 
                     # Check if we need to scrape this player's stats
                     has_stats = session.exec(
-                        select(ProPlayerStatCard).where(
-                            ProPlayerStatCard.player_id == p["hltv_id"]
-                        )
+                        select(ProPlayerStatCard).where(ProPlayerStatCard.player_id == p["hltv_id"])
                     ).first()
                     if not has_stats:
                         new_player_urls.append(p["profile_url"])
 
             session.commit()
 
-        logger.info("Saved %d teams. %d players need stat scraping.",
-                     len(teams), len(new_player_urls))
+        logger.info(
+            "Saved %d teams. %d players need stat scraping.", len(teams), len(new_player_urls)
+        )
         return new_player_urls
 
     def fetch_and_save_player(self, url: str) -> bool:
@@ -449,7 +462,7 @@ class HLTVStatFetcher:
             logger.warning("Sub-stat fetch failed for %s: %s", url, e)
         return {}
 
-    def _safe_float(self, text: str) -> float:
+    def _safe_float(self, text: str | None) -> float:
         """Robust float parsing handling 'N/A', '-', and commas.
 
         Returns 0.0 for missing/unparseable values (convention: 0.0 = unknown).

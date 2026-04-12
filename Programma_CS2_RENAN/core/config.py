@@ -71,7 +71,7 @@ except ImportError:
     app_logger.warning("C-03: keyring package not installed; secrets stored on disk only")
 
 
-def get_secret(key, default=""):
+def get_secret(key: str, default: str = "") -> str:
     """
     Retrieve secret from system keyring.
 
@@ -105,7 +105,7 @@ def get_secret(key, default=""):
         return default
 
 
-def set_secret(key, value):
+def set_secret(key: str, value: str) -> bool:
     """
     Store secret in system keyring.
 
@@ -139,7 +139,7 @@ def mask_secret(value: str) -> str:
     return f"{value[:4]}...{value[-4:]}"
 
 
-def load_user_settings():
+def load_user_settings() -> dict:
     with _settings_lock:
         defaults = {
             "CS2_PLAYER_NAME": "",
@@ -310,7 +310,7 @@ KNOWLEDGE_DATABASE_URL = f"sqlite:///{os.path.join(DATA_DIR, 'knowledge_base.db'
 HLTV_DATABASE_URL = f"sqlite:///{os.path.join(CORE_DB_DIR, 'hltv_metadata.db')}"
 
 
-def get_setting(key, default=None):
+def get_setting(key: str, default: object = None) -> object:
     """Thread-safe dynamic setting lookup. Safe for daemon/background threads."""
     with _settings_lock:
         return _settings.get(key, default)
@@ -364,7 +364,7 @@ def refresh_settings():
         MATCH_DATA_PATH = _resolve_match_data_path()
 
 
-def get_all_settings():
+def get_all_settings() -> dict:
     """Returns a thread-safe copy of all current settings."""
     with _settings_lock:
         return _settings.copy()
@@ -386,7 +386,7 @@ _SETTING_NAME_TO_GLOBAL = {
 }
 
 
-def save_user_setting(key, value):
+def save_user_setting(key: str, value: object) -> None:
     """Saves setting without importing external modules to avoid loops."""
     original_value = value
     with _settings_lock:
