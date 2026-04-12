@@ -49,6 +49,16 @@ MIN_RETRIEVAL_CONFIDENCE = 0.3  # Minimum acceptable experience quality for retr
 PRO_EXPERIENCE_CONFIDENCE = 0.7  # Confidence assigned to pro-sourced experiences
 AMATEUR_EXPERIENCE_CONFIDENCE = 0.5  # Confidence assigned to user-sourced experiences
 
+# KT-01: CRUD duplicate detection threshold (cosine similarity)
+DUPLICATE_SIMILARITY_THRESHOLD = 0.9
+
+# KT-01: EMA factor for effectiveness_score merging on CRUD UPDATE
+CRUD_EMA_FACTOR = 0.3
+
+# KT-01: Prioritized replay constants (Eq. 4-5 in COPER design)
+REPLAY_ALPHA = 0.6  # Exponent controlling priority skew (lower = more uniform)
+REPLAY_GATE = 0.4  # Minimum confidence_score to be eligible for replay
+
 
 @dataclass
 class ExperienceContext:
@@ -157,7 +167,12 @@ class ExperienceBank:
         confidence: float = 0.5,
     ) -> CoachingExperience:
         """
-        Add a new experience to the bank.
+        Add a new experience to the bank with CRUD semantics (KT-01).
+
+        Duplicate detection via cosine similarity > 0.9:
+        - Same context_hash + same action: UPDATE (EMA merge)
+        - Same context_hash + different action + higher delta_win_prob: DISCARD old, CREATE new
+        - No match: CREATE (standard path)
 
         Args:
             context: Structured context of the situation
@@ -171,16 +186,55 @@ class ExperienceBank:
             confidence: How reliable/generalizable (0.0-1.0)
 
         Returns:
-            The created CoachingExperience record
+            The created or updated CoachingExperience record
         """
         # Generate embedding for semantic search
         query_text = f"{context.to_query_string()} {action_taken} {outcome}"
         embedding_vec = self.embedder.embed(query_text)
         embedding_json = self._serialize_embedding(embedding_vec)
+        context_hash = context.compute_hash()
 
-        # Create experience record
+        # KT-01: CRUD duplicate detection
+        duplicate = self._find_semantic_duplicate(embedding_vec, context_hash)
+
+        if duplicate is not None:
+            if duplicate.context_hash == context_hash and duplicate.action_taken == action_taken:
+                # UPDATE path: same context + same action → EMA merge
+                logger.info(
+                    "CRUD UPDATE: merging experience %s (same context+action)",
+                    duplicate.id,
+                )
+                return self.update_experience(
+                    duplicate.id,
+                    effectiveness_score=duplicate.effectiveness_score,
+                    new_effectiveness=delta_win_prob,
+                    mu_skill=duplicate.mu_skill,
+                    sigma_skill=duplicate.sigma_skill,
+                )
+
+            if (
+                duplicate.context_hash == context_hash
+                and duplicate.action_taken != action_taken
+                and delta_win_prob > duplicate.delta_win_prob
+            ):
+                # CONTRADICTION path: same context, different action, new is better
+                logger.info(
+                    "CRUD DISCARD+CREATE: replacing experience %s "
+                    "(context_hash=%s, old_action=%s, new_action=%s, "
+                    "old_dwp=%.3f, new_dwp=%.3f)",
+                    duplicate.id,
+                    context_hash,
+                    duplicate.action_taken,
+                    action_taken,
+                    duplicate.delta_win_prob,
+                    delta_win_prob,
+                )
+                self.discard_experience(duplicate.id)
+                # Fall through to CREATE
+
+        # CREATE path: standard insert
         experience = CoachingExperience(
-            context_hash=context.compute_hash(),
+            context_hash=context_hash,
             map_name=context.map_name,
             round_phase=context.round_phase,
             side=context.side,
@@ -210,6 +264,152 @@ class ExperienceBank:
 
         logger.info("Added experience: %s -> %s on %s", action_taken, outcome, context.map_name)
         return experience
+
+    def _find_semantic_duplicate(
+        self,
+        embedding_vec: np.ndarray,
+        context_hash: str,
+    ) -> Optional[CoachingExperience]:
+        """Find a semantically duplicate experience (cosine similarity > threshold).
+
+        Checks FAISS first, then falls back to brute-force over same-hash entries.
+
+        Returns:
+            The best matching CoachingExperience if similarity > DUPLICATE_SIMILARITY_THRESHOLD,
+            else None.
+        """
+        # FAISS fast-path
+        from Programma_CS2_RENAN.backend.knowledge.vector_index import get_vector_index_manager
+
+        index_mgr = get_vector_index_manager()
+        if index_mgr is not None:
+            faiss_results = index_mgr.search("experience", embedding_vec, 5)
+            if faiss_results:
+                candidate_ids = [db_id for db_id, _ in faiss_results]
+                faiss_scores = {db_id: score for db_id, score in faiss_results}
+                with self.db.get_session() as session:
+                    entries = session.exec(
+                        select(CoachingExperience).where(
+                            CoachingExperience.id.in_(candidate_ids),
+                            CoachingExperience.context_hash == context_hash,
+                        )
+                    ).all()
+                    for entry in entries:
+                        if faiss_scores.get(entry.id, 0.0) >= DUPLICATE_SIMILARITY_THRESHOLD:
+                            return entry
+
+        # Brute-force fallback: check entries with same context_hash
+        with self.db.get_session() as session:
+            candidates = session.exec(
+                select(CoachingExperience)
+                .where(CoachingExperience.context_hash == context_hash)
+                .limit(50)
+            ).all()
+
+            best_match: Optional[CoachingExperience] = None
+            best_sim = 0.0
+            for cand in candidates:
+                if cand.embedding:
+                    try:
+                        cand_vec = self._deserialize_embedding(cand.embedding)
+                        sim = self._cosine_similarity(embedding_vec, cand_vec)
+                        if sim >= DUPLICATE_SIMILARITY_THRESHOLD and sim > best_sim:
+                            best_sim = sim
+                            best_match = cand
+                    except (json.JSONDecodeError, ValueError, binascii.Error):
+                        continue
+
+            return best_match
+
+    def update_experience(
+        self,
+        experience_id: int,
+        effectiveness_score: float = 0.0,
+        new_effectiveness: float = 0.0,
+        mu_skill: float = 0.5,
+        sigma_skill: float = 0.5,
+    ) -> CoachingExperience:
+        """CRUD UPDATE: merge a duplicate observation into an existing experience.
+
+        Applies EMA on effectiveness_score, increments times_retrieved,
+        and tightens sigma_skill (evidence reduces uncertainty).
+
+        Args:
+            experience_id: Primary key of the experience to update.
+            effectiveness_score: Current EMA of effectiveness.
+            new_effectiveness: New observation (delta_win_prob of incoming).
+            mu_skill: Current TrueSkill mean.
+            sigma_skill: Current TrueSkill std.
+
+        Returns:
+            The updated CoachingExperience.
+        """
+        from sqlalchemy import func as sa_func
+
+        # EMA: new_eff = old * (1 - alpha) + new * alpha
+        merged_effectiveness = max(
+            -1.0,
+            min(
+                1.0,
+                effectiveness_score * (1 - CRUD_EMA_FACTOR) + new_effectiveness * CRUD_EMA_FACTOR,
+            ),
+        )
+
+        # TrueSkill update: mu moves toward new observation, sigma shrinks
+        new_mu = max(0.0, min(1.0, mu_skill * 0.8 + new_effectiveness * 0.2))
+        new_sigma = max(0.01, sigma_skill * 0.95)  # Evidence tightens posterior
+
+        with self.db.get_session() as session:
+            session.exec(
+                update(CoachingExperience)
+                .where(CoachingExperience.id == experience_id)
+                .values(
+                    effectiveness_score=merged_effectiveness,
+                    mu_skill=new_mu,
+                    sigma_skill=new_sigma,
+                    times_retrieved=CoachingExperience.times_retrieved + 1,
+                )
+            )
+            session.commit()
+
+            experience = session.get(CoachingExperience, experience_id)
+
+        logger.info(
+            "CRUD UPDATE experience %s: eff=%.3f, mu=%.3f, sigma=%.3f",
+            experience_id,
+            merged_effectiveness,
+            new_mu,
+            new_sigma,
+        )
+        return experience
+
+    def discard_experience(self, experience_id: int) -> bool:
+        """CRUD DISCARD: set confidence to 0.0, effectively retiring the experience.
+
+        Does NOT delete the row — preserves history for auditing and potential
+        re-evaluation. A discarded experience will not appear in retrieval
+        (confidence < MIN_RETRIEVAL_CONFIDENCE).
+
+        Args:
+            experience_id: Primary key of the experience to discard.
+
+        Returns:
+            True if the experience was found and discarded, False otherwise.
+        """
+        with self.db.get_session() as session:
+            result = session.exec(
+                update(CoachingExperience)
+                .where(CoachingExperience.id == experience_id)
+                .values(confidence=0.0, mu_skill=0.0, sigma_skill=1.0)
+            )
+            session.commit()
+
+            if result.rowcount == 0:
+                logger.warning("Discard target experience %s not found", experience_id)
+                return False
+
+        logger.info("CRUD DISCARD experience %s: confidence set to 0.0", experience_id)
+        return True
 
     def retrieve_similar(
         self,
@@ -759,6 +959,74 @@ class ExperienceBank:
 
         logger.info("Extracted %s experiences from %s", experiences_added, demo_name)
         return experiences_added
+
+    def sample_for_replay(self, k: int = 5) -> List[CoachingExperience]:
+        """Sample k experiences biased toward infrequently-retrieved ones (Eq. 4-5).
+
+        Priority: p_i = (1 / max(times_retrieved, 1))^REPLAY_ALPHA, normalized.
+        Gating: only experiences with confidence_score(kappa=1) >= REPLAY_GATE are eligible.
+        Sampling: without replacement via numpy.random.choice with computed probabilities.
+
+        Args:
+            k: Number of experiences to sample.
+
+        Returns:
+            List of sampled CoachingExperience records (may be < k if pool is small).
+        """
+        with self.db.get_session() as session:
+            candidates = session.exec(
+                select(CoachingExperience).where(
+                    CoachingExperience.confidence >= MIN_RETRIEVAL_CONFIDENCE,
+                )
+            ).all()
+
+        if not candidates:
+            return []
+
+        # Gate by TrueSkill lower-bound confidence
+        eligible = [exp for exp in candidates if exp.confidence_score(kappa=1.0) >= REPLAY_GATE]
+
+        if not eligible:
+            logger.debug("No experiences pass REPLAY_GATE=%.2f", REPLAY_GATE)
+            return []
+
+        # Compute priority weights: infrequently-retrieved items get higher weight
+        priorities = np.array(
+            [1.0 / max(exp.times_retrieved, 1) for exp in eligible], dtype=np.float64
+        )
+        priorities = priorities**REPLAY_ALPHA
+
+        # Normalize to probability distribution
+        total = priorities.sum()
+        if total <= 0:
+            return []
+        probs = priorities / total
+
+        # Sample without replacement
+        actual_k = min(k, len(eligible))
+        rng = np.random.default_rng(seed=None)  # Non-deterministic for replay diversity
+        chosen_indices = rng.choice(len(eligible), size=actual_k, replace=False, p=probs)
+
+        sampled = [eligible[i] for i in chosen_indices]
+
+        # Increment times_retrieved for sampled experiences
+        sampled_ids = [exp.id for exp in sampled if exp.id is not None]
+        if sampled_ids:
+            with self.db.get_session() as session:
+                session.exec(
+                    update(CoachingExperience)
+                    .where(CoachingExperience.id.in_(sampled_ids))
+                    .values(times_retrieved=CoachingExperience.times_retrieved + 1)
+                )
+                session.commit()
+
+        logger.debug(
+            "Replay sampled %d/%d eligible experiences (pool=%d)",
+            actual_k,
+            len(eligible),
+            len(candidates),
+        )
+        return sampled
 
     def get_experience_count(self) -> Dict[str, int]:
         """Get counts of experiences by category using server-side aggregation."""
