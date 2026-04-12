@@ -14,8 +14,9 @@ Integration Points:
     - PlayerMatchStats / RoundStats: Match & round-level statistical context
 """
 
+import re
 import threading
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from sqlmodel import desc, select
 
@@ -92,7 +93,41 @@ INTENT_KEYWORDS: Dict[str, List[str]] = {
         "country",
         "what team",
     ],
+    "round_query": [
+        "round ",
+        "rounds ",
+        "what happened in round",
+        "show me round",
+        "analyze round",
+        "break down round",
+        "round by round",
+    ],
+    "match_query": [
+        "match",
+        "demo",
+        "game against",
+        "versus",
+        " vs ",
+        "map on",
+        "that game",
+        "this match",
+    ],
 }
+
+# DP-02: Regex patterns for extracting round numbers from user messages
+_ROUND_PATTERN = re.compile(
+    r"""
+    (?:rounds?|r)\s*(\d{1,2})     # "round 5", "rounds 3", "R5", "round 12"
+    (?:\s*[-–to]+\s*(\d{1,2}))?   # optional range: "round 5-10", "rounds 5 to 10"
+    """,
+    re.IGNORECASE | re.VERBOSE,
+)
+
+# DP-02: Pattern for extracting demo/match references from user messages
+_DEMO_PATTERN = re.compile(
+    r"(\w+)[\s-]+(?:vs|versus)[\s-]+(\w+)",  # "faze vs spirit", "navi-vs-furia"
+    re.IGNORECASE,
+)
 
 _CS2_MAP_NAMES = frozenset(
     {
@@ -433,8 +468,19 @@ class CoachingDialogueEngine:
         return self._player_lookup
 
     def _classify_intent(self, message: str) -> str:
-        """Keyword-based intent classification with player entity detection."""
+        """Keyword-based intent classification with player entity detection.
+
+        DP-02: round_query and match_query take priority when explicit round
+        numbers or match references are detected, since the user is asking
+        for specific data drill-down rather than general coaching advice.
+        """
         message_lower = message.lower()
+
+        # DP-02: Check for round numbers first — strongest signal
+        round_numbers = self._parse_round_numbers(message)
+        if round_numbers:
+            return "round_query"
+
         scores: Dict[str, int] = {}
         for intent, keywords in INTENT_KEYWORDS.items():
             scores[intent] = sum(1 for kw in keywords if kw in message_lower)
@@ -464,6 +510,55 @@ class CoachingDialogueEngine:
         if "dust 2" in text_lower or "dust_2" in text_lower:
             return "dust2"
         return None
+
+    @staticmethod
+    def _parse_round_numbers(text: str) -> List[int]:
+        """DP-02: Extract round numbers from user message.
+
+        Handles: "round 5", "R5", "rounds 5-10", "round 5 to 10",
+        "rounds 3, 7, and 12" (via multiple matches).
+        Returns sorted, deduplicated list of round numbers.
+        """
+        rounds: set = set()
+        for match in _ROUND_PATTERN.finditer(text):
+            start = int(match.group(1))
+            end_str = match.group(2)
+            if end_str:
+                end = int(end_str)
+                rounds.update(range(start, min(end, 50) + 1))
+            else:
+                rounds.add(start)
+        return sorted(rounds)
+
+    def _resolve_demo_name(self, text: str) -> Optional[str]:
+        """DP-02: Resolve a demo name from user message or session context.
+
+        Checks: (1) session demo_name, (2) team-vs-team pattern in text,
+        (3) map mention + team fragment matching against DB.
+        """
+        # Prefer session demo if set
+        session_demo = self._player_context.get("demo_name")
+
+        # Check for "X vs Y" pattern in text
+        demo_match = _DEMO_PATTERN.search(text)
+        if demo_match:
+            team_a = demo_match.group(1).lower()
+            team_b = demo_match.group(2).lower()
+            # Try to find a matching demo in the DB
+            try:
+                db = get_db_manager()
+                with db.get_session() as session:
+                    all_demos = session.exec(select(PlayerMatchStats.demo_name).distinct()).all()
+                    for demo in all_demos:
+                        demo_lower = demo.lower() if demo else ""
+                        if team_a in demo_lower and team_b in demo_lower:
+                            return demo
+                        if team_b in demo_lower and team_a in demo_lower:
+                            return demo
+            except Exception:
+                pass
+
+        return session_demo
 
     def _retrieve_context(self, user_message: str, intent: str) -> str:
         """Retrieve RAG knowledge and experiences relevant to the question."""
@@ -546,14 +641,36 @@ class CoachingDialogueEngine:
         except Exception as exc:
             logger.warning("Experience Bank retrieval failed: %s", exc)
 
+        # DP-02: Round-specific drill-down when the user asks about specific
+        # rounds or a specific match.
+        round_numbers = self._parse_round_numbers(user_message)
+        demo_name = self._resolve_demo_name(user_message)
+
+        if round_numbers and demo_name:
+            try:
+                round_ctx = self._retrieve_round_drill_down(demo_name, round_numbers, user_message)
+                if round_ctx:
+                    blocks.append(round_ctx)
+            except Exception as exc:
+                logger.warning("Round drill-down retrieval failed: %s", exc)
+        elif intent == "match_query" and demo_name:
+            try:
+                match_ctx = self._retrieve_match_overview(demo_name)
+                if match_ctx:
+                    blocks.append(match_ctx)
+            except Exception as exc:
+                logger.warning("Match overview retrieval failed: %s", exc)
+
         # Analytical context: match stats, round data, and ML-backed insights
-        # for any player mentioned in the query.
-        try:
-            analytical = self._retrieve_analytical_context(user_message, intent)
-            if analytical:
-                blocks.append(analytical)
-        except Exception as exc:
-            logger.warning("Analytical context retrieval failed: %s", exc)
+        # for any player mentioned in the query (when no specific round/match
+        # drill-down was triggered above).
+        if not round_numbers and intent != "match_query":
+            try:
+                analytical = self._retrieve_analytical_context(user_message, intent)
+                if analytical:
+                    blocks.append(analytical)
+            except Exception as exc:
+                logger.warning("Analytical context retrieval failed: %s", exc)
 
         return "\n\n".join(blocks)
 
@@ -597,6 +714,181 @@ class CoachingDialogueEngine:
             blocks.append(ml_block)
 
         return "\n\n".join(blocks)
+
+    def _retrieve_round_drill_down(
+        self, demo_name: str, round_numbers: List[int], user_message: str
+    ) -> str:
+        """DP-02: Retrieve detailed data for specific rounds in a specific demo.
+
+        Queries RoundStats for requested rounds, reconstructs tick-level
+        timelines via RoundReconstructor, and formats for LLM context.
+        """
+        blocks: List[str] = []
+        db = get_db_manager()
+
+        with db.get_session() as session:
+            # Get all players in this demo's requested rounds
+            round_stmt = (
+                select(RoundStats)
+                .where(RoundStats.demo_name == demo_name)
+                .where(RoundStats.round_number.in_(round_numbers))  # type: ignore[union-attr]
+                .order_by(RoundStats.round_number, desc(RoundStats.kills))
+            )
+            round_rows = session.exec(round_stmt).all()
+
+            if not round_rows:
+                # Try partial match on demo_name (user may abbreviate)
+                all_demos = session.exec(select(PlayerMatchStats.demo_name).distinct()).all()
+                for d in all_demos:
+                    if d and demo_name.lower() in d.lower():
+                        demo_name = d
+                        round_rows = session.exec(
+                            select(RoundStats)
+                            .where(RoundStats.demo_name == demo_name)
+                            .where(RoundStats.round_number.in_(round_numbers))  # type: ignore[union-attr]
+                            .order_by(RoundStats.round_number, desc(RoundStats.kills))
+                        ).all()
+                        break
+
+            if not round_rows:
+                return ""
+
+            # Group by round number
+            rounds_by_num: Dict[int, List] = {}
+            for r in round_rows:
+                rounds_by_num.setdefault(r.round_number, []).append(r)
+
+            # Format round-level statistics
+            lines = [
+                f"ROUND DRILL-DOWN for {demo_name} "
+                f"(rounds {', '.join(str(n) for n in sorted(rounds_by_num))})"
+                f" — data from parsed demo file:"
+            ]
+
+            for rnum in sorted(rounds_by_num):
+                players = rounds_by_num[rnum]
+                won = any(p.round_won for p in players)
+                result = "WON" if won else "LOST"
+                lines.append(f"\n  --- Round {rnum} ({result}) ---")
+                for p in players:
+                    opener = " OPENER" if p.opening_kill else ""
+                    traded = " TRADED" if p.was_traded else ""
+                    hs = f" {p.headshot_kills}HS" if p.headshot_kills else ""
+                    util = []
+                    if p.flashes_thrown:
+                        util.append(f"{p.flashes_thrown}flash")
+                    if p.smokes_thrown:
+                        util.append(f"{p.smokes_thrown}smoke")
+                    if p.he_damage or p.molotov_damage:
+                        util.append(f"{(p.he_damage or 0) + (p.molotov_damage or 0):.0f}utildmg")
+                    util_str = f" [{', '.join(util)}]" if util else ""
+                    lines.append(
+                        f"    {p.player_name} ({p.side}): "
+                        f"{p.kills}K/{p.deaths}D {p.damage_dealt}dmg{hs}{opener}{traded}"
+                        f" ${p.equipment_value}{util_str}"
+                    )
+            blocks.append("\n".join(lines))
+
+        # Tick-level round reconstruction for detailed timelines
+        # Detect which player the user is asking about (from message or session)
+        player_name = None
+        try:
+            lookup = self._get_player_lookup()
+            mentions = lookup.detect_player_mentions(user_message)
+            if mentions:
+                player_name = mentions[0]
+        except Exception:
+            pass
+        if not player_name:
+            player_name = self._player_context.get("player_name")
+
+        if player_name and round_numbers:
+            try:
+                from Programma_CS2_RENAN.backend.processing.round_reconstructor import (
+                    get_round_reconstructor,
+                )
+
+                reconstructor = get_round_reconstructor()
+                # Cap at 5 rounds to avoid oversized context
+                timelines = reconstructor.reconstruct_rounds(
+                    demo_name, player_name, round_numbers[:5]
+                )
+                for tl in timelines:
+                    if tl and tl.events:
+                        blocks.append(tl.format_for_llm())
+            except Exception:
+                logger.debug(
+                    "Round reconstruction unavailable for %s rounds %s",
+                    player_name,
+                    round_numbers,
+                    exc_info=True,
+                )
+
+        return "\n\n".join(blocks)
+
+    def _retrieve_match_overview(self, demo_name: str) -> str:
+        """DP-02: Retrieve a full match overview for a specific demo.
+
+        Returns all player stats and key rounds for the match.
+        """
+        db = get_db_manager()
+        parts: List[str] = []
+
+        with db.get_session() as session:
+            # Match-level stats for all players
+            match_stmt = (
+                select(PlayerMatchStats)
+                .where(PlayerMatchStats.demo_name == demo_name)
+                .order_by(desc(PlayerMatchStats.rating))
+            )
+            matches = session.exec(match_stmt).all()
+
+            if not matches:
+                # Partial match
+                all_demos = session.exec(select(PlayerMatchStats.demo_name).distinct()).all()
+                for d in all_demos:
+                    if d and demo_name.lower() in d.lower():
+                        demo_name = d
+                        matches = session.exec(
+                            select(PlayerMatchStats)
+                            .where(PlayerMatchStats.demo_name == demo_name)
+                            .order_by(desc(PlayerMatchStats.rating))
+                        ).all()
+                        break
+
+            if not matches:
+                return ""
+
+            lines = [f"MATCH OVERVIEW for {demo_name} ({len(matches)} players):"]
+            for m in matches:
+                lines.append(
+                    f"  {m.player_name}: Rating={m.rating:.2f} "
+                    f"K/D={m.kd_ratio:.2f} ADR={m.avg_adr:.1f} "
+                    f"HS%={m.avg_hs:.0%} KAST={m.avg_kast:.0%}"
+                )
+            parts.append("\n".join(lines))
+
+            # Key rounds: highest-impact rounds across all players
+            key_stmt = (
+                select(RoundStats)
+                .where(RoundStats.demo_name == demo_name)
+                .where(RoundStats.kills >= 2)  # type: ignore[union-attr]
+                .order_by(desc(RoundStats.kills), desc(RoundStats.damage_dealt))
+                .limit(20)
+            )
+            key_rounds = session.exec(key_stmt).all()
+
+            if key_rounds:
+                lines = [f"KEY ROUNDS (multi-kill rounds, sorted by impact):"]
+                for r in key_rounds:
+                    opener = " OPENER" if r.opening_kill else ""
+                    lines.append(
+                        f"  R{r.round_number} {r.player_name} ({r.side}): "
+                        f"{r.kills}K/{r.deaths}D {r.damage_dealt}dmg{opener}"
+                    )
+                parts.append("\n".join(lines))
+
+        return "\n\n".join(parts)
 
     @staticmethod
     def _format_player_analytics(session, player_name: str) -> str:
