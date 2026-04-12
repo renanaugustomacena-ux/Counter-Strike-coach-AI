@@ -45,7 +45,18 @@ class WizardScreen(QWidget):
 
     def retranslate(self):
         """Update translatable text when language changes."""
-        pass  # Wizard labels are English-only; wire i18n when translations added
+        self._title.setText(i18n.get_text("wizard_title", "Setup Wizard"))
+        self._back_btn.setText(i18n.get_text("wizard_back", "Back"))
+        step = self._stack.currentIndex()
+        self._step_label.setText(
+            i18n.get_text("wizard_step", "Step {n} of 5").replace("{n}", str(step + 1))
+        )
+        if step == 0:
+            self._next_btn.setText(i18n.get_text("wizard_get_started", "Get Started"))
+        elif step == 4:
+            self._next_btn.setText(i18n.get_text("wizard_launch", "Launch App"))
+        else:
+            self._next_btn.setText(i18n.get_text("wizard_next", "Next"))
 
     # ── UI Construction ──
 
@@ -54,10 +65,10 @@ class WizardScreen(QWidget):
         layout.setContentsMargins(24, 24, 24, 24)
         layout.setSpacing(16)
 
-        title = QLabel("Setup Wizard")
-        title.setObjectName("section_title")
-        title.setFont(QFont("Roboto", 20, QFont.Bold))
-        layout.addWidget(title)
+        self._title = QLabel(i18n.get_text("wizard_title", "Setup Wizard"))
+        self._title.setObjectName("section_title")
+        self._title.setFont(QFont("Roboto", 20, QFont.Bold))
+        layout.addWidget(self._title)
 
         # 5-page stack
         self._stack = QStackedWidget()
@@ -70,7 +81,7 @@ class WizardScreen(QWidget):
 
         # Bottom bar with Back + Next buttons
         bottom = QHBoxLayout()
-        self._back_btn = QPushButton("Back")
+        self._back_btn = QPushButton(i18n.get_text("wizard_back", "Back"))
         self._back_btn.setFixedHeight(40)
         self._back_btn.setMinimumWidth(100)
         self._back_btn.setCursor(Qt.PointingHandCursor)
@@ -82,7 +93,7 @@ class WizardScreen(QWidget):
         self._step_label.setStyleSheet("color: #a0a0b0; font-size: 12px;")
         bottom.addWidget(self._step_label)
         bottom.addStretch()
-        self._next_btn = QPushButton("Get Started")
+        self._next_btn = QPushButton(i18n.get_text("wizard_get_started", "Get Started"))
         self._next_btn.setFixedHeight(40)
         self._next_btn.setMinimumWidth(140)
         self._next_btn.setCursor(Qt.PointingHandCursor)
@@ -272,13 +283,15 @@ class WizardScreen(QWidget):
         self._stack.setCurrentIndex(index)
         # Update button visibility and labels
         self._back_btn.setVisible(index > 0)
-        self._step_label.setText(f"Step {index + 1} of 5")
+        self._step_label.setText(
+            i18n.get_text("wizard_step", "Step {n} of 5").replace("{n}", str(index + 1))
+        )
         if index == 0:
-            self._next_btn.setText("Get Started")
+            self._next_btn.setText(i18n.get_text("wizard_get_started", "Get Started"))
         elif index == 4:
-            self._next_btn.setText("Launch App")
+            self._next_btn.setText(i18n.get_text("wizard_launch", "Launch App"))
         else:
-            self._next_btn.setText("Next")
+            self._next_btn.setText(i18n.get_text("wizard_next", "Next"))
 
     # ── Folder Pickers ──
 
