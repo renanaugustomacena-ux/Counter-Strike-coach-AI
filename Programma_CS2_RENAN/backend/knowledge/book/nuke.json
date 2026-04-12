@@ -311,6 +311,94 @@
       "situation": "T-side Nuke, vent control after ramp trade",
       "map_name": "de_nuke",
       "pro_example": "Pro meta: vent push after ramp trade raises B execute success by ~15 points on Nuke"
+    },
+    {
+      "title": "Nuke IGL: second-half T adjustment read",
+      "description": "When switching to T side on Nuke, review CT defense patterns from the first half. If the enemy played aggressive outside every round, open with a fast ramp execute to punish the undermanned upper site. If they stacked upper with three players, default outside and exploit the slow vent-to-B rotation. Nuke has the strongest CT bias — your T adjustment in round 16 must be decisive.",
+      "category": "role_play_igl",
+      "situation": "T-side Nuke, second-half opening rounds as IGL",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: IGLs who exploit first-half CT tendencies win ~11% more opening rounds after half-switch on Nuke"
+    },
+    {
+      "title": "Nuke IGL: timeout trigger on ramp control loss",
+      "description": "Call a timeout on Nuke after losing two consecutive rounds where the CTs aggressively pushed ramp. Ramp is the primary T-side entry on Nuke — losing it twice means the CT timing or flash is outpacing your setup. Use the timeout to pre-molotov the ramp push lane, add a shoulder-peek bait at the ramp entrance, and assign a dedicated flash player for the ramp retake.",
+      "category": "role_play_igl",
+      "situation": "T-side Nuke, losing ramp control repeatedly",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: timeouts after losing ramp control recover the position in ~50% of cases on Nuke"
+    },
+    {
+      "title": "Nuke lurk: secret passage to B site flank",
+      "description": "As the T lurker on Nuke, push through secret and drop into B site while your team executes upper through ramp. Wait until you hear the ramp execute utility, then drop through secret. The B anchor will rotate toward upper on the execute call — you catch them from behind or take B uncontested. The secret drop must be timed precisely: too early alerts the B player, too late wastes the distraction.",
+      "category": "role_play_lurk",
+      "situation": "T-side Nuke, lurk during upper ramp execute",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: secret lurk flanks during ramp executes produce a kill in ~32% of rounds on Nuke"
+    },
+    {
+      "title": "Nuke lurk: CT outside flank during upper retake",
+      "description": "As the CT lurker on Nuke, hold outside during an upper site retake. When your team pushes upper through heaven and ramp, push outside to cut off the T escape through lobby. Time your push to arrive at T-side outside 3 seconds after the first upper contact — Ts saving through lobby will run into your angle from the outside corridor.",
+      "category": "role_play_lurk",
+      "situation": "CT-side Nuke, flanking during upper retake",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: outside flanks during upper retakes catch rotating Ts ~29% of the time on Nuke"
+    },
+    {
+      "title": "Nuke clutch: 1v1 CT defuse on upper site from heaven",
+      "description": "In a 1v1 CT defuse situation on Nuke upper, use the heaven railing as your anchor. Tap the defuse to force the T to peek from ramp or hut, then hold the angle from heaven. Heaven gives you an elevated angle that the T must look upward to contest — this disrupts their crosshair placement. If no peek comes within 4 seconds, commit to a smoke defuse by dropping the smoke on the bomb from heaven.",
+      "category": "clutch_play",
+      "situation": "1v1 CT clutch on Nuke upper site",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: heaven 1v1 defuse attempts succeed ~43% of the time on Nuke upper"
+    },
+    {
+      "title": "Nuke clutch: 1v3 T bomb timer play on B site",
+      "description": "In a 1v3 T post-plant on Nuke B, plant for secret and retreat into the secret tunnel. From secret you control the bomb line of sight from an angle the CTs cannot pre-fire without exposing themselves. Molotov the bomb at 10 seconds to deny the defuse. The three CTs must push through the tight B ramp or drop from vents — both entries are narrow and sequential.",
+      "category": "clutch_play",
+      "situation": "1v3 T post-plant clutch on Nuke B site",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: secret post-plant with B plant wins ~21% of 1v3 situations on Nuke B"
+    },
+    {
+      "title": "Nuke aim: ramp room head-glitch duel spot",
+      "description": "Hold the ramp room from the head-glitch position at the top of the ramp stairs. This gives a head-level angle on anyone pushing up ramp from T side. Pre-aim the center of the ramp opening — Ts emerge in a predictable line from the bottom. Tap-fire at this range for maximum accuracy. The ramp head-glitch exposes only your forehead and gives the CT side a significant elevation advantage.",
+      "category": "aim_and_duels",
+      "situation": "CT-side Nuke, holding ramp from top position",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: ramp top head-glitch wins the ramp duel ~62% of the time at pro level on Nuke"
+    },
+    {
+      "title": "Nuke aim: outside wall wallbang through the silo gap",
+      "description": "The silo area on Nuke outside has thin metal panels that allow wallbang shots with rifles. When you hear CTs positioning behind the silo, spray through the panel at body height. The penetration deals ~30% rifle damage. This wallbang is effective when CTs play aggressive outside — timing it with the round start crossing window maximizes damage against the outside anchor.",
+      "category": "aim_and_duels",
+      "situation": "T-side Nuke, silo wallbang on outside",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: silo wallbangs score damage in ~18% of rounds where CTs play outside on Nuke"
+    },
+    {
+      "title": "Nuke support: upper execute triple-utility combo",
+      "description": "As the support player during a Nuke upper execute, throw the heaven smoke (blocking the heaven angle), the site molotov (clearing the default plant area), and the hut flash (blinding the hut anchor). Execute in this order: heaven smoke first to remove the elevation advantage, molotov second to flush the site player, flash last to enable the ramp entry. This combo takes 7 seconds and neutralizes the upper site defense.",
+      "category": "role_play_support",
+      "situation": "T-side Nuke, supporting upper site execute",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: full heaven-site-hut utility combo raises upper execute success to ~55% on Nuke"
+    },
+    {
+      "title": "Nuke entry: alternate upper entry through squeaky door",
+      "description": "Instead of the standard ramp rush, enter upper through squeaky door with a pre-flash bounced off the hut interior wall. The squeaky entry bypasses the ramp crossfire and puts you on the site from the hut side. Pop flash before opening the door — this blinds the site and hell players. Swing immediately through the door to catch defenders focused on ramp. The door sound is your only disadvantage; commit fully once you open it.",
+      "category": "role_play_entry",
+      "situation": "T-side Nuke, alternate upper entry through squeaky",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: squeaky door entries score first kill ~38% of the time on Nuke upper"
+    },
+    {
+      "title": "Nuke economy: outside rush force-buy with P90s",
+      "description": "On Nuke eco rounds as T, buy two P90s for a fast outside rush. The outside area on Nuke has medium-range engagements that suit the P90's large magazine and decent accuracy. Stack both P90s at the T outside entrance and rush with a smoke on the roof crosshair angle. The 50-round magazine overwhelms the outside anchor before they can trade. P90s cost $2350 but the kill reward and economy damage justify the investment.",
+      "category": "economy",
+      "situation": "T-side Nuke, eco round outside push",
+      "map_name": "de_nuke",
+      "pro_example": "Pro meta: outside P90 rushes on eco rounds average 1.7 kills and break CT economy ~24% of the time on Nuke"
     }
   ]
 }

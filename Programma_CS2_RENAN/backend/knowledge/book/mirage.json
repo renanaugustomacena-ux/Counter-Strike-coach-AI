@@ -319,6 +319,94 @@
       "situation": "T-side Mirage, clock management after 1:00",
       "map_name": "de_mirage",
       "pro_example": "Pro meta: T round win rate drops ~8% for every 10 seconds of indecision after 1:00 on Mirage"
+    },
+    {
+      "title": "Mirage IGL: second-half CT adjustment read",
+      "description": "When switching to CT side on Mirage, review T-side patterns from the first half. If the enemy favored A splits through palace and ramp, stack one extra player connector and play retake B. If they forced mid control every round, set up an aggressive window peek to break the pattern. Adjust within the first two CT rounds before the opponent adapts.",
+      "category": "role_play_igl",
+      "situation": "CT-side Mirage, second-half opening rounds as IGL",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: IGLs who adjust CT setups within 2 rounds of half-switch win ~8% more rounds on Mirage"
+    },
+    {
+      "title": "Mirage IGL: timeout trigger on consecutive B losses",
+      "description": "Call a timeout on Mirage after losing two consecutive B holds. Mirage B apartments is narrow and favors T aggression — two straight B losses usually means the enemy has read your anchor positions. Use the timeout to swap your B anchor player, change the crossfire angle from bench-market to van-short, and re-assign utility responsibility.",
+      "category": "role_play_igl",
+      "situation": "CT-side Mirage, losing B site repeatedly",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: tactical timeouts after 2 consecutive site losses recover the site ~60% of the time in pro play"
+    },
+    {
+      "title": "Mirage lurk: underpass-to-B-short route",
+      "description": "As the lurker on T-side Mirage, drop through underpass and push into B short while your team fakes A. The underpass route is quiet and gives you a timing window to catch the B short rotator from behind. Wait until you hear the A execute utility before pushing — the noise covers your footsteps through the connector area.",
+      "category": "role_play_lurk",
+      "situation": "T-side Mirage, lurk during A fake",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: underpass lurk flanks produce a kill in ~35% of A fake rounds on Mirage"
+    },
+    {
+      "title": "Mirage lurk: CT connector flank on retake",
+      "description": "As the CT lurker on Mirage, hold connector during a B retake. When your team pushes B through market, push connector into B short to cut off the T escape route. Time your push to match the market retake flash — arriving 2 seconds after the first contact catches rotating Ts in the open.",
+      "category": "role_play_lurk",
+      "situation": "CT-side Mirage, flanking during B retake",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: connector flanks during B retakes score at least one kill in ~40% of attempts on Mirage"
+    },
+    {
+      "title": "Mirage clutch: 1v1 CT defuse on A site from triple box",
+      "description": "In a 1v1 CT defuse situation on Mirage A, use triple box as your anchor. Tap the defuse to force the T to peek, then hold the angle from triple. If the bomb is planted default (near the box), you have a short defuse path and the box absorbs peeking damage. If the T does not peek within 5 seconds, commit to the full defuse with a smoke.",
+      "category": "clutch_play",
+      "situation": "1v1 CT clutch on Mirage A site",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: triple box 1v1 defuse attempts succeed ~45% of the time on Mirage A"
+    },
+    {
+      "title": "Mirage clutch: 1v3 T bomb timer play on B site",
+      "description": "In a 1v3 T post-plant on Mirage B, plant for short and retreat to apartments. The key is patience — do not re-peek. CTs must defuse through your line of sight from apps. With the bomb planted for short, the market-side CT must cross your angle to reach the bomb. Use a molotov on the bomb at 10 seconds to deny the defuse and force them into your crosshair.",
+      "category": "clutch_play",
+      "situation": "1v3 T post-plant clutch on Mirage B site",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: apps post-plant position with short plant wins ~20% of 1v3 situations on Mirage B"
+    },
+    {
+      "title": "Mirage aim: A ramp vs palace duel spot",
+      "description": "Hold the A ramp to palace angle from the stairs head-glitch position. This spot gives you a head-level angle on anyone pushing out of palace while exposing only the top of your head. Pre-aim the palace doorframe left edge — most entries swing wide to clear the site and cross your crosshair. Burst-fire discipline wins this duel at medium range.",
+      "category": "aim_and_duels",
+      "situation": "CT-side Mirage, holding A ramp against palace push",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: ramp head-glitch wins the palace duel ~60% of the time at pro level on Mirage"
+    },
+    {
+      "title": "Mirage aim: B apartments wallbang through the door",
+      "description": "The wooden door at B apartments on Mirage is fully wallbangable with rifles. When you hear footsteps in apartments, spray through the door at body height. The penetration damage is ~50% for AK/M4 rounds. This is especially effective during eco rounds when the enemy has no armor — two to three bullets through the door can secure a kill before they enter the site.",
+      "category": "aim_and_duels",
+      "situation": "CT-side Mirage B, wallbanging apartments door",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: B apartments door wallbangs score kills in ~15% of rounds where Ts push B on Mirage"
+    },
+    {
+      "title": "Mirage support: A execute triple-utility combo",
+      "description": "As the support player during a Mirage A execute, throw the CT smoke (blocking CT spawn vision), the jungle molotov (clearing the jungle angle), and the stairs flash (blinding any ticket player). Throw in this exact order: smoke first to cut rotation, molotov second to flush the anchor, flash last to cover the entry. This combo takes 6 seconds and enables the entry fragger to swing A main with only the ramp player as a threat.",
+      "category": "role_play_support",
+      "situation": "T-side Mirage, supporting A site execute",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: full CT-jungle-stairs utility combo raises A execute success to ~65% on Mirage"
+    },
+    {
+      "title": "Mirage entry: palace flash alternate entry",
+      "description": "Instead of the standard A main push, enter through palace with a right-hand pop flash. Bounce the flash off the palace pillar so it pops above the A site — this blinds the triple and stairs players without blinding you. Swing out of palace immediately after the flash pops. The palace entry avoids the A main crossfire entirely and catches rotators off guard.",
+      "category": "role_play_entry",
+      "situation": "T-side Mirage, alternate A entry through palace",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: palace pop flash entries score first kill ~50% of the time on Mirage A"
+    },
+    {
+      "title": "Mirage economy: B apartments force-buy with shotguns",
+      "description": "On Mirage eco rounds, buy two MAG-7 shotguns for B apartments. The tight corridors in apartments make shotguns lethal within 10 meters. Position one shotgun behind the pillar and one behind the door. Let the Ts push through and collapse — the close-range ambush neutralizes the Ts' rifle advantage. Even if you lose the round, securing 1-2 kills with $300 shotguns is an economy win.",
+      "category": "economy",
+      "situation": "CT-side Mirage, eco round B setup",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: B apartments shotgun stacks on eco rounds average 1.8 kills per round on Mirage"
     }
   ]
 }

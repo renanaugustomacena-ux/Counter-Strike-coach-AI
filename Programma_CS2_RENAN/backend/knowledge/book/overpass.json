@@ -311,6 +311,94 @@
       "situation": "T-side Overpass, playground control after A long trade",
       "map_name": "de_overpass",
       "pro_example": "Pro meta: playground push after A trade raises execute success by ~14 points on Overpass"
+    },
+    {
+      "title": "Overpass IGL: second-half CT adjustment read",
+      "description": "When switching to CT side on Overpass, review T attack patterns from the first half. If the enemy consistently pushed B through monster, double-stack B with a connector crossfire and play retake A. If they exploited A long with fast executes, set an aggressive bathroom AWP to slow the push. Adjust within the first two CT rounds to establish the defensive anchor.",
+      "category": "role_play_igl",
+      "situation": "CT-side Overpass, second-half opening rounds as IGL",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: IGLs who adjust CT setups within 2 rounds of half-switch win ~8% more rounds on Overpass"
+    },
+    {
+      "title": "Overpass IGL: timeout trigger on monster control collapse",
+      "description": "Call a timeout on Overpass after losing two consecutive rounds where the Ts took monster control. Monster is the critical B approach on Overpass — losing it means the T timing is outpacing your B setup. Use the timeout to assign a dedicated monster AWP from the connector angle, pre-molotov the monster exit, and adjust the B anchor to play retake from heaven instead of holding site.",
+      "category": "role_play_igl",
+      "situation": "CT-side Overpass, losing monster control repeatedly",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: timeouts after losing monster control recover the setup in ~53% of cases on Overpass"
+    },
+    {
+      "title": "Overpass lurk: connector to A bathroom flank route",
+      "description": "As the T lurker on Overpass, push through connector and rotate toward A bathroom while your team executes B through monster. Wait until you hear the B execute utility, then push through connector into bathroom. The A anchor will rotate toward B on the execute call — you catch them mid-rotation at the party area or take A long uncontested.",
+      "category": "role_play_lurk",
+      "situation": "T-side Overpass, lurk during B monster execute",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: connector-to-bathroom lurk flanks produce a kill in ~31% of B execute rounds on Overpass"
+    },
+    {
+      "title": "Overpass lurk: CT monster flank during A retake",
+      "description": "As the CT lurker on Overpass, hold monster during an A site retake. When your team pushes A through long and bathrooms, push monster toward B short to cut off the T rotation path. Time your push to arrive 3 seconds after the first A retake contact — Ts rotating to save through connector will cross your angle at the B short junction.",
+      "category": "role_play_lurk",
+      "situation": "CT-side Overpass, flanking during A retake",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: monster flanks during A retakes catch rotating Ts ~33% of the time on Overpass"
+    },
+    {
+      "title": "Overpass clutch: 1v1 CT defuse on B site from pillar",
+      "description": "In a 1v1 CT defuse situation on Overpass B, use the site pillar as your anchor. Tap the defuse to force the T to peek from monster or water, then hold the tight angle around the pillar. The pillar provides cover from both post-plant positions. If no peek comes within 4 seconds, commit to a smoke defuse by smoking the bomb from the pillar side and defusing through it.",
+      "category": "clutch_play",
+      "situation": "1v1 CT clutch on Overpass B site",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: pillar 1v1 defuse attempts succeed ~42% of the time on Overpass B"
+    },
+    {
+      "title": "Overpass clutch: 1v3 T bomb timer play on A site",
+      "description": "In a 1v3 T post-plant on Overpass A, plant for long and retreat to the long corner. From long you control the bomb line of sight without exposing yourself to the bathroom or connector angles. Molotov the bomb at 10 seconds to deny the defuse. The three CTs must push through the narrow long corridor or rotate through party — both paths funnel them into your angle sequentially.",
+      "category": "clutch_play",
+      "situation": "1v3 T post-plant clutch on Overpass A site",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: long post-plant with A long plant wins ~19% of 1v3 situations on Overpass A"
+    },
+    {
+      "title": "Overpass aim: A long to bathroom duel spot",
+      "description": "Hold the A long angle from the truck head-glitch position. This gives a long-range head-level angle on anyone pushing from bathroom toward A site. Pre-aim the bathroom exit doorframe — CTs swing wide to clear long and expose themselves. Counter-strafe and tap at this range. The truck head-glitch exposes only your forehead and wins the angle trade against bathroom pushers.",
+      "category": "aim_and_duels",
+      "situation": "T-side Overpass, holding A long against bathroom push",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: truck head-glitch wins the bathroom duel ~55% of the time at pro level on Overpass"
+    },
+    {
+      "title": "Overpass aim: B connector wallbang through the thin wall",
+      "description": "The thin wall between connector and B heaven on Overpass is wallbangable with AK-47 and M4. When you hear CTs holding heaven, spray through the wall at standing height. The penetration deals ~35% rifle damage per hit. This wallbang is effective when CTs play passive heaven during B retakes — two to three bullets through the wall soften them before your team swings onto the site.",
+      "category": "aim_and_duels",
+      "situation": "T-side Overpass, wallbanging B connector wall",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: connector wallbangs score damage in ~16% of rounds where CTs hold heaven on Overpass"
+    },
+    {
+      "title": "Overpass support: B execute triple-utility combo",
+      "description": "As the support player during an Overpass B execute, throw the heaven smoke (blocking the heaven angle), the site molotov (clearing the pillar anchor), and the connector flash (blinding rotators from connector). Execute in this order: heaven smoke first to remove the elevation advantage, molotov second to flush the close anchor, flash last to enable the monster entry. This 7-second combo reduces B to one exposed defender.",
+      "category": "role_play_support",
+      "situation": "T-side Overpass, supporting B site execute",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: full heaven-pillar-connector utility combo raises B execute success to ~57% on Overpass"
+    },
+    {
+      "title": "Overpass entry: alternate A entry through party",
+      "description": "Instead of the standard A long push, enter A site through the party area with a pop flash off the party wall. The party path bypasses the A long crossfire and puts you on the site from behind the truck. Flash off the right wall so it pops above the site — this blinds the long and bank players. Swing immediately after the flash to catch the A anchor off-angle from the unexpected direction.",
+      "category": "role_play_entry",
+      "situation": "T-side Overpass, alternate A entry through party",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: party entries score first kill ~41% of the time on Overpass A"
+    },
+    {
+      "title": "Overpass economy: monster rush force-buy with MP9s",
+      "description": "On Overpass eco rounds as T, buy two MP9s for a fast monster rush toward B. The monster tunnel is tight and makes SMG spray lethal within 10 meters. Stack both MP9s at the monster entrance and rush with a flash. The close-range burst overwhelms the monster anchor before they can call for rotation. Even if you lose the round, securing 1-2 kills with $1250 SMGs versus full-buy CTs is an economy victory.",
+      "category": "economy",
+      "situation": "T-side Overpass, eco round monster stack",
+      "map_name": "de_overpass",
+      "pro_example": "Pro meta: monster SMG rushes on eco rounds average 1.6 kills and break CT economy ~21% of the time on Overpass"
     }
   ]
 }
