@@ -33,10 +33,7 @@ from typing import Dict, List, Literal, Optional
 import numpy as np
 
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager
-from Programma_CS2_RENAN.backend.storage.db_models import (
-    PlayerMatchStats,
-    PlayerTickState,
-)
+from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats, PlayerTickState
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.processing.demo_quality")
@@ -148,13 +145,13 @@ class DemoQualityScorer:
         # Outlier penalty reduces score for anomalous demos.
         outlier_penalty = min(len(outlier_flags) * 0.1, 0.4)
 
-        quality_score = float(np.clip(
-            0.45 * tick_coverage
-            + 0.35 * feature_completeness
-            + 0.20 * (1.0 - outlier_penalty),
-            0.0,
-            1.0,
-        ))
+        quality_score = float(
+            np.clip(
+                0.45 * tick_coverage + 0.35 * feature_completeness + 0.20 * (1.0 - outlier_penalty),
+                0.0,
+                1.0,
+            )
+        )
 
         # Derive recommendation.
         if quality_score >= _QUALITY_THRESHOLD_USE and not any(
@@ -173,8 +170,7 @@ class DemoQualityScorer:
         ]
         if outlier_flags:
             flag_summary = "; ".join(
-                f"{f.metric_name}={f.value:.2f} ({f.severity})"
-                for f in outlier_flags
+                f"{f.metric_name}={f.value:.2f} ({f.severity})" for f in outlier_flags
             )
             detail_parts.append(f"flagged=[{flag_summary}]")
 
@@ -197,9 +193,7 @@ class DemoQualityScorer:
         )
         return report
 
-    def score_demos_batch(
-        self, demo_names: list[str]
-    ) -> list[DemoQualityReport]:
+    def score_demos_batch(self, demo_names: list[str]) -> list[DemoQualityReport]:
         """Score multiple demos and return sorted by quality descending.
 
         Args:
@@ -213,9 +207,7 @@ class DemoQualityScorer:
             try:
                 reports.append(self.score_demo(name))
             except Exception:
-                logger.warning(
-                    "Failed to score demo %s", name, exc_info=True
-                )
+                logger.warning("Failed to score demo %s", name, exc_info=True)
                 reports.append(
                     DemoQualityReport(
                         demo_name=name,
@@ -254,9 +246,7 @@ class DemoQualityScorer:
             logger.debug("Demo %s has no tick data", demo_name)
             return 0.0
 
-        coverage = float(np.clip(
-            tick_count / _EXPECTED_TICKS_PER_DEMO, 0.0, 1.0
-        ))
+        coverage = float(np.clip(tick_count / _EXPECTED_TICKS_PER_DEMO, 0.0, 1.0))
 
         if tick_count < _MIN_VIABLE_TICKS:
             logger.debug(
@@ -285,11 +275,7 @@ class DemoQualityScorer:
 
         db = get_db_manager()
         with db.get_session() as session:
-            stmt = (
-                select(PlayerTickState)
-                .where(PlayerTickState.demo_name == demo_name)
-                .limit(500)
-            )
+            stmt = select(PlayerTickState).where(PlayerTickState.demo_name == demo_name).limit(500)
             ticks = session.exec(stmt).all()
 
         if not ticks:
