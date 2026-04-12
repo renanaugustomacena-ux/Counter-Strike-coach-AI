@@ -2921,7 +2921,7 @@ See Section 40 (Dependency Audit) for the full license matrix.
 | ~~CTF-1~~ | ~~HIGH~~ | ~~torch.load path trust (no checkpoint hash validation)~~ | **FIXED** — SHA-256 hash registry in `persistence.py`; verified on save/load | — |
 | ~~S-1/S-2~~ | ~~MEDIUM~~ | ~~f-string SQL in 6 diagnostic tools~~ | **SAFE** — all instances use `_ALLOWED_TABLES`, `_safe_table_name()` regex, or `_validate_table_name()` whitelists. No user input reaches SQL interpolation. | — |
 | DL-1 | MEDIUM | No DataLineage audit trail | Write provenance records in repair/population tools | 2h |
-| DEP-1 | MEDIUM | Range-pinned dependencies | Pin exact versions in `requirements.txt` | 1h |
+| ~~DEP-1~~ | ~~MEDIUM~~ | ~~Range-pinned dependencies~~ | **FIXED** — exact pins for all 26 deps (torch range-pinned for platform portability) | — |
 | UX-1 | MEDIUM | No destructive action confirmation dialogs | Add `QMessageBox.warning()` before reset/clear | 1h |
 | ~~UX-2~~ | ~~MEDIUM~~ | ~~Tactical viewer no loading indicator~~ | **FIXED** (commit `3483cbb`) | — |
 | ~~D-4~~ | ~~MEDIUM~~ | ~~No indexes on has_helmet, has_defuser, kast~~ | **FIXED** (commit `ffc6796`) | — |
