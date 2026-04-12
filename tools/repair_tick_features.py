@@ -152,6 +152,16 @@ def main() -> None:
         conn.execute("DROP TABLE _repair")
         conn.commit()
 
+        # DL-1: Record provenance for tick feature repair
+        from Programma_CS2_RENAN.backend.storage.database import get_db_manager
+
+        get_db_manager().record_lineage(
+            entity_type="batch_tick_repair",
+            entity_id=len(repair_data),
+            source_demo=demo_name,
+            processing_step="tick_feature_repair",
+        )
+
         elapsed = time.monotonic() - t_demo
         print(f"{len(repair_data):,} ticks ({elapsed:.1f}s)", flush=True)
         total_updated += len(repair_data)

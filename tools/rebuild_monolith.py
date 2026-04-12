@@ -519,6 +519,15 @@ def main():
             or 0
         )
 
+    # DL-1: Record provenance for monolith rebuild
+    if demos_done > 0:
+        db.record_lineage(
+            entity_type="batch_monolith_rebuild",
+            entity_id=tick_total,
+            source_demo=f"{demos_done}_demos",
+            processing_step="monolith_rebuild",
+        )
+
     print("=== Summary ===")
     print(f"  PlayerTickState:  {final_ticks:,} ticks from {final_demos} demos")
     print(f"  PlayerMatchStats: {final_stats} pro rows")

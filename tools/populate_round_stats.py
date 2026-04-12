@@ -123,7 +123,7 @@ def main() -> None:
     import sqlite3
 
     from Programma_CS2_RENAN.backend.processing.round_stats_builder import enrich_from_demo
-    from Programma_CS2_RENAN.backend.storage.database import init_database
+    from Programma_CS2_RENAN.backend.storage.database import get_db_manager, init_database
 
     full_rebuild = "--full" in sys.argv
 
@@ -227,11 +227,11 @@ def main() -> None:
 
         conn.executemany(_INSERT_SQL, rows_to_insert)
         # DL-1: Record provenance for bulk round stats population
-        conn.execute(
-            "INSERT INTO datalineage (entity_type, entity_id, source_demo, "
-            "pipeline_version, processing_step, created_at) "
-            "VALUES (?, ?, ?, ?, ?, datetime('now'))",
-            ("round_stats", len(rows_to_insert), demo_name, "v1", "populate_round_stats"),
+        get_db_manager().record_lineage(
+            entity_type="batch_round_stats",
+            entity_id=len(rows_to_insert),
+            source_demo=demo_name,
+            processing_step="round_stats_population",
         )
         conn.commit()
 
