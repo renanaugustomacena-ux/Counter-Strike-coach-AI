@@ -5,6 +5,7 @@ import os
 from PySide6.QtCore import Qt, QThreadPool, QTimer
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QComboBox,
     QFileDialog,
@@ -163,6 +164,17 @@ class TacticalViewerScreen(QWidget):
         )
         self._empty_overlay.setParent(map_container)
         self._empty_overlay.setGeometry(0, 0, 0, 0)  # sized in resizeEvent
+
+        # Loading overlay (UX-2: map switch indicator)
+        self._loading_overlay = QLabel("Loading map...")
+        self._loading_overlay.setAlignment(Qt.AlignCenter)
+        self._loading_overlay.setFont(QFont("Roboto", 14))
+        self._loading_overlay.setStyleSheet(
+            "color: #e0e0e0; background: rgba(10, 10, 20, 200); "
+            "border-radius: 12px; padding: 24px;"
+        )
+        self._loading_overlay.setParent(map_container)
+        self._loading_overlay.hide()
 
         main_area.addWidget(map_container, 1)
 
@@ -377,6 +389,13 @@ class TacticalViewerScreen(QWidget):
         if map_name not in self._full_demo_data:
             return
 
+        # UX-2: Show loading overlay during map switch
+        self._loading_overlay.setText(f"Loading {map_name}...")
+        self._loading_overlay.setGeometry(self._map_widget.geometry())
+        self._loading_overlay.show()
+        self._loading_overlay.raise_()
+        QApplication.processEvents()
+
         frames, events, segments = self._full_demo_data[map_name]
         self._game_events = events
         self._segments = segments
@@ -408,6 +427,9 @@ class TacticalViewerScreen(QWidget):
 
         # Clear chronovisor
         self._chronovisor_vm.clear()
+
+        # UX-2: Hide loading overlay
+        self._loading_overlay.hide()
 
     def _on_map_changed(self, text: str):
         if text:
