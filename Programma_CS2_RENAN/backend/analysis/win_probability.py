@@ -16,8 +16,8 @@ Adheres to GEMINI.md principles:
 - GPU-friendly operations
 """
 
-from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
@@ -272,6 +272,262 @@ class WinProbabilityPredictor:
 def get_win_predictor() -> WinProbabilityPredictor:
     """Factory function for win predictor."""
     return WinProbabilityPredictor()
+
+
+# ---------------------------------------------------------------------------
+# KT-07: Elo Rating System with Recency Weighting
+# ---------------------------------------------------------------------------
+# Per-player Elo computed from match history with exponential recency decay.
+# Elo differential is provided as supplementary context to the win
+# probability model without altering the core 12-feature architecture.
+#
+# References:
+#   - Elo, A. E. (1978). The Rating of Chessplayers, Past and Present.
+#   - Glickman, M. E. (1999). Parameter estimation in large dynamic
+#     paired comparison experiments. Applied Statistics, 48(3), 377–394.
+#   - Herbrich, R. et al. (2006). TrueSkill (NeurIPS) — for the
+#     recency-weighting adaptation.
+# ---------------------------------------------------------------------------
+
+# Default Elo constants
+_ELO_INITIAL: float = 1500.0
+_ELO_K_FACTOR: float = 32.0
+_ELO_RECENCY_HALF_LIFE: int = 20  # matches
+
+
+@dataclass
+class MatchResult:
+    """A single match result for Elo computation.
+
+    Attributes:
+        opponent_elo: Opponent's Elo rating at the time of the match.
+        won: Whether the player won the match.
+        match_index: Chronological index (0 = oldest). Used for recency
+            weighting; higher index = more recent.
+    """
+
+    opponent_elo: float
+    won: bool
+    match_index: int = 0
+
+
+class EloRatingCalculator:
+    """Per-player Elo rating calculator with exponential recency weighting.
+
+    The standard Elo update is:
+
+        new_elo = old_elo + K * w * (S - E)
+
+    where:
+        - S = actual score (1 for win, 0 for loss)
+        - E = expected score = 1 / (1 + 10^((opp_elo - elo) / 400))
+        - K = base K-factor
+        - w = recency weight = 2^((match_index - N + 1) / half_life)
+
+    Recency weighting ensures recent matches contribute more to the
+    final rating.  The half-life parameter controls decay speed:
+    a match *half_life* games ago contributes half the K-factor of
+    the most recent match.
+
+    References:
+        Elo, A. E. (1978). The Rating of Chessplayers, Past and Present.
+        Glickman, M. E. (1999). Parameter estimation in large dynamic
+        paired comparison experiments.
+
+    Args:
+        initial_elo: Starting Elo for players with no history.
+        k_factor: Base K-factor controlling update magnitude.
+        recency_half_life: Number of matches for recency weight to halve.
+    """
+
+    def __init__(
+        self,
+        initial_elo: float = _ELO_INITIAL,
+        k_factor: float = _ELO_K_FACTOR,
+        recency_half_life: int = _ELO_RECENCY_HALF_LIFE,
+    ):
+        self.initial_elo = initial_elo
+        self.k_factor = k_factor
+        self.recency_half_life = max(recency_half_life, 1)
+
+    def compute_elo(self, match_history: List[MatchResult]) -> float:
+        """Compute Elo rating from chronologically ordered match history.
+
+        Args:
+            match_history: List of ``MatchResult`` objects ordered from
+                oldest (index 0) to newest.  If empty, returns
+                ``initial_elo``.
+
+        Returns:
+            Final Elo rating as a float.
+        """
+        if not match_history:
+            logger.debug("Empty match history — returning initial Elo %.1f", self.initial_elo)
+            return self.initial_elo
+
+        n = len(match_history)
+        elo = self.initial_elo
+
+        for result in match_history:
+            # Expected score (logistic curve)
+            expected = 1.0 / (1.0 + 10.0 ** ((result.opponent_elo - elo) / 400.0))
+            actual = 1.0 if result.won else 0.0
+
+            # Recency weight: most recent match (index n-1) gets weight 1.0,
+            # a match half_life games earlier gets weight 0.5, etc.
+            recency_exponent = (result.match_index - (n - 1)) / self.recency_half_life
+            recency_weight = float(np.power(2.0, recency_exponent))
+
+            elo += self.k_factor * recency_weight * (actual - expected)
+
+        logger.debug(
+            "Elo computed: %d matches, final=%.1f (initial=%.1f)",
+            n,
+            elo,
+            self.initial_elo,
+        )
+        return float(elo)
+
+    def compute_elo_differential(
+        self,
+        team_histories: List[List[MatchResult]],
+        enemy_histories: List[List[MatchResult]],
+    ) -> float:
+        """Compute Elo differential between two teams.
+
+        The differential is the difference of team-average Elo ratings:
+
+            diff = mean(team_elos) - mean(enemy_elos)
+
+        Normalized by 400 (one Elo "class") so the output is roughly in
+        [-3, +3] for practical purposes and can be fed directly as a
+        supplementary feature.
+
+        Args:
+            team_histories: List of match histories, one per team player.
+            enemy_histories: List of match histories, one per enemy player.
+
+        Returns:
+            Normalized Elo differential (float).  Positive favors the team.
+        """
+        team_elos = (
+            [self.compute_elo(h) for h in team_histories] if team_histories else [self.initial_elo]
+        )
+        enemy_elos = (
+            [self.compute_elo(h) for h in enemy_histories]
+            if enemy_histories
+            else [self.initial_elo]
+        )
+
+        team_avg = float(np.mean(team_elos))
+        enemy_avg = float(np.mean(enemy_elos))
+        differential = (team_avg - enemy_avg) / 400.0
+
+        logger.debug(
+            "Elo differential: team_avg=%.1f enemy_avg=%.1f diff=%.3f",
+            team_avg,
+            enemy_avg,
+            differential,
+        )
+        return differential
+
+    @staticmethod
+    def elo_win_probability(elo_a: float, elo_b: float) -> float:
+        """Expected win probability of player/team A vs B from Elo ratings.
+
+        Uses the standard logistic Elo formula:
+
+            P(A wins) = 1 / (1 + 10^((elo_b - elo_a) / 400))
+
+        Args:
+            elo_a: Elo rating of player/team A.
+            elo_b: Elo rating of player/team B.
+
+        Returns:
+            Win probability for A in [0, 1].
+        """
+        return 1.0 / (1.0 + 10.0 ** ((elo_b - elo_a) / 400.0))
+
+
+class EloAugmentedPredictor:
+    """Win probability predictor augmented with Elo differential context.
+
+    Wraps the existing ``WinProbabilityPredictor`` and optionally blends
+    its output with an Elo-based prior.  The core 12-feature model is
+    **unchanged** — Elo serves as a supplementary Bayesian adjustment:
+
+        final_prob = (1 - alpha) * nn_prob + alpha * elo_prob
+
+    where ``alpha`` controls the Elo influence (default 0.15).
+
+    This preserves backward compatibility: when no Elo data is available,
+    the predictor falls back to the standard 12-feature model.
+
+    Args:
+        base_predictor: Existing ``WinProbabilityPredictor`` instance.
+            If None, creates a new one.
+        elo_calculator: ``EloRatingCalculator`` instance.  If None,
+            creates one with default parameters.
+        elo_blend_alpha: Blending weight for Elo prior (0 = ignore Elo,
+            1 = only Elo).  Default 0.15.
+    """
+
+    def __init__(
+        self,
+        base_predictor: Optional[WinProbabilityPredictor] = None,
+        elo_calculator: Optional[EloRatingCalculator] = None,
+        elo_blend_alpha: float = 0.15,
+    ):
+        self.base_predictor = base_predictor or WinProbabilityPredictor()
+        self.elo_calculator = elo_calculator or EloRatingCalculator()
+        self.elo_blend_alpha = np.clip(elo_blend_alpha, 0.0, 1.0)
+
+    def predict_with_elo(
+        self,
+        game_state: GameState,
+        team_elo: float,
+        enemy_elo: float,
+    ) -> Tuple[float, str]:
+        """Predict win probability with Elo-augmented blending.
+
+        Args:
+            game_state: Current in-round game state.
+            team_elo: Average Elo of the player's team.
+            enemy_elo: Average Elo of the enemy team.
+
+        Returns:
+            (probability, explanation) tuple.
+        """
+        # Base prediction from 12-feature model
+        base_prob, base_explanation = self.base_predictor.predict(game_state)
+
+        # Elo-based prior
+        elo_prob = EloRatingCalculator.elo_win_probability(team_elo, enemy_elo)
+
+        # Bayesian blend
+        alpha = float(self.elo_blend_alpha)
+        final_prob = (1.0 - alpha) * base_prob + alpha * elo_prob
+        final_prob = float(np.clip(final_prob, 0.0, 1.0))
+
+        elo_diff = (team_elo - enemy_elo) / 400.0
+        explanation = f"{base_explanation} | Elo diff={elo_diff:+.2f}, " f"blend={final_prob:.0%}"
+
+        logger.debug(
+            "EloAugmented: base=%.3f elo_prior=%.3f alpha=%.2f final=%.3f",
+            base_prob,
+            elo_prob,
+            alpha,
+            final_prob,
+        )
+
+        return final_prob, explanation
+
+    def predict(self, game_state: GameState) -> Tuple[float, str]:
+        """Fallback: predict without Elo (delegates to base predictor).
+
+        Maintains interface compatibility with ``WinProbabilityPredictor``.
+        """
+        return self.base_predictor.predict(game_state)
 
 
 if __name__ == "__main__":

@@ -40,8 +40,28 @@ class JEPATrainer:
         for n, p in model.named_parameters():
             if "target_encoder" in n:
                 p.requires_grad = False
-        trainable = [p for p in model.parameters() if p.requires_grad]
-        self.optimizer = optim.AdamW(trainable, lr=lr, weight_decay=weight_decay)
+
+        # KT-05: Separate concept parameters for 0.05x LR multiplier
+        # (VL-JEPA paper Section 4.6 — prevents concept embedding collapse)
+        concept_params = []
+        other_params = []
+        for n, p in model.named_parameters():
+            if not p.requires_grad:
+                continue
+            if "concept" in n:
+                concept_params.append(p)
+            else:
+                other_params.append(p)
+
+        if concept_params:
+            param_groups = [
+                {"params": other_params},
+                {"params": concept_params, "lr": lr * 0.05},
+            ]
+            self.optimizer = optim.AdamW(param_groups, lr=lr, weight_decay=weight_decay)
+        else:
+            trainable = [p for p in model.parameters() if p.requires_grad]
+            self.optimizer = optim.AdamW(trainable, lr=lr, weight_decay=weight_decay)
         self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=t_max)
 
         # J-6: EMA cosine momentum schedule (Assran et al., CVPR 2023, Section 3.2).
