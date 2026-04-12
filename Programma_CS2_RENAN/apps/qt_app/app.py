@@ -139,10 +139,10 @@ def main():
     from Programma_CS2_RENAN.apps.qt_app.screens.match_detail_screen import MatchDetailScreen
     from Programma_CS2_RENAN.apps.qt_app.screens.match_history_screen import MatchHistoryScreen
     from Programma_CS2_RENAN.apps.qt_app.screens.performance_screen import PerformanceScreen
+    from Programma_CS2_RENAN.apps.qt_app.screens.pro_comparison_screen import ProComparisonScreen
     from Programma_CS2_RENAN.apps.qt_app.screens.profile_screen import ProfileScreen
     from Programma_CS2_RENAN.apps.qt_app.screens.settings_screen import SettingsScreen
     from Programma_CS2_RENAN.apps.qt_app.screens.steam_config_screen import SteamConfigScreen
-    from Programma_CS2_RENAN.apps.qt_app.screens.pro_comparison_screen import ProComparisonScreen
     from Programma_CS2_RENAN.apps.qt_app.screens.tactical_viewer_screen import TacticalViewerScreen
     from Programma_CS2_RENAN.apps.qt_app.screens.user_profile_screen import UserProfileScreen
     from Programma_CS2_RENAN.apps.qt_app.screens.wizard_screen import WizardScreen
@@ -210,6 +210,40 @@ def main():
         get_console().boot()
     except Exception:
         logging.exception("Backend boot failed")
+
+    # WR-10: Pre-download SBERT model with progress dialog if not cached
+    _splash_status(splash, "Checking AI language model...")
+    try:
+        from Programma_CS2_RENAN.backend.knowledge.rag_knowledge import KnowledgeEmbedder
+
+        if not KnowledgeEmbedder.is_model_cached():
+            _splash_status(splash, "Downloading AI language model (~90 MB, first time only)...")
+            splash.repaint()
+            QApplication.processEvents()
+
+            # Download in foreground with splash visible — blocks but shows progress
+            import threading
+
+            download_done = threading.Event()
+            download_ok = [False]
+
+            def _do_download():
+                download_ok[0] = KnowledgeEmbedder.download_model()
+                download_done.set()
+
+            t = threading.Thread(target=_do_download, daemon=True)
+            t.start()
+
+            # Keep splash responsive while downloading
+            while not download_done.wait(timeout=0.1):
+                QApplication.processEvents()
+
+            if download_ok[0]:
+                _splash_status(splash, "AI language model ready!")
+            else:
+                _splash_status(splash, "AI model download failed — using fallback")
+    except Exception:
+        pass  # Don't block app startup over SBERT
 
     _splash_status(splash, "Ready!")
     window.show()
