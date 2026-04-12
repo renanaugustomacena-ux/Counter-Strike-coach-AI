@@ -13,6 +13,7 @@ import os
 import sys
 import time
 from collections import defaultdict
+from contextlib import asynccontextmanager
 from typing import List, Optional
 
 import uvicorn
@@ -79,7 +80,19 @@ class RateLimiter:
 # Initialize rate limiter: 10 requests per minute per IP
 telemetry_rate_limiter = RateLimiter(max_requests=10, window_seconds=60)
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """SA-06: Replace deprecated on_event('startup') with lifespan context manager."""
+    if init_database:
+        try:
+            init_database()
+        except Exception as e:
+            app_logger.error("DB Init failed: %s", e)
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 class InsightRead(BaseModel):
@@ -98,15 +111,6 @@ class MatchTelemetry(BaseModel):
     match_id: str
     stats: dict
     timestamp: float
-
-
-@app.on_event("startup")
-def on_startup():
-    if init_database:
-        try:
-            init_database()
-        except Exception as e:
-            app_logger.error("DB Init failed: %s", e)
 
 
 @app.post("/api/ingest/telemetry", status_code=202)

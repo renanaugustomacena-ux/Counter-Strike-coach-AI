@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMessageBox,
     QPushButton,
     QScrollArea,
     QSizePolicy,
@@ -321,8 +322,16 @@ class CoachScreen(QWidget):
         self._chat_vm.send_message(text)
 
     def _clear_chat(self):
-        self._chat_vm.clear_session()
-        self._chat_status_label.setText("")
+        reply = QMessageBox.question(
+            self,
+            "Clear Chat",
+            "Clear the current coaching session?\nThis cannot be undone.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if reply == QMessageBox.Yes:
+            self._chat_vm.clear_session()
+            self._chat_status_label.setText("")
 
     # ── Signal Slots ──
 
