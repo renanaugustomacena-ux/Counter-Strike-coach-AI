@@ -22,7 +22,7 @@ logger = get_logger("cs2analyzer.llm_service")
 
 # Default Ollama configuration
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
-DEFAULT_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1:8b")  # 8B general-purpose model
+DEFAULT_MODEL = os.getenv("OLLAMA_MODEL", "gemma4:e2b")  # Gemma 4 E2B (2.3B effective, 128K ctx)
 
 
 class LLMService:
@@ -82,7 +82,7 @@ class LLMService:
                 "temperature": 0.7,
                 "top_p": 0.9,
                 "num_predict": -1,
-                "num_ctx": 16384,
+                "num_ctx": 32768,
             },
         }
 
@@ -136,7 +136,7 @@ class LLMService:
                 "temperature": 0.7,
                 "top_p": 0.9,
                 "num_predict": -1,
-                "num_ctx": 16384,
+                "num_ctx": 32768,
             },
         }
 

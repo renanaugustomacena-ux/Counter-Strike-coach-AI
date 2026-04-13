@@ -226,14 +226,17 @@ def main() -> None:
             )
 
         conn.executemany(_INSERT_SQL, rows_to_insert)
+        conn.commit()
         # DL-1: Record provenance for bulk round stats population
+        # NOTE: record_lineage uses a separate SQLAlchemy session, so the raw
+        # conn MUST be committed first to release its write lock — otherwise
+        # the two connections deadlock (especially on NTFS filesystems).
         get_db_manager().record_lineage(
             entity_type="batch_round_stats",
             entity_id=len(rows_to_insert),
             source_demo=demo_name,
             processing_step="round_stats_population",
         )
-        conn.commit()
 
         # Count how many were actually inserted (vs ignored by IGNORE)
         after = conn.execute(

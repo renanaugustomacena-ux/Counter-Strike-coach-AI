@@ -5,7 +5,7 @@
 #
 # Prerequisites:
 #   - venv activated: source ~/.venvs/cs2analyzer/bin/activate
-#   - .dem files at /media/admin/usb-ssd/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/
+#   - .dem files at PRO_DEMO_PATH from user_settings.json (currently /media/renan/New Volume/...)
 #   - database.db accessible
 #
 # Usage:
