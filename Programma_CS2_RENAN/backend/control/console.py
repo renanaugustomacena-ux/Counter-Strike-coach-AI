@@ -388,9 +388,7 @@ class Console:
                 from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
 
                 with _get_db().get_session() as s:
-                    match_count = s.exec(
-                        select(func.count(PlayerMatchStats.id))
-                    ).one() or 0
+                    match_count = s.exec(select(func.count(PlayerMatchStats.id))).one() or 0
 
                 if match_count >= 200:
                     confidence = 100.0
@@ -402,7 +400,11 @@ class Console:
                     confidence = 0.0
 
                 sm.update_belief_confidence(confidence)
-                logger.info("Console: Belief confidence set to %.0f%% (%d matches)", confidence, match_count)
+                logger.info(
+                    "Console: Belief confidence set to %s%% (%s matches)",
+                    int(confidence),
+                    match_count,
+                )
             except Exception as e:
                 logger.warning("Console: Could not compute belief confidence: %s", e)
 
@@ -664,7 +666,7 @@ class Console:
         def _count_demos(directory: Path) -> int:
             try:
                 count = 0
-                for _ in directory.rglob("*.dem"):
+                for _ in (p for p in directory.rglob("*.dem") if not p.is_symlink()):
                     count += 1
                     if count >= _DEMO_COUNT_CAP:
                         logger.warning("Demo count capped at %s in %s", _DEMO_COUNT_CAP, directory)

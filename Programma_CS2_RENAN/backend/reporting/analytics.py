@@ -91,25 +91,36 @@ class AnalyticsEngine:
                 return {}  # Not enough data
 
         # 2. Heuristic Mapping (Simplified for V1)
+        # SA-03: aggregate select() returns Row objects — use integer indexing,
+        # not attribute access (Row doesn't support .avg_acc etc.)
+        avg_acc = float(user_stats[0] or 0)
+        avg_hs = float(user_stats[1] or 0)
+        avg_kast = float(user_stats[2] or 0)
+        avg_util_blind = float(user_stats[3] or 0)
+        avg_util_time = float(user_stats[4] or 0)
+        avg_flash = float(user_stats[5] or 0)
+        avg_adr = float(user_stats[6] or 0)
+        avg_clutch = float(user_stats[7] or 0)
+
         # Aim: Accuracy & HS%
-        aim = (user_stats.avg_acc * 100 * 0.5) + (user_stats.avg_hs * 100 * 0.5)
+        aim = (avg_acc * 100 * 0.5) + (avg_hs * 100 * 0.5)
 
         # Utility: Blinded Enemies & Blind Time
         # Heuristic: 2.0 enemies/round = 100pts
-        util_score = min(100, (user_stats.avg_util_blind / 2.0) * 100)
-        flash_score = min(100, (user_stats.avg_flash / 1.0) * 100)
+        util_score = min(100, (avg_util_blind / 2.0) * 100)
+        flash_score = min(100, (avg_flash / 1.0) * 100)
         utility = (util_score * 0.6) + (flash_score * 0.4)
 
         # Positioning: KAST & Survival
         # KAST > 75% = 100pts
-        positioning = min(100, (user_stats.avg_kast / 0.75) * 100)
+        positioning = min(100, (avg_kast / 0.75) * 100)
 
         # Sense: ADR & EF
         # ADR > 100 = 100pts
-        sense = min(100, (user_stats.avg_adr / 100.0) * 100)
+        sense = min(100, (avg_adr / 100.0) * 100)
 
         # Clutch: Win Pct
-        clutch = min(100, user_stats.avg_clutch * 100)
+        clutch = min(100, avg_clutch * 100)
 
         return {
             "Aim": int(aim),
@@ -163,7 +174,19 @@ class AnalyticsEngine:
         """Aggregates per-map performance: {map_name: {rating, adr, kd, matches}}."""
         # Match standard CS2 map names (de_mirage, cs_office) and also
         # map names embedded in demo filenames like "furia-vs-navi-m1-mirage.dem"
-        _KNOWN_MAPS = {"mirage", "inferno", "dust2", "overpass", "ancient", "anubis", "nuke", "vertigo", "train", "cache", "office"}
+        _KNOWN_MAPS = {
+            "mirage",
+            "inferno",
+            "dust2",
+            "overpass",
+            "ancient",
+            "anubis",
+            "nuke",
+            "vertigo",
+            "train",
+            "cache",
+            "office",
+        }
         _MAP_PATTERN = re.compile(r"(de_\w+|cs_\w+|ar_\w+)")
         try:
             filters = self._player_filter(player_name)

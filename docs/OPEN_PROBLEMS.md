@@ -1,6 +1,6 @@
 # Open Problems — Read This First
 
-> Last updated: 2026-04-11
+> Last updated: 2026-04-13
 > Read this at the start of every session. If we drift, come back here.
 
 ---
@@ -28,8 +28,8 @@ A **fully offline, privacy-first** CS2 coaching desktop app that beats cloud com
 
 **Phase:** Teaching the Coach (pro data only, no user demos, no active coaching)
 **Demos:** 97 .dem files on USB SSD, 564 per-match DBs, ~68 aggregated into production tables. Re-aggregation script ready.
-**Models:** JEPA **partially trained** (10-50 epochs across multiple restarts, not converged — see Deep Audit Phase 3 weight forensics). RAP disabled. LLM = Llama 3.1 8B via Ollama (no fine-tuning).
-**Coach Book:** v3 shipped (151 entries). Target is 1500.
+**Models:** JEPA **partially trained** (10-50 epochs across multiple restarts, not converged — see Deep Audit Phase 3 weight forensics). RAP disabled. LLM = **Gemma 4 E2B** via Ollama (swapped from Llama 3.1 8B on 2026-04-13, no fine-tuning).
+**Coach Book:** v4 shipped (502 entries across 7 map files + general). Target is 1500.
 **Hardware:** AMD Ryzen 9 9950X + RX 9070 XT (16GB VRAM) with ROCm 7.2. PyTorch 2.9.1+rocm6.3 GPU working. Local 8B LoRA fine-tuning is now feasible.
 **Environment:** Python 3.12, venv at `~/.venvs/cs2analyzer/`, FlareSolverr running, 308/313 validator checks pass (5 warnings: kivy/kivymd optional, shap optional, ncps/hflayers optional for RAP).
 
@@ -91,7 +91,9 @@ Also fixed this session:
 ### Data & Pipeline
 | # | Problem | Status | Effort |
 |---|---------|--------|--------|
-| DP-01 | Re-aggregation: ~30 demos not yet in roundstats/playermatchstats | **Script ready** (`scripts/reaggregate.sh`) | 30-90 min runtime |
+| DP-01 | Re-aggregation: only 31/97 demos have tick data in playertickstate. Re-aggregation script ran but only processes demos already in DB. Need full ingestion (`ingest_pro_demos.py --full`) on powerful machine first. | **Blocked** — needs full ingestion (DP-05) | 2-6 hrs (GPU machine) |
+| DP-05 | **NEW:** 66 demos missing from playertickstate. `ingest_pro_demos.py --full` needed to parse all 97 .dem files tick-by-tick. Heavy operation, best on Ryzen 9 machine. | Not started | 2-6 hrs |
+| DP-06 | **NEW:** PRO_DEMO_PATH in user_settings.json not portable across machines (hardcoded mount path). Manual fix applied for laptop. | Workaround applied | 30 min (proper fix) |
 | DP-02 | Coach can't answer per-player/per-round drill-down questions | Not started | 1 session |
 | DP-03 | Analytics page shows anonymous aggregates — needs per-player breakdown | Not started | 1-2 sessions |
 | DP-04 | HLTV scraping CSS selectors drifted — only 3 players scraped | Blocked (needs testing) | 1 session |
@@ -102,11 +104,11 @@ Also fixed this session:
 | CI-01 | JEPA model: partially trained (not converged), needs full 50-100 epoch run on production data | Ready to run | 1 session (GPU hrs) |
 | CI-02 | No CS2 eval benchmark — can't measure coaching quality | Not started | Multi-session |
 | CI-03 | No LLM fine-tuning scaffolding (LoRA/PEFT) | Not started | Multi-session |
-| CI-04 | Coach Book at 151 entries, target 1500 | Not started | Several sessions |
+| CI-04 | Coach Book at 502 entries (v4), target 1500 | In progress | Several sessions |
 | CI-05 | Pro baseline ignores HLTV database | Not started | 1 session |
-| WR-76 | Round Reconstructor missing — tick data never reaches LLM | Not started | 3-5 days |
-| WR-77 | Coordinate-to-callout mapping missing | Not started | 2-3 days |
-| WR-78 | LLM hallucinates when data insufficient | Not started | 1 day |
+| WR-76 | Round Reconstructor — tick data now reaches LLM | **FIXED** (commit `d7969cf`) | — |
+| WR-77 | Coordinate-to-callout mapping | **FIXED** (commit `ef978a1`) | — |
+| WR-78 | LLM data honesty constraints | **FIXED** (commit `023a08d`) | — |
 
 ### Frontend
 | # | Problem | Status | Effort |
@@ -118,21 +120,20 @@ Also fixed this session:
 ### Data Quality
 | # | Problem | Status | Effort |
 |---|---------|--------|--------|
-| DQ-01 | `flash_assists` and `unused_utility_per_round` still zero in data | Partial | Will improve after re-aggregation |
+| DQ-01 | `flash_assists` and `unused_utility_per_round` still zero in data | Blocked by DP-05 (tick data needed) | After full ingestion |
 | DQ-02 | `is_blinded` feature always zero (CS2 removed event) | Identified | `flash_duration` workaround exists but needs data re-repair |
 
 ---
 
 ## Recommended Session Order (path to v0.1)
 
-1. **Run re-aggregation** — `bash scripts/reaggregate.sh` (30-90 min). Unblocks everything downstream.
-2. ~~**WR-79 + WR-80** — Quick coaching quality wins.~~ **DONE** (commit `b9d4acf`).
-3. **CI-04** — Expand Coach Book to 500+ entries. Biggest cheap quality win.
-4. **DP-02** — Wire per-player/per-match retrieval into coaching chat.
-5. **DP-04** — HLTV scraping session (test FlareSolverr, verify CSS selectors).
-6. **CI-01** — JEPA pretraining (GPU time on RX 9070 XT).
-7. **CI-02** — Build eval benchmark. Prerequisite to fine-tuning.
-8. **v0.1 packaging** — PyInstaller spec, CPU-only torch, dependency cleanup.
+1. **DP-05: Full demo ingestion** — `KIVY_NO_ARGS=1 python3 tools/ingest_pro_demos.py --full` on powerful machine. Then `bash scripts/reaggregate.sh` + `PRAGMA wal_checkpoint(TRUNCATE)`. Unblocks enrichment.
+2. **CI-04** — Continue Coach Book expansion (502→1500). Biggest cheap quality win.
+3. **DP-02** — Wire per-player/per-match retrieval into coaching chat.
+4. **DP-04** — HLTV scraping session (test FlareSolverr, verify CSS selectors).
+5. **CI-01** — JEPA pretraining (GPU time on RX 9070 XT).
+6. **CI-02** — Build eval benchmark. Prerequisite to fine-tuning.
+7. **v0.1 packaging** — PyInstaller spec, CPU-only torch, dependency cleanup.
 
 ### Beyond v0.1
 - **CI-03** — LLM fine-tuning scaffolding (LoRA/PEFT, now feasible with 16GB VRAM)

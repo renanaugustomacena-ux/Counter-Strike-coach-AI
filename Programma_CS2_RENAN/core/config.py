@@ -320,11 +320,48 @@ def get_setting(key: str, default: Any = None) -> Any:
 def get_pro_demo_base() -> Path:
     """Resolve the pro demo base directory from settings.
 
-    Returns the PRO_DEMO_PATH from user_settings.json, falling back to HOME.
-    Tools should call this instead of hardcoding paths.
+    Returns the PRO_DEMO_PATH from user_settings.json. If the configured path
+    doesn't exist (e.g. SSD mounted at a different path on another machine),
+    scans common mount points for the expected directory structure (DP-06).
+    Falls back to HOME if nothing found.
     """
-    raw = get_setting("PRO_DEMO_PATH", os.path.expanduser("~"))
-    return Path(str(raw)) if raw else Path(os.path.expanduser("~"))
+    raw = get_setting("PRO_DEMO_PATH", "")
+    configured = Path(str(raw)) if raw else None
+
+    if configured and configured.exists():
+        return configured
+
+    # DP-06: Auto-detect SSD mount when configured path doesn't exist
+    if configured and not configured.exists():
+        # Extract the relative suffix (e.g. "Counter-Strike-coach-AI/DEMO_PRO_PLAYERS")
+        # and scan /media/<user>/*/ for it
+        parts = configured.parts
+        # Find "Counter-Strike-coach-AI" in the path
+        marker = "Counter-Strike-coach-AI"
+        suffix_parts = []
+        found = False
+        for part in parts:
+            if found:
+                suffix_parts.append(part)
+            if part == marker:
+                found = True
+                suffix_parts.append(part)
+        if suffix_parts:
+            suffix = Path(*suffix_parts)
+            media_dir = Path("/media")
+            if media_dir.exists():
+                for user_dir in media_dir.iterdir():
+                    for mount in user_dir.iterdir():
+                        candidate = mount / suffix
+                        if candidate.exists():
+                            app_logger.info(
+                                "PRO_DEMO_PATH auto-detected at %s (configured: %s)",
+                                candidate,
+                                configured,
+                            )
+                            return candidate
+
+    return Path(os.path.expanduser("~"))
 
 
 def get_credential(key: str) -> str:

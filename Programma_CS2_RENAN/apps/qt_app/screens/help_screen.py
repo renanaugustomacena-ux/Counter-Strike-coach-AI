@@ -67,7 +67,7 @@ _FALLBACK_TOPICS = [
             "- Chat: interactive conversation with the AI coach (requires Ollama)\n\n"
             "To enable chat:\n"
             "1. Install Ollama: curl -fsSL https://ollama.com/install.sh | sh\n"
-            "2. Pull the model: ollama pull llama3.1:8b\n"
+            "2. Pull the model: ollama pull gemma4:e2b\n"
             "3. Start Ollama: ollama serve\n"
             "4. Open the Chat panel in the Coach screen"
         ),
@@ -114,7 +114,7 @@ _FALLBACK_TOPICS = [
             "Coach chat offline:\n"
             "- Ollama must be installed and running\n"
             "- Run 'ollama serve' in a terminal\n"
-            "- Ensure the llama3.1:8b model is downloaded\n\n"
+            "- Ensure the gemma4:e2b model is downloaded\n\n"
             "Fonts not changing:\n"
             "- Some custom fonts require the font files in PHOTO_GUI/\n"
             "- Restart the app after changing fonts"
