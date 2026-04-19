@@ -385,6 +385,54 @@
       "pro_example": "Pro meta: B apartments door wallbangs score kills in ~15% of rounds where Ts push B on Mirage"
     },
     {
+      "title": "Mirage aim: top mid shoulder peek discipline",
+      "description": "When peeking top mid as T, use a shoulder peek first to bait the AWP shot. Expose only your shoulder model for one frame, then immediately counter-strafe back. The AWP must re-scope after missing, giving you a 1.5-second window to wide-swing with a rifle. Never dry-peek top mid without shoulder-peeking first — the AWP wins that duel 70% of the time.",
+      "category": "aim_and_duels",
+      "situation": "T-side Mirage, peeking top mid against AWP",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: shoulder peek into wide swing wins mid duels vs AWP ~55% at tier-1 level"
+    },
+    {
+      "title": "Mirage aim: connector close-range crosshair placement",
+      "description": "When pushing through connector as T, pre-aim head level at the left wall corner where CTs hold the close angle. The connector doorway forces a tight angle — whoever has the crosshair closer to head level wins. Keep your crosshair at standing head height on the left edge of the connector exit. Crouching here is a mistake because the CT expects it.",
+      "category": "aim_and_duels",
+      "situation": "T-side Mirage, pushing through connector",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: connector entry duels favor the player with correct crosshair placement ~65% of the time"
+    },
+    {
+      "title": "Mirage aim: B short off-angle headshot position",
+      "description": "On CT B, hold an off-angle from the pillar near B short instead of the standard bench or market positions. This catches Ts who pre-aim the common spots. Stand slightly behind the pillar with only your right shoulder exposed. The angle is unexpected and gives you a free first shot before the T adjusts.",
+      "category": "aim_and_duels",
+      "situation": "CT-side Mirage, off-angle B hold",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: off-angle B short holds score first kills ~50% vs ~35% for standard bench on Mirage"
+    },
+    {
+      "title": "Mirage aim: kitchen window rifle spray control",
+      "description": "When spraying through the kitchen window opening at B, compensate for the window frame obscuring your spray pattern. The frame blocks visual feedback — commit to a 10-bullet spray at chest height and pull down-left for the AK or straight down for the M4. Do not tap-fire through the window; the T is likely moving and a spray covers more area.",
+      "category": "aim_and_duels",
+      "situation": "CT-side Mirage, engaging through kitchen window",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: spray-through-window kills account for ~10% of B site defensive frags on Mirage"
+    },
+    {
+      "title": "Mirage aim: A site triple box peek advantage",
+      "description": "Triple box on A site provides a height advantage for head-level duels. When holding from triple, pre-aim at the top of A main — Ts entering have to look upward to find you, adding reaction time. Burst-fire from triple and drop behind the box after 3 bullets. Re-peek from the opposite side of the box to catch the trade attempt.",
+      "category": "aim_and_duels",
+      "situation": "CT-side Mirage, holding A from triple box",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: triple box holds win the first duel ~55% on Mirage A"
+    },
+    {
+      "title": "Mirage aim: catwalk to A site long-range burst",
+      "description": "When pushing from catwalk to A site as T, the engagement range is 20-30 meters against jungle or connector players. Use 3-4 bullet bursts with the AK at this range — spraying is inaccurate beyond 20m. Pre-aim jungle corner first (higher threat), then flick to connector if clear. Crouching on catwalk makes you an easy AWP target from CT spawn.",
+      "category": "aim_and_duels",
+      "situation": "T-side Mirage, engaging A site from catwalk",
+      "map_name": "de_mirage",
+      "pro_example": "Pro meta: burst-fire discipline from catwalk raises hit rate by ~20% vs spraying on Mirage"
+    },
+    {
       "title": "Mirage support: A execute triple-utility combo",
       "description": "As the support player during a Mirage A execute, throw the CT smoke (blocking CT spawn vision), the jungle molotov (clearing the jungle angle), and the stairs flash (blinding any ticket player). Throw in this exact order: smoke first to cut rotation, molotov second to flush the anchor, flash last to cover the entry. This combo takes 6 seconds and enables the entry fragger to swing A main with only the ramp player as a threat.",
       "category": "role_play_support",
