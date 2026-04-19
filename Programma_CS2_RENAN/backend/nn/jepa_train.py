@@ -62,7 +62,11 @@ class JEPAPretrainDataset(Dataset):
     """
 
     def __init__(
-        self, match_sequences: List[np.ndarray], context_len: int = 10, target_len: int = 10
+        self,
+        match_sequences: List[np.ndarray],
+        context_len: int = 10,
+        target_len: int = 10,
+        seed: int = 42,
     ):
         # M2 FIX: Enforce that min ticks constant covers context + target windows.
         # Without this, changes to context/target lengths could silently produce
@@ -75,6 +79,10 @@ class JEPAPretrainDataset(Dataset):
         self.sequences = match_sequences
         self.context_len = context_len
         self.target_len = target_len
+        # DET-01: per-dataset numpy Generator (SeedSequence-derived) so multi-
+        # worker DataLoader runs stay bit-reproducible across restarts even
+        # when set_global_seed is re-applied mid-session.
+        self._rng = np.random.default_rng(seed)
 
     def __len__(self):
         return len(self.sequences)
@@ -89,7 +97,7 @@ class JEPAPretrainDataset(Dataset):
             context = sequence[: self.context_len]
             target = sequence[self.context_len : self.context_len + self.target_len]
         else:
-            start = np.random.randint(0, max_start)
+            start = int(self._rng.integers(0, max_start))
             context = sequence[start : start + self.context_len]
             target = sequence[start + self.context_len : start + self.context_len + self.target_len]
 
@@ -127,16 +135,6 @@ def _load_tick_sequence(
             "ORDER BY tick LIMIT ?",
             (demo_name, player_name, max_ticks),
         ).fetchall()
-
-        # KAST FIX: Inject avg_kast from playermatchstats so feature #16 is non-zero.
-        # Without this, kast_estimate is always 0.0 because playertickstate has no
-        # kast fields and the vectorizer's estimate_kast_from_stats() fallback also
-        # gets all zeros (no kills/deaths columns in tick data).
-        row_kast = conn.execute(
-            "SELECT avg_kast FROM playermatchstats "
-            "WHERE demo_name = ? AND LOWER(player_name) = LOWER(?)",
-            (demo_name, player_name),
-        ).fetchone()
     finally:
         conn.close()
 
@@ -147,12 +145,12 @@ def _load_tick_sequence(
     tick_dicts = [dict(row) for row in rows]
     map_name = tick_dicts[0].get("map_name")
 
-    # Inject KAST if available (even 0.0 is valid — it means the player had no
-    # positive-impact rounds, distinct from "no data available")
-    if row_kast is not None and row_kast[0] is not None:
-        avg_kast = float(row_kast[0])
-        for td in tick_dicts:
-            td["kast"] = avg_kast
+    # DATA-01 fix: do NOT inject playermatchstats.avg_kast as a per-tick constant.
+    # avg_kast is a post-hoc match aggregate — known only after the match ends —
+    # so broadcasting it to every tick (a) leaks future information into the
+    # encoder during training and (b) creates train-serve skew since live
+    # inference has no match-aggregate KAST to inject. Feature 16 defaults to
+    # 0.0 at both train and serve time, preserving the 25-dim contract.
 
     # V-4 FIX: extract_batch() can raise DataQualityError (>5% NaN/Inf).
     # Without try/except, one corrupt demo crashes the entire data loading run.
@@ -316,8 +314,16 @@ def train_jepa_pretrain(
         callbacks.close_all()
         return
 
+    # DET-01: seeded Generator on DataLoader shuffle so resume + multi-restart
+    # pairs produce identical batch orderings.
+    from Programma_CS2_RENAN.backend.nn.config import seeded_generator as _seeded_generator
+
     dataloader = DataLoader(
-        dataset, batch_size=batch_size, shuffle=True, worker_init_fn=_worker_init
+        dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        worker_init_fn=_worker_init,
+        generator=_seeded_generator(),
     )
 
     # NN-JM-04: Target encoder is updated ONLY via EMA, never by gradient.
@@ -478,6 +484,12 @@ def train_jepa_pretrain(
         "training_config": train_config,
     }
 
+    # REPR-01: stash the final EMA schedule counters so save_jepa_model can
+    # persist them even though this legacy training path does not hold a
+    # JEPATrainer instance.
+    model._saved_ema_step = _ema_step
+    model._saved_ema_total_steps = _ema_total
+
     return model
 
 
@@ -532,8 +544,15 @@ def train_jepa_finetune(
         _seed(42 + worker_id)
 
     dataset = torch.utils.data.TensorDataset(X_tensor, y_tensor)
+    # DET-01: seeded Generator — matches pretrain path for bit-reproducibility.
+    from Programma_CS2_RENAN.backend.nn.config import seeded_generator as _seeded_generator
+
     dataloader = DataLoader(
-        dataset, batch_size=batch_size, shuffle=True, worker_init_fn=_worker_init
+        dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        worker_init_fn=_worker_init,
+        generator=_seeded_generator(),
     )
 
     for epoch in range(num_epochs):
@@ -568,17 +587,25 @@ def train_jepa_finetune(
     return model
 
 
-def save_jepa_model(model: JEPACoachingModel, path: str, optimizer=None):
+def save_jepa_model(
+    model: JEPACoachingModel,
+    path: str,
+    optimizer=None,
+    trainer=None,
+):
     """Save JEPA model checkpoint with full training metadata.
 
     Checkpoint contents:
-        - model_state_dict: Model weights
+        - model_state_dict: Model weights (includes target_encoder EMA shadow)
         - is_pretrained: Pre-training flag
         - optimizer_state_dict: Optimizer state (if provided)
         - training_metadata: Loss history, epoch count, config (if available)
         - input_dim / output_dim: Model architecture dimensions
         - param_count: Total parameter count
         - save_timestamp: ISO 8601 save time
+        - ema_step / ema_total_steps: Trainer-side cosine-schedule counters
+          (REPR-01 fix). Without these, resume restarts the EMA schedule from
+          τ=0.996 (fast tracking) rather than the late-training stable value.
     """
     import datetime
 
@@ -593,6 +620,16 @@ def save_jepa_model(model: JEPACoachingModel, path: str, optimizer=None):
 
     if optimizer is not None:
         checkpoint["optimizer_state_dict"] = optimizer.state_dict()
+
+    # REPR-01: persist EMA cosine-schedule progress from trainer so resume picks
+    # up at the current τ, not τ=0.996. Prefer the live trainer; fall back to
+    # counters stashed on the model by train_jepa_pretrain before return.
+    if trainer is not None:
+        checkpoint["ema_step"] = int(getattr(trainer, "_ema_step", 0))
+        checkpoint["ema_total_steps"] = int(getattr(trainer, "_ema_total_steps", 0))
+    elif hasattr(model, "_saved_ema_step"):
+        checkpoint["ema_step"] = int(model._saved_ema_step)
+        checkpoint["ema_total_steps"] = int(getattr(model, "_saved_ema_total_steps", 0))
 
     metadata = getattr(model, "_training_metadata", None)
     if metadata:
@@ -622,7 +659,9 @@ def load_jepa_model(path: str, input_dim: int, output_dim: int) -> JEPACoachingM
     """Load JEPA model checkpoint.
 
     Returns the model with training metadata attached (if present in checkpoint)
-    as model._training_metadata.
+    as model._training_metadata. EMA schedule counters (ema_step,
+    ema_total_steps) are also attached to model so a resuming trainer can
+    restore its cosine schedule.
     """
     model = JEPACoachingModel(input_dim, output_dim)
     checkpoint = torch.load(path, map_location="cpu", weights_only=True)
@@ -632,6 +671,12 @@ def load_jepa_model(path: str, input_dim: int, output_dim: int) -> JEPACoachingM
     metadata = checkpoint.get("training_metadata")
     if metadata:
         model._training_metadata = metadata
+
+    # REPR-01: expose EMA counters on the model so the trainer can rehydrate.
+    if "ema_step" in checkpoint:
+        model._saved_ema_step = int(checkpoint["ema_step"])
+    if "ema_total_steps" in checkpoint:
+        model._saved_ema_total_steps = int(checkpoint["ema_total_steps"])
 
     param_count = checkpoint.get("param_count", "?")
     timestamp = checkpoint.get("save_timestamp", "unknown")

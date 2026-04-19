@@ -595,13 +595,12 @@ class TrainingOrchestrator:
                 )
                 per_tick_val_mask.append(True)
             else:
-                outcome = getattr(item, "round_outcome", None)
-                if outcome is not None:
-                    val = float(outcome)
-                    per_tick_val_mask.append(True)
-                else:
-                    val = 0.0
-                    per_tick_val_mask.append(False)
+                # LEAK-01 fix: round_outcome is the final round result (known only
+                # at round end). Using it as the per-tick value target leaks future
+                # information into the value head. Mask the sample instead of
+                # substituting the leaky label.
+                val = 0.0
+                per_tick_val_mask.append(False)
             per_tick_val.append(val)
 
             # Tactical role label (10 classes)

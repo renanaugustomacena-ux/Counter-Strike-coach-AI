@@ -2,7 +2,7 @@ import re
 
 import numpy as np
 import torch
-from sqlmodel import func, select
+from sqlmodel import col, func, select
 
 from Programma_CS2_RENAN.backend.nn.config import OUTPUT_DIM, RAP_POSITION_SCALE, get_device
 from Programma_CS2_RENAN.backend.nn.persistence import load_nn, save_nn
@@ -339,7 +339,7 @@ class CoachTrainingManager:
                     total,
                 )
             all_matches = session.exec(
-                select(PlayerMatchStats).order_by(PlayerMatchStats.match_date)
+                select(PlayerMatchStats).order_by(col(PlayerMatchStats.match_date))
             ).all()
 
             if not all_matches:
@@ -546,7 +546,9 @@ class CoachTrainingManager:
             # For newly ingested demos, this will work perfectly
             # For old demos with demo_name='unknown', we fall back to limit
             stmt = (
-                select(PlayerTickState).where(PlayerTickState.demo_name.in_(demo_names)).limit(5000)
+                select(PlayerTickState)
+                .where(col(PlayerTickState.demo_name).in_(demo_names))
+                .limit(5000)
             )  # Increased from 1K now that filtering is proper
 
             ticks = session.exec(stmt).all()
@@ -833,7 +835,7 @@ class CoachTrainingManager:
                 user_matches = session.exec(
                     select(PlayerMatchStats)
                     .where(PlayerMatchStats.is_pro == False)
-                    .order_by(PlayerMatchStats.match_date.desc())
+                    .order_by(col(PlayerMatchStats.match_date).desc())
                     .limit(_RADAR_MATCH_LIMIT)
                 ).all()
 

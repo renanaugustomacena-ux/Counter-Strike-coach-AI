@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 import pandas as pd
@@ -14,6 +14,10 @@ logger = get_logger(LOGGER_NAME)
 # DriftMonitor behaviour: if the past was constant, a tiny shift = high z-score.
 _STD_EPSILON = 0.01
 
+# DRIFT_FEATURES = match-aggregate stats from PlayerMatchStats — useful for
+# monitoring player-level performance drift, but NOT the 25-dim tick feature
+# vector the encoder actually consumes. Use TickFeatureDriftMonitor below for
+# model-input drift (DRIFT-01 fix).
 DRIFT_FEATURES = ["avg_adr", "kd_ratio", "impact_rounds", "avg_hs", "avg_kast"]
 
 
@@ -142,6 +146,88 @@ class DriftMonitor:
             is_drifted=is_drifted,
             drifted_features=drifted,
             max_z_score=max_z,
+            timestamp=datetime.now(timezone.utc),
+        )
+
+
+class TickFeatureDriftMonitor:
+    """
+    Drift monitor operating on the 25-dim tick-level feature vector the JEPA/RAP
+    encoders actually consume. Complements DriftMonitor (match-aggregate drift)
+    by measuring drift in model-input space, per-dimension.
+
+    Reference statistics should be computed from the training distribution via
+    `fit_reference(train_feature_matrix)`; `check_drift` then scores an
+    incoming batch of feature vectors per dimension.
+    """
+
+    def __init__(self, z_threshold: float = 2.5):
+        self.z_threshold = z_threshold
+        self._ref_mean: Optional[np.ndarray] = None
+        self._ref_std: Optional[np.ndarray] = None
+        self._feature_names: Optional[List[str]] = None
+
+    def fit_reference(
+        self,
+        feature_matrix: np.ndarray,
+        feature_names: Optional[List[str]] = None,
+    ) -> None:
+        """Store per-dimension mean/std from training data.
+
+        Args:
+            feature_matrix: [N, D] array of tick feature vectors. D must equal
+                METADATA_DIM (25) or caller's FEATURE_NAMES length.
+            feature_names: Optional list of length D naming each dimension.
+        """
+        if feature_matrix.ndim != 2:
+            raise ValueError(f"feature_matrix must be 2D [N, D], got shape {feature_matrix.shape}")
+        self._ref_mean = feature_matrix.mean(axis=0)
+        self._ref_std = feature_matrix.std(axis=0, ddof=0)
+        # Floor zero-std dims so any shift registers as drift (matches DriftMonitor).
+        self._ref_std = np.where(self._ref_std == 0, _STD_EPSILON, self._ref_std)
+        self._feature_names = feature_names
+
+    def check_drift(self, new_batch: np.ndarray) -> DriftReport:
+        """Score a batch of tick feature vectors against reference stats.
+
+        Args:
+            new_batch: [B, D] array of incoming tick vectors.
+
+        Returns:
+            DriftReport with per-dimension drift flags. drifted_features
+            contains dimension names (or "dim_{i}" when unnamed).
+        """
+        if self._ref_mean is None or self._ref_std is None:
+            raise RuntimeError(
+                "TickFeatureDriftMonitor.fit_reference() must be called before check_drift()"
+            )
+        if new_batch.ndim != 2:
+            raise ValueError(f"new_batch must be 2D [B, D], got shape {new_batch.shape}")
+        if new_batch.shape[1] != self._ref_mean.shape[0]:
+            raise ValueError(
+                f"dim mismatch: ref has {self._ref_mean.shape[0]}, new has {new_batch.shape[1]}"
+            )
+
+        new_mean = new_batch.mean(axis=0)
+        z_per_dim = np.abs(new_mean - self._ref_mean) / self._ref_std
+
+        drifted = []
+        for i, z in enumerate(z_per_dim):
+            if z >= self.z_threshold:
+                name = self._feature_names[i] if self._feature_names is not None else f"dim_{i}"
+                drifted.append(name)
+                logger.warning(
+                    "Tick-feature drift: %s (z=%.2f, ref_mean=%.3f, new_mean=%.3f)",
+                    name,
+                    float(z),
+                    float(self._ref_mean[i]),
+                    float(new_mean[i]),
+                )
+
+        return DriftReport(
+            is_drifted=len(drifted) > 0,
+            drifted_features=drifted,
+            max_z_score=float(z_per_dim.max()) if z_per_dim.size else 0.0,
             timestamp=datetime.now(timezone.utc),
         )
 

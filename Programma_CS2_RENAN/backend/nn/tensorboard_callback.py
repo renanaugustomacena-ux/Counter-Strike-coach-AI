@@ -13,7 +13,7 @@ Usage:
     # Launch: tensorboard --logdir runs/
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import torch
 
@@ -27,6 +27,7 @@ try:
 
     _TB_AVAILABLE = True
 except ImportError:
+    SummaryWriter = None  # type: ignore[assignment,misc]
     _TB_AVAILABLE = False
     logger.warning("tensorboard not installed — TensorBoardCallback will be a no-op")
 
@@ -57,17 +58,16 @@ class TensorBoardCallback(TrainingCallback):
         self._model_type = model_type
         self._epoch = 0
         self._global_step = 0
+        self.writer: Optional[Any] = None
 
         if self._active:
             self.writer = SummaryWriter(log_dir)
             logger.info("TensorBoard writer initialized: %s", log_dir)
-        else:
-            self.writer = None
 
     # ── Lifecycle Hooks ──────────────────────────────────────────────
 
     def on_train_start(self, model, config: Dict[str, Any]) -> None:
-        if not self._active:
+        if not self._active or self.writer is None:
             return
         self._model_type = config.get("model_type", self._model_type)
         self._create_custom_layout()
@@ -76,7 +76,7 @@ class TensorBoardCallback(TrainingCallback):
         self._epoch = epoch
 
     def on_batch_end(self, batch_idx: int, loss: float, outputs: Dict[str, Any]) -> None:
-        if not self._active:
+        if not self._active or self.writer is None:
             return
         self._global_step += 1
         step = self._global_step
@@ -117,7 +117,7 @@ class TensorBoardCallback(TrainingCallback):
         model,
         **kwargs,
     ) -> None:
-        if not self._active:
+        if not self._active or self.writer is None:
             return
 
         # ── Epoch Scalars ──
@@ -127,9 +127,11 @@ class TensorBoardCallback(TrainingCallback):
 
         # Learning rate
         optimizer = kwargs.get("optimizer")
-        if optimizer:
-            for i, pg in enumerate(optimizer.param_groups):
-                self.writer.add_scalar(f"lr/group_{i}", pg["lr"], epoch)
+        if optimizer is not None:
+            param_groups = getattr(optimizer, "param_groups", None)
+            if param_groups is not None:
+                for i, pg in enumerate(param_groups):
+                    self.writer.add_scalar(f"lr/group_{i}", pg["lr"], epoch)
 
         # ── Histograms ──
         self._log_parameter_histograms(model, epoch)
@@ -140,7 +142,7 @@ class TensorBoardCallback(TrainingCallback):
         self.writer.flush()
 
     def on_train_end(self, model, final_metrics: Dict[str, Any]) -> None:
-        if not self._active:
+        if not self._active or self.writer is None:
             return
         for key, val in final_metrics.items():
             if isinstance(val, (int, float)):
@@ -148,7 +150,7 @@ class TensorBoardCallback(TrainingCallback):
         self.writer.flush()
 
     def close(self) -> None:
-        if self._active and self.writer:
+        if self._active and self.writer is not None:
             self.writer.close()
             logger.info("TensorBoard writer closed")
 
@@ -156,6 +158,8 @@ class TensorBoardCallback(TrainingCallback):
 
     def _log_parameter_histograms(self, model, epoch: int) -> None:
         """Log parameter and gradient distributions."""
+        if self.writer is None:
+            return
         for name, param in model.named_parameters():
             if not param.requires_grad:
                 continue
@@ -165,12 +169,16 @@ class TensorBoardCallback(TrainingCallback):
 
     def _log_belief_histogram(self, model, epoch: int) -> None:
         """Log RAP belief vector distribution (64-dim)."""
+        if self.writer is None:
+            return
         belief = getattr(model, "_last_belief_batch", None)
         if belief is not None and isinstance(belief, torch.Tensor):
             self.writer.add_histogram("belief/vector", belief, epoch)
 
     def _log_gate_histograms(self, model, epoch: int) -> None:
         """Log SuperpositionLayer gate activation distributions."""
+        if self.writer is None:
+            return
         strategy = getattr(model, "strategy", None)
         if strategy is None:
             return
@@ -183,6 +191,8 @@ class TensorBoardCallback(TrainingCallback):
 
     def _log_concept_histograms(self, model, epoch: int) -> None:
         """Log VL-JEPA concept embedding norms."""
+        if self.writer is None:
+            return
         concept_embs = getattr(model, "concept_embeddings", None)
         if concept_embs is not None:
             norms = concept_embs.weight.data.norm(dim=1)
@@ -192,6 +202,8 @@ class TensorBoardCallback(TrainingCallback):
 
     def _create_custom_layout(self) -> None:
         """Define TensorBoard custom scalar layout for organized dashboards."""
+        if self.writer is None:
+            return
         layout = {
             "Coach Vital Signs": {
                 "Loss": ["Multiline", ["loss/train", "loss/val", "loss/gap"]],

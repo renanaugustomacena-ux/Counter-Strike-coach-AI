@@ -68,8 +68,11 @@ class JEPATrainer:
         # τ(t) = 1 - (1 - τ_base) · (cos(πt/T) + 1) / 2
         # Starts at 0.996 (fast tracking) → 1.0 (frozen target) over training.
         self._ema_base_momentum: float = 0.996
-        self._ema_step: int = 0
-        self._ema_total_steps: int = t_max  # default; updated when dataloader length is known
+        # REPR-01: if load_jepa_model attached saved counters to the model,
+        # rehydrate them so the cosine schedule resumes at the correct τ
+        # instead of restarting at τ=0.996.
+        self._ema_step: int = int(getattr(model, "_saved_ema_step", 0))
+        self._ema_total_steps: int = int(getattr(model, "_saved_ema_total_steps", t_max))
 
         # Task 2.19.3: Drift monitoring for automatic retraining
         self.drift_monitor = DriftMonitor(z_threshold=drift_threshold)
@@ -359,17 +362,33 @@ class JEPATrainer:
 
         # 4. Generate concept labels — prefer outcome-based (G-01 fix) over heuristic
         labeler = ConceptLabeler()
+        valid_indices: list[int] = []
         if round_stats is not None and any(rs is not None for rs in round_stats):
             # G-01: Use RoundStats outcome data (no label leakage)
+            # LEAK-02 fix: drop samples with rs=None instead of substituting
+            # torch.full((16,), 0.5) — 0.5 under BCE-with-logits acts as a weak
+            # positive for every concept simultaneously, producing incoherent
+            # gradients. Mask via index selection and recompute logits slice.
             batch_labels = []
-            for rs in round_stats:
+            for idx, rs in enumerate(round_stats):
                 if rs is not None:
                     batch_labels.append(labeler.label_from_round_stats(rs))
-                else:
-                    # Fallback: neutral labels for missing RoundStats
-                    batch_labels.append(torch.full((16,), 0.5))
-            concept_labels = torch.stack(batch_labels).to(x_context.device)
+                    valid_indices.append(idx)
+            if not batch_labels:
+                # Degenerate: all None after the any() check raced (should not
+                # happen, but guard anyway). Fall through to skip path.
+                concept_labels = None
+            else:
+                concept_labels = torch.stack(batch_labels).to(x_context.device)
+                if len(valid_indices) < concept_logits.shape[0]:
+                    idx_t = torch.tensor(
+                        valid_indices, dtype=torch.long, device=concept_logits.device
+                    )
+                    concept_logits = concept_logits.index_select(0, idx_t)
         else:
+            concept_labels = None
+
+        if concept_labels is None:
             # J-2 FIX: Hard-gate heuristic fallback — skip concept alignment entirely.
             # The heuristic labeler (label_batch/label_tick) derives labels directly from
             # the input feature vector, causing label leakage: the model can learn a

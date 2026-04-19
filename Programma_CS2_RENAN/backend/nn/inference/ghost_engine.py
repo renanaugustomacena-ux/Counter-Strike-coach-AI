@@ -1,4 +1,5 @@
 import os
+from types import SimpleNamespace
 from typing import Any, Dict, Optional, Tuple
 
 import torch
@@ -115,7 +116,12 @@ class GhostEngine:
                 knowledge = None
 
             # A. Map Frame - tactical overlay (Player-POV when knowledge available)
-            tick_list = [tick_data]
+            # TensorFactory performs attribute access (tick.pos_x, ...) on each
+            # tick. Promote a dict-shaped tick to a SimpleNamespace so the
+            # contract (`List[PlayerTickState]`) is honored and callers can pass
+            # either shape interchangeably.
+            tick_obj = SimpleNamespace(**tick_data) if isinstance(tick_data, dict) else tick_data
+            tick_list = [tick_obj]
             map_t = (
                 tensor_factory.generate_map_tensor(tick_list, map_name, knowledge=knowledge)
                 .unsqueeze(0)

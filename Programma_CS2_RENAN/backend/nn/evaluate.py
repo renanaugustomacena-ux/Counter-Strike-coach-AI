@@ -2,10 +2,11 @@ import numpy as np
 import torch
 
 try:
-    import shap
+    import shap  # type: ignore[import-untyped]
 
     _HAS_SHAP = True
 except ImportError:
+    shap = None  # type: ignore[assignment]
     _HAS_SHAP = False
 
 from Programma_CS2_RENAN.backend.nn.coach_manager import MATCH_AGGREGATE_FEATURES
