@@ -73,13 +73,15 @@ def run_census():
     print(f"Chunk size: {CHUNK_SIZE:,}\n")
 
     # Per-demo accumulators
-    demo_stats = defaultdict(lambda: {
-        "total": 0,
-        "zero_counts": defaultdict(int),
-        "min_vals": defaultdict(lambda: float("inf")),
-        "max_vals": defaultdict(lambda: float("-inf")),
-        "map_name": None,
-    })
+    demo_stats = defaultdict(
+        lambda: {
+            "total": 0,
+            "zero_counts": defaultdict(int),
+            "min_vals": defaultdict(lambda: float("inf")),
+            "max_vals": defaultdict(lambda: float("-inf")),
+            "map_name": None,
+        }
+    )
 
     # Build column list for SELECT
     col_names = list(AUDIT_COLUMNS.keys()) + ["demo_name", "map_name"]
@@ -92,8 +94,7 @@ def run_census():
     while current_id <= max_id:
         end_id = current_id + CHUNK_SIZE - 1
         c.execute(
-            f"SELECT {col_select} FROM playertickstate "
-            f"WHERE rowid BETWEEN ? AND ?",
+            f"SELECT {col_select} FROM playertickstate " f"WHERE rowid BETWEEN ? AND ?",
             (current_id, end_id),
         )
         rows = c.fetchall()

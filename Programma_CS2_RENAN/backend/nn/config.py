@@ -117,8 +117,7 @@ def get_device() -> torch.device:
             get_state_manager().add_notification(
                 "training",
                 "INFO",
-                "No GPU detected — training will use CPU. "
-                "This is slower but fully functional.",
+                "No GPU detected — training will use CPU. " "This is slower but fully functional.",
             )
         except Exception:
             pass  # DB not ready yet; log message above is sufficient

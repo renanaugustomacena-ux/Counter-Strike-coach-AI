@@ -48,12 +48,23 @@ class LLMService:
             if response.status_code == 200:
                 models = response.json().get("models", [])
                 model_names = [m.get("name", "") for m in models]
-                # Check if any model is available (we can use whatever is installed)
                 self._available = len(models) > 0
                 self._available_checked_at = time.monotonic()
                 if self._available and self.model not in model_names:
-                    # Use first available model
-                    self.model = model_names[0] if model_names else DEFAULT_MODEL
+                    requested = self.model
+                    # Prefer same model family (gemma4 -> any gemma4 variant -> any gemma -> first available).
+                    family_prefix = requested.split(":", 1)[0]
+                    same_family = [n for n in model_names if n.split(":", 1)[0] == family_prefix]
+                    gemma_any = [n for n in model_names if n.startswith("gemma")]
+                    chosen = (same_family or gemma_any or model_names)[0]
+                    self.model = chosen
+                    logger.warning(
+                        "Requested LLM '%s' not installed in Ollama; falling back to '%s'. "
+                        "Install with `ollama pull %s` to restore the configured chatbot model.",
+                        requested,
+                        chosen,
+                        requested,
+                    )
                 return self._available
         except (requests.ConnectionError, requests.Timeout):
             self._available = False

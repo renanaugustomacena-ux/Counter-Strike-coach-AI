@@ -47,7 +47,9 @@ def _map_and_pipeline_user(demo_path, rounds_df, db_manager, processed_dir):
     db_manager.upsert(match_stats)
     pipeline_ran = _trigger_ml_pipeline(db_manager, demo_name, match_stats_dict)
     if not pipeline_ran:
-        logger.warning("ML pipeline skipped for %s — demo NOT archived (can be reprocessed)", demo_name)
+        logger.warning(
+            "ML pipeline skipped for %s — demo NOT archived (can be reprocessed)", demo_name
+        )
         return
     # R3-H03: Only archive after all pipeline steps succeed
     _archive_user_demo(demo_path, processed_dir)

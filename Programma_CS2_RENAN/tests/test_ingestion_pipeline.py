@@ -247,9 +247,10 @@ class TestCorrectionEngine:
         result = generate_corrections(deviations, 100)
         if len(result) >= 2:
             # Most important should come first
-            assert abs(result[0]["weighted_z"]) * result[0]["importance"] >= abs(
-                result[1]["weighted_z"]
-            ) * result[1]["importance"]
+            assert (
+                abs(result[0]["weighted_z"]) * result[0]["importance"]
+                >= abs(result[1]["weighted_z"]) * result[1]["importance"]
+            )
 
     def test_corrections_empty_deviations(self):
         from Programma_CS2_RENAN.backend.coaching.correction_engine import generate_corrections

@@ -18,7 +18,6 @@ from sqlmodel import Session, SQLModel, create_engine, select
 
 from Programma_CS2_RENAN.backend.storage.db_models import CoachingInsight
 
-
 # ============ Shared Fixtures ============
 
 
@@ -46,9 +45,7 @@ class _MockStateManager:
         self.notifications = []
 
     def add_notification(self, category, severity, message):
-        self.notifications.append(
-            {"category": category, "severity": severity, "message": message}
-        )
+        self.notifications.append({"category": category, "severity": severity, "message": message})
 
     def update_status(self, *args, **kwargs):
         pass
@@ -169,9 +166,7 @@ class TestWR57TraditionalNeverZero:
 
             with mock_db.get_session() as session:
                 insights = session.exec(
-                    select(CoachingInsight).where(
-                        CoachingInsight.player_name == "TestPlayer"
-                    )
+                    select(CoachingInsight).where(CoachingInsight.player_name == "TestPlayer")
                 ).all()
                 assert len(insights) >= 1, "C-01: Must never produce zero coaching"
                 assert any("Match Analysis Complete" in i.title for i in insights)
@@ -232,9 +227,7 @@ class TestWR56DialogueContext:
     """WR-56: _build_chat_messages must not drop last assistant response."""
 
     def test_full_history_preserved(self):
-        from Programma_CS2_RENAN.backend.services.coaching_dialogue import (
-            CoachingDialogueEngine,
-        )
+        from Programma_CS2_RENAN.backend.services.coaching_dialogue import CoachingDialogueEngine
 
         engine = CoachingDialogueEngine.__new__(CoachingDialogueEngine)
         engine._history = [
@@ -272,14 +265,12 @@ class TestWR44TimeInRound:
         ticks = np.arange(0, int(200 * tick_rate), tick_rate)
         time_in_round = ((ticks - round_start_tick) / tick_rate).clip(0.0, 115.0)
 
-        assert time_in_round.max() <= 115.0, (
-            f"time_in_round must clip at 115.0, got {time_in_round.max()}"
-        )
+        assert (
+            time_in_round.max() <= 115.0
+        ), f"time_in_round must clip at 115.0, got {time_in_round.max()}"
         # Verify the vectorizer normalization stays in [0, 1]
         normalized = time_in_round / 115.0
-        assert normalized.max() <= 1.0, (
-            f"Normalized time must be <= 1.0, got {normalized.max()}"
-        )
+        assert normalized.max() <= 1.0, f"Normalized time must be <= 1.0, got {normalized.max()}"
 
 
 # ============ CORE-10: NaN yaw interpolation ============
@@ -340,9 +331,7 @@ class TestDS08SSRFPrevention:
     """DS-08: FaceIT demo download rejects non-HTTPS URLs."""
 
     def test_rejects_file_scheme(self):
-        from Programma_CS2_RENAN.backend.data_sources.faceit_integration import (
-            FACEITIntegration,
-        )
+        from Programma_CS2_RENAN.backend.data_sources.faceit_integration import FACEITIntegration
 
         integration = FACEITIntegration.__new__(FACEITIntegration)
         integration.api_key = "test"

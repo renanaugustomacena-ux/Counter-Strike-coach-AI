@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 import torch
 
+from Programma_CS2_RENAN.backend.nn.config import OUTPUT_DIM
 from Programma_CS2_RENAN.backend.nn.jepa_model import (
     COACHING_CONCEPTS,
     CONCEPT_NAMES,
@@ -22,7 +23,6 @@ from Programma_CS2_RENAN.backend.nn.jepa_model import (
     jepa_contrastive_loss,
     vl_jepa_concept_loss,
 )
-from Programma_CS2_RENAN.backend.nn.config import OUTPUT_DIM
 from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
 
 

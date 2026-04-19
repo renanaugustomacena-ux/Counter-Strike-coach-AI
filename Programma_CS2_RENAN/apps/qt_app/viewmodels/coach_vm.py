@@ -54,9 +54,7 @@ class CoachViewModel(QObject):
             # Fall back to all insights (pro match analysis) if user has none
             if not results:
                 results = session.exec(
-                    select(CoachingInsight)
-                    .order_by(CoachingInsight.created_at.desc())
-                    .limit(10)
+                    select(CoachingInsight).order_by(CoachingInsight.created_at.desc()).limit(10)
                 ).all()
 
             return [

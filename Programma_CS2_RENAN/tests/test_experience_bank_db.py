@@ -521,7 +521,12 @@ class TestExperienceCount:
         assert counts == {"total": 0, "pro": 0, "user": 0}
 
     def test_counts_with_mixed_data(self, experience_bank, sample_context):
-        """Correctly counts user vs pro experiences."""
+        """Correctly counts user vs pro experiences.
+
+        NOTE: add_experience() dedups on (context_hash + action) per its docstring
+        (CRUD semantics — UPDATE existing record). To count three distinct rows
+        each call must use a different action.
+        """
         experience_bank.add_experience(
             context=sample_context, action_taken="pushed", outcome="kill"
         )
@@ -530,7 +535,7 @@ class TestExperienceCount:
         )
         experience_bank.add_experience(
             context=sample_context,
-            action_taken="held_angle",
+            action_taken="rotated",
             outcome="kill",
             pro_player_name="NiKo",
         )

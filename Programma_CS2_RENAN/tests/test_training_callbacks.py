@@ -14,11 +14,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import torch
 
-from Programma_CS2_RENAN.backend.nn.training_callbacks import (
-    CallbackRegistry,
-    TrainingCallback,
-)
-
+from Programma_CS2_RENAN.backend.nn.training_callbacks import CallbackRegistry, TrainingCallback
 
 # ─── TrainingCallback (Abstract Base) ─────────────────────────────────
 
@@ -210,17 +206,15 @@ class TestTensorBoardCallback:
 
     def test_import_without_tensorboard(self):
         """Module should import even without tensorboard package."""
-        from Programma_CS2_RENAN.backend.nn.tensorboard_callback import (
-            TensorBoardCallback,
-        )
+        from Programma_CS2_RENAN.backend.nn.tensorboard_callback import TensorBoardCallback
 
         assert TensorBoardCallback is not None
 
     def test_noop_when_tensorboard_missing(self):
         """All hooks should be no-ops when tensorboard is not installed."""
         from Programma_CS2_RENAN.backend.nn.tensorboard_callback import (
-            TensorBoardCallback,
             _TB_AVAILABLE,
+            TensorBoardCallback,
         )
 
         cb = TensorBoardCallback(log_dir=tempfile.mkdtemp(prefix="test_tb_"))
@@ -236,8 +230,8 @@ class TestTensorBoardCallback:
     def test_active_flag_matches_availability(self):
         """_active should match _TB_AVAILABLE."""
         from Programma_CS2_RENAN.backend.nn.tensorboard_callback import (
-            TensorBoardCallback,
             _TB_AVAILABLE,
+            TensorBoardCallback,
         )
 
         cb = TensorBoardCallback(log_dir=tempfile.mkdtemp(prefix="test_tb_"))
@@ -245,9 +239,7 @@ class TestTensorBoardCallback:
 
     def test_callback_integrates_with_registry(self):
         """TensorBoardCallback should work in CallbackRegistry without errors."""
-        from Programma_CS2_RENAN.backend.nn.tensorboard_callback import (
-            TensorBoardCallback,
-        )
+        from Programma_CS2_RENAN.backend.nn.tensorboard_callback import TensorBoardCallback
 
         cb = TensorBoardCallback(log_dir=tempfile.mkdtemp(prefix="test_tb_reg_"))
         reg = CallbackRegistry([cb])
