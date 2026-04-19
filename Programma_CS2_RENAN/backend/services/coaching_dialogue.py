@@ -14,6 +14,7 @@ Integration Points:
     - PlayerMatchStats / RoundStats: Match & round-level statistical context
 """
 
+import os
 import re
 import threading
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -31,9 +32,17 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.coaching_dialogue")
 
-# WR-06: Timeout for interactive LLM dialogue calls (seconds).
-# Prevents UI hangs when Ollama stalls or is overloaded.
-_DIALOGUE_TIMEOUT = 45
+# WR-06 / CHAT-01 (AUDIT §8.1): Timeout budget for interactive LLM calls.
+# Realistic Gemma 4 E2B latency on this class of hardware (5.1B Q4_K_M,
+# ROCm, full coaching prompt with system + 2-3 KB retrieved context) is
+# 30-40 s warm, up to ~50 s cold. Previous 45 s response budget
+# triggered fallback for most real queries → user saw raw-data dumps.
+# New budget is generous enough to cover cold starts; UI already shows
+# a loading spinner via `is_loading_changed`, so long waits are visible.
+# Override via env for faster GPUs: `CS2_DIALOGUE_TIMEOUT=60`.
+_DIALOGUE_TIMEOUT = int(os.getenv("CS2_DIALOGUE_TIMEOUT", "180"))
+_OPENING_TIMEOUT = int(os.getenv("CS2_OPENING_TIMEOUT", "90"))
+_FALLBACK_RETRY_TIMEOUT = int(os.getenv("CS2_FALLBACK_TIMEOUT", "90"))
 
 # Intent classification keywords for retrieval routing
 INTENT_KEYWORDS: Dict[str, List[str]] = {
@@ -143,6 +152,86 @@ _CS2_MAP_NAMES = frozenset(
     }
 )
 
+# CHAT-02 (AUDIT §8.2): 2nd → 3rd person regex transforms. CoachingInsight
+# messages are authored in 2nd person at NN-generation time (describing the
+# analyzed player's weaknesses). When the user has no personal demos and we
+# inject pro-player insights as reference material, the raw text reads as if
+# the critique is aimed at the user. Transforms below re-attribute it to the
+# pro. Order matters — longest/most-specific patterns first so, e.g.,
+# "You were" matches before "You".
+_SECOND_TO_THIRD_PERSON: Tuple[Tuple[re.Pattern, str], ...] = (
+    # Full phrases first — capital-You variants keep capital "They" to
+    # preserve sentence-start capitalization in sentences that begin with You.
+    (re.compile(r"\bYou are\b"), "They are"),
+    (re.compile(r"\byou are\b"), "they are"),
+    (re.compile(r"\bYou were\b"), "They were"),
+    (re.compile(r"\byou were\b"), "they were"),
+    (re.compile(r"\bYou have\b"), "They have"),
+    (re.compile(r"\byou have\b"), "they have"),
+    (re.compile(r"\bYou will\b"), "They will"),
+    (re.compile(r"\byou will\b"), "they will"),
+    (re.compile(r"\bYou should\b"), "They should"),
+    (re.compile(r"\byou should\b"), "they should"),
+    (re.compile(r"\bYou can\b"), "They can"),
+    (re.compile(r"\byou can\b"), "they can"),
+    # Possessives — "Your X" / "your X" → "Their X" / "their X"
+    (re.compile(r"\bYour\b"), "Their"),
+    (re.compile(r"\byour\b"), "their"),
+    (re.compile(r"\bYours\b"), "Theirs"),
+    (re.compile(r"\byours\b"), "theirs"),
+    # Bare pronouns last
+    (re.compile(r"\bYou\b"), "They"),
+    (re.compile(r"\byou\b"), "they"),
+)
+
+
+# BE-03 (AUDIT §9.1): CoachingInsight.message, pro nicknames, and HLTV bios
+# are attacker-influenceable. Strip ASCII control chars (except newline / tab)
+# to neutralise terminal-escape injection and hidden prompt-instruction bytes
+# before the text lands in an LLM prompt. Matches Unicode categories Cc
+# (control) minus \t (0x09) and \n (0x0A).
+_CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
+
+
+def _sanitize_llm_context(text: str, max_len: int = 300) -> str:
+    """Sanitise free-form strings destined for an LLM prompt context block.
+
+    Removes ASCII control chars and caps length. Does NOT attempt semantic
+    prompt-injection defence — that is enforced via SYSTEM_PROMPT_TEMPLATE
+    rules and the `{` / `}` escape at `_build_system_prompt`.
+    """
+    if not text:
+        return ""
+    cleaned = _CONTROL_CHARS_RE.sub("", text)
+    return cleaned[:max_len]
+
+
+def _to_third_person(text: str, pro_name: str, attribute: bool = True) -> str:
+    """Re-narrate 2nd-person coaching text as 3rd-person about `pro_name`.
+
+    Deterministic regex-based transform — no LLM call. Swaps you/your/yours
+    pronouns to they/their/theirs. Optionally prepends an attribution prefix.
+
+    Args:
+        text: Original insight message (may contain "you"/"your").
+        pro_name: Pro player the insight actually describes.
+        attribute: When True, prepend `[pro_name] ` unless already present.
+            Set False when the caller's surrounding format already names the
+            pro (avoids double attribution).
+
+    Returns:
+        Rewritten text.
+    """
+    rewritten = text
+    for pattern, replacement in _SECOND_TO_THIRD_PERSON:
+        rewritten = pattern.sub(replacement, rewritten)
+    if attribute:
+        prefix = f"[{pro_name}] "
+        if not rewritten.startswith(prefix):
+            rewritten = prefix + rewritten
+    return rewritten
+
+
 SYSTEM_PROMPT_TEMPLATE = """\
 You are an expert CS2 tactical coach.  You have access to real match data, \
 round-by-round statistics, and coaching insights generated from parsed demo files.
@@ -182,18 +271,24 @@ blocks are present, treat them as real analyzed data from parsed demo files.
 say you don't have information on that player rather than guessing.
 
 CRITICAL RULES FOR DATA PROVENANCE:
-- If the player context says "pro reference data", these insights come from \
-professional players, NOT from the user's personal matches.
-- NEVER say "your stats show" or "your utility usage" when referencing pro data. \
-Instead say "the pro data shows" or "based on pro match analysis".
-- WR-79: Address the user as "you" or "player" — NEVER use their configured \
-username (shown in Player context above) in coaching advice. The username is \
-metadata for the system, not something to repeat back to the user.
+- If the player context says "pro reference data" or "no personal match data yet", \
+treat the entire session as TUTOR MODE: the user has no personal demos, so every \
+insight, statistic, round, and prediction in the retrieved context describes a \
+PROFESSIONAL player — NEVER the user. In tutor mode you MUST:
+  - Refer to the pro by name in 3rd person ("donk did X", "zywoo's KAST is Y").
+  - NEVER use "you", "your", or "yours" when describing the retrieved data. \
+Phrases like "your KAST", "you are 36% slower", "improve your opening duels" are \
+FORBIDDEN and constitute fabricated personal critique.
+  - Frame every lesson as: "[pro_name] shows X → what you (the user) can take away: Y".
+  - If the retrieved text already contains "[{{pro_name}}]" attribution prefix, keep \
+the attribution visible when echoing the stat.
+- WR-79: Address the user as "you" or "player" in YOUR OWN advice only — NEVER use \
+their configured username (shown in Player context above) in coaching advice.
 - When retrieved coaching experiences mention specific player names, those are \
 pro players from parsed demos — clearly attribute them (e.g., "in s1mple's \
 data we see..."), do NOT conflate pro player names with the user.
 - Only use possessive framing ("your", "you") when the context explicitly confirms \
-the data comes from the user's personal matches.
+the data comes from the user's personal matches (i.e., NOT in tutor mode).
 
 CRITICAL RULES FOR DATA HONESTY (WR-78):
 - Only describe events that appear in the data provided below. If the data shows \
@@ -233,6 +328,7 @@ class CoachingDialogueEngine:
         self._session_active: bool = False
         # C-06: Protect mutable session state from concurrent UI thread access
         self._state_lock = threading.Lock()
+        self._warmed_up: bool = False
 
         # Ensure hand-curated tactical knowledge is in the DB for RAG retrieval
         try:
@@ -243,6 +339,34 @@ class CoachingDialogueEngine:
             ensure_seed_knowledge_loaded()
         except Exception as exc:
             logger.debug("Seed knowledge check skipped: %s", exc)
+
+        # CHAT-01: Warm Gemma in a daemon thread so the first real chat
+        # request does not pay the ~10 s model-load tax. No-op when LLM
+        # is unavailable — is_available() caches the result anyway.
+        threading.Thread(
+            target=self._warmup_llm,
+            name="gemma-warmup",
+            daemon=True,
+        ).start()
+
+    def _warmup_llm(self) -> None:
+        """Fire a tiny chat request so Gemma is hot before the user asks.
+
+        Runs at engine construction on a daemon thread. Silent on failure;
+        `is_available()` retries on next call.
+        """
+        try:
+            if not self._llm.is_available():
+                return
+            # Minimal prompt — just forces Ollama to load the model into VRAM.
+            self._llm.chat(
+                [{"role": "user", "content": "ready?"}],
+                system_prompt="Reply with a single word.",
+            )
+            self._warmed_up = True
+            logger.info("Gemma warmup complete — chat engine hot.")
+        except Exception as exc:
+            logger.debug("Gemma warmup skipped: %s", exc)
 
     # ------------------------------------------------------------------
     # Session lifecycle
@@ -443,21 +567,37 @@ class CoachingDialogueEngine:
             if self._player_context.get("using_pro_reference"):
                 parts.append(
                     f"Pro player analysis (use as coaching reference, "
-                    f"{len(insights)} insights available):"
+                    f"{len(insights)} insights available — these describe PRO "
+                    f"players' gameplay, NOT the user's):"
                 )
                 for ins in insights[:10]:
                     pro = ins.get("player_name", "Pro")
-                    parts.append(
-                        f"  - [{ins['severity']}] {pro} — {ins['title']}: "
-                        f"{ins['message'][:300]}"
-                    )
+                    # CHAT-02: transform 2nd-person text to 3rd-person.
+                    # Outer format already names the pro, so suppress the
+                    # attribution prefix to avoid "donk — title: [donk] they…".
+                    # BE-03: sanitise message before LLM exposure.
+                    clean_msg = _sanitize_llm_context(ins["message"], max_len=300)
+                    retold = _to_third_person(clean_msg, pro, attribute=False)
+                    parts.append(f"  - [{ins['severity']}] {pro} — {ins['title']}: {retold}")
             else:
                 parts.append(f"Recent coaching insights ({len(insights)} available):")
                 for ins in insights[:10]:
-                    parts.append(f"  - [{ins['severity']}] {ins['title']}: {ins['message'][:300]}")
+                    clean_msg = _sanitize_llm_context(ins["message"], max_len=300)
+                    parts.append(f"  - [{ins['severity']}] {ins['title']}: {clean_msg}")
 
         player_context_str = "\n".join(parts)
-        return SYSTEM_PROMPT_TEMPLATE.format(player_context=player_context_str)
+        # BE-03 (AUDIT §9.1): every value in `player_context_str` is sourced
+        # from `CoachingInsight.message`, pro nicknames, and HLTV-scraped
+        # bios — all attacker-influenceable through poisoned demos or HLTV
+        # rows. Two attack surfaces:
+        #   1. Literal `{` / `}` braces would be interpreted by `str.format`
+        #      below → `KeyError` (DoS) or unintended substitution.
+        #   2. Adversarial instructions embedded in nicknames / messages
+        #      could attempt prompt injection downstream. The brace escape
+        #      neutralises the `format()` exploit; further LLM-side
+        #      hardening is in SYSTEM_PROMPT_TEMPLATE rules.
+        safe_context = player_context_str.replace("{", "{{").replace("}", "}}")
+        return SYSTEM_PROMPT_TEMPLATE.format(player_context=safe_context)
 
     def _get_player_lookup(self):
         """Lazy-init PlayerLookupService to avoid import cost at startup."""
@@ -986,12 +1126,16 @@ class CoachingDialogueEngine:
         if insights:
             lines = [
                 f"ML-BACKED COACHING INSIGHTS for {player_name} "
-                f"({len(insights)} insights from neural network analysis):"
+                f"({len(insights)} insights from neural network analysis — "
+                f"describing {player_name}'s gameplay, rendered in 3rd person):"
             ]
             for ins in insights:
-                lines.append(
-                    f"  [{ins.severity}] {ins.title} ({ins.focus_area}): " f"{ins.message[:300]}"
-                )
+                # CHAT-02: re-attribute to the pro so LLM cannot echo as "your".
+                # Header already names the player — suppress inline prefix.
+                # BE-03: sanitise message before LLM exposure.
+                clean_msg = _sanitize_llm_context(ins.message, max_len=300)
+                retold = _to_third_person(clean_msg, player_name, attribute=False)
+                lines.append(f"  [{ins.severity}] {ins.title} ({ins.focus_area}): {retold}")
             parts.append("\n".join(lines))
 
         if not parts:
@@ -1083,12 +1227,17 @@ class CoachingDialogueEngine:
                 if insights:
                     lines = [
                         f"LIVE NEURAL NETWORK ANALYSIS for {name} "
-                        f"(AdvancedCoachNN/JEPA model predictions):"
+                        f"(AdvancedCoachNN/JEPA model predictions — "
+                        f"describing {name}'s gameplay, rendered in 3rd person):"
                     ]
                     for ins in insights[:5]:
+                        # Header already names the player — suppress prefix.
+                        # BE-03: sanitise message before LLM exposure.
+                        clean_msg = _sanitize_llm_context(ins.message, max_len=250)
+                        retold = _to_third_person(clean_msg, name, attribute=False)
                         lines.append(
                             f"  [{ins.priority.value.upper()}] {ins.title} "
-                            f"(confidence={ins.confidence:.0%}): {ins.message[:250]}"
+                            f"(confidence={ins.confidence:.0%}): {retold}"
                         )
                     blocks.append("\n".join(lines))
 
@@ -1115,9 +1264,19 @@ class CoachingDialogueEngine:
         if not self._llm.is_available():
             return self._offline_opening()
 
-        prompt_parts = ["Greet the player briefly and offer to help with their gameplay."]
+        using_pro = self._player_context.get("using_pro_reference", False)
+        if using_pro:
+            prompt_parts = [
+                "Greet the player briefly. Make clear that NO personal match data "
+                "has been ingested for them yet, so coaching will be grounded in "
+                "PROFESSIONAL match analysis (HLTV pro stats, parsed pro demos, "
+                "ML-extracted pro patterns) — not their own gameplay. Invite them "
+                "to ask about a pro player, a tactic, a map concept, or a role.",
+            ]
+        else:
+            prompt_parts = ["Greet the player briefly and offer to help with their gameplay."]
         insights = self._player_context.get("recent_insights", [])
-        if insights:
+        if insights and not using_pro:
             focus = self._player_context.get("primary_focus", "gameplay")
             prompt_parts.append(
                 f"Mention that you've noticed their recent coaching focused on "
@@ -1126,7 +1285,9 @@ class CoachingDialogueEngine:
 
         messages = [{"role": "user", "content": " ".join(prompt_parts)}]
         try:
-            response = self._chat_with_timeout(messages, self._system_prompt, timeout=30)
+            response = self._chat_with_timeout(
+                messages, self._system_prompt, timeout=_OPENING_TIMEOUT
+            )
         except (TimeoutError, Exception) as exc:
             logger.warning("Opening generation failed: %s", exc)
             return self._offline_opening()
@@ -1138,14 +1299,23 @@ class CoachingDialogueEngine:
     def _offline_opening(self) -> str:
         """Opening message when Ollama is unavailable."""
         name = self._player_context.get("player_name", "player")
+        using_pro = self._player_context.get("using_pro_reference", False)
         focus = self._player_context.get("primary_focus")
-        msg = (
-            f"[Offline Coach] Hey {name}! I can help with your CS2 gameplay. "
-            f"I'm running in offline mode — my answers will be based on the "
-            f"tactical knowledge base."
-        )
-        if focus:
-            msg += f" Your recent coaching focused on {focus}."
+        if using_pro:
+            msg = (
+                f"[Offline Coach] Hey {name}! No personal match data has been "
+                f"ingested yet, so I'll coach using PROFESSIONAL match analysis "
+                f"(HLTV pro stats + parsed pro demos + ML-extracted pro patterns). "
+                f"Ask me about a pro player, a tactic, a map concept, or a role."
+            )
+        else:
+            msg = (
+                f"[Offline Coach] Hey {name}! I can help with your CS2 gameplay. "
+                f"I'm running in offline mode — my answers will be based on the "
+                f"tactical knowledge base."
+            )
+            if focus:
+                msg += f" Your recent coaching focused on {focus}."
         msg += " What would you like to work on?"
         return msg
 
@@ -1174,7 +1344,9 @@ class CoachingDialogueEngine:
                         ),
                     }
                 ]
-                response = self._chat_with_timeout(messages, system, timeout=15)
+                response = self._chat_with_timeout(
+                    messages, system, timeout=_FALLBACK_RETRY_TIMEOUT
+                )
                 if not response.startswith("[LLM"):
                     return response
             except Exception as exc:

@@ -389,6 +389,10 @@ class CoachScreen(QWidget):
             # Title + severity
             title_row = QHBoxLayout()
             title_lbl = QLabel(insight.get("title", "Insight"))
+            # FE-01 (AUDIT §9.1): force PlainText to block HTML rendering of
+            # DB-sourced text. Default Qt.AutoText flips to RichText whenever
+            # content starts with `<`, enabling clickable file:// / smb:// links.
+            title_lbl.setTextFormat(Qt.PlainText)
             title_lbl.setFont(QFont("Roboto", 12, QFont.Bold))
             title_lbl.setStyleSheet("color: #dcdcdc; background: transparent;")
             title_row.addWidget(title_lbl)
@@ -405,6 +409,7 @@ class CoachScreen(QWidget):
 
             # Message
             msg_lbl = QLabel(insight.get("message", ""))
+            msg_lbl.setTextFormat(Qt.PlainText)  # FE-01 — see title_lbl above
             msg_lbl.setWordWrap(True)
             msg_lbl.setStyleSheet("color: #a0a0b0; font-size: 12px; background: transparent;")
             item_layout.addWidget(msg_lbl)
@@ -414,6 +419,7 @@ class CoachScreen(QWidget):
             focus = insight.get("focus_area", "")
             if focus:
                 focus_lbl = QLabel(focus)
+                focus_lbl.setTextFormat(Qt.PlainText)  # FE-01
                 focus_lbl.setStyleSheet("color: #5a5a8a; font-size: 11px; background: transparent;")
                 meta_row.addWidget(focus_lbl)
             meta_row.addStretch()

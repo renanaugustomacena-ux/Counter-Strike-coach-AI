@@ -8,6 +8,7 @@ Safe migration: ADD COLUMN only. No destructive operations.
 Adds data_quality column to playermatchstats (C-04: track parse completeness).
 """
 
+import re
 from typing import Sequence, Union
 
 import sqlalchemy as sa
@@ -20,11 +21,22 @@ down_revision: Union[str, Sequence[str], None] = "3c6ecb5fe20e"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
+# DB-02 (AUDIT §9.1): identifier whitelist guards `sa.text(f"...")` DDL
+# from injection if a future migration template copy ever substitutes a
+# non-literal table name.
+_SAFE_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _safe_id(name: str) -> str:
+    if not _SAFE_IDENTIFIER_RE.match(name):
+        raise ValueError(f"Unsafe identifier: {name!r}")
+    return name
+
 
 def _column_exists(table: str, column: str) -> bool:
     """Check if a column already exists (idempotent guard)."""
     conn = op.get_bind()
-    result = conn.execute(sa.text(f"PRAGMA table_info({table})"))
+    result = conn.execute(sa.text(f'PRAGMA table_info("{_safe_id(table)}")'))
     return any(row[1] == column for row in result)
 
 

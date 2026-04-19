@@ -347,11 +347,15 @@ class MatchDetailScreen(QWidget):
                 card_layout.setSpacing(4)
 
                 title_lbl = QLabel(ins.get("title", ""))
+                # FE-01 (AUDIT §9.1): force PlainText on DB-sourced labels
+                # so Qt.AutoText cannot flip to RichText and render <a href="file://...">
+                title_lbl.setTextFormat(Qt.PlainText)
                 title_lbl.setFont(QFont("Roboto", 12, QFont.Bold))
                 title_lbl.setStyleSheet(f"color: {sev_color.name()};")
                 card_layout.addWidget(title_lbl)
 
                 msg_lbl = QLabel(ins.get("message", ""))
+                msg_lbl.setTextFormat(Qt.PlainText)  # FE-01
                 msg_lbl.setWordWrap(True)
                 msg_lbl.setStyleSheet("color: #dcdcdc;")
                 card_layout.addWidget(msg_lbl)
@@ -359,6 +363,7 @@ class MatchDetailScreen(QWidget):
                 focus = ins.get("focus_area", "")
                 if focus:
                     focus_lbl = QLabel(f"Focus: {focus}")
+                    focus_lbl.setTextFormat(Qt.PlainText)  # FE-01
                     focus_lbl.setStyleSheet("color: #666666; font-style: italic;")
                     card_layout.addWidget(focus_lbl)
 

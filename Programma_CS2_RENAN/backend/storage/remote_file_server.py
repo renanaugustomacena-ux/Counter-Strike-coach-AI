@@ -189,10 +189,23 @@ def run_server(
     if ssl_keyfile and ssl_certfile:
         logger.info("TLS enabled: cert=%s key=%s", ssl_certfile, ssl_keyfile)
     elif host != "127.0.0.1":
+        # BE-07 (AUDIT §9): refuse to bind a non-localhost address without TLS.
+        # The previous warning-only path left STORAGE_API_KEY transmitted in
+        # cleartext over LAN. Override is explicit: set
+        # `CS2_ALLOW_INSECURE_BIND=1` if you really need plaintext on a trusted
+        # private network (e.g. local CI fixture).
+        import os as _os
+
+        if _os.getenv("CS2_ALLOW_INSECURE_BIND") != "1":
+            raise RuntimeError(
+                f"Refusing to bind {host}:{port} without TLS — "
+                f"STORAGE_API_KEY would be sent in cleartext. Provide "
+                f"ssl_keyfile + ssl_certfile, or set CS2_ALLOW_INSECURE_BIND=1."
+            )
         logger.warning(
             "Running without TLS on non-localhost address %s:%d — "
-            "API key will be transmitted in plaintext. Use ssl_keyfile/ssl_certfile "
-            "for encrypted traffic.",
+            "API key will be transmitted in plaintext "
+            "(CS2_ALLOW_INSECURE_BIND override active).",
             host,
             port,
         )

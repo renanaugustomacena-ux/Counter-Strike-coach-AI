@@ -21,13 +21,13 @@ class ExplanationGenerator:
             "action": "Focus on your crosshair height when clearing corners with your {weapon}.",
         },
         SkillAxes.POSITIONING: {
-            "negative": "Positioning at {location} was suboptimal. You were exposed to multiple angles for {time}s.",
+            "negative": "Positioning at {location} was suboptimal. You were exposed to multiple angles for {time}.",
             "positive": "Excellent anchoring of {location}. Professional occupancy heatmap aligns with your playstyle here.",
             "action": "Try holding a tighter angle at {location} to reduce exposure.",
         },
         SkillAxes.UTILITY: {
             "negative": "Utility timing with {weapon} was suboptimal. {enemies} enemies were unaffected by the deployment.",
-            "positive": "High-impact {weapon} usage! You blinded {enemies} enemies for {time}s.",
+            "positive": "High-impact {weapon} usage! You blinded {enemies} enemies for {time}.",
             "action": "Wait for a clear sound cue before deploying your {weapon} to maximize effectiveness.",
         },
         SkillAxes.TIMING: {
@@ -66,7 +66,7 @@ class ExplanationGenerator:
             score=max(0, int(100 - abs(delta * 100))),
             impact=ctx.get("impact", "reduced effectiveness"),
             location=ctx.get("location", "key positions"),
-            time=ctx.get("time", "several"),
+            time=ctx.get("time", "several seconds"),
             enemies=ctx.get("enemies", "nearby"),
             weapon=ctx.get("weapon", "your equipment"),
             recommendation="conservative" if skill_level < 5 else "aggressive",
