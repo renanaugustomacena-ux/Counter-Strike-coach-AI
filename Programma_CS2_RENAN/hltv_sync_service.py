@@ -86,8 +86,7 @@ def run_sync_loop():
         get_state_manager().add_notification(
             "hunter",
             "WARNING",
-            f"HLTV unreachable via FlareSolverr. "
-            f"Retrying in {_DORMANT_SLEEP_S // 3600} hours.",
+            f"HLTV unreachable via FlareSolverr. " f"Retrying in {_DORMANT_SLEEP_S // 3600} hours.",
         )
         _dormant_sleep(_DORMANT_SLEEP_S)
         return

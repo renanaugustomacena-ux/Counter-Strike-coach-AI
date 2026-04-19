@@ -159,12 +159,20 @@ class HybridCoachingEngine:
                 from Programma_CS2_RENAN.backend.nn.jepa_model import JEPACoachingModel
 
                 model = JEPACoachingModel(input_dim=METADATA_DIM, output_dim=OUTPUT_DIM)
-                logger.info("Loaded JEPA model for hybrid coaching (in=%s, out=%s)", METADATA_DIM, OUTPUT_DIM)
+                logger.info(
+                    "Loaded JEPA model for hybrid coaching (in=%s, out=%s)",
+                    METADATA_DIM,
+                    OUTPUT_DIM,
+                )
             else:
                 from Programma_CS2_RENAN.backend.nn.model import AdvancedCoachNN
 
                 model = AdvancedCoachNN(input_dim=METADATA_DIM, output_dim=OUTPUT_DIM)
-                logger.info("Loaded AdvancedCoachNN for hybrid coaching (in=%s, out=%s)", METADATA_DIM, OUTPUT_DIM)
+                logger.info(
+                    "Loaded AdvancedCoachNN for hybrid coaching (in=%s, out=%s)",
+                    METADATA_DIM,
+                    OUTPUT_DIM,
+                )
             return model
         except Exception as e:
             logger.error("Failed to load ML model: %s", e)

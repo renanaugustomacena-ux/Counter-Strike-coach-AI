@@ -7,7 +7,7 @@ but without importing the Kivy-dependent LocalizationManager class.
 
 import json
 import os
-from typing import Dict
+from typing import Dict, Optional
 
 from PySide6.QtCore import QObject, Signal
 
@@ -86,8 +86,8 @@ class QtLocalizationManager(QObject):
     def lang(self) -> str:
         return self._lang
 
-    def get_text(self, key: str) -> str:
-        """Priority: JSON (current) → hardcoded (current) → hardcoded (en) → raw key."""
+    def get_text(self, key: str, default: Optional[str] = None) -> str:
+        """Priority: JSON (current) → hardcoded (current) → hardcoded (en) → default → raw key."""
         # 1. JSON
         json_lang = _JSON_TRANSLATIONS.get(self._lang, {})
         val = json_lang.get(key)
@@ -102,6 +102,9 @@ class QtLocalizationManager(QObject):
         en_val = _FULL_TRANSLATIONS.get("en", {}).get(key)
         if en_val is not None:
             return en_val
+        # 4. Caller-supplied default (used by screens that ship inline English literals)
+        if default is not None:
+            return default
         return key
 
     def set_language(self, lang_code: str):

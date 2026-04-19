@@ -22,7 +22,6 @@ from Programma_CS2_RENAN.backend.nn.config import (
     set_global_seed,
 )
 
-
 # ─── set_global_seed ──────────────────────────────────────────────────
 
 
@@ -122,9 +121,7 @@ class TestGetDevice:
 class TestConfigConstants:
     def test_input_dim_matches_metadata_dim(self):
         """INPUT_DIM must match METADATA_DIM from vectorizer."""
-        from Programma_CS2_RENAN.backend.processing.feature_engineering import (
-            METADATA_DIM,
-        )
+        from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
 
         assert INPUT_DIM == METADATA_DIM == 25
 

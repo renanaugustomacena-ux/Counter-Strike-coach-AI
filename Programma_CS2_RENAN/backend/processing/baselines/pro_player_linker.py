@@ -13,9 +13,7 @@ from typing import Dict, List, Optional
 
 from sqlmodel import select, update
 
-from Programma_CS2_RENAN.backend.processing.baselines.nickname_resolver import (
-    NicknameResolver,
-)
+from Programma_CS2_RENAN.backend.processing.baselines.nickname_resolver import NicknameResolver
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -99,13 +97,9 @@ class ProPlayerLinker:
             session.commit()
 
         if unresolved_names:
-            logger.warning(
-                "Unresolved pro names (%d): %s", len(unresolved_names), unresolved_names
-            )
+            logger.warning("Unresolved pro names (%d): %s", len(unresolved_names), unresolved_names)
 
-        logger.info(
-            "Backfill complete: linked=%d, unresolved=%d", linked, len(unresolved_names)
-        )
+        logger.info("Backfill complete: linked=%d, unresolved=%d", linked, len(unresolved_names))
         return {
             "linked": linked,
             "unresolved": len(unresolved_names),

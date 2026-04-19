@@ -79,10 +79,15 @@ class EMA:
                 param.data = self.shadow[name].clone()  # NN-16: clone to avoid shared reference
 
     def restore(self):
-        """Restore original training weights after using shadow weights."""
+        """Restore original training weights after using shadow weights.
+
+        Clones backup tensors before assigning so ``self.backup = {}`` cannot
+        leave ``param.data`` aliasing storage that callers may free or mutate
+        via in-place ops (mirrors the apply_shadow contract above).
+        """
         for name, param in self.model.named_parameters():
             if param.requires_grad:
-                param.data = self.backup[name]
+                param.data = self.backup[name].clone()
         self.backup = {}
 
     def state_dict(self):
