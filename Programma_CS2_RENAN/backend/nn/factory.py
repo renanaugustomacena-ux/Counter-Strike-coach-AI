@@ -12,8 +12,20 @@ Supports:
 
 import torch.nn as nn
 
-from Programma_CS2_RENAN.backend.nn.config import HIDDEN_DIM, INPUT_DIM, OUTPUT_DIM
+from Programma_CS2_RENAN.backend.nn.config import HIDDEN_DIM, OUTPUT_DIM
 from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
+
+
+def _require_int(kwargs: dict, key: str, default: int) -> int:
+    """Coerce kwargs[key] to int, defaulting when absent/None.
+
+    Prevents silent propagation of None/str into model ctor dim args, which
+    would fail with a cryptic shape error mid-forward instead of at ctor.
+    """
+    val = kwargs.get(key)
+    if val is None:
+        return int(default)
+    return int(val)
 
 
 class ModelFactory:
@@ -41,32 +53,32 @@ class ModelFactory:
             from Programma_CS2_RENAN.backend.nn.jepa_model import JEPACoachingModel
 
             return JEPACoachingModel(
-                input_dim=kwargs.get("input_dim", METADATA_DIM),
-                output_dim=kwargs.get("output_dim", OUTPUT_DIM),
+                input_dim=_require_int(kwargs, "input_dim", METADATA_DIM),
+                output_dim=_require_int(kwargs, "output_dim", OUTPUT_DIM),
             )
 
         elif model_type == ModelFactory.TYPE_VL_JEPA:
             from Programma_CS2_RENAN.backend.nn.jepa_model import VLJEPACoachingModel
 
             return VLJEPACoachingModel(
-                input_dim=kwargs.get("input_dim", METADATA_DIM),
-                output_dim=kwargs.get("output_dim", OUTPUT_DIM),
+                input_dim=_require_int(kwargs, "input_dim", METADATA_DIM),
+                output_dim=_require_int(kwargs, "output_dim", OUTPUT_DIM),
             )
 
         elif model_type == ModelFactory.TYPE_RAP:
             from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.model import RAPCoachModel
 
             return RAPCoachModel(
-                metadata_dim=kwargs.get("metadata_dim", METADATA_DIM),
-                output_dim=kwargs.get("output_dim", 10),
+                metadata_dim=_require_int(kwargs, "metadata_dim", METADATA_DIM),
+                output_dim=_require_int(kwargs, "output_dim", 10),
             )
 
         elif model_type == ModelFactory.TYPE_RAP_LITE:
             from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.model import RAPCoachModel
 
             return RAPCoachModel(
-                metadata_dim=kwargs.get("metadata_dim", METADATA_DIM),
-                output_dim=kwargs.get("output_dim", 10),
+                metadata_dim=_require_int(kwargs, "metadata_dim", METADATA_DIM),
+                output_dim=_require_int(kwargs, "output_dim", 10),
                 use_lite_memory=True,
             )
 
@@ -74,18 +86,18 @@ class ModelFactory:
             from Programma_CS2_RENAN.backend.nn.role_head import NeuralRoleHead
 
             return NeuralRoleHead(
-                input_dim=kwargs.get("input_dim", NeuralRoleHead.ROLE_INPUT_DIM),
-                hidden_dim=kwargs.get("hidden_dim", 32),
-                output_dim=kwargs.get("output_dim", NeuralRoleHead.ROLE_OUTPUT_DIM),
+                input_dim=_require_int(kwargs, "input_dim", NeuralRoleHead.ROLE_INPUT_DIM),
+                hidden_dim=_require_int(kwargs, "hidden_dim", 32),
+                output_dim=_require_int(kwargs, "output_dim", NeuralRoleHead.ROLE_OUTPUT_DIM),
             )
 
         elif model_type == ModelFactory.TYPE_LEGACY:
             from Programma_CS2_RENAN.backend.nn.model import TeacherRefinementNN
 
             return TeacherRefinementNN(
-                input_dim=kwargs.get("input_dim", METADATA_DIM),
-                output_dim=kwargs.get("output_dim", OUTPUT_DIM),
-                hidden_dim=kwargs.get("hidden_dim", HIDDEN_DIM),
+                input_dim=_require_int(kwargs, "input_dim", METADATA_DIM),
+                output_dim=_require_int(kwargs, "output_dim", OUTPUT_DIM),
+                hidden_dim=_require_int(kwargs, "hidden_dim", HIDDEN_DIM),
             )
 
         else:

@@ -1,3 +1,5 @@
+from typing import cast
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -68,7 +70,8 @@ class RAPStrategy(nn.Module):
 
         # Execute ONLY selected experts (not all 4)
         batch_size = hidden_state.shape[0]
-        output_dim = self.experts[0]["final"].out_features
+        first_expert = cast(nn.ModuleDict, self.experts[0])
+        output_dim = cast(nn.Linear, first_expert["final"]).out_features
         final_output = torch.zeros(batch_size, output_dim, device=hidden_state.device)
 
         # Determine which experts are needed across the batch
@@ -76,8 +79,8 @@ class RAPStrategy(nn.Module):
         expert_outputs_cache = {}
 
         for expert_idx in unique_experts:
-            expert_idx_val = expert_idx.item()
-            expert = self.experts[expert_idx_val]
+            expert_idx_val = int(expert_idx.item())
+            expert = cast(nn.ModuleDict, self.experts[expert_idx_val])
             # Find which batch samples need this expert
             mask = (top_k_indices == expert_idx_val).any(dim=-1)  # [B] bool
             if not mask.any():

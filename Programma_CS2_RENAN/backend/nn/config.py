@@ -14,14 +14,41 @@ GLOBAL_SEED = 42
 
 
 def set_global_seed(seed: int = GLOBAL_SEED):
-    """Set all random seeds for reproducible training runs (AR-6, P1-02)."""
+    """Set all random seeds for reproducible training runs (AR-6, P1-02).
+
+    DET-02: warn_only=True surfaces non-deterministic kernels (CUDA LSTM/
+    scatter_add backward) as a warning instead of crashing the run, while
+    still flagging reproducibility gaps in logs. Disable by exporting
+    CS2_NONDETERMINISTIC=1 for kernels that refuse even a warn fallback.
+    """
+    import os as _os
+
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+    if _os.environ.get("CS2_NONDETERMINISTIC") != "1":
+        try:
+            torch.use_deterministic_algorithms(True, warn_only=True)
+        except Exception as e:
+            # Older torch versions / unsupported kernels — degrade gracefully
+            # rather than blocking seed setup.
+            logger.warning("torch.use_deterministic_algorithms unavailable: %s", e)
     logger.info("Global seed set to %d", seed)
+
+
+def seeded_generator(seed: int = GLOBAL_SEED) -> torch.Generator:
+    """Return a torch.Generator seeded from ``seed``.
+
+    DET-01: DataLoader worker-level RNG must use an explicit Generator so
+    resume and multi-process forks stay bit-reproducible. Callers wire this
+    into ``DataLoader(..., generator=seeded_generator())``.
+    """
+    g = torch.Generator()
+    g.manual_seed(seed)
+    return g
 
 
 # --- Hardware Allocation ---

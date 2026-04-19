@@ -6,14 +6,35 @@ for real-time monitoring and post-training analysis.
 """
 
 import json
+import math
 import os
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.nn.training_monitor")
+
+
+def _coerce_json_safe(value: Any) -> Any:
+    """Replace NaN/±Inf with None so json.dump emits valid RFC 8259 JSON.
+
+    Fixes #27: training_progress.json has accumulated 543 NaN/Inf literals,
+    which RFC 8259 forbids. Python's json module writes them as `NaN`/
+    `Infinity` tokens when allow_nan=True (the default), producing output
+    that trips strict parsers (browsers, jq, most JSON libraries).
+    """
+    if isinstance(value, float):
+        if math.isnan(value) or math.isinf(value):
+            return None
+        return value
+    if isinstance(value, dict):
+        return {k: _coerce_json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_coerce_json_safe(v) for v in value]
+    return value
 
 
 class TrainingMonitor:
@@ -77,12 +98,22 @@ class TrainingMonitor:
         self._save()
 
     def _save(self):
-        """Persist metrics to JSON file via atomic write (NN-L-12)."""
+        """Persist metrics to JSON file via atomic write (NN-L-12).
+
+        #27: coerce NaN/Inf → null before dumping and set allow_nan=False so
+        a future regression (serializing a non-finite without coercion) fails
+        loudly instead of emitting invalid JSON.
+        """
         dir_path = self.log_file.parent
         fd, tmp_path = tempfile.mkstemp(dir=str(dir_path), suffix=".tmp")
         try:
             with os.fdopen(fd, "w") as f:
-                json.dump(self.metrics, f, indent=2)
+                json.dump(
+                    _coerce_json_safe(self.metrics),
+                    f,
+                    indent=2,
+                    allow_nan=False,
+                )
             os.replace(tmp_path, self.log_file)
         except BaseException:
             try:

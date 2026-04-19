@@ -131,7 +131,9 @@ class RAPCommunication:
         view_angle = game_context.get("player_view_angle")
         player_pos = game_context.get("player_pos")
         threat_pos = game_context.get("threat_pos")
-        if view_angle is None or player_pos is None or threat_pos is None:
+        if not isinstance(view_angle, (int, float)):
+            return "the flank"
+        if player_pos is None or threat_pos is None:
             return "the flank"
         try:
             return _compute_relative_direction(float(view_angle), player_pos, threat_pos)

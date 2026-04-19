@@ -170,6 +170,9 @@ def load_user_settings() -> dict:
             "INGEST_MODE_AUTO": True,
             "LOCAL_QUOTA_GB": 10.0,
             "ML_INTENSITY": "Medium",
+            # Belief-vector per-dim variance floor consumed by Ultimate_ML_Coach_Debugger
+            # to flag dead belief channels (stable ≈ high conviction vs. stale).
+            "ML_BELIEF_VARIANCE_THRESHOLD": 0.5,
             "SETUP_COMPLETED": False,
             "STORAGE_API_KEY": "",
             "THEME": "CS2",

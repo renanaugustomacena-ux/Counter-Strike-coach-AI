@@ -46,10 +46,11 @@ _CONCEPT_NAMES = [
 
 # UMAP availability
 try:
-    import umap
+    import umap  # type: ignore[import-untyped]
 
     _UMAP_AVAILABLE = True
 except ImportError:
+    umap = None  # type: ignore[assignment]
     _UMAP_AVAILABLE = False
 
 try:
@@ -60,6 +61,8 @@ try:
 
     _MPL_AVAILABLE = True
 except ImportError:
+    matplotlib = None  # type: ignore[assignment]
+    plt = None  # type: ignore[assignment]
     _MPL_AVAILABLE = False
 
 
@@ -167,6 +170,8 @@ class EmbeddingProjector(TrainingCallback):
         labels=None,
     ) -> None:
         """Generate UMAP 2D projection and log as TensorBoard figure."""
+        if umap is None or plt is None:
+            return
         try:
             n_neighbors = min(15, max(2, embeddings.shape[0] - 1))
             reducer = umap.UMAP(
@@ -199,6 +204,8 @@ class EmbeddingProjector(TrainingCallback):
 
     def _generate_concept_umap(self, embeddings, labels: List[str], epoch: int) -> None:
         """Generate UMAP projection of concept prototypes with labels."""
+        if umap is None or plt is None:
+            return
         try:
             n_neighbors = min(5, max(2, embeddings.shape[0] - 1))
             reducer = umap.UMAP(

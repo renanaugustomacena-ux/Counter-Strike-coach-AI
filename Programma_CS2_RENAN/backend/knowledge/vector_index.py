@@ -120,7 +120,9 @@ class VectorIndexManager:
         actual_k = min(k, idx.ntotal)
 
         # FAISS search (thread-safe for IndexFlat reads)
-        distances, indices = idx.search(qvec, actual_k)
+        # Python wrapper: Index.search(x, k) → (distances, labels). Static analyzers
+        # sometimes bind to the SWIG low-level signature search(n, x, k, D, I).
+        distances, indices = idx.search(qvec, actual_k)  # type: ignore[call-arg]
 
         results = []
         for i in range(actual_k):
@@ -182,7 +184,7 @@ class VectorIndexManager:
         normalized = (embeddings / norms).astype(np.float32)
 
         idx = faiss.IndexFlatIP(dim)
-        idx.add(normalized)
+        idx.add(normalized)  # type: ignore[call-arg]
 
         with self._lock:
             self._indexes[index_name] = idx
