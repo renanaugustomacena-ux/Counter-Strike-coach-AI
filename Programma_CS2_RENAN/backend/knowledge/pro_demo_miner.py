@@ -35,6 +35,47 @@ _KNOWN_MAPS = {"mirage", "dust2", "inferno", "nuke", "overpass", "ancient", "anu
 # Minimum rounds on a (map, side) combination for map-specific knowledge
 _MIN_MAP_ROUNDS = 10
 
+# CHAT-06 (AUDIT §8.6): DEFAULT_STATS fallback sentinel from
+# `tools/seed_hltv_top20.py:1266`. When HLTV scrape returned no per-player
+# rows for some GamerLegion / T2 players, the seed script wrote these
+# placeholder numbers so the DB INSERT would satisfy NOT NULL constraints.
+# Note: `kast` / `headshot_pct` are stored as RATIOS (0.71 / 0.44) in the
+# stat card table even though the seed script declares them as percentages
+# (71.0 / 44.0) — an upstream converter normalises before write. Sentinel
+# uses the on-disk form so the tuple equality check actually matches.
+_DEFAULT_STATS_SENTINEL: Tuple[float, float, float, float, float, float, float, int] = (
+    1.02,  # rating_2_0
+    0.67,  # kpr
+    0.65,  # dpr
+    72.0,  # adr
+    0.71,  # kast (ratio form on disk)
+    0.98,  # impact
+    0.44,  # headshot_pct (ratio form on disk)
+    150,  # maps_played
+)
+
+
+def _is_default_stats_card(card: ProPlayerStatCard) -> bool:
+    """True when a stat card is byte-identical to the DEFAULT_STATS fallback.
+
+    DEFAULT_STATS is a placeholder row written by the seed script when the
+    HLTV scraper produced no data for a given nickname. RAG mining skips
+    these to prevent identical-stat pollution across different players.
+    Comparison is exact: if HLTV re-scrape later writes genuinely identical
+    numbers (extremely unlikely across 8 fields), the card will be filtered
+    with a false positive — acceptable trade-off vs the current pollution.
+    """
+    return (
+        card.rating_2_0,
+        card.kpr,
+        card.dpr,
+        card.adr,
+        card.kast,
+        card.impact,
+        card.headshot_pct,
+        card.maps_played,
+    ) == _DEFAULT_STATS_SENTINEL
+
 
 class ProStatsMiner:
     """
@@ -72,12 +113,26 @@ class ProStatsMiner:
                 return 0
 
             total_knowledge = 0
+            skipped_default = 0
 
             for card in stat_cards:
                 player = session.exec(
                     select(ProPlayer).where(ProPlayer.hltv_id == card.player_id)
                 ).first()
                 nickname = player.nickname if player else f"Player_{card.player_id}"
+
+                # CHAT-06: skip DEFAULT_STATS fallback rows — mining them
+                # would write byte-identical RAG entries across unrelated
+                # players and show the coach fabricated identical baselines.
+                if _is_default_stats_card(card):
+                    skipped_default += 1
+                    logger.debug(
+                        "Skipping DEFAULT_STATS card for %s (hltv_id=%s) — "
+                        "HLTV scrape has no real data yet",
+                        nickname,
+                        card.player_id,
+                    )
+                    continue
 
                 # Fetch team + identity metadata for richer knowledge entries
                 team_name = None
@@ -104,6 +159,12 @@ class ProStatsMiner:
                 except Exception as e:
                     logger.error("Failed to mine stats for %s: %s", nickname, e)
 
+        if skipped_default:
+            logger.warning(
+                "Skipped %s DEFAULT_STATS placeholder cards — rescrape HLTV "
+                "for missing nicknames to restore real baselines.",
+                skipped_default,
+            )
         logger.info("Total knowledge mined: %s entries", total_knowledge)
         return total_knowledge
 

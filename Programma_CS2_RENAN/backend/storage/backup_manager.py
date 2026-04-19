@@ -1,4 +1,6 @@
 import os
+import re
+import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -7,6 +9,11 @@ from Programma_CS2_RENAN.core.config import CORE_DB_DIR, USER_DATA_ROOT
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.backup_manager")
+
+# BE-01 / BE-06 / DB-03 (AUDIT §9): label validated at function entry,
+# before any path construction — prevents pre-validation injection into
+# `target_path`. Strict regex keeps the value safe for filename use too.
+_SAFE_BACKUP_LABEL_RE = re.compile(r"^[a-zA-Z0-9_\-]{1,64}$")
 
 
 class BackupManager:
@@ -35,39 +42,55 @@ class BackupManager:
         Returns:
             True if successful, False otherwise.
         """
+        # BE-01 / DB-03 (AUDIT §9): validate the label before any path or
+        # SQL construction. Previously the regex ran on `target_path.stem`
+        # after the path was already built — post-hoc and bypassable.
+        if not isinstance(label, str) or not _SAFE_BACKUP_LABEL_RE.match(label):
+            logger.error("Refusing backup: invalid label %r", label)
+            return False
+
         if not os.path.exists(self.db_path):
             logger.warning("No database found at %s to backup.", self.db_path)
             return False
 
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         filename = f"backup_{label}_{timestamp}.db"
-        target_path = Path(self.backup_dir) / filename
+        backup_dir_resolved = Path(self.backup_dir).resolve()
+        target_path = backup_dir_resolved / filename
+
+        # BE-06 (AUDIT §9): defence-in-depth — verify the resolved path is
+        # inside the backup directory. `is_relative_to` avoids the legacy
+        # `startswith` prefix-confusion bug (e.g. `/backups_evil/...`).
+        try:
+            target_path.resolve().relative_to(backup_dir_resolved)
+        except ValueError:
+            logger.error(
+                "Refusing backup: target path %s escapes backup dir %s",
+                target_path,
+                backup_dir_resolved,
+            )
+            return False
 
         logger.info("Starting Backup: %s...", filename)
 
         try:
-            # 1. Hot Backup via SQLite VACUUM INTO
-            # This is vastly superior to shutil.copy() as it respects WAL transactions
-            db_manager = get_db_manager()
-            with db_manager.engine.connect() as conn:
-                # VACUUM INTO is available in SQLite 3.27+ (Python 3.8+ includes this)
-                # Validate backup path resolves within expected directory
-                import re
-
-                label = target_path.stem
-                if not re.match(r"^[a-zA-Z0-9_\-]+$", label):
-                    raise ValueError(f"Backup label contains invalid characters: {label}")
-                resolved = target_path.resolve()
-                if not str(resolved).startswith(str(target_path.parent.resolve())):
-                    raise ValueError(f"Backup path escapes target directory: {resolved}")
-                from sqlalchemy import text
-
-                target_path_safe = str(target_path).replace("'", "''")
-                conn.execute(text(f"VACUUM INTO '{target_path_safe}'"))
+            # BE-01 / DB-03 (AUDIT §9): use SQLite's native online backup API
+            # instead of `VACUUM INTO` with an f-string path. The backup API
+            # does not take a SQL string — only Python connection objects —
+            # so there is no injection surface. Also WAL-safe.
+            source = sqlite3.connect(self.db_path)
+            try:
+                dest = sqlite3.connect(str(target_path))
+                try:
+                    source.backup(dest)
+                finally:
+                    dest.close()
+            finally:
+                source.close()
 
             # 2. Verify Output
             if not os.path.exists(target_path):
-                raise FileNotFoundError("VACUUM INTO completed but file is missing.")
+                raise FileNotFoundError("sqlite3.backup completed but file is missing.")
 
             # 3. Integrity Check on the BACKUP (don't lock the main DB)
             if not self._verify_integrity(target_path):
@@ -126,13 +149,15 @@ class BackupManager:
         Returns:
             True if the backup passes integrity checks, False otherwise.
         """
-        # DG-03: Validate path is within backup directory to prevent traversal.
-        resolved = os.path.realpath(backup_path)
-        backup_dir_resolved = os.path.realpath(self.backup_dir)
-        if (
-            not resolved.startswith(backup_dir_resolved + os.sep)
-            and resolved != backup_dir_resolved
-        ):
+        # DG-03 / BE-06 (AUDIT §9): path traversal guard via `is_relative_to`
+        # — avoids the `startswith` prefix-confusion bug where a sibling
+        # directory `/backups_evil/..` would bypass an older `startswith`
+        # check without the trailing `+ os.sep`.
+        resolved = Path(backup_path).resolve()
+        backup_dir_resolved = Path(self.backup_dir).resolve()
+        try:
+            resolved.relative_to(backup_dir_resolved)
+        except ValueError:
             logger.error("DG-03: Backup path escapes backup directory: %s", backup_path)
             return False
         if not os.path.exists(backup_path):

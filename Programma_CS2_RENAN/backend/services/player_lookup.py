@@ -215,6 +215,30 @@ class ProPlayerProfile:
     demo_matches: int = 0
     demo_avg_rating: Optional[float] = None
     demo_avg_adr: Optional[float] = None
+    # CHAT-06: True when the source stat card is a DEFAULT_STATS placeholder
+    # (HLTV scrape had no real rows for this nickname); renderer must show
+    # "stats not yet scraped" instead of the fabricated fallback numbers.
+    is_default_stats: bool = False
+
+
+# CHAT-06 (AUDIT §8.6): same sentinel as pro_demo_miner._DEFAULT_STATS_SENTINEL.
+# Duplicated here to avoid a circular import from knowledge -> services.
+# kast/hs on disk are ratio form (0.71/0.44), not percent (71.0/44.0).
+_DEFAULT_STATS_SENTINEL = (1.02, 0.67, 0.65, 72.0, 0.71, 0.98, 0.44, 150)
+
+
+def _stat_card_is_default(card: ProPlayerStatCard) -> bool:
+    """True when the stat card is byte-identical to DEFAULT_STATS fallback."""
+    return (
+        card.rating_2_0,
+        card.kpr,
+        card.dpr,
+        card.adr,
+        card.kast,
+        card.impact,
+        card.headshot_pct,
+        card.maps_played,
+    ) == _DEFAULT_STATS_SENTINEL
 
 
 class PlayerLookupService:
@@ -416,6 +440,10 @@ class PlayerLookupService:
                 ).first()
 
                 if stat_card:
+                    # CHAT-06: detect DEFAULT_STATS placeholder card so the
+                    # renderer can mark stats as "not yet scraped" instead
+                    # of echoing identical fallback numbers.
+                    profile.is_default_stats = _stat_card_is_default(stat_card)
                     profile.rating_2_0 = stat_card.rating_2_0
                     profile.kpr = stat_card.kpr
                     profile.dpr = stat_card.dpr
@@ -474,19 +502,38 @@ class PlayerLookupService:
             team_str += f" (World Rank #{profile.team_world_rank})"
         lines.append(f"Team: {team_str}")
 
-        # Format KAST/HS% consistently (ratio vs percentage)
+        # CHAT-06: suppress stat block entirely for DEFAULT_STATS placeholder
+        # cards. LLM sees an explicit "no HLTV stats yet" note so it cannot
+        # fabricate numbers from thin air. Identity fields above still render.
+        if profile.is_default_stats:
+            lines.append(
+                "HLTV Stats: not yet scraped for this player "
+                "(DEFAULT_STATS placeholder — rescrape HLTV to populate)."
+            )
+            lines.append("=== END VERIFIED DATA ===")
+            return "\n".join(lines)
+
+        # Format KAST/HS% consistently (ratio vs percentage). Treat 0.0 as
+        # "not published by HLTV" — display "n/a" so the LLM does not feed
+        # the user fabricated zero-percent stats.
         kast_pct = profile.kast * 100 if profile.kast <= 1.0 else profile.kast
         hs_pct = profile.headshot_pct * 100 if profile.headshot_pct <= 1.0 else profile.headshot_pct
 
+        def _fmt_pct(value: float) -> str:
+            return "n/a" if value <= 0.0 else f"{value:.1f}%"
+
+        def _fmt_num(value: float, fmt: str = "{:.2f}") -> str:
+            return "n/a" if value <= 0.0 else fmt.format(value)
+
         lines.append(
-            f"HLTV Stats: Rating 2.0: {profile.rating_2_0:.2f} | "
-            f"KPR: {profile.kpr:.2f} | DPR: {profile.dpr:.2f} | "
-            f"ADR: {profile.adr:.1f}"
+            f"HLTV Stats: Rating 2.0: {_fmt_num(profile.rating_2_0)} | "
+            f"KPR: {_fmt_num(profile.kpr)} | DPR: {_fmt_num(profile.dpr)} | "
+            f"ADR: {_fmt_num(profile.adr, '{:.1f}')}"
         )
         lines.append(
-            f"KAST: {kast_pct:.1f}% | HS%: {hs_pct:.1f}% | "
-            f"Impact: {profile.impact:.2f} | "
-            f"Opening Duel Win: {profile.opening_duel_win_pct:.1f}%"
+            f"KAST: {_fmt_pct(kast_pct)} | HS%: {_fmt_pct(hs_pct)} | "
+            f"Impact: {_fmt_num(profile.impact)} | "
+            f"Opening Duel Win: {_fmt_pct(profile.opening_duel_win_pct)}"
         )
         lines.append(f"Maps Played: {profile.maps_played}")
 

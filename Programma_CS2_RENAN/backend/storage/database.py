@@ -1,4 +1,5 @@
 import os
+import re
 import threading
 from contextlib import contextmanager
 from pathlib import Path
@@ -13,6 +14,14 @@ from Programma_CS2_RENAN.core.config import DATABASE_URL, HLTV_DATABASE_URL
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.database")
+
+# DB-04 (AUDIT §9): SQLite type allowlist for column types fed into raw DDL.
+# Mirrors the pattern in match_data_manager._SAFE_COL_TYPE_RE.
+_SAFE_COL_TYPE_RE = re.compile(
+    r"^(VARCHAR|TEXT|INTEGER|FLOAT|REAL|BOOLEAN|DATETIME|DATE|TIME|BLOB|NUMERIC)"
+    r"(\(\d+(,\s*\d+)?\))?$",
+    re.IGNORECASE,
+)
 
 from .db_models import (
     CalibrationSnapshot,
@@ -101,6 +110,12 @@ class DatabaseManager:
             cursor.execute("PRAGMA journal_mode=WAL")
             cursor.execute("PRAGMA synchronous=NORMAL")
             cursor.execute("PRAGMA busy_timeout=30000")  # 30s wait
+            # DB-06 (AUDIT §9): SQLite does NOT enforce FK constraints by
+            # default — schema-level FKs are decorative without this pragma.
+            cursor.execute("PRAGMA foreign_keys=ON")
+            # DB-07 (AUDIT §9): cap WAL growth so large ingest bursts do not
+            # block readers. 512 pages ≈ 2 MB checkpoint cadence.
+            cursor.execute("PRAGMA wal_autocheckpoint=512")
             cursor.close()
 
     def _get_engine(self):
@@ -143,6 +158,18 @@ class DatabaseManager:
                 for col_name in missing:
                     col = table.columns[col_name]
                     col_type = col.type.compile(self.engine.dialect)
+                    # DB-04 (AUDIT §9): validate compiler output against the
+                    # SQLite type allowlist before interpolating into raw SQL.
+                    # Refuses non-standard types so a malformed type string
+                    # cannot smuggle DDL fragments into the ALTER statement.
+                    if not _SAFE_COL_TYPE_RE.match(col_type):
+                        logger.warning(
+                            "Schema: skipping %s.%s — compiler emitted unsafe type %r",
+                            table.name,
+                            col_name,
+                            col_type,
+                        )
+                        continue
                     # Only use simple scalar defaults — skip callables/server defaults
                     default = ""
                     if col.default is not None and col.default.arg is not None:
@@ -375,6 +402,9 @@ class HLTVDatabaseManager:
             cursor.execute("PRAGMA journal_mode=WAL")
             cursor.execute("PRAGMA synchronous=NORMAL")
             cursor.execute("PRAGMA busy_timeout=30000")
+            # DB-06 / DB-07 (AUDIT §9): see monolith engine pragmas above.
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.execute("PRAGMA wal_autocheckpoint=512")
             cursor.close()
 
     def create_db_and_tables(self):

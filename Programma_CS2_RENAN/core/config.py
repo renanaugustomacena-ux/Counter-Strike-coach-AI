@@ -208,7 +208,10 @@ def load_user_settings() -> dict:
         # C-05: Retrieve from keyring; if the disk value is the mask sentinel, treat as empty
         # so that a failed keyring doesn't return the literal mask string to callers.
         _MASK = "PROTECTED_BY_WINDOWS_VAULT"
-        for secret_key in ("STEAM_API_KEY", "FACEIT_API_KEY"):
+        # FE-06: STORAGE_API_KEY also routed through keyring on read.
+        for secret_key in ("STEAM_API_KEY", "FACEIT_API_KEY", "STORAGE_API_KEY"):
+            if secret_key not in current:
+                continue
             disk_val = current[secret_key]
             fallback = "" if disk_val == _MASK else disk_val
             current[secret_key] = get_secret(secret_key, fallback)
@@ -431,7 +434,11 @@ def save_user_setting(key: str, value: Any) -> None:
     """Saves setting without importing external modules to avoid loops."""
     original_value = value
     with _settings_lock:
-        if key in ["STEAM_API_KEY", "FACEIT_API_KEY"]:
+        # FE-04 / FE-06 (AUDIT §9): route every secret-shaped key through
+        # the OS keyring when available. STORAGE_API_KEY was previously
+        # missing from this list and persisted in plaintext regardless of
+        # keyring availability.
+        if key in ("STEAM_API_KEY", "FACEIT_API_KEY", "STORAGE_API_KEY"):
             if set_secret(key, str(value)):
                 value = "PROTECTED_BY_WINDOWS_VAULT"
 
@@ -458,6 +465,13 @@ def save_user_setting(key: str, value: Any) -> None:
         with open(tmp_path, "w") as f:
             json.dump(data, f, indent=4)
         os.replace(tmp_path, SETTINGS_PATH)
+        # FE-04: tighten file permissions in case keyring was unavailable
+        # and a key fell through to plaintext storage. POSIX-only; chmod is
+        # a no-op on Windows, where ACLs handle this differently.
+        try:
+            os.chmod(SETTINGS_PATH, 0o600)
+        except OSError:
+            pass
 
         # Keep the original unmasked value in memory for the current session
         _settings[key] = original_value

@@ -54,11 +54,42 @@ class _SafeUnpickler(pickle.Unpickler):
 
 
 def _get_cache_hmac_key() -> bytes:
-    """Derive a machine-local HMAC key for cache integrity verification."""
-    import socket
+    """Return a persistent random HMAC key for cache integrity verification.
 
-    seed = f"cs2analyzer-cache-{socket.gethostname()}-{os.getuid() if hasattr(os, 'getuid') else 'win'}"
-    return hashlib.sha256(seed.encode()).digest()
+    BE-12 / FE-02 (AUDIT §9): the previous implementation derived the key
+    from `hostname + uid`, both world-readable on the local machine —
+    making cache-tamper forgery trivial. Generate a 32-byte random key on
+    first use and persist it with mode 0600 in the cache dir. Subsequent
+    runs read the key back. If the file disappears, a new key is created
+    and prior cache entries fail HMAC verification (correct behaviour:
+    cache contents are tied to the key that signed them).
+    """
+    import secrets
+
+    from Programma_CS2_RENAN.core.config import DATA_DIR
+
+    key_dir = os.path.join(DATA_DIR, "demo_cache")
+    key_path = os.path.join(key_dir, ".hmac_key")
+
+    if not os.path.exists(key_path):
+        os.makedirs(key_dir, exist_ok=True)
+        key = secrets.token_bytes(32)
+        # Atomic write: tmp + replace; chmod before replace so the destination
+        # never exists with broader perms.
+        tmp = key_path + ".tmp"
+        with open(tmp, "wb") as f:
+            f.write(key)
+            f.flush()
+            os.fsync(f.fileno())
+        try:
+            os.chmod(tmp, 0o600)  # POSIX only; no-op semantics on Windows
+        except OSError:
+            pass
+        os.replace(tmp, key_path)
+        return key
+
+    with open(key_path, "rb") as f:
+        return f.read()
 
 
 def _pickle_dump_signed(obj, path: str) -> None:

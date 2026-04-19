@@ -241,8 +241,11 @@ class StateManager:
 
                 return {"status": status, "detail": state.detail or ""}
         except Exception as e:
-            logger.error("Failed to get status for %s: %s", daemon, e)
-            return {"status": "Error", "detail": str(e)}
+            # DB-05 (AUDIT §9): SQLAlchemy exception strings often contain
+            # the DB path, table names, and partial SQL. Log full context
+            # internally; return a generic detail to UI/LLM callers.
+            logger.error("Failed to get status for %s: %s", daemon, e, exc_info=True)
+            return {"status": "Error", "detail": "Internal error — see logs"}
 
 
 # P0-04: Lazy singleton with double-checked locking (AR-5).

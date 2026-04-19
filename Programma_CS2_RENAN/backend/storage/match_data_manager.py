@@ -19,6 +19,7 @@ Path Resolution:
 """
 
 import os
+import re
 import threading
 from collections import OrderedDict
 from contextlib import contextmanager
@@ -32,6 +33,61 @@ from sqlmodel import Field, Session, SQLModel, create_engine, select
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 _logger = get_logger("cs2analyzer.match_data_manager")
+
+# DB-01 (AUDIT §9.1): SQLAlchemy `text()` does not bind identifiers, so any
+# table/column name interpolated into DDL is an injection surface if ever
+# sourced from config/LLM/external data. Today `_MATCH_DB_MIGRATIONS` holds
+# hardcoded constants, but defence-in-depth: assert every identifier matches
+# the SQL-safe pattern before it enters a `text()` call.
+_SAFE_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _assert_safe_identifier(name: str, *, kind: str = "identifier") -> str:
+    """Reject any string that is not a bare SQL identifier.
+
+    Permits `[A-Za-z_][A-Za-z0-9_]*`. Reserved words are NOT filtered —
+    callers wrap the result in double quotes when needed.
+    """
+    if not isinstance(name, str) or not _SAFE_IDENTIFIER_RE.match(name):
+        raise ValueError(f"Unsafe {kind}: {name!r}")
+    return name
+
+
+# SQLite column-type allowlist. Accepts the compiled output of SQLAlchemy
+# types plus optional `(n)` size suffixes. Anything else is rejected so a
+# corrupt/injected type string cannot smuggle DDL fragments.
+_SAFE_COL_TYPE_RE = re.compile(
+    r"^(VARCHAR|TEXT|INTEGER|FLOAT|REAL|BOOLEAN|DATETIME|DATE|TIME|BLOB|NUMERIC)"
+    r"(\(\d+(,\s*\d+)?\))?$",
+    re.IGNORECASE,
+)
+
+
+def _assert_safe_col_type(type_str: str) -> str:
+    if not isinstance(type_str, str) or not _SAFE_COL_TYPE_RE.match(type_str):
+        raise ValueError(f"Unsafe column type: {type_str!r}")
+    return type_str
+
+
+# DEFAULT-clause literals: SQLite forbids bind parameters in DDL DEFAULT,
+# so we need to inline. Accept only safe literal forms — integers, floats,
+# `NULL`, or single-quoted strings with embedded quotes properly doubled.
+_SAFE_DEFAULT_LITERAL_RE = re.compile(
+    r"""^(
+        -?\d+(\.\d+)?              # integer or float
+      | NULL                       # SQL NULL
+      | TRUE | FALSE               # SQL booleans
+      | '([^']|'')*'               # single-quoted string, '' escaped
+    )$""",
+    re.IGNORECASE | re.VERBOSE,
+)
+
+
+def _assert_safe_default_literal(value: str) -> str:
+    if not isinstance(value, str) or not _SAFE_DEFAULT_LITERAL_RE.match(value):
+        raise ValueError(f"Unsafe DDL DEFAULT literal: {value!r}")
+    return value
+
 
 # ============ Per-Match Schema Versioning ============
 # Bump this when MatchTickState/MatchEventState/MatchMetadata models change.
@@ -239,6 +295,23 @@ class MatchDataManager:
         """
         self.match_data_path = match_data_path
 
+        # AUDIT §8.8: a broken symlink at the target path causes
+        # `os.makedirs(..., exist_ok=True)` to raise FileExistsError because
+        # `exist_ok` only swallows the error when the existing path is a
+        # *directory*. Detect the broken-symlink case and replace it with a
+        # real directory so shutdown does not crash when an external mount
+        # disappears.
+        if os.path.islink(self.match_data_path) and not os.path.exists(self.match_data_path):
+            target = os.readlink(self.match_data_path)
+            _logger.warning(
+                "match_data path is a broken symlink (%s -> %s). Removing the "
+                "dead link and creating a fresh local directory. Re-link or "
+                "remount the original target if you need that storage back.",
+                self.match_data_path,
+                target,
+            )
+            os.unlink(self.match_data_path)
+
         # Ensure match data directory exists
         os.makedirs(self.match_data_path, exist_ok=True)
 
@@ -322,6 +395,9 @@ class MatchDataManager:
                 cursor.execute("PRAGMA journal_mode=WAL")
                 cursor.execute("PRAGMA synchronous=NORMAL")
                 cursor.execute("PRAGMA busy_timeout=30000")
+                # DB-06 / DB-07 (AUDIT §9): enforce FK constraints + cap WAL.
+                cursor.execute("PRAGMA foreign_keys=ON")
+                cursor.execute("PRAGMA wal_autocheckpoint=512")
                 cursor.close()
 
             # Create tables for this match.
@@ -392,14 +468,22 @@ class MatchDataManager:
             while current_version < MATCH_DB_SCHEMA_VERSION:
                 migrations = _MATCH_DB_MIGRATIONS.get(current_version, [])
                 for table, column, col_type, default_val in migrations:
+                    # DB-01: validate identifiers + type before DDL f-string.
+                    # Today these come from a hardcoded dict; the assert guards
+                    # the template against future drift (config-driven / LLM).
+                    safe_table = _assert_safe_identifier(table, kind="table")
+                    safe_column = _assert_safe_identifier(column, kind="column")
+                    type_name = _assert_safe_col_type(col_type.compile(dialect=engine.dialect))
+                    # SQLite DDL forbids bind params in DEFAULT — validate as
+                    # a safe SQL literal (digits / NULL / single-quoted string).
+                    safe_default = _assert_safe_default_literal(str(default_val))
                     # Idempotent: check column existence before adding
-                    cols = conn.execute(sa.text(f"PRAGMA table_info({table})"))
-                    if not any(r[1] == column for r in cols):
-                        type_name = col_type.compile(dialect=engine.dialect)
+                    cols = conn.execute(sa.text(f'PRAGMA table_info("{safe_table}")'))
+                    if not any(r[1] == safe_column for r in cols):
                         conn.execute(
                             sa.text(
-                                f"ALTER TABLE {table} ADD COLUMN "
-                                f"{column} {type_name} DEFAULT {default_val}"
+                                f'ALTER TABLE "{safe_table}" ADD COLUMN '
+                                f'"{safe_column}" {type_name} DEFAULT {safe_default}'
                             )
                         )
                 current_version += 1

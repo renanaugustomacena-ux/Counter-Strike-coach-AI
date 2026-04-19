@@ -283,6 +283,46 @@ class TacticalViewerScreen(QWidget):
         if not path:
             return
 
+        # FE-03 (AUDIT §9): Qt's filter `*.dem` is a UI hint, not enforcement.
+        # Users can type any path manually (and some OS dialogs accept it).
+        # Resolve symlinks, verify extension + size before handing a C
+        # extension (demoparser2) an arbitrary file — a `.dem → /etc/shadow`
+        # symlink would otherwise be read into the parser's exception text.
+        try:
+            resolved = os.path.realpath(path)
+        except (OSError, ValueError) as exc:
+            logger.warning("Demo path resolution failed for %s: %s", path, exc)
+            self._show_error("Invalid demo path")
+            return
+        if not resolved.lower().endswith(".dem"):
+            logger.warning("Demo path rejected — not a .dem file: %s", resolved)
+            self._show_error("Selected file is not a .dem demo")
+            return
+        try:
+            # DS-12: MIN_DEMO_SIZE=10MB is the ingestion invariant; enforce
+            # it at UI load too so sub-threshold files fail fast with a
+            # readable error instead of a cryptic parser crash.
+            from Programma_CS2_RENAN.backend.data_sources.demo_format_adapter import MIN_DEMO_SIZE
+
+            size = os.path.getsize(resolved)
+        except OSError as exc:
+            logger.warning("Demo path stat failed for %s: %s", resolved, exc)
+            self._show_error("Unable to read selected file")
+            return
+        if size < MIN_DEMO_SIZE:
+            logger.warning(
+                "Demo path rejected — %d bytes below MIN_DEMO_SIZE (%d): %s",
+                size,
+                MIN_DEMO_SIZE,
+                resolved,
+            )
+            self._show_error(
+                f"File too small to be a valid CS2 demo "
+                f"({size // 1024} KB < {MIN_DEMO_SIZE // 1024 // 1024} MB)"
+            )
+            return
+        path = resolved
+
         logger.info("Loading demo: %s", path)
         self._play_btn.setText("...")
         self._play_btn.setEnabled(False)
@@ -381,6 +421,11 @@ class TacticalViewerScreen(QWidget):
         self._play_btn.setText("Play")
         logger.error("Demo load failed: %s", error)
         self._error_label.setText(f"Error: {error}")
+        self._error_label.setVisible(True)
+
+    def _show_error(self, message: str) -> None:
+        """Display a simple error message in the header error label."""
+        self._error_label.setText(f"Error: {message}")
         self._error_label.setVisible(True)
 
     # ── Map/Round Switching ──

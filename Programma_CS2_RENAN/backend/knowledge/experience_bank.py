@@ -113,6 +113,40 @@ class SynthesizedAdvice:
     experiences_used: int
 
 
+def _dedup_experiences(
+    items: List["CoachingExperience"],
+    top_k: int,
+) -> List["CoachingExperience"]:
+    """CHAT-07 (AUDIT §8.7): drop near-duplicates from a sorted result list.
+
+    Walks `items` in score order and greedily keeps the first instance of
+    each `(action_taken, outcome, map_name, pro_player_name)` tuple. If the
+    deduped list is shorter than `top_k`, falls back to the original order
+    to fill remaining slots — better one repeat than under-filling the
+    response. Preserves input ordering for the items it keeps.
+    """
+    seen: set = set()
+    deduped: List["CoachingExperience"] = []
+    spillover: List["CoachingExperience"] = []
+    for exp in items:
+        key = (
+            getattr(exp, "action_taken", None),
+            getattr(exp, "outcome", None),
+            getattr(exp, "map_name", None),
+            getattr(exp, "pro_player_name", None),
+        )
+        if key in seen:
+            spillover.append(exp)
+            continue
+        seen.add(key)
+        deduped.append(exp)
+        if len(deduped) >= top_k:
+            return deduped
+    if len(deduped) < top_k:
+        deduped.extend(spillover[: top_k - len(deduped)])
+    return deduped
+
+
 class ExperienceBank:
     """
     COPER Experience Bank: Store, retrieve, and synthesize gameplay experiences.
@@ -514,7 +548,8 @@ class ExperienceBank:
                     ).all()
                     if entries:
                         entries.sort(key=lambda e: faiss_scores.get(e.id, 0), reverse=True)
-                        results = entries[:top_k]
+                        # CHAT-07: dedup before trimming to top_k
+                        results = _dedup_experiences(entries, top_k)
                         result_ids = [e.id for e in results if e.id is not None]
                         if result_ids:
                             session.exec(
@@ -547,7 +582,9 @@ class ExperienceBank:
                         pass
 
             scored.sort(key=lambda x: x[1], reverse=True)
-            results = [exp for exp, _ in scored[:top_k]]
+            # CHAT-07: dedup before trimming to top_k
+            ranked = [exp for exp, _ in scored]
+            results = _dedup_experiences(ranked, top_k)
 
             result_ids = [e.id for e in results if e.id is not None]
             if result_ids:
@@ -610,7 +647,9 @@ class ExperienceBank:
                 scored.append((exp, score))
 
             scored.sort(key=lambda x: x[1], reverse=True)
-            results = [exp for exp, _ in scored[:top_k]]
+            # CHAT-07: dedup before trimming to top_k
+            ranked = [exp for exp, _ in scored]
+            results = _dedup_experiences(ranked, top_k)
 
             # Atomic usage_count increment (prevents race in concurrent retrieval)
             result_ids = [exp.id for exp in results if exp.id is not None]
@@ -675,7 +714,9 @@ class ExperienceBank:
                 scored.append((exp, score))
 
             scored.sort(key=lambda x: x[1], reverse=True)
-            results = [exp for exp, _ in scored[:top_k]]
+            # CHAT-07: dedup before trimming to top_k
+            ranked = [exp for exp, _ in scored]
+            results = _dedup_experiences(ranked, top_k)
 
             # Atomic usage_count increment (prevents race in concurrent retrieval)
             result_ids = [exp.id for exp in results if exp.id is not None]

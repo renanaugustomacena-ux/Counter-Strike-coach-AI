@@ -1,5 +1,7 @@
 """Home / Dashboard screen — central hub with 4 cards and live CoachState polling."""
 
+from html import escape
+
 from PySide6.QtCore import Qt, QThreadPool
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
@@ -125,9 +127,12 @@ class HomeScreen(QWidget):
     def _update_status_dot(self, status: str):
         tokens = get_tokens()
         dot_color = tokens.warning if status != "Idle" else tokens.text_tertiary
+        # FE-05 (AUDIT §9): `status` is sourced from the coaching service; if
+        # any upstream component ever emits HTML it would render verbatim in
+        # this RichText label. Escape before embedding.
         self._status_label.setText(
             f'<span style="color:{dot_color}">\u25CF</span> '
-            f'<span style="color:{tokens.text_secondary}">Coach: {status}</span>'
+            f'<span style="color:{tokens.text_secondary}">Coach: {escape(status)}</span>'
         )
 
     def _update_service_dot(self, active: bool):
