@@ -89,10 +89,12 @@ gha-creds-*.json
 # Internal review/audit documents (not for public distribution)
 AIstate.md
 AUDIT_PROTOCOL.md
+AUDIT.md
 CLAUDE.md
 CONSOLE_ARCHITECTURE.md
 jepa.md
 part1_review.md
+TASKS.md
 
 # Reports (generated artifacts, regenerable)
 reports/
@@ -109,6 +111,22 @@ identifier.sqlite
 
 # Corrupted git objects backup (filesystem artifact, safe to delete)
 .git_corrupted/
+
+# Local audit archive (legacy PyCharm IDE inspection dumps + reports — not source of truth)
+.audit/
+
+# IDE inspection metadata
+.descriptions.xml
+*Inspection.xml
+GrazieInspectionRunner.xml
+JsonStandardCompliance.xml
+DuplicatedCode*.xml
+MarkdownIncorrect*.xml
+MarkdownUnresolved*.xml
+JS*.xml
+DotEnvTrailingWhitespaceInspection.xml
+SpellCheckingInspection.xml
+IgnoreFileDuplicateEntry.xml
 
 # Node modules (docs PDF generation)
 docs/node_modules/
