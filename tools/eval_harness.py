@@ -179,8 +179,18 @@ def _load_experience_embeddings(sample_size: int = 2000, seed: int = 42):
     labels: List[str] = []
 
     with db.get_session() as session:
-        stmt = select(CoachingExperience).where(CoachingExperience.embedding.is_not(None))
-        rows = list(session.exec(stmt).all())
+        # GAP-09 compatibility: SELECT only the three columns we need so the
+        # query stays compatible with DBs that haven't yet run the
+        # strategy_label migration (or any future additive migration).
+        stmt = select(
+            CoachingExperience.id,
+            CoachingExperience.embedding,
+            CoachingExperience.outcome,
+        ).where(CoachingExperience.embedding.is_not(None))
+        rows = [
+            type("Row", (), {"id": r[0], "embedding": r[1], "outcome": r[2]})()
+            for r in session.exec(stmt).all()
+        ]
 
     if not rows:
         return np.empty((0,), dtype=np.int64), np.empty((0, 0)), np.empty((0,), dtype=object)
