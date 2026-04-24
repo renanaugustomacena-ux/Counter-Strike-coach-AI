@@ -13,9 +13,9 @@ Questo modulo gestisce il livello di ingestion a runtime: monitoraggio di nuovi 
 
 | File | Linee | Scopo | Classi/Funzioni Principali |
 |------|-------|-------|---------------------------|
-| `watcher.py` | ~150 | Monitor del filesystem per file `.dem` | `DemoFileHandler(FileSystemEventHandler)` |
-| `resource_manager.py` | ~120 | Throttling CPU/RAM per task in background | `ResourceManager` |
-| `csv_migrator.py` | ~100 | Importazione CSV esterna in tabelle SQLModel | `CSVMigrator` |
+| `watcher.py` | ~239 | Monitor del filesystem per file `.dem` | `DemoFileHandler(FileSystemEventHandler)`, `IngestionWatcher` |
+| `resource_manager.py` | ~201 | Throttling CPU/RAM per task in background | `ResourceManager` |
+| `csv_migrator.py` | ~208 | Importazione CSV esterna in tabelle SQLModel | `CSVMigrator` |
 
 ## `watcher.py` — Monitor File Demo
 

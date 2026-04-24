@@ -106,9 +106,10 @@ demos_uploaded >= RECOMMENDED_DEMOS  -->  COACH_READY
 
 - `UserOnboardingManager` recalculates the stage on every call to
   `get_status()`. It is stateless aside from the TTL cache.
-- The `get_onboarding_manager()` factory creates a fresh instance each
-  time. It is **not** a singleton, so multiple callers will not share
-  cache state unless they share the same instance.
+- The `get_onboarding_manager()` factory is a module-level singleton
+  (`new_user_flow.py:133-140`): the first call constructs the instance
+  and subsequent calls return the cached reference, so all callers share
+  the same TTL cache.
 - Stage thresholds are class-level constants. If they need to become
   configurable, promote them to `core/config.py` user settings.
 - Never gate features completely based on stage. Always allow coaching

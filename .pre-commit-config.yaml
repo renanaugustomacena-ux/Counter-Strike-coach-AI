@@ -60,7 +60,8 @@ repos:
         exclude: |
           (?x)^(
             Programma_CS2_RENAN/PHOTO_GUI/.*\.(jpg|jpeg|png|bmp|gif|ico)|
-            Programma_CS2_RENAN/data/external/.*\.csv
+            Programma_CS2_RENAN/data/external/.*\.csv|
+            docs/books/.*\.pdf
           )$
       - id: check-merge-conflict
       - id: detect-private-key

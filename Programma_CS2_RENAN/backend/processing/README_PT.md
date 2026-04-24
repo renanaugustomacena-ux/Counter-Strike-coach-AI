@@ -16,17 +16,21 @@ dados -- nenhum deles armazena ou treina nada.
 | Arquivo | Linhas | Propósito | Exports Principais |
 |---------|--------|-----------|-------------------|
 | `__init__.py` | 1 | Marcador de pacote | -- |
-| `connect_map_context.py` | ~113 | Características espaciais Z-aware relativas aos objetivos do mapa | `distance_with_z_penalty()`, `calculate_map_context_features()` |
-| `cv_framebuffer.py` | ~193 | Ring buffer thread-safe para captura de frames CV e extração de HUD | `FrameBuffer`, `HeatmapData` |
-| `data_pipeline.py` | ~330 | Limpeza de dados, scaling, split temporal, descontaminação de jogadores | `ProDataPipeline` |
-| `external_analytics.py` | ~202 | Comparação z-score com datasets CSV de referência elite | `EliteAnalytics` |
-| `heatmap_engine.py` | ~301 | Mapas de ocupação Gaussiana e heatmaps diferenciais usuário-vs-pro | `HeatmapEngine`, `HeatmapData`, `DifferentialHeatmapData` |
-| `player_knowledge.py` | ~617 | Sistema de percepção Player-POV (modelo sensorial NO-WALLHACK) | `PlayerKnowledge`, `PlayerKnowledgeBuilder` |
-| `round_stats_builder.py` | ~573 | Estatísticas por round e por jogador a partir de eventos de demo | `build_round_stats()`, `aggregate_round_stats_to_match()`, `enrich_from_demo()` |
-| `skill_assessment.py` | ~155 | Decomposição de habilidade em 5 eixos e projeção de nível curricular | `SkillLatentModel`, `SkillAxes` |
-| `state_reconstructor.py` | ~131 | Conversão tick-para-tensor para treinamento e inferência do RAP-Coach | `RAPStateReconstructor` |
-| `tensor_factory.py` | ~748 | Tensores de percepção Player-POV (map, view, motion) | `TensorFactory`, `TensorConfig`, `TrainingTensorConfig`, `get_tensor_factory()` |
-| `tick_enrichment.py` | ~352 | Características contextuais cross-jogador para índices METADATA_DIM 20-24 | `enrich_tick_data()` |
+| `bombsite_encoding.py` | ~192 | Codificacao de centroide de bombsite e classificacao A/B | `encode_bombsite_context()` |
+| `connect_map_context.py` | ~112 | Caracteristicas espaciais Z-aware relativas aos objetivos do mapa | `distance_with_z_penalty()`, `calculate_map_context_features()` |
+| `data_pipeline.py` | ~408 | Limpeza de dados, scaling, split temporal, descontaminacao de jogadores | `ProDataPipeline` |
+| `demo_prioritizer.py` | ~344 | Priorizacao de fila de demos pro (recencia, mapa, rating) | `DemoPrioritizer` |
+| `demo_quality.py` | ~408 | Quality gates de demos (completude de tick, corrupcao, cobertura) | `DemoQualityAssessor` |
+| `external_analytics.py` | ~201 | Comparacao z-score com datasets CSV de referencia elite | `EliteAnalytics` |
+| `heatmap_engine.py` | ~300 | Mapas de ocupacao Gaussiana e heatmaps diferenciais usuario-vs-pro | `HeatmapEngine`, `HeatmapData`, `DifferentialHeatmapData` |
+| `player_knowledge.py` | ~625 | Sistema de percepcao Player-POV (modelo sensorial NO-WALLHACK) | `PlayerKnowledge`, `PlayerKnowledgeBuilder` |
+| `rating.py` | ~230 | Glue HLTV rating cross-modulo (agregacao nivel de partida) | `compute_match_rating()` |
+| `round_reconstructor.py` | ~575 | Reconstrucao de estado por round a partir de streams de ticks brutos | `RoundReconstructor` |
+| `round_stats_builder.py` | ~742 | Estatisticas por round e por jogador a partir de eventos de demo | `build_round_stats()`, `aggregate_round_stats_to_match()`, `enrich_from_demo()` |
+| `skill_assessment.py` | ~161 | Decomposicao de habilidade em 5 eixos e projecao de nivel curricular | `SkillLatentModel`, `SkillAxes` |
+| `state_reconstructor.py` | ~130 | Conversao tick-para-tensor para treinamento e inferencia do RAP-Coach | `RAPStateReconstructor` |
+| `tensor_factory.py` | ~747 | Tensores de percepcao Player-POV (map, view, motion) | `TensorFactory`, `TensorConfig`, `TrainingTensorConfig`, `get_tensor_factory()` |
+| `tick_enrichment.py` | ~350 | Caracteristicas contextuais cross-jogador para indices METADATA_DIM 20-24 | `enrich_tick_data()` |
 
 ## Sub-Pacotes
 
@@ -119,16 +123,12 @@ A pontuação média de habilidade é projetada em um nível curricular de
   comparações z-score para o motor de correção.
 - **UI / Visualização:** `heatmap_engine.HeatmapEngine` gera dados RGBA
   para heatmaps de posição e overlays diferenciais.
-  `cv_framebuffer.FrameBuffer` captura frames para OCR das regiões HUD.
 
 ## Notas de Desenvolvimento
 
 - Todos os cálculos de distância espacial em mapas multi-nível devem
   usar `distance_with_z_penalty()` de `connect_map_context.py`, não a
   distância Euclidiana bruta.
-- `FrameBuffer` é thread-safe para `capture_frame()` e `get_latest()`,
-  mas `create_texture_from_data()` (Kivy) deve ser chamado a partir da
-  thread principal OpenGL.
 - `HeatmapEngine.generate_heatmap_data()` e
   `generate_differential_heatmap_data()` são thread-safe.
 - `ProDataPipeline` limita as linhas em memória a `_MAX_PIPELINE_ROWS`

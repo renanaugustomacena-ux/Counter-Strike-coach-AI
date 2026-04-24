@@ -39,18 +39,16 @@ interni prima di essere passati ai consumatori a valle.
 | `faceit_api.py` | `FaceitAPI` | Wrapper API piattaforma FACEIT per cronologia partite e statistiche giocatore |
 | `faceit_integration.py` | `FaceitIntegration` | Orchestrazione ingestione dati FACEIT di alto livello |
 | `hltv_scraper.py` | `HLTVScraper` | Raccoglie statistiche giocatori professionisti da hltv.org (Rating 2.0, K/D, ADR, KAST, HS%) |
-| `hltv/` | Sotto-pacchetto | Implementazione HLTV attiva: client FlareSolverr, gestore Docker, selettori CSS, rate limiting, fetcher statistiche |
+| `hltv/` | Sotto-pacchetto | Implementazione HLTV attiva: client FlareSolverr, gestore Docker, fetcher statistiche (selettori CSS + rate limiting inline) |
 
 ### Sotto-Pacchetto HLTV (`hltv/`)
 
 | File | Scopo |
 |------|-------|
-| `__init__.py` | Root sotto-pacchetto |
-| `flaresolverr_client.py` | Client HTTP che instrada richieste attraverso FlareSolverr/Docker per bypassare la protezione Cloudflare |
-| `docker_manager.py` | Gestisce il ciclo di vita del container Docker FlareSolverr (avvio, arresto, health check) |
-| `selectors.py` | Selettori CSS per il parsing delle pagine HTML HLTV (profili giocatori, tabelle statistiche) |
-| `rate_limit.py` | Logica di rate limiting per evitare blocchi da hltv.org |
-| `stat_fetcher.py` | Orchestratore di alto livello per il recupero statistiche che coordina i moduli sopra |
+| `__init__.py` | Root sotto-pacchetto (marcatore namespace vuoto) |
+| `flaresolverr_client.py` | Client REST che invia richieste al container FlareSolverr locale (porta 8191) per bypassare Cloudflare |
+| `docker_manager.py` | Gestisce il ciclo di vita del container Docker FlareSolverr (`docker start`, `docker compose up -d`, health check) |
+| `stat_fetcher.py` | `HLTVStatFetcher`: discovery, parsing HTML, persistenza. Selettori CSS inline via `soup.select()`; rate limiting via `CRAWL_DELAY_MIN/MAX_SECONDS` (2-7s) + `random.uniform()` |
 
 ## Diagramma Flusso Dati
 
@@ -163,10 +161,11 @@ dei file demo.**
 ### Sotto-pacchetto hltv/
 
 L'implementazione HLTV attiva che gestisce il recupero di pagine protette da Cloudflare.
-`docker_manager.py` gestisce il container FlareSolverr, `flaresolverr_client.py` instrada
-le richieste HTTP attraverso di esso, `selectors.py` fornisce selettori CSS per il parsing
-HTML, `rate_limit.py` previene scraping aggressivo e `stat_fetcher.py` orchestra
-l'intero flusso di lavoro di recupero statistiche.
+`docker_manager.py` gestisce il ciclo di vita del container FlareSolverr,
+`flaresolverr_client.py` instrada le richieste HTTP attraverso di esso, e
+`stat_fetcher.py` orchestra discovery, parsing HTML (selettori CSS inline via
+BeautifulSoup4), rate limiting (crawl delay randomizzato 2-7 secondi) e persistenza
+database.
 
 ## Punti di Integrazione
 

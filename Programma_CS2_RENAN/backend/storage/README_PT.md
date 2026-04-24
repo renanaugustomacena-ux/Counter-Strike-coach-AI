@@ -18,10 +18,10 @@ dos dados, acesso concorrente pelos daemons e portabilidade entre máquinas.
 
 | Arquivo | Propósito |
 |---------|-----------|
-| `db_models.py` | 20 classes de tabela SQLModel cobrindo todo o modelo de dados |
+| `db_models.py` | 21 classes de tabela SQLModel cobrindo todo o modelo de dados |
 | `database.py` | `DatabaseManager` (monólito) + `HLTVDatabaseManager` + singletons |
 | `match_data_manager.py` | Partições SQLite por-partida (Tier 3) com cache de engine LRU |
-| `backup_manager.py` | Backup a quente via `VACUUM INTO`, política de retenção (7 diários + 4 semanais) |
+| `backup_manager.py` | Backup a quente via SQLite Online Backup API, retenção (último + 7 diários + 4 semanais) |
 | `db_backup.py` | Wrapper da SQLite Online Backup API + arquivamento tar.gz para dados de partida |
 | `db_migrate.py` | Executor de migrações Alembic para upgrades automáticos de schema na inicialização |
 | `maintenance.py` | Poda de metadados: remove dados de tick antigos preservando estatísticas agregadas |
@@ -38,7 +38,7 @@ de lock de escrita entre daemons e manter a profundidade B-tree rasa por partida
 ```
 +-------------------------------+
 |      database.db (Monólito)   |
-|  17 tabelas: dados de treino, |
+|  18 tabelas: dados de treino, |
 |  estatísticas de jogador,     |
 |  ticks, estado de coaching,   |
 |  base de conhecimento         |
@@ -65,9 +65,11 @@ de lock de escrita entre daemons e manter a profundidade B-tree rasa por partida
 ### PRAGMAs de Conexão (aplicadas em cada checkout)
 
 ```sql
-PRAGMA journal_mode = WAL;
-PRAGMA synchronous  = NORMAL;
-PRAGMA busy_timeout = 30000;
+PRAGMA journal_mode     = WAL;
+PRAGMA synchronous      = NORMAL;
+PRAGMA busy_timeout     = 30000;
+PRAGMA foreign_keys     = ON;      -- DB-06: FKs são decorativas sem isto
+PRAGMA wal_autocheckpoint = 512;   -- DB-07: cadência de checkpoint ~2 MB
 ```
 
 Pool de engine: `pool_size=1, max_overflow=4` para segurança single-writer do SQLite.
@@ -117,7 +119,8 @@ recursos. Funcionalidades:
 
 ### BackupManager (`backup_manager.py`)
 
-Backup a quente usando `VACUUM INTO` (não-bloqueante em modo WAL). Política de
+Backup a quente usando a Online Backup API do SQLite (`sqlite3.Connection.backup()` em
+`backup_manager.py:81-89`), WAL-safe e não-bloqueante. Política de
 retenção: mantém o mais recente + 7 diários + 4 semanais. Cada backup é verificado
 com `PRAGMA quick_check` antes da aceitação.
 
@@ -129,9 +132,9 @@ de usuário e pro, controle de cota, deduplicação contra `IngestionTask` e
 
 ## Destaques do Modelo de Dados (db_models.py)
 
-O módulo define 20 classes de tabela SQLModel organizadas em grupos lógicos:
+O módulo define 21 classes de tabela SQLModel organizadas em grupos lógicos:
 
-- **Telemetria de jogador:** `PlayerMatchStats`, `PlayerTickState`, `RoundStats`
+- **Telemetria de jogador:** `PlayerMatchStats`, `PlayerTickState`, `RoundStats`, `PlayerProfile`
 - **Framework de coaching:** `CoachState`, `CoachingInsight`, `CoachingExperience` (COPER)
 - **Base de conhecimento:** `TacticalKnowledge` (RAG, embeddings 384-dim)
 - **Dados pro:** `ProTeam`, `ProPlayer`, `ProPlayerStatCard`

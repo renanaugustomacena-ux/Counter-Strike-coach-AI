@@ -27,7 +27,7 @@
 - Busca secoes de traits: Firepower, Entrying, Utility
 - Busca sub-paginas: Clutches (1v1, 1v2, 1v3), Multikills (3k, 4k, 5k),
   Historico de rating da carreira
-- Descobre automaticamente os Top 50 jogadores a partir da pagina de ranking do HLTV
+- Descobre automaticamente URLs de jogadores via ranking mundial de times HLTV (top 30 times, ~150 jogadores). Recai para `/stats/players` se a descoberta via times retornar zero
 - Salva todos os dados nas tabelas `ProPlayer` + `ProPlayerStatCard` em `hltv_metadata.db`
 - Respeita `robots.txt` e aplica rate limiting entre as requisicoes
 - Usa FlareSolverr (container Docker) para contornar a protecao Cloudflare em hltv.org

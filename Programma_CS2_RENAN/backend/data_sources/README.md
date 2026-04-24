@@ -39,18 +39,16 @@ before being passed to downstream consumers.
 | `faceit_api.py` | `FaceitAPI` | FACEIT platform API wrapper for match history and player statistics |
 | `faceit_integration.py` | `FaceitIntegration` | High-level FACEIT data ingestion orchestration |
 | `hltv_scraper.py` | `HLTVScraper` | Scrapes professional player statistics from hltv.org (Rating 2.0, K/D, ADR, KAST, HS%) |
-| `hltv/` | Sub-package | Active HLTV implementation: FlareSolverr client, Docker manager, CSS selectors, rate limiting, stat fetcher |
+| `hltv/` | Sub-package | Active HLTV implementation: FlareSolverr client, Docker manager, stat fetcher (CSS selectors + rate limiting inline) |
 
 ### HLTV Sub-Package (`hltv/`)
 
 | File | Purpose |
 |------|---------|
-| `__init__.py` | Sub-package root |
-| `flaresolverr_client.py` | HTTP client that routes requests through FlareSolverr/Docker to bypass Cloudflare protection |
-| `docker_manager.py` | Manages the FlareSolverr Docker container lifecycle (start, stop, health check) |
-| `selectors.py` | CSS selectors for parsing HLTV HTML pages (player profiles, stat tables) |
-| `rate_limit.py` | Rate limiting logic to avoid being blocked by hltv.org |
-| `stat_fetcher.py` | High-level stat fetching orchestrator that coordinates the above modules |
+| `__init__.py` | Sub-package root (empty namespace marker) |
+| `flaresolverr_client.py` | REST client that posts requests to the local FlareSolverr container (port 8191) to bypass Cloudflare |
+| `docker_manager.py` | Manages the FlareSolverr Docker container lifecycle (`docker start`, `docker compose up -d`, health check) |
+| `stat_fetcher.py` | `HLTVStatFetcher`: discovery, HTML parsing, persistence. Inline CSS selectors via `soup.select()`; rate limiting via `CRAWL_DELAY_MIN/MAX_SECONDS` (2-7s) + `random.uniform()` |
 
 ## Data Flow Diagram
 
@@ -158,10 +156,10 @@ has no connection to demo file management.**
 ### hltv/ Sub-Package
 
 The active HLTV implementation that handles Cloudflare-protected page retrieval.
-`docker_manager.py` manages the FlareSolverr container, `flaresolverr_client.py` routes
-HTTP requests through it, `selectors.py` provides CSS selectors for HTML parsing,
-`rate_limit.py` prevents aggressive scraping, and `stat_fetcher.py` orchestrates the
-full stat-fetching workflow.
+`docker_manager.py` manages the FlareSolverr container lifecycle, `flaresolverr_client.py`
+routes HTTP requests through it, and `stat_fetcher.py` orchestrates discovery, HTML
+parsing (inline CSS selectors via BeautifulSoup4), rate limiting (2-7 second randomized
+crawl delay), and database persistence.
 
 ## Integration Points
 

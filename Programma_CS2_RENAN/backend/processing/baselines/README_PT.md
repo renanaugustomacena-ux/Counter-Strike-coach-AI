@@ -27,24 +27,32 @@ demos) e entao consumidos milhares de vezes pela pipeline de coaching.
 | `role_thresholds.py` | Limiares de classificacao de papeis aprendidos (com gestao cold-start) | `RoleThresholdStore`, `LearnedThreshold`, `get_role_threshold_store()` |
 | `meta_drift.py` | Detecta drift estatistico e espacial nos padroes de jogo pro | `MetaDriftEngine` |
 | `nickname_resolver.py` | Resolucao fuzzy de nomes de jogadores de demo para IDs HLTV | `NicknameResolver` |
+| `pro_player_linker.py` | Backfill + linking por-ingestao de `PlayerMatchStats.pro_player_id` para `ProPlayer.hltv_id` | `ProPlayerLinker` |
 | `__init__.py` | Marcador de pacote vazio | -- |
 
 ## Arquitetura & Conceitos
 
-### Fallback de Baseline em Tres Niveis (`pro_baseline.py`)
+### Fusao de Baseline em Quatro Camadas (`pro_baseline.py`)
 
-`get_pro_baseline()` resolve baselines atraves de uma cadeia de prioridade rigorosa:
+`get_pro_baseline()` estratifica todas as fontes disponiveis (prioridade
+ascendente -- camadas posteriores sobrescrevem as anteriores), nao uma
+cascata first-wins:
 
-1. **Banco de dados** -- Agrega linhas `ProPlayerStatCard` de
-   `hltv_metadata.db` em medias por jogador, depois calcula media/desvio
-   padrao globais. Suporta filtragem opcional por `map_name` (Task 2.18.1)
-   para coaching especifico por mapa.
-2. **CSV** -- Recorre a `data/external/all_Time_best_Players_Stats.csv`
-   quando o banco de dados esta vazio. Mapeia dinamicamente colunas CSV via
-   `_CSV_COLUMN_MAP`.
-3. **Defaults hardcoded** -- `HARD_DEFAULT_BASELINE` fornece 16 distribuicoes
-   de metricas calibradas manualmente para que o coach ainda funcione em uma
-   instalacao nova. Uma chave `_provenance` marca a baseline como degradada.
+1. **Defaults hardcoded** -- `HARD_DEFAULT_BASELINE` fornece 16 distribuicoes
+   de metricas calibradas manualmente para que o coach ainda funcione em
+   uma instalacao nova.
+2. **CSV** -- `data/external/all_Time_best_Players_Stats.csv` para dados
+   historicos amplos. Mapeia dinamicamente colunas CSV via `_CSV_COLUMN_MAP`.
+3. **Demo stats** -- Dados de partida reais de demos pro ingeridas via
+   `_load_pro_from_demo_stats()` (fornece `accuracy` e campos derivados de
+   demo).
+4. **HLTV** -- Linhas `ProPlayerStatCard` de `hltv_metadata.db` agregadas
+   por jogador, depois media/desvio padrao globais. Suporta filtragem
+   opcional por `map_name` (Task 2.18.1) para coaching especifico por mapa;
+   fornece opening duels, clutch stats e impact (maior N).
+
+Uma chave `_provenance` registra a cadeia de fontes usadas. Quando apenas
+`hard_default` esta disponivel a baseline e logada como degradada.
 
 Protecoes:
 - `P-PB-01`: Razao K/D ignorada quando DPR < 0.01 (evita razoes infladas).

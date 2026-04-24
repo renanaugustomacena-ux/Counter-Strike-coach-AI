@@ -26,23 +26,29 @@ then consumed thousands of times by the coaching pipeline.
 | `role_thresholds.py` | Learned role-classification thresholds (cold-start aware) | `RoleThresholdStore`, `LearnedThreshold`, `get_role_threshold_store()` |
 | `meta_drift.py` | Detects statistical and spatial drift in pro play patterns | `MetaDriftEngine` |
 | `nickname_resolver.py` | Fuzzy resolution of demo player names to HLTV IDs | `NicknameResolver` |
+| `pro_player_linker.py` | Backfill + per-ingestion linking of `PlayerMatchStats.pro_player_id` to `ProPlayer.hltv_id` | `ProPlayerLinker` |
 | `__init__.py` | Empty package marker | -- |
 
 ## Architecture & Concepts
 
-### Three-Tier Baseline Fallback (`pro_baseline.py`)
+### Four-Layer Baseline Fusion (`pro_baseline.py`)
 
-`get_pro_baseline()` resolves baselines through a strict priority chain:
+`get_pro_baseline()` layers all available sources (ascending priority --
+later layers override earlier ones), not a first-wins cascade:
 
-1. **Database** -- Aggregates `ProPlayerStatCard` rows from `hltv_metadata.db`
-   into per-player averages, then computes global mean/std.  Supports optional
-   `map_name` filtering (Task 2.18.1) for map-specific coaching.
-2. **CSV** -- Falls back to `data/external/all_Time_best_Players_Stats.csv`
-   when the database is empty.  Dynamically maps CSV columns via
-   `_CSV_COLUMN_MAP`.
-3. **Hard defaults** -- `HARD_DEFAULT_BASELINE` provides 16 hand-tuned
+1. **Hard defaults** -- `HARD_DEFAULT_BASELINE` provides 16 hand-tuned
    metric distributions so the coach can still function on a fresh install.
-   A `_provenance` key marks the baseline as degraded.
+2. **CSV** -- `data/external/all_Time_best_Players_Stats.csv` for broad
+   historical data.  Dynamically maps CSV columns via `_CSV_COLUMN_MAP`.
+3. **Demo stats** -- Real match data from ingested pro demos via
+   `_load_pro_from_demo_stats()` (supplies `accuracy`, demo-derived fields).
+4. **HLTV** -- `ProPlayerStatCard` rows from `hltv_metadata.db` aggregated
+   per player, then global mean/std.  Supports optional `map_name`
+   filtering (Task 2.18.1) for map-specific coaching; supplies opening
+   duels, clutch stats, and impact (largest N).
+
+A `_provenance` key records the chain of sources used.  When only
+`hard_default` is available the baseline is logged as degraded.
 
 Guard rails:
 - `P-PB-01`: K/D ratio skipped when DPR < 0.01 (avoids inflated ratios).

@@ -1,3 +1,22 @@
+# Coach Books — Refactor Plan  *(ARCHIVED — superseded)*
+
+> **⚠️ ARCHIVED on 2026-04-24.** This plan has been superseded by the unified documentation uplift plan at `/home/renan/.claude/plans/hello-my-dear-brother-misty-micali.md`.
+>
+> Decisions locked in 2026-04-23 merged this contract into the new plan:
+> - Phase 1 Session 1 structural skeleton → **executed** (Book 1B §4 un-indented; Book 2 & Book 3 H1+Indice added).
+> - Phase 1 Sessions 2-5 (drift fixes per book) → **absorbed** into the unified plan's Phase 4.
+> - Phase 2 Sessions 6-8 (EN translation) → **absorbed** into unified plan's Phase 5, now tri-lingual (IT canonical + EN + PT-BR).
+> - §9 "do not touch analogies" contract → **overridden** by Renan 2026-04-23: analogies extracted into companion `docs/books/analogy-book.md` (≤7k→12k words after expansion, 35 canonical entries), and the books keep their full analogies per user direction 2026-04-24 ("books have no limitations in word count or content exhaustiveness").
+> - §10 open questions (6) → resolved in unified plan's "Decisions locked in" section.
+>
+> The content below is preserved verbatim for **historical reference** — the session-by-session breakdown remained useful even after the goals shifted. For the active contract, see the new plan.
+
+---
+
+*(original document follows)*
+
+---
+
 # Coach Books — Refactor Plan
 
 > **Status:** Audit + plan only. No book content has been edited yet. This document is the contract for the refactor; execution happens in subsequent sessions.

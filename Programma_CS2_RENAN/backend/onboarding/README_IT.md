@@ -111,9 +111,10 @@ demos_uploaded >= RECOMMENDED_DEMOS  -->  COACH_READY
 
 - `UserOnboardingManager` ricalcola la fase ad ogni chiamata a
   `get_status()`. È stateless a parte la cache TTL.
-- La factory `get_onboarding_manager()` crea una nuova istanza ogni
-  volta. **Non** è un singleton, quindi più chiamanti non condividono
-  lo stato della cache a meno che non condividano la stessa istanza.
+- La factory `get_onboarding_manager()` è un singleton a livello di
+  modulo (`new_user_flow.py:133-140`): la prima chiamata costruisce
+  l'istanza e le chiamate successive restituiscono il riferimento
+  memorizzato, quindi tutti i chiamanti condividono la stessa cache TTL.
 - Le soglie delle fasi sono costanti a livello di classe. Se devono
   diventare configurabili, promuoverle in `core/config.py` come
   impostazioni utente.

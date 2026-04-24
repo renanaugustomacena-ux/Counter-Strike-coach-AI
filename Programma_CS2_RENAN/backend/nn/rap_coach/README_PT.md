@@ -162,18 +162,22 @@ dados completo:
 
 ## Constantes-Chave
 
+> Os anchors de linha abaixo apontam para a implementacao canonica em
+> `backend/nn/experimental/rap_coach/` -- os arquivos neste pacote sao shims
+> de re-exportacao de 4-5 linhas.
+
 | Constante | Valor | Fonte |
 |-----------|-------|-------|
-| `hidden_dim` | 256 | `model.py:45` |
-| `perception_dim` | 128 | `model.py:42` (64 + 32 + 32) |
-| `ncp_units` | 512 | `memory.py:50` (hidden_dim x 2) |
-| `belief_dim` | 64 | `memory.py:92` |
-| `OUTPUT_DIM` | 10 | `nn/config.py:123` |
+| `hidden_dim` | 256 | `experimental/rap_coach/model.py:45` |
+| `perception_dim` | 128 | `experimental/rap_coach/model.py:42` (64 + 32 + 32) |
+| `ncp_units` | 512 | `experimental/rap_coach/memory.py:52` (hidden_dim x 2) |
+| `belief_dim` | 64 | `experimental/rap_coach/model.py:61` |
+| `OUTPUT_DIM` | 10 | `nn/config.py:162` |
 | `METADATA_DIM` | 25 | `vectorizer.py:32` |
-| `RAP_POSITION_SCALE` | 500.0 | `nn/config.py:155` |
-| `num_experts` | 4 | `strategy.py:42` |
-| `hopfield_heads` | 4 | `memory.py:83` |
-| `Z_AXIS_PENALTY_WEIGHT` | 2.0 | `trainer.py:26` |
+| `RAP_POSITION_SCALE` | 500.0 | `nn/config.py:194` |
+| `num_experts` | 4 | `experimental/rap_coach/strategy.py:32` |
+| `hopfield_heads` | 4 | `experimental/rap_coach/memory.py:92` |
+| `Z_AXIS_PENALTY_WEIGHT` | 2.0 | `experimental/rap_coach/trainer.py:27` |
 
 ## Invariantes Criticas
 

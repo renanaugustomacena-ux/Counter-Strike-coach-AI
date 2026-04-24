@@ -30,20 +30,20 @@ No UI logic lives here. The backend exposes its capabilities through a **service
 
 | # | Sub-Package | Files | Purpose | Key Entry Points |
 |---|-------------|-------|---------|------------------|
-| 1 | `analysis/` | 11 | Game theory engines: belief models, momentum tracking, win probability, entropy analysis, deception index, blind spot detection | `belief_model.py`, `win_probability.py`, `momentum.py` |
+| 1 | `analysis/` | 12 | Game theory engines: belief models, momentum tracking, win probability, entropy analysis, deception index, blind spot detection | `belief_model.py`, `win_probability.py`, `momentum.py` |
 | 2 | `coaching/` | 8 | 4-mode coaching pipeline: COPER experience-based, Hybrid (NN + rules), RAG retrieval-augmented, pure NN refinement | `hybrid_engine.py`, `correction_engine.py`, `pro_bridge.py` |
 | 3 | `control/` | 5 | Daemon lifecycle management, ingestion queue governance, ML training control, database resource limits | `ingest_manager.py`, `ml_controller.py`, `db_governor.py` |
-| 4 | `data_sources/` | 13+ | External data integration: demo parser (demoparser2), HLTV pro statistics scraper (FlareSolverr/Docker), Steam API, FACEIT API | `demo_parser.py`, `hltv/`, `steam_api.py`, `faceit_api.py` |
+| 4 | `data_sources/` | 15 | External data integration: demo parser (demoparser2), HLTV pro statistics scraper (FlareSolverr/Docker), Steam API, FACEIT API | `demo_parser.py`, `hltv/`, `steam_api.py`, `faceit_api.py` |
 | 5 | `ingestion/` | 4 | Runtime file watching for new demos, CSV migration from legacy formats, OS resource governance | `watcher.py`, `resource_manager.py`, `csv_migrator.py` |
 | 6 | `knowledge/` | 8 | RAG knowledge base with FAISS vector index, COPER experience bank, pro demo mining, tactical knowledge graph | `rag_knowledge.py`, `experience_bank.py`, `vector_index.py` |
 | 7 | `knowledge_base/` | 2 | In-app help system: contextual tooltips, glossary, guided walkthroughs for the UI | `help_system.py` |
-| 8 | `nn/` | 53 | Neural network architectures (6 model types), training pipeline, inference, EMA, early stopping, data quality, RAP Coach, JEPA | `jepa_model.py`, `rap_coach/`, `train.py`, `config.py` |
+| 8 | `nn/` | 52 | Neural network architectures (6 model types), training pipeline, inference, EMA, early stopping, data quality, RAP Coach, JEPA | `jepa_model.py`, `rap_coach/`, `train.py`, `config.py` |
 | 9 | `onboarding/` | 2 | New user progression flow: skill assessment, demo collection prompts, initial calibration | `new_user_flow.py` |
-| 10 | `processing/` | 16+ | Feature engineering (25-dim vector), baseline computation, pro baselines, heatmap generation, validation, tick enrichment | `feature_engineering/vectorizer.py`, `baselines/`, `validation/` |
+| 10 | `processing/` | 33 | Feature engineering (25-dim vector), baseline computation, pro baselines, heatmap generation, validation, tick enrichment | `feature_engineering/vectorizer.py`, `baselines/`, `validation/` |
 | 11 | `progress/` | 3 | Longitudinal training tracking: session trends, improvement metrics, skill curve analysis | `longitudinal.py`, `trend_analysis.py` |
 | 12 | `reporting/` | 2 | Analytics query layer for UI screens: aggregated match stats, trend summaries, performance breakdowns | `analytics.py` |
-| 13 | `services/` | 11 | Service orchestration layer: coaching service, analysis orchestrator, dialogue engine, LLM integration, profile management, telemetry | `coaching_service.py`, `analysis_orchestrator.py`, `llm_service.py` |
-| 14 | `storage/` | 12+ | Tri-database persistence (SQLite WAL): database manager, SQLModel ORM, backup, match data manager, state manager, remote telemetry | `database.py`, `db_models.py`, `match_data_manager.py` |
+| 13 | `services/` | 12 | Service orchestration layer: coaching service, analysis orchestrator, dialogue engine, LLM integration, profile management, telemetry | `coaching_service.py`, `analysis_orchestrator.py`, `llm_service.py` |
+| 14 | `storage/` | 14 | Tri-database persistence (SQLite WAL): database manager, SQLModel ORM, backup, match data manager, state manager, remote telemetry | `database.py`, `db_models.py`, `match_data_manager.py` |
 
 ---
 
@@ -193,7 +193,7 @@ Layer 5 (Orchestration): services/  reporting/  control/
 
 ### Testing
 
-- Framework: `pytest`, 89 test files in `tests/`.
+- Framework: `pytest`, 99 test files in `Programma_CS2_RENAN/tests/` (+1 top-level).
 - Integration tests require `CS2_INTEGRATION_TESTS=1`.
 - Key fixtures: `in_memory_db`, `seeded_db_session`, `mock_db_manager`, `torch_no_grad`.
 
@@ -202,7 +202,7 @@ Layer 5 (Orchestration): services/  reporting/  control/
 13 hooks must pass before any commit: headless-validator, dead-code-detector,
 integrity-manifest, dev-health, trailing-whitespace, end-of-file-fixer,
 check-yaml, check-json, large-files (1 MB), merge-conflict, detect-private-key,
-black (100 cols, py3.10), isort (profile=black).
+black (100 cols, py3.12), isort (profile=black).
 
 ### Post-Task Validation
 

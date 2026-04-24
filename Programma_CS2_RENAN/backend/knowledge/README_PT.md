@@ -71,7 +71,7 @@ Todo texto e transformado em embedding usando Sentence-BERT (`all-MiniLM-L6-v2`,
 fallback deterministico baseado em hash-projection produz vetores de 100 dimensoes
 com similaridade semantica degradada mas funcional. A classe `KnowledgeEmbedder`
 gerencia o carregamento do modelo, caching, rastreamento de versao
-(`CURRENT_VERSION = "v2"`) e re-embedding automatico quando o modelo muda de
+(`CURRENT_VERSION = "v3"`) e re-embedding automatico quando o modelo muda de
 dimensao.
 
 ### Indice Vetorial FAISS
@@ -180,7 +180,7 @@ JSON legado (comeca com `[`) para compatibilidade retroativa.
 | `AMATEUR_EXPERIENCE_CONFIDENCE` | 0.5 | `experience_bank.py:44` |
 | `OVERFETCH_KNOWLEDGE` | 10 | `vector_index.py:48` |
 | `OVERFETCH_EXPERIENCE` | 20 | `vector_index.py:49` |
-| `KnowledgeEmbedder.CURRENT_VERSION` | `"v2"` | `rag_knowledge.py:48` |
+| `KnowledgeEmbedder.CURRENT_VERSION` | `"v3"` | `rag_knowledge.py:51` |
 | `KnowledgeEmbedder.embedding_dim` | 384 (SBERT) / 100 (fallback) | `rag_knowledge.py:53,67` |
 
 ### Limiares de Arquetipos do Mining Pro-Stats

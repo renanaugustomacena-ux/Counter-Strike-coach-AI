@@ -82,8 +82,9 @@ Programma_CS2_RENAN/
 ├── tests/                      # Test suite (1,794+ tests in 89 files)
 ├── tools/                      # Package-level validation tools
 ├── __init__.py                 # Package init (__version__ = "1.0.0")
+├── main.py                     # Legacy Kivy/KivyMD desktop entry (RASP-gated)
 ├── run_ingestion.py            # Demo ingestion entry point
-├── fetch_hltv_stats.py         # HLTV stats scraping entry point
+├── run_worker.py               # Background ingestion worker (stale-task recovery)
 └── hltv_sync_service.py        # Background HLTV sync daemon
 ```
 
@@ -91,10 +92,10 @@ Programma_CS2_RENAN/
 
 | File | Purpose | How to Run |
 |------|---------|-----------|
-| `apps/qt_app/app.py` | Desktop application (Qt GUI) | `python -m Programma_CS2_RENAN.apps.qt_app.app` |
-| `apps/desktop_app/main.py` | Desktop application (Kivy GUI) | `python -m Programma_CS2_RENAN.apps.desktop_app.main` |
+| `apps/qt_app/app.py` | Desktop application (Qt GUI, primary) | `python -m Programma_CS2_RENAN.apps.qt_app.app` |
+| `main.py` | Desktop application (Kivy/KivyMD GUI, legacy fallback) | `python -m Programma_CS2_RENAN.main` |
 | `run_ingestion.py` | Demo ingestion pipeline | `python -m Programma_CS2_RENAN.run_ingestion` |
-| `fetch_hltv_stats.py` | HLTV pro stats scraping | `python -m Programma_CS2_RENAN.fetch_hltv_stats` |
+| `run_worker.py` | Background ingestion worker (stale task recovery) | `python -m Programma_CS2_RENAN.run_worker` |
 | `hltv_sync_service.py` | HLTV background sync | Started by Hunter daemon |
 
 ## Technology Stack

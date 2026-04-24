@@ -537,6 +537,7 @@ async function main() {
   console.log("[md2pdf] Launching Chromium...");
   const browser = await puppeteer.launch({
     headless: true,
+    executablePath: process.env.CHROME_PATH || "/usr/bin/google-chrome",
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",

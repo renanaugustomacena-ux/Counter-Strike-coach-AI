@@ -11,9 +11,9 @@ This module handles the runtime ingestion layer: watching for new demo files on 
 
 | File | Lines | Purpose | Key Classes/Functions |
 |------|-------|---------|----------------------|
-| `watcher.py` | ~150 | Filesystem monitor for `.dem` files | `DemoFileHandler(FileSystemEventHandler)` |
-| `resource_manager.py` | ~120 | CPU/RAM throttling for background tasks | `ResourceManager` |
-| `csv_migrator.py` | ~100 | External CSV import into SQLModel tables | `CSVMigrator` |
+| `watcher.py` | ~239 | Filesystem monitor for `.dem` files | `DemoFileHandler(FileSystemEventHandler)`, `IngestionWatcher` |
+| `resource_manager.py` | ~201 | CPU/RAM throttling for background tasks | `ResourceManager` |
+| `csv_migrator.py` | ~208 | External CSV import into SQLModel tables | `CSVMigrator` |
 
 ## `watcher.py` — Demo File Monitor
 

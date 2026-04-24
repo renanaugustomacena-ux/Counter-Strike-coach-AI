@@ -30,20 +30,20 @@ Nenhuma logica de UI reside aqui. O backend expoe suas funcionalidades atraves d
 
 | # | Sub-Pacote | Arquivos | Proposito | Pontos de Entrada Chave |
 |---|------------|----------|-----------|------------------------|
-| 1 | `analysis/` | 11 | Motores de teoria dos jogos: belief model, rastreamento de momentum, win probability, analise de entropia, indice de engano, deteccao de pontos cegos | `belief_model.py`, `win_probability.py`, `momentum.py` |
+| 1 | `analysis/` | 12 | Motores de teoria dos jogos: belief model, rastreamento de momentum, win probability, analise de entropia, indice de engano, deteccao de pontos cegos | `belief_model.py`, `win_probability.py`, `momentum.py` |
 | 2 | `coaching/` | 8 | Pipeline de coaching em 4 modos: COPER baseado em experiencia, Hybrid (NN + regras), RAG retrieval-augmented, refinamento puro NN | `hybrid_engine.py`, `correction_engine.py`, `pro_bridge.py` |
 | 3 | `control/` | 5 | Gerenciamento do ciclo de vida de daemons, governanca de fila de ingestion, controle de training ML, limites de recursos de database | `ingest_manager.py`, `ml_controller.py`, `db_governor.py` |
-| 4 | `data_sources/` | 13+ | Integracao de dados externos: demo parser (demoparser2), scraper de estatisticas pro HLTV (FlareSolverr/Docker), Steam API, FACEIT API | `demo_parser.py`, `hltv/`, `steam_api.py`, `faceit_api.py` |
+| 4 | `data_sources/` | 15 | Integracao de dados externos: demo parser (demoparser2), scraper de estatisticas pro HLTV (FlareSolverr/Docker), Steam API, FACEIT API | `demo_parser.py`, `hltv/`, `steam_api.py`, `faceit_api.py` |
 | 5 | `ingestion/` | 4 | Monitoramento runtime de arquivos para novas demos, migracao CSV de formatos legacy, governanca de recursos do OS | `watcher.py`, `resource_manager.py`, `csv_migrator.py` |
 | 6 | `knowledge/` | 8 | Knowledge base RAG com indice vetorial FAISS, banco de experiencias COPER, mineracao de demos pro, grafo de conhecimento tatico | `rag_knowledge.py`, `experience_bank.py`, `vector_index.py` |
 | 7 | `knowledge_base/` | 2 | Sistema de ajuda in-app: tooltips contextuais, glossario, guias passo a passo para a interface | `help_system.py` |
-| 8 | `nn/` | 53 | Arquiteturas de redes neurais (6 tipos de modelo), pipeline de training, inferencia, EMA, early stopping, data quality, RAP Coach, JEPA | `jepa_model.py`, `rap_coach/`, `train.py`, `config.py` |
+| 8 | `nn/` | 52 | Arquiteturas de redes neurais (6 tipos de modelo), pipeline de training, inferencia, EMA, early stopping, data quality, RAP Coach, JEPA | `jepa_model.py`, `rap_coach/`, `train.py`, `config.py` |
 | 9 | `onboarding/` | 2 | Fluxo de progressao de novos usuarios: avaliacao de habilidades, solicitacoes de coleta de demos, calibracao inicial | `new_user_flow.py` |
-| 10 | `processing/` | 16+ | Feature engineering (vetor 25-dim), computacao de baselines, baselines pro, geracao de heatmap, validacao, enriquecimento de ticks | `feature_engineering/vectorizer.py`, `baselines/`, `validation/` |
+| 10 | `processing/` | 33 | Feature engineering (vetor 25-dim), computacao de baselines, baselines pro, geracao de heatmap, validacao, enriquecimento de ticks | `feature_engineering/vectorizer.py`, `baselines/`, `validation/` |
 | 11 | `progress/` | 3 | Rastreamento longitudinal de training: tendencias de sessao, metricas de melhoria, analise de curva de habilidade | `longitudinal.py`, `trend_analysis.py` |
 | 12 | `reporting/` | 2 | Camada de consultas analiticas para telas da UI: estatisticas agregadas de partidas, resumos de tendencias, detalhamento de desempenho | `analytics.py` |
-| 13 | `services/` | 11 | Camada de orquestracao de servicos: coaching service, analysis orchestrator, dialogue engine, integracao LLM, gerenciamento de perfil, telemetria | `coaching_service.py`, `analysis_orchestrator.py`, `llm_service.py` |
-| 14 | `storage/` | 12+ | Persistencia tri-database (SQLite WAL): database manager, ORM SQLModel, backup, match data manager, state manager, telemetria remota | `database.py`, `db_models.py`, `match_data_manager.py` |
+| 13 | `services/` | 12 | Camada de orquestracao de servicos: coaching service, analysis orchestrator, dialogue engine, integracao LLM, gerenciamento de perfil, telemetria | `coaching_service.py`, `analysis_orchestrator.py`, `llm_service.py` |
+| 14 | `storage/` | 14 | Persistencia tri-database (SQLite WAL): database manager, ORM SQLModel, backup, match data manager, state manager, telemetria remota | `database.py`, `db_models.py`, `match_data_manager.py` |
 
 ---
 
@@ -194,7 +194,7 @@ Nivel 5 (Orquestracao):   services/  reporting/  control/
 
 ### Testes
 
-- Framework: `pytest`, 89 arquivos de teste em `tests/`.
+- Framework: `pytest`, 99 arquivos de teste em `Programma_CS2_RENAN/tests/` (+1 top-level).
 - Testes de integracao requerem `CS2_INTEGRATION_TESTS=1`.
 - Fixtures chave: `in_memory_db`, `seeded_db_session`, `mock_db_manager`, `torch_no_grad`.
 
@@ -203,7 +203,7 @@ Nivel 5 (Orquestracao):   services/  reporting/  control/
 13 hooks devem passar antes de qualquer commit: headless-validator, dead-code-detector,
 integrity-manifest, dev-health, trailing-whitespace, end-of-file-fixer,
 check-yaml, check-json, large-files (1 MB), merge-conflict, detect-private-key,
-black (100 colunas, py3.10), isort (profile=black).
+black (100 colunas, py3.12), isort (profile=black).
 
 ### Validacao Pos-Tarefa
 
