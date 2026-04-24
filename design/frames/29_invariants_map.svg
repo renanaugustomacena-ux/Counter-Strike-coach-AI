@@ -1,0 +1,188 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Roboto, Inter, system-ui, sans-serif">
+  <rect width="1440" height="900" fill="#14141e"/>
+
+  <g transform="translate(60,44)">
+    <text fill="#ff4444" font-size="10" letter-spacing="4" font-weight="700">CORRECTNESS · FRAME 29</text>
+    <text y="32" fill="#dcdcdc" font-size="24" font-weight="700">Critical Invariants — the "do not touch" list</text>
+    <text y="54" fill="#a0a0b0" font-size="12">Violation = silent corruption · not a crash · found only when coaching becomes subtly wrong</text>
+    <text y="74" fill="#3a3a5a" font-size="11" font-family="JetBrains Mono, monospace">enforced by asserts + guards + test_security_hardening.py (66 regression tests)</text>
+  </g>
+
+  <!-- Grouped invariant cards: 4 cols × 3 rows = 12 -->
+  <!-- Col widths: 328px each, 4 gaps of 16px. Start x=60, y=148 -->
+
+  <!-- INV 1: P-RSB-03 round_won -->
+  <g transform="translate(60,148)">
+    <rect width="328" height="180" rx="8" fill="rgba(255,68,68,0.08)" stroke="#ff4444"/>
+    <text x="14" y="22" fill="#ff4444" font-size="11" letter-spacing="2" font-weight="700" font-family="JetBrains Mono, monospace">P-RSB-03</text>
+    <text x="14" y="44" fill="#dcdcdc" font-size="13" font-weight="700">round_won excluded from feats</text>
+    <text x="14" y="68" fill="#a0a0b0" font-size="11">Using the label as an input feature leaks</text>
+    <text x="14" y="84" fill="#a0a0b0" font-size="11">the answer — model memorizes instead of</text>
+    <text x="14" y="100" fill="#a0a0b0" font-size="11">learning real coaching signal.</text>
+    <text x="14" y="128" fill="#dcdcdc" font-size="11" font-weight="700">Enforced:</text>
+    <text x="14" y="144" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">assert "round_won" not in FEATURE_NAMES</text>
+    <text x="14" y="168" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">vectorizer.py:178 at module import</text>
+  </g>
+
+  <!-- INV 2: NN-MEM-01 Hopfield bypass -->
+  <g transform="translate(404,148)">
+    <rect width="328" height="180" rx="8" fill="rgba(255,68,68,0.08)" stroke="#ff4444"/>
+    <text x="14" y="22" fill="#ff4444" font-size="11" letter-spacing="2" font-weight="700" font-family="JetBrains Mono, monospace">NN-MEM-01</text>
+    <text x="14" y="44" fill="#dcdcdc" font-size="13" font-weight="700">Hopfield bypass until ≥2 fwd</text>
+    <text x="14" y="68" fill="#a0a0b0" font-size="11">Random prototypes inject noise. Forcing</text>
+    <text x="14" y="84" fill="#a0a0b0" font-size="11">retrieval before backprop = learning</text>
+    <text x="14" y="100" fill="#a0a0b0" font-size="11">against corrupted targets.</text>
+    <text x="14" y="128" fill="#dcdcdc" font-size="11" font-weight="700">Enforced:</text>
+    <text x="14" y="144" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">_training_forward_count &gt;= 2</text>
+    <text x="14" y="168" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">rap_coach/memory.py:74-78</text>
+  </g>
+
+  <!-- INV 3: NN-16 EMA clone -->
+  <g transform="translate(748,148)">
+    <rect width="328" height="180" rx="8" fill="rgba(255,68,68,0.08)" stroke="#ff4444"/>
+    <text x="14" y="22" fill="#ff4444" font-size="11" letter-spacing="2" font-weight="700" font-family="JetBrains Mono, monospace">NN-16</text>
+    <text x="14" y="44" fill="#dcdcdc" font-size="13" font-weight="700">EMA apply_shadow() must .clone()</text>
+    <text x="14" y="68" fill="#a0a0b0" font-size="11">Without .clone(), shadow params alias</text>
+    <text x="14" y="84" fill="#a0a0b0" font-size="11">to current weights. EMA update becomes</text>
+    <text x="14" y="100" fill="#a0a0b0" font-size="11">a no-op — teacher doesn't stabilize.</text>
+    <text x="14" y="128" fill="#dcdcdc" font-size="11" font-weight="700">Enforced:</text>
+    <text x="14" y="144" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">shadow = param.detach().clone()</text>
+    <text x="14" y="168" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">ema.py:79</text>
+  </g>
+
+  <!-- INV 4: NN-JM-04 no_grad EMA -->
+  <g transform="translate(1092,148)">
+    <rect width="288" height="180" rx="8" fill="rgba(255,68,68,0.08)" stroke="#ff4444"/>
+    <text x="14" y="22" fill="#ff4444" font-size="11" letter-spacing="2" font-weight="700" font-family="JetBrains Mono, monospace">NN-JM-04</text>
+    <text x="14" y="44" fill="#dcdcdc" font-size="13" font-weight="700">target_encoder no_grad</text>
+    <text x="14" y="68" fill="#a0a0b0" font-size="11">requires_grad=True + EMA corrupts</text>
+    <text x="14" y="84" fill="#a0a0b0" font-size="11">gradient-based learning silently.</text>
+    <text x="14" y="100" fill="#a0a0b0" font-size="11">Target drifts independent of loss.</text>
+    <text x="14" y="128" fill="#dcdcdc" font-size="11" font-weight="700">Enforced:</text>
+    <text x="14" y="144" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">RuntimeError raised in</text>
+    <text x="14" y="158" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">update_target_encoder() :357</text>
+  </g>
+
+  <!-- Row 2 -->
+  <!-- INV 5: DS-12 -->
+  <g transform="translate(60,344)">
+    <rect width="328" height="180" rx="8" fill="rgba(255,68,68,0.08)" stroke="#ff4444"/>
+    <text x="14" y="22" fill="#ff4444" font-size="11" letter-spacing="2" font-weight="700" font-family="JetBrains Mono, monospace">DS-12</text>
+    <text x="14" y="44" fill="#dcdcdc" font-size="13" font-weight="700">MIN_DEMO_SIZE = 10 MB</text>
+    <text x="14" y="68" fill="#a0a0b0" font-size="11">Sub-threshold files crash the parser</text>
+    <text x="14" y="84" fill="#a0a0b0" font-size="11">deep in C code. Cryptic traceback.</text>
+    <text x="14" y="100" fill="#a0a0b0" font-size="11">Fail fast at the UI and ingestion layer.</text>
+    <text x="14" y="128" fill="#dcdcdc" font-size="11" font-weight="700">Enforced:</text>
+    <text x="14" y="144" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">size &lt; MIN_DEMO_SIZE → DataQualityError</text>
+    <text x="14" y="158" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">demo_format_adapter.py:49</text>
+    <text x="14" y="172" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">+ UI check in tactical_viewer_screen.py</text>
+  </g>
+
+  <!-- INV 6: P-VEC-02 NaN clamp -->
+  <g transform="translate(404,344)">
+    <rect width="328" height="180" rx="8" fill="rgba(255,68,68,0.08)" stroke="#ff4444"/>
+    <text x="14" y="22" fill="#ff4444" font-size="11" letter-spacing="2" font-weight="700" font-family="JetBrains Mono, monospace">P-VEC-02</text>
+    <text x="14" y="44" fill="#dcdcdc" font-size="13" font-weight="700">NaN/Inf clamp + 5% batch guard</text>
+    <text x="14" y="68" fill="#a0a0b0" font-size="11">A single NaN poisons the whole batch's</text>
+    <text x="14" y="84" fill="#a0a0b0" font-size="11">gradient. Clamp at extraction. If more</text>
+    <text x="14" y="100" fill="#a0a0b0" font-size="11">than 5% needed clamping → data quality</text>
+    <text x="14" y="116" fill="#a0a0b0" font-size="11">upstream is broken, raise.</text>
+    <text x="14" y="144" fill="#dcdcdc" font-size="11" font-weight="700">Enforced:</text>
+    <text x="14" y="160" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">np.nan_to_num() then ratio check</text>
+    <text x="14" y="174" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">vectorizer.py · DataQualityError</text>
+  </g>
+
+  <!-- INV 7: METADATA_DIM=25 -->
+  <g transform="translate(748,344)">
+    <rect width="328" height="180" rx="8" fill="rgba(255,68,68,0.08)" stroke="#ff4444"/>
+    <text x="14" y="22" fill="#ff4444" font-size="11" letter-spacing="2" font-weight="700" font-family="JetBrains Mono, monospace">METADATA_DIM = 25</text>
+    <text x="14" y="44" fill="#dcdcdc" font-size="13" font-weight="700">Sole source of truth</text>
+    <text x="14" y="68" fill="#a0a0b0" font-size="11">Any hand-rolled "25" elsewhere drifts.</text>
+    <text x="14" y="84" fill="#a0a0b0" font-size="11">If you add a feature, change ONE file,</text>
+    <text x="14" y="100" fill="#a0a0b0" font-size="11">and the import assert will tell you</text>
+    <text x="14" y="116" fill="#a0a0b0" font-size="11">if FEATURE_NAMES drifts.</text>
+    <text x="14" y="144" fill="#dcdcdc" font-size="11" font-weight="700">Enforced:</text>
+    <text x="14" y="160" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">assert len(FEATURE_NAMES)==25</text>
+    <text x="14" y="174" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">vectorizer.py:32 · P-X-01</text>
+  </g>
+
+  <!-- INV 8: P1-03 InfoNCE -->
+  <g transform="translate(1092,344)">
+    <rect width="288" height="180" rx="8" fill="rgba(255,68,68,0.08)" stroke="#ff4444"/>
+    <text x="14" y="22" fill="#ff4444" font-size="11" letter-spacing="2" font-weight="700" font-family="JetBrains Mono, monospace">P1-03</text>
+    <text x="14" y="44" fill="#dcdcdc" font-size="13" font-weight="700">InfoNCE prevents collapse</text>
+    <text x="14" y="68" fill="#a0a0b0" font-size="11">Plain L2 loss on predicted vs target</text>
+    <text x="14" y="84" fill="#a0a0b0" font-size="11">embeddings allows the network to</text>
+    <text x="14" y="100" fill="#a0a0b0" font-size="11">degenerate: all embeddings → 0.</text>
+    <text x="14" y="128" fill="#dcdcdc" font-size="11" font-weight="700">Enforced:</text>
+    <text x="14" y="144" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">contrastive loss T=0.07</text>
+    <text x="14" y="158" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">jepa_model.py:373</text>
+  </g>
+
+  <!-- Row 3 -->
+  <!-- INV 9: GLOBAL_SEED -->
+  <g transform="translate(60,540)">
+    <rect width="328" height="180" rx="8" fill="rgba(255,170,0,0.08)" stroke="#ffaa00"/>
+    <text x="14" y="22" fill="#ffaa00" font-size="11" letter-spacing="2" font-weight="700" font-family="JetBrains Mono, monospace">GLOBAL_SEED = 42</text>
+    <text x="14" y="44" fill="#dcdcdc" font-size="13" font-weight="700">Determinism contract</text>
+    <text x="14" y="68" fill="#a0a0b0" font-size="11">Seed both numpy and torch. Restore</text>
+    <text x="14" y="84" fill="#a0a0b0" font-size="11">RNG state after AutoNCP wiring so</text>
+    <text x="14" y="100" fill="#a0a0b0" font-size="11">downstream torch init is unaffected.</text>
+    <text x="14" y="128" fill="#dcdcdc" font-size="11" font-weight="700">Enforced:</text>
+    <text x="14" y="144" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">set_global_seed(42) · NN-45 / NN-MEM-02</text>
+    <text x="14" y="158" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">np.random.set_state + torch.set_rng_state</text>
+  </g>
+
+  <!-- INV 10: P2-01 singleton -->
+  <g transform="translate(404,540)">
+    <rect width="328" height="180" rx="8" fill="rgba(255,170,0,0.08)" stroke="#ffaa00"/>
+    <text x="14" y="22" fill="#ffaa00" font-size="11" letter-spacing="2" font-weight="700" font-family="JetBrains Mono, monospace">P2-01</text>
+    <text x="14" y="44" fill="#dcdcdc" font-size="13" font-weight="700">CoachState singleton · id=1</text>
+    <text x="14" y="68" fill="#a0a0b0" font-size="11">Multiple rows → race conditions when</text>
+    <text x="14" y="84" fill="#a0a0b0" font-size="11">daemons write state. Schema-level</text>
+    <text x="14" y="100" fill="#a0a0b0" font-size="11">constraint prevents drift.</text>
+    <text x="14" y="128" fill="#dcdcdc" font-size="11" font-weight="700">Enforced:</text>
+    <text x="14" y="144" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">CheckConstraint("id = 1")</text>
+    <text x="14" y="158" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">db_models.py:372</text>
+  </g>
+
+  <!-- INV 11: SE-02 daemon join -->
+  <g transform="translate(748,540)">
+    <rect width="328" height="180" rx="8" fill="rgba(255,170,0,0.08)" stroke="#ffaa00"/>
+    <text x="14" y="22" fill="#ffaa00" font-size="11" letter-spacing="2" font-weight="700" font-family="JetBrains Mono, monospace">SE-02</text>
+    <text x="14" y="44" fill="#dcdcdc" font-size="13" font-weight="700">Daemon graceful join · 5s each</text>
+    <text x="14" y="68" fill="#a0a0b0" font-size="11">On shutdown, set _shutdown_event and</text>
+    <text x="14" y="84" fill="#a0a0b0" font-size="11">thread.join(5). Cuts off orphan threads</text>
+    <text x="14" y="100" fill="#a0a0b0" font-size="11">holding DB WAL locks.</text>
+    <text x="14" y="128" fill="#dcdcdc" font-size="11" font-weight="700">Enforced:</text>
+    <text x="14" y="144" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">finally: t.join(timeout=5)</text>
+    <text x="14" y="158" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">session_engine.py:193</text>
+  </g>
+
+  <!-- INV 12: MD5 not hash() -->
+  <g transform="translate(1092,540)">
+    <rect width="288" height="180" rx="8" fill="rgba(255,170,0,0.08)" stroke="#ffaa00"/>
+    <text x="14" y="22" fill="#ffaa00" font-size="11" letter-spacing="2" font-weight="700" font-family="JetBrains Mono, monospace">HASH-01</text>
+    <text x="14" y="44" fill="#dcdcdc" font-size="13" font-weight="700">hashlib.md5 · not Python hash()</text>
+    <text x="14" y="68" fill="#a0a0b0" font-size="11">Python's hash() is salted per process.</text>
+    <text x="14" y="84" fill="#a0a0b0" font-size="11">map_id derived from hash() would drift</text>
+    <text x="14" y="100" fill="#a0a0b0" font-size="11">between runs → retraining required.</text>
+    <text x="14" y="128" fill="#dcdcdc" font-size="11" font-weight="700">Enforced:</text>
+    <text x="14" y="144" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">hashlib.md5(name.encode())</text>
+    <text x="14" y="158" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">vectorizer.py · map_id computation</text>
+  </g>
+
+  <!-- Rationale strip bottom -->
+  <g transform="translate(60,744)">
+    <rect width="1320" height="128" rx="8" fill="#1a1a2e"/>
+    <text x="14" y="24" fill="#dcdcdc" font-size="12" font-weight="700">Why these are "critical"</text>
+
+    <g transform="translate(14,44)" font-size="11">
+      <text fill="#a0a0b0">Every invariant above was once a bug that shipped. Training loss looked OK, coach output looked plausible,</text>
+      <text y="16" fill="#a0a0b0">the only signal something was wrong came weeks later from drift metrics or user-reported "this advice is odd".</text>
+      <text y="36" fill="#4caf50" font-size="12" font-weight="700">The pattern: silent corruption &gt; loud crashes · these invariants are the pattern's countermeasure.</text>
+      <text y="60" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">regression coverage: tests/test_ema_hopfield_drift_invariants.py · tests/test_security_hardening.py · tests/test_tensor_factory.py</text>
+      <text y="78" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">CI gate: all invariants must pass before merge (pytest -m "not slow and not integration")</text>
+    </g>
+  </g>
+</svg>

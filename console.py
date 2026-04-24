@@ -99,7 +99,7 @@ DEAD_CODE_DETECTOR_TIMEOUT_S = 220
 # --- Logging (centralized) ---
 from Programma_CS2_RENAN.observability.logger_setup import get_tool_logger
 
-logger = get_tool_logger("console")
+logger = get_tool_logger("console", console=False)  # Rich owns stdout
 
 # ============================================================================
 #  COMMAND REGISTRY

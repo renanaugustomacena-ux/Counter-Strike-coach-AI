@@ -1,0 +1,123 @@
+{
+  "$schema": "https://schemas.designtokens.org/draft/2023-09-01/schema.json",
+  "$description": "Macena CS2 Coach AI — design tokens. Source: Programma_CS2_RENAN/apps/qt_app/core/design_tokens.py",
+  "theme": {
+    "cs2": {
+      "name": { "$value": "CS2", "$type": "string" },
+      "surface": {
+        "base":    { "$value": "#14141e", "$type": "color" },
+        "raised":  { "$value": "#1a1a2e", "$type": "color" },
+        "overlay": { "$value": "#1a1a2e", "$type": "color" },
+        "sunken":  { "$value": "#0f0f2e", "$type": "color" },
+        "sidebar": { "$value": "#0f0f2e", "$type": "color" }
+      },
+      "border": {
+        "subtle":  { "$value": "rgba(255,255,255,0.05)", "$type": "color" },
+        "default": { "$value": "#3a3a5a", "$type": "color" },
+        "accent":  { "$value": "rgba(217,102,0,0.3)", "$type": "color" }
+      },
+      "text": {
+        "primary":   { "$value": "#dcdcdc", "$type": "color" },
+        "secondary": { "$value": "#a0a0b0", "$type": "color" },
+        "tertiary":  { "$value": "#3a3a5a", "$type": "color" },
+        "inverse":   { "$value": "#ffffff", "$type": "color" },
+        "disabled":  { "$value": "#666666", "$type": "color" }
+      },
+      "accent": {
+        "primary": { "$value": "#d96600", "$type": "color" },
+        "hover":   { "$value": "#e67a1a", "$type": "color" },
+        "pressed": { "$value": "#b85500", "$type": "color" }
+      },
+      "semantic": {
+        "success": { "$value": "#4caf50", "$type": "color" },
+        "warning": { "$value": "#ffaa00", "$type": "color" },
+        "error":   { "$value": "#ff4444", "$type": "color" },
+        "info":    { "$value": "#4a9eff", "$type": "color" }
+      },
+      "chart": {
+        "bg":              { "$value": "#1a1a1a", "$type": "color" },
+        "grid":            { "$value": "rgba(255,255,255,0.16)", "$type": "color" },
+        "axis":            { "$value": "rgba(255,255,255,0.1)", "$type": "color" },
+        "line.primary":    { "$value": "#00ccff", "$type": "color" },
+        "line.secondary":  { "$value": "#ffaa00", "$type": "color" },
+        "fill.positive":   { "$value": "#4caf50", "$type": "color" },
+        "fill.negative":   { "$value": "#ff4444", "$type": "color" }
+      }
+    },
+    "csgo": {
+      "name": { "$value": "CSGO", "$type": "string" },
+      "surface": {
+        "base":    { "$value": "#1a1c21", "$type": "color" },
+        "raised":  { "$value": "#1c1e24", "$type": "color" },
+        "sunken":  { "$value": "#141a24", "$type": "color" },
+        "sidebar": { "$value": "#141a24", "$type": "color" }
+      },
+      "accent": {
+        "primary": { "$value": "#617d8c", "$type": "color" },
+        "hover":   { "$value": "#7a96a5", "$type": "color" },
+        "pressed": { "$value": "#4e6a78", "$type": "color" }
+      },
+      "text": {
+        "primary":   { "$value": "#dcdcdc", "$type": "color" },
+        "secondary": { "$value": "#a0a8b0", "$type": "color" }
+      },
+      "semantic": {
+        "success": { "$value": "#4caf50", "$type": "color" },
+        "warning": { "$value": "#c8a030", "$type": "color" },
+        "error":   { "$value": "#cc4444", "$type": "color" },
+        "info":    { "$value": "#617d8c", "$type": "color" }
+      }
+    },
+    "cs16": {
+      "name": { "$value": "CS1.6", "$type": "string" },
+      "surface": {
+        "base":    { "$value": "#121a12", "$type": "color" },
+        "raised":  { "$value": "#182418", "$type": "color" },
+        "sunken":  { "$value": "#0d2414", "$type": "color" },
+        "sidebar": { "$value": "#0d2414", "$type": "color" }
+      },
+      "accent": {
+        "primary": { "$value": "#4db04f", "$type": "color" },
+        "hover":   { "$value": "#66c268", "$type": "color" },
+        "pressed": { "$value": "#3d9040", "$type": "color" }
+      },
+      "text": {
+        "primary":   { "$value": "#dcdcdc", "$type": "color" },
+        "secondary": { "$value": "#80a080", "$type": "color" }
+      },
+      "semantic": {
+        "success": { "$value": "#4db04f", "$type": "color" },
+        "warning": { "$value": "#b8a030", "$type": "color" },
+        "error":   { "$value": "#cc3333", "$type": "color" },
+        "info":    { "$value": "#4db04f", "$type": "color" }
+      }
+    }
+  },
+  "spacing": {
+    "xs":   { "$value": "4px",  "$type": "dimension" },
+    "sm":   { "$value": "8px",  "$type": "dimension" },
+    "md":   { "$value": "12px", "$type": "dimension" },
+    "lg":   { "$value": "16px", "$type": "dimension" },
+    "xl":   { "$value": "24px", "$type": "dimension" },
+    "xxl":  { "$value": "32px", "$type": "dimension" },
+    "xxxl": { "$value": "48px", "$type": "dimension" }
+  },
+  "radius": {
+    "sm": { "$value": "4px",  "$type": "dimension" },
+    "md": { "$value": "8px",  "$type": "dimension" },
+    "lg": { "$value": "16px", "$type": "dimension" },
+    "xl": { "$value": "24px", "$type": "dimension" }
+  },
+  "typography": {
+    "family.sans": { "$value": "Roboto, Inter, system-ui, sans-serif", "$type": "fontFamily" },
+    "family.mono": { "$value": "'JetBrains Mono', 'Fira Code', Consolas, monospace", "$type": "fontFamily" },
+    "size": {
+      "caption":  { "$value": "11px", "$type": "dimension" },
+      "body":     { "$value": "13px", "$type": "dimension" },
+      "subtitle": { "$value": "14px", "$type": "dimension" },
+      "title":    { "$value": "18px", "$type": "dimension" },
+      "h1":       { "$value": "24px", "$type": "dimension" },
+      "stat":     { "$value": "28px", "$type": "dimension" }
+    }
+  }
+}

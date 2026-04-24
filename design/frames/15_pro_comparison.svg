@@ -1,0 +1,290 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Roboto, Inter, system-ui, sans-serif">
+  <defs>
+    <symbol id="ic-home" viewBox="0 0 24 24"><path d="M12 3 L22 12 L19 12 L19 21 L5 21 L5 12 L2 12 Z M9 15 L15 15 L15 21 L9 21 Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-brain" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 5 L12 19 M12 8 C7 6 5 11 12 12 M12 12 C17 11 19 16 12 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="ic-list" viewBox="0 0 24 24"><path d="M4 6 L20 6 M4 12 L20 12 M4 18 L20 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="2.5" cy="6" r="1.5" fill="currentColor"/><circle cx="2.5" cy="12" r="1.5" fill="currentColor"/><circle cx="2.5" cy="18" r="1.5" fill="currentColor"/></symbol>
+    <symbol id="ic-chart" viewBox="0 0 24 24"><rect x="3" y="14" width="5" height="8" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="10" y="8" width="5" height="14" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="17" y="3" width="5" height="19" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="ic-cross" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 1 L12 7 M12 17 L12 23 M1 12 L7 12 M17 12 L23 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="ic-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 4 L12 7 M12 17 L12 20 M4 12 L7 12 M17 12 L20 12 M6.3 6.3 L8.5 8.5 M15.5 15.5 L17.7 17.7 M6.3 17.7 L8.5 15.5 M15.5 8.5 L17.7 6.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="ic-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9 9 C9 5 15 5 15 9 C15 12 12 12 12 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="18" r="1" fill="currentColor"/></symbol>
+  </defs>
+
+  <rect width="1440" height="900" fill="#14141e"/>
+
+  <!-- Sidebar (no "Pro Compare" nav item, but this screen reached via Home card "Compare Pro Players") -->
+  <g>
+    <rect width="220" height="900" fill="#0f0f2e"/>
+    <rect x="219" width="1" height="900" fill="rgba(255,255,255,0.05)"/>
+    <g transform="translate(176,12)"><text x="18" y="26" text-anchor="middle" fill="#a0a0b0" font-size="22">≡</text></g>
+    <text x="110" y="82" text-anchor="middle" fill="#d96600" font-size="11" letter-spacing="3" font-weight="700">MACENA CS2</text>
+    <g transform="translate(8,108)" font-size="13">
+      <g color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-home" width="20" height="20"/></g><text x="44" y="26" fill="#a0a0b0">Home</text></g>
+      <g transform="translate(0,44)" color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-brain" width="20" height="20"/></g><text x="44" y="26" fill="#a0a0b0">Coach</text></g>
+      <g transform="translate(0,88)" color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-list" width="20" height="20"/></g><text x="44" y="26" fill="#a0a0b0">Match History</text></g>
+      <g transform="translate(0,132)" color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-chart" width="20" height="20"/></g><text x="44" y="26" fill="#a0a0b0">Performance</text></g>
+      <g transform="translate(0,176)" color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-cross" width="20" height="20"/></g><text x="44" y="26" fill="#a0a0b0">Tactical Viewer</text></g>
+      <g transform="translate(0,220)" color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-gear" width="20" height="20"/></g><text x="44" y="26" fill="#a0a0b0">Settings</text></g>
+      <g transform="translate(0,264)" color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-help" width="20" height="20"/></g><text x="44" y="26" fill="#a0a0b0">Help</text></g>
+    </g>
+    <text x="110" y="872" text-anchor="middle" fill="#3a3a5a" font-size="11" font-family="JetBrains Mono, monospace">v0.1.0</text>
+  </g>
+
+  <!-- Title -->
+  <text x="236" y="56" fill="#dcdcdc" font-size="20" font-weight="700">Pro Player Comparison</text>
+
+  <!-- Mode toggle -->
+  <g transform="translate(236,76)">
+    <g>
+      <rect width="110" height="32" rx="4" fill="rgba(217,102,0,0.2)" stroke="#d96600"/>
+      <text x="55" y="21" text-anchor="middle" fill="#d96600" font-size="13" font-weight="700">Pro vs Pro</text>
+    </g>
+    <g transform="translate(118,0)">
+      <rect width="110" height="32" rx="4" fill="transparent" stroke="#3a3a5a"/>
+      <text x="55" y="21" text-anchor="middle" fill="#a0a0b0" font-size="13">Me vs Pro</text>
+    </g>
+  </g>
+
+  <!-- Select Players card -->
+  <g transform="translate(236,120)">
+    <rect width="1188" height="84" rx="8" fill="#1a1a2e"/>
+    <text x="16" y="28" fill="#dcdcdc" font-size="14" font-weight="700">Select Players</text>
+
+    <g transform="translate(16,44)" font-size="13">
+      <text y="16" fill="#a0a0b0">Player A:</text>
+      <g transform="translate(80,0)">
+        <rect width="240" height="28" rx="4" fill="#0f0f2e" stroke="#3a3a5a"/>
+        <text x="12" y="19" fill="#dcdcdc">ZywOo (#1 Vitality)</text>
+        <text x="228" y="19" text-anchor="end" fill="#a0a0b0">▾</text>
+      </g>
+      <text x="340" y="16" fill="#a0a0b0">Player B:</text>
+      <g transform="translate(420,0)">
+        <rect width="240" height="28" rx="4" fill="#0f0f2e" stroke="#3a3a5a"/>
+        <text x="12" y="19" fill="#dcdcdc">donk (#3 Spirit)</text>
+        <text x="228" y="19" text-anchor="end" fill="#a0a0b0">▾</text>
+      </g>
+
+      <g transform="translate(692,-4)">
+        <rect width="120" height="36" rx="4" fill="#d96600"/>
+        <text x="60" y="23" text-anchor="middle" fill="#14141e" font-weight="700">Compare</text>
+      </g>
+
+      <text x="840" y="16" fill="#5a5a8a" font-size="11" font-family="JetBrains Mono, monospace">312 pros loaded · HLTVDatabase</text>
+    </g>
+  </g>
+
+  <!-- Results area: radar chart + side-by-side cards -->
+  <g transform="translate(236,220)">
+    <rect width="1188" height="664" rx="8" fill="#1a1a2e"/>
+
+    <!-- Left: Radar chart (8-axis) — canvas 520×520, centered -->
+    <g transform="translate(30,30)">
+      <text fill="#dcdcdc" font-size="14" font-weight="700">Skill Radar — 8 axes (0-100)</text>
+
+      <!-- Radar canvas 520×520, center (260, 290), radius=200 -->
+      <g transform="translate(0,36)">
+        <rect width="520" height="520" rx="6" fill="#1a1a1a"/>
+
+        <!-- Grid rings 25/50/75/100 -->
+        <g fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1">
+          <!-- 8 axis octagons at 25% radius -->
+          <!-- 8 angles: -90, -45, 0, 45, 90, 135, 180, 225 (deg from east; we convert to map) -->
+          <!-- Actually: i*45 - 90 for i=0..7 → -90,-45,0,45,90,135,180,225 -->
+          <!-- cx=260, cy=260 (plot center within the 520 box) -->
+          <!-- r=50 (25%) points: (260+50cos,  260+50sin) for each angle -->
+          <!-- i=0 -90° → (260,210), i=1 -45 → (295.36,224.64), i=2 0° → (310,260), i=3 45° → (295.36,295.36), i=4 90° → (260,310), i=5 135° → (224.64,295.36), i=6 180° → (210,260), i=7 225° → (224.64,224.64) -->
+          <polygon points="260,210 295.36,224.64 310,260 295.36,295.36 260,310 224.64,295.36 210,260 224.64,224.64"/>
+          <!-- r=100 (50%) -->
+          <polygon points="260,160 330.71,189.29 360,260 330.71,330.71 260,360 189.29,330.71 160,260 189.29,189.29"/>
+          <!-- r=150 (75%) -->
+          <polygon points="260,110 366.07,153.93 410,260 366.07,366.07 260,410 153.93,366.07 110,260 153.93,153.93"/>
+          <!-- r=200 (100%) -->
+          <polygon points="260,60 401.42,118.58 460,260 401.42,401.42 260,460 118.58,401.42 60,260 118.58,118.58" stroke="rgba(255,255,255,0.25)"/>
+        </g>
+
+        <!-- Axis lines -->
+        <g stroke="rgba(255,255,255,0.1)" stroke-width="1">
+          <line x1="260" y1="260" x2="260" y2="60"/>
+          <line x1="260" y1="260" x2="401.42" y2="118.58"/>
+          <line x1="260" y1="260" x2="460" y2="260"/>
+          <line x1="260" y1="260" x2="401.42" y2="401.42"/>
+          <line x1="260" y1="260" x2="260" y2="460"/>
+          <line x1="260" y1="260" x2="118.58" y2="401.42"/>
+          <line x1="260" y1="260" x2="60" y2="260"/>
+          <line x1="260" y1="260" x2="118.58" y2="118.58"/>
+        </g>
+
+        <!-- Data polygon for ZywOo (Player A, orange fill) -->
+        <!-- Values (0-100): Aim=92, Opening=88, Utility=84, Clutch=90, Positioning=94, Aggression=78, Economy=86, Survival=88 -->
+        <!-- Scale: r = 200 * v/100 → 184, 176, 168, 180, 188, 156, 172, 176 -->
+        <!-- Points: -->
+        <!-- i=0 top (Aim): (260, 260-184)=(260,76) -->
+        <!-- i=1 UR (Opening) 88/100=176 → (260+176*cos(-45)=260+124.45=384.45, 260+176*sin(-45)=260-124.45=135.55) -->
+        <!-- i=2 R (Utility) 84/100=168 → (260+168, 260) = (428,260) -->
+        <!-- i=3 DR (Clutch) 90/100=180 → (260+180*cos(45)=260+127.28=387.28, 260+127.28=387.28) -->
+        <!-- i=4 bottom (Positioning) 94/100=188 → (260, 260+188)=(260,448) -->
+        <!-- i=5 DL (Aggression) 78/100=156 → (260-110.31=149.69, 260+110.31=370.31) -->
+        <!-- i=6 L (Economy) 86/100=172 → (260-172,260) = (88,260) -->
+        <!-- i=7 UL (Survival) 88/100=176 → (260-124.45=135.55, 260-124.45=135.55) -->
+        <polygon points="260,76 384.45,135.55 428,260 387.28,387.28 260,448 149.69,370.31 88,260 135.55,135.55"
+                 fill="rgba(217,102,0,0.28)" stroke="#d96600" stroke-width="2.5"/>
+
+        <!-- Data polygon for donk (Player B, blue fill) -->
+        <!-- Values: Aim=96, Opening=94, Utility=72, Clutch=86, Positioning=78, Aggression=94, Economy=74, Survival=70 -->
+        <!-- r: 192, 188, 144, 172, 156, 188, 148, 140 -->
+        <!-- Points: -->
+        <!-- i=0 (Aim 96): (260, 260-192)=(260,68) -->
+        <!-- i=1 (Opening 94) 188: (260+188*cos(-45)=260+132.94=392.94, 260-132.94=127.06) -->
+        <!-- i=2 (Utility 72) 144: (260+144, 260)=(404,260) -->
+        <!-- i=3 (Clutch 86) 172: (260+121.62=381.62, 260+121.62=381.62) -->
+        <!-- i=4 (Positioning 78) 156: (260, 260+156)=(260,416) -->
+        <!-- i=5 (Aggression 94) 188: (260-132.94=127.06, 260+132.94=392.94) -->
+        <!-- i=6 (Economy 74) 148: (260-148,260)=(112,260) -->
+        <!-- i=7 (Survival 70) 140: (260-98.99=161.01, 260-98.99=161.01) -->
+        <polygon points="260,68 392.94,127.06 404,260 381.62,381.62 260,416 127.06,392.94 112,260 161.01,161.01"
+                 fill="rgba(74,158,255,0.25)" stroke="#4a9eff" stroke-width="2.5"/>
+
+        <!-- Axis labels -->
+        <g font-size="11" fill="#dcdcdc" font-weight="600">
+          <text x="260" y="48" text-anchor="middle">Aim</text>
+          <text x="416" y="110" text-anchor="middle">Opening</text>
+          <text x="480" y="264" text-anchor="start">Utility</text>
+          <text x="416" y="416" text-anchor="middle">Clutch</text>
+          <text x="260" y="482" text-anchor="middle">Positioning</text>
+          <text x="104" y="416" text-anchor="middle">Aggression</text>
+          <text x="40" y="264" text-anchor="end">Economy</text>
+          <text x="104" y="110" text-anchor="middle">Survival</text>
+        </g>
+
+        <!-- Value dots on ZywOo polygon -->
+        <g fill="#ffaa00" stroke="#ffffff" stroke-width="1">
+          <circle cx="260"    cy="76"    r="3"/>
+          <circle cx="384.45" cy="135.55" r="3"/>
+          <circle cx="428"    cy="260"   r="3"/>
+          <circle cx="387.28" cy="387.28" r="3"/>
+          <circle cx="260"    cy="448"   r="3"/>
+          <circle cx="149.69" cy="370.31" r="3"/>
+          <circle cx="88"     cy="260"   r="3"/>
+          <circle cx="135.55" cy="135.55" r="3"/>
+        </g>
+      </g>
+
+      <!-- Legend under radar -->
+      <g transform="translate(0,588)" font-size="12">
+        <rect x="0" y="-10" width="14" height="10" fill="rgba(217,102,0,0.5)" stroke="#d96600"/>
+        <text x="22" y="-2" fill="#dcdcdc" font-weight="700">ZywOo</text>
+        <text x="82" y="-2" fill="#a0a0b0">(#1 Vitality)</text>
+
+        <rect x="200" y="-10" width="14" height="10" fill="rgba(74,158,255,0.5)" stroke="#4a9eff"/>
+        <text x="222" y="-2" fill="#dcdcdc" font-weight="700">donk</text>
+        <text x="268" y="-2" fill="#a0a0b0">(#3 Spirit)</text>
+      </g>
+    </g>
+
+    <!-- Right: metric comparison table -->
+    <g transform="translate(580,30)">
+      <text fill="#dcdcdc" font-size="14" font-weight="700">Head-to-head metrics  ·  2026-Q1 form</text>
+
+      <!-- Column headers -->
+      <g transform="translate(0,30)" font-size="11">
+        <text fill="#a0a0b0">METRIC</text>
+        <text x="240" text-anchor="middle" fill="#d96600" font-weight="700">ZywOo</text>
+        <text x="420" text-anchor="middle" fill="#4a9eff" font-weight="700">donk</text>
+        <text x="580" text-anchor="middle" fill="#a0a0b0">WINNER</text>
+      </g>
+      <line x1="0" y1="38" x2="578" y2="38" stroke="#3a3a5a"/>
+
+      <!-- Rows -->
+      <g transform="translate(0,54)" font-size="12">
+        <g>
+          <text fill="#dcdcdc">HLTV Rating</text>
+          <text x="240" text-anchor="middle" fill="#4db04f" font-weight="700">1.28</text>
+          <text x="420" text-anchor="middle" fill="#dcdcdc">1.24</text>
+          <text x="580" text-anchor="middle" fill="#d96600">ZywOo +0.04</text>
+        </g>
+        <g transform="translate(0,24)">
+          <text fill="#dcdcdc">K/D Ratio</text>
+          <text x="240" text-anchor="middle" fill="#4db04f" font-weight="700">1.32</text>
+          <text x="420" text-anchor="middle" fill="#dcdcdc">1.41</text>
+          <text x="580" text-anchor="middle" fill="#4a9eff">donk +0.09</text>
+        </g>
+        <g transform="translate(0,48)">
+          <text fill="#dcdcdc">ADR</text>
+          <text x="240" text-anchor="middle" fill="#dcdcdc">88.2</text>
+          <text x="420" text-anchor="middle" fill="#4db04f" font-weight="700">92.7</text>
+          <text x="580" text-anchor="middle" fill="#4a9eff">donk +4.5</text>
+        </g>
+        <g transform="translate(0,72)">
+          <text fill="#dcdcdc">KAST %</text>
+          <text x="240" text-anchor="middle" fill="#4db04f" font-weight="700">78%</text>
+          <text x="420" text-anchor="middle" fill="#dcdcdc">72%</text>
+          <text x="580" text-anchor="middle" fill="#d96600">ZywOo +6%</text>
+        </g>
+        <g transform="translate(0,96)">
+          <text fill="#dcdcdc">Headshot %</text>
+          <text x="240" text-anchor="middle" fill="#dcdcdc">52%</text>
+          <text x="420" text-anchor="middle" fill="#4db04f" font-weight="700">58%</text>
+          <text x="580" text-anchor="middle" fill="#4a9eff">donk +6%</text>
+        </g>
+        <g transform="translate(0,120)">
+          <text fill="#dcdcdc">Opening Duel Win %</text>
+          <text x="240" text-anchor="middle" fill="#dcdcdc">56%</text>
+          <text x="420" text-anchor="middle" fill="#4db04f" font-weight="700">61%</text>
+          <text x="580" text-anchor="middle" fill="#4a9eff">donk +5%</text>
+        </g>
+        <g transform="translate(0,144)">
+          <text fill="#dcdcdc">Clutch Win %</text>
+          <text x="240" text-anchor="middle" fill="#4db04f" font-weight="700">67%</text>
+          <text x="420" text-anchor="middle" fill="#dcdcdc">58%</text>
+          <text x="580" text-anchor="middle" fill="#d96600">ZywOo +9%</text>
+        </g>
+        <g transform="translate(0,168)">
+          <text fill="#dcdcdc">HE Damage/Round</text>
+          <text x="240" text-anchor="middle" fill="#4db04f" font-weight="700">15.8</text>
+          <text x="420" text-anchor="middle" fill="#dcdcdc">12.4</text>
+          <text x="580" text-anchor="middle" fill="#d96600">ZywOo +3.4</text>
+        </g>
+        <g transform="translate(0,192)">
+          <text fill="#dcdcdc">Flash Assists/Match</text>
+          <text x="240" text-anchor="middle" fill="#dcdcdc">2.8</text>
+          <text x="420" text-anchor="middle" fill="#dcdcdc">2.9</text>
+          <text x="580" text-anchor="middle" fill="#5a5a8a">even</text>
+        </g>
+        <g transform="translate(0,216)">
+          <text fill="#dcdcdc">Thru-smoke Kill %</text>
+          <text x="240" text-anchor="middle" fill="#4db04f" font-weight="700">12%</text>
+          <text x="420" text-anchor="middle" fill="#dcdcdc">8%</text>
+          <text x="580" text-anchor="middle" fill="#d96600">ZywOo +4%</text>
+        </g>
+        <g transform="translate(0,240)">
+          <text fill="#dcdcdc">Trade Kill Ratio</text>
+          <text x="240" text-anchor="middle" fill="#dcdcdc">0.36</text>
+          <text x="420" text-anchor="middle" fill="#4db04f" font-weight="700">0.42</text>
+          <text x="580" text-anchor="middle" fill="#4a9eff">donk +0.06</text>
+        </g>
+        <g transform="translate(0,264)">
+          <text fill="#dcdcdc">Survival Rate</text>
+          <text x="240" text-anchor="middle" fill="#4db04f" font-weight="700">43%</text>
+          <text x="420" text-anchor="middle" fill="#dcdcdc">34%</text>
+          <text x="580" text-anchor="middle" fill="#d96600">ZywOo +9%</text>
+        </g>
+      </g>
+
+      <!-- Summary callout -->
+      <g transform="translate(0,348)">
+        <rect width="578" height="112" rx="6" fill="#0f0f2e"/>
+        <text x="16" y="24" fill="#dcdcdc" font-size="12" font-weight="700">Style summary</text>
+        <text x="16" y="48" fill="#d96600" font-size="12">ZywOo — team-enabling support AWP</text>
+        <text x="16" y="66" fill="#a0a0b0" font-size="11">Higher KAST, more utility damage, clutches win</text>
+        <text x="16" y="86" fill="#4a9eff" font-size="12">donk — aggressive entry rifler</text>
+        <text x="16" y="104" fill="#a0a0b0" font-size="11">Higher K/D, opening duels, headshot %</text>
+      </g>
+
+      <!-- Data source -->
+      <g transform="translate(0,476)">
+        <text fill="#5a5a8a" font-size="10" font-family="JetBrains Mono, monospace">ProPlayer · ProPlayerStatCard · HLTV scraped 2026-04-22 14:00</text>
+        <text y="14" fill="#5a5a8a" font-size="10" font-family="JetBrains Mono, monospace">Sample: last 20 official matches per player · 2026-Q1 season</text>
+      </g>
+    </g>
+  </g>
+
+</svg>

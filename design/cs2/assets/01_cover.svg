@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Inter, &#39;Segoe UI&#39;, system-ui, sans-serif">
+  <defs>
+    <radialGradient id="bg01" cx="0.25" cy="0.35" r="0.9">
+      <stop offset="0%" stop-color="#1a1a2e"></stop>
+      <stop offset="55%" stop-color="#14141e"></stop>
+      <stop offset="100%" stop-color="#0b0b14"></stop>
+    </radialGradient>
+    <radialGradient id="accentglow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#d96600" stop-opacity="0.45"></stop>
+      <stop offset="70%" stop-color="#d96600" stop-opacity="0.08"></stop>
+      <stop offset="100%" stop-color="#d96600" stop-opacity="0"></stop>
+    </radialGradient>
+    <linearGradient id="titlegrad" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0%" stop-color="#dcdcdc"></stop>
+      <stop offset="50%" stop-color="#ffffff"></stop>
+      <stop offset="100%" stop-color="#dcdcdc"></stop>
+    </linearGradient>
+  </defs>
+
+  <rect width="1440" height="900" fill="url(#bg01)"></rect>
+
+
+  <g stroke="rgba(58,58,90,0.18)" stroke-width="0.5">
+    <line x1="0" y1="180" x2="1440" y2="180"></line>
+    <line x1="0" y1="360" x2="1440" y2="360"></line>
+    <line x1="0" y1="540" x2="1440" y2="540"></line>
+    <line x1="0" y1="720" x2="1440" y2="720"></line>
+    <line x1="240" y1="0" x2="240" y2="900"></line>
+    <line x1="480" y1="0" x2="480" y2="900"></line>
+    <line x1="720" y1="0" x2="720" y2="900"></line>
+    <line x1="960" y1="0" x2="960" y2="900"></line>
+    <line x1="1200" y1="0" x2="1200" y2="900"></line>
+  </g>
+
+
+  <ellipse cx="1200" cy="220" rx="380" ry="240" fill="url(#accentglow)"></ellipse>
+
+
+  <g transform="translate(90 80)">
+
+    <g>
+      <circle cx="26" cy="26" r="22" fill="none" stroke="#d96600" stroke-width="2"></circle>
+      <line x1="26" y1="6" x2="26" y2="14" stroke="#d96600" stroke-width="2" stroke-linecap="round"></line>
+      <line x1="26" y1="38" x2="26" y2="46" stroke="#d96600" stroke-width="2" stroke-linecap="round"></line>
+      <line x1="6" y1="26" x2="14" y2="26" stroke="#d96600" stroke-width="2" stroke-linecap="round"></line>
+      <line x1="38" y1="26" x2="46" y2="26" stroke="#d96600" stroke-width="2" stroke-linecap="round"></line>
+      <text x="26" y="32" fill="#d96600" font-size="16" font-weight="800" text-anchor="middle" font-family="&#39;JetBrains Mono&#39;, monospace">M</text>
+    </g>
+    <text x="68" y="22" fill="#dcdcdc" font-size="14" font-weight="700" letter-spacing="3">MACENA</text>
+    <text x="68" y="42" fill="#a0a0b0" font-size="11" font-family="&#39;JetBrains Mono&#39;, monospace">cs2-analyzer</text>
+
+
+    <g transform="translate(1178 8)">
+      <rect width="82" height="36" rx="18" fill="rgba(255,255,255,0.04)" stroke="#3a3a5a"></rect>
+      <circle cx="18" cy="18" r="4" fill="#4db04f"></circle>
+      <text x="30" y="22" fill="#a0a0b0" font-size="11" font-family="&#39;JetBrains Mono&#39;, monospace">v0.9.0</text>
+    </g>
+  </g>
+
+
+  <g transform="translate(90 260)">
+    <text fill="#d96600" font-size="13" font-weight="700" letter-spacing="4">OFFLINE · LOCAL-FIRST · DETERMINISTIC</text>
+
+    <text y="80" fill="url(#titlegrad)" font-size="104" font-weight="800" letter-spacing="-3">Your coach</text>
+    <text y="180" fill="url(#titlegrad)" font-size="104" font-weight="800" letter-spacing="-3">watches every</text>
+    <text y="280" fill="#d96600" font-size="104" font-weight="800" letter-spacing="-3">demo you play.</text>
+
+    <text y="340" fill="#a0a0b0" font-size="20" font-weight="300">A desktop CS2 analyst built on JEPA self-supervised representations,</text>
+    <text y="366" fill="#a0a0b0" font-size="20" font-weight="300">a 7-layer RAP architecture, and a self-correcting critic loop —</text>
+    <text y="392" fill="#a0a0b0" font-size="20" font-weight="300">running entirely on your machine.</text>
+  </g>
+
+
+  <g transform="translate(90 720)">
+    <g transform="translate(0 0)">
+      <rect width="240" height="68" rx="8" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <text x="18" y="24" fill="#d96600" font-size="10" font-weight="700" font-family="&#39;JetBrains Mono&#39;, monospace">01</text>
+      <text x="18" y="46" fill="#dcdcdc" font-size="14" font-weight="700">Demo ingestion</text>
+      <text x="18" y="60" fill="#a0a0b0" font-size="11">demoparser2 · auto-detects</text>
+    </g>
+
+    <g transform="translate(260 0)">
+      <rect width="240" height="68" rx="8" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <text x="18" y="24" fill="#d96600" font-size="10" font-weight="700" font-family="&#39;JetBrains Mono&#39;, monospace">02</text>
+      <text x="18" y="46" fill="#dcdcdc" font-size="14" font-weight="700">JEPA representations</text>
+      <text x="18" y="60" fill="#a0a0b0" font-size="11">self-supervised 25→256</text>
+    </g>
+
+    <g transform="translate(520 0)">
+      <rect width="240" height="68" rx="8" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <text x="18" y="24" fill="#d96600" font-size="10" font-weight="700" font-family="&#39;JetBrains Mono&#39;, monospace">03</text>
+      <text x="18" y="46" fill="#dcdcdc" font-size="14" font-weight="700">RAP coaching loop</text>
+      <text x="18" y="60" fill="#a0a0b0" font-size="11">7 layers · self-correcting</text>
+    </g>
+
+    <g transform="translate(780 0)">
+      <rect width="240" height="68" rx="8" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <text x="18" y="24" fill="#d96600" font-size="10" font-weight="700" font-family="&#39;JetBrains Mono&#39;, monospace">04</text>
+      <text x="18" y="46" fill="#dcdcdc" font-size="14" font-weight="700">Tactical viewer</text>
+      <text x="18" y="60" fill="#a0a0b0" font-size="11">positions · rounds · ghost</text>
+    </g>
+
+    <g transform="translate(1040 0)">
+      <rect width="240" height="68" rx="8" fill="#1a1a2e" stroke="#d96600" stroke-width="1.2"></rect>
+      <text x="18" y="24" fill="#d96600" font-size="10" font-weight="700" font-family="&#39;JetBrains Mono&#39;, monospace">05</text>
+      <text x="18" y="46" fill="#dcdcdc" font-size="14" font-weight="700">Pro comparison</text>
+      <text x="18" y="60" fill="#d96600" font-size="11">HLTV ingestion · ZywOo · donk</text>
+    </g>
+  </g>
+
+
+  <g transform="translate(90 848)">
+    <text fill="#3a3a5a" font-size="11" font-family="&#39;JetBrains Mono&#39;, monospace">PySide6 · PyTorch · SQLite-WAL · Alembic · Py3.10+</text>
+    <text x="1260" fill="#3a3a5a" font-size="11" font-family="&#39;JetBrains Mono&#39;, monospace">© Renan Augusto Macena</text>
+  </g>
+
+
+  <g stroke="#d96600" stroke-width="1.5" fill="none">
+    <path d="M60 60 L60 90 M60 60 L90 60"></path>
+    <path d="M1380 60 L1380 90 M1380 60 L1350 60"></path>
+    <path d="M60 840 L60 810 M60 840 L90 840"></path>
+    <path d="M1380 840 L1380 810 M1380 840 L1350 840"></path>
+  </g>
+</svg>

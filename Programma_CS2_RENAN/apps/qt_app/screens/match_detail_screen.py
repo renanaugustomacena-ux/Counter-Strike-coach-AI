@@ -84,8 +84,14 @@ class MatchDetailScreen(QWidget):
         self._status.setVisible(False)
         layout.addWidget(self._status)
 
-        # Tab widget
+        # Tab widget — pill variant per Frame 11 spec. The QSS rule
+        # `QTabBar[variant="pill"]::tab` lives in the base template; we
+        # only need to attach the property on the QTabBar here and
+        # polish() to trigger the selector.
         self._tabs = QTabWidget()
+        tab_bar = self._tabs.tabBar()
+        tab_bar.setProperty("variant", "pill")
+        tab_bar.setDrawBase(False)
         self._tabs.setVisible(False)
         layout.addWidget(self._tabs, 1)
 
@@ -224,7 +230,7 @@ class MatchDetailScreen(QWidget):
             strip_row.addWidget(strip_lbl)
             for r in rounds:
                 won = r.get("round_won", False)
-                dot = QLabel("\u25CF")
+                dot = QLabel("\u25cf")
                 dot.setStyleSheet(
                     f"color: {tokens.success if won else tokens.error}; font-size: 10px;"
                 )

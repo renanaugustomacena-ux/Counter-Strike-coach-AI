@@ -1,0 +1,267 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Roboto, Inter, system-ui, sans-serif">
+  <defs>
+    <symbol id="ic-home" viewBox="0 0 24 24"><path d="M12 3 L22 12 L19 12 L19 21 L5 21 L5 12 L2 12 Z M9 15 L15 15 L15 21 L9 21 Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"></path></symbol>
+    <symbol id="ic-brain" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"></circle><path d="M12 5 L12 19 M12 8 C7 6 5 11 12 12 M12 12 C17 11 19 16 12 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></symbol>
+    <symbol id="ic-list" viewBox="0 0 24 24"><path d="M4 6 L20 6 M4 12 L20 12 M4 18 L20 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path><circle cx="2.5" cy="6" r="1.5" fill="currentColor"></circle><circle cx="2.5" cy="12" r="1.5" fill="currentColor"></circle><circle cx="2.5" cy="18" r="1.5" fill="currentColor"></circle></symbol>
+    <symbol id="ic-chart" viewBox="0 0 24 24"><rect x="3" y="14" width="5" height="8" fill="none" stroke="currentColor" stroke-width="1.5"></rect><rect x="10" y="8" width="5" height="14" fill="none" stroke="currentColor" stroke-width="1.5"></rect><rect x="17" y="3" width="5" height="19" fill="none" stroke="currentColor" stroke-width="1.5"></rect></symbol>
+    <symbol id="ic-cross" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.5"></circle><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.5"></circle><path d="M12 1 L12 7 M12 17 L12 23 M1 12 L7 12 M17 12 L23 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></symbol>
+    <symbol id="ic-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.5"></circle><path d="M12 4 L12 7 M12 17 L12 20 M4 12 L7 12 M17 12 L20 12 M6.3 6.3 L8.5 8.5 M15.5 15.5 L17.7 17.7 M6.3 17.7 L8.5 15.5 M15.5 8.5 L17.7 6.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></symbol>
+    <symbol id="ic-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.5"></circle><path d="M9 9 C9 5 15 5 15 9 C15 12 12 12 12 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path><circle cx="12" cy="18" r="1" fill="currentColor"></circle></symbol>
+  </defs>
+
+  <rect width="1440" height="900" fill="#14141e"></rect>
+
+
+  <g>
+    <rect width="220" height="900" fill="#0f0f2e"></rect>
+    <rect x="219" width="1" height="900" fill="rgba(255,255,255,0.05)"></rect>
+    <g transform="translate(176,12)"><text x="18" y="26" text-anchor="middle" fill="#a0a0b0" font-size="22">≡</text></g>
+    <text x="110" y="82" text-anchor="middle" fill="#d96600" font-size="11" letter-spacing="3" font-weight="700">MACENA CS2</text>
+    <g transform="translate(8,108)" font-size="13">
+      <g color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-home" width="20" height="20"></use></g><text x="44" y="26" fill="#a0a0b0">Home</text></g>
+      <g transform="translate(0,44)" color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-brain" width="20" height="20"></use></g><text x="44" y="26" fill="#a0a0b0">Coach</text></g>
+      <g transform="translate(0,88)" color="#d96600">
+        <rect width="204" height="40" rx="6" fill="rgba(217,102,0,0.25)"></rect>
+        <rect width="3" height="40" fill="#d96600"></rect>
+        <g transform="translate(12,10)"><use href="#ic-list" width="20" height="20"></use></g>
+        <text x="44" y="26" fill="#d96600" font-weight="600">Match History</text>
+      </g>
+      <g transform="translate(0,132)" color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-chart" width="20" height="20"></use></g><text x="44" y="26" fill="#a0a0b0">Performance</text></g>
+      <g transform="translate(0,176)" color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-cross" width="20" height="20"></use></g><text x="44" y="26" fill="#a0a0b0">Tactical Viewer</text></g>
+      <g transform="translate(0,220)" color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-gear" width="20" height="20"></use></g><text x="44" y="26" fill="#a0a0b0">Settings</text></g>
+      <g transform="translate(0,264)" color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-help" width="20" height="20"></use></g><text x="44" y="26" fill="#a0a0b0">Help</text></g>
+    </g>
+    <text x="110" y="872" text-anchor="middle" fill="#3a3a5a" font-size="11" font-family="JetBrains Mono, monospace">v0.1.0</text>
+  </g>
+
+
+  <g transform="translate(236,36)">
+    <rect width="80" height="32" rx="4" fill="transparent" stroke="#3a3a5a"></rect>
+    <text x="40" y="21" text-anchor="middle" fill="#dcdcdc" font-size="13">← Back</text>
+  </g>
+  <text x="328" y="58" fill="#dcdcdc" font-size="20" font-weight="700">Match Detail — de_mirage</text>
+
+
+  <g transform="translate(236,80)" font-size="13">
+
+    <g>
+      <rect width="120" height="36" rx="0" fill="#1a1a2e"></rect>
+      <rect y="34" width="120" height="2" fill="#d96600"></rect>
+      <text x="60" y="23" text-anchor="middle" fill="#d96600" font-weight="700">Overview</text>
+    </g>
+
+    <g transform="translate(122,0)">
+      <rect width="100" height="36" rx="0" fill="transparent"></rect>
+      <text x="50" y="23" text-anchor="middle" fill="#a0a0b0">Rounds</text>
+    </g>
+
+    <g transform="translate(224,0)">
+      <rect width="110" height="36" rx="0" fill="transparent"></rect>
+      <text x="55" y="23" text-anchor="middle" fill="#a0a0b0">Economy</text>
+    </g>
+
+    <g transform="translate(336,0)">
+      <rect width="110" height="36" rx="0" fill="transparent"></rect>
+      <text x="55" y="23" text-anchor="middle" fill="#a0a0b0">Highlights</text>
+    </g>
+    <line x1="0" y1="36" x2="1188" y2="36" stroke="#3a3a5a" stroke-width="1"></line>
+  </g>
+
+
+
+
+  <g transform="translate(236,132)">
+    <text fill="#dcdcdc" font-size="14">de_mirage  |  2026-04-22 21:14</text>
+    <text x="1188" y="0" text-anchor="end" fill="#a0a0b0" font-size="12">demo 312 MB · 24 rounds · 45 min</text>
+  </g>
+
+
+  <g transform="translate(236,152)">
+    <g>
+      <rect width="180" height="80" rx="8" fill="#1a1a2e"></rect>
+      <text x="90" y="42" text-anchor="middle" fill="#4db04f" font-size="28" font-weight="700">1.34</text>
+      <text x="90" y="62" text-anchor="middle" fill="#a0a0b0" font-size="11">Rating (Good)</text>
+    </g>
+    <g transform="translate(196,0)">
+      <rect width="180" height="80" rx="8" fill="#1a1a2e"></rect>
+      <text x="90" y="42" text-anchor="middle" fill="#4db04f" font-size="28" font-weight="700">1.26</text>
+      <text x="90" y="62" text-anchor="middle" fill="#a0a0b0" font-size="11">K/D Ratio</text>
+    </g>
+    <g transform="translate(392,0)">
+      <rect width="180" height="80" rx="8" fill="#1a1a2e"></rect>
+      <text x="90" y="42" text-anchor="middle" fill="#4db04f" font-size="28" font-weight="700">82.3</text>
+      <text x="90" y="62" text-anchor="middle" fill="#a0a0b0" font-size="11">ADR</text>
+    </g>
+    <g transform="translate(588,0)">
+      <rect width="180" height="80" rx="8" fill="#1a1a2e"></rect>
+      <text x="90" y="42" text-anchor="middle" fill="#4db04f" font-size="28" font-weight="700">78%</text>
+      <text x="90" y="62" text-anchor="middle" fill="#a0a0b0" font-size="11">KAST</text>
+    </g>
+    <g transform="translate(784,0)">
+      <rect width="180" height="80" rx="8" fill="#1a1a2e"></rect>
+      <text x="90" y="42" text-anchor="middle" fill="#dcdcdc" font-size="28" font-weight="700">52%</text>
+      <text x="90" y="62" text-anchor="middle" fill="#a0a0b0" font-size="11">Headshot %</text>
+    </g>
+  </g>
+
+
+  <g transform="translate(236,252)">
+    <text x="0" y="14" fill="#a0a0b0" font-size="11">Rounds:</text>
+
+    <g transform="translate(60,8)" font-size="10">
+
+      <text fill="#4caf50">●</text><text x="12" fill="#4caf50">●</text><text x="24" fill="#f54236">●</text>
+      <text x="36" fill="#4caf50">●</text><text x="48" fill="#f54236">●</text><text x="60" fill="#4caf50">●</text>
+      <text x="72" fill="#4caf50">●</text><text x="84" fill="#4caf50">●</text><text x="96" fill="#f54236">●</text>
+      <text x="108" fill="#f54236">●</text><text x="120" fill="#4caf50">●</text><text x="132" fill="#f54236">●</text>
+
+      <line x1="148" y1="-8" x2="148" y2="4" stroke="#3a3a5a"></line>
+
+      <text x="156" fill="#4caf50">●</text><text x="168" fill="#f54236">●</text><text x="180" fill="#4caf50">●</text>
+      <text x="192" fill="#4caf50">●</text><text x="204" fill="#4caf50">●</text><text x="216" fill="#4caf50">●</text>
+      <text x="228" fill="#f54236">●</text><text x="240" fill="#4caf50">●</text><text x="252" fill="#f54236">●</text>
+      <text x="264" fill="#4caf50">●</text><text x="276" fill="#4caf50">●</text><text x="288" fill="#4caf50">●</text>
+    </g>
+    <text x="376" y="14" fill="#dcdcdc" font-size="11" font-weight="700">16 — 8</text>
+    <text x="432" y="14" fill="#a0a0b0" font-size="11">final · T-side 7-5 · CT-side 9-3</text>
+  </g>
+
+
+  <text x="236" y="302" fill="#dcdcdc" font-size="14" font-weight="700">HLTV 2.0 Components</text>
+  <g transform="translate(236,320)" font-size="12">
+
+
+    <g>
+      <text x="0" y="14" fill="#a0a0b0" width="180">Rating Impact</text>
+      <text x="200" y="14" fill="#4db04f" font-weight="700">1.28</text>
+      <rect x="240" y="5" width="240" height="8" rx="4" fill="#0f0f2e"></rect>
+      <rect x="240" y="5" width="154" height="8" rx="4" fill="#4db04f"></rect>
+    </g>
+
+    <g transform="translate(0,28)">
+      <text x="0" y="14" fill="#a0a0b0">Rating Survival</text>
+      <text x="200" y="14" fill="#4db04f" font-weight="700">1.12</text>
+      <rect x="240" y="5" width="240" height="8" rx="4" fill="#0f0f2e"></rect>
+      <rect x="240" y="5" width="134" height="8" rx="4" fill="#4db04f"></rect>
+    </g>
+
+    <g transform="translate(0,56)">
+      <text x="0" y="14" fill="#a0a0b0">Rating KAST</text>
+      <text x="200" y="14" fill="#ff9900" font-weight="700">1.08</text>
+      <rect x="240" y="5" width="240" height="8" rx="4" fill="#0f0f2e"></rect>
+      <rect x="240" y="5" width="130" height="8" rx="4" fill="#ff9900"></rect>
+    </g>
+
+    <g transform="translate(0,84)">
+      <text x="0" y="14" fill="#a0a0b0">Rating KPR</text>
+      <text x="200" y="14" fill="#4db04f" font-weight="700">1.32</text>
+      <rect x="240" y="5" width="240" height="8" rx="4" fill="#0f0f2e"></rect>
+      <rect x="240" y="5" width="158" height="8" rx="4" fill="#4db04f"></rect>
+    </g>
+
+    <g transform="translate(0,112)">
+      <text x="0" y="14" fill="#a0a0b0">Rating ADR</text>
+      <text x="200" y="14" fill="#4db04f" font-weight="700">1.41</text>
+      <rect x="240" y="5" width="240" height="8" rx="4" fill="#0f0f2e"></rect>
+      <rect x="240" y="5" width="169" height="8" rx="4" fill="#4db04f"></rect>
+    </g>
+
+
+    <g transform="translate(540,0)">
+      <g>
+        <text x="0" y="14" fill="#a0a0b0">Trade Kill Ratio</text>
+        <text x="200" y="14" fill="#dcdcdc" font-weight="700">0.34</text>
+        <rect x="240" y="5" width="240" height="8" rx="4" fill="#0f0f2e"></rect>
+        <rect x="240" y="5" width="82" height="8" rx="4" fill="#4a9eff"></rect>
+      </g>
+      <g transform="translate(0,28)">
+        <text x="0" y="14" fill="#a0a0b0">Was Traded</text>
+        <text x="200" y="14" fill="#dcdcdc" font-weight="700">0.62</text>
+        <rect x="240" y="5" width="240" height="8" rx="4" fill="#0f0f2e"></rect>
+        <rect x="240" y="5" width="149" height="8" rx="4" fill="#4a9eff"></rect>
+      </g>
+      <g transform="translate(0,56)">
+        <text x="0" y="14" fill="#a0a0b0">Opening Duel Win%</text>
+        <text x="200" y="14" fill="#ff9900" font-weight="700">55%</text>
+        <rect x="240" y="5" width="240" height="8" rx="4" fill="#0f0f2e"></rect>
+        <rect x="240" y="5" width="132" height="8" rx="4" fill="#ff9900"></rect>
+      </g>
+      <g transform="translate(0,84)">
+        <text x="0" y="14" fill="#a0a0b0">Clutch Win%</text>
+        <text x="200" y="14" fill="#4db04f" font-weight="700">67%</text>
+        <rect x="240" y="5" width="240" height="8" rx="4" fill="#0f0f2e"></rect>
+        <rect x="240" y="5" width="161" height="8" rx="4" fill="#4db04f"></rect>
+      </g>
+      <g transform="translate(0,112)">
+        <text x="0" y="14" fill="#a0a0b0">Positional Aggression</text>
+        <text x="200" y="14" fill="#ff9900" font-weight="700">0.72</text>
+        <rect x="240" y="5" width="240" height="8" rx="4" fill="#0f0f2e"></rect>
+        <rect x="240" y="5" width="173" height="8" rx="4" fill="#ff9900"></rect>
+      </g>
+    </g>
+  </g>
+
+
+  <text x="236" y="500" fill="#dcdcdc" font-size="14" font-weight="700">Kill Enrichment</text>
+  <g transform="translate(236,520)">
+    <rect width="1188" height="88" rx="8" fill="#1a1a2e"></rect>
+    <g transform="translate(16,20)" font-size="12">
+      <g>
+        <text x="0" y="0" fill="#a0a0b0">Thru-smoke kills</text>
+        <text x="0" y="22" fill="#dcdcdc" font-size="20" font-weight="700">8%</text>
+        <text x="0" y="48" fill="#5a5a8a" font-size="10">2 of 24 kills</text>
+      </g>
+      <g transform="translate(220,0)">
+        <text x="0" y="0" fill="#a0a0b0">Wallbang kills</text>
+        <text x="0" y="22" fill="#dcdcdc" font-size="20" font-weight="700">4%</text>
+        <text x="0" y="48" fill="#5a5a8a" font-size="10">1 of 24 kills</text>
+      </g>
+      <g transform="translate(440,0)">
+        <text x="0" y="0" fill="#a0a0b0">No-scope kills</text>
+        <text x="0" y="22" fill="#dcdcdc" font-size="20" font-weight="700">0%</text>
+        <text x="0" y="48" fill="#5a5a8a" font-size="10">0 of 24 kills</text>
+      </g>
+      <g transform="translate(660,0)">
+        <text x="0" y="0" fill="#a0a0b0">Blind kills</text>
+        <text x="0" y="22" fill="#dcdcdc" font-size="20" font-weight="700">0%</text>
+        <text x="0" y="48" fill="#5a5a8a" font-size="10">0 of 24 kills</text>
+      </g>
+      <g transform="translate(880,0)">
+        <text x="0" y="0" fill="#a0a0b0">Opening Kills</text>
+        <text x="0" y="22" fill="#4db04f" font-size="20" font-weight="700">6</text>
+        <text x="0" y="48" fill="#5a5a8a" font-size="10">3W 3L (+3 OK delta)</text>
+      </g>
+    </g>
+  </g>
+
+
+  <text x="236" y="632" fill="#dcdcdc" font-size="14" font-weight="700">Utility Per Round</text>
+  <g transform="translate(236,652)">
+    <rect width="1188" height="88" rx="8" fill="#1a1a2e"></rect>
+    <g transform="translate(16,20)" font-size="12">
+      <g>
+        <text x="0" y="0" fill="#a0a0b0">HE damage/round</text>
+        <text x="0" y="22" fill="#dcdcdc" font-size="20" font-weight="700">12.4</text>
+      </g>
+      <g transform="translate(220,0)">
+        <text x="0" y="0" fill="#a0a0b0">Molotov dmg/round</text>
+        <text x="0" y="22" fill="#dcdcdc" font-size="20" font-weight="700">5.8</text>
+      </g>
+      <g transform="translate(440,0)">
+        <text x="0" y="0" fill="#a0a0b0">Smokes/round</text>
+        <text x="0" y="22" fill="#dcdcdc" font-size="20" font-weight="700">0.8</text>
+      </g>
+      <g transform="translate(660,0)">
+        <text x="0" y="0" fill="#a0a0b0">Flash assists</text>
+        <text x="0" y="22" fill="#dcdcdc" font-size="20" font-weight="700">3</text>
+      </g>
+      <g transform="translate(880,0)">
+        <text x="0" y="0" fill="#a0a0b0">Unused util/round</text>
+        <text x="0" y="22" fill="#ff9900" font-size="20" font-weight="700">1.2</text>
+      </g>
+    </g>
+  </g>
+
+
+  <text x="236" y="870" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">PlayerMatchStats · demo_name=2026-04-22_mirage_comp.dem · rating_components from hltv_components JSON</text>
+</svg>

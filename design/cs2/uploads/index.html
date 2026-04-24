@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Macena CS2 Coach AI — Design Atlas</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:          #14141e;
+    --surface:     #1a1a2e;
+    --surface2:    #0f0f2e;
+    --border:      #3a3a5a;
+    --border-sub:  rgba(255,255,255,0.05);
+    --text:        #dcdcdc;
+    --text-sec:    #a0a0b0;
+    --text-ter:    #3a3a5a;
+    --accent:      #d96600;
+    --accent-h:    #e67a1a;
+    --warn:        #ffaa00;
+    --info:        #4a9eff;
+    --ok:          #4caf50;
+    --err:         #ff4444;
+    --purple:      #a855f7;
+    --nav-w:       220px;
+    --insp-w:      240px;
+    --top-h:       52px;
+    --mono:        "JetBrains Mono", "Fira Code", monospace;
+    --sans:        "Roboto", "Inter", system-ui, sans-serif;
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 13px; }
+
+  /* ── TOP BAR ── */
+  #topbar {
+    position: fixed; top: 0; left: 0; right: 0; height: var(--top-h);
+    background: rgba(20,20,30,0.92); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-sub);
+    display: flex; align-items: center; padding: 0 20px; gap: 16px;
+    z-index: 100;
+  }
+  #topbar .logo { font-size: 11px; letter-spacing: 3px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+  #topbar .title { font-size: 15px; font-weight: 700; color: var(--text); }
+  #topbar .sep { flex: 1; }
+  #topbar .badge { font-size: 10px; background: rgba(217,102,0,0.15); border: 1px solid var(--accent); color: var(--accent); padding: 3px 10px; border-radius: 4px; font-family: var(--mono); }
+  #topbar .badge.info { background: rgba(74,158,255,0.12); border-color: var(--info); color: var(--info); }
+  #topbar .badge.ok   { background: rgba(76,175,80,0.12);  border-color: var(--ok);   color: var(--ok);   }
+
+  /* ── LEFT NAV ── */
+  #nav {
+    position: fixed; top: var(--top-h); left: 0; bottom: 0; width: var(--nav-w);
+    background: var(--surface2); border-right: 1px solid var(--border-sub);
+    overflow-y: auto; z-index: 90; padding-bottom: 32px;
+  }
+  #nav::-webkit-scrollbar { width: 4px; }
+  #nav::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .nav-section { padding: 16px 14px 4px; font-size: 9px; letter-spacing: 3px; font-weight: 700; color: var(--text-ter); text-transform: uppercase; }
+  .nav-item {
+    display: block; padding: 6px 14px; color: var(--text-sec); text-decoration: none;
+    font-size: 11px; border-left: 2px solid transparent; transition: all 0.15s;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text); border-left-color: var(--accent); }
+  .nav-item .num { font-family: var(--mono); font-size: 10px; color: var(--text-ter); margin-right: 6px; }
+  .nav-item.arch { border-left-color: transparent; }
+  .nav-item.arch:hover { border-left-color: var(--info); }
+
+  /* ── RIGHT INSPECTOR ── */
+  #inspector {
+    position: fixed; top: var(--top-h); right: 0; bottom: 0; width: var(--insp-w);
+    background: var(--surface2); border-left: 1px solid var(--border-sub);
+    overflow-y: auto; z-index: 90; padding-bottom: 32px;
+  }
+  #inspector::-webkit-scrollbar { width: 4px; }
+  #inspector::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .insp-section { padding: 14px 12px 6px; font-size: 9px; letter-spacing: 3px; font-weight: 700; color: var(--text-ter); text-transform: uppercase; }
+  .swatch-row { display: flex; align-items: center; gap: 8px; padding: 4px 12px; }
+  .swatch { width: 20px; height: 20px; border-radius: 4px; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.08); }
+  .swatch-label { font-family: var(--mono); font-size: 10px; color: var(--text-sec); }
+  .swatch-name  { font-size: 10px; color: var(--text-ter); flex: 1; text-align: right; }
+
+  /* ── MAIN CANVAS ── */
+  #canvas {
+    margin-top: var(--top-h);
+    margin-left: var(--nav-w);
+    margin-right: var(--insp-w);
+    padding: 40px 32px 80px;
+    overflow-y: auto;
+  }
+
+  /* section header on canvas */
+  .section-header {
+    margin: 48px 0 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-header:first-child { margin-top: 0; }
+  .section-header .label { font-size: 9px; letter-spacing: 4px; font-weight: 700; color: var(--accent); text-transform: uppercase; }
+  .section-header h2 { font-size: 20px; font-weight: 700; color: var(--text); margin-top: 4px; }
+  .section-header p  { font-size: 12px; color: var(--text-sec); margin-top: 4px; }
+
+  /* frame grid */
+  .frame-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(640px, 1fr));
+    gap: 32px;
+  }
+  .frame-grid.arch-grid {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+
+  /* individual frame card */
+  .frame-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .frame-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px rgba(217,102,0,0.2), 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .frame-card.arch:hover { border-color: var(--info); box-shadow: 0 0 0 1px rgba(74,158,255,0.2), 0 8px 32px rgba(0,0,0,0.4); }
+
+  .frame-label {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; background: var(--surface2);
+    border-bottom: 1px solid var(--border-sub);
+  }
+  .frame-label .num { font-family: var(--mono); font-size: 10px; color: var(--text-ter); }
+  .frame-label .name { font-size: 12px; font-weight: 600; color: var(--text); flex: 1; }
+  .frame-label .dims { font-family: var(--mono); font-size: 10px; color: var(--text-ter); }
+  .frame-label .tag { font-size: 9px; letter-spacing: 1px; font-weight: 700; padding: 2px 6px; border-radius: 3px; text-transform: uppercase; }
+  .tag-ui   { background: rgba(217,102,0,0.15); color: var(--accent); }
+  .tag-arch { background: rgba(74,158,255,0.15); color: var(--info);   }
+  .tag-ds   { background: rgba(76,175,80,0.15);  color: var(--ok);     }
+  .tag-mkt  { background: rgba(255,170,0,0.15);  color: var(--warn);   }
+  .tag-rap  { background: rgba(255,68,68,0.15);  color: #ff4444;       }
+
+  .frame-img-wrap { padding: 0; line-height: 0; }
+  .frame-img-wrap img {
+    width: 100%; height: auto; display: block;
+    background: var(--bg);
+  }
+  .frame-img-wrap.arch-img img { width: 100%; }
+
+  /* ── SCROLLBAR global ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--surface2); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ====== TOP BAR ====== -->
+<div id="topbar">
+  <div class="logo">MACENA CS2</div>
+  <div class="title">Design Atlas</div>
+  <div class="sep"></div>
+  <div class="badge ok">36 frames</div>
+  <div class="badge info">3 architecture</div>
+  <div class="badge">design/ folder</div>
+</div>
+
+<!-- ====== LEFT NAV ====== -->
+<nav id="nav">
+  <div class="nav-section">Marketing</div>
+  <a class="nav-item" href="#frame-01"><span class="num">01</span>Cover</a>
+  <a class="nav-item" href="#frame-02"><span class="num">02</span>Landing Hero</a>
+  <a class="nav-item" href="#frame-03"><span class="num">03</span>Feature Showcase</a>
+  <a class="nav-item" href="#frame-04"><span class="num">04</span>Pitch Slide</a>
+
+  <div class="nav-section">App Screens</div>
+  <a class="nav-item" href="#frame-05"><span class="num">05</span>Home</a>
+  <a class="nav-item" href="#frame-06"><span class="num">06</span>Coach</a>
+  <a class="nav-item" href="#frame-07"><span class="num">07</span>Coach Chat Dense</a>
+  <a class="nav-item" href="#frame-08"><span class="num">08</span>Match History</a>
+  <a class="nav-item" href="#frame-09"><span class="num">09</span>Match Detail Overview</a>
+  <a class="nav-item" href="#frame-10"><span class="num">10</span>Match Detail Rounds</a>
+  <a class="nav-item" href="#frame-11"><span class="num">11</span>Match Detail Economy</a>
+  <a class="nav-item" href="#frame-12"><span class="num">12</span>Performance</a>
+  <a class="nav-item" href="#frame-13"><span class="num">13</span>Tactical Viewer</a>
+  <a class="nav-item" href="#frame-14"><span class="num">14</span>Tactical Ghost Mode</a>
+  <a class="nav-item" href="#frame-15"><span class="num">15</span>Pro Comparison</a>
+  <a class="nav-item" href="#frame-16"><span class="num">16</span>Settings</a>
+  <a class="nav-item" href="#frame-17"><span class="num">17</span>Profile</a>
+  <a class="nav-item" href="#frame-18"><span class="num">18</span>Wizard Onboarding</a>
+  <a class="nav-item" href="#frame-19"><span class="num">19</span>Help / FAQ</a>
+  <a class="nav-item" href="#frame-20"><span class="num">20</span>Loading / Empty States</a>
+
+  <div class="nav-section">Architecture</div>
+  <a class="nav-item" href="#frame-21"><span class="num">21</span>System Map</a>
+  <a class="nav-item" href="#frame-22"><span class="num">22</span>JEPA Architecture</a>
+  <a class="nav-item" href="#frame-23"><span class="num">23</span>JEPA Training Loop</a>
+  <a class="nav-item" href="#frame-24"><span class="num">24</span>Feature Vector 25-dim</a>
+  <a class="nav-item" href="#frame-25"><span class="num">25</span>RAP Hopfield Memory</a>
+  <a class="nav-item" href="#frame-26"><span class="num">26</span>Skill Latent Model</a>
+  <a class="nav-item" href="#frame-27"><span class="num">27</span>Session State Machine</a>
+  <a class="nav-item" href="#frame-28"><span class="num">28</span>DB Schema ER</a>
+  <a class="nav-item" href="#frame-29"><span class="num">29</span>Invariants Map</a>
+  <a class="nav-item" href="#frame-30"><span class="num">30</span>Inference Path</a>
+
+  <div class="nav-section">Design System</div>
+  <a class="nav-item" href="#frame-31"><span class="num">31</span>Token System</a>
+  <a class="nav-item" href="#frame-32"><span class="num">32</span>Theme Grid</a>
+  <a class="nav-item" href="#frame-33"><span class="num">33</span>Component Library</a>
+  <a class="nav-item" href="#frame-34"><span class="num">34</span>Chart Library</a>
+  <a class="nav-item" href="#frame-35"><span class="num">35</span>Icon Grid</a>
+  <a class="nav-item" href="#frame-36"><span class="num">36</span>Typography Specimen</a>
+
+  <div class="nav-section">RAP Deep-Dive</div>
+  <a class="nav-item" href="#frame-37"><span class="num">37</span>RAP 7-Layer Pipeline</a>
+  <a class="nav-item" href="#frame-38"><span class="num">38</span>RAP Perception CNN</a>
+  <a class="nav-item" href="#frame-39"><span class="num">39</span>RAP Memory · LTC+Hopfield</a>
+  <a class="nav-item" href="#frame-40"><span class="num">40</span>RAP Chronovisor Multi-Scale</a>
+  <a class="nav-item" href="#frame-41"><span class="num">41</span>RAP Self-Correction Loop</a>
+
+  <div class="nav-section">Standalone Arch</div>
+  <a class="nav-item arch" href="#arch-system-map">↳ System Map (full)</a>
+  <a class="nav-item arch" href="#arch-jepa">↳ JEPA Model (full)</a>
+  <a class="nav-item arch" href="#arch-pipeline">↳ Data Pipeline (full)</a>
+</nav>
+
+<!-- ====== RIGHT INSPECTOR ====== -->
+<aside id="inspector">
+  <div class="insp-section">CS2 Theme</div>
+  <div class="swatch-row"><div class="swatch" style="background:#14141e;"></div><div class="swatch-label">#14141e</div><div class="swatch-name">surface.base</div></div>
+  <div class="swatch-row"><div class="swatch" style="background:#1a1a2e;"></div><div class="swatch-label">#1a1a2e</div><div class="swatch-name">surface.raised</div></div>
+  <div class="swatch-row"><div class="swatch" style="background:#0f0f2e;"></div><div class="swatch-label">#0f0f2e</div><div class="swatch-name">surface.sunken</div></div>
+  <div class="swatch-row"><div class="swatch" style="background:#d96600;"></div><div class="swatch-label">#d96600</div><div class="swatch-name">accent.primary</div></div>
+  <div class="swatch-row"><div class="swatch" style="background:#e67a1a;"></div><div class="swatch-label">#e67a1a</div><div class="swatch-name">accent.hover</div></div>
+  <div class="swatch-row"><div class="swatch" style="background:#b85500;"></div><div class="swatch-label">#b85500</div><div class="swatch-name">accent.pressed</div></div>
+  <div class="swatch-row"><div class="swatch" style="background:#dcdcdc;"></div><div class="swatch-label">#dcdcdc</div><div class="swatch-name">text.primary</div></div>
+  <div class="swatch-row"><div class="swatch" style="background:#a0a0b0;"></div><div class="swatch-label">#a0a0b0</div><div class="swatch-name">text.secondary</div></div>
+  <div class="swatch-row"><div class="swatch" style="background:#3a3a5a;"></div><div class="swatch-label">#3a3a5a</div><div class="swatch-name">border.default</div></div>
+
+  <div class="insp-section">Semantic</div>
+  <div class="swatch-row"><div class="swatch" style="background:#4caf50;"></div><div class="swatch-label">#4caf50</div><div class="swatch-name">success</div></div>
+  <div class="swatch-row"><div class="swatch" style="background:#ffaa00;"></div><div class="swatch-label">#ffaa00</div><div class="swatch-name">warning</div></div>
+  <div class="swatch-row"><div class="swatch" style="background:#ff4444;"></div><div class="swatch-label">#ff4444</div><div class="swatch-name">error</div></div>
+  <div class="swatch-row"><div class="swatch" style="background:#4a9eff;"></div><div class="swatch-label">#4a9eff</div><div class="swatch-name">info</div></div>
+
+  <div class="insp-section">CSGO Theme</div>
+  <div class="swatch-row"><div class="swatch" style="background:#1a1c21;"></div><div class="swatch-label">#1a1c21</div><div class="swatch-name">surface.base</div></div>
+  <div class="swatch-row"><div class="swatch" style="background:#617d8c;"></div><div class="swatch-label">#617d8c</div><div class="swatch-name">accent.primary</div></div>
+
+  <div class="insp-section">CS1.6 Theme</div>
+  <div class="swatch-row"><div class="swatch" style="background:#0d1a0d;"></div><div class="swatch-label">#0d1a0d</div><div class="swatch-name">surface.base</div></div>
+  <div class="swatch-row"><div class="swatch" style="background:#4db04f;"></div><div class="swatch-label">#4db04f</div><div class="swatch-name">accent.primary</div></div>
+
+  <div class="insp-section">Spacing</div>
+  <div class="swatch-row" style="flex-direction:column;align-items:flex-start;gap:2px;">
+    <div style="font-family:var(--mono);font-size:10px;color:var(--text-sec);">xs=4  sm=8  md=12</div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--text-sec);">lg=16  xl=24  xxl=32</div>
+  </div>
+
+  <div class="insp-section">Radius</div>
+  <div class="swatch-row" style="flex-direction:column;align-items:flex-start;gap:2px;">
+    <div style="font-family:var(--mono);font-size:10px;color:var(--text-sec);">sm=4  md=8  lg=16  xl=24</div>
+  </div>
+
+  <div class="insp-section">Typography</div>
+  <div class="swatch-row" style="flex-direction:column;align-items:flex-start;gap:2px;">
+    <div style="font-family:var(--mono);font-size:10px;color:var(--text-sec);">sans: Roboto / Inter</div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--text-sec);">mono: JetBrains Mono</div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--text-ter);">scale: 11 12 14 16 20 24 28</div>
+  </div>
+
+  <div class="insp-section">Files</div>
+  <div style="padding:6px 12px;">
+    <a href="tokens/design-tokens.json" style="font-family:var(--mono);font-size:10px;color:var(--info);display:block;margin-bottom:4px;">tokens/design-tokens.json</a>
+    <a href="assets/icons/sprite.svg"   style="font-family:var(--mono);font-size:10px;color:var(--info);display:block;margin-bottom:4px;">assets/icons/sprite.svg</a>
+    <a href="architecture/system_map.svg"  style="font-family:var(--mono);font-size:10px;color:var(--info);display:block;margin-bottom:4px;">architecture/system_map.svg</a>
+    <a href="architecture/jepa_model.svg"  style="font-family:var(--mono);font-size:10px;color:var(--info);display:block;margin-bottom:4px;">architecture/jepa_model.svg</a>
+    <a href="architecture/data_pipeline.svg" style="font-family:var(--mono);font-size:10px;color:var(--info);display:block;">architecture/data_pipeline.svg</a>
+  </div>
+</aside>
+
+<!-- ====== MAIN CANVAS ====== -->
+<main id="canvas">
+
+  <!-- ── MARKETING ── -->
+  <div class="section-header">
+    <div class="label">Marketing · Frames 01–04</div>
+    <h2>Product Covers &amp; Pitch</h2>
+    <p>Hero poster, landing hero section, feature bento, pitch slide — all vector, lossless at any scale.</p>
+  </div>
+  <div class="frame-grid">
+    <div id="frame-01" class="frame-card">
+      <div class="frame-label"><span class="num">01</span><span class="name">Cover</span><span class="tag tag-mkt">Marketing</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/01_cover.svg" alt="Cover" loading="lazy"></div>
+    </div>
+    <div id="frame-02" class="frame-card">
+      <div class="frame-label"><span class="num">02</span><span class="name">Landing Hero</span><span class="tag tag-mkt">Marketing</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/02_landing_hero.svg" alt="Landing Hero" loading="lazy"></div>
+    </div>
+    <div id="frame-03" class="frame-card">
+      <div class="frame-label"><span class="num">03</span><span class="name">Feature Showcase</span><span class="tag tag-mkt">Marketing</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/03_feature_showcase.svg" alt="Feature Showcase" loading="lazy"></div>
+    </div>
+    <div id="frame-04" class="frame-card">
+      <div class="frame-label"><span class="num">04</span><span class="name">Pitch Slide</span><span class="tag tag-mkt">Marketing</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/04_pitch_slide.svg" alt="Pitch Slide" loading="lazy"></div>
+    </div>
+  </div>
+
+  <!-- ── APP SCREENS ── -->
+  <div class="section-header">
+    <div class="label">App Screens · Frames 05–20</div>
+    <h2>Qt Application Screens</h2>
+    <p>Real UI composition from apps/qt_app/screens/ — populated with plausible data, real widget names, NavSidebar states.</p>
+  </div>
+  <div class="frame-grid">
+    <div id="frame-05" class="frame-card">
+      <div class="frame-label"><span class="num">05</span><span class="name">Home</span><span class="tag tag-ui">UI</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/05_home.svg" alt="Home" loading="lazy"></div>
+    </div>
+    <div id="frame-06" class="frame-card">
+      <div class="frame-label"><span class="num">06</span><span class="name">Coach</span><span class="tag tag-ui">UI</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/06_coach.svg" alt="Coach" loading="lazy"></div>
+    </div>
+    <div id="frame-07" class="frame-card">
+      <div class="frame-label"><span class="num">07</span><span class="name">Coach Chat Dense</span><span class="tag tag-ui">UI</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/07_coach_chat_dense.svg" alt="Coach Chat Dense" loading="lazy"></div>
+    </div>
+    <div id="frame-08" class="frame-card">
+      <div class="frame-label"><span class="num">08</span><span class="name">Match History</span><span class="tag tag-ui">UI</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/08_match_history.svg" alt="Match History" loading="lazy"></div>
+    </div>
+    <div id="frame-09" class="frame-card">
+      <div class="frame-label"><span class="num">09</span><span class="name">Match Detail — Overview</span><span class="tag tag-ui">UI</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/09_match_detail_overview.svg" alt="Match Detail Overview" loading="lazy"></div>
+    </div>
+    <div id="frame-10" class="frame-card">
+      <div class="frame-label"><span class="num">10</span><span class="name">Match Detail — Rounds</span><span class="tag tag-ui">UI</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/10_match_detail_rounds.svg" alt="Match Detail Rounds" loading="lazy"></div>
+    </div>
+    <div id="frame-11" class="frame-card">
+      <div class="frame-label"><span class="num">11</span><span class="name">Match Detail — Economy</span><span class="tag tag-ui">UI</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/11_match_detail_economy.svg" alt="Match Detail Economy" loading="lazy"></div>
+    </div>
+    <div id="frame-12" class="frame-card">
+      <div class="frame-label"><span class="num">12</span><span class="name">Performance</span><span class="tag tag-ui">UI</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/12_performance.svg" alt="Performance" loading="lazy"></div>
+    </div>
+    <div id="frame-13" class="frame-card">
+      <div class="frame-label"><span class="num">13</span><span class="name">Tactical Viewer</span><span class="tag tag-ui">UI</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/13_tactical_viewer.svg" alt="Tactical Viewer" loading="lazy"></div>
+    </div>
+    <div id="frame-14" class="frame-card">
+      <div class="frame-label"><span class="num">14</span><span class="name">Tactical Ghost Mode</span><span class="tag tag-ui">UI</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/14_tactical_ghost_mode.svg" alt="Tactical Ghost Mode" loading="lazy"></div>
+    </div>
+    <div id="frame-15" class="frame-card">
+      <div class="frame-label"><span class="num">15</span><span class="name">Pro Comparison</span><span class="tag tag-ui">UI</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/15_pro_comparison.svg" alt="Pro Comparison" loading="lazy"></div>
+    </div>
+    <div id="frame-16" class="frame-card">
+      <div class="frame-label"><span class="num">16</span><span class="name">Settings</span><span class="tag tag-ui">UI</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/16_settings.svg" alt="Settings" loading="lazy"></div>
+    </div>
+    <div id="frame-17" class="frame-card">
+      <div class="frame-label"><span class="num">17</span><span class="name">Profile</span><span class="tag tag-ui">UI</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/17_profile.svg" alt="Profile" loading="lazy"></div>
+    </div>
+    <div id="frame-18" class="frame-card">
+      <div class="frame-label"><span class="num">18</span><span class="name">Wizard Onboarding</span><span class="tag tag-ui">UI</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/18_wizard_onboarding.svg" alt="Wizard Onboarding" loading="lazy"></div>
+    </div>
+    <div id="frame-19" class="frame-card">
+      <div class="frame-label"><span class="num">19</span><span class="name">Help / FAQ</span><span class="tag tag-ui">UI</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/19_help_faq.svg" alt="Help FAQ" loading="lazy"></div>
+    </div>
+    <div id="frame-20" class="frame-card">
+      <div class="frame-label"><span class="num">20</span><span class="name">Loading / Empty States</span><span class="tag tag-ui">UI</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/20_loading_empty_states.svg" alt="Loading Empty States" loading="lazy"></div>
+    </div>
+  </div>
+
+  <!-- ── ARCHITECTURE FRAMES ── -->
+  <div class="section-header">
+    <div class="label">Architecture · Frames 21–30</div>
+    <h2>System &amp; ML Diagrams</h2>
+    <p>Real modules, real file paths, every arrow labeled. Invariant flags inline. For deep-dive use the standalone architecture/ SVGs below.</p>
+  </div>
+  <div class="frame-grid">
+    <div id="frame-21" class="frame-card arch">
+      <div class="frame-label"><span class="num">21</span><span class="name">System Map</span><span class="tag tag-arch">Arch</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/21_system_map.svg" alt="System Map" loading="lazy"></div>
+    </div>
+    <div id="frame-22" class="frame-card arch">
+      <div class="frame-label"><span class="num">22</span><span class="name">JEPA Architecture</span><span class="tag tag-arch">Arch</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/22_jepa_architecture.svg" alt="JEPA Architecture" loading="lazy"></div>
+    </div>
+    <div id="frame-23" class="frame-card arch">
+      <div class="frame-label"><span class="num">23</span><span class="name">JEPA Training Loop</span><span class="tag tag-arch">Arch</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/23_jepa_training_loop.svg" alt="JEPA Training Loop" loading="lazy"></div>
+    </div>
+    <div id="frame-24" class="frame-card arch">
+      <div class="frame-label"><span class="num">24</span><span class="name">Feature Vector 25-dim</span><span class="tag tag-arch">Arch</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/24_feature_vector_25dim.svg" alt="Feature Vector 25-dim" loading="lazy"></div>
+    </div>
+    <div id="frame-25" class="frame-card arch">
+      <div class="frame-label"><span class="num">25</span><span class="name">RAP Hopfield Memory</span><span class="tag tag-arch">Arch</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/25_rap_hopfield_memory.svg" alt="RAP Hopfield Memory" loading="lazy"></div>
+    </div>
+    <div id="frame-26" class="frame-card arch">
+      <div class="frame-label"><span class="num">26</span><span class="name">Skill Latent Model</span><span class="tag tag-arch">Arch</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/26_skill_latent_model.svg" alt="Skill Latent Model" loading="lazy"></div>
+    </div>
+    <div id="frame-27" class="frame-card arch">
+      <div class="frame-label"><span class="num">27</span><span class="name">Session State Machine</span><span class="tag tag-arch">Arch</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/27_session_state_machine.svg" alt="Session State Machine" loading="lazy"></div>
+    </div>
+    <div id="frame-28" class="frame-card arch">
+      <div class="frame-label"><span class="num">28</span><span class="name">DB Schema ER</span><span class="tag tag-arch">Arch</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/28_db_schema_er.svg" alt="DB Schema ER" loading="lazy"></div>
+    </div>
+    <div id="frame-29" class="frame-card arch">
+      <div class="frame-label"><span class="num">29</span><span class="name">Invariants Map</span><span class="tag tag-arch">Arch</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/29_invariants_map.svg" alt="Invariants Map" loading="lazy"></div>
+    </div>
+    <div id="frame-30" class="frame-card arch">
+      <div class="frame-label"><span class="num">30</span><span class="name">Inference Path</span><span class="tag tag-arch">Arch</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/30_inference_path.svg" alt="Inference Path" loading="lazy"></div>
+    </div>
+  </div>
+
+  <!-- ── DESIGN SYSTEM FRAMES ── -->
+  <div class="section-header">
+    <div class="label">Design System · Frames 31–36</div>
+    <h2>Tokens, Components &amp; Typography</h2>
+    <p>Color tokens from design_tokens.py · 3 themes · component library · chart library · icon grid · type ramp.</p>
+  </div>
+  <div class="frame-grid">
+    <div id="frame-31" class="frame-card">
+      <div class="frame-label"><span class="num">31</span><span class="name">Token System</span><span class="tag tag-ds">Design System</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/31_token_system.svg" alt="Token System" loading="lazy"></div>
+    </div>
+    <div id="frame-32" class="frame-card">
+      <div class="frame-label"><span class="num">32</span><span class="name">Theme Grid</span><span class="tag tag-ds">Design System</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/32_theme_grid.svg" alt="Theme Grid" loading="lazy"></div>
+    </div>
+    <div id="frame-33" class="frame-card">
+      <div class="frame-label"><span class="num">33</span><span class="name">Component Library</span><span class="tag tag-ds">Design System</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/33_component_library.svg" alt="Component Library" loading="lazy"></div>
+    </div>
+    <div id="frame-34" class="frame-card">
+      <div class="frame-label"><span class="num">34</span><span class="name">Chart Library</span><span class="tag tag-ds">Design System</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/34_chart_library.svg" alt="Chart Library" loading="lazy"></div>
+    </div>
+    <div id="frame-35" class="frame-card">
+      <div class="frame-label"><span class="num">35</span><span class="name">Icon Grid</span><span class="tag tag-ds">Design System</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/35_icon_grid.svg" alt="Icon Grid" loading="lazy"></div>
+    </div>
+    <div id="frame-36" class="frame-card">
+      <div class="frame-label"><span class="num">36</span><span class="name">Typography Specimen</span><span class="tag tag-ds">Design System</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/36_typography_specimen.svg" alt="Typography Specimen" loading="lazy"></div>
+    </div>
+  </div>
+
+  <!-- ── RAP DEEP-DIVE ── -->
+  <div class="section-header">
+    <div class="label">RAP Deep-Dive · backend/nn/experimental/rap_coach/</div>
+    <h2>Reflexive Auto-correcting Pedagogue</h2>
+    <p>The flagship architecture: 7 layers that reach reliability through self-correction — humility gate, reshaped prototypes, MoE specialization, multi-scale self-critique.</p>
+  </div>
+  <div class="frame-grid">
+    <div id="frame-37" class="frame-card">
+      <div class="frame-label"><span class="num">37</span><span class="name">RAP — 7-Layer Pipeline</span><span class="tag tag-rap">RAP</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/37_rap_7_layer_pipeline.svg" alt="RAP 7-Layer Pipeline" loading="lazy"></div>
+    </div>
+    <div id="frame-38" class="frame-card">
+      <div class="frame-label"><span class="num">38</span><span class="name">RAP — Perception CNN (3 streams)</span><span class="tag tag-rap">RAP</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/38_rap_perception_cnn.svg" alt="RAP Perception CNN" loading="lazy"></div>
+    </div>
+    <div id="frame-39" class="frame-card">
+      <div class="frame-label"><span class="num">39</span><span class="name">RAP — Memory · LTC + Hopfield</span><span class="tag tag-rap">RAP</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/39_rap_memory_ltc_hopfield.svg" alt="RAP Memory LTC Hopfield" loading="lazy"></div>
+    </div>
+    <div id="frame-40" class="frame-card">
+      <div class="frame-label"><span class="num">40</span><span class="name">RAP — Chronovisor Multi-Scale</span><span class="tag tag-rap">RAP</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/40_rap_chronovisor_multiscale.svg" alt="RAP Chronovisor Multi-Scale" loading="lazy"></div>
+    </div>
+    <div id="frame-41" class="frame-card">
+      <div class="frame-label"><span class="num">41</span><span class="name">RAP — Self-Correction Loop</span><span class="tag tag-rap">RAP</span><span class="dims">1440×900</span></div>
+      <div class="frame-img-wrap"><img src="frames/41_rap_self_correction_loop.svg" alt="RAP Self-Correction Loop" loading="lazy"></div>
+    </div>
+  </div>
+
+  <!-- ── STANDALONE ARCHITECTURE ── -->
+  <div class="section-header">
+    <div class="label">Standalone Architecture · architecture/</div>
+    <h2>Deep-Dive Architecture SVGs</h2>
+    <p>Larger viewBox (1920×1200 / 1440×1080) · more technical detail · use for AE import, Figma paste, documentation.</p>
+  </div>
+  <div class="frame-grid arch-grid">
+    <div id="arch-system-map" class="frame-card arch">
+      <div class="frame-label"><span class="name">System Map — Full Pipeline</span><span class="tag tag-arch">1920×1200</span><a href="architecture/system_map.svg" style="font-family:var(--mono);font-size:10px;color:var(--info);margin-left:auto;text-decoration:none;">open ↗</a></div>
+      <div class="frame-img-wrap arch-img"><img src="architecture/system_map.svg" alt="System Map Full" loading="lazy"></div>
+    </div>
+    <div id="arch-jepa" class="frame-card arch">
+      <div class="frame-label"><span class="name">JEPA Model — Full Layer Diagram</span><span class="tag tag-arch">1440×1080</span><a href="architecture/jepa_model.svg" style="font-family:var(--mono);font-size:10px;color:var(--info);margin-left:auto;text-decoration:none;">open ↗</a></div>
+      <div class="frame-img-wrap arch-img"><img src="architecture/jepa_model.svg" alt="JEPA Model Full" loading="lazy"></div>
+    </div>
+    <div id="arch-pipeline" class="frame-card arch">
+      <div class="frame-label"><span class="name">Data Pipeline — 25-dim Vector Lifecycle</span><span class="tag tag-arch">1440×900</span><a href="architecture/data_pipeline.svg" style="font-family:var(--mono);font-size:10px;color:var(--info);margin-left:auto;text-decoration:none;">open ↗</a></div>
+      <div class="frame-img-wrap arch-img"><img src="architecture/data_pipeline.svg" alt="Data Pipeline Full" loading="lazy"></div>
+    </div>
+  </div>
+
+</main>
+
+</body>
+</html>

@@ -1,0 +1,278 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 1080" font-family="Roboto, Inter, system-ui, sans-serif">
+  <defs>
+    <marker id="ar"  viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#d96600"/></marker>
+    <marker id="arB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#4a9eff"/></marker>
+    <marker id="arG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#4caf50"/></marker>
+    <marker id="arR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#ff4444"/></marker>
+    <marker id="arP" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#a855f7"/></marker>
+  </defs>
+
+  <rect width="1440" height="1080" fill="#14141e"/>
+
+  <!-- HEADER -->
+  <g transform="translate(72,48)">
+    <text fill="#4a9eff" font-size="10" letter-spacing="4" font-weight="700">MACENA CS2 COACH AI · MODEL ARCHITECTURE</text>
+    <text y="38" fill="#dcdcdc" font-size="30" font-weight="800">JEPA Coaching Model — full layer diagram</text>
+    <text y="62" fill="#a0a0b0" font-size="12">Joint-Embedding Predictive Architecture (LeCun 2023) · predict latent space, not observation space</text>
+    <text y="78" fill="#3a3a5a" font-size="11" font-family="JetBrains Mono, monospace">backend/nn/jepa_model.py  ·  class JEPACoachingModel</text>
+  </g>
+
+  <!-- ===== LEFT LANE: PRE-TRAINING PATH ===== -->
+  <!-- Lane label -->
+  <g transform="translate(72,112)">
+    <rect width="580" height="26" rx="5" fill="rgba(74,158,255,0.1)" stroke="#4a9eff" stroke-dasharray="4,3"/>
+    <text x="12" y="17" fill="#4a9eff" font-size="10" letter-spacing="3" font-weight="700">STAGE 1 — JEPA PRE-TRAINING (self-supervised, pro demos)</text>
+  </g>
+
+  <!-- INPUT BOX -->
+  <g transform="translate(72,154)">
+    <rect width="580" height="70" rx="8" fill="#1a1a2e" stroke="#d96600" stroke-width="1.5"/>
+    <text x="16" y="22" fill="#d96600" font-size="10" letter-spacing="2" font-weight="700">INPUT  ·  match state window</text>
+    <text x="16" y="46" fill="#dcdcdc" font-size="14" font-weight="700">x  ∈  ℝ<tspan baseline-shift="super" font-size="10">[B=64 × T=20 × 25]</tspan></text>
+    <text x="16" y="62" fill="#a0a0b0" font-size="11">B=64 batch · T=20 ticks per window (10 ctx + 10 tgt) · 25 = METADATA_DIM</text>
+  </g>
+
+  <!-- Split arrow -->
+  <path d="M232 224 L170 258" stroke="#d96600" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+  <path d="M420 224 L482 258" stroke="#4a9eff" stroke-width="1.5" fill="none" marker-end="url(#arB)"/>
+  <text x="195" y="252" fill="#d96600" font-size="10">x_ctx [0:10]</text>
+  <text x="432" y="252" fill="#4a9eff" font-size="10">x_tgt [10:20]</text>
+
+  <!-- CONTEXT ENCODER θ -->
+  <g transform="translate(72,260)">
+    <rect width="260" height="160" rx="8" fill="rgba(217,102,0,0.08)" stroke="#d96600" stroke-width="2"/>
+    <text x="14" y="22" fill="#d96600" font-size="10" letter-spacing="2" font-weight="700">CONTEXT ENCODER  θ  (trainable)</text>
+    <text x="14" y="44" fill="#dcdcdc" font-size="13" font-weight="700">JEPAEncoder(input_dim=25)</text>
+    <g font-size="10" font-family="JetBrains Mono, monospace" fill="#a0a0b0">
+      <text x="14" y="66">Linear(25 → 512)</text>
+      <text x="14" y="82">LayerNorm(512)</text>
+      <text x="14" y="98">GELU()</text>
+      <text x="14" y="114">Dropout(0.1)</text>
+      <text x="14" y="130">Linear(512 → 256)</text>
+      <text x="14" y="146">LayerNorm(256)</text>
+    </g>
+    <text x="246" y="152" text-anchor="end" fill="#3a3a5a" font-size="9" font-family="JetBrains Mono, monospace">:43</text>
+  </g>
+
+  <!-- TARGET ENCODER θ̄ (EMA) -->
+  <g transform="translate(390,260)">
+    <rect width="262" height="160" rx="8" fill="rgba(74,158,255,0.08)" stroke="#4a9eff" stroke-width="2"/>
+    <text x="14" y="22" fill="#4a9eff" font-size="10" letter-spacing="2" font-weight="700">TARGET ENCODER  θ̄  (EMA, no_grad)</text>
+    <text x="14" y="44" fill="#dcdcdc" font-size="13" font-weight="700">JEPAEncoder(input_dim=25)</text>
+    <g font-size="10" font-family="JetBrains Mono, monospace" fill="#a0a0b0">
+      <text x="14" y="66">Linear(25 → 512)</text>
+      <text x="14" y="82">LayerNorm(512)</text>
+      <text x="14" y="98">GELU()</text>
+      <text x="14" y="114">Dropout(0.1)</text>
+      <text x="14" y="130">Linear(512 → 256)</text>
+      <text x="14" y="146">LayerNorm(256)</text>
+    </g>
+    <text x="248" y="152" text-anchor="end" fill="#3a3a5a" font-size="9" font-family="JetBrains Mono, monospace">:43</text>
+  </g>
+
+  <!-- EMA update arrow -->
+  <path d="M332 350 Q360 350 390 350" stroke="#ffaa00" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arP)"/>
+  <text x="340" y="342" fill="#ffaa00" font-size="9" font-family="JetBrains Mono, monospace">EMA  τ=0.996</text>
+
+  <!-- avg pool labels -->
+  <text x="178" y="438" text-anchor="middle" fill="#a0a0b0" font-size="10">avg pool dim=1</text>
+  <text x="516" y="438" text-anchor="middle" fill="#a0a0b0" font-size="10">avg pool dim=1</text>
+
+  <path d="M202 420 L202 452" stroke="#d96600" stroke-width="1.5" marker-end="url(#ar)"/>
+  <path d="M516 420 L516 452" stroke="#4a9eff" stroke-width="1.5" marker-end="url(#arB)"/>
+
+  <!-- s_context_pooled / s_target_pooled boxes -->
+  <g transform="translate(72,454)">
+    <rect width="260" height="44" rx="6" fill="#1a1a2e" stroke="#d96600"/>
+    <text x="14" y="18" fill="#a0a0b0" font-size="10">s_ctx  ∈  ℝ</text>
+    <text x="60" y="18" fill="#d96600" font-size="10" font-weight="700">[B, 256]</text>
+    <text x="14" y="34" fill="#3a3a5a" font-size="9" font-family="JetBrains Mono, monospace">context embedding (pooled)</text>
+  </g>
+  <g transform="translate(390,454)">
+    <rect width="262" height="44" rx="6" fill="#1a1a2e" stroke="#4a9eff"/>
+    <text x="14" y="18" fill="#a0a0b0" font-size="10">s_tgt  ∈  ℝ</text>
+    <text x="60" y="18" fill="#4a9eff" font-size="10" font-weight="700">[B, 256]</text>
+    <text x="14" y="34" fill="#3a3a5a" font-size="9" font-family="JetBrains Mono, monospace">target embedding  (stop_grad)</text>
+  </g>
+
+  <!-- ctx → predictor -->
+  <path d="M202 498 L202 524" stroke="#d96600" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <!-- PREDICTOR -->
+  <g transform="translate(72,526)">
+    <rect width="260" height="130" rx="8" fill="rgba(217,102,0,0.06)" stroke="#d96600" stroke-width="1.5"/>
+    <text x="14" y="22" fill="#d96600" font-size="10" letter-spacing="2" font-weight="700">PREDICTOR</text>
+    <text x="14" y="42" fill="#dcdcdc" font-size="13" font-weight="700">JEPAPredictor(latent=256)</text>
+    <g font-size="10" font-family="JetBrains Mono, monospace" fill="#a0a0b0">
+      <text x="14" y="64">Linear(256 → 512)</text>
+      <text x="14" y="80">LayerNorm(512)</text>
+      <text x="14" y="96">GELU()</text>
+      <text x="14" y="112">Dropout(0.1)</text>
+      <text x="14" y="122">Linear(512 → 256)</text>
+    </g>
+    <text x="246" y="122" text-anchor="end" fill="#3a3a5a" font-size="9" font-family="JetBrains Mono, monospace">:75</text>
+  </g>
+
+  <!-- s_pred -->
+  <path d="M202 656 L202 678" stroke="#d96600" stroke-width="1.5" marker-end="url(#ar)"/>
+  <g transform="translate(72,680)">
+    <rect width="260" height="40" rx="6" fill="#1a1a2e" stroke="#d96600"/>
+    <text x="14" y="16" fill="#a0a0b0" font-size="10">s_pred  ∈  ℝ</text>
+    <text x="64" y="16" fill="#d96600" font-size="10" font-weight="700">[B, 256]</text>
+    <text x="14" y="32" fill="#3a3a5a" font-size="9" font-family="JetBrains Mono, monospace">predicted target embedding</text>
+  </g>
+
+  <!-- InfoNCE LOSS -->
+  <path d="M332 700 L390 700" stroke="#ffaa00" stroke-width="1.5" fill="none"/>
+  <path d="M516 498 L516 700 L556 700" stroke="#4a9eff" stroke-width="1.5" fill="none" marker-end="url(#arB)"/>
+  <g transform="translate(390,674)">
+    <rect width="262" height="66" rx="8" fill="rgba(255,170,0,0.1)" stroke="#ffaa00" stroke-width="2"/>
+    <text x="14" y="18" fill="#ffaa00" font-size="10" letter-spacing="2" font-weight="700">INFONCE CONTRASTIVE LOSS · P1-03</text>
+    <text x="14" y="38" fill="#dcdcdc" font-size="12" font-weight="700">jepa_contrastive_loss(T=0.07)</text>
+    <text x="14" y="56" fill="#a0a0b0" font-size="10">cosine sim · negatives from batch · :373</text>
+  </g>
+
+  <!-- ===== RIGHT LANE: COACHING INFERENCE ===== -->
+  <g transform="translate(740,112)">
+    <rect width="628" height="26" rx="5" fill="rgba(76,175,80,0.1)" stroke="#4caf50" stroke-dasharray="4,3"/>
+    <text x="12" y="17" fill="#4caf50" font-size="10" letter-spacing="3" font-weight="700">STAGE 2 — LSTM FINE-TUNE + INFERENCE (supervised, user demos)</text>
+  </g>
+
+  <!-- Frozen encoder input -->
+  <g transform="translate(740,154)">
+    <rect width="280" height="70" rx="8" fill="#1a1a2e" stroke="#4caf50" stroke-width="1.5"/>
+    <text x="14" y="22" fill="#4caf50" font-size="10" letter-spacing="2" font-weight="700">FROZEN CONTEXT ENCODER  θ</text>
+    <text x="14" y="44" fill="#dcdcdc" font-size="13" font-weight="700">requires_grad = False</text>
+    <text x="14" y="60" fill="#a0a0b0" font-size="11">[B, 10, 25]  →  [B, 10, 256]  → pool → [B, 256]</text>
+  </g>
+  <path d="M880 224 L880 248" stroke="#4caf50" stroke-width="1.5" marker-end="url(#arG)"/>
+
+  <!-- LSTM -->
+  <g transform="translate(740,250)">
+    <rect width="280" height="110" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <text x="14" y="22" fill="#4caf50" font-size="10" letter-spacing="2" font-weight="700">LSTM COACHING HEAD</text>
+    <text x="14" y="44" fill="#dcdcdc" font-size="13" font-weight="700">LSTM(256 → 128)</text>
+    <g font-size="10" font-family="JetBrains Mono, monospace" fill="#a0a0b0">
+      <text x="14" y="64">input_size=256  hidden_size=128</text>
+      <text x="14" y="80">num_layers=2  batch_first=True</text>
+      <text x="14" y="96">dropout=0.2 (between layers)</text>
+    </g>
+    <text x="266" y="96" text-anchor="end" fill="#3a3a5a" font-size="9" font-family="JetBrains Mono, monospace">:131</text>
+  </g>
+  <path d="M880 360 L880 384" stroke="#4caf50" stroke-width="1.5" marker-end="url(#arG)"/>
+
+  <!-- Gate -->
+  <g transform="translate(740,386)">
+    <rect width="280" height="68" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <text x="14" y="20" fill="#4caf50" font-size="10" letter-spacing="2" font-weight="700">MOE GATE  (J-3 fix)</text>
+    <text x="14" y="42" fill="#dcdcdc" font-size="13" font-weight="700">Linear(128 → 3)  raw logits</text>
+    <text x="14" y="58" fill="#a0a0b0" font-size="10">top-2 sparse — no dense softmax collapse</text>
+    <text x="266" y="58" text-anchor="end" fill="#3a3a5a" font-size="9" font-family="JetBrains Mono, monospace">:141</text>
+  </g>
+  <path d="M880 454 L880 478" stroke="#4caf50" stroke-width="1.5" marker-end="url(#arG)"/>
+
+  <!-- 3 experts -->
+  <g transform="translate(740,480)">
+    <rect width="280" height="96" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <text x="14" y="20" fill="#4caf50" font-size="10" letter-spacing="2" font-weight="700">MIXTURE OF EXPERTS  (3 × top-2)</text>
+    <text x="14" y="40" fill="#dcdcdc" font-size="12" font-weight="700">Expert:  Linear(128→128) → ReLU → Linear(128→output_dim)</text>
+    <text x="14" y="58" fill="#a0a0b0" font-size="10">Expert 0 — positioning · Expert 1 — aim · Expert 2 — utility</text>
+    <text x="14" y="74" fill="#a0a0b0" font-size="10">Weighted sum of top-2 activated experts per sample</text>
+    <text x="266" y="88" text-anchor="end" fill="#3a3a5a" font-size="9" font-family="JetBrains Mono, monospace">:161  :193</text>
+  </g>
+  <path d="M880 576 L880 600" stroke="#4caf50" stroke-width="1.5" marker-end="url(#arG)"/>
+
+  <!-- role_id bias -->
+  <g transform="translate(1060,490)">
+    <rect width="260" height="60" rx="6" fill="#0f0f2e" stroke="#3a3a5a" stroke-dasharray="4,3"/>
+    <text x="14" y="18" fill="#a0a0b0" font-size="10">Optional role_id bias</text>
+    <text x="14" y="34" fill="#3a3a5a" font-size="9" font-family="JetBrains Mono, monospace">_apply_role_bias() :317</text>
+    <text x="14" y="50" fill="#a0a0b0" font-size="10">+1.0 boost to role-matched expert</text>
+  </g>
+  <path d="M1060 518 L1020 518" stroke="#3a3a5a" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arG)"/>
+
+  <!-- RAP Hopfield -->
+  <g transform="translate(740,602)">
+    <rect width="280" height="96" rx="8" fill="rgba(168,85,247,0.08)" stroke="#a855f7" stroke-width="1.5"/>
+    <text x="14" y="20" fill="#a855f7" font-size="10" letter-spacing="2" font-weight="700">RAP HOPFIELD MEMORY  NN-MEM-01</text>
+    <text x="14" y="42" fill="#dcdcdc" font-size="12" font-weight="700">Retrieval-Augmented Prediction</text>
+    <text x="14" y="60" fill="#a0a0b0" font-size="10">query = coaching output  →  retrieve pro patterns</text>
+    <text x="14" y="76" fill="#ff4444" font-size="9" font-family="JetBrains Mono, monospace">BYPASS until ≥2 forward passes  rap_coach/memory.py:74</text>
+    <text x="266" y="88" text-anchor="end" fill="#3a3a5a" font-size="9" font-family="JetBrains Mono, monospace">_fwd_count guard</text>
+  </g>
+  <path d="M880 698 L880 722" stroke="#a855f7" stroke-width="1.5" marker-end="url(#arP)"/>
+
+  <!-- CoachingInsight output -->
+  <g transform="translate(740,724)">
+    <rect width="280" height="80" rx="8" fill="rgba(76,175,80,0.1)" stroke="#4caf50" stroke-width="2"/>
+    <text x="14" y="22" fill="#4caf50" font-size="10" letter-spacing="2" font-weight="700">OUTPUT · CoachingInsight</text>
+    <text x="14" y="46" fill="#dcdcdc" font-size="14" font-weight="700">belief_confidence  ·  labels</text>
+    <text x="14" y="62" fill="#a0a0b0" font-size="10">ConceptLabeler → 5-axis skill vector</text>
+    <text x="14" y="76" fill="#3a3a5a" font-size="9" font-family="JetBrains Mono, monospace">CoachingConcept dataclass  :420</text>
+  </g>
+
+  <!-- ============ INVARIANTS STRIP ============ -->
+  <g transform="translate(72,860)">
+    <text fill="#ff4444" font-size="10" letter-spacing="3" font-weight="700">MODEL INVARIANTS</text>
+    <g transform="translate(0,18)">
+      <rect width="260" height="28" rx="4" fill="rgba(255,68,68,0.12)" stroke="#ff4444"/>
+      <text x="10" y="18" fill="#ff4444" font-size="10" font-family="JetBrains Mono, monospace" font-weight="700">NN-JM-04</text>
+      <text x="86" y="18" fill="#a0a0b0" font-size="10">target_encoder requires_grad=False</text>
+    </g>
+    <g transform="translate(274,18)">
+      <rect width="260" height="28" rx="4" fill="rgba(255,68,68,0.12)" stroke="#ff4444"/>
+      <text x="10" y="18" fill="#ff4444" font-size="10" font-family="JetBrains Mono, monospace" font-weight="700">NN-16</text>
+      <text x="52" y="18" fill="#a0a0b0" font-size="10">EMA apply_shadow() must .clone()</text>
+    </g>
+    <g transform="translate(548,18)">
+      <rect width="260" height="28" rx="4" fill="rgba(255,68,68,0.12)" stroke="#ff4444"/>
+      <text x="10" y="18" fill="#ff4444" font-size="10" font-family="JetBrains Mono, monospace" font-weight="700">NN-MEM-01</text>
+      <text x="90" y="18" fill="#a0a0b0" font-size="10">Hopfield bypass until ≥2 fwd passes</text>
+    </g>
+    <g transform="translate(822,18)">
+      <rect width="260" height="28" rx="4" fill="rgba(255,68,68,0.12)" stroke="#ff4444"/>
+      <text x="10" y="18" fill="#ff4444" font-size="10" font-family="JetBrains Mono, monospace" font-weight="700">P1-03</text>
+      <text x="50" y="18" fill="#a0a0b0" font-size="10">contrastive loss — embedding collapse fix</text>
+    </g>
+    <g transform="translate(1096,18)">
+      <rect width="260" height="28" rx="4" fill="rgba(255,68,68,0.12)" stroke="#ff4444"/>
+      <text x="10" y="18" fill="#ff4444" font-size="10" font-family="JetBrains Mono, monospace" font-weight="700">P-RSB-03</text>
+      <text x="78" y="18" fill="#a0a0b0" font-size="10">round_won never in input features</text>
+    </g>
+  </g>
+
+  <!-- LEGEND: PRE-TRAIN vs INFERENCE -->
+  <g transform="translate(72,922)">
+    <text fill="#a0a0b0" font-size="11">Stage 1 pre-training activates:</text>
+    <text x="220" y="0" fill="#d96600" font-size="11">context_encoder θ</text>
+    <text x="360" y="0" fill="#a0a0b0" font-size="11">+</text>
+    <text x="374" y="0" fill="#4a9eff" font-size="11">target_encoder θ̄ (EMA)</text>
+    <text x="560" y="0" fill="#a0a0b0" font-size="11">+</text>
+    <text x="574" y="0" fill="#d96600" font-size="11">predictor</text>
+    <text x="650" y="0" fill="#a0a0b0" font-size="11">→ InfoNCE loss</text>
+  </g>
+  <g transform="translate(72,942)">
+    <text fill="#a0a0b0" font-size="11">Stage 2 fine-tune activates:</text>
+    <text x="210" y="0" fill="#4caf50" font-size="11">frozen encoders</text>
+    <text x="316" y="0" fill="#a0a0b0" font-size="11">+</text>
+    <text x="330" y="0" fill="#4caf50" font-size="11">LSTM</text>
+    <text x="374" y="0" fill="#a0a0b0" font-size="11">+</text>
+    <text x="388" y="0" fill="#4caf50" font-size="11">MoE</text>
+    <text x="424" y="0" fill="#a0a0b0" font-size="11">+</text>
+    <text x="438" y="0" fill="#a855f7" font-size="11">Hopfield</text>
+    <text x="510" y="0" fill="#a0a0b0" font-size="11">→ coaching concepts</text>
+  </g>
+
+  <!-- EMA formula -->
+  <g transform="translate(72,972)">
+    <rect width="580" height="44" rx="6" fill="#0f0f2e" stroke="#ffaa00" stroke-dasharray="4,3"/>
+    <text x="14" y="18" fill="#ffaa00" font-size="12" font-family="JetBrains Mono, monospace">θ̄ ← τ · θ̄  +  (1 − τ) · θ     τ = 0.996</text>
+    <text x="14" y="36" fill="#a0a0b0" font-size="10">Exponential Moving Average keeps target encoder stable — no gradient flows through θ̄  (jepa_model.py:348)</text>
+  </g>
+
+  <!-- FOOTER -->
+  <g transform="translate(72,1050)">
+    <text fill="#3a3a5a" font-size="10">Macena CS2 Coach AI · design/architecture/jepa_model.svg · viewBox 1440×1080</text>
+    <text x="1296" y="0" text-anchor="end" fill="#3a3a5a" font-size="10">Source: backend/nn/jepa_model.py</text>
+  </g>
+</svg>

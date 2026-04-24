@@ -68,6 +68,9 @@ class CoachScreen(QWidget):
         if current > 0:
             self._on_belief(current)
         self._coach_vm.load_insights()
+        # Probe Ollama on screen entry so the status dot reflects reality
+        # instead of sticking at "Checking..." until the user opens chat.
+        self._chat_vm.check_availability()
 
     def on_leave(self):
         """Clean up when navigating away."""

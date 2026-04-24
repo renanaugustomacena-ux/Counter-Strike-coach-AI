@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from Programma_CS2_RENAN.backend.nn.coach_manager import CoachTrainingManager
 from Programma_CS2_RENAN.backend.nn.training_callbacks import CallbackRegistry
 from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
+from Programma_CS2_RENAN.core.config import RUNS_DIR
 from Programma_CS2_RENAN.observability.logger_setup import app_logger
 
 
@@ -48,8 +49,8 @@ def main():
     parser.add_argument(
         "--tb-logdir",
         type=str,
-        default="runs/",
-        help="TensorBoard log directory (default: runs/)",
+        default=RUNS_DIR,
+        help=f"TensorBoard log directory (default: {RUNS_DIR})",
     )
     parser.add_argument(
         "--no-tensorboard",

@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Inter, &#39;Segoe UI&#39;, system-ui, sans-serif">
+  <rect width="1440" height="900" fill="#0b0b14"></rect>
+
+  <text x="60" y="50" fill="#dcdcdc" font-size="22" font-weight="700">Typography Specimen</text>
+  <text x="60" y="72" fill="#a0a0b0" font-size="12">design_tokens.py · 6-step scale · Inter (UI) + JetBrains Mono (code/metrics)</text>
+
+
+  <g transform="translate(60 110)">
+    <text fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace" letter-spacing="1.2">SCALE · font_size_* · apps/qt_app/core/design_tokens.py:87</text>
+
+    <g transform="translate(0 24)">
+      <rect width="820" height="660" rx="10" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+
+
+      <g transform="translate(32 56)">
+        <text fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">font_size_stat · 28 · bold</text>
+        <text y="36" fill="#dcdcdc" font-size="28" font-weight="700">1.28 · RATING 2.1</text>
+      </g>
+      <line x1="32" y1="100" x2="788" y2="100" stroke="#3a3a5a" opacity="0.4"></line>
+
+
+      <g transform="translate(32 124)">
+        <text fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">font_size_h1 · 24 · bold</text>
+        <text y="34" fill="#dcdcdc" font-size="24" font-weight="700">Macena CS2 Analyzer</text>
+      </g>
+      <line x1="32" y1="168" x2="788" y2="168" stroke="#3a3a5a" opacity="0.4"></line>
+
+
+      <g transform="translate(32 192)">
+        <text fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">font_size_title · 18 · semibold</text>
+        <text y="30" fill="#dcdcdc" font-size="18" font-weight="600">Belief · Positioning · de_mirage</text>
+      </g>
+      <line x1="32" y1="232" x2="788" y2="232" stroke="#3a3a5a" opacity="0.4"></line>
+
+
+      <g transform="translate(32 256)">
+        <text fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">font_size_subtitle · 14 · semibold</text>
+        <text y="28" fill="#dcdcdc" font-size="14" font-weight="600">Demo Analysis · Drag or paste .dem path</text>
+      </g>
+      <line x1="32" y1="292" x2="788" y2="292" stroke="#3a3a5a" opacity="0.4"></line>
+
+
+      <g transform="translate(32 316)">
+        <text fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">font_size_body · 13 · regular</text>
+        <text y="28" fill="#dcdcdc" font-size="13">Your Mirage A-site executes are landing with high-impact flashbangs — 82% conversion over the last 4 matches.</text>
+      </g>
+      <line x1="32" y1="360" x2="788" y2="360" stroke="#3a3a5a" opacity="0.4"></line>
+
+
+      <g transform="translate(32 384)">
+        <text fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">font_size_caption · 11 · regular · often text_tertiary</text>
+        <text y="26" fill="#a0a0b0" font-size="11">24 rounds · 82.4 ADR · 28/19/6 K/D/A · last updated 2m ago</text>
+      </g>
+      <line x1="32" y1="420" x2="788" y2="420" stroke="#3a3a5a" opacity="0.4"></line>
+
+
+      <g transform="translate(32 444)">
+        <text fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace" letter-spacing="1.2">COLOR HIERARCHY (body size)</text>
+        <text y="22" fill="#dcdcdc" font-size="13" font-weight="600">text_primary · #dcdcdc — headings, key numbers, active nav</text>
+        <text y="42" fill="#a0a0b0" font-size="13">text_secondary · #a0a0b0 — descriptions, labels, body copy</text>
+        <text y="62" fill="#3a3a5a" font-size="13">text_tertiary · #3a3a5a — placeholders, timestamps, metadata</text>
+        <text y="82" fill="#666666" font-size="13">text_disabled · #666666 — greyed-out controls</text>
+        <text y="102" fill="#ffffff" font-size="13" font-weight="600">text_inverse · #ffffff — on accent backgrounds (buttons)</text>
+      </g>
+
+
+      <g transform="translate(32 572)">
+        <text fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace" letter-spacing="1.2">WEIGHTS · Qt QFont.Weight · 3 used</text>
+        <text y="22" fill="#dcdcdc" font-size="14" font-weight="400">Regular 400 — body copy, descriptions, chat</text>
+        <text y="44" fill="#dcdcdc" font-size="14" font-weight="600">Semibold 600 — titles, labels, button text</text>
+        <text y="66" fill="#dcdcdc" font-size="14" font-weight="700">Bold 700 — stats, headings, emphasis</text>
+      </g>
+    </g>
+  </g>
+
+
+  <g transform="translate(900 110)">
+    <text fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace" letter-spacing="1.2">FAMILIES</text>
+
+    <g transform="translate(0 24)">
+      <rect width="480" height="200" rx="10" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+
+      <g transform="translate(24 36)">
+        <text fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">PRIMARY UI</text>
+        <text y="22" fill="#dcdcdc" font-size="20" font-weight="700">Inter</text>
+        <text y="42" fill="#a0a0b0" font-size="11">fallback: Segoe UI (Windows), system-ui (Mac/Linux)</text>
+        <text y="68" fill="#dcdcdc" font-size="14">ABCDEFGHIJKLM 0123456789</text>
+        <text y="86" fill="#dcdcdc" font-size="14">abcdefghijklm · &amp; @ # $ %</text>
+      </g>
+
+      <line x1="24" y1="132" x2="456" y2="132" stroke="#3a3a5a" opacity="0.4"></line>
+
+      <g transform="translate(24 154)">
+        <text fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">MONOSPACE</text>
+        <text y="22" fill="#dcdcdc" font-size="20" font-weight="700" font-family="&#39;JetBrains Mono&#39;, monospace">JetBrains Mono</text>
+      </g>
+    </g>
+
+    <text y="248" fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace" letter-spacing="1.2">MONO USAGE · code · paths · hashes · stats dumps</text>
+
+    <g transform="translate(0 264)">
+      <rect width="480" height="280" rx="10" fill="#0a0a14" stroke="#3a3a5a"></rect>
+      <g font-family="&#39;JetBrains Mono&#39;, Consolas, monospace" font-size="11">
+        <text x="16" y="24" fill="#3a3a5a"># paths</text>
+        <text x="16" y="40" fill="#a0a0b0">~/demos/esl-pro/spirit_navi.dem</text>
+        <text x="16" y="56" fill="#a0a0b0">sha256: 09f3b4e2…c4a1</text>
+
+        <text x="16" y="84" fill="#3a3a5a"># metrics readout</text>
+        <text x="16" y="100" fill="#dcdcdc">adr          <tspan fill="#00ccff">82.4</tspan></text>
+        <text x="16" y="116" fill="#dcdcdc">hs_rate      <tspan fill="#ffaa00">0.64</tspan></text>
+        <text x="16" y="132" fill="#dcdcdc">rating_2_1   <tspan fill="#4db04f">1.28</tspan></text>
+        <text x="16" y="148" fill="#dcdcdc">kast         <tspan fill="#00ccff">0.79</tspan></text>
+
+        <text x="16" y="176" fill="#3a3a5a"># config snippet</text>
+        <text x="16" y="192" fill="#d96600">JEPA_ENCODER_DIM</text><text x="160" y="192" fill="#dcdcdc">= 512</text>
+        <text x="16" y="208" fill="#d96600">JEPA_LATENT_DIM</text><text x="160" y="208" fill="#dcdcdc">= 256</text>
+        <text x="16" y="224" fill="#d96600">JEPA_EMA_TAU</text><text x="160" y="224" fill="#dcdcdc">= 0.996</text>
+        <text x="16" y="240" fill="#d96600">METADATA_DIM</text><text x="160" y="240" fill="#dcdcdc">= 25</text>
+        <text x="16" y="256" fill="#d96600">GLOBAL_SEED</text><text x="160" y="256" fill="#dcdcdc">= 42</text>
+      </g>
+    </g>
+
+
+    <text y="572" fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace" letter-spacing="1.2">SPACING · 4px grid</text>
+    <g transform="translate(0 588)">
+      <rect width="480" height="160" rx="10" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <g font-size="11">
+        <text x="24" y="28" fill="#dcdcdc" font-weight="600">spacing_xs · 4px</text>
+        <rect x="220" y="17" width="4" height="14" fill="#d96600"></rect>
+        <text x="24" y="48" fill="#dcdcdc" font-weight="600">spacing_sm · 8px</text>
+        <rect x="220" y="37" width="8" height="14" fill="#d96600"></rect>
+        <text x="24" y="68" fill="#dcdcdc" font-weight="600">spacing_md · 12px</text>
+        <rect x="220" y="57" width="12" height="14" fill="#d96600"></rect>
+        <text x="24" y="88" fill="#dcdcdc" font-weight="600">spacing_lg · 16px</text>
+        <rect x="220" y="77" width="16" height="14" fill="#d96600"></rect>
+        <text x="24" y="108" fill="#dcdcdc" font-weight="600">spacing_xl · 24px</text>
+        <rect x="220" y="97" width="24" height="14" fill="#d96600"></rect>
+        <text x="24" y="128" fill="#dcdcdc" font-weight="600">spacing_xxl · 32px</text>
+        <rect x="220" y="117" width="32" height="14" fill="#d96600"></rect>
+        <text x="24" y="148" fill="#dcdcdc" font-weight="600">spacing_xxxl · 48px</text>
+        <rect x="220" y="137" width="48" height="14" fill="#d96600"></rect>
+      </g>
+    </g>
+  </g>
+
+  <text x="60" y="864" fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">Type + space tokens are frozen dataclass fields · no hardcoded hex or px values in screens/widgets</text>
+</svg>

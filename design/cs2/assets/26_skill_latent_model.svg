@@ -1,0 +1,257 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Roboto, Inter, system-ui, sans-serif">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#d96600"></path></marker>
+    <marker id="arG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#4caf50"></path></marker>
+    <marker id="arP" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#a855f7"></path></marker>
+  </defs>
+
+  <rect width="1440" height="900" fill="#14141e"></rect>
+
+  <g transform="translate(60,44)">
+    <text fill="#4caf50" font-size="10" letter-spacing="4" font-weight="700">SKILL MODEL · FRAME 26</text>
+    <text y="32" fill="#dcdcdc" font-size="24" font-weight="700">Skill Latent — 5-axis decomposition → 1-10 curriculum level</text>
+    <text y="54" fill="#a0a0b0" font-size="12">Z-score vs pro baseline → Gaussian CDF percentile → axis average → curriculum level</text>
+    <text y="74" fill="#3a3a5a" font-size="11" font-family="JetBrains Mono, monospace">backend/processing/skill_assessment.py · SkillAxes · SkillLatentModel</text>
+  </g>
+
+
+  <g transform="translate(60,150)">
+    <rect width="320" height="560" rx="8" fill="#1a1a2e"></rect>
+    <text x="16" y="26" fill="#dcdcdc" font-size="13" font-weight="700">Input: PlayerMatchStats row</text>
+    <text x="16" y="44" fill="#a0a0b0" font-size="11">10 features used across 5 axes</text>
+
+    <g transform="translate(16,72)" font-size="11" font-family="JetBrains Mono, monospace">
+
+      <g>
+        <text fill="#d96600" font-weight="700">MECHANICS</text>
+        <g transform="translate(0,16)">
+          <text fill="#a0a0b0">  accuracy</text>
+          <text x="180" fill="#dcdcdc">0.62</text>
+        </g>
+        <g transform="translate(0,32)">
+          <text fill="#a0a0b0">  avg_hs</text>
+          <text x="180" fill="#dcdcdc">0.52</text>
+        </g>
+      </g>
+      <g transform="translate(0,64)">
+        <text fill="#4a9eff" font-weight="700">POSITIONING</text>
+        <g transform="translate(0,16)">
+          <text fill="#a0a0b0">  rating_survival</text>
+          <text x="180" fill="#dcdcdc">1.12</text>
+        </g>
+        <g transform="translate(0,32)">
+          <text fill="#a0a0b0">  rating_kast</text>
+          <text x="180" fill="#dcdcdc">1.08</text>
+        </g>
+      </g>
+      <g transform="translate(0,128)">
+        <text fill="#4caf50" font-weight="700">UTILITY</text>
+        <g transform="translate(0,16)">
+          <text fill="#a0a0b0">  utility_blind_time</text>
+          <text x="180" fill="#dcdcdc">2.3</text>
+        </g>
+        <g transform="translate(0,32)">
+          <text fill="#a0a0b0">  utility_enemies_blinded</text>
+          <text x="180" fill="#dcdcdc">1.4</text>
+        </g>
+      </g>
+      <g transform="translate(0,192)">
+        <text fill="#ffaa00" font-weight="700">TIMING</text>
+        <g transform="translate(0,16)">
+          <text fill="#a0a0b0">  opening_duel_win_pct</text>
+          <text x="180" fill="#dcdcdc">0.55</text>
+        </g>
+        <g transform="translate(0,32)">
+          <text fill="#a0a0b0">  positional_aggression</text>
+          <text x="180" fill="#dcdcdc">0.72</text>
+        </g>
+      </g>
+      <g transform="translate(0,256)">
+        <text fill="#a855f7" font-weight="700">DECISION</text>
+        <g transform="translate(0,16)">
+          <text fill="#a0a0b0">  clutch_win_pct</text>
+          <text x="180" fill="#dcdcdc">0.67</text>
+        </g>
+        <g transform="translate(0,32)">
+          <text fill="#a0a0b0">  rating_impact</text>
+          <text x="180" fill="#dcdcdc">1.28</text>
+        </g>
+      </g>
+    </g>
+
+
+    <g transform="translate(16,418)">
+      <rect width="288" height="126" rx="6" fill="#0f0f2e"></rect>
+      <text x="12" y="22" fill="#dcdcdc" font-size="11" font-weight="700">Baseline</text>
+      <text x="12" y="42" fill="#a0a0b0" font-size="11">get_pro_baseline() → {feat: {mean, std}}</text>
+      <text x="12" y="62" fill="#a0a0b0" font-size="11">Computed from all pros in HLTV corpus</text>
+      <text x="12" y="84" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">baselines/pro_baseline.py</text>
+      <text x="12" y="102" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">P-SA-01-2: skip if std ≤ 0</text>
+      <text x="12" y="118" fill="#ffaa00" font-size="10">refreshed nightly via Scanner daemon</text>
+    </g>
+  </g>
+
+
+  <path d="M380 430 L420 430" stroke="#d96600" stroke-width="1.5" marker-end="url(#ar)"></path>
+
+
+  <g transform="translate(420,150)">
+    <rect width="440" height="560" rx="8" fill="#1a1a2e"></rect>
+    <text x="16" y="26" fill="#dcdcdc" font-size="13" font-weight="700">Gaussian CDF percentile · per feature</text>
+
+    <g transform="translate(16,52)" font-family="JetBrains Mono, monospace" font-size="11" fill="#a0a0b0">
+      <text>z = (val − baseline.mean) / baseline.std</text>
+      <text y="18">percentile = 1 / (1 + exp(−1.702 · z))   # ≈ Φ(z)</text>
+      <text y="36" fill="#5a5a8a">1.702 = √(2π / ln 2)</text>
+    </g>
+
+
+    <g transform="translate(16,116)">
+      <rect width="408" height="180" rx="6" fill="#0f0f2e"></rect>
+      <text x="14" y="20" fill="#dcdcdc" font-size="11" font-weight="700">σ(1.702·z) — Z-score → percentile</text>
+
+
+      <g transform="translate(30,40)">
+        <line x1="0" y1="110" x2="360" y2="110" stroke="#3a3a5a"></line>
+        <line x1="180" y1="0" x2="180" y2="110" stroke="#3a3a5a" stroke-dasharray="3 2"></line>
+
+
+        <line x1="0" y1="10" x2="360" y2="10" stroke="rgba(255,255,255,0.05)"></line>
+        <line x1="0" y1="60" x2="360" y2="60" stroke="rgba(255,255,255,0.05)"></line>
+
+
+        <path d="M0,105 C80,105 100,100 140,78 S200,15 200,10 S280,5 360,5" stroke="#4caf50" stroke-width="2" fill="none"></path>
+
+
+        <text x="-4" y="14" text-anchor="end" fill="#a0a0b0" font-size="10">1.0</text>
+        <text x="-4" y="64" text-anchor="end" fill="#a0a0b0" font-size="10">0.5</text>
+        <text x="-4" y="114" text-anchor="end" fill="#a0a0b0" font-size="10">0.0</text>
+        <text x="0" y="128" fill="#a0a0b0" font-size="10">−3σ</text>
+        <text x="180" y="128" text-anchor="middle" fill="#a0a0b0" font-size="10">0</text>
+        <text x="360" y="128" text-anchor="end" fill="#a0a0b0" font-size="10">+3σ</text>
+
+
+        <circle cx="220" cy="38" r="4" fill="#d96600"></circle>
+        <text x="228" y="32" fill="#d96600" font-size="10">you: z=+0.6 → 70th pct</text>
+      </g>
+    </g>
+
+
+    <text x="16" y="330" fill="#dcdcdc" font-size="13" font-weight="700">Axis averages (mean of 2 features each)</text>
+
+    <g transform="translate(16,356)" font-size="12">
+      <g>
+        <text fill="#d96600" font-weight="700" font-family="JetBrains Mono, monospace">MECHANICS</text>
+        <rect x="130" y="-12" width="200" height="14" rx="3" fill="#0f0f2e"></rect>
+        <rect x="130" y="-12" width="124" height="14" rx="3" fill="#d96600"></rect>
+        <text x="340" fill="#d96600" font-weight="700">0.62</text>
+      </g>
+      <g transform="translate(0,24)">
+        <text fill="#4a9eff" font-weight="700" font-family="JetBrains Mono, monospace">POSITIONING</text>
+        <rect x="130" y="-12" width="200" height="14" rx="3" fill="#0f0f2e"></rect>
+        <rect x="130" y="-12" width="152" height="14" rx="3" fill="#4a9eff"></rect>
+        <text x="340" fill="#4a9eff" font-weight="700">0.76</text>
+      </g>
+      <g transform="translate(0,48)">
+        <text fill="#4caf50" font-weight="700" font-family="JetBrains Mono, monospace">UTILITY</text>
+        <rect x="130" y="-12" width="200" height="14" rx="3" fill="#0f0f2e"></rect>
+        <rect x="130" y="-12" width="78" height="14" rx="3" fill="#4caf50"></rect>
+        <text x="340" fill="#4caf50" font-weight="700">0.39</text>
+      </g>
+      <g transform="translate(0,72)">
+        <text fill="#ffaa00" font-weight="700" font-family="JetBrains Mono, monospace">TIMING</text>
+        <rect x="130" y="-12" width="200" height="14" rx="3" fill="#0f0f2e"></rect>
+        <rect x="130" y="-12" width="108" height="14" rx="3" fill="#ffaa00"></rect>
+        <text x="340" fill="#ffaa00" font-weight="700">0.54</text>
+      </g>
+      <g transform="translate(0,96)">
+        <text fill="#a855f7" font-weight="700" font-family="JetBrains Mono, monospace">DECISION</text>
+        <rect x="130" y="-12" width="200" height="14" rx="3" fill="#0f0f2e"></rect>
+        <rect x="130" y="-12" width="146" height="14" rx="3" fill="#a855f7"></rect>
+        <text x="340" fill="#a855f7" font-weight="700">0.73</text>
+      </g>
+    </g>
+
+    <text x="16" y="504" fill="#a0a0b0" font-size="11">avg_skill = mean of 5 axes = (0.62 + 0.76 + 0.39 + 0.54 + 0.73) / 5 = <tspan fill="#dcdcdc" font-weight="700">0.608</tspan></text>
+    <text x="16" y="526" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">missing metric → get_z returns None · skipped (not zero-filled)</text>
+  </g>
+
+
+  <path d="M860 430 L900 430" stroke="#4caf50" stroke-width="1.5" marker-end="url(#arG)"></path>
+
+
+  <g transform="translate(900,150)">
+    <rect width="480" height="560" rx="8" fill="#1a1a2e"></rect>
+    <text x="16" y="26" fill="#dcdcdc" font-size="13" font-weight="700">Curriculum level · 1-10 skill index</text>
+
+    <g transform="translate(16,52)" font-family="JetBrains Mono, monospace" font-size="12" fill="#a0a0b0">
+      <text>level = round(avg_skill × 9) + 1</text>
+      <text y="18">     = round(0.608 × 9) + 1</text>
+      <text y="36" fill="#dcdcdc">     = 6</text>
+      <text y="54" fill="#5a5a8a"># P-SA-02: round() not int() for uniform mapping</text>
+    </g>
+
+
+    <text x="16" y="146" fill="#dcdcdc" font-size="12" font-weight="700">skill_tensor  ∈  ℝ [1, 10]  (one-hot)</text>
+
+    <g transform="translate(16,158)" font-size="11">
+
+      <g>
+        <rect width="42" height="42" rx="4" fill="#0f0f2e" stroke="#3a3a5a"></rect>
+        <text x="21" y="22" text-anchor="middle" fill="#a0a0b0">1</text>
+        <text x="21" y="38" text-anchor="middle" fill="#3a3a5a" font-size="9">0</text>
+      </g>
+      <g transform="translate(44,0)"><rect width="42" height="42" rx="4" fill="#0f0f2e" stroke="#3a3a5a"></rect><text x="21" y="22" text-anchor="middle" fill="#a0a0b0">2</text><text x="21" y="38" text-anchor="middle" fill="#3a3a5a" font-size="9">0</text></g>
+      <g transform="translate(88,0)"><rect width="42" height="42" rx="4" fill="#0f0f2e" stroke="#3a3a5a"></rect><text x="21" y="22" text-anchor="middle" fill="#a0a0b0">3</text><text x="21" y="38" text-anchor="middle" fill="#3a3a5a" font-size="9">0</text></g>
+      <g transform="translate(132,0)"><rect width="42" height="42" rx="4" fill="#0f0f2e" stroke="#3a3a5a"></rect><text x="21" y="22" text-anchor="middle" fill="#a0a0b0">4</text><text x="21" y="38" text-anchor="middle" fill="#3a3a5a" font-size="9">0</text></g>
+      <g transform="translate(176,0)"><rect width="42" height="42" rx="4" fill="#0f0f2e" stroke="#3a3a5a"></rect><text x="21" y="22" text-anchor="middle" fill="#a0a0b0">5</text><text x="21" y="38" text-anchor="middle" fill="#3a3a5a" font-size="9">0</text></g>
+      <g transform="translate(220,0)">
+        <rect width="42" height="42" rx="4" fill="#d96600" stroke="#ffffff"></rect>
+        <text x="21" y="22" text-anchor="middle" fill="#14141e" font-weight="700">6</text>
+        <text x="21" y="38" text-anchor="middle" fill="#14141e" font-size="9" font-weight="700">1</text>
+      </g>
+      <g transform="translate(264,0)"><rect width="42" height="42" rx="4" fill="#0f0f2e" stroke="#3a3a5a"></rect><text x="21" y="22" text-anchor="middle" fill="#a0a0b0">7</text><text x="21" y="38" text-anchor="middle" fill="#3a3a5a" font-size="9">0</text></g>
+      <g transform="translate(308,0)"><rect width="42" height="42" rx="4" fill="#0f0f2e" stroke="#3a3a5a"></rect><text x="21" y="22" text-anchor="middle" fill="#a0a0b0">8</text><text x="21" y="38" text-anchor="middle" fill="#3a3a5a" font-size="9">0</text></g>
+      <g transform="translate(352,0)"><rect width="42" height="42" rx="4" fill="#0f0f2e" stroke="#3a3a5a"></rect><text x="21" y="22" text-anchor="middle" fill="#a0a0b0">9</text><text x="21" y="38" text-anchor="middle" fill="#3a3a5a" font-size="9">0</text></g>
+      <g transform="translate(396,0)"><rect width="42" height="42" rx="4" fill="#0f0f2e" stroke="#3a3a5a"></rect><text x="21" y="22" text-anchor="middle" fill="#a0a0b0">10</text><text x="21" y="38" text-anchor="middle" fill="#3a3a5a" font-size="9">0</text></g>
+    </g>
+
+
+    <g transform="translate(16,220)" font-size="11">
+      <text fill="#a0a0b0">Tiers (communication layer):</text>
+      <text y="20" fill="#a0a0b0"><tspan fill="#ff9900">low</tspan> 1-3 (rookie)  ·  <tspan fill="#4a9eff">mid</tspan> 4-7 (solid)  ·  <tspan fill="#4db04f">high</tspan> 8-10 (pro)</text>
+      <text y="40" fill="#a0a0b0">You are in the <tspan fill="#4a9eff" font-weight="700">mid</tspan> tier — coach tone: practical, technical.</text>
+    </g>
+
+
+    <g transform="translate(16,300)">
+      <rect width="448" height="232" rx="8" fill="#0f0f2e"></rect>
+      <text x="14" y="24" fill="#a855f7" font-size="11" letter-spacing="2" font-weight="700">DOWNSTREAM · RAP Layer 4 Pedagogy</text>
+
+      <g transform="translate(14,44)" font-family="JetBrains Mono, monospace" font-size="11" fill="#a0a0b0">
+        <text>skill_vec = SkillLatentModel.calculate_skill_vector(stats)</text>
+        <text y="16">skill_tensor = SkillLatentModel.get_skill_tensor(skill_vec)</text>
+        <text y="32">                                        # shape [1, 10]</text>
+        <text y="52" fill="#dcdcdc">RAPPedagogy(</text>
+        <text y="68" x="24" fill="#dcdcdc">combined_state,</text>
+        <text y="84" x="24" fill="#a855f7">skill_tensor  # ← used here to bias Critic V(s)</text>
+        <text y="100" fill="#dcdcdc">)</text>
+      </g>
+
+      <text x="14" y="172" fill="#a0a0b0" font-size="11">And RAP Layer 5 Communication:</text>
+      <text x="14" y="190" fill="#dcdcdc" font-size="11">• level 1-3 tier → simple language, no jargon</text>
+      <text x="14" y="206" fill="#dcdcdc" font-size="11">• level 4-7 tier → technical, angles, timings</text>
+      <text x="14" y="222" fill="#dcdcdc" font-size="11">• level 8-10 tier → peer-level analysis, nuance</text>
+    </g>
+  </g>
+
+
+  <g transform="translate(60,740)">
+    <rect width="1320" height="130" rx="8" fill="rgba(76,175,80,0.06)" stroke="#4caf50" stroke-dasharray="5 3"></rect>
+    <text x="16" y="24" fill="#4caf50" font-size="11" letter-spacing="3" font-weight="700">WHY A SKILL LATENT, NOT A SINGLE RATING</text>
+    <text x="16" y="48" fill="#a0a0b0" font-size="12">A 1.10 HLTV rating hides the <tspan fill="#d96600">mechanical star with bad timing</tspan> vs the <tspan fill="#4a9eff">positional solid with weak aim</tspan>. The 5-axis decomposition surfaces</text>
+    <text x="16" y="66" fill="#a0a0b0" font-size="12">which specific skill pillar is pulling you up or down, so the coach prescribes deliberate practice — not generic &#34;get better&#34;.</text>
+    <text x="16" y="94" fill="#4caf50" font-size="12" font-weight="700">The model doesn&#39;t try to be universal. It models <tspan fill="#dcdcdc">you</tspan>, then coaches the gap between you and pros in each axis independently.</text>
+    <text x="16" y="118" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">skill_assessment.py:39 SkillLatentModel · test_skill_assessment.py coverage: 100%</text>
+  </g>
+</svg>

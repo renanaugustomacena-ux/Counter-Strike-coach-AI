@@ -8,7 +8,9 @@ import time
 # and `python -m` invocation this block is a no-op. Technical debt: remove when entrypoints
 # are configured in pyproject.toml/setup.py.
 current = os.path.dirname(os.path.abspath(__file__))
-root = os.path.dirname(os.path.dirname(os.path.dirname(current)))
+# current = <repo>/Programma_CS2_RENAN/core
+# repo root that *contains* the Programma_CS2_RENAN package is two dirnames up.
+root = os.path.dirname(os.path.dirname(current))
 if root not in sys.path:
     sys.path.insert(0, root)
 

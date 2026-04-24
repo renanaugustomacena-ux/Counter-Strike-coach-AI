@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Macena · CS2 Coach AI — Deck</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,300;1,9..144,500&family=Roboto:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<script type="application/json" id="speaker-notes">
+[
+  "Welcome. This is Macena — CS2 Coach AI. In the next fifteen minutes, I'll walk you through the problem we're solving, the product we've built, and the architecture behind it. The core idea: a coach that knows when to stay silent.",
+
+  "CS2 has about 32 million active players. Fewer than 0.001 percent have ever worked with a professional coach. That's the gap. You can watch a thousand demos and still not know what to fix next — signal is lost in opinion.",
+
+  "Our thesis is simple: reliability comes from self-correction, not from scale. Humility is a feature. Confidence below 0.70 means the coach stays silent. We'd rather ship silence than confident noise.",
+
+  "Before the architecture, the product. Ten screens, one cockpit. Every surface speaks the same language — dense, measured, and built for the player who treats every match like a film room.",
+
+  "This is the Coach screen — the cockpit. Conversational interface, anchored in real match data. The model references specific rounds, specific angles, specific economies. No generic advice.",
+
+  "Match Detail. Not a replay — an autopsy. We surface the decisions that mattered: retake commits, economy breaks, positioning errors. Each one traceable back to the raw tick data.",
+
+  "Tactical Viewer. Top-down with ghost positioning. You see the map as the coach sees it: heat, rotation vectors, map-control deltas per round. This is where pattern recognition lives.",
+
+  "Pro Comparison. Your decision versus the pro's decision on functionally equivalent positions. Same angle, same econ, same round state — different outcome. Receipts, not vibes.",
+
+  "Performance over time. Skill latent model projected to human-readable axes: aim, utility, positioning, economy, clutch. The curves are what improvement actually looks like at the level of bits.",
+
+  "Now the architecture. Seven layers in one loop. Perception, memory, policy, critique, gate, vector, hopfield — orchestrated by RAP. Every prediction passes through the gate before reaching the player.",
+
+  "JEPA — Joint-Embedding Predictive Architecture. We predict in latent space, not pixel space. No reconstruction loss. The target encoder is frozen, updated via EMA. This is the efficiency unlock.",
+
+  "The 25-dimensional feature vector. Exactly 25 dimensions, sourced from one file, vectorizer.py line 32. Round-won is explicitly excluded — it's outcome leakage. Everything measurable about a tick lives here.",
+
+  "Memory. Liquid Time Constant networks for continuous dynamics, Hopfield networks for associative recall. LTC handles the flow; Hopfield handles the patterns. 512 NCP units, 32 heads with 4-dim keys.",
+
+  "Chronovisor — our multiscale temporal module. Three scan horizons: 64 ticks, 192 ticks, 640 ticks. Short for reactions, medium for rounds, long for halves. One encoder, three timescales.",
+
+  "RAP — Reflex-Audit-Prompt. The loop that makes it trustworthy. The model drafts advice. It audits its own draft against context. It rewrites. Then the humility gate decides: ship or stay silent.",
+
+  "The humility gate. Confidence threshold at 0.70. Below that, the coach says nothing. Above, the advice ships. This is the single non-negotiable rule that makes the rest of the system viable.",
+
+  "Seven invariants. Hardcoded. Non-negotiable. Round-won excluded from all dimensions. Hopfield bypassed until two forward passes. EMA apply_shadow must clone. Target encoder never receives gradient. These rules exist because each one, historically, caused a production bug.",
+
+  "The design system. One token system, one theme grid, one component library, charts, icons, type. Forty-one frames, pixel-consistent. Every surface in the product inherits from here.",
+
+  "Where we are. The perception and memory layers are shipped and stable. RAP loop runs in production with real telemetry. Chronovisor is in closed beta. The gate is tuned on a held-out set.",
+
+  "Coaching that knows when to stay silent. That's Macena. Thank you."
+]
+</script>
+
+<style>
+  :root {
+    --base: #14141e;
+    --raised: #1a1a2e;
+    --sunken: #0f0f2e;
+    --deep: #0a0a14;
+    --accent: #d96600;
+    --accent-hi: #e67a1a;
+    --border: #3a3a5a;
+    --tx1: #dcdcdc;
+    --tx2: #a0a0b0;
+    --tx3: #6b6b7a;
+    --ok: #4caf50;
+    --warn: #ffaa00;
+    --err: #ff4444;
+    --info: #4a9eff;
+    --cyan: #00ccff;
+
+    --f-display: 'Anton', 'Oswald', 'Arial Narrow', Impact, sans-serif;
+    --f-serif:   'Fraunces', 'Playfair Display', Georgia, serif;
+    --f-sans:    'Roboto', Inter, system-ui, sans-serif;
+    --f-mono:    'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  }
+
+  html, body {
+    margin: 0; padding: 0;
+    height: 100%; width: 100%;
+    background: #000;
+    overflow: hidden;
+    font-family: var(--f-sans);
+    color: var(--tx1);
+  }
+  * { box-sizing: border-box; }
+  ::selection { background: rgba(217,102,0,0.4); color: #fff; }
+
+  /* ── Slide frame ───────────────────────────────────────────── */
+  deck-stage > section {
+    background: var(--base);
+    color: var(--tx1);
+    font-family: var(--f-sans);
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ── Reusable slide elements ─────────────────────────────── */
+  .frame {
+    position: absolute;
+    inset: 0;
+    padding: 100px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .kicker {
+    font-family: var(--f-mono);
+    font-size: 24px;
+    letter-spacing: 0.35em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 44px;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+  }
+  .kicker .tick {
+    width: 8px; height: 8px; background: var(--accent); display: inline-block;
+  }
+  .kicker .line { flex: 1; max-width: 200px; height: 1px; background: var(--border); }
+
+  .title {
+    font-family: var(--f-display);
+    font-size: 160px;
+    font-weight: 400;
+    letter-spacing: -0.03em;
+    line-height: 1.0;
+    color: var(--tx1);
+    text-transform: uppercase;
+    margin: 0;
+  }
+  .title.accent { color: var(--accent); }
+  .title.small { font-size: 120px; }
+
+  .subtitle {
+    font-family: var(--f-serif);
+    font-style: italic;
+    font-size: 40px;
+    font-weight: 300;
+    line-height: 1.3;
+    color: var(--tx2);
+    letter-spacing: -0.005em;
+    margin-top: 36px;
+    max-width: 1400px;
+  }
+  .subtitle strong { color: var(--accent); font-weight: 600; font-style: normal; }
+
+  .body {
+    font-family: var(--f-sans);
+    font-size: 34px;
+    font-weight: 300;
+    line-height: 1.45;
+    color: var(--tx2);
+    letter-spacing: -0.002em;
+  }
+  .body strong { color: var(--tx1); font-weight: 500; }
+
+  .meta {
+    font-family: var(--f-mono);
+    font-size: 26px;
+    letter-spacing: 0.25em;
+    color: var(--tx3);
+    text-transform: uppercase;
+  }
+
+  /* ── Persistent slide chrome ─────────────────────────────── */
+  .chrome {
+    position: absolute; inset: 0;
+    pointer-events: none;
+  }
+  .chrome .hud-top-l,
+  .chrome .hud-top-r,
+  .chrome .hud-bot-l,
+  .chrome .hud-bot-r {
+    position: absolute;
+    font-family: var(--f-mono);
+    font-size: 24px;
+    letter-spacing: 0.3em;
+    color: var(--tx3);
+    text-transform: uppercase;
+  }
+  .chrome .hud-top-l { top: 40px; left: 60px; display: flex; align-items: center; gap: 12px; }
+  .chrome .hud-top-l .dot { width: 8px; height: 8px; background: var(--accent); }
+  .chrome .hud-top-r { top: 40px; right: 60px; }
+  .chrome .hud-bot-l { bottom: 40px; left: 60px; }
+  .chrome .hud-bot-r { bottom: 40px; right: 60px; color: var(--accent); }
+  .chrome .rule {
+    position: absolute; left: 60px; right: 60px;
+    height: 1px; background: var(--border); opacity: 0.4;
+  }
+  .chrome .rule.top { top: 80px; }
+  .chrome .rule.bot { bottom: 80px; }
+
+  /* ── Special backgrounds ─────────────────────────────────── */
+  section.bg-deep { background: var(--deep); }
+  section.bg-sunken { background: var(--sunken); }
+  section.bg-accent {
+    background: var(--accent);
+    color: var(--deep);
+  }
+  section.bg-accent .kicker,
+  section.bg-accent .meta,
+  section.bg-accent .chrome * { color: rgba(20,20,30,0.6) !important; }
+  section.bg-accent .kicker .tick,
+  section.bg-accent .chrome .dot { background: var(--deep) !important; }
+  section.bg-accent .title { color: var(--deep); }
+
+  /* ── Big numbers ─────────────────────────────────────────── */
+  .bignum {
+    font-family: var(--f-display);
+    font-weight: 400;
+    letter-spacing: -0.04em;
+    line-height: 0.9;
+    font-variant-numeric: tabular-nums;
+  }
+  .bignum.xl { font-size: 420px; }
+  .bignum.lg { font-size: 280px; }
+  .bignum.md { font-size: 180px; }
+
+  /* ── Screen card (for product slides) ────────────────────── */
+  .screen-card {
+    position: absolute;
+    background: var(--sunken);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+  }
+  .screen-card img {
+    width: 100%; height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+  .screen-card .corner-tl,
+  .screen-card .corner-tr,
+  .screen-card .corner-bl,
+  .screen-card .corner-br {
+    position: absolute; width: 18px; height: 18px;
+    border-color: var(--accent); border-style: solid;
+  }
+  .screen-card .corner-tl { top: 8px; left: 8px; border-width: 2px 0 0 2px; }
+  .screen-card .corner-tr { top: 8px; right: 8px; border-width: 2px 2px 0 0; }
+  .screen-card .corner-bl { bottom: 8px; left: 8px; border-width: 0 0 2px 2px; }
+  .screen-card .corner-br { bottom: 8px; right: 8px; border-width: 0 2px 2px 0; }
+  .screen-card .tag {
+    position: absolute; top: 0; right: 0;
+    background: var(--accent); color: var(--deep);
+    font-family: var(--f-mono); font-size: 24px;
+    letter-spacing: 0.2em; padding: 8px 16px;
+    font-weight: 700; text-transform: uppercase;
+  }
+
+  /* ── Stat grid ───────────────────────────────────────────── */
+  .stat-row { display: flex; gap: 100px; flex-wrap: wrap; }
+  .stat { }
+  .stat .k {
+    font-family: var(--f-display);
+    font-size: 140px; line-height: 0.9;
+    color: var(--tx1); letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat .u {
+    font-family: var(--f-mono);
+    font-size: 26px; letter-spacing: 0.4em;
+    color: var(--accent); text-transform: uppercase;
+    margin-top: 12px;
+  }
+
+  /* ── Rows / lists (invariants) ───────────────────────────── */
+  .rule-row {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 28px;
+    align-items: baseline;
+    padding: 22px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .rule-row:last-child { border-bottom: none; }
+  .rule-row .code {
+    font-family: var(--f-mono);
+    font-size: 28px;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+  .rule-row .rule {
+    font-family: var(--f-sans);
+    font-size: 28px;
+    font-weight: 300;
+    color: var(--tx1);
+    line-height: 1.3;
+  }
+
+  /* ── Dimension vector vis ────────────────────────────────── */
+  .dim-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 18px;
+  }
+  .dim-cell {
+    border: 1px solid var(--border);
+    padding: 18px 20px;
+    background: rgba(0,0,0,0.3);
+  }
+  .dim-cell .n {
+    font-family: var(--f-mono);
+    font-size: 24px;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+  .dim-cell .l {
+    font-family: var(--f-sans);
+    font-size: 24px;
+    font-weight: 400;
+    color: var(--tx1);
+    margin-top: 6px;
+  }
+
+  /* ── Pipeline layer row ──────────────────────────────────── */
+  .layer-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 28px;
+    border: 1px solid var(--border);
+    background: rgba(0,0,0,0.3);
+    font-family: var(--f-mono);
+  }
+  .layer-chip .n {
+    font-size: 24px;
+    color: var(--accent);
+    letter-spacing: 0.25em;
+  }
+  .layer-chip .l {
+    font-family: var(--f-display);
+    font-size: 28px;
+    color: var(--tx1);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  /* ── Quote block ─────────────────────────────────────────── */
+  .quote {
+    font-family: var(--f-serif);
+    font-style: italic;
+    font-weight: 300;
+    font-size: 72px;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    color: var(--tx1);
+    max-width: 1500px;
+  }
+  .quote::before { content: '“'; color: var(--accent); }
+  .quote::after { content: '”'; color: var(--accent); }
+  .quote-by {
+    font-family: var(--f-mono);
+    font-size: 28px;
+    letter-spacing: 0.35em;
+    color: var(--tx3);
+    text-transform: uppercase;
+    margin-top: 40px;
+  }
+
+  /* Print (skill requirement) */
+  @media print {
+    html, body { background: #000; }
+  }
+</style>
+</head>
+
+<body>
+<deck-stage width="1920" height="1080">
+
+  <!-- 01 · TITLE -->
+  <section data-label="Title" class="bg-deep">
+    <div class="chrome">
+      <div class="hud-top-l"><span class="dot"></span>MACENA / CS2-COACH-AI</div>
+      <div class="hud-top-r">DECK · v1 · 2026.04</div>
+      <div class="rule top"></div>
+      <div class="rule bot"></div>
+      <div class="hud-bot-l">01 / 20</div>
+      <div class="hud-bot-r">THE DECK</div>
+    </div>
+    <div class="frame" style="justify-content: center; padding: 100px 120px;">
+      <div style="width: 220px; height: 4px; background: var(--accent); margin-bottom: 56px;"></div>
+      <div class="title" style="font-size: 340px; letter-spacing: -0.04em; text-shadow: 0 0 40px rgba(217,102,0,0.4);">MACENA</div>
+      <div class="kicker" style="margin-top: 48px; font-size: 26px; letter-spacing: 0.6em;">CS2 · COACH · AI</div>
+      <div class="subtitle" style="margin-top: 80px; max-width: 1100px; font-size: 36px;">
+        Reliability through <strong>self-correction</strong>.<br/>
+        Coaching that knows when to stay silent.
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 · PROBLEM -->
+  <section data-label="The Problem">
+    <div class="chrome">
+      <div class="hud-top-l"><span class="dot"></span>MACENA / CS2-COACH-AI</div>
+      <div class="hud-top-r">ACT · 01 · THE PROBLEM</div>
+      <div class="rule top"></div>
+      <div class="rule bot"></div>
+      <div class="hud-bot-l">02 / 20</div>
+      <div class="hud-bot-r">GAP</div>
+    </div>
+    <div class="frame">
+      <div class="kicker"><span class="tick"></span>ACT 01 · THE PROBLEM<span class="line"></span></div>
+      <div class="title">THE GAP.</div>
+
+      <div class="stat-row" style="margin-top: 100px; gap: 140px;">
+        <div class="stat">
+          <div class="k">32<span style="font-size: 0.6em; color: var(--accent);">M</span></div>
+          <div class="u" style="margin-top: 32px;">ACTIVE PLAYERS · CS2</div>
+        </div>
+        <div class="stat">
+          <div class="k" style="color: var(--err);">&lt; 0.001<span style="font-size: 0.4em;">%</span></div>
+          <div class="u" style="margin-top: 32px;">HAVE WORKED WITH A COACH</div>
+        </div>
+      </div>
+
+      <div class="subtitle" style="margin-top: 80px;">
+        You can watch a thousand demos and still not know
+        <strong>what to fix next.</strong>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 · THESIS -->
+  <section data-label="The Thesis" class="bg-sunken">
+    <div class="chrome">
+      <div class="hud-top-l"><span class="dot"></span>MACENA / CS2-COACH-AI</div>
+      <div class="hud-top-r">ACT · 02 · THESIS</div>
+      <div class="rule top"></div>
+      <div class="rule bot"></div>
+      <div class="hud-bot-l">03 / 20</div>
+      <div class="hud-bot-r">SILENCE &gt; NOISE</div>
+    </div>
+    <div class="frame">
+      <div class="kicker"><span class="tick"></span>ACT 02 · THE THESIS<span class="line"></span></div>
+      <div class="title">RELIABILITY</div>
+      <div class="title">THROUGH</div>
+      <div class="title accent">SELF-</div>
+      <div class="title accent">CORRECTION.</div>
+      <div class="meta" style="margin-top: 60px;">NOT THROUGH SCALE · NOT THROUGH VOLUME · NOT THROUGH CONFIDENCE</div>
+    </div>
+  </section>
+
+  <!-- 04 · PRODUCT INTRO -->
+  <section data-label="The Product">
+    <div class="chrome">
+      <div class="hud-top-l"><span class="dot"></span>MACENA / CS2-COACH-AI</div>
+      <div class="hud-top-r">ACT · 03 · PRODUCT</div>
+      <div class="rule top"></div>
+      <div class="rule bot"></div>
+      <div class="hud-bot-l">04 / 20</div>
+      <div class="hud-bot-r">10 SCREENS</div>
+    </div>
+    <div class="frame">
+      <div class="kicker"><span class="tick"></span>ACT 03 · THE PRODUCT<span class="line"></span></div>
+      <div class="title">TEN SCREENS.</div>
+      <div class="title accent">ONE COCKPIT.</div>
+      <div class="subtitle" style="margin-top: 60px;">
+        Every surface speaks the same language —
+        <strong>dense, measured, film-room grade.</strong>
+      </div>
+      <div style="display: flex; gap: 24px; margin-top: 80px; flex-wrap: wrap;">
+        <div class="layer-chip"><span class="n">06</span><span class="l">COACH</span></div>
+        <div class="layer-chip"><span class="n">09</span><span class="l">MATCH</span></div>
+        <div class="layer-chip"><span class="n">13</span><span class="l">TACTICAL</span></div>
+        <div class="layer-chip"><span class="n">15</span><span class="l">PRO COMPARE</span></div>
+        <div class="layer-chip"><span class="n">12</span><span class="l">PROGRESS</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 · COACH SCREEN -->
+  <section data-label="Coach">
+    <div class="chrome">
+      <div class="hud-top-l"><span class="dot"></span>MACENA / CS2-COACH-AI</div>
+      <div class="hud-top-r">SCREEN · 06 · COACH</div>
+      <div class="rule top"></div>
+      <div class="rule bot"></div>
+      <div class="hud-bot-l">05 / 20</div>
+      <div class="hud-bot-r">THE COCKPIT</div>
+    </div>
+    <div class="frame" style="flex-direction: row; gap: 80px; align-items: stretch;">
+      <div style="flex: 0 0 520px; display: flex; flex-direction: column; justify-content: center;">
+        <div class="kicker"><span class="tick"></span>SCREEN 06<span class="line"></span></div>
+        <div class="title small">COACH.</div>
+        <div class="subtitle" style="margin-top: 32px; font-size: 32px;">
+          Conversational, anchored in <strong>real match data.</strong>
+        </div>
+        <div class="meta" style="margin-top: 48px; line-height: 2;">
+          → SPECIFIC ROUNDS<br/>
+          → SPECIFIC ANGLES<br/>
+          → SPECIFIC ECONOMIES
+        </div>
+      </div>
+      <div class="screen-card" style="position: relative; flex: 1; min-height: 780px;">
+        <img src="assets/06_coach.svg" alt="Coach screen"/>
+        <div class="corner-tl"></div><div class="corner-tr"></div>
+        <div class="corner-bl"></div><div class="corner-br"></div>
+        <div class="tag">FRAME 06</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 · MATCH DETAIL -->
+  <section data-label="Match Detail" class="bg-deep">
+    <div class="chrome">
+      <div class="hud-top-l"><span class="dot"></span>MACENA / CS2-COACH-AI</div>
+      <div class="hud-top-r">SCREEN · 09 · MATCH</div>
+      <div class="rule top"></div>
+      <div class="rule bot"></div>
+      <div class="hud-bot-l">06 / 20</div>
+      <div class="hud-bot-r">AUTOPSY</div>
+    </div>
+    <div class="frame" style="flex-direction: row-reverse; gap: 80px; align-items: stretch;">
+      <div style="flex: 0 0 520px; display: flex; flex-direction: column; justify-content: center;">
+        <div class="kicker"><span class="tick"></span>SCREEN 09<span class="line"></span></div>
+        <div class="title small">AUTOPSY,<br/>NOT REPLAY.</div>
+        <div class="subtitle" style="margin-top: 32px; font-size: 30px;">
+          The <strong>decisions</strong> that mattered — traceable back to raw tick data.
+        </div>
+      </div>
+      <div class="screen-card" style="position: relative; flex: 1; min-height: 780px;">
+        <img src="assets/09_match_detail_overview.svg" alt="Match detail"/>
+        <div class="corner-tl"></div><div class="corner-tr"></div>
+        <div class="corner-bl"></div><div class="corner-br"></div>
+        <div class="tag" style="background: var(--info);">FRAME 09</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 07 · TACTICAL VIEWER -->
+  <section data-label="Tactical Viewer">
+    <div class="chrome">
+      <div class="hud-top-l"><span class="dot"></span>MACENA / CS2-COACH-AI</div>
+      <div class="hud-top-r">SCREEN · 13 · TACTICAL</div>
+      <div class="rule top"></div>
+      <div class="rule bot"></div>
+      <div class="hud-bot-l">07 / 20</div>
+      <div class="hud-bot-r">MAP SENSE</div>
+    </div>
+    <div class="frame" style="flex-direction: row; gap: 80px; align-items: stretch;">
+      <div style="flex: 0 0 520px; display: flex; flex-direction: column; justify-content: center;">
+        <div class="kicker" style="color: var(--cyan);"><span class="tick" style="background: var(--cyan);"></span>SCREEN 13<span class="line"></span></div>
+        <div class="title small">SEE THE MAP.</div>
+        <div class="subtitle" style="margin-top: 32px; font-size: 30px;">
+          Top-down with <strong>ghost positioning.</strong> Heat, rotation vectors, map-control deltas per round.
+        </div>
+      </div>
+      <div class="screen-card" style="position: relative; flex: 1; min-height: 780px;">
+        <img src="assets/13_tactical_viewer.svg" alt="Tactical viewer"/>
+        <div class="corner-tl" style="border-color: var(--cyan);"></div>
+        <div class="corner-tr" style="border-color: var(--cyan);"></div>
+        <div class="corner-bl" style="border-color: var(--cyan);"></div>
+        <div class="corner-br" style="border-color: var(--cyan);"></div>
+        <div class="tag" style="background: var(--cyan);">FRAME 13</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 08 · PRO COMPARE -->
+  <section data-label="Pro Comparison" class="bg-sunken">
+    <div class="chrome">
+      <div class="hud-top-l"><span class="dot"></span>MACENA / CS2-COACH-AI</div>
+      <div class="hud-top-r">SCREEN · 15 · COMPARE</div>
+      <div class="rule top"></div>
+      <div class="rule bot"></div>
+      <div class="hud-bot-l">08 / 20</div>
+      <div class="hud-bot-r">RECEIPTS</div>
+    </div>
+    <div class="frame" style="flex-direction: row-reverse; gap: 80px; align-items: stretch;">
+      <div style="flex: 0 0 520px; display: flex; flex-direction: column; justify-content: center;">
+        <div class="kicker" style="color: var(--warn);"><span class="tick" style="background: var(--warn);"></span>SCREEN 15<span class="line"></span></div>
+        <div class="title small">PRO VS. YOU.</div>
+        <div class="subtitle" style="margin-top: 32px; font-size: 30px;">
+          Same angle, same econ, same round state — <strong>different outcome.</strong>
+        </div>
+        <div class="meta" style="margin-top: 40px; color: var(--warn); font-size: 28px;">RECEIPTS · NOT VIBES</div>
+      </div>
+      <div class="screen-card" style="position: relative; flex: 1; min-height: 780px;">
+        <img src="assets/15_pro_comparison.svg" alt="Pro comparison"/>
+        <div class="corner-tl" style="border-color: var(--warn);"></div>
+        <div class="corner-tr" style="border-color: var(--warn);"></div>
+        <div class="corner-bl" style="border-color: var(--warn);"></div>
+        <div class="corner-br" style="border-color: var(--warn);"></div>
+        <div class="tag" style="background: var(--warn);">FRAME 15</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 09 · PERFORMANCE -->
+  <section data-label="Performance">
+    <div class="chrome">
+      <div class="hud-top-l"><span class="dot"></span>MACENA / CS2-COACH-AI</div>
+      <div class="hud-top-r">SCREEN · 12 · PROGRESS</div>
+      <div class="rule top"></div>
+      <div class="rule bot"></div>
+      <div class="hud-bot-l">09 / 20</div>
+      <div class="hud-bot-r">CURVE</div>
+    </div>
+    <div class="frame" style="flex-direction: row; gap: 80px; align-items: stretch;">
+      <div style="flex: 0 0 520px; display: flex; flex-direction: column; justify-content: center;">
+        <div class="kicker" style="color: var(--ok);"><span class="tick" style="background: var(--ok);"></span>SCREEN 12<span class="line"></span></div>
+        <div class="title small">SKILL<br/>OVER TIME.</div>
+        <div class="subtitle" style="margin-top: 32px; font-size: 30px;">
+          Skill latent projected to <strong>five human axes.</strong> Aim, utility, positioning, economy, clutch.
+        </div>
+      </div>
+      <div class="screen-card" style="position: relative; flex: 1; min-height: 780px;">
+        <img src="assets/12_performance.svg" alt="Performance"/>
+        <div class="corner-tl" style="border-color: var(--ok);"></div>
+        <div class="corner-tr" style="border-color: var(--ok);"></div>
+        <div class="corner-bl" style="border-color: var(--ok);"></div>
+        <div class="corner-br" style="border-color: var(--ok);"></div>
+        <div class="tag" style="background: var(--ok);">FRAME 12</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 · ARCHITECTURE -->
+  <section data-label="Architecture" class="bg-deep">
+    <div class="chrome">
+      <div class="hud-top-l"><span class="dot"></span>MACENA / CS2-COACH-AI</div>
+      <div class="hud-top-r">ACT · 04 · ARCHITECTURE</div>
+      <div class="rule top"></div>
+      <div class="rule bot"></div>
+      <div class="hud-bot-l">10 / 20</div>
+      <div class="hud-bot-r">7 LAYERS · 1 LOOP</div>
+    </div>
+    <div class="frame">
+      <div class="kicker"><span class="tick"></span>ACT 04 · ARCHITECTURE<span class="line"></span></div>
+      <div class="title">SEVEN LAYERS.</div>
+      <div class="title accent">ONE LOOP.</div>
+      <div class="screen-card" style="left: 100px; right: 100px; top: 600px; bottom: 100px; background: rgba(0,0,0,0.4);">
+        <img src="assets/37_rap_7_layer_pipeline.svg" alt="RAP pipeline" style="object-fit: contain;"/>
+        <div class="corner-tl"></div><div class="corner-tr"></div>
+        <div class="corner-bl"></div><div class="corner-br"></div>
+        <div class="tag">FRAME 37</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11 · JEPA -->
+  <section data-label="JEPA" class="bg-sunken">
+    <div class="chrome">
+      <div class="hud-top-l"><span class="dot"></span>MACENA / CS2-COACH-AI</div>
+      <div class="hud-top-r">ARCH · JEPA</div>
+      <div class="rule top"></div>
+      <div class="rule bot"></div>
+      <div class="hud-bot-l">11 / 20</div>
+      <div class="hud-bot-r">LATENT OVER PIXEL</div>
+    </div>
+    <div class="frame" style="flex-direction: row; gap: 60px; align-items: stretch;">
+      <div style="flex: 0 0 720px; display: flex; flex-direction: column; justify-content: center;">
+        <div class="kicker" style="color: var(--cyan);"><span class="tick" style="background: var(--cyan);"></span>JOINT-EMBEDDING PREDICTIVE<span class="line"></span></div>
+        <div class="title small">PREDICT IN<br/><span style="color: var(--accent);">LATENT SPACE.</span></div>
+        <div class="subtitle" style="margin-top: 40px; font-size: 30px;">
+          No pixel reconstruction.<br/>
+          No wasted compute.<br/>
+          Just <strong>intent</strong>, encoded.
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 14px; margin-top: 56px;">
+          <div class="layer-chip" style="padding: 10px 18px;"><span class="l" style="font-size: 28px; font-family: var(--f-mono); text-transform: none;">target_encoder frozen</span></div>
+          <div class="layer-chip" style="padding: 10px 18px;"><span class="l" style="font-size: 28px; font-family: var(--f-mono); text-transform: none;">EMA update</span></div>
+          <div class="layer-chip" style="padding: 10px 18px;"><span class="l" style="font-size: 28px; font-family: var(--f-mono); text-transform: none;">requires_grad=False</span></div>
+          <div class="layer-chip" style="padding: 10px 18px;"><span class="l" style="font-size: 28px; font-family: var(--f-mono); text-transform: none;">NN-JM-04</span></div>
+        </div>
+      </div>
+      <div class="screen-card" style="position: relative; flex: 1; min-height: 780px; background: rgba(0,0,0,0.4);">
+        <img src="assets/22_jepa_architecture.svg" alt="JEPA architecture"/>
+        <div class="corner-tl" style="border-color: var(--cyan);"></div>
+        <div class="corner-tr" style="border-color: var(--cyan);"></div>
+        <div class="corner-bl" style="border-color: var(--cyan);"></div>
+        <div class="corner-br" style="border-color: var(--cyan);"></div>
+        <div class="tag" style="background: var(--cyan);">FRAME 22</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12 · FEATURE VECTOR -->
+  <section data-label="Feature Vector">
+    <div class="chrome">
+      <div class="hud-top-l"><span class="dot"></span>MACENA / CS2-COACH-AI</div>
+      <div class="hud-top-r">ARCH · VECTOR</div>
+      <div class="rule top"></div>
+      <div class="rule bot"></div>
+      <div class="hud-bot-l">12 / 20</div>
+      <div class="hud-bot-r">25 DIMS</div>
+    </div>
+    <div class="frame">
+      <div class="kicker"><span class="tick"></span>THE FEATURE VECTOR<span class="line"></span></div>
+      <div class="title small">25 DIMENSIONS.<br/><span style="color: var(--accent);">ONE FILE.</span></div>
+      <div style="display: flex; gap: 64px; margin-top: 64px; align-items: flex-start;">
+        <div style="flex: 0 0 500px;">
+          <div class="subtitle" style="font-size: 28px; margin-top: 0;">
+            Sourced from <strong>vectorizer.py:32</strong>. Round-won explicitly excluded — outcome leakage.
+          </div>
+          <div class="meta" style="margin-top: 40px; line-height: 1.9;">
+            → BOUNDS CHECKED<br/>
+            → NAN/INF CLAMPED<br/>
+            → &gt; 5% INVALID → DataQualityError
+          </div>
+        </div>
+        <div class="dim-grid" style="flex: 1;">
+          <div class="dim-cell"><div class="n">D00</div><div class="l">health</div></div>
+          <div class="dim-cell"><div class="n">D01</div><div class="l">armor</div></div>
+          <div class="dim-cell"><div class="n">D02</div><div class="l">money</div></div>
+          <div class="dim-cell"><div class="n">D03</div><div class="l">weapon_tier</div></div>
+          <div class="dim-cell"><div class="n">D04</div><div class="l">has_utility</div></div>
+          <div class="dim-cell"><div class="n">D05</div><div class="l">pos_x</div></div>
+          <div class="dim-cell"><div class="n">D06</div><div class="l">pos_y</div></div>
+          <div class="dim-cell"><div class="n">D07</div><div class="l">view_angle</div></div>
+          <div class="dim-cell"><div class="n">D08</div><div class="l">velocity</div></div>
+          <div class="dim-cell"><div class="n">D09</div><div class="l">crosshair</div></div>
+          <div class="dim-cell"><div class="n">D10</div><div class="l">team_econ</div></div>
+          <div class="dim-cell"><div class="n">D11</div><div class="l">alive_count</div></div>
+          <div class="dim-cell"><div class="n">D12</div><div class="l">bomb_state</div></div>
+          <div class="dim-cell"><div class="n">D13</div><div class="l">round_clock</div></div>
+          <div class="dim-cell"><div class="n">D14</div><div class="l">map_control</div></div>
+          <div class="dim-cell" style="border-color: var(--err); background: rgba(255,68,68,0.08);"><div class="n" style="color: var(--err);">D15</div><div class="l" style="color: var(--err); text-decoration: line-through;">round_won</div></div>
+          <div class="dim-cell"><div class="n">…</div><div class="l">+ 10 more</div></div>
+          <div class="dim-cell"><div class="n">D24</div><div class="l">phase_ratio</div></div>
+          <div class="dim-cell" style="border-style: dashed; background: transparent;"><div class="n" style="color: var(--tx3);">P-RSB-03</div><div class="l" style="color: var(--tx3); font-size: 24px;">round_won banned</div></div>
+          <div class="dim-cell" style="border-style: dashed; background: transparent;"><div class="n" style="color: var(--tx3);">METADATA_DIM</div><div class="l" style="color: var(--tx3); font-size: 24px;">single source</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13 · MEMORY -->
+  <section data-label="Memory" class="bg-deep">
+    <div class="chrome">
+      <div class="hud-top-l"><span class="dot"></span>MACENA / CS2-COACH-AI</div>
+      <div class="hud-top-r">ARCH · MEMORY</div>
+      <div class="rule top"></div>
+      <div class="rule bot"></div>
+      <div class="hud-bot-l">13 / 20</div>
+      <div class="hud-bot-r">LTC + HOPFIELD</div>
+    </div>
+    <div class="frame" style="flex-direction: row; gap: 60px; align-items: stretch;">
+      <div style="flex: 0 0 720px; display: flex; flex-direction: column; justify-content: center;">
+        <div class="kicker"><span class="tick"></span>THE MEMORY SYSTEM<span class="line"></span></div>
+        <div class="title small">LTC + <span style="color: var(--accent);">HOPFIELD.</span></div>
+        <div class="subtitle" style="margin-top: 40px; font-size: 30px;">
+          Continuous <strong>flow</strong>. Associative <strong>recall</strong>.
+          Two mechanisms, one hippocampus.
+        </div>
+        <div class="stat-row" style="margin-top: 60px; gap: 80px;">
+          <div class="stat"><div class="k" style="font-size: 100px;">512</div><div class="u" style="margin-top: 28px;">NCP UNITS · LTC</div></div>
+          <div class="stat"><div class="k" style="font-size: 100px;">32<span style="color: var(--accent);">×4</span></div><div class="u" style="margin-top: 28px;">HEAD × DIM · HOPFIELD</div></div>
+        </div>
+      </div>
+      <div class="screen-card" style="position: relative; flex: 1; min-height: 780px; background: rgba(0,0,0,0.4);">
+        <img src="assets/25_rap_hopfield_memory.svg" alt="Memory system"/>
+        <div class="corner-tl"></div><div class="corner-tr"></div>
+        <div class="corner-bl"></div><div class="corner-br"></div>
+        <div class="tag">FRAME 25</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 14 · CHRONOVISOR -->
+  <section data-label="Chronovisor">
+    <div class="chrome">
+      <div class="hud-top-l"><span class="dot"></span>MACENA / CS2-COACH-AI</div>
+      <div class="hud-top-r">ARCH · CHRONOVISOR</div>
+      <div class="rule top"></div>
+      <div class="rule bot"></div>
+      <div class="hud-bot-l">14 / 20</div>
+      <div class="hud-bot-r">3 TIMESCALES</div>
+    </div>
+    <div class="frame">
+      <div class="kicker"><span class="tick"></span>CHRONOVISOR · MULTISCALE TEMPORAL<span class="line"></span></div>
+      <div class="title small">THREE HORIZONS.<br/><span style="color: var(--accent);">ONE ENCODER.</span></div>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; margin-top: 80px;">
+        <div class="screen-card" style="position: relative; height: 440px; padding: 40px; background: rgba(0,0,0,0.3);">
+          <div class="meta" style="margin-bottom: 20px;">SCAN · SHORT</div>
+          <div class="bignum" style="font-size: 180px; color: var(--info);">64</div>
+          <div class="meta" style="margin-top: 20px; color: var(--tx2); letter-spacing: 0.15em;">TICKS</div>
+          <div class="body" style="font-size: 24px; margin-top: 32px; color: var(--tx1);">Reactions.<br/>Aim duels. Peek timings.</div>
+          <div class="corner-tl" style="border-color: var(--info);"></div><div class="corner-tr" style="border-color: var(--info);"></div>
+          <div class="corner-bl" style="border-color: var(--info);"></div><div class="corner-br" style="border-color: var(--info);"></div>
+        </div>
+        <div class="screen-card" style="position: relative; height: 440px; padding: 40px; background: rgba(0,0,0,0.3);">
+          <div class="meta" style="margin-bottom: 20px;">SCAN · MEDIUM</div>
+          <div class="bignum" style="font-size: 180px; color: var(--accent);">192</div>
+          <div class="meta" style="margin-top: 20px; color: var(--tx2); letter-spacing: 0.15em;">TICKS</div>
+          <div class="body" style="font-size: 24px; margin-top: 32px; color: var(--tx1);">Rounds.<br/>Rotations. Map control.</div>
+          <div class="corner-tl"></div><div class="corner-tr"></div>
+          <div class="corner-bl"></div><div class="corner-br"></div>
+        </div>
+        <div class="screen-card" style="position: relative; height: 440px; padding: 40px; background: rgba(0,0,0,0.3);">
+          <div class="meta" style="margin-bottom: 20px;">SCAN · LONG</div>
+          <div class="bignum" style="font-size: 180px; color: var(--cyan);">640</div>
+          <div class="meta" style="margin-top: 20px; color: var(--tx2); letter-spacing: 0.15em;">TICKS</div>
+          <div class="body" style="font-size: 24px; margin-top: 32px; color: var(--tx1);">Halves.<br/>Economy arcs. Macro.</div>
+          <div class="corner-tl" style="border-color: var(--cyan);"></div><div class="corner-tr" style="border-color: var(--cyan);"></div>
+          <div class="corner-bl" style="border-color: var(--cyan);"></div><div class="corner-br" style="border-color: var(--cyan);"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 15 · RAP LOOP -->
+  <section data-label="RAP Loop" class="bg-sunken">
+    <div class="chrome">
+      <div class="hud-top-l"><span class="dot"></span>MACENA / CS2-COACH-AI</div>
+      <div class="hud-top-r">ACT · 05 · RAP</div>
+      <div class="rule top"></div>
+      <div class="rule bot"></div>
+      <div class="hud-bot-l">15 / 20</div>
+      <div class="hud-bot-r">SELF-CORRECTION</div>
+    </div>
+    <div class="frame">
+      <div class="kicker"><span class="tick"></span>ACT 05 · RAP · REFLEX-AUDIT-PROMPT<span class="line"></span></div>
+      <div class="title">IT CRITIQUES</div>
+      <div class="title accent">ITSELF.</div>
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; margin-top: 100px;">
+        <div style="border: 1px solid var(--info); background: rgba(74,158,255,0.06); padding: 32px;">
+          <div class="meta" style="color: var(--info); font-size: 24px;">STAGE 01 · DRAFT</div>
+          <div class="body" style="font-size: 24px; color: var(--tx1); margin-top: 16px; font-family: var(--f-mono); text-decoration: line-through; text-decoration-color: var(--err); opacity: 0.6;">You should push A.</div>
+        </div>
+        <div style="border: 1px solid var(--warn); background: rgba(255,170,0,0.06); padding: 32px;">
+          <div class="meta" style="color: var(--warn); font-size: 24px;">STAGE 02 · CRITIQUE</div>
+          <div class="body" style="font-size: 24px; color: var(--tx1); margin-top: 16px; font-family: var(--f-mono);">conf 0.42 · below gate · reason missing</div>
+        </div>
+        <div style="border: 1px solid var(--cyan); background: rgba(0,204,255,0.06); padding: 32px;">
+          <div class="meta" style="color: var(--cyan); font-size: 24px;">STAGE 03 · REWRITE</div>
+          <div class="body" style="font-size: 24px; color: var(--tx1); margin-top: 16px; font-family: var(--f-serif); font-style: italic;">On round 7 you overpeeked long from CT. Hold angle.</div>
+        </div>
+        <div style="border: 1px solid var(--ok); background: rgba(76,175,80,0.06); padding: 32px;">
+          <div class="meta" style="color: var(--ok); font-size: 24px;">STAGE 04 · GATE · PASS</div>
+          <div class="body" style="font-size: 24px; color: var(--tx1); margin-top: 16px; font-family: var(--f-mono);">conf 0.83 · ≥ 0.70 · <span style="color: var(--ok); font-weight: 700;">SHIP</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 16 · HUMILITY GATE -->
+  <section data-label="Humility Gate" class="bg-accent">
+    <div class="chrome">
+      <div class="hud-top-l"><span class="dot"></span>MACENA / CS2-COACH-AI</div>
+      <div class="hud-top-r">ACT · 05 · GATE</div>
+      <div class="rule top" style="background: rgba(20,20,30,0.25);"></div>
+      <div class="rule bot" style="background: rgba(20,20,30,0.25);"></div>
+      <div class="hud-bot-l">16 / 20</div>
+      <div class="hud-bot-r" style="color: var(--deep) !important;">0.70</div>
+    </div>
+    <div class="frame" style="justify-content: center;">
+      <div class="meta" style="color: rgba(20,20,30,0.7); font-size: 28px; margin-bottom: 40px;">THE HUMILITY GATE</div>
+      <div class="bignum xl" style="color: var(--deep); font-size: 520px;">0.70</div>
+      <div style="font-family: var(--f-serif); font-style: italic; font-size: 52px; color: var(--deep); margin-top: 60px; max-width: 1400px; line-height: 1.25;">
+        Below this threshold, the coach says <strong style="font-style: normal; font-weight: 700; border-bottom: 4px solid var(--deep);">nothing.</strong>
+      </div>
+      <div class="meta" style="color: rgba(20,20,30,0.7); font-size: 28px; margin-top: 60px;">WE'D RATHER SHIP SILENCE THAN CONFIDENT NOISE.</div>
+    </div>
+  </section>
+
+  <!-- 17 · INVARIANTS -->
+  <section data-label="Invariants">
+    <div class="chrome">
+      <div class="hud-top-l"><span class="dot"></span>MACENA / CS2-COACH-AI</div>
+      <div class="hud-top-r">RULES · INVARIANTS</div>
+      <div class="rule top"></div>
+      <div class="rule bot"></div>
+      <div class="hud-bot-l">17 / 20</div>
+      <div class="hud-bot-r">7 RULES</div>
+    </div>
+    <div class="frame">
+      <div class="kicker"><span class="tick"></span>GUARDRAILS · NON-NEGOTIABLE<span class="line"></span></div>
+      <div class="title small">SEVEN INVARIANTS.</div>
+      <div style="margin-top: 56px;">
+        <div class="rule-row">
+          <div class="code">P-RSB-03</div>
+          <div class="rule"><strong style="color: var(--tx1);">round_won</strong> excluded from all 25 dimensions</div>
+        </div>
+        <div class="rule-row">
+          <div class="code">NN-MEM-01</div>
+          <div class="rule">Hopfield <strong style="color: var(--tx1);">bypassed</strong> until ≥ 2 forward passes</div>
+        </div>
+        <div class="rule-row">
+          <div class="code">NN-16</div>
+          <div class="rule">EMA <strong style="color: var(--tx1);">apply_shadow()</strong> must .clone()</div>
+        </div>
+        <div class="rule-row">
+          <div class="code">NN-JM-04</div>
+          <div class="rule">target_encoder <strong style="color: var(--tx1);">requires_grad = False</strong></div>
+        </div>
+        <div class="rule-row">
+          <div class="code">DS-12</div>
+          <div class="rule"><strong style="color: var(--tx1);">MIN_DEMO_SIZE</strong> = 10 MB</div>
+        </div>
+        <div class="rule-row">
+          <div class="code">P-VEC-02</div>
+          <div class="rule">NaN/Inf clamp · &gt; 5% → <strong style="color: var(--err);">DataQualityError</strong></div>
+        </div>
+        <div class="rule-row">
+          <div class="code">METADATA_DIM</div>
+          <div class="rule">sole source of truth: <strong style="color: var(--tx1);">vectorizer.py : 32</strong></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 18 · DESIGN SYSTEM -->
+  <section data-label="Design System" class="bg-deep">
+    <div class="chrome">
+      <div class="hud-top-l"><span class="dot"></span>MACENA / CS2-COACH-AI</div>
+      <div class="hud-top-r">DESIGN SYSTEM</div>
+      <div class="rule top"></div>
+      <div class="rule bot"></div>
+      <div class="hud-bot-l">18 / 20</div>
+      <div class="hud-bot-r">41 FRAMES</div>
+    </div>
+    <div class="frame">
+      <div class="kicker"><span class="tick"></span>THE SYSTEM<span class="line"></span></div>
+      <div class="title small">ONE LANGUAGE. <span style="color: var(--accent);">EVERY SURFACE.</span></div>
+      <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 24px; margin-top: 72px;">
+        <div class="screen-card" style="position: relative; height: 360px;">
+          <img src="assets/31_token_system.svg" style="object-fit: cover; object-position: top left;"/>
+          <div class="corner-tl"></div><div class="corner-tr"></div>
+          <div class="corner-bl"></div><div class="corner-br"></div>
+          <div style="position: absolute; bottom: 0; left: 0; right: 0; padding: 16px; background: linear-gradient(0deg, var(--deep), transparent);">
+            <div class="meta" style="font-size: 24px;">FRAME 31</div>
+            <div style="font-family: var(--f-display); font-size: 24px; color: var(--tx1);">TOKENS</div>
+          </div>
+        </div>
+        <div class="screen-card" style="position: relative; height: 360px;">
+          <img src="assets/32_theme_grid.svg" style="object-fit: cover; object-position: top left;"/>
+          <div class="corner-tl"></div><div class="corner-tr"></div>
+          <div class="corner-bl"></div><div class="corner-br"></div>
+          <div style="position: absolute; bottom: 0; left: 0; right: 0; padding: 16px; background: linear-gradient(0deg, var(--deep), transparent);">
+            <div class="meta" style="font-size: 24px;">FRAME 32</div>
+            <div style="font-family: var(--f-display); font-size: 24px; color: var(--tx1);">THEMES</div>
+          </div>
+        </div>
+        <div class="screen-card" style="position: relative; height: 360px;">
+          <img src="assets/33_component_library.svg" style="object-fit: cover; object-position: top left;"/>
+          <div class="corner-tl"></div><div class="corner-tr"></div>
+          <div class="corner-bl"></div><div class="corner-br"></div>
+          <div style="position: absolute; bottom: 0; left: 0; right: 0; padding: 16px; background: linear-gradient(0deg, var(--deep), transparent);">
+            <div class="meta" style="font-size: 24px;">FRAME 33</div>
+            <div style="font-family: var(--f-display); font-size: 24px; color: var(--tx1);">COMPONENTS</div>
+          </div>
+        </div>
+        <div class="screen-card" style="position: relative; height: 360px;">
+          <img src="assets/34_chart_library.svg" style="object-fit: cover; object-position: top left;"/>
+          <div class="corner-tl"></div><div class="corner-tr"></div>
+          <div class="corner-bl"></div><div class="corner-br"></div>
+          <div style="position: absolute; bottom: 0; left: 0; right: 0; padding: 16px; background: linear-gradient(0deg, var(--deep), transparent);">
+            <div class="meta" style="font-size: 24px;">FRAME 34</div>
+            <div style="font-family: var(--f-display); font-size: 24px; color: var(--tx1);">CHARTS</div>
+          </div>
+        </div>
+        <div class="screen-card" style="position: relative; height: 360px;">
+          <img src="assets/35_icon_grid.svg" style="object-fit: cover; object-position: top left;"/>
+          <div class="corner-tl"></div><div class="corner-tr"></div>
+          <div class="corner-bl"></div><div class="corner-br"></div>
+          <div style="position: absolute; bottom: 0; left: 0; right: 0; padding: 16px; background: linear-gradient(0deg, var(--deep), transparent);">
+            <div class="meta" style="font-size: 24px;">FRAME 35</div>
+            <div style="font-family: var(--f-display); font-size: 24px; color: var(--tx1);">ICONS</div>
+          </div>
+        </div>
+        <div class="screen-card" style="position: relative; height: 360px;">
+          <img src="assets/36_typography_specimen.svg" style="object-fit: cover; object-position: top left;"/>
+          <div class="corner-tl"></div><div class="corner-tr"></div>
+          <div class="corner-bl"></div><div class="corner-br"></div>
+          <div style="position: absolute; bottom: 0; left: 0; right: 0; padding: 16px; background: linear-gradient(0deg, var(--deep), transparent);">
+            <div class="meta" style="font-size: 24px;">FRAME 36</div>
+            <div style="font-family: var(--f-display); font-size: 24px; color: var(--tx1);">TYPE</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 19 · STATUS / ROADMAP -->
+  <section data-label="Status">
+    <div class="chrome">
+      <div class="hud-top-l"><span class="dot"></span>MACENA / CS2-COACH-AI</div>
+      <div class="hud-top-r">STATUS · ROADMAP</div>
+      <div class="rule top"></div>
+      <div class="rule bot"></div>
+      <div class="hud-bot-l">19 / 20</div>
+      <div class="hud-bot-r">BUILD · 2026.04</div>
+    </div>
+    <div class="frame">
+      <div class="kicker"><span class="tick"></span>WHERE WE ARE<span class="line"></span></div>
+      <div class="title small">BUILD · STATUS.</div>
+      <div style="margin-top: 72px;">
+        <div class="rule-row">
+          <div class="code" style="color: var(--ok);">PERCEPTION</div>
+          <div class="rule"><strong style="color: var(--tx1);">SHIPPED.</strong> JEPA encoder in production · target frozen · EMA stable</div>
+        </div>
+        <div class="rule-row">
+          <div class="code" style="color: var(--ok);">MEMORY</div>
+          <div class="rule"><strong style="color: var(--tx1);">SHIPPED.</strong> LTC + Hopfield live · 512 NCP units · associative recall &gt; 91%</div>
+        </div>
+        <div class="rule-row">
+          <div class="code" style="color: var(--ok);">RAP LOOP</div>
+          <div class="rule"><strong style="color: var(--tx1);">LIVE.</strong> In production with real telemetry · gate at 0.70 · audit coverage 100%</div>
+        </div>
+        <div class="rule-row">
+          <div class="code" style="color: var(--warn);">CHRONOVISOR</div>
+          <div class="rule"><strong style="color: var(--tx1);">CLOSED BETA.</strong> 3 horizons · tuning long-scale attention · Q3 release target</div>
+        </div>
+        <div class="rule-row">
+          <div class="code" style="color: var(--info);">HUMILITY GATE</div>
+          <div class="rule"><strong style="color: var(--tx1);">TUNED.</strong> Held-out set · false-speak rate 3.2% · false-silent rate 8.1%</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 20 · CLOSING -->
+  <section data-label="Closing" class="bg-deep">
+    <div class="chrome">
+      <div class="hud-top-l"><span class="dot"></span>MACENA / CS2-COACH-AI</div>
+      <div class="hud-top-r">END OF DECK</div>
+      <div class="rule top"></div>
+      <div class="rule bot"></div>
+      <div class="hud-bot-l">20 / 20</div>
+      <div class="hud-bot-r">THANK YOU</div>
+    </div>
+    <div class="frame" style="justify-content: center;">
+      <div style="width: 220px; height: 4px; background: var(--accent); margin-bottom: 44px;"></div>
+      <div class="quote" style="font-size: 88px;">
+        Coaching that knows<br/>
+        <span style="color: var(--accent); font-style: normal; font-weight: 500;">when to stay silent.</span>
+      </div>
+      <div style="display: flex; align-items: baseline; gap: 40px; margin-top: 100px;">
+        <div class="title" style="font-size: 140px;">MACENA</div>
+        <div class="meta" style="color: var(--accent); font-size: 24px;">CS2 · COACH · AI</div>
+      </div>
+      <div class="meta" style="margin-top: 60px; color: var(--tx3);">macena.coach_ai &nbsp;·&nbsp; build 2026.04 &nbsp;·&nbsp; deck v1</div>
+    </div>
+  </section>
+
+</deck-stage>
+
+<script src="deck-stage.js"></script>
+</body>
+</html>

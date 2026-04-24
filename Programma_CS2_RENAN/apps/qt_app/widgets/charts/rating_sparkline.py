@@ -5,6 +5,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QBrush, QColor, QPainter, QPen
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+from Programma_CS2_RENAN.apps.qt_app.widgets.charts import token_color
 
 
 class RatingSparkline(QChartView):
@@ -74,7 +75,7 @@ class RatingSparkline(QChartView):
         ax_x = QValueAxis()
         ax_x.setRange(0, max(n - 1, 1))
         ax_x.setLabelsColor(QColor(tokens.text_secondary))
-        ax_x.setGridLineColor(QColor(255, 255, 255, 20))
+        ax_x.setGridLineColor(token_color(tokens.chart_grid))
         ax_x.setLabelFormat("%d")
         chart.addAxis(ax_x, Qt.AlignBottom)
 
@@ -83,7 +84,7 @@ class RatingSparkline(QChartView):
         ax_y.setTitleText("Rating")
         ax_y.setTitleBrush(QColor(tokens.text_secondary))
         ax_y.setLabelsColor(QColor(tokens.text_secondary))
-        ax_y.setGridLineColor(QColor(255, 255, 255, 20))
+        ax_y.setGridLineColor(token_color(tokens.chart_grid))
         chart.addAxis(ax_y, Qt.AlignLeft)
 
         for s in chart.series():

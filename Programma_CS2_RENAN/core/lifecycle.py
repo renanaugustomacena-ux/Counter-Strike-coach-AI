@@ -26,6 +26,10 @@ class AppLifecycleManager:
         self.project_root = Path(
             os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         )
+        # Pre-init so CORE-12 cleanup at launch_daemon() doesn't crash on the
+        # first call (AttributeError: 'AppLifecycleManager' has no '_out_log').
+        self._out_log = None
+        self._err_log = None
 
     def ensure_single_instance(self):
         """

@@ -1,0 +1,202 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Roboto, Inter, system-ui, sans-serif">
+  <defs>
+    <!-- Vector icon paths from IconProvider (24×24 design space) -->
+    <symbol id="ic-home" viewBox="0 0 24 24"><path d="M12 3 L22 12 L19 12 L19 21 L5 21 L5 12 L2 12 Z M9 15 L15 15 L15 21 L9 21 Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-brain" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 5 L12 19 M12 8 C7 6 5 11 12 12 M12 12 C17 11 19 16 12 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="ic-list" viewBox="0 0 24 24"><path d="M4 6 L20 6 M4 12 L20 12 M4 18 L20 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="2.5" cy="6" r="1.5" fill="currentColor"/><circle cx="2.5" cy="12" r="1.5" fill="currentColor"/><circle cx="2.5" cy="18" r="1.5" fill="currentColor"/></symbol>
+    <symbol id="ic-chart" viewBox="0 0 24 24"><rect x="3" y="14" width="5" height="8" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="10" y="8" width="5" height="14" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="17" y="3" width="5" height="19" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="ic-cross" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 1 L12 7 M12 17 L12 23 M1 12 L7 12 M17 12 L23 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="ic-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 4 L12 7 M12 17 L12 20 M4 12 L7 12 M17 12 L20 12 M6.3 6.3 L8.5 8.5 M15.5 15.5 L17.7 17.7 M6.3 17.7 L8.5 15.5 M15.5 8.5 L17.7 6.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="ic-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9 9 C9 5 15 5 15 9 C15 12 12 12 12 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="18" r="1" fill="currentColor"/></symbol>
+  </defs>
+
+  <!-- Canvas -->
+  <rect width="1440" height="900" fill="#14141e"/>
+
+  <!-- ═══════════════ LEFT SIDEBAR (220px) ═══════════════ -->
+  <g>
+    <rect width="220" height="900" fill="#0f0f2e"/>
+    <rect x="219" width="1" height="900" fill="rgba(255,255,255,0.05)"/>
+
+    <!-- Hamburger toggle (top-right of sidebar, 36×36) -->
+    <g transform="translate(176,12)">
+      <rect width="36" height="36" rx="6" fill="transparent"/>
+      <text x="18" y="26" text-anchor="middle" fill="#a0a0b0" font-size="22">≡</text>
+    </g>
+
+    <!-- App title (centered) -->
+    <text x="110" y="82" text-anchor="middle" fill="#d96600" font-size="11" letter-spacing="3" font-weight="700">MACENA CS2</text>
+
+    <!-- Nav buttons (40px each, 8px h-padding, 4px gap) -->
+    <g transform="translate(8,108)" font-family="Roboto, Inter, system-ui, sans-serif" font-size="13">
+
+      <!-- Home (active) -->
+      <g color="#d96600">
+        <rect width="204" height="40" rx="6" fill="rgba(217,102,0,0.25)"/>
+        <rect width="3" height="40" fill="#d96600"/>
+        <g transform="translate(12,10)"><use href="#ic-home" width="20" height="20"/></g>
+        <text x="44" y="26" fill="#d96600" font-weight="600">Home</text>
+      </g>
+
+      <!-- Coach -->
+      <g transform="translate(0,44)" color="#a0a0b0">
+        <rect width="204" height="40" rx="6" fill="transparent"/>
+        <g transform="translate(12,10)"><use href="#ic-brain" width="20" height="20"/></g>
+        <text x="44" y="26" fill="#a0a0b0">Coach</text>
+      </g>
+
+      <!-- Match History -->
+      <g transform="translate(0,88)" color="#a0a0b0">
+        <rect width="204" height="40" rx="6" fill="transparent"/>
+        <g transform="translate(12,10)"><use href="#ic-list" width="20" height="20"/></g>
+        <text x="44" y="26" fill="#a0a0b0">Match History</text>
+      </g>
+
+      <!-- Performance -->
+      <g transform="translate(0,132)" color="#a0a0b0">
+        <rect width="204" height="40" rx="6" fill="transparent"/>
+        <g transform="translate(12,10)"><use href="#ic-chart" width="20" height="20"/></g>
+        <text x="44" y="26" fill="#a0a0b0">Performance</text>
+      </g>
+
+      <!-- Tactical Viewer -->
+      <g transform="translate(0,176)" color="#a0a0b0">
+        <rect width="204" height="40" rx="6" fill="transparent"/>
+        <g transform="translate(12,10)"><use href="#ic-cross" width="20" height="20"/></g>
+        <text x="44" y="26" fill="#a0a0b0">Tactical Viewer</text>
+      </g>
+
+      <!-- Settings -->
+      <g transform="translate(0,220)" color="#a0a0b0">
+        <rect width="204" height="40" rx="6" fill="transparent"/>
+        <g transform="translate(12,10)"><use href="#ic-gear" width="20" height="20"/></g>
+        <text x="44" y="26" fill="#a0a0b0">Settings</text>
+      </g>
+
+      <!-- Help -->
+      <g transform="translate(0,264)" color="#a0a0b0">
+        <rect width="204" height="40" rx="6" fill="transparent"/>
+        <g transform="translate(12,10)"><use href="#ic-help" width="20" height="20"/></g>
+        <text x="44" y="26" fill="#a0a0b0">Help</text>
+      </g>
+    </g>
+
+    <!-- Version label (bottom) -->
+    <text x="110" y="872" text-anchor="middle" fill="#3a3a5a" font-size="11" font-family="JetBrains Mono, monospace">v0.1.0</text>
+  </g>
+
+  <!-- ═══════════════ MAIN CONTENT (x=220, w=1220) ═══════════════ -->
+
+  <!-- Title -->
+  <text x="236" y="56" fill="#dcdcdc" font-size="20" font-weight="700">Dashboard</text>
+
+  <!-- Status bar card -->
+  <g transform="translate(236,72)">
+    <rect width="1188" height="44" rx="8" fill="#1a1a2e"/>
+
+    <!-- Coach status -->
+    <g transform="translate(16,28)">
+      <text fill="#3a3a5a" font-size="14">●</text>
+      <text x="16" fill="#a0a0b0" font-size="13">Coach: Idle</text>
+    </g>
+
+    <!-- Service status -->
+    <g transform="translate(168,28)">
+      <text fill="#4caf50" font-size="14">●</text>
+      <text x="16" fill="#a0a0b0" font-size="13">Service: Online</text>
+    </g>
+
+    <!-- Matches -->
+    <text x="344" y="28" fill="#a0a0b0" font-size="13">Matches: 47</text>
+  </g>
+
+  <!-- ── Card 1: Demo Analysis ── -->
+  <g transform="translate(236,132)">
+    <rect width="1188" height="148" rx="8" fill="#1a1a2e"/>
+    <!-- Title -->
+    <text x="16" y="28" fill="#dcdcdc" font-size="14" font-weight="700">Demo Analysis</text>
+    <!-- Description -->
+    <text x="16" y="52" fill="#a0a0b0" font-size="13">Analyze .dem files from your configured folder and feed them to the coaching pipeline.</text>
+    <!-- Path row -->
+    <text x="16" y="78" fill="#a0a0b0" font-size="13">Path:</text>
+    <text x="54" y="78" fill="#dcdcdc" font-size="13" font-family="JetBrains Mono, monospace">/home/renan/cs2/demos/personal</text>
+    <!-- Buttons row -->
+    <g transform="translate(16,100)">
+      <!-- Select Demo Folder (180w × 32h) -->
+      <rect width="180" height="32" rx="4" fill="transparent" stroke="#3a3a5a"/>
+      <text x="90" y="20" text-anchor="middle" fill="#dcdcdc" font-size="12">Select Demo Folder</text>
+      <!-- Analyze Demos (160w × 32h) -->
+      <rect x="188" width="160" height="32" rx="4" fill="#d96600"/>
+      <text x="268" y="20" text-anchor="middle" fill="#14141e" font-size="12" font-weight="700">Analyze Demos</text>
+      <!-- Status label -->
+      <text x="360" y="20" fill="#a0a0b0" font-size="12">Ready — 47 analyzed · 0 pending</text>
+    </g>
+  </g>
+
+  <!-- ── Card 2: Pro Demo Ingestion ── -->
+  <g transform="translate(236,296)">
+    <rect width="1188" height="148" rx="8" fill="#1a1a2e"/>
+    <text x="16" y="28" fill="#dcdcdc" font-size="14" font-weight="700">Pro Demo Ingestion</text>
+    <text x="16" y="52" fill="#a0a0b0" font-size="13">Ingest pro player demos to build the reference baseline for the JEPA model and chat coach.</text>
+    <text x="16" y="78" fill="#a0a0b0" font-size="13">Path:</text>
+    <text x="54" y="78" fill="#dcdcdc" font-size="13" font-family="JetBrains Mono, monospace">/home/renan/cs2/demos/pro</text>
+    <g transform="translate(16,100)">
+      <rect width="180" height="32" rx="4" fill="transparent" stroke="#3a3a5a"/>
+      <text x="90" y="20" text-anchor="middle" fill="#dcdcdc" font-size="12">Select Demo Folder</text>
+      <rect x="188" width="180" height="32" rx="4" fill="#d96600"/>
+      <text x="278" y="20" text-anchor="middle" fill="#14141e" font-size="12" font-weight="700">Analyze Pro Demos</text>
+      <text x="380" y="20" fill="#a0a0b0" font-size="12">2,148 indexed · last sync 4h ago</text>
+    </g>
+  </g>
+
+  <!-- ── Card 3: Connectivity ── -->
+  <g transform="translate(236,460)">
+    <rect width="1188" height="108" rx="8" fill="#1a1a2e"/>
+    <text x="16" y="28" fill="#dcdcdc" font-size="14" font-weight="700">Connectivity</text>
+    <g transform="translate(16,52)">
+      <!-- Profile button -->
+      <rect width="140" height="32" rx="4" fill="transparent" stroke="#3a3a5a"/>
+      <text x="70" y="20" text-anchor="middle" fill="#dcdcdc" font-size="12">Profile</text>
+      <!-- Steam Config button -->
+      <rect x="148" width="140" height="32" rx="4" fill="transparent" stroke="#3a3a5a"/>
+      <text x="218" y="20" text-anchor="middle" fill="#dcdcdc" font-size="12">Steam Config</text>
+      <!-- FaceIt Config button -->
+      <rect x="296" width="140" height="32" rx="4" fill="transparent" stroke="#3a3a5a"/>
+      <text x="366" y="20" text-anchor="middle" fill="#dcdcdc" font-size="12">FaceIt Config</text>
+    </g>
+  </g>
+
+  <!-- ── Card 4: Tactical Analysis ── -->
+  <g transform="translate(236,584)">
+    <rect width="1188" height="140" rx="8" fill="#1a1a2e"/>
+    <text x="16" y="28" fill="#dcdcdc" font-size="14" font-weight="700">Tactical Analysis</text>
+    <text x="16" y="52" fill="#a0a0b0" font-size="13">Open the 2D tactical viewer for round-by-round replay, or compare any pro player's stats.</text>
+    <g transform="translate(16,76)">
+      <rect width="200" height="36" rx="4" fill="transparent" stroke="#3a3a5a"/>
+      <text x="100" y="23" text-anchor="middle" fill="#dcdcdc" font-size="12">Open Tactical Viewer</text>
+      <rect x="208" width="200" height="36" rx="4" fill="transparent" stroke="#3a3a5a"/>
+      <text x="308" y="23" text-anchor="middle" fill="#dcdcdc" font-size="12">Compare Pro Players</text>
+    </g>
+  </g>
+
+  <!-- ── Card 5: Training Status (visible when training active) ── -->
+  <g transform="translate(236,740)">
+    <rect width="1188" height="140" rx="8" fill="#1a1a2e" stroke="rgba(217,102,0,0.3)"/>
+    <text x="16" y="28" fill="#dcdcdc" font-size="14" font-weight="700">Training Status</text>
+
+    <!-- Epoch -->
+    <text x="16" y="56" fill="#dcdcdc" font-size="13">Epoch: 12 / 40</text>
+    <!-- Progress bar -->
+    <rect x="16" y="64" width="600" height="6" rx="3" fill="#0f0f2e"/>
+    <rect x="16" y="64" width="180" height="6" rx="3" fill="#d96600"/>
+
+    <!-- Metrics row -->
+    <text x="16" y="94" fill="#dcdcdc" font-size="13">Train Loss: 0.0841</text>
+    <text x="200" y="94" fill="#dcdcdc" font-size="13">Val Loss: 0.0923</text>
+    <text x="384" y="94" fill="#a0a0b0" font-size="13">ETA: 23m 14s</text>
+
+    <!-- Sub-status -->
+    <text x="16" y="120" fill="#3a3a5a" font-size="12" font-family="JetBrains Mono, monospace">teacher daemon · jepa_train.py · batch 184/512</text>
+  </g>
+
+</svg>

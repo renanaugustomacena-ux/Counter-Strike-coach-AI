@@ -1,0 +1,195 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Roboto, Inter, system-ui, sans-serif">
+  <defs>
+    <symbol id="ic-home" viewBox="0 0 24 24"><path d="M12 3 L22 12 L19 12 L19 21 L5 21 L5 12 L2 12 Z M9 15 L15 15 L15 21 L9 21 Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-brain" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 5 L12 19 M12 8 C7 6 5 11 12 12 M12 12 C17 11 19 16 12 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="ic-list" viewBox="0 0 24 24"><path d="M4 6 L20 6 M4 12 L20 12 M4 18 L20 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="2.5" cy="6" r="1.5" fill="currentColor"/><circle cx="2.5" cy="12" r="1.5" fill="currentColor"/><circle cx="2.5" cy="18" r="1.5" fill="currentColor"/></symbol>
+    <symbol id="ic-chart" viewBox="0 0 24 24"><rect x="3" y="14" width="5" height="8" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="10" y="8" width="5" height="14" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="17" y="3" width="5" height="19" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="ic-cross" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 1 L12 7 M12 17 L12 23 M1 12 L7 12 M17 12 L23 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="ic-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 4 L12 7 M12 17 L12 20 M4 12 L7 12 M17 12 L20 12 M6.3 6.3 L8.5 8.5 M15.5 15.5 L17.7 17.7 M6.3 17.7 L8.5 15.5 M15.5 8.5 L17.7 6.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="ic-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9 9 C9 5 15 5 15 9 C15 12 12 12 12 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="18" r="1" fill="currentColor"/></symbol>
+  </defs>
+
+  <rect width="1440" height="900" fill="#14141e"/>
+
+  <g>
+    <rect width="220" height="900" fill="#0f0f2e"/>
+    <rect x="219" width="1" height="900" fill="rgba(255,255,255,0.05)"/>
+    <g transform="translate(176,12)"><text x="18" y="26" text-anchor="middle" fill="#a0a0b0" font-size="22">≡</text></g>
+    <text x="110" y="82" text-anchor="middle" fill="#d96600" font-size="11" letter-spacing="3" font-weight="700">MACENA CS2</text>
+    <g transform="translate(8,108)" font-size="13">
+      <g color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-home" width="20" height="20"/></g><text x="44" y="26" fill="#a0a0b0">Home</text></g>
+      <g transform="translate(0,44)" color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-brain" width="20" height="20"/></g><text x="44" y="26" fill="#a0a0b0">Coach</text></g>
+      <g transform="translate(0,88)" color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-list" width="20" height="20"/></g><text x="44" y="26" fill="#a0a0b0">Match History</text></g>
+      <g transform="translate(0,132)" color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-chart" width="20" height="20"/></g><text x="44" y="26" fill="#a0a0b0">Performance</text></g>
+      <g transform="translate(0,176)" color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-cross" width="20" height="20"/></g><text x="44" y="26" fill="#a0a0b0">Tactical Viewer</text></g>
+      <g transform="translate(0,220)" color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-gear" width="20" height="20"/></g><text x="44" y="26" fill="#a0a0b0">Settings</text></g>
+      <g transform="translate(0,264)" color="#d96600">
+        <rect width="204" height="40" rx="6" fill="rgba(217,102,0,0.25)"/><rect width="3" height="40" fill="#d96600"/>
+        <g transform="translate(12,10)"><use href="#ic-help" width="20" height="20"/></g>
+        <text x="44" y="26" fill="#d96600" font-weight="600">Help</text>
+      </g>
+    </g>
+    <text x="110" y="872" text-anchor="middle" fill="#3a3a5a" font-size="11" font-family="JetBrains Mono, monospace">v0.1.0</text>
+  </g>
+
+  <!-- Title + search -->
+  <text x="236" y="56" fill="#dcdcdc" font-size="20" font-weight="700">Help Center</text>
+
+  <g transform="translate(1024,36)">
+    <rect width="400" height="32" rx="16" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <text x="16" y="21" fill="#5a5a8a" font-size="12">🔍  Search topics...</text>
+  </g>
+
+  <!-- Two-panel layout: left topic list (300w) + right content -->
+
+  <!-- Left: topic list -->
+  <g transform="translate(236,80)">
+    <rect width="300" height="800" rx="8" fill="#1a1a2e"/>
+    <text x="16" y="28" fill="#a0a0b0" font-size="11" letter-spacing="2" font-weight="700">TOPICS  ·  6</text>
+
+    <!-- Topic items -->
+    <g transform="translate(8,48)" font-size="13">
+      <!-- Getting Started (active) -->
+      <g>
+        <rect width="284" height="44" rx="6" fill="rgba(217,102,0,0.2)"/>
+        <rect width="3" height="44" fill="#d96600"/>
+        <text x="16" y="20" fill="#d96600" font-weight="700">Getting Started</text>
+        <text x="16" y="36" fill="#a0a0b0" font-size="11">First-run setup · essentials</text>
+      </g>
+      <g transform="translate(0,52)">
+        <rect width="284" height="44" rx="6" fill="transparent"/>
+        <text x="16" y="20" fill="#dcdcdc">Demo Analysis</text>
+        <text x="16" y="36" fill="#a0a0b0" font-size="11">How .dem files are processed</text>
+      </g>
+      <g transform="translate(0,104)">
+        <rect width="284" height="44" rx="6" fill="transparent"/>
+        <text x="16" y="20" fill="#dcdcdc">AI Coach</text>
+        <text x="16" y="36" fill="#a0a0b0" font-size="11">Belief state · insights · chat</text>
+      </g>
+      <g transform="translate(0,156)">
+        <rect width="284" height="44" rx="6" fill="transparent"/>
+        <text x="16" y="20" fill="#dcdcdc">Steam Integration</text>
+        <text x="16" y="36" fill="#a0a0b0" font-size="11">SteamID64 · API key setup</text>
+      </g>
+      <g transform="translate(0,208)">
+        <rect width="284" height="44" rx="6" fill="transparent"/>
+        <text x="16" y="20" fill="#dcdcdc">Navigation</text>
+        <text x="16" y="36" fill="#a0a0b0" font-size="11">Sidebar · screen guide</text>
+      </g>
+      <g transform="translate(0,260)">
+        <rect width="284" height="44" rx="6" fill="transparent"/>
+        <text x="16" y="20" fill="#dcdcdc">Troubleshooting</text>
+        <text x="16" y="36" fill="#a0a0b0" font-size="11">No matches · chat offline · fonts</text>
+      </g>
+    </g>
+
+    <!-- External links block at bottom -->
+    <g transform="translate(16,580)">
+      <text fill="#a0a0b0" font-size="11" letter-spacing="2" font-weight="700">EXTERNAL</text>
+      <g transform="translate(0,24)" font-size="12">
+        <text fill="#4a9eff">↗ GitHub repo</text>
+        <text y="22" fill="#4a9eff">↗ Ollama install docs</text>
+        <text y="44" fill="#4a9eff">↗ HLTV API reference</text>
+        <text y="66" fill="#4a9eff">↗ demoparser2 docs</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Right: topic content -->
+  <g transform="translate(552,80)">
+    <rect width="872" height="800" rx="8" fill="#1a1a2e"/>
+
+    <g transform="translate(32,32)">
+      <text fill="#dcdcdc" font-size="20" font-weight="700">Getting Started</text>
+      <text y="28" fill="#a0a0b0" font-size="13">Welcome to Macena CS2 Analyzer!</text>
+
+      <!-- Steps -->
+      <g transform="translate(0,68)" font-size="13">
+        <g>
+          <circle cx="12" cy="12" r="12" fill="#d96600"/>
+          <text x="12" y="16" text-anchor="middle" fill="#14141e" font-weight="700" font-size="11">1</text>
+          <text x="36" y="10" fill="#dcdcdc" font-weight="700">Set your in-game name</text>
+          <text x="36" y="28" fill="#a0a0b0">Go to Settings → Quick Links → In-Game Name</text>
+        </g>
+        <g transform="translate(0,52)">
+          <circle cx="12" cy="12" r="12" fill="#d96600"/>
+          <text x="12" y="16" text-anchor="middle" fill="#14141e" font-weight="700" font-size="11">2</text>
+          <text x="36" y="10" fill="#dcdcdc" font-weight="700">Point to your demo folder</text>
+          <text x="36" y="28" fill="#a0a0b0">Home → Demo Analysis → Select Demo Folder</text>
+        </g>
+        <g transform="translate(0,104)">
+          <circle cx="12" cy="12" r="12" fill="#d96600"/>
+          <text x="12" y="16" text-anchor="middle" fill="#14141e" font-weight="700" font-size="11">3</text>
+          <text x="36" y="10" fill="#dcdcdc" font-weight="700">Let the analyzer ingest your .dem files</text>
+          <text x="36" y="28" fill="#a0a0b0">Click "Analyze Demos" — or leave the Scanner daemon running</text>
+        </g>
+        <g transform="translate(0,156)">
+          <circle cx="12" cy="12" r="12" fill="#d96600"/>
+          <text x="12" y="16" text-anchor="middle" fill="#14141e" font-weight="700" font-size="11">4</text>
+          <text x="36" y="10" fill="#dcdcdc" font-weight="700">Explore Match History and Performance</text>
+          <text x="36" y="28" fill="#a0a0b0">Your stats, per-map breakdown, strengths &amp; weaknesses</text>
+        </g>
+        <g transform="translate(0,208)">
+          <circle cx="12" cy="12" r="12" fill="#d96600"/>
+          <text x="12" y="16" text-anchor="middle" fill="#14141e" font-weight="700" font-size="11">5</text>
+          <text x="36" y="10" fill="#dcdcdc" font-weight="700">Chat with the AI Coach</text>
+          <text x="36" y="28" fill="#a0a0b0">Requires Ollama + gemma3:e2b model — see AI Coach section</text>
+        </g>
+      </g>
+
+      <!-- Demo folder location hint -->
+      <g transform="translate(0,320)">
+        <rect width="808" height="90" rx="6" fill="#0f0f2e"/>
+        <text x="16" y="24" fill="#ffaa00" font-size="11" letter-spacing="2" font-weight="700">DEMO FOLDER · WHERE CS2 SAVES .DEM FILES</text>
+        <text x="16" y="46" fill="#a0a0b0" font-size="12">Typical path on Linux / Steam:</text>
+        <text x="16" y="66" fill="#dcdcdc" font-size="12" font-family="JetBrains Mono, monospace">~/.steam/steam/steamapps/common/Counter-Strike Global Offensive/game/csgo/replays/</text>
+        <text x="16" y="82" fill="#5a5a8a" font-size="10">The analyzer expects .dem files ≥ 10 MB (DS-12 guard).</text>
+      </g>
+
+      <!-- Related topics -->
+      <g transform="translate(0,438)">
+        <text fill="#a0a0b0" font-size="11" letter-spacing="2" font-weight="700">RELATED</text>
+        <g transform="translate(0,20)" font-size="12">
+          <g>
+            <rect width="260" height="44" rx="6" fill="#0f0f2e"/>
+            <text x="14" y="20" fill="#dcdcdc" font-weight="700">→ Demo Analysis</text>
+            <text x="14" y="36" fill="#a0a0b0" font-size="11">How the pipeline works</text>
+          </g>
+          <g transform="translate(274,0)">
+            <rect width="260" height="44" rx="6" fill="#0f0f2e"/>
+            <text x="14" y="20" fill="#dcdcdc" font-weight="700">→ AI Coach</text>
+            <text x="14" y="36" fill="#a0a0b0" font-size="11">Enable Ollama chat</text>
+          </g>
+          <g transform="translate(548,0)">
+            <rect width="260" height="44" rx="6" fill="#0f0f2e"/>
+            <text x="14" y="20" fill="#dcdcdc" font-weight="700">→ Troubleshooting</text>
+            <text x="14" y="36" fill="#a0a0b0" font-size="11">Common issues</text>
+          </g>
+        </g>
+      </g>
+
+      <!-- Keyboard shortcuts (fiction-free, just based on Qt defaults) -->
+      <g transform="translate(0,524)">
+        <text fill="#a0a0b0" font-size="11" letter-spacing="2" font-weight="700">KEYBOARD HINTS</text>
+        <g transform="translate(0,20)" font-size="12">
+          <g>
+            <rect width="808" height="36" rx="4" fill="#0f0f2e"/>
+            <text x="14" y="22" fill="#dcdcdc">Click hamburger  ≡  (top of sidebar) to collapse the nav sidebar 220 → 60 px</text>
+          </g>
+          <g transform="translate(0,44)">
+            <rect width="808" height="36" rx="4" fill="#0f0f2e"/>
+            <text x="14" y="22" fill="#dcdcdc">Return in chat input sends the message · Esc closes dialogs · Back button on drill-down screens returns</text>
+          </g>
+        </g>
+      </g>
+
+      <!-- Bottom help source -->
+      <g transform="translate(0,640)">
+        <rect width="808" height="54" rx="6" fill="rgba(74,158,255,0.08)" stroke="#4a9eff" stroke-dasharray="4 3"/>
+        <text x="16" y="22" fill="#4a9eff" font-size="12" font-weight="700">Docs source</text>
+        <text x="16" y="40" fill="#a0a0b0" font-size="11" font-family="JetBrains Mono, monospace">Programma_CS2_RENAN/data/docs/*.md  ·  loaded via help_system.py</text>
+      </g>
+    </g>
+  </g>
+
+</svg>

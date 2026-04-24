@@ -55,8 +55,9 @@ class _PlayerItem(QFrame):
         layout.addLayout(info, 1)
 
         self._weapon_label = QLabel()
+        self._weapon_label.setFont(QFont("JetBrains Mono", 9))
         self._weapon_label.setStyleSheet(
-            "color: #808090; font-size: 10px; background: transparent;"
+            "color: #808090; background: transparent; letter-spacing: 1px;"
         )
         self._weapon_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         layout.addWidget(self._weapon_label)
@@ -168,8 +169,25 @@ class _LivePlayerCard(QFrame):
         self._name_label.setStyleSheet(f"color: {team_color};")
 
         self._hp_bar.setValue(player.hp)
+        # HP bar chunk color tracks thresholds so a glance reads as
+        # alive-healthy / injured / critical without reading the number.
+        hp = player.hp
+        if hp > 60:
+            hp_color = "#4caf50"  # success
+        elif hp >= 30:
+            hp_color = "#ffaa00"  # warning
+        else:
+            hp_color = "#ff4444"  # error
+        self._hp_bar.setStyleSheet(
+            "QProgressBar { background-color: rgba(0,0,0,0.35); border: none; border-radius: 3px; }"
+            f"QProgressBar::chunk {{ background-color: {hp_color}; border-radius: 3px; }}"
+        )
         self._armor_bar.setValue(player.armor)
-        self._money_label.setText(f"${player.money}")
+        self._armor_bar.setStyleSheet(
+            "QProgressBar { background-color: rgba(0,0,0,0.35); border: none; border-radius: 3px; }"
+            "QProgressBar::chunk { background-color: #4a9eff; border-radius: 3px; }"
+        )
+        self._money_label.setText(f"${player.money:,}")
         self._kda_label.setText(f"{player.kills} / {player.deaths} / {player.assists}")
 
         self.setStyleSheet(
@@ -195,11 +213,19 @@ class PlayerSidebar(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # Header
-        header = QLabel(team_name)
-        header.setFont(QFont("Roboto", 12, QFont.Bold))
-        header.setStyleSheet(f"color: {team_color}; padding: 8px;")
-        header.setAlignment(Qt.AlignCenter)
+        # Header — monospace caps + 3px left accent border in team color.
+        # Tells the eye "CT" / "T" instantly, mirrors Frame-13 tactical
+        # viewer spec.
+        header = QLabel(team_name.upper())
+        header.setFont(QFont("JetBrains Mono", 13, QFont.Bold))
+        header.setStyleSheet(
+            f"color: {team_color};"
+            f"padding: 10px 12px;"
+            f"border-left: 3px solid {team_color};"
+            "letter-spacing: 2px;"
+            "background: transparent;"
+        )
+        header.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         layout.addWidget(header)
 
         # Scroll area for player list

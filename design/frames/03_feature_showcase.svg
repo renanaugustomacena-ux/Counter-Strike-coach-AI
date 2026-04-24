@@ -1,0 +1,290 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Inter, 'Segoe UI', system-ui, sans-serif">
+  <rect width="1440" height="900" fill="#0b0b14"/>
+
+  <!-- Header -->
+  <g transform="translate(60 60)">
+    <text fill="#d96600" font-size="12" font-weight="700" letter-spacing="3">SIX CORE CAPABILITIES</text>
+    <text y="42" fill="#dcdcdc" font-size="40" font-weight="800" letter-spacing="-1">What the coach actually does.</text>
+    <text y="68" fill="#a0a0b0" font-size="14">Every box maps to a concrete module in the codebase — no vapor, no roadmap bullets.</text>
+  </g>
+
+  <!-- 2×3 grid · cards 424×296 · 24 gap -->
+
+  <!-- Card 1: Demo Ingestion -->
+  <g transform="translate(60 172)">
+    <rect width="424" height="296" rx="12" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <rect width="424" height="6" rx="12" fill="#d96600"/>
+
+    <text x="24" y="40" fill="#d96600" font-size="10" font-weight="700" letter-spacing="1.5" font-family="'JetBrains Mono', monospace">01 · INGESTION</text>
+    <text x="24" y="70" fill="#dcdcdc" font-size="22" font-weight="700">Demo parser + auto-watch</text>
+    <text x="24" y="96" fill="#a0a0b0" font-size="12">Drop a .dem, or let Scanner watch your folder.</text>
+
+    <!-- mini viz: folder → parse → db -->
+    <g transform="translate(24 120)">
+      <g transform="translate(0 40)">
+        <rect width="90" height="60" rx="4" fill="#0f0f2e" stroke="#3a3a5a"/>
+        <path d="M10 18 L32 18 L36 12 L80 12 L80 48 L10 48 Z" fill="none" stroke="#d96600" stroke-width="1"/>
+        <text x="45" y="74" fill="#a0a0b0" font-size="10" text-anchor="middle" font-family="'JetBrains Mono', monospace">~/demos</text>
+      </g>
+      <path d="M96 72 L126 72" stroke="#d96600" stroke-width="1.5" marker-end="url(#a3)" fill="none"/>
+      <g transform="translate(130 40)">
+        <rect width="140" height="60" rx="4" fill="#0f0f2e" stroke="#3a3a5a"/>
+        <text x="70" y="26" fill="#dcdcdc" font-size="11" text-anchor="middle" font-family="'JetBrains Mono', monospace">demoparser2</text>
+        <text x="70" y="44" fill="#a0a0b0" font-size="10" text-anchor="middle">ticks · events</text>
+        <text x="70" y="74" fill="#a0a0b0" font-size="10" text-anchor="middle" font-family="'JetBrains Mono', monospace">DS-12 ≥ 10 MB</text>
+      </g>
+      <path d="M276 72 L306 72" stroke="#d96600" stroke-width="1.5" marker-end="url(#a3)" fill="none"/>
+      <g transform="translate(310 40)">
+        <rect width="70" height="60" rx="4" fill="#0f0f2e" stroke="#3a3a5a"/>
+        <ellipse cx="35" cy="22" rx="24" ry="8" fill="none" stroke="#d96600" stroke-width="1"/>
+        <path d="M11 22 L11 46 Q35 54 59 46 L59 22" fill="none" stroke="#d96600" stroke-width="1"/>
+        <text x="35" y="74" fill="#a0a0b0" font-size="10" text-anchor="middle" font-family="'JetBrains Mono', monospace">WAL db</text>
+      </g>
+    </g>
+
+    <text x="24" y="270" fill="#3a3a5a" font-size="10" font-family="'JetBrains Mono', monospace">core/session_engine.py · Scanner daemon</text>
+  </g>
+
+  <!-- Card 2: Feature Vector -->
+  <g transform="translate(508 172)">
+    <rect width="424" height="296" rx="12" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <rect width="424" height="6" rx="12" fill="#d96600"/>
+
+    <text x="24" y="40" fill="#d96600" font-size="10" font-weight="700" letter-spacing="1.5" font-family="'JetBrains Mono', monospace">02 · FEATURES</text>
+    <text x="24" y="70" fill="#dcdcdc" font-size="22" font-weight="700">25-dim vector · no leak</text>
+    <text x="24" y="96" fill="#a0a0b0" font-size="12">Hand-audited feature set. round_won excluded (P-RSB-03).</text>
+
+    <!-- 25-cell grid 5×5 -->
+    <g transform="translate(24 128)">
+      <g>
+        <rect width="68" height="30" rx="3" fill="#4a9eff"/>
+        <rect x="72" width="68" height="30" rx="3" fill="#4a9eff"/>
+        <rect x="144" width="68" height="30" rx="3" fill="#4a9eff"/>
+        <rect x="216" width="68" height="30" rx="3" fill="#4a9eff"/>
+        <rect x="288" width="68" height="30" rx="3" fill="#4a9eff"/>
+      </g>
+      <g transform="translate(0 34)">
+        <rect width="68" height="30" rx="3" fill="#4db04f"/>
+        <rect x="72" width="68" height="30" rx="3" fill="#4db04f"/>
+        <rect x="144" width="68" height="30" rx="3" fill="#4db04f"/>
+        <rect x="216" width="68" height="30" rx="3" fill="#4db04f"/>
+        <rect x="288" width="68" height="30" rx="3" fill="#4db04f"/>
+      </g>
+      <g transform="translate(0 68)">
+        <rect width="68" height="30" rx="3" fill="#ff9933"/>
+        <rect x="72" width="68" height="30" rx="3" fill="#ff9933"/>
+        <rect x="144" width="68" height="30" rx="3" fill="#ff9933"/>
+        <rect x="216" width="68" height="30" rx="3" fill="#ff9933"/>
+        <rect x="288" width="68" height="30" rx="3" fill="#ff9933"/>
+      </g>
+      <g transform="translate(0 102)">
+        <rect width="68" height="30" rx="3" fill="#d96600"/>
+        <rect x="72" width="68" height="30" rx="3" fill="#d96600"/>
+        <rect x="144" width="68" height="30" rx="3" fill="#d96600"/>
+        <rect x="216" width="68" height="30" rx="3" fill="#d96600"/>
+        <rect x="288" width="68" height="30" rx="3" fill="#d96600"/>
+      </g>
+      <g transform="translate(0 134)">
+        <rect width="68" height="0" rx="0"/>
+      </g>
+    </g>
+    <text x="24" y="270" fill="#3a3a5a" font-size="10" font-family="'JetBrains Mono', monospace">backend/processing/feature_engineering/vectorizer.py:151</text>
+  </g>
+
+  <!-- Card 3: JEPA -->
+  <g transform="translate(956 172)">
+    <rect width="424" height="296" rx="12" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <rect width="424" height="6" rx="12" fill="#d96600"/>
+
+    <text x="24" y="40" fill="#d96600" font-size="10" font-weight="700" letter-spacing="1.5" font-family="'JetBrains Mono', monospace">03 · JEPA</text>
+    <text x="24" y="70" fill="#dcdcdc" font-size="22" font-weight="700">Self-supervised 25→256</text>
+    <text x="24" y="96" fill="#a0a0b0" font-size="12">Student predicts target encoder · EMA τ=0.996 · InfoNCE T=0.07.</text>
+
+    <g transform="translate(24 124)">
+      <!-- student -->
+      <rect width="140" height="48" rx="6" fill="#0f0f2e" stroke="#d96600"/>
+      <text x="70" y="20" fill="#d96600" font-size="10" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">STUDENT</text>
+      <text x="70" y="36" fill="#dcdcdc" font-size="11" text-anchor="middle">25→512→256</text>
+
+      <!-- arrows -->
+      <g transform="translate(148 24)">
+        <path d="M0 0 L60 0" stroke="#d96600" stroke-width="1.5" marker-end="url(#a3)" fill="none"/>
+        <text x="30" y="-6" fill="#3a3a5a" font-size="9" text-anchor="middle" font-family="'JetBrains Mono', monospace">predict</text>
+      </g>
+
+      <!-- target -->
+      <g transform="translate(212 0)">
+        <rect width="140" height="48" rx="6" fill="#0f0f2e" stroke="#4db04f"/>
+        <text x="70" y="20" fill="#4db04f" font-size="10" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">TARGET (EMA)</text>
+        <text x="70" y="36" fill="#dcdcdc" font-size="11" text-anchor="middle">frozen · stop_grad</text>
+      </g>
+
+      <!-- EMA formula -->
+      <g transform="translate(0 66)">
+        <rect width="352" height="40" rx="6" fill="#0a0a14" stroke="#3a3a5a"/>
+        <text x="176" y="26" fill="#dcdcdc" font-size="13" text-anchor="middle" font-family="'JetBrains Mono', monospace">θ_t ← 0.996 · θ_t + 0.004 · θ_s</text>
+      </g>
+
+      <!-- Loss note -->
+      <text y="132" fill="#a0a0b0" font-size="11" font-family="'JetBrains Mono', monospace">B=64 · T=20 (10 ctx + 10 target) · NN-16 .clone()</text>
+    </g>
+
+    <text x="24" y="270" fill="#3a3a5a" font-size="10" font-family="'JetBrains Mono', monospace">backend/nn/jepa_model.py · jepa_train.py</text>
+  </g>
+
+  <!-- Card 4: RAP -->
+  <g transform="translate(60 492)">
+    <rect width="424" height="296" rx="12" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <rect width="424" height="6" rx="12" fill="#ff4444"/>
+
+    <text x="24" y="40" fill="#ff4444" font-size="10" font-weight="700" letter-spacing="1.5" font-family="'JetBrains Mono', monospace">04 · RAP COACH</text>
+    <text x="24" y="70" fill="#dcdcdc" font-size="22" font-weight="700">7-layer self-corrector</text>
+    <text x="24" y="96" fill="#a0a0b0" font-size="11">Perception · Memory · Strategy · Pedagogy · Position · Chrono · Comm.</text>
+
+    <!-- 7 stacked layer pills -->
+    <g transform="translate(24 124)" font-family="'JetBrains Mono', monospace" font-size="10">
+      <g>
+        <rect width="376" height="18" rx="3" fill="#0f0f2e" stroke="#ff4444"/>
+        <text x="8" y="13" fill="#ff4444">1 · PERCEPTION</text>
+        <text x="370" y="13" fill="#a0a0b0" text-anchor="end">z_spatial [B,128]</text>
+      </g>
+      <g transform="translate(0 22)">
+        <rect width="376" height="18" rx="3" fill="#0f0f2e" stroke="#ff4444"/>
+        <text x="8" y="13" fill="#ff4444">2 · MEMORY · LTC + Hopfield</text>
+        <text x="370" y="13" fill="#a0a0b0" text-anchor="end">belief[64]</text>
+      </g>
+      <g transform="translate(0 44)">
+        <rect width="376" height="18" rx="3" fill="#0f0f2e" stroke="#ff4444"/>
+        <text x="8" y="13" fill="#ff4444">3 · STRATEGY · Top-2 MoE</text>
+        <text x="370" y="13" fill="#a0a0b0" text-anchor="end">advice_probs</text>
+      </g>
+      <g transform="translate(0 66)">
+        <rect width="376" height="18" rx="3" fill="#0f0f2e" stroke="#ff4444"/>
+        <text x="8" y="13" fill="#ff4444">4 · PEDAGOGY · critic V(s)</text>
+        <text x="370" y="13" fill="#a0a0b0" text-anchor="end">advantage Δ</text>
+      </g>
+      <g transform="translate(0 88)">
+        <rect width="376" height="18" rx="3" fill="#0f0f2e" stroke="#ff4444"/>
+        <text x="8" y="13" fill="#ff4444">5 · POSITION · Linear(256,3)</text>
+        <text x="370" y="13" fill="#a0a0b0" text-anchor="end">δxyz × 500</text>
+      </g>
+      <g transform="translate(0 110)">
+        <rect width="376" height="18" rx="3" fill="#0f0f2e" stroke="#ff4444"/>
+        <text x="8" y="13" fill="#ff4444">6 · CHRONOVISOR · 3 scales</text>
+        <text x="370" y="13" fill="#a0a0b0" text-anchor="end">CriticalMoment</text>
+      </g>
+      <g transform="translate(0 132)">
+        <rect width="376" height="18" rx="3" fill="#0f0f2e" stroke="#ff4444"/>
+        <text x="8" y="13" fill="#ff4444">7 · COMMUNICATION · conf ≥ 0.7</text>
+        <text x="370" y="13" fill="#a0a0b0" text-anchor="end">advice text</text>
+      </g>
+    </g>
+
+    <text x="24" y="270" fill="#3a3a5a" font-size="10" font-family="'JetBrains Mono', monospace">backend/nn/experimental/rap_coach/model.py</text>
+  </g>
+
+  <!-- Card 5: Tactical Viewer -->
+  <g transform="translate(508 492)">
+    <rect width="424" height="296" rx="12" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <rect width="424" height="6" rx="12" fill="#4a9eff"/>
+
+    <text x="24" y="40" fill="#4a9eff" font-size="10" font-weight="700" letter-spacing="1.5" font-family="'JetBrains Mono', monospace">05 · TACTICAL</text>
+    <text x="24" y="70" fill="#dcdcdc" font-size="22" font-weight="700">2D map with ghost mode</text>
+    <text x="24" y="96" fill="#a0a0b0" font-size="12">Your path vs pro shadow · per-round scrub · 10 players.</text>
+
+    <!-- mini Mirage mock -->
+    <g transform="translate(24 122)">
+      <rect width="376" height="130" rx="6" fill="#0f0f2e" stroke="#3a3a5a"/>
+      <!-- CT bar -->
+      <rect x="0" y="0" width="40" height="130" fill="rgba(74,158,255,0.12)"/>
+      <rect x="336" y="0" width="40" height="130" fill="rgba(255,153,51,0.12)"/>
+      <!-- Mirage sketch -->
+      <g transform="translate(52 14)" stroke="rgba(160,160,176,0.35)" stroke-width="0.8" fill="none">
+        <rect x="20" y="20" width="60" height="60"/>
+        <rect x="160" y="14" width="80" height="70"/>
+        <rect x="30" y="96" width="240" height="14"/>
+      </g>
+      <!-- CT/T dots -->
+      <g>
+        <circle cx="82" cy="50" r="3" fill="#4a9eff"/>
+        <circle cx="100" cy="68" r="3" fill="#4a9eff"/>
+        <circle cx="210" cy="46" r="3" fill="#ff9933"/>
+        <circle cx="250" cy="60" r="3" fill="#ff9933"/>
+        <circle cx="158" cy="110" r="3" fill="#4a9eff"/>
+        <!-- user path -->
+        <path d="M82 50 Q120 80 158 110 Q200 110 210 46" fill="none" stroke="#d96600" stroke-width="1.6"/>
+        <!-- ghost (dashed) -->
+        <path d="M82 50 Q110 70 140 90 Q180 100 210 46" fill="none" stroke="#a0a0b0" stroke-width="1.2" stroke-dasharray="3 3"/>
+      </g>
+      <!-- side labels -->
+      <text x="20" y="72" fill="#4a9eff" font-size="14" font-weight="700" text-anchor="middle">CT</text>
+      <text x="356" y="72" fill="#ff9933" font-size="14" font-weight="700" text-anchor="middle">T</text>
+    </g>
+
+    <g transform="translate(24 268)">
+      <rect width="10" height="2" fill="#d96600"/>
+      <text x="18" y="4" fill="#a0a0b0" font-size="10">you</text>
+      <rect x="74" width="10" height="2" fill="#a0a0b0" stroke-dasharray="2 2"/>
+      <text x="92" y="4" fill="#a0a0b0" font-size="10">ZywOo ghost</text>
+    </g>
+    <text x="24" y="286" fill="#3a3a5a" font-size="10" font-family="'JetBrains Mono', monospace">apps/qt_app/screens/tactical_viewer_screen.py</text>
+  </g>
+
+  <!-- Card 6: Pro Comparison (HLTV) -->
+  <g transform="translate(956 492)">
+    <rect width="424" height="296" rx="12" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <rect width="424" height="6" rx="12" fill="#4db04f"/>
+
+    <text x="24" y="40" fill="#4db04f" font-size="10" font-weight="700" letter-spacing="1.5" font-family="'JetBrains Mono', monospace">06 · PRO COMPARISON</text>
+    <text x="24" y="70" fill="#dcdcdc" font-size="22" font-weight="700">HLTV scrape · Me vs Pro</text>
+    <text x="24" y="96" fill="#a0a0b0" font-size="12">Pro teams + players · radar chart overlay.</text>
+
+    <!-- radar mini -->
+    <g transform="translate(130 210)">
+      <g fill="none" stroke="#3a3a5a" stroke-width="0.7" opacity="0.7">
+        <polygon points="0,-70 49.50,-49.50 70,0 49.50,49.50 0,70 -49.50,49.50 -70,0 -49.50,-49.50"/>
+        <polygon points="0,-52 36.77,-36.77 52,0 36.77,36.77 0,52 -36.77,36.77 -52,0 -36.77,-36.77"/>
+        <polygon points="0,-34 24.04,-24.04 34,0 24.04,24.04 0,34 -24.04,24.04 -34,0 -24.04,-24.04"/>
+      </g>
+      <!-- pro (green) -->
+      <polygon points="0,-62 35,-35 58,0 42,42 0,46 -40,40 -54,0 -34,-34"
+               fill="rgba(77,176,79,0.22)" stroke="#4db04f" stroke-width="1.2"/>
+      <!-- you (orange) -->
+      <polygon points="0,-44 28,-28 44,0 30,30 0,40 -32,32 -42,0 -28,-28"
+               fill="rgba(217,102,0,0.22)" stroke="#d96600" stroke-width="1.2"/>
+
+      <g fill="#a0a0b0" font-size="9" text-anchor="middle">
+        <text x="0" y="-82">AIM</text>
+        <text x="82" y="3">UTIL</text>
+        <text x="0" y="90">POS</text>
+        <text x="-82" y="3">ECON</text>
+      </g>
+    </g>
+
+    <!-- legend -->
+    <g transform="translate(250 124)" font-family="'JetBrains Mono', monospace" font-size="10">
+      <rect width="154" height="86" rx="4" fill="#0f0f2e" stroke="#3a3a5a"/>
+      <g transform="translate(12 22)">
+        <rect width="10" height="10" fill="#4db04f"/>
+        <text x="16" y="9" fill="#dcdcdc">ZywOo · 1.42</text>
+      </g>
+      <g transform="translate(12 42)">
+        <rect width="10" height="10" fill="#d96600"/>
+        <text x="16" y="9" fill="#dcdcdc">you · 1.28</text>
+      </g>
+      <text x="12" y="74" fill="#3a3a5a">HLTV match 2374201</text>
+    </g>
+
+    <text x="24" y="286" fill="#3a3a5a" font-size="10" font-family="'JetBrains Mono', monospace">apps/qt_app/screens/pro_comparison_screen.py · BS4+FlareSolverr</text>
+  </g>
+
+  <!-- Arrow marker -->
+  <defs>
+    <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#d96600"/>
+    </marker>
+  </defs>
+
+  <!-- footer -->
+  <text x="720" y="860" fill="#3a3a5a" font-size="11" text-anchor="middle" font-family="'JetBrains Mono', monospace">Every card = real module shipping in v0.9.0 · no vaporware</text>
+</svg>

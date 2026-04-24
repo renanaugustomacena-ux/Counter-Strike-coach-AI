@@ -81,6 +81,10 @@ class SkeletonTable(QWidget):
 
     Shows `row_count` SkeletonCard widgets. Call hide() and replace
     with real content when data arrives.
+
+    On first show, cards slide in with a 40ms stagger (``reveal_stagger``)
+    so the loading state feels purposeful rather than inert — the same
+    pattern used by scope.gg's match-detail skeletons.
     """
 
     def __init__(self, row_count: int = 3, parent: QWidget | None = None):
@@ -88,6 +92,19 @@ class SkeletonTable(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
+        self._cards: list[SkeletonCard] = []
         for _ in range(row_count):
-            layout.addWidget(SkeletonCard())
+            card = SkeletonCard()
+            self._cards.append(card)
+            layout.addWidget(card)
         layout.addStretch()
+        self._reveal_played: bool = False
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if self._reveal_played or not self._cards:
+            return
+        self._reveal_played = True
+        Animator.reveal_stagger(
+            self._cards, delay_ms=40, duration=240, distance_px=20, direction="up"
+        )

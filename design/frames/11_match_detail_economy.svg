@@ -1,0 +1,212 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Roboto, Inter, system-ui, sans-serif">
+  <defs>
+    <symbol id="ic-home" viewBox="0 0 24 24"><path d="M12 3 L22 12 L19 12 L19 21 L5 21 L5 12 L2 12 Z M9 15 L15 15 L15 21 L9 21 Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-brain" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 5 L12 19 M12 8 C7 6 5 11 12 12 M12 12 C17 11 19 16 12 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="ic-list" viewBox="0 0 24 24"><path d="M4 6 L20 6 M4 12 L20 12 M4 18 L20 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="2.5" cy="6" r="1.5" fill="currentColor"/><circle cx="2.5" cy="12" r="1.5" fill="currentColor"/><circle cx="2.5" cy="18" r="1.5" fill="currentColor"/></symbol>
+    <symbol id="ic-chart" viewBox="0 0 24 24"><rect x="3" y="14" width="5" height="8" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="10" y="8" width="5" height="14" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="17" y="3" width="5" height="19" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="ic-cross" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 1 L12 7 M12 17 L12 23 M1 12 L7 12 M17 12 L23 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="ic-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 4 L12 7 M12 17 L12 20 M4 12 L7 12 M17 12 L20 12 M6.3 6.3 L8.5 8.5 M15.5 15.5 L17.7 17.7 M6.3 17.7 L8.5 15.5 M15.5 8.5 L17.7 6.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="ic-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9 9 C9 5 15 5 15 9 C15 12 12 12 12 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="18" r="1" fill="currentColor"/></symbol>
+  </defs>
+
+  <rect width="1440" height="900" fill="#14141e"/>
+
+  <g>
+    <rect width="220" height="900" fill="#0f0f2e"/>
+    <rect x="219" width="1" height="900" fill="rgba(255,255,255,0.05)"/>
+    <g transform="translate(176,12)"><text x="18" y="26" text-anchor="middle" fill="#a0a0b0" font-size="22">≡</text></g>
+    <text x="110" y="82" text-anchor="middle" fill="#d96600" font-size="11" letter-spacing="3" font-weight="700">MACENA CS2</text>
+    <g transform="translate(8,108)" font-size="13">
+      <g color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-home" width="20" height="20"/></g><text x="44" y="26" fill="#a0a0b0">Home</text></g>
+      <g transform="translate(0,44)" color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-brain" width="20" height="20"/></g><text x="44" y="26" fill="#a0a0b0">Coach</text></g>
+      <g transform="translate(0,88)" color="#d96600">
+        <rect width="204" height="40" rx="6" fill="rgba(217,102,0,0.25)"/><rect width="3" height="40" fill="#d96600"/>
+        <g transform="translate(12,10)"><use href="#ic-list" width="20" height="20"/></g>
+        <text x="44" y="26" fill="#d96600" font-weight="600">Match History</text>
+      </g>
+      <g transform="translate(0,132)" color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-chart" width="20" height="20"/></g><text x="44" y="26" fill="#a0a0b0">Performance</text></g>
+      <g transform="translate(0,176)" color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-cross" width="20" height="20"/></g><text x="44" y="26" fill="#a0a0b0">Tactical Viewer</text></g>
+      <g transform="translate(0,220)" color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-gear" width="20" height="20"/></g><text x="44" y="26" fill="#a0a0b0">Settings</text></g>
+      <g transform="translate(0,264)" color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-help" width="20" height="20"/></g><text x="44" y="26" fill="#a0a0b0">Help</text></g>
+    </g>
+    <text x="110" y="872" text-anchor="middle" fill="#3a3a5a" font-size="11" font-family="JetBrains Mono, monospace">v0.1.0</text>
+  </g>
+
+  <!-- Title + back -->
+  <g transform="translate(236,36)">
+    <rect width="80" height="32" rx="4" fill="transparent" stroke="#3a3a5a"/>
+    <text x="40" y="21" text-anchor="middle" fill="#dcdcdc" font-size="13">← Back</text>
+  </g>
+  <text x="328" y="58" fill="#dcdcdc" font-size="20" font-weight="700">Match Detail — de_mirage</text>
+
+  <!-- Tabs (Economy active) -->
+  <g transform="translate(236,80)" font-size="13">
+    <g><rect width="120" height="36" fill="transparent"/><text x="60" y="23" text-anchor="middle" fill="#a0a0b0">Overview</text></g>
+    <g transform="translate(122,0)"><rect width="100" height="36" fill="transparent"/><text x="50" y="23" text-anchor="middle" fill="#a0a0b0">Rounds</text></g>
+    <g transform="translate(224,0)"><rect width="110" height="36" fill="#1a1a2e"/><rect y="34" width="110" height="2" fill="#d96600"/><text x="55" y="23" text-anchor="middle" fill="#d96600" font-weight="700">Economy</text></g>
+    <g transform="translate(336,0)"><rect width="110" height="36" fill="transparent"/><text x="55" y="23" text-anchor="middle" fill="#a0a0b0">Highlights</text></g>
+    <line x1="0" y1="36" x2="1188" y2="36" stroke="#3a3a5a"/>
+  </g>
+
+  <!-- Chart card: Economy per Round bar chart -->
+  <!-- Chart dimensions: card 1188×640, plot area inside: 60 left margin, 40 right, 50 top, 80 bottom → plot 1088w × 510h -->
+  <g transform="translate(236,140)">
+    <rect width="1188" height="640" rx="8" fill="#1a1a1a"/>
+
+    <!-- Title -->
+    <text x="594" y="32" text-anchor="middle" fill="#ffffff" font-size="15" font-weight="700">Economy per Round</text>
+
+    <!-- Y-axis title (rotated) -->
+    <text x="20" y="330" fill="#a0a0b0" font-size="11" transform="rotate(-90 20 330)">Equipment ($)</text>
+
+    <!-- Y-axis labels & grid lines (plot y=52 to y=552; 500px tall; scale: $5500→0, $0→500) -->
+    <g font-size="10" fill="#a0a0b0">
+      <!-- 6 gridlines at $0, $1k, $2k, $3k, $4k, $5k -->
+      <g>
+        <line x1="60" y1="552" x2="1148" y2="552" stroke="#ffffff" stroke-opacity="0.08"/>
+        <text x="54" y="556" text-anchor="end">$0</text>
+      </g>
+      <g>
+        <line x1="60" y1="461" x2="1148" y2="461" stroke="#ffffff" stroke-opacity="0.08"/>
+        <text x="54" y="465" text-anchor="end">$1000</text>
+      </g>
+      <g>
+        <line x1="60" y1="370" x2="1148" y2="370" stroke="#ffffff" stroke-opacity="0.08"/>
+        <text x="54" y="374" text-anchor="end">$2000</text>
+      </g>
+      <g>
+        <line x1="60" y1="279" x2="1148" y2="279" stroke="#ffffff" stroke-opacity="0.08"/>
+        <text x="54" y="283" text-anchor="end">$3000</text>
+      </g>
+      <g>
+        <line x1="60" y1="188" x2="1148" y2="188" stroke="#ffffff" stroke-opacity="0.08"/>
+        <text x="54" y="192" text-anchor="end">$4000</text>
+      </g>
+      <g>
+        <line x1="60" y1="97" x2="1148" y2="97" stroke="#ffffff" stroke-opacity="0.08"/>
+        <text x="54" y="101" text-anchor="end">$5000</text>
+      </g>
+      <g>
+        <line x1="60" y1="52" x2="1148" y2="52" stroke="#ffffff" stroke-opacity="0.08"/>
+      </g>
+    </g>
+
+    <!-- X-axis -->
+    <line x1="60" y1="552" x2="1148" y2="552" stroke="#ffffff" stroke-opacity="0.15"/>
+
+    <!-- Bars: 24 rounds, cell width = 1088/24 = 45.33. T=amber #ffaa00, CT=cyan #00ccff -->
+    <!-- Scale: $1 = 91/1000 = 0.091; Y top=52, y bottom=552. Bar top y = 552 - val * 0.091 -->
+    <!-- Bar width 30, centered in 45.33 cell. Cell_x = 60 + i * 45.33 -->
+
+    <g>
+      <!-- R1 T $4600 (y=552-419=133) -->
+      <rect x="68"   y="133" width="30" height="419" fill="#ffaa00"/>
+      <!-- R2 T $3800 -->
+      <rect x="113.3" y="206" width="30" height="346" fill="#ffaa00"/>
+      <!-- R3 T $5200 -->
+      <rect x="158.7" y="79"  width="30" height="473" fill="#ffaa00"/>
+      <!-- R4 T $5000 -->
+      <rect x="204"   y="97"  width="30" height="455" fill="#ffaa00"/>
+      <!-- R5 T $4800 -->
+      <rect x="249.3" y="115" width="30" height="437" fill="#ffaa00"/>
+      <!-- R6 T $5200 -->
+      <rect x="294.7" y="79"  width="30" height="473" fill="#ffaa00"/>
+      <!-- R7 T $5400 -->
+      <rect x="340"   y="61"  width="30" height="491" fill="#ffaa00"/>
+      <!-- R8 T $5000 -->
+      <rect x="385.3" y="97"  width="30" height="455" fill="#ffaa00"/>
+      <!-- R9 T $5200 -->
+      <rect x="430.7" y="79"  width="30" height="473" fill="#ffaa00"/>
+      <!-- R10 T $5200 -->
+      <rect x="476"   y="79"  width="30" height="473" fill="#ffaa00"/>
+      <!-- R11 T $5400 -->
+      <rect x="521.3" y="61"  width="30" height="491" fill="#ffaa00"/>
+      <!-- R12 T $5200 -->
+      <rect x="566.7" y="79"  width="30" height="473" fill="#ffaa00"/>
+
+      <!-- Half divider -->
+      <line x1="612" y1="52" x2="612" y2="552" stroke="#d96600" stroke-width="1" stroke-dasharray="4 3" stroke-opacity="0.5"/>
+      <text x="612" y="44" text-anchor="middle" fill="#d96600" font-size="10">half</text>
+
+      <!-- R13 CT $3800 -->
+      <rect x="612"   y="206" width="30" height="346" fill="#00ccff"/>
+      <!-- R14 CT $4200 -->
+      <rect x="657.3" y="170" width="30" height="382" fill="#00ccff"/>
+      <!-- R15 CT $4800 -->
+      <rect x="702.7" y="115" width="30" height="437" fill="#00ccff"/>
+      <!-- R16 CT $5200 -->
+      <rect x="748"   y="79"  width="30" height="473" fill="#00ccff"/>
+      <!-- R17 CT $5200 -->
+      <rect x="793.3" y="79"  width="30" height="473" fill="#00ccff"/>
+      <!-- R18 CT $5200 -->
+      <rect x="838.7" y="79"  width="30" height="473" fill="#00ccff"/>
+      <!-- R19 CT $5200 -->
+      <rect x="884"   y="79"  width="30" height="473" fill="#00ccff"/>
+      <!-- R20 CT $5200 -->
+      <rect x="929.3" y="79"  width="30" height="473" fill="#00ccff"/>
+      <!-- R21 CT $5200 -->
+      <rect x="974.7" y="79"  width="30" height="473" fill="#00ccff"/>
+      <!-- R22 CT $5200 -->
+      <rect x="1020"  y="79"  width="30" height="473" fill="#00ccff"/>
+      <!-- R23 CT $5200 -->
+      <rect x="1065.3" y="79" width="30" height="473" fill="#00ccff"/>
+      <!-- R24 CT $5200 -->
+      <rect x="1110.7" y="79" width="30" height="473" fill="#00ccff"/>
+    </g>
+
+    <!-- X-axis labels (every 2) -->
+    <g font-size="10" fill="#a0a0b0" text-anchor="middle">
+      <text x="83"    y="572">1</text>
+      <text x="174"   y="572">3</text>
+      <text x="264.7" y="572">5</text>
+      <text x="355.3" y="572">7</text>
+      <text x="446"   y="572">9</text>
+      <text x="536.7" y="572">11</text>
+      <text x="627.3" y="572">13</text>
+      <text x="718"   y="572">15</text>
+      <text x="808.7" y="572">17</text>
+      <text x="899.3" y="572">19</text>
+      <text x="990"   y="572">21</text>
+      <text x="1080.7" y="572">23</text>
+    </g>
+    <text x="604" y="598" text-anchor="middle" fill="#a0a0b0" font-size="11">Round number</text>
+
+    <!-- Legend at bottom-center -->
+    <g transform="translate(480,612)" font-size="12">
+      <rect x="0" y="-10" width="16" height="14" fill="#00ccff"/>
+      <text x="22" y="2" fill="#dcdcdc">CT</text>
+      <rect x="90" y="-10" width="16" height="14" fill="#ffaa00"/>
+      <text x="112" y="2" fill="#dcdcdc">T</text>
+    </g>
+  </g>
+
+  <!-- Stats summary below chart -->
+  <g transform="translate(236,796)" font-size="12">
+    <rect width="1188" height="84" rx="8" fill="#1a1a2e"/>
+    <g transform="translate(16,20)">
+      <text fill="#a0a0b0">T-side avg equip</text>
+      <text x="0" y="22" fill="#ffaa00" font-size="20" font-weight="700">$5,000</text>
+      <text x="0" y="48" fill="#5a5a8a" font-size="10">12 rounds · 7W · 5L</text>
+    </g>
+    <g transform="translate(260,20)">
+      <text fill="#a0a0b0">CT-side avg equip</text>
+      <text x="0" y="22" fill="#00ccff" font-size="20" font-weight="700">$4,942</text>
+      <text x="0" y="48" fill="#5a5a8a" font-size="10">12 rounds · 9W · 3L</text>
+    </g>
+    <g transform="translate(504,20)">
+      <text fill="#a0a0b0">Full buys</text>
+      <text x="0" y="22" fill="#dcdcdc" font-size="20" font-weight="700">20</text>
+      <text x="0" y="48" fill="#5a5a8a" font-size="10">≥ $4,500 threshold</text>
+    </g>
+    <g transform="translate(664,20)">
+      <text fill="#a0a0b0">Force buys</text>
+      <text x="0" y="22" fill="#dcdcdc" font-size="20" font-weight="700">3</text>
+      <text x="0" y="48" fill="#5a5a8a" font-size="10">$3,000-4,500</text>
+    </g>
+    <g transform="translate(824,20)">
+      <text fill="#a0a0b0">Eco / Save rounds</text>
+      <text x="0" y="22" fill="#dcdcdc" font-size="20" font-weight="700">1</text>
+      <text x="0" y="48" fill="#5a5a8a" font-size="10">&lt; $3,000</text>
+    </g>
+  </g>
+</svg>

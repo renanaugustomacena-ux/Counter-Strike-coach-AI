@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 )
 
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.stepper import Stepper
 from Programma_CS2_RENAN.core.config import save_user_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -90,8 +91,12 @@ class WizardScreen(QWidget):
         self._back_btn.setVisible(False)  # Hidden on intro page
         bottom.addWidget(self._back_btn)
         bottom.addStretch()
+        # Stepper replaces the text "Step N of 5" — reads as progress
+        # at a glance and mirrors Frame 17–19 design.
+        self._stepper = Stepper(step_count=5, current_step=0)
+        bottom.addWidget(self._stepper)
         self._step_label = QLabel("Step 1 of 5")
-        self._step_label.setStyleSheet("color: #a0a0b0; font-size: 12px;")
+        self._step_label.setStyleSheet("color: #a0a0b0; font-size: 11px; margin-left: 12px;")
         bottom.addWidget(self._step_label)
         bottom.addStretch()
         self._next_btn = QPushButton(i18n.get_text("wizard_get_started", "Get Started"))
@@ -284,6 +289,7 @@ class WizardScreen(QWidget):
         self._stack.setCurrentIndex(index)
         # Update button visibility and labels
         self._back_btn.setVisible(index > 0)
+        self._stepper.current_step = index
         self._step_label.setText(
             i18n.get_text("wizard_step", "Step {n} of 5").replace("{n}", str(index + 1))
         )

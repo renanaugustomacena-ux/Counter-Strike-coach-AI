@@ -1,0 +1,344 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Roboto, Inter, system-ui, sans-serif">
+  <defs>
+    <marker id="ar"  viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#d96600"/></marker>
+    <marker id="arY" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#ffaa00"/></marker>
+    <marker id="arG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#4caf50"/></marker>
+    <marker id="arB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#4a9eff"/></marker>
+  </defs>
+
+  <rect width="1440" height="900" fill="#14141e"/>
+
+  <!-- HEADER -->
+  <g transform="translate(72,44)">
+    <text fill="#ffaa00" font-size="10" letter-spacing="4" font-weight="700">MACENA CS2 COACH AI · DATA PIPELINE</text>
+    <text y="36" fill="#dcdcdc" font-size="30" font-weight="800">25-dim Feature Vector — lifecycle from .dem to tensor</text>
+    <text y="60" fill="#a0a0b0" font-size="12">Single source of truth: vectorizer.py · FEATURE_NAMES tuple · METADATA_DIM=25 · P-X-01</text>
+  </g>
+
+  <!-- ======================================================
+       TOP ROW: .dem → raw ticks (horizontal flow)
+  ======================================================= -->
+
+  <!-- Step 1: .dem source -->
+  <g transform="translate(72,100)">
+    <rect width="180" height="76" rx="8" fill="#1a1a2e" stroke="#d96600" stroke-width="2"/>
+    <text x="14" y="20" fill="#d96600" font-size="10" letter-spacing="2" font-weight="700">SOURCE</text>
+    <text x="14" y="42" fill="#dcdcdc" font-size="14" font-weight="700">.dem file</text>
+    <text x="14" y="58" fill="#a0a0b0" font-size="10">≥ 10 MB  (DS-12)</text>
+    <text x="14" y="72" fill="#3a3a5a" font-size="9" font-family="JetBrains Mono, monospace">demos/</text>
+  </g>
+  <path d="M252 138 L284 138" stroke="#d96600" stroke-width="1.5" marker-end="url(#ar)"/>
+  <text x="255" y="132" fill="#d96600" font-size="9">.dem</text>
+
+  <!-- Step 2: demoparser2 -->
+  <g transform="translate(286,100)">
+    <rect width="190" height="76" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <text x="14" y="20" fill="#a0a0b0" font-size="10" letter-spacing="2" font-weight="700">PARSE  ·  RUST</text>
+    <text x="14" y="42" fill="#dcdcdc" font-size="13" font-weight="700">demoparser2</text>
+    <text x="14" y="58" fill="#a0a0b0" font-size="10">aggregate + per-tick events</text>
+    <text x="14" y="72" fill="#3a3a5a" font-size="9" font-family="JetBrains Mono, monospace">demo_parser.py:51</text>
+  </g>
+  <path d="M476 138 L508 138" stroke="#d96600" stroke-width="1.5" marker-end="url(#ar)"/>
+  <text x="479" y="132" fill="#a0a0b0" font-size="9">tick df</text>
+
+  <!-- Step 3: interpolate -->
+  <g transform="translate(510,100)">
+    <rect width="190" height="76" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <text x="14" y="20" fill="#a0a0b0" font-size="10" letter-spacing="2" font-weight="700">INTERPOLATE</text>
+    <text x="14" y="42" fill="#dcdcdc" font-size="13" font-weight="700">Fill position gaps</text>
+    <text x="14" y="58" fill="#a0a0b0" font-size="10">linear x/y/z between ticks</text>
+    <text x="14" y="72" fill="#3a3a5a" font-size="9" font-family="JetBrains Mono, monospace">demo_format_adapter.py</text>
+  </g>
+  <path d="M700 138 L732 138" stroke="#d96600" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <!-- Step 4: enrich -->
+  <g transform="translate(734,100)">
+    <rect width="190" height="76" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <text x="14" y="20" fill="#a0a0b0" font-size="10" letter-spacing="2" font-weight="700">ENRICH</text>
+    <text x="14" y="42" fill="#dcdcdc" font-size="13" font-weight="700">Tick context</text>
+    <text x="14" y="58" fill="#a0a0b0" font-size="10">enemies_visible · bomb · time</text>
+    <text x="14" y="72" fill="#3a3a5a" font-size="9" font-family="JetBrains Mono, monospace">round_reconstructor.py</text>
+  </g>
+  <path d="M924 138 L956 138" stroke="#d96600" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <!-- Step 5: FeatureExtractor.extract() -->
+  <g transform="translate(958,100)">
+    <rect width="222" height="76" rx="8" fill="rgba(255,170,0,0.12)" stroke="#ffaa00" stroke-width="2"/>
+    <text x="14" y="20" fill="#ffaa00" font-size="10" letter-spacing="2" font-weight="700">VECTORIZE  ·  P-X-01</text>
+    <text x="14" y="42" fill="#dcdcdc" font-size="13" font-weight="700">FeatureExtractor.extract()</text>
+    <text x="14" y="58" fill="#a0a0b0" font-size="10">per-tick · configurable bounds</text>
+    <text x="14" y="72" fill="#ffaa00" font-size="9" font-family="JetBrains Mono, monospace">vectorizer.py:184</text>
+  </g>
+  <path d="M1180 138 L1212 138" stroke="#ffaa00" stroke-width="1.5" marker-end="url(#arY)"/>
+
+  <!-- Step 6: P-VEC-02 guard -->
+  <g transform="translate(1214,100)">
+    <rect width="154" height="76" rx="8" fill="rgba(255,68,68,0.1)" stroke="#ff4444" stroke-width="1.5"/>
+    <text x="14" y="20" fill="#ff4444" font-size="10" letter-spacing="2" font-weight="700">P-VEC-02</text>
+    <text x="14" y="40" fill="#dcdcdc" font-size="12" font-weight="700">NaN/Inf clamp</text>
+    <text x="14" y="56" fill="#a0a0b0" font-size="10">&gt;5% batch →</text>
+    <text x="14" y="70" fill="#ff4444" font-size="10" font-weight="700">DataQualityError</text>
+  </g>
+
+  <!-- ======================================================
+       MIDDLE: 25-DIM GRID
+  ======================================================= -->
+  <text x="72" y="222" fill="#ffaa00" font-size="10" letter-spacing="3" font-weight="700">25-DIM FEATURE VECTOR  —  FEATURE_NAMES  (vectorizer.py:151)</text>
+
+  <!-- Grid of 25 feature slots: 5 rows × 5 cols -->
+  <!-- Cell width=252, height=56, gap_x=8, gap_y=8 -->
+  <!-- Start x=72, y=234 -->
+
+  <!-- Row 0: dims 0-4 VITALS -->
+  <g transform="translate(72,234)">
+    <!-- dim 0 -->
+    <g>
+      <rect width="248" height="56" rx="6" fill="#1a1a2e" stroke="#d96600" stroke-width="1.5"/>
+      <text x="8" y="16" fill="#d96600" font-size="9" font-family="JetBrains Mono, monospace" font-weight="700">dim[0]  health</text>
+      <text x="8" y="32" fill="#dcdcdc" font-size="11" font-weight="700">health</text>
+      <text x="8" y="48" fill="#a0a0b0" font-size="9">norm: / health_max (100)</text>
+    </g>
+    <!-- dim 1 -->
+    <g transform="translate(256,0)">
+      <rect width="248" height="56" rx="6" fill="#1a1a2e" stroke="#d96600" stroke-width="1.5"/>
+      <text x="8" y="16" fill="#d96600" font-size="9" font-family="JetBrains Mono, monospace" font-weight="700">dim[1]  armor</text>
+      <text x="8" y="32" fill="#dcdcdc" font-size="11" font-weight="700">armor</text>
+      <text x="8" y="48" fill="#a0a0b0" font-size="9">norm: / armor_max (100)</text>
+    </g>
+    <!-- dim 2 -->
+    <g transform="translate(512,0)">
+      <rect width="248" height="56" rx="6" fill="#1a1a2e" stroke="#d96600" stroke-width="1.5"/>
+      <text x="8" y="16" fill="#d96600" font-size="9" font-family="JetBrains Mono, monospace" font-weight="700">dim[2]  has_helmet</text>
+      <text x="8" y="32" fill="#dcdcdc" font-size="11" font-weight="700">has_helmet</text>
+      <text x="8" y="48" fill="#a0a0b0" font-size="9">binary 0/1</text>
+    </g>
+    <!-- dim 3 -->
+    <g transform="translate(768,0)">
+      <rect width="248" height="56" rx="6" fill="#1a1a2e" stroke="#d96600" stroke-width="1.5"/>
+      <text x="8" y="16" fill="#d96600" font-size="9" font-family="JetBrains Mono, monospace" font-weight="700">dim[3]  has_defuser</text>
+      <text x="8" y="32" fill="#dcdcdc" font-size="11" font-weight="700">has_defuser</text>
+      <text x="8" y="48" fill="#a0a0b0" font-size="9">binary 0/1</text>
+    </g>
+    <!-- dim 4 -->
+    <g transform="translate(1024,0)">
+      <rect width="248" height="56" rx="6" fill="#1a1a2e" stroke="#d96600" stroke-width="1.5"/>
+      <text x="8" y="16" fill="#d96600" font-size="9" font-family="JetBrains Mono, monospace" font-weight="700">dim[4]  equipment_value</text>
+      <text x="8" y="32" fill="#dcdcdc" font-size="11" font-weight="700">equipment_value</text>
+      <text x="8" y="48" fill="#a0a0b0" font-size="9">norm: / equip_max (16000)</text>
+    </g>
+    <!-- row label -->
+    <text x="1290" y="34" fill="#d96600" font-size="10" letter-spacing="2" font-weight="700">VITALS</text>
+  </g>
+
+  <!-- Row 1: dims 5-8 + pad → STATE -->
+  <g transform="translate(72,298)">
+    <g>
+      <rect width="248" height="56" rx="6" fill="#1a1a2e" stroke="#4a9eff" stroke-width="1.5"/>
+      <text x="8" y="16" fill="#4a9eff" font-size="9" font-family="JetBrains Mono, monospace" font-weight="700">dim[5]  is_crouching</text>
+      <text x="8" y="32" fill="#dcdcdc" font-size="11" font-weight="700">is_crouching</text>
+      <text x="8" y="48" fill="#a0a0b0" font-size="9">binary 0/1</text>
+    </g>
+    <g transform="translate(256,0)">
+      <rect width="248" height="56" rx="6" fill="#1a1a2e" stroke="#4a9eff" stroke-width="1.5"/>
+      <text x="8" y="16" fill="#4a9eff" font-size="9" font-family="JetBrains Mono, monospace" font-weight="700">dim[6]  is_scoped</text>
+      <text x="8" y="32" fill="#dcdcdc" font-size="11" font-weight="700">is_scoped</text>
+      <text x="8" y="48" fill="#a0a0b0" font-size="9">binary 0/1</text>
+    </g>
+    <g transform="translate(512,0)">
+      <rect width="248" height="56" rx="6" fill="#1a1a2e" stroke="#4a9eff" stroke-width="1.5"/>
+      <text x="8" y="16" fill="#4a9eff" font-size="9" font-family="JetBrains Mono, monospace" font-weight="700">dim[7]  is_blinded</text>
+      <text x="8" y="32" fill="#dcdcdc" font-size="11" font-weight="700">is_blinded</text>
+      <text x="8" y="48" fill="#a0a0b0" font-size="9">binary 0/1</text>
+    </g>
+    <g transform="translate(768,0)">
+      <rect width="248" height="56" rx="6" fill="#1a1a2e" stroke="#4a9eff" stroke-width="1.5"/>
+      <text x="8" y="16" fill="#4a9eff" font-size="9" font-family="JetBrains Mono, monospace" font-weight="700">dim[8]  enemies_visible</text>
+      <text x="8" y="32" fill="#dcdcdc" font-size="11" font-weight="700">enemies_visible</text>
+      <text x="8" y="48" fill="#a0a0b0" font-size="9">/ enemies_max (5)  clamped</text>
+    </g>
+    <!-- spacer dim 9 preview -->
+    <g transform="translate(1024,0)">
+      <rect width="248" height="56" rx="6" fill="#1a1a2e" stroke="#4caf50" stroke-width="1.5"/>
+      <text x="8" y="16" fill="#4caf50" font-size="9" font-family="JetBrains Mono, monospace" font-weight="700">dim[9]  pos_x</text>
+      <text x="8" y="32" fill="#dcdcdc" font-size="11" font-weight="700">pos_x</text>
+      <text x="8" y="48" fill="#a0a0b0" font-size="9">/ ±pos_xy_extent  (map-specific)</text>
+    </g>
+    <text x="1290" y="18" fill="#4a9eff" font-size="10" letter-spacing="2" font-weight="700">STATE</text>
+    <text x="1290" y="38" fill="#4caf50" font-size="10" letter-spacing="2" font-weight="700">SPATIAL</text>
+  </g>
+
+  <!-- Row 2: dims 10-14 SPATIAL -->
+  <g transform="translate(72,362)">
+    <g>
+      <rect width="248" height="56" rx="6" fill="#1a1a2e" stroke="#4caf50" stroke-width="1.5"/>
+      <text x="8" y="16" fill="#4caf50" font-size="9" font-family="JetBrains Mono, monospace" font-weight="700">dim[10]  pos_y</text>
+      <text x="8" y="32" fill="#dcdcdc" font-size="11" font-weight="700">pos_y</text>
+      <text x="8" y="48" fill="#a0a0b0" font-size="9">/ ±pos_xy_extent</text>
+    </g>
+    <g transform="translate(256,0)">
+      <rect width="248" height="56" rx="6" fill="#1a1a2e" stroke="#4caf50" stroke-width="1.5"/>
+      <text x="8" y="16" fill="#4caf50" font-size="9" font-family="JetBrains Mono, monospace" font-weight="700">dim[11]  pos_z</text>
+      <text x="8" y="32" fill="#dcdcdc" font-size="11" font-weight="700">pos_z</text>
+      <text x="8" y="48" fill="#a0a0b0" font-size="9">/ pos_z_extent  Nuke/Vertigo aware</text>
+    </g>
+    <g transform="translate(512,0)">
+      <rect width="248" height="56" rx="6" fill="#1a1a2e" stroke="#4caf50" stroke-width="1.5"/>
+      <text x="8" y="16" fill="#4caf50" font-size="9" font-family="JetBrains Mono, monospace" font-weight="700">dim[12]  view_yaw_sin</text>
+      <text x="8" y="32" fill="#dcdcdc" font-size="11" font-weight="700">view_yaw_sin</text>
+      <text x="8" y="48" fill="#a0a0b0" font-size="9">sin(yaw)  cyclic continuity</text>
+    </g>
+    <g transform="translate(768,0)">
+      <rect width="248" height="56" rx="6" fill="#1a1a2e" stroke="#4caf50" stroke-width="1.5"/>
+      <text x="8" y="16" fill="#4caf50" font-size="9" font-family="JetBrains Mono, monospace" font-weight="700">dim[13]  view_yaw_cos</text>
+      <text x="8" y="32" fill="#dcdcdc" font-size="11" font-weight="700">view_yaw_cos</text>
+      <text x="8" y="48" fill="#a0a0b0" font-size="9">cos(yaw)  cyclic continuity</text>
+    </g>
+    <g transform="translate(1024,0)">
+      <rect width="248" height="56" rx="6" fill="#1a1a2e" stroke="#4caf50" stroke-width="1.5"/>
+      <text x="8" y="16" fill="#4caf50" font-size="9" font-family="JetBrains Mono, monospace" font-weight="700">dim[14]  view_pitch</text>
+      <text x="8" y="32" fill="#dcdcdc" font-size="11" font-weight="700">view_pitch</text>
+      <text x="8" y="48" fill="#a0a0b0" font-size="9">/ pitch_max  normalized</text>
+    </g>
+    <text x="1290" y="34" fill="#4caf50" font-size="10" letter-spacing="2" font-weight="700">SPATIAL</text>
+  </g>
+
+  <!-- Row 3: dims 15-19 CONTEXT + TACTICAL -->
+  <g transform="translate(72,426)">
+    <g>
+      <rect width="248" height="56" rx="6" fill="#1a1a2e" stroke="#4caf50" stroke-width="1.5"/>
+      <text x="8" y="16" fill="#4caf50" font-size="9" font-family="JetBrains Mono, monospace" font-weight="700">dim[15]  z_penalty</text>
+      <text x="8" y="32" fill="#dcdcdc" font-size="11" font-weight="700">z_penalty</text>
+      <text x="8" y="48" fill="#a0a0b0" font-size="9">vertical distinctiveness  0–1</text>
+    </g>
+    <g transform="translate(256,0)">
+      <rect width="248" height="56" rx="6" fill="#1a1a2e" stroke="#a855f7" stroke-width="1.5"/>
+      <text x="8" y="16" fill="#a855f7" font-size="9" font-family="JetBrains Mono, monospace" font-weight="700">dim[16]  kast_estimate</text>
+      <text x="8" y="32" fill="#dcdcdc" font-size="11" font-weight="700">kast_estimate</text>
+      <text x="8" y="48" fill="#a0a0b0" font-size="9">KAST participation ratio  0–1</text>
+    </g>
+    <g transform="translate(512,0)">
+      <rect width="248" height="56" rx="6" fill="#1a1a2e" stroke="#a855f7" stroke-width="1.5"/>
+      <text x="8" y="16" fill="#a855f7" font-size="9" font-family="JetBrains Mono, monospace" font-weight="700">dim[17]  map_id</text>
+      <text x="8" y="32" fill="#dcdcdc" font-size="11" font-weight="700">map_id</text>
+      <text x="8" y="48" fill="#a0a0b0" font-size="9">deterministic MD5 hash  0–1</text>
+    </g>
+    <g transform="translate(768,0)">
+      <rect width="248" height="56" rx="6" fill="#1a1a2e" stroke="#a855f7" stroke-width="1.5"/>
+      <text x="8" y="16" fill="#a855f7" font-size="9" font-family="JetBrains Mono, monospace" font-weight="700">dim[18]  round_phase</text>
+      <text x="8" y="32" fill="#dcdcdc" font-size="11" font-weight="700">round_phase</text>
+      <text x="8" y="48" fill="#a0a0b0" font-size="9">0=pistol  0.33=eco  0.66=force  1=full</text>
+    </g>
+    <g transform="translate(1024,0)">
+      <rect width="248" height="56" rx="6" fill="#1a1a2e" stroke="#ffaa00" stroke-width="1.5"/>
+      <text x="8" y="16" fill="#ffaa00" font-size="9" font-family="JetBrains Mono, monospace" font-weight="700">dim[19]  weapon_class</text>
+      <text x="8" y="32" fill="#dcdcdc" font-size="11" font-weight="700">weapon_class</text>
+      <text x="8" y="48" fill="#a0a0b0" font-size="9">0=knife  0.2=pistol  0.6=rifle  0.8=sniper</text>
+    </g>
+    <text x="1290" y="18" fill="#4caf50" font-size="10" letter-spacing="2" font-weight="700">SPATIAL</text>
+    <text x="1290" y="38" fill="#a855f7" font-size="10" letter-spacing="2" font-weight="700">CONTEXT</text>
+    <text x="1290" y="56" fill="#ffaa00" font-size="10" letter-spacing="2" font-weight="700">TACTICAL</text>
+  </g>
+
+  <!-- Row 4: dims 20-24 TACTICAL -->
+  <g transform="translate(72,490)">
+    <g>
+      <rect width="248" height="56" rx="6" fill="#1a1a2e" stroke="#ffaa00" stroke-width="1.5"/>
+      <text x="8" y="16" fill="#ffaa00" font-size="9" font-family="JetBrains Mono, monospace" font-weight="700">dim[20]  time_in_round</text>
+      <text x="8" y="32" fill="#dcdcdc" font-size="11" font-weight="700">time_in_round</text>
+      <text x="8" y="48" fill="#a0a0b0" font-size="9">seconds / 115  clamped [0,1]</text>
+    </g>
+    <g transform="translate(256,0)">
+      <rect width="248" height="56" rx="6" fill="#1a1a2e" stroke="#ffaa00" stroke-width="1.5"/>
+      <text x="8" y="16" fill="#ffaa00" font-size="9" font-family="JetBrains Mono, monospace" font-weight="700">dim[21]  bomb_planted</text>
+      <text x="8" y="32" fill="#dcdcdc" font-size="11" font-weight="700">bomb_planted</text>
+      <text x="8" y="48" fill="#a0a0b0" font-size="9">binary 0/1</text>
+    </g>
+    <g transform="translate(512,0)">
+      <rect width="248" height="56" rx="6" fill="#1a1a2e" stroke="#ffaa00" stroke-width="1.5"/>
+      <text x="8" y="16" fill="#ffaa00" font-size="9" font-family="JetBrains Mono, monospace" font-weight="700">dim[22]  teammates_alive</text>
+      <text x="8" y="32" fill="#dcdcdc" font-size="11" font-weight="700">teammates_alive</text>
+      <text x="8" y="48" fill="#a0a0b0" font-size="9">count / 4  [0,1]</text>
+    </g>
+    <g transform="translate(768,0)">
+      <rect width="248" height="56" rx="6" fill="#1a1a2e" stroke="#ffaa00" stroke-width="1.5"/>
+      <text x="8" y="16" fill="#ffaa00" font-size="9" font-family="JetBrains Mono, monospace" font-weight="700">dim[23]  enemies_alive</text>
+      <text x="8" y="32" fill="#dcdcdc" font-size="11" font-weight="700">enemies_alive</text>
+      <text x="8" y="48" fill="#a0a0b0" font-size="9">count / 5  [0,1]</text>
+    </g>
+    <g transform="translate(1024,0)">
+      <rect width="248" height="56" rx="6" fill="rgba(255,170,0,0.15)" stroke="#ffaa00" stroke-width="2"/>
+      <text x="8" y="16" fill="#ffaa00" font-size="9" font-family="JetBrains Mono, monospace" font-weight="700">dim[24]  team_economy</text>
+      <text x="8" y="32" fill="#dcdcdc" font-size="11" font-weight="700">team_economy</text>
+      <text x="8" y="48" fill="#a0a0b0" font-size="9">team avg money / 16000  [0,1]</text>
+    </g>
+    <text x="1290" y="34" fill="#ffaa00" font-size="10" letter-spacing="2" font-weight="700">TACTICAL</text>
+  </g>
+
+  <!-- ======================================================
+       BOTTOM ROW: output → storage → batch → model
+  ======================================================= -->
+  <g transform="translate(72,580)">
+    <text fill="#4caf50" font-size="10" letter-spacing="3" font-weight="700">DOWNSTREAM — tensor storage → batch assembly → model input</text>
+  </g>
+
+  <!-- output tensor box -->
+  <g transform="translate(72,598)">
+    <rect width="248" height="72" rx="8" fill="rgba(255,170,0,0.1)" stroke="#ffaa00" stroke-width="2"/>
+    <text x="14" y="22" fill="#ffaa00" font-size="10" letter-spacing="2" font-weight="700">OUTPUT TENSOR</text>
+    <text x="14" y="44" fill="#dcdcdc" font-size="14" font-weight="700">float32  [N, 25]</text>
+    <text x="14" y="62" fill="#a0a0b0" font-size="10">N = ticks extracted from .dem</text>
+  </g>
+  <path d="M320 634 L352 634" stroke="#ffaa00" stroke-width="1.5" marker-end="url(#arY)"/>
+
+  <!-- SQLite write -->
+  <g transform="translate(354,598)">
+    <rect width="220" height="72" rx="8" fill="#1a1a2e" stroke="#4caf50" stroke-width="1.5"/>
+    <text x="14" y="22" fill="#4caf50" font-size="10" letter-spacing="2" font-weight="700">WRITE  ·  SQLite-WAL</text>
+    <text x="14" y="44" fill="#dcdcdc" font-size="13" font-weight="700">PlayerTickState</text>
+    <text x="14" y="60" fill="#a0a0b0" font-size="10">JSON array per tick · FK → match</text>
+    <text x="14" y="70" fill="#3a3a5a" font-size="9" font-family="JetBrains Mono, monospace">db_models.py</text>
+  </g>
+  <path d="M574 634 L606 634" stroke="#4caf50" stroke-width="1.5" marker-end="url(#arG)"/>
+
+  <!-- Batch assembly -->
+  <g transform="translate(608,598)">
+    <rect width="248" height="72" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <text x="14" y="22" fill="#a0a0b0" font-size="10" letter-spacing="2" font-weight="700">BATCH ASSEMBLY</text>
+    <text x="14" y="44" fill="#dcdcdc" font-size="13" font-weight="700">Window  [10+10 ticks]</text>
+    <text x="14" y="60" fill="#a0a0b0" font-size="10">ctx=x[0:10]  ·  tgt=x[10:20]</text>
+    <text x="14" y="70" fill="#3a3a5a" font-size="9" font-family="JetBrains Mono, monospace">training_orchestrator.py</text>
+  </g>
+  <path d="M856 634 L888 634" stroke="#4a9eff" stroke-width="1.5" marker-end="url(#arB)"/>
+
+  <!-- to JEPA -->
+  <g transform="translate(890,598)">
+    <rect width="248" height="72" rx="8" fill="rgba(74,158,255,0.1)" stroke="#4a9eff" stroke-width="2"/>
+    <text x="14" y="22" fill="#4a9eff" font-size="10" letter-spacing="2" font-weight="700">MODEL INPUT</text>
+    <text x="14" y="44" fill="#dcdcdc" font-size="14" font-weight="700">float32  [B=64, T=20, 25]</text>
+    <text x="14" y="62" fill="#a0a0b0" font-size="10">JEPACoachingModel.forward_jepa_pretrain()</text>
+  </g>
+
+  <!-- Parity note -->
+  <g transform="translate(72,690)">
+    <rect width="1296" height="44" rx="6" fill="#0f0f2e" stroke="#ffaa00" stroke-dasharray="5,3"/>
+    <text x="14" y="18" fill="#ffaa00" font-size="11">TRAIN/INFER PARITY GUARANTEE:</text>
+    <text x="224" y="18" fill="#a0a0b0" font-size="11">Training (StateReconstructor) and Inference (GhostEngine) both call</text>
+    <text x="724" y="18" fill="#ffaa00" font-size="11" font-family="JetBrains Mono, monospace">FeatureExtractor.extract()</text>
+    <text x="936" y="18" fill="#a0a0b0" font-size="11">— same code, same normalization bounds.</text>
+    <text x="14" y="36" fill="#ff4444" font-size="10" font-family="JetBrains Mono, monospace">Changes to feature order or normalization MUST be made in vectorizer.py ONLY.  P-X-01</text>
+  </g>
+
+  <!-- EXCLUDED feature note -->
+  <g transform="translate(72,752)">
+    <rect width="620" height="32" rx="5" fill="rgba(255,68,68,0.1)" stroke="#ff4444"/>
+    <text x="14" y="14" fill="#ff4444" font-size="10" letter-spacing="2" font-weight="700">P-RSB-03</text>
+    <text x="78" y="14" fill="#a0a0b0" font-size="10">round_won is EXCLUDED from all 25 dims — label leak prevention. Never add it.</text>
+    <text x="14" y="28" fill="#3a3a5a" font-size="9" font-family="JetBrains Mono, monospace">assert len(FEATURE_NAMES) == METADATA_DIM  enforced at module import</text>
+  </g>
+
+  <!-- FOOTER -->
+  <g transform="translate(72,868)">
+    <text fill="#3a3a5a" font-size="10">Macena CS2 Coach AI · design/architecture/data_pipeline.svg · viewBox 1440×900</text>
+    <text x="1296" y="0" text-anchor="end" fill="#3a3a5a" font-size="10">Source: backend/processing/feature_engineering/vectorizer.py</text>
+  </g>
+</svg>

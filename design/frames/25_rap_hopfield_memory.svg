@@ -1,0 +1,205 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Roboto, Inter, system-ui, sans-serif">
+  <defs>
+    <marker id="ar"  viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#a855f7"/></marker>
+    <marker id="arR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#ff4444"/></marker>
+    <marker id="arG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#4caf50"/></marker>
+  </defs>
+
+  <rect width="1440" height="900" fill="#14141e"/>
+
+  <g transform="translate(60,44)">
+    <text fill="#a855f7" font-size="10" letter-spacing="4" font-weight="700">RAP · FRAME 25</text>
+    <text y="32" fill="#dcdcdc" font-size="24" font-weight="700">RAP Memory — LTC + Hopfield Associative Store</text>
+    <text y="54" fill="#a0a0b0" font-size="12">Layer 2 of the 7-layer RAP pipeline · Liquid Time-Constant neurons + learnable prototype store</text>
+    <text y="74" fill="#3a3a5a" font-size="11" font-family="JetBrains Mono, monospace">backend/nn/experimental/rap_coach/memory.py · class RAPMemory</text>
+  </g>
+
+  <!-- Input -->
+  <g transform="translate(60,148)">
+    <rect width="280" height="84" rx="8" fill="#1a1a2e" stroke="#a855f7" stroke-width="1.5"/>
+    <text x="12" y="22" fill="#a855f7" font-size="10" letter-spacing="2" font-weight="700">INPUT · from Layer 1 + metadata</text>
+    <text x="12" y="46" fill="#dcdcdc" font-size="14" font-weight="700">concat(z_spatial, metadata)</text>
+    <text x="12" y="64" fill="#a0a0b0" font-size="11">shape [B, T, 128 + 25 = 153]</text>
+    <text x="12" y="78" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">perception_dim + METADATA_DIM</text>
+  </g>
+
+  <!-- Arrow to LTC -->
+  <path d="M340 190 L380 190" stroke="#a855f7" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <!-- LTC block -->
+  <g transform="translate(380,136)">
+    <rect width="380" height="128" rx="8" fill="rgba(168,85,247,0.08)" stroke="#a855f7" stroke-width="2"/>
+    <text x="16" y="24" fill="#a855f7" font-size="10" letter-spacing="2" font-weight="700">LIQUID TIME-CONSTANT · continuous-time dynamics</text>
+    <text x="16" y="46" fill="#dcdcdc" font-size="14" font-weight="700">LTC(input=153, wiring=AutoNCP)</text>
+
+    <g transform="translate(16,60)" font-size="11" font-family="JetBrains Mono, monospace" fill="#a0a0b0">
+      <text>ncp_units   = 512  (hidden_dim × 2)</text>
+      <text y="16">ncp_output  = 154  (30% motor neurons)</text>
+      <text y="32">motor 154 · command 143 · inter 215</text>
+    </g>
+    <text x="16" y="122" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">NN-45 + NN-MEM-02 · seeded (42) · checkpoint-portable wiring</text>
+  </g>
+
+  <!-- LTC projection to 256 -->
+  <path d="M760 198 L780 198" stroke="#a855f7" stroke-width="1.5" marker-end="url(#ar)"/>
+  <g transform="translate(780,168)">
+    <rect width="180" height="60" rx="6" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <text x="12" y="20" fill="#a0a0b0" font-size="10" font-weight="700" letter-spacing="2">PROJECT</text>
+    <text x="12" y="38" fill="#dcdcdc" font-size="12" font-family="JetBrains Mono, monospace">Linear(154 → 256)</text>
+    <text x="12" y="54" fill="#5a5a8a" font-size="10">RAP-AUDIT-07</text>
+  </g>
+
+  <!-- HOPFIELD BLOCK (big, center-right) -->
+  <path d="M960 198 L990 198" stroke="#a855f7" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <g transform="translate(990,136)">
+    <rect width="390" height="128" rx="8" fill="rgba(168,85,247,0.08)" stroke="#a855f7" stroke-width="2"/>
+    <text x="16" y="24" fill="#a855f7" font-size="10" letter-spacing="2" font-weight="700">HOPFIELD ASSOCIATIVE MEMORY</text>
+    <text x="16" y="46" fill="#dcdcdc" font-size="14" font-weight="700">HopfieldLayer(256, 256)</text>
+
+    <g transform="translate(16,60)" font-size="11" font-family="JetBrains Mono, monospace" fill="#a0a0b0">
+      <text>num_heads  = 4</text>
+      <text y="16">quantity   = 32    (learnable prototypes)</text>
+      <text y="32">trainable  = True  (shaped by backprop)</text>
+    </g>
+    <text x="16" y="122" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">Ramsauer et al. ICLR 2021 · exponential storage capacity</text>
+  </g>
+
+  <!-- Prototype bank visualization (below Hopfield) -->
+  <g transform="translate(990,284)">
+    <rect width="390" height="180" rx="8" fill="#1a1a2e"/>
+    <text x="14" y="22" fill="#dcdcdc" font-size="12" font-weight="700">Prototype bank · 32 × 256-dim</text>
+    <text x="14" y="40" fill="#a0a0b0" font-size="11">Each prototype = a "tactical pattern"</text>
+
+    <!-- 32 proto cells, 8×4 grid, each 44×26 -->
+    <g transform="translate(14,52)" font-size="9">
+      <!-- Sample 8 with labels, rest as dots -->
+      <g>
+        <rect width="44" height="26" rx="3" fill="#0f0f2e" stroke="#a855f7"/>
+        <text x="22" y="17" text-anchor="middle" fill="#a855f7" font-family="JetBrains Mono, monospace">A-exec</text>
+      </g>
+      <g transform="translate(46,0)"><rect width="44" height="26" rx="3" fill="#0f0f2e" stroke="#a855f7"/><text x="22" y="17" text-anchor="middle" fill="#a855f7" font-family="JetBrains Mono, monospace">B-exec</text></g>
+      <g transform="translate(92,0)"><rect width="44" height="26" rx="3" fill="#0f0f2e" stroke="#a855f7"/><text x="22" y="17" text-anchor="middle" fill="#a855f7" font-family="JetBrains Mono, monospace">mid-dom</text></g>
+      <g transform="translate(138,0)"><rect width="44" height="26" rx="3" fill="#0f0f2e" stroke="#a855f7"/><text x="22" y="17" text-anchor="middle" fill="#a855f7" font-family="JetBrains Mono, monospace">retake</text></g>
+      <g transform="translate(184,0)"><rect width="44" height="26" rx="3" fill="#0f0f2e" stroke="#a855f7"/><text x="22" y="17" text-anchor="middle" fill="#a855f7" font-family="JetBrains Mono, monospace">eco</text></g>
+      <g transform="translate(230,0)"><rect width="44" height="26" rx="3" fill="#0f0f2e" stroke="#a855f7"/><text x="22" y="17" text-anchor="middle" fill="#a855f7" font-family="JetBrains Mono, monospace">clutch</text></g>
+      <g transform="translate(276,0)"><rect width="44" height="26" rx="3" fill="#0f0f2e" stroke="#a855f7"/><text x="22" y="17" text-anchor="middle" fill="#a855f7" font-family="JetBrains Mono, monospace">save</text></g>
+      <g transform="translate(322,0)"><rect width="44" height="26" rx="3" fill="#0f0f2e" stroke="#a855f7"/><text x="22" y="17" text-anchor="middle" fill="#a855f7" font-family="JetBrains Mono, monospace">split</text></g>
+
+      <!-- Row 2-4 : just color cells -->
+      <g transform="translate(0,30)">
+        <g><rect width="44" height="26" rx="3" fill="rgba(168,85,247,0.2)"/></g>
+        <g transform="translate(46,0)"><rect width="44" height="26" rx="3" fill="rgba(168,85,247,0.35)"/></g>
+        <g transform="translate(92,0)"><rect width="44" height="26" rx="3" fill="rgba(168,85,247,0.15)"/></g>
+        <g transform="translate(138,0)"><rect width="44" height="26" rx="3" fill="rgba(168,85,247,0.4)"/></g>
+        <g transform="translate(184,0)"><rect width="44" height="26" rx="3" fill="rgba(168,85,247,0.25)"/></g>
+        <g transform="translate(230,0)"><rect width="44" height="26" rx="3" fill="rgba(168,85,247,0.3)"/></g>
+        <g transform="translate(276,0)"><rect width="44" height="26" rx="3" fill="rgba(168,85,247,0.2)"/></g>
+        <g transform="translate(322,0)"><rect width="44" height="26" rx="3" fill="rgba(168,85,247,0.35)"/></g>
+      </g>
+      <g transform="translate(0,60)">
+        <g><rect width="44" height="26" rx="3" fill="rgba(168,85,247,0.15)"/></g>
+        <g transform="translate(46,0)"><rect width="44" height="26" rx="3" fill="rgba(168,85,247,0.25)"/></g>
+        <g transform="translate(92,0)"><rect width="44" height="26" rx="3" fill="rgba(168,85,247,0.4)"/></g>
+        <g transform="translate(138,0)"><rect width="44" height="26" rx="3" fill="rgba(168,85,247,0.2)"/></g>
+        <g transform="translate(184,0)"><rect width="44" height="26" rx="3" fill="rgba(168,85,247,0.3)"/></g>
+        <g transform="translate(230,0)"><rect width="44" height="26" rx="3" fill="rgba(168,85,247,0.35)"/></g>
+        <g transform="translate(276,0)"><rect width="44" height="26" rx="3" fill="rgba(168,85,247,0.15)"/></g>
+        <g transform="translate(322,0)"><rect width="44" height="26" rx="3" fill="rgba(168,85,247,0.25)"/></g>
+      </g>
+      <g transform="translate(0,90)">
+        <g><rect width="44" height="26" rx="3" fill="rgba(168,85,247,0.3)"/></g>
+        <g transform="translate(46,0)"><rect width="44" height="26" rx="3" fill="rgba(168,85,247,0.15)"/></g>
+        <g transform="translate(92,0)"><rect width="44" height="26" rx="3" fill="rgba(168,85,247,0.2)"/></g>
+        <g transform="translate(138,0)"><rect width="44" height="26" rx="3" fill="rgba(168,85,247,0.35)"/></g>
+        <g transform="translate(184,0)"><rect width="44" height="26" rx="3" fill="rgba(168,85,247,0.4)"/></g>
+        <g transform="translate(230,0)"><rect width="44" height="26" rx="3" fill="rgba(168,85,247,0.15)"/></g>
+        <g transform="translate(276,0)"><rect width="44" height="26" rx="3" fill="rgba(168,85,247,0.25)"/></g>
+        <g transform="translate(322,0)"><rect width="44" height="26" rx="3" fill="rgba(168,85,247,0.3)"/></g>
+      </g>
+    </g>
+    <text x="14" y="170" fill="#5a5a8a" font-size="10" font-family="JetBrains Mono, monospace">32 prototypes × 256-dim = 8,192 parameters · updated by backprop</text>
+  </g>
+
+  <!-- Residual combine -->
+  <path d="M1185 264 L1185 310 L960 310" stroke="#a855f7" stroke-width="1.2" fill="none"/>
+  <path d="M780 198 Q780 310 770 310" stroke="#a855f7" stroke-width="1.2" fill="none"/>
+
+  <g transform="translate(540,304)">
+    <rect width="200" height="60" rx="8" fill="rgba(168,85,247,0.1)" stroke="#a855f7"/>
+    <text x="14" y="22" fill="#a855f7" font-size="10" font-weight="700" letter-spacing="2">RESIDUAL  ⊕</text>
+    <text x="14" y="40" fill="#dcdcdc" font-size="12">combined = ltc + mem</text>
+    <text x="14" y="54" fill="#a0a0b0" font-size="11">shape [B, T, 256]</text>
+  </g>
+
+  <!-- Arrow to Belief head -->
+  <path d="M540 334 L400 334" stroke="#a855f7" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <!-- Belief head -->
+  <g transform="translate(60,304)">
+    <rect width="340" height="60" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <text x="14" y="20" fill="#a0a0b0" font-size="10" font-weight="700" letter-spacing="2">BELIEF HEAD</text>
+    <text x="14" y="40" fill="#dcdcdc" font-size="12" font-family="JetBrains Mono, monospace">Linear(256) → SiLU → Linear(64)</text>
+    <text x="14" y="54" fill="#a0a0b0" font-size="11">belief ∈ ℝ [B, T, 64]  → to Layer 3 Strategy</text>
+  </g>
+
+  <!-- ═══ MATURITY GATE (big critical section) ═══ -->
+  <g transform="translate(60,420)">
+    <rect width="880" height="220" rx="8" fill="rgba(255,68,68,0.08)" stroke="#ff4444" stroke-width="2"/>
+    <text x="16" y="26" fill="#ff4444" font-size="10" letter-spacing="3" font-weight="700">NN-MEM-01 · MATURITY GATE · why the Hopfield stays quiet at the start</text>
+    <text x="16" y="50" fill="#dcdcdc" font-size="14" font-weight="700">bypass Hopfield until ≥ 2 training forward passes OR checkpoint load</text>
+
+    <g transform="translate(16,78)" font-size="12">
+      <text fill="#a0a0b0">Why the gate exists:</text>
+      <text y="20" fill="#dcdcdc">Brand-new prototypes are random noise. If we let Hopfield retrieve them before backprop has</text>
+      <text y="36" fill="#dcdcdc">shaped them, it adds signal-shaped noise to combined_state → model learns against corrupted targets.</text>
+    </g>
+
+    <g transform="translate(16,150)" font-family="JetBrains Mono, monospace" font-size="12">
+      <text fill="#a0a0b0">if self._hopfield_trained:</text>
+      <text y="18" x="24" fill="#4caf50">mem_out = self.hopfield(ltc_out)   # retrieve prototypes</text>
+      <text y="36" fill="#a0a0b0">else:</text>
+      <text y="54" x="24" fill="#ff4444">mem_out = torch.zeros_like(ltc_out)   # bypass, add nothing</text>
+    </g>
+  </g>
+
+  <!-- ═══ Self-correction callout (right) ═══ -->
+  <g transform="translate(960,420)">
+    <rect width="420" height="220" rx="8" fill="rgba(76,175,80,0.06)" stroke="#4caf50" stroke-width="2"/>
+    <text x="16" y="26" fill="#4caf50" font-size="10" letter-spacing="3" font-weight="700">SELF-CORRECTION · why RAP can become LLM-like</text>
+
+    <text x="16" y="56" fill="#dcdcdc" font-size="13" font-weight="700">1. Prototypes are written by backprop</text>
+    <text x="16" y="74" fill="#a0a0b0" font-size="11">Not stored · shaped by the loss over every batch</text>
+
+    <text x="16" y="102" fill="#dcdcdc" font-size="13" font-weight="700">2. Wrong retrievals → wrong predictions → loss</text>
+    <text x="16" y="120" fill="#a0a0b0" font-size="11">Loss gradient reshapes prototypes toward correctness</text>
+
+    <text x="16" y="148" fill="#dcdcdc" font-size="13" font-weight="700">3. Right retrievals → right predictions → low loss</text>
+    <text x="16" y="166" fill="#a0a0b0" font-size="11">Stable prototypes — the "vocabulary" of tactical patterns</text>
+
+    <text x="16" y="194" fill="#4caf50" font-size="12" font-weight="700">→ no scale needed, just correct gradients.</text>
+  </g>
+
+  <!-- Checkpoint load path -->
+  <g transform="translate(60,664)">
+    <rect width="1320" height="84" rx="8" fill="#1a1a2e"/>
+    <text x="16" y="24" fill="#dcdcdc" font-size="13" font-weight="700">Checkpoint load path  ·  activates Hopfield immediately</text>
+
+    <g transform="translate(16,44)" font-family="JetBrains Mono, monospace" font-size="12" fill="#a0a0b0">
+      <text>def load_state_dict(self, state_dict, strict=True, assign=False):</text>
+      <text y="16" x="24">result = super().load_state_dict(...)</text>
+      <text y="32" x="24" fill="#4caf50">self._hopfield_trained = True   # prototypes already shaped by a previous run</text>
+    </g>
+  </g>
+
+  <!-- Lite fallback note -->
+  <g transform="translate(60,766)">
+    <rect width="1320" height="108" rx="8" fill="#0f0f2e" stroke="#3a3a5a" stroke-dasharray="4 3"/>
+    <text x="16" y="26" fill="#a0a0b0" font-size="12" font-weight="700">Fallback · RAPMemoryLite</text>
+    <text x="16" y="48" fill="#a0a0b0" font-size="11">When ncps / hflayers are not installed (niche academic libs), RAPMemoryLite is used:</text>
+    <g transform="translate(16,64)" font-family="JetBrains Mono, monospace" font-size="11" fill="#dcdcdc">
+      <text>LSTM(153 → 256, batch_first=True) + belief_head(256→64)</text>
+      <text y="16" fill="#a0a0b0" font-size="11"># same I/O contract · loses continuous-time dynamics + Hopfield recall · activate via use_lite_memory=True</text>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Roboto, Inter, system-ui, sans-serif">
+  <defs>
+    <symbol id="ic-home" viewBox="0 0 24 24"><path d="M12 3 L22 12 L19 12 L19 21 L5 21 L5 12 L2 12 Z M9 15 L15 15 L15 21 L9 21 Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"></path></symbol>
+    <symbol id="ic-brain" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"></circle><path d="M12 5 L12 19 M12 8 C7 6 5 11 12 12 M12 12 C17 11 19 16 12 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></symbol>
+    <symbol id="ic-list" viewBox="0 0 24 24"><path d="M4 6 L20 6 M4 12 L20 12 M4 18 L20 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path><circle cx="2.5" cy="6" r="1.5" fill="currentColor"></circle><circle cx="2.5" cy="12" r="1.5" fill="currentColor"></circle><circle cx="2.5" cy="18" r="1.5" fill="currentColor"></circle></symbol>
+    <symbol id="ic-chart" viewBox="0 0 24 24"><rect x="3" y="14" width="5" height="8" fill="none" stroke="currentColor" stroke-width="1.5"></rect><rect x="10" y="8" width="5" height="14" fill="none" stroke="currentColor" stroke-width="1.5"></rect><rect x="17" y="3" width="5" height="19" fill="none" stroke="currentColor" stroke-width="1.5"></rect></symbol>
+    <symbol id="ic-cross" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.5"></circle><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.5"></circle><path d="M12 1 L12 7 M12 17 L12 23 M1 12 L7 12 M17 12 L23 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></symbol>
+    <symbol id="ic-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.5"></circle><path d="M12 4 L12 7 M12 17 L12 20 M4 12 L7 12 M17 12 L20 12 M6.3 6.3 L8.5 8.5 M15.5 15.5 L17.7 17.7 M6.3 17.7 L8.5 15.5 M15.5 8.5 L17.7 6.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></symbol>
+    <symbol id="ic-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.5"></circle><path d="M9 9 C9 5 15 5 15 9 C15 12 12 12 12 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path><circle cx="12" cy="18" r="1" fill="currentColor"></circle></symbol>
+  </defs>
+
+  <rect width="1440" height="900" fill="#14141e"></rect>
+
+
+  <g>
+    <rect width="220" height="900" fill="#0f0f2e"></rect>
+    <rect x="219" width="1" height="900" fill="rgba(255,255,255,0.05)"></rect>
+    <g transform="translate(176,12)"><text x="18" y="26" text-anchor="middle" fill="#a0a0b0" font-size="22">≡</text></g>
+    <text x="110" y="82" text-anchor="middle" fill="#d96600" font-size="11" letter-spacing="3" font-weight="700">MACENA CS2</text>
+
+    <g transform="translate(8,108)" font-size="13">
+      <g color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-home" width="20" height="20"></use></g><text x="44" y="26" fill="#a0a0b0">Home</text></g>
+      <g transform="translate(0,44)" color="#d96600">
+        <rect width="204" height="40" rx="6" fill="rgba(217,102,0,0.25)"></rect>
+        <rect width="3" height="40" fill="#d96600"></rect>
+        <g transform="translate(12,10)"><use href="#ic-brain" width="20" height="20"></use></g>
+        <text x="44" y="26" fill="#d96600" font-weight="600">Coach</text>
+      </g>
+      <g transform="translate(0,88)" color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-list" width="20" height="20"></use></g><text x="44" y="26" fill="#a0a0b0">Match History</text></g>
+      <g transform="translate(0,132)" color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-chart" width="20" height="20"></use></g><text x="44" y="26" fill="#a0a0b0">Performance</text></g>
+      <g transform="translate(0,176)" color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-cross" width="20" height="20"></use></g><text x="44" y="26" fill="#a0a0b0">Tactical Viewer</text></g>
+      <g transform="translate(0,220)" color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-gear" width="20" height="20"></use></g><text x="44" y="26" fill="#a0a0b0">Settings</text></g>
+      <g transform="translate(0,264)" color="#a0a0b0"><g transform="translate(12,10)"><use href="#ic-help" width="20" height="20"></use></g><text x="44" y="26" fill="#a0a0b0">Help</text></g>
+    </g>
+
+    <text x="110" y="872" text-anchor="middle" fill="#3a3a5a" font-size="11" font-family="JetBrains Mono, monospace">v0.1.0</text>
+  </g>
+
+
+
+
+  <text x="236" y="56" fill="#dcdcdc" font-size="20" font-weight="700">RAP Coach Dashboard</text>
+
+
+  <g transform="translate(1316,36)">
+    <rect width="100" height="32" rx="4" fill="transparent" stroke="#3a3a5a"></rect>
+    <text x="50" y="21" text-anchor="middle" fill="#dcdcdc" font-size="13">Chat</text>
+  </g>
+
+
+  <g transform="translate(236,80)">
+    <rect width="1188" height="196" rx="8" fill="#1a1a2e"></rect>
+    <text x="16" y="28" fill="#dcdcdc" font-size="14" font-weight="700">Belief State Confidence</text>
+    <text x="16" y="52" fill="#a0a0b0" font-size="13">Model confidence based on the quality and volume of demos analyzed so far.</text>
+    <text x="16" y="70" fill="#a0a0b0" font-size="13">This grows as you ingest more of your own matches.</text>
+
+
+    <g transform="translate(32,96)">
+      <circle cx="40" cy="40" r="36" fill="none" stroke="#3a3a5a" stroke-opacity="0.3" stroke-width="8"></circle>
+      <circle cx="40" cy="40" r="36" fill="none" stroke="#d96600" stroke-width="8" stroke-linecap="round" stroke-dasharray="165.12 61.07" transform="rotate(-90 40 40) scale(1 -1) translate(0 -80)"></circle>
+      <text x="40" y="46" text-anchor="middle" fill="#dcdcdc" font-size="16" font-weight="700">73%</text>
+    </g>
+
+
+    <g transform="translate(152,108)">
+      <text y="12" fill="#a0a0b0" font-size="12">Drivers:</text>
+      <g transform="translate(0,28)">
+        <rect width="8" height="8" rx="2" fill="#4caf50"></rect><text x="16" y="8" fill="#dcdcdc" font-size="12">Sample count · 47 personal demos analyzed</text>
+      </g>
+      <g transform="translate(0,48)">
+        <rect width="8" height="8" rx="2" fill="#4caf50"></rect><text x="16" y="8" fill="#dcdcdc" font-size="12">Data quality · 42 complete · 5 partial · 0 none</text>
+      </g>
+      <g transform="translate(0,68)">
+        <rect width="8" height="8" rx="2" fill="#ffaa00"></rect><text x="16" y="8" fill="#dcdcdc" font-size="12">Map coverage · 6 of 9 competitive maps seen</text>
+      </g>
+    </g>
+  </g>
+
+
+  <g transform="translate(236,292)">
+    <rect width="1188" height="344" rx="8" fill="#1a1a2e"></rect>
+    <text x="16" y="28" fill="#dcdcdc" font-size="14" font-weight="700">Recent Insights</text>
+
+
+    <g transform="translate(16,48)">
+      <rect width="1156" height="72" rx="6" fill="#181c28"></rect>
+      <text x="12" y="20" fill="#d96600" font-size="11" font-style="italic">Pro Analysis: ZywOo on Mirage</text>
+      <text x="12" y="40" fill="#dcdcdc" font-size="12" font-weight="700">Over-peeking on A-site default</text>
+      <text x="1144" y="40" text-anchor="end" fill="#ff5555" font-size="11" font-weight="700">High</text>
+      <text x="12" y="56" fill="#a0a0b0" font-size="12">Peeked jungle 4× without flash support · ZywOo waited for team util in 87% of comparable rounds.</text>
+      <text x="12" y="68" fill="#5a5a8a" font-size="10">positioning</text>
+      <text x="1144" y="68" text-anchor="end" fill="#5a5a8a" font-size="10">2026-04-22 21:14</text>
+    </g>
+
+
+    <g transform="translate(16,128)">
+      <rect width="1156" height="72" rx="6" fill="#181c28"></rect>
+      <text x="12" y="24" fill="#dcdcdc" font-size="12" font-weight="700">Utility burn before engage</text>
+      <text x="1144" y="24" text-anchor="end" fill="#ffcc00" font-size="11" font-weight="700">Medium</text>
+      <text x="12" y="44" fill="#a0a0b0" font-size="12">HE used avg 4.1s before first contact vs pro baseline 8.3s — throw earlier on executes.</text>
+      <text x="12" y="62" fill="#5a5a8a" font-size="10">utility</text>
+      <text x="1144" y="62" text-anchor="end" fill="#5a5a8a" font-size="10">2026-04-22 19:02</text>
+    </g>
+
+
+    <g transform="translate(16,208)">
+      <rect width="1156" height="72" rx="6" fill="#181c28"></rect>
+      <text x="12" y="24" fill="#dcdcdc" font-size="12" font-weight="700">Crosshair placement improving</text>
+      <text x="1144" y="24" text-anchor="end" fill="#4caf50" font-size="11" font-weight="700">Low</text>
+      <text x="12" y="44" fill="#a0a0b0" font-size="12">Head-level crosshair held 78% of ticks, up from 64% last 10 matches — keep it up.</text>
+      <text x="12" y="62" fill="#5a5a8a" font-size="10">aim</text>
+      <text x="1144" y="62" text-anchor="end" fill="#5a5a8a" font-size="10">2026-04-22 16:47</text>
+    </g>
+
+
+    <g transform="translate(16,288)">
+      <rect width="1156" height="40" rx="6" fill="#181c28"></rect>
+      <text x="12" y="18" fill="#dcdcdc" font-size="12" font-weight="700">Pistol round buy pattern</text>
+      <text x="1144" y="18" text-anchor="end" fill="#4caf50" font-size="11" font-weight="700">Low</text>
+      <text x="12" y="32" fill="#a0a0b0" font-size="11">Armor pickup rate 42% on loss round 2 — consider full-buy strategy.</text>
+    </g>
+  </g>
+
+
+  <g transform="translate(236,652)">
+    <rect width="1188" height="228" rx="8" fill="#1a1a2e"></rect>
+    <text x="16" y="28" fill="#dcdcdc" font-size="14" font-weight="700">Advanced Analytics</text>
+    <text x="594" y="120" text-anchor="middle" fill="#666680" font-size="13">Trend graphs and radar charts will appear here after demo analysis.</text>
+    <text x="594" y="144" text-anchor="middle" fill="#666680" font-size="13">Analyze matches to populate this section.</text>
+  </g>
+
+</svg>

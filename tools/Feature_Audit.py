@@ -52,7 +52,7 @@ install_rich_traceback(console=console)
 # --- Logging (centralized) ---
 from Programma_CS2_RENAN.observability.logger_setup import get_tool_logger
 
-_tool_logger = get_tool_logger("feature_audit")
+_tool_logger = get_tool_logger("feature_audit", console=False)  # Rich owns stdout
 
 
 class IndustrialFeatureAuditor:

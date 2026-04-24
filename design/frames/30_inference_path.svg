@@ -1,0 +1,207 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Roboto, Inter, system-ui, sans-serif">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#a855f7"/></marker>
+    <marker id="arG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#4caf50"/></marker>
+    <marker id="arB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#4a9eff"/></marker>
+  </defs>
+
+  <rect width="1440" height="900" fill="#14141e"/>
+
+  <g transform="translate(60,44)">
+    <text fill="#a855f7" font-size="10" letter-spacing="4" font-weight="700">RUNTIME · FRAME 30</text>
+    <text y="32" fill="#dcdcdc" font-size="24" font-weight="700">Inference Path — demo to coaching insight in one pass</text>
+    <text y="54" fill="#a0a0b0" font-size="12">From newly-parsed match to a persisted CoachingInsight row the user sees in the Coach screen</text>
+  </g>
+
+  <!-- Vertical flow, 9 stages from top to bottom-left + feedback loop -->
+
+  <!-- Stage 1: trigger -->
+  <g transform="translate(60,140)">
+    <rect width="260" height="80" rx="8" fill="#1a1a2e" stroke="#d96600" stroke-width="1.5"/>
+    <text x="12" y="22" fill="#d96600" font-size="10" letter-spacing="2" font-weight="700">1 · TRIGGER</text>
+    <text x="12" y="44" fill="#dcdcdc" font-size="13" font-weight="700">Digester finishes ingestion</text>
+    <text x="12" y="62" fill="#a0a0b0" font-size="11">IngestionTask → DONE</text>
+    <text x="12" y="76" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">session_engine.py</text>
+  </g>
+  <path d="M190 220 L190 244" stroke="#a855f7" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <!-- Stage 2: Load features from DB -->
+  <g transform="translate(60,246)">
+    <rect width="260" height="80" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <text x="12" y="22" fill="#a855f7" font-size="10" letter-spacing="2" font-weight="700">2 · LOAD FEATURES</text>
+    <text x="12" y="44" fill="#dcdcdc" font-size="13" font-weight="700">PlayerTickState fetch</text>
+    <text x="12" y="62" fill="#a0a0b0" font-size="11">tensor [N_ticks, 25]</text>
+    <text x="12" y="76" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">match_data_manager.py</text>
+  </g>
+  <path d="M190 326 L190 350" stroke="#a855f7" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <!-- Stage 3: window batch -->
+  <g transform="translate(60,352)">
+    <rect width="260" height="80" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <text x="12" y="22" fill="#a855f7" font-size="10" letter-spacing="2" font-weight="700">3 · WINDOW BATCH</text>
+    <text x="12" y="44" fill="#dcdcdc" font-size="13" font-weight="700">sliding [B, 10, 25]</text>
+    <text x="12" y="62" fill="#a0a0b0" font-size="11">step = 5 ticks · pad last window</text>
+    <text x="12" y="76" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">state_reconstructor.py</text>
+  </g>
+  <path d="M190 432 L190 456" stroke="#a855f7" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <!-- Stage 4: Load checkpoint -->
+  <g transform="translate(60,458)">
+    <rect width="260" height="80" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <text x="12" y="22" fill="#a855f7" font-size="10" letter-spacing="2" font-weight="700">4 · LOAD CHECKPOINT</text>
+    <text x="12" y="44" fill="#dcdcdc" font-size="13" font-weight="700">load_nn("rap_coach", model)</text>
+    <text x="12" y="62" fill="#a0a0b0" font-size="11">weights_only=True · HMAC-verified</text>
+    <text x="12" y="76" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">persistence.py · models/global/latest.pt</text>
+  </g>
+  <path d="M190 538 L190 562" stroke="#a855f7" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <!-- Stage 5: model.eval -->
+  <g transform="translate(60,564)">
+    <rect width="260" height="80" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <text x="12" y="22" fill="#a855f7" font-size="10" letter-spacing="2" font-weight="700">5 · MODE · EVAL</text>
+    <text x="12" y="44" fill="#dcdcdc" font-size="13" font-weight="700">model.eval() · no_grad</text>
+    <text x="12" y="62" fill="#a0a0b0" font-size="11">Hopfield marked trained</text>
+    <text x="12" y="76" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">NN-MEM-01 active via load path</text>
+  </g>
+  <path d="M190 644 L190 668" stroke="#a855f7" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <!-- Stage 6: Forward -->
+  <g transform="translate(60,670)">
+    <rect width="260" height="80" rx="8" fill="rgba(168,85,247,0.1)" stroke="#a855f7" stroke-width="2"/>
+    <text x="12" y="22" fill="#a855f7" font-size="10" letter-spacing="2" font-weight="700">6 · FORWARD PASS</text>
+    <text x="12" y="44" fill="#dcdcdc" font-size="13" font-weight="700">advice_probs[B, 10], value[B, 1]</text>
+    <text x="12" y="62" fill="#a0a0b0" font-size="11">attribution[B, 5] · position[B, 3]</text>
+    <text x="12" y="76" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">RAPCoachModel.forward()</text>
+  </g>
+
+  <!-- Right column: Layer detail for step 6 -->
+  <g transform="translate(360,246)">
+    <rect width="440" height="504" rx="8" fill="#1a1a2e"/>
+    <text x="16" y="26" fill="#dcdcdc" font-size="13" font-weight="700">Step 6 expanded · RAP 7-layer pass</text>
+
+    <g transform="translate(16,52)">
+      <!-- Layer 1 Perception -->
+      <g>
+        <rect width="408" height="52" rx="6" fill="#0f0f2e" stroke="#3a3a5a"/>
+        <text x="14" y="20" fill="#a855f7" font-size="10" font-weight="700" letter-spacing="2">L1 · PERCEPTION</text>
+        <text x="14" y="38" fill="#dcdcdc" font-size="11">3 CNN streams (view/map/motion) → z_spatial [B, 128]</text>
+      </g>
+      <g transform="translate(0,60)">
+        <rect width="408" height="52" rx="6" fill="#0f0f2e" stroke="#3a3a5a"/>
+        <text x="14" y="20" fill="#a855f7" font-size="10" font-weight="700" letter-spacing="2">L2 · MEMORY</text>
+        <text x="14" y="38" fill="#dcdcdc" font-size="11">LTC(153→154) + Hopfield(32 proto, 4 heads) → belief [B, T, 64]</text>
+      </g>
+      <g transform="translate(0,120)">
+        <rect width="408" height="52" rx="6" fill="#0f0f2e" stroke="#3a3a5a"/>
+        <text x="14" y="20" fill="#a855f7" font-size="10" font-weight="700" letter-spacing="2">L3 · STRATEGY</text>
+        <text x="14" y="38" fill="#dcdcdc" font-size="11">MoE 4 experts + Superposition · advice_probs [B, 10]</text>
+      </g>
+      <g transform="translate(0,180)">
+        <rect width="408" height="52" rx="6" fill="#0f0f2e" stroke="#3a3a5a"/>
+        <text x="14" y="20" fill="#a855f7" font-size="10" font-weight="700" letter-spacing="2">L4 · PEDAGOGY</text>
+        <text x="14" y="38" fill="#dcdcdc" font-size="11">Critic V(s) + CausalAttributor (5 concepts) → attribution [B, 5]</text>
+      </g>
+      <g transform="translate(0,240)">
+        <rect width="408" height="52" rx="6" fill="#0f0f2e" stroke="#3a3a5a"/>
+        <text x="14" y="20" fill="#a855f7" font-size="10" font-weight="700" letter-spacing="2">L5 · COMMUNICATION</text>
+        <text x="14" y="38" fill="#dcdcdc" font-size="11">skill-conditioned templates · confidence gate 0.7</text>
+      </g>
+      <g transform="translate(0,300)">
+        <rect width="408" height="52" rx="6" fill="#0f0f2e" stroke="#3a3a5a"/>
+        <text x="14" y="20" fill="#a855f7" font-size="10" font-weight="700" letter-spacing="2">L6 · CHRONOVISOR</text>
+        <text x="14" y="38" fill="#dcdcdc" font-size="11">micro/standard/macro scan · CriticalMoment[] list</text>
+      </g>
+      <g transform="translate(0,360)">
+        <rect width="408" height="52" rx="6" fill="#0f0f2e" stroke="#3a3a5a"/>
+        <text x="14" y="20" fill="#a855f7" font-size="10" font-weight="700" letter-spacing="2">L7 · POSITION HEAD</text>
+        <text x="14" y="38" fill="#dcdcdc" font-size="11">Linear(256 → 3) → (dx, dy, dz) · scale=500</text>
+      </g>
+    </g>
+
+    <text x="16" y="486" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">backend/nn/experimental/rap_coach/model.py · RAPCoachModel.forward()</text>
+  </g>
+
+  <!-- Stage 7: attribution → NL -->
+  <g transform="translate(840,246)">
+    <rect width="260" height="100" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <text x="12" y="22" fill="#a855f7" font-size="10" letter-spacing="2" font-weight="700">7 · TOP-K CONCEPT</text>
+    <text x="12" y="44" fill="#dcdcdc" font-size="13" font-weight="700">argmax of attribution</text>
+    <text x="12" y="62" fill="#a0a0b0" font-size="11">[positioning, crosshair, aggression,</text>
+    <text x="12" y="78" fill="#a0a0b0" font-size="11">  utility, rotation]</text>
+    <text x="12" y="94" fill="#5a5a8a" font-size="10" font-family="JetBrains Mono, monospace">CausalAttributor output</text>
+  </g>
+  <path d="M970 346 L970 370" stroke="#a855f7" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <g transform="translate(840,372)">
+    <rect width="260" height="100" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <text x="12" y="22" fill="#a855f7" font-size="10" letter-spacing="2" font-weight="700">8 · CONFIDENCE GATE</text>
+    <text x="12" y="44" fill="#dcdcdc" font-size="13" font-weight="700">if max_prob &lt; 0.7 · suppress</text>
+    <text x="12" y="62" fill="#a0a0b0" font-size="11">Better to stay silent than say a</text>
+    <text x="12" y="78" fill="#a0a0b0" font-size="11">weak or wrong thing.</text>
+    <text x="12" y="94" fill="#5a5a8a" font-size="10" font-family="JetBrains Mono, monospace">RAPCommunication</text>
+  </g>
+  <path d="M970 472 L970 496" stroke="#a855f7" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <g transform="translate(840,498)">
+    <rect width="260" height="100" rx="8" fill="rgba(76,175,80,0.1)" stroke="#4caf50" stroke-width="2"/>
+    <text x="12" y="22" fill="#4caf50" font-size="10" letter-spacing="2" font-weight="700">9 · RENDER TEMPLATE</text>
+    <text x="12" y="44" fill="#dcdcdc" font-size="13" font-weight="700">skill-tier template fill</text>
+    <text x="12" y="62" fill="#a0a0b0" font-size="11">tier = low/mid/high from SkillLatent</text>
+    <text x="12" y="78" fill="#a0a0b0" font-size="11">angle resolver fills map-specific hints</text>
+    <text x="12" y="94" fill="#5a5a8a" font-size="10" font-family="JetBrains Mono, monospace">natural-language advice string</text>
+  </g>
+  <path d="M970 598 L970 622" stroke="#4caf50" stroke-width="1.5" marker-end="url(#arG)"/>
+
+  <!-- Stage 10: Persist -->
+  <g transform="translate(840,624)">
+    <rect width="260" height="80" rx="8" fill="rgba(76,175,80,0.1)" stroke="#4caf50" stroke-width="2"/>
+    <text x="12" y="22" fill="#4caf50" font-size="10" letter-spacing="2" font-weight="700">10 · PERSIST</text>
+    <text x="12" y="44" fill="#dcdcdc" font-size="13" font-weight="700">CoachingInsight INSERT</text>
+    <text x="12" y="62" fill="#a0a0b0" font-size="11">title · severity · message · focus_area</text>
+  </g>
+
+  <!-- Arrow from step 6 to step 7 -->
+  <path d="M320 710 L840 296" stroke="#a855f7" stroke-width="1" stroke-dasharray="4 3" fill="none" marker-end="url(#ar)" opacity="0.6"/>
+
+  <!-- Stage 11 · UI -->
+  <g transform="translate(1140,246)">
+    <rect width="240" height="80" rx="8" fill="#1a1a2e" stroke="#4a9eff" stroke-width="1.5"/>
+    <text x="12" y="22" fill="#4a9eff" font-size="10" letter-spacing="2" font-weight="700">11 · UI EMIT</text>
+    <text x="12" y="44" fill="#dcdcdc" font-size="13" font-weight="700">app_state signal</text>
+    <text x="12" y="62" fill="#a0a0b0" font-size="11">insights_changed.emit()</text>
+    <text x="12" y="76" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">Qt RichText safe · FE-01</text>
+  </g>
+
+  <g transform="translate(1140,346)">
+    <rect width="240" height="120" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <text x="12" y="22" fill="#4a9eff" font-size="10" letter-spacing="2" font-weight="700">12 · USER SEES IT</text>
+    <text x="12" y="44" fill="#dcdcdc" font-size="13" font-weight="700">Coach screen</text>
+    <text x="12" y="62" fill="#a0a0b0" font-size="11">"Over-peeking A-site default"</text>
+    <text x="12" y="80" fill="#ff5555" font-size="11" font-weight="700">High</text>
+    <text x="12" y="100" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">coach_screen.py _on_insights()</text>
+  </g>
+
+  <!-- Feedback loop: user's next match → back to step 1 -->
+  <g transform="translate(1140,488)">
+    <rect width="240" height="216" rx="8" fill="rgba(76,175,80,0.06)" stroke="#4caf50" stroke-dasharray="5 3"/>
+    <text x="12" y="22" fill="#4caf50" font-size="10" letter-spacing="2" font-weight="700">FEEDBACK LOOP · USER CORRECTION</text>
+    <text x="12" y="44" fill="#dcdcdc" font-size="11">User plays more games applying advice.</text>
+    <text x="12" y="62" fill="#a0a0b0" font-size="11">New demo → re-ingestion → new features.</text>
+    <text x="12" y="80" fill="#a0a0b0" font-size="11">If advice worked: stats improve, new</text>
+    <text x="12" y="96" fill="#a0a0b0" font-size="11">CoachingInsight reflects the shift.</text>
+
+    <text x="12" y="128" fill="#dcdcdc" font-size="11">If advice didn't work: the model's</text>
+    <text x="12" y="144" fill="#a0a0b0" font-size="11">attribution was wrong → next training</text>
+    <text x="12" y="160" fill="#a0a0b0" font-size="11">epoch down-weights that concept.</text>
+
+    <text x="12" y="190" fill="#4caf50" font-size="11" font-weight="700">→ self-correcting via gradient</text>
+    <text x="12" y="206" fill="#5a5a8a" font-size="10" font-family="JetBrains Mono, monospace">see frame 41 for deep-dive</text>
+  </g>
+
+  <!-- Loop-back arrow -->
+  <path d="M1260 704 Q1260 810 80 810 L80 220" stroke="#4caf50" stroke-width="1.2" stroke-dasharray="4 3" fill="none" marker-end="url(#arG)" opacity="0.7"/>
+  <text x="540" y="830" fill="#4caf50" font-size="11" font-family="JetBrains Mono, monospace">next training run picks up the new demo · re-shapes prototypes · advice gets smarter</text>
+
+  <!-- Footer anchors -->
+  <text x="60" y="870" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">coaching_service.py · persistence.py · skill_assessment.py · rap_coach/model.py</text>
+</svg>

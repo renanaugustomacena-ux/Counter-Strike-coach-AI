@@ -59,7 +59,7 @@ class TrendChart(QChartView):
         ax_x.setRange(0, max(len(history) - 1, 1))
         ax_x.setLabelFormat("%d")
         ax_x.setLabelsColor(QColor(tokens.text_secondary))
-        ax_x.setGridLineColor(QColor(255, 255, 255, 30))
+        ax_x.setGridLineColor(token_color(tokens.chart_grid))
         chart.addAxis(ax_x, Qt.AlignBottom)
         rating_series.attachAxis(ax_x)
         adr_series.attachAxis(ax_x)
@@ -71,7 +71,7 @@ class TrendChart(QChartView):
         ax_rating.setTitleText("Rating")
         ax_rating.setTitleBrush(QColor(tokens.chart_line_primary))
         ax_rating.setLabelsColor(QColor(tokens.chart_line_primary))
-        ax_rating.setGridLineColor(QColor(255, 255, 255, 20))
+        ax_rating.setGridLineColor(token_color(tokens.chart_grid))
         chart.addAxis(ax_rating, Qt.AlignLeft)
         rating_series.attachAxis(ax_rating)
 

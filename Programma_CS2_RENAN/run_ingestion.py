@@ -13,10 +13,6 @@ from Programma_CS2_RENAN.backend.nn.model import (
     RAPCommunication,
     TeacherRefinementNN,
 )
-from Programma_CS2_RENAN.backend.processing.baselines.pro_baseline import (
-    calculate_deviations,
-    get_pro_baseline,
-)
 from Programma_CS2_RENAN.backend.processing.state_reconstructor import RAPStateReconstructor
 from Programma_CS2_RENAN.backend.progress.longitudinal import FeatureTrend
 from Programma_CS2_RENAN.backend.progress.trend_analysis import compute_trend
@@ -131,7 +127,11 @@ def run_ml_pipeline(db_manager, player_name: str, current_demo_name: str, stats:
 
     logger.info("Player Level Identified: %s/10 (Axes: %s)", curr_level, skill_vec)
 
-    deviations = calculate_deviations(stats, get_pro_baseline())
+    # Pro-baseline deviations live in hltv_metadata.db and are computed only during
+    # coaching inference, never during demo ingestion. Ingestion stays isolated from
+    # HLTV reads; downstream consumers that need Z-scores call calculate_deviations
+    # directly against get_pro_baseline() at inference time.
+    deviations: dict = {}
     trends = _get_feature_trends(db_manager, player_name)
 
     # 2. Level-Conditioned RAP Inference
@@ -523,29 +523,23 @@ def _save_player_stats(db_manager, row, demo_name, is_pro):
     # Use clean stem to align with PlayerTickState and enable AI Coach linking
     clean_demo_name = Path(demo_name).stem if str(demo_name).endswith(".dem") else demo_name
 
-    # Resolve pro_player_id from HLTV database via NicknameResolver
-    resolved_pro_id = None
-    if is_pro:
-        try:
-            from Programma_CS2_RENAN.backend.processing.baselines.pro_player_linker import (
-                ProPlayerLinker,
-            )
-
-            resolved_pro_id = ProPlayerLinker().link_player(p_name)
-        except Exception as exc:
-            logger.warning("Pro player linking failed for '%s': %s", p_name, exc)
-
+    # pro_player_id links PlayerMatchStats to ProPlayer.hltv_id which lives in
+    # hltv_metadata.db. Resolving it here would reach across the DB boundary
+    # and tie demo ingestion to HLTV availability. Leave the column NULL on
+    # ingest; an out-of-band job (hltv_sync_service / ProPlayerLinker.backfill)
+    # may populate it later against hltv_metadata.db without blocking ingestion.
     match_stats = PlayerMatchStats(
         player_name=p_name,
         demo_name=clean_demo_name,
         is_pro=is_pro,
-        pro_player_id=resolved_pro_id,
         **stats_dict,
     )
     db_manager.upsert(match_stats)
-    current_name = get_setting("CS2_PLAYER_NAME")
-    if not is_pro and str(p_name).lower() == str(current_name).lower():
-        run_ml_pipeline(db_manager, p_name, clean_demo_name, stats_dict)
+    # Coaching inference (run_ml_pipeline) reads hltv_metadata.db via get_pro_baseline
+    # to compute skill axes and RAP advice. That cross-DB read does not belong on
+    # the demo-ingestion hot path — ingestion writes raw stats and returns. The
+    # coach UI (qt_app session) invokes run_ml_pipeline on demand when HLTV
+    # availability has been confirmed at its own boundary.
 
 
 def _sanitize_value(value, default, value_type=float):
