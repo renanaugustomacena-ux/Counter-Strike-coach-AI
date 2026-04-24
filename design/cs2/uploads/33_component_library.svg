@@ -1,0 +1,333 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Inter, &#39;Segoe UI&#39;, system-ui, sans-serif">
+  <rect width="1440" height="900" fill="#0b0b14"></rect>
+
+  <text x="60" y="50" fill="#dcdcdc" font-size="22" font-weight="700">Component Library — CS2 theme</text>
+  <text x="60" y="72" fill="#a0a0b0" font-size="12">apps/qt_app/widgets/components/* · every control used across the app</text>
+
+
+  <g transform="translate(60 100)">
+    <text fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace" letter-spacing="1.2">CONTROLS</text>
+
+
+    <g transform="translate(0 20)">
+      <text fill="#a0a0b0" font-size="11">Button · accent</text>
+      <rect y="16" width="110" height="34" rx="4" fill="#d96600"></rect>
+      <text x="55" y="37" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">ANALYZE</text>
+
+      <text x="130" fill="#a0a0b0" font-size="11">hover</text>
+      <rect x="130" y="16" width="110" height="34" rx="4" fill="#e67a1a"></rect>
+      <text x="185" y="37" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">ANALYZE</text>
+
+      <text x="260" fill="#a0a0b0" font-size="11">pressed</text>
+      <rect x="260" y="16" width="110" height="34" rx="4" fill="#b85500"></rect>
+      <text x="315" y="37" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">ANALYZE</text>
+
+      <text x="390" fill="#a0a0b0" font-size="11">disabled</text>
+      <rect x="390" y="16" width="110" height="34" rx="4" fill="#3a3a5a"></rect>
+      <text x="445" y="37" fill="#666666" font-size="12" font-weight="700" text-anchor="middle">ANALYZE</text>
+
+      <text x="520" fill="#a0a0b0" font-size="11">ghost</text>
+      <rect x="520" y="16" width="110" height="34" rx="4" fill="none" stroke="#d96600" stroke-width="1"></rect>
+      <text x="575" y="37" fill="#d96600" font-size="12" font-weight="700" text-anchor="middle">CANCEL</text>
+
+      <text x="650" fill="#a0a0b0" font-size="11">danger</text>
+      <rect x="650" y="16" width="110" height="34" rx="4" fill="none" stroke="#ff4444" stroke-width="1"></rect>
+      <text x="705" y="37" fill="#ff4444" font-size="12" font-weight="700" text-anchor="middle">DELETE</text>
+    </g>
+
+
+    <g transform="translate(0 74)">
+      <text fill="#a0a0b0" font-size="11">Text input · filled</text>
+      <rect y="16" width="300" height="34" rx="4" fill="#0f0f2e" stroke="#3a3a5a"></rect>
+      <text x="12" y="37" fill="#dcdcdc" font-size="12" font-family="&#39;JetBrains Mono&#39;, monospace">~/demos/esl-pro/spirit_navi.dem</text>
+
+      <text x="320" fill="#a0a0b0" font-size="11">empty · focus</text>
+      <rect x="320" y="16" width="300" height="34" rx="4" fill="#0f0f2e" stroke="#d96600" stroke-width="1"></rect>
+      <text x="332" y="37" fill="#3a3a5a" font-size="12">Path to .dem file…</text>
+
+      <text x="640" fill="#a0a0b0" font-size="11">error state</text>
+      <rect x="640" y="16" width="300" height="34" rx="4" fill="#0f0f2e" stroke="#ff4444" stroke-width="1"></rect>
+      <text x="652" y="37" fill="#ff4444" font-size="12">file not found: demo.dem</text>
+    </g>
+
+
+    <g transform="translate(0 128)">
+      <text fill="#a0a0b0" font-size="11">Checkbox</text>
+      <rect y="16" width="16" height="16" rx="3" fill="#d96600"></rect>
+      <path d="M3 24 l4 4 l6 -8" fill="none" stroke="#ffffff" stroke-width="2"></path>
+      <text x="26" y="29" fill="#dcdcdc" font-size="12">Generate coaching insights</text>
+
+      <rect x="220" y="16" width="16" height="16" rx="3" fill="none" stroke="#3a3a5a" stroke-width="1"></rect>
+      <text x="246" y="29" fill="#dcdcdc" font-size="12">Include pro comparison</text>
+
+      <text x="440" fill="#a0a0b0" font-size="11">Radio</text>
+      <circle cx="448" cy="24" r="8" fill="none" stroke="#3a3a5a" stroke-width="1"></circle>
+      <circle cx="448" cy="24" r="4" fill="#d96600"></circle>
+      <text x="462" y="29" fill="#dcdcdc" font-size="12">CS2 theme</text>
+
+      <circle cx="556" cy="24" r="8" fill="none" stroke="#3a3a5a" stroke-width="1"></circle>
+      <text x="570" y="29" fill="#a0a0b0" font-size="12">CSGO</text>
+
+      <circle cx="628" cy="24" r="8" fill="none" stroke="#3a3a5a" stroke-width="1"></circle>
+      <text x="642" y="29" fill="#a0a0b0" font-size="12">CS1.6</text>
+
+      <text x="720" fill="#a0a0b0" font-size="11">Tag · PRO</text>
+      <rect x="720" y="16" width="40" height="20" rx="3" fill="#d96600"></rect>
+      <text x="740" y="30" fill="#ffffff" font-size="11" font-weight="700" text-anchor="middle">PRO</text>
+
+      <rect x="770" y="16" width="52" height="20" rx="3" fill="rgba(217,102,0,0.25)" stroke="#d96600"></rect>
+      <text x="796" y="30" fill="#d96600" font-size="11" font-weight="700" text-anchor="middle">T-SIDE</text>
+
+      <rect x="832" y="16" width="52" height="20" rx="3" fill="rgba(74,158,255,0.25)" stroke="#4a9eff"></rect>
+      <text x="858" y="30" fill="#4a9eff" font-size="11" font-weight="700" text-anchor="middle">CT-SIDE</text>
+    </g>
+  </g>
+
+
+  <g transform="translate(60 280)">
+    <text fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace" letter-spacing="1.2">NAVIGATION · nav_sidebar.py · NAV_ITEMS[7]</text>
+
+    <g transform="translate(0 20)">
+
+      <text fill="#a0a0b0" font-size="11">default</text>
+      <rect y="16" width="196" height="40" rx="6" fill="#0f0f2e"></rect>
+      <g transform="translate(20 28)">
+        <path d="M0 3 L10 -6 L20 3 L17 3 L17 12 L3 12 L3 3 Z" fill="none" stroke="#a0a0b0" stroke-width="1.2"></path>
+        <rect x="7" y="6" width="6" height="6" fill="none" stroke="#a0a0b0" stroke-width="1.2"></rect>
+      </g>
+      <text x="52" y="41" fill="#a0a0b0" font-size="13">Home</text>
+
+
+      <text x="216" fill="#a0a0b0" font-size="11">hover · accent_muted_15</text>
+      <rect x="216" y="16" width="196" height="40" rx="6" fill="rgba(217,102,0,0.15)"></rect>
+      <g transform="translate(236 28)">
+        <path d="M0 3 L10 -6 L20 3 L17 3 L17 12 L3 12 L3 3 Z" fill="none" stroke="#dcdcdc" stroke-width="1.2"></path>
+        <rect x="7" y="6" width="6" height="6" fill="none" stroke="#dcdcdc" stroke-width="1.2"></rect>
+      </g>
+      <text x="268" y="41" fill="#dcdcdc" font-size="13">Home</text>
+
+
+      <text x="432" fill="#a0a0b0" font-size="11">active · accent_muted_25 + border</text>
+      <rect x="432" y="16" width="196" height="40" rx="6" fill="rgba(217,102,0,0.25)" stroke="#d96600" stroke-width="1"></rect>
+      <rect x="432" y="16" width="3" height="40" rx="1.5" fill="#d96600"></rect>
+      <g transform="translate(452 28)">
+        <path d="M0 3 L10 -6 L20 3 L17 3 L17 12 L3 12 L3 3 Z" fill="none" stroke="#d96600" stroke-width="1.5"></path>
+        <rect x="7" y="6" width="6" height="6" fill="none" stroke="#d96600" stroke-width="1.5"></rect>
+      </g>
+      <text x="484" y="41" fill="#d96600" font-size="13" font-weight="700">Home</text>
+
+
+      <text x="648" fill="#a0a0b0" font-size="11">collapsed · 60w</text>
+      <rect x="648" y="16" width="60" height="40" rx="6" fill="rgba(217,102,0,0.25)" stroke="#d96600" stroke-width="1"></rect>
+      <g transform="translate(668 28)">
+        <path d="M0 3 L10 -6 L20 3 L17 3 L17 12 L3 12 L3 3 Z" fill="none" stroke="#d96600" stroke-width="1.5"></path>
+        <rect x="7" y="6" width="6" height="6" fill="none" stroke="#d96600" stroke-width="1.5"></rect>
+      </g>
+
+
+      <text x="790" fill="#a0a0b0" font-size="11">hamburger ≡</text>
+      <rect x="790" y="16" width="40" height="40" rx="6" fill="#0f0f2e" stroke="#3a3a5a"></rect>
+      <g stroke="#dcdcdc" stroke-width="1.5" stroke-linecap="round">
+        <line x1="800" y1="30" x2="820" y2="30"></line>
+        <line x1="800" y1="36" x2="820" y2="36"></line>
+        <line x1="800" y1="42" x2="820" y2="42"></line>
+      </g>
+    </g>
+  </g>
+
+
+  <g transform="translate(60 400)">
+    <text fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace" letter-spacing="1.2">PROGRESS · STAT · RATING</text>
+
+
+    <g transform="translate(0 24)">
+      <text fill="#a0a0b0" font-size="11">ProgressRing · thick=8 · starts 12 o&#39;clock CCW</text>
+
+
+      <g transform="translate(0 20)">
+        <circle cx="40" cy="40" r="36" fill="none" stroke="#0f0f2e" stroke-width="8"></circle>
+        <circle cx="40" cy="40" r="36" fill="none" stroke="#d96600" stroke-width="8" stroke-linecap="round" stroke-dasharray="165.12 61.07" transform="rotate(-90 40 40) scale(1 -1) translate(0 -80)"></circle>
+        <text x="40" y="44" fill="#dcdcdc" font-size="14" font-weight="700" text-anchor="middle">73%</text>
+        <text x="40" y="94" fill="#a0a0b0" font-size="10" text-anchor="middle">belief</text>
+      </g>
+
+
+      <g transform="translate(100 30)">
+        <circle cx="30" cy="30" r="26" fill="none" stroke="#0f0f2e" stroke-width="6"></circle>
+        <circle cx="30" cy="30" r="26" fill="none" stroke="#ffaa00" stroke-width="6" stroke-linecap="round" stroke-dasharray="73.51 89.79" transform="rotate(-90 30 30) scale(1 -1) translate(0 -60)"></circle>
+        <text x="30" y="34" fill="#dcdcdc" font-size="12" font-weight="700" text-anchor="middle">45%</text>
+        <text x="30" y="74" fill="#a0a0b0" font-size="10" text-anchor="middle">hs%</text>
+      </g>
+
+
+      <g transform="translate(180 35)">
+        <circle cx="25" cy="25" r="21" fill="none" stroke="#0f0f2e" stroke-width="5"></circle>
+        <circle cx="25" cy="25" r="21" fill="none" stroke="#ff4444" stroke-width="5" stroke-linecap="round" stroke-dasharray="36.95 94.99" transform="rotate(-90 25 25) scale(1 -1) translate(0 -50)"></circle>
+        <text x="25" y="29" fill="#dcdcdc" font-size="11" font-weight="700" text-anchor="middle">28%</text>
+        <text x="25" y="64" fill="#a0a0b0" font-size="10" text-anchor="middle">win</text>
+      </g>
+    </g>
+
+
+    <g transform="translate(280 24)">
+      <text fill="#a0a0b0" font-size="11">StatBadge · rating_color(value)</text>
+
+      <rect x="0" y="16" width="108" height="72" rx="6" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <text x="54" y="52" fill="#4db04f" font-size="26" font-weight="700" text-anchor="middle">1.28</text>
+      <text x="54" y="72" fill="#a0a0b0" font-size="10" text-anchor="middle">&gt; 1.10 · GREEN</text>
+      <text x="54" y="84" fill="#3a3a5a" font-size="9" text-anchor="middle">#4db04f</text>
+
+      <rect x="116" y="16" width="108" height="72" rx="6" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <text x="170" y="52" fill="#ff9900" font-size="26" font-weight="700" text-anchor="middle">0.97</text>
+      <text x="170" y="72" fill="#a0a0b0" font-size="10" text-anchor="middle">0.90–1.10 · YELLOW</text>
+      <text x="170" y="84" fill="#3a3a5a" font-size="9" text-anchor="middle">#ff9900</text>
+
+      <rect x="232" y="16" width="108" height="72" rx="6" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <text x="286" y="52" fill="#f54236" font-size="26" font-weight="700" text-anchor="middle">0.84</text>
+      <text x="286" y="72" fill="#a0a0b0" font-size="10" text-anchor="middle">&lt; 0.90 · RED</text>
+      <text x="286" y="84" fill="#3a3a5a" font-size="9" text-anchor="middle">#f54236</text>
+    </g>
+
+
+    <g transform="translate(652 24)">
+      <text fill="#a0a0b0" font-size="11">rating_label(value) · theme_engine.py</text>
+      <g transform="translate(0 16)">
+        <rect width="88" height="28" rx="4" fill="rgba(77,176,79,0.18)" stroke="#4db04f"></rect>
+        <text x="44" y="19" fill="#4db04f" font-size="10" font-weight="700" text-anchor="middle">EXCELLENT</text>
+        <text x="44" y="44" fill="#a0a0b0" font-size="9" text-anchor="middle">≥ 1.30</text>
+      </g>
+      <g transform="translate(96 16)">
+        <rect width="76" height="28" rx="4" fill="rgba(77,176,79,0.12)" stroke="#4db04f" stroke-opacity="0.6"></rect>
+        <text x="38" y="19" fill="#4db04f" font-size="10" font-weight="700" text-anchor="middle">STRONG</text>
+        <text x="38" y="44" fill="#a0a0b0" font-size="9" text-anchor="middle">1.10–1.30</text>
+      </g>
+      <g transform="translate(180 16)">
+        <rect width="72" height="28" rx="4" fill="rgba(255,153,0,0.14)" stroke="#ff9900"></rect>
+        <text x="36" y="19" fill="#ff9900" font-size="10" font-weight="700" text-anchor="middle">STABLE</text>
+        <text x="36" y="44" fill="#a0a0b0" font-size="9" text-anchor="middle">0.90–1.10</text>
+      </g>
+      <g transform="translate(260 16)">
+        <rect width="72" height="28" rx="4" fill="rgba(245,66,54,0.14)" stroke="#f54236"></rect>
+        <text x="36" y="19" fill="#f54236" font-size="10" font-weight="700" text-anchor="middle">WEAK</text>
+        <text x="36" y="44" fill="#a0a0b0" font-size="9" text-anchor="middle">&lt; 0.90</text>
+      </g>
+    </g>
+  </g>
+
+
+  <g transform="translate(60 560)">
+    <text fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace" letter-spacing="1.2">TOAST · widgets/toast.py · 4 severities · 50px tall · MAX_VISIBLE=3</text>
+
+    <g transform="translate(0 20)">
+      <rect width="320" height="50" rx="6" fill="rgba(30,60,90,0.9)" stroke="#4a9eff" stroke-width="1"></rect>
+      <text x="18" y="32" fill="#4a9eff" font-size="18">ℹ</text>
+      <text x="44" y="26" fill="#dcdcdc" font-size="11" font-weight="700">INFO</text>
+      <text x="44" y="42" fill="#a0a0b0" font-size="10">Scanner found 2 new demos</text>
+      <text x="304" y="20" fill="#888888" font-size="14" text-anchor="end">×</text>
+    </g>
+
+    <g transform="translate(336 20)">
+      <rect width="320" height="50" rx="6" fill="rgba(80,60,10,0.9)" stroke="#ffaa00" stroke-width="1"></rect>
+      <text x="18" y="32" fill="#ffaa00" font-size="18">⚠</text>
+      <text x="44" y="26" fill="#dcdcdc" font-size="11" font-weight="700">WARNING</text>
+      <text x="44" y="42" fill="#a0a0b0" font-size="10">Hopfield bypassed — 2 fwd passes needed</text>
+      <text x="304" y="20" fill="#888888" font-size="14" text-anchor="end">×</text>
+    </g>
+
+    <g transform="translate(672 20)">
+      <rect width="320" height="50" rx="6" fill="rgba(80,20,20,0.9)" stroke="#ff4444" stroke-width="1"></rect>
+      <text x="18" y="32" fill="#ff4444" font-size="18">✖</text>
+      <text x="44" y="26" fill="#dcdcdc" font-size="11" font-weight="700">ERROR</text>
+      <text x="44" y="42" fill="#a0a0b0" font-size="10">Demo &lt; 10MB (DS-12 violation)</text>
+      <text x="304" y="20" fill="#888888" font-size="14" text-anchor="end">×</text>
+    </g>
+
+    <g transform="translate(1008 20)">
+      <rect width="320" height="50" rx="6" fill="rgba(100,10,10,0.94)" stroke="#ff0000" stroke-width="2"></rect>
+      <text x="18" y="32" fill="#ff0000" font-size="18">☠</text>
+      <text x="44" y="26" fill="#dcdcdc" font-size="11" font-weight="700">CRITICAL</text>
+      <text x="44" y="42" fill="#a0a0b0" font-size="10">DataQualityError · NaN &gt; 5% batch</text>
+      <text x="304" y="20" fill="#888888" font-size="14" text-anchor="end">×</text>
+    </g>
+  </g>
+
+
+  <g transform="translate(60 660)">
+    <text fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace" letter-spacing="1.2">LOADING · MATCHCARD · widgets/skeleton.py · screens/match_history_screen.py</text>
+
+
+    <g transform="translate(0 20)">
+      <rect width="260" height="120" rx="8" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <rect x="16" y="16" width="140" height="14" rx="3" fill="#3a3a5a" opacity="0.8"></rect>
+      <rect x="16" y="40" width="220" height="10" rx="2" fill="#3a3a5a" opacity="0.6"></rect>
+      <rect x="16" y="58" width="180" height="10" rx="2" fill="#3a3a5a" opacity="0.6"></rect>
+      <rect x="16" y="80" width="60" height="24" rx="4" fill="#3a3a5a" opacity="0.7"></rect>
+      <rect x="84" y="80" width="60" height="24" rx="4" fill="#3a3a5a" opacity="0.7"></rect>
+      <text x="130" y="114" fill="#3a3a5a" font-size="9" text-anchor="middle" font-family="&#39;JetBrains Mono&#39;, monospace">SkeletonCard · pulse 1200ms</text>
+    </g>
+
+
+    <g transform="translate(280 20)">
+      <rect width="520" height="90" rx="8" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <rect width="3" height="90" rx="1.5" fill="#d96600"></rect>
+      <text x="20" y="28" fill="#dcdcdc" font-size="13" font-weight="700">de_mirage · 2026-04-22 · 16–13 CT WIN</text>
+      <text x="20" y="46" fill="#a0a0b0" font-size="11">5h ago · 24 rounds · 82.4 ADR · 28/19/6 K/D/A · 64% HS</text>
+      <text x="20" y="64" fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">demo_20260422_spirit_cs2.dem · sha256 09f3…c4a1</text>
+      <rect x="440" y="18" width="60" height="54" rx="6" fill="rgba(77,176,79,0.18)" stroke="#4db04f"></rect>
+      <text x="470" y="45" fill="#4db04f" font-size="18" font-weight="700" text-anchor="middle">1.28</text>
+      <text x="470" y="60" fill="#4db04f" font-size="9" text-anchor="middle">RATING 2.1</text>
+    </g>
+
+
+    <g transform="translate(820 20)">
+      <rect width="520" height="90" rx="8" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <rect width="3" height="90" rx="1.5" fill="#4a9eff"></rect>
+      <rect x="20" y="14" width="40" height="20" rx="3" fill="#d96600"></rect>
+      <text x="40" y="28" fill="#ffffff" font-size="11" font-weight="700" text-anchor="middle">PRO</text>
+      <text x="72" y="28" fill="#dcdcdc" font-size="13" font-weight="700">de_ancient · Spirit 16–10 Navi · ZywOo</text>
+      <text x="20" y="46" fill="#a0a0b0" font-size="11">ESL Pro League · 2026-04-20 · 1.42 rating · 107 ADR</text>
+      <text x="20" y="64" fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">HLTV match_id 2374201 · imported via PRO ingestion</text>
+      <rect x="440" y="18" width="60" height="54" rx="6" fill="rgba(77,176,79,0.18)" stroke="#4db04f"></rect>
+      <text x="470" y="45" fill="#4db04f" font-size="18" font-weight="700" text-anchor="middle">1.42</text>
+      <text x="470" y="60" fill="#4db04f" font-size="9" text-anchor="middle">HLTV</text>
+    </g>
+  </g>
+
+
+  <g transform="translate(60 790)">
+    <text fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace" letter-spacing="1.2">DASHBOARD_CARD · widgets/components/card.py · objectName=&#34;dashboard_card&#34;</text>
+
+    <g transform="translate(0 20)">
+
+      <rect width="260" height="70" rx="8" fill="#1a1a2e" stroke="#3a3a5a" stroke-width="1"></rect>
+      <text x="16" y="26" fill="#dcdcdc" font-size="13" font-weight="700">Demo Analysis</text>
+      <text x="16" y="44" fill="#a0a0b0" font-size="11">default · border #3a3a5a</text>
+      <text x="16" y="62" fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">bg #1a1a2e</text>
+
+
+      <rect x="276" width="260" height="70" rx="8" fill="#1a1a2e" stroke="#d96600" stroke-opacity="0.3" stroke-width="1"></rect>
+      <text x="292" y="26" fill="#dcdcdc" font-size="13" font-weight="700">Demo Analysis</text>
+      <text x="292" y="44" fill="#d96600" font-size="11">hover · border accent_muted_30</text>
+      <text x="292" y="62" fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">rgba(217,102,0,0.3)</text>
+
+
+      <rect x="552" width="260" height="70" rx="8" fill="#1a1a2e" stroke="#d96600" stroke-width="1.5"></rect>
+      <text x="568" y="26" fill="#dcdcdc" font-size="13" font-weight="700">Demo Analysis</text>
+      <text x="568" y="44" fill="#d96600" font-size="11">selected · solid accent</text>
+      <text x="568" y="62" fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">#d96600</text>
+
+
+      <rect x="828" width="260" height="70" rx="8" fill="#1a1a2e" stroke="#3a3a5a" stroke-width="1" opacity="0.5"></rect>
+      <text x="844" y="26" fill="#666666" font-size="13" font-weight="700">Demo Analysis</text>
+      <text x="844" y="44" fill="#666666" font-size="11">disabled · opacity 0.5</text>
+      <text x="844" y="62" fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">not interactive</text>
+
+
+      <rect x="1104" width="252" height="70" rx="8" fill="#1a1a2e" stroke="#4a9eff" stroke-width="1.2"></rect>
+      <rect x="1104" width="3" height="70" rx="1.5" fill="#4a9eff"></rect>
+      <text x="1120" y="26" fill="#dcdcdc" font-size="13" font-weight="700">Pro Ingestion</text>
+      <text x="1120" y="44" fill="#4a9eff" font-size="11">info accent (HLTV)</text>
+      <text x="1120" y="62" fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">left-bar variant</text>
+    </g>
+  </g>
+</svg>

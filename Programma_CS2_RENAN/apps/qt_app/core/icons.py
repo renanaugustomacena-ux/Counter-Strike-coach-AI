@@ -1,11 +1,27 @@
-"""QPainterPath vector icon provider — no SVG dependency.
+"""Icon provider with an SVG-sprite primary path and a QPainterPath fallback.
 
-All icons drawn programmatically in a 24x24 coordinate space, scaled
-at render time to any requested size. Color-injected at runtime.
+The authoritative icon set lives in `design/assets/icons/sprite.svg`.
+`SvgIconProvider` renders from that sprite via `QSvgRenderer`; it is
+preferred whenever the sprite is present and parseable. If the sprite
+is missing (fresh checkout, non-default layout, packaging issue), we
+fall back to the hand-drawn `QPainterPath` class below so the app still
+ships with working nav icons instead of blanks.
+
+The flag `USE_SVG_ICONS` forces the fallback even when the sprite is
+present — flip it to `False` to investigate a sprite-specific regression
+without touching any screen file.
 """
 
 from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
+
+from Programma_CS2_RENAN.apps.qt_app.core.svg_icon_provider import (
+    SvgIconProvider,
+    sprite_is_available,
+)
+
+# Flip to False to force the QPainterPath fallback while debugging.
+USE_SVG_ICONS: bool = True
 
 
 def _render(path: QPainterPath, size: int, color: str, stroke: float = 1.5) -> QPixmap:
@@ -30,8 +46,13 @@ def _render(path: QPainterPath, size: int, color: str, stroke: float = 1.5) -> Q
     return pixmap
 
 
-class IconProvider:
-    """Generates QIcon from QPainterPath shapes — 24x24 design grid."""
+class _QPainterPathIconProvider:
+    """Fallback: QIcon from hand-rolled QPainterPath shapes on a 24x24 grid.
+
+    Used only when the SVG sprite is unavailable or `USE_SVG_ICONS` is
+    `False`. Kept in lockstep with the sprite coverage for nav icons so
+    the viewer never ships with broken glyphs.
+    """
 
     @staticmethod
     def home(size: int = 24, color: str = "#ffffff") -> QIcon:
@@ -140,3 +161,11 @@ class IconProvider:
         # Dot
         p.addEllipse(QRectF(11, 17, 2, 2))
         return QIcon(_render(p, size, color))
+
+
+# Public facade. Call sites keep using `IconProvider.home(...)` etc.;
+# whether they get the sprite-backed or QPainterPath-backed implementation
+# is decided once at import time.
+IconProvider = (
+    SvgIconProvider if USE_SVG_ICONS and sprite_is_available() else _QPainterPathIconProvider
+)

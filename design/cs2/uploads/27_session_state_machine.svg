@@ -1,0 +1,244 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Roboto, Inter, system-ui, sans-serif">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#d96600"></path></marker>
+    <marker id="arB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#4a9eff"></path></marker>
+    <marker id="arG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#4caf50"></path></marker>
+    <marker id="arR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#ff4444"></path></marker>
+  </defs>
+
+  <rect width="1440" height="900" fill="#14141e"></rect>
+
+  <g transform="translate(60,44)">
+    <text fill="#4a9eff" font-size="10" letter-spacing="4" font-weight="700">CORE · FRAME 27</text>
+    <text y="32" fill="#dcdcdc" font-size="24" font-weight="700">Session Engine — 4 daemons + global state machine</text>
+    <text y="54" fill="#a0a0b0" font-size="12">core/session_engine.py · threading-based · watchdog every 30s restarts crashed daemons</text>
+  </g>
+
+
+  <g transform="translate(60,140)">
+    <text fill="#dcdcdc" font-size="13" font-weight="700">Global lifecycle · CoachState.status (SQLModel singleton, id=1)</text>
+  </g>
+
+
+  <g transform="translate(60,168)">
+
+
+
+    <g>
+      <rect width="148" height="52" rx="26" fill="rgba(255,170,0,0.15)" stroke="#ffaa00"></rect>
+      <text x="74" y="24" text-anchor="middle" fill="#ffaa00" font-size="11" font-weight="700">BOOTING</text>
+      <text x="74" y="40" text-anchor="middle" fill="#a0a0b0" font-size="10">startup path</text>
+    </g>
+    <path d="M208 194 L236 194" stroke="#4a9eff" stroke-width="1.5" marker-end="url(#arB)"></path>
+
+
+    <g transform="translate(236,0)">
+      <rect width="148" height="52" rx="26" fill="rgba(76,175,80,0.15)" stroke="#4caf50"></rect>
+      <text x="74" y="24" text-anchor="middle" fill="#4caf50" font-size="11" font-weight="700">RUNNING</text>
+      <text x="74" y="40" text-anchor="middle" fill="#a0a0b0" font-size="10">all 4 daemons alive</text>
+    </g>
+    <path d="M384 194 L412 194" stroke="#4a9eff" stroke-width="1.5" marker-end="url(#arB)"></path>
+
+
+    <g transform="translate(412,0)">
+      <rect width="148" height="52" rx="26" fill="rgba(74,158,255,0.15)" stroke="#4a9eff"></rect>
+      <text x="74" y="24" text-anchor="middle" fill="#4a9eff" font-size="11" font-weight="700">IDLE</text>
+      <text x="74" y="40" text-anchor="middle" fill="#a0a0b0" font-size="10">no demos queued</text>
+    </g>
+    <path d="M560 194 L588 194" stroke="#4a9eff" stroke-width="1.5" marker-end="url(#arB)"></path>
+
+
+    <g transform="translate(588,0)">
+      <rect width="148" height="52" rx="26" fill="rgba(217,102,0,0.18)" stroke="#d96600"></rect>
+      <text x="74" y="24" text-anchor="middle" fill="#d96600" font-size="11" font-weight="700">TRAINING</text>
+      <text x="74" y="40" text-anchor="middle" fill="#a0a0b0" font-size="10">Teacher active</text>
+    </g>
+    <path d="M736 194 L764 194" stroke="#4a9eff" stroke-width="1.5" marker-end="url(#arB)"></path>
+
+
+    <g transform="translate(764,0)">
+      <rect width="148" height="52" rx="26" fill="rgba(168,85,247,0.15)" stroke="#a855f7"></rect>
+      <text x="74" y="24" text-anchor="middle" fill="#a855f7" font-size="11" font-weight="700">PAUSED</text>
+      <text x="74" y="40" text-anchor="middle" fill="#a0a0b0" font-size="10">user paused</text>
+    </g>
+    <path d="M912 194 L940 194" stroke="#4a9eff" stroke-width="1.5" marker-end="url(#arB)"></path>
+
+
+    <g transform="translate(940,0)">
+      <rect width="160" height="52" rx="26" fill="rgba(255,170,0,0.15)" stroke="#ffaa00"></rect>
+      <text x="80" y="24" text-anchor="middle" fill="#ffaa00" font-size="11" font-weight="700">SHUTTING_DOWN</text>
+      <text x="80" y="40" text-anchor="middle" fill="#a0a0b0" font-size="10">shutdown requested</text>
+    </g>
+    <path d="M1100 194 L1128 194" stroke="#4a9eff" stroke-width="1.5" marker-end="url(#arB)"></path>
+
+
+    <g transform="translate(1128,0)">
+      <rect width="140" height="52" rx="26" fill="#0f0f2e" stroke="#3a3a5a"></rect>
+      <text x="70" y="24" text-anchor="middle" fill="#a0a0b0" font-size="11" font-weight="700">OFFLINE</text>
+      <text x="70" y="40" text-anchor="middle" fill="#3a3a5a" font-size="10">clean exit</text>
+    </g>
+
+
+    <g transform="translate(588,76)">
+      <rect width="148" height="52" rx="26" fill="rgba(255,68,68,0.15)" stroke="#ff4444"></rect>
+      <text x="74" y="24" text-anchor="middle" fill="#ff4444" font-size="11" font-weight="700">ERROR</text>
+      <text x="74" y="40" text-anchor="middle" fill="#a0a0b0" font-size="10">daemon crashed</text>
+    </g>
+
+
+    <path d="M420 222 L620 218" stroke="#ff4444" stroke-width="1" stroke-dasharray="3 2" fill="none" marker-end="url(#arR)"></path>
+    <text x="444" y="244" fill="#ff4444" font-size="10">any state → ERROR on daemon death</text>
+
+    <path d="M700 218 L720 200" stroke="#4caf50" stroke-width="1" stroke-dasharray="3 2" fill="none" marker-end="url(#arG)"></path>
+    <text x="708" y="252" fill="#4caf50" font-size="10">watchdog restarts → back to RUNNING</text>
+  </g>
+
+
+  <g transform="translate(60,316)">
+    <text fill="#dcdcdc" font-size="13" font-weight="700">The 4 daemons — independent threads with strict responsibility</text>
+  </g>
+
+
+  <g transform="translate(60,344)">
+    <rect width="320" height="232" rx="8" fill="#1a1a2e" stroke="#d96600"></rect>
+    <text x="16" y="26" fill="#d96600" font-size="10" letter-spacing="3" font-weight="700">DAEMON A · SCANNER  (Hunter)</text>
+    <text x="16" y="50" fill="#dcdcdc" font-size="14" font-weight="700">_scanner_daemon_loop()</text>
+
+    <g transform="translate(16,68)" font-size="11">
+      <text fill="#a0a0b0">Responsibility:</text>
+      <text y="16" fill="#dcdcdc">scan demo folder → enqueue IngestionTask rows</text>
+
+      <text y="40" fill="#a0a0b0">Interval:</text>
+      <text y="56" fill="#dcdcdc" font-family="JetBrains Mono, monospace">SCAN_INTERVAL = 10s</text>
+
+      <text y="78" fill="#a0a0b0">Disk check:</text>
+      <text y="94" fill="#dcdcdc" font-family="JetBrains Mono, monospace">DISK_CHECK_INTERVAL = 300s</text>
+
+      <text y="118" fill="#a0a0b0">State reporter:</text>
+      <text y="134" fill="#dcdcdc" font-family="JetBrains Mono, monospace">CoachState.hltv_status</text>
+    </g>
+
+    <text x="16" y="220" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">session_engine.py:283</text>
+  </g>
+
+
+  <g transform="translate(396,344)">
+    <rect width="320" height="232" rx="8" fill="#1a1a2e" stroke="#4caf50"></rect>
+    <text x="16" y="26" fill="#4caf50" font-size="10" letter-spacing="3" font-weight="700">DAEMON B · DIGESTER</text>
+    <text x="16" y="50" fill="#dcdcdc" font-size="14" font-weight="700">_digester_daemon_loop()</text>
+
+    <g transform="translate(16,68)" font-size="11">
+      <text fill="#a0a0b0">Responsibility:</text>
+      <text y="16" fill="#dcdcdc">pop queued tasks · parse · vectorize · write DB</text>
+
+      <text y="40" fill="#a0a0b0">Zombie guard:</text>
+      <text y="56" fill="#dcdcdc" font-family="JetBrains Mono, monospace">ZOMBIE_THRESHOLD = 1800s</text>
+
+      <text y="78" fill="#a0a0b0">Progress signal:</text>
+      <text y="94" fill="#dcdcdc" font-family="JetBrains Mono, monospace">CoachState.parsing_progress</text>
+
+      <text y="118" fill="#a0a0b0">State reporter:</text>
+      <text y="134" fill="#dcdcdc" font-family="JetBrains Mono, monospace">CoachState.ingest_status</text>
+    </g>
+
+    <text x="16" y="220" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">session_engine.py:374</text>
+  </g>
+
+
+  <g transform="translate(732,344)">
+    <rect width="320" height="232" rx="8" fill="#1a1a2e" stroke="#4a9eff"></rect>
+    <text x="16" y="26" fill="#4a9eff" font-size="10" letter-spacing="3" font-weight="700">DAEMON C · TEACHER</text>
+    <text x="16" y="50" fill="#dcdcdc" font-size="14" font-weight="700">_teacher_daemon_loop()</text>
+
+    <g transform="translate(16,68)" font-size="11">
+      <text fill="#a0a0b0">Responsibility:</text>
+      <text y="16" fill="#dcdcdc">run training loop (JEPA + LSTM) periodically</text>
+
+      <text y="40" fill="#a0a0b0">Emits metrics:</text>
+      <text y="56" fill="#dcdcdc" font-family="JetBrains Mono, monospace">current_epoch · train_loss · val_loss</text>
+
+      <text y="78" fill="#a0a0b0">Gate:</text>
+      <text y="94" fill="#dcdcdc">min samples before train (configurable)</text>
+
+      <text y="118" fill="#a0a0b0">State reporter:</text>
+      <text y="134" fill="#dcdcdc" font-family="JetBrains Mono, monospace">CoachState.ml_status</text>
+    </g>
+
+    <text x="16" y="220" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">session_engine.py:418</text>
+  </g>
+
+
+  <g transform="translate(1068,344)">
+    <rect width="320" height="232" rx="8" fill="#1a1a2e" stroke="#a855f7"></rect>
+    <text x="16" y="26" fill="#a855f7" font-size="10" letter-spacing="3" font-weight="700">DAEMON D · PULSE</text>
+    <text x="16" y="50" fill="#dcdcdc" font-size="14" font-weight="700">_pulse_daemon_loop()</text>
+
+    <g transform="translate(16,68)" font-size="11">
+      <text fill="#a0a0b0">Responsibility:</text>
+      <text y="16" fill="#dcdcdc">heartbeat · CPU/mem telemetry · keep-alive</text>
+
+      <text y="40" fill="#a0a0b0">Heartbeat interval:</text>
+      <text y="56" fill="#dcdcdc" font-family="JetBrains Mono, monospace">periodic · updates last_heartbeat</text>
+
+      <text y="78" fill="#a0a0b0">Publishes to:</text>
+      <text y="94" fill="#dcdcdc" font-family="JetBrains Mono, monospace">CoachState.system_load_cpu/mem</text>
+
+      <text y="118" fill="#a0a0b0">Purpose:</text>
+      <text y="134" fill="#dcdcdc">lets UI know engine is alive</text>
+    </g>
+
+    <text x="16" y="220" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">session_engine.py · pulse loop</text>
+  </g>
+
+
+  <g transform="translate(60,600)">
+    <rect width="1328" height="96" rx="8" fill="rgba(74,158,255,0.08)" stroke="#4a9eff" stroke-dasharray="5 3"></rect>
+    <text x="16" y="26" fill="#4a9eff" font-size="11" letter-spacing="3" font-weight="700">SE-WD · WATCHDOG  (main thread loop, every 30s)</text>
+
+    <g transform="translate(16,48)" font-size="12">
+      <text fill="#a0a0b0">1.  For each of (Scanner, Digester, Teacher, Pulse):</text>
+      <text y="18" fill="#dcdcdc">      if <tspan font-family="JetBrains Mono, monospace" fill="#ffaa00">not thread.is_alive()</tspan> and not shutdown → spawn new thread with same target, notify UI via ERROR toast</text>
+      <text y="40" fill="#a0a0b0">2.  Keeps the system self-healing — a single daemon crash never brings the whole engine down.</text>
+    </g>
+  </g>
+
+
+  <g transform="translate(60,712)">
+    <rect width="650" height="160" rx="8" fill="#1a1a2e"></rect>
+    <text x="16" y="24" fill="#dcdcdc" font-size="12" font-weight="700">Auxiliary threads (spawned at boot)</text>
+
+    <g transform="translate(16,48)" font-size="11">
+      <g>
+        <rect width="8" height="8" rx="2" fill="#d96600"></rect>
+        <text x="20" y="8" fill="#dcdcdc" font-weight="700">IPC Stdin Monitor</text>
+        <text y="24" fill="#a0a0b0">listens for control messages (pause/resume/shutdown) from GUI process</text>
+      </g>
+      <g transform="translate(0,44)">
+        <rect width="8" height="8" rx="2" fill="#4caf50"></rect>
+        <text x="20" y="8" fill="#dcdcdc" font-weight="700">IngestionWatcher (filesystem)</text>
+        <text y="24" fill="#a0a0b0">detects new .dem files in real time (watchdog observer pattern)</text>
+      </g>
+      <g transform="translate(0,88)">
+        <rect width="8" height="8" rx="2" fill="#4a9eff"></rect>
+        <text x="20" y="8" fill="#dcdcdc" font-weight="700">Auto Backup Manager</text>
+        <text y="24" fill="#a0a0b0">sqlite3.backup() → timestamped snapshot if should_run_auto_backup()</text>
+      </g>
+    </g>
+  </g>
+
+
+  <g transform="translate(726,712)">
+    <rect width="662" height="160" rx="8" fill="rgba(217,102,0,0.05)" stroke="#d96600" stroke-dasharray="5 3"></rect>
+    <text x="16" y="24" fill="#d96600" font-size="11" letter-spacing="3" font-weight="700">COACHSTATE · SINGLETON · P2-01</text>
+    <text x="16" y="44" fill="#a0a0b0" font-size="11">Exactly one row with id=1 (CHECK constraint). Written by daemons, polled by Qt UI.</text>
+
+    <g transform="translate(16,64)" font-family="JetBrains Mono, monospace" font-size="10" fill="#a0a0b0">
+      <text>status · belief_confidence · hltv_status (Hunter)</text>
+      <text y="14">ingest_status (Digester) · ml_status (Teacher)</text>
+      <text y="28">current_epoch · total_epochs · train_loss · val_loss · eta_seconds</text>
+      <text y="42">service_pid · system_load_cpu · system_load_mem · last_heartbeat</text>
+      <text y="56">parsing_progress · detail</text>
+      <text y="74" fill="#ff4444">db_models.py:365  CoachState  CheckConstraint(&#34;id = 1&#34;)</text>
+    </g>
+  </g>
+</svg>

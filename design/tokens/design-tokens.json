@@ -1,0 +1,209 @@
+{
+  "$schema": "https://schemas.designtokens.org/draft/2023-09-01/schema.json",
+  "$description": "Macena CS2 Coach AI — design tokens. Source of truth for visual constants. Python dataclass is generated from this file via tools/gen_design_tokens.py. Edit JSON, then regenerate.",
+  "theme": {
+    "cs2": {
+      "name": { "$value": "CS2", "$type": "string" },
+      "surface": {
+        "base":              { "$value": "#0B1628", "$type": "color" },
+        "raised":            { "$value": "#121E2E", "$type": "color" },
+        "overlay":           { "$value": "#121E2E", "$type": "color" },
+        "sunken":            { "$value": "#07101C", "$type": "color" },
+        "sidebar":           { "$value": "#07101C", "$type": "color" },
+        "raised_rgba":       { "$value": "rgba(11, 22, 40, 217)", "$type": "color" },
+        "card_hover_border": { "$value": "rgba(255, 106, 0, 0.3)", "$type": "color" }
+      },
+      "border": {
+        "subtle":        { "$value": "rgba(255, 255, 255, 0.05)", "$type": "color" },
+        "default":       { "$value": "#2A3A55", "$type": "color" },
+        "accent_muted":  { "$value": "rgba(255, 106, 0, 0.3)", "$type": "color" }
+      },
+      "text": {
+        "primary":   { "$value": "#F5F7FA", "$type": "color" },
+        "secondary": { "$value": "#8B94A5", "$type": "color" },
+        "tertiary":  { "$value": "#3B4A68", "$type": "color" },
+        "inverse":   { "$value": "#ffffff", "$type": "color" },
+        "disabled":  { "$value": "#666666", "$type": "color" }
+      },
+      "accent": {
+        "primary":  { "$value": "#FF6A00", "$type": "color" },
+        "hover":    { "$value": "#FF8533", "$type": "color" },
+        "pressed":  { "$value": "#CC5500", "$type": "color" },
+        "muted_15": { "$value": "rgba(255, 106, 0, 0.15)", "$type": "color" },
+        "muted_25": { "$value": "rgba(255, 106, 0, 0.25)", "$type": "color" },
+        "muted_30": { "$value": "rgba(255, 106, 0, 0.3)",  "$type": "color" }
+      },
+      "semantic": {
+        "success": { "$value": "#4caf50", "$type": "color" },
+        "warning": { "$value": "#ffaa00", "$type": "color" },
+        "error":   { "$value": "#ff4444", "$type": "color" },
+        "info":    { "$value": "#00D9FF", "$type": "color" }
+      },
+      "toast": {
+        "info_bg":         { "$value": "rgba(11, 40, 60, 230)",  "$type": "color" },
+        "info_border":     { "$value": "#00D9FF",                "$type": "color" },
+        "warning_bg":      { "$value": "rgba(80, 60, 10, 230)",  "$type": "color" },
+        "warning_border":  { "$value": "#ffaa00",                "$type": "color" },
+        "error_bg":        { "$value": "rgba(80, 20, 20, 230)",  "$type": "color" },
+        "error_border":    { "$value": "#ff4444",                "$type": "color" },
+        "critical_bg":     { "$value": "rgba(100, 10, 10, 240)", "$type": "color" },
+        "critical_border": { "$value": "#ff0000",                "$type": "color" },
+        "dismiss":         { "$value": "#8B94A5",                "$type": "color" }
+      },
+      "chart": {
+        "bg":              { "$value": "#0D1624",                "$type": "color" },
+        "grid":            { "$value": "rgba(255, 255, 255, 40)", "$type": "color" },
+        "axis":            { "$value": "rgba(255, 255, 255, 25)", "$type": "color" },
+        "line_primary":    { "$value": "#00D9FF",                "$type": "color" },
+        "line_secondary":  { "$value": "#FF6A00",                "$type": "color" },
+        "fill_positive":   { "$value": "#4caf50",                "$type": "color" },
+        "fill_negative":   { "$value": "#ff4444",                "$type": "color" }
+      }
+    },
+    "csgo": {
+      "name": { "$value": "CSGO", "$type": "string" },
+      "surface": {
+        "base":              { "$value": "#1a1c21", "$type": "color" },
+        "raised":            { "$value": "#1c1e24", "$type": "color" },
+        "overlay":           { "$value": "#1c1e24", "$type": "color" },
+        "sunken":            { "$value": "#141a24", "$type": "color" },
+        "sidebar":           { "$value": "#141a24", "$type": "color" },
+        "raised_rgba":       { "$value": "rgba(26, 28, 33, 217)",   "$type": "color" },
+        "card_hover_border": { "$value": "rgba(97, 125, 140, 0.3)", "$type": "color" }
+      },
+      "border": {
+        "subtle":        { "$value": "rgba(255, 255, 255, 0.05)",  "$type": "color" },
+        "default":       { "$value": "#3a3e48",                    "$type": "color" },
+        "accent_muted":  { "$value": "rgba(97, 125, 140, 0.3)",    "$type": "color" }
+      },
+      "text": {
+        "primary":   { "$value": "#dcdcdc", "$type": "color" },
+        "secondary": { "$value": "#a0a8b0", "$type": "color" },
+        "tertiary":  { "$value": "#3a3e48", "$type": "color" },
+        "inverse":   { "$value": "#ffffff", "$type": "color" },
+        "disabled":  { "$value": "#666666", "$type": "color" }
+      },
+      "accent": {
+        "primary":  { "$value": "#617d8c", "$type": "color" },
+        "hover":    { "$value": "#7a96a5", "$type": "color" },
+        "pressed":  { "$value": "#4e6a78", "$type": "color" },
+        "muted_15": { "$value": "rgba(97, 125, 140, 0.15)", "$type": "color" },
+        "muted_25": { "$value": "rgba(97, 125, 140, 0.25)", "$type": "color" },
+        "muted_30": { "$value": "rgba(97, 125, 140, 0.3)",  "$type": "color" }
+      },
+      "semantic": {
+        "success": { "$value": "#4caf50", "$type": "color" },
+        "warning": { "$value": "#c8a030", "$type": "color" },
+        "error":   { "$value": "#cc4444", "$type": "color" },
+        "info":    { "$value": "#617d8c", "$type": "color" }
+      },
+      "toast": {
+        "info_bg":         { "$value": "rgba(26, 40, 60, 230)", "$type": "color" },
+        "info_border":     { "$value": "#617d8c",               "$type": "color" },
+        "warning_bg":      { "$value": "rgba(60, 50, 20, 230)", "$type": "color" },
+        "warning_border":  { "$value": "#c8a030",               "$type": "color" },
+        "error_bg":        { "$value": "rgba(70, 20, 20, 230)", "$type": "color" },
+        "error_border":    { "$value": "#cc4444",               "$type": "color" },
+        "critical_bg":     { "$value": "rgba(90, 10, 10, 240)", "$type": "color" },
+        "critical_border": { "$value": "#ee0000",               "$type": "color" },
+        "dismiss":         { "$value": "#666666",               "$type": "color" }
+      },
+      "chart": {
+        "bg":              { "$value": "#1c1e20",                  "$type": "color" },
+        "grid":            { "$value": "rgba(255, 255, 255, 40)",  "$type": "color" },
+        "axis":            { "$value": "rgba(255, 255, 255, 25)",  "$type": "color" },
+        "line_primary":    { "$value": "#00ccff",                  "$type": "color" },
+        "line_secondary":  { "$value": "#c8a030",                  "$type": "color" },
+        "fill_positive":   { "$value": "#4caf50",                  "$type": "color" },
+        "fill_negative":   { "$value": "#cc4444",                  "$type": "color" }
+      }
+    },
+    "cs16": {
+      "name": { "$value": "CS1.6", "$type": "string" },
+      "surface": {
+        "base":              { "$value": "#121a12", "$type": "color" },
+        "raised":            { "$value": "#182418", "$type": "color" },
+        "overlay":           { "$value": "#182418", "$type": "color" },
+        "sunken":            { "$value": "#0d2414", "$type": "color" },
+        "sidebar":           { "$value": "#0d2414", "$type": "color" },
+        "raised_rgba":       { "$value": "rgba(18, 26, 18, 217)", "$type": "color" },
+        "card_hover_border": { "$value": "rgba(77, 176, 79, 0.3)", "$type": "color" }
+      },
+      "border": {
+        "subtle":        { "$value": "rgba(255, 255, 255, 0.05)", "$type": "color" },
+        "default":       { "$value": "#2a3e2a",                   "$type": "color" },
+        "accent_muted":  { "$value": "rgba(77, 176, 79, 0.3)",    "$type": "color" }
+      },
+      "text": {
+        "primary":   { "$value": "#dcdcdc", "$type": "color" },
+        "secondary": { "$value": "#80a080", "$type": "color" },
+        "tertiary":  { "$value": "#2a3e2a", "$type": "color" },
+        "inverse":   { "$value": "#ffffff", "$type": "color" },
+        "disabled":  { "$value": "#555555", "$type": "color" }
+      },
+      "accent": {
+        "primary":  { "$value": "#4db04f", "$type": "color" },
+        "hover":    { "$value": "#66c268", "$type": "color" },
+        "pressed":  { "$value": "#3d9040", "$type": "color" },
+        "muted_15": { "$value": "rgba(77, 176, 79, 0.15)", "$type": "color" },
+        "muted_25": { "$value": "rgba(77, 176, 79, 0.25)", "$type": "color" },
+        "muted_30": { "$value": "rgba(77, 176, 79, 0.3)",  "$type": "color" }
+      },
+      "semantic": {
+        "success": { "$value": "#4db04f", "$type": "color" },
+        "warning": { "$value": "#b8a030", "$type": "color" },
+        "error":   { "$value": "#cc3333", "$type": "color" },
+        "info":    { "$value": "#4db04f", "$type": "color" }
+      },
+      "toast": {
+        "info_bg":         { "$value": "rgba(18, 36, 28, 230)", "$type": "color" },
+        "info_border":     { "$value": "#4db04f",               "$type": "color" },
+        "warning_bg":      { "$value": "rgba(50, 45, 15, 230)", "$type": "color" },
+        "warning_border":  { "$value": "#b8a030",               "$type": "color" },
+        "error_bg":        { "$value": "rgba(60, 18, 18, 230)", "$type": "color" },
+        "error_border":    { "$value": "#cc3333",               "$type": "color" },
+        "critical_bg":     { "$value": "rgba(80, 10, 10, 240)", "$type": "color" },
+        "critical_border": { "$value": "#dd0000",               "$type": "color" },
+        "dismiss":         { "$value": "#5a7a5a",               "$type": "color" }
+      },
+      "chart": {
+        "bg":              { "$value": "#181e18",                  "$type": "color" },
+        "grid":            { "$value": "rgba(255, 255, 255, 40)",  "$type": "color" },
+        "axis":            { "$value": "rgba(255, 255, 255, 25)",  "$type": "color" },
+        "line_primary":    { "$value": "#00ccff",                  "$type": "color" },
+        "line_secondary":  { "$value": "#b8a030",                  "$type": "color" },
+        "fill_positive":   { "$value": "#4db04f",                  "$type": "color" },
+        "fill_negative":   { "$value": "#cc3333",                  "$type": "color" }
+      }
+    }
+  },
+  "spacing": {
+    "xs":   { "$value": 4,  "$type": "number" },
+    "sm":   { "$value": 8,  "$type": "number" },
+    "md":   { "$value": 12, "$type": "number" },
+    "lg":   { "$value": 16, "$type": "number" },
+    "xl":   { "$value": 24, "$type": "number" },
+    "xxl":  { "$value": 32, "$type": "number" },
+    "xxxl": { "$value": 48, "$type": "number" }
+  },
+  "radius": {
+    "sm": { "$value": 4,  "$type": "number" },
+    "md": { "$value": 8,  "$type": "number" },
+    "lg": { "$value": 16, "$type": "number" },
+    "xl": { "$value": 24, "$type": "number" }
+  },
+  "typography": {
+    "family": {
+      "sans": { "$value": "Roboto, Inter, system-ui, sans-serif", "$type": "fontFamily" },
+      "mono": { "$value": "'JetBrains Mono', 'Fira Code', Consolas, monospace", "$type": "fontFamily" }
+    },
+    "size": {
+      "caption":  { "$value": 11, "$type": "number" },
+      "body":     { "$value": 13, "$type": "number" },
+      "subtitle": { "$value": 14, "$type": "number" },
+      "title":    { "$value": 18, "$type": "number" },
+      "h1":       { "$value": 24, "$type": "number" },
+      "stat":     { "$value": 28, "$type": "number" }
+    }
+  }
+}

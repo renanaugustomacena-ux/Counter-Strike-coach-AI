@@ -12,6 +12,9 @@ from Programma_CS2_RENAN.core.config import get_resource_path
 from Programma_CS2_RENAN.core.demo_frame import NadeType, Team
 from Programma_CS2_RENAN.core.playback_engine import InterpolatedPlayerState
 from Programma_CS2_RENAN.core.spatial_engine import SpatialEngine
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+_logger = get_logger("cs2analyzer.qt_tactical_map")
 
 TICK_RATE = 64
 PLAYER_RADIUS = 8
@@ -118,6 +121,15 @@ class TacticalMapWidget(QWidget):
                     self._map_pixmap = QPixmap(os.path.join(maps_dir, fname))
                     return
 
+        # No radar found. paintEvent draws a dark fallback rect with the
+        # map name — without this warning the failure was silent, which
+        # produced the "blank viewer" symptom reported by the user.
+        _logger.warning(
+            "Map radar image not found for %r (searched %s); "
+            "viewer will render fallback rect only",
+            self._map_name,
+            maps_dir,
+        )
         self._map_pixmap = None
 
     # ── Coordinate Transform ──

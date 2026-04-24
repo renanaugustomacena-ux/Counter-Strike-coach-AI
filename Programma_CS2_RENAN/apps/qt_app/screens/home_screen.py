@@ -7,11 +7,13 @@ from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QFileDialog,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QProgressBar,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -20,6 +22,8 @@ from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 from Programma_CS2_RENAN.apps.qt_app.core.worker import Worker
+from Programma_CS2_RENAN.apps.qt_app.widgets.coaching.animated_counter import AnimatedCounter
+from Programma_CS2_RENAN.apps.qt_app.widgets.coaching.underglow_label import UnderglowLabel
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
 from Programma_CS2_RENAN.core.config import get_setting, save_user_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -50,12 +54,17 @@ class HomeScreen(QWidget):
             state.parsing_progress_changed.connect(self._on_parsing_progress)
             state.training_changed.connect(self._on_training)
             state.total_matches_changed.connect(self._on_total_matches)
+            state.belief_confidence_changed.connect(self._on_belief_confidence)
             self._connected = True
         # Read current values immediately (signals only fire on CHANGE,
         # but boot may have set values before we connected)
         prev = get_app_state().cached_state
         if prev.get("total_matches", 0) > 0:
             self._on_total_matches(prev["total_matches"])
+        if prev.get("current_epoch", 0) > 0:
+            self._epoch_counter.set_target(float(prev["current_epoch"]))
+        if prev.get("belief_confidence") is not None:
+            self._on_belief_confidence(prev["belief_confidence"])
         if "service_active" in prev:
             self._on_service_active(prev["service_active"])
 
@@ -76,13 +85,17 @@ class HomeScreen(QWidget):
         self._status_bar = self._build_status_bar()
         root.addWidget(self._status_bar)
 
-        # Scrollable card area
+        # Scrollable card area laid out as a bento grid (Frame 05 spec).
+        # Each builder populates its own card attribute (no layout.addWidget
+        # inside the builder anymore — placement is explicit here so the
+        # grid spans read at a glance.
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
         content = QWidget()
-        self._cards_layout = QVBoxLayout(content)
+        self._cards_layout = QGridLayout(content)
         self._cards_layout.setSpacing(16)
+        self._cards_layout.setContentsMargins(0, 0, 0, 0)
 
         self._build_demo_card()
         self._build_pro_card()
@@ -90,7 +103,38 @@ class HomeScreen(QWidget):
         self._build_tactical_card()
         self._build_training_card()
 
-        self._cards_layout.addStretch()
+        # Bento placement — 3-column grid.
+        # row 0 col 0-1 (2x2): Demo Analysis hero (depth=floating)
+        # row 0 col 2    (1x1): Connectivity
+        # row 1 col 2    (1x1): Tactical Analysis
+        # row 2 col 0-1 (1x2): Pro Demos
+        # row 2 col 2    (1x1): Training (hidden until active; reserves cell)
+        self._cards_layout.addWidget(self._demo_card, 0, 0, 2, 2)
+        self._cards_layout.addWidget(self._conn_card, 0, 2, 1, 1)
+        self._cards_layout.addWidget(self._tact_card, 1, 2, 1, 1)
+        self._cards_layout.addWidget(self._pro_card, 2, 0, 1, 2)
+        self._cards_layout.addWidget(self._training_card, 2, 2, 1, 1)
+
+        # Column + row stretch: keep column widths balanced (2:1 vs 1:1 vs 1:1
+        # naturally balances because the hero spans 2 columns). Trailing row
+        # absorbs free vertical space so cards don't bloom when the window
+        # is tall.
+        self._cards_layout.setColumnStretch(0, 1)
+        self._cards_layout.setColumnStretch(1, 1)
+        self._cards_layout.setColumnStretch(2, 1)
+        self._cards_layout.setRowStretch(3, 1)
+
+        # Stagger reveal so the bento composes on first show.
+        from Programma_CS2_RENAN.apps.qt_app.core.animation import Animator
+
+        Animator.reveal_stagger(
+            [self._demo_card, self._conn_card, self._tact_card, self._pro_card],
+            delay_ms=55,
+            duration=280,
+            distance_px=18,
+            direction="up",
+        )
+
         scroll.setWidget(content)
         root.addWidget(scroll, 1)
 
@@ -116,11 +160,45 @@ class HomeScreen(QWidget):
         self._update_service_dot(False)
         layout.addWidget(self._service_label)
 
-        self._matches_label = QLabel("Matches: 0")
-        self._matches_label.setFont(QFont("Roboto", 13))
-        self._matches_label.setStyleSheet(f"color: {tokens.text_secondary};")
-        layout.addWidget(self._matches_label)
+        # Hero trio: animated counters with underglow. Each block pairs
+        # a large Space-Grotesk display number with a small caption. The
+        # AnimatedCounter tweens 0 → target so the number feels earned
+        # when the Home screen first appears.
+        layout.addStretch()
 
+        def _hero_block(counter: AnimatedCounter, caption: str) -> QWidget:
+            block = QWidget()
+            block_layout = QVBoxLayout(block)
+            block_layout.setContentsMargins(0, 0, 0, 0)
+            block_layout.setSpacing(0)
+            block_layout.addWidget(counter)
+            cap = QLabel(caption.upper())
+            cap.setStyleSheet(
+                f"color: {tokens.text_secondary}; "
+                f"font-size: {tokens.font_size_caption}px; "
+                "letter-spacing: 2px; background: transparent;"
+            )
+            block_layout.addWidget(cap)
+            return block
+
+        self._matches_counter = AnimatedCounter(target=0, precision=0, duration_ms=700)
+        self._epoch_counter = AnimatedCounter(target=0, precision=0, suffix="", duration_ms=600)
+        self._belief_counter = AnimatedCounter(target=0.0, precision=0, suffix="%", duration_ms=600)
+
+        # Keep the legacy label ref alive (unused visually) so the
+        # _on_total_matches handler path doesn't break if some code still
+        # reads the attribute. New code reads the animated counter.
+        self._matches_label = QLabel("")
+        self._matches_label.setVisible(False)
+
+        self._matches_underglow = UnderglowLabel("", font_size=tokens.font_size_stat)
+        self._matches_underglow.setVisible(False)
+
+        layout.addWidget(_hero_block(self._matches_counter, "Matches analyzed"))
+        layout.addSpacing(24)
+        layout.addWidget(_hero_block(self._epoch_counter, "Training epoch"))
+        layout.addSpacing(24)
+        layout.addWidget(_hero_block(self._belief_counter, "Belief confidence"))
         layout.addStretch()
         return bar
 
@@ -131,7 +209,7 @@ class HomeScreen(QWidget):
         # any upstream component ever emits HTML it would render verbatim in
         # this RichText label. Escape before embedding.
         self._status_label.setText(
-            f'<span style="color:{dot_color}">\u25CF</span> '
+            f'<span style="color:{dot_color}">\u25cf</span> '
             f'<span style="color:{tokens.text_secondary}">Coach: {escape(status)}</span>'
         )
 
@@ -144,14 +222,17 @@ class HomeScreen(QWidget):
             dot_color = tokens.error
             text = "Offline"
         self._service_label.setText(
-            f'<span style="color:{dot_color}">\u25CF</span> '
+            f'<span style="color:{dot_color}">\u25cf</span> '
             f'<span style="color:{tokens.text_secondary}">Service: {text}</span>'
         )
 
     # ── Card 1: Demo Analysis ──
 
     def _build_demo_card(self):
-        card = Card(title=i18n.get_text("demo_analysis"))
+        # Hero card — floating depth gives it a soft drop shadow distinct
+        # from the flat satellite cards around it.
+        card = Card(title=i18n.get_text("demo_analysis"), depth="floating")
+        card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self._demo_card = card
         layout = card.layout()
 
@@ -199,8 +280,7 @@ class HomeScreen(QWidget):
 
         btn_row.addStretch()
         layout.addLayout(btn_row)
-
-        self._cards_layout.addWidget(card)
+        # Placement done in _build_ui grid block — no addWidget here.
 
     # ── Card 2: Pro Ingestion Hub ──
 
@@ -245,8 +325,7 @@ class HomeScreen(QWidget):
 
         pro_btn_row.addStretch()
         layout.addLayout(pro_btn_row)
-
-        self._cards_layout.addWidget(card)
+        # Placement done in _build_ui grid block.
 
     # ── Card 3: API & Profile Connectivity ──
 
@@ -275,8 +354,7 @@ class HomeScreen(QWidget):
 
         btn_row.addStretch()
         layout.addLayout(btn_row)
-
-        self._cards_layout.addWidget(card)
+        # Placement done in _build_ui grid block.
 
     # ── Card 4: Tactical Analysis ──
 
@@ -307,8 +385,7 @@ class HomeScreen(QWidget):
 
         btn_row.addStretch()
         layout.addLayout(btn_row)
-
-        self._cards_layout.addWidget(card)
+        # Placement done in _build_ui grid block.
 
     # ── Training Status Card (hidden until training active) ──
 
@@ -333,7 +410,7 @@ class HomeScreen(QWidget):
         layout.addWidget(self._eta_label)
 
         self._training_card.setVisible(False)
-        self._cards_layout.addWidget(self._training_card)
+        # Placement done in _build_ui grid block.
 
     # ── Helpers ──
 
@@ -519,6 +596,9 @@ class HomeScreen(QWidget):
         visible = total > 0
 
         self._training_card.setVisible(visible)
+        # Keep the hero epoch counter live even when the training card
+        # is hidden — the number itself stays on the status strip.
+        self._epoch_counter.set_target(float(epoch))
         if not visible:
             return
 
@@ -528,4 +608,8 @@ class HomeScreen(QWidget):
         self._eta_label.setText(f"ETA: {self._format_eta(data.get('eta_seconds', 0))}")
 
     def _on_total_matches(self, count: int):
-        self._matches_label.setText(f"Matches: {count}")
+        self._matches_counter.set_target(float(count))
+
+    def _on_belief_confidence(self, conf: float):
+        # AppState emits 0..1; hero shows integer percent.
+        self._belief_counter.set_target(float(conf) * 100.0)

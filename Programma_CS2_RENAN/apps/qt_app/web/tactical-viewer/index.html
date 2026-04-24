@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Macena — Tactical Viewer</title>
+    <!-- qwebchannel.js is injected by Qt via QWebEngine on load. -->
+    <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+    <style>
+      html,
+      body,
+      #root {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #0b1628;
+        color: #f5f7fa;
+        font-family: "Inter", "Roboto", system-ui, sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

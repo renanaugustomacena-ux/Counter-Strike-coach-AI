@@ -16,11 +16,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import ThemeEngine
 from Programma_CS2_RENAN.apps.qt_app.core.worker import Worker
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.toggle_switch import ToggleSwitch
 from Programma_CS2_RENAN.core.config import get_setting, save_user_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -121,6 +123,7 @@ class SettingsScreen(QWidget):
         gen_scroll, self._general_layout = self._make_tab()
         self._tabs.addTab(gen_scroll, i18n.get_text("language"))
         self._build_language_section(self._general_layout)
+        self._build_flagship_section(self._general_layout)
         self._general_layout.addStretch()
 
     def _make_tab(self) -> tuple[QScrollArea, QVBoxLayout]:
@@ -348,6 +351,82 @@ class SettingsScreen(QWidget):
         )
         self._language_card.layout().addLayout(row)
         target.addWidget(self._language_card)
+
+    def _build_flagship_section(self, target: QVBoxLayout):
+        """P3 opt-in feature toggles (sounds, frameless window, pyqtgraph heatmap).
+
+        Each row uses a ``ToggleSwitch`` primitive bound to an AppState
+        setter; persistence is automatic via the settings config layer.
+        Restart requirements are flagged in the description where the
+        underlying chrome (main window frame) cannot hot-swap.
+        """
+        self._flagship_card = Card(
+            title="Flagship Features",
+            subtitle="Opt-in polish beyond the default UX. All default off.",
+            depth="raised",
+        )
+        layout = self._flagship_card.layout()
+        app_state = get_app_state()
+
+        def _add_row(
+            label_text: str,
+            description: str,
+            checked: bool,
+            handler,
+            note: str = "",
+        ) -> ToggleSwitch:
+            row = QHBoxLayout()
+            row.setSpacing(12)
+
+            text_col = QVBoxLayout()
+            text_col.setSpacing(2)
+            name_label = QLabel(label_text)
+            name_label.setFont(QFont("Roboto", 13, QFont.DemiBold))
+            name_label.setStyleSheet(
+                f"color: {get_tokens().text_primary}; background: transparent;"
+            )
+            text_col.addWidget(name_label)
+
+            desc_label = QLabel(description + (f"  ({note})" if note else ""))
+            desc_label.setWordWrap(True)
+            desc_label.setStyleSheet(
+                f"color: {get_tokens().text_secondary}; font-size: 12px; "
+                "background: transparent;"
+            )
+            text_col.addWidget(desc_label)
+            row.addLayout(text_col, 1)
+
+            toggle = ToggleSwitch(checked=checked)
+            toggle.toggled.connect(handler)
+            row.addWidget(toggle, 0, Qt.AlignVCenter)
+            layout.addLayout(row)
+            return toggle
+
+        self._sounds_toggle = _add_row(
+            "Micro-interaction sounds",
+            "Subtle click / success / error feedback.",
+            app_state.sounds_enabled,
+            app_state.set_sounds_enabled,
+            note="Requires WAVs under PHOTO_GUI/sounds/",
+        )
+
+        self._frameless_toggle = _add_row(
+            "Frameless window",
+            "Replaces the OS titlebar with a hand-rolled chrome (no GPL dep).",
+            app_state.use_frameless_window,
+            app_state.set_use_frameless_window,
+            note="Restart to apply",
+        )
+
+        self._pyqtgraph_toggle = _add_row(
+            "pyqtgraph heatmap",
+            "Higher-fidelity match-detail heatmap via pyqtgraph if installed.",
+            app_state.use_pyqtgraph_heatmap,
+            app_state.set_use_pyqtgraph_heatmap,
+            note="Falls back to QtCharts if pyqtgraph missing",
+        )
+
+        target.addWidget(self._flagship_card)
 
     # ── Toggle Button Helpers ──
 

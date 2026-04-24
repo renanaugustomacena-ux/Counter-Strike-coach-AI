@@ -72,6 +72,12 @@ D:\\
 # TensorBoard logs (regenerable via training)
 runs/
 
+# Stage-4 relocation: repo-root training-artifact dirs are deprecated. The
+# canonical location is Programma_CS2_RENAN/models and .../runs (routed via
+# core/config.py MODELS_DIR / RUNS_DIR). Keep the root paths out of git so a
+# stale CWD from an old command cannot resurface them.
+/models/
+
 # Media recordings
 *.gif
 *.mp4
@@ -86,7 +92,10 @@ _test_ingest.py
 .secret_master.key
 gha-creds-*.json
 
-# Internal review/audit documents (not for public distribution)
+# Internal review / audit / engineering handoff documents
+# (not for public distribution — repo ships LICENSE, README, CHANGELOG,
+# CONTRIBUTING, SECURITY, QUICKSTART, user guides, books; everything
+# below is local-only and never pushed).
 AIstate.md
 AUDIT_PROTOCOL.md
 AUDIT.md
@@ -95,6 +104,37 @@ CONSOLE_ARCHITECTURE.md
 jepa.md
 part1_review.md
 TASKS.md
+reporting.md
+KNOWLEDGE_TRANSFER_TO_CS2_COACH.md
+PYCHARM_CONFIGURATION_GUIDE.md
+PYCHARM_CONFIGURATION_GUIDE*.md
+/docs/AUDIT_PROGRESS.md
+/docs/DEEP_AUDIT_FINDINGS.md
+/docs/ENGINEERING_HANDOFF.md
+/docs/FRONTEND_ANALYSIS.md
+/docs/OPEN_PROBLEMS.md
+/docs/COACH_QUALITY_ROADMAP.md
+/docs/system_architecture.pdf
+/docs/archive/
+/docs/Studies/
+
+# Third-party Claude Code plugin (separate project, not part of the CS2 app)
+/caveman/
+
+# Python build artifacts
+*.egg-info/
+
+# Local SQLite backups + pre-chat purge snapshots (regenerable by the app)
+/Programma_CS2_RENAN/backups/
+*.db.pre_chat*
+*.db.backup
+*.db.pre_*
+
+# Generated FAISS / RAG indexes (rebuilt by the knowledge ingestion pipeline)
+/Programma_CS2_RENAN/indexes/
+
+# Demo parse cache (.mcn signed pickles, regenerable per-demo)
+/Programma_CS2_RENAN/data/demo_cache/
 
 # Reports (generated artifacts, regenerable)
 reports/

@@ -5,6 +5,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QPainter
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+from Programma_CS2_RENAN.apps.qt_app.widgets.charts import token_color
 
 
 class EconomyChart(QChartView):
@@ -75,6 +76,6 @@ class EconomyChart(QChartView):
         ax_y.setTitleText("Equipment ($)")
         ax_y.setTitleBrush(QColor(tokens.text_secondary))
         ax_y.setLabelsColor(QColor(tokens.text_secondary))
-        ax_y.setGridLineColor(QColor(255, 255, 255, 20))
+        ax_y.setGridLineColor(token_color(tokens.chart_grid))
         chart.addAxis(ax_y, Qt.AlignLeft)
         series.attachAxis(ax_y)

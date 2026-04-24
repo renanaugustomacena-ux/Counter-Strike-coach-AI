@@ -98,8 +98,12 @@ def main():
     def _on_app_quit():
         from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state
         from Programma_CS2_RENAN.backend.control.console import get_console
+        from Programma_CS2_RENAN.core.lifecycle import lifecycle
 
         get_app_state().stop_polling()
+        # Stop the Session Engine subprocess (Scanner/Digester/Teacher/Pulse)
+        # before tearing down the Console so its DB handles are free.
+        lifecycle.shutdown()
         get_console().shutdown()
 
     app.aboutToQuit.connect(_on_app_quit)
@@ -210,6 +214,18 @@ def main():
         get_console().boot()
     except Exception:
         logging.exception("Backend boot failed")
+
+    # Launch the Session Engine daemon (Scanner/Digester/Teacher/Pulse). Without
+    # this the Pulse thread never writes CoachState.last_heartbeat, so the GUI
+    # shows "Service offline" and the Coach card stalls at "Idle".
+    _splash_status(splash, "Starting Session Engine daemon...")
+    try:
+        from Programma_CS2_RENAN.core.lifecycle import lifecycle
+
+        if lifecycle.launch_daemon() is None:
+            logging.error("Session Engine daemon failed to launch")
+    except Exception:
+        logging.exception("Session Engine daemon launch failed")
 
     # WR-10: Pre-download SBERT model with progress dialog if not cached
     _splash_status(splash, "Checking AI language model...")

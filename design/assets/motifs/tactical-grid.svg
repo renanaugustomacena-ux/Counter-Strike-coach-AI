@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Neo-tactical noir grid motif — tiled at 2.5% opacity behind surface base.
+       64px tile: a 32px cross (minor gridline) + 1px corners (major gridline
+       anchor). Scale-neutral; reads as "tactical map" rather than "checker". -->
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F5F7FA" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#F5F7FA" stop-opacity="0.14"/>
+    </linearGradient>
+  </defs>
+  <!-- Cross at cell center (32,32) -->
+  <line x1="24" y1="32" x2="40" y2="32" stroke="url(#g)" stroke-width="1"/>
+  <line x1="32" y1="24" x2="32" y2="40" stroke="url(#g)" stroke-width="1"/>
+  <!-- Corner anchors (1px dots) -->
+  <rect x="0" y="0" width="1" height="1" fill="#F5F7FA" fill-opacity="0.35"/>
+  <rect x="63" y="0" width="1" height="1" fill="#F5F7FA" fill-opacity="0.35"/>
+  <rect x="0" y="63" width="1" height="1" fill="#F5F7FA" fill-opacity="0.35"/>
+  <rect x="63" y="63" width="1" height="1" fill="#F5F7FA" fill-opacity="0.35"/>
+</svg>

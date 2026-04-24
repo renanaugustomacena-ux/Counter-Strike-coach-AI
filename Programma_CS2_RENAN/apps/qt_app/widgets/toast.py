@@ -12,11 +12,12 @@ from PySide6.QtWidgets import (
 )
 
 from Programma_CS2_RENAN.apps.qt_app.core.animation import Animator
+from Programma_CS2_RENAN.apps.qt_app.core.easing import Easing
 
 # Severity → (icon, auto-dismiss milliseconds; 0 = manual dismiss only)
 _SEVERITY_CONFIG = {
     "INFO": ("\u2139", 5000),  # i
-    "WARNING": ("\u26A0", 8000),  # warning triangle
+    "WARNING": ("\u26a0", 8000),  # warning triangle
     "ERROR": ("\u2716", 12000),  # X mark
     "CRITICAL": ("\u2620", 0),  # skull
 }
@@ -112,8 +113,17 @@ class ToastContainer(QWidget):
         toast.dismissed.connect(lambda t=toast: self._on_dismissed(t))
         self.layout().addWidget(toast)
         self._toasts.append(toast)
-        Animator.fade_in(toast, duration=200)
         self.refit()
+        # Slide from the right edge with a subtle overshoot. Geometry
+        # animation (not opacity effect) stays safe on mid-repaint — see
+        # `core/animation.py` note on the Linux QPainter/opacity crash.
+        Animator.slide_in(
+            toast,
+            direction="right",
+            distance_px=64,
+            duration=260,
+            easing=Easing.OutBack,
+        )
 
     def _on_dismissed(self, toast: ToastWidget):
         if toast in self._toasts:

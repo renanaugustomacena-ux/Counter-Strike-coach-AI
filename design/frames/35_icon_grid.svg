@@ -1,0 +1,343 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Inter, 'Segoe UI', system-ui, sans-serif">
+  <rect width="1440" height="900" fill="#0b0b14"/>
+
+  <text x="60" y="50" fill="#dcdcdc" font-size="22" font-weight="700">Icon Grid — QPainterPath vectors</text>
+  <text x="60" y="72" fill="#a0a0b0" font-size="12">apps/qt_app/core/icons.py · 24×24 design grid · stroke 1.5 · runtime color injection via QPen</text>
+
+  <!-- ═══ Row 1: The 7 NavSidebar icons ═══ -->
+  <g transform="translate(60 110)">
+    <text fill="#3a3a5a" font-size="10" font-family="'JetBrains Mono', monospace" letter-spacing="1.2">NAV ICONS · NAV_ITEMS[] · nav_sidebar.py:20</text>
+
+    <!-- Cell proto: 180w × 140h -->
+
+    <!-- 1. home -->
+    <g transform="translate(0 24)">
+      <rect width="180" height="140" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+      <g transform="translate(66 24) scale(2)" fill="none" stroke="#dcdcdc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3 L22 12 L19 12 L19 21 L5 21 L5 12 L2 12 Z"/>
+        <rect x="9" y="15" width="6" height="6"/>
+      </g>
+      <text x="90" y="108" fill="#dcdcdc" font-size="12" font-weight="600" text-anchor="middle">home</text>
+      <text x="90" y="124" fill="#3a3a5a" font-size="9" text-anchor="middle" font-family="'JetBrains Mono', monospace">IconProvider.home()</text>
+    </g>
+
+    <!-- 2. brain -->
+    <g transform="translate(196 24)">
+      <rect width="180" height="140" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+      <g transform="translate(66 24) scale(2)" fill="none" stroke="#dcdcdc" stroke-width="1.5" stroke-linecap="round">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M12 5 L12 19"/>
+        <path d="M12 8 C7 6, 5 11, 12 12"/>
+        <path d="M12 12 C17 11, 19 16, 12 16"/>
+      </g>
+      <text x="90" y="108" fill="#dcdcdc" font-size="12" font-weight="600" text-anchor="middle">brain</text>
+      <text x="90" y="124" fill="#3a3a5a" font-size="9" text-anchor="middle" font-family="'JetBrains Mono', monospace">coach</text>
+    </g>
+
+    <!-- 3. list_icon -->
+    <g transform="translate(392 24)">
+      <rect width="180" height="140" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+      <g transform="translate(66 24) scale(2)" fill="none" stroke="#dcdcdc" stroke-width="1.5" stroke-linecap="round">
+        <line x1="4" y1="6" x2="20" y2="6"/>
+        <line x1="4" y1="12" x2="20" y2="12"/>
+        <line x1="4" y1="18" x2="20" y2="18"/>
+        <circle cx="2.5" cy="6" r="1.5" fill="#dcdcdc"/>
+        <circle cx="2.5" cy="12" r="1.5" fill="#dcdcdc"/>
+        <circle cx="2.5" cy="18" r="1.5" fill="#dcdcdc"/>
+      </g>
+      <text x="90" y="108" fill="#dcdcdc" font-size="12" font-weight="600" text-anchor="middle">list_icon</text>
+      <text x="90" y="124" fill="#3a3a5a" font-size="9" text-anchor="middle" font-family="'JetBrains Mono', monospace">match_history</text>
+    </g>
+
+    <!-- 4. chart -->
+    <g transform="translate(588 24)">
+      <rect width="180" height="140" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+      <g transform="translate(66 24) scale(2)" fill="none" stroke="#dcdcdc" stroke-width="1.5">
+        <rect x="3" y="14" width="5" height="8"/>
+        <rect x="10" y="8" width="5" height="14"/>
+        <rect x="17" y="3" width="5" height="19"/>
+      </g>
+      <text x="90" y="108" fill="#dcdcdc" font-size="12" font-weight="600" text-anchor="middle">chart</text>
+      <text x="90" y="124" fill="#3a3a5a" font-size="9" text-anchor="middle" font-family="'JetBrains Mono', monospace">performance</text>
+    </g>
+
+    <!-- 5. crosshair -->
+    <g transform="translate(784 24)">
+      <rect width="180" height="140" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+      <g transform="translate(66 24) scale(2)" fill="none" stroke="#dcdcdc" stroke-width="1.5" stroke-linecap="round">
+        <circle cx="12" cy="12" r="8"/>
+        <circle cx="12" cy="12" r="3"/>
+        <line x1="12" y1="1" x2="12" y2="7"/>
+        <line x1="12" y1="17" x2="12" y2="23"/>
+        <line x1="1" y1="12" x2="7" y2="12"/>
+        <line x1="17" y1="12" x2="23" y2="12"/>
+      </g>
+      <text x="90" y="108" fill="#dcdcdc" font-size="12" font-weight="600" text-anchor="middle">crosshair</text>
+      <text x="90" y="124" fill="#3a3a5a" font-size="9" text-anchor="middle" font-family="'JetBrains Mono', monospace">tactical_viewer</text>
+    </g>
+
+    <!-- 6. gear -->
+    <g transform="translate(980 24)">
+      <rect width="180" height="140" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+      <g transform="translate(66 24) scale(2)" fill="none" stroke="#dcdcdc" stroke-width="1.5" stroke-linecap="round">
+        <circle cx="12" cy="12" r="4"/>
+        <line x1="19" y1="12" x2="22" y2="12"/>
+        <line x1="12" y1="19" x2="12" y2="22"/>
+        <line x1="5" y1="12" x2="2" y2="12"/>
+        <line x1="12" y1="5" x2="12" y2="2"/>
+        <line x1="17" y1="17" x2="19.12" y2="19.12"/>
+        <line x1="7" y1="17" x2="4.88" y2="19.12"/>
+        <line x1="7" y1="7" x2="4.88" y2="4.88"/>
+        <line x1="17" y1="7" x2="19.12" y2="4.88"/>
+      </g>
+      <text x="90" y="108" fill="#dcdcdc" font-size="12" font-weight="600" text-anchor="middle">gear</text>
+      <text x="90" y="124" fill="#3a3a5a" font-size="9" text-anchor="middle" font-family="'JetBrains Mono', monospace">settings</text>
+    </g>
+
+    <!-- 7. help_circle -->
+    <g transform="translate(1176 24)">
+      <rect width="180" height="140" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+      <g transform="translate(66 24) scale(2)" fill="none" stroke="#dcdcdc" stroke-width="1.5" stroke-linecap="round">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M9 9 C9 5, 15 5, 15 9 C15 12, 12 12, 12 14"/>
+        <circle cx="12" cy="18" r="1" fill="#dcdcdc"/>
+      </g>
+      <text x="90" y="108" fill="#dcdcdc" font-size="12" font-weight="600" text-anchor="middle">help_circle</text>
+      <text x="90" y="124" fill="#3a3a5a" font-size="9" text-anchor="middle" font-family="'JetBrains Mono', monospace">help</text>
+    </g>
+  </g>
+
+  <!-- ═══ Row 2: Color variants ═══ -->
+  <g transform="translate(60 306)">
+    <text fill="#3a3a5a" font-size="10" font-family="'JetBrains Mono', monospace" letter-spacing="1.2">COLOR VARIANTS · QPen color = tokens.text_primary | accent_primary | text_tertiary</text>
+
+    <g transform="translate(0 20)">
+      <rect width="1296" height="120" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+
+      <!-- default (text_primary) -->
+      <text x="60" y="28" fill="#a0a0b0" font-size="11" text-anchor="middle">default</text>
+      <g transform="translate(48 42) scale(1.5)" fill="none" stroke="#dcdcdc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3 L22 12 L19 12 L19 21 L5 21 L5 12 L2 12 Z"/>
+        <rect x="9" y="15" width="6" height="6"/>
+      </g>
+      <text x="60" y="108" fill="#3a3a5a" font-size="9" text-anchor="middle" font-family="'JetBrains Mono', monospace">#dcdcdc</text>
+
+      <!-- active (accent) -->
+      <text x="180" y="28" fill="#a0a0b0" font-size="11" text-anchor="middle">active</text>
+      <g transform="translate(168 42) scale(1.5)" fill="none" stroke="#d96600" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3 L22 12 L19 12 L19 21 L5 21 L5 12 L2 12 Z"/>
+        <rect x="9" y="15" width="6" height="6"/>
+      </g>
+      <text x="180" y="108" fill="#3a3a5a" font-size="9" text-anchor="middle" font-family="'JetBrains Mono', monospace">#d96600</text>
+
+      <!-- disabled (text_tertiary) -->
+      <text x="300" y="28" fill="#a0a0b0" font-size="11" text-anchor="middle">disabled</text>
+      <g transform="translate(288 42) scale(1.5)" fill="none" stroke="#3a3a5a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3 L22 12 L19 12 L19 21 L5 21 L5 12 L2 12 Z"/>
+        <rect x="9" y="15" width="6" height="6"/>
+      </g>
+      <text x="300" y="108" fill="#3a3a5a" font-size="9" text-anchor="middle" font-family="'JetBrains Mono', monospace">#3a3a5a</text>
+
+      <!-- success -->
+      <text x="420" y="28" fill="#a0a0b0" font-size="11" text-anchor="middle">success</text>
+      <g transform="translate(408 42) scale(1.5)" fill="none" stroke="#4db04f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3 L22 12 L19 12 L19 21 L5 21 L5 12 L2 12 Z"/>
+        <rect x="9" y="15" width="6" height="6"/>
+      </g>
+      <text x="420" y="108" fill="#3a3a5a" font-size="9" text-anchor="middle" font-family="'JetBrains Mono', monospace">#4db04f</text>
+
+      <!-- warning -->
+      <text x="540" y="28" fill="#a0a0b0" font-size="11" text-anchor="middle">warning</text>
+      <g transform="translate(528 42) scale(1.5)" fill="none" stroke="#ffaa00" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3 L22 12 L19 12 L19 21 L5 21 L5 12 L2 12 Z"/>
+        <rect x="9" y="15" width="6" height="6"/>
+      </g>
+      <text x="540" y="108" fill="#3a3a5a" font-size="9" text-anchor="middle" font-family="'JetBrains Mono', monospace">#ffaa00</text>
+
+      <!-- error -->
+      <text x="660" y="28" fill="#a0a0b0" font-size="11" text-anchor="middle">error</text>
+      <g transform="translate(648 42) scale(1.5)" fill="none" stroke="#ff4444" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3 L22 12 L19 12 L19 21 L5 21 L5 12 L2 12 Z"/>
+        <rect x="9" y="15" width="6" height="6"/>
+      </g>
+      <text x="660" y="108" fill="#3a3a5a" font-size="9" text-anchor="middle" font-family="'JetBrains Mono', monospace">#ff4444</text>
+
+      <!-- Size ladder 16/20/24/32 -->
+      <text x="780" y="28" fill="#a0a0b0" font-size="11">size ladder</text>
+      <g fill="none" stroke="#dcdcdc" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+        <g transform="translate(780 50)"><path d="M8 2 L15 8 L13 8 L13 14 L3 14 L3 8 L1 8 Z"/><rect x="6" y="10" width="4" height="4"/></g>
+        <g transform="translate(816 48) scale(0.83)"><path d="M12 3 L22 12 L19 12 L19 21 L5 21 L5 12 L2 12 Z"/><rect x="9" y="15" width="6" height="6"/></g>
+        <g transform="translate(856 44)"><path d="M12 3 L22 12 L19 12 L19 21 L5 21 L5 12 L2 12 Z"/><rect x="9" y="15" width="6" height="6"/></g>
+        <g transform="translate(904 40) scale(1.33)"><path d="M12 3 L22 12 L19 12 L19 21 L5 21 L5 12 L2 12 Z"/><rect x="9" y="15" width="6" height="6"/></g>
+      </g>
+      <text x="820" y="108" fill="#3a3a5a" font-size="9" text-anchor="middle" font-family="'JetBrains Mono', monospace">16 · 20 · 24 · 32</text>
+
+      <!-- Toast glyphs -->
+      <text x="1130" y="28" fill="#a0a0b0" font-size="11" text-anchor="middle">toast glyphs (unicode)</text>
+      <text x="1020" y="78" fill="#4a9eff" font-size="32" text-anchor="middle">ℹ</text>
+      <text x="1020" y="108" fill="#3a3a5a" font-size="9" text-anchor="middle" font-family="'JetBrains Mono', monospace">INFO</text>
+      <text x="1090" y="78" fill="#ffaa00" font-size="32" text-anchor="middle">⚠</text>
+      <text x="1090" y="108" fill="#3a3a5a" font-size="9" text-anchor="middle" font-family="'JetBrains Mono', monospace">WARN</text>
+      <text x="1160" y="78" fill="#ff4444" font-size="32" text-anchor="middle">✖</text>
+      <text x="1160" y="108" fill="#3a3a5a" font-size="9" text-anchor="middle" font-family="'JetBrains Mono', monospace">ERROR</text>
+      <text x="1230" y="78" fill="#ff0000" font-size="32" text-anchor="middle">☠</text>
+      <text x="1230" y="108" fill="#3a3a5a" font-size="9" text-anchor="middle" font-family="'JetBrains Mono', monospace">CRIT</text>
+    </g>
+  </g>
+
+  <!-- ═══ Row 3: Icon anatomy & rendering ═══ -->
+  <g transform="translate(60 472)">
+    <text fill="#3a3a5a" font-size="10" font-family="'JetBrains Mono', monospace" letter-spacing="1.2">ANATOMY · 24×24 DESIGN GRID · QPainterPath → QPixmap</text>
+
+    <g transform="translate(0 20)">
+      <!-- Grid visualization with crosshair icon at x10 -->
+      <rect width="640" height="300" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+
+      <!-- Grid lines -->
+      <g transform="translate(40 30)" stroke="#3a3a5a" stroke-width="0.5" opacity="0.5">
+        <g>
+          <line x1="0" y1="0" x2="240" y2="0"/>
+          <line x1="0" y1="40" x2="240" y2="40"/>
+          <line x1="0" y1="80" x2="240" y2="80"/>
+          <line x1="0" y1="120" x2="240" y2="120"/>
+          <line x1="0" y1="160" x2="240" y2="160"/>
+          <line x1="0" y1="200" x2="240" y2="200"/>
+          <line x1="0" y1="240" x2="240" y2="240"/>
+          <line x1="0" y1="0" x2="0" y2="240"/>
+          <line x1="40" y1="0" x2="40" y2="240"/>
+          <line x1="80" y1="0" x2="80" y2="240"/>
+          <line x1="120" y1="0" x2="120" y2="240"/>
+          <line x1="160" y1="0" x2="160" y2="240"/>
+          <line x1="200" y1="0" x2="200" y2="240"/>
+          <line x1="240" y1="0" x2="240" y2="240"/>
+        </g>
+        <!-- tick labels -->
+        <g fill="#3a3a5a" font-size="9" opacity="1" font-family="'JetBrains Mono', monospace">
+          <text x="-12" y="4">0</text>
+          <text x="-12" y="84">8</text>
+          <text x="-12" y="164">16</text>
+          <text x="-12" y="244">24</text>
+          <text x="-2" y="-10">0</text>
+          <text x="78" y="-10">8</text>
+          <text x="158" y="-10">16</text>
+          <text x="238" y="-10">24</text>
+        </g>
+      </g>
+
+      <!-- crosshair icon drawn at 10x scale -->
+      <g transform="translate(40 30) scale(10)" fill="none" stroke="#d96600" stroke-width="0.15" stroke-linecap="round">
+        <circle cx="12" cy="12" r="8"/>
+        <circle cx="12" cy="12" r="3"/>
+        <line x1="12" y1="1" x2="12" y2="7"/>
+        <line x1="12" y1="17" x2="12" y2="23"/>
+        <line x1="1" y1="12" x2="7" y2="12"/>
+        <line x1="17" y1="12" x2="23" y2="12"/>
+      </g>
+
+      <!-- Anatomy labels with leader lines -->
+      <g stroke="#3a3a5a" stroke-width="0.8" fill="none">
+        <line x1="280" y1="60" x2="440" y2="60"/>
+        <line x1="280" y1="130" x2="440" y2="130"/>
+        <line x1="280" y1="200" x2="440" y2="200"/>
+      </g>
+      <g font-size="11">
+        <text x="448" y="44" fill="#dcdcdc" font-weight="700">outer circle</text>
+        <text x="448" y="60" fill="#a0a0b0">r=8 at (12,12)</text>
+        <text x="448" y="114" fill="#dcdcdc" font-weight="700">inner circle</text>
+        <text x="448" y="130" fill="#a0a0b0">r=3 (center dot)</text>
+        <text x="448" y="184" fill="#dcdcdc" font-weight="700">cross lines</text>
+        <text x="448" y="200" fill="#a0a0b0">N/S/E/W ticks · len 6</text>
+      </g>
+
+      <text x="20" y="24" fill="#dcdcdc" font-size="13" font-weight="700">crosshair · dissected</text>
+    </g>
+
+    <!-- Rendering pipeline -->
+    <g transform="translate(660 20)">
+      <rect width="636" height="300" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+      <text x="20" y="28" fill="#dcdcdc" font-size="13" font-weight="700">Rendering pipeline</text>
+
+      <!-- Step boxes -->
+      <g transform="translate(20 50)">
+        <rect width="120" height="80" rx="6" fill="#0f0f2e" stroke="#3a3a5a"/>
+        <text x="60" y="20" fill="#d96600" font-size="10" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">STEP 1</text>
+        <text x="60" y="44" fill="#dcdcdc" font-size="11" text-anchor="middle" font-weight="600">QPainterPath</text>
+        <text x="60" y="60" fill="#a0a0b0" font-size="10" text-anchor="middle">declare shapes</text>
+        <text x="60" y="74" fill="#3a3a5a" font-size="9" text-anchor="middle" font-family="'JetBrains Mono', monospace">p.moveTo/lineTo</text>
+      </g>
+
+      <path d="M144 90 L164 90" stroke="#d96600" stroke-width="1.5" fill="none" marker-end="url(#arr35)"/>
+
+      <g transform="translate(168 50)">
+        <rect width="120" height="80" rx="6" fill="#0f0f2e" stroke="#3a3a5a"/>
+        <text x="60" y="20" fill="#d96600" font-size="10" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">STEP 2</text>
+        <text x="60" y="44" fill="#dcdcdc" font-size="11" text-anchor="middle" font-weight="600">_render()</text>
+        <text x="60" y="60" fill="#a0a0b0" font-size="10" text-anchor="middle">size + color</text>
+        <text x="60" y="74" fill="#3a3a5a" font-size="9" text-anchor="middle" font-family="'JetBrains Mono', monospace">QPainter scale</text>
+      </g>
+
+      <path d="M292 90 L312 90" stroke="#d96600" stroke-width="1.5" fill="none" marker-end="url(#arr35)"/>
+
+      <g transform="translate(316 50)">
+        <rect width="120" height="80" rx="6" fill="#0f0f2e" stroke="#3a3a5a"/>
+        <text x="60" y="20" fill="#d96600" font-size="10" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">STEP 3</text>
+        <text x="60" y="44" fill="#dcdcdc" font-size="11" text-anchor="middle" font-weight="600">QPixmap</text>
+        <text x="60" y="60" fill="#a0a0b0" font-size="10" text-anchor="middle">antialiased</text>
+        <text x="60" y="74" fill="#3a3a5a" font-size="9" text-anchor="middle" font-family="'JetBrains Mono', monospace">transparent bg</text>
+      </g>
+
+      <path d="M440 90 L460 90" stroke="#d96600" stroke-width="1.5" fill="none" marker-end="url(#arr35)"/>
+
+      <g transform="translate(464 50)">
+        <rect width="148" height="80" rx="6" fill="#0f0f2e" stroke="#3a3a5a"/>
+        <text x="74" y="20" fill="#d96600" font-size="10" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">STEP 4</text>
+        <text x="74" y="44" fill="#dcdcdc" font-size="11" text-anchor="middle" font-weight="600">QIcon(pixmap)</text>
+        <text x="74" y="60" fill="#a0a0b0" font-size="10" text-anchor="middle">attach to button</text>
+        <text x="74" y="74" fill="#3a3a5a" font-size="9" text-anchor="middle" font-family="'JetBrains Mono', monospace">QPushButton.setIcon</text>
+      </g>
+
+      <defs>
+        <marker id="arr35" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0 0 L10 5 L0 10 Z" fill="#d96600"/>
+        </marker>
+      </defs>
+
+      <!-- Code snippet -->
+      <g transform="translate(20 148)">
+        <rect width="596" height="136" rx="6" fill="#0a0a14" stroke="#3a3a5a"/>
+        <g font-family="'JetBrains Mono', Consolas, monospace" font-size="11">
+          <text x="12" y="22" fill="#a0a0b0">@staticmethod</text>
+          <text x="12" y="38" fill="#a0a0b0">def <tspan fill="#d96600">crosshair</tspan>(size: int = 24, color: str = <tspan fill="#4db04f">"#ffffff"</tspan>) -&gt; <tspan fill="#4a9eff">QIcon</tspan>:</text>
+          <text x="12" y="54" fill="#dcdcdc">    p = QPainterPath()</text>
+          <text x="12" y="70" fill="#dcdcdc">    p.addEllipse(QRectF(<tspan fill="#ffaa00">4, 4, 16, 16</tspan>))</text>
+          <text x="12" y="86" fill="#dcdcdc">    p.addEllipse(QRectF(<tspan fill="#ffaa00">9, 9, 6, 6</tspan>))</text>
+          <text x="12" y="102" fill="#dcdcdc">    p.moveTo(<tspan fill="#ffaa00">12, 1</tspan>); p.lineTo(<tspan fill="#ffaa00">12, 7</tspan>)</text>
+          <text x="12" y="118" fill="#dcdcdc">    …</text>
+          <text x="12" y="134" fill="#dcdcdc">    return QIcon(<tspan fill="#00ccff">_render</tspan>(p, size, color))</text>
+        </g>
+      </g>
+    </g>
+  </g>
+
+  <!-- ═══ Row 4: Additional pictograms used in app ═══ -->
+  <g transform="translate(60 792)">
+    <text fill="#3a3a5a" font-size="10" font-family="'JetBrains Mono', monospace" letter-spacing="1.2">APP PICTOGRAMS · non-icon symbols found in the UI</text>
+
+    <g transform="translate(0 16)" font-size="22">
+      <text x="20" y="28" fill="#d96600">✓</text>
+      <text x="70" y="28" fill="#a0a0b0" font-size="11">check · wizard step complete</text>
+
+      <text x="280" y="28" fill="#ff4444">✗</text>
+      <text x="310" y="28" fill="#a0a0b0" font-size="11">dismiss · skeleton empty</text>
+
+      <text x="530" y="28" fill="#dcdcdc">≡</text>
+      <text x="560" y="28" fill="#a0a0b0" font-size="11">hamburger · nav toggle</text>
+
+      <text x="790" y="28" fill="#d96600">⌂</text>
+      <text x="820" y="28" fill="#a0a0b0" font-size="11">home glyph · empty state</text>
+
+      <text x="1050" y="28" fill="#4db04f">⚡</text>
+      <text x="1080" y="28" fill="#a0a0b0" font-size="11">pulse daemon activity</text>
+    </g>
+  </g>
+</svg>

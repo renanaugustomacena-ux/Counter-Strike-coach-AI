@@ -1,0 +1,307 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Roboto, Inter, system-ui, sans-serif">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#d96600"></path></marker>
+    <marker id="arY" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#ffaa00"></path></marker>
+    <marker id="arG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#4caf50"></path></marker>
+    <marker id="arB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#4a9eff"></path></marker>
+    <marker id="arP" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#a855f7"></path></marker>
+  </defs>
+
+  <rect width="1440" height="900" fill="#14141e"></rect>
+
+
+  <g transform="translate(60,44)">
+    <text fill="#d96600" font-size="10" letter-spacing="4" font-weight="700">SYSTEM ARCHITECTURE · FRAME 21</text>
+    <text y="32" fill="#dcdcdc" font-size="24" font-weight="700">Ingestion → Features → Storage → Training → Inference</text>
+    <text y="54" fill="#a0a0b0" font-size="12">Compact top-to-bottom overview · every arrow labeled · every box pinned to file:line</text>
+  </g>
+
+
+
+
+
+  <g transform="translate(60,110)">
+    <rect width="240" height="32" rx="6" fill="rgba(217,102,0,0.18)"></rect>
+    <text x="12" y="21" fill="#d96600" font-size="10" letter-spacing="3" font-weight="700">① INGESTION</text>
+  </g>
+  <g transform="translate(330,110)">
+    <rect width="240" height="32" rx="6" fill="rgba(255,170,0,0.15)"></rect>
+    <text x="12" y="21" fill="#ffaa00" font-size="10" letter-spacing="3" font-weight="700">② FEATURES</text>
+  </g>
+  <g transform="translate(600,110)">
+    <rect width="240" height="32" rx="6" fill="rgba(76,175,80,0.15)"></rect>
+    <text x="12" y="21" fill="#4caf50" font-size="10" letter-spacing="3" font-weight="700">③ STORAGE · SQLite WAL</text>
+  </g>
+  <g transform="translate(870,110)">
+    <rect width="240" height="32" rx="6" fill="rgba(74,158,255,0.15)"></rect>
+    <text x="12" y="21" fill="#4a9eff" font-size="10" letter-spacing="3" font-weight="700">④ TRAINING</text>
+  </g>
+  <g transform="translate(1140,110)">
+    <rect width="240" height="32" rx="6" fill="rgba(168,85,247,0.15)"></rect>
+    <text x="12" y="21" fill="#a855f7" font-size="10" letter-spacing="3" font-weight="700">⑤ INFERENCE</text>
+  </g>
+
+
+  <g transform="translate(60,160)">
+    <g>
+      <rect width="240" height="66" rx="8" fill="#1a1a2e" stroke="#d96600" stroke-width="1.5"></rect>
+      <text x="12" y="20" fill="#d96600" font-size="10" letter-spacing="2" font-weight="700">SOURCE</text>
+      <text x="12" y="40" fill="#dcdcdc" font-size="13" font-weight="700">.dem file</text>
+      <text x="12" y="56" fill="#a0a0b0" font-size="10">≥ 10 MB · DS-12 guard</text>
+    </g>
+    <path d="M120 230 L120 252" stroke="#d96600" stroke-width="1.5" marker-end="url(#ar)"></path>
+    <g transform="translate(0,254)">
+      <rect width="240" height="66" rx="8" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <text x="12" y="20" fill="#a0a0b0" font-size="10" letter-spacing="2" font-weight="700">DEDUPE FSM</text>
+      <text x="12" y="40" fill="#dcdcdc" font-size="13" font-weight="700">IngestionTask</text>
+      <text x="12" y="56" fill="#a0a0b0" font-size="10">QUEUED → PROCESSING → DONE</text>
+    </g>
+    <path d="M120 322 L120 344" stroke="#d96600" stroke-width="1.5" marker-end="url(#ar)"></path>
+    <g transform="translate(0,348)">
+      <rect width="240" height="66" rx="8" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <text x="12" y="20" fill="#a0a0b0" font-size="10" letter-spacing="2" font-weight="700">PARSE · RUST</text>
+      <text x="12" y="40" fill="#dcdcdc" font-size="13" font-weight="700">demoparser2 v0.4.1</text>
+      <text x="12" y="56" fill="#a0a0b0" font-size="10">aggregate + per-tick events</text>
+    </g>
+    <path d="M120 414 L120 436" stroke="#d96600" stroke-width="1.5" marker-end="url(#ar)"></path>
+    <g transform="translate(0,438)">
+      <rect width="240" height="66" rx="8" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <text x="12" y="20" fill="#a0a0b0" font-size="10" letter-spacing="2" font-weight="700">ENRICH TICKS</text>
+      <text x="12" y="40" fill="#dcdcdc" font-size="13" font-weight="700">Interpolate + context</text>
+      <text x="12" y="56" fill="#a0a0b0" font-size="10">x/y/z · enemies_visible · bomb</text>
+    </g>
+
+
+    <g transform="translate(0,520)" font-size="9" font-family="JetBrains Mono, monospace" fill="#3a3a5a">
+      <text>run_ingestion.py:312</text>
+      <text y="14">demo_parser.py:51</text>
+      <text y="28">round_reconstructor.py</text>
+    </g>
+  </g>
+
+
+  <path d="M300 420 L330 420" stroke="#ffaa00" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#arY)"></path>
+  <text x="304" y="412" fill="#ffaa00" font-size="9" font-family="JetBrains Mono, monospace">raw ticks</text>
+
+
+  <g transform="translate(330,160)">
+    <g>
+      <rect width="240" height="66" rx="8" fill="rgba(255,170,0,0.1)" stroke="#ffaa00" stroke-width="1.5"></rect>
+      <text x="12" y="20" fill="#ffaa00" font-size="10" letter-spacing="2" font-weight="700">VECTORIZE</text>
+      <text x="12" y="40" fill="#dcdcdc" font-size="13" font-weight="700">FeatureExtractor.extract()</text>
+      <text x="12" y="56" fill="#a0a0b0" font-size="10">25 float32 per tick</text>
+    </g>
+    <path d="M120 230 L120 252" stroke="#ffaa00" stroke-width="1.5" marker-end="url(#arY)"></path>
+    <g transform="translate(0,254)">
+      <rect width="240" height="66" rx="8" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <text x="12" y="20" fill="#ffaa00" font-size="10" letter-spacing="2" font-weight="700">CLAMP · P-VEC-02</text>
+      <text x="12" y="40" fill="#dcdcdc" font-size="13" font-weight="700">NaN/Inf → 0</text>
+      <text x="12" y="56" fill="#a0a0b0" font-size="10">&gt;5% batch → DataQualityError</text>
+    </g>
+    <path d="M120 322 L120 344" stroke="#ffaa00" stroke-width="1.5" marker-end="url(#arY)"></path>
+    <g transform="translate(0,348)">
+      <rect width="240" height="66" rx="8" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <text x="12" y="20" fill="#ffaa00" font-size="10" letter-spacing="2" font-weight="700">SCHEMA CHECK</text>
+      <text x="12" y="40" fill="#dcdcdc" font-size="13" font-weight="700">len(v) == METADATA_DIM</text>
+      <text x="12" y="56" fill="#a0a0b0" font-size="10">25 == 25 or assert fail</text>
+    </g>
+    <path d="M120 414 L120 436" stroke="#ffaa00" stroke-width="1.5" marker-end="url(#arY)"></path>
+    <g transform="translate(0,438)">
+      <rect width="240" height="66" rx="8" fill="rgba(255,170,0,0.1)" stroke="#ffaa00" stroke-width="2"></rect>
+      <text x="12" y="20" fill="#ffaa00" font-size="10" letter-spacing="2" font-weight="700">OUTPUT</text>
+      <text x="12" y="40" fill="#dcdcdc" font-size="13" font-weight="700">tensor [N, 25] float32</text>
+      <text x="12" y="56" fill="#a0a0b0" font-size="10">P-RSB-03: no round_won</text>
+    </g>
+    <g transform="translate(0,520)" font-size="9" font-family="JetBrains Mono, monospace" fill="#3a3a5a">
+      <text>vectorizer.py:184</text>
+      <text y="14">vectorizer.py:151 FEATURE_NAMES</text>
+      <text y="28">METADATA_DIM = 25</text>
+    </g>
+  </g>
+
+  <path d="M570 420 L600 420" stroke="#4caf50" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#arG)"></path>
+  <text x="574" y="412" fill="#4caf50" font-size="9" font-family="JetBrains Mono, monospace">PlayerTickState</text>
+
+
+  <g transform="translate(600,160)">
+    <g>
+      <rect width="240" height="66" rx="8" fill="rgba(76,175,80,0.1)" stroke="#4caf50" stroke-width="1.5"></rect>
+      <text x="12" y="20" fill="#4caf50" font-size="10" letter-spacing="2" font-weight="700">ENGINE</text>
+      <text x="12" y="40" fill="#dcdcdc" font-size="13" font-weight="700">SQLite · WAL mode</text>
+      <text x="12" y="56" fill="#a0a0b0" font-size="10">FK=ON · wal_autocheckpoint=512</text>
+    </g>
+    <path d="M120 230 L120 252" stroke="#4caf50" stroke-width="1.5" marker-end="url(#arG)"></path>
+    <g transform="translate(0,254)">
+      <rect width="240" height="66" rx="8" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <text x="12" y="20" fill="#4caf50" font-size="10" letter-spacing="2" font-weight="700">TABLE · per-player stats</text>
+      <text x="12" y="40" fill="#dcdcdc" font-size="13" font-weight="700">PlayerMatchStats</text>
+      <text x="12" y="56" fill="#a0a0b0" font-size="10">rating · KDA · KAST · ADR · …</text>
+    </g>
+    <path d="M120 322 L120 344" stroke="#4caf50" stroke-width="1.5" marker-end="url(#arG)"></path>
+    <g transform="translate(0,348)">
+      <rect width="240" height="66" rx="8" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <text x="12" y="20" fill="#4caf50" font-size="10" letter-spacing="2" font-weight="700">TABLE · per-tick vector</text>
+      <text x="12" y="40" fill="#dcdcdc" font-size="13" font-weight="700">PlayerTickState</text>
+      <text x="12" y="56" fill="#a0a0b0" font-size="10">25-dim JSON · tick-indexed</text>
+    </g>
+    <path d="M120 414 L120 436" stroke="#4caf50" stroke-width="1.5" marker-end="url(#arG)"></path>
+    <g transform="translate(0,438)">
+      <rect width="240" height="66" rx="8" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <text x="12" y="20" fill="#4caf50" font-size="10" letter-spacing="2" font-weight="700">+7 more tables</text>
+      <text x="12" y="40" fill="#dcdcdc" font-size="13" font-weight="700">24 tables total</text>
+      <text x="12" y="56" fill="#a0a0b0" font-size="10">Events · Rounds · HLTV · …</text>
+    </g>
+    <g transform="translate(0,520)" font-size="9" font-family="JetBrains Mono, monospace" fill="#3a3a5a">
+      <text>db_models.py · 24 @table=True</text>
+      <text y="14">database.py set_sqlite_pragma</text>
+      <text y="28">14 Alembic migrations · up+down</text>
+    </g>
+  </g>
+
+  <path d="M840 420 L870 420" stroke="#4a9eff" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#arB)"></path>
+  <text x="844" y="412" fill="#4a9eff" font-size="9" font-family="JetBrains Mono, monospace">batched tensors</text>
+
+
+  <g transform="translate(870,160)">
+    <g>
+      <rect width="240" height="66" rx="8" fill="rgba(74,158,255,0.1)" stroke="#4a9eff" stroke-width="1.5"></rect>
+      <text x="12" y="20" fill="#4a9eff" font-size="10" letter-spacing="2" font-weight="700">STAGE 1 · PRO DEMOS</text>
+      <text x="12" y="40" fill="#dcdcdc" font-size="13" font-weight="700">JEPA pre-train</text>
+      <text x="12" y="56" fill="#a0a0b0" font-size="10">self-supervised · InfoNCE</text>
+    </g>
+    <path d="M120 230 L120 252" stroke="#4a9eff" stroke-width="1.5" marker-end="url(#arB)"></path>
+    <g transform="translate(0,254)">
+      <rect width="240" height="66" rx="8" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <text x="12" y="20" fill="#4a9eff" font-size="10" letter-spacing="2" font-weight="700">EMA · NN-JM-04 + NN-16</text>
+      <text x="12" y="40" fill="#dcdcdc" font-size="13" font-weight="700">θ̄ ← τ·θ̄ + (1-τ)·θ</text>
+      <text x="12" y="56" fill="#a0a0b0" font-size="10">τ = 0.996 · no_grad · .clone()</text>
+    </g>
+    <path d="M120 322 L120 344" stroke="#4a9eff" stroke-width="1.5" marker-end="url(#arB)"></path>
+    <g transform="translate(0,348)">
+      <rect width="240" height="66" rx="8" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <text x="12" y="20" fill="#4a9eff" font-size="10" letter-spacing="2" font-weight="700">STAGE 2 · USER DATA</text>
+      <text x="12" y="40" fill="#dcdcdc" font-size="13" font-weight="700">LSTM fine-tune + MoE</text>
+      <text x="12" y="56" fill="#a0a0b0" font-size="10">3 experts · top-2 sparse · J-3</text>
+    </g>
+    <path d="M120 414 L120 436" stroke="#4a9eff" stroke-width="1.5" marker-end="url(#arB)"></path>
+    <g transform="translate(0,438)">
+      <rect width="240" height="66" rx="8" fill="rgba(74,158,255,0.1)" stroke="#4a9eff" stroke-width="2"></rect>
+      <text x="12" y="20" fill="#4a9eff" font-size="10" letter-spacing="2" font-weight="700">CHECKPOINT</text>
+      <text x="12" y="40" fill="#dcdcdc" font-size="13" font-weight="700">models/global/latest.pt</text>
+      <text x="12" y="56" fill="#a0a0b0" font-size="10">torch.load weights_only=True</text>
+    </g>
+    <g transform="translate(0,520)" font-size="9" font-family="JetBrains Mono, monospace" fill="#3a3a5a">
+      <text>jepa_train.py · jepa_model.py</text>
+      <text y="14">update_target_encoder() :348</text>
+      <text y="28">coach_manager.py · Teacher daemon</text>
+    </g>
+  </g>
+
+  <path d="M1110 420 L1140 420" stroke="#a855f7" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#arP)"></path>
+  <text x="1114" y="412" fill="#a855f7" font-size="9" font-family="JetBrains Mono, monospace">weights loaded</text>
+
+
+  <g transform="translate(1140,160)">
+    <g>
+      <rect width="240" height="66" rx="8" fill="rgba(168,85,247,0.1)" stroke="#a855f7" stroke-width="1.5"></rect>
+      <text x="12" y="20" fill="#a855f7" font-size="10" letter-spacing="2" font-weight="700">ENTRY</text>
+      <text x="12" y="40" fill="#dcdcdc" font-size="13" font-weight="700">CoachingService</text>
+      <text x="12" y="56" fill="#a0a0b0" font-size="10">dispatched by session_engine</text>
+    </g>
+    <path d="M120 230 L120 252" stroke="#a855f7" stroke-width="1.5" marker-end="url(#arP)"></path>
+    <g transform="translate(0,254)">
+      <rect width="240" height="66" rx="8" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <text x="12" y="20" fill="#a855f7" font-size="10" letter-spacing="2" font-weight="700">ENCODE + PREDICT</text>
+      <text x="12" y="40" fill="#dcdcdc" font-size="13" font-weight="700">[B, 10, 25] → [B, 256]</text>
+      <text x="12" y="56" fill="#a0a0b0" font-size="10">context_encoder · predictor</text>
+    </g>
+    <path d="M120 322 L120 344" stroke="#a855f7" stroke-width="1.5" marker-end="url(#arP)"></path>
+    <g transform="translate(0,348)">
+      <rect width="240" height="66" rx="8" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <text x="12" y="20" fill="#a855f7" font-size="10" letter-spacing="2" font-weight="700">RAP · NN-MEM-01</text>
+      <text x="12" y="40" fill="#dcdcdc" font-size="13" font-weight="700">Hopfield memory</text>
+      <text x="12" y="56" fill="#a0a0b0" font-size="10">bypass ≤ 2 fwd passes</text>
+    </g>
+    <path d="M120 414 L120 436" stroke="#a855f7" stroke-width="1.5" marker-end="url(#arP)"></path>
+    <g transform="translate(0,438)">
+      <rect width="240" height="66" rx="8" fill="rgba(168,85,247,0.1)" stroke="#a855f7" stroke-width="2"></rect>
+      <text x="12" y="20" fill="#a855f7" font-size="10" letter-spacing="2" font-weight="700">OUTPUT</text>
+      <text x="12" y="40" fill="#dcdcdc" font-size="13" font-weight="700">CoachingInsight row</text>
+      <text x="12" y="56" fill="#a0a0b0" font-size="10">title · severity · message · focus</text>
+    </g>
+    <g transform="translate(0,520)" font-size="9" font-family="JetBrains Mono, monospace" fill="#3a3a5a">
+      <text>coaching_service.py</text>
+      <text y="14">rap_coach/memory.py:74-78</text>
+      <text y="28">CoachingInsight table</text>
+    </g>
+  </g>
+
+
+  <g transform="translate(60,750)">
+    <text fill="#ff4444" font-size="10" letter-spacing="3" font-weight="700">CRITICAL INVARIANTS — VIOLATION = SILENT CORRUPTION</text>
+    <g transform="translate(0,18)">
+      <rect width="186" height="24" rx="4" fill="rgba(255,68,68,0.12)" stroke="#ff4444"></rect>
+      <text x="8" y="16" fill="#ff4444" font-size="10" font-family="JetBrains Mono, monospace" font-weight="700">P-RSB-03</text>
+      <text x="72" y="16" fill="#a0a0b0" font-size="10">round_won excluded</text>
+    </g>
+    <g transform="translate(198,18)">
+      <rect width="186" height="24" rx="4" fill="rgba(255,68,68,0.12)" stroke="#ff4444"></rect>
+      <text x="8" y="16" fill="#ff4444" font-size="10" font-family="JetBrains Mono, monospace" font-weight="700">NN-MEM-01</text>
+      <text x="80" y="16" fill="#a0a0b0" font-size="10">Hopfield bypass ≤2</text>
+    </g>
+    <g transform="translate(396,18)">
+      <rect width="186" height="24" rx="4" fill="rgba(255,68,68,0.12)" stroke="#ff4444"></rect>
+      <text x="8" y="16" fill="#ff4444" font-size="10" font-family="JetBrains Mono, monospace" font-weight="700">NN-16</text>
+      <text x="46" y="16" fill="#a0a0b0" font-size="10">EMA .clone() shadows</text>
+    </g>
+    <g transform="translate(594,18)">
+      <rect width="186" height="24" rx="4" fill="rgba(255,68,68,0.12)" stroke="#ff4444"></rect>
+      <text x="8" y="16" fill="#ff4444" font-size="10" font-family="JetBrains Mono, monospace" font-weight="700">NN-JM-04</text>
+      <text x="70" y="16" fill="#a0a0b0" font-size="10">target_enc no_grad</text>
+    </g>
+    <g transform="translate(792,18)">
+      <rect width="186" height="24" rx="4" fill="rgba(255,68,68,0.12)" stroke="#ff4444"></rect>
+      <text x="8" y="16" fill="#ff4444" font-size="10" font-family="JetBrains Mono, monospace" font-weight="700">DS-12</text>
+      <text x="48" y="16" fill="#a0a0b0" font-size="10">MIN_DEMO_SIZE=10MB</text>
+    </g>
+    <g transform="translate(990,18)">
+      <rect width="186" height="24" rx="4" fill="rgba(255,68,68,0.12)" stroke="#ff4444"></rect>
+      <text x="8" y="16" fill="#ff4444" font-size="10" font-family="JetBrains Mono, monospace" font-weight="700">P-VEC-02</text>
+      <text x="68" y="16" fill="#a0a0b0" font-size="10">NaN/Inf · 5% guard</text>
+    </g>
+    <g transform="translate(1188,18)">
+      <rect width="192" height="24" rx="4" fill="rgba(255,68,68,0.12)" stroke="#ff4444"></rect>
+      <text x="8" y="16" fill="#ff4444" font-size="10" font-family="JetBrains Mono, monospace" font-weight="700">METADATA_DIM=25</text>
+      <text x="130" y="16" fill="#a0a0b0" font-size="10">sole source</text>
+    </g>
+  </g>
+
+
+  <g transform="translate(60,802)">
+    <text fill="#4a9eff" font-size="10" letter-spacing="3" font-weight="700">SESSION ENGINE · 4 DAEMONS (core/session_engine.py)</text>
+    <g transform="translate(0,18)" font-size="12">
+      <g>
+        <rect width="320" height="50" rx="6" fill="#0f0f2e"></rect>
+        <text x="12" y="20" fill="#4a9eff" font-weight="700">Scanner (Hunter)</text>
+        <text x="12" y="38" fill="#a0a0b0" font-size="11">scan demo folder → IngestionTask queue</text>
+      </g>
+      <g transform="translate(330,0)">
+        <rect width="320" height="50" rx="6" fill="#0f0f2e"></rect>
+        <text x="12" y="20" fill="#4a9eff" font-weight="700">Digester</text>
+        <text x="12" y="38" fill="#a0a0b0" font-size="11">process queue · parse + vectorize + write</text>
+      </g>
+      <g transform="translate(660,0)">
+        <rect width="320" height="50" rx="6" fill="#0f0f2e"></rect>
+        <text x="12" y="20" fill="#4a9eff" font-weight="700">Teacher</text>
+        <text x="12" y="38" fill="#a0a0b0" font-size="11">training loop · JEPA pretrain + LSTM finetune</text>
+      </g>
+      <g transform="translate(990,0)">
+        <rect width="320" height="50" rx="6" fill="#0f0f2e"></rect>
+        <text x="12" y="20" fill="#4a9eff" font-weight="700">Pulse</text>
+        <text x="12" y="38" fill="#a0a0b0" font-size="11">heartbeat · CoachState · watchdog every 30s</text>
+      </g>
+    </g>
+  </g>
+
+  <text x="60" y="880" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">GLOBAL_SEED=42 · set_global_seed(42) before every training loop · deterministic</text>
+</svg>

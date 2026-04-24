@@ -11,6 +11,7 @@ from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import QWidget
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+from Programma_CS2_RENAN.apps.qt_app.widgets.charts import token_color
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 _logger = get_logger("cs2analyzer.qt_radar_chart")
@@ -60,7 +61,7 @@ class RadarChart(QWidget):
         angles = [2 * math.pi * i / n - math.pi / 2 for i in range(n)]
 
         # Grid rings (25, 50, 75, 100)
-        grid_pen = QPen(QColor(255, 255, 255, 40), 1)
+        grid_pen = QPen(token_color(tokens.chart_grid), 1)
         painter.setPen(grid_pen)
         for level in (25, 50, 75, 100):
             r = radius * level / 100
@@ -71,7 +72,7 @@ class RadarChart(QWidget):
             painter.drawPolyline(points)
 
         # Axis lines
-        axis_pen = QPen(QColor(255, 255, 255, 25), 1)
+        axis_pen = QPen(token_color(tokens.chart_axis), 1)
         painter.setPen(axis_pen)
         for a in angles:
             painter.drawLine(

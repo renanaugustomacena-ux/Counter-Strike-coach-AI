@@ -1,0 +1,226 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Inter, 'Segoe UI', system-ui, sans-serif">
+  <rect width="1440" height="900" fill="#0b0b14"/>
+
+  <defs>
+    <marker id="a41" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#d96600"/>
+    </marker>
+    <marker id="a41r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#ff4444"/>
+    </marker>
+    <radialGradient id="core41" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#d96600" stop-opacity="0.35"/>
+      <stop offset="50%" stop-color="#d96600" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#d96600" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <text x="60" y="50" fill="#dcdcdc" font-size="24" font-weight="700">RAP · self-correction loop — becoming LLM-like by gradient</text>
+  <text x="60" y="74" fill="#a0a0b0" font-size="13">not scale. not more parameters. a model that refuses to speak when unsure, critiques its own detections, and re-weights its own prototypes every batch.</text>
+  <text x="60" y="94" fill="#3a3a5a" font-size="11" font-family="'JetBrains Mono', monospace">observation → belief → decision → evaluation → advantage gap → backprop → shaped prototypes + sparser experts + calibrated voice</text>
+
+  <!-- ═══ Central loop (circular) ═══ -->
+  <g transform="translate(420 420)">
+    <!-- halo -->
+    <circle r="270" fill="url(#core41)"/>
+    <!-- core -->
+    <circle r="80" fill="#1a1a2e" stroke="#d96600" stroke-width="2"/>
+    <text y="-8" fill="#d96600" font-size="14" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">RAP</text>
+    <text y="10" fill="#dcdcdc" font-size="10" text-anchor="middle">self-correcting</text>
+    <text y="26" fill="#dcdcdc" font-size="10" text-anchor="middle">coach</text>
+    <text y="46" fill="#3a3a5a" font-size="9" text-anchor="middle" font-family="'JetBrains Mono', monospace">epoch N+1 &gt; N</text>
+
+    <!-- 6 stage nodes around ring (angles: -90, -30, 30, 90, 150, 210) -->
+    <!-- Stage 1: OBSERVE (top) -->
+    <g transform="translate(0 -220)">
+      <circle r="58" fill="#0f0f2e" stroke="#4a9eff" stroke-width="1.6"/>
+      <text y="-14" fill="#4a9eff" font-size="10" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">1 · OBSERVE</text>
+      <text y="4" fill="#dcdcdc" font-size="9" text-anchor="middle">view · map</text>
+      <text y="18" fill="#dcdcdc" font-size="9" text-anchor="middle">motion</text>
+      <text y="34" fill="#3a3a5a" font-size="8" text-anchor="middle" font-family="'JetBrains Mono', monospace">z_spatial</text>
+    </g>
+
+    <!-- Stage 2: BELIEVE (upper right) -->
+    <g transform="translate(190.53 -110)">
+      <circle r="58" fill="#0f0f2e" stroke="#4db04f" stroke-width="1.6"/>
+      <text y="-14" fill="#4db04f" font-size="10" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">2 · BELIEVE</text>
+      <text y="4" fill="#dcdcdc" font-size="9" text-anchor="middle">LTC +</text>
+      <text y="18" fill="#dcdcdc" font-size="9" text-anchor="middle">Hopfield</text>
+      <text y="34" fill="#3a3a5a" font-size="8" text-anchor="middle" font-family="'JetBrains Mono', monospace">belief[64]</text>
+    </g>
+
+    <!-- Stage 3: DECIDE (lower right) -->
+    <g transform="translate(190.53 110)">
+      <circle r="58" fill="#0f0f2e" stroke="#d96600" stroke-width="1.6"/>
+      <text y="-14" fill="#d96600" font-size="10" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">3 · DECIDE</text>
+      <text y="4" fill="#dcdcdc" font-size="9" text-anchor="middle">Top-2 MoE</text>
+      <text y="18" fill="#dcdcdc" font-size="9" text-anchor="middle">4 experts</text>
+      <text y="34" fill="#3a3a5a" font-size="8" text-anchor="middle" font-family="'JetBrains Mono', monospace">advice</text>
+    </g>
+
+    <!-- Stage 4: EVALUATE (bottom) -->
+    <g transform="translate(0 220)">
+      <circle r="58" fill="#0f0f2e" stroke="#ff9900" stroke-width="1.6"/>
+      <text y="-14" fill="#ff9900" font-size="10" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">4 · EVALUATE</text>
+      <text y="4" fill="#dcdcdc" font-size="9" text-anchor="middle">critic V(s)</text>
+      <text y="18" fill="#dcdcdc" font-size="9" text-anchor="middle">R − V̂(s)</text>
+      <text y="34" fill="#3a3a5a" font-size="8" text-anchor="middle" font-family="'JetBrains Mono', monospace">advantage Δ</text>
+    </g>
+
+    <!-- Stage 5: JUDGE (lower left) -->
+    <g transform="translate(-190.53 110)">
+      <circle r="58" fill="#0f0f2e" stroke="#ff4444" stroke-width="1.6"/>
+      <text y="-14" fill="#ff4444" font-size="10" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">5 · JUDGE</text>
+      <text y="4" fill="#dcdcdc" font-size="9" text-anchor="middle">Chronovisor</text>
+      <text y="18" fill="#dcdcdc" font-size="9" text-anchor="middle">3 scales</text>
+      <text y="34" fill="#3a3a5a" font-size="8" text-anchor="middle" font-family="'JetBrains Mono', monospace">dedup finest</text>
+    </g>
+
+    <!-- Stage 6: SPEAK (upper left) -->
+    <g transform="translate(-190.53 -110)">
+      <circle r="58" fill="#0f0f2e" stroke="#00ccff" stroke-width="1.6"/>
+      <text y="-14" fill="#00ccff" font-size="10" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">6 · SPEAK</text>
+      <text y="4" fill="#dcdcdc" font-size="9" text-anchor="middle">conf ≥ 0.7</text>
+      <text y="18" fill="#dcdcdc" font-size="9" text-anchor="middle">tier-shaped</text>
+      <text y="34" fill="#3a3a5a" font-size="8" text-anchor="middle" font-family="'JetBrains Mono', monospace">or silent</text>
+    </g>
+
+    <!-- Arrows between stages (orange forward) -->
+    <g fill="none" stroke="#d96600" stroke-width="2" marker-end="url(#a41)">
+      <path d="M48 -214 A220 220 0 0 1 185 -114"/>
+      <path d="M195 -55 A220 220 0 0 1 195 55"/>
+      <path d="M185 114 A220 220 0 0 1 48 214"/>
+      <path d="M-48 214 A220 220 0 0 1 -185 114"/>
+      <path d="M-195 55 A220 220 0 0 1 -195 -55"/>
+      <path d="M-185 -114 A220 220 0 0 1 -48 -214"/>
+    </g>
+
+    <!-- Red backprop arrows (dashed inward from each stage to core) -->
+    <g fill="none" stroke="#ff4444" stroke-width="1.2" stroke-dasharray="4 3" opacity="0.75">
+      <path d="M0 -168 L0 -80" marker-end="url(#a41r)"/>
+      <path d="M145 -84 L70 -40" marker-end="url(#a41r)"/>
+      <path d="M145 84 L70 40" marker-end="url(#a41r)"/>
+      <path d="M0 168 L0 80" marker-end="url(#a41r)"/>
+      <path d="M-145 84 L-70 40" marker-end="url(#a41r)"/>
+      <path d="M-145 -84 L-70 -40" marker-end="url(#a41r)"/>
+    </g>
+  </g>
+
+  <!-- Legend for arrows -->
+  <g transform="translate(60 740)">
+    <rect width="320" height="48" rx="6" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <g transform="translate(14 18)">
+      <line x1="0" y1="0" x2="24" y2="0" stroke="#d96600" stroke-width="2" marker-end="url(#a41)"/>
+      <text x="32" y="4" fill="#dcdcdc" font-size="11">forward pass (inference)</text>
+    </g>
+    <g transform="translate(14 36)">
+      <line x1="0" y1="0" x2="24" y2="0" stroke="#ff4444" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#a41r)"/>
+      <text x="32" y="4" fill="#dcdcdc" font-size="11">gradient signal (backprop updates each layer)</text>
+    </g>
+  </g>
+
+  <!-- ═══ Right panel: LLM-like properties ═══ -->
+  <g transform="translate(880 122)">
+    <rect width="500" height="516" rx="12" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <rect width="500" height="36" rx="12" fill="#d96600"/>
+    <text x="16" y="24" fill="#ffffff" font-size="12" font-weight="700" font-family="'JetBrains Mono', monospace" letter-spacing="1.2">LLM-LIKE PROPERTIES · emerge from architecture, not from scale</text>
+
+    <!-- Property 1: Humility gate -->
+    <g transform="translate(16 56)">
+      <rect width="468" height="72" rx="8" fill="#0f0f2e" stroke="#00ccff" stroke-width="1"/>
+      <text x="14" y="22" fill="#00ccff" font-size="11" font-weight="700" font-family="'JetBrains Mono', monospace">1 · HUMILITY GATE</text>
+      <text x="14" y="40" fill="#dcdcdc" font-size="11">Refuses to advise when confidence &lt; 0.70.</text>
+      <text x="14" y="56" fill="#a0a0b0" font-size="10" font-family="'JetBrains Mono', monospace">communication.py:86  if confidence &lt; 0.7: return None</text>
+    </g>
+
+    <!-- Property 2: Prototype reshaping -->
+    <g transform="translate(16 140)">
+      <rect width="468" height="72" rx="8" fill="#0f0f2e" stroke="#4db04f" stroke-width="1"/>
+      <text x="14" y="22" fill="#4db04f" font-size="11" font-weight="700" font-family="'JetBrains Mono', monospace">2 · PROTOTYPE RESHAPING</text>
+      <text x="14" y="40" fill="#dcdcdc" font-size="11">32 Hopfield prototypes live as nn.Parameter — every batch they drift toward recurring patterns.</text>
+      <text x="14" y="56" fill="#a0a0b0" font-size="10" font-family="'JetBrains Mono', monospace">memory.py:89  HopfieldLayer(quantity=32, trainable=True)</text>
+    </g>
+
+    <!-- Property 3: Maturity gate -->
+    <g transform="translate(16 224)">
+      <rect width="468" height="72" rx="8" fill="#0f0f2e" stroke="#ff9900" stroke-width="1"/>
+      <text x="14" y="22" fill="#ff9900" font-size="11" font-weight="700" font-family="'JetBrains Mono', monospace">3 · MATURITY GATE (NN-MEM-01)</text>
+      <text x="14" y="40" fill="#dcdcdc" font-size="11">Hopfield bypassed until ≥2 training forwards — random prototypes would inject noise, not signal.</text>
+      <text x="14" y="56" fill="#a0a0b0" font-size="10" font-family="'JetBrains Mono', monospace">memory.py:146  if training_forward_count &gt;= 2: activate</text>
+    </g>
+
+    <!-- Property 4: Expert specialization -->
+    <g transform="translate(16 308)">
+      <rect width="468" height="72" rx="8" fill="#0f0f2e" stroke="#d96600" stroke-width="1"/>
+      <text x="14" y="22" fill="#d96600" font-size="11" font-weight="700" font-family="'JetBrains Mono', monospace">4 · EXPERT SPECIALIZATION (RAP-AUDIT-04/08)</text>
+      <text x="14" y="40" fill="#dcdcdc" font-size="11">Entropy loss on 4-expert MoE gate pushes each expert into a role (aim · util · rotate · pace).</text>
+      <text x="14" y="56" fill="#a0a0b0" font-size="10" font-family="'JetBrains Mono', monospace">strategy.py:63  gate_probs → top-2 indices → renormalize</text>
+    </g>
+
+    <!-- Property 5: Self-critique dedup -->
+    <g transform="translate(16 392)">
+      <rect width="468" height="72" rx="8" fill="#0f0f2e" stroke="#ff4444" stroke-width="1"/>
+      <text x="14" y="22" fill="#ff4444" font-size="11" font-weight="700" font-family="'JetBrains Mono', monospace">5 · SELF-CRITIQUE DEDUPLICATION</text>
+      <text x="14" y="40" fill="#dcdcdc" font-size="11">Three scales propose critical moments independently. Keep only the finest-grained detection per cluster.</text>
+      <text x="14" y="56" fill="#a0a0b0" font-size="10" font-family="'JetBrains Mono', monospace">chronovisor_scanner.py:372  priority = {micro:0, std:1, macro:2}</text>
+    </g>
+
+    <!-- Property 6: Skill-tiered voice -->
+    <g transform="translate(16 476)">
+      <rect width="468" height="30" rx="8" fill="#0f0f2e" stroke="#a0a0b0" stroke-width="1"/>
+      <text x="14" y="20" fill="#a0a0b0" font-size="11" font-family="'JetBrains Mono', monospace">6 · SKILL-TIERED VOICE · low/mid/high templates · angle sector from pos</text>
+    </g>
+  </g>
+
+  <!-- ═══ Bottom left: advantage formula ═══ -->
+  <g transform="translate(60 592)">
+    <rect width="320" height="140" rx="10" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <text x="16" y="24" fill="#3a3a5a" font-size="10" font-family="'JetBrains Mono', monospace" letter-spacing="1.2">THE GAP THAT DRIVES LEARNING</text>
+
+    <g transform="translate(16 44)">
+      <rect width="288" height="42" rx="6" fill="#0a0a14" stroke="#ff9900"/>
+      <text x="144" y="20" fill="#ff9900" font-size="14" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">ΔA = R_actual − V̂(s)</text>
+      <text x="144" y="34" fill="#a0a0b0" font-size="10" text-anchor="middle">advantage = truth − prediction</text>
+    </g>
+
+    <text x="16" y="106" fill="#dcdcdc" font-size="11">Large ΔA → big gradient → big correction next step.</text>
+    <text x="16" y="122" fill="#3a3a5a" font-size="10" font-family="'JetBrains Mono', monospace">pedagogy.py:24 · calculate_advantage_gap()</text>
+  </g>
+
+  <!-- ═══ Bottom center: NOT scale, ARCHITECTURE ═══ -->
+  <g transform="translate(400 760)">
+    <rect width="480" height="120" rx="10" fill="#1a1a2e" stroke="#d96600" stroke-width="1.5"/>
+    <text x="240" y="32" fill="#d96600" font-size="14" font-weight="700" text-anchor="middle">not scale. architecture.</text>
+    <text x="240" y="56" fill="#dcdcdc" font-size="11" text-anchor="middle">GPT learns truth by compression of the internet.</text>
+    <text x="240" y="74" fill="#dcdcdc" font-size="11" text-anchor="middle">RAP learns truth by disagreement with its own critic.</text>
+    <text x="240" y="100" fill="#a0a0b0" font-size="10" text-anchor="middle" font-style="italic">"reliable not by scale but by auto-correcting itself along the way"</text>
+  </g>
+
+  <!-- ═══ Bottom right: parameter count ═══ -->
+  <g transform="translate(900 760)">
+    <rect width="480" height="120" rx="10" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <text x="16" y="24" fill="#3a3a5a" font-size="10" font-family="'JetBrains Mono', monospace" letter-spacing="1.2">BY THE NUMBERS</text>
+
+    <g transform="translate(16 44)" font-family="'JetBrains Mono', monospace" font-size="11">
+      <text fill="#a0a0b0">LTC neurons</text>
+      <text x="220" fill="#dcdcdc" text-anchor="end">512</text>
+      <text x="230" fill="#3a3a5a">(motor 154 · cmd 143 · inter 215)</text>
+
+      <text y="16" fill="#a0a0b0">Hopfield prototypes</text>
+      <text x="220" y="16" fill="#dcdcdc" text-anchor="end">32 × 256</text>
+      <text x="230" y="16" fill="#3a3a5a">(8,192 learnable params)</text>
+
+      <text y="32" fill="#a0a0b0">MoE experts (Top-2)</text>
+      <text x="220" y="32" fill="#dcdcdc" text-anchor="end">4</text>
+      <text x="230" y="32" fill="#3a3a5a">(2 active per sample · 50% compute)</text>
+
+      <text y="48" fill="#a0a0b0">Chronovisor scales</text>
+      <text x="220" y="48" fill="#dcdcdc" text-anchor="end">3</text>
+      <text x="230" y="48" fill="#3a3a5a">(64 · 192 · 640 ticks)</text>
+
+      <text y="64" fill="#a0a0b0">Confidence floor</text>
+      <text x="220" y="64" fill="#4db04f" text-anchor="end">0.70</text>
+      <text x="230" y="64" fill="#3a3a5a">(below → silence)</text>
+    </g>
+  </g>
+</svg>

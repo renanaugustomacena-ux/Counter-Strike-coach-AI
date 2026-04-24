@@ -1,0 +1,4 @@
+packages:
+  - 'tactical-viewer'
+  - 'match-detail'
+  - 'coach-chat'

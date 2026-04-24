@@ -13,6 +13,7 @@ Usage:
     # Launch: tensorboard --logdir runs/
 """
 
+import os
 from typing import Any, Dict, Optional
 
 import torch
@@ -53,12 +54,20 @@ class TensorBoardCallback(TrainingCallback):
         gates/activations — SuperpositionLayer gate values
     """
 
-    def __init__(self, log_dir: str = "runs/coach_training", model_type: str = ""):
+    def __init__(self, log_dir: Optional[str] = None, model_type: str = ""):
         self._active = _TB_AVAILABLE
         self._model_type = model_type
         self._epoch = 0
         self._global_step = 0
         self.writer: Optional[Any] = None
+
+        # Stage-4 relocation: default log_dir under the package's RUNS_DIR so
+        # TensorBoard events co-locate with models/ instead of spawning a
+        # repo-root `runs/` orphan on every train.
+        if log_dir is None:
+            from Programma_CS2_RENAN.core.config import RUNS_DIR
+
+            log_dir = os.path.join(RUNS_DIR, "coach_training")
 
         if self._active:
             self.writer = SummaryWriter(log_dir)

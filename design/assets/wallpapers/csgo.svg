@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <radialGradient id="g1" cx="25%" cy="25%" r="65%"><stop offset="0%" stop-color="#617d8c" stop-opacity="0.40"/><stop offset="100%" stop-color="#1a1c21" stop-opacity="0"/></radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#3a3e48" stroke-width="0.4" opacity="0.3"/></pattern>
+  </defs>
+  <rect width="1440" height="900" fill="#1a1c21"/>
+  <rect width="1440" height="900" fill="url(#grid)"/>
+  <rect width="1440" height="900" fill="url(#g1)"/>
+</svg>

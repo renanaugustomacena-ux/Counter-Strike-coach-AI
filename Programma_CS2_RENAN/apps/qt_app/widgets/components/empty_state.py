@@ -1,14 +1,25 @@
 """EmptyState component — centered message with optional CTA button.
 
 Replaces bare "No data found" text labels with a structured empty state
-that guides the user toward the next action.
+that guides the user toward the next action. Optional illustration slot
+accepts either an emoji/unicode icon (``icon_text``) OR a path to an
+SVG in ``design/frames/`` for a Frame 20-style illustrated empty state.
 """
+
+import os
+from pathlib import Path
+from typing import Optional
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont
+from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+
+# Project-root-relative base so design frames resolve in source-layout
+# runs; PyInstaller builds will need a dedicated resource copy.
+_DESIGN_FRAMES_DIR = Path(__file__).resolve().parents[4] / "design" / "frames"
 
 
 class EmptyState(QWidget):
@@ -30,6 +41,7 @@ class EmptyState(QWidget):
         title: str = "",
         description: str = "",
         cta_text: str = "",
+        illustration: Optional[str] = None,
         parent: QWidget | None = None,
     ):
         super().__init__(parent)
@@ -45,12 +57,24 @@ class EmptyState(QWidget):
             tokens.spacing_xxxl,
         )
 
-        # Icon area
+        # Illustration slot — SVG file name under design/frames/ (e.g.
+        # ``20_loading_empty_states.svg``). If the file isn't found we
+        # fall back to the icon_text path so the empty state still
+        # renders something in place of the illustration.
+        self._svg: Optional[QSvgWidget] = None
+        if illustration:
+            svg_path = _DESIGN_FRAMES_DIR / illustration
+            if os.path.exists(svg_path):
+                self._svg = QSvgWidget(str(svg_path))
+                self._svg.setFixedSize(200, 140)
+                layout.addWidget(self._svg, alignment=Qt.AlignCenter)
+
+        # Icon area (text fallback / companion)
         self._icon_label = QLabel(icon_text)
         self._icon_label.setAlignment(Qt.AlignCenter)
         self._icon_label.setFont(QFont("Roboto", 48))
         self._icon_label.setStyleSheet("background: transparent;")
-        if icon_text:
+        if icon_text and self._svg is None:
             layout.addWidget(self._icon_label)
         else:
             self._icon_label.setVisible(False)

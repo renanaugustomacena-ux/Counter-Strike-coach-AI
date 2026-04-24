@@ -301,6 +301,7 @@ DB_DIR = CORE_DB_DIR
 LOG_DIR = os.path.join(USER_DATA_ROOT, "logs")
 DATA_DIR = os.path.join(USER_DATA_ROOT, "data")
 MODELS_DIR = os.path.join(USER_DATA_ROOT, "models")
+RUNS_DIR = os.path.join(USER_DATA_ROOT, "runs")
 
 # Wire resolved LOG_DIR into logger_setup (breaks circular import dependency).
 # Safe: logger_setup is already in sys.modules from line 7 import.
@@ -308,7 +309,7 @@ from Programma_CS2_RENAN.observability.logger_setup import configure_log_dir  # 
 
 configure_log_dir(LOG_DIR)
 
-for d in [DB_DIR, LOG_DIR, DATA_DIR, MODELS_DIR]:
+for d in [DB_DIR, LOG_DIR, DATA_DIR, MODELS_DIR, RUNS_DIR]:
     os.makedirs(d, exist_ok=True)
 
 # SINGLE DATABASE - always in project folder

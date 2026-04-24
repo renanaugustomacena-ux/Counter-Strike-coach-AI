@@ -57,7 +57,7 @@ install_rich_traceback(console=console)
 # --- Logging (centralized) ---
 from Programma_CS2_RENAN.observability.logger_setup import get_tool_logger
 
-_tool_logger = get_tool_logger("audit_binaries")
+_tool_logger = get_tool_logger("audit_binaries", console=False)  # Rich owns stdout
 
 
 class IndustrialBinaryAuditor:

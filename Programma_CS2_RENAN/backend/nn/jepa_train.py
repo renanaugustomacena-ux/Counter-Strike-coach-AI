@@ -692,9 +692,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", choices=["pretrain", "finetune"], required=True)
-    # L3 FIX: Resolve relative to project root so the path is stable regardless
-    # of the working directory when invoked via `python -m`.
-    parser.add_argument("--model-path", default=str(_PROJECT_ROOT / "models" / "jepa_model.pt"))
+    # Stage-4 relocation: route through MODELS_DIR so the default lands inside
+    # the package (Programma_CS2_RENAN/models) instead of a repo-root orphan.
+    from Programma_CS2_RENAN.core.config import MODELS_DIR
+
+    parser.add_argument("--model-path", default=str(Path(MODELS_DIR) / "jepa_model.pt"))
     args = parser.parse_args()
 
     if args.mode == "pretrain":

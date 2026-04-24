@@ -56,6 +56,9 @@ PALETTES = {
 
 _THEMES_DIR = Path(__file__).parent.parent / "themes"
 _ASSETS_DIR = Path(__file__).parent.parent.parent.parent / "PHOTO_GUI"
+# P4 Neo-tactical noir display fonts live here; auto-scanned at register_fonts().
+# See assets/fonts/README.txt for Space Grotesk + Inter variable-font sources.
+_DISPLAY_FONTS_DIR = Path(__file__).parent.parent.parent.parent / "assets" / "fonts"
 
 _THEME_WALLPAPER_FOLDER = {
     "CS2": "cs2theme",
@@ -194,7 +197,17 @@ class ThemeEngine(QObject):
         self.apply_theme(self._active)
 
     def register_fonts(self):
-        """Register all custom font files with Qt. Call once at startup."""
+        """Register all custom font files with Qt. Call once at startup.
+
+        Two sources:
+            1. ``PHOTO_GUI/`` — legacy display fonts (Roboto, JetBrains Mono,
+               New Hope, CS Regular, YUPIX) shipped since P1.
+            2. ``assets/fonts/`` — P4 Neo-tactical noir display stack
+               (Space Grotesk, Inter variable). Auto-scanned; whatever
+               .ttf / .otf files are present get registered. Missing files
+               are silent at debug level because the QSS fallback chain
+               (Roboto / system sans) renders correctly either way.
+        """
         if self._fonts_registered:
             return
         for name, filename in _FONT_FILES.items():
@@ -205,6 +218,22 @@ class ThemeEngine(QObject):
                     _logger.warning("Failed to load font %s from %s", name, path)
             else:
                 _logger.warning("Font file not found: %s", path)
+
+        if _DISPLAY_FONTS_DIR.is_dir():
+            for font_path in sorted(_DISPLAY_FONTS_DIR.iterdir()):
+                if font_path.suffix.lower() not in (".ttf", ".otf"):
+                    continue
+                font_id = QFontDatabase.addApplicationFont(str(font_path))
+                if font_id < 0:
+                    _logger.warning("Failed to load display font from %s", font_path)
+                else:
+                    _logger.debug("Registered display font %s", font_path.name)
+        else:
+            _logger.debug(
+                "Display fonts dir missing: %s (Roboto fallback used)",
+                _DISPLAY_FONTS_DIR,
+            )
+
         self._fonts_registered = True
 
     # ── Wallpaper ──

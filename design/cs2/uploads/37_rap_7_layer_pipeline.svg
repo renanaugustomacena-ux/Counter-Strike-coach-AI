@@ -1,0 +1,331 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Inter, &#39;Segoe UI&#39;, system-ui, sans-serif">
+  <rect width="1440" height="900" fill="#0b0b14"></rect>
+
+  <defs>
+    <marker id="a37" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#d96600"></path>
+    </marker>
+    <marker id="a37b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#4a9eff"></path>
+    </marker>
+  </defs>
+
+
+  <text x="60" y="50" fill="#dcdcdc" font-size="24" font-weight="700">RAP Coach — full architecture</text>
+  <text x="60" y="74" fill="#a0a0b0" font-size="13">backend/nn/experimental/rap_coach/model.py · RAPCoachModel · 6 modules, 7 integration points · POSITION_SCALE=500</text>
+  <text x="60" y="94" fill="#3a3a5a" font-size="11" font-family="&#39;JetBrains Mono&#39;, monospace">forward(view_frame, map_frame, motion_diff, metadata, skill_vec, hidden_state, timespans) → dict</text>
+
+
+  <g transform="translate(60 122)">
+    <text fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace" letter-spacing="1.2">INPUTS</text>
+    <rect y="14" width="220" height="660" rx="10" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+
+
+    <g transform="translate(16 36)">
+      <rect width="188" height="96" rx="6" fill="#0f0f2e" stroke="#3a3a5a"></rect>
+      <text x="94" y="20" fill="#d96600" font-size="10" font-weight="700" text-anchor="middle" font-family="&#39;JetBrains Mono&#39;, monospace">view_frame</text>
+      <rect x="24" y="28" width="60" height="60" fill="#14141e" stroke="#d96600" stroke-width="0.6"></rect>
+      <g stroke="rgba(217,102,0,0.4)" stroke-width="0.4">
+        <line x1="24" y1="43" x2="84" y2="43"></line>
+        <line x1="24" y1="58" x2="84" y2="58"></line>
+        <line x1="24" y1="73" x2="84" y2="73"></line>
+        <line x1="39" y1="28" x2="39" y2="88"></line>
+        <line x1="54" y1="28" x2="54" y2="88"></line>
+        <line x1="69" y1="28" x2="69" y2="88"></line>
+      </g>
+      <text x="110" y="44" fill="#dcdcdc" font-size="10">1st-person RGB</text>
+      <text x="110" y="62" fill="#a0a0b0" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">[B,T,3,64,64]</text>
+      <text x="110" y="78" fill="#a0a0b0" font-size="10">ventral stream</text>
+    </g>
+
+
+    <g transform="translate(16 144)">
+      <rect width="188" height="96" rx="6" fill="#0f0f2e" stroke="#3a3a5a"></rect>
+      <text x="94" y="20" fill="#d96600" font-size="10" font-weight="700" text-anchor="middle" font-family="&#39;JetBrains Mono&#39;, monospace">map_frame</text>
+      <rect x="24" y="28" width="60" height="60" fill="#14141e" stroke="#d96600" stroke-width="0.6"></rect>
+      <circle cx="44" cy="50" r="2.5" fill="#4a9eff"></circle>
+      <circle cx="60" cy="54" r="2.5" fill="#4a9eff"></circle>
+      <circle cx="68" cy="62" r="2.5" fill="#ff9933"></circle>
+      <circle cx="50" cy="68" r="2.5" fill="#ff9933"></circle>
+      <path d="M30 40 L34 40 L34 74 L78 74" fill="none" stroke="rgba(217,102,0,0.5)" stroke-width="0.6"></path>
+      <text x="110" y="44" fill="#dcdcdc" font-size="10">tactical map</text>
+      <text x="110" y="62" fill="#a0a0b0" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">[B,T,3,64,64]</text>
+      <text x="110" y="78" fill="#a0a0b0" font-size="10">dorsal stream</text>
+    </g>
+
+
+    <g transform="translate(16 252)">
+      <rect width="188" height="96" rx="6" fill="#0f0f2e" stroke="#3a3a5a"></rect>
+      <text x="94" y="20" fill="#d96600" font-size="10" font-weight="700" text-anchor="middle" font-family="&#39;JetBrains Mono&#39;, monospace">motion_diff</text>
+      <rect x="24" y="28" width="60" height="60" fill="#14141e" stroke="#d96600" stroke-width="0.6"></rect>
+      <path d="M30 60 Q44 40 58 60 T78 60" fill="none" stroke="#00ccff" stroke-width="1.2"></path>
+      <path d="M30 70 Q44 55 58 70 T78 70" fill="none" stroke="#00ccff" stroke-width="1.2" opacity="0.6"></path>
+      <text x="110" y="44" fill="#dcdcdc" font-size="10">frame Δ</text>
+      <text x="110" y="62" fill="#a0a0b0" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">[B,T,3,64,64]</text>
+      <text x="110" y="78" fill="#a0a0b0" font-size="10">temporal flow</text>
+    </g>
+
+
+    <g transform="translate(16 360)">
+      <rect width="188" height="96" rx="6" fill="#0f0f2e" stroke="#3a3a5a"></rect>
+      <text x="94" y="20" fill="#d96600" font-size="10" font-weight="700" text-anchor="middle" font-family="&#39;JetBrains Mono&#39;, monospace">metadata · 25-dim</text>
+      <g transform="translate(24 30)">
+        <g fill="#4a9eff">
+          <rect x="0" y="0" width="8" height="8"></rect>
+          <rect x="10" y="0" width="8" height="8"></rect>
+          <rect x="20" y="0" width="8" height="8"></rect>
+          <rect x="30" y="0" width="8" height="8"></rect>
+          <rect x="40" y="0" width="8" height="8"></rect>
+        </g>
+        <g fill="#4db04f">
+          <rect x="50" y="0" width="8" height="8"></rect>
+          <rect x="60" y="0" width="8" height="8"></rect>
+          <rect x="70" y="0" width="8" height="8"></rect>
+          <rect x="80" y="0" width="8" height="8"></rect>
+          <rect x="0" y="10" width="8" height="8"></rect>
+          <rect x="10" y="10" width="8" height="8"></rect>
+        </g>
+        <g fill="#ff9933">
+          <rect x="20" y="10" width="8" height="8"></rect>
+          <rect x="30" y="10" width="8" height="8"></rect>
+          <rect x="40" y="10" width="8" height="8"></rect>
+          <rect x="50" y="10" width="8" height="8"></rect>
+          <rect x="60" y="10" width="8" height="8"></rect>
+        </g>
+        <g fill="#d96600">
+          <rect x="70" y="10" width="8" height="8"></rect>
+          <rect x="80" y="10" width="8" height="8"></rect>
+          <rect x="0" y="20" width="8" height="8"></rect>
+          <rect x="10" y="20" width="8" height="8"></rect>
+          <rect x="20" y="20" width="8" height="8"></rect>
+        </g>
+        <g fill="#ff4444">
+          <rect x="30" y="20" width="8" height="8"></rect>
+          <rect x="40" y="20" width="8" height="8"></rect>
+          <rect x="50" y="20" width="8" height="8"></rect>
+          <rect x="60" y="20" width="8" height="8"></rect>
+        </g>
+      </g>
+      <text x="24" y="78" fill="#a0a0b0" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">[B,T,25] FEATURE_NAMES</text>
+    </g>
+
+
+    <g transform="translate(16 468)">
+      <rect width="188" height="186" rx="6" fill="#0f0f2e" stroke="#3a3a5a"></rect>
+      <text x="94" y="20" fill="#d96600" font-size="10" font-weight="700" text-anchor="middle" font-family="&#39;JetBrains Mono&#39;, monospace">auxiliary</text>
+
+      <rect x="14" y="32" width="160" height="38" rx="4" fill="#14141e" stroke="#3a3a5a" stroke-width="0.8"></rect>
+      <text x="22" y="48" fill="#dcdcdc" font-size="11" font-weight="700">skill_vec</text>
+      <text x="22" y="62" fill="#a0a0b0" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">[B,10] curriculum 1–10</text>
+
+      <rect x="14" y="76" width="160" height="38" rx="4" fill="#14141e" stroke="#3a3a5a" stroke-width="0.8"></rect>
+      <text x="22" y="92" fill="#dcdcdc" font-size="11" font-weight="700">timespans</text>
+      <text x="22" y="106" fill="#a0a0b0" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">[B,T] Δt (s) for ODE</text>
+
+      <rect x="14" y="120" width="160" height="50" rx="4" fill="#14141e" stroke="#3a3a5a" stroke-width="0.8"></rect>
+      <text x="22" y="136" fill="#dcdcdc" font-size="11" font-weight="700">hidden_state</text>
+      <text x="22" y="150" fill="#a0a0b0" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">persistent · NN-40</text>
+      <text x="22" y="162" fill="#3a3a5a" font-size="9" font-family="&#39;JetBrains Mono&#39;, monospace">stateful inference</text>
+    </g>
+  </g>
+
+
+  <g transform="translate(304 122)">
+    <text fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace" letter-spacing="1.2">PIPELINE · module path · file:line</text>
+
+
+    <g transform="translate(0 16)">
+      <rect width="720" height="80" rx="8" fill="#1a1a2e" stroke="#d96600" stroke-width="1.2"></rect>
+      <rect width="80" height="80" rx="8" fill="#d96600"></rect>
+      <text x="40" y="34" fill="#ffffff" font-size="20" font-weight="700" text-anchor="middle">1</text>
+      <text x="40" y="54" fill="#ffffff" font-size="9" font-weight="700" text-anchor="middle" letter-spacing="1.2">PERCEPT</text>
+      <text x="40" y="68" fill="#ffffff" font-size="8" text-anchor="middle" opacity="0.85">ResNet</text>
+
+      <text x="96" y="22" fill="#dcdcdc" font-size="13" font-weight="700">RAPPerception · 3 CNN streams</text>
+      <text x="96" y="40" fill="#a0a0b0" font-size="11">view [1,2,2,1]→64 · map [2,2]→32 · motion→32 · concat</text>
+      <text x="96" y="58" fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">rap_coach/perception.py:47</text>
+      <text x="96" y="72" fill="#d96600" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace" font-weight="700">out: z_spatial [B, T, 128]</text>
+    </g>
+    <path d="M360 98 L360 114" stroke="#d96600" stroke-width="2" marker-end="url(#a37)" fill="none"></path>
+
+
+    <g transform="translate(0 116)">
+      <rect width="720" height="80" rx="8" fill="#1a1a2e" stroke="#d96600" stroke-width="1.2"></rect>
+      <rect width="80" height="80" rx="8" fill="#d96600"></rect>
+      <text x="40" y="34" fill="#ffffff" font-size="20" font-weight="700" text-anchor="middle">2</text>
+      <text x="40" y="54" fill="#ffffff" font-size="9" font-weight="700" text-anchor="middle" letter-spacing="1.2">MEMORY</text>
+      <text x="40" y="68" fill="#ffffff" font-size="8" text-anchor="middle" opacity="0.85">LTC+HF</text>
+
+      <text x="96" y="22" fill="#dcdcdc" font-size="13" font-weight="700">RAPMemory · Liquid + Hopfield</text>
+      <text x="96" y="40" fill="#a0a0b0" font-size="11">LTC AutoNCP(512, out=154) → proj 256 + Hopfield(32×4 heads) · belief_head →64</text>
+      <text x="96" y="58" fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">rap_coach/memory.py:24 · NN-MEM-01 Hopfield bypass</text>
+      <text x="96" y="72" fill="#d96600" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace" font-weight="700">out: combined[B,T,256] + belief[B,T,64] + hidden</text>
+    </g>
+    <path d="M360 198 L360 214" stroke="#d96600" stroke-width="2" marker-end="url(#a37)" fill="none"></path>
+
+
+    <g transform="translate(0 216)">
+      <rect width="720" height="80" rx="8" fill="#1a1a2e" stroke="#d96600" stroke-width="1.2"></rect>
+      <rect width="80" height="80" rx="8" fill="#d96600"></rect>
+      <text x="40" y="34" fill="#ffffff" font-size="20" font-weight="700" text-anchor="middle">3</text>
+      <text x="40" y="54" fill="#ffffff" font-size="9" font-weight="700" text-anchor="middle" letter-spacing="1.2">STRAT</text>
+      <text x="40" y="68" fill="#ffffff" font-size="8" text-anchor="middle" opacity="0.85">MoE·K2</text>
+
+      <text x="96" y="22" fill="#dcdcdc" font-size="13" font-weight="700">RAPStrategy · Top-2 MoE · 4 experts</text>
+      <text x="96" y="40" fill="#a0a0b0" font-size="11">Superposition (FiLM) · context = metadata[25] + belief[64] = 89 · entropy sparsity</text>
+      <text x="96" y="58" fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">rap_coach/strategy.py:14 · RAP-AUDIT-08 Top-K=2</text>
+      <text x="96" y="72" fill="#d96600" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace" font-weight="700">out: advice_probs[B, OUTPUT_DIM] + gate_weights[B,4]</text>
+    </g>
+    <path d="M360 298 L360 314" stroke="#d96600" stroke-width="2" marker-end="url(#a37)" fill="none"></path>
+
+
+    <g transform="translate(0 316)">
+      <rect width="720" height="80" rx="8" fill="#1a1a2e" stroke="#d96600" stroke-width="1.2"></rect>
+      <rect width="80" height="80" rx="8" fill="#d96600"></rect>
+      <text x="40" y="34" fill="#ffffff" font-size="20" font-weight="700" text-anchor="middle">4</text>
+      <text x="40" y="54" fill="#ffffff" font-size="9" font-weight="700" text-anchor="middle" letter-spacing="1.2">PEDAGOGY</text>
+
+      <text x="96" y="22" fill="#dcdcdc" font-size="13" font-weight="700">RAPPedagogy + CausalAttributor</text>
+      <text x="96" y="40" fill="#a0a0b0" font-size="11">critic V(s) 256→64→1 · skill_adapter(10→256) · 5 concepts sigmoid</text>
+      <text x="96" y="58" fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">rap_coach/pedagogy.py:9 · advantage = actual − V(s)</text>
+      <text x="96" y="72" fill="#d96600" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace" font-weight="700">out: value_estimate[B,1] + attribution[B,5]</text>
+    </g>
+    <path d="M360 398 L360 414" stroke="#d96600" stroke-width="2" marker-end="url(#a37)" fill="none"></path>
+
+
+    <g transform="translate(0 416)">
+      <rect width="720" height="80" rx="8" fill="#1a1a2e" stroke="#d96600" stroke-width="1.2"></rect>
+      <rect width="80" height="80" rx="8" fill="#d96600"></rect>
+      <text x="40" y="34" fill="#ffffff" font-size="20" font-weight="700" text-anchor="middle">5</text>
+      <text x="40" y="54" fill="#ffffff" font-size="9" font-weight="700" text-anchor="middle" letter-spacing="1.2">POSITION</text>
+
+      <text x="96" y="22" fill="#dcdcdc" font-size="13" font-weight="700">Position Head · nn.Linear(256, 3)</text>
+      <text x="96" y="40" fill="#a0a0b0" font-size="11">δ(x,y,z) from current → optimal shadow · × RAP_POSITION_SCALE</text>
+      <text x="96" y="58" fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">model.py:71 · RAP_POSITION_SCALE=500 (backend/nn/config.py)</text>
+      <text x="96" y="72" fill="#d96600" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace" font-weight="700">out: optimal_pos[B, 3]</text>
+    </g>
+    <path d="M360 498 L360 514" stroke="#d96600" stroke-width="2" marker-end="url(#a37)" fill="none"></path>
+
+
+    <g transform="translate(0 516)">
+      <rect width="720" height="80" rx="8" fill="#1a1a2e" stroke="#d96600" stroke-width="1.2"></rect>
+      <rect width="80" height="80" rx="8" fill="#d96600"></rect>
+      <text x="40" y="34" fill="#ffffff" font-size="20" font-weight="700" text-anchor="middle">6</text>
+      <text x="40" y="54" fill="#ffffff" font-size="9" font-weight="700" text-anchor="middle" letter-spacing="1.2">CHRONO</text>
+      <text x="40" y="68" fill="#ffffff" font-size="8" text-anchor="middle" opacity="0.85">multi-scale</text>
+
+      <text x="96" y="22" fill="#dcdcdc" font-size="13" font-weight="700">ChronovisorScanner · post-inference</text>
+      <text x="96" y="40" fill="#a0a0b0" font-size="11">micro 64t · standard 192t · macro 640t · cross-scale dedup (gap &lt;64t)</text>
+      <text x="96" y="58" fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">rap_coach/chronovisor_scanner.py:141 · ANALYSIS_SCALES[3]</text>
+      <text x="96" y="72" fill="#d96600" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace" font-weight="700">out: list[CriticalMoment]</text>
+    </g>
+    <path d="M360 598 L360 614" stroke="#d96600" stroke-width="2" marker-end="url(#a37)" fill="none"></path>
+
+
+    <g transform="translate(0 616)">
+      <rect width="720" height="80" rx="8" fill="#1a1a2e" stroke="#d96600" stroke-width="1.2"></rect>
+      <rect width="80" height="80" rx="8" fill="#d96600"></rect>
+      <text x="40" y="34" fill="#ffffff" font-size="20" font-weight="700" text-anchor="middle">7</text>
+      <text x="40" y="54" fill="#ffffff" font-size="9" font-weight="700" text-anchor="middle" letter-spacing="1.2">COMM</text>
+
+      <text x="96" y="22" fill="#dcdcdc" font-size="13" font-weight="700">RAPCommunication · tiered templates</text>
+      <text x="96" y="40" fill="#a0a0b0" font-size="11">3 skill tiers (low/mid/high) · confidence gate 0.7 · 3 topics · angle sector resolve</text>
+      <text x="96" y="58" fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">rap_coach/communication.py:38 · skill_level maps to template</text>
+      <text x="96" y="72" fill="#d96600" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace" font-weight="700">out: advice_text (str) | None when conf &lt; 0.7</text>
+    </g>
+  </g>
+
+
+  <g transform="translate(1044 122)">
+    <text fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace" letter-spacing="1.2">OUTPUTS · forward() dict + Chronovisor scan</text>
+
+    <g transform="translate(0 16)">
+      <rect width="340" height="660" rx="10" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+
+      <g transform="translate(16 16)">
+        <rect width="308" height="70" rx="6" fill="#0f0f2e" stroke="#4a9eff" stroke-width="1"></rect>
+        <text x="16" y="20" fill="#4a9eff" font-size="10" font-weight="700" font-family="&#39;JetBrains Mono&#39;, monospace">advice_probs</text>
+        <text x="16" y="38" fill="#dcdcdc" font-size="11">softmax over advice vocabulary</text>
+        <text x="16" y="54" fill="#a0a0b0" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">shape [B, OUTPUT_DIM]</text>
+        <text x="16" y="66" fill="#3a3a5a" font-size="9" font-family="&#39;JetBrains Mono&#39;, monospace">top-K decoded by Communication</text>
+      </g>
+
+      <g transform="translate(16 94)">
+        <rect width="308" height="70" rx="6" fill="#0f0f2e" stroke="#4db04f" stroke-width="1"></rect>
+        <text x="16" y="20" fill="#4db04f" font-size="10" font-weight="700" font-family="&#39;JetBrains Mono&#39;, monospace">belief_state</text>
+        <text x="16" y="38" fill="#dcdcdc" font-size="11">latent game understanding</text>
+        <text x="16" y="54" fill="#a0a0b0" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">shape [B, T, 64] · SiLU head</text>
+        <text x="16" y="66" fill="#3a3a5a" font-size="9" font-family="&#39;JetBrains Mono&#39;, monospace">re-enters strategy context</text>
+      </g>
+
+      <g transform="translate(16 172)">
+        <rect width="308" height="70" rx="6" fill="#0f0f2e" stroke="#ff9900" stroke-width="1"></rect>
+        <text x="16" y="20" fill="#ff9900" font-size="10" font-weight="700" font-family="&#39;JetBrains Mono&#39;, monospace">value_estimate V(s)</text>
+        <text x="16" y="38" fill="#dcdcdc" font-size="11">critic head · advantage target</text>
+        <text x="16" y="54" fill="#a0a0b0" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">shape [B, 1]</text>
+        <text x="16" y="66" fill="#3a3a5a" font-size="9" font-family="&#39;JetBrains Mono&#39;, monospace">feeds self-correction loop</text>
+      </g>
+
+      <g transform="translate(16 250)">
+        <rect width="308" height="70" rx="6" fill="#0f0f2e" stroke="#d96600" stroke-width="1"></rect>
+        <text x="16" y="20" fill="#d96600" font-size="10" font-weight="700" font-family="&#39;JetBrains Mono&#39;, monospace">gate_weights</text>
+        <text x="16" y="38" fill="#dcdcdc" font-size="11">MoE expert routing (softmax)</text>
+        <text x="16" y="54" fill="#a0a0b0" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">shape [B, 4] · Top-2 active</text>
+        <text x="16" y="66" fill="#3a3a5a" font-size="9" font-family="&#39;JetBrains Mono&#39;, monospace">entropy → sparsity loss</text>
+      </g>
+
+      <g transform="translate(16 328)">
+        <rect width="308" height="70" rx="6" fill="#0f0f2e" stroke="#ff4444" stroke-width="1"></rect>
+        <text x="16" y="20" fill="#ff4444" font-size="10" font-weight="700" font-family="&#39;JetBrains Mono&#39;, monospace">optimal_pos</text>
+        <text x="16" y="38" fill="#dcdcdc" font-size="11">shadow suggestion (δx, δy, δz)</text>
+        <text x="16" y="54" fill="#a0a0b0" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">shape [B, 3] · × 500</text>
+        <text x="16" y="66" fill="#3a3a5a" font-size="9" font-family="&#39;JetBrains Mono&#39;, monospace">rendered in Tactical Viewer</text>
+      </g>
+
+      <g transform="translate(16 406)">
+        <rect width="308" height="70" rx="6" fill="#0f0f2e" stroke="#00ccff" stroke-width="1"></rect>
+        <text x="16" y="20" fill="#00ccff" font-size="10" font-weight="700" font-family="&#39;JetBrains Mono&#39;, monospace">attribution</text>
+        <text x="16" y="38" fill="#dcdcdc" font-size="11">5 concepts · sigmoid · Positioning…</text>
+        <text x="16" y="54" fill="#a0a0b0" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">shape [B, 5]</text>
+        <text x="16" y="66" fill="#3a3a5a" font-size="9" font-family="&#39;JetBrains Mono&#39;, monospace">context-weighted errors</text>
+      </g>
+
+      <g transform="translate(16 484)">
+        <rect width="308" height="70" rx="6" fill="#0f0f2e" stroke="#a0a0b0" stroke-width="1"></rect>
+        <text x="16" y="20" fill="#a0a0b0" font-size="10" font-weight="700" font-family="&#39;JetBrains Mono&#39;, monospace">hidden_state</text>
+        <text x="16" y="38" fill="#dcdcdc" font-size="11">LTC recurrent state (cached)</text>
+        <text x="16" y="54" fill="#a0a0b0" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">for next forward · NN-40</text>
+        <text x="16" y="66" fill="#3a3a5a" font-size="9" font-family="&#39;JetBrains Mono&#39;, monospace">stateful inference</text>
+      </g>
+
+      <g transform="translate(16 562)">
+        <rect width="308" height="80" rx="6" fill="#0a0a14" stroke="#d96600" stroke-width="1.5"></rect>
+        <text x="16" y="22" fill="#d96600" font-size="11" font-weight="700" font-family="&#39;JetBrains Mono&#39;, monospace">CriticalMoment (post-scan)</text>
+        <text x="16" y="40" fill="#dcdcdc" font-size="11">peak_tick · severity · type · scale</text>
+        <text x="16" y="56" fill="#a0a0b0" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">{mistake, play} × {micro, std, macro}</text>
+        <text x="16" y="72" fill="#3a3a5a" font-size="9" font-family="&#39;JetBrains Mono&#39;, monospace">to_highlight_annotation() → UI</text>
+      </g>
+    </g>
+  </g>
+
+
+  <g stroke="#4a9eff" stroke-width="1.5" fill="none" opacity="0.7">
+    <path d="M284 176 L300 158" marker-end="url(#a37b)"></path>
+    <path d="M284 284 L300 166" marker-end="url(#a37b)"></path>
+    <path d="M284 392 L300 174" marker-end="url(#a37b)"></path>
+    <path d="M284 500 L300 182" marker-end="url(#a37b)"></path>
+    <path d="M284 620 L300 366" marker-end="url(#a37b)"></path>
+  </g>
+
+  <g stroke="#d96600" stroke-width="1.5" fill="none" opacity="0.6">
+    <path d="M1024 258 L1044 160" marker-end="url(#a37)"></path>
+    <path d="M1024 258 L1044 252" marker-end="url(#a37)"></path>
+    <path d="M1024 358 L1044 344" marker-end="url(#a37)"></path>
+    <path d="M1024 358 L1044 428" marker-end="url(#a37)"></path>
+    <path d="M1024 458 L1044 348" marker-end="url(#a37)"></path>
+    <path d="M1024 558 L1044 586" marker-end="url(#a37)"></path>
+  </g>
+
+
+  <text x="60" y="864" fill="#3a3a5a" font-size="10" font-family="&#39;JetBrains Mono&#39;, monospace">RAPCoachModel · experimental · USE_RAP_MODEL=False default · requires ncps + hflayers (else use RAPMemoryLite LSTM shim)</text>
+</svg>

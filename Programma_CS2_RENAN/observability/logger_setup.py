@@ -215,13 +215,16 @@ def get_logger(name: str) -> logging.Logger:
 # ---------------------------------------------------------------------------
 
 
-def get_tool_logger(tool_name: str) -> logging.Logger:
+def get_tool_logger(tool_name: str, console: bool = True) -> logging.Logger:
     """Logger factory for standalone tool scripts.
 
     Produces a logger named ``cs2analyzer.tools.<tool_name>`` with:
     - JSON file handler in ``logs/tools/<tool_name>_<timestamp>.json``
-    - Console handler at WARNING (for Rich-based tools that own stdout)
+    - Console StreamHandler at INFO (text format) when ``console=True``
     - Correlation ID filter
+
+    Set ``console=False`` for tools that drive stdout themselves with Rich or
+    similar TUI libraries and do not want duplicate log lines in the terminal.
 
     The tool log directory is created automatically.
     """
@@ -244,6 +247,17 @@ def get_tool_logger(tool_name: str) -> logging.Logger:
     fh = logging.FileHandler(log_file, encoding="utf-8")
     fh.setFormatter(JSONFormatter())
     logger.addHandler(fh)
+
+    if console:
+        console_formatter = logging.Formatter(
+            "%(asctime)s | %(levelname)s | %(message)s",
+            "%Y-%m-%d %H:%M:%S",
+        )
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(console_formatter)
+        console_handler.setLevel(logging.INFO)
+        logger.addHandler(console_handler)
+
     logger.addFilter(_CorrelationFilter())
     logger.propagate = False
 

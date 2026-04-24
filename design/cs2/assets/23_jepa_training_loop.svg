@@ -1,0 +1,191 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Roboto, Inter, system-ui, sans-serif">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#d96600"></path></marker>
+    <marker id="arB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#4a9eff"></path></marker>
+    <marker id="arG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#4caf50"></path></marker>
+    <marker id="arY" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#ffaa00"></path></marker>
+  </defs>
+
+  <rect width="1440" height="900" fill="#14141e"></rect>
+
+  <g transform="translate(60,44)">
+    <text fill="#4a9eff" font-size="10" letter-spacing="4" font-weight="700">AI CORE · FRAME 23</text>
+    <text y="32" fill="#dcdcdc" font-size="24" font-weight="700">JEPA Training Loop — one optimizer step, zoomed in</text>
+    <text y="54" fill="#a0a0b0" font-size="12">What actually happens per batch · jepa_train.py · jepa_trainer.py</text>
+  </g>
+
+
+
+  <g transform="translate(600,400)">
+    <rect width="240" height="160" rx="12" fill="rgba(217,102,0,0.08)" stroke="#d96600" stroke-width="2"></rect>
+    <text x="120" y="30" text-anchor="middle" fill="#d96600" font-size="10" letter-spacing="3" font-weight="700">ONE BATCH STEP</text>
+    <text x="120" y="62" text-anchor="middle" fill="#dcdcdc" font-size="16" font-weight="700">batch_size = 64</text>
+    <text x="120" y="84" text-anchor="middle" fill="#a0a0b0" font-size="12">T = 20 ticks</text>
+    <text x="120" y="104" text-anchor="middle" fill="#a0a0b0" font-size="12">25-dim per tick</text>
+    <text x="120" y="128" text-anchor="middle" fill="#ffaa00" font-size="12" font-family="JetBrains Mono, monospace">~30 ms on CUDA</text>
+    <text x="120" y="148" text-anchor="middle" fill="#ffaa00" font-size="12" font-family="JetBrains Mono, monospace">~120 ms on CPU</text>
+  </g>
+
+
+  <g transform="translate(60,160)">
+    <rect width="300" height="96" rx="8" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+    <circle cx="24" cy="24" r="14" fill="#d96600"></circle>
+    <text x="24" y="28" text-anchor="middle" fill="#14141e" font-weight="700" font-size="13">1</text>
+    <text x="46" y="28" fill="#dcdcdc" font-size="13" font-weight="700">Sample batch from pro demos</text>
+    <text x="46" y="48" fill="#a0a0b0" font-size="11">Random round · uniform over pros · 24,000+ rounds</text>
+    <text x="46" y="68" fill="#a0a0b0" font-size="11">Split tensor along T: x[:, 0:10] ctx, x[:, 10:20] tgt</text>
+    <text x="46" y="84" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">JepaDataset · DataLoader shuffle=True</text>
+  </g>
+
+
+  <g transform="translate(1080,160)">
+    <rect width="300" height="96" rx="8" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+    <circle cx="24" cy="24" r="14" fill="#d96600"></circle>
+    <text x="24" y="28" text-anchor="middle" fill="#14141e" font-weight="700" font-size="13">2</text>
+    <text x="46" y="28" fill="#dcdcdc" font-size="13" font-weight="700">Forward pass · compute loss</text>
+    <text x="46" y="48" fill="#a0a0b0" font-size="11">s_pred, s_tgt = model.forward_jepa_pretrain(ctx, tgt)</text>
+    <text x="46" y="68" fill="#a0a0b0" font-size="11">loss = jepa_contrastive_loss(s_pred, s_tgt, T=0.07)</text>
+    <text x="46" y="84" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">P1-03 InfoNCE · prevents collapse</text>
+  </g>
+
+
+  <g transform="translate(1080,560)">
+    <rect width="300" height="96" rx="8" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+    <circle cx="24" cy="24" r="14" fill="#d96600"></circle>
+    <text x="24" y="28" text-anchor="middle" fill="#14141e" font-weight="700" font-size="13">3</text>
+    <text x="46" y="28" fill="#dcdcdc" font-size="13" font-weight="700">Backward · compute gradients</text>
+    <text x="46" y="48" fill="#a0a0b0" font-size="11">loss.backward()</text>
+    <text x="46" y="68" fill="#a0a0b0" font-size="11">Only context_encoder + predictor get grads</text>
+    <text x="46" y="84" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">target_encoder.requires_grad = False</text>
+  </g>
+
+
+  <g transform="translate(560,720)">
+    <rect width="320" height="96" rx="8" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+    <circle cx="24" cy="24" r="14" fill="#d96600"></circle>
+    <text x="24" y="28" text-anchor="middle" fill="#14141e" font-weight="700" font-size="13">4</text>
+    <text x="46" y="28" fill="#dcdcdc" font-size="13" font-weight="700">Optimizer step + zero_grad</text>
+    <text x="46" y="48" fill="#a0a0b0" font-size="11">optimizer.step() · AdamW lr=1e-4 weight_decay=1e-2</text>
+    <text x="46" y="68" fill="#a0a0b0" font-size="11">optimizer.zero_grad(set_to_none=True)</text>
+    <text x="46" y="84" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">context θ + predictor updated</text>
+  </g>
+
+
+  <g transform="translate(60,560)">
+    <rect width="300" height="96" rx="8" fill="rgba(255,170,0,0.08)" stroke="#ffaa00"></rect>
+    <circle cx="24" cy="24" r="14" fill="#ffaa00"></circle>
+    <text x="24" y="28" text-anchor="middle" fill="#14141e" font-weight="700" font-size="13">5</text>
+    <text x="46" y="28" fill="#ffaa00" font-size="13" font-weight="700">EMA update target encoder</text>
+    <text x="46" y="48" fill="#a0a0b0" font-size="11">θ̄ ← 0.996 · θ̄ + 0.004 · θ</text>
+    <text x="46" y="68" fill="#a0a0b0" font-size="11">NN-16: .clone() before apply_shadow</text>
+    <text x="46" y="84" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">update_target_encoder() :348</text>
+  </g>
+
+
+  <g transform="translate(380,160)">
+    <rect width="680" height="96" rx="8" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+    <circle cx="24" cy="24" r="14" fill="#d96600"></circle>
+    <text x="24" y="28" text-anchor="middle" fill="#14141e" font-weight="700" font-size="13">6</text>
+    <text x="46" y="28" fill="#dcdcdc" font-size="13" font-weight="700">Log metrics · emit CoachState update · tensorboard scalar</text>
+    <text x="46" y="48" fill="#a0a0b0" font-size="11">coachstate.train_loss = loss.item() · train_step_count += 1</text>
+    <text x="46" y="68" fill="#a0a0b0" font-size="11">every 100 steps: save checkpoint · every epoch: val_loss on held-out pros</text>
+    <text x="46" y="84" fill="#3a3a5a" font-size="10" font-family="JetBrains Mono, monospace">tensorboard_callback.py · Qt UI reads CoachState singleton</text>
+  </g>
+
+
+
+  <path d="M360 208 L380 208" stroke="#d96600" stroke-width="1.5" marker-end="url(#ar)"></path>
+
+  <path d="M1060 208 L1080 208" stroke="#d96600" stroke-width="1.5" marker-end="url(#ar)"></path>
+
+  <path d="M1230 256 L1230 560" stroke="#d96600" stroke-width="1.5" marker-end="url(#ar)"></path>
+
+  <path d="M1080 608 L900 760 L880 760" stroke="#d96600" stroke-width="1.5" fill="none" marker-end="url(#ar)"></path>
+
+  <path d="M560 760 L380 760 L220 656" stroke="#d96600" stroke-width="1.5" fill="none" marker-end="url(#arY)"></path>
+
+  <path d="M210 560 L210 256" stroke="#d96600" stroke-width="1.5" marker-end="url(#ar)"></path>
+
+
+  <path d="M360 208 L600 410" stroke="#d96600" stroke-width="0.8" stroke-dasharray="3 2" fill="none" opacity="0.4"></path>
+  <path d="M1080 208 L840 410" stroke="#d96600" stroke-width="0.8" stroke-dasharray="3 2" fill="none" opacity="0.4"></path>
+  <path d="M1080 608 L840 490" stroke="#d96600" stroke-width="0.8" stroke-dasharray="3 2" fill="none" opacity="0.4"></path>
+  <path d="M360 608 L600 490" stroke="#ffaa00" stroke-width="0.8" stroke-dasharray="3 2" fill="none" opacity="0.4"></path>
+
+
+  <g transform="translate(60,304)">
+    <rect width="300" height="220" rx="8" fill="#1a1a1a"></rect>
+    <text x="14" y="24" fill="#dcdcdc" font-size="13" font-weight="700">Loss curve · 40 epochs</text>
+    <text x="14" y="42" fill="#5a5a8a" font-size="10" font-family="JetBrains Mono, monospace">tensorboard/train_loss</text>
+
+
+    <g transform="translate(30,62)">
+
+      <line x1="0" y1="0" x2="0" y2="130" stroke="#3a3a5a"></line>
+
+      <line x1="0" y1="130" x2="244" y2="130" stroke="#3a3a5a"></line>
+
+
+      <line x1="0" y1="32" x2="244" y2="32" stroke="rgba(255,255,255,0.05)"></line>
+      <line x1="0" y1="65" x2="244" y2="65" stroke="rgba(255,255,255,0.05)"></line>
+      <line x1="0" y1="98" x2="244" y2="98" stroke="rgba(255,255,255,0.05)"></line>
+
+
+      <text x="-6" y="5" text-anchor="end" fill="#a0a0b0" font-size="9">3.0</text>
+      <text x="-6" y="36" text-anchor="end" fill="#a0a0b0" font-size="9">2.0</text>
+      <text x="-6" y="69" text-anchor="end" fill="#a0a0b0" font-size="9">1.0</text>
+      <text x="-6" y="101" text-anchor="end" fill="#a0a0b0" font-size="9">0.5</text>
+      <text x="-6" y="133" text-anchor="end" fill="#a0a0b0" font-size="9">0</text>
+
+
+      <text x="0" y="146" fill="#a0a0b0" font-size="9">0</text>
+      <text x="122" y="146" text-anchor="middle" fill="#a0a0b0" font-size="9">20</text>
+      <text x="244" y="146" text-anchor="end" fill="#a0a0b0" font-size="9">40</text>
+
+
+      <polyline points="0,8 12,18 24,35 36,50 48,60 60,72 72,80 84,86 96,92 108,96 120,100 132,104 144,108 156,110 168,112 180,114 192,116 204,118 216,120 228,121 244,122" fill="none" stroke="#00ccff" stroke-width="2"></polyline>
+
+      <polyline points="0,6 12,14 24,28 36,44 48,54 60,64 72,74 84,82 96,86 108,90 120,94 132,98 144,102 156,104 168,106 180,107 192,108 204,109 216,110 228,111 244,112" fill="none" stroke="#ffaa00" stroke-width="2" stroke-dasharray="4 2"></polyline>
+    </g>
+
+
+    <g transform="translate(30,202)" font-size="10">
+      <line x1="0" y1="0" x2="14" y2="0" stroke="#00ccff" stroke-width="2"></line>
+      <text x="20" y="3" fill="#dcdcdc">train_loss</text>
+      <line x1="100" y1="0" x2="114" y2="0" stroke="#ffaa00" stroke-width="2" stroke-dasharray="3 2"></line>
+      <text x="120" y="3" fill="#dcdcdc">val_loss</text>
+    </g>
+  </g>
+
+
+  <g transform="translate(380,304)">
+    <rect width="440" height="96" rx="8" fill="#1a1a2e"></rect>
+    <text x="14" y="24" fill="#dcdcdc" font-size="13" font-weight="700">Hyperparameters</text>
+    <g transform="translate(14,42)" font-size="11" font-family="JetBrains Mono, monospace" fill="#a0a0b0">
+      <text>optimizer = AdamW(lr=1e-4, weight_decay=1e-2)</text>
+      <text y="16">scheduler = CosineAnnealingLR(T_max=40 epochs)</text>
+      <text y="32">ema_momentum = 0.996 (BYOL default)</text>
+      <text y="48">batch_size = 64 · T = 20 · GLOBAL_SEED = 42</text>
+    </g>
+  </g>
+
+
+  <g transform="translate(840,304)">
+    <rect width="220" height="96" rx="8" fill="#1a1a2e"></rect>
+    <text x="14" y="24" fill="#dcdcdc" font-size="13" font-weight="700">Epoch schedule</text>
+    <g transform="translate(14,42)" font-size="11">
+      <text fill="#a0a0b0">Pre-train: 40 epochs</text>
+      <text y="16" fill="#a0a0b0">Val every: 1 epoch</text>
+      <text y="32" fill="#a0a0b0">Early stop: patience 5</text>
+      <text y="48" fill="#a0a0b0">Save every: 100 steps</text>
+    </g>
+  </g>
+
+
+  <g transform="translate(60,832)">
+    <text fill="#ff4444" font-size="10" letter-spacing="2" font-weight="700">FAILURE MODES HANDLED</text>
+    <g transform="translate(0,14)" font-size="11">
+      <text fill="#a0a0b0">Embedding collapse (all s → same vector) → fixed by InfoNCE (P1-03) · Target drift → EMA bounds τ=0.996 · Silent grad poisoning → NN-JM-04 assert · Checkpoint non-det → GLOBAL_SEED=42</text>
+    </g>
+  </g>
+</svg>

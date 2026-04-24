@@ -33,6 +33,21 @@ class AppState(QObject):
     training_changed = Signal(dict)
     notification_received = Signal(str, str)  # (severity, message)
 
+    # ── P3 opt-in flagship toggles (default OFF; persisted via user settings) ──
+    # These are additive-only to the AppState signal surface; removing any
+    # pre-existing signal above would break the consumer contract
+    # documented in the P3 plan's non-goals.
+    sounds_enabled_changed = Signal(bool)
+    use_frameless_window_changed = Signal(bool)
+    use_pyqtgraph_heatmap_changed = Signal(bool)
+
+    # ── P4 opt-in flagship toggle (default OFF during dev rollout) ──
+    # When True, marquee screens (tactical viewer first, match detail +
+    # coach chat later) load a QWebEngineView hosting the React+D3
+    # experience from `apps/qt_app/web/<name>/dist/`. Qt-native flow
+    # remains as fallback so this toggle is never destructive.
+    use_webengine_marquee_changed = Signal(bool)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self._prev: dict = {}
@@ -124,13 +139,15 @@ class AppState(QObject):
                 try:
                     from sqlalchemy import func as sa_func
 
-                    demo_count = (
-                        session.exec(
-                            select(sa_func.count(sa_func.distinct(PlayerMatchStats.demo_name)))
-                        ).one()
-                        or 0
-                    )
-                except Exception:
+                    # SQLModel Session.exec(...).one() returns a Row; index [0] works
+                    # for both sqlalchemy Row and plain tuple. Fall back to 0 on NULL.
+                    row = session.exec(
+                        select(sa_func.count(sa_func.distinct(PlayerMatchStats.demo_name)))
+                    ).one()
+                    raw = row[0] if hasattr(row, "__getitem__") else row
+                    demo_count = int(raw or 0)
+                except Exception as exc:
+                    logger.debug("AppState: demo_count query failed: %s", exc)
                     demo_count = int(state.total_matches_processed)
 
                 return {
@@ -184,3 +201,91 @@ class AppState(QObject):
 
     def _on_error(self, msg):
         logger.warning("AppState poll error: %s", msg)
+
+    # ── P3 toggle accessors ──────────────────────────────────────────
+    # Each toggle is persisted through ``core.config`` settings so user
+    # preference survives an app restart. ``_read_toggle`` returns the
+    # bool coerced from whatever JSON emitted (``"true"`` / ``"1"`` /
+    # ``True`` all map to True, everything else maps to False so a
+    # malformed settings file can never flip a flagship feature on).
+
+    @staticmethod
+    def _read_toggle(key: str) -> bool:
+        from Programma_CS2_RENAN.core.config import get_setting
+
+        raw = get_setting(key, False)
+        if isinstance(raw, bool):
+            return raw
+        if isinstance(raw, str):
+            return raw.strip().lower() in ("1", "true", "yes", "on")
+        return bool(raw)
+
+    @staticmethod
+    def _write_toggle(key: str, value: bool) -> None:
+        from Programma_CS2_RENAN.core.config import save_user_setting
+
+        save_user_setting(key, bool(value))
+
+    # sounds_enabled
+
+    @property
+    def sounds_enabled(self) -> bool:
+        """True when micro-interaction sound effects should play."""
+        return self._read_toggle("SOUNDS_ENABLED")
+
+    def set_sounds_enabled(self, value: bool) -> None:
+        if self.sounds_enabled == bool(value):
+            return
+        self._write_toggle("SOUNDS_ENABLED", value)
+        self.sounds_enabled_changed.emit(bool(value))
+
+    # use_frameless_window
+
+    @property
+    def use_frameless_window(self) -> bool:
+        """True when the hand-rolled frameless titlebar chrome is active."""
+        return self._read_toggle("USE_FRAMELESS_WINDOW")
+
+    def set_use_frameless_window(self, value: bool) -> None:
+        if self.use_frameless_window == bool(value):
+            return
+        self._write_toggle("USE_FRAMELESS_WINDOW", value)
+        self.use_frameless_window_changed.emit(bool(value))
+
+    # use_pyqtgraph_heatmap
+
+    @property
+    def use_pyqtgraph_heatmap(self) -> bool:
+        """True when match_detail should prefer the pyqtgraph heatmap.
+
+        Requires `pyqtgraph` to be installed; if absent, the match_detail
+        screen transparently falls back to the QtCharts widget and this
+        toggle is a no-op.
+        """
+        return self._read_toggle("USE_PYQTGRAPH_HEATMAP")
+
+    def set_use_pyqtgraph_heatmap(self, value: bool) -> None:
+        if self.use_pyqtgraph_heatmap == bool(value):
+            return
+        self._write_toggle("USE_PYQTGRAPH_HEATMAP", value)
+        self.use_pyqtgraph_heatmap_changed.emit(bool(value))
+
+    # use_webengine_marquee
+
+    @property
+    def use_webengine_marquee(self) -> bool:
+        """True when marquee screens should render their web front-end.
+
+        Requires PySide6 QtWebEngine (already part of Addons) AND the
+        corresponding ``apps/qt_app/web/<name>/dist/index.html`` to
+        exist. The host screens check the dist presence and silently
+        fall back to the Qt-native path if missing — the toggle alone
+        never causes a blank surface.
+        """
+        return self._read_toggle("USE_WEBENGINE_MARQUEE")
+
+    def set_use_webengine_marquee(self, value: bool) -> None:
+        if self.use_webengine_marquee == bool(value):
+            return
+        self._write_toggle("USE_WEBENGINE_MARQUEE", value)
+        self.use_webengine_marquee_changed.emit(bool(value))

@@ -50,54 +50,82 @@ def ingest_one_demo(demo_path_str: str) -> dict:
     demo_path = Path(demo_path_str)
     t0 = time.time()
 
+    # The IngestionTask row is the authoritative state machine for this demo.
+    # The previous implementation put the final status update inside the same
+    # try: block as the worker call — when _ingest_single_demo raised, the
+    # update was skipped and the row stayed at "queued" forever. That silent
+    # desync is what made the Apr 2026 run show 0 failed rows after 301 hard
+    # failures. This function now guarantees the row is flipped to
+    # "completed" or "failed" in a finally: block regardless of exception.
+
+    db = get_db_manager()
+    storage = StorageManager()
+
+    # 1. Ensure task record exists, reset from "failed" to "queued" for retry.
+    with db.get_session() as session:
+        existing = session.exec(
+            select(IngestionTask).where(IngestionTask.demo_path == demo_path_str)
+        ).first()
+        if not existing:
+            session.add(IngestionTask(demo_path=demo_path_str, is_pro=True, status="queued"))
+            session.commit()
+        elif existing.status == "failed":
+            existing.status = "queued"
+            existing.retry_count = 0
+            existing.error_message = None
+            session.add(existing)
+            session.commit()
+
+    # 2. Flip to "processing" before work starts so stale-lock sweeps can
+    #    identify in-flight rows by updated_at age.
+    with db.get_session() as session:
+        task = session.exec(
+            select(IngestionTask).where(IngestionTask.demo_path == demo_path_str)
+        ).first()
+        if task:
+            task.status = "processing"
+            task.error_message = None
+            session.add(task)
+            session.commit()
+
+    success = False
+    msg = "Worker did not record a result"
     try:
-        db = get_db_manager()
-        storage = StorageManager()
-
-        # Ensure task record exists
-        with db.get_session() as session:
-            existing = session.exec(
-                select(IngestionTask).where(IngestionTask.demo_path == demo_path_str)
-            ).first()
-            if not existing:
-                session.add(IngestionTask(demo_path=demo_path_str, is_pro=True, status="queued"))
-                session.commit()
-            elif existing.status == "failed":
-                existing.status = "queued"
-                existing.retry_count = 0
-                existing.error_message = None
-                session.add(existing)
-                session.commit()
-
         success, msg = _ingest_single_demo(db, storage, demo_path, is_pro=True)
+    except Exception as exc:  # noqa: BLE001 — boundary: must catch to record failure
+        success = False
+        msg = f"Worker exception: {exc!r}"
+    finally:
+        # 3. Authoritative final status update — runs on both success and
+        #    exception paths. error_message truncated so a giant SQL traceback
+        #    does not blow up the VARCHAR column.
+        truncated_msg = (msg or "")[:512]
+        try:
+            with db.get_session() as session:
+                task = session.exec(
+                    select(IngestionTask).where(IngestionTask.demo_path == demo_path_str)
+                ).first()
+                if task:
+                    task.status = "completed" if success else "failed"
+                    task.error_message = truncated_msg
+                    if not success:
+                        task.retry_count = (task.retry_count or 0) + 1
+                    session.add(task)
+                    session.commit()
+        except Exception as status_exc:  # noqa: BLE001 — loud log, do not mask worker result
+            logger.error(
+                "Failed to update IngestionTask status for %s: %r",
+                demo_path.name,
+                status_exc,
+            )
 
-        # Update task status
-        with db.get_session() as session:
-            task = session.exec(
-                select(IngestionTask).where(IngestionTask.demo_path == demo_path_str)
-            ).first()
-            if task:
-                task.status = "completed" if success else "failed"
-                task.error_message = msg
-                session.add(task)
-                session.commit()
-
-        elapsed = time.time() - t0
-        return {
-            "demo": demo_path.name,
-            "success": success,
-            "msg": msg,
-            "elapsed": elapsed,
-        }
-
-    except Exception as e:
-        elapsed = time.time() - t0
-        return {
-            "demo": demo_path.name,
-            "success": False,
-            "msg": f"Worker exception: {e}",
-            "elapsed": elapsed,
-        }
+    elapsed = time.time() - t0
+    return {
+        "demo": demo_path.name,
+        "success": success,
+        "msg": msg,
+        "elapsed": elapsed,
+    }
 
 
 def get_already_ingested():
@@ -127,6 +155,12 @@ def main():
     parser.add_argument("--limit", type=int, default=0, help="Max demos to process (0=all)")
     parser.add_argument(
         "--demo-dir", type=str, default="", help="Demo directory (default: PRO_DEMO_PATH setting)"
+    )
+    parser.add_argument(
+        "--no-train",
+        action="store_true",
+        help="Skip the auto-training pass after ingestion. Use run_full_training_cycle.py "
+        "(or train.sh) separately when training is desired.",
     )
     args = parser.parse_args()
 
@@ -168,8 +202,14 @@ def main():
     fail_count = 0
     batch_start = time.time()
 
-    # Use maxtasksperchild=1 to prevent memory leaks from accumulating DataFrames
-    with ProcessPoolExecutor(max_workers=workers, max_tasks_per_child=1) as executor:
+    # Prevent DataFrame-accumulation memory leaks by recycling workers after each
+    # task. `max_tasks_per_child` is Python 3.11+ on ProcessPoolExecutor; on 3.10
+    # we fall back (workers keep their memory, but 3.10 is the supported minimum
+    # per CLAUDE.md so don't crash on it).
+    pool_kwargs = {"max_workers": workers}
+    if sys.version_info >= (3, 11):
+        pool_kwargs["max_tasks_per_child"] = 1
+    with ProcessPoolExecutor(**pool_kwargs) as executor:
         # Submit all jobs
         future_to_demo = {executor.submit(ingest_one_demo, str(demo)): demo for demo in pending}
 
@@ -220,13 +260,16 @@ def main():
     logger.info("Throughput: %.1f demos/min", len(pending) / (batch_elapsed / 60))
     logger.info("=" * 70)
 
-    # After ingestion completes, start training automatically
-    if success_count > 0:
+    # After ingestion completes, start training automatically unless the caller
+    # explicitly opted out (e.g. ingest.sh keeps ingest/train phases separate).
+    if success_count > 0 and not args.no_train:
         logger.info("Starting ML training automatically...")
         try:
             run_training_after_ingestion()
         except Exception as e:
             logger.error("Training failed: %s", e)
+    elif args.no_train:
+        logger.info("--no-train set — skipping auto-training. Run train.sh to train.")
 
 
 def run_training_after_ingestion():

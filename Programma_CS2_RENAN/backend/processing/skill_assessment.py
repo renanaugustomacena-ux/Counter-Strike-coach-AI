@@ -14,7 +14,10 @@ from typing import Dict
 import numpy as np
 import torch
 
-from Programma_CS2_RENAN.backend.processing.baselines.pro_baseline import get_pro_baseline
+# pro_baseline is imported lazily inside calculate_skill_vector so that callers
+# importing only SkillAxes (explainability, coaching/__init__, etc.) do not pull
+# the HLTV-backed baseline module into their import graph. Ingestion must stay
+# isolated from hltv_metadata.db reads at module load time.
 from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -45,6 +48,8 @@ class SkillLatentModel:
         Calculates normalized skill scores (0.0 to 1.0) for each axis.
         Using a more sensitive Gaussian normalization (Z-score to Percentile).
         """
+        from Programma_CS2_RENAN.backend.processing.baselines.pro_baseline import get_pro_baseline
+
         baseline = get_pro_baseline()
 
         def get_z(feat, val):

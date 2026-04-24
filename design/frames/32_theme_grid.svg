@@ -1,0 +1,303 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Inter, 'Segoe UI', system-ui, sans-serif">
+  <rect width="1440" height="900" fill="#0b0b14"/>
+
+  <text x="60" y="54" fill="#dcdcdc" font-size="24" font-weight="700">Theme Grid — Three skins, same structure</text>
+  <text x="60" y="78" fill="#a0a0b0" font-size="13">design_tokens.py · CS2_TOKENS · CSGO_TOKENS · CS16_TOKENS · selected via ThemeEngine.set_active_theme()</text>
+  <text x="60" y="96" fill="#3a3a5a" font-size="11" font-family="'JetBrains Mono', Consolas, monospace">get_tokens(theme) → DesignTokens(frozen)</text>
+
+  <!-- Column 1: CS2 -->
+  <g transform="translate(60 120)">
+    <rect width="420" height="720" rx="12" fill="#14141e" stroke="#3a3a5a" stroke-width="1"/>
+    <rect x="16" y="16" width="80" height="22" rx="11" fill="#d96600"/>
+    <text x="56" y="31" fill="#ffffff" font-size="11" font-weight="700" text-anchor="middle">ACTIVE</text>
+    <text x="16" y="64" fill="#dcdcdc" font-size="20" font-weight="700">CS2</text>
+    <text x="16" y="82" fill="#a0a0b0" font-size="11">accent #d96600 · orange-brown</text>
+
+    <rect x="16" y="100" width="72" height="300" rx="6" fill="#0f0f2e" stroke="#3a3a5a" stroke-width="1"/>
+    <rect x="20" y="108" width="64" height="28" rx="4" fill="rgba(217,102,0,0.25)" stroke="#d96600" stroke-width="1"/>
+    <circle cx="34" cy="122" r="4" fill="none" stroke="#d96600" stroke-width="1.2"/>
+    <rect x="44" y="118" width="36" height="3" rx="1.5" fill="#d96600"/>
+    <rect x="44" y="125" width="28" height="2" rx="1" fill="rgba(217,102,0,0.6)"/>
+    <g fill="none" stroke="#a0a0b0" stroke-width="1.1" opacity="0.8">
+      <rect x="20" y="144" width="64" height="24" rx="4"/>
+      <rect x="20" y="172" width="64" height="24" rx="4"/>
+      <rect x="20" y="200" width="64" height="24" rx="4"/>
+      <rect x="20" y="228" width="64" height="24" rx="4"/>
+    </g>
+
+    <rect x="104" y="100" width="300" height="140" rx="8" fill="#1a1a2e" stroke="#3a3a5a" stroke-width="1"/>
+    <text x="120" y="124" fill="#dcdcdc" font-size="14" font-weight="700">Demo Analysis</text>
+    <text x="120" y="142" fill="#a0a0b0" font-size="11">Drop demo / paste path</text>
+    <rect x="120" y="156" width="268" height="38" rx="4" fill="#0f0f2e" stroke="#3a3a5a" stroke-width="1"/>
+    <text x="132" y="179" fill="#3a3a5a" font-size="11">Path to .dem file…</text>
+    <rect x="120" y="204" width="104" height="28" rx="4" fill="#d96600"/>
+    <text x="172" y="223" fill="#ffffff" font-size="11" font-weight="700" text-anchor="middle">ANALYZE</text>
+
+    <rect x="104" y="256" width="92" height="56" rx="6" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <text x="150" y="282" fill="#4caf50" font-size="20" font-weight="700" text-anchor="middle">1.28</text>
+    <text x="150" y="300" fill="#a0a0b0" font-size="10" text-anchor="middle">RATING 2.1</text>
+    <rect x="208" y="256" width="92" height="56" rx="6" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <text x="254" y="282" fill="#dcdcdc" font-size="20" font-weight="700" text-anchor="middle">64%</text>
+    <text x="254" y="300" fill="#a0a0b0" font-size="10" text-anchor="middle">HS %</text>
+    <rect x="312" y="256" width="92" height="56" rx="6" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <text x="358" y="282" fill="#00ccff" font-size="20" font-weight="700" text-anchor="middle">82.4</text>
+    <text x="358" y="300" fill="#a0a0b0" font-size="10" text-anchor="middle">ADR</text>
+
+    <g transform="translate(104 328)">
+      <rect width="300" height="62" rx="6" fill="#1a1a2e" stroke="#3a3a5a"/>
+      <circle cx="38" cy="31" r="22" fill="none" stroke="#0f0f2e" stroke-width="5"/>
+      <circle cx="38" cy="31" r="22" fill="none" stroke="#d96600" stroke-width="5" stroke-linecap="round"
+              stroke-dasharray="100.96 37.33" transform="rotate(-90 38 31) scale(1 -1) translate(0 -62)"/>
+      <text x="38" y="35" fill="#dcdcdc" font-size="11" font-weight="700" text-anchor="middle">73%</text>
+      <text x="72" y="28" fill="#dcdcdc" font-size="11" font-weight="700">Belief</text>
+      <text x="72" y="44" fill="#a0a0b0" font-size="10">Positioning · Mirage</text>
+      <text x="72" y="56" fill="#3a3a5a" font-size="9" font-family="'JetBrains Mono', monospace">ProgressRing thick=5</text>
+    </g>
+
+    <text x="16" y="432" fill="#3a3a5a" font-size="10" font-family="'JetBrains Mono', monospace" letter-spacing="1.2">TOKENS</text>
+    <g font-size="10" font-family="'JetBrains Mono', monospace">
+      <rect x="16" y="444" width="16" height="16" rx="2" fill="#14141e" stroke="#3a3a5a"/>
+      <text x="38" y="456" fill="#a0a0b0">surface_base</text><text x="160" y="456" fill="#dcdcdc" text-anchor="end">#14141e</text>
+      <rect x="168" y="444" width="16" height="16" rx="2" fill="#1a1a2e"/>
+      <text x="190" y="456" fill="#a0a0b0">raised</text><text x="288" y="456" fill="#dcdcdc" text-anchor="end">#1a1a2e</text>
+      <rect x="296" y="444" width="16" height="16" rx="2" fill="#0f0f2e"/>
+      <text x="318" y="456" fill="#a0a0b0">sunken</text><text x="404" y="456" fill="#dcdcdc" text-anchor="end">#0f0f2e</text>
+
+      <rect x="16" y="466" width="16" height="16" rx="2" fill="#d96600"/>
+      <text x="38" y="478" fill="#a0a0b0">accent_primary</text><text x="160" y="478" fill="#dcdcdc" text-anchor="end">#d96600</text>
+      <rect x="168" y="466" width="16" height="16" rx="2" fill="#e67a1a"/>
+      <text x="190" y="478" fill="#a0a0b0">hover</text><text x="288" y="478" fill="#dcdcdc" text-anchor="end">#e67a1a</text>
+      <rect x="296" y="466" width="16" height="16" rx="2" fill="#b85500"/>
+      <text x="318" y="478" fill="#a0a0b0">pressed</text><text x="404" y="478" fill="#dcdcdc" text-anchor="end">#b85500</text>
+
+      <rect x="16" y="488" width="16" height="16" rx="2" fill="#dcdcdc"/>
+      <text x="38" y="500" fill="#a0a0b0">text_primary</text><text x="160" y="500" fill="#dcdcdc" text-anchor="end">#dcdcdc</text>
+      <rect x="168" y="488" width="16" height="16" rx="2" fill="#a0a0b0"/>
+      <text x="190" y="500" fill="#a0a0b0">secondary</text><text x="288" y="500" fill="#dcdcdc" text-anchor="end">#a0a0b0</text>
+      <rect x="296" y="488" width="16" height="16" rx="2" fill="#3a3a5a"/>
+      <text x="318" y="500" fill="#a0a0b0">tertiary</text><text x="404" y="500" fill="#dcdcdc" text-anchor="end">#3a3a5a</text>
+
+      <rect x="16" y="510" width="16" height="16" rx="2" fill="#4caf50"/>
+      <text x="38" y="522" fill="#a0a0b0">success</text><text x="160" y="522" fill="#dcdcdc" text-anchor="end">#4caf50</text>
+      <rect x="168" y="510" width="16" height="16" rx="2" fill="#ffaa00"/>
+      <text x="190" y="522" fill="#a0a0b0">warning</text><text x="288" y="522" fill="#dcdcdc" text-anchor="end">#ffaa00</text>
+      <rect x="296" y="510" width="16" height="16" rx="2" fill="#ff4444"/>
+      <text x="318" y="522" fill="#a0a0b0">error</text><text x="404" y="522" fill="#dcdcdc" text-anchor="end">#ff4444</text>
+
+      <rect x="16" y="532" width="16" height="16" rx="2" fill="#00ccff"/>
+      <text x="38" y="544" fill="#a0a0b0">chart_primary</text><text x="160" y="544" fill="#dcdcdc" text-anchor="end">#00ccff</text>
+      <rect x="168" y="532" width="16" height="16" rx="2" fill="#ffaa00"/>
+      <text x="190" y="544" fill="#a0a0b0">secondary</text><text x="288" y="544" fill="#dcdcdc" text-anchor="end">#ffaa00</text>
+      <rect x="296" y="532" width="16" height="16" rx="2" fill="#1a1a1a"/>
+      <text x="318" y="544" fill="#a0a0b0">chart_bg</text><text x="404" y="544" fill="#dcdcdc" text-anchor="end">#1a1a1a</text>
+    </g>
+
+    <text x="16" y="580" fill="#3a3a5a" font-size="10" font-family="'JetBrains Mono', monospace" letter-spacing="1.2">TOAST BORDERS</text>
+    <rect x="16" y="592" width="388" height="24" rx="4" fill="rgba(30,60,90,0.9)" stroke="#4a9eff"/>
+    <text x="24" y="608" fill="#dcdcdc" font-size="10">ℹ  Analysis started · demo_0412.dem</text>
+    <rect x="16" y="622" width="388" height="24" rx="4" fill="rgba(80,60,10,0.9)" stroke="#ffaa00"/>
+    <text x="24" y="638" fill="#dcdcdc" font-size="10">⚠  Tick drift detected (0.3%)</text>
+    <rect x="16" y="652" width="388" height="24" rx="4" fill="rgba(80,20,20,0.9)" stroke="#ff4444"/>
+    <text x="24" y="668" fill="#dcdcdc" font-size="10">✖  DataQualityError · NaN rate &gt; 5%</text>
+
+    <text x="16" y="700" fill="#3a3a5a" font-size="10" font-family="'JetBrains Mono', monospace">theme_engine.py:apply_theme("CS2")</text>
+  </g>
+
+  <!-- Column 2: CSGO -->
+  <g transform="translate(510 120)">
+    <rect width="420" height="720" rx="12" fill="#1a1c21" stroke="#3a3e48" stroke-width="1"/>
+    <rect x="16" y="16" width="80" height="22" rx="11" fill="#3a3e48"/>
+    <text x="56" y="31" fill="#a0a8b0" font-size="11" font-weight="700" text-anchor="middle">THEME</text>
+    <text x="16" y="64" fill="#dcdcdc" font-size="20" font-weight="700">CSGO</text>
+    <text x="16" y="82" fill="#a0a8b0" font-size="11">accent #617d8c · slate-blue</text>
+
+    <rect x="16" y="100" width="72" height="300" rx="6" fill="#141a24" stroke="#3a3e48" stroke-width="1"/>
+    <rect x="20" y="108" width="64" height="28" rx="4" fill="rgba(97,125,140,0.25)" stroke="#617d8c" stroke-width="1"/>
+    <circle cx="34" cy="122" r="4" fill="none" stroke="#617d8c" stroke-width="1.2"/>
+    <rect x="44" y="118" width="36" height="3" rx="1.5" fill="#617d8c"/>
+    <rect x="44" y="125" width="28" height="2" rx="1" fill="rgba(97,125,140,0.6)"/>
+    <g fill="none" stroke="#a0a8b0" stroke-width="1.1" opacity="0.8">
+      <rect x="20" y="144" width="64" height="24" rx="4"/>
+      <rect x="20" y="172" width="64" height="24" rx="4"/>
+      <rect x="20" y="200" width="64" height="24" rx="4"/>
+      <rect x="20" y="228" width="64" height="24" rx="4"/>
+    </g>
+
+    <rect x="104" y="100" width="300" height="140" rx="8" fill="#1c1e24" stroke="#3a3e48" stroke-width="1"/>
+    <text x="120" y="124" fill="#dcdcdc" font-size="14" font-weight="700">Demo Analysis</text>
+    <text x="120" y="142" fill="#a0a8b0" font-size="11">Drop demo / paste path</text>
+    <rect x="120" y="156" width="268" height="38" rx="4" fill="#141a24" stroke="#3a3e48" stroke-width="1"/>
+    <text x="132" y="179" fill="#3a3e48" font-size="11">Path to .dem file…</text>
+    <rect x="120" y="204" width="104" height="28" rx="4" fill="#617d8c"/>
+    <text x="172" y="223" fill="#ffffff" font-size="11" font-weight="700" text-anchor="middle">ANALYZE</text>
+
+    <rect x="104" y="256" width="92" height="56" rx="6" fill="#1c1e24" stroke="#3a3e48"/>
+    <text x="150" y="282" fill="#4caf50" font-size="20" font-weight="700" text-anchor="middle">1.28</text>
+    <text x="150" y="300" fill="#a0a8b0" font-size="10" text-anchor="middle">RATING 2.1</text>
+    <rect x="208" y="256" width="92" height="56" rx="6" fill="#1c1e24" stroke="#3a3e48"/>
+    <text x="254" y="282" fill="#dcdcdc" font-size="20" font-weight="700" text-anchor="middle">64%</text>
+    <text x="254" y="300" fill="#a0a8b0" font-size="10" text-anchor="middle">HS %</text>
+    <rect x="312" y="256" width="92" height="56" rx="6" fill="#1c1e24" stroke="#3a3e48"/>
+    <text x="358" y="282" fill="#00ccff" font-size="20" font-weight="700" text-anchor="middle">82.4</text>
+    <text x="358" y="300" fill="#a0a8b0" font-size="10" text-anchor="middle">ADR</text>
+
+    <g transform="translate(104 328)">
+      <rect width="300" height="62" rx="6" fill="#1c1e24" stroke="#3a3e48"/>
+      <circle cx="38" cy="31" r="22" fill="none" stroke="#141a24" stroke-width="5"/>
+      <circle cx="38" cy="31" r="22" fill="none" stroke="#617d8c" stroke-width="5" stroke-linecap="round"
+              stroke-dasharray="100.96 37.33" transform="rotate(-90 38 31) scale(1 -1) translate(0 -62)"/>
+      <text x="38" y="35" fill="#dcdcdc" font-size="11" font-weight="700" text-anchor="middle">73%</text>
+      <text x="72" y="28" fill="#dcdcdc" font-size="11" font-weight="700">Belief</text>
+      <text x="72" y="44" fill="#a0a8b0" font-size="10">Positioning · Mirage</text>
+      <text x="72" y="56" fill="#3a3e48" font-size="9" font-family="'JetBrains Mono', monospace">ProgressRing thick=5</text>
+    </g>
+
+    <text x="16" y="432" fill="#3a3e48" font-size="10" font-family="'JetBrains Mono', monospace" letter-spacing="1.2">TOKENS</text>
+    <g font-size="10" font-family="'JetBrains Mono', monospace">
+      <rect x="16" y="444" width="16" height="16" rx="2" fill="#1a1c21" stroke="#3a3e48"/>
+      <text x="38" y="456" fill="#a0a8b0">surface_base</text><text x="160" y="456" fill="#dcdcdc" text-anchor="end">#1a1c21</text>
+      <rect x="168" y="444" width="16" height="16" rx="2" fill="#1c1e24"/>
+      <text x="190" y="456" fill="#a0a8b0">raised</text><text x="288" y="456" fill="#dcdcdc" text-anchor="end">#1c1e24</text>
+      <rect x="296" y="444" width="16" height="16" rx="2" fill="#141a24"/>
+      <text x="318" y="456" fill="#a0a8b0">sunken</text><text x="404" y="456" fill="#dcdcdc" text-anchor="end">#141a24</text>
+
+      <rect x="16" y="466" width="16" height="16" rx="2" fill="#617d8c"/>
+      <text x="38" y="478" fill="#a0a8b0">accent_primary</text><text x="160" y="478" fill="#dcdcdc" text-anchor="end">#617d8c</text>
+      <rect x="168" y="466" width="16" height="16" rx="2" fill="#7a96a5"/>
+      <text x="190" y="478" fill="#a0a8b0">hover</text><text x="288" y="478" fill="#dcdcdc" text-anchor="end">#7a96a5</text>
+      <rect x="296" y="466" width="16" height="16" rx="2" fill="#4e6a78"/>
+      <text x="318" y="478" fill="#a0a8b0">pressed</text><text x="404" y="478" fill="#dcdcdc" text-anchor="end">#4e6a78</text>
+
+      <rect x="16" y="488" width="16" height="16" rx="2" fill="#dcdcdc"/>
+      <text x="38" y="500" fill="#a0a8b0">text_primary</text><text x="160" y="500" fill="#dcdcdc" text-anchor="end">#dcdcdc</text>
+      <rect x="168" y="488" width="16" height="16" rx="2" fill="#a0a8b0"/>
+      <text x="190" y="500" fill="#a0a8b0">secondary</text><text x="288" y="500" fill="#dcdcdc" text-anchor="end">#a0a8b0</text>
+      <rect x="296" y="488" width="16" height="16" rx="2" fill="#3a3e48"/>
+      <text x="318" y="500" fill="#a0a8b0">tertiary</text><text x="404" y="500" fill="#dcdcdc" text-anchor="end">#3a3e48</text>
+
+      <rect x="16" y="510" width="16" height="16" rx="2" fill="#4caf50"/>
+      <text x="38" y="522" fill="#a0a8b0">success</text><text x="160" y="522" fill="#dcdcdc" text-anchor="end">#4caf50</text>
+      <rect x="168" y="510" width="16" height="16" rx="2" fill="#c8a030"/>
+      <text x="190" y="522" fill="#a0a8b0">warning</text><text x="288" y="522" fill="#dcdcdc" text-anchor="end">#c8a030</text>
+      <rect x="296" y="510" width="16" height="16" rx="2" fill="#cc4444"/>
+      <text x="318" y="522" fill="#a0a8b0">error</text><text x="404" y="522" fill="#dcdcdc" text-anchor="end">#cc4444</text>
+
+      <rect x="16" y="532" width="16" height="16" rx="2" fill="#00ccff"/>
+      <text x="38" y="544" fill="#a0a8b0">chart_primary</text><text x="160" y="544" fill="#dcdcdc" text-anchor="end">#00ccff</text>
+      <rect x="168" y="532" width="16" height="16" rx="2" fill="#c8a030"/>
+      <text x="190" y="544" fill="#a0a8b0">secondary</text><text x="288" y="544" fill="#dcdcdc" text-anchor="end">#c8a030</text>
+      <rect x="296" y="532" width="16" height="16" rx="2" fill="#1c1e20"/>
+      <text x="318" y="544" fill="#a0a8b0">chart_bg</text><text x="404" y="544" fill="#dcdcdc" text-anchor="end">#1c1e20</text>
+    </g>
+
+    <text x="16" y="580" fill="#3a3e48" font-size="10" font-family="'JetBrains Mono', monospace" letter-spacing="1.2">TOAST BORDERS</text>
+    <rect x="16" y="592" width="388" height="24" rx="4" fill="rgba(26,40,60,0.9)" stroke="#617d8c"/>
+    <text x="24" y="608" fill="#dcdcdc" font-size="10">ℹ  Analysis started · demo_0412.dem</text>
+    <rect x="16" y="622" width="388" height="24" rx="4" fill="rgba(60,50,20,0.9)" stroke="#c8a030"/>
+    <text x="24" y="638" fill="#dcdcdc" font-size="10">⚠  Tick drift detected (0.3%)</text>
+    <rect x="16" y="652" width="388" height="24" rx="4" fill="rgba(70,20,20,0.9)" stroke="#cc4444"/>
+    <text x="24" y="668" fill="#dcdcdc" font-size="10">✖  DataQualityError · NaN rate &gt; 5%</text>
+
+    <text x="16" y="700" fill="#3a3e48" font-size="10" font-family="'JetBrains Mono', monospace">theme_engine.py:apply_theme("CSGO")</text>
+  </g>
+
+  <!-- Column 3: CS1.6 -->
+  <g transform="translate(960 120)">
+    <rect width="420" height="720" rx="12" fill="#121a12" stroke="#2a3e2a" stroke-width="1"/>
+    <rect x="16" y="16" width="80" height="22" rx="11" fill="#2a3e2a"/>
+    <text x="56" y="31" fill="#80a080" font-size="11" font-weight="700" text-anchor="middle">THEME</text>
+    <text x="16" y="64" fill="#dcdcdc" font-size="20" font-weight="700">CS1.6</text>
+    <text x="16" y="82" fill="#80a080" font-size="11">accent #4db04f · retro green</text>
+
+    <rect x="16" y="100" width="72" height="300" rx="6" fill="#0d2414" stroke="#2a3e2a" stroke-width="1"/>
+    <rect x="20" y="108" width="64" height="28" rx="4" fill="rgba(77,176,79,0.25)" stroke="#4db04f" stroke-width="1"/>
+    <circle cx="34" cy="122" r="4" fill="none" stroke="#4db04f" stroke-width="1.2"/>
+    <rect x="44" y="118" width="36" height="3" rx="1.5" fill="#4db04f"/>
+    <rect x="44" y="125" width="28" height="2" rx="1" fill="rgba(77,176,79,0.6)"/>
+    <g fill="none" stroke="#80a080" stroke-width="1.1" opacity="0.8">
+      <rect x="20" y="144" width="64" height="24" rx="4"/>
+      <rect x="20" y="172" width="64" height="24" rx="4"/>
+      <rect x="20" y="200" width="64" height="24" rx="4"/>
+      <rect x="20" y="228" width="64" height="24" rx="4"/>
+    </g>
+
+    <rect x="104" y="100" width="300" height="140" rx="8" fill="#182418" stroke="#2a3e2a" stroke-width="1"/>
+    <text x="120" y="124" fill="#dcdcdc" font-size="14" font-weight="700">Demo Analysis</text>
+    <text x="120" y="142" fill="#80a080" font-size="11">Drop demo / paste path</text>
+    <rect x="120" y="156" width="268" height="38" rx="4" fill="#0d2414" stroke="#2a3e2a" stroke-width="1"/>
+    <text x="132" y="179" fill="#2a3e2a" font-size="11">Path to .dem file…</text>
+    <rect x="120" y="204" width="104" height="28" rx="4" fill="#4db04f"/>
+    <text x="172" y="223" fill="#ffffff" font-size="11" font-weight="700" text-anchor="middle">ANALYZE</text>
+
+    <rect x="104" y="256" width="92" height="56" rx="6" fill="#182418" stroke="#2a3e2a"/>
+    <text x="150" y="282" fill="#4db04f" font-size="20" font-weight="700" text-anchor="middle">1.28</text>
+    <text x="150" y="300" fill="#80a080" font-size="10" text-anchor="middle">RATING 2.1</text>
+    <rect x="208" y="256" width="92" height="56" rx="6" fill="#182418" stroke="#2a3e2a"/>
+    <text x="254" y="282" fill="#dcdcdc" font-size="20" font-weight="700" text-anchor="middle">64%</text>
+    <text x="254" y="300" fill="#80a080" font-size="10" text-anchor="middle">HS %</text>
+    <rect x="312" y="256" width="92" height="56" rx="6" fill="#182418" stroke="#2a3e2a"/>
+    <text x="358" y="282" fill="#00ccff" font-size="20" font-weight="700" text-anchor="middle">82.4</text>
+    <text x="358" y="300" fill="#80a080" font-size="10" text-anchor="middle">ADR</text>
+
+    <g transform="translate(104 328)">
+      <rect width="300" height="62" rx="6" fill="#182418" stroke="#2a3e2a"/>
+      <circle cx="38" cy="31" r="22" fill="none" stroke="#0d2414" stroke-width="5"/>
+      <circle cx="38" cy="31" r="22" fill="none" stroke="#4db04f" stroke-width="5" stroke-linecap="round"
+              stroke-dasharray="100.96 37.33" transform="rotate(-90 38 31) scale(1 -1) translate(0 -62)"/>
+      <text x="38" y="35" fill="#dcdcdc" font-size="11" font-weight="700" text-anchor="middle">73%</text>
+      <text x="72" y="28" fill="#dcdcdc" font-size="11" font-weight="700">Belief</text>
+      <text x="72" y="44" fill="#80a080" font-size="10">Positioning · Mirage</text>
+      <text x="72" y="56" fill="#2a3e2a" font-size="9" font-family="'JetBrains Mono', monospace">ProgressRing thick=5</text>
+    </g>
+
+    <text x="16" y="432" fill="#2a3e2a" font-size="10" font-family="'JetBrains Mono', monospace" letter-spacing="1.2">TOKENS</text>
+    <g font-size="10" font-family="'JetBrains Mono', monospace">
+      <rect x="16" y="444" width="16" height="16" rx="2" fill="#121a12" stroke="#2a3e2a"/>
+      <text x="38" y="456" fill="#80a080">surface_base</text><text x="160" y="456" fill="#dcdcdc" text-anchor="end">#121a12</text>
+      <rect x="168" y="444" width="16" height="16" rx="2" fill="#182418"/>
+      <text x="190" y="456" fill="#80a080">raised</text><text x="288" y="456" fill="#dcdcdc" text-anchor="end">#182418</text>
+      <rect x="296" y="444" width="16" height="16" rx="2" fill="#0d2414"/>
+      <text x="318" y="456" fill="#80a080">sunken</text><text x="404" y="456" fill="#dcdcdc" text-anchor="end">#0d2414</text>
+
+      <rect x="16" y="466" width="16" height="16" rx="2" fill="#4db04f"/>
+      <text x="38" y="478" fill="#80a080">accent_primary</text><text x="160" y="478" fill="#dcdcdc" text-anchor="end">#4db04f</text>
+      <rect x="168" y="466" width="16" height="16" rx="2" fill="#66c268"/>
+      <text x="190" y="478" fill="#80a080">hover</text><text x="288" y="478" fill="#dcdcdc" text-anchor="end">#66c268</text>
+      <rect x="296" y="466" width="16" height="16" rx="2" fill="#3d9040"/>
+      <text x="318" y="478" fill="#80a080">pressed</text><text x="404" y="478" fill="#dcdcdc" text-anchor="end">#3d9040</text>
+
+      <rect x="16" y="488" width="16" height="16" rx="2" fill="#dcdcdc"/>
+      <text x="38" y="500" fill="#80a080">text_primary</text><text x="160" y="500" fill="#dcdcdc" text-anchor="end">#dcdcdc</text>
+      <rect x="168" y="488" width="16" height="16" rx="2" fill="#80a080"/>
+      <text x="190" y="500" fill="#80a080">secondary</text><text x="288" y="500" fill="#dcdcdc" text-anchor="end">#80a080</text>
+      <rect x="296" y="488" width="16" height="16" rx="2" fill="#2a3e2a"/>
+      <text x="318" y="500" fill="#80a080">tertiary</text><text x="404" y="500" fill="#dcdcdc" text-anchor="end">#2a3e2a</text>
+
+      <rect x="16" y="510" width="16" height="16" rx="2" fill="#4db04f"/>
+      <text x="38" y="522" fill="#80a080">success</text><text x="160" y="522" fill="#dcdcdc" text-anchor="end">#4db04f</text>
+      <rect x="168" y="510" width="16" height="16" rx="2" fill="#b8a030"/>
+      <text x="190" y="522" fill="#80a080">warning</text><text x="288" y="522" fill="#dcdcdc" text-anchor="end">#b8a030</text>
+      <rect x="296" y="510" width="16" height="16" rx="2" fill="#cc3333"/>
+      <text x="318" y="522" fill="#80a080">error</text><text x="404" y="522" fill="#dcdcdc" text-anchor="end">#cc3333</text>
+
+      <rect x="16" y="532" width="16" height="16" rx="2" fill="#00ccff"/>
+      <text x="38" y="544" fill="#80a080">chart_primary</text><text x="160" y="544" fill="#dcdcdc" text-anchor="end">#00ccff</text>
+      <rect x="168" y="532" width="16" height="16" rx="2" fill="#b8a030"/>
+      <text x="190" y="544" fill="#80a080">secondary</text><text x="288" y="544" fill="#dcdcdc" text-anchor="end">#b8a030</text>
+      <rect x="296" y="532" width="16" height="16" rx="2" fill="#181e18"/>
+      <text x="318" y="544" fill="#80a080">chart_bg</text><text x="404" y="544" fill="#dcdcdc" text-anchor="end">#181e18</text>
+    </g>
+
+    <text x="16" y="580" fill="#2a3e2a" font-size="10" font-family="'JetBrains Mono', monospace" letter-spacing="1.2">TOAST BORDERS</text>
+    <rect x="16" y="592" width="388" height="24" rx="4" fill="rgba(18,36,28,0.9)" stroke="#4db04f"/>
+    <text x="24" y="608" fill="#dcdcdc" font-size="10">ℹ  Analysis started · demo_0412.dem</text>
+    <rect x="16" y="622" width="388" height="24" rx="4" fill="rgba(50,45,15,0.9)" stroke="#b8a030"/>
+    <text x="24" y="638" fill="#dcdcdc" font-size="10">⚠  Tick drift detected (0.3%)</text>
+    <rect x="16" y="652" width="388" height="24" rx="4" fill="rgba(60,18,18,0.9)" stroke="#cc3333"/>
+    <text x="24" y="668" fill="#dcdcdc" font-size="10">✖  DataQualityError · NaN rate &gt; 5%</text>
+
+    <text x="16" y="700" fill="#2a3e2a" font-size="10" font-family="'JetBrains Mono', monospace">theme_engine.py:apply_theme("CS1.6")</text>
+  </g>
+
+  <text x="720" y="884" fill="#3a3a5a" font-size="10" font-family="'JetBrains Mono', monospace" text-anchor="middle">Three themes, one structural contract · DesignTokens(frozen=True) · get_tokens() → single source</text>
+</svg>

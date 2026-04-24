@@ -1,0 +1,278 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Roboto, Inter, system-ui, sans-serif">
+  <rect width="1440" height="900" fill="#14141e"></rect>
+
+  <g transform="translate(60,44)">
+    <text fill="#d96600" font-size="10" letter-spacing="4" font-weight="700">DESIGN SYSTEM · FRAME 31</text>
+    <text y="32" fill="#dcdcdc" font-size="24" font-weight="700">Token System — CS2 theme · colors, spacing, radius, typography</text>
+    <text y="54" fill="#a0a0b0" font-size="12">Single source: design_tokens.py · CS2_TOKENS @dataclass(frozen=True) · get_tokens()</text>
+  </g>
+
+
+  <g transform="translate(60,130)">
+    <text fill="#a0a0b0" font-size="11" letter-spacing="3" font-weight="700">SURFACES · 4-LAYER DEPTH</text>
+  </g>
+
+  <g transform="translate(60,152)">
+    <g>
+      <rect width="160" height="80" rx="6" fill="#14141e" stroke="#3a3a5a"></rect>
+      <rect width="160" height="28" rx="6" fill="#0f0f2e"></rect>
+      <text x="12" y="19" fill="#dcdcdc" font-size="11" font-weight="700">surface_base</text>
+      <text x="12" y="52" fill="#a0a0b0" font-size="11" font-family="JetBrains Mono, monospace">#14141e</text>
+      <text x="12" y="70" fill="#5a5a8a" font-size="10">QMainWindow bg</text>
+    </g>
+    <g transform="translate(168,0)">
+      <rect width="160" height="80" rx="6" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <rect width="160" height="28" rx="6" fill="#0f0f2e"></rect>
+      <text x="12" y="19" fill="#dcdcdc" font-size="11" font-weight="700">surface_raised</text>
+      <text x="12" y="52" fill="#a0a0b0" font-size="11" font-family="JetBrains Mono, monospace">#1a1a2e</text>
+      <text x="12" y="70" fill="#5a5a8a" font-size="10">cards, panels</text>
+    </g>
+    <g transform="translate(336,0)">
+      <rect width="160" height="80" rx="6" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <rect width="160" height="28" rx="6" fill="#0f0f2e"></rect>
+      <text x="12" y="19" fill="#dcdcdc" font-size="11" font-weight="700">surface_overlay</text>
+      <text x="12" y="52" fill="#a0a0b0" font-size="11" font-family="JetBrains Mono, monospace">#1a1a2e</text>
+      <text x="12" y="70" fill="#5a5a8a" font-size="10">tooltips, dropdowns</text>
+    </g>
+    <g transform="translate(504,0)">
+      <rect width="160" height="80" rx="6" fill="#0f0f2e" stroke="#3a3a5a"></rect>
+      <rect width="160" height="28" rx="6" fill="#0f0f2e"></rect>
+      <text x="12" y="19" fill="#dcdcdc" font-size="11" font-weight="700">surface_sunken</text>
+      <text x="12" y="52" fill="#a0a0b0" font-size="11" font-family="JetBrains Mono, monospace">#0f0f2e</text>
+      <text x="12" y="70" fill="#5a5a8a" font-size="10">inputs, wells</text>
+    </g>
+    <g transform="translate(672,0)">
+      <rect width="160" height="80" rx="6" fill="#0f0f2e" stroke="#3a3a5a"></rect>
+      <rect width="160" height="28" rx="6" fill="#0f0f2e"></rect>
+      <text x="12" y="19" fill="#dcdcdc" font-size="11" font-weight="700">surface_sidebar</text>
+      <text x="12" y="52" fill="#a0a0b0" font-size="11" font-family="JetBrains Mono, monospace">#0f0f2e</text>
+      <text x="12" y="70" fill="#5a5a8a" font-size="10">left navigation</text>
+    </g>
+  </g>
+
+
+  <g transform="translate(60,262)">
+    <text fill="#a0a0b0" font-size="11" letter-spacing="3" font-weight="700">ACCENT  (CS2 orange — the brand color)</text>
+  </g>
+  <g transform="translate(60,284)">
+    <g>
+      <rect width="160" height="80" rx="6" fill="#d96600"></rect>
+      <text x="12" y="22" fill="#14141e" font-size="11" font-weight="700">accent_primary</text>
+      <text x="12" y="48" fill="#14141e" font-size="11" font-family="JetBrains Mono, monospace">#d96600</text>
+      <text x="12" y="66" fill="#14141e" font-size="10">main CTA · active state</text>
+    </g>
+    <g transform="translate(168,0)">
+      <rect width="160" height="80" rx="6" fill="#e67a1a"></rect>
+      <text x="12" y="22" fill="#14141e" font-size="11" font-weight="700">accent_hover</text>
+      <text x="12" y="48" fill="#14141e" font-size="11" font-family="JetBrains Mono, monospace">#e67a1a</text>
+      <text x="12" y="66" fill="#14141e" font-size="10">hover lightness +5%</text>
+    </g>
+    <g transform="translate(336,0)">
+      <rect width="160" height="80" rx="6" fill="#b85500"></rect>
+      <text x="12" y="22" fill="#14141e" font-size="11" font-weight="700">accent_pressed</text>
+      <text x="12" y="48" fill="#14141e" font-size="11" font-family="JetBrains Mono, monospace">#b85500</text>
+      <text x="12" y="66" fill="#14141e" font-size="10">pressed darkness −10%</text>
+    </g>
+    <g transform="translate(504,0)">
+      <rect width="160" height="80" rx="6" fill="#14141e" stroke="#d96600"></rect>
+      <rect width="160" height="80" rx="6" fill="rgba(217,102,0,0.15)"></rect>
+      <text x="12" y="22" fill="#d96600" font-size="11" font-weight="700">accent_muted_15</text>
+      <text x="12" y="48" fill="#d96600" font-size="11" font-family="JetBrains Mono, monospace">rgba(…, 0.15)</text>
+      <text x="12" y="66" fill="#a0a0b0" font-size="10">nav hover bg</text>
+    </g>
+    <g transform="translate(672,0)">
+      <rect width="160" height="80" rx="6" fill="#14141e" stroke="#d96600"></rect>
+      <rect width="160" height="80" rx="6" fill="rgba(217,102,0,0.25)"></rect>
+      <text x="12" y="22" fill="#d96600" font-size="11" font-weight="700">accent_muted_25</text>
+      <text x="12" y="48" fill="#d96600" font-size="11" font-family="JetBrains Mono, monospace">rgba(…, 0.25)</text>
+      <text x="12" y="66" fill="#a0a0b0" font-size="10">nav active bg</text>
+    </g>
+  </g>
+
+
+  <g transform="translate(60,394)">
+    <text fill="#a0a0b0" font-size="11" letter-spacing="3" font-weight="700">TEXT HIERARCHY · 5 LEVELS</text>
+  </g>
+  <g transform="translate(60,416)">
+    <g>
+      <rect width="160" height="80" rx="6" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <text x="12" y="22" fill="#dcdcdc" font-size="11" font-weight="700">text_primary</text>
+      <text x="12" y="48" fill="#dcdcdc" font-size="18" font-weight="700">Aa</text>
+      <text x="42" y="48" fill="#dcdcdc" font-size="11" font-family="JetBrains Mono, monospace">#dcdcdc</text>
+      <text x="12" y="66" fill="#5a5a8a" font-size="10">headings</text>
+    </g>
+    <g transform="translate(168,0)">
+      <rect width="160" height="80" rx="6" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <text x="12" y="22" fill="#a0a0b0" font-size="11" font-weight="700">text_secondary</text>
+      <text x="12" y="48" fill="#a0a0b0" font-size="18" font-weight="700">Aa</text>
+      <text x="42" y="48" fill="#a0a0b0" font-size="11" font-family="JetBrains Mono, monospace">#a0a0b0</text>
+      <text x="12" y="66" fill="#5a5a8a" font-size="10">body, descriptions</text>
+    </g>
+    <g transform="translate(336,0)">
+      <rect width="160" height="80" rx="6" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <text x="12" y="22" fill="#3a3a5a" font-size="11" font-weight="700">text_tertiary</text>
+      <text x="12" y="48" fill="#3a3a5a" font-size="18" font-weight="700">Aa</text>
+      <text x="42" y="48" fill="#3a3a5a" font-size="11" font-family="JetBrains Mono, monospace">#3a3a5a</text>
+      <text x="12" y="66" fill="#5a5a8a" font-size="10">metadata, file:line</text>
+    </g>
+    <g transform="translate(504,0)">
+      <rect width="160" height="80" rx="6" fill="#d96600"></rect>
+      <text x="12" y="22" fill="#ffffff" font-size="11" font-weight="700">text_inverse</text>
+      <text x="12" y="48" fill="#ffffff" font-size="18" font-weight="700">Aa</text>
+      <text x="42" y="48" fill="#ffffff" font-size="11" font-family="JetBrains Mono, monospace">#ffffff</text>
+      <text x="12" y="66" fill="rgba(255,255,255,0.8)" font-size="10">on accent bg</text>
+    </g>
+    <g transform="translate(672,0)">
+      <rect width="160" height="80" rx="6" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <text x="12" y="22" fill="#666666" font-size="11" font-weight="700">text_disabled</text>
+      <text x="12" y="48" fill="#666666" font-size="18" font-weight="700">Aa</text>
+      <text x="42" y="48" fill="#666666" font-size="11" font-family="JetBrains Mono, monospace">#666666</text>
+      <text x="12" y="66" fill="#5a5a8a" font-size="10">disabled controls</text>
+    </g>
+  </g>
+
+
+  <g transform="translate(60,526)">
+    <text fill="#a0a0b0" font-size="11" letter-spacing="3" font-weight="700">SEMANTIC · 4 states</text>
+  </g>
+  <g transform="translate(60,548)">
+    <g>
+      <rect width="190" height="80" rx="6" fill="#4caf50"></rect>
+      <text x="12" y="22" fill="#14141e" font-size="11" font-weight="700">success</text>
+      <text x="12" y="48" fill="#14141e" font-size="14" font-weight="700">✓</text>
+      <text x="40" y="48" fill="#14141e" font-size="11" font-family="JetBrains Mono, monospace">#4caf50</text>
+      <text x="12" y="66" fill="rgba(20,20,30,0.8)" font-size="10">rating good · service online</text>
+    </g>
+    <g transform="translate(198,0)">
+      <rect width="190" height="80" rx="6" fill="#ffaa00"></rect>
+      <text x="12" y="22" fill="#14141e" font-size="11" font-weight="700">warning</text>
+      <text x="12" y="48" fill="#14141e" font-size="14" font-weight="700">⚠</text>
+      <text x="40" y="48" fill="#14141e" font-size="11" font-family="JetBrains Mono, monospace">#ffaa00</text>
+      <text x="12" y="66" fill="rgba(20,20,30,0.8)" font-size="10">rating avg · parse pending</text>
+    </g>
+    <g transform="translate(396,0)">
+      <rect width="190" height="80" rx="6" fill="#ff4444"></rect>
+      <text x="12" y="22" fill="#ffffff" font-size="11" font-weight="700">error</text>
+      <text x="12" y="48" fill="#ffffff" font-size="14" font-weight="700">✖</text>
+      <text x="40" y="48" fill="#ffffff" font-size="11" font-family="JetBrains Mono, monospace">#ff4444</text>
+      <text x="12" y="66" fill="rgba(255,255,255,0.8)" font-size="10">rating bad · service down</text>
+    </g>
+    <g transform="translate(594,0)">
+      <rect width="190" height="80" rx="6" fill="#4a9eff"></rect>
+      <text x="12" y="22" fill="#14141e" font-size="11" font-weight="700">info</text>
+      <text x="12" y="48" fill="#14141e" font-size="14" font-weight="700">ℹ</text>
+      <text x="40" y="48" fill="#14141e" font-size="11" font-family="JetBrains Mono, monospace">#4a9eff</text>
+      <text x="12" y="66" fill="rgba(20,20,30,0.8)" font-size="10">neutral notices</text>
+    </g>
+  </g>
+
+
+  <g transform="translate(880,130)">
+    <text fill="#a0a0b0" font-size="11" letter-spacing="3" font-weight="700">SPACING · 4px grid</text>
+  </g>
+  <g transform="translate(880,152)">
+    <g><rect width="4" height="32" fill="#d96600"></rect><text x="10" y="14" fill="#dcdcdc" font-size="11" font-family="JetBrains Mono, monospace">xs</text><text x="40" y="14" fill="#a0a0b0" font-size="11">4 px</text></g>
+    <g transform="translate(0,36)"><rect width="8" height="32" fill="#d96600"></rect><text x="14" y="14" fill="#dcdcdc" font-size="11" font-family="JetBrains Mono, monospace">sm</text><text x="44" y="14" fill="#a0a0b0" font-size="11">8 px</text></g>
+    <g transform="translate(0,72)"><rect width="12" height="32" fill="#d96600"></rect><text x="18" y="14" fill="#dcdcdc" font-size="11" font-family="JetBrains Mono, monospace">md</text><text x="48" y="14" fill="#a0a0b0" font-size="11">12 px</text></g>
+    <g transform="translate(0,108)"><rect width="16" height="32" fill="#d96600"></rect><text x="22" y="14" fill="#dcdcdc" font-size="11" font-family="JetBrains Mono, monospace">lg</text><text x="52" y="14" fill="#a0a0b0" font-size="11">16 px</text></g>
+    <g transform="translate(0,144)"><rect width="24" height="32" fill="#d96600"></rect><text x="30" y="14" fill="#dcdcdc" font-size="11" font-family="JetBrains Mono, monospace">xl</text><text x="60" y="14" fill="#a0a0b0" font-size="11">24 px</text></g>
+    <g transform="translate(0,180)"><rect width="32" height="32" fill="#d96600"></rect><text x="38" y="14" fill="#dcdcdc" font-size="11" font-family="JetBrains Mono, monospace">xxl</text><text x="68" y="14" fill="#a0a0b0" font-size="11">32 px</text></g>
+    <g transform="translate(0,216)"><rect width="48" height="32" fill="#d96600"></rect><text x="54" y="14" fill="#dcdcdc" font-size="11" font-family="JetBrains Mono, monospace">xxxl</text><text x="92" y="14" fill="#a0a0b0" font-size="11">48 px</text></g>
+  </g>
+
+  <g transform="translate(1050,130)">
+    <text fill="#a0a0b0" font-size="11" letter-spacing="3" font-weight="700">RADIUS</text>
+  </g>
+  <g transform="translate(1050,152)">
+    <g>
+      <rect width="48" height="48" rx="4" fill="#1a1a2e" stroke="#d96600"></rect>
+      <text x="56" y="18" fill="#dcdcdc" font-size="11" font-family="JetBrains Mono, monospace">sm</text>
+      <text x="56" y="32" fill="#a0a0b0" font-size="11">4 px</text>
+    </g>
+    <g transform="translate(0,56)">
+      <rect width="48" height="48" rx="8" fill="#1a1a2e" stroke="#d96600"></rect>
+      <text x="56" y="18" fill="#dcdcdc" font-size="11" font-family="JetBrains Mono, monospace">md</text>
+      <text x="56" y="32" fill="#a0a0b0" font-size="11">8 px</text>
+    </g>
+    <g transform="translate(0,112)">
+      <rect width="48" height="48" rx="16" fill="#1a1a2e" stroke="#d96600"></rect>
+      <text x="56" y="18" fill="#dcdcdc" font-size="11" font-family="JetBrains Mono, monospace">lg</text>
+      <text x="56" y="32" fill="#a0a0b0" font-size="11">16 px</text>
+    </g>
+    <g transform="translate(0,168)">
+      <rect width="48" height="48" rx="24" fill="#1a1a2e" stroke="#d96600"></rect>
+      <text x="56" y="18" fill="#dcdcdc" font-size="11" font-family="JetBrains Mono, monospace">xl</text>
+      <text x="56" y="32" fill="#a0a0b0" font-size="11">24 px</text>
+    </g>
+  </g>
+
+  <g transform="translate(1220,130)">
+    <text fill="#a0a0b0" font-size="11" letter-spacing="3" font-weight="700">TYPE SCALE</text>
+  </g>
+  <g transform="translate(1220,152)">
+    <text x="0" y="14" fill="#a0a0b0" font-size="11">caption · 11</text>
+    <text x="0" y="36" fill="#a0a0b0" font-size="13">body · 13</text>
+    <text x="0" y="60" fill="#dcdcdc" font-size="14">subtitle · 14</text>
+    <text x="0" y="88" fill="#dcdcdc" font-size="18" font-weight="700">title · 18</text>
+    <text x="0" y="122" fill="#dcdcdc" font-size="24" font-weight="700">h1 · 24</text>
+    <text x="0" y="160" fill="#d96600" font-size="28" font-weight="700">stat · 28</text>
+  </g>
+
+
+  <g transform="translate(60,666)">
+    <text fill="#a0a0b0" font-size="11" letter-spacing="3" font-weight="700">BORDERS  ·  CHART PALETTE</text>
+  </g>
+
+  <g transform="translate(60,688)">
+    <g>
+      <rect width="180" height="52" rx="6" fill="#1a1a2e" stroke="rgba(255,255,255,0.05)"></rect>
+      <text x="12" y="22" fill="#dcdcdc" font-size="11" font-weight="700">border_subtle</text>
+      <text x="12" y="42" fill="#a0a0b0" font-size="10" font-family="JetBrains Mono, monospace">rgba(255,255,255,0.05)</text>
+    </g>
+    <g transform="translate(188,0)">
+      <rect width="180" height="52" rx="6" fill="#1a1a2e" stroke="#3a3a5a"></rect>
+      <text x="12" y="22" fill="#dcdcdc" font-size="11" font-weight="700">border_default</text>
+      <text x="12" y="42" fill="#a0a0b0" font-size="10" font-family="JetBrains Mono, monospace">#3a3a5a</text>
+    </g>
+    <g transform="translate(376,0)">
+      <rect width="180" height="52" rx="6" fill="#1a1a2e" stroke="rgba(217,102,0,0.3)"></rect>
+      <text x="12" y="22" fill="#dcdcdc" font-size="11" font-weight="700">border_accent_muted</text>
+      <text x="12" y="42" fill="#a0a0b0" font-size="10" font-family="JetBrains Mono, monospace">rgba(217,102,0,0.3)</text>
+    </g>
+  </g>
+
+
+  <g transform="translate(60,750)">
+    <g>
+      <rect width="120" height="48" rx="6" fill="#1a1a1a"></rect>
+      <text x="12" y="22" fill="#dcdcdc" font-size="11" font-weight="700">chart_bg</text>
+      <text x="12" y="42" fill="#a0a0b0" font-size="10" font-family="JetBrains Mono, monospace">#1a1a1a</text>
+    </g>
+    <g transform="translate(128,0)">
+      <rect width="120" height="48" rx="6" fill="#00ccff"></rect>
+      <text x="12" y="22" fill="#14141e" font-size="11" font-weight="700">line_primary</text>
+      <text x="12" y="42" fill="#14141e" font-size="10" font-family="JetBrains Mono, monospace">#00ccff</text>
+    </g>
+    <g transform="translate(256,0)">
+      <rect width="120" height="48" rx="6" fill="#ffaa00"></rect>
+      <text x="12" y="22" fill="#14141e" font-size="11" font-weight="700">line_secondary</text>
+      <text x="12" y="42" fill="#14141e" font-size="10" font-family="JetBrains Mono, monospace">#ffaa00</text>
+    </g>
+    <g transform="translate(384,0)">
+      <rect width="120" height="48" rx="6" fill="#4caf50"></rect>
+      <text x="12" y="22" fill="#14141e" font-size="11" font-weight="700">fill_positive</text>
+      <text x="12" y="42" fill="#14141e" font-size="10" font-family="JetBrains Mono, monospace">#4caf50</text>
+    </g>
+    <g transform="translate(512,0)">
+      <rect width="120" height="48" rx="6" fill="#ff4444"></rect>
+      <text x="12" y="22" fill="#ffffff" font-size="11" font-weight="700">fill_negative</text>
+      <text x="12" y="42" fill="#ffffff" font-size="10" font-family="JetBrains Mono, monospace">#ff4444</text>
+    </g>
+  </g>
+
+
+  <g transform="translate(60,836)">
+    <rect width="1320" height="40" rx="6" fill="#1a1a2e"></rect>
+    <text x="14" y="26" fill="#a0a0b0" font-size="11">All values frozen in <tspan fill="#dcdcdc" font-family="JetBrains Mono, monospace">CS2_TOKENS = DesignTokens(...)</tspan> · override with <tspan fill="#dcdcdc" font-family="JetBrains Mono, monospace">set_active_theme(&#34;CSGO&#34;)</tspan> or <tspan fill="#dcdcdc" font-family="JetBrains Mono, monospace">&#34;CS1.6&#34;</tspan></text>
+  </g>
+</svg>

@@ -40,6 +40,10 @@ class PerformanceScreen(QWidget):
         self._vm.data_changed.connect(self._on_data)
         self._vm.error_changed.connect(self._on_error)
         self._vm.is_loading_changed.connect(self._on_loading)
+        # Tracks the card widgets currently populating _content_layout so
+        # the reveal-stagger animation at the end of _on_data touches only
+        # live sections and not the trailing stretch item.
+        self._active_sections: list[Card] = []
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 16, 16, 16)
@@ -143,6 +147,19 @@ class PerformanceScreen(QWidget):
                 self._build_utility(utility, is_pro_overview)
             except Exception as e:
                 logger.error("Failed to build utility breakdown: %s", e)
+
+        # Stagger-reveal the sections now that they're all placed. Geometry
+        # animation so no QPainter/opacity effect fires mid-repaint.
+        if self._active_sections:
+            from Programma_CS2_RENAN.apps.qt_app.core.animation import Animator
+
+            Animator.reveal_stagger(
+                self._active_sections,
+                delay_ms=50,
+                duration=260,
+                distance_px=16,
+                direction="up",
+            )
 
     def _on_error(self, msg: str):
         if msg:
@@ -313,9 +330,16 @@ class PerformanceScreen(QWidget):
     # ── Helpers ──
 
     def _section(self, title: str) -> Card:
-        """Create a titled card section and add it to the content layout."""
-        card = Card(title=title)
+        """Create a titled raised-depth card section and add it to the content layout.
+
+        ``depth="raised"`` activates the QSS rule
+        ``QFrame#dashboard_card[depth="raised"]`` in the base template,
+        giving each section a 1px top highlight that distinguishes it
+        from the page background without the cost of a drop shadow.
+        """
+        card = Card(title=title, depth="raised")
         self._content_layout.insertWidget(self._content_layout.count() - 1, card)
+        self._active_sections.append(card)
         return card
 
     def _show_loading(self):
@@ -338,3 +362,4 @@ class PerformanceScreen(QWidget):
             if w:
                 w.setVisible(False)
                 w.setParent(None)  # Immediate detach, avoids GPU segfault from deleteLater()
+        self._active_sections.clear()

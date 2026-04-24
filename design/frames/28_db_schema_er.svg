@@ -1,0 +1,302 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Roboto, Inter, system-ui, sans-serif">
+  <defs>
+    <marker id="arG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#4caf50"/></marker>
+    <marker id="arB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#4a9eff"/></marker>
+  </defs>
+
+  <rect width="1440" height="900" fill="#14141e"/>
+
+  <g transform="translate(60,44)">
+    <text fill="#4caf50" font-size="10" letter-spacing="4" font-weight="700">STORAGE · FRAME 28</text>
+    <text y="32" fill="#dcdcdc" font-size="24" font-weight="700">Database Schema — 24 tables across 2 SQLite DBs</text>
+    <text y="54" fill="#a0a0b0" font-size="12">Main DB (user data + coaching) + HLTV DB (pro stats) · WAL mode · FK=ON · 14 Alembic migrations</text>
+  </g>
+
+  <!-- Two DB headers -->
+  <g transform="translate(60,110)">
+    <rect width="900" height="32" rx="6" fill="rgba(76,175,80,0.15)"/>
+    <text x="12" y="21" fill="#4caf50" font-size="10" letter-spacing="3" font-weight="700">MAIN DB · database.db</text>
+  </g>
+  <g transform="translate(980,110)">
+    <rect width="400" height="32" rx="6" fill="rgba(74,158,255,0.15)"/>
+    <text x="12" y="21" fill="#4a9eff" font-size="10" letter-spacing="3" font-weight="700">HLTV DB · hltv_metadata.db</text>
+  </g>
+
+  <!-- ═══ MAIN DB TABLES ═══ -->
+
+  <!-- PlayerMatchStats (central) -->
+  <g transform="translate(340,160)">
+    <rect width="340" height="280" rx="8" fill="#1a1a2e" stroke="#4caf50" stroke-width="2"/>
+    <rect width="340" height="32" rx="8" fill="#4caf50"/>
+    <text x="12" y="21" fill="#14141e" font-size="12" font-weight="700" font-family="JetBrains Mono, monospace">PlayerMatchStats</text>
+    <text x="328" y="21" text-anchor="end" fill="#14141e" font-size="10" font-family="JetBrains Mono, monospace">core</text>
+
+    <g transform="translate(12,48)" font-family="JetBrains Mono, monospace" font-size="11">
+      <text fill="#ffaa00" font-weight="700">PK  id</text>
+      <text y="16" fill="#a0a0b0">idx player_name  · TEXT</text>
+      <text y="32" fill="#a0a0b0">idx demo_name    · TEXT</text>
+      <text y="48" fill="#a0a0b0">idx match_date   · DATETIME</text>
+      <text y="64" fill="#a0a0b0">    dataset_split · ENUM(train/val/test)</text>
+      <text y="80" fill="#a0a0b0">    data_quality  · none/partial/complete</text>
+      <text y="96" fill="#a0a0b0">    avg_kills · avg_deaths · avg_adr · kast</text>
+      <text y="112" fill="#a0a0b0">    rating · kd_ratio · accuracy · avg_hs</text>
+      <text y="128" fill="#a0a0b0">    impact_rounds · sample_weight</text>
+      <text y="144" fill="#a0a0b0">    HLTV2.0: kpr · dpr · rating_impact/adr/kast</text>
+      <text y="160" fill="#a0a0b0">    trade_kill_ratio · was_traded_ratio</text>
+      <text y="176" fill="#a0a0b0">    thrusmoke/wallbang/noscope/blind_kill_%</text>
+      <text y="192" fill="#a0a0b0">    utility_blind_time · enemies_blinded</text>
+      <text y="208" fill="#a0a0b0">    he_damage_per_round · moly · smokes · flash</text>
+      <text y="224" fill="#d96600">fk  pro_player_id → ProPlayer (logical, no FK)</text>
+      <text y="240" fill="#ffaa00">UK  (demo_name, player_name)</text>
+    </g>
+  </g>
+
+  <!-- PlayerTickState -->
+  <g transform="translate(60,160)">
+    <rect width="260" height="160" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <rect width="260" height="28" rx="8" fill="#4caf50" opacity="0.7"/>
+    <text x="12" y="19" fill="#14141e" font-size="11" font-weight="700" font-family="JetBrains Mono, monospace">PlayerTickState</text>
+
+    <g transform="translate(12,42)" font-family="JetBrains Mono, monospace" font-size="11">
+      <text fill="#ffaa00" font-weight="700">PK  id</text>
+      <text y="16" fill="#a0a0b0">idx (demo_name, tick)</text>
+      <text y="32" fill="#a0a0b0">idx (player_name, demo_name)</text>
+      <text y="48" fill="#a0a0b0">idx has_helmet · has_defuser (D-4)</text>
+      <text y="64" fill="#a0a0b0">    tick · player_name · demo_name</text>
+      <text y="80" fill="#a0a0b0">    feature_vector · JSON [25 floats]</text>
+      <text y="96" fill="#a0a0b0">    created_at</text>
+    </g>
+  </g>
+
+  <!-- PlayerProfile -->
+  <g transform="translate(60,340)">
+    <rect width="260" height="100" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <rect width="260" height="28" rx="8" fill="#4caf50" opacity="0.7"/>
+    <text x="12" y="19" fill="#14141e" font-size="11" font-weight="700" font-family="JetBrains Mono, monospace">PlayerProfile</text>
+
+    <g transform="translate(12,42)" font-family="JetBrains Mono, monospace" font-size="11">
+      <text fill="#ffaa00" font-weight="700">PK  id</text>
+      <text y="16" fill="#a0a0b0">uk  player_name · TEXT</text>
+      <text y="32" fill="#a0a0b0">    created_at</text>
+    </g>
+  </g>
+
+  <!-- RoundStats -->
+  <g transform="translate(700,160)">
+    <rect width="280" height="180" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <rect width="280" height="28" rx="8" fill="#4caf50" opacity="0.7"/>
+    <text x="12" y="19" fill="#14141e" font-size="11" font-weight="700" font-family="JetBrains Mono, monospace">RoundStats</text>
+
+    <g transform="translate(12,42)" font-family="JetBrains Mono, monospace" font-size="11">
+      <text fill="#ffaa00" font-weight="700">PK  id</text>
+      <text y="16" fill="#a0a0b0">idx (demo_name, round_number)</text>
+      <text y="32" fill="#a0a0b0">    player_name · side (CT/T)</text>
+      <text y="48" fill="#a0a0b0">    kills · deaths · damage_dealt</text>
+      <text y="64" fill="#a0a0b0">    round_won · opening_kill</text>
+      <text y="80" fill="#a0a0b0">    equipment_value · was_traded</text>
+      <text y="96" fill="#a0a0b0">    trade_kills · utility_total</text>
+      <text y="112" fill="#a0a0b0">    hs · flashes · smokes · he_dmg</text>
+    </g>
+  </g>
+
+  <!-- CoachingInsight -->
+  <g transform="translate(700,360)">
+    <rect width="280" height="136" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <rect width="280" height="28" rx="8" fill="#4caf50" opacity="0.7"/>
+    <text x="12" y="19" fill="#14141e" font-size="11" font-weight="700" font-family="JetBrains Mono, monospace">CoachingInsight</text>
+
+    <g transform="translate(12,42)" font-family="JetBrains Mono, monospace" font-size="11">
+      <text fill="#ffaa00" font-weight="700">PK  id</text>
+      <text y="16" fill="#a0a0b0">idx player_name · demo_name · user_id</text>
+      <text y="32" fill="#a0a0b0">    title · message</text>
+      <text y="48" fill="#a0a0b0">    severity (low/medium/high)</text>
+      <text y="64" fill="#a0a0b0">    focus_area (positioning/aim/…)</text>
+      <text y="80" fill="#a0a0b0">    created_at</text>
+    </g>
+  </g>
+
+  <!-- IngestionTask -->
+  <g transform="translate(60,460)">
+    <rect width="260" height="120" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <rect width="260" height="28" rx="8" fill="#4caf50" opacity="0.7"/>
+    <text x="12" y="19" fill="#14141e" font-size="11" font-weight="700" font-family="JetBrains Mono, monospace">IngestionTask</text>
+
+    <g transform="translate(12,42)" font-family="JetBrains Mono, monospace" font-size="11">
+      <text fill="#ffaa00" font-weight="700">PK  id</text>
+      <text y="16" fill="#a0a0b0">uk  demo_path · TEXT</text>
+      <text y="32" fill="#a0a0b0">    is_pro · status</text>
+      <text y="48" fill="#a0a0b0">    queued/processing/done/failed</text>
+      <text y="64" fill="#a0a0b0">    retry_count · error_message</text>
+      <text y="80" fill="#a0a0b0">    updated_at (onupdate)</text>
+    </g>
+  </g>
+
+  <!-- CoachState (singleton) -->
+  <g transform="translate(340,460)">
+    <rect width="340" height="180" rx="8" fill="rgba(217,102,0,0.08)" stroke="#d96600" stroke-width="1.5"/>
+    <rect width="340" height="28" rx="8" fill="#d96600"/>
+    <text x="12" y="19" fill="#14141e" font-size="11" font-weight="700" font-family="JetBrains Mono, monospace">CoachState · SINGLETON</text>
+
+    <g transform="translate(12,42)" font-family="JetBrains Mono, monospace" font-size="11">
+      <text fill="#ffaa00" font-weight="700">CK  id = 1  (P2-01)</text>
+      <text y="16" fill="#a0a0b0">    status · CoachStatus enum</text>
+      <text y="32" fill="#a0a0b0">    belief_confidence · hltv_status</text>
+      <text y="48" fill="#a0a0b0">    ingest_status · ml_status</text>
+      <text y="64" fill="#a0a0b0">    current_epoch · total_epochs</text>
+      <text y="80" fill="#a0a0b0">    train_loss · val_loss · eta_seconds</text>
+      <text y="96" fill="#a0a0b0">    parsing_progress · last_heartbeat</text>
+      <text y="112" fill="#a0a0b0">    system_load_cpu · system_load_mem</text>
+      <text y="128" fill="#a0a0b0">    service_pid · detail</text>
+    </g>
+  </g>
+
+  <!-- TacticalKnowledge (RAG) -->
+  <g transform="translate(700,516)">
+    <rect width="280" height="124" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <rect width="280" height="28" rx="8" fill="#a855f7" opacity="0.7"/>
+    <text x="12" y="19" fill="#14141e" font-size="11" font-weight="700" font-family="JetBrains Mono, monospace">TacticalKnowledge · RAG</text>
+
+    <g transform="translate(12,42)" font-family="JetBrains Mono, monospace" font-size="11">
+      <text fill="#ffaa00" font-weight="700">PK  id</text>
+      <text y="16" fill="#a0a0b0">idx title · category · map_name</text>
+      <text y="32" fill="#a0a0b0">    description · situation</text>
+      <text y="48" fill="#a0a0b0">    pro_example</text>
+      <text y="64" fill="#a0a0b0">    embedding · JSON [384 floats]</text>
+      <text y="80" fill="#a0a0b0">    usage_count</text>
+    </g>
+  </g>
+
+  <!-- CoachingExperience -->
+  <g transform="translate(60,660)">
+    <rect width="260" height="120" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <rect width="260" height="28" rx="8" fill="#4caf50" opacity="0.7"/>
+    <text x="12" y="19" fill="#14141e" font-size="11" font-weight="700" font-family="JetBrains Mono, monospace">CoachingExperience</text>
+
+    <g transform="translate(12,42)" font-family="JetBrains Mono, monospace" font-size="11">
+      <text fill="#ffaa00" font-weight="700">PK  id</text>
+      <text y="16" fill="#a0a0b0">    game_state_json · ≤16 KB</text>
+      <text y="32" fill="#a0a0b0">    action · reward · next_state</text>
+      <text y="48" fill="#a0a0b0">    created_at</text>
+      <text y="64" fill="#3a3a5a">RL training replay buffer</text>
+    </g>
+  </g>
+
+  <!-- Ext_ tables -->
+  <g transform="translate(340,660)">
+    <rect width="340" height="120" rx="8" fill="#1a1a2e" stroke="#3a3a5a"/>
+    <rect width="340" height="28" rx="8" fill="#4caf50" opacity="0.4"/>
+    <text x="12" y="19" fill="#14141e" font-size="11" font-weight="700" font-family="JetBrains Mono, monospace">Ext_TeamRoundStats  ·  Ext_PlayerPlaystyle</text>
+
+    <g transform="translate(12,42)" font-family="JetBrains Mono, monospace" font-size="11">
+      <text fill="#a0a0b0">aux JSON ≤ 8 KB · playstyle profile</text>
+      <text y="16" fill="#a0a0b0">team-level round aggregates</text>
+      <text y="32" fill="#a0a0b0">latent_vec · derived_tags</text>
+      <text y="48" fill="#3a3a5a">DM-04 guard on JSON size</text>
+    </g>
+  </g>
+
+  <!-- ServiceNotification + CalibrationSnapshot + RoleThresholdRecord + DataLineage + DataQualityMetric -->
+  <g transform="translate(700,660)">
+    <rect width="280" height="120" rx="8" fill="#0f0f2e" stroke="#3a3a5a"/>
+    <text x="12" y="20" fill="#dcdcdc" font-size="11" font-weight="700">Audit + ops tables (5)</text>
+    <g transform="translate(12,38)" font-family="JetBrains Mono, monospace" font-size="10" fill="#a0a0b0">
+      <text>ServiceNotification    severity+msg</text>
+      <text y="14">CalibrationSnapshot    training meta</text>
+      <text y="28">RoleThresholdRecord    role cutoffs</text>
+      <text y="42">DataLineage            source tracking</text>
+      <text y="56">DataQualityMetric      per-demo score</text>
+      <text y="74" fill="#3a3a5a">MatchResult  ·  MapVeto  (pro meta)</text>
+    </g>
+  </g>
+
+  <!-- HLTV DB tables -->
+  <g transform="translate(980,160)">
+    <rect width="400" height="140" rx="8" fill="#1a1a2e" stroke="#4a9eff"/>
+    <rect width="400" height="28" rx="8" fill="#4a9eff"/>
+    <text x="12" y="19" fill="#14141e" font-size="11" font-weight="700" font-family="JetBrains Mono, monospace">ProTeam</text>
+
+    <g transform="translate(12,42)" font-family="JetBrains Mono, monospace" font-size="11">
+      <text fill="#ffaa00" font-weight="700">PK  id</text>
+      <text y="16" fill="#a0a0b0">    hltv_team_id · team_name</text>
+      <text y="32" fill="#a0a0b0">    team_rank · country · region</text>
+      <text y="48" fill="#a0a0b0">    wins · losses · elo</text>
+      <text y="64" fill="#a0a0b0">    created_at · last_scrape</text>
+    </g>
+  </g>
+
+  <g transform="translate(980,320)">
+    <rect width="400" height="140" rx="8" fill="#1a1a2e" stroke="#4a9eff"/>
+    <rect width="400" height="28" rx="8" fill="#4a9eff"/>
+    <text x="12" y="19" fill="#14141e" font-size="11" font-weight="700" font-family="JetBrains Mono, monospace">ProPlayer</text>
+
+    <g transform="translate(12,42)" font-family="JetBrains Mono, monospace" font-size="11">
+      <text fill="#ffaa00" font-weight="700">PK  id</text>
+      <text y="16" fill="#a0a0b0">    hltv_id · nickname · team</text>
+      <text y="32" fill="#a0a0b0">fk  pro_team_id → ProTeam.id</text>
+      <text y="48" fill="#a0a0b0">    team_rank · country · age</text>
+      <text y="64" fill="#a0a0b0">    twitter · faceit_elo · mm_rank</text>
+    </g>
+  </g>
+
+  <g transform="translate(980,480)">
+    <rect width="400" height="160" rx="8" fill="#1a1a2e" stroke="#4a9eff"/>
+    <rect width="400" height="28" rx="8" fill="#4a9eff"/>
+    <text x="12" y="19" fill="#14141e" font-size="11" font-weight="700" font-family="JetBrains Mono, monospace">ProPlayerStatCard</text>
+
+    <g transform="translate(12,42)" font-family="JetBrains Mono, monospace" font-size="11">
+      <text fill="#ffaa00" font-weight="700">PK  id</text>
+      <text y="16" fill="#a0a0b0">fk  pro_player_id → ProPlayer</text>
+      <text y="32" fill="#a0a0b0">    rating_20 · KAST · impact · ADR</text>
+      <text y="48" fill="#a0a0b0">    maps_played · rounds</text>
+      <text y="64" fill="#a0a0b0">    per-map breakdown (JSON)</text>
+      <text y="80" fill="#a0a0b0">    last_refreshed</text>
+    </g>
+  </g>
+
+  <g transform="translate(980,660)">
+    <rect width="400" height="120" rx="8" fill="#0f0f2e" stroke="#3a3a5a"/>
+    <text x="12" y="20" fill="#dcdcdc" font-size="11" font-weight="700">MatchResult · MapVeto</text>
+    <g transform="translate(12,38)" font-family="JetBrains Mono, monospace" font-size="10" fill="#a0a0b0">
+      <text>MatchResult  pro vs pro · map · score · event</text>
+      <text y="14">             fk team_a_id · team_b_id</text>
+      <text y="28">MapVeto      veto sequence per match_id</text>
+      <text y="56" fill="#3a3a5a">Never FK main → HLTV (cross-DB)</text>
+      <text y="70" fill="#3a3a5a">logical ref via pro_player_id only</text>
+    </g>
+  </g>
+
+  <!-- Relationship arrows -->
+  <!-- PlayerMatchStats → RoundStats (1-M via demo_name) -->
+  <path d="M680 220 L700 220" stroke="#4caf50" stroke-width="1.5" marker-end="url(#arG)"/>
+  <!-- PlayerMatchStats → CoachingInsight -->
+  <path d="M680 420 L700 420" stroke="#4caf50" stroke-width="1.5" marker-end="url(#arG)"/>
+
+  <!-- PlayerTickState → PlayerMatchStats (logical via demo+player) -->
+  <path d="M320 220 L340 220" stroke="#4caf50" stroke-width="1.5" marker-end="url(#arG)"/>
+  <!-- PlayerProfile → PlayerMatchStats -->
+  <path d="M320 380 L340 240" stroke="#4caf50" stroke-width="1.2" stroke-dasharray="3 2" marker-end="url(#arG)"/>
+
+  <!-- ProPlayer → PlayerMatchStats (cross-DB logical) -->
+  <path d="M980 390 L680 280" stroke="#4a9eff" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arG)"/>
+  <text x="720" y="296" fill="#4a9eff" font-size="9" font-family="JetBrains Mono, monospace">pro_player_id (logical)</text>
+
+  <!-- ProTeam → ProPlayer -->
+  <path d="M1180 300 L1180 320" stroke="#4a9eff" stroke-width="1.5" marker-end="url(#arB)"/>
+  <!-- ProPlayer → ProPlayerStatCard -->
+  <path d="M1180 460 L1180 480" stroke="#4a9eff" stroke-width="1.5" marker-end="url(#arB)"/>
+
+  <!-- Legend -->
+  <g transform="translate(60,810)">
+    <rect width="1320" height="60" rx="6" fill="#1a1a2e"/>
+    <text x="14" y="22" fill="#dcdcdc" font-size="12" font-weight="700">Access contract</text>
+    <g transform="translate(14,40)" font-size="11">
+      <text fill="#a0a0b0">• Never instantiate DatabaseManager / HLTVDatabaseManager directly —</text>
+      <text x="440" fill="#dcdcdc" font-family="JetBrains Mono, monospace">get_db_manager()</text>
+      <text x="564" fill="#a0a0b0">/</text>
+      <text x="574" fill="#dcdcdc" font-family="JetBrains Mono, monospace">get_hltv_db_manager()</text>
+      <text x="720" fill="#a0a0b0">singletons.</text>
+      <text x="810" fill="#a0a0b0">• 14 Alembic migrations, all with paired up/down.</text>
+      <text x="1150" fill="#a0a0b0">• PRAGMA FK=ON, WAL autocheckpoint=512.</text>
+    </g>
+  </g>
+</svg>

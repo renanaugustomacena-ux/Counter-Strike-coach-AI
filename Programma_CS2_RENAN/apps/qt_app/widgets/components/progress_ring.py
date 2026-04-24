@@ -4,8 +4,8 @@ Replaces horizontal progress bars with a modern circular design.
 Draws a background arc and a foreground arc proportional to the value.
 """
 
-from PySide6.QtCore import QRectF, Qt
-from PySide6.QtGui import QColor, QFont, QPainter, QPen
+from PySide6.QtCore import QPointF, QRectF, Qt
+from PySide6.QtGui import QColor, QConicalGradient, QFont, QPainter, QPen
 from PySide6.QtWidgets import QWidget
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
@@ -57,9 +57,14 @@ class ProgressRing(QWidget):
         painter.setPen(bg_pen)
         painter.drawArc(rect, 0, 360 * 16)
 
-        # Foreground arc (progress)
-        fg_color = QColor(tokens.accent_primary)
-        fg_pen = QPen(fg_color, self._thickness, Qt.SolidLine, Qt.RoundCap)
+        # Foreground arc (progress) — conical gradient from accent_primary
+        # at the 12 o'clock start to accent_hover at the arc's end. Adds
+        # a subtle vertical depth cue without a second pass.
+        gradient = QConicalGradient(QPointF(rect.center()), 90.0)
+        gradient.setColorAt(0.0, QColor(tokens.accent_primary))
+        gradient.setColorAt(max(0.01, self._value), QColor(tokens.accent_hover))
+        gradient.setColorAt(1.0, QColor(tokens.accent_primary))
+        fg_pen = QPen(gradient, self._thickness, Qt.SolidLine, Qt.RoundCap)
         painter.setPen(fg_pen)
         # Start at 12 o'clock (90°), sweep counter-clockwise
         start_angle = 90 * 16

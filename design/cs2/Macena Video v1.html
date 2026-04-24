@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Macena · CS2 Coach AI — Video</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+  html, body {
+    margin: 0; padding: 0;
+    height: 100%; width: 100%;
+    background: #000;
+    overflow: hidden;
+    font-family: 'Roboto', Inter, system-ui, sans-serif;
+    color: #dcdcdc;
+  }
+  #root {
+    position: absolute; inset: 0;
+  }
+  * { box-sizing: border-box; }
+  ::selection { background: #d9660066; color: #fff; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- React + Babel (pinned) -->
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<!-- animation engine -->
+<script type="text/babel" src="animations.jsx"></script>
+
+<!-- shared primitives & scenes -->
+<script type="text/babel" src="scenes/shared.jsx"></script>
+<script type="text/babel" src="scenes/scenes_intro.jsx"></script>
+<script type="text/babel" src="scenes/scenes_product.jsx"></script>
+<script type="text/babel" src="scenes/scenes_arch.jsx"></script>
+<script type="text/babel" src="scenes/scenes_rap.jsx"></script>
+<script type="text/babel" src="scenes/scenes_ds_closing.jsx"></script>
+
+<!-- main -->
+<script type="text/babel" src="main.jsx"></script>
+</body>
+</html>
