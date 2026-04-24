@@ -3,6 +3,8 @@
 Thank you for your interest in contributing. This document describes how to
 propose changes, the standards your code must meet, and the review process.
 
+> **[English](CONTRIBUTING.md)** | **[Italiano](CONTRIBUTING_IT.md)** | **[Portugues](CONTRIBUTING_PT.md)**
+
 ## License
 
 By submitting a pull request you agree that your contribution is licensed under
@@ -38,7 +40,7 @@ python -m pytest Programma_CS2_RENAN/tests/ tests/ --tb=short
 3. **All pre-commit hooks must pass** — `pre-commit run --all-files`.
 4. **All tests must pass** — `python -m pytest Programma_CS2_RENAN/tests/ tests/`.
 5. **Headless validator must pass** — `python tools/headless_validator.py` (exit 0).
-6. **Coverage must not decrease** — current threshold is 33%, rising incrementally.
+6. **Coverage must not decrease** — current threshold is 40%, rising incrementally.
 7. **Open a PR against `main`** with a clear description of what and why.
 
 ## Coding Standards
@@ -74,7 +76,7 @@ python -m pytest Programma_CS2_RENAN/tests/ tests/ --tb=short
 
 ## Reporting Issues
 
-Use the [GitHub Issues](https://github.com/renan-macena/Counter-Strike-coach-AI/issues)
+Use the [GitHub Issues](https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI/issues)
 tracker. Include:
 
 - Steps to reproduce (or a minimal demo file if applicable).

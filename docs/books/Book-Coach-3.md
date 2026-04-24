@@ -1,10 +1,64 @@
+# Ultimate CS2 Coach — Parte 3: Programma, UI, Tools e Build
+
+> **Argomenti:** Schema completo del database (three-tier storage, SQLite WAL, SQLModel ORM), Regime di formazione e limiti di maturità (CALIBRATING/LEARNING/MATURE), Catalogo delle funzioni di perdita, Logica Completa del Programma (dal lancio al consiglio): Session Engine, Digester, Teacher, Hunter, Pulse; Interfaccia desktop Qt/PySide6 (13 schermate, ViewModels, Qt Signals); Pipeline di ingestione (demo e pro); Console di controllo unificata; Onboarding nuovo utente; Architettura di storage; Motore di playback e viewer tattico; Dati spaziali e mappe; Osservabilità e logging; Reporting; Quote e limiti; Tolleranza ai guasti; Viaggio completo dell'utente (4 flussi); Suite di strumenti (validazione e diagnostica); Test suite; Pre-commit hooks; Build, packaging, deployment; Migrazioni Alembic; HLTV sync service; RASP Guard; MatchVisualizer; File di configurazione runtime; Entry point root-level; Glossario.
+>
+> **Autore:** Renan Augusto Macena
+
+---
+
+> Questo documento è la continuazione della **Parte 2** — *Servizi, Analisi e Database*, che copre i servizi di coaching, i motori di analisi, la conoscenza e il Database. La Parte 3 scende al livello di programma: come l'intero sistema si avvia, come i daemon si orchestrano, come l'interfaccia desktop rende visibile il coaching, come il codice è testato, validato e deployato.
+
+---
+
+## Indice
+
+**Parte 3 — Programma, UI, Tools e Build (questo documento)**
+
+9. [Schema del database e ciclo di vita dei dati](#9-schema-del-database-e-ciclo-di-vita-dei-dati)
+10. [Regime di formazione e limiti di maturità](#10-regime-di-formazione-e-limiti-di-maturità)
+11. [Catalogo delle funzioni di perdita](#11-catalogo-delle-funzioni-di-perdita)
+12. [Logica Completa del Programma — Dal Lancio al Consiglio](#12-logica-completa-del-programma--dal-lancio-al-consiglio)
+    - 12.1 Avvio applicazione e bootstrap
+    - 12.2 Session Engine e Quad-Daemon
+    - 12.3 Daemon Digester e pipeline di ingestione
+    - 12.4 Daemon Teacher e training orchestrator
+    - 12.5 Interfaccia Desktop (Qt/PySide6, 13 schermate, ViewModels)
+    - 12.6 Pipeline di Ingestione (`ingestion/`)
+    - 12.7 Console di Controllo Unificata (`backend/control/`)
+    - 12.8 Onboarding e Flusso Nuovo Utente
+    - 12.9 Architettura di Storage (`backend/storage/`)
+    - 12.10 Motore di Playback e Viewer Tattico
+    - 12.11 Dati Spaziali e Gestione Mappe
+    - 12.12 Osservabilità e Logging
+    - 12.13 Reporting e Visualizzazione
+    - 12.14 Gestione Quote e Limiti
+    - 12.15 Tolleranza ai Guasti e Recupero
+    - 12.16 Viaggio Completo dell'Utente — 4 Flussi Principali
+    - 12.17 Suite di Strumenti — Validazione e Diagnostica (`tools/`)
+    - 12.18 Architettura della Test Suite (`tests/`)
+    - 12.19 Le 12 Fasi di Rimediazione Sistematica
+    - 12.20 Pre-commit Hooks e Quality Gates
+    - 12.21 Build, Packaging e Deployment
+    - 12.22 Sistema Migrazioni Alembic
+    - 12.23 Orchestratore Ingestione Principale (`run_ingestion.py`)
+    - 12.24 HLTV Sync Service e Background Daemon
+    - 12.25 RASP Guard — Integrità Runtime del Codice
+    - 12.26 MatchVisualizer — Rendering Avanzato
+    - 12.27 File di Dati e Configurazione Runtime
+    - 12.28 Entry Point Root-Level
+- [Riepilogo Architetturale](#riepilogo-architetturale)
+- [Mappa delle Interconnessioni tra le 3 Parti](#mappa-delle-interconnessioni-tra-le-3-parti)
+- [Glossario Tecnico](#glossario-tecnico)
+
+---
+
 ## 9. Schema del database e ciclo di vita dei dati
 
-Il progetto utilizza **SQLModel** (Pydantic + SQLAlchemy) con SQLite (modalità WAL) e un'**architettura three-tier storage** specializzata. 21 tabelle SQLModel principali distribuite su 3 tier di storage:
+Il progetto utilizza **SQLModel** (Pydantic + SQLAlchemy) con SQLite (modalità WAL) e un'**architettura three-tier storage** specializzata. In totale **24 tabelle SQLModel** (`backend/storage/db_models.py`: 21 tabelle monolite+HLTV; `backend/storage/match_data_manager.py`: 3 tabelle per-match) distribuite su 3 tier di storage:
 
-1. **`database.db`** — Database monolite principale dell'applicazione (18 tabelle). Contiene tutte le tabelle core: statistiche giocatori, stato del coach, task di ingestione, insight di coaching, profili utente, notifiche di sistema, base RAG (`TacticalKnowledge`), banca esperienze COPER (`CoachingExperience`), risultati partite, calibrazioni e soglie di ruolo.
-2. **`hltv_metadata.db`** — Database dei metadati professionali (3 tabelle). Contiene i profili dei giocatori pro (`ProPlayer`, `ProTeam`) e le schede statistiche (`ProPlayerStatCard`). Separato dal monolite perché viene scritto da un processo separato (HLTV sync service) per eliminare la contesa WAL con i daemon del session engine.
-3. **`match_data/{id}.db`** — Database per-match di telemetria (Tier 3). Ogni partita ha il proprio file SQLite dedicato contenente i dati tick-per-tick (`PlayerTickState`, ~100.000 righe per partita). Gestito da `MatchDataManager`. Questa separazione risolve il problema dello "Telemetry Cliff" — evita che il database monolite cresca indefinitamente con dati ad alta frequenza.
+1. **`database.db`** — Database monolite principale dell'applicazione (**18 tabelle**, elencate esplicitamente in `database.py:_MONOLITH_TABLES` righe 54-73). Contiene tutte le tabelle core: statistiche giocatori (`PlayerMatchStats`), stato del coach (`CoachState`), task di ingestione (`IngestionTask`), insight di coaching (`CoachingInsight`), profili utente (`PlayerProfile`), notifiche di sistema (`ServiceNotification`), base RAG (`TacticalKnowledge`), banca esperienze COPER (`CoachingExperience`), risultati partite (`MatchResult`, `MapVeto`), calibrazioni (`CalibrationSnapshot`), soglie di ruolo (`RoleThresholdRecord`), tracciamento provenienza (`DataLineage`, `DataQualityMetric`), e tabelle estese per round team (`Ext_TeamRoundStats`) e stile di gioco (`Ext_PlayerPlaystyle`), oltre a `RoundStats` e `PlayerTickState` archiviale.
+2. **`hltv_metadata.db`** — Database dei metadati professionali (**3 tabelle**, `database.py:_HLTV_TABLES` righe 78-82): profili dei giocatori pro (`ProPlayer`, `ProTeam`) e schede statistiche (`ProPlayerStatCard`). Separato dal monolite perché viene scritto da un processo separato (HLTV sync service) per eliminare la contesa WAL con i daemon del session engine.
+3. **`match_data/{id}.db`** — Database per-match di telemetria (**3 tabelle**, definite in `match_data_manager.py`: `MatchTickState`:110, `MatchEventState`:190, `MatchMetadata`:242). Ogni partita ha il proprio file SQLite dedicato contenente i dati tick-per-tick (~100.000 righe per partita). Gestito da `MatchDataManager`. Questa separazione risolve il problema dello "Telemetry Cliff" — evita che il database monolite cresca indefinitamente con dati ad alta frequenza.
 
 Questa separazione a tre livelli garantisce che le operazioni di scrittura intensive del session engine (ingestione demo, addestramento ML → `database.db`) non contendano lock WAL con lo scraping HLTV in processo separato (`hltv_metadata.db`), e che la telemetria ad alta frequenza per-match non appesantisca il monolite (`match_data/{id}.db`).
 
@@ -1167,7 +1221,7 @@ Dopo il parsing base, `enrich_from_demo()` aggiunge metriche avanzate calcolate 
 | **JsonTournamentIngestor** | `pipelines/json_tournament_ingestor.py` | Importa dati torneo da file JSON strutturati |
 | **RegistryLifecycle** | `registry/lifecycle.py` | Gestione ciclo di vita dei record di ingestione |
 
-**SteamLocator** (`ingestion/steam_locator.py`, 135 righe) — localizzazione automatica demo CS2:
+**SteamLocator** (`ingestion/steam_locator.py`) — localizzazione automatica demo CS2:
 
 Il SteamLocator implementa un algoritmo di **discovery cross-platform** per trovare automaticamente la cartella delle demo di CS2:
 
@@ -1177,7 +1231,7 @@ Il SteamLocator implementa un algoritmo di **discovery cross-platform** per trov
 | **Linux** | `~/.steam/steam/` → `libraryfolders.vdf` | `~/.steam/steam/steamapps/common/...` |
 | **Fallback** | Chiede all'utente via UI Settings | Percorso personalizzato |
 
-**IntegrityChecker** (`ingestion/integrity.py`, 53 righe):
+**IntegrityChecker** (`ingestion/integrity.py`):
 
 Verifica preliminare di ogni file demo prima del parsing costoso:
 - **Magic bytes**: `PBDEMS2\0` (CS2 Source 2) o `HL2DEMO\0` (legacy Source 1)
@@ -1381,7 +1435,7 @@ flowchart TB
 
 **Componenti di Storage dettagliati:**
 
-**MatchDataManager** (`backend/storage/match_data_manager.py`, 719 righe) — il componente più grande dello storage layer:
+**MatchDataManager** (`backend/storage/match_data_manager.py`) — il componente più grande dello storage layer:
 
 Il MatchDataManager è responsabile della gestione dei dati per-partita ad alta densità (PlayerTickState con ~100.000 righe per partita). Per evitare che il database principale cresca in modo incontrollato, ogni partita ha il proprio database SQLite separato (`match_XXXX.db`).
 
@@ -1397,7 +1451,7 @@ Il MatchDataManager è responsabile della gestione dei dati per-partita ad alta 
 
 > **Analogia:** Il MatchDataManager è come un **archivista che gestisce le scatole dei manoscritti originali**. Ogni partita è un manoscritto troppo voluminoso per stare nello schedario generale (database.db), quindi viene conservato in una scatola separata con un'etichetta (match_XXXX.db). L'archivista sa esattamente dove si trova ogni scatola, può aprirla su richiesta e, quando la scatola diventa troppo vecchia, può spostarla nell'archivio freddo.
 
-**StorageManager** (`backend/storage/storage_manager.py`, 249 righe):
+**StorageManager** (`backend/storage/storage_manager.py`):
 
 Il StorageManager è il **coordinatore di alto livello** dello storage che gestisce quote, upload e ciclo di vita dei dati:
 
@@ -1408,7 +1462,7 @@ Il StorageManager è il **coordinatore di alto livello** dello storage che gesti
 | **Pulizia** | `cleanup_old_data(days)` → rimuove match DB e task vecchi |
 | **Spazio disco** | `get_storage_usage()` → report dimensioni per ogni database e directory |
 
-**StateManager** (`backend/storage/state_manager.py`, 165 righe):
+**StateManager** (`backend/storage/state_manager.py`):
 
 Il StateManager è un **Singleton** che mantiene lo stato runtime del sistema e lo persiste nel database tramite la tabella `CoachState`:
 
@@ -1421,7 +1475,7 @@ Il StateManager è un **Singleton** che mantiene lo stato runtime del sistema e 
 | `update_training_metrics(epoch, loss, val_loss, eta)` | Aggiorna le metriche di training in tempo reale |
 | `get_belief_confidence()` | Restituisce il livello di fiducia del modello di credenza (0.0-1.0) |
 
-**StatAggregator** (`backend/storage/stat_aggregator.py`, 99 righe):
+**StatAggregator** (`backend/storage/stat_aggregator.py`):
 
 Calcola statistiche aggregate a partire dai dati grezzi per-round:
 
@@ -1433,7 +1487,7 @@ Calcola statistiche aggregate a partire dai dati grezzi per-round:
 | `accuracy` | `sum(hits) / sum(shots_fired)` | Performance meccanica |
 | `trade_kill_rate` | `trade_kills / team_deaths` | Lavoro di squadra |
 
-**BackupManager** (`backend/storage/backup.py`, 203 righe):
+**BackupManager** (`backend/storage/backup.py`):
 
 | Caratteristica | Dettaglio |
 | -------------- | --------- |
@@ -1444,7 +1498,7 @@ Calcola statistiche aggregate a partire dai dati grezzi per-round:
 | **Formato** | Copia completa del file `.db` (non dump SQL) |
 | **Etichettatura** | `startup_auto`, `manual`, `pre_migration` |
 
-**Maintenance** (`backend/storage/maintenance.py`, 53 righe):
+**Maintenance** (`backend/storage/maintenance.py`):
 
 | Operazione | Frequenza | Scopo |
 | ---------- | --------- | ----- |
@@ -1453,7 +1507,7 @@ Calcola statistiche aggregate a partire dai dati grezzi per-round:
 | `wal_checkpoint()` | All'avvio | Forza il merge del WAL nel database principale |
 | `integrity_check()` | All'avvio | `PRAGMA integrity_check` — verifica coerenza strutturale |
 
-**DbMigrate** (`backend/storage/db_migrate.py`, 112 righe):
+**DbMigrate** (`backend/storage/db_migrate.py`):
 
 Wrapper attorno ad Alembic che automatizza l'esecuzione delle migrazioni:
 
@@ -1715,7 +1769,7 @@ Il sistema include integrazione opzionale con **Sentry** per error tracking remo
 
 > **Analogia:** Sentry è come un **servizio di telemedicina opzionale**. Se lo attivi (double opt-in), quando il tuo corpo (l'applicazione) ha un malfunzionamento grave, invia automaticamente un referto anonimizzato al dottore remoto (server Sentry). Il referto non contiene il tuo nome né il tuo indirizzo (PII scrubbing) — solo i sintomi e le circostanze dell'incidente. Se preferisci la privacy totale, non attivi il servizio e tutto resta locale.
 
-**Logger Setup** (`observability/logger_setup.py`, 76 righe):
+**Logger Setup** (`observability/logger_setup.py`):
 
 Il sistema di logging centralizzato fornisce log strutturati con:
 
@@ -1767,7 +1821,7 @@ flowchart TB
 | **Differenziale** | Sottrae heatmap pro da heatmap utente → rosso (troppo tempo), blu (troppo poco) |
 | **Hotspot** | Identifica cluster di posizione per training posizionale |
 
-**MatchVisualizer** (`reporting/visualizer.py`, 402 righe) — metodi di rendering specializzati:
+**MatchVisualizer** (`reporting/visualizer.py`) — metodi di rendering specializzati:
 
 Il MatchVisualizer estende la capacità di reporting con 6 metodi di rendering ad alta qualità (cfr. sezione 12.26 per i dettagli algoritmici):
 
@@ -2134,7 +2188,7 @@ flowchart TB
     style L5 fill:#ff6b6b,color:#fff
 ```
 
-**Headless Validator** (`tools/headless_validator.py`, 2.777 righe) — il gate di regressione obbligatorio (Dev Rule 9). Eseguito dopo **ogni** task di sviluppo con 23 fasi e 319 controlli:
+**Headless Validator** (`tools/headless_validator.py`) — il gate di regressione obbligatorio (Dev Rule 9). Eseguito dopo **ogni** task di sviluppo con 23 fasi e 319 controlli:
 
 | Fase | Verifica | Dettaglio |
 | ---- | -------- | --------- |
@@ -2157,7 +2211,7 @@ flowchart TB
 | `Console` (Rich) | Output colorato con tabelle, progress bar, emoji di stato |
 | `Severity` enum | 4 livelli: `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
 
-**DB Inspector** (`tools/db_inspector.py`, 515 righe) — ispezione profonda del database:
+**DB Inspector** (`tools/db_inspector.py`) — ispezione profonda del database:
 
 - Apre `database.db` e `hltv_metadata.db` separatamente
 - Per ogni tabella: conta record, verifica schema, controlla integrità indici
@@ -2165,7 +2219,7 @@ flowchart TB
 - Rileva anomalie: tabelle vuote inattese, record orfani, timestamp fuori range
 - Output: tabella Rich colorata con stato per ogni tabella
 
-**Demo Inspector** (`tools/demo_inspector.py`, 328 righe) — ispezione file demo:
+**Demo Inspector** (`tools/demo_inspector.py`) — ispezione file demo:
 
 - Verifica magic bytes (`PBDEMS2\0` per CS2, `HL2DEMO\0` per legacy)
 - Controlla dimensione file (1KB min, 5GB max)
@@ -2265,7 +2319,7 @@ flowchart TB
     style E2E fill:#ff6b6b,color:#fff
 ```
 
-**Conftest** (`tests/conftest.py`, 128 righe) — fixture condivise:
+**Conftest** (`tests/conftest.py`) — fixture condivise:
 
 | Fixture | Scope | Descrizione |
 | ------- | ----- | ----------- |
@@ -2452,7 +2506,7 @@ Ogni fase di rimediazione ha prodotto un report dettagliato salvato nella direct
 
 ### 12.20 Pre-commit Hooks e Quality Gates
 
-**File:** `.pre-commit-config.yaml` (97 righe)
+**File:** `.pre-commit-config.yaml`
 
 Il progetto utilizza un sistema di **pre-commit hooks** che si attivano automaticamente prima di ogni commit, impedendo che codice non conforme raggiunga il repository.
 
@@ -2565,7 +2619,7 @@ Migrazioni specifiche per lo storage layer, separate per modularità. Gestiscono
 
 ### 12.23 Orchestratore Ingestione Principale (`run_ingestion.py`)
 
-**File:** `Programma_CS2_RENAN/run_ingestion.py` (~1.210 righe)
+**File:** `Programma_CS2_RENAN/run_ingestion.py`
 
 L'`run_ingestion.py` è il **cuore orchestratore** dell'intera pipeline di ingestione. È il file più grande dedicato all'ingestione e coordina tutte le fasi dal discovery delle demo alla persistenza dei risultati nel database.
 
@@ -2588,7 +2642,7 @@ L'`run_ingestion.py` è il **cuore orchestratore** dell'intera pipeline di inges
 | `report_progress()` | Logging strutturato del progresso complessivo |
 | `handle_duplicate_detection()` | Verifica tramite Registry se la demo è già stata processata |
 
-**ResourceManager** (`ingestion/resource_manager.py`, 201 righe):
+**ResourceManager** (`ingestion/resource_manager.py`):
 
 Il ResourceManager gestisce le **risorse hardware** durante l'ingestione per evitare il sovraccarico del sistema:
 
@@ -2605,7 +2659,7 @@ Il ResourceManager gestisce le **risorse hardware** durante l'ingestione per evi
 
 ### 12.24 HLTV Sync Service e Background Daemon
 
-**File:** `Programma_CS2_RENAN/hltv_sync_service.py` (~201 righe)
+**File:** `Programma_CS2_RENAN/hltv_sync_service.py`
 **File correlati:** `backend/data_sources/hltv/`, `backend/services/telemetry_client.py`
 
 L'HLTV Sync Service è un **daemon in background** che sincronizza automaticamente i dati dei giocatori professionisti da HLTV.org. Opera come un servizio monitorato dal `ServiceSupervisor` della Console.
@@ -2694,7 +2748,7 @@ sequenceDiagram
 
 ### 12.25 RASP Guard — Integrità Runtime del Codice
 
-**File:** `Programma_CS2_RENAN/observability/rasp.py` (139 righe)
+**File:** `Programma_CS2_RENAN/observability/rasp.py`
 **File dati:** `data/integrity_manifest.json`
 
 Il RASP (Runtime Application Self-Protection) Guard è il **primo controllo** eseguito all'avvio dell'applicazione (Fase 1 della sequenza di boot). Verifica che nessun file sorgente sia stato modificato rispetto al manifesto di integrità.
@@ -2729,7 +2783,7 @@ flowchart LR
 
 ### 12.26 MatchVisualizer — Rendering Avanzato
 
-**File:** `Programma_CS2_RENAN/reporting/visualizer.py` (402 righe)
+**File:** `Programma_CS2_RENAN/reporting/visualizer.py`
 
 Il `MatchVisualizer` estende il sistema di reporting (sezione 12.13) con **6 metodi di rendering** specializzati per la generazione di grafici e visualizzazioni.
 

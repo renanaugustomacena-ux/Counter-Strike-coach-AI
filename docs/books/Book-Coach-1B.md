@@ -42,9 +42,9 @@
 
 ---
 
-  ## 4. Sottosistema 2 — Modello RAP Coach
+## 4. Sottosistema 2 — Modello RAP Coach
 
-  **Directory canonico:** `backend/nn/experimental/rap_coach/` (il vecchio percorso `backend/nn/rap_coach/` è uno shim di reindirizzamento)
+**Directory canonico:** `backend/nn/experimental/rap_coach/` (il vecchio percorso `backend/nn/rap_coach/` è uno shim di reindirizzamento)
   **File:** `model.py`, `perception.py`, `memory.py`, `strategy.py`, `pedagogy.py`, `communication.py`, `skill_model.py`, `trainer.py`, `chronovisor_scanner.py`
 
   Il RAP (Reasoning, Adaptation, Pedagogy) Coach è un'**architettura profonda con 6 componenti neurali apprendibili + 1 livello di comunicazione esterna**, appositamente progettata per il coaching CS2 in condizioni di osservabilità parziale (condizioni POMDP). La classe `RAPCoachModel` contiene Percezione (`RAPPerception`), Memoria (`RAPMemory` con LTC+Hopfield), Strategia (`RAPStrategy`), Pedagogia (`RAPPedagogy` con Value Critic e Skill Adapter), Attribuzione Causale (`CausalAttributor`) e una Testa di Posizionamento (`nn.Linear(256→3)`), tutti apprendibili. Il livello di Comunicazione (`communication.py`) opera esternamente come selettore di template di post-elaborazione. Il forward pass produce 6 output: `advice_probs`, `belief_state`, `value_estimate`, `gate_weights`, `optimal_pos` e `attribution`.
@@ -1070,7 +1070,7 @@ IndexFlatIP.add(normalized)
 
 **Over-fetching con costanti esplicite:** Per gestire scenari di post-filtraggio (category, map_name, confidence, outcome), la ricerca recupera più risultati del necessario: `k × OVERFETCH_KNOWLEDGE = k × 10` per la Knowledge Base (filtro per categoria + mappa), `k × OVERFETCH_EXPERIENCE = k × 20` per l'Experience Bank (filtro per mappa + confidence + outcome + scoring composito). Il moltiplicatore 20× per le esperienze è doppio rispetto alla conoscenza perché i filtri sono più restrittivi (4 criteri vs 2), quindi serve un pool iniziale più ampio per garantire abbastanza risultati dopo il filtraggio.
 
-### -Contesto dei Round (`round_context.py`, 224 righe)
+### -Contesto dei Round (`round_context.py`)
 
 Il modulo **Round Context** è la **griglia temporale** del sistema di ingestione: converte i tick grezzi dei file demo in coordinate significative "round N, tempo T secondi" che ogni altro modulo può utilizzare per contestualizzare gli eventi di gioco.
 

@@ -34,6 +34,7 @@ Unlike static coaching tools with pre-written tips, this system builds its intel
 - [Validation and Quality](#validation-and-quality)
 - [Multi-Language Support](#multi-language-support)
 - [Security Features](#security-features)
+- [Performance Tuning](#performance-tuning)
 - [System Maturity](#system-maturity)
 - [Documentation](#documentation)
 - [Feeding the Coach](#feeding-the-coach)
@@ -595,6 +596,22 @@ python run_full_training_cycle.py
 
 Standalone script that executes a full training cycle outside the daemon engine. Useful for manual training or debugging.
 
+### Batch Ingestion
+
+```bash
+python batch_ingest.py [--workers N] [--limit N]
+```
+
+Parallel batch ingestion of pro demo files using multiprocessing. Resumable — skips already-ingested demos. Defaults to all CPU cores.
+
+### Internal API Server
+
+```bash
+python -m uvicorn Programma_CS2_RENAN.backend.services.api:app --host 127.0.0.1 --port 8000
+```
+
+FastAPI-based internal API for programmatic access to coaching, ingestion status, and model state. Not exposed externally by default. See `backend/services/` READMEs for endpoint documentation.
+
 ---
 
 ## Validation and Quality
@@ -657,6 +674,24 @@ Language can be changed at runtime from Settings without restarting the applicat
 - All logging through the `get_logger("cs2analyzer.<module>")` namespace
 - No PII in log output
 - Structured format for observability integration
+
+---
+
+## Performance Tuning
+
+| Knob | Default | Effect |
+|------|---------|--------|
+| GPU device | Auto-detected via `get_device()` | CUDA when available, else CPU. Override with `CUDA_VISIBLE_DEVICES` |
+| Training batch size | 32 (`backend/nn/config.py`) | Increase for GPU with >6 GB VRAM. Decrease if OOM |
+| Ingestion workers | CPU count (`batch_ingest.py`) | `--workers N` to limit parallel demo parsing |
+| EMA momentum | 0.996 base, cosine-scheduled to 1.0 (`backend/nn/jepa_train.py:353`) | JEPA target encoder tracking. Lower values track faster but noisier. RAP Coach EMA default is 0.999 (`backend/nn/ema.py:39`) |
+| TensorBoard | `runs/coach_training` | `tensorboard --logdir runs/coach_training` for live metrics |
+| SQLite WAL mode | Enabled by default | Concurrent read/write. No tuning needed for single-user |
+| Drift detection threshold | Z-score based (`backend/processing/validation/`) | Auto-triggers retraining flag when feature distributions shift |
+
+For GPU users: PyTorch CUDA 12.1 is the tested configuration. Mixed precision is not currently enabled — all training runs at FP32.
+
+> For hardware-specific guidance, see [Study 15 — Hardware and Scaling](docs/Studies/).
 
 ---
 
@@ -790,6 +825,12 @@ Open [http://localhost:6006](http://localhost:6006) to monitor conviction index,
 | `CUDA not available` | Verify driver with `nvidia-smi`, reinstall PyTorch with `--index-url https://download.pytorch.org/whl/cu121` |
 | `sentence-transformers not installed` | Non-blocking warning. Install with `pip install sentence-transformers` for improved embeddings, or ignore (TF-IDF fallback works) |
 | `database is locked` | Close all Python processes and restart |
+| `RuntimeError: mat1 and mat2 shapes cannot be multiplied` | Model checkpoint from different METADATA_DIM. Delete stale checkpoints in `Programma_CS2_RENAN/models/` and retrain |
+| Headless validator fails | Run `python tools/headless_validator.py` for the specific failing phase. Fix before committing |
+| Demo parsing returns 0 rounds | File may be corrupted or below `MIN_DEMO_SIZE` (10 MB). Try a different demo |
+| TensorBoard shows no data | Verify `runs/coach_training/` exists and contains event files. Training must complete at least one epoch |
+| Ollama not responding | Ensure Ollama is running (`ollama serve`) and the configured model is pulled (`ollama pull llama3.1:8b`) |
+| FlareSolverr connection refused | Start Docker: `docker compose up -d`. Verify port 8191 is accessible |
 | Factory reset | Delete `Programma_CS2_RENAN/user_settings.json` and restart |
 
 ### Database Locations
@@ -809,13 +850,33 @@ Open [http://localhost:6006](http://localhost:6006) to monitor conviction index,
 
 Every README and technical document in the project. Click any link to open the document.
 
-### Book Coach Series (PDF)
+### Book Coach Series
 
-- [Ultimate CS2 Coach — Sistema AI](docs/books/Book-Coach-1.pdf)
-- [Ultimate CS2 Coach — Parte 1A — Il Cervello](docs/books/Book-Coach-1A.pdf)
-- [Ultimate CS2 Coach — Parte 1B — I Sensi e lo Specialista](docs/books/Book-Coach-1B.pdf)
-- [Ultimate CS2 Coach — Parte 2 — Servizi, Analisi e Database](docs/books/Book-Coach-2.pdf)
-- [Ultimate CS2 Coach — Parte 3 — Programma, UI, Tools e Build](docs/books/Book-Coach-3.pdf)
+Four tri-lingual vision books + one canonical analogy companion book. Each coach book is available as Markdown (editable source) and PDF.
+
+**Italian (canonical source):**
+- [Ultimate CS2 Coach — Sistema AI](docs/books/Book-Coach-1.pdf) — umbrella PDF
+- [Parte 1A — Il Cervello](docs/books/Book-Coach-1A.md) ([PDF](docs/books/Book-Coach-1A.pdf))
+- [Parte 1B — I Sensi e lo Specialista](docs/books/Book-Coach-1B.md) ([PDF](docs/books/Book-Coach-1B.pdf))
+- [Parte 2 — Servizi, Analisi e Database](docs/books/Book-Coach-2.md) ([PDF](docs/books/Book-Coach-2.pdf))
+- [Parte 3 — Programma, UI, Tools e Build](docs/books/Book-Coach-3.md) ([PDF](docs/books/Book-Coach-3.pdf))
+- [Il Libro delle Analogie](docs/books/analogy-book.md) — 35 canonical pedagogical metaphors
+
+**English translations:**
+- [Part 1A — The Brain](docs/books/Book-Coach-1A-en.md)
+- [Part 1B — The Senses and the Specialist](docs/books/Book-Coach-1B-en.md)
+- [Part 2 — Services, Analysis, and Database](docs/books/Book-Coach-2-en.md)
+- [Part 3 — Program, UI, Tools, and Build](docs/books/Book-Coach-3-en.md)
+- [The Book of Analogies](docs/books/analogy-book-en.md)
+
+**Brazilian Portuguese translations:**
+- [Parte 1A — O Cerebro](docs/books/Book-Coach-1A-pt.md)
+- [Parte 1B — Os Sentidos e o Especialista](docs/books/Book-Coach-1B-pt.md)
+- [Parte 2 — Servicos, Analise e Banco de Dados](docs/books/Book-Coach-2-pt.md)
+- [Parte 3 — Programa, UI, Ferramentas e Build](docs/books/Book-Coach-3-pt.md)
+- [O Livro das Analogias](docs/books/analogy-book-pt.md)
+
+**Translation reference:** [Translation Glossary (IT → EN → PT-BR)](docs/books/TRANSLATION_GLOSSARY.md) — canonical terminology used across every translated edition.
 
 ### Root
 

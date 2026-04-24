@@ -13,9 +13,9 @@ Este módulo gerencia a camada de ingestão em tempo de execução: monitorament
 
 | Arquivo | Linhas | Finalidade | Classes/Funções Principais |
 |---------|--------|-----------|---------------------------|
-| `watcher.py` | ~150 | Monitor do filesystem para arquivos `.dem` | `DemoFileHandler(FileSystemEventHandler)` |
-| `resource_manager.py` | ~120 | Throttling de CPU/RAM para tarefas em background | `ResourceManager` |
-| `csv_migrator.py` | ~100 | Importação de CSV externo em tabelas SQLModel | `CSVMigrator` |
+| `watcher.py` | ~239 | Monitor do filesystem para arquivos `.dem` | `DemoFileHandler(FileSystemEventHandler)`, `IngestionWatcher` |
+| `resource_manager.py` | ~201 | Throttling de CPU/RAM para tarefas em background | `ResourceManager` |
+| `csv_migrator.py` | ~208 | Importação de CSV externo em tabelas SQLModel | `CSVMigrator` |
 
 ## `watcher.py` — Monitor de Arquivos Demo
 

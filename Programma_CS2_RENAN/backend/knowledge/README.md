@@ -69,7 +69,7 @@ All text is embedded using Sentence-BERT (`all-MiniLM-L6-v2`, 384 dimensions).
 When the `sentence-transformers` package is not installed, a deterministic
 hash-projection fallback produces 100-dimensional vectors with degraded but
 functional semantic similarity. The `KnowledgeEmbedder` class manages model
-loading, caching, version tracking (`CURRENT_VERSION = "v2"`), and automatic
+loading, caching, version tracking (`CURRENT_VERSION = "v3"`), and automatic
 re-embedding when the model changes dimension.
 
 ### FAISS Vector Index
@@ -177,7 +177,7 @@ for backward compatibility.
 | `AMATEUR_EXPERIENCE_CONFIDENCE` | 0.5 | `experience_bank.py:44` |
 | `OVERFETCH_KNOWLEDGE` | 10 | `vector_index.py:48` |
 | `OVERFETCH_EXPERIENCE` | 20 | `vector_index.py:49` |
-| `KnowledgeEmbedder.CURRENT_VERSION` | `"v2"` | `rag_knowledge.py:48` |
+| `KnowledgeEmbedder.CURRENT_VERSION` | `"v3"` | `rag_knowledge.py:51` |
 | `KnowledgeEmbedder.embedding_dim` | 384 (SBERT) / 100 (fallback) | `rag_knowledge.py:53,67` |
 
 ### Pro-Stats Mining Archetype Thresholds

@@ -29,6 +29,7 @@ Every module follows the factory function pattern for thread-safe singleton acce
 | `role_classifier.py` | `RoleClassifier`, `RoleProfile` | `get_role_classifier()` | 5-role neural + heuristic classification |
 | `utility_economy.py` | `UtilityAnalyzer`, `EconomyOptimizer`, `EconomyDecision` | `get_utility_analyzer()`, `get_economy_optimizer()` | Grenade efficiency and buy-round optimization |
 | `momentum.py` | `MomentumTracker`, `MomentumState` | `get_momentum_tracker()` | Round momentum with tilt detection |
+| `movement_quality.py` | `MovementQualityAnalyzer` | `get_movement_quality_analyzer()` | Positioning-mistake detector (MLMove paper, 4 patterns) |
 | `__init__.py` | _(re-exports all public symbols)_ | _(all factory functions)_ | Package API surface |
 
 ---

@@ -16,17 +16,21 @@ validates data -- none of them store or train anything.
 | File | Lines | Purpose | Key Exports |
 |------|-------|---------|-------------|
 | `__init__.py` | 1 | Package marker | -- |
-| `connect_map_context.py` | ~113 | Z-aware spatial features relative to map objectives | `distance_with_z_penalty()`, `calculate_map_context_features()` |
-| `cv_framebuffer.py` | ~193 | Thread-safe ring buffer for CV frame capture and HUD extraction | `FrameBuffer`, `HeatmapData` |
-| `data_pipeline.py` | ~330 | Data cleaning, scaling, temporal splitting, player decontamination | `ProDataPipeline` |
-| `external_analytics.py` | ~202 | Z-score comparison against elite CSV reference datasets | `EliteAnalytics` |
-| `heatmap_engine.py` | ~301 | Gaussian occupancy maps and differential user-vs-pro heatmaps | `HeatmapEngine`, `HeatmapData`, `DifferentialHeatmapData` |
-| `player_knowledge.py` | ~617 | Player-POV perception system (NO-WALLHACK sensorial model) | `PlayerKnowledge`, `PlayerKnowledgeBuilder` |
-| `round_stats_builder.py` | ~573 | Per-round, per-player statistics from demo events | `build_round_stats()`, `aggregate_round_stats_to_match()`, `enrich_from_demo()` |
-| `skill_assessment.py` | ~155 | 5-axis skill decomposition and curriculum level projection | `SkillLatentModel`, `SkillAxes` |
-| `state_reconstructor.py` | ~131 | Tick-to-tensor conversion for RAP-Coach training and inference | `RAPStateReconstructor` |
-| `tensor_factory.py` | ~748 | Player-POV perception tensors (map, view, motion) | `TensorFactory`, `TensorConfig`, `TrainingTensorConfig`, `get_tensor_factory()` |
-| `tick_enrichment.py` | ~352 | Cross-player contextual features for METADATA_DIM indices 20-24 | `enrich_tick_data()` |
+| `bombsite_encoding.py` | ~192 | Bombsite centroid encoding and A/B site classification | `encode_bombsite_context()` |
+| `connect_map_context.py` | ~112 | Z-aware spatial features relative to map objectives | `distance_with_z_penalty()`, `calculate_map_context_features()` |
+| `data_pipeline.py` | ~408 | Data cleaning, scaling, temporal splitting, player decontamination | `ProDataPipeline` |
+| `demo_prioritizer.py` | ~344 | Pro-demo prioritization queue scoring (recency, map, rating) | `DemoPrioritizer` |
+| `demo_quality.py` | ~408 | Demo quality gates (tick completeness, corruption, coverage) | `DemoQualityAssessor` |
+| `external_analytics.py` | ~201 | Z-score comparison against elite CSV reference datasets | `EliteAnalytics` |
+| `heatmap_engine.py` | ~300 | Gaussian occupancy maps and differential user-vs-pro heatmaps | `HeatmapEngine`, `HeatmapData`, `DifferentialHeatmapData` |
+| `player_knowledge.py` | ~625 | Player-POV perception system (NO-WALLHACK sensorial model) | `PlayerKnowledge`, `PlayerKnowledgeBuilder` |
+| `rating.py` | ~230 | Cross-module HLTV rating glue (match-level aggregation) | `compute_match_rating()` |
+| `round_reconstructor.py` | ~575 | Per-round state reconstruction from raw tick streams | `RoundReconstructor` |
+| `round_stats_builder.py` | ~742 | Per-round, per-player statistics from demo events | `build_round_stats()`, `aggregate_round_stats_to_match()`, `enrich_from_demo()` |
+| `skill_assessment.py` | ~161 | 5-axis skill decomposition and curriculum level projection | `SkillLatentModel`, `SkillAxes` |
+| `state_reconstructor.py` | ~130 | Tick-to-tensor conversion for RAP-Coach training and inference | `RAPStateReconstructor` |
+| `tensor_factory.py` | ~747 | Player-POV perception tensors (map, view, motion) | `TensorFactory`, `TensorConfig`, `TrainingTensorConfig`, `get_tensor_factory()` |
+| `tick_enrichment.py` | ~350 | Cross-player contextual features for METADATA_DIM indices 20-24 | `enrich_tick_data()` |
 
 ## Sub-Packages
 
@@ -117,16 +121,12 @@ Gaussian CDF approximation (`sigmoid(1.702 * z)`).
   comparisons for the correction engine.
 - **UI / Visualization:** `heatmap_engine.HeatmapEngine` generates
   RGBA data for position heatmaps and differential overlays.
-  `cv_framebuffer.FrameBuffer` captures frames for HUD-region OCR.
 
 ## Development Notes
 
 - All spatial distance calculations on multi-level maps must use
   `distance_with_z_penalty()` from `connect_map_context.py`, not raw
   Euclidean distance.
-- `FrameBuffer` is thread-safe for `capture_frame()` and
-  `get_latest()`, but `create_texture_from_data()` (Kivy) must be
-  called from the main OpenGL thread.
 - `HeatmapEngine.generate_heatmap_data()` and
   `generate_differential_heatmap_data()` are thread-safe.
 - `ProDataPipeline` limits in-memory rows to `_MAX_PIPELINE_ROWS`

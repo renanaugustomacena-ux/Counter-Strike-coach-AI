@@ -29,6 +29,7 @@ Cada modulo segue o padrao factory function para acesso singleton thread-safe. T
 | `role_classifier.py` | `RoleClassifier`, `RoleProfile` | `get_role_classifier()` | Classificacao neural + heuristica de 5 funcoes |
 | `utility_economy.py` | `UtilityAnalyzer`, `EconomyOptimizer`, `EconomyDecision` | `get_utility_analyzer()`, `get_economy_optimizer()` | Eficiencia de granadas e otimizacao de buy round |
 | `momentum.py` | `MomentumTracker`, `MomentumState` | `get_momentum_tracker()` | Momentum de round com deteccao de tilt |
+| `movement_quality.py` | `MovementQualityAnalyzer` | `get_movement_quality_analyzer()` | Detector de erros de posicionamento (paper MLMove, 4 padroes) |
 | `__init__.py` | _(re-exporta todos os simbolos publicos)_ | _(todas as factory functions)_ | Superficie da API do pacote |
 
 ---

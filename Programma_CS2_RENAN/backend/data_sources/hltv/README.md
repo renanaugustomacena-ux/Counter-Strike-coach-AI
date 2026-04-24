@@ -25,7 +25,7 @@
 - Fetches: Rating 2.0, K/D, KPR, DPR, ADR, KAST, HS%, Impact, Maps Played
 - Fetches trait sections: Firepower, Entrying, Utility stats
 - Fetches sub-pages: Clutches (1v1, 1v2, 1v3), Multikills (3k, 4k, 5k), Career rating history
-- Auto-discovers the Top 50 players from HLTV's ranking page
+- Auto-discovers player URLs via the HLTV world team ranking (top 30 teams, ~150 players). Falls back to `/stats/players` if team discovery returns zero
 - Saves all data into `ProPlayer` + `ProPlayerStatCard` tables in `hltv_metadata.db`
 - Respects `robots.txt` and enforces rate limiting between requests
 - Uses FlareSolverr (Docker container) to bypass Cloudflare protection on hltv.org
@@ -48,12 +48,10 @@ statistics baseline that the coaching engine uses to compare user performance ag
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `__init__.py` | 1 | Package initialization (empty marker) |
-| `docker_manager.py` | 139 | Docker/FlareSolverr container lifecycle: start, health-check, stop |
-| `flaresolverr_client.py` | 141 | REST client for FlareSolverr API: session management, HTTP GET via proxy |
-| `rate_limit.py` | 33 | `RateLimiter` with tiered delays to mimic human browsing patterns |
-| `selectors.py` | 29 | `HLTVURLBuilder` (URL construction) + `PlayerStatsSelectors` (CSS selectors) |
-| `stat_fetcher.py` | 438 | `HLTVStatFetcher`: main fetching logic, HTML parsing, database persistence |
+| `__init__.py` | 0 | Package initialization (empty marker) |
+| `docker_manager.py` | 138 | Docker/FlareSolverr container lifecycle: `ensure_flaresolverr()`, health-check, `stop_flaresolverr()` |
+| `flaresolverr_client.py` | 140 | REST client for FlareSolverr API: session management (`create_session`/`destroy_session`), `get()` via proxy |
+| `stat_fetcher.py` | 676 | `HLTVStatFetcher`: discovery (`fetch_top_teams`, `fetch_top_players`), HTML parsing via inline `soup.select()`, rate limiting via `CRAWL_DELAY_MIN/MAX_SECONDS`, database persistence |
 
 ---
 
@@ -71,19 +69,19 @@ statistics baseline that the coaching engine uses to compare user performance ag
                         |     stat_fetcher.py      |
                         |   HLTVStatFetcher class  |
                         |   - preflight_check()    |
+                        |   - fetch_top_teams(30)  |
                         |   - fetch_top_players()  |
-                        |   - fetch_and_save()     |
-                        +---+--------+--------+----+
-                            |        |        |
-                   +--------+   +----+----+   +--------+
-                   |            |         |            |
-                   v            v         v            v
-          +--------+--+  +-----+------+  +-----+------+
-          | selectors |  | rate_limit |  | flaresolverr |
-          | .py       |  | .py        |  | _client.py   |
-          | URL build |  | Tiered     |  | REST client  |
-          | CSS select|  | delays     |  | for proxy    |
-          +-----------+  +------------+  +------+-------+
+                        |   - fetch_and_save_player|
+                        |   Inline soup.select()   |
+                        |   CRAWL_DELAY 2-7s       |
+                        +------------+-------------+
+                                     |
+                                     v
+                                     +----------+---------+
+                                     | flaresolverr_      |
+                                     | client.py          |
+                                     | REST via :8191     |
+                                     +----------+---------+
                                                 |
                                                 v
                                      +----------+---------+
@@ -131,14 +129,17 @@ statistics baseline that the coaching engine uses to compare user performance ag
 2. **Docker check**: `docker_manager.ensure_flaresolverr()` guarantees the FlareSolverr container
    is running on port 8191. It tries `docker start flaresolverr` first, then falls back to
    `docker compose up -d` if the container does not exist.
-3. **Discovery**: `fetch_top_players()` scrapes the Top 50 ranking page to collect player profile
-   URLs automatically.
+3. **Discovery**: `fetch_top_teams(count=30)` scrapes `/ranking/teams/` (robots.txt-compliant)
+   to extract the top teams and their rosters, yielding ~150 player stat URLs. If team discovery
+   returns zero, the caller falls back to `fetch_top_players()` which targets `/stats/players`
+   (note: `/stats/players?rankingFilter=Top50` is disallowed by HLTV `robots.txt` as of
+   2026-04-12 — see stat_fetcher.py:57-108).
 4. **Per-player fetch**: For each player URL, `fetch_and_save_player()` triggers a deep crawl:
    - Overview page: Rating 2.0, KPR, DPR, ADR, KAST, HS%, Impact, Maps Played
    - Trait sections: Firepower, Entrying, Utility (parsed from the same page)
    - Sub-pages: Clutches, Multikills, Career history (separate HTTP requests each)
-5. **Parsing**: BeautifulSoup4 parses the HTML responses using CSS selectors defined in
-   `selectors.py` and inline in `stat_fetcher.py`.
+5. **Parsing**: BeautifulSoup4 parses the HTML responses using CSS selectors defined inline
+   in `stat_fetcher.py` via `soup.select()` with multi-selector fallback (`_select_fallback()`).
 6. **Persistence**: Parsed data is upserted into `ProPlayer` and `ProPlayerStatCard` tables in
    `hltv_metadata.db` via SQLModel. KAST is converted from percentage to ratio (P-SAN-01).
 
@@ -146,23 +147,23 @@ statistics baseline that the coaching engine uses to compare user performance ag
 
 ## Rate Limiting
 
-The `RateLimiter` class uses a **tiered delay system** (not a token bucket) that mimics human
-browsing behavior with randomized jitter to avoid detection:
+Rate limiting is implemented directly in `stat_fetcher.py` as module-level constants, not as
+a separate class:
 
-| Tier | Delay Range | Purpose |
-|------|-------------|---------|
-| `micro` | 2.0 -- 3.5s | Small waits within a page sequence |
-| `standard` | 4.0 -- 8.0s | Normal page navigation between players |
-| `heavy` | 10.0 -- 20.0s | Transition between different stat sections |
-| `backoff` | 45.0 -- 90.0s | After a suspected block or network failure |
+```python
+CRAWL_DELAY_MIN_SECONDS = 2  # stat_fetcher.py:50
+CRAWL_DELAY_MAX_SECONDS = 7  # stat_fetcher.py:51
+```
 
-Additionally, `stat_fetcher.py` enforces its own `CRAWL_DELAY_MIN_SECONDS = 2` and
-`CRAWL_DELAY_MAX_SECONDS = 7` between every HTTP request, using `random.uniform()`.
+Every HTTP request through FlareSolverr is preceded by
+`time.sleep(random.uniform(CRAWL_DELAY_MIN_SECONDS, CRAWL_DELAY_MIN_SECONDS + 2))` or
+equivalent (see stat_fetcher.py:201, 239). The effective delay between any two requests is
+therefore **2.0-7.0 seconds** with uniform jitter.
 
-Random jitter is intentionally **unseeded** (F6-25): deterministic jitter would create detectable
-request patterns. Anti-scraping detection relies on apparent human randomness.
-
-The minimum effective delay between any two requests is **2.0 seconds** (hard floor).
+Random jitter is intentionally **unseeded** (F6-25): deterministic jitter would create
+detectable request patterns. Anti-scraping detection relies on apparent human randomness.
+Additional dormant sleeps (one hour between sync cycles, six hours when HLTV is unreachable)
+are enforced by the caller `hltv_sync_service.run_sync_loop()`.
 
 ---
 
@@ -268,7 +269,6 @@ curl http://localhost:8191/
 All modules use structured logging via `get_logger("cs2analyzer.<module>")`:
 - `cs2analyzer.docker_manager` -- container lifecycle events
 - `cs2analyzer.flaresolverr` -- FlareSolverr REST API interactions
-- `cs2analyzer.hltv.rate_limit` -- delay tier and sleep duration
 - `cs2analyzer.hltv_stat_fetcher` -- player discovery, parsing, database persistence
 
 ### Configuration
@@ -279,9 +279,11 @@ All modules use structured logging via `get_logger("cs2analyzer.<module>")`:
 
 ### Selector Maintenance
 
-When HLTV changes its page layout, update CSS selectors in two places:
-1. `selectors.py` -- `PlayerStatsSelectors` class (table rows, name column, rating column)
-2. `stat_fetcher.py` -- inline `soup.select()` calls in parsing methods
+When HLTV changes its page layout, update CSS selectors inline in `stat_fetcher.py`. The
+`_select_fallback()` helper (stat_fetcher.py:131-156) takes an ordered list of candidate
+selectors and logs a warning when a primary selector fails and a fallback activates, so
+layout drift is detected early without breaking scraping. Inspect the WARNING logs for
+"CSS fallback activated" messages and add new primary selectors above the existing ones.
 
 ### FlareSolverr Session Management
 

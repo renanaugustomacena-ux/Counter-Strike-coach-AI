@@ -18,10 +18,10 @@ portability across machines.
 
 | File | Purpose |
 |------|---------|
-| `db_models.py` | 20 SQLModel table classes spanning the full data model |
+| `db_models.py` | 21 SQLModel table classes spanning the full data model |
 | `database.py` | `DatabaseManager` (monolith) + `HLTVDatabaseManager` + singletons |
 | `match_data_manager.py` | Per-match SQLite partitions (Tier 3) with LRU engine cache |
-| `backup_manager.py` | Hot backup via `VACUUM INTO`, retention policy (7 daily + 4 weekly) |
+| `backup_manager.py` | Hot backup via SQLite Online Backup API, retention (latest + 7 daily + 4 weekly) |
 | `db_backup.py` | SQLite Online Backup API wrapper + tar.gz archival for match data |
 | `db_migrate.py` | Alembic migration runner for automatic schema upgrades on startup |
 | `maintenance.py` | Metadata pruning: removes old tick data while preserving aggregate stats |
@@ -38,7 +38,7 @@ write-lock contention between daemons and to keep per-match B-tree depth shallow
 ```
 +-------------------------------+
 |      database.db (Monolith)   |
-|  17 tables: training data,    |
+|  18 tables: training data,    |
 |  player stats, ticks,         |
 |  coaching state, knowledge    |
 +---------------+---------------+
@@ -64,9 +64,11 @@ write-lock contention between daemons and to keep per-match B-tree depth shallow
 ### Connection PRAGMAs (enforced on every checkout)
 
 ```sql
-PRAGMA journal_mode = WAL;
-PRAGMA synchronous  = NORMAL;
-PRAGMA busy_timeout = 30000;
+PRAGMA journal_mode     = WAL;
+PRAGMA synchronous      = NORMAL;
+PRAGMA busy_timeout     = 30000;
+PRAGMA foreign_keys     = ON;      -- DB-06: FKs are decorative without this
+PRAGMA wal_autocheckpoint = 512;   -- DB-07: ~2 MB checkpoint cadence
 ```
 
 Engine pool: `pool_size=1, max_overflow=4` for single-writer SQLite safety.
@@ -115,7 +117,8 @@ Tracks daemon status, training progress, heartbeat, and resource limits. Feature
 
 ### BackupManager (`backup_manager.py`)
 
-Hot backup using `VACUUM INTO` (non-blocking during WAL mode). Retention policy:
+Hot backup using SQLite's Online Backup API (`sqlite3.Connection.backup()` at
+`backup_manager.py:81-89`), WAL-safe and non-blocking. Retention policy:
 keep the latest + 7 daily + 4 weekly backups. Every backup is verified with
 `PRAGMA quick_check` before acceptance.
 
@@ -127,9 +130,9 @@ path-traversal protection (P2-03).
 
 ## Data Model Highlights (db_models.py)
 
-The module defines 20 SQLModel table classes organized into logical groups:
+The module defines 21 SQLModel table classes organized into logical groups:
 
-- **Player telemetry:** `PlayerMatchStats`, `PlayerTickState`, `RoundStats`
+- **Player telemetry:** `PlayerMatchStats`, `PlayerTickState`, `RoundStats`, `PlayerProfile`
 - **Coaching framework:** `CoachState`, `CoachingInsight`, `CoachingExperience` (COPER)
 - **Knowledge base:** `TacticalKnowledge` (RAG, 384-dim embeddings)
 - **Pro data:** `ProTeam`, `ProPlayer`, `ProPlayerStatCard`

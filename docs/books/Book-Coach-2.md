@@ -1,6 +1,48 @@
+# Ultimate CS2 Coach — Parte 2: Servizi, Analisi, Conoscenza, Controllo, Progresso e Database
+
+> **Argomenti:** Servizi di Coaching (pipeline 4-modi: COPER/Ibrido/RAG/Base, Ollama LLM), Motori di Coaching (10 motori di analisi game-theoretic e statistica), Conoscenza e Recupero (RAG + Experience Bank COPER), Motori di analisi (belief model bayesiano, expectiminimax, momentum, ruoli, deception index, entropia, engagement range, utility economy, win probability), Elaborazione e Feature Engineering (vettore canonico 25-dim, baselines professionali), Modulo di Controllo (lifecycle daemon, code ingestione, controllo ML), Progresso e Tendenze (tracking longitudinale), Database e Storage (schema SQLite WAL three-tier), Pipeline di Addestramento e Orchestrazione, Funzioni di Perdita.
+>
+> **Autore:** Renan Augusto Macena
+
+---
+
+> Questo documento è la continuazione della **Parte 1B** — *I Sensi e lo Specialista*, che copre il modello RAP Coach e tutte le sorgenti dati esterne. La Parte 2 documenta i servizi di coaching che consumano quegli output neurali e li trasformano in consigli azionabili, insieme ai motori di analisi, alla conoscenza tattica e all'infrastruttura di storage e addestramento.
+
+---
+
+## Indice
+
+**Parte 2 — Servizi, Analisi e Database (questo documento)**
+
+5. [Sottosistema 3 — Servizi di Coaching (`backend/services/`)](#5-sottosistema-3--servizi-di-coaching)
+   - CoachingService (pipeline 4-modi)
+   - OllamaWriter (raffinamento LLM)
+   - AnalysisOrchestrator
+5B. [Sottosistema 3B — Motori di Coaching (`backend/coaching/`)](#5b-sottosistema-3b--motori-di-coaching)
+6. [Sottosistema 4 — Conoscenza e Recupero (`backend/knowledge/`)](#6-sottosistema-4--conoscenza-e-recupero)
+   - RAG Knowledge (retrieval per pattern di coaching)
+   - Experience Bank COPER (storage e retrieval di esperienze)
+7. [Sottosistema 5 — Motori di analisi (`backend/analysis/`)](#7-sottosistema-5--motori-di-analisi)
+   - Belief Model bayesiano
+   - Game Tree (expectiminimax)
+   - Momentum, Role Classifier, Deception Index, Entropy Analysis
+   - Engagement Range, Utility Economy, Win Probability, Blind Spots
+8. [Sottosistema 6 — Elaborazione e Feature Engineering (`backend/processing/`)](#8-sottosistema-6--elaborazione-e-feature-engineering)
+   - Vectorizer (contratto canonico METADATA_DIM=25)
+   - TensorFactory (costruzione tensor visione/mappa)
+   - Baselines professionali e meta drift detection
+   - Heatmap, validazione
+9. [Sottosistema 7 — Modulo di Controllo (`backend/control/`)](#9-sottosistema-7--modulo-di-controllo)
+10. [Sottosistema 8 — Progresso e Tendenze (`backend/progress/`)](#10-sottosistema-8--progresso-e-tendenze)
+11. [Sottosistema 9 — Database e Storage (`backend/storage/`)](#11-sottosistema-9--database-e-storage)
+12. [Pipeline di Addestramento e Orchestrazione](#12-pipeline-di-addestramento-e-orchestrazione)
+13. [Funzioni di Perdita — Dettaglio Implementativo](#13-funzioni-di-perdita--dettaglio-implementativo)
+
+---
+
 ## 5. Sottosistema 3 — Servizi di Coaching
-https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI
-**cartella nella repo:** `backend/services/`
+
+**Cartella nella repo:** `backend/services/`
 **File:** `coaching_service.py`, `ollama_writer.py`, `analysis_orchestrator.py`
 
 Questo sottosistema è il **centro decisionale**: prende tutto ciò che le reti neurali e i sistemi di conoscenza hanno prodotto e lo sintetizza in veri e propri consigli di coaching per il giocatore.
@@ -136,7 +178,7 @@ Oltre ai tre servizi principali (CoachingService, OllamaCoachWriter, AnalysisOrc
 
 > **Analogia:** Se CoachingService è il **direttore dell'ospedale**, i servizi aggiuntivi sono i **reparti specializzati**: c'è il reparto di dialogo (coaching interattivo), il reparto lezioni (formazione strutturata), il laboratorio linguistico (LLM), il reparto imaging (visualizzazioni), l'anagrafe (profili), il reparto analisi (coordinamento) e il sistema di telemetria (monitoraggio remoto).
 
-#### CoachingDialogueEngine (`coaching_dialogue.py`, ~500 righe)
+#### CoachingDialogueEngine (`coaching_dialogue.py`)
 
 Motore di dialogo multi-turno con augmentazione RAG e Experience Bank. Evolve il single-shot OllamaCoachWriter in una **sessione interattiva** dove i giocatori possono fare domande follow-up sulle loro prestazioni.
 
@@ -176,7 +218,7 @@ sequenceDiagram
 
 **Sicurezza dello storico (F5-06):** Il messaggio utente viene aggiunto alla cronologia solo *dopo* aver ottenuto una risposta valida dal LLM, evitando stati inconsistenti in caso di eccezione.
 
-#### LessonGenerator (`lesson_generator.py`, 382 righe)
+#### LessonGenerator (`lesson_generator.py`)
 
 Generatore di lezioni educative strutturate a partire dall'analisi delle demo:
 
@@ -204,7 +246,7 @@ flowchart TB
 
 **Pro Tips map-specific:** Database interno con consigli per mirage, inferno, dust2, ancient, nuke. Fallback a consigli generali per mappe non coperte.
 
-#### LLMService (`llm_service.py`, 253 righe)
+#### LLMService (`llm_service.py`)
 
 Servizio di integrazione Ollama per inferenza LLM locale:
 
@@ -229,7 +271,7 @@ Servizio di integrazione Ollama per inferenza LLM locale:
 
 **Auto-discovery modello:** Se il modello configurato non è disponibile, utilizza automaticamente il primo modello installato. Singleton via `get_llm_service()`.
 
-#### VisualizationService (`visualization_service.py`, 119 righe)
+#### VisualizationService (`visualization_service.py`)
 
 Genera grafici radar Matplotlib per confronto User vs Pro:
 
@@ -238,7 +280,7 @@ Genera grafici radar Matplotlib per confronto User vs Pro:
 - Feature confrontate: avg_kills, avg_adr, avg_hs, avg_kast, accuracy
 - Rendering wrappato in try/except (F5-19) per gestire stats vuote o backend matplotlib assente
 
-#### ProfileService (`profile_service.py`, 127 righe)
+#### ProfileService (`profile_service.py`)
 
 Orchestratore di sincronizzazione profili esterni:
 
@@ -247,7 +289,7 @@ Orchestratore di sincronizzazione profili esterni:
 - `sync_all_external_data(steam_id, faceit_name)` → upsert su `PlayerProfile` in DB
 - Chiavi API caricate da environment/keyring (F5-22), mai hardcoded
 
-#### AnalysisService (`analysis_service.py`, 92 righe)
+#### AnalysisService (`analysis_service.py`)
 
 Servizio di coordinamento analisi con drift detection:
 
@@ -255,7 +297,7 @@ Servizio di coordinamento analisi con drift detection:
 - `get_pro_comparison(player_name, pro_name)` → confronto side-by-side
 - `check_for_drift(player_name)` → `detect_feature_drift()` sulle ultime 100 partite
 
-#### TelemetryClient (`telemetry_client.py`, 60 righe)
+#### TelemetryClient (`telemetry_client.py`)
 
 Client async per invio metriche a server centrale:
 
@@ -264,7 +306,7 @@ Client async per invio metriche a server centrale:
 - Fallback graceful se httpx non installato (feature opzionale)
 - **Anti-fabrication compliant:** nessun dato sintetico nel self-test
 
-#### PlayerLookupService (`player_lookup.py`, 503 righe)
+#### PlayerLookupService (`player_lookup.py`)
 
 Servizio di ricerca giocatori professionisti che previene l'allucinazione LLM iniettando dati verificati nel contesto del dialogo di coaching:
 
@@ -324,13 +366,13 @@ flowchart LR
 ## 5B. Sottosistema 3B — Motori di Coaching
 
 **Cartella nella repo:** `backend/coaching/`
-**File:** 7 moduli, ~1.100 righe totali
+**File:** 7 moduli
 
 Questo sottosistema contiene i **motori decisionali di coaching** che trasformano deviazioni statistiche grezze in consigli prioritizzati e contestualizzati. A differenza dei Servizi (Sezione 5) che orchestrano e presentano, i Motori di Coaching contengono la **logica di ragionamento** dell'allenatore.
 
 > **Analogia:** Se i Servizi di Coaching (Sezione 5) sono la **reception dell'ospedale**, i Motori di Coaching sono i **medici specialisti nei loro studi**. Il `CorrectionEngine` è il medico di base che pesa i sintomi e decide quali 3 sono i più urgenti. Il `HybridCoachingEngine` è il primario che sintetizza ML e conoscenza enciclopedica per formulare diagnosi complete. L'`ExplanationGenerator` è lo specialista che traduce il gergo medico in parole comprensibili al paziente. Il `ProBridge` è il consulente che porta i referti di altri ospedali (dati HLTV) e li rende compatibili con il sistema locale. Il `LongitudinalEngine` è l'epidemiologo che studia i trend nel tempo.
 
-### -HybridCoachingEngine (`hybrid_engine.py`, 643 righe)
+### -HybridCoachingEngine (`hybrid_engine.py`)
 
 Il **cuore decisionale** del coaching: sintetizza predizioni ML con conoscenza RAG per generare insight unificati e deduplicati.
 
@@ -377,7 +419,7 @@ Dove `knowledge_effectiveness = min(1.0, mean(usage_count) / 100)`.
 
 **Fallback baseline (F4-02):** Se `get_pro_baseline()` fallisce, usa valori statici hardcoded e marca tutti gli insight con `baseline_quality=degraded` nel messaggio.
 
-### -CorrectionEngine (`correction_engine.py`, 65 righe)
+### -CorrectionEngine (`correction_engine.py`)
 
 Genera le **top-3 correzioni pesate** da deviazioni Z-score:
 
@@ -401,7 +443,7 @@ Genera le **top-3 correzioni pesate** da deviazioni Z-score:
 
 **Override utente:** I pesi sono sovrascrivibili via `get_setting("COACH_WEIGHT_OVERRIDES")`.
 
-### -ExplanationGenerator (`explainability.py`, 95 righe)
+### -ExplanationGenerator (`explainability.py`)
 
 Traduce segnali latenti RL in **narrative comprensibili** organizzate per i 5 assi di competenza (`SkillAxes`):
 
@@ -423,7 +465,7 @@ Traduce segnali latenti RL in **narrative comprensibili** organizzate per i 5 as
 
 **Filtro di complessità:** Per `skill_level < 3` (principianti), le narrative negative sono semplificate alla sola azione suggerita, evitando sovraccarico cognitivo.
 
-### -NNRefinement (`nn_refinement.py`, 31 righe)
+### -NNRefinement (`nn_refinement.py`)
 
 Applica aggiustamenti di peso dalla rete neurale alle correzioni pre-calcolate:
 
@@ -433,7 +475,7 @@ refined_z = weighted_z × (1 + nn_adjustments["{feature}_weight"])
 
 Modulo leggero che scala le correzioni dal `CorrectionEngine` usando pesi appresi dal modello ML, permettendo al sistema neurale di influenzare la prioritizzazione dei consigli.
 
-### -ProBridge (`pro_bridge.py`, 115 righe)
+### -ProBridge (`pro_bridge.py`)
 
 **Layer di traduzione** che assimila Player Card HLTV nel modello cognitivo del coach:
 
@@ -464,7 +506,7 @@ Modulo leggero che scala le correzioni dal `CorrectionEngine` usando pesi appres
 
 **Classificazione archetipo:** `get_player_archetype()` → Star Fragger (impact>1.3), Support Anchor (kast>0.75), Sniper Specialist (AWP kills>40%), All-Rounder (default).
 
-### -PlayerTokenResolver (`token_resolver.py`, 108 righe)
+### -PlayerTokenResolver (`token_resolver.py`)
 
 Risolve **token statici** (Card) per il confronto dinamico:
 
@@ -487,7 +529,7 @@ flowchart TB
     CMP --> DELTA["Correction Delta:<br/>rating: -0.15<br/>adr: +5.2<br/>kast: -0.03<br/>is_underperforming: true"]
 ```
 
-### -LongitudinalEngine (`longitudinal_engine.py`, 49 righe)
+### -LongitudinalEngine (`longitudinal_engine.py`)
 
 Genera insight trend-aware comparando traiettorie di performance nel tempo con segnali di stabilità NN:
 
@@ -679,7 +721,7 @@ graph LR
     QUERY["Query: Posizionamento AWP"] -.->|"segue connessioni"| RESULT["AWP richiede angoli lunghi<br/>trovati in A Long, Mid"]
 ```
 
-### -Inizializzazione Knowledge Base (`init_knowledge_base.py`, 111 righe)
+### -Inizializzazione Knowledge Base (`init_knowledge_base.py`)
 
 Script di orchestrazione che popola il database RAG con conoscenza tattica da due fonti:
 
@@ -688,7 +730,7 @@ Script di orchestrazione che popola il database RAG con conoscenza tattica da du
 
 Dopo il caricamento, genera un report per categoria e mappa utilizzando query COUNT aggregate (senza caricare tutti i record in memoria).
 
-### -ProDemoMiner (`pro_demo_miner.py`, 277 righe)
+### -ProDemoMiner (`pro_demo_miner.py`)
 
 Estrae conoscenza tattica dalle demo professionali utilizzando pattern detection:
 
@@ -711,7 +753,7 @@ Estrae conoscenza tattica dalle demo professionali utilizzando pattern detection
 - Conoscenza specifica per team (strategie, tendenze, stili)
 - Conoscenza per esecuzioni di successo (pattern con tasso ≥70%)
 
-### -Round Utils (`round_utils.py`, 35 righe)
+### -Round Utils (`round_utils.py`)
 
 Utility condivisa per classificazione fase economica del round, estratta per eliminare duplicazione tra i layer knowledge e services:
 
@@ -750,7 +792,7 @@ flowchart TB
     end
 ```
 
-### -Classificatore di Ruoli (`role_classifier.py`, ~400 righe)
+### -Classificatore di Ruoli (`role_classifier.py`)
 
 Assegna uno dei 6 ruoli utilizzando **soglie statistiche apprese**:
 
@@ -771,7 +813,7 @@ Assegna uno dei 6 ruoli utilizzando **soglie statistiche apprese**:
 
 **Audit del bilanciamento del team** (`audit_team_balance()`): rileva più AWPer (ALTA), Entry mancante (ALTA), Supporto mancante (MEDIA), nessuna diversità (CRITICA), più Lurker (MEDIA).
 
-### -Predittore di Probabilità di Vittoria (`win_probability.py`, ~250 righe)
+### -Predittore di Probabilità di Vittoria (`win_probability.py`)
 
 Rete neurale a 12 funzioni che stima P(round_win | game_state):
 
@@ -837,7 +879,7 @@ Il `compute_elo_differential(team_histories, enemy_histories)` calcola il differ
 
 **Nota:** L'Elo è un'**augmentazione opzionale** — l'architettura base a 12 feature del `WinProbabilityNN` rimane invariata. Se lo storico non è disponibile, il predittore ricade sulla probabilità NN pura.
 
-### -Albero di gioco Expectiminimax (`game_tree.py`, ~445 righe)
+### -Albero di gioco Expectiminimax (`game_tree.py`)
 
 Implementa la **ricerca expectiminimax** con modellazione adattiva dell'avversario:
 
@@ -872,7 +914,7 @@ flowchart TB
     style RESULT fill:#51cf66,color:#fff
 ```
 
-### -Stimatore Bayesiano di Morte (`belief_model.py`, ~486 righe)
+### -Stimatore Bayesiano di Morte (`belief_model.py`)
 
 Modelli P(morte | credenza, HP, armatura, classe_arma):
 
@@ -915,7 +957,7 @@ flowchart TB
 
 > **Nota sulla calibrazione (G-07):** Lo Stimatore Bayesiano di Morte è ora un **componente live** grazie al cablaggio completato durante la rimediazione. La funzione `extract_death_events_from_db()` nel Session Engine estrae automaticamente gli eventi di morte dal database e li passa ad `auto_calibrate()`, permettendo al modello di affinare le sue probabilità a priori sulla base dei dati reali accumulati. Questo ciclo di feedback trasforma lo stimatore da un modello statico a un sistema che si auto-calibra con l'esperienza.
 
-### -Indice di Inganno (`deception_index.py`, ~220 righe)
+### -Indice di Inganno (`deception_index.py`)
 
 Quantifica l'inganno tattico tramite tre sottometriche:
 
@@ -941,7 +983,7 @@ flowchart TB
     style VERDICT fill:#51cf66,color:#fff
 ```
 
-### - Momentum Tracker ([momentum.py](http://momentum.py), \~160 righe)
+### - Momentum Tracker (`momentum.py`)
 
 Modella il momentum psicologico come un moltiplicatore di prestazioni che decresce nel tempo:
 
@@ -970,7 +1012,7 @@ flowchart TB
     style TILT fill:#ff6b6b,color:#fff
 ```
 
-### -Analizzatore di Entropia (`entropy_analysis.py`, ~145 righe)
+### -Analizzatore di Entropia (`entropy_analysis.py`)
 
 Misura l'efficacia dell'utilità tramite la **riduzione di entropia di Shannon** delle posizioni nemiche:
 
@@ -994,7 +1036,7 @@ flowchart LR
     style IMPACT fill:#51cf66,color:#fff
 ```
 
-### -Rilevatore di Punti Ciechi (`blind_spots.py`, ~210 righe)
+### -Rilevatore di Punti Ciechi (`blind_spots.py`)
 
 Identifica decisioni ricorrenti non ottimali rispetto alle raccomandazioni dell'albero di gioco:
 
@@ -1028,7 +1070,7 @@ flowchart TB
     style R7 fill:#51cf66,color:#fff
 ```
 
-### -Analizzatore distanza di ingaggio (`engagement_range.py`, ~442 righe)
+### -Analizzatore distanza di ingaggio (`engagement_range.py`)
 
 Analizza le distanze di uccisione per costruire **profili di ingaggio** specifici per ruolo e posizione:
 
@@ -1067,7 +1109,7 @@ flowchart TB
     style OBS fill:#ffd43b,color:#000
 ```
 
-### -Analizzatore di utilità ed economia (`utility_economy.py`, ~370 righe)
+### -Analizzatore di utilità ed economia (`utility_economy.py`)
 
 **Analizzatore di utilità:** Punteggio di efficacia per tipo rispetto alle basi dei professionisti (Molotov: 35 danni/lancio, Flash: 1,2 nemici/flash, ecc.)
 
@@ -1087,7 +1129,7 @@ flowchart LR
     style FULL fill:#51cf66,color:#fff
 ```
 
-### -Analizzatore Qualità Movimento (`movement_quality.py`, ~539 righe)
+### -Analizzatore Qualità Movimento (`movement_quality.py`)
 
 Rileva 4 errori comuni di posizionamento basandosi sul paper MLMove (SIGGRAPH 2024, Stanford/Activision/NVIDIA):
 
@@ -1236,7 +1278,7 @@ R_damage = ADR / 73,3
 
 Utilizzato da: demo_parser.py (analisi), base_features.py (aggregazione), coaching_service.py (insight).
 
-### -Metriche PlusMinus e Rating Role-Adjusted (`rating.py`, 231 righe) — KT-06
+### -Metriche PlusMinus e Rating Role-Adjusted (`rating.py`) — KT-06
 
 Modulo complementare alla valutazione HLTV 2.0 che fornisce due metriche aggiuntive progettate per catturare aspetti che il Rating 2.0 trascura:
 
@@ -1339,7 +1381,7 @@ Mappe di occupazione gaussiane ad alte prestazioni per la visualizzazione tattic
 
 > **Analogia:** Data Pipeline è come un **ufficio ammissioni scolastico** che prepara i fascicoli degli studenti per le lezioni. Per prima cosa, **estrae tutti i file** dal database. Quindi **rimuove gli imbroglioni**, ovvero chiunque abbia statistiche incredibilmente alte (un ADR superiore a 400 significa che probabilmente hanno usato hack o che i dati sono corrotti). Successivamente, **standardizza i voti** in modo che tutto sia sulla stessa scala. Quindi **ordina gli studenti cronologicamente** e assegna il 70% alla "classe di apprendimento" (formazione), il 15% alla "classe di quiz" (validazione) e il 15% alla "classe di esame finale" (test). La suddivisione temporale è fondamentale: significa che il modello non vede mai dati "futuri" durante l'addestramento, impedendo imbrogli dovuti ai viaggi nel tempo.
 
-### -Scorer Qualità Demo (`demo_quality.py`, 409 righe) — KT-09
+### -Scorer Qualità Demo (`demo_quality.py`) — KT-09
 
 Valuta la qualità dei dati delle demo ingerite utilizzando metodi statistici robusti basati sul **modello di contaminazione di Huber** (1981):
 
@@ -1368,7 +1410,7 @@ Valuta la qualità dei dati delle demo ingerite utilizzando metodi statistici ro
 
 La robustezza del metodo IQR garantisce un breakdown point del 25% (modello epsilon-contamination di Huber): fino al 25% dei dati può essere corrotto senza invalidare il rilevamento.
 
-### -Prioritizzatore Demo (`demo_prioritizer.py`, 345 righe) — KT-09
+### -Prioritizzatore Demo (`demo_prioritizer.py`) — KT-09
 
 Classifica le demo disponibili per valore di coaching atteso, ispirato ai principi di **Active Learning** (Settles, 2009):
 
@@ -1388,7 +1430,7 @@ Classifica le demo disponibili per valore di coaching atteso, ispirato ai princi
 | `_MIN_TICKS_FOR_VARIANCE` | 64 | Tick minimi per varianza significativa |
 | `_MAX_TICKS_SAMPLE` | 2048 | Limite campionamento per evitare OOM |
 
-### -Codifica Bombsite-Relativa (`bombsite_encoding.py`, 193 righe) — KT-10
+### -Codifica Bombsite-Relativa (`bombsite_encoding.py`) — KT-10
 
 Codifica posizioni relative ai bombsite per ottenere **equivarianza approssimata** sotto la simmetria CT/T:
 
@@ -1505,7 +1547,7 @@ flowchart TB
 
 **Copertura quantitativa:** Il progetto comprende **1.515+ test** distribuiti su 94 file di test e **319+ controlli headless validator** articolati su 24+ fasi di validazione. Questa copertura spazia dall'integrità dello schema DB alla coerenza dei vettori di embedding, dalla correttezza delle pipeline di addestramento alla validazione end-to-end dei flussi di coaching.
 
-### -PlayerKnowledge — Sistema Percettivo NO-WALLHACK (`player_knowledge.py`, 527 righe)
+### -PlayerKnowledge — Sistema Percettivo NO-WALLHACK (`player_knowledge.py`)
 
 Modello di percezione **Player-POV** che ricostruisce ciò che un giocatore legittimamente sa in ogni tick, senza informazioni da wallhack. Questo è il fondamento per coaching eticamente corretto: il coach vede solo ciò che il giocatore vedeva.
 
@@ -1550,7 +1592,7 @@ flowchart TB
 
 **Verifica FOV:** `_is_in_fov()` usa trigonometria (atan2 + angle_diff) per determinare se un target rientra nel campo visivo orizzontale del giocatore. Solo i nemici confermati visibili (dal contatore `enemies_visible` della demo) vengono inclusi.
 
-### -RAPStateReconstructor (`state_reconstructor.py`, 92 righe)
+### -RAPStateReconstructor (`state_reconstructor.py`)
 
 **Vision Bridge Phase 1:** Converte sequenze di `PlayerTickState` dal DB in tensori di percezione per il modello RAP-Coach:
 
@@ -1559,7 +1601,7 @@ flowchart TB
 - **Player-POV:** Modalità opzionale via parametro `knowledge` (PlayerKnowledge)
 - **Windowing:** Finestre temporali di `sequence_length=32` tick con overlap 50%
 
-### -ConnectMapContext (`connect_map_context.py`, 116 righe)
+### -ConnectMapContext (`connect_map_context.py`)
 
 Feature spaziali Z-aware per mappe multilivello (Task 2.17.1):
 
@@ -1570,7 +1612,7 @@ Feature spaziali Z-aware per mappe multilivello (Task 2.17.1):
 
 **Output:** Vettore di 6 feature spaziali normalizzate [0,1]: distanza da bombsite A/B, distanza da spawn T/CT, distanza da mid, penalità Z. Distanze calcolate con `distance_with_z_penalty()` per penalizzare percorsi cross-level su Nuke/Vertigo.
 
-### -CVFrameBuffer (`cv_framebuffer.py`, 183 righe)
+### -CVFrameBuffer (`cv_framebuffer.py`)
 
 Ring buffer thread-safe per frame RGB (Task 2.24.2) con estrazione regioni HUD:
 
@@ -1582,7 +1624,7 @@ Ring buffer thread-safe per frame RGB (Task 2.24.2) con estrazione regioni HUD:
 
 **Dynamic resolution scaling:** Tutte le regioni scalano automaticamente rispetto a `REFERENCE_RESOLUTION = (1920, 1080)` per supportare risoluzioni diverse. Conversione BGR→RGB integrata nel metodo `capture_frame()`.
 
-### -EliteAnalytics (`external_analytics.py`, 159 righe)
+### -EliteAnalytics (`external_analytics.py`)
 
 Carica e analizza dataset CSV di riferimento (top 100 giocatori, statistiche match, dati tornei):
 
@@ -1591,7 +1633,7 @@ Carica e analizza dataset CSV di riferimento (top 100 giocatori, statistiche mat
 - **Z-score tornei:** `_calc_tournament_z()` confronta vs baseline tournament per accuracy, econ_rating, utility_value
 - **Graceful degradation:** `is_healthy()` = True se ≥1 dataset caricato con successo
 
-### -MetaDriftEngine (`meta_drift.py`, 125 righe)
+### -MetaDriftEngine (`meta_drift.py`)
 
 **Pillar 2 Phase 3 — Meta-Drift Surveillance:**
 
@@ -1606,7 +1648,7 @@ flowchart LR
 
 **Integrazione:** `HybridCoachingEngine._calculate_confidence()` chiama `MetaDriftEngine.get_meta_confidence_adjustment()` per penalizzare la confidenza degli insight quando la meta è instabile.
 
-### -NicknameResolver (`nickname_resolver.py`, 129 righe)
+### -NicknameResolver (`nickname_resolver.py`)
 
 **Task 2.18.2:** Risolve nickname in-game delle demo in HLTV ProPlayer ID con matching a 3 livelli:
 
@@ -1618,7 +1660,7 @@ flowchart LR
 
 Gestisce tag di team e prefissi clan. Complessità O(n) per query, accettabile per <1.000 pro nel DB.
 
-### -ProBaseline (`pro_baseline.py`, 476 righe)
+### -ProBaseline (`pro_baseline.py`)
 
 **Task 2.18.1:** Sistema di baseline pro con supporto map-specific e catena di fallback a 3 livelli:
 
@@ -1651,7 +1693,7 @@ flowchart TB
 
 **`calculate_deviations(player_stats, baseline)`** — Calcola Z-score per ogni feature: `z = (player_value - mean) / std`. Gestisce sia baseline flat (legacy) che strutturate (dict con mean/std).
 
-### -RoleThresholdStore (`role_thresholds.py`, 268 righe)
+### -RoleThresholdStore (`role_thresholds.py`)
 
 **Principio anti-mock:** Tutte le soglie di ruolo apprendono esclusivamente da dati pro reali (HLTV, demo, ML):
 
@@ -1684,13 +1726,13 @@ flowchart TB
 ## 9. Sottosistema 7 — Modulo di Controllo
 
 **Cartella nella repo:** `backend/control/`
-**File:** 4 moduli, ~900 righe totali
+**File:** 4 moduli
 
 Questo sottosistema è la **torre di controllo** del sistema: supervisiona servizi background, governa i database, gestisce l'ingestione delle demo e controlla il ciclo di vita del training ML.
 
 > **Analogia:** Se l'intero sistema è un **aeroporto**, il Modulo di Controllo è la **torre di controllo**. La Console è il controllore capo che vede tutti gli schermi. Il ServiceSupervisor è il responsabile del gate che avvia e ferma i voli (servizi). Il DatabaseGovernor è l'ispettore di sicurezza che verifica che le piste (database) siano integre. L'IngestionManager è il responsabile del carico bagagli che processa i bagagli (demo) in ordine. L'MLController è il responsabile della manutenzione che può avviare, fermare o mettere in pausa la manutenzione degli aerei (training).
 
-### -Console (`console.py`, 480 righe) — Singleton
+### -Console (`console.py`) — Singleton
 
 La **Console di Controllo Unificata**: autorità centrale per ML, Ingestion e System State.
 
@@ -1760,7 +1802,7 @@ stateDiagram-v2
 
 **Servizi gestiti:** Attualmente solo `hunter` (HLTV sync daemon: `hltv_sync_service.py`). Architettura estensibile per daemon aggiuntivi.
 
-### -DatabaseGovernor (`db_governor.py`, 111 righe)
+### -DatabaseGovernor (`db_governor.py`)
 
 Controller autorevole per Database Tier 1, 2 e 3:
 
@@ -1784,7 +1826,7 @@ Controller autorevole per Database Tier 1, 2 e 3:
 | Tier 2 | `hltv_metadata.db` | Metadati HLTV, ProPlayer, ProPlayerStatCard |
 | Tier 3 | `match_*.db` (per-match) | Dati telemetria tick-by-tick per partita |
 
-### -IngestionManager (`ingest_manager.py`, 236 righe)
+### -IngestionManager (`ingest_manager.py`)
 
 Controller di ingestione demo con 3 modalità operative:
 
@@ -1812,7 +1854,7 @@ flowchart TB
 
 **Integrazione StateManager:** Progresso parsing in tempo reale (0-100%) esposto via `state_manager.update_parsing_progress()`.
 
-### -MLController (`ml_controller.py`, 121 righe)
+### -MLController (`ml_controller.py`)
 
 Supervisore del ciclo di vita ML con intervento in tempo reale:
 
@@ -1869,11 +1911,11 @@ stateDiagram-v2
 ## 10. Sottosistema 8 — Progresso e Tendenze
 
 **Cartella nella repo:** `backend/progress/`
-**File:** 2 moduli, 49 righe totali
+**File:** 2 moduli
 
 Sottosistema leggero dedicato al tracciamento delle **traiettorie di performance** nel tempo.
 
-### -FeatureTrend (`longitudinal.py`, 10 righe)
+### -FeatureTrend (`longitudinal.py`)
 
 Dataclass minimale che rappresenta il trend di una singola feature:
 
@@ -1884,7 +1926,7 @@ Dataclass minimale che rappresenta il trend di una singola feature:
 | `volatility` | float | Deviazione standard dei valori (stabilità) |
 | `confidence` | float | min(1.0, num_samples / 30) — richiede 30+ partite per piena fiducia |
 
-### -TrendAnalysis (`trend_analysis.py`, 14 righe)
+### -TrendAnalysis (`trend_analysis.py`)
 
 `compute_trend(values)` — Calcola slope, volatility e confidence da una serie di valori:
 
@@ -1907,7 +1949,7 @@ flowchart LR
 ## 11. Sottosistema 9 — Database e Storage
 
 **Cartella nella repo:** `backend/storage/`
-**File:** 10 moduli, ~2.600 righe totali
+**File:** 10 moduli
 
 Questo sottosistema è il **sistema di archiviazione permanente** dell'intero progetto: ogni dato — dalle statistiche di una partita ai modelli addestrati, dalle esperienze di coaching ai profili dei giocatori professionisti — viene salvato, protetto, versionato e reso disponibile attraverso questa infrastruttura.
 
@@ -1950,7 +1992,7 @@ flowchart TB
 
 > **Spiegazione Diagramma:** I tre database sono fisicamente separati: Tier 1 contiene i dati core dell'applicazione (17 tabelle), Tier 2 i dati professionali scaricati da HLTV (3 tabelle), e Tier 3 i dati di telemetria per-match in file SQLite individuali. La separazione evita contesa WAL: le scritture di ingestione (Tier 1) non bloccano le letture HLTV (Tier 2) né la registrazione di telemetria (Tier 3). I riferimenti cross-database sono **logici** (non FK reali) poiché SQLite non supporta FK cross-file.
 
-### -Modelli di Dati (`db_models.py`, 604 righe)
+### -Modelli di Dati (`db_models.py`)
 
 Il **codice genetico** di tutto il sistema: definisce ogni tabella, vincolo, indice e validatore tramite SQLModel (Pydantic + SQLAlchemy). Due enum e 20+ modelli organizzati per tier.
 
@@ -1998,7 +2040,7 @@ Il **codice genetico** di tutto il sistema: definisce ogni tabella, vincolo, ind
 
 > **Nota (P2-01):** Il vincolo `CHECK(id=1)` su `CoachState` garantisce che esista esattamente una riga nel database, trasformandolo in un singleton persistente. Qualsiasi tentativo di inserire una seconda riga fallisce a livello di database, non solo a livello applicativo.
 
-### -DatabaseManager (`database.py`, 289 righe)
+### -DatabaseManager (`database.py`)
 
 Il **custode dell'archivio**: gestisce le connessioni SQLite con WAL mode obbligatorio, separando fisicamente il database monolite (Tier 1) dal database HLTV (Tier 2).
 
@@ -2034,7 +2076,7 @@ Il **custode dell'archivio**: gestisce le connessioni SQLite con WAL mode obblig
 
 > **Nota sulla riconciliazione HLTV:** `HLTVDatabaseManager._reconcile_stale_schema()` rileva colonne mancanti in tabelle HLTV esistenti (schema aggiornato ma DB vecchio) e ricrea le tabelle interessate tramite `DROP TABLE` + `CREATE TABLE`, operando come una migrazione distruttiva di emergenza — accettabile perché i dati HLTV sono ri-scaricabili.
 
-### -MatchDataManager (`match_data_manager.py`, 748 righe)
+### -MatchDataManager (`match_data_manager.py`)
 
 Il **sistema di telecamere di sicurezza** del progetto: ogni partita riceve il suo file SQLite dedicato (`match_{id}.db`) contenente la telemetria tick-by-tick — fino a **1,7 milioni di righe per partita**.
 
@@ -2085,7 +2127,7 @@ flowchart LR
 | `get_all_players_at_tick(match_id, tick)` | Snapshot tutti i giocatori a un tick |
 | `get_all_players_tick_window(match_id, start, end)` | Finestra tick per tutti i giocatori (addestramento RAP) |
 
-### -BackupManager (`backup_manager.py`, 220 righe)
+### -BackupManager (`backup_manager.py`)
 
 Il **responsabile della sicurezza dei dati**: crea copie di backup non-bloccanti tramite `VACUUM INTO` e le gestisce con una politica di rotazione.
 
@@ -2120,7 +2162,7 @@ flowchart TB
 
 **Sicurezza path:** Il label del backup viene validato con regex `^[a-zA-Z0-9_\-]+$` e il path risolto viene verificato per prevenire path traversal attacks. Il path viene escapato per SQL injection (`'` → `''`).
 
-### -StorageManager (`storage_manager.py`, 258 righe)
+### -StorageManager (`storage_manager.py`)
 
 Gestore dello **storage locale** per demo CS2: cartelle di ingestione, archivio post-elaborazione, e quote disco.
 
@@ -2132,7 +2174,7 @@ Gestore dello **storage locale** per demo CS2: cartelle di ingestione, archivio 
 | **Quota disco** | `LOCAL_QUOTA_GB` (default 10 GB), verificata prima dell'archiviazione |
 | **Discovery** | `list_new_demos(is_pro)` — cerca `.dem` non ancora elaborati in `PRO_DEMO_PATH` o `DEFAULT_DEMO_PATH` |
 
-### -StateManager (`state_manager.py`, 206 righe)
+### -StateManager (`state_manager.py`)
 
 **DAO centralizzato** per il singleton `CoachState`: interfaccia thread-safe tra i daemon e la GUI.
 
@@ -2149,13 +2191,13 @@ Gestore dello **storage locale** per demo CS2: cartelle di ingestione, archivio 
 
 ### -Servizi Storage Aggiuntivi
 
-**`stat_aggregator.py` (99 righe)** — Persistenza dati spider HLTV: `persist_player_card(card_data, player_hltv_id)` converte i dati estratti dallo spider in un `ProPlayerStatCard` e lo salva nel database HLTV. `persist_team(team_data)` salva/aggiorna un `ProTeam`.
+**`stat_aggregator.py`** — Persistenza dati spider HLTV: `persist_player_card(card_data, player_hltv_id)` converte i dati estratti dallo spider in un `ProPlayerStatCard` e lo salva nel database HLTV. `persist_team(team_data)` salva/aggiorna un `ProTeam`.
 
-**`db_migrate.py` (112 righe)** — Orchestrazione migrazioni Alembic: `ensure_database_current()` viene chiamata all'avvio dell'applicazione per auto-aggiornare lo schema. Confronta `current_rev` vs `head_rev` e se diversi esegue `alembic.command.upgrade(cfg, "head")`. Se `alembic.ini` non esiste (sviluppo senza Alembic), ritorna `True` silenziosamente.
+**`db_migrate.py`** — Orchestrazione migrazioni Alembic: `ensure_database_current()` viene chiamata all'avvio dell'applicazione per auto-aggiornare lo schema. Confronta `current_rev` vs `head_rev` e se diversi esegue `alembic.command.upgrade(cfg, "head")`. Se `alembic.ini` non esiste (sviluppo senza Alembic), ritorna `True` silenziosamente.
 
-**`maintenance.py` (53 righe)** — Manutenzione database: `prune_old_metadata(days=90)` elimina record vecchi in batch da 500 (`SQLITE_MAX_VARIABLE_NUMBER` safety), evitando query DELETE con migliaia di parametri che SQLite rifiuterebbe.
+**`maintenance.py`** — Manutenzione database: `prune_old_metadata(days=90)` elimina record vecchi in batch da 500 (`SQLITE_MAX_VARIABLE_NUMBER` safety), evitando query DELETE con migliaia di parametri che SQLite rifiuterebbe.
 
-**`remote_file_server.py` (213 righe)** — Servizio di backup remoto e gestione file: supporta sincronizzazione con drive esterno o backup cloud.
+**`remote_file_server.py`** — Servizio di backup remoto e gestione file: supporta sincronizzazione con drive esterno o backup cloud.
 
 ```mermaid
 flowchart TB
@@ -2226,7 +2268,7 @@ flowchart TB
     style TARGETS fill:#fff3e0
 ```
 
-### -TrainingOrchestrator (training_orchestrator.py, 890 righe)
+### -TrainingOrchestrator (training_orchestrator.py)
 
 La classe centrale della pipeline di addestramento. Gestisce JEPA, VL-JEPA e RAP da un punto di ingresso unificato, con dispatch basato su `model_type`.
 
@@ -2413,7 +2455,7 @@ Durante la validazione, il calcolo della loss JEPA richiede un passaggio extra p
 
 Per RAP, la validazione usa `trainer.criterion_val` (MSE su value_estimate vs target_val).
 
-### -JEPATrainer (jepa_trainer.py, 296 righe)
+### -JEPATrainer (jepa_trainer.py)
 
 Il trainer specializzato per l'architettura JEPA. Gestisce pre-training self-supervised, monitoraggio drift, e il protocollo VL-JEPA a tripla loss.
 
@@ -2491,7 +2533,7 @@ Tre componenti di loss:
 - `should_retrain(history, window=5)` → True se drift persistente nelle ultime 5 epoche
 - `retrain_if_needed()` → ciclo completo di riaddestramento con scheduler resettato
 
-### -RAPTrainer (rap_coach/trainer.py, 110 righe)
+### -RAPTrainer (rap_coach/trainer.py)
 
 Il trainer multi-task per il modello RAP Coach. Gestisce 4 componenti di loss simultaneamente.
 
@@ -2535,7 +2577,7 @@ flowchart TB
 
 **F3-07:** I `gate_weights` vengono passati esplicitamente a `compute_sparsity_loss()` anziché letti dall'istanza del modello — garantisce thread-safety.
 
-### -Punto di Ingresso Training (train.py, 275 righe)
+### -Punto di Ingresso Training (train.py)
 
 Modulo entry-point che fornisce la funzione `train_nn()` con dispatch automatico e funzioni standalone.
 
@@ -2557,7 +2599,7 @@ Modulo entry-point che fornisce la funzione `train_nn()` con dispatch automatico
 
 > **Nota P1-02:** Tutti i percorsi chiamano `set_global_seed()` prima dell'addestramento per garantire riproducibilità. Il seed globale è configurato nel modulo `config.py`.
 
-### -WinProbabilityTrainer (win_probability_trainer.py, ~138 righe)
+### -WinProbabilityTrainer (win_probability_trainer.py)
 
 Modulo dedicato al modello di probabilità vittoria — la rete più semplice dell'ecosistema.
 
@@ -2598,22 +2640,22 @@ Input(9) → Linear(32) → ReLU → Linear(16) → ReLU → Linear(1) → Sigmo
 
 I seguenti moduli forniscono l'infrastruttura di supporto al ciclo di addestramento — configurazione, controllo, monitoraggio, dataset, e arresto anticipato.
 
-**`training_config.py` (69 righe)** — Dataclass centralizzate per iperparametri:
+**`training_config.py`** — Dataclass centralizzate per iperparametri:
 
 | Dataclass | Parametri Chiave | Uso |
 |---|---|---|
 | `TrainingConfig` | `base_lr=1e-4`, `max_epochs=100`, `patience=10`, `batch_size=1`, `gradient_clip=1.0`, `ema_decay=0.999` | Configurazione base per tutti i modelli |
 | `JEPATrainingConfig` | Estende TrainingConfig + `latent_dim=256`, `contrastive_temperature=0.07`, `momentum_target=0.996`, `pretraining_epochs=50` | Specifica per JEPA self-supervised |
 
-**`training_controller.py` (160 righe)** — Gatekeeper che decide **se** un nuovo demo debba essere usato per addestramento:
+**`training_controller.py`** — Gatekeeper che decide **se** un nuovo demo debba essere usato per addestramento:
 
 - **Quota mensile**: `MAX_DEMOS_PER_MONTH = 10` — conta i `PlayerMatchStats` processati negli ultimi 30 giorni
 - **Score di diversità**: Confronta il nuovo demo con gli ultimi 5 match via similarità coseno su 6 feature normalizzate (kills, deaths, ADR, HS%, utility, opening duels). Se `diversity < 0.3`, il demo viene rifiutato
 - Ritorna un `TrainingDecision(should_train, reason, diversity_score)` — il chiamante decide se procedere
 
-**`training_monitor.py` (123 righe)** — Persistenza metriche in JSON per monitoraggio real-time e analisi post-training. Traccia: epoche, train_loss, val_loss, learning_rate, best_val_loss, stato (in progress / early stopped / completed).
+**`training_monitor.py`** — Persistenza metriche in JSON per monitoraggio real-time e analisi post-training. Traccia: epoche, train_loss, val_loss, learning_rate, best_val_loss, stato (in progress / early stopped / completed).
 
-**`early_stopping.py` (86 righe)** — Implementazione callable dell'arresto anticipato:
+**`early_stopping.py`** — Implementazione callable dell'arresto anticipato:
 
 ```python
 stopper = EarlyStopping(patience=10, min_delta=1e-4)
@@ -2623,7 +2665,7 @@ if stopper(val_loss):  # True = ferma l'addestramento
 
 Logica: se `val_loss < best_loss - min_delta`, reset del contatore. Altrimenti incrementa. Quando `counter >= patience`, ritorna `True`. Usato da tutti i trainer (JEPA, RAP, Legacy, WinProb).
 
-**`dataset.py` (64 righe)** — Due Dataset PyTorch:
+**`dataset.py`** — Due Dataset PyTorch:
 
 | Dataset | Input | Output | Uso |
 |---|---|---|---|
@@ -2638,7 +2680,7 @@ Architettura plugin a due livelli per l'osservabilità del training, senza modif
 
 > **Analogia:** Il sistema di callback è come i **sensori di un'auto da corsa** — termometro olio, pressione pneumatici, G-force — che raccolgono dati senza mai interferire con la guida. Il pilota (orchestratore) corre, i sensori (callback) registrano.
 
-**Layer 1 — `training_callbacks.py` (110 righe):**
+**Layer 1 — `training_callbacks.py`:**
 
 `TrainingCallback` (ABC) definisce 7 hook di lifecycle:
 
@@ -2656,7 +2698,7 @@ Architettura plugin a due livelli per l'osservabilità del training, senza modif
 
 `CallbackRegistry` è il dispatcher: `fire(event, **kwargs)` chiama l'hook corrispondente su ogni callback registrato. Errori nei callback vengono catturati e loggati — **mai crashano il training**.
 
-**Layer 2 — `tensorboard_callback.py` (228 righe):**
+**Layer 2 — `tensorboard_callback.py`:**
 
 ```mermaid
 flowchart LR
