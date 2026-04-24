@@ -1,7 +1,9 @@
 import hashlib
 import json
 import os
+from dataclasses import asdict
 from pathlib import Path
+from typing import Any, Optional
 
 import torch
 
@@ -12,6 +14,11 @@ logger = get_logger("cs2analyzer.nn.persistence")
 
 # Base models directory is now imported from config to ensure persistence
 BASE_NN_DIR = Path(MODELS_DIR)
+
+# GAP-07: metadata-sidecar schema. Bump when the envelope shape changes in
+# a way that requires special handling on load (not for benign field adds —
+# from_dict ignores unknown keys).
+_META_SCHEMA_VERSION = "v1"
 
 
 class StaleCheckpointError(RuntimeError):
@@ -90,19 +97,109 @@ def _verify_checkpoint_hash(path: Path) -> bool:
     return True
 
 
-def save_nn(model, version, user_id=None):
-    """Save model checkpoint with atomic write to prevent corruption on crash."""
+def _sidecar_path(checkpoint_path: Path) -> Path:
+    """Return sibling JSON metadata path for a given .pt checkpoint."""
+    return checkpoint_path.with_suffix(".pt.meta.json")
+
+
+def _build_current_meta() -> dict:
+    """Snapshot current feature-schema + normalizer config for sidecar persistence.
+
+    Called at save time. Imported lazily to avoid circular import on module load
+    (vectorizer → nn → persistence → vectorizer).
+    """
+    from Programma_CS2_RENAN.backend.processing.feature_engineering.base_features import (
+        load_learned_heuristics,
+    )
+    from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import (
+        FEATURE_NAMES,
+        METADATA_DIM,
+    )
+
+    return {
+        "schema_version": _META_SCHEMA_VERSION,
+        "metadata_dim": METADATA_DIM,
+        "feature_names": list(FEATURE_NAMES),
+        "heuristic_config": asdict(load_learned_heuristics()),
+    }
+
+
+def _validate_loaded_meta(meta: dict, checkpoint_path: Path) -> None:
+    """Raise StaleCheckpointError if the sidecar says the checkpoint was trained
+    against a different feature schema than the code currently expects.
+
+    heuristic_config is validated for presence only — bounds can legitimately
+    drift via learned calibration (load_learned_heuristics override). What
+    MUST match is: schema_version, metadata_dim, feature_names.
+    """
+    from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import (
+        FEATURE_NAMES,
+        METADATA_DIM,
+    )
+
+    got_ver = meta.get("schema_version")
+    if got_ver != _META_SCHEMA_VERSION:
+        raise StaleCheckpointError(
+            f"GAP-07: sidecar schema_version={got_ver!r} for {checkpoint_path} "
+            f"does not match current {_META_SCHEMA_VERSION!r}. Retrain required."
+        )
+    got_dim = meta.get("metadata_dim")
+    if got_dim != METADATA_DIM:
+        raise StaleCheckpointError(
+            f"GAP-07: checkpoint trained with metadata_dim={got_dim} but code "
+            f"expects {METADATA_DIM}. Retrain required."
+        )
+    got_names = meta.get("feature_names")
+    if got_names is None:
+        raise StaleCheckpointError(
+            f"GAP-07: sidecar for {checkpoint_path} missing feature_names. "
+            "Refuse to load — silent feature drift would follow."
+        )
+    if list(got_names) != list(FEATURE_NAMES):
+        raise StaleCheckpointError(
+            f"GAP-07: feature_names in {checkpoint_path} sidecar differ from "
+            f"current FEATURE_NAMES. Retrain required. "
+            f"Diff (first 5): got={list(got_names)[:5]} cur={list(FEATURE_NAMES)[:5]}"
+        )
+
+
+def save_nn(model, version, user_id=None, extra_meta: Optional[dict] = None):
+    """Save model checkpoint with atomic write to prevent corruption on crash.
+
+    GAP-07: also writes a `.pt.meta.json` sidecar capturing the feature-schema
+    and normalizer config used at training time. load_nn() validates this
+    sidecar on read and raises StaleCheckpointError on drift — preventing the
+    silent train/serve skew that previously occurred when heuristic_config.json
+    was edited after training.
+
+    Args:
+        model: torch.nn.Module — state_dict is serialized.
+        version: model version identifier (e.g. "jepa_brain", "rap_coach").
+        user_id: optional per-user scope; None → global checkpoint dir.
+        extra_meta: optional dict of additional metadata to persist (e.g.
+            EMA step, training epoch, optimizer kind). Must be JSON-serializable.
+    """
     path = get_model_path(version, user_id)
     tmp_path = path.with_suffix(".pt.tmp")
+    sidecar = _sidecar_path(path)
+    tmp_sidecar = sidecar.with_suffix(".json.tmp")
     try:
         torch.save(model.state_dict(), tmp_path)
-        tmp_path.replace(path)  # atomic on POSIX
+        meta = _build_current_meta()
+        if extra_meta:
+            meta["extra"] = extra_meta
+        tmp_sidecar.write_text(json.dumps(meta, indent=2, sort_keys=True))
+        # Promote both files to final names — checkpoint first so consumers
+        # never see a sidecar without its matching weights.
+        tmp_path.replace(path)
+        tmp_sidecar.replace(sidecar)
         _register_checkpoint_hash(path)
     except BaseException:
-        try:
-            tmp_path.unlink(missing_ok=True)
-        except OSError:
-            pass
+        for p in (tmp_path, tmp_sidecar):
+            try:
+                p.unlink(missing_ok=True)
+            except OSError:
+                pass
         raise
 
 
@@ -128,6 +225,28 @@ def load_nn(version, model, user_id=None):
             raise RuntimeError(
                 f"Checkpoint integrity check failed for {path}. "
                 "File hash does not match registry. Refusing to load."
+            )
+        # GAP-07: Validate sidecar (if present) BEFORE touching the model so
+        # a feature-schema drift aborts early instead of producing a model
+        # with garbage features at inference. Missing sidecar is treated as
+        # a legacy checkpoint — WARN, continue, block re-save until retrain.
+        sidecar = _sidecar_path(path)
+        if sidecar.exists():
+            try:
+                meta = json.loads(sidecar.read_text())
+            except (json.JSONDecodeError, OSError) as e:
+                raise StaleCheckpointError(
+                    f"GAP-07: cannot parse sidecar {sidecar}: {e}. "
+                    "Refusing to load a checkpoint whose feature-schema "
+                    "cannot be verified."
+                ) from e
+            _validate_loaded_meta(meta, path)
+        else:
+            logger.warning(
+                "GAP-07: no metadata sidecar for %s (legacy checkpoint). "
+                "Feature-schema drift cannot be verified. Retrain to remove "
+                "this warning.",
+                path,
             )
         try:
             state_dict = torch.load(path, map_location=torch.device("cpu"), weights_only=True)

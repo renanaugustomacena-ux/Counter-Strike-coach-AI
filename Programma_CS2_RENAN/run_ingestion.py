@@ -721,8 +721,11 @@ def _extract_and_store_events(demo_path, match_id, match_manager, df_ticks):
     # Pro demos have 1.5M+ ticks — iterrows() into a 50K-capped dict caused
     # endless eviction warnings and O(n) build time. A MultiIndex DataFrame
     # gives O(1) lookups with zero pre-materialization cost.
+    # GAP-02: include positional columns (X/Y/Z from demoparser2) so we can
+    # capture throw origin for grenade_thrown events that do not carry x/y/z
+    # in their own event schema.
     _state_index = None
-    _STATE_COLS = ["health", "armor", "equipment_value", "team_name"]
+    _STATE_COLS = ["health", "armor", "equipment_value", "team_name", "X", "Y", "Z"]
     if not df_ticks.empty and "player_name" in df_ticks.columns:
         _df_state = df_ticks[
             ["tick", "player_name"] + [c for c in _STATE_COLS if c in df_ticks.columns]
@@ -742,7 +745,26 @@ def _extract_and_store_events(demo_path, match_id, match_manager, df_ticks):
             _sid_df["player_name"] = _sid_df["player_name"].str.strip()
             sid_to_name = dict(zip(_sid_df["player_steamid"], _sid_df["player_name"]))
 
-    _DEFAULT_STATE = {"health": 100, "armor": 0, "equipment_value": 0, "team": ""}
+    _DEFAULT_STATE = {
+        "health": 100,
+        "armor": 0,
+        "equipment_value": 0,
+        "team": "",
+        "pos_x": 0.0,
+        "pos_y": 0.0,
+        "pos_z": 0.0,
+    }
+
+    def _row_to_state(row):
+        return {
+            "health": int(row.get("health", 100)),
+            "armor": int(row.get("armor", 0)),
+            "equipment_value": int(row.get("equipment_value", 0)),
+            "team": str(row.get("team_name", "")),
+            "pos_x": float(row.get("X", 0.0) or 0.0),
+            "pos_y": float(row.get("Y", 0.0) or 0.0),
+            "pos_z": float(row.get("Z", 0.0) or 0.0),
+        }
 
     def _lookup_state(tick, player_name):
         """Get player state at a tick, with nearest-tick fallback."""
@@ -752,25 +774,13 @@ def _extract_and_store_events(demo_path, match_id, match_manager, df_ticks):
         # Exact match
         key = (tick, pname)
         if key in _state_index.index:
-            row = _state_index.loc[key]
-            return {
-                "health": int(row.get("health", 100)),
-                "armor": int(row.get("armor", 0)),
-                "equipment_value": int(row.get("equipment_value", 0)),
-                "team": str(row.get("team_name", "")),
-            }
+            return _row_to_state(_state_index.loc[key])
         # Fallback: search within ±5 ticks
         for offset in range(1, 6):
             for t in (tick - offset, tick + offset):
                 fb_key = (t, pname)
                 if fb_key in _state_index.index:
-                    row = _state_index.loc[fb_key]
-                    return {
-                        "health": int(row.get("health", 100)),
-                        "armor": int(row.get("armor", 0)),
-                        "equipment_value": int(row.get("equipment_value", 0)),
-                        "team": str(row.get("team_name", "")),
-                    }
+                    return _row_to_state(_state_index.loc[fb_key])
         return _DEFAULT_STATE
 
     def _resolve_name(row, name_cols):
@@ -1025,7 +1035,46 @@ def _extract_and_store_events(demo_path, match_id, match_manager, df_ticks):
     except Exception as e:
         logger.warning("Event extraction failed for HE grenade events: %s", e)
 
-    # --- 8. Bomb events ---
+    # --- 8. Grenade thrown (GAP-02) ---
+    # demoparser2 'grenade_thrown' schema: tick, user_name, user_steamid, weapon
+    # (weapon ∈ {smokegrenade, molotov, incgrenade, flashbang, hegrenade, decoy}).
+    # No x/y/z on the event itself → throw origin resolved from tick state.
+    # entity_id defaults to sentinel (-1) because the parser does not link
+    # thrown → detonate via entityid; downstream pairing is proximity-based.
+    try:
+        res = parser.parse_events(["grenade_thrown"])
+        if res:
+            gt_df = res[0][1] if isinstance(res[0], tuple) else pd.DataFrame(res)
+            if not gt_df.empty:
+                for row in gt_df.itertuples():
+                    tick = int(row.tick)
+                    # Prefer steamid lookup (name column absent in some rows)
+                    sid = int(getattr(row, "user_steamid", 0) or 0)
+                    name = sid_to_name.get(sid) or _resolve_name(row, ["user_name"])
+                    if not name:
+                        continue
+                    state = _lookup_state(tick, name)
+                    weapon = str(getattr(row, "weapon", "") or "").strip()
+                    events.append(
+                        MatchEventState(
+                            tick=tick,
+                            round_number=_get_round(row),
+                            event_type="grenade_thrown",
+                            player_name=name,
+                            player_team=state.get("team", ""),
+                            player_health=state.get("health", 100),
+                            player_armor=state.get("armor", 0),
+                            player_equipment_value=state.get("equipment_value", 0),
+                            pos_x=state.get("pos_x", 0.0),
+                            pos_y=state.get("pos_y", 0.0),
+                            pos_z=state.get("pos_z", 0.0),
+                            weapon=weapon,
+                        )
+                    )
+    except Exception as e:
+        logger.warning("Event extraction failed for grenade_thrown: %s", e)
+
+    # --- 9. Bomb events ---
     try:
         for bomb_event in ["bomb_planted", "bomb_defused"]:
             res = parser.parse_events([bomb_event])
@@ -1065,10 +1114,61 @@ def _extract_and_store_events(demo_path, match_id, match_manager, df_ticks):
     return len(events)
 
 
+def _parse_demo_header_meta(demo_path) -> tuple[str, float]:
+    """Extract (map_name, tick_rate) from a .dem file header.
+
+    GAP-01: demoparser2's `parse_header()` exposes both fields. Previous code
+    hardcoded tick_rate=64.0, silently halving time_in_round on 128-tick
+    demos. Validation range [32, 256] mirrors P-RSB-05.
+
+    Returns safe defaults ("de_unknown", 64.0) on any header read failure so
+    ingestion never aborts on metadata.
+    """
+    from demoparser2 import DemoParser as _DemoParser
+
+    default_map = "de_unknown"
+    default_tr = 64.0
+    try:
+        header = _DemoParser(str(demo_path)).parse_header()
+    except Exception as exc:
+        logger.warning(
+            "Failed to read demo header for %s: %s (defaults map=%s tick_rate=%.1f)",
+            demo_path,
+            exc,
+            default_map,
+            default_tr,
+        )
+        return default_map, default_tr
+
+    map_name = header.get("map_name") or default_map
+    if map_name == "unknown":
+        map_name = default_map
+
+    raw_tr = header.get("tick_rate", default_tr) or default_tr
+    try:
+        parsed_tr = float(raw_tr)
+    except (TypeError, ValueError):
+        logger.warning(
+            "GAP-01: demo header tick_rate=%r not numeric; falling back to %.1f",
+            raw_tr,
+            default_tr,
+        )
+        return map_name, default_tr
+
+    if not (32.0 <= parsed_tr <= 256.0):
+        logger.warning(
+            "GAP-01: demo header tick_rate=%.2f outside [32,256]; falling back to %.1f",
+            parsed_tr,
+            default_tr,
+        )
+        return map_name, default_tr
+
+    logger.info("Demo header: map_name=%s tick_rate=%.2f", map_name, parsed_tr)
+    return map_name, parsed_tr
+
+
 def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
     import time as _time
-
-    from demoparser2 import DemoParser as _DemoParser
 
     from Programma_CS2_RENAN.backend.data_sources.demo_parser import parse_sequential_ticks
     from Programma_CS2_RENAN.backend.processing.tick_enrichment import enrich_tick_data
@@ -1105,23 +1205,18 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
     get_state_manager().update_parsing_progress(25.0)
     t_enrich = _time.monotonic()
 
-    # Resolve map_name from demo header (demoparser2 exposes it via parse_header())
-    _meta_map_name = "de_unknown"
-    try:
-        _header = _DemoParser(str(demo_path)).parse_header()
-        _meta_map_name = _header.get("map_name", "de_unknown")
-        if not _meta_map_name or _meta_map_name == "unknown":
-            _meta_map_name = "de_unknown"
-        logger.info("Map name from demo header: %s", _meta_map_name)
-    except Exception as e:
-        logger.warning("Failed to extract map_name from demo header: %s", e)
+    # Resolve map_name + tick_rate from demo header (demoparser2 exposes both
+    # via parse_header()). GAP-01: tick_rate was previously hardcoded to 64.0,
+    # which silently halved time_in_round on 128-tick demos. Pure helper is
+    # unit-testable without a real .dem file on disk.
+    _meta_map_name, _meta_tick_rate = _parse_demo_header_meta(demo_path)
 
     # Enrich with cross-player features: round_number, time_in_round,
     # bomb_planted, teammates_alive, enemies_alive, team_economy, enemies_visible
     df_ticks = enrich_tick_data(
         df_ticks,
         demo_path=str(demo_path),
-        tick_rate=64.0,
+        tick_rate=_meta_tick_rate,
         map_name=_meta_map_name,
     )
 
@@ -1479,13 +1574,15 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
 
     db_elapsed = _time.monotonic() - t_db
 
-    # Store match metadata
+    # Store match metadata (GAP-01: persist detected tick_rate per-demo so
+    # downstream consumers don't fall back to the 64.0 schema default).
     meta = MatchMetadata(
         match_id=match_id,
         demo_name=demo_name,
         map_name=_meta_map_name,
         tick_count=int(last_tick - start_tick),
         player_count=_meta_player_count,
+        tick_rate=_meta_tick_rate,
     )
     match_manager.store_metadata(match_id, meta)
 

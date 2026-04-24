@@ -80,6 +80,7 @@ _INSERT_SQL = (
 _ENRICHMENT_TO_PLAYERMATCHSTATS = {
     "trade_kill_ratio": "trade_kill_ratio",
     "was_traded_ratio": "was_traded_ratio",
+    "avg_trade_response_ticks": "avg_trade_response_ticks",  # GAP-03
     "thrusmoke_kill_pct": "thrusmoke_kill_pct",
     "wallbang_kill_pct": "wallbang_kill_pct",
     "noscope_kill_pct": "noscope_kill_pct",
