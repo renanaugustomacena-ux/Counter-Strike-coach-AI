@@ -605,6 +605,12 @@ class CoachingExperience(SQLModel, table=True):
     # Vector Embedding for Semantic Search (JSON-encoded 384-dim)
     embedding: Optional[str] = Field(default=None)
 
+    # GAP-09: explicit tactical-strategy label (nullable, indexed). Taxonomy
+    # enumerated in docs/strategy_taxonomy.md. Legacy rows stay NULL; new
+    # mining + classification jobs populate it. Filtering by strategy_label
+    # is a hot path for retrieval-by-playbook coaching.
+    strategy_label: Optional[str] = Field(default=None, index=True)
+
     # Metadata
     source_demo: Optional[str] = Field(default=None)  # Which demo this came from
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

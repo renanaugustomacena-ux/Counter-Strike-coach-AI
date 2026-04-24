@@ -74,7 +74,17 @@ class AdvancedCoachNN(nn.Module):
         self.experts = nn.ModuleList(
             [self._create_expert(hidden_dim, output_dim) for _ in range(num_experts)]
         )
-        self.gate = nn.Sequential(nn.Linear(hidden_dim, num_experts), nn.Softmax(dim=-1))
+        # GAP-10 (MOE-02): emit raw logits, not post-softmax probabilities.
+        # The dense softmax let gradient flow through every expert each step,
+        # causing expert collapse. Top-2 sparse routing in forward() now
+        # gates which experts receive gradient (mirrors JEPA sparse path).
+        # NOTE: state_dict key changed from `gate.0.weight` (Sequential) to
+        # `gate.weight` (Linear). Old checkpoints raise StaleCheckpointError —
+        # retrain required.
+        self.gate = nn.Linear(hidden_dim, num_experts)
+        # Number of experts to route to per sample (top-K). Capped at
+        # num_experts so 1- or 2-expert configs still work.
+        self.gate_top_k = min(2, num_experts)
 
     def _create_expert(self, h_dim, o_dim):
         return nn.Sequential(
@@ -88,7 +98,12 @@ class AdvancedCoachNN(nn.Module):
         x = self._validate_input_dim(x)
         lstm_out, _ = self.lstm(x)
         last_hidden = self.layer_norm(lstm_out[:, -1, :])  # Apply normalization
-        gate_weights = self.gate(last_hidden)
+
+        # GAP-10: top-K sparse gate. Raw logits → top-K → softmax-renormalize
+        # → scatter into a [B, E] vector of zeros. Non-selected experts get
+        # gate weight 0 → no gradient flows → no expert collapse.
+        gate_logits = self.gate(last_hidden)
+        gate_weights = _topk_sparse_gate(gate_logits, self.gate_top_k)
 
         if role_id is not None:
             gate_weights = self._apply_role_bias(gate_weights, role_id)
@@ -118,6 +133,33 @@ class AdvancedCoachNN(nn.Module):
         role_bias = torch.zeros_like(gate_weights)
         role_bias[:, role_id_int] = 1.0
         return (gate_weights + role_bias) / 2.0
+
+
+def _topk_sparse_gate(logits: torch.Tensor, k: int) -> torch.Tensor:
+    """Convert dense gate logits into a top-K sparse weight vector.
+
+    GAP-10: input shape `[B, E]` (or `[B, T, E]`), output same shape with
+    only the top-K positions per row populated (softmax-normalized over those
+    K logits) and the rest zero. With K = num_experts this collapses to the
+    legacy dense softmax — useful as a sanity check.
+
+    Args:
+        logits: raw gate logits.
+        k: number of experts to route to per sample. 1 ≤ k ≤ E.
+
+    Returns:
+        Sparse gate weights, same shape as `logits`, sums to 1 along the
+        last dimension.
+    """
+    if k <= 0:
+        raise ValueError("k must be ≥ 1")
+    e = logits.shape[-1]
+    k_eff = min(k, e)
+    top_vals, top_idx = logits.topk(k_eff, dim=-1)
+    top_probs = torch.softmax(top_vals, dim=-1)
+    sparse = torch.zeros_like(logits)
+    sparse.scatter_(-1, top_idx, top_probs)
+    return sparse
 
 
 def _compute_nn_output(experts, last_hidden, gate_weights):
