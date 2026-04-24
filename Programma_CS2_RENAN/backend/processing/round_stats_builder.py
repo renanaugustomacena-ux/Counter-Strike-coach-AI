@@ -267,6 +267,10 @@ def _init_round_player_accumulators(
                 "headshot_kills": 0,
                 "trade_kills": 0,
                 "was_traded": False,
+                # GAP-03: accumulate trade-kill response timing so
+                # aggregate_round_stats_to_match() can emit avg_trade_response_ticks.
+                "trade_response_ticks_sum": 0,
+                "trade_response_count": 0,
                 "thrusmoke_kills": 0,
                 "wallbang_kills": 0,
                 "noscope_kills": 0,
@@ -520,10 +524,16 @@ def _integrate_trade_kills(
             rn = detail["round"]
             trader = detail["trade_killer"]
             traded_victim = detail["original_victim"]
+            response_ticks = int(detail.get("response_ticks", 0) or 0)
 
             key_trader = (rn, trader)
             if key_trader in round_player_stats:
                 round_player_stats[key_trader]["trade_kills"] += 1
+                # GAP-03: capture how fast the teammate responded. Lower =
+                # faster team revenge / better positioning discipline.
+                if response_ticks > 0:
+                    round_player_stats[key_trader]["trade_response_ticks_sum"] += response_ticks
+                    round_player_stats[key_trader]["trade_response_count"] += 1
 
             key_traded = (rn, traded_victim)
             if key_traded in round_player_stats:
@@ -651,11 +661,19 @@ def aggregate_round_stats_to_match(
     for rs in player_rounds:
         enemies_blinded_union.update(rs.get("enemies_blinded", set()))
 
+    # GAP-03: average response ticks for the trade kills this player executed.
+    # Aggregated across rounds; missing data (no trade kills) → 0.0 default
+    # (PlayerMatchStats.avg_trade_response_ticks schema default).
+    _resp_sum = sum(rs.get("trade_response_ticks_sum", 0) for rs in player_rounds)
+    _resp_count = sum(rs.get("trade_response_count", 0) for rs in player_rounds)
+    _avg_trade_response_ticks = float(_resp_sum) / _resp_count if _resp_count > 0 else 0.0
+
     enrichment = {
         # Trade kill metrics (Proposal 1)
         "trade_kill_ratio": sum(rs["trade_kills"] for rs in player_rounds) / max(1, total_kills),
         "was_traded_ratio": sum(1 for rs in player_rounds if rs["was_traded"])
         / max(1, total_deaths),
+        "avg_trade_response_ticks": _avg_trade_response_ticks,
         # Kill enrichment (Proposal 1)
         "thrusmoke_kill_pct": sum(rs["thrusmoke_kills"] for rs in player_rounds)
         / max(1, total_kills),
