@@ -4,6 +4,15 @@ Early Stopping for neural network training.
 Monitors validation loss and stops training when performance plateaus,
 preventing overfitting and saving computational resources.
 
+Also includes EmbeddingCollapseDetector: a hard-stop guard against the
+P9-02 representation-collapse failure mode. The current jepa_trainer
+emits a per-batch warning when embedding variance drops below 0.01
+(advisory only). The modernization report (§9, Phase 0) and its N=260
+supplement (§5.1 item 4) require this to abort training after two
+consecutive validation epochs of collapse — silent collapse renders all
+subsequent metrics meaningless and the larger corpus only buys more
+opportunities for it. EmbeddingCollapseDetector implements that gate.
+
 Usage:
     early_stopper = EarlyStopping(patience=10, min_delta=1e-4)
 
@@ -11,7 +20,86 @@ Usage:
         val_loss = validate()
         if early_stopper(val_loss):
             break
+
+    collapse_detector = EmbeddingCollapseDetector(threshold=0.01, patience=2)
+    for epoch in range(max_epochs):
+        epoch_variance = train_one_epoch(...)
+        collapse_detector.update(epoch_variance)  # raises if collapsed
 """
+
+
+class EmbeddingCollapseError(RuntimeError):
+    """Raised when the JEPA encoder collapses to a degenerate representation.
+
+    Triggered by EmbeddingCollapseDetector after `patience` consecutive
+    validation epochs with mean per-dim embedding variance below `threshold`.
+    """
+
+
+class EmbeddingCollapseDetector:
+    """Hard-stop guard for the P9-02 embedding collapse failure mode.
+
+    Modernization report §9 (Logical Coherence Audit):
+        P9-02: embedding-collapse warning at variance < 0.01 is advisory only
+        Resolution: promote to early-stop signal — abort training after two
+        consecutive collapsed val epochs.
+
+    The detector maintains a single counter of consecutive epochs where the
+    epoch-mean embedding variance falls below `threshold`. A healthy epoch
+    resets the counter. When the counter reaches `patience`, `update()`
+    raises EmbeddingCollapseError.
+
+    Variance source: typically the mean across latent dimensions of the
+    per-dim variance computed across a batch's pooled embeddings. The same
+    quantity already returned by JEPATrainer._log_embedding_diversity().
+    """
+
+    def __init__(self, threshold: float = 0.01, patience: int = 2):
+        self.threshold = float(threshold)
+        self.patience = int(patience)
+        self.consecutive_collapsed = 0
+        self.last_variance: float = float("nan")
+
+    def update(self, epoch_mean_variance: float) -> None:
+        """Feed an epoch's mean embedding variance.
+
+        Resets the counter if the variance is healthy (>= threshold).
+        Increments on collapse and raises EmbeddingCollapseError once the
+        consecutive-collapsed counter reaches `patience`.
+
+        Args:
+            epoch_mean_variance: Mean variance across latent dimensions for
+                the just-completed epoch. Negative or NaN values are treated
+                as collapse (defensive against numerical surprise).
+
+        Raises:
+            EmbeddingCollapseError: when collapse persists `patience` epochs.
+        """
+        v = float(epoch_mean_variance)
+        self.last_variance = v
+        # NaN, negative, or below-threshold all count as collapse. NaN
+        # comparison: "v < threshold" is False for NaN, so test explicitly.
+        is_collapsed = (v != v) or (v < self.threshold)
+        if is_collapsed:
+            self.consecutive_collapsed += 1
+        else:
+            self.consecutive_collapsed = 0
+
+        if self.consecutive_collapsed >= self.patience:
+            raise EmbeddingCollapseError(
+                f"P9-02: JEPA embedding variance below {self.threshold} for "
+                f"{self.consecutive_collapsed} consecutive epochs (last="
+                f"{v:.6f}). Encoder has collapsed; training aborted to "
+                "prevent meaningless downstream metrics. Investigate: "
+                "(a) InfoNCE temperature τ too low, (b) EMA momentum too "
+                "fast, (c) data pipeline returning non-diverse contexts, "
+                "(d) VICReg variance term not yet added (Pillar I)."
+            )
+
+    def reset(self) -> None:
+        """Reset the consecutive-collapse counter (e.g. after retraining)."""
+        self.consecutive_collapsed = 0
+        self.last_variance = float("nan")
 
 
 class EarlyStopping:

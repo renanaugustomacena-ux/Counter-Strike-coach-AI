@@ -4,6 +4,10 @@ from typing import List, Optional
 import torch
 import torch.optim as optim
 
+from Programma_CS2_RENAN.backend.nn.early_stopping import (
+    EmbeddingCollapseDetector,
+    EmbeddingCollapseError,
+)
 from Programma_CS2_RENAN.backend.nn.jepa_model import (
     ConceptLabeler,
     JEPACoachingModel,
@@ -79,6 +83,12 @@ class JEPATrainer:
         self.drift_history: List[DriftReport] = []
         self._needs_full_retrain = False
         self._reference_stats: Optional[dict] = None
+
+        # P9-02 (Phase 0 hygiene): hard-stop guard against embedding collapse.
+        # Reads the per-batch variances accumulated by train_epoch and raises
+        # EmbeddingCollapseError after two consecutive collapsed val epochs.
+        # Per CS2_Coach_Modernization_Report.pdf §9 and Supplement_N260 §5.1.
+        self.embedding_collapse_detector = EmbeddingCollapseDetector(threshold=0.01, patience=2)
 
     def set_total_steps(self, epochs: int, batches_per_epoch: int) -> None:
         """Set actual total training steps for EMA schedule (NN-04b)."""
@@ -199,9 +209,17 @@ class JEPATrainer:
     def train_epoch(self, dataloader, device):
         """
         Train for one epoch.
+
+        P9-02: at end-of-epoch, the mean of per-batch embedding variances is
+        fed to ``self.embedding_collapse_detector``, which raises
+        ``EmbeddingCollapseError`` after two consecutive collapsed epochs
+        (variance < 0.01). The error propagates out of train_epoch — callers
+        must let it bubble so training aborts rather than silently continuing
+        on a degenerate encoder.
         """
         total_loss = 0
         count = 0
+        epoch_variances: List[float] = []
 
         for batch in dataloader:
             x_context = batch["context"].to(device)
@@ -233,6 +251,11 @@ class JEPATrainer:
             total_loss += result["loss"]
             count += 1
 
+            # Accumulate the per-batch variance for end-of-epoch P9-02 check.
+            v = result.get("embedding_variance")
+            if v is not None:
+                epoch_variances.append(float(v))
+
         # Step scheduler once per epoch (not per batch)
         self.scheduler.step()
 
@@ -241,6 +264,18 @@ class JEPATrainer:
             logger.warning(
                 "NN-TR-02: train_epoch completed with 0 batches — dataloader may be empty"
             )
+
+        # P9-02 hard-stop check. update() raises EmbeddingCollapseError when
+        # the consecutive-collapsed counter reaches patience (default 2);
+        # training aborts via the propagated exception.
+        if epoch_variances:
+            epoch_mean_variance = sum(epoch_variances) / len(epoch_variances)
+            logger.info(
+                "Epoch embedding variance: mean=%.6f over %d batches",
+                epoch_mean_variance,
+                len(epoch_variances),
+            )
+            self.embedding_collapse_detector.update(epoch_mean_variance)
 
         return total_loss / max(1, count)
 
@@ -300,6 +335,10 @@ class JEPATrainer:
         # progress > 1.0 (clamped) → momentum ≈ 1.0 (frozen target encoder).
         self._ema_step = 0
         self._ema_total_steps = epochs * len(full_dataloader)
+
+        # P9-02: clear consecutive-collapse counter so a prior near-collapse
+        # state does not abort retraining on the very first new epoch.
+        self.embedding_collapse_detector.reset()
 
         for epoch in range(epochs):
             avg_loss = self.train_epoch(full_dataloader, device)
