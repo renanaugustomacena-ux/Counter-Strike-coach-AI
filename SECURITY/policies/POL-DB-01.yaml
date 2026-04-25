@@ -1,0 +1,44 @@
+id: POL-DB-01
+description: |
+  Any f-string (or .format() call) that constructs SQL DDL must be flanked by a call to
+  `_assert_safe_identifier` / `_assert_safe_col_type` / `_SAFE_BACKUP_LABEL_RE` (whichever is
+  appropriate) within 5 lines above the SQL construction. AUDIT §9 DB-01 / DB-04 mandated this
+  pattern; this policy prevents regression.
+
+  Example (passing):
+    _assert_safe_identifier(table_name)
+    _assert_safe_col_type(col_type)
+    sql = f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_type}"
+
+  Example (violating):
+    sql = f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_type}"
+    # ^ no allowlist guard above — CWE-89 SQL injection regression.
+
+  Status: PHASE 2 — requires AST analysis (libcst). Stub only in Phase 1.
+severity: warn
+applies_to:
+  - "Programma_CS2_RENAN/backend/storage/**/*.py"
+excludes:
+  - "**/__pycache__/**"
+  - "Programma_CS2_RENAN/backend/storage/match_data_manager.py"  # already audited green
+kind: text_regex
+config:
+  # Phase 1 heuristic: flag any f-string that contains `ALTER TABLE`, `CREATE TABLE`,
+  # `DROP TABLE`, `CREATE INDEX`, etc. — requires manual review pending AST upgrade.
+  patterns:
+    - id: ddl_fstring
+      pattern: 'f["\x27](ALTER\s+TABLE|CREATE\s+TABLE|DROP\s+TABLE|CREATE\s+INDEX|DROP\s+INDEX|RENAME\s+TABLE)'
+      message: |
+        f-string SQL DDL detected. Verify `_assert_safe_identifier` / `_assert_safe_col_type` is
+        called within 5 lines above. Phase 2 will replace this regex check with AST analysis.
+  inline_waivers:
+    - '# SEC: justified'
+    - '# noqa: POL-DB-01'
+phase_2_upgrade: |
+  Replace text_regex with ast_walker once libcst is added as dev dep. The walker should
+  identify f-string nodes containing SQL DDL keywords, then verify a Call node with
+  `_assert_safe_*` exists in the same function body within N lines above.
+mapping:
+  cwe: ['CWE-89']
+  owasp10: ['A03']
+  asvs: ['V5.3.4']

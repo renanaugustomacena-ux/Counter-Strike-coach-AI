@@ -1,0 +1,32 @@
+# SECURITY/waivers.yaml
+#
+# Time-bound exceptions to policy rules in SECURITY/policies/*.yaml.
+# Doctrine §54 — Policy as Code Law: every waiver is auditable.
+#
+# Each entry MUST have all fields below. Expired waivers fail the
+# policy gate (tools/policy_runner.py). Adding a waiver requires
+# CODEOWNERS approval.
+#
+# Schema:
+#   - rule:          policy ID (e.g., POL-CODE-01)
+#     path:          glob path (or exact file path) being waived
+#     match:         (optional) regex/string of what is waived
+#     risk:          one of LOW | MEDIUM | HIGH | CRITICAL
+#     expires:       YYYY-MM-DD (max 90 days from issue)
+#     owner:         GitHub handle of the human accountable
+#     justification: 1-3 sentence reason
+
+waivers: []
+
+# ── Example (commented out) ──
+# waivers:
+#   - rule: POL-CODE-01
+#     path: tools/build_tools.py
+#     match: 'shell=True'
+#     risk: LOW
+#     expires: 2026-07-15
+#     owner: renanaugustomacena-ux
+#     justification: |
+#       Internal build tool calls a fixed shell pipeline; no user input is interpolated.
+#       Already marked `# nosec B602` in source. Tracked for refactor when we move to
+#       PyInstaller invocation via subprocess args list.

@@ -1,0 +1,26 @@
+id: POL-CI-02
+description: |
+  Every workflow file must declare a top-level `permissions:` block with the principle of
+  least privilege. The default GitHub-Actions token has read+write on contents, issues, etc. —
+  a compromised dependency or third-party action can use this to push malicious code.
+
+  Workflows must explicitly declare `permissions:` even if the value is `contents: read`. Jobs
+  may then expand permissions narrowly where required (e.g., the threat-model-gate workflow
+  needs `pull-requests: write`).
+
+  This rule warns if the top-level `permissions:` block is absent.
+severity: warn
+applies_to:
+  - ".github/workflows/*.yml"
+  - ".github/workflows/*.yaml"
+excludes: []
+kind: yaml_walker
+config:
+  query: 'permissions'
+  rule: must_exist_at_top_level
+  message: |
+    Workflow lacks top-level `permissions:` block. Add `permissions: { contents: read }` and
+    expand per-job where needed.
+mapping:
+  cwe: ['CWE-269']
+  ssdf: ['PO.5.1']

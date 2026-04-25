@@ -1,0 +1,28 @@
+id: POL-COV-01
+description: |
+  The coverage `fail_under` threshold in `pyproject.toml [tool.coverage.report]` must equal
+  the `--cov-fail-under=N` value in `.github/workflows/build.yml`. A discrepancy means CI is
+  more lenient than local — drift in either direction undermines coverage discipline.
+
+  Recon (2026-04-25) observed pyproject.toml=40 vs CI=33 — Phase 1 aligns to 40/40.
+severity: error
+applies_to:
+  - "pyproject.toml"
+  - ".github/workflows/build.yml"
+excludes: []
+kind: file_compare
+config:
+  left:
+    path: pyproject.toml
+    extract: 'fail_under\s*=\s*(\d+)'
+    description: 'pyproject.toml [tool.coverage.report] fail_under'
+  right:
+    path: .github/workflows/build.yml
+    extract: '--cov-fail-under=(\d+)'
+    description: 'CI workflow --cov-fail-under value'
+  rule: must_be_equal
+  message: |
+    Coverage threshold mismatch: pyproject.toml fail_under={left} but CI --cov-fail-under={right}.
+    These must agree (recommended: 40 for current baseline; raise quarterly).
+mapping:
+  ssdf: ['PW.7.4']

@@ -1,0 +1,27 @@
+id: POL-CI-01
+description: |
+  Every `uses:` entry in .github/workflows/*.yml MUST reference a 40-character commit SHA,
+  not a tag (@v4, @latest, @main, etc.). Tags are mutable; SHAs are not. A compromised
+  third-party action that re-tags @v4 to point at malicious code can backdoor the build
+  silently. SHA pinning makes such an event a no-op for our builds until we explicitly bump.
+
+  Exceptions: lines containing `# SEC: justified <reason>` or `# noqa: POL-CI-01`.
+severity: error
+applies_to:
+  - ".github/workflows/*.yml"
+  - ".github/workflows/*.yaml"
+excludes: []
+kind: line_regex
+config:
+  patterns:
+    - id: action_not_sha_pinned
+      # Match `uses: <owner>/<repo>@<ref>` where <ref> is NOT a 40-char hex SHA
+      pattern: '^\s*-?\s*uses:\s*[A-Za-z0-9._/\-]+@(?!([0-9a-f]{40})\b)\S+'
+      message: 'GitHub Action must be SHA-pinned (40-char commit hex). Tag/branch refs are mutable.'
+  inline_waivers:
+    - '# SEC: justified'
+    - '# noqa: POL-CI-01'
+mapping:
+  cwe: ['CWE-829']
+  asvs: ['V14.2.1']
+  ssdf: ['PS.3.2', 'PW.4.4']
