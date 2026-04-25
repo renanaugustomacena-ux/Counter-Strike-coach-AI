@@ -270,7 +270,7 @@
     "core/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "core/app_types.py": "5a4486f8f37486739504f361b51d95f8e6b7d3f90e3cddd6f193b788357e14bb",
     "core/asset_manager.py": "b2e31e16439dd6fe528114ef7429141293441b014ca82bf640d24452f532c682",
-    "core/config.py": "60fd343784a68c637d09ef52e28b5b8424b38f574c92e2afe0b11ccef3f579d0",
+    "core/config.py": "2368ab8403d83f32b6a907fe3e6446045ec7e1fc2457b8ccf3be7e2cd6eb1bf1",
     "core/constants.py": "55cb6c47a9125d520414ce67ebb3dfe879046b13da9c75b1da4a9b1673893f8f",
     "core/demo_frame.py": "a843f0a0464a87a6c5928ecaa95bd8b91df339185f981bdeb9eff458600417bc",
     "core/frozen_hook.py": "53ada3203f40f5cf5071a73766207ab43903b38dc9aba9e9ec8c29d8908197bf",

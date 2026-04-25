@@ -250,11 +250,19 @@ jobs:
 
       - name: Check for hardcoded secrets (detect-secrets)
         run: |
+          # Exclusions below are all NON-SECRET high-entropy content:
+          # - checkpoint_hashes.json: CTF-1 SHA-256 registry of model files.
+          # - pnpm-lock.yaml / package-lock.json / yarn.lock: package-manager
+          #   integrity hashes (SRI) for every transitive dep.
           detect-secrets scan Programma_CS2_RENAN/ \
             --exclude-files 'tests/' \
             --exclude-files 'external_analysis/' \
             --exclude-files 'integrity_manifest' \
             --exclude-files 'i18n/' \
+            --exclude-files 'models/checkpoint_hashes\.json' \
+            --exclude-files 'pnpm-lock\.yaml' \
+            --exclude-files 'package-lock\.json' \
+            --exclude-files 'yarn\.lock' \
             > .secrets-report.json
           # Only fail on high-entropy findings (actual hardcoded secrets).
           # KeywordDetector matches variable names (api_key=...) which are false

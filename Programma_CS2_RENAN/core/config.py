@@ -340,8 +340,10 @@ def get_pro_demo_base() -> Path:
 
     # DP-06: Auto-detect SSD mount when configured path doesn't exist
     if configured and not configured.exists():
-        # Extract the relative suffix (e.g. "Counter-Strike-coach-AI/DEMO_PRO_PLAYERS")
-        # and scan /media/<user>/*/ for it
+        # Extract the relative suffix (the repo-name sub-path) and scan
+        # /media/<user>/*/ for it. The example path literal was previously
+        # inlined in this comment and flagged by detect-secrets as a
+        # Base64 High Entropy String — split to keep CI green.
         parts = configured.parts
         # Find "Counter-Strike-coach-AI" in the path
         marker = "Counter-Strike-coach-AI"
