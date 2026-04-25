@@ -50,7 +50,9 @@ def _state_hash(state: Dict) -> int:
         state.get("utility_remaining", 4),
         state.get("is_ct", True),
     )
-    return int(hashlib.md5(str(key).encode()).hexdigest(), 16)
+    # Non-cryptographic use (transposition-table memoization key).
+    # usedforsecurity=False silences bandit B324 and states intent.
+    return int(hashlib.md5(str(key).encode(), usedforsecurity=False).hexdigest(), 16)
 
 
 class OpponentModel:
