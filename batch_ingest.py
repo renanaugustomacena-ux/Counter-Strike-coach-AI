@@ -167,9 +167,12 @@ def main():
     if args.demo_dir:
         demo_dir = Path(args.demo_dir)
     else:
-        from Programma_CS2_RENAN.core.config import get_setting
+        # Use get_pro_demo_base() so a stale PRO_DEMO_PATH (e.g. SSD remounted
+        # at a new path on another machine) auto-recovers via the DP-06 scan
+        # over /media/<user>/*/ for the Counter-Strike-coach-AI suffix.
+        from Programma_CS2_RENAN.core.config import get_pro_demo_base
 
-        demo_dir = Path(get_setting("PRO_DEMO_PATH", os.path.expanduser("~")))
+        demo_dir = get_pro_demo_base()
     all_demos = sorted(p for p in demo_dir.rglob("*.dem") if not p.is_symlink())
 
     already_ingested = get_already_ingested()
