@@ -1,0 +1,159 @@
+name: threat-model-gate
+
+# Doctrine §55 — Continuous Threat Modeling Discipline.
+# Any PR that touches a path listed in SECURITY/BOUNDARY_FILES.txt is
+# automatically labelled `security-review-required` and posts a comment
+# enumerating the matched boundaries. CODEOWNERS then routes the review
+# to the repository owner.
+#
+# This workflow is INFORMATIONAL — it labels and comments. Hard enforcement
+# (block-on-missing-review) lives in branch-protection rules configured in
+# the GitHub UI; this workflow provides the visibility signal.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main, develop]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: threat-model-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  detect-boundary-touch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR HEAD
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute changed files vs base
+        id: diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          changed=$(git diff --name-only "${BASE_SHA}" "${HEAD_SHA}" | sort -u)
+          {
+            echo "files<<__EOF__"
+            echo "${changed}"
+            echo "__EOF__"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Match against SECURITY/BOUNDARY_FILES.txt
+        id: match
+        env:
+          CHANGED: ${{ steps.diff.outputs.files }}
+        run: |
+          set -euo pipefail
+          if [[ ! -f SECURITY/BOUNDARY_FILES.txt ]]; then
+            echo "matched=false" >> "${GITHUB_OUTPUT}"
+            echo "boundary_hits=" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          # Build python helper (inline, deterministic, no external deps).
+          python3 - "$CHANGED" <<'PY' > .matched.txt
+          import fnmatch, sys, pathlib
+
+          changed = [line for line in sys.argv[1].splitlines() if line.strip()]
+          patterns = []
+          for line in pathlib.Path("SECURITY/BOUNDARY_FILES.txt").read_text().splitlines():
+              line = line.strip()
+              if not line or line.startswith("#"):
+                  continue
+              patterns.append(line)
+
+          matches = []
+          for f in changed:
+              for p in patterns:
+                  # Glob match: /a/**/b matches a/x/b, **/foo matches any depth, etc.
+                  if fnmatch.fnmatch(f, p) or fnmatch.fnmatch(f, p.lstrip("/")):
+                      matches.append(f"{f}  ⟵  {p}")
+                      break
+          if matches:
+              print("\n".join(matches))
+          PY
+
+          if [[ -s .matched.txt ]]; then
+            echo "matched=true" >> "${GITHUB_OUTPUT}"
+            {
+              echo "boundary_hits<<__EOF__"
+              cat .matched.txt
+              echo "__EOF__"
+            } >> "${GITHUB_OUTPUT}"
+          else
+            echo "matched=false" >> "${GITHUB_OUTPUT}"
+            echo "boundary_hits=" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Label PR security-review-required
+        if: steps.match.outputs.matched == 'true'
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea  # v7.0.1
+        with:
+          script: |
+            const labelName = 'security-review-required';
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+
+            // Ensure the label exists; create with descriptive color if missing.
+            try {
+              await github.rest.issues.getLabel({ owner, repo, name: labelName });
+            } catch (e) {
+              if (e.status === 404) {
+                await github.rest.issues.createLabel({
+                  owner, repo,
+                  name: labelName,
+                  color: 'B60205',
+                  description: 'Touches SECURITY/BOUNDARY_FILES.txt; requires CODEOWNERS approval',
+                });
+              } else {
+                throw e;
+              }
+            }
+
+            await github.rest.issues.addLabels({
+              owner, repo, issue_number, labels: [labelName],
+            });
+
+      - name: Comment with boundary hits
+        if: steps.match.outputs.matched == 'true'
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea  # v7.0.1
+        env:
+          BOUNDARY_HITS: ${{ steps.match.outputs.boundary_hits }}
+        with:
+          script: |
+            const hits = process.env.BOUNDARY_HITS || '(none)';
+            const body = [
+              '### 🛡️ Security review required',
+              '',
+              'This PR touches paths listed in [`SECURITY/BOUNDARY_FILES.txt`](../blob/main/SECURITY/BOUNDARY_FILES.txt).',
+              '',
+              '**Matched boundaries:**',
+              '```',
+              hits,
+              '```',
+              '',
+              'Before merging:',
+              '',
+              '1. Confirm the **Security review** checklist in the PR description is complete.',
+              '2. Update [`SECURITY/THREAT_MODEL.md`](../blob/main/SECURITY/THREAT_MODEL.md) if a trust boundary changed.',
+              '3. Update [`SECURITY/CONTROL_CATALOG.md`](../blob/main/SECURITY/CONTROL_CATALOG.md) if a control was added/modified.',
+              '4. CODEOWNERS will route the review to the repository owner.',
+              '',
+              'Workflow source: [`.github/workflows/threat-model-gate.yml`](../blob/main/.github/workflows/threat-model-gate.yml).',
+            ].join('\n');
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+
+            await github.rest.issues.createComment({
+              owner, repo, issue_number, body,
+            });

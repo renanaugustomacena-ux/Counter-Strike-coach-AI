@@ -1,0 +1,68 @@
+# CODEOWNERS — security review routing for Macena CS2 Analyzer
+#
+# Doctrine: every PR that touches a security-critical path requires review by the
+# repository owner before merge. The threat-model-gate workflow labels matching PRs
+# `security-review-required` and links to SECURITY/THREAT_MODEL.md.
+#
+# References:
+# - SECURITY/BOUNDARY_FILES.txt — canonical trust-boundary file inventory
+# - SECURITY/THREAT_MODEL.md    — threat model that must be updated for boundary changes
+# - SECURITY/CONTROL_CATALOG.md — controls mapped to NIST SSDF / OWASP ASVS / CWE
+
+# ── Default — repo-wide review fallback ──
+*                                                       @renanaugustomacena-ux
+
+# ── Pillar 1 — Threat Model & Control Architecture ──
+/SECURITY/**                                            @renanaugustomacena-ux
+/.github/CODEOWNERS                                     @renanaugustomacena-ux
+/.github/pull_request_template.md                       @renanaugustomacena-ux
+/.github/workflows/**                                   @renanaugustomacena-ux
+
+# ── Pillar 2 — Secrets, Identity, Authentication ──
+/Programma_CS2_RENAN/core/config.py                     @renanaugustomacena-ux
+/Programma_CS2_RENAN/core/secret_storage.py             @renanaugustomacena-ux
+/Programma_CS2_RENAN/core/settings_schema.py            @renanaugustomacena-ux
+/Programma_CS2_RENAN/core/typing/secrets.py             @renanaugustomacena-ux
+/Programma_CS2_RENAN/backend/auth/**                    @renanaugustomacena-ux
+/Programma_CS2_RENAN/observability/rasp.py              @renanaugustomacena-ux
+/Programma_CS2_RENAN/observability/redaction.py         @renanaugustomacena-ux
+/Programma_CS2_RENAN/observability/audit_log.py         @renanaugustomacena-ux
+/Programma_CS2_RENAN/observability/sentry_setup.py      @renanaugustomacena-ux
+/Programma_CS2_RENAN/observability/logger_setup.py      @renanaugustomacena-ux
+
+# ── Pillar 3 — Supply Chain & Build ──
+/requirements*.txt                                      @renanaugustomacena-ux
+/requirements*.in                                       @renanaugustomacena-ux
+/requirements-lock*.txt                                 @renanaugustomacena-ux
+/pyproject.toml                                         @renanaugustomacena-ux
+/docker-compose.yml                                     @renanaugustomacena-ux
+/Dockerfile                                             @renanaugustomacena-ux
+/.pre-commit-config.yaml                                @renanaugustomacena-ux
+
+# ── Trust boundaries — External I/O ──
+/Programma_CS2_RENAN/backend/data_sources/**            @renanaugustomacena-ux
+/Programma_CS2_RENAN/ingestion/demo_loader.py           @renanaugustomacena-ux
+/Programma_CS2_RENAN/ingestion/integrity.py             @renanaugustomacena-ux
+
+# ── Trust boundaries — Storage ──
+/Programma_CS2_RENAN/backend/storage/**                 @renanaugustomacena-ux
+/alembic/**                                             @renanaugustomacena-ux
+
+# ── Trust boundaries — Knowledge / Models ──
+/Programma_CS2_RENAN/backend/knowledge/rag_knowledge.py @renanaugustomacena-ux
+/Programma_CS2_RENAN/backend/nn/persistence.py          @renanaugustomacena-ux
+/Programma_CS2_RENAN/backend/nn/factory.py              @renanaugustomacena-ux
+
+# ── Tooling that affects security posture ──
+/tools/policy_runner.py                                 @renanaugustomacena-ux
+/tools/verify_lock_hashes.py                            @renanaugustomacena-ux
+/tools/headless_validator.py                            @renanaugustomacena-ux
+/tools/wipe_for_reingest*.py                            @renanaugustomacena-ux
+/tools/audit_binaries.py                                @renanaugustomacena-ux
+/tools/forensic_snapshot.py                             @renanaugustomacena-ux
+/tools/panic.py                                         @renanaugustomacena-ux
+/tools/drift_detector.py                                @renanaugustomacena-ux
+/tools/refresh_compose_digests.py                       @renanaugustomacena-ux
+/tools/refresh_model_pins.py                            @renanaugustomacena-ux
+/tools/fuzz/**                                          @renanaugustomacena-ux
+/goliath.py                                             @renanaugustomacena-ux
