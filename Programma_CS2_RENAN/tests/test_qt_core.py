@@ -374,8 +374,13 @@ class TestThemeEngine:
         assert rating_label(0.80) == "Below Avg"
 
     def test_theme_engine_default(self):
+        from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import CS2_TOKENS
         from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import ThemeEngine
 
         engine = ThemeEngine()
         assert engine.active_theme == "CS2"
-        assert engine.chart_bg == "#1a1a1a"
+        # Read expected value from the design-token source of truth so the
+        # test doesn't drift every time the P1-P4 aesthetic uplift bumps
+        # a color. (The previous hard-coded `#1a1a1a` survived ec0a24a's
+        # re-theming and broke CI once install got past numpy==2.4.3.)
+        assert engine.chart_bg == CS2_TOKENS.chart_bg

@@ -85,7 +85,7 @@ class TestSkillAxes:
 
 
 class TestCalculateSkillVector:
-    @patch("Programma_CS2_RENAN.backend.processing.skill_assessment.get_pro_baseline")
+    @patch("Programma_CS2_RENAN.backend.processing.baselines.pro_baseline.get_pro_baseline")
     def test_average_player_scores_near_0_5(self, mock_get_baseline, mock_baseline):
         """A player at exactly the pro baseline mean should score ~0.5."""
         mock_get_baseline.return_value = mock_baseline
@@ -105,7 +105,7 @@ class TestCalculateSkillVector:
         for axis, score in result.items():
             assert 0.45 <= score <= 0.55, f"{axis} should be ~0.5 for average player, got {score}"
 
-    @patch("Programma_CS2_RENAN.backend.processing.skill_assessment.get_pro_baseline")
+    @patch("Programma_CS2_RENAN.backend.processing.baselines.pro_baseline.get_pro_baseline")
     def test_elite_player_scores_high(self, mock_get_baseline, mock_baseline):
         """A player 2 std above mean should score > 0.9."""
         mock_get_baseline.return_value = mock_baseline
@@ -125,7 +125,7 @@ class TestCalculateSkillVector:
         for axis, score in result.items():
             assert score > 0.8, f"{axis} should be high for elite player, got {score}"
 
-    @patch("Programma_CS2_RENAN.backend.processing.skill_assessment.get_pro_baseline")
+    @patch("Programma_CS2_RENAN.backend.processing.baselines.pro_baseline.get_pro_baseline")
     def test_weak_player_scores_low(self, mock_get_baseline, mock_baseline):
         """A player 2 std below mean should score < 0.2."""
         mock_get_baseline.return_value = mock_baseline
@@ -145,7 +145,7 @@ class TestCalculateSkillVector:
         for axis, score in result.items():
             assert score < 0.3, f"{axis} should be low for weak player, got {score}"
 
-    @patch("Programma_CS2_RENAN.backend.processing.skill_assessment.get_pro_baseline")
+    @patch("Programma_CS2_RENAN.backend.processing.baselines.pro_baseline.get_pro_baseline")
     def test_all_none_returns_default_0_5(self, mock_get_baseline, mock_baseline):
         """All-None stats should produce default 0.5 for all axes."""
         mock_get_baseline.return_value = mock_baseline
@@ -155,7 +155,7 @@ class TestCalculateSkillVector:
         for axis, score in result.items():
             assert score == 0.5
 
-    @patch("Programma_CS2_RENAN.backend.processing.skill_assessment.get_pro_baseline")
+    @patch("Programma_CS2_RENAN.backend.processing.baselines.pro_baseline.get_pro_baseline")
     def test_partial_stats_only_computes_available_axes(self, mock_get_baseline, mock_baseline):
         """Only axes with available stats should appear in the result."""
         mock_get_baseline.return_value = mock_baseline
@@ -165,7 +165,7 @@ class TestCalculateSkillVector:
         # Other axes should not be present (no stats for them)
         assert SkillAxes.UTILITY not in result
 
-    @patch("Programma_CS2_RENAN.backend.processing.skill_assessment.get_pro_baseline")
+    @patch("Programma_CS2_RENAN.backend.processing.baselines.pro_baseline.get_pro_baseline")
     def test_scores_bounded_0_to_1(self, mock_get_baseline, mock_baseline):
         """All scores should be in [0, 1] regardless of extreme inputs."""
         mock_get_baseline.return_value = mock_baseline
@@ -185,7 +185,7 @@ class TestCalculateSkillVector:
         for axis, score in result.items():
             assert 0.0 <= score <= 1.0, f"{axis} out of bounds: {score}"
 
-    @patch("Programma_CS2_RENAN.backend.processing.skill_assessment.get_pro_baseline")
+    @patch("Programma_CS2_RENAN.backend.processing.baselines.pro_baseline.get_pro_baseline")
     def test_zero_stats_bounded(self, mock_get_baseline, mock_baseline):
         """Zero values should produce valid scores (not crash or NaN)."""
         mock_get_baseline.return_value = mock_baseline
@@ -200,7 +200,7 @@ class TestCalculateSkillVector:
             assert 0.0 <= score <= 1.0
             assert not np.isnan(score)
 
-    @patch("Programma_CS2_RENAN.backend.processing.skill_assessment.get_pro_baseline")
+    @patch("Programma_CS2_RENAN.backend.processing.baselines.pro_baseline.get_pro_baseline")
     def test_degenerate_baseline_std_zero(self, mock_get_baseline):
         """P-SA-01-2: Metrics with std=0 should be skipped (no div-by-zero)."""
         baseline = {
@@ -214,7 +214,7 @@ class TestCalculateSkillVector:
         if SkillAxes.MECHANICS in result:
             assert not np.isnan(result[SkillAxes.MECHANICS])
 
-    @patch("Programma_CS2_RENAN.backend.processing.skill_assessment.get_pro_baseline")
+    @patch("Programma_CS2_RENAN.backend.processing.baselines.pro_baseline.get_pro_baseline")
     def test_negative_std_skipped(self, mock_get_baseline):
         """Negative std should be treated as degenerate."""
         baseline = {
