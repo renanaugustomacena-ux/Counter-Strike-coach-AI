@@ -1,5 +1,5 @@
 {
-  "file_count": 306,
+  "file_count": 307,
   "generator": "sync_integrity_manifest.py",
   "hashes": {
     "__init__.py": "d3074031129007f4a6dd65765a0faaad39df9ba8ee41ebe0c94c7f18598c12d0",
@@ -176,7 +176,7 @@
     "backend/nn/inference/ghost_engine.py": "38cdb1cf898e6e77efc0a91b9ae1bfa5dde7ce6b1117f18984cce481e85e75eb",
     "backend/nn/jepa_model.py": "f0ca703095fd4d5d79f7f05f05e60d85cac2871ec5b6feb98c301500c32d9ef4",
     "backend/nn/jepa_train.py": "39e8f04c04bbe38291a501c61c073f1202f330d0d7f318517816de7ec2336af2",
-    "backend/nn/jepa_trainer.py": "e606f1502b78ebb56ca8be415a9ad6060066dcc0a4103da8f715e72f4b7411ca",
+    "backend/nn/jepa_trainer.py": "24f8432f2248d4bc1868b6fc08424f1bff3b8a74f4b63066f1b43d0a6e17c5ee",
     "backend/nn/layers/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "backend/nn/layers/superposition.py": "98caf630a9c1a312b5a224c07d06d823245b3a84a0ca19481c0b5dcd72e296b9",
     "backend/nn/maturity_observatory.py": "585bfd86c5ac73fe144b14f5b4bddaeed9338474815d807fd53dbdded1cce507",
@@ -300,6 +300,7 @@
     "observability/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "observability/error_codes.py": "6d9fb3121151e7ad64b9d1098ba2a33b09618374ae4a981687d8b0b1d45d3309",
     "observability/exceptions.py": "a7d9fb88846a6edddbea4ce5c0fec8150ecdf1446bb40112d49da656040c33f7",
+    "observability/label_source_monitor.py": "4601f607fcea3191fcec43d29f4db7e6601ccdacc3d68778a0b900b2d294ae70",
     "observability/logger_setup.py": "4eea624ffc46d899a0ef583c391115e6f4e345d0ccd8aac29c1b2a5ab0937b46",
     "observability/rasp.py": "978ce8dc560eb32ba48cfde3ccb5c51e4945cb2065e641750d7b40900d2adf70",
     "observability/sentry_setup.py": "4b48bfde7725f132fc37f4db416c44eb7ec060ad808dd908d2676f9bb938ff52",

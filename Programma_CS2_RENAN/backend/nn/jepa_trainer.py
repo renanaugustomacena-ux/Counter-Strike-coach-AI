@@ -20,6 +20,11 @@ from Programma_CS2_RENAN.backend.processing.validation.drift import (
     DriftReport,
     should_retrain,
 )
+from Programma_CS2_RENAN.observability.label_source_monitor import (
+    LABEL_SOURCE_ROUND_STATS,
+    LABEL_SOURCE_SKIPPED_NO_ROUND_STATS,
+    LabelSourceMonitor,
+)
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.jepa_trainer")
@@ -89,6 +94,12 @@ class JEPATrainer:
         # EmbeddingCollapseError after two consecutive collapsed val epochs.
         # Per CS2_Coach_Modernization_Report.pdf §9 and Supplement_N260 §5.1.
         self.embedding_collapse_detector = EmbeddingCollapseDetector(threshold=0.01, patience=2)
+
+        # G-01 (Phase 0 hygiene): structured telemetry for the concept-label
+        # routing decision. train_step_vl reports `label_source` per batch;
+        # this monitor sliding-windows the rate and alarms above 1% over 5min.
+        # Per CS2_Coach_Modernization_Report.pdf §9 and Supplement_N260 §5.1 #3.
+        self.label_source_monitor = LabelSourceMonitor()
 
     def set_total_steps(self, epochs: int, batches_per_epoch: int) -> None:
         """Set actual total training steps for EMA schedule (NN-04b)."""
@@ -446,11 +457,13 @@ class JEPATrainer:
             total_loss.backward()
             self.optimizer.step()
             self.model.update_target_encoder(momentum=self._scheduled_ema_momentum())
+            self.label_source_monitor.record(LABEL_SOURCE_SKIPPED_NO_ROUND_STATS)
             return {
                 "total_loss": total_loss.item(),
                 "infonce_loss": infonce_loss.item(),
                 "concept_loss": 0.0,
                 "diversity_loss": 0.0,
+                "label_source": LABEL_SOURCE_SKIPPED_NO_ROUND_STATS,
             }
 
         # 5. Concept loss + diversity
@@ -473,9 +486,15 @@ class JEPATrainer:
         # 8. EMA update for target encoder (cosine schedule — J-6)
         self.model.update_target_encoder(momentum=self._scheduled_ema_momentum())
 
+        # G-01 telemetry: mark this batch as having reached the canonical
+        # outcome-based labelling path. The monitor's sliding-window alarm
+        # fires if SKIPPED batches start to dominate.
+        self.label_source_monitor.record(LABEL_SOURCE_ROUND_STATS)
+
         return {
             "total_loss": total_loss.item(),
             "infonce_loss": infonce_loss.item(),
             "concept_loss": concept_loss.item(),
             "diversity_loss": diversity_loss.item(),
+            "label_source": LABEL_SOURCE_ROUND_STATS,
         }
