@@ -44,6 +44,18 @@ MATURE_THRESHOLD = 0.75
 MATURE_EPOCHS = 20
 CRISIS_DROP_PCT = 0.20  # 20% drop from rolling max within 5 epochs
 
+# Concept-temperature saturation thresholds (Phase 0 hygiene, PRE-6).
+# Per CS2_Coach_Modernization_Report.pdf §8.3:
+#   "Add a saturation alarm to the training callbacks: if concept_temperature
+#    is within 5% of either boundary for ten consecutive epochs, log a warning
+#    and investigate concept-prototype collapse via the activation histogram."
+# The temperature is clamped to [0.01, 1.0] in jepa_model.py at lines 932 and
+# 1000. We define "near a boundary" as within 5% of the full clamp range.
+CONCEPT_TEMP_LOWER_BOUND = 0.01
+CONCEPT_TEMP_UPPER_BOUND = 1.0
+CONCEPT_TEMP_SATURATION_FRACTION = 0.05
+CONCEPT_TEMP_SATURATION_PATIENCE = 10
+
 
 @dataclass
 class MaturitySnapshot:
@@ -65,6 +77,13 @@ class MaturitySnapshot:
 
     # Classification
     state: str = "doubt"
+
+    # PRE-6: Concept-temperature monitoring (Pillar I / Section 8.3 of the
+    # modernization report). Saturated → either boundary; alarm fires after
+    # CONCEPT_TEMP_SATURATION_PATIENCE consecutive saturated epochs.
+    concept_temperature: Optional[float] = None
+    concept_temperature_saturated: bool = False
+    concept_temperature_saturation_warning: bool = False
 
 
 class MaturityObservatory(TrainingCallback):
@@ -92,6 +111,12 @@ class MaturityObservatory(TrainingCallback):
         self._ema_score = 0.0
         self._prev_val_loss: Optional[float] = None
         self._initial_val_loss: Optional[float] = None
+        # PRE-6 saturation streak counter (consecutive epochs where the
+        # concept_temperature is within 5% of either clamp boundary).
+        self._concept_temp_saturation_streak: int = 0
+        # One-shot latch so we don't spam the alarm log every epoch after
+        # the threshold is crossed.
+        self._concept_temp_warning_logged: bool = False
 
     # ── Lifecycle ────────────────────────────────────────────────────
 
@@ -141,6 +166,12 @@ class MaturityObservatory(TrainingCallback):
 
         # 5. Role Stability (proxy: conviction consistency over recent epochs)
         snap.role_stability = self._compute_role_stability()
+
+        # 6. PRE-6: concept_temperature saturation tracking. Returns the
+        # current clamped value plus whether it sits inside either 5%-band.
+        # Updates the consecutive-saturation streak and may flip the
+        # warning latch on the snapshot.
+        self._update_concept_temperature_saturation(snap, model)
 
         # Composite scores
         snap.conviction_index = self._compute_conviction_index(snap)
@@ -210,6 +241,76 @@ class MaturityObservatory(TrainingCallback):
         # Ratio of improvement: 1.0 when val_loss → 0, 0.0 when no improvement
         improvement = 1.0 - (val_loss / self._initial_val_loss)
         return float(max(0.0, min(1.0, improvement)))
+
+    def _update_concept_temperature_saturation(self, snap: MaturitySnapshot, model) -> None:
+        """Inspect ``model.concept_temperature`` and update saturation state.
+
+        Per CS2_Coach_Modernization_Report.pdf §8.3, the concept_temperature
+        on VLJEPACoachingModel is a learned scalar clamped to
+        [CONCEPT_TEMP_LOWER_BOUND, CONCEPT_TEMP_UPPER_BOUND] (currently
+        [0.01, 1.0] in jepa_model.py). At convergence, saturation against
+        either boundary indicates a degenerate concept space:
+
+          - lower-saturation → forced-binary classification
+          - upper-saturation → uniform / non-discriminative concepts
+
+        We define "near a boundary" as within
+        ``CONCEPT_TEMP_SATURATION_FRACTION * (upper - lower)`` of either
+        edge. After ``CONCEPT_TEMP_SATURATION_PATIENCE`` consecutive
+        saturated epochs the warning latch flips and a one-shot
+        ``logger.error`` fires; subsequent saturated epochs do not
+        re-spam. A healthy epoch resets the streak (and re-arms the latch
+        for future events).
+        """
+        temp_param = getattr(model, "concept_temperature", None)
+        if temp_param is None:
+            # Not a VL-JEPA model — leave fields at defaults (None / False).
+            return
+
+        with torch.no_grad():
+            # Match the live clamp applied at jepa_model.py:932 so the
+            # observatory sees the same value the loss does.
+            value = float(
+                temp_param.detach()
+                .clamp(min=CONCEPT_TEMP_LOWER_BOUND, max=CONCEPT_TEMP_UPPER_BOUND)
+                .item()
+            )
+
+        snap.concept_temperature = value
+
+        band = CONCEPT_TEMP_SATURATION_FRACTION * (
+            CONCEPT_TEMP_UPPER_BOUND - CONCEPT_TEMP_LOWER_BOUND
+        )
+        is_saturated = (
+            value <= CONCEPT_TEMP_LOWER_BOUND + band or value >= CONCEPT_TEMP_UPPER_BOUND - band
+        )
+        snap.concept_temperature_saturated = is_saturated
+
+        if is_saturated:
+            self._concept_temp_saturation_streak += 1
+        else:
+            self._concept_temp_saturation_streak = 0
+            # Re-arm the latch so a fresh saturation episode logs again.
+            self._concept_temp_warning_logged = False
+
+        if self._concept_temp_saturation_streak >= CONCEPT_TEMP_SATURATION_PATIENCE:
+            snap.concept_temperature_saturation_warning = True
+            if not self._concept_temp_warning_logged:
+                edge = (
+                    "lower (binary collapse)"
+                    if value <= CONCEPT_TEMP_LOWER_BOUND + band
+                    else "upper (uniform / non-discriminative)"
+                )
+                logger.error(
+                    "WARN_CONCEPT_TEMPERATURE_SATURATED: concept_temperature="
+                    "%.4f saturated against %s for %d consecutive epochs. "
+                    "Investigate concept-prototype collapse via the activation "
+                    "histogram already available in the Observatory.",
+                    value,
+                    edge,
+                    self._concept_temp_saturation_streak,
+                )
+                self._concept_temp_warning_logged = True
 
     def _compute_role_stability(self) -> float:
         """Consistency of conviction index over recent epochs."""

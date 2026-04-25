@@ -179,7 +179,7 @@
     "backend/nn/jepa_trainer.py": "24f8432f2248d4bc1868b6fc08424f1bff3b8a74f4b63066f1b43d0a6e17c5ee",
     "backend/nn/layers/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "backend/nn/layers/superposition.py": "98caf630a9c1a312b5a224c07d06d823245b3a84a0ca19481c0b5dcd72e296b9",
-    "backend/nn/maturity_observatory.py": "585bfd86c5ac73fe144b14f5b4bddaeed9338474815d807fd53dbdded1cce507",
+    "backend/nn/maturity_observatory.py": "aa1c8af0a8699a1623ff5f97e0e8df9deb55d751c6b70d67931aa5eb717445bb",
     "backend/nn/model.py": "5617b88a48118d61d1bd1aa8eb25c6d2354976b96b02e7ed4a381f72035b714c",
     "backend/nn/persistence.py": "2ce50b7a5764b14c872ef4d3a6ff0b787ef3fc03bb6d5424e4aa1a1e3272d877",
     "backend/nn/rap_coach/__init__.py": "1642f99c2eca95e4f8f7e800de64f1d95a4da00f446cf277422a36abfacbed5f",
