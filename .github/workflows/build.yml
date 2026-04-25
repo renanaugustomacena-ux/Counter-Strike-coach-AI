@@ -37,7 +37,13 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: '3.10'
+  # 3.11 is the effective floor: requirements.txt pins numpy==2.4.3,
+  # scipy==1.17.1, scikit-learn==1.8.0 — all of which require Python
+  # >=3.11. CI was stuck on 3.10 and every install failed before a
+  # single test ran. requirements-lock-cpu.txt still pins older
+  # versions that work on both 3.10 and 3.11, so the build stage is
+  # unaffected by the bump.
+  PYTHON_VERSION: '3.11'
 
 jobs:
   # ═══════════════════════════════════════════════════════════════════════════
