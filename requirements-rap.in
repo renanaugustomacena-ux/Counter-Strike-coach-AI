@@ -1,0 +1,25 @@
+# =============================================================================
+# Macena CS2 Analyzer — RAP Coach Optional Dependencies
+# =============================================================================
+#
+# Required ONLY when USE_RAP_MODEL=True in settings.
+#
+# Compile to a hashed lockfile via:
+#
+#   uv pip compile --generate-hashes \
+#       --output-file requirements-rap-lock.txt \
+#       --constraint requirements-lock.txt \
+#       requirements-rap.in
+#
+# The --constraint pin to requirements-lock.txt prevents accidental upgrade of
+# shared transitives (numpy, torch) to versions different from production.
+#
+# =============================================================================
+
+# SEC: justified — ncps tracks tied to torch + ML-research stability; explicit
+# range pin lets us follow patch fixes without forcing a major-version bump.
+ncps>=0.0.7,<2.0
+
+# SEC: justified — same reasoning as ncps; community-maintained Hopfield
+# implementation; range pin lets minor/patch updates flow.
+hflayers>=1.3.0,<2.0

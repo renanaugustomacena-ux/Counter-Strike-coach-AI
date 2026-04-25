@@ -1,0 +1,57 @@
+# =============================================================================
+# Macena CS2 Analyzer — Developer & Tooling Dependencies
+# =============================================================================
+#
+# These are NOT bundled with the production app. They power local development,
+# CI, the security pipeline, and the build process.
+#
+# Compile to a hashed lockfile via:
+#
+#   uv pip compile --generate-hashes \
+#       --output-file requirements-dev-lock.txt \
+#       requirements-dev.in
+#
+# Use in CI / local dev shells with:
+#
+#   pip install --require-hashes -r requirements-dev-lock.txt
+#
+# =============================================================================
+
+# --- Lockfile compiler (primary) ---
+uv==0.5.21
+
+# --- Lockfile compiler (fallback for environments where uv install is restricted) ---
+pip-tools==7.4.1
+
+# --- Test stack ---
+pytest==8.3.4
+pytest-cov==6.0.0
+hypothesis==6.122.3
+
+# --- Static analysis & linting ---
+black==24.10.0
+isort==5.13.2
+mypy==1.13.0
+ruff==0.7.4
+bandit==1.8.0
+
+# --- Secret & SCA scanning ---
+detect-secrets==1.5.0
+pip-audit==2.7.3
+
+# --- Supply-chain tooling ---
+cyclonedx-bom==4.4.3                   # CycloneDX 1.6 SBOM generator
+in-toto==2.4.0                          # SLSA provenance helper (off-CI generation)
+sigstore==3.6.0                         # cosign-equivalent signing for non-Windows
+
+# --- Fuzzing harness ---
+atheris==2.3.0                          # libFuzzer Python binding for demoparser2
+
+# --- Sandbox tooling (Linux-only) ---
+pyseccomp==0.1.2; sys_platform == "linux"
+
+# --- AST analysis for policy-as-code Phase 2 upgrade ---
+libcst==1.5.0
+
+# --- Pre-commit framework ---
+pre-commit==4.0.1
