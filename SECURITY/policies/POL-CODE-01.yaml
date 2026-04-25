@@ -1,0 +1,57 @@
+id: POL-CODE-01
+description: |
+  Forbid dangerous code primitives in production code without an explicit waiver tag.
+  Blocks: pickle.load / pickle.loads, yaml.load (unsafe variant), subprocess(..., shell=True),
+  bare eval(), bare exec(), marshal.load.
+
+  These primitives are repeatedly the source of remote code execution, data integrity, and
+  command-injection vulnerabilities (CWE-502, CWE-78, CWE-95, CWE-94).
+
+  An inline `# SEC: justified <reason>` comment on the same line, or `# noqa: POL-CODE-01`,
+  suppresses the warning. Waivers should be rare and time-bound via SECURITY/waivers.yaml.
+severity: error
+applies_to:
+  - "Programma_CS2_RENAN/**/*.py"
+  - "tools/**/*.py"
+  - "goliath.py"
+  - "console.py"
+  - "run_*.py"
+  - "batch_ingest.py"
+excludes:
+  - ".venv/**"
+  - "external_analysis/**"
+  - "tests/fixtures/**"
+  - "**/__pycache__/**"
+  - "Programma_CS2_RENAN/tests/**"
+  - "tests/**"
+  - "Programma_CS2_RENAN/ingestion/demo_loader.py"  # uses _SafeUnpickler — verified safe (C-SEC-06)
+  - "tools/headless_validator.py"   # meta-validator that scans for these patterns; mentions them in strings/docstrings only, never calls them
+  - "tools/policy_runner.py"        # meta-tool that scans for these patterns; mentions them in policy IDs and error messages
+kind: line_regex
+config:
+  patterns:
+    - id: pickle_load
+      pattern: '\bpickle\.(load|loads)\s*\('
+      message: 'pickle.load/loads on untrusted data is RCE-class (CWE-502). Use _SafeUnpickler or JSON.'
+    - id: yaml_load_unsafe
+      pattern: '\byaml\.load\s*\([^)]*\)'
+      message: 'yaml.load is unsafe (deserializes arbitrary classes). Use yaml.safe_load.'
+    - id: shell_true
+      pattern: '\b(subprocess\.(run|call|Popen|check_output|check_call))\s*\([^)]*shell\s*=\s*True'
+      message: 'subprocess(..., shell=True) is shell-injection-prone (CWE-78). Pass argv list.'
+    - id: bare_eval
+      pattern: '(?<!\.)\beval\s*\('
+      message: 'bare eval() is RCE-class (CWE-95). Use ast.literal_eval if parsing untrusted input.'
+    - id: bare_exec
+      pattern: '(?<!\.)\bexec\s*\('
+      message: 'bare exec() is RCE-class (CWE-94). Refactor to call functions directly.'
+    - id: marshal_load
+      pattern: '\bmarshal\.(load|loads)\s*\('
+      message: 'marshal.load on untrusted data is RCE-class. Use JSON.'
+  inline_waivers:
+    - '# SEC: justified'
+    - '# noqa: POL-CODE-01'
+mapping:
+  cwe: ['CWE-78', 'CWE-94', 'CWE-95', 'CWE-502']
+  asvs: ['V5.5.3', 'V12.3.3']
+  ssdf: ['PW.7.1']

@@ -1,0 +1,49 @@
+id: POL-NET-02
+description: |
+  External HTTP calls (`requests.get`/`requests.post`/`httpx.*`/`urllib.request.*`) must route
+  through the `_validated_get` wrapper which enforces:
+    - HTTPS-only scheme
+    - explicit timeout
+    - max response body size
+    - URL allow-list / DNS-rebinding defense (Phase 2)
+
+  This rule reports any direct call site outside of:
+    - core/_http_guard.py (the wrapper itself, Phase 2)
+    - tests/**
+    - tools/** (developer tooling)
+    - external_analysis/**
+
+  Phase 1: warn-mode — logs the violations but does not block. Phase 2: blocking after the
+  `_validated_get` wrapper exists.
+severity: warn
+applies_to:
+  - "Programma_CS2_RENAN/backend/data_sources/**/*.py"
+  - "Programma_CS2_RENAN/backend/services/**/*.py"
+  - "Programma_CS2_RENAN/backend/storage/**/*.py"
+  - "Programma_CS2_RENAN/backend/auth/**/*.py"
+excludes:
+  - "**/__pycache__/**"
+  - "Programma_CS2_RENAN/backend/data_sources/_http_guard.py"   # the wrapper itself
+kind: line_regex
+config:
+  patterns:
+    - id: direct_requests
+      pattern: '\brequests\.(get|post|put|delete|head|patch|request)\s*\('
+      message: |
+        Direct `requests.<verb>` call. In Phase 2, all external HTTP must route through
+        `_validated_get` (HTTPS-only + timeout + size cap + URL allow-list).
+    - id: direct_httpx
+      pattern: '\bhttpx\.(get|post|put|delete|head|patch|request|stream)\s*\('
+      message: |
+        Direct `httpx.<verb>` call. Route through `_validated_get`.
+    - id: urllib_request
+      pattern: '\burllib\.request\.(urlopen|Request)\s*\('
+      message: |
+        urllib.request.urlopen/Request — use `_validated_get` instead.
+  inline_waivers:
+    - '# SEC: justified'
+    - '# noqa: POL-NET-02'
+mapping:
+  cwe: ['CWE-918']
+  asvs: ['V12.6.1']
+  owasp10: ['A10']

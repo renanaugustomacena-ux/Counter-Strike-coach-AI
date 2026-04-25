@@ -1,0 +1,39 @@
+id: POL-DEPS-01
+description: |
+  Every dependency in requirements*.txt must be exact-pinned (`==`) and may not be unpinned,
+  range-pinned (`>=`, `<=`, `~=`), or omit a version. Range pins make supply-chain CVE
+  triage non-deterministic and break reproducible builds.
+
+  In Phase 2, this rule extends to require `--hash=sha256:` lines on lockfiles
+  (requirements-lock*.txt) and is enforced via `tools/verify_lock_hashes.py`. Until then,
+  this policy enforces the simpler exact-pin requirement on top-level requirements files.
+
+  Justified exceptions (e.g., `torch>=2.1.0,<3.0` for CUDA/CPU/ROCm variants) require an
+  inline `# SEC: justified <reason>` comment.
+
+  Special handling: lines beginning with `-r `, `--extra-index-url`, `--index-url`, comments,
+  blank lines are skipped.
+severity: error
+applies_to:
+  - "requirements.txt"
+  - "requirements-*.txt"
+excludes:
+  - "requirements-lock*.txt"   # locks are checked by tools/verify_lock_hashes.py
+kind: line_regex
+config:
+  patterns:
+    - id: not_exact_pinned
+      # Matches a non-comment, non-blank line where the dep specifier doesn't include `==`.
+      # Allows: foo==1.2.3, foo==1.2.3; sys_platform=='win32'
+      # Rejects: foo, foo>=1.0, foo~=2.0, foo<3.0
+      pattern: '^(?!\s*#)(?!\s*-r\b)(?!\s*--)(?!\s*$)[A-Za-z0-9_.\[\]\-]+(?!==)\s*([><~]=|<|>|$)'
+      message: |
+        Dependency must be exact-pinned (`==<version>`). Range pins break reproducibility.
+        For platform-specific exceptions (e.g., torch + CUDA/CPU split), add `# SEC: justified <reason>`.
+  inline_waivers:
+    - '# SEC: justified'
+    - '# noqa: POL-DEPS-01'
+mapping:
+  cwe: ['CWE-1357']
+  asvs: ['V14.2.1']
+  ssdf: ['PS.3.1', 'PS.3.2']

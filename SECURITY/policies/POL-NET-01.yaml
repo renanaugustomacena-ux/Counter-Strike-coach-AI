@@ -1,0 +1,32 @@
+id: POL-NET-01
+description: |
+  No docker-compose service may bind to 0.0.0.0 (or omit a host prefix, which defaults to all-interfaces)
+  without an explicit `# SEC: bind-public <reason>` waiver tag in an adjacent comment.
+
+  Most services in this project (FlareSolverr, telemetry, remote_file_server) are localhost-only by
+  design. A LAN-bound port broadens the attack surface from "process running as user" to "every
+  device on the network." Today (gap T-009 / T-013) FlareSolverr binds 0.0.0.0:8191 — Phase 2
+  rectifies this.
+severity: error
+applies_to:
+  - "docker-compose*.yml"
+  - "compose.yml"
+  - "compose.yaml"
+excludes: []
+kind: line_regex
+config:
+  patterns:
+    - id: bind_all_interfaces
+      # Match a quoted ports entry like "8191:8191" or unquoted 8191:8191 (no host prefix
+      # implies 0.0.0.0). Or explicit 0.0.0.0:port:port. Skip 127.0.0.1 / localhost.
+      pattern: '^\s*-\s*"?(?!(127\.0\.0\.1|localhost|::1)[:.])(?:0\.0\.0\.0:|\b)\d+:\d+'
+      message: |
+        Port binds publicly (or to all interfaces). Prefer "127.0.0.1:<port>:<port>".
+        If LAN exposure is required, add a comment "# SEC: bind-public <reason>".
+  inline_waivers:
+    - '# SEC: bind-public'
+    - '# noqa: POL-NET-01'
+mapping:
+  cwe: ['CWE-1327']
+  asvs: ['V14.4.1']
+  ssdf: ['PO.5']

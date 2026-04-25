@@ -1,0 +1,44 @@
+id: POL-DB-02
+description: |
+  Alembic migrations must not catch broad exceptions. Each migration should fail-fast on
+  any error so the state is unambiguous.
+
+  Today (AUDIT §2.2), several alembic/versions/*.py files contain `except Exception:` or
+  `except BaseException:` blocks that mask migration failures. A masked failure produces a
+  database that *looks* migrated but actually has missing schema objects, indexes, or constraints
+  — silent corruption.
+
+  Forbidden patterns:
+    except Exception
+    except BaseException
+    except:                 (bare except)
+
+  Allowed:
+    except sqlalchemy.exc.OperationalError as e:   (specific, scoped)
+    except (NoSuchTableError, ProgrammingError):   (specific tuple)
+severity: error
+applies_to:
+  - "alembic/versions/**/*.py"
+  - "Programma_CS2_RENAN/alembic/versions/**/*.py"
+excludes:
+  - "**/__pycache__/**"
+kind: line_regex
+config:
+  patterns:
+    - id: broad_except
+      pattern: '^\s*except\s+(Exception|BaseException)\b'
+      message: |
+        Broad except masks migration failure → silent DB corruption. Catch a specific
+        exception class (e.g., sqlalchemy.exc.OperationalError) or let it propagate.
+    - id: bare_except
+      pattern: '^\s*except\s*:'
+      message: |
+        Bare `except:` catches BaseException including KeyboardInterrupt/SystemExit.
+        Use a specific exception class.
+  inline_waivers:
+    - '# SEC: justified'
+    - '# noqa: POL-DB-02'
+mapping:
+  cwe: ['CWE-754', 'CWE-755']
+  asvs: ['V7.4.1']
+  ssdf: ['PW.7']
