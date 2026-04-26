@@ -544,7 +544,19 @@ class TrainingOrchestrator:
             match_id = getattr(item, "match_id", None)
             tick = int(getattr(item, "tick", 0))
             player_name = str(getattr(item, "player_name", ""))
-            demo_name = str(getattr(item, "demo_name", ""))
+            demo_name = str(getattr(item, "demo_name", "") or "")
+
+            # POV-RAP-FIX-2 (Sprint A 2026-04-26): PlayerTickState rows in the
+            # monolith have match_id=None but demo_name set; per-match shards
+            # are keyed by the SHA-256-derived numeric ID. Without this fall-
+            # back the POV gate dropped every batch (see commit b091f83 for the
+            # tablename half of this fix; this is the FK half).
+            if match_id is None and demo_name:
+                from Programma_CS2_RENAN.backend.storage.match_data_manager import (
+                    demo_name_to_match_id,
+                )
+
+                match_id = demo_name_to_match_id(demo_name)
 
             map_name = self._resolve_map_name(match_id, demo_name, match_mgr, _metadata_cache)
 

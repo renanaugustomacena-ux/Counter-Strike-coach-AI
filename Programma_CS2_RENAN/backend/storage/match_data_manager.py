@@ -18,6 +18,7 @@ Path Resolution:
 - On first startup after relocation, files are auto-migrated from old to new path
 """
 
+import hashlib
 import os
 import re
 import threading
@@ -87,6 +88,45 @@ def _assert_safe_default_literal(value: str) -> str:
     if not isinstance(value, str) or not _SAFE_DEFAULT_LITERAL_RE.match(value):
         raise ValueError(f"Unsafe DDL DEFAULT literal: {value!r}")
     return value
+
+
+# ============ Demo-name → match_id resolver ============
+# POV-RAP-FIX-2 (Sprint A 2026-04-26):
+# `PlayerTickState` rows in the monolith DB have `match_id=None` but
+# `demo_name` populated. Per-match shards are keyed by numeric match_id,
+# computed at ingestion time via the same SHA-256 hash. Any orchestrator
+# code that needs to resolve a tick's per-match shard must use this helper
+# to derive match_id from demo_name when the foreign-key field is missing.
+#
+# Source of truth: run_ingestion.py:1232:
+#   match_id = int(hashlib.sha256(demo_name.encode()).hexdigest(), 16) % (2**63 - 1)
+#
+# Verified 2026-04-26: 100% of 255 distinct demo_names in playertickstate
+# resolve to existing shard files via this function.
+
+
+def demo_name_to_match_id(demo_name: str) -> int:
+    """Compute the canonical match_id for a demo name.
+
+    Mirrors the deterministic ingestion-time derivation in
+    `run_ingestion.py:1232`. Stable across machines, OS versions, and
+    Python implementations because SHA-256 + Python's `int(x, 16)` are
+    fully specified.
+
+    Args:
+        demo_name: The demo's basename without extension (e.g.
+            "astralis-vs-furia-m2-mirage"). Empty string is invalid and
+            raises ValueError to surface upstream missing-data bugs early.
+
+    Returns:
+        Non-negative `int` in the range [0, 2**63 - 2].
+
+    Raises:
+        ValueError: If `demo_name` is falsy.
+    """
+    if not demo_name:
+        raise ValueError("demo_name_to_match_id requires a non-empty demo_name")
+    return int(hashlib.sha256(demo_name.encode()).hexdigest(), 16) % (2**63 - 1)
 
 
 # ============ Per-Match Schema Versioning ============
