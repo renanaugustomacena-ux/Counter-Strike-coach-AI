@@ -262,7 +262,7 @@
     "backend/storage/db_migrate.py": "674a1e07da3e2e3c3a2a18bb07cb762334775dbd598940b7eb5168021706d790",
     "backend/storage/db_models.py": "71d81eadb3395b812f0fa01ff45d4c4f888fc283223f41d38cf88f37d48505ea",
     "backend/storage/maintenance.py": "50d83de4cb8c50203c7fa56f920a1b0545fb19912f0f999d4c07121ec7b6687d",
-    "backend/storage/match_data_manager.py": "4a8379d8411ffef4f7c95f7560ae7053d09dd4786775335a67d7a38f4c5a962c",
+    "backend/storage/match_data_manager.py": "d0c347be8b7d89517f94087f68604bc65044445ff7cf503d38da8fe1a7a2a9e5",
     "backend/storage/remote_file_server.py": "8cbf4f03e3f3d142f2bc5c4a2adbabe97553dc7d1b8d41fd04d98a402577c85f",
     "backend/storage/stat_aggregator.py": "f2292888de834c7ce5a85d873123a5272138bb233e6cc36de6c4285b7a4085ad",
     "backend/storage/state_manager.py": "b045d9a48393f3ea67f627078fd152db4d1a7d3b47bffd1585367df373edd8be",

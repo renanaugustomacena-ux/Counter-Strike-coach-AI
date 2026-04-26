@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Generator, List, Optional
 
 import sqlalchemy as sa
-from sqlalchemy import event
+from sqlalchemy import Column, Integer, event
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -92,7 +92,7 @@ def _assert_safe_default_literal(value: str) -> str:
 # ============ Per-Match Schema Versioning ============
 # Bump this when MatchTickState/MatchEventState/MatchMetadata models change.
 # Add migration steps to _MATCH_DB_MIGRATIONS for each version bump.
-MATCH_DB_SCHEMA_VERSION = 2
+MATCH_DB_SCHEMA_VERSION = 3
 
 # Registry: version_from -> list of (table, column, sa_type, default_value)
 # Each entry: (table_name, column_name, sa_type, default_value_sql)
@@ -101,6 +101,20 @@ _MATCH_DB_MIGRATIONS: Dict[int, list] = {
     1: [
         ("match_metadata", "match_complete", sa.Boolean(), "0"),
         ("match_event_state", "duration_estimated", sa.Boolean(), "0"),
+    ],
+    # v2 → v3 (POV-RAP-FIX, Sprint A 2026-04-26): legacy ingestions wrote tick
+    # rows into table `matchtickstate` (no underscores), but the SQLModel ORM
+    # was bound to `match_tick_state` — every RAP batch was dropped because
+    # `get_all_players_at_tick` queried the empty modern table. The fix:
+    # MatchTickState.__tablename__ now points at `matchtickstate`, and the
+    # `id` field maps to SQLite's implicit rowid via sa_column. The two
+    # modern-only data columns (round_outcome, created_at) need to exist on
+    # the legacy table so SELECT * doesn't fail; they are nullable, no
+    # backfill needed (no consumer reads them today). ALTER TABLE ADD COLUMN
+    # in SQLite is O(1) (metadata only) — no row rewrite, no disk pressure.
+    2: [
+        ("matchtickstate", "round_outcome", sa.Integer(), "NULL"),
+        ("matchtickstate", "created_at", sa.DateTime(), "NULL"),
     ],
 }
 
@@ -111,11 +125,31 @@ class MatchTickState(SQLModel, table=True):
     """
     Per-tick player state for a specific match.
     This model lives in individual match databases, NOT the main monolith.
+
+    POV-RAP-FIX (Sprint A 2026-04-26): bound to legacy table `matchtickstate`
+    (no underscores) because the ingestion writer at run_ingestion.py:1561
+    has always written to that name (`df_match.to_sql("matchtickstate", ...)`)
+    but earlier versions of this model used `__tablename__ = "match_tick_state"`,
+    which created an EMPTY parallel table that the ORM-based reader path
+    queried — silently dropping every RAP training batch. The realignment
+    here makes the SQLModel point at where the data actually lives.
+
+    The `id` field maps to SQLite's implicit `rowid` column (always present;
+    no schema change required on existing shards). Two modern-only columns
+    (`round_outcome`, `created_at`) are added to existing legacy tables by
+    the v2→v3 migration in `_MATCH_DB_MIGRATIONS` — both nullable, no
+    consumer reads them today.
     """
 
-    __tablename__ = "match_tick_state"
+    __tablename__ = "matchtickstate"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    # Map `id` to SQLite's rowid (no `id` column needed on disk; the legacy
+    # table never had one). SQLAlchemy primary_key=True is required so the
+    # ORM can identity-track instances.
+    id: Optional[int] = Field(
+        default=None,
+        sa_column=Column("rowid", Integer, primary_key=True),
+    )
     tick: int = Field(index=True)
     round_number: int = Field(default=1, index=True)
     player_name: str = Field(index=True)
@@ -183,8 +217,12 @@ class MatchTickState(SQLModel, table=True):
     team_economy: int = Field(default=0)
     map_name: str = Field(default="de_unknown")
 
-    # Timestamp for maintenance
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # Timestamp for maintenance.
+    # POV-RAP-FIX (Sprint A 2026-04-26): made Optional + nullable. Existing
+    # legacy `matchtickstate` rows lack this column entirely; the v2→v3
+    # migration ALTERs it in as nullable so SELECT * doesn't error. New
+    # ingestion paths leave this NULL (no consumer reads it today).
+    created_at: Optional[datetime] = None
 
 
 class MatchEventState(SQLModel, table=True):
@@ -415,9 +453,17 @@ class MatchDataManager:
 
             # Defensive check: verify only expected tables were created.
             # R2-03: Known legacy table names from schema versions before __tablename__
-            # was set explicitly (e.g. "matchtickstate" predates "match_tick_state").
-            # These are inert orphan tables that cause no functional harm.
-            _LEGACY_MATCH_TABLES = {"matchtickstate", "matcheventstate", "matchmetadata"}
+            # was set explicitly. POV-RAP-FIX (Sprint A 2026-04-26) realigned
+            # MatchTickState back to `matchtickstate` (the lowercase original),
+            # so `match_tick_state` (with underscores) is now the orphan side
+            # — older shards may still have an empty `match_tick_state` table
+            # left over from when SQLModel briefly created it; harmless,
+            # treated as inert here.
+            _LEGACY_MATCH_TABLES = {
+                "match_tick_state",  # leftover empty table from the brief modern-name era
+                "matcheventstate",
+                "matchmetadata",
+            }
             from sqlalchemy import inspect as sa_inspect
 
             created = set(sa_inspect(engine).get_table_names())
