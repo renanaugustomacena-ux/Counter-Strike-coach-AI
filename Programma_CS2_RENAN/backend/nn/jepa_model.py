@@ -128,7 +128,9 @@ class JEPACoachingModel(nn.Module):
         self.predictor = JEPAPredictor(latent_dim)
 
         # LSTM Coaching Head (similar to existing AdvancedCoachNN)
-        self.lstm = nn.LSTM(latent_dim, hidden_dim, batch_first=True, num_layers=2, dropout=0.2)
+        # Supplement_N260 §P2-4: dropout 0.2 → 0.15 at N=266 regime
+        # (reverts the main report's 0.2 recommendation per Supplement Table S2).
+        self.lstm = nn.LSTM(latent_dim, hidden_dim, batch_first=True, num_layers=2, dropout=0.15)
 
         # Mixture of Experts (existing architecture)
         self.experts = nn.ModuleList(
@@ -887,8 +889,11 @@ class VLJEPACoachingModel(JEPACoachingModel):
             nn.Linear(latent_dim, latent_dim),
         )
 
-        # Learned temperature for concept similarity scaling
-        self.concept_temperature = nn.Parameter(torch.tensor(0.07))
+        # Learned temperature for concept similarity scaling.
+        # Supplement_N260 §P2-4: InfoNCE τ initial 0.07 → 0.10 at N=266 regime
+        # (start; sweep 0.10–0.15 once Optuna budget unlocked). Parameter remains
+        # learnable; clamp [0.01, 1.0] downstream still applies.
+        self.concept_temperature = nn.Parameter(torch.tensor(0.10))
 
     def forward_vl(
         self,
