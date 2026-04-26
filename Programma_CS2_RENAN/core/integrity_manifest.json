@@ -174,7 +174,7 @@
     "backend/nn/factory.py": "e2583225fa856bf0d62e62e1d4ccf36f9170c34c8c9d07c6d39f9a9088991458",
     "backend/nn/inference/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "backend/nn/inference/ghost_engine.py": "38cdb1cf898e6e77efc0a91b9ae1bfa5dde7ce6b1117f18984cce481e85e75eb",
-    "backend/nn/jepa_model.py": "f0ca703095fd4d5d79f7f05f05e60d85cac2871ec5b6feb98c301500c32d9ef4",
+    "backend/nn/jepa_model.py": "8e2385b9ad0a632bcd940ff433f81d4a6b9698f57966a2f126943c4786ffc533",
     "backend/nn/jepa_train.py": "39e8f04c04bbe38291a501c61c073f1202f330d0d7f318517816de7ec2336af2",
     "backend/nn/jepa_trainer.py": "24f8432f2248d4bc1868b6fc08424f1bff3b8a74f4b63066f1b43d0a6e17c5ee",
     "backend/nn/layers/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
