@@ -17,12 +17,30 @@ def _build_callbacks(args) -> CallbackRegistry:
     """Build callback registry based on CLI flags."""
     registry = CallbackRegistry()
 
+    tb_writer = None
     if not args.no_tensorboard:
         from Programma_CS2_RENAN.backend.nn.tensorboard_callback import TensorBoardCallback
 
         tb = TensorBoardCallback(log_dir=args.tb_logdir)
         registry.add(tb)
         app_logger.info("TensorBoard callback registered (logdir: %s)", args.tb_logdir)
+        # MaturityObservatory shares the SummaryWriter so its scalars land in
+        # the same TensorBoard logdir; falls back to None when TB is no-op.
+        tb_writer = getattr(tb, "writer", None)
+
+    # PRE-11 wiring: MaturityObservatory is a TrainingCallback per its base
+    # class, but was not registered in the production callback chain — so
+    # `tonight's JEPA run produced zero MaturitySnapshots. Registering it
+    # here makes the 5-state machine (doubt / crisis / learning / conviction
+    # / mature) actually classify each epoch and log the conviction_index
+    # via app_logger.info on every on_epoch_end. Most signals are RAP-specific
+    # (strategy.superposition, _last_belief_batch) and will be 0 for pure
+    # JEPA; value_accuracy and concept_focus (when VL-JEPA) carry signal.
+    from Programma_CS2_RENAN.backend.nn.maturity_observatory import MaturityObservatory
+
+    observatory = MaturityObservatory(tb_writer=tb_writer)
+    registry.add(observatory)
+    app_logger.info("MaturityObservatory callback registered")
 
     return registry
 
