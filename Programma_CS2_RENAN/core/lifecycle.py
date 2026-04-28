@@ -54,7 +54,10 @@ class AppLifecycleManager:
                 return False
 
             return True
-        except Exception as e:
+        except (OSError, AttributeError):
+            # OSError covers ctypes.WinError (CreateMutexW failure, kernel32
+            # access issues). AttributeError covers a hypothetical broken
+            # windll.kernel32 lookup (already gated by sys.platform check).
             logger.exception("Failed to acquire single instance lock")
             # Fail closed to protect DB
             return False
@@ -97,7 +100,10 @@ class AppLifecycleManager:
                     stderr=self._err_log,
                     env=env,
                 )
-            except Exception:
+            except (OSError, ValueError, subprocess.SubprocessError):
+                # OSError: exec target missing / permission denied / fork failure.
+                # ValueError: invalid Popen args (e.g. bad cwd type).
+                # subprocess.SubprocessError: timing / IO setup failures.
                 # Close file handles immediately if Popen fails to prevent leaks
                 self._out_log.close()
                 self._err_log.close()
@@ -111,7 +117,10 @@ class AppLifecycleManager:
             atexit.register(self.shutdown)
             return self._daemon_process
 
-        except Exception as e:
+        except (OSError, ValueError, subprocess.SubprocessError):
+            # Same surface as inner Popen except above, plus open()-on-log-files
+            # OSError (permissions / disk full / parent dir gone). All of these
+            # leave the daemon unstarted; callers see None and surface a UI hint.
             logger.exception("Failed to launch daemon")
             return None
 
@@ -130,7 +139,10 @@ class AppLifecycleManager:
                     # 2. Force kill if resistant
                     logger.warning("Daemon hung, forcing kill.")
                     self._daemon_process.kill()
-            except Exception as e:
+            except (OSError, ProcessLookupError, subprocess.SubprocessError):
+                # OSError: signal delivery failed (target process gone / no perm).
+                # ProcessLookupError: subclass of OSError; daemon already dead.
+                # subprocess.SubprocessError: terminate/wait/kill internal failure.
                 logger.exception("Error killing daemon")
 
         # Close daemon log handles to prevent resource leaks
@@ -138,7 +150,8 @@ class AppLifecycleManager:
             if handle:
                 try:
                     handle.close()
-                except Exception as e:
+                except OSError as e:
+                    # Already closed / file gone — best-effort cleanup, debug only.
                     logger.debug("Failed to close daemon log handle: %s", e)
 
         # Mutex is released automatically by OS on process exit,
@@ -146,7 +159,8 @@ class AppLifecycleManager:
         if self._instance_mutex and sys.platform == "win32":
             try:
                 ctypes.windll.kernel32.CloseHandle(self._instance_mutex)
-            except Exception as e:
+            except OSError as e:
+                # Win32 CloseHandle raises OSError on bad handle; non-fatal at exit.
                 logger.debug("Mutex cleanup: %s", e)
 
 
