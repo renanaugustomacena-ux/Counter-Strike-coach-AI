@@ -1,0 +1,99 @@
+name: Notify on main-branch failure
+
+# TASKS#50 — owner-visibility for main-branch CI failures.
+# Closes the 12-day red-CI gap discovered in 2026-04-25 session 6 (AUDIT §11).
+# Trigger: any failed run of "Macena CI Pipeline" on main branch.
+# Action: open or update a single rolling GitHub issue summarizing the failure.
+# A single rolling issue is preferred over per-failure spam: if main is red for
+# multiple commits, the issue gets a comment per failure, not a new issue each
+# time. Auto-closes when CI returns green.
+
+on:
+  workflow_run:
+    workflows: ["Macena CI Pipeline"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: notify-failure-${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  open-or-update-issue:
+    if: github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Open or update CI-red rolling issue
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea  # v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const run = context.payload.workflow_run;
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${owner}/${repo}/actions/runs/${run.id}`;
+            const sha = run.head_sha.slice(0, 7);
+            const title = "main CI red — investigate";
+            const labels = ["ci-red", "main-branch", "regression"];
+
+            // Find an existing open rolling issue with our label so we comment
+            // instead of creating a new one each time. List with the label
+            // filter; if none open, create.
+            const existing = await github.rest.issues.listForRepo({
+              owner, repo, state: "open", labels: "ci-red", per_page: 5,
+            });
+            const rolling = existing.data.find(i => i.title === title);
+
+            const body = [
+              `Run failed on \`${run.head_branch}\` at commit \`${sha}\``,
+              "",
+              `- Run: ${runUrl}`,
+              `- Conclusion: ${run.conclusion}`,
+              `- Triggered by: ${run.event}`,
+              `- Started at: ${run.run_started_at}`,
+              "",
+              "Triage steps:",
+              "1. Open the run URL and identify which stage failed.",
+              "2. If pip install failed, check requirements.txt vs PYTHON_VERSION.",
+              "3. If a test failed, run locally with the matching matrix env.",
+              "4. Fix root cause — never `--no-verify` or skip hooks.",
+              "5. Push fix; this issue auto-closes when main returns green.",
+            ].join("\n");
+
+            if (rolling) {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: rolling.number, body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner, repo, title, body, labels,
+              });
+            }
+
+  close-on-success:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Close rolling CI-red issue
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea  # v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const open = await github.rest.issues.listForRepo({
+              owner, repo, state: "open", labels: "ci-red", per_page: 5,
+            });
+            for (const issue of open.data) {
+              if (issue.title === "main CI red — investigate") {
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: issue.number,
+                  body: `Resolved — main returned green on \`${context.payload.workflow_run.head_sha.slice(0, 7)}\`. Auto-closing.`,
+                });
+                await github.rest.issues.update({
+                  owner, repo, issue_number: issue.number, state: "closed",
+                });
+              }
+            }
