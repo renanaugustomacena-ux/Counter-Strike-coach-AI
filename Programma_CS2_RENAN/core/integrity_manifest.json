@@ -129,7 +129,7 @@
     "backend/data_sources/hltv/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "backend/data_sources/hltv/docker_manager.py": "b7eb0260eb46a94a8919eed9d1746196064cb35d0d94cc6a05ebc47c734f92c9",
     "backend/data_sources/hltv/flaresolverr_client.py": "b357b5a0abed238d3f58bdb053234d075147c6a8ba65d8716304af2584ade9c3",
-    "backend/data_sources/hltv/stat_fetcher.py": "4e4ba7b6e742d9b961d0a201cdcfd65100f67656eef373626de090e022ed539b",
+    "backend/data_sources/hltv/stat_fetcher.py": "30a3a184d9bdaffb47390dd92bf6e08198c76c61493a211af74320a2b2cfb166",
     "backend/data_sources/hltv_scraper.py": "57b490117a846d2c1a8cd242640efdd2eef08f55115c66c94f2fedc0ccbfbc1f",
     "backend/data_sources/round_context.py": "75f73325bdf2d7f53769056a2cd6fa956533a98455dbe90e12bc294e292fca9e",
     "backend/data_sources/steam_api.py": "def70a7118c5c96cafa1c71e42936a1732aa10df8cc7896864442aa70a6d0a3f",
