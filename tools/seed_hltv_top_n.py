@@ -326,6 +326,32 @@ def _is_default_stats_card_player_id(player_id: int) -> bool:
     return card is not None and _is_default_stats_card(card)
 
 
+def _backfill_player_team(player_hltv_id: int, team_id: int) -> None:
+    """Set ProPlayer.team_id if currently NULL or different.
+
+    fetch_and_save_player upserts ProPlayer from the HLTV stats page
+    which does not expose the team relationship. We know the team from
+    the discovery step, so we backfill it here. Idempotent: no-op if
+    team_id already matches.
+    """
+    db = get_hltv_db_manager()
+    with db.get_session() as s:
+        player = s.exec(select(ProPlayer).where(ProPlayer.hltv_id == player_hltv_id)).first()
+        if player is None:
+            logger.warning(
+                "Cannot backfill team_id for hltv_id=%d — ProPlayer row missing",
+                player_hltv_id,
+            )
+            return
+        if player.team_id == team_id:
+            return
+        player.team_id = team_id
+        player.last_updated = datetime.now(timezone.utc)
+        s.add(player)
+        s.commit()
+        logger.info("Backfilled team_id=%d on ProPlayer hltv_id=%d", team_id, player_hltv_id)
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Per-player fetch with retry + pending-queue fallback
 # ──────────────────────────────────────────────────────────────────────────────
@@ -471,6 +497,13 @@ def run_seed(args: argparse.Namespace) -> int:
         )
         result = fetch_player_with_retry(fetcher, player, max_retries=args.max_retries)
         if result == "ok":
+            # Backfill team_id on the ProPlayer row. fetch_and_save_player
+            # populates from the stats page, which doesn't expose team_id
+            # — but we know it from the discovery step. Without this the
+            # player ends up team_id=NULL and is unrouteable from the
+            # pro-baseline merger that joins on team. (Surfaced 2026-04-29
+            # when jL/19206 landed at mouz with team_id=NULL.)
+            _backfill_player_team(player.hltv_id, player.team_id)
             if had_card:
                 report.players_updated.append(player.hltv_id)
             else:
