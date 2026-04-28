@@ -78,6 +78,14 @@ def main():
 
     args = parser.parse_args()
 
+    # DET-01: deterministic training requires set_global_seed() before any RNG draw.
+    # Per REFERENCE.md §3 every entry point must seed; this entry was added in
+    # commit e89df58 (PRE-11) without it. Seeding here covers model init,
+    # DataLoader shuffle, worker_init, and any np/torch RNG used downstream.
+    from Programma_CS2_RENAN.backend.nn.config import set_global_seed
+
+    set_global_seed()
+
     app_logger.info(
         "Training Cycle Initiated. Mode: %s | Dry Run: %s", args.model_type.upper(), args.dry_run
     )
