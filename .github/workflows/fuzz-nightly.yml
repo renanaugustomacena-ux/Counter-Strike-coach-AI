@@ -1,0 +1,101 @@
+name: fuzz-nightly
+
+# Doctrine §64 — Testability and Continuous Verification.
+# Nightly Atheris fuzz campaign against demoparser2 (the C/Rust extension that
+# parses untrusted .dem files). Maps to control C-SBX-02 in CONTROL_CATALOG.md.
+#
+# Phase 1 status: develop branch only, informational. Phase 2 promotes to
+# release-blocking when the sandbox (C-SBX-01) is also live.
+
+on:
+  schedule:
+    - cron: "23 3 * * *"   # 03:23 UTC every night — off-peak
+  workflow_dispatch:        # manual trigger
+    inputs:
+      time_budget_seconds:
+        description: "Fuzzing time budget in seconds (default 1800)"
+        required: false
+        default: "1800"
+
+permissions:
+  contents: read
+  issues: write             # to auto-open issues on new crashes
+
+concurrency:
+  group: fuzz-nightly
+  cancel-in-progress: false   # let a running campaign finish before starting another
+
+jobs:
+  fuzz-demo-parser:
+    if: github.ref == 'refs/heads/develop' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Atheris + demoparser2
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          # Use Phase 1 lock fallback (no hashes yet) — Phase 2 will use
+          # `pip install --require-hashes -r requirements-dev-lock.txt`.
+          python -m pip install demoparser2==0.41.1 atheris==2.3.0 hypothesis==6.122.3
+
+      - name: Run fuzz campaign
+        env:
+          TIME_BUDGET: ${{ github.event.inputs.time_budget_seconds || '1800' }}
+        run: |
+          set -euo pipefail
+          mkdir -p .fuzz/corpus .fuzz/crashes
+          # Use a deterministic seed so reproductions are stable.
+          python tools/fuzz/fuzz_demo_parser.py \
+              --time-budget "${TIME_BUDGET}" \
+              --corpus-dir .fuzz/corpus \
+              --crash-dir .fuzz/crashes \
+              --seed 42
+
+      - name: Upload corpus + crashes (always)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: fuzz-artifacts-${{ github.run_id }}
+          path: |
+            .fuzz/corpus/
+            .fuzz/crashes/
+          retention-days: 30
+
+      - name: Open issue on new crash
+        if: failure()
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea  # v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const title = `fuzz-nightly: new demoparser2 crash on ${new Date().toISOString().slice(0,10)}`;
+            const body = [
+              '## Fuzz crash detected',
+              '',
+              `Run: ${process.env.GITHUB_SERVER_URL}/${owner}/${repo}/actions/runs/${process.env.GITHUB_RUN_ID}`,
+              '',
+              'Download the `fuzz-artifacts-*` artifact for the corpus + crash inputs.',
+              '',
+              'Reproduce locally:',
+              '```',
+              'python tools/fuzz/fuzz_demo_parser.py --reproduce <crash-input-path>',
+              '```',
+              '',
+              'Triage per SECURITY/INCIDENT_RESPONSE.md IR-02 (malicious .dem RCE attempt).',
+              '',
+              'Labels: security, fuzzing, regression',
+            ].join('\n');
+            await github.rest.issues.create({
+              owner, repo, title, body,
+              labels: ['security', 'fuzzing', 'regression'],
+            });
