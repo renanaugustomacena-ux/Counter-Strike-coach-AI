@@ -188,16 +188,34 @@ def discover_top_teams(fs: FlareSolverrClient, top_n: int) -> List[TeamRecord]:
 
 
 def _parse_team_roster(html: str, team: TeamRecord) -> List[PlayerRecord]:
-    """Parse a /team/{id}/{name} page, return active roster."""
+    """Parse a /team/{id}/{name} page, return ONLY the 5 active starters.
+
+    HLTV team pages contain many `/player/...` anchors (active roster, bench,
+    coach, analyst, historical lineup, opponent links from match boxes). The
+    unfiltered scan returned ~36 players/team. Verified 2026-04-29 against
+    /team/9565/vitality: `.bodyshot-team` is the active-roster section and
+    contains exactly 5 anchors. We narrow to that section. If absent (older
+    layouts), fall back to the unfiltered scan capped at 7 (CS2 active-roster
+    ceiling — extremely rare 6-7 transitional configs).
+    """
     from bs4 import BeautifulSoup
 
     soup = BeautifulSoup(html, "html.parser")
     players: List[PlayerRecord] = []
+    seen_ids: set = set()
 
-    # HLTV team page lists players in .bodyshot-team or .players-grid.
-    # Each player is an anchor `<a href="/player/{id}/{nick}" ...>`.
-    seen_ids = set()
-    for a in soup.select('a[href^="/player/"]'):
+    roster_section = soup.select_one(".bodyshot-team")
+    anchors = roster_section.select('a[href^="/player/"]') if roster_section else []
+
+    if not anchors:
+        logger.warning(
+            "No .bodyshot-team for team %d (%s) — fallback to capped unfiltered scan",
+            team.hltv_id,
+            team.name,
+        )
+        anchors = soup.select('a[href^="/player/"]')[:7]
+
+    for a in anchors:
         href = a.get("href", "")
         parts = href.strip("/").split("/")
         if len(parts) < 3 or parts[0] != "player" or not parts[1].isdigit():
@@ -209,6 +227,21 @@ def _parse_team_roster(html: str, team: TeamRecord) -> List[PlayerRecord]:
         nick = parts[2]
         players.append(
             PlayerRecord(hltv_id=pid, nickname=nick, team_id=team.hltv_id, team_name=team.name)
+        )
+
+    if len(players) < 5:
+        logger.warning(
+            "Team %d (%s) parsed only %d active players (expected 5-7) — verify layout",
+            team.hltv_id,
+            team.name,
+            len(players),
+        )
+    elif len(players) > 7:
+        logger.warning(
+            "Team %d (%s) parsed %d players (>7) — selector leaked beyond active roster",
+            team.hltv_id,
+            team.name,
+            len(players),
         )
     return players
 
