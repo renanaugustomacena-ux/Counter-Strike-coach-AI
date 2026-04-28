@@ -533,9 +533,80 @@ class HLTVStatFetcher:
             logger.debug("Unparseable stat value: %r", text)
             return 0.0
 
+    def _parse_player_summary_box(self, soup: BeautifulSoup) -> Dict[str, str]:
+        """Parses the *player summary* stat-box section on the overview page.
+
+        Verified 2026-04-29 against /stats/players/11893/zywoo: this section
+        is the only place HLTV exposes Rating 2.0 + KAST (plus a duplicate
+        of DPR/ADR/KPR/etc.). The .stats-row section the legacy parser
+        reads does NOT contain Rating 2.0 or KAST — that's why 174/178
+        cards in the HLTV DB had kast=0 and a misclassified rating field
+        (the parser was capturing "Impact rating" as `rating` because of
+        the loose `if "rating" in label` match).
+
+        DOM shape:
+          .player-summary-stat-box-data-wrapper
+            ├── .player-summary-stat-box-data        ← value (e.g. "75.8%")
+            └── .player-summary-stat-box-data-text   ← label (e.g. "KAST")
+          .player-summary-stat-box-rating-wrapper       (Rating 2.0 only)
+            ├── .player-summary-stat-box-rating-data-text  ← "1.33"
+            └── .player-summary-stat-box-data-text   ← "Rating 2.0"
+
+        Returns raw string values keyed by canonical field name; caller
+        feeds them through _safe_float.
+        """
+        result: Dict[str, str] = {}
+
+        # Rating 2.0 (special wrapper)
+        for w in soup.select(".player-summary-stat-box-rating-wrapper"):
+            label_el = w.select_one(".player-summary-stat-box-data-text")
+            value_el = w.select_one(".player-summary-stat-box-rating-data-text")
+            if label_el and value_el:
+                # The label_el direct text (before nested tooltip <div>)
+                label = "".join(c for c in label_el.children if isinstance(c, str)).strip()
+                if "rating 2.0" in label.lower():
+                    result["rating_2_0"] = value_el.get_text(strip=True)
+
+        # The 6 plain data wrappers (DPR, KAST, ADR, KPR, Round swing, Multi-kill, MK rating)
+        for w in soup.select(".player-summary-stat-box-data-wrapper"):
+            value_el = w.select_one(".player-summary-stat-box-data")
+            label_el = w.select_one(".player-summary-stat-box-data-text")
+            if not (value_el and label_el):
+                continue
+            label = "".join(c for c in label_el.children if isinstance(c, str)).strip().lower()
+            value = value_el.get_text(strip=True)
+            if value in ("-", "", "N/A"):
+                continue
+            if label == "kast":
+                result["kast"] = value
+            elif label == "dpr":
+                result["dpr"] = value
+            elif label == "adr":
+                result["adr"] = value
+            elif label == "kpr":
+                result["kpr"] = value
+        return result
+
     def _parse_overview(self, soup: BeautifulSoup) -> Dict[str, Any]:
-        """Parses the player overview page."""
-        stats = {}
+        """Parses the player overview page.
+
+        Merges two DOM sections:
+          1. `.stats-row` (legacy table — has Impact rating, Headshot %, K/D Ratio,
+             Maps played; does NOT have Rating 2.0 or KAST)
+          2. `.player-summary-stat-box-*` (top-of-page summary boxes — has
+             Rating 2.0 + KAST + a duplicate of DPR/ADR/KPR)
+
+        Player-summary values win for Rating 2.0 + KAST since the legacy
+        section doesn't expose them. .stats-row keeps Impact / HS% / K/D /
+        Maps played. Fixes the bug where 174/178 cards had kast=0 because
+        the legacy parser only knew about .stats-row.
+        """
+        stats: Dict[str, str] = {}
+
+        # 1. Legacy .stats-row table — capture impact/hs/maps_played/etc
+        #    NOTE: order of "impact"/"rating" checks fixed: HLTV's label
+        #    "Impact rating" contains both substrings, so "impact" must be
+        #    matched FIRST otherwise the legacy parser puts it into `rating`.
         rows = self._select_fallback(
             soup,
             [".stats-row", ".summary-row", ".stat-row", "div[class*='stats'] .row"],
@@ -557,12 +628,22 @@ class HLTVStatFetcher:
                     stats["hs"] = value
                 if "kast" in label:
                     stats["kast"] = value
-                if "rating" in label:
-                    stats["rating"] = value
+                # Match impact BEFORE rating: "Impact rating" contains both
+                # but the value is the impact rating, not Rating 2.0.
                 if "impact" in label:
                     stats["impact"] = value
+                elif "rating" in label:
+                    stats["rating"] = value
                 if "maps played" in label:
                     stats["maps_played"] = value
+
+        # 2. Player-summary boxes — Rating 2.0 + KAST come from here.
+        summary = self._parse_player_summary_box(soup)
+        # Player-summary takes priority for the fields it exposes
+        # (it's the canonical Rating 2.0 + KAST display).
+        for k in ("rating_2_0", "kast", "dpr", "adr", "kpr"):
+            if k in summary:
+                stats[k if k != "rating_2_0" else "rating"] = summary[k]
 
         mapped = {
             "kpr": self._safe_float(stats.get("kpr")),
