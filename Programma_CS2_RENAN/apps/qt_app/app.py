@@ -172,6 +172,7 @@ def main():
         window.switch_screen("match_detail")
 
     match_history.match_selected.connect(_on_match_selected)
+    home.match_selected.connect(_on_match_selected)
 
     # Replace placeholders with real screens
     placeholders["match_history"] = match_history
