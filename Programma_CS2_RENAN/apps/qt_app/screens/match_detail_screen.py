@@ -1,14 +1,25 @@
-"""Match Detail Screen — tabbed drill-down: Overview, Rounds, Economy, Highlights."""
+"""Match Detail — tabbed drill-down for one analyzed demo.
 
-import re
+Composition:
+    Header rail   ← Back   |  MAP · DATE                       [Rating chip]
+    Tabs (pill)   Overview · Rounds · Economy · Highlights
+    Body          per-tab content (each rehoused in styled Cards)
+
+The tab QSS hook ``QTabBar[variant="pill"]`` lives in ``base.qss.template``;
+this screen sets the property and lets the template do the rest. All
+inline hex codes from the previous incarnation are routed through
+``get_tokens()`` so theme cycling lands cleanly.
+"""
+
+from __future__ import annotations
+
+from typing import Any
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
-    QPushButton,
     QScrollArea,
     QTabWidget,
     QVBoxLayout,
@@ -16,379 +27,556 @@ from PySide6.QtWidgets import (
 )
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+from Programma_CS2_RENAN.apps.qt_app.core.match_utils import (
+    extract_map_name,
+    map_short_name,
+)
 from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import (
-    COLOR_GREEN,
-    COLOR_RED,
-    COLOR_YELLOW,
     rating_color,
     rating_label,
-    rgba_to_qcolor,
 )
-from Programma_CS2_RENAN.apps.qt_app.viewmodels.match_detail_vm import MatchDetailViewModel
+from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
+from Programma_CS2_RENAN.apps.qt_app.core.widgets_helpers import make_button
+from Programma_CS2_RENAN.apps.qt_app.viewmodels.match_detail_vm import (
+    MatchDetailViewModel,
+)
 from Programma_CS2_RENAN.apps.qt_app.widgets.charts.economy_chart import EconomyChart
 from Programma_CS2_RENAN.apps.qt_app.widgets.charts.momentum_chart import MomentumChart
-from Programma_CS2_RENAN.apps.qt_app.widgets.components.stat_badge import StatBadge
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.empty_state import EmptyState
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.hero_stats_strip import (
+    HeroStat,
+    HeroStatsStrip,
+)
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.status_chip import StatusChip
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.qt_match_detail")
 
-_COLOR_CT = QColor("#5C9EE8")
-_COLOR_T = QColor("#E8C95C")
 
-_MAP_PATTERN = re.compile(r"(de_\w+|cs_\w+|ar_\w+)")
+def _format_match_date(value: Any) -> str:
+    if value is None:
+        return ""
+    if hasattr(value, "strftime"):
+        try:
+            return value.strftime("%Y-%m-%d %H:%M")
+        except Exception:
+            pass
+    return str(value)
 
-_SEVERITY_COLORS = {
-    "critical": rgba_to_qcolor(list(COLOR_RED)),
-    "warning": rgba_to_qcolor(list(COLOR_YELLOW)),
-    "info": _COLOR_CT,
-}
+
+def _kd_sentiment(value: float) -> str:
+    if value >= 1.0:
+        return "positive"
+    if value < 0.85:
+        return "negative"
+    return "neutral"
 
 
-def _extract_map_name(demo_name: str) -> str:
-    m = _MAP_PATTERN.search(demo_name)
-    return m.group(1) if m else "Unknown Map"
+def _adr_sentiment(value: float) -> str:
+    if value >= 75:
+        return "positive"
+    if value < 55:
+        return "negative"
+    return "neutral"
+
+
+def _kast_sentiment(value: float) -> str:
+    if value >= 0.7:
+        return "positive"
+    if value < 0.5:
+        return "negative"
+    return "neutral"
+
+
+def _rating_sentiment(value: float) -> str:
+    if value >= 1.10:
+        return "positive"
+    if value < 0.90:
+        return "negative"
+    return "neutral"
 
 
 class MatchDetailScreen(QWidget):
-    """Tabbed match detail: Overview, Round Timeline, Economy, Highlights."""
+    """Tabbed match detail screen."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._vm = MatchDetailViewModel()
         self._vm.data_changed.connect(self._on_data)
         self._vm.error_changed.connect(self._on_error)
-        self._demo_name = ""
+        self._demo_name: str = ""
+        self._build_ui()
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(8)
+    # ── Lifecycle ──
 
-        # Back button + Title
-        title_row = QHBoxLayout()
-        title_row.setSpacing(8)
-        back_btn = QPushButton("\u2190 Back")
-        back_btn.setCursor(Qt.PointingHandCursor)
-        back_btn.setFixedWidth(80)
+    def load_demo(self, demo_name: str) -> None:
+        """Called externally (from match list / dashboard recent strip)."""
+        self._demo_name = demo_name
+        self._title_label.setText(map_short_name(demo_name).upper() or "MATCH")
+        self._subtitle_label.setText("")
+        self._rating_chip.set_label("Loading…")
+        self._rating_chip.set_severity("neutral")
+        self._tabs.setVisible(False)
+        self._empty_state.set_title("Loading match details…")
+        self._empty_state.set_description("")
+        self._empty_state.set_cta_text("")
+        self._empty_state.setVisible(True)
+        self._vm.load_detail(demo_name)
+
+    def on_enter(self) -> None:
+        if self._demo_name:
+            self.load_demo(self._demo_name)
+
+    def retranslate(self) -> None:
+        """Tab labels are static English for now."""
+        return
+
+    # ── UI Construction ──
+
+    def _build_ui(self) -> None:
+        tokens = get_tokens()
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(
+            tokens.spacing_lg, tokens.spacing_lg, tokens.spacing_lg, tokens.spacing_lg
+        )
+        root.setSpacing(tokens.spacing_md)
+
+        # ── Header rail ──
+        header = QHBoxLayout()
+        header.setContentsMargins(0, 0, 0, 0)
+        header.setSpacing(tokens.spacing_md)
+
+        back_btn = make_button("← Back", variant="ghost", fixed_width=88)
+        back_btn.setFixedHeight(32)
         back_btn.clicked.connect(lambda: self._navigate("match_history"))
-        title_row.addWidget(back_btn)
-        self._title = QLabel("Match Detail")
-        self._title.setObjectName("section_title")
-        self._title.setFont(QFont("Roboto", 20, QFont.Bold))
-        title_row.addWidget(self._title, 1)
-        layout.addLayout(title_row)
+        header.addWidget(back_btn)
 
-        # Status
-        self._status = QLabel("")
-        self._status.setAlignment(Qt.AlignCenter)
-        self._status.setStyleSheet("color: #a0a0b0; font-size: 14px;")
-        self._status.setVisible(False)
-        layout.addWidget(self._status)
+        title_col = QVBoxLayout()
+        title_col.setContentsMargins(0, 0, 0, 0)
+        title_col.setSpacing(0)
 
-        # Tab widget — pill variant per Frame 11 spec. The QSS rule
-        # `QTabBar[variant="pill"]::tab` lives in the base template; we
-        # only need to attach the property on the QTabBar here and
-        # polish() to trigger the selector.
+        self._title_label = QLabel("MATCH")
+        Typography.apply(self._title_label, "h1")
+        title_col.addWidget(self._title_label)
+
+        self._subtitle_label = QLabel("")
+        self._subtitle_label.setFont(Typography.font("mono"))
+        self._subtitle_label.setStyleSheet(
+            f"color: {tokens.text_tertiary}; background: transparent; "
+            f"font-size: {tokens.font_size_caption}px;"
+        )
+        title_col.addWidget(self._subtitle_label)
+
+        header.addLayout(title_col, 1)
+
+        self._rating_chip = StatusChip("—", severity="neutral")
+        header.addWidget(self._rating_chip)
+
+        root.addLayout(header)
+
+        # ── Empty / loading state ──
+        self._empty_state = EmptyState(
+            icon_text="◎",
+            title="Loading match details…",
+            description="",
+        )
+        self._empty_state.setVisible(False)
+        root.addWidget(self._empty_state)
+
+        # ── Tabs ──
         self._tabs = QTabWidget()
         tab_bar = self._tabs.tabBar()
         tab_bar.setProperty("variant", "pill")
         tab_bar.setDrawBase(False)
+        # Force re-polish so the property selector kicks in even when the
+        # widget is constructed before its style sheet is applied.
+        tab_bar.style().unpolish(tab_bar)
+        tab_bar.style().polish(tab_bar)
         self._tabs.setVisible(False)
-        layout.addWidget(self._tabs, 1)
+        root.addWidget(self._tabs, 1)
 
-    def load_demo(self, demo_name: str):
-        """Called externally to load a specific match."""
-        self._demo_name = demo_name
-        self._title.setText(f"Match Detail — {_extract_map_name(demo_name)}")
-        self._status.setText("Loading match details...")
-        self._status.setVisible(True)
-        self._tabs.setVisible(False)
-        self._vm.load_detail(demo_name)
+    # ── Data → UI ──
 
-    def on_enter(self):
-        if self._demo_name:
-            self.load_demo(self._demo_name)
-
-    def retranslate(self):
-        """Update translatable text when language changes."""
-        pass  # Tab labels are English-only; wire i18n when translations added
-
-    def _on_data(self, stats: dict, rounds: list, insights: list, hltv: dict):
-        self._status.setVisible(False)
+    def _on_data(
+        self,
+        stats: dict,
+        rounds: list,
+        insights: list,
+        hltv: dict,
+    ) -> None:
+        self._empty_state.setVisible(False)
         self._tabs.setVisible(True)
         self._tabs.clear()
 
         if not stats and not rounds:
-            self._status.setText("No match data available.")
-            self._status.setVisible(True)
             self._tabs.setVisible(False)
+            self._empty_state.set_title("No match data available")
+            self._empty_state.set_description(
+                "The demo may still be processing, or analysis hasn't completed."
+            )
+            self._empty_state.set_cta_text("Back to Match History")
+            self._empty_state.action_clicked.connect(
+                lambda: self._navigate("match_history")
+            )
+            self._empty_state.setVisible(True)
             return
 
-        # Tab 1: Overview
-        self._tabs.addTab(self._build_overview(stats, hltv, rounds), "Overview")
+        # Header
+        demo_name = stats.get("demo_name") or self._demo_name
+        self._title_label.setText(map_short_name(demo_name).upper() or "MATCH")
+        date_str = _format_match_date(stats.get("match_date"))
+        self._subtitle_label.setText(
+            f"{extract_map_name(demo_name)}   ·   {date_str}" if date_str else
+            extract_map_name(demo_name)
+        )
 
-        # Tab 2: Rounds
+        rating = float(stats.get("rating") or 0.0)
+        self._rating_chip.set_label(f"Rating {rating:.2f} · {rating_label(rating)}")
+        self._rating_chip.set_severity(
+            "online" if rating >= 1.10 else "offline" if rating < 0.90 else "warning"
+        )
+
+        # Tabs
+        self._tabs.addTab(self._build_overview(stats, hltv, rounds), "Overview")
         if rounds:
             self._tabs.addTab(self._build_rounds(rounds), "Rounds")
-
-        # Tab 3: Economy
-        if rounds:
             self._tabs.addTab(self._build_economy(rounds), "Economy")
-
-        # Tab 4: Highlights
         self._tabs.addTab(self._build_highlights(rounds, insights), "Highlights")
 
-    def _on_error(self, msg: str):
-        if msg:
-            self._status.setText(msg)
-            self._status.setVisible(True)
-            self._tabs.setVisible(False)
+    def _on_error(self, msg: str) -> None:
+        if not msg:
+            return
+        self._tabs.setVisible(False)
+        self._empty_state.set_title("Couldn't load match")
+        self._empty_state.set_description(str(msg))
+        self._empty_state.set_cta_text("Back to Match History")
+        self._empty_state.action_clicked.connect(
+            lambda: self._navigate("match_history")
+        )
+        self._empty_state.setVisible(True)
 
-    def _navigate(self, screen_name: str):
+    def _navigate(self, screen_name: str) -> None:
         win = self.window()
         if win and hasattr(win, "switch_screen"):
             win.switch_screen(screen_name)
 
-    # ── Tab builders ──
+    # ── Tab: Overview ──
 
     def _build_overview(self, stats: dict, hltv: dict, rounds: list) -> QWidget:
+        tokens = get_tokens()
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
         content = QWidget()
         layout = QVBoxLayout(content)
-        layout.setSpacing(12)
-        tokens = get_tokens()
+        layout.setContentsMargins(0, tokens.spacing_md, 0, tokens.spacing_md)
+        layout.setSpacing(tokens.spacing_lg)
 
-        rating = stats.get("rating", 1.0) or 1.0
+        # Hero stats row
+        rating = float(stats.get("rating") or 0.0)
+        kd = float(stats.get("kd_ratio") or 0.0)
+        adr = float(stats.get("avg_adr") or 0.0)
+        kast = float(stats.get("avg_kast") or 0.0)
+        hs = float(stats.get("avg_hs") or 0.0)
 
-        # Map + date header
-        map_name = _extract_map_name(stats.get("demo_name", ""))
-        date_str = ""
-        if stats.get("match_date"):
-            try:
-                date_str = stats["match_date"].strftime("%Y-%m-%d %H:%M")
-            except Exception:
-                date_str = str(stats["match_date"])
-        info = QLabel(f"{map_name}  |  {date_str}")
-        info.setFont(QFont("Roboto", 14))
-        layout.addWidget(info)
-
-        # StatBadge row
-        kd = stats.get("kd_ratio", 0.0)
-        adr = stats.get("avg_adr", 0.0)
-        kast = stats.get("avg_kast", 0.0)
-        hs = stats.get("avg_hs", 0.0)
-
-        badge_row = QHBoxLayout()
-        badge_row.setSpacing(16)
-
-        badge_row.addWidget(
-            StatBadge(
-                value=f"{rating:.2f}",
-                label=f"Rating ({rating_label(rating)})",
-                sentiment="positive" if rating >= 1.0 else "negative",
-            )
+        hero = HeroStatsStrip(
+            stats=[
+                HeroStat(f"{rating:.2f}", "Rating", _rating_sentiment(rating)),
+                HeroStat(f"{kd:.2f}", "K / D", _kd_sentiment(kd)),
+                HeroStat(f"{adr:.0f}", "ADR", _adr_sentiment(adr)),
+                HeroStat(f"{kast * 100:.0f}%", "KAST", _kast_sentiment(kast)),
+                HeroStat(f"{hs * 100:.0f}%", "Headshot", "neutral"),
+            ]
         )
-        badge_row.addWidget(
-            StatBadge(
-                value=f"{kd:.2f}",
-                label="K/D Ratio",
-                sentiment="positive" if kd >= 1.0 else "negative",
-            )
-        )
-        badge_row.addWidget(
-            StatBadge(
-                value=f"{adr:.1f}",
-                label="ADR",
-                sentiment="positive" if adr >= 70 else "negative" if adr < 50 else "neutral",
-            )
-        )
-        badge_row.addWidget(
-            StatBadge(
-                value=f"{kast * 100:.0f}%",
-                label="KAST",
-                sentiment="positive" if kast >= 0.7 else "negative" if kast < 0.5 else "neutral",
-            )
-        )
-        badge_row.addWidget(
-            StatBadge(
-                value=f"{hs * 100:.0f}%",
-                label="Headshot %",
-                sentiment="neutral",
-            )
-        )
-        badge_row.addStretch()
-        layout.addLayout(badge_row)
+        layout.addWidget(hero)
 
-        # Round outcome strip (green/red dots per round)
+        # Round outcome strip — color-coded W/L per round, in a Card.
         if rounds:
-            strip_row = QHBoxLayout()
-            strip_row.setSpacing(3)
-            strip_lbl = QLabel("Rounds:")
-            strip_lbl.setFont(QFont("Roboto", 11))
-            strip_lbl.setStyleSheet(f"color: {tokens.text_secondary};")
-            strip_row.addWidget(strip_lbl)
-            for r in rounds:
-                won = r.get("round_won", False)
-                dot = QLabel("\u25cf")
-                dot.setStyleSheet(
-                    f"color: {tokens.success if won else tokens.error}; font-size: 10px;"
-                )
-                dot.setFixedWidth(12)
-                strip_row.addWidget(dot)
-            strip_row.addStretch()
-            layout.addLayout(strip_row)
+            layout.addWidget(self._build_round_strip_card(rounds))
 
-        # HLTV breakdown with bar indicators
+        # HLTV breakdown
         if hltv:
-            sep = QLabel("HLTV 2.0 Components")
-            sep.setFont(QFont("Roboto", 14, QFont.Bold))
-            sep.setStyleSheet(f"color: {tokens.text_primary}; margin-top: 12px;")
-            layout.addWidget(sep)
+            layout.addWidget(self._build_hltv_card(hltv))
 
-            for comp, val in hltv.items():
-                row = QHBoxLayout()
-                name_lbl = QLabel(comp.replace("_", " ").title())
-                name_lbl.setFixedWidth(180)
-                name_lbl.setStyleSheet(f"color: {tokens.text_secondary};")
-                row.addWidget(name_lbl)
-
-                val_color = rating_color(val)
-                val_lbl = QLabel(f"{val:.2f}")
-                val_lbl.setStyleSheet(f"color: {val_color.name()};")
-                val_lbl.setFont(QFont("Roboto", 11, QFont.Bold))
-                row.addWidget(val_lbl)
-
-                # Inline bar indicator (0.0–2.0 mapped to bar width)
-                bar_bg = QFrame()
-                bar_bg.setFixedHeight(6)
-                bar_bg.setFixedWidth(120)
-                bar_bg.setStyleSheet(f"background: {tokens.surface_raised}; border-radius: 3px;")
-                bar_fill = QFrame(bar_bg)
-                fill_w = max(1, min(120, int(val / 2.0 * 120)))
-                bar_fill.setGeometry(0, 0, fill_w, 6)
-                bar_fill.setStyleSheet(f"background: {val_color.name()}; border-radius: 3px;")
-                row.addWidget(bar_bg)
-
-                row.addStretch()
-                layout.addLayout(row)
-
-        layout.addStretch()
+        layout.addStretch(1)
         scroll.setWidget(content)
         return scroll
+
+    def _build_round_strip_card(self, rounds: list) -> Card:
+        tokens = get_tokens()
+        card = Card(title="Round outcomes", depth="raised")
+        body = card.content_layout
+
+        wins = sum(1 for r in rounds if r.get("round_won"))
+        total = len(rounds)
+        score_label = QLabel(f"{wins} W   ·   {total - wins} L   ·   {total} rounds")
+        score_label.setFont(Typography.font("mono"))
+        score_label.setStyleSheet(
+            f"color: {tokens.text_secondary}; background: transparent;"
+        )
+        body.addWidget(score_label)
+
+        strip = QHBoxLayout()
+        strip.setContentsMargins(0, 0, 0, 0)
+        strip.setSpacing(3)
+        for r in rounds:
+            won = bool(r.get("round_won"))
+            cell = QLabel("●")
+            cell.setAlignment(Qt.AlignCenter)
+            cell.setFixedSize(14, 14)
+            cell.setStyleSheet(
+                f"color: {tokens.success if won else tokens.error}; "
+                f"background: transparent; font-size: 12px;"
+            )
+            strip.addWidget(cell)
+        strip.addStretch(1)
+        body.addLayout(strip)
+        return card
+
+    def _build_hltv_card(self, hltv: dict) -> Card:
+        tokens = get_tokens()
+        card = Card(title="HLTV 2.0 components", depth="raised")
+        body = card.content_layout
+        body.setSpacing(tokens.spacing_xs)
+
+        for comp, val in hltv.items():
+            row = QHBoxLayout()
+            row.setContentsMargins(0, 0, 0, 0)
+            row.setSpacing(tokens.spacing_md)
+
+            name = QLabel(comp.replace("_", " ").title())
+            name.setFont(Typography.font("body"))
+            name.setFixedWidth(180)
+            name.setStyleSheet(
+                f"color: {tokens.text_secondary}; background: transparent;"
+            )
+            row.addWidget(name)
+
+            val_color = rating_color(val)
+            value = QLabel(f"{val:.2f}")
+            value.setFont(Typography.font("mono"))
+            value.setFixedWidth(60)
+            value.setStyleSheet(
+                f"color: {val_color.name()}; background: transparent;"
+            )
+            row.addWidget(value)
+
+            bar_bg = QFrame()
+            bar_bg.setFixedHeight(6)
+            bar_bg.setFixedWidth(180)
+            bar_bg.setStyleSheet(
+                f"background: {tokens.surface_sunken}; "
+                f"border-radius: {tokens.radius_sm}px;"
+            )
+            bar_fill = QFrame(bar_bg)
+            fill_w = max(1, min(180, int((val / 2.0) * 180)))
+            bar_fill.setGeometry(0, 0, fill_w, 6)
+            bar_fill.setStyleSheet(
+                f"background: {val_color.name()}; "
+                f"border-radius: {tokens.radius_sm}px;"
+            )
+            row.addWidget(bar_bg)
+
+            row.addStretch(1)
+            body.addLayout(row)
+
+        return card
+
+    # ── Tab: Rounds ──
 
     def _build_rounds(self, rounds: list) -> QWidget:
+        tokens = get_tokens()
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
         content = QWidget()
         layout = QVBoxLayout(content)
-        layout.setSpacing(2)
+        layout.setContentsMargins(0, tokens.spacing_md, 0, tokens.spacing_md)
+        layout.setSpacing(tokens.spacing_md)
 
-        # Header
-        hdr = QLabel("Rnd   W/L   Side   K  D   DMG     $Equip")
-        hdr.setFont(QFont("JetBrains Mono", 10, QFont.Bold))
-        hdr.setStyleSheet("color: #a0a0b0;")
-        layout.addWidget(hdr)
+        card = Card(title="", depth="raised")
+        body = card.content_layout
+        body.setSpacing(2)
+
+        header = QLabel(
+            f"{'RND':<6} {'W/L':<6} {'SIDE':<6} {'K':<4} {'D':<4} "
+            f"{'DMG':<8} {'EQUIP':<8}"
+        )
+        header.setFont(Typography.font("mono"))
+        Typography.apply(header, "caption")
+        header.setStyleSheet(
+            f"color: {tokens.text_tertiary}; background: transparent; "
+            f"padding-bottom: {tokens.spacing_xs}px;"
+        )
+        body.addWidget(header)
 
         for r in rounds:
-            rnum = r.get("round_number", 0)
-            side = r.get("side", "?")
-            won = r.get("round_won", False)
-            kills = r.get("kills", 0)
-            deaths = r.get("deaths", 0)
-            dmg = r.get("damage_dealt", 0)
-            opening = r.get("opening_kill", False)
-            equip = r.get("equipment_value", 0)
+            rnum = int(r.get("round_number") or 0)
+            side = str(r.get("side") or "?")
+            won = bool(r.get("round_won"))
+            kills = int(r.get("kills") or 0)
+            deaths = int(r.get("deaths") or 0)
+            dmg = int(r.get("damage_dealt") or 0)
+            opening = bool(r.get("opening_kill"))
+            equip = int(r.get("equipment_value") or 0)
 
-            side_color = _COLOR_CT.name() if side == "CT" else _COLOR_T.name()
-            result_color = "#4CAF50" if won else "#F44336"
-            result_text = "W" if won else "L"
-            fk_text = "  FK" if opening else ""
-
-            row_text = (
-                f"R{rnum:<3}  "
-                f'<span style="color:{result_color}">{result_text}</span>    '
-                f'<span style="color:{side_color}">{side:>2}</span>    '
-                f"{kills}  {deaths}   {dmg:>4}   ${equip:>5}"
-                f'<span style="color:#ffaa00">{fk_text}</span>'
+            result_color = tokens.success if won else tokens.error
+            side_color = tokens.info if side == "CT" else tokens.warning
+            fk_marker = (
+                f"   <span style=\"color:{tokens.accent_primary}\">FK</span>"
+                if opening
+                else ""
             )
 
-            lbl = QLabel(row_text)
-            lbl.setTextFormat(Qt.RichText)
-            lbl.setFont(QFont("JetBrains Mono", 10))
-            layout.addWidget(lbl)
+            row_html = (
+                f"<span style='color:{tokens.text_tertiary}'>R{rnum:<3}</span> "
+                f"  <span style='color:{result_color}'>{'W' if won else 'L':<4}</span> "
+                f"  <span style='color:{side_color}'>{side:<4}</span> "
+                f"  <span style='color:{tokens.text_primary}'>{kills:<3}</span> "
+                f"  <span style='color:{tokens.text_primary}'>{deaths:<3}</span> "
+                f"  <span style='color:{tokens.text_primary}'>{dmg:<6}</span> "
+                f"  <span style='color:{tokens.text_secondary}'>${equip:<6}</span>"
+                f"{fk_marker}"
+            )
+            row_label = QLabel(row_html)
+            row_label.setTextFormat(Qt.RichText)
+            row_label.setFont(Typography.font("mono"))
+            body.addWidget(row_label)
 
-        layout.addStretch()
+        layout.addWidget(card)
+        layout.addStretch(1)
         scroll.setWidget(content)
         return scroll
 
-    def _build_economy(self, rounds: list) -> QWidget:
-        chart = EconomyChart()
-        chart.plot(rounds)
-        return chart
+    # ── Tab: Economy ──
 
-    def _build_highlights(self, rounds: list, insights: list) -> QWidget:
+    def _build_economy(self, rounds: list) -> QWidget:
+        tokens = get_tokens()
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
         content = QWidget()
         layout = QVBoxLayout(content)
-        layout.setSpacing(8)
+        layout.setContentsMargins(0, tokens.spacing_md, 0, tokens.spacing_md)
 
-        # Coaching insights
+        card = Card(title="Economy by round", depth="raised")
+        body = card.content_layout
+        chart = EconomyChart()
+        chart.setMinimumHeight(320)
+        chart.plot(rounds)
+        body.addWidget(chart)
+        layout.addWidget(card)
+        layout.addStretch(1)
+
+        scroll.setWidget(content)
+        return scroll
+
+    # ── Tab: Highlights ──
+
+    def _build_highlights(self, rounds: list, insights: list) -> QWidget:
+        tokens = get_tokens()
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        content = QWidget()
+        layout = QVBoxLayout(content)
+        layout.setContentsMargins(0, tokens.spacing_md, 0, tokens.spacing_md)
+        layout.setSpacing(tokens.spacing_lg)
+
+        # Insights card
+        insights_card = Card(title="Coaching insights", depth="raised")
+        insights_body = insights_card.content_layout
+        insights_body.setSpacing(tokens.spacing_md)
+
         if insights:
-            sec = QLabel("Coaching Insights")
-            sec.setFont(QFont("Roboto", 14, QFont.Bold))
-            sec.setStyleSheet("color: #dcdcdc;")
-            layout.addWidget(sec)
-
             for ins in insights:
-                sev = ins.get("severity", "info")
-                sev_color = _SEVERITY_COLORS.get(sev, _COLOR_CT)
-
-                card = QFrame()
-                card.setObjectName("dashboard_card")
-                card_layout = QVBoxLayout(card)
-                card_layout.setSpacing(4)
-
-                title_lbl = QLabel(ins.get("title", ""))
-                # FE-01 (AUDIT §9.1): force PlainText on DB-sourced labels
-                # so Qt.AutoText cannot flip to RichText and render <a href="file://...">
-                title_lbl.setTextFormat(Qt.PlainText)
-                title_lbl.setFont(QFont("Roboto", 12, QFont.Bold))
-                title_lbl.setStyleSheet(f"color: {sev_color.name()};")
-                card_layout.addWidget(title_lbl)
-
-                msg_lbl = QLabel(ins.get("message", ""))
-                msg_lbl.setTextFormat(Qt.PlainText)  # FE-01
-                msg_lbl.setWordWrap(True)
-                msg_lbl.setStyleSheet("color: #dcdcdc;")
-                card_layout.addWidget(msg_lbl)
-
-                focus = ins.get("focus_area", "")
-                if focus:
-                    focus_lbl = QLabel(f"Focus: {focus}")
-                    focus_lbl.setTextFormat(Qt.PlainText)  # FE-01
-                    focus_lbl.setStyleSheet("color: #666666; font-style: italic;")
-                    card_layout.addWidget(focus_lbl)
-
-                layout.addWidget(card)
+                insights_body.addWidget(self._build_insight_card(ins))
         else:
-            layout.addWidget(QLabel("No coaching insights for this match yet."))
+            empty = QLabel(
+                "No coaching insights for this match yet — once analysis "
+                "completes, suggestions will surface here."
+            )
+            empty.setWordWrap(True)
+            empty.setFont(Typography.font("body"))
+            empty.setStyleSheet(
+                f"color: {tokens.text_secondary}; background: transparent;"
+            )
+            insights_body.addWidget(empty)
+
+        layout.addWidget(insights_card)
 
         # Momentum chart
         if rounds:
-            sec = QLabel("Momentum")
-            sec.setFont(QFont("Roboto", 14, QFont.Bold))
-            sec.setStyleSheet("color: #dcdcdc; margin-top: 12px;")
-            layout.addWidget(sec)
-
+            momentum_card = Card(title="Momentum", depth="raised")
+            momentum_body = momentum_card.content_layout
             momentum = MomentumChart()
-            momentum.setMinimumHeight(250)
+            momentum.setMinimumHeight(260)
             momentum.plot(rounds)
-            layout.addWidget(momentum)
+            momentum_body.addWidget(momentum)
+            layout.addWidget(momentum_card)
 
-        layout.addStretch()
+        layout.addStretch(1)
         scroll.setWidget(content)
         return scroll
+
+    def _build_insight_card(self, ins: dict) -> QFrame:
+        tokens = get_tokens()
+        sev = (ins.get("severity") or "info").lower()
+        if sev == "critical":
+            border_color = tokens.error
+            badge_color = tokens.error
+        elif sev == "warning":
+            border_color = tokens.warning
+            badge_color = tokens.warning
+        else:
+            border_color = tokens.info
+            badge_color = tokens.info
+
+        card = QFrame()
+        card.setObjectName("dashboard_card")
+        card.setProperty("depth", "raised")
+        card.setStyleSheet(
+            f"QFrame#dashboard_card {{ "
+            f"background: {tokens.surface_raised}; "
+            f"border-left: 3px solid {border_color}; "
+            f"border-top-left-radius: 0px; "
+            f"border-bottom-left-radius: 0px; "
+            f"padding: {tokens.spacing_md}px; "
+            f"}}"
+        )
+        body = QVBoxLayout(card)
+        body.setSpacing(tokens.spacing_xs)
+        body.setContentsMargins(
+            tokens.spacing_md, tokens.spacing_md, tokens.spacing_md, tokens.spacing_md
+        )
+
+        title = QLabel(ins.get("title", ""))
+        title.setTextFormat(Qt.PlainText)  # FE-01: never trust DB-sourced labels
+        title.setFont(Typography.font("subtitle"))
+        title.setStyleSheet(
+            f"color: {badge_color}; background: transparent;"
+        )
+        body.addWidget(title)
+
+        message = QLabel(ins.get("message", ""))
+        message.setTextFormat(Qt.PlainText)
+        message.setWordWrap(True)
+        message.setFont(Typography.font("body"))
+        message.setStyleSheet(
+            f"color: {tokens.text_primary}; background: transparent;"
+        )
+        body.addWidget(message)
+
+        focus = ins.get("focus_area")
+        if focus:
+            focus_label = QLabel(f"Focus  ·  {focus}")
+            focus_label.setTextFormat(Qt.PlainText)
+            focus_label.setFont(Typography.font("caption"))
+            focus_label.setStyleSheet(
+                f"color: {tokens.text_tertiary}; background: transparent;"
+            )
+            body.addWidget(focus_label)
+
+        return card
