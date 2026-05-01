@@ -17,6 +17,8 @@ from PySide6.QtWidgets import (
 )
 
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
+from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.apps.qt_app.viewmodels.user_profile_vm import UserProfileViewModel
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -72,14 +74,13 @@ class UserProfileScreen(QWidget):
         back_btn.clicked.connect(lambda: self._navigate("home"))
         title_row.addWidget(back_btn)
         self._title_label = QLabel(i18n.get_text("profile"))
-        self._title_label.setObjectName("section_title")
-        self._title_label.setFont(QFont("Roboto", 20, QFont.Bold))
+        Typography.apply(self._title_label, "h1")
         title_row.addWidget(self._title_label, 1)
         layout.addLayout(title_row)
 
         self._status = QLabel("")
         self._status.setAlignment(Qt.AlignCenter)
-        self._status.setStyleSheet("color: #a0a0b0; font-size: 14px;")
+        self._status.setStyleSheet(f"color: {get_tokens().text_secondary}; font-size: 14px;")
         self._status.setVisible(False)
         layout.addWidget(self._status)
 
@@ -97,13 +98,13 @@ class UserProfileScreen(QWidget):
 
         self._avatar_icon = QLabel("\u263a")  # Smiley as fallback
         self._avatar_icon.setAlignment(Qt.AlignCenter)
-        self._avatar_icon.setStyleSheet("color: #666680; font-size: 64px;")
+        self._avatar_icon.setStyleSheet(f"color: {get_tokens().text_tertiary}; font-size: 64px;")
         avatar_section.addWidget(self._avatar_icon)
 
         self._name_label = QLabel("Player")
         self._name_label.setAlignment(Qt.AlignCenter)
         self._name_label.setFont(QFont("Roboto", 18, QFont.Bold))
-        self._name_label.setStyleSheet("color: #dcdcdc;")
+        self._name_label.setStyleSheet(f"color: {get_tokens().text_primary};")
         avatar_section.addWidget(self._name_label)
 
         self._role_label = QLabel("All-Rounder")
@@ -120,11 +121,11 @@ class UserProfileScreen(QWidget):
         bio_layout.setSpacing(4)
         self._bio_title = QLabel(i18n.get_text("bio"))
         self._bio_title.setFont(QFont("Roboto", 14, QFont.Bold))
-        self._bio_title.setStyleSheet("color: #dcdcdc;")
+        self._bio_title.setStyleSheet(f"color: {get_tokens().text_primary};")
         bio_layout.addWidget(self._bio_title)
         self._bio_label = QLabel("No description yet.")
         self._bio_label.setWordWrap(True)
-        self._bio_label.setStyleSheet("color: #a0a0b0; font-size: 13px;")
+        self._bio_label.setStyleSheet(f"color: {get_tokens().text_secondary}; font-size: 13px;")
         bio_layout.addWidget(self._bio_label)
         self._content_layout.addWidget(bio_card)
 
@@ -195,7 +196,7 @@ class UserProfileScreen(QWidget):
 
         # Bio field
         bio_lbl = QLabel("Bio:")
-        bio_lbl.setStyleSheet("color: #a0a0b0;")
+        bio_lbl.setStyleSheet(f"color: {get_tokens().text_secondary};")
         lay.addWidget(bio_lbl)
         bio_input = QLineEdit(self._current.get("bio", ""))
         bio_input.setPlaceholderText("Tell us about yourself...")
@@ -203,7 +204,7 @@ class UserProfileScreen(QWidget):
 
         # Role field
         role_lbl = QLabel("Role:")
-        role_lbl.setStyleSheet("color: #a0a0b0;")
+        role_lbl.setStyleSheet(f"color: {get_tokens().text_secondary};")
         lay.addWidget(role_lbl)
         role_input = QLineEdit(self._current.get("role", "All-Rounder"))
         role_input.setPlaceholderText("Entry Fragger, AWPer, IGL, Support, Lurker...")

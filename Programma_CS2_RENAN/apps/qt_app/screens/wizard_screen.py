@@ -17,6 +17,8 @@ from PySide6.QtWidgets import (
 )
 
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
+from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.stepper import Stepper
 from Programma_CS2_RENAN.core.config import save_user_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -68,8 +70,7 @@ class WizardScreen(QWidget):
         layout.setSpacing(16)
 
         self._title = QLabel(i18n.get_text("wizard_title", "Setup Wizard"))
-        self._title.setObjectName("section_title")
-        self._title.setFont(QFont("Roboto", 20, QFont.Bold))
+        Typography.apply(self._title, "h1")
         layout.addWidget(self._title)
 
         # 5-page stack
@@ -96,7 +97,7 @@ class WizardScreen(QWidget):
         self._stepper = Stepper(step_count=5, current_step=0)
         bottom.addWidget(self._stepper)
         self._step_label = QLabel("Step 1 of 5")
-        self._step_label.setStyleSheet("color: #a0a0b0; font-size: 11px; margin-left: 12px;")
+        self._step_label.setStyleSheet(f"color: {get_tokens().text_secondary}; font-size: {get_tokens().font_size_caption}px; margin-left: 12px;")
         bottom.addWidget(self._step_label)
         bottom.addStretch()
         self._next_btn = QPushButton(i18n.get_text("wizard_get_started", "Get Started"))
@@ -116,7 +117,7 @@ class WizardScreen(QWidget):
         welcome = QLabel("Welcome to Macena CS2 Analyzer")
         welcome.setFont(QFont("Roboto", 18, QFont.Bold))
         welcome.setAlignment(Qt.AlignCenter)
-        welcome.setStyleSheet("color: #dcdcdc;")
+        welcome.setStyleSheet(f"color: {get_tokens().text_primary};")
         lay.addWidget(welcome)
 
         desc = QLabel(
@@ -127,7 +128,7 @@ class WizardScreen(QWidget):
         )
         desc.setAlignment(Qt.AlignCenter)
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: #a0a0b0; font-size: 14px;")
+        desc.setStyleSheet(f"color: {get_tokens().text_secondary}; font-size: {get_tokens().font_size_subtitle}px;")
         lay.addWidget(desc)
 
         return page
@@ -143,7 +144,7 @@ class WizardScreen(QWidget):
             "can identify your stats."
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: #a0a0b0; font-size: 13px;")
+        desc.setStyleSheet(f"color: {get_tokens().text_secondary}; font-size: {get_tokens().font_size_body}px;")
         lay.addWidget(desc)
 
         self._name_input = QLineEdit()
@@ -152,7 +153,7 @@ class WizardScreen(QWidget):
         lay.addWidget(self._name_input)
 
         self._name_error = QLabel("")
-        self._name_error.setStyleSheet("color: #f44336; font-size: 12px;")
+        self._name_error.setStyleSheet(f"color: {get_tokens().error}; font-size: {get_tokens().font_size_caption}px;")
         self._name_error.setVisible(False)
         lay.addWidget(self._name_error)
 
@@ -169,7 +170,7 @@ class WizardScreen(QWidget):
             "This is where models, knowledge base, and datasets will be stored."
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: #a0a0b0; font-size: 13px;")
+        desc.setStyleSheet(f"color: {get_tokens().text_secondary}; font-size: {get_tokens().font_size_body}px;")
         lay.addWidget(desc)
 
         # Manual entry
@@ -186,13 +187,13 @@ class WizardScreen(QWidget):
 
         # Selected path display
         self._brain_path_label = QLabel("")
-        self._brain_path_label.setStyleSheet("color: #dcdcdc; font-size: 12px;")
+        self._brain_path_label.setStyleSheet(f"color: {get_tokens().text_primary}; font-size: {get_tokens().font_size_caption}px;")
         self._brain_path_label.setWordWrap(True)
         lay.addWidget(self._brain_path_label)
 
         # Error display
         self._brain_error = QLabel("")
-        self._brain_error.setStyleSheet("color: #f44336; font-size: 12px;")
+        self._brain_error.setStyleSheet(f"color: {get_tokens().error}; font-size: {get_tokens().font_size_caption}px;")
         self._brain_error.setWordWrap(True)
         self._brain_error.setVisible(False)
         lay.addWidget(self._brain_error)
@@ -211,7 +212,7 @@ class WizardScreen(QWidget):
             "You can skip this step and set it later in Settings."
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: #a0a0b0; font-size: 13px;")
+        desc.setStyleSheet(f"color: {get_tokens().text_secondary}; font-size: {get_tokens().font_size_body}px;")
         lay.addWidget(desc)
 
         input_row = QHBoxLayout()
@@ -226,12 +227,12 @@ class WizardScreen(QWidget):
         lay.addLayout(input_row)
 
         self._demo_path_label = QLabel("")
-        self._demo_path_label.setStyleSheet("color: #dcdcdc; font-size: 12px;")
+        self._demo_path_label.setStyleSheet(f"color: {get_tokens().text_primary}; font-size: {get_tokens().font_size_caption}px;")
         self._demo_path_label.setWordWrap(True)
         lay.addWidget(self._demo_path_label)
 
         self._demo_error = QLabel("")
-        self._demo_error.setStyleSheet("color: #f44336; font-size: 12px;")
+        self._demo_error.setStyleSheet(f"color: {get_tokens().error}; font-size: {get_tokens().font_size_caption}px;")
         self._demo_error.setWordWrap(True)
         self._demo_error.setVisible(False)
         lay.addWidget(self._demo_error)
@@ -248,7 +249,7 @@ class WizardScreen(QWidget):
         done = QLabel("You're all set!")
         done.setFont(QFont("Roboto", 18, QFont.Bold))
         done.setAlignment(Qt.AlignCenter)
-        done.setStyleSheet("color: #dcdcdc;")
+        done.setStyleSheet(f"color: {get_tokens().text_primary};")
         lay.addWidget(done)
 
         info = QLabel(
@@ -257,7 +258,7 @@ class WizardScreen(QWidget):
         )
         info.setAlignment(Qt.AlignCenter)
         info.setWordWrap(True)
-        info.setStyleSheet("color: #a0a0b0; font-size: 14px;")
+        info.setStyleSheet(f"color: {get_tokens().text_secondary}; font-size: {get_tokens().font_size_subtitle}px;")
         lay.addWidget(info)
 
         return page

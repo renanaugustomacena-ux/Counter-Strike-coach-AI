@@ -59,8 +59,7 @@ class FaceitConfigScreen(QWidget):
         back_btn.clicked.connect(lambda: self._navigate("home"))
         title_row.addWidget(back_btn)
         title = QLabel("FaceIT Competitive Stats")
-        title.setObjectName("section_title")
-        title.setFont(QFont("Roboto", 20, QFont.Bold))
+        Typography.apply(title, "h1")
         title_row.addWidget(title, 1)
         layout.addLayout(title_row)
 
@@ -86,7 +85,7 @@ class FaceitConfigScreen(QWidget):
 
         card_title = QLabel("FaceIT API Key")
         card_title.setFont(QFont("Roboto", 14, QFont.Bold))
-        card_title.setStyleSheet("color: #dcdcdc;")
+        card_title.setStyleSheet(f"color: {get_tokens().text_primary};")
         card_layout.addWidget(card_title)
 
         desc = QLabel(
@@ -94,7 +93,7 @@ class FaceitConfigScreen(QWidget):
             "against competitive rankings and track your ELO progression."
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: #a0a0b0; font-size: 13px;")
+        desc.setStyleSheet(f"color: {get_tokens().text_secondary}; font-size: 13px;")
         card_layout.addWidget(desc)
 
         link_btn = QPushButton("Get FaceIT API Key")
@@ -119,7 +118,7 @@ class FaceitConfigScreen(QWidget):
         layout.addWidget(save_btn)
 
         self._saved_label = QLabel("Saved!")
-        self._saved_label.setStyleSheet("color: #4caf50; font-size: 14px; font-weight: bold;")
+        self._saved_label.setStyleSheet(f"color: {get_tokens().success}; font-size: 14px; font-weight: bold;")
         self._saved_label.setAlignment(Qt.AlignCenter)
         self._saved_label.setVisible(False)
         layout.addWidget(self._saved_label)
