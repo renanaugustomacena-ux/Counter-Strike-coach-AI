@@ -22,10 +22,14 @@ from PySide6.QtWidgets import (
 )
 
 from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state
+from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 from Programma_CS2_RENAN.apps.qt_app.core.qt_playback_engine import QtPlaybackEngine
+from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.apps.qt_app.core.web_bridge import MarqueeBridge
+from Programma_CS2_RENAN.apps.qt_app.core.widgets_helpers import make_button
 from Programma_CS2_RENAN.apps.qt_app.core.worker import Worker
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.status_chip import StatusChip
 from Programma_CS2_RENAN.apps.qt_app.viewmodels.tactical_vm import (
     TacticalChronovisorVM,
     TacticalGhostVM,
@@ -315,28 +319,37 @@ class TacticalViewerScreen(QWidget):
     # ── UI Construction ──
 
     def _build_ui(self):
+        tokens = get_tokens()
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
         # Header
         header = QHBoxLayout()
-        header.setContentsMargins(12, 8, 12, 8)
-        header.setSpacing(12)
+        header.setContentsMargins(
+            tokens.spacing_md, tokens.spacing_sm, tokens.spacing_md, tokens.spacing_sm
+        )
+        header.setSpacing(tokens.spacing_md)
         self._title_label = QLabel(i18n.get_text("tactical_analyzer"))
-        self._title_label.setObjectName("section_title")
-        self._title_label.setFont(QFont("Roboto", 18, QFont.Bold))
+        Typography.apply(self._title_label, "h1")
         header.addWidget(self._title_label)
+
+        self._map_chip = StatusChip("No demo loaded", severity="neutral")
+        header.addWidget(self._map_chip)
         header.addStretch()
 
         self._error_label = QLabel()
-        self._error_label.setStyleSheet("color: #ff5555; font-size: 13px;")
+        self._error_label.setFont(Typography.font("body"))
+        self._error_label.setStyleSheet(
+            f"color: {tokens.error}; background: transparent;"
+        )
         self._error_label.setWordWrap(True)
         self._error_label.setVisible(False)
         header.addWidget(self._error_label)
 
-        self._open_btn = QPushButton(i18n.get_text("open_demo"))
-        self._open_btn.setCursor(Qt.PointingHandCursor)
+        self._open_btn = make_button(
+            i18n.get_text("open_demo"), variant="primary", fixed_width=140
+        )
         self._open_btn.setFixedHeight(36)
         self._open_btn.clicked.connect(self._open_demo)
         header.addWidget(self._open_btn)
@@ -351,7 +364,8 @@ class TacticalViewerScreen(QWidget):
         main_area.setContentsMargins(0, 0, 0, 0)
         main_area.setSpacing(0)
 
-        self._ct_sidebar = PlayerSidebar("CT", "#4d80ff")
+        # Sidebar accents — info token for CT (cool blue), warning for T (orange-yellow)
+        self._ct_sidebar = PlayerSidebar("CT", tokens.info)
         self._ct_sidebar.setFixedWidth(200)
         self._ct_sidebar.player_clicked.connect(self._on_player_select)
         main_area.addWidget(self._ct_sidebar)
@@ -386,10 +400,12 @@ class TacticalViewerScreen(QWidget):
             # Empty-state overlay
             self._empty_overlay = QLabel(i18n.get_text("tactical_empty_state"))
             self._empty_overlay.setAlignment(Qt.AlignCenter)
-            self._empty_overlay.setFont(QFont("Roboto", 16))
+            self._empty_overlay.setFont(Typography.font("title"))
             self._empty_overlay.setStyleSheet(
-                "color: #707090; background: rgba(10, 10, 20, 180); "
-                "border-radius: 12px; padding: 32px;"
+                f"color: {tokens.text_secondary}; "
+                f"background: {tokens.surface_raised_rgba}; "
+                f"border-radius: {tokens.radius_lg}px; "
+                f"padding: {tokens.spacing_xxl}px;"
             )
             self._empty_overlay.setParent(map_container)
             self._empty_overlay.setGeometry(0, 0, 0, 0)  # sized in resizeEvent
@@ -397,17 +413,19 @@ class TacticalViewerScreen(QWidget):
             # Loading overlay (UX-2: map switch indicator)
             self._loading_overlay = QLabel("Loading map...")
             self._loading_overlay.setAlignment(Qt.AlignCenter)
-            self._loading_overlay.setFont(QFont("Roboto", 14))
+            self._loading_overlay.setFont(Typography.font("subtitle"))
             self._loading_overlay.setStyleSheet(
-                "color: #e0e0e0; background: rgba(10, 10, 20, 200); "
-                "border-radius: 12px; padding: 24px;"
+                f"color: {tokens.text_primary}; "
+                f"background: {tokens.surface_raised_rgba}; "
+                f"border-radius: {tokens.radius_lg}px; "
+                f"padding: {tokens.spacing_xl}px;"
             )
             self._loading_overlay.setParent(map_container)
             self._loading_overlay.hide()
 
         main_area.addWidget(map_container, 1)
 
-        self._t_sidebar = PlayerSidebar("T", "#ff9933")
+        self._t_sidebar = PlayerSidebar("T", tokens.warning)
         self._t_sidebar.setFixedWidth(200)
         self._t_sidebar.player_clicked.connect(self._on_player_select)
         main_area.addWidget(self._t_sidebar)
@@ -419,12 +437,21 @@ class TacticalViewerScreen(QWidget):
         root.addWidget(control_panel)
 
     def _build_controls(self) -> QFrame:
+        tokens = get_tokens()
         panel = QFrame()
-        panel.setStyleSheet("QFrame { background-color: #0f0f1a; border-top: 1px solid #2a2a3a; }")
+        panel.setObjectName("tactical_controls")
+        panel.setStyleSheet(
+            f"QFrame#tactical_controls {{ "
+            f"background-color: {tokens.surface_sidebar}; "
+            f"border-top: 1px solid {tokens.border_subtle}; "
+            f"}}"
+        )
         panel.setFixedHeight(130)
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(12, 6, 12, 6)
-        layout.setSpacing(4)
+        layout.setContentsMargins(
+            tokens.spacing_md, tokens.spacing_xs, tokens.spacing_md, tokens.spacing_xs
+        )
+        layout.setSpacing(tokens.spacing_xs)
 
         # Row 1: selectors
         row1 = QHBoxLayout()
@@ -785,6 +812,10 @@ class TacticalViewerScreen(QWidget):
 
         # Update map
         self._map_widget.set_map(map_name)
+
+        # Header chip — surfaces the current map identity at a glance
+        self._map_chip.set_label(f"Map · {map_name.replace('de_', '').upper()}")
+        self._map_chip.set_severity("online")
 
         # Publish map + segments + events to the web marquee (no-op
         # when WebEngine path is off).
