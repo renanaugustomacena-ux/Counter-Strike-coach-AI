@@ -61,6 +61,7 @@ export interface DesignTokens {
   font_size_title: number;
   font_size_h1: number;
   font_size_stat: number;
+  font_size_display: number;
   radius_sm: number;
   radius_md: number;
   radius_lg: number;
@@ -123,6 +124,7 @@ export const CS2_TOKENS: DesignTokens = {
   font_size_title: 18,
   font_size_h1: 24,
   font_size_stat: 28,
+  font_size_display: 32,
   radius_sm: 4,
   radius_md: 8,
   radius_lg: 16,
@@ -185,6 +187,7 @@ export const CSGO_TOKENS: DesignTokens = {
   font_size_title: 18,
   font_size_h1: 24,
   font_size_stat: 28,
+  font_size_display: 32,
   radius_sm: 4,
   radius_md: 8,
   radius_lg: 16,
@@ -247,6 +250,7 @@ export const CS16_TOKENS: DesignTokens = {
   font_size_title: 18,
   font_size_h1: 24,
   font_size_stat: 28,
+  font_size_display: 32,
   radius_sm: 4,
   radius_md: 8,
   radius_lg: 16,
