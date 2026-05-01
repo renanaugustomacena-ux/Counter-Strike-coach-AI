@@ -102,6 +102,7 @@ GLOBAL_FIELDS: list[tuple[str, list[str], str]] = [
     ("font_size_title", ["typography", "size", "title"], "int"),
     ("font_size_h1", ["typography", "size", "h1"], "int"),
     ("font_size_stat", ["typography", "size", "stat"], "int"),
+    ("font_size_display", ["typography", "size", "display"], "int"),
     ("radius_sm", ["radius", "sm"], "int"),
     ("radius_md", ["radius", "md"], "int"),
     ("radius_lg", ["radius", "lg"], "int"),
@@ -167,7 +168,7 @@ SECTION_HEADERS: list[tuple[int, str]] = [
 GLOBAL_SECTIONS: list[tuple[int, str]] = [
     (0, "Spacing scale (4px grid)"),  # before spacing_xs
     (7, "Typography scale"),  # before font_size_caption
-    (13, "Border radius"),  # before radius_sm
+    (14, "Border radius"),  # before radius_sm (shifted by font_size_display addition)
 ]
 
 

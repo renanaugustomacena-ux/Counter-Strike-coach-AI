@@ -4,14 +4,17 @@ Replaces the ad-hoc _make_card() helpers duplicated across 4 screens.
 Uses the dashboard_card QSS object name for theme-consistent styling.
 
 Depth tiers (opt-in via ``depth=`` kwarg):
-    flat      default — 1px subtle border, no shadow.
-    raised    QSS tier: raised surface + top highlight (no QPainter cost).
-    floating  QGraphicsDropShadowEffect (blur=20, offset=(0,4), 35% alpha).
-              Guarded against cards containing QChartView / QtCharts —
-              combining drop shadow + chart redraw causes a 10-20x FPS
-              drop (documented Qt issue). When a chart child is detected
-              at first render, depth silently downgrades to 'raised' and
-              emits one WARNING via cs2analyzer.qt_app.card.
+    flat         default — 1px subtle border, no shadow.
+    raised       QSS tier: raised surface + top highlight (no QPainter cost).
+    highlighted  QSS tier: raised surface + 3px accent left edge — used
+                 sparingly to draw the eye to the most important card on
+                 a screen. No shadow.
+    floating     QGraphicsDropShadowEffect (blur=20, offset=(0,4), 35% alpha).
+                 Guarded against cards containing QChartView / QtCharts —
+                 combining drop shadow + chart redraw causes a 10-20x FPS
+                 drop (documented Qt issue). When a chart child is detected
+                 at first render, depth silently downgrades to 'raised' and
+                 emits one WARNING via cs2analyzer.qt_app.card.
 """
 
 from typing import Literal
@@ -39,7 +42,7 @@ class Card(QFrame):
         self,
         title: str = "",
         subtitle: str = "",
-        depth: Literal["flat", "raised", "floating"] = "flat",
+        depth: Literal["flat", "raised", "highlighted", "floating"] = "flat",
         parent: QWidget | None = None,
     ):
         super().__init__(parent)

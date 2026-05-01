@@ -564,7 +564,7 @@ QTabBar[variant="pill"]::tab:hover:!selected {
 /* ── QLabel variants ── */
 QLabel[variant="display"] {
     font-family: "Space Grotesk", "Inter", "Roboto", system-ui, sans-serif;
-    font-size: ${font_size_stat}px;
+    font-size: ${font_size_display}px;
     font-weight: 800;
     color: ${text_primary};
     letter-spacing: -1px;
@@ -590,12 +590,17 @@ QLabel[variant="accent"] {
 }
 
 /* ── Card depth variants ──
-   Usage: Card.setProperty("depth", "raised"|"floating")
+   Usage: Card.setProperty("depth", "raised"|"highlighted"|"floating")
    Applied in addition to the base #dashboard_card rule above. */
 QFrame#dashboard_card[depth="raised"] {
     background-color: ${surface_raised};
     border: 1px solid ${border_subtle};
     border-top: 1px solid ${accent_muted_15};
+}
+QFrame#dashboard_card[depth="highlighted"] {
+    background-color: ${surface_raised};
+    border: 1px solid ${border_subtle};
+    border-left: 3px solid ${accent_primary};
 }
 QFrame#dashboard_card[depth="floating"] {
     background-color: ${surface_overlay};

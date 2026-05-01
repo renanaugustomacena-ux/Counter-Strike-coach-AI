@@ -92,6 +92,7 @@ class DesignTokens:
     font_size_title: int = 18
     font_size_h1: int = 24
     font_size_stat: int = 28
+    font_size_display: int = 32
 
     # ── Border radius ──
     radius_sm: int = 4

@@ -203,7 +203,8 @@
       "subtitle": { "$value": 14, "$type": "number" },
       "title":    { "$value": 18, "$type": "number" },
       "h1":       { "$value": 24, "$type": "number" },
-      "stat":     { "$value": 28, "$type": "number" }
+      "stat":     { "$value": 28, "$type": "number" },
+      "display":  { "$value": 32, "$type": "number" }
     }
   }
 }
