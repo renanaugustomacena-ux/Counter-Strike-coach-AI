@@ -1,365 +1,620 @@
-"""Performance Dashboard — rating trends, per-map stats, strengths/weaknesses, utility."""
+"""Performance — aggregate analytics dashboard.
+
+Composition:
+    Title rail        Performance               [● N matches]
+    Pro-overview banner   (visible when no personal data yet)
+    Hero stats row    Avg rating · Matches · K/D · ADR · KAST
+    Section: Trend    average / range / recent (text summary; chart-free
+                      to avoid GPU segfaults on some Linux drivers, per
+                      the prior implementation's note).
+    Section: Per-map  3-column grid of map mini-cards.
+    Section: S/W vs pro  two columns (when not pro-overview).
+    Section: Utility  ADR/round comparison row vs pro baseline.
+
+Body is housed in a QStackedWidget so loading / empty / data swaps
+don't push the title rail around.
+"""
+
+from __future__ import annotations
+
+from typing import Iterable
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
     QHBoxLayout,
     QLabel,
     QScrollArea,
+    QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
 
+from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import (
-    COLOR_GREEN,
-    COLOR_RED,
     rating_color,
     rating_label,
-    rgba_to_qcolor,
 )
-from Programma_CS2_RENAN.apps.qt_app.viewmodels.performance_vm import PerformanceViewModel
+from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
+from Programma_CS2_RENAN.apps.qt_app.viewmodels.performance_vm import (
+    PerformanceViewModel,
+)
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.empty_state import EmptyState
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.hero_stats_strip import (
+    HeroStat,
+    HeroStatsStrip,
+)
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.status_chip import StatusChip
 from Programma_CS2_RENAN.apps.qt_app.widgets.skeleton import SkeletonTable
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.qt_performance")
 
-_GREEN = rgba_to_qcolor(list(COLOR_GREEN))
-_RED = rgba_to_qcolor(list(COLOR_RED))
+
+def _rating_sentiment(value: float) -> str:
+    if value >= 1.10:
+        return "positive"
+    if value < 0.90:
+        return "negative"
+    return "neutral"
+
+
+def _kd_sentiment(value: float) -> str:
+    if value >= 1.0:
+        return "positive"
+    if value < 0.85:
+        return "negative"
+    return "neutral"
 
 
 class PerformanceScreen(QWidget):
-    """Aggregate performance dashboard with native Qt charts."""
+    """Aggregate performance dashboard with sectioned cards."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._vm = PerformanceViewModel()
         self._vm.data_changed.connect(self._on_data)
         self._vm.error_changed.connect(self._on_error)
         self._vm.is_loading_changed.connect(self._on_loading)
-        # Tracks the card widgets currently populating _content_layout so
-        # the reveal-stagger animation at the end of _on_data touches only
-        # live sections and not the trailing stretch item.
-        self._active_sections: list[Card] = []
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(8)
+        self._build_ui()
 
-        # Title
-        self._title_label = QLabel(i18n.get_text("advanced_analytics"))
-        self._title_label.setObjectName("section_title")
-        self._title_label.setFont(QFont("Roboto", 20, QFont.Bold))
-        layout.addWidget(self._title_label)
+    # ── Lifecycle ──
 
-        # Status (error / empty — NOT used for loading)
-        self._status = QLabel("")
-        self._status.setAlignment(Qt.AlignCenter)
-        self._status.setStyleSheet("color: #a0a0b0; font-size: 14px;")
-        self._status.setVisible(False)
-        layout.addWidget(self._status)
-
-        # Skeleton loader
-        self._skeleton = SkeletonTable(row_count=3)
-        self._skeleton.setVisible(False)
-        layout.addWidget(self._skeleton)
-
-        # Scrollable content
-        self._scroll = QScrollArea()
-        self._scroll.setWidgetResizable(True)
-        self._scroll.setFrameShape(QFrame.NoFrame)
-        self._content = QWidget()
-        self._content_layout = QVBoxLayout(self._content)
-        self._content_layout.setSpacing(16)
-        self._content_layout.addStretch()
-        self._scroll.setWidget(self._content)
-        layout.addWidget(self._scroll, 1)
-
-    def on_enter(self):
+    def on_enter(self) -> None:
         self._show_loading()
         self._vm.load_performance()
 
-    def on_leave(self):
-        pass  # No pending work to cancel; skeleton hides on next on_enter
+    def on_leave(self) -> None:
+        return
 
-    def retranslate(self):
-        """Update all translatable text when language changes."""
+    def retranslate(self) -> None:
         self._title_label.setText(i18n.get_text("advanced_analytics"))
 
-    def _on_loading(self, loading: bool):
+    # ── UI Construction ──
+
+    def _build_ui(self) -> None:
+        tokens = get_tokens()
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(
+            tokens.spacing_lg, tokens.spacing_lg, tokens.spacing_lg, tokens.spacing_lg
+        )
+        root.setSpacing(tokens.spacing_md)
+
+        # Title rail
+        title_row = QHBoxLayout()
+        title_row.setContentsMargins(0, 0, 0, 0)
+        self._title_label = QLabel(i18n.get_text("advanced_analytics"))
+        Typography.apply(self._title_label, "h1")
+        title_row.addWidget(self._title_label)
+        title_row.addStretch(1)
+        self._count_chip = StatusChip("0 matches", severity="neutral")
+        title_row.addWidget(self._count_chip)
+        root.addLayout(title_row)
+
+        # Provenance banner — visible only when surfacing pro data as ref
+        self._pro_banner = QLabel(
+            "No personal demos analyzed yet. Showing aggregated stats from "
+            "all parsed pro matches (multiple players across multiple teams). "
+            "Analyze your own demos to see your personal analytics."
+        )
+        self._pro_banner.setWordWrap(True)
+        self._pro_banner.setFont(Typography.font("body"))
+        self._pro_banner.setStyleSheet(
+            f"color: {tokens.accent_primary}; "
+            f"background: {tokens.accent_muted_15}; "
+            f"border: 1px solid {tokens.accent_muted_30}; "
+            f"border-radius: {tokens.radius_md}px; "
+            f"padding: {tokens.spacing_md}px;"
+        )
+        self._pro_banner.setVisible(False)
+        root.addWidget(self._pro_banner)
+
+        # Body stack: skeleton | empty | content
+        self._body_stack = QStackedWidget()
+        root.addWidget(self._body_stack, 1)
+
+        self._skeleton = SkeletonTable(row_count=3)
+        self._body_stack.addWidget(self._skeleton)
+
+        self._empty_state = EmptyState(
+            icon_text="◎",
+            title="No performance data yet",
+            description="Analyze a demo to start seeing your aggregate trends.",
+            cta_text="Open Dashboard",
+        )
+        self._empty_state.action_clicked.connect(
+            lambda: self._navigate("home")
+        )
+        self._body_stack.addWidget(self._empty_state)
+
+        self._content_scroll = QScrollArea()
+        self._content_scroll.setWidgetResizable(True)
+        self._content_scroll.setFrameShape(QFrame.NoFrame)
+        self._content = QWidget()
+        self._content_layout = QVBoxLayout(self._content)
+        self._content_layout.setContentsMargins(0, 0, 0, 0)
+        self._content_layout.setSpacing(tokens.spacing_lg)
+        self._content_layout.addStretch(1)
+        self._content_scroll.setWidget(self._content)
+        self._body_stack.addWidget(self._content_scroll)
+
+        self._page_skeleton = 0
+        self._page_empty = 1
+        self._page_content = 2
+
+    # ── Plumbing ──
+
+    def _on_loading(self, loading: bool) -> None:
         if loading:
             self._show_loading()
 
+    def _show_loading(self) -> None:
+        self._clear_content()
+        self._body_stack.setCurrentIndex(self._page_skeleton)
+
+    def _on_error(self, msg: str) -> None:
+        if not msg:
+            return
+        self._empty_state.set_title("Couldn't load performance")
+        self._empty_state.set_description(str(msg))
+        self._body_stack.setCurrentIndex(self._page_empty)
+
+    def _navigate(self, screen_name: str) -> None:
+        win = self.window()
+        if win and hasattr(win, "switch_screen"):
+            win.switch_screen(screen_name)
+
+    # ── Data → UI ──
+
     def _on_data(
-        self, history: list, map_stats: dict, sw: dict, utility: dict, is_pro_overview: bool = False
-    ):
-        self._skeleton.setVisible(False)
-        self._status.setVisible(False)
-        self._scroll.setVisible(True)
+        self,
+        history: list,
+        map_stats: dict,
+        sw: dict,
+        utility: dict,
+        is_pro_overview: bool = False,
+    ) -> None:
         self._clear_content()
 
         if not history and not map_stats:
-            self._show_status("No performance data. Play some matches!")
+            self._empty_state.set_title("No performance data yet")
+            self._empty_state.set_description(
+                "Analyze a demo to start seeing your aggregate trends."
+            )
+            self._body_stack.setCurrentIndex(self._page_empty)
+            self._update_count_chip(0)
+            self._pro_banner.setVisible(False)
             return
 
-        # Provenance banner when showing pro data as reference
-        if is_pro_overview:
-            banner = QLabel(
-                "No personal demos analyzed yet. Showing aggregated stats from all "
-                "parsed pro matches (multiple players across multiple teams). "
-                "Analyze your own demos to see your personal analytics."
-            )
-            banner.setWordWrap(True)
-            banner.setStyleSheet(
-                "color: #d96600; background: #1a1200; border: 1px solid #3a2a00; "
-                "border-radius: 6px; padding: 10px; font-size: 13px;"
-            )
-            self._content_layout.insertWidget(0, banner)
+        self._pro_banner.setVisible(is_pro_overview)
+        self._update_count_chip(len(history) if history else 0)
 
-        # Each section is wrapped in try/except so a chart rendering crash
-        # doesn't kill the entire app (segfaults on some Linux GPU drivers).
-        # Section 1: Rating Trend
+        # Hero strip — top-of-page snapshot.
+        self._content_layout.insertWidget(
+            self._content_layout.count() - 1,
+            self._build_hero(history, utility),
+        )
+
+        # Sections: trend, map stats, strengths/weaknesses, utility.
         try:
-            self._build_trend(history, is_pro_overview)
+            self._content_layout.insertWidget(
+                self._content_layout.count() - 1,
+                self._build_trend(history, is_pro_overview),
+            )
         except Exception as e:
-            logger.error("Failed to build rating trend: %s", e)
+            logger.error("trend section failed: %s", e)
 
-        # Section 2: Per-Map Stats
         if map_stats:
             try:
-                self._build_map_stats(map_stats, is_pro_overview)
+                self._content_layout.insertWidget(
+                    self._content_layout.count() - 1,
+                    self._build_map_grid(map_stats, is_pro_overview),
+                )
             except Exception as e:
-                logger.error("Failed to build map stats: %s", e)
+                logger.error("map grid failed: %s", e)
 
-        # Section 3: Strengths & Weaknesses — hidden in pro overview (Z-scores are meaningless)
         if not is_pro_overview and sw and (sw.get("strengths") or sw.get("weaknesses")):
             try:
-                self._build_sw(sw)
+                self._content_layout.insertWidget(
+                    self._content_layout.count() - 1,
+                    self._build_strengths_weaknesses(sw),
+                )
             except Exception as e:
-                logger.error("Failed to build strengths/weaknesses: %s", e)
+                logger.error("strengths/weaknesses failed: %s", e)
 
-        # Section 4: Utility
         if utility and utility.get("user"):
             try:
-                self._build_utility(utility, is_pro_overview)
+                self._content_layout.insertWidget(
+                    self._content_layout.count() - 1,
+                    self._build_utility(utility, is_pro_overview),
+                )
             except Exception as e:
-                logger.error("Failed to build utility breakdown: %s", e)
+                logger.error("utility section failed: %s", e)
 
-        # Stagger-reveal the sections now that they're all placed. Geometry
-        # animation so no QPainter/opacity effect fires mid-repaint.
-        if self._active_sections:
-            from Programma_CS2_RENAN.apps.qt_app.core.animation import Animator
-
-            Animator.reveal_stagger(
-                self._active_sections,
-                delay_ms=50,
-                duration=260,
-                distance_px=16,
-                direction="up",
-            )
-
-    def _on_error(self, msg: str):
-        if msg:
-            self._skeleton.setVisible(False)
-            self._show_status(msg)
+        self._body_stack.setCurrentIndex(self._page_content)
 
     # ── Section builders ──
 
-    def _build_trend(self, history: list, is_pro_overview: bool = False):
-        title = "Rating Trend (Pro Reference Data)" if is_pro_overview else "Rating Trend"
-        card = self._section(title)
-        if not history:
-            card.layout().addWidget(QLabel("Not enough data for trend analysis."))
-            return
+    def _build_hero(self, history: list, utility: dict) -> QWidget:
+        ratings = [
+            float(h.get("rating") or 0)
+            for h in (history or [])
+            if h.get("rating") is not None
+        ]
+        avg_rating = sum(ratings) / len(ratings) if ratings else 0.0
 
-        # Text-based trend display (QChartView causes segfault on some Linux GPU drivers)
-        ratings = [h.get("rating", 0) for h in history if h.get("rating") is not None]
+        # Aggregate K/D and ADR from history if present
+        kds = [float(h.get("kd_ratio") or 0) for h in (history or []) if h.get("kd_ratio")]
+        adrs = [float(h.get("avg_adr") or 0) for h in (history or []) if h.get("avg_adr")]
+        kasts = [float(h.get("avg_kast") or 0) for h in (history or []) if h.get("avg_kast")]
+
+        avg_kd = sum(kds) / len(kds) if kds else 0.0
+        avg_adr = sum(adrs) / len(adrs) if adrs else 0.0
+        avg_kast = sum(kasts) / len(kasts) if kasts else 0.0
+
+        stats: list[HeroStat] = [
+            HeroStat(
+                f"{avg_rating:.2f}" if ratings else "—",
+                "Avg rating",
+                _rating_sentiment(avg_rating) if ratings else "neutral",
+            ),
+            HeroStat(f"{len(ratings)}" if ratings else "0", "Matches", "neutral"),
+            HeroStat(
+                f"{avg_kd:.2f}" if kds else "—",
+                "K / D",
+                _kd_sentiment(avg_kd) if kds else "neutral",
+            ),
+            HeroStat(
+                f"{avg_adr:.0f}" if adrs else "—",
+                "ADR",
+                "positive" if avg_adr >= 70 else "negative" if avg_adr < 50 else "neutral",
+            ),
+            HeroStat(
+                f"{avg_kast * 100:.0f}%" if kasts else "—",
+                "KAST",
+                "positive" if avg_kast >= 0.7 else "negative" if avg_kast < 0.5 else "neutral",
+            ),
+        ]
+        return HeroStatsStrip(stats)
+
+    def _build_trend(self, history: list, is_pro_overview: bool) -> Card:
+        title = "Rating trend" + (" — pro reference" if is_pro_overview else "")
+        card = Card(title=title, depth="raised")
+        body = card.content_layout
+        tokens = get_tokens()
+
+        ratings = [
+            float(h.get("rating") or 0)
+            for h in (history or [])
+            if h.get("rating") is not None
+        ]
         if not ratings:
-            card.layout().addWidget(QLabel("No rating data available."))
-            return
+            self._add_body_label(body, "Not enough data for trend analysis.", muted=True)
+            return card
 
         avg_r = sum(ratings) / len(ratings)
         min_r = min(ratings)
         max_r = max(ratings)
-        recent_5 = ratings[-5:] if len(ratings) >= 5 else ratings
-        avg_recent = sum(recent_5) / len(recent_5)
-
-        trend_text = (
-            f"Matches analyzed: {len(ratings)}\n"
-            f"Average rating: {avg_r:.2f}\n"
-            f"Range: {min_r:.2f} — {max_r:.2f}\n"
-            f"Recent trend ({len(recent_5)} matches): {avg_recent:.2f}"
-        )
+        recent = ratings[-5:] if len(ratings) >= 5 else ratings
+        avg_recent = sum(recent) / len(recent)
 
         if avg_recent > avg_r + 0.05:
-            trend_text += "  ▲ Improving"
+            arrow = "▲"
+            arrow_color = tokens.success
+            sub = "Improving"
         elif avg_recent < avg_r - 0.05:
-            trend_text += "  ▼ Declining"
+            arrow = "▼"
+            arrow_color = tokens.error
+            sub = "Declining"
         else:
-            trend_text += "  ─ Stable"
+            arrow = "─"
+            arrow_color = tokens.text_secondary
+            sub = "Stable"
 
-        lbl = QLabel(trend_text)
-        lbl.setStyleSheet("font-size: 14px; line-height: 1.6;")
-        card.layout().addWidget(lbl)
+        # Strip layout: average · range · recent · trend arrow
+        strip = QHBoxLayout()
+        strip.setContentsMargins(0, 0, 0, 0)
+        strip.setSpacing(tokens.spacing_xxl)
 
-    def _build_map_stats(self, map_stats: dict, is_pro_overview: bool = False):
-        title = (
-            "Per-Map Performance (Pro Reference Data)" if is_pro_overview else "Per-Map Performance"
+        strip.addWidget(self._stat_block(f"{avg_r:.2f}", "AVERAGE"))
+        strip.addWidget(
+            self._stat_block(f"{min_r:.2f} — {max_r:.2f}", "RANGE", mono=True)
         )
-        card = self._section(title)
+        strip.addWidget(
+            self._stat_block(
+                f"{avg_recent:.2f}", f"LAST {len(recent)}", color_value=tokens.text_primary
+            )
+        )
 
-        grid = QGridLayout()
-        grid.setSpacing(12)
+        trend_block = self._stat_block(
+            f"{arrow}  {sub}", "TREND", color_value=arrow_color
+        )
+        strip.addWidget(trend_block)
+        strip.addStretch(1)
+
+        wrapper = QWidget()
+        wrapper.setLayout(strip)
+        body.addWidget(wrapper)
+        return card
+
+    def _build_map_grid(self, map_stats: dict, is_pro_overview: bool) -> Card:
+        title = "Per-map performance" + (
+            " — pro reference" if is_pro_overview else ""
+        )
+        card = Card(title=title, depth="raised")
+        body = card.content_layout
+        tokens = get_tokens()
+
+        grid_widget = QWidget()
+        grid = QGridLayout(grid_widget)
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setSpacing(tokens.spacing_md)
         cols = 3
 
         for idx, (map_name, stats) in enumerate(map_stats.items()):
-            map_card = QFrame()
-            map_card.setObjectName("dashboard_card")
-            mc_layout = QVBoxLayout(map_card)
-            mc_layout.setSpacing(4)
+            grid.addWidget(self._build_map_tile(map_name, stats), idx // cols, idx % cols)
 
-            name = QLabel(map_name.replace("de_", "").title())
-            name.setFont(QFont("Roboto", 12, QFont.Bold))
-            mc_layout.addWidget(name)
+        body.addWidget(grid_widget)
+        return card
 
-            r = stats.get("rating", 1.0)
-            r_color = rating_color(r)
-            rating_lbl = QLabel(f"Rating: {r:.2f} ({rating_label(r)})")
-            rating_lbl.setFont(QFont("Roboto", 11, QFont.Bold))
-            rating_lbl.setStyleSheet(f"color: {r_color.name()};")
-            mc_layout.addWidget(rating_lbl)
+    def _build_map_tile(self, map_name: str, stats: dict) -> QFrame:
+        tokens = get_tokens()
+        tile = QFrame()
+        tile.setObjectName("dashboard_card")
+        tile.setProperty("depth", "flat")
 
-            adr = stats.get("adr", 0)
-            kd = stats.get("kd", 0)
-            detail = QLabel(f"ADR: {adr:.0f}  K/D: {kd:.2f}")
-            detail.setObjectName("section_subtitle")
-            mc_layout.addWidget(detail)
+        tile_layout = QVBoxLayout(tile)
+        tile_layout.setContentsMargins(
+            tokens.spacing_md, tokens.spacing_sm, tokens.spacing_md, tokens.spacing_sm
+        )
+        tile_layout.setSpacing(2)
 
-            matches_n = stats.get("matches", 0)
-            count = QLabel(f"{matches_n} matches")
-            count.setObjectName("section_subtitle")
-            mc_layout.addWidget(count)
+        name = QLabel(map_name.replace("de_", "").upper())
+        Typography.apply(name, "caption")
+        name.setStyleSheet(
+            f"color: {tokens.text_secondary}; background: transparent;"
+        )
+        tile_layout.addWidget(name)
 
-            grid.addWidget(map_card, idx // cols, idx % cols)
+        rating_value = float(stats.get("rating") or 0)
+        rating_label_widget = QLabel(f"{rating_value:.2f}")
+        rating_label_widget.setFont(Typography.font("h1"))
+        rating_label_widget.setStyleSheet(
+            f"color: {rating_color(rating_value).name()}; background: transparent;"
+        )
+        tile_layout.addWidget(rating_label_widget)
 
-        card.layout().addLayout(grid)
+        adr = float(stats.get("adr") or 0)
+        kd = float(stats.get("kd") or 0)
+        detail = QLabel(f"K/D {kd:.2f}    ADR {adr:.0f}")
+        detail.setFont(Typography.font("mono"))
+        detail.setStyleSheet(
+            f"color: {tokens.text_primary}; background: transparent;"
+        )
+        tile_layout.addWidget(detail)
 
-    def _build_sw(self, sw: dict):
-        card = self._section("Strengths & Weaknesses (vs Pro Average)")
+        n_matches = int(stats.get("matches") or 0)
+        meta = QLabel(f"{n_matches} matches  ·  {rating_label(rating_value)}")
+        meta.setFont(Typography.font("caption"))
+        meta.setStyleSheet(
+            f"color: {tokens.text_tertiary}; background: transparent;"
+        )
+        tile_layout.addWidget(meta)
+        return tile
+
+    def _build_strengths_weaknesses(self, sw: dict) -> Card:
+        card = Card(title="Strengths & weaknesses vs pro", depth="raised")
+        body = card.content_layout
+        tokens = get_tokens()
 
         row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(tokens.spacing_xl)
 
-        # Strengths column
-        str_col = QVBoxLayout()
-        str_title = QLabel("Strengths")
-        str_title.setFont(QFont("Roboto", 12, QFont.Bold))
-        str_title.setStyleSheet(f"color: {_GREEN.name()};")
-        str_col.addWidget(str_title)
-
-        for name, z in sw.get("strengths", []):
-            display = name.replace("_", " ").title()
-            lbl = QLabel(f"+{z:.1f} above avg \u2014 {display}")
-            lbl.setStyleSheet(f"color: {_GREEN.name()};")
-            str_col.addWidget(lbl)
-
-        if not sw.get("strengths"):
-            str_col.addWidget(QLabel("No data"))
-
-        # Weaknesses column
-        weak_col = QVBoxLayout()
-        weak_title = QLabel("Weaknesses")
-        weak_title.setFont(QFont("Roboto", 12, QFont.Bold))
-        weak_title.setStyleSheet(f"color: {_RED.name()};")
-        weak_col.addWidget(weak_title)
-
-        for name, z in sw.get("weaknesses", []):
-            display = name.replace("_", " ").title()
-            lbl = QLabel(f"{z:.1f} below avg \u2014 {display}")
-            lbl.setStyleSheet(f"color: {_RED.name()};")
-            weak_col.addWidget(lbl)
-
-        if not sw.get("weaknesses"):
-            weak_col.addWidget(QLabel("No data"))
-
-        row.addLayout(str_col)
-        row.addLayout(weak_col)
-        card.layout().addLayout(row)
-
-    def _build_utility(self, utility: dict, is_pro_overview: bool = False):
-        title = (
-            "Utility Effectiveness (Pro Reference Data)"
-            if is_pro_overview
-            else "Utility Effectiveness (vs Pro)"
+        row.addWidget(
+            self._sw_column("Strengths", sw.get("strengths") or [], tokens.success)
         )
-        card = self._section(title)
+        row.addWidget(
+            self._sw_column(
+                "Weaknesses", sw.get("weaknesses") or [], tokens.error, sign_inverse=True
+            )
+        )
+        row.addStretch(1)
 
-        user = utility.get("user", {})
-        pro = utility.get("pro", {})
-        if not user or all(v == 0 for v in user.values()):
-            card.layout().addWidget(QLabel("No utility data available yet."))
-            return
+        wrapper = QWidget()
+        wrapper.setLayout(row)
+        body.addWidget(wrapper)
+        return card
 
-        # Text-based utility comparison (QChartView causes segfault on some Linux GPU drivers)
+    def _sw_column(
+        self,
+        title: str,
+        entries: list,
+        color: str,
+        sign_inverse: bool = False,
+    ) -> QWidget:
+        tokens = get_tokens()
+        col = QVBoxLayout()
+        col.setContentsMargins(0, 0, 0, 0)
+        col.setSpacing(tokens.spacing_xs)
+
+        header = QLabel(title.upper())
+        Typography.apply(header, "caption")
+        header.setStyleSheet(f"color: {color}; background: transparent;")
+        col.addWidget(header)
+
+        if not entries:
+            empty = QLabel("No data")
+            empty.setFont(Typography.font("body"))
+            empty.setStyleSheet(
+                f"color: {tokens.text_tertiary}; background: transparent;"
+            )
+            col.addWidget(empty)
+        else:
+            for name, z in entries:
+                display = name.replace("_", " ").title()
+                sign = "−" if sign_inverse else "+"
+                lbl = QLabel(f"{sign}{abs(z):.1f}σ   {display}")
+                lbl.setFont(Typography.font("body"))
+                lbl.setStyleSheet(
+                    f"color: {color}; background: transparent;"
+                )
+                col.addWidget(lbl)
+
+        wrapper = QWidget()
+        wrapper.setLayout(col)
+        return wrapper
+
+    def _build_utility(self, utility: dict, is_pro_overview: bool) -> Card:
+        title = "Utility effectiveness" + (
+            " — pro reference" if is_pro_overview else " vs pro"
+        )
+        card = Card(title=title, depth="raised")
+        body = card.content_layout
+        tokens = get_tokens()
+
+        user = utility.get("user") or {}
+        pro = utility.get("pro") or {}
+        if not user or all((v or 0) == 0 for v in user.values()):
+            self._add_body_label(body, "No utility data available yet.", muted=True)
+            return card
+
         labels = {
-            "he_damage": "HE Damage/Round",
-            "molotov_damage": "Molotov Damage/Round",
-            "smokes_per_round": "Smokes/Round",
-            "flash_blind_time": "Flash Blind Time",
-            "flash_assists": "Flash Assists",
-            "unused_utility": "Unused Utility",
+            "he_damage": "HE damage / round",
+            "molotov_damage": "Molotov damage / round",
+            "smokes_per_round": "Smokes / round",
+            "flash_blind_time": "Flash blind time",
+            "flash_assists": "Flash assists",
+            "unused_utility": "Unused utility",
         }
         for key, display_name in labels.items():
-            u_val = user.get(key, 0)
-            p_val = pro.get(key, 0) if pro else 0
-            comparison = ""
-            if p_val > 0:
-                pct = ((u_val - p_val) / p_val) * 100 if p_val != 0 else 0
+            user_val = float(user.get(key, 0) or 0)
+            pro_val = float((pro or {}).get(key, 0) or 0)
+
+            row = QHBoxLayout()
+            row.setContentsMargins(0, 0, 0, 0)
+            row.setSpacing(tokens.spacing_md)
+
+            name = QLabel(display_name)
+            name.setFont(Typography.font("body"))
+            name.setFixedWidth(220)
+            name.setStyleSheet(
+                f"color: {tokens.text_secondary}; background: transparent;"
+            )
+            row.addWidget(name)
+
+            value = QLabel(f"{user_val:.2f}")
+            value.setFont(Typography.font("mono"))
+            value.setFixedWidth(80)
+            value.setStyleSheet(
+                f"color: {tokens.text_primary}; background: transparent;"
+            )
+            row.addWidget(value)
+
+            comparison_color = tokens.text_tertiary
+            comparison_text = ""
+            if pro_val > 0 and not is_pro_overview:
+                pct = ((user_val - pro_val) / pro_val) * 100
                 if pct > 10:
-                    comparison = f"  (▲ {pct:+.0f}% vs pro)"
+                    comparison_text = f"▲ {pct:+.0f}% vs pro"
+                    # "More" is good for damage stats, bad for unused — keep neutral
+                    comparison_color = tokens.success if key != "unused_utility" else tokens.error
                 elif pct < -10:
-                    comparison = f"  (▼ {pct:+.0f}% vs pro)"
+                    comparison_text = f"▼ {pct:+.0f}% vs pro"
+                    comparison_color = tokens.error if key != "unused_utility" else tokens.success
                 else:
-                    comparison = f"  (≈ pro level)"
-            lbl = QLabel(f"{display_name}: {u_val:.2f}{comparison}")
-            lbl.setStyleSheet("font-size: 13px;")
-            card.layout().addWidget(lbl)
+                    comparison_text = "≈ pro level"
+                    comparison_color = tokens.text_secondary
+            comparison = QLabel(comparison_text)
+            comparison.setFont(Typography.font("mono"))
+            comparison.setStyleSheet(
+                f"color: {comparison_color}; background: transparent;"
+            )
+            row.addWidget(comparison, 1)
+
+            wrapper = QWidget()
+            wrapper.setLayout(row)
+            body.addWidget(wrapper)
+
+        return card
 
     # ── Helpers ──
 
-    def _section(self, title: str) -> Card:
-        """Create a titled raised-depth card section and add it to the content layout.
+    def _stat_block(
+        self,
+        value: str,
+        label: str,
+        mono: bool = False,
+        color_value: str | None = None,
+    ) -> QWidget:
+        tokens = get_tokens()
+        block = QWidget()
+        col = QVBoxLayout(block)
+        col.setContentsMargins(0, 0, 0, 0)
+        col.setSpacing(2)
 
-        ``depth="raised"`` activates the QSS rule
-        ``QFrame#dashboard_card[depth="raised"]`` in the base template,
-        giving each section a 1px top highlight that distinguishes it
-        from the page background without the cost of a drop shadow.
-        """
-        card = Card(title=title, depth="raised")
-        self._content_layout.insertWidget(self._content_layout.count() - 1, card)
-        self._active_sections.append(card)
-        return card
+        v = QLabel(value)
+        if mono:
+            v.setFont(Typography.font("mono"))
+        else:
+            v.setFont(Typography.font("h1"))
+        v.setStyleSheet(
+            f"color: {color_value or tokens.text_primary}; background: transparent;"
+        )
+        col.addWidget(v)
 
-    def _show_loading(self):
-        self._clear_content()
-        self._status.setVisible(False)
-        self._scroll.setVisible(False)
-        self._skeleton.setVisible(True)
+        l = QLabel(label)
+        Typography.apply(l, "caption")
+        l.setStyleSheet(
+            f"color: {tokens.text_secondary}; background: transparent;"
+        )
+        col.addWidget(l)
+        return block
 
-    def _show_status(self, text: str):
-        self._clear_content()
-        self._skeleton.setVisible(False)
-        self._scroll.setVisible(True)
-        self._status.setText(text)
-        self._status.setVisible(True)
+    def _add_body_label(self, layout, text: str, muted: bool = False) -> None:
+        tokens = get_tokens()
+        lbl = QLabel(text)
+        lbl.setFont(Typography.font("body"))
+        lbl.setStyleSheet(
+            f"color: {tokens.text_tertiary if muted else tokens.text_primary}; "
+            f"background: transparent;"
+        )
+        lbl.setWordWrap(True)
+        layout.addWidget(lbl)
 
-    def _clear_content(self):
+    def _update_count_chip(self, count: int) -> None:
+        self._count_chip.set_label(f"{count} matches")
+        self._count_chip.set_severity("online" if count > 0 else "neutral")
+
+    def _clear_content(self) -> None:
         while self._content_layout.count() > 1:
             item = self._content_layout.takeAt(0)
-            w = item.widget()
-            if w:
-                w.setVisible(False)
-                w.setParent(None)  # Immediate detach, avoids GPU segfault from deleteLater()
-        self._active_sections.clear()
+            w = item.widget() if item is not None else None
+            if w is not None:
+                w.setParent(None)
+                w.deleteLater()
