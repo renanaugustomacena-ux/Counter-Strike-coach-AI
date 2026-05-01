@@ -15,6 +15,8 @@ from PySide6.QtWidgets import (
 )
 
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
+from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.qt_help")

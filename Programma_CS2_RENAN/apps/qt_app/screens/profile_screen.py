@@ -39,8 +39,7 @@ class ProfileScreen(QWidget):
         back_btn.clicked.connect(lambda: self._navigate("home"))
         title_row.addWidget(back_btn)
         title = QLabel("In-Game Name")
-        title.setObjectName("section_title")
-        title.setFont(QFont("Roboto", 20, QFont.Bold))
+        Typography.apply(title, "h1")
         title_row.addWidget(title, 1)
         layout.addLayout(title_row)
 
@@ -49,7 +48,7 @@ class ProfileScreen(QWidget):
             "in demo files and match history."
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: #a0a0b0; font-size: 13px;")
+        desc.setStyleSheet(f"color: {get_tokens().text_secondary}; font-size: 13px;")
         layout.addWidget(desc)
 
         self._name_input = QLineEdit()
@@ -64,7 +63,7 @@ class ProfileScreen(QWidget):
         layout.addWidget(save_btn)
 
         self._saved_label = QLabel("Saved!")
-        self._saved_label.setStyleSheet("color: #4caf50; font-size: 13px;")
+        self._saved_label.setStyleSheet(f"color: {get_tokens().success}; font-size: 13px;")
         self._saved_label.setVisible(False)
         layout.addWidget(self._saved_label)
 

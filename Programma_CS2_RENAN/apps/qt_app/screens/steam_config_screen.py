@@ -14,6 +14,8 @@ from PySide6.QtWidgets import (
 )
 
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
+from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.apps.qt_app.core.worker import Worker
 from Programma_CS2_RENAN.core.config import get_credential, get_setting, save_user_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -71,8 +73,7 @@ class SteamConfigScreen(QWidget):
         back_btn.clicked.connect(lambda: self._navigate("home"))
         title_row.addWidget(back_btn)
         self._title_label = QLabel(i18n.get_text("steam_integration"))
-        self._title_label.setObjectName("section_title")
-        self._title_label.setFont(QFont("Roboto", 20, QFont.Bold))
+        Typography.apply(self._title_label, "h1")
         title_row.addWidget(self._title_label, 1)
         layout.addLayout(title_row)
 
@@ -103,7 +104,7 @@ class SteamConfigScreen(QWidget):
 
         self._id_desc = QLabel(i18n.get_text("steam_desc"))
         self._id_desc.setWordWrap(True)
-        self._id_desc.setStyleSheet("color: #a0a0b0; font-size: 13px;")
+        self._id_desc.setStyleSheet(f"color: {get_tokens().text_secondary}; font-size: 13px;")
         id_layout.addWidget(self._id_desc)
 
         self._id_link_btn = QPushButton(i18n.get_text("find_steam_id"))
@@ -126,7 +127,7 @@ class SteamConfigScreen(QWidget):
 
         self._key_desc = QLabel(i18n.get_text("steam_api_key_desc"))
         self._key_desc.setWordWrap(True)
-        self._key_desc.setStyleSheet("color: #a0a0b0; font-size: 13px;")
+        self._key_desc.setStyleSheet(f"color: {get_tokens().text_secondary}; font-size: 13px;")
         key_layout.addWidget(self._key_desc)
 
         self._key_link_btn = QPushButton(i18n.get_text("get_steam_key"))
@@ -180,7 +181,7 @@ class SteamConfigScreen(QWidget):
         card_layout.setSpacing(8)
         lbl = QLabel(i18n.get_text(i18n_key))
         lbl.setFont(QFont("Roboto", 14, QFont.Bold))
-        lbl.setStyleSheet("color: #dcdcdc;")
+        lbl.setStyleSheet(f"color: {get_tokens().text_primary};")
         card_layout.addWidget(lbl)
         return card, lbl
 

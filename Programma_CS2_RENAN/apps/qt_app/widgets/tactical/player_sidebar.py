@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.core.demo_frame import Team
 from Programma_CS2_RENAN.core.playback_engine import InterpolatedPlayerState
 
@@ -46,11 +47,11 @@ class _PlayerItem(QFrame):
         info.setSpacing(0)
         self._name_label = QLabel()
         self._name_label.setFont(QFont("Roboto", 10, QFont.Bold))
-        self._name_label.setStyleSheet("color: #dcdcdc; background: transparent;")
+        self._name_label.setStyleSheet(f"color: {get_tokens().text_primary}; background: transparent;")
         info.addWidget(self._name_label)
 
         self._stats_label = QLabel()
-        self._stats_label.setStyleSheet("color: #a0a0b0; font-size: 11px; background: transparent;")
+        self._stats_label.setStyleSheet(f"color: {get_tokens().text_secondary}; font-size: 11px; background: transparent;")
         info.addWidget(self._stats_label)
         layout.addLayout(info, 1)
 
@@ -71,16 +72,16 @@ class _PlayerItem(QFrame):
 
         if not player.is_alive:
             self._icon_label.setText("\u2620")
-            self._icon_label.setStyleSheet("color: #808080; background: transparent;")
-            self._name_label.setStyleSheet("color: #808080; background: transparent;")
+            self._icon_label.setStyleSheet(f"color: {get_tokens().text_disabled}; background: transparent;")
+            self._name_label.setStyleSheet(f"color: {get_tokens().text_disabled}; background: transparent;")
         elif is_ct:
             self._icon_label.setText("\u2694")
-            self._icon_label.setStyleSheet("color: #4d80ff; background: transparent;")
-            self._name_label.setStyleSheet("color: #dcdcdc; background: transparent;")
+            self._icon_label.setStyleSheet(f"color: {get_tokens().info}; background: transparent;")
+            self._name_label.setStyleSheet(f"color: {get_tokens().text_primary}; background: transparent;")
         else:
             self._icon_label.setText("\u25ce")
-            self._icon_label.setStyleSheet("color: #ff9933; background: transparent;")
-            self._name_label.setStyleSheet("color: #dcdcdc; background: transparent;")
+            self._icon_label.setStyleSheet(f"color: {get_tokens().warning}; background: transparent;")
+            self._name_label.setStyleSheet(f"color: {get_tokens().text_primary}; background: transparent;")
 
         self._name_label.setText(player.name)
         info = f"${player.money}"
@@ -120,7 +121,7 @@ class _LivePlayerCard(QFrame):
         self._name_label = QLabel()
         self._name_label.setFont(QFont("Roboto", 12, QFont.Bold))
         self._name_label.setAlignment(Qt.AlignCenter)
-        self._name_label.setStyleSheet("color: #dcdcdc;")
+        self._name_label.setStyleSheet(f"color: {get_tokens().text_primary};")
         layout.addWidget(self._name_label)
 
         # HP bar
@@ -128,7 +129,7 @@ class _LivePlayerCard(QFrame):
         hp_row.setSpacing(4)
         hp_lbl = QLabel("HP")
         hp_lbl.setFixedWidth(30)
-        hp_lbl.setStyleSheet("color: #a0a0b0; font-size: 11px;")
+        hp_lbl.setStyleSheet(f"color: {get_tokens().text_secondary}; font-size: 11px;")
         hp_row.addWidget(hp_lbl)
         self._hp_bar = QProgressBar()
         self._hp_bar.setRange(0, 100)
@@ -142,7 +143,7 @@ class _LivePlayerCard(QFrame):
         armor_row.setSpacing(4)
         armor_lbl = QLabel("ARM")
         armor_lbl.setFixedWidth(30)
-        armor_lbl.setStyleSheet("color: #a0a0b0; font-size: 11px;")
+        armor_lbl.setStyleSheet(f"color: {get_tokens().text_secondary}; font-size: 11px;")
         armor_row.addWidget(armor_lbl)
         self._armor_bar = QProgressBar()
         self._armor_bar.setRange(0, 100)
@@ -153,12 +154,12 @@ class _LivePlayerCard(QFrame):
 
         # Money + KDA
         self._money_label = QLabel("$0")
-        self._money_label.setStyleSheet("color: #80ff80; font-size: 13px;")
+        self._money_label.setStyleSheet(f"color: {get_tokens().success}; font-size: 13px;")
         self._money_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self._money_label)
 
         self._kda_label = QLabel("0 / 0 / 0")
-        self._kda_label.setStyleSheet("color: #dcdcdc; font-size: 13px;")
+        self._kda_label.setStyleSheet(f"color: {get_tokens().text_primary}; font-size: 13px;")
         self._kda_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self._kda_label)
 
@@ -173,11 +174,11 @@ class _LivePlayerCard(QFrame):
         # alive-healthy / injured / critical without reading the number.
         hp = player.hp
         if hp > 60:
-            hp_color = "#4caf50"  # success
+            hp_color = get_tokens().success  # success
         elif hp >= 30:
-            hp_color = "#ffaa00"  # warning
+            hp_color = get_tokens().warning  # warning
         else:
-            hp_color = "#ff4444"  # error
+            hp_color = get_tokens().error  # error
         self._hp_bar.setStyleSheet(
             "QProgressBar { background-color: rgba(0,0,0,0.35); border: none; border-radius: 3px; }"
             f"QProgressBar::chunk {{ background-color: {hp_color}; border-radius: 3px; }}"

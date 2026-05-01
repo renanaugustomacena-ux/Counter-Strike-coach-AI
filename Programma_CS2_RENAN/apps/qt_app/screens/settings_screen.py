@@ -20,6 +20,8 @@ from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import ThemeEngine
+from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
+from Programma_CS2_RENAN.apps.qt_app.core.widgets_helpers import make_button
 from Programma_CS2_RENAN.apps.qt_app.core.worker import Worker
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.toggle_switch import ToggleSwitch
@@ -95,8 +97,7 @@ class SettingsScreen(QWidget):
         layout.setSpacing(8)
 
         self._title_label = QLabel(i18n.get_text("settings"))
-        self._title_label.setObjectName("section_title")
-        self._title_label.setFont(QFont("Roboto", 20, QFont.Bold))
+        Typography.apply(self._title_label, "h1")
         layout.addWidget(self._title_label)
 
         # Tab widget
@@ -304,7 +305,10 @@ class SettingsScreen(QWidget):
         set_btn.clicked.connect(self._on_interval_set)
         interval_row.addWidget(set_btn)
         self._interval_error = QLabel("")
-        self._interval_error.setStyleSheet("color: #ff5555; font-size: 11px;")
+        self._interval_error.setStyleSheet(
+            f"color: {tokens.error}; background: transparent; "
+            f"font-size: {tokens.font_size_caption}px;"
+        )
         self._interval_error.setVisible(False)
         interval_row.addWidget(self._interval_error)
         interval_row.addStretch()
