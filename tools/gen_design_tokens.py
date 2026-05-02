@@ -85,6 +85,10 @@ THEME_FIELDS: list[tuple[str, list[str], str]] = [
     ("chart_line_secondary", ["chart", "line_secondary"], "str"),
     ("chart_fill_positive", ["chart", "fill_positive"], "str"),
     ("chart_fill_negative", ["chart", "fill_negative"], "str"),
+    ("frost_bg", ["frost", "bg"], "str"),
+    ("frost_bg_hover", ["frost", "bg_hover"], "str"),
+    ("frost_border", ["frost", "border"], "str"),
+    ("frost_glow", ["frost", "glow"], "str"),
 ]
 
 # Globals (shared across themes): python_field -> JSON top-level path
@@ -107,6 +111,9 @@ GLOBAL_FIELDS: list[tuple[str, list[str], str]] = [
     ("radius_md", ["radius", "md"], "int"),
     ("radius_lg", ["radius", "lg"], "int"),
     ("radius_xl", ["radius", "xl"], "int"),
+    ("frost_blur_radius", ["frost", "blur_radius"], "int"),
+    ("frost_elevation_blur", ["frost", "elevation_blur"], "int"),
+    ("frost_elevation_offset", ["frost", "elevation_offset"], "int"),
 ]
 
 # Theme key in JSON -> (python constant name, display name)
@@ -163,12 +170,14 @@ SECTION_HEADERS: list[tuple[int, str]] = [
     (23, "Semantic"),  # before success
     (27, "Toast notification backgrounds"),  # before toast_info_bg
     (36, "Chart palette"),  # before chart_bg
+    (42, "Frost / glass surface (Phase 7)"),  # before frost_bg
 ]
 
 GLOBAL_SECTIONS: list[tuple[int, str]] = [
     (0, "Spacing scale (4px grid)"),  # before spacing_xs
     (7, "Typography scale"),  # before font_size_caption
     (14, "Border radius"),  # before radius_sm (shifted by font_size_display addition)
+    (18, "Frost / glass effects (Phase 7)"),  # before frost_blur_radius
 ]
 
 

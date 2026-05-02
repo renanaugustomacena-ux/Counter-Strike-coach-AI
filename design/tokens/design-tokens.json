@@ -58,6 +58,12 @@
         "line_secondary":  { "$value": "#FF6A00",                "$type": "color" },
         "fill_positive":   { "$value": "#4caf50",                "$type": "color" },
         "fill_negative":   { "$value": "#ff4444",                "$type": "color" }
+      },
+      "frost": {
+        "bg":         { "$value": "rgba(11, 22, 40, 0.78)",   "$type": "color" },
+        "bg_hover":   { "$value": "rgba(11, 22, 40, 0.88)",   "$type": "color" },
+        "border":     { "$value": "rgba(255, 255, 255, 0.08)", "$type": "color" },
+        "glow":       { "$value": "rgba(255, 106, 0, 0.4)",    "$type": "color" }
       }
     },
     "csgo": {
@@ -116,6 +122,12 @@
         "line_secondary":  { "$value": "#c8a030",                  "$type": "color" },
         "fill_positive":   { "$value": "#4caf50",                  "$type": "color" },
         "fill_negative":   { "$value": "#cc4444",                  "$type": "color" }
+      },
+      "frost": {
+        "bg":         { "$value": "rgba(28, 30, 36, 0.78)",    "$type": "color" },
+        "bg_hover":   { "$value": "rgba(28, 30, 36, 0.88)",    "$type": "color" },
+        "border":     { "$value": "rgba(255, 255, 255, 0.06)", "$type": "color" },
+        "glow":       { "$value": "rgba(200, 160, 48, 0.4)",   "$type": "color" }
       }
     },
     "cs16": {
@@ -174,6 +186,12 @@
         "line_secondary":  { "$value": "#b8a030",                  "$type": "color" },
         "fill_positive":   { "$value": "#4db04f",                  "$type": "color" },
         "fill_negative":   { "$value": "#cc3333",                  "$type": "color" }
+      },
+      "frost": {
+        "bg":         { "$value": "rgba(24, 36, 24, 0.78)",    "$type": "color" },
+        "bg_hover":   { "$value": "rgba(24, 36, 24, 0.88)",    "$type": "color" },
+        "border":     { "$value": "rgba(255, 255, 255, 0.06)", "$type": "color" },
+        "glow":       { "$value": "rgba(184, 160, 48, 0.4)",   "$type": "color" }
       }
     }
   },
@@ -191,6 +209,11 @@
     "md": { "$value": 8,  "$type": "number" },
     "lg": { "$value": 16, "$type": "number" },
     "xl": { "$value": 24, "$type": "number" }
+  },
+  "frost": {
+    "blur_radius":      { "$value": 12, "$type": "number" },
+    "elevation_blur":   { "$value": 24, "$type": "number" },
+    "elevation_offset": { "$value": 6,  "$type": "number" }
   },
   "typography": {
     "family": {

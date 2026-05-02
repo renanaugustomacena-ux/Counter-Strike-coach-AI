@@ -76,6 +76,12 @@ class DesignTokens:
     chart_fill_positive: str  # Positive area fill
     chart_fill_negative: str  # Negative area fill
 
+    # ── Frost / glass surface (Phase 7) ──
+    frost_bg: str
+    frost_bg_hover: str
+    frost_border: str
+    frost_glow: str
+
     # ── Spacing scale (4px grid) ──
     spacing_xs: int = 4
     spacing_sm: int = 8
@@ -99,6 +105,11 @@ class DesignTokens:
     radius_md: int = 8
     radius_lg: int = 16
     radius_xl: int = 24
+
+    # ── Frost / glass effects (Phase 7) ──
+    frost_blur_radius: int = 12
+    frost_elevation_blur: int = 24
+    frost_elevation_offset: int = 6
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -157,6 +168,11 @@ CS2_TOKENS = DesignTokens(
     chart_line_secondary="#FF6A00",
     chart_fill_positive="#4caf50",
     chart_fill_negative="#ff4444",
+    # Frost / glass surface (Phase 7)
+    frost_bg="rgba(11, 22, 40, 0.78)",
+    frost_bg_hover="rgba(11, 22, 40, 0.88)",
+    frost_border="rgba(255, 255, 255, 0.08)",
+    frost_glow="rgba(255, 106, 0, 0.4)",
 )
 
 CSGO_TOKENS = DesignTokens(
@@ -211,6 +227,11 @@ CSGO_TOKENS = DesignTokens(
     chart_line_secondary="#c8a030",
     chart_fill_positive="#4caf50",
     chart_fill_negative="#cc4444",
+    # Frost / glass surface (Phase 7)
+    frost_bg="rgba(28, 30, 36, 0.78)",
+    frost_bg_hover="rgba(28, 30, 36, 0.88)",
+    frost_border="rgba(255, 255, 255, 0.06)",
+    frost_glow="rgba(200, 160, 48, 0.4)",
 )
 
 CS16_TOKENS = DesignTokens(
@@ -265,6 +286,11 @@ CS16_TOKENS = DesignTokens(
     chart_line_secondary="#b8a030",
     chart_fill_positive="#4db04f",
     chart_fill_negative="#cc3333",
+    # Frost / glass surface (Phase 7)
+    frost_bg="rgba(24, 36, 24, 0.78)",
+    frost_bg_hover="rgba(24, 36, 24, 0.88)",
+    frost_border="rgba(255, 255, 255, 0.06)",
+    frost_glow="rgba(184, 160, 48, 0.4)",
 )
 
 _THEME_TOKENS = {

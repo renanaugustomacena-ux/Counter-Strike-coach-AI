@@ -26,7 +26,7 @@
     "apps/qt_app/core/animation.py": "af3580b401377c475b53ecbf49689db1dac382ed58fb85ac246b6f5023e8b065",
     "apps/qt_app/core/app_state.py": "36f50afd2b2ade1015545783d6bea8a030741c740df08050a8872bd1fe045e64",
     "apps/qt_app/core/asset_bridge.py": "d59b3490542e7feefc31d457a36a631218af1c14e3043407df65500694d0c72e",
-    "apps/qt_app/core/design_tokens.py": "cb7fa1e4874aff95402e0887a979200e21237b3b99bf1789d94ec6685ba43c5b",
+    "apps/qt_app/core/design_tokens.py": "fc8561ae8ccec43b2142906bdbc7f23c195f3edc358ae73cb278346a5a84f560",
     "apps/qt_app/core/easing.py": "2f0fbde9d0d66b4409235d8223fef08cfe8345cf24d47c03c6a6046e7f35b46e",
     "apps/qt_app/core/i18n_bridge.py": "969932860d8bb25fc57db82d4b4e3b2f51ef3eb4edcc5cd7116542967e4d98be",
     "apps/qt_app/core/icons.py": "c69f15d8d96c5a8af07e284922eae5afa21d5bb8a32a93f05b5373734f1c0499",

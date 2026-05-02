@@ -47,6 +47,10 @@ export interface DesignTokens {
   chart_line_secondary: string;
   chart_fill_positive: string;
   chart_fill_negative: string;
+  frost_bg: string;
+  frost_bg_hover: string;
+  frost_border: string;
+  frost_glow: string;
 
   spacing_xs: number;
   spacing_sm: number;
@@ -66,6 +70,9 @@ export interface DesignTokens {
   radius_md: number;
   radius_lg: number;
   radius_xl: number;
+  frost_blur_radius: number;
+  frost_elevation_blur: number;
+  frost_elevation_offset: number;
 }
 
 export const CS2_TOKENS: DesignTokens = {
@@ -111,6 +118,10 @@ export const CS2_TOKENS: DesignTokens = {
   chart_line_secondary: "#FF6A00",
   chart_fill_positive: "#4caf50",
   chart_fill_negative: "#ff4444",
+  frost_bg: "rgba(11, 22, 40, 0.78)",
+  frost_bg_hover: "rgba(11, 22, 40, 0.88)",
+  frost_border: "rgba(255, 255, 255, 0.08)",
+  frost_glow: "rgba(255, 106, 0, 0.4)",
   spacing_xs: 4,
   spacing_sm: 8,
   spacing_md: 12,
@@ -129,6 +140,9 @@ export const CS2_TOKENS: DesignTokens = {
   radius_md: 8,
   radius_lg: 16,
   radius_xl: 24,
+  frost_blur_radius: 12,
+  frost_elevation_blur: 24,
+  frost_elevation_offset: 6,
 };
 
 export const CSGO_TOKENS: DesignTokens = {
@@ -174,6 +188,10 @@ export const CSGO_TOKENS: DesignTokens = {
   chart_line_secondary: "#c8a030",
   chart_fill_positive: "#4caf50",
   chart_fill_negative: "#cc4444",
+  frost_bg: "rgba(28, 30, 36, 0.78)",
+  frost_bg_hover: "rgba(28, 30, 36, 0.88)",
+  frost_border: "rgba(255, 255, 255, 0.06)",
+  frost_glow: "rgba(200, 160, 48, 0.4)",
   spacing_xs: 4,
   spacing_sm: 8,
   spacing_md: 12,
@@ -192,6 +210,9 @@ export const CSGO_TOKENS: DesignTokens = {
   radius_md: 8,
   radius_lg: 16,
   radius_xl: 24,
+  frost_blur_radius: 12,
+  frost_elevation_blur: 24,
+  frost_elevation_offset: 6,
 };
 
 export const CS16_TOKENS: DesignTokens = {
@@ -237,6 +258,10 @@ export const CS16_TOKENS: DesignTokens = {
   chart_line_secondary: "#b8a030",
   chart_fill_positive: "#4db04f",
   chart_fill_negative: "#cc3333",
+  frost_bg: "rgba(24, 36, 24, 0.78)",
+  frost_bg_hover: "rgba(24, 36, 24, 0.88)",
+  frost_border: "rgba(255, 255, 255, 0.06)",
+  frost_glow: "rgba(184, 160, 48, 0.4)",
   spacing_xs: 4,
   spacing_sm: 8,
   spacing_md: 12,
@@ -255,6 +280,9 @@ export const CS16_TOKENS: DesignTokens = {
   radius_md: 8,
   radius_lg: 16,
   radius_xl: 24,
+  frost_blur_radius: 12,
+  frost_elevation_blur: 24,
+  frost_elevation_offset: 6,
 };
 
 export const TOKENS_BY_NAME: Record<string, DesignTokens> = {
