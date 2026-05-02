@@ -109,22 +109,28 @@ def get_file_size_mb(path: str) -> float:
 
 def main():
     """Run all 10 diagnostic sections."""
-    # ===========================================================================
-    # SECTION 1: STRUCTURAL HEALTH (Schema & Constraints)
-    # ===========================================================================
+    schema_info = _diag_schema_health()
+    _diag_integrity_and_wal()
+    _diag_consistency()
+    _diag_ingestion_pipeline()
+    _diag_performance_observability_and_summary(schema_info)
+
+
+def _diag_schema_health() -> dict:
+    """Section 1: list tables; for each non-alembic non-sqlite table, capture
+    columns/FKs/indexes/row counts and PK presence. Returns schema_info dict
+    (consumed later by Section 7 observability)."""
     print("=" * 70)
     print("SECTION 1: STRUCTURAL HEALTH — Schema & Constraints")
     print("=" * 70)
 
-    # List all tables
     tables = run_query(MAIN_DB, "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
     table_names = [t["name"] for t in tables if isinstance(t, dict)]
     print(f"\n[1.1] Tables in main DB: {len(table_names)}")
     for t in table_names:
         print(f"   • {t}")
 
-    # Get table info for each table
-    schema_info = {}
+    schema_info: dict = {}
     for tname in table_names:
         if tname.startswith("alembic") or tname.startswith("sqlite"):
             continue
@@ -145,17 +151,18 @@ def main():
             "col_details": cols,
         }
 
-        # Check for PRIMARY KEY presence
         has_pk = any(c.get("pk", 0) > 0 for c in cols)
 
         print(f"\n   [{tname}]")
         print(
             f"      Columns: {schema_info[tname]['columns']}  |  Rows: {count}  |  Indexes: {schema_info[tname]['indexes']}  |  FKs: {schema_info[tname]['foreign_keys']}  |  Has PK: {has_pk}"
         )
+    return schema_info
 
-    # ===========================================================================
-    # SECTION 2: INTEGRITY CHECK (Corruption Detection)
-    # ===========================================================================
+
+def _diag_integrity_and_wal() -> None:
+    """Sections 2-3: PRAGMA integrity_check + WAL/journal/synchronous mode for
+    main + HLTV + sample of per-match DBs."""
     print("\n" + "=" * 70)
     print("SECTION 2: INTEGRITY CHECK — Corruption Detection")
     print("=" * 70)
@@ -223,9 +230,10 @@ def main():
             f"\n   [{db_label}] journal_mode: {j_mode}  |  synchronous: {s_mode}  |  busy_timeout: {b_val}"
         )
 
-    # ===========================================================================
-    # SECTION 4: DATA CONSISTENCY & LOGICAL STABILITY
-    # ===========================================================================
+
+def _diag_consistency() -> None:
+    """Section 4: duplicate (demo,player) rows, orphan PTS, impossible values,
+    schema-drift between models and DB, dataset_split + pro distribution."""
     print("\n" + "=" * 70)
     print("SECTION 4: DATA CONSISTENCY & LOGICAL STABILITY")
     print("=" * 70)
@@ -343,9 +351,10 @@ def main():
         for s in pro_dist:
             print(f"      is_pro={s.get('is_pro', '?')}: {s.get('cnt', 0)} rows")
 
-    # ===========================================================================
-    # SECTION 5: INGESTION PIPELINE HEALTH
-    # ===========================================================================
+
+def _diag_ingestion_pipeline() -> None:
+    """Section 5: ingestion task status distribution, stuck tasks, cross-DB
+    consistency between match files on disk and MatchResult rows."""
     print("\n" + "=" * 70)
     print("SECTION 5: INGESTION PIPELINE HEALTH")
     print("=" * 70)
@@ -414,9 +423,11 @@ def main():
         if missing_files:
             print(f"      Missing file match IDs: {sorted(missing_files)[:10]}")
 
-    # ===========================================================================
-    # SECTION 6: PERFORMANCE HEALTH — Query Plan Analysis
-    # ===========================================================================
+
+def _diag_performance_observability_and_summary(schema_info: dict) -> None:
+    """Sections 6-10: index coverage + query-plan full-scan check, observability
+    (timestamp/source columns), HLTV pro stats DB, CoachState ML readiness,
+    storage summary, final banner."""
     print("\n" + "=" * 70)
     print("SECTION 6: PERFORMANCE HEALTH — Index Coverage")
     print("=" * 70)

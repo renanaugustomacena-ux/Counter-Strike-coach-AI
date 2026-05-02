@@ -127,11 +127,22 @@ def main():
 
     # ── Step 5: Run ML pipeline (coaching generation) ──
     print("[5/6] Running coaching pipeline...")
+    insights_text, corrections = _run_coaching_pipeline(stats_dict)
+    print(f"  Narrative insights generated: {len(insights_text)}")
+
+    # ── Step 6: Report results ──
+    _print_coaching_results(insights_text, corrections, player_name, clean_demo_name)
+
+
+def _run_coaching_pipeline(stats_dict: dict):
+    """Step 5: deviations → corrections → narrative insights."""
     from Programma_CS2_RENAN.backend.coaching.correction_engine import generate_corrections
+    from Programma_CS2_RENAN.backend.coaching.explainability import ExplanationGenerator
     from Programma_CS2_RENAN.backend.processing.baselines.pro_baseline import (
         calculate_deviations,
         get_pro_baseline,
     )
+    from Programma_CS2_RENAN.backend.processing.skill_assessment import SkillAxes
 
     baseline = get_pro_baseline()
     print(f"  Pro baseline loaded: {len(baseline)} features")
@@ -144,10 +155,6 @@ def main():
 
     corrections = generate_corrections(deviations, 30)
     print(f"  Top corrections: {len(corrections)}")
-
-    # Generate narrative insights
-    from Programma_CS2_RENAN.backend.coaching.explainability import ExplanationGenerator
-    from Programma_CS2_RENAN.backend.processing.skill_assessment import SkillAxes
 
     insights_text = []
     for c in corrections:
@@ -183,10 +190,11 @@ def main():
                     "message": message,
                 }
             )
+    return insights_text, corrections
 
-    print(f"  Narrative insights generated: {len(insights_text)}")
 
-    # ── Step 6: Report results ──
+def _print_coaching_results(insights_text, corrections, player_name, clean_demo_name):
+    """Step 6: print coaching output + summary; exit with PASS/FAIL code."""
     print()
     print("=" * 60)
     print("COACHING OUTPUT")
@@ -212,7 +220,6 @@ def main():
         print(f"  Category: {insight['category']}")
         print(f"  Severity: {insight['severity']}")
         print(f"  Message:")
-        # Wrap long messages
         msg = insight["message"]
         for line in msg.split("\n"):
             print(f"    {line}")

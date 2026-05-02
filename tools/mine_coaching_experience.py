@@ -51,6 +51,68 @@ def _classify_equipment_tier(equipment_value: int) -> str:
     return "full"
 
 
+def _mine_scenarios(rows) -> list:
+    """Scan roundstats rows and emit scenario dicts for entry frags, multi-kills,
+    trades, eco upsets, and utility-impact wins. Pure transform: no DB writes."""
+    scenarios: list = []
+    for row in rows:
+        demo_name = row["demo_name"]
+        map_name = _extract_map_name(demo_name)
+        rnum = row["round_number"]
+        player = row["player_name"]
+        side = row["side"]
+        ev = row["equipment_value"]
+        round_phase = _classify_round_phase(rnum, ev)
+
+        base_ctx = {
+            "map_name": map_name,
+            "round_phase": round_phase,
+            "side": side,
+            "equipment_tier": _classify_equipment_tier(ev),
+        }
+        game_state = {
+            "demo_name": demo_name,
+            "round_number": rnum,
+            "player_name": player,
+            "side": side,
+            "kills": row["kills"],
+            "deaths": row["deaths"],
+            "assists": row["assists"],
+            "damage_dealt": row["damage_dealt"],
+            "equipment_value": ev,
+            "round_won": bool(row["round_won"]),
+            "round_rating": row["round_rating"],
+        }
+
+        def _add(action, outcome, delta):
+            scenarios.append(
+                {
+                    "context": {**base_ctx},
+                    "action": action,
+                    "outcome": outcome,
+                    "delta": delta,
+                    "game_state": game_state,
+                    "player": player,
+                    "demo": demo_name,
+                }
+            )
+
+        if row["opening_kill"]:
+            _add("entry_frag", "kill", 0.15)
+        if row["opening_death"]:
+            _add("entry_frag", "death", -0.15)
+        if row["kills"] >= 2 and row["round_won"]:
+            _add("multi_kill", "round_win", 0.25)
+        if row["was_traded"] and row["deaths"] == 1:
+            _add("aggressive_push", "traded", -0.05)
+        if 0 < ev < 2000 and row["round_won"] and rnum not in (1, 13):
+            _add("eco_force", "upset_win", 0.30)
+        nade_dmg = (row["he_damage"] or 0) + (row["molotov_damage"] or 0)
+        if nade_dmg >= 50 and row["round_won"]:
+            _add("utility_damage", "round_win", 0.10)
+    return scenarios
+
+
 def main() -> None:
     import sqlite3
 
@@ -92,124 +154,7 @@ def main() -> None:
     ).fetchall()
 
     print(f"RoundStats rows to scan: {len(rows)}")
-
-    # Mine scenarios
-    scenarios = []
-
-    for row in rows:
-        demo_name = row["demo_name"]
-        map_name = _extract_map_name(demo_name)
-        rnum = row["round_number"]
-        player = row["player_name"]
-        side = row["side"]
-        ev = row["equipment_value"]
-        round_phase = _classify_round_phase(rnum, ev)
-
-        base_ctx = {
-            "map_name": map_name,
-            "round_phase": round_phase,
-            "side": side,
-            "equipment_tier": _classify_equipment_tier(ev),
-        }
-        game_state = {
-            "demo_name": demo_name,
-            "round_number": rnum,
-            "player_name": player,
-            "side": side,
-            "kills": row["kills"],
-            "deaths": row["deaths"],
-            "assists": row["assists"],
-            "damage_dealt": row["damage_dealt"],
-            "equipment_value": ev,
-            "round_won": bool(row["round_won"]),
-            "round_rating": row["round_rating"],
-        }
-
-        # Scenario 1: Entry Frag (opening kill)
-        if row["opening_kill"]:
-            scenarios.append(
-                {
-                    "context": {**base_ctx},
-                    "action": "entry_frag",
-                    "outcome": "kill",
-                    "delta": 0.15,
-                    "game_state": game_state,
-                    "player": player,
-                    "demo": demo_name,
-                }
-            )
-
-        # Scenario 2: Entry Death (opening death)
-        if row["opening_death"]:
-            scenarios.append(
-                {
-                    "context": {**base_ctx},
-                    "action": "entry_frag",
-                    "outcome": "death",
-                    "delta": -0.15,
-                    "game_state": game_state,
-                    "player": player,
-                    "demo": demo_name,
-                }
-            )
-
-        # Scenario 3: Multi-kill round win
-        if row["kills"] >= 2 and row["round_won"]:
-            scenarios.append(
-                {
-                    "context": {**base_ctx},
-                    "action": "multi_kill",
-                    "outcome": "round_win",
-                    "delta": 0.25,
-                    "game_state": game_state,
-                    "player": player,
-                    "demo": demo_name,
-                }
-            )
-
-        # Scenario 4: Trade death (died but was traded)
-        if row["was_traded"] and row["deaths"] == 1:
-            scenarios.append(
-                {
-                    "context": {**base_ctx},
-                    "action": "aggressive_push",
-                    "outcome": "traded",
-                    "delta": -0.05,
-                    "game_state": game_state,
-                    "player": player,
-                    "demo": demo_name,
-                }
-            )
-
-        # Scenario 5: Eco upset (low equipment, still won)
-        if 0 < ev < 2000 and row["round_won"] and rnum not in (1, 13):
-            scenarios.append(
-                {
-                    "context": {**base_ctx},
-                    "action": "eco_force",
-                    "outcome": "upset_win",
-                    "delta": 0.30,
-                    "game_state": game_state,
-                    "player": player,
-                    "demo": demo_name,
-                }
-            )
-
-        # Scenario 6: Utility impact (significant grenade damage in a win)
-        nade_dmg = (row["he_damage"] or 0) + (row["molotov_damage"] or 0)
-        if nade_dmg >= 50 and row["round_won"]:
-            scenarios.append(
-                {
-                    "context": {**base_ctx},
-                    "action": "utility_damage",
-                    "outcome": "round_win",
-                    "delta": 0.10,
-                    "game_state": game_state,
-                    "player": player,
-                    "demo": demo_name,
-                }
-            )
-
+    scenarios = _mine_scenarios(rows)
     conn.close()
 
     # Scenario summary
