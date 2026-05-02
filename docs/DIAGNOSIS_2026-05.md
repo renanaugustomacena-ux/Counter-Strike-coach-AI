@@ -105,7 +105,8 @@ Recently completed (this session, 2026-05-02 → 2026-05-03):
 | Track B1 — 8 production-fn refactors | ✅ DONE | [`d8c710e`](#commit-d8c710e) |
 | Track B2 — 4 tools-side refactors | ✅ DONE | [`da2d490`](#commit-da2d490) |
 | Memory housekeeping (NTFS3 resolved + GTX 1650 record) | ✅ DONE | (memory only) |
-| Track D — Documentation rebuild | 🟡 IN PROGRESS — this file is D.1 | — |
+| Track D — Documentation rebuild | ✅ DONE | 2971952 (D.1 diagnosis) + this commit (D.3 disk rm + D.4 CLAUDE.md sibling-doc pointer) |
+| Track C1.1 — Frost design tokens | ✅ DONE | 76cb734 |
 
 Open in master plan (proceed in order):
 
@@ -118,9 +119,9 @@ Open in master plan (proceed in order):
 
 ---
 
-## 6. Replaces these stale docs (delete after sign-off)
+## 6. Replaced these 9 stale docs (removed 2026-05-03)
 
-This file consolidates and supersedes nine prior dump-style docs. CLAUDE.md mandates canonical sibling-doc set only (`REFERENCE.md`, `AUDIT.md`, `TASKS.md`); these violate that rule and should be removed in a single atomic `git rm` commit:
+This file consolidates and supersedes nine prior dump-style docs that violated the CLAUDE.md canonical sibling-doc rule. They were already gitignored under the `.gitignore` "Internal review / audit / engineering handoff documents" section (lines 95+) — i.e., **never tracked in git history**. Removed from local disk 2026-05-03 via plain `rm` (not `git rm`); 384 KB freed; no repo-history change since they never lived there:
 
 1. `PYCHARM_CONFIGURATION_GUIDE.md` (749 L) — IDE setup, external-tool config; not part of code or build.
 2. `PYCHARM_CONFIGURATION_GUIDE _reference.md` (830 L, note literal space in filename) — duplicate of #1.
@@ -140,10 +141,10 @@ This file consolidates and supersedes nine prior dump-style docs. CLAUDE.md mand
 - Two PDFs in repo root (`CS2_Coach_Modernization_Report.pdf`, `CS2_Coach_Supplement_N260.pdf`) — already untracked per `.gitignore`.
 - `_rocm_smoke.sh`, `.cs2_req_no_torch.txt` — cross-stack parity artifacts (see §4).
 
-Atomic deletion command (run only after user sign-off):
+Audit trail (executed 2026-05-03):
 
 ```bash
-git rm \
+rm \
   PYCHARM_CONFIGURATION_GUIDE.md \
   'PYCHARM_CONFIGURATION_GUIDE _reference.md' \
   KNOWLEDGE_TRANSFER_TO_CS2_COACH.md \
@@ -153,10 +154,9 @@ git rm \
   docs/COACH_QUALITY_ROADMAP.md \
   docs/ENGINEERING_HANDOFF.md \
   docs/FRONTEND_ANALYSIS.md
-git commit -m "docs: collapse 9 stale dump docs into DIAGNOSIS_2026-05.md"
 ```
 
-Verify exact filename of the literal-space duplicate via `ls -la PYCHARM*` before staging.
+This action is irreversible (the files were never tracked, so they exist nowhere in git history). If anything in them is later needed, regenerate from current code state or recreate from external backups.
 
 ---
 
