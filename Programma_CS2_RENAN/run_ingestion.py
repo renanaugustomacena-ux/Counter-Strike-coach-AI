@@ -700,61 +700,57 @@ def _interpolate_position(df_ticks):
     return df_ticks
 
 
-def _extract_and_store_events(demo_path, match_id, match_manager, df_ticks):
-    """Extract game events from demo and persist as MatchEventState records.
+_EVENT_DEFAULT_STATE = {
+    "health": 100,
+    "armor": 0,
+    "equipment_value": 0,
+    "team": "",
+    "pos_x": 0.0,
+    "pos_y": 0.0,
+    "pos_z": 0.0,
+}
 
-    Parses weapon_fire, player_hurt, player_death, grenade/smoke/molotov/flash
-    events and stores them in the per-match database for Player-POV perception.
 
-    Player state (health, armor, equipment) is cross-referenced from df_ticks
-    at the event tick to capture the situational context.
+class _EventExtractor:
+    """Per-demo event-extraction helper for `_extract_and_store_events`.
+
+    Owns the (tick, player_name) state index and steamid→name mapping built
+    from `df_ticks`, plus one method per event type. All methods append to
+    `self.events`; `extract_all()` runs every event type in a fixed order and
+    returns the list. Method bodies preserve the original code paths verbatim
+    so behavior is unchanged after the extraction.
     """
-    from demoparser2 import DemoParser
 
-    try:
-        parser = DemoParser(str(demo_path))
-    except Exception as e:
-        logger.error("Failed to create DemoParser for event extraction: %s", e)
-        return 0
+    def __init__(self, parser, df_ticks):
+        self.parser = parser
+        self.events: list = []
+        # F6-14-v2: Indexed DataFrame replaces the old bounded dict; pro demos
+        # have 1.5M+ ticks, so iterrows() into a 50K-capped dict caused endless
+        # eviction warnings + O(n) build time. A MultiIndex DataFrame gives O(1)
+        # lookups with zero pre-materialization cost.
+        # GAP-02: include positional columns (X/Y/Z) so we can capture throw
+        # origin for grenade_thrown events that lack x/y/z in their schema.
+        self._state_index = None
+        _STATE_COLS = ["health", "armor", "equipment_value", "team_name", "X", "Y", "Z"]
+        if not df_ticks.empty and "player_name" in df_ticks.columns:
+            _df_state = df_ticks[
+                ["tick", "player_name"] + [c for c in _STATE_COLS if c in df_ticks.columns]
+            ].copy()
+            _df_state["_pname"] = _df_state["player_name"].str.strip().str.lower()
+            _df_state = _df_state.set_index(["tick", "_pname"])
+            _df_state = _df_state[~_df_state.index.duplicated(keep="last")]
+            self._state_index = _df_state
 
-    # F6-14-v2: Indexed DataFrame lookup replaces the old bounded dict.
-    # Pro demos have 1.5M+ ticks — iterrows() into a 50K-capped dict caused
-    # endless eviction warnings and O(n) build time. A MultiIndex DataFrame
-    # gives O(1) lookups with zero pre-materialization cost.
-    # GAP-02: include positional columns (X/Y/Z from demoparser2) so we can
-    # capture throw origin for grenade_thrown events that do not carry x/y/z
-    # in their own event schema.
-    _state_index = None
-    _STATE_COLS = ["health", "armor", "equipment_value", "team_name", "X", "Y", "Z"]
-    if not df_ticks.empty and "player_name" in df_ticks.columns:
-        _df_state = df_ticks[
-            ["tick", "player_name"] + [c for c in _STATE_COLS if c in df_ticks.columns]
-        ].copy()
-        _df_state["_pname"] = _df_state["player_name"].str.strip().str.lower()
-        _df_state = _df_state.set_index(["tick", "_pname"])
-        _df_state = _df_state[~_df_state.index.duplicated(keep="last")]
-        _state_index = _df_state
+        self.sid_to_name: dict = {}
+        if not df_ticks.empty and "player_steamid" in df_ticks.columns:
+            _sid_df = df_ticks[["player_steamid", "player_name"]].dropna(subset=["player_steamid"])
+            _sid_df = _sid_df[_sid_df["player_steamid"] != 0]
+            if not _sid_df.empty:
+                _sid_df["player_steamid"] = _sid_df["player_steamid"].astype(int)
+                _sid_df["player_name"] = _sid_df["player_name"].str.strip()
+                self.sid_to_name = dict(zip(_sid_df["player_steamid"], _sid_df["player_name"]))
 
-    # Build steamid -> player_name mapping from tick data (vectorized)
-    sid_to_name = {}
-    if not df_ticks.empty and "player_steamid" in df_ticks.columns:
-        _sid_df = df_ticks[["player_steamid", "player_name"]].dropna(subset=["player_steamid"])
-        _sid_df = _sid_df[_sid_df["player_steamid"] != 0]
-        if not _sid_df.empty:
-            _sid_df["player_steamid"] = _sid_df["player_steamid"].astype(int)
-            _sid_df["player_name"] = _sid_df["player_name"].str.strip()
-            sid_to_name = dict(zip(_sid_df["player_steamid"], _sid_df["player_name"]))
-
-    _DEFAULT_STATE = {
-        "health": 100,
-        "armor": 0,
-        "equipment_value": 0,
-        "team": "",
-        "pos_x": 0.0,
-        "pos_y": 0.0,
-        "pos_z": 0.0,
-    }
-
+    @staticmethod
     def _row_to_state(row):
         return {
             "health": int(row.get("health", 100)),
@@ -766,345 +762,319 @@ def _extract_and_store_events(demo_path, match_id, match_manager, df_ticks):
             "pos_z": float(row.get("Z", 0.0) or 0.0),
         }
 
-    def _lookup_state(tick, player_name):
-        """Get player state at a tick, with nearest-tick fallback."""
-        if _state_index is None:
-            return _DEFAULT_STATE
+    def _lookup_state(self, tick, player_name):
+        """Get player state at a tick, with nearest-tick fallback (±5)."""
+        if self._state_index is None or not player_name:
+            return _EVENT_DEFAULT_STATE
         pname = player_name.strip().lower()
-        # Exact match
         key = (tick, pname)
-        if key in _state_index.index:
-            return _row_to_state(_state_index.loc[key])
-        # Fallback: search within ±5 ticks
+        if key in self._state_index.index:
+            return self._row_to_state(self._state_index.loc[key])
         for offset in range(1, 6):
             for t in (tick - offset, tick + offset):
                 fb_key = (t, pname)
-                if fb_key in _state_index.index:
-                    return _row_to_state(_state_index.loc[fb_key])
-        return _DEFAULT_STATE
+                if fb_key in self._state_index.index:
+                    return self._row_to_state(self._state_index.loc[fb_key])
+        return _EVENT_DEFAULT_STATE
 
-    def _resolve_name(row, name_cols):
+    def _resolve_name(self, row, name_cols):
         """Resolve player name from event row trying multiple column names."""
         for col in name_cols:
             val = getattr(row, col, None)
             if val and str(val).strip() and str(val).lower() != "nan":
                 return str(val).strip()
-        # Fallback: try steamid mapping
         sid = getattr(row, "user_steamid", None) or getattr(row, "attacker_steamid", None)
         if sid:
-            return sid_to_name.get(int(sid), "")
+            return self.sid_to_name.get(int(sid), "")
         return ""
 
+    @staticmethod
     def _get_round(row):
-        """Extract round number from event row."""
         return int(getattr(row, "total_rounds_played", 1) or 1)
 
-    events = []
+    @staticmethod
+    def _row_pos(row):
+        return (
+            float(getattr(row, "x", 0) or 0),
+            float(getattr(row, "y", 0) or 0),
+            float(getattr(row, "z", 0) or 0),
+        )
 
-    # --- 1. weapon_fire events ---
-    try:
-        res = parser.parse_events(["weapon_fire"])
-        if res:
-            wf_df = res[0][1] if isinstance(res[0], tuple) else pd.DataFrame(res)
-            if not wf_df.empty:
-                for row in wf_df.itertuples():
-                    tick = int(row.tick)
-                    name = _resolve_name(row, ["player_name", "user_name", "name"])
-                    if not name:
-                        continue
-                    state = _lookup_state(tick, name)
-                    events.append(
-                        MatchEventState(
-                            tick=tick,
-                            round_number=_get_round(row),
-                            event_type="weapon_fire",
-                            player_name=name,
-                            player_team=state["team"],
-                            player_health=state["health"],
-                            player_armor=state["armor"],
-                            player_equipment_value=state["equipment_value"],
-                            pos_x=float(getattr(row, "x", 0) or 0),
-                            pos_y=float(getattr(row, "y", 0) or 0),
-                            pos_z=float(getattr(row, "z", 0) or 0),
-                            weapon=str(getattr(row, "weapon", "") or ""),
-                        )
-                    )
-    except Exception as e:
-        logger.warning("Event extraction failed for weapon_fire: %s", e)
+    def _safe_parse(self, names, log_label):
+        """Parse one or more event names; returns list of (name, df) or [] on failure."""
+        try:
+            res = self.parser.parse_events(list(names))
+        except Exception as e:
+            logger.warning("Event extraction failed for %s: %s", log_label, e)
+            return []
+        if not res:
+            return []
+        # Normalize to list[(name, df)]
+        if isinstance(res[0], tuple):
+            return [(n, df) for n, df in res if not df.empty]
+        single_df = pd.DataFrame(res)
+        return [(names[0], single_df)] if not single_df.empty else []
 
-    # --- 2. player_hurt events ---
-    try:
-        res = parser.parse_events(["player_hurt"])
-        if res:
-            ph_df = res[0][1] if isinstance(res[0], tuple) else pd.DataFrame(res)
-            if not ph_df.empty:
-                for row in ph_df.itertuples():
-                    tick = int(row.tick)
-                    attacker = _resolve_name(row, ["attacker_name", "user_name"])
-                    victim = _resolve_name(row, ["user_name", "player_name"])
-                    if not attacker and not victim:
-                        continue
-                    att_state = _lookup_state(tick, attacker) if attacker else {}
-                    vic_state = _lookup_state(tick, victim) if victim else {}
-                    dmg = int(getattr(row, "dmg_health", 0) or getattr(row, "damage", 0) or 0)
-                    events.append(
-                        MatchEventState(
-                            tick=tick,
-                            round_number=_get_round(row),
-                            event_type="player_hurt",
-                            player_name=attacker,
-                            player_team=att_state.get("team", ""),
-                            player_health=att_state.get("health", 100),
-                            player_armor=att_state.get("armor", 0),
-                            player_equipment_value=att_state.get("equipment_value", 0),
-                            pos_x=float(getattr(row, "x", 0) or 0),
-                            pos_y=float(getattr(row, "y", 0) or 0),
-                            pos_z=float(getattr(row, "z", 0) or 0),
-                            weapon=str(getattr(row, "weapon", "") or ""),
-                            damage=dmg,
-                            victim_name=victim,
-                            victim_team=vic_state.get("team", ""),
-                            victim_health=vic_state.get("health", 100),
-                            victim_armor=vic_state.get("armor", 0),
-                        )
-                    )
-    except Exception as e:
-        logger.warning("Event extraction failed for player_hurt: %s", e)
-
-    # --- 3. player_death events ---
-    try:
-        res = parser.parse_events(["player_death"])
-        if res:
-            pd_df = res[0][1] if isinstance(res[0], tuple) else pd.DataFrame(res)
-            if not pd_df.empty:
-                for row in pd_df.itertuples():
-                    tick = int(row.tick)
-                    attacker = _resolve_name(row, ["attacker_name", "user_name"])
-                    victim = _resolve_name(row, ["user_name", "player_name"])
-                    att_state = _lookup_state(tick, attacker) if attacker else {}
-                    vic_state = _lookup_state(tick, victim) if victim else {}
-                    events.append(
-                        MatchEventState(
-                            tick=tick,
-                            round_number=_get_round(row),
-                            event_type="player_death",
-                            player_name=attacker,
-                            player_team=att_state.get("team", ""),
-                            player_health=att_state.get("health", 100),
-                            player_armor=att_state.get("armor", 0),
-                            player_equipment_value=att_state.get("equipment_value", 0),
-                            pos_x=float(getattr(row, "x", 0) or 0),
-                            pos_y=float(getattr(row, "y", 0) or 0),
-                            pos_z=float(getattr(row, "z", 0) or 0),
-                            weapon=str(getattr(row, "weapon", "") or ""),
-                            is_headshot=bool(getattr(row, "headshot", False)),
-                            victim_name=victim,
-                            victim_team=vic_state.get("team", ""),
-                            victim_health=vic_state.get("health", 0),
-                            victim_armor=vic_state.get("armor", 0),
-                        )
-                    )
-    except Exception as e:
-        logger.warning("Event extraction failed for player_death: %s", e)
-
-    # --- 4. Smoke grenades (start/end pairing) ---
-    try:
-        res = parser.parse_events(["smokegrenade_detonate", "smokegrenade_expired"])
-        if res:
-            for evt_name, evt_df in res:
-                if evt_df.empty:
+    def extract_weapon_fire(self):
+        for _, df in self._safe_parse(["weapon_fire"], "weapon_fire"):
+            for row in df.itertuples():
+                tick = int(row.tick)
+                name = self._resolve_name(row, ["player_name", "user_name", "name"])
+                if not name:
                     continue
-                etype = "smoke_start" if "detonate" in evt_name else "smoke_end"
-                for row in evt_df.itertuples():
-                    tick = int(row.tick)
-                    sid = int(getattr(row, "user_steamid", 0) or 0)
-                    name = sid_to_name.get(sid, "")
-                    state = _lookup_state(tick, name) if name else {}
-                    events.append(
-                        MatchEventState(
-                            tick=tick,
-                            round_number=_get_round(row),
-                            event_type=etype,
-                            player_name=name,
-                            player_team=state.get("team", ""),
-                            player_health=state.get("health", 100),
-                            player_armor=state.get("armor", 0),
-                            player_equipment_value=state.get("equipment_value", 0),
-                            pos_x=float(getattr(row, "x", 0) or 0),
-                            pos_y=float(getattr(row, "y", 0) or 0),
-                            pos_z=float(getattr(row, "z", 0) or 0),
-                            weapon="smokegrenade",
-                            entity_id=int(getattr(row, "entityid", 0) or 0),
-                        )
+                state = self._lookup_state(tick, name)
+                px, py, pz = self._row_pos(row)
+                self.events.append(
+                    MatchEventState(
+                        tick=tick,
+                        round_number=self._get_round(row),
+                        event_type="weapon_fire",
+                        player_name=name,
+                        player_team=state["team"],
+                        player_health=state["health"],
+                        player_armor=state["armor"],
+                        player_equipment_value=state["equipment_value"],
+                        pos_x=px,
+                        pos_y=py,
+                        pos_z=pz,
+                        weapon=str(getattr(row, "weapon", "") or ""),
                     )
-    except Exception as e:
-        logger.warning("Event extraction failed for smoke events: %s", e)
+                )
 
-    # --- 5. Molotov/incendiary (start/end pairing) ---
-    try:
-        res = parser.parse_events(["inferno_startburn", "inferno_expire"])
-        if res:
-            for evt_name, evt_df in res:
-                if evt_df.empty:
+    def extract_player_hurt(self):
+        for _, df in self._safe_parse(["player_hurt"], "player_hurt"):
+            for row in df.itertuples():
+                tick = int(row.tick)
+                attacker = self._resolve_name(row, ["attacker_name", "user_name"])
+                victim = self._resolve_name(row, ["user_name", "player_name"])
+                if not attacker and not victim:
                     continue
-                etype = "molotov_start" if "startburn" in evt_name else "molotov_end"
-                for row in evt_df.itertuples():
-                    tick = int(row.tick)
-                    sid = int(getattr(row, "user_steamid", 0) or 0)
-                    name = sid_to_name.get(sid, "")
-                    state = _lookup_state(tick, name) if name else {}
-                    events.append(
-                        MatchEventState(
-                            tick=tick,
-                            round_number=_get_round(row),
-                            event_type=etype,
-                            player_name=name,
-                            player_team=state.get("team", ""),
-                            player_health=state.get("health", 100),
-                            player_armor=state.get("armor", 0),
-                            player_equipment_value=state.get("equipment_value", 0),
-                            pos_x=float(getattr(row, "x", 0) or 0),
-                            pos_y=float(getattr(row, "y", 0) or 0),
-                            pos_z=float(getattr(row, "z", 0) or 0),
-                            weapon="molotov",
-                            entity_id=int(getattr(row, "entityid", 0) or 0),
-                        )
+                att_state = self._lookup_state(tick, attacker) if attacker else {}
+                vic_state = self._lookup_state(tick, victim) if victim else {}
+                dmg = int(getattr(row, "dmg_health", 0) or getattr(row, "damage", 0) or 0)
+                px, py, pz = self._row_pos(row)
+                self.events.append(
+                    MatchEventState(
+                        tick=tick,
+                        round_number=self._get_round(row),
+                        event_type="player_hurt",
+                        player_name=attacker,
+                        player_team=att_state.get("team", ""),
+                        player_health=att_state.get("health", 100),
+                        player_armor=att_state.get("armor", 0),
+                        player_equipment_value=att_state.get("equipment_value", 0),
+                        pos_x=px,
+                        pos_y=py,
+                        pos_z=pz,
+                        weapon=str(getattr(row, "weapon", "") or ""),
+                        damage=dmg,
+                        victim_name=victim,
+                        victim_team=vic_state.get("team", ""),
+                        victim_health=vic_state.get("health", 100),
+                        victim_armor=vic_state.get("armor", 0),
                     )
-    except Exception as e:
-        logger.warning("Event extraction failed for molotov events: %s", e)
+                )
 
-    # --- 6. Flashbang detonation ---
-    try:
-        res = parser.parse_events(["flashbang_detonate"])
-        if res:
-            fb_df = res[0][1] if isinstance(res[0], tuple) else pd.DataFrame(res)
-            if not fb_df.empty:
-                for row in fb_df.itertuples():
-                    tick = int(row.tick)
-                    sid = int(getattr(row, "user_steamid", 0) or 0)
-                    name = sid_to_name.get(sid, "")
-                    state = _lookup_state(tick, name) if name else {}
-                    events.append(
-                        MatchEventState(
-                            tick=tick,
-                            round_number=_get_round(row),
-                            event_type="flash_detonate",
-                            player_name=name,
-                            player_team=state.get("team", ""),
-                            player_health=state.get("health", 100),
-                            player_armor=state.get("armor", 0),
-                            player_equipment_value=state.get("equipment_value", 0),
-                            pos_x=float(getattr(row, "x", 0) or 0),
-                            pos_y=float(getattr(row, "y", 0) or 0),
-                            pos_z=float(getattr(row, "z", 0) or 0),
-                            weapon="flashbang",
-                            entity_id=int(getattr(row, "entityid", 0) or 0),
-                        )
+    def extract_player_death(self):
+        for _, df in self._safe_parse(["player_death"], "player_death"):
+            for row in df.itertuples():
+                tick = int(row.tick)
+                attacker = self._resolve_name(row, ["attacker_name", "user_name"])
+                victim = self._resolve_name(row, ["user_name", "player_name"])
+                att_state = self._lookup_state(tick, attacker) if attacker else {}
+                vic_state = self._lookup_state(tick, victim) if victim else {}
+                px, py, pz = self._row_pos(row)
+                self.events.append(
+                    MatchEventState(
+                        tick=tick,
+                        round_number=self._get_round(row),
+                        event_type="player_death",
+                        player_name=attacker,
+                        player_team=att_state.get("team", ""),
+                        player_health=att_state.get("health", 100),
+                        player_armor=att_state.get("armor", 0),
+                        player_equipment_value=att_state.get("equipment_value", 0),
+                        pos_x=px,
+                        pos_y=py,
+                        pos_z=pz,
+                        weapon=str(getattr(row, "weapon", "") or ""),
+                        is_headshot=bool(getattr(row, "headshot", False)),
+                        victim_name=victim,
+                        victim_team=vic_state.get("team", ""),
+                        victim_health=vic_state.get("health", 0),
+                        victim_armor=vic_state.get("armor", 0),
                     )
-    except Exception as e:
-        logger.warning("Event extraction failed for flashbang events: %s", e)
+                )
 
-    # --- 7. HE grenade detonation ---
-    try:
-        res = parser.parse_events(["hegrenade_detonate"])
-        if res:
-            he_df = res[0][1] if isinstance(res[0], tuple) else pd.DataFrame(res)
-            if not he_df.empty:
-                for row in he_df.itertuples():
-                    tick = int(row.tick)
-                    sid = int(getattr(row, "user_steamid", 0) or 0)
-                    name = sid_to_name.get(sid, "")
-                    state = _lookup_state(tick, name) if name else {}
-                    events.append(
-                        MatchEventState(
-                            tick=tick,
-                            round_number=_get_round(row),
-                            event_type="he_detonate",
-                            player_name=name,
-                            player_team=state.get("team", ""),
-                            player_health=state.get("health", 100),
-                            player_armor=state.get("armor", 0),
-                            player_equipment_value=state.get("equipment_value", 0),
-                            pos_x=float(getattr(row, "x", 0) or 0),
-                            pos_y=float(getattr(row, "y", 0) or 0),
-                            pos_z=float(getattr(row, "z", 0) or 0),
-                            weapon="hegrenade",
-                            entity_id=int(getattr(row, "entityid", 0) or 0),
-                        )
+    def _extract_grenade_pair(self, evt_pair, etype_keyword_map, weapon_label, log_label):
+        """Helper for start/end pair events (smoke, molotov)."""
+        for evt_name, df in self._safe_parse(evt_pair, log_label):
+            etype = next(v for k, v in etype_keyword_map.items() if k in evt_name)
+            for row in df.itertuples():
+                tick = int(row.tick)
+                sid = int(getattr(row, "user_steamid", 0) or 0)
+                name = self.sid_to_name.get(sid, "")
+                state = self._lookup_state(tick, name) if name else {}
+                px, py, pz = self._row_pos(row)
+                self.events.append(
+                    MatchEventState(
+                        tick=tick,
+                        round_number=self._get_round(row),
+                        event_type=etype,
+                        player_name=name,
+                        player_team=state.get("team", ""),
+                        player_health=state.get("health", 100),
+                        player_armor=state.get("armor", 0),
+                        player_equipment_value=state.get("equipment_value", 0),
+                        pos_x=px,
+                        pos_y=py,
+                        pos_z=pz,
+                        weapon=weapon_label,
+                        entity_id=int(getattr(row, "entityid", 0) or 0),
                     )
-    except Exception as e:
-        logger.warning("Event extraction failed for HE grenade events: %s", e)
+                )
 
-    # --- 8. Grenade thrown (GAP-02) ---
-    # demoparser2 'grenade_thrown' schema: tick, user_name, user_steamid, weapon
-    # (weapon ∈ {smokegrenade, molotov, incgrenade, flashbang, hegrenade, decoy}).
-    # No x/y/z on the event itself → throw origin resolved from tick state.
-    # entity_id defaults to sentinel (-1) because the parser does not link
-    # thrown → detonate via entityid; downstream pairing is proximity-based.
-    try:
-        res = parser.parse_events(["grenade_thrown"])
-        if res:
-            gt_df = res[0][1] if isinstance(res[0], tuple) else pd.DataFrame(res)
-            if not gt_df.empty:
-                for row in gt_df.itertuples():
-                    tick = int(row.tick)
-                    # Prefer steamid lookup (name column absent in some rows)
-                    sid = int(getattr(row, "user_steamid", 0) or 0)
-                    name = sid_to_name.get(sid) or _resolve_name(row, ["user_name"])
-                    if not name:
-                        continue
-                    state = _lookup_state(tick, name)
-                    weapon = str(getattr(row, "weapon", "") or "").strip()
-                    events.append(
-                        MatchEventState(
-                            tick=tick,
-                            round_number=_get_round(row),
-                            event_type="grenade_thrown",
-                            player_name=name,
-                            player_team=state.get("team", ""),
-                            player_health=state.get("health", 100),
-                            player_armor=state.get("armor", 0),
-                            player_equipment_value=state.get("equipment_value", 0),
-                            pos_x=state.get("pos_x", 0.0),
-                            pos_y=state.get("pos_y", 0.0),
-                            pos_z=state.get("pos_z", 0.0),
-                            weapon=weapon,
-                        )
+    def extract_smoke(self):
+        self._extract_grenade_pair(
+            ["smokegrenade_detonate", "smokegrenade_expired"],
+            {"detonate": "smoke_start", "expired": "smoke_end"},
+            "smokegrenade",
+            "smoke events",
+        )
+
+    def extract_molotov(self):
+        self._extract_grenade_pair(
+            ["inferno_startburn", "inferno_expire"],
+            {"startburn": "molotov_start", "expire": "molotov_end"},
+            "molotov",
+            "molotov events",
+        )
+
+    def _extract_grenade_single(self, event_name, etype, weapon_label, log_label):
+        """Helper for single-event grenade detonations (flashbang, HE)."""
+        for _, df in self._safe_parse([event_name], log_label):
+            for row in df.itertuples():
+                tick = int(row.tick)
+                sid = int(getattr(row, "user_steamid", 0) or 0)
+                name = self.sid_to_name.get(sid, "")
+                state = self._lookup_state(tick, name) if name else {}
+                px, py, pz = self._row_pos(row)
+                self.events.append(
+                    MatchEventState(
+                        tick=tick,
+                        round_number=self._get_round(row),
+                        event_type=etype,
+                        player_name=name,
+                        player_team=state.get("team", ""),
+                        player_health=state.get("health", 100),
+                        player_armor=state.get("armor", 0),
+                        player_equipment_value=state.get("equipment_value", 0),
+                        pos_x=px,
+                        pos_y=py,
+                        pos_z=pz,
+                        weapon=weapon_label,
+                        entity_id=int(getattr(row, "entityid", 0) or 0),
                     )
-    except Exception as e:
-        logger.warning("Event extraction failed for grenade_thrown: %s", e)
+                )
 
-    # --- 9. Bomb events ---
-    try:
+    def extract_flashbang(self):
+        self._extract_grenade_single(
+            "flashbang_detonate", "flash_detonate", "flashbang", "flashbang events"
+        )
+
+    def extract_he_grenade(self):
+        self._extract_grenade_single(
+            "hegrenade_detonate", "he_detonate", "hegrenade", "HE grenade events"
+        )
+
+    def extract_grenade_thrown(self):
+        # GAP-02: 'grenade_thrown' schema lacks x/y/z; throw origin resolved from
+        # tick state. entity_id defaults to sentinel (-1) because the parser does
+        # not link thrown→detonate via entityid; downstream pairing is proximity-based.
+        for _, df in self._safe_parse(["grenade_thrown"], "grenade_thrown"):
+            for row in df.itertuples():
+                tick = int(row.tick)
+                sid = int(getattr(row, "user_steamid", 0) or 0)
+                name = self.sid_to_name.get(sid) or self._resolve_name(row, ["user_name"])
+                if not name:
+                    continue
+                state = self._lookup_state(tick, name)
+                weapon = str(getattr(row, "weapon", "") or "").strip()
+                self.events.append(
+                    MatchEventState(
+                        tick=tick,
+                        round_number=self._get_round(row),
+                        event_type="grenade_thrown",
+                        player_name=name,
+                        player_team=state.get("team", ""),
+                        player_health=state.get("health", 100),
+                        player_armor=state.get("armor", 0),
+                        player_equipment_value=state.get("equipment_value", 0),
+                        pos_x=state.get("pos_x", 0.0),
+                        pos_y=state.get("pos_y", 0.0),
+                        pos_z=state.get("pos_z", 0.0),
+                        weapon=weapon,
+                    )
+                )
+
+    def extract_bomb(self):
         for bomb_event in ["bomb_planted", "bomb_defused"]:
-            res = parser.parse_events([bomb_event])
-            if res:
-                b_df = res[0][1] if isinstance(res[0], tuple) else pd.DataFrame(res)
-                if not b_df.empty:
-                    etype = "bomb_planted" if "planted" in bomb_event else "bomb_defused"
-                    for row in b_df.itertuples():
-                        tick = int(row.tick)
-                        name = _resolve_name(row, ["user_name", "player_name"])
-                        state = _lookup_state(tick, name) if name else {}
-                        events.append(
-                            MatchEventState(
-                                tick=tick,
-                                round_number=_get_round(row),
-                                event_type=etype,
-                                player_name=name,
-                                player_team=state.get("team", ""),
-                                player_health=state.get("health", 100),
-                                player_armor=state.get("armor", 0),
-                                player_equipment_value=state.get("equipment_value", 0),
-                                pos_x=float(getattr(row, "x", 0) or 0),
-                                pos_y=float(getattr(row, "y", 0) or 0),
-                                pos_z=float(getattr(row, "z", 0) or 0),
-                            )
+            etype = "bomb_planted" if "planted" in bomb_event else "bomb_defused"
+            for _, df in self._safe_parse([bomb_event], "bomb events"):
+                for row in df.itertuples():
+                    tick = int(row.tick)
+                    name = self._resolve_name(row, ["user_name", "player_name"])
+                    state = self._lookup_state(tick, name) if name else {}
+                    px, py, pz = self._row_pos(row)
+                    self.events.append(
+                        MatchEventState(
+                            tick=tick,
+                            round_number=self._get_round(row),
+                            event_type=etype,
+                            player_name=name,
+                            player_team=state.get("team", ""),
+                            player_health=state.get("health", 100),
+                            player_armor=state.get("armor", 0),
+                            player_equipment_value=state.get("equipment_value", 0),
+                            pos_x=px,
+                            pos_y=py,
+                            pos_z=pz,
                         )
-    except Exception as e:
-        logger.warning("Event extraction failed for bomb events: %s", e)
+                    )
 
-    # Store all events in batch
+    def extract_all(self):
+        """Run every event-type extractor in fixed order; return self.events."""
+        self.extract_weapon_fire()
+        self.extract_player_hurt()
+        self.extract_player_death()
+        self.extract_smoke()
+        self.extract_molotov()
+        self.extract_flashbang()
+        self.extract_he_grenade()
+        self.extract_grenade_thrown()
+        self.extract_bomb()
+        return self.events
+
+
+def _extract_and_store_events(demo_path, match_id, match_manager, df_ticks):
+    """Extract game events from demo and persist as MatchEventState records.
+
+    Parses weapon_fire, player_hurt, player_death, grenade/smoke/molotov/flash
+    events and stores them in the per-match database for Player-POV perception.
+    Player state (health, armor, equipment) is cross-referenced from df_ticks
+    at the event tick to capture the situational context.
+    """
+    from demoparser2 import DemoParser
+
+    try:
+        parser = DemoParser(str(demo_path))
+    except Exception as e:
+        logger.error("Failed to create DemoParser for event extraction: %s", e)
+        return 0
+
+    extractor = _EventExtractor(parser, df_ticks)
+    events = extractor.extract_all()
+
     if events:
         stored = match_manager.store_event_batch(match_id, events)
         logger.info("Stored %d game events to match database (ID: %s)", stored, match_id)
@@ -1167,130 +1137,59 @@ def _parse_demo_header_meta(demo_path) -> tuple[str, float]:
     return map_name, parsed_tr
 
 
-def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
-    import time as _time
+_TICK_INT_DEFAULTS = {
+    "round_number": 1,
+    "player_steamid": 0,
+    "armor": 0,
+    "equipment_value": 0,
+    "balance": 0,
+    "enemies_visible": 0,
+    "ping": 0,
+    "kills_this_round": 0,
+    "deaths_this_round": 0,
+    "assists_this_round": 0,
+    "headshot_kills_this_round": 0,
+    "damage_this_round": 0,
+    "utility_damage_this_round": 0,
+    "enemies_flashed_this_round": 0,
+    "kills_total": 0,
+    "deaths_total": 0,
+    "assists_total": 0,
+    "headshot_kills_total": 0,
+    "mvps": 0,
+    "score": 0,
+    "cash_spent_this_round": 0,
+    "total_cash_spent": 0,
+    "teammates_alive": 4,
+    "enemies_alive": 5,
+    "team_economy": 0,
+}
+_TICK_FLOAT_DEFAULTS = {
+    "X": 0.0,
+    "Y": 0.0,
+    "Z": 0.0,
+    "yaw": 0.0,
+    "pitch": 0.0,
+    "time_in_round": 0.0,
+}
+_TICK_BOOL_DEFAULTS = {
+    "is_crouching": False,
+    "is_scoped": False,
+    "is_blinded": False,
+    "has_helmet": False,
+    "has_defuser": False,
+    "bomb_planted": False,
+}
 
-    from Programma_CS2_RENAN.backend.data_sources.demo_parser import parse_sequential_ticks
-    from Programma_CS2_RENAN.backend.processing.tick_enrichment import enrich_tick_data
 
-    t_pipeline = _time.monotonic()
+def _apply_tick_dataframe_defaults(df_ticks, meta_map_name):
+    """Fill NaN/None/non-numeric values with safe defaults for downstream DataFrames.
 
-    # PROGRESS: 10% - Sending to Rust Parser
-    get_state_manager().update_parsing_progress(10.0)
-
-    # Parse ALL players — required for cross-player feature computation
-    # (teammates_alive, enemies_alive, team_economy, enemies_visible).
-    # demoparser2 parsing is O(file_size) regardless of player filter;
-    # the filter only affects post-parse DataFrame slicing.
-    df_ticks = parse_sequential_ticks(str(demo_path), "ALL", start_tick=start_tick)
-
-    if df_ticks.empty:
-        get_state_manager().update_parsing_progress(100.0)
-        return start_tick
-
-    # PROGRESS: 20% - Interpolation
-    get_state_manager().update_parsing_progress(20.0)
-    t_interp = _time.monotonic()
-
-    # Apply intelligent interpolation to fill missing positions
-    df_ticks = _interpolate_position(df_ticks)
-
-    logger.info(
-        "Interpolation completed in %.2fs for %s rows",
-        _time.monotonic() - t_interp,
-        f"{len(df_ticks):,}",
-    )
-
-    # PROGRESS: 25% - Tick Enrichment (cross-player features)
-    get_state_manager().update_parsing_progress(25.0)
-    t_enrich = _time.monotonic()
-
-    # Resolve map_name + tick_rate from demo header (demoparser2 exposes both
-    # via parse_header()). GAP-01: tick_rate was previously hardcoded to 64.0,
-    # which silently halved time_in_round on 128-tick demos. Pure helper is
-    # unit-testable without a real .dem file on disk.
-    _meta_map_name, _meta_tick_rate = _parse_demo_header_meta(demo_path)
-
-    # Enrich with cross-player features: round_number, time_in_round,
-    # bomb_planted, teammates_alive, enemies_alive, team_economy, enemies_visible
-    df_ticks = enrich_tick_data(
-        df_ticks,
-        demo_path=str(demo_path),
-        tick_rate=_meta_tick_rate,
-        map_name=_meta_map_name,
-    )
-
-    logger.info("Enrichment completed in %.2fs", _time.monotonic() - t_enrich)
-
-    # PROGRESS: 40% - Database Insertion Start
-    get_state_manager().update_parsing_progress(40.0)
-    t_db = _time.monotonic()
-
-    demo_name = demo_path.stem
-    # DA-03-01: SHA-256 with 63-bit modulo (~3 billion demos before 50%
-    # birthday-paradox collision). SQLite INTEGER supports signed 64-bit.
-    match_id = int(hashlib.sha256(demo_name.encode()).hexdigest(), 16) % (2**63 - 1)
-    match_manager = get_match_data_manager()
-
-    total_ticks = len(df_ticks)
-    last_tick = int(df_ticks["tick"].max()) if total_ticks > 0 else start_tick
-
-    _meta_player_count = (
-        df_ticks["player_name"].nunique() if "player_name" in df_ticks.columns else 10
-    )
-
-    # ================================================================
-    # BULK INSERT via pandas to_sql() — bypasses ORM object creation.
-    # Previous per-row ORM loop took ~736s for 2.4M rows (96.6% of total).
-    # Vectorized DataFrame operations + to_sql() reduce this to ~15-20s.
-    # ================================================================
-
-    import numpy as np
-
-    BATCH_SIZE = 10000 if os.environ.get("HP_MODE") == "1" else 2000
-
-    # --- Build MatchTickState DataFrame (vectorized column mapping) ---
-    t_build = _time.monotonic()
-
-    _int_defaults = {
-        "round_number": 1,
-        "player_steamid": 0,
-        "armor": 0,
-        "equipment_value": 0,
-        "balance": 0,
-        "enemies_visible": 0,
-        "ping": 0,
-        "kills_this_round": 0,
-        "deaths_this_round": 0,
-        "assists_this_round": 0,
-        "headshot_kills_this_round": 0,
-        "damage_this_round": 0,
-        "utility_damage_this_round": 0,
-        "enemies_flashed_this_round": 0,
-        "kills_total": 0,
-        "deaths_total": 0,
-        "assists_total": 0,
-        "headshot_kills_total": 0,
-        "mvps": 0,
-        "score": 0,
-        "cash_spent_this_round": 0,
-        "total_cash_spent": 0,
-        "teammates_alive": 4,
-        "enemies_alive": 5,
-        "team_economy": 0,
-    }
-    _float_defaults = {"X": 0.0, "Y": 0.0, "Z": 0.0, "yaw": 0.0, "pitch": 0.0, "time_in_round": 0.0}
-    _bool_defaults = {
-        "is_crouching": False,
-        "is_scoped": False,
-        "is_blinded": False,
-        "has_helmet": False,
-        "has_defuser": False,
-        "bomb_planted": False,
-    }
-
-    # Fill NaN/None with defaults (vectorized, ~100ms for 2.4M rows)
-    for col, default in _int_defaults.items():
+    Mutates `df_ticks` in place (vectorized, ~100ms for 2.4M rows). Logs WARN
+    when non-numeric values get coerced and again when critical demoparser2
+    columns (balance, health, X/Y/Z) are entirely missing (R3-02).
+    """
+    for col, default in _TICK_INT_DEFAULTS.items():
         if col in df_ticks.columns:
             original_na = df_ticks[col].isna().sum()
             numeric = pd.to_numeric(df_ticks[col], errors="coerce")
@@ -1303,7 +1202,7 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
                     default,
                 )
             df_ticks[col] = numeric.fillna(default).astype(int)
-    for col, default in _float_defaults.items():
+    for col, default in _TICK_FLOAT_DEFAULTS.items():
         if col in df_ticks.columns:
             original_na = df_ticks[col].isna().sum()
             numeric = pd.to_numeric(df_ticks[col], errors="coerce")
@@ -1316,11 +1215,11 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
                     default,
                 )
             df_ticks[col] = numeric.fillna(default).astype(float)
-    for col, default in _bool_defaults.items():
+    for col, default in _TICK_BOOL_DEFAULTS.items():
         if col in df_ticks.columns:
             df_ticks[col] = df_ticks[col].fillna(default).astype(bool)
 
-    # R3-02: Warn about critical columns missing from demoparser2 output
+    # R3-02: Warn about critical columns missing entirely from demoparser2 output
     _critical_cols = ["balance", "health", "X", "Y", "Z"]
     _missing_critical = [c for c in _critical_cols if c not in df_ticks.columns]
     if _missing_critical:
@@ -1329,15 +1228,12 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
             _missing_critical,
         )
 
-    # Fill missing health default (100, not 0)
     if "health" in df_ticks.columns:
         df_ticks["health"] = (
             pd.to_numeric(df_ticks["health"], errors="coerce").fillna(100).astype(int)
         )
-    # Fill is_alive default (True)
     if "is_alive" in df_ticks.columns:
         df_ticks["is_alive"] = df_ticks["is_alive"].fillna(True).astype(bool)
-    # Fill string defaults
     if "team_name" in df_ticks.columns:
         df_ticks["team_name"] = df_ticks["team_name"].fillna("CT").astype(str)
     if "active_weapon" in df_ticks.columns:
@@ -1346,12 +1242,19 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
     if "player_name" in df_ticks.columns:
         df_ticks["player_name"] = df_ticks["player_name"].astype(str)
     if "map_name" in df_ticks.columns:
-        df_ticks["map_name"] = df_ticks["map_name"].fillna(_meta_map_name).astype(str)
+        df_ticks["map_name"] = df_ticks["map_name"].fillna(meta_map_name).astype(str)
     else:
-        df_ticks["map_name"] = _meta_map_name
+        df_ticks["map_name"] = meta_map_name
 
-    # Build MatchTickState DataFrame with renamed columns (ALL players)
-    df_match = pd.DataFrame(
+
+def _build_match_tick_dataframe(df_ticks):
+    """Build the per-match MatchTickState DataFrame (ALL players).
+
+    All columns are vectorized renames + dtype casts of `df_ticks`. Tick
+    decimation FORBIDDEN (CLAUDE.md invariant) — every input row maps 1:1 to
+    one output row.
+    """
+    return pd.DataFrame(
         {
             "tick": df_ticks["tick"].astype(int),
             "round_number": df_ticks.get("round_number", pd.Series(1, index=df_ticks.index)).astype(
@@ -1438,7 +1341,6 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
             "cash_spent_total": df_ticks.get(
                 "total_cash_spent", pd.Series(0, index=df_ticks.index)
             ).astype(int),
-            # --- Enriched features ---
             "pitch": df_ticks.get("pitch", pd.Series(0.0, index=df_ticks.index)).astype(float),
             "time_in_round": df_ticks.get(
                 "time_in_round", pd.Series(0.0, index=df_ticks.index)
@@ -1459,8 +1361,14 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
         }
     )
 
-    # Build legacy PlayerTickState DataFrame — filtered to target_player
-    # for user demos, ALL players for pro demos
+
+def _build_legacy_tick_dataframe(df_ticks, demo_name, target_player, meta_map_name):
+    """Build the legacy PlayerTickState DataFrame.
+
+    Filtered to `target_player` for user demos, ALL players for pro demos
+    (target_player == "ALL"). Tick decimation FORBIDDEN — only player filter,
+    every retained row maps 1:1.
+    """
     df_legacy_source = df_ticks
     if target_player and target_player != "ALL":
         target_lower = str(target_player).strip().lower()
@@ -1468,7 +1376,7 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
             df_ticks["player_name"].astype(str).str.strip().str.lower() == target_lower
         ]
 
-    df_legacy = pd.DataFrame(
+    return pd.DataFrame(
         {
             "demo_name": demo_name,
             "tick": df_legacy_source["tick"].astype(int),
@@ -1484,7 +1392,7 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
             "armor": df_legacy_source.get(
                 "armor", pd.Series(0, index=df_legacy_source.index)
             ).astype(int),
-            # ducking is the correct demoparser2 field for crouch state
+            # demoparser2 'ducking' is the correct field for crouch state
             "is_crouching": df_legacy_source.get(
                 "ducking",
                 df_legacy_source.get(
@@ -1516,7 +1424,6 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
                 ).astype(float)
                 > 0
             ).astype(bool),
-            # --- Enriched features ---
             "round_number": df_legacy_source.get(
                 "round_number", pd.Series(1, index=df_legacy_source.index)
             ).astype(int),
@@ -1536,75 +1443,48 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
                 "team_economy", pd.Series(0, index=df_legacy_source.index)
             ).astype(int),
             "map_name": df_legacy_source.get(
-                "map_name", pd.Series(_meta_map_name, index=df_legacy_source.index)
+                "map_name", pd.Series(meta_map_name, index=df_legacy_source.index)
             ),
             "created_at": datetime.now(timezone.utc),
         }
     )
 
-    logger.info("DataFrame construction: %.2fs", _time.monotonic() - t_build)
 
-    # --- Write to databases in chunks with progress tracking ---
-    match_engine = match_manager.get_engine(match_id)
-    monolith_engine = db_manager.engine
-    n_chunks = (total_ticks + BATCH_SIZE - 1) // BATCH_SIZE
+def _finalize_match_record(
+    match_manager,
+    match_id,
+    demo_name,
+    demo_path,
+    df_ticks,
+    meta_map_name,
+    meta_tick_rate,
+    meta_player_count,
+    last_tick,
+    start_tick,
+):
+    """Persist match metadata, extract events on fresh ingestion, mark complete.
 
-    for chunk_idx in range(n_chunks):
-        start = chunk_idx * BATCH_SIZE
-        end = min(start + BATCH_SIZE, total_ticks)
+    GAP-01: stores detected `tick_rate` per-demo so downstream consumers don't
+    fall back to the 64.0 schema default.
 
-        # Update progress: map chunk_idx/n_chunks -> 40..95%
-        pct = 40.0 + (chunk_idx / n_chunks) * 55.0
-        get_state_manager().update_parsing_progress(pct)
-
-        # Write chunk to per-match database
-        df_match.iloc[start:end].to_sql(
-            "matchtickstate",
-            match_engine,
-            if_exists="append",
-            index=False,
-        )
-        # Write chunk to legacy monolith
-        df_legacy.iloc[start:end].to_sql(
-            "playertickstate",
-            monolith_engine,
-            if_exists="append",
-            index=False,
-        )
-
-    db_elapsed = _time.monotonic() - t_db
-
-    # Store match metadata (GAP-01: persist detected tick_rate per-demo so
-    # downstream consumers don't fall back to the 64.0 schema default).
+    P4-A: marks the match complete only AFTER all ticks + events land. The
+    Teacher daemon only trains on completed matches, preventing learning from
+    half-written data.
+    """
     meta = MatchMetadata(
         match_id=match_id,
         demo_name=demo_name,
-        map_name=_meta_map_name,
+        map_name=meta_map_name,
         tick_count=int(last_tick - start_tick),
-        player_count=_meta_player_count,
-        tick_rate=_meta_tick_rate,
+        player_count=meta_player_count,
+        tick_rate=meta_tick_rate,
     )
     match_manager.store_metadata(match_id, meta)
 
-    total_elapsed = _time.monotonic() - t_pipeline
-    logger.info(
-        "Ingestion complete for %s: %s ticks, %d chunks, "
-        "DB insertion %.1fs, total pipeline %.1fs",
-        demo_name,
-        f"{total_ticks:,}",
-        n_chunks,
-        db_elapsed,
-        total_elapsed,
-    )
-
-    # Extract and persist game events (Player-POV Perception System)
     # Only on fresh ingestion (start_tick == 0) to avoid duplicate events
     if start_tick == 0:
         _extract_and_store_events(demo_path, match_id, match_manager, df_ticks)
 
-    # P4-A: Mark match as complete AFTER all ticks + events are stored.
-    # Teacher daemon only trains on completed matches to prevent learning
-    # from half-written data.
     try:
         with match_manager.get_match_session(match_id) as session:
             from sqlalchemy import text as sa_text
@@ -1616,6 +1496,131 @@ def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
         logger.info("Match %s marked as complete", match_id)
     except Exception as e:
         logger.warning("Failed to mark match %s as complete: %s", match_id, e)
+
+
+def _save_sequential_data(db_manager, demo_path, target_player, start_tick=0):
+    import time as _time
+
+    from Programma_CS2_RENAN.backend.data_sources.demo_parser import parse_sequential_ticks
+    from Programma_CS2_RENAN.backend.processing.tick_enrichment import enrich_tick_data
+
+    t_pipeline = _time.monotonic()
+
+    # PROGRESS: 10% - Sending to Rust Parser
+    get_state_manager().update_parsing_progress(10.0)
+
+    # Parse ALL players — required for cross-player feature computation
+    # (teammates_alive, enemies_alive, team_economy, enemies_visible).
+    # demoparser2 parsing is O(file_size) regardless of player filter; the
+    # filter only affects post-parse DataFrame slicing.
+    df_ticks = parse_sequential_ticks(str(demo_path), "ALL", start_tick=start_tick)
+
+    if df_ticks.empty:
+        get_state_manager().update_parsing_progress(100.0)
+        return start_tick
+
+    # PROGRESS: 20% - Interpolation
+    get_state_manager().update_parsing_progress(20.0)
+    t_interp = _time.monotonic()
+    df_ticks = _interpolate_position(df_ticks)
+    logger.info(
+        "Interpolation completed in %.2fs for %s rows",
+        _time.monotonic() - t_interp,
+        f"{len(df_ticks):,}",
+    )
+
+    # PROGRESS: 25% - Tick Enrichment (cross-player features)
+    get_state_manager().update_parsing_progress(25.0)
+    t_enrich = _time.monotonic()
+
+    # GAP-01: tick_rate was previously hardcoded to 64.0, silently halving
+    # time_in_round on 128-tick demos. The pure helper is unit-testable.
+    _meta_map_name, _meta_tick_rate = _parse_demo_header_meta(demo_path)
+    df_ticks = enrich_tick_data(
+        df_ticks,
+        demo_path=str(demo_path),
+        tick_rate=_meta_tick_rate,
+        map_name=_meta_map_name,
+    )
+    logger.info("Enrichment completed in %.2fs", _time.monotonic() - t_enrich)
+
+    # PROGRESS: 40% - Database Insertion Start
+    get_state_manager().update_parsing_progress(40.0)
+    t_db = _time.monotonic()
+
+    demo_name = demo_path.stem
+    # DA-03-01: SHA-256 with 63-bit modulo (~3 billion demos before 50%
+    # birthday-paradox collision). SQLite INTEGER supports signed 64-bit.
+    match_id = int(hashlib.sha256(demo_name.encode()).hexdigest(), 16) % (2**63 - 1)
+    match_manager = get_match_data_manager()
+
+    total_ticks = len(df_ticks)
+    last_tick = int(df_ticks["tick"].max()) if total_ticks > 0 else start_tick
+    _meta_player_count = (
+        df_ticks["player_name"].nunique() if "player_name" in df_ticks.columns else 10
+    )
+
+    # BULK INSERT via pandas to_sql() bypasses ORM object creation. The previous
+    # per-row ORM loop took ~736s for 2.4M rows (96.6% of total). Vectorized
+    # DataFrame ops + to_sql() reduce this to ~15-20s.
+    BATCH_SIZE = 10000 if os.environ.get("HP_MODE") == "1" else 2000
+
+    t_build = _time.monotonic()
+    _apply_tick_dataframe_defaults(df_ticks, _meta_map_name)
+    df_match = _build_match_tick_dataframe(df_ticks)
+    df_legacy = _build_legacy_tick_dataframe(df_ticks, demo_name, target_player, _meta_map_name)
+    logger.info("DataFrame construction: %.2fs", _time.monotonic() - t_build)
+
+    # --- Chunked dual-write to per-match + monolith DBs with progress ticks ---
+    match_engine = match_manager.get_engine(match_id)
+    monolith_engine = db_manager.engine
+    n_chunks = (total_ticks + BATCH_SIZE - 1) // BATCH_SIZE
+
+    for chunk_idx in range(n_chunks):
+        start = chunk_idx * BATCH_SIZE
+        end = min(start + BATCH_SIZE, total_ticks)
+
+        # Map chunk_idx/n_chunks -> 40..95%
+        pct = 40.0 + (chunk_idx / n_chunks) * 55.0
+        get_state_manager().update_parsing_progress(pct)
+
+        df_match.iloc[start:end].to_sql(
+            "matchtickstate",
+            match_engine,
+            if_exists="append",
+            index=False,
+        )
+        df_legacy.iloc[start:end].to_sql(
+            "playertickstate",
+            monolith_engine,
+            if_exists="append",
+            index=False,
+        )
+
+    db_elapsed = _time.monotonic() - t_db
+    total_elapsed = _time.monotonic() - t_pipeline
+    logger.info(
+        "Ingestion complete for %s: %s ticks, %d chunks, "
+        "DB insertion %.1fs, total pipeline %.1fs",
+        demo_name,
+        f"{total_ticks:,}",
+        n_chunks,
+        db_elapsed,
+        total_elapsed,
+    )
+
+    _finalize_match_record(
+        match_manager,
+        match_id,
+        demo_name,
+        demo_path,
+        df_ticks,
+        _meta_map_name,
+        _meta_tick_rate,
+        _meta_player_count,
+        last_tick,
+        start_tick,
+    )
 
     return last_tick
 

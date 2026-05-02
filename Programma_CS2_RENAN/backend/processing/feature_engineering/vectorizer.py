@@ -181,6 +181,206 @@ assert len(FEATURE_NAMES) == METADATA_DIM, (
 )
 
 
+# ---------------------------------------------------------------------------
+# Per-slot fillers (private helpers used by FeatureExtractor.extract).
+# Each helper mutates `vec` in place; ordering / slot indices MUST match the
+# FEATURE_NAMES tuple above (training-serving contract — P-X-01).
+# ---------------------------------------------------------------------------
+
+
+def _fill_vitals_movement(vec: np.ndarray, get_val, cfg) -> None:
+    """Slots 0-7: health, armor, helmet, defuser, equipment, crouch, scope, blinded."""
+    vec[0] = float(get_val("health", 100)) / cfg.health_max
+    vec[1] = float(get_val("armor", 0)) / cfg.armor_max
+
+    has_helmet = get_val("has_helmet", None)
+    if has_helmet is None:
+        # Fallback heuristic: armor > 0 often means helmet
+        has_helmet = get_val("armor", 0) > 0
+    vec[2] = 1.0 if has_helmet else 0.0
+
+    vec[3] = 1.0 if get_val("has_defuser", False) else 0.0
+    vec[4] = float(get_val("equipment_value", 0)) / cfg.equipment_value_max
+
+    vec[5] = 1.0 if get_val("is_crouching", False) else 0.0
+    vec[6] = 1.0 if get_val("is_scoped", False) else 0.0
+
+    # Feature #7 (is_blinded): demoparser2 populates flash_duration (float seconds
+    # >= 0). Prefer flash_duration > 0 as source of truth; fall back to is_blinded
+    # for legacy demos parsed with a different extractor.
+    _flash_dur = get_val("flash_duration", 0.0)
+    try:
+        _flash_dur = float(_flash_dur) if _flash_dur is not None else 0.0
+    except (TypeError, ValueError):
+        _flash_dur = 0.0
+    vec[7] = 1.0 if (_flash_dur > 0.0 or get_val("is_blinded", False)) else 0.0
+
+
+def _fill_awareness_position_view(vec: np.ndarray, get_val, cfg) -> float:
+    """Slots 8-14: enemies_visible, position xyz, view yaw sin/cos + pitch.
+
+    Returns pos_z so the caller can pass it to _fill_z_penalty without re-reading.
+    """
+    enemies_visible = float(get_val("enemies_visible", 0))
+    vec[8] = min(enemies_visible / cfg.enemies_visible_max, 1.0)
+
+    pos_x = float(get_val("pos_x", get_val("x", get_val("X", 0))))
+    pos_y = float(get_val("pos_y", get_val("y", get_val("Y", 0))))
+    pos_z = float(get_val("pos_z", get_val("z", get_val("Z", 0))))
+    if pos_x == 0.0 and pos_y == 0.0 and pos_z == 0.0:
+        # R4-14-01: On standard CS2 maps, (0,0,0) is outside the playable area.
+        _logger.warning("R4-14-01: Position (0,0,0) — likely missing data, not a valid coordinate")
+
+    vec[9] = np.clip(pos_x / cfg.pos_xy_extent, -1.0, 1.0)
+    vec[10] = np.clip(pos_y / cfg.pos_xy_extent, -1.0, 1.0)
+    vec[11] = np.clip(pos_z / cfg.pos_z_extent, -1.0, 1.0)
+
+    # View angles (12-14) — sin/cos encoding for yaw to avoid ±180° discontinuity
+    yaw_deg = float(get_val("view_x", 0))
+    yaw_rad = math.radians(yaw_deg)
+    vec[12] = math.sin(yaw_rad)
+    vec[13] = math.cos(yaw_rad)
+    vec[14] = float(get_val("view_y", 0)) / cfg.pitch_max
+    return pos_z
+
+
+def _fill_z_penalty(vec: np.ndarray, pos_z: float, map_name: Optional[str]) -> None:
+    """Slot 15: z_penalty (vertical awareness; lazy import avoids circular dep)."""
+    if map_name:
+        from Programma_CS2_RENAN.core.spatial_data import compute_z_penalty
+
+        vec[15] = compute_z_penalty(pos_z, map_name)
+        return
+
+    # P-VEC-01: z_penalty defaults to 0.0 when map_name unavailable. Callers SHOULD
+    # provide map_name for feature parity with training. Warn once per process.
+    global _z_penalty_warned
+    if not _z_penalty_warned:
+        _logger.warning(
+            "P-VEC-01: map_name not provided — z_penalty defaults to 0.0. "
+            "Feature parity with training may be degraded."
+        )
+        _z_penalty_warned = True
+    vec[15] = 0.0
+
+
+def _fill_round_metadata(vec: np.ndarray, get_val, cfg, map_name: Optional[str]) -> None:
+    """Slots 16-18: KAST, map_id hash, round_phase."""
+    # 16: KAST — uses real KAST data when available (training pipeline injects from
+    # playermatchstats.avg_kast or round-level computation). Defaults to 0.0; the
+    # old estimate_kast_from_stats() heuristic was retired (was 0.91 vs real 0.71).
+    kast_val = get_val("kast", get_val("avg_kast", None))
+    if kast_val is not None:
+        vec[16] = float(kast_val)
+
+    # 17: map identity (deterministic hash; Python's built-in hash() is NOT
+    # deterministic across sessions — must use hashlib for reproducibility).
+    if map_name:
+        h = int(hashlib.md5(map_name.encode(), usedforsecurity=False).hexdigest(), 16)
+        vec[17] = (h % 10000) / 10000.0
+
+    # 18: round phase (economic phase from equipment value)
+    equip_val = float(get_val("equipment_value", 0))
+    if equip_val > 0:
+        if equip_val < cfg.round_phase_eco_threshold:
+            vec[18] = 0.0  # pistol
+        elif equip_val < cfg.round_phase_force_threshold:
+            vec[18] = 0.33  # eco
+        elif equip_val < cfg.round_phase_full_threshold:
+            vec[18] = 0.66  # force
+        else:
+            vec[18] = 1.0  # full_buy
+
+
+def _fill_weapon_class(vec: np.ndarray, get_val) -> None:
+    """Slot 19: weapon class encoding (from active_weapon string)."""
+    weapon_name = str(get_val("active_weapon", get_val("weapon", "unknown"))).lower()
+    # Strip prefixes demoparser2 may include (e.g. "weapon_ak47" -> "ak47")
+    if weapon_name.startswith("weapon_"):
+        weapon_name = weapon_name[7:]
+    weapon_class = WEAPON_CLASS_MAP.get(weapon_name, None)
+    if weapon_class is None:
+        # H-12: Distinguish numeric entity handles (old ingestion artifact) from
+        # genuinely unknown weapon strings. demoparser2 < ~0.40 returned the
+        # active-weapon entity handle (large 32-bit int) instead of the display
+        # name. 0xFFFFFF (16777215) is CS2's "no weapon equipped" sentinel.
+        try:
+            numeric_val = int(weapon_name)
+            if numeric_val == 0xFFFFFF:
+                weapon_class = 0.0
+            else:
+                _logger.debug(
+                    "H-12: Numeric weapon handle %s — legacy ingestion data, re-ingest to fix",
+                    weapon_name,
+                )
+                weapon_class = _UNKNOWN_WEAPON_DEFAULT
+        except (ValueError, TypeError):
+            if weapon_name != "unknown":
+                if weapon_name not in _unknown_weapons_seen:
+                    _unknown_weapons_seen.add(weapon_name)
+                    _logger.warning(
+                        "H-12: Unknown weapon '%s' — add to WEAPON_CLASS_MAP", weapon_name
+                    )
+            weapon_class = _UNKNOWN_WEAPON_DEFAULT
+    vec[19] = weapon_class
+
+
+def _fill_context_features(vec: np.ndarray, get_val, context: Optional[Dict[str, Any]]) -> None:
+    """Slots 20-24: time_in_round, bomb_planted, teammates_alive, enemies_alive, team_economy.
+
+    Reads from tick_data first (enriched during ingestion), falls back to the
+    context dict (DemoFrame at inference). Eliminates the training/inference
+    skew where these features were always 0.0 during training but populated
+    during inference.
+    """
+    ctx = context or {}
+
+    time_val = get_val("time_in_round", None)
+    if time_val is None:
+        time_val = ctx.get("time_in_round", 0.0)
+    vec[20] = min(float(time_val or 0.0) / 115.0, 1.0)
+
+    bomb_val = get_val("bomb_planted", None)
+    if bomb_val is None:
+        bomb_val = ctx.get("bomb_planted", False)
+    vec[21] = 1.0 if bomb_val else 0.0
+
+    team_val = get_val("teammates_alive", None)
+    if team_val is None:
+        team_val = ctx.get("teammates_alive", 0)
+    vec[22] = min(float(team_val or 0) / 4.0, 1.0)
+
+    enemy_val = get_val("enemies_alive", None)
+    if enemy_val is None:
+        enemy_val = ctx.get("enemies_alive", 0)
+    vec[23] = min(float(enemy_val or 0) / 5.0, 1.0)
+
+    econ_val = get_val("team_economy", None)
+    if econ_val is None:
+        econ_val = ctx.get("team_economy", 0)
+    vec[24] = min(float(econ_val or 0) / 16000.0, 1.0)
+
+
+def _finalize_vector(vec: np.ndarray) -> np.ndarray:
+    """P-VEC-02 / R4-14-02: log NaN/Inf at ERROR with feature-name attribution; clamp to safe defaults."""
+    global _nan_inf_clamp_count
+    if np.any(~np.isfinite(vec)):
+        bad_indices = np.where(~np.isfinite(vec))[0].tolist()
+        bad_names = [FEATURE_NAMES[i] for i in bad_indices if i < len(FEATURE_NAMES)]
+        with _nan_inf_lock:
+            _nan_inf_clamp_count += 1
+            count_snapshot = _nan_inf_clamp_count
+        _logger.error(
+            "P-VEC-02: Feature vector contains NaN/Inf BEFORE clamp "
+            "(occurrence #%d) — indices: %s, features: %s. "
+            "Clamping to defaults; fix upstream normalisation.",
+            count_snapshot,
+            bad_indices,
+            bad_names,
+        )
+    return np.nan_to_num(vec, nan=0.0, posinf=1.0, neginf=-1.0)
+
+
 class FeatureExtractor:
     """
     Unified feature extraction for RAP Coach training and inference.
@@ -298,197 +498,15 @@ class FeatureExtractor:
 
         vec = np.zeros(METADATA_DIM, dtype=np.float32)
 
-        # Core vitals (0-4)
-        vec[0] = float(get_val("health", 100)) / cfg.health_max
-        vec[1] = float(get_val("armor", 0)) / cfg.armor_max
+        # Slot fillers — order MUST match FEATURE_NAMES (training-serving contract).
+        _fill_vitals_movement(vec, get_val, cfg)  # 0-7
+        pos_z = _fill_awareness_position_view(vec, get_val, cfg)  # 8-14
+        _fill_z_penalty(vec, pos_z, map_name)  # 15
+        _fill_round_metadata(vec, get_val, cfg, map_name)  # 16-18
+        _fill_weapon_class(vec, get_val)  # 19
+        _fill_context_features(vec, get_val, context)  # 20-24
 
-        # Helmet: try has_helmet, fallback heuristic (armor > 0 often means helmet)
-        has_helmet = get_val("has_helmet", None)
-        if has_helmet is None:
-            has_helmet = get_val("armor", 0) > 0
-        vec[2] = 1.0 if has_helmet else 0.0
-
-        vec[3] = 1.0 if get_val("has_defuser", False) else 0.0
-        vec[4] = float(get_val("equipment_value", 0)) / cfg.equipment_value_max
-
-        # Movement/Stance (5-7)
-        vec[5] = 1.0 if get_val("is_crouching", False) else 0.0
-        vec[6] = 1.0 if get_val("is_scoped", False) else 0.0
-        # Feature #7 (is_blinded): demoparser2 does not populate is_blinded as a
-        # tick property; it populates flash_duration (float seconds >= 0). Prefer
-        # flash_duration > 0 as the source of truth, falling back to is_blinded for
-        # legacy demos that may have been parsed with a different extractor.
-        _flash_dur = get_val("flash_duration", 0.0)
-        try:
-            _flash_dur = float(_flash_dur) if _flash_dur is not None else 0.0
-        except (TypeError, ValueError):
-            _flash_dur = 0.0
-        vec[7] = 1.0 if (_flash_dur > 0.0 or get_val("is_blinded", False)) else 0.0
-
-        # Awareness (8)
-        enemies_visible = float(get_val("enemies_visible", 0))
-        vec[8] = min(enemies_visible / cfg.enemies_visible_max, 1.0)
-
-        # Position (9-11)
-        pos_x = float(get_val("pos_x", get_val("x", get_val("X", 0))))
-        pos_y = float(get_val("pos_y", get_val("y", get_val("Y", 0))))
-        pos_z = float(get_val("pos_z", get_val("z", get_val("Z", 0))))
-        if pos_x == 0.0 and pos_y == 0.0 and pos_z == 0.0:
-            # R4-14-01: On standard CS2 maps, (0,0,0) is outside the playable area.
-            # Log at WARNING to track potential data contamination rate.
-            _logger.warning(
-                "R4-14-01: Position (0,0,0) — likely missing data, not a valid coordinate"
-            )
-
-        vec[9] = np.clip(pos_x / cfg.pos_xy_extent, -1.0, 1.0)
-        vec[10] = np.clip(pos_y / cfg.pos_xy_extent, -1.0, 1.0)
-        vec[11] = np.clip(pos_z / cfg.pos_z_extent, -1.0, 1.0)
-
-        # View angles (12-14) - sin/cos encoding for yaw to avoid ±180° discontinuity
-        yaw_deg = float(get_val("view_x", 0))
-        yaw_rad = math.radians(yaw_deg)
-        vec[12] = math.sin(yaw_rad)
-        vec[13] = math.cos(yaw_rad)
-        vec[14] = float(get_val("view_y", 0)) / cfg.pitch_max
-
-        # 15: Z-Penalty (Vertical Awareness) — lazy import to avoid circular dependency
-        if map_name:
-            from Programma_CS2_RENAN.core.spatial_data import compute_z_penalty
-
-            vec[15] = compute_z_penalty(pos_z, map_name)
-        else:
-            # P-VEC-01: z_penalty defaults to 0.0 when map_name unavailable.
-            # Callers SHOULD provide map_name for feature parity with training.
-            global _z_penalty_warned
-            if not _z_penalty_warned:
-                _logger.warning(
-                    "P-VEC-01: map_name not provided — z_penalty defaults to 0.0. "
-                    "Feature parity with training may be degraded."
-                )
-                _z_penalty_warned = True
-            vec[15] = 0.0
-
-        # 16: KAST (Kill/Assist/Survive/Trade participation ratio)
-        # Uses real KAST data when available (injected by training pipeline from
-        # playermatchstats.avg_kast, or from round-level computation).
-        # Defaults to 0.0 when no KAST data exists — the old estimate_kast_from_stats()
-        # heuristic was systematically inflated (0.91 vs real 0.71) and is retired.
-        kast_val = get_val("kast", get_val("avg_kast", None))
-        if kast_val is not None:
-            vec[16] = float(kast_val)
-        # else: vec[16] stays 0.0 (no heuristic fallback)
-
-        # 17: Map identity encoding (deterministic hash for map-specific learning)
-        # NOTE: Python's built-in hash() is NOT deterministic across sessions
-        # (PYTHONHASHSEED randomization). Use hashlib for reproducibility.
-        if map_name:
-            h = int(hashlib.md5(map_name.encode(), usedforsecurity=False).hexdigest(), 16)
-            vec[17] = (h % 10000) / 10000.0
-
-        # 18: Round phase indicator (economic phase from equipment value)
-        equip_val = float(get_val("equipment_value", 0))
-        if equip_val > 0:
-            if equip_val < cfg.round_phase_eco_threshold:
-                vec[18] = 0.0  # pistol
-            elif equip_val < cfg.round_phase_force_threshold:
-                vec[18] = 0.33  # eco
-            elif equip_val < cfg.round_phase_full_threshold:
-                vec[18] = 0.66  # force
-            else:
-                vec[18] = 1.0  # full_buy
-
-        # 19: Weapon class encoding (from active_weapon string in DB or weapon in DemoFrame)
-        weapon_name = str(get_val("active_weapon", get_val("weapon", "unknown"))).lower()
-        # Strip common prefixes demoparser2 may include (e.g. "weapon_ak47" -> "ak47")
-        if weapon_name.startswith("weapon_"):
-            weapon_name = weapon_name[7:]
-        weapon_class = WEAPON_CLASS_MAP.get(weapon_name, None)
-        if weapon_class is None:
-            # H-12: Distinguish numeric entity handles (old ingestion artifact) from
-            # genuinely unknown weapon strings. demoparser2 versions prior to ~0.40
-            # returned the active-weapon entity handle (a large 32-bit integer such as
-            # 13205906) instead of the display name. Those values are irrecoverable
-            # without the original entity table, so we fall back silently at DEBUG.
-            # 0xFFFFFF (16777215) is CS2's "no weapon equipped" sentinel — map to 0.0
-            # (same class as knife/empty hand) to avoid polluting the feature with 0.5.
-            try:
-                numeric_val = int(weapon_name)
-                if numeric_val == 0xFFFFFF:  # 16777215 — CS2 "no weapon" sentinel
-                    weapon_class = 0.0
-                else:
-                    # Unknown numeric handle: old data, re-ingestion required.
-                    _logger.debug(
-                        "H-12: Numeric weapon handle %s — legacy ingestion data, re-ingest to fix",
-                        weapon_name,
-                    )
-                    weapon_class = _UNKNOWN_WEAPON_DEFAULT
-            except (ValueError, TypeError):
-                # Not numeric — genuinely unknown weapon string.
-                if weapon_name != "unknown":
-                    if weapon_name not in _unknown_weapons_seen:
-                        _unknown_weapons_seen.add(weapon_name)
-                        _logger.warning(
-                            "H-12: Unknown weapon '%s' — add to WEAPON_CLASS_MAP", weapon_name
-                        )
-                weapon_class = _UNKNOWN_WEAPON_DEFAULT
-        vec[19] = weapon_class
-
-        # Context-dependent features (20-24): Read from tick_data first (enriched
-        # during ingestion), fall back to context dict (DemoFrame at inference).
-        # This eliminates the training/inference skew where these features were
-        # always 0.0 during training but populated during inference.
-        ctx = context or {}
-
-        # 20: time_in_round
-        time_val = get_val("time_in_round", None)
-        if time_val is None:
-            time_val = ctx.get("time_in_round", 0.0)
-        vec[20] = min(float(time_val or 0.0) / 115.0, 1.0)
-
-        # 21: bomb_planted
-        bomb_val = get_val("bomb_planted", None)
-        if bomb_val is None:
-            bomb_val = ctx.get("bomb_planted", False)
-        vec[21] = 1.0 if bomb_val else 0.0
-
-        # 22: teammates_alive
-        team_val = get_val("teammates_alive", None)
-        if team_val is None:
-            team_val = ctx.get("teammates_alive", 0)
-        vec[22] = min(float(team_val or 0) / 4.0, 1.0)
-
-        # 23: enemies_alive
-        enemy_val = get_val("enemies_alive", None)
-        if enemy_val is None:
-            enemy_val = ctx.get("enemies_alive", 0)
-        vec[23] = min(float(enemy_val or 0) / 5.0, 1.0)
-
-        # 24: team_economy
-        econ_val = get_val("team_economy", None)
-        if econ_val is None:
-            econ_val = ctx.get("team_economy", 0)
-        vec[24] = min(float(econ_val or 0) / 16000.0, 1.0)
-
-        # P-VEC-02 / R4-14-02: Non-finite values indicate upstream bugs.
-        # Log at ERROR and track count so the problem cannot be silently ignored.
-        global _nan_inf_clamp_count
-        if np.any(~np.isfinite(vec)):
-            bad_indices = np.where(~np.isfinite(vec))[0].tolist()
-            feature_names = FeatureExtractor.get_feature_names()
-            bad_names = [feature_names[i] for i in bad_indices if i < len(feature_names)]
-            with _nan_inf_lock:
-                _nan_inf_clamp_count += 1
-                count_snapshot = _nan_inf_clamp_count
-            _logger.error(
-                "P-VEC-02: Feature vector contains NaN/Inf BEFORE clamp "
-                "(occurrence #%d) — indices: %s, features: %s. "
-                "Clamping to defaults; fix upstream normalisation.",
-                count_snapshot,
-                bad_indices,
-                bad_names,
-            )
-        vec = np.nan_to_num(vec, nan=0.0, posinf=1.0, neginf=-1.0)
-        return vec
+        return _finalize_vector(vec)
 
     @classmethod
     def extract_batch(

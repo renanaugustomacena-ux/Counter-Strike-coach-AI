@@ -73,42 +73,36 @@ def _splash_status(splash: QSplashScreen, message: str) -> None:
     QApplication.processEvents()
 
 
-def main():
-    # High-DPI support
-    QApplication.setHighDpiScaleFactorRoundingPolicy(
-        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
-    )
-
-    app = QApplication(sys.argv)
-
+def _resolve_app_version() -> str:
+    """Resolve installed package version with fallback."""
     try:
-        _version = version("macena-cs2-analyzer")
+        return version("macena-cs2-analyzer")
     except PackageNotFoundError:
-        _version = "1.0.0"
+        return "1.0.0"
 
-    app.setApplicationName(f"Macena CS2 Analyzer v{_version}")
-    app.setApplicationVersion(_version)
 
-    # Show splash screen immediately
-    splash = _create_splash(_version)
-    splash.show()
-    QApplication.processEvents()
+def _install_quit_handler(app: QApplication) -> None:
+    """Wire graceful shutdown for app_state polling, lifecycle daemon, and Console.
 
-    # Connect graceful shutdown early — active even if boot fails
+    Ordering matters: stop polling first, then halt the Session Engine subprocess
+    (Scanner/Digester/Teacher/Pulse) so its DB handles release before the Console
+    closes its own database connections.
+    """
+
     def _on_app_quit():
         from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state
         from Programma_CS2_RENAN.backend.control.console import get_console
         from Programma_CS2_RENAN.core.lifecycle import lifecycle
 
         get_app_state().stop_polling()
-        # Stop the Session Engine subprocess (Scanner/Digester/Teacher/Pulse)
-        # before tearing down the Console so its DB handles are free.
         lifecycle.shutdown()
         get_console().shutdown()
 
     app.aboutToQuit.connect(_on_app_quit)
 
-    # Register custom fonts and apply theme + font
+
+def _apply_theme(app: QApplication, splash: QSplashScreen) -> ThemeEngine:
+    """Register fonts and apply the active theme; returns engine for later reuse."""
     _splash_status(splash, "Loading theme engine...")
     theme = ThemeEngine()
     theme.register_fonts()
@@ -123,19 +117,16 @@ def main():
 
     active_theme = get_setting("ACTIVE_THEME", "CS2")
     theme.apply_theme(active_theme, app)
+    return theme
 
-    # Create main window
-    _splash_status(splash, "Creating main window...")
-    window = MainWindow()
 
-    # Set initial wallpaper
-    window.set_wallpaper(theme.wallpaper_path)
+def _create_screens(theme: ThemeEngine) -> dict:
+    """Instantiate all real screens (Phase 2). Returns name -> widget mapping.
 
-    # Register placeholder screens for pages not yet ported
-    placeholders = create_placeholder_screens()
-
-    # ── Phase 2: Real data screens ──
-    _splash_status(splash, "Initializing screens...")
+    Screen imports are deferred so this module loads cheaply during tests that
+    only need the helpers, and so a single broken screen surfaces as a focused
+    ImportError rather than blocking module-level import.
+    """
     from Programma_CS2_RENAN.apps.qt_app.screens.coach_screen import CoachScreen
     from Programma_CS2_RENAN.apps.qt_app.screens.faceit_config_screen import FaceitConfigScreen
     from Programma_CS2_RENAN.apps.qt_app.screens.help_screen import HelpScreen
@@ -151,63 +142,44 @@ def main():
     from Programma_CS2_RENAN.apps.qt_app.screens.user_profile_screen import UserProfileScreen
     from Programma_CS2_RENAN.apps.qt_app.screens.wizard_screen import WizardScreen
 
-    match_history = MatchHistoryScreen()
-    match_detail = MatchDetailScreen()
-    performance = PerformanceScreen()
-    settings = SettingsScreen(theme_engine=theme)
-    wizard = WizardScreen()
-    user_profile = UserProfileScreen()
-    profile = ProfileScreen()
-    home = HomeScreen()
-    coach = CoachScreen()
-    steam_config = SteamConfigScreen()
-    faceit_config = FaceitConfigScreen()
-    help_screen = HelpScreen()
-    tactical_viewer = TacticalViewerScreen()
-    pro_comparison = ProComparisonScreen()
+    return {
+        "match_history": MatchHistoryScreen(),
+        "match_detail": MatchDetailScreen(),
+        "performance": PerformanceScreen(),
+        "settings": SettingsScreen(theme_engine=theme),
+        "wizard": WizardScreen(),
+        "user_profile": UserProfileScreen(),
+        "profile": ProfileScreen(),
+        "home": HomeScreen(),
+        "coach": CoachScreen(),
+        "steam_config": SteamConfigScreen(),
+        "faceit_config": FaceitConfigScreen(),
+        "help": HelpScreen(),
+        "tactical_viewer": TacticalViewerScreen(),
+        "pro_comparison": ProComparisonScreen(),
+    }
 
-    # Wire match selection: history → detail
+
+def _wire_screen_signals(window: MainWindow, screens: dict) -> None:
+    """Wire cross-screen routing: history/home → match_detail, wizard → home."""
+    match_detail = screens["match_detail"]
+
     def _on_match_selected(demo_name: str):
         match_detail.load_demo(demo_name)
         window.switch_screen("match_detail")
 
-    match_history.match_selected.connect(_on_match_selected)
-    home.match_selected.connect(_on_match_selected)
+    screens["match_history"].match_selected.connect(_on_match_selected)
+    screens["home"].match_selected.connect(_on_match_selected)
+    screens["wizard"].setup_completed.connect(lambda: window.switch_screen("home"))
 
-    # Replace placeholders with real screens
-    placeholders["match_history"] = match_history
-    placeholders["match_detail"] = match_detail
-    placeholders["performance"] = performance
-    placeholders["settings"] = settings
-    placeholders["wizard"] = wizard
-    placeholders["user_profile"] = user_profile
-    placeholders["profile"] = profile
-    placeholders["home"] = home
-    placeholders["coach"] = coach
-    placeholders["steam_config"] = steam_config
-    placeholders["faceit_config"] = faceit_config
-    placeholders["help"] = help_screen
-    placeholders["tactical_viewer"] = tactical_viewer
-    placeholders["pro_comparison"] = pro_comparison
 
-    # Wire wizard completion: wizard → home
-    wizard.setup_completed.connect(lambda: window.switch_screen("home"))
+def _boot_backend_services(splash: QSplashScreen) -> None:
+    """Boot Console + Session Engine daemon. Errors logged, never raised.
 
-    # Register all screens
-    _splash_status(splash, "Registering screens...")
-    for name, widget in placeholders.items():
-        window.register_screen(name, widget)
-
-    # First-run gate: show wizard if setup not completed
-    if get_setting("SETUP_COMPLETED", False):
-        window.switch_screen("home")
-    else:
-        window.switch_screen("wizard")
-
-    # Store references for theme switching later
-    window._theme_engine = theme
-
-    # Boot backend console (DB audit, conditional FlareSolverr/Hunter)
+    Without the Session Engine daemon, the Pulse thread never writes
+    CoachState.last_heartbeat — the GUI would show "Service offline" and the
+    Coach card would stall at "Idle".
+    """
     _splash_status(splash, "Starting backend services...")
     from Programma_CS2_RENAN.backend.control.console import get_console
 
@@ -216,9 +188,6 @@ def main():
     except Exception:
         logging.exception("Backend boot failed")
 
-    # Launch the Session Engine daemon (Scanner/Digester/Teacher/Pulse). Without
-    # this the Pulse thread never writes CoachState.last_heartbeat, so the GUI
-    # shows "Service offline" and the Coach card stalls at "Idle".
     _splash_status(splash, "Starting Session Engine daemon...")
     try:
         from Programma_CS2_RENAN.core.lifecycle import lifecycle
@@ -228,47 +197,63 @@ def main():
     except Exception:
         logging.exception("Session Engine daemon launch failed")
 
-    # WR-10: Pre-download SBERT model with progress dialog if not cached
+
+def _ensure_sbert_model(splash: QSplashScreen) -> None:
+    """WR-10: pre-download the SBERT RAG model on first run; never block boot."""
     _splash_status(splash, "Checking AI language model...")
     try:
         from Programma_CS2_RENAN.backend.knowledge.rag_knowledge import KnowledgeEmbedder
 
-        if not KnowledgeEmbedder.is_model_cached():
-            _splash_status(splash, "Downloading AI language model (~90 MB, first time only)...")
-            splash.repaint()
+        if KnowledgeEmbedder.is_model_cached():
+            return
+
+        _splash_status(splash, "Downloading AI language model (~90 MB, first time only)...")
+        splash.repaint()
+        QApplication.processEvents()
+
+        # Download in foreground with splash visible — blocks but shows progress
+        import threading
+
+        download_done = threading.Event()
+        download_ok = [False]
+
+        def _do_download():
+            download_ok[0] = KnowledgeEmbedder.download_model()
+            download_done.set()
+
+        t = threading.Thread(target=_do_download, daemon=True)
+        t.start()
+
+        # Keep splash responsive while downloading
+        while not download_done.wait(timeout=0.1):
             QApplication.processEvents()
 
-            # Download in foreground with splash visible — blocks but shows progress
-            import threading
-
-            download_done = threading.Event()
-            download_ok = [False]
-
-            def _do_download():
-                download_ok[0] = KnowledgeEmbedder.download_model()
-                download_done.set()
-
-            t = threading.Thread(target=_do_download, daemon=True)
-            t.start()
-
-            # Keep splash responsive while downloading
-            while not download_done.wait(timeout=0.1):
-                QApplication.processEvents()
-
-            if download_ok[0]:
-                _splash_status(splash, "AI language model ready!")
-            else:
-                _splash_status(splash, "AI model download failed — using fallback")
+        if download_ok[0]:
+            _splash_status(splash, "AI language model ready!")
+        else:
+            _splash_status(splash, "AI model download failed — using fallback")
     except Exception:
-        pass  # Don't block app startup over SBERT
+        # Don't block app startup over SBERT — coach falls back to dense similarity.
+        pass
 
-    _splash_status(splash, "Ready!")
-    window.show()
-    splash.finish(window)
 
-    # Show boot failure warning AFTER window is visible (modal dialog needs parent)
+def _install_qt_excepthook() -> None:
+    """Install a global excepthook that logs uncaught Qt signal/slot exceptions."""
+    _original_excepthook = sys.excepthook
+
+    def _qt_excepthook(exc_type, exc_value, exc_tb):
+        logging.error("Uncaught exception in Qt", exc_info=(exc_type, exc_value, exc_tb))
+        _original_excepthook(exc_type, exc_value, exc_tb)
+
+    sys.excepthook = _qt_excepthook
+
+
+def _show_boot_failure_warning_if_needed(window: MainWindow) -> None:
+    """Show a modal warning if Console boot failed — needs visible parent window."""
+    from Programma_CS2_RENAN.backend.control.console import get_console
+
     try:
-        get_console()  # already created above
+        get_console()
     except Exception:
         QMessageBox.warning(
             window,
@@ -279,19 +264,69 @@ def main():
             "Check the log file for details.",
         )
 
-    # Start background CoachState polling (10s interval)
+
+def main():
+    # High-DPI support
+    QApplication.setHighDpiScaleFactorRoundingPolicy(
+        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+    )
+
+    app = QApplication(sys.argv)
+
+    app_version = _resolve_app_version()
+    app.setApplicationName(f"Macena CS2 Analyzer v{app_version}")
+    app.setApplicationVersion(app_version)
+
+    splash = _create_splash(app_version)
+    splash.show()
+    QApplication.processEvents()
+
+    # Connect graceful shutdown early — active even if boot fails
+    _install_quit_handler(app)
+
+    theme = _apply_theme(app, splash)
+
+    _splash_status(splash, "Creating main window...")
+    window = MainWindow()
+    window.set_wallpaper(theme.wallpaper_path)
+
+    placeholders = create_placeholder_screens()
+
+    _splash_status(splash, "Initializing screens...")
+    real_screens = _create_screens(theme)
+    placeholders.update(real_screens)
+    _wire_screen_signals(window, real_screens)
+
+    _splash_status(splash, "Registering screens...")
+    for name, widget in placeholders.items():
+        window.register_screen(name, widget)
+
+    # First-run gate
+    from Programma_CS2_RENAN.core.config import get_setting
+
+    if get_setting("SETUP_COMPLETED", False):
+        window.switch_screen("home")
+    else:
+        window.switch_screen("wizard")
+
+    # Store reference for theme switching from settings later
+    window._theme_engine = theme
+
+    _boot_backend_services(splash)
+    _ensure_sbert_model(splash)
+
+    _splash_status(splash, "Ready!")
+    window.show()
+    splash.finish(window)
+
+    _show_boot_failure_warning_if_needed(window)
+
+    # Background CoachState polling (10s interval)
     from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state
 
     get_app_state().start_polling()
 
-    # Install global exception handler for uncaught exceptions in signal/slot dispatch
-    _original_excepthook = sys.excepthook
-
-    def _qt_excepthook(exc_type, exc_value, exc_tb):
-        logging.error("Uncaught exception in Qt", exc_info=(exc_type, exc_value, exc_tb))
-        _original_excepthook(exc_type, exc_value, exc_tb)
-
-    sys.excepthook = _qt_excepthook
+    _install_qt_excepthook()
 
     sys.exit(app.exec())
 

@@ -94,6 +94,173 @@ def _weapon_name(raw: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Event emitters (private helpers used by RoundReconstructor._build_timeline)
+# Each function appends 0–1 RoundEvent to `events` for one tick transition.
+# ---------------------------------------------------------------------------
+
+
+def _emit_round_start(events, first_tick, map_name: str) -> str:
+    """Emit the round-start position event; returns the starting callout."""
+    start_callout = get_callout(map_name, first_tick.pos_x, first_tick.pos_y, first_tick.pos_z)
+    events.append(
+        RoundEvent(
+            tick=first_tick.tick,
+            time_in_round=first_tick.time_in_round,
+            event_type="position_change",
+            description=f"Round start at {start_callout} with {_weapon_name(first_tick.active_weapon)}",
+            details={
+                "callout": start_callout,
+                "weapon": first_tick.active_weapon,
+                "health": first_tick.health,
+                "armor": first_tick.armor,
+            },
+        )
+    )
+    return start_callout
+
+
+def _emit_health_delta(events, prev, tick, map_name: str) -> None:
+    """Damage taken (health drop while still alive at start of tick)."""
+    if tick.health < prev.health and prev.health > 0:
+        damage_taken = prev.health - tick.health
+        callout = get_callout(map_name, tick.pos_x, tick.pos_y, tick.pos_z)
+        events.append(
+            RoundEvent(
+                tick=tick.tick,
+                time_in_round=tick.time_in_round,
+                event_type="health_delta",
+                description=(
+                    f"Took {damage_taken} damage at {callout} "
+                    f"(HP: {prev.health} -> {tick.health})"
+                ),
+                details={
+                    "damage": damage_taken,
+                    "health_before": prev.health,
+                    "health_after": tick.health,
+                    "callout": callout,
+                },
+            )
+        )
+
+
+def _emit_death(events, prev, tick, map_name: str) -> None:
+    """Death detection (alive last tick, dead this tick)."""
+    if prev.health > 0 and tick.health <= 0:
+        callout = get_callout(map_name, prev.pos_x, prev.pos_y, prev.pos_z)
+        events.append(
+            RoundEvent(
+                tick=tick.tick,
+                time_in_round=tick.time_in_round,
+                event_type="death",
+                description=f"Died at {callout}",
+                details={"callout": callout, "weapon_held": prev.active_weapon},
+            )
+        )
+
+
+def _emit_weapon_switch(events, prev, tick) -> None:
+    """Weapon switch while alive."""
+    if tick.active_weapon != prev.active_weapon and tick.health > 0:
+        events.append(
+            RoundEvent(
+                tick=tick.tick,
+                time_in_round=tick.time_in_round,
+                event_type="weapon_switch",
+                description=(f"Switched to {_weapon_name(tick.active_weapon)}"),
+                details={
+                    "from": prev.active_weapon,
+                    "to": tick.active_weapon,
+                },
+            )
+        )
+
+
+def _emit_engagement(events, prev, tick, map_name: str) -> None:
+    """First sighting of enemies (0 → N visible transition)."""
+    if tick.enemies_visible > 0 and prev.enemies_visible == 0:
+        callout = get_callout(map_name, tick.pos_x, tick.pos_y, tick.pos_z)
+        events.append(
+            RoundEvent(
+                tick=tick.tick,
+                time_in_round=tick.time_in_round,
+                event_type="engagement",
+                description=(
+                    f"Spotted {tick.enemies_visible} "
+                    f"enem{'y' if tick.enemies_visible == 1 else 'ies'} "
+                    f"at {callout}"
+                ),
+                details={
+                    "enemies": tick.enemies_visible,
+                    "callout": callout,
+                    "weapon": tick.active_weapon,
+                    "scoped": tick.is_scoped,
+                },
+            )
+        )
+
+
+def _emit_bomb_action(events, prev, tick, map_name: str) -> None:
+    """Bomb plant transition."""
+    if tick.bomb_planted and not prev.bomb_planted:
+        callout = get_callout(map_name, tick.pos_x, tick.pos_y, tick.pos_z)
+        events.append(
+            RoundEvent(
+                tick=tick.tick,
+                time_in_round=tick.time_in_round,
+                event_type="bomb_action",
+                description=f"Bomb planted (player at {callout})",
+                details={"callout": callout},
+            )
+        )
+
+
+def _emit_teammate_lost(events, prev, tick) -> None:
+    """Teammate count drop event."""
+    if tick.teammates_alive < prev.teammates_alive:
+        lost = prev.teammates_alive - tick.teammates_alive
+        events.append(
+            RoundEvent(
+                tick=tick.tick,
+                time_in_round=tick.time_in_round,
+                event_type="teammate_lost",
+                description=(
+                    f"Lost {lost} teammate{'s' if lost > 1 else ''} "
+                    f"({tick.teammates_alive + 1}v{tick.enemies_alive} situation)"
+                ),
+                details={
+                    "teammates_alive": tick.teammates_alive,
+                    "enemies_alive": tick.enemies_alive,
+                },
+            )
+        )
+
+
+def _emit_enemy_eliminated(events, prev, tick, map_name: str) -> None:
+    """Enemy count drop event."""
+    if tick.enemies_alive < prev.enemies_alive and prev.enemies_alive > 0:
+        eliminated = prev.enemies_alive - tick.enemies_alive
+        callout = get_callout(map_name, tick.pos_x, tick.pos_y, tick.pos_z)
+        events.append(
+            RoundEvent(
+                tick=tick.tick,
+                time_in_round=tick.time_in_round,
+                event_type="enemy_eliminated",
+                description=(
+                    f"Enemy eliminated near {callout} "
+                    f"({tick.teammates_alive + 1}v{tick.enemies_alive} situation)"
+                ),
+                details={
+                    "eliminated": eliminated,
+                    "callout": callout,
+                    "weapon": tick.active_weapon,
+                    "teammates_alive": tick.teammates_alive,
+                    "enemies_alive": tick.enemies_alive,
+                },
+            )
+        )
+
+
+# ---------------------------------------------------------------------------
 # Data Model
 # ---------------------------------------------------------------------------
 
@@ -311,7 +478,6 @@ class RoundReconstructor:
         map_name: str,
     ) -> RoundTimeline:
         """Build a RoundTimeline from tick data and optional RoundStats."""
-        # Round metadata from RoundStats (if available)
         side = round_stats.side if round_stats else "?"
         outcome = "won" if (round_stats and round_stats.round_won) else "lost"
         kills = round_stats.kills if round_stats else 0
@@ -319,30 +485,12 @@ class RoundReconstructor:
         damage = round_stats.damage_dealt if round_stats else 0
         equip = round_stats.equipment_value if round_stats else 0
 
-        # Check if player survived (health > 0 at last tick)
         survived = ticks[-1].health > 0 if ticks else True
 
         events: List[RoundEvent] = []
-
-        # Starting position
         first_tick = ticks[0]
-        start_callout = get_callout(map_name, first_tick.pos_x, first_tick.pos_y, first_tick.pos_z)
-        events.append(
-            RoundEvent(
-                tick=first_tick.tick,
-                time_in_round=first_tick.time_in_round,
-                event_type="position_change",
-                description=f"Round start at {start_callout} with {_weapon_name(first_tick.active_weapon)}",
-                details={
-                    "callout": start_callout,
-                    "weapon": first_tick.active_weapon,
-                    "health": first_tick.health,
-                    "armor": first_tick.armor,
-                },
-            )
-        )
+        start_callout = _emit_round_start(events, first_tick, map_name)
 
-        # Process ticks for state transitions
         prev = first_tick
         last_callout = start_callout
         sample_counter = 0
@@ -350,133 +498,18 @@ class RoundReconstructor:
         for tick in ticks[1:]:
             sample_counter += 1
 
-            # Health delta (damage taken)
-            if tick.health < prev.health and prev.health > 0:
-                damage_taken = prev.health - tick.health
-                callout = get_callout(map_name, tick.pos_x, tick.pos_y, tick.pos_z)
-                events.append(
-                    RoundEvent(
-                        tick=tick.tick,
-                        time_in_round=tick.time_in_round,
-                        event_type="health_delta",
-                        description=(
-                            f"Took {damage_taken} damage at {callout} "
-                            f"(HP: {prev.health} -> {tick.health})"
-                        ),
-                        details={
-                            "damage": damage_taken,
-                            "health_before": prev.health,
-                            "health_after": tick.health,
-                            "callout": callout,
-                        },
-                    )
-                )
+            # Per-event-type emitters (order matters: matches original source order
+            # so that events.sort() — which is stable — preserves intra-tick ordering).
+            _emit_health_delta(events, prev, tick, map_name)
+            _emit_death(events, prev, tick, map_name)
+            _emit_weapon_switch(events, prev, tick)
+            _emit_engagement(events, prev, tick, map_name)
+            _emit_bomb_action(events, prev, tick, map_name)
+            _emit_teammate_lost(events, prev, tick)
+            _emit_enemy_eliminated(events, prev, tick, map_name)
 
-            # Death detection
-            if prev.health > 0 and tick.health <= 0:
-                callout = get_callout(map_name, prev.pos_x, prev.pos_y, prev.pos_z)
-                events.append(
-                    RoundEvent(
-                        tick=tick.tick,
-                        time_in_round=tick.time_in_round,
-                        event_type="death",
-                        description=f"Died at {callout}",
-                        details={"callout": callout, "weapon_held": prev.active_weapon},
-                    )
-                )
-
-            # Weapon switch
-            if tick.active_weapon != prev.active_weapon and tick.health > 0:
-                events.append(
-                    RoundEvent(
-                        tick=tick.tick,
-                        time_in_round=tick.time_in_round,
-                        event_type="weapon_switch",
-                        description=(f"Switched to {_weapon_name(tick.active_weapon)}"),
-                        details={
-                            "from": prev.active_weapon,
-                            "to": tick.active_weapon,
-                        },
-                    )
-                )
-
-            # Enemies visible transitions
-            if tick.enemies_visible > 0 and prev.enemies_visible == 0:
-                callout = get_callout(map_name, tick.pos_x, tick.pos_y, tick.pos_z)
-                events.append(
-                    RoundEvent(
-                        tick=tick.tick,
-                        time_in_round=tick.time_in_round,
-                        event_type="engagement",
-                        description=(
-                            f"Spotted {tick.enemies_visible} "
-                            f"enem{'y' if tick.enemies_visible == 1 else 'ies'} "
-                            f"at {callout}"
-                        ),
-                        details={
-                            "enemies": tick.enemies_visible,
-                            "callout": callout,
-                            "weapon": tick.active_weapon,
-                            "scoped": tick.is_scoped,
-                        },
-                    )
-                )
-
-            # Bomb plant/defuse
-            if tick.bomb_planted and not prev.bomb_planted:
-                callout = get_callout(map_name, tick.pos_x, tick.pos_y, tick.pos_z)
-                events.append(
-                    RoundEvent(
-                        tick=tick.tick,
-                        time_in_round=tick.time_in_round,
-                        event_type="bomb_action",
-                        description=f"Bomb planted (player at {callout})",
-                        details={"callout": callout},
-                    )
-                )
-
-            # Teammates/enemies alive changes
-            if tick.teammates_alive < prev.teammates_alive:
-                lost = prev.teammates_alive - tick.teammates_alive
-                events.append(
-                    RoundEvent(
-                        tick=tick.tick,
-                        time_in_round=tick.time_in_round,
-                        event_type="teammate_lost",
-                        description=(
-                            f"Lost {lost} teammate{'s' if lost > 1 else ''} "
-                            f"({tick.teammates_alive + 1}v{tick.enemies_alive} situation)"
-                        ),
-                        details={
-                            "teammates_alive": tick.teammates_alive,
-                            "enemies_alive": tick.enemies_alive,
-                        },
-                    )
-                )
-
-            if tick.enemies_alive < prev.enemies_alive and prev.enemies_alive > 0:
-                eliminated = prev.enemies_alive - tick.enemies_alive
-                callout = get_callout(map_name, tick.pos_x, tick.pos_y, tick.pos_z)
-                events.append(
-                    RoundEvent(
-                        tick=tick.tick,
-                        time_in_round=tick.time_in_round,
-                        event_type="enemy_eliminated",
-                        description=(
-                            f"Enemy eliminated near {callout} "
-                            f"({tick.teammates_alive + 1}v{tick.enemies_alive} situation)"
-                        ),
-                        details={
-                            "eliminated": eliminated,
-                            "callout": callout,
-                            "weapon": tick.active_weapon,
-                            "teammates_alive": tick.teammates_alive,
-                            "enemies_alive": tick.enemies_alive,
-                        },
-                    )
-                )
-
-            # Position sampling (every ~2 seconds for significant movement)
+            # Position sampling (every ~2 seconds for significant movement) — stays
+            # inline because it owns the stateful sample_counter + last_callout.
             if sample_counter >= _POSITION_SAMPLE_INTERVAL and tick.health > 0:
                 sample_counter = 0
                 callout = get_callout(map_name, tick.pos_x, tick.pos_y, tick.pos_z)
@@ -497,10 +530,7 @@ class RoundReconstructor:
 
             prev = tick
 
-        # Sort events by tick (they should already be, but ensure)
         events.sort(key=lambda e: e.tick)
-
-        # Build summary
         summary = self._build_summary(events, side, outcome, kills, deaths_count, survived)
 
         return RoundTimeline(

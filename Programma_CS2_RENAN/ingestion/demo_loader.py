@@ -148,53 +148,27 @@ class DemoLoader:
     CACHE_VERSION = "v21_vectorized_parse"  # D-26: groupby + pre-vectorized columns
 
     @staticmethod
-    def load_demo(
-        path: str, force_reparse: bool = False
-    ) -> Dict[str, Tuple[List[DemoFrame], List[GameEvent], Dict[str, int]]]:
+    def _try_load_cache(cache_path: str):
+        """Return cached data if the file exists and verifies; None otherwise."""
+        if not os.path.exists(cache_path):
+            return None
+        app_logger.info("Loading cached simulation from %s", os.path.basename(cache_path))
         try:
-            from Programma_CS2_RENAN.observability.sentry_setup import add_breadcrumb
+            return _pickle_load_verified(cache_path)
+        except Exception as e:
+            app_logger.warning("Cache load failed, re-parsing: %s", e)
+            return None
 
-            add_breadcrumb("ingestion", f"Demo parse started: {os.path.basename(path)}")
-        except ImportError:
-            pass
+    @staticmethod
+    def _pass1_positions(parser):
+        """Pass 1: per-tick (steamid → (x,y,z)) baseline used by Pass 2 throw lookup.
 
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"Demo file not found: {path}")
-
-        if not os.path.exists(DemoLoader.CACHE_DIR):
-            os.makedirs(DemoLoader.CACHE_DIR)
-
-        demo_name = os.path.basename(path)
-        file_stats = os.stat(path)
-        cache_name = f"{demo_name}_{file_stats.st_size}_{DemoLoader.CACHE_VERSION}.mcn"
-        cache_path = os.path.join(DemoLoader.CACHE_DIR, cache_name)
-
-        if os.path.exists(cache_path) and not force_reparse:
-            app_logger.info("Loading cached simulation from %s", cache_name)
-            try:
-                data = _pickle_load_verified(cache_path)
-                return data  # type: ignore[return-value]
-            except Exception as e:
-                app_logger.warning("Cache load failed, re-parsing: %s", e)
-
-        # Pre-parse validation via DemoFormatAdapter (Proposal 12)
-        validation = validate_demo_file(path)
-        if not validation.get("valid", False):
-            raise ValueError(f"Demo validation failed: {validation['error']}")
-        for warning in validation.get("warnings", []):
-            app_logger.warning("Demo format warning: %s", warning)
-
-        app_logger.info("Parsing headers and base data for %s", path)
-        parser = DemoParser(path)
-
-        header = parser.parse_header()
-        tick_rate: float = float(header.get("tick_rate", 64.0) or 64.0)
-        default_map: str = str(header.get("map_name", "unknown") or "unknown")
-
-        # --- 1. EXTRACT PLAYER POSITIONS (Two-Pass Baseline) ---
+        Returns (pos_by_tick, pass1_failed). On failure, grenade trajectories
+        will be empty but the rest of the pipeline still produces frames.
+        """
         app_logger.info("Pass 1 - Extracting player positions")
         fields = ["tick", "steamid", "X", "Y", "Z"]
-        pos_by_tick = {}  # tick -> {steamid -> (x,y,z)}
+        pos_by_tick: dict = {}
         pass1_failed = False
         try:
             rows_df = parser.parse_ticks(fields)
@@ -219,14 +193,16 @@ class DemoLoader:
                 "Error in Pass 1 (player positions): %s — grenade trajectories will be empty", e
             )
             pass1_failed = True
+        return pos_by_tick, pass1_failed
 
-        # --- 2. NADE EVENTS ---
+    @staticmethod
+    def _pass2_nades(parser, tick_rate, pos_by_tick):
+        """Pass 2: link grenade detonations to throws via baseline; return tick → [NadeState]."""
         app_logger.info("Pass 2 - Linking grenades via baseline")
-        nades_by_tick = {}  # tick -> List[NadeState]        # Helper to find thrower pos
+        nades_by_tick: dict = {}
         throws_df = parser.parse_events(["grenade_thrown"])
         throws = throws_df[0][1] if throws_df else pd.DataFrame()
         if not throws.empty:
-            # Ensure steamid is string for consistent comparison
             throws["user_steamid"] = throws["user_steamid"].astype(str)
 
         def get_throw_data(det_tick, sid, tag):
@@ -244,11 +220,10 @@ class DemoLoader:
             if not m.empty:
                 t_row = m.iloc[-1]
                 t_tick = int(t_row["tick"])
-                # Look up thrower pos in our baseline
                 t_pos = pos_by_tick.get(t_tick, {}).get(sid)
                 if not t_pos:
-                    # Fallback: find nearest previous tick for this player
-                    for offset in range(1, 33):  # 0.5s at 64 tick/s
+                    # Fallback: nearest previous tick (≤ 0.5s at 64 t/s)
+                    for offset in range(1, 33):
                         tp = pos_by_tick.get(t_tick - offset, {}).get(sid)
                         if tp:
                             t_pos = tp
@@ -256,21 +231,18 @@ class DemoLoader:
                 return t_tick, t_pos
             return None, None
 
-        # Helper for common fields in all nade events (Note: lowercase x,y,z in events)
         def process_nades(event_list, n_type, dur_ticks=0, is_start_end=False):
-            # WARNING: MAX_NADE_DURATION is a HEURISTIC CEILING, not ground truth
-            # When end events are missing, durations are capped at this arbitrary value
-            # This becomes training data, so capped durations may poison temporal models
-            # NadeState.is_duration_estimated flag tracks capped durations (H-05)
-            MAX_NADE_DURATION = 20 * int(tick_rate)  # 20 seconds fallback (heuristic)
-            FADE_TICKS = 5 * int(tick_rate)  # 5 seconds for fade-out
-            capped_count = 0  # Track how many grenades hit the ceiling
+            # H-05: MAX_NADE_DURATION is a HEURISTIC CEILING, not ground truth. When
+            # end events are missing, durations cap here and feed training data —
+            # NadeState.is_duration_estimated (DS-14) flags those rows.
+            MAX_NADE_DURATION = 20 * int(tick_rate)
+            FADE_TICKS = 5 * int(tick_rate)
+            capped_count = 0
             try:
                 res = parser.parse_events(event_list)
                 if not res:
                     return
 
-                # Group by event name and ensure they are sorted by tick
                 data = {evt[0]: evt[1].sort_values("tick") for evt in res if not evt[1].empty}
 
                 if is_start_end:
@@ -284,8 +256,7 @@ class DemoLoader:
                             if eid is None:
                                 continue
 
-                            # Match end event that happens after this start event for the same entity
-                            # Limit search window to 30s to avoid cross-half mis-matches
+                            # Match end event for the same entity within 30s window
                             et = int(s_row.tick) + MAX_NADE_DURATION
                             duration_capped = True
                             if not ends.empty:
@@ -296,7 +267,7 @@ class DemoLoader:
                                 ]
                                 if not e_match.empty:
                                     et = min(et, int(e_match.iloc[0].tick))
-                                    duration_capped = False  # Found real end event
+                                    duration_capped = False
 
                             if duration_capped:
                                 capped_count += 1
@@ -321,9 +292,8 @@ class DemoLoader:
                                     else []
                                 ),
                                 thrower_id=sid if sid else None,
-                                is_duration_estimated=duration_capped,  # DS-14
+                                is_duration_estimated=duration_capped,
                             )
-                            # Add to relevant ticks plus fade window
                             for t in range(t_tick or st, et + FADE_TICKS + 1):
                                 if t not in nades_by_tick:
                                     nades_by_tick[t] = []
@@ -338,7 +308,7 @@ class DemoLoader:
                                 continue
                             st = int(row.tick)
                             et = st + (dur_ticks or MAX_NADE_DURATION)
-                            if not dur_ticks:  # Used MAX_NADE_DURATION fallback
+                            if not dur_ticks:
                                 capped_count += 1
                             sid = int(getattr(row, "user_steamid", 0) or 0)
                             tag = "flash" if n_type == NadeType.FLASH else "grenade"
@@ -358,22 +328,19 @@ class DemoLoader:
                                     else []
                                 ),
                                 thrower_id=sid if sid else None,
-                                is_duration_estimated=not bool(dur_ticks),  # DS-14
+                                is_duration_estimated=not bool(dur_ticks),
                             )
-                            # Add to relevant ticks plus fade window
                             for t in range(t_tick or st, et + FADE_TICKS + 1):
                                 if t not in nades_by_tick:
                                     nades_by_tick[t] = []
                                 nades_by_tick[t].append(nade)
 
-                # Log capped durations for transparency
                 if capped_count > 0:
                     app_logger.warning(
                         "%s %s grenades had durations capped at MAX_NADE_DURATION (heuristic ceiling)",
                         capped_count,
                         n_type.name,
                     )
-
             except Exception as e:
                 app_logger.error("Error parsing %s: %s", n_type, e)
 
@@ -383,9 +350,54 @@ class DemoLoader:
         process_nades(["inferno_startburn", "inferno_expire"], NadeType.MOLOTOV, is_start_end=True)
         process_nades(["flashbang_detonate"], NadeType.FLASH, dur_ticks=int(0.5 * tick_rate))
         process_nades(["hegrenade_detonate"], NadeType.HE, dur_ticks=int(0.5 * tick_rate))
+        return nades_by_tick
 
-        # --- 3. FULL EXTRACTION & MULTI-MAP SEGMENTATION ---
-        app_logger.info("Pass 3 - Extracting full states & segmentation")
+    @staticmethod
+    def _extract_round_starts(parser):
+        """Sorted ticks of round_freeze_end events (round-segmentation anchors)."""
+        try:
+            res = parser.parse_events(["round_freeze_end"])
+            if res:
+                return sorted(res[0][1]["tick"].tolist())
+        except Exception as e:
+            app_logger.warning("Failed to parse round_freeze_end events: %s", e)
+        return []
+
+    @staticmethod
+    def _extract_bomb_events(parser):
+        """WR-40: parse bomb_planted / bomb_defused. Returns (plant_events, defuse_ticks)."""
+        plant_events: list = []
+        defuse_ticks: list = []
+        try:
+            for evt_name in ["bomb_planted", "bomb_defused"]:
+                res = parser.parse_events([evt_name])
+                if res:
+                    df_evt = res[0][1] if isinstance(res[0], tuple) else pd.DataFrame(res)
+                    if not df_evt.empty and "tick" in df_evt.columns:
+                        for row in df_evt.itertuples():
+                            t = int(row.tick)
+                            if evt_name == "bomb_planted":
+                                bx = float(getattr(row, "x", 0.0) or 0.0)
+                                by = float(getattr(row, "y", 0.0) or 0.0)
+                                bz = float(getattr(row, "z", 0.0) or 0.0)
+                                plant_events.append((t, bx, by, bz))
+                            else:
+                                defuse_ticks.append(t)
+            plant_events.sort()
+            defuse_ticks.sort()
+            if plant_events:
+                app_logger.info(
+                    "Parsed %d bomb plant(s) and %d defuse(s)",
+                    len(plant_events),
+                    len(defuse_ticks),
+                )
+        except Exception as e:
+            app_logger.warning("Failed to parse bomb events: %s", e)
+        return plant_events, defuse_ticks
+
+    @staticmethod
+    def _pass3_load_dataframe(parser):
+        """Pass 3: parse all per-tick fields; rename current_equip_value → equipment_value."""
         fields = [
             "tick",
             "steamid",
@@ -410,49 +422,6 @@ class DemoLoader:
             "is_scoped",
             "current_equip_value",
         ]
-
-        round_starts = []
-        try:
-            res = parser.parse_events(["round_freeze_end"])
-            if res:
-                round_starts = sorted(res[0][1]["tick"].tolist())
-        except Exception as e:
-            app_logger.warning("Failed to parse round_freeze_end events: %s", e)
-
-        # --- Bomb events (WR-40) ---
-        _bomb_plant_events = []  # [(tick, x, y, z), ...]
-        _bomb_defuse_ticks = []  # [tick, ...]
-        try:
-            for _evt_name in ["bomb_planted", "bomb_defused"]:
-                res = parser.parse_events([_evt_name])
-                if res:
-                    df_evt = res[0][1] if isinstance(res[0], tuple) else pd.DataFrame(res)
-                    if not df_evt.empty and "tick" in df_evt.columns:
-                        for row in df_evt.itertuples():
-                            t = int(row.tick)
-                            if _evt_name == "bomb_planted":
-                                bx = float(getattr(row, "x", 0.0) or 0.0)
-                                by = float(getattr(row, "y", 0.0) or 0.0)
-                                bz = float(getattr(row, "z", 0.0) or 0.0)
-                                _bomb_plant_events.append((t, bx, by, bz))
-                            else:
-                                _bomb_defuse_ticks.append(t)
-            _bomb_plant_events.sort()
-            _bomb_defuse_ticks.sort()
-            if _bomb_plant_events:
-                app_logger.info(
-                    "Parsed %d bomb plant(s) and %d defuse(s)",
-                    len(_bomb_plant_events),
-                    len(_bomb_defuse_ticks),
-                )
-        except Exception as e:
-            app_logger.warning("Failed to parse bomb events: %s", e)
-
-        # Detect Map Changes (via rounded start or gaps if map_name is unavailable per tick)
-        # For now, we use the default map but structure it as a dict.
-        # If demoparser2 allowed 'map_name' in parse_ticks, we'd use that.
-        # But we can segment by 'Full Match' for the default map.
-
         rows_df = pd.DataFrame()
         try:
             rows_df = parser.parse_ticks(fields)
@@ -462,173 +431,185 @@ class DemoLoader:
         except Exception as e:
             app_logger.error("Error parsing ticks in Pass 3: %s", e)
 
-        # Rename demoparser2's "current_equip_value" → "equipment_value" for
-        # downstream compatibility with PlayerState and fill maps.
         if "current_equip_value" in rows_df.columns:
             rows_df = rows_df.rename(columns={"current_equip_value": "equipment_value"})
+        return rows_df
 
-        # D-26: Pre-vectorize columns to minimize per-row Python overhead.
-        # Iterates ~172K tick groups instead of ~1.7M individual rows.
-        frames: List[DemoFrame] = []
-
-        if not rows_df.empty:
-            # --- Money: coalesce across demoparser2 field name variants (H-03) ---
-            _money_series = pd.Series(np.nan, index=rows_df.index)
-            _found_money_col = False
-            for _mf in ("balance", "cash", "money", "m_iAccount"):
-                if _mf in rows_df.columns:
-                    _money_series = _money_series.fillna(rows_df[_mf])
-                    _found_money_col = True
-            if not _found_money_col:
-                # R3-02: No money column at all — log once instead of per-row
-                app_logger.warning(
-                    "R3-02: No money column found in parsed data — all money values default to 0"
-                )
-            rows_df["money_resolved"] = _money_series.fillna(0).astype(int)
-
-            # --- Team: vectorized string classification ---
-            _tu = rows_df["team_name"].fillna("").astype(str).str.upper()
-            rows_df["team_resolved"] = np.where(
-                _tu.str.contains("CT", na=False),
-                "CT",
-                np.where(_tu.str.contains("TER", na=False), "T", "SPEC"),
+    @staticmethod
+    def _pass3_preprocess_dataframe(rows_df, round_starts):
+        """D-26: pre-vectorize money/team/round/numeric defaults to skip per-row Python."""
+        # Money: coalesce demoparser2 field-name variants (H-03)
+        _money_series = pd.Series(np.nan, index=rows_df.index)
+        _found_money_col = False
+        for _mf in ("balance", "cash", "money", "m_iAccount"):
+            if _mf in rows_df.columns:
+                _money_series = _money_series.fillna(rows_df[_mf])
+                _found_money_col = True
+        if not _found_money_col:
+            # R3-02: log once instead of per-row
+            app_logger.warning(
+                "R3-02: No money column found in parsed data — all money values default to 0"
             )
+        rows_df["money_resolved"] = _money_series.fillna(0).astype(int)
 
-            # --- Round index: O(n log m) via searchsorted (replaces O(n*m) linear scan) ---
-            if round_starts:
-                _rs_arr = np.array(round_starts)
-                rows_df["round_resolved"] = np.clip(
-                    np.searchsorted(_rs_arr, rows_df["tick"].values, side="right"),
-                    1,
-                    len(_rs_arr),
-                )
-            else:
-                rows_df["round_resolved"] = 1
+        # Team: vectorized string classification
+        _tu = rows_df["team_name"].fillna("").astype(str).str.upper()
+        rows_df["team_resolved"] = np.where(
+            _tu.str.contains("CT", na=False),
+            "CT",
+            np.where(_tu.str.contains("TER", na=False), "T", "SPEC"),
+        )
 
-            # --- NaN-safe numeric fills (one vectorized pass instead of per-row getattr) ---
-            _fill_map = {
-                "X": 0.0,
-                "Y": 0.0,
-                "Z": 0.0,
-                "yaw": 0.0,
-                "armor_value": 0,
-                "flash_duration": 0.0,
-                "equipment_value": 0,
-                "kills_total": 0,
-                "deaths_total": 0,
-                "assists_total": 0,
-                "mvps": 0,
-            }
-            for _col, _default in _fill_map.items():
-                if _col in rows_df.columns:
-                    rows_df[_col] = rows_df[_col].fillna(_default)
+        # Round index: O(n log m) via searchsorted (replaces O(n*m) linear scan)
+        if round_starts:
+            _rs_arr = np.array(round_starts)
+            rows_df["round_resolved"] = np.clip(
+                np.searchsorted(_rs_arr, rows_df["tick"].values, side="right"),
+                1,
+                len(_rs_arr),
+            )
+        else:
+            rows_df["round_resolved"] = 1
 
-            # Health: NaN → 0 if column exists, else default 100 (column missing entirely)
-            if "health" in rows_df.columns:
-                rows_df["health"] = rows_df["health"].fillna(0)
-            else:
-                rows_df["health"] = 100
+        # NaN-safe numeric defaults (one vectorized pass)
+        _fill_map = {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": 0.0,
+            "yaw": 0.0,
+            "armor_value": 0,
+            "flash_duration": 0.0,
+            "equipment_value": 0,
+            "kills_total": 0,
+            "deaths_total": 0,
+            "assists_total": 0,
+            "mvps": 0,
+        }
+        for _col, _default in _fill_map.items():
+            if _col in rows_df.columns:
+                rows_df[_col] = rows_df[_col].fillna(_default)
 
-            _rs_list = round_starts if round_starts else []
-            _team_map = {"CT": Team.CT, "T": Team.T, "SPEC": Team.SPECTATOR}
+        # Health: NaN → 0 if column exists, else default 100
+        if "health" in rows_df.columns:
+            rows_df["health"] = rows_df["health"].fillna(0)
+        else:
+            rows_df["health"] = 100
 
-            # Bomb state tracking (WR-40): pointer-based forward scan
-            _bomb_is_planted = False
-            _bomb_pos = (0.0, 0.0, 0.0)
-            _bomb_plant_idx = 0
-            _bomb_defuse_idx = 0
-            _rs_bomb_idx = 0  # Pointer into _rs_list for round resets
+    @staticmethod
+    def _pass3_build_frames(
+        rows_df,
+        tick_rate,
+        default_map,
+        round_starts,
+        bomb_plant_events,
+        bomb_defuse_ticks,
+        nades_by_tick,
+    ):
+        """Build the DemoFrame list from preprocessed rows + bomb timeline."""
+        frames: List[DemoFrame] = []
+        if rows_df.empty:
+            return frames
 
-            for tick_val, group in rows_df.groupby("tick", sort=True):
-                tick_int = int(tick_val)
-                r_idx = int(group.iloc[0]["round_resolved"])
-                st_t = _rs_list[r_idx - 1] if (_rs_list and r_idx <= len(_rs_list)) else 0
+        _rs_list = round_starts if round_starts else []
+        _team_map = {"CT": Team.CT, "T": Team.T, "SPEC": Team.SPECTATOR}
 
-                players = []
-                for row in group.itertuples():
-                    sid = int(getattr(row, "steamid", 0) or 0)
-                    team = _team_map.get(row.team_resolved, Team.SPECTATOR)
+        # WR-40: pointer-based forward scan for bomb state across all ticks
+        _bomb_is_planted = False
+        _bomb_pos = (0.0, 0.0, 0.0)
+        _bomb_plant_idx = 0
+        _bomb_defuse_idx = 0
+        _rs_bomb_idx = 0
 
-                    hp_val = int(row.health)
+        for tick_val, group in rows_df.groupby("tick", sort=True):
+            tick_int = int(tick_val)
+            r_idx = int(group.iloc[0]["round_resolved"])
+            st_t = _rs_list[r_idx - 1] if (_rs_list and r_idx <= len(_rs_list)) else 0
 
-                    # R3-H01: active weapon only (demoparser2 limitation)
-                    active_weapon = str(getattr(row, "active_weapon_name", "None"))
-                    _inventory = (
-                        [active_weapon] if active_weapon and active_weapon != "None" else []
-                    )
+            players = []
+            for row in group.itertuples():
+                sid = int(getattr(row, "steamid", 0) or 0)
+                team = _team_map.get(row.team_resolved, Team.SPECTATOR)
+                hp_val = int(row.health)
 
-                    players.append(
-                        PlayerState(
-                            player_id=sid,
-                            name=str(getattr(row, "name", "Unknown")),
-                            team=team,
-                            x=float(row.X),
-                            y=float(row.Y),
-                            z=float(row.Z),
-                            yaw=float(row.yaw),
-                            hp=hp_val,
-                            armor=int(row.armor_value),
-                            is_alive=bool(getattr(row, "is_alive", False)),
-                            is_flashed=float(row.flash_duration) > 0.5,
-                            has_defuser=bool(getattr(row, "defuse_kit_owned", False)),
-                            weapon=active_weapon,
-                            is_crouching=bool(getattr(row, "is_crouching", False)),
-                            is_scoped=bool(getattr(row, "is_scoped", False)),
-                            equipment_value=int(getattr(row, "equipment_value", 0)),
-                            money=int(row.money_resolved),
-                            kills=int(row.kills_total),
-                            deaths=int(row.deaths_total),
-                            assists=int(row.assists_total),
-                            mvps=int(row.mvps),
-                            inventory=_inventory,
-                        )
-                    )
+                # R3-H01: active weapon only (demoparser2 limitation)
+                active_weapon = str(getattr(row, "active_weapon_name", "None"))
+                _inventory = [active_weapon] if active_weapon and active_weapon != "None" else []
 
-                # WR-40: Track bomb state using sorted pointer scan
-                while _rs_bomb_idx < len(_rs_list) and _rs_list[_rs_bomb_idx] <= tick_int:
-                    _bomb_is_planted = False
-                    _rs_bomb_idx += 1
-
-                while (
-                    _bomb_plant_idx < len(_bomb_plant_events)
-                    and _bomb_plant_events[_bomb_plant_idx][0] <= tick_int
-                ):
-                    _bomb_is_planted = True
-                    _bomb_pos = _bomb_plant_events[_bomb_plant_idx][1:]
-                    _bomb_plant_idx += 1
-
-                while (
-                    _bomb_defuse_idx < len(_bomb_defuse_ticks)
-                    and _bomb_defuse_ticks[_bomb_defuse_idx] <= tick_int
-                ):
-                    _bomb_is_planted = False
-                    _bomb_defuse_idx += 1
-
-                _bomb_state = None
-                if _bomb_is_planted:
-                    _bomb_state = BombState(
-                        x=_bomb_pos[0],
-                        y=_bomb_pos[1],
-                        z=_bomb_pos[2],
-                        is_planted=True,
-                        is_defused=False,
-                    )
-
-                frames.append(
-                    DemoFrame(
-                        tick=tick_int,
-                        round_number=r_idx,
-                        time_in_round=(tick_int - st_t) / tick_rate,
-                        map_name=default_map,
-                        players=players,
-                        nades=nades_by_tick.get(tick_int, []),
-                        bomb=_bomb_state,
+                players.append(
+                    PlayerState(
+                        player_id=sid,
+                        name=str(getattr(row, "name", "Unknown")),
+                        team=team,
+                        x=float(row.X),
+                        y=float(row.Y),
+                        z=float(row.Z),
+                        yaw=float(row.yaw),
+                        hp=hp_val,
+                        armor=int(row.armor_value),
+                        is_alive=bool(getattr(row, "is_alive", False)),
+                        is_flashed=float(row.flash_duration) > 0.5,
+                        has_defuser=bool(getattr(row, "defuse_kit_owned", False)),
+                        weapon=active_weapon,
+                        is_crouching=bool(getattr(row, "is_crouching", False)),
+                        is_scoped=bool(getattr(row, "is_scoped", False)),
+                        equipment_value=int(getattr(row, "equipment_value", 0)),
+                        money=int(row.money_resolved),
+                        kills=int(row.kills_total),
+                        deaths=int(row.deaths_total),
+                        assists=int(row.assists_total),
+                        mvps=int(row.mvps),
+                        inventory=_inventory,
                     )
                 )
 
-        # Resolving Kills
+            # Sorted-pointer bomb state advance
+            while _rs_bomb_idx < len(_rs_list) and _rs_list[_rs_bomb_idx] <= tick_int:
+                _bomb_is_planted = False
+                _rs_bomb_idx += 1
+
+            while (
+                _bomb_plant_idx < len(bomb_plant_events)
+                and bomb_plant_events[_bomb_plant_idx][0] <= tick_int
+            ):
+                _bomb_is_planted = True
+                _bomb_pos = bomb_plant_events[_bomb_plant_idx][1:]
+                _bomb_plant_idx += 1
+
+            while (
+                _bomb_defuse_idx < len(bomb_defuse_ticks)
+                and bomb_defuse_ticks[_bomb_defuse_idx] <= tick_int
+            ):
+                _bomb_is_planted = False
+                _bomb_defuse_idx += 1
+
+            _bomb_state = None
+            if _bomb_is_planted:
+                _bomb_state = BombState(
+                    x=_bomb_pos[0],
+                    y=_bomb_pos[1],
+                    z=_bomb_pos[2],
+                    is_planted=True,
+                    is_defused=False,
+                )
+
+            frames.append(
+                DemoFrame(
+                    tick=tick_int,
+                    round_number=r_idx,
+                    time_in_round=(tick_int - st_t) / tick_rate,
+                    map_name=default_map,
+                    players=players,
+                    nades=nades_by_tick.get(tick_int, []),
+                    bomb=_bomb_state,
+                )
+            )
+        return frames
+
+    @staticmethod
+    def _extract_kill_events(parser, pos_by_tick):
+        """Resolve player_death events into GameEvent[KILL] anchored at victim position."""
         app_logger.info("Resolving final game events")
-        game_events = []
+        game_events: list = []
         try:
             res = parser.parse_events(["player_death"])
             if res:
@@ -656,7 +637,11 @@ class DemoLoader:
                     )
         except Exception as e:
             app_logger.warning("Failed to parse player_death events: %s", e)
+        return game_events
 
+    @staticmethod
+    def _compute_segments(round_starts):
+        """Match-half / overtime anchors keyed off round number."""
         segments = {"Full Match": 0}
         if round_starts:
             for i, tick in enumerate(round_starts):
@@ -667,33 +652,97 @@ class DemoLoader:
                     segments["Second Half"] = tick
                 elif r_num == 25:
                     segments["Overtime"] = tick
+        return segments
 
-        result = {default_map: (frames, game_events, segments)}
-
-        if pass1_failed:
-            result["_quality_flags"] = {"pass1_positions_failed": True}  # type: ignore[assignment]  # type: ignore[assignment]
-
-        # --- 4. MAP TENSORS INJECTION ---
+    @staticmethod
+    def _inject_map_tensors(result, default_map):
+        """ING-02: attach map-specific tensors under '_map_tensors' if available."""
         try:
             map_tensors_path = os.path.join(
                 os.path.dirname(os.path.dirname(__file__)), "data", "map_tensors.json"
             )
-            if os.path.exists(map_tensors_path):
-                import json
-
-                with open(map_tensors_path, "r") as f:
-                    map_tensors = json.load(f)
-
-                # Attach map-specific tensors under _-prefixed key (ING-02)
-                if default_map in map_tensors:
-                    app_logger.debug("Loaded map tensors for %s", default_map)
-                    result["_map_tensors"] = map_tensors[default_map]  # type: ignore[assignment]  # type: ignore[assignment]
-                else:
-                    app_logger.debug("No specific tensors found for %s", default_map)
-            else:
+            if not os.path.exists(map_tensors_path):
                 app_logger.debug("map_tensors.json not found")
+                return
+            import json
+
+            with open(map_tensors_path, "r") as f:
+                map_tensors = json.load(f)
+            if default_map in map_tensors:
+                app_logger.debug("Loaded map tensors for %s", default_map)
+                result["_map_tensors"] = map_tensors[default_map]  # type: ignore[assignment]
+            else:
+                app_logger.debug("No specific tensors found for %s", default_map)
         except Exception as e:
             app_logger.warning("Error loading map tensors: %s", e)
+
+    @staticmethod
+    def load_demo(
+        path: str, force_reparse: bool = False
+    ) -> Dict[str, Tuple[List[DemoFrame], List[GameEvent], Dict[str, int]]]:
+        try:
+            from Programma_CS2_RENAN.observability.sentry_setup import add_breadcrumb
+
+            add_breadcrumb("ingestion", f"Demo parse started: {os.path.basename(path)}")
+        except ImportError:
+            pass
+
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Demo file not found: {path}")
+        if not os.path.exists(DemoLoader.CACHE_DIR):
+            os.makedirs(DemoLoader.CACHE_DIR)
+
+        demo_name = os.path.basename(path)
+        file_stats = os.stat(path)
+        cache_name = f"{demo_name}_{file_stats.st_size}_{DemoLoader.CACHE_VERSION}.mcn"
+        cache_path = os.path.join(DemoLoader.CACHE_DIR, cache_name)
+
+        if not force_reparse:
+            cached = DemoLoader._try_load_cache(cache_path)
+            if cached is not None:
+                return cached  # type: ignore[return-value]
+
+        # Pre-parse validation via DemoFormatAdapter (Proposal 12)
+        validation = validate_demo_file(path)
+        if not validation.get("valid", False):
+            raise ValueError(f"Demo validation failed: {validation['error']}")
+        for warning in validation.get("warnings", []):
+            app_logger.warning("Demo format warning: %s", warning)
+
+        app_logger.info("Parsing headers and base data for %s", path)
+        parser = DemoParser(path)
+        header = parser.parse_header()
+        tick_rate: float = float(header.get("tick_rate", 64.0) or 64.0)
+        default_map: str = str(header.get("map_name", "unknown") or "unknown")
+
+        pos_by_tick, pass1_failed = DemoLoader._pass1_positions(parser)
+        nades_by_tick = DemoLoader._pass2_nades(parser, tick_rate, pos_by_tick)
+
+        app_logger.info("Pass 3 - Extracting full states & segmentation")
+        round_starts = DemoLoader._extract_round_starts(parser)
+        bomb_plant_events, bomb_defuse_ticks = DemoLoader._extract_bomb_events(parser)
+
+        rows_df = DemoLoader._pass3_load_dataframe(parser)
+        if not rows_df.empty:
+            DemoLoader._pass3_preprocess_dataframe(rows_df, round_starts)
+        frames = DemoLoader._pass3_build_frames(
+            rows_df,
+            tick_rate,
+            default_map,
+            round_starts,
+            bomb_plant_events,
+            bomb_defuse_ticks,
+            nades_by_tick,
+        )
+
+        game_events = DemoLoader._extract_kill_events(parser, pos_by_tick)
+        segments = DemoLoader._compute_segments(round_starts)
+
+        result = {default_map: (frames, game_events, segments)}
+        if pass1_failed:
+            result["_quality_flags"] = {"pass1_positions_failed": True}  # type: ignore[assignment]
+
+        DemoLoader._inject_map_tensors(result, default_map)
 
         app_logger.info("Finished parsing. Maps found: %s. Saving cache", list(result.keys()))
         _pickle_dump_signed(result, cache_path)

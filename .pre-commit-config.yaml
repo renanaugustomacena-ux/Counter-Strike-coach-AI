@@ -8,7 +8,7 @@ repos:
     hooks:
       - id: headless-validator
         name: Headless System Validator
-        entry: python tools/headless_validator.py
+        entry: ./.venv/bin/python tools/headless_validator.py
         language: system
         pass_filenames: false
         always_run: true
@@ -19,7 +19,7 @@ repos:
       # Dead Code & Orphan Detector
       - id: dead-code-detector
         name: Dead Code & Orphan Detector
-        entry: python tools/dead_code_detector.py
+        entry: ./.venv/bin/python tools/dead_code_detector.py
         language: system
         pass_filenames: false
         types: [python]
@@ -29,7 +29,7 @@ repos:
       # Integrity manifest sync check
       - id: integrity-manifest-check
         name: Check Integrity Manifest
-        entry: python Programma_CS2_RENAN/tools/sync_integrity_manifest.py --verify-only
+        entry: ./.venv/bin/python Programma_CS2_RENAN/tools/sync_integrity_manifest.py --verify-only
         language: system
         pass_filenames: false
         always_run: true
@@ -39,7 +39,7 @@ repos:
       # Build health validation
       - id: dev-health-quick
         name: Development Health Check
-        entry: python tools/dev_health.py --quick
+        entry: ./.venv/bin/python tools/dev_health.py --quick
         language: system
         pass_filenames: false
         always_run: true

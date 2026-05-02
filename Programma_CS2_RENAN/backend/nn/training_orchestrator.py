@@ -503,15 +503,18 @@ class TrainingOrchestrator:
         the LTC to process actual temporal sequences with ODE dynamics across
         multiple timesteps — not single-tick snapshots.
 
-        For each window:
-        1. Resolves per-match DB, builds PlayerKnowledge per tick
-        2. Generates per-timestep view/map/motion tensors (5D: B,T,C,H,W)
-        3. Stacks metadata as (B_windows, T, 25) for temporal processing
-        4. Computes targets from the last tick in each window
-        5. Computes target_pos (self-supervised: position delta from last tick)
+        Phases (extracted as helpers below):
+          Phase 1  (_rap_collect_per_tick)     resolves per-match DB, builds
+                                               PlayerKnowledge, generates per-tick
+                                               view/map/motion tensors, computes
+                                               value+mask (LEAK-01 guard) and
+                                               tactical role label per tick.
+          Phase 2  (_rap_compute_target_pos)   per-tick position deltas (RAP-AUDIT-02).
+          Phase 2b (_rap_compute_timespans)    inter-tick timespans (RAP-AUDIT-05).
+          Phase 3  (_rap_segment_windows)      drop windows below min POV density.
+          Phase 4  (this orchestrator)         stack windows into batch tensors.
 
-        Falls back to legacy zero-init per-tick when match DB is unavailable.
-        Windows where ALL ticks lack POV data are dropped entirely.
+        Returns the final batch dict, or None when no valid windows could form.
         """
         from Programma_CS2_RENAN.backend.nn.config import RAP_POSITION_SCALE
         from Programma_CS2_RENAN.backend.processing.player_knowledge import PlayerKnowledgeBuilder
@@ -523,22 +526,97 @@ class TrainingOrchestrator:
         tf = TensorFactory(TrainingTensorConfig())
         kb = PlayerKnowledgeBuilder()
         match_mgr = self._get_match_manager()
+        caches = {"all_players": {}, "window": {}, "event": {}, "metadata": {}}
 
-        # Per-batch caches to avoid re-querying same match/tick
-        _all_players_cache: dict = {}
-        _window_cache: dict = {}
-        _event_cache: dict = {}
-        _metadata_cache: dict = {}
+        per_tick = self._rap_collect_per_tick(raw_items, tf, kb, match_mgr, caches)
+        per_tick["target_pos"] = self._rap_compute_target_pos(raw_items, RAP_POSITION_SCALE)
+        per_tick["dt"] = self._rap_compute_timespans(raw_items)
 
-        # ---- Phase 1: Per-tick tensor & target generation ----
-        per_tick_view = []
-        per_tick_map = []
-        per_tick_motion = []
-        per_tick_has_pov = []
-        per_tick_val = []
-        per_tick_val_mask = []
-        per_tick_strat = []
+        seq_len = self.RAP_SEQ_LEN
+        num_windows = b // seq_len
+        if num_windows == 0:
+            logger.warning(
+                "RAP batch has %d ticks < seq_len=%d — cannot form temporal window",
+                b,
+                seq_len,
+            )
+            return None
+
+        windows = self._rap_segment_windows(per_tick, features_tensor, seq_len, num_windows)
+        if windows is None:
+            logger.warning("All RAP temporal windows lack POV data. Skipping batch.")
+            return None
+
+        n_valid = len(windows["views"])
+        skipped = num_windows - n_valid
+        self._total_samples += num_windows
+        self._total_fallbacks += skipped
+        if skipped > 0:
+            fallback_rate = self._total_fallbacks / max(self._total_samples, 1) * 100
+            logger.warning(
+                "RAP batch: %d/%d temporal windows with POV data — %d skipped. "
+                "Aggregate fallback rate: %.1f%%",
+                n_valid,
+                num_windows,
+                skipped,
+                fallback_rate,
+            )
+        else:
+            logger.debug(
+                "RAP batch: %d temporal windows (seq_len=%d) with POV data",
+                n_valid,
+                seq_len,
+            )
+
+        # 5D visual tensors: (B, T, C, H, W) — enables per-timestep perception
+        view = torch.stack(windows["views"]).to(self.device)
+        map_tensor = torch.stack(windows["maps"]).to(self.device)
+        motion_tensor = torch.stack(windows["motions"]).to(self.device)
+        # Metadata: (B, T, 25) — full temporal sequence for LTC
+        metadata = torch.stack(windows["metadata"]).to(self.device)
+        target_val = (
+            torch.tensor(windows["target_val"], dtype=torch.float32).unsqueeze(1).to(self.device)
+        )
+        target_strat = torch.stack(windows["target_strat"]).to(self.device)
+        val_mask = torch.tensor(windows["val_mask"], dtype=torch.bool).to(self.device)
+        target_pos = torch.tensor(windows["target_pos"], dtype=torch.float32).to(self.device)
+        timespans = torch.stack(windows["timespans"]).to(self.device)  # (B, T)
+
+        return {
+            "view": view,  # (B, T, C, H, W) — 5D for per-timestep perception
+            "map": map_tensor,  # (B, T, C, H, W)
+            "motion": motion_tensor,  # (B, T, C, H, W)
+            "metadata": metadata,  # (B, T, 25) — temporal sequence, NOT unsqueeze(1)
+            "target_strat": target_strat,  # (B, 10)
+            "target_val": target_val,  # (B, 1)
+            "val_mask": val_mask,  # (B,) NN-M-12: True = valid outcome
+            "target_pos": target_pos,  # (B, 3) RAP-AUDIT-02: enables position head training
+            "timespans": timespans,  # (B, T) RAP-AUDIT-05: inter-tick time intervals
+        }
+
+    def _rap_collect_per_tick(self, raw_items, tf, kb, match_mgr, caches):
+        """Phase 1: per-tick tensors, value+mask (LEAK-01), strat label.
+
+        Returns a dict with the per_tick_* lists keyed as views/maps/motions/
+        has_pov/vals/val_masks/strats. The LEAK-01 guard remains intact: when
+        we lack a knowledge object or the all_players context for a tick, the
+        value defaults to 0.0 with mask=False so the sample is excluded from
+        the value-head loss instead of being trained on the future-leaked
+        round_outcome label.
+        """
+        per_tick_view: list = []
+        per_tick_map: list = []
+        per_tick_motion: list = []
+        per_tick_has_pov: list = []
+        per_tick_val: list = []
+        per_tick_val_mask: list = []
+        per_tick_strat: list = []
         pov_count = 0
+
+        all_players_cache = caches["all_players"]
+        metadata_cache = caches["metadata"]
+        window_cache = caches["window"]
+        event_cache = caches["event"]
 
         for i, item in enumerate(raw_items):
             match_id = getattr(item, "match_id", None)
@@ -549,8 +627,8 @@ class TrainingOrchestrator:
             # POV-RAP-FIX-2 (Sprint A 2026-04-26): PlayerTickState rows in the
             # monolith have match_id=None but demo_name set; per-match shards
             # are keyed by the SHA-256-derived numeric ID. Without this fall-
-            # back the POV gate dropped every batch (see commit b091f83 for the
-            # tablename half of this fix; this is the FK half).
+            # back the POV gate dropped every batch (commit b091f83 = tablename
+            # half; this is the FK half).
             if match_id is None and demo_name:
                 from Programma_CS2_RENAN.backend.storage.match_data_manager import (
                     demo_name_to_match_id,
@@ -558,7 +636,7 @@ class TrainingOrchestrator:
 
                 match_id = demo_name_to_match_id(demo_name)
 
-            map_name = self._resolve_map_name(match_id, demo_name, match_mgr, _metadata_cache)
+            map_name = self._resolve_map_name(match_id, demo_name, match_mgr, metadata_cache)
 
             knowledge = None
             tick_list = [item]
@@ -572,9 +650,9 @@ class TrainingOrchestrator:
                         item,
                         match_mgr,
                         kb,
-                        _all_players_cache,
-                        _window_cache,
-                        _event_cache,
+                        all_players_cache,
+                        window_cache,
+                        event_cache,
                     )
                     if knowledge is not None:
                         pov_count += 1
@@ -598,7 +676,7 @@ class TrainingOrchestrator:
             per_tick_motion.append(motion_t)
 
             # Advantage function (continuous [0, 1])
-            all_players = _all_players_cache.get((match_id, tick), [])
+            all_players = all_players_cache.get((match_id, tick), [])
             if all_players and knowledge is not None:
                 val = self._compute_advantage(
                     all_players,
@@ -621,153 +699,111 @@ class TrainingOrchestrator:
             strat_vec[strat_idx] = 1.0
             per_tick_strat.append(strat_vec)
 
-        # ---- Phase 2: Per-tick position deltas (self-supervised target_pos) ----
-        # RAP-AUDIT-02: target_pos enables gradient flow to the position head,
-        # which was previously dead (zero loss every step). Uses self-supervised
-        # next-position prediction: delta normalized by RAP_POSITION_SCALE.
-        per_tick_target_pos = []
+        return {
+            "views": per_tick_view,
+            "maps": per_tick_map,
+            "motions": per_tick_motion,
+            "has_pov": per_tick_has_pov,
+            "vals": per_tick_val,
+            "val_masks": per_tick_val_mask,
+            "strats": per_tick_strat,
+            "pov_count": pov_count,
+        }
+
+    @staticmethod
+    def _rap_compute_target_pos(raw_items, position_scale):
+        """RAP-AUDIT-02: per-tick self-supervised next-position deltas.
+
+        Without this, the position head sees zero loss every step and never
+        trains. Last tick gets [0,0,0] (no successor available).
+        """
+        per_tick_target_pos: list = []
         for i in range(len(raw_items)):
             if i + 1 < len(raw_items):
                 cur = raw_items[i]
                 nxt = raw_items[i + 1]
-                dx = (getattr(nxt, "pos_x", 0) - getattr(cur, "pos_x", 0)) / RAP_POSITION_SCALE
-                dy = (getattr(nxt, "pos_y", 0) - getattr(cur, "pos_y", 0)) / RAP_POSITION_SCALE
-                dz = (getattr(nxt, "pos_z", 0) - getattr(cur, "pos_z", 0)) / RAP_POSITION_SCALE
+                dx = (getattr(nxt, "pos_x", 0) - getattr(cur, "pos_x", 0)) / position_scale
+                dy = (getattr(nxt, "pos_y", 0) - getattr(cur, "pos_y", 0)) / position_scale
+                dz = (getattr(nxt, "pos_z", 0) - getattr(cur, "pos_z", 0)) / position_scale
                 per_tick_target_pos.append([dx, dy, dz])
             else:
                 per_tick_target_pos.append([0.0, 0.0, 0.0])
+        return per_tick_target_pos
 
-        # ---- Phase 2b: Compute inter-tick timespans for LTC ODE solver ----
-        # RAP-AUDIT-05: Without timespans, the LTC treats every tick interval as 1.0s,
-        # losing the continuous-time advantage over LSTM. Real timespans enable the
-        # ODE solver to adapt membrane capacitance based on actual elapsed time:
-        # cm_t = cm / (elapsed_time / ode_unfolds).
-        # Tick rate default: 64 ticks/second (CS2 matchmaking). 128-tick detected
-        # from demo metadata when available.
-        _DEFAULT_TICK_RATE = 64.0
-        per_tick_dt = []
+    @staticmethod
+    def _rap_compute_timespans(raw_items, default_tick_rate: float = 64.0):
+        """RAP-AUDIT-05: inter-tick timespans for the LTC ODE solver.
+
+        Without real timespans the LTC treats every tick as 1.0s and loses its
+        continuous-time advantage over LSTM. CS2 matchmaking defaults to 64 t/s;
+        128-tick can be detected from demo metadata when available (not done here).
+        """
+        per_tick_dt: list = []
         for i in range(len(raw_items)):
             if i + 1 < len(raw_items):
                 cur_tick = int(getattr(raw_items[i], "tick", 0))
                 nxt_tick = int(getattr(raw_items[i + 1], "tick", 0))
-                dt = max((nxt_tick - cur_tick) / _DEFAULT_TICK_RATE, 1e-4)
+                dt = max((nxt_tick - cur_tick) / default_tick_rate, 1e-4)
             else:
-                # Last tick: use same dt as previous (or 1/tick_rate)
-                dt = per_tick_dt[-1] if per_tick_dt else 1.0 / _DEFAULT_TICK_RATE
+                dt = per_tick_dt[-1] if per_tick_dt else 1.0 / default_tick_rate
             per_tick_dt.append(dt)
+        return per_tick_dt
 
-        # ---- Phase 3: Segment into temporal windows of RAP_SEQ_LEN ----
-        seq_len = self.RAP_SEQ_LEN
-        num_windows = b // seq_len
-        if num_windows == 0:
-            logger.warning(
-                "RAP batch has %d ticks < seq_len=%d — cannot form temporal window",
-                b,
-                seq_len,
-            )
-            return None
+    @staticmethod
+    def _rap_segment_windows(per_tick, features_tensor, seq_len: int, num_windows: int):
+        """Phase 3: split per-tick lists into RAP_SEQ_LEN windows; drop sparse-POV ones.
 
-        window_views = []
-        window_maps = []
-        window_motions = []
-        window_metadata = []
-        window_target_val = []
-        window_target_strat = []
-        window_val_mask = []
-        window_target_pos = []
-        window_timespans = []
+        T-2 FIX: requires ≥50% POV density per window. Previously only dropped
+        windows with ZERO POV (1/32 = 3.1% kept), so windows dominated by zero-
+        init fallback tensors taught the model that vision data is uninformative.
+
+        Returns dict of window_* lists, or None if every window was dropped.
+        """
+        _MIN_POV_DENSITY = 0.5
+
+        window_views: list = []
+        window_maps: list = []
+        window_motions: list = []
+        window_metadata: list = []
+        window_target_val: list = []
+        window_target_strat: list = []
+        window_val_mask: list = []
+        window_target_pos: list = []
+        window_timespans: list = []
 
         for w in range(num_windows):
             start = w * seq_len
             end = start + seq_len
 
-            # T-2 FIX: Require minimum 50% POV density per window.
-            # Previously only dropped windows with ZERO POV (1/32 = 3.1% kept).
-            # Windows dominated by zero-init fallback tensors teach the model that
-            # vision data is uninformative, causing it to underweight real POV signals.
-            window_pov_count = sum(1 for ok in per_tick_has_pov[start:end] if ok)
-            _MIN_POV_DENSITY = 0.5
+            window_pov_count = sum(1 for ok in per_tick["has_pov"][start:end] if ok)
             if window_pov_count / seq_len < _MIN_POV_DENSITY:
                 continue
 
-            # Stack per-timestep tensors → (T, C, H, W) per window
-            w_view = torch.stack(per_tick_view[start:end])
-            w_map = torch.stack(per_tick_map[start:end])
-            w_motion = torch.stack(per_tick_motion[start:end])
+            window_views.append(torch.stack(per_tick["views"][start:end]))
+            window_maps.append(torch.stack(per_tick["maps"][start:end]))
+            window_motions.append(torch.stack(per_tick["motions"][start:end]))
+            window_metadata.append(features_tensor[start:end])
+            window_timespans.append(torch.tensor(per_tick["dt"][start:end], dtype=torch.float32))
 
-            # Metadata: (T, 25) — full temporal sequence
-            w_meta = features_tensor[start:end]
-
-            # Timespans: (T,) — inter-tick time intervals in seconds
-            w_ts = torch.tensor(per_tick_dt[start:end], dtype=torch.float32)
-
-            # Targets from last tick in window
             last_idx = end - 1
-            w_val = per_tick_val[last_idx]
-            w_strat = per_tick_strat[last_idx]
-            w_vmask = per_tick_val_mask[last_idx]
-            w_tpos = per_tick_target_pos[last_idx]
-
-            window_views.append(w_view)
-            window_maps.append(w_map)
-            window_motions.append(w_motion)
-            window_metadata.append(w_meta)
-            window_target_val.append(w_val)
-            window_target_strat.append(w_strat)
-            window_val_mask.append(w_vmask)
-            window_target_pos.append(w_tpos)
-            window_timespans.append(w_ts)
+            window_target_val.append(per_tick["vals"][last_idx])
+            window_target_strat.append(per_tick["strats"][last_idx])
+            window_val_mask.append(per_tick["val_masks"][last_idx])
+            window_target_pos.append(per_tick["target_pos"][last_idx])
 
         if not window_views:
-            logger.warning("All RAP temporal windows lack POV data. Skipping batch.")
             return None
 
-        # ---- Phase 4: Stack into batch tensors ----
-        n_valid = len(window_views)
-        skipped = num_windows - n_valid
-        self._total_samples += num_windows
-        self._total_fallbacks += skipped
-        if skipped > 0:
-            fallback_rate = self._total_fallbacks / max(self._total_samples, 1) * 100
-            logger.warning(
-                "RAP batch: %d/%d temporal windows with POV data — %d skipped. "
-                "Aggregate fallback rate: %.1f%%",
-                n_valid,
-                num_windows,
-                skipped,
-                fallback_rate,
-            )
-        else:
-            logger.debug(
-                "RAP batch: %d temporal windows (seq_len=%d) with POV data",
-                n_valid,
-                seq_len,
-            )
-
-        # 5D visual tensors: (B, T, C, H, W) — enables per-timestep perception
-        view = torch.stack(window_views).to(self.device)
-        map_tensor = torch.stack(window_maps).to(self.device)
-        motion_tensor = torch.stack(window_motions).to(self.device)
-        # Metadata: (B, T, 25) — full temporal sequence for LTC
-        metadata = torch.stack(window_metadata).to(self.device)
-        target_val = (
-            torch.tensor(window_target_val, dtype=torch.float32).unsqueeze(1).to(self.device)
-        )
-        target_strat = torch.stack(window_target_strat).to(self.device)
-        val_mask = torch.tensor(window_val_mask, dtype=torch.bool).to(self.device)
-        target_pos = torch.tensor(window_target_pos, dtype=torch.float32).to(self.device)
-        timespans = torch.stack(window_timespans).to(self.device)  # (B, T)
-
         return {
-            "view": view,  # (B, T, C, H, W) — 5D for per-timestep perception
-            "map": map_tensor,  # (B, T, C, H, W)
-            "motion": motion_tensor,  # (B, T, C, H, W)
-            "metadata": metadata,  # (B, T, 25) — temporal sequence, NOT unsqueeze(1)
-            "target_strat": target_strat,  # (B, 10)
-            "target_val": target_val,  # (B, 1)
-            "val_mask": val_mask,  # (B,) NN-M-12: True = valid outcome
-            "target_pos": target_pos,  # (B, 3) RAP-AUDIT-02: enables position head training
-            "timespans": timespans,  # (B, T) RAP-AUDIT-05: inter-tick time intervals
+            "views": window_views,
+            "maps": window_maps,
+            "motions": window_motions,
+            "metadata": window_metadata,
+            "target_val": window_target_val,
+            "target_strat": window_target_strat,
+            "val_mask": window_val_mask,
+            "target_pos": window_target_pos,
+            "timespans": window_timespans,
         }
 
     def _build_sample_knowledge(

@@ -263,71 +263,61 @@ def load_user_match_sequences(limit: int = 200) -> tuple:
     return np.array(X_padded), np.array(y_targets)
 
 
-def train_jepa_pretrain(
-    model: JEPACoachingModel,
-    num_epochs: int = 50,
-    batch_size: int = 16,
-    learning_rate: float = 1e-4,
-    num_negatives: int = 8,
-    log_dir: str = "runs/jepa_pretrain",
-):
+def _jepa_negative_indices(batch_size_actual: int, num_negatives: int, device) -> "torch.Tensor":
+    """P1-05 + NN-35: O(B) negative-index sampling via shifted randperm.
+
+    Returns a (batch_size_actual, max(1, effective_negatives)) tensor; for each
+    sample i, the row contains indices that exclude i. When the batch is too
+    small for any negatives, returns a zero-tensor placeholder so downstream
+    indexing still works.
     """
-    JEPA pre-training on pro demos (self-supervised).
+    effective_negatives = min(num_negatives, batch_size_actual - 1)
+    if effective_negatives > 0:
+        perm = torch.randperm(batch_size_actual - 1, device=device)
+        perm = perm.unsqueeze(0).expand(batch_size_actual, -1)
+        arange = torch.arange(batch_size_actual, device=device).unsqueeze(1)
+        # Shift indices >= i by +1 so index i is never selected
+        neg_indices = perm + (perm >= arange).long()
+        return neg_indices[:, :effective_negatives]
+    return torch.zeros(
+        batch_size_actual, max(1, effective_negatives), dtype=torch.long, device=device
+    )
 
-    Args:
-        model: JEPACoachingModel instance
-        num_epochs: Number of pre-training epochs
-        batch_size: Batch size
-        learning_rate: Learning rate
-        num_negatives: Number of negative samples for contrastive loss
-        log_dir: TensorBoard log directory
+
+def _jepa_pretrain_load_data(batch_size: int, worker_init_fn):
+    """Load pro demo sequences and build a seeded DataLoader.
+
+    Returns (dataloader, num_sequences) on success; (None, 0) if no valid data.
+    NN-33 empty-guard is the caller's responsibility (it must close callbacks).
     """
-    from Programma_CS2_RENAN.backend.nn.config import set_global_seed
-    from Programma_CS2_RENAN.backend.nn.early_stopping import EarlyStopping
-    from Programma_CS2_RENAN.backend.nn.tensorboard_callback import TensorBoardCallback
-    from Programma_CS2_RENAN.backend.nn.training_callbacks import CallbackRegistry
-
-    set_global_seed()  # P1-02: Reproducible training
-    logger.info("Starting JEPA pre-training...")
-
-    # ── Callback Registry (TensorBoard + any future callbacks) ──
-    tb_callback = TensorBoardCallback(log_dir=log_dir, model_type="jepa_pretrain")
-    callbacks = CallbackRegistry([tb_callback])
-
-    def _worker_init(worker_id: int) -> None:
-        set_global_seed(42 + worker_id)
-
-    # Load pro demo data — scan all pro entries since many PlayerMatchStats rows
-    # lack tick data in the monolith (only demos with .dem files parsed have ticks).
-    sequences = load_pro_demo_sequences(limit=2000)
-
-    # NN-33: Guard against empty dataset
-    if not sequences:
-        logger.warning("No valid pro demo sequences found — skipping JEPA pre-training")
-        callbacks.close_all()
-        return
-
-    dataset = JEPAPretrainDataset(sequences, context_len=10, target_len=10)
-
-    if len(dataset) == 0:
-        logger.warning("JEPAPretrainDataset is empty — skipping JEPA pre-training")
-        callbacks.close_all()
-        return
-
-    # DET-01: seeded Generator on DataLoader shuffle so resume + multi-restart
-    # pairs produce identical batch orderings.
     from Programma_CS2_RENAN.backend.nn.config import seeded_generator as _seeded_generator
 
+    sequences = load_pro_demo_sequences(limit=2000)
+    if not sequences:
+        return None, 0
+    dataset = JEPAPretrainDataset(sequences, context_len=10, target_len=10)
+    if len(dataset) == 0:
+        return None, 0
     dataloader = DataLoader(
         dataset,
         batch_size=batch_size,
         shuffle=True,
-        worker_init_fn=_worker_init,
+        worker_init_fn=worker_init_fn,
         generator=_seeded_generator(),
     )
+    return dataloader, len(sequences)
+
+
+def _jepa_pretrain_setup_training(model, learning_rate: float, num_epochs: int, dataloader):
+    """Freeze target encoder (NN-JM-04), build AdamW + cosine LR, return EMA state.
+
+    Returns (optimizer, scheduler, device, ema_state) where ema_state is the dict
+    {step: int, total: int, base: float}. The cosine EMA momentum schedule (J-6,
+    Assran et al. CVPR 2023 §3.2) is computed per-step from this state.
+    """
+    from Programma_CS2_RENAN.backend.nn.config import get_device
 
     # NN-JM-04: Target encoder is updated ONLY via EMA, never by gradient.
-    # Freeze it before training so update_target_encoder() safety check passes.
     for param in model.target_encoder.parameters():
         param.requires_grad = False
 
@@ -337,36 +327,103 @@ def train_jepa_pretrain(
         weight_decay=1e-2,  # J-7: Loshchilov & Hutter (ICLR 2019) AdamW default
     )
 
-    from Programma_CS2_RENAN.backend.nn.config import get_device
-
     device = get_device()
     model.to(device)
-
-    early_stopper = EarlyStopping(patience=10, min_delta=1e-5)  # P1-01
 
     # NN-L-15: Cosine LR schedule (matches JEPATrainer in jepa_trainer.py)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
 
-    # J-6: EMA cosine momentum schedule (Assran et al., CVPR 2023, Section 3.2)
+    ema_state = {"step": 0, "total": num_epochs * len(dataloader), "base": 0.996}
+    return optimizer, scheduler, device, ema_state
+
+
+def _jepa_pretrain_finalize(
+    model,
+    loss_history: list,
+    best_loss: float,
+    final_epoch: int,
+    num_sequences: int,
+    train_config: dict,
+    ema_state: dict,
+    callbacks,
+) -> None:
+    """Fire on_train_end, freeze encoders, attach metadata for save_jepa_model."""
+    callbacks.fire(
+        "on_train_end",
+        model=model,
+        final_metrics={
+            "final_loss": loss_history[-1] if loss_history else 0.0,
+            "best_loss": best_loss,
+            "total_epochs": final_epoch + 1,
+            "num_sequences": num_sequences,
+        },
+    )
+    callbacks.close_all()
+
+    # Freeze encoders for fine-tuning
+    model.freeze_encoders()
+
+    model._training_metadata = {
+        "loss_history": loss_history,
+        "best_loss": best_loss,
+        "final_epoch": final_epoch + 1,
+        "num_sequences": num_sequences,
+        "training_config": train_config,
+    }
+
+    # REPR-01: stash final EMA schedule counters so save_jepa_model can persist
+    # them even though this legacy training path does not hold a JEPATrainer.
+    model._saved_ema_step = ema_state["step"]
+    model._saved_ema_total_steps = ema_state["total"]
+
+
+def train_jepa_pretrain(
+    model: JEPACoachingModel,
+    num_epochs: int = 50,
+    batch_size: int = 16,
+    learning_rate: float = 1e-4,
+    num_negatives: int = 8,
+    log_dir: str = "runs/jepa_pretrain",
+):
+    """JEPA pre-training on pro demos (self-supervised)."""
     import math as _math
 
-    _ema_base = 0.996
-    _ema_total = num_epochs * len(dataloader)  # total training steps
-    _ema_step = 0
+    from Programma_CS2_RENAN.backend.nn.config import set_global_seed
+    from Programma_CS2_RENAN.backend.nn.early_stopping import EarlyStopping
+    from Programma_CS2_RENAN.backend.nn.tensorboard_callback import TensorBoardCallback
+    from Programma_CS2_RENAN.backend.nn.training_callbacks import CallbackRegistry
 
-    # Training metadata for checkpoint
-    loss_history = []
+    set_global_seed()  # P1-02: Reproducible training
+    logger.info("Starting JEPA pre-training...")
+
+    tb_callback = TensorBoardCallback(log_dir=log_dir, model_type="jepa_pretrain")
+    callbacks = CallbackRegistry([tb_callback])
+
+    def _worker_init(worker_id: int) -> None:
+        set_global_seed(42 + worker_id)
+
+    dataloader, num_sequences = _jepa_pretrain_load_data(batch_size, _worker_init)
+    if dataloader is None:
+        logger.warning("No valid pro demo sequences found — skipping JEPA pre-training")
+        callbacks.close_all()
+        return
+
+    optimizer, scheduler, device, ema_state = _jepa_pretrain_setup_training(
+        model, learning_rate, num_epochs, dataloader
+    )
+    early_stopper = EarlyStopping(patience=10, min_delta=1e-5)  # P1-01
+
+    loss_history: list = []
     best_loss = float("inf")
     final_epoch = 0
 
-    # ── Fire on_train_start ──
     train_config = {
         "model_type": "jepa_pretrain",
         "num_epochs": num_epochs,
         "batch_size": batch_size,
         "learning_rate": learning_rate,
         "num_negatives": num_negatives,
-        "num_sequences": len(sequences),
+        "num_sequences": num_sequences,
         "num_batches": len(dataloader),
         "device": str(device),
     }
@@ -383,7 +440,6 @@ def train_jepa_pretrain(
             x_context = batch["context"].to(device)
             x_target = batch["target"].to(device)
 
-            # Forward pass
             pred, target = model.forward_jepa_pretrain(x_context, x_target)
 
             # M1 FIX: Skip degenerate single-sample batches where positive==negative
@@ -392,36 +448,21 @@ def train_jepa_pretrain(
             if batch_size_actual < 2:
                 continue
 
-            # P1-05 + NN-35: Sample negatives via randperm (O(B) instead of O(B²))
-            effective_negatives = min(num_negatives, batch_size_actual - 1)
-            if effective_negatives > 0:
-                # For each sample i, shift a random permutation to exclude i
-                perm = torch.randperm(batch_size_actual - 1, device=device)
-                perm = perm.unsqueeze(0).expand(batch_size_actual, -1)
-                arange = torch.arange(batch_size_actual, device=device).unsqueeze(1)
-                # Shift indices >= i by +1 so index i is never selected
-                neg_indices = perm + (perm >= arange).long()
-                neg_indices = neg_indices[:, :effective_negatives]
-            else:
-                neg_indices = torch.zeros(
-                    batch_size_actual, max(1, effective_negatives), dtype=torch.long, device=device
-                )
+            neg_indices = _jepa_negative_indices(batch_size_actual, num_negatives, device)
             negatives = target[neg_indices]
 
-            # Contrastive loss
             loss = jepa_contrastive_loss(pred, target, negatives)
 
-            # Backward pass
             optimizer.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)  # P1-06
             optimizer.step()
 
-            # J-6: EMA update with cosine momentum schedule
-            _progress = min(_ema_step / max(1, _ema_total), 1.0)
-            _momentum = 1.0 - (1.0 - _ema_base) * (_math.cos(_math.pi * _progress) + 1) / 2
+            # J-6: EMA cosine momentum schedule (Assran et al., CVPR 2023, §3.2)
+            _progress = min(ema_state["step"] / max(1, ema_state["total"]), 1.0)
+            _momentum = 1.0 - (1.0 - ema_state["base"]) * (_math.cos(_math.pi * _progress) + 1) / 2
             model.update_target_encoder(momentum=_momentum)
-            _ema_step += 1
+            ema_state["step"] += 1
 
             total_loss += loss.item()
 
@@ -459,37 +500,16 @@ def train_jepa_pretrain(
 
     logger.info("JEPA pre-training complete")
 
-    # Fire on_train_end with final metrics
-    callbacks.fire(
-        "on_train_end",
-        model=model,
-        final_metrics={
-            "final_loss": loss_history[-1] if loss_history else 0.0,
-            "best_loss": best_loss,
-            "total_epochs": final_epoch + 1,
-            "num_sequences": len(sequences),
-        },
+    _jepa_pretrain_finalize(
+        model,
+        loss_history,
+        best_loss,
+        final_epoch,
+        num_sequences,
+        train_config,
+        ema_state,
+        callbacks,
     )
-    callbacks.close_all()
-
-    # Freeze encoders for fine-tuning
-    model.freeze_encoders()
-
-    # Attach training metadata for save_jepa_model
-    model._training_metadata = {
-        "loss_history": loss_history,
-        "best_loss": best_loss,
-        "final_epoch": final_epoch + 1,
-        "num_sequences": len(sequences),
-        "training_config": train_config,
-    }
-
-    # REPR-01: stash the final EMA schedule counters so save_jepa_model can
-    # persist them even though this legacy training path does not hold a
-    # JEPATrainer instance.
-    model._saved_ema_step = _ema_step
-    model._saved_ema_total_steps = _ema_total
-
     return model
 
 

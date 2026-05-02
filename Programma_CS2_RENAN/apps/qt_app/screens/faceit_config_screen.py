@@ -12,6 +12,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.core.config import get_credential, save_user_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -118,7 +120,9 @@ class FaceitConfigScreen(QWidget):
         layout.addWidget(save_btn)
 
         self._saved_label = QLabel("Saved!")
-        self._saved_label.setStyleSheet(f"color: {get_tokens().success}; font-size: 14px; font-weight: bold;")
+        self._saved_label.setStyleSheet(
+            f"color: {get_tokens().success}; font-size: 14px; font-weight: bold;"
+        )
         self._saved_label.setAlignment(Qt.AlignCenter)
         self._saved_label.setVisible(False)
         layout.addWidget(self._saved_label)
