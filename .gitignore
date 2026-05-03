@@ -12,6 +12,10 @@ __pycache__/
 .vs/
 .idea/
 
+# D-track / HLTV-track concurrency lock files (runtime; see
+# Programma_CS2_RENAN/core/lock_files.py)
+.locks/
+
 # Distribution / Build
 dist/
 build/
