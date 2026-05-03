@@ -39,6 +39,9 @@ MONOLITH_DB_PATH = os.path.join(CORE_DB_DIR, "database.db")
 COLUMN_MAP = {
     "tick": "tick",
     "player_name": "player_name",
+    # steamid is forwarded so a player's identity survives nickname collisions
+    # and team changes. Added in migration d4e5f6a7b8c9 (D1 prereq).
+    "steamid": "steamid",
     "pos_x": "pos_x",
     "pos_y": "pos_y",
     "pos_z": "pos_z",
@@ -61,7 +64,12 @@ COLUMN_MAP = {
     "map_name": "map_name",
 }
 
-# Columns written to playertickstate (excludes autoincrement id)
+# Columns written to playertickstate (excludes autoincrement id).
+# Order is ARBITRARY for the INSERT statement (column-listed insert is safe
+# against schema-position drift) but must match the order of values appended
+# to the row tuple in rebuild_tick_data. Adding a new column requires updating
+# (1) this list, (2) COLUMN_MAP if the source column has a different name,
+# and (3) the df.reindex() call so the value lands at the right tuple index.
 TICK_INSERT_COLUMNS = [
     "created_at",
     "match_id",
@@ -91,6 +99,8 @@ TICK_INSERT_COLUMNS = [
     "enemies_alive",
     "team_economy",
     "map_name",
+    # steamid added by migration d4e5f6a7b8c9 (D1 prereq).
+    "steamid",
 ]
 
 TICK_INSERT_SQL = (
@@ -171,12 +181,141 @@ def _infer_map_name(stem: str) -> str:
     return next((f"de_{p}" for p in reversed(parts) if p in KNOWN_CS2_MAPS), "de_unknown")
 
 
-def rebuild_tick_data(db_manager, all_demos: list[Path], incremental: bool = False):
-    """Read per-match DBs and write to monolith PlayerTickState via raw sqlite3."""
+def _synthetic_demo_paths_from_match_dbs(match_data_dir: Path) -> list[Path]:
+    """Build synthetic demo paths from match_*.db files (D1 source mode).
+
+    rebuild_tick_data() drives off ``demo_path.stem`` to compute match_id
+    and to populate the ``demo_name`` column. The legacy mode walks the
+    .dem files on disk; D1 needs to process every match_*.db regardless
+    of whether the source .dem still exists. Each match_*.db carries
+    ``match_metadata.demo_name``; we read it and synthesize a Path so
+    the existing function logic works unchanged.
+
+    Files missing the ``match_metadata`` table or the ``demo_name`` row
+    are skipped; D3 phase handles their recovery separately.
+    """
+    if not match_data_dir.is_dir():
+        return []
+    paths: list[Path] = []
+    for match_db in sorted(match_data_dir.glob("match_*.db")):
+        try:
+            con = sqlite3.connect(f"file:{match_db}?mode=ro&immutable=1", uri=True)
+            row = con.execute("SELECT demo_name FROM match_metadata LIMIT 1").fetchone()
+            con.close()
+        except sqlite3.OperationalError:
+            # match_metadata table absent (corrupted file); skip.
+            continue
+        if not row or not row[0]:
+            continue
+        demo_stem = str(row[0])
+        if demo_stem.endswith(".dem"):
+            demo_stem = demo_stem[: -len(".dem")]
+        # Synthetic prefix makes it obvious in logs that the path is not real.
+        paths.append(Path(f"/synthetic-from-match-db/{demo_stem}.dem"))
+    return paths
+
+
+def _check_disk_or_abort(threshold_gb: float, anchor: Path) -> None:
+    """Abort the run if the filesystem holding ``anchor`` has less than
+    ``threshold_gb`` GB free. Used to prevent D1 from filling the disk
+    during the ~414M-row tick migration.
+    """
+    if threshold_gb <= 0:
+        return
+    import shutil
+
+    free = shutil.disk_usage(anchor).free
+    if free < threshold_gb * (1024**3):
+        raise RuntimeError(
+            f"Disk pressure abort: {free / 1024**3:.1f} GB free at {anchor} "
+            f"(threshold {threshold_gb} GB)"
+        )
+
+
+def _write_checkpoint(path: Path | None, state: dict) -> None:
+    """Persist per-match progress to a JSON checkpoint file.
+
+    Resume after a kill picks up at the next unprocessed demo. State
+    schema:
+      {
+        "started_at": iso_str,
+        "completed": [demo_stem, ...],
+        "errors":    [{"demo": str, "error": str, "at": iso_str}, ...],
+        "in_progress": str | null,
+        "wall_clock_seconds": float,
+      }
+    """
+    if path is None:
+        return
+    import json
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(state, indent=2))
+
+
+def _load_checkpoint(path: Path | None) -> dict:
+    """Read existing checkpoint state if present; otherwise return seed state."""
+    if path is None or not path.exists():
+        return {
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "completed": [],
+            "errors": [],
+            "in_progress": None,
+            "wall_clock_seconds": 0.0,
+        }
+    import json
+
+    try:
+        return json.loads(path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return {
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "completed": [],
+            "errors": [],
+            "in_progress": None,
+            "wall_clock_seconds": 0.0,
+        }
+
+
+def rebuild_tick_data(
+    db_manager,
+    all_demos: list[Path],
+    incremental: bool = False,
+    *,
+    checkpoint_path: Path | None = None,
+    disk_abort_gb: float = 0.0,
+    wal_checkpoint_every: int = 0,
+    match_id_filter: int | None = None,
+    limit: int | None = None,
+):
+    """Read per-match DBs and write to monolith PlayerTickState via raw sqlite3.
+
+    D1 additions (all opt-in via kwargs; legacy positional callers unchanged):
+      checkpoint_path: persist per-match progress here; resume skips completed.
+      disk_abort_gb: abort if the disk falls below this much free.
+      wal_checkpoint_every: PRAGMA wal_checkpoint(TRUNCATE) every N demos.
+      match_id_filter: process only the demo whose stem hashes to this id.
+      limit: process at most N demos this run.
+    """
     from sqlalchemy import text
 
     total_ticks = 0
     demos_processed = 0
+
+    # Optional pre-loop filters (D1 additions)
+    if match_id_filter is not None:
+        all_demos = [p for p in all_demos if demo_stem_to_match_id(p.stem) == match_id_filter]
+        print(f"  --match-id filter: {len(all_demos)} demo(s) match id {match_id_filter}.")
+    if limit is not None and limit > 0:
+        all_demos = all_demos[:limit]
+        print(f"  --limit applied: processing at most {len(all_demos)} demo(s).")
+
+    # Load checkpoint state for resume (D1 addition)
+    checkpoint = _load_checkpoint(checkpoint_path)
+    completed_via_checkpoint = set(checkpoint.get("completed") or [])
+    if completed_via_checkpoint:
+        print(f"  Checkpoint resume: {len(completed_via_checkpoint)} demo(s) already done.")
+    run_started = time.monotonic()
 
     # Determine existing demos for incremental mode
     if incremental:
@@ -211,12 +350,38 @@ def rebuild_tick_data(db_manager, all_demos: list[Path], incremental: bool = Fal
             print(f"  SKIP {stem} -- already in monolith")
             continue
 
+        if stem in completed_via_checkpoint:
+            print(f"  SKIP {stem} -- already in checkpoint (resume)")
+            continue
+
+        # Disk-pressure abort BEFORE reading source so we don't half-write
+        # under low-disk conditions.
+        try:
+            _check_disk_or_abort(disk_abort_gb, Path(MONOLITH_DB_PATH).parent)
+        except RuntimeError as disk_err:
+            print(f"  ABORT {stem} -- {disk_err}")
+            checkpoint["errors"].append(
+                {
+                    "demo": stem,
+                    "error": str(disk_err),
+                    "at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+            checkpoint["wall_clock_seconds"] = time.monotonic() - run_started
+            _write_checkpoint(checkpoint_path, checkpoint)
+            break
+
         match_id = demo_stem_to_match_id(stem)
         match_db_path = MATCH_DATA_DIR / f"match_{match_id}.db"
 
         if not match_db_path.exists():
             print(f"  SKIP {stem} -- no per-match DB")
             continue
+
+        # Mark in-progress before the heavy work so a kill mid-flight
+        # leaves a breadcrumb for diagnosis.
+        checkpoint["in_progress"] = stem
+        _write_checkpoint(checkpoint_path, checkpoint)
 
         t0 = time.monotonic()
 
@@ -289,6 +454,11 @@ def rebuild_tick_data(db_manager, all_demos: list[Path], incremental: bool = Fal
                     df[col] = 0
             if "round_outcome" not in df.columns:
                 df["round_outcome"] = None
+            # steamid is nullable; legacy match_tick_state (empty deprecated
+            # table) lacked the column — fill with None so reindex doesn't
+            # produce NaN (which sqlite3 would store as a float).
+            if "steamid" not in df.columns:
+                df["steamid"] = None
 
             # Infer map_name if absent or invalid
             if "map_name" not in df.columns or df["map_name"].iloc[0] in (
@@ -317,12 +487,35 @@ def rebuild_tick_data(db_manager, all_demos: list[Path], incremental: bool = Fal
             rate_mb = (rows_written * 28 * 8) / (1024 * 1024 * max(elapsed, 0.001))
             print(f"  OK {stem}: {rows_written:,} ticks ({elapsed:.1f}s, ~{rate_mb:.0f} MB/s)")
 
+            # D1: per-match checkpoint write + periodic WAL checkpoint.
+            checkpoint["completed"].append(stem)
+            checkpoint["in_progress"] = None
+            checkpoint["wall_clock_seconds"] = time.monotonic() - run_started
+            _write_checkpoint(checkpoint_path, checkpoint)
+            if wal_checkpoint_every > 0 and demos_processed % wal_checkpoint_every == 0:
+                try:
+                    mono_conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                    mono_conn.commit()
+                    print(f"  WAL checkpoint truncated after {demos_processed} demos")
+                except sqlite3.OperationalError as wal_err:
+                    print(f"  WAL checkpoint warning: {wal_err}")
+
         except Exception as e:
             try:
                 mono_conn.rollback()
             except Exception:
                 pass
             print(f"  ERROR {stem}: {e}")
+            checkpoint["errors"].append(
+                {
+                    "demo": stem,
+                    "error": str(e),
+                    "at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+            checkpoint["in_progress"] = None
+            checkpoint["wall_clock_seconds"] = time.monotonic() - run_started
+            _write_checkpoint(checkpoint_path, checkpoint)
             continue
 
     # Recreate indexes after bulk load (full rebuild only)
@@ -450,89 +643,224 @@ def rebuild_match_stats(db_manager, all_demos: list[Path]):
     return total_parsed
 
 
+def _parse_argv(argv: list[str]):
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        prog="rebuild_monolith",
+        description=(
+            "Rebuild monolith DB from per-match DBs. D1 phase of the v3 "
+            "restoration plan: --phase tick-only --source match-dbs."
+        ),
+    )
+    parser.add_argument(
+        "--full",
+        action="store_true",
+        help="Legacy: clear playertickstate before rebuilding (default: incremental).",
+    )
+    parser.add_argument(
+        "--phase",
+        choices=("full", "tick-only", "match-stats-only", "linker-only"),
+        default="full",
+        help="Which phase(s) to run. D1 uses 'tick-only' (default: full = legacy 1+2+3).",
+    )
+    parser.add_argument(
+        "--source",
+        choices=("dem-files", "match-dbs"),
+        default="dem-files",
+        help=(
+            "Demo enumeration source. 'dem-files' walks DEMO_PRO_PLAYERS for .dem "
+            "files (legacy). 'match-dbs' enumerates match_*.db files directly so "
+            "matches without surviving .dem files still get migrated (D1)."
+        ),
+    )
+    parser.add_argument(
+        "--match-id",
+        type=int,
+        default=None,
+        help="Process only the demo whose stem hashes to this match_id (debug).",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Process at most N demos this run (smoke test / resume slice).",
+    )
+    parser.add_argument(
+        "--checkpoint-file",
+        type=Path,
+        default=Path("Programma_CS2_RENAN/backups/tick_migration_state.json"),
+        help="JSON file recording per-match progress for resume after kill.",
+    )
+    parser.add_argument(
+        "--disk-abort-gb",
+        type=float,
+        default=50.0,
+        help="Abort if MONOLITH_DB_PATH disk falls below this many GB free.",
+    )
+    parser.add_argument(
+        "--wal-checkpoint-every",
+        type=int,
+        default=10,
+        help="PRAGMA wal_checkpoint(TRUNCATE) every N demos (0 disables).",
+    )
+    parser.add_argument(
+        "--no-lock",
+        action="store_true",
+        help=(
+            "Skip d_track_running lock acquisition. Only use after manually "
+            "stopping hltv_sync_service and confirming via ps."
+        ),
+    )
+    return parser.parse_args(argv)
+
+
+def _enumerate_demos(source: str) -> list[Path]:
+    if source == "match-dbs":
+        paths = _synthetic_demo_paths_from_match_dbs(MATCH_DATA_DIR)
+        print(f"Source=match-dbs: enumerated {len(paths)} match_*.db files.")
+        return paths
+    paths = sorted(DEMO_BASE.rglob("*.dem"))
+    print(f"Source=dem-files: found {len(paths)} .dem files on disk.")
+    return paths
+
+
 def main():
     from sqlalchemy import text
 
     from Programma_CS2_RENAN.backend.storage.database import get_db_manager, init_database
     from Programma_CS2_RENAN.core.config import save_user_setting
 
-    print("=== CS2 Coach AI -- Rebuild Monolith from Per-Match DBs ===\n")
+    args = _parse_argv(sys.argv[1:])
+    incremental = not args.full
 
-    # Init
-    init_database()
-    db = get_db_manager()
-    save_user_setting("PRO_DEMO_PATH", str(DEMO_BASE))
+    print("=== CS2 Coach AI -- Rebuild Monolith from Per-Match DBs ===")
+    print(f"  Phase:               {args.phase}")
+    print(f"  Source:              {args.source}")
+    print(f"  Mode:                {'incremental' if incremental else 'full (clears tickstate)'}")
+    print(f"  Checkpoint:          {args.checkpoint_file}")
+    print(f"  Disk abort threshold: {args.disk_abort_gb} GB")
+    print(f"  WAL checkpoint every: {args.wal_checkpoint_every} demos")
+    print(f"  Lock acquisition:    {'OFF (escape hatch)' if args.no_lock else 'd_track_running'}")
+    print()
 
-    # Discover all demos (including ingested/)
-    all_demos = sorted(DEMO_BASE.rglob("*.dem"))
-    print(f"Found {len(all_demos)} .dem files on disk.")
-    print(f"Per-match DB directory: {MATCH_DATA_DIR}\n")
+    # Acquire lock unless explicitly disabled. The lock blocks hltv_sync_service
+    # and ad-hoc ingestion from concurrent main-DB writes (see
+    # docs/concurrency_policy.md).
+    lock_acquired = False
+    if not args.no_lock:
+        from Programma_CS2_RENAN.core import lock_files
 
-    if not all_demos:
-        print("No demos found. Nothing to rebuild.")
-        return
+        lock_files.install_signal_handlers()
+        try:
+            lock_files.acquire("d_track_running")
+            lock_acquired = True
+            print("  Lock acquired: d_track_running\n")
+        except lock_files.LockConflict as conflict:
+            print(f"  Lock acquisition FAILED: {conflict}")
+            print("  Stop the conflicting process or pass --no-lock to override.")
+            sys.exit(2)
 
-    # Phase 1: Tick data from per-match DBs (fast -- no .dem parsing)
-    incremental = "--full" not in sys.argv
-    if incremental:
-        print("--- Phase 1: Rebuilding PlayerTickState (incremental -- use --full to clear) ---")
-    else:
-        print("--- Phase 1: Rebuilding PlayerTickState from per-match DBs ---")
-    t_start = time.monotonic()
-    demos_done, tick_total = rebuild_tick_data(db, all_demos, incremental=incremental)
-    t_ticks = time.monotonic() - t_start
-    print(
-        f"\n  Phase 1 complete: {tick_total:,} new ticks from {demos_done} demos ({t_ticks:.1f}s)\n"
-    )
-
-    # Phase 2: Aggregate stats from .dem files (parse_demo is fast for headers)
-    print("--- Phase 2: Rebuilding PlayerMatchStats from .dem files ---")
-    t_start = time.monotonic()
-    stats_total = rebuild_match_stats(db, all_demos)
-    t_stats = time.monotonic() - t_start
-    print(f"\n  Phase 2 complete: {stats_total} PlayerMatchStats rows ({t_stats:.1f}s)\n")
-
-    # Phase 3: Backfill pro_player_id from HLTV NicknameResolver
-    print("--- Phase 3: Linking PlayerMatchStats to HLTV ProPlayer records ---")
     try:
-        from Programma_CS2_RENAN.backend.processing.baselines.pro_player_linker import (
-            ProPlayerLinker,
-        )
+        # Init
+        init_database()
+        db = get_db_manager()
+        save_user_setting("PRO_DEMO_PATH", str(DEMO_BASE))
 
-        result = ProPlayerLinker().backfill_all()
-        print(
-            f"  Linked: {result['linked']}, "
-            f"Unresolved: {result['unresolved']} {result['unresolved_names']}\n"
-        )
-    except Exception as e:
-        print(f"  WARNING: Pro player linking failed: {e}\n")
+        all_demos = _enumerate_demos(args.source)
+        print(f"Per-match DB directory: {MATCH_DATA_DIR}\n")
 
-    # Summary
-    with db.get_session() as session:
-        final_ticks = session.exec(text("SELECT COUNT(*) FROM playertickstate")).scalar() or 0
-        final_demos = (
-            session.exec(text("SELECT COUNT(DISTINCT demo_name) FROM playertickstate")).scalar()
-            or 0
-        )
-        final_stats = (
-            session.exec(text("SELECT COUNT(*) FROM playermatchstats WHERE is_pro = 1")).scalar()
-            or 0
-        )
+        if not all_demos:
+            print("No demos to process. Nothing to rebuild.")
+            return
 
-    # DL-1: Record provenance for monolith rebuild
-    if demos_done > 0:
-        db.record_lineage(
-            entity_type="batch_monolith_rebuild",
-            entity_id=tick_total,
-            source_demo=f"{demos_done}_demos",
-            processing_step="monolith_rebuild",
-        )
+        run_phases = {
+            "full": ("tick", "stats", "linker"),
+            "tick-only": ("tick",),
+            "match-stats-only": ("stats",),
+            "linker-only": ("linker",),
+        }[args.phase]
 
-    print("=== Summary ===")
-    print(f"  PlayerTickState:  {final_ticks:,} ticks from {final_demos} demos")
-    print(f"  PlayerMatchStats: {final_stats} pro rows")
-    print(f"  Total time:       {t_ticks + t_stats:.1f}s")
-    print("\nMonolith is ready. Run: python tools/ingest_pro_demos.py --retrain-only")
+        demos_done = 0
+        tick_total = 0
+        stats_total = 0
+        t_ticks = 0.0
+        t_stats = 0.0
+
+        if "tick" in run_phases:
+            print("--- Phase 1: Rebuilding PlayerTickState ---")
+            t_start = time.monotonic()
+            demos_done, tick_total = rebuild_tick_data(
+                db,
+                all_demos,
+                incremental=incremental,
+                checkpoint_path=args.checkpoint_file,
+                disk_abort_gb=args.disk_abort_gb,
+                wal_checkpoint_every=args.wal_checkpoint_every,
+                match_id_filter=args.match_id,
+                limit=args.limit,
+            )
+            t_ticks = time.monotonic() - t_start
+            print(
+                f"\n  Phase 1 complete: {tick_total:,} new ticks from "
+                f"{demos_done} demos ({t_ticks:.1f}s)\n"
+            )
+
+        if "stats" in run_phases:
+            print("--- Phase 2: Rebuilding PlayerMatchStats from .dem files ---")
+            t_start = time.monotonic()
+            stats_total = rebuild_match_stats(db, all_demos)
+            t_stats = time.monotonic() - t_start
+            print(f"\n  Phase 2 complete: {stats_total} PlayerMatchStats rows ({t_stats:.1f}s)\n")
+
+        if "linker" in run_phases:
+            print("--- Phase 3: Linking PlayerMatchStats to HLTV ProPlayer records ---")
+            try:
+                from Programma_CS2_RENAN.backend.processing.baselines.pro_player_linker import (
+                    ProPlayerLinker,
+                )
+
+                result = ProPlayerLinker().backfill_all()
+                print(
+                    f"  Linked: {result['linked']}, "
+                    f"Unresolved: {result['unresolved']} {result['unresolved_names']}\n"
+                )
+            except Exception as e:
+                print(f"  WARNING: Pro player linking failed: {e}\n")
+
+        # Summary
+        with db.get_session() as session:
+            final_ticks = session.exec(text("SELECT COUNT(*) FROM playertickstate")).scalar() or 0
+            final_demos = (
+                session.exec(text("SELECT COUNT(DISTINCT demo_name) FROM playertickstate")).scalar()
+                or 0
+            )
+            final_stats = (
+                session.exec(
+                    text("SELECT COUNT(*) FROM playermatchstats WHERE is_pro = 1")
+                ).scalar()
+                or 0
+            )
+
+        # DL-1: Record provenance for monolith rebuild
+        if demos_done > 0 and "tick" in run_phases:
+            db.record_lineage(
+                entity_type="batch_monolith_rebuild",
+                entity_id=tick_total,
+                source_demo=f"{demos_done}_demos",
+                processing_step="monolith_rebuild",
+            )
+
+        print("=== Summary ===")
+        print(f"  PlayerTickState:  {final_ticks:,} ticks from {final_demos} demos")
+        print(f"  PlayerMatchStats: {final_stats} pro rows")
+        print(f"  Total time:       {t_ticks + t_stats:.1f}s")
+    finally:
+        if lock_acquired:
+            from Programma_CS2_RENAN.core import lock_files
+
+            lock_files.release("d_track_running")
+            print("\n  Lock released: d_track_running")
 
 
 if __name__ == "__main__":

@@ -134,6 +134,11 @@ class PlayerMatchStats(SQLModel, table=True):
     pro_player_id: Optional[int] = Field(
         default=None, index=True
     )  # Logical ref to ProPlayer.hltv_id (separate DB — no FK)
+    # Steam ID forwarded from match_*.db.matchtickstate.steamid by the D1 tick
+    # migration. Nullable for backward compat; existing pre-D1 rows stay NULL.
+    # Index deferred to a post-D1 migration to avoid per-INSERT overhead during
+    # the bulk migration phase.
+    steamid: Optional[int] = Field(default=None)
 
 
 class PlayerTickState(SQLModel, table=True):
@@ -180,6 +185,11 @@ class PlayerTickState(SQLModel, table=True):
     enemies_visible: int = Field(default=0)
     is_blinded: bool = Field(default=False)
     round_outcome: Optional[int] = None
+    # Steam ID forwarded from match_*.db.matchtickstate.steamid by the D1 tick
+    # migration. Nullable for backward compat; pre-D1 rows stay NULL. Index
+    # deferred to a post-D1 migration to avoid per-INSERT overhead during the
+    # bulk write phase.
+    steamid: Optional[int] = Field(default=None)
 
     # --- Enriched Features (cross-player & contextual) ---
     round_number: int = Field(default=1)
