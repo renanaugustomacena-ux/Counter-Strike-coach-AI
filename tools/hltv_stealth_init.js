@@ -9,6 +9,18 @@
 // payload that can be passed to `mcp__puppeteer__puppeteer_evaluate`
 // AFTER navigation to mask the most blatant headless tells.
 //
+// PREREQUISITE — Chromium install (verified 2026-04-29 missing on this host)
+// ---------------------------------------------------------------------------
+// puppeteer-mcp's bundled Chromium must be downloaded once before the
+// puppeteer_* tools work. On a fresh install they fail with:
+//   "Could not find Chrome (ver. 131.0.6778.204)"
+// One-time setup (owner-authorized, ~150 MB):
+//   npx puppeteer browsers install chrome
+// The cache lands at ~/.cache/puppeteer; the version pin lives in the
+// puppeteer-mcp server config. This is a server-side install — running it
+// from inside a Claude Code session needs `node`/`npm` on PATH and may need
+// sudo if /usr/local is the install target.
+//
 // LIMITATIONS (read before assuming this is enough)
 // --------------------------------------------------
 // Real puppeteer-extra-stealth uses `evaluateOnNewDocument` — its overrides

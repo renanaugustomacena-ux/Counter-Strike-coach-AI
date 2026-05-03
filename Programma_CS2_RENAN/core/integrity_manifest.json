@@ -45,7 +45,7 @@
     "apps/qt_app/screens/coach_screen.py": "e93469c9219eed196405b77cd749b132b36d4618388cc9e6a4244a6069fc45b2",
     "apps/qt_app/screens/faceit_config_screen.py": "1d1e8cb54479a25aa430e0ea818225c2b1d7d3e44ce922f8cdca9d4b008e1fe6",
     "apps/qt_app/screens/help_screen.py": "89af13bc7e76e8a78c1defcd668ceadce228469c4ab044b32b618c6f95e9239d",
-    "apps/qt_app/screens/home_screen.py": "a121b133ab9521afcb5c265cbe469b13a251d672ccc040f5dc44301414e8318d",
+    "apps/qt_app/screens/home_screen.py": "81207f0e06b881f1bf8904ab9d01b1d0aca043676e122ab54fead0fd6a4735b8",
     "apps/qt_app/screens/match_detail_screen.py": "634c6d6524ebc8b433bed3ebaa61821ed4c8e85e84e33007215f5c6b4a1db750",
     "apps/qt_app/screens/match_history_screen.py": "deb2d3ce3ea29bc81070a7fe2a90877acc4fbf0003e23b4953cc777cccc37f5c",
     "apps/qt_app/screens/performance_screen.py": "df3b0e49b792829699d5e5483ae31237a671050fe2925cdd8aba6908df559c6f",

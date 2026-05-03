@@ -36,23 +36,13 @@ from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.apps.qt_app.core.widgets_helpers import make_button
 from Programma_CS2_RENAN.apps.qt_app.core.worker import Worker
-from Programma_CS2_RENAN.apps.qt_app.viewmodels.focus_insight_vm import (
-    FocusInsightViewModel,
-)
-from Programma_CS2_RENAN.apps.qt_app.viewmodels.match_history_vm import (
-    MatchHistoryViewModel,
-)
+from Programma_CS2_RENAN.apps.qt_app.viewmodels.focus_insight_vm import FocusInsightViewModel
+from Programma_CS2_RENAN.apps.qt_app.viewmodels.match_history_vm import MatchHistoryViewModel
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.empty_state import EmptyState
-from Programma_CS2_RENAN.apps.qt_app.widgets.components.focus_insight import (
-    FocusInsightCard,
-)
-from Programma_CS2_RENAN.apps.qt_app.widgets.components.last_match_hero import (
-    LastMatchHeroCard,
-)
-from Programma_CS2_RENAN.apps.qt_app.widgets.components.match_mini_card import (
-    MatchMiniCard,
-)
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.focus_insight import FocusInsightCard
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.last_match_hero import LastMatchHeroCard
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.match_mini_card import MatchMiniCard
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.status_chip import StatusChip
 from Programma_CS2_RENAN.core.config import get_setting, save_user_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -71,6 +61,9 @@ class HomeScreen(QWidget):
         self._connected = False
         self._ingestion_worker = None
         self._user_matches: list[dict[str, Any]] = []
+        # Tracks whether _on_matches_changed has populated the dual-count chip;
+        # gates _on_total_matches from clobbering the richer label.
+        self._matches_chip_populated = False
 
         self._match_history_vm = MatchHistoryViewModel(self)
         self._focus_insight_vm = FocusInsightViewModel(self)
@@ -126,7 +119,10 @@ class HomeScreen(QWidget):
 
         self._service_chip = StatusChip("Service: Idle", severity="neutral")
         title_row.addWidget(self._service_chip)
-        self._matches_chip = StatusChip("0 matches", severity="neutral")
+        # Placeholder until matches_changed or total_matches signal arrives.
+        # Hardcoding "0 matches" misled users when 30 pro rows existed but no
+        # personal demos had been ingested yet (chip read 0 while history showed 30).
+        self._matches_chip = StatusChip("…", severity="neutral")
         title_row.addWidget(self._matches_chip)
 
         root.addLayout(title_row)
@@ -213,9 +209,7 @@ class HomeScreen(QWidget):
         header_row.setContentsMargins(0, 0, 0, 0)
         caption = QLabel("RECENT MATCHES")
         Typography.apply(caption, "caption")
-        caption.setStyleSheet(
-            f"color: {tokens.text_secondary}; background: transparent;"
-        )
+        caption.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
         header_row.addWidget(caption)
         header_row.addStretch(1)
         view_all = make_button("View all →", variant="ghost")
@@ -268,13 +262,11 @@ class HomeScreen(QWidget):
         layout.setSpacing(tokens.spacing_md)
 
         # Personal demos row
-        self._personal_row, self._personal_path_label, self._personal_btn = (
-            self._build_ingest_row(
-                kind_caption="PERSONAL",
-                button_text="Analyze",
-                on_click=self._on_start_analysis,
-                pick_action=self._pick_demo_folder,
-            )
+        self._personal_row, self._personal_path_label, self._personal_btn = self._build_ingest_row(
+            kind_caption="PERSONAL",
+            button_text="Analyze",
+            on_click=self._on_start_analysis,
+            pick_action=self._pick_demo_folder,
         )
         layout.addLayout(self._personal_row)
 
@@ -325,9 +317,7 @@ class HomeScreen(QWidget):
 
         cap = QLabel(kind_caption)
         Typography.apply(cap, "caption")
-        cap.setStyleSheet(
-            f"color: {tokens.text_tertiary}; background: transparent;"
-        )
+        cap.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
         row.addWidget(cap)
 
         path_row = QHBoxLayout()
@@ -336,9 +326,7 @@ class HomeScreen(QWidget):
 
         path_label = QLabel("Not configured")
         path_label.setFont(Typography.font("mono"))
-        path_label.setStyleSheet(
-            f"color: {tokens.text_secondary}; background: transparent;"
-        )
+        path_label.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
         path_label.setWordWrap(False)
         path_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         path_row.addWidget(path_label, 1)
@@ -367,9 +355,7 @@ class HomeScreen(QWidget):
 
         self._epoch_label = QLabel("Epoch — / —")
         self._epoch_label.setFont(Typography.font("title"))
-        self._epoch_label.setStyleSheet(
-            f"color: {tokens.text_primary}; background: transparent;"
-        )
+        self._epoch_label.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
         layout.addWidget(self._epoch_label)
 
         self._train_progress_bar = QProgressBar()
@@ -388,9 +374,7 @@ class HomeScreen(QWidget):
 
         self._eta_label = QLabel("ETA —")
         self._eta_label.setFont(Typography.font("mono"))
-        self._eta_label.setStyleSheet(
-            f"color: {tokens.text_tertiary}; background: transparent;"
-        )
+        self._eta_label.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
         layout.addWidget(self._eta_label)
 
         layout.addStretch(1)
@@ -413,9 +397,7 @@ class HomeScreen(QWidget):
         )
         desc.setFont(Typography.font("body"))
         desc.setWordWrap(True)
-        desc.setStyleSheet(
-            f"color: {tokens.text_secondary}; background: transparent;"
-        )
+        desc.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
         layout.addWidget(desc)
 
         layout.addStretch(1)
@@ -463,10 +445,14 @@ class HomeScreen(QWidget):
         user_matches = [m for m in matches if not m.get("is_pro")]
         self._user_matches = user_matches
 
+        # Distinct pro demos = unique demo_name across is_pro rows.
+        # PlayerMatchStats stores one row per (demo, player), so the row count
+        # would inflate by the number of players analyzed per demo (~10×).
+        pro_demos = {m["demo_name"] for m in matches if m.get("is_pro") and m.get("demo_name")}
+        self._update_matches_chip(len(user_matches), len(pro_demos))
+
         if not user_matches:
             self._show_onboarding(True)
-            self._matches_chip.set_label("0 matches")
-            self._matches_chip.set_severity("neutral")
             return
 
         self._show_onboarding(False)
@@ -480,8 +466,18 @@ class HomeScreen(QWidget):
         self._last_match_card.set_state(last_match, history_ratings)
 
         self._populate_recent_strip(user_matches[:6])
-        self._matches_chip.set_label(f"{len(user_matches)} matches")
-        self._matches_chip.set_severity("online")
+
+    def _update_matches_chip(self, user_n: int, pro_demos_n: int) -> None:
+        # Dual-count label disambiguates the prior "matches" overload
+        # (some screens count rows, some count demos) and surfaces both
+        # the user's own match progress and the pro analysis corpus.
+        label = f"{user_n} yours · {pro_demos_n} pro demos"
+        self._matches_chip.set_label(label)
+        if user_n > 0:
+            self._matches_chip.set_severity("online")
+        else:
+            self._matches_chip.set_severity("neutral")
+        self._matches_chip_populated = True
 
     def _populate_recent_strip(self, matches: list[dict[str, Any]]) -> None:
         # Clear existing cards (leave the trailing stretch in place).
@@ -563,9 +559,7 @@ class HomeScreen(QWidget):
 
         worker = Worker(_run)
         worker.signals.result.connect(lambda _: self._on_analysis_done(is_pro=False))
-        worker.signals.error.connect(
-            lambda err: self._on_analysis_error(err, is_pro=False)
-        )
+        worker.signals.error.connect(lambda err: self._on_analysis_error(err, is_pro=False))
         self._ingestion_worker = worker
         QThreadPool.globalInstance().start(worker)
 
@@ -590,9 +584,7 @@ class HomeScreen(QWidget):
 
         worker = Worker(_run)
         worker.signals.result.connect(lambda _: self._on_analysis_done(is_pro=True))
-        worker.signals.error.connect(
-            lambda err: self._on_analysis_error(err, is_pro=True)
-        )
+        worker.signals.error.connect(lambda err: self._on_analysis_error(err, is_pro=True))
         self._ingestion_worker = worker
         QThreadPool.globalInstance().start(worker)
 
@@ -654,9 +646,7 @@ class HomeScreen(QWidget):
             f"color: {tokens.error}; background: transparent; "
             f"font-size: {tokens.font_size_caption}px;"
         )
-        logger.error(
-            "Home %s analysis failed: %s", "pro" if is_pro else "personal", error
-        )
+        logger.error("Home %s analysis failed: %s", "pro" if is_pro else "personal", error)
         get_app_state().notification_received.emit(
             "ERROR",
             f"{'Pro analysis' if is_pro else 'Demo analysis'} failed: {error}",
@@ -701,15 +691,18 @@ class HomeScreen(QWidget):
         self._train_progress_bar.setValue(max(0, min(100, pct)))
         train_loss = float(data.get("train_loss", 0.0))
         val_loss = float(data.get("val_loss", 0.0))
-        self._train_loss_label.setText(
-            f"Loss {train_loss:.4f}  ·  Val {val_loss:.4f}"
-        )
+        self._train_loss_label.setText(f"Loss {train_loss:.4f}  ·  Val {val_loss:.4f}")
         self._eta_label.setText(f"ETA {self._format_eta(data.get('eta_seconds', 0))}")
 
     def _on_total_matches(self, count: int) -> None:
-        self._matches_chip.set_label(f"{count} matches")
+        # AppState reports DISTINCT demo_name across PlayerMatchStats — demos,
+        # not rows. If _on_matches_changed already populated the dual-count
+        # chip, leave that richer label alone (it carries user/pro split).
+        if self._matches_chip_populated:
+            return
+        self._matches_chip.set_label(f"{count} demos analyzed")
         if count > 0:
-            self._matches_chip.set_severity("online")
+            self._matches_chip.set_severity("neutral")
 
     @staticmethod
     def _format_eta(seconds: float) -> str:
