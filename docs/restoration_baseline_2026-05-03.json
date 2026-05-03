@@ -1,0 +1,50 @@
+{
+  "created_at": "2026-05-03T13:48:43.763684+00:00",
+  "plan_version": "v3",
+  "main_db": {
+    "tables": {
+      "calibrationsnapshot": 12,
+      "coachingexperience": 0,
+      "coachinginsight": 2,
+      "coachstate": 1,
+      "datalineage": 0,
+      "dataqualitymetric": 0,
+      "ext_playerplaystyle": 0,
+      "ext_teamroundstats": 0,
+      "ingestiontask": 65,
+      "mapveto": 0,
+      "matchresult": 0,
+      "playermatchstats": 2040,
+      "playerprofile": 0,
+      "playertickstate": 3908990,
+      "rolethresholdrecord": 0,
+      "roundstats": 0,
+      "servicenotification": 109,
+      "tacticalknowledge": 15
+    },
+    "playermatchstats_data_quality": {
+      "complete": 30,
+      "registered_only": 2010
+    },
+    "playermatchstats_is_pro": {
+      "1": 2040
+    },
+    "playermatchstats_distinct_demo_name": 204,
+    "playertickstate_distinct_demo_name": 3,
+    "ingestiontask_status": {
+      "completed": 65
+    }
+  },
+  "hltv_db": {
+    "tables": {
+      "proplayer": 149,
+      "proplayerstatcard": 6,
+      "proteam": 30
+    },
+    "proplayer_real_name_filled": 0,
+    "proplayer_country_filled": 0,
+    "proplayer_age_filled": 0,
+    "proplayer_team_id_filled": 149,
+    "proplayerstatcard_pros_with_card": 6
+  }
+}
