@@ -518,6 +518,106 @@ class ProPlayerStatCard(SQLModel, table=True):
         return v
 
 
+# --- HLTV team/event/tournament tables added by Phase H1 of v3 plan ---
+# These live in hltv_metadata.db (a separate SQLite file from database.db)
+# per the long-standing separation principle: HLTV scrapes provide pro
+# stats only; demo-derived data lives in database.db and never crosses
+# into hltv_metadata.db. See feedback_hltv_db_is_separate.md memory.
+
+
+class ProEvent(SQLModel, table=True):
+    """HLTV event (LAN tournament, online cup, qualifier).
+
+    Source: scraped from https://www.hltv.org/events and per-event pages.
+    Populated by Phase M3 of the v3 restoration plan via the H2 scraper
+    extension (`HLTVStatFetcher._parse_event_listing`).
+    """
+
+    __table_args__ = ({"extend_existing": True},)
+    id: Optional[int] = Field(default=None, primary_key=True)
+    hltv_id: int = Field(index=True, unique=True)
+    name: str = Field(index=True)
+    start_date: Optional[datetime] = Field(default=None, index=True)
+    end_date: Optional[datetime] = Field(default=None)
+    prize_pool_usd: Optional[int] = Field(default=None)
+    location: Optional[str] = Field(default=None)
+    tier: Optional[str] = Field(default=None)  # "S-Tier", "A-Tier", "B-Tier", "Online"
+    detailed_stats_json: str = Field(default="{}")
+    last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ProTournament(SQLModel, table=True):
+    """Multi-event tournament series (e.g. BLAST Premier 2026 Season).
+
+    Distinct from ProEvent: a tournament aggregates multiple events
+    (qualifiers, group stage, finals) under one organizer/season label.
+    Population deferred — Phase M3 covers events first; tournament-level
+    rollup is a follow-up enhancement.
+    """
+
+    __table_args__ = ({"extend_existing": True},)
+    id: Optional[int] = Field(default=None, primary_key=True)
+    hltv_id: int = Field(index=True, unique=True)
+    name: str = Field(index=True)
+    season: Optional[str] = Field(default=None)
+    organizer: Optional[str] = Field(default=None)
+    last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ProHead2Head(SQLModel, table=True):
+    """Aggregate head-to-head record between two pro teams.
+
+    Populated by Phase M3 from per-pair HLTV head-to-head pages (subset
+    of top-50 most-played opponents per team to bound scrape volume).
+    """
+
+    __table_args__ = (
+        UniqueConstraint("team1_hltv_id", "team2_hltv_id", name="ux_h2h_teams"),
+        {"extend_existing": True},
+    )
+    id: Optional[int] = Field(default=None, primary_key=True)
+    team1_hltv_id: int = Field(index=True)
+    team2_hltv_id: int = Field(index=True)
+    total_matches: int = Field(default=0)
+    team1_wins: int = Field(default=0)
+    team2_wins: int = Field(default=0)
+    draws: int = Field(default=0)
+    last_meeting_date: Optional[datetime] = Field(default=None)
+    last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ProMapRecord(SQLModel, table=True):
+    """Per-team-or-player per-map performance record.
+
+    Subject is XOR: either ``team_hltv_id`` or ``player_hltv_id`` is set,
+    never both. CHECK constraint enforces this. UniqueConstraint allows
+    one record per (subject, map_name) pair.
+    """
+
+    __table_args__ = (
+        CheckConstraint(
+            "(team_hltv_id IS NULL) <> (player_hltv_id IS NULL)",
+            name="ck_promaprecord_subject_xor",
+        ),
+        UniqueConstraint(
+            "team_hltv_id",
+            "player_hltv_id",
+            "map_name",
+            name="ux_promaprecord_subject_map",
+        ),
+        {"extend_existing": True},
+    )
+    id: Optional[int] = Field(default=None, primary_key=True)
+    team_hltv_id: Optional[int] = Field(default=None, index=True)
+    player_hltv_id: Optional[int] = Field(default=None, index=True)
+    map_name: str = Field(index=True)
+    maps_played: int = Field(default=0)
+    win_rate: float = Field(default=0.0)
+    ct_win_rate: float = Field(default=0.0)
+    t_win_rate: float = Field(default=0.0)
+    last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 class MatchResult(SQLModel, table=True):
     __table_args__ = {"extend_existing": True}
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
