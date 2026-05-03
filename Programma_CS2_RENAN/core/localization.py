@@ -400,14 +400,18 @@ def _load_json_translations() -> dict:
 _JSON_TRANSLATIONS = _load_json_translations()
 
 
-# Kivy-dependent base class — guarded for Qt compatibility.
-# When Kivy is absent, TRANSLATIONS and _JSON_TRANSLATIONS are still accessible.
-try:
+# Kivy-dependent base class — only bind to Kivy if the Kivy runtime is already
+# loaded (legacy Kivy entrypoint). When the Qt entrypoint is active or Kivy is
+# absent, fall through to plain Python so we don't eagerly boot Kivy's logger,
+# cache and window subsystems just to read translations.
+import sys as _sys
+
+if "kivy" in _sys.modules:
     from kivy.event import EventDispatcher
     from kivy.properties import StringProperty
-except ImportError:
+else:
     EventDispatcher = object
-    StringProperty = lambda default="": default
+    StringProperty = lambda default="": default  # noqa: E731
 
 
 class LocalizationManager(EventDispatcher):
