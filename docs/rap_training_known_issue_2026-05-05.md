@@ -76,3 +76,55 @@ timespans/cm broadcast bug.
 
 `./.venv/bin/python run_full_training_cycle.py --dry-run --model-type rap`
 exits 0. A single epoch completes without raising in `_ode_solver`.
+
+## Fix staged (2026-05-06) — pending verification
+
+Root cause confirmed by reading `ncps/torch/ltc.py:178`:
+
+```python
+ts = 1.0 if timespans is None else timespans[:, t].squeeze()
+```
+
+For `timespans` of shape `(B, T)`, the slice `[:, t]` yields `(B,)` and
+`.squeeze()` is a no-op. Then `_ode_solver` (line 224) computes
+`cm_t = cm / (elapsed_time / ode_unfolds)` where `cm` has shape
+`(state_size,) = (ncp_units,) = (512,)`. Division of `(512,)` by `(B,)`
+does not broadcast unless `state_size == B`.
+
+This is an intrinsic ncps bug for any RNN config where `ncp_units != batch_size`.
+Reproduces identically on ncps 1.0.1 and 0.0.7, ruling out a version
+regression.
+
+**Fix:** monkey-patch `LTCCell._ode_solver` on the `self.ltc.rnn_cell`
+instance inside `RAPMemory.__init__`. The patch unsqueezes any 1-D
+`elapsed_time` to `(B, 1)` before delegating to the original solver, so
+`cm` (state_size,) broadcasts to `(B, state_size)` as the ODE math
+requires.
+
+Code: `Programma_CS2_RENAN/backend/nn/experimental/rap_coach/memory.py`,
+inside the RAPMemory `__init__` after `self.ltc = LTC(...)`. Search for
+`RAP-LTC-FIX` in the source.
+
+Verification status: **VERIFIED via standalone CPU forward pass (2026-05-06).**
+
+Standalone check (no full training pipeline, no GPU, doesn't compete with
+the JEPA training currently running):
+
+```python
+mem = RAPMemory(perception_dim=128, metadata_dim=25, hidden_dim=256)
+x = torch.randn(8, 10, 153)             # (B=8, T=10, F=153)
+timespans = torch.full((8, 10), 1/64)   # (B, T) at 64-tick rate
+ltc_out, belief, hidden = mem(x, hidden=None, timespans=timespans)
+# Forward OK:
+#   ltc_out: (8, 10, 256)
+#   belief:  (8, 10, 64)
+#   hidden:  (8, 512)   ← matches ncp_units, no shape error
+```
+
+The previously-crashing path `cm (512,) / elapsed_time (B,)` now succeeds
+because `elapsed_time` is reshaped to `(B, 1)` before the division, so it
+broadcasts to `(B, state_size) = (B, 512)` cleanly.
+
+End-to-end follow-up (in a future session, after JEPA training completes):
+`./.venv/bin/python run_full_training_cycle.py --dry-run --model-type rap`
+should now exit 0.

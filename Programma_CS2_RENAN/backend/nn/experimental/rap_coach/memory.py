@@ -66,6 +66,32 @@ class RAPMemory(nn.Module):
             np.random.set_state(np_rng_state)
             torch.random.set_rng_state(torch_rng_state)
         self.ltc = LTC(input_dim, self.wiring, batch_first=True)
+
+        # RAP-LTC-FIX (2026-05-06): work around an ncps shape bug in
+        # `LTCCell._ode_solver`. When `LTC.forward` is called with a
+        # `timespans` tensor of shape (B, T), the per-step slice
+        # `timespans[:, t].squeeze()` (ltc.py:178) collapses to shape (B,).
+        # Then `_ode_solver` does `cm / (elapsed_time / ode_unfolds)` where
+        # `cm` is shape (state_size,) = (512,) for our config. Division of
+        # (state_size,) by (B,) does not broadcast unless state_size==B,
+        # so any batch with ncp_units != batch_size raises a RuntimeError
+        # ("tensor a (512) must match tensor b (10) at non-singleton dim 0").
+        # Reproduces on ncps==1.0.1 and ncps==0.0.7 — not a version skew.
+        #
+        # Fix: wrap the cell's `_ode_solver` to unsqueeze 1-D elapsed_time
+        # to shape (B, 1), so cm broadcasts to (B, state_size) — which is
+        # what the ODE math needs (per-batch per-feature time constant).
+        # See docs/rap_training_known_issue_2026-05-05.md for the trace
+        # and reasoning.
+        _original_ode_solver = self.ltc.rnn_cell._ode_solver
+
+        def _patched_ode_solver(inputs, state, elapsed_time):
+            if torch.is_tensor(elapsed_time) and elapsed_time.dim() == 1:
+                elapsed_time = elapsed_time.unsqueeze(-1)  # (B,) -> (B, 1)
+            return _original_ode_solver(inputs, state, elapsed_time)
+
+        self.ltc.rnn_cell._ode_solver = _patched_ode_solver
+
         # RAP-AUDIT-07: Project LTC output (154-dim) back to hidden_dim (256) to
         # maintain the downstream contract. All layers after memory expect 256-dim.
         self.ltc_projection = nn.Linear(ncp_output, hidden_dim)
