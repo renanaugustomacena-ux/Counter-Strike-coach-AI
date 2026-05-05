@@ -1,0 +1,32 @@
+{
+  "generated_at": "2026-05-05T13:25:48.555559+00:00",
+  "phase": "D2A complete",
+  "total_rows": 2030,
+  "distinct_demos": 203,
+  "data_quality_distribution": {
+    "full_sql": 1950,
+    "full_sql_round_count_anomaly": 80
+  },
+  "dataset_split_distribution": {
+    "TEST": 300,
+    "TRAIN": 1410,
+    "VAL": 320
+  },
+  "field_population": {
+    "rating_positive": 2020,
+    "rating_clamp_ceiling": 1,
+    "util_damage_present": 1946,
+    "trade_kill_ratio_positive": 1763,
+    "was_traded_ratio_positive": 1822,
+    "avg_trade_response_positive": 1761,
+    "steamid_populated": 2030,
+    "pro_player_id_linked": 0
+  },
+  "notes": [
+    "1 row at rating=5.0 clamp ceiling: 910/vitality-vs-the-mongolz-m2-dust2 (corrupted source \u2014 kills_total accumulator bug, K=121 in 18 rounds; flagged for D3 recovery)",
+    "80 rows tagged full_sql_round_count_anomaly: round_count outside CS2 MR12 band [13, 36] (forfeits, partial parses)",
+    "0 rows tagged 'partial' / 'complete' / 'registered_only': D2A successfully replaced all stub rows",
+    "pro_player_id linkage deferred to D2C (pro_player_linker.backfill_all)",
+    "Class B fields (accuracy, opening_duel_win_pct, clutch_win_pct, etc.) stay 0 \u2014 D2B fills them when .dem available"
+  ]
+}

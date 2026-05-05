@@ -52,14 +52,22 @@ if str(_REPO_ROOT) not in sys.path:
 
 from Programma_CS2_RENAN.core import lock_files  # noqa: E402
 
-# Round counts that produce sane per-round means. CS2 standard:
-#   16 = MR12 + draw window
-#   24 = MR12 + standard win-by-2 (most common today)
-#   30 = MR15 (legacy CSGO)
-#   36 = overtime extension (24 + 12)
-# Matches outside this set get tagged 'full_sql_round_count_anomaly'
-# instead of 'full_sql' so downstream consumers can filter.
-SANE_ROUND_COUNTS = {16, 24, 30, 36}
+# pandas is only imported when detect_trade_kills runs (per-match).
+# Keeping the import inside the function avoids paying the cost when the
+# tool is invoked in --reconcile or --dry-run modes that skip writes.
+
+# CS2 MR12 valid round-count band:
+#   13       — minimum (13-0 sweep)
+#   13-25    — typical no-OT range (winner reaches 13)
+#   26-36    — with overtime (each OT adds up to 6 rounds; max 2 OTs in
+#              practice, plus the regulation 24)
+# Outside [13, 36] → tag full_sql_round_count_anomaly (forfeits, partial
+# parses, multi-match accumulator bugs in source files).
+#
+# The previous {16, 24, 30, 36} set was inherited from CSGO MR15 thinking
+# and mis-flagged 81% of CS2 demos as anomalous. (See 2026-05-05 audit.)
+MIN_VALID_ROUND_COUNT = 13
+MAX_VALID_ROUND_COUNT = 36
 
 
 # Tracks every distinct ``data_quality`` value this tool can write.
@@ -190,97 +198,200 @@ def _aggregate_per_player(match_db_path: Path) -> list[dict]:
     con = sqlite3.connect(f"file:{match_db_path}?mode=ro&immutable=1", uri=True)
     cur = con.cursor()
 
-    # Tick-level per-round MAX of cumulative round counters → SUM across rounds.
+    # Per-player TOTALS use cumulative MAX(_total) columns — these are the
+    # source of truth in matchtickstate. The per-round counters
+    # (kills_this_round etc.) are NOT a faithful decomposition of the totals:
+    # they undercount on every match we cross-checked (e.g. 910 on m1-mirage:
+    # MAX(kills_total)=35, SUM(MAX(kills_this_round))=17). The cumulative
+    # column rolls forward across the whole match including any post-tick
+    # adjustments the per-round snapshot misses.
+    #
+    # Per-round damage MUST come from damage_this_round (no damage_total
+    # column exists in the source schema).
     rows = cur.execute(
         """
         SELECT player_name,
                steamid,
-               SUM(rk) AS kills,
-               SUM(rd) AS deaths,
-               SUM(ra) AS assists,
-               SUM(rh) AS hs_kills,
-               SUM(rdmg) AS damage,
-               SUM(rudmg) AS util_dmg,
-               SUM(rblind) AS enemies_blinded,
-               COUNT(*) AS rounds_played,
-               MAX(rounds_with_kill) AS rwk_marker
-        FROM (
-          SELECT round_number,
-                 player_name,
-                 steamid,
-                 MAX(kills_this_round) AS rk,
-                 MAX(deaths_this_round) AS rd,
-                 MAX(assists_this_round) AS ra,
-                 MAX(headshot_kills_this_round) AS rh,
-                 MAX(damage_this_round) AS rdmg,
-                 MAX(utility_damage_this_round) AS rudmg,
-                 MAX(enemies_flashed_this_round) AS rblind,
-                 CASE WHEN MAX(kills_this_round) > 0 THEN 1 ELSE 0 END AS rounds_with_kill
-          FROM matchtickstate
-          WHERE player_name IS NOT NULL AND player_name != ''
-          GROUP BY round_number, player_name, steamid
-        )
+               MAX(kills_total)               AS kills,
+               MAX(deaths_total)              AS deaths,
+               MAX(assists_total)             AS assists,
+               MAX(headshot_kills_total)      AS hs_kills,
+               MAX(score)                     AS score,
+               MAX(cash_spent_total)          AS cash_spent
+        FROM matchtickstate
+        WHERE player_name IS NOT NULL AND player_name != ''
         GROUP BY player_name, steamid
         ORDER BY player_name
         """
     ).fetchall()
 
-    # Per-player kill_std and adr_std (variance across rounds).
-    std_rows = cur.execute(
+    # Per-round arrays: per-round damage SUM (for total damage + adr_std),
+    # per-round kills for kill_std + impact_rounds (rounds with ≥1 kill share),
+    # per-round util damage / enemies flashed (for class A util fields).
+    perround_rows = cur.execute(
         """
-        SELECT player_name,
-               steamid,
-               kills_per_round_list,
-               adr_per_round_list
-        FROM (
-          SELECT player_name,
-                 steamid,
-                 GROUP_CONCAT(rk) AS kills_per_round_list,
-                 GROUP_CONCAT(rdmg) AS adr_per_round_list
-          FROM (
-            SELECT round_number,
-                   player_name,
-                   steamid,
-                   MAX(kills_this_round) AS rk,
-                   MAX(damage_this_round) AS rdmg
-            FROM matchtickstate
-            WHERE player_name IS NOT NULL AND player_name != ''
-            GROUP BY round_number, player_name, steamid
-          )
-          GROUP BY player_name, steamid
-        )
+        SELECT player_name, steamid, round_number,
+               MAX(kills_this_round)                AS rk,
+               MAX(damage_this_round)               AS rdmg,
+               MAX(utility_damage_this_round)       AS rudmg,
+               MAX(enemies_flashed_this_round)      AS rblind
+        FROM matchtickstate
+        WHERE player_name IS NOT NULL AND player_name != ''
+        GROUP BY player_name, steamid, round_number
         """
     ).fetchall()
 
-    std_lookup = {
-        (player_name, steamid): {
-            "kills_list": [_safe_float(x) for x in (kpl or "").split(",") if x],
-            "adr_list": [_safe_float(x) for x in (apl or "").split(",") if x],
-        }
-        for player_name, steamid, kpl, apl in std_rows
-    }
+    perround: dict[tuple, dict] = {}
+    for pn, sid, rn, rk, rdmg, rudmg, rblind in perround_rows:
+        d = perround.setdefault(
+            (pn, sid),
+            {
+                "kills_per_round": [],
+                "damage_per_round": [],
+                "util_dmg_per_round": [],
+                "blinded_per_round": [],
+                "rounds_played": 0,
+            },
+        )
+        d["kills_per_round"].append(int(rk or 0))
+        d["damage_per_round"].append(int(rdmg or 0))
+        d["util_dmg_per_round"].append(int(rudmg or 0))
+        d["blinded_per_round"].append(int(rblind or 0))
+        d["rounds_played"] += 1
 
-    # Per-player utility damage from event stream (HE / molotov / smoke).
+    # Per-player utility damage from event stream (HE + molotov damage).
+    # Smokes don't damage players, so smoke counts come from a separate
+    # query against event_type='smoke_start'.
     util_rows = cur.execute(
         """
         SELECT player_name,
                SUM(CASE WHEN weapon LIKE 'hegrenade%' THEN damage ELSE 0 END) AS he_dmg,
-               SUM(CASE WHEN weapon LIKE 'molotov%' OR weapon LIKE 'inferno%' THEN damage ELSE 0 END) AS molly_dmg,
-               SUM(CASE WHEN weapon LIKE 'smokegrenade%' THEN 1 ELSE 0 END) AS smoke_throws
+               SUM(CASE WHEN weapon LIKE 'molotov%'
+                          OR weapon LIKE 'inferno%'
+                          OR weapon LIKE 'incgrenade%' THEN damage ELSE 0 END) AS molly_dmg
         FROM match_event_state
         WHERE event_type = 'player_hurt' AND player_name IS NOT NULL
         GROUP BY player_name
         """
     ).fetchall()
+    smoke_rows = cur.execute(
+        """
+        SELECT player_name, COUNT(*) AS n
+        FROM match_event_state
+        WHERE event_type = 'smoke_start'
+              AND player_name IS NOT NULL AND player_name != ''
+        GROUP BY player_name
+        """
+    ).fetchall()
+    smoke_lookup = {pn: int(n or 0) for pn, n in smoke_rows}
     util_lookup = {
         pn: {
             "he_dmg": _safe_float(he),
             "molly_dmg": _safe_float(molly),
-            "smoke_throws": int(smoke or 0),
+            "smoke_throws": smoke_lookup.get(pn, 0),
         }
-        for pn, he, molly, smoke in util_rows
+        for pn, he, molly in util_rows
     }
+    # Players who threw smokes but inflicted no util damage need an entry too.
+    for pn, n in smoke_lookup.items():
+        if pn not in util_lookup:
+            util_lookup[pn] = {"he_dmg": 0.0, "molly_dmg": 0.0, "smoke_throws": n}
+
+    # Trade-kill detection via match_event_state.player_death.
+    death_rows = cur.execute(
+        """
+        SELECT tick, player_name AS attacker_name, victim_name AS user_name,
+               round_number AS round_num
+        FROM match_event_state
+        WHERE event_type = 'player_death'
+              AND player_name IS NOT NULL AND player_name != ''
+              AND victim_name IS NOT NULL AND victim_name != ''
+        ORDER BY tick
+        """
+    ).fetchall()
+
+    # Team roster from early ticks (pre-half-side-flip), via SQL.
+    tick_bounds = cur.execute("SELECT MIN(tick), MAX(tick) FROM matchtickstate").fetchone()
+    tmin, tmax = tick_bounds or (0, 1)
+    cutoff = (tmin or 0) + int(((tmax or 1) - (tmin or 0)) * 0.1)
+    roster_rows = cur.execute(
+        """
+        SELECT player_name, team, COUNT(*) AS n
+        FROM matchtickstate
+        WHERE tick <= ?
+              AND player_name IS NOT NULL AND player_name != ''
+              AND team IS NOT NULL AND team != ''
+        GROUP BY player_name, team
+        """,
+        (cutoff,),
+    ).fetchall()
+    # Source uses full team names: 'TERRORIST' for T-side, 'CT' for CT-side.
+    # Map to the team_num convention detect_trade_kills expects (2=T, 3=CT).
+    # Earlier draft compared `winner.upper() == "T"` — only matched two-letter
+    # codes that don't appear in this schema. Fix: handle full names too.
+    _votes: dict[str, dict] = {}
+    for pn, tm, n in roster_rows:
+        _votes.setdefault(pn, {})[tm] = int(n or 0)
+    team_roster: dict[str, int] = {}
+    for pn, votes in _votes.items():
+        winner = max(votes.items(), key=lambda kv: kv[1])[0]
+        if isinstance(winner, str):
+            w = winner.upper().strip()
+            if w in ("T", "TERRORIST", "TERRORISTS"):
+                tn = 2
+            elif w in ("CT", "COUNTER-TERRORIST", "COUNTER_TERRORIST", "COUNTERTERRORIST"):
+                tn = 3
+            else:
+                tn = 0
+        else:
+            tn = int(winner) if winner in (2, 3) else 0
+        if tn:
+            team_roster[pn.strip().lower()] = tn
+
     con.close()
+
+    # Run trade-kill detection on the gathered death + roster data.
+    trade_per_attacker: dict[str, int] = {}
+    trade_total_kills_seen: dict[str, int] = {}
+    was_traded_per_victim: dict[str, int] = {}
+    trade_response_ticks: dict[str, list[int]] = {}
+    if death_rows and team_roster:
+        import pandas as _pd  # local import — keeps cold-start light
+
+        from Programma_CS2_RENAN.backend.data_sources.trade_kill_detector import (
+            DEFAULT_TICK_RATE,
+            detect_trade_kills,
+        )
+
+        deaths_df = _pd.DataFrame(
+            death_rows, columns=["tick", "attacker_name", "user_name", "round_num"]
+        )
+        try:
+            trade_result = detect_trade_kills(
+                deaths_df=deaths_df,
+                team_roster=team_roster,
+                tick_rate=DEFAULT_TICK_RATE,
+            )
+            # Canonical trade_details dict keys per
+            # Programma_CS2_RENAN/backend/data_sources/trade_kill_detector.py:238-248:
+            #   trade_killer    — player who got the revenge kill (the "trader")
+            #   original_killer — enemy player who killed our teammate
+            #   original_victim — the teammate whose death was avenged ("was traded")
+            #   response_ticks  — gap between the two kills
+            for det in trade_result.trade_details:
+                attacker = det.get("trade_killer")
+                if attacker:
+                    a = str(attacker).strip().lower()
+                    trade_per_attacker[a] = trade_per_attacker.get(a, 0) + 1
+                    if "response_ticks" in det:
+                        trade_response_ticks.setdefault(a, []).append(int(det["response_ticks"]))
+
+                victim = det.get("original_victim")
+                if victim:
+                    v = str(victim).strip().lower()
+                    was_traded_per_victim[v] = was_traded_per_victim.get(v, 0) + 1
+        except Exception as e:  # noqa: BLE001 — graceful on parser quirks
+            print(f"  WARN: trade-kill detection failed for {match_db_path.name}: {e}")
 
     aggregates: list[dict] = []
     for row in rows:
@@ -291,22 +402,36 @@ def _aggregate_per_player(match_db_path: Path) -> list[dict]:
             deaths,
             assists,
             hs_kills,
-            damage,
-            util_dmg,
-            enemies_blinded,
-            rounds_played,
-            _rwk_marker,
+            score,
+            cash_spent,
         ) = row
         kills = int(kills or 0)
         deaths = int(deaths or 0)
-        if (
-            max(kills, deaths, int(damage or 0), int(hs_kills or 0))
-            < MIN_NONZERO_FIELDS_FOR_REAL_PLAYER
-        ):
-            # Observer / caster / bot.
+        hs_kills = int(hs_kills or 0)
+        if max(kills, deaths, hs_kills) < MIN_NONZERO_FIELDS_FOR_REAL_PLAYER:
+            # Observer / caster / bot row — every total counter at zero.
             continue
-        std = std_lookup.get((player_name, steamid), {"kills_list": [], "adr_list": []})
+
+        pr = perround.get(
+            (player_name, steamid),
+            {
+                "kills_per_round": [],
+                "damage_per_round": [],
+                "util_dmg_per_round": [],
+                "blinded_per_round": [],
+                "rounds_played": 0,
+            },
+        )
+        damage = sum(pr["damage_per_round"])
+        util_dmg = sum(pr["util_dmg_per_round"])
+        enemies_blinded = sum(pr["blinded_per_round"])
+        rounds_played = pr["rounds_played"]
+
         util = util_lookup.get(player_name, {"he_dmg": 0.0, "molly_dmg": 0.0, "smoke_throws": 0})
+        nlow = str(player_name).strip().lower()
+        my_trade_kills = trade_per_attacker.get(nlow, 0)
+        my_was_traded = was_traded_per_victim.get(nlow, 0)
+        my_response_ticks = trade_response_ticks.get(nlow, [])
         aggregates.append(
             {
                 "player_name": str(player_name),
@@ -314,16 +439,23 @@ def _aggregate_per_player(match_db_path: Path) -> list[dict]:
                 "kills": kills,
                 "deaths": deaths,
                 "assists": int(assists or 0),
-                "hs_kills": int(hs_kills or 0),
-                "damage": int(damage or 0),
-                "util_dmg": int(util_dmg or 0),
-                "enemies_blinded": int(enemies_blinded or 0),
-                "rounds_played": int(rounds_played or 0),
-                "kills_list": std["kills_list"],
-                "adr_list": std["adr_list"],
+                "hs_kills": hs_kills,
+                "damage": damage,
+                "util_dmg": util_dmg,
+                "enemies_blinded": enemies_blinded,
+                "rounds_played": rounds_played,
+                "score": int(score or 0),
+                "cash_spent": int(cash_spent or 0),
+                "kills_list": [float(k) for k in pr["kills_per_round"]],
+                "adr_list": [float(d) for d in pr["damage_per_round"]],
                 "he_dmg": util["he_dmg"],
                 "molly_dmg": util["molly_dmg"],
                 "smoke_throws": util["smoke_throws"],
+                "trade_kills": my_trade_kills,
+                "was_traded": my_was_traded,
+                "avg_trade_response_ticks": (
+                    sum(my_response_ticks) / len(my_response_ticks) if my_response_ticks else 0.0
+                ),
             }
         )
     return aggregates
@@ -387,8 +519,24 @@ def _build_player_match_stats(meta: dict, agg: dict, source_path: Path):
     adr_per_round = [v / 1.0 for v in agg["adr_list"]]  # rdmg already per-round
     adr_std = _stdev(adr_per_round)
 
-    # Tag: full_sql, or anomaly variant if round_count outside the sane set.
-    if meta["round_count"] in SANE_ROUND_COUNTS:
+    # impact_rounds: share of rounds where the player got at least 1 kill.
+    # This is the canonical "impact" count metric (different from the HLTV
+    # 2.0 rating_impact COMPONENT, which is a normalized score). Conflating
+    # them was a bug in the prior draft.
+    if rounds > 0 and agg["kills_list"]:
+        rounds_with_kill_share = sum(1 for k in agg["kills_list"] if k > 0) / rounds
+    else:
+        rounds_with_kill_share = 0.0
+
+    # Trade-kill ratios. The detector populated raw counts in agg; convert
+    # to ratios per the existing PlayerMatchStats semantics.
+    trade_kill_ratio = agg["trade_kills"] / max(1, kills)
+    was_traded_ratio = agg["was_traded"] / max(1, deaths)
+    avg_trade_response_ticks = float(agg["avg_trade_response_ticks"])
+
+    # Tag: full_sql, or anomaly variant if round_count is outside the sane
+    # CS2 MR12 band [MIN_VALID_ROUND_COUNT, MAX_VALID_ROUND_COUNT].
+    if MIN_VALID_ROUND_COUNT <= meta["round_count"] <= MAX_VALID_ROUND_COUNT:
         data_quality = DATA_QUALITY_FULL_SQL
     else:
         data_quality = DATA_QUALITY_FULL_SQL_ROUND_ANOMALY
@@ -416,15 +564,17 @@ def _build_player_match_stats(meta: dict, agg: dict, source_path: Path):
         avg_hs=float(avg_hs),
         avg_kast=float(kast),
         accuracy=0.0,  # Class B — needs .dem
-        econ_rating=float(avg_adr / 85.0),  # see rating.py:26
+        econ_rating=0.0,  # No canonical SQL-only formula in codebase. D2B may
+        # populate from .dem round-economy events.
         kill_std=float(kill_std),
         adr_std=float(adr_std),
         kd_ratio=float(kd_ratio),
-        impact_rounds=float(rating_impact),
+        impact_rounds=float(rounds_with_kill_share),
         utility_blind_time=0.0,  # Class B
         utility_enemies_blinded=float(agg["enemies_blinded"]),
-        flash_assists=0.0,  # Class B (full); partial events from match_event_state
-        # could be added here in a follow-up.
+        flash_assists=0.0,  # Class B (full). The match_event_state.flash_detonate
+        # events carry empty victim_name in current sources, so per-victim
+        # blind tracking requires .dem re-parse (D2B).
         opening_duel_win_pct=0.0,  # Class B
         clutch_win_pct=0.0,  # Class B
         positional_aggression_score=0.0,  # Class B
@@ -435,9 +585,9 @@ def _build_player_match_stats(meta: dict, agg: dict, source_path: Path):
         rating_kast=float(rating_kast),
         rating_kpr=float(rating_kpr),
         rating_adr=float(rating_adr),
-        trade_kill_ratio=0.0,  # populated separately by trade_kill_detector
-        was_traded_ratio=0.0,
-        avg_trade_response_ticks=0.0,
+        trade_kill_ratio=float(trade_kill_ratio),
+        was_traded_ratio=float(was_traded_ratio),
+        avg_trade_response_ticks=float(avg_trade_response_ticks),
         thrusmoke_kill_pct=0.0,  # Class B
         wallbang_kill_pct=0.0,
         noscope_kill_pct=0.0,
@@ -466,6 +616,166 @@ def _existing_quality(session, demo_name: str, player_name: str) -> Optional[str
     ).first()
 
 
+# ---------------------------------------------------------------------------
+# Reconciliation against existing 'complete' rows
+# ---------------------------------------------------------------------------
+
+# Per master plan §5 D2A.4. Halt if more than ROW_HALT_PCT of the reconciled
+# rows show > FIELD_TOLERANCE_PCT drift on any single Class-A field.
+RECONCILE_FIELD_TOLERANCE_PCT = 5.0
+RECONCILE_ROW_HALT_PCT = 10.0
+
+# Class-A fields whose drift between the existing 'complete' row and a fresh
+# SQL re-derivation matters. Class B fields stay at 0 in full_sql, so diffing
+# them against a (potentially populated) complete row would always show drift
+# for the wrong reason.
+RECONCILE_FIELDS = (
+    "avg_kills",
+    "avg_deaths",
+    "avg_adr",
+    "avg_hs",
+    "avg_kast",
+    "kpr",
+    "dpr",
+    "kd_ratio",
+    "kill_std",
+    "adr_std",
+    "impact_rounds",
+    "rating",
+    "rating_impact",
+    "rating_survival",
+    "rating_kast",
+    "rating_kpr",
+    "rating_adr",
+    "trade_kill_ratio",
+    "was_traded_ratio",
+    "he_damage_per_round",
+    "molotov_damage_per_round",
+    "smokes_per_round",
+    "utility_enemies_blinded",
+)
+
+
+def _reconcile_against_complete(report_path: Path) -> dict:
+    """Diff fresh aggregates against existing data_quality='complete' rows.
+
+    Returns the report dict; also writes JSON to report_path. Does not write
+    anything to playermatchstats.
+    """
+    from Programma_CS2_RENAN.backend.storage.match_data_manager import get_match_data_manager
+    from Programma_CS2_RENAN.core.config import CORE_DB_DIR
+
+    monolith_path = Path(CORE_DB_DIR) / "database.db"
+    mdm = get_match_data_manager()
+    match_data_dir = Path(mdm.match_data_path)
+
+    # Pull existing complete rows via raw sqlite3 (read-only; no lock contention).
+    cur = sqlite3.connect(f"file:{monolith_path}?mode=ro", uri=True).cursor()
+    cur.execute(
+        f"""
+        SELECT demo_name, player_name, {", ".join(RECONCILE_FIELDS)}
+        FROM playermatchstats
+        WHERE data_quality = '{DATA_QUALITY_COMPLETE}'
+        """
+    )
+    existing = {(r[0], r[1]): r[2:] for r in cur.fetchall()}
+    if not existing:
+        report = {
+            "verdict": "no_complete_rows",
+            "rows_compared": 0,
+            "drifts": [],
+        }
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(json.dumps(report, indent=2))
+        return report
+
+    # Map demo_name → match_*.db source path.
+    demos_needed = {d for (d, _) in existing}
+    src_for_demo: dict[str, Path] = {}
+    for sp in match_data_dir.glob("match_*.db"):
+        meta = _read_match_metadata(sp)
+        if meta and meta["demo_name"] in demos_needed:
+            src_for_demo[meta["demo_name"]] = sp
+        if len(src_for_demo) == len(demos_needed):
+            break
+
+    drifts: list[dict] = []
+    rows_compared = 0
+    rows_with_drift = 0
+
+    for demo in sorted(demos_needed):
+        sp = src_for_demo.get(demo)
+        if sp is None:
+            drifts.append({"demo_name": demo, "issue": "source_match_db_missing"})
+            continue
+        meta = _read_match_metadata(sp)
+        if meta is None:
+            drifts.append({"demo_name": demo, "issue": "metadata_unreadable"})
+            continue
+        try:
+            aggs = _aggregate_per_player(sp)
+        except sqlite3.OperationalError as e:
+            drifts.append({"demo_name": demo, "issue": f"aggregator_error: {e}"})
+            continue
+
+        new_by_player = {a["player_name"]: a for a in aggs}
+
+        for (d, pname), old_vals in existing.items():
+            if d != demo:
+                continue
+            new_agg = new_by_player.get(pname)
+            if new_agg is None:
+                drifts.append(
+                    {
+                        "demo_name": demo,
+                        "player_name": pname,
+                        "issue": "player_missing_in_new_aggregate",
+                    }
+                )
+                continue
+            new_pms = _build_player_match_stats(meta, new_agg, sp)
+            row_drifts: dict[str, dict] = {}
+            for i, fld in enumerate(RECONCILE_FIELDS):
+                old_v = _safe_float(old_vals[i])
+                new_v = _safe_float(getattr(new_pms, fld, 0.0))
+                if abs(old_v) < 1e-6 and abs(new_v) < 1e-6:
+                    continue
+                denom = max(abs(old_v), 1e-6)
+                pct = abs(old_v - new_v) / denom * 100.0
+                if pct > RECONCILE_FIELD_TOLERANCE_PCT:
+                    row_drifts[fld] = {
+                        "old": round(old_v, 4),
+                        "new": round(new_v, 4),
+                        "pct": round(pct, 2),
+                    }
+            rows_compared += 1
+            if row_drifts:
+                rows_with_drift += 1
+                drifts.append(
+                    {
+                        "demo_name": demo,
+                        "player_name": pname,
+                        "drifts": row_drifts,
+                    }
+                )
+
+    drift_row_pct = rows_with_drift / rows_compared * 100.0 if rows_compared else 0.0
+    halt = drift_row_pct > RECONCILE_ROW_HALT_PCT
+    report = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "rows_compared": rows_compared,
+        "rows_with_drift": rows_with_drift,
+        "drift_row_pct": round(drift_row_pct, 2),
+        "field_tolerance_pct": RECONCILE_FIELD_TOLERANCE_PCT,
+        "halt_threshold_row_pct": RECONCILE_ROW_HALT_PCT,
+        "verdict": "drift_detected" if halt else "within_tolerance",
+        "drifts": drifts,
+    }
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(json.dumps(report, indent=2, default=str))
+    return report
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     args = _build_arg_parser().parse_args(argv)
     write_mode = args.commit
@@ -485,6 +795,18 @@ def main(argv: Optional[list[str]] = None) -> int:
     print(f"  Checkpoint:         {args.checkpoint_file}")
     print(f"  Report:             {args.report_out}")
     print()
+
+    # Reconcile-only mode: diff against existing 'complete' rows; do not write.
+    if args.reconcile:
+        report = _reconcile_against_complete(args.report_out)
+        print(
+            f"  reconcile: rows_compared={report.get('rows_compared', 0)}, "
+            f"rows_with_drift={report.get('rows_with_drift', 0)} "
+            f"({report.get('drift_row_pct', 0)}% > {report.get('halt_threshold_row_pct', 0)}% halt) "
+            f"→ verdict={report.get('verdict', '?')}"
+        )
+        print(f"  Report written: {args.report_out}")
+        return 2 if report.get("verdict") == "drift_detected" else 0
 
     # Lock acquisition only when writing.
     lock_acquired = False

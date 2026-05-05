@@ -1,0 +1,13 @@
+{
+  "started_at": "2026-05-05T13:06:42.726410+00:00",
+  "mode": "commit",
+  "matches_seen": 267,
+  "matches_skipped_missing_metadata": 64,
+  "matches_processed": 203,
+  "rows_written": 2030,
+  "rows_skipped_complete": 0,
+  "rows_skipped_noise": 0,
+  "rows_overwritten": 0,
+  "errors": [],
+  "finished_at": "2026-05-05T13:25:05.020896+00:00"
+}

@@ -1,0 +1,1445 @@
+{
+  "generated_at": "2026-05-05T10:54:11.923809+00:00",
+  "rows_compared": 20,
+  "rows_with_drift": 20,
+  "drift_row_pct": 100.0,
+  "field_tolerance_pct": 5.0,
+  "halt_threshold_row_pct": 10.0,
+  "verdict": "drift_detected",
+  "drifts": [
+    {
+      "demo_name": "vitality-vs-the-mongolz-m1-mirage",
+      "player_name": "910",
+      "drifts": {
+        "avg_adr": {
+          "old": 61.9333,
+          "new": 52.7,
+          "pct": 14.91
+        },
+        "avg_hs": {
+          "old": 0.35,
+          "new": 0.8,
+          "pct": 128.57
+        },
+        "kill_std": {
+          "old": 0.0,
+          "new": 0.9353,
+          "pct": 93526073.57
+        },
+        "adr_std": {
+          "old": 0.0,
+          "new": 66.3274,
+          "pct": 6632737511.51
+        },
+        "impact_rounds": {
+          "old": 2.7451,
+          "new": 0.3667,
+          "pct": 86.64
+        },
+        "rating_impact": {
+          "old": 2.7451,
+          "new": 2.597,
+          "pct": 5.4
+        },
+        "rating_survival": {
+          "old": 0.2667,
+          "new": 0.8412,
+          "pct": 215.46
+        },
+        "rating_kast": {
+          "old": 1.0,
+          "new": 1.4286,
+          "pct": 42.86
+        },
+        "rating_kpr": {
+          "old": 1.1667,
+          "new": 1.7182,
+          "pct": 47.28
+        },
+        "rating_adr": {
+          "old": 61.9333,
+          "new": 0.719,
+          "pct": 98.84
+        },
+        "he_damage_per_round": {
+          "old": 0.0,
+          "new": 3.5667,
+          "pct": 356666666.67
+        },
+        "molotov_damage_per_round": {
+          "old": 0.0,
+          "new": 3.2333,
+          "pct": 323333333.33
+        },
+        "smokes_per_round": {
+          "old": 0.0,
+          "new": 0.4667,
+          "pct": 46666666.67
+        },
+        "utility_enemies_blinded": {
+          "old": 0.0,
+          "new": 8.0,
+          "pct": 800000000.0
+        }
+      }
+    },
+    {
+      "demo_name": "vitality-vs-the-mongolz-m1-mirage",
+      "player_name": "Techno4K",
+      "drifts": {
+        "kill_std": {
+          "old": 0.0,
+          "new": 0.8367,
+          "pct": 83666002.65
+        },
+        "adr_std": {
+          "old": 0.0,
+          "new": 75.7084,
+          "pct": 7570842434.79
+        },
+        "impact_rounds": {
+          "old": 1.8965,
+          "new": 0.5,
+          "pct": 73.64
+        },
+        "rating_impact": {
+          "old": 1.8965,
+          "new": 1.7628,
+          "pct": 7.05
+        },
+        "rating_survival": {
+          "old": 0.3667,
+          "new": 1.1567,
+          "pct": 215.46
+        },
+        "rating_kast": {
+          "old": 1.0,
+          "new": 1.4286,
+          "pct": 42.86
+        },
+        "rating_kpr": {
+          "old": 0.7333,
+          "new": 1.08,
+          "pct": 47.28
+        },
+        "rating_adr": {
+          "old": 79.6333,
+          "new": 1.1405,
+          "pct": 98.57
+        },
+        "he_damage_per_round": {
+          "old": 0.0,
+          "new": 5.4667,
+          "pct": 546666666.67
+        },
+        "molotov_damage_per_round": {
+          "old": 0.0,
+          "new": 0.9667,
+          "pct": 96666666.67
+        },
+        "smokes_per_round": {
+          "old": 0.0,
+          "new": 0.8,
+          "pct": 80000000.0
+        },
+        "utility_enemies_blinded": {
+          "old": 0.0,
+          "new": 9.0,
+          "pct": 900000000.0
+        }
+      }
+    },
+    {
+      "demo_name": "vitality-vs-the-mongolz-m1-mirage",
+      "player_name": "ZywOo",
+      "drifts": {
+        "avg_adr": {
+          "old": 76.2667,
+          "new": 98.4,
+          "pct": 29.02
+        },
+        "kill_std": {
+          "old": 0.0,
+          "new": 0.7397,
+          "pct": 73967995.56
+        },
+        "adr_std": {
+          "old": 0.0,
+          "new": 63.0225,
+          "pct": 6302249188.0
+        },
+        "impact_rounds": {
+          "old": 2.1663,
+          "new": 0.8,
+          "pct": 63.07
+        },
+        "rating_survival": {
+          "old": 0.2,
+          "new": 0.6309,
+          "pct": 215.46
+        },
+        "rating_kast": {
+          "old": 1.0,
+          "new": 1.4286,
+          "pct": 42.86
+        },
+        "rating_kpr": {
+          "old": 0.8667,
+          "new": 1.2764,
+          "pct": 47.28
+        },
+        "rating_adr": {
+          "old": 76.2667,
+          "new": 1.3424,
+          "pct": 98.24
+        },
+        "he_damage_per_round": {
+          "old": 0.0,
+          "new": 2.5333,
+          "pct": 253333333.33
+        },
+        "molotov_damage_per_round": {
+          "old": 0.0,
+          "new": 1.6,
+          "pct": 160000000.0
+        },
+        "smokes_per_round": {
+          "old": 0.0,
+          "new": 0.4667,
+          "pct": 46666666.67
+        },
+        "utility_enemies_blinded": {
+          "old": 0.0,
+          "new": 27.0,
+          "pct": 2700000000.0
+        }
+      }
+    },
+    {
+      "demo_name": "vitality-vs-the-mongolz-m1-mirage",
+      "player_name": "apEX",
+      "drifts": {
+        "avg_adr": {
+          "old": 67.6,
+          "new": 100.2,
+          "pct": 48.22
+        },
+        "kill_std": {
+          "old": 0.0,
+          "new": 0.6065,
+          "pct": 60647843.49
+        },
+        "adr_std": {
+          "old": 0.0,
+          "new": 52.369,
+          "pct": 5236898265.98
+        },
+        "impact_rounds": {
+          "old": 1.2779,
+          "new": 0.2667,
+          "pct": 79.13
+        },
+        "rating": {
+          "old": 0.97,
+          "new": 1.0623,
+          "pct": 9.52
+        },
+        "rating_survival": {
+          "old": 0.2,
+          "new": 0.6309,
+          "pct": 215.46
+        },
+        "rating_kast": {
+          "old": 0.932,
+          "new": 1.2933,
+          "pct": 38.77
+        },
+        "rating_kpr": {
+          "old": 0.4667,
+          "new": 0.6873,
+          "pct": 47.28
+        },
+        "rating_adr": {
+          "old": 67.6,
+          "new": 1.367,
+          "pct": 97.98
+        },
+        "he_damage_per_round": {
+          "old": 0.0,
+          "new": 8.9667,
+          "pct": 896666666.67
+        },
+        "molotov_damage_per_round": {
+          "old": 0.0,
+          "new": 0.6333,
+          "pct": 63333333.33
+        },
+        "smokes_per_round": {
+          "old": 0.0,
+          "new": 0.7,
+          "pct": 70000000.0
+        },
+        "utility_enemies_blinded": {
+          "old": 0.0,
+          "new": 14.0,
+          "pct": 1400000000.0
+        }
+      }
+    },
+    {
+      "demo_name": "vitality-vs-the-mongolz-m1-mirage",
+      "player_name": "bLitz",
+      "drifts": {
+        "avg_adr": {
+          "old": 59.6333,
+          "new": 62.6667,
+          "pct": 5.09
+        },
+        "avg_hs": {
+          "old": 0.3571,
+          "new": 0.6071,
+          "pct": 70.0
+        },
+        "kill_std": {
+          "old": 0.0,
+          "new": 0.8193,
+          "pct": 81930724.87
+        },
+        "adr_std": {
+          "old": 0.0,
+          "new": 63.9943,
+          "pct": 6399425261.55
+        },
+        "impact_rounds": {
+          "old": 2.2385,
+          "new": 0.3,
+          "pct": 86.6
+        },
+        "rating_impact": {
+          "old": 2.2385,
+          "new": 2.1145,
+          "pct": 5.54
+        },
+        "rating_survival": {
+          "old": 0.3333,
+          "new": 1.0515,
+          "pct": 215.46
+        },
+        "rating_kast": {
+          "old": 1.0,
+          "new": 1.4286,
+          "pct": 42.86
+        },
+        "rating_kpr": {
+          "old": 0.9333,
+          "new": 1.3746,
+          "pct": 47.28
+        },
+        "rating_adr": {
+          "old": 59.6333,
+          "new": 0.8549,
+          "pct": 98.57
+        },
+        "he_damage_per_round": {
+          "old": 0.0,
+          "new": 8.7,
+          "pct": 870000000.0
+        },
+        "molotov_damage_per_round": {
+          "old": 0.0,
+          "new": 1.8,
+          "pct": 180000000.0
+        },
+        "smokes_per_round": {
+          "old": 0.0,
+          "new": 0.6667,
+          "pct": 66666666.67
+        },
+        "utility_enemies_blinded": {
+          "old": 0.0,
+          "new": 43.0,
+          "pct": 4300000000.0
+        }
+      }
+    },
+    {
+      "demo_name": "vitality-vs-the-mongolz-m1-mirage",
+      "player_name": "cobrazera",
+      "drifts": {
+        "avg_adr": {
+          "old": 81.0333,
+          "new": 119.4,
+          "pct": 47.35
+        },
+        "kill_std": {
+          "old": 0.0,
+          "new": 0.8683,
+          "pct": 86834497.09
+        },
+        "adr_std": {
+          "old": 0.0,
+          "new": 76.8351,
+          "pct": 7683506742.5
+        },
+        "impact_rounds": {
+          "old": 1.9023,
+          "new": 0.7667,
+          "pct": 59.7
+        },
+        "rating": {
+          "old": 1.2715,
+          "new": 1.3866,
+          "pct": 9.05
+        },
+        "rating_survival": {
+          "old": 0.2667,
+          "new": 0.8412,
+          "pct": 215.46
+        },
+        "rating_kast": {
+          "old": 1.0,
+          "new": 1.4286,
+          "pct": 42.86
+        },
+        "rating_kpr": {
+          "old": 0.7333,
+          "new": 1.08,
+          "pct": 47.28
+        },
+        "rating_adr": {
+          "old": 81.0333,
+          "new": 1.6289,
+          "pct": 97.99
+        },
+        "he_damage_per_round": {
+          "old": 0.0,
+          "new": 4.1,
+          "pct": 410000000.0
+        },
+        "molotov_damage_per_round": {
+          "old": 0.0,
+          "new": 1.8,
+          "pct": 180000000.0
+        },
+        "smokes_per_round": {
+          "old": 0.0,
+          "new": 0.2333,
+          "pct": 23333333.33
+        },
+        "utility_enemies_blinded": {
+          "old": 0.0,
+          "new": 6.0,
+          "pct": 600000000.0
+        }
+      }
+    },
+    {
+      "demo_name": "vitality-vs-the-mongolz-m1-mirage",
+      "player_name": "flameZ",
+      "drifts": {
+        "kill_std": {
+          "old": 0.0,
+          "new": 0.5921,
+          "pct": 59209349.99
+        },
+        "adr_std": {
+          "old": 0.0,
+          "new": 62.6681,
+          "pct": 6266808203.34
+        },
+        "impact_rounds": {
+          "old": 2.0051,
+          "new": 0.7333,
+          "pct": 63.43
+        },
+        "rating_impact": {
+          "old": 2.0051,
+          "new": 1.8881,
+          "pct": 5.84
+        },
+        "rating_survival": {
+          "old": 0.2667,
+          "new": 0.8412,
+          "pct": 215.46
+        },
+        "rating_kast": {
+          "old": 1.0,
+          "new": 1.4286,
+          "pct": 42.86
+        },
+        "rating_kpr": {
+          "old": 0.7667,
+          "new": 1.1291,
+          "pct": 47.28
+        },
+        "rating_adr": {
+          "old": 88.6,
+          "new": 1.1837,
+          "pct": 98.66
+        },
+        "he_damage_per_round": {
+          "old": 0.0,
+          "new": 3.2333,
+          "pct": 323333333.33
+        },
+        "molotov_damage_per_round": {
+          "old": 0.0,
+          "new": 7.6667,
+          "pct": 766666666.67
+        },
+        "smokes_per_round": {
+          "old": 0.0,
+          "new": 0.8,
+          "pct": 80000000.0
+        },
+        "utility_enemies_blinded": {
+          "old": 0.0,
+          "new": 70.0,
+          "pct": 7000000000.0
+        }
+      }
+    },
+    {
+      "demo_name": "vitality-vs-the-mongolz-m1-mirage",
+      "player_name": "mezii",
+      "drifts": {
+        "avg_adr": {
+          "old": 60.3667,
+          "new": 81.6667,
+          "pct": 35.28
+        },
+        "avg_hs": {
+          "old": 0.2632,
+          "new": 0.2941,
+          "pct": 11.76
+        },
+        "kill_std": {
+          "old": 0.0,
+          "new": 0.7397,
+          "pct": 73967995.56
+        },
+        "adr_std": {
+          "old": 0.0,
+          "new": 76.7537,
+          "pct": 7675367376.73
+        },
+        "impact_rounds": {
+          "old": 1.4605,
+          "new": 0.7333,
+          "pct": 49.79
+        },
+        "rating_impact": {
+          "old": 1.4605,
+          "new": 1.386,
+          "pct": 5.1
+        },
+        "rating_survival": {
+          "old": 0.4,
+          "new": 1.2618,
+          "pct": 215.46
+        },
+        "rating_kast": {
+          "old": 0.954,
+          "new": 1.3629,
+          "pct": 42.86
+        },
+        "rating_kpr": {
+          "old": 0.5667,
+          "new": 0.8346,
+          "pct": 47.28
+        },
+        "rating_adr": {
+          "old": 60.3667,
+          "new": 1.1141,
+          "pct": 98.15
+        },
+        "he_damage_per_round": {
+          "old": 0.0,
+          "new": 2.9,
+          "pct": 290000000.0
+        },
+        "molotov_damage_per_round": {
+          "old": 0.0,
+          "new": 2.2,
+          "pct": 220000000.0
+        },
+        "smokes_per_round": {
+          "old": 0.0,
+          "new": 0.7333,
+          "pct": 73333333.33
+        },
+        "utility_enemies_blinded": {
+          "old": 0.0,
+          "new": 15.0,
+          "pct": 1500000000.0
+        }
+      }
+    },
+    {
+      "demo_name": "vitality-vs-the-mongolz-m1-mirage",
+      "player_name": "mzinho",
+      "drifts": {
+        "avg_hs": {
+          "old": 0.7368,
+          "new": 0.9474,
+          "pct": 28.57
+        },
+        "kill_std": {
+          "old": 0.0,
+          "new": 0.8604,
+          "pct": 86036613.43
+        },
+        "adr_std": {
+          "old": 0.0,
+          "new": 89.9157,
+          "pct": 8991570126.14
+        },
+        "impact_rounds": {
+          "old": 1.634,
+          "new": 0.3333,
+          "pct": 79.6
+        },
+        "rating_impact": {
+          "old": 1.634,
+          "new": 1.4846,
+          "pct": 9.14
+        },
+        "rating_survival": {
+          "old": 0.3333,
+          "new": 1.0515,
+          "pct": 215.46
+        },
+        "rating_kast": {
+          "old": 1.0,
+          "new": 1.4286,
+          "pct": 42.86
+        },
+        "rating_kpr": {
+          "old": 0.6333,
+          "new": 0.9327,
+          "pct": 47.28
+        },
+        "rating_adr": {
+          "old": 67.8667,
+          "new": 0.8845,
+          "pct": 98.7
+        },
+        "he_damage_per_round": {
+          "old": 0.0,
+          "new": 2.8667,
+          "pct": 286666666.67
+        },
+        "molotov_damage_per_round": {
+          "old": 0.0,
+          "new": 0.5333,
+          "pct": 53333333.33
+        },
+        "smokes_per_round": {
+          "old": 0.0,
+          "new": 0.4667,
+          "pct": 46666666.67
+        },
+        "utility_enemies_blinded": {
+          "old": 0.0,
+          "new": 7.0,
+          "pct": 700000000.0
+        }
+      }
+    },
+    {
+      "demo_name": "vitality-vs-the-mongolz-m1-mirage",
+      "player_name": "ropz",
+      "drifts": {
+        "avg_adr": {
+          "old": 80.9667,
+          "new": 110.6333,
+          "pct": 36.64
+        },
+        "kill_std": {
+          "old": 0.0,
+          "new": 0.9322,
+          "pct": 93218319.94
+        },
+        "adr_std": {
+          "old": 0.0,
+          "new": 67.1316,
+          "pct": 6713161716.35
+        },
+        "impact_rounds": {
+          "old": 1.9731,
+          "new": 0.8,
+          "pct": 59.45
+        },
+        "rating": {
+          "old": 1.2112,
+          "new": 1.3061,
+          "pct": 7.84
+        },
+        "rating_survival": {
+          "old": 0.1333,
+          "new": 0.4206,
+          "pct": 215.46
+        },
+        "rating_kast": {
+          "old": 1.0,
+          "new": 1.4286,
+          "pct": 42.86
+        },
+        "rating_kpr": {
+          "old": 0.7667,
+          "new": 1.1291,
+          "pct": 47.28
+        },
+        "rating_adr": {
+          "old": 80.9667,
+          "new": 1.5093,
+          "pct": 98.14
+        },
+        "he_damage_per_round": {
+          "old": 0.0,
+          "new": 2.6,
+          "pct": 260000000.0
+        },
+        "molotov_damage_per_round": {
+          "old": 0.0,
+          "new": 0.5333,
+          "pct": 53333333.33
+        },
+        "smokes_per_round": {
+          "old": 0.0,
+          "new": 0.4333,
+          "pct": 43333333.33
+        },
+        "utility_enemies_blinded": {
+          "old": 0.0,
+          "new": 1.0,
+          "pct": 100000000.0
+        }
+      }
+    },
+    {
+      "demo_name": "vitality-vs-the-mongolz-m2-dust2",
+      "player_name": "910",
+      "drifts": {
+        "avg_adr": {
+          "old": 78.5,
+          "new": 83.1667,
+          "pct": 5.94
+        },
+        "avg_hs": {
+          "old": 0.4667,
+          "new": 0.9504,
+          "pct": 103.66
+        },
+        "kill_std": {
+          "old": 0.0,
+          "new": 0.8085,
+          "pct": 80845208.35
+        },
+        "adr_std": {
+          "old": 0.0,
+          "new": 92.4575,
+          "pct": 9245746239.73
+        },
+        "impact_rounds": {
+          "old": 14.648,
+          "new": 0.5556,
+          "pct": 96.21
+        },
+        "rating_survival": {
+          "old": 0.2778,
+          "new": 0.8763,
+          "pct": 215.46
+        },
+        "rating_kast": {
+          "old": 1.0,
+          "new": 1.4286,
+          "pct": 42.86
+        },
+        "rating_kpr": {
+          "old": 6.7222,
+          "new": 9.9002,
+          "pct": 47.28
+        },
+        "rating_adr": {
+          "old": 78.5,
+          "new": 1.1346,
+          "pct": 98.55
+        },
+        "he_damage_per_round": {
+          "old": 0.0,
+          "new": 0.1111,
+          "pct": 11111111.11
+        },
+        "molotov_damage_per_round": {
+          "old": 0.0,
+          "new": 2.0556,
+          "pct": 205555555.56
+        },
+        "smokes_per_round": {
+          "old": 0.0,
+          "new": 0.6111,
+          "pct": 61111111.11
+        },
+        "utility_enemies_blinded": {
+          "old": 0.0,
+          "new": 5.0,
+          "pct": 500000000.0
+        }
+      }
+    },
+    {
+      "demo_name": "vitality-vs-the-mongolz-m2-dust2",
+      "player_name": "Techno4K",
+      "drifts": {
+        "avg_adr": {
+          "old": 50.5556,
+          "new": 58.6111,
+          "pct": 15.93
+        },
+        "avg_hs": {
+          "old": 0.4,
+          "new": 0.8732,
+          "pct": 118.31
+        },
+        "kill_std": {
+          "old": 0.0,
+          "new": 1.1991,
+          "pct": 119912822.36
+        },
+        "adr_std": {
+          "old": 0.0,
+          "new": 78.5517,
+          "pct": 7855169814.23
+        },
+        "impact_rounds": {
+          "old": 8.614,
+          "new": 0.2222,
+          "pct": 97.42
+        },
+        "rating_survival": {
+          "old": 0.1667,
+          "new": 0.5258,
+          "pct": 215.46
+        },
+        "rating_kast": {
+          "old": 1.0,
+          "new": 1.4286,
+          "pct": 42.86
+        },
+        "rating_kpr": {
+          "old": 3.9444,
+          "new": 5.8092,
+          "pct": 47.28
+        },
+        "rating_adr": {
+          "old": 50.5556,
+          "new": 0.7996,
+          "pct": 98.42
+        },
+        "smokes_per_round": {
+          "old": 0.0,
+          "new": 0.6667,
+          "pct": 66666666.67
+        },
+        "utility_enemies_blinded": {
+          "old": 0.0,
+          "new": 2.0,
+          "pct": 200000000.0
+        }
+      }
+    },
+    {
+      "demo_name": "vitality-vs-the-mongolz-m2-dust2",
+      "player_name": "ZywOo",
+      "drifts": {
+        "avg_adr": {
+          "old": 75.4444,
+          "new": 56.8889,
+          "pct": 24.59
+        },
+        "avg_hs": {
+          "old": 0.4167,
+          "new": 0.3571,
+          "pct": 14.29
+        },
+        "kill_std": {
+          "old": 0.0,
+          "new": 0.7859,
+          "pct": 78590524.8
+        },
+        "adr_std": {
+          "old": 0.0,
+          "new": 78.3986,
+          "pct": 7839859609.25
+        },
+        "impact_rounds": {
+          "old": 1.9735,
+          "new": 0.3333,
+          "pct": 83.11
+        },
+        "rating_impact": {
+          "old": 1.9735,
+          "new": 2.6245,
+          "pct": 32.98
+        },
+        "rating_survival": {
+          "old": -1.7778,
+          "new": -5.6081,
+          "pct": 215.46
+        },
+        "rating_kast": {
+          "old": 0.3611,
+          "new": 0.5159,
+          "pct": 42.86
+        },
+        "rating_kpr": {
+          "old": 0.7778,
+          "new": 1.1455,
+          "pct": 47.28
+        },
+        "rating_adr": {
+          "old": 75.4444,
+          "new": 0.7761,
+          "pct": 98.97
+        },
+        "he_damage_per_round": {
+          "old": 0.0,
+          "new": 3.6667,
+          "pct": 366666666.67
+        },
+        "molotov_damage_per_round": {
+          "old": 0.0,
+          "new": 0.6667,
+          "pct": 66666666.67
+        },
+        "smokes_per_round": {
+          "old": 0.0,
+          "new": 0.6111,
+          "pct": 61111111.11
+        },
+        "utility_enemies_blinded": {
+          "old": 0.0,
+          "new": 30.0,
+          "pct": 3000000000.0
+        }
+      }
+    },
+    {
+      "demo_name": "vitality-vs-the-mongolz-m2-dust2",
+      "player_name": "apEX",
+      "drifts": {
+        "avg_adr": {
+          "old": 79.2222,
+          "new": 73.2222,
+          "pct": 7.57
+        },
+        "avg_hs": {
+          "old": 0.6154,
+          "new": 0.7273,
+          "pct": 18.18
+        },
+        "avg_kast": {
+          "old": 0.4067,
+          "new": 0.3733,
+          "pct": 8.2
+        },
+        "kill_std": {
+          "old": 0.0,
+          "new": 0.6077,
+          "pct": 60768498.89
+        },
+        "adr_std": {
+          "old": 0.0,
+          "new": 73.5923,
+          "pct": 7359232341.32
+        },
+        "impact_rounds": {
+          "old": 1.6344,
+          "new": 0.3333,
+          "pct": 79.61
+        },
+        "rating_impact": {
+          "old": 1.6344,
+          "new": 2.2925,
+          "pct": 40.27
+        },
+        "rating_survival": {
+          "old": -1.6667,
+          "new": -5.2576,
+          "pct": 215.46
+        },
+        "rating_kast": {
+          "old": 0.4067,
+          "new": 0.5333,
+          "pct": 31.15
+        },
+        "rating_kpr": {
+          "old": 0.6111,
+          "new": 0.9,
+          "pct": 47.28
+        },
+        "rating_adr": {
+          "old": 79.2222,
+          "new": 0.9989,
+          "pct": 98.74
+        },
+        "he_damage_per_round": {
+          "old": 0.0,
+          "new": 7.8333,
+          "pct": 783333333.33
+        },
+        "molotov_damage_per_round": {
+          "old": 0.0,
+          "new": 1.3889,
+          "pct": 138888888.89
+        },
+        "smokes_per_round": {
+          "old": 0.0,
+          "new": 0.2222,
+          "pct": 22222222.22
+        },
+        "utility_enemies_blinded": {
+          "old": 0.0,
+          "new": 43.0,
+          "pct": 4300000000.0
+        }
+      }
+    },
+    {
+      "demo_name": "vitality-vs-the-mongolz-m2-dust2",
+      "player_name": "bLitz",
+      "drifts": {
+        "avg_adr": {
+          "old": 27.4444,
+          "new": 24.5,
+          "pct": 10.73
+        },
+        "avg_hs": {
+          "old": 0.0,
+          "new": 0.6875,
+          "pct": 68750000.0
+        },
+        "kill_std": {
+          "old": 0.0,
+          "new": 0.3234,
+          "pct": 32338083.34
+        },
+        "adr_std": {
+          "old": 0.0,
+          "new": 33.997,
+          "pct": 3399697218.35
+        },
+        "impact_rounds": {
+          "old": 2.0086,
+          "new": 0.1111,
+          "pct": 94.47
+        },
+        "rating_impact": {
+          "old": 2.0086,
+          "new": 1.8823,
+          "pct": 6.29
+        },
+        "rating_survival": {
+          "old": 0.2778,
+          "new": 0.8763,
+          "pct": 215.46
+        },
+        "rating_kast": {
+          "old": 1.0,
+          "new": 1.4286,
+          "pct": 42.86
+        },
+        "rating_kpr": {
+          "old": 0.8889,
+          "new": 1.3091,
+          "pct": 47.28
+        },
+        "rating_adr": {
+          "old": 27.4444,
+          "new": 0.3342,
+          "pct": 98.78
+        },
+        "he_damage_per_round": {
+          "old": 0.0,
+          "new": 4.8333,
+          "pct": 483333333.33
+        },
+        "molotov_damage_per_round": {
+          "old": 0.0,
+          "new": 0.0556,
+          "pct": 5555555.56
+        },
+        "smokes_per_round": {
+          "old": 0.0,
+          "new": 0.5556,
+          "pct": 55555555.56
+        },
+        "utility_enemies_blinded": {
+          "old": 0.0,
+          "new": 10.0,
+          "pct": 1000000000.0
+        }
+      }
+    },
+    {
+      "demo_name": "vitality-vs-the-mongolz-m2-dust2",
+      "player_name": "cobrazera",
+      "drifts": {
+        "avg_adr": {
+          "old": 67.3889,
+          "new": 82.0556,
+          "pct": 21.76
+        },
+        "avg_hs": {
+          "old": 0.2857,
+          "new": 0.5556,
+          "pct": 94.44
+        },
+        "kill_std": {
+          "old": 0.0,
+          "new": 0.6077,
+          "pct": 60768498.89
+        },
+        "adr_std": {
+          "old": 0.0,
+          "new": 70.1112,
+          "pct": 7011123281.84
+        },
+        "impact_rounds": {
+          "old": 3.478,
+          "new": 0.5556,
+          "pct": 84.03
+        },
+        "rating_survival": {
+          "old": 0.2222,
+          "new": 0.701,
+          "pct": 215.46
+        },
+        "rating_kast": {
+          "old": 1.0,
+          "new": 1.4286,
+          "pct": 42.86
+        },
+        "rating_kpr": {
+          "old": 1.5,
+          "new": 2.2091,
+          "pct": 47.28
+        },
+        "rating_adr": {
+          "old": 67.3889,
+          "new": 1.1194,
+          "pct": 98.34
+        },
+        "smokes_per_round": {
+          "old": 0.0,
+          "new": 0.2778,
+          "pct": 27777777.78
+        }
+      }
+    },
+    {
+      "demo_name": "vitality-vs-the-mongolz-m2-dust2",
+      "player_name": "flameZ",
+      "drifts": {
+        "avg_adr": {
+          "old": 72.5556,
+          "new": 57.8333,
+          "pct": 20.29
+        },
+        "avg_hs": {
+          "old": 0.5789,
+          "new": 0.7333,
+          "pct": 26.67
+        },
+        "kill_std": {
+          "old": 0.0,
+          "new": 1.2367,
+          "pct": 123669388.48
+        },
+        "adr_std": {
+          "old": 0.0,
+          "new": 101.7704,
+          "pct": 10177035856.45
+        },
+        "impact_rounds": {
+          "old": 2.0797,
+          "new": 0.2778,
+          "pct": 86.64
+        },
+        "rating_impact": {
+          "old": 2.0797,
+          "new": 2.7468,
+          "pct": 32.07
+        },
+        "rating_survival": {
+          "old": -1.7778,
+          "new": -5.6081,
+          "pct": 215.46
+        },
+        "rating_kast": {
+          "old": 0.3611,
+          "new": 0.5159,
+          "pct": 42.86
+        },
+        "rating_kpr": {
+          "old": 0.8333,
+          "new": 1.2273,
+          "pct": 47.28
+        },
+        "rating_adr": {
+          "old": 72.5556,
+          "new": 0.789,
+          "pct": 98.91
+        },
+        "he_damage_per_round": {
+          "old": 0.0,
+          "new": 9.1667,
+          "pct": 916666666.67
+        },
+        "molotov_damage_per_round": {
+          "old": 0.0,
+          "new": 3.7222,
+          "pct": 372222222.22
+        },
+        "smokes_per_round": {
+          "old": 0.0,
+          "new": 0.3333,
+          "pct": 33333333.33
+        },
+        "utility_enemies_blinded": {
+          "old": 0.0,
+          "new": 9.0,
+          "pct": 900000000.0
+        }
+      }
+    },
+    {
+      "demo_name": "vitality-vs-the-mongolz-m2-dust2",
+      "player_name": "mezii",
+      "drifts": {
+        "avg_adr": {
+          "old": 70.5556,
+          "new": 63.6667,
+          "pct": 9.76
+        },
+        "avg_hs": {
+          "old": 0.625,
+          "new": 0.5294,
+          "pct": 15.29
+        },
+        "kill_std": {
+          "old": 0.0,
+          "new": 0.9003,
+          "pct": 90025413.99
+        },
+        "adr_std": {
+          "old": 0.0,
+          "new": 89.2973,
+          "pct": 8929725639.68
+        },
+        "impact_rounds": {
+          "old": 2.308,
+          "new": 0.6111,
+          "pct": 73.52
+        },
+        "rating": {
+          "old": 0.0,
+          "new": 0.072,
+          "pct": 7204476.2
+        },
+        "rating_impact": {
+          "old": 2.308,
+          "new": 2.9852,
+          "pct": 29.34
+        },
+        "rating_survival": {
+          "old": -1.7222,
+          "new": -5.4329,
+          "pct": 215.46
+        },
+        "rating_kast": {
+          "old": 0.3839,
+          "new": 0.5484,
+          "pct": 42.86
+        },
+        "rating_kpr": {
+          "old": 0.9444,
+          "new": 1.3909,
+          "pct": 47.28
+        },
+        "rating_adr": {
+          "old": 70.5556,
+          "new": 0.8686,
+          "pct": 98.77
+        },
+        "he_damage_per_round": {
+          "old": 0.0,
+          "new": 2.3333,
+          "pct": 233333333.33
+        },
+        "molotov_damage_per_round": {
+          "old": 0.0,
+          "new": 0.2778,
+          "pct": 27777777.78
+        },
+        "smokes_per_round": {
+          "old": 0.0,
+          "new": 0.2778,
+          "pct": 27777777.78
+        },
+        "utility_enemies_blinded": {
+          "old": 0.0,
+          "new": 4.0,
+          "pct": 400000000.0
+        }
+      }
+    },
+    {
+      "demo_name": "vitality-vs-the-mongolz-m2-dust2",
+      "player_name": "mzinho",
+      "drifts": {
+        "avg_adr": {
+          "old": 45.7222,
+          "new": 64.1667,
+          "pct": 40.34
+        },
+        "avg_hs": {
+          "old": 0.8,
+          "new": 0.6667,
+          "pct": 16.67
+        },
+        "kill_std": {
+          "old": 0.0,
+          "new": 0.6077,
+          "pct": 60768498.89
+        },
+        "adr_std": {
+          "old": 0.0,
+          "new": 53.6867,
+          "pct": 5368672746.48
+        },
+        "impact_rounds": {
+          "old": 1.967,
+          "new": 0.5556,
+          "pct": 71.76
+        },
+        "rating_survival": {
+          "old": 0.2222,
+          "new": 0.701,
+          "pct": 215.46
+        },
+        "rating_kast": {
+          "old": 1.0,
+          "new": 1.4286,
+          "pct": 42.86
+        },
+        "rating_kpr": {
+          "old": 0.8333,
+          "new": 1.2273,
+          "pct": 47.28
+        },
+        "rating_adr": {
+          "old": 45.7222,
+          "new": 0.8754,
+          "pct": 98.09
+        },
+        "he_damage_per_round": {
+          "old": 0.0,
+          "new": 0.7222,
+          "pct": 72222222.22
+        },
+        "smokes_per_round": {
+          "old": 0.0,
+          "new": 0.4444,
+          "pct": 44444444.44
+        },
+        "utility_enemies_blinded": {
+          "old": 0.0,
+          "new": 2.0,
+          "pct": 200000000.0
+        }
+      }
+    },
+    {
+      "demo_name": "vitality-vs-the-mongolz-m2-dust2",
+      "player_name": "ropz",
+      "drifts": {
+        "avg_adr": {
+          "old": 97.5,
+          "new": 118.2778,
+          "pct": 21.31
+        },
+        "avg_hs": {
+          "old": 0.5,
+          "new": 0.55,
+          "pct": 10.0
+        },
+        "kill_std": {
+          "old": 0.0,
+          "new": 1.3198,
+          "pct": 131978409.8
+        },
+        "adr_std": {
+          "old": 0.0,
+          "new": 116.2689,
+          "pct": 11626885959.89
+        },
+        "impact_rounds": {
+          "old": 2.7762,
+          "new": 0.5556,
+          "pct": 79.99
+        },
+        "rating": {
+          "old": 0.0054,
+          "new": 0.239,
+          "pct": 4314.57
+        },
+        "rating_impact": {
+          "old": 2.7762,
+          "new": 3.6607,
+          "pct": 31.86
+        },
+        "rating_survival": {
+          "old": -1.9444,
+          "new": -6.1339,
+          "pct": 215.46
+        },
+        "rating_kast": {
+          "old": 0.2928,
+          "new": 0.4183,
+          "pct": 42.86
+        },
+        "rating_kpr": {
+          "old": 1.1111,
+          "new": 1.6364,
+          "pct": 47.28
+        },
+        "rating_adr": {
+          "old": 97.5,
+          "new": 1.6136,
+          "pct": 98.35
+        },
+        "he_damage_per_round": {
+          "old": 0.0,
+          "new": 0.5,
+          "pct": 50000000.0
+        },
+        "smokes_per_round": {
+          "old": 0.0,
+          "new": 0.4444,
+          "pct": 44444444.44
+        },
+        "utility_enemies_blinded": {
+          "old": 0.0,
+          "new": 24.0,
+          "pct": 2400000000.0
+        }
+      }
+    },
+    {
+      "demo_name": "vitality-vs-the-mongolz-m2-nuke",
+      "issue": "source_match_db_missing"
+    }
+  ]
+}
