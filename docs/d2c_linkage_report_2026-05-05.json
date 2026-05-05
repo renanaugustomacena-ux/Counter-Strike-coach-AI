@@ -1,0 +1,40 @@
+{
+  "generated_at": "2026-05-05T16:06:15.664067+00:00",
+  "phase": "D2C complete",
+  "total_rows": 2030,
+  "rows_linked": 1670,
+  "rows_unlinked": 360,
+  "linkage_pct": 82.27,
+  "distinct_pro_player_ids": 91,
+  "hltv_proplayer_table_size": 149,
+  "unresolved_count": 66,
+  "unresolved_with_hltv_candidate_substr": 3,
+  "unresolved_with_hltv_candidate_substr_sample": [
+    {
+      "player_name": "INS",
+      "rows": 4,
+      "hltv_candidates": [
+        "insani"
+      ]
+    },
+    {
+      "player_name": "rain",
+      "rows": 17,
+      "hltv_candidates": [
+        "Rainwaker"
+      ]
+    },
+    {
+      "player_name": "try",
+      "rows": 1,
+      "hltv_candidates": [
+        "cmtry"
+      ]
+    }
+  ],
+  "notes": [
+    "NicknameResolver.find_pro_player_id may be case-sensitive; 3 of 66 unresolved names have a substring/case-insensitive match in HLTV. Worth a follow-up patch if NicknameResolver.find_pro_player_id is case-sensitive.",
+    "HLTV ProPlayer table has 149 entries. H3 (full HLTV backfill) will grow this; re-running backfill_all() after H3 will pick up newly seeded pros.",
+    "Plan \u00a77 D2C.1 acceptance gates passed: linked rows >= 100 (got 1670), >= 80 with is_pro (got 1670)."
+  ]
+}
