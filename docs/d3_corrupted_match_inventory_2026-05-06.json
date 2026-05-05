@@ -1,0 +1,1435 @@
+{
+  "generated_at": "2026-05-05T23:55:17.178705+00:00",
+  "phase": "D3 inventory (metadata-only)",
+  "total_sources": 268,
+  "bucket_counts": {
+    "good_with_metadata": 203,
+    "missing_metadata_value": 64,
+    "missing_table_match_metadata": 1,
+    "unreadable_file": 0
+  },
+  "good_demos_with_dem_available": 2,
+  "buckets": {
+    "good_with_metadata": [
+      {
+        "path": "match_1024017916937813269.db",
+        "demo_name": "astralis-vs-furia-m2-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_1086251240410403892.db",
+        "demo_name": "mouz-vs-furia-m3-inferno_esports",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_1100228761377519882.db",
+        "demo_name": "spirit-vs-mouz-m2-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_1113740604439489209.db",
+        "demo_name": "saw-vs-legacy-m3-ancient",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_1206370711021406030.db",
+        "demo_name": "faze-vs-aurora-m2-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_1222528259192870018.db",
+        "demo_name": "parivision-vs-vitality-m1-overpass",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_1272030366284206418.db",
+        "demo_name": "g2-vs-mouz-m2-dust2-p1",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_1345550734006338860.db",
+        "demo_name": "furia-vs-falcons-m2-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_1353321914364551676.db",
+        "demo_name": "furia-vs-parivision-m3-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_138345632516189146.db",
+        "demo_name": "faze-vs-spirit-m2-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_138902736265038260.db",
+        "demo_name": "mouz-vs-natus-vincere-m3-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_1389167367274647744.db",
+        "demo_name": "falcons-vs-parivision-m1-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_1396514152594356861.db",
+        "demo_name": "b8-vs-pain-m2-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_1414918644116646251.db",
+        "demo_name": "spirit-vs-mouz-m3-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_1425230260566919638.db",
+        "demo_name": "falcons-vs-faze-m1-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_1436986465226211426.db",
+        "demo_name": "falcons-vs-aurora-m3-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_1487368522645509217.db",
+        "demo_name": "the-mongolz-vs-vitality-m3-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_1520509844003787246.db",
+        "demo_name": "g2-vs-spirit-m3-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_1535016786029757799.db",
+        "demo_name": "2025-furia-vs-natus-vincere-m1-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_1643308487712556275.db",
+        "demo_name": "vitality-vs-falcons-m2-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_1724364855108319020.db",
+        "demo_name": "spirit-vs-the-mongolz-m2-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_1787559818232428882.db",
+        "demo_name": "furia-vs-natus-vincere-m4-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_1789133555290750070.db",
+        "demo_name": "spirit-vs-faze-m3-vertigo",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_1860684732900051178.db",
+        "demo_name": "furia-vs-pain-m1-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_1876580732272567560.db",
+        "demo_name": "the-mongolz-vs-vitality-m1-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_188103570660876584.db",
+        "demo_name": "the-mongolz-vs-furia-m5-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_1901534687649751146.db",
+        "demo_name": "falcons-vs-furia-m1-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_1902566149900205214.db",
+        "demo_name": "spirit-vs-furia-m1-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_1964782899210418509.db",
+        "demo_name": "vitality-vs-faze-m3-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_2105891293966856419.db",
+        "demo_name": "vitality-vs-furia-m2-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_2108061991683222609.db",
+        "demo_name": "g2-vs-falcons-m1-ancient",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_2137645170168718708.db",
+        "demo_name": "furia-vs-natus-vincere-m3-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_214060802801321437.db",
+        "demo_name": "astralis-vs-furia-m3-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_2167156441938940112.db",
+        "demo_name": "g2-vs-mouz-m1-overpass-p3",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_2302162131315884707.db",
+        "demo_name": "the-mongolz-vs-furia-m3-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_2328920796377639224.db",
+        "demo_name": "aurora-vs-fut-m3-overpass",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_2371452152082515988.db",
+        "demo_name": "aurora-vs-fut-m1-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_2429571703568222324.db",
+        "demo_name": "b8-vs-aurora-m1-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_244976170828907754.db",
+        "demo_name": "gamerlegion-vs-the-mongolz-m2-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_2454689164319019602.db",
+        "demo_name": "furia-vs-natus-vincere-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_2460015568413386692.db",
+        "demo_name": "astralis-vs-furia-m1-overpass",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_248558911835883491.db",
+        "demo_name": "passion-ua-vs-liquid-m1-train",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_2510067276639811970.db",
+        "demo_name": "faze-vs-flyquest-m2-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_256218403229758401.db",
+        "demo_name": "spirit-vs-astralis-m1-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_2674677550936251868.db",
+        "demo_name": "furia-vs-aurora-m1-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_2697777379858931711.db",
+        "demo_name": "the-mongolz-vs-aurora-m1-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_27142949788747259.db",
+        "demo_name": "mouz-vs-furia-m1-train",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_272394379377658227.db",
+        "demo_name": "falcons-vs-g2-m1-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_2796366404829286269.db",
+        "demo_name": "furia-vs-vitality-m2-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_2799721517177866409.db",
+        "demo_name": "the-mongolz-vs-aurora-m3-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_2809003910921410690.db",
+        "demo_name": "passion-ua-vs-liquid-m2-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_2844767710800249183.db",
+        "demo_name": "the-mongolz-vs-liquid-m3-ancient",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_2906188923147223437.db",
+        "demo_name": "2026-mouz-vs-vitality-m2-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_2934632236325953919.db",
+        "demo_name": "2025-the-mongolz-vs-furia-m2-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_2980858070178274788.db",
+        "demo_name": "falcons-vs-g2-m2-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_3081548064375597710.db",
+        "demo_name": "aurora-vs-legacy-m5-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_3133951572754539282.db",
+        "demo_name": "mouz-vs-faze-m1-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_3170584591875036144.db",
+        "demo_name": "gamerlegion-vs-aurora-m1-overpass",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_3181705809305636438.db",
+        "demo_name": "furia-vs-falcons-m2-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_3204582710373778572.db",
+        "demo_name": "astralis-vs-legacy-m1-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_322281239645554504.db",
+        "demo_name": "vitality-vs-virtus-pro-m2-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_325379522980916953.db",
+        "demo_name": "aurora-vs-fut-m2-anubis",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_328224034346248377.db",
+        "demo_name": "falcons-vs-faze-m3-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_3313932895308866719.db",
+        "demo_name": "furia-vs-falcons-m2-nuke(1)",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_3381567288768929112.db",
+        "demo_name": "falcons-vs-pain-m1-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_345688893539286927.db",
+        "demo_name": "spirit-vs-faze-m1-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_3500788740002644519.db",
+        "demo_name": "furia-vs-falcons-m1-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_3519109717850203675.db",
+        "demo_name": "furia-vs-parivision-m2-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_3617667970904856962.db",
+        "demo_name": "furia-vs-vitality-m1-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_3679845381511128344.db",
+        "demo_name": "faze-vs-aurora-m1-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_3680340186011683247.db",
+        "demo_name": "falcons-vs-3dmax-m1-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_3769477702251993531.db",
+        "demo_name": "furia-vs-b8-m1-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_3793252518494217809.db",
+        "demo_name": "spirit-vs-the-mongolz-m1-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_3798595084393999117.db",
+        "demo_name": "mouz-vs-furia-m3-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_3829467553198645914.db",
+        "demo_name": "the-mongolz-vs-aurora-m2-dust2-p1",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_3874524605940943120.db",
+        "demo_name": "the-mongolz-vs-liquid-m1-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_3891802428543584717.db",
+        "demo_name": "ence-vs-falcons-m2-overpass",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_3895843924261625815.db",
+        "demo_name": "furia-vs-pain-m2-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_3917185276137902256.db",
+        "demo_name": "gamerlegion-vs-falcons-m2-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_3956032407499336290.db",
+        "demo_name": "faze-vs-the-mongolz-m2-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_3971786005762061371.db",
+        "demo_name": "falcons-vs-faze-m2-ancient",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_4008804498772854171.db",
+        "demo_name": "mouz-vs-faze-m2-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_4026689703254493406.db",
+        "demo_name": "faze-vs-natus-vincere-m1-ancient",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_4108804044832135620.db",
+        "demo_name": "furia-vs-aurora-m2-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_4118308100395583527.db",
+        "demo_name": "furia-vs-the-mongolz-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_4218192694333266580.db",
+        "demo_name": "g2-vs-spirit-m2-overpass",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_4223054957165825623.db",
+        "demo_name": "faze-vs-aurora-m3-overpass",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_4238854950221180073.db",
+        "demo_name": "furia-vs-falcons-m4-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_4287226905186307444.db",
+        "demo_name": "aurora-vs-astralis-m3-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_4315130445971420929.db",
+        "demo_name": "g2-vs-natus-vincere-m2-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_4442149497471419619.db",
+        "demo_name": "parivision-vs-vitality-m2-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_4450862520688478860.db",
+        "demo_name": "g2-vs-spirit-m1-anubis",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_4459553878150913169.db",
+        "demo_name": "furia-vs-natus-vincere-m1-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_4496792989652879874.db",
+        "demo_name": "furia-vs-falcons-m3-anubis",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_4515095340041939324.db",
+        "demo_name": "spirit-vs-faze-m2-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_458632168716343751.db",
+        "demo_name": "vitality-vs-the-mongolz-m2-dust2",
+        "metadata_round_count": 0,
+        "has_dem": true
+      },
+      {
+        "path": "match_4695603286377783303.db",
+        "demo_name": "faze-vs-flyquest-m1-anubis",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_470061886086518259.db",
+        "demo_name": "furia-vs-falcons-m3-train",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_4722192831957666532.db",
+        "demo_name": "the-mongolz-vs-liquid-m2-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_4729614370357325617.db",
+        "demo_name": "fut-vs-astralis-m3-overpass",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_4782313960303487077.db",
+        "demo_name": "vitality-vs-faze-m1-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_4886343711582863514.db",
+        "demo_name": "falcons-vs-g2-m3-ancient",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_4918458006625036521.db",
+        "demo_name": "gamerlegion-vs-falcons-m1-train",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_4938748941642720496.db",
+        "demo_name": "falcons-vs-furia-m2-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_4948602212326233624.db",
+        "demo_name": "faze-vs-the-mongolz-m1-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_4982572509065746837.db",
+        "demo_name": "g2-vs-falcons-m2-train",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_499260499125714115.db",
+        "demo_name": "astralis-vs-legacy-m2-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_5106694050454849633.db",
+        "demo_name": "faze-vs-natus-vincere-m3-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_5110170300155805562.db",
+        "demo_name": "mouz-vs-cloud9-m3-ancient",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_5113413114104219503.db",
+        "demo_name": "furia-vs-astralis-m2-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_5253038098191573331.db",
+        "demo_name": "spirit-vs-g2-m2-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_528504212449188254.db",
+        "demo_name": "aurora-vs-falcons-m2-train",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_5312606395923570398.db",
+        "demo_name": "b8-vs-pain-m1-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_5329553944583559093.db",
+        "demo_name": "falcons-vs-aurora-m2-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_5381538896448038314.db",
+        "demo_name": "gamerlegion-vs-the-mongolz-m1-overpass-p2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_5500950922448328108.db",
+        "demo_name": "falcons-vs-3dmax-m2-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_5501450460708774000.db",
+        "demo_name": "legacy-vs-flyquest-m2-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_5503432792736688006.db",
+        "demo_name": "vitality-vs-faze-m4-overpass",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_5550404415456676522.db",
+        "demo_name": "gamerlegion-vs-aurora-m2-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_5621575358713334867.db",
+        "demo_name": "aurora-vs-astralis-m1-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_5639168896788109977.db",
+        "demo_name": "furia-vs-parivision-m1-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_5657130603952784117.db",
+        "demo_name": "saw-vs-legacy-m2-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_5688232509757972114.db",
+        "demo_name": "vitality-vs-furia-m3-overpass",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_5767979323577175840.db",
+        "demo_name": "furia-vs-fut-m3-anubis",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_5892668006689104848.db",
+        "demo_name": "spirit-vs-mouz-m1-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_5910630698869843535.db",
+        "demo_name": "gamerlegion-vs-pain-m3-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_5938200089143290985.db",
+        "demo_name": "furia-vs-falcons-m1-train",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_5941332403014246196.db",
+        "demo_name": "2026-vitality-vs-the-mongolz-m1-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_5984234172733252896.db",
+        "demo_name": "eternal-fire-vs-natus-vincere-m1-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_6002721892498045039.db",
+        "demo_name": "the-mongolz-vs-furia-m4-overpass",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_6056036010258281678.db",
+        "demo_name": "aurora-vs-falcons-m1-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_6073727489055594203.db",
+        "demo_name": "mouz-vs-furia-m2-mirage-p1",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_6186879118144824780.db",
+        "demo_name": "vitality-vs-virtus-pro-m3-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_6247317182621438110.db",
+        "demo_name": "g2-vs-natus-vincere-m3-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_6339940142015115932.db",
+        "demo_name": "furia-vs-vitality-m3-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_634245929522375116.db",
+        "demo_name": "vitality-vs-the-mongolz-m1-mirage",
+        "metadata_round_count": 0,
+        "has_dem": true
+      },
+      {
+        "path": "match_6393252038121428019.db",
+        "demo_name": "mouz-vs-natus-vincere-m1-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_6466423603022674677.db",
+        "demo_name": "mouz-vs-fut-m1-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_6477018116211700957.db",
+        "demo_name": "vitality-vs-the-mongolz-m3-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_648905919808070429.db",
+        "demo_name": "faze-vs-the-mongolz-m3-ancient",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_6519999866844160966.db",
+        "demo_name": "gamerlegion-vs-pain-m2-overpass",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_6546526763147926043.db",
+        "demo_name": "the-mongolz-vs-vitality-m2-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_6569881487871688149.db",
+        "demo_name": "vitality-vs-aurora-m1-ancient",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_6614749117776075469.db",
+        "demo_name": "vitality-vs-g2-m1-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_6647866482825448320.db",
+        "demo_name": "vitality-vs-faze-m3-inferno(differentmatch)",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_6663098645655717733.db",
+        "demo_name": "spirit-vs-astralis-m2-overpass",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_6684609509859346842.db",
+        "demo_name": "mouz-vs-falcons-m2-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_672367828423769375.db",
+        "demo_name": "falcons-vs-parivision-m3-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_6740024381394518696.db",
+        "demo_name": "furia-vs-vitality-m3-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_6979894167215991947.db",
+        "demo_name": "furia-vs-natus-vincere-m2-inferno(1)",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_6980352803042055160.db",
+        "demo_name": "furia-vs-fut-m2-overpass",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_7032684793653340106.db",
+        "demo_name": "cloud9-vs-vitality-m1-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_7046987023009586207.db",
+        "demo_name": "vitality-vs-furia-m1-ancient",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_7073013273001125027.db",
+        "demo_name": "the-mongolz-vs-furia-m2-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_7097485993104638456.db",
+        "demo_name": "aurora-vs-legacy-m2-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_7114279511009796863.db",
+        "demo_name": "imperial-vs-the-mongolz-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_7131664035098005965.db",
+        "demo_name": "mouz-vs-furia-m1-nuke-p2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_714673762830392230.db",
+        "demo_name": "g2-vs-virtuspro-m2-ancient",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_7170811853863129827.db",
+        "demo_name": "furia-vs-fut-m1-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_7184267350226785882.db",
+        "demo_name": "furia-vs-b8-m2-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_7185475621878496377.db",
+        "demo_name": "g2-vs-natus-vincere-m1-ancient",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_7205582561358098322.db",
+        "demo_name": "b8-vs-aurora-m3-overpass",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_723938032343515017.db",
+        "demo_name": "the-mongolz-vs-aurora-m3-nuke(differentmatch)",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_7249049041983998020.db",
+        "demo_name": "falcons-vs-pain-m2-ancient",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_7298504660386629493.db",
+        "demo_name": "eternal-fire-vs-natus-vincere-m2-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_730055187535882054.db",
+        "demo_name": "vitality-vs-virtus-pro-m1-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_7309047136083624217.db",
+        "demo_name": "g2-vs-virtuspro-m1-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_7426743448630103688.db",
+        "demo_name": "the-mongolz-vs-aurora-m2-dust-p2(different match)",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_7443564290054233367.db",
+        "demo_name": "the-mongolz-vs-aurora-m2-dust-p2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_7656204921720727251.db",
+        "demo_name": "falcons-vs-aurora-m1-anubis",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_7662026932760277534.db",
+        "demo_name": "spirit-vs-the-mongolz-m3-ancient",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_7695564694941801728.db",
+        "demo_name": "mouz-vs-furia-m2-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_7718489764653961383.db",
+        "demo_name": "vitality-vs-aurora-m2-overpass",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_7784491670499672360.db",
+        "demo_name": "2025-the-mongolz-vs-furia-m3-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_7843503653642014139.db",
+        "demo_name": "furia-vs-falcons-m1-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_7881628469299324172.db",
+        "demo_name": "the-mongolz-vs-furia-m1-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_7919349311842624804.db",
+        "demo_name": "parivision-vs-vitality-m3-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_8014369995370595675.db",
+        "demo_name": "furia-vs-vitality-m2-overpass",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_8086038251181715151.db",
+        "demo_name": "mouz-vs-falcons-m1-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_8135873708520807378.db",
+        "demo_name": "aurora-vs-astralis-m2-train",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_8140228658511890823.db",
+        "demo_name": "gamerlegion-vs-pain-m1-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_8281031692823620168.db",
+        "demo_name": "vitality-vs-falcons-m1-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_8315184209259074872.db",
+        "demo_name": "furia-vs-vitality-m4-overpass",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_8331025315922383906.db",
+        "demo_name": "vitality-vs-faze-m3-inferno(different_match)",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_8379527485957961904.db",
+        "demo_name": "b8-vs-aurora-m2-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_8400575736831236483.db",
+        "demo_name": "spirit-vs-falcons-m1-anubis",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_8458487664747984675.db",
+        "demo_name": "aurora-vs-legacy-m4-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_8560840196544757642.db",
+        "demo_name": "2026-the-mongolz-vs-furia-m1-mirage",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_8570055279703349083.db",
+        "demo_name": "furia-vs-natus-vincere-m2-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_8611336490562385614.db",
+        "demo_name": "legacy-vs-flyquest-m1-overpass",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_8723273475341585650.db",
+        "demo_name": "furia-vs-natus-vincere-m3-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_8725841980998426484.db",
+        "demo_name": "falcons-vs-parivision-m2-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_8764816134643198102.db",
+        "demo_name": "furia-vs-vitality-m1-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_8808975129724293285.db",
+        "demo_name": "fut-vs-astralis-m1-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_8873553327394950522.db",
+        "demo_name": "fut-vs-astralis-m2-ancient",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_8924229852066709154.db",
+        "demo_name": "faze-vs-natus-vincere-m2-nuke",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_8939536342236000485.db",
+        "demo_name": "furia-vs-astralis-m1-train",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_8959065639100544845.db",
+        "demo_name": "spirit-vs-mibr-m2-vertigo",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_9041949725346795732.db",
+        "demo_name": "saw-vs-legacy-m1-inferno",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_9065661203290716589.db",
+        "demo_name": "the-mongolz-vs-aurora-m2-dust2-p1(differentmatch)",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_965010442901378937.db",
+        "demo_name": "aurora-vs-legacy-m1-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_970705804282228187.db",
+        "demo_name": "aurora-vs-legacy-m3-train",
+        "metadata_round_count": 0,
+        "has_dem": false
+      },
+      {
+        "path": "match_981773013375998522.db",
+        "demo_name": "vitality-vs-faze-m2-dust2",
+        "metadata_round_count": 0,
+        "has_dem": false
+      }
+    ],
+    "missing_metadata_value": [
+      {
+        "path": "match_1.db"
+      },
+      {
+        "path": "match_1083510231651994524.db"
+      },
+      {
+        "path": "match_112279990403633624.db"
+      },
+      {
+        "path": "match_1296780765673836013.db"
+      },
+      {
+        "path": "match_1605128764749430574.db"
+      },
+      {
+        "path": "match_1776443697675117873.db"
+      },
+      {
+        "path": "match_1972846501974513917.db"
+      },
+      {
+        "path": "match_2011757319558866710.db"
+      },
+      {
+        "path": "match_2210876723721980710.db"
+      },
+      {
+        "path": "match_2637654713753650563.db"
+      },
+      {
+        "path": "match_2640912145460478727.db"
+      },
+      {
+        "path": "match_2940215464609934058.db"
+      },
+      {
+        "path": "match_3061481644192937838.db"
+      },
+      {
+        "path": "match_3628959166992666895.db"
+      },
+      {
+        "path": "match_3660814607312925928.db"
+      },
+      {
+        "path": "match_3862085155614660990.db"
+      },
+      {
+        "path": "match_3895203083360342258.db"
+      },
+      {
+        "path": "match_3986525576559663168.db"
+      },
+      {
+        "path": "match_4043404938308712223.db"
+      },
+      {
+        "path": "match_4046766227078567058.db"
+      },
+      {
+        "path": "match_4523196252674340482.db"
+      },
+      {
+        "path": "match_4751561624951399578.db"
+      },
+      {
+        "path": "match_4758495944383212288.db"
+      },
+      {
+        "path": "match_4879474679401207584.db"
+      },
+      {
+        "path": "match_4991976633576216134.db"
+      },
+      {
+        "path": "match_5001534516030835642.db"
+      },
+      {
+        "path": "match_50250830584121323.db"
+      },
+      {
+        "path": "match_517109444617493049.db"
+      },
+      {
+        "path": "match_5504447986441145582.db"
+      },
+      {
+        "path": "match_5821102604794486936.db"
+      },
+      {
+        "path": "match_5930108983625200714.db"
+      },
+      {
+        "path": "match_6203205878695514257.db"
+      },
+      {
+        "path": "match_6332673317152995872.db"
+      },
+      {
+        "path": "match_6334384090632712292.db"
+      },
+      {
+        "path": "match_635228925022355169.db"
+      },
+      {
+        "path": "match_6377875043931837955.db"
+      },
+      {
+        "path": "match_6445333938996795056.db"
+      },
+      {
+        "path": "match_647757924071709666.db"
+      },
+      {
+        "path": "match_6482573948910526667.db"
+      },
+      {
+        "path": "match_654367835016249701.db"
+      },
+      {
+        "path": "match_6702413631322776621.db"
+      },
+      {
+        "path": "match_7079920283776051058.db"
+      },
+      {
+        "path": "match_7107912706302660226.db"
+      },
+      {
+        "path": "match_7260080073522336820.db"
+      },
+      {
+        "path": "match_7336271136750948546.db"
+      },
+      {
+        "path": "match_7422810754306594470.db"
+      },
+      {
+        "path": "match_7492999207593409559.db"
+      },
+      {
+        "path": "match_7560750601658500858.db"
+      },
+      {
+        "path": "match_7573840099316589532.db"
+      },
+      {
+        "path": "match_7712884114599669465.db"
+      },
+      {
+        "path": "match_7823112534875690579.db"
+      },
+      {
+        "path": "match_7902296291090273551.db"
+      },
+      {
+        "path": "match_7992482094064624327.db"
+      },
+      {
+        "path": "match_8045939857849960534.db"
+      },
+      {
+        "path": "match_8260121072065237082.db"
+      },
+      {
+        "path": "match_8373638349774523478.db"
+      },
+      {
+        "path": "match_8430908050395624864.db"
+      },
+      {
+        "path": "match_8496328054915208456.db"
+      },
+      {
+        "path": "match_8706684547965396611.db"
+      },
+      {
+        "path": "match_8846174471463006465.db"
+      },
+      {
+        "path": "match_8925606777233417703.db"
+      },
+      {
+        "path": "match_897203930949190376.db"
+      },
+      {
+        "path": "match_9073263199604095540.db"
+      },
+      {
+        "path": "match_907853788184598752.db"
+      }
+    ],
+    "missing_table_match_metadata": [
+      {
+        "path": "match_0001.db",
+        "has_matchtickstate": false
+      }
+    ],
+    "unreadable_file": []
+  }
+}
