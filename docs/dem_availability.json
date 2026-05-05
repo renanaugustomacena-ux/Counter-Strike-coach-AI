@@ -1,1879 +1,1659 @@
 {
-  "created_at": "2026-05-03T13:48:43.822955+00:00",
-  "demo_pro_players_root": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS",
-  "total_dem_files_found": 65,
-  "total_match_db_files": 267,
-  "dem_recoverable_count": 65,
-  "dem_missing_count": 202,
-  "mappings": [
+  "generated_at": "2026-05-05T16:12:28.679071+00:00",
+  "tickstate_demos": 204,
+  "matchstats_demos": 203,
+  "dem_files_found": 65,
+  "dem_matches_tickstate": 3,
+  "dem_matches_matchstats": 2,
+  "tickstate_only_with_dem": 1,
+  "tickstate_only_with_dem_list": [
+    "vitality-vs-the-mongolz-m2-nuke"
+  ],
+  "extras_not_in_tickstate": 62,
+  "extras_sample": [
+    "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/mouz-vs-fut-m2-overpass.dem",
+    "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/mouz-vs-natus-vincere-m2-nuke.dem",
+    "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/mouz-vs-parivision-overpass.dem",
+    "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/mouz-vs-spirit-m1-ancient.dem",
+    "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/mouz-vs-spirit-m2-mirage.dem",
+    "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/mouz-vs-the-mongolz-m1-inferno.dem",
+    "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/mouz-vs-the-mongolz-m2-nuke.dem",
+    "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/mouz-vs-virtus-pro-m1-inferno.dem",
+    "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/mouz-vs-virtus-pro-m2-mirage.dem",
+    "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/mouz-vs-virtus-pro-m3-overpass.dem"
+  ],
+  "demos": [
     {
-      "match_id": 1,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_0001.db",
-      "match_db_size_bytes": 0,
-      "demo_stem": null,
-      "dem_path": null
-    },
-    {
-      "match_id": 1024017916937813269,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1024017916937813269.db",
-      "match_db_size_bytes": 326074368,
-      "demo_stem": "astralis-vs-furia-m2-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 1083510231651994524,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1083510231651994524.db",
-      "match_db_size_bytes": 12120064,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/mouz-vs-virtus-pro-m3-overpass.dem"
-    },
-    {
-      "match_id": 1086251240410403892,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1086251240410403892.db",
-      "match_db_size_bytes": 283643904,
-      "demo_stem": "mouz-vs-furia-m3-inferno_esports",
-      "dem_path": null
-    },
-    {
-      "match_id": 1100228761377519882,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1100228761377519882.db",
-      "match_db_size_bytes": 332288000,
-      "demo_stem": "spirit-vs-mouz-m2-dust2",
-      "dem_path": null
-    },
-    {
-      "match_id": 1113740604439489209,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1113740604439489209.db",
-      "match_db_size_bytes": 181866496,
-      "demo_stem": "saw-vs-legacy-m3-ancient",
-      "dem_path": null
-    },
-    {
-      "match_id": 112279990403633624,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_112279990403633624.db",
-      "match_db_size_bytes": 86016,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/vitality-vs-mouz-m1-mirage.dem"
-    },
-    {
-      "match_id": 1206370711021406030,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1206370711021406030.db",
-      "match_db_size_bytes": 211828736,
-      "demo_stem": "faze-vs-aurora-m2-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 1222528259192870018,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1222528259192870018.db",
-      "match_db_size_bytes": 336883712,
-      "demo_stem": "parivision-vs-vitality-m1-overpass",
-      "dem_path": null
-    },
-    {
-      "match_id": 1272030366284206418,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1272030366284206418.db",
-      "match_db_size_bytes": 277446656,
-      "demo_stem": "g2-vs-mouz-m2-dust2-p1",
-      "dem_path": null
-    },
-    {
-      "match_id": 1296780765673836013,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1296780765673836013.db",
-      "match_db_size_bytes": 86016,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/vitality-vs-mouz-m1-inferno.dem"
-    },
-    {
-      "match_id": 1345550734006338860,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1345550734006338860.db",
-      "match_db_size_bytes": 206712832,
-      "demo_stem": "furia-vs-falcons-m2-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 1353321914364551676,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1353321914364551676.db",
-      "match_db_size_bytes": 303448064,
-      "demo_stem": "furia-vs-parivision-m3-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 138345632516189146,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_138345632516189146.db",
-      "match_db_size_bytes": 347389952,
-      "demo_stem": "faze-vs-spirit-m2-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 138902736265038260,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_138902736265038260.db",
-      "match_db_size_bytes": 234758144,
-      "demo_stem": "mouz-vs-natus-vincere-m3-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 1389167367274647744,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1389167367274647744.db",
-      "match_db_size_bytes": 334438400,
-      "demo_stem": "falcons-vs-parivision-m1-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 1396514152594356861,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1396514152594356861.db",
-      "match_db_size_bytes": 292478976,
-      "demo_stem": "b8-vs-pain-m2-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 1414918644116646251,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1414918644116646251.db",
-      "match_db_size_bytes": 326320128,
-      "demo_stem": "spirit-vs-mouz-m3-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 1425230260566919638,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1425230260566919638.db",
-      "match_db_size_bytes": 253341696,
-      "demo_stem": "falcons-vs-faze-m1-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 1436986465226211426,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1436986465226211426.db",
-      "match_db_size_bytes": 304017408,
-      "demo_stem": "falcons-vs-aurora-m3-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 1487368522645509217,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1487368522645509217.db",
-      "match_db_size_bytes": 230744064,
-      "demo_stem": "the-mongolz-vs-vitality-m3-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 1520509844003787246,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1520509844003787246.db",
-      "match_db_size_bytes": 415690752,
-      "demo_stem": "g2-vs-spirit-m3-dust2",
-      "dem_path": null
-    },
-    {
+      "demo_name": "2025-furia-vs-natus-vincere-m1-mirage",
       "match_id": 1535016786029757799,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1535016786029757799.db",
-      "match_db_size_bytes": 314523648,
-      "demo_stem": "2025-furia-vs-natus-vincere-m1-mirage",
-      "dem_path": null
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
     },
     {
-      "match_id": 1605128764749430574,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1605128764749430574.db",
-      "match_db_size_bytes": 11362304,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/natus-vincere-vs-g2-m1-anubis.dem"
-    },
-    {
-      "match_id": 1643308487712556275,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1643308487712556275.db",
-      "match_db_size_bytes": 314642432,
-      "demo_stem": "vitality-vs-falcons-m2-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 1724364855108319020,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1724364855108319020.db",
-      "match_db_size_bytes": 436502528,
-      "demo_stem": "spirit-vs-the-mongolz-m2-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 1776443697675117873,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1776443697675117873.db",
-      "match_db_size_bytes": 138559488,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/parivision-vs-furia-m2-inferno.dem"
-    },
-    {
-      "match_id": 1787559818232428882,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1787559818232428882.db",
-      "match_db_size_bytes": 252551168,
-      "demo_stem": "furia-vs-natus-vincere-m4-dust2",
-      "dem_path": null
-    },
-    {
-      "match_id": 1789133555290750070,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1789133555290750070.db",
-      "match_db_size_bytes": 428081152,
-      "demo_stem": "spirit-vs-faze-m3-vertigo",
-      "dem_path": null
-    },
-    {
-      "match_id": 1860684732900051178,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1860684732900051178.db",
-      "match_db_size_bytes": 214368256,
-      "demo_stem": "furia-vs-pain-m1-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 1876580732272567560,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1876580732272567560.db",
-      "match_db_size_bytes": 268230656,
-      "demo_stem": "the-mongolz-vs-vitality-m1-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 188103570660876584,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_188103570660876584.db",
-      "match_db_size_bytes": 205520896,
-      "demo_stem": "the-mongolz-vs-furia-m5-dust2",
-      "dem_path": null
-    },
-    {
-      "match_id": 1901534687649751146,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1901534687649751146.db",
-      "match_db_size_bytes": 290992128,
-      "demo_stem": "falcons-vs-furia-m1-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 1902566149900205214,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1902566149900205214.db",
-      "match_db_size_bytes": 426663936,
-      "demo_stem": "spirit-vs-furia-m1-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 1964782899210418509,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1964782899210418509.db",
-      "match_db_size_bytes": 325308416,
-      "demo_stem": "vitality-vs-faze-m3-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 1972846501974513917,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_1972846501974513917.db",
-      "match_db_size_bytes": 141094912,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/pain-vs-virtus-pro-m1-dust2.dem"
-    },
-    {
-      "match_id": 2011757319558866710,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_2011757319558866710.db",
-      "match_db_size_bytes": 68988928,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/spirit-vs-furia-m2-dust2.dem"
-    },
-    {
-      "match_id": 2105891293966856419,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_2105891293966856419.db",
-      "match_db_size_bytes": 383070208,
-      "demo_stem": "vitality-vs-furia-m2-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 2108061991683222609,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_2108061991683222609.db",
-      "match_db_size_bytes": 294805504,
-      "demo_stem": "g2-vs-falcons-m1-ancient",
-      "dem_path": null
-    },
-    {
-      "match_id": 2137645170168718708,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_2137645170168718708.db",
-      "match_db_size_bytes": 281214976,
-      "demo_stem": "furia-vs-natus-vincere-m3-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 214060802801321437,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_214060802801321437.db",
-      "match_db_size_bytes": 247529472,
-      "demo_stem": "astralis-vs-furia-m3-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 2167156441938940112,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_2167156441938940112.db",
-      "match_db_size_bytes": 407048192,
-      "demo_stem": "g2-vs-mouz-m1-overpass-p3",
-      "dem_path": null
-    },
-    {
-      "match_id": 2210876723721980710,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_2210876723721980710.db",
-      "match_db_size_bytes": 86016,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/vitality-vs-g2-m3-overpass.dem"
-    },
-    {
-      "match_id": 2302162131315884707,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_2302162131315884707.db",
-      "match_db_size_bytes": 375951360,
-      "demo_stem": "the-mongolz-vs-furia-m3-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 2328920796377639224,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_2328920796377639224.db",
-      "match_db_size_bytes": 271085568,
-      "demo_stem": "aurora-vs-fut-m3-overpass",
-      "dem_path": null
-    },
-    {
-      "match_id": 2371452152082515988,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_2371452152082515988.db",
-      "match_db_size_bytes": 242982912,
-      "demo_stem": "aurora-vs-fut-m1-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 2429571703568222324,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_2429571703568222324.db",
-      "match_db_size_bytes": 308973568,
-      "demo_stem": "b8-vs-aurora-m1-dust2",
-      "dem_path": null
-    },
-    {
-      "match_id": 244976170828907754,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_244976170828907754.db",
-      "match_db_size_bytes": 215068672,
-      "demo_stem": "gamerlegion-vs-the-mongolz-m2-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 2454689164319019602,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_2454689164319019602.db",
-      "match_db_size_bytes": 190164992,
-      "demo_stem": "furia-vs-natus-vincere-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 2460015568413386692,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_2460015568413386692.db",
-      "match_db_size_bytes": 313155584,
-      "demo_stem": "astralis-vs-furia-m1-overpass",
-      "dem_path": null
-    },
-    {
-      "match_id": 248558911835883491,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_248558911835883491.db",
-      "match_db_size_bytes": 305225728,
-      "demo_stem": "passion-ua-vs-liquid-m1-train",
-      "dem_path": null
-    },
-    {
-      "match_id": 2510067276639811970,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_2510067276639811970.db",
-      "match_db_size_bytes": 299974656,
-      "demo_stem": "faze-vs-flyquest-m2-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 256218403229758401,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_256218403229758401.db",
-      "match_db_size_bytes": 439074816,
-      "demo_stem": "spirit-vs-astralis-m1-dust2",
-      "dem_path": null
-    },
-    {
-      "match_id": 2637654713753650563,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_2637654713753650563.db",
-      "match_db_size_bytes": 49152000,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/natus-vincere-vs-aurora-m1-mirage.dem"
-    },
-    {
-      "match_id": 2640912145460478727,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_2640912145460478727.db",
-      "match_db_size_bytes": 25608192,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/vitality-vs-g2-m3-anubis.dem"
-    },
-    {
-      "match_id": 2674677550936251868,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_2674677550936251868.db",
-      "match_db_size_bytes": 299503616,
-      "demo_stem": "furia-vs-aurora-m1-dust2",
-      "dem_path": null
-    },
-    {
-      "match_id": 2697777379858931711,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_2697777379858931711.db",
-      "match_db_size_bytes": 390230016,
-      "demo_stem": "the-mongolz-vs-aurora-m1-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 27142949788747259,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_27142949788747259.db",
-      "match_db_size_bytes": 502591488,
-      "demo_stem": "mouz-vs-furia-m1-train",
-      "dem_path": null
-    },
-    {
-      "match_id": 272394379377658227,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_272394379377658227.db",
-      "match_db_size_bytes": 263716864,
-      "demo_stem": "falcons-vs-g2-m1-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 2796366404829286269,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_2796366404829286269.db",
-      "match_db_size_bytes": 324079616,
-      "demo_stem": "furia-vs-vitality-m2-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 2799721517177866409,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_2799721517177866409.db",
-      "match_db_size_bytes": 201793536,
-      "demo_stem": "the-mongolz-vs-aurora-m3-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 2809003910921410690,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_2809003910921410690.db",
-      "match_db_size_bytes": 306069504,
-      "demo_stem": "passion-ua-vs-liquid-m2-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 2844767710800249183,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_2844767710800249183.db",
-      "match_db_size_bytes": 229711872,
-      "demo_stem": "the-mongolz-vs-liquid-m3-ancient",
-      "dem_path": null
-    },
-    {
-      "match_id": 2906188923147223437,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_2906188923147223437.db",
-      "match_db_size_bytes": 289361920,
-      "demo_stem": "2026-mouz-vs-vitality-m2-inferno",
-      "dem_path": null
-    },
-    {
+      "demo_name": "2025-the-mongolz-vs-furia-m2-inferno",
       "match_id": 2934632236325953919,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_2934632236325953919.db",
-      "match_db_size_bytes": 406368256,
-      "demo_stem": "2025-the-mongolz-vs-furia-m2-inferno",
-      "dem_path": null
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
     },
     {
-      "match_id": 2940215464609934058,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_2940215464609934058.db",
-      "match_db_size_bytes": 31510528,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/spirit-vs-furia-m3-nuke.dem"
-    },
-    {
-      "match_id": 2980858070178274788,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_2980858070178274788.db",
-      "match_db_size_bytes": 269488128,
-      "demo_stem": "falcons-vs-g2-m2-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 3061481644192937838,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3061481644192937838.db",
-      "match_db_size_bytes": 82878464,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/spirit-vs-g2-m1-mirage.dem"
-    },
-    {
-      "match_id": 3081548064375597710,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3081548064375597710.db",
-      "match_db_size_bytes": 322981888,
-      "demo_stem": "aurora-vs-legacy-m5-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 3133951572754539282,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3133951572754539282.db",
-      "match_db_size_bytes": 256102400,
-      "demo_stem": "mouz-vs-faze-m1-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 3170584591875036144,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3170584591875036144.db",
-      "match_db_size_bytes": 183943168,
-      "demo_stem": "gamerlegion-vs-aurora-m1-overpass",
-      "dem_path": null
-    },
-    {
-      "match_id": 3181705809305636438,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3181705809305636438.db",
-      "match_db_size_bytes": 312414208,
-      "demo_stem": "furia-vs-falcons-m2-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 3204582710373778572,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3204582710373778572.db",
-      "match_db_size_bytes": 464941056,
-      "demo_stem": "astralis-vs-legacy-m1-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 322281239645554504,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_322281239645554504.db",
-      "match_db_size_bytes": 301088768,
-      "demo_stem": "vitality-vs-virtus-pro-m2-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 325379522980916953,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_325379522980916953.db",
-      "match_db_size_bytes": 376184832,
-      "demo_stem": "aurora-vs-fut-m2-anubis",
-      "dem_path": null
-    },
-    {
-      "match_id": 328224034346248377,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_328224034346248377.db",
-      "match_db_size_bytes": 291799040,
-      "demo_stem": "falcons-vs-faze-m3-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 3313932895308866719,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3313932895308866719.db",
-      "match_db_size_bytes": 295374848,
-      "demo_stem": "furia-vs-falcons-m2-nuke(1)",
-      "dem_path": null
-    },
-    {
-      "match_id": 3381567288768929112,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3381567288768929112.db",
-      "match_db_size_bytes": 209342464,
-      "demo_stem": "falcons-vs-pain-m1-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 345688893539286927,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_345688893539286927.db",
-      "match_db_size_bytes": 283222016,
-      "demo_stem": "spirit-vs-faze-m1-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 3500788740002644519,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3500788740002644519.db",
-      "match_db_size_bytes": 255442944,
-      "demo_stem": "furia-vs-falcons-m1-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 3519109717850203675,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3519109717850203675.db",
-      "match_db_size_bytes": 406769664,
-      "demo_stem": "furia-vs-parivision-m2-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 3617667970904856962,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3617667970904856962.db",
-      "match_db_size_bytes": 330559488,
-      "demo_stem": "furia-vs-vitality-m1-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 3628959166992666895,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3628959166992666895.db",
-      "match_db_size_bytes": 140611584,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/parivision-vs-furia-m1-mirage.dem"
-    },
-    {
-      "match_id": 3660814607312925928,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3660814607312925928.db",
-      "match_db_size_bytes": 143425536,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/pain-vs-virtus-pro-m3-inferno.dem"
-    },
-    {
-      "match_id": 3679845381511128344,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3679845381511128344.db",
-      "match_db_size_bytes": 235343872,
-      "demo_stem": "faze-vs-aurora-m1-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 3680340186011683247,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3680340186011683247.db",
-      "match_db_size_bytes": 247119872,
-      "demo_stem": "falcons-vs-3dmax-m1-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 3769477702251993531,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3769477702251993531.db",
-      "match_db_size_bytes": 311717888,
-      "demo_stem": "furia-vs-b8-m1-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 3793252518494217809,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3793252518494217809.db",
-      "match_db_size_bytes": 344940544,
-      "demo_stem": "spirit-vs-the-mongolz-m1-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 3798595084393999117,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3798595084393999117.db",
-      "match_db_size_bytes": 283643904,
-      "demo_stem": "mouz-vs-furia-m3-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 3829467553198645914,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3829467553198645914.db",
-      "match_db_size_bytes": 153600000,
-      "demo_stem": "the-mongolz-vs-aurora-m2-dust2-p1",
-      "dem_path": null
-    },
-    {
-      "match_id": 3862085155614660990,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3862085155614660990.db",
-      "match_db_size_bytes": 244015104,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/vitality-vs-g2-m1-mirage.dem"
-    },
-    {
-      "match_id": 3874524605940943120,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3874524605940943120.db",
-      "match_db_size_bytes": 162705408,
-      "demo_stem": "the-mongolz-vs-liquid-m1-dust2",
-      "dem_path": null
-    },
-    {
-      "match_id": 3891802428543584717,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3891802428543584717.db",
-      "match_db_size_bytes": 327077888,
-      "demo_stem": "ence-vs-falcons-m2-overpass",
-      "dem_path": null
-    },
-    {
-      "match_id": 3895203083360342258,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3895203083360342258.db",
-      "match_db_size_bytes": 32079872,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/mouz-vs-virtus-pro-m2-mirage.dem"
-    },
-    {
-      "match_id": 3895843924261625815,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3895843924261625815.db",
-      "match_db_size_bytes": 304201728,
-      "demo_stem": "furia-vs-pain-m2-dust2",
-      "dem_path": null
-    },
-    {
-      "match_id": 3917185276137902256,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3917185276137902256.db",
-      "match_db_size_bytes": 226951168,
-      "demo_stem": "gamerlegion-vs-falcons-m2-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 3956032407499336290,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3956032407499336290.db",
-      "match_db_size_bytes": 449294336,
-      "demo_stem": "faze-vs-the-mongolz-m2-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 3971786005762061371,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3971786005762061371.db",
-      "match_db_size_bytes": 430718976,
-      "demo_stem": "falcons-vs-faze-m2-ancient",
-      "dem_path": null
-    },
-    {
-      "match_id": 3986525576559663168,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_3986525576559663168.db",
-      "match_db_size_bytes": 62799872,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/spirit-vs-g2-m3-ancient.dem"
-    },
-    {
-      "match_id": 4008804498772854171,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4008804498772854171.db",
-      "match_db_size_bytes": 308695040,
-      "demo_stem": "mouz-vs-faze-m2-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 4026689703254493406,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4026689703254493406.db",
-      "match_db_size_bytes": 221061120,
-      "demo_stem": "faze-vs-natus-vincere-m1-ancient",
-      "dem_path": null
-    },
-    {
-      "match_id": 4043404938308712223,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4043404938308712223.db",
-      "match_db_size_bytes": 86016,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/vitality-vs-mouz-m2-inferno.dem"
-    },
-    {
-      "match_id": 4046766227078567058,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4046766227078567058.db",
-      "match_db_size_bytes": 40943616,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/mouz-vs-vitality-m3-train.dem"
-    },
-    {
-      "match_id": 4108804044832135620,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4108804044832135620.db",
-      "match_db_size_bytes": 242622464,
-      "demo_stem": "furia-vs-aurora-m2-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 4118308100395583527,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4118308100395583527.db",
-      "match_db_size_bytes": 270790656,
-      "demo_stem": "furia-vs-the-mongolz-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 4218192694333266580,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4218192694333266580.db",
-      "match_db_size_bytes": 333520896,
-      "demo_stem": "g2-vs-spirit-m2-overpass",
-      "dem_path": null
-    },
-    {
-      "match_id": 4223054957165825623,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4223054957165825623.db",
-      "match_db_size_bytes": 262049792,
-      "demo_stem": "faze-vs-aurora-m3-overpass",
-      "dem_path": null
-    },
-    {
-      "match_id": 4238854950221180073,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4238854950221180073.db",
-      "match_db_size_bytes": 510742528,
-      "demo_stem": "furia-vs-falcons-m4-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 4287226905186307444,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4287226905186307444.db",
-      "match_db_size_bytes": 279683072,
-      "demo_stem": "aurora-vs-astralis-m3-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 4315130445971420929,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4315130445971420929.db",
-      "match_db_size_bytes": 263184384,
-      "demo_stem": "g2-vs-natus-vincere-m2-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 4442149497471419619,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4442149497471419619.db",
-      "match_db_size_bytes": 217702400,
-      "demo_stem": "parivision-vs-vitality-m2-dust2",
-      "dem_path": null
-    },
-    {
-      "match_id": 4450862520688478860,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4450862520688478860.db",
-      "match_db_size_bytes": 325607424,
-      "demo_stem": "g2-vs-spirit-m1-anubis",
-      "dem_path": null
-    },
-    {
-      "match_id": 4459553878150913169,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4459553878150913169.db",
-      "match_db_size_bytes": 314527744,
-      "demo_stem": "furia-vs-natus-vincere-m1-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 4496792989652879874,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4496792989652879874.db",
-      "match_db_size_bytes": 342974464,
-      "demo_stem": "furia-vs-falcons-m3-anubis",
-      "dem_path": null
-    },
-    {
-      "match_id": 4515095340041939324,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4515095340041939324.db",
-      "match_db_size_bytes": 253124608,
-      "demo_stem": "spirit-vs-faze-m2-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 4523196252674340482,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4523196252674340482.db",
-      "match_db_size_bytes": 80924672,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/spirit-vs-natus-vincere-m2-ancient.dem"
-    },
-    {
-      "match_id": 458632168716343751,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_458632168716343751.db",
-      "match_db_size_bytes": 314658816,
-      "demo_stem": "vitality-vs-the-mongolz-m2-dust2",
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/ingested/vitality-vs-the-mongolz-m2-dust2.dem"
-    },
-    {
-      "match_id": 4695603286377783303,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4695603286377783303.db",
-      "match_db_size_bytes": 293044224,
-      "demo_stem": "faze-vs-flyquest-m1-anubis",
-      "dem_path": null
-    },
-    {
-      "match_id": 470061886086518259,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_470061886086518259.db",
-      "match_db_size_bytes": 493883392,
-      "demo_stem": "furia-vs-falcons-m3-train",
-      "dem_path": null
-    },
-    {
-      "match_id": 4722192831957666532,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4722192831957666532.db",
-      "match_db_size_bytes": 203010048,
-      "demo_stem": "the-mongolz-vs-liquid-m2-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 4729614370357325617,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4729614370357325617.db",
-      "match_db_size_bytes": 370708480,
-      "demo_stem": "fut-vs-astralis-m3-overpass",
-      "dem_path": null
-    },
-    {
-      "match_id": 4751561624951399578,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4751561624951399578.db",
-      "match_db_size_bytes": 3256320,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/pain-vs-3dmax-nuke.dem"
-    },
-    {
-      "match_id": 4758495944383212288,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4758495944383212288.db",
-      "match_db_size_bytes": 140251136,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/parivision-vs-spirit-m1-overpass.dem"
-    },
-    {
-      "match_id": 4782313960303487077,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4782313960303487077.db",
-      "match_db_size_bytes": 268476416,
-      "demo_stem": "vitality-vs-faze-m1-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 4879474679401207584,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4879474679401207584.db",
-      "match_db_size_bytes": 39763968,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/natus-vincere-vs-faze-m1-mirage.dem"
-    },
-    {
-      "match_id": 4886343711582863514,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4886343711582863514.db",
-      "match_db_size_bytes": 252854272,
-      "demo_stem": "falcons-vs-g2-m3-ancient",
-      "dem_path": null
-    },
-    {
-      "match_id": 4918458006625036521,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4918458006625036521.db",
-      "match_db_size_bytes": 212238336,
-      "demo_stem": "gamerlegion-vs-falcons-m1-train",
-      "dem_path": null
-    },
-    {
-      "match_id": 4938748941642720496,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4938748941642720496.db",
-      "match_db_size_bytes": 341958656,
-      "demo_stem": "falcons-vs-furia-m2-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 4948602212326233624,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4948602212326233624.db",
-      "match_db_size_bytes": 336642048,
-      "demo_stem": "faze-vs-the-mongolz-m1-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 4982572509065746837,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4982572509065746837.db",
-      "match_db_size_bytes": 272187392,
-      "demo_stem": "g2-vs-falcons-m2-train",
-      "dem_path": null
-    },
-    {
-      "match_id": 4991976633576216134,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_4991976633576216134.db",
-      "match_db_size_bytes": 630784,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/natus-vincere-vs-spirit-m2-dust2.dem"
-    },
-    {
-      "match_id": 499260499125714115,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_499260499125714115.db",
-      "match_db_size_bytes": 175636480,
-      "demo_stem": "astralis-vs-legacy-m2-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 5001534516030835642,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_5001534516030835642.db",
-      "match_db_size_bytes": 606208,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/natus-vincere-vs-spirit-m1-mirage.dem"
-    },
-    {
-      "match_id": 50250830584121323,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_50250830584121323.db",
-      "match_db_size_bytes": 16461824,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/mouz-vs-vitality-m1-dust2.dem"
-    },
-    {
-      "match_id": 5106694050454849633,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_5106694050454849633.db",
-      "match_db_size_bytes": 312774656,
-      "demo_stem": "faze-vs-natus-vincere-m3-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 5110170300155805562,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_5110170300155805562.db",
-      "match_db_size_bytes": 562552832,
-      "demo_stem": "mouz-vs-cloud9-m3-ancient",
-      "dem_path": null
-    },
-    {
-      "match_id": 5113413114104219503,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_5113413114104219503.db",
-      "match_db_size_bytes": 439562240,
-      "demo_stem": "furia-vs-astralis-m2-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 517109444617493049,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_517109444617493049.db",
-      "match_db_size_bytes": 5578752,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/nrg-vs-furia-m3-dust2.dem"
-    },
-    {
-      "match_id": 5253038098191573331,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_5253038098191573331.db",
-      "match_db_size_bytes": 421044224,
-      "demo_stem": "spirit-vs-g2-m2-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 528504212449188254,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_528504212449188254.db",
-      "match_db_size_bytes": 320131072,
-      "demo_stem": "aurora-vs-falcons-m2-train",
-      "dem_path": null
-    },
-    {
-      "match_id": 5312606395923570398,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_5312606395923570398.db",
-      "match_db_size_bytes": 283181056,
-      "demo_stem": "b8-vs-pain-m1-dust2",
-      "dem_path": null
-    },
-    {
-      "match_id": 5329553944583559093,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_5329553944583559093.db",
-      "match_db_size_bytes": 342560768,
-      "demo_stem": "falcons-vs-aurora-m2-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 5381538896448038314,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_5381538896448038314.db",
-      "match_db_size_bytes": 285696000,
-      "demo_stem": "gamerlegion-vs-the-mongolz-m1-overpass-p2",
-      "dem_path": null
-    },
-    {
-      "match_id": 5500950922448328108,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_5500950922448328108.db",
-      "match_db_size_bytes": 337588224,
-      "demo_stem": "falcons-vs-3dmax-m2-dust2",
-      "dem_path": null
-    },
-    {
-      "match_id": 5501450460708774000,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_5501450460708774000.db",
-      "match_db_size_bytes": 352374784,
-      "demo_stem": "legacy-vs-flyquest-m2-dust2",
-      "dem_path": null
-    },
-    {
-      "match_id": 5503432792736688006,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_5503432792736688006.db",
-      "match_db_size_bytes": 211644416,
-      "demo_stem": "vitality-vs-faze-m4-overpass",
-      "dem_path": null
-    },
-    {
-      "match_id": 5504447986441145582,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_5504447986441145582.db",
-      "match_db_size_bytes": 3215360,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/pain-vs-legacy-m3-nuke.dem"
-    },
-    {
-      "match_id": 5550404415456676522,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_5550404415456676522.db",
-      "match_db_size_bytes": 169897984,
-      "demo_stem": "gamerlegion-vs-aurora-m2-dust2",
-      "dem_path": null
-    },
-    {
-      "match_id": 5621575358713334867,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_5621575358713334867.db",
-      "match_db_size_bytes": 280801280,
-      "demo_stem": "aurora-vs-astralis-m1-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 5639168896788109977,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_5639168896788109977.db",
-      "match_db_size_bytes": 423985152,
-      "demo_stem": "furia-vs-parivision-m1-dust2",
-      "dem_path": null
-    },
-    {
-      "match_id": 5657130603952784117,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_5657130603952784117.db",
-      "match_db_size_bytes": 371564544,
-      "demo_stem": "saw-vs-legacy-m2-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 5688232509757972114,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_5688232509757972114.db",
-      "match_db_size_bytes": 391495680,
-      "demo_stem": "vitality-vs-furia-m3-overpass",
-      "dem_path": null
-    },
-    {
-      "match_id": 5767979323577175840,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_5767979323577175840.db",
-      "match_db_size_bytes": 270200832,
-      "demo_stem": "furia-vs-fut-m3-anubis",
-      "dem_path": null
-    },
-    {
-      "match_id": 5821102604794486936,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_5821102604794486936.db",
-      "match_db_size_bytes": 14630912,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/natus-vincere-vs-spirit-m2-anubis.dem"
-    },
-    {
-      "match_id": 5892668006689104848,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_5892668006689104848.db",
-      "match_db_size_bytes": 678703104,
-      "demo_stem": "spirit-vs-mouz-m1-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 5910630698869843535,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_5910630698869843535.db",
-      "match_db_size_bytes": 310861824,
-      "demo_stem": "gamerlegion-vs-pain-m3-dust2",
-      "dem_path": null
-    },
-    {
-      "match_id": 5930108983625200714,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_5930108983625200714.db",
-      "match_db_size_bytes": 302616576,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/spirit-vs-natus-vincere-m1-nuke.dem"
-    },
-    {
-      "match_id": 5938200089143290985,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_5938200089143290985.db",
-      "match_db_size_bytes": 371212288,
-      "demo_stem": "furia-vs-falcons-m1-train",
-      "dem_path": null
-    },
-    {
-      "match_id": 5941332403014246196,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_5941332403014246196.db",
-      "match_db_size_bytes": 288985088,
-      "demo_stem": "2026-vitality-vs-the-mongolz-m1-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 5984234172733252896,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_5984234172733252896.db",
-      "match_db_size_bytes": 402903040,
-      "demo_stem": "eternal-fire-vs-natus-vincere-m1-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 6002721892498045039,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_6002721892498045039.db",
-      "match_db_size_bytes": 324423680,
-      "demo_stem": "the-mongolz-vs-furia-m4-overpass",
-      "dem_path": null
-    },
-    {
-      "match_id": 6056036010258281678,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_6056036010258281678.db",
-      "match_db_size_bytes": 314699776,
-      "demo_stem": "aurora-vs-falcons-m1-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 6073727489055594203,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_6073727489055594203.db",
-      "match_db_size_bytes": 312700928,
-      "demo_stem": "mouz-vs-furia-m2-mirage-p1",
-      "dem_path": null
-    },
-    {
-      "match_id": 6186879118144824780,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_6186879118144824780.db",
-      "match_db_size_bytes": 238628864,
-      "demo_stem": "vitality-vs-virtus-pro-m3-dust2",
-      "dem_path": null
-    },
-    {
-      "match_id": 6203205878695514257,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_6203205878695514257.db",
-      "match_db_size_bytes": 5214208,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/nrg-vs-furia-m2-nuke.dem"
-    },
-    {
-      "match_id": 6247317182621438110,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_6247317182621438110.db",
-      "match_db_size_bytes": 271093760,
-      "demo_stem": "g2-vs-natus-vincere-m3-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 6332673317152995872,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_6332673317152995872.db",
-      "match_db_size_bytes": 221171712,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/vitality-vs-g2-m2-inferno.dem"
-    },
-    {
-      "match_id": 6334384090632712292,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_6334384090632712292.db",
-      "match_db_size_bytes": 1236992,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/natus-vincere-vs-aurora-m4-dust2.dem"
-    },
-    {
-      "match_id": 6339940142015115932,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_6339940142015115932.db",
-      "match_db_size_bytes": 184188928,
-      "demo_stem": "furia-vs-vitality-m3-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 634245929522375116,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_634245929522375116.db",
-      "match_db_size_bytes": 473972736,
-      "demo_stem": "vitality-vs-the-mongolz-m1-mirage",
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/ingested/vitality-vs-the-mongolz-m1-mirage.dem"
-    },
-    {
-      "match_id": 635228925022355169,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_635228925022355169.db",
-      "match_db_size_bytes": 86016,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/vitality-vs-mouz-m2-dust2.dem"
-    },
-    {
-      "match_id": 6377875043931837955,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_6377875043931837955.db",
-      "match_db_size_bytes": 106778624,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/mouz-vs-virtus-pro-m1-inferno.dem"
-    },
-    {
-      "match_id": 6393252038121428019,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_6393252038121428019.db",
-      "match_db_size_bytes": 193486848,
-      "demo_stem": "mouz-vs-natus-vincere-m1-dust2",
-      "dem_path": null
-    },
-    {
-      "match_id": 6445333938996795056,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_6445333938996795056.db",
-      "match_db_size_bytes": 135135232,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/parivision-vs-spirit-m2-mirage.dem"
-    },
-    {
-      "match_id": 6466423603022674677,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_6466423603022674677.db",
-      "match_db_size_bytes": 308129792,
-      "demo_stem": "mouz-vs-fut-m1-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 6477018116211700957,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_6477018116211700957.db",
-      "match_db_size_bytes": 211824640,
-      "demo_stem": "vitality-vs-the-mongolz-m3-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 647757924071709666,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_647757924071709666.db",
-      "match_db_size_bytes": 86016,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/vitality-vs-mouz-m1-nuke.dem"
-    },
-    {
-      "match_id": 6482573948910526667,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_6482573948910526667.db",
-      "match_db_size_bytes": 142770176,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/pain-vs-themongolz-m3-inferno.dem"
-    },
-    {
-      "match_id": 648905919808070429,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_648905919808070429.db",
-      "match_db_size_bytes": 241721344,
-      "demo_stem": "faze-vs-the-mongolz-m3-ancient",
-      "dem_path": null
-    },
-    {
-      "match_id": 6519999866844160966,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_6519999866844160966.db",
-      "match_db_size_bytes": 236396544,
-      "demo_stem": "gamerlegion-vs-pain-m2-overpass",
-      "dem_path": null
-    },
-    {
-      "match_id": 654367835016249701,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_654367835016249701.db",
-      "match_db_size_bytes": 183201792,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/mouz-vs-spirit-m1-ancient.dem"
-    },
-    {
-      "match_id": 6546526763147926043,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_6546526763147926043.db",
-      "match_db_size_bytes": 318320640,
-      "demo_stem": "the-mongolz-vs-vitality-m2-dust2",
-      "dem_path": null
-    },
-    {
-      "match_id": 6569881487871688149,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_6569881487871688149.db",
-      "match_db_size_bytes": 688553984,
-      "demo_stem": "vitality-vs-aurora-m1-ancient",
-      "dem_path": null
-    },
-    {
-      "match_id": 6614749117776075469,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_6614749117776075469.db",
-      "match_db_size_bytes": 235442176,
-      "demo_stem": "vitality-vs-g2-m1-dust2",
-      "dem_path": null
-    },
-    {
-      "match_id": 6647866482825448320,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_6647866482825448320.db",
-      "match_db_size_bytes": 307826688,
-      "demo_stem": "vitality-vs-faze-m3-inferno(differentmatch)",
-      "dem_path": null
-    },
-    {
-      "match_id": 6663098645655717733,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_6663098645655717733.db",
-      "match_db_size_bytes": 313688064,
-      "demo_stem": "spirit-vs-astralis-m2-overpass",
-      "dem_path": null
-    },
-    {
-      "match_id": 6684609509859346842,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_6684609509859346842.db",
-      "match_db_size_bytes": 229449728,
-      "demo_stem": "mouz-vs-falcons-m2-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 6702413631322776621,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_6702413631322776621.db",
-      "match_db_size_bytes": 111296512,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/mouz-vs-the-mongolz-m2-nuke.dem"
-    },
-    {
-      "match_id": 672367828423769375,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_672367828423769375.db",
-      "match_db_size_bytes": 387055616,
-      "demo_stem": "falcons-vs-parivision-m3-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 6740024381394518696,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_6740024381394518696.db",
-      "match_db_size_bytes": 290910208,
-      "demo_stem": "furia-vs-vitality-m3-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 6979894167215991947,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_6979894167215991947.db",
-      "match_db_size_bytes": 341336064,
-      "demo_stem": "furia-vs-natus-vincere-m2-inferno(1)",
-      "dem_path": null
-    },
-    {
-      "match_id": 6980352803042055160,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_6980352803042055160.db",
-      "match_db_size_bytes": 555196416,
-      "demo_stem": "furia-vs-fut-m2-overpass",
-      "dem_path": null
-    },
-    {
-      "match_id": 7032684793653340106,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7032684793653340106.db",
-      "match_db_size_bytes": 318001152,
-      "demo_stem": "cloud9-vs-vitality-m1-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 7046987023009586207,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7046987023009586207.db",
-      "match_db_size_bytes": 334053376,
-      "demo_stem": "vitality-vs-furia-m1-ancient",
-      "dem_path": null
-    },
-    {
-      "match_id": 7073013273001125027,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7073013273001125027.db",
-      "match_db_size_bytes": 335044608,
-      "demo_stem": "the-mongolz-vs-furia-m2-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 7079920283776051058,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7079920283776051058.db",
-      "match_db_size_bytes": 48877568,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/spirit-vs-mibr-m1-nuke.dem"
-    },
-    {
-      "match_id": 7097485993104638456,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7097485993104638456.db",
-      "match_db_size_bytes": 279568384,
-      "demo_stem": "aurora-vs-legacy-m2-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 7107912706302660226,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7107912706302660226.db",
-      "match_db_size_bytes": 14954496,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/nrg-vs-furia-m1-mirage.dem"
-    },
-    {
-      "match_id": 7114279511009796863,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7114279511009796863.db",
-      "match_db_size_bytes": 467673088,
-      "demo_stem": "imperial-vs-the-mongolz-dust2",
-      "dem_path": null
-    },
-    {
-      "match_id": 7131664035098005965,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7131664035098005965.db",
-      "match_db_size_bytes": 279339008,
-      "demo_stem": "mouz-vs-furia-m1-nuke-p2",
-      "dem_path": null
-    },
-    {
-      "match_id": 714673762830392230,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_714673762830392230.db",
-      "match_db_size_bytes": 273420288,
-      "demo_stem": "g2-vs-virtuspro-m2-ancient",
-      "dem_path": null
-    },
-    {
-      "match_id": 7170811853863129827,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7170811853863129827.db",
-      "match_db_size_bytes": 256864256,
-      "demo_stem": "furia-vs-fut-m1-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 7184267350226785882,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7184267350226785882.db",
-      "match_db_size_bytes": 322109440,
-      "demo_stem": "furia-vs-b8-m2-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 7185475621878496377,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7185475621878496377.db",
-      "match_db_size_bytes": 401227776,
-      "demo_stem": "g2-vs-natus-vincere-m1-ancient",
-      "dem_path": null
-    },
-    {
-      "match_id": 7205582561358098322,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7205582561358098322.db",
-      "match_db_size_bytes": 217559040,
-      "demo_stem": "b8-vs-aurora-m3-overpass",
-      "dem_path": null
-    },
-    {
-      "match_id": 723938032343515017,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_723938032343515017.db",
-      "match_db_size_bytes": 201801728,
-      "demo_stem": "the-mongolz-vs-aurora-m3-nuke(differentmatch)",
-      "dem_path": null
-    },
-    {
-      "match_id": 7249049041983998020,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7249049041983998020.db",
-      "match_db_size_bytes": 269627392,
-      "demo_stem": "falcons-vs-pain-m2-ancient",
-      "dem_path": null
-    },
-    {
-      "match_id": 7260080073522336820,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7260080073522336820.db",
-      "match_db_size_bytes": 40542208,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/pain-vs-themongolz-m2-nuke.dem"
-    },
-    {
-      "match_id": 7298504660386629493,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7298504660386629493.db",
-      "match_db_size_bytes": 316624896,
-      "demo_stem": "eternal-fire-vs-natus-vincere-m2-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 730055187535882054,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_730055187535882054.db",
-      "match_db_size_bytes": 558153728,
-      "demo_stem": "vitality-vs-virtus-pro-m1-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 7309047136083624217,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7309047136083624217.db",
-      "match_db_size_bytes": 243548160,
-      "demo_stem": "g2-vs-virtuspro-m1-dust2",
-      "dem_path": null
-    },
-    {
-      "match_id": 7336271136750948546,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7336271136750948546.db",
-      "match_db_size_bytes": 140107776,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/parivision-vs-spirit-m3-ancient.dem"
-    },
-    {
-      "match_id": 7422810754306594470,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7422810754306594470.db",
-      "match_db_size_bytes": 51703808,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/natus-vincere-vs-aurora-m3-nuke-p1.dem"
-    },
-    {
-      "match_id": 7426743448630103688,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7426743448630103688.db",
-      "match_db_size_bytes": 126894080,
-      "demo_stem": "the-mongolz-vs-aurora-m2-dust-p2(different match)",
-      "dem_path": null
-    },
-    {
-      "match_id": 7443564290054233367,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7443564290054233367.db",
-      "match_db_size_bytes": 126894080,
-      "demo_stem": "the-mongolz-vs-aurora-m2-dust-p2",
-      "dem_path": null
-    },
-    {
-      "match_id": 7492999207593409559,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7492999207593409559.db",
-      "match_db_size_bytes": 34222080,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/natus-vincere-vs-aurora-m2-anubis.dem"
-    },
-    {
-      "match_id": 7560750601658500858,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7560750601658500858.db",
-      "match_db_size_bytes": 86016,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/vitality-vs-g2-m5-train.dem"
-    },
-    {
-      "match_id": 7573840099316589532,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7573840099316589532.db",
-      "match_db_size_bytes": 136671232,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/pain-vs-virtus-pro-m2-mirage.dem"
-    },
-    {
-      "match_id": 7656204921720727251,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7656204921720727251.db",
-      "match_db_size_bytes": 292540416,
-      "demo_stem": "falcons-vs-aurora-m1-anubis",
-      "dem_path": null
-    },
-    {
-      "match_id": 7662026932760277534,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7662026932760277534.db",
-      "match_db_size_bytes": 252788736,
-      "demo_stem": "spirit-vs-the-mongolz-m3-ancient",
-      "dem_path": null
-    },
-    {
-      "match_id": 7695564694941801728,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7695564694941801728.db",
-      "match_db_size_bytes": 312066048,
-      "demo_stem": "mouz-vs-furia-m2-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 7712884114599669465,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7712884114599669465.db",
-      "match_db_size_bytes": 357593088,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/mouz-vs-fut-m2-overpass.dem"
-    },
-    {
-      "match_id": 7718489764653961383,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7718489764653961383.db",
-      "match_db_size_bytes": 298426368,
-      "demo_stem": "vitality-vs-aurora-m2-overpass",
-      "dem_path": null
-    },
-    {
+      "demo_name": "2025-the-mongolz-vs-furia-m3-nuke",
       "match_id": 7784491670499672360,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7784491670499672360.db",
-      "match_db_size_bytes": 191873024,
-      "demo_stem": "2025-the-mongolz-vs-furia-m3-nuke",
-      "dem_path": null
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
     },
     {
-      "match_id": 7823112534875690579,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7823112534875690579.db",
-      "match_db_size_bytes": 86016,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/vitality-vs-g2-m4-inferno.dem"
+      "demo_name": "2026-mouz-vs-vitality-m2-inferno",
+      "match_id": 2906188923147223437,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
     },
     {
-      "match_id": 7843503653642014139,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7843503653642014139.db",
-      "match_db_size_bytes": 411664384,
-      "demo_stem": "furia-vs-falcons-m1-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 7881628469299324172,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7881628469299324172.db",
-      "match_db_size_bytes": 437366784,
-      "demo_stem": "the-mongolz-vs-furia-m1-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 7902296291090273551,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7902296291090273551.db",
-      "match_db_size_bytes": 36155392,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/mouz-vs-vitality-m1-mirage.dem"
-    },
-    {
-      "match_id": 7919349311842624804,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7919349311842624804.db",
-      "match_db_size_bytes": 410918912,
-      "demo_stem": "parivision-vs-vitality-m3-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 7992482094064624327,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_7992482094064624327.db",
-      "match_db_size_bytes": 193835008,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/mouz-vs-parivision-overpass.dem"
-    },
-    {
-      "match_id": 8014369995370595675,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8014369995370595675.db",
-      "match_db_size_bytes": 460648448,
-      "demo_stem": "furia-vs-vitality-m2-overpass",
-      "dem_path": null
-    },
-    {
-      "match_id": 8045939857849960534,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8045939857849960534.db",
-      "match_db_size_bytes": 3391488,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/pain-vs-legacy-m2-dust2.dem"
-    },
-    {
-      "match_id": 8086038251181715151,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8086038251181715151.db",
-      "match_db_size_bytes": 233652224,
-      "demo_stem": "mouz-vs-falcons-m1-dust2",
-      "dem_path": null
-    },
-    {
-      "match_id": 8135873708520807378,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8135873708520807378.db",
-      "match_db_size_bytes": 238886912,
-      "demo_stem": "aurora-vs-astralis-m2-train",
-      "dem_path": null
-    },
-    {
-      "match_id": 8140228658511890823,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8140228658511890823.db",
-      "match_db_size_bytes": 338776064,
-      "demo_stem": "gamerlegion-vs-pain-m1-nuke",
-      "dem_path": null
-    },
-    {
-      "match_id": 8260121072065237082,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8260121072065237082.db",
-      "match_db_size_bytes": 1589248,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/pain-vs-legacy-m1-inferno.dem"
-    },
-    {
-      "match_id": 8281031692823620168,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8281031692823620168.db",
-      "match_db_size_bytes": 400355328,
-      "demo_stem": "vitality-vs-falcons-m1-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 8315184209259074872,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8315184209259074872.db",
-      "match_db_size_bytes": 332816384,
-      "demo_stem": "furia-vs-vitality-m4-overpass",
-      "dem_path": null
-    },
-    {
-      "match_id": 8331025315922383906,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8331025315922383906.db",
-      "match_db_size_bytes": 307830784,
-      "demo_stem": "vitality-vs-faze-m3-inferno(different_match)",
-      "dem_path": null
-    },
-    {
-      "match_id": 8373638349774523478,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8373638349774523478.db",
-      "match_db_size_bytes": 136511488,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/mouz-vs-the-mongolz-m1-inferno.dem"
-    },
-    {
-      "match_id": 8379527485957961904,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8379527485957961904.db",
-      "match_db_size_bytes": 274374656,
-      "demo_stem": "b8-vs-aurora-m2-mirage",
-      "dem_path": null
-    },
-    {
-      "match_id": 8400575736831236483,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8400575736831236483.db",
-      "match_db_size_bytes": 309895168,
-      "demo_stem": "spirit-vs-falcons-m1-anubis",
-      "dem_path": null
-    },
-    {
-      "match_id": 8430908050395624864,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8430908050395624864.db",
-      "match_db_size_bytes": 133832704,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/mouz-vs-spirit-m2-mirage.dem"
-    },
-    {
-      "match_id": 8458487664747984675,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8458487664747984675.db",
-      "match_db_size_bytes": 302546944,
-      "demo_stem": "aurora-vs-legacy-m4-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 8496328054915208456,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8496328054915208456.db",
-      "match_db_size_bytes": 36397056,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/natus-vincere-vs-faze-m2-nuke.dem"
-    },
-    {
+      "demo_name": "2026-the-mongolz-vs-furia-m1-mirage",
       "match_id": 8560840196544757642,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8560840196544757642.db",
-      "match_db_size_bytes": 317050880,
-      "demo_stem": "2026-the-mongolz-vs-furia-m1-mirage",
-      "dem_path": null
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
     },
     {
-      "match_id": 8570055279703349083,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8570055279703349083.db",
-      "match_db_size_bytes": 341336064,
-      "demo_stem": "furia-vs-natus-vincere-m2-inferno",
-      "dem_path": null
+      "demo_name": "2026-vitality-vs-the-mongolz-m1-mirage",
+      "match_id": 5941332403014246196,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
     },
     {
-      "match_id": 8611336490562385614,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8611336490562385614.db",
-      "match_db_size_bytes": 254107648,
-      "demo_stem": "legacy-vs-flyquest-m1-overpass",
-      "dem_path": null
+      "demo_name": "astralis-vs-furia-m1-overpass",
+      "match_id": 2460015568413386692,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
     },
     {
-      "match_id": 8706684547965396611,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8706684547965396611.db",
-      "match_db_size_bytes": 75292672,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/vitality-vs-the-mongolz-m2-nuke.dem"
+      "demo_name": "astralis-vs-furia-m2-mirage",
+      "match_id": 1024017916937813269,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
     },
     {
-      "match_id": 8723273475341585650,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8723273475341585650.db",
-      "match_db_size_bytes": 273719296,
-      "demo_stem": "furia-vs-natus-vincere-m3-dust2",
-      "dem_path": null
+      "demo_name": "astralis-vs-furia-m3-nuke",
+      "match_id": 214060802801321437,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
     },
     {
-      "match_id": 8725841980998426484,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8725841980998426484.db",
-      "match_db_size_bytes": 359194624,
-      "demo_stem": "falcons-vs-parivision-m2-dust2",
-      "dem_path": null
+      "demo_name": "astralis-vs-legacy-m1-inferno",
+      "match_id": 3204582710373778572,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
     },
     {
-      "match_id": 8764816134643198102,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8764816134643198102.db",
-      "match_db_size_bytes": 347774976,
-      "demo_stem": "furia-vs-vitality-m1-nuke",
-      "dem_path": null
+      "demo_name": "astralis-vs-legacy-m2-nuke",
+      "match_id": 499260499125714115,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
     },
     {
-      "match_id": 8808975129724293285,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8808975129724293285.db",
-      "match_db_size_bytes": 290783232,
-      "demo_stem": "fut-vs-astralis-m1-dust2",
-      "dem_path": null
+      "demo_name": "aurora-vs-astralis-m1-nuke",
+      "match_id": 5621575358713334867,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
     },
     {
-      "match_id": 8846174471463006465,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8846174471463006465.db",
-      "match_db_size_bytes": 2039808,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/natus-vincere-vs-furia-m2-mirage.dem"
+      "demo_name": "aurora-vs-astralis-m2-train",
+      "match_id": 8135873708520807378,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
     },
     {
-      "match_id": 8873553327394950522,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8873553327394950522.db",
-      "match_db_size_bytes": 207798272,
-      "demo_stem": "fut-vs-astralis-m2-ancient",
-      "dem_path": null
+      "demo_name": "aurora-vs-astralis-m3-mirage",
+      "match_id": 4287226905186307444,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
     },
     {
-      "match_id": 8924229852066709154,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8924229852066709154.db",
-      "match_db_size_bytes": 332861440,
-      "demo_stem": "faze-vs-natus-vincere-m2-nuke",
-      "dem_path": null
+      "demo_name": "aurora-vs-falcons-m1-inferno",
+      "match_id": 6056036010258281678,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
     },
     {
-      "match_id": 8925606777233417703,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8925606777233417703.db",
-      "match_db_size_bytes": 901120,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/natus-vincere-vs-furia-m1-nuke.dem"
+      "demo_name": "aurora-vs-falcons-m2-train",
+      "match_id": 528504212449188254,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
     },
     {
-      "match_id": 8939536342236000485,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8939536342236000485.db",
-      "match_db_size_bytes": 282845184,
-      "demo_stem": "furia-vs-astralis-m1-train",
-      "dem_path": null
+      "demo_name": "aurora-vs-fut-m1-mirage",
+      "match_id": 2371452152082515988,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
     },
     {
-      "match_id": 8959065639100544845,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_8959065639100544845.db",
-      "match_db_size_bytes": 238743552,
-      "demo_stem": "spirit-vs-mibr-m2-vertigo",
-      "dem_path": null
+      "demo_name": "aurora-vs-fut-m2-anubis",
+      "match_id": 325379522980916953,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
     },
     {
-      "match_id": 897203930949190376,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_897203930949190376.db",
-      "match_db_size_bytes": 40710144,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/mouz-vs-vitality-m2-inferno.dem"
+      "demo_name": "aurora-vs-fut-m3-overpass",
+      "match_id": 2328920796377639224,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
     },
     {
-      "match_id": 9041949725346795732,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_9041949725346795732.db",
-      "match_db_size_bytes": 262483968,
-      "demo_stem": "saw-vs-legacy-m1-inferno",
-      "dem_path": null
-    },
-    {
-      "match_id": 9065661203290716589,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_9065661203290716589.db",
-      "match_db_size_bytes": 153600000,
-      "demo_stem": "the-mongolz-vs-aurora-m2-dust2-p1(differentmatch)",
-      "dem_path": null
-    },
-    {
-      "match_id": 9073263199604095540,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_9073263199604095540.db",
-      "match_db_size_bytes": 258236416,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/mouz-vs-natus-vincere-m2-nuke.dem"
-    },
-    {
-      "match_id": 907853788184598752,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_907853788184598752.db",
-      "match_db_size_bytes": 180187136,
-      "demo_stem": null,
-      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/vitality-vs-g2-m2-mirage.dem"
-    },
-    {
+      "demo_name": "aurora-vs-legacy-m1-dust2",
       "match_id": 965010442901378937,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_965010442901378937.db",
-      "match_db_size_bytes": 332120064,
-      "demo_stem": "aurora-vs-legacy-m1-dust2",
-      "dem_path": null
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
     },
     {
+      "demo_name": "aurora-vs-legacy-m2-mirage",
+      "match_id": 7097485993104638456,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "aurora-vs-legacy-m3-train",
       "match_id": 970705804282228187,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_970705804282228187.db",
-      "match_db_size_bytes": 441315328,
-      "demo_stem": "aurora-vs-legacy-m3-train",
-      "dem_path": null
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
     },
     {
+      "demo_name": "aurora-vs-legacy-m4-inferno",
+      "match_id": 8458487664747984675,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "aurora-vs-legacy-m5-nuke",
+      "match_id": 3081548064375597710,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "b8-vs-aurora-m1-dust2",
+      "match_id": 2429571703568222324,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "b8-vs-aurora-m2-mirage",
+      "match_id": 8379527485957961904,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "b8-vs-aurora-m3-overpass",
+      "match_id": 7205582561358098322,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "b8-vs-pain-m1-dust2",
+      "match_id": 5312606395923570398,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "b8-vs-pain-m2-mirage",
+      "match_id": 1396514152594356861,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "cloud9-vs-vitality-m1-inferno",
+      "match_id": 7032684793653340106,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "ence-vs-falcons-m2-overpass",
+      "match_id": 3891802428543584717,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "eternal-fire-vs-natus-vincere-m1-mirage",
+      "match_id": 5984234172733252896,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "eternal-fire-vs-natus-vincere-m2-inferno",
+      "match_id": 7298504660386629493,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "falcons-vs-3dmax-m1-nuke",
+      "match_id": 3680340186011683247,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "falcons-vs-3dmax-m2-dust2",
+      "match_id": 5500950922448328108,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "falcons-vs-aurora-m1-anubis",
+      "match_id": 7656204921720727251,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "falcons-vs-aurora-m2-mirage",
+      "match_id": 5329553944583559093,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "falcons-vs-aurora-m3-inferno",
+      "match_id": 1436986465226211426,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "falcons-vs-faze-m1-nuke",
+      "match_id": 1425230260566919638,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "falcons-vs-faze-m2-ancient",
+      "match_id": 3971786005762061371,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "falcons-vs-faze-m3-mirage",
+      "match_id": 328224034346248377,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "falcons-vs-furia-m1-inferno",
+      "match_id": 1901534687649751146,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "falcons-vs-furia-m2-mirage",
+      "match_id": 4938748941642720496,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "falcons-vs-g2-m1-mirage",
+      "match_id": 272394379377658227,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "falcons-vs-g2-m2-nuke",
+      "match_id": 2980858070178274788,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "falcons-vs-g2-m3-ancient",
+      "match_id": 4886343711582863514,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "falcons-vs-pain-m1-inferno",
+      "match_id": 3381567288768929112,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "falcons-vs-pain-m2-ancient",
+      "match_id": 7249049041983998020,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "falcons-vs-parivision-m1-mirage",
+      "match_id": 1389167367274647744,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "falcons-vs-parivision-m2-dust2",
+      "match_id": 8725841980998426484,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "falcons-vs-parivision-m3-inferno",
+      "match_id": 672367828423769375,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "faze-vs-aurora-m1-inferno",
+      "match_id": 3679845381511128344,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "faze-vs-aurora-m2-mirage",
+      "match_id": 1206370711021406030,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "faze-vs-aurora-m3-overpass",
+      "match_id": 4223054957165825623,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "faze-vs-flyquest-m1-anubis",
+      "match_id": 4695603286377783303,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "faze-vs-flyquest-m2-nuke",
+      "match_id": 2510067276639811970,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "faze-vs-natus-vincere-m1-ancient",
+      "match_id": 4026689703254493406,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "faze-vs-natus-vincere-m2-nuke",
+      "match_id": 8924229852066709154,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "faze-vs-natus-vincere-m3-inferno",
+      "match_id": 5106694050454849633,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "faze-vs-spirit-m2-mirage",
+      "match_id": 138345632516189146,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "faze-vs-the-mongolz-m1-mirage",
+      "match_id": 4948602212326233624,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "faze-vs-the-mongolz-m2-inferno",
+      "match_id": 3956032407499336290,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "faze-vs-the-mongolz-m3-ancient",
+      "match_id": 648905919808070429,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-astralis-m1-train",
+      "match_id": 8939536342236000485,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-astralis-m2-nuke",
+      "match_id": 5113413114104219503,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-aurora-m1-dust2",
+      "match_id": 2674677550936251868,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-aurora-m2-mirage",
+      "match_id": 4108804044832135620,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-b8-m1-mirage",
+      "match_id": 3769477702251993531,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-b8-m2-inferno",
+      "match_id": 7184267350226785882,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-falcons-m1-inferno",
+      "match_id": 3500788740002644519,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-falcons-m1-mirage",
+      "match_id": 7843503653642014139,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-falcons-m1-train",
+      "match_id": 5938200089143290985,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-falcons-m2-inferno",
+      "match_id": 1345550734006338860,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-falcons-m2-nuke",
+      "match_id": 3181705809305636438,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-falcons-m2-nuke(1)",
+      "match_id": 3313932895308866719,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-falcons-m3-anubis",
+      "match_id": 4496792989652879874,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-falcons-m3-train",
+      "match_id": 470061886086518259,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-falcons-m4-mirage",
+      "match_id": 4238854950221180073,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-fut-m1-mirage",
+      "match_id": 7170811853863129827,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-fut-m2-overpass",
+      "match_id": 6980352803042055160,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-fut-m3-anubis",
+      "match_id": 5767979323577175840,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-natus-vincere-m1-mirage",
+      "match_id": 4459553878150913169,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-natus-vincere-m2-inferno",
+      "match_id": 8570055279703349083,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-natus-vincere-m2-inferno(1)",
+      "match_id": 6979894167215991947,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-natus-vincere-m3-dust2",
+      "match_id": 8723273475341585650,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-natus-vincere-m3-nuke",
+      "match_id": 2137645170168718708,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-natus-vincere-m4-dust2",
+      "match_id": 1787559818232428882,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-natus-vincere-nuke",
+      "match_id": 2454689164319019602,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-pain-m1-inferno",
+      "match_id": 1860684732900051178,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-pain-m2-dust2",
+      "match_id": 3895843924261625815,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-parivision-m1-dust2",
+      "match_id": 5639168896788109977,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-parivision-m2-inferno",
+      "match_id": 3519109717850203675,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-parivision-m3-mirage",
+      "match_id": 1353321914364551676,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-the-mongolz-nuke",
+      "match_id": 4118308100395583527,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-vitality-m1-mirage",
+      "match_id": 3617667970904856962,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-vitality-m1-nuke",
+      "match_id": 8764816134643198102,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-vitality-m2-inferno",
+      "match_id": 2796366404829286269,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-vitality-m2-overpass",
+      "match_id": 8014369995370595675,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-vitality-m3-inferno",
+      "match_id": 6740024381394518696,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-vitality-m3-nuke",
+      "match_id": 6339940142015115932,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "furia-vs-vitality-m4-overpass",
+      "match_id": 8315184209259074872,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "fut-vs-astralis-m1-dust2",
+      "match_id": 8808975129724293285,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "fut-vs-astralis-m2-ancient",
+      "match_id": 8873553327394950522,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "fut-vs-astralis-m3-overpass",
+      "match_id": 4729614370357325617,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "g2-vs-falcons-m1-ancient",
+      "match_id": 2108061991683222609,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "g2-vs-falcons-m2-train",
+      "match_id": 4982572509065746837,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "g2-vs-mouz-m1-overpass-p3",
+      "match_id": 2167156441938940112,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "g2-vs-mouz-m2-dust2-p1",
+      "match_id": 1272030366284206418,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "g2-vs-natus-vincere-m1-ancient",
+      "match_id": 7185475621878496377,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "g2-vs-natus-vincere-m2-nuke",
+      "match_id": 4315130445971420929,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "g2-vs-natus-vincere-m3-inferno",
+      "match_id": 6247317182621438110,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "g2-vs-spirit-m1-anubis",
+      "match_id": 4450862520688478860,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "g2-vs-spirit-m2-overpass",
+      "match_id": 4218192694333266580,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "g2-vs-spirit-m3-dust2",
+      "match_id": 1520509844003787246,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "g2-vs-virtuspro-m1-dust2",
+      "match_id": 7309047136083624217,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "g2-vs-virtuspro-m2-ancient",
+      "match_id": 714673762830392230,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "gamerlegion-vs-aurora-m1-overpass",
+      "match_id": 3170584591875036144,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "gamerlegion-vs-aurora-m2-dust2",
+      "match_id": 5550404415456676522,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "gamerlegion-vs-falcons-m1-train",
+      "match_id": 4918458006625036521,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "gamerlegion-vs-falcons-m2-nuke",
+      "match_id": 3917185276137902256,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "gamerlegion-vs-pain-m1-nuke",
+      "match_id": 8140228658511890823,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "gamerlegion-vs-pain-m2-overpass",
+      "match_id": 6519999866844160966,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "gamerlegion-vs-pain-m3-dust2",
+      "match_id": 5910630698869843535,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "gamerlegion-vs-the-mongolz-m1-overpass-p2",
+      "match_id": 5381538896448038314,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "gamerlegion-vs-the-mongolz-m2-inferno",
+      "match_id": 244976170828907754,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "imperial-vs-the-mongolz-dust2",
+      "match_id": 7114279511009796863,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "legacy-vs-flyquest-m1-overpass",
+      "match_id": 8611336490562385614,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "legacy-vs-flyquest-m2-dust2",
+      "match_id": 5501450460708774000,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "mouz-vs-cloud9-m3-ancient",
+      "match_id": 5110170300155805562,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "mouz-vs-falcons-m1-dust2",
+      "match_id": 8086038251181715151,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "mouz-vs-falcons-m2-nuke",
+      "match_id": 6684609509859346842,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "mouz-vs-faze-m1-mirage",
+      "match_id": 3133951572754539282,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "mouz-vs-faze-m2-inferno",
+      "match_id": 4008804498772854171,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "mouz-vs-furia-m1-nuke-p2",
+      "match_id": 7131664035098005965,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "mouz-vs-furia-m1-train",
+      "match_id": 27142949788747259,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "mouz-vs-furia-m2-mirage",
+      "match_id": 7695564694941801728,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "mouz-vs-furia-m2-mirage-p1",
+      "match_id": 6073727489055594203,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "mouz-vs-furia-m3-inferno",
+      "match_id": 3798595084393999117,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "mouz-vs-furia-m3-inferno_esports",
+      "match_id": 1086251240410403892,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "mouz-vs-fut-m1-mirage",
+      "match_id": 6466423603022674677,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "mouz-vs-natus-vincere-m1-dust2",
+      "match_id": 6393252038121428019,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "mouz-vs-natus-vincere-m3-mirage",
+      "match_id": 138902736265038260,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "parivision-vs-vitality-m1-overpass",
+      "match_id": 1222528259192870018,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "parivision-vs-vitality-m2-dust2",
+      "match_id": 4442149497471419619,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "parivision-vs-vitality-m3-inferno",
+      "match_id": 7919349311842624804,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "passion-ua-vs-liquid-m1-train",
+      "match_id": 248558911835883491,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "passion-ua-vs-liquid-m2-mirage",
+      "match_id": 2809003910921410690,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "saw-vs-legacy-m1-inferno",
+      "match_id": 9041949725346795732,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "saw-vs-legacy-m2-nuke",
+      "match_id": 5657130603952784117,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "saw-vs-legacy-m3-ancient",
+      "match_id": 1113740604439489209,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "spirit-vs-astralis-m1-dust2",
+      "match_id": 256218403229758401,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "spirit-vs-astralis-m2-overpass",
+      "match_id": 6663098645655717733,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "spirit-vs-falcons-m1-anubis",
+      "match_id": 8400575736831236483,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "spirit-vs-faze-m1-mirage",
+      "match_id": 345688893539286927,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "spirit-vs-faze-m2-nuke",
+      "match_id": 4515095340041939324,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "spirit-vs-faze-m3-vertigo",
+      "match_id": 1789133555290750070,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "spirit-vs-furia-m1-mirage",
+      "match_id": 1902566149900205214,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "spirit-vs-g2-m2-nuke",
+      "match_id": 5253038098191573331,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "spirit-vs-mibr-m2-vertigo",
+      "match_id": 8959065639100544845,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "spirit-vs-mouz-m1-mirage",
+      "match_id": 5892668006689104848,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "spirit-vs-mouz-m2-dust2",
+      "match_id": 1100228761377519882,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "spirit-vs-mouz-m3-nuke",
+      "match_id": 1414918644116646251,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "spirit-vs-the-mongolz-m1-nuke",
+      "match_id": 3793252518494217809,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "spirit-vs-the-mongolz-m2-mirage",
+      "match_id": 1724364855108319020,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "spirit-vs-the-mongolz-m3-ancient",
+      "match_id": 7662026932760277534,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "the-mongolz-vs-aurora-m1-mirage",
+      "match_id": 2697777379858931711,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "the-mongolz-vs-aurora-m2-dust-p2",
+      "match_id": 7443564290054233367,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "the-mongolz-vs-aurora-m2-dust-p2(different match)",
+      "match_id": 7426743448630103688,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "the-mongolz-vs-aurora-m2-dust2-p1",
+      "match_id": 3829467553198645914,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "the-mongolz-vs-aurora-m2-dust2-p1(differentmatch)",
+      "match_id": 9065661203290716589,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "the-mongolz-vs-aurora-m3-nuke",
+      "match_id": 2799721517177866409,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "the-mongolz-vs-aurora-m3-nuke(differentmatch)",
+      "match_id": 723938032343515017,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "the-mongolz-vs-furia-m1-mirage",
+      "match_id": 7881628469299324172,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "the-mongolz-vs-furia-m2-inferno",
+      "match_id": 7073013273001125027,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "the-mongolz-vs-furia-m3-nuke",
+      "match_id": 2302162131315884707,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "the-mongolz-vs-furia-m4-overpass",
+      "match_id": 6002721892498045039,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "the-mongolz-vs-furia-m5-dust2",
+      "match_id": 188103570660876584,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "the-mongolz-vs-liquid-m1-dust2",
+      "match_id": 3874524605940943120,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "the-mongolz-vs-liquid-m2-mirage",
+      "match_id": 4722192831957666532,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "the-mongolz-vs-liquid-m3-ancient",
+      "match_id": 2844767710800249183,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "the-mongolz-vs-vitality-m1-mirage",
+      "match_id": 1876580732272567560,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "the-mongolz-vs-vitality-m2-dust2",
+      "match_id": 6546526763147926043,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "the-mongolz-vs-vitality-m3-nuke",
+      "match_id": 1487368522645509217,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "vitality-vs-aurora-m1-ancient",
+      "match_id": 6569881487871688149,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "vitality-vs-aurora-m2-overpass",
+      "match_id": 7718489764653961383,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "vitality-vs-falcons-m1-mirage",
+      "match_id": 8281031692823620168,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "vitality-vs-falcons-m2-inferno",
+      "match_id": 1643308487712556275,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "vitality-vs-faze-m1-nuke",
+      "match_id": 4782313960303487077,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "vitality-vs-faze-m2-dust2",
       "match_id": 981773013375998522,
-      "match_db_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data/match_981773013375998522.db",
-      "match_db_size_bytes": 210452480,
-      "demo_stem": "vitality-vs-faze-m2-dust2",
-      "dem_path": null
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "vitality-vs-faze-m3-inferno",
+      "match_id": 1964782899210418509,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "vitality-vs-faze-m3-inferno(different_match)",
+      "match_id": 8331025315922383906,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "vitality-vs-faze-m3-inferno(differentmatch)",
+      "match_id": 6647866482825448320,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "vitality-vs-faze-m4-overpass",
+      "match_id": 5503432792736688006,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "vitality-vs-furia-m1-ancient",
+      "match_id": 7046987023009586207,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "vitality-vs-furia-m2-inferno",
+      "match_id": 2105891293966856419,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "vitality-vs-furia-m3-overpass",
+      "match_id": 5688232509757972114,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "vitality-vs-g2-m1-dust2",
+      "match_id": 6614749117776075469,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "vitality-vs-the-mongolz-m1-mirage",
+      "match_id": 634245929522375116,
+      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/ingested/vitality-vs-the-mongolz-m1-mirage.dem",
+      "dem_size_bytes": 650600907,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "vitality-vs-the-mongolz-m2-dust2",
+      "match_id": 458632168716343751,
+      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/ingested/vitality-vs-the-mongolz-m2-dust2.dem",
+      "dem_size_bytes": 422874054,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "vitality-vs-the-mongolz-m2-nuke",
+      "match_id": 8706684547965396611,
+      "dem_path": "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/vitality-vs-the-mongolz-m2-nuke.dem",
+      "dem_size_bytes": 400747292,
+      "in_playertickstate": true,
+      "in_playermatchstats": false
+    },
+    {
+      "demo_name": "vitality-vs-the-mongolz-m3-nuke",
+      "match_id": 6477018116211700957,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "vitality-vs-virtus-pro-m1-mirage",
+      "match_id": 730055187535882054,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "vitality-vs-virtus-pro-m2-inferno",
+      "match_id": 322281239645554504,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
+    },
+    {
+      "demo_name": "vitality-vs-virtus-pro-m3-dust2",
+      "match_id": 6186879118144824780,
+      "dem_path": null,
+      "dem_size_bytes": null,
+      "in_playertickstate": true,
+      "in_playermatchstats": true
     }
   ]
 }
