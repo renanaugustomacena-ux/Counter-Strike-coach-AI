@@ -26,7 +26,10 @@ build/
 
 # Logs
 *.log
-logs/
+/logs/*
+!/logs/README.md
+!/logs/README_IT.md
+!/logs/README_PT.md
 
 # Data & Cache
 *.dem
@@ -141,7 +144,10 @@ PYCHARM_CONFIGURATION_GUIDE*.md
 /Programma_CS2_RENAN/data/demo_cache/
 
 # Reports (generated artifacts, regenerable)
-reports/
+/reports/*
+!/reports/README.md
+!/reports/README_IT.md
+!/reports/README_PT.md
 
 # Build/runtime artifacts at root
 Build_Health_Report.json
