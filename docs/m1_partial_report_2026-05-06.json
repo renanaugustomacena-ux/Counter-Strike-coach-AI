@@ -1,0 +1,51 @@
+{
+  "generated_at": "2026-05-06T22:30:00+03:00",
+  "phase": "M1 — populate empty monolith tables from available data",
+  "status": "partial",
+  "doctrine_s129": {
+    "q1_question": "What roundstats/playermatchstats enrichment can we derive from the 3 available .dem files?",
+    "q2_simplest": "populate_round_stats.py — single pass: parse .dem → INSERT roundstats → UPDATE playermatchstats",
+    "q3_idempotent": true,
+    "q4_tested_subset": "3 .dem files processed; round-1 boundary warning on m2-nuke logged, not fatal",
+    "q5_reversible": "DELETE FROM roundstats WHERE demo_name IN (...); playermatchstats columns nullable"
+  },
+  "roundstats": {
+    "rows_inserted": 640,
+    "demos_processed": 3,
+    "demos_skipped": 201,
+    "breakdown": {
+      "vitality-vs-the-mongolz-m1-mirage": 300,
+      "vitality-vs-the-mongolz-m2-dust2": 180,
+      "vitality-vs-the-mongolz-m2-nuke": 160
+    },
+    "warnings": [
+      "vitality-vs-the-mongolz-m2-nuke: missing round 1 boundaries — round_number starts at 2"
+    ]
+  },
+  "playermatchstats_enrichment": {
+    "rows_updated": 30,
+    "fields_enriched": [
+      "trade_kill_ratio",
+      "was_traded_ratio",
+      "avg_trade_response_ticks",
+      "thrusmoke_kill_pct",
+      "wallbang_kill_pct",
+      "he_damage_per_round",
+      "molotov_damage_per_round",
+      "smokes_per_round"
+    ]
+  },
+  "matchresult": {
+    "rows": 0,
+    "blocker": "Needs HLTV match-result data (team IDs, event names). Blocked on H2 code + H3 execution."
+  },
+  "mapveto": {
+    "rows": 0,
+    "blocker": "Needs HLTV veto sequences. Blocked on H2 code + H3 execution."
+  },
+  "blockers": {
+    "roundstats_beyond_3_demos": "Blocked on M2 (.dem re-acquisition via HLTV demo URLs from H3). 201 demos have playermatchstats but no .dem file on disk.",
+    "matchresult_mapveto": "Structurally blocked — HLTV scraper currently only fetches player stats, not match results. H2 extends scraper for match-level data. H3 executes (requires FlareSolverr + user authorization)."
+  },
+  "next_decision": "Data layer is defensible (392M ticks, 2030 playermatchstats, 640 roundstats, 55 recovered shards). User feedback (2026-05-05): run training pipeline before proposing more data work. Surface decision: train now vs H2 code sprint."
+}
