@@ -16,6 +16,7 @@ import re
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
+    QComboBox,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -34,9 +35,7 @@ from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.apps.qt_app.core.widgets_helpers import make_button
 from Programma_CS2_RENAN.apps.qt_app.viewmodels.coach_vm import CoachViewModel
-from Programma_CS2_RENAN.apps.qt_app.viewmodels.coaching_chat_vm import (
-    CoachingChatViewModel,
-)
+from Programma_CS2_RENAN.apps.qt_app.viewmodels.coaching_chat_vm import CoachingChatViewModel
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.empty_state import EmptyState
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.progress_ring import ProgressRing
@@ -52,9 +51,7 @@ _QUICK_ACTION_KEYS = [
     ("quick_action_focus", "What should I focus on improving?"),
 ]
 
-_MAP_RE = re.compile(
-    r"(mirage|inferno|dust2|overpass|ancient|anubis|nuke|vertigo|train)"
-)
+_MAP_RE = re.compile(r"(mirage|inferno|dust2|overpass|ancient|anubis|nuke|vertigo|train)")
 
 
 def _map_from_demo(demo_name: str) -> str:
@@ -102,6 +99,11 @@ class CoachScreen(QWidget):
             self._on_belief(current)
         self._coach_vm.load_insights()
         self._chat_vm.check_availability()
+        # Lazy-populate the LLM model combobox on first show — Ollama
+        # /api/tags is a local 3 s call but we still defer it past
+        # __init__ so dock construction stays snappy.
+        if not getattr(self, "_llm_models_loaded", False):
+            self._refresh_llm_models()
 
     def on_leave(self) -> None:
         self._typing_label.setVisible(False)
@@ -150,9 +152,7 @@ class CoachScreen(QWidget):
         self._chat_status_chip = StatusChip("Coach: Checking…", severity="neutral")
         title_row.addWidget(self._chat_status_chip)
 
-        self._chat_toggle_btn = make_button(
-            "Open chat", variant="secondary", fixed_width=120
-        )
+        self._chat_toggle_btn = make_button("Open chat", variant="secondary", fixed_width=120)
         self._chat_toggle_btn.setFixedHeight(32)
         self._chat_toggle_btn.clicked.connect(self._toggle_chat)
         title_row.addWidget(self._chat_toggle_btn)
@@ -165,6 +165,10 @@ class CoachScreen(QWidget):
         # Insights card
         self._insights_card = self._build_insights_card()
         content_layout.addWidget(self._insights_card)
+
+        # LLM Coach settings card (Cluster E — Gemma / Ollama model selector)
+        self._llm_settings_card = self._build_llm_settings_card()
+        content_layout.addWidget(self._llm_settings_card)
 
         content_layout.addStretch(1)
         self._main_scroll.setWidget(content)
@@ -201,9 +205,7 @@ class CoachScreen(QWidget):
 
         ctx_caption = QLabel("BELIEF CONFIDENCE")
         Typography.apply(ctx_caption, "caption")
-        ctx_caption.setStyleSheet(
-            f"color: {tokens.text_secondary}; background: transparent;"
-        )
+        ctx_caption.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
         ctx.addWidget(ctx_caption)
 
         self._belief_value_label = QLabel("—")
@@ -215,9 +217,7 @@ class CoachScreen(QWidget):
 
         ctx_subtitle = QLabel("How confident the model is in its current read")
         ctx_subtitle.setFont(Typography.font("body"))
-        ctx_subtitle.setStyleSheet(
-            f"color: {tokens.text_tertiary}; background: transparent;"
-        )
+        ctx_subtitle.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
         ctx_subtitle.setWordWrap(True)
         ctx.addWidget(ctx_subtitle)
 
@@ -236,12 +236,131 @@ class CoachScreen(QWidget):
             icon_text="◌",
             title="No insights yet",
             description=(
-                "Once you analyze a few demos, coaching insights will land "
-                "here automatically."
+                "Once you analyze a few demos, coaching insights will land " "here automatically."
             ),
         )
         self._insights_container.addWidget(self._insights_empty)
         return card
+
+    # ── LLM Coach settings ──
+
+    def _build_llm_settings_card(self) -> Card:
+        """Local-LLM picker for the natural-language coaching layer.
+
+        Discovers all locally-installed Ollama models via /api/tags and
+        exposes them in a QComboBox. Selection persists to
+        user_settings.json["LLM_COACH_MODEL"] which llm_service.py reads
+        at startup. Refresh button re-queries Ollama (in case the user
+        just `ollama pull`'d a new model).
+        """
+        from Programma_CS2_RENAN.apps.qt_app.core.widgets_helpers import make_button
+
+        tokens = get_tokens()
+        card = Card(title="LLM Coach", subtitle="Local Ollama model", depth="raised")
+        body = card.content_layout
+        body.setSpacing(tokens.spacing_md)
+
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(tokens.spacing_sm)
+
+        model_label = QLabel("Model:")
+        model_label.setFont(Typography.font("body"))
+        model_label.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
+        row.addWidget(model_label)
+
+        self._llm_model_combo = QComboBox()
+        self._llm_model_combo.setMinimumWidth(220)
+        self._llm_model_combo.currentTextChanged.connect(self._on_llm_model_picked)
+        row.addWidget(self._llm_model_combo, 1)
+
+        refresh_btn = make_button("Refresh", variant="secondary", fixed_width=100)
+        refresh_btn.setFixedHeight(32)
+        refresh_btn.clicked.connect(self._refresh_llm_models)
+        row.addWidget(refresh_btn)
+
+        body.addLayout(row)
+
+        self._llm_model_status = QLabel("Click Refresh to discover installed models.")
+        self._llm_model_status.setFont(Typography.font("caption"))
+        self._llm_model_status.setStyleSheet(
+            f"color: {tokens.text_muted}; background: transparent;"
+        )
+        self._llm_model_status.setWordWrap(True)
+        body.addWidget(self._llm_model_status)
+
+        # Initial population — run once on first show via on_enter so
+        # the network call doesn't block the dock setup.
+        self._llm_models_loaded = False
+        return card
+
+    def _refresh_llm_models(self) -> None:
+        """Re-query Ollama and rebuild the model combobox.
+
+        Runs on the main thread because /api/tags is local + 3 s timeout;
+        an off-thread job would cost more in plumbing than the request
+        itself. If the user has 50+ models it'll still finish in <100 ms.
+        """
+        from Programma_CS2_RENAN.backend.services.llm_service import get_llm_service
+        from Programma_CS2_RENAN.core.config import get_setting
+
+        try:
+            service = get_llm_service()
+            models = service.list_models()
+        except Exception as exc:  # noqa: BLE001 — surface any error in the UI
+            self._llm_model_status.setText(f"Failed to query Ollama: {exc}")
+            return
+
+        self._llm_model_combo.blockSignals(True)
+        self._llm_model_combo.clear()
+        if not models:
+            self._llm_model_combo.addItem("(no models found — run `ollama pull <model>`)")
+            self._llm_model_combo.setEnabled(False)
+            self._llm_model_status.setText(
+                "Ollama unreachable or no models installed. "
+                "Start `ollama serve` and `ollama pull gemma4:e2b` to enable the LLM Coach."
+            )
+            self._llm_model_combo.blockSignals(False)
+            return
+
+        self._llm_model_combo.setEnabled(True)
+        # Sort: gemma family first (production default), then alphabetical.
+        models.sort(key=lambda m: (not m["name"].startswith("gemma"), m["name"]))
+        for m in models:
+            size_mb = m["size"] // (1024 * 1024) if m["size"] else 0
+            label = f"{m['name']}  ({size_mb} MB)" if size_mb else m["name"]
+            self._llm_model_combo.addItem(label, m["name"])
+
+        # Select the saved model if present, else first in list.
+        saved = str(get_setting("LLM_COACH_MODEL", "") or "")
+        idx = -1
+        if saved:
+            for i in range(self._llm_model_combo.count()):
+                if self._llm_model_combo.itemData(i) == saved:
+                    idx = i
+                    break
+        if idx < 0:
+            idx = 0
+        self._llm_model_combo.setCurrentIndex(idx)
+        self._llm_model_combo.blockSignals(False)
+        self._llm_model_status.setText(f"{len(models)} models discovered.")
+        self._llm_models_loaded = True
+
+    def _on_llm_model_picked(self, _label: str) -> None:
+        """Persist the model selection. The actual model name is on the
+        item's userData (the bare 'gemma4:e2b' form, not the size suffix).
+        llm_service.py picks this up on next get_llm_service() invocation
+        via _resolve_default_model()."""
+        from Programma_CS2_RENAN.core.config import save_user_setting
+
+        idx = self._llm_model_combo.currentIndex()
+        if idx < 0:
+            return
+        model_name = self._llm_model_combo.itemData(idx)
+        if not model_name or not isinstance(model_name, str):
+            return
+        save_user_setting("LLM_COACH_MODEL", model_name)
+        self._llm_model_status.setText(f"Selected: {model_name} (saved)")
 
     # ── Chat panel ──
 
@@ -269,9 +388,7 @@ class CoachScreen(QWidget):
 
         chat_title = QLabel("CHAT")
         Typography.apply(chat_title, "caption")
-        chat_title.setStyleSheet(
-            f"color: {tokens.text_secondary}; background: transparent;"
-        )
+        chat_title.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
         header.addWidget(chat_title)
 
         self._inline_status_chip = StatusChip("Checking…", severity="neutral")
@@ -295,9 +412,7 @@ class CoachScreen(QWidget):
         msg_scroll = QScrollArea()
         msg_scroll.setWidgetResizable(True)
         msg_scroll.setFrameShape(QFrame.NoFrame)
-        msg_scroll.setStyleSheet(
-            "QScrollArea { border: none; background: transparent; }"
-        )
+        msg_scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
         self._msg_container = QWidget()
         self._msg_container.setStyleSheet("background: transparent;")
         self._msg_layout = QVBoxLayout(self._msg_container)
@@ -416,8 +531,7 @@ class CoachScreen(QWidget):
         if not insights:
             self._insights_empty.set_title("No insights yet")
             self._insights_empty.set_description(
-                "Once you analyze a few demos, coaching insights will land "
-                "here automatically."
+                "Once you analyze a few demos, coaching insights will land " "here automatically."
             )
             self._insights_empty.setVisible(True)
             return
@@ -458,9 +572,7 @@ class CoachScreen(QWidget):
                 ctx_text += f" ON {map_tag.upper()}"
             ctx = QLabel(ctx_text)
             Typography.apply(ctx, "caption")
-            ctx.setStyleSheet(
-                f"color: {tokens.accent_primary}; background: transparent;"
-            )
+            ctx.setStyleSheet(f"color: {tokens.accent_primary}; background: transparent;")
             body.addWidget(ctx)
 
         # Title row + severity badge
@@ -470,17 +582,13 @@ class CoachScreen(QWidget):
         title = QLabel(insight.get("title", "Insight"))
         title.setTextFormat(Qt.PlainText)  # FE-01 — block HTML rendering
         title.setFont(Typography.font("subtitle"))
-        title.setStyleSheet(
-            f"color: {tokens.text_primary}; background: transparent;"
-        )
+        title.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
         title_row.addWidget(title)
         title_row.addStretch(1)
 
         sev_chip = QLabel((insight.get("severity") or "info").upper())
         Typography.apply(sev_chip, "caption")
-        sev_chip.setStyleSheet(
-            f"color: {sev_color}; background: transparent;"
-        )
+        sev_chip.setStyleSheet(f"color: {sev_color}; background: transparent;")
         title_row.addWidget(sev_chip)
         body.addLayout(title_row)
 
@@ -489,9 +597,7 @@ class CoachScreen(QWidget):
         msg.setTextFormat(Qt.PlainText)
         msg.setWordWrap(True)
         msg.setFont(Typography.font("body"))
-        msg.setStyleSheet(
-            f"color: {tokens.text_secondary}; background: transparent;"
-        )
+        msg.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
         body.addWidget(msg)
 
         # Meta row
@@ -502,9 +608,7 @@ class CoachScreen(QWidget):
             focus_lbl = QLabel(f"Focus  ·  {focus}")
             focus_lbl.setTextFormat(Qt.PlainText)
             focus_lbl.setFont(Typography.font("caption"))
-            focus_lbl.setStyleSheet(
-                f"color: {tokens.text_tertiary}; background: transparent;"
-            )
+            focus_lbl.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
             meta_row.addWidget(focus_lbl)
         meta_row.addStretch(1)
         date_str = insight.get("created_at") or ""
@@ -579,9 +683,7 @@ class CoachScreen(QWidget):
             text_label.setWordWrap(True)
             text_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
             text_label.setFont(Typography.font("body"))
-            text_label.setStyleSheet(
-                f"color: {text_color}; background: transparent;"
-            )
+            text_label.setStyleSheet(f"color: {text_color}; background: transparent;")
             b_layout.addWidget(text_label)
 
             wrapper = QWidget()

@@ -15,6 +15,12 @@ Depth tiers (opt-in via ``depth=`` kwarg):
                  drop (documented Qt issue). When a chart child is detected
                  at first render, depth silently downgrades to 'raised' and
                  emits one WARNING via cs2analyzer.qt_app.card.
+    frosted      Soft-frost surface — semi-transparent fill (frost_bg),
+                 hairline highlight border (frost_border), and an
+                 elevated drop shadow tinted with the theme's accent
+                 (frost_glow). Approximates the visual of a backdrop-blur
+                 panel without true backdrop compositing (which Qt does
+                 not natively support). Same QChartView guard as floating.
 """
 
 from typing import Literal
@@ -42,7 +48,7 @@ class Card(QFrame):
         self,
         title: str = "",
         subtitle: str = "",
-        depth: Literal["flat", "raised", "highlighted", "floating"] = "flat",
+        depth: Literal["flat", "raised", "highlighted", "floating", "frosted"] = "flat",
         parent: QWidget | None = None,
     ):
         super().__init__(parent)
@@ -52,6 +58,19 @@ class Card(QFrame):
         # this property is set; polish() re-evaluates selectors.
         self.setProperty("depth", depth)
         tokens = get_tokens()
+        # Apply theme-aware frost stylesheet inline — the dashboard_card
+        # QSS doesn't ship a frosted variant in the global theme rules,
+        # so push the rgba fill / hairline border directly onto the
+        # widget instance. Stays consistent across CS2 / CSGO / CS16
+        # palettes because the tokens themselves are theme-driven.
+        if depth == "frosted":
+            self.setStyleSheet(
+                f"#dashboard_card {{ "
+                f"background-color: {tokens.frost_bg}; "
+                f"border: 1px solid {tokens.frost_border}; "
+                f"border-radius: 12px; "
+                f"}}"
+            )
 
         self._layout = QVBoxLayout(self)
         self._layout.setSpacing(tokens.spacing_sm)
@@ -110,11 +129,13 @@ class Card(QFrame):
     def _apply_depth_effect(self) -> None:
         """Attach or strip the drop-shadow effect based on self._depth.
 
-        ``floating`` + a QChartView descendant = FPS tank; downgrade to
-        ``raised`` with one warning so the bug is visible without
-        needing a profiler.
+        ``floating`` and ``frosted`` both mount a QGraphicsDropShadowEffect.
+        Both are guarded against QChartView descendants — drop-shadow +
+        chart redraw causes a 10-20x FPS drop. When a chart child is
+        present, the depth silently downgrades to ``raised`` with one
+        WARNING so the bug is visible without needing a profiler.
         """
-        if self._depth != "floating":
+        if self._depth not in ("floating", "frosted"):
             self.setGraphicsEffect(None)
             return
 
@@ -127,9 +148,10 @@ class Card(QFrame):
 
         if QChartView is not None and self.findChildren(QChartView):
             _logger.warning(
-                "Card depth=floating downgraded to raised on %r: "
+                "Card depth=%s downgraded to raised on %r: "
                 "QChartView child present (drop-shadow + chart redraw "
                 "causes 10-20x FPS drop)",
+                self._depth,
                 self.title_label.text() or "<untitled>",
             )
             self._depth = "raised"
@@ -139,9 +161,44 @@ class Card(QFrame):
             self.setGraphicsEffect(None)
             return
 
+        if self._depth == "frosted":
+            tokens = get_tokens()
+            # Parse the rgba(r, g, b, a) glow string into a QColor so the
+            # shadow tints with the theme's accent (orange for CS2, gold
+            # for CSGO, dark-gold for CS16). frost_glow is rgba; extract
+            # the channels directly without depending on an alpha multiplier.
+            r, g, b, a = _parse_rgba(tokens.frost_glow, fallback=(0, 0, 0, 0.35))
+            effect = QGraphicsDropShadowEffect(self)
+            effect.setBlurRadius(tokens.frost_elevation_blur)
+            effect.setOffset(0, tokens.frost_elevation_offset)
+            effect.setColor(QColor(r, g, b, int(a * 255)))
+            self.setGraphicsEffect(effect)
+            return
+
+        # 'floating' fallback — soft ambient drop shadow, theme-neutral.
         effect = QGraphicsDropShadowEffect(self)
         effect.setBlurRadius(20)
         effect.setOffset(0, 4)
         # rgba(0,0,0,0.35) ~ alpha 89. Soft ambient, not a hard drop.
         effect.setColor(QColor(0, 0, 0, 89))
         self.setGraphicsEffect(effect)
+
+
+def _parse_rgba(s: str, fallback: tuple[int, int, int, float]) -> tuple[int, int, int, float]:
+    """Parse 'rgba(r, g, b, a)' or 'rgb(r, g, b)' into channel ints + alpha float.
+
+    Tolerant of whitespace; returns the fallback tuple if the string
+    doesn't match the expected shape. Used by Card._apply_depth_effect
+    to translate frost_glow (rgba string) into a QColor.
+    """
+    import re
+
+    m = re.match(
+        r"^\s*rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)\s*$",
+        s,
+    )
+    if not m:
+        return fallback
+    r, g, b = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    a = float(m.group(4)) if m.group(4) is not None else 1.0
+    return (r, g, b, a)

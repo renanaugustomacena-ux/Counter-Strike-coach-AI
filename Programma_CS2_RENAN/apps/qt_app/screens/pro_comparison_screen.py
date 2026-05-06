@@ -3,14 +3,17 @@
 Composition:
     Title rail   Pro Comparison              [● N pros loaded]
     Mode chips   [Pro vs Pro] [Me vs Pro]
-    Selectors    Player A: [combo]  Player B: [combo]   [Compare]
+    Selectors    Player A: [combo] [Details]  Player B: [combo] [Details]   [Compare]
     Body         Header card (names + optional banner)
                  Stats card (3-column grid: metric / A / B with delta-tinted values)
+
+Emits ``pro_detail_requested(int hltv_id)`` when either Details button is
+clicked. The MainWindow / app.py wires this to ProPlayerDetailScreen.
 """
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QComboBox,
     QCompleter,
@@ -52,6 +55,8 @@ def _format_value(field: str, value: float) -> str:
 
 class ProComparisonScreen(QWidget):
     """Compare two pros, or yourself against a pro."""
+
+    pro_detail_requested = Signal(int)  # emits hltv_id when Details clicked
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -128,6 +133,11 @@ class ProComparisonScreen(QWidget):
         self._combo_a.setInsertPolicy(QComboBox.NoInsert)
         sel_row.addWidget(self._combo_a)
 
+        self._details_a_btn = make_button("Details", variant="secondary", fixed_width=90)
+        self._details_a_btn.setFixedHeight(36)
+        self._details_a_btn.clicked.connect(lambda: self._open_details(self._combo_a))
+        sel_row.addWidget(self._details_a_btn)
+
         self._label_b = QLabel("Player B")
         self._label_b.setFont(Typography.font("body"))
         self._label_b.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
@@ -138,6 +148,11 @@ class ProComparisonScreen(QWidget):
         self._combo_b.setEditable(True)
         self._combo_b.setInsertPolicy(QComboBox.NoInsert)
         sel_row.addWidget(self._combo_b)
+
+        self._details_b_btn = make_button("Details", variant="secondary", fixed_width=90)
+        self._details_b_btn.setFixedHeight(36)
+        self._details_b_btn.clicked.connect(lambda: self._open_details(self._combo_b))
+        sel_row.addWidget(self._details_b_btn)
 
         self._compare_btn = make_button("Compare", variant="primary", fixed_width=120)
         self._compare_btn.setFixedHeight(36)
@@ -191,17 +206,39 @@ class ProComparisonScreen(QWidget):
         self._mode = mode
         self._chip_p_vs_p.set_checked(mode == "pro_vs_pro")
         self._chip_m_vs_p.set_checked(mode == "me_vs_pro")
-        if mode == "pro_vs_pro":
+        is_pvp = mode == "pro_vs_pro"
+        if is_pvp:
             self._label_a.setText("Player A")
             self._label_a.setVisible(True)
             self._combo_a.setVisible(True)
+            self._details_a_btn.setVisible(True)
             self._label_b.setText("Player B")
         else:
             self._label_a.setVisible(False)
             self._combo_a.setVisible(False)
+            # In Me-vs-Pro mode, hide combo_a's Details button — there's
+            # no pro selected on side A (it's "you").
+            self._details_a_btn.setVisible(False)
             self._label_b.setText("Compare against")
 
         self._body_stack.setCurrentIndex(self._page_empty)
+
+    # ── Details routing ──
+
+    def _open_details(self, combo: QComboBox) -> None:
+        """Emit pro_detail_requested with the combo's current hltv_id.
+
+        MainWindow / app.py wires the signal to ProPlayerDetailScreen.
+        Silently ignores empty selections — Details on an unset combo
+        is a no-op rather than an error popup.
+        """
+        hltv_id = combo.currentData()
+        if hltv_id is None:
+            return
+        try:
+            self.pro_detail_requested.emit(int(hltv_id))
+        except (TypeError, ValueError):
+            logger.warning("pro_detail_requested: non-int currentData(): %r", hltv_id)
 
     # ── Data flow ──
 

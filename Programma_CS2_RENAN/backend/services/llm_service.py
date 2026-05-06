@@ -20,9 +20,29 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.llm_service")
 
-# Default Ollama configuration
+# Default Ollama configuration. Resolution priority:
+#   1. OLLAMA_MODEL environment variable (deployment override)
+#   2. user_settings.json LLM_COACH_MODEL (UI selector in CoachScreen)
+#   3. "gemma4:e2b" hard default (Gemma 4 E2B, 2.3B effective, 128K ctx)
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
-DEFAULT_MODEL = os.getenv("OLLAMA_MODEL", "gemma4:e2b")  # Gemma 4 E2B (2.3B effective, 128K ctx)
+
+
+def _resolve_default_model() -> str:
+    env_choice = os.getenv("OLLAMA_MODEL")
+    if env_choice:
+        return env_choice
+    try:
+        from Programma_CS2_RENAN.core.config import get_setting
+
+        setting_choice = get_setting("LLM_COACH_MODEL", "")
+        if setting_choice:
+            return str(setting_choice)
+    except Exception:  # noqa: BLE001 — bootstrap path may run pre-config
+        pass
+    return "gemma4:e2b"
+
+
+DEFAULT_MODEL = _resolve_default_model()
 
 
 class LLMService:
@@ -34,6 +54,32 @@ class LLMService:
         self._available = None  # Cached availability status
         self._available_checked_at = 0.0  # Timestamp of last check
         self._AVAILABILITY_TTL = 60.0  # Re-check every 60 seconds
+
+    def list_models(self) -> List[Dict[str, Any]]:
+        """Return Ollama's installed-model inventory via /api/tags.
+
+        Returns a list of dicts with keys: name (str), size (int bytes),
+        modified_at (str ISO timestamp). Empty list if Ollama is
+        unreachable. Used by the LLM Coach tab in CoachScreen to populate
+        a model selector — letting the user pick between any locally
+        installed Gemma / Llama / Mistral / etc. without hardcoding.
+        """
+        try:
+            response = requests.get(f"{self.base_url}/api/tags", timeout=3)
+            if response.status_code != 200:
+                return []
+            models = response.json().get("models", []) or []
+            return [
+                {
+                    "name": m.get("name", ""),
+                    "size": int(m.get("size") or 0),
+                    "modified_at": m.get("modified_at", ""),
+                }
+                for m in models
+                if m.get("name")
+            ]
+        except (requests.ConnectionError, requests.Timeout, ValueError):
+            return []
 
     def is_available(self) -> bool:
         """Check if Ollama is running and the model is available."""

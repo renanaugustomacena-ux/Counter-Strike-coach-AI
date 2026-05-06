@@ -33,14 +33,9 @@ from PySide6.QtWidgets import (
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
-from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import (
-    rating_color,
-    rating_label,
-)
+from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import rating_color, rating_label
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
-from Programma_CS2_RENAN.apps.qt_app.viewmodels.performance_vm import (
-    PerformanceViewModel,
-)
+from Programma_CS2_RENAN.apps.qt_app.viewmodels.performance_vm import PerformanceViewModel
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.empty_state import EmptyState
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.hero_stats_strip import (
@@ -77,9 +72,11 @@ class PerformanceScreen(QWidget):
         super().__init__(parent)
         self._vm = PerformanceViewModel()
         self._vm.data_changed.connect(self._on_data)
+        self._vm.context_changed.connect(self._on_context)
         self._vm.error_changed.connect(self._on_error)
         self._vm.is_loading_changed.connect(self._on_loading)
 
+        self._latest_context: dict = {}
         self._build_ui()
 
     # ── Lifecycle ──
@@ -147,9 +144,7 @@ class PerformanceScreen(QWidget):
             description="Analyze a demo to start seeing your aggregate trends.",
             cta_text="Open Dashboard",
         )
-        self._empty_state.action_clicked.connect(
-            lambda: self._navigate("home")
-        )
+        self._empty_state.action_clicked.connect(lambda: self._navigate("home"))
         self._body_stack.addWidget(self._empty_state)
 
         self._content_scroll = QScrollArea()
@@ -191,6 +186,18 @@ class PerformanceScreen(QWidget):
 
     # ── Data → UI ──
 
+    def _on_context(self, context: dict) -> None:
+        """Cluster F — store the latest percentile dict.
+
+        ``_build_context_strip`` reads ``self._latest_context`` when the
+        UI is rebuilt by ``_on_data``. The signal arrives just after
+        data_changed in the same VM emit cycle, so we cache here and
+        rely on the data_changed-triggered rebuild to render. If the
+        context arrives BEFORE data (race), the next rebuild picks it
+        up automatically.
+        """
+        self._latest_context = dict(context or {})
+
     def _on_data(
         self,
         history: list,
@@ -218,6 +225,14 @@ class PerformanceScreen(QWidget):
         self._content_layout.insertWidget(
             self._content_layout.count() - 1,
             self._build_hero(history, utility),
+        )
+
+        # Cluster F — context strip: percentile rank vs the pro cohort.
+        # Lives directly under the hero strip so the user sees their
+        # absolute number and its rank-against-pros side by side.
+        self._content_layout.insertWidget(
+            self._content_layout.count() - 1,
+            self._build_context_strip(),
         )
 
         # Sections: trend, map stats, strengths/weaknesses, utility.
@@ -262,9 +277,7 @@ class PerformanceScreen(QWidget):
 
     def _build_hero(self, history: list, utility: dict) -> QWidget:
         ratings = [
-            float(h.get("rating") or 0)
-            for h in (history or [])
-            if h.get("rating") is not None
+            float(h.get("rating") or 0) for h in (history or []) if h.get("rating") is not None
         ]
         avg_rating = sum(ratings) / len(ratings) if ratings else 0.0
 
@@ -302,6 +315,68 @@ class PerformanceScreen(QWidget):
         ]
         return HeroStatsStrip(stats)
 
+    def _build_context_strip(self) -> QWidget:
+        """Cluster F — small Card showing percentile rank vs pro cohort.
+
+        Bound to ``self._latest_context`` so future context_changed
+        emissions repaint this widget in place. The widget is rebuilt
+        on each load_performance() call (the parent layout clears
+        between loads), so capturing the dict snapshot at construction
+        time is fine.
+        """
+        tokens = get_tokens()
+        ctx = self._latest_context or {}
+        card = Card(title="Versus pro cohort", depth="raised")
+        body = card.content_layout
+
+        if not ctx:
+            self._add_body_label(
+                body,
+                "No pro percentile data — the pro cohort is empty or you have " "no matches yet.",
+                muted=True,
+            )
+            return card
+
+        def _fmt_pct(p: float) -> str:
+            return f"{p * 100:.0f}th %"
+
+        def _sentiment(p: float) -> str:
+            if p >= 0.66:
+                return tokens.success
+            if p <= 0.33:
+                return tokens.error
+            return tokens.text_secondary
+
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(tokens.spacing_lg)
+
+        for key, label in (
+            ("rating", "Rating"),
+            ("kd", "K/D"),
+            ("adr", "ADR"),
+            ("kast", "KAST"),
+        ):
+            p = ctx.get(key)
+            if p is None:
+                continue
+            cell = QVBoxLayout()
+            cell.setContentsMargins(0, 0, 0, 0)
+            value_lbl = QLabel(_fmt_pct(float(p)))
+            value_lbl.setFont(Typography.font("h3"))
+            value_lbl.setStyleSheet(f"color: {_sentiment(float(p))}; background: transparent;")
+            label_lbl = QLabel(label)
+            label_lbl.setFont(Typography.font("caption"))
+            label_lbl.setStyleSheet(f"color: {tokens.text_muted}; background: transparent;")
+            cell.addWidget(value_lbl)
+            cell.addWidget(label_lbl)
+            wrap = QWidget()
+            wrap.setLayout(cell)
+            row.addWidget(wrap)
+        row.addStretch(1)
+        body.addLayout(row)
+        return card
+
     def _build_trend(self, history: list, is_pro_overview: bool) -> Card:
         title = "Rating trend" + (" — pro reference" if is_pro_overview else "")
         card = Card(title=title, depth="raised")
@@ -309,9 +384,7 @@ class PerformanceScreen(QWidget):
         tokens = get_tokens()
 
         ratings = [
-            float(h.get("rating") or 0)
-            for h in (history or [])
-            if h.get("rating") is not None
+            float(h.get("rating") or 0) for h in (history or []) if h.get("rating") is not None
         ]
         if not ratings:
             self._add_body_label(body, "Not enough data for trend analysis.", muted=True)
@@ -342,18 +415,14 @@ class PerformanceScreen(QWidget):
         strip.setSpacing(tokens.spacing_xxl)
 
         strip.addWidget(self._stat_block(f"{avg_r:.2f}", "AVERAGE"))
-        strip.addWidget(
-            self._stat_block(f"{min_r:.2f} — {max_r:.2f}", "RANGE", mono=True)
-        )
+        strip.addWidget(self._stat_block(f"{min_r:.2f} — {max_r:.2f}", "RANGE", mono=True))
         strip.addWidget(
             self._stat_block(
                 f"{avg_recent:.2f}", f"LAST {len(recent)}", color_value=tokens.text_primary
             )
         )
 
-        trend_block = self._stat_block(
-            f"{arrow}  {sub}", "TREND", color_value=arrow_color
-        )
+        trend_block = self._stat_block(f"{arrow}  {sub}", "TREND", color_value=arrow_color)
         strip.addWidget(trend_block)
         strip.addStretch(1)
 
@@ -363,9 +432,7 @@ class PerformanceScreen(QWidget):
         return card
 
     def _build_map_grid(self, map_stats: dict, is_pro_overview: bool) -> Card:
-        title = "Per-map performance" + (
-            " — pro reference" if is_pro_overview else ""
-        )
+        title = "Per-map performance" + (" — pro reference" if is_pro_overview else "")
         card = Card(title=title, depth="raised")
         body = card.content_layout
         tokens = get_tokens()
@@ -396,9 +463,7 @@ class PerformanceScreen(QWidget):
 
         name = QLabel(map_name.replace("de_", "").upper())
         Typography.apply(name, "caption")
-        name.setStyleSheet(
-            f"color: {tokens.text_secondary}; background: transparent;"
-        )
+        name.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
         tile_layout.addWidget(name)
 
         rating_value = float(stats.get("rating") or 0)
@@ -413,17 +478,13 @@ class PerformanceScreen(QWidget):
         kd = float(stats.get("kd") or 0)
         detail = QLabel(f"K/D {kd:.2f}    ADR {adr:.0f}")
         detail.setFont(Typography.font("mono"))
-        detail.setStyleSheet(
-            f"color: {tokens.text_primary}; background: transparent;"
-        )
+        detail.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
         tile_layout.addWidget(detail)
 
         n_matches = int(stats.get("matches") or 0)
         meta = QLabel(f"{n_matches} matches  ·  {rating_label(rating_value)}")
         meta.setFont(Typography.font("caption"))
-        meta.setStyleSheet(
-            f"color: {tokens.text_tertiary}; background: transparent;"
-        )
+        meta.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
         tile_layout.addWidget(meta)
         return tile
 
@@ -436,9 +497,7 @@ class PerformanceScreen(QWidget):
         row.setContentsMargins(0, 0, 0, 0)
         row.setSpacing(tokens.spacing_xl)
 
-        row.addWidget(
-            self._sw_column("Strengths", sw.get("strengths") or [], tokens.success)
-        )
+        row.addWidget(self._sw_column("Strengths", sw.get("strengths") or [], tokens.success))
         row.addWidget(
             self._sw_column(
                 "Weaknesses", sw.get("weaknesses") or [], tokens.error, sign_inverse=True
@@ -471,9 +530,7 @@ class PerformanceScreen(QWidget):
         if not entries:
             empty = QLabel("No data")
             empty.setFont(Typography.font("body"))
-            empty.setStyleSheet(
-                f"color: {tokens.text_tertiary}; background: transparent;"
-            )
+            empty.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
             col.addWidget(empty)
         else:
             for name, z in entries:
@@ -481,9 +538,7 @@ class PerformanceScreen(QWidget):
                 sign = "−" if sign_inverse else "+"
                 lbl = QLabel(f"{sign}{abs(z):.1f}σ   {display}")
                 lbl.setFont(Typography.font("body"))
-                lbl.setStyleSheet(
-                    f"color: {color}; background: transparent;"
-                )
+                lbl.setStyleSheet(f"color: {color}; background: transparent;")
                 col.addWidget(lbl)
 
         wrapper = QWidget()
@@ -491,9 +546,7 @@ class PerformanceScreen(QWidget):
         return wrapper
 
     def _build_utility(self, utility: dict, is_pro_overview: bool) -> Card:
-        title = "Utility effectiveness" + (
-            " — pro reference" if is_pro_overview else " vs pro"
-        )
+        title = "Utility effectiveness" + (" — pro reference" if is_pro_overview else " vs pro")
         card = Card(title=title, depth="raised")
         body = card.content_layout
         tokens = get_tokens()
@@ -523,17 +576,13 @@ class PerformanceScreen(QWidget):
             name = QLabel(display_name)
             name.setFont(Typography.font("body"))
             name.setFixedWidth(220)
-            name.setStyleSheet(
-                f"color: {tokens.text_secondary}; background: transparent;"
-            )
+            name.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
             row.addWidget(name)
 
             value = QLabel(f"{user_val:.2f}")
             value.setFont(Typography.font("mono"))
             value.setFixedWidth(80)
-            value.setStyleSheet(
-                f"color: {tokens.text_primary}; background: transparent;"
-            )
+            value.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
             row.addWidget(value)
 
             comparison_color = tokens.text_tertiary
@@ -552,9 +601,7 @@ class PerformanceScreen(QWidget):
                     comparison_color = tokens.text_secondary
             comparison = QLabel(comparison_text)
             comparison.setFont(Typography.font("mono"))
-            comparison.setStyleSheet(
-                f"color: {comparison_color}; background: transparent;"
-            )
+            comparison.setStyleSheet(f"color: {comparison_color}; background: transparent;")
             row.addWidget(comparison, 1)
 
             wrapper = QWidget()
@@ -583,16 +630,12 @@ class PerformanceScreen(QWidget):
             v.setFont(Typography.font("mono"))
         else:
             v.setFont(Typography.font("h1"))
-        v.setStyleSheet(
-            f"color: {color_value or tokens.text_primary}; background: transparent;"
-        )
+        v.setStyleSheet(f"color: {color_value or tokens.text_primary}; background: transparent;")
         col.addWidget(v)
 
         l = QLabel(label)
         Typography.apply(l, "caption")
-        l.setStyleSheet(
-            f"color: {tokens.text_secondary}; background: transparent;"
-        )
+        l.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
         col.addWidget(l)
         return block
 

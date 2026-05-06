@@ -185,6 +185,14 @@ def load_user_settings() -> dict:
             "USE_RAG_COACHING": False,
             "USE_RAP_MODEL": False,
             "ZOMBIE_TASK_THRESHOLD_SECONDS": 300,
+            # Cluster D — Coach screen as QDockWidget. Persists user's
+            # preferred dock arrangement across launches.
+            "COACH_DOCK_VISIBLE": False,
+            "COACH_DOCK_FLOATING": False,
+            "COACH_DOCK_AREA": "right",  # "right" | "bottom"
+            # Cluster E — LLM Coach: Ollama model selected from CoachScreen.
+            # Empty string = use OLLAMA_MODEL env var or hard default.
+            "LLM_COACH_MODEL": "",
         }
 
         # File I/O and keyring retrieval are inside the lock to prevent

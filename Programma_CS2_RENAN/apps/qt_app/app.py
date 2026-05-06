@@ -135,6 +135,9 @@ def _create_screens(theme: ThemeEngine) -> dict:
     from Programma_CS2_RENAN.apps.qt_app.screens.match_history_screen import MatchHistoryScreen
     from Programma_CS2_RENAN.apps.qt_app.screens.performance_screen import PerformanceScreen
     from Programma_CS2_RENAN.apps.qt_app.screens.pro_comparison_screen import ProComparisonScreen
+    from Programma_CS2_RENAN.apps.qt_app.screens.pro_player_detail_screen import (
+        ProPlayerDetailScreen,
+    )
     from Programma_CS2_RENAN.apps.qt_app.screens.profile_screen import ProfileScreen
     from Programma_CS2_RENAN.apps.qt_app.screens.settings_screen import SettingsScreen
     from Programma_CS2_RENAN.apps.qt_app.screens.steam_config_screen import SteamConfigScreen
@@ -157,11 +160,13 @@ def _create_screens(theme: ThemeEngine) -> dict:
         "help": HelpScreen(),
         "tactical_viewer": TacticalViewerScreen(),
         "pro_comparison": ProComparisonScreen(),
+        "pro_player_detail": ProPlayerDetailScreen(),
     }
 
 
 def _wire_screen_signals(window: MainWindow, screens: dict) -> None:
-    """Wire cross-screen routing: history/home → match_detail, wizard → home."""
+    """Wire cross-screen routing: history/home → match_detail, wizard → home,
+    pro_comparison → pro_player_detail."""
     match_detail = screens["match_detail"]
 
     def _on_match_selected(demo_name: str):
@@ -171,6 +176,17 @@ def _wire_screen_signals(window: MainWindow, screens: dict) -> None:
     screens["match_history"].match_selected.connect(_on_match_selected)
     screens["home"].match_selected.connect(_on_match_selected)
     screens["wizard"].setup_completed.connect(lambda: window.switch_screen("home"))
+
+    # Cluster C — drill-down from pro_comparison Details button.
+    pro_detail = screens["pro_player_detail"]
+    pro_compare = screens["pro_comparison"]
+
+    def _on_pro_detail_requested(hltv_id: int) -> None:
+        pro_detail.load_pro(hltv_id)
+        window.switch_screen("pro_player_detail")
+
+    pro_compare.pro_detail_requested.connect(_on_pro_detail_requested)
+    pro_detail.back_requested.connect(lambda: window.switch_screen("pro_comparison"))
 
 
 def _boot_backend_services(splash: QSplashScreen) -> None:
