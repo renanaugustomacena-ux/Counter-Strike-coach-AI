@@ -13,6 +13,7 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
+    QCompleter,
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -118,9 +119,7 @@ class ProComparisonScreen(QWidget):
 
         self._label_a = QLabel("Player A")
         self._label_a.setFont(Typography.font("body"))
-        self._label_a.setStyleSheet(
-            f"color: {tokens.text_secondary}; background: transparent;"
-        )
+        self._label_a.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
         sel_row.addWidget(self._label_a)
 
         self._combo_a = QComboBox()
@@ -131,9 +130,7 @@ class ProComparisonScreen(QWidget):
 
         self._label_b = QLabel("Player B")
         self._label_b.setFont(Typography.font("body"))
-        self._label_b.setStyleSheet(
-            f"color: {tokens.text_secondary}; background: transparent;"
-        )
+        self._label_b.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
         sel_row.addWidget(self._label_b)
 
         self._combo_b = QComboBox()
@@ -221,8 +218,25 @@ class ProComparisonScreen(QWidget):
         if len(players) >= 2:
             self._combo_b.setCurrentIndex(1)
 
+        # Case-insensitive substring search: typing "zyw" matches "ZywOo (#3 Vitality)"
+        # and typing "vit" matches every Vitality player. Default Qt completer
+        # is prefix-only and case-sensitive, which is unusable for nicknames
+        # whose canonical casing varies (HObbit, Hobbit, m0NESY, m0nesy).
+        for combo in (self._combo_a, self._combo_b):
+            self._install_contains_completer(combo)
+
         self._count_chip.set_label(f"{len(players)} pros loaded")
         self._count_chip.set_severity("online" if players else "neutral")
+
+    @staticmethod
+    def _install_contains_completer(combo: QComboBox) -> None:
+        completer = combo.completer()
+        if completer is None:
+            completer = QCompleter(combo)
+            combo.setCompleter(completer)
+        completer.setFilterMode(Qt.MatchContains)
+        completer.setCaseSensitivity(Qt.CaseInsensitive)
+        completer.setCompletionMode(QCompleter.PopupCompletion)
 
     def _on_compare(self) -> None:
         self._body_stack.setCurrentIndex(self._page_empty)
@@ -239,9 +253,7 @@ class ProComparisonScreen(QWidget):
             if id_b is not None:
                 self._vm.compare_user_vs_pro(id_b)
 
-    def _on_comparison(
-        self, stats_a: dict, stats_b: dict, name_a: str, name_b: str
-    ) -> None:
+    def _on_comparison(self, stats_a: dict, stats_b: dict, name_a: str, name_b: str) -> None:
         tokens = get_tokens()
         self._clear_results()
         no_data_a = not stats_a or all((v or 0) == 0 for v in stats_a.values())
@@ -264,9 +276,7 @@ class ProComparisonScreen(QWidget):
                 f"padding: {tokens.spacing_md}px;"
             )
             header_card.content_layout.addWidget(banner)
-        self._results_layout.insertWidget(
-            self._results_layout.count() - 1, header_card
-        )
+        self._results_layout.insertWidget(self._results_layout.count() - 1, header_card)
 
         # Stats card with grid
         grid_card = Card(title="Statistics", depth="raised")
@@ -309,9 +319,7 @@ class ProComparisonScreen(QWidget):
 
             metric = QLabel(display_name)
             metric.setFont(Typography.font("body"))
-            metric.setStyleSheet(
-                f"color: {tokens.text_secondary}; background: transparent;"
-            )
+            metric.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
             grid.addWidget(metric, row_idx, 0)
 
             grid.addWidget(self._stat_cell(fmt_a, color_a), row_idx, 1)
@@ -323,9 +331,7 @@ class ProComparisonScreen(QWidget):
             )
 
         grid_card.content_layout.addWidget(grid_widget)
-        self._results_layout.insertWidget(
-            self._results_layout.count() - 1, grid_card
-        )
+        self._results_layout.insertWidget(self._results_layout.count() - 1, grid_card)
 
         self._body_stack.setCurrentIndex(self._page_results)
 

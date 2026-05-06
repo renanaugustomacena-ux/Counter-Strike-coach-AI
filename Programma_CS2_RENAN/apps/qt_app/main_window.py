@@ -9,6 +9,7 @@ from pathlib import Path
 from PySide6.QtCore import QEvent, QPoint, Qt, Signal
 from PySide6.QtGui import QKeySequence, QPainter, QPixmap, QShortcut
 from PySide6.QtWidgets import (
+    QDockWidget,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -290,12 +291,83 @@ class MainWindow(QMainWindow):
         self._bg_widget.set_image(path)
 
     def register_screen(self, name: str, widget: QWidget):
-        """Add a screen widget to the stack."""
+        """Add a screen widget to the stack.
+
+        The 'coach' screen is special-cased as a dockable side panel
+        (QDockWidget) so users can float / pin to right or bottom / hide it.
+        Other screens go into the QStackedWidget as before.
+        """
+        if name == "coach":
+            self._register_coach_dock(widget)
+            return
         idx = self._stack.addWidget(widget)
         self._screens[name] = idx
 
+    def _register_coach_dock(self, widget: QWidget) -> None:
+        """Wrap CoachScreen in a QDockWidget pinned to the right side.
+
+        Persists visibility/floating state in user_settings.json so the
+        next launch restores the user's preferred dock arrangement.
+        """
+        from Programma_CS2_RENAN.core.config import get_setting, save_user_setting
+
+        dock = QDockWidget(i18n.tr("nav.coach", "Coach"), self)
+        dock.setObjectName("coach_dock")
+        dock.setAllowedAreas(Qt.RightDockWidgetArea | Qt.BottomDockWidgetArea)
+        dock.setFeatures(
+            QDockWidget.DockWidgetClosable
+            | QDockWidget.DockWidgetMovable
+            | QDockWidget.DockWidgetFloatable
+        )
+        dock.setWidget(widget)
+
+        # Restore persisted state. Default: hidden, pinned to right.
+        saved_area = get_setting("COACH_DOCK_AREA", "right")
+        area = Qt.BottomDockWidgetArea if saved_area == "bottom" else Qt.RightDockWidgetArea
+        self.addDockWidget(area, dock)
+
+        floating = bool(get_setting("COACH_DOCK_FLOATING", False))
+        dock.setFloating(floating)
+        visible = bool(get_setting("COACH_DOCK_VISIBLE", False))
+        dock.setVisible(visible)
+
+        # Persist on user-driven changes.
+        def _on_top_level_changed(is_floating: bool) -> None:
+            save_user_setting("COACH_DOCK_FLOATING", bool(is_floating))
+
+        def _on_dock_location_changed(new_area: Qt.DockWidgetArea) -> None:
+            label = "bottom" if new_area == Qt.BottomDockWidgetArea else "right"
+            save_user_setting("COACH_DOCK_AREA", label)
+
+        def _on_visibility_changed(is_visible: bool) -> None:
+            # Only persist when the user toggles via the close button — the
+            # initial setVisible() calls above also fire this signal, but
+            # they happen before user interaction, so guard with a one-shot.
+            if getattr(self, "_coach_dock_init_done", False):
+                save_user_setting("COACH_DOCK_VISIBLE", bool(is_visible))
+
+        dock.topLevelChanged.connect(_on_top_level_changed)
+        dock.dockLocationChanged.connect(_on_dock_location_changed)
+        dock.visibilityChanged.connect(_on_visibility_changed)
+
+        self._coach_dock = dock
+        self._coach_dock_init_done = True
+
     def switch_screen(self, name: str):
-        """Navigate to a named screen with a fade transition."""
+        """Navigate to a named screen with a fade transition.
+
+        The 'coach' screen toggles its QDockWidget visibility instead of
+        switching the stack — the sidebar 'Coach' nav becomes a show/hide
+        toggle for the dock panel.
+        """
+        if name == "coach":
+            dock = getattr(self, "_coach_dock", None)
+            if dock is not None:
+                visible = not dock.isVisible()
+                dock.setVisible(visible)
+                if visible:
+                    dock.raise_()
+            return
         if name not in self._screens:
             logger.warning("switch_screen: unknown screen '%s'", name)
             return

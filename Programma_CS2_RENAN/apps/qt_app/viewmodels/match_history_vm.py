@@ -52,8 +52,14 @@ class MatchHistoryViewModel(QObject):
         player = get_setting("CS2_PLAYER_NAME", "")
 
         with get_db_manager().get_session() as session:
-            # Show user matches first (filtered by player name), then all pro matches
-            query = select(PlayerMatchStats)
+            # Show user matches first (filtered by player name), then all pro matches.
+            # Exclude stub-quality rows (registered_only / partial / none) — they
+            # carry only ~7 of 47 columns and would inflate the dashboard chip
+            # without contributing meaningful per-row stats. Real rows are tagged
+            # full_sql / full_sql_round_count_anomaly / complete / is_pro_overridden.
+            query = select(PlayerMatchStats).where(
+                PlayerMatchStats.data_quality.not_in(("registered_only", "partial", "none"))
+            )
             if player:
                 query = query.where(
                     (PlayerMatchStats.player_name == player)
