@@ -1,5 +1,7 @@
 # Backend Ingestion — File Watching, Resource Governance & CSV Migration
 
+> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
+
 > **Authority:** Rule 2 (Backend Sovereignty), Rule 4 (Data Persistence)
 > **Skill:** `/resilience-check`, `/data-lifecycle-review`
 

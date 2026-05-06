@@ -1,6 +1,6 @@
 # Reporting -- Motor Analitico para Dashboard
 
-> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Portugues](README_PT.md)**
+> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
 > **Autoridade:** Regra 1 (Corretude), Regra 2 (Soberania do Backend)
 > **Skill:** `/correctness-check`

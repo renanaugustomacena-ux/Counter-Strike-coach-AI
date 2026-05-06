@@ -1,5 +1,7 @@
 # Macena CS2 Coach AI — Design Atlas
 
+> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
+
 Vector design system for the CS2 coaching application. All files are SVG + HTML + JSON — zero binaries, fully portable.
 
 ## File Map

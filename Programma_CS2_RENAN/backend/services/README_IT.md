@@ -1,6 +1,6 @@
 # Services -- Livello di Orchestrazione dei Servizi Applicativi
 
-> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Portugues](README_PT.md)**
+> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
 > **Autorita:** Regola 1 (Correttezza), Regola 2 (Sovranita Backend)
 > **Skills:** `/api-contract-review`, `/state-audit`, `/correctness-check`

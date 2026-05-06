@@ -1,6 +1,6 @@
 # HLTV Professional Player Statistics Scraper
 
-> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Portugues](README_PT.md)**
+> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
 ---
 

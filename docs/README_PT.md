@@ -1,6 +1,6 @@
 # Macena CS2 Analyzer — Indice de Documentacao
 
-> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Portugues](README_PT.md)**
+> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
 ## Documento Principal
 

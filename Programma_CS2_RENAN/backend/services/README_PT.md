@@ -1,6 +1,6 @@
 # Services -- Camada de Orquestracao de Servicos da Aplicacao
 
-> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Portugues](README_PT.md)**
+> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
 > **Autoridade:** Regra 1 (Corretude), Regra 2 (Soberania do Backend)
 > **Skills:** `/api-contract-review`, `/state-audit`, `/correctness-check`

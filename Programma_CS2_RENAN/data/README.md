@@ -1,5 +1,7 @@
 # Data — Application Data & Configuration
 
+> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
+
 > **Authority:** Rule 4 (Data Persistence)
 
 This directory contains runtime data, configuration files, coaching knowledge, external statistical datasets, and the demo ingestion staging area. All files here are user-side data (not code).

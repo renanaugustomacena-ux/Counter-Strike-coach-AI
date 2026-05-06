@@ -1,5 +1,7 @@
 # Packaging — Build & Distribution
 
+> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
+
 > **Authority:** Rule 7 (CI/CD & Release Engineering)
 
 This directory contains everything needed to build the Macena CS2 Analyzer into a distributable Windows application.

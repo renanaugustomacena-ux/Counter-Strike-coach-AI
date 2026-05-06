@@ -7,7 +7,7 @@
 
 **Coach Tattico basato su IA per Counter-Strike 2**
 
-> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Portugues](README_PT.md)**
+> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
 ---
 
@@ -880,7 +880,7 @@ Quattro libri di visione tri-lingui + un libro compagno di analogie canoniche. O
 
 ### Radice
 
-- [README (EN)](README.md) — [Italiano](README_IT.md) — [Portugues](README_PT.md)
+- [README (EN)](README.md) — [Italiano](README_IT.md) — [Português](README_PT.md)
 
 ### Ingegneria
 

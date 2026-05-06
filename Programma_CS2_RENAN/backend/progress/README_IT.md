@@ -1,6 +1,6 @@
 # Progress -- Tracciamento Longitudinale delle Prestazioni
 
-> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Portugues](README_PT.md)**
+> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
 > **Autorita:** Regola 1 (Correttezza), Regola 4 (Persistenza dei Dati)
 

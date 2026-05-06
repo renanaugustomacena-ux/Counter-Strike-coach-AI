@@ -7,7 +7,7 @@
 
 **AI-Powered Tactical Coach for Counter-Strike 2**
 
-> **[Italiano](README_IT.md)** | **[Portugues](README_PT.md)**
+> **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
 ---
 
@@ -880,7 +880,7 @@ Four tri-lingual vision books + one canonical analogy companion book. Each coach
 
 ### Root
 
-- [README (EN)](README.md) — [Italiano](README_IT.md) — [Portugues](README_PT.md)
+- [README (EN)](README.md) — [Italiano](README_IT.md) — [Português](README_PT.md)
 
 ### Engineering
 

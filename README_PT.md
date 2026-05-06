@@ -7,7 +7,7 @@
 
 **Coach Tatico com IA para Counter-Strike 2**
 
-> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Portugues](README_PT.md)**
+> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
 ---
 
@@ -881,7 +881,7 @@ Quatro livros de visao tri-lingues + um livro companheiro de analogias canonicas
 
 ### Raiz
 
-- [README (EN)](README.md) — [Italiano](README_IT.md) — [Portugues](README_PT.md)
+- [README (EN)](README.md) — [Italiano](README_IT.md) — [Português](README_PT.md)
 
 ### Engenharia
 

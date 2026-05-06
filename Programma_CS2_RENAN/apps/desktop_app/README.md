@@ -1,6 +1,6 @@
 # Desktop Application (Legacy Kivy/KivyMD)
 
-> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Portugues](README_PT.md)**
+> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
 > **Authority:** Desktop UI / Kivy frontend
 > **Skill level:** Intermediate -- requires familiarity with Kivy widget lifecycle, KivyMD Material components, and the MVVM pattern.

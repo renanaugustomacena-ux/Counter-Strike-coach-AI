@@ -1,5 +1,7 @@
 # SECURITY/policies/
 
+> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
+
 Policy-as-code rules consumed by `tools/policy_runner.py`.
 
 ## File layout

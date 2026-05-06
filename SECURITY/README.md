@@ -1,5 +1,7 @@
 # SECURITY/ — Macena CS2 Analyzer Security Documentation
 
+> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
+
 This directory is the single source of truth for the security posture of `Programma_CS2_RENAN`.
 All docs here are version-controlled, reviewed via `CODEOWNERS`, and authoritative.
 

@@ -1,5 +1,7 @@
 # CS2 Coach Bench
 
+> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
+
 200-question evaluation benchmark for CS2 coaching AI quality.
 
 ## Quick Start

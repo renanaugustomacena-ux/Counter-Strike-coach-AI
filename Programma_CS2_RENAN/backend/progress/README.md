@@ -1,6 +1,6 @@
 # Progress -- Longitudinal Performance Tracking
 
-> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Portugues](README_PT.md)**
+> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
 > **Authority:** Rule 1 (Correctness), Rule 4 (Data Persistence)
 

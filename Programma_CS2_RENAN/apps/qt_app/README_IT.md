@@ -1,6 +1,6 @@
 # Applicazione Desktop Qt (Primaria)
 
-> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Portugues](README_PT.md)**
+> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
 *Mantenuta dal team Macena CS2 Analyzer. Richiede familiarita con PySide6, MVVM e Qt Signal/Slot.*
 

@@ -1,5 +1,7 @@
 # Control — Application Orchestration & Daemon Management
 
+> **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
+
 > **Authority:** Rule 2 (Backend Sovereignty), Rule 6 (Change Governance)
 > **Skill:** `/state-audit`, `/resilience-check`
 
