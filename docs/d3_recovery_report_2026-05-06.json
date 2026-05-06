@@ -1,0 +1,532 @@
+{
+  "generated_at": "2026-05-06T19:20:10.251238+00:00",
+  "phase": "D3 metadata recovery",
+  "mode": "apply",
+  "doctrine_s129": {
+    "q1_question": "Which corrupted shards can have metadata restored?",
+    "q2_simplest": "SHA-256 forward map + intra-shard map validation",
+    "q3_idempotent": true,
+    "q4_tested_subset": "dry-run proves classification before --apply",
+    "q5_reversible": "backup created; INSERT-only, DELETE reverses"
+  },
+  "summary": {
+    "RECOVERABLE_FULL": 55,
+    "RECOVERABLE_NAME_ONLY": 8,
+    "UNRECOVERABLE": 2
+  },
+  "notes": [
+    "is_pro_match=0 matches existing 203-shard pattern (systemic misset, V-phase fix)",
+    "RECOVERABLE_NAME_ONLY shards deferred to M2 (re-ingest from .dem)",
+    "parser_version='v1-d3-recovered' marks derived rows"
+  ],
+  "RECOVERABLE_FULL": [
+    {
+      "file": "match_1083510231651994524.db",
+      "demo_name": "mouz-vs-virtus-pro-m3-overpass",
+      "map_validated": true,
+      "tick_count": 78000,
+      "round_count": 2,
+      "player_count": 10
+    },
+    {
+      "file": "match_1605128764749430574.db",
+      "demo_name": "natus-vincere-vs-g2-m1-anubis",
+      "map_validated": true,
+      "tick_count": 78000,
+      "round_count": 2,
+      "player_count": 10
+    },
+    {
+      "file": "match_1776443697675117873.db",
+      "demo_name": "parivision-vs-furia-m2-inferno",
+      "map_validated": true,
+      "tick_count": 862000,
+      "round_count": 11,
+      "player_count": 10
+    },
+    {
+      "file": "match_1972846501974513917.db",
+      "demo_name": "pain-vs-virtus-pro-m1-dust2",
+      "map_validated": true,
+      "tick_count": 904000,
+      "round_count": 11,
+      "player_count": 10
+    },
+    {
+      "file": "match_2011757319558866710.db",
+      "demo_name": "spirit-vs-furia-m2-dust2",
+      "map_validated": true,
+      "tick_count": 440000,
+      "round_count": 5,
+      "player_count": 10
+    },
+    {
+      "file": "match_2637654713753650563.db",
+      "demo_name": "natus-vincere-vs-aurora-m1-mirage",
+      "map_validated": true,
+      "tick_count": 328000,
+      "round_count": 3,
+      "player_count": 10
+    },
+    {
+      "file": "match_2640912145460478727.db",
+      "demo_name": "vitality-vs-g2-m3-anubis",
+      "map_validated": true,
+      "tick_count": 168000,
+      "round_count": 3,
+      "player_count": 10
+    },
+    {
+      "file": "match_2940215464609934058.db",
+      "demo_name": "spirit-vs-furia-m3-nuke",
+      "map_validated": true,
+      "tick_count": 206000,
+      "round_count": 3,
+      "player_count": 10
+    },
+    {
+      "file": "match_3061481644192937838.db",
+      "demo_name": "spirit-vs-g2-m1-mirage",
+      "map_validated": true,
+      "tick_count": 538000,
+      "round_count": 6,
+      "player_count": 10
+    },
+    {
+      "file": "match_3628959166992666895.db",
+      "demo_name": "parivision-vs-furia-m1-mirage",
+      "map_validated": true,
+      "tick_count": 898000,
+      "round_count": 10,
+      "player_count": 10
+    },
+    {
+      "file": "match_3660814607312925928.db",
+      "demo_name": "pain-vs-virtus-pro-m3-inferno",
+      "map_validated": true,
+      "tick_count": 900000,
+      "round_count": 10,
+      "player_count": 10
+    },
+    {
+      "file": "match_3862085155614660990.db",
+      "demo_name": "vitality-vs-g2-m1-mirage",
+      "map_validated": true,
+      "tick_count": 1538000,
+      "round_count": 19,
+      "player_count": 10
+    },
+    {
+      "file": "match_3895203083360342258.db",
+      "demo_name": "mouz-vs-virtus-pro-m2-mirage",
+      "map_validated": true,
+      "tick_count": 206000,
+      "round_count": 4,
+      "player_count": 10
+    },
+    {
+      "file": "match_3986525576559663168.db",
+      "demo_name": "spirit-vs-g2-m3-ancient",
+      "map_validated": true,
+      "tick_count": 420000,
+      "round_count": 5,
+      "player_count": 11
+    },
+    {
+      "file": "match_4046766227078567058.db",
+      "demo_name": "mouz-vs-vitality-m3-train",
+      "map_validated": true,
+      "tick_count": 270000,
+      "round_count": 5,
+      "player_count": 10
+    },
+    {
+      "file": "match_4523196252674340482.db",
+      "demo_name": "spirit-vs-natus-vincere-m2-ancient",
+      "map_validated": true,
+      "tick_count": 534000,
+      "round_count": 6,
+      "player_count": 10
+    },
+    {
+      "file": "match_4751561624951399578.db",
+      "demo_name": "pain-vs-3dmax-nuke",
+      "map_validated": true,
+      "tick_count": 22000,
+      "round_count": 2,
+      "player_count": 10
+    },
+    {
+      "file": "match_4758495944383212288.db",
+      "demo_name": "parivision-vs-spirit-m1-overpass",
+      "map_validated": true,
+      "tick_count": 890000,
+      "round_count": 11,
+      "player_count": 10
+    },
+    {
+      "file": "match_4879474679401207584.db",
+      "demo_name": "natus-vincere-vs-faze-m1-mirage",
+      "map_validated": true,
+      "tick_count": 260000,
+      "round_count": 4,
+      "player_count": 10
+    },
+    {
+      "file": "match_4991976633576216134.db",
+      "demo_name": "natus-vincere-vs-spirit-m2-dust2",
+      "map_validated": true,
+      "tick_count": 4000,
+      "round_count": 1,
+      "player_count": 10
+    },
+    {
+      "file": "match_5001534516030835642.db",
+      "demo_name": "natus-vincere-vs-spirit-m1-mirage",
+      "map_validated": true,
+      "tick_count": 4000,
+      "round_count": 1,
+      "player_count": 10
+    },
+    {
+      "file": "match_50250830584121323.db",
+      "demo_name": "mouz-vs-vitality-m1-dust2",
+      "map_validated": true,
+      "tick_count": 106000,
+      "round_count": 3,
+      "player_count": 10
+    },
+    {
+      "file": "match_517109444617493049.db",
+      "demo_name": "nrg-vs-furia-m3-dust2",
+      "map_validated": true,
+      "tick_count": 38000,
+      "round_count": 1,
+      "player_count": 10
+    },
+    {
+      "file": "match_5504447986441145582.db",
+      "demo_name": "pain-vs-legacy-m3-nuke",
+      "map_validated": true,
+      "tick_count": 22000,
+      "round_count": 1,
+      "player_count": 10
+    },
+    {
+      "file": "match_5821102604794486936.db",
+      "demo_name": "natus-vincere-vs-spirit-m2-anubis",
+      "map_validated": true,
+      "tick_count": 96000,
+      "round_count": 2,
+      "player_count": 10
+    },
+    {
+      "file": "match_5930108983625200714.db",
+      "demo_name": "spirit-vs-natus-vincere-m1-nuke",
+      "map_validated": true,
+      "tick_count": 1962000,
+      "round_count": 24,
+      "player_count": 10
+    },
+    {
+      "file": "match_6203205878695514257.db",
+      "demo_name": "nrg-vs-furia-m2-nuke",
+      "map_validated": true,
+      "tick_count": 36000,
+      "round_count": 2,
+      "player_count": 10
+    },
+    {
+      "file": "match_6332673317152995872.db",
+      "demo_name": "vitality-vs-g2-m2-inferno",
+      "map_validated": true,
+      "tick_count": 1370000,
+      "round_count": 18,
+      "player_count": 10
+    },
+    {
+      "file": "match_6334384090632712292.db",
+      "demo_name": "natus-vincere-vs-aurora-m4-dust2",
+      "map_validated": true,
+      "tick_count": 8000,
+      "round_count": 1,
+      "player_count": 10
+    },
+    {
+      "file": "match_6377875043931837955.db",
+      "demo_name": "mouz-vs-virtus-pro-m1-inferno",
+      "map_validated": true,
+      "tick_count": 666000,
+      "round_count": 9,
+      "player_count": 10
+    },
+    {
+      "file": "match_6445333938996795056.db",
+      "demo_name": "parivision-vs-spirit-m2-mirage",
+      "map_validated": true,
+      "tick_count": 874000,
+      "round_count": 11,
+      "player_count": 10
+    },
+    {
+      "file": "match_6482573948910526667.db",
+      "demo_name": "pain-vs-themongolz-m3-inferno",
+      "map_validated": true,
+      "tick_count": 904000,
+      "round_count": 11,
+      "player_count": 10
+    },
+    {
+      "file": "match_654367835016249701.db",
+      "demo_name": "mouz-vs-spirit-m1-ancient",
+      "map_validated": true,
+      "tick_count": 1172000,
+      "round_count": 13,
+      "player_count": 10
+    },
+    {
+      "file": "match_6702413631322776621.db",
+      "demo_name": "mouz-vs-the-mongolz-m2-nuke",
+      "map_validated": true,
+      "tick_count": 718000,
+      "round_count": 12,
+      "player_count": 10
+    },
+    {
+      "file": "match_7079920283776051058.db",
+      "demo_name": "spirit-vs-mibr-m1-nuke",
+      "map_validated": true,
+      "tick_count": 322000,
+      "round_count": 4,
+      "player_count": 10
+    },
+    {
+      "file": "match_7107912706302660226.db",
+      "demo_name": "nrg-vs-furia-m1-mirage",
+      "map_validated": true,
+      "tick_count": 100000,
+      "round_count": 3,
+      "player_count": 10
+    },
+    {
+      "file": "match_7260080073522336820.db",
+      "demo_name": "pain-vs-themongolz-m2-nuke",
+      "map_validated": true,
+      "tick_count": 270000,
+      "round_count": 5,
+      "player_count": 10
+    },
+    {
+      "file": "match_7336271136750948546.db",
+      "demo_name": "parivision-vs-spirit-m3-ancient",
+      "map_validated": true,
+      "tick_count": 898000,
+      "round_count": 12,
+      "player_count": 10
+    },
+    {
+      "file": "match_7422810754306594470.db",
+      "demo_name": "natus-vincere-vs-aurora-m3-nuke-p1",
+      "map_validated": true,
+      "tick_count": 338000,
+      "round_count": 5,
+      "player_count": 10
+    },
+    {
+      "file": "match_7492999207593409559.db",
+      "demo_name": "natus-vincere-vs-aurora-m2-anubis",
+      "map_validated": true,
+      "tick_count": 220000,
+      "round_count": 5,
+      "player_count": 10
+    },
+    {
+      "file": "match_7573840099316589532.db",
+      "demo_name": "pain-vs-virtus-pro-m2-mirage",
+      "map_validated": true,
+      "tick_count": 866000,
+      "round_count": 13,
+      "player_count": 10
+    },
+    {
+      "file": "match_7712884114599669465.db",
+      "demo_name": "mouz-vs-fut-m2-overpass",
+      "map_validated": true,
+      "tick_count": 2198000,
+      "round_count": 28,
+      "player_count": 10
+    },
+    {
+      "file": "match_7902296291090273551.db",
+      "demo_name": "mouz-vs-vitality-m1-mirage",
+      "map_validated": true,
+      "tick_count": 238000,
+      "round_count": 4,
+      "player_count": 10
+    },
+    {
+      "file": "match_7992482094064624327.db",
+      "demo_name": "mouz-vs-parivision-overpass",
+      "map_validated": true,
+      "tick_count": 1218000,
+      "round_count": 14,
+      "player_count": 10
+    },
+    {
+      "file": "match_8045939857849960534.db",
+      "demo_name": "pain-vs-legacy-m2-dust2",
+      "map_validated": true,
+      "tick_count": 22000,
+      "round_count": 1,
+      "player_count": 10
+    },
+    {
+      "file": "match_8260121072065237082.db",
+      "demo_name": "pain-vs-legacy-m1-inferno",
+      "map_validated": true,
+      "tick_count": 10000,
+      "round_count": 1,
+      "player_count": 10
+    },
+    {
+      "file": "match_8373638349774523478.db",
+      "demo_name": "mouz-vs-the-mongolz-m1-inferno",
+      "map_validated": true,
+      "tick_count": 852000,
+      "round_count": 11,
+      "player_count": 10
+    },
+    {
+      "file": "match_8430908050395624864.db",
+      "demo_name": "mouz-vs-spirit-m2-mirage",
+      "map_validated": true,
+      "tick_count": 854000,
+      "round_count": 12,
+      "player_count": 10
+    },
+    {
+      "file": "match_8496328054915208456.db",
+      "demo_name": "natus-vincere-vs-faze-m2-nuke",
+      "map_validated": true,
+      "tick_count": 242000,
+      "round_count": 4,
+      "player_count": 10
+    },
+    {
+      "file": "match_8706684547965396611.db",
+      "demo_name": "vitality-vs-the-mongolz-m2-nuke",
+      "map_validated": true,
+      "tick_count": 352000,
+      "round_count": 6,
+      "player_count": 10
+    },
+    {
+      "file": "match_8846174471463006465.db",
+      "demo_name": "natus-vincere-vs-furia-m2-mirage",
+      "map_validated": true,
+      "tick_count": 14000,
+      "round_count": 2,
+      "player_count": 10
+    },
+    {
+      "file": "match_8925606777233417703.db",
+      "demo_name": "natus-vincere-vs-furia-m1-nuke",
+      "map_validated": true,
+      "tick_count": 6000,
+      "round_count": 1,
+      "player_count": 10
+    },
+    {
+      "file": "match_897203930949190376.db",
+      "demo_name": "mouz-vs-vitality-m2-inferno",
+      "map_validated": true,
+      "tick_count": 262000,
+      "round_count": 4,
+      "player_count": 10
+    },
+    {
+      "file": "match_9073263199604095540.db",
+      "demo_name": "mouz-vs-natus-vincere-m2-nuke",
+      "map_validated": true,
+      "tick_count": 1668000,
+      "round_count": 22,
+      "player_count": 10
+    },
+    {
+      "file": "match_907853788184598752.db",
+      "demo_name": "vitality-vs-g2-m2-mirage",
+      "map_validated": true,
+      "tick_count": 1160000,
+      "round_count": 15,
+      "player_count": 10
+    }
+  ],
+  "RECOVERABLE_NAME_ONLY": [
+    {
+      "file": "match_112279990403633624.db",
+      "shard_id": 112279990403633624,
+      "demo_name": "vitality-vs-mouz-m1-mirage",
+      "reason": "EMPTY_MATCHTICKSTATE"
+    },
+    {
+      "file": "match_1296780765673836013.db",
+      "shard_id": 1296780765673836013,
+      "demo_name": "vitality-vs-mouz-m1-inferno",
+      "reason": "EMPTY_MATCHTICKSTATE"
+    },
+    {
+      "file": "match_2210876723721980710.db",
+      "shard_id": 2210876723721980710,
+      "demo_name": "vitality-vs-g2-m3-overpass",
+      "reason": "EMPTY_MATCHTICKSTATE"
+    },
+    {
+      "file": "match_4043404938308712223.db",
+      "shard_id": 4043404938308712223,
+      "demo_name": "vitality-vs-mouz-m2-inferno",
+      "reason": "EMPTY_MATCHTICKSTATE"
+    },
+    {
+      "file": "match_635228925022355169.db",
+      "shard_id": 635228925022355169,
+      "demo_name": "vitality-vs-mouz-m2-dust2",
+      "reason": "EMPTY_MATCHTICKSTATE"
+    },
+    {
+      "file": "match_647757924071709666.db",
+      "shard_id": 647757924071709666,
+      "demo_name": "vitality-vs-mouz-m1-nuke",
+      "reason": "EMPTY_MATCHTICKSTATE"
+    },
+    {
+      "file": "match_7560750601658500858.db",
+      "shard_id": 7560750601658500858,
+      "demo_name": "vitality-vs-g2-m5-train",
+      "reason": "EMPTY_MATCHTICKSTATE"
+    },
+    {
+      "file": "match_7823112534875690579.db",
+      "shard_id": 7823112534875690579,
+      "demo_name": "vitality-vs-g2-m4-inferno",
+      "reason": "EMPTY_MATCHTICKSTATE"
+    }
+  ],
+  "UNRECOVERABLE": [
+    {
+      "file": "match_0001.db",
+      "reason": "MISSING_TABLE_NO_DATA",
+      "shard_id": null
+    },
+    {
+      "file": "match_1.db",
+      "reason": "NO_SHA256_MATCH",
+      "shard_id": 1
+    }
+  ],
+  "apply_result": {
+    "backed_up": 55,
+    "written": 55,
+    "skipped_idempotent": 0,
+    "errors": []
+  }
+}
