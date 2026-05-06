@@ -643,6 +643,172 @@ def rebuild_match_stats(db_manager, all_demos: list[Path]):
     return total_parsed
 
 
+# 14 Class B fields produced by aggregate_round_stats_to_match() in
+# round_stats_builder.py. These map 1:1 to playermatchstats columns and are
+# the entire write surface of D2B's enrich-only phase.
+_ENRICHMENT_KEYS = (
+    "trade_kill_ratio",
+    "was_traded_ratio",
+    "avg_trade_response_ticks",
+    "thrusmoke_kill_pct",
+    "wallbang_kill_pct",
+    "noscope_kill_pct",
+    "blind_kill_pct",
+    "he_damage_per_round",
+    "molotov_damage_per_round",
+    "smokes_per_round",
+    "flash_assists",
+    "utility_blind_time",
+    "utility_enemies_blinded",
+    "opening_duel_win_pct",
+)
+
+# 4 Class B fields NOT computed by enrich_from_demo today. They stay at
+# defaults (0.0) after D2B; future work can extend the aggregator:
+# accuracy, clutch_win_pct, positional_aggression_score, unused_utility_per_round.
+
+_DATA_QUALITY_COMPLETE = "complete"
+_DATA_QUALITY_DEM_UNREADABLE = "full_sql_dem_unreadable"
+_DATA_QUALITY_DEM_PARTIAL = "full_sql_dem_partial"
+
+
+def _resolve_dem_path(demo_name: str):
+    """Find the .dem on disk for a demo_name. Returns Path or None."""
+    candidate = DEMO_BASE / f"{demo_name}.dem"
+    if candidate.exists():
+        return candidate
+    matches = list(DEMO_BASE.rglob(f"{demo_name}.dem"))
+    return matches[0] if matches else None
+
+
+def _demoparser2_health_check(dem_path: Path) -> bool:
+    """Return True if demoparser2 reads the header. Per plan §6.1."""
+    try:
+        from demoparser2 import DemoParser
+
+        parser = DemoParser(str(dem_path))
+        header = parser.parse_header()
+        return header.get("server_name") is not None
+    except Exception as e:
+        print(f"  HEALTH-CHECK FAIL {dem_path.name}: {e}")
+        return False
+
+
+def enrich_match_stats(db_manager, all_demos: list[Path]):
+    """D2B — upgrade `data_quality='full_sql%'` rows to `complete` by merging
+    14 Class B fields from `enrich_from_demo` for demos whose `.dem` survives.
+
+    Idempotent: rows already tagged `complete` are skipped.
+    """
+    from Programma_CS2_RENAN.backend.processing.round_stats_builder import enrich_from_demo
+
+    conn = sqlite3.connect(MONOLITH_DB_PATH, timeout=120)
+    _set_bulk_pragmas(conn)
+
+    rows_updated = 0
+    rows_tagged_unreadable = 0
+    rows_tagged_partial = 0
+    demos_processed = 0
+    demos_no_dem = 0
+
+    update_cols = list(_ENRICHMENT_KEYS) + ["data_quality"]
+    set_clause = ",".join(f"{c}=?" for c in update_cols)
+    update_sql = (
+        f"UPDATE playermatchstats SET {set_clause} " "WHERE demo_name=? AND LOWER(player_name)=?"
+    )
+
+    for demo_path_arg in all_demos:
+        demo_name = demo_path_arg.stem
+        remaining = conn.execute(
+            "SELECT COUNT(*) FROM playermatchstats "
+            "WHERE demo_name=? AND data_quality LIKE 'full_sql%'",
+            (demo_name,),
+        ).fetchone()[0]
+        if remaining == 0:
+            any_row = conn.execute(
+                "SELECT 1 FROM playermatchstats WHERE demo_name=? LIMIT 1",
+                (demo_name,),
+            ).fetchone()
+            if any_row is None:
+                continue
+            print(f"  SKIP {demo_name}: already complete")
+            continue
+
+        dem_path = _resolve_dem_path(demo_name)
+        if dem_path is None:
+            demos_no_dem += 1
+            continue
+
+        if not _demoparser2_health_check(dem_path):
+            n = conn.execute(
+                "UPDATE playermatchstats SET data_quality=? WHERE demo_name=?",
+                (_DATA_QUALITY_DEM_UNREADABLE, demo_name),
+            ).rowcount
+            rows_tagged_unreadable += n
+            print(f"  TAG-UNREADABLE {demo_name}: {n} rows -> {_DATA_QUALITY_DEM_UNREADABLE}")
+            continue
+
+        try:
+            enrichment_by_player, _ = enrich_from_demo(str(dem_path), demo_name)
+        except Exception as e:
+            n = conn.execute(
+                "UPDATE playermatchstats SET data_quality=? WHERE demo_name=?",
+                (_DATA_QUALITY_DEM_PARTIAL, demo_name),
+            ).rowcount
+            rows_tagged_partial += n
+            print(f"  TAG-PARTIAL {demo_name}: {e} -> {n} rows -> {_DATA_QUALITY_DEM_PARTIAL}")
+            continue
+
+        if not enrichment_by_player:
+            n = conn.execute(
+                "UPDATE playermatchstats SET data_quality=? WHERE demo_name=?",
+                (_DATA_QUALITY_DEM_PARTIAL, demo_name),
+            ).rowcount
+            rows_tagged_partial += n
+            print(f"  TAG-PARTIAL {demo_name}: empty enrichment -> {n} rows")
+            continue
+
+        demo_rows_updated = 0
+        for raw_player, enrich in enrichment_by_player.items():
+            values = []
+            for key in _ENRICHMENT_KEYS:
+                v = enrich.get(key, 0.0)
+                try:
+                    if not math.isfinite(float(v)):
+                        v = 0.0
+                except (TypeError, ValueError):
+                    v = 0.0
+                values.append(float(v))
+            values.append(_DATA_QUALITY_COMPLETE)
+            values.extend([demo_name, raw_player])
+            r = conn.execute(update_sql, tuple(values)).rowcount
+            demo_rows_updated += r
+
+        if demo_rows_updated == 0:
+            n = conn.execute(
+                "UPDATE playermatchstats SET data_quality=? WHERE demo_name=?",
+                (_DATA_QUALITY_DEM_PARTIAL, demo_name),
+            ).rowcount
+            rows_tagged_partial += n
+            print(f"  TAG-PARTIAL {demo_name}: name mismatch -> {n} rows")
+        else:
+            rows_updated += demo_rows_updated
+            demos_processed += 1
+            print(f"  OK {demo_name}: {demo_rows_updated} rows -> complete")
+
+    conn.commit()
+    _restore_pragmas(conn)
+    conn.close()
+
+    print()
+    print(
+        f"  D2B summary: demos_processed={demos_processed}, demos_no_dem={demos_no_dem}, "
+        f"rows_complete={rows_updated}, rows_unreadable={rows_tagged_unreadable}, "
+        f"rows_partial={rows_tagged_partial}"
+    )
+    return rows_updated
+
+
 def _parse_argv(argv: list[str]):
     import argparse
 
@@ -660,9 +826,12 @@ def _parse_argv(argv: list[str]):
     )
     parser.add_argument(
         "--phase",
-        choices=("full", "tick-only", "match-stats-only", "linker-only"),
+        choices=("full", "tick-only", "match-stats-only", "linker-only", "enrich-only"),
         default="full",
-        help="Which phase(s) to run. D1 uses 'tick-only' (default: full = legacy 1+2+3).",
+        help=(
+            "Which phase(s) to run. D1 uses 'tick-only', D2B uses 'enrich-only' "
+            "(default: full = legacy 1+2+3)."
+        ),
     )
     parser.add_argument(
         "--source",
@@ -779,6 +948,7 @@ def main():
             "tick-only": ("tick",),
             "match-stats-only": ("stats",),
             "linker-only": ("linker",),
+            "enrich-only": ("enrich",),
         }[args.phase]
 
         demos_done = 0
@@ -813,6 +983,16 @@ def main():
             t_stats = time.monotonic() - t_start
             print(f"\n  Phase 2 complete: {stats_total} PlayerMatchStats rows ({t_stats:.1f}s)\n")
 
+        if "enrich" in run_phases:
+            print("--- Phase D2B: Enrich PlayerMatchStats Class B fields ---")
+            t_start = time.monotonic()
+            stats_total = enrich_match_stats(db, all_demos)
+            t_stats = time.monotonic() - t_start
+            print(
+                f"\n  Phase D2B complete: {stats_total} rows promoted to "
+                f"complete ({t_stats:.1f}s)\n"
+            )
+
         if "linker" in run_phases:
             print("--- Phase 3: Linking PlayerMatchStats to HLTV ProPlayer records ---")
             try:
@@ -828,13 +1008,21 @@ def main():
             except Exception as e:
                 print(f"  WARNING: Pro player linking failed: {e}\n")
 
-        # Summary
+        # Summary — skip playertickstate COUNT for enrich-only (392M rows is too slow)
         with db.get_session() as session:
-            final_ticks = session.exec(text("SELECT COUNT(*) FROM playertickstate")).scalar() or 0
-            final_demos = (
-                session.exec(text("SELECT COUNT(DISTINCT demo_name) FROM playertickstate")).scalar()
-                or 0
-            )
+            if "tick" in run_phases:
+                final_ticks = (
+                    session.exec(text("SELECT COUNT(*) FROM playertickstate")).scalar() or 0
+                )
+                final_demos = (
+                    session.exec(
+                        text("SELECT COUNT(DISTINCT demo_name) FROM playertickstate")
+                    ).scalar()
+                    or 0
+                )
+            else:
+                final_ticks = -1
+                final_demos = -1
             final_stats = (
                 session.exec(
                     text("SELECT COUNT(*) FROM playermatchstats WHERE is_pro = 1")
