@@ -202,7 +202,7 @@ def _diag_integrity_and_wal() -> None:
             result = run_query(mpath, "PRAGMA integrity_check")
             status = result[0].get("integrity_check", "UNKNOWN") if result else "ERROR"
             size = get_file_size_mb(mpath)
-            tick_count = run_query(mpath, "SELECT COUNT(*) as cnt FROM match_tick_state")
+            tick_count = run_query(mpath, "SELECT COUNT(*) as cnt FROM playertickstate")
             ticks = tick_count[0]["cnt"] if tick_count else "N/A"
             print(f"   [{mf}] Integrity: {status}  |  Size: {size} MB  |  Ticks: {ticks}")
         if len(match_files) > sample_size:

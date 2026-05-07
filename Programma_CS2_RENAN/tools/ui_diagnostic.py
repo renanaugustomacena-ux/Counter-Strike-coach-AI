@@ -257,7 +257,7 @@ class UIDiagnostic(BaseValidator):
                 "Qt",
                 "Screen modules syntax valid",
                 len(parse_errors) == 0,
-                detail=f"{len(screen_files)} parsed OK" if not parse_errors else None,
+                detail=f"{len(screen_files)} parsed OK" if not parse_errors else "",
                 error="; ".join(parse_errors[:3]) if parse_errors else "",
             )
         else:

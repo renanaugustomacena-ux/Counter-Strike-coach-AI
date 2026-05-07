@@ -1273,7 +1273,7 @@ DEFAULT_STATS = {
     "headshot_pct": 44.0,
     "maps_played": 150,
     "opening_kill_ratio": 0.95,
-    "opening_duel_win_pct": 49.0,
+    "opening_duel_win_pct": 0.49,
 }
 
 
@@ -1369,7 +1369,11 @@ def main():
                 ),
                 "maps_played": stats["maps_played"],
                 "opening_kill_ratio": stats["opening_kill_ratio"],
-                "opening_duel_win_pct": stats["opening_duel_win_pct"],
+                "opening_duel_win_pct": (
+                    stats["opening_duel_win_pct"] / 100.0
+                    if stats["opening_duel_win_pct"] > 1.0
+                    else stats["opening_duel_win_pct"]
+                ),
                 "detailed_stats_json": json.dumps(
                     {
                         "source": "hltv.org",

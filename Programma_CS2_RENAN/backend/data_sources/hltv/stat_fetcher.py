@@ -53,6 +53,9 @@ CRAWL_DELAY_MAX_SECONDS = 7
 _HLTV_ROBOTS_URL = "https://www.hltv.org/robots.txt"
 _HLTV_BASE_URL = "https://www.hltv.org"
 
+HLTV_STATS_START_DATE = "2021-06-01"
+HLTV_STATS_END_DATE = "2026-05-06"
+
 
 def check_robots_txt(target_url: str = _HLTV_BASE_URL + "/stats/players") -> bool:
     """Check HLTV robots.txt to verify scraping is not explicitly disallowed.
@@ -390,10 +393,12 @@ class HLTVStatFetcher:
         return self._save_to_db(hltv_id, player_name, data)
 
     def _fetch_player_stats(self, url: str) -> Optional[Dict[str, Any]]:
+        """Fetch overview + all sub-pages for one player.
+
+        Sub-pages use HLTV_STATS_START_DATE..HLTV_STATS_END_DATE.
+        Overview has no date filter.
         """
-        Fetches Main Stats + Deep Dives (Clutches, Multikills, Career).
-        """
-        logger.info("Deep-Crawling stats for: %s", url)
+        logger.info("Deep-crawling stats for: %s", url)
         try:
             time.sleep(random.uniform(CRAWL_DELAY_MIN_SECONDS + 1, CRAWL_DELAY_MAX_SECONDS))
             html = self._solver.get(url)
@@ -404,65 +409,99 @@ class HLTVStatFetcher:
             soup = BeautifulSoup(html, "html.parser")
             main_data = self._parse_overview(soup)
 
-            # Extract ID and Name from URL: .../stats/players/{id}/{name}
             tokens = url.rstrip("/").split("/")
-            if len(tokens) >= 2:
-                p_id = tokens[-2]
-                p_name = tokens[-1]
+            if len(tokens) < 2:
+                return main_data
 
-                # Try to parse HLTV ID
-                try:
-                    main_data["hltv_id"] = int(p_id)
-                except ValueError:
-                    logger.warning("Non-numeric player ID in URL: %s", p_id)
-                    return None
+            p_id = tokens[-2]
+            p_name = tokens[-1]
+            try:
+                main_data["hltv_id"] = int(p_id)
+            except ValueError:
+                logger.warning("Non-numeric player ID in URL: %s", p_id)
+                return None
 
-                detailed = {}
-                detailed.update(self._parse_trait_sections(soup))
+            date_qs = f"?startDate={HLTV_STATS_START_DATE}&endDate={HLTV_STATS_END_DATE}"
+            base = f"{_HLTV_BASE_URL}/stats/players"
 
-                # Sub-pages
-                clutch_url = url.replace("/stats/players/", "/stats/players/clutches/").replace(
-                    f"/{p_id}/", f"/{p_id}/all/"
-                )
-                detailed["clutches"] = self._fetch_sub_stats(clutch_url, self._parse_clutches)
+            sub_pages = {
+                "individual": (
+                    f"{base}/individual/{p_id}/{p_name}{date_qs}",
+                    self._parse_individual,
+                ),
+                "career": (
+                    f"{base}/career/{p_id}/{p_name}{date_qs}",
+                    self._parse_career,
+                ),
+                "opponents": (
+                    f"{base}/opponents/team/{p_id}/{p_name}{date_qs}",
+                    self._parse_opponents,
+                ),
+                "clutch_counts": (
+                    f"{base}/clutches/{p_id}/all/{p_name}{date_qs}",
+                    self._parse_clutches,
+                ),
+            }
 
-                multikill_url = url.replace(
-                    "/stats/players/", "/stats/players/multikills/"
-                ).replace(f"/{p_id}/", f"/{p_id}/all/")
-                detailed["multikills"] = self._fetch_sub_stats(
-                    multikill_url, self._parse_multikills
-                )
+            detailed = main_data.pop("_detailed", {})
 
-                career_url = url.replace("/stats/players/", "/stats/players/career/")
-                detailed["career"] = self._fetch_sub_stats(career_url, self._parse_career)
+            for key, (sub_url, parser) in sub_pages.items():
+                detailed[key] = self._fetch_sub_stats(sub_url, parser)
 
-                main_data["detailed_stats_json"] = detailed
+            ind = detailed.get("individual", {})
+            if ind:
+                main_data["opening_kill_ratio"] = ind.get("opening_kill_ratio", 0.0)
+                main_data["opening_duel_win_pct"] = ind.get("opening_kill_win_pct", 0.0)
+                detailed["multikill_counts"] = {
+                    "2k": int(ind.get("2_kill_rounds", 0)),
+                    "3k": int(ind.get("3_kill_rounds", 0)),
+                    "4k": int(ind.get("4_kill_rounds", 0)),
+                    "5k": int(ind.get("5_kill_rounds", 0)),
+                }
 
+            clutch_data = detailed.get("clutch_counts", {})
+            if isinstance(clutch_data, dict):
+                main_data["clutch_win_count"] = sum(clutch_data.values())
+
+            rounds_played = main_data.get("rounds_played", 0)
+            if rounds_played > 0 and detailed.get("multikill_counts"):
+                mk_rounds = sum(detailed["multikill_counts"].values())
+                main_data["multikill_round_pct"] = (mk_rounds / rounds_played) * 100.0
+
+            main_data["detailed_stats_json"] = detailed
             return main_data
 
         except Exception:
-            logger.exception("Error in Deep Crawl for %s", url)
+            logger.exception("Error in deep crawl for %s", url)
             return None
 
     def _save_to_db(self, hltv_id: int, nickname: str, data: Dict[str, Any]) -> bool:
         """Save fetched data to ProPlayer + ProPlayerStatCard in hltv_metadata.db."""
         try:
             with self._hltv_db.get_session() as session:
-                # Upsert ProPlayer
                 player = session.exec(select(ProPlayer).where(ProPlayer.hltv_id == hltv_id)).first()
 
+                profile = data.pop("profile", {})
                 if not player:
                     player = ProPlayer(hltv_id=hltv_id, nickname=nickname)
                     session.add(player)
                     session.commit()
                     session.refresh(player)
                     logger.info("Created ProPlayer: %s (ID: %s)", nickname, hltv_id)
-                else:
-                    player.nickname = nickname
-                    session.add(player)
-                    session.commit()
 
-                # Upsert ProPlayerStatCard
+                player.nickname = nickname
+                if profile.get("real_name"):
+                    player.real_name = profile["real_name"]
+                if profile.get("country"):
+                    player.country = profile["country"]
+                if profile.get("age"):
+                    try:
+                        player.age = int(profile["age"])
+                    except (ValueError, TypeError):
+                        pass
+                session.add(player)
+                session.commit()
+
                 card = session.exec(
                     select(ProPlayerStatCard).where(ProPlayerStatCard.player_id == hltv_id)
                 ).first()
@@ -477,15 +516,14 @@ class HLTVStatFetcher:
                     "kpr": data.get("kpr", 0.0),
                     "dpr": data.get("dpr", 0.0),
                     "adr": data.get("adr", 0.0),
-                    # P-SAN-01: HLTV shows KAST as percentage (e.g. 74.0%);
-                    # system stores as ratio [0, 1] (e.g. 0.74).
                     "kast": data.get("kast_pct", 0.0) / 100.0,
                     "impact": data.get("impact_rating", 0.0),
-                    # V-2 FIX: Normalize headshot_pct to ratio [0, 1] (same as KAST above).
                     "headshot_pct": data.get("hs_pct", 0.0) / 100.0,
                     "maps_played": data.get("maps_played", 0),
                     "opening_kill_ratio": data.get("opening_kill_ratio", 0.0),
-                    "opening_duel_win_pct": data.get("opening_duel_win_pct", 0.0),
+                    "opening_duel_win_pct": data.get("opening_duel_win_pct", 0.0) / 100.0,
+                    "clutch_win_count": data.get("clutch_win_count", 0),
+                    "multikill_round_pct": data.get("multikill_round_pct", 0.0),
                     "detailed_stats_json": detailed_json_str,
                     "time_span": "all_time",
                 }
@@ -533,141 +571,147 @@ class HLTVStatFetcher:
             logger.debug("Unparseable stat value: %r", text)
             return 0.0
 
-    def _parse_player_summary_box(self, soup: BeautifulSoup) -> Dict[str, str]:
-        """Parses the *player summary* stat-box section on the overview page.
+    def _parse_player_summary_box(self, soup: BeautifulSoup) -> Dict[str, Any]:
+        """Parse player summary stat-box: Rating (1.0 or 2.0) + 6 data boxes.
 
-        Verified 2026-04-29 against /stats/players/11893/zywoo: this section
-        is the only place HLTV exposes Rating 2.0 + KAST (plus a duplicate
-        of DPR/ADR/KPR/etc.). The .stats-row section the legacy parser
-        reads does NOT contain Rating 2.0 or KAST — that's why 174/178
-        cards in the HLTV DB had kast=0 and a misclassified rating field
-        (the parser was capturing "Impact rating" as `rating` because of
-        the loose `if "rating" in label` match).
-
-        DOM shape:
-          .player-summary-stat-box-data-wrapper
-            ├── .player-summary-stat-box-data        ← value (e.g. "75.8%")
-            └── .player-summary-stat-box-data-text   ← label (e.g. "KAST")
-          .player-summary-stat-box-rating-wrapper       (Rating 2.0 only)
-            ├── .player-summary-stat-box-rating-data-text  ← "1.33"
-            └── .player-summary-stat-box-data-text   ← "Rating 2.0"
-
-        Returns raw string values keyed by canonical field name; caller
-        feeds them through _safe_float.
+        Returns canonical values for dedicated columns, 'raw_boxes' for the
+        JSON blob, and 'rating_version' (e.g. "Rating 2.0").
         """
-        result: Dict[str, str] = {}
+        result: Dict[str, Any] = {}
+        raw_boxes: Dict[str, Dict[str, Any]] = {}
 
-        # Rating 2.0 (special wrapper)
         for w in soup.select(".player-summary-stat-box-rating-wrapper"):
             label_el = w.select_one(".player-summary-stat-box-data-text")
             value_el = w.select_one(".player-summary-stat-box-rating-data-text")
             if label_el and value_el:
-                # The label_el direct text (before nested tooltip <div>)
                 label = "".join(c for c in label_el.children if isinstance(c, str)).strip()
-                if "rating 2.0" in label.lower():
+                if "rating" in label.lower():
                     result["rating_2_0"] = value_el.get_text(strip=True)
+                    result["rating_version"] = label
 
-        # The 6 plain data wrappers (DPR, KAST, ADR, KPR, Round swing, Multi-kill, MK rating)
         for w in soup.select(".player-summary-stat-box-data-wrapper"):
             value_el = w.select_one(".player-summary-stat-box-data")
             label_el = w.select_one(".player-summary-stat-box-data-text")
             if not (value_el and label_el):
                 continue
-            label = "".join(c for c in label_el.children if isinstance(c, str)).strip().lower()
+            label = "".join(c for c in label_el.children if isinstance(c, str)).strip()
             value = value_el.get_text(strip=True)
+            above_avg = "aboveAverage" in (w.get("class") or [])
+            raw_boxes[label] = {"value": value, "above_avg": above_avg}
             if value in ("-", "", "N/A"):
                 continue
-            if label == "kast":
+            lbl = label.lower()
+            if lbl == "kast":
                 result["kast"] = value
-            elif label == "dpr":
+            elif lbl == "dpr":
                 result["dpr"] = value
-            elif label == "adr":
+            elif lbl == "adr":
                 result["adr"] = value
-            elif label == "kpr":
+            elif lbl == "kpr":
                 result["kpr"] = value
+
+        result["raw_boxes"] = raw_boxes
         return result
 
+    def _parse_profile(self, soup: BeautifulSoup) -> Dict[str, str]:
+        """Extract real_name, country, age from overview page profile section."""
+        profile: Dict[str, str] = {}
+        name_el = soup.select_one(".player-summary-stat-box-left-player-name")
+        if name_el:
+            profile["real_name"] = name_el.get_text(strip=True)
+        age_el = soup.select_one(".player-summary-stat-box-left-player-age")
+        if age_el:
+            m = re.search(r"(\d+)", age_el.get_text(strip=True))
+            if m:
+                profile["age"] = m.group(1)
+        flag_el = soup.select_one(".player-summary-stat-box-left-flag img.flag[title]")
+        if not flag_el:
+            flag_el = soup.select_one("img.flag[title]")
+        if flag_el and flag_el.get("title"):
+            profile["country"] = str(flag_el["title"]).strip()
+        return profile
+
     def _parse_overview(self, soup: BeautifulSoup) -> Dict[str, Any]:
-        """Parses the player overview page.
+        """Parse overview page: profile + summary boxes + legacy stats.
 
-        Merges two DOM sections:
-          1. `.stats-row` (legacy table — has Impact rating, Headshot %, K/D Ratio,
-             Maps played; does NOT have Rating 2.0 or KAST)
-          2. `.player-summary-stat-box-*` (top-of-page summary boxes — has
-             Rating 2.0 + KAST + a duplicate of DPR/ADR/KPR)
-
-        Player-summary values win for Rating 2.0 + KAST since the legacy
-        section doesn't expose them. .stats-row keeps Impact / HS% / K/D /
-        Maps played. Fixes the bug where 174/178 cards had kast=0 because
-        the legacy parser only knew about .stats-row.
+        Returns flat dict for ProPlayerStatCard dedicated columns,
+        plus 'profile' and '_detailed' sub-dicts for further processing.
         """
-        stats: Dict[str, str] = {}
+        detailed: Dict[str, Any] = {}
 
-        # 1. Legacy .stats-row table — capture impact/hs/maps_played/etc
-        #    NOTE: order of "impact"/"rating" checks fixed: HLTV's label
-        #    "Impact rating" contains both substrings, so "impact" must be
-        #    matched FIRST otherwise the legacy parser puts it into `rating`.
+        profile = self._parse_profile(soup)
+        summary = self._parse_player_summary_box(soup)
+        detailed["summary_boxes"] = summary.get("raw_boxes", {})
+        detailed["rating_version"] = summary.get("rating_version", "")
+
+        tier_el = soup.select_one(".player-summary-stat-box-rating-text")
+        if tier_el:
+            detailed["rating_tier"] = tier_el.get_text(strip=True)
+
+        legacy: Dict[str, str] = {}
+        legacy_raw: Dict[str, str] = {}
         rows = self._select_fallback(
             soup,
-            [".stats-row", ".summary-row", ".stat-row", "div[class*='stats'] .row"],
+            [".stats-row", ".summary-row", ".stat-row"],
             "player overview stats",
         )
         for row in rows:
             spans = row.find_all("span")
             if len(spans) == 2:
-                label = spans[0].text.strip().lower()
+                label = spans[0].text.strip()
                 value = spans[1].text.strip()
+                legacy_raw[label] = value
+                lbl = label.lower()
+                if "damage / round" in lbl or "damage/round" in lbl:
+                    legacy["adr"] = value
+                elif "kills / round" in lbl or "kills/round" in lbl:
+                    legacy["kpr"] = value
+                elif "deaths / round" in lbl or "deaths/round" in lbl:
+                    legacy["dpr"] = value
+                elif "headshot" in lbl:
+                    legacy["hs"] = value
+                elif "kast" in lbl:
+                    legacy["kast"] = value
+                elif "impact" in lbl:
+                    legacy["impact"] = value
+                elif "rating" in lbl:
+                    legacy["rating"] = value
+                elif "maps played" in lbl:
+                    legacy["maps_played"] = value
+                elif "rounds played" in lbl:
+                    legacy["rounds_played"] = value
+        detailed["legacy_stats"] = legacy_raw
+        detailed["role_stats"] = self._parse_role_stats(soup)
+        detailed["section_scores"] = self._parse_section_scores(soup)
 
-                if "damage / round" in label:
-                    stats["adr"] = value
-                if "kills / round" in label:
-                    stats["kpr"] = value
-                if "deaths / round" in label:
-                    stats["dpr"] = value
-                if "headshot" in label:
-                    stats["hs"] = value
-                if "kast" in label:
-                    stats["kast"] = value
-                # Match impact BEFORE rating: "Impact rating" contains both
-                # but the value is the impact rating, not Rating 2.0.
-                if "impact" in label:
-                    stats["impact"] = value
-                elif "rating" in label:
-                    stats["rating"] = value
-                if "maps played" in label:
-                    stats["maps_played"] = value
-
-        # 2. Player-summary boxes — Rating 2.0 + KAST come from here.
-        summary = self._parse_player_summary_box(soup)
-        # Player-summary takes priority for the fields it exposes
-        # (it's the canonical Rating 2.0 + KAST display).
         for k in ("rating_2_0", "kast", "dpr", "adr", "kpr"):
             if k in summary:
-                stats[k if k != "rating_2_0" else "rating"] = summary[k]
+                legacy[k if k != "rating_2_0" else "rating"] = summary[k]
 
-        mapped = {
-            "kpr": self._safe_float(stats.get("kpr")),
-            "dpr": self._safe_float(stats.get("dpr")),
-            "adr": self._safe_float(stats.get("adr")),
-            "hs_pct": self._safe_float(stats.get("hs")),
-            "kast_pct": self._safe_float(stats.get("kast")),
-            "rating": self._safe_float(stats.get("rating")),
-            "impact_rating": self._safe_float(stats.get("impact")),
-            "maps_played": int(self._safe_float(stats.get("maps_played"))),
+        mapped: Dict[str, Any] = {
+            "kpr": self._safe_float(legacy.get("kpr")),
+            "dpr": self._safe_float(legacy.get("dpr")),
+            "adr": self._safe_float(legacy.get("adr")),
+            "hs_pct": self._safe_float(legacy.get("hs")),
+            "kast_pct": self._safe_float(legacy.get("kast")),
+            "rating": self._safe_float(legacy.get("rating")),
+            "impact_rating": self._safe_float(legacy.get("impact")),
+            "maps_played": int(self._safe_float(legacy.get("maps_played"))),
+            "rounds_played": int(self._safe_float(legacy.get("rounds_played"))),
+            "profile": profile,
+            "_detailed": detailed,
         }
 
-        # K/D ratio
         if mapped["dpr"] > 0:
             mapped["kd_ratio"] = mapped["kpr"] / mapped["dpr"]
         else:
             mapped["kd_ratio"] = 0.0
 
-        # Player nickname (fallback chain for HLTV layout variants)
         player_name = None
         name_tag = (
-            soup.select_one(".player-nickname")
+            soup.select_one(".player-summary-stat-box-left-nickname")
+            or soup.select_one(".player-nickname")
             or soup.select_one("h1.summaryNickname")
-            or soup.select_one(".playerNick")
             or soup.select_one("h1[class*='nick']")
         )
         if name_tag:
@@ -682,76 +726,148 @@ class HLTVStatFetcher:
 
         return mapped
 
-    def _parse_trait_sections(self, soup: BeautifulSoup) -> Dict[str, Any]:
-        """Parses Firepower, Entrying, Utility columns from Main Stats Page."""
-        traits = {}
+    def _parse_role_stats(self, soup: BeautifulSoup) -> Dict[str, Dict[str, Any]]:
+        """Parse role stats (40 stats x 3 sides) from overview page.
 
-        section_map = {
-            "Kills per round": ("firepower", "kpr"),
-            "Damage per round": ("firepower", "adr"),
-            "Opening duel win": ("entrying", "opening_win_pct"),
-            "Traded deaths": ("entrying", "traded_deaths_pct"),
-            "Flash assists": ("utility", "flash_assists"),
-            "Damage per round win": ("firepower", "adr_win"),
-            "Kills per round win": ("firepower", "kpr_win"),
+        Each .role-stats-row carries its side as a class on the row itself:
+        .stats-side-combined, .stats-side-ct, .stats-side-t.
+        """
+        result: Dict[str, Dict[str, Any]] = {"combined": {}, "ct": {}, "t": {}}
+
+        for row in soup.select(".role-stats-row"):
+            title_el = row.select_one(".role-stats-title")
+            data_el = row.select_one(".role-stats-data")
+            if not (title_el and data_el):
+                continue
+
+            stat_name = title_el.get_text(strip=True)
+            val = data_el.get_text(strip=True)
+
+            classes = row.get("class") or []
+            if "stats-side-ct" in classes:
+                side = "ct"
+            elif "stats-side-t" in classes:
+                side = "t"
+            else:
+                side = "combined"
+
+            result[side][stat_name] = self._safe_float(val) if val else 0.0
+
+        return result
+
+    def _parse_section_scores(self, soup: BeautifulSoup) -> Dict[str, int]:
+        """Parse 7 section scores from overview (combined side only).
+
+        Score lives in child .row-stats-section-score; section name is a
+        bare text node inside .role-stats-section-title.
+        """
+        scores: Dict[str, int] = {}
+        for wrapper in soup.select(".role-stats-section-title-wrapper.stats-side-combined"):
+            title_el = wrapper.select_one(".role-stats-section-title")
+            if not title_el:
+                continue
+            score_el = title_el.select_one(".row-stats-section-score")
+            if not score_el:
+                continue
+            m = re.search(r"(\d+)/100", score_el.get_text(strip=True))
+            if not m:
+                continue
+            name_parts = [c.strip() for c in title_el.children if isinstance(c, str) and c.strip()]
+            section_name = name_parts[0] if name_parts else "Unknown"
+            scores[section_name] = int(m.group(1))
+        return scores
+
+    def _parse_individual(self, soup: BeautifulSoup) -> Dict[str, float]:
+        """Parse individual stats page (24 stats via .stats-row).
+
+        Uses exact lowercase label matching verified against live HLTV HTML.
+        """
+        stats: Dict[str, float] = {}
+        label_map = {
+            "kills": "total_kills",
+            "deaths": "total_deaths",
+            "kill / death": "kd_ratio",
+            "kill / round": "kills_per_round",
+            "rounds with kills": "rounds_with_kills",
+            "total opening kills": "opening_kills",
+            "total opening deaths": "opening_deaths",
+            "opening kill ratio": "opening_kill_ratio",
+            "opening kill rating": "opening_kill_rating",
+            "team win percent after first kill": "opening_kill_win_pct",
+            "first kill in won rounds": "first_kill_in_won_rounds",
+            "0 kill rounds": "0_kill_rounds",
+            "1 kill rounds": "1_kill_rounds",
+            "2 kill rounds": "2_kill_rounds",
+            "3 kill rounds": "3_kill_rounds",
+            "4 kill rounds": "4_kill_rounds",
+            "5 kill rounds": "5_kill_rounds",
+            "rifle kills": "rifle_kills",
+            "sniper kills": "sniper_kills",
+            "smg kills": "smg_kills",
+            "pistol kills": "pistol_kills",
+            "grenade": "grenade_kills",
+            "other": "other_kills",
         }
+        for row in soup.select(".stats-row"):
+            spans = row.find_all("span")
+            if len(spans) == 2:
+                label = spans[0].text.strip().lower()
+                value = spans[1].text.strip()
+                json_key = label_map.get(label)
+                if json_key:
+                    stats[json_key] = self._safe_float(value)
+        return stats
 
-        rows = soup.select("tr") + soup.select(".stats-row")
+    def _parse_opponents(self, soup: BeautifulSoup) -> List[Dict[str, Any]]:
+        """Parse opponents page — per-team stats.
 
-        for row in rows:
-            text = row.text.strip()
-            for key_phrase, (category, json_key) in section_map.items():
-                if key_phrase.lower() in text.lower():
-                    chunks = [t.strip() for t in row.text.split("\n") if t.strip()]
-                    if len(chunks) >= 2:
-                        val = self._safe_float(chunks[-1])
-                        if category not in traits:
-                            traits[category] = {}
-                        traits[category][json_key] = val
-
-        return traits
-
-    def _parse_clutches(self, soup: BeautifulSoup) -> Dict[str, Any]:
-        """Parses the Clutches table."""
-        clutches = {}
-        rows = soup.select(".stats-table tr")
-        for row in rows:
+        Team name td has two <a> children: [team_name, "See matches"].
+        Extract only the first <a> text for the team name.
+        """
+        opponents: List[Dict[str, Any]] = []
+        for row in soup.select(".stats-table tbody tr"):
             cols = row.select("td")
-            text = row.text.lower()
-            if "1 on 1" in text and len(cols) >= 2:
-                clutches["1on1_wins"] = self._safe_float(cols[-2].text)
-                clutches["1on1_losses"] = self._safe_float(cols[-1].text)
-            elif "1 on 2" in text and len(cols) >= 2:
-                clutches["1on2_wins"] = self._safe_float(cols[-2].text)
-            elif "1 on 3" in text and len(cols) >= 2:
-                clutches["1on3_wins"] = self._safe_float(cols[-2].text)
-        return clutches
+            if len(cols) >= 5:
+                team_link = cols[0].select_one("a")
+                team_name = (
+                    team_link.get_text(strip=True) if team_link else cols[0].get_text(strip=True)
+                )
+                opponents.append(
+                    {
+                        "team": team_name,
+                        "maps": int(self._safe_float(cols[1].get_text(strip=True))),
+                        "kd_diff": cols[2].get_text(strip=True),
+                        "kd": self._safe_float(cols[3].get_text(strip=True)),
+                        "rating": self._safe_float(cols[4].get_text(strip=True)),
+                    }
+                )
+        return opponents
 
-    def _parse_multikills(self, soup: BeautifulSoup) -> Dict[str, Any]:
-        """Parses Multi-Kill summary."""
-        mk = {}
-        rows = soup.select(".stats-table tr")
-        for row in rows:
-            text = row.text
-            if "3 kills" in text:
-                mk["3k"] = self._safe_float(row.select("td")[-1].text)
-            if "4 kills" in text:
-                mk["4k"] = self._safe_float(row.select("td")[-1].text)
-            if "5 kills" in text:
-                mk["5k"] = self._safe_float(row.select("td")[-1].text)
-        return mk
-
-    def _parse_career(self, soup: BeautifulSoup) -> Dict[str, Any]:
-        """Parses Career Rating history."""
-        career = {}
-        rows = soup.select(".stats-table tbody tr")
-        history = {}
-        for row in rows:
+    def _parse_clutches(self, soup: BeautifulSoup) -> Dict[str, int]:
+        """Parse clutches 'all' tier — count events per type from Type column."""
+        counts: Dict[str, int] = {}
+        for row in soup.select(".stats-table tbody tr"):
             cols = row.select("td")
-            if len(cols) >= 2:
-                period = cols[0].text.strip()
-                rating = self._safe_float(cols[1].text)
-                if period.isdigit():
-                    history[period] = rating
-        career["rating_history"] = history
+            for col in cols:
+                text = col.get_text(strip=True)
+                m = re.match(r"1 on (\d)", text)
+                if m:
+                    tier = f"1on{m.group(1)}"
+                    counts[tier] = counts.get(tier, 0) + 1
+                    break
+        return counts
+
+    def _parse_career(self, soup: BeautifulSoup) -> Dict[str, Dict[str, float]]:
+        """Parse career page — year-by-year ratings (all, online, lan, majors)."""
+        career: Dict[str, Dict[str, float]] = {}
+        for row in soup.select(".stats-table tbody tr"):
+            cols = row.select("td")
+            if len(cols) >= 5:
+                period = cols[0].get_text(strip=True)
+                career[period] = {
+                    "all": self._safe_float(cols[1].get_text(strip=True)),
+                    "online": self._safe_float(cols[2].get_text(strip=True)),
+                    "lan": self._safe_float(cols[3].get_text(strip=True)),
+                    "majors": self._safe_float(cols[4].get_text(strip=True)),
+                }
         return career

@@ -5,6 +5,7 @@ from PySide6.QtCore import QMargins, Qt
 from PySide6.QtGui import QColor, QPainter, QPen
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+from Programma_CS2_RENAN.apps.qt_app.widgets.charts import token_color
 
 
 class TrendChart(QChartView):

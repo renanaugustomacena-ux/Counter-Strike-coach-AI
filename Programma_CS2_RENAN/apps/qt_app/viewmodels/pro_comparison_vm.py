@@ -168,7 +168,7 @@ class ProComparisonViewModel(QObject):
                     func.avg(PlayerMatchStats.avg_kast).label("kast"),
                     func.avg(PlayerMatchStats.avg_hs).label("headshot_pct"),
                     func.avg(PlayerMatchStats.opening_duel_win_pct).label("opening_duel_win_pct"),
-                    func.avg(PlayerMatchStats.clutch_win_pct).label("clutch_win_count"),
+                    func.avg(PlayerMatchStats.clutch_win_pct).label("clutch_win_pct"),
                 ).where(
                     PlayerMatchStats.player_name == player,
                     PlayerMatchStats.is_pro == False,  # noqa: E712

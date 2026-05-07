@@ -185,7 +185,7 @@ def _load_match_summary(con: sqlite3.Connection, src: Path) -> Optional[MatchSum
         map_name=str(map_name or "de_unknown"),
         round_count=int(round_count or 0),
         match_date=match_date,
-        is_pro_match=bool(is_pro_match) or True,
+        is_pro_match=True,
     )
 
 

@@ -168,7 +168,6 @@ def _audit_startup_backups() -> list[dict]:
         one_per_month.setdefault(ym, p)
 
     now = datetime.now(timezone.utc)
-    cutoff_ym = (now.replace(day=1).timestamp(),)  # used for month math below
 
     months_to_keep = set()
     yr, mo = now.year, now.month

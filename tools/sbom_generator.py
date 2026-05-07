@@ -49,15 +49,6 @@ PROJECT_VERSION = "1.0.0"  # synced from pyproject.toml in Phase 2
 LOCK_LINE = re.compile(r"^(?P<name>[A-Za-z0-9._\-\[\],]+)==(?P<version>[^\s;]+)")
 
 
-def _try_cyclonedx_lib() -> bool:
-    try:
-        from cyclonedx.builder.this import this_component  # noqa: F401
-
-        return True
-    except ImportError:
-        return False
-
-
 def _components_from_env() -> list[dict[str, Any]]:
     """Enumerate installed dists via importlib.metadata."""
     components: list[dict[str, Any]] = []

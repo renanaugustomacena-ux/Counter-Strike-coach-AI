@@ -159,8 +159,8 @@ class TestCoperTickDataValidation:
                     tick_data=[1, 2, 3],  # List, not dict — should be handled
                 )
                 # If no exception, the fallback chain handled it
-            except AttributeError as e:
-                pytest.fail(f"BUG #8: COPER crashed with AttributeError on non-dict tick_data: {e}")
+            except Exception as e:
+                pytest.fail(f"BUG #8: COPER crashed on non-dict tick_data: {e}")
 
     def test_coper_with_empty_dict_tick_data(self):
         """An empty dict {} is falsy in the condition check, so COPER won't trigger.

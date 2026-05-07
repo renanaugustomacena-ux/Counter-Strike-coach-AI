@@ -113,7 +113,8 @@ class TestAutoEnqueue:
             assert isinstance(task.created_at, datetime)
             assert isinstance(task.updated_at, datetime)
             # Timestamps should be recent (within last 60 seconds)
-            now = datetime.now(timezone.utc)
+            # SQLite strips timezone info on round-trip — use naive datetime
+            now = datetime.now()
             delta = (now - task.created_at).total_seconds()
             assert delta < 60, f"created_at is {delta}s old — should be recent"
 

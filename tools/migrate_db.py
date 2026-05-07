@@ -58,19 +58,21 @@ except ImportError:
     Console = Panel = Confirm = Table = Theme = install_rich_traceback = None
 
 # --- Configuration ---
-MTS_THEME = Theme(
-    {
-        "info": "cyan",
-        "warning": "bold yellow",
-        "error": "bold red",
-        "success": "bold green",
-        "db": "bold blue",
-        "path": "underline blue",
-    }
-)
-
-console = Console(theme=MTS_THEME)
-install_rich_traceback(console=console)
+if Console is not None:
+    MTS_THEME = Theme(
+        {
+            "info": "cyan",
+            "warning": "bold yellow",
+            "error": "bold red",
+            "success": "bold green",
+            "db": "bold blue",
+            "path": "underline blue",
+        }
+    )
+    console = Console(theme=MTS_THEME)
+    install_rich_traceback(console=console)
+else:
+    console = None
 
 
 # --- Logging (centralized) ---

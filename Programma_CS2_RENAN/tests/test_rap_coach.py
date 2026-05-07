@@ -17,7 +17,8 @@ import pytest
 import torch
 
 # RAP Coach architecture requires ncps + hflayers — skip entire module if absent.
-pytest.importorskip("ncps", reason="RAP deps (ncps, hflayers) not installed")
+pytest.importorskip("ncps", reason="RAP dep ncps not installed")
+pytest.importorskip("hflayers", reason="RAP dep hflayers not installed")
 
 from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
 
@@ -157,6 +158,26 @@ class TestRAPMemory:
         combined, belief, _ = mem(x)
         assert not torch.isnan(combined).any()
         assert not torch.isnan(belief).any()
+
+    def test_hopfield_bypass_training_mode(self):
+        """NN-MEM-01: Hopfield bypassed until >= 2 training forward passes."""
+        from Programma_CS2_RENAN.backend.nn.rap_coach.memory import RAPMemory
+
+        torch.manual_seed(42)
+        mem = RAPMemory(128, METADATA_DIM, 256)
+        mem.train()
+        x = torch.randn(2, 5, 128 + METADATA_DIM)
+
+        assert not mem._hopfield_trained
+        assert mem._training_forward_count == 0
+
+        mem(x)
+        assert mem._training_forward_count == 1
+        assert not mem._hopfield_trained
+
+        mem(x)
+        assert mem._training_forward_count >= 2
+        assert mem._hopfield_trained
 
 
 # ---------------------------------------------------------------------------

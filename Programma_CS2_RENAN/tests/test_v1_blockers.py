@@ -414,7 +414,7 @@ class TestSplashScreen:
             pixmap = splash.pixmap()
             assert pixmap.width() == 520
             assert pixmap.height() == 320
-        except Exception:
+        except (ImportError, ModuleNotFoundError):
             pytest.skip("Qt offscreen not available")
 
     def test_splash_status_updates(self):
@@ -434,7 +434,7 @@ class TestSplashScreen:
 
             splash = _create_splash("1.0.0")
             _splash_status(splash, "Testing...")
-        except Exception:
+        except (ImportError, ModuleNotFoundError):
             pytest.skip("Qt offscreen not available")
 
 

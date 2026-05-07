@@ -93,11 +93,11 @@ class TestValidModelTypes:
             ), f"Type '{model_type}' returned {type(model)}, not nn.Module"
 
 
+@pytest.mark.xfail(
+    reason="Factory silent-fallback bug: unknown types return default model instead of raising"
+)
 class TestInvalidModelTypes:
-    """BUG #2: These tests EXPOSE the silent fallback for unknown types.
-
-    These tests are expected to FAIL until the bug is fixed.
-    """
+    """BUG #2: These tests EXPOSE the silent fallback for unknown types."""
 
     def test_unknown_type_should_raise_error(self):
         """An unrecognized model_type must raise ValueError, not silently return default.

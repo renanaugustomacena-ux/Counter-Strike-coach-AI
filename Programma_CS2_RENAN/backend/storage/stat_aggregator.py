@@ -13,7 +13,7 @@ from sqlmodel import select
 
 from Programma_CS2_RENAN.backend.storage.database import get_hltv_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import (
-    MAX_AUX_JSON_BYTES,
+    MAX_STAT_JSON_BYTES,
     ProPlayer,
     ProPlayerStatCard,
     ProTeam,
@@ -87,14 +87,14 @@ class StatCardAggregator:
             # S-07: Store spider blob with size guard — truncate to core
             # stats if the full crawl exceeds the DB model's size cap.
             full_json = json.dumps(spider_data)
-            if len(full_json.encode("utf-8")) > MAX_AUX_JSON_BYTES:
+            if len(full_json.encode("utf-8")) > MAX_STAT_JSON_BYTES:
                 logger.warning(
                     "S-07: detailed_stats_json for %s [%s] is %d bytes "
                     "(limit %d) — storing core stats only",
                     nickname,
                     hltv_id,
                     len(full_json.encode("utf-8")),
-                    MAX_AUX_JSON_BYTES,
+                    MAX_STAT_JSON_BYTES,
                 )
                 core_only = {"core": core, "player_id": hltv_id, "nickname": nickname}
                 full_json = json.dumps(core_only)

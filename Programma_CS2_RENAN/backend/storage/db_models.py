@@ -14,6 +14,9 @@ MAX_GAME_STATE_JSON_BYTES = 16_384  # 16 KB
 # DM-04: Maximum allowed size (bytes) for auxiliary JSON fields in Ext_PlayerPlaystyle.
 # Prevents unbounded growth from user-supplied profile data.
 MAX_AUX_JSON_BYTES = 8_192  # 8 KB
+MAX_STAT_JSON_BYTES = (
+    32_768  # 32 KB — ProPlayerStatCard needs room for role stats + weapons + opponents
+)
 
 
 # --- Enums for Data Integrity ---
@@ -510,9 +513,9 @@ class ProPlayerStatCard(SQLModel, table=True):
     @field_validator("detailed_stats_json")
     @classmethod
     def validate_detailed_stats_size(cls, v: str) -> str:
-        if v and len(v.encode("utf-8")) > MAX_AUX_JSON_BYTES:
+        if v and len(v.encode("utf-8")) > MAX_STAT_JSON_BYTES:
             raise ValueError(
-                f"detailed_stats_json exceeds {MAX_AUX_JSON_BYTES} bytes "
+                f"detailed_stats_json exceeds {MAX_STAT_JSON_BYTES} bytes "
                 f"({len(v.encode('utf-8'))} bytes)"
             )
         return v

@@ -670,15 +670,19 @@ def _reconcile_against_complete(report_path: Path) -> dict:
     match_data_dir = Path(mdm.match_data_path)
 
     # Pull existing complete rows via raw sqlite3 (read-only; no lock contention).
-    cur = sqlite3.connect(f"file:{monolith_path}?mode=ro", uri=True).cursor()
-    cur.execute(
-        f"""
-        SELECT demo_name, player_name, {", ".join(RECONCILE_FIELDS)}
-        FROM playermatchstats
-        WHERE data_quality = '{DATA_QUALITY_COMPLETE}'
-        """
-    )
-    existing = {(r[0], r[1]): r[2:] for r in cur.fetchall()}
+    _conn = sqlite3.connect(f"file:{monolith_path}?mode=ro", uri=True)
+    try:
+        cur = _conn.cursor()
+        cur.execute(
+            f"""
+            SELECT demo_name, player_name, {", ".join(RECONCILE_FIELDS)}
+            FROM playermatchstats
+            WHERE data_quality = '{DATA_QUALITY_COMPLETE}'
+            """
+        )
+        existing = {(r[0], r[1]): r[2:] for r in cur.fetchall()}
+    finally:
+        _conn.close()
     if not existing:
         report = {
             "verdict": "no_complete_rows",

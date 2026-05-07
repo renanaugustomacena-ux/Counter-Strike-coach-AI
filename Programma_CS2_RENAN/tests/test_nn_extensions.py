@@ -150,9 +150,10 @@ class TestNNConfig:
             OUTPUT_DIM,
             WEIGHT_CLAMP,
         )
+        from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
 
         assert BATCH_SIZE == 32
-        assert INPUT_DIM > 0
+        assert INPUT_DIM == METADATA_DIM
         assert OUTPUT_DIM == 10
         assert HIDDEN_DIM == 128
         assert LEARNING_RATE == 0.001

@@ -311,7 +311,7 @@ class TestEntropyAnalyzer:
         post = [(100, 200), (110, 210)]
         impact = ea.analyze_utility_throw(pre, post, "smoke")
         assert impact.utility_type == "smoke"
-        assert impact.pre_entropy >= impact.post_entropy or True  # Entropy can go either way
+        assert impact.pre_entropy >= 0.0 and impact.post_entropy >= 0.0
         assert 0.0 <= impact.effectiveness_rating <= 1.0
 
     def test_rank_utility_usage(self):

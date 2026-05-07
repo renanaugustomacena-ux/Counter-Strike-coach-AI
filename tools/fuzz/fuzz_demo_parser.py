@@ -126,7 +126,7 @@ def _run_random_fallback(args: argparse.Namespace, log: logging.Logger) -> int:
         data = _generate_input(rng)
         try:
             _try_parse(data)
-        except (Exception, BaseException) as exc:  # noqa: BLE001 — fuzz target
+        except Exception as exc:  # noqa: BLE001 — fuzz target
             # demoparser2 is expected to raise on malformed input; we treat any
             # exception as "interesting" only when it's outside the known-error
             # surface. Without a clear surface, count and save all of them; the

@@ -14,7 +14,7 @@ import json
 import sys
 from pathlib import Path
 
-from _infra import SOURCE_ROOT, BaseValidator, Severity
+from _infra import SOURCE_ROOT, BaseValidator
 
 MANIFEST_PATH = SOURCE_ROOT / "core" / "integrity_manifest.json"
 

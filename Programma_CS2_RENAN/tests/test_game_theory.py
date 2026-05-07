@@ -194,11 +194,13 @@ class TestAdaptiveBeliefCalibrator:
         """extract_death_events_from_db returns empty DataFrame when no data."""
         from Programma_CS2_RENAN.backend.analysis.belief_model import extract_death_events_from_db
 
-        # This will hit a real (likely empty) DB or fail gracefully
         df = extract_death_events_from_db()
         assert isinstance(df, pd.DataFrame)
         assert "health" in df.columns
         assert "died" in df.columns
+        if len(df) > 0:
+            assert df["health"].dtype in ("float64", "int64", "object")
+            assert df["died"].dtype in ("bool", "int64", "object")
 
     def test_weapon_lethality_calibration(self):
         """Weapon lethality calibration with proper data."""

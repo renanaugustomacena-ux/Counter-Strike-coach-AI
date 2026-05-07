@@ -102,7 +102,7 @@ def main() -> int:
     parser.add_argument(
         "apps",
         nargs="*",
-        choices=list(REGISTERED_APPS) + [[]],
+        choices=list(REGISTERED_APPS),
         help="Marquee apps to build. Defaults to all registered.",
     )
     args = parser.parse_args()

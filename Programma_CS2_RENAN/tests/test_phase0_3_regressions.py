@@ -568,8 +568,9 @@ class TestP0_04_StatusEnumValidation:
         # Valid status should succeed
         sm.update_status("hunter", "Running")
 
-        # Invalid global status should raise (caught internally by update_status)
-        # The function catches exceptions, so verify the state wasn't corrupted
+        # Invalid global status raises ValueError (caught internally by update_status)
+        # Invalid global status raises ValueError (caught internally by update_status)
+        # Verify the state wasn't corrupted — should remain default "Paused"
         sm.update_status("global", "INVALID_STATUS_XYZ")
         status_info = sm.get_status("global")
-        assert status_info["status"] != "INVALID_STATUS_XYZ"
+        assert status_info["status"] == "Paused"

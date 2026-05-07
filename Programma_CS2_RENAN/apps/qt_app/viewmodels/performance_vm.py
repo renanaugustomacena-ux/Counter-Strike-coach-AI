@@ -55,7 +55,7 @@ class PerformanceViewModel(QObject):
             from Programma_CS2_RENAN.backend.reporting.analytics import analytics
         except ImportError as exc:
             logger.warning("Analytics module unavailable: %s", exc)
-            return ([], {}, {}, {}, False)
+            return ([], {}, {}, {}, False, {})
 
         # Check if user has personal matches — determines provenance labeling
         from sqlalchemy import func as sa_func

@@ -243,7 +243,7 @@ def main() -> None:
         after = conn.execute(
             "SELECT COUNT(*) FROM roundstats WHERE demo_name = ?", (demo_name,)
         ).fetchone()[0]
-        newly_inserted = after - (0 if full_rebuild else 0)
+        newly_inserted = after
 
         # Q1-02: Update playermatchstats with match-level enrichment for every
         # (demo_name, player_name) pair that has a row. UPDATE with no matching
@@ -262,12 +262,12 @@ def main() -> None:
             if not set_clauses:
                 continue
             values.extend([demo_name, player_name])
-            conn.execute(
+            result = conn.execute(
                 f"UPDATE playermatchstats SET {', '.join(set_clauses)} "
                 f"WHERE demo_name = ? AND player_name = ?",
                 values,
             )
-            if conn.total_changes:
+            if result.rowcount > 0:
                 pms_updates += 1
         conn.commit()
 

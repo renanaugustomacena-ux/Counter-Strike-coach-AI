@@ -123,7 +123,7 @@ def phase_1_data_discovery():
             train_tick_query = text(
                 f"SELECT COUNT(*) FROM playertickstate WHERE demo_name IN ({placeholders})"
             )
-            train_ticks = session.exec(train_tick_query, params=params).one()[0]
+            train_ticks = session.execute(train_tick_query, params).one()[0]
             check(
                 "TRAIN split has tick data",
                 train_ticks > 0,
