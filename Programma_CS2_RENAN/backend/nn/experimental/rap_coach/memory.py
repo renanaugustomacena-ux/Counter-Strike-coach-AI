@@ -182,6 +182,35 @@ class RAPMemory(nn.Module):
 
         return combined_state, belief, hidden
 
+    @torch.no_grad()
+    def initialize_prototypes(self, embeddings: torch.Tensor) -> None:
+        """Phase 5B: Initialize Hopfield prototypes from K-means centroids.
+
+        Reduces warmup time from random initialization. Call after first
+        epoch of LTC output has been collected.
+        """
+        K = 32
+        N = embeddings.shape[0]
+        if N < K:
+            logger.debug("Too few embeddings (%d) for %d prototypes", N, K)
+            return
+        indices = torch.linspace(0, N - 1, K).long().to(embeddings.device)
+        centroids = embeddings[indices].clone()
+        for _ in range(10):
+            dists = torch.cdist(embeddings, centroids)
+            assignments = dists.argmin(dim=1)
+            for k in range(K):
+                mask = assignments == k
+                if mask.any():
+                    centroids[k] = embeddings[mask].mean(dim=0)
+        for name, param in self.hopfield.named_parameters():
+            if param.shape[-1] == centroids.shape[-1] and param.shape[0] == K:
+                param.data.copy_(centroids)
+                self._hopfield_trained = True
+                logger.info("Phase 5B: Hopfield prototypes initialized from %d samples", N)
+                return
+        logger.debug("Phase 5B: No matching Hopfield prototype parameter found")
+
     def load_state_dict(self, state_dict, strict=True, assign=False):
         """Override to mark Hopfield as trained when loading a checkpoint."""
         result = super().load_state_dict(state_dict, strict=strict, assign=assign)

@@ -13,6 +13,7 @@ from Programma_CS2_RENAN.backend.nn.jepa_model import (
     JEPACoachingModel,
     VLJEPACoachingModel,
     jepa_contrastive_loss,
+    vicreg_regularization,
     vl_jepa_concept_loss,
 )
 from Programma_CS2_RENAN.backend.processing.validation.drift import (
@@ -71,7 +72,29 @@ class JEPATrainer:
         else:
             trainable = [p for p in model.parameters() if p.requires_grad]
             self.optimizer = optim.AdamW(trainable, lr=lr, weight_decay=weight_decay)
-        self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=t_max)
+        # Phase 4B: Linear warmup (5%) → cosine decay (Goyal et al. 2017)
+        _warmup_epochs = max(1, int(t_max * 0.05))
+        self.scheduler = optim.lr_scheduler.SequentialLR(
+            self.optimizer,
+            schedulers=[
+                optim.lr_scheduler.LinearLR(
+                    self.optimizer, start_factor=0.01, total_iters=_warmup_epochs
+                ),
+                optim.lr_scheduler.CosineAnnealingLR(
+                    self.optimizer, T_max=max(1, t_max - _warmup_epochs)
+                ),
+            ],
+            milestones=[_warmup_epochs],
+        )
+
+        # Phase 4A: Mixed precision (Micikevicius et al. 2018)
+        self._device_type = "cuda" if torch.cuda.is_available() else "cpu"
+        self._amp_enabled = torch.cuda.is_available()
+        self._scaler = torch.amp.GradScaler(enabled=self._amp_enabled)
+
+        # Phase 4C+D: Gradient accumulation (effective batch *= 4) and clipping
+        self._accumulation_steps = 4
+        self._max_grad_norm = 1.0
 
         # J-6: EMA cosine momentum schedule (Assran et al., CVPR 2023, Section 3.2).
         # τ(t) = 1 - (1 - τ_base) · (cos(πt/T) + 1) / 2
@@ -141,17 +164,18 @@ class JEPATrainer:
             return neg_encoded.reshape(b, n, -1)
 
     def train_step(
-        self, x_context: torch.Tensor, x_target: torch.Tensor, negatives: torch.Tensor
+        self,
+        x_context: torch.Tensor,
+        x_target: torch.Tensor,
+        negatives: torch.Tensor,
+        step_optimizer: bool = True,
     ) -> dict:
         """
-        Single self-supervised training step.
+        Single self-supervised training step with AMP + gradient accumulation.
 
-        Returns dict with "loss" key for consistency with RAPTrainer and VL-JEPA interfaces.
-
-        Handles two negative-sample paths:
-        1. Pre-encoded negatives (from train_epoch dataloader) — shape (B, N, latent_dim)
-        2. Raw feature negatives (from TrainingOrchestrator._prepare_batch) — shape (B, N, METADATA_DIM)
-           These are auto-detected by dimension mismatch and encoded via target_encoder.
+        Args:
+            step_optimizer: If True, unscale/clip/step/EMA after backward.
+                If False, only accumulate gradients (for gradient accumulation).
         """
         # NN-TR-03: Validate input tensor shapes before forward pass
         if x_context.ndim != 3:
@@ -175,29 +199,83 @@ class JEPATrainer:
             negatives = negatives.to(device)
 
         self.model.train()
-        self.optimizer.zero_grad()
 
-        # 1. Forward Pass
-        pred_embedding, target_embedding = self.model.forward_jepa_pretrain(x_context, x_target)
+        # Phase 2D: Tabular augmentation on context (target stays clean — BYOL paradigm)
+        x_context_aug = self._tabular_augment(x_context)
 
-        # 2. Encode raw negatives if from orchestrator batch (dimension mismatch = raw features)
-        if negatives is not None and negatives.shape[-1] != pred_embedding.shape[-1]:
-            negatives = self.encode_raw_negatives(negatives, x_context.shape[1])
+        # Phase 4A: AMP autocast for forward + loss
+        with torch.amp.autocast(device_type=self._device_type, enabled=self._amp_enabled):
+            pred_embedding, target_embedding = self.model.forward_jepa_pretrain(
+                x_context_aug, x_target
+            )
+            if negatives is not None and negatives.shape[-1] != pred_embedding.shape[-1]:
+                negatives = self.encode_raw_negatives(negatives, x_context.shape[1])
 
-        # 3. Compute Loss
-        loss = jepa_contrastive_loss(pred_embedding, target_embedding, negatives)
+            # Phase 2A: Augment negatives with MoCo queue
+            negatives = self._augment_with_moco_queue(negatives, pred_embedding)
 
-        # 4. Optimization
-        loss.backward()
-        self.optimizer.step()
+            # Phase 2B: Learned temperature (CLIP-style)
+            tau = self.model.log_temperature.exp().clamp(0.01, 1.0)
+            loss = jepa_contrastive_loss(pred_embedding, target_embedding, negatives, tau)
 
-        # 5. Update Target Encoder (EMA with cosine momentum schedule — J-6)
-        self.model.update_target_encoder(momentum=self._scheduled_ema_momentum())
+            # Phase 2E: VICReg regularization on pred embeddings
+            vicreg = vicreg_regularization(pred_embedding, lambda_var=25.0, lambda_cov=1.0)
+            loss = loss + 0.01 * vicreg
 
-        # 6. Embedding diversity monitoring (P9-02 acceptance criterion)
+        # Phase 2A: Enqueue target embeddings for future negatives
+        self.model.enqueue(target_embedding)
+
+        # Phase 4C: Scale loss for gradient accumulation
+        self._scaler.scale(loss / self._accumulation_steps).backward()
+
+        grad_norm = None
+        if step_optimizer:
+            grad_norm = self._optimizer_step()
+
         embedding_variance = self._log_embedding_diversity(pred_embedding)
 
-        return {"loss": loss.item(), "embedding_variance": embedding_variance}
+        return {
+            "loss": loss.item(),
+            "embedding_variance": embedding_variance,
+            "grad_norm": grad_norm,
+            "temperature": tau.item(),
+            "vicreg": vicreg.item(),
+        }
+
+    @staticmethod
+    def _tabular_augment(
+        x: torch.Tensor, mask_ratio: float = 0.3, noise_std: float = 0.03
+    ) -> torch.Tensor:
+        """Phase 2D: Tabular multi-crop augmentation (TabNet-style feature masking)."""
+        mask = torch.bernoulli(torch.full_like(x, 1.0 - mask_ratio))
+        noise = torch.randn_like(x) * noise_std
+        return x * mask + noise
+
+    def _augment_with_moco_queue(
+        self, negatives: torch.Tensor, pred_embedding: torch.Tensor
+    ) -> torch.Tensor:
+        """Phase 2A: Augment in-batch negatives with MoCo queue entries."""
+        queue = self.model.moco_queue.clone().detach()
+        b = pred_embedding.shape[0]
+        # Sample subset from queue to keep memory bounded
+        n_queue = min(64, queue.shape[0])
+        idx = torch.randperm(queue.shape[0], device=queue.device)[:n_queue]
+        queue_neg = queue[idx].unsqueeze(0).expand(b, -1, -1)  # (B, n_queue, latent_dim)
+        if negatives is not None:
+            return torch.cat([negatives, queue_neg], dim=1)
+        return queue_neg
+
+    def _optimizer_step(self) -> float:
+        """Unscale → clip → step → scaler update → zero_grad → EMA."""
+        self._scaler.unscale_(self.optimizer)
+        trainable = [p for p in self.model.parameters() if p.requires_grad]
+        grad_norm = torch.nn.utils.clip_grad_norm_(trainable, self._max_grad_norm).item()
+        self._scaler.step(self.optimizer)
+        self._scaler.update()
+        self.optimizer.zero_grad()
+        self.model.update_target_encoder(momentum=self._scheduled_ema_momentum())
+        logger.debug("Grad norm: %.4f", grad_norm)
+        return grad_norm
 
     def _log_embedding_diversity(self, embeddings: torch.Tensor) -> float:
         """Monitor embedding collapse risk (P9-02 acceptance criterion).
@@ -232,7 +310,10 @@ class JEPATrainer:
         count = 0
         epoch_variances: List[float] = []
 
-        for batch in dataloader:
+        self.optimizer.zero_grad()
+        accum = self._accumulation_steps
+
+        for batch_idx, batch in enumerate(dataloader):
             x_context = batch["context"].to(device)
             x_target = batch["target"].to(device)
 
@@ -251,23 +332,24 @@ class JEPATrainer:
                 all_encoded = self.model.target_encoder(x_target).mean(dim=1)  # [B, latent]
 
             # NN-TR-01: O(B²) negative construction — each sample excludes itself.
-            # For typical batch sizes (32–128) this is fast. For B > 256 consider
-            # vectorised masking: mask = ~torch.eye(B, dtype=bool, device=device)
             indices = torch.arange(batch_size, device=device)
             negatives_tensor = torch.stack(
                 [all_encoded[indices != i] for i in range(batch_size)]
             )  # [B, B-1, latent]
 
-            result = self.train_step(x_context, x_target, negatives_tensor)
+            do_step = (count + 1) % accum == 0
+            result = self.train_step(x_context, x_target, negatives_tensor, step_optimizer=do_step)
             total_loss += result["loss"]
             count += 1
 
-            # Accumulate the per-batch variance for end-of-epoch P9-02 check.
             v = result.get("embedding_variance")
             if v is not None:
                 epoch_variances.append(float(v))
 
-        # Step scheduler once per epoch (not per batch)
+        # Flush any remaining accumulated gradients
+        if count % accum != 0:
+            self._optimizer_step()
+
         self.scheduler.step()
 
         # NN-TR-02: Warn if dataloader was empty (no batches processed)
@@ -338,8 +420,18 @@ class JEPATrainer:
 
         logger.warning("Starting full model retraining due to detected drift")
 
-        # Reset learning rate scheduler for fresh training
-        self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=epochs)
+        # Reset LR scheduler with warmup for fresh training
+        _warmup = max(1, int(epochs * 0.05))
+        self.scheduler = optim.lr_scheduler.SequentialLR(
+            self.optimizer,
+            schedulers=[
+                optim.lr_scheduler.LinearLR(self.optimizer, start_factor=0.01, total_iters=_warmup),
+                optim.lr_scheduler.CosineAnnealingLR(
+                    self.optimizer, T_max=max(1, epochs - _warmup)
+                ),
+            ],
+            milestones=[_warmup],
+        )
 
         # V-3 FIX: Reset EMA cosine momentum schedule for fresh retraining.
         # Without this, _ema_step accumulates from previous training, causing
@@ -370,63 +462,51 @@ class JEPATrainer:
         concept_alpha: float = 0.5,
         concept_beta: float = 0.1,
         round_stats=None,
+        step_optimizer: bool = True,
     ) -> dict:
         """
         VL-JEPA training step: InfoNCE + concept alignment + diversity.
-
-        Requires self.model to be a VLJEPACoachingModel instance.
-
-        Args:
-            x_context: Context window [batch, context_len, input_dim]
-            x_target: Target window [batch, target_len, input_dim]
-            negatives: Negative samples [batch, num_negatives, latent_dim]
-            concept_alpha: Weight for concept alignment loss
-            concept_beta: Weight for diversity regularization
-            round_stats: Optional list of RoundStats objects for outcome-based labeling (G-01)
-
-        Returns:
-            Dict with infonce_loss, concept_loss, diversity_loss, total_loss
+        AMP and gradient accumulation via step_optimizer flag.
         """
         if not isinstance(self.model, VLJEPACoachingModel):
             raise TypeError("train_step_vl requires a VLJEPACoachingModel")
 
         self.model.train()
-        self.optimizer.zero_grad()
 
-        # 1. Standard JEPA pre-training forward
-        pred_embedding, target_embedding = self.model.forward_jepa_pretrain(
-            x_context,
-            x_target,
-        )
+        # Phase 2D: Tabular augmentation
+        x_context_aug = self._tabular_augment(x_context)
 
-        # 2. InfoNCE contrastive loss
-        infonce_loss = jepa_contrastive_loss(
-            pred_embedding,
-            target_embedding,
-            negatives,
-        )
+        # Phase 4A: AMP autocast
+        with torch.amp.autocast(device_type=self._device_type, enabled=self._amp_enabled):
+            pred_embedding, target_embedding = self.model.forward_jepa_pretrain(
+                x_context_aug,
+                x_target,
+            )
+            if negatives is not None and negatives.shape[-1] != pred_embedding.shape[-1]:
+                negatives = self.encode_raw_negatives(negatives, x_context.shape[1])
+            negatives = self._augment_with_moco_queue(negatives, pred_embedding)
+            tau = self.model.log_temperature.exp().clamp(0.01, 1.0)
+            infonce_loss = jepa_contrastive_loss(
+                pred_embedding,
+                target_embedding,
+                negatives,
+                tau,
+            )
+            infonce_loss = infonce_loss + 0.01 * vicreg_regularization(pred_embedding)
+            vl_output = self.model.forward_vl(x_context_aug)
+            concept_logits = vl_output["concept_logits"]
 
-        # 3. Concept alignment: encode context and get concept logits
-        vl_output = self.model.forward_vl(x_context)
-        concept_logits = vl_output["concept_logits"]
+        self.model.enqueue(target_embedding)
 
-        # 4. Generate concept labels — prefer outcome-based (G-01 fix) over heuristic
         labeler = ConceptLabeler()
         valid_indices: list[int] = []
         if round_stats is not None and any(rs is not None for rs in round_stats):
-            # G-01: Use RoundStats outcome data (no label leakage)
-            # LEAK-02 fix: drop samples with rs=None instead of substituting
-            # torch.full((16,), 0.5) — 0.5 under BCE-with-logits acts as a weak
-            # positive for every concept simultaneously, producing incoherent
-            # gradients. Mask via index selection and recompute logits slice.
             batch_labels = []
             for idx, rs in enumerate(round_stats):
                 if rs is not None:
                     batch_labels.append(labeler.label_from_round_stats(rs))
                     valid_indices.append(idx)
             if not batch_labels:
-                # Degenerate: all None after the any() check raced (should not
-                # happen, but guard anyway). Fall through to skip path.
                 concept_labels = None
             else:
                 concept_labels = torch.stack(batch_labels).to(x_context.device)
@@ -439,12 +519,6 @@ class JEPATrainer:
             concept_labels = None
 
         if concept_labels is None:
-            # J-2 FIX: Hard-gate heuristic fallback — skip concept alignment entirely.
-            # The heuristic labeler (label_batch/label_tick) derives labels directly from
-            # the input feature vector, causing label leakage: the model can learn a
-            # near-linear mapping (concept[0] ≈ 0.5 + features[8]) instead of actual
-            # coaching concepts. InfoNCE loss alone is sufficient for JEPA pre-training;
-            # concept alignment is an additive enhancement that requires outcome labels.
             if not getattr(self, "_concept_skip_logged", False):
                 logger.warning(
                     "J-2: VL-JEPA concept alignment SKIPPED — no RoundStats available. "
@@ -452,43 +526,32 @@ class JEPATrainer:
                 )
                 self._concept_skip_logged = True
 
-            # Return InfoNCE loss only, no concept alignment
-            total_loss = infonce_loss
-            total_loss.backward()
-            self.optimizer.step()
-            self.model.update_target_encoder(momentum=self._scheduled_ema_momentum())
+            self._scaler.scale(infonce_loss / self._accumulation_steps).backward()
+            if step_optimizer:
+                self._optimizer_step()
             self.label_source_monitor.record(LABEL_SOURCE_SKIPPED_NO_ROUND_STATS)
             return {
-                "total_loss": total_loss.item(),
+                "total_loss": infonce_loss.item(),
                 "infonce_loss": infonce_loss.item(),
                 "concept_loss": 0.0,
                 "diversity_loss": 0.0,
                 "label_source": LABEL_SOURCE_SKIPPED_NO_ROUND_STATS,
             }
 
-        # 5. Concept loss + diversity
-        concept_total, concept_loss, diversity_loss = vl_jepa_concept_loss(
-            concept_logits,
-            concept_labels,
-            self.model.concept_embeddings.weight,
-            alpha=concept_alpha,
-            beta=concept_beta,
-        )
+        with torch.amp.autocast(device_type=self._device_type, enabled=self._amp_enabled):
+            concept_total, concept_loss, diversity_loss = vl_jepa_concept_loss(
+                concept_logits,
+                concept_labels,
+                self.model.concept_embeddings.weight,
+                alpha=concept_alpha,
+                beta=concept_beta,
+            )
+            total_loss = infonce_loss + concept_total
 
-        # 6. Combined loss
-        total_loss = infonce_loss + concept_total
+        self._scaler.scale(total_loss / self._accumulation_steps).backward()
+        if step_optimizer:
+            self._optimizer_step()
 
-        # 7. Backward + optimize
-        total_loss.backward()
-        self.optimizer.step()
-        # Note: scheduler.step() is called once per epoch in train_epoch(), not per batch
-
-        # 8. EMA update for target encoder (cosine schedule — J-6)
-        self.model.update_target_encoder(momentum=self._scheduled_ema_momentum())
-
-        # G-01 telemetry: mark this batch as having reached the canonical
-        # outcome-based labelling path. The monitor's sliding-window alarm
-        # fires if SKIPPED batches start to dominate.
         self.label_source_monitor.record(LABEL_SOURCE_ROUND_STATS)
 
         return {

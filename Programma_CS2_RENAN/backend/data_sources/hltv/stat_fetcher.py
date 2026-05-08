@@ -197,13 +197,14 @@ class HLTVStatFetcher:
                 )
                 return player_urls
 
-        # Fallback: direct stats page (may be blocked by robots.txt)
         url = "https://www.hltv.org/stats/players"
         logger.info("Fallback: discovering players from %s (no query params)", url)
         try:
-            time.sleep(random.uniform(CRAWL_DELAY_MIN_SECONDS, CRAWL_DELAY_MIN_SECONDS + 2))
+            base_delay = CRAWL_DELAY_MIN_SECONDS + min(self._consecutive_failures * 2, 10)
+            time.sleep(random.uniform(base_delay, base_delay + 3))
             html = self._solver.get(url)
             if not html:
+                self._consecutive_failures += 1
                 logger.error("FlareSolverr failed for Top 50 page")
                 return []
 
@@ -239,9 +240,11 @@ class HLTVStatFetcher:
         url = "https://www.hltv.org/ranking/teams/"
         logger.info("Discovering top %d teams from: %s", count, url)
         try:
-            time.sleep(random.uniform(CRAWL_DELAY_MIN_SECONDS, CRAWL_DELAY_MIN_SECONDS + 2))
+            base_delay = CRAWL_DELAY_MIN_SECONDS + min(self._consecutive_failures * 2, 10)
+            time.sleep(random.uniform(base_delay, base_delay + 3))
             html = self._solver.get(url)
             if not html:
+                self._consecutive_failures += 1
                 logger.error("FlareSolverr failed for team ranking page")
                 return []
 
@@ -255,9 +258,19 @@ class HLTVStatFetcher:
             results = []
             for team_el in ranked_teams:
                 try:
-                    name_el = team_el.select_one(".name")
-                    rank_el = team_el.select_one(".position")
-                    link_el = team_el.select_one("a.moreLink")
+                    name_el = (
+                        team_el.select_one(".name")
+                        or team_el.select_one(".teamName")
+                        or team_el.select_one("span[class*='name']")
+                    )
+                    rank_el = (
+                        team_el.select_one(".position")
+                        or team_el.select_one(".ranking-pos")
+                        or team_el.select_one("span[class*='rank']")
+                    )
+                    link_el = team_el.select_one("a.moreLink") or team_el.select_one(
+                        "a[href*='/team/']"
+                    )
 
                     if not name_el or not link_el:
                         continue
@@ -270,10 +283,23 @@ class HLTVStatFetcher:
                     m = re.search(r"/team/(\d+)/", href)
                     team_hltv_id = int(m.group(1)) if m else 0
 
-                    # Extract roster from ranking page (avoids extra HTTP request)
                     players = []
-                    for player_el in team_el.select("td.player-holder a.pointer"):
-                        nick_el = player_el.select_one("div.nick")
+                    roster_selectors = [
+                        "td.player-holder a.pointer",
+                        ".lineup-con a[href*='/player/']",
+                        "a[href*='/player/']",
+                    ]
+                    roster_els = []
+                    for sel in roster_selectors:
+                        roster_els = team_el.select(sel)
+                        if roster_els:
+                            break
+                    for player_el in roster_els:
+                        nick_el = (
+                            player_el.select_one("div.nick")
+                            or player_el.select_one(".nick")
+                            or player_el.select_one("span.nick")
+                        )
                         p_href = str(player_el.get("href", ""))
                         pm = re.search(r"/player/(\d+)/", p_href)
                         if nick_el and pm:
@@ -300,13 +326,24 @@ class HLTVStatFetcher:
                 except Exception as e:
                     logger.warning("Failed to parse team element: %s", e)
 
+            total_players = sum(len(t["players"]) for t in results)
+            if results and total_players < len(results):
+                logger.warning(
+                    "H2: Stale response — %d teams but only %d players "
+                    "(expected ≥%d). HLTV layout may have changed.",
+                    len(results),
+                    total_players,
+                    len(results) * 3,
+                )
+            self._consecutive_failures = max(0, self._consecutive_failures - 1)
             logger.info(
                 "Discovered %d teams with %d total players.",
                 len(results),
-                sum(len(t["players"]) for t in results),
+                total_players,
             )
             return results
         except Exception:
+            self._consecutive_failures += 1
             logger.exception("Error discovering top teams")
             return []
 
@@ -369,15 +406,14 @@ class HLTVStatFetcher:
         )
         return new_player_urls
 
+    _MIN_VIABLE_FIELDS = {"rating", "kpr", "maps_played"}
+
     def fetch_and_save_player(self, url: str) -> bool:
         """
         Fetch player stats from HLTV and save to hltv_metadata.db.
 
-        Args:
-            url: HLTV player stats URL (e.g. https://www.hltv.org/stats/players/2023/fallen)
-
-        Returns:
-            True if successfully fetched and saved, False otherwise.
+        H2: Validates minimum viable stats before persisting — a player
+        with rating=0 and kpr=0 likely had a parsing failure.
         """
         data = self._fetch_player_stats(url)
         if not data:
@@ -390,6 +426,25 @@ class HLTVStatFetcher:
             logger.error("Could not extract HLTV ID from URL: %s", url)
             return False
 
+        missing = [f for f in self._MIN_VIABLE_FIELDS if not data.get(f)]
+        if missing:
+            logger.warning(
+                "H2: Skipping %s (ID %s) — missing minimum viable fields: %s",
+                player_name,
+                hltv_id,
+                missing,
+            )
+            return False
+
+        if data.get("rating", 0) <= 0:
+            logger.warning(
+                "H2: Skipping %s (ID %s) — rating=%.2f (likely parse failure)",
+                player_name,
+                hltv_id,
+                data.get("rating", 0),
+            )
+            return False
+
         return self._save_to_db(hltv_id, player_name, data)
 
     def _fetch_player_stats(self, url: str) -> Optional[Dict[str, Any]]:
@@ -400,9 +455,11 @@ class HLTVStatFetcher:
         """
         logger.info("Deep-crawling stats for: %s", url)
         try:
-            time.sleep(random.uniform(CRAWL_DELAY_MIN_SECONDS + 1, CRAWL_DELAY_MAX_SECONDS))
+            base_delay = CRAWL_DELAY_MIN_SECONDS + 1 + min(self._consecutive_failures * 2, 10)
+            time.sleep(random.uniform(base_delay, base_delay + 3))
             html = self._solver.get(url)
             if not html:
+                self._consecutive_failures += 1
                 logger.error("FlareSolverr failed for %s", url)
                 return None
 
@@ -469,9 +526,11 @@ class HLTVStatFetcher:
                 main_data["multikill_round_pct"] = (mk_rounds / rounds_played) * 100.0
 
             main_data["detailed_stats_json"] = detailed
+            self._consecutive_failures = max(0, self._consecutive_failures - 1)
             return main_data
 
         except Exception:
+            self._consecutive_failures += 1
             logger.exception("Error in deep crawl for %s", url)
             return None
 
@@ -544,16 +603,31 @@ class HLTVStatFetcher:
             logger.exception("Failed to save stats for %s (ID: %s)", nickname, hltv_id)
             return False
 
+    _consecutive_failures: int = 0
+
     def _fetch_sub_stats(self, url: str, parser_func) -> Dict[str, Any]:
-        """Generic helper for sub-page fetching."""
+        """Generic helper for sub-page fetching.
+
+        H2: Adaptive delay — increases crawl delay after consecutive failures
+        to reduce load on HLTV when experiencing issues.
+        """
         try:
-            time.sleep(random.uniform(CRAWL_DELAY_MIN_SECONDS, CRAWL_DELAY_MIN_SECONDS + 3))
+            base_delay = CRAWL_DELAY_MIN_SECONDS + min(self._consecutive_failures * 2, 10)
+            time.sleep(random.uniform(base_delay, base_delay + 3))
             html = self._solver.get(url)
             if html:
-                return parser_func(BeautifulSoup(html, "html.parser"))
+                result = parser_func(BeautifulSoup(html, "html.parser"))
+                self._consecutive_failures = max(0, self._consecutive_failures - 1)
+                return result
+            self._consecutive_failures += 1
         except Exception as e:
-            # DS-07: Log at WARNING so production failures are visible.
-            logger.warning("Sub-stat fetch failed for %s: %s", url, e)
+            self._consecutive_failures += 1
+            logger.warning(
+                "Sub-stat fetch failed for %s: %s (failures: %d)",
+                url,
+                e,
+                self._consecutive_failures,
+            )
         return {}
 
     def _safe_float(self, text: Optional[str]) -> float:

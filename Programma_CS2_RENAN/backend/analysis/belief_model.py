@@ -133,6 +133,43 @@ class DeathProbabilityEstimator:
         """Flag high-risk positions."""
         return probability > threshold
 
+    def estimate_with_uncertainty(
+        self,
+        belief: BeliefState,
+        player_hp: int,
+        armor: bool,
+        weapon_class: str,
+        n_samples: int = 20,
+        dropout_rate: float = 0.1,
+    ) -> Dict[str, float]:
+        """MC Dropout uncertainty estimation (Gal & Ghahramani 2016).
+
+        Runs N stochastic forward passes with random feature perturbation
+        (mimicking dropout on the Bayesian inputs). Returns mean, std,
+        and 90% credible interval.
+        """
+        rng = np.random.default_rng(seed=42)
+        samples = []
+        for _ in range(n_samples):
+            b_copy = BeliefState(
+                visible_enemies=belief.visible_enemies,
+                inferred_enemies=belief.inferred_enemies,
+                information_age=belief.information_age * (1.0 + rng.normal(0, 0.05)),
+                positional_exposure=np.clip(
+                    belief.positional_exposure + rng.normal(0, dropout_rate), 0, 1
+                ),
+            )
+            hp_pert = max(1, int(player_hp + rng.normal(0, 3)))
+            samples.append(self.estimate(b_copy, hp_pert, armor, weapon_class))
+
+        arr = np.array(samples)
+        return {
+            "mean": float(arr.mean()),
+            "std": float(arr.std()),
+            "ci_low": float(np.percentile(arr, 5)),
+            "ci_high": float(np.percentile(arr, 95)),
+        }
+
     # AC-05-01: Minimum samples for statistically meaningful calibration
     MIN_CALIBRATION_SAMPLES: int = 30
 

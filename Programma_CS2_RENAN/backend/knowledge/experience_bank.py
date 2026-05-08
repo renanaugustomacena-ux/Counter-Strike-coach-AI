@@ -198,6 +198,7 @@ class ExperienceBank:
         pro_player_name: Optional[str] = None,
         pro_match_id: Optional[int] = None,
         source_demo: Optional[str] = None,
+        strategy_label: Optional[str] = None,
         confidence: float = 0.5,
     ) -> CoachingExperience:
         """
@@ -282,6 +283,7 @@ class ExperienceBank:
             pro_player_name=pro_player_name,
             embedding=embedding_json,
             source_demo=source_demo,
+            strategy_label=strategy_label,
         )
 
         with self.db.get_session() as session:
@@ -451,6 +453,7 @@ class ExperienceBank:
         top_k: int = 3,
         min_confidence: float = MIN_RETRIEVAL_CONFIDENCE,
         outcome_filter: Optional[str] = None,
+        strategy_family: Optional[str] = None,
     ) -> List[CoachingExperience]:
         """
         Retrieve similar experiences using semantic + hash matching.
@@ -489,6 +492,7 @@ class ExperienceBank:
                     min_confidence,
                     outcome_filter,
                     top_k,
+                    strategy_family=strategy_family,
                 )
                 if result is not None:
                     return result
@@ -501,6 +505,7 @@ class ExperienceBank:
             min_confidence,
             outcome_filter,
             top_k,
+            strategy_family=strategy_family,
         )
 
     def retrieve_by_text(
@@ -605,6 +610,7 @@ class ExperienceBank:
         min_confidence: float,
         outcome_filter: Optional[str],
         top_k: int,
+        strategy_family: Optional[str] = None,
     ) -> Optional[List[CoachingExperience]]:
         """Post-filter FAISS results with composite scoring."""
         candidate_ids = [db_id for db_id, _ in faiss_results]
@@ -626,6 +632,12 @@ class ExperienceBank:
             ]
             if outcome_filter:
                 filtered = [e for e in filtered if e.outcome == outcome_filter]
+            if strategy_family:
+                filtered = [
+                    e
+                    for e in filtered
+                    if e.strategy_label and e.strategy_label.startswith(strategy_family + ".")
+                ]
 
             if not filtered:
                 return None
@@ -671,6 +683,7 @@ class ExperienceBank:
         min_confidence: float,
         outcome_filter: Optional[str],
         top_k: int,
+        strategy_family: Optional[str] = None,
     ) -> List[CoachingExperience]:
         """Original brute-force cosine similarity search."""
         with self.db.get_session() as session:
@@ -681,6 +694,10 @@ class ExperienceBank:
 
             if outcome_filter:
                 stmt = stmt.where(CoachingExperience.outcome == outcome_filter)
+            if strategy_family:
+                stmt = stmt.where(
+                    CoachingExperience.strategy_label.startswith(strategy_family + ".")
+                )
 
             stmt = stmt.limit(100)
             candidates = session.exec(stmt).all()
@@ -731,7 +748,10 @@ class ExperienceBank:
             return results
 
     def retrieve_pro_examples(
-        self, context: ExperienceContext, top_k: int = 3
+        self,
+        context: ExperienceContext,
+        top_k: int = 3,
+        strategy_family: Optional[str] = None,
     ) -> List[CoachingExperience]:
         """
         Retrieve similar experiences specifically from pro players.
@@ -763,13 +783,16 @@ class ExperienceBank:
                 faiss_scores = {db_id: score for db_id, score in faiss_results}
 
                 with self.db.get_session() as session:
-                    entries = session.exec(
-                        select(CoachingExperience).where(
-                            CoachingExperience.id.in_(candidate_ids),
-                            CoachingExperience.pro_player_name.isnot(None),
-                            CoachingExperience.map_name == context.map_name,
+                    wheres = [
+                        CoachingExperience.id.in_(candidate_ids),
+                        CoachingExperience.pro_player_name.isnot(None),
+                        CoachingExperience.map_name == context.map_name,
+                    ]
+                    if strategy_family:
+                        wheres.append(
+                            CoachingExperience.strategy_label.startswith(strategy_family + ".")
                         )
-                    ).all()
+                    entries = session.exec(select(CoachingExperience).where(*wheres)).all()
 
                     if entries:
                         entries.sort(key=lambda e: faiss_scores.get(e.id, 0), reverse=True)
@@ -777,14 +800,15 @@ class ExperienceBank:
 
         # Brute-force fallback
         with self.db.get_session() as session:
-            stmt = (
-                select(CoachingExperience)
-                .where(
-                    CoachingExperience.pro_player_name.isnot(None),
-                    CoachingExperience.map_name == context.map_name,
-                )
-                .limit(50)
+            stmt = select(CoachingExperience).where(
+                CoachingExperience.pro_player_name.isnot(None),
+                CoachingExperience.map_name == context.map_name,
             )
+            if strategy_family:
+                stmt = stmt.where(
+                    CoachingExperience.strategy_label.startswith(strategy_family + ".")
+                )
+            stmt = stmt.limit(50)
 
             candidates = session.exec(stmt).all()
 

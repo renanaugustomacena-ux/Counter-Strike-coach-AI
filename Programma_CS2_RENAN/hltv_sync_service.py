@@ -28,6 +28,18 @@ STOP_SIGNAL = SCRIPT_DIR / "hltv_sync.stop"
 # Dormant mode sleep duration (6 hours) when HLTV is unreachable
 _DORMANT_SLEEP_S = 21600
 
+# H4: Refresh cadence policy.
+# HLTV stats are match-aggregated and update once per match (~daily for top players).
+# Full refresh of 150+ players takes ~12 hours at polite crawl rates.
+# Policy:
+#   - Full refresh: every 7 days (team rankings change weekly)
+#   - Incremental (top 30 players): every 24 hours
+#   - Inter-cycle rest: 1 hour between batches to avoid sustained load
+#   - Dormant: 6 hours when HLTV unreachable (Cloudflare block likely)
+_FULL_REFRESH_INTERVAL_S = 7 * 86400  # 7 days
+_INCREMENTAL_INTERVAL_S = 86400  # 24 hours
+_INTER_CYCLE_REST_S = 3600  # 1 hour between batches
+
 
 def _dormant_sleep(seconds: int) -> None:
     """Sleep in 1-second increments, checking the stop signal."""
@@ -97,18 +109,17 @@ def run_sync_loop():
     solver.create_session()
 
     fetcher = HLTVStatFetcher()
+    last_full_refresh = 0.0
 
     if STOP_SIGNAL.exists():
         os.remove(STOP_SIGNAL)
 
     while not STOP_SIGNAL.exists():
         try:
-            # D-23: Check config flag + robots.txt before each cycle
             if not fetcher.preflight_check():
                 get_state_manager().update_status(
                     "hunter", "Blocked", "Scraping disabled or disallowed by robots.txt"
                 )
-                # WR-15: Notify user that scraping is blocked
                 get_state_manager().add_notification(
                     "hunter",
                     "INFO",
@@ -118,28 +129,41 @@ def run_sync_loop():
                 _dormant_sleep(3600)
                 continue
 
+            is_full_refresh = (time.time() - last_full_refresh) >= _FULL_REFRESH_INTERVAL_S
+            mode = "full" if is_full_refresh else "incremental"
             get_state_manager().update_status(
-                "hunter", "Running", f"Stats sync cycle active at {time.ctime()}"
+                "hunter", "Running", f"Stats sync ({mode}) active at {time.ctime()}"
             )
 
-            # 1. Discover top 30 teams and their rosters from HLTV ranking
-            logger.info("Discovering top 30 teams and rosters...")
+            logger.info("Discovering top 30 teams and rosters... (mode: %s)", mode)
             teams = fetcher.fetch_top_teams(count=30)
 
             if teams:
-                # 2. Persist teams and players, get URLs needing stat scraping
-                player_urls = fetcher.save_teams_and_players(teams)
-                logger.info(
-                    "%d teams saved, %d players need stat scraping",
-                    len(teams),
-                    len(player_urls),
-                )
+                if is_full_refresh:
+                    player_urls = fetcher.save_teams_and_players(teams)
+                    all_player_urls = []
+                    for team in teams:
+                        for p in team.get("players", []):
+                            url = p.get("profile_url", "")
+                            if url and url not in all_player_urls:
+                                all_player_urls.append(url)
+                    player_urls = all_player_urls
+                    logger.info(
+                        "Full refresh: %d teams, re-scraping all %d players",
+                        len(teams),
+                        len(player_urls),
+                    )
+                else:
+                    player_urls = fetcher.save_teams_and_players(teams)
+                    logger.info(
+                        "%d teams saved, %d new players need stat scraping",
+                        len(teams),
+                        len(player_urls),
+                    )
             else:
-                # Fallback: use legacy top-50 individual discovery
                 logger.warning("Team discovery returned 0 — falling back to top 50 individuals")
                 player_urls = fetcher.fetch_top_players()
 
-            # 3. Deep crawl each player's stats
             synced = 0
             for url in player_urls:
                 if STOP_SIGNAL.exists():
@@ -147,18 +171,28 @@ def run_sync_loop():
                 if fetcher.fetch_and_save_player(url):
                     synced += 1
 
-            logger.info("Cycle complete: %s players synced. Sleeping for 1 hour...", synced)
+            if is_full_refresh:
+                last_full_refresh = time.time()
+
+            sleep_s = _INTER_CYCLE_REST_S
+            logger.info(
+                "Cycle complete (%s): %s players synced. Next check in %d min.",
+                mode,
+                synced,
+                sleep_s // 60,
+            )
             get_state_manager().update_status(
-                "hunter", "Idle", f"Sync complete: {synced} players. Next cycle in 1 hour."
+                "hunter",
+                "Idle",
+                f"Sync complete ({mode}): {synced} players. Next in {sleep_s // 60} min.",
             )
             if synced > 0:
-                # WR-15: Notify user of successful sync with count
                 get_state_manager().add_notification(
                     "hunter",
                     "INFO",
-                    f"HLTV sync complete: {synced} pro player stats updated.",
+                    f"HLTV sync complete ({mode}): {synced} pro player stats updated.",
                 )
-            _dormant_sleep(3600)
+            _dormant_sleep(sleep_s)
 
         except Exception as e:
             logger.error("Sync Loop Error: %s", e)

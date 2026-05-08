@@ -1,10 +1,15 @@
 import argparse
+import gc
 import os
 import sys
 from pathlib import Path
 
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import torch
 
 from Programma_CS2_RENAN.backend.nn.coach_manager import CoachTrainingManager
 from Programma_CS2_RENAN.backend.nn.training_callbacks import CallbackRegistry
@@ -118,6 +123,15 @@ def main():
                 callbacks=callbacks,
             )
             orchestrator_jepa.run_training()
+
+            if args.model_type == "all":
+                del orchestrator_jepa
+                gc.collect()
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                    torch.cuda.synchronize()
+                    free_mb = torch.cuda.mem_get_info()[0] / 1024**2
+                    app_logger.info("GPU reclaimed after JEPA — %.0f MB free", free_mb)
 
         if args.model_type in ["all", "rap"]:
             app_logger.info(">>> Starting Phase 2: RAP Coach Training (Policy) <<<")

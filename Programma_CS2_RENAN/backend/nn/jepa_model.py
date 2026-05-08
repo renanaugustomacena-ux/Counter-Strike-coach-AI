@@ -147,6 +147,20 @@ class JEPACoachingModel(nn.Module):
         self.latent_dim = latent_dim
         self.is_pretrained = False
 
+        # Phase 2B: Learned InfoNCE temperature (Radford et al. 2021 — CLIP)
+        self.log_temperature = nn.Parameter(torch.log(torch.tensor(0.07)))
+
+        # Phase 2A: MoCo v3 momentum contrast queue (He et al. 2020)
+        _MOCO_QUEUE_SIZE = 4096
+        self.register_buffer(
+            "moco_queue", F.normalize(torch.randn(_MOCO_QUEUE_SIZE, latent_dim), dim=1)
+        )
+        self.register_buffer("moco_queue_ptr", torch.zeros(1, dtype=torch.long))
+
+        # Phase 3A: MoE auxiliary loss (populated by _sparse_moe)
+        self._moe_aux_loss = torch.tensor(0.0)
+        self._expert_counts = torch.zeros(num_experts)
+
     def forward(self, x: torch.Tensor, role_id: Optional[int] = None) -> torch.Tensor:
         """
         Default forward pass (calls coaching inference).
@@ -192,36 +206,54 @@ class JEPACoachingModel(nn.Module):
 
         return s_target_pred, s_target_pooled
 
+    @torch.no_grad()
+    def enqueue(self, embeddings: torch.Tensor) -> None:
+        """Enqueue batch of encoded embeddings into MoCo FIFO queue."""
+        embeddings = F.normalize(embeddings.detach(), dim=-1)
+        bs = embeddings.shape[0]
+        ptr = int(self.moco_queue_ptr.item())
+        qs = self.moco_queue.shape[0]
+        end = ptr + bs
+        if end <= qs:
+            self.moco_queue[ptr:end] = embeddings
+        else:
+            overflow = end - qs
+            self.moco_queue[ptr:] = embeddings[: qs - ptr]
+            self.moco_queue[:overflow] = embeddings[qs - ptr :]
+        self.moco_queue_ptr[0] = end % qs
+
     def _sparse_moe(self, last_hidden: torch.Tensor, role_id: Optional[int] = None) -> torch.Tensor:
-        """Top-2 sparse MoE routing (J-3 fix).
+        """Top-2 sparse MoE routing with load-balancing aux loss (J-3 + Phase 3A).
 
-        Only the top-2 experts execute per input, enabling specialization.
-        Per Shazeer et al. (ICLR 2017) and Fedus et al. (JMLR 2021).
-
-        Args:
-            last_hidden: LSTM output [batch, hidden_dim]
-            role_id: Optional role bias for gating
-
-        Returns:
-            Weighted expert output [batch, output_dim]
+        Phase 3A: Switch Transformer-style auxiliary loss (Fedus et al. 2022)
+        penalizes unbalanced routing so all experts get utilized.
         """
         gate_logits = self.gate(last_hidden)  # (B, num_experts)
 
         if role_id is not None:
             gate_logits = self._apply_role_bias(gate_logits, role_id)
 
+        # Phase 3A: Load-balancing auxiliary loss
+        routing_probs = F.softmax(gate_logits, dim=-1)
+        f_i = routing_probs.mean(dim=0)  # mean routing prob per expert
+        top1 = gate_logits.argmax(dim=-1)
+        P_i = torch.zeros(self.num_experts, device=gate_logits.device)
+        for i in range(self.num_experts):
+            P_i[i] = (top1 == i).float().mean()
+        self._moe_aux_loss = 0.01 * self.num_experts * (f_i * P_i).sum()
+        self._expert_counts = P_i.detach()
+
         # Top-2 selection
         top_k = min(2, self.num_experts)
-        top_vals, top_idx = torch.topk(gate_logits, top_k, dim=-1)  # (B, 2)
-        top_weights = F.softmax(top_vals, dim=-1)  # normalize over selected
+        top_vals, top_idx = torch.topk(gate_logits, top_k, dim=-1)
+        top_weights = F.softmax(top_vals, dim=-1)
 
-        # Execute only selected experts
         batch_size = last_hidden.size(0)
         output = torch.zeros(batch_size, self._output_dim, device=last_hidden.device)
 
         for k in range(top_k):
-            expert_indices = top_idx[:, k]  # (B,)
-            weights_k = top_weights[:, k]  # (B,)
+            expert_indices = top_idx[:, k]
+            weights_k = top_weights[:, k]
             for e_idx in range(self.num_experts):
                 mask = expert_indices == e_idx
                 if mask.any():
@@ -373,39 +405,47 @@ class JEPACoachingModel(nn.Module):
 
 
 def jepa_contrastive_loss(
-    pred: torch.Tensor, target: torch.Tensor, negatives: torch.Tensor, temperature: float = 0.07
+    pred: torch.Tensor, target: torch.Tensor, negatives: torch.Tensor, temperature=0.07
 ) -> torch.Tensor:
     """
     InfoNCE contrastive loss for JEPA pre-training.
-
-    From GEMINI.md: Energy-Based Models
-    E(x, y) = ||s_x(x) - s_y(y)||²
 
     Args:
         pred: Predicted embeddings [batch, latent_dim]
         target: Target embeddings [batch, latent_dim]
         negatives: Negative samples [batch, num_negatives, latent_dim]
-        temperature: Softmax temperature
-
-    Returns:
-        Contrastive loss scalar
+        temperature: float or learnable tensor (Phase 2B)
     """
-    # Normalize embeddings
     pred = F.normalize(pred, dim=-1)
     target = F.normalize(target, dim=-1)
     negatives = F.normalize(negatives, dim=-1)
 
-    # Positive similarity
     pos_sim = (pred * target).sum(dim=-1) / temperature
-
-    # Negative similarities
     neg_sim = torch.bmm(negatives, pred.unsqueeze(-1)).squeeze(-1) / temperature
 
-    # InfoNCE: -log(exp(pos) / (exp(pos) + sum(exp(neg))))
     logits = torch.cat([pos_sim.unsqueeze(1), neg_sim], dim=1)
     labels = torch.zeros(logits.size(0), dtype=torch.long, device=logits.device)
 
     return F.cross_entropy(logits, labels)
+
+
+def vicreg_regularization(
+    embeddings: torch.Tensor, lambda_var: float = 25.0, lambda_cov: float = 1.0
+) -> torch.Tensor:
+    """Phase 2E: VICReg variance + covariance regularization (Bardes et al. 2022).
+
+    Prevents embedding collapse (low variance) and dimension correlation.
+    """
+    if embeddings.shape[0] < 2:
+        return torch.tensor(0.0, device=embeddings.device)
+    std = embeddings.std(dim=0)
+    var_loss = F.relu(1.0 - std).mean()
+    centered = embeddings - embeddings.mean(dim=0)
+    N = embeddings.shape[0]
+    cov = (centered.T @ centered) / max(N - 1, 1)
+    off_diag = cov - torch.diag(cov.diag())
+    cov_loss = (off_diag**2).sum() / embeddings.shape[1]
+    return lambda_var * var_loss + lambda_cov * cov_loss
 
 
 # ═══════════════════════════════════════════════════════════════════════

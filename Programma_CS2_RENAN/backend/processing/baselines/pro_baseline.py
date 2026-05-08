@@ -265,11 +265,12 @@ def _load_pro_from_demo_stats(map_name: Optional[str] = None):
             std_val = float(np.std(vals))
             if std_val == 0.0:
                 _logger.warning(
-                    "Demo baseline std=0 for '%s' (%d players) — metric skipped",
+                    "Demo baseline std=0 for '%s' (%d players) — metric excluded from baseline",
                     feat,
                     len(vals),
                 )
-            baseline[feat] = {"mean": float(np.mean(vals)), "std": max(std_val, 0.01)}
+                continue
+            baseline[feat] = {"mean": float(np.mean(vals)), "std": std_val}
 
         # Merge with HARD defaults for metrics not available in demo stats
         defaults = HARD_DEFAULT_BASELINE

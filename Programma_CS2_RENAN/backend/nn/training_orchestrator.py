@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 import torch
 
@@ -7,6 +9,14 @@ from Programma_CS2_RENAN.backend.nn.training_callbacks import CallbackRegistry
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.nn.orchestrator")
+
+
+def _flush_all_loggers() -> None:
+    """Force-flush all logging handlers to prevent silent loss on process kill."""
+    for handler in logging.root.handlers:
+        handler.flush()
+    for handler in logger.handlers:
+        handler.flush()
 
 
 class TrainingOrchestrator:
@@ -31,12 +41,14 @@ class TrainingOrchestrator:
         patience=10,
         batch_size=32,
         callbacks: CallbackRegistry = None,
+        accumulation_steps: int = 4,
     ):
         self.manager = manager
         self.model_type = model_type
         self.max_epochs = max_epochs
         self.patience = patience
         self.batch_size = batch_size
+        self._accumulation_steps = accumulation_steps
         self.device = get_device()
         self.best_val_loss = float("inf")
         self.patience_counter = 0
@@ -53,6 +65,9 @@ class TrainingOrchestrator:
         # F3-11: Aggregate zero-tensor fallback counters across entire training run
         self._total_samples = 0
         self._total_fallbacks = 0
+        self._current_epoch = 0
+        _LTC_CURRICULUM_EPOCHS = 5
+        self._ltc_curriculum_epochs = _LTC_CURRICULUM_EPOCHS
 
         # Determine internal model/trainer classes based on type
         if model_type in ("jepa", "vl-jepa"):
@@ -182,11 +197,16 @@ class TrainingOrchestrator:
         )
 
         # NN-04b: Set actual total training steps for EMA schedule
+        # With gradient accumulation, optimizer steps = batches / accum_steps
         if hasattr(trainer, "set_total_steps"):
-            trainer.set_total_steps(self.max_epochs, len(train_data))
+            import math as _math
+
+            steps_per_epoch = _math.ceil(len(train_data) / self._accumulation_steps)
+            trainer.set_total_steps(self.max_epochs, steps_per_epoch)
 
         # 3. Epoch Loop
         for epoch in range(1, self.max_epochs + 1):
+            self._current_epoch = epoch
             if context:
                 context.check_state()
 
@@ -236,8 +256,11 @@ class TrainingOrchestrator:
             # Save LATEST checkpoint regardless
             save_nn(model, f"{self.model_name}_latest", user_id=None)
 
+            _flush_all_loggers()
+
             if self.patience_counter >= self.patience:
                 logger.info("Early Stopping Triggered at Epoch %s", epoch)
+                _flush_all_loggers()
                 break
 
         # P3-C: Hard gate — abort if aggregate fallback rate exceeds 30%
@@ -294,7 +317,7 @@ class TrainingOrchestrator:
             return batches
         else:
             # P7: RAP uses windowed data — each window is a contiguous
-            # 320-tick segment from a single match, already a batch.
+            # segment from a single match, already a batch.
             windows = self.manager._fetch_rap_windows(is_pro=is_pro, split=split)
             return windows if windows else []
 
@@ -304,8 +327,13 @@ class TrainingOrchestrator:
 
         if is_train:
             trainer.model.train()
+            if hasattr(trainer, "optimizer"):
+                trainer.optimizer.zero_grad()
         else:
             trainer.model.eval()
+
+        accum = self._accumulation_steps
+        train_batch_count = 0
 
         for batch_idx, batch in enumerate(batches):
             if context:
@@ -322,15 +350,17 @@ class TrainingOrchestrator:
                 continue  # Skip empty batches
 
             if is_train:
-                # Trainer handles zero_grad, backward, optimizer
+                train_batch_count += 1
+                do_step = train_batch_count % accum == 0
+
                 if self.model_type in ("jepa", "vl-jepa"):
-                    # JEPA signature: context, target, negatives
                     if self._use_vl:
                         result = trainer.train_step_vl(
                             tensor_batch["context"],
                             tensor_batch["target"],
                             tensor_batch.get("negatives"),
                             round_stats=tensor_batch.get("round_stats"),
+                            step_optimizer=do_step,
                         )
                         loss = result["total_loss"]
                     else:
@@ -338,6 +368,7 @@ class TrainingOrchestrator:
                             tensor_batch["context"],
                             tensor_batch["target"],
                             tensor_batch.get("negatives"),
+                            step_optimizer=do_step,
                         )
                         loss = result["loss"] if isinstance(result, dict) else result
                 else:
@@ -399,6 +430,11 @@ class TrainingOrchestrator:
                             loss = trainer.criterion_val(pred, tgt).item()
 
             total_loss += loss
+
+        # Flush remaining accumulated gradients at end of epoch
+        if is_train and train_batch_count % accum != 0:
+            if hasattr(trainer, "_optimizer_step"):
+                trainer._optimizer_step()
 
         return total_loss / max(len(batches), 1)
 
@@ -495,6 +531,18 @@ class TrainingOrchestrator:
     # temporal context for the LTC ODE solver.
     RAP_SEQ_LEN = 32
 
+    def _curriculum_seq_len(self) -> int:
+        """Phase 5A: Ramp RAP window length during early epochs.
+
+        Epochs 1-5 use progressively longer windows (8→32) to stabilize
+        LTC ODE dynamics before exposing full temporal context.
+        """
+        full = self.RAP_SEQ_LEN
+        if self._current_epoch > self._ltc_curriculum_epochs:
+            return full
+        frac = self._current_epoch / max(self._ltc_curriculum_epochs, 1)
+        return max(8, int(full * (0.25 + 0.75 * frac)))
+
     def _prepare_rap_batch(self, raw_items, _features, features_tensor, b):
         """Build RAP tensor batch with temporal windows for LTC sequence processing.
 
@@ -532,7 +580,7 @@ class TrainingOrchestrator:
         per_tick["target_pos"] = self._rap_compute_target_pos(raw_items, RAP_POSITION_SCALE)
         per_tick["dt"] = self._rap_compute_timespans(raw_items)
 
-        seq_len = self.RAP_SEQ_LEN
+        seq_len = self._curriculum_seq_len()
         num_windows = b // seq_len
         if num_windows == 0:
             logger.warning(

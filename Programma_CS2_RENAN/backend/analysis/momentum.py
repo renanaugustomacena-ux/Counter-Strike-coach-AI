@@ -33,6 +33,17 @@ MULTIPLIER_MAX = 1.4
 MOMENTUM_WIN_PER_STREAK = 0.05
 MOMENTUM_LOSS_PER_STREAK = 0.04
 
+# Phase 6: Round-type weighting multipliers for momentum impact.
+# Winning a force buy (low economy upset) carries more psychological weight
+# than winning a full buy where you were favored. Conversely, losing a
+# full-buy round is more demoralizing than losing an eco (expected loss).
+ROUND_TYPE_WEIGHT = {
+    "eco": {"win": 1.4, "loss": 0.6},
+    "force_buy": {"win": 1.3, "loss": 0.8},
+    "full_buy": {"win": 1.0, "loss": 1.2},
+    "pistol": {"win": 1.2, "loss": 1.0},
+}
+
 # Tilt detection threshold — player is "tilted" when multiplier < 0.85.
 # Source: hand-tuned; corresponds to ~3-round loss streak.
 TILT_THRESHOLD = 0.85
@@ -81,13 +92,16 @@ class MomentumTracker:
     def history(self) -> List[MomentumState]:
         return list(self._history)
 
-    def update(self, round_won: bool, round_number: int) -> MomentumState:
+    def update(
+        self, round_won: bool, round_number: int, round_type: str = "full_buy"
+    ) -> MomentumState:
         """
         Update momentum based on round outcome.
 
         Args:
             round_won: Whether the round was won.
             round_number: Current round number (1-indexed).
+            round_type: One of "eco", "force_buy", "full_buy", "pistol".
 
         Returns:
             Updated MomentumState.
@@ -121,10 +135,13 @@ class MomentumTracker:
         decay = math.exp(-self._state.decay_rate * gap)
         streak = self._state.streak_length
 
+        outcome_key = "win" if round_won else "loss"
+        rt_weight = ROUND_TYPE_WEIGHT.get(round_type, {}).get(outcome_key, 1.0)
+
         if self._state.streak_type == "win":
-            raw = 1.0 + MOMENTUM_WIN_PER_STREAK * streak * decay
+            raw = 1.0 + MOMENTUM_WIN_PER_STREAK * streak * decay * rt_weight
         elif self._state.streak_type == "loss":
-            raw = 1.0 - MOMENTUM_LOSS_PER_STREAK * streak * decay
+            raw = 1.0 - MOMENTUM_LOSS_PER_STREAK * streak * decay * rt_weight
         else:
             raw = 1.0
 

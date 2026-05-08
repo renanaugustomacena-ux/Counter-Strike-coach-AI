@@ -14,6 +14,8 @@ Setup:
 
 from __future__ import annotations
 
+import time
+
 import requests
 
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -92,12 +94,16 @@ class FlareSolverrClient:
     # HTTP verbs
     # ------------------------------------------------------------------
 
-    def get(self, url: str) -> str | None:
+    _MAX_RETRIES = 3
+    _BACKOFF_BASE = 5
+
+    def get(self, url: str, max_retries: int | None = None) -> str | None:
         """Fetch *url* through FlareSolverr, returning the decoded HTML body.
 
         Returns ``None`` on any error (network, Cloudflare block, timeout).
-        R3-M12: Callers can check ``self.last_error`` for structured error details.
+        H2: Retries with exponential backoff (5s, 15s, 45s) on transient failures.
         """
+        retries = max_retries if max_retries is not None else self._MAX_RETRIES
         self.last_error: str | None = None
         payload: dict = {
             "cmd": "request.get",
@@ -107,34 +113,43 @@ class FlareSolverrClient:
         if self._session_id:
             payload["session"] = self._session_id
 
-        try:
-            resp = requests.post(
-                self._base_url,
-                json=payload,
-                timeout=self._timeout + 15,
-            )
-            data = resp.json()
+        for attempt in range(retries + 1):
+            try:
+                resp = requests.post(
+                    self._base_url,
+                    json=payload,
+                    timeout=self._timeout + 15,
+                )
+                data = resp.json()
 
-            if data.get("status") == "ok":
-                solution = data.get("solution", {})
-                status_code = solution.get("status", 0)
-                if status_code == 200:
-                    logger.info("FlareSolverr: OK for %s", url)
-                    return solution.get("response", "")
-                self.last_error = f"HTTP {status_code} for {url}"
-                logger.warning("FlareSolverr: %s", self.last_error)
-            else:
-                self.last_error = f"FlareSolverr error: {data.get('message')}"
+                if data.get("status") == "ok":
+                    solution = data.get("solution", {})
+                    status_code = solution.get("status", 0)
+                    if status_code == 200:
+                        logger.info("FlareSolverr: OK for %s", url)
+                        return solution.get("response", "")
+                    self.last_error = f"HTTP {status_code} for {url}"
+                    if status_code == 429:
+                        logger.warning("Rate limited (429) — backing off")
+                    else:
+                        logger.warning("FlareSolverr: %s", self.last_error)
+                else:
+                    self.last_error = f"FlareSolverr error: {data.get('message')}"
+                    logger.error("%s", self.last_error)
+
+            except requests.exceptions.ConnectionError:
+                self.last_error = f"FlareSolverr unreachable at {self._base_url}"
+                logger.error("%s — is the Docker container running?", self.last_error)
+            except requests.exceptions.Timeout:
+                self.last_error = f"FlareSolverr timeout ({self._timeout}s) for {url}"
+                logger.error("%s", self.last_error)
+            except Exception as exc:
+                self.last_error = f"FlareSolverr request failed: {exc}"
                 logger.error("%s", self.last_error)
 
-        except requests.exceptions.ConnectionError:
-            self.last_error = f"FlareSolverr unreachable at {self._base_url}"
-            logger.error("%s — is the Docker container running?", self.last_error)
-        except requests.exceptions.Timeout:
-            self.last_error = f"FlareSolverr timeout ({self._timeout}s) for {url}"
-            logger.error("%s", self.last_error)
-        except Exception as exc:
-            self.last_error = f"FlareSolverr request failed: {exc}"
-            logger.error("%s", self.last_error)
+            if attempt < retries:
+                delay = self._BACKOFF_BASE * (3**attempt)
+                logger.info("Retry %d/%d in %ds for %s", attempt + 1, retries, delay, url)
+                time.sleep(delay)
 
         return None

@@ -114,6 +114,56 @@ class WinProbabilityNN(nn.Module):
         return self.network(x)
 
 
+@dataclass
+class PlattScaler:
+    """Platt scaling (Platt 1999): logistic regression on raw model logits.
+
+    Transforms raw sigmoid output p into calibrated probability:
+        p_cal = 1 / (1 + exp(A * logit(p) + B))
+    where logit(p) = log(p / (1-p)).
+
+    Fitted via maximum likelihood on a held-out calibration set.
+    """
+
+    a: float = -1.0
+    b: float = 0.0
+    fitted: bool = False
+
+    def fit(self, raw_probs: np.ndarray, labels: np.ndarray, max_iter: int = 100) -> None:
+        """Fit A, B via Newton's method on binary cross-entropy."""
+        eps = 1e-7
+        p = np.clip(raw_probs, eps, 1 - eps)
+        logits = np.log(p / (1 - p))
+        y = labels.astype(np.float64)
+
+        a, b = 0.0, 0.0
+        for _ in range(max_iter):
+            s = 1.0 / (1.0 + np.exp(a * logits + b))
+            d = y - s
+            grad_a = float(np.dot(d, logits))
+            grad_b = float(np.sum(d))
+            w = s * (1 - s) + eps
+            hess_a = -float(np.dot(w, logits**2))
+            hess_b = -float(np.sum(w))
+            if abs(hess_a) > eps:
+                a -= grad_a / hess_a
+            if abs(hess_b) > eps:
+                b -= grad_b / hess_b
+
+        self.a = a
+        self.b = b
+        self.fitted = True
+        logger.info("Platt scaler fitted: A=%.4f B=%.4f", a, b)
+
+    def calibrate(self, raw_prob: float) -> float:
+        if not self.fitted:
+            return raw_prob
+        eps = 1e-7
+        p = np.clip(raw_prob, eps, 1 - eps)
+        logit = np.log(p / (1 - p))
+        return float(1.0 / (1.0 + np.exp(self.a * logit + self.b)))
+
+
 class WinProbabilityPredictor:
     """
     Win probability prediction engine.
@@ -124,6 +174,7 @@ class WinProbabilityPredictor:
     def __init__(self, model_path: Optional[str] = None):
         self.model = WinProbabilityNN()
         self._checkpoint_loaded = False
+        self._platt = PlattScaler()
 
         if model_path:
             try:
@@ -177,10 +228,24 @@ class WinProbabilityPredictor:
         # Apply heuristic adjustments
         prob = self._apply_heuristics(prob, game_state)
 
+        # Phase 6: Platt scaling post-hoc calibration
+        if self._platt.fitted:
+            prob = self._platt.calibrate(prob)
+
         # Generate explanation
         explanation = self._generate_explanation(prob, game_state)
 
         return prob, explanation
+
+    def fit_calibration(self, game_states: List[GameState], outcomes: List[bool]) -> None:
+        """Fit Platt scaler on a calibration set of (state, did_win) pairs."""
+        raw_probs = []
+        for gs in game_states:
+            features = self._extract_features(gs)
+            with torch.no_grad():
+                x = torch.FloatTensor(features).unsqueeze(0)
+                raw_probs.append(self.model(x).item())
+        self._platt.fit(np.array(raw_probs), np.array(outcomes, dtype=np.float64))
 
     def _extract_features(self, state: GameState) -> np.ndarray:
         """Extract normalized features from game state."""

@@ -48,15 +48,28 @@ class UtilityImpact:
     effectiveness_rating: float
 
 
+_MAP_GRID_RESOLUTION: Dict[str, int] = {
+    "de_dust2": 32,
+    "de_mirage": 32,
+    "de_inferno": 36,
+    "de_nuke": 40,
+    "de_overpass": 36,
+    "de_anubis": 32,
+    "de_vertigo": 40,
+    "de_ancient": 36,
+    "de_train": 36,
+}
+
+
 class EntropyAnalyzer:
     """
     Computes Shannon entropy of enemy position distributions before and after
     utility usage to quantify each throw's information-theoretic impact.
     """
 
-    def __init__(self, grid_resolution: int = 32):
-        # Default 32x32 grid. Sufficient for macro-positioning analysis.
-        # For fine-grained clustering, KDE would provide smoother estimates.
+    def __init__(self, grid_resolution: int = 32, map_name: Optional[str] = None):
+        if map_name and grid_resolution == 32:
+            grid_resolution = _MAP_GRID_RESOLUTION.get(map_name, 32)
         self.grid_resolution = grid_resolution
         # AC-03-01: Pre-allocate grid buffer — reused across calls (zeroed before each use)
         self._grid_buffer = np.zeros((grid_resolution, grid_resolution), dtype=np.float32)

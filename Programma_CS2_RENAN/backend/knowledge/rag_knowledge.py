@@ -87,12 +87,16 @@ class KnowledgeEmbedder:
     @staticmethod
     def _is_model_cached(model_name: str) -> bool:
         """Check if SBERT model is already downloaded."""
-        cache_dir = os.environ.get(
-            "SENTENCE_TRANSFORMERS_HOME",
-            os.path.join(os.path.expanduser("~"), ".cache", "torch", "sentence_transformers"),
-        )
-        model_path = os.path.join(cache_dir, model_name.replace("/", "_"))
-        return os.path.isdir(model_path)
+        home = os.path.expanduser("~")
+        slug = model_name.replace("/", "_")
+        hf_hub = os.path.join(home, ".cache", "huggingface", "hub")
+        candidates = [
+            os.environ.get("SENTENCE_TRANSFORMERS_HOME", ""),
+            os.path.join(home, ".cache", "torch", "sentence_transformers", slug),
+            os.path.join(hf_hub, f"models--{model_name.replace('/', '--')}"),
+            os.path.join(hf_hub, f"models--sentence-transformers--{slug}"),
+        ]
+        return any(os.path.isdir(p) for p in candidates if p)
 
     @staticmethod
     def _notify_download_start(model_name: str):

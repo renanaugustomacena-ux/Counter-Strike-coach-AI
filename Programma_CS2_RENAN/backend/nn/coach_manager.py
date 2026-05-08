@@ -562,7 +562,7 @@ class CoachTrainingManager:
             app_logger.info("Loaded %s ticks for %s split", len(ticks), split)
             return ticks
 
-    def _fetch_rap_windows(self, is_pro: bool, split: str = "train", window_size: int = 320):
+    def _fetch_rap_windows(self, is_pro: bool, split: str = "train", window_size: int = 96):
         """Fetch windowed tick data for RAP training from completed matches.
 
         Unlike JEPA's flat tick fetcher, RAP needs contiguous temporal windows

@@ -284,7 +284,7 @@ class CoachScreen(QWidget):
         self._llm_model_status = QLabel("Click Refresh to discover installed models.")
         self._llm_model_status.setFont(Typography.font("caption"))
         self._llm_model_status.setStyleSheet(
-            f"color: {tokens.text_muted}; background: transparent;"
+            f"color: {tokens.text_tertiary}; background: transparent;"
         )
         self._llm_model_status.setWordWrap(True)
         body.addWidget(self._llm_model_status)
