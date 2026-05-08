@@ -964,6 +964,11 @@ class TrainingOrchestrator:
             if m in demo_lower:
                 return f"de_{m}"
 
+        logger.warning(
+            "C-1: map fallback to de_mirage — no metadata and demo_name=%r "
+            "matched no known map. Spatial tensors may be wrong for this window.",
+            demo_name,
+        )
         return "de_mirage"
 
     # ============ G-01: RoundStats Fetch for VL-JEPA ============

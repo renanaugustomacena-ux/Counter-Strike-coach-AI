@@ -15,6 +15,7 @@ From Phase 1B Roadmap:
     - Context-aware retrieval (map, side, round type)
 """
 
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
@@ -135,6 +136,8 @@ class HybridCoachingEngine:
         # Pro baseline for deviation calculation.
         # _using_fallback_baseline is set True when get_pro_baseline() fails (F4-02).
         self._using_fallback_baseline: bool = False
+        self._baseline_loaded_at: float = 0.0
+        self._baseline_ttl: float = 3600.0
         self.pro_baseline = self._load_pro_baseline()
 
     @property
@@ -178,6 +181,12 @@ class HybridCoachingEngine:
             logger.error("Failed to load ML model: %s", e)
             return None
 
+    def _ensure_fresh_baseline(self) -> None:
+        """C-2: Refresh baseline if TTL expired. Prevents stale z-scores in long-lived engines."""
+        if time.monotonic() - self._baseline_loaded_at > self._baseline_ttl:
+            logger.info("C-2: Baseline TTL expired (%.0fs), refreshing", self._baseline_ttl)
+            self.pro_baseline = self._load_pro_baseline()
+
     def _load_pro_baseline(self) -> Dict[str, float]:
         """Load pro baseline statistics from centralized source.
 
@@ -186,10 +195,10 @@ class HybridCoachingEngine:
         """
         from Programma_CS2_RENAN.backend.processing.baselines.pro_baseline import get_pro_baseline
 
+        self._baseline_loaded_at = time.monotonic()
         try:
             baseline_data = get_pro_baseline()
-            # Return full nested structure {feature: {"mean": x, "std": y}}
-            # so that calculate_deviations() can compute proper Z-scores
+            self._using_fallback_baseline = False
             return baseline_data
         except Exception as e:
             logger.error(
@@ -266,6 +275,9 @@ class HybridCoachingEngine:
             side,
             pro_reference_id,
         )
+
+        # C-2: Refresh baseline if stale (TTL=1h)
+        self._ensure_fresh_baseline()
 
         # Step 0: Resolve Contextual Pro Baseline
         active_baseline = self.pro_baseline
