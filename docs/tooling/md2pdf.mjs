@@ -29,15 +29,51 @@ const COVER_DATA = {
     description:
       "Architettura neurale, addestramento, JEPA, VL-JEPA, Superposition Layer, LSTM + Mixture of Experts",
   },
+  "Book-Coach-1A-en": {
+    title: "Ultimate CS2 Coach",
+    subtitle: "Part 1A — The Brain",
+    description:
+      "Neural architecture, training, JEPA, VL-JEPA, Superposition Layer, LSTM + Mixture of Experts",
+  },
+  "Book-Coach-1A-pt": {
+    title: "Ultimate CS2 Coach",
+    subtitle: "Parte 1A — O Cerebro",
+    description:
+      "Arquitetura neural, treinamento, JEPA, VL-JEPA, Superposition Layer, LSTM + Mixture of Experts",
+  },
   "Book-Coach-1B": {
     title: "Ultimate CS2 Coach",
     subtitle: "Parte 1B — I Sensi e lo Specialista",
     description:
       "RAP Coach Model, ChronovisorScanner, GhostEngine, Sorgenti Dati, HLTV, Steam, FACEIT",
   },
+  "Book-Coach-1B-en": {
+    title: "Ultimate CS2 Coach",
+    subtitle: "Part 1B — The Senses and the Specialist",
+    description:
+      "RAP Coach Model, ChronovisorScanner, GhostEngine, Data Sources, HLTV, Steam, FACEIT",
+  },
+  "Book-Coach-1B-pt": {
+    title: "Ultimate CS2 Coach",
+    subtitle: "Parte 1B — Os Sentidos e o Especialista",
+    description:
+      "RAP Coach Model, ChronovisorScanner, GhostEngine, Fontes de Dados, HLTV, Steam, FACEIT",
+  },
   "Book-Coach-2": {
     title: "Ultimate CS2 Coach",
     subtitle: "Parte 2 — Servizi, Analisi e Database",
+    description:
+      "Coaching Services, Knowledge & Retrieval, Analysis Engines, Database Schema, Training Pipeline",
+  },
+  "Book-Coach-2-en": {
+    title: "Ultimate CS2 Coach",
+    subtitle: "Part 2 — Services, Analysis and Database",
+    description:
+      "Coaching Services, Knowledge & Retrieval, Analysis Engines, Database Schema, Training Pipeline",
+  },
+  "Book-Coach-2-pt": {
+    title: "Ultimate CS2 Coach",
+    subtitle: "Parte 2 — Servicos, Analise e Banco de Dados",
     description:
       "Coaching Services, Knowledge & Retrieval, Analysis Engines, Database Schema, Training Pipeline",
   },
@@ -46,6 +82,18 @@ const COVER_DATA = {
     subtitle: "Parte 3 — Programma, UI, Tools e Build",
     description:
       "Logica Programma, UI Qt/PySide6, Ingestion Pipeline, 17 Tools Diagnostici, 81 Test Files, Remediation",
+  },
+  "Book-Coach-3-en": {
+    title: "Ultimate CS2 Coach",
+    subtitle: "Part 3 — Application, UI, Tools and Build",
+    description:
+      "Application Logic, UI Qt/PySide6, Ingestion Pipeline, 17 Diagnostic Tools, 81 Test Files, Remediation",
+  },
+  "Book-Coach-3-pt": {
+    title: "Ultimate CS2 Coach",
+    subtitle: "Parte 3 — Aplicacao, UI, Ferramentas e Build",
+    description:
+      "Logica Aplicacao, UI Qt/PySide6, Ingestion Pipeline, 17 Ferramentas Diagnosticas, 81 Arquivos de Teste, Remediacao",
   },
 };
 
@@ -552,9 +600,17 @@ async function main() {
       const docsDir = resolve(args[1] || ".");
       const files = [
         "Book-Coach-1A.md",
+        "Book-Coach-1A-en.md",
+        "Book-Coach-1A-pt.md",
         "Book-Coach-1B.md",
+        "Book-Coach-1B-en.md",
+        "Book-Coach-1B-pt.md",
         "Book-Coach-2.md",
+        "Book-Coach-2-en.md",
+        "Book-Coach-2-pt.md",
         "Book-Coach-3.md",
+        "Book-Coach-3-en.md",
+        "Book-Coach-3-pt.md",
       ];
 
       console.log(`[md2pdf] Batch mode: ${files.length} files from ${docsDir}`);

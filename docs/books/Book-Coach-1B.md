@@ -50,7 +50,6 @@
   Il RAP (Reasoning, Adaptation, Pedagogy) Coach è un'**architettura profonda con 6 componenti neurali apprendibili + 1 livello di comunicazione esterna**, appositamente progettata per il coaching CS2 in condizioni di osservabilità parziale (condizioni POMDP). La classe `RAPCoachModel` contiene Percezione (`RAPPerception`), Memoria (`RAPMemory` con LTC+Hopfield), Strategia (`RAPStrategy`), Pedagogia (`RAPPedagogy` con Value Critic e Skill Adapter), Attribuzione Causale (`CausalAttributor`) e una Testa di Posizionamento (`nn.Linear(256→3)`), tutti apprendibili. Il livello di Comunicazione (`communication.py`) opera esternamente come selettore di template di post-elaborazione. Il forward pass produce 6 output: `advice_probs`, `belief_state`, `value_estimate`, `gate_weights`, `optimal_pos` e `attribution`.
 
 
-  > **Analogia:** L'allenatore RAP è il **cervello più avanzato** del sistema: immaginalo come un edificio di 7 piani in cui ogni piano ha un compito specifico. Il piano 1 (Percezione) è costituito dagli **occhi**: osserva le immagini della mappa, la visuale del giocatore e gli schemi di movimento. Il piano 2 (Memoria) è l'**ippocampo**: ricorda cosa è successo prima nel round e lo collega a round simili precedenti tramite rete LTC + Hopfield. Il piano 3 (Strategia) è la **stanza decisionale**: decide quali consigli dare tramite 4 esperti MoE. Il piano 4 (Pedagogia) è l'**ufficio dell'insegnante**: stima il valore della situazione con il Value Critic. Il piano 5 (Attribuzione Causale) è il **detective**: capisce PERCHÉ qualcosa è andato storto, suddividendo la colpa in 5 categorie. Il piano 6 (Posizionamento) è il **GPS**: calcola dove avrebbe dovuto trovarsi il giocatore con un `nn.Linear(256→3)` che predice `(dx, dy, dz)`. Il piano 7 (Comunicazione) è il **portavoce**: traduce tutto in semplici consigli leggibili, operando come post-elaborazione esterna. La parte "POMDP" significa che l'allenatore deve lavorare con **informazioni incomplete**: non può vedere l'intera mappa, proprio come un giocatore. È come allenare una squadra di calcio dagli spalti quando metà campo è coperto dalla nebbia.
   >
 
 ```mermaid
@@ -116,8 +115,6 @@ Un front-end **convoluzionale a tre flussi** che elabora gli input visivi:
 
 I tre vettori di caratteristiche sono concatenati in un singolo **embedding di percezione a 128 dimensioni** (64 + 32 + 32).
 
-> **Analogia:** Il Livello di Percezione è come i **tre diversi paia di occhiali** dell'allenatore. La prima coppia (tensore di vista / flusso ventrale) mostra **ciò che il giocatore vede** – la sua prospettiva in prima persona, elaborata attraverso una ResNet leggera a 5 blocchi (configurazione `[1,2,2,1]`, calibrata per input 64×64) che estrae 64 caratteristiche importanti dall'immagine. La seconda coppia (tensore di mappa / flusso dorsale) mostra il **radar/minimappa aerea** – dove si trovano tutti – elaborato attraverso una rete più semplice a 3 blocchi in 32 caratteristiche. La terza coppia (tensore di movimento) mostra **chi si sta muovendo e con quale velocità** – come la sfocatura del movimento in una foto – elaborata in altre 32 caratteristiche. Quindi tutte e tre le viste vengono **incollate insieme** in un unico riepilogo di 128 numeri: "Ecco tutto ciò che riesco a vedere in questo momento". Questo processo trae ispirazione dal modo in cui il cervello umano elabora la vista: il flusso ventrale riconosce "cosa" sono le cose, mentre il flusso dorsale traccia "dove" si trovano le cose.
-
 ```mermaid
 flowchart TB
     VIEW["TENSORE VISTA<br/>(Cosa vedi - FPS)<br/>3x64x64 px"] --> RND["ResNet Leggero<br/>(5 blocchi [1,2,2,1])"]
@@ -144,13 +141,9 @@ I blocchi ResNet utilizzano **scorciatoie di identità** con downsample apprendi
 
 > **Nota sulla scelta architettonica (F3-29):** La configurazione originale `[3,4,6,3]` (15 blocchi, 33 conv nel flusso ventrale) era progettata per input 224×224 (la dimensione standard di ImageNet). Per input 64×64 come quelli utilizzati in questo progetto, le feature map collasserebbero spazialmente dopo il primo blocco stride-2, rendendo i blocchi successivi ridondanti. La configurazione `[1,2,2,1]` (5 blocchi effettivi) è calibrata specificamente per la risoluzione di training 64×64, con `AdaptiveAvgPool2d` che gestisce qualsiasi risoluzione spaziale residua. Eventuali checkpoint precedenti vengono automaticamente rilevati come `_stale_checkpoint` da `load_nn()`.
 
-> **Analogia:** Le scorciatoie di identità sono come gli **ascensori di un edificio**: consentono alle informazioni di saltare i piani e di passare direttamente dai livelli iniziali a quelli successivi. Senza di esse, le informazioni dovrebbero salire molte rampe di scale e, una volta raggiunta la cima, il segnale originale sarebbe così sbiadito che la rete non potrebbe apprendere. Le scorciatoie garantiscono che anche in una rete profonda, i gradienti (i segnali di apprendimento) possano fluire in modo efficiente. Questo è lo stesso trucco che ha reso possibile il moderno deep learning, inventato da Kaiming He nel 2015. La scelta di una rete più compatta (`[1,2,2,1]` anziché `[3,4,6,3]`) è come scegliere un edificio di 6 piani anziché 16 quando il terreno disponibile (64×64 pixel) è piccolo: meno piani significano meno ascensori necessari, ma il trasporto rimane ugualmente efficiente.
-
 ### -Livello di memoria (`memory.py`) — LTC + Hopfield
 
 Questa parte affronta la sfida fondamentale che il CS2 coach è un **Processo decisionale di Markov parzialmente osservabile** (POMDP).
-
-> **Analogia:** POMDP è un modo elegante per dire **"non puoi vedere tutto".** In CS2, non sai dove si trovano tutti i nemici: vedi solo ciò che hai di fronte. È come giocare a scacchi con una coperta su metà della scacchiera. Il compito del Livello di memoria è **ricordare e indovinare**: tiene traccia di ciò che è accaduto in precedenza nel round e usa quella memoria per riempire gli spazi vuoti su ciò che non può vedere. Dispone di due strumenti speciali per questo: una rete LTC (memoria a breve termine che si adatta alla velocità del gioco) e una rete Hopfield (ricerca di pattern a lungo termine che dice "questa situazione mi ricorda qualcosa che ho già visto").
 
 **Rete a costante di tempo liquida (LTC) con cablaggio AutoNCP:**
 
@@ -161,15 +154,11 @@ Questa parte affronta la sfida fondamentale che il CS2 coach è un **Processo de
 - Adatta la risoluzione temporale al ritmo del gioco (impostazioni lente vs. scontri a fuoco rapidi)
 - Seeding deterministico (NN-MEM-02): numpy + torch RNG seedati a 42 durante la creazione del wiring AutoNCP, con ripristino dello stato RNG originale dopo l'inizializzazione — garantisce portabilità dei checkpoint tra diverse esecuzioni
 
-> **Analogia:** La rete LTC è come un **cervello vivo e respirante**: a differenza delle normali reti neurali che elaborano il tempo a intervalli fissi (come un orologio che ticchetta ogni secondo), la LTC adatta la sua velocità a ciò che accade. Durante una lenta preparazione (i giocatori camminano silenziosamente), l'elaborazione avviene al rallentatore. Durante uno scontro a fuoco veloce, accelera, come il battito cardiaco accelerato quando si è eccitati. Il "cablaggio AutoNCP" fa sì che le connessioni tra i neuroni siano sparse e strutturate come in un vero cervello: non tutto si collega a tutto il resto. Questo è più efficiente e biologicamente più realistico.
-
 **Memoria associativa di Hopfield:**
 
 - Input/Output: 256-dim
 - Teste: 4
 - Utilizza `hflayers.Hopfield` come **memoria indirizzabile tramite contenuto** per il recupero dei round prototipo
-
-> **Analogia:** La memoria di Hopfield è come un **album fotografico di giocate famose**. Durante l'allenamento, memorizza i "round prototipo" – schemi classici come "una perfetta ripresa del sito B in Inferno" o "una corsa fallita nel fumo in Dust2". Quando arriva un nuovo momento di gioco, la rete di Hopfield chiede: "Questo mi ricorda qualche foto nel mio album?" Se trova una corrispondenza, recupera il ricordo associato, come un detective della polizia che sfoglia le foto segnaletiche e dice: "Ho già visto questa faccia!". Ha 4 "teste" (teste di attenzione) in modo da poter cercare 4 diversi tipi di schemi contemporaneamente.
 
 **Ritardo di attivazione Hopfield (NN-MEM-01 + RAP-M-04):**
 
@@ -181,8 +170,6 @@ La rete di Hopfield **non si attiva immediatamente** durante l'addestramento. I 
 - Dopo ≥2 forward (garantendo almeno un backward + optimizer.step abbia modellato i pattern), Hopfield si attiva e contribuisce al combined_state
 - Il caricamento di un checkpoint (`load_state_dict`) imposta `_hopfield_trained = True` immediatamente, assumendo che il modello sia già stato addestrato
 
-> **Analogia:** È come un **nuovo dipendente che osserva per i primi 2 giorni** prima di poter prendere decisioni. L'album fotografico della Hopfield è vuoto all'inizio — le foto sono sfocate e casuali. Sarebbe dannoso consultare un album di foto illeggibili per prendere decisioni tattiche. Dopo 2 passaggi di addestramento, il dipendente ha visto abbastanza esempi da avere almeno qualche foto significativa nell'album, e da quel momento inizia a contribuire attivamente.
-
 **RAPMemoryLite — Fallback LSTM puro:**
 
 Modulo sostitutivo leggero per `RAPMemory`, utilizzato quando le dipendenze `ncps`/`hflayers` non sono disponibili o quando si desidera un modello più portabile:
@@ -193,8 +180,6 @@ Modulo sostitutivo leggero per `RAPMemory`, utilizzato quando le dipendenze `ncp
 - Nessun seeding RNG necessario (niente AutoNCP)
 - Nessun Hopfield training delay (niente pattern memorizzati)
 - Istanziato via `ModelFactory.TYPE_RAP_LITE` ("rap-lite") con `use_lite_memory=True`
-
-> **Analogia:** RAPMemoryLite è come un **generatore di riserva** che funziona con carburante più semplice. Non ha il "cervello liquido" (LTC) che si adatta al ritmo del gioco, né l'album fotografico (Hopfield) che ricorda le giocate famose. Usa invece una memoria LSTM tradizionale — meno sofisticata, ma affidabile e funzionante ovunque senza componenti speciali. È il piano B per quando il laboratorio sperimentale non è accessibile.
 
 ```mermaid
 flowchart TB
@@ -208,8 +193,6 @@ flowchart TB
 ```
 
 **Combinazione residua:** `combined_state = ltc_out + hopfield_out`
-
-> **Analogia:** La combinazione residua è come **chiedere a due consulenti e sommare le loro opinioni**. Il LTC dice "in base a quanto appena accaduto, penso X". L'Hopfield dice "in base al mio ricordo di situazioni simili, penso Y". Invece di sceglierne una, il sistema somma entrambe le opinioni: in questo modo, sia gli eventi recenti che gli schemi storici contribuiscono alla comprensione finale.
 
 **Testo di convinzione:** `Lineare(256→256) → SiLU → Lineare(256→64)` — produce un vettore di convinzione a 64 dimensioni che codifica la comprensione tattica latente dell'allenatore.
 
@@ -227,13 +210,9 @@ return combined_state, belief, hidden
 
 Implementa **SuperpositionLayer** combinato con un mix di esperti contestualizzati:
 
-> **Analogia:** Il Livello Strategia è come una **sala di guerra con 4 generali specializzati**, ognuno esperto in un diverso tipo di situazione. Un generale è bravo nelle spinte aggressive, un altro nelle prese difensive, un altro nelle giocate di utilità e un altro ancora nelle rotazioni. Un "guardiano" (il "gate" softmax) ascolta la situazione attuale e decide quanto fidarsi di ciascun generale: "Siamo in un round eco su Dust2? Il Generale 2 (specialista difensivo) ottiene il 60% del potere, il Generale 4 (utilità) il 30% e gli altri si dividono il resto". Il **Livello di Superposizione** è l'ingrediente segreto: consente a ciascun generale di adattare il proprio pensiero in base al contesto di gioco attuale (mappa, economia, fazione) utilizzando un meccanismo di controllo intelligente.
-
 **SuperpositionLayers** (`layers/superposition.py`): controllo dipendente dal contesto dove `output = F.linear(x, weight, bias) * sigmoid(context_gate(context))`. Un vettore di gate sigmoide condizionato sul contesto **25-dim** (METADATA_DIM completo) maschera selettivamente gli output degli esperti. La perdita di sparsità L1 (`context_gate_l1_weight = 1e-4`) incoraggia un gating sparso e interpretabile. Osservabile: le statistiche del gate (media, standard, sparsità, active_ratio) possono essere tracciate.
 
 > **Nota:** `RAPStrategy.__init__` utilizza `context_dim=25` (METADATA_DIM). La rete di gate è `Linear(hidden_dim=256, num_experts=4) → Softmax(dim=-1)`.
-
-> **Analogia:** Il livello di sovrapposizione è come un **interruttore dimmer per ogni neurone**. Invece di avere ogni neurone sempre completamente acceso, un gate dipendente dal contesto (controllato dalle 25 caratteristiche dei metadati) può attenuare o aumentare la luminosità di ciascuno di essi. Se il contesto dice "questo è un round eco", alcuni neuroni vengono attenuati (non sono rilevanti per i round eco), mentre altri vengono aumentati. La perdita di sparsità L1 è come dire al sistema: "Cerca di usare il minor numero possibile di neuroni: più semplice è la tua spiegazione, meglio è". Questo rende il modello più interpretabile: puoi effettivamente vedere quali gate si attivano in quali situazioni.
 
 ```mermaid
 flowchart TB
@@ -265,8 +244,6 @@ Due sottomoduli:
 
 1. **Value Critic:** `Linear(256→64) → ReLU → Linear(64→1)`. Stima V(s) per l'apprendimento con differenze temporali. **Skill Adapter:** `Linear(10 skill_buckets → 256)` consente stime di valore condizionate dalle abilità.
 
-> **Analogia:** Il Value Critic è come un **commentatore sportivo** che, in qualsiasi momento durante una partita, può dire "In questo momento, questa squadra ha un vantaggio del 72%". Stima V(s) — il "valore" dello stato attuale della partita. L'**Skill Adapter** adatta questa stima in base al livello di abilità del giocatore: un principiante nella stessa posizione di un professionista affronta probabilità molto diverse, quindi la previsione del valore dovrebbe riflettere questo.
-
 1. **CausalAttributor:** Produce un vettore di attribuzione a 5 dimensioni che mappa i concetti di allenamento:
 
 | Indice | Concetto                            | Segnale meccanico                          |
@@ -278,8 +255,6 @@ Due sottomoduli:
 | 4      | **Rotazione**                 | 0,8 × position_delta                      |
 
 Fusione: `attribuzione = context_weights × mechanical_errors` dove context_weights deriva da `Lineare(256→32) → ReLU → Lineare(32→5) → Sigmoide`.
-
-> **Analogia:** L'attributore causale è il modo in cui l'allenatore risponde alla domanda **"PERCHÉ è andato storto?"** Invece di dire semplicemente "sei morto", suddivide la colpa in 5 categorie, come una pagella scolastica con 5 materie. "Sei morto perché: 45% posizionamento errato, 30% utilizzo inadeguato delle utilità, 15% posizionamento errato del mirino, 5% troppo aggressivo, 5% rotazione errata." Lo fa combinando due segnali: (1) ciò che lo stato nascosto della rete neurale ritiene importante (context_weights, l'intuizione del cervello) e (2) errori meccanici misurabili (quanto lontano dalla posizione ottimale, quanto errato era l'angolo di visione). Moltiplicandoli insieme si ottiene un'attribuzione di colpa basata sia sui dati che sull'intuizione.
 
 ```mermaid
 flowchart TB
@@ -303,8 +278,6 @@ Scompone le statistiche grezze in 5 assi delle abilità utilizzando la normalizz
 | **Utilità**       | Utility_blind_time, Utility_nemici_accecati                             | Punteggio Z                           |
 | **Tempistica**     | Percentuale_vittorie_duello_apertura, Punteggio_aggressione_posizionale | Punteggio Z                           |
 | **Decisione**      | Percentuale_vittorie_clutch, Impatto_valutazione                        | Punteggio Z                           |
-
-> **Analogia:** Il modello di abilità crea una **pagella di 5 materie** per ogni giocatore. Ogni materia (Meccanica, Posizionamento, Utilità, Tempismo, Decisione) viene valutata confrontando il giocatore con i professionisti. Il punteggio Z è come chiedere: "Quanto è sopra o sotto la media della classe questo studente?". Un punteggio Z pari a 0 significa "esattamente nella media tra i professionisti". Un punteggio Z pari a -2 significa "molto al di sotto della media - necessita di un duro lavoro". Un punteggio Z pari a +1 significa "sopra la media - sta andando bene". Il sistema converte quindi i punteggi Z in percentili (la percentuale di professionisti in cui sei migliore) e li associa a un livello curriculare da 1 a 10, come i voti scolastici. Uno studente di livello 1 riceve un allenamento adatto ai principianti; uno studente di livello 10 riceve un'analisi tattica avanzata.
 
 ```mermaid
 flowchart TB
@@ -339,8 +312,6 @@ Orchestra il ciclo di addestramento con una **funzione di perdita composita**:
 L_totale = L_strategia + 0,5 × L_valore + L_sparsità + L_posizione
 ```
 
-> **Analogia:** La perdita totale è come una **pagella con 4 voti**, ognuno dei quali misura un aspetto diverso delle prestazioni del modello. Il modello cerca di rendere TUTTI e quattro i voti il più bassi possibile (nell'apprendimento automatico, una perdita minore = prestazioni migliori). I pesi (1,0, 0,5, 1e-4, 1,0) indicano l'importance di ogni materia: Strategia e Posizione sono materie a punteggio pieno, Valore è mezzo credito e Scarsità è un credito extra. Il modello non può semplicemente superare una materia e bocciare le altre: deve bilanciarle tutte e quattro.
-
 | Termine di perdita | Formula                                                   | Peso | Scopo                                                            |
 | ------------------ | --------------------------------------------------------- | ---- | ---------------------------------------------------------------- |
 | `L_strategy`     | `MSELoss(advice_probs, target_strat)`                   | 1.0  | Raccomandazione tattica corretta                                 |
@@ -349,8 +320,6 @@ L_totale = L_strategia + 0,5 × L_valore + L_sparsità + L_posizione
 | `L_position`     | `MSE(pred_xy, true_xy) + 2.0 × MSE(pred_z, true_z)`    | 1.0  | Posizionamento ottimale,**penalità rigorosa sull'asse Z** |
 
 > **Nota:** Il moltiplicatore 2× sull'asse Z esiste perché gli errori di posizionamento verticale (ad esempio, un livello sbagliato su Nuke/Vertigo) sono tatticamente catastrofici: rappresentano errori di piano sbagliato che nessuna correzione orizzontale può correggere.
-
-> **Analogia:** La penalità sull'asse Z è come un **allarme antincendio per errori di piano sbagliato**. Nelle mappe di CS2 come Nuke (che ha due piani) o Vertigo (un grattacielo), dire a un giocatore di andare al piano sbagliato è un disastro: è come dire a qualcuno di andare in cucina quando intendevi la soffitta. Essere leggermente fuori posizione orizzontale (X/Y) è come essere qualche passo a sinistra o a destra: non eccezionale, ma risolvibile. Essere al piano sbagliato (Z) è come essere in una stanza completamente diversa. Ecco perché gli errori verticali vengono puniti 2 volte più duramente durante l'addestramento: il modello impara rapidamente a "NON suggerire MAI il piano sbagliato".
 
 ```mermaid
 flowchart LR
@@ -375,8 +344,6 @@ flowchart LR
 |---|---|---|---|
 | **Per-timestep** | `[B, T, C, H, W]` (5-dim) | Addestramento con sequenze temporali | Ogni timestep elaborato individualmente dalla CNN |
 | **Statico** | `[B, C, H, W]` (4-dim) | Inferenza in tempo reale (GhostEngine) | Singolo frame espanso su tutti i timestep |
-
-> **Analogia NN-39:** Immagina di mostrare un filmato al coach. Nel formato **per-timestep**, il coach guarda ogni fotogramma uno per uno, analizzandoli separatamente e costruendo una comprensione che evolve nel tempo — come un arbitro che rivede un'azione al rallentatore, fotogramma per fotogramma. Nel formato **statico**, il coach vede una singola fotografia della situazione e assume che la scena sia rimasta invariata per tutta la durata — come quando si analizza una posizione da una screenshot. Il fix NN-39 garantisce che entrambe le situazioni producano lo stesso formato di output (`[B, T, 128]`), così il resto del cervello (memoria, strategia, pedagogia) funziona identicamente in entrambi i casi.
 
 ```python
 def forward(view_frame, map_frame, motion_diff, metadata, skill_vec=None):
@@ -413,8 +380,6 @@ def forward(view_frame, map_frame, motion_diff, metadata, skill_vec=None):
     }
 ```
 
-> **Analogia:** Questa è la **ricetta completa** di come pensa il RAP Coach, passo dopo passo: (1) **Occhi** — il livello Percezione esamina la vista, la mappa e le immagini in movimento e crea un riepilogo di 128 numeri di ciò che vede. Il fix NN-39 permette due modalità: se riceve un filmato (5-dim), elabora ogni fotogramma separatamente; se riceve una foto (4-dim), la replica su tutti i timestep. (2) Questo riepilogo visivo viene combinato con 25 numeri di metadati (salute, posizione, economia, ecc.) per formare una descrizione di 153 numeri. (3) **Memoria** — la memoria LTC + Hopfield elabora la descrizione nel tempo, producendo uno stato nascosto di 256 numeri e un vettore di credenze di 64 numeri ("cosa penso stia accadendo"). (4) **Strategia** — 4 esperti esaminano lo stato nascosto e producono 10 probabilità di consiglio ("40% di probabilità che tu debba spingere, 30% di tenere premuto, ecc."). (5) **Insegnante** — il livello pedagogico stima "quanto è buona questa situazione?" (valore). (6) **GPS** — la testa di posizione prevede dove dovresti muoverti (coordinate 3D). (7) **Colpa** — l'attributore capisce perché le cose sono andate male (5 categorie). Tutti e **7** gli output vengono restituiti insieme come un dizionario: l'analisi completa dell'allenamento per un momento di gioco. Il settimo output, `hidden_state` (NN-40), è lo stato ricorrente della memoria — permette al GhostEngine di mantenere la "memoria" tra tick consecutivi, come un coach che non dimentica cosa è successo 5 secondi fa quando valuta la posizione attuale.
-
 ```mermaid
 flowchart LR
     subgraph INPUTS["INGRESSI"]
@@ -446,8 +411,6 @@ flowchart LR
 
 Un **modulo di elaborazione del segnale multi-scala** che identifica i momenti critici nelle partite analizzando i delta di vantaggio temporale su **3 livelli di risoluzione** (micro, standard, macro):
 
-> **Analogia:** Il Chronovisor è come un **rilevatore di momenti salienti con 3 lenti di ingrandimento**. La lente **micro** (sotto-secondo) cattura decisioni istantanee negli scontri a fuoco — come un arbitro che rivede un'azione al rallentatore. La lente **standard** (livello ingaggio) individua i momenti critici come giocate decisive o errori fatali — come il replay principale della partita. La lente **macro** (strategica) rileva cambiamenti di strategia che si sviluppano su 5-10 secondi — come l'analisi tattica del commentatore. Funziona monitorando il vantaggio della squadra nel tempo (come un grafico del prezzo di un'azione) e cercando picchi o crolli improvvisi a ciascuna scala. Invece di guardare l'intera partita di 45 minuti, il giocatore può passare direttamente ai momenti critici più significativi.
-
 **Configurazione Multi-Scala (`ANALYSIS_SCALES`):**
 
 | Scala | Window (tick) | Lag | Soglia | Descrizione |
@@ -455,8 +418,6 @@ Un **modulo di elaborazione del segnale multi-scala** che identifica i momenti c
 | **Micro** | 64 | 16 | 0.10 | Decisioni di ingaggio sotto-secondo |
 | **Standard** | 192 | 64 | 0.15 | Momenti critici a livello di ingaggio |
 | **Macro** | 640 | 128 | 0.20 | Rilevamento cambiamenti strategici (5-10 secondi) |
-
-> **Analogia della multi-scala:** Le tre scale sono come **tre diversi zoom su Google Maps**: la scala micro è il livello strada (puoi vedere ogni dettaglio di un incrocio), la scala standard è il livello quartiere (vedi la struttura generale della zona), la scala macro è il livello città (vedi come i quartieri si collegano tra loro). Un giocatore può avere una micro-decisione sbagliata (un peek troppo lento) che non appare nelle scale più grandi, o un cambiamento strategico macro (rotazione tardiva) che non è visibile nella micro-analisi. Utilizzando tutte e tre contemporaneamente, il coach cattura sia gli errori istantanei che le scelte strategiche errate.
 
 **Pipeline di rilevamento (per ciascuna scala):**
 
@@ -489,8 +450,6 @@ Un **modulo di elaborazione del segnale multi-scala** che identifica i momenti c
 
 Proprietà di utilità: `is_empty_success` (scansione riuscita ma nessun momento critico trovato), `is_failure` (scansione fallita — modello non caricato, errore DB, ecc.).
 
-> **Analogia della pipeline:** Ecco la procedura passo dopo passo: (1) Il modello RAP osserva ogni momento e assegna un "punteggio di vantaggio" (come un cardiofrequenzimetro). (2) Per ciascuna delle 3 scale, confronta ogni momento con ciò che è accaduto N tick prima (16, 64 o 128 tick a seconda della scala) — "le cose sono migliorate o peggiorate?" (3) Se il cambiamento supera la soglia della scala, si tratta di un evento significativo — come un picco di frequenza cardiaca. (4) Ingrandisce la finestra attorno al picco per trovare il momento di picco esatto. (5) Filtra i rilevamenti duplicati — se due picchi sono troppo vicini tra loro, mantiene solo quello più grande. (6) Etichetta ogni picco: "gioco" (hai fatto qualcosa di eccezionale) o "errore" (hai commesso un errore). (7) Confeziona tutto in una scheda di valutazione ordinata per ogni momento critico, con punteggi di gravità da 0 (minore) a 1 (che cambia il gioco) e la scala di rilevamento (micro/standard/macro).
-
 ```mermaid
 flowchart LR
     subgraph TIMELINE["Vantaggio nel tempo V(s)"]
@@ -510,8 +469,6 @@ flowchart LR
 ### -GhostEngine (`inference/ghost_engine.py`)
 
 Inferenza in tempo reale per il "Ghost" — overlay della posizione ottimale del giocatore. Il GhostEngine rappresenta il **punto finale** dell'intera catena neurale: è dove il RAP Coach Model produce output visibili all'utente sotto forma di un "giocatore fantasma" sulla mappa tattica.
-
-> **Analogia:** Il Ghost Engine è come un **ologramma "migliore te"** sullo schermo. In ogni momento durante la riproduzione, chiede al RAP Coach: "Data questa situazione esatta, dove DOVREBBE trovarsi il giocatore?" La risposta è un piccolo delta di posizione (ad esempio "5 pixel a destra e 3 pixel in alto"), che viene ridimensionato alle coordinate reali della mappa. Il risultato è un giocatore "fantasma" trasparente visualizzato sulla mappa tattica, che mostra la posizione ottimale. Se il fantasma è lontano da dove ti trovavi effettivamente, sai di essere in una brutta posizione. Se è vicino, ti sei posizionato bene.
 
 **Pipeline di Inferenza 4-Tensori con PlayerKnowledge:**
 
@@ -573,8 +530,6 @@ Il modello produce un delta normalizzato in [-1, 1] che viene scalato a coordina
 | **Errore PlayerKnowledge** | Costruzione conoscenza fallita | Degrada a tensori legacy (tutti zeri) |
 | **Errore di inferenza** | RuntimeError / CUDA OOM | Log errore, ritorna `(0.0, 0.0)` |
 
-> **Analogia del fallback:** Il fallback è come un GPS con 5 livelli di sicurezza: (1) "Modalità offline — non ho mappe caricate", (2) "Non ho mai imparato a navigare questa zona", (3) "Non so nemmeno in quale città siamo", (4) "So dove siamo ma non posso vedere intorno a noi — guido a memoria", (5) "Si è rotto qualcosa — ti dico semplicemente di restare dove sei". In ogni caso, il GPS **non manda mai l'auto contro un muro** — la risposta peggiore possibile è "resta fermo" (`(0.0, 0.0)`), che è infinitamente meglio di un crash dell'applicazione.
-
 ```mermaid
 flowchart TB
     subgraph INIT["Fase 1: Inizializzazione"]
@@ -616,8 +571,6 @@ flowchart TB
 **File:** `demo_parser.py`, `demo_format_adapter.py`, `event_registry.py`, `trade_kill_detector.py`, `hltv_scraper.py`, `hltv_metadata.py`, `steam_api.py`, `steam_demo_finder.py`, `faceit_api.py`, `faceit_integration.py`, `__init__.py`
 
 Il sottosistema Sorgenti Dati è il **punto di ingresso di tutti i dati esterni** nel sistema. Raccoglie informazioni da 5 fonti distinte: file demo CS2, statistiche HLTV, profili Steam, dati FACEIT e registry eventi di gioco.
-
-> **Analogia:** Le Sorgenti Dati sono come i **5 sensi** del coach AI. L'occhio principale (demo parser) guarda le registrazioni delle partite frame per frame. L'orecchio (HLTV scraper) ascolta le notizie dal mondo professionistico. Il tatto (Steam API) sente il profilo e la storia del giocatore. Il gusto (FACEIT) assaggia il livello competitivo del giocatore. Il sesto senso (event registry) cataloga sistematicamente ogni tipo di evento che il gioco può produrre. Senza questi sensi, il coach sarebbe cieco e sordo — incapace di imparare qualsiasi cosa.
 
 ```mermaid
 flowchart TB
@@ -674,8 +627,6 @@ Wrapper robusto attorno alla libreria `demoparser2` per l'estrazione di statisti
 - Statistiche avanzate: `avg_hs`, `accuracy`, `impact_rounds`, `econ_rating`
 - Rating HLTV 2.0 approssimato (approssimazione hand-tuned, non formula ufficiale)
 
-> **Analogia:** Il Demo Parser è come un **cronista sportivo esperto** che guarda la registrazione di una partita e compila una pagella dettagliata per ogni giocatore. Non si limita a contare le uccisioni: calcola il danno per round, la percentuale di headshot, l'efficienza economica e persino quanto sono consistenti le prestazioni (deviazione standard). Se la registrazione è corrotta o mancano dati, il cronista scrive "nessun dato disponibile" invece di inventare numeri — è la politica di tolleranza zero alla fabbricazione di dati del progetto.
-
 ### -Demo Format Adapter (`demo_format_adapter.py`)
 
 Livello di resilienza per la gestione di versioni diverse del formato demo CS2.
@@ -699,8 +650,6 @@ Livello di resilienza per la gestione di versioni diverse del formato demo CS2.
 
 **`DemoFormatAdapter.validate_demo(path)`:** Validazione a 3 fasi: (1) esistenza e dimensioni entro bounds, (2) lettura magic bytes per identificazione formato, (3) verifica supporto del formato rilevato.
 
-> **Analogia:** Il Demo Format Adapter è come un **doganiere all'aeroporto** che controlla ogni "pacco" (file demo) prima di farlo entrare nel sistema. Controlla: (1) "Il pacco è della giusta dimensione?" (non troppo piccolo = corrotto, non troppo grande = potenziale bomba), (2) "Ha il timbro giusto?" (magic bytes PBDEMS2 = CS2, HL2DEMO = CS:GO vecchio), (3) "Accettiamo pacchi da questo paese?" (CS2 sì, CS:GO no). Se qualcosa non quadra, il pacco viene respinto con un messaggio chiaro sul motivo. Questo impedisce a file corrotti o del formato sbagliato di entrare nella pipeline e causare errori misteriosi a valle.
-
 ### -Event Registry (`event_registry.py`)
 
 Registro canonico di **tutti gli eventi di gioco CS2** derivato dai dump SteamDatabase.
@@ -722,8 +671,6 @@ Registro canonico di **tutti gli eventi di gioco CS2** derivato dai dump SteamDa
 
 > **Nota (F6-33):** I `handler_path` non sono validati a runtime — se i moduli gestori vengono spostati, i riferimenti diventano silenziosamente obsoleti. Aggiungere validazione `hasattr/callable` al dispatch degli eventi se l'affidabilità è critica.
 
-> **Analogia:** L'Event Registry è come un **catalogo enciclopedico di tutti i segnali che il gioco può emettere**. Ogni segnale è classificato per categoria (combattimento, round, utilità, economia, movimento, meta), priorità (critico/standard/opzionale) e stato di implementazione. È come un catalogo di un museo: ogni opera d'arte ha una scheda con titolo, sala, artista e se è attualmente esposta. Questo permette al team di sapere esattamente quali eventi il sistema gestisce e quali mancano, pianificando l'espansione in modo sistematico.
-
 ### -Trade Kill Detector (`trade_kill_detector.py`)
 
 Identifica i **trade kill** — uccisioni di ritorsione entro una finestra temporale — dalle sequenze di morte nel demo.
@@ -739,8 +686,6 @@ Identifica i **trade kill** — uccisioni di ritorsione entro una finestra tempo
 **`build_team_roster(parser)`:** Costruisce mappatura `player_name → team_num` dai tick iniziali della partita (usa il 10° percentile dei tick per stabilità dell'assegnazione).
 
 **`get_round_boundaries(parser)`:** Estrae i tick di confine tra round dall'evento `round_end`.
-
-> **Analogia:** Il Trade Kill Detector è come un **analista di replay sportivo** che rivede ogni eliminazione e chiede: "Qualcuno ha vendicato questo giocatore entro 3 secondi?" Se sì, la morte è stata "scambiata" — significa che la squadra ha reagito velocemente. Un alto rapporto di trade kill indica un buon coordinamento di squadra; un basso rapporto indica giocatori isolati che muoiono senza supporto. Questa metrica è uno degli indicatori più importanti nel CS2 professionistico per valutare la disciplina posizionale e la comunicazione della squadra.
 
 ### -Steam API (`steam_api.py`)
 
@@ -775,8 +720,6 @@ Auto-discovery delle demo CS2 dall'installazione Steam locale.
 ### -Modulo HLTV (`backend/data_sources/hltv/`)
 
 Il sottosistema HLTV è composto da 5 moduli specializzati che collaborano per estrarre statistiche professionistiche dal sito HLTV.org, superando le protezioni anti-scraping di Cloudflare:
-
-> **Analogia:** Il modulo HLTV è come una **squadra di spionaggio ben organizzata** che raccoglie informazioni sui migliori giocatori del mondo. Il `stat_fetcher` è l'agente sul campo che sa dove trovare i dati. Il `docker_manager` prepara il veicolo blindato (FlareSolverr) per superare i posti di blocco (Cloudflare). Il `flaresolverr_client` è il conducente specializzato. Il `rate_limiter` è il cronometrista che assicura che la squadra non attiri attenzione muovendosi troppo velocemente. I `selectors` sono la mappa che indica esattamente dove trovare ogni informazione sulla pagina.
 
 **`HLTVStatFetcher`** (`stat_fetcher.py`) — Orchestratore principale dello scraping:
 
@@ -870,13 +813,9 @@ flowchart LR
 - Gestione match history e download demo
 - Eccezione dedicata `FACEITAPIError`
 
-> **Analogia:** FACEIT è come un **consulente esterno** che fornisce al coach una seconda opinione sul livello del giocatore. Mentre il sistema HLTV fornisce dati sui professionisti, FACEIT fornisce il ranking competitivo del giocatore utente (Elo e Level da 1 a 10). Il rate limiting è come un **appuntamento con il consulente**: non puoi chiamare più di 10 volte al minuto, altrimenti il consulente si rifiuta di rispondere (errore 429). Il sistema rispetta automaticamente questo limite, aspettando il tempo necessario tra una richiesta e l'altra.
-
 ### -FrameBuffer — Buffer Circolare per Estrazione HUD (`backend/processing/cv_framebuffer.py`)
 
 Il **FrameBuffer** è un buffer circolare thread-safe per la cattura e l'analisi dei frame dello schermo di gioco. Funziona come la "retina" del sistema: cattura frame dallo schermo, li memorizza in un anello di dimensione fissa e permette l'estrazione delle regioni HUD (Head-Up Display) per l'analisi visiva.
-
-> **Analogia:** Il FrameBuffer è come un **registratore a nastro circolare** in una sala di sorveglianza. La telecamera (lo schermo di gioco) registra continuamente, ma il nastro ha solo spazio per 30 fotogrammi — quando è pieno, i nuovi fotogrammi sovrascrivono i più vecchi. Il guardiano (il sistema di analisi) può in qualsiasi momento chiedere "mostrami gli ultimi N fotogrammi" o "ingrandisci la zona del minimap in questo fotogramma". La cosa importante è che il registratore non si blocca mai: anche se il guardiano sta analizzando un fotogramma, la telecamera continua a registrare senza interruzioni grazie a un lucchetto (lock) che coordina gli accessi.
 
 **Configurazione:**
 
@@ -928,8 +867,6 @@ flowchart LR
 ### -TensorFactory — Fabbrica dei Tensori (`backend/processing/tensor_factory.py`)
 
 La **TensorFactory** è il **sistema percettivo** del RAP Coach: converte lo stato di gioco grezzo in 3 tensori-immagine che il modello neurale può "vedere". Ogni tensore è un'immagine a 3 canali che codifica una diversa dimensione della situazione tattica: **mappa** (dove sono tutti), **vista** (cosa può vedere il giocatore) e **movimento** (come si sta muovendo).
-
-> **Analogia:** La TensorFactory è come un **pittore di mappe tattiche militari** che riceve rapporti radio e disegna tre mappe separate per il comandante (il modello RAP). La prima mappa (**mappa tattica**) mostra le posizioni di alleati e nemici conosciuti. La seconda mappa (**mappa di visibilità**) mostra cosa il soldato può effettivamente vedere dal suo punto di vista — il cono di 90° davanti a lui. La terza mappa (**mappa di movimento**) mostra il percorso recente del soldato, la sua velocità e la direzione del suo mirino. Crucialmente, il pittore segue una regola ferrea: **non disegna mai la posizione di nemici che il soldato non ha visto** (principio NO-WALLHACK). Se un nemico è dietro un muro, non appare sulla mappa — esattamente come nella realtà del giocatore.
 
 **Configurazioni:**
 
@@ -1029,8 +966,6 @@ flowchart TB
 
 Il **VectorIndexManager** fornisce ricerca semantica ad alta velocità per il sistema di conoscenza RAG (Retrieval-Augmented Generation) del coach. Utilizza FAISS (Facebook AI Similarity Search) con `IndexFlatIP` su vettori L2-normalizzati, ottenendo efficacemente una **ricerca per similarità coseno** in tempo sub-lineare.
 
-> **Analogia:** L'indice FAISS è come il **sistema di ricerca della biblioteca** del coach. Invece di sfogliare ogni libro (conoscenza tattica) o ogni appunto (esperienza di coaching) uno per uno per trovare quello rilevante alla situazione corrente, il bibliotecario (FAISS) ha creato un **indice per concetti**: quando il coach chiede "qual è la strategia migliore per un retake B su Mirage con 2 giocatori?", l'indice trova istantaneamente i 5 documenti più simili a questa domanda, senza dover leggere tutti i 10.000 documenti nella biblioteca. Il trucco è che ogni documento e ogni domanda vengono convertiti in un vettore di 384 numeri (embedding), e FAISS confronta questi vettori tramite **prodotto interno** (equivalente alla similarità coseno dopo normalizzazione L2).
-
 **Indici Duali:**
 
 | Indice | Sorgente DB | Contenuto |
@@ -1073,8 +1008,6 @@ IndexFlatIP.add(normalized)
 ### -Contesto dei Round (`round_context.py`)
 
 Il modulo **Round Context** è la **griglia temporale** del sistema di ingestione: converte i tick grezzi dei file demo in coordinate significative "round N, tempo T secondi" che ogni altro modulo può utilizzare per contestualizzare gli eventi di gioco.
-
-> **Analogia:** Il Round Context è come l'**assistente del cronometrista** in una partita di calcio. Il cronometrista (DemoParser) misura il tempo in millisecondi assoluti dall'inizio della registrazione, ma l'assistente traduce quei millisecondi in informazioni utili: "Questo evento è successo al 23° minuto del secondo tempo". Senza l'assistente, ogni analista dovrebbe fare questa conversione da solo, rischiando errori e incoerenze. Il Round Context fa lo stesso per CS2: converte tick assoluti in "Round 7, 42 secondi dall'inizio dell'azione", permettendo a tutti i motori di analisi di lavorare con coordinate temporali coerenti e significative.
 
 **Funzioni pubbliche:**
 
@@ -1134,8 +1067,6 @@ La Parte 1B ha documentato i **due pilastri percettivi e diagnostici** del siste
 |---|---|---|
 | **2. RAP Coach** | Il **medico specialista** — architettura a 7 componenti per coaching completo in condizioni POMDP | Percezione (ResNet a 3 flussi, 24 conv), Memoria (LTC **512** unità NCP + Hopfield 4 teste + ritardo attivazione NN-MEM-01 + **RAPMemoryLite** fallback LSTM), Strategia (4 esperti MoE + SuperpositionLayer), Pedagogia (Value Critic + Skill Adapter), Attribuzione Causale (5 categorie, segnale utilità appreso), Posizionamento (Linear 256→3), Comunicazione (template), ChronovisorScanner (3 scale temporali + 50K tick safety limit + deduplicazione cross-scala + ScanResult strutturato), GhostEngine (pipeline 4-tensori con POV mode R4-04-01, hidden_state NN-40, fallback a 5 livelli) |
 | **1B. Sorgenti Dati** | I **sensi** — acquisiscono e strutturano dati dal mondo esterno | Demo Parser (demoparser2 + HLTV 2.0 rating), Demo Format Adapter (magic bytes PBDEMS2), Event Registry (schema CS2 completo), Trade Kill Detector (finestra 192 tick), Steam API (retry + backoff), Steam Demo Finder (cross-platform), HLTV (FlareSolverr + rate limiting 4 livelli + selettori CSS con fallback chain — **161 giocatori pro reali, 32 team, 156 stat card** in hltv_metadata.db), FACEIT API, FrameBuffer (ring buffer 30 frame), TensorFactory (3 rasterizzatori NO-WALLHACK), FAISS (IndexFlatIP 384-dim), Round Context (merge_asof O(n log m)) |
-
-> **Analogia finale:** Se il sistema di coaching fosse un **essere umano**, la Parte 1A ha descritto il suo cervello (le reti neurali che imparano e il sistema di maturità che decide quando sono pronte), e la Parte 1B ha descritto i suoi occhi e orecchie (le sorgenti dati che acquisiscono informazioni dal mondo esterno), il suo sistema nervoso specializzato (il RAP Coach che integra percezione, memoria e decisione), e il suo sistema di comunicazione (che traduce la comprensione in consigli leggibili). Ma un cervello con sensi da solo non basta: ha bisogno di un **corpo** per agire. La **Parte 2** documenta quel corpo — i servizi che sintetizzano i consigli, i motori di analisi che investigano ogni aspetto del gameplay, i sistemi di conoscenza che memorizzano la saggezza accumulata, la pipeline di elaborazione che prepara i dati, il database che preserva tutto, e la pipeline di addestramento che insegna ai modelli.
 
 ```mermaid
 flowchart LR

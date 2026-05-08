@@ -97,8 +97,6 @@ flowchart TB
     style DB3 fill:#868e96,color:#fff
 ```
 
-> **Analogia:** Il database è l'**archivio** del sistema: ogni informazione ha un cassetto e una cartella specifici. L'architettura three-tier storage è come avere **tre archivi specializzati**: l'archivio principale (dati del gioco, conoscenze tattiche, esperienze di coaching — tutto in un unico grande schedario WAL), lo schedario dei professionisti (dati HLTV, aggiornato da un processo separato per evitare contesa), e i **fascicoli per-partita** (telemetria tick-per-tick, ciascuno in un file separato per evitare che l'archivio principale diventi troppo pesante). Separandoli, il processo principale può scrivere e leggere dall'archivio generale mentre il servizio HLTV aggiorna lo schedario dei pro e i dati di telemetria restano isolati per partita, senza bloccarsi a vicenda. SQLite in modalità WAL consente a più programmi di leggere ciascun archivio contemporaneamente. SQLModel combina Pydantic (per la convalida dei dati: "assicurati che il campo età sia effettivamente un numero") con SQLAlchemy (per le operazioni sul database: "salva questo nella tabella giusta"). Le 21 tabelle sono organizzate come l'archivio scolastico: profili degli studenti, punteggi dei test, appunti di classe, valutazioni degli insegnanti e libri della biblioteca.
-
 ```mermaid
 erDiagram
     PlayerMatchStats ||--o{ RoundStats : "demo_name"
@@ -384,8 +382,6 @@ La ricerca semantica RAG funziona calcolando la **cosine similarity** tra l'embe
 
 Il sistema COPER utilizza queste esperienze per **imparare dai propri consigli**: il campo `context_hash` consente il lookup rapido di situazioni simili, `outcome` e `delta_win_prob` misurano l'efficacia dell'azione, e il ciclo di feedback (`outcome_validated`, `times_advice_given/followed`, `effectiveness_score`) consente al sistema di prioritizzare consigli che hanno storicamente prodotto risultati positivi. Il campo `game_state_json` è limitato a 16KB per prevenire crescita incontrollata del database. I campi TrueSkill `mu_skill`/`sigma_skill` (KT-01) forniscono una stima bayesiana della qualità dell'esperienza, usata per la prioritizzazione del replay: `confidence_score = mu_skill - κ × sigma_skill`. Il contatore `times_retrieved` implementa la replay priority, mentre `times_validated` traccia le conferme utente per il CRUD semantico.
 
-> **Analogia:** Il ciclo di vita dei dati mostra **come le informazioni fluiscono attraverso il sistema nel tempo**, come il tracciamento di un pacco dalla fabbrica alla consegna. Prima arrivano le registrazioni delle partite (100.000 punti dati per partita!). Poi le statistiche dei giocatori professionisti vengono estratte da HLTV (come scaricare un almanacco sportivo). Vengono importati file CSV esterni (come ottenere dati storici). L'IA elabora tutto, genera consigli per gli allenatori, apprende le soglie di ruolo e registra costantemente lo stato di salute del sistema. I backup vengono eseguiti automaticamente: 7 copie giornaliere e 4 copie settimanali, come se salvassi i tuoi compiti sia sul computer che su un'unità USB, per ogni evenienza.
-
 ```mermaid
 flowchart LR
     DEMO["Acquisizione Demo<br/>100K tick"] --> FEAT["Feature Estratte<br/>vettori 25-dim"]
@@ -395,8 +391,6 @@ flowchart LR
 ```
 
 ## 10. Regime di formazione e limiti di maturità
-
-> **Analogia:** Il regime di formazione è il **curriculum scolastico completo**, dalla scuola materna al diploma. Uno studente (il modello di intelligenza artificiale) inizia con zero conoscenze e apprende gradualmente attraverso 4 fasi, sbloccando corsi più avanzati man mano che si dimostra all'altezza. I limiti di maturità sono come i **requisiti di valutazione**: non puoi sostenere l'esame di Fisica AP (Ottimizzazione RAP) finché non hai superato Matematica di base (Pre-Formazione JEPA), Algebra (Baseline Pro) e Pre-Calcolo (Fine-Tuning Utente). Ogni limite verifica: "Hai studiato abbastanza demo per essere pronto per il livello successivo?"
 
 ```mermaid
 stateDiagram-v2
@@ -427,8 +421,6 @@ stateDiagram-v2
 | 2\. Baseline pro           | 50 corrispondenze pro     | Supervisionato                 | MSE(pred, pro_stats)                       |
 | 3\. Ottimizzazione utente  | 50 corrispondenze utente  | Supervisionato (trasferimento) | MSE(pred, user_stats)                      |
 | 4\. Ottimizzazione RAP     | 200 corrispondenze totali | Multi-task                     | Strategia + Valore + Sparsità + Posizione |
-
-> **Analogia:** La fase 1 è come **guardare programmi di cucina**: il modello apprende i pattern semplicemente osservando (auto-supervisionato, senza bisogno di etichette). La fase 2 è come **una scuola di cucina con un libro di testo**: "Ecco come fa un professionista la pasta" (supervisionata con dati professionali). La fase 3 è come **cucinare per la tua famiglia**: "La tua famiglia preferisce il piccante, quindi adattiamo la ricetta" (affinando i dati degli utenti). La fase 4 è un **addestramento da chef provetto**: imparare a bilanciare contemporaneamente sapore, presentazione, tempi e nutrizione (multi-task: strategia + valore + parsimonia + posizione). Hai bisogno di almeno 10 programmi di cucina per iniziare, 50 ricette da imparare e 200 piatti in totale preparati prima di diplomarti.
 
 ```mermaid
 flowchart LR
@@ -488,8 +480,6 @@ flowchart TB
 | 14 | Aggression Control | Psicologia | Controllo dell'aggressività |
 | 15 | Adaptation Speed | Psicologia | Velocità di adattamento al meta avversario |
 
-> **Analogia dei 16 Concetti:** I 16 coaching concepts sono come le **16 materie di un curriculum scolastico completo**. Tre materie riguardano la **geografia** (posizionamento — dove ti trovi). Due riguardano la **chimica** (utility — come usi i tuoi strumenti). Cinque riguardano la **strategia** (decisione e economia — le scelte che fai). Quattro riguardano la **ginnastica** (ingaggio — le abilità fisiche: mira, rinculo, timing). Tre riguardano la **psicologia** (compostezza, aggressività, adattamento). Lo Stage 2 del VL-JEPA insegna al modello a "capire" queste 16 materie e a dare un voto a ciascuna per ogni azione del giocatore.
-
 **AdamW + CosineAnnealing (JEPA Trainer):**
 
 | Iperparametro | Valore | Scopo |
@@ -519,8 +509,6 @@ flowchart LR
 
 **Trigger di riaddestramento:** Il demone Teacher monitora la crescita del numero di demo professionali; attiva il riaddestramento quando `count ≥ last_count × 1,10`.
 
-> **Analogia:** Il trigger di riaddestramento è come una **scuola che aggiorna il suo curriculum quando arrivano abbastanza nuovi libri di testo**. Il demone Teacher (un processo in background) controlla costantemente: "Quante demo professionali abbiamo ora?". Quando il numero cresce del 10% o più dall'ultimo addestramento, dice: "Abbiamo abbastanza nuovo materiale: è ora di riqualificare il modello in modo che rimanga al passo con l'evoluzione del meta professionale."
-
 **JEPAPretrainDataset** (`jepa_train.py`):
 
 Il dataset di pre-training JEPA utilizza **finestre temporali** per creare coppie contesto-target:
@@ -532,13 +520,9 @@ Il dataset di pre-training JEPA utilizza **finestre temporali** per creare coppi
 | Gap | 0-5 tick (random) | Distanza variabile tra contesto e target |
 | Batch size | 32 | Numero di coppie per batch |
 
-> **Analogia del Dataset:** Il dataset di pre-training è come un **esercizio di lettura veloce**. Al modello viene mostrata una pagina del libro (10 tick di contesto) e poi gli si chiede: "Cosa c'è scritto nella pagina successiva?" (10 tick target). Il gap variabile rende l'esercizio più difficile — a volte la pagina successiva è subito dopo, a volte sono separate da qualche pagina vuota. Questo forza il modello a imparare pattern generali, non sequenze specifiche.
-
 ---
 
 ## 11. Catalogo delle funzioni di perdita
-
-> **Analogia:** Le funzioni di perdita sono i **punteggi dei test** che l'IA cerca di minimizzare. Ogni modello ha il suo tipo di test. Un punteggio più basso significa una prestazione migliore, l'opposto dei voti scolastici! Pensa a ogni funzione di perdita come a una domanda specifica del test: "Quanto era vicina la tua previsione alla risposta corretta?" (MSE), "Hai scelto la risposta corretta tra più opzioni?" (InfoNCE/BCE), "Hai utilizzato troppe risorse?" (Scarsità). La tabella seguente è simile al **calendario completo dell'esame**: ogni test, per ogni modello, con la formula di valutazione esatta.
 
 | Modello                   | Nome della perdita        | Formula                                                                                                                         | Scopo                                                                  |
 | ------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
@@ -552,8 +536,6 @@ Il dataset di pre-training JEPA utilizza **finestre temporali** per creare coppi
 | **WinProb**         | Previsione                | `BCEWithLogitsLoss(pred, risultato)`                                                                                          | Previsione dell'esito del round                                        |
 | **NeuralRoleHead**  | KL-Divergence             | `KLDivLoss(log_softmax(pred), target)` con smoothing delle etichette ε=0,02                                                  | Corrispondenza della distribuzione di probabilità del ruolo           |
 | **VL-JEPA**         | Allineamento dei concetti | `BCE(concept_logits, concept_labels)` + `VICReg(concept_diversity)`                                                         | Fondamenti del concetto di linguaggio visivo                           |
-
-> **Analogia per le funzioni di perdita delle chiavi:** **InfoNCE** è come un test a risposta multipla: "Ecco 32 possibili risposte: qual è quella corretta?" Il modello ottiene un punteggio più alto per aver scelto quello giusto E per esserne sicuro. L'**MSE** (Errore Quadratico Medio) è come misurare la distanza della tua freccetta dal centro del bersaglio: più vicino = minore perdita. L'**BCE** (Entropia Incrociata Binaria) è come un quiz vero/falso: "La tua squadra ha vinto? Sì o no?". La **Perdita di Sparsità** è come un insegnante che dice "Usa meno parole nel tuo tema": incoraggia il modello ad attivare meno esperti, rendendolo più efficiente e interpretabile. La **Perdita di Posizione con penalità Z 2x** è come dire "mancare a sinistra o a destra è grave, ma cadere da un dirupo (dal piano sbagliato) è due volte peggio". La **KL-Divergence** è come confrontare due classifiche: "La tua classifica dei ruoli corrisponde a quella reale?" — misura quanto la distribuzione predetta si discosta da quella target.
 
 **Dettaglio: InfoNCE Contrastive Loss (JEPA)**
 
@@ -571,8 +553,6 @@ L_InfoNCE = -log( exp(sim(pred, target⁺) / τ) / Σᵢ exp(sim(pred, targetᵢ
 | `targetᵢ` | Tutti gli embedding nel batch | Negativi in-batch — le risposte sbagliate |
 | Batch size | 32 | Numero di negativi = batch_size - 1 = 31 |
 
-> **Analogia InfoNCE:** Immagina di essere in una stanza con 32 persone. Ti viene mostrata una foto (contesto) e devi trovare la persona giusta (target positivo) tra le 32. La temperatura τ=0.07 è come la **nitidezza degli occhiali**: valori bassi significano occhiali molto precisi — devi essere molto sicuro della tua scelta per ottenere un buon punteggio. Valori alti significano occhiali sfocati — anche una scelta approssimativa va bene. Il τ basso del JEPA forza il modello a imparare rappresentazioni molto precise.
-
 **Dettaglio: VL-JEPA Concept Loss (VICReg Components)**
 
 La loss di allineamento concetti del VL-JEPA combina due componenti:
@@ -587,8 +567,6 @@ Dove `VICReg_diversity` è composta da:
 | -------------- | ------- | ---- | ----- |
 | **Variance** | `max(0, γ - std(z))` per ogni dimensione | α=0.5 | Previene il collasso delle rappresentazioni — ogni dimensione deve variare |
 | **Covariance** | `Σᵢ≠ⱼ cov(zᵢ, zⱼ)²` | β=0.1 | Decorrelazione — ogni dimensione deve catturare informazioni diverse |
-
-> **Analogia VICReg:** La **Variance** è come un insegnante che dice "Ognuno di voi deve avere un'opinione diversa — non copiate tutti la stessa risposta!" (previene il collasso dove tutti i concept embedding diventano identici). La **Covariance** è come dire "Ogni studente deve specializzarsi in una materia diversa — non servono 16 esperti di storia e zero di matematica!" (forza diversità tra le dimensioni). Insieme, garantiscono che i 16 concept embedding siano sia **diversi tra loro** che **significativi individualmente**.
 
 **Dettaglio: RAP Multi-Task Loss**
 
@@ -614,8 +592,6 @@ La penalità Z 2× nella loss di posizione riflette il fatto che in CS2 sbagliar
 ## 12. Logica Completa del Programma — Dal Lancio al Consiglio
 
 Questo capitolo documenta la **logica completa** di Macena CS2 Analyzer, dal momento in cui l'utente lancia l'applicazione fino a quando riceve i consigli di coaching. A differenza dei capitoli precedenti che si concentrano sui sottosistemi AI, qui viene spiegato come **ogni componente del programma** lavora insieme: l'interfaccia desktop, l'architettura quad-daemon, la pipeline di ingestione, il sistema di storage, il playback tattico, l'osservabilità e il ciclo di vita dell'applicazione.
-
-> **Analogia:** Se i capitoli 1-11 descrivono i **singoli organi** di un corpo umano (cervello, cuore, polmoni, fegato), questo capitolo descrive il **corpo intero in azione**: come si sveglia al mattino, come respira, cammina, mangia, pensa e parla. Capire gli organi è essenziale, ma capire come lavorano insieme è ciò che dà vita al sistema. Immaginate Macena CS2 Analyzer come una **piccola città**: ha un municipio (il processo principale Kivy), una centrale operativa sotterranea (il Session Engine con i suoi 4 daemon), un archivio comunale (il database SQLite), un ufficio postale (la pipeline di ingestione), una scuola (il sistema di addestramento ML), una biblioteca (il sistema di conoscenza RAG/COPER), un ospedale (il servizio di coaching) e un sistema di monitoraggio della salute pubblica (l'osservabilità). Questo capitolo vi guida attraverso ogni edificio e mostra come i cittadini (i dati) si muovono da un luogo all'altro.
 
 ```mermaid
 flowchart TB
@@ -674,15 +650,11 @@ La sequenza di avvio Qt segue un approccio più moderno basato su **QApplication
 8. **Window show** — Mostra la finestra e avvia il loop eventi Qt
 9. **CoachState polling** — Timer Qt per aggiornamento periodico dello stato
 
-> **Analogia:** L'avvio Qt è come l'**accensione di un'auto moderna con start/stop elettronico**. Un singolo pulsante (QApplication) avvia la sequenza: il computer di bordo configura il display (High-DPI), carica il tema del cruscotto (QSS), assembla tutti gli strumenti (14 schermate nel QStackedWidget), collega i sensori (signal wiring), verifica se è il primo avvio (first-run gate), accende il motore (backend console) e infine illumina il cruscotto (window show).
-
 #### 12.1.2 Entry Point Kivy (Legacy) — `main.py`
 
 **File:** `Programma_CS2_RENAN/main.py`
 
 Quando l'utente lancia l'applicazione tramite l'entry point legacy, `main.py` orchestra una **sequenza di avvio a 9 fasi** rigorosamente ordinata. Ogni fase deve completarsi con successo prima che la successiva possa iniziare. Se una fase critica fallisce, l'applicazione termina con un messaggio esplicito — mai silenziosamente.
-
-> **Analogia:** L'avvio del programma è come la **checklist di pre-volo di un aereo**. Prima che l'aereo possa decollare, il pilota (main.py) deve completare una serie di controlli in ordine: verificare l'integrità della fusoliera (audit RASP), impostare gli strumenti (configurazione percorsi), controllare il carburante (migrazione database), accendere i motori (inizializzazione Kivy), caricare i passeggeri (registrazione schermate), attivare il pilota automatico (lancio daemon) e infine decollare (mostrare l'interfaccia). Se un controllo fallisce — ad esempio il carburante è insufficiente (database corrotto) — il volo viene cancellato, non si prova a decollare sperando che vada bene.
 
 ```mermaid
 flowchart TB
@@ -713,8 +685,6 @@ flowchart TB
 | 6 | `database.py` | `create_all()` su engine SQLite con `check_same_thread=False` | Nessuna persistenza possibile |
 | 7 | `lifecycle.py` | Lancia subprocess con PYTHONPATH corretto, verifica mutex | Nessuna automazione in background |
 
-> **Analogia:** Le conseguenze del fallimento sono disposte come **tessere del domino**: se la fase 2 (percorsi) fallisce, le fasi 3-9 cadranno tutte perché nessuna sa dove trovare il database, i modelli o i log. Se la fase 6 (database) fallisce, le fasi 7-9 funzioneranno apparentemente ma non potranno salvare né recuperare nulla — come un ristorante che ha aperto i battenti ma si è dimenticato di accendere i fornelli.
-
 ---
 
 ### 12.2 Gestione del Ciclo di Vita (`lifecycle.py`)
@@ -722,8 +692,6 @@ flowchart TB
 **File:** `Programma_CS2_RENAN/core/lifecycle.py`
 
 L'`AppLifecycleManager` è un **Singleton** che gestisce il ciclo di vita dell'intera applicazione: dalla garanzia che esista una sola istanza attiva, al lancio del subprocess daemon, fino allo shutdown coordinato.
-
-> **Analogia:** Il Lifecycle Manager è come il **direttore di un teatro**. Prima dello spettacolo, verifica che non ci siano altri spettacoli in corso nella stessa sala (Single Instance Lock). Poi assume il regista (Session Engine daemon) che lavorerà dietro le quinte. Durante lo spettacolo, il direttore è sempre presente in caso di emergenza. Alla fine, il direttore si assicura che tutti lascino il teatro in ordine: prima il regista termina il suo lavoro, poi le luci si spengono, poi le porte si chiudono.
 
 **Meccanismi principali:**
 
@@ -754,8 +722,6 @@ flowchart LR
     style BG fill:#ff6b6b,color:#fff
 ```
 
-> **Analogia:** La pipe `stdin` è come un **filo telefonico** tra il direttore e il regista. Finché il filo è collegato, il regista sa che il direttore è ancora presente. Se il filo si spezza improvvisamente (EOF — il processo principale crasha), il regista capisce che lo spettacolo è finito e chiude tutto in modo ordinato. Se il direttore vuole terminare normalmente, invia il messaggio "STOP" attraverso il filo e aspetta che il regista confermi di aver terminato.
-
 ---
 
 ### 12.3 Sistema di Configurazione (`config.py`)
@@ -763,8 +729,6 @@ flowchart LR
 **File:** `Programma_CS2_RENAN/core/config.py`
 
 Il sistema utilizza **tre livelli di configurazione**, ciascuno con un diverso livello di persistenza e sicurezza:
-
-> **Analogia:** I tre livelli di configurazione sono come i **tre strati di un'armatura medievale**. Lo strato interno (hardcoded) è l'armatura di base che non cambia mai — le fondamenta del sistema. Lo strato intermedio (JSON) è la cotta di maglia personalizzabile — l'utente può regolarla come preferisce. Lo strato esterno (Keyring) è il casco con la visiera — protegge i segreti più preziosi (chiavi API) in una cassaforte del sistema operativo, inaccessibile a occhi indiscreti.
 
 ```mermaid
 flowchart TB
@@ -812,8 +776,6 @@ flowchart TB
 | `HALF_LIFE_DAYS` | 90 | `pro_baseline.py` | Decadimento temporale dati pro |
 | `Z_LEVEL_THRESHOLD` | 200 | `connect_map_context.py` | Soglia Z per classificazione piano |
 
-> **Analogia delle Costanti:** Le costanti sono come i **parametri vitali di riferimento** in medicina. `METADATA_DIM=25` è come dire "la pressione sistolica normale è 120" — tutti i medici (modelli ML) usano lo stesso riferimento. `TRADE_WINDOW_TICKS=192` è come la "golden hour" in traumatologia: se un compagno viene ucciso e tu uccidi il suo assassino entro 3 secondi, è un trade kill. `SILENCE_THRESHOLD=0.2` è come il "primum non nocere" (prima, non nuocere): se il coach non ha nulla di significativo da dire, è meglio tacere che dare consigli inutili.
-
 **Architettura dei percorsi:**
 
 Il sistema gestisce percorsi con un'attenzione particolare alla **portabilità Windows/Linux**. Il cuore è `BRAIN_DATA_ROOT`: una directory configurabile dall'utente che contiene modelli, log e dati derivati. Se non esiste, il sistema ricade sulla cartella del progetto.
@@ -828,8 +790,6 @@ Il sistema gestisce percorsi con un'attenzione particolare alla **portabilità W
 | `DEFAULT_DEMO_PATH` | Cartella demo dell'utente | Sì — via UI Settings |
 | `PRO_DEMO_PATH` | Cartella demo professionali | Sì — via UI Settings |
 
-> **Analogia:** `BRAIN_DATA_ROOT` è come l'**indirizzo di casa del cervello** dell'allenatore. Puoi spostarlo su un disco più grande (SSD esterno) semplicemente cambiando l'indirizzo, e tutto il resto — modelli, log, dati delle partite — seguirà automaticamente. Il database principale (`database.db`), invece, è come il **registro comunale**: rimane sempre nello stesso posto per ragioni di integrità.
-
 ---
 
 ### 12.4 Motore di Sessione — Architettura Quad-Daemon (`session_engine.py`)
@@ -837,8 +797,6 @@ Il sistema gestisce percorsi con un'attenzione particolare alla **portabilità W
 **File:** `Programma_CS2_RENAN/core/session_engine.py`
 
 Il Session Engine è il **cuore pulsante** dell'automazione del sistema. Vive come subprocess separato e ospita **4 daemon thread** che lavorano in parallelo, ciascuno con una responsabilità ben definita. Questo design separa completamente il lavoro pesante (parsing demo, addestramento ML) dall'interfaccia utente, garantendo che la GUI Kivy rimanga sempre reattiva.
-
-> **Analogia:** Il Session Engine è come una **centrale nucleare sotterranea** che alimenta l'intera città. Ha 4 reattori (daemon), ciascuno che produce un diverso tipo di energia. Il Reattore 1 (Scanner) è lo **scanner radar**: scansiona costantemente l'orizzonte cercando nuove demo da processare. Il Reattore 2 (Digester) è la **raffineria**: prende le demo grezze e le trasforma in dati strutturati. Il Reattore 3 (Teacher) è il **laboratorio di ricerca**: usa i dati raffinati per addestrare il cervello dell'allenatore. Il Reattore 4 (Pulse) è il **sistema di monitoraggio cardiaco**: emette un battito ogni 5 secondi per confermare che la centrale è viva. Se la città in superficie (GUI Kivy) viene distrutta da un terremoto (crash), la centrale rileva la perdita di comunicazione e si spegne in modo sicuro.
 
 ```mermaid
 flowchart TB
@@ -876,10 +834,6 @@ flowchart TB
 | **Digester** | Continuo | Preleva 1 task dalla coda, esegue parsing completo | `_work_available_event` (segnalato da Scanner) |
 | **Teacher** | 300 secondi (5 min) | Controlla crescita sample pro; se ≥10% → `run_full_cycle()` | `pro_count >= last_count × 1.10` |
 | **Pulse** | 5 secondi | Aggiorna `CoachState.last_heartbeat` nel database | Sempre attivo |
-
-> **Analogia del Digester:** Il Digester è come un **lavapiatti instancabile**: prende un piatto sporco (demo grezza) dalla pila, lo lava accuratamente (parsing con demoparser2, estrazione feature, calcolo rating HLTV 2.0, arricchimento RoundStats), lo asciuga (normalizzazione), lo ripone nello scaffale giusto (salva in database) e poi prende il piatto successivo. Non prende mai 2 piatti alla volta — uno alla volta, per evitare errori. Se la pila è vuota, aspetta pazientemente (sleep 2s + `_work_available_event`) finché qualcuno non porta nuovi piatti sporchi.
-
-> **Analogia del Teacher:** Il Teacher è come un **professore universitario che aggiorna i suoi corsi**. Ogni 5 minuti controlla: "Sono arrivati abbastanza nuovi articoli scientifici (demo pro)?" Se il numero è cresciuto del 10% dall'ultimo aggiornamento, dice: "È ora di riscrivere le dispense!" e lancia un ciclo completo di addestramento. Dopo l'addestramento, esegue anche un controllo meta-shift: "La media dei professionisti è cambiata? Il meta del gioco si è spostato?" — garantendo che il coaching rimanga sempre attuale.
 
 **Sequenza di shutdown:**
 
@@ -922,8 +876,6 @@ Ogni daemon è protetto da un `try/except` globale. Se un daemon crasha:
 4. Il daemon **non viene riavviato automaticamente** (per design: crash di un daemon indica un bug, non un errore transitorio)
 5. Gli altri daemon continuano a funzionare indipendentemente
 
-> **Analogia:** Ogni daemon è un **lavoratore con il proprio ufficio e la propria porta**. Se un lavoratore ha un malore (crash), chiude la sua porta e mette un avviso "Temporaneamente non disponibile" (ServiceNotification). Gli altri lavoratori negli altri uffici continuano a lavorare normalmente. Il direttore (Session Engine) prende nota dell'incidente ma non cerca di rianimare il lavoratore — preferisce che un tecnico (lo sviluppatore) indaghi la causa prima di farlo tornare al lavoro.
-
 **Zombie Task Cleanup:** All'avvio, il Session Engine cerca task con `status="processing"` rimasti da un crash precedente e li resetta a `status="queued"`, consentendo il ripristino automatico senza perdita di dati.
 
 **Backup Automatico:** All'avvio del Session Engine, `BackupManager.should_run_auto_backup()` verifica se è necessario un backup e, in caso affermativo, crea un checkpoint con etichetta `"startup_auto"`. Il backup segue una rotazione di 7 copie giornaliere + 4 settimanali.
@@ -940,8 +892,6 @@ L'interfaccia desktop ha due implementazioni: **Qt/PySide6** (primaria) e **Kivy
 **File chiave:** `app.py`, `main_window.py`, `core/i18n_bridge.py`, `core/theme_engine.py`, `screens/`
 
 L'interfaccia Qt è costruita con **PySide6 (Qt 6)** e utilizza un pattern **MVVM con Qt Signals/Slots**. La `MainWindow` (`QMainWindow`) è composta da una **sidebar di navigazione** e un **`QStackedWidget`** che ospita le 14 schermate.
-
-> **Analogia:** L'interfaccia Qt è come un **cruscotto digitale di un'auto sportiva moderna**. Il cruscotto (QStackedWidget) ha diverse modalità di visualizzazione selezionabili dalla barra laterale: la vista "Viaggio" (Home), la vista "Navigazione" (Tactical Viewer con QPainter), la vista "Diagnostica" (Coach), la vista "Impostazioni" (Settings). Il pattern MVVM con Signals/Slots garantisce che ogni interazione utente emetta un "segnale" che viene catturato dallo "slot" appropriato — come i sensori dell'auto che comunicano con il computer di bordo tramite il bus CAN.
 
 | Specifica | Dettaglio |
 |---|---|
@@ -966,8 +916,6 @@ L'interfaccia Qt è costruita con **PySide6 (Qt 6)** e utilizza un pattern **MVV
 **File chiave:** `layout.kv`, `wizard_screen.py`, `player_sidebar.py`, `tactical_viewer_screen.py`, `tactical_viewmodels.py`, `tactical_map.py`, `timeline.py`, `widgets.py`, `help_screen.py`, `ghost_pixel.py`
 
 L'interfaccia legacy è costruita con **Kivy + KivyMD** e segue il pattern **MVVM** (Model-View-ViewModel). Lo `ScreenManager` gestisce la navigazione tra le schermate con transizioni `FadeTransition`.
-
-> **Analogia:** L'interfaccia Kivy è come un **cruscotto di un'auto sportiva classica**. Il cruscotto (ScreenManager) ha diverse modalità di visualizzazione che puoi selezionare: la vista "Viaggio" (Home — dashboard generale), la vista "Navigazione" (Tactical Viewer — mappa 2D), la vista "Diagnostica" (Coach — analisi dettagliata), la vista "Impostazioni" (Settings — personalizzazione). Ogni vista ha i suoi indicatori specializzati. Il pattern MVVM garantisce che il "motore" (ViewModel) e il "display" (View) siano separati: se cambi il design del cruscotto, il motore continua a funzionare identicamente, e viceversa.
 
 ```mermaid
 flowchart TB
@@ -1019,8 +967,6 @@ flowchart TB
 | **Pro Comparison** | Confronto pro | Confronto statistiche utente con giocatori professionisti HLTV, benchmark prestazionale |
 | **FACEIT Config** | Configurazione FACEIT | Inserimento e validazione API key FACEIT |
 
-> **Analogia della Home Screen:** La Home è come la **plancia di comando di una nave spaziale**. L'indicatore di quota ("5/10 demo questo mese") è il **misuratore di carburante**. Lo stato del servizio (verde/rosso) è il **pannello dei sistemi vitali**: verde = tutti i sistemi operativi, rosso = allarme. La fiducia delle credenze (0.0-1.0) è il **livello di stabilità dell'IA**: 0.0 = l'IA non sa nulla, 1.0 = l'IA è sicura delle sue analisi. Il contatore delle partite processate è l'**odometro**: quanta strada ha percorso il sistema.
-
 **Widget personalizzati:**
 
 | Widget | File | Funzione |
@@ -1058,8 +1004,6 @@ flowchart TB
     style CHAT fill:#51cf66,color:#fff
 ```
 
-> **Analogia del Coach Screen:** La schermata Coach è come l'**ambulatorio del dottore dopo la visita**. Le **Insight Cards** sono il referto immediato: "Pressione alta!" (rosso), "Colesterolo da monitorare" (giallo), "Buona forma fisica" (verde). Il **Radar** è la visualizzazione delle capacità fisiche. I **Trend** sono il confronto con le visite precedenti. La **Chat AI** è la possibilità di fare domande al dottore. I **Task Attivi** mostrano gli esami ancora in corso.
-
 **Pattern MVVM nel Tactical Viewer:**
 
 ```mermaid
@@ -1093,8 +1037,6 @@ flowchart TB
     style MODEL fill:#51cf66,color:#fff
 ```
 
-> **Analogia MVVM:** Il pattern MVVM è come un **giornale televisivo**: il **Modello** è il giornalista sul campo che raccoglie i fatti (dati demo, inferenza AI). Il **ViewModel** è il redattore che organizza le notizie e decide cosa è importante (stato di riproduzione, velocità, selezione). La **View** è il presentatore che legge le notizie al pubblico (rendering su schermo Kivy). Il giornalista non sa come viene presentata la notizia. Il presentatore non sa come è stata raccolta. Il redattore è il ponte tra i due. Se cambi il presentatore (nuovo design UI), la notizia rimane la stessa.
-
 ---
 
 ### 12.6 Pipeline di Ingestione (`ingestion/`)
@@ -1103,8 +1045,6 @@ flowchart TB
 **File chiave:** `demo_loader.py`, `steam_locator.py`, `integrity.py`, `registry/`, `pipelines/user_ingest.py`, `pipelines/json_tournament_ingestor.py`
 
 La pipeline di ingestione è il **percorso completo** che un file `.dem` compie dal filesystem fino a diventare insight di coaching nel database. È orchestrata dal daemon Scanner (scoperta) e dal daemon Digester (elaborazione).
-
-> **Analogia:** La pipeline di ingestione è come il **percorso di una lettera attraverso l'ufficio postale**. (1) Il postino (Scanner) raccoglie la lettera (file .dem) dalla cassetta postale (cartella demo). (2) L'ufficio smistamento (DemoLoader) apre la busta e ne estrae il contenuto (parsing con demoparser2). (3) L'archivista (FeatureExtractor) misura e cataloga ogni dettaglio (25 feature per tick). (4) Lo storico (RoundStatsBuilder) scrive un riassunto per capitolo (statistiche per round). (5) Il bibliotecario (data_pipeline) classifica e ordina il materiale (normalizzazione, split dataset). (6) Il medico (CoachingService) esamina tutto e scrive una diagnosi (insight di coaching). (7) Infine, tutto viene archiviato (persistenza in database) per consultazione futura.
 
 ```mermaid
 flowchart TB
@@ -1190,10 +1130,6 @@ flowchart LR
     style TEST fill:#ff6b6b,color:#fff
 ```
 
-> **Analogia:** La divisione temporale è come preparare un **esame scolastico equo**. Le domande del test (15% test) devono riguardare argomenti insegnati DOPO gli esercizi (70% train) e i compiti a casa (15% val). Se le domande del test riguardassero argomenti studiati prima degli esercizi, lo studente (il modello) sembrerebbe più bravo di quanto sia realmente — un trucco, non vera conoscenza.
-
-> **Analogia del Feature Vector:** Il vettore a 25 dimensioni è come la **lettura istantanea di 25 sensori** attaccati al giocatore in ogni momento: 5 sensori "corporei" (salute, armatura, casco, defuse kit, valore equipaggiamento), 3 sensori "posturali" (accucciato, con mirino, accecato), 1 sensore "visivo" (nemici visibili), 6 sensori "spaziali" (posizione X/Y/Z e angoli di vista sin/cos/pitch), 1 sensore "livello" (penalità Z per Nuke/Vertigo), 1 sensore "tattico" (KAST), 3 sensori "contestuali" (mappa, fase economica, classe arma), e 5 sensori "situazionali" (tempo nel round, bomba piazzata, compagni/nemici vivi, economia di squadra). A differenza delle statistiche aggregate a livello di partita, ogni tick produce un nuovo vettore — 128 letture al secondo.
-
 **Enrich From Demo — Arricchimento post-parsing:**
 
 Dopo il parsing base, `enrich_from_demo()` aggiunge metriche avanzate calcolate dagli eventi:
@@ -1238,8 +1174,6 @@ Verifica preliminare di ogni file demo prima del parsing costoso:
 - **Size bounds**: minimo 1KB (non vuoto), massimo 5GB (non corrotto/eccessivo)
 - **Read test**: tenta di leggere i primi N byte per verificare che il file sia accessibile
 
-> **Analogia dello SteamLocator:** Lo SteamLocator è come un **segugio che fiuta la cartella di CS2** nel tuo computer. Sa che Steam memorizza le sue librerie in posti specifici (registro Windows, `libraryfolders.vdf` su Linux/Mac), e segue le tracce fino alla cartella `csgo/replays` dove vengono salvate le demo. Se non riesce a trovarla automaticamente, chiede all'utente di indicare il percorso manualmente — ma nella maggior parte dei casi, la trova da solo.
-
 ---
 
 ### 12.7 Console di Controllo Unificata (`backend/control/`)
@@ -1247,8 +1181,6 @@ Verifica preliminare di ogni file demo prima del parsing costoso:
 **File:** `Programma_CS2_RENAN/backend/control/console.py`, `ingest_manager.py`, `db_governor.py`, `ml_controller.py`
 
 La Console è un **Singleton** che funge da punto di coordinamento centrale per tutti i sottosistemi backend. È il "quadro di comando" attraverso cui ogni parte del sistema può essere controllata.
-
-> **Analogia:** La Console è come la **torre di controllo di un aeroporto**. Ha 4 schermi: uno per il radar (ServiceSupervisor — monitora i servizi in esecuzione), uno per le piste (IngestionManager — coordina l'arrivo delle demo), uno per la manutenzione (DatabaseGovernor — verifica l'integrità dello storage) e uno per l'addestramento dei piloti (MLController — gestisce il ciclo di vita dell'apprendimento automatico). Il controllore del traffico aereo (Console Singleton) coordina tutto da un'unica postazione.
 
 ```mermaid
 flowchart TB
@@ -1280,8 +1212,6 @@ flowchart TB
 
 L'`MLController` utilizza un token di controllo chiamato `MLControlContext` (`backend/control/ml_controller.py`) che viene passato ai cicli di addestramento per consentire **intervento in tempo reale** da parte dell'operatore. Questo sostituisce l'approccio precedente basato su `StopIteration` con un sistema thread-safe più robusto.
 
-> **Analogia:** MLControlContext è come il **telecomando di un lettore video**. L'operatore può premere **Pausa** (il training si ferma immediatamente, senza perdita di dati), **Play** (il training riprende dal punto esatto in cui si era fermato), **Stop** (il training termina con un'eccezione controllata `TrainingStopRequested`) o regolare la **velocità** (throttle: 0.0 = massima velocità, 1.0 = massimo ritardo). Il meccanismo usa `threading.Event` per evitare busy-wait durante la pausa — il thread di training semplicemente dorme finché non riceve il segnale di ripresa.
-
 ```mermaid
 flowchart LR
     OP["Operatore"] -->|"request_pause()"| CTX["MLControlContext"]
@@ -1310,8 +1240,6 @@ flowchart LR
 **File:** `Programma_CS2_RENAN/backend/onboarding/new_user_flow.py`
 
 L'`OnboardingManager` guida i nuovi utenti attraverso una **progressione a 3 fasi** che si adatta automaticamente alla quantità di dati disponibili.
-
-> **Analogia:** L'onboarding è come il **tutorial di un videogioco RPG**. Quando inizi una nuova partita (nessuna demo caricata), il gioco ti guida passo passo: "Benvenuto, avventuriero! Carica la tua prima demo per iniziare." Dopo 1-2 demo, il sistema dice: "Buon inizio! Caricane altre N per sbloccare l'analisi stabile." Dopo 3+ demo, il sistema annuncia: "Il tuo coach è pronto! Le analisi personalizzate sono ora attive." Ogni fase sblocca gradualmente le funzionalità del programma, impedendo al sistema di mostrare risultati inaffidabili quando non ha abbastanza dati.
 
 ```mermaid
 stateDiagram-v2
@@ -1355,8 +1283,6 @@ Il sistema di aiuto integrato fornisce supporto contestuale all'utente:
 | **Troubleshooting** | Albero decisionale per problemi comuni (Steam path non trovato, demo non parsata, coaching vuoto) |
 | **Tooltips** | Spiegazioni inline per metriche complesse (KAST, HLTV 2.0 Rating, ADR) |
 
-> **Analogia:** Il Help System è come avere un **assistente bibliotecario** sempre disponibile. Se sei nella sezione "Narrativa" (Tactical Viewer), ti aiuta con le domande relative alla lettura delle mappe. Se sei in "Scienze" (Coach), ti spiega cosa significano le metriche. Se qualcosa non funziona, ti guida passo passo nella risoluzione del problema — come un flow chart "Se il rubinetto non dà acqua → controlla la valvola → controlla il tubo → chiama l'idraulico."
-
 ---
 
 ### 12.9 Architettura di Storage (`backend/storage/`)
@@ -1365,8 +1291,6 @@ Il sistema di aiuto integrato fornisce supporto contestuale all'utente:
 **File chiave:** `database.py`, `db_models.py`, `match_data_manager.py`, `storage_manager.py`, `maintenance.py`, `state_manager.py`, `stat_aggregator.py`, `backup.py`
 
 Il sistema di storage utilizza un'architettura **three-tier storage** basata su SQLite in modalità WAL (Write-Ahead Logging), che consente letture e scritture concorrenti senza blocchi.
-
-> **Analogia:** L'architettura di storage è come un **sistema bibliotecario a 3 livelli**. Il **piano terra** (`database.db`, 18 tabelle) contiene il catalogo generale, le schede di tutti i lettori (giocatori), la base di conoscenza tattica (RAG), la banca esperienze COPER, le recensioni dei critici (insight di coaching) e il registro dei prestiti (task di ingestione) — tutto in un unico grande schedario sempre disponibile. Lo **schedario separato** (`hltv_metadata.db`, 3 tabelle) contiene i profili dei giocatori professionisti e le loro statistiche — separato perché viene aggiornato da un processo diverso (HLTV sync) per evitare contesa di lock. Oltre a questi, i **database per-match** (`match_XXXX.db`) contengono i manoscritti originali completi (dati tick-per-tick delle partite) — ciascuno in una scatola separata per evitare che lo schedario principale diventi troppo pesante. La modalità WAL è come avere una **porta girevole**: molte persone possono entrare a leggere contemporaneamente, e qualcuno può scrivere senza bloccare l'ingresso.
 
 ```mermaid
 flowchart TB
@@ -1448,8 +1372,6 @@ Il MatchDataManager è responsabile della gestione dei dati per-partita ad alta 
 | `list_available_matches()` | Elenca tutti i match con DB disponibili |
 | `delete_match_data(demo_name)` | Rimuove il DB per-match e aggiorna il registro |
 | `get_match_statistics(demo_name)` | Calcola statistiche aggregate dal tick data |
-
-> **Analogia:** Il MatchDataManager è come un **archivista che gestisce le scatole dei manoscritti originali**. Ogni partita è un manoscritto troppo voluminoso per stare nello schedario generale (database.db), quindi viene conservato in una scatola separata con un'etichetta (match_XXXX.db). L'archivista sa esattamente dove si trova ogni scatola, può aprirla su richiesta e, quando la scatola diventa troppo vecchia, può spostarla nell'archivio freddo.
 
 **StorageManager** (`backend/storage/storage_manager.py`):
 
@@ -1542,8 +1464,6 @@ flowchart LR
 
 Il sistema di playback tattico consente all'utente di **rivivere le proprie partite** su una mappa 2D interattiva, con overlay AI (posizione fantasma ottimale), marcatori eventi (uccisioni, piazzamenti bomba) e controlli di riproduzione completi.
 
-> **Analogia:** Il Tactical Viewer è come un **sistema di replay sportivo di livello professionistico**. Immagina di poter guardare le tue partite di calcio dalla prospettiva di un drone aereo, con la possibilità di rallentare, accelerare, mettere in pausa, e con un assistente AI che ti mostra "dove avresti dovuto trovarti" come un'ombra trasparente sul campo. Inoltre, una timeline intelligente evidenzia automaticamente i momenti chiave: "Minuto 23:15 — hai perso il vantaggio qui" (marcatore rosso) o "Minuto 34:02 — giocata eccellente!" (marcatore verde). Puoi cliccare su qualsiasi marcatore e il replay salta direttamente a quel momento.
-
 ```mermaid
 flowchart TB
     subgraph VIEWER["TACTICAL VIEWER - COMPONENTI"]
@@ -1602,8 +1522,6 @@ flowchart LR
     style FALLBACK fill:#868e96,color:#fff
 ```
 
-> **Analogia del GhostEngine:** Il fantasma è come un **allenatore invisibile** che corre sul campo accanto a te. Guarda la stessa partita che guardi tu, ma conosce la posizione ottimale dove dovresti trovarti. La sua ombra semi-trasparente sulla mappa dice: "Saresti stato più al sicuro e più efficace qui." Il fattore ×500.0 converte i piccoli delta del modello (numeri tra -1 e +1) in distanze reali sulla mappa (centinaia di unità mondo). Se il modello non è caricato, il fantasma semplicemente scompare — non mostra posizioni sbagliate.
-
 **ChronovisorScanner — Rilevamento momenti critici:**
 
 Il ChronovisorScanner analizza l'intera partita e identifica i **momenti decisivi** basandosi sul cambio di vantaggio:
@@ -1635,8 +1553,6 @@ Ogni momento viene posizionato sulla Timeline come un marcatore cliccabile. Il c
 **File:** `Programma_CS2_RENAN/core/spatial_data.py`, `spatial_engine.py`, `data/map_config.json`
 
 Il sistema di gestione mappe traduce le **coordinate mondo di CS2** (valori tipici: -2000 a +2000 su X/Y) in **coordinate pixel** sulla texture della mappa (0.0 a 1.0 normalizzato), e viceversa.
-
-> **Analogia:** La gestione mappe è come un **sistema GPS per il mondo di CS2**. Ogni mappa ha la sua "proiezione cartografica": un punto di origine (angolo in alto a sinistra), una scala (quante unità di gioco per pixel) e, per mappe multilivello come Nuke, un **separatore di piani** (z_cutoff = -495 per Nuke). Il GPS sa che se la tua coordinata Z è sopra -495, sei al piano superiore, altrimenti al piano inferiore. Questa informazione è cruciale per il GhostEngine e per il rendering corretto sulla mappa tattica.
 
 ```mermaid
 flowchart LR
@@ -1706,8 +1622,6 @@ Gestisce il caricamento delle texture delle mappe e degli asset UI:
 | Font (JetBrains Mono, YUPIX) | TTF | ~200KB | Sì (registrate in Kivy) |
 | Wallpaper temi | PNG 1920×1080 | ~2MB | Lazy load |
 
-> **Analogia dell'AssetManager:** L'AssetManager è come il **magazziniere del teatro**. Sa esattamente dove sono conservati tutti gli oggetti di scena (texture, font, icone), li carica su richiesta, e tiene i più usati nella **tasca** (cache) per non dover tornare in magazzino ogni volta. Se un oggetto non esiste, restituisce un placeholder generico — lo spettacolo deve andare avanti.
-
 ---
 
 ### 12.12 Osservabilità e Logging
@@ -1716,8 +1630,6 @@ Gestisce il caricamento delle texture delle mappe e degli asset UI:
 **File correlati:** `backend/storage/state_manager.py`, `backend/services/telemetry_client.py`
 
 Il sistema di osservabilità garantisce che ogni evento significativo sia **tracciabile, strutturato e persistente**. Il client di telemetria (`telemetry_client.py`) utilizza **`httpx`** (HTTP asincrono) per l'invio non bloccante di metriche e eventi, evitando che latenze di rete influiscano sulle prestazioni dell'applicazione.
-
-> **Analogia:** L'osservabilità è come il **sistema di telecamere di sicurezza e registri di un edificio**. Il logging strutturato (`get_logger()`) è la telecamera che registra tutto con timestamp e etichette ("chi ha fatto cosa, dove e quando"). Lo StateManager è la **lavagna nella hall** che mostra lo stato attuale di ogni piano (daemon): "Piano 1 (Scanner): Scanning. Piano 2 (Digester): Idle. Piano 3 (Teacher): Learning." Le ServiceNotification sono gli **annunci interfono** che informano i residenti (l'utente) di eventi importanti o errori.
 
 ```mermaid
 flowchart TB
@@ -1767,8 +1679,6 @@ Il sistema include integrazione opzionale con **Sentry** per error tracking remo
 | **Non bloccante** | Se Sentry non è configurato, il sistema prosegue normalmente (Fase 4 dell'avvio) |
 | **Contesto arricchito** | Ogni errore include: versione app, stato daemon, conteggio demo, sistema operativo |
 
-> **Analogia:** Sentry è come un **servizio di telemedicina opzionale**. Se lo attivi (double opt-in), quando il tuo corpo (l'applicazione) ha un malfunzionamento grave, invia automaticamente un referto anonimizzato al dottore remoto (server Sentry). Il referto non contiene il tuo nome né il tuo indirizzo (PII scrubbing) — solo i sintomi e le circostanze dell'incidente. Se preferisci la privacy totale, non attivi il servizio e tutto resta locale.
-
 **Logger Setup** (`observability/logger_setup.py`):
 
 Il sistema di logging centralizzato fornisce log strutturati con:
@@ -1783,8 +1693,6 @@ Il sistema di logging centralizzato fornisce log strutturati con:
 
 **Metriche di training esposte in CoachState:** `current_epoch`, `total_epochs`, `train_loss`, `val_loss`, `eta_seconds`, `belief_confidence`, `system_load_cpu`, `system_load_mem`.
 
-> **Analogia:** Le metriche di training sono come il **pannello strumenti di un'auto durante una corsa**: l'epoca corrente è il **contachilometri** (a che punto sei), la train_loss è il **consumo di carburante** (più basso = più efficiente), la val_loss è il **cronometro del giro** (il tuo tempo sulla pista di test), e l'ETA è il **GPS** che stima quanto manca alla destinazione. L'utente può vedere tutto questo in tempo reale sulla Home screen, aggiornato ogni 10 secondi.
-
 ---
 
 ### 12.13 Reporting e Visualizzazione
@@ -1793,8 +1701,6 @@ Il sistema di logging centralizzato fornisce log strutturati con:
 **File correlati:** `backend/processing/heatmap_engine.py`
 
 Il sistema di reporting trasforma i dati grezzi in **visualizzazioni comprensibili** per l'utente.
-
-> **Analogia:** Il sistema di reporting è come un **grafico designer** che prende numeri aridi e li trasforma in poster colorati e infografiche. Il **Visualizer** crea grafici radar (pentagoni che mostrano le tue 5 abilità rispetto ai pro), grafici di tendenza (come stai migliorando nel tempo) e tabelle di confronto. L'**HeatmapEngine** crea mappe di calore (dove stai troppo vs. dove dovresti stare). Il **ReportGenerator** assembla tutto in un documento PDF completo, come un referto medico che il "paziente" (giocatore) può studiare con calma.
 
 ```mermaid
 flowchart TB
@@ -1847,15 +1753,11 @@ Assembla tutti gli elementi visuali in un **documento PDF completo**:
 7. **Consigli del Coach**: Top-3 insight prioritizzati
 8. **Footer**: Generato da Macena CS2 Analyzer v.X.X
 
-> **Analogia del Report PDF:** Il report è come un **referto medico completo dopo un check-up**. La prima pagina ha il riepilogo ("paziente in buona salute, da migliorare il colesterolo"). Poi vengono i grafici dettagliati (analisi del sangue = radar chart, TAC = heatmap, ECG = trend). Infine le raccomandazioni del dottore (i consigli del coach). Il paziente può studiarlo con calma a casa e portarlo al prossimo appuntamento.
-
 ---
 
 ### 12.14 Gestione Quote e Limiti
 
 Il sistema implementa un meccanismo di **quota mensile** per prevenire l'abuso delle risorse di elaborazione e garantire una distribuzione equa del carico.
-
-> **Analogia:** Il sistema di quote è come un **abbonamento in palestra con sessioni limitate**. Ogni mese hai 10 sessioni (demo) disponibili. Ogni volta che carichi una demo, il contatore diminuisce. All'inizio del mese successivo, il contatore si resetta. Inoltre, c'è un limite totale a vita di 100 demo: come un diario che ha solo 100 pagine. Queste limitazioni garantiscono che il sistema non venga sovraccaricato da utenti che caricano centinaia di demo alla volta, e che il database non cresca in modo incontrollato.
 
 | Limite | Valore | Enforcement |
 | ------ | ------ | ----------- |
@@ -1881,8 +1783,6 @@ flowchart LR
 ### 12.15 Tolleranza ai Guasti e Recupero
 
 Il sistema è progettato per **non perdere mai dati** e **riprendersi automaticamente** da quasi tutti i tipi di fallimento.
-
-> **Analogia:** La tolleranza ai guasti è come un **sistema di sicurezza in una centrale nucleare**: ci sono multipli livelli di protezione, ciascuno indipendente dagli altri. Se un livello fallisce, il successivo si attiva. (1) Il **Zombie Task Cleanup** è come il turno di notte che ripulisce gli strumenti dimenticati: se il turno precedente (sessione precedente) ha lasciato task in stato "processing" a causa di un crash, il turno successivo li resetta e li ricomincia. (2) Il **Backup Automatico** è come la cassaforte ignifuga: anche se l'intero edificio brucia, i documenti nella cassaforte sopravvivono. (3) Il **Service Supervisor** è come il guardiano che riavvia i generatori di emergenza se si spengono. (4) Il **Connection Pooling** è come avere riserve di chiavi: se una serratura si blocca, ce ne sono altre 19 disponibili.
 
 ```mermaid
 flowchart TB
@@ -1957,8 +1857,6 @@ flowchart TB
     style G3 fill:#ff6b6b,color:#fff
 ```
 
-> **Analogia della Degradazione:** La degradazione graduale è come un **sistema di illuminazione a 4 livelli in caso di blackout**. Livello 1: corrente principale (COPER completo — la migliore esperienza). Livello 2: generatore di backup (ML+RAG ibrido — buono ma non perfetto). Livello 3: batterie di emergenza (RAG puro — le luci sono accese ma fioche). Livello 4: torce a mano (template generici — vedi appena, ma non resti al buio). Il sistema **non crasha mai** — degrada sempre in modo controllato e trasparente.
-
 ---
 
 ### 12.16 Viaggio Completo dell'Utente — 4 Flussi Principali
@@ -1966,8 +1864,6 @@ flowchart TB
 Questa sezione descrive i **4 flussi principali** che un utente attraversa durante l'uso di Macena CS2 Analyzer.
 
 #### Flusso 1: Upload e Analisi di una Demo
-
-> **Analogia:** Questo flusso è come **portare un campione di sangue in laboratorio**: lo consegni al banco accettazione (upload), il tecnico lo prepara (parsing), il chimico lo analizza (feature extraction), il medico legge i risultati (coaching service) e ti viene consegnato il referto (insight nella UI). Tutto avviene in modo automatico una volta consegnato il campione.
 
 ```mermaid
 sequenceDiagram
@@ -2029,8 +1925,6 @@ Il LessonGenerator opera in modalità doppia: se Ollama è disponibile, genera l
 
 #### Flusso 2: Visualizzazione Tattica
 
-> **Analogia:** Questo flusso è come **guardare una partita registrata al moviola** con un commentatore AI. Carichi il video (demo), il sistema lo decodifica, e poi puoi navigare avanti e indietro, rallentare, accelerare, e vedere dove il commentatore pensa che avresti dovuto posizionarti.
-
 ```mermaid
 sequenceDiagram
     participant U as Utente
@@ -2056,8 +1950,6 @@ sequenceDiagram
 ```
 
 #### Flusso 3: Riaddestramento ML Automatico
-
-> **Analogia:** Questo flusso è completamente **automatico**, come il pilota automatico di un aereo. L'utente non deve fare nulla: il sistema monitora costantemente la quantità di dati disponibili e, quando ce ne sono abbastanza di nuovi, riaddestra automaticamente il modello per mantenerlo aggiornato con il meta corrente.
 
 ```mermaid
 sequenceDiagram
@@ -2085,8 +1977,6 @@ sequenceDiagram
 ```
 
 #### Flusso 4: Chat AI con il Coach
-
-> **Analogia:** La chat è come avere un **colloquio privato con il tuo allenatore**. Puoi fargli domande specifiche ("Cosa dovrei migliorare su Dust2?"), e lui consulta la sua base di conoscenza, le tue statistiche e i riferimenti pro per darti una risposta personalizzata. Se Ollama è installato localmente, la risposta suona naturale e motivante. Se non è disponibile, il sistema usa comunque la base di conoscenza RAG per fornire risposte utili.
 
 **CoachingDialogueEngine — Pipeline Multi-Turno:**
 
@@ -2124,8 +2014,6 @@ flowchart TB
 ```
 
 #### Flusso 5: Diagnostica e Manutenzione
-
-> **Analogia:** Questo flusso è il **tagliando periodico dell'auto**. L'operatore (sviluppatore o utente esperto) porta il sistema in officina (console o tools) e fa eseguire una serie di controlli. Non è necessario farlo ogni giorno, ma è consigliato dopo aggiornamenti, dopo periodi di inattività, o quando qualcosa sembra andare storto.
 
 ```mermaid
 sequenceDiagram
@@ -2169,8 +2057,6 @@ sequenceDiagram
 
 La suite di strumenti è una **raccolta di 41 script** distribuiti su due directory (`tools/` root con 29 script e `Programma_CS2_RENAN/tools/` con 12 script) che formano una piramide di validazione multi-livello. Ogni strumento ha uno scopo preciso e può essere eseguito indipendentemente, ma insieme formano un sistema di garanzia della qualità che copre ogni aspetto del progetto.
 
-> **Analogia:** La suite di strumenti è come il **reparto di controllo qualità di una fabbrica automobilistica**. Ogni veicolo (build del progetto) attraversa una serie di stazioni di ispezione, ciascuna specializzata in un aspetto: il **Headless Validator** è la stazione di collaudo rapido che verifica che il motore si accenda e le ruote girino (regression gate in 23 fasi, 319 controlli). Il **DB Inspector** è il meccanico che smonta e controlla il motore pezzo per pezzo (ispezione database). Il **Demo Inspector** è il tecnico che verifica la carrozzeria (integrità file demo). Il **Brain Verify** è il neurologo che testa ogni funzione cognitiva (118 regole di qualità dell'intelligenza). Il **Goliath Hospital** è l'ospedale completo con 10 reparti specializzati. Nessun veicolo esce dalla fabbrica senza aver superato tutti i controlli.
-
 ```mermaid
 flowchart TB
     subgraph PYRAMID["PIRAMIDE DI VALIDAZIONE (dal più veloce al più profondo)"]
@@ -2199,8 +2085,6 @@ flowchart TB
 | 5 | **Configurazione** | `METADATA_DIM`, percorsi, costanti — valori coerenti e raggiungibili |
 | 6 | **ML Smoke** | Istanziazione modelli (JEPA, RAP, MoE) con pesi casuali — verificano dimensioni e forward pass |
 | 7 | **Osservabilità** | `get_logger()` funzionante, `StateManager` inizializzabile, log path scrivibile |
-
-> **Analogia:** Il Headless Validator è il **termometro** del progetto. Non fa una diagnosi approfondita, ma se la temperatura è alta (exit code ≠ 0), sai subito che qualcosa non va. È il primo controllo da fare, veloce e non invasivo. Se passa, puoi procedere con fiducia. Se fallisce, fermati e investiga prima di andare avanti.
 
 **Infrastruttura Condivisa** (`tools/_infra.py`):
 
@@ -2267,8 +2151,6 @@ Il "Goliath Hospital" è il **sistema di diagnostica più completo** del progett
 | 9 | **Farmacia** | Dipendenze, versioni, compatibilità |
 | 10 | **Clinica degli Strumenti** | Validazione degli altri strumenti (meta-test) |
 
-> **Analogia:** Goliath Hospital è come un **check-up medico completo**. Non ti fa solo il termometro (Headless Validator) — ti fa radiografie, analisi del sangue, elettrocardiogramma, risonanza magnetica, e chiama 10 specialisti diversi per esaminare ogni aspetto della tua salute. Se un reparto trova un problema, lo segnala con la severità appropriata. Il risultato finale è un **referto completo** con raccomandazioni prioritizzate.
-
 **Ultimate ML Coach Debugger** (`tools/Ultimate_ML_Coach_Debugger.py`) — falsificazione delle credenze neurali:
 
 Questo strumento esegue un audit a **3 fasi** sulla pipeline ML:
@@ -2303,8 +2185,6 @@ Questo strumento esegue un audit a **3 fasi** sulla pipeline ML:
 **File totali:** 94 file di test + `conftest.py` + 10 script forensics + 15 script di verifica
 
 La test suite è organizzata secondo il **principio della piramide dei test**: molti unit test (veloci, isolati), meno integration test (più lenti, con dipendenze reali), e pochi end-to-end test (completi ma costosi).
-
-> **Analogia:** La test suite è come il **sistema di esami di una scuola**. Gli **unit test** sono i quiz giornalieri: rapidi, focalizzati su un singolo argomento, facili da correggere. Gli **integration test** sono gli esami di metà trimestre: verificano che più argomenti funzionino insieme. Gli **e2e test** sono gli esami finali: simulano l'intera esperienza dello studente dall'iscrizione al diploma. I **forensics** sono le indagini speciali: quando qualcosa va storto, scavano a fondo per trovare la causa radice.
 
 ```mermaid
 flowchart TB
@@ -2364,8 +2244,6 @@ Gli script forensics sono strumenti diagnostici per indagini post-mortem:
 | `trace_coaching_path.py` | Traccia il percorso di un insight dalla demo all'UI |
 | `db_consistency_check.py` | Verifica coerenza tra le 3 database |
 
-> **Analogia Forensics:** Gli script forensics sono come la **scatola nera di un aereo**. Dopo un incidente (bug, crash, risultato inatteso), li usi per ricostruire esattamente cosa è successo, passo dopo passo. Non vengono eseguiti di routine — solo quando serve indagare un problema specifico.
-
 **Verification Scripts** (15 file nella root `tests/`):
 
 Script di verifica one-shot per validare specifici aspetti del sistema:
@@ -2416,8 +2294,6 @@ I seguenti moduli hanno alta complessità (>500 LOC) ma copertura test limitata:
 ### 12.19 Le 12 Fasi di Rimediazione Sistematica
 
 Il progetto ha attraversato un processo di **rimediazione in 12 fasi** che ha risolto complessivamente **370+ problemi** identificati durante audit di qualità progressivi. Ogni fase si è concentrata su una categoria specifica di problemi, dalla correzione di bug critici alla ristrutturazione architetturale.
-
-> **Analogia:** Le 12 fasi di rimediazione sono come la **ristrutturazione progressiva di un edificio storico**. La Fase 1 ha riparato le **fondamenta** (bug critici che impedivano il funzionamento). Le fasi intermedie hanno rinforzato i **muri portanti** (architettura, sicurezza, dati). Le fasi finali hanno completato le **finiture** (logging, edge case, documentazione). Ogni fase ha prodotto un report dettagliato nella directory `reports/`.
 
 ```mermaid
 flowchart TB
@@ -2510,8 +2386,6 @@ Ogni fase di rimediazione ha prodotto un report dettagliato salvato nella direct
 
 Il progetto utilizza un sistema di **pre-commit hooks** che si attivano automaticamente prima di ogni commit, impedendo che codice non conforme raggiunga il repository.
 
-> **Analogia:** I pre-commit hooks sono come i **metal detector all'ingresso di un aeroporto**. Prima che qualsiasi bagaglio (codice) salga sull'aereo (repository), deve passare attraverso una serie di controlli automatici. Se un controllo fallisce, il bagaglio viene rifiutato e il passeggero (sviluppatore) deve risolvere il problema prima di riprovare.
-
 **4 Hook Locali (custom del progetto):**
 
 | Hook | Script | Timeout | Descrizione |
@@ -2565,8 +2439,6 @@ flowchart LR
 
 Il progetto include un sistema di build e packaging per la distribuzione dell'applicazione desktop su Windows.
 
-> **Analogia:** Il sistema di build è come una **catena di montaggio automobilistica**. Il processo di build prende tutti i componenti (sorgenti Python, modelli ML, asset UI) e li assembla in un unico pacchetto eseguibile. `windows_installer.iss` (Inno Setup) è la **carrozzeria**: avvolge il pacchetto in un installer professionale con wizard di installazione, icone e collegamento desktop. I 3 file requirements sono le **distinte dei materiali**: specificano esattamente quali pezzi servono per ogni tipo di assemblaggio.
-
 **3 File Requirements:**
 
 | File | Scopo | Dipendenze |
@@ -2599,8 +2471,6 @@ Il progetto include un sistema di build e packaging per la distribuzione dell'ap
 
 Il progetto utilizza **due setup Alembic separati** per gestire le migrazioni dello schema del database in modo organizzato.
 
-> **Analogia:** I due setup Alembic sono come due **quaderni di lavoro** per un architetto. Il quaderno principale (`alembic/` root) contiene il **piano di costruzione completo**: 13 revisioni che documentano ogni modifica strutturale dall'inizio del progetto. Il quaderno secondario (`backend/storage/migrations/`) contiene le **note di cantiere**: 2 revisioni più specifiche per modifiche allo storage layer. Ogni revisione è numerata, datata e reversibile — come le versioni di un documento legale.
-
 **Alembic Root (`alembic/`, 13 versioni):**
 
 Contiene le migrazioni principali dello schema, dalla creazione iniziale delle tabelle alle modifiche più recenti. Ogni migrazione:
@@ -2622,8 +2492,6 @@ Migrazioni specifiche per lo storage layer, separate per modularità. Gestiscono
 **File:** `Programma_CS2_RENAN/run_ingestion.py`
 
 L'`run_ingestion.py` è il **cuore orchestratore** dell'intera pipeline di ingestione. È il file più grande dedicato all'ingestione e coordina tutte le fasi dal discovery delle demo alla persistenza dei risultati nel database.
-
-> **Analogia:** Se la pipeline di ingestione (sezione 12.6) è il percorso di una lettera attraverso l'ufficio postale, `run_ingestion.py` è il **direttore dell'ufficio postale** in persona. Non smista le lettere lui stesso — delega ai postini (DemoLoader), agli archivisti (FeatureExtractor) e ai medici (CoachingService) — ma coordina il flusso complessivo, decide le priorità, gestisce gli errori e tiene il registro di tutto.
 
 **12+ funzioni principali:**
 
@@ -2653,8 +2521,6 @@ Il ResourceManager gestisce le **risorse hardware** durante l'ingestione per evi
 | Disk check | Sì | Verifica spazio disco sufficiente prima del processing |
 | Throttle delay | 2s | Delay tra task consecutivi per raffreddamento |
 
-> **Analogia:** Il ResourceManager è come il **termostato di un forno industriale**. Se la temperatura (CPU/RAM) sale troppo, rallenta automaticamente la produzione (ingestione) per evitare il surriscaldamento. Quando la temperatura scende, riprende a pieno regime. Non chiede permesso all'operatore — agisce autonomamente per proteggere il sistema.
-
 ---
 
 ### 12.24 HLTV Sync Service e Background Daemon
@@ -2663,8 +2529,6 @@ Il ResourceManager gestisce le **risorse hardware** durante l'ingestione per evi
 **File correlati:** `backend/data_sources/hltv/`, `backend/services/telemetry_client.py`
 
 L'HLTV Sync Service è un **daemon in background** che sincronizza automaticamente i dati dei giocatori professionisti da HLTV.org. Opera come un servizio monitorato dal `ServiceSupervisor` della Console.
-
-> **Analogia:** L'HLTV Sync Service è come un **corrispondente sportivo** che vive vicino allo stadio (HLTV.org). Ogni ora controlla i risultati delle partite, scarica le statistiche dei giocatori e le invia alla redazione (il database). Se lo stadio chiude (HLTV down), il corrispondente entra in "modalità dormiente" per 6 ore prima di riprovare. Se viene cacciato dallo stadio troppe volte (rate limit), il Circuit Breaker lo ferma per un'ora per evitare il ban permanente.
 
 ```mermaid
 flowchart TB
@@ -2742,8 +2606,6 @@ sequenceDiagram
     Note over HS: Dopo fallimento: modalità dormiente 6h
 ```
 
-> **Analogia del Circuit Breaker HLTV:** Il Circuit Breaker è come un **fusibile elettrico intelligente**. Quando il circuito è CLOSED (normale), la corrente scorre liberamente (le richieste HLTV funzionano). Se ci sono troppi cortocircuiti (10 fallimenti consecutivi), il fusibile scatta → OPEN (tutte le richieste bloccate per 1 ora). Dopo il periodo di cooldown, il fusibile passa a HALF_OPEN: lascia passare una sola richiesta di test. Se il test ha successo, il fusibile si richiude (CLOSED). Se fallisce, si riapre (OPEN) per un'altra ora. Questo meccanismo previene il "martellamento" di un server down, che porterebbe a ban IP o blacklisting.
-
 ---
 
 ### 12.25 RASP Guard — Integrità Runtime del Codice
@@ -2752,8 +2614,6 @@ sequenceDiagram
 **File dati:** `data/integrity_manifest.json`
 
 Il RASP (Runtime Application Self-Protection) Guard è il **primo controllo** eseguito all'avvio dell'applicazione (Fase 1 della sequenza di boot). Verifica che nessun file sorgente sia stato modificato rispetto al manifesto di integrità.
-
-> **Analogia:** Il RASP Guard è come un **sistema antifurto con sensori su ogni porta e finestra**. All'accensione dell'allarme (avvio dell'app), il sistema controlla che ogni porta (file Python) sia nella stessa posizione in cui era stata lasciata (hash SHA-256). Se qualcuno ha forzato una finestra (modificato un file), l'allarme suona immediatamente e l'edificio va in lockdown (`IntegrityError` → terminazione). Questo protegge contro manomissioni accidentali (aggiornamenti corrotti) e intenzionali (attacchi supply chain).
 
 **Componenti del RASP Guard:**
 
@@ -2786,8 +2646,6 @@ flowchart LR
 **File:** `Programma_CS2_RENAN/reporting/visualizer.py`
 
 Il `MatchVisualizer` estende il sistema di reporting (sezione 12.13) con **6 metodi di rendering** specializzati per la generazione di grafici e visualizzazioni.
-
-> **Analogia:** Il MatchVisualizer è come un **illustratore professionista** che trasforma dati numerici aridi in illustrazioni comprensibili a colpo d'occhio. Ogni metodo è una tecnica diversa: il radar chart è un **ritratto a ragno** delle abilità, l'heatmap differenziale è una **mappa del calore** che mostra dove stai troppo e dove troppo poco, i momenti critici sono **fumetti** che evidenziano le scene chiave della partita.
 
 **6 Metodi di rendering:**
 
@@ -2838,8 +2696,6 @@ Contiene i parametri di trasformazione coordinate per ogni mappa supportata (Dus
 }
 ```
 
-> **Analogia:** `map_config.json` è come un **atlante con le proiezioni cartografiche**. Ogni mappa ha la sua proiezione unica: punto di origine, scala e, per le mappe multilivello, l'altitudine che separa i piani. Senza questo file, il Tactical Viewer non saprebbe dove posizionare i giocatori sulla mappa 2D.
-
 **`data/integrity_manifest.json`** — Manifesto di integrità RASP:
 
 Dizionario `{percorso_file: hash_sha256}` per tutti i file Python critici. Generato/aggiornato da `tools/sync_integrity_manifest.py`. Verificato all'avvio da `RASPGuard` (sezione 12.25).
@@ -2876,8 +2732,6 @@ La console è il **punto di ingresso più potente** per gli operatori esperti. O
 - **Modalità Interattiva**: Shell REPL con prompt personalizzato e storia comandi
 - **Pannelli Rich**: Dashboard con tabelle colorate, progress bar, tree view dello stato
 
-> **Analogia:** La console è come il **terminale di un amministratore di sistema Linux**. Mentre l'interfaccia grafica (Kivy) è il desktop user-friendly per l'utente finale, la console è il terminale SSH per l'operatore esperto che vuole controllare tutto manualmente: avviare/fermare servizi, ispezionare il database, lanciare addestramento, eseguire diagnostica.
-
 ```mermaid
 flowchart TB
     subgraph ENTRY["ENTRY POINTS DEL PROGETTO"]
@@ -2901,8 +2755,6 @@ flowchart TB
 ### Riepilogo Architetturale
 
 Macena CS2 Analyzer è un'applicazione **stratificata e modulare** organizzata su 5 livelli architetturali con 3 processi separati.
-
-> **Analogia:** L'architettura è come una **torta a 5 strati**, dove ogni strato ha un ruolo preciso e comunica solo con gli strati immediatamente adiacenti. Lo strato superiore (Presentazione) è la glassa: ciò che l'utente vede e tocca. Lo strato successivo (Applicazione) è la farcitura: combina ingredienti da varie fonti. Lo strato centrale (Dominio) è il pan di Spagna: la sostanza vera e propria del sistema. Lo strato inferiore (Persistenza) è il piatto: supporta tutto e non cambia mai forma. Lo strato di base (Infrastruttura) è il tavolo: il fondamento silenzioso su cui tutto poggia.
 
 ```mermaid
 flowchart TB
@@ -2981,8 +2833,6 @@ flowchart TB
 | **IPC** | subprocess (stdlib) | — | Session Engine come subprocess |
 | **Config** | json (stdlib) | — | user_settings.json, map_config.json |
 
-> **Analogia dello Stack:** Lo stack tecnologico è come la **cassetta degli attrezzi di un artigiano esperto**. PyTorch è il **tornio CNC** — lo strumento di precisione più costoso e potente. Kivy è il **banco da lavoro** — la superficie su cui tutto viene assemblato. SQLModel è lo **schedario organizzato** — dove si conservano tutti i progetti. Playwright è il **drone di ricognizione** — va a raccogliere dati sul campo (HLTV). Rich è la **vernice di finitura** — rende tutto più bello e leggibile. Ogni strumento ha un ruolo preciso, e nessuno è ridondante.
-
 **I 3 processi dell'applicazione:**
 
 | Processo | Tipo | Responsabilità | Comunicazione |
@@ -3033,8 +2883,6 @@ La funzione `infer_round_phase(equipment_value)` è un'**utilità condivisa** ut
 | $1.500 – $2.999       | `"eco"`       |
 | $3.000 – $3.999       | `"force"`     |
 | ≥ $4.000               | `"full_buy"`  |
-
-> **Analogia:** `round_utils.py` è come un **dizionario condiviso** consultato da più dipartimenti. Invece di avere ogni ufficio che definisce le proprie regole per classificare "eco" vs "force buy", tutti consultano lo stesso dizionario, garantendo coerenza tra coaching, analisi e knowledge base.
 
 ---
 

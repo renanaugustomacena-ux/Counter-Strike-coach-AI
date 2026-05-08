@@ -47,8 +47,6 @@
 
 This subsystem is the **decision-making hub**: it takes everything the neural networks and knowledge systems produced and synthesizes it into actual coaching advice for the player.
 
-> **Analogy:** If the neural network core (Section 3) is the brain and the RAP coach (Section 4) is the specialist doctor, then the Coaching Services subsystem is the **hospital receptionist and the front desk**. It takes the doctor's reports, the nurse's notes, and the lab results and turns them into a clear report for the patient. It also has a backup plan for every scenario: if the specialist is unavailable, it refers you to a general practitioner; if the GP is out, it hands you a pamphlet; and if everything else fails, at least it gives you your baseline vitals. The patient (player) ALWAYS leaves with something useful, never empty-handed.
-
 ### -CoachingService (`coaching_service.py`)
 
 The **central synthesis engine** that implements a **4-tier coaching fallback chain** with graceful degradation:
@@ -86,8 +84,6 @@ sequenceDiagram
 | 3. **Base RAG** | `_enhance_with_rag()`           | Medium     | If the ML models are unavailable                   |
 | 4. **Template** | Basic statistical template      | Low        | Last resort — always returns *something*           |
 
-> **Analogy:** The 4-tier fallback is like **ordering food at a restaurant**. Tier 1 (COPER) is the chef's special: the best, most personalized dish, crafted from experience. Tier 2 (Hybrid) is the standard menu: great food, but not as customized. Tier 3 (Base RAG) is the kids' menu: simpler, but still nourishing. Tier 4 (Template) is bread and water: basic, but you will never leave hungry. The key guarantee is: **the player always receives coaching advice**, no matter what. The system never tells you "Sorry, I have nothing for you".
-
 ```mermaid
 flowchart TB
     T1["Tier 1: COPER<br/>I've seen exactly this situation<br/>before and this is what worked<br/><br/>Best quality, Maximum confidence"]
@@ -111,8 +107,6 @@ flowchart TB
 
 This ensures coaching insights reflect the **current average meta** rather than outdated historical averages. If temporal data is insufficient (< 10 stat cards), the service transparently falls back to the legacy `get_pro_baseline()` function.
 
-> **Analogy:** Previously, the coach compared you against a **snapshot** of professional statistics from months ago. Now it uses a **real-time, updated average** where recent professional performances count more than old ones, like a curved grade where last week's test scores count more than last year's. If the class average on "ADR" went up this month, you'll see it immediately reflected in your coaching advice.
-
 **Round phase inference** (`_infer_round_phase`): Equipment value → round phase classification:
 
 | Equipment value          | Round phase    |
@@ -133,8 +127,6 @@ Turns structured coaching information into natural language via a local LLM (Oll
 - **Graceful degradation:** returns the original text if Ollama is unavailable
 - **System prompt:** CS2 coaching expert tone, <100 words, actionable, encouraging
 
-> **Analogy:** OllamaCoachWriter is like a **translator** that takes dry statistics and turns them into motivating advice. Without it, the coach might say: "mean deviation: -0.07, z-score: -1.4, category: mechanics". With it, the coach says: "Your headshot percentage is slightly below the pro average. Try focusing on crosshair placement — keep it at head height when clearing corners". It runs a local AI model (Ollama) on your computer: no internet needed, no data sent to the cloud. If Ollama is not installed, the system simply uses the original text: no crash, no error, just slightly less polished phrasing.
-
 ### -AnalysisOrchestrator (`analysis_orchestrator.py`)
 
 Synthesizes the advanced Phase 6 analysis by instantiating 7 engines and orchestrating 5 analysis pipelines:
@@ -150,8 +142,6 @@ Synthesizes the advanced Phase 6 analysis by instantiating 7 engines and orchest
 - `engagement_range` (engagement distance analysis)
 
 **Engines instantiated:** `belief_estimator`, `deception_analyzer`, `momentum_tracker`, `entropy_analyzer`, `game_tree`, `blind_spot_detector`, `engagement_analyzer` (7 engines). The `belief_estimator` is instantiated but is not currently invoked directly as a separate pipeline.
-
-> **Analogy:** AnalysisOrchestrator is like a **team of 7 specialized detectives**, each investigating a different aspect of your gameplay. *Detective Momentum* checks whether you are on a successful streak or struggling. *Detective Deception* checks whether you are predictable or sneaky. *Detective Entropy* checks whether your utility (grenades) is effective. *Detective Blind Spots* checks whether you keep making the same mistake. *Detective Strategy* checks whether you are making the right decisions. *Detective Death Probability* checks how risky your positions are. *Detective Engagement Range* checks at which distances you fight best. All of these checks run in the background (non-blocking), so even if one detective fails, the others still report their findings.
 
 ```mermaid
 flowchart LR
@@ -175,8 +165,6 @@ flowchart LR
 ### -Additional Services (Not previously documented)
 
 Beyond the three main services (CoachingService, OllamaCoachWriter, AnalysisOrchestrator), the `backend/services/` directory contains **7 additional services** that complete the coaching ecosystem:
-
-> **Analogy:** If CoachingService is the **hospital director**, the additional services are the **specialized departments**: there is the dialogue department (interactive coaching), the lessons department (structured training), the language lab (LLM), the imaging department (visualizations), the records office (profiles), the analysis department (coordination), and the telemetry system (remote monitoring).
 
 #### CoachingDialogueEngine (`coaching_dialogue.py`)
 
@@ -310,8 +298,6 @@ Async client for sending metrics to a central server:
 
 Professional player lookup service that prevents LLM hallucination by injecting verified data into the coaching dialogue context:
 
-> **Analogy:** The PlayerLookupService is like a **fact-checking archivist** who verifies facts before the coach speaks. When a player asks "Tell me about s1mple", the archivist goes to check the real medical files (HLTV + Monolith database) and hands the coach a verified card: "Here is the real data on s1mple: rating 1.29, Natus Vincere team, etc.". The coach is obligated to use ONLY this verified data — it cannot invent statistics. Without the archivist, the LLM could "hallucinate" plausible but false statistics.
-
 | Component | Detail |
 |---|---|
 | **3-tier matching** | Exact (case-insensitive) → Fuzzy (SequenceMatcher ≥ 0.75) → Pattern (nickname regex) |
@@ -369,8 +355,6 @@ flowchart LR
 **Files:** 7 modules
 
 This subsystem contains the **coaching decision engines** that transform raw statistical deviations into prioritized and contextualized advice. Unlike the Services (Section 5), which orchestrate and present, the Coaching Engines contain the coach's **reasoning logic**.
-
-> **Analogy:** If the Coaching Services (Section 5) are the **hospital reception desk**, the Coaching Engines are the **specialist doctors in their offices**. The `CorrectionEngine` is the general practitioner who weighs symptoms and decides which 3 are most urgent. The `HybridCoachingEngine` is the chief physician who synthesizes ML and encyclopedic knowledge to formulate complete diagnoses. The `ExplanationGenerator` is the specialist who translates medical jargon into words the patient can understand. The `ProBridge` is the consultant who brings in reports from other hospitals (HLTV data) and makes them compatible with the local system. The `LongitudinalEngine` is the epidemiologist who studies trends over time.
 
 ### -HybridCoachingEngine (`hybrid_engine.py`)
 
@@ -539,8 +523,6 @@ Generates trend-aware insights by comparing performance trajectories over time w
   - **Regression:** slope < 0 → severity "Medium" (or "High" if `nn_signals.stability_warning` is active)
   - **Improvement:** slope > 0 → severity "Positive", focus "Reinforcement"
 
-> **Analogy:** The LongitudinalEngine is like a **chart of grades over time**. It does not just look at the score on the last exam — it looks at the whole trajectory: "Your math grades have been dropping for 3 months" (regression) or "Your accuracy is improving steadily" (improvement). If the neural system is unstable (`stability_warning`), the doctor raises the alarm level: "This drop may be more serious than it looks".
-
 ```mermaid
 flowchart LR
     subgraph COACHING_ENGINES["COACHING ENGINES (backend/coaching/)"]
@@ -570,8 +552,6 @@ flowchart LR
 
 This subsystem is the coach's **library and diary**: it stores tactical knowledge (like a textbook) and past training experiences (like a diary of what worked and what did not).
 
-> **Analogy:** Imagine you had two ways to study for an exam. The first is a **textbook** (RAG Knowledge Base) — it contains every CS2 tip organized by topic: "aim", "positioning", "utility", etc. You can search it by asking questions in plain English and the system finds the most relevant pages. The second is your **personal diary** (Experience Bank) — it records every training session you have done, the advice you received, and whether you actually improved afterwards. Over time, the diary becomes smarter: advice that worked gets highlighted, advice that did not is phased out. Together, the textbook and the diary give the coach both **general knowledge** and **personal experience** to draw from.
-
 ### -RAG Knowledge Base (`rag_knowledge.py`)
 
 Implements a **retrieval-augmented generation** pipeline using dense vector similarity search:
@@ -586,7 +566,6 @@ Implements a **retrieval-augmented generation** pipeline using dense vector simi
 | **Versioning**                     | `CURRENT_VERSION = "v3"` (2026-04, Coach Book refactor, Premier S4 active duty alignment); stale v2 embeddings automatically recomputed via `trigger_reembedding()` |
 | **Categories**                     | 14: aim, positioning, utility, movement, economy, strategy, crosshair placement, communication, mental, game sense, trading, **mid_round**, **retakes_post_plant**, **aim_and_duels** |
 
-> **Analogy:** RAG works like a **smart search engine for the coach's brain**. When the coach needs positioning advice on Dust2 as a CT AWPer, it does not search by keywords like Google. Instead, it converts the question into a "meaning vector" of 384 numbers and finds stored tips whose meaning vectors point in the same direction (cosine similarity). It is as if every book in a library had a GPS coordinate representing its topic, and instead of searching by title you provided GPS coordinates and found the 5 nearest books. The 1.2x relevance multiplier is like saying "books from the same shelf (same map/side/round type) get bonus points". The deduplication filter (threshold 0.85) prevents returning 5 near-identical copies of the same tip.
 >
 > **Fix M-07 — Zero-norm vector rejection:** `VectorIndex.search()` validates the query vector norm before the search. If the norm is zero (typically due to an empty fallback embedding or corrupted input), the method returns `None` with a log warning instead of propagating a division-by-zero error in cosine similarity. This protects the RAG pipeline from degenerate queries without interrupting the coaching flow.
 
@@ -617,8 +596,6 @@ flowchart TB
 
 Implements the **Contextual Observation–Prediction–Experience–Retrieval (COPER)** framework with CRUD semantics, prioritized replay, and TrueSkill integration:
 
-> **Analogy:** COPER is the **coach's personal diary with superpowers**. Every time the coach gives advice during a match, it writes a diary entry: "On Dust2, eco round T side, the player was in B tunnels with 60 HP and a Deagle. I told them to hold the angle. They survived and got 2 kills. This advice WORKED!" Later, when a similar situation comes up, the coach flips through the diary and finds that entry. But it is even smarter: it also checks what professional players did in similar situations, looks for patterns ("This player keeps struggling in eco rounds on T side"), and adapts confidence based on the advice's validation date.
-
 ```mermaid
 graph LR
     subgraph STOR["Storage"]
@@ -646,16 +623,12 @@ graph LR
 2. **Pro experiences:** How the pros handled analogous situations.
 3. **Pattern analysis:** Identifies recurring weaknesses, improvement trends, contextual correlations.
 
-> **Analogy:** Dual retrieval is like studying for an exam using **both your past tests and the class genius's answers**. Your past tests show what you personally struggle with. The class genius's answers show the ideal approach. Pattern analysis is like your teacher reviewing all of your tests and saying: "I noticed you always lose points on the same type of question — let's focus on that".
-
 **Feedback loop (EMA-based):**
 
 - Each experience tracks `outcome_validated`, `effectiveness_score`, `times_advice_given`, `times_advice_followed`
 - Follow-up matches update effectiveness: `new_score = 0.7 × old_score + 0.3 × outcome_value`
 - Stale experiences (>90 days without validation): confidence decreases by 10%
 - Usage tracking increments `usage_count` on every retrieval
-
-> **Analogy:** The feedback loop is how the coach **learns from its own advice**. After giving advice, it checks: "Did the player actually do what I suggested? Did their performance improve?". The EMA formula (0.7 old + 0.3 new) means the coach trusts its long-term experience more than any single outcome, like a restaurant rating based on hundreds of reviews, not just the latest one. If a piece of advice is not validated within 90 days, it loses 10% confidence, like a weather forecast becoming less reliable the further out it is. This creates a self-improving system: good advice becomes more reliable over time, while bad advice is gradually phased out.
 
 ```mermaid
 flowchart TB
@@ -697,8 +670,6 @@ flowchart TB
     style DISCARD_CREATE fill:#ffd43b,color:#000
 ```
 
-> **CRUD analogy:** Previously, the coach's diary always added a new entry, even if it was almost identical to a previous one. With KT-01, the diary became smart: (1) **If the same situation produced the same advice**, it updates the existing entry with a weighted average of outcomes (UPDATE). (2) **If the same situation suggests a different, better piece of advice**, it replaces the old entry (DISCARD+CREATE). (3) **If the new advice is worse**, it silently discards it (KEEP). This prevents unbounded growth of the diary while keeping only the most useful experiences.
-
 **Prioritized replay (KT-01):** Experiences are sampled for replay with probability proportional to `priority^REPLAY_ALPHA`, where `priority = effectiveness_score × confidence_score`. Only experiences with `confidence_score ≥ REPLAY_GATE` are eligible. This balances exploitation (effective experiences) with exploration (less tested experiences).
 
 **TrueSkill integration (KT-01):** `mu_skill` and `sigma_skill` fields for Bayesian tracking of player competence in the specific situation. TrueSkill priors influence the weight of the experience in retrieval: experiences with high uncertainty (`sigma` high) are penalized relative to those with a stable signal.
@@ -710,8 +681,6 @@ flowchart TB
 ### -Knowledge Graph
 
 A lightweight **entity-relation graph** stored in SQLite (`kg_entities`, `kg_relations` tables). Supports `query_subgraph(entity_name)` at 1 hop for multi-hop reasoning to complement semantic similarity.
-
-> **Analogy:** The Knowledge Graph is like a **network of connected facts**. Instead of storing tips as isolated paragraphs, it links concepts: "Smoke → blocks → vision", "AWP → requires → long angles", "Dust2 B site → connects to → tunnels". When the coach searches for "AWP positioning", the Knowledge Graph can follow the connections: "AWP needs long angles → Dust2 has long angles at A long and mid → those positions connect to A site". This "connection-following" ability (called multi-hop reasoning) helps the coach draw logical inferences that pure textual search might miss.
 
 ```mermaid
 graph LR
@@ -773,8 +742,6 @@ Shared utility for round economic phase classification, extracted to eliminate d
 
 This subsystem contains **11 specialized analysis engines**, each designed to investigate a different dimension of gameplay. They run as Phase 6 analyses, providing insights that go beyond what neural networks alone can offer.
 
-> **Analogy:** Think of these 11 analysis engines as a **team of 11 different sports scientists**, each with their own specialization. One scientist studies your shooting mechanics, another your decision-making under pressure, another your ability to be unpredictable, and so on. Each scientist produces their own mini-report, and together they paint a complete picture of your strengths and weaknesses. No single scientist sees everything, but together they cover every important aspect of competitive CS2.
-
 ```mermaid
 flowchart TB
     subgraph ENGINES["THE 11 ANALYSIS ENGINES — YOUR SPECIALIST TEAM"]
@@ -805,19 +772,13 @@ Assigns one of 6 roles using **learned statistical thresholds**:
 | **Lurker**             | Solo kill ratio vs threshold                              | —                |
 | **Flex**               | Fallback when confidence is low                           | —                |
 
-> **Analogy:** The Role Classifier is like a **talent scout** who watches your playstyle and figures out which position you naturally fit. If you get lots of AWP kills, you are probably an AWPer. If you are always the first to die (but you also get opening kills), you are probably an Entry Fragger. If you use a lot of flashes and help your teammates, you are a Support. If nobody knows exactly what you do best, you are classified as Flex, a generalist. The thresholds are not hardcoded; they are learned from real professional player data (what percentage of kills does a real AWPer actually get with the AWP?).
-
 **Cold-start protection:** `RoleThresholdStore` requires ≥10 samples and ≥3 valid thresholds to exit cold-start. Returns `(FLEX, 0.0)` if in cold-start. Thresholds are **persisted in the database** via `persist_to_db()` and `load_from_db()` — fully implemented, not stubs.
-
-> **Analogy:** Cold-start protection is like a **new teacher saying "I don't know my students well enough yet".** Until the system has seen at least 10 professional players and learned at least 3 valid role thresholds, it refuses to classify anyone, returning "Flex" with 0% probability. This avoids the embarrassing mistake of calling someone an "AWPer" when the system has seen only 2 examples of what an AWPer looks like.
 
 **Team balance audit** (`audit_team_balance()`): detects multiple AWPers (HIGH), missing Entry (HIGH), missing Support (MEDIUM), no diversity (CRITICAL), multiple Lurkers (MEDIUM).
 
 ### -Win Probability Predictor (`win_probability.py`)
 
 12-feature neural network that estimates P(round_win | game_state):
-
-> **Analogy:** The Win Probability predictor is like a **real-time scoreboard in a basketball game** that shows "The home team has a 72% chance of winning". It considers 12 factors about the current moment — how much money each team has, how many players are still alive, whether the bomb is planted, how much time is left — and predicts the odds. It uses a small neural network (much smaller than the RAP Coach) because it needs to be fast, updating every few seconds during live analysis.
 
 **Architecture:** `Linear(12, 64) → ReLU → Dropout(0.2) → Linear(64, 32) → ReLU → Dropout(0.1) → Linear(32, 1) → Sigmoid`.
 
@@ -840,15 +801,12 @@ Assigns one of 6 roles using **learned statistical thresholds**:
 
 **Heuristic overrides:** 3+ advantage → floor at 85%, 3+ disadvantage → ceiling at 15%, 0 alive → 0%, planted-bomb adjustments (T: +0.10, CT: −0.10) — additive on base probability, economic caps of ±$8000.
 
-> **Analogy:** The heuristic overrides are **common-sense safety rails**. Even if the neural network glitches and predicts a 50% win probability when the whole team is dead, the safety bar says "No — 0 players alive = 0% chance. Period." Similarly, if you have 3 more alive players than the enemy, the safety rule reads: "You have AT LEAST an 85% chance of winning, regardless of what the neural network thinks". These rules encode the most basic game knowledge that should never be violated, acting as a sanity check on AI predictions.
 >
 > **Note A-12 — Cross-load guard:** This 12-feature predictor (`WinProbabilityNN`) is a *separate and incompatible* model from the 9-feature `WinProbabilityTrainerNN` described in Section 12. The checkpoints are not interchangeable: at load time, the `state_dict` dimensionality is validated and, on mismatch, the model is re-initialized from scratch with a log warning.
 
 **Elo-Augmented Predictor (KT-07):**
 
 The `EloAugmentedPredictor` wraps the base `WinProbabilityNN` with an optional Elo system to leverage match history:
-
-> **Analogy:** Elo integration is like adding **player reputation** to the prediction. If you know that team A won 80% of recent matches, your prediction should reflect that even before the round starts. Elo captures this "accumulated reputation" that the 12-feature model cannot see because it only looks at the current round state.
 
 | Constant | Value | Description |
 |---|---|---|
@@ -883,8 +841,6 @@ final_prob = (1 - α) × nn_prob + α × elo_prob    (α = 0.15 default)
 
 Implements **expectiminimax search** with adaptive opponent modeling:
 
-> **Analogy:** The Game Tree is like a **chess engine for CS2**. It asks: "If I push, what might the enemy do? And if they do, what is my best response?". It builds a tree of possibilities 3 levels deep: your move, the enemy's likely response, and your counter-response. Unlike traditional chess, CS2 has randomness (you might miss a shot, the enemy might rotate), so it uses "expectiminimax", meaning it accounts for probabilities at each step. The result is a ranking like "Push is best, Hold is second, Rotate is third, Utility is fourth" with a confidence score for each option.
-
 - **Actions:** push, hold, rotate, use_utility
 - **Opponent model:** Economic priorities (eco/force/full buy), side adjustments, advantage adjustments, time pressure
 - **Depth:** 3 levels (max → chance → min)
@@ -917,8 +873,6 @@ flowchart TB
 ### -Bayesian Death Estimator (`belief_model.py`)
 
 Models P(death | belief, HP, armor, weapon_class):
-
-> **Analogy:** The Death Estimator is like a **danger indicator** that answers these questions: "Given your position, your health state, the enemy's weapon, and what we think they are doing, how likely are you to die in the next few seconds?". It uses Bayesian statistics — a fancy way of saying "start with a hypothesis, then update it with evidence". The initial hypothesis is based on HP: if you have full health, the chance of dying is about 35%; if you have low HP, the chance goes up to 80%. Then it adjusts based on what it knows: "But the enemy has an AWP (1.4× more dangerous) and the threat is recent (no decay)". This produces a final probability that the coach uses to decide whether to recommend aggressive or defensive play.
 
 - **Prior:** Death rates per HP band (full ≥80: 0.35, damaged 40-79: 0.55, critical <40: 0.80)
 - **Likelihood factors:** Threat level (with exponential decay exp(−0.1 × age)), armor reduction (0.75×), weapon multipliers (AWP: 1.4×, Rifle: 1.0×, SMG: 0.75×, Pistol: 0.6×, Knife: 0.3×)
@@ -961,8 +915,6 @@ flowchart TB
 
 Quantifies tactical deception via three sub-metrics:
 
-> **Analogy:** The Deception Index measures how **sneaky and unpredictable** a player is. In CS2, being predictable is dangerous: if the enemy knows you always peek from the same angle, they will pre-aim. The Deception Index is like a **poker-face score**: a high score means you are hard to read (good), a low score means you are transparent (bad). It measures three things: (1) Do you throw fake flashes to bait reactions? (2) Do you fake site takes by suddenly changing direction? (3) Do you alternate walking and running to confuse enemies about your position?
-
 | Sub-metric                          | Weight | Detection method                                                                                                       |
 | ----------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------- |
 | **Fake-flash frequency**            | 0.25   | Flashes that do not blind enemies — `bait_rate = 1 - effective/total`                                                  |
@@ -986,8 +938,6 @@ flowchart TB
 ### -Momentum Tracker (`momentum.py`)
 
 Models psychological momentum as a performance multiplier that decays over time:
-
-> **Analogy:** The Momentum Tracker is like a mood ring for your gameplay. When you win several rounds in a row, you are "hot" — playing with confidence, taking smarter risks, and your momentum multiplier exceeds 1.2. When you lose several rounds in a row, you might be "on tilt" — frustrated, making mistakes, and your multiplier drops below 0.85. The tracker accounts for the fact that momentum fades over time (winning 3 rounds ago matters less than winning the last round) and resets at halftime (when you switch sides). It is like tracking a basketball team's "run": a 10-0 run builds momentum that affects performance.
 
 - Winning streak: multiplier = 1.0 + 0.05 × streak length × decay
 - Losing streak: multiplier = 1.0 − 0.04 × streak length × decay
@@ -1016,8 +966,6 @@ flowchart TB
 
 Measures utility effectiveness via **Shannon entropy reduction** of enemy positions:
 
-> **Analogy:** Entropy is a measure of **uncertainty**: the higher the entropy, the greater the uncertainty about enemy positions. The Entropy Analyzer asks: "Before throwing that smoke, enemies could be in 100 possible positions (high entropy). After the smoke, they could only be in 30 positions (low entropy). Your smoke reduced uncertainty by 70%, meaning it was an effective smoke!". It is like playing hide-and-seek: if you are searching an entire house, there are many hiding spots (high entropy). If you close off the kitchen and the bathroom, there are fewer hiding spots (low entropy). A good grenade reduces the number of places you have to worry about.
-
 - Discretizes positions into a 32×32 grid
 - Computes `H = −Σ p(cell) × log₂(p(cell))`
 - Utility impact = `H_pre − H_post` (positive = information gained)
@@ -1039,8 +987,6 @@ flowchart LR
 ### -Blind Spot Detector (`blind_spots.py`)
 
 Identifies recurring suboptimal decisions relative to the game tree's recommendations:
-
-> **Analogy:** The Blind Spot Detector is like a **driving instructor** who notices that you always forget to check the mirrors before changing lanes. It compares what you actually did in each round with what the game tree indicated as the optimal action. If you keep pushing when you should hold, or keep holding when you should rotate, it flags that as a "blind spot", a recurring mistake you might not even be aware of. The more often a mistake occurs AND the bigger its impact, the higher its priority. Then it generates a specific training plan: "You tend to push in post-plant situations when holding is better. Practice passive post-plant positioning."
 
 - Compares real player actions with the optimal actions of `ExpectiminimaxSearch`
 - Classifies situations (post-plant, clutch, eco, late round, numerical advantage)
@@ -1073,8 +1019,6 @@ flowchart TB
 ### -Engagement Range Analyzer (`engagement_range.py`)
 
 Analyzes kill distances to build role- and position-specific **engagement profiles**:
-
-> **Analogy:** The Engagement Range Analyzer is like a **sports analyst who studies where a player scores goals**. A striker scores mostly from inside the box (close-range), a midfielder from mid-range, and a defender from long-range on set pieces. Similarly, an AWPer should get more kills at long range, while an Entry Fragger should excel at close combat. If your distance profile does not match your role, the coach tells you "You are fighting too close for an AWPer" or "You are not exploiting long sightlines enough".
 
 **Core components:**
 
@@ -1115,8 +1059,6 @@ flowchart TB
 
 **Economy optimizer:** Buy advice based on economic thresholds ($5000 full buy, $2000 force, <$2000 eco), round context, score differential, and loss bonus.
 
-> **Analogy:** The **Utility analyzer** is like a **grenade report card**: it checks whether your molotovs deal the same damage as a pro's (35 damage per throw is the benchmark), whether your flashbangs blind enough enemies (pros average 1.2 enemies per flash), and so on. **Economy Optimizer** is like a **financial advisor for CS2**: it tells you when to spend big (full buy: $5000+), when to save (eco: less than $2000), and when to take a calculated risk (force buy: $2000-$5000). It also takes the bigger picture into account: "Score is 12-10 and you are losing — maybe a force buy is worth the risk".
-
 ```mermaid
 flowchart LR
     ECO["ECO ($0-$2000)<br/>Save money<br/>Pistols only"]
@@ -1132,8 +1074,6 @@ flowchart LR
 ### -Movement Quality Analyzer (`movement_quality.py`)
 
 Detects 4 common positioning mistakes based on the MLMove paper (SIGGRAPH 2024, Stanford/Activision/NVIDIA):
-
-> **Analogy:** The Movement Quality Analyzer is like a **soccer coach reviewing game footage in slow motion**. It does not only look at where you died — it analyzes your movement moment by moment: "You were in a dominant high-ground position and abandoned it for no reason — mistake #1. Your teammate was killed and you made a suicidal solo push — mistake #3. In another situation, your teammate created an opening but you did not move to support them — mistake #4." Each mistake is classified by type, severity, round, and exact position on the map (callout).
 
 **4 types of mistakes detected:**
 
@@ -1210,13 +1150,9 @@ flowchart TB
 
 This subsystem handles all **data preparation**, transforming raw game recordings into the precise numerical formats the neural networks need for training and inference.
 
-> **Analogy:** This is the factory's **prep station**. Before the chefs (neural networks) can cook, the ingredients (raw game data) must be washed, peeled, cut, and measured. The Feature Extractor is the head cook who ensures everything is cut to exactly the same size every time. The Tensor Factory creates perfect "food photos" of the game state. The Data Pipeline is the dishwasher and organizer that cleans up bad data and sorts everything into piles for training/testing. Without this prep station, the chefs would receive inconsistent raw ingredients and produce terrible food.
-
 ### -Unified Feature Extractor (`vectorizer.py`)
 
 The **single source of truth** for tick-level feature vectors. Both training (`RAPStateReconstructor`) and inference (`GhostEngine`) MUST use this class.
-
-> **Analogy:** The Feature Extractor is the system's **universal translator**. It takes complex, messy game state data (a player's position in 3D space, health, weapons, what they see, etc.) and translates it into exactly 25 precise numbers, each scaled to fit between -1 and 1 (or 0 and 1). Think of it as converting every recipe measurement into the same unit: instead of mixing cups, spoons, grams, and liters, everything is converted to milliliters. This way every part of the system speaks the same "25-number language". If training used one translator and inference used a different one, the results would be garbage — so there is only ONE translator, shared everywhere.
 
 **25-dimensional feature vector contract:**
 
@@ -1274,15 +1210,11 @@ R_impact = (2.13·KPR + 0.42·ADR/100) / 1.0
 R_damage = ADR / 73.3
 ```
 
-> **Analogy:** The HLTV 2.0 rating is like a **GPA** for CS2 players. Instead of averaging grades in Math, English, Science, History, and Art, it averages five CS2 "subjects": Kill rate, Survival rate, KAST (how often you contributed), Impact (how much your kills mattered), and Damage (total damage dealt). Each subject is normalized by the pro average (like grading on a curve): if pros average 0.679 kills per round, getting 0.679 KPR gives you a "B" (1.0). Getting more gives you an "A+"; getting less gives you a "C". The fact that both training and inference use the exact same formula prevents "training-inference skew" — making sure the same grading rubric is used for practice tests and the final exam.
-
 Used by: demo_parser.py (analysis), base_features.py (aggregation), coaching_service.py (insights).
 
 ### -PlusMinus and Role-Adjusted Rating Metrics (`rating.py`) — KT-06
 
 Complementary module to the HLTV 2.0 rating that provides two additional metrics designed to capture aspects Rating 2.0 overlooks:
-
-> **Analogy:** If the HLTV 2.0 Rating is a student's **GPA** (overall average), PlusMinus is a basketball player's **plus-minus** (+/-, how much the team gains when you are on the floor), and Role-Adjusted Rating is like a **grade adjusted for course difficulty**: an 85 in Advanced Physics counts more than a 90 in Intro to Music. A support with 0.85 K/D is not worse than an entry fragger with 1.10 K/D — they are simply doing a different job. This module captures exactly that.
 
 **PlusMinus:**
 
@@ -1357,8 +1289,6 @@ flowchart TB
     style CH2 fill:#ffd43b,color:#000
 ```
 
-> **Analogy:** Tensor Factory creates **tiny 64x64 pixel paintings** of the game situation that the RAP coach can look at. The **map tensor** is like a bird's-eye painting: the player is a red dot, teammates are green dots, enemies are blue dots. The **view tensor** is the same painting, but with everything outside the player's 90° field of view erased — like wearing blinders, so the model only sees what the player could actually see. The **motion tensor** is like a long-exposure photograph: fast-moving players leave bright streaks, still players are invisible. Together, these three "paintings" give the RAP coach a complete visual understanding of every moment.
-
 ### -Heatmap Engine (`heatmap_engine.py`)
 
 High-performance Gaussian occupancy maps for tactical visualization:
@@ -1366,8 +1296,6 @@ High-performance Gaussian occupancy maps for tactical visualization:
 - Thread-safe data generation (`generate_heatmap_data()`)
 - Texture creation on the main thread only (OpenGL)
 - Differential heatmaps with hotspot detection for positional training
-
-> **Analogy:** The Heatmap Engine creates **heat maps**, similar to the weather maps you see on TV, but for player positions. Areas where the player often is light up red, while areas they never visit are cold blue. The "differential" heatmap shows the difference between YOUR positions and PRO positions: if a spot lights up red, you spend too much time there compared to pros; if it lights up blue, you never go there but pros do. This visualization immediately shows "you spend too much time at A and not enough rotating to mid".
 
 ### -Data Pipeline (`data_pipeline.py`)
 
@@ -1379,13 +1307,9 @@ High-performance Gaussian occupancy maps for tactical visualization:
 4. **Splits** temporally (70/15/15) with chronological ordering per group (pro/user)
 5. **Keeps** the `dataset_split` column in place
 
-> **Analogy:** Data Pipeline is like a **school admissions office** preparing student files for classes. First it **pulls all files** from the database. Then it **removes the cheaters**, i.e. anyone with unbelievably high stats (an ADR above 400 means they probably used hacks or the data is corrupted). Next it **standardizes the grades** so everything is on the same scale. Then it **sorts students chronologically** and assigns 70% to the "learning class" (training), 15% to the "quiz class" (validation), and 15% to the "final exam class" (test). The temporal split is crucial: it means the model never sees "future" data during training, preventing cheating through time travel.
-
 ### -Demo Quality Scorer (`demo_quality.py`) — KT-09
 
 Evaluates the quality of ingested demo data using robust statistical methods based on **Huber's contamination model** (1981):
-
-> **Analogy:** The Demo Quality Scorer is like a **health inspector for data**. Before letting food (a demo) into the kitchen (training pipeline), the inspector examines it: "Is this ingredient fresh? (enough tick coverage?) Is it complete? (do all fields have values?) Does it look strange? (suspiciously high or low stats?)". If the inspection fails, the ingredient is marked as "to be reviewed" or "to be discarded" — never used directly in the kitchen without a check.
 
 | Component | Weight | Method |
 |---|---|---|
@@ -1414,8 +1338,6 @@ The robustness of the IQR method guarantees a 25% breakdown point (Huber's epsil
 
 Ranks available demos by expected coaching value, inspired by **Active Learning** principles (Settles, 2009):
 
-> **Analogy:** The Demo Prioritizer is like a **teacher choosing which homework to grade first**. Instead of grading in chronological order, the teacher briefly looks at each assignment and decides: "This one looks easy — my mental model understands it well (low variance). This other one looks strange — I am not sure how to grade it (high variance). I will grade the strange one first, because I will learn more from it!". In ML terms: demos where the model is most uncertain are the ones that provide the most learning signal.
-
 **Two ranking strategies:**
 
 | Strategy | Condition | Method | Metric |
@@ -1433,8 +1355,6 @@ Ranks available demos by expected coaching value, inspired by **Active Learning*
 ### -Bombsite-Relative Encoding (`bombsite_encoding.py`) — KT-10
 
 Encodes positions relative to bombsites to obtain **approximate equivariance** under CT/T symmetry:
-
-> **Analogy:** Instead of describing your position with absolute coordinates ("I am at x=1200, y=800"), bombsite-relative encoding describes it as "I am 400 units from A site and 1200 units from B site". This is more tactically informative: knowing how close you are to an objective is more useful than raw coordinates. Additionally, by flipping the sign for T vs CT side, the model understands that "near A site" has opposite tactical meanings for attackers and defenders.
 
 **Bombsite coordinates for 9 maps** (from DDS radar textures + community callouts):
 
@@ -1455,8 +1375,6 @@ de_dust2, de_mirage, de_inferno, de_nuke, de_overpass, de_anubis, de_vertigo, de
 ### -Per-Round Stats Generator (`round_stats_builder.py`)
 
 Bridges raw demo events to the **per-round isolation layer** (`RoundStats` in `db_models.py`), preventing statistical contamination between rounds and enabling detailed per-round coaching analysis.
-
-> **Analogy:** Instead of giving you one grade for the entire test, this module grades **each individual question** (per-round stats), then averages them for the final report card (match-level stats). A bad third round does not silently drag down your fifteenth round score: every round is independent. It is like a teacher writing detailed comments on every problem of a homework rather than just assigning a letter grade.
 
 **Key functions:**
 
@@ -1495,8 +1413,6 @@ flowchart TB
 ### -Temporal Baseline Decay (`pro_baseline.py`)
 
 The `TemporalBaselineDecay` class complements (it does not replace) the existing `get_pro_baseline()` function with a time-weighted average, ensuring that coach comparisons reflect the **current CS2 meta** rather than stale historical averages.
-
-> **Analogy:** Old exam scores count for less than recent ones when computing the class average. A professional player's stats from 6 months ago are "faded" (less important) relative to last week's stats. This way, if the game meta changes — for example, AWP usage drops after a balance patch — the baseline updates automatically without manual recalibration.
 
 **Decay formula:**
 
@@ -1543,15 +1459,11 @@ flowchart TB
 - [**schema.py**](http://schema.py)**:** Schema validation for database records
 - [**sanity.py**](http://sanity.py)** / dem\_[validator.py](http://validator.py):** Data and demo-file integrity checks
 
-> **Analogy:** The validation subsystem is the factory's **quality control inspector**. Drift detection checks: "Is the data we are receiving today similar to the data we trained on, or have things changed?" (like checking whether a cookie recipe still tastes like last month's batch). Schema validation checks: "Does every database record have all required fields in the correct format?" (like making sure every form is completely filled out). Integrity checks verify that demo files are real, complete, and uncorrupted (like shaking a box to make sure it is not empty before shipping).
-
 **Quantitative coverage:** The project includes **1,515+ tests** distributed across 94 test files and **319+ headless validator checks** organized across 24+ validation phases. This coverage spans DB schema integrity, embedding vector consistency, training pipeline correctness, and end-to-end validation of coaching flows.
 
 ### -PlayerKnowledge — NO-WALLHACK Perception System (`player_knowledge.py`)
 
 **Player-POV** perception model that reconstructs what a player legitimately knows at every tick, without wallhack information. This is the foundation for ethically correct coaching: the coach sees only what the player saw.
-
-> **Analogy:** PlayerKnowledge is like the **fog-of-war rules** in a strategy game. In an RTS, you cannot see the enemy until they enter your field of view. Similarly, this system guarantees that the coach does not "cheat" by using information the player could not have: it sees only enemies in the FOV, remembers the last known positions with temporal decay (like human memory fading), and infers sound positions within realistic distances.
 
 **Perception dataclasses:**
 
@@ -1719,8 +1631,6 @@ flowchart TB
 
 **Persistence:** `persist_to_db()` / `load_from_db()` — learned thresholds survive restarts. `validate_consistency()` verifies internal consistency (e.g. entry_rate cannot be negative).
 
-> **Analogy:** RoleThresholdStore is like a **doctor who refuses to diagnose** until enough patients have been seen. "I cannot tell you whether you are an AWPer because I have only seen 2 AWPers in my career. Come back when I have enough experience." Each threshold is learned from the percentile of real pro data, not invented. If the data changes (new meta), the thresholds update automatically.
-
 ---
 
 ## 9. Subsystem 7 — Control Module
@@ -1729,8 +1639,6 @@ flowchart TB
 **Files:** 4 modules
 
 This subsystem is the system's **control tower**: it supervises background services, governs the databases, manages demo ingestion, and controls the ML training lifecycle.
-
-> **Analogy:** If the whole system is an **airport**, the Control Module is the **control tower**. The Console is the chief controller who sees every screen. The ServiceSupervisor is the gate manager who starts and stops flights (services). The DatabaseGovernor is the safety inspector who checks that the runways (databases) are intact. The IngestionManager is the baggage handler who processes luggage (demos) in order. The MLController is the maintenance chief who can start, stop, or pause aircraft maintenance (training).
 
 ### -Console (`console.py`) — Singleton
 
@@ -1875,8 +1783,6 @@ Supervisor of the ML lifecycle with real-time intervention:
 
 **Pipeline:** `start_training()` → daemon thread → `CoachTrainingManager.run_full_cycle(context=self.context)` → `TrainingStopRequested` caught for graceful stop → `set_error()` on crash.
 
-> **Analogy:** MLController is like the **control panel of a nuclear reactor**. The operator can start the reactor (training), pause it for inspection, resume, or execute an emergency stop. The `check_state()` that every ML loop must call is like the control rods: the loop automatically stops at the next safe point when the operator pulls the lever.
-
 ### Inter-Daemon Coordination
 
 The Control Module orchestrates the system's 4 daemons (Hunter, Digester, Teacher, Pulse) through communication channels based on shared state (`CoachState`) and event-based signals:
@@ -1953,8 +1859,6 @@ flowchart LR
 
 This subsystem is the **permanent storage system** for the entire project: every piece of data — from match statistics to trained models, from coaching experiences to professional player profiles — is saved, protected, versioned, and made available through this infrastructure.
 
-> **Analogy:** If the entire coaching system is a **hospital**, the Storage subsystem is the **central archive and the medical-records system**. There are three separate archives (Tier 1, 2, 3) to prevent whoever consults patient records (database.db) from blocking whoever archives specialist doctor statistics (hltv_metadata.db) or the person recording the surveillance cameras (match_*.db per-match). The `DatabaseManager` is the head archivist who manages the cabinet keys, the `BackupManager` is the security officer who makes nightly copies of everything, and the `MatchDataManager` is the technician who manages the camera room where each recording has its own dedicated tape. No data is ever lost: there are daily and weekly copies, integrity checks, and a migration system that updates the archives when the file format changes.
-
 **Tri-Database architecture:**
 
 ```mermaid
@@ -1995,8 +1899,6 @@ flowchart TB
 ### -Data Models (`db_models.py`)
 
 The **genetic code** of the whole system: defines every table, constraint, index, and validator through SQLModel (Pydantic + SQLAlchemy). Two enums and 20+ models organized per tier.
-
-> **Analogy:** `db_models.py` is like the **architectural blueprint of a building**: it specifies every room (table), door sizes (field types), locks (CHECK and UNIQUE constraints), and the building's index (database indexes). If anyone tries to put a negative value for `avg_kills`, the blueprint rejects it before it is even written — like an architect refusing to build a room with negative height.
 
 **Integrity enums:**
 
@@ -2044,8 +1946,6 @@ The **genetic code** of the whole system: defines every table, constraint, index
 
 The **archive keeper**: manages SQLite connections with mandatory WAL mode, physically separating the monolith database (Tier 1) from the HLTV database (Tier 2).
 
-> **Analogy:** The DatabaseManager is like the **custodian of a building with two separate archives**. One is the main archive (database.db) where all patient records are kept, and the other is the external-consultant archive (hltv_metadata.db) where files on foreign specialist doctors are kept. The custodian has an iron rule: every time someone opens an archive, the lock must be set to "WAL" (Write-Ahead Logging) mode, which allows multiple people to read simultaneously while only one writes. If the lock jams, the custodian waits up to 30 seconds before declaring failure.
-
 **Two classes, two databases:**
 
 | Class | Database | Tables | Engine |
@@ -2079,8 +1979,6 @@ The **archive keeper**: manages SQLite connections with mandatory WAL mode, phys
 ### -MatchDataManager (`match_data_manager.py`)
 
 The project's **security-camera system**: every match gets its own dedicated SQLite file (`match_{id}.db`) containing tick-by-tick telemetry — up to **1.7 million rows per match**.
-
-> **Analogy:** The MatchDataManager is like a **video surveillance system where every camera records to its own dedicated tape**. Instead of recording all cameras onto the same tape (which would become huge and impossible to search), every camera (match) has its own drawer (.db file). If you want to review Match #42, you only open drawer #42 — the other 500 matches are untouched. Delete a match? Delete the file. Analyze two matches in parallel? Open two drawers simultaneously, neither blocks the other. The system also keeps an LRU cache of 50 open drawers for speed — the 50 most recently consulted stay open, the others are automatically closed.
 
 **3 per-match models (Tier 3):**
 
@@ -2131,7 +2029,6 @@ flowchart LR
 
 The **data security officer**: creates non-blocking backup copies via `VACUUM INTO` and manages them with a rotation policy.
 
-> **Analogy:** The BackupManager is like a **bank backup system**. Every night (or on demand), the system makes a copy of the vault (database) into a secondary safe. The copy is made with a special technique (`VACUUM INTO`) that does not block ongoing operations — it is like photocopying a book without taking it off the shelf. After the copy, the system verifies that the photocopy is readable (`PRAGMA quick_check`). If the check fails, the copy is destroyed. Old copies are deleted with a rotation policy: 7 daily copies + 4 weekly copies. This balances safety and disk space.
 >
 > **Fix H-02 — DB handle leak:** `_verify_integrity()` uses a `try/finally` block to guarantee closing the `sqlite3` connection even on error. The PRAGMA used is `quick_check` (not `integrity_check`) to reduce verification time on large databases — `quick_check` skips index validation, which is sufficient to verify the structural integrity of backup pages.
 
@@ -2178,8 +2075,6 @@ Manager for **local storage** of CS2 demos: ingestion folders, post-processing a
 
 **Centralized DAO** for the `CoachState` singleton: thread-safe interface between daemons and the GUI.
 
-> **Analogy:** The StateManager is like the **airport arrivals board**: every daemon (Hunter, Digester, Teacher) updates its own status on the board, and the GUI reads it to show the user what is happening. A `threading.Lock()` prevents two daemons from writing to the same field simultaneously, corrupting the display.
-
 | Method | Description |
 |---|---|
 | `get_state()` | Retrieves the singleton (creates it if missing, P0-04 lock) |
@@ -2224,8 +2119,6 @@ flowchart TB
 ---
 
 ## 12. Training and Orchestration Pipeline
-
-> **Analogy:** If the neural models (Sections 1-2) are the orchestra's instruments, the `TrainingOrchestrator` is the **conductor** who decides when to start, controls the tempo of each performance, corrects the off-notes (early stopping), and finally records the best performance to disk (checkpoint). Without the conductor, the instruments would only produce chaos.
 
 The training subsystem has three distinct responsibilities:
 
@@ -2459,8 +2352,6 @@ For RAP, validation uses `trainer.criterion_val` (MSE on value_estimate vs targe
 
 The specialized trainer for the JEPA architecture. Manages self-supervised pre-training, drift monitoring, and the VL-JEPA triple-loss protocol.
 
-> **Analogy:** If the Orchestrator is the conductor, the `JEPATrainer` is the **first violin** — it performs the most delicate technical work (InfoNCE, EMA update, drift detection) while the conductor controls the tempo and decides when to stop.
-
 **Constructor:**
 
 | Parameter | Default | Detail |
@@ -2536,8 +2427,6 @@ Three loss components:
 ### -RAPTrainer (rap_coach/trainer.py)
 
 The multi-task trainer for the RAP Coach model. Manages 4 loss components simultaneously.
-
-> **Analogy:** The RAPTrainer is like a **driving instructor** who simultaneously evaluates route choice (strategy), risk assessment (value), driving style (sparsity), and parking (positioning) — all in a single lesson.
 
 **Loss composition:**
 
@@ -2678,8 +2567,6 @@ The `SelfSupervisedDataset` uses a **sliding window**: `context_len=10` ticks as
 
 Two-layer plugin architecture for training observability, without modifying the main loop.
 
-> **Analogy:** The callback system is like the **sensors of a race car** — oil thermometer, tire pressure, G-force — that collect data without ever interfering with driving. The driver (orchestrator) races, the sensors (callbacks) record.
-
 **Layer 1 — `training_callbacks.py`:**
 
 `TrainingCallback` (ABC) defines 7 lifecycle hooks:
@@ -2742,8 +2629,6 @@ Graceful import: if `tensorboard` is not installed, the callback becomes a compl
 ---
 
 ## 13. Loss Functions — Implementation Detail
-
-> **Analogy:** Loss functions are the **pain nervous system** of neural models — without them, the model would never know whether it is getting better or worse. Each loss type is specialized: acute pain (contrastive) for JEPA, diffuse pain (multi-task MSE) for RAP, and binary pain (BCE) for win probability.
 
 ### Catalog of Loss Functions
 

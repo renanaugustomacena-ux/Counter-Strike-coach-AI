@@ -59,8 +59,6 @@ CS2 Ultimate e um **sistema de coaching baseado em IA hibrido** para Counter-Str
 
 O sistema contem **~103.600 linhas de Python** distribuidas em 411 arquivos `.py` sob `Programma_CS2_RENAN/`, que se estendem por **oito subsistemas logicos de IA** (NN Core com VL-JEPA, RAP Coach + RAP Lite, Coaching Services, Knowledge & Retrieval, Analysis Engines (11), Processing & Feature Engineering, Fontes de Dados, Motores de Coaching), um Observatorio de treinamento, um modulo de Controle (Console com REST API, DB Governor, Ingest Manager, ML Controller), uma arquitetura Quad-Daemon para automacao em background (Hunter, Digester, Teacher, Pulse), uma interface desktop Qt/PySide6 com 15 telas e pattern MVVM (migrada de Kivy em marco de 2026), um sistema completo de ingestao (com subsistema HLTV dedicado: HLTVApiService, CircuitBreaker, RateLimiter), storage e reporting, uma **Tools Suite** com 41 scripts Python de validacao e diagnostico (29 root + 12 no pacote - Goliath Hospital, headless validator, Ultimate ML Coach Debugger, validate_coaching_pipeline, ingest_pro_demos, dead_code_detector, dev_health, rebuild_monolith, tick_census), uma arquitetura tri-database especializada com 18 tabelas SQLModel no monolito (+ 3 no banco HLTV separado + 3 nos bancos por-match = 24 totais), e uma **Test Suite** com 99 arquivos de teste organizados em 6 categorias: analysis/theory, coaching/training, ML/models, data/storage, UI/playback, integration/misc. O projeto passou por um processo de **remediacao sistematica em 13 fases** que resolveu 412+ problemas de qualidade do codigo, correcao ML, seguranca e arquitetura, incluindo a eliminacao de label leakage no treinamento (G-01), a implementacao da zona de perigo visual no tensor de visao (G-02), a calibracao automatica do estimador bayesiano (G-07), e a correcao do fallback do coaching COPER (G-08), seguida por uma **segunda onda de remediacao** que resolveu mais 162 problemas (31 HIGH + 131 MEDIUM) relacionados a thread safety, schema drift, Qt lifecycle, e hardening de observabilidade, e uma **terceira onda** (abril de 2026) que enderecou 40+ problemas adicionais incluindo type safety (SA-14 a SA-27), dependency pinning (DEP-1), checkpoint security (CTF-1/2), DataLineage audit trail (DL-1), e correcoes UI/UX (UX-1/2/3). A pipeline end-to-end foi completada em 12 de marco de 2026: 11 demos profissionais ingeridas, 17.3M linhas de tick, 6.4GB de banco de dados, JEPA pre-treinado (train loss 0.9506, val loss 1.8248). Atualizacao abril 2026: 156 bancos de dados por-match, AdvancedCoachNN completamente treinado (`latest.pt`), banco HLTV populado com **161 jogadores profissionais reais** (32 times, 156 stat cards), HybridCoachingEngine potencializado com selecao automatica do pro de referencia por nome nos feedbacks de coaching, **Coach Book v4** expandido para **502 entradas** de conhecimento tatico em 8 arquivos JSON (7 mapas + geral) com 13 categorias, **CoachingDialogueEngine** para coaching multi-turno com drill-down por-jogador e por-round, **MovementQualityAnalyzer** (11o motor de analise), **EloAugmentedPredictor** para probabilidade de vitoria com feature Elo, **PlusMinus rating metric**, potencializacoes COPER (incerteza TrueSkill, semantica CRUD, replay priorizado), codificacao posicao relativa ao bombsite, priorizacao de demos por variancia de coaching com scoring de qualidade via modelo Huber, e **CS2 Coach Bench** benchmark de avaliacao com 200 perguntas.
 
-> **Analogia:** Imagine que voce tem um treinador robo super inteligente que assiste as suas partidas de futebol em video. Primeiramente, ele **observa** centenas de partidas profissionais e as suas, anotando cada movimento (essa e a parte de "ingestao", gerenciada pelo daemon Hunter que escaneia as pastas e pelo daemon Digester que processa os arquivos). Depois, ele **estuda** essas anotacoes e aprende o que os grandes jogadores fazem de forma diferente dos iniciantes, como um estudante que enfrenta os varios niveis escolares (CALIBRAR e o jardim de infancia, APRENDER e o ensino fundamental, AMADURECER e o diploma) - isso o daemon Teacher faz em background. Quando chega a hora de te dar um conselho, ele nao se limita a chutar: consulta seu **caderno de sugestoes**, sua **memoria das sessoes de treinamento passadas** e o que os **profissionais** fariam na sua exata situacao, escolhendo a fonte de que mais confia. Finalmente, **explica** por que esta te dizendo para fazer algo, nao apenas "faca isso", mas "faca isso *porque* voce continua sendo pego de surpresa". E como ter um treinador que viu cada partida profissional ja jogada, lembra de cada sessao de treinamento que voce fez e pode te explicar exatamente por que voce deveria mudar de estrategia. Enquanto isso, a interface desktop Qt/PySide6 mostra tudo em tempo real: um mapa tatico 2D com o seu "fantasma" otimo, graficos radar das suas habilidades, e um dashboard que te diz exatamente em que ponto esta o seu treinador no processo de aprendizado. O daemon Pulse garante que o sistema esteja sempre vigilante com um batimento cardiaco constante.
-
 ```mermaid
 flowchart LR
     W["1. OBSERVA<br/>(Ingestion)<br/><br/>Le os arquivos<br/>demo, frame<br/>por frame"] --> L["2. APRENDE<br/>(Treinamento)<br/><br/>Constroi o cerebro<br/>atraves de 3<br/>Graus de maturidade"]
@@ -80,8 +78,6 @@ flowchart LR
 ## 2. Panorama da arquitetura do sistema
 
 O sistema e dividido em **6 subsistemas principais** que trabalham juntos como os departamentos de uma empresa. Cada subsistema tem uma tarefa especifica e os dados fluem entre eles em uma pipeline bem definida.
-
-> **Analogia :** Pense no sistema inteiro como uma **grande fabrica com 6 departamentos**. O primeiro departamento (Ingestao) e a **sala de correio**: recebe as gravacoes brutas das partidas e as organiza. O segundo departamento (Processamento) e a **oficina**: analisa as gravacoes e mede tudo o que contem. O terceiro departamento (Formacao) e a **escola**: instrui o cerebro da IA mostrando-lhe milhares de exemplos. O quarto departamento (Conhecimento) e a **biblioteca**: armazena sugestoes, conselhos passados e conhecimentos especializados para que o treinador possa consulta-los. O quinto departamento (Inferencia) e o **cerebro**: combina o que a IA aprendeu com o que a biblioteca conhece para criar conselhos. O sexto departamento (Analise) e a **equipe investigativa**: conduz investigacoes especiais como "este jogador esta em dificuldade?" ou "era uma boa posicao?". Todos os seis departamentos trabalham juntos para que o treinador possa fornecer conselhos inteligentes e personalizados.
 
 ```mermaid
 graph TB
@@ -264,8 +260,6 @@ Dois invariantes arquiteturais fundamentais atravessam o sistema inteiro:
 
 **1. Principio NO-WALLHACK:** O coach IA **ve apenas o que o jogador legitimamente conhece**. Quando o modulo `PlayerKnowledge` esta disponivel, os tensores gerados pela `TensorFactory` codificam exclusivamente informacoes legitimas: companheiros de equipe (sempre visiveis), inimigos em posicoes "last-known" (com decaimento temporal, tau = 2.5s), utilidade propria e observada. Nenhuma informacao "wallhack" (posicoes inimigas reais nao visiveis) entra jamais no sistema de percepcao. Quando `PlayerKnowledge` e `None`, o sistema recai em um modo legacy com tensores simplificados.
 
-> **Analogia:** O principio NO-WALLHACK e como um **exame de direcao onde o instrutor ve apenas o que o aluno ve**. O instrutor nao tem acesso a uma camera externa que mostra todos os obstaculos ocultos - deve avaliar as decisoes do aluno baseando-se apenas nas informacoes efetivamente disponiveis ao aluno. Se o aluno cometeu um erro porque nao podia ver um obstaculo atras de uma curva, o instrutor nao o pune por isso. Da mesma forma, o coach IA avalia o posicionamento do jogador apenas com base no que o jogador podia razoavelmente saber naquele momento.
-
 **2. Contrato 25-dim (`FeatureExtractor`):** O `FeatureExtractor` em `vectorizer.py` define o vetor de feature canonico de 25 dimensoes (`METADATA_DIM = 25`) usado por **todos** os modelos (AdvancedCoachNN, JEPA, VL-JEPA, RAP Coach) tanto em treinamento quanto em inferencia. Qualquer modificacao no vetor de features ocorre **exclusivamente** no `FeatureExtractor` - nenhum outro modulo pode definir features proprias. Isso garante coerencia dimensional end-to-end.
 
 ```
@@ -282,8 +276,6 @@ Normalizacao posicao: `np.clip(pos_x / cfg.pos_xy_extent, -1.0, 1.0)` onde
 de coordenadas fora do intervalo que produziriam features > 1.0 em modulos nao normalizados.
 ```
 
-> **Analogia:** O contrato 25-dim e como uma **lingua franca** falada por todos no sistema. Cada modelo, cada pipeline de treinamento, cada motor de inferencia "fala" exatamente a mesma lingua com 25 palavras. Se um modulo comecasse a usar 26 palavras ou uma ordem diferente, a comunicacao se interromperia. O `FeatureExtractor` e o **dicionario oficial** - a unica autoridade para a definicao e a ordem das features.
-
 ---
 
 ## 3. Subsistema 1 - Nucleo da rede neural
@@ -292,8 +284,6 @@ de coordenadas fora do intervalo que produziriam features > 1.0 em modulos nao n
 **Arquivos-chave:** `model.py`, `jepa_model.py`, `jepa_train.py`, `jepa_trainer.py`, `coach_manager.py`, `training_orchestrator.py`, `config.py`, `factory.py`, `persistence.py`, `role_head.py`, `training_callbacks.py`, `tensorboard_callback.py`, `maturity_observatory.py`, `embedding_projector.py`, `dataset.py`, `data_quality.py`, `evaluate.py`, `train_pipeline.py`, `training_monitor.py`, `early_stopping.py`, `ema.py`, `training_controller.py`, `win_probability_trainer.py`, `training_config.py`
 
 Este subsistema contem todos os modelos de rede neural, o "cerebro" do sistema de coaching. Inclui seis arquiteturas distintas de modelos (AdvancedCoachNN, JEPA, VL-JEPA, RAP Coach, RAP Lite, NeuralRoleHead), um gerenciador de training, um Observatorio de Introspeccao do Coach e utilitarios para a criacao e persistencia dos modelos.
-
-> **Analogia:** Este e o **departamento cerebro** da fabrica. Contem seis diferentes tipos de cerebros (AdvancedCoachNN, JEPA, VL-JEPA, RAP Coach, RAP Lite e NeuralRoleHead), cada um estruturado de forma diferente e especializado em ambitos diferentes, como por exemplo um cerebro matematico, um linguistico, um criativo, um para competencias interpessoais, um portatil que funciona em qualquer lugar e um para a identificacao dos papeis, todos em sinergia. O Training Manager e como o **diretor da escola**: decide qual cerebro pode estudar o que e quando, e mantem o controle das notas de todos. O **Observatorio** e o escritorio de controle de qualidade da escola: monitora o "boletim" de cada cerebro durante a formacao, identificando sinais de confusao, panico, crescimento ou dominio.
 
 ```mermaid
 flowchart TB
@@ -326,8 +316,6 @@ Definido em `model.py`, este e o fundamento do coaching supervisionado.
 | **Bias de papel**          | Parametro `role_id` opcional: `gate_weights = (gate_weights + role_bias) / 2.0` - orienta a selecao dos especialistas para conhecimentos especificos do papel                                                        |
 | **Validacao do input** | `_validate_input_dim()` redimensiona automaticamente 1D -> `unsqueeze(0).unsqueeze(0)` e 2D -> `unsqueeze(0)` para robustez                                                                                      |
 
-> **Analogia:** Este modelo e como um **juri de 3 juizes** em um show de talentos. Primeiramente, o LSTM le os dados de jogo do jogador como se estivesse lendo uma historia: entende o que aconteceu passo a passo, lembrando dos momentos importantes (e exatamente isso que os LSTMs sabem fazer bem: memoria). Depois de ler a historia inteira, resume tudo em uma unica "opiniao" (128 numeros). Entao, tres diferentes juizes especialistas examinam essa opiniao e cada um atribui sua propria nota. Mas nem todos os juizes sao igualmente bons em cada tipo de performance: um especialista em danca e melhor em julgar danca, um especialista em canto em cantar. Entao uma **rede de controle** (como um moderador) decide o quanto confiar em cada juiz: "Para este jogador, o Juiz 1 e relevante em 60%, o Juiz 2 em 30%, o Juiz 3 em 10%". A nota final e uma combinacao ponderada das opinioes dos tres juizes.
-
 Cada modulo especialista em AdvancedCoachNN: `Linear(128->128) -> LayerNorm(128) -> ReLU -> Linear(128->output_dim)`.
 
 > **Nota:** `_create_expert()` do JEPA omite LayerNorm - apenas `Linear -> ReLU -> Linear`. Trata-se de uma escolha de design deliberada: os especialistas JEPA operam em embeddings latentes ja normalizados, enquanto os especialistas AdvancedCoachNN processam outputs LSTM brutos que se beneficiam da normalizacao por especialista.
@@ -341,8 +329,6 @@ gate_weights = softmax(W_gate . h) # [batch, 3]
 expert_outputs = [E_i(h) for i in 1..3]
 output = tanh(Sigma gate_weights_i x expert_outputs_i)
 ```
-
-> **Analogia:** Eis a receita passo a passo: (1) O LSTM le as 25 medicoes do jogador em varios timesteps, como se lesse as paginas de um diario. (2) Escolhe o resumo da ultima pagina, ou seja, a compreensao mais recente. (3) Um "moderador" examina esse resumo e decide o quanto confiar em cada um dos 3 especialistas (esses pesos de confianca somados sempre dao 100%). (4) Cada especialista atribui seus proprios scores de coaching. (5) O resultado final e o resultado dos scores dos especialistas misturados juntos com base no quanto o moderador confia em cada um, comprimidos em um intervalo de -1 a +1 pela funcao tanh (como uma avaliacao em uma curva).
 
 ```mermaid
 flowchart TB
@@ -369,8 +355,6 @@ flowchart TB
 
 Definido em `jepa_model.py`. Um modelo de **pre-treinamento auto-supervisionado** inspirado no I-JEPA de Yann LeCun, adaptado para dados CS2 sequenciais.
 
-> **Analogia:** JEPA e a fase de **"aprende observando"** do treinador, assim como e possivel aprender muito sobre basquete apenas assistindo as partidas da NBA, mesmo antes que alguem te ensine as regras. Em vez de precisar que alguem rotule cada jogada como "boa" ou "ruim" (aprendizado supervisionado), JEPA se auto-aprende jogando um jogo de adivinhacao: "Eu vi o que aconteceu no primeiro tempo deste round... posso prever o que vai acontecer depois?". Se adivinha corretamente, esta construindo um bom entendimento dos patterns CS2. Se adivinha errado, se adapta. Isso se chama **aprendizado auto-supervisionado**: o modelo cria suas proprias "tarefas" a partir dos dados em si.
-
 ```mermaid
 graph LR
     subgraph SSP["Fase Auto-Supervisionada"]
@@ -395,8 +379,6 @@ graph LR
 | **Codificador target** | Estruturalmente identico; atualizado via media movel exponencial (tau = 0.996). `EMA.state_dict()` retorna tensores **clonados** para prevenir aliasing (um bug anterior permitia a modificacao acidental dos pesos target atraves de referencias compartilhadas) |
 | **Predictor**           | Linear(256, 512) -> LayerNorm -> GELU -> Dropout(0.1) -> Linear(512, 256)                               |
 | **Coaching Head**       | LSTM(256, hidden_dim, 2 layers, dropout=0.2) -> 3 especialistas MoE -> output controlado                     |
-
-> **Analogia:** O **Online Encoder** e como um estudante: transforma os dados brutos de jogo em uma "essencia" de 256 numeros (um resumo compacto). O **Target Encoder** e como o irmao mais velho do estudante que se atualiza lentamente (EMA significa "aproximar-se dos conhecimentos do irmao mais novo, mas apenas um pouquinho a cada dia" - 99,6% permanece inalterado, apenas 0,4% se atualiza). Esse alvo lento impede que o sistema colapse em uma solucao banal (como prever sempre "tudo e igual"). O **Predictor** e uma ponte que tenta traduzir "o que eu vi" em "o que eu acho que vai acontecer". A **Coaching Head** e o acessorio final que converte a compreensao em um conselho efetivo, como passar de "Entendo o basquete" para "voce deveria passar mais".
 
 ```mermaid
 flowchart TB
@@ -426,17 +408,11 @@ flowchart TB
 6. **Monitoramento do drift**: Rastreia os objetos DriftReport; ativa o retreinamento automatico se o drift > 2,5 sigma.
 7. **Rotulos baseados em resultado (Correcao G-01):** O `ConceptLabeler` no treinamento VL-JEPA agora gera rotulos a partir dos dados `RoundStats` (resultados por round: abates, mortes, danos, sobrevivencia) em vez de features em nivel de tick. Isso elimina o **label leakage** - o problema anterior em que os rotulos dos conceitos eram derivados das mesmas features usadas como input, permitindo que o modelo "trapaceasse" durante o treinamento sem realmente aprender os patterns. O metodo `label_from_round_stats(rs)` produz um vetor de 16 rotulos de conceito baseados em resultados mensuraveis. Se os dados `RoundStats` nao estiverem disponiveis, o sistema recai na heuristica legacy com um aviso de log uma unica vez.
 
-> **Analogia:** A receita do treinamento e esta: (1) Carrega as gravacoes de jogadores profissionais, quadro a quadro. (2) Para cada gravacao, divide em "o que aconteceu antes" e "o que aconteceu depois". (3) Dois codificadores examinam cada metade de forma independente. (4) O sistema verifica: "Minha predicao de 'o que aconteceu depois' se aproximou da resposta efetiva e nao de respostas erradas aleatorias?" - isso e InfoNCE, como um teste de multipla escolha em que o modelo deve escolher a resposta certa entre muitas respostas erradas. (5) O codificador do irmao mais velho absorve lentamente os conhecimentos do irmao mais novo (apenas 0,4% por passagem). (6) Se os dados comecam a parecer muito diferentes daqueles em que o modelo foi treinado (drift > 2,5 desvios padrao), toca um sino de alarme: "O meta do jogo mudou - e hora de requalificar!"
-
 **Decodificacao Seletiva** (`forward_selective`): pula a passagem em avanco inteira se a distancia do cosseno entre o embedding atual e o anterior for inferior a um limite (`skip_threshold=0.05`). Utiliza `1.0 - F.cosine_similarity()` como metrica de distancia e, durante a operacao de salto, retorna o output anterior memorizado na cache. Isso permite uma inferencia eficaz em tempo real com salto dinamico dos frames: durante os momentos de jogo estaticos (os jogadores mantem os angulos), a maioria dos frames e pulada completamente.
-
-> **Analogia:** A decodificacao seletiva e como uma camera de seguranca com **deteccao de movimento**. Em vez de gravar 24 horas por dia, 7 dias por semana (processando cada frame), ela so ativa quando algo efetivamente muda. Se dois frames consecutivos sao quase identicos (distancia < 0.05 - na pratica "nao aconteceu nada"), o modelo pula o calculo completamente. Isso permite economizar uma enorme quantidade de potencia de processamento nos momentos lentos (como quando os jogadores mantem os angulos e aguardam), continuando a capturar cada acao importante.
 
 ### -VL-JEPA: Arquitetura de Alinhamento Visao-Linguagem com Conceitos de Coaching
 
 Definido na segunda metade de `jepa_model.py`. O VL-JEPA (**Vision-Language JEPA**) e uma **extensao fundamental** do JEPACoachingModel que adiciona um **mecanismo de alinhamento entre embeddings latentes e conceitos de coaching interpretaveis**. Inspirado no VL-JEPA de Meta FAIR (2026), mapeia as representacoes latentes em um espaco conceitual estruturado com 16 conceitos de coaching predefinidos.
-
-> **Analogia:** Se JEPA e um treinador que "entende" o jogo observando-o (aprendizado auto-supervisionado), VL-JEPA e o mesmo treinador que tambem aprendeu o **vocabulario especifico do coaching**. Nao apenas entende os patterns do jogo, mas sabe rotula-los com conceitos como "posicionamento agressivo", "economia ineficiente" ou "troca reativa". E como a diferenca entre um critico de cinema que "sente" quando um filme funciona e um que sabe articular o porque: "a fotografia e excelente, o ritmo e lento no segundo ato, a reviravolta e previsivel". O VL-JEPA traduz a compreensao latente em linguagem de coaching especifica.
 
 #### Taxonomia dos 16 Conceitos de Coaching
 
@@ -479,8 +455,6 @@ graph TB
 ```
 
 Cada conceito e definido como um `CoachingConcept` dataclass imutavel com `(id, name, dimension, description)`. A lista global `COACHING_CONCEPTS` e `CONCEPT_NAMES` sao as fontes de verdade para todo o sistema.
-
-> **Analogia:** Os 16 conceitos sao como as **16 materias de um boletim escolar do coaching**. Em vez de uma nota unica "voce e bom/ruim", o VL-JEPA avalia o jogador em 16 aspectos especificos: "Em posicionamento agressivo voce esta em 80%, em economia eficiente em 45%, em reatividade a troca em 70%". As 5 dimensoes sao os "departamentos" da escola: Posicionamento, Utilidade, Decisao, Engajamento e Psicologia. Um jogador pode se destacar em uma dimensao e ter lacunas em outra - exatamente como um estudante pode ter otimas notas em matematica mas notas baixas em literatura.
 
 #### Arquitetura VLJEPACoachingModel
 
@@ -529,8 +503,6 @@ flowchart TB
     style VLNEW fill:#be4bdb,color:#fff
     style PARENT fill:#228be6,color:#fff
 ```
-
-> **Analogia:** A arquitetura VL-JEPA e como adicionar um **tradutor simultaneo** a um analista que ja entende o jogo. O `concept_projector` e o interprete que pega a compreensao latente do encoder (256 numeros abstratos) e a traduz no "espaco dos conceitos". Os `concept_embeddings` sao como 16 **placas sinalizadoras** no espaco latente: cada um representa um conceito de coaching e tem uma posicao fixa (aprendida durante o treinamento). O `concept_temperature` controla o quao "nitida" deve ser a classificacao: uma temperatura baixa (0.01) torna as decisoes binarias ("e este conceito ou nao e"), uma temperatura alta (1.0) as torna suaves ("poderia ser varios conceitos ao mesmo tempo"). O sistema calcula a distancia cosseno entre a projecao do jogador e cada placa, e os conceitos mais proximos sao ativados.
 
 #### Caminho Forward VL-JEPA (`forward_vl`)
 
@@ -596,8 +568,6 @@ A classe `ConceptLabeler` gera **rotulos soft multi-label** (`[0, 1]^16`) para o
 
 **Modo 2 - Heuristica Legacy (fallback com label leakage):** `label_tick(features)` gera rotulos diretamente do vetor de features de 25 dim. Isso cria **label leakage** porque o modelo pode "trapacear" reconstruindo as features de input em vez de aprender patterns latentes. Usado apenas quando `RoundStats` nao esta disponivel, com um aviso de log uma unica vez.
 
-> **Analogia G-01:** O label leakage e como um **exame em que as respostas estao escritas no verso da folha de questoes**. No modo heuristica, os rotulos dos conceitos sao derivados das mesmas 25 features que o modelo ve como input - o modelo pode simplesmente "copiar as respostas" sem entender nada. No modo baseado em resultado, os rotulos vem de dados diferentes (o que ACONTECEU no round: abates, mortes, vitoria) - o modelo deve efetivamente entender a relacao entre as features de input e os resultados para obter bons scores. E a diferenca entre estudar para entender e estudar para copiar.
-
 **`label_batch(features_batch)`:** Wrapper que gerencia batches 2D `[B, 25]` e 3D `[B, seq_len, 25]` (media dos rotulos sobre a sequencia para input 3D).
 
 **Referencia indices feature (METADATA_DIM=25):**
@@ -630,8 +600,6 @@ total = alpha * concept_loss + beta * diversity_loss
 |---|---|---|---|
 | `concept_loss` | `F.binary_cross_entropy_with_logits(logits, labels)` | alpha = 0.5 | Alinha embeddings aos conceitos corretos |
 | `diversity_loss` | `-std_per_dim(L2_norm(concept_embs)).mean()` | beta = 0.1 | Impede o colapso dos embeddings de conceito |
-
-> **Analogia:** A `concept_loss` e como **verificar se o estudante associa corretamente os termos as definicoes** - "posicionamento agressivo" deve ativar quando o jogador e efetivamente agressivo. A `diversity_loss` e inspirada em VICReg (Variance-Invariance-Covariance Regularization): impede que todos os 16 prototipos de conceito colapsem no mesmo ponto do espaco latente. E como assegurar-se de que as 16 placas sinalizadoras no museu estejam **todas em posicoes diferentes** - se duas placas estao no mesmo lugar, nao servem para distinguir os conceitos. A diversidade e medida como o desvio padrao dos embeddings normalizados ao longo de cada dimensao: um desvio padrao alto significa que os conceitos estao bem separados.
 
 **Perda total no training step VL-JEPA (`train_step_vl`):**
 
@@ -689,8 +657,6 @@ flowchart TB
     style COACHING fill:#51cf66,color:#fff
 ```
 
-> **Analogia do fluxo dimensional:** Imagine o percurso dos dados como uma jornada de **traducao multilingue**: os dados brutos do jogo (25 numeros) sao como um texto em "linguagem do jogo". O encoder os traduz em "linguagem latente" (256 numeros) - uma representacao comprimida mas rica. A partir daqui, o percurso se bifurca: o **ramo JEPA** (auto-supervisao) verifica se o tradutor entende a sequencia temporal, o **ramo Coaching** (LSTM+MoE) produz conselhos praticos, e o **ramo VL** (conceitos) traduz da "linguagem latente" para a "linguagem do coaching" (16 conceitos interpretaveis). Cada ramo serve a um proposito diferente, mas todos partem da mesma traducao de base.
-
 #### JEPATrainer: Treinamento com Monitoramento Drift
 
 Definido em `jepa_trainer.py`. Gerencia tanto o treinamento JEPA padrao quanto VL-JEPA, com retreinamento automatico baseado no drift.
@@ -740,8 +706,6 @@ Metodo compartilhado que codifica negativos brutos (feature space) no espaco lat
 - Se o flag `_needs_full_retrain` estiver ativo, reseta o scheduler e reexecuta `epochs` epocas completas
 - Depois do retreinamento, cancela o flag e o historico drift
 - Retorna `True/False` para indicar se o retreinamento ocorreu
-
-> **Analogia:** O sistema de monitoramento do drift e como um **termometro automatico para as condicoes do meta-jogo**. Se os dados dos novos jogadores forem muito diferentes daqueles em que o modelo foi treinado (por exemplo, uma atualizacao importante do jogo mudou as mecanicas), o termometro detecta a "febre" (drift > 2.5 sigma). Se a febre persistir por 5 controles consecutivos, o sistema prescreve uma "cura completa" - retreinamento total. Isso impede que o modelo de conselhos baseados em um meta-jogo obsoleto.
 
 #### Pipeline de Treinamento Standalone (`jepa_train.py`)
 
@@ -851,8 +815,6 @@ flowchart TB
 
 **Log periodico durante treinamento:** A cada 100 forward pass (configuravel via `enable_tracing(interval)`), logga via logger estruturado: dimensoes ativas (gate_mean > 0.5), dimensoes esparsas (gate_mean < 0.1) e media geral.
 
-> **Analogia:** O SuperpositionLayer e como um **mixer de audio com 256 canais** onde cada slider e controlado automaticamente com base na "cena" atual. Em um round eco, certos canais sao abaixados (as features relativas ao full-buy sao irrelevantes). Em um retake post-plant, outros canais sao levantados. O `gate_sparsity_loss` e como um sonoplasta que diz: "Use o menor numero possivel de canais de cada vez - se voce consegue obter o mesmo som com 50 canais em vez de 200, o mix sera mais limpo e interpretavel". A inicializacao Kaiming e como **afinar o instrumento antes de tocar** - sem uma boa afinacao inicial, ate o musico mais talentoso produzira notas desafinadas. O design dual-tensor e como ter **duas copias do mix**: uma "live" que o sonoplasta pode regular (com gradientes), e uma "gravada" que o critico pode analisar a posteriori (sem perturbar a performance em curso).
-
 #### Modulo EMA Standalone
 
 A atualizacao **Exponential Moving Average** do target encoder e implementada diretamente em `JEPACoachingModel.update_target_encoder(momentum=0.996)`:
@@ -869,13 +831,9 @@ with torch.no_grad():
 - O momentum 0.996 significa que o target encoder "absorve" apenas 0,4% dos pesos do encoder online a cada passo - atualizacao muito conservadora
 - `state_dict()` do modelo retorna tensores **clonados** (`.clone()`) para prevenir aliasing acidental - um bug real corrigido durante o audit onde `state_dict()` retornava referencias diretas aos tensores do modelo em vez de copias, causando corrupcao quando o chamador modificava o dicionario
 
-> **Analogia:** O EMA e como um **mentor que aprende lentamente com o aluno**. O aluno (context encoder) aprende rapidamente com os dados e muda muito a cada licao. O mentor (target encoder) observa o aluno e atualiza seus proprios conhecimentos muito lentamente - apenas 0,4% por licao. Isso impede que o mentor "esqueca" o que sabia antes, criando um alvo estavel para o aprendizado. Sem EMA, ambos os cerebros mudariam rapido demais e o sistema poderia "colapsar" - um fenomeno conhecido como mode collapse onde ambos os encoders produzem o mesmo output independentemente do input.
-
 ### -CoachTrainingManager (Orquestracao)
 
 Definido em `coach_manager.py`. Este e o **cerebro do processo de formacao**, que gerencia um rigoroso **ciclo de formacao de 3 niveis, baseado na maturidade**, dividido em 4 fases:
-
-> **Analogia apropriada para criancas:** CoachTrainingManager e como o **diretor** que decide a classe de cada aluno e quais materias pode seguir. Um aluno novinho em folha (CALIBRACAO) pode frequentar apenas cursos introdutorios. Um aluno que passou em um numero suficiente de cursos (APRENDIZADO) pode frequentar cursos avancados. E um aluno do ultimo ano (MATURE) tem acesso a tudo. O diretor tambem impoe uma regra: "Voce nao pode iniciar nenhum curso ate ter participado de pelo menos 10 sessoes de orientacao". Isso impede que o sistema tente ensinar quando praticamente nao tem dados para aprender.
 
 ```mermaid
 graph TD
@@ -902,8 +860,6 @@ graph TD
 | CALIBRACAO  | 0-49          | 0,50                      | Heuristica de base, pre-treinamento JEPA               |
 | APRENDIZADO | 50-199        | 0,80                      | Comparacao base profissional, otimizacao usuario     |
 | MADURO        | 200+           | 1,00                      | Coach RAP completo, teoria dos jogos, analise completa |
-
-> **Analogia:** O multiplicador de confianca e como um **score de confianca**. Quando o coach e novo (CALIBRACAO), confia nos proprios conselhos apenas em 50%: sabe que podem estar errados, entao e cauteloso. Depois de ter estudado mais de 50 demos (APRENDIZADO), confia em si mesmo em 80%. Depois de mais de 200 demos (MADURO), esta completamente seguro: 100%. E como um meteorologista: um meteorologista iniciante poderia dizer "Tenho certeza em 50% que vai chover", mas um experiente com decadas de dados atras de si diz "Tenho certeza em 100%". O treinador nunca finge saber mais do que realmente sabe.
 
 ```mermaid
 flowchart TB
@@ -934,11 +890,7 @@ weapon_class, time_in_round, bomb_planted,
 teammates_alive, enemies_alive, team_economy
 ```
 
-> **Analogia:** Essas 25 caracteristicas sao como uma **lista de verificacao de 25 perguntas** que o treinador faz a um jogador em cada momento de uma partida: "Quao saudavel voce esta? Tem uma armadura? Um capacete? Um kit de disarme? Quanto custa seu equipamento? Esta agachado? Usa uma mira? Esta cego? Quantos inimigos consegue ver? Onde voce esta (coordenadas x, y, z)? Em que direcao esta olhando (dividido em sin/cos para evitar estranhezas angulares)? Esta no andar errado de um mapa multiniveis? Como se comportou (KAST)? De que mapa se trata? E um round de pistola, eco, forca ou full buy? Que tipo de arma esta usando? Quanto tempo se passou no round? A bomba foi plantada? Quantos companheiros de equipe ainda estao vivos? Quantos inimigos estao vivos? Qual e a economia media da sua equipe?" As ultimas 6 perguntas (indices 19-24) fornecem ao modelo uma consciencia tatica do contexto de jogo - essas features tem valor predefinido 0.0 durante o treinamento do banco de dados e sao populadas pelo contexto DemoFrame no momento da inferencia. Cada modelo no sistema fala exatamente o mesmo "linguagem de 25 perguntas" - este e o contrato de treinamento. Se alguma parte do sistema utilizasse perguntas diferentes, as respostas nao corresponderiam e tudo se interromperia.
-
 **Indices target:** `TARGET_INDICES = list(range(OUTPUT_DIM))` = `[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]` - o modelo preve deltas de melhoria para as primeiras **10 metricas agregadas** em nivel de partida: `[avg_kills, avg_deaths, avg_adr, avg_hs, avg_kast, kill_std, adr_std, kd_ratio, impact_rounds, accuracy]`.
-
-> **Analogia:** Das 25 features agregadas em nivel de partida, o modelo se concentra na previsao de melhorias para as primeiras 10: **media abates** (voce esta conseguindo mais eliminacoes?), **media mortes** (voce esta morrendo menos?), **media ADR** (voce esta infligindo mais danos por round?), **media HS%** (sua mira na cabeca esta melhorando?), **media KAST** (voce esta contribuindo mais frequentemente para os rounds?), **variancia abates e ADR** (voce e mais consistente?), **razao K/D** (o saldo e positivo?), **rounds de impacto** (voce esta influenciando mais rounds criticos?) e **precisao** (seus tiros acertam?). Essas 10 metricas cobrem as dimensoes de desempenho mais acionaveis segundo o padrao HLTV 2.0: o output ofensivo, a sobrevivencia, o impacto nos danos, a consistencia (variancia baixa = jogador confiavel), e a precisao mecanica. As 15 features agregadas restantes (economia, rating composto, estatisticas avancadas) sao usadas como input contextual mas nao sao targets diretos de predicao - o modelo as usa para entender a situacao mas nao sugere melhorias especificas sobre elas. E como um treinador de basquete que acompanha centenas de estatisticas mas concentra o feedback nos 10 fundamentos: pontos marcados, assists, rebotes, percentual do campo, bolas perdidas, bolas roubadas, bloqueios, plus-minus, eficiencia e minutos jogados.
 
 ### -TrainingOrchestrator
 
@@ -957,8 +909,6 @@ O orchestrator se integra com Observatory atraves de `CallbackRegistry`. Dispara
 **Pool negativos cross-match (NN-H-03):** O orchestrator mantem um pool de feature vectors de batches anteriores (`_neg_pool`, max 500 vetores). Os negativos contrastivos sao amostrados deste pool em vez do batch atual, garantindo que os negativos venham de **partidas diferentes** e nao da mesma sequencia temporal de contexto/target. Quando o pool ainda esta vazio (warm-up), o sistema recai em in-batch sampling. Isso evita falsos negativos: dois ticks da mesma acao de jogo seriam muito similares para serem negativos uteis.
 
 **Gate de qualidade pre-treinamento (P3-D):** Antes de iniciar qualquer treinamento, o orchestrator executa `run_pre_training_quality_check()`. Se o report de qualidade nao passar (dados insuficientes, distribuicoes anomalas, features ausentes), o treinamento e **abortado** com um log de erro explicativo. Isso impede de desperdicar GPU em dados que produziriam um modelo inutil.
-
-> **Analogia:** TrainingOrchestrator e como um **treinador de academia com um cronometro e um comentarista esportivo ao vivo**. O trainer executa o ciclo: "Execute uma passagem completa em todos os dados (epoca), verifique os scores do quiz (validacao) e, se nao melhorou em 10 tentativas (paciencia), pare: voce terminou, nao faz sentido supertreinar". Salva tambem a versao melhor do modelo em disco (checkpoint), como quando se salvam os progressos de jogo. A nova adicao e o **comentarista ao vivo** (callback): se alguem estiver ouvindo, o trainer anuncia "Treinamento iniciado!", "Epoca 5 em curso!", "Batch 12 completado, perda 0,03!", "Epoca 5 terminada, val_loss melhorou!", "Treinamento concluido!". Esses anuncios alimentam a gravacao TensorBoard, o monitoramento da maturidade e as projecoes de embedding do Observatorio. Se ninguem estiver ouvindo, o comentarista permanece em silencio, sem nenhum overhead.
 
 ```mermaid
 flowchart TB
@@ -991,11 +941,7 @@ flowchart TB
 >
 > **StaleCheckpointError:** Se as dimensoes de um checkpoint salvo nao corresponderem a configuracao atual do modelo (por exemplo, depois de uma atualizacao de `output_dim=4` para `output_dim=10`), o sistema levanta `StaleCheckpointError` em vez de carregar silenciosamente pesos incompativeis, prevenindo corrupcoes silenciosas.
 
-> **Analogia:** A ModelFactory e como uma **fabrica de brinquedos** que pode construir seis diferentes tipos de robos. Voce diz "Quero um robo JEPA" ou "Preciso de um robo role_head" e ela sabe exatamente quais pecas usar e como monta-lo. O RAP Lite e como a versao "portatil" do robo RAP - mesmas funcionalidades externas, mas com um motor interno mais simples (LSTM em vez de LTC+Hopfield) que funciona em qualquer lugar sem componentes especiais. Cada robo tem uma etiqueta com o nome (nome do checkpoint) para que se possa encontra-lo depois na prateleira. Em vez de lembrar de como e construido cada robo, basta voce dizer a fabrica "construa-me um jepa" e ela cuidara de tudo.
-
 **Persistencia** (`persistence.py`): Salva/carrega com `weights_only=True` (seguranca), cadeia de fallback elegante (especifica do usuario -> global -> pula), gerenciamento das dimensoes nao correspondentes.
-
-> **Analogia:** A persistencia e como **salvar os progressos de um videogame**. Depois do treinamento, o "estado cerebral" do modelo (todos os pesos aprendidos) e salvo em um arquivo `.pt`. Quando voce reinicia o app, carrega o cerebro salvo em vez de recomecar do zero. O flag `weights_only=True` e uma medida de seguranca, como carregar apenas os arquivos de save criados por voce, nao os aleatorios pegos da internet que podem conter virus. A cadeia de fallback significa: "Primeiramente, tente carregar o SEU cerebro salvo pessoal. Se nao existir, tente o predefinido. Se nem esse existir, comece do zero". E se a forma do cerebro mudar (por exemplo adicionando novas funcionalidades), gerencia a discrepancia de forma fluida em vez de travar.
 
 ```mermaid
 flowchart TB
@@ -1033,8 +979,6 @@ RAP_POSITION_SCALE = 500.0         # P9-01: Fator de escala para delta posicao (
 >
 > **Nota arquitetural:** A `CoachNNConfig` dataclass em `model.py` define `output_dim = METADATA_DIM` (25) como default, mas a `ModelFactory` sempre sobrescreve esse valor com `OUTPUT_DIM = 10` durante a instanciacao. O output_dim efetivo em producao para todos os modelos (Legacy, JEPA, VL-JEPA, RAP, RAP Lite) e portanto **10**, nao 25. Historicamente, `OUTPUT_DIM` era 4 (4 metricas selecionadas), depois foi elevado para 10 para cobrir as features agregadas mais relevantes.
 
-> **Analogia:** Esta e a **pagina das configuracoes** para o cerebro da IA. Assim como um videogame tem configuracoes para volume, brilho e dificuldade, a rede neural tem configuracoes para quantas features ler (25), quantos scores produzir (10 - as metricas de desempenho mais importantes sobre as quais o modelo pode sugerir melhorias), quantos exemplos estudar ao mesmo tempo (32 - a dimensao do batch), quao rapido aprende (0.001 - a velocidade de aprendizado, como o seletor de velocidade em uma esteira ergometrica) e quantas vezes revisar todos os dados (50 epocas). O `GLOBAL_SEED = 42` garante que cada execucao de treinamento seja reprodutivel - mesma semente, mesmos resultados - atraves de `set_global_seed()` que define random, numpy, torch e CUDA. Essas configuracoes sao escolhidas com cuidado: um aprendizado rapido demais faz com que o modelo "ultrapasse" e nunca se estabilize; lento demais, leva uma eternidade.
-
 **Gerenciamento de dispositivos:** `get_device()` implementa uma **selecao GPU inteligente de 3 niveis**:
 
 1. **Override usuario:** Se configurado `CUDA_DEVICE` (ex. "cuda:0" ou "cpu"), usa esse
@@ -1043,13 +987,9 @@ RAP_POSITION_SCALE = 500.0         # P9-01: Fator de escala para delta posicao (
 
 Dimensionamento batch baseado na intensidade ML: `Alto=128`, `Medio=32`, `Baixo=8`. O atraso de throttling entre batches se adapta: `Alto=0.0s`, `Medio=0.05s`, `Baixo=0.2s`.
 
-> **Analogia:** O gerenciador dispositivos verifica: "Tenho um motor turbo (GPU/CUDA) disponivel ou preciso usar o motor padrao (CPU)?". A nova logica de selecao e como um **concierge de locacao de carros** que, quando ha varios carros disponiveis (multiplas GPUs), escolhe automaticamente o mais potente e ignora os utilitarios. Se voce tem uma GTX 1650 e uma Intel UHD integrada, o sistema sabe que a GTX e a "esportiva" e a escolhe. Caso contrario, passa para a CPU, que e mais lenta mas ainda funcional.
-
 ### -NeuralRoleHead (MLP para a classificacao dos papeis)
 
 Definido em `role_head.py`. Um MLP leve que preve as probabilidades de papel dos jogadores com base em 5 parametros de estilo de jogo, operando como **opiniao secundaria** junto com a heuristica `RoleClassifier`. A logica de consenso em `role_classifier.py` une ambas as opinioes para produzir a classificacao final.
-
-> **Analogia:** NeuralRoleHead e como um **quiz surpresa**: faz apenas 5 perguntas sobre como voce joga ("Com que frequencia voce sobrevive aos rounds?", "Com que frequencia voce consegue a primeira morte?", "Com que frequencia suas mortes sao trocadas?", "Quao influente voce e?", "Quao agressivo voce e?") e adivinha instantaneamente seu papel em menos de um milissegundo. Funciona junto com o classificador de papeis normal (que utiliza regras de threshold), como dois professores que avaliam o mesmo aluno de forma independente, para depois comparar suas avaliacoes. Se ambos concordam, a confianca aumenta. Em caso de desacordo, a opiniao neural vence se ela for claramente mais segura.
 
 **Arquitetura:**
 
@@ -1130,8 +1070,6 @@ flowchart LR
 **Arquivos:** `training_callbacks.py`, `tensorboard_callback.py`, `maturity_observatory.py`, `embedding_projector.py`
 
 O Observatorio e uma **arquitetura de plugin de 4 niveis** que instrumentaliza o ciclo de treinamento sem modificar o codigo de treinamento principal. Monitora os sinais neurais do treinador durante o treinamento e os traduz em estados de maturidade interpretaveis pelo humano, permitindo a desenvolvedores e operadores entender se o modelo esta confuso, em fase de aprendizado ou pronto para a producao.
-
-> **Analogia:** O Observatorio e como um **sistema de boletins para o cerebro do treinador**. Enquanto o treinador estuda (treinamento), o Observatorio verifica constantemente: "Este cerebro esta confuso (DUVIDA)? Simplesmente esqueceu tudo o que aprendeu (CRISE)? Esta ficando mais inteligente (APRENDIZADO)? Esta tomando decisoes certas com seguranca (CONVICCAO)? Esta completamente maduro (MADURO)?" E como ter um conselheiro escolar que verifica as notas, a coerencia nos trabalhos, os scores dos testes e o comportamento do aluno, e escreve um relatorio de sintese depois de cada aula. Se a caneta do conselheiro quebrar (erro de callback), ele simplesmente encolhe os ombros e vai adiante: o aluno continua a estudar sem interrupcoes.
 
 **Arquitetura de 4 niveis:**
 
@@ -1247,8 +1185,6 @@ maturity/conviction_index, maturity/maturity_score
 
 Mais um log textual do estado atual via logger estruturado.
 
-> **Analogia estendida:** Cada sinal mede um aspecto diferente da "saude mental" do modelo. A `entropia das crencas` e como perguntar "Seu cerebro esta seguro ou confuso?". A `especializacao do gate` e "Seus especialistas tem papeis claros ou fazem todos a mesma coisa?". O `focus nos conceitos` e "Voce esta usando os 16 vocabulos de coaching de forma distinta ou os confunde?". A `acuracia do valor` e "Suas estimativas de vantagem correspondem a realidade?". A `estabilidade dos papeis` e "Voce muda continuamente de ideia ou e coerente?". O indice de conviccao combina tudo isso em uma unica "nota de saude" e o EMA o suaviza para evitar oscilacoes - como um medico que nao se alarma com um unico batimento anomalo mas observa a tendencia.
-
 **Garantias de design:**
 
 - **Impacto zero se desabilitado:** Quando nenhuma callback e registrada, todas as chamadas `CallbackRegistry.fire()` sao no-op. Nenhuma alocacao de memoria, nenhum overhead de calculo.
@@ -1278,8 +1214,6 @@ A Parte 1A documentou o **nucleo cognitivo** do sistema de coaching - todo o sub
 | **ModelFactory** | Instanciacao modelos | 6 tipos de modelo (+ RAP Lite) com persistencia e fallback |
 | **NeuralRoleHead** | Classificacao papeis | MLP 5->32->16->5, consenso com heuristica |
 | **MaturityObservatory** | Introspeccao treinamento | 5 sinais -> indice de conviccao -> 5 estados de maturidade |
-
-> **Analogia:** Se o sistema de coaching fosse um **ser humano**, a Parte 1A descreveu seu cerebro - as redes neurais que aprendem, o sistema de avaliacao da maturidade que decide quando o cerebro esta pronto para dar conselhos, e a fabrica que constroi e salva cada tipo de cerebro. Mas um cerebro sozinho nao basta: precisa de **olhos e ouvidos** para perceber o mundo e de um **especialista medico** para diagnosticos aprofundados. A **Parte 1B** documenta exatamente isso.
 
 ```mermaid
 flowchart LR
