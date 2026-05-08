@@ -155,6 +155,8 @@ class TrainingOrchestrator:
         trainer_kwargs = {"lr": self.learning_rate}
         if self.model_type in ("jepa", "vl-jepa", "rap"):
             trainer_kwargs["t_max"] = self.max_epochs  # NN-M-10: sync scheduler with epochs
+        if self.model_type == "rap":
+            trainer_kwargs["accumulation_steps"] = self._accumulation_steps
         trainer = self.TrainerClass(model, **trainer_kwargs)
 
         # 2. Prepare Data
@@ -374,7 +376,7 @@ class TrainingOrchestrator:
                 else:
                     # RAP signature: batch dict directly — returns dict with "loss" key.
                     # KeyError here is a programming bug (not data) — let it propagate.
-                    result = trainer.train_step(tensor_batch)
+                    result = trainer.train_step(tensor_batch, step_optimizer=do_step)
                     if not isinstance(result, dict) or "loss" not in result:
                         raise ValueError(
                             f"RAP train_step must return dict with 'loss' key, "
@@ -642,6 +644,77 @@ class TrainingOrchestrator:
             "timespans": timespans,  # (B, T) RAP-AUDIT-05: inter-tick time intervals
         }
 
+    def _rap_prefetch_caches(self, raw_items, match_mgr, caches):
+        """Bulk pre-fetch match data for entire window: 2 queries instead of 288.
+
+        Without this, _build_sample_knowledge issues 3 queries per tick with
+        unique cache keys — zero reuse despite 99.7% data overlap between
+        consecutive ticks (320-tick lookback shifts by 1 each tick).
+        """
+        if match_mgr is None:
+            return
+
+        match_tick_map: dict = {}
+        for item in raw_items:
+            mid = getattr(item, "match_id", None)
+            if mid is None:
+                demo_name = str(getattr(item, "demo_name", "") or "")
+                if demo_name:
+                    from Programma_CS2_RENAN.backend.storage.match_data_manager import (
+                        demo_name_to_match_id,
+                    )
+
+                    mid = demo_name_to_match_id(demo_name)
+            if mid is not None:
+                match_tick_map.setdefault(mid, []).append(int(getattr(item, "tick", 0)))
+
+        if not match_tick_map:
+            return
+
+        all_players_cache = caches["all_players"]
+        window_cache = caches["window"]
+        event_cache = caches["event"]
+
+        for match_id, ticks in match_tick_map.items():
+            min_tick = min(ticks)
+            max_tick = max(ticks)
+            lookback_start = max(0, min_tick - 320)
+            event_end = max_tick + 64
+
+            try:
+                bulk_states = match_mgr.get_all_players_tick_window(
+                    match_id, max_tick, window_size=max_tick - lookback_start
+                )
+
+                for t in ticks:
+                    ap_key = (match_id, t)
+                    if ap_key not in all_players_cache:
+                        all_players_cache[ap_key] = bulk_states.get(t, [])
+
+                for t in ticks:
+                    wnd_key = (match_id, t)
+                    if wnd_key not in window_cache:
+                        wnd_start = max(0, t - 320)
+                        window_cache[wnd_key] = {
+                            k: v for k, v in bulk_states.items() if wnd_start <= k <= t
+                        }
+
+                bulk_events = match_mgr.get_events_for_tick_range(
+                    match_id, lookback_start, event_end
+                )
+
+                for t in ticks:
+                    evt_key = (match_id, t)
+                    if evt_key not in event_cache:
+                        evt_start = max(0, t - 320)
+                        evt_end_t = t + 64
+                        event_cache[evt_key] = [
+                            e for e in bulk_events if evt_start <= e.tick <= evt_end_t
+                        ]
+
+            except Exception as e:
+                logger.debug("Bulk prefetch failed for match_id=%s: %s", match_id, e)
+
     def _rap_collect_per_tick(self, raw_items, tf, kb, match_mgr, caches):
         """Phase 1: per-tick tensors, value+mask (LEAK-01), strat label.
 
@@ -652,6 +725,7 @@ class TrainingOrchestrator:
         the value-head loss instead of being trained on the future-leaked
         round_outcome label.
         """
+        self._rap_prefetch_caches(raw_items, match_mgr, caches)
         per_tick_view: list = []
         per_tick_map: list = []
         per_tick_motion: list = []

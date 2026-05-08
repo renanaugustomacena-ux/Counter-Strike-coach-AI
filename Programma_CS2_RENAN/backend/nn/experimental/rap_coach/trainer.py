@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.amp import GradScaler, autocast
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.model import RAPCoachModel
@@ -26,107 +27,109 @@ class RAPTrainer:
     # is penalised 2× relative to X/Y. (Task 2.17.1: Strict verticality enforcement)
     Z_AXIS_PENALTY_WEIGHT = 2.0
 
-    def __init__(self, model: RAPCoachModel, lr=1e-4, t_max=100):
+    def __init__(self, model: RAPCoachModel, lr=1e-4, t_max=100, accumulation_steps: int = 4):
         self.model = model
-        # RAP-AUDIT-10: weight_decay=1e-2 per Loshchilov & Hutter (ICLR 2019).
-        # Previous 1e-4 provided negligible regularization with limited training data.
         self.optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-2)
-        self.criterion_strat = nn.MSELoss()  # For strategy optimization
-        self.criterion_val = nn.MSELoss()  # For pedagogical evaluation
-        self.criterion_pos = nn.MSELoss()  # For positioning (Optimal Shadow)
+        self.criterion_strat = nn.MSELoss()
+        self.criterion_val = nn.MSELoss()
+        self.criterion_pos = nn.MSELoss()
         self.z_axis_penalty_weight = self.Z_AXIS_PENALTY_WEIGHT
-        # RAP-AUDIT-10: CosineAnnealingLR for improved convergence (1-5% better
-        # final loss per academic consensus). JEPA trainer already uses this pattern.
-        # The orchestrator calls trainer.scheduler.step() per epoch if present.
+        self._accumulation_steps = accumulation_steps
         self.scheduler = CosineAnnealingLR(self.optimizer, T_max=t_max, eta_min=1e-6)
 
-    def train_step(self, batch):
-        """
-        Single optimization step over a temporal window.
-        """
-        self.optimizer.zero_grad()
+        dev = next(model.parameters()).device
+        self._use_amp = dev.type == "cuda"
+        self._scaler = GradScaler("cuda", enabled=self._use_amp)
 
-        # Forward Pass — includes timespans for LTC ODE dynamics (RAP-AUDIT-05)
-        try:
-            outputs = self.model(
-                batch["view"],
-                batch["map"],
-                batch["motion"],
-                batch["metadata"],
-                timespans=batch.get("timespans"),
+    def train_step(self, batch, *, step_optimizer: bool = True):
+        """Single optimisation step over a temporal window.
+
+        Args:
+            batch: tensor dict produced by the orchestrator.
+            step_optimizer: when False, accumulate gradients without stepping.
+                The orchestrator sets this to implement gradient accumulation.
+        """
+        dev_type = next(self.model.parameters()).device.type
+
+        with autocast(dev_type, enabled=self._use_amp):
+            try:
+                outputs = self.model(
+                    batch["view"],
+                    batch["map"],
+                    batch["motion"],
+                    batch["metadata"],
+                    timespans=batch.get("timespans"),
+                )
+            except Exception:
+                logger.exception("Forward pass failed during train_step")
+                raise
+
+            loss_strat = self.criterion_strat(outputs["advice_probs"], batch["target_strat"])
+
+            val_mask = batch.get("val_mask")
+            if val_mask is not None and val_mask.any() and not val_mask.all():
+                loss_val = self.criterion_val(
+                    outputs["value_estimate"][val_mask], batch["target_val"][val_mask]
+                )
+            elif val_mask is not None and not val_mask.any():
+                loss_val = torch.tensor(0.0, device=loss_strat.device)
+            else:
+                loss_val = self.criterion_val(outputs["value_estimate"], batch["target_val"])
+
+            gate_weights = outputs.get("gate_weights")
+            loss_sparsity = self.model.compute_sparsity_loss(gate_weights)
+
+            loss_pos = torch.tensor(0.0, device=loss_strat.device)
+            z_error = 0.0
+            if "target_pos" in batch:
+                loss_pos, z_error = self.compute_position_loss(
+                    outputs["optimal_pos"], batch["target_pos"]
+                )
+
+            total_loss = (
+                self.LOSS_WEIGHT_STRATEGY * loss_strat
+                + self.LOSS_WEIGHT_VALUE * loss_val
+                + self.LOSS_WEIGHT_SPARSITY * loss_sparsity
+                + self.LOSS_WEIGHT_POSITION * loss_pos
             )
-        except Exception:
-            logger.exception("Forward pass failed during train_step")
-            raise
 
-        # 1. Strategy Loss (Decision optimality)
-        # In actual training, 'targets' come from pro-baseline deltas
-        loss_strat = self.criterion_strat(outputs["advice_probs"], batch["target_strat"])
-
-        # 2. Pedagogy Loss (Value estimation)
-        # V(s) should approximate the eventual round outcome.
-        # NN-M-12: mask out samples with missing outcome data.
-        val_mask = batch.get("val_mask")
-        if val_mask is not None and val_mask.any() and not val_mask.all():
-            masked_pred = outputs["value_estimate"][val_mask]
-            masked_target = batch["target_val"][val_mask]
-            loss_val = self.criterion_val(masked_pred, masked_target)
-        elif val_mask is not None and not val_mask.any():
-            loss_val = torch.tensor(0.0, device=loss_strat.device)
-        else:
-            loss_val = self.criterion_val(outputs["value_estimate"], batch["target_val"])
-
-        # 3. Sparsity Loss (Interpretation) — pass gate_weights explicitly for thread-safety (F3-07)
-        gate_weights = outputs.get("gate_weights")
-        loss_sparsity = self.model.compute_sparsity_loss(gate_weights)
-
-        # LOGGING: Sparsity Ratio (How many gate weights are effectively zero?)
         sparsity_ratio = 0.0
         if gate_weights is not None:
             with torch.no_grad():
-                sparse_mask = gate_weights.abs() < 0.01
-                sparsity_ratio = sparse_mask.float().mean().item()
+                sparsity_ratio = (gate_weights.abs() < 0.01).float().mean().item()
 
-        # 4. Position Loss (Verticality Awareness - Task 2.17.1)
-        # We compare predicted position delta (optimal_pos) against target delta
-        # If target_pos_delta is not in batch, we default to 0 (unsupervised) or skip
-        loss_pos = torch.tensor(0.0, device=loss_strat.device)
-        z_error = 0.0
+        self._scaler.scale(total_loss / self._accumulation_steps).backward()
 
-        if "target_pos" in batch:
-            loss_pos, z_error = self.compute_position_loss(
-                outputs["optimal_pos"], batch["target_pos"]
-            )
-        else:
-            logger.debug("target_pos absent from batch — position head receives no gradient")
-
-        # NN-58: Use class-level loss weights for tunable multi-task balance
-        total_loss = (
-            self.LOSS_WEIGHT_STRATEGY * loss_strat
-            + self.LOSS_WEIGHT_VALUE * loss_val
-            + self.LOSS_WEIGHT_SPARSITY * loss_sparsity
-            + self.LOSS_WEIGHT_POSITION * loss_pos
-        )
-
-        total_loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
-        self.optimizer.step()
+        if step_optimizer:
+            self._scaler.unscale_(self.optimizer)
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+            self._scaler.step(self.optimizer)
+            self._scaler.update()
+            self.optimizer.zero_grad()
 
         logger.debug(
-            "train_step: loss=%.4f sparsity=%.3f pos_loss=%.4f z_err=%.4f",
+            "train_step: loss=%.4f sparsity=%.3f pos_loss=%.4f z_err=%.4f amp=%s",
             total_loss.item(),
             sparsity_ratio,
             loss_pos.item(),
             z_error,
+            self._use_amp,
         )
 
-        # Return dict with metrics for the Orchestrator to log
         return {
             "loss": total_loss.item(),
             "sparsity_ratio": sparsity_ratio,
             "loss_pos": loss_pos.item(),
             "z_error": z_error,
         }
+
+    def _optimizer_step(self):
+        """Flush accumulated gradients — called by orchestrator at epoch end."""
+        self._scaler.unscale_(self.optimizer)
+        torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+        self._scaler.step(self.optimizer)
+        self._scaler.update()
+        self.optimizer.zero_grad()
 
     def compute_position_loss(self, pred_delta, target_delta):
         """
