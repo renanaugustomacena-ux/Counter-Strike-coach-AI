@@ -56,7 +56,7 @@ _device_logged = False
 _cached_device = None
 
 # Keywords that identify integrated/low-power GPUs (should be deprioritized)
-_INTEGRATED_GPU_KEYWORDS = ("uhd", "iris", "integrated", "intel")
+_INTEGRATED_GPU_KEYWORDS = ("uhd", "iris", "integrated", "intel", "processor", "apu")
 
 
 def _select_best_cuda_device() -> torch.device:

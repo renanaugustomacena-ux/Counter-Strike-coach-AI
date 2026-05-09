@@ -166,7 +166,7 @@
     "backend/nn/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "backend/nn/advanced/__init__.py": "3971d5e4c0ae524c1e60d8936ca3103a1689b0c89b4591b6ece3283d793254c7",
     "backend/nn/coach_manager.py": "ed46925ec1a3532784589832e90b44072b5cd0184513ec8b52dbb7152daffbcb",
-    "backend/nn/config.py": "57414db55631028632a30441462085b2e14e1875751c51bfab33fbc30fc29427",
+    "backend/nn/config.py": "fb55bbc340356e62b3cf6bd1d3c5a85bafa5111482658e2ea9b0d285173656b1",
     "backend/nn/data_quality.py": "c8cb1208bfcba5f16623e907c96890f9f2883ee184256acb92363ed0b700e290",
     "backend/nn/dataset.py": "48c044a0836d27fe50f5ed3aeaade64879737e76421750ed3501758b9ef2c4be",
     "backend/nn/early_stopping.py": "981d47452e64553b6c451f56208215b03d3f719c1c65d1f5087e373b5c9068d2",
