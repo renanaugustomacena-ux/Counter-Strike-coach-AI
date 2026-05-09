@@ -151,6 +151,7 @@ PYCHARM_CONFIGURATION_GUIDE*.md
 !/reports/README.md
 !/reports/README_IT.md
 !/reports/README_PT.md
+evals/cs2_coach_bench/reports/
 
 # Build/runtime artifacts at root
 Build_Health_Report.json
