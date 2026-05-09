@@ -213,6 +213,19 @@ def load_user_settings() -> dict:
             except Exception as e:
                 app_logger.error("Failed to load user settings from %s: %s", SETTINGS_PATH, e)
 
+        # Docker / CI override: path-based settings can be remapped via env vars
+        # so that host-absolute paths in user_settings.json are replaced by
+        # container-internal mount points (e.g. PRO_DEMO_PATH=/workspace/DEMO_PRO_PLAYERS).
+        for path_key in (
+            "PRO_DEMO_PATH",
+            "DEFAULT_DEMO_PATH",
+            "BRAIN_DATA_ROOT",
+            "CUSTOM_STORAGE_PATH",
+        ):
+            env_val = os.environ.get(path_key)
+            if env_val:
+                current[path_key] = env_val
+
         # C-05: Retrieve from keyring; if the disk value is the mask sentinel, treat as empty
         # so that a failed keyring doesn't return the literal mask string to callers.
         _MASK = "PROTECTED_BY_WINDOWS_VAULT"

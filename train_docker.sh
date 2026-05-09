@@ -31,6 +31,7 @@ exec docker run --rm -it \
   -v "$HFLAYERS_SRC":/opt/venv/lib/python3.12/site-packages/hflayers:ro \
   -w /workspace/Counter-Strike-coach-AI-main \
   -e PYTHONPATH=/workspace/Counter-Strike-coach-AI-main \
+  -e PRO_DEMO_PATH=/workspace/DEMO_PRO_PLAYERS \
   -e PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
   -e PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring \
   "$ROCM_IMAGE" \
