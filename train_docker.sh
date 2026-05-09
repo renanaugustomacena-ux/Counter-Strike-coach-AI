@@ -32,6 +32,7 @@ exec docker run --rm -it \
   -w /workspace/Counter-Strike-coach-AI-main \
   -e PYTHONPATH=/workspace/Counter-Strike-coach-AI-main \
   -e PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+  -e PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring \
   "$ROCM_IMAGE" \
   bash -c "
     echo '>>> Installing project dependencies...'

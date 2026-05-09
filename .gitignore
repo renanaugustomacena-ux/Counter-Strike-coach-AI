@@ -30,6 +30,7 @@ build/
 !/logs/README.md
 !/logs/README_IT.md
 !/logs/README_PT.md
+Programma_CS2_RENAN/logs/
 
 # Data & Cache
 *.dem
@@ -62,6 +63,8 @@ user_settings.json
 
 # Model checkpoints (binary, regenerable via training)
 *.pt
+*.pt.meta.json
+Programma_CS2_RENAN/models/global/_backup_*/
 
 # OS generated
 nul
@@ -153,6 +156,12 @@ PYCHARM_CONFIGURATION_GUIDE*.md
 Build_Health_Report.json
 Compiler_Readiness_Report.json
 training_progress.json
+docs/d2a_run_report.json
+
+# Internal engineering reports (local-only, not for public distribution)
+/CS2_Coach_Modernization_Report.pdf
+/CS2_Coach_Supplement_N260.pdf
+/docs/research/
 
 # Test/validation artifacts
 .coverage
