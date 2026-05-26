@@ -18,7 +18,11 @@ Guida completa per installare, configurare e utilizzare il Macena CS2 Analyzer s
 10. [Dashboard Prestazioni](#10-dashboard-prestazioni)
 11. [Visualizzatore Tattico (Widget Mappa 2D)](#11-visualizzatore-tattico-widget-mappa-2d)
 12. [Profilo Utente](#12-profilo-utente)
-13. [Risoluzione dei Problemi](#13-risoluzione-dei-problemi)
+13. [Migliori Pratiche per il Coaching AI](#13-migliori-pratiche-per-il-coaching-ai)
+14. [Configurazione Avanzata (Modalita' Esperto)](#14-configurazione-avanzata-modalita-esperto)
+15. [Ottimizzazione delle Prestazioni](#15-ottimizzazione-delle-prestazioni)
+16. [Comunita' e Supporto](#16-comunita-e-supporto)
+17. [Risoluzione dei Problemi](#17-risoluzione-dei-problemi)
 
 ---
 
@@ -442,7 +446,76 @@ Mostra il tuo avatar, nome, ruolo e biografia. Clicca l'**icona della matita** p
 
 ---
 
-## 13. Risoluzione dei Problemi
+## 13. Migliori Pratiche per il Coaching AI
+
+Per ottenere il massimo dal coach AI, segui queste linee guida:
+
+- **Sii Specifico nella Chat**: Invece di chiedere "Come sto andando?", prova con "Com'era il mio posizionamento nel sito A di de_mirage?" o "Quali utility dovrei usare per il B-split su Anubis?". Piu' contesto fornisci, meglio il motore RAG potra' recuperare i tick di partita rilevanti.
+- **La "Regola dei 10 Demo"**: Lo "Stato delle Credenze" (Belief State) e il "Radar delle Abilita'" (Skill Radar) dell'AI richiedono una base di dati per essere accurati. Consigliamo di importare almeno **10 demo recenti** prima di affidarsi all'analisi delle tendenze a lungo termine.
+- **Interpretare lo Skill Radar**:
+  - **Bordo Esterno**: Rappresenta le prestazioni di livello professionale (il "Gold Standard").
+  - **Il Tuo Grafico**: Il tuo percentile rispetto alla base dei professionisti. Un calo in un'area (es. "Utility") e' un suggerimento diretto a controllare il "Pannello Utility" nella Dashboard delle Prestazioni.
+- **Lo Stato delle Credenze (Belief State)**: Questa percentuale (0-100%) indica quanto l'AI e' sicura della sua valutazione attuale. Se e' inferiore al 50%, importa piu' demo per ridurre la "varianza" nel tuo profilo.
+
+---
+
+## 14. Configurazione Avanzata (Modalita' Esperto)
+
+Per gli utenti esperti e gli amministratori di sistema, l'app puo' essere perfezionata tramite il file `user_settings.json` situato nella directory `Programma_CS2_RENAN/`.
+
+### Modifica Manuale delle Impostazioni
+Puoi modificare manualmente `user_settings.json` per configurare flag nascosti:
+- `debug_mode`: Imposta su `true` per abilitare il logging dettagliato in `logs/app.log`.
+- `custom_theme_path`: Punta a una directory locale per asset UI personalizzati.
+
+### Moltiplicatore di Velocita' e Bilanciamento CPU
+Nell'**Hub di Importazione Pro**, il selettore "Velocita'" mappa un `speed_multiplier` nella configurazione:
+- **Eco (0.5x)**: Limita l'analisi dei demo al 50% dei core logici disponibili.
+- **Turbo (2.0x)**: Sovralloca i thread per massimizzare la velocita' di importazione a costo di un'alta latenza di sistema.
+
+### Configurazioni Headless e Server
+Se in esecuzione su un server Linux headless:
+- Usa l'intervallo `auto_scan` per mantenere il database sincronizzato con una cartella popolata da uno script esterno `ftp` o `rsync`.
+- Avvia con il flag `-n` per saltare l'interfaccia Qt ed eseguire solo il worker di importazione/addestramento:
+  ```bash
+  python -m Programma_CS2_RENAN.run_worker
+  ```
+
+---
+
+## 15. Ottimizzazione delle Prestazioni
+
+### Suggerimenti per PC di Fascia Bassa
+- **Modalita' Eco**: Mantieni sempre l'Hub di Importazione su "Eco" per evitare scatti nell'interfaccia.
+- **Qualita' dei Caratteri**: Nelle Impostazioni, scegli "Roboto" o "Arial" per migliori prestazioni di rendering su GPU integrate.
+- **Riduci la Scala dell'Interfaccia**: Usa la dimensione del carattere "Piccolo" per ridurre l'impronta di memoria della finestra Qt.
+
+### Archiviazione: SSD vs HDD
+La **Root dei Dati AI** contiene migliaia di piccoli file `.json` e `.pt`.
+- **SSD (Altamente Raccomandato)**: Caricamento dei modelli e recupero della base di conoscenza fino a 10 volte piu' veloce.
+- **HDD**: Aspettati ritardi significativi quando apri la "Schermata Coach" o passi da un dettaglio partita all'altro.
+
+### Stabilita' CUDA
+Se l'app si blocca frequentemente su schede NVIDIA, prova il flag `--cpu-only` all'avvio per bypassare il toolkit CUDA ed eseguire la rete neurale sul tuo processore:
+```bash
+python -m Programma_CS2_RENAN.apps.qt_app.app --cpu-only
+```
+
+---
+
+## 16. Comunita' e Supporto
+
+- **Contribuire**: I contributi sono benvenuti! Leggi `CONTRIBUTING.md` nella directory principale per gli standard di codifica, i flussi di lavoro delle pull request e il glossario del Linguaggio Ubiquo.
+- **Segnalazione Bug**: Hai trovato un bug? Apri un issue su GitHub usando il modello **Bug Report**. Includi il tuo `logs/app.log` e le specifiche del sistema.
+- **Richieste di Funzionalita'**: Usa i **Discussions** di GitHub o il modello **Feature Request** per suggerire nuovi modelli AI o widget per l'interfaccia.
+
+---
+
+## 17. Risoluzione dei Problemi
+
+### "L'antivirus blocca lo script di importazione"
+Alcuni software antivirus (come Windows Defender o Bitdefender) potrebbero segnalare il parser dei demo come un "Trojan" perche' legge strutture simili alla memoria da file binari.
+- **Rimedio**: Aggiungi la cartella del progetto alla **Lista di Esclusione** del tuo antivirus.
 
 ### "ModuleNotFoundError: No module named 'PySide6'"
 

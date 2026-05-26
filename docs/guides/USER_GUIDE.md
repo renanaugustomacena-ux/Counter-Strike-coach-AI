@@ -18,7 +18,11 @@ Complete guide to install, configure, and use the Macena CS2 Analyzer on Windows
 10. [Performance Dashboard](#10-performance-dashboard)
 11. [Tactical Viewer (2D Map Widget)](#11-tactical-viewer-2d-map-widget)
 12. [User Profile](#12-user-profile)
-13. [Troubleshooting](#13-troubleshooting)
+13. [AI Coaching Best Practices](#13-ai-coaching-best-practices)
+14. [Advanced Configuration (Expert Mode)](#14-advanced-configuration-expert-mode)
+15. [Performance Optimization](#15-performance-optimization)
+16. [Community & Support](#16-community--support)
+17. [Troubleshooting](#17-troubleshooting)
 
 ---
 
@@ -439,7 +443,76 @@ Shows your player avatar, name, role, and bio. Click the **pencil icon** to edit
 
 ---
 
-## 13. Troubleshooting
+## 13. AI Coaching Best Practices
+
+To get the most out of the AI coach, follow these guidelines:
+
+- **Be Specific in Chat**: Instead of asking "How am I doing?", try "How was my positioning on de_mirage A-site?" or "What utility should I use for B-split on Anubis?". The more context you provide, the better the RAG engine can retrieve relevant match ticks.
+- **The "10-Demo Rule"**: The AI's "Belief State" and "Skill Radar" require a baseline of data to be accurate. We recommend ingesting at least **10 recent demos** before trusting the long-term trend analysis.
+- **Interpreting the Skill Radar**:
+  - **Outer Rim**: Represents professional-tier performance (the "Gold Standard").
+  - **Your Plot**: Your percentile ranking relative to the pro baseline. A dip in one area (e.g., "Utility") is a direct hint to watch the "Utility Panel" in the Performance Dashboard.
+- **The Belief State**: This percentage (0-100%) indicates how confident the AI is in its current assessment. If it's below 50%, ingest more demos to reduce the "variance" in your profile.
+
+---
+
+## 14. Advanced Configuration (Expert Mode)
+
+For power users and server admins, the app can be fine-tuned via the `user_settings.json` file located in the `Programma_CS2_RENAN/` directory.
+
+### Manual Settings Editing
+You can manually edit `user_settings.json` to configure hidden flags:
+- `debug_mode`: Set to `true` to enable verbose logging in `logs/app.log`.
+- `custom_theme_path`: Point to a local directory for custom UI assets.
+
+### Speed Multiplier & CPU Balance
+In the **Pro Ingestion Hub**, the "Speed" selector maps to a `speed_multiplier` in the config:
+- **Eco (0.5x)**: Limits demo parsing to 50% of available logical cores.
+- **Turbo (2.0x)**: Over-subscribes threads to maximize ingestion speed at the cost of high system latency.
+
+### Headless & Server Setups
+If running on a headless Linux server:
+- Use the `auto_scan` interval to keep the database synced with a folder being populated by an external `ftp` or `rsync` script.
+- Launch with the `-n` flag to skip the Qt GUI and run only the ingestion/training worker:
+  ```bash
+  python -m Programma_CS2_RENAN.run_worker
+  ```
+
+---
+
+## 15. Performance Optimization
+
+### Low-End PC Tips
+- **Eco Mode**: Always keep the Ingestion Hub on "Eco" to prevent UI stuttering.
+- **Font Quality**: In Settings, choose "Roboto" or "Arial" for better rendering performance on integrated GPUs.
+- **Reduce UI Scale**: Use the "Small" font size to reduce the memory footprint of the Qt window.
+
+### Storage: SSD vs HDD
+The **Brain Data Root** contains thousands of small `.json` and `.pt` files.
+- **SSD (Highly Recommended)**: Up to 10x faster model loading and knowledge base retrieval.
+- **HDD**: Expect significant delays when opening the "Coach Screen" or switching between match details.
+
+### CUDA Stability
+If the app crashes frequently on NVIDIA cards, try the `--cpu-only` flag during launch to bypass the CUDA toolkit and run the neural network on your processor:
+```bash
+python -m Programma_CS2_RENAN.apps.qt_app.app --cpu-only
+```
+
+---
+
+## 16. Community & Support
+
+- **Contributing**: We welcome contributions! Please read `CONTRIBUTING.md` in the root directory for coding standards, pull request workflows, and the Ubiquitous Language glossary.
+- **Reporting Bugs**: Found a bug? Open an issue on GitHub using the **Bug Report** template. Include your `logs/app.log` and system specs.
+- **Feature Requests**: Use the GitHub **Discussions** or **Feature Request** template to suggest new AI models or UI widgets.
+
+---
+
+## 17. Troubleshooting
+
+### "Antivirus blocking the ingestion script"
+Some antivirus software (like Windows Defender or Bitdefender) may flag the demo parser as a "Trojan" because it reads memory-like structures from binary files.
+- **Fix**: Add the project folder to your antivirus **Exclusion List**.
 
 ### "ModuleNotFoundError: No module named 'PySide6'"
 

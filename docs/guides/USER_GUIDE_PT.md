@@ -18,7 +18,11 @@ Guia completo para instalar, configurar e usar o Macena CS2 Analyzer no Windows 
 10. [Painel de Desempenho](#10-painel-de-desempenho)
 11. [Visualizador Tatico (Widget de Mapa 2D)](#11-visualizador-tatico-widget-de-mapa-2d)
 12. [Perfil do Jogador](#12-perfil-do-jogador)
-13. [Solucao de Problemas](#13-solucao-de-problemas)
+13. [Melhores Praticas para Coaching de IA](#13-melhores-praticas-para-coaching-de-ia)
+14. [Configuracao Avancada (Modo Expert)](#14-configuracao-avancada-modo-expert)
+15. [Otimizacao de Desempenho](#15-otimizacao-de-desempenho)
+16. [Comunidade e Suporte](#16-comunidade-e-suporte)
+17. [Solucao de Problemas](#17-solucao-de-problemas)
 
 ---
 
@@ -439,7 +443,76 @@ Mostra seu avatar de jogador, nome, funcao e biografia. Clique no **icone de lap
 
 ---
 
-## 13. Solucao de Problemas
+## 13. Melhores Praticas para Coaching de IA
+
+Para obter o maximo do coach de IA, siga estas diretrizes:
+
+- **Seja Especifico no Chat**: Em vez de perguntar "Como estou indo?", tente "Como foi meu posicionamento no bombsite A da de_mirage?" ou "Que utilitarios devo usar para o B-split na Anubis?". Quanto mais contexto voce fornecer, melhor o motor RAG podera recuperar os ticks de partida relevantes.
+- **A "Regra dos 10 Demos"**: O "Estado de Crenca" (Belief State) e o "Radar de Habilidades" (Skill Radar) da IA requerem uma base de dados para serem precisos. Recomendamos ingerir pelo menos **10 demos recentes** antes de confiar na analise de tendencia de longo prazo.
+- **Interpretando o Skill Radar**:
+  - **Borda Externa**: Representa o desempenho de nivel profissional (o "Gold Standard").
+  - **Seu Grafico**: Seu ranking percentil em relacao a base profissional. Uma queda em uma area (ex.: "Utilitarios") e uma dica direta para verificar o "Painel de Utilitarios" no Painel de Desempenho.
+- **O Estado de Crenca (Belief State)**: Esta porcentagem (0-100%) indica o quao confiante a IA esta em sua avaliacao atual. Se estiver abaixo de 50%, ingira mais demos para reduzir a "variancia" no seu perfil.
+
+---
+
+## 14. Configuracao Avancada (Modo Expert)
+
+Para usuarios avancados e administradores de servidor, o aplicativo pode ser ajustado atraves do arquivo `user_settings.json` localizado no diretorio `Programma_CS2_RENAN/`.
+
+### Edicao Manual de Configuracoes
+Voce pode editar manualmente o `user_settings.json` para configurar flags ocultas:
+- `debug_mode`: Defina como `true` para habilitar o log detalhado em `logs/app.log`.
+- `custom_theme_path`: Aponte para um diretorio local para assets de UI personalizados.
+
+### Multiplicador de Velocidade e Equilíbrio de CPU
+No **Hub de Ingestao Pro**, o seletor de "Velocidade" mapeia para um `speed_multiplier` na config:
+- **Eco (0.5x)**: Limita o parsing de demos a 50% dos nucleos logicos disponiveis.
+- **Turbo (2.0x)**: Sobre-aloca threads para maximizar a velocidade de ingestao ao custo de alta latencia do sistema.
+
+### Setups Headless e Servidor
+Se estiver rodando em um servidor Linux headless:
+- Use o intervalo `auto_scan` para manter o banco de dados sincronizado com uma pasta sendo populada por um script externo de `ftp` ou `rsync`.
+- Inicie com a flag `-n` para pular a interface Qt e rodar apenas o worker de ingestao/treinamento:
+  ```bash
+  python -m Programma_CS2_RENAN.run_worker
+  ```
+
+---
+
+## 15. Otimizacao de Desempenho
+
+### Dicas para PCs de Baixo Custo
+- **Modo Eco**: Sempre mantenha o Hub de Ingestao em "Eco" para evitar travamentos na UI.
+- **Qualidade da Fonte**: Nas Configuracoes, escolha "Roboto" ou "Arial" para melhor desempenho de renderizacao em GPUs integradas.
+- **Reduzir Escala da UI**: Use o tamanho de fonte "Pequeno" para reduzir o uso de memoria da janela Qt.
+
+### Armazenamento: SSD vs HDD
+O **Diretorio Raiz de Dados** contem milhares de pequenos arquivos `.json` e `.pt`.
+- **SSD (Altamente Recomendado)**: Carregamento de modelos e recuperacao de base de conhecimento ate 10x mais rapido.
+- **HDD**: Espere atrasos significativos ao abrir a "Tela do Coach" ou alternar entre detalhes de partidas.
+
+### Estabilidade CUDA
+Se o aplicativo travar frequentemente em placas NVIDIA, tente a flag `--cpu-only` durante o inicio para ignorar o toolkit CUDA e rodar a rede neural no seu processador:
+```bash
+python -m Programma_CS2_RENAN.apps.qt_app.app --cpu-only
+```
+
+---
+
+## 16. Comunidade e Suporte
+
+- **Contribuindo**: Aceitamos contribuicoes! Leia `CONTRIBUTING.md` no diretorio raiz para padroes de codigo, fluxos de pull request e o glossario de Linguagem Ubiqua.
+- **Relatando Bugs**: Encontrou um bug? Abra uma issue no GitHub usando o template de **Bug Report**. Inclua seu `logs/app.log` e especificacoes do sistema.
+- **Solicitacoes de Recursos**: Use as **Discussions** do GitHub ou o template de **Feature Request** para sugerir novos modelos de IA ou widgets de UI.
+
+---
+
+## 17. Solucao de Problemas
+
+### "Antivirus bloqueando o script de ingestao"
+Alguns softwares antivirus (como Windows Defender ou Bitdefender) podem sinalizar o parser de demos como um "Trojan" porque ele le estruturas semelhantes a memoria de arquivos binarios.
+- **Correcao**: Adicione a pasta do projeto a **Lista de Exclusoes** do seu antivirus.
 
 ### "ModuleNotFoundError: No module named 'PySide6'"
 
