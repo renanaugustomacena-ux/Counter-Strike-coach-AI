@@ -15,6 +15,7 @@ from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_
 from Programma_CS2_RENAN.backend.processing.state_reconstructor import RAPStateReconstructor
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager, init_database
 from Programma_CS2_RENAN.backend.storage.db_models import (
+    DatasetSplit,
     PlayerMatchStats,
     PlayerProfile,
     PlayerTickState,
@@ -356,11 +357,11 @@ class CoachTrainingManager:
                 val_idx = int(n * 0.85)
                 for i, m in enumerate(matches):
                     if i < train_idx:
-                        m.dataset_split = "train"
+                        m.dataset_split = DatasetSplit.TRAIN
                     elif i < val_idx:
-                        m.dataset_split = "val"
+                        m.dataset_split = DatasetSplit.VAL
                     else:
-                        m.dataset_split = "test"
+                        m.dataset_split = DatasetSplit.TEST
                     session.add(m)
 
             temporal_assign(pros)
@@ -502,7 +503,7 @@ class CoachTrainingManager:
         except Exception as e:
             app_logger.warning("Role Head training failed (non-fatal): %s", e)
 
-    def _fetch_jepa_ticks(self, is_pro: bool, split: str = "train"):
+    def _fetch_jepa_ticks(self, is_pro: bool, split: DatasetSplit = DatasetSplit.TRAIN):
         """Fetch ticks for JEPA/RAP training with proper split filtering.
 
         P4-A: Only uses demos whose per-match DB is marked match_complete=True,
@@ -562,7 +563,9 @@ class CoachTrainingManager:
             app_logger.info("Loaded %s ticks for %s split", len(ticks), split)
             return ticks
 
-    def _fetch_rap_windows(self, is_pro: bool, split: str = "train", window_size: int = 96):
+    def _fetch_rap_windows(
+        self, is_pro: bool, split: DatasetSplit = DatasetSplit.TRAIN, window_size: int = 96
+    ):
         """Fetch windowed tick data for RAP training from completed matches.
 
         Unlike JEPA's flat tick fetcher, RAP needs contiguous temporal windows

@@ -73,7 +73,11 @@ def run_pre_training_quality_check(
         from sqlmodel import func, select
 
         from Programma_CS2_RENAN.backend.storage.database import get_db_manager
-        from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats, PlayerTickState
+        from Programma_CS2_RENAN.backend.storage.db_models import (
+            DatasetSplit,
+            PlayerMatchStats,
+            PlayerTickState,
+        )
 
         db = get_db_manager()
 
@@ -85,13 +89,13 @@ def run_pre_training_quality_check(
 
         # 2. Count by dataset split
         with db.get_session() as session:
-            for split_name in ("train", "val", "test"):
+            for split_name in (DatasetSplit.TRAIN, DatasetSplit.VAL, DatasetSplit.TEST):
                 count = session.exec(
                     select(func.count())
                     .select_from(PlayerMatchStats)
                     .where(PlayerMatchStats.dataset_split == split_name)
                 ).one()
-                setattr(report, f"{split_name}_rows", count)
+                setattr(report, f"{split_name.value}_rows", count)
 
         # 3. Zero-position rate (sample up to 10K ticks for efficiency)
         with db.get_session() as session:

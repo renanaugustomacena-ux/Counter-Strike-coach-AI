@@ -6,6 +6,7 @@ import torch
 from Programma_CS2_RENAN.backend.nn.config import get_device
 from Programma_CS2_RENAN.backend.nn.persistence import StaleCheckpointError, load_nn, save_nn
 from Programma_CS2_RENAN.backend.nn.training_callbacks import CallbackRegistry
+from Programma_CS2_RENAN.backend.storage.db_models import DatasetSplit
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.nn.orchestrator")
@@ -305,7 +306,7 @@ class TrainingOrchestrator:
 
     def _fetch_batches(self, is_train=True):
         """Fetch and batch data from Manager."""
-        split = "train" if is_train else "val"
+        split = DatasetSplit.TRAIN if is_train else DatasetSplit.VAL
         is_pro = True  # Start with Pro baseline by default
 
         if self.model_type in ("jepa", "vl-jepa"):
