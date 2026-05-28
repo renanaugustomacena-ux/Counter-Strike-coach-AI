@@ -564,7 +564,11 @@ class CoachTrainingManager:
             return ticks
 
     def _fetch_rap_windows(
-        self, is_pro: bool, split: DatasetSplit = DatasetSplit.TRAIN, window_size: int = 96
+        self,
+        is_pro: bool,
+        split: DatasetSplit = DatasetSplit.TRAIN,
+        window_size: int = 96,
+        max_demos: int | None = None,
     ):
         """Fetch windowed tick data for RAP training from completed matches.
 
@@ -604,6 +608,10 @@ class CoachTrainingManager:
             if not demo_names:
                 app_logger.warning("No completed demos available for RAP windows")
                 return []
+
+            if max_demos is not None and len(demo_names) > max_demos:
+                app_logger.info("RAP demo cap: %d → %d demos", len(demo_names), max_demos)
+                demo_names = demo_names[:max_demos]
 
             windows: list = []
             _PER_DEMO_TICK_CAP = 10_000

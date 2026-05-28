@@ -161,7 +161,7 @@ class ProPlayerDetailScreen(QWidget):
             self._header_time_span,
         ):
             lbl.setFont(Typography.font("caption"))
-            lbl.setStyleSheet(f"color: {tokens.text_muted}; background: transparent;")
+            lbl.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
             meta_row.addWidget(lbl)
         meta_row.addStretch(1)
         header_body.addLayout(meta_row)
@@ -317,7 +317,7 @@ class ProPlayerDetailScreen(QWidget):
 
             date_lbl = QLabel(str(m.get("date", "—")))
             date_lbl.setFont(Typography.font("caption"))
-            date_lbl.setStyleSheet(f"color: {tokens.text_muted}; background: transparent;")
+            date_lbl.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
             opp_lbl = QLabel(f"vs {m.get('opponent', '—')}  ·  {m.get('map', '—')}")
             opp_lbl.setFont(Typography.font("body"))
             opp_lbl.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")

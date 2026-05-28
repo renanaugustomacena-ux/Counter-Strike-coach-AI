@@ -319,9 +319,10 @@ class TrainingOrchestrator:
                 batches.append(raw_items[i : i + self.batch_size])
             return batches
         else:
-            # P7: RAP uses windowed data — each window is a contiguous
-            # segment from a single match, already a batch.
-            windows = self.manager._fetch_rap_windows(is_pro=is_pro, split=split)
+            rap_kwargs: dict = {"is_pro": is_pro, "split": split}
+            if self.max_epochs <= 1:
+                rap_kwargs["max_demos"] = 10
+            windows = self.manager._fetch_rap_windows(**rap_kwargs)
             return windows if windows else []
 
     def _run_epoch(self, trainer, batches, is_train=True, context=None):

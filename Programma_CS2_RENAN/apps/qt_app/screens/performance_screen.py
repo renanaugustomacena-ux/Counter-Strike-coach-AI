@@ -367,7 +367,7 @@ class PerformanceScreen(QWidget):
             value_lbl.setStyleSheet(f"color: {_sentiment(float(p))}; background: transparent;")
             label_lbl = QLabel(label)
             label_lbl.setFont(Typography.font("caption"))
-            label_lbl.setStyleSheet(f"color: {tokens.text_muted}; background: transparent;")
+            label_lbl.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
             cell.addWidget(value_lbl)
             cell.addWidget(label_lbl)
             wrap = QWidget()
