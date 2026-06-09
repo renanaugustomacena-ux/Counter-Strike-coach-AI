@@ -1267,11 +1267,10 @@ class CoachingDialogueEngine:
         using_pro = self._player_context.get("using_pro_reference", False)
         if using_pro:
             prompt_parts = [
-                "Greet the player briefly. Make clear that NO personal match data "
-                "has been ingested for them yet, so coaching will be grounded in "
-                "PROFESSIONAL match analysis (HLTV pro stats, parsed pro demos, "
-                "ML-extracted pro patterns) — not their own gameplay. Invite them "
-                "to ask about a pro player, a tactic, a map concept, or a role.",
+                "Greet the player briefly. Acknowledge that you have access to a \
+wealth of PROFESSIONAL match analysis (HLTV pro stats, parsed pro demos, \
+ML-extracted pro patterns). Invite them to ask about any pro player, tactical \
+concept, or specific round in your database.",
             ]
         else:
             prompt_parts = ["Greet the player briefly and offer to help with their gameplay."]
@@ -1279,8 +1278,8 @@ class CoachingDialogueEngine:
         if insights and not using_pro:
             focus = self._player_context.get("primary_focus", "gameplay")
             prompt_parts.append(
-                f"Mention that you've noticed their recent coaching focused on "
-                f"'{focus}' and ask if they'd like to dig deeper into that."
+                f"Mention that you've noticed their recent coaching focused on \
+'{focus}' and ask if they'd like to dig deeper into that."
             )
 
         messages = [{"role": "user", "content": " ".join(prompt_parts)}]
@@ -1303,10 +1302,10 @@ class CoachingDialogueEngine:
         focus = self._player_context.get("primary_focus")
         if using_pro:
             msg = (
-                f"[Offline Coach] Hey {name}! No personal match data has been "
-                f"ingested yet, so I'll coach using PROFESSIONAL match analysis "
-                f"(HLTV pro stats + parsed pro demos + ML-extracted pro patterns). "
-                f"Ask me about a pro player, a tactic, a map concept, or a role."
+                f"[Offline Coach] Hey {name}! I'm ready to analyze professional "
+                f"gameplay with you. My database is loaded with HLTV pro stats, "
+                f"parsed pro demos, and ML-extracted tactical patterns. "
+                f"Ask me about any pro player, tactic, map concept, or specific match."
             )
         else:
             msg = (
