@@ -3,7 +3,7 @@ import logging
 import numpy as np
 import torch
 
-from Programma_CS2_RENAN.backend.nn.config import get_device
+from Programma_CS2_RENAN.backend.nn.config import GLOBAL_SEED, get_device
 from Programma_CS2_RENAN.backend.nn.persistence import StaleCheckpointError, load_nn, save_nn
 from Programma_CS2_RENAN.backend.nn.training_callbacks import CallbackRegistry
 from Programma_CS2_RENAN.backend.storage.db_models import DatasetSplit
@@ -142,8 +142,13 @@ class TrainingOrchestrator:
             )
         return model
 
-    def _run_epoch_loop(self, trainer, model, train_data, val_data, context):
-        """Execute the train/validate/checkpoint epoch loop. Returns final epoch number."""
+    def _run_epoch_loop(self, trainer, model, val_data, context):
+        """Execute the train/validate/checkpoint epoch loop. Returns final epoch number.
+
+        B1: Train data is re-fetched each epoch with ``seed = GLOBAL_SEED + epoch``
+        so the subsample window slides across the corpus.  Val data stays fixed
+        (passed in) so early-stopping comparisons remain stable across epochs.
+        """
         final_epoch = 0
         for epoch in range(1, self.max_epochs + 1):
             final_epoch = epoch
@@ -152,6 +157,11 @@ class TrainingOrchestrator:
                 context.check_state()
 
             self.callbacks.fire("on_epoch_start", epoch=epoch)
+
+            train_data = self._fetch_batches(is_train=True, epoch=epoch)
+            if not train_data:
+                logger.warning("B1: Empty train data at epoch %d — stopping", epoch)
+                break
 
             train_loss = self._run_epoch(trainer, train_data, is_train=True, context=context)
 
@@ -257,14 +267,17 @@ class TrainingOrchestrator:
             trainer_kwargs["accumulation_steps"] = self._accumulation_steps
         trainer = self.TrainerClass(model, **trainer_kwargs)
 
-        train_data = self._fetch_batches(is_train=True)
-        val_data = self._fetch_batches(is_train=False)
+        # B1: Pre-flight probe — verify data availability and log counts.
+        # This uses epoch=0 (seed=42); actual training re-fetches per epoch
+        # with rotating seeds so each epoch sees a fresh subsample.
+        preflight_train = self._fetch_batches(is_train=True, epoch=0)
+        val_data = self._fetch_batches(is_train=False, epoch=0)
 
-        if not train_data:
+        if not preflight_train:
             logger.warning("Training Aborted: Insufficient Training Data")
             return
 
-        total_train_samples = len(train_data) * self.batch_size
+        total_train_samples = len(preflight_train) * self.batch_size
         _MIN_TRAINING_SAMPLES = 100
         if total_train_samples < _MIN_TRAINING_SAMPLES:
             logger.error(
@@ -276,7 +289,7 @@ class TrainingOrchestrator:
             return
 
         logger.info(
-            "Training on %s samples, Validating on %s",
+            "Training on ~%s samples/epoch (rotated), Validating on %s (fixed)",
             total_train_samples,
             len(val_data) * self.batch_size if val_data else 0,
         )
@@ -295,22 +308,29 @@ class TrainingOrchestrator:
         if hasattr(trainer, "set_total_steps"):
             import math as _math
 
-            steps_per_epoch = _math.ceil(len(train_data) / self._accumulation_steps)
+            steps_per_epoch = _math.ceil(len(preflight_train) / self._accumulation_steps)
             trainer.set_total_steps(self.max_epochs, steps_per_epoch)
 
-        final_epoch = self._run_epoch_loop(trainer, model, train_data, val_data, context)
+        final_epoch = self._run_epoch_loop(trainer, model, val_data, context)
         self._finalize_training(model, final_epoch)
 
-    def _fetch_batches(self, is_train=True):
-        """Fetch and batch data from Manager."""
+    def _fetch_batches(self, is_train=True, epoch=0):
+        """Fetch and batch data from Manager.
+
+        B1: For JEPA, ``epoch`` drives per-epoch seed rotation so each epoch
+        sees a different subsample of the tick corpus.  Val uses epoch=0
+        (fixed seed) so early-stopping comparisons remain stable.
+        """
         split = DatasetSplit.TRAIN if is_train else DatasetSplit.VAL
-        is_pro = True  # Start with Pro baseline by default
+        is_pro = True
 
         if self.model_type in ("jepa", "vl-jepa"):
-            raw_items = self.manager._fetch_jepa_ticks(is_pro=is_pro, split=split)
+            # B1.3: Val subsample stays fixed (GLOBAL_SEED) so early-stopping
+            # comparisons are stable across epochs.  Only train rotates.
+            seed = GLOBAL_SEED + epoch if is_train else GLOBAL_SEED
+            raw_items = self.manager._fetch_jepa_ticks(is_pro=is_pro, split=split, seed=seed)
             if not raw_items:
                 return []
-            # Temporal ordering preserved — no shuffle for sequence models
             batches = []
             for i in range(0, len(raw_items), self.batch_size):
                 batches.append(raw_items[i : i + self.batch_size])

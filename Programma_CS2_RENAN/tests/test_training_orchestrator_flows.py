@@ -352,7 +352,6 @@ class TestFetchBatches:
         orch = _make_orchestrator(batch_size=4)
         orch.manager._fetch_jepa_ticks.return_value = list(range(10))
         batches = orch._fetch_batches(is_train=True)
-        # 10 items / 4 batch_size = 3 batches (4, 4, 2)
         assert len(batches) == 3
         assert len(batches[0]) == 4
         assert len(batches[-1]) == 2
@@ -361,13 +360,27 @@ class TestFetchBatches:
         orch = _make_orchestrator()
         orch.manager._fetch_jepa_ticks.return_value = []
         orch._fetch_batches(is_train=True)
-        orch.manager._fetch_jepa_ticks.assert_called_with(is_pro=True, split="train")
+        orch.manager._fetch_jepa_ticks.assert_called_with(is_pro=True, split="train", seed=42)
 
     def test_uses_val_split_when_not_train(self):
         orch = _make_orchestrator()
         orch.manager._fetch_jepa_ticks.return_value = []
         orch._fetch_batches(is_train=False)
-        orch.manager._fetch_jepa_ticks.assert_called_with(is_pro=True, split="val")
+        orch.manager._fetch_jepa_ticks.assert_called_with(is_pro=True, split="val", seed=42)
+
+    def test_epoch_seed_rotation(self):
+        """B1: Different epochs produce different seeds."""
+        orch = _make_orchestrator()
+        orch.manager._fetch_jepa_ticks.return_value = []
+        orch._fetch_batches(is_train=True, epoch=5)
+        orch.manager._fetch_jepa_ticks.assert_called_with(is_pro=True, split="train", seed=47)
+
+    def test_val_uses_fixed_seed_regardless_of_epoch(self):
+        """B1.3: Val split always uses GLOBAL_SEED (epoch ignored for val in run_training)."""
+        orch = _make_orchestrator()
+        orch.manager._fetch_jepa_ticks.return_value = []
+        orch._fetch_batches(is_train=False, epoch=0)
+        orch.manager._fetch_jepa_ticks.assert_called_with(is_pro=True, split="val", seed=42)
 
 
 # ===========================================================================
@@ -535,6 +548,68 @@ class TestRunTrainingEdgeCases:
         call_args = orch.manager._update_state.call_args
         assert call_args[0][0] == "Training"
         assert "5/50" in call_args[0][1]
+
+
+# ===========================================================================
+# B1 — Per-epoch seed rotation
+# ===========================================================================
+
+
+class TestPerEpochSeedRotation:
+    """B1: Verify per-epoch seed rotation in the training data pipeline."""
+
+    def test_same_epoch_same_seed(self):
+        """B1.4a: Identical epoch → identical seed → deterministic."""
+        orch = _make_orchestrator()
+        orch.manager._fetch_jepa_ticks.return_value = list(range(8))
+        b1 = orch._fetch_batches(is_train=True, epoch=3)
+        orch.manager._fetch_jepa_ticks.assert_called_with(is_pro=True, split="train", seed=45)
+
+    def test_different_epochs_different_seeds(self):
+        """B1.4b: Different epochs → different seeds."""
+        orch = _make_orchestrator()
+        orch.manager._fetch_jepa_ticks.return_value = []
+
+        orch._fetch_batches(is_train=True, epoch=1)
+        call1 = orch.manager._fetch_jepa_ticks.call_args
+
+        orch._fetch_batches(is_train=True, epoch=2)
+        call2 = orch.manager._fetch_jepa_ticks.call_args
+
+        assert call1.kwargs["seed"] != call2.kwargs["seed"]
+
+    def test_val_seed_stable_across_epochs(self):
+        """B1.4c: Val always uses GLOBAL_SEED regardless of epoch param."""
+        orch = _make_orchestrator()
+        orch.manager._fetch_jepa_ticks.return_value = []
+
+        orch._fetch_batches(is_train=False, epoch=0)
+        seed_0 = orch.manager._fetch_jepa_ticks.call_args.kwargs["seed"]
+
+        orch._fetch_batches(is_train=False, epoch=5)
+        seed_5 = orch.manager._fetch_jepa_ticks.call_args.kwargs["seed"]
+
+        assert seed_0 == seed_5 == 42
+
+    def test_run_epoch_loop_refetches_train_per_epoch(self):
+        """B1: _run_epoch_loop fetches fresh train data each epoch."""
+        orch = _make_orchestrator(max_epochs=3, batch_size=4)
+        orch.manager._fetch_jepa_ticks.return_value = list(range(8))
+
+        mock_trainer = MagicMock()
+        mock_model = MagicMock()
+        val_data = [[1, 2, 3, 4]]
+
+        # _run_epoch fires on_epoch_start, calls _run_epoch (which we mock)
+        with patch.object(orch, "_run_epoch", return_value=1.0):
+            with patch("Programma_CS2_RENAN.backend.nn.training_orchestrator.save_nn"):
+                orch._run_epoch_loop(mock_trainer, mock_model, val_data, None)
+
+        # Should have called _fetch_jepa_ticks once per epoch (3 total)
+        fetch_calls = orch.manager._fetch_jepa_ticks.call_args_list
+        assert len(fetch_calls) == 3
+        seeds = [c.kwargs["seed"] for c in fetch_calls]
+        assert seeds == [43, 44, 45]  # GLOBAL_SEED + epoch (1, 2, 3)
 
 
 # ===========================================================================

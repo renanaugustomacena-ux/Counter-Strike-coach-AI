@@ -503,16 +503,25 @@ class CoachTrainingManager:
         except Exception as e:
             app_logger.warning("Role Head training failed (non-fatal): %s", e)
 
-    def _fetch_jepa_ticks(self, is_pro: bool, split: DatasetSplit = DatasetSplit.TRAIN):
-        """Fetch ticks for JEPA/RAP training with proper split filtering.
+    def _fetch_jepa_ticks(
+        self,
+        is_pro: bool,
+        split: DatasetSplit = DatasetSplit.TRAIN,
+        seed: int = 42,
+        sample_size: int = 5000,
+    ):
+        """Fetch ticks for JEPA/RAP training with seeded subsampling.
+
+        B1: Each call with a different ``seed`` returns a different random
+        subsample of ``sample_size`` ticks from the eligible pool.  This is the
+        mechanism that gives each epoch a fresh data window while keeping any
+        single call deterministic (DET-01).
 
         P4-A: Only uses demos whose per-match DB is marked match_complete=True,
         preventing Teacher from training on half-written match data.
         """
-        # P4-A: Build set of completed match demo names
         completed_demos = self._get_completed_demo_names()
 
-        # Fetch demo names that match the split
         with self.db.get_session() as session:
             stmt_matches = select(PlayerMatchStats).where(
                 PlayerMatchStats.is_pro == is_pro, PlayerMatchStats.dataset_split == split
@@ -523,13 +532,10 @@ class CoachTrainingManager:
                 app_logger.warning("No %s matches found for is_pro=%s", split, is_pro)
                 return []
 
-            # Extract unique demo names from matches.
-            # WR-76: Strip legacy ".dem_{player}" suffix so these names match the
-            # plain-stem format used in PlayerTickState.demo_name.
+            # WR-76: Strip legacy ".dem_{player}" suffix
             all_demo_names = set(
                 _MATCH_STATS_DEMO_SUFFIX_RE.sub("", m.demo_name) for m in matches if m.demo_name
             )
-            # P4-A: Only include demos whose per-match DB is fully written
             if completed_demos is not None:
                 demo_names = list(all_demo_names & completed_demos)
                 skipped = len(all_demo_names) - len(demo_names)
@@ -539,26 +545,47 @@ class CoachTrainingManager:
                     )
             else:
                 demo_names = list(all_demo_names)
-            app_logger.info(
-                "Loading ticks from %s %s demos (is_pro=%s)", len(demo_names), split, is_pro
+
+            if not demo_names:
+                app_logger.warning("No eligible demos for %s split (is_pro=%s)", split, is_pro)
+                return []
+
+            # B1: Fetch all matching tick IDs (lightweight — just integers),
+            # then subsample in Python with a seeded RNG so each epoch sees
+            # a different window of the corpus.
+            id_stmt = select(PlayerTickState.id).where(
+                col(PlayerTickState.demo_name).in_(demo_names)
             )
-
-            # Filter ticks by demo_name for proper split separation
-            # For newly ingested demos, this will work perfectly
-            # For old demos with demo_name='unknown', we fall back to limit
-            stmt = (
-                select(PlayerTickState)
-                .where(col(PlayerTickState.demo_name).in_(demo_names))
-                .limit(5000)
-            )  # Increased from 1K now that filtering is proper
-
-            ticks = session.exec(stmt).all()
+            all_ids = [row for row in session.exec(id_stmt).all()]
 
             # Fallback for legacy data without demo_name
-            if len(ticks) == 0:
+            if not all_ids:
                 app_logger.warning("No ticks found with demo_name filter, using LIMIT fallback")
-                stmt_fallback = select(PlayerTickState).limit(1000)
-                ticks = session.exec(stmt_fallback).all()
+                fallback_stmt = select(PlayerTickState).limit(min(sample_size, 1000))
+                ticks = session.exec(fallback_stmt).all()
+                app_logger.info("Loaded %s ticks for %s split (fallback)", len(ticks), split)
+                return ticks
+
+            rng = np.random.default_rng(seed)
+            n_select = min(sample_size, len(all_ids))
+            selected_ids = rng.choice(all_ids, size=n_select, replace=False).tolist()
+
+            app_logger.info(
+                "B1: Sampling %d/%d ticks for %s split (seed=%d, is_pro=%s)",
+                n_select,
+                len(all_ids),
+                split,
+                seed,
+                is_pro,
+            )
+
+            # Fetch full objects for selected IDs (chunked for SQLite safety)
+            _CHUNK = 500
+            ticks = []
+            for chunk_start in range(0, len(selected_ids), _CHUNK):
+                chunk_ids = selected_ids[chunk_start : chunk_start + _CHUNK]
+                chunk_stmt = select(PlayerTickState).where(col(PlayerTickState.id).in_(chunk_ids))
+                ticks.extend(session.exec(chunk_stmt).all())
 
             app_logger.info("Loaded %s ticks for %s split", len(ticks), split)
             return ticks
