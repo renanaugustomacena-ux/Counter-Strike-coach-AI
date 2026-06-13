@@ -106,14 +106,11 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
 
-      # Transitional: SDL2 needed while Kivy code remains (remove after full Qt migration)
       - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq \
-            libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
-            libgl1
+          sudo apt-get install -y -qq libgl1
 
       - name: Install Python dependencies
         run: |
@@ -164,14 +161,11 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
 
-      # Transitional: SDL2 needed while Kivy code remains (remove after full Qt migration)
       - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq \
-            libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
-            libgl1
+          sudo apt-get install -y -qq libgl1
 
       - name: Install Python dependencies
         run: |
@@ -319,13 +313,10 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
 
-      # Transitional: SDL2 needed while Kivy code remains (remove after full Qt migration)
       - name: Install system dependencies
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq \
-            libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
-            libgl1
+          sudo apt-get install -y -qq libgl1
 
       - name: Install dependencies
         run: |

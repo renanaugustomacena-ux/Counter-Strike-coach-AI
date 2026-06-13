@@ -1,4 +1,4 @@
-"""Tactical Viewer ViewModels — Qt port of desktop_app/tactical_viewmodels.py."""
+"""Tactical Viewer ViewModels — Qt port of legacy_kivy/tactical_viewmodels.py."""
 
 import threading
 from dataclasses import is_dataclass, replace

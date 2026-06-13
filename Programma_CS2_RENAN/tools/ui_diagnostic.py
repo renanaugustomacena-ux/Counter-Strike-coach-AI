@@ -37,7 +37,7 @@ class UIDiagnostic(BaseValidator):
     def _check_resources(self):
         self.console.section("Resources", 1, 6)
 
-        kv = SOURCE_ROOT / "apps" / "desktop_app" / "layout.kv"
+        kv = SOURCE_ROOT / "apps" / "legacy_kivy" / "layout.kv"
         self.check("Resources", "layout.kv exists", kv.exists())
 
         gui = SOURCE_ROOT / "PHOTO_GUI"
@@ -153,7 +153,7 @@ class UIDiagnostic(BaseValidator):
     def _check_kv_validation(self):
         self.console.section("KV Validation", 4, 6)
 
-        kv_path = SOURCE_ROOT / "apps" / "desktop_app" / "layout.kv"
+        kv_path = SOURCE_ROOT / "apps" / "legacy_kivy" / "layout.kv"
         if not kv_path.exists():
             self.check("KV", "layout.kv readable", False)
             return

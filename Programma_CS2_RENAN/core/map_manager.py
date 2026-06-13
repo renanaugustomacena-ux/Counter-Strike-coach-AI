@@ -5,7 +5,10 @@ Delegates to AssetAuthority for asset resolution and provides
 async loading capabilities for Kivy applications.
 """
 
-from kivy.loader import Loader
+try:
+    from kivy.loader import Loader
+except ImportError:
+    Loader = None
 
 from Programma_CS2_RENAN.core.asset_manager import AssetAuthority, SmartAsset
 from Programma_CS2_RENAN.core.spatial_data import get_map_metadata

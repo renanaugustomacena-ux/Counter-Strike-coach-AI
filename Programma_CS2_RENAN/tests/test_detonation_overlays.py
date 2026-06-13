@@ -20,7 +20,7 @@ class TestGrenadeConstants:
     def _load_tactical_map(self):
         """Try importing TacticalMap; skip if Kivy unavailable."""
         try:
-            from Programma_CS2_RENAN.apps.desktop_app.tactical_map import TacticalMap
+            from Programma_CS2_RENAN.apps.legacy_kivy.tactical_map import TacticalMap
 
             self.radii = TacticalMap.GRENADE_RADII
             self.colors = TacticalMap.GRENADE_OVERLAY_COLORS
@@ -68,7 +68,7 @@ class TestTacticalMapOverlayProperty:
         source_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             "apps",
-            "desktop_app",
+            "legacy_kivy",
             "tactical_map.py",
         )
         with open(source_path, "r", encoding="utf-8") as f:
@@ -86,7 +86,7 @@ class TestTacticalMapOverlayProperty:
         source_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             "apps",
-            "desktop_app",
+            "legacy_kivy",
             "tactical_map.py",
         )
         with open(source_path, "r", encoding="utf-8") as f:
@@ -101,7 +101,7 @@ class TestTacticalMapOverlayProperty:
         source_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             "apps",
-            "desktop_app",
+            "legacy_kivy",
             "tactical_map.py",
         )
         with open(source_path, "r", encoding="utf-8") as f:

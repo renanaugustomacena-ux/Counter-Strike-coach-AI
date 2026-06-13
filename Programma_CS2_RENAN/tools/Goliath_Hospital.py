@@ -440,12 +440,12 @@ class GoliathHospital(BaseValidator):
             )
 
         # layout.kv
-        layout_kv = SOURCE_ROOT / "apps" / "desktop_app" / "layout.kv"
+        layout_kv = SOURCE_ROOT / "apps" / "legacy_kivy" / "layout.kv"
         self.check(
             "Radiology",
             "layout_kv",
             layout_kv.exists(),
-            error="apps/desktop_app/layout.kv missing",
+            error="apps/legacy_kivy/layout.kv missing",
             severity=Severity.ERROR,
         )
 

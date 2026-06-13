@@ -1,4 +1,4 @@
-"""CoachingChatViewModel — Qt port of desktop_app/coaching_chat_vm.py.
+"""CoachingChatViewModel — Qt port of legacy_kivy/coaching_chat_vm.py.
 
 Drives the interactive coaching chat panel via CoachingDialogueEngine + Ollama.
 All engine calls run in Worker background threads; signals auto-marshal to main thread.

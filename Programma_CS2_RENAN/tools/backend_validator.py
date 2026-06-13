@@ -447,7 +447,7 @@ class BackendValidator(BaseValidator):
         self.console.section("Resource Integrity", 6, 7)
 
         # KV layout
-        kv = SOURCE_ROOT / "apps" / "desktop_app" / "layout.kv"
+        kv = SOURCE_ROOT / "apps" / "legacy_kivy" / "layout.kv"
         self.check("Resources", "layout.kv exists", kv.exists())
 
         # PHOTO_GUI

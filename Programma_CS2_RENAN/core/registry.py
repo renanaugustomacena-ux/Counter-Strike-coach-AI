@@ -7,7 +7,10 @@ Handles decoupling of Screens, Models, and Tasks.
 import threading
 from typing import Dict, Optional, Type
 
-from kivymd.uix.screen import MDScreen
+try:
+    from kivymd.uix.screen import MDScreen
+except ImportError:
+    MDScreen = object
 
 # REG-01: Lock protects _mapping against concurrent register/get from multiple threads.
 _registry_lock = threading.Lock()

@@ -23,7 +23,7 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 _logger = get_logger("cs2analyzer.qt_theme_engine")
 
-# ── Palette data (mirrored from desktop_app/theme.py to avoid Kivy import chain) ──
+# ── Palette data (mirrored from legacy_kivy/theme.py to avoid Kivy import chain) ──
 
 COLOR_GREEN = (0.30, 0.69, 0.31, 1)
 COLOR_YELLOW = (1.0, 0.60, 0.0, 1)
