@@ -56,7 +56,7 @@ def parse_demo(demo_path: str, target_player: Optional[str] = None) -> pd.DataFr
             return pd.DataFrame()
 
         return _extract_stats_with_full_fields(parser, len(rounds_df), target_player)
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError, KeyError) as e:
         logger.exception("parse_demo failed for %s: %s", demo_name, e)
         return pd.DataFrame()
 
@@ -113,7 +113,7 @@ def _extract_stats_with_full_fields(parser, total_rounds, target_player):
                 totals.drop(
                     columns=["kill_std_calc", "adr_std_calc"], inplace=True, errors="ignore"
                 )
-    except Exception as e:
+    except (ValueError, KeyError, TypeError) as e:
         logger.debug("Could not compute per-round variance: %s", e)
 
     # --- HLTV 2.0 LOGIC START ---
@@ -217,8 +217,8 @@ def _compute_per_round_variance(parser):
         adr_std.columns = ["player_name", "adr_std"]
 
         return kill_std.merge(adr_std, on="player_name", how="outer").fillna(0.0)
-    except Exception:
-        logger.debug("Per-round variance computation failed", exc_info=True)
+    except (ValueError, KeyError, TypeError) as e:
+        logger.debug("Per-round variance computation failed: %s", e, exc_info=True)
         return None
 
 
@@ -338,7 +338,7 @@ def _add_event_stats_safe(parser, df, total_rounds):
             )
         logger.info("Event stats extracted for %d/%d players", players_with_data, len(df))
 
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, RuntimeError) as e:
         df["data_quality"] = "none"
         logger.exception("Event parsing failed - stats remain 0.0")
 
@@ -500,6 +500,6 @@ def parse_sequential_ticks(
             _time.monotonic() - t_start,
         )
         return df
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError, KeyError) as e:
         logger.exception("Seq failure for %s", demo_path)
         return pd.DataFrame()

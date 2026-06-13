@@ -1,6 +1,8 @@
 import threading
 from typing import Dict, List, Optional
 
+from sqlalchemy.exc import SQLAlchemyError
+
 from Programma_CS2_RENAN.observability.logger_setup import get_logger as _get_logger
 
 _timeout_logger = _get_logger("cs2analyzer.coaching.timeout")
@@ -146,7 +148,7 @@ class CoachingService:
             baseline = decay.get_temporal_baseline(map_name=map_name)
             _coaching_logger.debug("Temporal baseline retrieved for map=%s", map_name or "global")
             return baseline
-        except Exception as e:
+        except (ImportError, OSError, ValueError) as e:
             _coaching_logger.warning("Temporal baseline unavailable, using legacy: %s", e)
             from Programma_CS2_RENAN.backend.processing.baselines.pro_baseline import (
                 get_pro_baseline,
@@ -381,7 +383,7 @@ class CoachingService:
                         events=events,
                         map_name=map_name,
                     )
-            except Exception as fb_err:
+            except (ValueError, KeyError, OSError) as fb_err:
                 logger.debug("Feedback collection non-fatal: %s", fb_err)
 
         except Exception as e:
@@ -626,7 +628,7 @@ class CoachingService:
                     len(long_insights),
                     player_name,
                 )
-        except Exception as e:
+        except (ValueError, KeyError, OSError) as e:
             _coaching_logger.warning("Longitudinal coaching failed (non-fatal): %s", e)
 
     def _find_best_match_pro(self, player_stats: Dict[str, float]) -> Optional[int]:
@@ -652,7 +654,7 @@ class CoachingService:
                     if dist < best_dist:
                         best_dist = dist
                         best_id = card.player_id
-        except Exception as e:
+        except (SQLAlchemyError, ValueError, TypeError) as e:
             _coaching_logger.warning("Pro auto-selection failed: %s", e)
 
         if best_id:
@@ -813,7 +815,7 @@ class CoachingService:
                 )
 
                 range_analyzer = get_engagement_range_analyzer()
-            except Exception:
+            except (ImportError, RuntimeError, OSError):
                 range_analyzer = None
 
             # Build coaching narrative from hotspots
@@ -867,7 +869,7 @@ class CoachingService:
 
                 viz = MatchVisualizer()
                 return viz.render_differential_overlay(user_positions, pro_positions, map_name)
-            except Exception as viz_err:
+            except (ImportError, ValueError, RuntimeError, OSError) as viz_err:
                 logger.warning("Differential overlay rendering failed: %s", viz_err)
                 return None
 

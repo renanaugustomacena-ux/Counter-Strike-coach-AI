@@ -2,6 +2,7 @@ import re
 
 import numpy as np
 import torch
+from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import col, func, select
 
 from Programma_CS2_RENAN.backend.nn.config import OUTPUT_DIM, RAP_POSITION_SCALE, get_device
@@ -146,7 +147,7 @@ class CoachTrainingManager:
         """Enforces the 10/10 Rule and Account Connection."""
         try:
             return self._check_db_prerequisites()
-        except Exception as e:
+        except (SQLAlchemyError, OSError) as e:
             return False, f"Prerequisite Check Failed: {e}"
 
     def _check_db_prerequisites(self) -> tuple[bool, str]:
@@ -219,7 +220,7 @@ class CoachTrainingManager:
                 s.add(state)
                 s.commit()
                 app_logger.info("Maturity Progress: %s/200", state.total_matches_processed)
-        except Exception as e:
+        except (SQLAlchemyError, OSError) as e:
             app_logger.error("Maturity Counter Error: %s", e)
 
     def check_maturity_gate(self) -> tuple[bool, int]:
@@ -254,7 +255,7 @@ class CoachTrainingManager:
                     )
 
                 return is_mature, count
-        except Exception as e:
+        except (SQLAlchemyError, OSError) as e:
             app_logger.error("Maturity Gate Error: %s", e)
             return False, 0  # Fail closed on errors
 
@@ -391,7 +392,7 @@ class CoachTrainingManager:
             tb = TensorBoardCallback(log_dir="runs/console_training")
             registry.add(tb)
             app_logger.info("TensorBoard callback registered for Console training")
-        except Exception as e:
+        except (ImportError, OSError, RuntimeError) as e:
             app_logger.warning("TensorBoard callback unavailable: %s", e)
         return registry
 
@@ -664,7 +665,7 @@ class CoachTrainingManager:
                 if meta and getattr(meta, "match_complete", False):
                     completed.add(meta.demo_name)
             return completed if completed else None
-        except Exception as e:
+        except (SQLAlchemyError, OSError, AttributeError) as e:
             app_logger.debug("P4-A: match completeness check unavailable: %s", e)
             return None
 

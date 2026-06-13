@@ -15,6 +15,7 @@ if root not in sys.path:
     sys.path.insert(0, root)
 
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import select
 
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager, init_database
@@ -86,16 +87,14 @@ def run_session_loop():
             bm.create_checkpoint(label="startup_auto")
         else:
             logger.info("Daily Backup already exists. Skipping.")
-    except Exception as e:
+    except (OSError, SQLAlchemyError) as e:
         logger.exception("Backup Routine Failed")
-        # F6-SE: Set backup failure flag so Teacher daemon skips training
         _backup_failed.set()
-        # SE-05: Surface backup failure to UI so user knows data is unprotected
         try:
             get_state_manager().add_notification(
                 "global", "WARNING", f"Automated backup failed: {e}"
             )
-        except Exception as notify_err:
+        except OSError as notify_err:
             logger.debug("Backup notification failed: %s", notify_err)
 
     # --- H-02: One-time knowledge base population (pro demo mining) ---
@@ -117,7 +116,7 @@ def run_session_loop():
             logger.info("Knowledge base initialization complete.")
         else:
             logger.debug("Knowledge base already populated (%d entries). Skipping init.", kb_count)
-    except Exception as e:
+    except (ImportError, OSError, ValueError, SQLAlchemyError) as e:
         logger.warning("Knowledge base initialization failed (non-fatal): %s", e)
 
     # Start IPC Monitor (The Life-Line)
@@ -134,7 +133,7 @@ def run_session_loop():
 
         watcher = IngestionWatcher()
         watcher.start()
-    except Exception as e:
+    except (ImportError, OSError, RuntimeError) as e:
         logger.exception("Failed to start IngestionWatcher")
 
     # SE-02: Store daemon thread references for graceful join on shutdown.
@@ -252,7 +251,7 @@ def _cleanup_zombie_tasks():
                     task.updated_at = datetime.now(timezone.utc)
                     s.add(task)
                 s.commit()
-    except Exception as e:
+    except (SQLAlchemyError, OSError) as e:
         logger.exception("Failed to cleanup zombie tasks")
 
 
@@ -274,9 +273,9 @@ def _check_disk_space(path, min_gb=5):
                     f"Low disk space: {free_gb:.1f} GB free. "
                     f"Consider deleting old demos or moving data.",
                 )
-            except Exception as notify_err:
+            except OSError as notify_err:
                 logger.debug("Disk space notification failed: %s", notify_err)
-    except Exception as disk_err:
+    except OSError as disk_err:
         logger.debug("Disk space check failed: %s", disk_err)
 
 
@@ -340,7 +339,7 @@ def _scanner_daemon_loop():
                         steam_dir = find_cs2_replays()
                         if steam_dir:
                             sync_steam_demos(steam_dir)
-                    except Exception as steam_err:
+                    except (OSError, ImportError, ValueError) as steam_err:
                         logger.debug("[Scanner] Steam auto-discovery skipped: %s", steam_err)
 
                 except Exception as scan_err:
@@ -442,7 +441,7 @@ def _teacher_daemon_loop():
                         "WARNING",
                         "Training running without backup. Consider freeing disk space.",
                     )
-                except Exception as e:
+                except OSError as e:
                     logger.warning("Failed to send backup warning notification: %s", e)
 
             trigger_count = _check_retraining_trigger()
@@ -485,7 +484,7 @@ def _teacher_daemon_loop():
                         logger.info("Belief calibration completed: %s", summary)
                     else:
                         logger.info("Belief calibration skipped: no death events in DB")
-                except Exception as cal_err:
+                except (ValueError, RuntimeError, OSError) as cal_err:
                     logger.warning("Belief calibration non-fatal: %s", cal_err)
             else:
                 logger.debug("Teacher: retraining not triggered this cycle")
@@ -508,7 +507,7 @@ def _pulse_daemon_loop():
         try:
             set_correlation_id()  # OBS-07: Tracing context per cycle (WR-29)
             get_state_manager().heartbeat()
-        except Exception as e:
+        except OSError as e:
             logger.warning("Heartbeat failed: %s", e)
         time.sleep(5)
 
@@ -522,7 +521,7 @@ def _get_current_baseline_snapshot() -> dict:
 
         decay = TemporalBaselineDecay()
         return decay.get_temporal_baseline()
-    except Exception as e:
+    except (ImportError, OSError, ValueError) as e:
         logger.debug("Baseline snapshot unavailable: %s", e)
         return {}
 
@@ -551,7 +550,7 @@ def _check_meta_shift(old_baseline: dict) -> dict:
                 )
 
         return new_baseline
-    except Exception as e:
+    except (ValueError, KeyError, TypeError) as e:
         logger.warning("Meta-shift detection failed (non-fatal): %s", e)
         return old_baseline
 
@@ -593,7 +592,7 @@ def _commit_trained_sample_count(count: int) -> None:
                 st.last_trained_sample_count = count
                 s.add(st)
                 s.commit()  # F6-03: persist trained sample count; context manager does not auto-commit here
-    except Exception as e:
+    except (SQLAlchemyError, OSError) as e:
         logger.exception("Failed to commit trained sample count")
 
 

@@ -199,7 +199,7 @@ class EmbeddingProjector(TrainingCallback):
 
             self._writer.add_figure(tag, fig, epoch)
             plt.close(fig)
-        except Exception as e:
+        except (ValueError, TypeError, RuntimeError, OSError) as e:
             logger.debug("UMAP projection failed (non-critical): %s", e)
 
     def _generate_concept_umap(self, embeddings, labels: List[str], epoch: int) -> None:
@@ -235,5 +235,5 @@ class EmbeddingProjector(TrainingCallback):
 
             self._writer.add_figure("embeddings/concept_umap", fig, epoch)
             plt.close(fig)
-        except Exception as e:
+        except (ValueError, TypeError, RuntimeError, OSError) as e:
             logger.debug("Concept UMAP failed (non-critical): %s", e)

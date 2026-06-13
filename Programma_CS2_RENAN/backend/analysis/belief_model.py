@@ -14,6 +14,7 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 import pandas as pd
+from sqlalchemy.exc import SQLAlchemyError
 
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -405,7 +406,7 @@ class AdaptiveBeliefCalibrator:
 
             logger.info("Threat decay lambda calibrated: %.4f (was 0.1)", fitted_lambda)
             return fitted_lambda
-        except Exception as e:
+        except (RuntimeError, ValueError, TypeError) as e:
             logger.warning("Decay calibration failed: %s", e)
             return None
 
@@ -470,7 +471,7 @@ class AdaptiveBeliefCalibrator:
                         session.add(snapshot)
                 session.commit()
                 logger.info("Calibration snapshot saved to DB (%d samples)", sample_count)
-        except Exception as e:
+        except (OSError, SQLAlchemyError) as e:
             logger.warning("Failed to save calibration snapshot: %s", e)
 
 
@@ -528,6 +529,6 @@ def extract_death_events_from_db() -> pd.DataFrame:
             return pd.DataFrame(columns=["health", "died"])
         return pd.DataFrame(rows)
 
-    except Exception as e:
+    except (OSError, SQLAlchemyError, ValueError, KeyError) as e:
         logger.warning("Failed to extract death events for calibration: %s", e)
         return pd.DataFrame(columns=["health", "died"])
