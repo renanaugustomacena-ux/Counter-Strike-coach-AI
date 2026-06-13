@@ -325,6 +325,83 @@ class TrainingOrchestrator:
             windows = self.manager._fetch_rap_windows(**rap_kwargs)
             return windows if windows else []
 
+    def _train_step_dispatch(self, trainer, tensor_batch, do_step):
+        """Dispatch a single training step to the correct model-type path.
+
+        Returns (loss: float, result: dict).
+        """
+        if self.model_type not in ("jepa", "vl-jepa"):
+            result = trainer.train_step(tensor_batch, step_optimizer=do_step)
+            if not isinstance(result, dict) or "loss" not in result:
+                raise ValueError(
+                    f"RAP train_step must return dict with 'loss' key, "
+                    f"got {type(result).__name__}: "
+                    f"{list(result.keys()) if isinstance(result, dict) else result}"
+                )
+            return float(result["loss"]), result
+
+        if self._use_vl:
+            result = trainer.train_step_vl(
+                tensor_batch["context"],
+                tensor_batch["target"],
+                tensor_batch.get("negatives"),
+                round_stats=tensor_batch.get("round_stats"),
+                step_optimizer=do_step,
+            )
+            return float(result["total_loss"]), result
+
+        result = trainer.train_step(
+            tensor_batch["context"],
+            tensor_batch["target"],
+            tensor_batch.get("negatives"),
+            step_optimizer=do_step,
+        )
+        loss = result["loss"] if isinstance(result, dict) else result
+        if not isinstance(result, dict):
+            result = {"loss": float(loss)}
+        return float(loss), result
+
+    def _eval_step_dispatch(self, trainer, tensor_batch):
+        """Dispatch a single validation step (no grad). Returns loss float."""
+        with torch.no_grad():
+            if self.model_type in ("jepa", "vl-jepa"):
+                return self._eval_step_jepa(trainer, tensor_batch)
+            return self._eval_step_rap(trainer, tensor_batch)
+
+    def _eval_step_jepa(self, trainer, tensor_batch):
+        """JEPA/VL-JEPA validation: contrastive loss on pred vs target."""
+        pred, target = trainer.model.forward_jepa_pretrain(
+            tensor_batch["context"], tensor_batch["target"]
+        )
+        from Programma_CS2_RENAN.backend.nn.jepa_model import jepa_contrastive_loss
+
+        # NN-H-02: Use shared encode_raw_negatives() for consistency
+        # with training path (3D sequence expansion + mean pooling).
+        raw_neg = tensor_batch.get("negatives")
+        if raw_neg is not None:
+            raw_neg = raw_neg.to(next(trainer.model.parameters()).device)
+        seq_len = tensor_batch["context"].shape[1]
+        neg_latent = trainer.encode_raw_negatives(raw_neg, seq_len)
+        return jepa_contrastive_loss(pred, target, neg_latent).item()
+
+    def _eval_step_rap(self, trainer, tensor_batch):
+        """RAP validation: value estimate loss with optional val_mask."""
+        outputs = trainer.model(
+            tensor_batch["view"],
+            tensor_batch["map"],
+            tensor_batch["motion"],
+            tensor_batch["metadata"],
+            timespans=tensor_batch.get("timespans"),
+        )
+        val_mask = tensor_batch.get("val_mask")
+        pred = outputs["value_estimate"]
+        tgt = tensor_batch["target_val"]
+        if val_mask is not None and not val_mask.any():
+            return 0.0
+        if val_mask is not None and val_mask.any() and not val_mask.all():
+            return trainer.criterion_val(pred[val_mask], tgt[val_mask]).item()
+        return trainer.criterion_val(pred, tgt).item()
+
     def _run_epoch(self, trainer, batches, is_train=True, context=None):
         """Run a single epoch (Train or Eval)."""
         total_loss = 0.0
@@ -348,90 +425,22 @@ class TrainingOrchestrator:
                 logger.debug("P3-E: Dropping batch %d (size %d < 2)", batch_idx, len(batch))
                 continue
 
-            # Convert raw DB objects to Tensors
             tensor_batch = self._prepare_tensor_batch(batch)
             if tensor_batch is None:
-                continue  # Skip empty batches
+                continue
 
             if is_train:
                 train_batch_count += 1
                 do_step = train_batch_count % accum == 0
-
-                if self.model_type in ("jepa", "vl-jepa"):
-                    if self._use_vl:
-                        result = trainer.train_step_vl(
-                            tensor_batch["context"],
-                            tensor_batch["target"],
-                            tensor_batch.get("negatives"),
-                            round_stats=tensor_batch.get("round_stats"),
-                            step_optimizer=do_step,
-                        )
-                        loss = result["total_loss"]
-                    else:
-                        result = trainer.train_step(
-                            tensor_batch["context"],
-                            tensor_batch["target"],
-                            tensor_batch.get("negatives"),
-                            step_optimizer=do_step,
-                        )
-                        loss = result["loss"] if isinstance(result, dict) else result
-                else:
-                    # RAP signature: batch dict directly — returns dict with "loss" key.
-                    # KeyError here is a programming bug (not data) — let it propagate.
-                    result = trainer.train_step(tensor_batch, step_optimizer=do_step)
-                    if not isinstance(result, dict) or "loss" not in result:
-                        raise ValueError(
-                            f"RAP train_step must return dict with 'loss' key, "
-                            f"got {type(result).__name__}: "
-                            f"{list(result.keys()) if isinstance(result, dict) else result}"
-                        )
-                    loss = result["loss"]
-
-                # Fire: on_batch_end (training batches only)
-                batch_outputs = result if isinstance(result, dict) else {"loss": float(loss)}
+                loss, result = self._train_step_dispatch(trainer, tensor_batch, do_step)
                 self.callbacks.fire(
                     "on_batch_end",
                     batch_idx=batch_idx,
-                    loss=float(loss),
-                    outputs=batch_outputs,
+                    loss=loss,
+                    outputs=result,
                 )
             else:
-                # Validation (No Grad)
-                with torch.no_grad():
-                    if self.model_type in ("jepa", "vl-jepa"):
-                        # For validation, just compute loss without backward
-                        pred, target = trainer.model.forward_jepa_pretrain(
-                            tensor_batch["context"], tensor_batch["target"]
-                        )
-                        from Programma_CS2_RENAN.backend.nn.jepa_model import jepa_contrastive_loss
-
-                        # NN-H-02: Use shared encode_raw_negatives() for consistency
-                        # with training path (3D sequence expansion + mean pooling).
-                        raw_neg = tensor_batch.get("negatives")
-                        if raw_neg is not None:
-                            raw_neg = raw_neg.to(next(trainer.model.parameters()).device)
-                        seq_len = tensor_batch["context"].shape[1]
-                        neg_latent = trainer.encode_raw_negatives(raw_neg, seq_len)
-
-                        loss = jepa_contrastive_loss(pred, target, neg_latent).item()
-                    else:
-                        # RAP validation — KeyError = programming bug, let it propagate.
-                        outputs = trainer.model(
-                            tensor_batch["view"],
-                            tensor_batch["map"],
-                            tensor_batch["motion"],
-                            tensor_batch["metadata"],
-                            timespans=tensor_batch.get("timespans"),
-                        )
-                        val_mask = tensor_batch.get("val_mask")
-                        pred = outputs["value_estimate"]
-                        tgt = tensor_batch["target_val"]
-                        if val_mask is not None and val_mask.any() and not val_mask.all():
-                            loss = trainer.criterion_val(pred[val_mask], tgt[val_mask]).item()
-                        elif val_mask is not None and not val_mask.any():
-                            loss = 0.0
-                        else:
-                            loss = trainer.criterion_val(pred, tgt).item()
+                loss = self._eval_step_dispatch(trainer, tensor_batch)
 
             total_loss += loss
 
