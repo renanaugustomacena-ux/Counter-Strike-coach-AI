@@ -6,7 +6,6 @@ Every assertion checks a SPECIFIC value, never just `assert True`.
 """
 
 import os
-import sys
 import tempfile
 
 import pytest

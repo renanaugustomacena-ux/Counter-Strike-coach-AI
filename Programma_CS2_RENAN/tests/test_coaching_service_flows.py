@@ -8,7 +8,6 @@ traditional correction saving, longitudinal coaching, and fallback chains.
 Uses in-memory SQLite with monkeypatched get_db_manager for CI portability.
 """
 
-import sys
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from unittest.mock import patch
@@ -394,7 +393,6 @@ class TestGetLatestInsights:
 
     def test_ordered_by_created_at_desc(self, coaching_service, mock_db):
         """Results are ordered newest-first."""
-        from datetime import timedelta
 
         with mock_db.get_session() as session:
             older = CoachingInsight(

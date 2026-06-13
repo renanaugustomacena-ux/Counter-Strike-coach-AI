@@ -7,11 +7,7 @@ Covers:
   role_thresholds.py — LearnedThreshold, RoleThresholdStore
 """
 
-import math
-import sys
 from datetime import datetime, timedelta, timezone
-
-import pytest
 
 
 # ---------------------------------------------------------------------------

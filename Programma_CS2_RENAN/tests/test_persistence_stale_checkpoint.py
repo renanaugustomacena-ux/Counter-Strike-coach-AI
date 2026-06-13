@@ -15,8 +15,6 @@ These tests verify:
 4. Corrupted checkpoints are handled explicitly
 """
 
-import tempfile
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest

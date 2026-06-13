@@ -7,10 +7,6 @@ Covers:
   - init defaults
 """
 
-import sys
-
-import pytest
-
 
 class TestSegmentMatchIntoWindows:
     """Tests for temporal windowing logic (no DB or tensor deps)."""

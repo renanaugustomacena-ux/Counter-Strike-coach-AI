@@ -8,7 +8,6 @@ This is the most critical invariant in the ML pipeline. If these dimensions
 diverge, the model silently produces garbage (or crashes with size mismatch).
 """
 
-import pytest
 import torch
 
 
@@ -70,7 +69,6 @@ class TestDimensionChainAlignment:
 
     def test_feature_extractor_output_matches_model_input(self):
         """FeatureExtractor output shape must match model's expected input_dim."""
-        import numpy as np
 
         from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
         from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import (

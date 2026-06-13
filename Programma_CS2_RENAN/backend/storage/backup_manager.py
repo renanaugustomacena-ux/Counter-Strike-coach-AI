@@ -4,7 +4,6 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-from Programma_CS2_RENAN.backend.storage.database import get_db_manager
 from Programma_CS2_RENAN.core.config import CORE_DB_DIR, USER_DATA_ROOT
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 

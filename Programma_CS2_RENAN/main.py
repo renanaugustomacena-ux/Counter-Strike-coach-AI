@@ -86,7 +86,6 @@ from kivy.clock import Clock
 from kivy.core.text import Label as CoreLabel
 from kivy.core.text import LabelBase
 from kivy.core.window import Window
-from kivy.factory import Factory
 from kivy.lang import Builder
 from kivy.properties import (
     BooleanProperty,
@@ -95,7 +94,7 @@ from kivy.properties import (
     ObjectProperty,
     StringProperty,
 )
-from kivy.uix.screenmanager import FadeTransition, ScreenManager
+from kivy.uix.screenmanager import FadeTransition
 from kivy.utils import platform
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -120,7 +119,6 @@ from Programma_CS2_RENAN.backend.storage.db_models import CoachingInsight, Playe
 
 # --- Centralized Configuration ---
 from Programma_CS2_RENAN.core.config import (
-    DATABASE_URL,
     get_resource_path,
     get_setting,
     refresh_settings,
@@ -668,14 +666,6 @@ class CS2AnalyzerApp(MDApp):
 
     def build(self):
         try:
-            from Programma_CS2_RENAN.apps.desktop_app.help_screen import HelpScreen
-            from Programma_CS2_RENAN.apps.desktop_app.match_detail_screen import MatchDetailScreen
-            from Programma_CS2_RENAN.apps.desktop_app.match_history_screen import MatchHistoryScreen
-            from Programma_CS2_RENAN.apps.desktop_app.performance_screen import PerformanceScreen
-            from Programma_CS2_RENAN.apps.desktop_app.tactical_viewer_screen import (
-                TacticalViewerScreen,
-            )
-            from Programma_CS2_RENAN.apps.desktop_app.wizard_screen import WizardScreen
 
             kv_path = get_resource_path(os.path.join("apps", "desktop_app", "layout.kv"))
             root = Builder.load_file(kv_path)
@@ -890,11 +880,7 @@ class CS2AnalyzerApp(MDApp):
     def _threaded_status_update(self):
         from datetime import datetime, timezone  # F7-04: timezone for utcnow replacement
 
-        from Programma_CS2_RENAN.backend.storage.db_models import (
-            CoachState,
-            IngestionTask,
-            PlayerProfile,
-        )
+        from Programma_CS2_RENAN.backend.storage.db_models import CoachState, IngestionTask
 
         try:
             db = get_db_manager()

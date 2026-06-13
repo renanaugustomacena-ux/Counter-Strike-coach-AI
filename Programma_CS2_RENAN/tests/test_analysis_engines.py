@@ -4,30 +4,13 @@ Unit tests for Analysis Engines.
 Tests Win Probability, Role Classifier, Utility Analyzer, and Economy Optimizer.
 """
 
-import sys
-
-import pytest
-import torch
-
 from Programma_CS2_RENAN.backend.analysis.role_classifier import (
     ROLE_PROFILES,
     PlayerRole,
     RoleClassifier,
-    get_role_classifier,
 )
-from Programma_CS2_RENAN.backend.analysis.utility_economy import (
-    EconomyOptimizer,
-    UtilityAnalyzer,
-    UtilityType,
-    get_economy_optimizer,
-    get_utility_analyzer,
-)
-from Programma_CS2_RENAN.backend.analysis.win_probability import (
-    GameState,
-    WinProbabilityNN,
-    WinProbabilityPredictor,
-    get_win_predictor,
-)
+from Programma_CS2_RENAN.backend.analysis.utility_economy import EconomyOptimizer, UtilityAnalyzer
+from Programma_CS2_RENAN.backend.analysis.win_probability import GameState, WinProbabilityPredictor
 
 
 class TestWinProbabilityPredictor:

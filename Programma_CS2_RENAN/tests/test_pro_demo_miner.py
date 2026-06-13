@@ -8,10 +8,7 @@ Non-destructive: only cleans up records created by each test.
 import pytest
 from sqlmodel import select
 
-from Programma_CS2_RENAN.backend.knowledge.pro_demo_miner import (
-    ProStatsMiner,
-    auto_populate_from_pro_demos,
-)
+from Programma_CS2_RENAN.backend.knowledge.pro_demo_miner import ProStatsMiner
 from Programma_CS2_RENAN.backend.storage.database import (
     get_db_manager,
     get_hltv_db_manager,

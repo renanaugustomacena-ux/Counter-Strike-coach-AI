@@ -18,7 +18,6 @@ Verifies:
 from __future__ import annotations
 
 import torch
-import torch.nn as nn
 
 from Programma_CS2_RENAN.backend.nn.model import AdvancedCoachNN, CoachNNConfig, _topk_sparse_gate
 

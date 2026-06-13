@@ -8,8 +8,6 @@ Covers:
   ChronovisorScanner._analyze_signal_at_scale (single-scale)
 """
 
-import sys
-
 import numpy as np
 
 

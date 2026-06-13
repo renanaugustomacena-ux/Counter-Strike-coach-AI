@@ -9,8 +9,6 @@ Z-cutoff values:
   - Vertigo: 11700 (upper above, lower below)
 """
 
-import sys
-
 import pytest
 
 from Programma_CS2_RENAN.core.spatial_data import classify_vertical_level, compute_z_penalty

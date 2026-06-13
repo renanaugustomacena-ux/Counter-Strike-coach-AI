@@ -8,8 +8,6 @@ Validates:
 - Edge cases (zero kills, empty rounds, no events)
 """
 
-import sys
-
 import pytest
 
 from Programma_CS2_RENAN.backend.processing.round_stats_builder import (
@@ -284,17 +282,13 @@ class TestEnrichFromDemoImport:
         assert callable(enrich_from_demo)
 
     def test_event_registry_import(self):
-        from Programma_CS2_RENAN.backend.data_sources.event_registry import (
-            EVENT_REGISTRY,
-            get_coverage_report,
-        )
+        from Programma_CS2_RENAN.backend.data_sources.event_registry import EVENT_REGISTRY
 
         assert "player_blind" in EVENT_REGISTRY
         assert EVENT_REGISTRY["player_blind"].implemented is True
 
     def test_trade_kill_detector_import(self):
         from Programma_CS2_RENAN.backend.data_sources.trade_kill_detector import (
-            TradeKillResult,
             analyze_demo_trades,
             detect_trade_kills,
         )

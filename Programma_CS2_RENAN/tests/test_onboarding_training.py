@@ -13,8 +13,6 @@ formula unit tests analogous to test_unit.py, not ML pipeline assertions against
 synthetic data pretending to be real game state.
 """
 
-import sys
-
 import numpy as np
 import pytest
 from sqlmodel import select

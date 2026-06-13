@@ -10,7 +10,6 @@ Adheres to GEMINI.md principles:
 - Clear error messaging
 """
 
-import os
 import platform
 from datetime import datetime, timedelta, timezone
 from pathlib import Path

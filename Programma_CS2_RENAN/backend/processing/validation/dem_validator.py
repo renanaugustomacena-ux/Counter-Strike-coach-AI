@@ -6,7 +6,6 @@ Adheres to GEMINI.md backend principles: explicit validation, early failure dete
 """
 
 import os
-import struct
 from pathlib import Path
 from typing import Optional, Tuple
 

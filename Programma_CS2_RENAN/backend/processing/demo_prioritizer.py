@@ -18,13 +18,13 @@ References:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Dict, Optional, Tuple
 
 import numpy as np
 import torch
 
-from Programma_CS2_RENAN.backend.nn.config import INPUT_DIM, get_device
+from Programma_CS2_RENAN.backend.nn.config import get_device
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats, PlayerTickState
 from Programma_CS2_RENAN.observability.logger_setup import get_logger

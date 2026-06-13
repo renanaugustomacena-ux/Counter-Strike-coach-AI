@@ -6,7 +6,6 @@ CI-portable: uses in-memory SQLite with monkeypatched get_db_manager.
 """
 
 import io
-import sys
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch

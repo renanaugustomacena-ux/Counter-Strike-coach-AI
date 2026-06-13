@@ -7,7 +7,7 @@ from scipy.ndimage import gaussian_filter
 from Programma_CS2_RENAN.core.spatial_data import get_map_metadata
 
 if TYPE_CHECKING:
-    from kivy.graphics.texture import Texture
+    pass
 
 
 @dataclass

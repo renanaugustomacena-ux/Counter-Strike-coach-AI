@@ -4,10 +4,7 @@ from typing import List, Optional
 import torch
 import torch.optim as optim
 
-from Programma_CS2_RENAN.backend.nn.early_stopping import (
-    EmbeddingCollapseDetector,
-    EmbeddingCollapseError,
-)
+from Programma_CS2_RENAN.backend.nn.early_stopping import EmbeddingCollapseDetector
 from Programma_CS2_RENAN.backend.nn.jepa_model import (
     ConceptLabeler,
     JEPACoachingModel,

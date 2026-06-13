@@ -9,10 +9,6 @@ Target: 100% coverage of training_callbacks.py + tensorboard_callback.py.
 """
 
 import tempfile
-from unittest.mock import MagicMock, patch
-
-import pytest
-import torch
 
 from Programma_CS2_RENAN.backend.nn.training_callbacks import CallbackRegistry, TrainingCallback
 

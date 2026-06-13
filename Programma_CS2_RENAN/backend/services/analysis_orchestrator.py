@@ -213,10 +213,7 @@ class AnalysisOrchestrator:
             return insights
 
         try:
-            from Programma_CS2_RENAN.backend.analysis.momentum import (
-                get_momentum_tracker,
-                predict_performance_adjustment,
-            )
+            from Programma_CS2_RENAN.backend.analysis.momentum import get_momentum_tracker
 
             tracker = get_momentum_tracker()
             tilt_rounds = []
@@ -593,8 +590,6 @@ class AnalysisOrchestrator:
         try:
             if not game_states:
                 return insights
-
-            from Programma_CS2_RENAN.backend.analysis.win_probability import GameState
 
             critical_moments = []
             prev_prob = 0.5

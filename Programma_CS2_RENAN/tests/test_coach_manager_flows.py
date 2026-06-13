@@ -8,7 +8,6 @@ tier constants, pro baseline defaults).
 CI-portable: uses in-memory SQLite with monkeypatched get_db_manager.
 """
 
-import sys
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace

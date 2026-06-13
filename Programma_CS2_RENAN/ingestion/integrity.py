@@ -2,12 +2,6 @@ import hashlib
 import os
 
 from Programma_CS2_RENAN.backend.data_sources.demo_format_adapter import (
-    DEMO_MAGIC_LEGACY,
-    DEMO_MAGIC_V2,
-    MAX_DEMO_SIZE,
-    MIN_DEMO_SIZE,
-)
-from Programma_CS2_RENAN.backend.data_sources.demo_format_adapter import (
     validate_demo_file as _adapter_validate,
 )
 

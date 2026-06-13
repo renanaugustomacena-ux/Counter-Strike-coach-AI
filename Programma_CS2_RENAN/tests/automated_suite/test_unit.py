@@ -1,5 +1,4 @@
 import pandas as pd
-import pytest
 
 from Programma_CS2_RENAN.backend.processing.feature_engineering.base_features import (
     extract_match_stats,

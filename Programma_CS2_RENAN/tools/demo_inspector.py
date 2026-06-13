@@ -14,12 +14,11 @@ Usage:
 """
 
 import argparse
-import os
 import sys
 from pathlib import Path
 
 # --- Path stabilization ---
-from _infra import PROJECT_ROOT, SOURCE_ROOT, path_stabilize
+from _infra import SOURCE_ROOT, path_stabilize
 
 path_stabilize()
 
@@ -104,7 +103,6 @@ def extract_df(event_result):
 
 def cmd_events(args):
     """Inspect demo events — list event types and probe critical events."""
-    import pandas as pd
 
     demo = find_demo(args.demo)
     parser = get_parser(demo)
@@ -205,7 +203,6 @@ def cmd_fields(args):
 
 def cmd_track(args):
     """Track entity trajectories (grenades, projectiles)."""
-    import pandas as pd
 
     demo = find_demo(args.demo)
     parser = get_parser(demo)

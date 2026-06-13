@@ -8,8 +8,6 @@ Verifies:
 4. Query string generation
 """
 
-import pytest
-
 
 class TestExperienceContext:
     """Verify ExperienceContext data structure and methods."""

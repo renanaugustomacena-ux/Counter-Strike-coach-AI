@@ -10,8 +10,7 @@ Covers:
   generate_longitudinal_coaching (longitudinal_engine.py)
 """
 
-import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -175,10 +174,7 @@ class TestPlayerCardAssimilator:
         assert "rating" in baseline
 
     def test_get_coach_baseline_values(self):
-        from Programma_CS2_RENAN.backend.coaching.pro_bridge import (
-            ESTIMATED_ROUNDS_PER_MATCH,
-            PlayerCardAssimilator,
-        )
+        from Programma_CS2_RENAN.backend.coaching.pro_bridge import PlayerCardAssimilator
 
         card = self._make_card(kpr=0.75, dpr=0.60, adr=85.0)
         baseline = PlayerCardAssimilator(card).get_coach_baseline()

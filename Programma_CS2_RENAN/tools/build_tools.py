@@ -19,7 +19,6 @@ import re
 import subprocess
 import sys
 from datetime import datetime, timezone
-from pathlib import Path
 
 from _infra import PROJECT_ROOT, SOURCE_ROOT, Console, path_stabilize
 

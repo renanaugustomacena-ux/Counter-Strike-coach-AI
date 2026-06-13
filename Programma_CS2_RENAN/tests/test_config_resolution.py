@@ -7,7 +7,6 @@ and atomic save_user_setting().
 import json
 import os
 import threading
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -210,7 +209,7 @@ class TestThreadSafety:
     """Verify _settings_lock prevents data races."""
 
     def test_concurrent_saves_no_corruption(self, isolated_settings):
-        from Programma_CS2_RENAN.core.config import SETTINGS_PATH, get_setting, save_user_setting
+        from Programma_CS2_RENAN.core.config import SETTINGS_PATH, save_user_setting
 
         errors = []
 

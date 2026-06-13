@@ -5,10 +5,7 @@ Verifies skill vector calculation, curriculum level mapping, and tensor output
 using fields that actually feed into calculate_skill_vector.
 """
 
-import sys
-
 import pytest
-import torch
 
 from Programma_CS2_RENAN.backend.nn.rap_coach.skill_model import SkillAxes, SkillLatentModel
 from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats

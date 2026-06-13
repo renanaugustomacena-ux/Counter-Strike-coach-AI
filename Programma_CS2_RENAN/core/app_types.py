@@ -7,7 +7,7 @@ Never confuse the two — import the correct one for your context.
 """
 
 from enum import Enum, auto
-from typing import Dict, NewType, TypedDict, Union
+from typing import NewType, TypedDict, Union
 
 MatchID = NewType("MatchID", int)
 Tick = NewType("Tick", int)

@@ -8,7 +8,6 @@ empty batch handling, deterministic RNG).
 CI-portable: uses mocks for external dependencies.
 """
 
-import sys
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -483,7 +482,6 @@ class TestPrepareTensorBatchJEPA:
         Previously target was features_tensor[-1:] which could be distant from context.
         Now target is features_tensor[10:11] — the next tick after context ticks[0:10].
         """
-        import torch
 
         from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
 

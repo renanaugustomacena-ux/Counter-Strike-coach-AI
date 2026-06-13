@@ -14,7 +14,7 @@ import sys
 import time
 from collections import defaultdict
 from contextlib import asynccontextmanager
-from typing import List, Optional
+from typing import List
 
 import uvicorn
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request

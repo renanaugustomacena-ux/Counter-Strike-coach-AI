@@ -57,7 +57,6 @@ def test_e2e_user_journey(isolated_settings):
         pytest.fail(f"E2E Lifecycle Failed during Training: {e}")
 
     # 5. Verify training produced observable effects
-    from Programma_CS2_RENAN.backend.storage.db_models import CoachState
     from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
 
     sm = get_state_manager()

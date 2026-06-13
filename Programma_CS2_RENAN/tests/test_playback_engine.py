@@ -2,8 +2,6 @@
 Unit tests for the PlaybackEngine and DemoFrame data models.
 """
 
-import sys
-
 import pytest
 
 from Programma_CS2_RENAN.core.demo_frame import DemoFrame, NadeState, NadeType, PlayerState, Team

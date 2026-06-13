@@ -243,7 +243,6 @@ def collect_config():
         CS2_PLAYER_NAME,
         DATABASE_URL,
         MATCH_DATA_PATH,
-        MODELS_DIR,
         SETTINGS_PATH,
     )
 

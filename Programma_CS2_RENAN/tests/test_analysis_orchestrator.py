@@ -5,10 +5,6 @@ Validates that the orchestrator correctly coordinates all Phase 6
 analysis modules and produces structured CoachingInsight objects.
 """
 
-import sys
-
-import pytest
-
 
 class TestAnalysisOrchestrator:
     """Verify AnalysisOrchestrator end-to-end behavior."""

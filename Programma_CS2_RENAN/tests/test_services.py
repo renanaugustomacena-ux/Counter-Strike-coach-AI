@@ -5,10 +5,6 @@ Tests service instantiation and API contracts using real data from the database.
 Skips gracefully when no real data is available.
 """
 
-import sys
-
-import pytest
-
 
 class TestCoachingService:
     def test_instantiation(self):

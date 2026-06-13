@@ -19,7 +19,7 @@ import json
 import sys
 from pathlib import Path
 
-from _infra import BaseValidator, Console, Severity, ToolReport, path_stabilize
+from _infra import BaseValidator, Severity, path_stabilize
 
 path_stabilize()
 

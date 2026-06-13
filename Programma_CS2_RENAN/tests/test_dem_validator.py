@@ -4,14 +4,11 @@ Unit tests for DEM file validator.
 Tests validation logic, magic number detection, and error handling.
 """
 
-import sys
-import tempfile
 from pathlib import Path
 
 import pytest
 
 from Programma_CS2_RENAN.backend.processing.validation.dem_validator import (
-    DEMValidationError,
     DEMValidator,
     validate_dem_file,
 )

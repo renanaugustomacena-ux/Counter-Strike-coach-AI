@@ -5,12 +5,10 @@ Each test targets a specific WR/finding ID and verifies the fix works correctly.
 These prevent the exact bugs from silently returning.
 """
 
-import math
 import sqlite3
-import tempfile
 from contextlib import contextmanager
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy.pool import StaticPool
@@ -255,7 +253,6 @@ class TestWR44TimeInRound:
 
     def test_clip_at_115_not_175(self):
         import numpy as np
-        import pandas as pd
 
         # Directly test the clipping logic that assign_round_to_ticks applies.
         # The fix changed upper=175.0 to upper=115.0 in round_context.py.

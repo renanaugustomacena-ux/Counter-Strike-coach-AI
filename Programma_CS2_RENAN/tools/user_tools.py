@@ -14,12 +14,10 @@ Usage:
 """
 
 import argparse
-import os
 import sys
 from datetime import datetime, timezone
-from pathlib import Path
 
-from _infra import PROJECT_ROOT, SOURCE_ROOT, path_stabilize
+from _infra import SOURCE_ROOT, path_stabilize
 
 path_stabilize()
 

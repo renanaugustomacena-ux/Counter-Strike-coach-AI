@@ -6,7 +6,6 @@ map images, handles fallbacks, and provides spatial metadata.
 """
 
 import os
-import sys
 
 import pytest
 

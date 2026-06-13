@@ -12,7 +12,6 @@ Hashing: SHA-256 of file content (normalized to UTF-8).
 import hashlib
 import json
 import sys
-from pathlib import Path
 
 from _infra import SOURCE_ROOT, BaseValidator
 

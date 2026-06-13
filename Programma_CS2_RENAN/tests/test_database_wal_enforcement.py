@@ -6,8 +6,6 @@ Validates that every new SQLite connection gets:
 - busy_timeout = 30000
 """
 
-import os
-
 import pytest
 from sqlalchemy import text
 

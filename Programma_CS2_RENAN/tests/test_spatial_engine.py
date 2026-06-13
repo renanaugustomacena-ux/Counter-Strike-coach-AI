@@ -1,8 +1,5 @@
-import sys
-
 import pytest
 
-from Programma_CS2_RENAN.core.spatial_data import SPATIAL_REGISTRY as MAP_DATA
 from Programma_CS2_RENAN.core.spatial_engine import SpatialEngine
 
 

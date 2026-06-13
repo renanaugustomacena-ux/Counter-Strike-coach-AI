@@ -16,7 +16,7 @@ import time
 from dataclasses import dataclass
 from typing import List, Optional
 
-from sqlmodel import func, select
+from sqlmodel import select
 
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager, get_hltv_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import (

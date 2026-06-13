@@ -11,8 +11,6 @@ Covers all 7 layers of the RAPCoachModel:
   Trainer (RAPTrainer — train_step + position loss)
 """
 
-import sys
-
 import pytest
 import torch
 

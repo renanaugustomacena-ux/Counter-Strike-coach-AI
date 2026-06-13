@@ -178,7 +178,6 @@ def _resolve_name_column(df: pd.DataFrame, candidates: list) -> Optional[str]:
 
 def _compute_per_round_variance(parser):
     """Compute per-round kill and damage std from player_death and player_hurt events."""
-    import numpy as np
 
     try:
         deaths_evs = parser.parse_events(["player_death"])

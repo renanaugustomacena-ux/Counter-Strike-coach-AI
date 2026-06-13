@@ -9,7 +9,6 @@ Target: 100% coverage of config.py public functions.
 """
 
 import numpy as np
-import pytest
 import torch
 
 from Programma_CS2_RENAN.backend.nn.config import (

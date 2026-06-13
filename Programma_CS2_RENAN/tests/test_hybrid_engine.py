@@ -4,8 +4,6 @@ Unit tests for Hybrid Coaching Engine.
 Tests ML-RAG synthesis, confidence scoring, and priority classification.
 """
 
-import sys
-
 import pytest
 from sqlmodel import select
 
@@ -13,9 +11,8 @@ from Programma_CS2_RENAN.backend.coaching.hybrid_engine import (
     HybridCoachingEngine,
     HybridInsight,
     InsightPriority,
-    get_hybrid_engine,
 )
-from Programma_CS2_RENAN.backend.storage.db_models import CoachingInsight, TacticalKnowledge
+from Programma_CS2_RENAN.backend.storage.db_models import CoachingInsight
 
 
 @pytest.mark.integration

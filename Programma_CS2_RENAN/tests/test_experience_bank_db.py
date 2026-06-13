@@ -7,7 +7,6 @@ Uses in-memory SQLite with monkeypatched get_db_manager for CI portability.
 
 import hashlib
 import json
-import sys
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 

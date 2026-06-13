@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Optional
 
 from PySide6.QtCore import QByteArray, QRectF, Qt
-from PySide6.QtGui import QColor, QIcon, QImage, QPainter, QPixmap
+from PySide6.QtGui import QIcon, QImage, QPainter, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 
 from Programma_CS2_RENAN.observability.logger_setup import get_logger

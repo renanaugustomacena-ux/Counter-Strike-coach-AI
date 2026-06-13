@@ -8,7 +8,6 @@ map, view, and motion.
 All tests are CI-portable: no database, no real demo files, no GPU required.
 """
 
-import sys
 import threading
 from types import SimpleNamespace
 
@@ -23,12 +22,7 @@ from Programma_CS2_RENAN.backend.processing.player_knowledge import (
     VisibleEntity,
 )
 from Programma_CS2_RENAN.backend.processing.tensor_factory import (
-    BOMB_MARKER_INTENSITY,
-    BOMB_MARKER_RADIUS,
-    MAX_SPEED_UNITS_PER_TICK,
-    MAX_YAW_DELTA_DEG,
     TRAJECTORY_WINDOW,
-    VELOCITY_FALLOFF_RADIUS,
     TensorConfig,
     TensorFactory,
     TrainingTensorConfig,

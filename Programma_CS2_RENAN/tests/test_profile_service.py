@@ -7,10 +7,7 @@ Covers:
   _apply_profile_fields — Profile field update helper
 """
 
-import sys
 from unittest.mock import patch
-
-import pytest
 
 
 # ---------------------------------------------------------------------------

@@ -5,8 +5,6 @@ Validates extract_match_stats with controlled scalar inputs
 (pure math/formula tests — protocol-compliant).
 """
 
-import sys
-
 import pandas as pd
 import pytest
 

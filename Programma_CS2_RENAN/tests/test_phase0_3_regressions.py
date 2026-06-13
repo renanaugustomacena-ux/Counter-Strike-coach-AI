@@ -7,11 +7,9 @@ the bugs cannot silently regress in future development cycles.
 """
 
 import sqlite3
-import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import numpy as np

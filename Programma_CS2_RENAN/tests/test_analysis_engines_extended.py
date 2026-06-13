@@ -8,10 +8,6 @@ Covers:
   WinProbabilityNN / WinProbabilityPredictor (win_probability.py)
 """
 
-import math
-import sys
-
-import numpy as np
 import pandas as pd
 import torch
 

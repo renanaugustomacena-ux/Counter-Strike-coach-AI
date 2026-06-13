@@ -11,8 +11,6 @@ import json
 import os
 import sys
 
-import pytest
-
 
 # ---------------------------------------------------------------------------
 # stabilize_paths / get_base_dir

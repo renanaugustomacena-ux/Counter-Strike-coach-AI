@@ -3,8 +3,6 @@ Tests for spatial distance calculations, fuzzy nickname matching,
 outlier trimming, and maturity tier classification.
 """
 
-import sys
-
 import numpy as np
 import pandas as pd
 import pytest
@@ -12,7 +10,7 @@ import pytest
 from Programma_CS2_RENAN.backend.nn.coach_manager import DEMO_TIERS, TIER_CONFIDENCE
 from Programma_CS2_RENAN.backend.processing.baselines.nickname_resolver import NicknameResolver
 from Programma_CS2_RENAN.backend.processing.connect_map_context import distance_with_z_penalty
-from Programma_CS2_RENAN.backend.processing.validation.sanity import LIMITS, validate_and_trim
+from Programma_CS2_RENAN.backend.processing.validation.sanity import validate_and_trim
 
 
 class TestVerticality:

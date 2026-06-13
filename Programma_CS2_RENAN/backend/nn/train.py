@@ -2,7 +2,6 @@ import time
 
 import torch
 import torch.nn as nn
-from sqlmodel import select
 from torch.utils.data import DataLoader
 
 from Programma_CS2_RENAN.backend.nn.config import EPOCHS, LEARNING_RATE, get_throttling_delay

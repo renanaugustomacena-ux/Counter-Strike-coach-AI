@@ -22,7 +22,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -38,14 +38,10 @@ from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 from Programma_CS2_RENAN.apps.qt_app.core.match_utils import map_short_name
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
-from Programma_CS2_RENAN.apps.qt_app.viewmodels.match_history_vm import (
-    MatchHistoryViewModel,
-)
+from Programma_CS2_RENAN.apps.qt_app.viewmodels.match_history_vm import MatchHistoryViewModel
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.empty_state import EmptyState
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.filter_chip import FilterChip
-from Programma_CS2_RENAN.apps.qt_app.widgets.components.match_row_card import (
-    MatchRowCard,
-)
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.match_row_card import MatchRowCard
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.status_chip import StatusChip
 from Programma_CS2_RENAN.apps.qt_app.widgets.skeleton import SkeletonTable
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -260,9 +256,7 @@ class MatchHistoryScreen(QWidget):
             self._pro_banner.setVisible(False)
             self._map_row_widget.setVisible(False)
             self._empty_state.set_title("No matches found")
-            self._empty_state.set_description(
-                "Play and analyze a demo to see it here."
-            )
+            self._empty_state.set_description("Play and analyze a demo to see it here.")
             self._body_stack.setCurrentIndex(self._page_empty)
             self._update_count_chip(0)
             return
@@ -314,16 +308,12 @@ class MatchHistoryScreen(QWidget):
                 f"color: {tokens.text_secondary}; background: transparent; "
                 f"padding: {tokens.spacing_md}px 0 {tokens.spacing_xs}px 0;"
             )
-            self._container_layout.insertWidget(
-                self._container_layout.count() - 1, header
-            )
+            self._container_layout.insertWidget(self._container_layout.count() - 1, header)
 
             for match in bucket_matches:
                 row = MatchRowCard(match)
                 row.clicked.connect(self._on_match_clicked)
-                self._container_layout.insertWidget(
-                    self._container_layout.count() - 1, row
-                )
+                self._container_layout.insertWidget(self._container_layout.count() - 1, row)
 
         Animator.fade_in(self._container, duration=200)
 
@@ -335,9 +325,7 @@ class MatchHistoryScreen(QWidget):
             out = [m for m in out if m.get("is_pro")]
         if self._map_filter != _MAP_ALL:
             out = [
-                m
-                for m in out
-                if map_short_name(m.get("demo_name", "")).lower() == self._map_filter
+                m for m in out if map_short_name(m.get("demo_name", "")).lower() == self._map_filter
             ]
         return out
 

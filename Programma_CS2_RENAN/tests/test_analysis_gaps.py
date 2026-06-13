@@ -6,8 +6,7 @@ Covers:
   DeceptionAnalyzer (deception_index.py) — flash baits, rotation feints, sound, composite
 """
 
-import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import numpy as np
 import pandas as pd

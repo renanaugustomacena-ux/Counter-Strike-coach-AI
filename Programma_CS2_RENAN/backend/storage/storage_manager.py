@@ -5,8 +5,6 @@ from typing import Optional
 
 from Programma_CS2_RENAN.core.config import BASE_DIR as PROJECT_ROOT
 from Programma_CS2_RENAN.core.config import (
-    CURRENT_USER_ID,
-    DATA_DIR,
     MAX_DEMOS_PER_MONTH,
     MAX_TOTAL_DEMOS_PER_USER,
     get_setting,

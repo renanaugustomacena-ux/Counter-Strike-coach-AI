@@ -13,9 +13,7 @@ Exit codes: 0 = PASS, 1 = FAIL
 """
 
 import json
-import os
 import sys
-import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -26,7 +24,7 @@ PROJECT_ROOT, SOURCE_ROOT = path_stabilize()
 
 import torch
 
-from Programma_CS2_RENAN.core.config import DATABASE_URL, MODELS_DIR, SETTINGS_PATH
+from Programma_CS2_RENAN.core.config import MODELS_DIR, SETTINGS_PATH
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.backend_validator")
@@ -371,10 +369,7 @@ class BackendValidator(BaseValidator):
 
         # Chronovisor Scanner (Prop 5)
         try:
-            from Programma_CS2_RENAN.backend.nn.rap_coach.chronovisor_scanner import (
-                CriticalMoment,
-                ScanResult,
-            )
+            from Programma_CS2_RENAN.backend.nn.rap_coach.chronovisor_scanner import CriticalMoment
 
             cm = CriticalMoment(
                 match_id=0,

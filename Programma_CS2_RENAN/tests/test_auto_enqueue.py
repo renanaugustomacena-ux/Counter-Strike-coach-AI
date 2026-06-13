@@ -4,9 +4,8 @@ Unit tests for automated demo parsing triggers.
 Tests IngestionTask creation and auto-enqueue functionality.
 """
 
-import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 
 import pytest
 from sqlmodel import select

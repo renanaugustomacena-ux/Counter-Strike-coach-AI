@@ -6,7 +6,6 @@ integration with real demo files (skipped if unavailable).
 No MagicMock, no @patch on non-HTTP targets.
 """
 
-import sys
 from pathlib import Path
 
 import pandas as pd

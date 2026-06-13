@@ -11,9 +11,6 @@ Covers:
 
 import json
 import sqlite3
-import sys
-
-import pytest
 
 
 class TestKnowledgeGraphManager:

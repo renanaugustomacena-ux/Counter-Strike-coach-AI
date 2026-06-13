@@ -8,8 +8,6 @@ Covers:
   AdvancedCoachNN, CoachNNConfig, ModelManager (model.py)
 """
 
-import sys
-
 import numpy as np
 import pytest
 import torch

@@ -1,6 +1,5 @@
-from kivy.core.window import Window
 from kivy.graphics import Color, Ellipse, Line
-from kivy.properties import BooleanProperty, ObjectProperty, StringProperty
+from kivy.properties import BooleanProperty, StringProperty
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.image import Image
 from kivy.uix.label import Label

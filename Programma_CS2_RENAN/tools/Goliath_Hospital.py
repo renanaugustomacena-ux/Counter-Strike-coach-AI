@@ -27,7 +27,7 @@ import sys
 import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List
 
 from _infra import BaseValidator, Severity, path_stabilize
 

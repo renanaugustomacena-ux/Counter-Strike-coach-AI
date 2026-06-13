@@ -9,13 +9,9 @@ creation, and log retention cleanup.
 import json
 import logging
 import os
-import shutil
-import tempfile
 import time
 from pathlib import Path
 from unittest import mock
-
-import pytest
 
 # Ensure project root is importable
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent

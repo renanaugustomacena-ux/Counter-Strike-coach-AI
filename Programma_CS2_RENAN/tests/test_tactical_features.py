@@ -1,5 +1,3 @@
-import sys
-
 import pytest
 
 from Programma_CS2_RENAN.backend.analysis.utility_economy import (

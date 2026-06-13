@@ -19,11 +19,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import select
 
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager, init_database
-from Programma_CS2_RENAN.backend.storage.db_models import (
-    CoachState,
-    IngestionTask,
-    PlayerMatchStats,
-)
+from Programma_CS2_RENAN.backend.storage.db_models import CoachState, PlayerMatchStats
 from Programma_CS2_RENAN.observability.logger_setup import get_logger, set_correlation_id
 
 logger = get_logger("cs2analyzer.session_engine")
@@ -550,7 +546,7 @@ def _check_meta_shift(old_baseline: dict) -> dict:
                 )
 
         return new_baseline
-    except (ValueError, KeyError, TypeError) as e:
+    except (ValueError, KeyError, TypeError, RuntimeError) as e:
         logger.warning("Meta-shift detection failed (non-fatal): %s", e)
         return old_baseline
 

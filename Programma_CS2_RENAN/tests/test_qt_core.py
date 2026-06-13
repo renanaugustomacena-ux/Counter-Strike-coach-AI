@@ -352,14 +352,14 @@ class TestThemeEngine:
             assert required.issubset(set(palette.keys())), f"{name} missing slots"
 
     def test_rating_color_good(self, qapp):
-        from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import COLOR_GREEN, rating_color
+        from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import rating_color
 
         color = rating_color(1.20)
         # Should be green
         assert color.greenF() > color.redF()
 
     def test_rating_color_bad(self, qapp):
-        from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import COLOR_RED, rating_color
+        from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import rating_color
 
         color = rating_color(0.80)
         # Should be red

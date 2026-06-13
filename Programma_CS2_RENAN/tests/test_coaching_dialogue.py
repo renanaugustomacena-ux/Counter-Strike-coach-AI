@@ -8,10 +8,6 @@ Covers:
   CoachingService._infer_round_phase — round phase delegation
 """
 
-import sys
-
-import pytest
-
 
 class TestFormatCoperMessage:
     """Tests for COPER advice message formatting."""

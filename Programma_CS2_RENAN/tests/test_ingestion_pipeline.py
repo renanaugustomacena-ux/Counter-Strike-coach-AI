@@ -5,13 +5,11 @@ and the _is_profile_ready gate.
 """
 
 import math
-from pathlib import Path
 
 import pytest
-from sqlmodel import Session, SQLModel, create_engine, select
+from sqlmodel import Session, SQLModel, create_engine
 
 from Programma_CS2_RENAN.backend.storage.db_models import (
-    CoachingInsight,
     IngestionTask,
     PlayerMatchStats,
     PlayerProfile,

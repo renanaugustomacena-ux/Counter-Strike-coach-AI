@@ -8,10 +8,7 @@ Covers:
   get_player_trade_stats — per-player aggregation
 """
 
-import sys
-
 import pandas as pd
-import pytest
 
 
 # ---------------------------------------------------------------------------

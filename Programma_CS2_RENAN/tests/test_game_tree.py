@@ -8,8 +8,6 @@ Covers:
   get_game_tree_search — factory function
 """
 
-import sys
-
 
 # ---------------------------------------------------------------------------
 # OpponentModel

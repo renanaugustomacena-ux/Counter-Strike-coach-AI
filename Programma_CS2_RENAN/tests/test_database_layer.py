@@ -8,11 +8,9 @@ Covers:
 """
 
 import json
-import sys
 from datetime import datetime, timezone
 from unittest.mock import patch
 
-import pytest
 from sqlmodel import Session, SQLModel, create_engine, select
 
 

@@ -6,9 +6,6 @@ and derived stat correctness (KD ratio, KAST, headshot rate, ADR).
 F9-08: Pure-logic tests only — no DB or model dependency.
 """
 
-import sys
-
-import numpy as np
 import pandas as pd
 import pytest
 

@@ -380,7 +380,6 @@ class ExperienceBank:
         Returns:
             The updated CoachingExperience.
         """
-        from sqlalchemy import func as sa_func
 
         # EMA: new_eff = old * (1 - alpha) + new * alpha
         merged_effectiveness = max(

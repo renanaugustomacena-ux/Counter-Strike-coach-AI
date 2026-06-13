@@ -11,7 +11,7 @@ Target: 100% function-level coverage of jepa_train.py.
 import math
 import os
 import tempfile
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -23,9 +23,7 @@ from Programma_CS2_RENAN.backend.nn.jepa_train import (
     _MAX_TICKS_PER_SEQUENCE,
     _MIN_TICKS_FOR_SEQUENCE,
     JEPAPretrainDataset,
-    _load_tick_sequence,
     load_jepa_model,
-    load_user_match_sequences,
     save_jepa_model,
     train_jepa_finetune,
     train_jepa_pretrain,

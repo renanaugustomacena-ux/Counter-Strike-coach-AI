@@ -14,8 +14,6 @@ from __future__ import annotations
 
 import json
 import logging
-from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 import torch
@@ -154,7 +152,6 @@ def test_save_nn_rolls_back_both_tmp_files_on_failure(isolated_models_dir, monke
     its final position — atomicity guarantee across the pair."""
     model = _Tiny()
     # Force json.dumps to raise after torch.save succeeded
-    import builtins
 
     real_dumps = json.dumps
 

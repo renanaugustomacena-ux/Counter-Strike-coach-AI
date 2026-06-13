@@ -10,8 +10,6 @@ Verifies:
 6. Feature name list matches dimension count
 """
 
-import math
-
 import numpy as np
 import pytest
 

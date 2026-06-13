@@ -7,7 +7,6 @@ Covers:
   CoachingDialogueEngine helpers (coaching_dialogue.py) — intent, prompts, fallbacks
 """
 
-import sys
 import threading
 from unittest.mock import MagicMock
 

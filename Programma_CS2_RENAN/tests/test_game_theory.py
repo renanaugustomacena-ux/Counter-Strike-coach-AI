@@ -11,12 +11,7 @@ Validates advanced game-theory analysis, spatial intelligence, and utility/econo
 - Engagement Range Analytics (Proposal 7)
 """
 
-import math
-import sys
-
-import numpy as np
 import pandas as pd
-import pytest
 
 # ─────────────────────────── Belief Model ───────────────────────────
 
@@ -170,10 +165,7 @@ class TestAdaptiveBeliefCalibrator:
 
     def test_insufficient_samples_skipped(self):
         """Calibration should be skipped if fewer than MIN_SAMPLES."""
-        from Programma_CS2_RENAN.backend.analysis.belief_model import (
-            _DEFAULT_PRIORS,
-            AdaptiveBeliefCalibrator,
-        )
+        from Programma_CS2_RENAN.backend.analysis.belief_model import AdaptiveBeliefCalibrator
 
         calibrator = AdaptiveBeliefCalibrator()
         original_full = calibrator.estimator.priors["full"]

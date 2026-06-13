@@ -10,16 +10,12 @@ Tests cover:
 """
 
 import math
-import sys
 import types
 from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from Programma_CS2_RENAN.backend.processing.baselines.pro_baseline import (
-    TemporalBaselineDecay,
-    get_pro_baseline,
-)
+from Programma_CS2_RENAN.backend.processing.baselines.pro_baseline import TemporalBaselineDecay
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -146,7 +146,6 @@ class TestDimensionPropagation:
 
     def test_legacy_default_dimensions(self):
         """Default dimensions should match METADATA_DIM and OUTPUT_DIM from config."""
-        from Programma_CS2_RENAN.backend.nn.config import INPUT_DIM, OUTPUT_DIM
         from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
         from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
 

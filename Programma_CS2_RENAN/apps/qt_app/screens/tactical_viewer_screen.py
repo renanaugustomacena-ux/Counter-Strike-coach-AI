@@ -5,7 +5,6 @@ import os
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Qt, QThreadPool, QTimer, Signal
-from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -29,12 +28,12 @@ from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.apps.qt_app.core.web_bridge import MarqueeBridge
 from Programma_CS2_RENAN.apps.qt_app.core.widgets_helpers import make_button
 from Programma_CS2_RENAN.apps.qt_app.core.worker import Worker
-from Programma_CS2_RENAN.apps.qt_app.widgets.components.status_chip import StatusChip
 from Programma_CS2_RENAN.apps.qt_app.viewmodels.tactical_vm import (
     TacticalChronovisorVM,
     TacticalGhostVM,
     TacticalPlaybackVM,
 )
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.status_chip import StatusChip
 from Programma_CS2_RENAN.apps.qt_app.widgets.tactical.map_widget import TacticalMapWidget
 from Programma_CS2_RENAN.apps.qt_app.widgets.tactical.player_sidebar import PlayerSidebar
 from Programma_CS2_RENAN.apps.qt_app.widgets.tactical.timeline_widget import TimelineWidget
@@ -340,16 +339,12 @@ class TacticalViewerScreen(QWidget):
 
         self._error_label = QLabel()
         self._error_label.setFont(Typography.font("body"))
-        self._error_label.setStyleSheet(
-            f"color: {tokens.error}; background: transparent;"
-        )
+        self._error_label.setStyleSheet(f"color: {tokens.error}; background: transparent;")
         self._error_label.setWordWrap(True)
         self._error_label.setVisible(False)
         header.addWidget(self._error_label)
 
-        self._open_btn = make_button(
-            i18n.get_text("open_demo"), variant="primary", fixed_width=140
-        )
+        self._open_btn = make_button(i18n.get_text("open_demo"), variant="primary", fixed_width=140)
         self._open_btn.setFixedHeight(36)
         self._open_btn.clicked.connect(self._open_demo)
         header.addWidget(self._open_btn)

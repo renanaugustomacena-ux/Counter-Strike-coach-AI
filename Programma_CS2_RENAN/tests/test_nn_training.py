@@ -7,8 +7,6 @@ Covers:
   TrainingController (training_controller.py) — diversity, monthly limit, features
 """
 
-import sys
-
 import numpy as np
 import pytest
 

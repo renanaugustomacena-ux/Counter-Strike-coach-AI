@@ -5,13 +5,9 @@ Validates: no hardcoded secrets, proper .gitignore, no unsafe eval/exec,
 subprocess safety, integrity manifest integrity.
 """
 
-import fnmatch
 import json
 import re
-import sys
 from pathlib import Path
-
-import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 SOURCE_ROOT = PROJECT_ROOT / "Programma_CS2_RENAN"

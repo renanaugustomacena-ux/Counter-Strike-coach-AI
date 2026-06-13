@@ -4,9 +4,6 @@ Unit tests for JEPA coaching model.
 Tests model architecture, forward passes, and training components.
 """
 
-import sys
-
-import numpy as np
 import pytest
 import torch
 
