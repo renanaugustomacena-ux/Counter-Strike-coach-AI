@@ -360,27 +360,35 @@ class TestFetchBatches:
         orch = _make_orchestrator()
         orch.manager._fetch_jepa_ticks.return_value = []
         orch._fetch_batches(is_train=True)
-        orch.manager._fetch_jepa_ticks.assert_called_with(is_pro=True, split="train", seed=42)
+        orch.manager._fetch_jepa_ticks.assert_called_with(
+            is_pro=True, split="train", seed=42, sample_size=50_000
+        )
 
     def test_uses_val_split_when_not_train(self):
         orch = _make_orchestrator()
         orch.manager._fetch_jepa_ticks.return_value = []
         orch._fetch_batches(is_train=False)
-        orch.manager._fetch_jepa_ticks.assert_called_with(is_pro=True, split="val", seed=42)
+        orch.manager._fetch_jepa_ticks.assert_called_with(
+            is_pro=True, split="val", seed=42, sample_size=10_000
+        )
 
     def test_epoch_seed_rotation(self):
         """B1: Different epochs produce different seeds."""
         orch = _make_orchestrator()
         orch.manager._fetch_jepa_ticks.return_value = []
         orch._fetch_batches(is_train=True, epoch=5)
-        orch.manager._fetch_jepa_ticks.assert_called_with(is_pro=True, split="train", seed=47)
+        orch.manager._fetch_jepa_ticks.assert_called_with(
+            is_pro=True, split="train", seed=47, sample_size=50_000
+        )
 
     def test_val_uses_fixed_seed_regardless_of_epoch(self):
         """B1.3: Val split always uses GLOBAL_SEED (epoch ignored for val in run_training)."""
         orch = _make_orchestrator()
         orch.manager._fetch_jepa_ticks.return_value = []
         orch._fetch_batches(is_train=False, epoch=0)
-        orch.manager._fetch_jepa_ticks.assert_called_with(is_pro=True, split="val", seed=42)
+        orch.manager._fetch_jepa_ticks.assert_called_with(
+            is_pro=True, split="val", seed=42, sample_size=10_000
+        )
 
 
 # ===========================================================================
@@ -562,8 +570,10 @@ class TestPerEpochSeedRotation:
         """B1.4a: Identical epoch → identical seed → deterministic."""
         orch = _make_orchestrator()
         orch.manager._fetch_jepa_ticks.return_value = list(range(8))
-        b1 = orch._fetch_batches(is_train=True, epoch=3)
-        orch.manager._fetch_jepa_ticks.assert_called_with(is_pro=True, split="train", seed=45)
+        orch._fetch_batches(is_train=True, epoch=3)
+        orch.manager._fetch_jepa_ticks.assert_called_with(
+            is_pro=True, split="train", seed=45, sample_size=50_000
+        )
 
     def test_different_epochs_different_seeds(self):
         """B1.4b: Different epochs → different seeds."""
@@ -610,6 +620,46 @@ class TestPerEpochSeedRotation:
         assert len(fetch_calls) == 3
         seeds = [c.kwargs["seed"] for c in fetch_calls]
         assert seeds == [43, 44, 45]  # GLOBAL_SEED + epoch (1, 2, 3)
+
+
+# ===========================================================================
+# B2 — Configurable subsample sizes
+# ===========================================================================
+
+
+class TestSubsampleSizeConfig:
+    """B2: Verify configurable train/val sample sizes."""
+
+    def test_default_train_samples(self):
+        orch = _make_orchestrator()
+        assert orch._train_samples == 50_000
+
+    def test_default_val_samples(self):
+        orch = _make_orchestrator()
+        assert orch._val_samples == 10_000
+
+    def test_custom_train_samples(self):
+        orch = _make_orchestrator(train_samples=1000)
+        assert orch._train_samples == 1000
+
+    def test_custom_val_samples(self):
+        orch = _make_orchestrator(val_samples=500)
+        assert orch._val_samples == 500
+
+    def test_custom_sizes_passed_to_fetch(self):
+        """B2: Custom sizes propagate to _fetch_jepa_ticks."""
+        orch = _make_orchestrator(train_samples=2000, val_samples=800)
+        orch.manager._fetch_jepa_ticks.return_value = []
+
+        orch._fetch_batches(is_train=True, epoch=1)
+        orch.manager._fetch_jepa_ticks.assert_called_with(
+            is_pro=True, split="train", seed=43, sample_size=2000
+        )
+
+        orch._fetch_batches(is_train=False, epoch=0)
+        orch.manager._fetch_jepa_ticks.assert_called_with(
+            is_pro=True, split="val", seed=42, sample_size=800
+        )
 
 
 # ===========================================================================

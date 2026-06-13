@@ -80,6 +80,18 @@ def main():
         action="store_true",
         help="Disable TensorBoard logging",
     )
+    parser.add_argument(
+        "--train-samples",
+        type=int,
+        default=None,
+        help="Per-epoch train subsample size (default: 50000, config: TRAIN_SAMPLES)",
+    )
+    parser.add_argument(
+        "--val-samples",
+        type=int,
+        default=None,
+        help="Validation subsample size (default: 10000, config: VAL_SAMPLES)",
+    )
 
     args = parser.parse_args()
 
@@ -121,6 +133,8 @@ def main():
                 max_epochs=epochs,
                 patience=5 if args.dry_run else 10,
                 callbacks=callbacks,
+                train_samples=args.train_samples,
+                val_samples=args.val_samples,
             )
             orchestrator_jepa.run_training()
 
@@ -140,6 +154,8 @@ def main():
                 model_type="rap",
                 max_epochs=epochs,
                 patience=5 if args.dry_run else 10,
+                train_samples=args.train_samples,
+                val_samples=args.val_samples,
                 callbacks=callbacks,
             )
             orchestrator_rap.run_training()

@@ -34,6 +34,9 @@ class TrainingOrchestrator:
     Real-time Progress Reporting.
     """
 
+    _DEFAULT_TRAIN_SAMPLES = 50_000
+    _DEFAULT_VAL_SAMPLES = 10_000
+
     def __init__(
         self,
         manager,
@@ -43,6 +46,8 @@ class TrainingOrchestrator:
         batch_size=32,
         callbacks: CallbackRegistry = None,
         accumulation_steps: int = 4,
+        train_samples: int | None = None,
+        val_samples: int | None = None,
     ):
         self.manager = manager
         self.model_type = model_type
@@ -50,6 +55,15 @@ class TrainingOrchestrator:
         self.patience = patience
         self.batch_size = batch_size
         self._accumulation_steps = accumulation_steps
+
+        from Programma_CS2_RENAN.core.config import get_setting
+
+        self._train_samples = train_samples or get_setting(
+            "TRAIN_SAMPLES", default=self._DEFAULT_TRAIN_SAMPLES
+        )
+        self._val_samples = val_samples or get_setting(
+            "VAL_SAMPLES", default=self._DEFAULT_VAL_SAMPLES
+        )
         self.device = get_device()
         self.best_val_loss = float("inf")
         self.patience_counter = 0
@@ -289,9 +303,12 @@ class TrainingOrchestrator:
             return
 
         logger.info(
-            "Training on ~%s samples/epoch (rotated), Validating on %s (fixed)",
+            "B2: Training on ~%d samples/epoch (cap=%d, rotated), "
+            "Validating on %d (cap=%d, fixed)",
             total_train_samples,
+            self._train_samples,
             len(val_data) * self.batch_size if val_data else 0,
+            self._val_samples,
         )
 
         self.callbacks.fire(
@@ -328,7 +345,10 @@ class TrainingOrchestrator:
             # B1.3: Val subsample stays fixed (GLOBAL_SEED) so early-stopping
             # comparisons are stable across epochs.  Only train rotates.
             seed = GLOBAL_SEED + epoch if is_train else GLOBAL_SEED
-            raw_items = self.manager._fetch_jepa_ticks(is_pro=is_pro, split=split, seed=seed)
+            sample_size = self._train_samples if is_train else self._val_samples
+            raw_items = self.manager._fetch_jepa_ticks(
+                is_pro=is_pro, split=split, seed=seed, sample_size=sample_size
+            )
             if not raw_items:
                 return []
             batches = []
