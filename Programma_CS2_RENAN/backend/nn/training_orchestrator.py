@@ -130,10 +130,15 @@ class TrainingOrchestrator:
     def _load_or_init_model(self):
         """Create model via Factory and load checkpoint if available.
 
-        REPR-01: When a checkpoint is loaded, EMA step counters rehydrate
-        from the saved state dict — `_ema_step` and `_ema_total_steps` are
-        part of the persisted checkpoint, ensuring the cosine schedule resumes
-        correctly on fine-tuning runs.
+        REPR-01: EMA step counters rehydrate via model attributes set by
+        ``jepa_train.load_jepa_model`` (``_saved_ema_step``, ``_saved_ema_total_steps``).
+        Note: the orchestrator save path (``persistence.save_nn``) stores
+        ``state_dict`` only — EMA counters persist through ``jepa_train``'s
+        separate checkpoint format.  ``set_total_steps`` later recomputes
+        ``_ema_total_steps`` from the current run config.
+
+        B3.2: ``best_val_loss`` is restored from the sidecar ``extra`` field
+        so resume compares against the checkpoint's stored best, not +inf.
         """
         from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
 
@@ -141,6 +146,7 @@ class TrainingOrchestrator:
         try:
             load_nn(self.model_name, model)
             logger.info("Resumed training from %s", self.model_name)
+            self._restore_best_val_from_sidecar()
         except FileNotFoundError:
             logger.info("No checkpoint found — starting fresh training for %s", self.model_name)
         except StaleCheckpointError:
@@ -155,6 +161,31 @@ class TrainingOrchestrator:
                 e,
             )
         return model
+
+    def _restore_best_val_from_sidecar(self):
+        """B3.2: Restore best_val_loss from checkpoint sidecar on resume.
+
+        Without this, resume seeds best_val_loss with +inf, causing the first
+        epoch to always declare 'new best' and overwrite the prior checkpoint
+        even if the resumed model performs worse.
+        """
+        import json
+
+        from Programma_CS2_RENAN.backend.nn.persistence import _sidecar_path, get_model_path
+
+        try:
+            path = get_model_path(self.model_name, user_id=None)
+            sidecar = _sidecar_path(path)
+            if sidecar.exists():
+                meta = json.loads(sidecar.read_text())
+                stored = (meta.get("extra") or {}).get("best_val_loss")
+                if stored is not None:
+                    self.best_val_loss = float(stored)
+                    logger.info(
+                        "B3.2: Restored best_val_loss=%.6f from sidecar", self.best_val_loss
+                    )
+        except Exception as e:
+            logger.debug("B3.2: Could not restore best_val_loss from sidecar: %s", e)
 
     def _run_epoch_loop(self, trainer, model, val_data, context):
         """Execute the train/validate/checkpoint epoch loop. Returns final epoch number.
@@ -205,7 +236,12 @@ class TrainingOrchestrator:
             if val_loss < self.best_val_loss:
                 self.best_val_loss = val_loss
                 self.patience_counter = 0
-                save_nn(model, self.model_name, user_id=None)
+                save_nn(
+                    model,
+                    self.model_name,
+                    user_id=None,
+                    extra_meta={"best_val_loss": val_loss},
+                )
                 logger.info("New Best Model Saved (Val Loss: %s)", format(val_loss, ".6f"))
             else:
                 self.patience_counter += 1

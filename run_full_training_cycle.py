@@ -81,6 +81,12 @@ def main():
         help="Disable TensorBoard logging",
     )
     parser.add_argument(
+        "--patience",
+        type=int,
+        default=None,
+        help="Early-stop patience in epochs (default: 10 smoke / 25-30 full runs)",
+    )
+    parser.add_argument(
         "--train-samples",
         type=int,
         default=None,
@@ -118,8 +124,9 @@ def main():
     # Build callback registry (TensorBoard etc.)
     callbacks = _build_callbacks(args)
 
-    # Override epochs for dry run
+    # Override epochs/patience for dry run
     epochs = 1 if args.dry_run else args.epochs
+    patience = 5 if args.dry_run else (args.patience or 10)
 
     # Assign dataset splits before training (chronological 70/15/15)
     manager.assign_dataset_splits()
@@ -131,7 +138,7 @@ def main():
                 manager,
                 model_type="jepa",
                 max_epochs=epochs,
-                patience=5 if args.dry_run else 10,
+                patience=patience,
                 callbacks=callbacks,
                 train_samples=args.train_samples,
                 val_samples=args.val_samples,
@@ -153,7 +160,7 @@ def main():
                 manager,
                 model_type="rap",
                 max_epochs=epochs,
-                patience=5 if args.dry_run else 10,
+                patience=patience,
                 train_samples=args.train_samples,
                 val_samples=args.val_samples,
                 callbacks=callbacks,

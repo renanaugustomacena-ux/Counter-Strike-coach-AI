@@ -663,6 +663,157 @@ class TestSubsampleSizeConfig:
 
 
 # ===========================================================================
+# B3 — Patience & best_val_loss resume
+# ===========================================================================
+
+
+class TestPatienceConfig:
+    """B3.1: Verify --patience flag threads to orchestrator."""
+
+    def test_default_patience(self):
+        orch = _make_orchestrator()
+        assert orch.patience == 10
+
+    def test_custom_patience(self):
+        orch = _make_orchestrator(patience=25)
+        assert orch.patience == 25
+
+    def test_early_stop_at_custom_patience(self):
+        """Early stopping triggers after patience epochs without improvement."""
+        orch = _make_orchestrator(max_epochs=50, patience=3)
+        mock_trainer = MagicMock()
+        mock_model = MagicMock()
+
+        with patch.object(orch, "_run_epoch", return_value=2.0):
+            with patch.object(orch, "_fetch_batches", return_value=[[1, 2, 3]]):
+                with patch("Programma_CS2_RENAN.backend.nn.training_orchestrator.save_nn"):
+                    # best_val_loss starts at inf, so epoch 1 improves → counter=0
+                    # epochs 2,3,4 don't improve → counter reaches 3 → stop
+                    final = orch._run_epoch_loop(mock_trainer, mock_model, [[1]], None)
+                    assert final == 4  # stopped at epoch 4 (patience=3 after 1 improvement)
+
+
+class TestBestValLossResume:
+    """B3.2: Verify best_val_loss restores from sidecar on resume."""
+
+    def test_restore_from_sidecar(self, tmp_path):
+        """B3.2: best_val_loss is restored from checkpoint sidecar."""
+        import json
+
+        orch = _make_orchestrator()
+        assert orch.best_val_loss == float("inf")
+
+        # Create fake sidecar with stored best_val_loss
+        model_dir = tmp_path / "global"
+        model_dir.mkdir(parents=True)
+        sidecar = model_dir / "jepa_brain.pt.meta.json"
+        sidecar.write_text(
+            json.dumps(
+                {
+                    "schema_version": "v1",
+                    "metadata_dim": 25,
+                    "feature_names": [],
+                    "extra": {"best_val_loss": 1.8977},
+                }
+            )
+        )
+
+        with patch(
+            "Programma_CS2_RENAN.backend.nn.persistence.get_model_path",
+            return_value=model_dir / "jepa_brain.pt",
+        ):
+            orch._restore_best_val_from_sidecar()
+
+        assert orch.best_val_loss == pytest.approx(1.8977)
+
+    def test_no_sidecar_keeps_inf(self, tmp_path):
+        """B3.2: Missing sidecar leaves best_val_loss at +inf (fresh start)."""
+        orch = _make_orchestrator()
+        model_dir = tmp_path / "global"
+        model_dir.mkdir(parents=True)
+
+        with patch(
+            "Programma_CS2_RENAN.backend.nn.persistence.get_model_path",
+            return_value=model_dir / "jepa_brain.pt",
+        ):
+            orch._restore_best_val_from_sidecar()
+
+        assert orch.best_val_loss == float("inf")
+
+    def test_sidecar_without_extra_keeps_inf(self, tmp_path):
+        """B3.2: Sidecar without extra field leaves best_val_loss at +inf."""
+        import json
+
+        orch = _make_orchestrator()
+        model_dir = tmp_path / "global"
+        model_dir.mkdir(parents=True)
+        sidecar = model_dir / "jepa_brain.pt.meta.json"
+        sidecar.write_text(
+            json.dumps({"schema_version": "v1", "metadata_dim": 25, "feature_names": []})
+        )
+
+        with patch(
+            "Programma_CS2_RENAN.backend.nn.persistence.get_model_path",
+            return_value=model_dir / "jepa_brain.pt",
+        ):
+            orch._restore_best_val_from_sidecar()
+
+        assert orch.best_val_loss == float("inf")
+
+    def test_save_persists_best_val_loss(self):
+        """B3.2: save_nn is called with extra_meta containing best_val_loss."""
+        orch = _make_orchestrator(max_epochs=1, patience=10)
+        mock_trainer = MagicMock()
+        mock_model = MagicMock()
+
+        with patch.object(orch, "_run_epoch", return_value=1.5):
+            with patch.object(orch, "_fetch_batches", return_value=[[1, 2, 3]]):
+                with patch(
+                    "Programma_CS2_RENAN.backend.nn.training_orchestrator.save_nn"
+                ) as mock_save:
+                    orch._run_epoch_loop(mock_trainer, mock_model, [[1]], None)
+
+                    # First save_nn call should be the "best" save with extra_meta
+                    best_call = mock_save.call_args_list[0]
+                    assert best_call.kwargs.get("extra_meta") == {"best_val_loss": 1.5}
+
+
+class TestEMATotalSteps:
+    """B3.3: Verify EMA total_steps derives from actual planned steps."""
+
+    def test_set_total_steps_called_with_planned_values(self):
+        """B3.3: set_total_steps called with max_epochs * steps_per_epoch."""
+        orch = _make_orchestrator(max_epochs=100)
+        orch.manager._fetch_jepa_ticks.return_value = list(range(100))
+
+        mock_model = MagicMock()
+        mock_model.to.return_value = mock_model
+        mock_trainer = MagicMock()
+        mock_trainer.set_total_steps = MagicMock()
+        orch.TrainerClass = MagicMock(return_value=mock_trainer)
+
+        with patch(
+            "Programma_CS2_RENAN.backend.nn.data_quality.run_pre_training_quality_check"
+        ) as mock_qc:
+            mock_qc.return_value = MagicMock(passed=True)
+            with patch("Programma_CS2_RENAN.backend.nn.factory.ModelFactory") as mf:
+                mf.get_model.return_value = mock_model
+                with patch("Programma_CS2_RENAN.backend.nn.training_orchestrator.load_nn"):
+                    with patch("Programma_CS2_RENAN.backend.nn.training_orchestrator.save_nn"):
+                        with patch.object(orch, "_run_epoch_loop", return_value=1):
+                            with patch.object(orch, "_finalize_training"):
+                                orch.run_training()
+
+        mock_trainer.set_total_steps.assert_called_once()
+        call_args = mock_trainer.set_total_steps.call_args[0]
+        assert call_args[0] == 100  # max_epochs
+        # steps_per_epoch = ceil(batches / accumulation_steps)
+        # batches = ceil(100 items / 32 batch_size) = 4
+        # steps_per_epoch = ceil(4 / 4 accum) = 1
+        assert call_args[1] >= 1
+
+
+# ===========================================================================
 # Weight constants and role indices
 # ===========================================================================
 
