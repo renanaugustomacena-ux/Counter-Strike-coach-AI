@@ -96,47 +96,35 @@ class TrainingOrchestrator:
         else:
             raise ValueError(f"Unknown model type: {model_type}")
 
-    def run_training(self, context=None):
-        """Execute the full training pipeline."""
-        logger.info("Orchestrator Starting: %s Cycle", self.model_name.upper())
-
-        # GPU detection — warn early so user knows training will be slow
-        if not torch.cuda.is_available():
-            logger.warning(
-                "No NVIDIA GPU detected. Training will run on CPU and may be "
-                "10-50x slower. For faster training, use a machine with an NVIDIA GPU."
-            )
-            try:
-                from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
-
-                get_state_manager().add_notification(
-                    "training", "WARNING", "Training on CPU (no GPU detected). This will be slow."
-                )
-            except Exception:
-                pass  # Non-fatal — don't block training over a notification
-
-        # P3-D: Pre-training data quality gate
-        from Programma_CS2_RENAN.backend.nn.data_quality import run_pre_training_quality_check
-
-        quality_report = run_pre_training_quality_check()
-        if not quality_report.passed:
-            logger.error(
-                "P3-D: Training ABORTED — pre-training quality check FAILED.\n%s",
-                quality_report.summary(),
-            )
+    def _warn_no_gpu(self):
+        """Emit GPU-absent warning so user knows training will be slow."""
+        if torch.cuda.is_available():
             return
+        logger.warning(
+            "No NVIDIA GPU detected. Training will run on CPU and may be "
+            "10-50x slower. For faster training, use a machine with an NVIDIA GPU."
+        )
+        try:
+            from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
 
-        # 1. Initialize Model via Factory
-        # This unifies instantiation logic with Inference Engine
+            get_state_manager().add_notification(
+                "training", "WARNING", "Training on CPU (no GPU detected). This will be slow."
+            )
+        except Exception:
+            pass
+
+    def _load_or_init_model(self):
+        """Create model via Factory and load checkpoint if available.
+
+        REPR-01: When a checkpoint is loaded, EMA step counters rehydrate
+        from the saved state dict — `_ema_step` and `_ema_total_steps` are
+        part of the persisted checkpoint, ensuring the cosine schedule resumes
+        correctly on fine-tuning runs.
+        """
         from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
-
-        # Mapping generic orchestrator type to Factory constants if needed,
-        # but they seem to match ("jepa", "rap").
-        # If model_type is 'rap', we assume it's ModelFactory.TYPE_RAP.
 
         model = ModelFactory.get_model(self.model_type).to(self.device)
         try:
-            # Try loading existing checkpoint to resume
             load_nn(self.model_name, model)
             logger.info("Resumed training from %s", self.model_name)
         except FileNotFoundError:
@@ -152,92 +140,35 @@ class TrainingOrchestrator:
                 self.model_name,
                 e,
             )
+        return model
 
-        trainer_kwargs = {"lr": self.learning_rate}
-        if self.model_type in ("jepa", "vl-jepa", "rap"):
-            trainer_kwargs["t_max"] = self.max_epochs  # NN-M-10: sync scheduler with epochs
-        if self.model_type == "rap":
-            trainer_kwargs["accumulation_steps"] = self._accumulation_steps
-        trainer = self.TrainerClass(model, **trainer_kwargs)
-
-        # 2. Prepare Data
-        # Phase 5.2 Alignment: Using standardized fetching with splits
-        train_data = self._fetch_batches(is_train=True)
-        val_data = self._fetch_batches(is_train=False)
-
-        if not train_data:
-            logger.warning("Training Aborted: Insufficient Training Data")
-            return
-
-        # P3-C: Minimum sample threshold — refuse to train on tiny datasets
-        total_train_samples = len(train_data) * self.batch_size
-        _MIN_TRAINING_SAMPLES = 100
-        if total_train_samples < _MIN_TRAINING_SAMPLES:
-            logger.error(
-                "P3-C: Training aborted — only %d samples (minimum %d required). "
-                "Ingest more demos before training.",
-                total_train_samples,
-                _MIN_TRAINING_SAMPLES,
-            )
-            return
-
-        logger.info(
-            "Training on %s samples, Validating on %s",
-            total_train_samples,
-            len(val_data) * self.batch_size if val_data else 0,
-        )
-
-        # Fire: on_train_start
-        self.callbacks.fire(
-            "on_train_start",
-            model=model,
-            config={
-                "model_type": self.model_type,
-                "max_epochs": self.max_epochs,
-                "batch_size": self.batch_size,
-                "lr": self.learning_rate,
-            },
-        )
-
-        # NN-04b: Set actual total training steps for EMA schedule
-        # With gradient accumulation, optimizer steps = batches / accum_steps
-        if hasattr(trainer, "set_total_steps"):
-            import math as _math
-
-            steps_per_epoch = _math.ceil(len(train_data) / self._accumulation_steps)
-            trainer.set_total_steps(self.max_epochs, steps_per_epoch)
-
-        # 3. Epoch Loop
+    def _run_epoch_loop(self, trainer, model, train_data, val_data, context):
+        """Execute the train/validate/checkpoint epoch loop. Returns final epoch number."""
+        final_epoch = 0
         for epoch in range(1, self.max_epochs + 1):
+            final_epoch = epoch
             self._current_epoch = epoch
             if context:
                 context.check_state()
 
-            # Fire: on_epoch_start
             self.callbacks.fire("on_epoch_start", epoch=epoch)
 
-            # A. Train
             train_loss = self._run_epoch(trainer, train_data, is_train=True, context=context)
 
-            # B. Validate
-            val_loss = 0.0
             if val_data:
                 val_loss = self._run_epoch(trainer, val_data, is_train=False, context=context)
             else:
-                val_loss = train_loss  # Fallback if no val data
+                val_loss = train_loss
                 if epoch == 1:
                     logger.warning(
                         "No validation data — overfitting detection disabled (val_loss = train_loss)"
                     )
 
-            # C. Scheduler Step (if trainer has one)
             if hasattr(trainer, "scheduler") and trainer.scheduler is not None:
                 trainer.scheduler.step()
 
-            # D. Logging & Reporting
             self._report_progress(epoch, train_loss, val_loss)
 
-            # Fire: on_epoch_end
             self.callbacks.fire(
                 "on_epoch_end",
                 epoch=epoch,
@@ -247,18 +178,15 @@ class TrainingOrchestrator:
                 optimizer=trainer.optimizer if hasattr(trainer, "optimizer") else None,
             )
 
-            # E. Checkpointing & Early Stopping
             if val_loss < self.best_val_loss:
                 self.best_val_loss = val_loss
                 self.patience_counter = 0
-                save_nn(model, self.model_name, user_id=None)  # Save BEST
+                save_nn(model, self.model_name, user_id=None)
                 logger.info("New Best Model Saved (Val Loss: %s)", format(val_loss, ".6f"))
             else:
                 self.patience_counter += 1
 
-            # Save LATEST checkpoint regardless
             save_nn(model, f"{self.model_name}_latest", user_id=None)
-
             _flush_all_loggers()
 
             if self.patience_counter >= self.patience:
@@ -266,7 +194,10 @@ class TrainingOrchestrator:
                 _flush_all_loggers()
                 break
 
-        # P3-C: Hard gate — abort if aggregate fallback rate exceeds 30%
+        return final_epoch
+
+    def _finalize_training(self, model, final_epoch):
+        """Post-loop gates and on_train_end callback."""
         if self._total_samples > 0 and self._total_fallbacks > 0:
             rate = self._total_fallbacks / self._total_samples * 100
             if rate > 30:
@@ -286,13 +217,12 @@ class TrainingOrchestrator:
                 self._total_samples,
             )
 
-        # Fire: on_train_end
         self.callbacks.fire(
             "on_train_end",
             model=model,
             final_metrics={
                 "best_val_loss": self.best_val_loss,
-                "final_epoch": epoch,
+                "final_epoch": final_epoch,
                 "model_type": self.model_type,
                 "fallback_rate": (
                     self._total_fallbacks / max(self._total_samples, 1)
@@ -301,8 +231,75 @@ class TrainingOrchestrator:
                 ),
             },
         )
-
         logger.info("Training Cycle Complete.")
+
+    def run_training(self, context=None):
+        """Execute the full training pipeline."""
+        logger.info("Orchestrator Starting: %s Cycle", self.model_name.upper())
+        self._warn_no_gpu()
+
+        from Programma_CS2_RENAN.backend.nn.data_quality import run_pre_training_quality_check
+
+        quality_report = run_pre_training_quality_check()
+        if not quality_report.passed:
+            logger.error(
+                "P3-D: Training ABORTED — pre-training quality check FAILED.\n%s",
+                quality_report.summary(),
+            )
+            return
+
+        model = self._load_or_init_model()
+
+        trainer_kwargs = {"lr": self.learning_rate}
+        if self.model_type in ("jepa", "vl-jepa", "rap"):
+            trainer_kwargs["t_max"] = self.max_epochs
+        if self.model_type == "rap":
+            trainer_kwargs["accumulation_steps"] = self._accumulation_steps
+        trainer = self.TrainerClass(model, **trainer_kwargs)
+
+        train_data = self._fetch_batches(is_train=True)
+        val_data = self._fetch_batches(is_train=False)
+
+        if not train_data:
+            logger.warning("Training Aborted: Insufficient Training Data")
+            return
+
+        total_train_samples = len(train_data) * self.batch_size
+        _MIN_TRAINING_SAMPLES = 100
+        if total_train_samples < _MIN_TRAINING_SAMPLES:
+            logger.error(
+                "P3-C: Training aborted — only %d samples (minimum %d required). "
+                "Ingest more demos before training.",
+                total_train_samples,
+                _MIN_TRAINING_SAMPLES,
+            )
+            return
+
+        logger.info(
+            "Training on %s samples, Validating on %s",
+            total_train_samples,
+            len(val_data) * self.batch_size if val_data else 0,
+        )
+
+        self.callbacks.fire(
+            "on_train_start",
+            model=model,
+            config={
+                "model_type": self.model_type,
+                "max_epochs": self.max_epochs,
+                "batch_size": self.batch_size,
+                "lr": self.learning_rate,
+            },
+        )
+
+        if hasattr(trainer, "set_total_steps"):
+            import math as _math
+
+            steps_per_epoch = _math.ceil(len(train_data) / self._accumulation_steps)
+            trainer.set_total_steps(self.max_epochs, steps_per_epoch)
+
+        final_epoch = self._run_epoch_loop(trainer, model, train_data, val_data, context)
+        self._finalize_training(model, final_epoch)
 
     def _fetch_batches(self, is_train=True):
         """Fetch and batch data from Manager."""
