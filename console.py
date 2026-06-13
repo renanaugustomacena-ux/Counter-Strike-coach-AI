@@ -1343,6 +1343,57 @@ class StatusPoller:
 # ============================================================================
 
 
+def _poll_tui_input(cmd_buffer: str, renderer, live) -> tuple:
+    """Check for pending input and dispatch keypress. Returns (cmd_buffer, should_exit)."""
+    has_input = False
+    if msvcrt:
+        has_input = msvcrt.kbhit()
+    elif _unix_input:
+        has_input = bool(_select_mod.select([sys.stdin], [], [], 0)[0])
+    if not has_input:
+        return cmd_buffer, False
+    ch = msvcrt.getwch() if msvcrt else sys.stdin.read(1)
+    return _handle_tui_keypress(ch, cmd_buffer, renderer, live)
+
+
+def _handle_tui_keypress(ch: str, cmd_buffer: str, renderer, live) -> tuple:
+    """Process a single TUI keypress. Returns (updated_cmd_buffer, should_exit)."""
+    if ch == "\x03":
+        return cmd_buffer, True
+
+    if ch in ("\b", "\x7f"):
+        renderer.mark_dirty()
+        return cmd_buffer[:-1], False
+
+    if ch not in ("\r", "\n"):
+        if ch.isprintable():
+            renderer.mark_dirty()
+            return cmd_buffer + ch, False
+        return cmd_buffer, False
+
+    cmd = cmd_buffer.strip()
+    renderer.mark_dirty()
+    if not cmd:
+        return "", False
+
+    result = registry.dispatch_interactive(cmd)
+    if result == "__EXIT__":
+        return "", True
+
+    if result:
+        if ">>>" in result:
+            renderer.set_result(result)
+            live.stop()
+            rich_con.print(result)
+            rich_con.input("\n[dim]Press Enter to continue...[/dim]")
+            live.start()
+            renderer.mark_dirty()
+        else:
+            renderer.set_result(result)
+
+    return "", False
+
+
 def run_tui_mode():
     """Interactive persistent TUI with status dashboard (Non-blocking)."""
     import psutil
@@ -1399,52 +1450,10 @@ def run_tui_mode():
                     _prev_status_hash = _status_hash
 
                 # 2. Handle Input (platform-aware) — always responsive
-                has_input = False
-                if msvcrt:
-                    has_input = msvcrt.kbhit()
-                elif _unix_input:
-                    has_input = bool(_select_mod.select([sys.stdin], [], [], 0)[0])
-
-                if has_input:
-                    if msvcrt:
-                        ch = msvcrt.getwch()
-                    else:
-                        ch = sys.stdin.read(1)
-
-                    if ch in ("\r", "\n"):  # Enter
-                        cmd = cmd_buffer.strip()
-                        cmd_buffer = ""
-                        renderer.mark_dirty()
-
-                        if not cmd:
-                            pass
-                        else:
-                            result = registry.dispatch_interactive(cmd)
-
-                            if result == "__EXIT__":
-                                is_running = False
-                                break
-
-                            if result:
-                                if ">>>" in result:
-                                    renderer.set_result(result)
-                                    live.stop()
-                                    rich_con.print(result)
-                                    rich_con.input("\n[dim]Press Enter to continue...[/dim]")
-                                    live.start()
-                                    renderer.mark_dirty()
-                                else:
-                                    renderer.set_result(result)
-
-                    elif ch in ("\b", "\x7f"):  # Backspace (Win=\b, Unix=\x7f)
-                        cmd_buffer = cmd_buffer[:-1]
-                        renderer.mark_dirty()
-                    elif ch == "\x03":  # Ctrl+C
-                        is_running = False
-                    else:
-                        if ch.isprintable():
-                            cmd_buffer += ch
-                            renderer.mark_dirty()
+                cmd_buffer, should_exit = _poll_tui_input(cmd_buffer, renderer, live)
+                if should_exit:
+                    is_running = False
+                    break
 
                 # 3. Throttled refresh — ONLY when dirty AND interval elapsed
                 # No unconditional periodic refresh — status changes already mark dirty
@@ -1580,6 +1589,36 @@ def build_cli_parser() -> argparse.ArgumentParser:
     return parser
 
 
+# Dispatch table: (category, subcmd) → extractor(args) → handler_args list.
+# Conditional entries use a guard+extractor tuple checked at runtime.
+_CLI_ARG_EXTRACTORS = {
+    ("ml", "throttle"): lambda a: [str(a.value)],
+    ("ingest", "start"): lambda a: ["--priority"] if getattr(a, "priority", False) else [],
+    ("ingest", "mode"): lambda a: [a.mode_type, str(a.interval)],
+    ("build", "run"): lambda a: ["--test-only"] if getattr(a, "test_only", False) else [],
+    ("test", "hospital"): lambda a: [a.dept] if getattr(a, "dept", None) else [],
+    ("sys", "audit"): lambda a: [a.demo] if getattr(a, "demo", None) else [],
+    ("sys", "db"): lambda a: ["-y"] if getattr(a, "yes", False) else [],
+    ("maint", "sanitize"): lambda a: ["-y"] if getattr(a, "yes", False) else [],
+    ("maint", "prune"): lambda a: [str(a.match_id)],
+    ("set", "config"): lambda a: [a.key, a.value],
+    ("set", "demo-path"): lambda a: getattr(a, "path", []),
+    ("set", "pro-path"): lambda a: getattr(a, "path", []),
+    ("svc", "restart"): lambda a: [a.service_name],
+    ("svc", "spawn"): lambda a: [a.script_name],
+    ("tool", "demo"): lambda a: [a.subcommand],
+    ("tool", "user"): lambda a: [a.subcommand],
+}
+
+
+def _extract_cli_handler_args(args, subcmd: str) -> list:
+    """Look up arg extractor from dispatch table; return [] if no special extraction needed."""
+    extractor = _CLI_ARG_EXTRACTORS.get((args.category, subcmd))
+    if extractor is None:
+        return []
+    return extractor(args)
+
+
 def run_cli_mode(argv: List[str]):
     """Non-interactive command dispatch."""
     # Handle 'help' before argparse (not registered as subparser)
@@ -1598,38 +1637,7 @@ def run_cli_mode(argv: List[str]):
 
     subcmd = getattr(args, "subcmd", "") or ""
 
-    # Build the args list for the handler
-    handler_args = []
-    if args.category == "ml" and subcmd == "throttle":
-        handler_args = [str(args.value)]
-    elif args.category == "ingest" and subcmd == "start" and getattr(args, "priority", False):
-        handler_args = ["--priority"]
-    elif args.category == "ingest" and subcmd == "mode":
-        handler_args = [args.mode_type, str(args.interval)]
-    elif args.category == "build" and subcmd == "run" and getattr(args, "test_only", False):
-        handler_args = ["--test-only"]
-    elif args.category == "test" and subcmd == "hospital" and getattr(args, "dept", None):
-        handler_args = [args.dept]
-    elif args.category == "sys" and subcmd == "audit" and getattr(args, "demo", None):
-        handler_args = [args.demo]
-    elif args.category == "sys" and subcmd == "db" and getattr(args, "yes", False):
-        handler_args = ["-y"]
-    elif args.category == "maint" and subcmd == "sanitize" and getattr(args, "yes", False):
-        handler_args = ["-y"]
-    elif args.category == "maint" and subcmd == "prune":
-        handler_args = [str(args.match_id)]
-    elif args.category == "set" and subcmd == "config":
-        handler_args = [args.key, args.value]
-    elif args.category == "set" and subcmd in ("demo-path", "pro-path"):
-        handler_args = getattr(args, "path", [])
-    elif args.category == "svc" and subcmd == "restart":
-        handler_args = [args.service_name]
-    elif args.category == "svc" and subcmd == "spawn":
-        handler_args = [args.script_name]
-    elif args.category == "tool" and subcmd == "demo":
-        handler_args = [args.subcommand]
-    elif args.category == "tool" and subcmd == "user":
-        handler_args = [args.subcommand]
+    handler_args = _extract_cli_handler_args(args, subcmd)
 
     # ROOT-08: Boot services before dispatch so commands that need them work
     try:
