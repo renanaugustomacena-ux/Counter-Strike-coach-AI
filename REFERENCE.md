@@ -108,15 +108,15 @@ the cited file.
 |---|---|---|---|
 | **P-X-01** | `METADATA_DIM=25`; `FEATURE_NAMES` length and order | `vectorizer.py:32, 151-177` | Migration manifest + retraining + ContractGuard update |
 | **P-RSB-03** | `round_won` excluded from training features (label leakage) | `vectorizer.py` (FEATURE_NAMES — `round_won` is NOT present) | Re-derive feature schema before adding |
-| **NN-MEM-01** | Hopfield bypass until ≥2 forward passes | `experimental/rap_coach/memory.py:74-156` (counter `_training_forward_count`, gated to `self.training`) | Coordinate with Pillar II self-correction loop (Refinement passes do NOT count today) |
-| **NN-16** | EMA `apply_shadow()` must `.clone()` shadows; `restore()` must `.clone()` backups | `ema.py:79, 90` | Any aliasing reintroduces the 2026-03 silent-share regression |
-| **NN-JM-04** | Target encoder `requires_grad=False` during EMA | `jepa_trainer.py:40-46` (loop sets `p.requires_grad=False` for `target_encoder.*`) | Reverting causes target/context divergence |
+| **NN-MEM-01** | Hopfield bypass until ≥2 forward passes | `experimental/rap_coach/memory.py:111` (counter `_training_forward_count`), gated at `:175-180` | Coordinate with Pillar II self-correction loop (Refinement passes do NOT count today) |
+| **NN-16** | EMA `apply_shadow()` must `.clone()` shadows; `restore()` must `.clone()` backups | `ema.py:79, 90` (verified 2026-06-13) | Any aliasing reintroduces the 2026-03 silent-share regression |
+| **NN-JM-04** | Target encoder `requires_grad=False` during EMA | `jepa_trainer.py:51-52` (loop sets `p.requires_grad=False` for `target_encoder.*`) | Reverting causes target/context divergence |
 | **DS-12** | `MIN_DEMO_SIZE = 10 MB` | `demo_format_adapter.py:49` | Increase only with empirical evidence on demo distribution |
 | **P-VEC-02 / P3-A** | NaN/Inf clamp + `>5%` batch fail → `DataQualityError` | `vectorizer.py` (`_nan_inf_clamp_count` at :145, threading lock at :146) | Tightening threshold requires re-baselining batch-quality dashboard |
 | **P9-02** | Embedding variance < 0.01 over 2 consecutive validation epochs aborts training | `early_stopping.py:EmbeddingCollapseDetector`; wired in `jepa_trainer.py:train_epoch` | Threshold/patience changes require re-validation of "healthy" baseline |
 | **G-01** | Concept labels via RoundStats outcomes only; heuristic fallback hard-gated | `jepa_trainer.py:335-416` | `LabelSourceMonitor` alarms above 1% SKIPPED rate |
 | **DET-01** | `set_global_seed(42)` before every training entry | `backend/nn/config.py:16-39`; called in `jepa_train.py:290`, `:298`, `:542-544`; `train.py:28, 79`; `win_probability_trainer.py:53` | Adding a new entry point requires a seed call before any RNG draw |
-| **REPR-01** | EMA cosine schedule rehydrates `_ema_step` / `_ema_total_steps` from saved checkpoint | `jepa_trainer.py:73-75` | Skipping rehydration restarts τ at 0.996, breaks fine-tuning |
+| **REPR-01** | EMA cosine schedule rehydrates `_ema_step` / `_ema_total_steps` from saved checkpoint | `jepa_trainer.py:106-107` (load from model attrs) | Skipping rehydration restarts τ at 0.996, breaks fine-tuning |
 
 ---
 
@@ -164,13 +164,18 @@ Read via `get_setting(key, default)`; write via `save_user_setting(key, value)`
 | `GLOBAL_SEED` | 42 | `backend/nn/config.py` (set_global_seed default) | `set_global_seed(42)` before every training entry |
 | `METADATA_DIM` | 25 | `vectorizer.py:32` | sole source of truth — see §2 |
 | `MIN_DEMO_SIZE` | 10 MB | `demo_format_adapter.py:49` | ingestion rejects undersized demos (DS-12) |
-| `EMA τ_base` | 0.996 | `jepa_trainer.py:70` (`self._ema_base_momentum`) | cosine schedule to 1.0 over `_ema_total_steps` |
-| `InfoNCE τ` | 0.07 (current); recommended 0.10–0.15 at N=266 | `jepa_model.py:891` | Pillar I migration (P2-4) |
+| `EMA τ_base` | 0.996 | `jepa_trainer.py:102` (`self._ema_base_momentum`) | cosine schedule to 1.0 over `_ema_total_steps` |
+| `InfoNCE τ` | **learnable**; init `log(0.07)` | `jepa_model.py:151` (`nn.Parameter`); clamped `[0.01, 1.0]` at `jepa_trainer.py:218, :488` | Radford et al. 2021 (CLIP); P2-4 init adjustment deferred |
 | `Embedding-collapse threshold` | 0.01 / 2 consecutive epochs | `early_stopping.py: EmbeddingCollapseDetector` | P9-02 |
-| `concept_temperature` | clamped to [0.01, 1.0] | `jepa_model.py:932, :1000` | saturation alarm at 5%/10 epochs (PRE-6) |
+| `concept_temperature` | clamped to [0.01, 1.0] | `jepa_model.py:151` (same param); `jepa_trainer.py:218, :488` (clamp sites) | saturation alarm at 5%/10 epochs (PRE-6) |
 | `label_source alarm` | 1% / 5-min sliding window | `observability/label_source_monitor.py` | G-01 telemetry (PRE-2) |
-| `BATCH_SIZE` (current) | 16; recommended 32 at N=266 | `training_config.py` | Supplement Table S2 |
-| `latent_dim` | 256 | `jepa_model.py` | reverts to 256 at N≥260 (was 128 at N=11) per Supplement |
+| `BATCH_SIZE` (JEPA) | 16 | `jepa_train.py:383` (default arg) | RAP uses batch_size=1 (`training_config.py:22`) |
+| `latent_dim` | 256 | `jepa_model.py:43, :75` (encoder + predictor defaults) | reverts to 256 at N≥260 (was 128 at N=11) per Supplement |
+| `MoCo queue size` | 4096 | `jepa_model.py:154` (`_MOCO_QUEUE_SIZE`) | 64 sampled per batch (`:266`) |
+| `VICReg λ_var / λ_cov / weight` | 25.0 / 1.0 / 0.01 | `jepa_trainer.py:222-223` | regularization on pred embeddings |
+| `MoE load-balance aux` | 0.01 × num_experts | `jepa_model.py:243` | penalizes unbalanced routing |
+| `_MIN_TRAINING_SAMPLES` | 100 | `training_orchestrator.py:174` | hard gate; fewer → abort |
+| `P3-C fallback-rate gates` | 10% warn / 30% abort | `training_orchestrator.py:269-274` | aggregate zero-tensor fallback rate |
 
 ---
 
@@ -245,6 +250,8 @@ variance < 0.05.
 - Per-match shard archival strategy not yet documented; planned via SQLite
   ATTACH consolidation before the per-match DB count crosses ~1000 instances
   (Supplement §3.2 Risk C).
+- 14 arxiv JEPA/VL-JEPA papers in `docs/research/arxiv/` (added 2026-06-13);
+  indexed by research dossier in the programme plan. Phase E8 links from README.
 
 ---
 
@@ -253,6 +260,6 @@ variance < 0.05.
 - **Principles & rules:** `CLAUDE.md` (project + user globals)
 - **Audit trail / findings:** `AUDIT.md`
 - **Backlog:** `TASKS.md`
-- **Architectural plan:** `~/.claude/plans/ok-my-friend-when-federated-tome.md`
+- **Completion programme:** `~/.claude/plans/cs2-completion-2026-06-13/` (15 files; supersedes all earlier plan files)
 - **Modernization reports:** `CS2_Coach_Modernization_Report.pdf`,
   `CS2_Coach_Supplement_N260.pdf` (gitignored — author's reference docs)

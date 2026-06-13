@@ -4,21 +4,21 @@ Single canonical state-of-the-system snapshot for the Macena CS2 Analyzer
 project. Replaces 9 prior dump-style docs (see §6). Refresh when material
 state changes; do not append narrative.
 
-**Owner:** Renan Augusto Macena · **Branch:** `main` (post-`da2d490`) · **Last refresh:** 2026-05-03
+**Owner:** Renan Augusto Macena · **Branch:** `main` (post-`1878514`) · **Last refresh:** 2026-06-13
 
 ---
 
 ## 1. Executive summary
 
-Repo state is **GREEN** for runtime, validation, and tests:
+Repo state is **GREEN** for runtime and validation; **1 test failure** (skill-vector expectation, tracked as Programme Phase C0):
 
-- `./.venv/bin/python tools/headless_validator.py` → **312/319 PASS, 0 fail, 7 warn, exit 0** (`VERDICT: PASS`).
-- `./.venv/bin/python -m pytest Programma_CS2_RENAN/tests/` → **1932 passed, 63 skipped, 0 failed**.
-- All 8 CLAUDE.md production invariants enforced.
-- All 12 oversized functions (>200 lines) refactored; Phase 23 long-fn warning eliminated.
-- Documentation surface collapsed to canonical sibling-doc set + this file.
+- `./.venv/bin/python tools/headless_validator.py` → **314/319 PASS, 0 fail, 5 warn, exit 0** (`VERDICT: PASS`).
+- `./.venv/bin/python -m pytest` (scoped) → **2028 passed, 1 failed, 14 skipped, 5 xpassed**.
+- All 11 REFERENCE.md §3 invariants enforced (verified 2026-06-13).
+- JEPA training: val loss ~1.8977, maturity state `doubt`. Plateau root-caused to fixed-seed 5,024-tick/epoch subsampling (fix designed, not yet implemented — Programme Phase B).
+- 14 arxiv JEPA/VL-JEPA papers added to `docs/research/arxiv/`.
 
-Open work tracked in [TASKS.md](../TASKS.md) and `~/.claude/plans/cs2-coach-flawless-readiness-master-plan.md`. Phase F (refactor) and parts of Phase H (project hygiene) are now done; remaining tracks listed in §5.
+Open work tracked in [TASKS.md](../TASKS.md) and `~/.claude/plans/cs2-completion-2026-06-13/` (completion programme, 7 phases A–G).
 
 ---
 
@@ -27,7 +27,7 @@ Open work tracked in [TASKS.md](../TASKS.md) and `~/.claude/plans/cs2-coach-flaw
 Run: `./.venv/bin/python tools/headless_validator.py 2>&1 | tail -25`
 
 ```
-RESULT: 312/319 passed, 0 failed, 7 warnings
+RESULT: 314/319 passed, 0 failed, 5 warnings
 VERDICT: PASS
 ```
 
@@ -35,15 +35,13 @@ Residual warnings (all by-design / known-deferred):
 
 | # | Source | Warning | Disposition |
 |---|---|---|---|
-| 1 | Core | `import map_manager: No module named 'kivy'` | Legacy Kivy UI artifact; qt_app is the active UI. Remove `map_manager`/`registry` Kivy imports during Phase H legacy-screen cleanup. |
+| 1 | Core | `import map_manager: No module named 'kivy'` | Legacy Kivy UI artifact; qt_app is the active UI. Programme Phase C11 retires these imports. |
 | 2 | Core | `import registry: No module named 'kivymd'` | Same as #1. |
-| 3 | Deps | `Optional deps not installed: shap` | Optional model-explainability dep; coaching pipeline tolerates absence. Install only when shap-driven explanations needed. |
-| 4 | RAP | `RAPCoachModel full forward pass: ncps + hflayers required` | RAP coach is opt-in (`USE_RAP_MODEL=True`). `hflayers` is **not on PyPI** — installation requires a wheel from upstream maintainer (master plan §B#5). Defer until RAP path is exercised. |
-| 5 | RAP | `compute_sparsity_loss safety: ncps + hflayers required` | Same as #4. |
-| 6 | Web-Marquee | `web/match-detail/ not scaffolded` | Gated until P4.1+ per redesign plan. Defer. |
-| 7 | Web-Marquee | `web/coach-chat/ not scaffolded` | Same as #6. |
+| 3 | Deps | `Optional deps not installed: shap` | Optional model-explainability dep; coaching pipeline tolerates absence. |
+| 4 | Web-Marquee | `web/match-detail/ not scaffolded` | Gated until P4.1+ per redesign plan. Defer. |
+| 5 | Web-Marquee | `web/coach-chat/ not scaffolded` | Same as #4. |
 
-**Pre-commit gate:** all hooks pass (`integrity-manifest-check`, `dev-health-quick`, black, isort, trim/EOF/yaml/json/private-key/large-files/merge-conflict checks).
+Note: ncps + hflayers warnings (#4/#5 in prior version) are now resolved — both packages installed in venv.
 
 ---
 
@@ -55,9 +53,9 @@ These are the production-correctness contracts. Violation = silent corruption. A
 |---|---|---|---|
 | **P-X-01** | `feature_engineering/vectorizer.py` | `assert len(FEATURE_NAMES) == METADATA_DIM=25` at module import | ✅ Enforced; 104/104 contract tests pass after refactor |
 | **P-RSB-03** | `processing/round_reconstructor.py` | `round_won` excluded from training feature set (label-leak) | ✅ Enforced |
-| **NN-MEM-01** | `rap_coach/memory.py:74-78` | Hopfield bypassed until ≥2 forward passes | ✅ Enforced |
-| **NN-16** | `backend/nn/ema.py:79` | EMA `apply_shadow()` calls `.clone()` on shadows | ✅ Enforced |
-| **NN-JM-04** | `backend/nn/jepa_model.py:323-331` | Target encoder `requires_grad=False` during EMA | ✅ Enforced; preserved verbatim by `_jepa_pretrain_setup_training` helper |
+| **NN-MEM-01** | `rap_coach/memory.py:111, :175-180` | Hopfield bypassed until ≥2 forward passes | ✅ Enforced |
+| **NN-16** | `backend/nn/ema.py:79, 90` | EMA `apply_shadow()` calls `.clone()` on shadows | ✅ Enforced |
+| **NN-JM-04** | `backend/nn/jepa_trainer.py:51-52` | Target encoder `requires_grad=False` during EMA | ✅ Enforced |
 | **DS-12** | `demo_format_adapter.py:49` | `MIN_DEMO_SIZE = 10 MB` | ✅ Enforced |
 | **P-VEC-02 / P3-A** | `vectorizer._finalize_vector` | NaN/Inf clamp; >5% rate per batch raises `DataQualityError` | ✅ Enforced; helper extracted but logic byte-for-byte identical |
 | **LEAK-01** | `training_orchestrator._rap_collect_per_tick` | When per-tick `all_players` context absent, mask sample (`val_mask=False`) instead of substituting `round_outcome` | ✅ Enforced; refactor preserves verbatim — confirmed by AST diff |
@@ -94,28 +92,9 @@ These are the production-correctness contracts. Violation = silent corruption. A
 
 ## 5. Active backlog cross-reference
 
-Active tracker: `~/.claude/plans/cs2-coach-flawless-readiness-master-plan.md` (single source of truth for open work).
+Active programme: `~/.claude/plans/cs2-completion-2026-06-13/` (15-file completion programme; supersedes all prior plan files including `cs2-coach-flawless-readiness-master-plan.md` which no longer exists on disk).
 
-Recently completed (this session, 2026-05-02 → 2026-05-03):
-
-| Track | Status | Commit |
-|---|---|---|
-| Phase 0 — Pre-flight gates | ✅ DONE | (no commit; verification only) |
-| Track A — Dependency restoration | ✅ N/A (venv already provisioned) | — |
-| Track B1 — 8 production-fn refactors | ✅ DONE | [`d8c710e`](#commit-d8c710e) |
-| Track B2 — 4 tools-side refactors | ✅ DONE | [`da2d490`](#commit-da2d490) |
-| Memory housekeeping (NTFS3 resolved + GTX 1650 record) | ✅ DONE | (memory only) |
-| Track D — Documentation rebuild | ✅ DONE | 2971952 (D.1 diagnosis) + this commit (D.3 disk rm + D.4 CLAUDE.md sibling-doc pointer) |
-| Track C1.1 — Frost design tokens | ✅ DONE | 76cb734 |
-
-Open in master plan (proceed in order):
-
-- **Phase E.3** — ROCm decision: keep `_rocm_smoke.sh` and `.cs2_req_no_torch.txt` as cross-stack parity artifacts (not deletion candidates). Already documented above.
-- **Phase F.2** — Broad-except remediation (TASKS#28, 32 sites). Independent track.
-- **Phase G.4** — Validator-exit-0 acceptance gate. Currently passing; continue to verify after every track lands.
-- **Phase H.2 / H.5** — Project hygiene: tools audit + remaining README sweep.
-- **Track C1** — UI soft-frost polish (Phase 7). Visual redesign substrate landed in `bd033ca`; frost-tier tokens + `card.py` FROSTED depth tier + QSS layering pending. Needs running Qt app for visual verification.
-- **Track C2 (Phase 8)** — Legacy screen adoption (8 screens still on pre-redesign layouts: user_profile, profile, settings, help, wizard, faceit_config, steam_config; partial coach). Defer until C1 ships.
+Programme phases: A (foundation/truth) → B (training engine) → C (code quality) → D (data pipeline) → E (documentation) → F (product completion) → G (release/data ops). See `01-MASTER-PLAN.md` for full checklist and session log.
 
 ---
 
