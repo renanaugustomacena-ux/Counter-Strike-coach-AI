@@ -27,12 +27,16 @@ class TestSkillAxes:
 
 class TestSkillVectorLowPerformance:
     def test_low_mechanics(self):
-        """Poor accuracy + avg_hs → low MECHANICS score."""
+        """Poor accuracy + avg_hs → low MECHANICS score.
+
+        Pro baseline: accuracy mean≈0.0024, avg_hs mean≈0.52.
+        Values here are below both means so Z-scores are negative.
+        """
         stats = PlayerMatchStats(
             player_name="LowMech",
             demo_name="test_low_mech.dem",
-            accuracy=0.10,
-            avg_hs=0.05,
+            accuracy=0.0005,
+            avg_hs=0.15,
         )
         vec = SkillLatentModel.calculate_skill_vector(stats)
         if SkillAxes.MECHANICS in vec:

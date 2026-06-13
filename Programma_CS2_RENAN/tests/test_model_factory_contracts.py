@@ -93,38 +93,25 @@ class TestValidModelTypes:
             ), f"Type '{model_type}' returned {type(model)}, not nn.Module"
 
 
-@pytest.mark.xfail(
-    reason="Factory silent-fallback bug: unknown types return default model instead of raising"
-)
 class TestInvalidModelTypes:
-    """BUG #2: These tests EXPOSE the silent fallback for unknown types."""
+    """Invalid model types must raise ValueError (fixed in 3120c4b)."""
 
     def test_unknown_type_should_raise_error(self):
-        """An unrecognized model_type must raise ValueError, not silently return default.
-
-        CURRENTLY FAILS: factory.py line 74 returns TeacherRefinementNN for any
-        unrecognized type via the `else` branch.
-        """
+        """An unrecognized model_type must raise ValueError."""
         from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
 
         with pytest.raises(ValueError, match="Unknown model type"):
             ModelFactory.get_model("totally_invalid_type")
 
     def test_typo_jepa_should_raise_error(self):
-        """A typo like 'jep' should raise, not silently produce a legacy model.
-
-        CURRENTLY FAILS: 'jep' falls through to else branch.
-        """
+        """A typo like 'jep' should raise, not silently produce a legacy model."""
         from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
 
         with pytest.raises(ValueError):
             ModelFactory.get_model("jep")
 
     def test_empty_string_should_raise_error(self):
-        """Empty string is not a valid model type.
-
-        CURRENTLY FAILS: empty string falls through to else branch.
-        """
+        """Empty string is not a valid model type."""
         from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
 
         with pytest.raises(ValueError):
@@ -138,10 +125,7 @@ class TestInvalidModelTypes:
             ModelFactory.get_model(None)
 
     def test_case_sensitivity(self):
-        """Model types should be case-sensitive — 'JEPA' is not 'jepa'.
-
-        CURRENTLY FAILS: 'JEPA' falls through to else branch and returns legacy.
-        """
+        """Model types should be case-sensitive — 'JEPA' is not 'jepa'."""
         from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
 
         with pytest.raises(ValueError):
