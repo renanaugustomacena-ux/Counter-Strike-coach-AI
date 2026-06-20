@@ -377,6 +377,57 @@ def _jepa_pretrain_finalize(
     model._saved_ema_total_steps = ema_state["total"]
 
 
+def _jepa_pretrain_process_batch(
+    model,
+    batch: dict,
+    device: torch.device,
+    num_negatives: int,
+    optimizer: torch.optim.Optimizer,
+    ema_state: dict,
+    callbacks,
+    batch_idx: int,
+) -> float | None:
+    """Process single JEPA pre-training batch: fwd → loss → bwd → EMA update.
+
+    Returns loss value, or None when batch is degenerate (< 2 samples).
+    """
+    import math as _math
+
+    x_context = batch["context"].to(device)
+    x_target = batch["target"].to(device)
+
+    pred, target = model.forward_jepa_pretrain(x_context, x_target)
+
+    batch_size_actual = pred.size(0)
+    if batch_size_actual < 2:
+        return None
+
+    neg_indices = _jepa_negative_indices(batch_size_actual, num_negatives, device)
+    negatives = target[neg_indices]
+
+    loss = jepa_contrastive_loss(pred, target, negatives)
+
+    optimizer.zero_grad()
+    loss.backward()
+    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+    optimizer.step()
+
+    # J-6: EMA cosine momentum schedule (Assran et al., CVPR 2023, §3.2)
+    _progress = min(ema_state["step"] / max(1, ema_state["total"]), 1.0)
+    _momentum = 1.0 - (1.0 - ema_state["base"]) * (_math.cos(_math.pi * _progress) + 1) / 2
+    model.update_target_encoder(momentum=_momentum)
+    ema_state["step"] += 1
+
+    callbacks.fire(
+        "on_batch_end",
+        batch_idx=batch_idx,
+        loss=loss.item(),
+        outputs={"infonce_loss": loss.item(), "ema_momentum": _momentum},
+    )
+
+    return loss.item()
+
+
 def train_jepa_pretrain(
     model: JEPACoachingModel,
     num_epochs: int = 50,
@@ -386,8 +437,6 @@ def train_jepa_pretrain(
     log_dir: str = "runs/jepa_pretrain",
 ):
     """JEPA pre-training on pro demos (self-supervised)."""
-    import math as _math
-
     from Programma_CS2_RENAN.backend.nn.config import set_global_seed
     from Programma_CS2_RENAN.backend.nn.early_stopping import EarlyStopping
     from Programma_CS2_RENAN.backend.nn.tensorboard_callback import TensorBoardCallback
@@ -437,41 +486,11 @@ def train_jepa_pretrain(
         callbacks.fire("on_epoch_start", epoch=epoch)
 
         for batch_idx, batch in enumerate(dataloader):
-            x_context = batch["context"].to(device)
-            x_target = batch["target"].to(device)
-
-            pred, target = model.forward_jepa_pretrain(x_context, x_target)
-
-            # M1 FIX: Skip degenerate single-sample batches where positive==negative
-            # produces zero contrastive loss (no learning signal).
-            batch_size_actual = pred.size(0)
-            if batch_size_actual < 2:
-                continue
-
-            neg_indices = _jepa_negative_indices(batch_size_actual, num_negatives, device)
-            negatives = target[neg_indices]
-
-            loss = jepa_contrastive_loss(pred, target, negatives)
-
-            optimizer.zero_grad()
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)  # P1-06
-            optimizer.step()
-
-            # J-6: EMA cosine momentum schedule (Assran et al., CVPR 2023, §3.2)
-            _progress = min(ema_state["step"] / max(1, ema_state["total"]), 1.0)
-            _momentum = 1.0 - (1.0 - ema_state["base"]) * (_math.cos(_math.pi * _progress) + 1) / 2
-            model.update_target_encoder(momentum=_momentum)
-            ema_state["step"] += 1
-
-            total_loss += loss.item()
-
-            callbacks.fire(
-                "on_batch_end",
-                batch_idx=batch_idx,
-                loss=loss.item(),
-                outputs={"infonce_loss": loss.item(), "ema_momentum": _momentum},
+            batch_loss = _jepa_pretrain_process_batch(
+                model, batch, device, num_negatives, optimizer, ema_state, callbacks, batch_idx
             )
+            if batch_loss is not None:
+                total_loss += batch_loss
 
         avg_loss = total_loss / len(dataloader)
         loss_history.append(avg_loss)

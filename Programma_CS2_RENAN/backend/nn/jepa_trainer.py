@@ -28,6 +28,38 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 logger = get_logger("cs2analyzer.jepa_trainer")
 
 
+def _resolve_concept_labels(
+    round_stats,
+    concept_logits: torch.Tensor,
+    device: torch.device,
+) -> tuple[torch.Tensor | None, torch.Tensor]:
+    """Resolve concept labels from round stats, filtering to valid indices.
+
+    Returns (concept_labels, concept_logits) — labels is None when no valid
+    round stats are available; concept_logits may be index-selected to match.
+    """
+    if round_stats is None or not any(rs is not None for rs in round_stats):
+        return None, concept_logits
+
+    labeler = ConceptLabeler()
+    valid_indices: list[int] = []
+    batch_labels: list[torch.Tensor] = []
+    for idx, rs in enumerate(round_stats):
+        if rs is not None:
+            batch_labels.append(labeler.label_from_round_stats(rs))
+            valid_indices.append(idx)
+
+    if not batch_labels:
+        return None, concept_logits
+
+    concept_labels = torch.stack(batch_labels).to(device)
+    if len(valid_indices) < concept_logits.shape[0]:
+        idx_t = torch.tensor(valid_indices, dtype=torch.long, device=concept_logits.device)
+        concept_logits = concept_logits.index_select(0, idx_t)
+
+    return concept_labels, concept_logits
+
+
 class JEPATrainer:
     """
     Trainer for JEPA (Joint-Embedding Predictive Architecture).
@@ -495,25 +527,9 @@ class JEPATrainer:
 
         self.model.enqueue(target_embedding)
 
-        labeler = ConceptLabeler()
-        valid_indices: list[int] = []
-        if round_stats is not None and any(rs is not None for rs in round_stats):
-            batch_labels = []
-            for idx, rs in enumerate(round_stats):
-                if rs is not None:
-                    batch_labels.append(labeler.label_from_round_stats(rs))
-                    valid_indices.append(idx)
-            if not batch_labels:
-                concept_labels = None
-            else:
-                concept_labels = torch.stack(batch_labels).to(x_context.device)
-                if len(valid_indices) < concept_logits.shape[0]:
-                    idx_t = torch.tensor(
-                        valid_indices, dtype=torch.long, device=concept_logits.device
-                    )
-                    concept_logits = concept_logits.index_select(0, idx_t)
-        else:
-            concept_labels = None
+        concept_labels, concept_logits = _resolve_concept_labels(
+            round_stats, concept_logits, x_context.device
+        )
 
         if concept_labels is None:
             if not getattr(self, "_concept_skip_logged", False):
