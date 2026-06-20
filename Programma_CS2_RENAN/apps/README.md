@@ -9,7 +9,7 @@
 The `apps/` directory contains all user-facing interface code for the Macena CS2 Analyzer.
 Two UI frameworks coexist as part of a deliberate migration strategy:
 
-- **Phase 0 (Legacy):** `desktop_app/` was the original prototype built with Kivy + KivyMD.
+- **Phase 0 (Legacy):** `legacy_kivy/` was the original prototype built with Kivy + KivyMD.
   It served as the rapid-prototyping shell during early development. No new features are
   added here; it exists only as a reference and for components not yet ported.
 
@@ -32,7 +32,7 @@ apps/
 ├── README_PT.md                 # Portuguese translation
 ├── spatial_debugger.py          # Standalone Kivy tool for map coordinate validation
 │
-├── desktop_app/                 # Legacy Kivy + KivyMD (Phase 0)
+├── legacy_kivy/                 # Legacy Kivy + KivyMD (Phase 0)
 │   ├── __init__.py
 │   ├── layout.kv                # Root KV layout (60 KB, 13 screens)
 │   ├── theme.py                 # Kivy palette constants and rating colors
@@ -125,7 +125,7 @@ apps/
 
 ## Framework Comparison
 
-| Aspect | `desktop_app/` (Kivy) | `qt_app/` (PySide6) |
+| Aspect | `legacy_kivy/` (Kivy) | `qt_app/` (PySide6) |
 |--------|----------------------|----------------------|
 | **Status** | Legacy (Phase 0) — frozen | **Active** (Phase 2+) |
 | **Layout** | KV language (`layout.kv`) | Python code (QLayouts) |
@@ -188,7 +188,7 @@ The boot sequence in `app.py`:
 3. Graceful shutdown handler connected (`aboutToQuit`)
 4. `ThemeEngine` initialized — custom fonts registered, theme applied
 5. `MainWindow` created with sidebar navigation
-6. All 14 screens instantiated and registered in the `QStackedWidget`
+6. All 15 screens instantiated and registered in the `QStackedWidget`
 7. First-run gate: shows `WizardScreen` if setup not completed, else `HomeScreen`
 8. Backend console booted (`get_console().boot()`)
 9. `AppState` polling started (10-second interval)
@@ -264,7 +264,7 @@ to update their labels dynamically.
 
 ## Development Guidelines
 
-1. **All new UI work goes in `qt_app/`** — do not add features to `desktop_app/`
+1. **All new UI work goes in `qt_app/`** — do not add features to `legacy_kivy/`
 2. **No Kivy imports in Qt code** — `asset_bridge.py`, `i18n_bridge.py`, `theme_engine.py`
    use only Qt and stdlib. Cross-framework imports are forbidden.
 3. **Background threading is mandatory** — never block the main thread with DB queries,
@@ -300,6 +300,6 @@ to update their labels dynamically.
 
 ## File Count
 
-- `desktop_app/`: 16 Python files + 1 KV layout (legacy, frozen)
-- `qt_app/`: 56 Python files across `core/`, `screens/`, `viewmodels/`, `widgets/` + 3 QSS themes
+- `legacy_kivy/`: 16 Python files + 1 KV layout (legacy, frozen)
+- `qt_app/`: 87 Python files across `core/`, `screens/`, `viewmodels/`, `widgets/` + 3 QSS themes
 - `apps/` root: 1 standalone tool (`spatial_debugger.py`)

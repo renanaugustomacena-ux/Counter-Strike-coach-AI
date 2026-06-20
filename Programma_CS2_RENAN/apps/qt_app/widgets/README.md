@@ -70,4 +70,4 @@ Widgets expose state changes via `Signal` (e.g. `clicked`, `selectionChanged`). 
 - Application core: `apps/qt_app/core/README.md`
 - Screens (consumers): `apps/qt_app/screens/README.md`
 - Parent app: `apps/qt_app/README.md`
-- Legacy Kivy widgets (for migration reference only): `apps/desktop_app/widgets.py`
+- Legacy Kivy widgets (for migration reference only): `apps/legacy_kivy/widgets.py`

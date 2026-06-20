@@ -3,7 +3,7 @@
 [![CI Pipeline](https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI/actions/workflows/build.yml/badge.svg)](https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI/actions/workflows/build.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Proprietary%20%7C%20Apache--2.0-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-313%20validator%20%7C%201794%20pytest-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-26%20phases%20validator%20%7C%202024%20pytest-brightgreen.svg)]()
 
 **Coach Tattico basato su IA per Counter-Strike 2**
 
@@ -299,7 +299,7 @@ Estende JEPA con allineamento di 16 concetti tattici:
 - Etichettatura basata su outcome da RoundStats (uccisioni, morti, equipaggiamento, risultato round)
 
 **Altri Modelli:**
-- **AdvancedCoachNN** -- LSTM (hidden=128) + Mixture-of-Experts (4 esperti, top-k=2) per predizione pesi di coaching
+- **AdvancedCoachNN** -- LSTM (hidden=128) + Mixture-of-Experts (3 esperti, top-k=2) per predizione pesi di coaching
 - **NeuralRoleHead** -- Classificatore MLP a 5 ruoli con KL-divergence gating e consensus voting
 - **RoleClassifier** -- Rilevamento leggero del ruolo dalle feature dei tick
 
@@ -410,20 +410,20 @@ Counter-Strike-coach-AI/
 |   |   |   +-- app.py                  Punto di ingresso Qt
 |   |   |   +-- main_window.py          QMainWindow con navigazione laterale
 |   |   |   +-- core/                   Singleton AppState, ThemeEngine, pattern Worker
-|   |   |   +-- screens/               13 schermate (home, visualizzatore tattico, cronologia
+|   |   |   +-- screens/               15 schermate (home, visualizzatore tattico, cronologia
 |   |   |   |                           partite, dettaglio partita, prestazioni, coach,
-|   |   |   |                           impostazioni, wizard, aiuto, profilo, config steam/faceit)
+|   |   |   |                           impostazioni, wizard, aiuto, profilo, profilo utente,
+|   |   |   |                           config steam/faceit, confronto pro, dettaglio pro)
 |   |   |   +-- viewmodels/            ViewModel signal-driven (QObject + Signal/Slot)
 |   |   |   +-- widgets/               Grafici (radar, momentum, economia, sparkline),
 |   |   |                               tattici (widget mappa, sidebar giocatore, timeline)
-|   |   +-- desktop_app/               GUI Kivy/KivyMD (fallback legacy)
-|   |       +-- main.py                 Punto di ingresso Kivy
+|   |   +-- legacy_kivy/                GUI Kivy/KivyMD (legacy, in quarantena)
+|   |       +-- kivy_main.py            Punto di ingresso Kivy
 |   |       +-- layout.kv               Definizione layout KivyMD
-|   |       +-- screens/                Classi schermata Kivy
-|   |       +-- widgets/                Componenti widget Kivy
-|   |       +-- viewmodels/             ViewModel stile Kivy
-|   |       +-- assets/                 Temi (CS2, CSGO, CS1.6), font, immagini radar mappa
-|   |       +-- i18n/                   Traduzioni (EN, IT, PT)
+|   |       +-- screens (inline)        Classi schermata Kivy (layout piatto)
+|   |       +-- widgets.py              Componenti widget Kivy
+|   |       +-- viewmodels (inline)     ViewModel stile Kivy
+|   |       +-- theme.py                Costanti tema e registro palette
 |   |
 |   +-- backend/
 |   |   +-- analysis/                   Teoria dei giochi e analisi statistica
@@ -455,7 +455,6 @@ Counter-Strike-coach-AI/
 |   |   |   |   +-- memory.py           Modulo memoria LTC + Hopfield
 |   |   |   +-- layers/                 Componenti neurali condivisi
 |   |   |       +-- superposition.py    Layer superposizione context-dependent
-|   |   |       +-- moe.py             Gating Mixture-of-Experts
 |   |   |
 |   |   +-- processing/                Feature engineering ed elaborazione dati
 |   |   |   +-- feature_engineering/
@@ -497,7 +496,7 @@ Counter-Strike-coach-AI/
 |   |   +-- visualizer.py             Rendering grafici e diagrammi
 |   |   +-- pdf_generator.py          Generazione report PDF
 |   |
-|   +-- tests/                         Suite di test (1,794+ test)
+|   +-- tests/                         Suite di test (2,024+ test)
 |   +-- data/                          Dati statici (seed knowledge base, dataset esterni)
 |
 +-- docs/                              Documentazione
@@ -512,7 +511,7 @@ Counter-Strike-coach-AI/
 |   +-- Studies/                        17 paper di ricerca
 |
 +-- tools/                             Strumenti di validazione e diagnostica
-|   +-- headless_validator.py          Gate di regressione primario (313 check, 24 fasi)
+|   +-- headless_validator.py          Gate di regressione primario (26 fasi)
 |   +-- Feature_Audit.py              Audit feature engineering
 |   +-- portability_test.py           Controlli compatibilita cross-platform
 |   +-- dead_code_detector.py         Scansione codice inutilizzato
@@ -548,10 +547,10 @@ Interfaccia grafica completa con visualizzatore tattico, cronologia partite, das
 ### Applicazione Desktop (GUI Kivy -- Legacy)
 
 ```bash
-python Programma_CS2_RENAN/main.py
+python -m Programma_CS2_RENAN.apps.legacy_kivy.kivy_main
 ```
 
-Interfaccia Kivy/KivyMD originale. Mantenuta come fallback per ambienti dove Qt non e disponibile.
+Interfaccia Kivy/KivyMD originale in quarantena sotto `apps/legacy_kivy/`. Mantenuta come riferimento per ambienti dove Qt non e disponibile.
 
 ### Console Interattiva (TUI)
 
@@ -620,8 +619,8 @@ Il progetto mantiene una gerarchia di validazione multi-livello:
 
 | Strumento | Ambito | Comando | Check |
 |-----------|--------|---------|-------|
-| Headless Validator | Gate di regressione primario | `python tools/headless_validator.py` | 313 check, 24 fasi |
-| Suite Pytest | Test logici e integrazione | `python -m pytest Programma_CS2_RENAN/tests/ -x -q` | 1,794+ test |
+| Headless Validator | Gate di regressione primario | `python tools/headless_validator.py` | 26 fasi |
+| Suite Pytest | Test logici e integrazione | `python -m pytest Programma_CS2_RENAN/tests/ -x -q` | 2,024+ test |
 | Feature Audit | Integrita feature engineering | `python tools/Feature_Audit.py` | Dimensioni vettore, range |
 | Portability Test | Compatibilita cross-platform | `python tools/portability_test.py` | Check importazione, percorsi |
 | Dev Health | Ambiente di sviluppo | `python tools/dev_health.py` | Dipendenze, config |
@@ -888,7 +887,7 @@ Quattro libri di visione tri-lingui + un libro compagno di analogie canoniche. O
 
 ### Infrastruttura
 
-- [CI/CD Pipeline & Configurazione GitHub](.github/README.md) — [Italiano](.github/README_IT.md) — [Portugues](.github/README_PT.md)
+- [CI/CD Pipeline & Configurazione GitHub](.github/OVERVIEW.md) — [Italiano](.github/OVERVIEW_IT.md) — [Portugues](.github/OVERVIEW_PT.md)
 - [Sistema di Migrazione Database — Alembic](alembic/README.md) — [Italiano](alembic/README_IT.md) — [Portugues](alembic/README_PT.md)
 - [Indice Documentazione](docs/README.md) — [Italiano](docs/README_IT.md) — [Portugues](docs/README_PT.md)
 - [Gli Studi — Bibliotheca](docs/Studies/README.md) — [Italiano](docs/Studies/README_IT.md) — [Portugues](docs/Studies/README_PT.md)
@@ -911,7 +910,7 @@ Quattro libri di visione tri-lingui + un libro compagno di analogie canoniche. O
 
 - [Apps — Livello Interfaccia Utente](Programma_CS2_RENAN/apps/README.md) — [Italiano](Programma_CS2_RENAN/apps/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/README_PT.md)
 - [Applicazione Desktop Qt (Primaria)](Programma_CS2_RENAN/apps/qt_app/README.md) — [Italiano](Programma_CS2_RENAN/apps/qt_app/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/qt_app/README_PT.md)
-- [Applicazione Desktop (Legacy Kivy/KivyMD)](Programma_CS2_RENAN/apps/desktop_app/README.md) — [Italiano](Programma_CS2_RENAN/apps/desktop_app/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/desktop_app/README_PT.md)
+- [Applicazione Desktop (Legacy Kivy/KivyMD)](Programma_CS2_RENAN/apps/legacy_kivy/README.md) — [Italiano](Programma_CS2_RENAN/apps/legacy_kivy/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/legacy_kivy/README_PT.md)
 
 ### Backend
 

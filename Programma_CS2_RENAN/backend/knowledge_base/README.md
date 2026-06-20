@@ -114,7 +114,7 @@ The screen imports `get_help_system` with a try/except guard and sets
 help system and falls back to `_FALLBACK_TOPICS` on failure. Search is performed
 client-side by filtering the already-loaded topic list.
 
-### Kivy Help Screen (`apps/desktop_app/help_screen.py`)
+### Kivy Help Screen (`apps/legacy_kivy/help_screen.py`)
 
 The legacy Kivy consumer. Uses `MDScreen` with `MDListItem` widgets for the topic
 sidebar and an `MDLabel` for content display. It follows the same import-guard and

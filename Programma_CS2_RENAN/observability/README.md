@@ -22,6 +22,7 @@ failures, and strict PII isolation before any data leaves the process boundary.
 | `sentry_setup.py` | Sentry SDK integration with double opt-in and PII scrubbing | `init_sentry()`, `add_breadcrumb()` |
 | `error_codes.py` | Centralised error code registry with severity and remediation | `ErrorCode`, `log_with_code()`, `get_all_codes()` |
 | `exceptions.py` | Domain exception hierarchy rooted at `CS2AnalyzerError` | `CS2AnalyzerError`, `ConfigurationError`, `DatabaseError`, `IngestionError`, `TrainingError`, `IntegrationError`, `UIError` |
+| `label_source_monitor.py` | Sliding-window telemetry for concept-labelling path choice (G-01) | `LabelSourceMonitor`, `LABEL_SOURCE_ROUND_STATS`, `LABEL_SOURCE_SKIPPED_NO_ROUND_STATS` |
 | `__init__.py` | Package marker | -- |
 
 ## Architecture & Concepts

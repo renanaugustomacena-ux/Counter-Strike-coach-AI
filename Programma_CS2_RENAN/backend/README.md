@@ -193,7 +193,7 @@ Layer 5 (Orchestration): services/  reporting/  control/
 
 ### Testing
 
-- Framework: `pytest`, 99 test files in `Programma_CS2_RENAN/tests/` (+1 top-level).
+- Framework: `pytest`, 112 test files in `Programma_CS2_RENAN/tests/` (+6 in root `tests/`).
 - Integration tests require `CS2_INTEGRATION_TESTS=1`.
 - Key fixtures: `in_memory_db`, `seeded_db_session`, `mock_db_manager`, `torch_no_grad`.
 

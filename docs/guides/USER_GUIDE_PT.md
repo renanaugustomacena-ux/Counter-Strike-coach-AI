@@ -606,8 +606,8 @@ Este e um aviso do modo de desenvolvimento da auditoria de seguranca RASP. Signi
 
 **UI Legada Kivy:** O arquivo de layout KV falhou ao carregar. Verifique:
 1. Voce esta executando a partir da raiz do projeto (nao de dentro de `Programma_CS2_RENAN/`)
-2. O arquivo `Programma_CS2_RENAN/apps/desktop_app/layout.kv` existe
-3. Execute: `python Programma_CS2_RENAN/main.py` (nao `python main.py`)
+2. O arquivo `Programma_CS2_RENAN/apps/legacy_kivy/layout.kv` existe
+3. Execute: `python -m Programma_CS2_RENAN.apps.legacy_kivy.kivy_main` (nao `python main.py`)
 
 ### Como resetar o aplicativo para o estado de fabrica
 

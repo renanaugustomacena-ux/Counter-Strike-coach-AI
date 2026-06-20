@@ -18,7 +18,7 @@ portability across machines.
 
 | File | Purpose |
 |------|---------|
-| `db_models.py` | 21 SQLModel table classes spanning the full data model |
+| `db_models.py` | 25 SQLModel table classes spanning the full data model |
 | `database.py` | `DatabaseManager` (monolith) + `HLTVDatabaseManager` + singletons |
 | `match_data_manager.py` | Per-match SQLite partitions (Tier 3) with LRU engine cache |
 | `backup_manager.py` | Hot backup via SQLite Online Backup API, retention (latest + 7 daily + 4 weekly) |
@@ -130,7 +130,7 @@ path-traversal protection (P2-03).
 
 ## Data Model Highlights (db_models.py)
 
-The module defines 21 SQLModel table classes organized into logical groups:
+The module defines 25 SQLModel table classes organized into logical groups:
 
 - **Player telemetry:** `PlayerMatchStats`, `PlayerTickState`, `RoundStats`, `PlayerProfile`
 - **Coaching framework:** `CoachState`, `CoachingInsight`, `CoachingExperience` (COPER)

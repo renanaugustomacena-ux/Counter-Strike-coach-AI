@@ -34,7 +34,7 @@ L'intento e tenere i percorsi di training e inferenza fisicamente separati nell'
 | Consumer | Uso |
 |----------|-----|
 | `apps/qt_app/screens/tactical_viewer_screen.py` | Renderizza le proiezioni ghost sull'overlay della mappa tattica |
-| `apps/desktop_app/tactical_viewmodels.py` (`TacticalGhostViewModel`) | Carica l'engine in modo lazy on demand per evitare costo di startup |
+| `apps/legacy_kivy/tactical_viewmodels.py` (`TacticalGhostViewModel`) | Carica l'engine in modo lazy on demand per evitare costo di startup |
 
 ## Note di sviluppo
 

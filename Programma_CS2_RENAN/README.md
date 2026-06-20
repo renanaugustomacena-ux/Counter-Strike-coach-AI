@@ -43,7 +43,7 @@ WATCH (Ingestion)  →  LEARN (Training)  →  THINK (Inference)  →  SPEAK (Di
 Programma_CS2_RENAN/
 ├── apps/                       # User interface layer
 │   ├── qt_app/                 # PySide6/Qt desktop UI (primary, MVVM)
-│   └── desktop_app/            # Kivy/KivyMD desktop UI (legacy fallback)
+│   └── legacy_kivy/            # Kivy/KivyMD desktop UI (legacy fallback)
 ├── backend/                    # Business logic layer
 │   ├── analysis/               # Game theory, belief models, momentum (11 engines)
 │   ├── coaching/               # Coaching pipeline (COPER, Hybrid, RAG, Neural)
@@ -79,10 +79,9 @@ Programma_CS2_RENAN/
 ├── assets/                     # Static assets (i18n, maps)
 ├── data/                       # Runtime data (demos, knowledge, configs)
 ├── models/                     # Trained model checkpoints
-├── tests/                      # Test suite (1,794+ tests in 89 files)
+├── tests/                      # Test suite (2,024+ tests in 118 files)
 ├── tools/                      # Package-level validation tools
 ├── __init__.py                 # Package init (__version__ = "1.0.0")
-├── main.py                     # Legacy Kivy/KivyMD desktop entry (RASP-gated)
 ├── run_ingestion.py            # Demo ingestion entry point
 ├── run_worker.py               # Background ingestion worker (stale-task recovery)
 └── hltv_sync_service.py        # Background HLTV sync daemon
@@ -93,7 +92,7 @@ Programma_CS2_RENAN/
 | File | Purpose | How to Run |
 |------|---------|-----------|
 | `apps/qt_app/app.py` | Desktop application (Qt GUI, primary) | `python -m Programma_CS2_RENAN.apps.qt_app.app` |
-| `main.py` | Desktop application (Kivy/KivyMD GUI, legacy fallback) | `python -m Programma_CS2_RENAN.main` |
+| `apps/legacy_kivy/kivy_main.py` | Desktop application (Kivy/KivyMD, legacy) | `python -m Programma_CS2_RENAN.apps.legacy_kivy.kivy_main` |
 | `run_ingestion.py` | Demo ingestion pipeline | `python -m Programma_CS2_RENAN.run_ingestion` |
 | `run_worker.py` | Background ingestion worker (stale task recovery) | `python -m Programma_CS2_RENAN.run_worker` |
 | `hltv_sync_service.py` | HLTV background sync | Started by Hunter daemon |
@@ -102,7 +101,7 @@ Programma_CS2_RENAN/
 
 | Layer | Technology |
 |-------|-----------|
-| Primary UI | PySide6/Qt (MVVM pattern, 13 screens, 7 ViewModels) |
+| Primary UI | PySide6/Qt (MVVM pattern, 15 screens, 10 ViewModels) |
 | Legacy UI | Kivy + KivyMD (MVVM pattern, 6 screens) |
 | ML Framework | PyTorch, ncps (Liquid Time-Constant neurons), hflayers (Hopfield) |
 | Database | SQLite (WAL mode) via SQLModel/SQLAlchemy |

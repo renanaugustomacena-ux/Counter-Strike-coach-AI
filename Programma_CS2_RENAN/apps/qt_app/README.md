@@ -6,7 +6,7 @@
 
 ## Overview
 
-PySide6/Qt desktop application implementing Model-View-ViewModel (MVVM) architecture with Qt Signal/Slot for CS2 tactical analysis and AI coaching. This is the **primary frontend** (56 Python files), replacing the legacy Kivy/KivyMD app at [`desktop_app/`](../desktop_app/). The application features 13 screens, 7 ViewModels, 6 chart widgets, 3 tactical widgets, toast notifications, 3 QSS themes (CS2, CSGO, CS1.6), background wallpaper rendering, internationalization (English/Italian/Portuguese), and a graceful shutdown sequence.
+PySide6/Qt desktop application implementing Model-View-ViewModel (MVVM) architecture with Qt Signal/Slot for CS2 tactical analysis and AI coaching. This is the **primary frontend** (87 Python files), replacing the legacy Kivy/KivyMD app at [`legacy_kivy/`](../legacy_kivy/). The application features 15 screens, 10 ViewModels, 8 chart widgets, 3 tactical widgets, 4 coaching widgets, toast notifications, 3 QSS themes (CS2, CSGO, CS1.6), background wallpaper rendering, internationalization (English/Italian/Portuguese), and a graceful shutdown sequence.
 
 ## Entry Point
 
@@ -21,7 +21,7 @@ The `main()` function in `app.py` performs the following boot sequence:
 3. Connects the graceful shutdown handler (`aboutToQuit` signal)
 4. Instantiates `ThemeEngine`, registers custom fonts, applies the active theme
 5. Creates `MainWindow` and sets the initial wallpaper
-6. Instantiates and registers all 13 screens (real implementations, not placeholders)
+6. Instantiates and registers all 15 screens (real implementations, not placeholders)
 7. Wires inter-screen signals (match selection: history -> detail, wizard completion -> home)
 8. First-run gate: shows WizardScreen if `SETUP_COMPLETED` is False, otherwise HomeScreen
 9. Boots the backend console (DB audit, conditional FlareSolverr/Hunter) with error dialog fallback
@@ -109,7 +109,7 @@ qt_app/
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         MainWindow                                  │
 │  ┌──────────┐  ┌─────────────────────────────────────────────────┐  │
-│  │ Sidebar   │  │ QStackedWidget (13 screens)                    │  │
+│  │ Sidebar   │  │ QStackedWidget (15 screens)                    │  │
 │  │ (5 nav    │  │  ┌───────────────────────────────────────────┐ │  │
 │  │  buttons) │  │  │  Screen (QWidget)                         │ │  │
 │  │           │  │  │   │                                       │ │  │

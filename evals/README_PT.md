@@ -18,7 +18,7 @@ O sistema de avaliação opera como um harness de benchmarking de ciclo fechado.
 ### CS2 Coach Bench
 Localizado em **`cs2_coach_bench/`**, este é o conjunto de dados primário para avaliação:
 - **`questions.jsonl`**: Uma coleção de mais de 200 perguntas táticas diversas cobrindo uso de utilitários, posicionamento e análise de estado de rodada.
-- **`rubric.py` / `rubric.md`**: Os critérios de pontuação "padrão-ouro" usados para avaliar a qualidade, precisão e relevância profissional dos conselhos do coach.
+- **`rubric.md`**: Os critérios de pontuação "padrão-ouro" usados para avaliar a qualidade, precisão e relevância profissional dos conselhos do coach.
 - **`run_eval.py`**: O motor de execução que envia as perguntas para a API do coach e coleta as respostas brutas do modelo.
 - **`score_responses.py`**: O script de validação que compara as saídas do modelo com a rubrica e gera métricas finais de desempenho (ex: Precisão, F1-score, Solidez Tática).
 - **`reports/`**: Relatórios JSON gerados por execução para rastreamento histórico.

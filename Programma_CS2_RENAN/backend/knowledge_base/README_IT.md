@@ -119,7 +119,7 @@ Lo schermo importa `get_help_system` con un guard try/except e imposta
 sistema di aiuto e ricade su `_FALLBACK_TOPICS` in caso di errore. La ricerca viene
 eseguita lato client filtrando la lista di argomenti gia caricata.
 
-### Kivy Help Screen (`apps/desktop_app/help_screen.py`)
+### Kivy Help Screen (`apps/legacy_kivy/help_screen.py`)
 
 Il consumatore Kivy legacy. Utilizza `MDScreen` con widget `MDListItem` per la
 barra laterale degli argomenti e un `MDLabel` per la visualizzazione del contenuto.

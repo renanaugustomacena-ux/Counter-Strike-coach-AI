@@ -18,7 +18,7 @@ Il sistema di valutazione opera come un harness di benchmarking a ciclo chiuso. 
 ### CS2 Coach Bench
 Situato in **`cs2_coach_bench/`**, questo è il dataset primario per la valutazione:
 - **`questions.jsonl`**: Una raccolta di oltre 200 domande tattiche diverse che coprono l'uso delle utility, il posizionamento e l'analisi dello stato del round.
-- **`rubric.py` / `rubric.md`**: I criteri di punteggio "gold-standard" utilizzati per valutare la qualità, l'accuratezza e la rilevanza professionale dei consigli del coach.
+- **`rubric.md`**: I criteri di punteggio "gold-standard" utilizzati per valutare la qualità, l'accuratezza e la rilevanza professionale dei consigli del coach.
 - **`run_eval.py`**: Il motore di esecuzione che invia le domande all'API del coach e raccoglie le risposte raw del modello.
 - **`score_responses.py`**: Lo script di convalida che confronta gli output del modello con la rubrica e genera le metriche finali di performance (es. Accuratezza, F1-score, Solidità Tattica).
 - **`reports/`**: Report JSON generati per ogni esecuzione per il tracciamento storico.

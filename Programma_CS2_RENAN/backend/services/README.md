@@ -31,6 +31,7 @@ All services use dependency injection for `DatabaseManager` access (via
 | `lesson_generator.py` | 382 | Structured lesson generation from demos | `LessonGenerator`, `check_lesson_system_status()` |
 | `llm_service.py` | 253 | Ollama LLM provider wrapper | `LLMService`, `get_llm_service()`, `check_ollama_status()` |
 | `ollama_writer.py` | 110 | Natural language polishing for insights | `OllamaCoachWriter`, `get_ollama_writer()` |
+| `player_lookup.py` | ~120 | Player name detection and HLTV data retrieval for chat | `PlayerLookupService` |
 | `profile_service.py` | 167 | Steam/FaceIT profile integration | `ProfileService` |
 | `telemetry_client.py` | 60 | Match telemetry dispatch to ML server | `send_match_telemetry()` |
 | `visualization_service.py` | 131 | Radar charts and comparison plots | `VisualizationService`, `get_visualization_service()` |

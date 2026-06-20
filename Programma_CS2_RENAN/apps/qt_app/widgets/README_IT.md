@@ -70,4 +70,4 @@ I widget espongono i cambi di stato tramite `Signal` (es. `clicked`, `selectionC
 - Core applicativo: `apps/qt_app/core/README.md`
 - Schermate (consumer): `apps/qt_app/screens/README.md`
 - App parent: `apps/qt_app/README.md`
-- Widget Kivy legacy (solo come riferimento per migrazione): `apps/desktop_app/widgets.py`
+- Widget Kivy legacy (solo come riferimento per migrazione): `apps/legacy_kivy/widgets.py`

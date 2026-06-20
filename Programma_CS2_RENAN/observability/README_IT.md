@@ -23,6 +23,7 @@ dato lasci il confine del processo.
 | `sentry_setup.py` | Integrazione SDK Sentry con doppio opt-in e scrubbing PII | `init_sentry()`, `add_breadcrumb()` |
 | `error_codes.py` | Registro centralizzato codici errore con severità e rimedio | `ErrorCode`, `log_with_code()`, `get_all_codes()` |
 | `exceptions.py` | Gerarchia eccezioni di dominio radicata in `CS2AnalyzerError` | `CS2AnalyzerError`, `ConfigurationError`, `DatabaseError`, `IngestionError`, `TrainingError`, `IntegrationError`, `UIError` |
+| `label_source_monitor.py` | Telemetria a finestra scorrevole per la scelta del percorso di concept-labelling (G-01) | `LabelSourceMonitor`, `LABEL_SOURCE_ROUND_STATS`, `LABEL_SOURCE_SKIPPED_NO_ROUND_STATS` |
 | `__init__.py` | Marcatore pacchetto | -- |
 
 ## Architettura & Concetti

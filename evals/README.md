@@ -18,7 +18,7 @@ The evaluation system operates as a closed-loop benchmarking harness. It simulat
 ### CS2 Coach Bench
 Located in **`cs2_coach_bench/`**, this is the primary dataset for evaluation:
 - **`questions.jsonl`**: A collection of 200+ diverse tactical questions covering utility usage, positioning, and round-state analysis.
-- **`rubric.py` / `rubric.md`**: The gold-standard scoring criteria used to evaluate the quality, accuracy, and professional relevance of the coach's advice.
+- **`rubric.md`**: The gold-standard scoring criteria used to evaluate the quality, accuracy, and professional relevance of the coach's advice.
 - **`run_eval.py`**: The execution engine that feeds the questions into the coach API and collects the raw model responses.
 - **`score_responses.py`**: The validation script that compares model outputs against the rubric and generates final performance metrics (e.g., Accuracy, F1-score, Tactical Soundness).
 - **`reports/`**: Generated per-run JSON reports for historical tracking.

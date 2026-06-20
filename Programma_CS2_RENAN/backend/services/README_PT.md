@@ -31,6 +31,7 @@ singleton `get_db_manager()`) e logging estruturado (via
 | `lesson_generator.py` | 382 | Geracao estruturada de licoes a partir de demos | `LessonGenerator`, `check_lesson_system_status()` |
 | `llm_service.py` | 253 | Wrapper do provedor Ollama LLM | `LLMService`, `get_llm_service()`, `check_ollama_status()` |
 | `ollama_writer.py` | 110 | Polimento em linguagem natural para insights | `OllamaCoachWriter`, `get_ollama_writer()` |
+| `player_lookup.py` | ~120 | Deteccao de nomes de jogadores e recuperacao de dados HLTV para chat | `PlayerLookupService` |
 | `profile_service.py` | 167 | Integracao de perfis Steam/FaceIT | `ProfileService` |
 | `telemetry_client.py` | 60 | Despacho de telemetria de partida para servidor ML | `send_match_telemetry()` |
 | `visualization_service.py` | 131 | Graficos radar e graficos comparativos | `VisualizationService`, `get_visualization_service()` |

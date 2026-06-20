@@ -9,7 +9,7 @@
 La directory `apps/` contiene tutto il codice dell'interfaccia utente del Macena CS2
 Analyzer. Due framework UI coesistono come parte di una strategia di migrazione deliberata:
 
-- **Fase 0 (Legacy):** `desktop_app/` era il prototipo originale costruito con Kivy +
+- **Fase 0 (Legacy):** `legacy_kivy/` era il prototipo originale costruito con Kivy +
   KivyMD. Ha servito come shell di prototipazione rapida durante lo sviluppo iniziale.
   Non vengono aggiunte nuove funzionalita qui; esiste solo come riferimento e per i
   componenti non ancora portati.
@@ -35,7 +35,7 @@ apps/
 ├── README_PT.md                 # Traduzione portoghese
 ├── spatial_debugger.py          # Strumento standalone Kivy per validazione coordinate mappa
 │
-├── desktop_app/                 # Legacy Kivy + KivyMD (Fase 0)
+├── legacy_kivy/                 # Legacy Kivy + KivyMD (Fase 0)
 │   ├── __init__.py
 │   ├── layout.kv                # Layout root KV (60 KB, 13 screen)
 │   ├── theme.py                 # Costanti palette Kivy e colori rating
@@ -128,7 +128,7 @@ apps/
 
 ## Confronto tra Framework
 
-| Aspetto | `desktop_app/` (Kivy) | `qt_app/` (PySide6) |
+| Aspetto | `legacy_kivy/` (Kivy) | `qt_app/` (PySide6) |
 |---------|----------------------|----------------------|
 | **Stato** | Legacy (Fase 0) — congelato | **Attivo** (Fase 2+) |
 | **Layout** | Linguaggio KV (`layout.kv`) | Codice Python (QLayouts) |
@@ -191,7 +191,7 @@ La sequenza di avvio in `app.py`:
 3. Handler di shutdown connesso (`aboutToQuit`)
 4. `ThemeEngine` inizializzato — font personalizzati registrati, tema applicato
 5. `MainWindow` creata con navigazione sidebar
-6. Tutti i 14 screen istanziati e registrati nel `QStackedWidget`
+6. Tutti i 15 screen istanziati e registrati nel `QStackedWidget`
 7. Gate prima esecuzione: mostra `WizardScreen` se setup non completato, altrimenti `HomeScreen`
 8. Console backend avviata (`get_console().boot()`)
 9. Polling `AppState` avviato (intervallo 10 secondi)
@@ -268,7 +268,7 @@ I cambi di lingua emettono un segnale `language_changed`. Gli screen implementan
 
 ## Linee Guida per lo Sviluppo
 
-1. **Tutto il nuovo lavoro UI va in `qt_app/`** — non aggiungere funzionalita a `desktop_app/`
+1. **Tutto il nuovo lavoro UI va in `qt_app/`** — non aggiungere funzionalita a `legacy_kivy/`
 2. **Nessun import Kivy nel codice Qt** — `asset_bridge.py`, `i18n_bridge.py`,
    `theme_engine.py` usano solo Qt e stdlib. Gli import cross-framework sono vietati.
 3. **Il threading in background e obbligatorio** — non bloccare mai il thread principale
@@ -306,6 +306,6 @@ I cambi di lingua emettono un segnale `language_changed`. Gli screen implementan
 
 ## Conteggio File
 
-- `desktop_app/`: 16 file Python + 1 layout KV (legacy, congelato)
-- `qt_app/`: 56 file Python distribuiti in `core/`, `screens/`, `viewmodels/`, `widgets/` + 3 temi QSS
+- `legacy_kivy/`: 16 file Python + 1 layout KV (legacy, congelato)
+- `qt_app/`: 87 file Python distribuiti in `core/`, `screens/`, `viewmodels/`, `widgets/` + 3 temi QSS
 - Root `apps/`: 1 strumento standalone (`spatial_debugger.py`)

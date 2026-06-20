@@ -28,12 +28,12 @@ Every other package in the project depends on at least one module from `core/`.
 | `constants.py` | Project-wide constants: tick rate, FOV, utility durations, trade window |
 | `demo_frame.py` | Core data types: `PlayerState`, `GhostState`, `NadeState`, `DemoFrame` |
 | `asset_manager.py` | `SmartAsset` (lazy loading), `AssetAuthority` (centralized registry) |
-| `playback.py` | `TimelineController`: centralized Kivy-based match playback controller |
 | `playback_engine.py` | `PlaybackEngine`: interpolated demo replay with frame blending |
 | `localization.py` | `LocalizationManager`: English, Italian, Portuguese string tables |
 | `platform_utils.py` | Cross-platform drive detection (Windows, Linux, macOS) |
 | `registry.py` | `ScreenRegistry` for Kivy screen lifecycle management |
-| `logger.py` | Structured logging setup with module-level loggers |
+| `lock_files.py` | PID-based lock files for D-track / HLTV-track concurrency control |
+| `map_callouts.py` | `NamedPositionRegistry`: coordinate-to-callout translation for CS2 maps |
 | `app_types.py` | Shared type aliases and enums used across the application |
 | `frozen_hook.py` | PyInstaller runtime hook for frozen-build path correction |
 | `integrity_manifest.json` | File hash manifest for RASP runtime integrity verification |

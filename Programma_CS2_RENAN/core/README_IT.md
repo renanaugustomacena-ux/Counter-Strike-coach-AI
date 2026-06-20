@@ -29,12 +29,12 @@ di `core/`.
 | `constants.py` | Costanti globali: tick rate, FOV, durate utility, finestra trade |
 | `demo_frame.py` | Tipi dati core: `PlayerState`, `GhostState`, `NadeState`, `DemoFrame` |
 | `asset_manager.py` | `SmartAsset` (lazy loading), `AssetAuthority` (registro centralizzato) |
-| `playback.py` | `TimelineController`: controller centralizzato Kivy per playback partita |
 | `playback_engine.py` | `PlaybackEngine`: replay demo interpolato con blending dei frame |
 | `localization.py` | `LocalizationManager`: tabelle stringhe Inglese, Italiano, Portoghese |
 | `platform_utils.py` | Rilevamento drive cross-platform (Windows, Linux, macOS) |
 | `registry.py` | `ScreenRegistry` per gestione ciclo di vita schermate Kivy |
-| `logger.py` | Setup logging strutturato con logger a livello modulo |
+| `lock_files.py` | Lock file basati su PID per controllo concorrenza D-track / HLTV-track |
+| `map_callouts.py` | `NamedPositionRegistry`: traduzione coordinate-callout per mappe CS2 |
 | `app_types.py` | Alias di tipo ed enum condivisi in tutta l'applicazione |
 | `frozen_hook.py` | Hook runtime PyInstaller per correzione percorsi in build congelata |
 | `integrity_manifest.json` | Manifest hash file per verifica integrità runtime RASP |

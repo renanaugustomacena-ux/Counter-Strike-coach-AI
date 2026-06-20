@@ -18,7 +18,7 @@ dei dati, l'accesso concorrente dai daemon e la portabilità tra macchine.
 
 | File | Scopo |
 |------|-------|
-| `db_models.py` | 21 classi tabella SQLModel che coprono l'intero modello dati |
+| `db_models.py` | 25 classi tabella SQLModel che coprono l'intero modello dati |
 | `database.py` | `DatabaseManager` (monolite) + `HLTVDatabaseManager` + singleton |
 | `match_data_manager.py` | Partizioni SQLite per-partita (Tier 3) con cache engine LRU |
 | `backup_manager.py` | Backup a caldo via SQLite Online Backup API, ritenzione (ultimo + 7 giornalieri + 4 settimanali) |
@@ -131,7 +131,7 @@ e protezione path-traversal (P2-03).
 
 ## Punti Salienti del Modello Dati (db_models.py)
 
-Il modulo definisce 21 classi tabella SQLModel organizzate in gruppi logici:
+Il modulo definisce 25 classi tabella SQLModel organizzate in gruppi logici:
 
 - **Telemetria giocatore:** `PlayerMatchStats`, `PlayerTickState`, `RoundStats`, `PlayerProfile`
 - **Framework di coaching:** `CoachState`, `CoachingInsight`, `CoachingExperience` (COPER)

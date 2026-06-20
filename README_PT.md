@@ -3,7 +3,7 @@
 [![CI Pipeline](https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI/actions/workflows/build.yml/badge.svg)](https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI/actions/workflows/build.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Proprietary%20%7C%20Apache--2.0-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-313%20validator%20%7C%201794%20pytest-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-26%20phases%20validator%20%7C%202024%20pytest-brightgreen.svg)]()
 
 **Coach Tatico com IA para Counter-Strike 2**
 
@@ -299,7 +299,7 @@ Estende JEPA com alinhamento de 16 conceitos taticos:
 - Labeling baseado em outcome a partir do RoundStats (kills, mortes, equipamento, resultado do round)
 
 **Outros Modelos:**
-- **AdvancedCoachNN** -- LSTM (hidden=128) + Mixture-of-Experts (4 experts, top-k=2) para predicao de pesos de coaching
+- **AdvancedCoachNN** -- LSTM (hidden=128) + Mixture-of-Experts (3 experts, top-k=2) para predicao de pesos de coaching
 - **NeuralRoleHead** -- Classificador MLP de 5 papeis com gating KL-divergence e votacao por consenso
 - **RoleClassifier** -- Deteccao leve de papel a partir de features de tick
 
@@ -410,21 +410,21 @@ Counter-Strike-coach-AI/
 |   |   |   +-- app.py                  Ponto de entrada Qt
 |   |   |   +-- main_window.py          QMainWindow com navegacao por sidebar
 |   |   |   +-- core/                   AppState singleton, ThemeEngine, padrao Worker
-|   |   |   +-- screens/               13 telas (home, visualizador tatico, historico de
+|   |   |   +-- screens/               15 telas (home, visualizador tatico, historico de
 |   |   |   |                           partidas, detalhe da partida, desempenho, coach,
-|   |   |   |                           configuracoes, wizard, ajuda, perfil, config
-|   |   |   |                           steam/faceit)
+|   |   |   |                           configuracoes, wizard, ajuda, perfil, perfil do
+|   |   |   |                           usuario, config steam/faceit, comparacao pro,
+|   |   |   |                           detalhe pro)
 |   |   |   +-- viewmodels/            ViewModels signal-driven (QObject + Signal/Slot)
 |   |   |   +-- widgets/               Graficos (radar, momentum, economia, sparkline),
 |   |   |                               tatico (widget de mapa, sidebar de jogador, timeline)
-|   |   +-- desktop_app/               GUI Kivy/KivyMD (fallback legacy)
-|   |       +-- main.py                 Ponto de entrada Kivy
+|   |   +-- legacy_kivy/                GUI Kivy/KivyMD (legacy, em quarentena)
+|   |       +-- kivy_main.py            Ponto de entrada Kivy
 |   |       +-- layout.kv               Definicao de layout KivyMD
-|   |       +-- screens/                Classes de tela Kivy
-|   |       +-- widgets/                Componentes de widget Kivy
-|   |       +-- viewmodels/             ViewModels estilo Kivy
-|   |       +-- assets/                 Temas (CS2, CSGO, CS1.6), fontes, imagens de radar
-|   |       +-- i18n/                   Traducoes (EN, IT, PT)
+|   |       +-- screens (inline)        Classes de tela Kivy (layout plano)
+|   |       +-- widgets.py              Componentes de widget Kivy
+|   |       +-- viewmodels (inline)     ViewModels estilo Kivy
+|   |       +-- theme.py                Constantes de tema e registro de paleta
 |   |
 |   +-- backend/
 |   |   +-- analysis/                   Teoria dos jogos e analise estatistica
@@ -456,7 +456,6 @@ Counter-Strike-coach-AI/
 |   |   |   |   +-- memory.py           Modulo de memoria LTC + Hopfield
 |   |   |   +-- layers/                 Componentes neurais compartilhados
 |   |   |       +-- superposition.py    Camada de superposicao dependente de contexto
-|   |   |       +-- moe.py             Gating Mixture-of-Experts
 |   |   |
 |   |   +-- processing/                Feature engineering e processamento de dados
 |   |   |   +-- feature_engineering/
@@ -498,7 +497,7 @@ Counter-Strike-coach-AI/
 |   |   +-- visualizer.py             Renderizacao de graficos e diagramas
 |   |   +-- pdf_generator.py          Geracao de relatorio PDF
 |   |
-|   +-- tests/                         Suite de testes (1.794+ testes)
+|   +-- tests/                         Suite de testes (2.024+ testes)
 |   +-- data/                          Dados estaticos (knowledge base seed, datasets externos)
 |
 +-- docs/                              Documentacao
@@ -513,7 +512,7 @@ Counter-Strike-coach-AI/
 |   +-- Studies/                        17 papers de pesquisa
 |
 +-- tools/                             Ferramentas de validacao e diagnostico
-|   +-- headless_validator.py          Gate de regressao primario (313 checks, 24 fases)
+|   +-- headless_validator.py          Gate de regressao primario (26 fases)
 |   +-- Feature_Audit.py              Auditoria de feature engineering
 |   +-- portability_test.py           Checks de compatibilidade cross-platform
 |   +-- dead_code_detector.py         Varredura de codigo nao utilizado
@@ -549,10 +548,10 @@ Interface grafica completa com visualizador tatico, historico de partidas, dashb
 ### Aplicacao Desktop (GUI Kivy -- Legacy)
 
 ```bash
-python Programma_CS2_RENAN/main.py
+python -m Programma_CS2_RENAN.apps.legacy_kivy.kivy_main
 ```
 
-Interface Kivy/KivyMD original. Mantida como fallback para ambientes onde Qt nao esta disponivel.
+Interface Kivy/KivyMD original em quarentena sob `apps/legacy_kivy/`. Mantida como referencia para ambientes onde Qt nao esta disponivel.
 
 ### Console Interativo (TUI)
 
@@ -621,8 +620,8 @@ O projeto mantem uma hierarquia de validacao multi-nivel:
 
 | Ferramenta | Escopo | Comando | Verificacoes |
 |------------|--------|---------|--------------|
-| Headless Validator | Gate de regressao primario | `python tools/headless_validator.py` | 313 checks, 24 fases |
-| Suite Pytest | Testes logicos e integracao | `python -m pytest Programma_CS2_RENAN/tests/ -x -q` | 1.794+ testes |
+| Headless Validator | Gate de regressao primario | `python tools/headless_validator.py` | 26 fases |
+| Suite Pytest | Testes logicos e integracao | `python -m pytest Programma_CS2_RENAN/tests/ -x -q` | 2.024+ testes |
 | Feature Audit | Integridade de feature engineering | `python tools/Feature_Audit.py` | Dimensoes de vetor, ranges |
 | Portability Test | Compatibilidade cross-platform | `python tools/portability_test.py` | Checks de importacao, caminhos |
 | Dev Health | Ambiente de desenvolvimento | `python tools/dev_health.py` | Dependencias, config |
@@ -889,7 +888,7 @@ Quatro livros de visao tri-lingues + um livro companheiro de analogias canonicas
 
 ### Infraestrutura
 
-- [CI/CD Pipeline & Configuracao GitHub](.github/README.md) — [Italiano](.github/README_IT.md) — [Portugues](.github/README_PT.md)
+- [CI/CD Pipeline & Configuracao GitHub](.github/OVERVIEW.md) — [Italiano](.github/OVERVIEW_IT.md) — [Portugues](.github/OVERVIEW_PT.md)
 - [Sistema de Migracao de Banco de Dados — Alembic](alembic/README.md) — [Italiano](alembic/README_IT.md) — [Portugues](alembic/README_PT.md)
 - [Indice de Documentacao](docs/README.md) — [Italiano](docs/README_IT.md) — [Portugues](docs/README_PT.md)
 - [Os Estudos — Bibliotheca](docs/Studies/README.md) — [Italiano](docs/Studies/README_IT.md) — [Portugues](docs/Studies/README_PT.md)
@@ -912,7 +911,7 @@ Quatro livros de visao tri-lingues + um livro companheiro de analogias canonicas
 
 - [Apps — Camada de Interface do Usuario](Programma_CS2_RENAN/apps/README.md) — [Italiano](Programma_CS2_RENAN/apps/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/README_PT.md)
 - [Aplicacao Desktop Qt (Primaria)](Programma_CS2_RENAN/apps/qt_app/README.md) — [Italiano](Programma_CS2_RENAN/apps/qt_app/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/qt_app/README_PT.md)
-- [Aplicacao Desktop (Legacy Kivy/KivyMD)](Programma_CS2_RENAN/apps/desktop_app/README.md) — [Italiano](Programma_CS2_RENAN/apps/desktop_app/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/desktop_app/README_PT.md)
+- [Aplicacao Desktop (Legacy Kivy/KivyMD)](Programma_CS2_RENAN/apps/legacy_kivy/README.md) — [Italiano](Programma_CS2_RENAN/apps/legacy_kivy/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/legacy_kivy/README_PT.md)
 
 ### Backend
 

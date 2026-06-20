@@ -6,7 +6,7 @@
 
 ## Panoramica
 
-Applicazione desktop PySide6/Qt che implementa l'architettura Model-View-ViewModel (MVVM) con Qt Signal/Slot per l'analisi tattica CS2 e il coaching AI. Questo e il **frontend primario** (56 file Python), che sostituisce l'app legacy Kivy/KivyMD in [`desktop_app/`](../desktop_app/). L'applicazione include 13 schermate, 7 ViewModel, 6 widget grafici, 3 widget tattici, notifiche toast, 3 temi QSS (CS2, CSGO, CS1.6), rendering wallpaper di sfondo, internazionalizzazione (Inglese/Italiano/Portoghese) e una sequenza di spegnimento controllato.
+Applicazione desktop PySide6/Qt che implementa l'architettura Model-View-ViewModel (MVVM) con Qt Signal/Slot per l'analisi tattica CS2 e il coaching AI. Questo e il **frontend primario** (87 file Python), che sostituisce l'app legacy Kivy/KivyMD in [`legacy_kivy/`](../legacy_kivy/). L'applicazione include 15 schermate, 10 ViewModel, 8 widget grafici, 3 widget tattici, 4 widget coaching, notifiche toast, 3 temi QSS (CS2, CSGO, CS1.6), rendering wallpaper di sfondo, internazionalizzazione (Inglese/Italiano/Portoghese) e una sequenza di spegnimento controllato.
 
 ## Punto di Ingresso
 
@@ -21,7 +21,7 @@ La funzione `main()` in `app.py` esegue la seguente sequenza di avvio:
 3. Connette il gestore di spegnimento controllato (signal `aboutToQuit`)
 4. Istanzia `ThemeEngine`, registra i font personalizzati, applica il tema attivo
 5. Crea `MainWindow` e imposta il wallpaper iniziale
-6. Istanzia e registra tutte le 13 schermate (implementazioni reali, non placeholder)
+6. Istanzia e registra tutte le 15 schermate (implementazioni reali, non placeholder)
 7. Collega i signal inter-schermata (selezione partita: history -> detail, completamento wizard -> home)
 8. Gate primo avvio: mostra WizardScreen se `SETUP_COMPLETED` e False, altrimenti HomeScreen
 9. Avvia la console backend (audit DB, FlareSolverr/Hunter condizionale) con finestra di errore di fallback
@@ -109,7 +109,7 @@ qt_app/
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         MainWindow                                  │
 │  ┌──────────┐  ┌─────────────────────────────────────────────────┐  │
-│  │ Sidebar   │  │ QStackedWidget (13 schermate)                  │  │
+│  │ Sidebar   │  │ QStackedWidget (15 schermate)                  │  │
 │  │ (5 pul-   │  │  ┌───────────────────────────────────────────┐ │  │
 │  │  santi)   │  │  │  Screen (QWidget)                         │ │  │
 │  │           │  │  │   │                                       │ │  │

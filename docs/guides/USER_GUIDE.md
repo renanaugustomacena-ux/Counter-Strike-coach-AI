@@ -606,8 +606,8 @@ This is a development-mode warning from the RASP security audit. It means source
 
 **Legacy Kivy UI:** The KV layout file failed to load. Check:
 1. You are running from the project root (not from inside `Programma_CS2_RENAN/`)
-2. The file `Programma_CS2_RENAN/apps/desktop_app/layout.kv` exists
-3. Run: `python Programma_CS2_RENAN/main.py` (not `python main.py`)
+2. The file `Programma_CS2_RENAN/apps/legacy_kivy/layout.kv` exists
+3. Run: `python -m Programma_CS2_RENAN.apps.legacy_kivy.kivy_main` (not `python main.py`)
 
 ### How to reset the app to factory state
 

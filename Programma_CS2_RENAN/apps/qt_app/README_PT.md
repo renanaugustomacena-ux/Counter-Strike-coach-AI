@@ -6,7 +6,7 @@
 
 ## Visao Geral
 
-Aplicacao desktop PySide6/Qt implementando arquitetura Model-View-ViewModel (MVVM) com Qt Signal/Slot para analise tatica CS2 e coaching de IA. Este e o **frontend primario** (56 arquivos Python), substituindo o app legacy Kivy/KivyMD em [`desktop_app/`](../desktop_app/). A aplicacao conta com 13 telas, 7 ViewModels, 6 widgets de graficos, 3 widgets taticos, notificacoes toast, 3 temas QSS (CS2, CSGO, CS1.6), renderizacao de wallpaper de fundo, internacionalizacao (Ingles/Italiano/Portugues) e uma sequencia de encerramento controlado.
+Aplicacao desktop PySide6/Qt implementando arquitetura Model-View-ViewModel (MVVM) com Qt Signal/Slot para analise tatica CS2 e coaching de IA. Este e o **frontend primario** (87 arquivos Python), substituindo o app legacy Kivy/KivyMD em [`legacy_kivy/`](../legacy_kivy/). A aplicacao conta com 15 telas, 10 ViewModels, 8 widgets de graficos, 3 widgets taticos, 4 widgets de coaching, notificacoes toast, 3 temas QSS (CS2, CSGO, CS1.6), renderizacao de wallpaper de fundo, internacionalizacao (Ingles/Italiano/Portugues) e uma sequencia de encerramento controlado.
 
 ## Ponto de Entrada
 
@@ -21,7 +21,7 @@ A funcao `main()` em `app.py` executa a seguinte sequencia de inicializacao:
 3. Conecta o handler de encerramento controlado (signal `aboutToQuit`)
 4. Instancia `ThemeEngine`, registra fontes customizadas, aplica o tema ativo
 5. Cria `MainWindow` e define o wallpaper inicial
-6. Instancia e registra todas as 13 telas (implementacoes reais, nao placeholders)
+6. Instancia e registra todas as 15 telas (implementacoes reais, nao placeholders)
 7. Conecta signals entre telas (selecao de partida: history -> detail, conclusao wizard -> home)
 8. Gate de primeiro uso: mostra WizardScreen se `SETUP_COMPLETED` e False, caso contrario HomeScreen
 9. Inicializa a console backend (audit DB, FlareSolverr/Hunter condicional) com dialogo de erro como fallback
@@ -109,7 +109,7 @@ qt_app/
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         MainWindow                                  │
 │  ┌──────────┐  ┌─────────────────────────────────────────────────┐  │
-│  │ Sidebar   │  │ QStackedWidget (13 telas)                      │  │
+│  │ Sidebar   │  │ QStackedWidget (15 telas)                      │  │
 │  │ (5 bo-    │  │  ┌───────────────────────────────────────────┐ │  │
 │  │  toes)    │  │  │  Screen (QWidget)                         │ │  │
 │  │           │  │  │   │                                       │ │  │

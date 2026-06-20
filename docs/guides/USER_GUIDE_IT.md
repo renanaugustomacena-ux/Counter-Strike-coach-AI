@@ -609,8 +609,8 @@ Questo e' un avviso in modalita' sviluppo proveniente dall'audit di sicurezza RA
 
 **UI Legacy Kivy:** Il file di layout KV non e' riuscito a caricarsi. Controlla:
 1. Stai eseguendo dalla directory principale del progetto (non dall'interno di `Programma_CS2_RENAN/`)
-2. Il file `Programma_CS2_RENAN/apps/desktop_app/layout.kv` esiste
-3. Esegui: `python Programma_CS2_RENAN/main.py` (non `python main.py`)
+2. Il file `Programma_CS2_RENAN/apps/legacy_kivy/layout.kv` esiste
+3. Esegui: `python -m Programma_CS2_RENAN.apps.legacy_kivy.kivy_main` (non `python main.py`)
 
 ### Come ripristinare l'app allo stato di fabbrica
 

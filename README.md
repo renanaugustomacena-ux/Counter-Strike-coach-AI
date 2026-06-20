@@ -3,7 +3,7 @@
 [![CI Pipeline](https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI/actions/workflows/build.yml/badge.svg)](https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI/actions/workflows/build.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Proprietary%20%7C%20Apache--2.0-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-313%20validator%20%7C%201794%20pytest-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-26%20phases%20validator%20%7C%202024%20pytest-brightgreen.svg)]()
 
 **AI-Powered Tactical Coach for Counter-Strike 2**
 
@@ -299,7 +299,7 @@ Extends JEPA with 16 tactical concept alignment:
 - Outcome-based labeling from RoundStats (kills, deaths, equipment, round result)
 
 **Other Models:**
-- **AdvancedCoachNN** — LSTM (hidden=128) + Mixture-of-Experts (4 experts, top-k=2) for coaching weight prediction
+- **AdvancedCoachNN** — LSTM (hidden=128) + Mixture-of-Experts (3 experts, top-k=2) for coaching weight prediction
 - **NeuralRoleHead** — 5-role MLP classifier with KL-divergence gating and consensus voting
 - **RoleClassifier** — Lightweight role detection from tick features
 
@@ -410,20 +410,20 @@ Counter-Strike-coach-AI/
 |   |   |   +-- app.py                  Qt entry point
 |   |   |   +-- main_window.py          QMainWindow with sidebar navigation
 |   |   |   +-- core/                   AppState singleton, ThemeEngine, Worker pattern
-|   |   |   +-- screens/               13 screens (home, tactical viewer, match history,
+|   |   |   +-- screens/               15 screens (home, tactical viewer, match history,
 |   |   |   |                           match detail, performance, coach, settings,
-|   |   |   |                           wizard, help, profile, steam/faceit config)
+|   |   |   |                           wizard, help, profile, user profile,
+|   |   |   |                           steam/faceit config, pro comparison, pro detail)
 |   |   |   +-- viewmodels/            Signal-driven ViewModels (QObject + Signal/Slot)
 |   |   |   +-- widgets/               Charts (radar, momentum, economy, sparkline),
 |   |   |                               tactical (map widget, player sidebar, timeline)
-|   |   +-- desktop_app/               Kivy/KivyMD GUI (legacy fallback)
-|   |       +-- main.py                 Kivy entry point
+|   |   +-- legacy_kivy/                Kivy/KivyMD GUI (legacy, quarantined)
+|   |       +-- kivy_main.py            Kivy entry point
 |   |       +-- layout.kv               KivyMD layout definition
-|   |       +-- screens/                Kivy screen classes
-|   |       +-- widgets/                Kivy widget components
-|   |       +-- viewmodels/             Kivy-style ViewModels
-|   |       +-- assets/                 Themes (CS2, CSGO, CS1.6), fonts, map radar images
-|   |       +-- i18n/                   Translations (EN, IT, PT)
+|   |       +-- screens (inline)        Kivy screen classes (single-directory flat layout)
+|   |       +-- widgets.py              Kivy widget components
+|   |       +-- viewmodels (inline)     Kivy-style ViewModels
+|   |       +-- theme.py                Theme constants and palette registry
 |   |
 |   +-- backend/
 |   |   +-- analysis/                   Game theory and statistical analysis
@@ -455,7 +455,6 @@ Counter-Strike-coach-AI/
 |   |   |   |   +-- memory.py           LTC + Hopfield memory module
 |   |   |   +-- layers/                 Shared neural components
 |   |   |       +-- superposition.py    Context-dependent superposition layer
-|   |   |       +-- moe.py             Mixture-of-Experts gating
 |   |   |
 |   |   +-- processing/                Feature engineering and data processing
 |   |   |   +-- feature_engineering/
@@ -497,7 +496,7 @@ Counter-Strike-coach-AI/
 |   |   +-- visualizer.py             Chart and diagram rendering
 |   |   +-- pdf_generator.py          PDF report generation
 |   |
-|   +-- tests/                         Test suite (1,794+ tests)
+|   +-- tests/                         Test suite (2,024+ tests)
 |   +-- data/                          Static data (seed knowledge base, external datasets)
 |
 +-- docs/                              Documentation
@@ -512,7 +511,7 @@ Counter-Strike-coach-AI/
 |   +-- Studies/                        17 research papers
 |
 +-- tools/                             Validation and diagnostic tools
-|   +-- headless_validator.py          Primary regression gate (313 checks, 24 phases)
+|   +-- headless_validator.py          Primary regression gate (26 phases)
 |   +-- Feature_Audit.py              Feature engineering audit
 |   +-- portability_test.py           Cross-platform compatibility checks
 |   +-- dead_code_detector.py         Unused code scanning
@@ -548,10 +547,10 @@ Full graphical interface with tactical viewer, match history, performance dashbo
 ### Desktop Application (Kivy GUI — Legacy)
 
 ```bash
-python Programma_CS2_RENAN/main.py
+python -m Programma_CS2_RENAN.apps.legacy_kivy.kivy_main
 ```
 
-Original Kivy/KivyMD interface. Maintained as fallback for environments where Qt is unavailable.
+Original Kivy/KivyMD interface quarantined under `apps/legacy_kivy/`. Retained as reference for environments where Qt is unavailable.
 
 ### Interactive Console (TUI)
 
@@ -620,8 +619,8 @@ The project maintains a multi-level validation hierarchy:
 
 | Tool | Scope | Command | Checks |
 |------|-------|---------|--------|
-| Headless Validator | Primary regression gate | `python tools/headless_validator.py` | 313 checks, 24 phases |
-| Pytest Suite | Logic and integration tests | `python -m pytest Programma_CS2_RENAN/tests/ -x -q` | 1,794+ tests |
+| Headless Validator | Primary regression gate | `python tools/headless_validator.py` | 26 phases |
+| Pytest Suite | Logic and integration tests | `python -m pytest Programma_CS2_RENAN/tests/ -x -q` | 2,024+ tests |
 | Feature Audit | Feature engineering integrity | `python tools/Feature_Audit.py` | Vector dimensions, ranges |
 | Portability Test | Cross-platform compatibility | `python tools/portability_test.py` | Import checks, paths |
 | Dev Health | Development environment | `python tools/dev_health.py` | Dependencies, config |
@@ -888,7 +887,7 @@ Four tri-lingual vision books + one canonical analogy companion book. Each coach
 
 ### Infrastructure
 
-- [CI/CD Pipeline & GitHub Configuration](.github/README.md) — [Italiano](.github/README_IT.md) — [Portugues](.github/README_PT.md)
+- [CI/CD Pipeline & GitHub Configuration](.github/OVERVIEW.md) — [Italiano](.github/OVERVIEW_IT.md) — [Portugues](.github/OVERVIEW_PT.md)
 - [Database Migration System — Alembic](alembic/README.md) — [Italiano](alembic/README_IT.md) — [Portugues](alembic/README_PT.md)
 - [Documentation Index](docs/README.md) — [Italiano](docs/README_IT.md) — [Portugues](docs/README_PT.md)
 - [The Studies — Bibliotheca](docs/Studies/README.md) — [Italiano](docs/Studies/README_IT.md) — [Portugues](docs/Studies/README_PT.md)
@@ -911,7 +910,7 @@ Four tri-lingual vision books + one canonical analogy companion book. Each coach
 
 - [Apps — User Interface Layer](Programma_CS2_RENAN/apps/README.md) — [Italiano](Programma_CS2_RENAN/apps/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/README_PT.md)
 - [Qt Desktop Application (Primary)](Programma_CS2_RENAN/apps/qt_app/README.md) — [Italiano](Programma_CS2_RENAN/apps/qt_app/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/qt_app/README_PT.md)
-- [Desktop Application (Legacy Kivy/KivyMD)](Programma_CS2_RENAN/apps/desktop_app/README.md) — [Italiano](Programma_CS2_RENAN/apps/desktop_app/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/desktop_app/README_PT.md)
+- [Desktop Application (Legacy Kivy/KivyMD)](Programma_CS2_RENAN/apps/legacy_kivy/README.md) — [Italiano](Programma_CS2_RENAN/apps/legacy_kivy/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/legacy_kivy/README_PT.md)
 
 ### Backend
 

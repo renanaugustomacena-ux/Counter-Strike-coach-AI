@@ -43,7 +43,7 @@ GUARDA (Ingestione) →  IMPARA (Addestramento) →  PENSA (Inferenza) →  PARL
 Programma_CS2_RENAN/
 ├── apps/                       # Livello interfaccia utente
 │   ├── qt_app/                 # UI desktop PySide6/Qt (primaria, MVVM)
-│   └── desktop_app/            # UI desktop Kivy/KivyMD (legacy fallback)
+│   └── legacy_kivy/            # UI desktop Kivy/KivyMD (legacy fallback)
 ├── backend/                    # Livello logica di business
 │   ├── analysis/               # Teoria dei giochi, modelli di credenza, momentum (11 motori)
 │   ├── coaching/               # Pipeline di coaching (COPER, Ibrido, RAG, Neurale)
@@ -79,10 +79,9 @@ Programma_CS2_RENAN/
 ├── assets/                     # Asset statici (i18n, mappe)
 ├── data/                       # Dati runtime (demo, conoscenza, configurazioni)
 ├── models/                     # Checkpoint dei modelli addestrati
-├── tests/                      # Suite di test (1,794+ test in 89 file)
+├── tests/                      # Suite di test (2,024+ test in 118 file)
 ├── tools/                      # Strumenti di validazione a livello pacchetto
 ├── __init__.py                 # Init del pacchetto (__version__ = "1.0.0")
-├── main.py                     # Entry Kivy/KivyMD legacy (protetto da RASP)
 ├── run_ingestion.py            # Punto di ingresso ingestione demo
 ├── run_worker.py               # Worker di ingestione in background (recupero task stale)
 └── hltv_sync_service.py        # Daemon di sincronizzazione HLTV in background
@@ -93,7 +92,7 @@ Programma_CS2_RENAN/
 | File | Scopo | Come Eseguire |
 |------|-------|---------------|
 | `apps/qt_app/app.py` | Applicazione desktop (GUI Qt, primaria) | `python -m Programma_CS2_RENAN.apps.qt_app.app` |
-| `main.py` | Applicazione desktop (GUI Kivy/KivyMD, fallback legacy) | `python -m Programma_CS2_RENAN.main` |
+| `apps/legacy_kivy/kivy_main.py` | Applicazione desktop (Kivy/KivyMD, legacy) | `python -m Programma_CS2_RENAN.apps.legacy_kivy.kivy_main` |
 | `run_ingestion.py` | Pipeline di ingestione demo | `python -m Programma_CS2_RENAN.run_ingestion` |
 | `run_worker.py` | Worker di ingestione in background (recupero task stale) | `python -m Programma_CS2_RENAN.run_worker` |
 | `hltv_sync_service.py` | Sincronizzazione HLTV in background | Avviato dal daemon Hunter |
@@ -102,7 +101,7 @@ Programma_CS2_RENAN/
 
 | Livello | Tecnologia |
 |---------|-----------|
-| UI Primaria | PySide6/Qt (pattern MVVM, 13 schermate, 7 ViewModel) |
+| UI Primaria | PySide6/Qt (pattern MVVM, 15 schermate, 10 ViewModel) |
 | UI Legacy | Kivy + KivyMD (pattern MVVM, 6 schermate) |
 | Framework ML | PyTorch, ncps (neuroni Liquid Time-Constant), hflayers (Hopfield) |
 | Database | SQLite (modalita WAL) via SQLModel/SQLAlchemy |
