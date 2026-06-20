@@ -48,6 +48,7 @@ class TrainingOrchestrator:
         accumulation_steps: int = 4,
         train_samples: int | None = None,
         val_samples: int | None = None,
+        dry_run: bool = False,
     ):
         self.manager = manager
         self.model_type = model_type
@@ -55,6 +56,13 @@ class TrainingOrchestrator:
         self.patience = patience
         self.batch_size = batch_size
         self._accumulation_steps = accumulation_steps
+        # B4: dry-run is a non-destructive pipeline-integrity probe. It must NOT
+        # write production checkpoints — the entry point already promises "will
+        # NOT save production weights", but that contract was never threaded into
+        # the orchestrator, so a `--dry-run` previously overwrote the real
+        # `<model_name>.pt`/`_latest.pt` with a 1-epoch model (Law 7 violation).
+        # When True, _run_epoch_loop skips every save_nn call.
+        self.dry_run = dry_run
 
         from Programma_CS2_RENAN.core.config import get_setting
 
@@ -236,17 +244,27 @@ class TrainingOrchestrator:
             if val_loss < self.best_val_loss:
                 self.best_val_loss = val_loss
                 self.patience_counter = 0
-                save_nn(
-                    model,
-                    self.model_name,
-                    user_id=None,
-                    extra_meta={"best_val_loss": val_loss},
-                )
-                logger.info("New Best Model Saved (Val Loss: %s)", format(val_loss, ".6f"))
+                # B4: best-val/patience state is tracked even in dry-run so
+                # early-stopping behaviour is identical; only the disk write is
+                # suppressed.
+                if self.dry_run:
+                    logger.info(
+                        "DRY RUN: new best (val %s) — checkpoint save skipped",
+                        format(val_loss, ".6f"),
+                    )
+                else:
+                    save_nn(
+                        model,
+                        self.model_name,
+                        user_id=None,
+                        extra_meta={"best_val_loss": val_loss},
+                    )
+                    logger.info("New Best Model Saved (Val Loss: %s)", format(val_loss, ".6f"))
             else:
                 self.patience_counter += 1
 
-            save_nn(model, f"{self.model_name}_latest", user_id=None)
+            if not self.dry_run:
+                save_nn(model, f"{self.model_name}_latest", user_id=None)
             _flush_all_loggers()
 
             if self.patience_counter >= self.patience:

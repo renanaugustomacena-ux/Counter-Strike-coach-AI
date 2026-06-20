@@ -142,6 +142,7 @@ def main():
                 callbacks=callbacks,
                 train_samples=args.train_samples,
                 val_samples=args.val_samples,
+                dry_run=args.dry_run,
             )
             orchestrator_jepa.run_training()
 
@@ -164,6 +165,7 @@ def main():
                 train_samples=args.train_samples,
                 val_samples=args.val_samples,
                 callbacks=callbacks,
+                dry_run=args.dry_run,
             )
             orchestrator_rap.run_training()
 
