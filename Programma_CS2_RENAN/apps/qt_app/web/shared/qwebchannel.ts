@@ -70,16 +70,15 @@ declare global {
  * Qt's channel has handshaked. Callers should ``await connectBridge()``
  * early in their entry point.
  */
-export async function connectBridge(
+export async function connectBridge<T = MarqueeBridge>(
   name = "bridge",
-): Promise<MarqueeBridge> {
-  // qwebchannel.js is injected by Qt; we reference the global.
-  return new Promise<MarqueeBridge>((resolve, reject) => {
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
     try {
       new QWebChannel(window.qt.webChannelTransport, (channel) => {
-        const bridge = channel.objects[name] as MarqueeBridge | undefined;
+        const bridge = channel.objects[name] as T | undefined;
         if (!bridge) {
-          reject(new Error(`MarqueeBridge ${name} not registered on channel`));
+          reject(new Error(`Bridge "${name}" not registered on channel`));
           return;
         }
         resolve(bridge);
