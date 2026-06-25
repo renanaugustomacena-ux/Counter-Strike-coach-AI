@@ -1,0 +1,2133 @@
+# Chapter 8 -- Qt App and Legacy Kivy UI Layer
+
+> **Scope:** Every class, function, constant, and mechanism in
+> `Programma_CS2_RENAN/apps/` -- the PySide6 (Qt) frontend and the
+> legacy Kivy frontend it replaced.
+>
+> **File inventory:** 80+ source files across `qt_app/` (core, screens,
+> viewmodels, widgets) and `legacy_kivy/`.
+
+---
+
+## Table of Contents
+
+1. [Package Root and Init Files](#1-package-root-and-init-files)
+2. [Qt App Entry Point (`app.py`)](#2-qt-app-entry-point)
+3. [Main Window (`main_window.py`)](#3-main-window)
+4. [Core Infrastructure (`core/`)](#4-core-infrastructure)
+   - 4.1 [Animation Framework](#41-animation-framework)
+   - 4.2 [Application State Singleton](#42-application-state-singleton)
+   - 4.3 [Asset Bridge](#43-asset-bridge)
+   - 4.4 [Design Tokens](#44-design-tokens)
+   - 4.5 [Easing Curves](#45-easing-curves)
+   - 4.6 [Internationalization Bridge](#46-internationalization-bridge)
+   - 4.7 [Icon System](#47-icon-system)
+   - 4.8 [Match Utilities](#48-match-utilities)
+   - 4.9 [QSS Generator](#49-qss-generator)
+   - 4.10 [Playback Engine](#410-playback-engine)
+   - 4.11 [Sound Manager](#411-sound-manager)
+   - 4.12 [SVG Icon Provider](#412-svg-icon-provider)
+   - 4.13 [Theme Engine](#413-theme-engine)
+   - 4.14 [Typography](#414-typography)
+   - 4.15 [Web Bridge](#415-web-bridge)
+   - 4.16 [Widget Helpers](#416-widget-helpers)
+   - 4.17 [Worker](#417-worker)
+5. [Screens (`screens/`)](#5-screens)
+   - 5.1 [Placeholder Factory](#51-placeholder-factory)
+   - 5.2 [Home Screen (Dashboard)](#52-home-screen)
+   - 5.3 [Coach Screen](#53-coach-screen)
+   - 5.4 [Match History Screen](#54-match-history-screen)
+   - 5.5 [Match Detail Screen](#55-match-detail-screen)
+   - 5.6 [Performance Screen](#56-performance-screen)
+   - 5.7 [Tactical Viewer Screen](#57-tactical-viewer-screen)
+   - 5.8 [Settings Screen](#58-settings-screen)
+   - 5.9 [Help Screen](#59-help-screen)
+   - 5.10 [Profile Screen](#510-profile-screen)
+   - 5.11 [User Profile Screen](#511-user-profile-screen)
+   - 5.12 [Steam Config Screen](#512-steam-config-screen)
+   - 5.13 [FaceIT Config Screen](#513-faceit-config-screen)
+   - 5.14 [Wizard Screen](#514-wizard-screen)
+   - 5.15 [Pro Comparison Screen](#515-pro-comparison-screen)
+   - 5.16 [Pro Player Detail Screen](#516-pro-player-detail-screen)
+6. [ViewModels (`viewmodels/`)](#6-viewmodels)
+   - 6.1 [Coach ViewModel](#61-coach-viewmodel)
+   - 6.2 [Coaching Chat ViewModel](#62-coaching-chat-viewmodel)
+   - 6.3 [Focus Insight ViewModel](#63-focus-insight-viewmodel)
+   - 6.4 [Match Detail ViewModel](#64-match-detail-viewmodel)
+   - 6.5 [Match History ViewModel](#65-match-history-viewmodel)
+   - 6.6 [Performance ViewModel](#66-performance-viewmodel)
+   - 6.7 [Pro Comparison ViewModel](#67-pro-comparison-viewmodel)
+   - 6.8 [Pro Player Detail ViewModel](#68-pro-player-detail-viewmodel)
+   - 6.9 [Tactical ViewModel](#69-tactical-viewmodel)
+   - 6.10 [User Profile ViewModel](#610-user-profile-viewmodel)
+7. [Widgets (`widgets/`)](#7-widgets)
+   - 7.1 [Skeleton Loader](#71-skeleton-loader)
+   - 7.2 [Toast Notifications](#72-toast-notifications)
+   - 7.3 [Charts](#73-charts)
+   - 7.4 [Coaching Widgets](#74-coaching-widgets)
+   - 7.5 [Design System Components](#75-design-system-components)
+   - 7.6 [Tactical Widgets](#76-tactical-widgets)
+8. [Legacy Kivy Frontend (`legacy_kivy/`)](#8-legacy-kivy-frontend)
+   - 8.1 [Kivy Main Application](#81-kivy-main-application)
+   - 8.2 [Theme System](#82-theme-system)
+   - 8.3 [Data ViewModels](#83-data-viewmodels)
+   - 8.4 [Coaching Chat ViewModel (Kivy)](#84-coaching-chat-viewmodel-kivy)
+   - 8.5 [Tactical ViewModels](#85-tactical-viewmodels)
+   - 8.6 [Kivy Screens](#86-kivy-screens)
+   - 8.7 [Kivy Widgets](#87-kivy-widgets)
+   - 8.8 [Tactical Map and Timeline](#88-tactical-map-and-timeline)
+   - 8.9 [Ghost Pixel and Spatial Debugger](#89-ghost-pixel-and-spatial-debugger)
+9. [Architecture and Design Decisions](#9-architecture-and-design-decisions)
+10. [Cross-Reference: Qt vs Legacy Kivy](#10-cross-reference-qt-vs-legacy-kivy)
+
+---
+
+## 1. Package Root and Init Files
+
+### `apps/__init__.py`
+
+Empty file. Marks `Programma_CS2_RENAN.apps` as a Python package. Contains no code, no docstring.
+
+### `apps/qt_app/__init__.py`
+
+Single-line docstring:
+
+```python
+"""PySide6 (Qt) frontend for Macena CS2 Analyzer."""
+```
+
+### `apps/qt_app/core/__init__.py`
+
+Single-line docstring:
+
+```python
+"""Qt app core utilities -- threading, theming, i18n, assets."""
+```
+
+### `apps/qt_app/screens/__init__.py`
+
+Single-line docstring:
+
+```python
+"""Qt screen widgets -- one per app page, registered with MainWindow."""
+```
+
+### `apps/qt_app/viewmodels/__init__.py`
+
+Single-line docstring. Marks the viewmodel package.
+
+### `apps/qt_app/widgets/__init__.py`, `widgets/charts/__init__.py`, `widgets/coaching/__init__.py`, `widgets/components/__init__.py`, `widgets/tactical/__init__.py`
+
+Init files for each widget subpackage. Typically contain only docstrings or are empty.
+
+---
+
+## 2. Qt App Entry Point
+
+**File:** `apps/qt_app/app.py`
+
+The application bootstrap module. Launched via `python -m Programma_CS2_RENAN.apps.qt_app.app`.
+
+### Functions
+
+#### `_create_splash(app_version: str) -> QSplashScreen`
+
+Creates a branded splash screen (520x320 pixels) with:
+- Dark gradient background (`#14141e` to `#0a0a14`)
+- CS2-orange accent bar at top (`#d96600`, 4px)
+- Title "MACENA CS2 ANALYZER" in Roboto 22pt Bold
+- Subtitle "AI-Powered Coaching Platform" in Roboto 11pt
+- Version string in JetBrains Mono 9pt
+- Orange divider line and bottom border
+- Window flags: `SplashScreen | FramelessWindowHint | WindowStaysOnTopHint`
+
+#### `_splash_status(splash: QSplashScreen, message: str) -> None`
+
+Updates the splash status message (bottom-left, `#a0a0b0` color) and calls `QApplication.processEvents()` to keep the splash responsive.
+
+#### `_resolve_app_version() -> str`
+
+Reads the installed package version via `importlib.metadata.version("macena-cs2-analyzer")`. Falls back to `"1.0.0"` on `PackageNotFoundError`.
+
+#### `_install_quit_handler(app: QApplication) -> None`
+
+Wires `app.aboutToQuit` to a shutdown sequence:
+1. `get_app_state().stop_polling()` -- stops the 10s CoachState poll timer
+2. `lifecycle.shutdown()` -- halts the Session Engine subprocess (Scanner/Digester/Teacher/Pulse)
+3. `get_console().shutdown()` -- closes Console database connections
+
+Ordering is critical: polling stops first, then daemon, then Console DB handles.
+
+#### `_apply_theme(app: QApplication, splash: QSplashScreen) -> ThemeEngine`
+
+Registers custom fonts via `ThemeEngine.register_fonts()`. Reads user preferences:
+- `FONT_TYPE` (default `"Roboto"`)
+- `FONT_SIZE` (default `"Medium"` = 13pt; Small=11, Large=16)
+- `ACTIVE_THEME` (default `"CS2"`)
+
+Applies the theme stylesheet and palette to the QApplication.
+
+#### `_create_screens(theme: ThemeEngine) -> dict`
+
+Deferred import of all 16 screen classes to keep module-level import cheap. Returns a dict mapping screen names to widget instances:
+
+| Key | Class |
+|---|---|
+| `"match_history"` | `MatchHistoryScreen` |
+| `"match_detail"` | `MatchDetailScreen` |
+| `"performance"` | `PerformanceScreen` |
+| `"settings"` | `SettingsScreen(theme_engine=theme)` |
+| `"wizard"` | `WizardScreen` |
+| `"user_profile"` | `UserProfileScreen` |
+| `"profile"` | `ProfileScreen` |
+| `"home"` | `HomeScreen` |
+| `"coach"` | `CoachScreen` |
+| `"steam_config"` | `SteamConfigScreen` |
+| `"faceit_config"` | `FaceitConfigScreen` |
+| `"help"` | `HelpScreen` |
+| `"tactical_viewer"` | `TacticalViewerScreen` |
+| `"pro_comparison"` | `ProComparisonScreen` |
+| `"pro_player_detail"` | `ProPlayerDetailScreen` |
+
+#### `_wire_screen_signals(window: MainWindow, screens: dict) -> None`
+
+Cross-screen routing:
+- `match_history.match_selected` and `home.match_selected` -> loads demo in `match_detail`, then switches to it
+- `wizard.setup_completed` -> switches to `"home"`
+- `pro_comparison.pro_detail_requested(hltv_id)` -> loads pro in `pro_player_detail`, switches to it
+- `pro_player_detail.back_requested` -> switches back to `"pro_comparison"`
+
+#### `_boot_backend_services(splash: QSplashScreen) -> None`
+
+Boots the Console (`get_console().boot()`) and launches the Session Engine daemon (`lifecycle.launch_daemon()`). Errors are logged but never raised -- the app remains usable even if the backend fails.
+
+#### `_ensure_sbert_model(splash: QSplashScreen) -> None`
+
+WR-10 feature: pre-downloads the SBERT RAG model (~90 MB) on first run. Uses a background thread with a polling loop that calls `QApplication.processEvents()` to keep the splash responsive. Failure is silently caught -- the coach falls back to dense similarity.
+
+#### `_install_qt_excepthook() -> None`
+
+Installs `sys.excepthook` to log uncaught exceptions from Qt signal/slot dispatch. Preserves the original excepthook and chains to it.
+
+#### `_show_boot_failure_warning_if_needed(window: MainWindow) -> None`
+
+Shows a `QMessageBox.warning` if `get_console()` raises. The modal requires the main window as parent so it appears after the window is shown.
+
+#### `main()`
+
+The complete boot sequence:
+1. Enable High-DPI: `PassThrough` rounding policy
+2. Create `QApplication`
+3. Resolve version, set app name/version
+4. Show splash
+5. Install quit handler
+6. Apply theme
+7. Create `MainWindow`
+8. Set wallpaper from theme
+9. Create placeholder screens, then real screens
+10. Wire cross-screen signals
+11. Register all screens with the window
+12. Check `SETUP_COMPLETED` -- route to `"home"` or `"wizard"`
+13. Store theme engine reference on window
+14. Boot backend services
+15. Pre-download SBERT model
+16. Show window, finish splash
+17. Show boot failure warning if needed
+18. Start AppState 10s polling
+19. Install Qt excepthook
+20. `sys.exit(app.exec())`
+
+---
+
+## 3. Main Window
+
+**File:** `apps/qt_app/main_window.py`
+
+### Class: `_CustomTitleBar(QFrame)`
+
+Hand-rolled frameless titlebar (36px height) with:
+- Title label (`QLabel`)
+- Three buttons: Minimize (`-`), Maximize/Restore (`[]`), Close (`x`)
+- Drag-to-move: tracks press offset so window moves 1:1 with cursor
+- Double-click title bar toggles maximize
+- Only instantiated when `AppState.use_frameless_window` is True
+- Caveat: no native snap-to-edge (OS window manager feature)
+
+**Methods:**
+- `__init__(parent: QMainWindow)` -- builds the 3-button + title layout
+- `_toggle_maximize()` -- switches between `showNormal()` and `showMaximized()`
+- `mousePressEvent(event)` -- records drag offset on left click (non-maximized)
+- `mouseMoveEvent(event)` -- moves window by cursor delta
+- `mouseReleaseEvent(event)` -- clears drag offset
+- `mouseDoubleClickEvent(event)` -- toggles maximize
+
+### Class: `_BackgroundWidget(QWidget)`
+
+Paints two composited layers behind all screen content:
+
+1. **Wallpaper pixmap** -- center-cropped, scaled via `KeepAspectRatioByExpanding`, at opacity 0.25. Cached as `_scaled_cache` (invalidated on resize).
+2. **Tactical-grid motif** -- SVG from `design/assets/motifs/tactical-grid.svg`, rendered once into a 64x64 `QPixmap` tile, painted via `drawTiledPixmap` at opacity 0.05.
+
+**Constants:**
+- `_MOTIF_PATH` -- path to the tactical-grid SVG
+
+**Methods:**
+- `_render_motif_tile(cls)` -- classmethod, renders SVG into 64x64 pixmap via `QSvgRenderer`
+- `set_image(path: str)` -- loads a wallpaper image file
+- `resizeEvent(event)` -- invalidates scaled cache
+- `paintEvent(event)` -- composites both layers
+
+### Class: `MainWindow(QMainWindow)`
+
+Root application window. Contains the collapsible sidebar, content stack, toast overlay, and coach dock.
+
+**Signal:**
+- `screen_changed(str)` -- emitted after navigating to a new screen
+
+**Construction:**
+- Minimum size: 1280x720
+- Title: `"Macena CS2 Analyzer v{version}"`
+- Frameless mode: reads `AppState.use_frameless_window` at construction (runtime flip requires restart)
+- Layout structure:
+  - If frameless: `QVBoxLayout(central)` -> `_CustomTitleBar` + body
+  - If framed: `QHBoxLayout(central)` directly
+  - Left: `NavSidebar` (collapsible)
+  - Right: `QStackedLayout` in `StackAll` mode:
+    - Layer 0: `_BackgroundWidget` (wallpaper)
+    - Layer 1: `QStackedWidget` (screen stack, transparent bg)
+  - Toast container: floating child of `content_wrapper`, not in the stacked layout
+
+**Keyboard shortcuts:**
+
+| Shortcut | Screen |
+|---|---|
+| `Ctrl+1` | home |
+| `Ctrl+2` | coach |
+| `Ctrl+3` | match_history |
+| `Ctrl+4` | performance |
+| `Ctrl+5` | tactical_viewer |
+| `Ctrl+,` | settings |
+| `F1` | help |
+
+**Methods:**
+- `set_wallpaper(path: str)` -- delegates to `_BackgroundWidget.set_image()`
+- `register_screen(name: str, widget: QWidget)` -- adds to stack; special-cases `"coach"` as a `QDockWidget`
+- `_register_coach_dock(widget)` -- wraps CoachScreen in a `QDockWidget` pinned to `RightDockWidgetArea` or `BottomDockWidgetArea`. Persists dock area, floating, and visibility state in `user_settings.json`.
+- `switch_screen(name: str)` -- navigates to a named screen:
+  - `"coach"` toggles the dock visibility instead of switching the stack
+  - Calls `on_leave()` on old widget, `on_enter()` on new widget
+  - Updates sidebar active state
+  - Emits `screen_changed` signal
+  - Fade animation is disabled (QPainter errors on Linux)
+- `_show_toast(severity: str, message: str)` -- delegates to `ToastContainer.add_toast()`
+- `_refresh_nav_labels(_lang: str)` -- called on i18n language change; retranslates sidebar and all screens
+- `eventFilter(obj, event)` -- repositions toast overlay on content area resize
+
+---
+
+## 4. Core Infrastructure
+
+### 4.1 Animation Framework
+
+**File:** `apps/qt_app/core/animation.py`
+
+#### Function: `_ensure_opacity_effect(widget) -> QGraphicsOpacityEffect`
+
+Attaches a `QGraphicsOpacityEffect` if not already present. Returns the effect.
+
+#### Class: `Animator`
+
+Static method collection for reusable animations.
+
+**Methods:**
+
+| Method | Description | Default Duration |
+|---|---|---|
+| `fade_in(widget, duration=200)` | Opacity 0->1, `OutCubic` easing | 200ms |
+| `fade_out(widget, duration=150, hide_on_finish=False)` | Opacity current->0, `InCubic` easing | 150ms |
+| `pulse(widget, low=0.3, high=0.8, duration=1200)` | Infinite breathing loop for skeletons. Returns `QSequentialAnimationGroup` for caller to `stop()`. | 1200ms/cycle |
+| `cross_fade(old_widget, new_widget, duration=200)` | Fades out old, then fades in new. | 200ms total |
+| `slide_in(widget, direction="right", distance_px=24, duration=220, easing=None)` | Slides from offset to resting position. Animates `geometry` (safe on mid-repaint). | 220ms |
+| `slide_out(widget, direction="right", distance_px=24, duration=180, easing=None, hide_on_finish=True)` | Slides away from resting position. | 180ms |
+| `reveal_stagger(widgets, delay_ms=40, duration=220, distance_px=16, direction="up")` | Staggered slide-in for card lists/bento grids. Uses `QTimer.singleShot` per widget. | 220ms per item, 40ms stagger |
+| `collapse_width(widget, to_width, duration=200, easing=None)` | Animates geometry to target width. Used for sidebar collapse/expand. | 200ms |
+
+**Safety note:** `slide_in`, `slide_out`, `reveal_stagger`, `collapse_width` animate `geometry`, not opacity, making them safe on widgets that may repaint concurrently. Prefer them over `fade_in`/`fade_out` during screen transitions.
+
+### 4.2 Application State Singleton
+
+**File:** `apps/qt_app/core/app_state.py`
+
+#### Function: `get_app_state() -> AppState`
+
+Returns the global singleton. Created on first call.
+
+#### Class: `AppState(QObject)`
+
+Polls the `CoachState` database row (id=1) every 10 seconds. Read-only -- the Qt app never writes to CoachState.
+
+**Signals:**
+
+| Signal | Type | Description |
+|---|---|---|
+| `service_active_changed` | `bool` | True if heartbeat delta < 300s |
+| `coach_status_changed` | `str` | Ingest status from CoachState |
+| `parsing_progress_changed` | `float` | 0-100 parsing progress |
+| `belief_confidence_changed` | `float` | Model belief confidence |
+| `total_matches_changed` | `int` | Distinct demo count from PlayerMatchStats |
+| `training_changed` | `dict` | Bundle of epoch/loss/ETA fields |
+| `notification_received` | `(str, str)` | (severity, message) from ServiceNotification |
+| `sounds_enabled_changed` | `bool` | P3 toggle |
+| `use_frameless_window_changed` | `bool` | P3 toggle |
+| `use_pyqtgraph_heatmap_changed` | `bool` | P3 toggle |
+| `use_webengine_marquee_changed` | `bool` | P4 toggle |
+
+**Properties (persisted via user settings):**
+- `sounds_enabled` -- micro-interaction sound effects
+- `use_frameless_window` -- hand-rolled titlebar chrome
+- `use_pyqtgraph_heatmap` -- match_detail pyqtgraph heatmap preference
+- `use_webengine_marquee` -- React+D3 web views for marquee screens
+- `cached_state` -- last-polled state snapshot dict
+
+**Methods:**
+- `start_polling()` -- starts 10s QTimer; calls `_poll()` immediately on first invocation
+- `stop_polling()` -- stops the timer
+- `_poll()` -- launches a `Worker` that calls `_bg_read()` in the thread pool
+- `_bg_read()` -- static method; opens a DB session, reads CoachState, queries unread ServiceNotifications (marks them read), counts distinct demos in PlayerMatchStats
+- `_apply(data)` -- compares new data against `_prev`, emits changed signals
+- `_on_error(msg)` -- logs warning
+- `_read_toggle(key)` / `_write_toggle(key, value)` -- reads/writes boolean toggles from `core.config`
+
+### 4.3 Asset Bridge
+
+**File:** `apps/qt_app/core/asset_bridge.py`
+
+#### Constants
+
+`_MAP_ALIASES` -- dict mapping short map names to canonical `de_*` forms:
+
+```
+mirage -> de_mirage, dust2 -> de_dust2, inferno -> de_inferno,
+nuke -> de_nuke, overpass -> de_overpass, ancient -> de_ancient,
+vertigo -> de_vertigo, anubis -> de_anubis, train -> de_train,
+cache -> de_cache
+```
+
+#### Functions
+
+- `_normalize_map_name(name: str) -> str` -- lowercases, strips, looks up in aliases
+- `_checkered_fallback(size=256) -> QPixmap` -- generates a magenta/black checkerboard 256x256 fallback image
+
+#### Class: `QtAssetBridge(QObject)`
+
+Drop-in replacement for Kivy's `MapManager` image loader.
+
+**Signal:** `map_loaded(str, object)` -- (map_name, QPixmap)
+
+**Methods:**
+- `get_map_pixmap(map_name, theme="regular") -> QPixmap` -- loads from `PHOTO_GUI/maps/`, caches by `"{canonical}_{theme}"`. Falls back to checkered pixmap.
+- `get_map_path(map_name, theme="regular") -> str` -- returns filesystem path (may not exist)
+- `_get_fallback() -> QPixmap` -- singleton checkered fallback
+- `clear_cache()` -- clears the pixmap cache
+
+**Singleton:** `assets = QtAssetBridge()`
+
+### 4.4 Design Tokens
+
+**File:** `apps/qt_app/core/design_tokens.py`
+
+Auto-generated from `design/tokens/design-tokens.json` via `tools/gen_design_tokens.py`.
+
+#### Class: `DesignTokens` (frozen dataclass)
+
+Single source of truth for every visual constant. 80+ fields organized in categories:
+
+**Theme identity:** `theme_name`, `surface_base`
+
+**Surfaces (4-layer depth system):**
+- `surface_raised` -- cards, panels (1 layer up)
+- `surface_overlay` -- tooltips, dropdowns (2 layers up)
+- `surface_sunken` -- inputs, wells (1 layer down)
+- `surface_sidebar` -- navigation sidebar
+- `surface_raised_rgba` -- card bg with alpha channel
+
+**Borders:** `surface_card_hover_border`, `border_subtle`, `border_default`, `border_accent_muted`
+
+**Text hierarchy (5 levels):** `text_primary`, `text_secondary`, `text_tertiary`, `text_inverse`, `text_disabled`
+
+**Accent (theme-specific):** `accent_primary`, `accent_hover`, `accent_pressed`, `accent_muted_15`, `accent_muted_25`, `accent_muted_30`
+
+**Semantic colors:** `success`, `warning`, `error`, `info`
+
+**Toast backgrounds/borders:** `toast_info_bg/border`, `toast_warning_bg/border`, `toast_error_bg/border`, `toast_critical_bg/border`, `toast_dismiss`
+
+**Chart palette:** `chart_bg`, `chart_grid`, `chart_axis`, `chart_line_primary`, `chart_line_secondary`, `chart_fill_positive`, `chart_fill_negative`
+
+**Frost/glass (Phase 7):** `frost_bg`, `frost_bg_hover`, `frost_border`, `frost_glow`, `frost_blur_radius` (12), `frost_elevation_blur` (24), `frost_elevation_offset` (6)
+
+**Spacing scale (4px grid):** `spacing_xs=4`, `spacing_sm=8`, `spacing_md=12`, `spacing_lg=16`, `spacing_xl=24`, `spacing_xxl=32`, `spacing_xxxl=48`
+
+**Typography scale:** `font_size_caption=11`, `font_size_body=13`, `font_size_subtitle=14`, `font_size_title=18`, `font_size_h1=24`, `font_size_stat=28`, `font_size_display=32`
+
+**Border radius:** `radius_sm=4`, `radius_md=8`, `radius_lg=16`, `radius_xl=24`
+
+#### Pre-built Theme Instances
+
+| Instance | Accent | Surface Base |
+|---|---|---|
+| `CS2_TOKENS` | `#FF6A00` (orange) | `#0B1628` (deep navy) |
+| `CSGO_TOKENS` | `#617d8c` (steel blue) | `#1a1c21` (dark slate) |
+| `CS16_TOKENS` | `#4db04f` (green) | `#121a12` (dark forest) |
+
+#### Functions
+
+- `get_tokens(theme_name=None) -> DesignTokens` -- returns tokens for a theme (defaults to active theme)
+- `set_active_theme(name: str) -> None` -- updates the module-level `_active_theme` variable
+
+### 4.5 Easing Curves
+
+**File:** `apps/qt_app/core/easing.py`
+
+#### Class: `Easing`
+
+Named `QEasingCurve` aliases for the Remotion library curves used in design assets.
+
+**Static attributes:** `Linear`, `InCubic`, `OutCubic`, `InOutCubic`, `InExpo`, `OutExpo`, `InOutExpo`, `InBack`, `OutBack`, `InOutBack`, `InSine`, `OutSine`, `InOutSine`
+
+**Static method:** `cubic_bezier(x1, y1, x2, y2) -> QEasingCurve` -- creates a CSS-style cubic bezier via `QEasingCurve.BezierSpline` + `addCubicBezierSegment`.
+
+### 4.6 Internationalization Bridge
+
+**File:** `apps/qt_app/core/i18n_bridge.py`
+
+Qt-native localization that reuses the core translation system without Kivy dependencies.
+
+#### Constants
+
+`_HARDCODED_EN` -- minimal fallback dict with 12 keys (app_name, dashboard, coaching, settings, profile, match_history_title, tactical_analysis, tactical_analyzer, rap_coach_dashboard, advanced_analytics, knowledge_engine, training_progress, help).
+
+#### Functions
+
+- `_get_home_dir() -> str` -- returns `os.path.expanduser("~")`
+- `_load_json_translations() -> dict` -- loads `en.json`, `pt.json`, `it.json` from `assets/i18n/`. Substitutes `{home_dir}` placeholders.
+
+#### Class: `QtLocalizationManager(QObject)`
+
+**Signal:** `language_changed(str)` -- emitted when `set_language()` changes the active language
+
+**Methods:**
+- `get_text(key, default=None) -> str` -- lookup priority: JSON (current lang) > hardcoded (current lang) > hardcoded English > caller default > raw key
+- `set_language(lang_code: str)` -- validates against available translations, emits `language_changed`
+
+**Singleton:** `i18n = QtLocalizationManager()`
+
+### 4.7 Icon System
+
+**File:** `apps/qt_app/core/icons.py`
+
+Dual-provider icon system with an SVG sprite primary path and QPainterPath fallback.
+
+#### Constant: `USE_SVG_ICONS = True`
+
+Flip to `False` to force the QPainterPath fallback.
+
+#### Function: `_render(path, size, color, stroke=1.5) -> QPixmap`
+
+Renders a `QPainterPath` into a `QPixmap`. Scales from 24x24 design space. Uses antialiased, round-capped, round-joined strokes.
+
+#### Class: `_QPainterPathIconProvider`
+
+Fallback icon factory. All methods are `@staticmethod`, return `QIcon`, take `size=24` and `color="#ffffff"`.
+
+Icons: `home` (house), `brain` (circle with partitions), `list_icon` (three lines with bullets), `chart` (ascending bars), `crosshair` (target), `gear` (cog with 8 teeth), `help_circle` (question mark in circle).
+
+#### Module-level selection
+
+```python
+IconProvider = SvgIconProvider if USE_SVG_ICONS and sprite_is_available() else _QPainterPathIconProvider
+```
+
+### 4.8 Match Utilities
+
+**File:** `apps/qt_app/core/match_utils.py`
+
+#### Constants
+
+- `_MAP_PATTERN` -- regex matching `de_*/cs_*/ar_*` map prefixes (stops at second underscore)
+- `_KNOWN_MAPS` -- frozenset of 11 bare map names: mirage, inferno, dust2, overpass, ancient, anubis, nuke, vertigo, train, cache, office
+
+#### Functions
+
+- `extract_map_name(demo_name: str) -> str` -- extracts `de_mirage` style map id from demo filenames. Falls back to bare name matching against `_KNOWN_MAPS`. Returns `"Unknown Map"` on failure.
+- `map_short_name(demo_name: str) -> str` -- returns the bare map name with prefix stripped (e.g., `"mirage"`). Returns `"--"` on unknown.
+
+### 4.9 QSS Generator
+
+**File:** `apps/qt_app/core/qss_generator.py`
+
+Template-based QSS stylesheet generator. Replaces three duplicate QSS files with one `base.qss.template` file where `$token_name` variables are substituted at runtime.
+
+**Constants:**
+- `_TEMPLATE_PATH` -- path to `themes/base.qss.template`
+- `_cache` -- dict of `theme_name -> rendered QSS string`
+
+**Functions:**
+- `render_qss(tokens: DesignTokens) -> str` -- renders template with `string.Template.safe_substitute(asdict(tokens))`. Caches per theme name.
+- `invalidate_cache(theme_name=None)` -- clears cache for one or all themes
+
+### 4.10 Playback Engine
+
+**File:** `apps/qt_app/core/qt_playback_engine.py`
+
+#### Class: `QtPlaybackEngine(PlaybackEngine)`
+
+Subclass of the base `PlaybackEngine` that uses `QTimer` instead of Kivy's `Clock`.
+
+- Timer interval: 16ms (~60 FPS)
+- `play()` -- starts timer if frames exist; resets to frame 0 if at end
+- `pause()` -- stops timer
+- `_qt_tick()` -- computes delta time via `time.monotonic()`, calls `_tick(dt)`
+- `_clock_event = None` -- prevents parent from using Kivy Clock
+
+### 4.11 Sound Manager
+
+**File:** `apps/qt_app/core/sound.py`
+
+#### Type: `SoundName = Literal["click", "success", "error", "notification"]`
+
+#### Constants
+
+- `_SOUND_DIR = "PHOTO_GUI/sounds"`
+- `_FILES` -- dict mapping `SoundName` to WAV filenames
+
+#### Class: `SoundManager(QObject)`
+
+Preloads four `QSoundEffect` instances at volume 0.6. Gated behind `AppState.sounds_enabled` (default False).
+
+**Methods:**
+- `__init__(app_state, parent=None)` -- loads effects from `PHOTO_GUI/sounds/`
+- `_load_effects()` -- creates `QSoundEffect` for each WAV
+- `play(name: SoundName)` -- no-op if sounds disabled or file missing. Warns exactly once per missing file per session.
+
+### 4.12 SVG Icon Provider
+
+**File:** `apps/qt_app/core/svg_icon_provider.py`
+
+Primary icon factory that renders from `design/assets/icons/sprite.svg`.
+
+#### Module-level processing
+
+1. `_sprite_raw()` -- reads sprite SVG text, warns if missing
+2. `_SYMBOL_RE` -- regex extracting `<symbol id="..." viewBox="...">...</symbol>`
+3. `_build_symbol_svgs(raw)` -- wraps each symbol as a standalone SVG document
+4. `_SYMBOL_SVGS` -- dict of `symbol_id -> standalone SVG text`
+
+#### Function: `_render_symbol(symbol_id, size, color) -> QPixmap`
+
+Substitutes `currentColor` with the requested color, renders via `QSvgRenderer` at 2x supersampling, then downscales for HiDPI clarity.
+
+#### Class: `SvgIconProvider`
+
+**Class cache:** `_cache: dict[tuple[str, int, str], QIcon]` -- permanent per-session
+
+**Nav/chrome icons:** `home`, `brain`, `list_icon`, `chart`, `crosshair`, `gear`, `help_circle`, `user`
+
+**Game icons (SVG-only):** `bomb`, `defuser`, `smoke`, `flash`, `molotov`, `he`, `rifle`, `awp`, `pistol`, `knife`
+
+**Status glyphs:** `check`, `warn`, `bolt`, `db`
+
+Each maps to a sprite symbol id like `i-home`, `i-brain`, etc.
+
+#### Function: `sprite_is_available() -> bool`
+
+True if the sprite loaded and parsed successfully.
+
+### 4.13 Theme Engine
+
+**File:** `apps/qt_app/core/theme_engine.py`
+
+#### Constants
+
+| Constant | Value | Description |
+|---|---|---|
+| `COLOR_GREEN` | `(0.30, 0.69, 0.31, 1)` | RGBA green |
+| `COLOR_YELLOW` | `(1.0, 0.60, 0.0, 1)` | RGBA yellow |
+| `COLOR_RED` | `(0.96, 0.26, 0.21, 1)` | RGBA red |
+| `COLOR_CARD_BG` | `(0.12, 0.12, 0.14, 1)` | RGBA card bg |
+| `RATING_GOOD` | `1.10` | Threshold for good rating |
+| `RATING_BAD` | `0.90` | Threshold for bad rating |
+| `PALETTES` | dict | Three theme palettes (CS2/CSGO/CS1.6) with surface, surface_alt, accent_primary, chart_bg |
+
+Directory constants:
+- `_THEMES_DIR` -- `qt_app/themes/`
+- `_ASSETS_DIR` -- `PHOTO_GUI/`
+- `_DISPLAY_FONTS_DIR` -- `assets/fonts/` (P4 Neo-tactical noir display fonts)
+- `_THEME_WALLPAPER_FOLDER` -- maps theme name to subfolder
+- `_FONT_FILES` -- maps 5 font names to filenames
+
+#### Functions
+
+- `rgba_to_qcolor(rgba: list[float]) -> QColor` -- converts `[r,g,b,a]` (0-1 floats) to QColor
+- `rating_color(rating: float) -> QColor` -- green/yellow/red based on thresholds
+- `rating_label(rating: float) -> str` -- "Excellent"/"Good"/"Average"/"Below Avg" (WCAG color-blind accessible)
+
+#### Class: `ThemeEngine(QObject)`
+
+**Signal:** `theme_changed(str)` -- emitted after a theme switch
+
+**Properties:** `active_theme`, `tokens`, `chart_bg`, `wallpaper_path`
+
+**Methods:**
+- `get_color(slot: str) -> QColor` -- returns QColor for a palette slot
+- `apply_theme(name: str, app=None)` -- renders QSS from template, appends font rule, sets QPalette with 15+ color roles, updates wallpaper, emits `theme_changed`
+- `set_font(family, size_pt)` -- invalidates QSS cache, re-applies theme
+- `register_fonts()` -- registers fonts from `PHOTO_GUI/` (5 fonts) and `assets/fonts/` (auto-scan for `.ttf`/`.otf`). Called once.
+- `_update_wallpaper(theme_name)` -- picks wallpaper from theme folder (prefers "vertical" images)
+- `get_available_wallpapers(theme_name=None) -> list[str]` -- lists wallpaper filenames
+- `set_wallpaper(filename: str)` -- sets a specific wallpaper
+
+### 4.14 Typography
+
+**File:** `apps/qt_app/core/typography.py`
+
+#### Constants
+
+- `_SANS = "Roboto"`, `_DISPLAY = "Space Grotesk"`, `_MONO = "JetBrains Mono"`
+- `_QSS_ROLES` -- frozenset of roles handled by QSS: `display`, `h1`, `caption`, `mono`, `accent`
+
+#### Class: `Typography`
+
+Static helper (never instantiated).
+
+**Methods:**
+- `apply(widget, role)` -- for QSS-backed roles, sets `variant` property and re-polishes; otherwise calls `setFont()`
+- `font(role) -> QFont` -- returns a configured QFont for the role
+
+**Role definitions:**
+
+| Role | Family | Size (token) | Weight | Extra |
+|---|---|---|---|---|
+| `display` | Space Grotesk | `font_size_display` (32) | Black | Letter spacing -1.0 |
+| `h1` | Space Grotesk | `font_size_h1` (24) | Bold | Letter spacing -0.5 |
+| `title` | Roboto | `font_size_title` (18) | DemiBold | |
+| `subtitle` | Roboto | `font_size_subtitle` (14) | Bold | |
+| `body` | Roboto | `font_size_body` (13) | Normal | |
+| `caption` | Roboto | `font_size_caption` (11) | DemiBold | Uppercase, letter spacing 1.5 |
+| `mono` | JetBrains Mono | `font_size_body` (13) | Normal | |
+| `stat` | Space Grotesk | `font_size_stat` (28) | Bold | |
+
+### 4.15 Web Bridge
+
+**File:** `apps/qt_app/core/web_bridge.py`
+
+Python-to-JS bridge for marquee web apps (React+D3/Three.js in `QWebEngineView`).
+
+#### Class: `MarqueeBridge(QObject)`
+
+**Signals (Python -> JS):**
+- `tick_changed(int)`, `frame_ready(str)`, `coach_state_changed(str)`, `ready_changed(bool)`
+- `map_name_changed(str)`, `segments_ready(str)`, `events_ready(str)`, `ghost_ready(str)`
+
+**Signals (JS -> Python):**
+- `seek_requested(int)`, `player_selected(int)`, `ghost_requested(int)`
+
+**Q_PROPERTIES (observable from JS):**
+- `current_tick` (int), `frame_payload` (str), `coach_state` (str), `ready` (bool)
+- `map_name` (str), `segments` (str), `events` (str), `ghost` (str)
+
+**Python-side publish methods:**
+- `publish_tick(tick)`, `publish_frame(frame_dict)`, `publish_coach_state(coach_dict)`
+- `publish_map(map_name)`, `publish_segments(segments_dict)`, `publish_events(events_list)`, `publish_ghost(ghosts_list)`
+
+All publish methods serialize to compact JSON (`separators=(",",":")`) with `default=str` for non-serializable types.
+
+**JS-invocable slots:**
+- `seek_to_tick(tick)` -- emits `seek_requested`
+- `select_player(player_id)` -- emits `player_selected`
+- `request_ghost(tick)` -- emits `ghost_requested`
+- `log(level, message)` -- routes web-side console logs to Python logger
+
+### 4.16 Widget Helpers
+
+**File:** `apps/qt_app/core/widgets_helpers.py`
+
+#### Type: `ButtonVariant = Literal["primary", "secondary", "ghost", "danger"]`
+
+#### Function: `make_button(text, variant="secondary", fixed_width=None, parent=None) -> QPushButton`
+
+Factory for themed buttons. Sets the `variant` property (consumed by `QPushButton[variant="..."]` rules in `base.qss.template`), pointing-hand cursor, optional fixed width, and re-polishes.
+
+### 4.17 Worker
+
+**File:** `apps/qt_app/core/worker.py`
+
+Drop-in replacement for Kivy's Thread + Clock pattern.
+
+#### Class: `WorkerSignals(QObject)`
+
+- `finished` -- Signal()
+- `error` -- Signal(str)
+- `result` -- Signal(object)
+
+All signals auto-marshal to the main thread via Qt's signal/slot mechanism.
+
+#### Class: `Worker(QRunnable)`
+
+Generic background worker.
+
+- `__init__(fn, *args, **kwargs)` -- stores callable and arguments; sets `autoDelete=True`
+- `run()` -- calls `fn(*args, **kwargs)`, emits `result` on success, `error` on exception, `finished` always. Catches `RuntimeError` on signal emission (receiver may be GC'd).
+
+Usage pattern:
+```python
+worker = Worker(some_function, arg1, arg2)
+worker.signals.result.connect(on_success)
+worker.signals.error.connect(on_error)
+QThreadPool.globalInstance().start(worker)
+```
+
+---
+
+## 5. Screens
+
+### 5.1 Placeholder Factory
+
+**File:** `apps/qt_app/screens/placeholder.py`
+
+Function `create_placeholder_screens()` returns a dict of lightweight placeholder `QWidget` instances for all screen slots. These are created before the real screens and then replaced by `placeholders.update(real_screens)` in `app.py`. This ensures every screen slot has a valid widget even if a real screen fails to import.
+
+### 5.2 Home Screen (Dashboard)
+
+**File:** `apps/qt_app/screens/home_screen.py`
+
+#### Class: `HomeScreen(QWidget)`
+
+The dashboard / landing page. Composition:
+- Title rail with "Dashboard" title and two status chips (service status, match count)
+- Hero section (stacked layout): Page A = hero pair + recent strip, Page B = onboarding card
+- Utility row (3-column): Ingest card, Training card (hidden when idle), Tactical card
+
+**Signal:** `match_selected(str)` -- demo_name, wired to MatchDetailScreen
+
+**ViewModels used:** `MatchHistoryViewModel`, `FocusInsightViewModel`
+
+**Key methods:**
+- `on_enter()` -- refreshes path display, connects AppState signals (once), kicks off async loads
+- `_build_ui()` -- constructs the entire layout tree
+- `_build_recent_strip()` -- horizontal scrollable row of `MatchMiniCard` widgets
+- `_build_onboarding_card()` -- `EmptyState` widget for cold start, with CTA to pick demo folder
+- `_build_ingest_card()` -- personal and pro demo analysis rows with path labels, Change/Analyze buttons, progress bar
+- `_build_training_card()` -- epoch/loss/ETA display, hidden until training is active
+- `_build_tactical_card()` -- "Open viewer" and "Compare pros" buttons
+- `_on_matches_changed(matches)` -- filters user vs pro matches, populates hero card and recent strip, updates dual-count chip
+- `_on_start_analysis()` / `_on_start_pro_analysis()` -- background `Worker` calling `process_new_demos()`
+- `_on_training(data)` -- shows/hides training card, rebalances utility row stretch factors
+- `_on_total_matches(count)` -- fallback if `_on_matches_changed` hasn't populated the chip yet
+
+### 5.3 Coach Screen
+
+**File:** `apps/qt_app/screens/coach_screen.py`
+
+#### Constants
+
+- `_QUICK_ACTION_KEYS` -- 3 preset coaching questions (positioning, utility, focus)
+- `_MAP_RE` -- regex for extracting map names from demo filenames
+
+#### Helper functions
+
+- `_map_from_demo(demo_name)` -- extracts title-cased map name
+- `_severity_color(severity, tokens)` -- maps high/medium/low to error/warning/success tokens
+
+#### Class: `CoachScreen(QWidget)`
+
+AI coaching surface with insights and collapsible chat composer.
+
+**ViewModels:** `CoachViewModel`, `CoachingChatViewModel`
+
+**Layout:**
+- Scrollable main surface with title rail (title + chat status chip + toggle button)
+- Belief confidence card (ProgressRing + numeric label)
+- Insights card (dynamic list of insight cards with severity-colored left border)
+- LLM Coach settings card (Ollama model picker with QComboBox + Refresh button)
+- Chat panel (fixed-height 420px, hidden by default):
+  - Header with status chip, Clear button, Collapse button
+  - Message scroll area with chat bubbles (user right-aligned, assistant left-aligned, system error-styled)
+  - Typing indicator
+  - Quick action chips row
+  - Composer: QLineEdit + Send button
+
+**Key methods:**
+- `on_enter()` -- connects belief signal, loads insights, checks chat availability, lazy-loads LLM models
+- `_toggle_chat()` -- shows/hides the chat panel, starts chat session
+- `_refresh_llm_models()` -- queries Ollama `/api/tags`, populates combobox (gemma family sorted first)
+- `_on_llm_model_picked(_label)` -- persists model selection to `LLM_COACH_MODEL`
+- `_on_insights(insights)` -- clears and rebuilds insight cards
+- `_render_messages(messages)` -- clears and rebuilds chat bubbles with role-specific styling
+- `_on_chat_availability(available)` -- updates status chips ("Online"/"Offline")
+
+### 5.4 Match History Screen
+
+**File:** `apps/qt_app/screens/match_history_screen.py`
+
+#### Constants
+
+- `_SOURCE_ALL`, `_SOURCE_PERSONAL`, `_SOURCE_PRO` -- source filter keys
+- `_MAP_ALL = "__all__"` -- map filter key
+- `_BUCKET_ORDER = ("TODAY", "THIS WEEK", "EARLIER")` -- time grouping order
+
+#### Helper functions
+
+- `_to_aware(dt)` -- converts to timezone-aware datetime
+- `_bucket(match_date, now)` -- groups matches into TODAY/THIS WEEK/EARLIER based on elapsed time (24h/7d thresholds)
+
+#### Class: `MatchHistoryScreen(QWidget)`
+
+**Signal:** `match_selected(str)` -- demo_name
+
+**ViewModel:** `MatchHistoryViewModel`
+
+**Layout:**
+- Title rail with count chip
+- Source filter chips (All/Personal/Pro, mutually exclusive)
+- Map filter chips (dynamic, top 8 maps by count)
+- Pro-only banner (visible when no personal matches)
+- Body stack: skeleton | empty | filter_empty | match_list (grouped by time buckets)
+
+**Key methods:**
+- `on_enter()` -- shows loading skeleton, kicks off `load_matches()`
+- `_on_matches_loaded(matches)` -- refreshes source/map chip counts, renders filtered+grouped rows
+- `_render_filtered()` -- applies source and map filters, groups by time bucket, creates `MatchRowCard` widgets with stagger animation
+- `_rebuild_map_chips()` -- dynamically generates `FilterChip` widgets for maps in the current source scope
+- `_on_source_chip(key)` / `_on_map_chip(key)` -- single-select filter handlers
+- `_reset_filters()` -- clears both filter dimensions
+
+### 5.5 Match Detail Screen
+
+**File:** `apps/qt_app/screens/match_detail_screen.py`
+
+#### Helper functions
+
+- `_format_match_date(value)` -- formats datetime or string to `YYYY-MM-DD HH:MM`
+- `_kd_sentiment(value)`, `_adr_sentiment(value)`, `_kast_sentiment(value)`, `_rating_sentiment(value)` -- return "positive"/"negative"/"neutral" based on thresholds
+
+#### Class: `MatchDetailScreen(QWidget)`
+
+Tabbed drill-down for one analyzed demo.
+
+**ViewModel:** `MatchDetailViewModel`
+
+**Layout:**
+- Header rail: Back button, title (map name), subtitle (map + date), rating chip
+- Empty/loading state (EmptyState widget)
+- Tabs (pill-styled QTabWidget): Overview, Rounds, Economy, Highlights
+
+**Key methods:**
+- `load_demo(demo_name)` -- called externally; sets loading state, delegates to VM
+- `_on_data(stats, rounds, insights, hltv)` -- populates all tabs:
+  - Overview: HeroStatsStrip (Rating, K/D, ADR, KAST, Headshot), round outcome strip, HLTV 2.0 component breakdown with colored bars
+  - Rounds: monospaced table with round number, W/L, side, kills, deaths, damage, equipment value, first-kill marker
+  - Economy: `EconomyChart` widget
+  - Highlights: coaching insights with severity-colored left borders, `MomentumChart`
+
+### 5.6 Performance Screen
+
+**File:** `apps/qt_app/screens/performance_screen.py`
+
+#### Class: `PerformanceScreen(QWidget)`
+
+Aggregate analytics dashboard.
+
+**ViewModel:** `PerformanceViewModel`
+
+**Layout:**
+- Title rail with count chip
+- Pro-overview banner (visible when no personal data)
+- Body stack: skeleton | empty | scrollable content
+
+**Sections (built dynamically from data):**
+1. **Hero strip** -- HeroStatsStrip: avg rating, matches, K/D, ADR, KAST
+2. **Context strip** (Cluster F) -- percentile rank vs pro cohort (Rating, K/D, ADR, KAST as Nth %)
+3. **Rating trend** -- text-based trend summary: average, range, last N, trend direction (up/down/stable arrow + color)
+4. **Per-map grid** -- 3-column grid of map tiles with rating (color-coded), K/D, ADR, match count
+5. **Strengths/weaknesses** -- two-column display with sigma deviations from pro baseline
+6. **Utility effectiveness** -- per-metric comparison vs pro (HE damage, molotov damage, smokes/round, flash blind time, flash assists, unused utility) with percentage delta arrows
+
+### 5.7 Tactical Viewer Screen
+
+**File:** `apps/qt_app/screens/tactical_viewer_screen.py`
+
+2D demo replay viewer with:
+- Map widget showing player positions on the radar image
+- Player sidebar listing CT/T teams with per-player stats
+- Timeline widget for scrubbing through ticks
+- Playback controls (play/pause, speed, step)
+- Demo selector dropdown
+
+Uses `QtPlaybackEngine` for tick-based playback at ~60 FPS.
+
+The screen checks `AppState.use_webengine_marquee` -- if True and the web dist exists, it loads a QWebEngineView with the React+D3 tactical viewer instead of the Qt-native widgets. Falls back silently if the dist is missing.
+
+### 5.8 Settings Screen
+
+**File:** `apps/qt_app/screens/settings_screen.py`
+
+Application settings panel. Takes `theme_engine: ThemeEngine` as constructor parameter.
+
+**Settings rows (Cards):**
+- **Theme selector** -- CS2/CSGO/CS1.6 radio buttons; applies immediately via `theme_engine.apply_theme()`
+- **Wallpaper picker** -- lists available wallpapers for the current theme
+- **Font settings** -- family dropdown (Roboto, JetBrains Mono, New Hope, CS Regular, YUPIX) + size dropdown (Small/Medium/Large)
+- **Language** -- English/Portuguese/Italian selector
+- **Demo paths** -- personal and pro demo folder paths with file dialogs
+- **Player identity** -- CS2 player name and SteamID64 fields
+- **P3 toggles:**
+  - Sounds enabled (ToggleSwitch)
+  - Frameless window mode (ToggleSwitch, requires restart)
+  - PyQtGraph heatmap preference (ToggleSwitch)
+- **P4 toggle:**
+  - WebEngine marquee mode (ToggleSwitch)
+- **Advanced** -- database reset, cache clear
+
+### 5.9 Help Screen
+
+**File:** `apps/qt_app/screens/help_screen.py`
+
+Two-panel help browser.
+
+**Fallback topics (6 entries):** Getting Started, Demo Analysis, AI Coach, Steam Integration, Navigation, Troubleshooting.
+
+**Layout:**
+- Title + search input
+- Left panel: `QListWidget` of topic titles (240px wide)
+- Right panel: `QScrollArea` with topic content label
+
+**Data source:** Tries to load from `backend/knowledge_base/help_system`. Falls back to `_FALLBACK_TOPICS` on import or runtime failure.
+
+**Search:** Client-side filter by title or content substring.
+
+### 5.10 Profile Screen
+
+**File:** `apps/qt_app/screens/profile_screen.py`
+
+Player profile display showing Steam identity configuration and aggregate stats. Contains links to Steam Config and FaceIT Config screens.
+
+### 5.11 User Profile Screen
+
+**File:** `apps/qt_app/screens/user_profile_screen.py`
+
+Extended user profile view with editable player name, SteamID, and profile preferences. Persists changes via `save_user_setting()`.
+
+### 5.12 Steam Config Screen
+
+**File:** `apps/qt_app/screens/steam_config_screen.py`
+
+Steam integration configuration:
+- SteamID64 input
+- Steam API Key input (password-masked)
+- Link to Steam API key registration
+- Save button with success feedback
+- Keyring availability warning (falls back to plaintext if `keyring` package unavailable)
+
+### 5.13 FaceIT Config Screen
+
+**File:** `apps/qt_app/screens/faceit_config_screen.py`
+
+#### Class: `FaceitConfigScreen(QWidget)`
+
+**Layout:**
+- Back button + title "FaceIT Competitive Stats"
+- Keyring warning (if `keyring` package unavailable)
+- API Key card: description, link to developers.faceit.com, password-masked input
+- Save button with 3-second "Saved!" feedback
+
+**Methods:**
+- `on_enter()` -- pre-fills API key from saved config
+- `_on_save()` -- persists API key via `save_user_setting("FACEIT_API_KEY", ...)`
+
+### 5.14 Wizard Screen
+
+**File:** `apps/qt_app/screens/wizard_screen.py`
+
+First-run setup wizard. Uses a `Stepper` component for step progression.
+
+**Signal:** `setup_completed` -- emitted when wizard finishes, wired to switch to home screen
+
+**Steps:**
+1. Welcome / introduction
+2. Player name and SteamID configuration
+3. Demo folder path selection
+4. (Optional) Pro demo folder path
+5. Completion confirmation
+
+Persists `SETUP_COMPLETED = True` on finish.
+
+### 5.15 Pro Comparison Screen
+
+**File:** `apps/qt_app/screens/pro_comparison_screen.py`
+
+Side-by-side comparison of the user's stats against pro player baselines.
+
+**Signal:** `pro_detail_requested(int)` -- HLTV player ID, wired to ProPlayerDetailScreen
+
+**ViewModel:** `ProComparisonViewModel`
+
+**Layout:**
+- Radar chart comparing user vs pro averages across multiple axes
+- Per-player comparison cards with "Details" buttons
+
+### 5.16 Pro Player Detail Screen
+
+**File:** `apps/qt_app/screens/pro_player_detail_screen.py`
+
+Drill-down into a single pro player's stats from HLTV.
+
+**Signal:** `back_requested` -- wired to navigate back to pro_comparison
+
+**ViewModel:** `ProPlayerDetailViewModel`
+
+**Methods:**
+- `load_pro(hltv_id: int)` -- fetches pro player data via ViewModel
+
+---
+
+## 6. ViewModels
+
+All ViewModels follow the MVVM pattern. They are `QObject` subclasses that use `Worker`/`QThreadPool` for background data access and emit typed signals consumed by their corresponding screens. No ViewModel directly manipulates UI widgets.
+
+### 6.1 Coach ViewModel
+
+**File:** `apps/qt_app/viewmodels/coach_vm.py`
+
+#### Class: `CoachViewModel(QObject)`
+
+**Signal:** `insights_loaded(list)` -- list of insight dicts
+
+**Method:** `load_insights()` -- background query via `Worker` that fetches recent coaching insights from the database (typically from `CoachingInsight` model). Emits results on the main thread.
+
+### 6.2 Coaching Chat ViewModel
+
+**File:** `apps/qt_app/viewmodels/coaching_chat_vm.py`
+
+#### Class: `CoachingChatViewModel(QObject)`
+
+Manages the interactive coaching chat session.
+
+**Signals:**
+- `messages_changed(list)` -- list of message dicts with `role` and `content`
+- `is_loading_changed(bool)` -- typing indicator state
+- `is_available_changed(bool)` -- whether the LLM coach is reachable
+
+**Methods:**
+- `check_availability()` -- probes the LLM service endpoint
+- `check_and_start(player_name)` -- starts a new session with player context
+- `send_message(text)` -- sends user message, triggers background LLM call, appends response
+- `clear_session()` -- resets the conversation history
+
+### 6.3 Focus Insight ViewModel
+
+**File:** `apps/qt_app/viewmodels/focus_insight_vm.py`
+
+#### Class: `FocusInsightViewModel(QObject)`
+
+**Signal:** `insight_changed(dict)` -- payload with `area`, `body`, `navigate_to` keys
+
+**Method:** `load()` -- background query that identifies the user's current "focus this week" area based on recent performance patterns.
+
+### 6.4 Match Detail ViewModel
+
+**File:** `apps/qt_app/viewmodels/match_detail_vm.py`
+
+#### Class: `MatchDetailViewModel(QObject)`
+
+**Signals:**
+- `data_changed(dict, list, list, dict)` -- (stats, rounds, insights, hltv_components)
+- `error_changed(str)` -- error message
+
+**Method:** `load_detail(demo_name)` -- background query fetching:
+- Player match stats (rating, K/D, ADR, KAST, HS%)
+- Per-round data (round number, side, W/L, kills, deaths, damage, equipment value, opening kill)
+- Coaching insights for the match
+- HLTV 2.0 component breakdown
+
+### 6.5 Match History ViewModel
+
+**File:** `apps/qt_app/viewmodels/match_history_vm.py`
+
+#### Class: `MatchHistoryViewModel(QObject)`
+
+**Signals:**
+- `matches_changed(list)` -- list of match dicts with demo_name, rating, match_date, is_pro, etc.
+- `error_changed(str)` -- error message
+- `is_loading_changed(bool)` -- loading state
+
+**Methods:**
+- `load_matches()` -- background query fetching all analyzed matches from `PlayerMatchStats`
+- `cancel()` -- sets a cancellation flag (best-effort)
+
+### 6.6 Performance ViewModel
+
+**File:** `apps/qt_app/viewmodels/performance_vm.py`
+
+#### Class: `PerformanceViewModel(QObject)`
+
+**Signals:**
+- `data_changed(list, dict, dict, dict, bool)` -- (history, map_stats, strengths_weaknesses, utility, is_pro_overview)
+- `context_changed(dict)` -- Cluster F: percentile rank vs pro cohort
+- `error_changed(str)` -- error message
+- `is_loading_changed(bool)` -- loading state
+
+**Method:** `load_performance()` -- background computation that:
+1. Loads all user match stats (falls back to pro data if no personal matches)
+2. Aggregates per-map statistics
+3. Computes strengths/weaknesses vs pro baseline (z-score analysis)
+4. Computes utility effectiveness metrics
+5. Computes percentile rankings against the pro cohort
+
+### 6.7 Pro Comparison ViewModel
+
+**File:** `apps/qt_app/viewmodels/pro_comparison_vm.py`
+
+#### Class: `ProComparisonViewModel(QObject)`
+
+**Signal:** `comparison_loaded(list)` -- list of pro player comparison dicts
+
+**Method:** `load_comparison()` -- background query fetching pro player stats from HLTV database for radar chart and comparison cards.
+
+### 6.8 Pro Player Detail ViewModel
+
+**File:** `apps/qt_app/viewmodels/pro_player_detail_vm.py`
+
+#### Class: `ProPlayerDetailViewModel(QObject)`
+
+**Signal:** `detail_loaded(dict)` -- pro player detail with stats, career history, etc.
+
+**Method:** `load_detail(hltv_id: int)` -- background query for a single pro player's data.
+
+### 6.9 Tactical ViewModel
+
+**File:** `apps/qt_app/viewmodels/tactical_vm.py`
+
+#### Class: `TacticalViewModel(QObject)`
+
+Manages demo loading, frame iteration, and player selection for the tactical viewer.
+
+**Signals:**
+- Frame data, player lists, map name changes
+- Playback state changes
+
+**Methods:**
+- `load_demo(demo_path_or_name)` -- loads parsed demo data
+- `seek_to_tick(tick)` -- jumps to a specific tick
+- `set_speed(multiplier)` -- adjusts playback speed
+- `select_player(player_id)` -- highlights a player
+
+### 6.10 User Profile ViewModel
+
+**File:** `apps/qt_app/viewmodels/user_profile_vm.py`
+
+#### Class: `UserProfileViewModel(QObject)`
+
+**Signal:** `profile_loaded(dict)` -- user profile data including name, SteamID, stats summary
+
+**Method:** `load_profile()` -- background query assembling user profile from config and database.
+
+---
+
+## 7. Widgets
+
+### 7.1 Skeleton Loader
+
+**File:** `apps/qt_app/widgets/skeleton.py`
+
+#### Class: `SkeletonTable(QWidget)`
+
+Generates a placeholder loading animation with `row_count` skeleton rows. Each row is a rounded `QFrame` with a pulsing opacity animation via `Animator.pulse()`. Used during data loading in MatchHistory, Performance, and other screens.
+
+### 7.2 Toast Notifications
+
+**File:** `apps/qt_app/widgets/toast.py`
+
+#### Class: `ToastContainer(QWidget)`
+
+Floating notification container anchored to the top-right of the content area.
+
+**Methods:**
+- `add_toast(severity, message)` -- creates a toast widget, slides it in from the right, auto-dismisses after a timeout
+- `refit()` -- repositions the container when the parent resizes
+
+#### Class: `Toast(QFrame)` (or similar internal widget)
+
+Individual toast notification with:
+- Severity-colored left border and background from design tokens
+- Dismiss button
+- Auto-hide timer (typically 5-8 seconds)
+- Slide-out animation on dismiss
+
+### 7.3 Charts
+
+#### `charts/economy_chart.py` -- `EconomyChart(QWidget)`
+
+QPainter-based chart showing equipment value per round. Draws a line graph with filled area, grid lines, and round number labels. Colors from design tokens.
+
+#### `charts/mini_sparkline.py` -- `MiniSparkline(QWidget)`
+
+Compact inline sparkline for embedding in cards. Renders a small line chart with optional fill, configurable color and size.
+
+#### `charts/momentum_chart.py` -- `MomentumChart(QWidget)`
+
+QPainter-based chart showing round-by-round momentum (cumulative round differential). Draws positive area in green, negative in red.
+
+#### `charts/radar_chart.py` -- `RadarChart(QWidget)`
+
+Multi-axis radar/spider chart for comparing player stats. Draws concentric rings, axis labels, and filled polygons for user vs pro data.
+
+#### `charts/rating_sparkline.py` -- `RatingSparkline(QWidget)`
+
+Sparkline specifically for rating history. Color-codes the line based on rating thresholds (green > 1.10, red < 0.90).
+
+#### `charts/round_heatmap.py` -- `RoundHeatmap(QWidget)`
+
+Grid-based heatmap of round outcomes. Each cell represents a round with color intensity based on performance.
+
+#### `charts/trend_chart.py` -- `TrendChart(QWidget)`
+
+General-purpose trend line chart with optional moving average overlay.
+
+#### `charts/utility_bar_chart.py` -- `UtilityBarChart(QWidget)`
+
+Horizontal bar chart comparing utility metrics (user vs pro baseline).
+
+### 7.4 Coaching Widgets
+
+#### `coaching/animated_counter.py` -- `AnimatedCounter(QLabel)`
+
+QLabel that animates from one numeric value to another using `QPropertyAnimation`. Used for live-updating stat displays.
+
+#### `coaching/belief_threat_gauge.py` -- `BeliefThreatGauge(QWidget)`
+
+Circular gauge widget showing belief confidence and threat level. QPainter-drawn arc with gradient fill.
+
+#### `coaching/momentum_sparkline.py` -- `MomentumSparkline(QWidget)`
+
+Compact sparkline specifically for coaching momentum display. Similar to MiniSparkline but with coaching-specific color semantics.
+
+#### `coaching/underglow_label.py` -- `UnderglowLabel(QLabel)`
+
+QLabel with a colored glow effect underneath. Used for emphasis in coaching displays.
+
+### 7.5 Design System Components
+
+#### `components/card.py` -- `Card(QFrame)`
+
+Base card component with:
+- Title label (optional, with `caption` typography)
+- Optional subtitle
+- `content_layout` (QVBoxLayout) for child content
+- Depth levels: `"raised"`, `"flat"`, `"overlay"`
+- Styling from design tokens (background, border, radius)
+
+**Methods:**
+- `set_title(text)`, `set_subtitle(text)`
+- `content_layout` property for adding child widgets
+
+#### `components/empty_state.py` -- `EmptyState(QWidget)`
+
+Centered empty-state placeholder with:
+- Large icon text (emoji/symbol)
+- Title label
+- Description label
+- Optional primary CTA button
+- Optional secondary CTA button
+
+**Signals:** `action_clicked`, `secondary_action_clicked`
+
+**Methods:** `set_title(text)`, `set_description(text)`, `set_cta_text(text)`
+
+#### `components/filter_chip.py` -- `FilterChip(QFrame)`
+
+Toggle chip for filter bars. Shows label text and optional count badge.
+
+**Signal:** `toggled(bool)`
+
+**Methods:**
+- `set_checked(checked)` -- sets visual state without emitting signal
+- `set_count(count)` -- updates the count badge
+
+#### `components/focus_insight.py` -- `FocusInsightCard(Card)`
+
+Dashboard card for "Focus This Week" display. Shows the current focus area, body text, and "Open" button.
+
+**Signal:** `open_clicked(str)` -- screen name to navigate to
+
+**Methods:** `set_insight(area, body, navigate_to)`, `set_empty()`
+
+#### `components/hero_stats_strip.py`
+
+**Dataclass:** `HeroStat(value: str, label: str, sentiment: str)` -- where sentiment is "positive"/"negative"/"neutral"
+
+**Class:** `HeroStatsStrip(QWidget)` -- horizontal row of stat blocks with large value numbers and caption labels. Values colored by sentiment.
+
+#### `components/icon_widget.py` -- `IconWidget(QLabel)`
+
+Wraps the `IconProvider` to display icons as QLabel pixmaps. Provides a unified interface regardless of whether SVG or QPainterPath provider is active.
+
+#### `components/last_match_hero.py` -- `LastMatchHeroCard(Card)`
+
+Dashboard hero card showing last match summary: map name, rating (color-coded), K/D, and a mini sparkline of recent ratings.
+
+**Signals:** `analyze_clicked`, `detail_clicked(str)` (demo_name)
+
+**Method:** `set_state(match_data, history_ratings)`
+
+#### `components/match_mini_card.py` -- `MatchMiniCard(QFrame)`
+
+Compact card for the dashboard recent matches strip. Shows map thumbnail/name, rating badge, and date. Fixed size for horizontal scrolling.
+
+**Signal:** `clicked(str)` -- demo_name
+
+#### `components/match_row_card.py` -- `MatchRowCard(QFrame)`
+
+Full-width card for the match history list. Shows map name, date, rating, K/D, ADR in a horizontal layout. Hover effects from QSS.
+
+**Signal:** `clicked(str)` -- demo_name
+
+#### `components/nav_sidebar.py` -- `NavSidebar(QFrame)`
+
+Collapsible navigation sidebar.
+
+**Signal:** `nav_clicked(str)` -- screen name
+
+**Nav items:** Home, Coach, Match History, Performance, Tactical Viewer, Settings, Help (defined as a list of dicts with icon method name, label, screen key)
+
+**Methods:**
+- `set_active(screen_name)` -- highlights the active nav item
+- `retranslate()` -- updates labels from i18n
+
+Each nav item is a `QPushButton` with an icon from `IconProvider` and a label.
+
+#### `components/progress_ring.py` -- `ProgressRing(QWidget)`
+
+Circular progress indicator. QPainter-drawn arc with configurable size, thickness, and value (0.0-1.0). Uses accent colors from design tokens.
+
+**Method:** `set_value(value: float)` -- updates the displayed value
+
+#### `components/section_header.py` -- `SectionHeader(QWidget)`
+
+Section divider with a caption-styled label and optional right-side widget.
+
+#### `components/stat_badge.py` -- `StatBadge(QFrame)`
+
+Compact badge displaying a single stat value and label, with sentiment coloring.
+
+#### `components/status_chip.py` -- `StatusChip(QFrame)`
+
+Small status indicator chip with colored dot and text label.
+
+**Severity levels:** `"online"` (green dot), `"offline"` (red dot), `"warning"` (yellow dot), `"neutral"` (gray dot)
+
+**Methods:** `set_label(text)`, `set_severity(severity)`
+
+#### `components/stepper.py` -- `Stepper(QWidget)`
+
+Multi-step wizard stepper component. Shows numbered circles connected by lines, with the current step highlighted.
+
+#### `components/toggle_switch.py` -- `ToggleSwitch(QWidget)`
+
+iOS-style toggle switch with animated knob movement. QPainter-drawn with accent/surface colors from design tokens.
+
+**Signal:** `toggled(bool)`
+
+**Methods:** `isChecked() -> bool`, `setChecked(checked: bool)`
+
+### 7.6 Tactical Widgets
+
+#### `tactical/map_widget.py` -- `MapWidget(QWidget)`
+
+2D radar map display. Renders player positions, utility throws, and event markers on top of a map image loaded via `QtAssetBridge`.
+
+**Features:**
+- Pan and zoom (mouse wheel + drag)
+- Player dots with team colors (CT blue, T yellow/orange)
+- Name labels
+- Ghost-AI overlay positions
+- Coordinate system mapping (game coordinates to pixel coordinates)
+
+#### `tactical/player_sidebar.py` -- `PlayerSidebar(QFrame)`
+
+Sidebar showing player lists for both teams (CT and T). Each player row shows name, health, armor, weapon, and alive/dead state.
+
+**Signal:** `player_selected(int)` -- player index/ID
+
+#### `tactical/timeline_widget.py` -- `TimelineWidget(QWidget)`
+
+Horizontal timeline scrubber for demo playback. Shows tick positions, round boundaries, and event markers (kills, plants, defuses).
+
+**Signals:**
+- `tick_changed(int)` -- user dragged the scrubber
+- `round_selected(int)` -- user clicked a round marker
+
+---
+
+## 8. Legacy Kivy Frontend
+
+**Package:** `apps/legacy_kivy/`
+
+The original Kivy/KivyMD-based frontend, preserved as a reference implementation. The Qt frontend replaced it in March 2026 (documented in Book-Coach Part 3). Import paths within these files reference `Programma_CS2_RENAN.apps.desktop_app.*`, indicating the files were copied/moved from a `desktop_app` directory into `legacy_kivy`.
+
+### 8.1 Kivy Main Application
+
+**File:** `apps/legacy_kivy/kivy_main.py` (2079 lines)
+
+The monolithic Kivy application entry point. Contains all startup bootstrapping, multiple screen classes, and the main `App` subclass.
+
+#### Startup Sequence
+
+1. `multiprocessing.freeze_support()` guard for PyInstaller compatibility
+2. Venv guard -- exits if not running in a virtual environment (bypassed by `CI=1`)
+3. RASP integrity audit -- validates runtime state
+4. Path stabilization -- ensures project root is on `sys.path`
+5. Database migration auto-upgrade via Alembic
+6. Sentry error reporting initialization
+7. Kivy/KivyMD configuration and imports
+
+#### Embedded Screen Classes
+
+The following screens are defined directly inside `kivy_main.py` (not in separate files):
+
+**`CoachingCard(MDCard)`** -- Reusable card for displaying coaching insights. Contains title, message, severity indicator, and focus area label.
+
+**`HomeScreen(MDScreen)`** -- Registered as `"home"`. The landing/dashboard screen. Shows quick action buttons for navigation, status indicators for services, and recent match summary.
+
+**`CoachScreen(MDScreen)`** -- Registered as `"coach"`. AI coaching surface with:
+- Background analytics/insights loading via `Clock.schedule_once` threading
+- Chat ViewModel integration (`CoachingChatViewModel`)
+- Coaching insight display cards
+- Belief confidence display
+
+**`UserProfileScreen(MDScreen)`** -- Registered as `"user_profile"`. Threaded DB load/save for player profile data.
+
+**`SettingsScreen(MDScreen)`** -- Registered as `"settings"`. Application settings with theme picker, font controls, demo paths, and player identity.
+
+**`ProfileScreen(MDScreen)`** -- Registered as `"profile"`. Simple player name configuration.
+
+**`SteamConfigScreen(MDScreen)`** -- Registered as `"steam_config"`. Steam API key and SteamID64 setup.
+
+**`FaceitConfigScreen(MDScreen)`** -- Registered as `"faceit_config"`. FaceIT API key configuration.
+
+#### Class: `CS2AnalyzerApp(MDApp)`
+
+The main application class. Contains all application-level orchestration:
+
+**Background/wallpaper management:**
+- Cross-fade animation between wallpapers
+- Slideshow wallpaper cycling
+
+**Font registration and dynamic font settings:**
+- Registers custom fonts from PHOTO_GUI directory
+- Dynamic font family and size changes
+
+**Theme palette application:**
+- CS2 (orange accent), CSGO (steel blue accent), CS1.6 (green accent)
+- Updates KivyMD primary palette
+
+**File manager integration:**
+- Demo upload (file picker for .dem files)
+- Folder picking (demo directory selection)
+- File viewer
+
+**Daemon/session engine lifecycle:**
+- Starts and stops background daemons
+- Session engine lifecycle management
+
+**Ingestion control:**
+- Auto and manual ingestion modes
+- Progress tracking
+
+**ML status polling:**
+- Progressive backoff polling for training status
+- Epoch/loss/ETA display
+
+**Service notifications:**
+- Toast-style notifications for service events
+
+**Navigation:**
+- Back-stack with `switch_screen()` / `go_back()`
+- `ScreenManager`-based screen switching
+
+**Additional features:**
+- Steam profile sync
+- Hardware budget settings (deprecated)
+- Pro comparison dialog
+- Tactical viewer integration
+- Quota management
+
+#### `__main__` Block
+
+Console boot, HLTV service mode detection, log retention cleanup, and `CS2AnalyzerApp().run()`.
+
+### 8.2 Theme System
+
+**File:** `apps/legacy_kivy/theme.py`
+
+Kivy-specific theme definitions with the same three-theme system (CS2/CSGO/CS1.6).
+
+**Constants:**
+- `COLOR_GREEN = (0.30, 0.69, 0.31, 1)` -- `#4CAF50`
+- `COLOR_YELLOW = (1.0, 0.60, 0.0, 1)` -- `#FF9800`
+- `COLOR_RED = (0.96, 0.26, 0.21, 1)` -- `#F44336`
+- `COLOR_CARD_BG = (0.12, 0.12, 0.14, 1)`
+- `RATING_GOOD = 1.10` -- threshold above which rating is colored green
+- `RATING_BAD = 0.90` -- threshold below which rating is colored red
+- `CHART_BG = "#1a1a1a"` -- default chart background, updated on theme change
+
+**Palette registry (`_PALETTES`):**
+- `"CS2"` -- surface `[0.08, 0.08, 0.12, 0.85]`, accent `[0.85, 0.4, 0.0, 1]` (orange), chart_bg `"#1a1a1a"`
+- `"CSGO"` -- surface `[0.10, 0.11, 0.13, 0.85]`, accent `[0.38, 0.49, 0.55, 1]` (blue-gray), chart_bg `"#1c1e20"`
+- `"CS1.6"` -- surface `[0.07, 0.10, 0.07, 0.85]`, accent `[0.30, 0.69, 0.31, 1]` (green), chart_bg `"#181e18"`
+
+**Module-level state:** `_active_theme = "CS2"` -- tracked as a module global
+
+**Functions:**
+- `set_active_theme(name: str) -> None` -- sets `_active_theme` and updates `CHART_BG`
+- `get_color(slot: str) -> list` -- returns RGBA list for a named slot (surface, surface_alt, accent_primary) from the active palette
+- `rating_color(rating: float) -> tuple` -- returns green/yellow/red RGBA tuple based on HLTV thresholds
+- `rating_label(rating: float) -> str` -- P4-07: WCAG 1.4.1 color-blind accessible text label ("Excellent" >= 1.20, "Good" > 1.10, "Average" >= 0.90, "Below Avg" < 0.90)
+
+The Qt `theme_engine.py` mirrors this data identically without importing the Kivy module, avoiding the Kivy import chain.
+
+### 8.3 Data ViewModels
+
+**File:** `apps/legacy_kivy/data_viewmodels.py`
+
+Three Kivy-specific ViewModels using `EventDispatcher` with Kivy `Properties` and daemon threads for background data loading. All use `Clock.schedule_once(callback, 0)` to marshal results back to the UI thread.
+
+#### Class: `MatchHistoryViewModel(EventDispatcher)`
+
+**Properties (Kivy):**
+- `matches = ListProperty([])` -- list of match dicts
+- `is_loading = BooleanProperty(False)` -- loading state
+- `error_message = StringProperty("")` -- error description
+
+**Internal state:**
+- `self._cancel = Event()` -- DV-01: cancellation event to discard stale results from superseded loads
+
+**Methods:**
+- `load_matches()` -- prevents duplicate loads (DA-DV-01), clears cancel event, spawns daemon thread
+- `cancel()` -- DV-01: signals background thread to discard results
+- `_bg_load()` -- background thread: reads `CS2_PLAYER_NAME` from config, queries `PlayerMatchStats` via SQLModel (limit 50, ordered by `match_date` desc, filters `is_pro == False`), marshals via `Clock.schedule_once`
+- `_on_loaded(data)` -- sets `matches` and clears `is_loading`
+- `_on_error(msg)` -- sets `error_message` and clears `is_loading`
+
+**Safety annotations:** DV-01 (cancellation), DA-DV-01 (duplicate load guard), DV-02 (guaranteed `is_loading` reset in `finally`)
+
+#### Class: `MatchDetailViewModel(EventDispatcher)`
+
+**Properties (Kivy):**
+- `stats = DictProperty({})` -- match stats dict
+- `rounds = ListProperty([])` -- per-round data
+- `insights = ListProperty([])` -- coaching insights
+- `hltv_breakdown = DictProperty({})` -- HLTV 2.0 component breakdown
+- `is_loading = BooleanProperty(False)`
+- `error_message = StringProperty("")`
+
+**Methods:**
+- `load_detail(demo_name: str)` -- DV-03: validates demo_name before spawning thread, DA-DV-01 duplicate guard
+- `_bg_load(demo_name)` -- queries `PlayerMatchStats`, `RoundStats` (ordered by `round_number` asc), and `CoachingInsight` (ordered by `created_at` desc) for the given demo. Detaches data from SQLModel session into plain dicts. P4-06: also fetches HLTV breakdown via `analytics.get_hltv2_breakdown(player)`
+- `_on_loaded(stats, rounds, insights, breakdown)` -- sets all properties, clears loading
+- `_on_error(msg)` -- sets error, clears loading
+
+#### Class: `PerformanceViewModel(EventDispatcher)`
+
+**Properties (Kivy):**
+- `history = ListProperty([])` -- rating history
+- `map_stats = DictProperty({})` -- per-map aggregated stats
+- `strength_weakness = DictProperty({})` -- strengths/weaknesses vs pro
+- `utility = DictProperty({})` -- utility effectiveness
+- `is_loading = BooleanProperty(False)`
+- `error_message = StringProperty("")`
+
+**Methods:**
+- `load_performance()` -- DA-DV-01 duplicate guard, spawns daemon thread
+- `_bg_load()` -- calls `analytics.get_rating_history(player, limit=50)`, `analytics.get_per_map_stats(player)`, `analytics.get_strength_weakness(player)`, `analytics.get_utility_breakdown(player)`. Includes `finally` block guaranteeing `is_loading` reset
+- `_on_loaded(history, map_stats, sw, utility)` -- sets all properties with `or {}` / `or []` fallbacks
+- `_on_error(msg)` -- sets error, clears loading
+
+### 8.4 Coaching Chat ViewModel (Kivy)
+
+**File:** `apps/legacy_kivy/coaching_chat_vm.py`
+
+#### Class: `CoachingChatViewModel(EventDispatcher)`
+
+Same interface as the Qt version but uses Kivy's `EventDispatcher` for property change notifications.
+
+**Properties (Kivy):**
+- `messages = ListProperty([])` -- list of `{"role": ..., "content": ...}` dicts
+- `is_loading = BooleanProperty(False)` -- whether a response is pending
+- `is_available = BooleanProperty(False)` -- whether Ollama is reachable
+- `session_active = BooleanProperty(False)` -- whether a session is in progress
+
+**Internal state:**
+- `self._engine = None` -- lazily loaded `CoachingDialogueEngine`
+- `self._messages_lock = threading.Lock()` -- F7-24: protects `messages` list from concurrent access
+
+**Methods:**
+- `_ensure_engine()` -- lazy import of `get_dialogue_engine()` to avoid heavy import at startup
+- `check_availability()` -- background thread probes engine availability, marshals result via `Clock.schedule_once`
+- `start_session(player_name, demo_name=None)` -- starts coaching session in background thread. On failure, uses fallback message: "Coach is currently offline. I can still help with cached knowledge -- ask me anything!"
+- `send_message(text)` -- strips whitespace, guards against empty or loading state. Immediately appends user message (under lock), spawns background thread for LLM response. On failure, appends error message "[Coach offline]..."
+- `clear_session()` -- resets engine, clears messages list, resets state flags
+
+**Internal callbacks (UI thread via `Clock.schedule_once`):**
+- `_set_available(available)` -- updates `is_available`
+- `_on_session_started(opening)` -- appends assistant opening message (under lock P4-02), sets `session_active`
+- `_on_response(response)` -- appends assistant response (under lock F7-24), clears `is_loading`
+
+### 8.5 Tactical ViewModels
+
+**File:** `apps/legacy_kivy/tactical_viewmodels.py` (345 lines)
+
+Three ViewModel classes for the tactical viewer subsystem, all using Kivy `EventDispatcher` pattern.
+
+#### Class: `TacticalPlaybackViewModel(EventDispatcher)`
+
+Manages demo playback state: play/pause, speed, tick position, seeking.
+
+**Properties (Kivy):**
+- `is_playing = BooleanProperty(False)`
+- `current_tick = NumericProperty(0)`
+- `max_tick = NumericProperty(0)`
+- `playback_speed = NumericProperty(1.0)`
+- `current_round = NumericProperty(0)`
+- Frame data properties
+
+**Methods:**
+- `load_demo(path)` -- loads and parses a demo file
+- `play()` / `pause()` / `toggle()` -- playback control
+- `seek(tick)` -- jump to tick
+- `set_speed(multiplier)` -- adjust playback speed
+- `step_forward()` / `step_backward()` -- frame-by-frame navigation
+
+#### Class: `TacticalGhostViewModel(EventDispatcher)`
+
+Lazy-loaded ghost prediction engine for AI-predicted positions.
+
+**Methods:**
+- `_ensure_engine()` -- lazy import of ghost prediction engine
+- `predict(frame_data)` -- generates predicted positions for the next tick
+- `clear()` -- resets prediction state
+
+#### Class: `TacticalChronovisorViewModel(EventDispatcher)`
+
+Critical moment scanner and navigation with cooperative cancellation.
+
+**Constants:**
+- `CM_NAVIGATION_BUFFER_TICKS = 32` -- tick buffer before critical moments for navigation jumps
+
+**Properties:**
+- `critical_moments = ListProperty([])` -- list of detected critical moment dicts
+- `is_scanning = BooleanProperty(False)` -- scanning state
+
+**Methods:**
+- `scan(demo_data)` -- background thread scans demo for critical moments (multi-kills, clutches, eco wins)
+- `cancel_scan()` -- cooperative cancellation of ongoing scan
+- `navigate_to(moment_index)` -- jumps playback to a critical moment (minus buffer ticks)
+
+### 8.6 Kivy Screens
+
+#### `help_screen.py`
+
+**File:** `apps/legacy_kivy/help_screen.py`
+
+#### Class: `HelpScreen(MDScreen)`
+
+**Property:** `current_topic_title = StringProperty("Help Center")`
+
+**Optional import:** `get_help_system` from `backend.knowledge_base.help_system` -- guarded by try/except with `_HELP_SYSTEM_AVAILABLE` flag (F7-09)
+
+**Methods:**
+- `on_enter()` -- calls `load_topics()`
+- `load_topics()` -- fetches topics from help system (or empty list on failure). If no content is displayed and topics exist, auto-loads the first topic
+- `_populate_list(topics)` -- clears and rebuilds `topic_list` container with `MDListItem` widgets. Each item binds `on_release` to `load_content(tid)`
+- `load_content(topic_id)` -- fetches topic content from help system, sets `current_topic_title` and content label text
+- `filter_topics(query)` -- search filter; delegates to `get_help_system().search_topics(query)` or reloads all topics if query is empty
+
+#### `match_detail_screen.py`
+
+**File:** `apps/legacy_kivy/match_detail_screen.py`
+
+**Constants:**
+- `_COLOR_CT = (0.36, 0.62, 0.91, 1)` -- `#5C9EE8`
+- `_COLOR_T = (0.91, 0.79, 0.36, 1)` -- `#E8C95C`
+- `_COLOR_SECTION_BG = (0.10, 0.10, 0.12, 1)`
+- `_MAP_PATTERN = re.compile(r"(de_\w+|cs_\w+|ar_\w+)")` -- regex for map name extraction
+- `_SEVERITY_ICONS` -- dict mapping `"critical"/"warning"/"info"` to (icon_name, color) tuples
+
+**Helper function:** `_extract_map_name(demo_name: str) -> str` -- extracts map name via regex
+
+**Class:** `MatchDetailScreen(MDScreen)` -- Registered as `"match_detail"` via `@registry.register`
+
+**ViewModel:** `MatchDetailViewModel` -- bound via `_vm.bind(stats=..., error_message=...)`
+
+**Methods:**
+- `on_pre_enter()` -- reads `app.selected_demo` (DA-MD-01: uses `getattr` to prevent `AttributeError`), shows "Loading..." placeholder, delegates to VM
+- `_on_vm_data_changed(instance, stats)` -- marshals VM properties into `_populate_sections()`
+- `_on_vm_error(instance, msg)` -- shows error placeholder
+- `_show_placeholder(text)` -- clears `detail_container` and shows centered label
+- `_populate_sections(stats, rounds, insights, hltv_breakdown)` -- builds four sections:
+  1. Overview -- rating display (color + label via `_rating_color`/`_rating_label`), map name, date, stats row (K/D, ADR, KAST, HS, Avg Kills/Deaths), HLTV 2.0 breakdown bars
+  2. Round Timeline -- per-round rows with round number (CT/T colored), W/L indicator (green/red), stats line with FK marker
+  3. Economy -- `EconomyGraphWidget` with deferred plot via `Clock.schedule_once`
+  4. Highlights and Momentum -- coaching insight cards with severity icons, `MomentumGraphWidget` with deferred plot
+- `_build_overview_section(container, stats, hltv_breakdown)` -- constructs overview card
+- `_add_hltv_breakdown(parent, breakdown)` -- P4-06: renders HLTV 2.0 component breakdown bars with color-coded values
+- `_build_rounds_section(container, rounds)` -- constructs round timeline rows
+- `_build_economy_section(container, rounds)` -- constructs economy chart card
+- `_build_highlights_section(container, rounds, insights)` -- constructs highlights with coaching insights and momentum graph
+- `_section_card(title) -> (MDCard, MDBoxLayout)` -- helper creating a styled section card with title, returns both card and content layout (binds card height to content height + 24dp)
+
+#### `match_history_screen.py`
+
+**File:** `apps/legacy_kivy/match_history_screen.py`
+
+**Helper function:** `_extract_map_name(demo_name: str) -> str` -- same regex-based extraction as match_detail
+
+**Class:** `MatchHistoryScreen(MDScreen)` -- Registered as `"match_history"` via `@registry.register`
+
+**ViewModel:** `MatchHistoryViewModel` -- bound via `_vm.bind(matches=..., error_message=...)`
+
+**Methods:**
+- `on_pre_enter()` -- P4-04: shows "Loading..." placeholder, kicks off `_vm.load_matches()`
+- `_on_matches_loaded(instance, matches)` -- DA-MH-01: clears loading state when empty
+- `_on_vm_error(instance, msg)` -- shows error placeholder
+- `_populate(matches)` -- clears container, builds `_build_match_card()` for each match
+- `_show_placeholder(text)` -- centered hint label
+- `_build_match_card(m) -> MDCard` -- constructs card with:
+  - Rating badge (P4-07: includes text label for color-blind accessibility) -- `f"{rating:.2f}\n{_rating_label(rating)}"` with `_rating_color` coloring
+  - Info column: map name + date, K/D + ADR + kills/deaths stats
+  - Ripple behavior enabled
+  - `on_release` bound to `_on_match_selected(demo_name)`
+- `_on_match_selected(demo_name)` -- sets `app.selected_demo`, calls `app.switch_screen("match_detail")`
+
+#### `performance_screen.py`
+
+**File:** `apps/legacy_kivy/performance_screen.py`
+
+**Class:** `PerformanceScreen(MDScreen)` -- Registered as `"performance"` via `@registry.register`
+
+**ViewModel:** `PerformanceViewModel` -- bound via `_vm.bind(history=..., error_message=...)`
+
+**Methods:**
+- `on_pre_enter()` -- P4-04: shows loading, kicks off `_vm.load_performance()`
+- `_on_vm_data_changed(instance, history)` -- DA-PS-01: always calls `_populate`, which handles empty data
+- `_on_vm_error(instance, msg)` -- shows error placeholder
+- `_populate(history, map_stats, sw, utility)` -- builds four sections:
+  1. Rating Trend -- `RatingSparklineWidget` with deferred plot
+  2. Per-Map Performance -- horizontal scroll of map cards via `ScrollView(do_scroll_y=False)`. Each `_build_map_card(map_name, stats)` shows map name (strips `de_`), rating (color-coded), ADR, K/D, match count
+  3. Strengths and Weaknesses (vs Pro Average) -- two-column layout with green strengths ("+X.Y above avg") and red weaknesses ("X.Y below avg"), sigma deviations
+  4. Utility Effectiveness (vs Pro) -- `UtilityBarWidget` with deferred plot
+- `_section_card(title) -> (MDCard, MDBoxLayout)` -- same helper pattern as match_detail
+
+#### `wizard_screen.py`
+
+**File:** `apps/legacy_kivy/wizard_screen.py` (418 lines)
+
+**Class:** `WizardScreen(MDScreen)` -- Registered as `"wizard"`
+
+Multi-step first-run setup wizard.
+
+**Steps:** intro, brain_path, demo_path, finish
+
+**Features:**
+- Folder picker with drive selection on Windows (`string.ascii_uppercase` iteration checking `os.path.exists`)
+- Path validation with `os.normpath` / `os.expanduser`
+- Error handling with `errno` codes for common filesystem errors
+- `MDFileManager` integration for directory browsing
+- Persists configuration on completion
+
+#### `tactical_viewer_screen.py`
+
+**File:** `apps/legacy_kivy/tactical_viewer_screen.py` (295 lines)
+
+**Class:** `TacticalViewerScreen(MDScreen)`
+
+Coordinates three ViewModels:
+- `TacticalPlaybackViewModel` -- playback state and demo loading
+- `TacticalGhostViewModel` -- AI ghost predictions
+- `TacticalChronovisorViewModel` -- critical moment scanning and navigation
+
+**Layout elements:**
+- `TacticalMap` widget for 2D map rendering
+- `PlayerSidebar` for team player lists
+- `TimelineScrubber` for tick navigation
+- Playback controls (play/pause, speed selector, step buttons)
+- Demo selector dropdown
+- Chronovisor panel for critical moment list
+
+### 8.7 Kivy Widgets
+
+**File:** `apps/legacy_kivy/widgets.py`
+
+Matplotlib-based chart widgets for the Kivy frontend. All use the `Agg` backend (`matplotlib.use("Agg")`) for headless rendering to Kivy textures.
+
+#### Class: `MatplotlibWidget(Image)`
+
+Base class for all Matplotlib-based chart widgets. Extends Kivy `Image`.
+
+**Properties:** `allow_stretch = True`, `keep_ratio = False`
+
+**Methods:**
+- `update_plot(fig)` -- WG-02: renders figure to PNG via `BytesIO` context manager (prevents leaks), creates `CoreImage` texture, schedules texture update via `Clock.schedule_once`. WG-01: closes figure and clears reference in `finally` block to free memory
+- `_set_texture(texture)` -- sets the widget's `texture` property
+
+#### Class: `TrendGraphWidget(MatplotlibWidget)`
+
+Dual-axis line chart for historical trends.
+
+**Method:** `plot(df)` -- plots Rating (left axis, cyan `#00ccff`, circle markers) and ADR (right axis, orange `#ffaa00`, dashed line). Title: "Performance Trend (Last 20 Matches)". Handles empty DataFrame gracefully.
+
+#### Class: `RadarChartWidget(MatplotlibWidget)`
+
+Spider/polar chart for skill attributes.
+
+**Properties:** `keep_ratio = True` (polar charts must not stretch)
+
+**Method:** `plot(skill_dict)` -- F7-36: requires at least 3 attributes for a meaningful polygon. Closes the polygon loop by appending the first value. Uses purple color (`#aa00ff`) with 25% alpha fill. Y-ticks at 25/50/75/100.
+
+#### Class: `EconomyGraphWidget(MatplotlibWidget)`
+
+Bar chart of equipment value per round, color-coded by side.
+
+**Method:** `plot(rounds: list)` -- CT rounds colored `#5C9EE8` (blue), T rounds colored `#E8C95C` (gold). Title: "Economy per Round".
+
+#### Class: `MomentumGraphWidget(MatplotlibWidget)`
+
+Cumulative kill-death delta as momentum line.
+
+**Method:** `plot(rounds: list)` -- computes running cumulative K-D delta. Line in cyan with circle markers. Positive area filled green (`#4CAF50`, 20% alpha), negative area filled red (`#F44336`, 20% alpha). Zero reference line. Title: "Momentum (Kill-Death Delta)".
+
+#### Class: `RatingSparklineWidget(MatplotlibWidget)`
+
+Rating progression sparkline with reference lines.
+
+**Method:** `plot(history: list)` -- plots rating values with gradient fill beneath. Reference lines: 1.0 (white dashed), 1.1 (green dashed), 0.9 (red dashed). Handles `None` ratings by defaulting to 1.0. Title: "Rating Trend".
+
+#### Class: `UtilityBarWidget(MatplotlibWidget)`
+
+Horizontal grouped bar chart comparing user vs pro utility stats.
+
+**Method:** `plot(utility: dict)` -- expects `{"user": {...}, "pro": {...}}` structure. Draws horizontal bars with user in cyan (`#00ccff`) and pro in orange (`#ffaa00`). Metric names auto-formatted from snake_case to Title Case. Legend positioned at lower right with dark background. Title: "Utility: You vs Pro".
+
+### 8.8 Tactical Map and Timeline
+
+#### `tactical_map.py` (607 lines)
+
+**File:** `apps/legacy_kivy/tactical_map.py`
+
+**Constant:** `RADAR_REFERENCE_SIZE = 1024` -- standard radar image pixel dimensions
+
+#### Class: `TacticalMap(Widget)`
+
+The "Living Map" widget -- renders players, utilities, and tactical overlays on a 2D map using Kivy `InstructionGroup` layers for performance.
+
+**Canvas layers (separate `InstructionGroup` instances for independent redraws):**
+- Background layer (map image)
+- Player layer (dots, FoV cones, health bars, names)
+- Grenade layer (trajectory lines, detonation overlays)
+- Heatmap layer (optional overlay)
+- Ghost layer (AI prediction markers)
+- Selection layer (highlight for selected player)
+
+**Features:**
+- Player rendering with FoV (Field of View) cones showing look direction
+- Team-colored dots (CT blue, T yellow/orange) with alive/dead distinction
+- Grenade animations with trajectory lines and detonation radius overlays
+- Optional heatmap support for positioning analysis
+- Name texture LRU cache -- caches rendered name labels to avoid repeated text rendering
+- Player selection via `on_touch_down` with hit-test against player positions
+
+**Coordinate system:**
+- Uses `SpatialEngine` for world-to-radar coordinate transformation
+- Handles Kivy's bottom-up Y axis vs Valve's top-down Y axis via Y-flip
+
+**Methods include:**
+- `update_frame(frame_data)` -- main render entry point, redraws all dynamic layers
+- `_render_players(players)` -- draws player dots, health bars, weapon indicators, name labels
+- `_render_grenades(grenades)` -- draws grenade trajectories and detonation effects
+- `_render_ghost(predictions)` -- draws semi-transparent AI-predicted positions
+- `on_touch_down(touch)` -- player selection via proximity hit-test
+
+#### `timeline.py`
+
+**File:** `apps/legacy_kivy/timeline.py`
+
+#### Class: `TimelineScrubber(Widget)`
+
+Interactive timeline widget for the tactical viewer. Displays match progress and event markers.
+
+**Properties (Kivy):**
+- `current_tick = NumericProperty(0)` -- current playback position
+- `max_tick = NumericProperty(1000)` -- total tick count
+
+**Event color constants:**
+- `COLOR_KILL = (0.9, 0.2, 0.2, 0.8)` -- red
+- `COLOR_PLANT = (0.9, 0.8, 0.2, 0.8)` -- yellow
+- `COLOR_DEFUSE = (0.2, 0.6, 0.9, 0.8)` -- blue
+- `COLOR_BG = (0.2, 0.2, 0.2, 1)` -- background
+- `COLOR_PROGRESS = (0.3, 0.7, 0.3, 1)` -- progress bar
+
+**Internal state:**
+- `self.game_events: List[GameEvent]` -- loaded event markers
+- `self.metadata_textures` -- cached texture data
+- `self._callback_seek` -- optional seek callback
+
+**Methods:**
+- `set_events(events: List[GameEvent])` -- loads game events for marker display
+- `set_seek_callback(callback)` -- sets `callback(tick: int)` for user interaction
+- `on_touch_down(touch)` / `on_touch_move(touch)` -- delegates to `_handle_touch`
+- `_handle_touch(touch)` -- calculates target tick from normalized X position (F7-33: clamped to [0.0, 1.0] to prevent out-of-range seeks), calls seek callback
+- `_redraw(*args)` -- full canvas redraw. When `max_tick <= 0`, shows empty-state placeholder text "Load a demo to enable timeline". Otherwise draws:
+  1. Background bar (full width)
+  2. Progress bar (proportional to `current_tick / max_tick`)
+  3. Event markers: kills (half-height red), bomb plants (full-height yellow), bomb defuses (full-height blue). Each marker is a 2px-wide rectangle positioned proportionally
+
+Binds `_redraw` to `pos`, `size`, and `current_tick` property changes for automatic updates.
+
+#### `player_sidebar.py` (362 lines)
+
+**File:** `apps/legacy_kivy/player_sidebar.py`
+
+#### Class: `LivePlayerCard(MDCard)`
+
+Real-time player stats display card for the tactical viewer sidebar. Shows player name, health bar, armor indicator, weapon, and alive/dead state with team-colored accents.
+
+#### Class: `PlayerSidebar(BoxLayout)`
+
+Sidebar listing all players organized by team (CT and T sections). Uses widget pooling for efficient updates -- reuses existing `LivePlayerCard` instances rather than creating/destroying widgets each frame, reducing GC pressure during 60 FPS playback.
+
+**Methods:**
+- `update_players(ct_players, t_players)` -- updates both team sections with pooled widget reuse
+- `on_player_selected(player_id)` -- selection handler
+
+### 8.9 Ghost Pixel and Spatial Debugger
+
+#### `ghost_pixel.py`
+
+**File:** `apps/legacy_kivy/ghost_pixel.py`
+
+**Constant:** `RADAR_REFERENCE_SIZE = 1024` -- standard radar image pixel dimensions
+
+#### Class: `GhostPixelValidator(Widget)`
+
+Debug overlay for validating coordinate transformations. Enable via console or hidden trigger.
+
+**Properties (Kivy):**
+- `map_meta = ObjectProperty(None, allownone=True)` -- `MapMetadata` instance
+- `map_name = StringProperty("de_dust2")` -- current map name
+- `active = BooleanProperty(False)` -- whether overlay is visible
+
+**F7-38 note:** GhostPixel debug overlay is importable in production. No functional risk unless explicitly instantiated. Should be gated with DEBUG config flag when hardening for release.
+
+**Canvas structure:**
+- Separate `InstructionGroup` for landmarks (`_landmark_group`) and crosshair (`_crosshair_group`) to avoid flicker on crosshair updates
+- Background rectangle for the status label
+
+**Methods:**
+- `_update_bg(*args)` -- updates background rectangle position/size and re-renders landmarks
+- `on_active(instance, value)` -- when activated, renders landmarks; when deactivated, clears both instruction groups
+- `_render_landmarks()` -- renders known map landmarks from `LANDMARKS` dict as cyan circles (`Color(0, 1, 1, 0.6)`) at validated positions using `map_meta.world_to_radar()` with Y-flip for Kivy coordinate system
+- `on_touch_down(touch)` / `on_touch_move(touch)` -- gates on `active` and `collide_point`, calls `update_debug_info`
+- `update_debug_info(touch)` -- P4-09: guards against zero-dimension widgets before first layout pass. Performs coordinate reverse mapping (pixel to world) using `SpatialEngine.pixel_to_world()`. Displays debug label at touch position showing: map name, normalized coordinates, world coordinates. Draws magenta crosshair (circle + horizontal/vertical lines) at touch position
+
+#### `spatial_debugger.py` (152 lines)
+
+**File:** `apps/legacy_kivy/spatial_debugger.py`
+
+#### Class: `SpatialValidatorWidget(FloatLayout)`
+
+Debug widget for validating Spatial Engine accuracy. Provides real-time cursor-to-world coordinate translation and landmark visualization.
+
+**Features:**
+- Grid overlay showing coordinate reference points
+- Landmark markers from the `LANDMARKS` database
+- Real-time cursor position display with game-world coordinate translation
+- Boundary markers showing map extents
+- Diagnostic information panel for coordinate validation
+
+---
+
+## 9. Architecture and Design Decisions
+
+### MVVM Pattern
+
+The Qt app strictly follows Model-View-ViewModel:
+- **Views** (screens, widgets) -- declarative layout, connect to VM signals, never access the database directly
+- **ViewModels** -- `QObject` subclasses that encapsulate business logic, use `Worker`/`QThreadPool` for background I/O, emit typed signals
+- **Models** -- existing backend storage layer (`PlayerMatchStats`, `CoachState`, etc.)
+
+### Threading Model
+
+All database and network access runs in `QThreadPool` via the `Worker` class. Signal/slot auto-marshaling ensures results arrive on the main thread. This replaces the Kivy pattern of `Thread` + `Clock.schedule_once`.
+
+### Theming Architecture
+
+1. **Design tokens** (`design-tokens.json`) are the single source of truth
+2. `tools/gen_design_tokens.py` generates `design_tokens.py` (frozen dataclasses)
+3. `base.qss.template` uses `$token_name` variables
+4. `qss_generator.py` renders the template with token values at runtime
+5. `ThemeEngine` applies QSS + QPalette + font rules to QApplication
+
+Three themes share the same QSS template; only the token values differ.
+
+### Screen Lifecycle
+
+Screens implement optional lifecycle hooks:
+- `on_enter()` -- called when switching to this screen (connect signals, refresh data)
+- `on_leave()` -- called when switching away (cleanup, cancel pending work)
+- `retranslate()` -- called when the UI language changes
+
+### Navigation
+
+`MainWindow.switch_screen(name)` manages all navigation:
+- Regular screens use `QStackedWidget` index switching
+- Coach screen uses `QDockWidget` visibility toggle
+- Keyboard shortcuts provide direct access to key screens
+
+### Asset Management
+
+- Map images: `QtAssetBridge` with `_MAP_ALIASES` normalization and checkered fallback
+- Icons: dual-provider system (SVG sprite preferred, QPainterPath fallback)
+- Fonts: registered at startup from `PHOTO_GUI/` and `assets/fonts/`
+- Wallpapers: per-theme selection from `cs2theme/`, `csgotheme/`, `cs16theme/`
+
+### Phase Evolution
+
+| Phase | Key Features |
+|---|---|
+| P1 | Basic Qt window, screen stack, wallpaper background |
+| P2 | Real screens, navigation sidebar, theme engine |
+| P3 | Frameless window, sounds, pyqtgraph heatmap toggles |
+| P4 | WebEngine marquee, web bridge, tactical-grid motif |
+| P7 | Frost/glass effects (design tokens defined, rendering TBD) |
+
+---
+
+## 10. Cross-Reference: Qt vs Legacy Kivy
+
+| Aspect | Qt (PySide6) | Kivy (legacy) |
+|---|---|---|
+| Entry point | `app.py` / `main_window.py` | `kivy_main.py` |
+| Threading | `Worker` + `QThreadPool` | `Thread` + `Clock.schedule_once` |
+| Styling | QSS templates + `DesignTokens` | Canvas instructions + `theme.py` |
+| Signals | Qt `Signal` | Kivy `EventDispatcher` |
+| Navigation | `QStackedWidget` + `NavSidebar` | `ScreenManager` + `.kv` layout |
+| Playback | `QtPlaybackEngine` (QTimer) | `PlaybackEngine` (Kivy Clock) |
+| Map rendering | `MapWidget` (QPainter) | `tactical_map.py` (Canvas) |
+| i18n | `QtLocalizationManager` (QObject) | `LocalizationManager` (EventDispatcher) |
+| Icons | SVG sprite + QPainterPath | (not available) |
+| Theme count | 3 (CS2/CSGO/CS1.6) | 3 (CS2/CSGO/CS1.6) |
+| Animations | `Animator` (QPropertyAnimation) | Kivy `Animation` class |
+| Toast notifs | `ToastContainer` + slide anim | (not available) |
+| Web views | `MarqueeBridge` + QWebEngineView | (not available) |
+| Sound effects | `SoundManager` (QSoundEffect) | (not available) |
+
+The legacy Kivy frontend is preserved for reference but is no longer the active UI. All new development targets the Qt frontend. The transition preserved functional parity while adding significant new capabilities (toast notifications, SVG icons, web views, sound effects, design tokens, frost effects).

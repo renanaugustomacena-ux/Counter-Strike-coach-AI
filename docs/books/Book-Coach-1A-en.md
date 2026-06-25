@@ -77,7 +77,7 @@ flowchart LR
 
 ## 2. System Architecture Overview
 
-The system is divided into **6 main subsystems** that work together like the departments of a company. Each subsystem has a specific task and the data flows between them in a well-defined pipeline.
+The system is divided into **6 main subsystems** with distinct responsibilities. Each subsystem has a specific task and the data flows between them in a well-defined pipeline.
 
 ```mermaid
 graph TB
@@ -207,8 +207,6 @@ graph TB
     style OBS_EMB fill:#868e96,color:#fff
 ```
 
-**Diagram explanation:** This big diagram is like a **treasure map** that shows how information travels through the system. The journey starts top left with the raw game recordings (`.dem` files, HLTV data, CSV files): think of them as **raw ingredients** arriving in the kitchen. These ingredients pass through the Processing section where they are **chopped, measured, and prepared** (features are extracted, vectors are created). Then they reach the Training section where five different "chefs" (JEPA, VL-JEPA, AdvancedCoachNN, RAP, and NeuralRoleHead) each learn their own cooking style. The Observatory is the **quality control inspector** that watches every training session, checking whether the chefs are improving, stalling, or panicking. The Knowledge section is like the **cookbook shelf**: it contains tips (RAG), past cooking successes (COPER), and relationships between ingredients (Knowledge Graph). The Inference section is where the **head chef** combines everything — acquired skills, recipe books, and pro chef techniques — to create the final dish: coaching advice. The Analysis section is like having **food critics** evaluating specific qualities: "Is it too spicy?" (momentum), "Is it creative?" (deception index), "Did they forget an ingredient?" (blind spots). Behind the scenes, the **Quad-Daemon architecture** (Hunter, Digester, Teacher, Pulse) works tirelessly like the automated kitchen staff: it scans new ingredients, prepares them, and updates the chefs' skills without ever stopping. Everything flows down and to the right until it reaches the Qt/PySide6 graphical interface, the **plate** where the user sees the final result.
-
 ### Data flow summary
 
 ```mermaid
@@ -231,8 +229,6 @@ flowchart LR
     J -->|rap_coach/trainer.py| K["RAP Weights .pt"]
 
 ```
-
-**Diagram explanation:** This diagram shows the **two parallel assembly lines** inside the processing department. Think of a match recording (`.dem` file) as a **long movie**. The **upper assembly line** watches the movie and writes summary statistics, like a report card for each match (kills, deaths, damage, etc.). These report cards are normalized (put on the same scale, like converting all temperatures to Celsius), split into study groups (70% for learning, 15% for quizzes, 15% for final exams), and used to train the basic training model. The **lower assembly line** is more detailed: it examines the movie **frame by frame** (every "tick" of the game clock), measuring 25 pieces of information about each player at every moment (position, health, what they see, economy, etc.) and creating 64x64 pixel "snapshots" of the map. Both numbers and images are fed into the RAP Coach's State Reconstructor, which combines them into a complete "what was happening at this precise moment" picture — and this is what the advanced RAP Coach model learns from.
 
 ```mermaid
 flowchart TB
@@ -369,8 +365,6 @@ graph LR
         CH --> Y["Coaching Score"]
     end
 ```
-
-> **Diagram explanation:** The self-supervised phase works like this: imagine watching a movie and pressing pause halfway through a scene. The **Online Encoder** looks at the first half and creates a summary ("here is what I have understood so far"). The **Target Encoder** (a slightly older copy of the same brain, slowly updated) looks at the second half and creates its own summary. Then a **Predictor** tries to guess the summary of the second half using only the summary of the first half. The **InfoNCE Loss** is like a teacher checking: "Does your prediction match what actually happened? And is it different enough from random guesses?". In the Fine-Tuning phase, once the model has acquired good predictive capability, we add a **Coaching Head** on top: now the understanding gained by watching can be used to provide actual coaching scores.
 
 **Architecture details:**
 
@@ -852,8 +846,6 @@ graph TD
     style P4 fill:#ff6b6b,color:#fff
 ```
 
-> **Diagram explanation:** Think of the 4 phases as **school years**: Phase 1 (JEPA) is like **watching game film**: the student watches hundreds of pro games and learns the patterns without anyone grading them. Phase 2 (Pro Baseline) is like **studying from a textbook**: now a teacher says "here is how you play well" and the student studies to match. Phase 3 (User fine-tuning) is like **private lessons**: the system adapts specifically to THIS player's style and weaknesses. Phase 4 (RAP) is like an **advanced strategy course**: the full 7-component RAP coach steps in with game theory, positioning, and causal reasoning. You cannot access Phase 4 until Phases 1-3 are complete, just like you cannot study calculus before algebra.
-
 **Maturity levels and confidence multipliers:**
 
 | Level         | Demo Count     | Confidence Multiplier    | Unlocked Features                                       |
@@ -942,7 +934,7 @@ flowchart TB
 >
 > **StaleCheckpointError:** If the dimensions of a saved checkpoint do not match the current model configuration (for example after an upgrade from `output_dim=4` to `output_dim=10`), the system raises `StaleCheckpointError` instead of silently loading incompatible weights, preventing silent corruption.
 
-**Persistence** (`persistence.py`): Save/load with `weights_only=True` (security), graceful fallback chain (user-specific → global → skip), mismatched size handling.
+**Persistence** (`persistence.py`): Save/load models with `weights_only=True` (security -- prevents arbitrary code execution during checkpoint deserialization). Implements a **SHA-256 hash registry** for checkpoint integrity validation: every saved file is accompanied by a `.sha256` sidecar file containing the checkpoint hash; at loading time, the system verifies the hash matches before proceeding with deserialization. **3-level fallback chain**: (1) user-specific checkpoint, (2) global checkpoint, (3) skip -- train from scratch. Handles mismatched dimensions via `StaleCheckpointError`.
 
 ```mermaid
 flowchart TB
@@ -987,6 +979,53 @@ RAP_POSITION_SCALE = 500.0         # P9-01: Scale factor for position delta ([-1
 3. **CPU fallback:** If no CUDA GPU is available
 
 Batch sizing based on ML intensity: `High=128`, `Medium=32`, `Low=8`. The throttling delay between batches adapts: `High=0.0s`, `Medium=0.05s`, `Low=0.2s`.
+
+### -Pre-Training Data Quality Control (`data_quality.py`)
+
+Before every training cycle, the system runs a data quality check on available data through `run_pre_training_quality_check()`. This gate prevents training on insufficient or corrupted data.
+
+**`DataQualityReport` dataclass:**
+
+| Field | Type | Description |
+|---|---|---|
+| `total_tick_rows` | `int` | Total rows in `PlayerTickState` |
+| `train_rows` / `val_rows` / `test_rows` | `int` | Rows per split (TRAIN/VAL/TEST) |
+| `zero_position_rate` | `float` | Fraction of ticks with position (0,0,0) -- indicator of corrupted data |
+| `nan_rate` | `float` | Fraction of ticks with NaN values |
+| `round_outcome_distribution` | `Dict[str,int]` | Outcome class distribution for balance checking |
+| `complete_matches` / `incomplete_matches` | `int` | Complete vs incomplete match count |
+| `issues` | `List[str]` | List of detected issues |
+| `passed` | `bool` | Final verdict (True = training allowed) |
+
+**5 checks performed:**
+1. Total row count from `PlayerTickState`
+2. Distribution by `DatasetSplit` (TRAIN/VAL/TEST) from `PlayerMatchStats`
+3. Zero position rate -- samples up to 10,000 ticks for efficiency
+4. Match completeness via `MatchDataManager`
+5. **Verdict:** fails if `total_tick_rows < min_samples` (default: 1000), `zero_position_rate > threshold` (default: 0.10), or `train_rows == 0`
+
+### -Training Controller (`training_controller.py`)
+
+Controls **when** the Coach can train, managing demo deduplication, data diversity, and monthly quota.
+
+**`TrainingDecision` dataclass:**
+
+| Field | Type | Description |
+|---|---|---|
+| `should_train` | `bool` | Whether to proceed with training |
+| `reason` | `str` | Human-readable motivation |
+| `diversity_score` | `float` | Diversity score (0.0--1.0) |
+
+**`TrainingController` class:**
+- `MIN_DIVERSITY_SCORE = 0.3` -- minimum diversity threshold to proceed
+- `MAX_DEMOS_PER_MONTH` -- monthly quota from settings (default: 10, NN-M-13)
+
+**Decision pipeline `should_train_on_demo(demo_path, match_stats) -> TrainingDecision`:**
+1. **Monthly quota check** -- `_get_monthly_training_count()` counts `PlayerMatchStats` with `processed_at >= 30 days ago`
+2. **Diversity calculation** -- `_calculate_diversity_score(new_stats)` computes `1 - mean_cosine_similarity` against the last 5 matches. First match: score = 1.0
+3. **Decision** -- if under quota AND diversity >= 0.3, `should_train = True`
+
+**Diversity calculation:** `_extract_features(stats)` extracts a 6-dim vector with approximate z-scaling: kills, deaths, ADR, HS%, utility blind time, opening duel win %. The cosine similarity between the new vector and each of the last 5 prevents training on data that is too similar (overfitting on one match type).
 
 ### -NeuralRoleHead (MLP for Role Classification)
 

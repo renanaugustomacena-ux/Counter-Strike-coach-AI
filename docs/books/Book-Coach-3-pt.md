@@ -262,7 +262,7 @@ erDiagram
     }
 ```
 
-> **Explicacao do diagrama ER:** Cada caixa representa um **tipo de registro** no banco de dados. `PlayerMatchStats` e como um **boletim** para cada jogador em cada partida (quantas mortes, quantas vezes morreu, sua avaliacao, etc). `PlayerTickState` e como um **diario frame a frame**: 128 entradas por segundo que registram exatamente onde o jogador estava, quao saudavel estava, em que direcao estava olhando. `RoundStats` e a **decomposicao por questao**: avaliacoes individuais para cada round (kills, deaths, damage, noscope kills, flash assists, round rating), permitindo analises detalhadas. `CoachingExperience` e o **diario** do treinador: cada momento de treinamento, se os conselhos funcionaram e o quanto foram eficazes. `CoachingInsight` e o **conselho efetivo** fornecido ao jogador. `TacticalKnowledge` e o **livro didatico**: sugestoes e estrategias que o treinador pode consultar. `RoleThresholdRecord` e a **rubrica de avaliacao**, ou seja, os limites aprendidos para classificar os papeis dos jogadores. `CalibrationSnapshot` e o **registro de controle do instrumento**, que registra quando o modelo de crenca foi recalibrado e com quantas amostras. `Ext_PlayerPlaystyle` e o **relatorio de scouting externo**, ou seja, as metricas do estilo de jogo obtidas dos dados CSV usados para treinar NeuralRoleHead. `ServiceNotification` e o **sistema de interfone**, ou seja, as mensagens de erro e evento provenientes dos daemons em background mostradas na interface do usuario. As linhas entre as tabelas mostram os relacionamentos: cada registro de partida esta vinculado ao perfil de um jogador, as experiencias de treinamento estao vinculadas a partidas especificas e RoundStats esta vinculado a PlayerMatchStats via demo_name. `DataLineage` e o **registro de proveniencia**: rastreia qual demo originou cada entidade e atraves de qual step do pipeline foi processada (append-only, para audit trail completo). `DataQualityMetric` e o **painel de metricas de qualidade**: registra valores numericos de qualidade para cada execucao do pipeline (ex. percentual de amostras descartadas, taxa de fallback zero-tensor), permitindo o monitoramento da saude do sistema ao longo do tempo.
+> **Descricao das tabelas:** `PlayerMatchStats` — estatisticas agregadas por jogador por partida (kills, deaths, ADR, rating HLTV 2.0, 25 features normalizadas). `PlayerTickState` — telemetria tick-by-tick a 64/128 Hz: posicao (x,y,z), saude, armadura, angulo de visao, arma atual, economia, estado para cada jogador em cada tick. `RoundStats` — estatisticas isoladas por round: kills, deaths, dano, noscope kills, flash assists, round rating, uteis para coaching granular. `CoachingExperience` — registro COPER: contexto do momento de coaching, conselho dado, resultado (positivo/negativo/neutro), eficacia numerica, embedding 384-dim para busca semantica. `CoachingInsight` — insights de coaching gerados pelo sistema e mostrados ao usuario na UI. `TacticalKnowledge` — base de conhecimento RAG: estrategias, posicionamentos, uso de utilidades, indexados com embeddings Sentence-BERT 384-dim, versao v3, 14 categorias. `RoleThresholdRecord` — limites aprendidos para a classificacao dos 10 papeis taticos, persistidos entre reinicios. `CalibrationSnapshot` — timestamp e contagem de amostras de cada auto-calibracao do estimador Bayesiano de morte. `Ext_PlayerPlaystyle` — metricas de estilo de jogo de CSVs externos, usadas para treinamento do NeuralRoleHead. `ServiceNotification` — mensagens de erro/evento dos daemons em background, mostradas na UI via polling. `DataLineage` — audit trail append-only: rastreia qual demo originou cada entidade e atraves de qual step do pipeline foi processada. `DataQualityMetric` — metricas quantitativas de qualidade por execucao do pipeline (percentual de amostras descartadas, taxa de fallback zero-tensor).
 
 **Ciclo de vida dos dados:**
 
@@ -597,29 +597,29 @@ Este capitulo documenta a **logica completa** do Macena CS2 Analyzer, desde o mo
 
 ```mermaid
 flowchart TB
-    subgraph CITY["A CIDADE - MACENA CS2 ANALYZER"]
-        MUNI["Prefeitura<br/>(Qt/Kivy UI - Processo Principal)"]
-        CENT["Central Operacional Subterranea<br/>(Session Engine - 4 Daemons)"]
-        ARCH["Arquivo Municipal<br/>(SQLite WAL - database.db)"]
-        POST["Correios<br/>(Pipeline Ingestao)"]
-        SCUOLA["Escola<br/>(Treinamento ML)"]
-        BIB["Biblioteca<br/>(RAG + COPER + Knowledge Graph)"]
-        OSP["Hospital<br/>(Servico Coaching)"]
-        MON["Monitoramento<br/>(Observabilidade + Logging)"]
+    subgraph SYSTEM["MACENA CS2 ANALYZER — ARQUITETURA DE COMPONENTES"]
+        UI["Qt/PySide6 + Kivy UI<br/>(Processo Principal)"]
+        SE["Session Engine<br/>(4 Daemons: Scanner, Digester, Teacher, Pulse)"]
+        DB["SQLite WAL Three-Tier<br/>(database.db + hltv_metadata.db + match_data/)"]
+        INGEST["Pipeline Ingestao<br/>(Demo → Parse → Enrich → Persist)"]
+        TRAIN["Treinamento ML<br/>(JEPA → Pro → User → RAP)"]
+        KB["Knowledge Layer<br/>(RAG + COPER + Knowledge Graph)"]
+        COACH["Servico Coaching<br/>(4 niveis fallback)"]
+        OBS["Observabilidade<br/>(Logging estruturado + RASP + Sentry)"]
     end
-    MUNI -->|"comandos"| CENT
-    CENT -->|"trabalho"| POST
-    POST -->|"dados"| ARCH
-    ARCH -->|"material de estudo"| SCUOLA
-    SCUOLA -->|"conhecimento"| BIB
-    BIB -->|"referencias"| OSP
-    OSP -->|"conselhos"| MUNI
-    MON -.->|"monitora tudo"| CENT
-    MON -.->|"monitora tudo"| ARCH
-    style MUNI fill:#4a9eff,color:#fff
-    style CENT fill:#ff6b6b,color:#fff
-    style ARCH fill:#ffd43b,color:#000
-    style OSP fill:#51cf66,color:#fff
+    UI -->|"comandos IPC"| SE
+    SE -->|"task scheduling"| INGEST
+    INGEST -->|"PlayerMatchStats + RoundStats"| DB
+    DB -->|"dataset treinamento"| TRAIN
+    TRAIN -->|"modelos .pt + embeddings"| KB
+    KB -->|"context retrieval"| COACH
+    COACH -->|"CoachingInsight"| UI
+    OBS -.->|"monitora"| SE
+    OBS -.->|"monitora"| DB
+    style UI fill:#4a9eff,color:#fff
+    style SE fill:#ff6b6b,color:#fff
+    style DB fill:#ffd43b,color:#000
+    style COACH fill:#51cf66,color:#fff
 ```
 
 ---
@@ -911,6 +911,17 @@ A interface Qt e construida com **PySide6 (Qt 6)** e utiliza um pattern **MVVM c
 - **CS2** — Palette laranja (#FF6600) com fundo escuro, inspirada na UI do CS2
 - **CSGO** — Palette azul-cinza (#4A90D9) com tons frios, inspirada no CS:GO
 - **CS1.6** — Palette verde (#33CC33) sobre fundo preto, inspirada no look retro do CS 1.6
+
+**Web Views** (`apps/qt_app/views/`):
+
+A interface Qt inclui **2 web views** baseadas em templates HTML/Jinja2, servidas via `QWebEngineView` para conteudo que se beneficia de renderizacao web-native:
+
+| Web View | Arquivo | Descricao |
+|---|---|---|
+| **Match Detail** | `match_detail_view.py` | Visualizacao detalhada de uma partida com timeline, estatisticas por round e heatmap — renderizacao HTML para graficos interativos |
+| **Coach Chat** | `coach_chat_view.py` | Interface de chat com o coach AI — renderizacao HTML para formatacao rich text, markdown, code highlighting |
+
+O `WebBridge` (`core/web_bridge.py`) gerencia a comunicacao bidirecional entre o backend Python e as web views via `QWebChannel`, expondo metodos Python como APIs JavaScript invocaveis a partir do template HTML. Essa arquitetura hibrida permite utilizar bibliotecas de visualizacao web (graficos interativos, formatacao rica) mantendo a logica de negocio no backend Python.
 
 #### 12.5.2 Interface Kivy (Legacy) — `apps/desktop_app/`
 
@@ -1696,6 +1707,31 @@ O sistema de logging centralizado fornece logs estruturados com:
 
 **Metricas de training expostas em CoachState:** `current_epoch`, `total_epochs`, `train_loss`, `val_loss`, `eta_seconds`, `belief_confidence`, `system_load_cpu`, `system_load_mem`.
 
+**Registro Centralizado de Codigos de Erro** (`observability/error_codes.py`):
+
+O sistema implementa um registro formal de **24 codigos de erro** classificados por severidade e modulo. Cada codigo e definido como `ErrorCodeDef(NamedTuple)` com: `code`, `severity`, `module`, `description`, `remediation`.
+
+| Prefixo | Modulo | Exemplo | Severidade tipica |
+|---|---|---|---|
+| `LS` | Logger Setup | LS-01: RotatingFileHandler indisponivel | MEDIUM |
+| `RP` | RASP Guard | RP-01: CS2_MANIFEST_KEY nao definido | HIGH |
+| `DA` | Data Access | DA-01-03: JSON malformado do DB | LOW |
+| `P` | Pipeline | P7-01/P7-02: Erros criticos de pipeline | HIGH |
+| `F` | Feature/Fix | F6-SE: Erro de session engine | HIGH |
+| `SE` | Session Engine | SE-05: Erro critico de sessao | HIGH |
+| `IM` | Ingestion | IM-03: Erro de ingestao | MEDIUM |
+| `NN` | Neural Network | NN-02: Erro de rede neural | MEDIUM |
+| `CO` | Console Control | CO-01/CO-03: Erros criticos de controle | HIGH |
+| `R1` | Release/Manifest | R1-12: Erro de manifesto de release | HIGH |
+
+**Severidade** (`Severity(Enum)`): `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`.
+
+**Utilidades:**
+- `log_with_code(error_code, message) → str` — Prefixa a mensagem com o codigo formal (ex. `[LS-01] message`)
+- `get_all_codes() → list[dict]` — Todos os codigos como lista de dicionarios para acesso programatico
+
+**Hierarquia de Excecoes** (`observability/exceptions.py`): Classe base `CS2AnalyzerError(Exception)` com subclasses: `ConfigurationError`, `DatabaseError`, `IngestionError`, `TrainingError`, `IntegrationError`, `UIError`. Cada excecao pode carregar um `error_code: ErrorCode | None` para correlacao com o registro.
+
 ---
 
 ### 12.13 Reporting e Visualizacao
@@ -2322,7 +2358,7 @@ flowchart TB
 | **3** | Data pipeline e features | ~30 | G-01 label leakage, G-02 normalizacao bounds, feature alignment |
 | **4** | Banco e schema | ~30 | WAL mode enforcement, missing indices, schema migration safety |
 | **5** | Dead code e cleanup | ~25 | G-06 eliminacao `nn/advanced/`, imports nao usados, arquivos duplicados |
-| **6** | Analysis engines | ~30 | Graceful degradation para todos os 10 motores, edge case handling |
+| **6** | Analysis engines | ~30 | Graceful degradation para todos os 11 motores, edge case handling |
 | **7** | ML pipeline | ~35 | G-07 Bayesian calibration, gradient clipping, checkpoint versioning |
 | **8** | Coaching e COPER | ~30 | G-08 experience decay, RAG index validation, fallback chain |
 | **9** | UI e UX | ~25 | F8-XX feedback visual, state consistency, error prevention |
@@ -2774,7 +2810,7 @@ flowchart TB
     subgraph L3["NIVEL 3: DOMINIO"]
         INGEST["Ingestao (Demo → Stats)"]
         ML["ML (JEPA, RAP, MoE)"]
-        ANALYSIS["Analise (10 motores)"]
+        ANALYSIS["Analise (11 motores)"]
         KNOWLEDGE["Conhecimento (RAG, COPER)"]
     end
     subgraph L4["NIVEL 4: PERSISTENCIA"]
@@ -2887,6 +2923,33 @@ A funcao `infer_round_phase(equipment_value)` e uma **utilidade compartilhada** 
 | $3.000 – $3.999  | `"force"`     |
 | >= $4.000         | `"full_buy"`  |
 
+### Utilidades Core — Lock Files e Plataforma
+
+**Lock Files** (`core/lock_files.py`):
+
+Sistema de lock file para concorrencia entre processos D-track / HLTV-track. Utiliza um diretorio `.locks/` local ao repositorio (sobrevive as sessoes, nao aos reinicios).
+
+| Componente | Descricao |
+|---|---|
+| **Formato lock file** | `<pid> <iso_timestamp>` — identifica o processo proprietario |
+| **Lock stale** | Recuperados automaticamente se o PID proprietario esta morto (`os.kill(pid, 0)`) |
+| **`LockConflict(RuntimeError)`** | Levantada quando o lock e detido por um processo vivo |
+| **`acquire(name) → Path`** | Cria lock, verifica conflitos, recupera stale, escreve PID + timestamp |
+| **`release(name)`** | Remove lock file. Idempotente |
+| **`lock(name)` (context manager)** | Acquire na entrada, release na saida |
+| **Signal handlers** | `install_signal_handlers()` registra handlers SIGTERM/SIGINT que liberam todos os locks antes da terminacao |
+| **`_held_locks: Set[str]`** | Estado module-level que rastreia os locks atualmente detidos |
+
+**Platform Utilities** (`core/platform_utils.py`):
+
+Deteccao de plataforma e drives disponiveis para operacoes de storage cross-platform.
+
+| Funcao | Descricao |
+|---|---|
+| `_get_platform() → str` | Retorna `"win"`, `"macosx"`, `"linux"` ou raw `sys.platform` |
+| `platform` (constante module-level) | Resultado de `_get_platform()` avaliado no import |
+| `get_available_drives() → List[str]` | **PU-02**: Windows → `_get_windows_drives()` com bitmask ctypes `GetLogicalDrives()` + fallback `psutil.disk_partitions()`; Linux/macOS → `["/"]`; Outro → diretorio home validado |
+
 ---
 
 ### Pontos Fortes da Arquitetura
@@ -2897,7 +2960,7 @@ A funcao `infer_round_phase(equipment_value)` e uma **utilidade compartilhada** 
 4. **Diversidade multi-modelo** — JEPA, VL-JEPA, LSTM+MoE, RAP e NeuralRoleHead contribuem com biases indutivos complementares.
 5. **Subdivisao temporal** — Previne a perda de dados garantindo a ordenacao cronologica.
 6. **Ciclo de feedback COPER** — Monitoramento da eficacia baseado em EMA com decaimento da experiencia obsoleta.
-7. **Suite de analise de Fase 6** — 10 motores de analise (papel, probabilidade de vitoria, arvore de jogo, conviccao, engano, momentum, entropia, pontos cegos, utility e economia, distancia de engajamento).
+7. **Suite de analise de Fase 6** — 11 motores de analise (papel, probabilidade de vitoria, arvore de jogo, conviccao, engano, momentum, entropia, pontos cegos, utility e economia, distancia de engajamento, qualidade de movimento).
 8. **Persistencia do limite** — Os limites de papel sobrevivem aos reinicios atraves da tabela DB `RoleThresholdRecord`.
 9. **Heuristica configuravel** — `HeuristicConfig` externaliza os limites de normalizacao em JSON.
 10. **Polishing LLM** — Integracao opcional com Ollama para narrativas de coaching em linguagem natural.
@@ -2988,7 +3051,7 @@ flowchart TB
     subgraph PART2["PARTE 2 — Coaching e Servicos"]
         P2_CE["Coaching Engines<br/>(Hybrid, Correction, Explain)"]
         P2_SV["Additional Services<br/>(LLM, Dialogue, Lesson)"]
-        P2_AN["Analysis Engines<br/>(10 motores)"]
+        P2_AN["Analysis Engines<br/>(11 motores)"]
         P2_KN["Knowledge<br/>(RAG, COPER, KG)"]
         P2_PR["Processing<br/>(Feature Eng, Validation)"]
         P2_CT["Control Module<br/>(Console, Governor, ML)"]

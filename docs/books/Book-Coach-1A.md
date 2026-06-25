@@ -77,7 +77,7 @@ flowchart LR
 
 ## 2. Panoramica dell'architettura del sistema
 
-Il sistema è suddiviso in **6 sottosistemi principali** che lavorano insieme come i reparti di un'azienda. Ogni sottosistema ha un compito specifico e i dati fluiscono tra di essi in una pipeline ben definita.
+Il sistema è suddiviso in **6 sottosistemi principali** con responsabilità distinte. Ogni sottosistema ha un compito specifico e i dati fluiscono tra di essi in una pipeline ben definita.
 
 ```mermaid
 graph TB
@@ -207,8 +207,6 @@ graph TB
     style OBS_EMB fill:#868e96,color:#fff
 ```
 
-**Spiegazione Diagramma:** Questo grande diagramma è come una **mappa del tesoro** che mostra come le informazioni viaggiano attraverso il sistema. Il viaggio inizia in alto a sinistra con le registrazioni grezze del gioco (file `.dem`, dati HLTV, file CSV): pensateli come **ingredienti grezzi** che arrivano in cucina. Questi ingredienti passano attraverso la sezione Elaborazione dove vengono **tagliati, misurati e preparati** (vengono estratte le caratteristiche, creati i vettori). Poi raggiungono la sezione Formazione dove cinque diversi "chef" (JEPA, VL-JEPA, AdvancedCoachNN, RAP e NeuralRoleHead) imparano ciascuno il proprio stile di cucina. L'Osservatorio è l'**ispettore del controllo qualità** che osserva ogni sessione di formazione, verificando se gli chef stanno migliorando, sono in stallo o sono in preda al panico. La sezione Conoscenza è come lo **scaffale del ricettario**: contiene suggerimenti (RAG), successi culinari passati (COPER) e relazioni tra gli ingredienti (Grafico della Conoscenza). La sezione Inferenza è dove lo **capo chef** combina tutto – competenze acquisite, libri di ricette e tecniche da chef professionista – per creare il piatto finale: consigli di coaching. La sezione Analisi è come avere dei **critici gastronomici** che valutano qualità specifiche: "È troppo piccante?" (momentum), "È creativo?" (indice di inganno), "Hanno dimenticato un ingrediente?" (punti ciechi). Dietro le quinte, l'**architettura Quad-Daemon** (Hunter, Digester, Teacher, Pulse) lavora instancabilmente come il personale di cucina automatizzato: scansiona nuovi ingredienti, li prepara e aggiorna le competenze degli chef senza mai fermarsi. Tutto scorre verso il basso e verso destra fino a raggiungere l'interfaccia grafica Qt/PySide6, il **piatto** dove l'utente vede il risultato finale.
-
 ### Riepilogo flusso dei dati
 
 ```mermaid
@@ -231,8 +229,6 @@ flowchart LR
     J -->|rap_coach/trainer.py| K["Pesi RAP .pt"]
 
 ```
-
-**Spiegazione diagramma:** Questo diagramma mostra le **due linee di montaggio parallele** all'interno del reparto di elaborazione. Immaginate la registrazione di una partita (file `.dem`) come un **lungo filmato**. La **linea di montaggio superiore** guarda il filmato e scrive statistiche riassuntive, come una pagella per ogni partita (uccisioni, morti, danni, ecc.). Queste pagelle vengono normalizzate (messe sulla stessa scala, come se tutte le temperature fossero convertite in gradi Celsius), divise in gruppi di studio (70% per l'apprendimento, 15% per i quiz, 15% per gli esami finali) e utilizzate per allenare il modello di allenamento di base. La **linea di montaggio inferiore** è più dettagliata: esamina il filmato **fotogramma per fotogramma** (ogni "ticchettio" del cronometro di gioco), misurando 25 informazioni su ciascun giocatore in ogni momento (posizione, salute, cosa vedono, economia, ecc.) e creando "istantanee" di 64x64 pixel della mappa. Sia i numeri che le immagini vengono inseriti nel RAP Coach's State Reconstructor, che li combina in un quadro completo di "cosa stava succedendo in questo preciso momento" - ed è da questo che impara il modello avanzato RAP Coach.
 
 ```mermaid
 flowchart TB
@@ -368,8 +364,6 @@ graph LR
         CH --> Y["Punteggio Coaching"]
     end
 ```
-
-> **Spiegazione diagramma:** La fase di auto-supervisione funziona così: immagina di guardare un film e di premere pausa a metà scena. L'**Online Encoder** guarda la prima metà e crea un riassunto ("ecco cosa ho capito finora"). L'**Target Encoder** (una copia leggermente più vecchia dello stesso cervello, aggiornata lentamente) guarda la seconda metà e crea il proprio riassunto. Quindi un **Predictor** cerca di indovinare il riassunto della seconda metà usando solo il riassunto della prima metà. L'**InfoNCE Loss** è come un insegnante che controlla: "La tua previsione corrisponde a ciò che è realmente accaduto? Ed è sufficientemente diversa dalle ipotesi casuali?". Nella fase di Fine-Tuning, una volta che il modello ha acquisito una buona capacità di previsione, aggiungiamo una **Testa di Coaching** in cima: ora la comprensione acquisita guardando può essere utilizzata per fornire punteggi di coaching effettivi.
 
 **Dettagli dell'architettura:**
 
@@ -851,8 +845,6 @@ graph TD
     style P4 fill:#ff6b6b,color:#fff
 ```
 
-> **Spiegazione diagramma:** Pensate alle 4 fasi come agli **anni scolastici**: la Fase 1 (JEPA) è come **guardare un filmato di una partita**: lo studente guarda centinaia di partite professionistiche e impara gli schemi senza che nessuno li valuti. La Fase 2 (Pro Baseline) è come **studiare da un libro di testo**: ora un insegnante dice "ecco come si gioca bene" e lo studente studia per adeguarsi. La Fase 3 (Perfezionamento dell'utente) è come **lezioni private**: il sistema si adatta specificamente allo stile e ai punti deboli di QUESTO giocatore. La Fase 4 (RAP) è come un **corso di strategia avanzata**: il coach RAP completo a 7 componenti interviene con teoria dei giochi, posizionamento e ragionamento causale. Non è possibile accedere alla Fase 4 finché non si sono completate le Fasi 1-3, proprio come non si può studiare analisi matematica prima di algebra.
-
 **Livelli di maturità e moltiplicatori di fiducia:**
 
 | Livello       | Conteggio demo | Moltiplicatore di fiducia | Funzionalità sbloccate                                 |
@@ -941,7 +933,7 @@ flowchart TB
 >
 > **StaleCheckpointError:** Se le dimensioni di un checkpoint salvato non corrispondono alla configurazione corrente del modello (ad esempio dopo un aggiornamento da `output_dim=4` a `output_dim=10`), il sistema solleva `StaleCheckpointError` anziché caricare silenziosamente pesi incompatibili, prevenendo corruzioni silenziose.
 
-**Persistenza** (`persistence.py`): Salva/carica con `weights_only=True` (sicurezza), catena di fallback elegante (specifica dell'utente → globale → salta), gestione delle dimensioni non corrispondenti.
+**Persistenza** (`persistence.py`): Salva/carica modelli con `weights_only=True` (sicurezza — previene esecuzione arbitraria di codice durante il deserializzazione di checkpoint). Implementa un **registro hash SHA-256** per validazione di integrità dei checkpoint: ogni file salvato viene accompagnato da un file sidecar `.sha256` contenente l'hash del checkpoint; al caricamento, il sistema verifica che l'hash corrisponda prima di procedere con il deserializzazione. **Catena di fallback a 3 livelli**: (1) checkpoint specifico dell'utente, (2) checkpoint globale, (3) salta — addestra da zero. Gestisce dimensioni non corrispondenti tramite `StaleCheckpointError`.
 
 ```mermaid
 flowchart TB
@@ -986,6 +978,53 @@ RAP_POSITION_SCALE = 500.0         # P9-01: Fattore di scala per delta posizione
 3. **Fallback CPU:** Se nessuna GPU CUDA è disponibile
 
 Dimensionamento batch basato sull'intensità ML: `Alto=128`, `Medio=32`, `Basso=8`. Il ritardo di throttling tra batch si adatta: `Alto=0.0s`, `Medio=0.05s`, `Basso=0.2s`.
+
+### -Controllo Qualità Dati Pre-Training (`data_quality.py`)
+
+Prima di ogni ciclo di addestramento, il sistema esegue un controllo di qualità sui dati disponibili attraverso `run_pre_training_quality_check()`. Questo gate impedisce l'addestramento su dati insufficienti o corrotti.
+
+**Dataclass `DataQualityReport`:**
+
+| Campo | Tipo | Descrizione |
+|---|---|---|
+| `total_tick_rows` | `int` | Righe totali in `PlayerTickState` |
+| `train_rows` / `val_rows` / `test_rows` | `int` | Righe per split (TRAIN/VAL/TEST) |
+| `zero_position_rate` | `float` | Frazione di tick con posizione (0,0,0) — indicatore di dati corrotti |
+| `nan_rate` | `float` | Frazione di tick con valori NaN |
+| `round_outcome_distribution` | `Dict[str,int]` | Distribuzione delle classi di outcome per bilanciamento |
+| `complete_matches` / `incomplete_matches` | `int` | Conteggio match completi vs incompleti |
+| `issues` | `List[str]` | Lista di problemi rilevati |
+| `passed` | `bool` | Verdetto finale (True = addestramento consentito) |
+
+**5 controlli eseguiti:**
+1. Conteggio righe totali da `PlayerTickState`
+2. Distribuzione per `DatasetSplit` (TRAIN/VAL/TEST) da `PlayerMatchStats`
+3. Tasso di posizioni zero — campiona fino a 10.000 tick per efficienza
+4. Completezza match via `MatchDataManager`
+5. **Verdetto:** fallisce se `total_tick_rows < min_samples` (default: 1000), `zero_position_rate > threshold` (default: 0.10), o `train_rows == 0`
+
+### -Training Controller (`training_controller.py`)
+
+Controlla **quando** il Coach può addestrarsi, gestendo deduplicazione demo, diversità dei dati e quota mensile.
+
+**Dataclass `TrainingDecision`:**
+
+| Campo | Tipo | Descrizione |
+|---|---|---|
+| `should_train` | `bool` | Se procedere con l'addestramento |
+| `reason` | `str` | Motivazione leggibile |
+| `diversity_score` | `float` | Score di diversità (0.0–1.0) |
+
+**Classe `TrainingController`:**
+- `MIN_DIVERSITY_SCORE = 0.3` — soglia minima di diversità per procedere
+- `MAX_DEMOS_PER_MONTH` — quota mensile da settings (default: 10, NN-M-13)
+
+**Pipeline di decisione `should_train_on_demo(demo_path, match_stats) → TrainingDecision`:**
+1. **Verifica quota mensile** — `_get_monthly_training_count()` conta `PlayerMatchStats` con `processed_at >= 30 giorni fa`
+2. **Calcolo diversità** — `_calculate_diversity_score(new_stats)` computa `1 - media_cosine_similarity` contro le ultime 5 partite. Prima partita: score = 1.0
+3. **Decisione** — se sotto quota E diversità ≥ 0.3, `should_train = True`
+
+**Calcolo diversità:** `_extract_features(stats)` estrae un vettore 6-dim con z-scaling approssimato: kills, deaths, ADR, HS%, utility blind time, opening duel win %. La similarità coseno tra il nuovo vettore e ciascuno degli ultimi 5 previene l'addestramento su dati troppo simili (overfit su una tipologia di partita).
 
 ### -NeuralRoleHead (MLP per la classificazione dei ruoli)
 

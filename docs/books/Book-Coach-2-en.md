@@ -1,6 +1,6 @@
 # Ultimate CS2 Coach — Part 2: Services, Analysis, Knowledge, Control, Progress, and Database
 
-> **Topics:** Coaching Services (4-mode pipeline: COPER/Hybrid/RAG/Base, Ollama LLM), Coaching Engines (10 game-theoretic and statistical analysis engines), Knowledge and Retrieval (RAG + COPER Experience Bank), Analysis Engines (Bayesian belief model, expectiminimax, momentum, roles, deception index, entropy, engagement range, utility economy, win probability), Processing and Feature Engineering (25-dim canonical vector, professional baselines), Control Module (lifecycle daemon, ingestion queue, ML control), Progress and Trends (longitudinal tracking), Database and Storage (three-tier SQLite WAL schema), Training and Orchestration Pipeline, Loss Functions.
+> **Topics:** Coaching Services (4-mode pipeline: COPER/Hybrid/RAG/Base, Ollama LLM), Coaching Engines (11 game-theoretic and statistical analysis engines), Knowledge and Retrieval (RAG + COPER Experience Bank), Analysis Engines (Bayesian belief model, expectiminimax, momentum, roles, deception index, entropy, engagement range, utility economy, win probability), Processing and Feature Engineering (25-dim canonical vector, professional baselines), Control Module (lifecycle daemon, ingestion queue, ML control), Progress and Trends (longitudinal tracking), Database and Storage (three-tier SQLite WAL schema), Training and Orchestration Pipeline, Loss Functions.
 >
 > **Author:** Renan Augusto Macena
 
@@ -18,6 +18,8 @@
    - CoachingService (4-mode pipeline)
    - OllamaWriter (LLM refinement)
    - AnalysisOrchestrator
+   - FastAPI Server (standalone REST endpoints)
+   - Onboarding (3-stage user flow)
 5B. [Subsystem 3B — Coaching Engines (`backend/coaching/`)](#5b-subsystem-3b--coaching-engines)
 6. [Subsystem 4 — Knowledge and Retrieval (`backend/knowledge/`)](#6-subsystem-4--knowledge-and-retrieval)
    - RAG Knowledge (retrieval for coaching patterns)
@@ -347,6 +349,66 @@ flowchart LR
     TC -->|"httpx POST"| SRV["Central Server"]
 ```
 
+### -FastAPI Server (`server.py`)
+
+Standalone REST server that exposes endpoints for telemetry, insights, health, and remote service control. **It is not integrated into the main application flow** — it is a separate utility service, launchable independently.
+
+**Rate Limiting:** `RateLimiter` class with sliding window — maximum 10 requests per minute per IP address. The internal `_requests` structure maps each IP to a list of `float` timestamps, purging expired timestamps on each check.
+
+**Lifecycle:** The server uses FastAPI's asynchronous lifespan handler to initialize the database at startup via `init_database()`.
+
+**Pydantic Models:**
+| Model | Type | Main Fields |
+|---|---|---|
+| `InsightRead` | Response | `id`, `player_name`, `title`, `message`, `focus_area`, `severity`, `created_at` |
+| `MatchTelemetry` | Request | `player_id`, `match_id`, `stats` (dict), `timestamp` (float) |
+
+**Endpoint Table:**
+
+| Method | Path | Rate Limited | Description |
+|---|---|---|---|
+| `POST` | `/api/ingest/telemetry` | Yes | Match telemetry data ingestion. Background write to disk via `_write_telemetry_to_disk()` |
+| `GET` | `/api/insights` | No | Returns coaching insights for a player (query param: `player_name`) |
+| `GET` | `/api/status` | No | Application status: version, uptime, database state |
+| `GET` | `/api/console/health` | No | Health check for service monitoring |
+| `POST` | `/api/training/start` | No | Starts ML training via Console backend |
+| `POST` | `/api/training/stop` | No | Stops ML training |
+| `POST` | `/api/training/pause` | No | Pauses ML training |
+| `POST` | `/api/training/resume` | No | Resumes ML training from pause |
+| `POST` | `/api/services/hunter/start` | No | Starts HLTV Hunter service |
+| `POST` | `/api/services/hunter/stop` | No | Stops HLTV Hunter service |
+| `GET` | `/api/services/status` | No | Status of all managed services |
+
+**Telemetry security:** `_write_telemetry_to_disk(data)` sanitizes filenames derived from `player_id` and `match_id` to prevent path traversal attacks — dangerous characters are removed before constructing the destination path.
+
+### -Onboarding (`new_user_flow.py`)
+
+Manages the new user experience through a **3-stage progressive onboarding** process that guides the player from installation to full coaching.
+
+**Onboarding Stages:**
+
+| Constant | Value | Meaning | Condition |
+|---|---|---|---|
+| `AWAITING_FIRST_DEMO` | `"awaiting_first_demo"` | No demos uploaded | 0 demos |
+| `BUILDING_BASELINE` | `"building_baseline"` | Demos uploaded but insufficient for stable baseline | 1-2 demos |
+| `COACH_READY` | `"coach_ready"` | Full coaching active | 3+ demos |
+
+**`UserOnboardingManager` class:**
+- `MIN_INITIAL_DEMOS = 1` — minimum to start basic coaching
+- `RECOMMENDED_DEMOS = 3` — minimum for stable statistical baseline
+- `_CACHE_TTL_SECONDS = 60` — cache TTL for demo count (avoids repeated queries during rapid UI refreshes)
+
+**Methods:**
+- `get_status(user_id) → OnboardingStatus` — returns the full onboarding status with demo count, stage, messages, and `coach_ready`/`baseline_stable` flags
+- `_count_user_demos(user_id)` — counts processed (non-pro) demos with TTL-based cache. Filter: `player_name == user_id AND is_pro == False`
+- `invalidate_cache(user_id=None)` — invalidates cache after new demo upload (for specific user or entire cache)
+- `_determine_stage(count)` — maps demo count to stage
+- `_get_stage_message(stage, count)` — human-readable message for each stage
+
+**Dataclass `OnboardingStatus`:** `stage`, `demos_uploaded`, `demos_required` (1), `demos_recommended` (3), `coach_ready`, `baseline_stable`, `message`.
+
+**Singleton:** `get_onboarding_manager()` — module-level factory (not thread-safe with double-checked locking — acceptable for this low-contention use case).
+
 ---
 
 ## 5B. Subsystem 3B — Coaching Engines
@@ -550,7 +612,7 @@ flowchart LR
 **Folder in the repo:** `backend/knowledge/`
 **Files:** `rag_knowledge.py`, `experience_bank.py`
 
-This subsystem is the coach's **library and diary**: it stores tactical knowledge (like a textbook) and past training experiences (like a diary of what worked and what did not).
+This subsystem manages two complementary data types: **tactical knowledge** (strategies, positioning, utility usage documented and indexed for semantic search) and **coaching experiences** (records of every coaching session with outcome, effectiveness, and match context, used for case-based learning).
 
 ### -RAG Knowledge Base (`rag_knowledge.py`)
 
@@ -1193,7 +1255,7 @@ The **single source of truth** for tick-level feature vectors. Both training (`R
 - **Map identity encoding:** deterministic hash enables map-specific learning
 - **HeuristicConfig** (`base_features.py`) allows overriding all normalization bounds via JSON
 
-> **Design decisions explained:** The **cyclical yaw encoding** (sin/cos) solves a sneaky problem: if you encode the direction a player looks as a single angle, looking left (-179°) and looking right (+179°) appear mathematically very distant, even though they are almost the same direction. Using sine and cosine, the math correctly understands they are close — like wrapping a ruler into a circle so 0° and 360° touch. The **Z penalty** is a "wrong-floor alarm": on multilevel maps like Nuke, being on the wrong floor is a disaster, so the model tracks that risk explicitly. **Tactical integration** (economy, alive counts, time) lets the coach know whether an aggressive play is correct given the remaining time or numerical advantage.
+> **Design decisions:** The **cyclical yaw encoding** (sin/cos) solves angular discontinuity: an angle of -179° and +179° differ by only 2° in reality but by 358° in linear representation. The (sin θ, cos θ) pair maps the angle onto a unit circle where Euclidean distance reflects the actual angular distance. The **Z penalty** (`z_penalty` in the 25-dim vector) explicitly flags the risk of vertical floor error — critical on multilevel maps (Nuke, Vertigo) where confusing upper/lower leads to completely wrong tactical decisions. **Tactical integration** (economy, alive counts, time) provides the model with the context needed to evaluate whether an aggressive play is correct given the numerical advantage, economic budget, and remaining time in the round.
 
 ### -HLTV 2.0 Rating (`rating.py`)
 
@@ -1898,7 +1960,7 @@ flowchart TB
 
 ### -Data Models (`db_models.py`)
 
-The **genetic code** of the whole system: defines every table, constraint, index, and validator through SQLModel (Pydantic + SQLAlchemy). Two enums and 20+ models organized per tier.
+The **canonical schema** of the whole system: defines every table, constraint, index, and validator through SQLModel (Pydantic + SQLAlchemy). Two enums and 20+ models organized per tier.
 
 **Integrity enums:**
 
@@ -2027,7 +2089,7 @@ flowchart LR
 
 ### -BackupManager (`backup_manager.py`)
 
-The **data security officer**: creates non-blocking backup copies via `VACUUM INTO` and manages them with a rotation policy.
+The **data security officer**: creates non-blocking backup copies via the **SQLite Online Backup API** (`sqlite3.Connection.backup()`) and manages them with a rotation policy. The online backup API (not `VACUUM INTO`) is the correct choice because it operates safely with WAL-mode and concurrent access — it copies pages incrementally without requiring an exclusive lock on the entire database.
 
 >
 > **Fix H-02 — DB handle leak:** `_verify_integrity()` uses a `try/finally` block to guarantee closing the `sqlite3` connection even on error. The PRAGMA used is `quick_check` (not `integrity_check`) to reduce verification time on large databases — `quick_check` skips index validation, which is sufficient to verify the structural integrity of backup pages.
@@ -2037,8 +2099,8 @@ The **data security officer**: creates non-blocking backup copies via `VACUUM IN
 ```mermaid
 flowchart TB
     TRIGGER["should_run_auto_backup()<br/>Check: does a backup exist for today?"]
-    TRIGGER -->|"No backup today"| VACUUM["VACUUM INTO<br/>'backup_{label}_{timestamp}.db'"]
-    VACUUM --> EXISTS{"File created?"}
+    TRIGGER -->|"No backup today"| BACKUP["sqlite3.Connection.backup()<br/>'backup_{label}_{timestamp}.db'"]
+    BACKUP --> EXISTS{"File created?"}
     EXISTS -->|"No"| FAIL["Error: missing file"]
     EXISTS -->|"Yes"| INTEG["PRAGMA quick_check<br/>on the copy"]
     INTEG -->|"ok"| LOG["Log: Backup Successful<br/>(size MB)"]
@@ -2052,12 +2114,12 @@ flowchart TB
     end
     PRUNE --> RETENTION
 
-    style VACUUM fill:#4a9eff,color:#fff
+    style BACKUP fill:#4a9eff,color:#fff
     style INTEG fill:#ffd43b,color:#000
     style PRUNE_OLD fill:#ff6b6b,color:#fff
 ```
 
-**Path safety:** The backup label is validated with the regex `^[a-zA-Z0-9_\-]+$`, and the resolved path is checked to prevent path traversal attacks. The path is escaped for SQL injection (`'` → `''`).
+**Path safety:** The backup label is pre-validated with regex `_SAFE_BACKUP_LABEL_RE = ^[a-zA-Z0-9_\-]{1,64}$` (BE-01, DB-03). The destination path is verified via `Path.resolve().relative_to()` to ensure it resides within the backup directory — defense in depth (BE-06) against path traversal. The online backup API (`sqlite3.Connection.backup()`) does not involve SQL queries for the path, eliminating injection risk at this level.
 
 ### -StorageManager (`storage_manager.py`)
 
@@ -2092,7 +2154,7 @@ Manager for **local storage** of CS2 demos: ingestion folders, post-processing a
 
 **`maintenance.py`** — Database maintenance: `prune_old_metadata(days=90)` deletes old records in batches of 500 (`SQLITE_MAX_VARIABLE_NUMBER` safety), avoiding DELETE queries with thousands of parameters that SQLite would reject.
 
-**`remote_file_server.py`** — Remote backup and file-management service: supports synchronization with an external drive or cloud backup.
+**`remote_file_server.py`** — Personal cloud storage server built on FastAPI for remote access to application data. Implements authentication via API key with HMAC-safe comparison (`hmac.compare_digest`) to prevent timing attacks, sliding-window rate limiting (10 req/min per IP) via ASGI middleware, and path traversal protection on all file-access endpoints. **Security BE-07:** refuses binding on non-localhost addresses without TLS — if certificate and key are provided, serves over HTTPS via uvicorn; otherwise, restricts to `localhost`. Endpoints: `GET /list` (file listing with auth), `GET /download/{filename}` (download with auth and path traversal protection), `GET /health` (health check without auth).
 
 ```mermaid
 flowchart TB
@@ -2100,7 +2162,7 @@ flowchart TB
         DBM["DatabaseManager<br/>(WAL, pool_size=1)"]
         HLTV_DBM["HLTVDatabaseManager<br/>(separate database)"]
         MDM["MatchDataManager<br/>(Tier 3, LRU cache 50)"]
-        BM["BackupManager<br/>(VACUUM INTO, 7d+4w)"]
+        BM["BackupManager<br/>(Online Backup API, 7d+4w)"]
         SM["StorageManager<br/>(demo folders, quotas)"]
         STM["StateManager<br/>(CoachState singleton)"]
         MODELS["db_models.py<br/>(20+ SQLModel tables)"]
