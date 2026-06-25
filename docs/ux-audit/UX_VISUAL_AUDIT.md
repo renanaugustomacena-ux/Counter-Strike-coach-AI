@@ -61,16 +61,22 @@ Each theme correctly loads its own wallpaper (`vertical_wallpaper_cs2_A` / `…c
 
 **Fixed** in `wizard_screen.py`: the 5-page step stack is now wrapped in a `Card(depth="frosted")` — a ~0.78-alpha, theme-driven glass panel (navy/gold/dark-gold per theme) with a hairline border and accent-tinted glow. The welcome copy is now fully legible while the wallpaper shows tastefully through the glass. No hardcoded values — reuses the design-system `frosted` tier + `design_tokens`, so it stays consistent across CS2/CSGO/CS16. The updated `renders/*/wizard.png` reflect the fix.
 
-### P2 — Wallpaper bleed on sparse screens
-On low-content screens (empty performance, empty match_detail) the wallpaper shows through and competes with content. Steam-tier apps blur+darken decorative imagery heavily (~0.08 opacity) so it never competes. Opaque/semi-opaque content panels or a stronger scrim would resolve it. Less severe than the initial (wrong-wallpaper) render suggested, but real.
+### P2 — Wallpaper bleed on sparse screens — ✅ RESOLVED (2026-06-25)
+~~On low-content screens (empty performance, empty match_detail) the wallpaper shows through and competes with content.~~
+
+**Fixed** in `main_window.py` (`_BackgroundWidget`): wallpaper opacity lowered `0.25 → 0.15`, so decorative imagery now reads as a faint texture instead of competing with content on the panel-less sparse screens. Verified on empty `performance` across all themes — the empty-state copy + CTA now clearly win. Panel'd screens were already covered by the P1 frosted card. Applied as a single, low-risk opacity lever (no stacked scrim needed after visual check).
 
 ### P3 — Empty-heavy first run
 Pro reference data populates match_history / pro_comparison, but **personal** screens (performance, match_detail) stay bare until a demo is analyzed. First impression hinges on driving the user to analyze a demo fast → the onboarding funnel is the highest-leverage flow.
 
-### P4 — CSGO selected-state affordance + secondary-text contrast
-CSGO's pale selected pills are hard to distinguish; gray-on-dark secondary text occasionally reads weak. A small contrast bump fixes both.
+### P4 — CSGO selected-state affordance — ✅ RESOLVED (2026-06-25)
+~~CSGO's pale selected pills are hard to distinguish at a glance.~~
 
-> All four are **presentation** fixes — no architectural change required.
+**Fixed** in `settings_screen.py` (`_update_toggle_group`): the selected pill now carries a lighter `accent_hover` ring on top of the `accent_primary` fill (plus the existing bold white text), so the active state reads strongly even with CSGO's muted slate accent. Border kept at 1px in **both** states, which also fixes a pre-existing 1px content-box reflow on toggle. Verified across CS2/CSGO/CS1.6 settings — CSGO affordance improved, CS2/CS1.6 unchanged (no regression). CSGO's overall cool/muted character is intentional theme identity; the fix maximizes affordance within it rather than re-saturating the theme accent.
+
+*Note:* the secondary "gray-on-dark text contrast" sub-point is not addressed here — tracked separately if it proves bothersome in practice.
+
+> All P1–P4 are **presentation** fixes — no architectural change required.
 
 ---
 
@@ -113,8 +119,8 @@ No valid credential exists in any source (`.env`, `user_settings.json`, Windows 
 ## 8. Recommended next steps (when work resumes)
 
 1. ~~**Wizard panel** (P1) — add a semi-opaque card behind the welcome copy.~~ ✅ **Done** (2026-06-25) — frosted `Card` wrapper, see §5.
-2. **Wallpaper scrim** (P2) — darken/blur decorative imagery in content zones (a single `design_tokens` opacity + an overlay scrim).
-3. **CSGO selected-state** (P4) — bump the selected-pill contrast in the CSGO QSS.
+2. ~~**Wallpaper scrim** (P2) — darken decorative imagery in content zones.~~ ✅ **Done** (2026-06-25) — wallpaper opacity 0.25→0.15, see §5.
+3. ~~**CSGO selected-state** (P4) — bump the selected-pill contrast.~~ ✅ **Done** (2026-06-25) — accent_hover ring on selected pills, see §5.
 4. **Default to CS2 theme** for new installs (strongest first impression).
 5. **Insert valid API keys** → re-run `api_smoke_test.py` to confirm live round-trip.
 6. **Decide on `legacy_kivy/`** — archive/remove to sharpen the repo's "focused product" signal (it's already non-shipping).

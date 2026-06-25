@@ -131,7 +131,11 @@ class _BackgroundWidget(QWidget):
         super().__init__(parent)
         self._pixmap: QPixmap | None = None
         self._scaled_cache: QPixmap | None = None
-        self._opacity: float = 0.25
+        # P2 (UX audit): wallpaper opacity lowered 0.25 -> 0.15 so decorative
+        # imagery never competes with content on sparse screens (empty
+        # performance/match-detail, wizard). Panel'd screens already rely on
+        # frosted cards; this rescues the screens without a content panel.
+        self._opacity: float = 0.15
         self._motif_tile: QPixmap | None = self._render_motif_tile()
         # Keep the motif barely perceptible — it's a subconscious
         # texture cue, not a decoration. Tweak via settings later.

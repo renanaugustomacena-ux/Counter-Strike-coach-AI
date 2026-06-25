@@ -453,9 +453,15 @@ class SettingsScreen(QWidget):
         tokens = get_tokens()
         for key, btn in button_dict.items():
             if key == active_key:
+                # P4 (UX audit): the selected pill gets a lighter accent_hover
+                # ring on top of the accent fill so the active state reads
+                # strongly even when the theme accent is muted (CSGO's slate).
+                # Border kept at 1px in BOTH states so the content box doesn't
+                # reflow by 1px when toggled.
                 btn.setStyleSheet(
                     f"QPushButton {{ background-color: {tokens.accent_primary}; "
-                    f"color: {tokens.text_inverse}; border: none; border-radius: 8px; "
+                    f"color: {tokens.text_inverse}; "
+                    f"border: 1px solid {tokens.accent_hover}; border-radius: 8px; "
                     f"padding: 8px 20px; font-weight: bold; }}"
                     f"QPushButton:hover {{ background-color: {tokens.accent_hover}; }}"
                 )
