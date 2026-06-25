@@ -112,7 +112,7 @@ Separate from visuals but part of "how it presents": both integrations are **cod
 
 No valid credential exists in any source (`.env`, `user_settings.json`, Windows keyring `MacenaCS2Analyzer`). The **code** is production-grade (Bearer/key auth, retry+backoff, rate limiting, keyring storage, zero hardcoded keys, wired to the config screens). → They will work the moment valid keys are entered; they do **not** work now. *(Probe scripts: `scratchpad/api_smoke_test.py`, `scratchpad/cred_sources.py`.)*
 
-**Note (stale validator):** `tools/backend_validator.py:76` still checks `import kivymd` + `layout.kv` existence. Kivy was intentionally dropped from V1 (`requirements.txt` ships only `PySide6`; `pyproject.toml`: "Legacy Kivy UI — migrated to Qt, not shipped in V1"), so this check throws a **false failure** on a clean install.
+**Note (stale validator) — ✅ resolved (2026-06-25):** `tools/backend_validator.py` previously checked `import kivymd` + `layout.kv` existence and would throw a **false failure** on a clean install (Kivy was intentionally dropped from V1 — `requirements.txt` ships only `PySide6`). The kivymd/layout.kv probes were removed from `backend_validator`, `ui_diagnostic`, `Goliath_Hospital`, and `project_snapshot` as part of the legacy_kivy cleanup (see §8.6).
 
 ---
 
@@ -123,8 +123,8 @@ No valid credential exists in any source (`.env`, `user_settings.json`, Windows 
 3. ~~**CSGO selected-state** (P4) — bump the selected-pill contrast.~~ ✅ **Done** (2026-06-25) — accent_hover ring on selected pills, see §5.
 4. **Default to CS2 theme** for new installs (strongest first impression).
 5. **Insert valid API keys** → re-run `api_smoke_test.py` to confirm live round-trip.
-6. **Decide on `legacy_kivy/`** — archive/remove to sharpen the repo's "focused product" signal (it's already non-shipping).
-7. *(Optional)* Repair/relax the `backend_validator.py` kivymd check.
+6. ~~**Decide on `legacy_kivy/`** — archive/remove to sharpen the repo's "focused product" signal.~~ ✅ **Done** (2026-06-25) — folder deleted (22 files); `test_detonation_overlays.py` repointed to the live Qt `map_widget` (now 8/8 pass vs 3 pass + 5 skip); integrity manifest regenerated; kivymd/layout.kv probes removed from `backend_validator`, `ui_diagnostic`, `Goliath_Hospital`, `project_snapshot`; stale coverage exclusion dropped. **Remaining follow-ups** (build/packaging infra, separate pass): `scripts/build_exe.bat` + `build_production.bat` + `packaging/cs2_analyzer_win.spec` still reference `kivy`/`kivymd`/old `main.py`; `core/registry.py` keeps a guarded `kivymd` import; `tests/forensics/debug_env.py` probes kivymd; CI `KIVY_NO_ARGS` env vars are now stale.
+7. ~~*(Optional)* Repair/relax the `backend_validator.py` kivymd check.~~ ✅ **Done** (part of #6).
 
 ---
 

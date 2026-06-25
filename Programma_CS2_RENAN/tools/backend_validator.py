@@ -73,7 +73,7 @@ class BackendValidator(BaseValidator):
         # Critical dependencies
         deps_ok = True
         missing = []
-        for mod in ["psutil", "kivymd", "sklearn", "demoparser2", "sqlmodel"]:
+        for mod in ["psutil", "sklearn", "demoparser2", "sqlmodel"]:
             try:
                 __import__(mod)
             except ImportError:
@@ -445,10 +445,6 @@ class BackendValidator(BaseValidator):
     # -----------------------------------------------------------------
     def _check_resource_integrity(self):
         self.console.section("Resource Integrity", 6, 7)
-
-        # KV layout
-        kv = SOURCE_ROOT / "apps" / "legacy_kivy" / "layout.kv"
-        self.check("Resources", "layout.kv exists", kv.exists())
 
         # PHOTO_GUI
         gui = SOURCE_ROOT / "PHOTO_GUI"

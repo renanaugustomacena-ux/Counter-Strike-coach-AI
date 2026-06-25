@@ -37,9 +37,6 @@ class UIDiagnostic(BaseValidator):
     def _check_resources(self):
         self.console.section("Resources", 1, 6)
 
-        kv = SOURCE_ROOT / "apps" / "legacy_kivy" / "layout.kv"
-        self.check("Resources", "layout.kv exists", kv.exists())
-
         gui = SOURCE_ROOT / "PHOTO_GUI"
         self.check(
             "Resources",
@@ -151,73 +148,18 @@ class UIDiagnostic(BaseValidator):
     # Section 4: KV Validation
     # -----------------------------------------------------------------
     def _check_kv_validation(self):
+        # The Kivy UI (apps/legacy_kivy + layout.kv) was migrated to PySide6/Qt
+        # and removed. KV validation is retired — the live UI is covered by the
+        # Qt Frontend section below. Reported as a non-failing notice so the
+        # `console.py` `test ui` command and the section count stay stable.
         self.console.section("KV Validation", 4, 6)
-
-        kv_path = SOURCE_ROOT / "apps" / "legacy_kivy" / "layout.kv"
-        if not kv_path.exists():
-            self.check("KV", "layout.kv readable", False)
-            return
-
-        kv_content = kv_path.read_text(encoding="utf-8")
-        kv_lines = kv_content.splitlines()
-
-        # 3-space indentation check (NEW)
-        bad_indent_lines = []
-        for i, line in enumerate(kv_lines, 1):
-            stripped = line.lstrip()
-            if not stripped or stripped.startswith("#"):
-                continue
-            indent = len(line) - len(stripped)
-            if indent > 0 and indent % 3 != 0:
-                # Check it's not a string continuation
-                if not stripped.startswith(("'", '"', ")", "]")):
-                    bad_indent_lines.append(i)
-
         self.check(
             "KV",
-            "3-space indentation",
-            len(bad_indent_lines) == 0,
-            detail=f"{len(bad_indent_lines)} violations" if bad_indent_lines else "clean",
-            error=f"Lines: {bad_indent_lines[:5]}..." if bad_indent_lines else "",
-            severity=Severity.WARNING,
+            "Kivy UI retired (migrated to Qt)",
+            True,
+            detail="layout.kv removed — see Qt Frontend section",
+            severity=Severity.INFO,
         )
-
-        # Widget ID uniqueness (NEW)
-        ids = re.findall(r"^\s+id:\s+(\w+)", kv_content, re.MULTILINE)
-        duplicates = [x for x in set(ids) if ids.count(x) > 1]
-        self.check(
-            "KV",
-            "Widget ID uniqueness",
-            len(duplicates) == 0,
-            detail=f"{len(ids)} IDs, {len(duplicates)} duplicates",
-            error=f"Duplicates: {duplicates}" if duplicates else "",
-            severity=Severity.WARNING,
-        )
-
-        # Screen class completeness (NEW) — check that each Screen subclass in Python has a KV rule
-        try:
-            main_py = SOURCE_ROOT / "main.py"
-            if main_py.exists():
-                main_content = main_py.read_text(encoding="utf-8")
-                # Find screen classes
-                screen_classes = re.findall(r"class\s+(\w+Screen)\s*\(", main_content)
-                # Check KV for matching rules
-                missing = []
-                for sc in screen_classes:
-                    if f"<{sc}>" not in kv_content:
-                        missing.append(sc)
-                self.check(
-                    "KV",
-                    "Screen class completeness",
-                    len(missing) == 0,
-                    detail=f"{len(screen_classes)} screens, {len(missing)} missing KV rules",
-                    error=f"Missing: {missing[:5]}" if missing else "",
-                    severity=Severity.WARNING,
-                )
-        except Exception as e:
-            self.check(
-                "KV", "Screen class completeness", False, error=str(e), severity=Severity.WARNING
-            )
 
     # -----------------------------------------------------------------
     # Section 5: Qt Frontend (primary UI)

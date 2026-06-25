@@ -439,16 +439,6 @@ class GoliathHospital(BaseValidator):
                 detail="models/ not present (ok if no trained models yet)",
             )
 
-        # layout.kv
-        layout_kv = SOURCE_ROOT / "apps" / "legacy_kivy" / "layout.kv"
-        self.check(
-            "Radiology",
-            "layout_kv",
-            layout_kv.exists(),
-            error="apps/legacy_kivy/layout.kv missing",
-            severity=Severity.ERROR,
-        )
-
     # =================================================================
     # 3. Pathology — Data Quality
     # =================================================================

@@ -26,7 +26,6 @@ VERSION = "1.0"
 # ─── Packages to probe ────────────────────────────────────────────────────────
 CRITICAL_DEPS = [
     "sqlmodel",
-    "kivymd",
     "demoparser2",
     "ncps",
     "numpy",
