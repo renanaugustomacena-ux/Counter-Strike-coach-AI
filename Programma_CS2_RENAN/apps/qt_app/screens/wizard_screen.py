@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.stepper import Stepper
 from Programma_CS2_RENAN.core.config import save_user_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -75,12 +76,21 @@ class WizardScreen(QWidget):
 
         # 5-page stack
         self._stack = QStackedWidget()
+        self._stack.setStyleSheet("QStackedWidget { background: transparent; }")
         self._stack.addWidget(self._build_intro_page())  # 0
         self._stack.addWidget(self._build_name_page())  # 1
         self._stack.addWidget(self._build_brain_page())  # 2
         self._stack.addWidget(self._build_demo_page())  # 3
         self._stack.addWidget(self._build_finish_page())  # 4
-        layout.addWidget(self._stack, 1)
+
+        # P1 (UX visual audit): float the step content on a frosted panel so the
+        # intro/finish copy stays legible over the desktop wallpaper instead of
+        # rendering directly on the busy background. frost_bg is ~0.78 alpha and
+        # theme-driven, so legibility stays consistent across CS2 / CSGO / CS16.
+        content_panel = Card(depth="frosted")
+        content_panel.content_layout.setContentsMargins(28, 28, 28, 28)
+        content_panel.content_layout.addWidget(self._stack)
+        layout.addWidget(content_panel, 1)
 
         # Bottom bar with Back + Next buttons
         bottom = QHBoxLayout()
