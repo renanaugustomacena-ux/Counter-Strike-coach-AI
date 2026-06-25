@@ -162,7 +162,10 @@ docs/d2a_run_report.json
 # Internal engineering reports (local-only, not for public distribution)
 /CS2_Coach_Modernization_Report.pdf
 /CS2_Coach_Supplement_N260.pdf
-/docs/research/
+# Research library: ignore all PDFs and notes (large binaries / internal),
+# but TRACK the bibliography catalog so the reading list is public + pushable.
+/docs/research/*
+!/docs/research/INDEX.md
 
 # Test/validation artifacts
 .coverage
