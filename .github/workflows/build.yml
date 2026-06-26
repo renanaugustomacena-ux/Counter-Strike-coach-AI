@@ -135,7 +135,11 @@ jobs:
 
       - name: Run pytest (Windows — cross-platform test validation, no coverage)
         if: runner.os == 'Windows'
-        run: python -m pytest Programma_CS2_RENAN/tests/ tests/ -v --tb=short
+        # --timeout=0 disables pytest-timeout on Windows: its thread-based timer is
+        # not reliably cancelled on the Windows runner and fires a spurious
+        # KeyboardInterrupt during teardown (all tests pass, but exit code 1). The
+        # hang-guard is retained on the Linux leg (pytest.ini timeout=30).
+        run: python -m pytest Programma_CS2_RENAN/tests/ tests/ -v --tb=short --timeout=0
 
       - name: Upload coverage report
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
