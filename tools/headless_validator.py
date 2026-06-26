@@ -22,6 +22,7 @@ Exit:   0 = PASS (warnings allowed) | 1 = FAIL
 
 import ast
 import importlib
+import importlib.util
 import json
 import os
 import re
