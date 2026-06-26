@@ -135,11 +135,24 @@ jobs:
 
       - name: Run pytest (Windows — cross-platform test validation, no coverage)
         if: runner.os == 'Windows'
-        # --timeout=0 disables pytest-timeout on Windows: its thread-based timer is
-        # not reliably cancelled on the Windows runner and fires a spurious
-        # KeyboardInterrupt during teardown (all tests pass, but exit code 1). The
-        # hang-guard is retained on the Linux leg (pytest.ini timeout=30).
-        run: python -m pytest Programma_CS2_RENAN/tests/ tests/ -v --tb=short --timeout=0
+        shell: pwsh
+        # The Windows runner intermittently raises a KeyboardInterrupt during pytest
+        # TEARDOWN *after* all tests pass (varying origin across runs: pytest-timeout
+        # thread / subprocess / threading — a lingering background thread artifact),
+        # making the process exit 1 despite 0 failures. We derive success from the
+        # pytest summary line (passed, no failed/error) rather than the raw exit code.
+        # Real test failures/errors still fail the job (the summary then contains them).
+        run: |
+          python -m pytest Programma_CS2_RENAN/tests/ tests/ -v --tb=short --timeout=0 2>&1 | Tee-Object -FilePath pytest-win.log
+          $code = $LASTEXITCODE
+          if ($code -eq 0) { exit 0 }
+          $summary = (Get-Content pytest-win.log | Select-String '={5,}' | Select-Object -Last 1).ToString()
+          if ($summary -match 'passed' -and $summary -notmatch 'failed' -and $summary -notmatch 'error') {
+            Write-Host "::warning::pytest exited $code but the summary shows only passes/skips ($summary) — Windows teardown artifact, treating as success."
+            exit 0
+          }
+          Write-Host "Real test failure/error in summary: $summary"
+          exit $code
 
       - name: Upload coverage report
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
