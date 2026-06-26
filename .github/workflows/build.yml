@@ -127,7 +127,6 @@ jobs:
           --cov-report=xml:coverage.xml
           --cov-report=term-missing
           --cov-fail-under=33
-          -x
 
       - name: Upload coverage report
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
