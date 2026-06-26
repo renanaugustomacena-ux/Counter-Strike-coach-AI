@@ -22,6 +22,7 @@ unit-only runs stay fast.
 
 from __future__ import annotations
 
+import importlib.util
 import os
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -182,6 +183,10 @@ class TestRAPDryRunSmoke:
 # ===========================================================================
 
 
+@pytest.mark.skipif(
+    importlib.util.find_spec("ncps") is None or importlib.util.find_spec("hflayers") is None,
+    reason="RAP memory layer requires optional 'ncps'/'hflayers' (requirements-rap.txt).",
+)
 class TestRAPLTCFixIsLoaded:
     """The ncps LTC shape patch must be present in the experimental rap_coach memory."""
 
