@@ -702,7 +702,7 @@ Production-grade backup solution for the monolithic SQLite database.
   - Keeps the last 7 daily backups (one per day, most recent for each day)
   - Keeps the last 4 weekly backups (one per ISO week, for approximately one month of coverage)
   - Deletes all backups not in the keep list
-  
+
   Parses backup filenames to extract timestamps using the format `backup_LABEL_YYYYMMDD_HHMMSS.db`. Skips malformed filenames gracefully.
 
 - **`should_run_auto_backup() -> bool`**: Checks whether any backup exists with today's date. Returns `True` if no backup for today exists (triggering auto-backup). Fails safe: returns `True` on any error.
@@ -1714,7 +1714,7 @@ Nearly every service, manager, and controller uses the singleton pattern. Two va
    ```python
    _instance = None
    _lock = threading.Lock()
-   
+
    def get_instance():
        global _instance
        if _instance is None:
@@ -1728,7 +1728,7 @@ Nearly every service, manager, and controller uses the singleton pattern. Two va
 2. **Simple Singleton** (not thread-safe): Used for low-contention singletons. Pattern:
    ```python
    _instance = None
-   
+
    def get_instance():
        global _instance
        if _instance is None:
