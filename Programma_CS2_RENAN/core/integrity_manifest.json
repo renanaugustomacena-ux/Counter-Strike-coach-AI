@@ -103,7 +103,7 @@
     "backend/analysis/movement_quality.py": "23200eeb7e1462d58b94df64151a0c03fe8d630d5ae2d3c486bc31cc7a7b0e69",
     "backend/analysis/role_classifier.py": "1b8ffefa7b5171040ff060f51971f875b3e4a308ef31f78800b6dbb61422cd7f",
     "backend/analysis/utility_economy.py": "d06763dc8a3c3a7ce4b9b4c8e8b8bab6ae27bad60007b43f461015b6249cb3fc",
-    "backend/analysis/win_probability.py": "1c984511d9257147dd48dda221ea0269b3603c261159564d78d5edf74c8fdb62",
+    "backend/analysis/win_probability.py": "ca2ef3a46af0ce0260570be8f4e2c34e427fa6ac9a5e715dd6b52a7adeb4e04a",
     "backend/coaching/__init__.py": "e0d323aa94e266b6daef232f6570f2e926d3a06504d9e49a74605aec8cf9f931",
     "backend/coaching/correction_engine.py": "1b627a30a24489b693acb51e4418c182e77fc095d1f4d0dcbc65a48f9642af80",
     "backend/coaching/explainability.py": "d0fe98eaa870da2e4d1af992bcf146e0b7e29f6f55eb7f12aad9da3209ae486d",

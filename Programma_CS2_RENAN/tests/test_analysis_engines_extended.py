@@ -425,3 +425,49 @@ class TestWinProbabilityPredictor:
         pred = WinProbabilityPredictor()
         prob, explanation = pred.predict_from_dict({"alive_players": 4, "enemy_alive": 2})
         assert 0.0 <= prob <= 1.0
+
+
+class TestPlattScaler:
+    """26-WINPROB-03: the Newton-Raphson fit must converge to the BCE MLE, not diverge.
+
+    Validates the calibration math against closed-form ground truth (a numerical
+    algorithm under test, not fabricated domain data): for probabilities the model
+    already calibrates, the optimum is the identity map (A=-1, B=0); for an
+    overconfident model, fitted calibration must reduce Brier error. Pre-fix the
+    Hessian sign was negated, so A,B ran away to ~3e8 (overflow) and calibrate()
+    collapsed every probability to 0.
+    """
+
+    def test_fit_converges_to_identity_on_calibrated_data(self):
+        import numpy as np
+
+        from Programma_CS2_RENAN.backend.analysis.win_probability import PlattScaler
+
+        logits = np.linspace(-4.0, 4.0, 2000)
+        p = 1.0 / (1.0 + np.exp(-logits))  # already-calibrated probabilities
+        scaler = PlattScaler()
+        scaler.fit(p, p)  # soft labels = p => identity optimum A=-1, B=0
+
+        assert scaler.fitted
+        assert abs(scaler.a - (-1.0)) < 0.05  # not 3e8 (the pre-fix divergence)
+        assert abs(scaler.b) < 0.05
+        assert abs(scaler.calibrate(0.70) - 0.70) < 0.02
+        assert abs(scaler.calibrate(0.90) - 0.90) < 0.02
+
+    def test_fit_reduces_brier_on_overconfident_model(self):
+        import numpy as np
+
+        from Programma_CS2_RENAN.backend.analysis.win_probability import PlattScaler
+
+        logits = np.linspace(-4.0, 4.0, 2000)
+        p = 1.0 / (1.0 + np.exp(-logits))  # truth
+        raw = 1.0 / (1.0 + np.exp(-2.0 * logits))  # overconfident (sharper than truth)
+        scaler = PlattScaler()
+        scaler.fit(raw, p)
+
+        cal = np.array([scaler.calibrate(float(r)) for r in raw])
+        brier_before = float(np.mean((raw - p) ** 2))
+        brier_after = float(np.mean((cal - p) ** 2))
+        assert brier_after < brier_before
+        # Regression guard against the divergence: parameters must stay finite/small.
+        assert abs(scaler.a) < 100.0 and abs(scaler.b) < 100.0

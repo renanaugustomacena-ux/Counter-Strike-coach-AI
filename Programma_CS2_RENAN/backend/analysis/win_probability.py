@@ -138,13 +138,17 @@ class PlattScaler:
 
         a, b = 0.0, 0.0
         for _ in range(max_iter):
-            s = 1.0 / (1.0 + np.exp(a * logits + b))
+            s = 1.0 / (1.0 + np.exp(np.clip(a * logits + b, -500.0, 500.0)))
             d = y - s
             grad_a = float(np.dot(d, logits))
             grad_b = float(np.sum(d))
+            # Newton-Raphson step minimizing BCE (logistic-regression MLE):
+            # grad = d(NLL)/dθ = Σ(y - s)·x, Hessian = Σ s(1-s)·x² (positive-definite).
+            # 26-WINPROB-03: the Hessian was previously negated, flipping the sign of
+            # every update so A,B ran away to ±1e8 (overflow) instead of converging.
             w = s * (1 - s) + eps
-            hess_a = -float(np.dot(w, logits**2))
-            hess_b = -float(np.sum(w))
+            hess_a = float(np.dot(w, logits**2))
+            hess_b = float(np.sum(w))
             if abs(hess_a) > eps:
                 a -= grad_a / hess_a
             if abs(hess_b) > eps:
@@ -161,7 +165,7 @@ class PlattScaler:
         eps = 1e-7
         p = np.clip(raw_prob, eps, 1 - eps)
         logit = np.log(p / (1 - p))
-        return float(1.0 / (1.0 + np.exp(self.a * logit + self.b)))
+        return float(1.0 / (1.0 + np.exp(np.clip(self.a * logit + self.b, -500.0, 500.0))))
 
 
 class WinProbabilityPredictor:
