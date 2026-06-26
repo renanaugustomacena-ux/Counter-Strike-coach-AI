@@ -56,10 +56,57 @@ def _read_lock(path: Path) -> Optional[Tuple[int, str]]:
         return None
 
 
+def _is_pid_alive_windows(pid: int) -> bool:
+    """Windows liveness probe (26-WIN-02).
+
+    POSIX ``os.kill(pid, 0)`` is unreliable on Windows: for a non-existent PID it
+    raises ``OSError(WinError 87)`` instead of ``ProcessLookupError`` — which the
+    POSIX branch would let propagate as an uncaught error out of ``acquire`` /
+    ``holder_pid`` — and for a process that has already exited but whose handle is
+    still referenced it *returns success* (a false "alive" that would leave a stale
+    lock unreclaimed). Instead we open the process and read its exit code: a live
+    process reports ``STILL_ACTIVE``; an exited one reports its real exit code even
+    while a handle lingers; a non-existent PID cannot be opened at all.
+
+    Caveat: a process that genuinely exits with code 259 (``STILL_ACTIVE``) reads as
+    alive — a documented Windows limitation, negligible for lock-holder tools.
+    """
+    import ctypes
+    from ctypes import wintypes
+
+    PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+    STILL_ACTIVE = 259
+    ERROR_ACCESS_DENIED = 5
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+    kernel32.GetExitCodeProcess.argtypes = (wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD))
+    kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+
+    handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+    if not handle:
+        # Non-existent PID (ERROR_INVALID_PARAMETER) -> dead. Access-denied means
+        # the PID belongs to a live, more-privileged process -> alive (mirrors the
+        # POSIX PermissionError branch).
+        return ctypes.get_last_error() == ERROR_ACCESS_DENIED
+    try:
+        exit_code = wintypes.DWORD()
+        if not kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)):
+            return False
+        return exit_code.value == STILL_ACTIVE
+    finally:
+        kernel32.CloseHandle(handle)
+
+
 def _is_pid_alive(pid: int) -> bool:
     """True iff a process with ``pid`` is currently alive on this host."""
     if pid <= 0:
         return False
+    if os.name == "nt":
+        # POSIX os.kill(pid, 0) is unreliable on Windows (26-WIN-02): it crashes on
+        # non-existent PIDs and false-positives on handle-retained exited processes.
+        return _is_pid_alive_windows(pid)
     try:
         os.kill(pid, 0)  # Signal 0 = liveness probe; raises if dead
         return True

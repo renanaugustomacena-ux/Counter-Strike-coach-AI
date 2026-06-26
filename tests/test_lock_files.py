@@ -101,6 +101,24 @@ def test_holder_pid_returns_none_for_stale_lock():
     assert lock_files.holder_pid("phase_d_track") is None
 
 
+def test_liveness_handles_never_allocated_pid():
+    # 26-WIN-02 regression: a never-allocated PID must read as dead and be
+    # reclaimable, never crash the liveness probe. On Windows the POSIX
+    # os.kill(pid, 0) idiom raised an uncaught OSError(WinError 87) here, so
+    # acquire()/holder_pid()/is_held() exploded instead of returning.
+    lock_path = lock_files._lock_path("phase_d_track")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path.write_text("999999 2026-01-01T00:00:00+00:00\n")
+
+    assert lock_files._is_pid_alive(999999) is False
+    assert lock_files.holder_pid("phase_d_track") is None
+    assert lock_files.is_held("phase_d_track") is False
+    # acquire must reclaim (not raise) since the holder is not a live process.
+    returned = lock_files.acquire("phase_d_track")
+    assert returned == lock_path
+    assert int(lock_path.read_text().split()[0]) == os.getpid()
+
+
 def test_context_manager_releases_on_normal_exit():
     with lock_files.lock("phase_d_track") as path:
         assert path.exists()
