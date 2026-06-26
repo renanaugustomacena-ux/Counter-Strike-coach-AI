@@ -135,15 +135,18 @@ jobs:
 
       - name: Run pytest (Windows — cross-platform test validation, no coverage)
         if: runner.os == 'Windows'
-        # NON-BLOCKING (AUDIT 26-WIN-01): the Windows runner exits non-zero from a
-        # spurious KeyboardInterrupt during pytest teardown even though every test
-        # passes. One source (a leaked SIGINT handler in test_lock_files) was fixed at
-        # source; a residual teardown artifact remains that is not reproducible from
-        # the Linux dev box. Linux is the authoritative test+coverage gate; Windows
-        # still runs for cross-platform validation (real failures are visible in the
-        # log) but does not block the pipeline until the artifact is fixed on a Windows
-        # machine. -p no:timeout avoids pytest-timeout's flaky Windows thread-timer.
-        continue-on-error: true
+        # BLOCKING. History (AUDIT 26-WIN-01 / 26-WIN-02): this leg was temporarily
+        # continue-on-error because the Windows runner exited non-zero. Two distinct
+        # causes, both now fixed at source — so the gate is re-armed:
+        #   1. test_lock_files leaked a SIGINT handler that fired a spurious
+        #      KeyboardInterrupt at pytest teardown — the test now restores it; the
+        #      artifact no longer reproduces on a full Windows run (2022 passed).
+        #   2. lock_files._is_pid_alive used the POSIX os.kill(pid,0) idiom, which on
+        #      Windows raised an uncaught OSError for unknown PIDs and false-positived
+        #      on exited ones — it now uses OpenProcess + GetExitCodeProcess.
+        # Real Windows-specific failures block the pipeline again. -p no:timeout avoids
+        # pytest-timeout's flaky Windows thread-timer; the job-level timeout-minutes is
+        # the hang backstop.
         run: python -m pytest Programma_CS2_RENAN/tests/ tests/ -v --tb=short -p no:timeout
 
       - name: Upload coverage report
