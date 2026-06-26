@@ -136,22 +136,24 @@ jobs:
       - name: Run pytest (Windows — cross-platform test validation, no coverage)
         if: runner.os == 'Windows'
         shell: pwsh
-        # The Windows runner intermittently raises a KeyboardInterrupt during pytest
-        # TEARDOWN *after* all tests pass (varying origin across runs: pytest-timeout
-        # thread / subprocess / threading — a lingering background thread artifact),
-        # making the process exit 1 despite 0 failures. We derive success from the
-        # pytest summary line (passed, no failed/error) rather than the raw exit code.
-        # Real test failures/errors still fail the job (the summary then contains them).
+        # pytest-timeout's thread-based timer is unreliable on the Windows runner and
+        # fires a spurious KeyboardInterrupt (varying point: mid-run or teardown),
+        # making pytest exit 1 despite 0 failures. Disable the plugin entirely here
+        # (-p no:timeout); the Linux leg keeps the hang-guard (pytest.ini timeout=30).
+        # Belt-and-suspenders: if a non-zero exit still occurs but the final summary
+        # shows only passes/skips, treat it as the runner artifact (real failures and
+        # errors still fail the job — the summary then contains "failed"/"error").
         run: |
-          python -m pytest Programma_CS2_RENAN/tests/ tests/ -v --tb=short --timeout=0 2>&1 | Tee-Object -FilePath pytest-win.log
+          python -m pytest Programma_CS2_RENAN/tests/ tests/ -v --tb=short -p no:timeout 2>&1 | Tee-Object -FilePath pytest-win.log
           $code = $LASTEXITCODE
           if ($code -eq 0) { exit 0 }
-          $summary = (Get-Content pytest-win.log | Select-String '={5,}' | Select-Object -Last 1).ToString()
+          $sumLine = Get-Content pytest-win.log | Select-String '={5,}.*(passed|failed|error)' | Select-Object -Last 1
+          $summary = if ($sumLine) { $sumLine.ToString() } else { '' }
           if ($summary -match 'passed' -and $summary -notmatch 'failed' -and $summary -notmatch 'error') {
-            Write-Host "::warning::pytest exited $code but the summary shows only passes/skips ($summary) — Windows teardown artifact, treating as success."
+            Write-Host "::warning::pytest exited $code but summary shows only passes/skips — treating as Windows runner artifact: $summary"
             exit 0
           }
-          Write-Host "Real test failure/error in summary: $summary"
+          Write-Host "pytest failed (exit $code). Summary: $summary"
           exit $code
 
       - name: Upload coverage report
