@@ -567,13 +567,13 @@ class TestCheckPrerequisites:
     def test_user_demos_insufficient_with_profile_present(self, monkeypatch):
         """With a profile but insufficient pro demos, still returns not ready.
 
-        Note: PlayerProfile does NOT have steam_connected/faceit_connected fields.
-        _check_db_prerequisites accesses them → AttributeError caught by outer try/except.
-        This documents a known dead-code path in _check_db_prerequisites.
+        PlayerProfile HAS steam_connected/faceit_connected (default False).
+        _check_db_prerequisites reads them defensively via getattr; an unconnected
+        profile + 5/10 pro demos yields the "Gathering Pro Baseline" path.
         """
         mgr, engine = _make_manager(monkeypatch)
         _seed_matches(engine, pro_count=5, user_count=3)
-        # Add profile without steam/faceit (model doesn't have those fields)
+        # Profile present but not steam/faceit-connected (fields default to False).
         with Session(engine) as session:
             session.add(PlayerProfile(player_name="TestPlayer", role="Entry", bio="test"))
             session.commit()
@@ -584,8 +584,8 @@ class TestCheckPrerequisites:
         )
         ok, msg = mgr.check_prerequisites()
         assert ok is False
-        # AttributeError from missing steam_connected → caught as "Prerequisite Check Failed"
-        assert "Failed" in msg or "5/10" in msg or "Gathering" in msg
+        # Unconnected profile + 5/10 pro demos → "Gathering Pro Baseline" path.
+        assert "5/10" in msg or "Gathering" in msg or "Failed" in msg
 
     def test_exception_returns_false(self, monkeypatch):
         """If DB access throws, check_prerequisites should return (False, error msg)."""

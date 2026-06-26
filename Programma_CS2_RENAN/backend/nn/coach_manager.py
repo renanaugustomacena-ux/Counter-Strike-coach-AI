@@ -169,7 +169,12 @@ class CoachTrainingManager:
             # If we don't have enough pro demos yet, check if we can use user demos
             # User demos REQUIRE ID validation (need to filter specific player's ticks)
             profile = session.exec(select(PlayerProfile)).first()
-            if not profile or not (profile.steam_connected and profile.faceit_connected):
+            # Defensive read: a profile instance may lack the connection fields if the
+            # row predates the steam_connected/faceit_connected columns (schema drift)
+            # or is a partial fixture. Missing → treat as "not connected" (safe default).
+            steam_ok = getattr(profile, "steam_connected", False)
+            faceit_ok = getattr(profile, "faceit_connected", False)
+            if not profile or not (steam_ok and faceit_ok):
                 # If no IDs connected, can only train on pro demos when available
                 if p_count > 0:
                     msg = f"Gathering Pro Baseline. Have {p_count}/10 pro demos."
