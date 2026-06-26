@@ -245,6 +245,36 @@ class TestBatchExtraction:
                 err_msg=f"Batch[{i}] differs from individual extraction",
             )
 
+    def test_p3a_gate_isolated_from_concurrent_global_clamps(self, monkeypatch):
+        """26-VEC-01: the P3-A gate must count only THIS batch's clamps.
+
+        Previously the gate diffed a process-global clamp counter (pre/post), so a
+        concurrent extract_batch() on another thread inflated the delta and could trip
+        a false DataQualityError. The gate now uses a thread-local per-batch counter.
+        Here a *clean* batch is processed while a phantom 'concurrent thread' bumps the
+        GLOBAL counter on every extract() call: with the old global-delta logic the
+        rate was 10/10=100% (raise); with the thread-local counter the batch's own
+        count is 0 → no raise.
+        """
+        import Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer as vec
+
+        clean_ticks = [{"health": 100}] * 10  # finite values → this batch clamps nothing
+        real_extract = vec.FeatureExtractor.extract
+
+        def extract_with_phantom_global_clamp(*args, **kwargs):
+            # Simulate another thread clamping: bump ONLY the global telemetry counter,
+            # never this thread's per-batch counter.
+            with vec._nan_inf_lock:
+                vec._nan_inf_clamp_count += 1
+            return real_extract(*args, **kwargs)
+
+        monkeypatch.setattr(
+            vec.FeatureExtractor, "extract", staticmethod(extract_with_phantom_global_clamp)
+        )
+
+        result = vec.FeatureExtractor.extract_batch(clean_ticks)
+        assert result.shape[0] == 10
+
 
 class TestFeatureNames:
     """Verify feature name consistency."""

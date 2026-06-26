@@ -144,6 +144,11 @@ _unknown_weapons_seen: set = set()
 # P-VEC-02: Track NaN/Inf occurrences for upstream bug visibility
 _nan_inf_clamp_count: int = 0
 _nan_inf_lock = __import__("threading").Lock()
+# 26-VEC-01: per-batch clamp counter (thread-local). The P3-A gate must measure only
+# the clamps produced by ITS OWN extract_batch() call, not those of concurrent batches
+# running on other threads. The global _nan_inf_clamp_count above stays a cumulative
+# telemetry counter; this thread-local is the per-batch, race-free signal for the gate.
+_batch_clamp_local = threading.local()
 
 
 # P-X-01: Feature schema names — single source of truth for train/infer parity.
@@ -370,6 +375,9 @@ def _finalize_vector(vec: np.ndarray) -> np.ndarray:
         with _nan_inf_lock:
             _nan_inf_clamp_count += 1
             count_snapshot = _nan_inf_clamp_count
+        # 26-VEC-01: tally this clamp against the current thread's per-batch counter
+        # (initialised by extract_batch) so the P3-A gate is isolated from other threads.
+        _batch_clamp_local.count = getattr(_batch_clamp_local, "count", 0) + 1
         _logger.error(
             "P-VEC-02: Feature vector contains NaN/Inf BEFORE clamp "
             "(occurrence #%d) — indices: %s, features: %s. "
@@ -546,8 +554,11 @@ class FeatureExtractor:
         # P-VEC-03: Pass snapshotted config directly to each extract() call
         # instead of mutating class-level state. This prevents cross-batch
         # contamination when multiple threads call extract_batch() concurrently.
-        global _nan_inf_clamp_count
-        pre_clamp = _nan_inf_clamp_count
+        # 26-VEC-01: reset this thread's per-batch clamp counter so the P3-A gate below
+        # counts only the clamps produced by THIS batch — immune to concurrent
+        # extract_batch() calls on other threads (which previously contaminated the
+        # shared global delta).
+        _batch_clamp_local.count = 0
 
         result = np.array(
             [
@@ -558,8 +569,7 @@ class FeatureExtractor:
         )
 
         # P3-A: Quality gate — refuse to produce batches with >5% NaN/Inf contamination.
-        post_clamp = _nan_inf_clamp_count
-        clamped_in_batch = post_clamp - pre_clamp
+        clamped_in_batch = getattr(_batch_clamp_local, "count", 0)
         batch_size = len(tick_data_list)
         if batch_size > 0 and clamped_in_batch > 0:
             contamination_rate = clamped_in_batch / batch_size
