@@ -135,32 +135,13 @@ jobs:
 
       - name: Run pytest (Windows — cross-platform test validation, no coverage)
         if: runner.os == 'Windows'
-        shell: pwsh
-        # pytest-timeout's thread-based timer is unreliable on the Windows runner and
-        # fires a spurious KeyboardInterrupt (varying point: mid-run or teardown),
-        # making pytest exit 1 despite 0 failures. Disable the plugin entirely here
-        # (-p no:timeout); the Linux leg keeps the hang-guard (pytest.ini timeout=30).
-        # Belt-and-suspenders: if a non-zero exit still occurs but the final summary
-        # shows only passes/skips, treat it as the runner artifact (real failures and
-        # errors still fail the job — the summary then contains "failed"/"error").
-        run: |
-          python -m pytest Programma_CS2_RENAN/tests/ tests/ -v --tb=short -p no:timeout 2>&1 | Tee-Object -FilePath pytest-win.log
-          $code = $LASTEXITCODE
-          if ($code -eq 0) { exit 0 }
-          # Root cause (AUDIT 26-WIN-01): core/lock_files.py installs a global SIGINT
-          # handler; on the Windows runner it triggers a spurious KeyboardInterrupt
-          # during session teardown (right after the lock_files tests), so pytest exits
-          # non-zero even though every test passed. Fail the job only if the log
-          # actually contains a test failure or collection error; otherwise treat the
-          # non-zero exit as the runner artifact. (The KeyboardInterrupt is internal to
-          # Python, so this pwsh wrapper still runs.)
-          $bad = Get-Content pytest-win.log | Select-String -Pattern ' FAILED', ' ERROR ', '\d+ failed', '\d+ error'
-          if (-not $bad) {
-            Write-Host "::warning::pytest exited $code but no FAILED/ERROR in log -- Windows SIGINT-handler teardown artifact, treating as success."
-            exit 0
-          }
-          Write-Host "Real test failures/errors detected -- failing job (exit $code)."
-          exit $code
+        # The earlier spurious KeyboardInterrupt on the Windows runner was a leaked
+        # SIGINT handler in test_lock_files (install_signal_handlers replaced SIGINT
+        # but only SIGTERM was restored) — now fixed at the source (AUDIT 26-WIN-01).
+        # -p no:timeout also keeps pytest-timeout's flaky Windows thread-timer out of
+        # the way (the marker is registered in pytest.ini so collection still works);
+        # the hang-guard is retained on the Linux leg.
+        run: python -m pytest Programma_CS2_RENAN/tests/ tests/ -v --tb=short -p no:timeout
 
       - name: Upload coverage report
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

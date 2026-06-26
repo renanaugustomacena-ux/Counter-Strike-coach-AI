@@ -127,6 +127,7 @@ def test_lock_name_with_path_separators_is_sanitized():
 
 def test_install_signal_handlers_replaces_handler():
     prior_term = signal.signal(signal.SIGTERM, signal.SIG_DFL)
+    prior_int = signal.getsignal(signal.SIGINT)
     try:
         lock_files.install_signal_handlers()
         current_term = signal.getsignal(signal.SIGTERM)
@@ -134,3 +135,8 @@ def test_install_signal_handlers_replaces_handler():
         assert current_term is not signal.SIG_IGN
     finally:
         signal.signal(signal.SIGTERM, prior_term)
+        # install_signal_handlers() also replaces SIGINT — restore it too, otherwise
+        # the custom handler (which re-raises via os.kill) leaks into the rest of the
+        # pytest session and fires a spurious KeyboardInterrupt during teardown on the
+        # Windows CI runner, exiting non-zero despite all tests passing (AUDIT 26-WIN-01).
+        signal.signal(signal.SIGINT, prior_int)
