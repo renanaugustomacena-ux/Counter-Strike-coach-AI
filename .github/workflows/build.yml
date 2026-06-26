@@ -119,7 +119,12 @@ jobs:
           pip install -r requirements-ci.txt
           pip install pytest pytest-cov pytest-timeout
 
-      - name: Run pytest with coverage
+      # Coverage is platform-independent (it measures code paths, not OS behaviour),
+      # so the coverage gate runs once, on Linux. Windows still runs the full test
+      # suite to validate cross-platform behaviour, but without coverage — pytest-cov
+      # report generation is flaky on the Windows runner and coverage there is redundant.
+      - name: Run pytest with coverage (Linux — coverage gate)
+        if: runner.os == 'Linux'
         run: >
           python -m pytest Programma_CS2_RENAN/tests/ tests/
           -v --tb=short
@@ -127,6 +132,10 @@ jobs:
           --cov-report=xml:coverage.xml
           --cov-report=term-missing
           --cov-fail-under=33
+
+      - name: Run pytest (Windows — cross-platform test validation, no coverage)
+        if: runner.os == 'Windows'
+        run: python -m pytest Programma_CS2_RENAN/tests/ tests/ -v --tb=short
 
       - name: Upload coverage report
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
