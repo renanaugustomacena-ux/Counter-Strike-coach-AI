@@ -27,14 +27,16 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.processing.round_reconstructor")
 
-# Tick sampling: 128 ticks/sec, sample every ~2 seconds for position tracking
+# Position-sampling granularity for the human-readable timeline: a fixed tick
+# stride (≈2 s on 128-tick demos, ≈4 s on 64-tick demos). This affects only how
+# often positions are sampled for display — real timings come from each tick's
+# persisted `time_in_round` (seconds), so it is tick-rate independent for
+# correctness and intentionally not derived from a per-demo rate (26-TICK-02).
 _POSITION_SAMPLE_INTERVAL = 256
 # Minimum position change (world units) to consider a meaningful movement
 _SIGNIFICANT_MOVEMENT = 400.0
 # Maximum ticks to load per round (safety cap for performance)
 _MAX_TICKS_PER_ROUND = 20_000
-# CS2 tick rate
-_TICK_RATE = 128
 
 # Explicit list of what the tick data cannot tell us
 _DATA_LIMITATIONS = [

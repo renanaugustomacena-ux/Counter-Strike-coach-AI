@@ -921,6 +921,47 @@ class AnalysisOrchestrator:
 
         return insights
 
+    def _resolve_tick_rate(self, demo_name: str, tick_data: pd.DataFrame) -> int:
+        """Resolve the per-demo server tick rate (single source of truth).
+
+        26-TICK-02 / data normalization: time<->tick windows must use the demo's
+        real rate so 64- and 128-tick demos coexist correctly. Resolution order:
+        (1) a ``tick_rate`` column carried by the tick data, (2) the persisted
+        ``MatchMetadata.tick_rate`` keyed by ``demo_name``, (3) the canonical
+        default (``core.constants.TICK_RATE``) with a warning — never a silent guess.
+        """
+        from Programma_CS2_RENAN.core.constants import TICK_RATE as DEFAULT_TICK_RATE
+
+        # (1) Provenance carried by the data itself, if present.
+        if "tick_rate" in tick_data.columns:
+            try:
+                rate = int(round(float(tick_data["tick_rate"].iloc[0])))
+                if rate > 0:
+                    return rate
+            except (ValueError, TypeError) as exc:
+                logger.warning("Invalid tick_rate column for %s: %s", demo_name, exc)
+
+        # (2) Single source of truth: persisted MatchMetadata.
+        try:
+            from Programma_CS2_RENAN.backend.storage.match_data_manager import (
+                demo_name_to_match_id,
+                get_match_data_manager,
+            )
+
+            meta = get_match_data_manager().get_metadata(demo_name_to_match_id(demo_name))
+            if meta is not None and meta.tick_rate and meta.tick_rate > 0:
+                return int(round(float(meta.tick_rate)))
+        except (ValueError, OSError) as exc:
+            logger.warning("Tick-rate metadata lookup failed for %s: %s", demo_name, exc)
+
+        # (3) Documented fallback — not a silent invention.
+        logger.warning(
+            "No per-demo tick_rate for %s; falling back to canonical %d",
+            demo_name,
+            DEFAULT_TICK_RATE,
+        )
+        return DEFAULT_TICK_RATE
+
     def _analyze_movement_quality(
         self,
         player_name: str,
@@ -946,7 +987,10 @@ class AnalysisOrchestrator:
             if "map_name" in tick_data.columns:
                 map_name = str(tick_data["map_name"].iloc[0])
 
-            metrics = analyzer.analyze_match_ticks(tick_dicts, map_name, player_name)
+            # 26-TICK-02: drive all time<->tick windows from the demo's real rate.
+            tick_rate = self._resolve_tick_rate(demo_name, tick_data)
+
+            metrics = analyzer.analyze_match_ticks(tick_dicts, map_name, player_name, tick_rate)
 
             if metrics.mistakes:
                 # Group by mistake type for summary insight

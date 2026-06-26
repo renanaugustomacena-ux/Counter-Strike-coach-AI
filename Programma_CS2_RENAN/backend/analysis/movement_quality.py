@@ -26,15 +26,29 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.analysis.movement_quality")
 
-# --- Thresholds ---
-# CS2: 128 ticks/sec
-_TICKS_PER_SECOND = 128
-# Minimum position hold time to count as "established" (3 seconds)
-_ESTABLISHED_HOLD_TICKS = 3 * _TICKS_PER_SECOND
+# --- Time-based thresholds (canonical seconds; tick windows derived per-demo) ---
+# 26-TICK-02 / data normalization: this module used to hardcode 128 ticks/sec,
+# which doubled every real-time window on 64-tick demos (most GOTV/HLTV pro demos)
+# and was correct only on 128-tick demos (FACEIT). Real-time semantics now live in
+# SECONDS and are converted to tick counts per-demo via the caller's tick_rate, so
+# 64- and 128-tick demos coexist correctly. Default mirrors the codebase canonical
+# rate (core.constants.TICK_RATE / MatchMetadata.tick_rate default 64.0); the real
+# per-demo rate is resolved by the orchestrator from MatchMetadata.
+DEFAULT_TICK_RATE = 64
+# Minimum data to attempt analysis (1 second of ticks)
+_MIN_ANALYSIS_SECONDS = 1.0
+# Minimum position hold time to count as "established"
+_ESTABLISHED_HOLD_SECONDS = 3.0
+# Window each side of a kill/death event to consider "in combat"
+_COMBAT_PROXIMITY_SECONDS = 0.5
+# Seconds after teammate death to check for push behavior
+_TRADE_WINDOW_SECONDS = 5.0
+# Seconds after a teammate's kill to check for a supporting advance
+_PASSIVE_CHECK_SECONDS = 3.0
+
+# --- Distance thresholds (world units; tick-rate independent) ---
 # Minimum Z-axis descent to flag high ground abandonment (units)
 _HIGH_GROUND_DROP = 100.0
-# Ticks around a kill/death event to consider "in combat"
-_COMBAT_PROXIMITY_TICKS = 64
 # Distance (world units) to count as "nearby" a teammate for trading
 _TRADE_SUPPORT_DISTANCE = 800.0
 # Distance for "within audio range" of an engagement
@@ -43,9 +57,15 @@ _AUDIO_RANGE_DISTANCE = 1500.0
 _ADVANCE_THRESHOLD = 100.0
 # Position change threshold (world units) to count as "moved"
 _MOVEMENT_THRESHOLD = 300.0
-# Seconds after teammate death to check for push behavior
-_TRADE_WINDOW_SECONDS = 5
-_TRADE_WINDOW_TICKS = _TRADE_WINDOW_SECONDS * _TICKS_PER_SECOND
+
+
+def _seconds_to_ticks(seconds: float, tick_rate: int) -> int:
+    """Convert a real-time window (seconds) to a tick count for a demo's tick_rate.
+
+    Clamped to a minimum of 1 tick so sub-tick windows never collapse to an empty
+    range. This is the single conversion point keeping 64/128-tick demos aligned.
+    """
+    return max(1, int(round(seconds * tick_rate)))
 
 
 # ---------------------------------------------------------------------------
@@ -134,6 +154,7 @@ class MovementQualityAnalyzer:
         map_name: str,
         player_name: str = "",
         round_number: int = 0,
+        tick_rate: int = DEFAULT_TICK_RATE,
     ) -> List[MovementMistake]:
         """
         Analyze a single round's tick data for movement mistakes.
@@ -143,23 +164,26 @@ class MovementQualityAnalyzer:
             map_name: Map identifier for callout lookup.
             player_name: For logging context.
             round_number: For result attribution.
+            tick_rate: Demo server tick rate (64 or 128). Drives every
+                tick<->second conversion so 64/128-tick demos coexist correctly
+                (26-TICK-02). Defaults to the codebase canonical rate.
 
         Returns:
             List of detected MovementMistake instances.
         """
-        if len(ticks) < _TICKS_PER_SECOND:
+        if len(ticks) < _seconds_to_ticks(_MIN_ANALYSIS_SECONDS, tick_rate):
             return []  # Not enough data for meaningful analysis
 
         mistakes: List[MovementMistake] = []
         rn = round_number or (ticks[0].get("round_number", 0) if ticks else 0)
 
         # Build combat tick set (ticks near kills/deaths)
-        combat_ticks = self._find_combat_ticks(ticks)
+        combat_ticks = self._find_combat_ticks(ticks, tick_rate)
 
         mistakes.extend(self._detect_high_ground_abandonment(ticks, map_name, rn, combat_ticks))
-        mistakes.extend(self._detect_premature_position_abandonment(ticks, map_name, rn))
-        mistakes.extend(self._detect_over_aggressive_trading(ticks, map_name, rn))
-        mistakes.extend(self._detect_over_passive_supporting(ticks, map_name, rn))
+        mistakes.extend(self._detect_premature_position_abandonment(ticks, map_name, rn, tick_rate))
+        mistakes.extend(self._detect_over_aggressive_trading(ticks, map_name, rn, tick_rate))
+        mistakes.extend(self._detect_over_passive_supporting(ticks, map_name, rn, tick_rate))
 
         return mistakes
 
@@ -168,6 +192,7 @@ class MovementQualityAnalyzer:
         all_ticks: List[Dict],
         map_name: str,
         player_name: str = "",
+        tick_rate: int = DEFAULT_TICK_RATE,
     ) -> MovementMetrics:
         """
         Analyze an entire match's tick data for movement quality.
@@ -176,6 +201,8 @@ class MovementQualityAnalyzer:
             all_ticks: All ticks for one player across all rounds, sorted by tick.
             map_name: Map identifier.
             player_name: For logging.
+            tick_rate: Demo server tick rate (64 or 128); drives all tick<->second
+                conversions (26-TICK-02). Defaults to the canonical rate.
 
         Returns:
             MovementMetrics with aggregate stats and per-round mistakes.
@@ -194,7 +221,7 @@ class MovementQualityAnalyzer:
 
         for rn, round_ticks in sorted(by_round.items()):
             # Per-round mistake detection
-            mistakes = self.analyze_round_ticks(round_ticks, map_name, player_name, rn)
+            mistakes = self.analyze_round_ticks(round_ticks, map_name, player_name, rn, tick_rate)
             all_mistakes.extend(mistakes)
 
             # Aggregate metrics
@@ -222,7 +249,7 @@ class MovementQualityAnalyzer:
                     if prev_callout is not None and hold_start > 0:
                         hold_ticks = t.get("tick", 0) - hold_start
                         if hold_ticks > 0:
-                            position_hold_times.append(hold_ticks / _TICKS_PER_SECOND)
+                            position_hold_times.append(hold_ticks / tick_rate)
                     hold_start = t.get("tick", 0)
                     prev_callout = callout
 
@@ -305,9 +332,12 @@ class MovementQualityAnalyzer:
         ticks: List[Dict],
         map_name: str,
         round_number: int,
+        tick_rate: int = DEFAULT_TICK_RATE,
     ) -> List[MovementMistake]:
         """Flag when player leaves a held position without new information."""
         mistakes = []
+        established_hold_ticks = _seconds_to_ticks(_ESTABLISHED_HOLD_SECONDS, tick_rate)
+        recent_info_ticks = _seconds_to_ticks(1.0, tick_rate)
         hold_start_idx = 0
         hold_x = ticks[0].get("pos_x", 0.0)
         hold_y = ticks[0].get("pos_y", 0.0)
@@ -326,17 +356,17 @@ class MovementQualityAnalyzer:
 
             # Player moved — check if they held long enough to count as "established"
             hold_duration = i - hold_start_idx
-            if hold_duration >= _ESTABLISHED_HOLD_TICKS:
+            if hold_duration >= established_hold_ticks:
                 # Check if there was new information (enemies visible)
                 had_new_info = False
-                for j in range(max(0, i - _TICKS_PER_SECOND), i):
+                for j in range(max(0, i - recent_info_ticks), i):
                     if ticks[j].get("enemies_visible", 0) > 0:
                         had_new_info = True
                         break
 
                 if not had_new_info:
                     callout = get_callout(map_name, hold_x, hold_y, ticks[i].get("pos_z", 0))
-                    hold_sec = hold_duration / _TICKS_PER_SECOND
+                    hold_sec = hold_duration / tick_rate
                     mistakes.append(
                         MovementMistake(
                             mistake_type="position_abandoned",
@@ -368,9 +398,11 @@ class MovementQualityAnalyzer:
         ticks: List[Dict],
         map_name: str,
         round_number: int,
+        tick_rate: int = DEFAULT_TICK_RATE,
     ) -> List[MovementMistake]:
         """Flag when player pushes after teammate death without support nearby."""
         mistakes = []
+        trade_window_ticks = _seconds_to_ticks(_TRADE_WINDOW_SECONDS, tick_rate)
 
         for i in range(1, len(ticks)):
             health = ticks[i].get("health", 0)
@@ -387,7 +419,7 @@ class MovementQualityAnalyzer:
             push_start_x = ticks[i].get("pos_x", 0.0)
             push_start_y = ticks[i].get("pos_y", 0.0)
 
-            end_idx = min(i + _TRADE_WINDOW_TICKS, len(ticks))
+            end_idx = min(i + trade_window_ticks, len(ticks))
             max_advance = 0.0
             for j in range(i + 1, end_idx):
                 if ticks[j].get("health", 0) <= 0:
@@ -436,9 +468,11 @@ class MovementQualityAnalyzer:
         ticks: List[Dict],
         map_name: str,
         round_number: int,
+        tick_rate: int = DEFAULT_TICK_RATE,
     ) -> List[MovementMistake]:
         """Flag when player doesn't advance while teammate is engaged nearby."""
         mistakes = []
+        passive_check_ticks = _seconds_to_ticks(_PASSIVE_CHECK_SECONDS, tick_rate)
         # Detect engagement windows: periods where enemies_alive drops
         # (indicating teammate is fighting)
         for i in range(1, len(ticks)):
@@ -456,8 +490,8 @@ class MovementQualityAnalyzer:
             engagement_x = ticks[i].get("pos_x", 0.0)
             engagement_y = ticks[i].get("pos_y", 0.0)
 
-            # Check movement in the 3 seconds after
-            check_window = min(i + 3 * _TICKS_PER_SECOND, len(ticks))
+            # Check movement in the seconds after the opening
+            check_window = min(i + passive_check_ticks, len(ticks))
             max_movement = 0.0
             for j in range(i + 1, check_window):
                 if ticks[j].get("health", 0) <= 0:
@@ -500,9 +534,10 @@ class MovementQualityAnalyzer:
     # Helpers
     # ------------------------------------------------------------------
 
-    def _find_combat_ticks(self, ticks: List[Dict]) -> set:
+    def _find_combat_ticks(self, ticks: List[Dict], tick_rate: int = DEFAULT_TICK_RATE) -> set:
         """Build set of tick numbers that are near combat events."""
         combat_ticks: set = set()
+        combat_proximity_ticks = _seconds_to_ticks(_COMBAT_PROXIMITY_SECONDS, tick_rate)
         for i, t in enumerate(ticks):
             # Near health drops or kills
             is_combat = False
@@ -517,7 +552,7 @@ class MovementQualityAnalyzer:
 
             if is_combat:
                 tick_num = t.get("tick", 0)
-                for offset in range(-_COMBAT_PROXIMITY_TICKS, _COMBAT_PROXIMITY_TICKS + 1):
+                for offset in range(-combat_proximity_ticks, combat_proximity_ticks + 1):
                     combat_ticks.add(tick_num + offset)
 
         return combat_ticks
