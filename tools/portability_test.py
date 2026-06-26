@@ -938,7 +938,7 @@ class PortabilityVerifier:
 
         # Additional critical files check
         additional_critical = [
-            ("Programma_CS2_RENAN/main.py", "Main application entry point"),
+            ("Programma_CS2_RENAN/apps/qt_app/app.py", "Qt application entry point"),
             ("tools/portability_test.py", "This verification script"),
             ("tools/headless_validator.py", "Headless system validator"),
         ]
