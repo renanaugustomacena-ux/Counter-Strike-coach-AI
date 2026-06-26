@@ -20,9 +20,10 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 
 from Programma_CS2_RENAN.core.constants import (
-    FLASH_DURATION_TICKS,
+    FLASH_DURATION_S,
     FOV_DEGREES,
-    MEMORY_CUTOFF_TICKS,
+    MEMORY_CUTOFF_S,
+    MEMORY_DECAY_TAU_S,
     MEMORY_DECAY_TAU_TICKS,
     Z_FLOOR_THRESHOLD,
 )
@@ -242,13 +243,26 @@ class PlayerKnowledgeBuilder:
         self,
         fov_degrees: float = FOV_DEGREES,
         hearing_range_gunfire: float = HEARING_RANGE_GUNFIRE,
-        memory_decay_tau: float = MEMORY_DECAY_TAU,
-        memory_cutoff_ticks: int = MEMORY_CUTOFF_TICKS,
+        memory_decay_tau: Optional[float] = None,
+        memory_cutoff_ticks: Optional[int] = None,
+        tick_rate: int = 64,
     ):
+        # C1 (AUDIT 26-TICK-01): derive the tick-based memory/flash windows from the
+        # per-demo tick_rate instead of the 64-hardcoded constants, so 128-tick demos
+        # (e.g. FACEIT) get correct real-time windows. At tick_rate=64 these match the
+        # legacy constants exactly (backward compatible). Explicit overrides still win.
         self.fov_degrees = fov_degrees
         self.hearing_range_gunfire = hearing_range_gunfire
-        self.memory_decay_tau = memory_decay_tau
-        self.memory_cutoff_ticks = memory_cutoff_ticks
+        self.tick_rate = tick_rate
+        if memory_decay_tau is not None:
+            self.memory_decay_tau = memory_decay_tau
+        else:
+            self.memory_decay_tau = MEMORY_DECAY_TAU_S * tick_rate
+        if memory_cutoff_ticks is not None:
+            self.memory_cutoff_ticks = memory_cutoff_ticks
+        else:
+            self.memory_cutoff_ticks = int(MEMORY_CUTOFF_S * tick_rate)
+        self.flash_window_ticks = int(FLASH_DURATION_S * tick_rate)
 
     def build_knowledge(
         self,
@@ -608,12 +622,12 @@ class PlayerKnowledgeBuilder:
                 )
             )
 
-        # Recent flashes (M-12: tick-rate aware via FLASH_DURATION_TICKS)
+        # Recent flashes (M-12 / C1: tick-rate aware via self.flash_window_ticks)
         for evt in events:
             if str(getattr(evt, "event_type", "")) != "flash_detonate":
                 continue
             evt_tick = int(getattr(evt, "tick", 0))
-            if 0 <= (current_tick - evt_tick) <= FLASH_DURATION_TICKS:
+            if 0 <= (current_tick - evt_tick) <= self.flash_window_ticks:
                 knowledge.utility_zones.append(
                     UtilityZone(
                         pos_x=float(getattr(evt, "pos_x", 0)),
