@@ -38,9 +38,7 @@ class TestTickRateAwareWindows:
         assert kb.flash_window_ticks == 128
 
     def test_explicit_overrides_take_precedence(self):
-        kb = PlayerKnowledgeBuilder(
-            memory_cutoff_ticks=999, memory_decay_tau=5.0, tick_rate=128
-        )
+        kb = PlayerKnowledgeBuilder(memory_cutoff_ticks=999, memory_decay_tau=5.0, tick_rate=128)
         # Explicit values win over tick-rate derivation; derived windows still scale.
         assert kb.memory_cutoff_ticks == 999
         assert kb.memory_decay_tau == 5.0
