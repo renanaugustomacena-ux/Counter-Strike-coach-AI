@@ -25,6 +25,8 @@ from Programma_CS2_RENAN.core.constants import (
     MEMORY_CUTOFF_S,
     MEMORY_DECAY_TAU_S,
     MEMORY_DECAY_TAU_TICKS,
+    MOLOTOV_DURATION_S,
+    SMOKE_DURATION_S,
     Z_FLOOR_THRESHOLD,
 )
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -263,6 +265,8 @@ class PlayerKnowledgeBuilder:
         else:
             self.memory_cutoff_ticks = int(MEMORY_CUTOFF_S * tick_rate)
         self.flash_window_ticks = int(FLASH_DURATION_S * tick_rate)
+        self.smoke_max_ticks = int(SMOKE_DURATION_S * tick_rate)
+        self.molotov_max_ticks = int(MOLOTOV_DURATION_S * tick_rate)
 
     def build_knowledge(
         self,
@@ -553,10 +557,10 @@ class PlayerKnowledgeBuilder:
         Identifies smokes and molotovs that are currently active
         (between start and end events), and recent flash detonations.
         """
-        # Active utility: start events without matching end events
-        # C-10: Time-based expiry constants (in ticks at 64 Hz)
-        SMOKE_MAX_TICKS = 18 * 64  # 18 seconds
-        MOLOTOV_MAX_TICKS = 7 * 64  # 7 seconds
+        # Active utility: start events without matching end events.
+        # C-10 / C1.2 (26-TICK-01): expiry windows are tick-rate-aware
+        # (self.smoke_max_ticks / self.molotov_max_ticks derived from the per-demo
+        # tick_rate in __init__) so 128-tick demos don't expire utility 2x too early.
 
         active_starts = {}  # entity_id -> event
         for evt in events:
@@ -601,7 +605,7 @@ class PlayerKnowledgeBuilder:
         for eid, evt in active_starts.items():
             evt_type = str(getattr(evt, "event_type", ""))
             evt_tick = int(getattr(evt, "tick", 0))
-            max_dur = SMOKE_MAX_TICKS if "smoke" in evt_type else MOLOTOV_MAX_TICKS
+            max_dur = self.smoke_max_ticks if "smoke" in evt_type else self.molotov_max_ticks
             if current_tick - evt_tick > max_dur:
                 expired_ids.append(eid)
         for eid in expired_ids:
