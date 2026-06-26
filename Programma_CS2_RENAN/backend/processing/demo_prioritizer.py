@@ -227,9 +227,9 @@ class DemoPrioritizer:
                 t.pos_x / 4096.0,
                 t.pos_y / 4096.0,
                 t.pos_z / 1024.0,
-                np.sin(np.radians(t.view_y)),  # view_yaw_sin
-                np.cos(np.radians(t.view_y)),  # view_yaw_cos
-                t.view_x / 90.0,  # view_pitch
+                np.sin(np.radians(t.view_x)),  # view_yaw_sin (view_x=yaw)
+                np.cos(np.radians(t.view_x)),  # view_yaw_cos (view_x=yaw)
+                t.view_y / 90.0,  # view_pitch (view_y=pitch)
                 0.0,  # z_penalty (requires map context)
                 0.0,  # kast_estimate
                 0.0,  # map_id
