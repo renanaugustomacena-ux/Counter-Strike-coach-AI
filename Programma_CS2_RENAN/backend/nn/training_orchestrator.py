@@ -679,7 +679,9 @@ class TrainingOrchestrator:
 
         per_tick = self._rap_collect_per_tick(raw_items, tf, kb, match_mgr, caches)
         per_tick["target_pos"] = self._rap_compute_target_pos(raw_items, RAP_POSITION_SCALE)
-        per_tick["dt"] = self._rap_compute_timespans(raw_items)
+        per_tick["dt"] = self._rap_compute_timespans(
+            raw_items, tick_rates=per_tick.get("tick_rates")
+        )
 
         seq_len = self._curriculum_seq_len()
         num_windows = b // seq_len
@@ -832,12 +834,20 @@ class TrainingOrchestrator:
         per_tick_val: list = []
         per_tick_val_mask: list = []
         per_tick_strat: list = []
+        per_tick_tick_rate: list = []
         pov_count = 0
 
         all_players_cache = caches["all_players"]
         metadata_cache = caches["metadata"]
         window_cache = caches["window"]
         event_cache = caches["event"]
+
+        # C1.2 (26-TICK-01): one PlayerKnowledgeBuilder per distinct server tick rate
+        # (seeded with the rate-64 builder passed in) so 128-tick demos get correct
+        # real-time memory/flash windows. Imported lazily to mirror _build_rap_batch.
+        from Programma_CS2_RENAN.backend.processing.player_knowledge import PlayerKnowledgeBuilder
+
+        kb_by_rate = {getattr(kb, "tick_rate", 64): kb}
 
         for i, item in enumerate(raw_items):
             match_id = getattr(item, "match_id", None)
@@ -859,6 +869,14 @@ class TrainingOrchestrator:
 
             map_name = self._resolve_map_name(match_id, demo_name, match_mgr, metadata_cache)
 
+            # C1.2: per-demo tick rate selects the matching knowledge builder.
+            tick_rate = self._resolve_tick_rate(match_id, match_mgr, metadata_cache)
+            per_tick_tick_rate.append(tick_rate)
+            kb_item = kb_by_rate.get(tick_rate)
+            if kb_item is None:
+                kb_item = PlayerKnowledgeBuilder(tick_rate=tick_rate)
+                kb_by_rate[tick_rate] = kb_item
+
             knowledge = None
             tick_list = [item]
 
@@ -870,7 +888,7 @@ class TrainingOrchestrator:
                         player_name,
                         item,
                         match_mgr,
-                        kb,
+                        kb_item,
                         all_players_cache,
                         window_cache,
                         event_cache,
@@ -928,6 +946,7 @@ class TrainingOrchestrator:
             "vals": per_tick_val,
             "val_masks": per_tick_val_mask,
             "strats": per_tick_strat,
+            "tick_rates": per_tick_tick_rate,
             "pov_count": pov_count,
         }
 
@@ -952,23 +971,53 @@ class TrainingOrchestrator:
         return per_tick_target_pos
 
     @staticmethod
-    def _rap_compute_timespans(raw_items, default_tick_rate: float = 64.0):
-        """RAP-AUDIT-05: inter-tick timespans for the LTC ODE solver.
+    def _rap_compute_timespans(raw_items, default_tick_rate: float = 64.0, tick_rates=None):
+        """RAP-AUDIT-05 / C1.2 (26-TICK-03): inter-tick timespans for the LTC ODE solver.
 
         Without real timespans the LTC treats every tick as 1.0s and loses its
-        continuous-time advantage over LSTM. CS2 matchmaking defaults to 64 t/s;
-        128-tick can be detected from demo metadata when available (not done here).
+        continuous-time advantage over LSTM. The elapsed seconds between ticks is
+        ``(nxt_tick - cur_tick) / tick_rate``; on a 128-tick demo the rate is 128, so a
+        fixed 64 would feed the LTC a 2x-too-large dt. ``tick_rates`` (per-item, from
+        ``MatchMetadata`` via ``_resolve_tick_rate``) overrides ``default_tick_rate`` so
+        each demo's real server rate is used; it falls back to the default when absent.
         """
         per_tick_dt: list = []
-        for i in range(len(raw_items)):
-            if i + 1 < len(raw_items):
+        n = len(raw_items)
+        for i in range(n):
+            rate = default_tick_rate
+            if tick_rates is not None and i < len(tick_rates) and tick_rates[i]:
+                rate = float(tick_rates[i])
+            if i + 1 < n:
                 cur_tick = int(getattr(raw_items[i], "tick", 0))
                 nxt_tick = int(getattr(raw_items[i + 1], "tick", 0))
-                dt = max((nxt_tick - cur_tick) / default_tick_rate, 1e-4)
+                dt = max((nxt_tick - cur_tick) / rate, 1e-4)
             else:
-                dt = per_tick_dt[-1] if per_tick_dt else 1.0 / default_tick_rate
+                dt = per_tick_dt[-1] if per_tick_dt else 1.0 / rate
             per_tick_dt.append(dt)
         return per_tick_dt
+
+    @staticmethod
+    def _resolve_tick_rate(match_id, match_mgr, metadata_cache, default: int = 64) -> int:
+        """C1.2 (26-TICK-01/03): per-demo server tick rate from cached MatchMetadata.
+
+        Reuses the same ``metadata_cache`` populated by ``_resolve_map_name`` so no
+        extra DB round-trips occur. Falls back to ``default`` (64) when metadata is
+        missing, and rejects out-of-range values (valid window [32, 256], per DS-07).
+        """
+        try:
+            if match_id not in metadata_cache and match_mgr is not None:
+                try:
+                    metadata_cache[match_id] = match_mgr.get_metadata(match_id)
+                except Exception:
+                    metadata_cache[match_id] = None
+            meta = metadata_cache.get(match_id)
+            if meta is not None:
+                rate = int(getattr(meta, "tick_rate", default) or default)
+                if 32 <= rate <= 256:
+                    return rate
+        except Exception:
+            pass
+        return default
 
     @staticmethod
     def _rap_segment_windows(per_tick, features_tensor, seq_len: int, num_windows: int):
