@@ -78,10 +78,7 @@ class StatusChip(QFrame):
             f"border-radius: {t.radius_sm}px; "
             f"}}"
         )
-        self._dot.setStyleSheet(
-            f"color: {dot_color}; background: transparent; font-size: 10px;"
-        )
+        self._dot.setStyleSheet(f"color: {dot_color}; background: transparent; font-size: 10px;")
         self._label.setStyleSheet(
-            f"color: {text_color}; background: transparent; "
-            f"font-size: {t.font_size_body}px;"
+            f"color: {text_color}; background: transparent; " f"font-size: {t.font_size_body}px;"
         )

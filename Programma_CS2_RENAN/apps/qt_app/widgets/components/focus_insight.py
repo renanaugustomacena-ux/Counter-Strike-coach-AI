@@ -8,14 +8,7 @@ Two states (managed via QStackedLayout):
 from __future__ import annotations
 
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import (
-    QFrame,
-    QHBoxLayout,
-    QLabel,
-    QStackedLayout,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QStackedLayout, QVBoxLayout, QWidget
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
@@ -74,24 +67,18 @@ class FocusInsightCard(QFrame):
 
         caption = QLabel("FOCUS THIS WEEK")
         Typography.apply(caption, "caption")
-        caption.setStyleSheet(
-            f"color: {tokens.accent_primary}; background: transparent;"
-        )
+        caption.setStyleSheet(f"color: {tokens.accent_primary}; background: transparent;")
         outer.addWidget(caption)
 
         self._area_label = QLabel("")
         self._area_label.setFont(Typography.font("h1"))
-        self._area_label.setStyleSheet(
-            f"color: {tokens.text_primary}; background: transparent;"
-        )
+        self._area_label.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
         outer.addWidget(self._area_label)
 
         self._body_label = QLabel("")
         self._body_label.setFont(Typography.font("body"))
         self._body_label.setWordWrap(True)
-        self._body_label.setStyleSheet(
-            f"color: {tokens.text_secondary}; background: transparent;"
-        )
+        self._body_label.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
         outer.addWidget(self._body_label)
 
         outer.addStretch(1)
@@ -117,16 +104,12 @@ class FocusInsightCard(QFrame):
 
         caption = QLabel("FOCUS THIS WEEK")
         Typography.apply(caption, "caption")
-        caption.setStyleSheet(
-            f"color: {tokens.text_secondary}; background: transparent;"
-        )
+        caption.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
         outer.addWidget(caption)
 
         title = QLabel("Coming into focus")
         title.setFont(Typography.font("title"))
-        title.setStyleSheet(
-            f"color: {tokens.text_primary}; background: transparent;"
-        )
+        title.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
         outer.addWidget(title)
 
         body = QLabel(
@@ -135,9 +118,7 @@ class FocusInsightCard(QFrame):
         )
         body.setFont(Typography.font("body"))
         body.setWordWrap(True)
-        body.setStyleSheet(
-            f"color: {tokens.text_secondary}; background: transparent;"
-        )
+        body.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
         outer.addWidget(body)
 
         outer.addStretch(1)

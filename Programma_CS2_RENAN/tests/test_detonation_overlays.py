@@ -75,9 +75,9 @@ class TestGrenadeConstants:
     def test_overlay_colors_defined_for_all_types(self):
         """Every NadeType with a radius must have an overlay color."""
         for nade_type in GRENADE_RADII:
-            assert nade_type in GRENADE_OVERLAY_COLORS, (
-                f"{nade_type} missing from GRENADE_OVERLAY_COLORS"
-            )
+            assert (
+                nade_type in GRENADE_OVERLAY_COLORS
+            ), f"{nade_type} missing from GRENADE_OVERLAY_COLORS"
 
     def test_overlay_colors_are_valid_qcolors(self):
         """Overlay colors must be QColor instances with in-range RGB channels."""

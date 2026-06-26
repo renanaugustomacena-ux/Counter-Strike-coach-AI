@@ -16,8 +16,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.stepper import Stepper
@@ -107,7 +107,9 @@ class WizardScreen(QWidget):
         self._stepper = Stepper(step_count=5, current_step=0)
         bottom.addWidget(self._stepper)
         self._step_label = QLabel("Step 1 of 5")
-        self._step_label.setStyleSheet(f"color: {get_tokens().text_secondary}; font-size: {get_tokens().font_size_caption}px; margin-left: 12px;")
+        self._step_label.setStyleSheet(
+            f"color: {get_tokens().text_secondary}; font-size: {get_tokens().font_size_caption}px; margin-left: 12px;"
+        )
         bottom.addWidget(self._step_label)
         bottom.addStretch()
         self._next_btn = QPushButton(i18n.get_text("wizard_get_started", "Get Started"))
@@ -138,7 +140,9 @@ class WizardScreen(QWidget):
         )
         desc.setAlignment(Qt.AlignCenter)
         desc.setWordWrap(True)
-        desc.setStyleSheet(f"color: {get_tokens().text_secondary}; font-size: {get_tokens().font_size_subtitle}px;")
+        desc.setStyleSheet(
+            f"color: {get_tokens().text_secondary}; font-size: {get_tokens().font_size_subtitle}px;"
+        )
         lay.addWidget(desc)
 
         return page
@@ -154,7 +158,9 @@ class WizardScreen(QWidget):
             "can identify your stats."
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet(f"color: {get_tokens().text_secondary}; font-size: {get_tokens().font_size_body}px;")
+        desc.setStyleSheet(
+            f"color: {get_tokens().text_secondary}; font-size: {get_tokens().font_size_body}px;"
+        )
         lay.addWidget(desc)
 
         self._name_input = QLineEdit()
@@ -163,7 +169,9 @@ class WizardScreen(QWidget):
         lay.addWidget(self._name_input)
 
         self._name_error = QLabel("")
-        self._name_error.setStyleSheet(f"color: {get_tokens().error}; font-size: {get_tokens().font_size_caption}px;")
+        self._name_error.setStyleSheet(
+            f"color: {get_tokens().error}; font-size: {get_tokens().font_size_caption}px;"
+        )
         self._name_error.setVisible(False)
         lay.addWidget(self._name_error)
 
@@ -180,7 +188,9 @@ class WizardScreen(QWidget):
             "This is where models, knowledge base, and datasets will be stored."
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet(f"color: {get_tokens().text_secondary}; font-size: {get_tokens().font_size_body}px;")
+        desc.setStyleSheet(
+            f"color: {get_tokens().text_secondary}; font-size: {get_tokens().font_size_body}px;"
+        )
         lay.addWidget(desc)
 
         # Manual entry
@@ -197,13 +207,17 @@ class WizardScreen(QWidget):
 
         # Selected path display
         self._brain_path_label = QLabel("")
-        self._brain_path_label.setStyleSheet(f"color: {get_tokens().text_primary}; font-size: {get_tokens().font_size_caption}px;")
+        self._brain_path_label.setStyleSheet(
+            f"color: {get_tokens().text_primary}; font-size: {get_tokens().font_size_caption}px;"
+        )
         self._brain_path_label.setWordWrap(True)
         lay.addWidget(self._brain_path_label)
 
         # Error display
         self._brain_error = QLabel("")
-        self._brain_error.setStyleSheet(f"color: {get_tokens().error}; font-size: {get_tokens().font_size_caption}px;")
+        self._brain_error.setStyleSheet(
+            f"color: {get_tokens().error}; font-size: {get_tokens().font_size_caption}px;"
+        )
         self._brain_error.setWordWrap(True)
         self._brain_error.setVisible(False)
         lay.addWidget(self._brain_error)
@@ -222,7 +236,9 @@ class WizardScreen(QWidget):
             "You can skip this step and set it later in Settings."
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet(f"color: {get_tokens().text_secondary}; font-size: {get_tokens().font_size_body}px;")
+        desc.setStyleSheet(
+            f"color: {get_tokens().text_secondary}; font-size: {get_tokens().font_size_body}px;"
+        )
         lay.addWidget(desc)
 
         input_row = QHBoxLayout()
@@ -237,12 +253,16 @@ class WizardScreen(QWidget):
         lay.addLayout(input_row)
 
         self._demo_path_label = QLabel("")
-        self._demo_path_label.setStyleSheet(f"color: {get_tokens().text_primary}; font-size: {get_tokens().font_size_caption}px;")
+        self._demo_path_label.setStyleSheet(
+            f"color: {get_tokens().text_primary}; font-size: {get_tokens().font_size_caption}px;"
+        )
         self._demo_path_label.setWordWrap(True)
         lay.addWidget(self._demo_path_label)
 
         self._demo_error = QLabel("")
-        self._demo_error.setStyleSheet(f"color: {get_tokens().error}; font-size: {get_tokens().font_size_caption}px;")
+        self._demo_error.setStyleSheet(
+            f"color: {get_tokens().error}; font-size: {get_tokens().font_size_caption}px;"
+        )
         self._demo_error.setWordWrap(True)
         self._demo_error.setVisible(False)
         lay.addWidget(self._demo_error)
@@ -268,7 +288,9 @@ class WizardScreen(QWidget):
         )
         info.setAlignment(Qt.AlignCenter)
         info.setWordWrap(True)
-        info.setStyleSheet(f"color: {get_tokens().text_secondary}; font-size: {get_tokens().font_size_subtitle}px;")
+        info.setStyleSheet(
+            f"color: {get_tokens().text_secondary}; font-size: {get_tokens().font_size_subtitle}px;"
+        )
         lay.addWidget(info)
 
         return page

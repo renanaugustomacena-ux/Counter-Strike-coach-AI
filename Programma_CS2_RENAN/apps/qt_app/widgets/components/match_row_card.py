@@ -20,9 +20,7 @@ from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.match_utils import map_short_name
 from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import rating_color, rating_label
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
-from Programma_CS2_RENAN.apps.qt_app.widgets.components.match_mini_card import (
-    _relative_time,
-)
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.match_mini_card import _relative_time
 
 
 class MatchRowCard(QFrame):
@@ -55,9 +53,7 @@ class MatchRowCard(QFrame):
 
         map_label = QLabel(map_short_name(self._demo_name).upper())
         Typography.apply(map_label, "caption")
-        map_label.setStyleSheet(
-            f"color: {tokens.text_secondary}; background: transparent;"
-        )
+        map_label.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
 
         date_label = QLabel(_relative_time(match.get("match_date")))
         date_label.setFont(Typography.font("mono"))
@@ -69,9 +65,7 @@ class MatchRowCard(QFrame):
         if is_pro:
             player = str(match.get("player_name") or "").strip()
             if player:
-                map_label.setText(
-                    f"{map_short_name(self._demo_name).upper()}  ·  {player.upper()}"
-                )
+                map_label.setText(f"{map_short_name(self._demo_name).upper()}  ·  {player.upper()}")
 
         map_col.addWidget(map_label)
         map_col.addWidget(date_label)
@@ -95,9 +89,7 @@ class MatchRowCard(QFrame):
 
         rating_tag = QLabel(rating_label(rating_value).upper())
         Typography.apply(rating_tag, "caption")
-        rating_tag.setStyleSheet(
-            f"color: {tokens.text_tertiary}; background: transparent;"
-        )
+        rating_tag.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
         rating_col.addWidget(rating_tag)
 
         rating_col_w = QWidget()
@@ -117,9 +109,7 @@ class MatchRowCard(QFrame):
 
         primary = QLabel(f"K/D {kd:.2f}    ADR {adr:.0f}")
         primary.setFont(Typography.font("mono"))
-        primary.setStyleSheet(
-            f"color: {tokens.text_primary}; background: transparent;"
-        )
+        primary.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
         stats_col.addWidget(primary)
 
         secondary = QLabel(f"{kills:.0f} kills  ·  {deaths:.0f} deaths")

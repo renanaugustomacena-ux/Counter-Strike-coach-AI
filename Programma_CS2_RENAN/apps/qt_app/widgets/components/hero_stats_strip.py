@@ -76,16 +76,12 @@ class HeroStatsStrip(QWidget):
         value = QLabel(stat.value)
         value.setFont(Typography.font("display"))
         value.setAlignment(Qt.AlignLeft | Qt.AlignBaseline)
-        value.setStyleSheet(
-            f"color: {_sentiment_color(stat.sentiment)}; background: transparent;"
-        )
+        value.setStyleSheet(f"color: {_sentiment_color(stat.sentiment)}; background: transparent;")
         col.addWidget(value)
 
         caption = QLabel(stat.label.upper())
         Typography.apply(caption, "caption")
-        caption.setStyleSheet(
-            f"color: {tokens.text_secondary}; background: transparent;"
-        )
+        caption.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
         col.addWidget(caption)
 
         return block

@@ -47,11 +47,15 @@ class _PlayerItem(QFrame):
         info.setSpacing(0)
         self._name_label = QLabel()
         self._name_label.setFont(QFont("Roboto", 10, QFont.Bold))
-        self._name_label.setStyleSheet(f"color: {get_tokens().text_primary}; background: transparent;")
+        self._name_label.setStyleSheet(
+            f"color: {get_tokens().text_primary}; background: transparent;"
+        )
         info.addWidget(self._name_label)
 
         self._stats_label = QLabel()
-        self._stats_label.setStyleSheet(f"color: {get_tokens().text_secondary}; font-size: 11px; background: transparent;")
+        self._stats_label.setStyleSheet(
+            f"color: {get_tokens().text_secondary}; font-size: 11px; background: transparent;"
+        )
         info.addWidget(self._stats_label)
         layout.addLayout(info, 1)
 
@@ -72,16 +76,26 @@ class _PlayerItem(QFrame):
 
         if not player.is_alive:
             self._icon_label.setText("\u2620")
-            self._icon_label.setStyleSheet(f"color: {get_tokens().text_disabled}; background: transparent;")
-            self._name_label.setStyleSheet(f"color: {get_tokens().text_disabled}; background: transparent;")
+            self._icon_label.setStyleSheet(
+                f"color: {get_tokens().text_disabled}; background: transparent;"
+            )
+            self._name_label.setStyleSheet(
+                f"color: {get_tokens().text_disabled}; background: transparent;"
+            )
         elif is_ct:
             self._icon_label.setText("\u2694")
             self._icon_label.setStyleSheet(f"color: {get_tokens().info}; background: transparent;")
-            self._name_label.setStyleSheet(f"color: {get_tokens().text_primary}; background: transparent;")
+            self._name_label.setStyleSheet(
+                f"color: {get_tokens().text_primary}; background: transparent;"
+            )
         else:
             self._icon_label.setText("\u25ce")
-            self._icon_label.setStyleSheet(f"color: {get_tokens().warning}; background: transparent;")
-            self._name_label.setStyleSheet(f"color: {get_tokens().text_primary}; background: transparent;")
+            self._icon_label.setStyleSheet(
+                f"color: {get_tokens().warning}; background: transparent;"
+            )
+            self._name_label.setStyleSheet(
+                f"color: {get_tokens().text_primary}; background: transparent;"
+            )
 
         self._name_label.setText(player.name)
         info = f"${player.money}"

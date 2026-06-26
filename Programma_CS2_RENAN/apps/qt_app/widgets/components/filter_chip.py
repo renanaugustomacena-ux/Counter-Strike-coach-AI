@@ -101,12 +101,8 @@ class FilterChip(QFrame):
             f"border: 1px solid {t.accent_primary}; "
             f"}}"
         )
-        self._label.setStyleSheet(
-            f"color: {text_color}; background: transparent;"
-        )
-        self._count_label.setStyleSheet(
-            f"color: {count_color}; background: transparent;"
-        )
+        self._label.setStyleSheet(f"color: {text_color}; background: transparent;")
+        self._count_label.setStyleSheet(f"color: {count_color}; background: transparent;")
 
     # ── Internals ──
 

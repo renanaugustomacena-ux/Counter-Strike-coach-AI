@@ -13,14 +13,7 @@ from __future__ import annotations
 from typing import Any
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (
-    QFrame,
-    QHBoxLayout,
-    QLabel,
-    QStackedLayout,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QStackedLayout, QVBoxLayout, QWidget
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.match_utils import map_short_name
@@ -28,9 +21,7 @@ from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import rating_color, rati
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.apps.qt_app.widgets.charts.mini_sparkline import MiniSparkline
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.empty_state import EmptyState
-from Programma_CS2_RENAN.apps.qt_app.widgets.components.match_mini_card import (
-    _relative_time,
-)
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.match_mini_card import _relative_time
 
 
 class LastMatchHeroCard(QFrame):
@@ -62,9 +53,7 @@ class LastMatchHeroCard(QFrame):
 
     # ── State ──
 
-    def set_state(
-        self, last_match: dict[str, Any] | None, history: list[float]
-    ) -> None:
+    def set_state(self, last_match: dict[str, Any] | None, history: list[float]) -> None:
         if last_match is None:
             self._stack.setCurrentWidget(self._empty_view)
             return
@@ -101,9 +90,7 @@ class LastMatchHeroCard(QFrame):
 
         caption = QLabel("LAST MATCH")
         Typography.apply(caption, "caption")
-        caption.setStyleSheet(
-            f"color: {tokens.text_secondary}; background: transparent;"
-        )
+        caption.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
         outer.addWidget(caption)
 
         # ── Body row: text column + sparkline ──
@@ -122,16 +109,13 @@ class LastMatchHeroCard(QFrame):
 
         self._rating_label = QLabel("—")
         self._rating_label.setFont(Typography.font("display"))
-        self._rating_label.setStyleSheet(
-            f"color: {tokens.text_primary}; background: transparent;"
-        )
+        self._rating_label.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
         rating_row.addWidget(self._rating_label, 0, Qt.AlignBottom)
 
         self._tag_label = QLabel("")
         self._tag_label.setFont(Typography.font("caption"))
         self._tag_label.setStyleSheet(
-            f"color: {tokens.text_secondary}; background: transparent;"
-            f"padding-bottom: 8px;"
+            f"color: {tokens.text_secondary}; background: transparent;" f"padding-bottom: 8px;"
         )
         rating_row.addWidget(self._tag_label, 0, Qt.AlignBottom)
         rating_row.addStretch(1)
@@ -141,17 +125,13 @@ class LastMatchHeroCard(QFrame):
         # Meta line: MAP · time
         self._meta_label = QLabel("")
         self._meta_label.setFont(Typography.font("body"))
-        self._meta_label.setStyleSheet(
-            f"color: {tokens.text_secondary}; background: transparent;"
-        )
+        self._meta_label.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
         text_col.addWidget(self._meta_label)
 
         # K/D + ADR mono
         self._kd_label = QLabel("")
         self._kd_label.setFont(Typography.font("mono"))
-        self._kd_label.setStyleSheet(
-            f"color: {tokens.text_primary}; background: transparent;"
-        )
+        self._kd_label.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
         text_col.addWidget(self._kd_label)
         text_col.addStretch(1)
 

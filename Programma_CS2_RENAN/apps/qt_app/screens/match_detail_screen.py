@@ -27,19 +27,11 @@ from PySide6.QtWidgets import (
 )
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
-from Programma_CS2_RENAN.apps.qt_app.core.match_utils import (
-    extract_map_name,
-    map_short_name,
-)
-from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import (
-    rating_color,
-    rating_label,
-)
+from Programma_CS2_RENAN.apps.qt_app.core.match_utils import extract_map_name, map_short_name
+from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import rating_color, rating_label
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.apps.qt_app.core.widgets_helpers import make_button
-from Programma_CS2_RENAN.apps.qt_app.viewmodels.match_detail_vm import (
-    MatchDetailViewModel,
-)
+from Programma_CS2_RENAN.apps.qt_app.viewmodels.match_detail_vm import MatchDetailViewModel
 from Programma_CS2_RENAN.apps.qt_app.widgets.charts.economy_chart import EconomyChart
 from Programma_CS2_RENAN.apps.qt_app.widgets.charts.momentum_chart import MomentumChart
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
@@ -217,9 +209,7 @@ class MatchDetailScreen(QWidget):
                 "The demo may still be processing, or analysis hasn't completed."
             )
             self._empty_state.set_cta_text("Back to Match History")
-            self._empty_state.action_clicked.connect(
-                lambda: self._navigate("match_history")
-            )
+            self._empty_state.action_clicked.connect(lambda: self._navigate("match_history"))
             self._empty_state.setVisible(True)
             return
 
@@ -228,8 +218,9 @@ class MatchDetailScreen(QWidget):
         self._title_label.setText(map_short_name(demo_name).upper() or "MATCH")
         date_str = _format_match_date(stats.get("match_date"))
         self._subtitle_label.setText(
-            f"{extract_map_name(demo_name)}   ·   {date_str}" if date_str else
-            extract_map_name(demo_name)
+            f"{extract_map_name(demo_name)}   ·   {date_str}"
+            if date_str
+            else extract_map_name(demo_name)
         )
 
         rating = float(stats.get("rating") or 0.0)
@@ -252,9 +243,7 @@ class MatchDetailScreen(QWidget):
         self._empty_state.set_title("Couldn't load match")
         self._empty_state.set_description(str(msg))
         self._empty_state.set_cta_text("Back to Match History")
-        self._empty_state.action_clicked.connect(
-            lambda: self._navigate("match_history")
-        )
+        self._empty_state.action_clicked.connect(lambda: self._navigate("match_history"))
         self._empty_state.setVisible(True)
 
     def _navigate(self, screen_name: str) -> None:
@@ -313,9 +302,7 @@ class MatchDetailScreen(QWidget):
         total = len(rounds)
         score_label = QLabel(f"{wins} W   ·   {total - wins} L   ·   {total} rounds")
         score_label.setFont(Typography.font("mono"))
-        score_label.setStyleSheet(
-            f"color: {tokens.text_secondary}; background: transparent;"
-        )
+        score_label.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
         body.addWidget(score_label)
 
         strip = QHBoxLayout()
@@ -349,33 +336,27 @@ class MatchDetailScreen(QWidget):
             name = QLabel(comp.replace("_", " ").title())
             name.setFont(Typography.font("body"))
             name.setFixedWidth(180)
-            name.setStyleSheet(
-                f"color: {tokens.text_secondary}; background: transparent;"
-            )
+            name.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
             row.addWidget(name)
 
             val_color = rating_color(val)
             value = QLabel(f"{val:.2f}")
             value.setFont(Typography.font("mono"))
             value.setFixedWidth(60)
-            value.setStyleSheet(
-                f"color: {val_color.name()}; background: transparent;"
-            )
+            value.setStyleSheet(f"color: {val_color.name()}; background: transparent;")
             row.addWidget(value)
 
             bar_bg = QFrame()
             bar_bg.setFixedHeight(6)
             bar_bg.setFixedWidth(180)
             bar_bg.setStyleSheet(
-                f"background: {tokens.surface_sunken}; "
-                f"border-radius: {tokens.radius_sm}px;"
+                f"background: {tokens.surface_sunken}; " f"border-radius: {tokens.radius_sm}px;"
             )
             bar_fill = QFrame(bar_bg)
             fill_w = max(1, min(180, int((val / 2.0) * 180)))
             bar_fill.setGeometry(0, 0, fill_w, 6)
             bar_fill.setStyleSheet(
-                f"background: {val_color.name()}; "
-                f"border-radius: {tokens.radius_sm}px;"
+                f"background: {val_color.name()}; " f"border-radius: {tokens.radius_sm}px;"
             )
             row.addWidget(bar_bg)
 
@@ -401,8 +382,7 @@ class MatchDetailScreen(QWidget):
         body.setSpacing(2)
 
         header = QLabel(
-            f"{'RND':<6} {'W/L':<6} {'SIDE':<6} {'K':<4} {'D':<4} "
-            f"{'DMG':<8} {'EQUIP':<8}"
+            f"{'RND':<6} {'W/L':<6} {'SIDE':<6} {'K':<4} {'D':<4} " f"{'DMG':<8} {'EQUIP':<8}"
         )
         header.setFont(Typography.font("mono"))
         Typography.apply(header, "caption")
@@ -425,9 +405,7 @@ class MatchDetailScreen(QWidget):
             result_color = tokens.success if won else tokens.error
             side_color = tokens.info if side == "CT" else tokens.warning
             fk_marker = (
-                f"   <span style=\"color:{tokens.accent_primary}\">FK</span>"
-                if opening
-                else ""
+                f'   <span style="color:{tokens.accent_primary}">FK</span>' if opening else ""
             )
 
             row_html = (
@@ -500,9 +478,7 @@ class MatchDetailScreen(QWidget):
             )
             empty.setWordWrap(True)
             empty.setFont(Typography.font("body"))
-            empty.setStyleSheet(
-                f"color: {tokens.text_secondary}; background: transparent;"
-            )
+            empty.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
             insights_body.addWidget(empty)
 
         layout.addWidget(insights_card)
@@ -555,18 +531,14 @@ class MatchDetailScreen(QWidget):
         title = QLabel(ins.get("title", ""))
         title.setTextFormat(Qt.PlainText)  # FE-01: never trust DB-sourced labels
         title.setFont(Typography.font("subtitle"))
-        title.setStyleSheet(
-            f"color: {badge_color}; background: transparent;"
-        )
+        title.setStyleSheet(f"color: {badge_color}; background: transparent;")
         body.addWidget(title)
 
         message = QLabel(ins.get("message", ""))
         message.setTextFormat(Qt.PlainText)
         message.setWordWrap(True)
         message.setFont(Typography.font("body"))
-        message.setStyleSheet(
-            f"color: {tokens.text_primary}; background: transparent;"
-        )
+        message.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
         body.addWidget(message)
 
         focus = ins.get("focus_area")
@@ -574,9 +546,7 @@ class MatchDetailScreen(QWidget):
             focus_label = QLabel(f"Focus  ·  {focus}")
             focus_label.setTextFormat(Qt.PlainText)
             focus_label.setFont(Typography.font("caption"))
-            focus_label.setStyleSheet(
-                f"color: {tokens.text_tertiary}; background: transparent;"
-            )
+            focus_label.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
             body.addWidget(focus_label)
 
         return card

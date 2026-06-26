@@ -75,9 +75,9 @@ class FocusInsightViewModel(QObject):
             with get_db_manager().get_session() as session:
                 query = select(PlayerMatchStats)
                 if player:
-                    query = query.where(
-                        PlayerMatchStats.player_name == player
-                    ).where(PlayerMatchStats.is_pro == False)  # noqa: E712
+                    query = query.where(PlayerMatchStats.player_name == player).where(
+                        PlayerMatchStats.is_pro == False
+                    )  # noqa: E712
                 else:
                     query = query.where(PlayerMatchStats.is_pro == False)  # noqa: E712
                 query = query.limit(1)

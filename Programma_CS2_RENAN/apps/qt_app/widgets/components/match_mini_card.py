@@ -47,9 +47,7 @@ class MatchMiniCard(QFrame):
         # Map name (caption, uppercase via Typography role)
         map_label = QLabel(map_short_name(self._demo_name).upper())
         Typography.apply(map_label, "caption")
-        map_label.setStyleSheet(
-            f"color: {tokens.text_secondary}; background: transparent;"
-        )
+        map_label.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
         layout.addWidget(map_label)
 
         # Rating (big display number, semantic-colored)
@@ -68,9 +66,7 @@ class MatchMiniCard(QFrame):
         kd = float(match.get("kd_ratio") or 0.0)
         kd_label = QLabel(f"K/D {kd:.2f}")
         kd_label.setFont(Typography.font("mono"))
-        kd_label.setStyleSheet(
-            f"color: {tokens.text_primary}; background: transparent;"
-        )
+        kd_label.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
         layout.addWidget(kd_label)
 
         # Relative time
