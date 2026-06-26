@@ -115,7 +115,7 @@ def _ds_split_for_demo(demo_name: str) -> str:
     match in the same split (no leakage). MD5 is non-cryptographic but
     fine for split assignment.
     """
-    h = int(hashlib.md5(demo_name.encode()).hexdigest(), 16) % 100
+    h = int(hashlib.md5(demo_name.encode(), usedforsecurity=False).hexdigest(), 16) % 100
     if h < 70:
         return "train"
     if h < 85:
@@ -673,13 +673,11 @@ def _reconcile_against_complete(report_path: Path) -> dict:
     _conn = sqlite3.connect(f"file:{monolith_path}?mode=ro", uri=True)
     try:
         cur = _conn.cursor()
-        cur.execute(
-            f"""
-            SELECT demo_name, player_name, {", ".join(RECONCILE_FIELDS)}
-            FROM playermatchstats
-            WHERE data_quality = '{DATA_QUALITY_COMPLETE}'
-            """
-        )
+        # B608 false positive: RECONCILE_FIELDS and DATA_QUALITY_COMPLETE are
+        # hardcoded module constants (not user input) — no SQL-injection vector.
+        _cols = ", ".join(RECONCILE_FIELDS)
+        _sql = f"SELECT demo_name, player_name, {_cols} FROM playermatchstats WHERE data_quality = '{DATA_QUALITY_COMPLETE}'"  # nosec B608
+        cur.execute(_sql)
         existing = {(r[0], r[1]): r[2:] for r in cur.fetchall()}
     finally:
         _conn.close()
