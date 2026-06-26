@@ -590,9 +590,11 @@ class TestCheckPrerequisites:
     def test_exception_returns_false(self, monkeypatch):
         """If DB access throws, check_prerequisites should return (False, error msg)."""
         mgr, _engine = _make_manager(monkeypatch)
-        # Break the DB
+        # Break the DB with a realistic DB-layer failure (OSError is in the
+        # narrowed except set of check_prerequisites; RuntimeError is not — by
+        # design, unexpected errors propagate rather than being masked).
         mgr.db = MagicMock()
-        mgr.db.get_session.side_effect = RuntimeError("DB down")
+        mgr.db.get_session.side_effect = OSError("DB down")
         ok, msg = mgr.check_prerequisites()
         assert ok is False
         assert "Failed" in msg or "DB down" in msg
