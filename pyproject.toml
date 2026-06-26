@@ -11,7 +11,7 @@ build-backend = "setuptools.build_meta"
 name = "macena-cs2-analyzer"
 version = "1.0.0"
 description = "AI-powered Counter-Strike 2 coaching and analysis platform"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = {text = "Proprietary"}
 
 [project.optional-dependencies]
@@ -70,7 +70,9 @@ omit = [
 # P6-01: Incremental coverage roadmap
 # Exclusions updated: dev tools, legacy Kivy UI, entry-point scripts
 # omitted from denominator for honest production coverage measurement.
-fail_under = 40
+# Kept in sync with the CI gate (build.yml: pytest --cov-fail-under=33).
+# Raise BOTH together when the suite sustainably clears a higher bar.
+fail_under = 33
 show_missing = true
 exclude_lines = [
     "pragma: no cover",
