@@ -134,3 +134,35 @@ rung before any longer rung starts (B7.3).
 epochs observed at 5k in the 2026-05-06 runs — budget the full rung in GPU
 sessions, not minutes. The validation subsample stays fixed within a run
 (DR-01c) so early stopping compares like with like across epochs.
+
+---
+
+## B5 determinism probe — PASSED (appended 2026-07-02)
+
+Three seeded dry-runs (`--dry-run --model-type jepa --train-samples 5000
+--val-samples 2000 --seed {42,43,44} --no-tensorboard`), executed against
+the full monolith (348,236,706 eligible train ticks, sampled via the
+B1-XL id-space rejection path landed the same day in `0cd6aa9` after the
+probe itself exposed the original B1 id fetch OOMing at ~9 minutes).
+
+| Seed | Train | Val | Val/Train |
+|------|-------|-----|-----------|
+| 42 | 3.6475 | 1.9688 | 0.5398 |
+| 43 | 3.6967 | 1.9684 | 0.5325 |
+| 44 | 3.6591 | 1.9688 | 0.5381 |
+
+**Ratio variance = 0.000010 — gate (< 0.05, REFERENCE §8) passed by four
+orders of magnitude.** Val losses are near-identical across seeds because
+the val subsample is anchored at GLOBAL_SEED (B1.3) and the corpus is
+fixed; residual train-side spread comes from model-init variation only.
+DET-01 + B1 rotation semantics verified end-to-end on real data.
+
+Operational notes from the probe campaign: each seed costs ~46 min at
+5k/2k samples, dominated by the two corpus-scale COUNT queries (~25 min
+each split) — cached per run since `04543be`, so multi-epoch rungs pay
+the price once. Probe runs must be launched detached (`setsid --fork`);
+the assistant-harness background executor SIGTERMs at ~10 minutes.
+
+**Phase B exit state: B1–B7 all green (B4 accepted exit-0 the same day).
+The retrain ladder above is unblocked — execution remains owner-gated
+Phase G5.**
