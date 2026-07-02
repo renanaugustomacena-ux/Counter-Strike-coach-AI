@@ -50,6 +50,31 @@ def _build_callbacks(args) -> CallbackRegistry:
     return registry
 
 
+def _run_eval_baseline(stage: str) -> None:
+    """B6.1 (W2.3): pre/post-training eval snapshot via tools/eval_harness.py.
+
+    Runs in a subprocess so SBERT/FAISS never share the trainer's GPU/RAM
+    budget (GTX 1650, 4GB). Failures are logged loudly but never block
+    training — an eval outage must not cost a GPU day.
+    """
+    import subprocess
+
+    harness = Path(__file__).parent / "tools" / "eval_harness.py"
+    cmd = [sys.executable, str(harness)]
+    app_logger.info("B6.1: %s-training eval baseline starting", stage)
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
+        tail = (res.stdout or res.stderr or "").strip().splitlines()
+        app_logger.info(
+            "B6.1: %s-training eval exit=%s — %s",
+            stage,
+            res.returncode,
+            tail[-1] if tail else "(no output)",
+        )
+    except (subprocess.SubprocessError, OSError) as e:
+        app_logger.warning("B6.1: %s-training eval failed to run: %s", stage, e, exc_info=True)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Macena CS2 Analyzer - Training Pipeline Entry Point"
@@ -98,6 +123,16 @@ def main():
         default=None,
         help="Validation subsample size (default: 10000, config: VAL_SAMPLES)",
     )
+    parser.add_argument(
+        "--eval-baseline",
+        dest="eval_baseline",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help=(
+            "Run tools/eval_harness.py before and after training (B6.1). "
+            "Default: on for real runs, off for --dry-run."
+        ),
+    )
 
     args = parser.parse_args()
 
@@ -130,6 +165,12 @@ def main():
 
     # Assign dataset splits before training (chronological 70/15/15)
     manager.assign_dataset_splits()
+
+    # B6.1: pre/post eval snapshots frame every real training run so promotion
+    # decisions (B7/G5) always have a same-day baseline pair to compare.
+    run_eval = args.eval_baseline if args.eval_baseline is not None else not args.dry_run
+    if run_eval:
+        _run_eval_baseline("pre")
 
     try:
         if args.model_type in ["all", "jepa"]:
@@ -170,6 +211,9 @@ def main():
             orchestrator_rap.run_training()
 
         app_logger.info("Full Training Cycle Completed Successfully.")
+
+        if run_eval:
+            _run_eval_baseline("post")
 
     except Exception as e:
         app_logger.critical("Training Cycle Failed: %s", e, exc_info=True)
