@@ -1,5 +1,5 @@
 {
-  "file_count": 304,
+  "file_count": 305,
   "generator": "sync_integrity_manifest.py",
   "hashes": {
     "__init__.py": "d3074031129007f4a6dd65765a0faaad39df9ba8ee41ebe0c94c7f18598c12d0",
@@ -108,6 +108,7 @@
     "backend/coaching/correction_engine.py": "1b627a30a24489b693acb51e4418c182e77fc095d1f4d0dcbc65a48f9642af80",
     "backend/coaching/explainability.py": "d0fe98eaa870da2e4d1af992bcf146e0b7e29f6f55eb7f12aad9da3209ae486d",
     "backend/coaching/hybrid_engine.py": "2ddb0f877b298c3c67326e0300a050720033b21a45c9e1564e6b41a7e6ebb548",
+    "backend/coaching/jepa_insight_adapter.py": "a0edb497e1cb9d4b193c53c99a1dab23caf2916a9c4f24bcbc9f782449e1c6a2",
     "backend/coaching/longitudinal_engine.py": "6de28e5cd5eed4290b211f402bf118d6967fd9e0cfbf4ac9a0e17a45bac18463",
     "backend/coaching/nn_refinement.py": "d5236da4d23479202fca8355e8aae484cda3386e67157c0830ddab0cde6f82d7",
     "backend/coaching/pro_bridge.py": "c525c85412d59ebe16e3deeab8d4a92347dc39d8bb2fb6dd4100153dcb045581",
