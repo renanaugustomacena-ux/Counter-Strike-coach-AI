@@ -195,3 +195,7 @@ IgnoreFileDuplicateEntry.xml
 docs/node_modules/
 docs/tooling/node_modules/
 docs/tooling/pdf_zh_output/
+
+# Web workspace uses pnpm (apps/qt_app/web/pnpm-lock.yaml is the canonical
+# lockfile); stray npm lockfiles from an accidental `npm install` are noise.
+Programma_CS2_RENAN/apps/qt_app/web/**/package-lock.json
