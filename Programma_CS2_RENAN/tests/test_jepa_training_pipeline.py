@@ -633,3 +633,49 @@ class TestEndToEndSmoke:
             e2 = model.context_encoder(x2).mean(1)
             cosine = torch.nn.functional.cosine_similarity(e1, e2).item()
             assert cosine < 0.99, f"Cosine similarity too high: {cosine} (collapse)"
+
+
+class TestEMARehydrationWarning:
+    """W1.4 (REPR-01 / Law 17): a resumed model without EMA counters warns loudly."""
+
+    def _model(self):
+        from Programma_CS2_RENAN.backend.nn.jepa_model import JEPACoachingModel
+        from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
+
+        return JEPACoachingModel(input_dim=METADATA_DIM, output_dim=10)
+
+    def test_pretrained_without_counters_warns(self):
+        from unittest import mock
+
+        import Programma_CS2_RENAN.backend.nn.jepa_trainer as jt
+
+        model = self._model()
+        model.is_pretrained = True  # resumed from a legacy checkpoint
+        with mock.patch.object(jt, "logger") as mock_log:
+            jt.JEPATrainer(model, t_max=10)
+        assert any("REPR-01" in str(c) for c in mock_log.warning.call_args_list)
+
+    def test_fresh_model_stays_silent(self):
+        from unittest import mock
+
+        import Programma_CS2_RENAN.backend.nn.jepa_trainer as jt
+
+        model = self._model()
+        with mock.patch.object(jt, "logger") as mock_log:
+            jt.JEPATrainer(model, t_max=10)
+        assert not any("REPR-01" in str(c) for c in mock_log.warning.call_args_list)
+
+    def test_counters_present_rehydrate_without_warning(self):
+        from unittest import mock
+
+        import Programma_CS2_RENAN.backend.nn.jepa_trainer as jt
+
+        model = self._model()
+        model.is_pretrained = True
+        model._saved_ema_step = 42
+        model._saved_ema_total_steps = 100
+        with mock.patch.object(jt, "logger") as mock_log:
+            trainer = jt.JEPATrainer(model, t_max=10)
+        assert trainer._ema_step == 42
+        assert trainer._ema_total_steps == 100
+        assert not any("REPR-01" in str(c) for c in mock_log.warning.call_args_list)

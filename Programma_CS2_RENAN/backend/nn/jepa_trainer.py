@@ -132,6 +132,15 @@ class JEPATrainer:
         # REPR-01: if load_jepa_model attached saved counters to the model,
         # rehydrate them so the cosine schedule resumes at the correct τ
         # instead of restarting at τ=0.996.
+        # W1.4 (Law 17): a pretrained/resumed model WITHOUT counters means a
+        # legacy checkpoint — the schedule restart must be loud, never silent.
+        if getattr(model, "is_pretrained", False) and not hasattr(model, "_saved_ema_step"):
+            logger.warning(
+                "REPR-01: pretrained model carries no saved EMA counters "
+                "(legacy checkpoint?) — EMA cosine schedule restarts at "
+                "τ_base=%.3f instead of resuming.",
+                self._ema_base_momentum,
+            )
         self._ema_step: int = int(getattr(model, "_saved_ema_step", 0))
         self._ema_total_steps: int = int(getattr(model, "_saved_ema_total_steps", t_max))
 

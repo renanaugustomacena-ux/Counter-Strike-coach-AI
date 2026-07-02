@@ -716,6 +716,15 @@ def load_jepa_model(path: str, input_dim: int, output_dim: int) -> JEPACoachingM
         model._saved_ema_step = int(checkpoint["ema_step"])
     if "ema_total_steps" in checkpoint:
         model._saved_ema_total_steps = int(checkpoint["ema_total_steps"])
+    if "ema_step" not in checkpoint and checkpoint.get("is_pretrained", False):
+        # W1.4 (Law 17): legacy pretrained checkpoint without EMA counters —
+        # warn at the only site that knows the checkpoint format; a resuming
+        # trainer will restart the cosine schedule at τ_base.
+        logger.warning(
+            "REPR-01: checkpoint %s has no EMA counters (legacy format) — "
+            "a resuming trainer will restart the EMA schedule at τ_base.",
+            path,
+        )
 
     param_count = checkpoint.get("param_count", "?")
     timestamp = checkpoint.get("save_timestamp", "unknown")
