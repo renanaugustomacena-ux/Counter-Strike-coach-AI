@@ -199,6 +199,99 @@ class TrainingOrchestrator:
         except Exception as e:
             logger.debug("B3.2: Could not restore best_val_loss from sidecar: %s", e)
 
+    # W2.5/DR-17: per-epoch stats need a sample, not all 50k rows.
+    _DRIFT_SAMPLE_CAP = 2048
+
+    def _init_train_drift_monitor(self, val_data):
+        """W2.5/DR-17: arm per-epoch train-subsample drift detection (opt-in).
+
+        ST-1 (2026-07-02) found the trainer's drift mechanism had no caller.
+        Wiring note: inside a single run the FIXED val set (B1.3) can never
+        drift against itself — the meaningful comparison is the ROTATING
+        train window (B1) against a val-anchored reference, which catches
+        the seed rotation walking into a differently-distributed corpus
+        region. Uses TickFeatureDriftMonitor (25-dim model-input space);
+        the trainer's own DriftMonitor is aggregate-space (DRIFT-01) and
+        does not apply to tick features. Enabled via the
+        DRIFT_RETRAIN_ENABLED setting (default off).
+        """
+        from Programma_CS2_RENAN.core.config import get_setting
+
+        if not get_setting("DRIFT_RETRAIN_ENABLED", default=False):
+            return None
+        if not val_data:
+            return None
+        try:
+            from Programma_CS2_RENAN.backend.processing.feature_engineering import (
+                FEATURE_NAMES,
+                FeatureExtractor,
+            )
+            from Programma_CS2_RENAN.backend.processing.validation.drift import (
+                TickFeatureDriftMonitor,
+            )
+
+            reference = FeatureExtractor.extract_batch(val_data[: self._DRIFT_SAMPLE_CAP])
+            monitor = TickFeatureDriftMonitor()
+            monitor.fit_reference(reference, feature_names=list(FEATURE_NAMES))
+            logger.info(
+                "W2.5: train-drift monitor armed (reference = %d fixed-val rows)",
+                len(reference),
+            )
+            return monitor
+        except Exception as e:
+            logger.warning(
+                "W2.5: drift monitor arming failed — disabled for this run: %s",
+                e,
+                exc_info=True,
+            )
+            return None
+
+    def _check_train_drift(self, monitor, train_data, epoch, already_alerted) -> bool:
+        """Score this epoch's train subsample against the val reference.
+
+        Warns per drifted epoch; escalates ONCE per run (CRITICAL + user
+        notification) so a persistent shift is impossible to miss without
+        spamming. Never raises — drift telemetry must not kill training.
+        """
+        try:
+            from Programma_CS2_RENAN.backend.processing.feature_engineering import FeatureExtractor
+
+            feats = FeatureExtractor.extract_batch(train_data[: self._DRIFT_SAMPLE_CAP])
+            report = monitor.check_drift(feats)
+            if not report.is_drifted:
+                return already_alerted
+            logger.warning(
+                "W2.5: train subsample drift at epoch %d (max_z=%.2f, dims=%s)",
+                epoch,
+                report.max_z_score,
+                report.drifted_features,
+            )
+            if not already_alerted:
+                logger.critical(
+                    "W2.5/DR-17: train-vs-val feature drift detected — the rotating "
+                    "subsample entered a differently-distributed corpus region. "
+                    "Review the eval report before promoting this checkpoint."
+                )
+                try:
+                    from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
+
+                    get_state_manager().add_notification(
+                        "training",
+                        "WARNING",
+                        f"Feature drift in training data at epoch {epoch} "
+                        f"(max_z={report.max_z_score:.2f}).",
+                    )
+                except Exception:
+                    logger.warning(
+                        "W2.5: drift notification could not be delivered",
+                        exc_info=True,
+                    )
+                return True
+            return already_alerted
+        except Exception as e:
+            logger.warning("W2.5: drift check failed at epoch %d: %s", epoch, e, exc_info=True)
+            return already_alerted
+
     def _run_epoch_loop(self, trainer, model, val_data, context):
         """Execute the train/validate/checkpoint epoch loop. Returns final epoch number.
 
@@ -207,6 +300,9 @@ class TrainingOrchestrator:
         (passed in) so early-stopping comparisons remain stable across epochs.
         """
         final_epoch = 0
+        # W2.5/DR-17: opt-in train-vs-val drift telemetry (None when disabled).
+        drift_monitor = self._init_train_drift_monitor(val_data)
+        drift_alerted = False
         for epoch in range(1, self.max_epochs + 1):
             final_epoch = epoch
             self._current_epoch = epoch
@@ -235,6 +331,11 @@ class TrainingOrchestrator:
                 trainer.scheduler.step()
 
             self._report_progress(epoch, train_loss, val_loss)
+
+            if drift_monitor is not None:
+                drift_alerted = self._check_train_drift(
+                    drift_monitor, train_data, epoch, drift_alerted
+                )
 
             self.callbacks.fire(
                 "on_epoch_end",

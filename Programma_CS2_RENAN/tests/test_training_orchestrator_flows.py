@@ -870,3 +870,64 @@ class TestNegativePoolWarmupLogging(TestPrepareTensorBatchJEPA):
             orch._prepare_tensor_batch(items)  # second pool use -> must NOT log again
         ready = [c for c in mock_log.info.call_args_list if "negative pool warmed up" in str(c)]
         assert len(ready) == 1
+
+
+class TestTrainDriftWiring(TestPrepareTensorBatchJEPA):
+    """W2.5/DR-17: opt-in train-vs-val drift telemetry in the epoch loop."""
+
+    def test_disabled_by_default_returns_none(self, monkeypatch):
+        import Programma_CS2_RENAN.core.config as cfg
+
+        orch = _make_orchestrator(model_type="jepa")
+        monkeypatch.setattr(cfg, "get_setting", lambda key, default=None: default)
+        assert orch._init_train_drift_monitor(self._make_tick_items(20)) is None
+
+    def test_armed_when_setting_on(self, monkeypatch):
+        import Programma_CS2_RENAN.core.config as cfg
+
+        def _setting(key, default=None):
+            return True if key == "DRIFT_RETRAIN_ENABLED" else default
+
+        monkeypatch.setattr(cfg, "get_setting", _setting)
+        orch = _make_orchestrator(model_type="jepa")
+        monitor = orch._init_train_drift_monitor(self._make_tick_items(20))
+        assert monitor is not None
+        # In-distribution sample against its own reference: no drift.
+        report_alert = orch._check_train_drift(
+            monitor, self._make_tick_items(20), epoch=1, already_alerted=False
+        )
+        assert report_alert is False
+
+    def test_alerts_once_on_persistent_drift(self):
+        from unittest import mock
+
+        import Programma_CS2_RENAN.backend.nn.training_orchestrator as tom
+
+        orch = _make_orchestrator(model_type="jepa")
+        fake_report = mock.MagicMock(is_drifted=True, max_z_score=9.9, drifted_features=["health"])
+        fake_monitor = mock.MagicMock()
+        fake_monitor.check_drift.return_value = fake_report
+
+        with mock.patch.object(tom, "logger") as mock_log:
+            alerted = orch._check_train_drift(
+                fake_monitor, self._make_tick_items(11), epoch=2, already_alerted=False
+            )
+            alerted = orch._check_train_drift(
+                fake_monitor, self._make_tick_items(11), epoch=3, already_alerted=alerted
+            )
+        assert alerted is True
+        # CRITICAL escalation exactly once; per-epoch warnings both times.
+        assert mock_log.critical.call_count == 1
+        drift_warnings = [
+            c for c in mock_log.warning.call_args_list if "train subsample drift" in str(c)
+        ]
+        assert len(drift_warnings) == 2
+
+    def test_drift_check_never_raises(self):
+        from unittest import mock
+
+        orch = _make_orchestrator(model_type="jepa")
+        exploding = mock.MagicMock()
+        exploding.check_drift.side_effect = RuntimeError("boom")
+        # Must swallow-and-log, returning prior alert state unchanged.
+        assert orch._check_train_drift(exploding, self._make_tick_items(11), 1, False) is False
