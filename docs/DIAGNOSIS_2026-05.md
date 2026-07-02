@@ -4,19 +4,19 @@ Single canonical state-of-the-system snapshot for the Macena CS2 Analyzer
 project. Replaces 9 prior dump-style docs (see §6). Refresh when material
 state changes; do not append narrative.
 
-**Owner:** Renan Augusto Macena · **Branch:** `main` (post-`1878514`) · **Last refresh:** 2026-06-13
+**Owner:** Renan Augusto Macena · **Branch:** `main` (post-`68e998f`) · **Last refresh:** 2026-07-02
 
 ---
 
 ## 1. Executive summary
 
-Repo state is **GREEN** for runtime and validation; **1 test failure** (skill-vector expectation, tracked as Programme Phase C0):
+Repo state is **GREEN** for runtime and validation; **1 test failure** (eval-harness dry-run timeout >30s — TASKS#56 / Programme B6.2):
 
-- `./.venv/bin/python tools/headless_validator.py` → **314/319 PASS, 0 fail, 5 warn, exit 0** (`VERDICT: PASS`).
-- `./.venv/bin/python -m pytest` (scoped) → **2028 passed, 1 failed, 14 skipped, 5 xpassed**.
-- All 11 REFERENCE.md §3 invariants enforced (verified 2026-06-13).
-- JEPA training: val loss ~1.8977, maturity state `doubt`. Plateau root-caused to fixed-seed 5,024-tick/epoch subsampling (fix designed, not yet implemented — Programme Phase B).
-- 14 arxiv JEPA/VL-JEPA papers added to `docs/research/arxiv/`.
+- `./.venv/bin/python tools/headless_validator.py` → **318/319 PASS, 0 fail, 1 warn, exit 0** (`VERDICT: PASS`).
+- `./.venv/bin/python -m pytest` (scoped) → **2088 passed, 1 failed, 9 skipped, 40 deselected** (archived: `reports/baseline_pytest_2026-07-02.txt`).
+- All REFERENCE.md §3 invariants enforced (code spot-verified 2026-06-13; environment re-verified 2026-07-02).
+- JEPA training: val loss ~1.8977, maturity state `doubt`. Sampling fix (B1–B3) LANDED 2026-06-19 (`dd31e39`/`330e28f`/`4fb2f87`); eval-gated retrain still pending (Programme G5, gated on B4–B6).
+- Research library: 14 JEPA PDFs in `docs/research/arxiv/` + ~52 more in `docs/research/library/` (see `docs/research/INDEX.md`, ~66 total).
 
 Open work tracked in [TASKS.md](../TASKS.md) and `~/.claude/plans/cs2-completion-2026-06-13/` (completion programme, 7 phases A–G).
 
@@ -24,10 +24,10 @@ Open work tracked in [TASKS.md](../TASKS.md) and `~/.claude/plans/cs2-completion
 
 ## 2. Validator current status
 
-Run: `./.venv/bin/python tools/headless_validator.py 2>&1 | tail -25`
+Run: `./.venv/bin/python tools/headless_validator.py 2>&1 | tail -25` — 2026-07-02, full output archived at `reports/baseline_validator_2026-07-02.txt`.
 
 ```
-RESULT: 314/319 passed, 0 failed, 5 warnings
+RESULT: 318/319 passed, 0 failed, 1 warnings
 VERDICT: PASS
 ```
 
@@ -35,13 +35,9 @@ Residual warnings (all by-design / known-deferred):
 
 | # | Source | Warning | Disposition |
 |---|---|---|---|
-| 1 | Core | `import map_manager: No module named 'kivy'` | Legacy Kivy UI artifact; qt_app is the active UI. Programme Phase C11 retires these imports. |
-| 2 | Core | `import registry: No module named 'kivymd'` | Same as #1. |
-| 3 | Deps | `Optional deps not installed: shap` | Optional model-explainability dep; coaching pipeline tolerates absence. |
-| 4 | Web-Marquee | `web/match-detail/ not scaffolded` | Gated until P4.1+ per redesign plan. Defer. |
-| 5 | Web-Marquee | `web/coach-chat/ not scaffolded` | Same as #4. |
+| 1 | Deps | `Optional deps not installed: shap` | Optional model-explainability dep; coaching pipeline tolerates absence. |
 
-Note: ncps + hflayers warnings (#4/#5 in prior version) are now resolved — both packages installed in venv.
+Note: kivy/kivymd warnings retired by C11 (`2b1ff16`); web/match-detail + web/coach-chat scaffolds landed (validator Phase 26 all PASS); ncps + hflayers installed in venv.
 
 ---
 
@@ -60,7 +56,7 @@ These are the production-correctness contracts. Violation = silent corruption. A
 | **P-VEC-02 / P3-A** | `vectorizer._finalize_vector` | NaN/Inf clamp; >5% rate per batch raises `DataQualityError` | ✅ Enforced; helper extracted but logic byte-for-byte identical |
 | **LEAK-01** | `training_orchestrator._rap_collect_per_tick` | When per-tick `all_players` context absent, mask sample (`val_mask=False`) instead of substituting `round_outcome` | ✅ Enforced; refactor preserves verbatim — confirmed by AST diff |
 | **REPR-01** | `jepa_train._jepa_pretrain_finalize` | EMA step counter persisted to `model._saved_ema_step` for resume reproducibility | ✅ Enforced |
-| **DET-01** | `run_full_training_cycle.py` (B#3, uncommitted in master plan) | `set_global_seed()` called immediately after argparse | Master plan B#3 — uncommitted on disk; verify before resuming Phase A. |
+| **DET-01** | `run_full_training_cycle.py` + orchestrator sampling | `set_global_seed()` at entry; per-epoch rotation `seed=GLOBAL_SEED+epoch` (train) / fixed seed (val) | ✅ Enforced — B1–B3 landed 2026-06-19 (`dd31e39`, `330e28f`, `4fb2f87`) with dedicated determinism/rotation tests. |
 | **Tick-decimation forbidden** | `run_ingestion._save_sequential_data` + `_build_match_tick_dataframe` + `_build_legacy_tick_dataframe` | Every input row maps 1:1 to one output row; player-name filter only | ✅ Enforced |
 | **HLTV DB separation** | `hltv_metadata.db` ≠ `database.db` | Feature-purpose separation; `get_hltv_db_manager()` vs `get_db_manager()` | ✅ Enforced; do not conflate |
 
@@ -84,6 +80,8 @@ These are the production-correctness contracts. Violation = silent corruption. A
 - Torch: `2.11.0+cu130` (working; do not downgrade).
 - 142 packages installed including PySide6 6.11.0, demoparser2 0.41.1, watchdog 5.0.3, scikit-learn 1.8.0, sentence-transformers 3.4.1, faiss-cpu, polars.
 - **Known issue:** `./.venv/bin/pip` shebang has stale path from a venv relocation (`/media/renan/New Volume/Counter-Strike-coach-AI/...` missing the `PROIECT/` segment). Workaround: use `./.venv/bin/python -m pip ...` for any pip operation. Real fix (deferred): recreate venv or rewrite shebang.
+- **Known issue (2026-07-02):** the stale-shebang disease affects other console scripts too — `./.venv/bin/pre-commit` points at the pre-move volume path. Standing rule: invoke venv tools as `./.venv/bin/python -m <module>` (pip, pre_commit, alembic, …). Real fix rides the G9 venv recreation.
+- **Cross-OS hook rule (2026-07-02, AUDIT 26-ENV-02):** git hooks are per-clone and per-OS. The 2026-06-26 Windows session installed CRLF hooks bound to `E:\...venv_win\Scripts\python.exe`, silently breaking every Linux commit. After ANY Windows session run `./.venv/bin/python -m pre_commit install -t pre-commit -t pre-push` on Linux (mirror operation on Windows). Phantom-churn defense (AUDIT 26-ENV-01): repo-local `core.filemode=false` + `core.autocrlf=input` + `.gitattributes` eol policy (commit `68e998f`) — do NOT run `git add --renormalize .` (478 historical CRLF files in index).
 
 **Filesystem:**
 - Repo lives on `/dev/sda2` (NTFS3 kernel driver). Past corruption incident 2026-04-29 02:09 UTC silently zeroed files; resolved 2026-05-02 via `chkdsk` from Windows. Volume currently clean (`dmesg | grep ntfs3` empty). Long-term recommendation: reformat to ext4/btrfs OR move active repos to a Linux-native volume.
@@ -92,7 +90,9 @@ These are the production-correctness contracts. Violation = silent corruption. A
 
 ## 5. Active backlog cross-reference
 
-Active programme: `~/.claude/plans/cs2-completion-2026-06-13/` (15-file completion programme; supersedes all prior plan files including `cs2-coach-flawless-readiness-master-plan.md` which no longer exists on disk).
+Active programme: `~/.claude/plans/cs2-completion-2026-06-13/` (completion programme; supersedes all prior plan files including `cs2-coach-flawless-readiness-master-plan.md` which no longer exists on disk).
+
+Extension (2026-07-02): `~/.claude/plans/hello-my-brother-our-bright-snail.md` — total-study dossier, Doctrine v2 (Laws 11–18), uplift workstreams W0–W8, research dossier v2 (RD-15+, EXP-1..12), tracker-drift register TD-1..8 (synced this date, session S-W0).
 
 Programme phases: A (foundation/truth) → B (training engine) → C (code quality) → D (data pipeline) → E (documentation) → F (product completion) → G (release/data ops). See `01-MASTER-PLAN.md` for full checklist and session log.
 
