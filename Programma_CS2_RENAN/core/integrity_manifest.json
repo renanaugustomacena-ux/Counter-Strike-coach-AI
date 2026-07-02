@@ -148,7 +148,7 @@
     "backend/knowledge_base/help_system.py": "62ab4f6b0729102d6d1c875b3a7fc5621e7716608c923c4e6079e8b0ee1896ec",
     "backend/nn/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "backend/nn/advanced/__init__.py": "3971d5e4c0ae524c1e60d8936ca3103a1689b0c89b4591b6ece3283d793254c7",
-    "backend/nn/coach_manager.py": "4ce4a8c507eca15a1361adaf0b503004ccfb37a12453dab718f77c012e10c8ea",
+    "backend/nn/coach_manager.py": "0c6a2e9c43a0635247423ab6d0e18374b35ade78aaa260dcdd295697efe0cccd",
     "backend/nn/config.py": "fb55bbc340356e62b3cf6bd1d3c5a85bafa5111482658e2ea9b0d285173656b1",
     "backend/nn/data_quality.py": "0860ec134d60f068a9794a6b869b4710bff502e5322d51e98d089ec6baaba2a8",
     "backend/nn/dataset.py": "48c044a0836d27fe50f5ed3aeaade64879737e76421750ed3501758b9ef2c4be",

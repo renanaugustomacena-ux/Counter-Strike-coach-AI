@@ -169,9 +169,12 @@ class CoachTrainingManager:
             # If we don't have enough pro demos yet, check if we can use user demos
             # User demos REQUIRE ID validation (need to filter specific player's ticks)
             profile = session.exec(select(PlayerProfile)).first()
-            # Defensive read: a profile instance may lack the connection fields if the
-            # row predates the steam_connected/faceit_connected columns (schema drift)
-            # or is a partial fixture. Missing → treat as "not connected" (safe default).
+            # 26-SCHEMA-02 (verified 2026-07-02): PlayerProfile has NEVER declared
+            # steam_connected/faceit_connected — they live on Ext_PlayerPlaystyle
+            # (the DM-02 conflated table) and NO code path writes them anywhere.
+            # These getattr reads therefore always yield False today, making the
+            # branch below the de-facto only path. Kept defensive-and-False until
+            # the connect feature is implemented or the fields are dropped (TASKS#61).
             steam_ok = getattr(profile, "steam_connected", False)
             faceit_ok = getattr(profile, "faceit_connected", False)
             if not profile or not (steam_ok and faceit_ok):

@@ -567,9 +567,11 @@ class TestCheckPrerequisites:
     def test_user_demos_insufficient_with_profile_present(self, monkeypatch):
         """With a profile but insufficient pro demos, still returns not ready.
 
-        PlayerProfile HAS steam_connected/faceit_connected (default False).
-        _check_db_prerequisites reads them defensively via getattr; an unconnected
-        profile + 5/10 pro demos yields the "Gathering Pro Baseline" path.
+        26-SCHEMA-02: PlayerProfile does NOT declare steam_connected/
+        faceit_connected (they live on Ext_PlayerPlaystyle and are never
+        written by any code path). check_prerequisites reads them via
+        getattr with a False default, so every profile is "not connected"
+        today; 5/10 pro demos therefore yields "Gathering Pro Baseline".
         """
         mgr, engine = _make_manager(monkeypatch)
         _seed_matches(engine, pro_count=5, user_count=3)
