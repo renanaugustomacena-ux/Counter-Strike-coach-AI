@@ -1,2 +1,29 @@
 *.db filter=lfs diff=lfs merge=lfs -text
 *.pt filter=lfs diff=lfs merge=lfs -text
+
+# --- Line-ending policy (2026-07-02) ---------------------------------------
+# The index is historically mixed (478 CRLF / 623 LF tracked text files from
+# the project's Windows-born history). Do NOT renormalize globally
+# (`git add --renormalize .` is forbidden without an owner-approved plan).
+# Phantom-churn defense is repo-local config: core.filemode=false,
+# core.autocrlf=input. Rules below pin only classes that must never flip.
+# Consequence of autocrlf=input: editing a CRLF-index file lazily normalizes
+# that one file to LF in its next commit (expected, incremental convergence).
+
+# Shell scripts break under bash with CRLF — always LF.
+*.sh text eol=lf
+
+# Windows batch files require CRLF.
+*.bat text eol=crlf
+
+# Mixed-EOL-in-index data files: eol-opaque, never converted or eol-compared.
+Programma_CS2_RENAN/backend/knowledge/tactical_knowledge.json -text
+Programma_CS2_RENAN/backend/storage/remote_telemetry/match_display_123_User_Test_001.json -text
+Programma_CS2_RENAN/core/integrity_manifest.json.bak -text
+Programma_CS2_RENAN/data/knowledge/coaching_knowledge_base.json -text
+Programma_CS2_RENAN/data/knowledge/coaching_knowledge_base_ocr.json -text
+Programma_CS2_RENAN/data/knowledge/extraction_summary.json -text
+Programma_CS2_RENAN/data/map_config.json -text
+Programma_CS2_RENAN/data/map_tensors.json -text
+Programma_CS2_RENAN/settings.json -text
+integrity_manifest.json -text
