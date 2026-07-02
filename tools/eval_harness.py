@@ -644,11 +644,20 @@ def run(
         }
 
     # --- RAG + kNN purity ---
-    try:
-        report["sections"]["rag_and_purity"] = _rag_and_purity(k_list)
-    except Exception as exc:
-        logger.exception("rag_and_purity section failed")
-        report["sections"]["rag_and_purity"] = {"status": "ERROR", "reason": str(exc)}
+    # B6.2 (W2.3): in dry-run this section previously ran the full SBERT load +
+    # 2000-sample embedding, blowing the 30s test budget under load. Dry-run is
+    # a report-shape probe, not an evaluation — skip the heavy path.
+    if dry_run:
+        report["sections"]["rag_and_purity"] = {
+            "status": "NOT_AVAILABLE",
+            "reason": "dry-run: heavy embedding pass skipped (B6.2 fast path)",
+        }
+    else:
+        try:
+            report["sections"]["rag_and_purity"] = _rag_and_purity(k_list)
+        except Exception as exc:
+            logger.exception("rag_and_purity section failed")
+            report["sections"]["rag_and_purity"] = {"status": "ERROR", "reason": str(exc)}
 
     # --- Brier calibration ---
     report["sections"]["win_prob_calibration"] = _win_prob_calibration(win_prob_ckpt)
