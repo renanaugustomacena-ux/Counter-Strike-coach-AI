@@ -104,7 +104,13 @@ class AnalysisOrchestrator:
                     f"{module} analysis failing repeatedly ({n} times).",
                 )
             except Exception:
-                pass
+                # 26-ORCH-01: the notification is best-effort, but its failure
+                # must leave a trace — never a silent pass (CLAUDE.md rule).
+                logger.warning(
+                    "26-ORCH-01: failed to emit persistent-failure notification " "for %s analysis",
+                    module,
+                    exc_info=True,
+                )
 
     def analyze_match(
         self,

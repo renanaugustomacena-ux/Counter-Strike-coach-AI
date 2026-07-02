@@ -183,3 +183,25 @@ class TestMatchAnalysis:
         )
 
         assert len(ma.all_insights) == 2
+
+
+class TestRecordModuleFailureNotification:
+    """26-ORCH-01 (W1.1): notification-send failure must be logged, never swallowed."""
+
+    def test_notification_failure_logs_warning(self, monkeypatch):
+        from unittest import mock
+
+        import Programma_CS2_RENAN.backend.services.analysis_orchestrator as ao
+        import Programma_CS2_RENAN.backend.storage.state_manager as sm
+
+        orch = ao.AnalysisOrchestrator()
+
+        def _boom():
+            raise RuntimeError("state manager down")
+
+        monkeypatch.setattr(sm, "get_state_manager", _boom)
+        with mock.patch.object(ao, "logger") as mock_log:
+            for _ in range(ao.AnalysisOrchestrator._LOG_SUPPRESSION_INITIAL):
+                orch._record_module_failure("momentum", RuntimeError("x"))
+        warned = [c for c in mock_log.warning.call_args_list if "26-ORCH-01" in str(c)]
+        assert warned, "notification failure must produce a 26-ORCH-01 warning"
