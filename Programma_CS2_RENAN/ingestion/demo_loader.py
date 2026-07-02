@@ -155,8 +155,9 @@ class DemoLoader:
         app_logger.info("Loading cached simulation from %s", os.path.basename(cache_path))
         try:
             return _pickle_load_verified(cache_path)
-        except Exception as e:
-            app_logger.warning("Cache load failed, re-parsing: %s", e)
+        except (OSError, ValueError, KeyError, EOFError, pickle.UnpicklingError) as e:
+            # W1.3/#28: typed superset for the HMAC-verified pickle cache path.
+            app_logger.warning("Cache load failed, re-parsing: %s", e, exc_info=True)
             return None
 
     @staticmethod
@@ -188,9 +189,11 @@ class DemoLoader:
                         float(getattr(row, "Z", 0.0) or 0.0),
                     )
             del rows_df
-        except Exception as e:
+        except Exception as e:  # demoparser2/PyO3 raises bare Exception — boundary catch (#28.3)
             app_logger.error(
-                "Error in Pass 1 (player positions): %s — grenade trajectories will be empty", e
+                "Error in Pass 1 (player positions): %s — grenade trajectories will be empty",
+                e,
+                exc_info=True,
             )
             pass1_failed = True
         return pos_by_tick, pass1_failed
@@ -341,8 +344,8 @@ class DemoLoader:
                         capped_count,
                         n_type.name,
                     )
-            except Exception as e:
-                app_logger.error("Error parsing %s: %s", n_type, e)
+            except Exception as e:  # demoparser2/PyO3 boundary catch (#28.3)
+                app_logger.error("Error parsing %s: %s", n_type, e, exc_info=True)
 
         process_nades(
             ["smokegrenade_detonate", "smokegrenade_expired"], NadeType.SMOKE, is_start_end=True
@@ -359,8 +362,8 @@ class DemoLoader:
             res = parser.parse_events(["round_freeze_end"])
             if res:
                 return sorted(res[0][1]["tick"].tolist())
-        except Exception as e:
-            app_logger.warning("Failed to parse round_freeze_end events: %s", e)
+        except Exception as e:  # demoparser2/PyO3 boundary catch (#28.3)
+            app_logger.warning("Failed to parse round_freeze_end events: %s", e, exc_info=True)
         return []
 
     @staticmethod
@@ -391,8 +394,8 @@ class DemoLoader:
                     len(plant_events),
                     len(defuse_ticks),
                 )
-        except Exception as e:
-            app_logger.warning("Failed to parse bomb events: %s", e)
+        except Exception as e:  # demoparser2/PyO3 boundary catch (#28.3)
+            app_logger.warning("Failed to parse bomb events: %s", e, exc_info=True)
         return plant_events, defuse_ticks
 
     @staticmethod
@@ -428,8 +431,8 @@ class DemoLoader:
             app_logger.debug("DataFrame columns: %s", rows_df.columns.tolist())
             if not rows_df.empty:
                 app_logger.debug("First row dict: %s", rows_df.iloc[0].to_dict())
-        except Exception as e:
-            app_logger.error("Error parsing ticks in Pass 3: %s", e)
+        except Exception as e:  # demoparser2/PyO3 boundary catch (#28.3)
+            app_logger.error("Error parsing ticks in Pass 3: %s", e, exc_info=True)
 
         if "current_equip_value" in rows_df.columns:
             rows_df = rows_df.rename(columns={"current_equip_value": "equipment_value"})
@@ -635,8 +638,8 @@ class DemoLoader:
                             details=f"{getattr(row, 'attacker_name', '?')} -> {getattr(row, 'user_name', '?')}",
                         )
                     )
-        except Exception as e:
-            app_logger.warning("Failed to parse player_death events: %s", e)
+        except Exception as e:  # demoparser2/PyO3 boundary catch (#28.3)
+            app_logger.warning("Failed to parse player_death events: %s", e, exc_info=True)
         return game_events
 
     @staticmethod
@@ -673,8 +676,9 @@ class DemoLoader:
                 result["_map_tensors"] = map_tensors[default_map]  # type: ignore[assignment]
             else:
                 app_logger.debug("No specific tensors found for %s", default_map)
-        except Exception as e:
-            app_logger.warning("Error loading map tensors: %s", e)
+        except (OSError, ValueError, KeyError) as e:
+            # W1.3/#28: JSON/IO path — json.JSONDecodeError is a ValueError subclass.
+            app_logger.warning("Error loading map tensors: %s", e, exc_info=True)
 
     @staticmethod
     def load_demo(

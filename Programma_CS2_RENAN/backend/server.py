@@ -19,6 +19,7 @@ from typing import List
 import uvicorn
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from pydantic import BaseModel
+from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import select
 
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -87,8 +88,8 @@ async def lifespan(app: FastAPI):
     if init_database:
         try:
             init_database()
-        except Exception as e:
-            app_logger.error("DB Init failed: %s", e)
+        except Exception as e:  # startup proceeds degraded by design (#28.1 policy)
+            app_logger.error("DB Init failed: %s", e, exc_info=True)
     yield
 
 
@@ -171,8 +172,9 @@ def _write_telemetry_to_disk(data: MatchTelemetry) -> None:
             json.dump(data.model_dump(), f, indent=4)
 
         app_logger.info("Telemetry archived: %s", file_path)
-    except Exception as e:
-        app_logger.error("Background telemetry write failed: %s", e)
+    except (OSError, TypeError, ValueError) as e:
+        # W1.3/#28: filesystem + json.dump failure classes; fire-and-forget by design.
+        app_logger.error("Background telemetry write failed: %s", e, exc_info=True)
 
 
 @app.get("/api/insights", response_model=List[InsightRead])
@@ -188,8 +190,9 @@ def get_insights():
             statement = select(CoachingInsight).limit(100)
             insights = session.exec(statement).all()
             return insights
-    except Exception as e:
-        app_logger.error("Error fetching insights: %s", e)
+    except SQLAlchemyError as e:
+        # W1.3/#28: DB-read superset; degrade to empty list.
+        app_logger.error("Error fetching insights: %s", e, exc_info=True)
         return []
 
 
@@ -200,8 +203,8 @@ def get_status():
         from Programma_CS2_RENAN.backend.control.console import get_console
 
         return get_console().get_system_status()
-    except Exception as e:
-        app_logger.warning("Console not available: %s", e)
+    except Exception as e:  # top-level API handler stays broad (#28.1 policy)
+        app_logger.warning("Console not available: %s", e, exc_info=True)
         return {"status": "unavailable", "error": str(e)}
 
 
@@ -218,7 +221,8 @@ def console_health():
             "ml_controller": console.ml_controller is not None,
             "ingest_manager": console.ingest_manager is not None,
         }
-    except Exception as e:
+    except Exception as e:  # top-level API handler stays broad (#28.1 policy)
+        app_logger.warning("Console health check failed: %s", e, exc_info=True)
         return {"healthy": False, "error": str(e)}
 
 
@@ -236,8 +240,8 @@ async def start_training(request: Request):
 
         result = get_console().start_training()
         return {"status": "ok", "training": result}
-    except Exception as e:
-        app_logger.error("Training start failed: %s", e)
+    except Exception as e:  # top-level API handler stays broad (#28.1 policy)
+        app_logger.error("Training start failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -252,8 +256,8 @@ async def stop_training(request: Request):
 
         result = get_console().stop_training()
         return {"status": "ok", "training": result}
-    except Exception as e:
-        app_logger.error("Training stop failed: %s", e)
+    except Exception as e:  # top-level API handler stays broad (#28.1 policy)
+        app_logger.error("Training stop failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -268,7 +272,8 @@ async def pause_training(request: Request):
 
         result = get_console().pause_training()
         return {"status": "ok", "training": result}
-    except Exception as e:
+    except Exception as e:  # top-level API handler stays broad (#28.1 policy)
+        app_logger.error("Training control failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -283,7 +288,8 @@ async def resume_training(request: Request):
 
         result = get_console().resume_training()
         return {"status": "ok", "training": result}
-    except Exception as e:
+    except Exception as e:  # top-level API handler stays broad (#28.1 policy)
+        app_logger.error("Training control failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -301,8 +307,8 @@ async def start_hunter(request: Request):
 
         get_console().supervisor.start_service("hunter")
         return {"status": "ok", "service": "hunter", "action": "started"}
-    except Exception as e:
-        app_logger.error("Hunter start failed: %s", e)
+    except Exception as e:  # top-level API handler stays broad (#28.1 policy)
+        app_logger.error("Hunter start failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -317,8 +323,8 @@ async def stop_hunter(request: Request):
 
         get_console().supervisor.stop_service("hunter")
         return {"status": "ok", "service": "hunter", "action": "stopped"}
-    except Exception as e:
-        app_logger.error("Hunter stop failed: %s", e)
+    except Exception as e:  # top-level API handler stays broad (#28.1 policy)
+        app_logger.error("Hunter stop failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -329,7 +335,8 @@ def services_status():
         from Programma_CS2_RENAN.backend.control.console import get_console
 
         return get_console().supervisor.get_status()
-    except Exception as e:
+    except Exception as e:  # top-level API handler stays broad (#28.1 policy)
+        app_logger.warning("Services status failed: %s", e, exc_info=True)
         return {"error": str(e)}
 
 
