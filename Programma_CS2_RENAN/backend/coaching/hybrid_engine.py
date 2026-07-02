@@ -150,35 +150,54 @@ class HybridCoachingEngine:
         return self._retriever
 
     def _load_model(self):
-        """Load ML model (JEPA or AdvancedCoachNN).
+        """Load the ML model WITH trained weights, or return None (26-HYB-01).
 
-        Uses METADATA_DIM for input and OUTPUT_DIM for output to match trained checkpoints.
+        Before 2026-07-02 this constructed a randomly-initialized model and
+        the live P9-03 Hybrid tier ran real inference on it — untrained
+        outputs reached the coaching chain. Now a model survives only if a
+        trained checkpoint actually loads (persistence.load_nn: sidecar-
+        verified, hash-checked, StaleCheckpointError on architecture drift);
+        otherwise None, which every caller already treats as "ML unavailable,
+        RAG-only fallback" (_get_ml_predictions early-returns on None).
+
+        Known remaining gap (full F1/W5.1 adapter): even with weights loaded,
+        this seam feeds MATCH_AGGREGATE_FEATURES into encoders trained on
+        tick-level FEATURE_NAMES vectors — same width (25), different
+        semantics. The JEPAInsightAdapter (F1.1) replaces this seam with
+        tick-window inputs + concept activations.
         """
-        from Programma_CS2_RENAN.backend.nn.config import OUTPUT_DIM
-        from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
+        from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
+        from Programma_CS2_RENAN.backend.nn.persistence import StaleCheckpointError, load_nn
 
+        model_type = ModelFactory.TYPE_JEPA if self.use_jepa else ModelFactory.TYPE_LEGACY
         try:
-            if self.use_jepa:
-                from Programma_CS2_RENAN.backend.nn.jepa_model import JEPACoachingModel
-
-                model = JEPACoachingModel(input_dim=METADATA_DIM, output_dim=OUTPUT_DIM)
-                logger.info(
-                    "Loaded JEPA model for hybrid coaching (in=%s, out=%s)",
-                    METADATA_DIM,
-                    OUTPUT_DIM,
-                )
-            else:
-                from Programma_CS2_RENAN.backend.nn.model import AdvancedCoachNN
-
-                model = AdvancedCoachNN(input_dim=METADATA_DIM, output_dim=OUTPUT_DIM)
-                logger.info(
-                    "Loaded AdvancedCoachNN for hybrid coaching (in=%s, out=%s)",
-                    METADATA_DIM,
-                    OUTPUT_DIM,
-                )
+            model = ModelFactory.get_model(model_type)
+            ckpt_name = ModelFactory.get_checkpoint_name(model_type)
+            load_nn(ckpt_name, model)
+            model.eval()
+            logger.info(
+                "Hybrid ML model loaded with trained weights: %s (checkpoint '%s')",
+                model_type,
+                ckpt_name,
+            )
             return model
+        except FileNotFoundError:
+            logger.warning(
+                "26-HYB-01: no trained checkpoint for '%s' — Hybrid ML disabled, "
+                "insights fall back to RAG-only",
+                model_type,
+            )
+            return None
+        except StaleCheckpointError as e:
+            logger.warning(
+                "26-HYB-01: stale checkpoint for '%s' (%s) — Hybrid ML disabled, "
+                "insights fall back to RAG-only",
+                model_type,
+                e,
+            )
+            return None
         except Exception as e:
-            logger.error("Failed to load ML model: %s", e)
+            logger.error("Failed to load ML model: %s", e, exc_info=True)
             return None
 
     def _ensure_fresh_baseline(self) -> None:

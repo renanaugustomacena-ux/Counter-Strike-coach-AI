@@ -227,3 +227,64 @@ class TestHybridInsight:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestHybridModelLoading:
+    """26-HYB-01 (W5.1 step 1): the Hybrid tier must never infer on random
+    weights — a model survives _load_model only if a checkpoint loads."""
+
+    def test_no_checkpoint_yields_none_and_rag_only(self, monkeypatch):
+        from unittest import mock
+
+        import Programma_CS2_RENAN.backend.nn.persistence as persistence
+        from Programma_CS2_RENAN.backend.coaching.hybrid_engine import HybridCoachingEngine
+
+        def _missing(version, model, user_id=None):
+            raise FileNotFoundError(f"no checkpoint {version}")
+
+        monkeypatch.setattr(persistence, "load_nn", _missing)
+        engine = HybridCoachingEngine(use_jepa=False)
+        assert engine.model is None
+        assert engine._get_ml_predictions({"avg_adr": 80.0}) is None
+
+    def test_stale_checkpoint_yields_none(self, monkeypatch):
+        import Programma_CS2_RENAN.backend.nn.persistence as persistence
+        from Programma_CS2_RENAN.backend.coaching.hybrid_engine import HybridCoachingEngine
+
+        def _stale(version, model, user_id=None):
+            raise persistence.StaleCheckpointError("gate.0.weight -> gate.weight")
+
+        monkeypatch.setattr(persistence, "load_nn", _stale)
+        engine = HybridCoachingEngine(use_jepa=False)
+        assert engine.model is None
+
+    def test_loaded_checkpoint_yields_eval_model(self, monkeypatch):
+        import Programma_CS2_RENAN.backend.nn.persistence as persistence
+        from Programma_CS2_RENAN.backend.coaching.hybrid_engine import HybridCoachingEngine
+
+        loaded = {}
+
+        def _ok(version, model, user_id=None):
+            loaded["version"] = version
+            return model
+
+        monkeypatch.setattr(persistence, "load_nn", _ok)
+        engine = HybridCoachingEngine(use_jepa=False)
+        assert engine.model is not None
+        assert engine.model.training is False  # eval mode enforced
+        assert loaded["version"] == "latest"  # TYPE_LEGACY checkpoint name
+
+    def test_jepa_flag_targets_jepa_brain(self, monkeypatch):
+        import Programma_CS2_RENAN.backend.nn.persistence as persistence
+        from Programma_CS2_RENAN.backend.coaching.hybrid_engine import HybridCoachingEngine
+
+        loaded = {}
+
+        def _ok(version, model, user_id=None):
+            loaded["version"] = version
+            return model
+
+        monkeypatch.setattr(persistence, "load_nn", _ok)
+        engine = HybridCoachingEngine(use_jepa=True)
+        assert engine.model is not None
+        assert loaded["version"] == "jepa_brain"
