@@ -665,26 +665,29 @@ def run(
     # --- LLM baseline ---
     report["sections"]["llm_baseline"] = _llm_baseline_stub()
 
-    # --- Phase 7D: Embedding quality ---
-    try:
-        report["sections"]["embedding_quality"] = _embedding_quality()
-    except Exception as exc:
-        logger.exception("embedding_quality section failed")
-        report["sections"]["embedding_quality"] = {"status": "ERROR", "reason": str(exc)}
-
-    # --- Phase 7B: Strategy relevance ---
-    try:
-        report["sections"]["strategy_relevance"] = _strategy_relevance()
-    except Exception as exc:
-        logger.exception("strategy_relevance section failed")
-        report["sections"]["strategy_relevance"] = {"status": "ERROR", "reason": str(exc)}
-
-    # --- Phase 7C: Expert utilization ---
-    try:
-        report["sections"]["expert_utilization"] = _expert_utilization()
-    except Exception as exc:
-        logger.exception("expert_utilization section failed")
-        report["sections"]["expert_utilization"] = {"status": "ERROR", "reason": str(exc)}
+    # --- Phase 7D/7B/7C: DB-heavy quality sections ---
+    # B6.2 (complete fix): dry-run is a report-SHAPE probe — profiling showed
+    # embedding_quality alone costs ~5s (DB read + sklearn + kNN) and pushed
+    # the dry-run test past its 30s budget under suite load even after the
+    # rag_and_purity gate. ONE uniform rule: every heavy section is skipped
+    # in dry-run with an explicit reason; real runs are unchanged.
+    _heavy_sections = (
+        ("embedding_quality", _embedding_quality),
+        ("strategy_relevance", _strategy_relevance),
+        ("expert_utilization", _expert_utilization),
+    )
+    for _name, _fn in _heavy_sections:
+        if dry_run:
+            report["sections"][_name] = {
+                "status": "NOT_AVAILABLE",
+                "reason": "dry-run: heavy section skipped (B6.2 fast path)",
+            }
+            continue
+        try:
+            report["sections"][_name] = _fn()
+        except Exception as exc:
+            logger.exception("%s section failed", _name)
+            report["sections"][_name] = {"status": "ERROR", "reason": str(exc)}
 
     if dry_run:
         print(json.dumps(report, indent=2, default=str))
