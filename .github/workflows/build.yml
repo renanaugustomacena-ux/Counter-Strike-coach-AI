@@ -350,6 +350,39 @@ jobs:
         continue-on-error: true
 
   # ═══════════════════════════════════════════════════════════════════════════
+  # WEB APPS (Ubuntu — pnpm workspace: tactical-viewer / match-detail / coach-chat)
+  # W6.3a (2026-07-02): the three React views ship inside the Qt app via
+  # QWebEngineView but had zero CI coverage. `build` runs `tsc -b && vite build`,
+  # so type errors fail this stage. Uses the runner's Node + corepack with a
+  # pinned pnpm version — no new third-party actions, no new SHA pins.
+  # NOTE: the packages declare `lint` scripts but no eslint config/dependency
+  # exists (TASKS#62: wire eslint properly or drop the scripts) — lint is
+  # deliberately NOT run here until that lands.
+  # ═══════════════════════════════════════════════════════════════════════════
+  web-apps:
+    name: Web Apps (tsc + vite build)
+    needs: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: Programma_CS2_RENAN/apps/qt_app/web
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Enable pnpm via corepack (pinned)
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.9 --activate
+          pnpm --version
+
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Build all apps (includes tsc -b typecheck)
+        run: pnpm -r run build
+
+  # ═══════════════════════════════════════════════════════════════════════════
   # BUILD DISTRIBUTION (Windows only, main branch, after all gates pass)
   # ═══════════════════════════════════════════════════════════════════════════
   build-distribution:
