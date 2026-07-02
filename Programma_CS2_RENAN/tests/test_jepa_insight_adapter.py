@@ -145,3 +145,100 @@ class TestLoaderDiscipline:
         # [T,25] input was auto-batched to [1,T,25]
         (x_arg,), _ = fake.forward_coaching.call_args
         assert tuple(x_arg.shape) == (1, 11, 25)
+
+
+class TestServiceWiring:
+    """F1.2: the CoachingService block — flag-off parity, persistence,
+    non-blocking discipline, tier→ladder mapping."""
+
+    def _service(self):
+        from unittest import mock as m
+
+        from Programma_CS2_RENAN.backend.services.coaching_service import CoachingService
+
+        svc = CoachingService.__new__(CoachingService)
+        svc.db_manager = m.MagicMock()
+        return svc
+
+    def test_flag_off_touches_nothing(self, monkeypatch):
+        import Programma_CS2_RENAN.core.config as cfg
+
+        svc = self._service()
+        monkeypatch.setattr(cfg, "get_setting", lambda key, default=None: False)
+        svc._generate_jepa_insights("p", "d.dem", {"tick_rows": [object()]})
+        svc.db_manager.get_session.assert_not_called()  # byte-identical parity
+
+    def test_candidates_persist_as_insights(self, monkeypatch):
+        import Programma_CS2_RENAN.backend.services.coaching_service as cs
+        import Programma_CS2_RENAN.core.config as cfg
+        from Programma_CS2_RENAN.backend.coaching import jepa_insight_adapter as jia
+
+        svc = self._service()
+        session = mock.MagicMock()
+        ctx = mock.MagicMock()
+        ctx.__enter__ = mock.MagicMock(return_value=session)
+        ctx.__exit__ = mock.MagicMock(return_value=False)
+        svc.db_manager.get_session.return_value = ctx
+
+        monkeypatch.setattr(cfg, "get_setting", lambda key, default=None: key == "USE_JEPA_MODEL")
+        monkeypatch.setattr(svc, "_jepa_maturity_state", lambda: "learning")
+        monkeypatch.setattr(
+            (
+                cs.FeatureExtractor
+                if hasattr(cs, "FeatureExtractor")
+                else __import__(
+                    "Programma_CS2_RENAN.backend.processing.feature_engineering",
+                    fromlist=["FeatureExtractor"],
+                ).FeatureExtractor
+            ),
+            "extract_batch",
+            staticmethod(lambda rows: [[0.5] * 25 for _ in rows]),
+        )
+        cand = jia.InsightCandidate(
+            axis="positioning",
+            message="Reduce exposure",
+            confidence=0.7,
+            feature="enemies_visible",
+            delta=-0.8,
+        )
+        monkeypatch.setattr(
+            "Programma_CS2_RENAN.backend.coaching.jepa_insight_adapter.generate_jepa_insights",
+            lambda window, maturity_state: [cand],
+        )
+        svc._generate_jepa_insights("dev1ce", "astralis.dem", {"tick_rows": [object()] * 5})
+
+        assert session.add.call_count == 1
+        row = session.add.call_args[0][0]
+        assert row.focus_area == "positioning" and row.severity == "Info"
+        assert row.player_name == "dev1ce" and "exposure" in row.message.lower()
+        session.commit.assert_called_once()
+
+    def test_adapter_explosion_never_raises(self, monkeypatch):
+        import Programma_CS2_RENAN.core.config as cfg
+
+        svc = self._service()
+        monkeypatch.setattr(cfg, "get_setting", lambda key, default=None: key == "USE_JEPA_MODEL")
+        monkeypatch.setattr(
+            "Programma_CS2_RENAN.backend.processing.feature_engineering.FeatureExtractor.extract_batch",
+            staticmethod(mock.MagicMock(side_effect=RuntimeError("boom"))),
+        )
+        # Must not raise — non-blocking contract.
+        svc._generate_jepa_insights("p", "d.dem", {"tick_rows": [object()]})
+
+    @pytest.mark.parametrize(
+        "count,expected",
+        [(0, "doubt"), (49, "doubt"), (50, "learning"), (199, "learning"), (200, "conviction")],
+    )
+    def test_tier_to_ladder_mapping(self, count, expected):
+        from types import SimpleNamespace
+
+        svc = self._service()
+        session = mock.MagicMock()
+        session.exec.return_value.first.return_value = SimpleNamespace(
+            total_matches_processed=count
+        )
+        ctx = mock.MagicMock()
+        ctx.__enter__ = mock.MagicMock(return_value=session)
+        ctx.__exit__ = mock.MagicMock(return_value=False)
+        svc.db_manager.get_session.return_value = ctx
+        assert svc._jepa_maturity_state() == expected

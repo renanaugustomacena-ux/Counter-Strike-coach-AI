@@ -267,6 +267,11 @@ class CoachingService:
             player_name, demo_name, tick_data, player_stats=player_stats
         )
 
+        # F1.2 (W5.1): JEPA-sourced insights — additive and setting-gated
+        # (USE_JEPA_MODEL default off => byte-identical behaviour today),
+        # non-blocking like Phase 6.
+        self._generate_jepa_insights(player_name, demo_name, tick_data)
+
         # Longitudinal tracking (C-02: was imported but never called)
         self._run_longitudinal_coaching(player_name, demo_name)
 
@@ -762,6 +767,84 @@ class CoachingService:
             logger.exception("RAG enhancement failed")
 
         return corrections
+
+    def _jepa_maturity_state(self) -> str:
+        """F1.2: map the DB-backed demo-count tier to the adapter's ladder.
+
+        Conservative on purpose: the MATURE tier maps to "conviction", never
+        "mature" — full-confidence phrasing waits until the observatory-driven
+        state (doubt/crisis/learning/conviction/mature) is persisted at
+        inference time rather than inferred from demo counts.
+        """
+        try:
+            from sqlmodel import select as _select
+
+            from Programma_CS2_RENAN.backend.storage.db_models import CoachState
+
+            with self.db_manager.get_session() as session:
+                state = session.exec(_select(CoachState)).first()
+            n = (getattr(state, "total_matches_processed", 0) or 0) if state else 0
+            if n < 50:  # CALIBRATING tier → hedged observations
+                return "doubt"
+            if n < 200:  # LEARNING tier
+                return "learning"
+            return "conviction"
+        except Exception:
+            _coaching_logger.warning(
+                "F1.2: maturity lookup failed — defaulting to doubt", exc_info=True
+            )
+            return "doubt"
+
+    def _generate_jepa_insights(self, player_name: str, demo_name: str, tick_data) -> None:
+        """F1.2 (W5.1): run the JEPA insight adapter and persist candidates.
+
+        NO-WALLHACK: consumes only the player's own tick rows from tick_data.
+        Non-blocking by contract — every failure logs and returns; the main
+        coaching pipeline never depends on this block. With USE_JEPA_MODEL
+        off (default) the adapter short-circuits before any model load.
+        """
+        try:
+            from Programma_CS2_RENAN.core.config import get_setting
+
+            if not get_setting("USE_JEPA_MODEL", default=False):
+                return
+            rows = tick_data.get("tick_rows") if isinstance(tick_data, dict) else None
+            if not rows:
+                return
+
+            from Programma_CS2_RENAN.backend.coaching.jepa_insight_adapter import (
+                generate_jepa_insights,
+            )
+            from Programma_CS2_RENAN.backend.processing.feature_engineering import FeatureExtractor
+
+            # Recent window only — bounded input, newest ticks carry the signal.
+            window = FeatureExtractor.extract_batch(rows[-256:])
+            candidates = generate_jepa_insights(window, maturity_state=self._jepa_maturity_state())
+            if not candidates:
+                return
+
+            from Programma_CS2_RENAN.backend.storage.db_models import CoachingInsight
+
+            with self.db_manager.get_session() as session:
+                for cand in candidates:
+                    session.add(
+                        CoachingInsight(
+                            player_name=player_name,
+                            demo_name=demo_name,
+                            title=f"World-model read: {cand.axis.replace('_', ' ')}",
+                            severity="Info",
+                            message=cand.message,
+                            focus_area=cand.axis,
+                        )
+                    )
+                session.commit()
+            _coaching_logger.info(
+                "F1.2: %d JEPA insight(s) saved for %s", len(candidates), player_name
+            )
+        except Exception as e:
+            _coaching_logger.warning(
+                "F1.2: JEPA insight block failed (non-blocking): %s", e, exc_info=True
+            )
 
     def generate_differential_insights(
         self,
