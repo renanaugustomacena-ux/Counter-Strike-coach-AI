@@ -43,6 +43,16 @@ logger = get_logger("cs2analyzer.coaching_dialogue")
 _DIALOGUE_TIMEOUT = int(os.getenv("CS2_DIALOGUE_TIMEOUT", "180"))
 _OPENING_TIMEOUT = int(os.getenv("CS2_OPENING_TIMEOUT", "90"))
 _FALLBACK_RETRY_TIMEOUT = int(os.getenv("CS2_FALLBACK_TIMEOUT", "90"))
+# F2 (TASKS#33): per-chunk stall budget for streaming responses. With
+# streaming, first-token latency replaces whole-response latency as the
+# felt wait, so the per-chunk gap budget can be much tighter than
+# _DIALOGUE_TIMEOUT — no chunk for this many seconds aborts the stream.
+_STREAM_STALL_TIMEOUT = float(os.getenv("CS2_CHAT_STREAM_STALL", "30"))
+
+
+class _StreamCancelledError(Exception):
+    """F2.3: raised inside the chunk callback to abort a cancelled stream."""
+
 
 # Intent classification keywords for retrieval routing
 INTENT_KEYWORDS: Dict[str, List[str]] = {
@@ -329,6 +339,9 @@ class CoachingDialogueEngine:
         # C-06: Protect mutable session state from concurrent UI thread access
         self._state_lock = threading.Lock()
         self._warmed_up: bool = False
+        # F2.3: lock-free cancellation flag for in-flight streaming responses
+        # (checked per chunk; set by cancel_stream() from any thread).
+        self._stream_cancel = threading.Event()
 
         # Ensure hand-curated tactical knowledge is in the DB for RAG retrieval
         try:
@@ -436,6 +449,82 @@ class CoachingDialogueEngine:
                 response = self._fallback_response(user_message, intent)
 
             # Safe to append now that we have a usable response
+            self._history.append({"role": "user", "content": user_message})
+            self._history.append({"role": "assistant", "content": response})
+            return response
+
+    def cancel_stream(self) -> None:
+        """F2.3: abort any in-flight streaming response (lock-free; safe from
+        any thread). The stream loop observes the flag on its next chunk."""
+        self._stream_cancel.set()
+
+    def respond_stream(self, user_message: str, progress_callback=None) -> str:
+        """F2 (TASKS#33): streaming variant of respond().
+
+        ``progress_callback`` receives the ACCUMULATED assistant text per
+        chunk (DR-14: whole-message re-render, never fragments). Mirrors
+        respond() exactly — same intent/retrieval/prompt build, same F5-06
+        history discipline (history mutates only once a usable final
+        response exists), same fallback ladder. Cancellation (cancel_stream)
+        aborts without mutating history and returns "".
+        """
+        with self._state_lock:
+            if not self._session_active:
+                if self._llm.is_available():
+                    self._session_active = True
+                    self._system_prompt = self._system_prompt or self._build_system_prompt()
+                else:
+                    return self._fallback_response(
+                        user_message, self._classify_intent(user_message)
+                    )
+
+            intent = self._classify_intent(user_message)
+            retrieval_context = self._retrieve_context(user_message, intent)
+
+            augmented_user = user_message
+            if retrieval_context:
+                augmented_user = (
+                    f"{user_message}\n\n"
+                    f"[Retrieved coaching knowledge for reference — "
+                    f"use if relevant, ignore if not]\n{retrieval_context}"
+                )
+
+            messages = self._build_chat_messages(augmented_user)
+
+            self._stream_cancel.clear()
+
+            def _on_chunk(accumulated: str) -> None:
+                if self._stream_cancel.is_set():
+                    raise _StreamCancelledError()
+                if progress_callback is not None:
+                    progress_callback(accumulated)
+
+            try:
+                response = self._llm.chat_stream(
+                    messages,
+                    system_prompt=self._system_prompt,
+                    on_chunk=_on_chunk,
+                    stall_timeout=_STREAM_STALL_TIMEOUT,
+                )
+            except _StreamCancelledError:
+                logger.info("F2.3: streaming response cancelled — history unchanged")
+                return ""
+            except Exception as exc:
+                # Stall (requests.Timeout), connection loss, malformed chunk —
+                # same fallback ladder as respond(); the UI replaces any
+                # partial render with the fallback text (logged loudly).
+                logger.warning(
+                    "F2.5: stream failed (%s: %s) — falling back to offline response",
+                    type(exc).__name__,
+                    exc,
+                )
+                response = self._fallback_response(user_message, intent)
+
+            if not response or response.startswith("[LLM"):
+                logger.warning("LLM error in streamed dialogue: %s", response or "(empty)")
+                response = self._fallback_response(user_message, intent)
+
+            # F5-06: history mutates only now, with a usable final response.
             self._history.append({"role": "user", "content": user_message})
             self._history.append({"role": "assistant", "content": response})
             return response

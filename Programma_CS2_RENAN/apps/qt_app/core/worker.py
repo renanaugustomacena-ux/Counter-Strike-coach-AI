@@ -17,6 +17,9 @@ class WorkerSignals(QObject):
     finished = Signal()
     error = Signal(str)
     result = Signal(object)
+    # F2 (TASKS#33): streaming partials from long-running fns. Emitted only
+    # when the Worker was built with wants_progress=True.
+    progress = Signal(object)
 
 
 class Worker(QRunnable):
@@ -30,18 +33,30 @@ class Worker(QRunnable):
     worker.signals.result.connect(callback) just works.
     """
 
-    def __init__(self, fn, *args, **kwargs):
+    def __init__(self, fn, *args, wants_progress: bool = False, **kwargs):
         super().__init__()
         self.fn = fn
         self.args = args
         self.kwargs = kwargs
+        self.wants_progress = wants_progress
         self.signals = WorkerSignals()
         self.setAutoDelete(True)
 
     @Slot()
     def run(self):
         try:
-            result = self.fn(*self.args, **self.kwargs)
+            kwargs = dict(self.kwargs)
+            if self.wants_progress:
+                # F2: inject a thread-safe emitter; Qt auto-marshals the signal
+                # to the main thread, same guarantee as result/error.
+                def _emit_progress(chunk):
+                    try:
+                        self.signals.progress.emit(chunk)
+                    except RuntimeError:
+                        pass  # receiver GC'd mid-stream
+
+                kwargs["progress_callback"] = _emit_progress
+            result = self.fn(*self.args, **kwargs)
             try:
                 self.signals.result.emit(result)
             except RuntimeError:

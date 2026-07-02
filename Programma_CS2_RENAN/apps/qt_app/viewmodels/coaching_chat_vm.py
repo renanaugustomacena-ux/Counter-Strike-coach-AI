@@ -21,6 +21,9 @@ class CoachingChatViewModel(QObject):
     is_loading_changed = Signal(bool)
     is_available_changed = Signal(bool)
     session_active_changed = Signal(bool)
+    # F2 (TASKS#33): fires as streamed tokens arrive so the view can repaint
+    # the in-progress assistant bubble without a full list rebuild per chunk.
+    streaming_changed = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -28,6 +31,9 @@ class CoachingChatViewModel(QObject):
         self._messages: list[dict] = []
         self._lock = threading.Lock()
         self._session_active = False
+        # F2: coalesce chunk repaints (>=30ms) to avoid flooding the event loop.
+        self._stream_buf = ""
+        self._stream_dirty = False
 
     def _ensure_engine(self):
         if self._engine is None:
@@ -75,12 +81,20 @@ class CoachingChatViewModel(QObject):
             self.messages_changed.emit(list(self._messages))
 
         self.is_loading_changed.emit(True)
-        worker = Worker(self._bg_respond, text)
+        self._stream_buf = ""
+        worker = Worker(self._bg_respond_stream, text, wants_progress=True)
+        worker.signals.progress.connect(self._on_stream_chunk)
         worker.signals.result.connect(self._on_response)
         worker.signals.error.connect(self._on_error)
         QThreadPool.globalInstance().start(worker)
 
+    def cancel_response(self):
+        """F2.3: abort the in-flight streamed response (e.g. user navigates away)."""
+        if self._engine is not None:
+            self._engine.cancel_stream()
+
     def clear_session(self):
+        self.cancel_response()
         self._ensure_engine()
         # QT-02: Wrap engine call in Worker to avoid main-thread freeze
         worker = Worker(self._engine.clear_session)
@@ -103,8 +117,9 @@ class CoachingChatViewModel(QObject):
     def _bg_start(self, player_name: str, demo_name: str | None):
         return self._engine.start_session(player_name, demo_name)
 
-    def _bg_respond(self, text: str):
-        return self._engine.respond(text)
+    def _bg_respond_stream(self, text: str, progress_callback=None):
+        # Worker injects progress_callback when wants_progress=True (F2).
+        return self._engine.respond_stream(text, progress_callback=progress_callback)
 
     # ── Result callbacks (main thread) ──
 
@@ -142,11 +157,20 @@ class CoachingChatViewModel(QObject):
         self.session_active_changed.emit(True)
         self.is_loading_changed.emit(False)
 
+    def _on_stream_chunk(self, accumulated):
+        # F2: accumulated is the FULL assistant text so far (DR-14). Emit the
+        # live buffer; the view repaints the in-progress bubble. The final
+        # committed message still arrives via _on_response.
+        self._stream_buf = str(accumulated)
+        self.streaming_changed.emit(self._stream_buf)
+
     def _on_response(self, response):
+        # F2.3: a cancelled stream returns "" and must not append a bubble.
         if response:
             with self._lock:
                 self._messages.append({"role": "assistant", "content": str(response)})
             self.messages_changed.emit(list(self._messages))
+        self._stream_buf = ""
         self.is_loading_changed.emit(False)
 
     def _on_error(self, msg):

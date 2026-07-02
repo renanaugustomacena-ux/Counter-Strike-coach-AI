@@ -220,6 +220,56 @@ class LLMService:
         except Exception as e:
             return f"[LLM Error] {str(e)}"
 
+    def chat_stream(
+        self,
+        messages: List[Dict[str, str]],
+        system_prompt: Optional[str] = None,
+        on_chunk=None,
+        connect_timeout: float = 10.0,
+        stall_timeout: float = 30.0,
+    ) -> str:
+        """TASKS#33/F2: streaming multi-turn chat via Ollama's /api/chat.
+
+        Calls ``on_chunk(accumulated_text)`` after every received chunk —
+        always the FULL accumulated message (DR-14: whole-message re-render,
+        never fragments). Returns the final text.
+
+        The requests read-timeout doubles as stall detection: no bytes for
+        ``stall_timeout`` seconds raises ``requests.exceptions.Timeout`` —
+        unlike chat(), errors RAISE here instead of returning "[LLM ...]"
+        markers, because the caller must decide what to do with an already
+        partially-rendered message.
+        """
+        chat_messages = list(messages)
+        if system_prompt:
+            chat_messages = [{"role": "system", "content": system_prompt}] + chat_messages
+
+        payload = {
+            "model": self.model,
+            "messages": chat_messages,
+            "stream": True,
+        }
+        accumulated = ""
+        with requests.post(
+            f"{self.base_url}/api/chat",
+            json=payload,
+            timeout=(connect_timeout, stall_timeout),
+            stream=True,
+        ) as response:
+            response.raise_for_status()
+            for line in response.iter_lines():
+                if not line:
+                    continue
+                data = json.loads(line)
+                piece = (data.get("message") or {}).get("content", "")
+                if piece:
+                    accumulated += piece
+                    if on_chunk is not None:
+                        on_chunk(accumulated)
+                if data.get("done"):
+                    break
+        return accumulated
+
     def generate_lesson(self, insights: Dict[str, Any]) -> str:
         """Transform RAP insights into a natural language lesson.
 
