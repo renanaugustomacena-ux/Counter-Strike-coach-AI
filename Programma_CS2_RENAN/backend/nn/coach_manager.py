@@ -5,6 +5,14 @@ import torch
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import col, func, select
 
+# B1-XL (2026-07-02): corpora with more eligible ticks than this are sampled
+# via seeded id-space rejection instead of materializing every id. The B5
+# determinism probes exposed the original B1 fetch OOMing at ~9 minutes on
+# the 429M-row monolith (hundreds of millions of Python ints → earlyoom
+# SIGTERM, exit 143) — a defect that would equally have killed every G5
+# retrain rung. Below the cap the exact-uniform materialization is kept.
+_ID_MATERIALIZE_CAP = 2_000_000
+
 from Programma_CS2_RENAN.backend.nn.config import OUTPUT_DIM, RAP_POSITION_SCALE
 from Programma_CS2_RENAN.backend.nn.persistence import save_nn
 from Programma_CS2_RENAN.backend.nn.train import train_nn
@@ -558,16 +566,18 @@ class CoachTrainingManager:
                 app_logger.warning("No eligible demos for %s split (is_pro=%s)", split, is_pro)
                 return []
 
-            # B1: Fetch all matching tick IDs (lightweight — just integers),
-            # then subsample in Python with a seeded RNG so each epoch sees
-            # a different window of the corpus.
-            id_stmt = select(PlayerTickState.id).where(
-                col(PlayerTickState.demo_name).in_(demo_names)
-            )
-            all_ids = [row for row in session.exec(id_stmt).all()]
+            # B1: seeded subsampling so each epoch sees a fresh corpus window.
+            # B1-XL: the id list is only "lightweight" on small corpora — on
+            # the full monolith it OOMs (see _ID_MATERIALIZE_CAP note), so the
+            # strategy is chosen by a COUNT first (returns one integer, never
+            # materializes rows).
+            eligibility = col(PlayerTickState.demo_name).in_(demo_names)
+            total = session.exec(
+                select(func.count()).select_from(PlayerTickState).where(eligibility)
+            ).one()
 
             # Fallback for legacy data without demo_name
-            if not all_ids:
+            if not total:
                 app_logger.warning("No ticks found with demo_name filter, using LIMIT fallback")
                 fallback_stmt = select(PlayerTickState).limit(min(sample_size, 1000))
                 ticks = session.exec(fallback_stmt).all()
@@ -575,17 +585,35 @@ class CoachTrainingManager:
                 return ticks
 
             rng = np.random.default_rng(seed)
-            n_select = min(sample_size, len(all_ids))
-            selected_ids = rng.choice(all_ids, size=n_select, replace=False).tolist()
+            n_select = min(sample_size, total)
 
-            app_logger.info(
-                "B1: Sampling %d/%d ticks for %s split (seed=%d, is_pro=%s)",
-                n_select,
-                len(all_ids),
-                split,
-                seed,
-                is_pro,
-            )
+            if total <= _ID_MATERIALIZE_CAP:
+                id_stmt = select(PlayerTickState.id).where(eligibility)
+                all_ids = [row for row in session.exec(id_stmt).all()]
+                selected_ids = rng.choice(all_ids, size=n_select, replace=False).tolist()
+                app_logger.info(
+                    "B1: Sampling %d/%d ticks for %s split (seed=%d, is_pro=%s)",
+                    n_select,
+                    total,
+                    split,
+                    seed,
+                    is_pro,
+                )
+            else:
+                id_min = session.exec(select(func.min(PlayerTickState.id)).where(eligibility)).one()
+                id_max = session.exec(select(func.max(PlayerTickState.id)).where(eligibility)).one()
+                selected_ids = self._sample_ids_rejection(
+                    session, demo_names, rng, n_select, id_min, id_max, total
+                )
+                app_logger.info(
+                    "B1-XL: Sampled %d/%d ticks for %s split via id-space rejection "
+                    "(seed=%d, is_pro=%s)",
+                    len(selected_ids),
+                    total,
+                    split,
+                    seed,
+                    is_pro,
+                )
 
             # Fetch full objects for selected IDs (chunked for SQLite safety)
             _CHUNK = 500
@@ -597,6 +625,64 @@ class CoachTrainingManager:
 
             app_logger.info("Loaded %s ticks for %s split", len(ticks), split)
             return ticks
+
+    def _sample_ids_rejection(self, session, demo_names, rng, n_select, id_min, id_max, total):
+        """B1-XL: seeded id-space rejection sampling — RAM stays O(n_select).
+
+        Deterministic (DET-01/B1): candidates come from the seeded rng in a
+        fixed order and acceptance preserves that order, so a given
+        (seed, corpus) always yields the same ids. The distribution is
+        uniform over the id RANGE rather than the exact row set — primary-key
+        gaps introduce negligible bias for a training subsample, a deliberate
+        trade against materializing hundreds of millions of ids.
+        """
+        span = max(1, id_max - id_min + 1)
+        density = total / span
+        # Draw budget: comfortably above expectation, hard-capped so a
+        # pathologically sparse id range can never loop unbounded.
+        expected_draws = n_select / max(density, 1e-9)
+        max_candidates = int(min(max(expected_draws * 8, n_select * 4), 5_000_000))
+        eligibility = col(PlayerTickState.demo_name).in_(demo_names)
+
+        selected: list = []
+        seen: set = set()
+        drawn = 0
+        _DRAW_BATCH = 5000
+        _QUERY_CHUNK = 500
+        while len(selected) < n_select and drawn < max_candidates:
+            batch = rng.integers(id_min, id_max + 1, size=_DRAW_BATCH)
+            drawn += _DRAW_BATCH
+            # Preserve draw order and drop repeats — order is what makes the
+            # accepted set reproducible for a given seed.
+            ordered = []
+            for c in batch:
+                c = int(c)
+                if c not in seen:
+                    seen.add(c)
+                    ordered.append(c)
+            if not ordered:
+                continue
+            found: set = set()
+            for i in range(0, len(ordered), _QUERY_CHUNK):
+                chunk = ordered[i : i + _QUERY_CHUNK]
+                rows = session.exec(
+                    select(PlayerTickState.id).where(
+                        col(PlayerTickState.id).in_(chunk), eligibility
+                    )
+                ).all()
+                found.update(int(r) for r in rows)
+            selected.extend(c for c in ordered if c in found)
+
+        if len(selected) < n_select:
+            app_logger.warning(
+                "B1-XL: rejection sampling underfilled %d/%d after %d candidates "
+                "(id-range density %.4f) — proceeding with the smaller subsample",
+                len(selected),
+                n_select,
+                drawn,
+                density,
+            )
+        return selected[:n_select]
 
     def _fetch_rap_windows(
         self,

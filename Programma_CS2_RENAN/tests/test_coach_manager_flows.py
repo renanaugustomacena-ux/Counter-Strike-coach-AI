@@ -807,3 +807,67 @@ class TestRunFullCycleGuards:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestFetchJepaTicksB1XL:
+    """B1-XL (2026-07-02): the B5 probes exposed the original B1 id fetch
+    OOMing on the 429M-row monolith. Above _ID_MATERIALIZE_CAP the fetch now
+    uses seeded id-space rejection sampling; these tests force the XL path on
+    a tiny corpus by shrinking the module cap."""
+
+    def _seed_ticks(self, engine, demo="probe.dem", n=60, pro=True):
+        from sqlmodel import Session
+
+        from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats, PlayerTickState
+
+        with Session(engine) as session:
+            session.add(
+                PlayerMatchStats(
+                    player_name="p1",
+                    demo_name=demo,
+                    is_pro=pro,
+                    dataset_split="train",
+                )
+            )
+            for i in range(n):
+                session.add(PlayerTickState(tick=i, player_name="p1", demo_name=demo))
+            session.commit()
+
+    def _xl_manager(self, monkeypatch):
+        import Programma_CS2_RENAN.backend.nn.coach_manager as cm
+
+        mgr, engine = _make_manager(monkeypatch)
+        mgr._get_completed_demo_names = lambda: None  # P4-A bypass for hermeticity
+        monkeypatch.setattr(cm, "_ID_MATERIALIZE_CAP", 5)  # force XL path
+        return mgr, engine
+
+    def test_xl_path_is_deterministic_per_seed(self, monkeypatch):
+        mgr, engine = self._xl_manager(monkeypatch)
+        self._seed_ticks(engine)
+        a = [t.id for t in mgr._fetch_jepa_ticks(is_pro=True, seed=42, sample_size=10)]
+        b = [t.id for t in mgr._fetch_jepa_ticks(is_pro=True, seed=42, sample_size=10)]
+        assert a == b and len(a) == 10  # DET-01: same (seed, corpus) → same ids
+
+    def test_xl_path_rotates_across_seeds(self, monkeypatch):
+        mgr, engine = self._xl_manager(monkeypatch)
+        self._seed_ticks(engine)
+        a = {t.id for t in mgr._fetch_jepa_ticks(is_pro=True, seed=42, sample_size=10)}
+        b = {t.id for t in mgr._fetch_jepa_ticks(is_pro=True, seed=43, sample_size=10)}
+        assert a != b  # B1 rotation: different seed → different window
+
+    def test_xl_path_respects_demo_eligibility(self, monkeypatch):
+        mgr, engine = self._xl_manager(monkeypatch)
+        self._seed_ticks(engine, demo="pro.dem", pro=True)
+        self._seed_ticks(engine, demo="user.dem", pro=False)
+        ticks = mgr._fetch_jepa_ticks(is_pro=True, seed=42, sample_size=30)
+        assert ticks and all(t.demo_name == "pro.dem" for t in ticks)
+
+    def test_small_corpus_keeps_exact_materialization(self, monkeypatch):
+        # Below the (default, untouched) cap the original exact-uniform path
+        # runs — regression guard that B1 behavior is unchanged there.
+        mgr, engine = _make_manager(monkeypatch)
+        mgr._get_completed_demo_names = lambda: None
+        self._seed_ticks(engine, n=40)
+        a = [t.id for t in mgr._fetch_jepa_ticks(is_pro=True, seed=42, sample_size=15)]
+        b = [t.id for t in mgr._fetch_jepa_ticks(is_pro=True, seed=42, sample_size=15)]
+        assert a == b and len(a) == 15
