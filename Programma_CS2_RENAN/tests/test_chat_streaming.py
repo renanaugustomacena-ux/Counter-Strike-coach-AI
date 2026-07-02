@@ -172,3 +172,76 @@ def test_worker_omits_callback_without_flag():
     w = Worker(_fn)  # no wants_progress
     w.run()
     assert captured["ran"] is True
+
+
+# ── F3/TASKS#37: NN input beyond player_query ───────────────────────────────
+
+
+class TestSessionMLContext:
+    """F3: coaching intents get session-scoped, cached NN context when the
+    session is grounded in a pro reference."""
+
+    def _engine_shell(self):
+        import threading
+
+        from Programma_CS2_RENAN.backend.services.coaching_dialogue import CoachingDialogueEngine
+
+        eng = CoachingDialogueEngine.__new__(CoachingDialogueEngine)
+        eng._player_context = {}
+        eng._history = []
+        eng._session_active = True
+        eng._state_lock = threading.RLock()
+        eng._stream_cancel = threading.Event()
+        eng._session_ml_cache = None
+        return eng
+
+    def test_gating_truth_table(self):
+        eng = self._engine_shell()
+        eng._player_context = {"using_pro_reference": True}
+        for intent in ("positioning", "aim", "utility", "economy", "general"):
+            assert eng._should_inject_session_ml(intent) is True
+        # player_query keeps its own richer mention-based ML path
+        assert eng._should_inject_session_ml("player_query") is False
+        # without a pro reference, never inject
+        eng._player_context = {"using_pro_reference": False}
+        assert eng._should_inject_session_ml("positioning") is False
+        eng._player_context = {}
+        assert eng._should_inject_session_ml("general") is False
+
+    def test_cache_computes_once_per_session(self):
+        from unittest import mock
+
+        eng = self._engine_shell()
+        eng._player_context = {"using_pro_reference": True, "player_name": "s1mple"}
+        eng._get_ml_analysis_for_players = mock.MagicMock(return_value="NN-BLOCK")
+
+        assert eng._get_session_ml_context() == "NN-BLOCK"
+        assert eng._get_session_ml_context() == "NN-BLOCK"
+        eng._get_ml_analysis_for_players.assert_called_once_with(["s1mple"])
+
+    def test_no_player_caches_empty(self):
+        from unittest import mock
+
+        eng = self._engine_shell()
+        eng._player_context = {"using_pro_reference": True}
+        eng._get_ml_analysis_for_players = mock.MagicMock()
+        assert eng._get_session_ml_context() == ""
+        assert eng._get_session_ml_context() == ""
+        eng._get_ml_analysis_for_players.assert_not_called()
+
+    def test_nn_failure_caches_empty_and_never_raises(self):
+        from unittest import mock
+
+        eng = self._engine_shell()
+        eng._player_context = {"using_pro_reference": True, "player_name": "device"}
+        eng._get_ml_analysis_for_players = mock.MagicMock(side_effect=RuntimeError("boom"))
+        assert eng._get_session_ml_context() == ""
+        assert eng._get_session_ml_context() == ""
+        eng._get_ml_analysis_for_players.assert_called_once()
+
+    def test_clear_session_resets_cache(self):
+        eng = self._engine_shell()
+        eng._session_ml_cache = "stale"
+        eng.clear_session()
+        assert eng._session_ml_cache is None
+        assert eng._player_context == {}

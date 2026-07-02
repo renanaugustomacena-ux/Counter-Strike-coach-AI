@@ -342,6 +342,10 @@ class CoachingDialogueEngine:
         # F2.3: lock-free cancellation flag for in-flight streaming responses
         # (checked per chunk; set by cancel_stream() from any thread).
         self._stream_cancel = threading.Event()
+        # F3/TASKS#37: session-scoped cache for the NN context block so the
+        # hybrid engine + baseline load at most once per session (latency
+        # budget F3.3). None = not computed yet; "" = computed, nothing usable.
+        self._session_ml_cache: Optional[str] = None
 
         # Ensure hand-curated tactical knowledge is in the DB for RAG retrieval
         try:
@@ -540,7 +544,40 @@ class CoachingDialogueEngine:
             self._history = []
             self._player_context = {}
             self._session_active = False
+            self._session_ml_cache = None  # F3: NN context is per-session
             logger.info("Dialogue session cleared")
+
+    # ── F3/TASKS#37: NN input beyond player_query ────────────────────────
+
+    _NN_COACHING_INTENTS = ("positioning", "aim", "utility", "economy", "general")
+
+    def _should_inject_session_ml(self, intent: str) -> bool:
+        """F3.2: general coaching questions get NN input when the session is
+        grounded in a pro reference — previously the NN only fired when a
+        player was explicitly mentioned (player_query path)."""
+        return intent in self._NN_COACHING_INTENTS and bool(
+            self._player_context.get("using_pro_reference")
+        )
+
+    def _get_session_ml_context(self) -> str:
+        """F3.3: cached, session-scoped NN analysis for the active player.
+
+        The hybrid engine + pro baseline load exactly once per session; a
+        session without a player (or with no usable NN output) caches ""
+        so later turns pay nothing.
+        """
+        if self._session_ml_cache is not None:
+            return self._session_ml_cache
+        player = self._player_context.get("player_name")
+        if not player or player == "Unknown":
+            self._session_ml_cache = ""
+            return ""
+        try:
+            self._session_ml_cache = self._get_ml_analysis_for_players([player]) or ""
+        except Exception as exc:
+            logger.warning("F3: session NN context failed: %s", exc, exc_info=True)
+            self._session_ml_cache = ""
+        return self._session_ml_cache
 
     @property
     def is_available(self) -> bool:
@@ -792,6 +829,13 @@ class CoachingDialogueEngine:
     def _retrieve_context(self, user_message: str, intent: str) -> str:
         """Retrieve RAG knowledge and experiences relevant to the question."""
         blocks: List[str] = []
+
+        # F3/TASKS#37: NN-backed analysis for coaching intents (cached per
+        # session). Player-mention questions keep their own richer ML path.
+        if self._should_inject_session_ml(intent):
+            ml_block = self._get_session_ml_context()
+            if ml_block:
+                blocks.append(ml_block)
 
         # Player-specific factual context (structured DB lookup, not RAG)
         if intent == "player_query":
