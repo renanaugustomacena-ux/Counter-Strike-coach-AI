@@ -852,3 +852,21 @@ class TestConstants:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestNegativePoolWarmupLogging(TestPrepareTensorBatchJEPA):
+    """W1.6 (NN-H-03): the warmup→cross-match pool transition logs exactly once."""
+
+    def test_pool_ready_logged_once(self):
+        from unittest import mock
+
+        import Programma_CS2_RENAN.backend.nn.training_orchestrator as tom
+
+        orch = _make_orchestrator(model_type="jepa")
+        items = self._make_tick_items(11)
+        with mock.patch.object(tom, "logger") as mock_log:
+            orch._prepare_tensor_batch(items)  # warm-up: in-batch fallback, seeds pool
+            orch._prepare_tensor_batch(items)  # pool >= n_neg -> first pool use, logs
+            orch._prepare_tensor_batch(items)  # second pool use -> must NOT log again
+        ready = [c for c in mock_log.info.call_args_list if "negative pool warmed up" in str(c)]
+        assert len(ready) == 1

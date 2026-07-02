@@ -85,6 +85,10 @@ class TrainingOrchestrator:
         self._neg_pool: list = []
         _NEG_POOL_MAX = 500  # Max features retained across batches
         self._neg_pool_max = _NEG_POOL_MAX
+        # W1.6: negatives per JEPA sample (named — was a magic 5 at the sampling
+        # site) and a one-shot flag so the warmup→pool transition logs exactly once.
+        self._n_contrastive_negatives = 5
+        self._neg_pool_ready_logged = False
         # F3-11: Aggregate zero-tensor fallback counters across entire training run
         self._total_samples = 0
         self._total_fallbacks = 0
@@ -589,8 +593,16 @@ class TrainingOrchestrator:
 
             # NN-H-03: Sample negatives from cross-match pool (not current batch)
             # to avoid false negatives from same-match ticks.
-            n_neg = 5
+            n_neg = self._n_contrastive_negatives
             if len(self._neg_pool) >= n_neg:
+                if not self._neg_pool_ready_logged:
+                    # W1.6 (NN-H-03): make the warmup→cross-match transition visible.
+                    logger.info(
+                        "NN-H-03: negative pool warmed up (%d features) — "
+                        "switching from in-batch to cross-match negatives",
+                        len(self._neg_pool),
+                    )
+                    self._neg_pool_ready_logged = True
                 pool_tensor = torch.stack(self._neg_pool[-200:]).to(self.device)
                 pool_idx = self._neg_rng.choice(len(pool_tensor), n_neg, replace=False)
                 negatives = pool_tensor[pool_idx].unsqueeze(0)  # (1, 5, METADATA_DIM)
@@ -1009,6 +1021,15 @@ class TrainingOrchestrator:
                 try:
                     metadata_cache[match_id] = match_mgr.get_metadata(match_id)
                 except Exception:
+                    # 26-ORCH-02: mirror analysis_orchestrator._resolve_tick_rate —
+                    # every fallback branch warns; nothing falls back silently.
+                    logger.warning(
+                        "26-ORCH-02: MatchMetadata lookup failed for match %s — "
+                        "tick rate will fall back to %d",
+                        match_id,
+                        default,
+                        exc_info=True,
+                    )
                     metadata_cache[match_id] = None
             meta = metadata_cache.get(match_id)
             if meta is not None:
@@ -1016,7 +1037,13 @@ class TrainingOrchestrator:
                 if 32 <= rate <= 256:
                     return rate
         except Exception:
-            pass
+            # 26-ORCH-02: same rule for the outer guard.
+            logger.warning(
+                "26-ORCH-02: tick-rate resolution failed for match %s — " "falling back to %d",
+                match_id,
+                default,
+                exc_info=True,
+            )
         return default
 
     @staticmethod

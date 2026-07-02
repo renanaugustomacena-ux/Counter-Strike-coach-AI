@@ -192,3 +192,38 @@ class TestDeterministicNegativeSampling:
             np.testing.assert_array_equal(result1, result2), (
                 "Same seed should produce identical negative samples"
             )
+
+
+class TestResolveTickRateLogging:
+    """26-ORCH-02 (W1.2): _resolve_tick_rate fallbacks warn instead of staying silent."""
+
+    def test_metadata_lookup_failure_warns_and_falls_back(self):
+        from unittest import mock
+
+        import Programma_CS2_RENAN.backend.nn.training_orchestrator as tom
+
+        class _BoomMgr:
+            def get_metadata(self, match_id):
+                raise RuntimeError("db gone")
+
+        with mock.patch.object(tom, "logger") as mock_log:
+            rate = tom.TrainingOrchestrator._resolve_tick_rate(1, _BoomMgr(), {}, default=64)
+        assert rate == 64
+        assert any("26-ORCH-02" in str(c) for c in mock_log.warning.call_args_list)
+
+    def test_outer_guard_warns_and_falls_back(self):
+        from unittest import mock
+
+        import Programma_CS2_RENAN.backend.nn.training_orchestrator as tom
+
+        class _EvilCache(dict):
+            def __contains__(self, item):
+                return True
+
+            def get(self, *a, **k):
+                raise RuntimeError("cache exploded")
+
+        with mock.patch.object(tom, "logger") as mock_log:
+            rate = tom.TrainingOrchestrator._resolve_tick_rate(1, None, _EvilCache(), default=64)
+        assert rate == 64
+        assert any("26-ORCH-02" in str(c) for c in mock_log.warning.call_args_list)
