@@ -1166,6 +1166,8 @@ _TICK_FLOAT_DEFAULTS = {
     "yaw": 0.0,
     "pitch": 0.0,
     "time_in_round": 0.0,
+    # F6.1/DQ-02: demoparser2's actual blind-state signal (seconds remaining).
+    "flash_duration": 0.0,
 }
 _TICK_BOOL_DEFAULTS = {
     "is_crouching": False,
@@ -1275,9 +1277,20 @@ def _build_match_tick_dataframe(df_ticks):
             "is_scoped": df_ticks.get("is_scoped", pd.Series(False, index=df_ticks.index)).astype(
                 bool
             ),
-            "is_blinded": df_ticks.get("is_blinded", pd.Series(False, index=df_ticks.index)).astype(
-                bool
-            ),
+            # F6.1/DQ-02: CS2 removed the legacy is_blinded signal (column reads
+            # False forever) — derive from flash_duration > 0, demoparser2's real
+            # blind-state field (already requested by parse_sequential_ticks and
+            # already used by the legacy-dataframe path below). OR any recorded
+            # legacy value so pre-CS2 demos keep theirs.
+            "is_blinded": (
+                (
+                    df_ticks.get("flash_duration", pd.Series(0.0, index=df_ticks.index)).astype(
+                        float
+                    )
+                    > 0
+                )
+                | df_ticks.get("is_blinded", pd.Series(False, index=df_ticks.index)).astype(bool)
+            ).astype(bool),
             "active_weapon": df_ticks.get(
                 "active_weapon", pd.Series("unknown", index=df_ticks.index)
             ),

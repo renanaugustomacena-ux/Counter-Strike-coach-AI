@@ -139,3 +139,46 @@ def test_real_overpass_demo_header_if_present():
     name, tr = _parse_demo_header_meta(demo)
     assert name.startswith("de_")
     assert 32.0 <= tr <= 256.0
+
+
+class TestIsBlindedFlashDurationDerivation:
+    """F6.1/DQ-02: main tick path derives is_blinded from flash_duration > 0
+    (CS2 removed the legacy signal); legacy recorded values are preserved."""
+
+    @staticmethod
+    def _df(**overrides):
+        import pandas as pd
+
+        base = {
+            "tick": [1, 2, 3],
+            "player_name": ["a", "b", "c"],
+            "X": [0.0, 1.0, 2.0],
+            "Y": [0.0, 1.0, 2.0],
+            "Z": [0.0, 0.0, 0.0],
+            "yaw": [0.0, 90.0, 180.0],
+            "health": [100, 50, 1],
+            "map_name": ["de_mirage", "de_mirage", "de_mirage"],
+        }
+        base.update(overrides)
+        return pd.DataFrame(base)
+
+    def test_flash_duration_positive_sets_blinded(self):
+        from Programma_CS2_RENAN.run_ingestion import _build_match_tick_dataframe
+
+        df = self._df(flash_duration=[0.0, 2.5, 0.0])
+        out = _build_match_tick_dataframe(df)
+        assert list(out["is_blinded"]) == [False, True, False]
+        assert len(out) == len(df)  # tick decimation FORBIDDEN — 1:1 rows
+
+    def test_legacy_recorded_value_preserved(self):
+        from Programma_CS2_RENAN.run_ingestion import _build_match_tick_dataframe
+
+        df = self._df(flash_duration=[0.0, 0.0, 0.0], is_blinded=[True, False, False])
+        out = _build_match_tick_dataframe(df)
+        assert list(out["is_blinded"]) == [True, False, False]
+
+    def test_absent_columns_default_false(self):
+        from Programma_CS2_RENAN.run_ingestion import _build_match_tick_dataframe
+
+        out = _build_match_tick_dataframe(self._df())
+        assert list(out["is_blinded"]) == [False, False, False]
