@@ -85,7 +85,13 @@ def main():
         help="Run a single epoch dry run to verify pipeline integrity",
     )
     parser.add_argument(
-        "--resume", action="store_true", help="Resume from latest checkpoint if available"
+        "--resume",
+        action="store_true",
+        help=(
+            "Deprecated no-op: resume is AUTOMATIC whenever a checkpoint exists "
+            "(the orchestrator always attempts load_nn and B3.2 restores the "
+            "stored best-val). Kept for script compatibility."
+        ),
     )
     parser.add_argument("--epochs", type=int, default=100, help="Override default max epochs")
     parser.add_argument(
@@ -124,6 +130,17 @@ def main():
         help="Validation subsample size (default: 10000, config: VAL_SAMPLES)",
     )
     parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help=(
+            "Global RNG seed for this run (B5 determinism probe). Default: "
+            "GLOBAL_SEED=42. Note: the per-epoch subsample rotation stays "
+            "anchored at GLOBAL_SEED+epoch by design (B1.3), so probe seeds "
+            "vary model init/shuffle, not the tick subsample."
+        ),
+    )
+    parser.add_argument(
         "--eval-baseline",
         dest="eval_baseline",
         action=argparse.BooleanOptionalAction,
@@ -142,7 +159,11 @@ def main():
     # DataLoader shuffle, worker_init, and any np/torch RNG used downstream.
     from Programma_CS2_RENAN.backend.nn.config import set_global_seed
 
-    set_global_seed()
+    if args.seed is not None:
+        set_global_seed(args.seed)
+        app_logger.info("B5: global seed overridden to %d for this run", args.seed)
+    else:
+        set_global_seed()
 
     app_logger.info(
         "Training Cycle Initiated. Mode: %s | Dry Run: %s", args.model_type.upper(), args.dry_run
