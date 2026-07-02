@@ -297,3 +297,136 @@ class TestFeatureNames:
 
         names = FeatureExtractor.get_feature_names()
         assert len(names) == len(set(names)), "Duplicate feature names found"
+
+
+class TestD1D2QualityGates:
+    """D1 (single-sample sliding gate) + D2 (clamp log throttle)."""
+
+    @staticmethod
+    def _tick(nan=False):
+        from types import SimpleNamespace
+
+        return SimpleNamespace(
+            tick=1,
+            player_name="p",
+            demo_name="d.dem",
+            pos_x=float("nan") if nan else 100.0,
+            pos_y=200.0,
+            pos_z=0.0,
+            view_x=0.0,
+            view_y=0.0,
+            health=100,
+            armor=50,
+            has_helmet=True,
+            has_defuser=False,
+            equipment_value=3000,
+            is_crouching=False,
+            is_scoped=False,
+            is_blinded=False,
+            enemies_visible=1,
+            active_weapon="ak47",
+            team="T",
+            round_time=30.0,
+            round_number=1,
+            bomb_planted=False,
+            teammates_alive=4,
+            enemies_alive=5,
+            team_economy=15000,
+            match_id=None,
+        )
+
+    @pytest.fixture(autouse=True)
+    def _clean_state(self):
+        import Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer as vz
+
+        vz._reset_quality_gate_state_for_tests()
+        yield
+        vz._reset_quality_gate_state_for_tests()
+
+    def test_d2_throttle_first_k_verbose_then_aggregate(self, monkeypatch):
+        from unittest import mock
+
+        import Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer as vz
+
+        # The verbose limit keys off the CUMULATIVE global counter (by design —
+        # a process that already clamped 10+ times stays throttled); pin it to
+        # zero so this test observes the fresh-process behaviour.
+        monkeypatch.setattr(vz, "_nan_inf_clamp_count", 0)
+        start = 0
+        clock = {"t": 1000.0}
+        monkeypatch.setattr(vz.time, "monotonic", lambda: clock["t"])
+
+        with mock.patch.object(vz, "_logger") as mock_log:
+            # Storm: 15 clamped single extracts (past the verbose limit of 10)
+            for _ in range(15):
+                vz.FeatureExtractor.extract(self._tick(nan=True), "de_mirage")
+            verbose = [c for c in mock_log.error.call_args_list if "occurrence #" in str(c)]
+            aggregates = [c for c in mock_log.error.call_args_list if "/D2:" in str(c)]
+            assert len(verbose) == vz._CLAMP_VERBOSE_LIMIT  # only the first 10
+            assert aggregates == []  # window not elapsed yet
+
+            # Advance past the aggregate window; next clamp flushes the summary
+            clock["t"] += vz._CLAMP_AGGREGATE_WINDOW_S + 1
+            vz.FeatureExtractor.extract(self._tick(nan=True), "de_mirage")
+            aggregates = [c for c in mock_log.error.call_args_list if "/D2:" in str(c)]
+            assert len(aggregates) == 1
+            assert "suppressed" in str(aggregates[0])
+
+        # D2.2: counters exact regardless of emission throttling
+        assert vz._nan_inf_clamp_count - start == 16
+
+    def test_d1_gate_trips_once_with_notification(self, monkeypatch):
+        from unittest import mock
+
+        import Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer as vz
+        import Programma_CS2_RENAN.backend.storage.state_manager as sm
+
+        # Shrink the window so the test stays fast, then restore via fixture.
+        monkeypatch.setattr(vz, "_SINGLE_WINDOW_N", 100)
+        monkeypatch.setattr(vz, "_single_clamp_window", __import__("collections").deque(maxlen=100))
+        notifier = mock.MagicMock()
+        monkeypatch.setattr(sm, "get_state_manager", lambda: notifier)
+
+        with mock.patch.object(vz, "_logger") as mock_log:
+            # 94 clean + 6 clamped = 6% > 5% threshold once the window fills
+            for _ in range(94):
+                vz.FeatureExtractor.extract(self._tick(), "de_mirage")
+            for _ in range(6):
+                vz.FeatureExtractor.extract(self._tick(nan=True), "de_mirage")
+            crits = [c for c in mock_log.critical.call_args_list if "D1:" in str(c)]
+            assert len(crits) == 1  # trips exactly once (hysteresis holds it)
+            notifier.add_notification.assert_called_once()
+
+            # More clean extracts while still above half-threshold: no re-trip
+            for _ in range(10):
+                vz.FeatureExtractor.extract(self._tick(), "de_mirage")
+            crits = [c for c in mock_log.critical.call_args_list if "D1:" in str(c)]
+            assert len(crits) == 1
+
+    def test_d1_clean_stream_stays_silent(self, monkeypatch):
+        from unittest import mock
+
+        import Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer as vz
+
+        monkeypatch.setattr(vz, "_SINGLE_WINDOW_N", 50)
+        monkeypatch.setattr(vz, "_single_clamp_window", __import__("collections").deque(maxlen=50))
+        with mock.patch.object(vz, "_logger") as mock_log:
+            for _ in range(60):
+                vz.FeatureExtractor.extract(self._tick(), "de_mirage")
+            assert mock_log.critical.call_count == 0
+
+    def test_batch_rows_do_not_feed_single_window(self):
+        import Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer as vz
+
+        before = len(vz._single_clamp_window)
+        # 100 rows, 4 clamped (4% — under P3-A's 5%, so no raise)
+        rows = [self._tick() for _ in range(96)] + [self._tick(nan=True) for _ in range(4)]
+        vz.FeatureExtractor.extract_batch(rows, "de_mirage")
+        assert len(vz._single_clamp_window) == before  # D1 window untouched
+
+    def test_p3a_batch_gate_unchanged(self):
+        import Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer as vz
+
+        rows = [self._tick() for _ in range(90)] + [self._tick(nan=True) for _ in range(10)]
+        with pytest.raises(vz.DataQualityError):
+            vz.FeatureExtractor.extract_batch(rows, "de_mirage")

@@ -10,6 +10,8 @@ Changes to the feature order or normalization MUST be made HERE ONLY.
 import hashlib
 import math
 import threading
+import time
+from collections import Counter, deque
 from typing import Any, ClassVar, Dict, List, Optional, Union
 
 import numpy as np
@@ -149,6 +151,40 @@ _nan_inf_lock = __import__("threading").Lock()
 # running on other threads. The global _nan_inf_clamp_count above stays a cumulative
 # telemetry counter; this thread-local is the per-batch, race-free signal for the gate.
 _batch_clamp_local = threading.local()
+
+# D2: log-EMISSION throttle for clamp events. The first _CLAMP_VERBOSE_LIMIT
+# occurrences log verbosely with full attribution; afterwards one aggregate
+# line per _CLAMP_AGGREGATE_WINDOW_S summarizes what was suppressed. An
+# upstream bug therefore cannot turn the log into a disk-filling storm.
+# Throttling affects emission ONLY — every counter stays exact (D2.2).
+_CLAMP_VERBOSE_LIMIT = 10
+_CLAMP_AGGREGATE_WINDOW_S = 60.0
+_clamp_suppressed_since_flush = 0
+_clamp_suppressed_features: Counter = Counter()
+_clamp_window_started = 0.0
+
+# D1: sliding-window quality gate for the SINGLE-sample path (extract()).
+# The batch path has the P3-A gate; inference-time extracts previously had
+# none — live coaching could silently consume garbage vectors. If more than
+# _SINGLE_GATE_THRESHOLD of the last _SINGLE_WINDOW_N single extracts
+# clamped, emit CRITICAL + a StateManager notification. Degrade LOUDLY,
+# never raise in the live coaching path (Law 3). Hysteresis: re-arms only
+# after the rate falls below half the threshold.
+_SINGLE_WINDOW_N = 1000
+_SINGLE_GATE_THRESHOLD = 0.05
+_single_clamp_window: deque = deque(maxlen=_SINGLE_WINDOW_N)
+_single_gate_tripped = False
+
+
+def _reset_quality_gate_state_for_tests() -> None:
+    """Test-only: reset D1/D2 module state (never call from production code)."""
+    global _clamp_suppressed_since_flush, _clamp_window_started, _single_gate_tripped
+    with _nan_inf_lock:
+        _clamp_suppressed_since_flush = 0
+        _clamp_suppressed_features.clear()
+        _clamp_window_started = 0.0
+        _single_clamp_window.clear()
+        _single_gate_tripped = False
 
 
 # P-X-01: Feature schema names — single source of truth for train/infer parity.
@@ -367,25 +403,100 @@ def _fill_context_features(vec: np.ndarray, get_val, context: Optional[Dict[str,
 
 
 def _finalize_vector(vec: np.ndarray) -> np.ndarray:
-    """P-VEC-02 / R4-14-02: log NaN/Inf at ERROR with feature-name attribution; clamp to safe defaults."""
-    global _nan_inf_clamp_count
-    if np.any(~np.isfinite(vec)):
+    """P-VEC-02 / R4-14-02 (+D1/D2): clamp NaN/Inf to safe defaults.
+
+    D2: verbose ERROR (full attribution) for the first _CLAMP_VERBOSE_LIMIT
+    occurrences, then one aggregate line per _CLAMP_AGGREGATE_WINDOW_S —
+    counters stay exact regardless. D1: the single-sample path (extract()
+    outside a batch) feeds a sliding window; a sustained clamp rate above
+    _SINGLE_GATE_THRESHOLD escalates CRITICAL + user notification without
+    ever raising (the batch path keeps its own P3-A raise-gate).
+    """
+    global _nan_inf_clamp_count, _clamp_suppressed_since_flush, _clamp_window_started
+    global _single_gate_tripped
+    in_batch = getattr(_batch_clamp_local, "in_batch", False)
+    clamped = bool(np.any(~np.isfinite(vec)))
+
+    if clamped:
         bad_indices = np.where(~np.isfinite(vec))[0].tolist()
         bad_names = [FEATURE_NAMES[i] for i in bad_indices if i < len(FEATURE_NAMES)]
+        emit_verbose = False
+        emit_aggregate = None
         with _nan_inf_lock:
             _nan_inf_clamp_count += 1
             count_snapshot = _nan_inf_clamp_count
+            if count_snapshot <= _CLAMP_VERBOSE_LIMIT:
+                emit_verbose = True
+            else:
+                _clamp_suppressed_since_flush += 1
+                _clamp_suppressed_features.update(bad_names)
+                now = time.monotonic()
+                if _clamp_window_started == 0.0:
+                    _clamp_window_started = now
+                elif now - _clamp_window_started >= _CLAMP_AGGREGATE_WINDOW_S:
+                    emit_aggregate = (
+                        _clamp_suppressed_since_flush,
+                        list(_clamp_suppressed_features.most_common(5)),
+                    )
+                    _clamp_suppressed_since_flush = 0
+                    _clamp_suppressed_features.clear()
+                    _clamp_window_started = now
         # 26-VEC-01: tally this clamp against the current thread's per-batch counter
         # (initialised by extract_batch) so the P3-A gate is isolated from other threads.
         _batch_clamp_local.count = getattr(_batch_clamp_local, "count", 0) + 1
-        _logger.error(
-            "P-VEC-02: Feature vector contains NaN/Inf BEFORE clamp "
-            "(occurrence #%d) — indices: %s, features: %s. "
-            "Clamping to defaults; fix upstream normalisation.",
-            count_snapshot,
-            bad_indices,
-            bad_names,
-        )
+        if emit_verbose:
+            _logger.error(
+                "P-VEC-02: Feature vector contains NaN/Inf BEFORE clamp "
+                "(occurrence #%d) — indices: %s, features: %s. "
+                "Clamping to defaults; fix upstream normalisation.",
+                count_snapshot,
+                bad_indices,
+                bad_names,
+            )
+        elif emit_aggregate is not None:
+            _logger.error(
+                "P-VEC-02/D2: %d further NaN/Inf clamps suppressed over the last "
+                "%.0fs (top features: %s). Counters remain exact; fix upstream.",
+                emit_aggregate[0],
+                _CLAMP_AGGREGATE_WINDOW_S,
+                emit_aggregate[1],
+            )
+
+    # D1: sliding-window gate for the single-sample (inference) path only —
+    # batch rows are P3-A's jurisdiction.
+    if not in_batch:
+        trip_rate = None
+        with _nan_inf_lock:
+            _single_clamp_window.append(1 if clamped else 0)
+            if len(_single_clamp_window) == _SINGLE_WINDOW_N:
+                rate = sum(_single_clamp_window) / _SINGLE_WINDOW_N
+                if rate > _SINGLE_GATE_THRESHOLD and not _single_gate_tripped:
+                    _single_gate_tripped = True
+                    trip_rate = rate
+                elif rate <= _SINGLE_GATE_THRESHOLD / 2 and _single_gate_tripped:
+                    _single_gate_tripped = False  # hysteresis re-arm
+        if trip_rate is not None:
+            _logger.critical(
+                "D1: single-sample NaN/Inf clamp rate %.1f%% over the last %d "
+                "extracts exceeds %.0f%% — inference features are degraded; "
+                "fix upstream data. (Degrading loudly, not raising: live "
+                "coaching path.)",
+                trip_rate * 100,
+                _SINGLE_WINDOW_N,
+                _SINGLE_GATE_THRESHOLD * 100,
+            )
+            try:
+                from Programma_CS2_RENAN.backend.storage.state_manager import get_state_manager
+
+                get_state_manager().add_notification(
+                    "data-quality",
+                    "WARNING",
+                    f"Feature quality degraded: {trip_rate * 100:.1f}% of recent "
+                    "inference extracts contained NaN/Inf (clamped).",
+                )
+            except Exception:
+                _logger.warning("D1: quality notification could not be delivered", exc_info=True)
+
     return np.nan_to_num(vec, nan=0.0, posinf=1.0, neginf=-1.0)
 
 
@@ -559,14 +670,20 @@ class FeatureExtractor:
         # extract_batch() calls on other threads (which previously contaminated the
         # shared global delta).
         _batch_clamp_local.count = 0
+        # D1: mark this thread as batch-context so _finalize_vector routes
+        # quality accounting to P3-A instead of the single-sample window.
+        _batch_clamp_local.in_batch = True
 
-        result = np.array(
-            [
-                FeatureExtractor.extract(t, map_name, ctx, _config_override=batch_config)
-                for t, ctx in zip(tick_data_list, contexts)
-            ],
-            dtype=np.float32,
-        )
+        try:
+            result = np.array(
+                [
+                    FeatureExtractor.extract(t, map_name, ctx, _config_override=batch_config)
+                    for t, ctx in zip(tick_data_list, contexts)
+                ],
+                dtype=np.float32,
+            )
+        finally:
+            _batch_clamp_local.in_batch = False
 
         # P3-A: Quality gate — refuse to produce batches with >5% NaN/Inf contamination.
         clamped_in_batch = getattr(_batch_clamp_local, "count", 0)
