@@ -103,3 +103,34 @@ The plateau is a curriculum/sampling tuning issue, not a data layer or
 model construction issue. The hard work (D1/D2A/D2C) is paying off — the
 training pipeline reads the new data cleanly. The next gain comes from
 showing the model more of that data per epoch.
+
+---
+
+## Retrain ladder (B7 — appended 2026-07-02)
+
+Sampling levers B1–B3 landed 2026-06-19 (`dd31e39`, `330e28f`, `4fb2f87`);
+`--eval-baseline` pre/post snapshots landed 2026-07-02 (`cfbf2e1`). The
+ladder below is the sanctioned path from the plateau checkpoint to a
+promoted model. Execution itself is owner-gated Phase G5 (GPU wall-clock).
+Resume is AUTOMATIC whenever a checkpoint exists — the `--resume` flag is a
+compatibility no-op.
+
+| Rung | Command | Gate to next rung |
+|---|---|---|
+| Smoke | `./.venv/bin/python run_full_training_cycle.py --model-type jepa --epochs 5 --train-samples 50000 --val-samples 10000 --patience 10` | completes; P9-02 collapse detector quiet; val < starting val |
+| Mid | `./.venv/bin/python run_full_training_cycle.py --model-type jepa --epochs 25 --patience 10` | val < 1.75 OR maturity leaves `doubt` (conviction > 0.2) |
+| Full | `./.venv/bin/python run_full_training_cycle.py --model-type jepa --epochs 100 --patience 30` | val < 1.50 (target above); eval non-regression |
+
+**Promotion protocol (B7.2):** the new `jepa_brain.pt` replaces production
+only when BOTH hold — (a) the post-run eval is non-regressive vs the
+pre-run eval on kNN purity@5 (floor 0.979) and RAG recall@10 (floor
+0.6475); (b) the rung's val gate is met. The displaced checkpoint is
+archived together with its `.pt.meta.json` sidecar (Law 17), and the CTF-1
+checkpoint-hash registry is updated. Collapse/saturation telemetry (P9-02
+detector, concept-temperature alarm) must be observed live on the smoke
+rung before any longer rung starts (B7.3).
+
+**Wall-clock note:** at 50k train subsamples expect roughly 10× the ~70s
+epochs observed at 5k in the 2026-05-06 runs — budget the full rung in GPU
+sessions, not minutes. The validation subsample stays fixed within a run
+(DR-01c) so early stopping compares like with like across epochs.
