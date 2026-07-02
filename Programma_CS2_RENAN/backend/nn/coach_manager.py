@@ -572,9 +572,36 @@ class CoachTrainingManager:
             # strategy is chosen by a COUNT first (returns one integer, never
             # materializes rows).
             eligibility = col(PlayerTickState.demo_name).in_(demo_names)
-            total = session.exec(
-                select(func.count()).select_from(PlayerTickState).where(eligibility)
-            ).one()
+
+            # B1-XL cache: the eligibility COUNT (and min/max id) walk ~10^8
+            # index entries — ~25 minutes on the full monolith. B1 re-fetches
+            # train data EVERY epoch, so without this cache a 5-epoch smoke
+            # rung pays that price five times over for a corpus that cannot
+            # change mid-run (ingestion never runs concurrently with training
+            # per the concurrency policy). Cache lives on the manager instance
+            # → scoped to one training process, cold again next run.
+            scale_cache = getattr(self, "_fetch_scale_cache", None)
+            if scale_cache is None:
+                scale_cache = {}
+                self._fetch_scale_cache = scale_cache
+            cache_key = (is_pro, str(split), tuple(sorted(demo_names)))
+            scale = scale_cache.get(cache_key)
+            if scale is None:
+                total = session.exec(
+                    select(func.count()).select_from(PlayerTickState).where(eligibility)
+                ).one()
+                if total > _ID_MATERIALIZE_CAP:
+                    id_min = session.exec(
+                        select(func.min(PlayerTickState.id)).where(eligibility)
+                    ).one()
+                    id_max = session.exec(
+                        select(func.max(PlayerTickState.id)).where(eligibility)
+                    ).one()
+                else:
+                    id_min = id_max = None
+                scale = (total, id_min, id_max)
+                scale_cache[cache_key] = scale
+            total, _cached_id_min, _cached_id_max = scale
 
             # Fallback for legacy data without demo_name
             if not total:
@@ -600,8 +627,7 @@ class CoachTrainingManager:
                     is_pro,
                 )
             else:
-                id_min = session.exec(select(func.min(PlayerTickState.id)).where(eligibility)).one()
-                id_max = session.exec(select(func.max(PlayerTickState.id)).where(eligibility)).one()
+                id_min, id_max = _cached_id_min, _cached_id_max
                 selected_ids = self._sample_ids_rejection(
                     session, demo_names, rng, n_select, id_min, id_max, total
                 )

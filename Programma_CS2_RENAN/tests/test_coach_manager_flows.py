@@ -871,3 +871,15 @@ class TestFetchJepaTicksB1XL:
         a = [t.id for t in mgr._fetch_jepa_ticks(is_pro=True, seed=42, sample_size=15)]
         b = [t.id for t in mgr._fetch_jepa_ticks(is_pro=True, seed=42, sample_size=15)]
         assert a == b and len(a) == 15
+
+    def test_scale_cache_populates_and_determinism_survives_reuse(self, monkeypatch):
+        """B1-XL cache: the COUNT/min/max walk is paid once per (split, corpus)
+        per manager instance; reuse must not change selection."""
+        mgr, engine = self._xl_manager(monkeypatch)
+        self._seed_ticks(engine)
+        first = [t.id for t in mgr._fetch_jepa_ticks(is_pro=True, seed=42, sample_size=10)]
+        assert getattr(mgr, "_fetch_scale_cache", None), "cache must populate on first fetch"
+        (key, (total, id_min, id_max)) = next(iter(mgr._fetch_scale_cache.items()))
+        assert total == 60 and id_min is not None and id_max is not None
+        second = [t.id for t in mgr._fetch_jepa_ticks(is_pro=True, seed=42, sample_size=10)]
+        assert first == second  # cached scale → identical selection (DET-01)
