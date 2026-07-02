@@ -76,7 +76,17 @@ class MapManager:
             _logger.warning(
                 "MM-01: Map '%s' using fallback asset (no ProxyImage returned)", map_name
             )
-            from kivy.clock import Clock
+            try:
+                from kivy.clock import Clock
+            except ImportError:
+                # W6.5/C11-bis: the only unguarded in-function kivy import left
+                # after the C11 quarantine — without kivy the fallback callback
+                # cannot be scheduled; degrade loudly instead of crashing.
+                _logger.warning(
+                    "MM-02: kivy absent — fallback-asset callback skipped for '%s'",
+                    map_name,
+                )
+                return None
 
             Clock.schedule_once(lambda dt: callback(None, asset.texture), 0)
             return None
