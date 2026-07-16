@@ -81,3 +81,39 @@ class TestHLTVTableRegistry:
         with mgr2.get_session() as s:
             survivors = s.exec(select(ProEvent).where(ProEvent.hltv_id == 7907)).all()
         assert len(survivors) == 1, "H1 row destroyed by schema reconciliation"
+
+
+class TestProMapRecordUniqueness:
+    """R4 MED: SQLite NULLs are distinct in UNIQUE indexes — the old
+    3-column constraint never fired because the XOR check guarantees one
+    subject column is always NULL. Partial unique indexes must reject
+    duplicate (subject, map) rows."""
+
+    def _mgr(self, tmp_path, monkeypatch):
+        url = f"sqlite:///{(tmp_path / 'hltv_unique_probe.db').as_posix()}"
+        monkeypatch.setattr(db_mod, "HLTV_DATABASE_URL", url)
+        mgr = db_mod.HLTVDatabaseManager()
+        mgr.create_db_and_tables()
+        return mgr
+
+    def test_duplicate_team_map_rejected(self, tmp_path, monkeypatch):
+        import pytest as _pytest
+        from sqlalchemy.exc import IntegrityError
+
+        from Programma_CS2_RENAN.backend.storage.db_models import ProMapRecord
+
+        mgr = self._mgr(tmp_path, monkeypatch)
+        with mgr.get_session() as s:
+            s.add(ProMapRecord(team_hltv_id=4608, map_name="de_mirage", maps_played=10))
+        with _pytest.raises(IntegrityError):
+            with mgr.get_session() as s:
+                s.add(ProMapRecord(team_hltv_id=4608, map_name="de_mirage", maps_played=99))
+
+    def test_same_map_different_subjects_allowed(self, tmp_path, monkeypatch):
+        from Programma_CS2_RENAN.backend.storage.db_models import ProMapRecord
+
+        mgr = self._mgr(tmp_path, monkeypatch)
+        with mgr.get_session() as s:
+            s.add(ProMapRecord(team_hltv_id=4608, map_name="de_inferno"))
+            s.add(ProMapRecord(team_hltv_id=6667, map_name="de_inferno"))
+            s.add(ProMapRecord(player_hltv_id=7998, map_name="de_inferno"))

@@ -250,10 +250,15 @@ class DatabaseManager:
             update_cols = {
                 k: stmt.excluded[k] for k in data if k not in ("demo_name", "player_name")
             }
-            stmt = stmt.on_conflict_do_update(
-                index_elements=["demo_name", "player_name"],
-                set_=update_cols,
-            )
+            if update_cols:
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=["demo_name", "player_name"],
+                    set_=update_cols,
+                )
+            else:
+                # R4 MED: a keys-only instance (ensure-row-exists) produced an
+                # empty set_ dict, which SQLAlchemy rejects with ValueError.
+                stmt = stmt.on_conflict_do_nothing(index_elements=["demo_name", "player_name"])
             session.execute(stmt)
             session.flush()
 

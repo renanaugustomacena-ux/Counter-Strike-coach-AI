@@ -205,6 +205,19 @@ def restore_backup(backup_path: Path, target_path: Path) -> bool:
     # Preserve existing file for rollback
     rollback_path = None
     if target_path.exists():
+        # R4 MED: checkpoint the live DB into the main file BEFORE taking
+        # the rollback snapshot — the restore path unlinks the -wal, and the
+        # rollback restores the main file only, so transactions committed to
+        # WAL but not yet checkpointed would be silently lost on a failed
+        # restore.
+        try:
+            _conn = sqlite3.connect(str(target_path))
+            try:
+                _conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            finally:
+                _conn.close()
+        except sqlite3.Error as e:
+            logger.warning("Pre-restore WAL checkpoint failed (non-fatal): %s", e)
         rollback_path = target_path.with_suffix(".db.rollback")
         shutil.copy2(str(target_path), str(rollback_path))
 

@@ -6,6 +6,7 @@ from typing import Optional
 
 from pydantic import field_validator
 from sqlalchemy import CheckConstraint, Column, ForeignKey, Index, Integer, String, UniqueConstraint
+from sqlalchemy import text as sa_text
 from sqlmodel import Field, SQLModel
 
 # WR-76: legacy ingestion stored PlayerMatchStats.demo_name as
@@ -610,11 +611,24 @@ class ProMapRecord(SQLModel, table=True):
             "(team_hltv_id IS NULL) <> (player_hltv_id IS NULL)",
             name="ck_promaprecord_subject_xor",
         ),
-        UniqueConstraint(
+        # R4 MED: SQLite treats NULLs as distinct in UNIQUE indexes, and the
+        # XOR check guarantees one subject column is always NULL — so the old
+        # 3-column UniqueConstraint could never fire and duplicate
+        # (subject, map) rows inserted freely. Partial unique indexes enforce
+        # the documented one-record-per-(subject, map) contract.
+        Index(
+            "ux_promaprecord_team_map",
             "team_hltv_id",
+            "map_name",
+            unique=True,
+            sqlite_where=sa_text("team_hltv_id IS NOT NULL"),
+        ),
+        Index(
+            "ux_promaprecord_player_map",
             "player_hltv_id",
             "map_name",
-            name="ux_promaprecord_subject_map",
+            unique=True,
+            sqlite_where=sa_text("player_hltv_id IS NOT NULL"),
         ),
         {"extend_existing": True},
     )
