@@ -59,8 +59,11 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 target_metadata = SQLModel.metadata
 
-# Set the sqlalchemy.url from our config.py
-config.set_main_option("sqlalchemy.url", DATABASE_URL)
+# Set the sqlalchemy.url from our config.py. CS2_ALEMBIC_URL (env var) wins
+# when set — migration verification targets a throwaway DB instead of the
+# real one; without an explicit override this line silently redirected every
+# programmatic Config(sqlalchemy.url=...) override to the production DB.
+config.set_main_option("sqlalchemy.url", os.environ.get("CS2_ALEMBIC_URL", DATABASE_URL))
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
