@@ -850,3 +850,96 @@ class TestEdgeCases:
         result = factory.generate_motion_tensor(ticks, map_name="de_mirage")
         assert result.shape == (3, 16, 16)
         assert not torch.isnan(result).any()
+
+
+# ============ _tick_yaw accessor (R4 CRIT regression, 2026-07-16) ============
+
+
+def _make_db_shaped_tick(pos_x=-2000.0, pos_y=800.0, view_x=0.0, tick=0):
+    """Tick shaped like a REAL PlayerTickState row: view_x/view_y, NO 'yaw'.
+
+    The historical helper (_make_tick) sets both attributes, which is why the
+    yaw-accessor bug (reading 'yaw' that DB rows never have) was invisible to
+    this suite.
+    """
+    return SimpleNamespace(
+        tick=tick,
+        player_name="TestPlayer",
+        demo_name="test.dem",
+        pos_x=pos_x,
+        pos_y=pos_y,
+        pos_z=0.0,
+        view_x=view_x,
+        view_y=0.0,
+        team="CT",
+        health=100,
+        armor=100,
+        is_crouching=False,
+        is_scoped=False,
+        active_weapon="ak47",
+        equipment_value=4750,
+        enemies_visible=0,
+        is_blinded=False,
+    )
+
+
+class TestTickYawAccessor:
+    """R4 CRIT: FOV/crosshair yaw must come from view_x on DB-shaped rows."""
+
+    @pytest.fixture
+    def factory(self):
+        return TensorFactory(config=TensorConfig(view_resolution=32, sigma=0.0))
+
+    def test_view_x_is_canonical(self):
+        from Programma_CS2_RENAN.backend.processing.tensor_factory import _tick_yaw
+
+        assert _tick_yaw(SimpleNamespace(view_x=90.0, yaw=45.0)) == 90.0
+
+    def test_legacy_yaw_fallback(self):
+        from Programma_CS2_RENAN.backend.processing.tensor_factory import _tick_yaw
+
+        assert _tick_yaw(SimpleNamespace(yaw=45.0)) == 45.0
+
+    def test_default_zero(self):
+        from Programma_CS2_RENAN.backend.processing.tensor_factory import _tick_yaw
+
+        assert _tick_yaw(SimpleNamespace()) == 0.0
+
+    def test_fov_consumes_view_x_on_db_rows(self, factory):
+        """A DB-shaped tick facing west must NOT produce the east-facing FOV.
+
+        Before the fix, getattr(tick, "yaw", 0.0) returned 0.0 for every
+        PlayerTickState, so the FOV cone faced east for all training samples.
+        """
+        east = factory.generate_view_tensor(
+            [_make_db_shaped_tick(view_x=0.0)], map_name="de_mirage"
+        )
+        west = factory.generate_view_tensor(
+            [_make_db_shaped_tick(view_x=180.0)], map_name="de_mirage"
+        )
+        assert not torch.equal(east[0], west[0]), (
+            "FOV mask identical for view_x=0 and view_x=180 — yaw is not "
+            "being read from view_x on DB-shaped rows"
+        )
+
+    def test_crosshair_channel_sees_view_x_delta(self, factory):
+        """Flick between two DB-shaped ticks must light the crosshair channel."""
+        from Programma_CS2_RENAN.core.spatial_data import get_map_metadata
+
+        meta = get_map_metadata("de_mirage")
+        prev = _make_db_shaped_tick(view_x=0.0, tick=1)
+        curr = _make_db_shaped_tick(view_x=60.0, tick=2)
+        channel = factory._build_crosshair_channel(curr, prev, meta, 32)
+        assert channel.max() > 0, (
+            "60-degree flick produced a dark crosshair channel — yaw delta "
+            "is not being read from view_x"
+        )
+
+    def test_crosshair_channel_dark_when_stationary(self, factory):
+        from Programma_CS2_RENAN.core.spatial_data import get_map_metadata
+
+        meta = get_map_metadata("de_mirage")
+        prev = _make_db_shaped_tick(view_x=42.0, tick=1)
+        curr = _make_db_shaped_tick(view_x=42.0, tick=2)
+        channel = factory._build_crosshair_channel(curr, prev, meta, 32)
+        assert channel.max() == 0.0

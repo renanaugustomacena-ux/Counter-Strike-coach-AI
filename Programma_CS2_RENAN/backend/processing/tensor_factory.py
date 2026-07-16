@@ -40,6 +40,19 @@ from Programma_CS2_RENAN.backend.processing.player_knowledge import PlayerKnowle
 from Programma_CS2_RENAN.backend.storage.db_models import PlayerTickState
 from Programma_CS2_RENAN.core.spatial_data import MapMetadata, get_map_metadata
 
+
+def _tick_yaw(tick) -> float:
+    """View yaw (degrees) of a tick row.
+
+    PlayerTickState stores the yaw as ``view_x`` (canonical contract:
+    view_x=yaw, view_y=pitch — see vectorizer.py). Legacy dict-shaped tick
+    objects may carry a ``yaw`` attribute instead. Reading ``yaw`` alone on
+    DB rows silently returned 0.0 (east-facing FOV for every training
+    sample) — R4 CRIT finding 2026-07-16.
+    """
+    return float(getattr(tick, "view_x", getattr(tick, "yaw", 0.0)))
+
+
 # ============ Constants ============
 
 OWN_POSITION_INTENSITY = 1.5
@@ -242,7 +255,7 @@ class TensorFactory:
         current_tick = ticks[-1]
         player_x = current_tick.pos_x
         player_y = current_tick.pos_y
-        yaw = getattr(current_tick, "yaw", 0.0)
+        yaw = _tick_yaw(current_tick)
 
         # Ch0: FOV mask (same geometry for both modes)
         fov_mask = self._generate_fov_mask(player_x, player_y, yaw, meta, resolution)
@@ -258,7 +271,7 @@ class TensorFactory:
         _LEGACY_TICK_CAP = 8
         accumulated_fov = fov_mask.copy()
         for tick in ticks[:-1][-_LEGACY_TICK_CAP:]:
-            tick_yaw = getattr(tick, "view_x", getattr(tick, "yaw", 0.0))
+            tick_yaw = _tick_yaw(tick)
             tick_fov = self._generate_fov_mask(tick.pos_x, tick.pos_y, tick_yaw, meta, resolution)
             accumulated_fov = np.maximum(accumulated_fov, tick_fov)
         danger_zone = np.clip(1.0 - accumulated_fov, 0, 1)
@@ -559,8 +572,8 @@ class TensorFactory:
         """
         channel = np.zeros((resolution, resolution), dtype=np.float32)
 
-        curr_yaw = float(getattr(curr_tick, "yaw", 0.0))
-        prev_yaw = float(getattr(prev_tick, "yaw", 0.0))
+        curr_yaw = _tick_yaw(curr_tick)
+        prev_yaw = _tick_yaw(prev_tick)
 
         yaw_delta = abs(curr_yaw - prev_yaw)
         if yaw_delta > 180:
