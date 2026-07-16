@@ -553,6 +553,22 @@ def train_jepa_finetune(
     """
     logger.info("Starting JEPA fine-tuning...")
 
+    # R4 HIGH / 26-RANGE-01 (TASKS#64): the CLI feed builds 25-dim last-tick
+    # state targets while the coaching head outputs OUTPUT_DIM=10 sigmoid
+    # "adjustments" — a mismatch that used to surface as an opaque MSELoss
+    # broadcast RuntimeError on the first batch. Fail loudly and explain:
+    # the 10-dim coaching-target contract must be defined before finetuning.
+    y_dim = int(np.asarray(y_train).shape[-1])
+    out_dim = int(getattr(model, "output_dim", 0))
+    if out_dim and y_dim != out_dim:
+        raise ValueError(
+            f"train_jepa_finetune: y_train targets have {y_dim} dims but the "
+            f"coaching head outputs {out_dim}. The supervised coaching-target "
+            "contract is undefined (26-RANGE-01 / TASKS#64, AUDIT §12.1) — "
+            "define 10-dim targets (proposed: per-axis deltas remapped to "
+            "[0,1] via (δ+1)/2) before running --mode finetune."
+        )
+
     # Ensure encoders are frozen
     model.freeze_encoders()
 
