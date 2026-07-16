@@ -66,8 +66,24 @@ def _register_checkpoint_hash(path: Path) -> None:
     if registry_path.exists():
         try:
             registry = json.loads(registry_path.read_text())
-        except (json.JSONDecodeError, OSError):
-            pass
+        except (json.JSONDecodeError, OSError) as e:
+            # R4 MED: was a bare pass — a corrupted registry was silently
+            # rewritten with ONLY the current entry, discarding every other
+            # checkpoint's hash (their next load would then skip
+            # verification as "unregistered"). Preserve the evidence and
+            # shout: integrity guarantees must not degrade silently.
+            corrupt_backup = registry_path.with_suffix(".corrupt")
+            try:
+                registry_path.replace(corrupt_backup)
+            except OSError:
+                corrupt_backup = None
+            logger.error(
+                "Checkpoint hash registry unreadable (%s) — rebuilt from the "
+                "current checkpoint only; previous hashes preserved at %s. "
+                "Older checkpoints will load as 'unregistered' (unverified).",
+                e,
+                corrupt_backup,
+            )
     registry[str(path)] = _compute_file_hash(path)
     registry_path.write_text(json.dumps(registry, indent=2))
 
