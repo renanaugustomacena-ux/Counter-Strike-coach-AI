@@ -679,3 +679,26 @@ class TestEMARehydrationWarning:
         assert trainer._ema_step == 42
         assert trainer._ema_total_steps == 100
         assert not any("REPR-01" in str(c) for c in mock_log.warning.call_args_list)
+
+
+# ─── 26-RANGE-01 guard (R4 HIGH, TASKS#64) ───────────────────────────
+
+
+class TestFinetuneTargetContractGuard:
+    """The real CLI builds 25-dim last-tick targets while the coaching head
+    outputs OUTPUT_DIM=10 — this used to die as an opaque MSELoss broadcast
+    RuntimeError. The guard must fail loudly and name the open contract."""
+
+    def test_dim_mismatch_raises_named_error(self, metadata_dim):
+        model = JEPACoachingModel(input_dim=metadata_dim, output_dim=10)
+        model.is_pretrained = True
+        X = np.random.randn(8, 20, metadata_dim).astype(np.float32)
+        y = np.random.randn(8, metadata_dim).astype(np.float32)  # 25 ≠ 10
+        with pytest.raises(ValueError, match="26-RANGE-01"):
+            train_jepa_finetune(model, X, y, num_epochs=1, batch_size=4)
+
+    def test_matching_dims_pass_the_guard(self, pretrained_model, metadata_dim):
+        X = np.random.randn(8, 20, metadata_dim).astype(np.float32)
+        y = np.random.randn(8, metadata_dim).astype(np.float32)
+        result = train_jepa_finetune(pretrained_model, X, y, num_epochs=1, batch_size=4)
+        assert result is not None
