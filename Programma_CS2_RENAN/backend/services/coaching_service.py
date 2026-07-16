@@ -633,7 +633,10 @@ class CoachingService:
                     len(long_insights),
                     player_name,
                 )
-        except (ValueError, KeyError, OSError) as e:
+        except (SQLAlchemyError, ValueError, KeyError, OSError) as e:
+            # R4 MED: SQLAlchemyError was missing from the tuple, so a DB
+            # failure here escaped the documented "never affects the main
+            # pipeline" contract and killed generate_new_insights mid-flight.
             _coaching_logger.warning("Longitudinal coaching failed (non-fatal): %s", e)
 
     def _find_best_match_pro(self, player_stats: Dict[str, float]) -> Optional[int]:

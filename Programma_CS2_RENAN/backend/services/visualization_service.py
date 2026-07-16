@@ -17,6 +17,9 @@ class VisualizationService:
         Generates a professional Radar Chart comparing User vs Pro.
         """
         # F5-19: Wrap matplotlib operations — rendering can fail (empty stats, backend issues).
+        # R4 MED: fig must pre-exist the try — a failure before plt.subplots
+        # made the finally raise UnboundLocalError, masking the real error.
+        fig = None
         try:
             labels = list(user_stats.keys())
             num_vars = len(labels)
@@ -68,7 +71,8 @@ class VisualizationService:
             logger.error("generate_performance_radar failed: %s", e)
             raise
         finally:
-            plt.close(fig)
+            if fig is not None:
+                plt.close(fig)
 
     def plot_comparison_v2(
         self, p1_name: str, p2_name: str, p1_stats: Dict[str, Any], p2_stats: Dict[str, Any]
@@ -77,6 +81,7 @@ class VisualizationService:
         Comparison plot for two players, returning a BytesIO buffer.
         """
         # F5-19: Wrap matplotlib operations — rendering can fail (empty stats, backend issues).
+        fig = None  # R4 MED: see generate_performance_radar
         try:
             # Filter only numeric values for radar chart
             numeric_feats = ["avg_kills", "avg_adr", "avg_hs", "avg_kast", "accuracy"]
@@ -109,7 +114,8 @@ class VisualizationService:
             logger.error("plot_comparison_v2 failed: %s", e)
             raise
         finally:
-            plt.close(fig)
+            if fig is not None:
+                plt.close(fig)
 
 
 _service = None
