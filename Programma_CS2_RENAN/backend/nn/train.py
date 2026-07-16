@@ -91,8 +91,18 @@ def _train_jepa_self_supervised(X, device, context=None):
     model.to(device)
     model.train()
 
+    # NN-JM-04 (R4 MED): the target encoder is EMA-updated, never
+    # gradient-trained — freeze it and exclude it from the optimizer
+    # (mirror of _jepa_pretrain_setup_training). Without this the very
+    # first update_target_encoder() tripped the NN-JM-04 guard, making
+    # this train_nn branch unusable.
+    for _p in model.target_encoder.parameters():
+        _p.requires_grad = False
+
     # Optimizer (AdamW standard for Transformers/JEPAs)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=1e-2)
+    optimizer = torch.optim.AdamW(
+        [p for p in model.parameters() if p.requires_grad], lr=1e-4, weight_decay=1e-2
+    )
 
     # 3. Pre-training Loop
     # In production, this would be 100+ epochs.

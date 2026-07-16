@@ -475,7 +475,16 @@ class JEPATrainer:
         # Without this, _ema_step accumulates from previous training, causing
         # progress > 1.0 (clamped) → momentum ≈ 1.0 (frozen target encoder).
         self._ema_step = 0
-        self._ema_total_steps = epochs * len(full_dataloader)
+        # R4 MED: _ema_step increments per OPTIMIZER step (every
+        # _accumulation_steps batches), so the total must be in the same
+        # unit — counting raw batches made progress reach only ~1/4 by the
+        # end of retraining and the J-6 schedule never annealed τ to 1.0
+        # (the orchestrator path already divides by accumulation_steps).
+        import math as _math
+
+        self._ema_total_steps = epochs * max(
+            1, _math.ceil(len(full_dataloader) / self._accumulation_steps)
+        )
 
         # P9-02: clear consecutive-collapse counter so a prior near-collapse
         # state does not abort retraining on the very first new epoch.
@@ -508,6 +517,29 @@ class JEPATrainer:
         """
         if not isinstance(self.model, VLJEPACoachingModel):
             raise TypeError("train_step_vl requires a VLJEPACoachingModel")
+
+        # R4 MED: mirror train_step's contract — the sibling entry points are
+        # dispatched interchangeably by the orchestrator, but this one used
+        # to skip the NN-TR-03 shape diagnostics and the NN-JT-03 device
+        # transfer (device-mismatch RuntimeError on GPU, VL path only).
+        if x_context.ndim != 3:
+            raise ValueError(
+                f"NN-TR-03: x_context must be 3D (B, seq_len, input_dim), got {x_context.ndim}D"
+            )
+        if x_target.ndim != 3:
+            raise ValueError(
+                f"NN-TR-03: x_target must be 3D (B, seq_len, input_dim), got {x_target.ndim}D"
+            )
+        if x_context.shape[0] != x_target.shape[0]:
+            raise ValueError(
+                f"NN-TR-03: batch size mismatch: context={x_context.shape[0]}, "
+                f"target={x_target.shape[0]}"
+            )
+        device = next(self.model.parameters()).device
+        x_context = x_context.to(device)
+        x_target = x_target.to(device)
+        if negatives is not None:
+            negatives = negatives.to(device)
 
         self.model.train()
 

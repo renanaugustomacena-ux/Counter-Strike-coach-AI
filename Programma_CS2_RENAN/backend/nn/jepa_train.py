@@ -553,6 +553,14 @@ def train_jepa_finetune(
     """
     logger.info("Starting JEPA fine-tuning...")
 
+    # DET-01 (R4 MED): seed the global generators — LSTM dropout and any
+    # torch RNG in the loop drew from the unseeded global generator on the
+    # standalone --mode finetune path (only the DataLoader shuffle was
+    # seeded), making runs non-reproducible.
+    from Programma_CS2_RENAN.backend.nn.config import set_global_seed
+
+    set_global_seed()
+
     # R4 HIGH / 26-RANGE-01 (TASKS#64): the CLI feed builds 25-dim last-tick
     # state targets while the coaching head outputs OUTPUT_DIM=10 sigmoid
     # "adjustments" — a mismatch that used to surface as an opaque MSELoss
@@ -623,6 +631,15 @@ def train_jepa_finetune(
 
             # Loss
             loss = loss_fn(predictions, y_batch)
+
+            # R4 MED: the Switch-Transformer load-balancing aux loss computed
+            # by _sparse_moe was never added to ANY objective — the claimed
+            # expert-collapse protection was inert (and its autograd graph
+            # was retained between forwards). forward_coaching is the only
+            # training path through the MoE router: consume it here.
+            moe_aux = getattr(model, "_moe_aux_loss", None)
+            if isinstance(moe_aux, torch.Tensor) and moe_aux.requires_grad:
+                loss = loss + moe_aux
 
             # Backward pass
             optimizer.zero_grad()
