@@ -2,3 +2,7 @@ packages:
   - 'tactical-viewer'
   - 'match-detail'
   - 'coach-chat'
+
+# esbuild ha bisogno del postinstall per collocare il binario nativo della piattaforma
+allowBuilds:
+  esbuild: true
