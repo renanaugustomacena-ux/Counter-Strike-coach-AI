@@ -145,7 +145,14 @@ class AnalyticsEngine:
             }
 
     def get_rating_history(self, player_name: str, limit: int = 50) -> list:
-        """Returns list of {rating, match_date, demo_name} ordered chronologically."""
+        """Returns list of {rating, match_date, demo_name, kd_ratio, avg_adr,
+        avg_kast} ordered chronologically.
+
+        R4 HIGH (2026-07-16): performance_vm builds its pro-percentile
+        context from kd_ratio/avg_adr/avg_kast of these rows; the history
+        used to carry only the rating, so those percentiles were computed
+        from empty lists and always ranked the user at ~0th.
+        """
         try:
             filters = self._player_filter(player_name)
             with self.db.get_session() as session:
@@ -154,6 +161,9 @@ class AnalyticsEngine:
                         PlayerMatchStats.rating,
                         PlayerMatchStats.match_date,
                         PlayerMatchStats.demo_name,
+                        PlayerMatchStats.kd_ratio,
+                        PlayerMatchStats.avg_adr,
+                        PlayerMatchStats.avg_kast,
                     )
                     .where(*filters)
                     .order_by(PlayerMatchStats.match_date.desc())
@@ -163,7 +173,14 @@ class AnalyticsEngine:
                 if not results:
                     return []
                 return [
-                    {"rating": r[0], "match_date": r[1], "demo_name": r[2]}
+                    {
+                        "rating": r[0],
+                        "match_date": r[1],
+                        "demo_name": r[2],
+                        "kd_ratio": r[3],
+                        "avg_adr": r[4],
+                        "avg_kast": r[5],
+                    }
                     for r in reversed(results)
                 ]
         except Exception as e:
