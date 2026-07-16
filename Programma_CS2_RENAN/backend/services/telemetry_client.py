@@ -16,12 +16,18 @@ logger = get_logger("cs2analyzer.telemetry")
 DEV_SERVER_URL = os.getenv("CS2_TELEMETRY_URL", "http://127.0.0.1:8000")
 
 
-def send_match_telemetry(player_id: str, match_id: str, stats: dict):
+def send_match_telemetry(player_name: str, match_id: str, stats: dict):
     """
     Sends match statistics to the central ML Coach server.
+
+    R4 HIGH (2026-07-16): the payload used a ``player_id`` key while the
+    server schema (server.py MatchTelemetry) requires ``player_name`` —
+    every request 422'd; and success was tested against 200 while the
+    endpoint is declared ``status_code=202`` — success was unreachable
+    end-to-end.
     """
     payload = {
-        "player_id": player_id,
+        "player_name": player_name,
         "match_id": match_id,
         "stats": stats,
         "timestamp": time.time(),
@@ -38,7 +44,7 @@ def send_match_telemetry(player_id: str, match_id: str, stats: dict):
                 f"{DEV_SERVER_URL}/api/ingest/telemetry", json=payload, timeout=10.0
             )
 
-        if response.status_code == 200:
+        if response.is_success:  # 2xx — the endpoint accepts with 202
             logger.info("[+] Data successfully sent to the Coach.")
             return True
         else:
