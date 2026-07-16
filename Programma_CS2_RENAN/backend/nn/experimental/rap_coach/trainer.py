@@ -106,6 +106,7 @@ class RAPTrainer:
             self._scaler.step(self.optimizer)
             self._scaler.update()
             self.optimizer.zero_grad()
+            self._notify_memory_step()
 
         logger.debug(
             "train_step: loss=%.4f sparsity=%.3f pos_loss=%.4f z_err=%.4f amp=%s",
@@ -130,6 +131,14 @@ class RAPTrainer:
         self._scaler.step(self.optimizer)
         self._scaler.update()
         self.optimizer.zero_grad()
+        self._notify_memory_step()
+
+    def _notify_memory_step(self):
+        """NN-MEM-01 (R4 MED): tell the Hopfield memory a REAL optimizer step
+        happened — its activation gate is step-driven, not forward-driven."""
+        memory = getattr(self.model, "memory", None)
+        if memory is not None and hasattr(memory, "notify_optimizer_step"):
+            memory.notify_optimizer_step()
 
     def compute_position_loss(self, pred_delta, target_delta):
         """

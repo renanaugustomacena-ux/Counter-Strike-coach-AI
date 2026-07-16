@@ -158,7 +158,10 @@ class TestRAPMemory:
         assert not torch.isnan(belief).any()
 
     def test_hopfield_bypass_training_mode(self):
-        """NN-MEM-01: Hopfield bypassed until >= 2 training forward passes."""
+        """NN-MEM-01 (R4 MED 2026-07-16): Hopfield stays bypassed until the
+        first REAL optimizer step — the old forward-count gate activated it
+        before any weight update under gradient accumulation (this test used
+        to codify that: 2 forwards → active)."""
         from Programma_CS2_RENAN.backend.nn.rap_coach.memory import RAPMemory
 
         torch.manual_seed(42)
@@ -169,12 +172,15 @@ class TestRAPMemory:
         assert not mem._hopfield_trained
         assert mem._training_forward_count == 0
 
+        # Any number of forwards without an optimizer step: still bypassed.
         mem(x)
-        assert mem._training_forward_count == 1
+        mem(x)
+        mem(x)
+        assert mem._training_forward_count == 3
         assert not mem._hopfield_trained
 
-        mem(x)
-        assert mem._training_forward_count >= 2
+        # The trainer signals the first real optimizer step → active.
+        mem.notify_optimizer_step()
         assert mem._hopfield_trained
 
 

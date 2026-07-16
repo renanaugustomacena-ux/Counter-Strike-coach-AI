@@ -653,7 +653,7 @@ class TrainingOrchestrator:
                 logger.debug("P3-E: Dropping batch %d (size %d < 2)", batch_idx, len(batch))
                 continue
 
-            tensor_batch = self._prepare_tensor_batch(batch)
+            tensor_batch = self._prepare_tensor_batch(batch, is_train=is_train)
             if tensor_batch is None:
                 continue
 
@@ -683,7 +683,7 @@ class TrainingOrchestrator:
 
         return total_loss / max(processed_count, 1)
 
-    def _prepare_tensor_batch(self, raw_items):
+    def _prepare_tensor_batch(self, raw_items, is_train: bool = True):
         """Convert list of DB objects (PlayerTickState) to Tensor Dictionary.
 
         Uses the unified FeatureExtractor to ensure consistency between training and inference.
@@ -758,12 +758,17 @@ class TrainingOrchestrator:
                 )
                 return None
 
-            # Populate pool with current batch features (after sampling to avoid self-negatives)
-            step = max(1, b // 10)  # Store ~10 features per batch to limit pool growth
-            for i in range(0, b, step):
-                self._neg_pool.append(features_tensor[i].detach().cpu())
-            if len(self._neg_pool) > self._neg_pool_max:
-                self._neg_pool = self._neg_pool[-self._neg_pool_max :]
+            # Populate pool with current batch features (after sampling to
+            # avoid self-negatives). R4 MED: TRAIN batches only — validation
+            # features must never become training negatives (the eval loop
+            # used to feed the pool too, mixing splits into the contrastive
+            # objective).
+            if is_train:
+                step = max(1, b // 10)  # Store ~10 features per batch to limit pool growth
+                for i in range(0, b, step):
+                    self._neg_pool.append(features_tensor[i].detach().cpu())
+                if len(self._neg_pool) > self._neg_pool_max:
+                    self._neg_pool = self._neg_pool[-self._neg_pool_max :]
 
             result = {"context": context, "target": target, "negatives": negatives}
 

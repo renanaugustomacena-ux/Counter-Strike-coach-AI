@@ -354,9 +354,14 @@ def _get_parse_timeout(demo_path: str) -> int:
         return DEMO_PARSE_TIMEOUT_SECONDS
 
 
-def parse_sequential_ticks(
-    demo_path: str, target_player: str, rate: int = None, start_tick: int = 0
-) -> pd.DataFrame:
+def parse_sequential_ticks(demo_path: str, target_player: str, start_tick: int = 0) -> pd.DataFrame:
+    """Parse every native tick for the player (or ALL players).
+
+    R4 MED / supreme invariant (2026-07-16): the legacy ``rate`` parameter
+    and its ``df.iloc[::sampling]`` stride were the LAST live tick-decimation
+    mechanism in the repo — removed entirely. Every input tick maps 1:1 to
+    one output row; the only filtering is by player name and start_tick.
+    """
     if not os.path.exists(demo_path):
         logger.warning("Demo file not found: %s", demo_path)
         return pd.DataFrame()
@@ -374,9 +379,6 @@ def parse_sequential_ticks(
         t_start = _time.monotonic()
 
         parser = DemoParser(demo_path)
-        sampling = (
-            rate if rate else 1
-        )  # FORCE NATIVE RATE (No Decimation as per Gemini_argument_master.md)
 
         # WP6: Complete Data Extraction (All demoparser2 fields)
         fields = [
@@ -486,7 +488,6 @@ def parse_sequential_ticks(
             if df.empty:
                 return pd.DataFrame()
 
-        df = df.iloc[::sampling]
         if target_player != "ALL":
             df = df[
                 df["player_name"].astype(str).str.strip().str.lower()
