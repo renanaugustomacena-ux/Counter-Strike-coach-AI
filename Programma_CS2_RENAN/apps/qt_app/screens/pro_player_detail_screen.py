@@ -306,7 +306,7 @@ class ProPlayerDetailScreen(QWidget):
             row = QFrame()
             row.setStyleSheet(
                 f"QFrame {{ "
-                f"background-color: {tokens.surface_card}; "
+                f"background-color: {tokens.surface_raised}; "
                 f"border: 1px solid {tokens.border_subtle}; "
                 f"border-radius: 6px; "
                 f"padding: 6px 10px; "

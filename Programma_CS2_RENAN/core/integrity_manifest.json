@@ -35,7 +35,7 @@
     "apps/qt_app/screens/performance_screen.py": "24d3aba520a83ab9da61ff00829563409810d918f38af4012e70bc56ed6ee893",
     "apps/qt_app/screens/placeholder.py": "bab92f86731c13e1f65590d3669aa33df85090712671219acd7c3951b51726e2",
     "apps/qt_app/screens/pro_comparison_screen.py": "2160f9efe44b18c6ced1344bc439c9ecfe54e08cba9f9a74057429f531adf172",
-    "apps/qt_app/screens/pro_player_detail_screen.py": "bb75df0bd4c6b61181258d6261c09adbcc5584d17d9cf66c0e9361928ec21f85",
+    "apps/qt_app/screens/pro_player_detail_screen.py": "88f5710ae274acfc2d3cd8fb4e9aa6f4bdabcb55369fff229d1101611860773d",
     "apps/qt_app/screens/profile_screen.py": "060af7bb017bd155bd886ef6232ffc6b6a7fe92b8f89c80fbad117c0726a4d71",
     "apps/qt_app/screens/settings_screen.py": "fb857b8bb1b90f8a821bbd3fba9f8ed30b68491b85ac5fe9cda05c831d4494b5",
     "apps/qt_app/screens/steam_config_screen.py": "274ba704334190b27cdd663b6a5c26817b5466ca42bea98d9aaff55b311e5fad",
