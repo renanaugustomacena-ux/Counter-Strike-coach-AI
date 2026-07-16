@@ -13,22 +13,22 @@ FOV_DEGREES: float = 90.0
 Z_FLOOR_THRESHOLD: float = 200.0
 """Minimum Z-distance (world units) to consider players on different floors (H-11)."""
 
-# === Utility Durations (seconds -> ticks) ===
+# === Temporal constants — SECONDS ONLY ===
+# R4 HIGH / 26-TICK (2026-07-16): the import-time "seconds -> ticks"
+# derivations (SMOKE_MAX_DURATION_TICKS, FLASH_DURATION_TICKS,
+# MEMORY_*_TICKS, TRADE_WINDOW_TICKS) baked in TICK_RATE=64 and were all
+# dead code after C1/DS-07 — every runtime path derives tick windows from
+# the per-demo MatchMetadata.tick_rate. Removed to close the GIGO surface:
+# tick windows MUST be computed at point of use from the per-demo rate.
+
+# === Utility Durations ===
 SMOKE_DURATION_S: float = 18.0
 MOLOTOV_DURATION_S: float = 7.0
 FLASH_DURATION_S: float = 2.0
 
-SMOKE_MAX_DURATION_TICKS: int = int(SMOKE_DURATION_S * TICK_RATE)  # 1152
-MOLOTOV_MAX_DURATION_TICKS: int = int(MOLOTOV_DURATION_S * TICK_RATE)  # 448
-FLASH_DURATION_TICKS: int = int(FLASH_DURATION_S * TICK_RATE)  # 128
-
-# === Memory Constants (seconds -> ticks) ===
+# === Memory Constants ===
 MEMORY_DECAY_TAU_S: float = 2.5
 MEMORY_CUTOFF_S: float = 7.5  # L-28: 3*tau (was 5.0s = 2*tau)
 
-MEMORY_DECAY_TAU_TICKS: int = int(MEMORY_DECAY_TAU_S * TICK_RATE)  # 160
-MEMORY_CUTOFF_TICKS: int = int(MEMORY_CUTOFF_S * TICK_RATE)  # 480
-
 # === Trade Kill ===
 TRADE_WINDOW_S: float = 3.0
-TRADE_WINDOW_TICKS: int = int(TRADE_WINDOW_S * TICK_RATE)  # 192

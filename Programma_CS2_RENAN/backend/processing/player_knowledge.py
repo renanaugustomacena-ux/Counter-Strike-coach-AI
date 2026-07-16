@@ -24,7 +24,6 @@ from Programma_CS2_RENAN.core.constants import (
     FOV_DEGREES,
     MEMORY_CUTOFF_S,
     MEMORY_DECAY_TAU_S,
-    MEMORY_DECAY_TAU_TICKS,
     MOLOTOV_DURATION_S,
     SMOKE_DURATION_S,
     Z_FLOOR_THRESHOLD,
@@ -44,8 +43,10 @@ HEARING_RANGE_GUNFIRE = 2000.0
 # CS2 is 5v5 so max 5 enemies; 10 allows for edge cases in parsed data.
 MAX_TRACKED_ENEMIES = 10
 
-# Backward-compatible alias (M-08)
-MEMORY_DECAY_TAU = MEMORY_DECAY_TAU_TICKS
+# R4 HIGH / 26-TICK (2026-07-16): the M-08 alias MEMORY_DECAY_TAU (= the
+# import-time 64-tick derivation) had zero consumers and baked in the
+# fixed rate — removed with the *_TICKS constants; the builder derives
+# memory windows from the per-demo tick rate (C1).
 
 # RAP-M-10: Hard cap on history ticks traversed in _build_enemy_memory.
 # Prevents O(N*E) blowup when callers pass unbounded history dicts.
