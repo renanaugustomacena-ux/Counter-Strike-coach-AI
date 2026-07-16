@@ -500,17 +500,16 @@ class PlayerKnowledgeBuilder:
         knowledge: PlayerKnowledge,
         events: list,
         current_tick: int,
-        tick_rate: int = 64,
     ) -> None:
         """Infer audible events from MatchEventState records.
 
         The player can hear gunfire within HEARING_RANGE_GUNFIRE and
         explosions within the same range. Direction is computed as the
-        angle from the player to the event source.
-
-        Args:
-            tick_rate: Server tick rate (64 or 128). Used to compute the
-                       1-second audible event window in ticks.
+        angle from the player to the event source. The 1-second audible
+        window derives from ``self.tick_rate`` (R4 HIGH 2026-07-16: a
+        ``tick_rate=64`` parameter default silently won over the per-demo
+        rate because the call site never forwarded it — on 128-tick demos
+        the audible window was halved).
         """
         audible_types = {"weapon_fire", "he_detonate", "flash_detonate", "bomb_planted"}
 
@@ -520,8 +519,8 @@ class PlayerKnowledgeBuilder:
                 continue
 
             evt_tick = int(getattr(evt, "tick", 0))
-            # P3-05: Use tick_rate to compute 1-second window instead of hardcoded 64.
-            if abs(evt_tick - current_tick) > tick_rate:
+            # P3-05: 1-second window in ticks = per-demo tick rate (C1).
+            if abs(evt_tick - current_tick) > self.tick_rate:
                 continue
 
             evt_x = float(getattr(evt, "pos_x", 0))
