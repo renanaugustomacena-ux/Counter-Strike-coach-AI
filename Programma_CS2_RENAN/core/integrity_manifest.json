@@ -250,7 +250,7 @@
     "backend/services/ollama_writer.py": "7790eb0d2b507020fe85cfc0532603c08f79cda02a47d88eef7d4105af501648",
     "backend/services/player_lookup.py": "598df0865f4f4ad0afd521ef5c324e22469d0c31b6965604c0051d8366358265",
     "backend/services/profile_service.py": "5279cb8179e50512efc0ddbd509a2fec7c6dfca5c0931efe6decb8e6e51015b2",
-    "backend/services/telemetry_client.py": "59f895ea25c4732b11c282350750ee2049d5e2afa61cfba05ba313c23663738e",
+    "backend/services/telemetry_client.py": "ba9ad364cddfbfd0f453144e2fbc5c8eeaf1eeb096ffc1ccba3302b427f9a8ff",
     "backend/services/visualization_service.py": "ff176b0ef6efd28443dd056e1b0867c524f4934bf8c7dc9e0f00d2457acd4d87",
     "backend/storage/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "backend/storage/backup_manager.py": "6aa293430eada05d340d85450e3addb99494fd5411de52a93d988c9201740937",
