@@ -264,8 +264,18 @@ class EconomyOptimizer:
             return self._pistol_round_decision(current_money, is_ct)
 
         # P3-12: configurable half-round detection instead of hardcoded [13, 25]
+        # R4 HIGH (2026-07-16): the half-switch round is the second PISTOL
+        # round — money resets to start money, so the old routing to
+        # _overtime_decision recommended an impossible "full-buy regardless"
+        # with 0.95 confidence in every match reaching halftime.
         half_round = self.HALF_ROUND.get(mr_format, 13)
         if round_number == half_round:
+            return self._pistol_round_decision(current_money, is_ct)
+
+        # True overtime rounds start with $10,000 in CS2 — there a full buy
+        # IS the correct call. Regulation length derives from the half-switch
+        # round (halves of half_round-1 rounds each): MR12 → 24, legacy → 30.
+        if round_number > 2 * (half_round - 1):
             return self._overtime_decision(current_money, is_ct)
 
         # Standard decision logic
@@ -354,11 +364,11 @@ class EconomyOptimizer:
         )
 
     def _overtime_decision(self, money: int, is_ct: bool) -> EconomyDecision:
-        """Overtime/half change recommendation."""
+        """Overtime recommendation ($10k start money in CS2 overtime)."""
         return EconomyDecision(
             action="full-buy",
             confidence=0.95,
-            reasoning="Critical round: Full buy regardless",
+            reasoning="Overtime: $10k start money — full buy",
             recommended_weapons=["Best weapons", "Full utility"],
         )
 

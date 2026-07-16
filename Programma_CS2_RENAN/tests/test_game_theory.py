@@ -976,3 +976,65 @@ class TestTacticalFeatures:
         decision = optimizer.recommend(current_money=800, round_number=1, is_ct=True)
         assert decision.action == "pistol"
         assert len(decision.recommended_weapons) > 0
+
+
+# ===========================================================================
+# R4 HIGH (2026-07-16) — half-switch must be format-aware
+# ===========================================================================
+
+
+class TestMomentumHalfSwitchFormatAware:
+    """The tracker used to reset at BOTH rounds 13 and 16 regardless of the
+    match format, wiping mid-half streaks (round 16 in every MR12 match)."""
+
+    def test_mr12_does_not_reset_at_round_16(self):
+        from Programma_CS2_RENAN.backend.analysis.momentum import MomentumTracker
+
+        t = MomentumTracker()  # MR12 default
+        t.update(True, 14)
+        t.update(True, 15)
+        state = t.update(True, 16)
+        assert state.streak_length == 3, "round 16 is a normal MR12 round"
+
+    def test_mr12_resets_at_round_13(self):
+        from Programma_CS2_RENAN.backend.analysis.momentum import MomentumTracker
+
+        t = MomentumTracker()
+        t.update(True, 11)
+        t.update(True, 12)
+        state = t.update(True, 13)
+        assert state.streak_length == 1, "half switch must reset the streak"
+
+    def test_legacy_30_round_format_resets_at_16(self):
+        from Programma_CS2_RENAN.backend.analysis.momentum import MomentumTracker
+
+        t = MomentumTracker(mr_format=15)
+        t.update(True, 14)
+        t.update(True, 15)
+        state = t.update(True, 16)
+        assert state.streak_length == 1
+
+
+class TestEconomyHalfSwitchIsPistol:
+    """Money resets at the half switch: recommending 'full-buy regardless'
+    on the second pistol round was impossible advice in every match."""
+
+    def test_second_pistol_round_never_full_buy(self):
+        from Programma_CS2_RENAN.backend.analysis.utility_economy import EconomyOptimizer
+
+        decision = EconomyOptimizer().recommend(current_money=800, round_number=13, mr_format=12)
+        assert (
+            decision.action != "full-buy"
+        ), "round 13 (MR12) is the second pistol round — $800 start money"
+
+    def test_true_overtime_is_full_buy(self):
+        from Programma_CS2_RENAN.backend.analysis.utility_economy import EconomyOptimizer
+
+        decision = EconomyOptimizer().recommend(current_money=10_000, round_number=25, mr_format=12)
+        assert decision.action == "full-buy", "CS2 overtime starts with $10k"
+
+    def test_regulation_round_24_not_overtime(self):
+        from Programma_CS2_RENAN.backend.analysis.utility_economy import EconomyOptimizer
+
+        decision = EconomyOptimizer().recommend(current_money=1000, round_number=24, mr_format=12)
+        assert "Overtime" not in decision.reasoning

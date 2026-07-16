@@ -79,10 +79,17 @@ class MomentumTracker:
     Momentum decays exponentially between rounds and resets on half-switch.
     """
 
-    def __init__(self, decay_rate: float = 0.15):
+    def __init__(self, decay_rate: float = 0.15, mr_format: int = 12):
+        """R4 HIGH (2026-07-16): the tracker used to reset at BOTH round 13
+        and round 16 regardless of format, so every MR12 match (CS2 default)
+        also wiped momentum at round 16 — a normal mid-half round — and MR13
+        matches reset spuriously at 13. The half-switch round now derives
+        from the match's MR format (halftime after ``mr_format`` rounds →
+        switch at ``mr_format + 1``)."""
         self._state = MomentumState(decay_rate=decay_rate)
         self._last_round: int = 0
         self._history: List[MomentumState] = []
+        self._half_switch_round: int = mr_format + 1
 
     @property
     def state(self) -> MomentumState:
@@ -166,8 +173,8 @@ class MomentumTracker:
         return self._state
 
     def _is_half_switch(self, round_number: int) -> bool:
-        """Check if this round marks a half-switch."""
-        return round_number in (HALF_SWITCH_MR12, HALF_SWITCH_MR13)
+        """Check if this round marks the half-switch for THIS match's format."""
+        return round_number == self._half_switch_round
 
     def _reset(self) -> None:
         """Reset momentum state for half-switch."""
