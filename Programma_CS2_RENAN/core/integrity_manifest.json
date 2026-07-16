@@ -134,7 +134,7 @@
     "backend/data_sources/steam_demo_finder.py": "a2ce43d78bbc0664abe4904b6ae93729f3e1e3b2012a9b5150e9a462de9a4f14",
     "backend/data_sources/trade_kill_detector.py": "ef2cef3a3b8563e73432c54ec27b378d21555de1d05a005955bdcca43396802c",
     "backend/ingestion/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "backend/ingestion/csv_migrator.py": "054493ea4a18612e662068eba9fb52e73c7f37e6658310567b7fe3b6a39fae07",
+    "backend/ingestion/csv_migrator.py": "f37ddebe461c99860a644dd7f6c5a5df85d5f71cc6e6497ea5c46c869ce29a64",
     "backend/ingestion/resource_manager.py": "bc1caf360ff3ee04efc0e02606a03928e062a8f6e3ad6c949cb4a53ff02fde11",
     "backend/ingestion/watcher.py": "a4de721f87580cf5b915335a9a21f2349192d9236e9ad32a0cae1bbe69431776",
     "backend/knowledge/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
