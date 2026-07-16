@@ -38,14 +38,15 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.processing.demo_quality")
 
-# Expected tick count for a full CS2 competitive match.
-# 30 rounds * ~115 seconds * 64 ticks/s * 10 players ~ 2.2M ticks.
-# We use a conservative per-player estimate for a single demo:
-# ~25 rounds * 100s * 64 ticks = ~160k ticks per player.
-# With 10 players in a demo: ~1.6M total ticks.
-# Minimum viable: 10 rounds * 80s * 64 * 10 = ~512k ticks.
-_EXPECTED_TICKS_PER_DEMO = 1_600_000
-_MIN_VIABLE_TICKS = 512_000
+# Expected tick count for a full CS2 competitive match, at the canonical
+# 64 t/s baseline. ~25 rounds * 100s * 64 ticks * 10 players ≈ 1.6M ticks;
+# minimum viable: 10 rounds * 80s * 64 * 10 ≈ 512k.
+# R4 MED (26-TICK): these scale with the demo's REAL tick rate at the point
+# of use — a 128-tick FACEIT demo of identical length has 2x the ticks
+# (coverage would saturate, masking truncation) while 64-tick demos were
+# penalized against a fixed threshold.
+_EXPECTED_TICKS_PER_DEMO_AT_64 = 1_600_000
+_MIN_VIABLE_TICKS_AT_64 = 512_000
 
 # IQR multiplier for outlier fences (Tukey's method).
 # 1.5 = standard outlier, 3.0 = extreme outlier.
@@ -246,17 +247,45 @@ class DemoQualityScorer:
             logger.debug("Demo %s has no tick data", demo_name)
             return 0.0
 
-        coverage = float(np.clip(tick_count / _EXPECTED_TICKS_PER_DEMO, 0.0, 1.0))
+        # 26-TICK: scale the 64-baseline expectations by the demo's real rate.
+        rate_scale = self._demo_tick_rate(demo_name) / 64.0
+        expected_ticks = _EXPECTED_TICKS_PER_DEMO_AT_64 * rate_scale
+        min_viable = _MIN_VIABLE_TICKS_AT_64 * rate_scale
 
-        if tick_count < _MIN_VIABLE_TICKS:
+        coverage = float(np.clip(tick_count / expected_ticks, 0.0, 1.0))
+
+        if tick_count < min_viable:
             logger.debug(
                 "Demo %s has low tick count: %d (min viable: %d)",
                 demo_name,
                 tick_count,
-                _MIN_VIABLE_TICKS,
+                int(min_viable),
             )
 
         return coverage
+
+    @staticmethod
+    def _demo_tick_rate(demo_name: str) -> int:
+        """Per-demo server tick rate from persisted MatchMetadata (GAP-01);
+        canonical 64 with a warning when metadata is unavailable — never a
+        silent guess (26-ORCH-02 discipline)."""
+        try:
+            from Programma_CS2_RENAN.backend.storage.match_data_manager import (
+                demo_name_to_match_id,
+                get_match_data_manager,
+            )
+
+            meta = get_match_data_manager().get_metadata(demo_name_to_match_id(demo_name))
+            rate = int(getattr(meta, "tick_rate", 0) or 0)
+            if 32 <= rate <= 256:
+                return rate
+        except Exception as e:
+            logger.debug("demo_quality: tick_rate lookup failed for %s: %s", demo_name, e)
+        logger.warning(
+            "demo_quality: no per-demo tick_rate for %s — using canonical 64",
+            demo_name,
+        )
+        return 64
 
     # ------------------------------------------------------------------
     # Component 2: Feature completeness

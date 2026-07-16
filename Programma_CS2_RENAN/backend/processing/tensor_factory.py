@@ -127,6 +127,9 @@ class TensorFactory:
     - motion_tensor (3, res, res): Ch0=vx uniform, Ch1=vy uniform, Ch2=speed uniform
     """
 
+    # R4 MED: one-shot warning flag for the team-less legacy map tensor.
+    _legacy_team_warned = False
+
     def __init__(self, config: Optional[TensorConfig] = None):
         self.config = config or TensorConfig()
 
@@ -172,6 +175,19 @@ class TensorFactory:
         player_channel = np.zeros((resolution, resolution), dtype=np.float32)
 
         current_tick = ticks[-1]
+        # R4 MED: PlayerTickState has NO 'team' column — on DB rows every
+        # tick defaults to the same side, so the legacy enemy channel is
+        # structurally empty. Player-POV mode (knowledge=...) is the
+        # canonical training path; say so loudly instead of pretending.
+        if not hasattr(current_tick, "team") and not TensorFactory._legacy_team_warned:
+            TensorFactory._legacy_team_warned = True
+            import logging
+
+            logging.getLogger("cs2analyzer.tensor_factory").warning(
+                "legacy map tensor: tick rows carry no 'team' attribute — the "
+                "enemy channel will be empty; use Player-POV mode (knowledge=) "
+                "for team-aware tensors"
+            )
         player_team = getattr(current_tick, "team", "CT")
 
         for tick in ticks:

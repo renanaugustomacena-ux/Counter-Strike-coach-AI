@@ -33,7 +33,7 @@ class TestCalculateKastForRound:
                 "tick": 100,
             },
         ]
-        assert calculate_kast_for_round("Player1", events) is True
+        assert calculate_kast_for_round("Player1", events, ticks_per_second=64) is True
 
     def test_assist_achieves_kast(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
@@ -49,7 +49,7 @@ class TestCalculateKastForRound:
                 "tick": 100,
             },
         ]
-        assert calculate_kast_for_round("Player1", events) is True
+        assert calculate_kast_for_round("Player1", events, ticks_per_second=64) is True
 
     def test_survive_achieves_kast(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
@@ -66,7 +66,7 @@ class TestCalculateKastForRound:
             },
         ]
         # Player1 survived (not in any victim field)
-        assert calculate_kast_for_round("Player1", events) is True
+        assert calculate_kast_for_round("Player1", events, ticks_per_second=64) is True
 
     def test_traded_achieves_kast(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
@@ -90,7 +90,7 @@ class TestCalculateKastForRound:
             },
         ]
         # Player1 died at tick 100, Enemy1 died at tick 200 (within 320-tick window at 64tps)
-        assert calculate_kast_for_round("Player1", events) is True
+        assert calculate_kast_for_round("Player1", events, ticks_per_second=64) is True
 
     def test_not_traded_too_late(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
@@ -114,7 +114,7 @@ class TestCalculateKastForRound:
             },
         ]
         # 400 ticks gap > 320 tick window
-        assert calculate_kast_for_round("Player1", events) is False
+        assert calculate_kast_for_round("Player1", events, ticks_per_second=64) is False
 
     def test_no_events_survives(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
@@ -122,7 +122,7 @@ class TestCalculateKastForRound:
         )
 
         # No deaths → player survived
-        assert calculate_kast_for_round("Player1", []) is True
+        assert calculate_kast_for_round("Player1", [], ticks_per_second=64) is True
 
     def test_non_death_events_ignored(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
@@ -133,7 +133,7 @@ class TestCalculateKastForRound:
             {"type": "weapon_fire", "attacker": "Player1"},
             {"type": "hurt_event", "victim": "Enemy1"},
         ]
-        assert calculate_kast_for_round("Player1", events) is True
+        assert calculate_kast_for_round("Player1", events, ticks_per_second=64) is True
 
     def test_self_kill_not_counted(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
@@ -151,7 +151,7 @@ class TestCalculateKastForRound:
         ]
         # Self-kill: attacker == victim == player → K not counted (victim == player_name)
         # Player also died, so S not achieved
-        assert calculate_kast_for_round("Player1", events) is False
+        assert calculate_kast_for_round("Player1", events, ticks_per_second=64) is False
 
     def test_custom_tick_rate(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
@@ -186,7 +186,7 @@ class TestCalculateKastPercentage:
             calculate_kast_percentage,
         )
 
-        assert calculate_kast_percentage("Player1", []) == 0.0
+        assert calculate_kast_percentage("Player1", [], ticks_per_second=64) == 0.0
 
     def test_all_kast_rounds(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
@@ -205,7 +205,7 @@ class TestCalculateKastPercentage:
             ],
             [],  # survived
         ]
-        assert calculate_kast_percentage("Player1", rounds) == 1.0
+        assert calculate_kast_percentage("Player1", rounds, ticks_per_second=64) == 1.0
 
     def test_partial_kast(self):
         from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
@@ -233,7 +233,7 @@ class TestCalculateKastPercentage:
             ],
         ]
         # Round 1: kill → KAST. Round 2: died, not traded → no KAST
-        assert calculate_kast_percentage("Player1", rounds) == 0.5
+        assert calculate_kast_percentage("Player1", rounds, ticks_per_second=64) == 0.5
 
 
 class TestEstimateKastFromStats:
