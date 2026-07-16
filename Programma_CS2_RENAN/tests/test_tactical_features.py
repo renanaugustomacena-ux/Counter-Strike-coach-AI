@@ -68,8 +68,16 @@ class TestTacticalFeatures:
         assert decision.action == "half-buy"
         assert len(decision.recommended_weapons) == 3
 
-    def test_economy_overtime(self):
+    def test_economy_second_pistol_round(self):
+        """R4 HIGH (2026-07-16): round 13 (MR12) is the SECOND PISTOL round
+        (money resets at the half switch) — this test used to codify the old
+        bug by expecting 'full-buy' there."""
         optimizer = EconomyOptimizer()
-        decision = optimizer.recommend(current_money=5000, round_number=13, is_ct=True)
+        decision = optimizer.recommend(current_money=800, round_number=13, is_ct=True)
+        assert decision.action != "full-buy"
+
+    def test_economy_true_overtime(self):
+        optimizer = EconomyOptimizer()
+        decision = optimizer.recommend(current_money=10_000, round_number=25, is_ct=True)
         assert decision.action == "full-buy"
         assert len(decision.recommended_weapons) == 2
