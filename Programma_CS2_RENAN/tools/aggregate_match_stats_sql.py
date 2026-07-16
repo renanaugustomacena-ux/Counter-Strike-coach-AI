@@ -348,6 +348,18 @@ def _aggregate_per_player(match_db_path: Path) -> list[dict]:
         if tn:
             team_roster[pn.strip().lower()] = tn
 
+    # R4 HIGH (2026-07-16, 26-TICK invariant): the trade window is defined in
+    # ticks from the tick rate — read the per-demo rate persisted by GAP-01
+    # instead of hardcoding the 64 default (which halved the real-time trade
+    # window on 128-tick demos). Pre-GAP-01 match DBs lack the column.
+    match_tick_rate = 0
+    try:
+        _tr_row = cur.execute("SELECT tick_rate FROM match_metadata LIMIT 1").fetchone()
+        if _tr_row and _tr_row[0]:
+            match_tick_rate = int(_tr_row[0])
+    except sqlite3.OperationalError:
+        match_tick_rate = 0
+
     con.close()
 
     # Run trade-kill detection on the gathered death + roster data.
@@ -363,6 +375,13 @@ def _aggregate_per_player(match_db_path: Path) -> list[dict]:
             detect_trade_kills,
         )
 
+        if not match_tick_rate:
+            print(
+                f"  WARN: {match_db_path.name}: no tick_rate in match_metadata — "
+                f"trade windows use default {DEFAULT_TICK_RATE} t/s"
+            )
+            match_tick_rate = DEFAULT_TICK_RATE
+
         deaths_df = _pd.DataFrame(
             death_rows, columns=["tick", "attacker_name", "user_name", "round_num"]
         )
@@ -370,7 +389,7 @@ def _aggregate_per_player(match_db_path: Path) -> list[dict]:
             trade_result = detect_trade_kills(
                 deaths_df=deaths_df,
                 team_roster=team_roster,
-                tick_rate=DEFAULT_TICK_RATE,
+                tick_rate=match_tick_rate,
             )
             # Canonical trade_details dict keys per
             # Programma_CS2_RENAN/backend/data_sources/trade_kill_detector.py:238-248:

@@ -361,6 +361,14 @@ class AnalysisOrchestrator:
                 "hegrenade_throw": "he_grenade",
             }
 
+            # R4 HIGH (2026-07-16): the post-throw window was a hardcoded
+            # `tick + 128` — 2s on a 64-tick demo but only 1s on 128-tick —
+            # and an EXACT tick match, which silently found zero rows when
+            # that precise tick wasn't sampled. Now: 2 real seconds from the
+            # per-demo rate, matched to the nearest sampled enemy tick within
+            # a ±1s tolerance (falls back to pre positions as before).
+            tick_rate = self._resolve_tick_rate(demo_name, tick_data)
+
             impacts = []
             for _, event in utility_events.iterrows():
                 tick = event["tick"]
@@ -368,8 +376,17 @@ class AnalysisOrchestrator:
 
                 # Pre: enemy positions at this tick
                 event_team = event.get("team", "")
-                pre_mask = (tick_data["tick"] == tick) & (tick_data["team"] != event_team)
-                post_mask = (tick_data["tick"] == tick + 128) & (tick_data["team"] != event_team)
+                enemy_mask = tick_data["team"] != event_team
+                pre_mask = (tick_data["tick"] == tick) & enemy_mask
+
+                post_target = tick + 2 * tick_rate
+                post_mask = pre_mask & False  # empty by default → pre fallback
+                enemy_ticks = tick_data.loc[enemy_mask & (tick_data["tick"] > tick), "tick"]
+                if not enemy_ticks.empty:
+                    deltas = (enemy_ticks - post_target).abs()
+                    nearest = int(enemy_ticks.iloc[deltas.to_numpy().argmin()])
+                    if abs(nearest - post_target) <= tick_rate:
+                        post_mask = (tick_data["tick"] == nearest) & enemy_mask
 
                 if "pos_x" in tick_data.columns and "pos_y" in tick_data.columns:
                     pre_pos = list(

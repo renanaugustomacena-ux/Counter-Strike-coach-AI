@@ -43,3 +43,37 @@ class TestTickRateAwareWindows:
         assert kb.memory_cutoff_ticks == 999
         assert kb.memory_decay_tau == 5.0
         assert kb.smoke_max_ticks == 2304
+
+
+class TestSoundWindowTickRate:
+    """R4 HIGH (2026-07-16): the 1-second audible window must use the
+    builder's per-demo tick rate. A ``tick_rate=64`` parameter default used
+    to win silently because the call site never forwarded it."""
+
+    @staticmethod
+    def _heard_count(kb: PlayerKnowledgeBuilder, delta_ticks: int) -> int:
+        from types import SimpleNamespace
+
+        from Programma_CS2_RENAN.backend.processing.player_knowledge import PlayerKnowledge
+
+        knowledge = PlayerKnowledge()
+        event = SimpleNamespace(
+            event_type="weapon_fire",
+            tick=1000 + delta_ticks,
+            pos_x=100.0,
+            pos_y=0.0,
+            pos_z=0.0,
+        )
+        kb._build_sound_events(knowledge, [event], current_tick=1000)
+        return len(knowledge.heard_events)
+
+    def test_128_rate_hears_event_100_ticks_away(self):
+        """100 ticks at 128 t/s is 0.78s — inside the 1-second window."""
+        assert self._heard_count(PlayerKnowledgeBuilder(tick_rate=128), 100) == 1
+
+    def test_64_rate_rejects_event_100_ticks_away(self):
+        """100 ticks at 64 t/s is 1.56s — outside the 1-second window."""
+        assert self._heard_count(PlayerKnowledgeBuilder(tick_rate=64), 100) == 0
+
+    def test_64_rate_hears_event_within_window(self):
+        assert self._heard_count(PlayerKnowledgeBuilder(tick_rate=64), 50) == 1
