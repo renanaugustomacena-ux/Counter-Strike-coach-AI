@@ -623,6 +623,61 @@ class TestPerEpochSeedRotation:
 
 
 # ===========================================================================
+# TASKS#59 — scheduler guard on zero-optimizer-step epochs
+# ===========================================================================
+
+
+class TestSchedulerZeroStepGuard:
+    """TASKS#59: scheduler must not advance on epochs with zero train batches."""
+
+    def _loop(self, orch, run_epoch):
+        mock_trainer = MagicMock()
+        mock_model = MagicMock()
+        with patch.object(orch, "_run_epoch", side_effect=run_epoch):
+            with patch.object(orch, "_fetch_batches", return_value=[[1, 2, 3]]):
+                with patch("Programma_CS2_RENAN.backend.nn.training_orchestrator.save_nn"):
+                    orch._run_epoch_loop(mock_trainer, mock_model, [[1]], None)
+        return mock_trainer
+
+    def test_scheduler_skipped_when_zero_train_batches(self):
+        """Every batch dropped (B4 RAP dry-run shape) → scheduler.step() not called."""
+        orch = _make_orchestrator(max_epochs=1)
+
+        def run_epoch(trainer, batches, is_train=True, context=None):
+            if is_train:
+                orch._last_train_batch_count = 0
+            return 1.0
+
+        trainer = self._loop(orch, run_epoch)
+        trainer.scheduler.step.assert_not_called()
+
+    def test_scheduler_steps_on_normal_epoch(self):
+        """Epochs that processed train batches step the scheduler once each."""
+        orch = _make_orchestrator(max_epochs=2)
+
+        def run_epoch(trainer, batches, is_train=True, context=None):
+            if is_train:
+                orch._last_train_batch_count = 3
+            return 1.0
+
+        trainer = self._loop(orch, run_epoch)
+        assert trainer.scheduler.step.call_count == 2
+
+    def test_zero_batch_epoch_logs_warning(self):
+        """The skip is loud: a warning names the epoch (no silent behaviour change)."""
+        orch = _make_orchestrator(max_epochs=1)
+
+        def run_epoch(trainer, batches, is_train=True, context=None):
+            return 1.0  # counter stays at its __init__ value of 0
+
+        with patch("Programma_CS2_RENAN.backend.nn.training_orchestrator.logger") as mock_log:
+            self._loop(orch, run_epoch)
+        assert any(
+            "TASKS#59" in str(c.args[0]) for c in mock_log.warning.call_args_list
+        ), "expected a TASKS#59 warning when the scheduler step is skipped"
+
+
+# ===========================================================================
 # B2 — Configurable subsample sizes
 # ===========================================================================
 
