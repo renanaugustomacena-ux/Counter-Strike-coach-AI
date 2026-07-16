@@ -720,13 +720,16 @@ class CoachTrainingManager:
         """Fetch windowed tick data for RAP training from completed matches.
 
         Unlike JEPA's flat tick fetcher, RAP needs contiguous temporal windows
-        with full all-player context.  This method:
+        of a SINGLE player's POV stream.  This method:
         1. Fetches only completed matches (match_complete == True)
-        2. Loads ticks from monolith grouped by match
-        3. Segments into contiguous windows of *window_size* ticks
+        2. Loads ticks from the monolith grouped by (demo, player)
+        3. Segments each player's run into contiguous windows of *window_size*
 
         Each returned window is a list of PlayerTickState objects from a single
-        demo, ordered by tick — ready to be treated as one RAP batch.
+        demo AND a single player, ordered by tick. R4 CRIT (2026-07-16):
+        ordering by tick alone interleaved all 10 players' rows, so the RAP
+        consumers (_rap_compute_target_pos position deltas, LTC timespans)
+        were computed BETWEEN DIFFERENT PLAYERS — garbage training signal.
 
         Returns:
             List[List[PlayerTickState]]: one inner list per window.
@@ -743,7 +746,13 @@ class CoachTrainingManager:
                 app_logger.warning("No %s matches for RAP (is_pro=%s)", split, is_pro)
                 return []
 
-            all_demo_names = {m.demo_name for m in matches if m.demo_name}
+            # WR-76 (R4 HIGH): PlayerMatchStats stores legacy "stem.dem_Player"
+            # names while PlayerTickState stores the bare stem — same strip as
+            # _fetch_jepa_ticks, without which the completed-demos intersection
+            # and the tick query silently match nothing on legacy data.
+            all_demo_names = {
+                _MATCH_STATS_DEMO_SUFFIX_RE.sub("", m.demo_name) for m in matches if m.demo_name
+            }
             if completed_demos is not None:
                 demo_names = sorted(all_demo_names & completed_demos)
                 skipped = len(all_demo_names) - len(demo_names)
@@ -761,31 +770,45 @@ class CoachTrainingManager:
                 demo_names = demo_names[:max_demos]
 
             windows: list = []
-            _PER_DEMO_TICK_CAP = 10_000
+            # Historical budget was 10k interleaved rows per demo (~1k ticks
+            # per player at 10 players) — kept equivalent per player.
+            _PER_PLAYER_TICK_CAP = 1_000
 
             for demo_name in demo_names:
-                ticks = list(
-                    session.exec(
-                        select(PlayerTickState)
+                player_names = sorted(
+                    p
+                    for p in session.exec(
+                        select(PlayerTickState.player_name)
                         .where(PlayerTickState.demo_name == demo_name)
-                        .order_by(PlayerTickState.tick)
-                        .limit(_PER_DEMO_TICK_CAP)
+                        .distinct()
                     ).all()
+                    if p
                 )
+                for player_name in player_names:
+                    ticks = list(
+                        session.exec(
+                            select(PlayerTickState)
+                            .where(
+                                PlayerTickState.demo_name == demo_name,
+                                PlayerTickState.player_name == player_name,
+                            )
+                            .order_by(PlayerTickState.tick)
+                            .limit(_PER_PLAYER_TICK_CAP)
+                        ).all()
+                    )
 
-                # T-1 + V-5 FIX: Skip demos shorter than one full segmentation window.
-                # V-5: Previous threshold of 32 was wrong — the segmentation loop at
-                # line 610 uses window_size (default 320), so demos with 32-319 ticks
-                # passed the check but produced zero windows (dead I/O).
-                if len(ticks) < window_size:
-                    continue
+                    # T-1 + V-5 FIX: Skip player runs shorter than one full
+                    # segmentation window (window_size, not a magic 32) —
+                    # shorter runs would produce zero windows (dead I/O).
+                    if len(ticks) < window_size:
+                        continue
 
-                # Segment into non-overlapping contiguous windows
-                for i in range(0, len(ticks) - window_size + 1, window_size):
-                    windows.append(ticks[i : i + window_size])
+                    # Segment into non-overlapping contiguous windows
+                    for i in range(0, len(ticks) - window_size + 1, window_size):
+                        windows.append(ticks[i : i + window_size])
 
             app_logger.info(
-                "RAP windows: %d windows of %d ticks from %d demos (%s split)",
+                "RAP windows: %d single-player windows of %d ticks from %d demos (%s split)",
                 len(windows),
                 window_size,
                 len(demo_names),
