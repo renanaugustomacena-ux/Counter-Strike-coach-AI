@@ -229,11 +229,17 @@ class TestCheckRetrainingTrigger:
         result = trigger()
         assert result == 10
 
-    def test_triggers_with_any_pros_when_never_trained(self, monkeypatch):
-        """When last_trained=0, even pro_count=5 triggers because 5 >= (0 * 1.10) = 0."""
+    def test_cold_start_below_bootstrap_does_not_trigger(self, monkeypatch):
+        """R4 HIGH (2026-07-16): with last_trained=0 the old growth test
+        collapsed to pro_count >= 0 and fired on a single sample; this test
+        used to CODIFY that bug ("even pro_count=5 triggers"). Cold start
+        must wait for the 10-sample bootstrap."""
         trigger = self._setup(monkeypatch, pro_count=5, last_trained=0)
-        result = trigger()
-        assert result == 5
+        assert trigger() == 0
+
+    def test_cold_start_at_nine_still_waits(self, monkeypatch):
+        trigger = self._setup(monkeypatch, pro_count=9, last_trained=0)
+        assert trigger() == 0
 
     def test_triggers_on_10_percent_increase(self, monkeypatch):
         # Last trained on 100, now 111 → 11% increase → trigger
