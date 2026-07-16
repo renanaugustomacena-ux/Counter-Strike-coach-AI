@@ -82,8 +82,14 @@ class StorageManager:
     def enforce_quota(self):
         """
         Check local usage and move old files to archive if over quota.
+
+        R4 MED: the quota is a DEMO quota — measure only *.dem files under
+        the managed path. The old whole-tree measurement compared the size
+        of the entire local_path (home directory on the default/fallback
+        path) against LOCAL_QUOTA_GB=10, which is virtually always exceeded
+        and would trigger archiving on every call.
         """
-        current_usage = self._get_dir_size_gb(self.local_path)
+        current_usage = self._get_demo_size_gb(self.local_path)
         logger.info(
             "Local storage usage: %s GB / %s GB",
             format(current_usage, ".2f"),
@@ -168,6 +174,22 @@ class StorageManager:
             logger.warning("Cannot calculate storage size for %s: %s", path, e)
         return total / (1024**3)
 
+    def _get_demo_size_gb(self, path: Path) -> float:
+        """Total size of *.dem files under ``path`` (R4 MED: the demo quota
+        must measure demos, not the whole tree — local_path can be the
+        user's home directory on the default/fallback configuration)."""
+        total = 0
+        try:
+            for dem in path.rglob("*.dem"):
+                try:
+                    if not dem.is_symlink():
+                        total += dem.stat().st_size
+                except OSError as e:
+                    logger.debug("Cannot get size of %s: %s", dem, e)
+        except OSError as e:
+            logger.warning("Cannot calculate demo size for %s: %s", path, e)
+        return total / (1024**3)
+
     # Legacy Compatibility Methods
 
     def get_ingest_dir(self, is_pro=False):
@@ -179,8 +201,13 @@ class StorageManager:
         Professional Check: uses both filename and path to prevent duplicates if files are moved.
         """
         target = self.get_ingest_dir(is_pro)
-        # rglob: search recursively so demos inside match subfolders are found
-        all_dems = [p for p in target.rglob("*.dem") if not p.is_symlink()]
+        # rglob: search recursively so demos inside match subfolders are found.
+        # R4 MED: exclude the ingested/ archive subtree — archive_demo() moves
+        # processed demos there (inside the same tree), and a demo whose parse
+        # wrote no PlayerMatchStats rows would otherwise be re-parsed forever.
+        all_dems = [
+            p for p in target.rglob("*.dem") if not p.is_symlink() and "ingested" not in p.parts
+        ]
 
         from sqlmodel import select
 
@@ -237,12 +264,22 @@ class StorageManager:
 
         from sqlmodel import select
 
+        # R4 MED: the unfiltered .first() read quota counters from an
+        # ARBITRARY player's row — the quota must be the current user's.
+        from Programma_CS2_RENAN.core.config import get_setting as _get_setting
+
         from .database import get_db_manager
         from .db_models import Ext_PlayerPlaystyle
 
+        player = _get_setting("CS2_PLAYER_NAME", "")
+        if not player:
+            return True  # no identity configured → no per-user quota to check
+
         db = get_db_manager()
         with db.get_session() as session:
-            playstyle = session.exec(select(Ext_PlayerPlaystyle)).first()
+            playstyle = session.exec(
+                select(Ext_PlayerPlaystyle).where(Ext_PlayerPlaystyle.player_name == player)
+            ).first()
             if not playstyle:
                 return True
             if playstyle.monthly_upload_count >= MAX_DEMOS_PER_MONTH:
