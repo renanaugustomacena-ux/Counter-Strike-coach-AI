@@ -123,21 +123,47 @@ def acquire(name: str) -> Path:
     Raises LockConflict if a live process already holds the lock.
     Reclaims the lock if the holder PID is dead (process crashed
     without releasing).
+
+    R4 HIGH (2026-07-16): the old read→check→write_text sequence was a
+    TOCTOU — two processes could both pass the liveness check and both
+    believe they hold the lock (last writer wins). Acquisition is now an
+    atomic O_CREAT|O_EXCL create; reclaiming a stale lock goes through an
+    atomic os.replace so only ONE contender performs the takeover and the
+    losers loop back to re-evaluate.
     """
     _LOCK_DIR.mkdir(parents=True, exist_ok=True)
     path = _lock_path(name)
 
-    existing = _read_lock(path)
-    if existing is not None:
-        pid, iso = existing
-        if _is_pid_alive(pid):
-            raise LockConflict(f"lock {name!r} held by live process pid={pid} since {iso}")
-        # Stale lock; the holder PID is dead. Fall through to reclaim.
+    payload = f"{os.getpid()} {datetime.now(timezone.utc).isoformat()}\n"
+    while True:
+        try:
+            fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            existing = _read_lock(path)
+            if existing is not None:
+                pid, iso = existing
+                if _is_pid_alive(pid):
+                    raise LockConflict(f"lock {name!r} held by live process pid={pid} since {iso}")
+            # Stale (dead holder) or unreadable half-written lock: steal it
+            # atomically — os.replace succeeds for exactly one contender;
+            # everyone else loops and re-evaluates the fresh state.
+            stale = path.with_name(f"{path.name}.stale.{os.getpid()}")
+            try:
+                os.replace(path, stale)
+            except FileNotFoundError:
+                continue  # already reclaimed by someone else; retry O_EXCL
+            try:
+                stale.unlink()
+            except FileNotFoundError:
+                pass
+            continue
 
-    iso_now = datetime.now(timezone.utc).isoformat()
-    path.write_text(f"{os.getpid()} {iso_now}\n")
-    _held_locks.add(name)
-    return path
+        try:
+            os.write(fd, payload.encode("utf-8"))
+        finally:
+            os.close(fd)
+        _held_locks.add(name)
+        return path
 
 
 def release(name: str) -> None:
