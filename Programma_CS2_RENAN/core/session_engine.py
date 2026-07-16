@@ -572,7 +572,14 @@ def _check_retraining_trigger() -> int:
     state = get_state_manager().get_state()
     last_count = state.last_trained_sample_count
 
-    if pro_count >= (last_count * 1.10) or (last_count == 0 and pro_count >= 10):
+    # R4 HIGH (2026-07-16): with last_count == 0 the growth test collapsed
+    # to pro_count >= 0.0 — true from the very first sample — so the
+    # intended >=10 cold-start bootstrap gate was dead code and training
+    # fired on a single pro sample. Cold start is now explicit.
+    if last_count == 0:
+        return pro_count if pro_count >= 10 else 0
+
+    if pro_count >= last_count * 1.10:
         return pro_count
 
     return 0
