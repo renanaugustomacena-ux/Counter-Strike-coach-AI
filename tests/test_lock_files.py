@@ -158,3 +158,57 @@ def test_install_signal_handlers_replaces_handler():
         # pytest session and fires a spurious KeyboardInterrupt during teardown on the
         # Windows CI runner, exiting non-zero despite all tests passing (AUDIT 26-WIN-01).
         signal.signal(signal.SIGINT, prior_int)
+
+
+# ===========================================================================
+# R4 HIGH (2026-07-16) — acquire() must be atomic (TOCTOU)
+# ===========================================================================
+
+
+class TestAcquireAtomicity:
+    """The old read→check→write_text acquire was a TOCTOU: concurrent
+    contenders could both believe they hold the lock (last writer wins).
+    With O_CREAT|O_EXCL exactly one contender may win."""
+
+    def test_exactly_one_winner_under_contention(self, tmp_path, monkeypatch):
+        import concurrent.futures as cf
+
+        from Programma_CS2_RENAN.core import lock_files as lf
+
+        monkeypatch.setattr(lf, "_LOCK_DIR", tmp_path)
+        winners = 0
+        conflicts = 0
+
+        def contend(_):
+            try:
+                lf.acquire("toctou-probe")
+                return "won"
+            except lf.LockConflict:
+                return "conflict"
+
+        with cf.ThreadPoolExecutor(max_workers=16) as pool:
+            results = list(pool.map(contend, range(16)))
+        winners = results.count("won")
+        conflicts = results.count("conflict")
+
+        try:
+            assert winners == 1, f"{winners} contenders all believe they hold the lock"
+            assert conflicts == 15
+        finally:
+            lf.release("toctou-probe")
+
+    def test_stale_lock_reclaimed_atomically(self, tmp_path, monkeypatch):
+        from Programma_CS2_RENAN.core import lock_files as lf
+
+        monkeypatch.setattr(lf, "_LOCK_DIR", tmp_path)
+        # A dead-PID lock left behind by a crashed process (never-allocated
+        # PID pattern, same discriminator used by the 26-WIN-02 tests).
+        stale_path = tmp_path / "reclaim-probe.lock"
+        stale_path.write_text("999999 2026-07-16T00:00:00+00:00\n")
+
+        path = lf.acquire("reclaim-probe")
+        try:
+            pid = int(path.read_text().split()[0])
+            assert pid == __import__("os").getpid()
+        finally:
+            lf.release("reclaim-probe")
