@@ -66,6 +66,10 @@ EXCLUDE_DIRS = {
     "reports",
     "packaging",
     "tmp",
+    # Vendored plugin repo (gitignored, lives only on some worktrees) —
+    # its duplicate definitions polluted the report with 125+ false
+    # positives on the 2026-07-02 baseline (TASKS#57).
+    "caveman",
     # Test directories (entry points, never imported)
     "tests",
     "forensics",
