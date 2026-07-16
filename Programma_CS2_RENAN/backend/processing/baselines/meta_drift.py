@@ -8,10 +8,11 @@ If pros start playing differently, the Coach adjusts its certainty.
 from datetime import datetime, timedelta, timezone
 
 import numpy as np
-from sqlmodel import func, select
+from sqlmodel import col, func, select
 
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager, get_hltv_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import (
+    MATCH_STATS_DEMO_SUFFIX_RE,
     PlayerMatchStats,
     PlayerTickState,
     ProPlayerStatCard,
@@ -33,35 +34,52 @@ class MetaDriftEngine:
         limit_date = datetime.now(timezone.utc) - timedelta(days=30)
 
         with db.get_session() as s:
-            # P3-30: Use COUNT instead of fetching all IDs (avoids unbounded result set)
-            pro_count = s.exec(
-                select(func.count())
-                .select_from(PlayerMatchStats)
-                .where(PlayerMatchStats.is_pro == True)
-            ).one()
-            if not pro_count:
+            # R4 HIGH (2026-07-16): the old query joined
+            # PlayerTickState.match_id == PlayerMatchStats.id — unrelated ID
+            # spaces (match_id references matchresult.match_id), pairing ticks
+            # with essentially random stats rows; it also never filtered by
+            # map, so the "drift on <map>" mixed every ingested map. Fixed by
+            # attributing ticks through demo_name (WR-76 suffix stripped) and
+            # filtering on PlayerTickState.map_name.
+            pro_stats = s.exec(
+                select(PlayerMatchStats.demo_name, PlayerMatchStats.processed_at).where(
+                    PlayerMatchStats.is_pro == True  # noqa: E712
+                )
+            ).all()
+            if not pro_stats:
                 return 0.0
 
-            # Refined query with date-aware join
-            recent_stmt = (
-                select(PlayerTickState.pos_x, PlayerTickState.pos_y)
-                .join(PlayerMatchStats, PlayerTickState.match_id == PlayerMatchStats.id)
-                .where(PlayerMatchStats.is_pro == True)
-                .where(PlayerMatchStats.processed_at >= limit_date)
-                .where(PlayerTickState.tick % 128 == 0)
-                .limit(50_000)
-            )
-            recent_pts = s.exec(recent_stmt).all()
+            recent_demos = set()
+            hist_demos = set()
+            for demo_name, processed_at in pro_stats:
+                if not demo_name or processed_at is None:
+                    continue
+                # SQLite drops tzinfo on round-trip; stored values are UTC by
+                # convention (default_factory=datetime.now(timezone.utc)).
+                if processed_at.tzinfo is None:
+                    processed_at = processed_at.replace(tzinfo=timezone.utc)
+                stem = MATCH_STATS_DEMO_SUFFIX_RE.sub("", demo_name)
+                if processed_at >= limit_date:
+                    recent_demos.add(stem)
+                else:
+                    hist_demos.add(stem)
+            # A demo re-processed recently must not count as historical too.
+            hist_demos -= recent_demos
+            if not recent_demos or not hist_demos:
+                return 0.0
 
-            hist_stmt = (
-                select(PlayerTickState.pos_x, PlayerTickState.pos_y)
-                .join(PlayerMatchStats, PlayerTickState.match_id == PlayerMatchStats.id)
-                .where(PlayerMatchStats.is_pro == True)
-                .where(PlayerMatchStats.processed_at < limit_date)
-                .where(PlayerTickState.tick % 128 == 0)
-                .limit(50_000)
-            )
-            hist_pts = s.exec(hist_stmt).all()
+            def _positions(demo_names):
+                stmt = (
+                    select(PlayerTickState.pos_x, PlayerTickState.pos_y)
+                    .where(col(PlayerTickState.demo_name).in_(sorted(demo_names)))
+                    .where(PlayerTickState.map_name == map_name)
+                    .where(PlayerTickState.tick % 128 == 0)
+                    .limit(50_000)
+                )
+                return s.exec(stmt).all()
+
+            recent_pts = _positions(recent_demos)
+            hist_pts = _positions(hist_demos)
 
             if not recent_pts or not hist_pts:
                 return 0.0

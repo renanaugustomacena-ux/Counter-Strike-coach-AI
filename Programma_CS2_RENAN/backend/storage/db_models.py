@@ -1,4 +1,5 @@
 import json as _json
+import re as _re
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
@@ -6,6 +7,13 @@ from typing import Optional
 from pydantic import field_validator
 from sqlalchemy import CheckConstraint, Column, ForeignKey, Index, Integer, String, UniqueConstraint
 from sqlmodel import Field, SQLModel
+
+# WR-76: legacy ingestion stored PlayerMatchStats.demo_name as
+# "{stem}.dem_{player}" (e.g. "falcons-vs-faze-m1-nuke.dem_EliGE") while
+# PlayerTickState.demo_name stores only the stem. Strip this suffix at query
+# time whenever the two tables must be matched (shared by coach_manager and
+# meta_drift — do NOT redefine locally).
+MATCH_STATS_DEMO_SUFFIX_RE = _re.compile(r"\.dem_.*$", _re.IGNORECASE)
 
 # Maximum allowed size (bytes) for game_state_json in CoachingExperience.
 # 10 players × ~30 fields ≈ 5–10 KB per snapshot. Cap prevents unbounded DB growth.

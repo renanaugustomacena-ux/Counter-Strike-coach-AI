@@ -1,5 +1,3 @@
-import re
-
 import numpy as np
 import torch
 from sqlalchemy.exc import SQLAlchemyError
@@ -23,6 +21,9 @@ from Programma_CS2_RENAN.backend.processing.data_pipeline import ProDataPipeline
 from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager, init_database
 from Programma_CS2_RENAN.backend.storage.db_models import (
+    MATCH_STATS_DEMO_SUFFIX_RE as _MATCH_STATS_DEMO_SUFFIX_RE,
+)
+from Programma_CS2_RENAN.backend.storage.db_models import (
     DatasetSplit,
     PlayerMatchStats,
     PlayerProfile,
@@ -31,12 +32,6 @@ from Programma_CS2_RENAN.backend.storage.db_models import (
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 app_logger = get_logger("cs2analyzer.nn.coach_manager")
-
-# WR-76: PlayerMatchStats.demo_name is stored as "{stem}.dem_{player}" by legacy ingestion
-# (e.g. "falcons-vs-faze-m1-nuke.dem_EliGE"), while PlayerTickState.demo_name stores only
-# the stem ("falcons-vs-faze-m1-nuke").  Stripping this suffix at query time keeps both
-# tables usable without a DB migration.
-_MATCH_STATS_DEMO_SUFFIX_RE = re.compile(r"\.dem_.*$", re.IGNORECASE)
 
 # Tick-level feature names aligned with FeatureExtractor (METADATA_DIM=25).
 # Used by the canonical training path (TrainingOrchestrator + StateReconstructor)
