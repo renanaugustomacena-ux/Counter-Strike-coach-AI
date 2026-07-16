@@ -630,18 +630,30 @@ class HLTVStatFetcher:
             )
         return {}
 
+    # R4 HIGH (2026-07-16): HLTV renders large counters with comma as the
+    # THOUSANDS separator ("39,606" rounds). Blind ','→'.' turned those into
+    # 39.606 → int 39, silently poisoning every ratio built on them.
+    _THOUSANDS_RE = re.compile(r"^\d{1,3}(?:,\d{3})+(?:\.\d+)?$")
+
     def _safe_float(self, text: Optional[str]) -> float:
         """Robust float parsing handling 'N/A', '-', and commas.
 
+        Comma handling: a digit-grouped string ("39,606" / "1,234.5") drops
+        the thousands commas; otherwise a comma is treated as a decimal
+        separator (legacy behaviour, e.g. "0,85").
         Returns 0.0 for missing/unparseable values (convention: 0.0 = unknown).
         """
         if not text or text in ["-", "N/A", "nan"]:
             return 0.0
         try:
-            clean_text = text.replace("%", "").replace(",", ".").strip()
+            clean_text = text.replace("%", "").strip()
             clean_text = clean_text.split()[0]
+            if self._THOUSANDS_RE.match(clean_text):
+                clean_text = clean_text.replace(",", "")
+            else:
+                clean_text = clean_text.replace(",", ".")
             return float(clean_text)
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, IndexError):
             logger.debug("Unparseable stat value: %r", text)
             return 0.0
 
