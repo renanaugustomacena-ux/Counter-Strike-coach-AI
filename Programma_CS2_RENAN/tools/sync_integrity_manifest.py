@@ -67,9 +67,13 @@ def _write_manifest(hashes: dict) -> None:
         "hashes": hashes,
     }
     MANIFEST_PATH.parent.mkdir(parents=True, exist_ok=True)
+    # newline="\n": Windows would otherwise translate to CRLF, and the manifest
+    # carries attr/-text so git never renormalizes it — every OS switch would
+    # rewrite all 300+ lines (26-ENV-01 anti-churn discipline).
     MANIFEST_PATH.write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
+        newline="\n",
     )
 
 
