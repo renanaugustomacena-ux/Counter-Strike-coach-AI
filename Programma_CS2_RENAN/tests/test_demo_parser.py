@@ -176,8 +176,17 @@ class TestDemoParserIntegration:
 
         from Programma_CS2_RENAN.backend.data_sources.demo_parser import parse_sequential_ticks
 
-        result = parse_sequential_ticks(demo_path, target_player="ALL", rate=64)
+        result = parse_sequential_ticks(demo_path, target_player="ALL")
         assert isinstance(result, pd.DataFrame)
         if not result.empty:
             assert "health" in result.columns
             assert "X" in result.columns
+
+    def test_decimation_parameter_is_gone(self):
+        """Supreme invariant (R4 MED, 2026-07-16): tick decimation is
+        FORBIDDEN — the legacy ``rate`` stride parameter must not exist."""
+        import inspect
+
+        from Programma_CS2_RENAN.backend.data_sources.demo_parser import parse_sequential_ticks
+
+        assert "rate" not in inspect.signature(parse_sequential_ticks).parameters

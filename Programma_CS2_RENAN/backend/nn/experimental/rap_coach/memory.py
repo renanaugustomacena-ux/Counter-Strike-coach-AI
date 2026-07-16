@@ -169,18 +169,29 @@ class RAPMemory(nn.Module):
         # We use the full sequence for training, but the last tick for decision
         belief = self.belief_head(combined_state)
 
-        # NN-MEM-01 + RAP-M-04: Activate Hopfield after ≥2 training forward passes,
-        # ensuring at least one backward+step has shaped the stored patterns.
+        # NN-MEM-01 + RAP-M-04 (R4 MED, 2026-07-16): the gate used to count
+        # FORWARD passes (>=2), but with gradient accumulation the optimizer
+        # steps only every accumulation_steps batches — Hopfield activated
+        # before any weight update had shaped the stored patterns (which are
+        # random-init; initialize_prototypes has no callers). Activation is
+        # now driven by notify_optimizer_step(), called by the trainer right
+        # after a real optimizer step. Forward counting remains only as
+        # telemetry.
         if self.training and not self._hopfield_trained:
             self._training_forward_count += 1
-            if self._training_forward_count >= 2:
-                self._hopfield_trained = True
-                logger.debug(
-                    "NN-MEM-01: Hopfield activated after %d training forwards",
-                    self._training_forward_count,
-                )
 
         return combined_state, belief, hidden
+
+    def notify_optimizer_step(self) -> None:
+        """NN-MEM-01: activate the Hopfield memory after the first REAL
+        optimizer step (called by the trainer post-``scaler.step``)."""
+        if not self._hopfield_trained:
+            self._hopfield_trained = True
+            logger.debug(
+                "NN-MEM-01: Hopfield activated after first optimizer step "
+                "(%d training forwards seen)",
+                self._training_forward_count,
+            )
 
     @torch.no_grad()
     def initialize_prototypes(self, embeddings: torch.Tensor) -> None:
