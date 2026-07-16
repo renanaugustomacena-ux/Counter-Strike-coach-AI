@@ -710,6 +710,65 @@ class CoachTrainingManager:
             )
         return selected[:n_select]
 
+    def _fetch_jepa_windows(
+        self,
+        is_pro: bool,
+        split: DatasetSplit = DatasetSplit.TRAIN,
+        seed: int = 42,
+        n_windows: int = 4500,
+        window_len: int = 11,
+    ):
+        """Fetch temporally-contiguous single-player windows for JEPA training.
+
+        R4 CRIT (2026-07-16): the JEPA consumer builds (context, target) as
+        positional slices of its batch — rows 0..9 are the context, row 10 the
+        next-step target. The old flat ``_fetch_jepa_ticks`` feed returned
+        randomly-subsampled, unordered rows spanning players and demos, so
+        "next-step prediction" was trained on unrelated pairs (a plausible
+        cause of the ~1.90 val-loss plateau). This fetcher keeps the whole
+        B1/B1-XL/P4-A/DET-01 machinery by reusing ``_fetch_jepa_ticks`` as a
+        seeded ANCHOR sampler, then expands each anchor into ``window_len``
+        contiguous ticks of the SAME (demo, player) stream.
+
+        Returns:
+            List[List[PlayerTickState]]: one inner list (len == window_len,
+            same player, ascending ticks) per window. Anchors too close to
+            the end of their player's stream are dropped (logged).
+        """
+        anchors = self._fetch_jepa_ticks(
+            is_pro=is_pro, split=split, seed=seed, sample_size=n_windows
+        )
+        if not anchors:
+            return []
+
+        windows: list = []
+        with self.db.get_session() as session:
+            for anchor in anchors:
+                rows = session.exec(
+                    select(PlayerTickState)
+                    .where(
+                        PlayerTickState.demo_name == anchor.demo_name,
+                        PlayerTickState.player_name == anchor.player_name,
+                        PlayerTickState.tick >= anchor.tick,
+                    )
+                    .order_by(PlayerTickState.tick)
+                    .limit(window_len)
+                ).all()
+                if len(rows) == window_len:
+                    windows.append(list(rows))
+
+        dropped = len(anchors) - len(windows)
+        app_logger.info(
+            "JEPA windows: %d contiguous single-player windows of %d ticks "
+            "(%d end-of-stream anchors dropped, seed=%d, %s split)",
+            len(windows),
+            window_len,
+            dropped,
+            seed,
+            split,
+        )
+        return windows
+
     def _fetch_rap_windows(
         self,
         is_pro: bool,

@@ -370,48 +370,52 @@ class TestClassifyTacticalRole:
 
 
 class TestFetchBatches:
-    """Tests for _fetch_batches — data fetching and batching."""
+    """Tests for _fetch_batches — JEPA window fetching (R4 CRIT contract).
 
-    def test_returns_correct_number_of_batches(self):
+    Each JEPA batch is ONE contiguous single-player window of
+    _JEPA_CONTEXT_LEN + 1 ticks; sample_size stays a per-epoch row budget
+    (n_windows = sample_size // window_len).
+    """
+
+    def test_windows_pass_through_as_batches(self):
         orch = _make_orchestrator(batch_size=4)
-        orch.manager._fetch_jepa_ticks.return_value = list(range(10))
+        windows = [[f"w0t{i}" for i in range(11)], [f"w1t{i}" for i in range(11)]]
+        orch.manager._fetch_jepa_windows.return_value = windows
         batches = orch._fetch_batches(is_train=True)
-        assert len(batches) == 3
-        assert len(batches[0]) == 4
-        assert len(batches[-1]) == 2
+        assert batches == windows
 
     def test_uses_train_split_when_is_train(self):
         orch = _make_orchestrator()
-        orch.manager._fetch_jepa_ticks.return_value = []
+        orch.manager._fetch_jepa_windows.return_value = []
         orch._fetch_batches(is_train=True)
-        orch.manager._fetch_jepa_ticks.assert_called_with(
-            is_pro=True, split="train", seed=42, sample_size=50_000
+        orch.manager._fetch_jepa_windows.assert_called_with(
+            is_pro=True, split="train", seed=42, n_windows=50_000 // 11, window_len=11
         )
 
     def test_uses_val_split_when_not_train(self):
         orch = _make_orchestrator()
-        orch.manager._fetch_jepa_ticks.return_value = []
+        orch.manager._fetch_jepa_windows.return_value = []
         orch._fetch_batches(is_train=False)
-        orch.manager._fetch_jepa_ticks.assert_called_with(
-            is_pro=True, split="val", seed=42, sample_size=10_000
+        orch.manager._fetch_jepa_windows.assert_called_with(
+            is_pro=True, split="val", seed=42, n_windows=10_000 // 11, window_len=11
         )
 
     def test_epoch_seed_rotation(self):
         """B1: Different epochs produce different seeds."""
         orch = _make_orchestrator()
-        orch.manager._fetch_jepa_ticks.return_value = []
+        orch.manager._fetch_jepa_windows.return_value = []
         orch._fetch_batches(is_train=True, epoch=5)
-        orch.manager._fetch_jepa_ticks.assert_called_with(
-            is_pro=True, split="train", seed=47, sample_size=50_000
+        orch.manager._fetch_jepa_windows.assert_called_with(
+            is_pro=True, split="train", seed=47, n_windows=50_000 // 11, window_len=11
         )
 
     def test_val_uses_fixed_seed_regardless_of_epoch(self):
         """B1.3: Val split always uses GLOBAL_SEED (epoch ignored for val in run_training)."""
         orch = _make_orchestrator()
-        orch.manager._fetch_jepa_ticks.return_value = []
+        orch.manager._fetch_jepa_windows.return_value = []
         orch._fetch_batches(is_train=False, epoch=0)
-        orch.manager._fetch_jepa_ticks.assert_called_with(
-            is_pro=True, split="val", seed=42, sample_size=10_000
+        orch.manager._fetch_jepa_windows.assert_called_with(
+            is_pro=True, split="val", seed=42, n_windows=10_000 // 11, window_len=11
         )
 
 
@@ -555,7 +559,7 @@ class TestRunTrainingEdgeCases:
     def test_aborts_when_no_training_data(self):
         """run_training should exit gracefully when no data is available."""
         orch = _make_orchestrator(model_type="jepa")
-        orch.manager._fetch_jepa_ticks.return_value = []
+        orch.manager._fetch_jepa_windows.return_value = []
 
         # Mock model and trainer to avoid real PyTorch initialization
         mock_model = MagicMock()
@@ -593,42 +597,42 @@ class TestPerEpochSeedRotation:
     def test_same_epoch_same_seed(self):
         """B1.4a: Identical epoch → identical seed → deterministic."""
         orch = _make_orchestrator()
-        orch.manager._fetch_jepa_ticks.return_value = list(range(8))
+        orch.manager._fetch_jepa_windows.return_value = []
         orch._fetch_batches(is_train=True, epoch=3)
-        orch.manager._fetch_jepa_ticks.assert_called_with(
-            is_pro=True, split="train", seed=45, sample_size=50_000
+        orch.manager._fetch_jepa_windows.assert_called_with(
+            is_pro=True, split="train", seed=45, n_windows=50_000 // 11, window_len=11
         )
 
     def test_different_epochs_different_seeds(self):
         """B1.4b: Different epochs → different seeds."""
         orch = _make_orchestrator()
-        orch.manager._fetch_jepa_ticks.return_value = []
+        orch.manager._fetch_jepa_windows.return_value = []
 
         orch._fetch_batches(is_train=True, epoch=1)
-        call1 = orch.manager._fetch_jepa_ticks.call_args
+        call1 = orch.manager._fetch_jepa_windows.call_args
 
         orch._fetch_batches(is_train=True, epoch=2)
-        call2 = orch.manager._fetch_jepa_ticks.call_args
+        call2 = orch.manager._fetch_jepa_windows.call_args
 
         assert call1.kwargs["seed"] != call2.kwargs["seed"]
 
     def test_val_seed_stable_across_epochs(self):
         """B1.4c: Val always uses GLOBAL_SEED regardless of epoch param."""
         orch = _make_orchestrator()
-        orch.manager._fetch_jepa_ticks.return_value = []
+        orch.manager._fetch_jepa_windows.return_value = []
 
         orch._fetch_batches(is_train=False, epoch=0)
-        seed_0 = orch.manager._fetch_jepa_ticks.call_args.kwargs["seed"]
+        seed_0 = orch.manager._fetch_jepa_windows.call_args.kwargs["seed"]
 
         orch._fetch_batches(is_train=False, epoch=5)
-        seed_5 = orch.manager._fetch_jepa_ticks.call_args.kwargs["seed"]
+        seed_5 = orch.manager._fetch_jepa_windows.call_args.kwargs["seed"]
 
         assert seed_0 == seed_5 == 42
 
     def test_run_epoch_loop_refetches_train_per_epoch(self):
         """B1: _run_epoch_loop fetches fresh train data each epoch."""
         orch = _make_orchestrator(max_epochs=3, batch_size=4)
-        orch.manager._fetch_jepa_ticks.return_value = list(range(8))
+        orch.manager._fetch_jepa_windows.return_value = [["t"] * 11]
 
         mock_trainer = MagicMock()
         mock_model = MagicMock()
@@ -639,8 +643,8 @@ class TestPerEpochSeedRotation:
             with patch("Programma_CS2_RENAN.backend.nn.training_orchestrator.save_nn"):
                 orch._run_epoch_loop(mock_trainer, mock_model, val_data, None)
 
-        # Should have called _fetch_jepa_ticks once per epoch (3 total)
-        fetch_calls = orch.manager._fetch_jepa_ticks.call_args_list
+        # Should have called _fetch_jepa_windows once per epoch (3 total)
+        fetch_calls = orch.manager._fetch_jepa_windows.call_args_list
         assert len(fetch_calls) == 3
         seeds = [c.kwargs["seed"] for c in fetch_calls]
         assert seeds == [43, 44, 45]  # GLOBAL_SEED + epoch (1, 2, 3)
@@ -726,18 +730,18 @@ class TestSubsampleSizeConfig:
         assert orch._val_samples == 500
 
     def test_custom_sizes_passed_to_fetch(self):
-        """B2: Custom sizes propagate to _fetch_jepa_ticks."""
+        """B2: Custom sizes propagate as the n_windows row budget."""
         orch = _make_orchestrator(train_samples=2000, val_samples=800)
-        orch.manager._fetch_jepa_ticks.return_value = []
+        orch.manager._fetch_jepa_windows.return_value = []
 
         orch._fetch_batches(is_train=True, epoch=1)
-        orch.manager._fetch_jepa_ticks.assert_called_with(
-            is_pro=True, split="train", seed=43, sample_size=2000
+        orch.manager._fetch_jepa_windows.assert_called_with(
+            is_pro=True, split="train", seed=43, n_windows=2000 // 11, window_len=11
         )
 
         orch._fetch_batches(is_train=False, epoch=0)
-        orch.manager._fetch_jepa_ticks.assert_called_with(
-            is_pro=True, split="val", seed=42, sample_size=800
+        orch.manager._fetch_jepa_windows.assert_called_with(
+            is_pro=True, split="val", seed=42, n_windows=800 // 11, window_len=11
         )
 
 
@@ -863,7 +867,7 @@ class TestEMATotalSteps:
     def test_set_total_steps_called_with_planned_values(self):
         """B3.3: set_total_steps called with max_epochs * steps_per_epoch."""
         orch = _make_orchestrator(max_epochs=100)
-        orch.manager._fetch_jepa_ticks.return_value = list(range(100))
+        orch.manager._fetch_jepa_windows.return_value = [[MagicMock()] * 11 for _ in range(4)]
 
         mock_model = MagicMock()
         mock_model.to.return_value = mock_model

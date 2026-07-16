@@ -156,7 +156,7 @@ class TestEmptyBatchHandling:
             from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
 
             manager = MagicMock()
-            manager._fetch_jepa_ticks.return_value = []
+            manager._fetch_jepa_windows.return_value = []
             orch = TrainingOrchestrator(manager, model_type="jepa")
 
             result = orch._fetch_batches(is_train=True)
