@@ -637,6 +637,12 @@ class TrainingOrchestrator:
 
         accum = self._accumulation_steps
         train_batch_count = 0
+        # R4 HIGH (2026-07-16): batches skipped below must not count in the
+        # loss denominator — they contributed 0 to total_loss but inflated
+        # len(batches), so epochs with different skip fractions (B1 rotation)
+        # had non-comparable val losses, corrupting best-checkpoint and
+        # early-stopping decisions.
+        processed_count = 0
 
         for batch_idx, batch in enumerate(batches):
             if context:
@@ -665,6 +671,7 @@ class TrainingOrchestrator:
                 loss = self._eval_step_dispatch(trainer, tensor_batch)
 
             total_loss += loss
+            processed_count += 1
 
         # Flush remaining accumulated gradients at end of epoch
         if is_train and train_batch_count % accum != 0:
@@ -674,7 +681,7 @@ class TrainingOrchestrator:
         if is_train:
             self._last_train_batch_count = train_batch_count
 
-        return total_loss / max(len(batches), 1)
+        return total_loss / max(processed_count, 1)
 
     def _prepare_tensor_batch(self, raw_items):
         """Convert list of DB objects (PlayerTickState) to Tensor Dictionary.
