@@ -651,6 +651,45 @@ class TestPerEpochSeedRotation:
 
 
 # ===========================================================================
+# R4 HIGH — epoch loss averaged over PROCESSED batches only
+# ===========================================================================
+
+
+class TestEpochLossDenominator:
+    """Skipped batches must not dilute the epoch loss (R4 HIGH 2026-07-16):
+    dividing by len(batches) made val losses non-comparable across epochs,
+    corrupting best-checkpoint and early-stopping decisions."""
+
+    def test_train_loss_ignores_skipped_batches(self):
+        orch = _make_orchestrator()
+        trainer = MagicMock()
+        batches = [[1, 2], [1, 2], [1, 2], [1, 2]]
+        # Two of four batches produce no tensors (e.g. missing POV windows).
+        with patch.object(
+            orch, "_prepare_tensor_batch", side_effect=[None, {"t": 1}, None, {"t": 1}]
+        ):
+            with patch.object(orch, "_train_step_dispatch", return_value=(2.0, {})):
+                loss = orch._run_epoch(trainer, batches, is_train=True)
+        assert loss == pytest.approx(2.0), "loss must average over processed batches only"
+
+    def test_eval_loss_ignores_skipped_batches(self):
+        orch = _make_orchestrator()
+        trainer = MagicMock()
+        batches = [[1, 2], [1, 2], [1, 2]]
+        with patch.object(orch, "_prepare_tensor_batch", side_effect=[{"t": 1}, None, {"t": 1}]):
+            with patch.object(orch, "_eval_step_dispatch", return_value=3.0):
+                loss = orch._run_epoch(trainer, batches, is_train=False)
+        assert loss == pytest.approx(3.0)
+
+    def test_all_skipped_returns_zero(self):
+        orch = _make_orchestrator()
+        trainer = MagicMock()
+        with patch.object(orch, "_prepare_tensor_batch", return_value=None):
+            loss = orch._run_epoch(trainer, [[1, 2], [1, 2]], is_train=True)
+        assert loss == 0.0
+
+
+# ===========================================================================
 # TASKS#59 — scheduler guard on zero-optimizer-step epochs
 # ===========================================================================
 
