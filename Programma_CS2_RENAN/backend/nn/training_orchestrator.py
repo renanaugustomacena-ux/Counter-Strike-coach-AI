@@ -93,6 +93,10 @@ class TrainingOrchestrator:
         self._total_samples = 0
         self._total_fallbacks = 0
         self._current_epoch = 0
+        # TASKS#59: train batches processed in the most recent train epoch.
+        # Zero means no optimizer step happened, so the LR scheduler must not
+        # advance (it would silently skip the first LR of the schedule).
+        self._last_train_batch_count = 0
         _LTC_CURRICULUM_EPOCHS = 5
         self._ltc_curriculum_epochs = _LTC_CURRICULUM_EPOCHS
 
@@ -328,7 +332,18 @@ class TrainingOrchestrator:
                     )
 
             if hasattr(trainer, "scheduler") and trainer.scheduler is not None:
-                trainer.scheduler.step()
+                # TASKS#59: an epoch where every batch was dropped (e.g. RAP
+                # dry-run with unavailable match DBs) performs zero optimizer
+                # steps; stepping the scheduler anyway would skip the first LR
+                # of the schedule (PyTorch UserWarning observed in the B4 log).
+                if self._last_train_batch_count > 0:
+                    trainer.scheduler.step()
+                else:
+                    logger.warning(
+                        "TASKS#59: epoch %d processed zero train batches — "
+                        "scheduler.step() skipped to preserve the LR schedule",
+                        epoch,
+                    )
 
             self._report_progress(epoch, train_loss, val_loss)
 
@@ -644,6 +659,9 @@ class TrainingOrchestrator:
         if is_train and train_batch_count % accum != 0:
             if hasattr(trainer, "_optimizer_step"):
                 trainer._optimizer_step()
+
+        if is_train:
+            self._last_train_batch_count = train_batch_count
 
         return total_loss / max(len(batches), 1)
 
