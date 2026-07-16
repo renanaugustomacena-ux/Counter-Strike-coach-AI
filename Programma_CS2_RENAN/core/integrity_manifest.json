@@ -227,7 +227,7 @@
     "backend/processing/round_stats_builder.py": "bc30ad5cad2c92cd6fd231b2c5a4ec0568ef20ce15d1d571323f9edd93ab5c06",
     "backend/processing/skill_assessment.py": "8c90dc8bc470ce68ed2342980229179901f95057538747f33d707ebf60269bde",
     "backend/processing/state_reconstructor.py": "b4da9589bdcc6996a989017ea28f346faf0f8620519f579e40b89639fab3eb12",
-    "backend/processing/tensor_factory.py": "a254dc2084d80fd40a2231038c0aac197c6c2bd4039e7a0c4609495fd77263a4",
+    "backend/processing/tensor_factory.py": "9671e60855c6ec72f8d61bde8933cfda05f0252a8743b32fd1c2a739ab4129b1",
     "backend/processing/tick_enrichment.py": "ba86c9a190fb9ad65627de265e70f3803d477499d0bcb0b5ff1a5abb65fa2f63",
     "backend/processing/validation/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "backend/processing/validation/dem_validator.py": "3ede52e38687dcaea89d4fb0be89645ff6e077f17def9eba02554e0ee486090d",

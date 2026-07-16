@@ -943,3 +943,43 @@ class TestTickYawAccessor:
         curr = _make_db_shaped_tick(view_x=42.0, tick=2)
         channel = factory._build_crosshair_channel(curr, prev, meta, 32)
         assert channel.max() == 0.0
+
+
+# ============ FOV cone orientation (R4 HIGH regression, 2026-07-16) ============
+
+
+class TestFovConeOrientation:
+    """Grid rows grow south (Y flip in _world_to_grid), so the FOV angle must
+    negate the row delta. Before the fix, yaw=90 (world north) lit the SOUTH
+    half of the grid — every training sample had a vertically mirrored cone."""
+
+    @pytest.fixture
+    def factory(self):
+        return TensorFactory(config=TensorConfig(view_resolution=64, sigma=0.0))
+
+    def _mass_center(self, factory, yaw):
+        from Programma_CS2_RENAN.core.spatial_data import get_map_metadata
+
+        meta = get_map_metadata("de_mirage")
+        mask = factory._generate_fov_mask(-2000.0, 800.0, yaw, meta, 64)
+        px, py = factory._world_to_grid(-2000.0, 800.0, meta, 64)
+        ys, xs = np.nonzero(mask)
+        assert ys.size > 0, "empty FOV mask"
+        return xs.mean(), ys.mean(), px, py
+
+    def test_yaw_90_lights_rows_above_player(self, factory):
+        """World north = smaller row indices in the image grid."""
+        _, cy, _, py = self._mass_center(factory, yaw=90.0)
+        assert cy < py, "yaw=90 (north) cone must sit ABOVE the player row"
+
+    def test_yaw_270_lights_rows_below_player(self, factory):
+        _, cy, _, py = self._mass_center(factory, yaw=270.0)
+        assert cy > py, "yaw=270 (south) cone must sit BELOW the player row"
+
+    def test_yaw_0_lights_columns_east_of_player(self, factory):
+        cx, _, px, _ = self._mass_center(factory, yaw=0.0)
+        assert cx > px, "yaw=0 (east) cone must sit RIGHT of the player column"
+
+    def test_yaw_180_lights_columns_west_of_player(self, factory):
+        cx, _, px, _ = self._mass_center(factory, yaw=180.0)
+        assert cx < px, "yaw=180 (west) cone must sit LEFT of the player column"

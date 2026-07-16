@@ -717,12 +717,16 @@ class TensorFactory:
         # Generate coordinates for masking
         y_coords, x_coords = np.ogrid[:resolution, :resolution]
 
-        # Calculate angle from player to each point
+        # Calculate angle from player to each point.
+        # R4 HIGH (2026-07-16): grid rows grow SOUTH (_world_to_grid flips Y:
+        # ny = meta.pos_y - y), so the row delta must be negated to recover
+        # the world-space angle. With dy = y_coords - py the cone was mirrored
+        # vertically: yaw=90 (north, world CCW convention) lit the SOUTH half.
         dx = x_coords - px
-        dy = y_coords - py
+        dy = py - y_coords
         distance = np.sqrt(dx**2 + dy**2)
 
-        # Angle from player to point
+        # Angle from player to point (world-space convention: 0=E, 90=N)
         angle_to_point = np.arctan2(dy, dx)
 
         # Angle difference (handling wraparound)
