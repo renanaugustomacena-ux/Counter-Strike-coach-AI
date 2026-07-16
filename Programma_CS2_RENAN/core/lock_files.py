@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import os
 import signal
+import time
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -135,6 +136,15 @@ def acquire(name: str) -> Path:
     path = _lock_path(name)
 
     payload = f"{os.getpid()} {datetime.now(timezone.utc).isoformat()}\n"
+    # A lock file that EXISTS but cannot be parsed yet is most likely a
+    # winner between its O_EXCL create and its payload write — stealing it
+    # there produced two holders (caught by the contention regression test
+    # on Linux CI, S-R3). Give the writer a grace window; only a
+    # persistently unreadable file (orphan of a crash inside that tiny
+    # window) may be stolen.
+    _UNREADABLE_GRACE_RETRIES = 50
+    _UNREADABLE_GRACE_SLEEP_S = 0.01
+    unreadable_retries = 0
     while True:
         try:
             fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
@@ -144,17 +154,28 @@ def acquire(name: str) -> Path:
                 pid, iso = existing
                 if _is_pid_alive(pid):
                     raise LockConflict(f"lock {name!r} held by live process pid={pid} since {iso}")
-            # Stale (dead holder) or unreadable half-written lock: steal it
-            # atomically — os.replace succeeds for exactly one contender;
-            # everyone else loops and re-evaluates the fresh state.
+                # Dead holder — fall through to the atomic steal below.
+            else:
+                unreadable_retries += 1
+                if unreadable_retries <= _UNREADABLE_GRACE_RETRIES:
+                    time.sleep(_UNREADABLE_GRACE_SLEEP_S)
+                    continue
+                # Persistently unreadable: crash orphan — steal it.
+
+            # Steal atomically — os.replace succeeds for exactly one
+            # contender; everyone else loops and re-evaluates fresh state.
             stale = path.with_name(f"{path.name}.stale.{os.getpid()}")
             try:
                 os.replace(path, stale)
             except FileNotFoundError:
                 continue  # already reclaimed by someone else; retry O_EXCL
+            except PermissionError:
+                # Windows: the file is still open by a live writer — contended.
+                time.sleep(_UNREADABLE_GRACE_SLEEP_S)
+                continue
             try:
                 stale.unlink()
-            except FileNotFoundError:
+            except (FileNotFoundError, PermissionError):
                 pass
             continue
 
