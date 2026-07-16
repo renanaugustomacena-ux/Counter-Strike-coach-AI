@@ -119,6 +119,30 @@ class TestResolveMapName:
             result = TrainingOrchestrator._resolve_map_name(None, f"demo_{m}_2024.dem", None, {})
             assert result == f"de_{m}", f"Failed to detect {m}"
 
+    def test_fallback_warning_logged_once_per_demo(self):
+        """TASKS#60: the C-1 fallback warns once per demo per run, not per window."""
+        from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
+
+        cache = {}
+        with patch("Programma_CS2_RENAN.backend.nn.training_orchestrator.logger") as mock_log:
+            for _ in range(5):
+                result = TrainingOrchestrator._resolve_map_name(
+                    None, "furia-vs-astralis-m1-train.dem", None, cache
+                )
+                assert result == "de_mirage"
+        assert mock_log.warning.call_count == 1
+
+    def test_fallback_warning_per_distinct_demo(self):
+        """TASKS#60: distinct unmappable demos each get their own single warning."""
+        from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
+
+        cache = {}
+        with patch("Programma_CS2_RENAN.backend.nn.training_orchestrator.logger") as mock_log:
+            TrainingOrchestrator._resolve_map_name(None, "unknown_a.dem", None, cache)
+            TrainingOrchestrator._resolve_map_name(None, "unknown_b.dem", None, cache)
+            TrainingOrchestrator._resolve_map_name(None, "unknown_a.dem", None, cache)
+        assert mock_log.warning.call_count == 2
+
 
 # ===========================================================================
 # _compute_advantage

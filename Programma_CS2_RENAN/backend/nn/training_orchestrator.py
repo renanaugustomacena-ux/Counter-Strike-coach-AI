@@ -1332,11 +1332,18 @@ class TrainingOrchestrator:
             if m in demo_lower:
                 return f"de_{m}"
 
-        logger.warning(
-            "C-1: map fallback to de_mirage — no metadata and demo_name=%r "
-            "matched no known map. Spatial tensors may be wrong for this window.",
-            demo_name,
-        )
+        # TASKS#60: this resolver runs once per window, so an unmappable demo
+        # used to emit hundreds of identical lines per run (B4 log). Warn once
+        # per demo per run, keyed through the run-scoped metadata_cache.
+        warned_key = ("c1_warned", demo_name)
+        if warned_key not in metadata_cache:
+            metadata_cache[warned_key] = True
+            logger.warning(
+                "C-1: map fallback to de_mirage — no metadata and demo_name=%r "
+                "matched no known map. Spatial tensors may be wrong for every "
+                "window of this demo (logged once per demo per run).",
+                demo_name,
+            )
         return "de_mirage"
 
     # ============ G-01: RoundStats Fetch for VL-JEPA ============
