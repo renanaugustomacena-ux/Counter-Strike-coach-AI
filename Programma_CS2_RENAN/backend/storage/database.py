@@ -38,9 +38,13 @@ from .db_models import (
     PlayerMatchStats,
     PlayerProfile,
     PlayerTickState,
+    ProEvent,
+    ProHead2Head,
+    ProMapRecord,
     ProPlayer,
     ProPlayerStatCard,
     ProTeam,
+    ProTournament,
     RoleThresholdRecord,
     RoundStats,
     ServiceNotification,
@@ -75,10 +79,18 @@ _MONOLITH_TABLES = [
 # Tables that belong exclusively to the HLTV metadata database (hltv_metadata.db).
 # Separated from the monolith to eliminate write lock contention between
 # the HLTV background service (separate process) and session_engine daemons.
+# EVERY Pro* model from db_models.py MUST be listed here: any HLTV-db table
+# absent from this list is DROPPED as an orphan by _reconcile_stale_schema()
+# on the next startup (the Phase-H1 tables were destroyed exactly this way —
+# R4 CRIT finding 2026-07-16). Contract-tested in test_hltv_table_registry.py.
 _HLTV_TABLES = [
+    ProEvent.__table__,
+    ProHead2Head.__table__,
+    ProMapRecord.__table__,
     ProPlayer.__table__,
     ProPlayerStatCard.__table__,
     ProTeam.__table__,
+    ProTournament.__table__,
 ]
 
 T = TypeVar("T", bound=SQLModel)
