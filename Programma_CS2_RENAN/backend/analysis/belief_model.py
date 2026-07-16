@@ -10,7 +10,7 @@ Governance: Rule 1 §7.1 (Probabilistic reasoning over deterministic heuristics)
 
 import math
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any, ClassVar, Dict, Optional
 
 import numpy as np
 import pandas as pd
@@ -59,7 +59,12 @@ class BeliefState:
     # Validation: AdaptiveBeliefCalibrator.calibrate_threat_decay() fits this
     # via least-squares on engagement data. Run auto_calibrate() with 100+
     # parsed demos to obtain empirical value. Bounded to [0.01, 1.0].
-    THREAT_DECAY_LAMBDA: float = 0.1
+    # R4 HIGH (2026-07-16): must be a ClassVar — as a dataclass FIELD the
+    # 0.1 default was baked into the generated __init__ and stamped on
+    # every new instance, so the class-level assignment made by the
+    # calibrator (WR-65, belief_model.py auto_calibrate) was a silent
+    # no-op for all future BeliefStates.
+    THREAT_DECAY_LAMBDA: ClassVar[float] = 0.1
 
     def threat_level(self) -> float:
         """Combined threat from visible + inferred enemies, decayed by info age."""
