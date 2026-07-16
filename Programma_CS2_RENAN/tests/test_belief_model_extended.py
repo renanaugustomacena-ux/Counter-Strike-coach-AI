@@ -365,3 +365,37 @@ class TestDeathEstimatorEstimateBounded:
                 f"estimate() returned {prob} for hp={hp}, armor={armor}, "
                 f"weapon={weapon}, visible={belief.visible_enemies}"
             )
+
+
+# ===========================================================================
+# R4 HIGH (2026-07-16) — THREAT_DECAY_LAMBDA calibration must propagate
+# ===========================================================================
+
+
+class TestThreatDecayCalibrationPropagates:
+    """As a dataclass FIELD the 0.1 default was baked into __init__ and the
+    calibrator's class-level assignment (WR-65) was a silent no-op for every
+    new BeliefState. As a ClassVar the assignment must propagate."""
+
+    def test_class_level_assignment_reaches_new_instances(self):
+        import math
+
+        from Programma_CS2_RENAN.backend.analysis.belief_model import BeliefState
+
+        original = BeliefState.THREAT_DECAY_LAMBDA
+        try:
+            BeliefState.THREAT_DECAY_LAMBDA = 0.42
+            state = BeliefState(inferred_enemies=5, information_age=1.0)
+            assert state.THREAT_DECAY_LAMBDA == 0.42
+            expected = (0 + 5 * math.exp(-0.42) * 0.5) / 5.0
+            assert abs(state.threat_level() - expected) < 1e-9
+        finally:
+            BeliefState.THREAT_DECAY_LAMBDA = original
+
+    def test_lambda_is_not_an_init_field(self):
+        import dataclasses
+
+        from Programma_CS2_RENAN.backend.analysis.belief_model import BeliefState
+
+        field_names = {f.name for f in dataclasses.fields(BeliefState)}
+        assert "THREAT_DECAY_LAMBDA" not in field_names

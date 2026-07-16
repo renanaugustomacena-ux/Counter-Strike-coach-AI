@@ -93,7 +93,7 @@
     "apps/qt_app/widgets/toast.py": "d4196b510d8249ecf592039e368d0d64ecc3158933b550714ca8436de11ffd9b",
     "backend/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "backend/analysis/__init__.py": "8b49c37e19be2c3de425b1ce585f39a5073a21319361d8846cf97bbaef0fa31e",
-    "backend/analysis/belief_model.py": "f1a0f742fd2f9f72492a25360a2c1049d96751395bab5f3b221677e7542e0edd",
+    "backend/analysis/belief_model.py": "686d3c0e1ec0ece69758df7bdea6674e71b162c3034f6d67401706407806714a",
     "backend/analysis/blind_spots.py": "9471036b4e460ac3461f850f5c1d22cbe9cf67c6ce112b147c72ce37b16ec89f",
     "backend/analysis/deception_index.py": "e1f2d6d1843f1c75c50be073c3bdf8e81e01509813dfc8e7b61a76ddc1eb7352",
     "backend/analysis/engagement_range.py": "c5b76ebb8b29bfd475fefd256ddff72274a39d17ac7fc147a57786625c261962",
