@@ -37,6 +37,12 @@ class TrainingOrchestrator:
     _DEFAULT_TRAIN_SAMPLES = 50_000
     _DEFAULT_VAL_SAMPLES = 10_000
 
+    # JEPA next-step contract: rows 0..CONTEXT-1 of a batch are the context
+    # window, row CONTEXT is the target tick. Each JEPA batch is therefore ONE
+    # contiguous single-player window of CONTEXT+1 ticks (R4 CRIT 2026-07-16 —
+    # the old flat-tick feed made these slices unrelated random rows).
+    _JEPA_CONTEXT_LEN = 10
+
     def __init__(
         self,
         manager,
@@ -520,15 +526,20 @@ class TrainingOrchestrator:
             # comparisons are stable across epochs.  Only train rotates.
             seed = GLOBAL_SEED + epoch if is_train else GLOBAL_SEED
             sample_size = self._train_samples if is_train else self._val_samples
-            raw_items = self.manager._fetch_jepa_ticks(
-                is_pro=is_pro, split=split, seed=seed, sample_size=sample_size
+            # R4 CRIT (2026-07-16): each JEPA batch must be ONE contiguous
+            # single-player window (context + next-step target), not a flat
+            # slice of random corpus ticks. sample_size keeps its meaning as
+            # a per-epoch row budget: n_windows * window_len ≈ sample_size.
+            window_len = self._JEPA_CONTEXT_LEN + 1
+            n_windows = max(1, sample_size // window_len)
+            windows = self.manager._fetch_jepa_windows(
+                is_pro=is_pro,
+                split=split,
+                seed=seed,
+                n_windows=n_windows,
+                window_len=window_len,
             )
-            if not raw_items:
-                return []
-            batches = []
-            for i in range(0, len(raw_items), self.batch_size):
-                batches.append(raw_items[i : i + self.batch_size])
-            return batches
+            return windows if windows else []
         else:
             rap_kwargs: dict = {"is_pro": is_pro, "split": split}
             if self.max_epochs <= 1:
@@ -691,7 +702,10 @@ class TrainingOrchestrator:
             # model learns to "predict" what it already sees). With b >> context_len,
             # target was ticks[-1] (distant future, not next-step prediction).
             # Fix: target is the tick immediately AFTER the context window.
-            _JEPA_CONTEXT_LEN = 10
+            # R4 CRIT (2026-07-16): raw_items is now guaranteed by
+            # _fetch_jepa_windows to be one contiguous single-player window,
+            # so these positional slices finally mean what they claim.
+            _JEPA_CONTEXT_LEN = self._JEPA_CONTEXT_LEN
             if b < _JEPA_CONTEXT_LEN + 1:
                 logger.debug(
                     "V-1: JEPA batch too short (%d < %d) — need context + target tick",
