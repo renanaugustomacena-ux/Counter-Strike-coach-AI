@@ -202,7 +202,12 @@ class CSVMigrator:
 
 
 if __name__ == "__main__":
-    db = DatabaseManager()
+    # R4 HIGH (2026-07-16): direct DatabaseManager() instantiation is
+    # forbidden by the repo invariant — the singleton accessor carries the
+    # WAL/pooling configuration; a second unmanaged engine bypassed it.
+    from Programma_CS2_RENAN.backend.storage.database import get_db_manager
+
+    db = get_db_manager()
     db.create_db_and_tables()  # Ensure schema exists
     migrator = CSVMigrator(db)
     migrator.run_migration()
