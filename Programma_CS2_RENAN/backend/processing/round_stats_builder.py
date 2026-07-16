@@ -129,13 +129,22 @@ def _team_num_to_side(team_num: int, round_number: int) -> str:
     team_num 2 and 3 alternate meaning based on half.
     """
     # Before half-switch (rounds 1-12): team 2 = one side, team 3 = other
-    # After half-switch (rounds 13+): sides swap
+    # After half-switch (rounds 13-24): sides swap
     # We don't know which team_num is CT vs T from the data alone,
     # but we can provide consistent labeling
     if round_number <= 12:
         return "CT" if team_num == 3 else "T"
-    else:
+    if round_number <= 24:
         return "T" if team_num == 3 else "CT"
+    # R4 MED: MR12 overtime (rounds 25+) — sides swap every 3 rounds.
+    # Convention: the first OT half (25-27) keeps the second-regulation-half
+    # assignment, then alternates (28-30 swap, 31-33 back, ...). The old
+    # single-swap-at-13 formula inverted side (and thus round_won) for half
+    # of every overtime's rounds.
+    ot_block = (round_number - 25) // 3
+    if ot_block % 2 == 0:
+        return "T" if team_num == 3 else "CT"
+    return "CT" if team_num == 3 else "T"
 
 
 def compute_round_rating(stats: Dict) -> float:

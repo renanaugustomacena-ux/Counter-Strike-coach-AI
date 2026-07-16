@@ -36,22 +36,11 @@ def _get_gaussian_filter():
     return _gaussian_filter
 
 
-from Programma_CS2_RENAN.backend.processing.player_knowledge import PlayerKnowledge
+# R4: the shared yaw accessor lives in player_knowledge (single source);
+# re-exported here because this module's tests and callers import it.
+from Programma_CS2_RENAN.backend.processing.player_knowledge import PlayerKnowledge, _tick_yaw
 from Programma_CS2_RENAN.backend.storage.db_models import PlayerTickState
 from Programma_CS2_RENAN.core.spatial_data import MapMetadata, get_map_metadata
-
-
-def _tick_yaw(tick) -> float:
-    """View yaw (degrees) of a tick row.
-
-    PlayerTickState stores the yaw as ``view_x`` (canonical contract:
-    view_x=yaw, view_y=pitch — see vectorizer.py). Legacy dict-shaped tick
-    objects may carry a ``yaw`` attribute instead. Reading ``yaw`` alone on
-    DB rows silently returned 0.0 (east-facing FOV for every training
-    sample) — R4 CRIT finding 2026-07-16.
-    """
-    return float(getattr(tick, "view_x", getattr(tick, "yaw", 0.0)))
-
 
 # ============ Constants ============
 

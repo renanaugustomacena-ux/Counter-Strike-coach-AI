@@ -33,10 +33,14 @@ class RAPStateReconstructor:
     def __init__(
         self,
         sequence_length: int = 32,
-        map_name: str = "de_mirage",
+        map_name: str | None = None,
         require_pov: bool = False,
         tensor_config: TensorConfig | None = None,
     ):
+        """R4 MED: map_name defaults to None so FeatureExtractor auto-resolves
+        the map from each tick's own map_name column — the old 'de_mirage'
+        default suppressed per-tick resolution and stamped mirage z_penalty /
+        map_id onto every demo whose caller forgot to set it."""
         self.sequence_length = sequence_length
         self.metadata_dim = METADATA_DIM  # Use unified constant
         self.map_name = map_name

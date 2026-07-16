@@ -57,8 +57,11 @@ class TestSkillVectorLowPerformance:
         if SkillAxes.UTILITY in vec:
             assert vec[SkillAxes.UTILITY] < 0.5
 
-    def test_zero_utility_treated_as_absent(self):
-        """Exactly 0.0 utility is treated as unavailable data by get_z."""
+    def test_zero_utility_is_real_bad_performance(self):
+        """R4 MED (2026-07-16): 0.0 is a REAL demo-derived value (the player
+        blinded nobody), NOT missing data — the old contract (this test)
+        conflated the two via `not val` and hid bad performance behind the
+        0.5 neutral fallback. Missing data is None, not 0.0."""
         stats = PlayerMatchStats(
             player_name="ZeroUtil",
             demo_name="test_zero_util.dem",
@@ -66,7 +69,18 @@ class TestSkillVectorLowPerformance:
             utility_enemies_blinded=0.0,
         )
         vec = SkillLatentModel.calculate_skill_vector(stats)
-        # 0.0 values → get_z returns None → axis absent or at fallback 0.5
+        if SkillAxes.UTILITY in vec:
+            assert vec[SkillAxes.UTILITY] < 0.5, "zero utility must rank LOW, not neutral"
+
+    def test_none_utility_treated_as_absent(self):
+        """None (column never populated) stays the unavailable sentinel."""
+        stats = PlayerMatchStats(
+            player_name="NoUtilData",
+            demo_name="test_none_util.dem",
+            utility_blind_time=None,
+            utility_enemies_blinded=None,
+        )
+        vec = SkillLatentModel.calculate_skill_vector(stats)
         if SkillAxes.UTILITY in vec:
             assert vec[SkillAxes.UTILITY] == pytest.approx(0.5, abs=0.01)
 

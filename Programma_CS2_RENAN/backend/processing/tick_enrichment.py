@@ -132,16 +132,17 @@ def _compute_bomb_state(
         if tick in round_starts:
             is_planted = False
 
-        # Check for bomb_planted event at this tick
+        # R4 MED: state-transition semantics — an event tick that falls
+        # BETWEEN sampled player-tick rows (parser gaps, dead-player gaps)
+        # must still flip the state. The old exact-equality check skipped
+        # such events entirely, leaving bomb_planted wrong for the rest of
+        # the round.
         while planted_idx < len(planted_events) and planted_events[planted_idx] <= tick:
-            if planted_events[planted_idx] == tick:
-                is_planted = True
+            is_planted = True
             planted_idx += 1
 
-        # Check for bomb_defused event at this tick
         while defused_idx < len(defused_events) and defused_events[defused_idx] <= tick:
-            if defused_events[defused_idx] == tick:
-                is_planted = False
+            is_planted = False
             defused_idx += 1
 
         bomb_state[i] = is_planted

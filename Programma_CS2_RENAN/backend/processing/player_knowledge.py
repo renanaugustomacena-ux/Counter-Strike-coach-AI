@@ -164,6 +164,19 @@ class PlayerKnowledge:
 # ============ Geometry Helpers ============
 
 
+def _tick_yaw(tick) -> float:
+    """View yaw (degrees) of a tick row.
+
+    PlayerTickState stores the yaw as ``view_x`` (canonical contract:
+    view_x=yaw, view_y=pitch — see vectorizer.py). Legacy dict-shaped tick
+    objects may carry a ``yaw`` attribute instead. Reading ``yaw`` alone on
+    DB rows silently returned 0.0 (east-facing FOV for every sample) —
+    R4 CRIT class, 2026-07-16. Single shared accessor (tensor_factory
+    imports it from here).
+    """
+    return float(getattr(tick, "view_x", getattr(tick, "yaw", 0.0)))
+
+
 def _normalize_angle(angle: float) -> float:
     """Normalize angle to [0, 360) range."""
     return angle % 360.0
@@ -307,7 +320,7 @@ class PlayerKnowledgeBuilder:
                 "Zero XY position for player at tick %d — possible missing data",
                 int(getattr(player_tick, "tick", 0)),
             )
-        knowledge.own_yaw = float(getattr(player_tick, "yaw", 0))
+        knowledge.own_yaw = _tick_yaw(player_tick)
         knowledge.own_health = int(getattr(player_tick, "health", 100))
         knowledge.own_armor = int(getattr(player_tick, "armor", 0))
         knowledge.own_weapon = str(getattr(player_tick, "active_weapon", ""))
@@ -448,7 +461,8 @@ class PlayerKnowledgeBuilder:
 
             our_x = float(getattr(our_player, "pos_x", 0))
             our_y = float(getattr(our_player, "pos_y", 0))
-            our_yaw = float(getattr(our_player, "yaw", 0))
+            our_z = float(getattr(our_player, "pos_z", 0))
+            our_yaw = _tick_yaw(our_player)
 
             # Find enemies in FOV at this historical tick
             enemies_in_fov = []
@@ -462,10 +476,24 @@ class PlayerKnowledgeBuilder:
 
                 p_x = float(getattr(p, "pos_x", 0))
                 p_y = float(getattr(p, "pos_y", 0))
+                p_z = float(getattr(p, "pos_z", 0))
 
-                if _is_in_fov(our_x, our_y, our_yaw, p_x, p_y, self.fov_degrees):
+                # R4 MED: the memory path must apply the same H-11 Z-floor
+                # guard as the live path — without it, last-known enemies
+                # could be populated through floors on Nuke/Vertigo (a
+                # wallhack leak into the NO-WALLHACK sensorial model).
+                if _is_in_fov(
+                    our_x,
+                    our_y,
+                    our_yaw,
+                    p_x,
+                    p_y,
+                    self.fov_degrees,
+                    player_z=our_z,
+                    target_z=p_z,
+                ):
                     dist = _distance_2d(our_x, our_y, p_x, p_y)
-                    enemies_in_fov.append((p_name, p_x, p_y, float(getattr(p, "pos_z", 0)), dist))
+                    enemies_in_fov.append((p_name, p_x, p_y, p_z, dist))
 
             # Take closest N matching the visible count
             enemies_in_fov.sort(key=lambda e: e[4])

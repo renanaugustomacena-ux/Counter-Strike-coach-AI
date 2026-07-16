@@ -53,8 +53,11 @@ class SkillLatentModel:
         baseline = get_pro_baseline()
 
         def get_z(feat, val):
-            # Check for missing/zero data
-            if not val or feat not in baseline:
+            # R4 MED: 0.0 is a REAL value (a player who never won a clutch),
+            # not missing data — `not val` conflated the two and silently
+            # excluded bad performance from the skill axes. Only None/absent
+            # counts as unavailable.
+            if val is None or feat not in baseline:
                 return None  # Mark as unavailable
 
             b = baseline[feat]
