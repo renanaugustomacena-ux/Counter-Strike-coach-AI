@@ -166,6 +166,9 @@ def load_user_settings() -> dict:
             "COACH_WEIGHT_OVERRIDES": {},
             "CUDA_DEVICE": "auto",
             "DEMO_ARCHIVE_PATH": "",
+            # W2.5/DR-17 — opt-in train-vs-val drift telemetry in the epoch
+            # loop (training_orchestrator). Off by default: telemetry only.
+            "DRIFT_RETRAIN_ENABLED": False,
             "INGEST_INTERVAL_MINUTES": 30,
             "INGEST_MODE_AUTO": True,
             "LOCAL_QUOTA_GB": 10.0,
