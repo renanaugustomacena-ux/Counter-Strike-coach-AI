@@ -26,7 +26,13 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 app_logger = get_logger("cs2analyzer.server")
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+# Path bootstrap ONLY for direct script execution (python backend/server.py).
+# S-R3 (2026-07-16): appending the package dir unconditionally at import time
+# polluted the process-wide sys.path — top-level names like "tools" then
+# resolved to Programma_CS2_RENAN/tools instead of the repo-root tools/ for
+# every process that imported the server (test suite included).
+if not __package__:
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 try:
     from Programma_CS2_RENAN.backend.storage.database import get_db_manager, init_database
