@@ -530,10 +530,18 @@ class PlayerLookupService:
             f"KPR: {_fmt_num(profile.kpr)} | DPR: {_fmt_num(profile.dpr)} | "
             f"ADR: {_fmt_num(profile.adr, '{:.1f}')}"
         )
+        # R4 MED: opening_duel_win_pct is stored in ratio form like kast/hs —
+        # without the same <=1.0 normalization it rendered as "0.5%" instead
+        # of "50.0%".
+        odw_pct = (
+            profile.opening_duel_win_pct * 100
+            if profile.opening_duel_win_pct <= 1.0
+            else profile.opening_duel_win_pct
+        )
         lines.append(
             f"KAST: {_fmt_pct(kast_pct)} | HS%: {_fmt_pct(hs_pct)} | "
             f"Impact: {_fmt_num(profile.impact)} | "
-            f"Opening Duel Win: {_fmt_pct(profile.opening_duel_win_pct)}"
+            f"Opening Duel Win: {_fmt_pct(odw_pct)}"
         )
         lines.append(f"Maps Played: {profile.maps_played}")
 

@@ -70,3 +70,37 @@ class TestThirdPersonTransform:
         assert "conttheir" not in out
         assert "their angle" in out
         assert "they peek" in out
+
+
+# ===========================================================================
+# R4 MED (2026-07-16) — round-pattern word boundary
+# ===========================================================================
+
+
+class TestRoundPatternBoundary:
+    """The trailing 'r' of any word used to match ("...tips foR 5 players"),
+    misrouting messages to round_query — strongest-signal intent."""
+
+    @staticmethod
+    def _matches(text):
+        from Programma_CS2_RENAN.backend.services.coaching_dialogue import _ROUND_PATTERN
+
+        return _ROUND_PATTERN.search(text.lower())
+
+    def test_word_trailing_r_does_not_match(self):
+        assert self._matches("any tips for 5 players pushing B?") is None
+
+    def test_round_forms_still_match(self):
+        for text, expected in [
+            ("what happened in round 5?", "5"),
+            ("show me R12", "12"),
+            ("rounds 5-10 were rough", "5"),
+            ("round 5 to 10 analysis", "5"),
+        ]:
+            m = self._matches(text)
+            assert m is not None, text
+            assert m.group(1) == expected
+
+    def test_range_second_group(self):
+        m = self._matches("rounds 5 to 10")
+        assert m.group(2) == "10"

@@ -136,8 +136,11 @@ INTENT_KEYWORDS: Dict[str, List[str]] = {
 # DP-02: Regex patterns for extracting round numbers from user messages
 _ROUND_PATTERN = re.compile(
     r"""
-    (?:rounds?|r)\s*(\d{1,2})     # "round 5", "rounds 3", "R5", "round 12"
-    (?:\s*[-–to]+\s*(\d{1,2}))?   # optional range: "round 5-10", "rounds 5 to 10"
+    \b(?:rounds?|r)\s*(\d{1,2})   # "round 5", "rounds 3", "R5", "round 12"
+                                  # R4 MED: \b prevents the trailing 'r' of any
+                                  # word ("...tips foR 5 players") matching and
+                                  # misrouting the intent to round_query
+    (?:\s*(?:-|–|\s+to\s+)\s*(\d{1,2}))?   # optional range: "5-10", "5 to 10"
     """,
     re.IGNORECASE | re.VERBOSE,
 )
@@ -822,7 +825,9 @@ class CoachingDialogueEngine:
                         if team_b in demo_lower and team_a in demo_lower:
                             return demo
             except Exception:
-                pass
+                # R4 MED: was a bare pass — a DB failure silently degraded
+                # round drill-down to the session demo with no trace.
+                logger.debug("demo-name resolution failed", exc_info=True)
 
         return session_demo
 
@@ -966,7 +971,7 @@ class CoachingDialogueEngine:
             lookup = self._get_player_lookup()
             mentioned = lookup.detect_player_mentions(user_message)
         except Exception:
-            pass
+            logger.debug("player-mention detection failed", exc_info=True)
 
         if not mentioned:
             return ""
@@ -1071,7 +1076,7 @@ class CoachingDialogueEngine:
             if mentions:
                 player_name = mentions[0]
         except Exception:
-            pass
+            logger.debug("player-mention detection failed", exc_info=True)
         if not player_name:
             player_name = self._player_context.get("player_name")
 
@@ -1218,7 +1223,11 @@ class CoachingDialogueEngine:
                 if r.smokes_thrown:
                     util.append(f"{r.smokes_thrown}smoke")
                 if r.he_damage or r.molotov_damage:
-                    util.append(f"{r.he_damage + r.molotov_damage:.0f}utildmg")
+                    # R4 MED: None-guard both addends — if exactly one is None
+                    # the guard passes but the addition raised TypeError,
+                    # discarding the whole analytical context block (the
+                    # parallel site at the player loop already guards).
+                    util.append(f"{(r.he_damage or 0) + (r.molotov_damage or 0):.0f}utildmg")
                 util_str = f" [{', '.join(util)}]" if util else ""
 
                 lines.append(
