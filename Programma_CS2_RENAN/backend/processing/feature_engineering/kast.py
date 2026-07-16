@@ -18,7 +18,8 @@ def calculate_kast_for_round(
     player_name: str,
     round_events: List[Dict[str, Any]],
     trade_window_seconds: float = 5.0,
-    ticks_per_second: int = 64,
+    *,
+    ticks_per_second: int,
 ) -> bool:
     """
     Determines if a player achieved KAST in a single round.
@@ -94,7 +95,8 @@ def calculate_kast_for_round(
 def calculate_kast_percentage(
     player_name: str,
     rounds_events: List[List[Dict[str, Any]]],
-    ticks_per_second: int = 64,
+    *,
+    ticks_per_second: int,
 ) -> float:
     """
     Calculates KAST percentage across multiple rounds.
