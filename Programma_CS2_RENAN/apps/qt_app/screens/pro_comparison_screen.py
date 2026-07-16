@@ -331,10 +331,15 @@ class ProComparisonScreen(QWidget):
         for row_idx, (field, display_name, lower_is_better) in enumerate(
             COMPARISON_METRICS, start=1
         ):
-            val_a = float(stats_a.get(field, 0.0) or 0)
-            val_b = float(stats_b.get(field, 0.0) or 0)
-            fmt_a = _format_value(field, val_a)
-            fmt_b = _format_value(field, val_b)
+            raw_a = stats_a.get(field)
+            raw_b = stats_b.get(field)
+            val_a = float(raw_a or 0)
+            val_b = float(raw_b or 0)
+            # R4 HIGH (2026-07-16): a metric absent on one side (e.g. the
+            # user has no HLTV-equivalent clutch count) renders as "—",
+            # never as a fabricated 0 that reads like a real score.
+            fmt_a = _format_value(field, val_a) if raw_a is not None else "—"
+            fmt_b = _format_value(field, val_b) if raw_b is not None else "—"
 
             # Color by who's better
             color_a, color_b = tokens.text_primary, tokens.text_primary

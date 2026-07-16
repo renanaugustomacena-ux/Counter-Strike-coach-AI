@@ -147,12 +147,19 @@ class PerformanceViewModel(QObject):
             beaten = sum(1 for v in cleaned if user_v >= v)
             return beaten / len(cleaned)
 
-        return {
-            "rating": _pct(u_rating, [r[0] for r in pro_rows]),
-            "kd": _pct(u_kd, [r[1] for r in pro_rows]),
-            "adr": _pct(u_adr, [r[2] for r in pro_rows]),
-            "kast": _pct(u_kast, [r[3] for r in pro_rows]),
-        }
+        # R4 HIGH (2026-07-16): a metric with no user-side data must be
+        # OMITTED (the context strip skips missing keys), not ranked at the
+        # ~0th percentile as if the user scored zero.
+        percentiles = {}
+        if ratings:
+            percentiles["rating"] = _pct(u_rating, [r[0] for r in pro_rows])
+        if kds:
+            percentiles["kd"] = _pct(u_kd, [r[1] for r in pro_rows])
+        if adrs:
+            percentiles["adr"] = _pct(u_adr, [r[2] for r in pro_rows])
+        if kasts:
+            percentiles["kast"] = _pct(u_kast, [r[3] for r in pro_rows])
+        return percentiles
 
     def _on_loaded(self, result):
         self._is_loading = False

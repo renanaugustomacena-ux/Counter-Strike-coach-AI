@@ -168,7 +168,6 @@ class ProComparisonViewModel(QObject):
                     func.avg(PlayerMatchStats.avg_kast).label("kast"),
                     func.avg(PlayerMatchStats.avg_hs).label("headshot_pct"),
                     func.avg(PlayerMatchStats.opening_duel_win_pct).label("opening_duel_win_pct"),
-                    func.avg(PlayerMatchStats.clutch_win_pct).label("clutch_win_pct"),
                 ).where(
                     PlayerMatchStats.player_name == player,
                     PlayerMatchStats.is_pro == False,  # noqa: E712
@@ -178,6 +177,12 @@ class ProComparisonViewModel(QObject):
         if not row or row[0] is None:
             return {}, player
 
+        # R4 HIGH (2026-07-16): the user's clutch_win_pct (a 0..1 fraction)
+        # used to be shoved into the 'clutch_win_count' slot and compared
+        # against the pro's integer clutch-win COUNT — units mismatch that
+        # always painted the user red. Metrics with no user-side equivalent
+        # (clutch_win_count, impact, opening_kill_ratio, multikill_round_pct)
+        # are now simply absent; the screen renders them as "—".
         field_names = [
             "rating_2_0",
             "kpr",
@@ -186,17 +191,12 @@ class ProComparisonViewModel(QObject):
             "kast",
             "headshot_pct",
             "opening_duel_win_pct",
-            "clutch_win_count",
         ]
         stats = {}
         for i, name in enumerate(field_names):
             stats[name] = float(row[i]) if row[i] is not None else 0.0
 
-        # Fields not in PlayerMatchStats — set to 0
-        stats.setdefault("impact", 0.0)
-        stats.setdefault("opening_kill_ratio", 0.0)
-        stats.setdefault("multikill_round_pct", 0.0)
-        stats.setdefault("maps_played", count)
+        stats["maps_played"] = count
 
         return stats, player
 
