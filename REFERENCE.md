@@ -56,7 +56,7 @@ Programma_CS2_RENAN/
 
 Top-level helpers: `console.py` (CLI), `goliath.py` (super-tool), `batch_ingest.py`
 (parallel pro-demo ingest), `run_full_training_cycle.py`, `tools/headless_validator.py`
-(MANDATORY post-task), `tools/wipe_for_reingest_v4.py` (one-shot DB rebuild).
+(MANDATORY post-task), `tools/wipe_for_reingest_safe.py` (one-shot DB rebuild).
 
 ---
 
