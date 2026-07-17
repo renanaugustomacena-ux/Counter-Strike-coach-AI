@@ -7,6 +7,7 @@ Usage:
     cd Programma_CS2_RENAN
     python -m tools.seed_hltv_top20
 """
+
 import json
 import os
 import sys

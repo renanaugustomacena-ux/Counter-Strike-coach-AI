@@ -11,6 +11,7 @@ Output: per-demo quality report + aggregate summary.
 Usage:
     python tools/tick_census.py
 """
+
 import sqlite3
 import sys
 import time

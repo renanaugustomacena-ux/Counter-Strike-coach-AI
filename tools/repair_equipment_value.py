@@ -8,6 +8,7 @@ then batch-updates the monolith via a temp table + SQL UPDATE.
 Usage:
     python tools/repair_equipment_value.py
 """
+
 import sqlite3
 import sys
 import time

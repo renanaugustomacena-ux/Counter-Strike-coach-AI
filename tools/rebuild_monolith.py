@@ -15,6 +15,7 @@ Usage:
     python tools/rebuild_monolith.py          # incremental (skip existing demos)
     python tools/rebuild_monolith.py --full   # clear + full rebuild
 """
+
 import hashlib
 import math
 import os

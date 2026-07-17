@@ -15,6 +15,7 @@ Exit codes:
     1  A ``pnpm`` invocation failed (surface stdout / stderr verbatim)
     2  pnpm not installed / not on PATH
 """
+
 from __future__ import annotations
 
 import argparse
