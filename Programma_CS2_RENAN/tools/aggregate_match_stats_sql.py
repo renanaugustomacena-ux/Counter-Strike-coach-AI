@@ -864,6 +864,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             "matches_processed": 0,
             "rows_written": 0,
             "rows_skipped_complete": 0,
+            "rows_skipped_needs_force": 0,
             "rows_skipped_noise": 0,
             "rows_overwritten": 0,
             "errors": [],
@@ -890,6 +891,16 @@ def main(argv: Optional[list[str]] = None) -> int:
                     if existing == DATA_QUALITY_COMPLETE and not args.really_force:
                         skip = True
                         report["rows_skipped_complete"] += 1
+                    # R4 MED: --force was a no-op — the CLI contract says
+                    # registered_only/partial rows are overwritten only WITH
+                    # --force, but the write path never consulted the flag.
+                    elif (
+                        existing in (DATA_QUALITY_REGISTERED_ONLY, DATA_QUALITY_PARTIAL)
+                        and not args.force
+                        and not args.really_force
+                    ):
+                        skip = True
+                        report["rows_skipped_needs_force"] += 1
                     if not skip:
                         if existing == DATA_QUALITY_COMPLETE:
                             report["rows_overwritten"] += 1
@@ -909,6 +920,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             f"  Summary: matches={report['matches_processed']}/{report['matches_seen']}, "
             f"rows={report['rows_written']}, "
             f"skipped(complete)={report['rows_skipped_complete']}, "
+            f"skipped(needs --force)={report['rows_skipped_needs_force']}, "
             f"errors={len(report['errors'])}"
         )
         return 0

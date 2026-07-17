@@ -23,6 +23,10 @@ PROJECT_ROOT = stabilize_paths()
 # Import SQLModel and your models
 from sqlmodel import SQLModel
 
+# no-dead-code — the model imports below LOOK unused but register every
+# table on SQLModel.metadata as an import side effect; Alembic autogenerate
+# diffs against that metadata. Removing them silently drops tables from
+# migration detection.
 from Programma_CS2_RENAN.backend.storage.db_models import (  # noqa: F401 — all needed for autogenerate
     CalibrationSnapshot,
     CoachingExperience,

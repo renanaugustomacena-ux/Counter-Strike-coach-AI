@@ -438,21 +438,26 @@ class UltimateMLDebugger(BaseValidator):
                 return
 
             # Check for overfitting: val_loss >> train_loss for N consecutive epochs
+            # R4 MED: track the MAX streak — the trailing streak resets on
+            # any non-divergent final epoch, so mid-training divergence
+            # passed the guard while the label claimed "max streak".
             overfit_streak = 0
+            max_streak = 0
             for ep in epochs:
                 t_loss = ep.get("train_loss", 0)
                 v_loss = ep.get("val_loss", 0)
                 if t_loss > 0 and v_loss > t_loss * (1 + _OVERFITTING_DIVERGENCE):
                     overfit_streak += 1
+                    max_streak = max(max_streak, overfit_streak)
                 else:
                     overfit_streak = 0
 
             self.check(
                 "Convergence",
                 "overfitting_guard",
-                overfit_streak < _OVERFITTING_CONSECUTIVE_EPOCHS,
-                error=f"Val loss diverged for {overfit_streak} consecutive epochs",
-                detail=f"max streak: {overfit_streak}",
+                max_streak < _OVERFITTING_CONSECUTIVE_EPOCHS,
+                error=f"Val loss diverged for {max_streak} consecutive epochs",
+                detail=f"max streak: {max_streak}",
             )
 
             # Check final loss is finite

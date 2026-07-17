@@ -189,33 +189,46 @@ def _load_match_summary(con: sqlite3.Connection, src: Path) -> Optional[MatchSum
 
 
 def _player_aggregates(con: sqlite3.Connection) -> list[PlayerAggregate]:
-    """Compute per-player aggregates from cumulative per-round counters.
+    """Compute per-player aggregates from the cumulative *_total counters.
 
-    matchtickstate.kills_this_round (etc.) reset to 0 at the start of each
-    round, so the per-round MAX is the round total. Summing across rounds
-    yields the match total without re-parsing the .dem.
+    R4 MED: the previous SUM(MAX(*_this_round)) approach undercounts —
+    cross-checked in aggregate_match_stats_sql.py (match 910 m1-mirage:
+    MAX(kills_total)=35 vs SUM(MAX(kills_this_round))=17), because
+    per-round counters are not reliably sampled at their round-end peak.
+    MAX(*_total) is the source of truth for kills/deaths/headshots; damage
+    keeps SUM(MAX(damage_this_round)) since no damage_total column exists.
     """
     cur = con.cursor()
     rows = cur.execute(
         """
-        SELECT player_name,
-               SUM(round_kills)     AS total_kills,
-               SUM(round_deaths)    AS total_deaths,
-               SUM(round_damage)    AS total_damage,
-               SUM(round_headshots) AS total_headshots,
-               COUNT(*)             AS rounds_played
+        SELECT t.player_name,
+               t.total_kills,
+               t.total_deaths,
+               COALESCE(d.total_damage, 0) AS total_damage,
+               t.total_headshots,
+               t.rounds_played
         FROM (
-          SELECT round_number, player_name,
-                 MAX(kills_this_round)          AS round_kills,
-                 MAX(deaths_this_round)         AS round_deaths,
-                 MAX(damage_this_round)         AS round_damage,
-                 MAX(headshot_kills_this_round) AS round_headshots
+          SELECT player_name,
+                 MAX(kills_total)            AS total_kills,
+                 MAX(deaths_total)           AS total_deaths,
+                 MAX(headshot_kills_total)   AS total_headshots,
+                 COUNT(DISTINCT round_number) AS rounds_played
           FROM matchtickstate
           WHERE player_name IS NOT NULL AND player_name != ''
-          GROUP BY round_number, player_name
-        )
-        GROUP BY player_name
-        ORDER BY player_name
+          GROUP BY player_name
+        ) t
+        LEFT JOIN (
+          SELECT player_name, SUM(round_damage) AS total_damage
+          FROM (
+            SELECT round_number, player_name,
+                   MAX(damage_this_round) AS round_damage
+            FROM matchtickstate
+            WHERE player_name IS NOT NULL AND player_name != ''
+            GROUP BY round_number, player_name
+          )
+          GROUP BY player_name
+        ) d ON d.player_name = t.player_name
+        ORDER BY t.player_name
         """
     ).fetchall()
     aggregates = []

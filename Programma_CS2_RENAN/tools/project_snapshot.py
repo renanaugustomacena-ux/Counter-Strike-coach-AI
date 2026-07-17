@@ -337,8 +337,10 @@ def format_compact(data):
             total = sum(ingest.values())
             q = ingest.get("queued", 0)
             p = ingest.get("processing", 0)
-            done = ingest.get("done", 0)
-            e = ingest.get("error", 0)
+            # R4 MED: statuses are 'completed'/'failed' (ingest_manager) —
+            # 'done'/'error' never exist and always displayed 0.
+            done = ingest.get("completed", 0)
+            e = ingest.get("failed", 0)
             lines.append(f"       ingest: {q}q/{p}p/{done}d/{e}e ({total} total)")
 
         # Coach
