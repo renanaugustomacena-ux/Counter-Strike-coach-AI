@@ -143,6 +143,19 @@ class TestDatabaseManager:
         result = db.get(PlayerProfile, 99999)
         assert result is None
 
+    def test_restrict_db_permissions_tolerates_foreign_owner(self, tmp_path):
+        """CFG-1 hardening is best-effort: a DB file the process does not own
+        (chmod → EPERM, e.g. root-owned monolith) must not abort startup."""
+        from Programma_CS2_RENAN.backend.storage.database import _restrict_db_permissions
+
+        db_file = tmp_path / "foreign_owned.sqlite"
+        db_file.touch()
+        with patch(
+            "Programma_CS2_RENAN.backend.storage.database.os.chmod",
+            side_effect=PermissionError(1, "Operation not permitted"),
+        ):
+            _restrict_db_permissions(f"sqlite:///{db_file}")  # must not raise
+
 
 # ---------------------------------------------------------------------------
 # StateManager

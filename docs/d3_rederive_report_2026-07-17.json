@@ -1,0 +1,680 @@
+{
+  "generated_at": "2026-07-17T14:57:14.251375+00:00",
+  "phase": "D3 v1 tick-rate re-derivation",
+  "mode": "apply",
+  "summary": {
+    "header_rederived": 0,
+    "marked_default_rate": 55,
+    "already_default_no_dem": 0,
+    "errors": 0,
+    "shards_backed_up": 55
+  },
+  "details": {
+    "header_rederived": [],
+    "marked_default_rate": [
+      {
+        "file": "match_1083510231651994524.db",
+        "demo_name": "mouz-vs-virtus-pro-m3-overpass",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_1605128764749430574.db",
+        "demo_name": "natus-vincere-vs-g2-m1-anubis",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_1776443697675117873.db",
+        "demo_name": "parivision-vs-furia-m2-inferno",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_1972846501974513917.db",
+        "demo_name": "pain-vs-virtus-pro-m1-dust2",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_2011757319558866710.db",
+        "demo_name": "spirit-vs-furia-m2-dust2",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_2637654713753650563.db",
+        "demo_name": "natus-vincere-vs-aurora-m1-mirage",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_2640912145460478727.db",
+        "demo_name": "vitality-vs-g2-m3-anubis",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_2940215464609934058.db",
+        "demo_name": "spirit-vs-furia-m3-nuke",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_3061481644192937838.db",
+        "demo_name": "spirit-vs-g2-m1-mirage",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_3628959166992666895.db",
+        "demo_name": "parivision-vs-furia-m1-mirage",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_3660814607312925928.db",
+        "demo_name": "pain-vs-virtus-pro-m3-inferno",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_3862085155614660990.db",
+        "demo_name": "vitality-vs-g2-m1-mirage",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_3895203083360342258.db",
+        "demo_name": "mouz-vs-virtus-pro-m2-mirage",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_3986525576559663168.db",
+        "demo_name": "spirit-vs-g2-m3-ancient",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_4046766227078567058.db",
+        "demo_name": "mouz-vs-vitality-m3-train",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_4523196252674340482.db",
+        "demo_name": "spirit-vs-natus-vincere-m2-ancient",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_4751561624951399578.db",
+        "demo_name": "pain-vs-3dmax-nuke",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_4758495944383212288.db",
+        "demo_name": "parivision-vs-spirit-m1-overpass",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_4879474679401207584.db",
+        "demo_name": "natus-vincere-vs-faze-m1-mirage",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_4991976633576216134.db",
+        "demo_name": "natus-vincere-vs-spirit-m2-dust2",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_5001534516030835642.db",
+        "demo_name": "natus-vincere-vs-spirit-m1-mirage",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_50250830584121323.db",
+        "demo_name": "mouz-vs-vitality-m1-dust2",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_517109444617493049.db",
+        "demo_name": "nrg-vs-furia-m3-dust2",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_5504447986441145582.db",
+        "demo_name": "pain-vs-legacy-m3-nuke",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_5821102604794486936.db",
+        "demo_name": "natus-vincere-vs-spirit-m2-anubis",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_5930108983625200714.db",
+        "demo_name": "spirit-vs-natus-vincere-m1-nuke",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_6203205878695514257.db",
+        "demo_name": "nrg-vs-furia-m2-nuke",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_6332673317152995872.db",
+        "demo_name": "vitality-vs-g2-m2-inferno",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_6334384090632712292.db",
+        "demo_name": "natus-vincere-vs-aurora-m4-dust2",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_6377875043931837955.db",
+        "demo_name": "mouz-vs-virtus-pro-m1-inferno",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_6445333938996795056.db",
+        "demo_name": "parivision-vs-spirit-m2-mirage",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_6482573948910526667.db",
+        "demo_name": "pain-vs-themongolz-m3-inferno",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_654367835016249701.db",
+        "demo_name": "mouz-vs-spirit-m1-ancient",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_6702413631322776621.db",
+        "demo_name": "mouz-vs-the-mongolz-m2-nuke",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_7079920283776051058.db",
+        "demo_name": "spirit-vs-mibr-m1-nuke",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_7107912706302660226.db",
+        "demo_name": "nrg-vs-furia-m1-mirage",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_7260080073522336820.db",
+        "demo_name": "pain-vs-themongolz-m2-nuke",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_7336271136750948546.db",
+        "demo_name": "parivision-vs-spirit-m3-ancient",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_7422810754306594470.db",
+        "demo_name": "natus-vincere-vs-aurora-m3-nuke-p1",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_7492999207593409559.db",
+        "demo_name": "natus-vincere-vs-aurora-m2-anubis",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_7573840099316589532.db",
+        "demo_name": "pain-vs-virtus-pro-m2-mirage",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_7712884114599669465.db",
+        "demo_name": "mouz-vs-fut-m2-overpass",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_7902296291090273551.db",
+        "demo_name": "mouz-vs-vitality-m1-mirage",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_7992482094064624327.db",
+        "demo_name": "mouz-vs-parivision-overpass",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_8045939857849960534.db",
+        "demo_name": "pain-vs-legacy-m2-dust2",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_8260121072065237082.db",
+        "demo_name": "pain-vs-legacy-m1-inferno",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_8373638349774523478.db",
+        "demo_name": "mouz-vs-the-mongolz-m1-inferno",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_8430908050395624864.db",
+        "demo_name": "mouz-vs-spirit-m2-mirage",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_8496328054915208456.db",
+        "demo_name": "natus-vincere-vs-faze-m2-nuke",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_8706684547965396611.db",
+        "demo_name": "vitality-vs-the-mongolz-m2-nuke",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_8846174471463006465.db",
+        "demo_name": "natus-vincere-vs-furia-m2-mirage",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_8925606777233417703.db",
+        "demo_name": "natus-vincere-vs-furia-m1-nuke",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_897203930949190376.db",
+        "demo_name": "mouz-vs-vitality-m2-inferno",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_9073263199604095540.db",
+        "demo_name": "mouz-vs-natus-vincere-m2-nuke",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      },
+      {
+        "file": "match_907853788184598752.db",
+        "demo_name": "vitality-vs-g2-m2-mirage",
+        "old": {
+          "parser_version": "v1-d3-recovered",
+          "tick_rate": 64.0
+        },
+        "new": {
+          "parser_version": "v2-d3-recovered-default-rate",
+          "tick_rate": 64.0
+        }
+      }
+    ],
+    "already_default_no_dem": [],
+    "errors": [],
+    "backed_up": 55
+  }
+}

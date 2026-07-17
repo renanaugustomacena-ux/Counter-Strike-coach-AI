@@ -37,6 +37,26 @@ def _timestamp() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
 
 
+# Headroom beyond the DB size a full-copy backup must leave free on the
+# target filesystem. Measured failure (2026-07-17, data box): a 154 GB
+# monolith on a disk with 54 GB free filled the volume to 100% mid-copy
+# and took the concurrent schema migration down with it.
+_BACKUP_HEADROOM_BYTES = 5 * 1024**3
+
+
+def _check_backup_free_space(db_path: Path, target_dir: Path) -> None:
+    """Refuse a full-size backup that cannot fit on the target filesystem."""
+    db_size = db_path.stat().st_size
+    free = shutil.disk_usage(target_dir).free
+    needed = db_size + _BACKUP_HEADROOM_BYTES
+    if free < needed:
+        raise RuntimeError(
+            f"Refusing backup: DB is {db_size / 1e9:.1f} GB but only "
+            f"{free / 1e9:.1f} GB free on {target_dir} "
+            f"(need DB size + {_BACKUP_HEADROOM_BYTES / 1e9:.0f} GB headroom)"
+        )
+
+
 def backup_monolith(target_dir: Optional[Path] = None) -> Path:
     """
     Create a WAL-safe backup of the monolith database.
@@ -51,6 +71,8 @@ def backup_monolith(target_dir: Optional[Path] = None) -> Path:
 
     if not _MONOLITH_DB.exists():
         raise FileNotFoundError(f"Monolith database not found: {_MONOLITH_DB}")
+
+    _check_backup_free_space(_MONOLITH_DB, target_dir)
 
     # P0-05: Use SQLite Online Backup API instead of WAL checkpoint + shutil.copy2.
     # The previous approach had a TOCTOU race: between checkpoint completion and
