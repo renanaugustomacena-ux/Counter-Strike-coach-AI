@@ -214,13 +214,32 @@ class RAPMemory(nn.Module):
                 mask = assignments == k
                 if mask.any():
                     centroids[k] = embeddings[mask].mean(dim=0)
+        # R4 LOW: hflayers' HopfieldLayer stores lookup_weights with a
+        # leading batch dim of 1 — shape (1, quantity, dim) — so the old
+        # shape[0] == K heuristic NEVER matched and Phase 5B silently did
+        # nothing. Target the parameter explicitly, tolerating the leading
+        # singleton dim.
         for name, param in self.hopfield.named_parameters():
-            if param.shape[-1] == centroids.shape[-1] and param.shape[0] == K:
-                param.data.copy_(centroids)
+            if not name.endswith("lookup_weights"):
+                continue
+            target = param.data
+            view = target.squeeze(0) if target.dim() == 3 and target.shape[0] == 1 else target
+            if view.shape == centroids.shape:
+                view.copy_(centroids)
                 self._hopfield_trained = True
                 logger.info("Phase 5B: Hopfield prototypes initialized from %d samples", N)
                 return
-        logger.debug("Phase 5B: No matching Hopfield prototype parameter found")
+            logger.warning(
+                "Phase 5B: lookup_weights shape %s does not match centroids %s "
+                "— prototype initialization skipped",
+                tuple(target.shape),
+                tuple(centroids.shape),
+            )
+            return
+        logger.warning(
+            "Phase 5B: no lookup_weights parameter found on the Hopfield layer "
+            "— prototype initialization cannot be applied"
+        )
 
     def load_state_dict(self, state_dict, strict=True, assign=False):
         """Override to mark Hopfield as trained when loading a checkpoint."""

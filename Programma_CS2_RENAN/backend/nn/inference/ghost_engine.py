@@ -65,8 +65,13 @@ class GhostEngine:
         self,
         tick_data: Dict[str, Any],
         game_state: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[float, float]:
+    ) -> Optional[Tuple[float, float]]:
         """Predict the OPTIMAL position (Ghost) for a given tick.
+
+        R4 LOW: failures return None — the old (0.0, 0.0) sentinel is a
+        VALID world coordinate near map center, so callers could not tell
+        "ghost at origin" from "inference failed" and rendered a misleading
+        ghost dot.
 
         Args:
             tick_data: Current tick state (dict or dataclass with pos_x, pos_y, yaw, etc.)
@@ -82,7 +87,7 @@ class GhostEngine:
             app_logger.warning(
                 "GhostEngine: predict_tick called but model is LOBOTOMIZED (no model loaded)"
             )
-            return (0.0, 0.0)
+            return None
 
         try:
             # 1. Prepare Tensors using TensorFactory (VISION BRIDGE - TASK 3.2)
@@ -97,7 +102,7 @@ class GhostEngine:
                 app_logger.warning(
                     "GhostEngine: No map_name in tick data — cannot produce spatial prediction"
                 )
-                return (0.0, 0.0)
+                return None
 
             # R4-04-01: POV tensors use different channel semantics than training
             # (Ch0=teammates, Ch1=last-known enemies vs. training's Ch0=enemies,
@@ -196,10 +201,10 @@ class GhostEngine:
 
         except RuntimeError as e:
             app_logger.error("GhostEngine inference RuntimeError (CUDA/tensor): %s", e)
-            return (0.0, 0.0)
+            return None
         except Exception as e:
             app_logger.warning("GhostEngine inference failed: %s", e)
-            return (0.0, 0.0)
+            return None
 
     @staticmethod
     def _build_knowledge_from_game_state(tick_data, game_state):

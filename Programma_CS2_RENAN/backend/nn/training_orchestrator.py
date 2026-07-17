@@ -147,7 +147,9 @@ class TrainingOrchestrator:
                 "training", "WARNING", "Training on CPU (no GPU detected). This will be slow."
             )
         except Exception:
-            pass
+            # R4 LOW: best-effort notification, but never a silent pass —
+            # mirrors the drift-notification handler's discipline.
+            logger.warning("CPU-training notification could not be recorded", exc_info=True)
 
     def _load_or_init_model(self):
         """Create model via Factory and load checkpoint if available.
