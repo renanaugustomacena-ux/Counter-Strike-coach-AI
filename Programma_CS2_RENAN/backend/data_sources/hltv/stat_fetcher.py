@@ -360,7 +360,7 @@ class HLTVStatFetcher:
     def save_teams_and_players(self, teams: List[Dict[str, Any]]) -> List[str]:
         """Persist discovered teams and link players to their teams.
 
-        Returns the number of NEW player stat URLs to scrape.
+        Returns the list of NEW player stat URLs to scrape.
         """
         db = get_hltv_db_manager()
         new_player_urls = []

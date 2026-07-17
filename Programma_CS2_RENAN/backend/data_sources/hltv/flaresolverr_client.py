@@ -87,7 +87,14 @@ class FlareSolverrClient:
             )
             logger.info("FlareSolverr session destroyed: %s", self._session_id)
         except Exception:
-            pass
+            # R4 LOW: a failed destroy leaks a headless-browser session in
+            # the container — leave a trace, keep the state reset.
+            logger.warning(
+                "FlareSolverr session destroy failed for %s — the container "
+                "may retain a browser session",
+                self._session_id,
+                exc_info=True,
+            )
         self._session_id = None
 
     # ------------------------------------------------------------------

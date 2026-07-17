@@ -113,11 +113,9 @@ def fetch_steam_profile(steam_id, api_key):
     try:
         resp = _request_with_retry(url, params, timeout=5)
         app_logger.debug("Profile status code: %s", resp.status_code)
-        if resp.status_code == 403:
-            # Try to see if there's any body info
-            app_logger.warning("403 Forbidden. Response text: %s", resp.text)
-
-        resp.raise_for_status()
+        # R4 LOW: the old `if resp.status_code == 403` branch here was
+        # unreachable — _request_with_retry raise_for_status()es first, so
+        # a 403 never returns. The body diagnostics live in the except now.
         data = resp.json()
         players = data.get("response", {}).get("players", [])
 
@@ -127,6 +125,8 @@ def fetch_steam_profile(steam_id, api_key):
         return players[0]
     except requests.exceptions.HTTPError as e:
         if e.response.status_code == 403:
+            # Body diagnostics moved here from the dead pre-raise branch.
+            app_logger.warning("403 Forbidden. Response text: %s", e.response.text)
             raise ValueError(
                 "Steam API Error 403: Forbidden.\nYour API Key is invalid or restricted.\nPlease generate a new key at: steamcommunity.com/dev/apikey"
             )

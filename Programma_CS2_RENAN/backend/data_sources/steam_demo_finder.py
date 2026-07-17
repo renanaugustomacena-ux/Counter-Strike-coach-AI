@@ -128,8 +128,13 @@ class SteamDemoFinder:
             path = Path(steam_path)
             if path.exists():
                 return path
-        except (ImportError, FileNotFoundError, OSError):
+        except FileNotFoundError:
+            # Key absent — the normal miss; path-scan fallback takes over.
             pass
+        except (ImportError, OSError):
+            # R4 LOW: winreg missing or registry failure silently degraded
+            # Steam discovery to path guessing — leave a breadcrumb.
+            logger.debug("Steam registry lookup failed — falling back to path scan", exc_info=True)
 
         return None
 
