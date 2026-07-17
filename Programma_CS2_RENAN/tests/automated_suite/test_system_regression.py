@@ -1,4 +1,6 @@
 import pytest
+
+pytestmark = pytest.mark.slow
 from sqlmodel import select
 
 from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats

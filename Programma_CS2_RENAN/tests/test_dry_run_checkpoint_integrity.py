@@ -28,6 +28,11 @@ from pathlib import Path
 
 import pytest
 
+# Each test spawns run_full_training_cycle as a subprocess (900 s cap):
+# on the monolith data box the sampler's table-scan startup alone blows
+# the budget — monolith-scale, not CI/laptop material (F7 class).
+pytestmark = pytest.mark.slow
+
 # .../Counter-Strike-coach-AI-main (where run_full_training_cycle.py lives)
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ENTRY = "run_full_training_cycle.py"

@@ -197,6 +197,19 @@ jobs:
         run: python tools/headless_validator.py
         timeout-minutes: 2
 
+      # F5 (staleness audit 2026-07-17): the integration-marked pytest tier
+      # had NO executor anywhere — phantom imports and dead mocks rotted in
+      # silence for months. Demo-dependent tests self-skip on CI (no .dem);
+      # what this catches is import errors, dead mock targets, and gated
+      # code paths that no longer exist.
+      - name: Run integration-marked pytest tier
+        env:
+          CS2_INTEGRATION_TESTS: '1'
+        # "not slow" keeps the monolith-scale e2e/system-regression suites
+        # out of the 10-minute job — they need a data box, not a CI runner.
+        run: python -m pytest Programma_CS2_RENAN/tests/ tests/ -m "integration and not slow" -q --timeout 300
+        timeout-minutes: 8
+
       - name: Run cross-module consistency checks
         run: |
           python -c "

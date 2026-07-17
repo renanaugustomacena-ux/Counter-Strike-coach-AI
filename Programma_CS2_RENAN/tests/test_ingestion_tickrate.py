@@ -129,12 +129,16 @@ def test_real_overpass_demo_header_if_present():
     if os.environ.get("CS2_INTEGRATION_TESTS") != "1":
         pytest.skip("Requires CS2_INTEGRATION_TESTS=1 and real demo")
 
-    demo = Path(
-        "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/"
-        "DEMO_PRO_PLAYERS/astralis-vs-furia-m1-overpass.dem"
+    # DP-06 SSOT — the old hardcoded "New Volume" mount died with the disk
+    # rename, so this test skipped forever even with the env flag set.
+    from Programma_CS2_RENAN.core.config import get_pro_demo_base
+
+    demo = next(
+        (p for p in sorted(get_pro_demo_base().rglob("*.dem")) if not p.is_symlink()),
+        None,
     )
-    if not demo.exists():
-        pytest.skip(f"canonical test demo missing at {demo}")
+    if demo is None:
+        pytest.skip("no .dem available under get_pro_demo_base()")
 
     name, tr = _parse_demo_header_meta(demo)
     assert name.startswith("de_")

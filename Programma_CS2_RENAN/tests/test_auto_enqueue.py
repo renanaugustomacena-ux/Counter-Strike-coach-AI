@@ -5,7 +5,7 @@ Tests IngestionTask creation and auto-enqueue functionality.
 """
 
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 from sqlmodel import select
@@ -111,10 +111,17 @@ class TestAutoEnqueue:
             assert task.updated_at is not None
             assert isinstance(task.created_at, datetime)
             assert isinstance(task.updated_at, datetime)
-            # Timestamps should be recent (within last 60 seconds)
-            # SQLite strips timezone info on round-trip — use naive datetime
-            now = datetime.now()
-            delta = (now - task.created_at).total_seconds()
+            # Timestamps should be recent (within last 60 seconds).
+            # In-session the value is the aware Python default; after a DB
+            # round-trip SQLite hands back a naive UTC datetime — normalize
+            # both sides so the subtraction is always aware-vs-aware.
+            now = datetime.now(timezone.utc)
+            created = (
+                task.created_at
+                if task.created_at.tzinfo is not None
+                else task.created_at.replace(tzinfo=timezone.utc)
+            )
+            delta = (now - created).total_seconds()
             assert delta < 60, f"created_at is {delta}s old — should be recent"
 
     def test_task_ordering(self):

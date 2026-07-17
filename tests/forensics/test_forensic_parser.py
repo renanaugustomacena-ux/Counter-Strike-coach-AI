@@ -14,14 +14,24 @@ import pytest
 from demoparser2 import DemoParser
 
 
+@pytest.mark.integration
 def test_extraction_pro_sample():
-    """Verify that we can extract data from a real pro demo in the data folder."""
-    # Resolve relative to project root
-    demo_p = os.path.join(
-        "Programma_CS2_RENAN", "data", "pro_demos", "furia-vs-natus-vincere-m1-mirage.dem"
-    )
+    """Verify that we can extract data from a real pro demo.
 
-    if not os.path.exists(demo_p):
+    Renamed from forensic_parser_test.py (never matched pytest's
+    test_*.py collection pattern) and re-pointed at the DP-06 SSOT —
+    the old Programma_CS2_RENAN/data/pro_demos/ path never existed.
+    """
+    if os.environ.get("CS2_INTEGRATION_TESTS") != "1":
+        pytest.skip("Requires CS2_INTEGRATION_TESTS=1 and a real demo")
+
+    from Programma_CS2_RENAN.core.config import get_pro_demo_base
+
+    demo_p = next(
+        (str(p) for p in sorted(get_pro_demo_base().rglob("*.dem")) if not p.is_symlink()),
+        None,
+    )
+    if demo_p is None:
         pytest.skip("Pro sample demo not found for forensic test.")
 
     parser = DemoParser(demo_p)
