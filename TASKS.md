@@ -120,6 +120,45 @@ CS2_LATENCY_MULTIPLIER=4 (5 passed) e su CI: policy invariata, budget NON toccat
 **TASKS.md è TRACCIATO in git da 2026-07-17** (richiesta owner): niente più risync manuale
 verso l'SSD, arriva col pull.
 
+**PASS 2 COMPRENSIONE (2026-07-17 sera, branch `fix/s-r8-pass2-datapath`) — lettura diretta
+dei tool DB-mutanti (fuori dal perimetro pass 1). 9 finding verificati, 3 production-grade:**
+(1) **F6-19 CHIUSO:** nessuna pipeline di ingestione chiamava enrich_from_demo → RoundStats
+vuota e i 14 campi Class-B a 0.0 di default, MA coach_manager li usa nei delta vs pro →
+segnale coaching FABBRICATO per ogni utente. Nuova SSOT
+`round_stats_builder.persist_round_stats_and_enrichment()` (idempotente, match
+case-insensitive, never-abort) chiamata da run_ingestion e user_ingest; populate_round_stats
+importa la mappa dalla SSOT. Verificato live: 300 RoundStats + 10/10 enriched reali.
+(2) **Le demo CS2 NON emettono player_blind** (evento CS:GO) → flash_assists/
+utility_blind_time/utility_enemies_blinded/blind_kill_pct strutturalmente 0.0 per TUTTI
+(pro inclusi). Il builder ora sintetizza gli eventi dalle transizioni per-tick di
+flash_duration attribuite al flashbang_detonate temporalmente più vicino (approssimazione
+documentata; transizioni non attribuibili = skip, mai guess). Live: ZywOo 3 FA / 50.7s /
+5 nemici. 5 unit test sulla sintesi. (3) populate_round_stats matchava player_name ESATTO
+vs chiavi builder lowercase → ogni pro mixed-case saltato in silenzio; ora LOWER().
+Altri: repair_tick_features join LOWER(TRIM()) (4 colonne 25-dim riparate solo per i nick
+minuscoli!) + campi parser mancanti esclusi dall'UPDATE (non più 0 fabbricati) + 2 test;
+wipe_safe: il pre-flight psutil CRASHAVA il processo su Windows (access violation nativa
+nell'enumerazione handle) → rename-probe su win32; il restore NON eliminava i -wal/-shm
+correnti prima dell'extract (SQLite avrebbe replayato un WAL post-snapshot sopra il DB
+ripristinato = stati misti) → fix + test; extractall filter="data"; USERNAME su Windows
+nell'audit; niente più riferimenti al v4 cancellato. repair_ratings scriveva rating_* NORMALIZZATI (la classe
+ratio-corruption di R4!) → verbatim dalla SSOT compute_rating_components. populate_match_results
+winner = COIN FLIP (associava CT-start→team_a del filename senza base dati) → outcome
+per starting-side only + max() sul gruppo + json.dumps + 3 test. d3_recover: tick_rate=64
+HARDCODED nei metadata ricostruiti (classe 26-NORM-01) + "Team 1"/"Team 2" fabbricati →
+header-derived rate (contratto GAP-01), sentinel onesti, marker distinti.
+
+**CHECKLIST SESSIONE DATI (SSD, dopo il mount — in ordine):**
+1. `repair_rating_scale.py --commit` (già pronto, dry-run verificato — task #5).
+2. `tools/repair_tick_features.py` POST-fix (i mixed-case player hanno ancora
+   is_crouching/is_blinded/has_helmet/has_defuser rotti sul monolite).
+3. `tools/populate_round_stats.py --full` POST-fix (enrichment mixed-case mancante +
+   metriche blind ora sintetizzabili → rienrichire TUTTI i pro).
+4. `tools/populate_match_results.py --full` (righe demo:% con winner coin-flip da rigenerare).
+5. Verificare le righe `parser_version='v1-d3-recovered'` (tick_rate 64 hardcoded) e
+   ri-derivarle dagli header (`d3_recover` fixato genera 'v2-*').
+6. `alembic upgrade head` (indice JEPA `e5f6a7b8c9d0`) PRIMA del retrain R8.
+
 **PUBBLICAZIONE — stato 2026-07-16 ~15:00:** ✅ **PR #23 MERGIATA** (12 commit S-R0/S-R1 su
 origin/main, rebase-merge, branch auto-eliminato). Sbloccata correggendo la **branch protection
 CLASSICA** (required approvals 1→0 via API — l'owner aveva modificato solo il ruleset; c'erano DUE

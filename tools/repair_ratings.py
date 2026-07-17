@@ -6,6 +6,10 @@ Repair zero-rating PlayerMatchStats records.
 Root cause: rating components produced NaN which was sanitized to 0.0.
 This script recomputes ratings from available stats using the HLTV 2.0 formula.
 
+Rating columns follow the RAW-components contract of
+``compute_rating_components()`` (the SSOT): baseline normalization happens
+only inside the ``rating`` aggregate, never in the ``rating_*`` columns.
+
 Usage:
     python tools/repair_ratings.py
 """
@@ -15,7 +19,9 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from Programma_CS2_RENAN.backend.processing.feature_engineering.rating import compute_hltv2_rating
+from Programma_CS2_RENAN.backend.processing.feature_engineering.rating import (
+    compute_rating_components,
+)
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager, init_database
 from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
 
@@ -54,8 +60,8 @@ def repair_zero_ratings():
                 skipped += 1
                 continue
 
-            new_rating = compute_hltv2_rating(kpr=kpr, dpr=dpr, kast=kast, avg_adr=adr)
-            new_rating = max(0.0, min(5.0, new_rating))
+            components = compute_rating_components(kpr=kpr, dpr=dpr, kast=kast, avg_adr=adr)
+            new_rating = max(0.0, min(5.0, components["rating"]))
 
             print(
                 f"  FIX  {rec.player_name:20s} | {rec.demo_name[:40]} | "
@@ -63,27 +69,11 @@ def repair_zero_ratings():
             )
 
             rec.rating = new_rating
-            # Also recompute and store rating components
-            from Programma_CS2_RENAN.backend.processing.feature_engineering.rating import (
-                BASELINE_ADR,
-                BASELINE_DPR_COMPLEMENT,
-                BASELINE_IMPACT,
-                BASELINE_KAST,
-                BASELINE_KPR,
-                compute_impact_rating,
-                compute_survival_rating,
-            )
-
-            impact = compute_impact_rating(kpr, adr, dpr=dpr)
-            rec.rating_kpr = kpr / BASELINE_KPR if BASELINE_KPR else 0.0
-            rec.rating_survival = (
-                compute_survival_rating(dpr) / BASELINE_DPR_COMPLEMENT
-                if BASELINE_DPR_COMPLEMENT
-                else 0.0
-            )
-            rec.rating_kast = kast / BASELINE_KAST if BASELINE_KAST else 0.0
-            rec.rating_impact = impact / BASELINE_IMPACT if BASELINE_IMPACT else 0.0
-            rec.rating_adr = adr / BASELINE_ADR if BASELINE_ADR else 0.0
+            rec.rating_kpr = components["rating_kpr"]
+            rec.rating_survival = components["rating_survival"]
+            rec.rating_kast = components["rating_kast"]
+            rec.rating_impact = components["rating_impact"]
+            rec.rating_adr = components["rating_adr"]
 
             if rec.data_quality == "complete":
                 rec.data_quality = "partial"

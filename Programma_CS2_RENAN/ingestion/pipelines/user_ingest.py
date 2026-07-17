@@ -13,9 +13,10 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 logger = get_logger("cs2analyzer.user_ingest")
 
 
-# F6-19: This pipeline stores basic PlayerMatchStats only. RoundStats, events, and
-# tick-level data are not extracted here. Full enrichment requires calling
-# enrich_from_demo() and _extract_and_store_events() from run_ingestion.py.
+# This pipeline stores PlayerMatchStats plus RoundStats/enrichment (F6-19
+# closed — the 14 Class-B fields feed coach_manager's pro-delta axes, so
+# leaving them at 0.0 fabricated coaching signal). Tick-level data is still
+# not extracted here; that remains run_ingestion.py's job.
 def ingest_user_demos(source_dir: Path, processed_dir: Path):
     db_manager = get_db_manager()
     demo_files = list(source_dir.glob("*.dem"))
@@ -45,6 +46,15 @@ def _map_and_pipeline_user(demo_path, rounds_df, db_manager, processed_dir):
         **match_stats_dict,
     )
     db_manager.upsert(match_stats)
+
+    # F6-19 closure: without this, the user's trade/opening/utility columns
+    # stay at 0.0 and every pro comparison on those axes is fabricated.
+    from Programma_CS2_RENAN.backend.processing.round_stats_builder import (
+        persist_round_stats_and_enrichment,
+    )
+
+    persist_round_stats_and_enrichment(db_manager, str(demo_path), demo_name)
+
     pipeline_ran = _trigger_ml_pipeline(db_manager, demo_name, match_stats_dict)
     if not pipeline_ran:
         logger.warning(

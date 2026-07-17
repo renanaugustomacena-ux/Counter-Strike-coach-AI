@@ -40,6 +40,29 @@ def _build_demo_path_map() -> dict:
     return {p.stem: p for p in DEMO_BASE.rglob("*.dem") if not p.is_symlink()}
 
 
+def _run_repair_update(conn, demo_name: str, available: dict) -> None:
+    """Apply the temp-table UPDATE FROM for one demo.
+
+    ``available`` maps playertickstate column -> temp-table column for the
+    fields the parser actually returned. The monolith stores player_name in
+    the ORIGINAL case from the parser ("ZywOo", "apEX"); the temp table is
+    lower+strip. An exact join here silently skipped every mixed-case
+    player (~half the monolith), so join on LOWER(TRIM()) instead.
+    """
+    set_clause = ", ".join(f"{col} = r.{tmp}" for col, tmp in available.items())
+    conn.execute(
+        f"""
+        UPDATE playertickstate
+        SET {set_clause}
+        FROM _repair r
+        WHERE playertickstate.demo_name = ?
+          AND LOWER(TRIM(playertickstate.player_name)) = r.player_name
+          AND playertickstate.tick = r.tick
+    """,
+        (demo_name,),
+    )
+
+
 def main() -> None:
     import sqlite3
 
@@ -93,61 +116,54 @@ def main() -> None:
             print("empty", flush=True)
             continue
 
-        # Compute corrected columns
+        # Compute corrected columns. ANTI-FABRICATION: a field the parser
+        # did not return must NOT be "repaired" to a default — that would
+        # overwrite the whole demo with fabricated zeros. Missing fields
+        # are excluded from the UPDATE instead.
         df["player_name"] = df["player_name"].astype(str).str.strip().str.lower()
-        df["_cr"] = df.get("ducking", pd.Series(0, index=df.index)).astype(bool).astype(int)
-        df["_bl"] = (
-            df.get("flash_duration", pd.Series(0.0, index=df.index)).astype(float) > 0
-        ).astype(int)
-        df["_hm"] = df.get("has_helmet", pd.Series(False, index=df.index)).astype(bool).astype(int)
-        df["_df"] = df.get("has_defuser", pd.Series(False, index=df.index)).astype(bool).astype(int)
+        available: dict = {}
+        if "ducking" in df.columns:
+            df["_cr"] = df["ducking"].astype(bool).astype(int)
+            available["is_crouching"] = "_cr"
+        if "flash_duration" in df.columns:
+            df["_bl"] = (df["flash_duration"].astype(float) > 0).astype(int)
+            available["is_blinded"] = "_bl"
+        if "has_helmet" in df.columns:
+            df["_hm"] = df["has_helmet"].astype(bool).astype(int)
+            available["has_helmet"] = "_hm"
+        if "has_defuser" in df.columns:
+            df["_df"] = df["has_defuser"].astype(bool).astype(int)
+            available["has_defuser"] = "_df"
+
+        missing = {"is_crouching", "is_blinded", "has_helmet", "has_defuser"} - set(available)
+        if missing:
+            print(f"WARN missing parser fields, NOT repairing: {sorted(missing)} ...", end=" ")
+        if not available:
+            print("no repairable fields", flush=True)
+            continue
 
         # Strategy: load into temp table, then UPDATE FROM (SQLite 3.33+)
+        temp_cols = list(available.values())  # e.g. ["_cr", "_bl", ...]
         conn.execute("DROP TABLE IF EXISTS _repair")
         conn.execute(
-            """
-            CREATE TEMP TABLE _repair (
-                player_name TEXT NOT NULL,
-                tick INTEGER NOT NULL,
-                cr INTEGER NOT NULL,
-                bl INTEGER NOT NULL,
-                hm INTEGER NOT NULL,
-                df INTEGER NOT NULL
-            )
-        """
+            "CREATE TEMP TABLE _repair (player_name TEXT NOT NULL, tick INTEGER NOT NULL, "
+            + ", ".join(f"{c} INTEGER NOT NULL" for c in temp_cols)
+            + ")"
         )
 
         # Bulk INSERT into temp table
         repair_data = list(
-            zip(
-                df["player_name"],
-                df["tick"].astype(int),
-                df["_cr"],
-                df["_bl"],
-                df["_hm"],
-                df["_df"],
-            )
+            zip(df["player_name"], df["tick"].astype(int), *(df[c] for c in temp_cols))
         )
         conn.executemany(
-            "INSERT INTO _repair(player_name, tick, cr, bl, hm, df) VALUES (?,?,?,?,?,?)",
+            f"INSERT INTO _repair(player_name, tick, {', '.join(temp_cols)}) "
+            f"VALUES ({', '.join('?' * (2 + len(temp_cols)))})",
             repair_data,
         )
 
         # Single UPDATE FROM — joins on (player_name, tick) within this demo
-        conn.execute(
-            """
-            UPDATE playertickstate
-            SET is_crouching = r.cr,
-                is_blinded   = r.bl,
-                has_helmet   = r.hm,
-                has_defuser  = r.df
-            FROM _repair r
-            WHERE playertickstate.demo_name = ?
-              AND playertickstate.player_name = r.player_name
-              AND playertickstate.tick = r.tick
-        """,
-            (demo_name,),
-        )
+        # (case/space-insensitive on the monolith side, see _run_repair_update).
+        _run_repair_update(conn, demo_name, available)
 
         conn.execute("DROP TABLE _repair")
         conn.commit()

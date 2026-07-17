@@ -4,12 +4,15 @@ Populate the MatchResult table from demo metadata + RoundStats outcomes.
 
 For each unique demo_name in playertickstate:
   1. Parses team names and map from the demo_name convention
-  2. Derives match winner from RoundStats round_won counts (if available)
+  2. Derives the outcome per STARTING SIDE from RoundStats round_won counts
   3. Gets map_name from playertickstate
   4. Creates a MatchResult row
 
-Winner derivation: group players by starting side (CT in rounds 1-12),
-count each group's total rounds_won. Group with more = winner.
+Outcome derivation: group players by starting side, score = max rounds_won
+within each group, winner reported as "CT_start"/"T_start"/"draw". Team
+NAMES from the filename are stored as metadata only — the DB carries no
+side↔name mapping, so pairing them would fabricate data (see
+derive_winner_from_roundstats docstring).
 
 Idempotent: skips demos that already have a MatchResult row.
 Use --full to rebuild all rows.
@@ -19,6 +22,7 @@ Usage:
     python tools/populate_match_results.py --full     # rebuild
 """
 
+import json
 import re
 import sqlite3
 import sys
@@ -75,10 +79,20 @@ def parse_demo_name(name: str) -> dict:
 
 def derive_winner_from_roundstats(conn: sqlite3.Connection, demo_name: str) -> tuple:
     """
-    Derive match winner from roundstats round_won data.
+    Derive the match outcome from roundstats round_won data.
 
-    Groups players by starting side (CT rounds 1-12 = first half).
-    Returns (team_a_score, team_b_score, winner_team_name) or (None, None, None).
+    Groups players by starting side (the side they played most rounds on is
+    their first-half side in MR12). Returns
+    (ct_start_score, t_start_score, winner_start_side) where
+    winner_start_side is "CT_start", "T_start" or "draw" — or (None, None,
+    None) when no roundstats exist.
+
+    ANTI-FABRICATION: nothing in the DB links a starting side to the team
+    NAMES parsed from the filename (that mapping lives only in the .dem
+    scoreboard, which this tool does not open). An earlier revision guessed
+    winner = team_a whenever the CT-start group won — a coin flip recorded
+    as fact. The outcome is therefore reported per starting side only; team
+    names stay in the JSON strictly as filename metadata.
     """
     rows = conn.execute(
         """
@@ -102,29 +116,28 @@ def derive_winner_from_roundstats(conn: sqlite3.Connection, demo_name: str) -> t
         player_sides[player_name][side] = total_rounds
         player_sides[player_name][f"{side}_won"] = rounds_won
 
-    ct_starters = []
-    t_starters = []
+    ct_start_scores = []
+    t_start_scores = []
     for player, sides in player_sides.items():
         total_won = sides["CT_won"] + sides["T_won"]
         if sides["CT"] >= sides["T"]:
-            ct_starters.append((player, total_won))
+            ct_start_scores.append(total_won)
         else:
-            t_starters.append((player, total_won))
+            t_start_scores.append(total_won)
 
-    if not ct_starters or not t_starters:
+    if not ct_start_scores or not t_start_scores:
         return None, None, None
 
-    ct_team_won = ct_starters[0][1]
-    t_team_won = t_starters[0][1]
-
-    parsed = parse_demo_name(demo_name)
-    team_a = parsed["team_a"] or "unknown"
-    team_b = parsed["team_b"] or "unknown"
+    # A full-match player's round_won count IS the team score; substitutes
+    # or disconnects undercount, so take the max across the group instead
+    # of whichever player happened to come first.
+    ct_team_won = max(ct_start_scores)
+    t_team_won = max(t_start_scores)
 
     if ct_team_won > t_team_won:
-        return ct_team_won, t_team_won, team_a
+        return ct_team_won, t_team_won, "CT_start"
     elif t_team_won > ct_team_won:
-        return t_team_won, ct_team_won, team_b
+        return ct_team_won, t_team_won, "T_start"
     else:
         return ct_team_won, t_team_won, "draw"
 
@@ -189,7 +202,7 @@ def main() -> None:
             if row:
                 map_name = row[0].replace("de_", "")
 
-        score_a, score_b, winner = derive_winner_from_roundstats(conn, demo_name)
+        ct_score, t_score, winner_side = derive_winner_from_roundstats(conn, demo_name)
 
         date_row = conn.execute(
             "SELECT MIN(created_at) FROM roundstats WHERE demo_name = ?",
@@ -199,12 +212,18 @@ def main() -> None:
             date_row[0] if date_row and date_row[0] else datetime.now(timezone.utc).isoformat()
         )
 
-        map_picks_json = f'{{"map": "{map_name}", "team_a": "{team_a}", "team_b": "{team_b}"}}'
-        if score_a is not None:
-            map_picks_json = (
-                f'{{"map": "{map_name}", "team_a": "{team_a}", "team_b": "{team_b}", '
-                f'"score_a": {score_a}, "score_b": {score_b}, "winner": "{winner}"}}'
+        # team_a/team_b are FILENAME metadata; scores/winner are per starting
+        # side — the DB cannot link the two (see derive_winner docstring).
+        map_picks: dict = {"map": map_name, "team_a": team_a, "team_b": team_b}
+        if ct_score is not None:
+            map_picks.update(
+                {
+                    "score_ct_start": ct_score,
+                    "score_t_start": t_score,
+                    "winner_start_side": winner_side,
+                }
             )
+        map_picks_json = json.dumps(map_picks)
 
         conn.execute(
             """
@@ -219,10 +238,14 @@ def main() -> None:
             ),
         )
         total_inserted += 1
-        if winner:
+        if winner_side:
             total_with_winner += 1
 
-        status = f"score={score_a}-{score_b} winner={winner}" if score_a else "no roundstats"
+        status = (
+            f"ct_start={ct_score} t_start={t_score} winner={winner_side}"
+            if ct_score is not None
+            else "no roundstats"
+        )
         if (i % 25 == 0) or (i == len(demo_names)):
             print(f"[{i:03d}/{len(demo_names)}] Last: {demo_name} ({status})")
 

@@ -75,24 +75,11 @@ _INSERT_SQL = (
 )
 
 # Q1-02: Enrichment keys (from round_stats_builder.aggregate_round_stats_to_match)
-# mapped to playermatchstats columns. These are the fields we UPDATE after the
-# roundstats INSERT. Any enrichment key NOT in this list is ignored.
-_ENRICHMENT_TO_PLAYERMATCHSTATS = {
-    "trade_kill_ratio": "trade_kill_ratio",
-    "was_traded_ratio": "was_traded_ratio",
-    "avg_trade_response_ticks": "avg_trade_response_ticks",  # GAP-03
-    "thrusmoke_kill_pct": "thrusmoke_kill_pct",
-    "wallbang_kill_pct": "wallbang_kill_pct",
-    "noscope_kill_pct": "noscope_kill_pct",
-    "blind_kill_pct": "blind_kill_pct",
-    "he_damage_per_round": "he_damage_per_round",
-    "molotov_damage_per_round": "molotov_damage_per_round",
-    "smokes_per_round": "smokes_per_round",
-    "flash_assists": "flash_assists",
-    "utility_blind_time": "utility_blind_time",
-    "utility_enemies_blinded": "utility_enemies_blinded",
-    "opening_duel_win_pct": "opening_duel_win_pct",
-}
+# mapped to playermatchstats columns. Imported from the builder module — the
+# single source of truth shared with the ingestion pipelines (F6-19).
+from Programma_CS2_RENAN.backend.processing.round_stats_builder import (  # noqa: E402
+    ENRICHMENT_TO_PLAYERMATCHSTATS as _ENRICHMENT_TO_PLAYERMATCHSTATS,
+)
 
 
 def _build_demo_path_map() -> dict:
@@ -239,11 +226,10 @@ def main() -> None:
             processing_step="round_stats_population",
         )
 
-        # Count how many were actually inserted (vs ignored by IGNORE)
+        # Total for this demo after INSERT OR IGNORE (reported below)
         after = conn.execute(
             "SELECT COUNT(*) FROM roundstats WHERE demo_name = ?", (demo_name,)
         ).fetchone()[0]
-        newly_inserted = after
 
         # Q1-02: Update playermatchstats with match-level enrichment for every
         # (demo_name, player_name) pair that has a row. UPDATE with no matching
@@ -262,9 +248,12 @@ def main() -> None:
             if not set_clauses:
                 continue
             values.extend([demo_name, player_name])
+            # Case-insensitive match: the builder lowercases player names
+            # while playermatchstats stores the raw parser case ("ZywOo") —
+            # an exact match silently skipped every mixed-case player.
             result = conn.execute(
                 f"UPDATE playermatchstats SET {', '.join(set_clauses)} "
-                f"WHERE demo_name = ? AND player_name = ?",
+                f"WHERE demo_name = ? AND LOWER(player_name) = ?",
                 values,
             )
             if result.rowcount > 0:

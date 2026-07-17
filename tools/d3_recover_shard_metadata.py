@@ -55,6 +55,27 @@ def demo_stem_to_match_id(stem: str) -> int:
     return int(hashlib.sha256(stem.encode()).hexdigest(), 16) % (2**63 - 1)
 
 
+def dem_header_tick_rate(dem_path: Path) -> float | None:
+    """Read the real tick rate from the .dem header, or None.
+
+    Mirrors the GAP-01 contract of run_ingestion._parse_demo_header_meta
+    (validation range [32, 256] per P-RSB-05) without importing that heavy
+    entrypoint into this standalone recovery tool. Returns None instead of
+    a default: recovery must never fabricate a rate (26-NORM-01 — a 64.0
+    written for a 128-tick demo silently halves every time window).
+    """
+    try:
+        from demoparser2 import DemoParser
+
+        header = DemoParser(str(dem_path)).parse_header()
+        rate = float(header.get("tick_rate") or 0.0)
+    except Exception:
+        return None
+    if 32.0 <= rate <= 256.0:
+        return rate
+    return None
+
+
 def parse_map_from_demo_name(demo_name: str) -> str | None:
     m = MAP_SUFFIX_RE.search(demo_name)
     if m and m.group(1) in KNOWN_MAPS:
@@ -110,18 +131,29 @@ def derive_metadata_from_shard(shard_path: Path, demo_name: str) -> dict | None:
             "WHERE player_name IS NOT NULL"
         ).fetchone()[0]
 
+        # Real tick rate from the .dem header when the file still exists.
+        # An earlier revision hardcoded 64.0 — fabricated metadata for
+        # every 128-tick demo. Rows written without a header-derived rate
+        # get a distinct parser_version so they stay findable/repairable.
+        dem_candidates = list(DEMO_BASE.rglob(f"{demo_name}.dem"))
+        real_rate = dem_header_tick_rate(dem_candidates[0]) if dem_candidates else None
+
         return {
             "demo_name": demo_name,
             "map_name": map_name or "unknown",
             "tick_count": tick_count,
             "round_count": round_count,
             "player_count": player_count,
-            "tick_rate": 64.0,
-            "team1_name": "Team 1",
-            "team2_name": "Team 2",
+            "tick_rate": real_rate if real_rate is not None else 64.0,
+            # Honest sentinels: the shard carries no team names/scores and
+            # inventing "Team 1"/"Team 2" is indistinguishable from data.
+            "team1_name": "unknown",
+            "team2_name": "unknown",
             "team1_score": 0,
             "team2_score": 0,
-            "parser_version": "v1-d3-recovered",
+            "parser_version": (
+                "v2-d3-recovered" if real_rate is not None else "v2-d3-recovered-default-rate"
+            ),
             "schema_version": 3,
             "is_pro_match": 0,
             "match_complete": 1,
@@ -327,7 +359,10 @@ def main() -> None:
         "notes": [
             "is_pro_match=0 matches existing 203-shard pattern (systemic misset, V-phase fix)",
             "RECOVERABLE_NAME_ONLY shards deferred to M2 (re-ingest from .dem)",
-            "parser_version='v1-d3-recovered' marks derived rows",
+            "parser_version='v2-d3-recovered' marks derived rows (header tick rate);",
+            "'v2-d3-recovered-default-rate' marks rows whose .dem was missing (rate=64 default);",
+            "legacy 'v1-d3-recovered' rows (2026-05-06 run) carry a HARDCODED 64.0 tick_rate —",
+            "re-derive them from headers before any 26-NORM-01-sensitive consumer trusts them",
         ],
         "RECOVERABLE_FULL": [
             {

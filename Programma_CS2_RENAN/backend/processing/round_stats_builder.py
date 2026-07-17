@@ -43,6 +43,11 @@ ALL_GRENADE_WEAPONS = HE_WEAPONS | FIRE_WEAPONS | SMOKE_WEAPONS | FLASH_WEAPONS
 # per-demo local value instead of mutating this global.
 _DEFAULT_FLASH_ASSIST_WINDOW_TICKS = 128
 
+# Minimum upward flash_duration jump (seconds) treated as a new blind
+# application in the CS2 tick-based reconstruction. Real flashes blind for
+# >= ~0.2s even at long range; float jitter sits orders of magnitude lower.
+_BLIND_EPSILON = 0.05
+
 
 def _parse_events_safe(parser, event_name: str) -> pd.DataFrame:
     """Parse events from demo, returning empty DataFrame on failure."""
@@ -445,6 +450,95 @@ def _process_utility_throws(
             round_player_stats[key]["smokes_thrown"] += 1
 
 
+def _synthesize_blind_events_from_ticks(parser) -> pd.DataFrame:
+    """Reconstruct player_blind-shaped events for CS2 demos.
+
+    Modern CS2 demos emit ZERO `player_blind` events (that was the CS:GO
+    game event) — with the old source, flash_assists / utility_blind_time /
+    utility_enemies_blinded were 0.0 for every player of every demo, and
+    coach_manager compared those zeros against pro baselines.
+
+    Reconstruction: the per-tick `flash_duration` prop is the remaining
+    blind time of a player. An upward jump (> _BLIND_EPSILON vs previous
+    tick) means "a flashbang just blinded this player for that many
+    seconds"; the thrower is attributed via the temporally closest
+    `flashbang_detonate` event within a small window. Simultaneous flashes
+    are attributed to the single closest detonation — a documented
+    approximation; when no detonation matches, the transition is skipped
+    (no attribution is fabricated).
+
+    Returns a DataFrame with columns (tick, attacker_name, user_name,
+    blind_duration) — the exact contract _process_blind_events consumes.
+    """
+    try:
+        ticks = parser.parse_ticks(["flash_duration"])
+        df = pd.DataFrame(ticks)
+    except Exception:
+        logger.warning("flash_duration tick parse failed — blind metrics stay 0", exc_info=True)
+        return pd.DataFrame()
+
+    if df.empty or "flash_duration" not in df.columns:
+        return pd.DataFrame()
+
+    name_col = "player_name" if "player_name" in df.columns else "name"
+    if name_col not in df.columns:
+        return pd.DataFrame()
+
+    deto_df = _parse_events_safe(parser, "flashbang_detonate")
+    if deto_df.empty or "tick" not in deto_df.columns:
+        # No detonations at all — nothing to attribute (weapon never thrown).
+        return pd.DataFrame()
+    thrower_col = "user_name" if "user_name" in deto_df.columns else "player_name"
+    if thrower_col not in deto_df.columns:
+        return pd.DataFrame()
+    detos = deto_df[["tick", thrower_col]].sort_values("tick").reset_index(drop=True)
+    deto_ticks = detos["tick"].astype(int).to_numpy()
+
+    # Attribution window: detonation precedes the tick-level effect by at
+    # most a handful of ticks (typically the same tick).
+    rate = _derive_flash_assist_window(parser) // 2  # window = rate*2 → rate
+    attr_back = max(2, int(rate * 0.25))
+
+    import numpy as np
+
+    df = df[[name_col, "tick", "flash_duration"]].sort_values([name_col, "tick"])
+    fd = df["flash_duration"].astype(float).to_numpy()
+    names = df[name_col].astype(str).to_numpy()
+    tick_arr = df["tick"].astype(int).to_numpy()
+
+    events = []
+    prev_fd = 0.0
+    prev_name: Optional[str] = None
+    for i in range(len(df)):
+        cur_name = names[i]
+        if cur_name != prev_name:
+            prev_fd = 0.0
+            prev_name = cur_name
+        cur_fd = fd[i]
+        if cur_fd > prev_fd + _BLIND_EPSILON:
+            t = tick_arr[i]
+            # closest detonation in [t - attr_back, t + 2]
+            lo = np.searchsorted(deto_ticks, t - attr_back, side="left")
+            hi = np.searchsorted(deto_ticks, t + 2, side="right")
+            if hi > lo:
+                window = deto_ticks[lo:hi]
+                best = lo + int(np.argmin(np.abs(window - t)))
+                events.append(
+                    {
+                        "tick": int(t),
+                        "attacker_name": str(detos.iloc[best][thrower_col]),
+                        "user_name": cur_name,
+                        "blind_duration": float(cur_fd),
+                    }
+                )
+        prev_fd = cur_fd
+
+    if not events:
+        return pd.DataFrame()
+    logger.info("Synthesized %d blind events from flash_duration ticks (CS2 path)", len(events))
+    return pd.DataFrame(events)
+
+
 def _process_blind_events(
     parser,
     deaths_df: pd.DataFrame,
@@ -453,15 +547,21 @@ def _process_blind_events(
     flash_assist_window: int,
     round_player_stats: Dict[Tuple[int, str], Dict],
 ) -> None:
-    """Accumulate blind metrics and detect flash assists from player_blind events.
+    """Accumulate blind metrics and detect flash assists from blind events.
 
     Q1-01: Always processes blind events for blind_time_on_enemies and
     enemies_blinded even when no kills occur. Only ENEMY blinds are counted;
     teammate blinds are ignored.
     Mutates *round_player_stats* in place.
+
+    Source: `player_blind` events when the demo provides them (CS:GO), else
+    synthesized from per-tick flash_duration transitions (CS2 — see
+    _synthesize_blind_events_from_ticks).
     """
     blind_df = _parse_events_safe(parser, "player_blind")
     if blind_df.empty or "blind_duration" not in blind_df.columns:
+        blind_df = _synthesize_blind_events_from_ticks(parser)
+    if blind_df.empty:
         return
 
     blind_df = blind_df.sort_values("tick").reset_index(drop=True)
@@ -774,3 +874,131 @@ def enrich_from_demo(
         len(round_stats),
     )
     return enrichment_by_player, round_stats
+
+
+# Enrichment key -> PlayerMatchStats column. Single source of truth for the
+# 14 Class-B fields produced by aggregate_round_stats_to_match();
+# tools/populate_round_stats.py imports this map instead of keeping a copy.
+ENRICHMENT_TO_PLAYERMATCHSTATS: Dict[str, str] = {
+    "trade_kill_ratio": "trade_kill_ratio",
+    "was_traded_ratio": "was_traded_ratio",
+    "avg_trade_response_ticks": "avg_trade_response_ticks",  # GAP-03
+    "thrusmoke_kill_pct": "thrusmoke_kill_pct",
+    "wallbang_kill_pct": "wallbang_kill_pct",
+    "noscope_kill_pct": "noscope_kill_pct",
+    "blind_kill_pct": "blind_kill_pct",
+    "he_damage_per_round": "he_damage_per_round",
+    "molotov_damage_per_round": "molotov_damage_per_round",
+    "smokes_per_round": "smokes_per_round",
+    "flash_assists": "flash_assists",
+    "utility_blind_time": "utility_blind_time",
+    "utility_enemies_blinded": "utility_enemies_blinded",
+    "opening_duel_win_pct": "opening_duel_win_pct",
+}
+
+
+def persist_round_stats_and_enrichment(
+    db_manager,
+    demo_path: str,
+    demo_name: str,
+) -> Tuple[int, int]:
+    """Compute and persist RoundStats + the 14 enrichment fields for one demo.
+
+    F6-19 closure: neither ingestion pipeline used to call this — RoundStats
+    stayed empty and the enrichment columns stayed at their 0.0 model
+    defaults, which coach_manager then compared against real pro baselines
+    (fabricated Z-deltas on trade/opening/utility axes for every user).
+
+    Idempotent: demos that already have RoundStats rows are skipped (same
+    contract as tools/populate_round_stats.py). Player matching for the
+    enrichment UPDATE is case-insensitive — build_round_stats lowercases
+    names while PlayerMatchStats stores the raw parser case ("ZywOo").
+
+    RoundStats.equipment_value is left at its model default here (the
+    builder works from events only); tools/populate_round_stats.py can
+    backfill it from playertickstate after tick ingestion.
+
+    Never raises: enrichment is additive — a failure here must not abort
+    the demo ingestion that already wrote core stats. Failures are logged
+    at EXCEPTION level and reported in the returned counts.
+
+    Returns:
+        (roundstats_rows_inserted, playermatchstats_rows_enriched)
+    """
+    import math
+
+    from sqlmodel import func, select
+
+    from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats, RoundStats
+
+    try:
+        enrichment_by_player, round_dicts = enrich_from_demo(str(demo_path), demo_name)
+        if not round_dicts:
+            logger.warning(
+                "No round stats derivable for %s — RoundStats/enrichment not written",
+                demo_name,
+            )
+            return 0, 0
+
+        model_fields = set(RoundStats.model_fields.keys())
+        inserted = 0
+        enriched = 0
+
+        with db_manager.get_session() as session:
+            existing = session.exec(
+                select(func.count())
+                .select_from(RoundStats)
+                .where(RoundStats.demo_name == demo_name)
+            ).one()
+            existing_count = existing[0] if isinstance(existing, tuple) else existing
+
+            if existing_count:
+                logger.info(
+                    "RoundStats already present for %s (%d rows) — insert skipped",
+                    demo_name,
+                    existing_count,
+                )
+            else:
+                for rd in round_dicts:
+                    payload = {k: v for k, v in rd.items() if k in model_fields}
+                    payload["demo_name"] = demo_name
+                    session.add(RoundStats(**payload))
+                    inserted += 1
+
+            for player_key, enrich in enrichment_by_player.items():
+                rows = session.exec(
+                    select(PlayerMatchStats).where(
+                        PlayerMatchStats.demo_name == demo_name,
+                        func.lower(PlayerMatchStats.player_name) == player_key,
+                    )
+                ).all()
+                for row in rows:
+                    for key, col in ENRICHMENT_TO_PLAYERMATCHSTATS.items():
+                        if key not in enrich:
+                            continue
+                        try:
+                            val = float(enrich[key])
+                        except (TypeError, ValueError):
+                            continue
+                        if not math.isfinite(val):
+                            continue
+                        setattr(row, col, val)
+                    session.add(row)
+                    enriched += 1
+
+            session.commit()
+
+        logger.info(
+            "RoundStats persisted for %s: %d rows inserted, %d players enriched",
+            demo_name,
+            inserted,
+            enriched,
+        )
+        return inserted, enriched
+    except Exception:
+        logger.exception(
+            "RoundStats/enrichment persistence failed for %s — core stats are "
+            "already written; run tools/populate_round_stats.py to backfill",
+            demo_name,
+        )
+        return 0, 0
