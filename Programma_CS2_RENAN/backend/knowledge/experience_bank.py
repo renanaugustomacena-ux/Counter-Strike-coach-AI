@@ -1024,7 +1024,7 @@ class ExperienceBank:
         logger.info("Extracted %s experiences from %s", experiences_added, demo_name)
         return experiences_added
 
-    def sample_for_replay(self, k: int = 5) -> List[CoachingExperience]:
+    def sample_for_replay(self, k: int = 5, seed: Optional[int] = None) -> List[CoachingExperience]:
         """Sample k experiences biased toward infrequently-retrieved ones (Eq. 4-5).
 
         Priority: p_i = (1 / max(times_retrieved, 1))^REPLAY_ALPHA, normalized.
@@ -1033,6 +1033,10 @@ class ExperienceBank:
 
         Args:
             k: Number of experiences to sample.
+            seed: RNG seed. DET-01 default: GLOBAL_SEED (42) — deterministic.
+                Pass an explicit epoch-varied seed (e.g. GLOBAL_SEED + epoch)
+                for replay diversity ACROSS epochs while staying reproducible;
+                the old hardwired default_rng(None) violated DET-01 outright.
 
         Returns:
             List of sampled CoachingExperience records (may be < k if pool is small).
@@ -1066,9 +1070,13 @@ class ExperienceBank:
             return []
         probs = priorities / total
 
-        # Sample without replacement
+        # Sample without replacement (DET-01: seeded by default)
         actual_k = min(k, len(eligible))
-        rng = np.random.default_rng(seed=None)  # Non-deterministic for replay diversity
+        if seed is None:
+            from Programma_CS2_RENAN.backend.nn.config import GLOBAL_SEED
+
+            seed = GLOBAL_SEED
+        rng = np.random.default_rng(seed=seed)
         chosen_indices = rng.choice(len(eligible), size=actual_k, replace=False, p=probs)
 
         sampled = [eligible[i] for i in chosen_indices]

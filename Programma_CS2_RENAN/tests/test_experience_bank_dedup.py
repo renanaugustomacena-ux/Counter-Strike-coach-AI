@@ -86,3 +86,17 @@ class TestDedupExperiences:
         ]
         out = dedup(items, top_k=3)
         assert [e.pro_player_name for e in out] == ["torzsi", "jame", "donk"]
+
+
+class TestReplaySamplingDeterminism:
+    """R4 MED (DET-01): sample_for_replay defaults to GLOBAL_SEED."""
+
+    def test_default_seed_is_global_seed(self):
+        import inspect
+
+        from Programma_CS2_RENAN.backend.knowledge.experience_bank import ExperienceBank
+
+        sig = inspect.signature(ExperienceBank.sample_for_replay)
+        assert "seed" in sig.parameters, "seed parameter must exist (DET-01)"
+        # None sentinel resolves to GLOBAL_SEED inside the method.
+        assert sig.parameters["seed"].default is None
