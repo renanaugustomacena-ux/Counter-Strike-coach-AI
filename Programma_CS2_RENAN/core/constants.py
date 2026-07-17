@@ -1,9 +1,14 @@
 # Project-wide constants (H-10, M-08, M-12, L-28).
 # All temporal constants defined in seconds, derived tick values computed at import.
 
+from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE
+
 # === Tick Rate ===
-TICK_RATE: int = 64
-"""CS2 standard tick rate (ticks per second)."""
+TICK_RATE: int = DEFAULT_TICK_RATE
+"""Legacy alias of the 26-NORM-01 SSOT (core.tick_rate.DEFAULT_TICK_RATE).
+
+Import the SSOT directly in new code; per-demo work must resolve the real
+rate (resolve_tick_rate), never assume this default."""
 
 # === Field of View ===
 FOV_DEGREES: float = 90.0

@@ -31,6 +31,7 @@ import sqlalchemy as sa
 from sqlalchemy import Column, Integer, event
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
+from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 _logger = get_logger("cs2analyzer.match_data_manager")
@@ -332,7 +333,9 @@ class MatchMetadata(SQLModel, table=True):
     tick_count: int = Field(default=0)
     round_count: int = Field(default=0)
     player_count: int = Field(default=10)
-    tick_rate: float = Field(default=64.0)
+    # Last-resort schema default — writers pass header/metadata-derived
+    # rates (GAP-01); the SSOT constant keeps the fallback auditable.
+    tick_rate: float = Field(default=float(DEFAULT_TICK_RATE))
 
     # Teams
     team1_name: str = Field(default="Team 1")

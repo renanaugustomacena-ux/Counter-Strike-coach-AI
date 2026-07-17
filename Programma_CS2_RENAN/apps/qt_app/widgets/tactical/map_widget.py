@@ -12,11 +12,12 @@ from Programma_CS2_RENAN.core.config import get_resource_path
 from Programma_CS2_RENAN.core.demo_frame import NadeType, Team
 from Programma_CS2_RENAN.core.playback_engine import InterpolatedPlayerState
 from Programma_CS2_RENAN.core.spatial_engine import SpatialEngine
+from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 _logger = get_logger("cs2analyzer.qt_tactical_map")
 
-TICK_RATE = 64
+TICK_RATE = DEFAULT_TICK_RATE
 PLAYER_RADIUS = 8
 HITBOX_MULTIPLIER = 2.5
 

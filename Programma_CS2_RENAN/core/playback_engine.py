@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from typing import Callable, List, Optional
 
 from Programma_CS2_RENAN.core.demo_frame import DemoFrame, NadeState, PlayerState, Team
+from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.playback_engine")
@@ -73,7 +74,7 @@ class PlaybackEngine:
         self._speed: float = self.SPEED_NORMAL
         self._clock_event: Optional[object] = None
         self._on_frame_update: Optional[Callable[[InterpolatedFrame], None]] = None
-        self._tick_rate: int = 64
+        self._tick_rate: int = DEFAULT_TICK_RATE
 
     def load_frames(self, frames: List[DemoFrame], *, tick_rate: int):
         # R4 LOW (26-TICK): tick_rate is REQUIRED — the old default 64 made

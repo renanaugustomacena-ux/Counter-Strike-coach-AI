@@ -28,6 +28,7 @@ from Programma_CS2_RENAN.core.constants import (
     SMOKE_DURATION_S,
     Z_FLOOR_THRESHOLD,
 )
+from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.player_knowledge")
@@ -261,7 +262,7 @@ class PlayerKnowledgeBuilder:
         hearing_range_gunfire: float = HEARING_RANGE_GUNFIRE,
         memory_decay_tau: Optional[float] = None,
         memory_cutoff_ticks: Optional[int] = None,
-        tick_rate: int = 64,
+        tick_rate: int = DEFAULT_TICK_RATE,
     ):
         # C1 (AUDIT 26-TICK-01): derive the tick-based memory/flash windows from the
         # per-demo tick_rate instead of the 64-hardcoded constants, so 128-tick demos

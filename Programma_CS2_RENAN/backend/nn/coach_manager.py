@@ -26,7 +26,6 @@ from Programma_CS2_RENAN.backend.storage.db_models import (
 from Programma_CS2_RENAN.backend.storage.db_models import (
     DatasetSplit,
     PlayerMatchStats,
-    PlayerProfile,
     PlayerTickState,
 )
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -169,52 +168,27 @@ class CoachTrainingManager:
                 )
                 return True, "Ready"
 
-            # If we don't have enough pro demos yet, check if we can use user demos
-            # User demos REQUIRE ID validation (need to filter specific player's ticks)
-            profile = session.exec(select(PlayerProfile)).first()
-            # 26-SCHEMA-02 (verified 2026-07-02): PlayerProfile has NEVER declared
-            # steam_connected/faceit_connected — they live on Ext_PlayerPlaystyle
-            # (the DM-02 conflated table) and NO code path writes them anywhere.
-            # These getattr reads therefore always yield False today, making the
-            # branch below the de-facto only path. Kept defensive-and-False until
-            # the connect feature is implemented or the fields are dropped (TASKS#61).
-            steam_ok = getattr(profile, "steam_connected", False)
-            faceit_ok = getattr(profile, "faceit_connected", False)
-            if not profile or not (steam_ok and faceit_ok):
-                # If no IDs connected, can only train on pro demos when available
-                if p_count > 0:
-                    msg = f"Gathering Pro Baseline. Have {p_count}/10 pro demos."
-                    get_state_manager().update_status("teacher", "Idle", msg)
-                    return False, msg
-                else:
-                    get_state_manager().update_status(
-                        "teacher",
-                        "Stalled",
-                        "Neural Stall: Connect IDs for user demo analysis OR ingest pro demos",
-                    )
-                    return (
-                        False,
-                        "Steam and FACEIT accounts required for user demo analysis. Professional demos can be ingested without IDs.",
-                    )
-
-            # IDs are connected - check user demo count
-            u_count = session.exec(
-                select(func.count(PlayerMatchStats.id)).where(PlayerMatchStats.is_pro == False)
-            ).one()
-
-            if u_count < 10:
-                msg = f"Need more data. You have {u_count}/10 personal demos."
-                get_state_manager().update_status("teacher", "Idle", msg)
-                return False, msg
-
-            # Have enough user demos
-            if p_count < 10:
+            # 26-SCHEMA-02 (owner decision 2026-07-17): the steam/faceit
+            # connect-state fields were REMOVED — no code path ever wrote them,
+            # so the user-demo prerequisite branch they gated was unreachable
+            # from day one (user-demo analysis needs a verified player identity
+            # to filter ticks). Until the connect feature is designed for real,
+            # training prerequisites are pro-only — which is the exact behavior
+            # this method has always had at runtime.
+            if p_count > 0:
                 msg = f"Gathering Pro Baseline. Have {p_count}/10 pro demos."
                 get_state_manager().update_status("teacher", "Idle", msg)
                 return False, msg
 
-        get_state_manager().update_status("teacher", "Ready", "All systems go. Starting cycle...")
-        return True, "Ready"
+            get_state_manager().update_status(
+                "teacher",
+                "Stalled",
+                "Neural Stall: ingest professional demos to begin",
+            )
+            return (
+                False,
+                "Professional demos required. Ingest pro demos to begin analysis.",
+            )
 
     def increment_maturity_counter(self):
         """Increments the maturity counter after successful demo processing."""

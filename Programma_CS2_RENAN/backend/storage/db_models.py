@@ -319,8 +319,10 @@ class Ext_PlayerPlaystyle(SQLModel, table=True):
         default=None, unique=True, index=True
     )  # Unique constraint added
     steam_avatar_url: Optional[str] = None
-    steam_connected: bool = Field(default=False)
-    faceit_connected: bool = Field(default=False)
+    # 26-SCHEMA-02 (owner decision 2026-07-17): steam_connected/faceit_connected
+    # removed — no code path ever wrote them and the only reader queried the
+    # wrong model, so the connect feature never existed end-to-end. Reintroduce
+    # via a full design (writer + reader + DM-02 split) if the product needs it.
 
     monthly_upload_count: int = Field(default=0)
     total_upload_count: int = Field(default=0)

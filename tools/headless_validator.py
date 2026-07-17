@@ -1544,6 +1544,9 @@ _EXCLUDE_DIRS = {
     "migrations",
     "alembic",
     "automated_suite",
+    # Vendored third-party: npm packages may ship Python ports inside
+    # node_modules (e.g. flatted's python/flatted.py) — not our code.
+    "node_modules",
 }
 
 
@@ -1673,6 +1676,7 @@ def verify_init_py_in_packages():
         "datasets",
         "automated_suite",
         "forensics",
+        "node_modules",
     }
     missing = []
     for d in sorted(prod_root.rglob("*")):

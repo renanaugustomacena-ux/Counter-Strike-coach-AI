@@ -26,6 +26,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from Programma_CS2_RENAN.core.config import get_pro_demo_base  # noqa: E402
+from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE  # noqa: E402
 
 # An earlier revision hardcoded the "New Volume" mount of the data box —
 # dead the moment the disk remounts under its UUID. Resolve the demo base
@@ -143,7 +144,7 @@ def derive_metadata_from_shard(shard_path: Path, demo_name: str) -> dict | None:
             "tick_count": tick_count,
             "round_count": round_count,
             "player_count": player_count,
-            "tick_rate": real_rate if real_rate is not None else 64.0,
+            "tick_rate": real_rate if real_rate is not None else float(DEFAULT_TICK_RATE),
             # Honest sentinels: the shard carries no team names/scores and
             # inventing "Team 1"/"Team 2" is indistinguishable from data.
             "team1_name": "unknown",

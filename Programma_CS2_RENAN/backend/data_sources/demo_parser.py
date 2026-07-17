@@ -13,6 +13,7 @@ from Programma_CS2_RENAN.backend.processing.feature_engineering.rating import (
     BASELINE_KAST,
     BASELINE_KPR,
 )
+from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.demo_parser")
@@ -296,8 +297,8 @@ def _compute_event_kast(parser, d_df, d_name_col, total_rounds):
         header = parser.parse_header()
         tick_rate = int(float(header.get("tick_rate", 64) or 64))
     except Exception as e:
-        logger.warning("Header parse failed for KAST trade window — using 64: %s", e)
-        tick_rate = 64
+        logger.warning("Header parse failed for KAST trade window — using DEFAULT_TICK_RATE: %s", e)
+        tick_rate = DEFAULT_TICK_RATE
 
     rounds_events: dict = {}
     for _, ev in d_df.iterrows():

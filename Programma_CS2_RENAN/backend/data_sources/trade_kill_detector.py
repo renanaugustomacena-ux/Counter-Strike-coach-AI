@@ -20,13 +20,14 @@ from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 
+from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.trade_kill_detector")
 
 # Trade window in seconds; computed as ticks at runtime based on tick rate.
 TRADE_WINDOW_S: float = 3.0
-DEFAULT_TICK_RATE: int = 64
+# DEFAULT_TICK_RATE imported from the 26-NORM-01 SSOT (core.tick_rate).
 
 
 @dataclass
