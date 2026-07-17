@@ -428,13 +428,28 @@ def scan_stale_imports(all_files: List[Path]) -> List[str]:
             continue
 
         imports = []
+        import_linenos: set = set()
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 for n in node.names:
-                    imports.append((n.asname or n.name, n.name))
+                    # `import a.b` binds the name `a` — track the bound name,
+                    # not the dotted path (R4 MED).
+                    bound = n.asname or n.name.split(".")[0]
+                    imports.append((bound, n.name))
+                for ln in range(node.lineno, (node.end_lineno or node.lineno) + 1):
+                    import_linenos.add(ln)
             elif isinstance(node, ast.ImportFrom):
+                # `from __future__ import annotations` is a compiler directive
+                # (never referenced as a Name); star imports bind unknowable
+                # names — neither is reportable.
+                if node.module == "__future__":
+                    continue
                 for n in node.names:
+                    if n.name == "*":
+                        continue
                     imports.append((n.asname or n.name, f"{node.module}.{n.name}"))
+                for ln in range(node.lineno, (node.end_lineno or node.lineno) + 1):
+                    import_linenos.add(ln)
 
         # Check usage
         # Naive text usage check in the file content (excluding the import lines themselves?)
@@ -449,22 +464,30 @@ def scan_stale_imports(all_files: List[Path]) -> List[str]:
                 # This is covered by Name check of the value
                 pass
 
+        # R4 MED: `alias not in content` could never be True — the import
+        # statement itself contains the alias text, so Phase C reported
+        # nothing, ever. Test the substring against the content WITHOUT the
+        # import lines, so it measures usage outside the import statements.
+        content_without_imports = "\n".join(
+            line for i, line in enumerate(content.split("\n"), start=1) if i not in import_linenos
+        )
+
         for alias, original in imports:
             if alias not in used_names:
-                # Fallback: Validation via text search (handling comments etc is hard for regex,
-                # but valid for "used in string" cases like rigid checks)
-                # If it's NOT in AST used_names, it might be unused.
-                # BUT: Typings?
-                if alias not in content:  # Brutal verify
-                    stale_reports.append(f"{f.relative_to(project_root)}: unused import '{alias}'")
-                elif f"'{alias}'" in content or f'"{alias}"' in content:
+                if (
+                    f"'{alias}'" in content_without_imports
+                    or f'"{alias}"' in content_without_imports
+                ):
                     # Used in string (e.g. __all__ = ["foo"]) -> Safe
-                    pass
-                # else:
-                #     # It's in content but not in AST load?
-                #     # Could be a comment.
-                #     # We'll report it as a warning.
-                #     pass
+                    continue
+                if alias not in content_without_imports:
+                    try:
+                        rel_name = f.relative_to(project_root)
+                    except ValueError:
+                        rel_name = f
+                    stale_reports.append(f"{rel_name}: unused import '{alias}'")
+                # else: appears in content (attribute chains the Name walk
+                # missed, comments, decorators) — too ambiguous to report.
 
     return stale_reports
 

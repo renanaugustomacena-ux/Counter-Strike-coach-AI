@@ -991,12 +991,18 @@ def verify_pathlib_usage():
 
 
 def verify_no_hardcoded_drive_letters_in_config():
-    """Ensure config module doesn't hardcode Windows drive letters."""
+    """Ensure config module doesn't hardcode Windows drive letters.
+
+    R4 MED: this check was a no-op — the loop collected nothing and never
+    raised, so it passed regardless of config.py content. Violations are
+    now accumulated and reported.
+    """
     import inspect
 
     from Programma_CS2_RENAN.core import config as cfg
 
     source = inspect.getsource(cfg)
+    violations = []
     # Check for absolute Windows paths that aren't in comments/docstrings
     for line in source.split("\n"):
         stripped = line.strip()
@@ -1007,6 +1013,9 @@ def verify_no_hardcoded_drive_letters_in_config():
             # Allow documented fallback paths
             if "not found" in stripped.lower() or "fallback" in stripped.lower():
                 continue
+            violations.append(stripped)
+    if violations:
+        raise AssertionError(f"hardcoded drive letters in config.py: {violations}")
 
 
 check("Platform", "pathlib-based config paths", verify_pathlib_usage)

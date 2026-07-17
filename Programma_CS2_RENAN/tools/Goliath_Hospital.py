@@ -754,7 +754,12 @@ class GoliathHospital(BaseValidator):
                     consecutive = 0
 
             # Long functions (>100 lines)
-            if any(rel.endswith(exc) for exc in _ONCOLOGY_LENGTH_EXCLUSIONS):
+            # R4 MED: normalize to POSIX before comparing — rel is
+            # os.sep-separated (backslashes on win32, the project's primary
+            # platform) while the exclusion list uses forward slashes, so
+            # the exclusions never matched on Windows.
+            rel_posix = rel.replace(os.sep, "/")
+            if any(rel_posix.endswith(exc) for exc in _ONCOLOGY_LENGTH_EXCLUSIONS):
                 continue
             try:
                 tree = ast.parse(content)

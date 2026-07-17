@@ -179,7 +179,7 @@ def collect_ingestion():
         try:
             le = s.exec(
                 text(
-                    "SELECT error_message FROM ingestiontask WHERE status='error' "
+                    "SELECT error_message FROM ingestiontask WHERE status='failed' "
                     "ORDER BY updated_at DESC LIMIT 1"
                 )
             ).first()
@@ -210,9 +210,12 @@ def collect_coach_state():
                 "target_epoch": data.get("target_epochs", 0),
                 "loss": data.get("train_loss"),
                 "matches": data.get("total_matches_processed", 0),
-                "hunter": str(data.get("hunter_status", "?")),
-                "digester": str(data.get("digester_status", "?")),
-                "teacher": str(data.get("teacher_status", "?")),
+                # R4 MED: CoachState columns are hltv_status/ingest_status/
+                # ml_status (Hunter/Digester/Teacher) — the old *_status keys
+                # never existed, so every daemon displayed "?".
+                "hunter": str(data.get("hltv_status", "?")),
+                "digester": str(data.get("ingest_status", "?")),
+                "teacher": str(data.get("ml_status", "?")),
             }
 
     return result
