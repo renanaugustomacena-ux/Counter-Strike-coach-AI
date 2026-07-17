@@ -44,7 +44,11 @@ class KnowledgeGraphManager:
         """
         if self._conn is not None:
             return self._conn
-        conn = sqlite3.connect(self.DB_PATH)
+        # R4 LOW: the cached connection outlives the creating thread —
+        # sqlite3's default check_same_thread=True would raise
+        # ProgrammingError from any other thread. Cross-thread access is
+        # serialized by _conn_lock at the call sites.
+        conn = sqlite3.connect(self.DB_PATH, check_same_thread=False)
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA synchronous=NORMAL")
         conn.execute("PRAGMA busy_timeout=30000")
@@ -222,10 +226,17 @@ class KnowledgeGraphManager:
 
 # Singleton
 _graph_instance = None
+import threading as _threading
+
+_graph_factory_lock = _threading.Lock()
 
 
 def get_knowledge_graph() -> KnowledgeGraphManager:
+    # R4 LOW: locked like every other factory in this subsystem — the
+    # unlocked check-then-set could build two managers under contention.
     global _graph_instance
     if not _graph_instance:
-        _graph_instance = KnowledgeGraphManager()
+        with _graph_factory_lock:
+            if not _graph_instance:
+                _graph_instance = KnowledgeGraphManager()
     return _graph_instance

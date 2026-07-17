@@ -441,7 +441,14 @@ class AdaptiveBeliefCalibrator:
         # affect subsequent death-probability and threat-level calculations.
         # (HP priors are already applied inside calibrate_hp_brackets.)
         if summary["weapon_lethality"]:
-            _WEAPON_LETHALITY.update(summary["weapon_lethality"])
+            # R4 LOW: swap the module-global atomically — the Teacher daemon
+            # calibrates while analysis threads read; a multi-key .update()
+            # could be observed half-applied. Rebinding a fresh dict is one
+            # atomic store under the GIL.
+            global _WEAPON_LETHALITY
+            merged = dict(_WEAPON_LETHALITY)
+            merged.update(summary["weapon_lethality"])
+            _WEAPON_LETHALITY = merged
             logger.info("Applied weapon lethality calibration to live estimator")
 
         if summary["threat_decay"] is not None:

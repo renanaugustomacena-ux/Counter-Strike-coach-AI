@@ -237,5 +237,7 @@ def from_round_stats(round_stats_list: List[dict]) -> List[MomentumState]:
 
 
 def get_momentum_tracker() -> MomentumTracker:
-    """Factory function for singleton access."""
+    """Factory: returns a NEW instance per call (R4 LOW: the old
+    docstring claimed singleton access — stateful callers relying on
+    that lost accumulated state silently)."""
     return MomentumTracker()
