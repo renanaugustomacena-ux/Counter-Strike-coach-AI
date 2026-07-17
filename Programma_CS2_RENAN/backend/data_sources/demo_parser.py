@@ -116,24 +116,29 @@ def _extract_stats_with_full_fields(parser, total_rounds, target_player):
     except (ValueError, KeyError, TypeError) as e:
         logger.debug("Could not compute per-round variance: %s", e)
 
-    # --- HLTV 2.0 LOGIC START ---
-    # Validated: baselines and formula match the canonical rating module
-    # (backend/processing/feature_engineering/rating.py, R²=0.995).
-    # Vectorized here for DataFrame performance; scalar version in rating.py.
+    return _apply_hltv2_columns(totals)
 
+
+def _apply_hltv2_columns(totals: pd.DataFrame) -> pd.DataFrame:
+    """Vectorized HLTV 2.0 columns for the per-player totals DataFrame.
+
+    Mirrors rating.compute_rating_components EXACTLY — raw component scale;
+    baseline normalization only inside the ``rating`` aggregate. The parity
+    is pinned by test_rating_components_contract.py: change both or neither.
+    """
     # 1. Base Metrics
     totals["kpr"] = totals["avg_kills"]
     totals["dpr"] = totals["avg_deaths"]
 
-    # 2. Impact Rating
-    # Formula: 2.13*KPR + 0.42*AssistPR - 0.41*SurvivalPR (Simplified for Phase 2)
-    # We don't have AssistPR yet easily, so we use refined Kills/ADR proxy for now
-    # until Multikill sub-task is complete.
-    # REF: study_notes/domain_2_math.md
-    totals["rating_impact"] = (totals["kpr"] * 2.13) + (totals["avg_adr"] / 100 * 0.42)
+    # 2. Impact Rating — vectorized compute_impact_rating(kpr, adr, dpr=dpr).
+    # dpr IS available here, so the survival penalty is applied; omitting it
+    # inflated impact by ~0.1-0.2 vs the canonical scalar (rating.py).
+    totals["rating_impact"] = (
+        (totals["kpr"] * 2.13) + (totals["avg_adr"] / 100 * 0.42) - 0.41 * (1.0 - totals["dpr"])
+    )
 
-    # 3. Survival Rating
-    # Formula: (1 - DPR) / Avg_Survival_Rate (~0.33) ? No, simply component weight.
+    # 3. Survival Rating — raw 1-dpr, NOT baseline-normalized (see the
+    # compute_rating_components contract).
     totals["rating_survival"] = 1.0 - totals["dpr"]
 
     # 4. Component Storage
@@ -145,9 +150,10 @@ def _extract_stats_with_full_fields(parser, total_rounds, target_player):
     totals["rating_kpr"] = totals["kpr"]
     totals["rating_adr"] = totals["avg_adr"]
 
-    # 5. Normalized rating (each component scaled to ~1.0 baseline)
+    # 5. Normalized rating — the ONLY place normalization happens; the
+    # stored rating_* columns above stay raw.
     r_kill = totals["kpr"] / RATING_BASELINE_KPR
-    r_surv = (1.0 - totals["dpr"]) / RATING_BASELINE_SURVIVAL
+    r_surv = totals["rating_survival"] / RATING_BASELINE_SURVIVAL
     r_kast = totals["rating_kast"] / RATING_BASELINE_KAST
     r_imp = totals["rating_impact"] / 1.0
     r_dmg = totals["avg_adr"] / RATING_BASELINE_ADR

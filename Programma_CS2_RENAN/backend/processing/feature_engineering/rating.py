@@ -84,6 +84,53 @@ def compute_survival_rating(dpr: float) -> float:
     return 1.0 - dpr
 
 
+def compute_rating_components(
+    kpr: float,
+    dpr: float,
+    kast: float,
+    avg_adr: float,
+) -> dict:
+    """
+    Single source of truth for the PlayerMatchStats ``rating_*`` columns.
+
+    CONTRACT — column scale is RAW components (NOT baseline-normalized):
+        rating_kpr      = kpr                                  (~0.68 avg pro)
+        rating_survival = 1 - dpr                              (~0.32 avg pro)
+        rating_kast     = kast ratio 0-1                       (~0.70 avg pro)
+        rating_impact   = compute_impact_rating(kpr, adr, dpr) (~1.0-1.4 pro)
+        rating_adr      = avg_adr                              (~73-85 pro)
+        rating          = compute_hltv2_rating(...) aggregate  (~1.0 avg pro)
+
+    Baseline normalization (``/ BASELINE_*``) happens ONLY inside the
+    ``rating`` aggregate. pro_baseline.py, skill_assessment.py and
+    coach_manager.py all consume the raw scale — writing normalized ratios
+    into these columns silently corrupts every downstream Z-score.
+
+    Every PlayerMatchStats writer MUST use this function. The vectorized
+    DataFrame path in demo_parser._apply_hltv2_columns replicates it and is
+    pinned by the parity test in test_rating_components_contract.py.
+
+    Args:
+        kpr: Kills per round (ratio, e.g. 0.72)
+        dpr: Deaths per round (ratio, e.g. 0.65)
+        kast: KAST ratio (0.0 - 1.0, e.g. 0.72)
+        avg_adr: Average damage per round (raw, e.g. 85.3)
+
+    Returns:
+        Dict with keys rating_kpr, rating_survival, rating_kast,
+        rating_impact, rating_adr, rating.
+    """
+    impact = compute_impact_rating(kpr, avg_adr, dpr=dpr)
+    return {
+        "rating_kpr": kpr,
+        "rating_survival": compute_survival_rating(dpr),
+        "rating_kast": kast,
+        "rating_impact": impact,
+        "rating_adr": avg_adr,
+        "rating": compute_hltv2_rating(kpr, dpr, kast, avg_adr, impact=impact),
+    }
+
+
 def compute_hltv2_rating(
     kpr: float,
     dpr: float,

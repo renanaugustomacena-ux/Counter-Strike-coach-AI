@@ -56,11 +56,24 @@ class TestParseSequentialTicksEdgeCases:
 
 
 class TestRatingFormulas:
-    """Test the HLTV 2.0 rating formulas with controlled scalar inputs.
+    """Exercise the HLTV 2.0 rating math through the vectorized parser path.
 
-    These mirror the calculations inside _extract_stats_with_full_fields()
-    using the exact same formula coefficients from demo_parser.py.
+    These call demo_parser._apply_hltv2_columns (the code that actually runs
+    in production) instead of re-deriving coefficients locally; full parity
+    with the scalar SSOT is pinned in test_rating_components_contract.py.
     """
+
+    @staticmethod
+    def _totals(avg_kills, avg_deaths, avg_adr, avg_kast):
+        return pd.DataFrame(
+            {
+                "player_name": ["p1"],
+                "avg_kills": [avg_kills],
+                "avg_deaths": [avg_deaths],
+                "avg_adr": [avg_adr],
+                "avg_kast": [avg_kast],
+            }
+        )
 
     def test_kd_ratio_calculation(self):
         """KD ratio = kills / deaths (0-division safe)."""
@@ -86,67 +99,41 @@ class TestRatingFormulas:
         assert avg_deaths == pytest.approx(1.0)
         assert avg_adr == pytest.approx(100.0)
 
-    def test_rating_components(self):
-        """Rating 2.0 component normalization uses known baseline divisors."""
-        kpr = 0.679  # exactly at baseline
-        dpr = 0.683  # above baseline death rate
-        kast = 0.70
-        avg_adr = 73.3
+    def test_rating_components_are_raw_scale(self):
+        """The stored rating_* columns carry RAW components, never ratios."""
+        from Programma_CS2_RENAN.backend.data_sources.demo_parser import _apply_hltv2_columns
 
-        r_kill = kpr / 0.679
-        r_surv = (1.0 - dpr) / 0.317
-        r_kast = kast / 0.70
-        r_dmg = avg_adr / 73.3
-
-        # At baseline values, all components should be ~1.0
-        assert r_kill == pytest.approx(1.0)
-        assert r_kast == pytest.approx(1.0)
-        assert r_dmg == pytest.approx(1.0)
-
-        # Survival: (1.0 - 0.683) / 0.317 = 0.317/0.317 = 1.0
-        assert r_surv == pytest.approx(1.0)
+        out = _apply_hltv2_columns(self._totals(0.679, 0.683, 73.3, 0.70))
+        row = out.iloc[0]
+        assert row["rating_kpr"] == pytest.approx(0.679)
+        assert row["rating_survival"] == pytest.approx(1.0 - 0.683)
+        assert row["rating_kast"] == pytest.approx(0.70)
+        assert row["rating_adr"] == pytest.approx(73.3)
 
     def test_final_rating_at_baseline(self):
-        """Rating at exact baseline values should be ~1.0."""
-        kpr = 0.679
-        dpr = 0.683
-        kast = 0.70
-        avg_adr = 73.3
-        impact = 1.0
+        """Rating at formula-baseline values should be ~1.0 (impact term
+        contributes its own deviation, hence the loose bound)."""
+        from Programma_CS2_RENAN.backend.data_sources.demo_parser import _apply_hltv2_columns
 
-        r_kill = kpr / 0.679
-        r_surv = (1.0 - dpr) / 0.317
-        r_kast = kast / 0.70
-        r_imp = impact / 1.0
-        r_dmg = avg_adr / 73.3
-
-        rating = (r_kill + r_surv + r_kast + r_imp + r_dmg) / 5.0
-        assert rating == pytest.approx(1.0)
+        out = _apply_hltv2_columns(self._totals(0.679, 0.683, 73.3, 0.70))
+        rating = out.iloc[0]["rating"]
+        # 4 of 5 components are exactly 1.0 at baseline; impact floats with
+        # the ADR-proxy formula, so the aggregate sits near — not at — 1.0.
+        assert 0.9 < rating < 1.3
 
     def test_econ_rating_formula(self):
         """econ_rating = avg_adr / 85.0."""
-        avg_adr = 85.0
-        assert avg_adr / 85.0 == pytest.approx(1.0)
+        from Programma_CS2_RENAN.backend.data_sources.demo_parser import _apply_hltv2_columns
 
-        avg_adr = 42.5
-        assert avg_adr / 85.0 == pytest.approx(0.5)
+        out = _apply_hltv2_columns(self._totals(0.679, 0.683, 85.0, 0.70))
+        assert out.iloc[0]["econ_rating"] == pytest.approx(1.0)
 
     def test_high_performer_rating_above_one(self):
         """A player with stats above baseline should have rating > 1.0."""
-        kpr = 1.2
-        dpr = 0.4
-        kast = 0.85
-        avg_adr = 100.0
-        impact = (kpr * 2.13) + (avg_adr / 100 * 0.42)
+        from Programma_CS2_RENAN.backend.data_sources.demo_parser import _apply_hltv2_columns
 
-        r_kill = kpr / 0.679
-        r_surv = (1.0 - dpr) / 0.317
-        r_kast = kast / 0.70
-        r_imp = impact / 1.0
-        r_dmg = avg_adr / 73.3
-
-        rating = (r_kill + r_surv + r_kast + r_imp + r_dmg) / 5.0
-        assert rating > 1.0
+        out = _apply_hltv2_columns(self._totals(1.2, 0.4, 100.0, 0.85))
+        assert out.iloc[0]["rating"] > 1.0
 
 
 class TestDemoParserIntegration:
