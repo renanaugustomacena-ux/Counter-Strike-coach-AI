@@ -229,7 +229,7 @@ class TestDeceptionAnalyzer:
         from Programma_CS2_RENAN.backend.analysis.deception_index import DeceptionAnalyzer
 
         analyzer = DeceptionAnalyzer()
-        result = analyzer.analyze_round(pd.DataFrame())
+        result = analyzer.analyze_round(pd.DataFrame(), tick_rate=64.0)
 
         assert result.fake_flash_rate == 0.0
         assert result.rotation_feint_rate == 0.0
@@ -253,7 +253,7 @@ class TestDeceptionAnalyzer:
             }
         )
 
-        result = analyzer.analyze_round(df)
+        result = analyzer.analyze_round(df, tick_rate=64.0)
         assert result.fake_flash_rate == 1.0, "All flashes without blinds should be baits"
 
     def test_composite_index_bounded(self):
@@ -272,7 +272,7 @@ class TestDeceptionAnalyzer:
                 "pos_y": [0.0, 500.0, 1000.0],
             }
         )
-        result = analyzer.analyze_round(df)
+        result = analyzer.analyze_round(df, tick_rate=64.0)
         assert 0.0 <= result.composite_index <= 1.0
 
     def test_compare_to_baseline_narrative(self):
@@ -1038,3 +1038,134 @@ class TestEconomyHalfSwitchIsPistol:
 
         decision = EconomyOptimizer().recommend(current_money=1000, round_number=24, mr_format=12)
         assert "Overtime" not in decision.reasoning
+
+
+class TestR4MedAnalysisRegressions:
+    """R4 MED batch 9 regression pins (game_tree TT, deception window,
+    belief calibration honesty, win-predictor checkpoint wiring)."""
+
+    def test_tt_key_distinguishes_node_types(self):
+        """A max node and a min node with identical state must NOT share a
+        transposition-table slot."""
+        from Programma_CS2_RENAN.backend.analysis.game_tree import _state_hash
+
+        state = {"alive_players": 3, "enemy_alive": 2, "team_economy": 4000}
+        assert _state_hash(state, "max") != _state_hash(state, "min")
+        assert _state_hash(state, "max") == _state_hash(dict(state), "max")
+
+    def test_tt_reuses_deeper_not_shallower_evaluations(self):
+        """depth is distance-from-root: a value cached at depth 2 (shallow
+        remaining subtree) must NOT be reused for a depth-0 query, while a
+        value cached at depth 0 (deep subtree) IS valid at depth 2."""
+        from Programma_CS2_RENAN.backend.analysis.game_tree import ExpectiminimaxSearch, GameNode
+
+        evaluator = ExpectiminimaxSearch.__new__(ExpectiminimaxSearch)
+        evaluator._tt = {}
+        evaluator._tt_hits = 0
+        evaluator._predictor = None
+
+        leaf_state = {"alive_players": 1, "enemy_alive": 1}
+        node = GameNode(node_type="max", state=leaf_state, children=[])
+
+        from Programma_CS2_RENAN.backend.analysis.game_tree import _state_hash
+
+        sh = _state_hash(leaf_state, "max")
+        evaluator._tt[sh] = (0.42, 2)  # cached at depth 2 (shallow)
+
+        # Query at depth 0 must NOT hit the shallow cache: evaluate leaf anew.
+        # GameNode with no children is a leaf → _evaluate_leaf fallback path.
+        value = evaluator.evaluate(node, depth=0)
+        assert evaluator._tt_hits == 0, "shallow cache entry must not satisfy a deeper query"
+
+        # Cached at depth 0 (deep) IS reusable at depth 2.
+        evaluator._tt[sh] = (0.77, 0)
+        value = evaluator.evaluate(node, depth=2)
+        assert evaluator._tt_hits == 1
+        assert value == 0.77
+
+    def test_flash_blind_window_scales_with_tick_rate(self):
+        """2s window: a blind 200 ticks after the flash is inside the window
+        at 128 tick/s (256-tick window) but outside at 64 tick/s (128)."""
+        import pandas as pd
+
+        from Programma_CS2_RENAN.backend.analysis.deception_index import DeceptionAnalyzer
+
+        analyzer = DeceptionAnalyzer()
+        df = pd.DataFrame(
+            {
+                "event_type": ["flashbang_throw", "player_blind"],
+                "tick": [1000, 1200],
+            }
+        )
+        rate64 = analyzer._detect_flash_baits(df, tick_rate=64.0)
+        rate128 = analyzer._detect_flash_baits(df, tick_rate=128.0)
+        assert rate64 == 1.0, "at 64 tick/s the blind is outside the 2s window → bait"
+        assert rate128 == 0.0, "at 128 tick/s the same gap is 1.56s → effective flash"
+
+    def test_belief_calibration_drops_eco_rows_instead_of_fabricating_hp(self, monkeypatch):
+        """Eco/force rounds must be DROPPED, not mapped to fabricated
+        health=60/30 (which mis-calibrated the damaged/critical priors to
+        eco-round death rates)."""
+        from contextlib import contextmanager
+
+        from sqlmodel import Session, SQLModel, create_engine
+
+        import Programma_CS2_RENAN.backend.storage.database as db_mod
+        from Programma_CS2_RENAN.backend.analysis import belief_model
+        from Programma_CS2_RENAN.backend.storage.db_models import RoundStats
+
+        engine = create_engine("sqlite:///:memory:")
+        SQLModel.metadata.create_all(engine)
+        with Session(engine) as s:
+            s.add(
+                RoundStats(
+                    demo_name="d",
+                    player_name="p",
+                    round_number=1,
+                    equipment_value=5000,
+                    deaths=1,
+                )
+            )
+            s.add(
+                RoundStats(
+                    demo_name="d",
+                    player_name="p",
+                    round_number=2,
+                    equipment_value=1000,
+                    deaths=1,
+                )
+            )
+            s.commit()
+
+        class _Mgr:
+            @contextmanager
+            def get_session(self, engine_key="default"):
+                with Session(engine) as session:
+                    yield session
+
+        monkeypatch.setattr(db_mod, "get_db_manager", lambda: _Mgr())
+
+        df = belief_model.extract_death_events_from_db()
+        assert len(df) == 1, "only the full-buy round survives"
+        assert set(df["health"].unique()) == {100}
+
+    def test_win_predictor_factory_wires_existing_checkpoint(self, tmp_path, monkeypatch):
+        """get_win_predictor must pass the standard checkpoint path when the
+        file exists — the bare factory ran production on random weights."""
+        import torch
+
+        from Programma_CS2_RENAN.backend.analysis import win_probability as wp
+
+        ckpt = tmp_path / "win_prob_predictor.pt"
+        torch.save(wp.WinProbabilityNN().state_dict(), ckpt)
+        monkeypatch.setattr(wp, "get_default_checkpoint_path", lambda: str(ckpt))
+
+        predictor = wp.get_win_predictor()
+        assert predictor._checkpoint_loaded is True
+
+    def test_win_predictor_factory_flags_heuristic_when_absent(self, tmp_path, monkeypatch):
+        from Programma_CS2_RENAN.backend.analysis import win_probability as wp
+
+        monkeypatch.setattr(wp, "get_default_checkpoint_path", lambda: str(tmp_path / "missing.pt"))
+        predictor = wp.get_win_predictor()
+        assert predictor._checkpoint_loaded is False

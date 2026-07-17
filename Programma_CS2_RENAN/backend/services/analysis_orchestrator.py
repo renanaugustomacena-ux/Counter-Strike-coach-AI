@@ -284,7 +284,11 @@ class AnalysisOrchestrator:
         insights: List[CoachingInsight] = []
 
         try:
-            metrics = self.deception_analyzer.analyze_round(tick_data)
+            # 26-NORM-01: per-demo tick rate via the orchestrator SSOT — the
+            # analyzer's flash-blind window is seconds-based and rate-aware.
+            metrics = self.deception_analyzer.analyze_round(
+                tick_data, tick_rate=self._resolve_tick_rate(demo_name, tick_data)
+            )
 
             if metrics.composite_index > 0.6:
                 insights.append(

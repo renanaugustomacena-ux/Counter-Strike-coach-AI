@@ -37,10 +37,16 @@ DEFAULT_NODE_BUDGET = 1000
 _TT_MAX_SIZE = 10_000
 
 
-def _state_hash(state: Dict) -> int:
-    """Create a deterministic hash from a game state dict for memoization."""
+def _state_hash(state: Dict, node_type: str) -> int:
+    """Create a deterministic hash from a game state dict for memoization.
+
+    R4 MED: node_type is part of the key — a max node and a min/chance node
+    with identical numeric state have DIFFERENT values (different operator
+    over the children), so sharing a TT slot returned wrong cached values.
+    """
     # Use only the numeric fields that affect evaluation
     key = (
+        node_type,
         state.get("alive_players", 5),
         state.get("enemy_alive", 5),
         state.get("team_economy", 4000),
@@ -368,10 +374,14 @@ class ExpectiminimaxSearch:
         Returns:
             Utility value in [0, 1] representing estimated win probability.
         """
-        # Transposition table lookup
-        sh = _state_hash(node.state)
+        # Transposition table lookup. depth is distance-from-root, so a
+        # SMALLER stored depth means the value was computed with a DEEPER
+        # remaining subtree — reuse is sound only when cached[1] <= depth.
+        # (R4 MED: the old >= reused shallow evaluations at nodes that
+        # required deeper lookahead.)
+        sh = _state_hash(node.state, node.node_type)
         cached = self._tt.get(sh)
-        if cached is not None and cached[1] >= depth:
+        if cached is not None and cached[1] <= depth:
             self._tt_hits += 1
             return cached[0]
 

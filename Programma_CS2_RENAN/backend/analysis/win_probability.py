@@ -338,9 +338,33 @@ class WinProbabilityPredictor:
         return self.predict(game_state)
 
 
+def get_default_checkpoint_path() -> str:
+    """Canonical on-disk location for the trained win-probability checkpoint.
+
+    Shared convention for the trainer (win_probability_trainer) and the
+    predictor factory below — keep them pointed at the same file.
+    """
+    import os
+
+    from Programma_CS2_RENAN.core.config import MODELS_DIR
+
+    return os.path.join(MODELS_DIR, "global", "win_prob_predictor.pt")
+
+
 def get_win_predictor() -> WinProbabilityPredictor:
-    """Factory function for win predictor."""
-    return WinProbabilityPredictor()
+    """Factory for the win predictor (26-HYB-01 load-or-degrade discipline).
+
+    R4 MED: this used to construct WinProbabilityPredictor() with no
+    model_path, so production ALWAYS ran on Xavier-random weights even when
+    a trained checkpoint existed on disk. The standard checkpoint location
+    is now wired; when the file is absent the predictor stays explicitly
+    heuristic-only (_checkpoint_loaded=False, W-02 error log) so callers
+    like game_tree can gate on it.
+    """
+    import os
+
+    path = get_default_checkpoint_path()
+    return WinProbabilityPredictor(model_path=path if os.path.exists(path) else None)
 
 
 # ---------------------------------------------------------------------------
