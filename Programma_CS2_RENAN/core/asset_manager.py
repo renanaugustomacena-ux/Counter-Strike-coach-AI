@@ -203,6 +203,15 @@ class AssetAuthority:
         if cls._fallback_texture is not None:
             return cls._fallback_texture
 
+        # R4 MED: in headless/Qt-only mode the kivy import at the top of this
+        # module resolves Texture to None — Texture.create would raise
+        # AttributeError. SmartAsset.texture is Optional by contract.
+        if Texture is None:
+            _logger.warning(
+                "Kivy absent — checkered fallback texture unavailable " "(headless/Qt-only mode)"
+            )
+            return None
+
         size = 64
         buf = bytearray(size * size * 3)
 

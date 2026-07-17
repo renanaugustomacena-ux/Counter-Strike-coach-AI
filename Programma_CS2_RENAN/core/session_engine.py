@@ -591,11 +591,20 @@ def _commit_trained_sample_count(count: int) -> None:
     try:
         with db.get_session() as s:
             st = s.exec(select(CoachState)).first()
-            if st:
-                st.last_trained_sample_count = count
-                s.add(st)
-                s.commit()  # F6-03: persist trained sample count; context manager does not auto-commit here
-    except (SQLAlchemyError, OSError) as e:
+            if st is None:
+                # R4 MED: this used to be a silent no-op — with the count
+                # never persisted, last_count stayed 0 and the teacher daemon
+                # re-entered the cold-start retrain path on EVERY cycle once
+                # pro_count >= 10. Create the row instead.
+                logger.warning(
+                    "CoachState row missing — creating it to persist trained " "sample count %d",
+                    count,
+                )
+                st = CoachState()
+            st.last_trained_sample_count = count
+            s.add(st)
+            s.commit()  # F6-03: persist trained sample count; context manager does not auto-commit here
+    except (SQLAlchemyError, OSError):
         logger.exception("Failed to commit trained sample count")
 
 

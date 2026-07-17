@@ -91,6 +91,13 @@ class MapManager:
             Clock.schedule_once(lambda dt: callback(None, asset.texture), 0)
             return None
 
+        # R4 MED: the missing-asset branch above degrades gracefully without
+        # kivy (MM-02), but a VALID asset used to crash here with
+        # AttributeError on Loader=None. Same rule for both branches.
+        if Loader is None:
+            _logger.warning("MM-02: kivy absent — async load skipped for '%s'", map_name)
+            return None
+
         proxy_image = Loader.image(asset.path)
         proxy_image.bind(on_load=callback)
         return proxy_image

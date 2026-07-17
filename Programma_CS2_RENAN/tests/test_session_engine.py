@@ -287,7 +287,11 @@ class TestCommitTrainedSampleCount:
             state = session.exec(select(CoachState)).first()
             assert state.last_trained_sample_count == 120
 
-    def test_no_crash_when_no_coach_state(self, monkeypatch):
+    def test_missing_coach_state_row_is_created(self, monkeypatch):
+        """R4 MED: with no CoachState row this used to silently no-op — the
+        count never persisted, so last_count stayed 0 and the teacher daemon
+        re-entered the cold-start retrain path on every cycle. The row must
+        be created and the count persisted."""
         from Programma_CS2_RENAN.core.session_engine import _commit_trained_sample_count
 
         engine = _make_engine()
@@ -296,8 +300,12 @@ class TestCommitTrainedSampleCount:
             "Programma_CS2_RENAN.core.session_engine.get_db_manager", lambda: mock_db
         )
 
-        # No CoachState → should not crash
         _commit_trained_sample_count(50)
+
+        with Session(engine) as session:
+            state = session.exec(select(CoachState)).first()
+            assert state is not None, "missing CoachState row must be created"
+            assert state.last_trained_sample_count == 50
 
 
 # ===========================================================================

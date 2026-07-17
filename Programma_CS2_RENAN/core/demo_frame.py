@@ -55,8 +55,10 @@ class PlayerState:
 
     def __post_init__(self):
         # DF-01: Sanitize NaN/Inf coordinates from demo parser bugs.
-        # Replace with 0.0 to prevent silent downstream failures in spatial calculations.
-        for attr in ("x", "y", "z"):
+        # Replace with 0.0 to prevent silent downstream failures in spatial
+        # calculations. R4 MED: yaw included — an unsanitized Inf yaw reached
+        # _interpolate_angle's wrap-around loop and hung the playback clock.
+        for attr in ("x", "y", "z", "yaw"):
             val = getattr(self, attr)
             if math.isnan(val) or math.isinf(val):
                 object.__setattr__(self, attr, 0.0)
