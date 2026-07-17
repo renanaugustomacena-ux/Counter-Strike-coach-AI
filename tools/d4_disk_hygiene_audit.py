@@ -19,6 +19,7 @@ Usage:
     ./.venv/bin/python tools/d4_disk_hygiene_audit.py
     ./.venv/bin/python tools/d4_disk_hygiene_audit.py --report-out docs/d4_audit.json
 """
+
 from __future__ import annotations
 
 import argparse

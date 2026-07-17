@@ -8,6 +8,7 @@ Usage:
     python tools/ingest_pro_demos.py --full          # full rebuild: re-ingest everything
     python tools/ingest_pro_demos.py --retrain-only  # skip ingestion, just retrain
 """
+
 import sys
 from pathlib import Path
 

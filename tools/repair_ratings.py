@@ -13,6 +13,7 @@ only inside the ``rating`` aggregate, never in the ``rating_*`` columns.
 Usage:
     python tools/repair_ratings.py
 """
+
 import sys
 from pathlib import Path
 
