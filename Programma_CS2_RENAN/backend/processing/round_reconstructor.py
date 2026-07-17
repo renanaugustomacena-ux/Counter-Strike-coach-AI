@@ -577,7 +577,14 @@ class RoundReconstructor:
         # Kills
         enemy_elims = [e for e in events if e.event_type == "enemy_eliminated"]
         if enemy_elims:
-            parts.append(f"{len(enemy_elims)} kill{'s' if len(enemy_elims) > 1 else ''}")
+            # R4 LOW: enemy_eliminated fires on ANY teammate's kill —
+            # labeling them the player's own "kills" contradicted the
+            # RoundStats header and fed the LLM self-contradicting
+            # grounding (a hallucination source).
+            parts.append(
+                f"{len(enemy_elims)} enem{'ies' if len(enemy_elims) > 1 else 'y'} "
+                "eliminated (team-wide)"
+            )
 
         # Outcome
         if survived:

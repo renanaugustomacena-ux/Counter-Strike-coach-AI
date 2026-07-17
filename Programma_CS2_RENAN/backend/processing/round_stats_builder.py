@@ -204,6 +204,13 @@ def _derive_flash_assist_window(parser) -> int:
             return _DEFAULT_FLASH_ASSIST_WINDOW_TICKS
         return tick_rate * 2
     except Exception:
+        # R4 LOW: a header failure masking systematic tick-rate
+        # misconfiguration across a whole batch must leave a trace.
+        logger.warning(
+            "Header parse failed — flash-assist window falls back to %d ticks",
+            _DEFAULT_FLASH_ASSIST_WINDOW_TICKS,
+            exc_info=True,
+        )
         return _DEFAULT_FLASH_ASSIST_WINDOW_TICKS
 
 

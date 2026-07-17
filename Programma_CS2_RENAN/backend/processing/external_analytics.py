@@ -58,6 +58,9 @@ class EliteAnalytics:
         path = get_resource_path(rel_path)
         if os.path.exists(path):
             return pd.read_csv(path)
+        # R4 LOW: a missing reference CSV silently emptied every elite
+        # comparison built on it — name the file so the gap is observable.
+        _logger.warning("External analytics dataset missing: %s", path)
         return pd.DataFrame()
 
     def _prepare_data(self):

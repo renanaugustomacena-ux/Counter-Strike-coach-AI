@@ -202,6 +202,12 @@ def get_adaptive_signatures(map_name: Optional[str] = None) -> Dict[PlayerRole, 
 
         confidence_mult = MetaDriftEngine.get_meta_confidence_adjustment(map_name)
     except Exception:
+        # R4 LOW: adaptive signatures silently degrading to static forever
+        # is exactly the class of failure that must be observable.
+        logger.warning(
+            "MetaDriftEngine unavailable — using static role signatures",
+            exc_info=True,
+        )
         return sigs
 
     # confidence_mult in [0.5, 1.0]; lower = more drift
