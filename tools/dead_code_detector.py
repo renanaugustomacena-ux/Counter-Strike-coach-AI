@@ -27,11 +27,18 @@ ENTRY_POINTS = {
     project_root / "goliath.py",
     project_root / "console.py",
 }
-# Add all tools to entry points (project-level and inner)
-for tool in TOOLS_DIR.glob("*.py"):
+# Add all tools to entry points (project-level and inner).
+# rglob: nested tool packages (e.g. tools/fuzz/) hold CI-invoked entry
+# points — fuzz_demo_parser.py is launched by fuzz-nightly.yml, never
+# imported, and glob-only coverage flagged it as an orphan.
+for tool in TOOLS_DIR.rglob("*.py"):
     ENTRY_POINTS.add(tool)
-for tool in INNER_TOOLS_DIR.glob("*.py"):
+for tool in INNER_TOOLS_DIR.rglob("*.py"):
     ENTRY_POINTS.add(tool)
+# Eval benches are standalone CLIs (documented in evals/*/README.md),
+# invoked as `python evals/...` — never imported by the package.
+for script in (project_root / "evals").rglob("*.py"):
+    ENTRY_POINTS.add(script)
 # Standalone entry-point scripts (run directly, never imported)
 _STANDALONE_SCRIPTS = [
     SOURCE_DIR / "run_worker.py",
@@ -557,7 +564,9 @@ def main():
             print(f"  - {s}")
         if len(stale) > 20:
             print(f"  ... and {len(stale)-20} more")
-        # Stale imports are warnings
+        # Phase C findings are real dead code — they must flip the
+        # verdict just like orphans, or --strict silently ignores them.
+        has_issues = True
 
     strict = "--strict" in sys.argv
     if has_issues:
