@@ -109,6 +109,7 @@ def backup_match_data(target_dir: Optional[Path] = None) -> Path:
     archive_path = target_dir / archive_name
 
     skip_extensions = {".db-wal", ".db-shm"}
+    failed_shards: list[str] = []
 
     # WR-33: Use sqlite3.backup() for .db files to eliminate TOCTOU race
     # between WAL checkpoint and tar.add(). The backup API holds locks while
@@ -137,9 +138,20 @@ def backup_match_data(target_dir: Optional[Path] = None) -> Path:
                         if os.path.exists(tmp_path):
                             os.unlink(tmp_path)
                 except Exception as e:
+                    failed_shards.append(entry.name)
                     logger.warning("Atomic backup failed for %s: %s", entry.name, e)
             else:
                 tar.add(str(entry), arcname=entry.name)
+
+    # R4 LOW: a partial archive must never masquerade as a complete backup
+    # (repo rule: untested/incomplete backups = no backups). Callers such as
+    # pre-migration hooks rely on this raise to abort.
+    if failed_shards:
+        raise RuntimeError(
+            f"Match data backup INCOMPLETE — {len(failed_shards)} shard(s) "
+            f"failed: {failed_shards[:10]} (archive kept at {archive_path} "
+            "for inspection, do NOT treat it as a full backup)"
+        )
 
     size_mb = archive_path.stat().st_size / (1024 * 1024)
     logger.info("Match data backup created: %s (%s MB)", archive_path, format(size_mb, ".2f"))

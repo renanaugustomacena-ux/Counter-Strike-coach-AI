@@ -56,11 +56,20 @@ class _RateLimiter:
         with self._lock:
             timestamps = self._hits[key]
             # Prune expired entries
-            self._hits[key] = [t for t in timestamps if t > cutoff]
-            timestamps = self._hits[key]
+            pruned = [t for t in timestamps if t > cutoff]
+            if not pruned:
+                # R4 LOW: evict idle keys — the defaultdict grew one entry
+                # per distinct client IP forever.
+                self._hits.pop(key, None)
+                timestamps = []
+            else:
+                self._hits[key] = pruned
+                timestamps = pruned
             if len(timestamps) >= self._max:
                 return False, 0
             timestamps.append(now)
+            if not pruned:
+                self._hits[key] = timestamps
             return True, self._max - len(timestamps)
 
 
@@ -89,23 +98,32 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return response
 
 
-# Configuration
-ARCHIVE_PATH = Path(get_setting("DEMO_ARCHIVE_PATH", "D:/CS2_Demos/Archive"))
-API_KEY = get_setting("STORAGE_API_KEY", "")
+# Configuration — resolved at CALL time via helpers, never frozen at
+# import (R4 LOW / repo daemon rule: a rotated STORAGE_API_KEY or moved
+# archive path must take effect without a process restart).
 API_KEY_NAME = "access_token"
+
+
+def _archive_path() -> Path:
+    return Path(get_setting("DEMO_ARCHIVE_PATH", "D:/CS2_Demos/Archive"))
+
+
+def _api_key() -> str:
+    return get_setting("STORAGE_API_KEY", "")
 
 
 @asynccontextmanager
 async def _lifespan(_application: FastAPI):
     """Modern lifespan handler (replaces deprecated @app.on_event)."""
-    logger.info("Storage Server starting... Serving: %s", ARCHIVE_PATH)
-    if not API_KEY:
+    archive = _archive_path()
+    logger.info("Storage Server starting... Serving: %s", archive)
+    if not _api_key():
         logger.warning(
             "STORAGE_API_KEY is empty — all authenticated endpoints will return 503. "
             "Set STORAGE_API_KEY in settings to enable file operations."
         )
-    if not ARCHIVE_PATH.exists():
-        ARCHIVE_PATH.mkdir(parents=True, exist_ok=True)
+    if not archive.exists():
+        archive.mkdir(parents=True, exist_ok=True)
     yield
 
 
@@ -116,13 +134,16 @@ api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 
 
 async def get_api_key(api_key_header: str = Security(api_key_header)):
-    if not API_KEY:
+    # R4 LOW: resolved per request — a rotated key or a late-added setting
+    # takes effect without a process restart (daemon config rule).
+    current_key = _api_key()
+    if not current_key:
         raise HTTPException(status_code=503, detail="Server API key not configured")
     if not api_key_header:
         raise HTTPException(status_code=403, detail="Missing API key")
     import hmac
 
-    if hmac.compare_digest(api_key_header, API_KEY):
+    if hmac.compare_digest(api_key_header, current_key):
         return api_key_header
     raise HTTPException(status_code=403, detail="Could not validate credentials")
 
@@ -138,7 +159,7 @@ async def list_files(api_key: str = Depends(get_api_key)):
     """List all available demos in archive."""
     files = []
     try:
-        for entry in os.scandir(ARCHIVE_PATH):
+        for entry in os.scandir(_archive_path()):
             if entry.is_file() and entry.name.endswith(".dem"):
                 files.append(
                     FileInfo(
@@ -156,10 +177,10 @@ async def list_files(api_key: str = Depends(get_api_key)):
 @app.get("/download/{filename}")
 async def download_file(filename: str, api_key: str = Depends(get_api_key)):
     """Download specific demo file."""
-    file_path = (ARCHIVE_PATH / filename).resolve()
+    file_path = (_archive_path() / filename).resolve()
     # P2-04: Use is_relative_to instead of startswith to prevent prefix bypass
     # (e.g. /data vs /data2). Available in Python 3.9+.
-    if not file_path.is_relative_to(ARCHIVE_PATH.resolve()):
+    if not file_path.is_relative_to(_archive_path().resolve()):
         raise HTTPException(status_code=403, detail="Access denied")
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found")

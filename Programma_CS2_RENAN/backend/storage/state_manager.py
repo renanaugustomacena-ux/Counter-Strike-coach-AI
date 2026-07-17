@@ -84,6 +84,14 @@ class StateManager:
                             f"Invalid global status {status!r}. Valid values: {valid_statuses}"
                         )
                     state.status = status
+                else:
+                    # R4 LOW: a typo'd daemon name used to fall through,
+                    # refresh last_updated and commit — a silent no-op that
+                    # masked daemon state transitions (R2-13).
+                    raise ValueError(
+                        f"Unknown daemon {daemon_key!r} — valid: "
+                        f"{[d.value for d in DaemonName]}"
+                    )
 
                 if detail:
                     state.detail = detail

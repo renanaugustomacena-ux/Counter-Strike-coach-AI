@@ -451,7 +451,13 @@ class MatchDataManager:
                         "Reconnect the drive and restart ingestion.",
                     )
                 except Exception:
-                    pass
+                    # R4 LOW: never swallow silently — the disconnect itself
+                    # still raises below; this only affects observability.
+                    logger.warning(
+                        "WR-14: could not record the storage-disconnect "
+                        "notification (state manager unavailable?)",
+                        exc_info=True,
+                    )
                 raise IOError(f"Match data storage disconnected: {self.match_data_path}")
 
             # M-18: True LRU eviction — dispose least recently used (first item)
@@ -775,12 +781,40 @@ class MatchDataManager:
                 session.exec(select(MatchTickState).where(MatchTickState.tick == tick)).all()
             )
 
+    # Temporal-memory lookback in SECONDS — converted per demo via
+    # MatchMetadata.tick_rate (R4 LOW 26-TICK: the old fixed 320-tick
+    # default meant 5 s at 64 tick/s but silently 2.5 s on 128-tick demos).
+    MEMORY_WINDOW_SECONDS: float = 5.0
+
+    def _default_window_ticks(self, match_id: int) -> int:
+        """MEMORY_WINDOW_SECONDS expressed in this match's ticks."""
+        rate = 64
+        try:
+            meta = self.get_metadata(match_id)
+            candidate = int(getattr(meta, "tick_rate", 0) or 0)
+            if 32 <= candidate <= 256:
+                rate = candidate
+            else:
+                logger.warning(
+                    "Match %s has no usable tick_rate (%r) — memory window "
+                    "falls back to 64 tick/s",
+                    match_id,
+                    candidate,
+                )
+        except Exception:
+            logger.warning(
+                "Metadata lookup failed for match %s — memory window falls " "back to 64 tick/s",
+                match_id,
+                exc_info=True,
+            )
+        return int(self.MEMORY_WINDOW_SECONDS * rate)
+
     def get_player_tick_window(
         self,
         match_id: int,
         player_name: str,
         center_tick: int,
-        window_size: int = 320,
+        window_size: Optional[int] = None,
     ) -> List[MatchTickState]:
         """Get a player's ticks within a window around center_tick.
 
@@ -791,10 +825,14 @@ class MatchDataManager:
             player_name: Player name to filter.
             center_tick: The center tick.
             window_size: Number of ticks before center_tick to include.
+                None (default) derives MEMORY_WINDOW_SECONDS from the
+                match's own tick rate.
 
         Returns:
             List of MatchTickState ordered by tick.
         """
+        if window_size is None:
+            window_size = self._default_window_ticks(match_id)
         start_tick = max(0, center_tick - window_size)
         with self.get_match_session(match_id) as session:
             return list(
@@ -811,7 +849,7 @@ class MatchDataManager:
         self,
         match_id: int,
         center_tick: int,
-        window_size: int = 320,
+        window_size: Optional[int] = None,
     ) -> Dict[int, List[MatchTickState]]:
         """Get ALL players' states within a tick window.
 
@@ -819,17 +857,21 @@ class MatchDataManager:
         enemy memory in PlayerKnowledgeBuilder. The window covers
         [center_tick - window_size, center_tick].
 
-        At 64 tick/s with window_size=320 and 10 players, this returns
-        ~3200 records. SQLite range scan with tick index: ~10ms.
+        A 5 s window with 10 players returns ~3200 records at 64 tick/s.
+        SQLite range scan with tick index: ~10ms.
 
         Args:
             match_id: The match ID.
             center_tick: The center tick.
             window_size: Number of ticks before center_tick to include.
+                None (default) derives MEMORY_WINDOW_SECONDS from the
+                match's own tick rate.
 
         Returns:
             Dict[int, List[MatchTickState]] grouped by tick.
         """
+        if window_size is None:
+            window_size = self._default_window_ticks(match_id)
         start_tick = max(0, center_tick - window_size)
         with self.get_match_session(match_id) as session:
             results = list(

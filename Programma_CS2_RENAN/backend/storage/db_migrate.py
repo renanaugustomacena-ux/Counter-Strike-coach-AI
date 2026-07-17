@@ -45,9 +45,13 @@ def ensure_database_current() -> bool:
 
         # Check current vs target revision
         engine = create_engine(DATABASE_URL)
-        with engine.connect() as conn:
-            context = MigrationContext.configure(conn)
-            current_rev = context.get_current_revision()
+        try:
+            with engine.connect() as conn:
+                context = MigrationContext.configure(conn)
+                current_rev = context.get_current_revision()
+        finally:
+            # R4 LOW: release the pool/file handle (was never disposed).
+            engine.dispose()
 
         script = ScriptDirectory.from_config(alembic_cfg)
         head_rev = script.get_current_head()
@@ -86,9 +90,12 @@ def get_current_revision() -> str | None:
         from Programma_CS2_RENAN.core.config import DATABASE_URL
 
         engine = create_engine(DATABASE_URL)
-        with engine.connect() as conn:
-            context = MigrationContext.configure(conn)
-            return context.get_current_revision()
+        try:
+            with engine.connect() as conn:
+                context = MigrationContext.configure(conn)
+                return context.get_current_revision()
+        finally:
+            engine.dispose()
     except Exception:
         logger.debug("Could not retrieve current DB revision", exc_info=True)
         return None

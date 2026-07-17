@@ -186,8 +186,16 @@ class DatabaseManager:
                     default = ""
                     if col.default is not None and col.default.arg is not None:
                         arg = col.default.arg
-                        if isinstance(arg, (int, float, str, bool)):
+                        # R4 LOW: Python repr is not SQL quoting — a str with
+                        # a single quote produced broken DDL, and bool
+                        # rendered as True/False keywords instead of 1/0.
+                        if isinstance(arg, bool):
+                            default = f" DEFAULT {int(arg)}"
+                        elif isinstance(arg, (int, float)):
                             default = f" DEFAULT {arg!r}"
+                        elif isinstance(arg, str):
+                            escaped = arg.replace("'", "''")
+                            default = f" DEFAULT '{escaped}'"
                     elif not col.nullable:
                         default = " DEFAULT ''"
 
@@ -199,7 +207,14 @@ class DatabaseManager:
                         )
                     except Exception as e:
                         if "duplicate column" in str(e).lower():
-                            pass
+                            # Expected race with a concurrent migrator —
+                            # logged at debug so it is never fully silent
+                            # (R4 LOW no-silent-failure).
+                            logger.debug(
+                                "Schema: %s.%s already exists — skipped",
+                                table.name,
+                                col_name,
+                            )
                         else:
                             logger.warning(
                                 "Schema: failed to add %s.%s: %s", table.name, col_name, e
