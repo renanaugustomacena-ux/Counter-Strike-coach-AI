@@ -27,7 +27,6 @@ logger = get_logger("cs2analyzer.trade_kill_detector")
 # Trade window in seconds; computed as ticks at runtime based on tick rate.
 TRADE_WINDOW_S: float = 3.0
 DEFAULT_TICK_RATE: int = 64
-TRADE_WINDOW_TICKS: int = int(TRADE_WINDOW_S * DEFAULT_TICK_RATE)
 
 
 @dataclass

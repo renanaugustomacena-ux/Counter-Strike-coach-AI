@@ -357,7 +357,11 @@ class TestGetPlayerTradeStats:
 class TestTradeKillConstants:
     """Tests for module-level constants."""
 
-    def test_trade_window_ticks(self):
-        from Programma_CS2_RENAN.backend.data_sources.trade_kill_detector import TRADE_WINDOW_TICKS
+    def test_trade_window_ticks_constant_is_gone(self):
+        """R4 LOW (26-TICK): the 64-tick-baked TRADE_WINDOW_TICKS export had
+        zero internal call sites — detect_trade_kills computes the window
+        from the actual demo rate. The constant must not come back."""
+        import Programma_CS2_RENAN.backend.data_sources.trade_kill_detector as tkd
 
-        assert TRADE_WINDOW_TICKS == 192  # 3 seconds at 64 tick
+        assert not hasattr(tkd, "TRADE_WINDOW_TICKS")
+        assert tkd.TRADE_WINDOW_S == 3.0  # seconds-based SSOT remains
