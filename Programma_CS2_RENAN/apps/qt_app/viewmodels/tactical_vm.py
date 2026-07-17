@@ -130,7 +130,12 @@ class TacticalGhostVM(QObject):
         for p in players:
             if p.is_alive and is_dataclass(p):
                 try:
-                    gx, gy = self._engine.predict_tick(p)
+                    prediction = self._engine.predict_tick(p)
+                    if prediction is None:
+                        # R4 LOW: inference failed — no ghost beats a ghost
+                        # fabricated at the map origin.
+                        continue
+                    gx, gy = prediction
                     ghost = replace(p, x=gx, y=gy, is_ghost=True)
                     ghosts.append(ghost)
                 except Exception as e:

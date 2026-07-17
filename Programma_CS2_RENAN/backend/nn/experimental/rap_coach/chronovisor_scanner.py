@@ -13,7 +13,7 @@ Algorithm:
 
 Doctoral-Level Rigor:
 - Uses signal processing (Savitzky-Golay optional, or simple moving average) to smooth noise.
-- Validates "Maturity" before running (via CoachManager).
+- Checks "Maturity" before running (advisory: warns on sub-maturity scans).
 """
 
 from dataclasses import dataclass
@@ -146,11 +146,19 @@ class ChronovisorScanner:
         self.model = self._load_model()
 
     def _load_model(self) -> Optional[RAPCoachModel]:
-        """Loads the trained model. Returns None if not mature or missing."""
-        is_mature, _ = self.manager.check_maturity_gate()
-        # For development/testing, we might skip the gate check depending on config,
-        # but for Phase 12 strictness, we should probably enforce it or warn.
-        # The UI gates access, but the backend logic should be robust.
+        """Loads the trained model (missing checkpoint → None).
+
+        R4 LOW: the maturity gate is ADVISORY here — the UI gates access,
+        but backend callers can scan below maturity; that now leaves a loud
+        trace instead of a silently discarded check result.
+        """
+        is_mature, maturity_detail = self.manager.check_maturity_gate()
+        if not is_mature:
+            logger.warning(
+                "Chronovisor scanning below the maturity gate (%s) — "
+                "critical moments may be low-quality",
+                maturity_detail,
+            )
 
         try:
             model = RAPCoachModel()
