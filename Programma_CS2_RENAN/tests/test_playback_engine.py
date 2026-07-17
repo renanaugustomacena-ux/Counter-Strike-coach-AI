@@ -114,14 +114,14 @@ class TestPlaybackEngine:
         """Test loading frames into the engine."""
         engine = PlaybackEngine()
         frames = self._create_test_frames(50)
-        engine.load_frames(frames)
+        engine.load_frames(frames, tick_rate=64)
         assert engine.get_total_ticks() == 49  # Last tick index
 
     def test_seek_to_tick(self):
         """Test seeking to a specific tick."""
         engine = PlaybackEngine()
         frames = self._create_test_frames(100)
-        engine.load_frames(frames)
+        engine.load_frames(frames, tick_rate=64)
 
         engine.seek_to_tick(50)
         assert engine.get_current_tick() == 50

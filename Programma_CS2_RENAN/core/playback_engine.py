@@ -75,7 +75,10 @@ class PlaybackEngine:
         self._on_frame_update: Optional[Callable[[InterpolatedFrame], None]] = None
         self._tick_rate: int = 64
 
-    def load_frames(self, frames: List[DemoFrame], tick_rate: int = 64):
+    def load_frames(self, frames: List[DemoFrame], *, tick_rate: int):
+        # R4 LOW (26-TICK): tick_rate is REQUIRED — the old default 64 made
+        # playback speed silently wrong by the rate ratio on 128-tick demos
+        # whenever a caller omitted it (both production callers did).
         self._frames = frames
         self._tick_rate = tick_rate
         self._current_index = 0

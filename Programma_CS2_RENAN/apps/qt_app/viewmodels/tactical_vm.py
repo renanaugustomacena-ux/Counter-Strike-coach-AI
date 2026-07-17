@@ -52,9 +52,9 @@ class TacticalPlaybackVM(QObject):
                 self.is_playing_changed.emit(playing)
         self.frame_updated.emit(frame)
 
-    def load_frames(self, frames: List):
+    def load_frames(self, frames: List, *, tick_rate: int):
         if self._engine:
-            self._engine.load_frames(frames)
+            self._engine.load_frames(frames, tick_rate=tick_rate)
             self._total_ticks = self._engine.get_total_ticks()
             self.total_ticks_changed.emit(self._total_ticks)
 
