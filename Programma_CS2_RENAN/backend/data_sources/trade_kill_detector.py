@@ -354,7 +354,16 @@ def analyze_demo_trades(parser) -> Tuple[TradeKillResult, Dict[str, Dict[str, fl
     try:
         header = parser.parse_header()
         tick_rate = int(float(header.get("tick_rate", DEFAULT_TICK_RATE) or DEFAULT_TICK_RATE))
-    except Exception:
+    except Exception as e:
+        # R4 MED: never swallow this silently — on a 128-tick demo the 3s
+        # trade window silently halves (192 vs 384 ticks), dropping every
+        # legitimate trade in the 1.5-3.0s band.
+        logger.warning(
+            "Header parse failed, falling back to tick_rate=%d: %s",
+            DEFAULT_TICK_RATE,
+            e,
+            exc_info=True,
+        )
         tick_rate = DEFAULT_TICK_RATE
     result = detect_trade_kills(deaths_df, roster, tick_rate=tick_rate)
 

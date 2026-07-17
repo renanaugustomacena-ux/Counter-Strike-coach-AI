@@ -245,29 +245,53 @@ class TestWR56DialogueContext:
         assert messages[3]["content"] == "What about utility?"
 
 
-# ============ WR-44: time_in_round stays in [0, 1] ============
+# ============ WR-44 → R4 MED: honest time_in_round, clamp in vectorizer ============
 
 
 class TestWR44TimeInRound:
-    """WR-44: time_in_round must not exceed 115s after clipping."""
+    """R4 MED superseded WR-44: raw time_in_round is NOT clamped at 115s
+    (bomb plant extends rounds past it; the 115 pin flattened the post-plant
+    temporal signal). The [0, 1] guarantee for feature 20 lives in the
+    vectorizer's min(t/115, 1.0), which must saturate, not overflow."""
 
-    def test_clip_at_115_not_175(self):
+    def test_post_plant_seconds_exceed_115_raw(self):
+        import pandas as pd
+
+        from Programma_CS2_RENAN.backend.data_sources.round_context import assign_round_to_ticks
+
+        tick_rate = 64.0
+        df = pd.DataFrame({"tick": [0, 64 * 60, 64 * 130]})  # 0s, 60s, 130s
+        rc = pd.DataFrame({"round_number": [1], "round_start_tick": [0]})
+        out = assign_round_to_ticks(df, rc, tick_rate=tick_rate)
+        assert out["time_in_round"].tolist() == [
+            0.0,
+            60.0,
+            130.0,
+        ], "raw seconds must be honest — 130s post-plant must NOT pin to 115"
+
+    def test_warmup_ticks_get_zero_not_bogus(self):
+        import pandas as pd
+
+        from Programma_CS2_RENAN.backend.data_sources.round_context import assign_round_to_ticks
+
+        # First round starts at tick 5000; earlier ticks are warmup.
+        df = pd.DataFrame({"tick": [1000, 6000]})
+        rc = pd.DataFrame({"round_number": [1], "round_start_tick": [5000]})
+        out = assign_round_to_ticks(df, rc, tick_rate=64.0)
+        # Old code: fillna(0) start → 1000/64 = 15.6 bogus seconds.
+        assert out["time_in_round"].tolist() == [0.0, pytest.approx(1000 / 64.0)]
+        assert out["round_number"].tolist() == [1, 1]
+
+    def test_vectorizer_feature20_saturates_to_1(self):
         import numpy as np
 
-        # Directly test the clipping logic that assign_round_to_ticks applies.
-        # The fix changed upper=175.0 to upper=115.0 in round_context.py.
-        tick_rate = 64
-        round_start_tick = 0
-        # Simulate ticks spanning 200 seconds
-        ticks = np.arange(0, int(200 * tick_rate), tick_rate)
-        time_in_round = ((ticks - round_start_tick) / tick_rate).clip(0.0, 115.0)
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import (
+            _fill_context_features,
+        )
 
-        assert (
-            time_in_round.max() <= 115.0
-        ), f"time_in_round must clip at 115.0, got {time_in_round.max()}"
-        # Verify the vectorizer normalization stays in [0, 1]
-        normalized = time_in_round / 115.0
-        assert normalized.max() <= 1.0, f"Normalized time must be <= 1.0, got {normalized.max()}"
+        vec = np.zeros(25, dtype=np.float32)
+        _fill_context_features(vec, lambda k, d=None: {"time_in_round": 130.0}.get(k, d), None)
+        assert vec[20] == 1.0, "feature 20 must saturate at 1.0 for >115s"
 
 
 # ============ CORE-10: NaN yaw interpolation ============

@@ -159,7 +159,8 @@ def extract_bomb_events(demo_path: str) -> pd.DataFrame:
 def assign_round_to_ticks(
     df_ticks: pd.DataFrame,
     round_context: pd.DataFrame,
-    tick_rate: float = 64.0,
+    *,
+    tick_rate: float,
 ) -> pd.DataFrame:
     """Assign round_number and time_in_round to each tick row.
 
@@ -170,7 +171,9 @@ def assign_round_to_ticks(
     Args:
         df_ticks: DataFrame with a 'tick' column (must be sorted).
         round_context: DataFrame from extract_round_context().
-        tick_rate: Demo tick rate (default 64.0 for CS2).
+        tick_rate: Demo tick rate. Required keyword — a 64.0 default here
+            silently halved time_in_round on 128-tick demos (26-TICK/26-NORM-01:
+            the per-demo rate must always be resolved by the caller).
 
     Returns:
         df_ticks with added columns: round_number, time_in_round
@@ -208,11 +211,17 @@ def assign_round_to_ticks(
     else:
         merged["round_number"] = 1
 
-    # Compute time_in_round in seconds
+    # Compute time_in_round in seconds. NO upper clamp (R4 MED): bomb plant
+    # extends rounds well past 115s from round start, and pinning post-plant
+    # ticks to 115.0 flattened the temporal signal; the 25-dim feature is
+    # normalized (and saturated to 1.0) in the vectorizer, not here. Warmup
+    # ticks (round_start_tick NaN) get an explicit 0.0 — the old fillna(0)
+    # start turned them into tick/tick_rate, a huge bogus value the 115
+    # clamp happened to mask.
     if "round_start_tick" in merged.columns:
         merged["time_in_round"] = (
-            (merged["tick"] - merged["round_start_tick"].fillna(0)) / tick_rate
-        ).clip(lower=0.0, upper=115.0)
+            ((merged["tick"] - merged["round_start_tick"]) / tick_rate).clip(lower=0.0).fillna(0.0)
+        )
     else:
         merged["time_in_round"] = 0.0
 

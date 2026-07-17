@@ -25,6 +25,7 @@ import re
 import time
 import urllib.request
 import urllib.robotparser
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 try:
@@ -54,7 +55,16 @@ _HLTV_ROBOTS_URL = "https://www.hltv.org/robots.txt"
 _HLTV_BASE_URL = "https://www.hltv.org"
 
 HLTV_STATS_START_DATE = "2021-06-01"
-HLTV_STATS_END_DATE = "2026-05-06"
+
+
+def _hltv_stats_end_date() -> str:
+    """Today, ISO — computed at request time.
+
+    R4 MED: this was a hardcoded past date ("2026-05-06"), silently freezing
+    every sub-page stat (individual/career/opponents/clutches) at that day:
+    all newer matches were excluded from the scraped window forever.
+    """
+    return datetime.now(timezone.utc).date().isoformat()
 
 
 def check_robots_txt(target_url: str = _HLTV_BASE_URL + "/stats/players") -> bool:
@@ -450,7 +460,7 @@ class HLTVStatFetcher:
     def _fetch_player_stats(self, url: str) -> Optional[Dict[str, Any]]:
         """Fetch overview + all sub-pages for one player.
 
-        Sub-pages use HLTV_STATS_START_DATE..HLTV_STATS_END_DATE.
+        Sub-pages use HLTV_STATS_START_DATE.._hltv_stats_end_date() (today).
         Overview has no date filter.
         """
         logger.info("Deep-crawling stats for: %s", url)
@@ -478,7 +488,7 @@ class HLTVStatFetcher:
                 logger.warning("Non-numeric player ID in URL: %s", p_id)
                 return None
 
-            date_qs = f"?startDate={HLTV_STATS_START_DATE}&endDate={HLTV_STATS_END_DATE}"
+            date_qs = f"?startDate={HLTV_STATS_START_DATE}&endDate={_hltv_stats_end_date()}"
             base = f"{_HLTV_BASE_URL}/stats/players"
 
             sub_pages = {

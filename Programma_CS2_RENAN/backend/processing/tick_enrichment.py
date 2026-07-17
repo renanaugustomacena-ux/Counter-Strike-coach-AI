@@ -34,7 +34,8 @@ logger = get_logger("cs2analyzer.tick_enrichment")
 def enrich_tick_data(
     df_all_players: pd.DataFrame,
     demo_path: str,
-    tick_rate: float = 64.0,
+    *,
+    tick_rate: float,
     map_name: str = "de_unknown",
 ) -> pd.DataFrame:
     """Enrich tick DataFrame with cross-player and contextual features.
@@ -47,7 +48,9 @@ def enrich_tick_data(
             Must contain: tick, player_name, team_name, is_alive, balance,
             X, Y, Z, yaw, health, armor, equipment_value.
         demo_path: Path to the .dem file for event extraction.
-        tick_rate: Demo tick rate (default 64.0 for CS2).
+        tick_rate: Demo tick rate. Required keyword — the old 64.0 default
+            replicated the GAP-01 hazard (silently halved time_in_round on
+            128-tick demos); callers must resolve the per-demo rate.
         map_name: Map name to propagate to every row.
 
     Returns:
