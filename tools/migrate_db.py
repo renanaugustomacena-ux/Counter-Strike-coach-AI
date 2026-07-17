@@ -6,7 +6,6 @@ this script is retained only as an archive for historical reference.
 """
 
 import argparse
-import logging
 import os
 import sqlite3
 import sys

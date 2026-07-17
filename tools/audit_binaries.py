@@ -1,13 +1,12 @@
 import argparse
 import hashlib
 import json
-import logging
 import os
 import signal
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Optional, Set
 
 # --- Venv Guard ---
 if sys.prefix == sys.base_prefix and not os.environ.get("CI"):

@@ -177,3 +177,84 @@ class TestDemoParserIntegration:
         from Programma_CS2_RENAN.backend.data_sources.demo_parser import parse_sequential_ticks
 
         assert "rate" not in inspect.signature(parse_sequential_ticks).parameters
+
+
+class TestEventDrivenKast:
+    """Runtime E2E 2026-07-17: the closed-form KAST estimate saturates at
+    1.0 for any player averaging >=1 kill/round — 8/10 pros of the first
+    real ingested demo were stamped avg_kast=1.0. KAST now comes from the
+    real per-round K/A/S/T events; the estimate is only a loud fallback."""
+
+    class _StubParser:
+        def parse_header(self):
+            return {"tick_rate": 64}
+
+    @staticmethod
+    def _deaths_df():
+        # Round 0: A kills B (B traded by C within window? C kills A at +100).
+        # Round 1: B kills C; A survives (no A events).
+        # Round 2: A kills B and C (multikill — must count as ONE round).
+        rows = [
+            {
+                "attacker_name": "A",
+                "user_name": "B",
+                "assister_name": "",
+                "tick": 1000,
+                "total_rounds_played": 0,
+            },
+            {
+                "attacker_name": "C",
+                "user_name": "A",
+                "assister_name": "",
+                "tick": 1100,
+                "total_rounds_played": 0,
+            },
+            {
+                "attacker_name": "B",
+                "user_name": "C",
+                "assister_name": "",
+                "tick": 5000,
+                "total_rounds_played": 1,
+            },
+            {
+                "attacker_name": "A",
+                "user_name": "B",
+                "assister_name": "",
+                "tick": 9000,
+                "total_rounds_played": 2,
+            },
+            {
+                "attacker_name": "A",
+                "user_name": "C",
+                "assister_name": "",
+                "tick": 9100,
+                "total_rounds_played": 2,
+            },
+        ]
+        return pd.DataFrame(rows)
+
+    def test_multikill_rounds_do_not_saturate(self):
+        from Programma_CS2_RENAN.backend.data_sources.demo_parser import _compute_event_kast
+
+        kast = _compute_event_kast(self._StubParser(), self._deaths_df(), "attacker_name", 3)
+        # A: R0 kill(+traded death), R1 survives, R2 kills → 3/3
+        assert kast["A"] == pytest.approx(1.0)
+        # B: R0 dies untraded? A killed B, then C killed A within 100 ticks →
+        # B IS traded (attacker A died within window) → R0 yes; R1 kill; R2 dies,
+        # A not killed after → no. → 2/3
+        assert kast["B"] == pytest.approx(2 / 3)
+        # C: R0 kill; R1 dies, B not killed after → no; R2 dies, no trade → no. → 1/3
+        assert kast["C"] == pytest.approx(1 / 3)
+
+    def test_empty_rounds_count_as_survival(self):
+        from Programma_CS2_RENAN.backend.data_sources.demo_parser import _compute_event_kast
+
+        kast = _compute_event_kast(self._StubParser(), self._deaths_df(), "attacker_name", 5)
+        # 2 extra rounds with no deaths → survival for everyone.
+        assert kast["C"] == pytest.approx(3 / 5)
+
+    def test_missing_round_column_returns_empty(self):
+        from Programma_CS2_RENAN.backend.data_sources.demo_parser import _compute_event_kast
+
+        df = self._deaths_df().drop(columns=["total_rounds_played"])
+        assert _compute_event_kast(self._StubParser(), df, "attacker_name", 3) == {}

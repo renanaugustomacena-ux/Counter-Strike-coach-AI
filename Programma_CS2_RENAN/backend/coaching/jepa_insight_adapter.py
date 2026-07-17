@@ -24,7 +24,7 @@ candidate); ``learning`` speaks with 0.8x confidence (two); ``conviction``
 """
 
 from dataclasses import dataclass
-from typing import List, Optional, Sequence
+from typing import List, Sequence
 
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
