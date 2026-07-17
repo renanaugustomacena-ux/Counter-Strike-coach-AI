@@ -524,11 +524,24 @@ def get_hltv_db_manager() -> HLTVDatabaseManager:
 
 
 def _restrict_db_permissions(url: str) -> None:
-    """Set DB file to owner-only read/write (CFG-1: was world-readable 644)."""
+    """Set DB file to owner-only read/write (CFG-1: was world-readable 644).
+
+    Best-effort: chmod requires file ownership, which the app cannot assume
+    (a monolith copied with sudo is root-owned; the data box runs as user).
+    Failing to TIGHTEN permissions must not abort startup — warn and continue.
+    """
     if url.startswith("sqlite:///"):
         db_path = Path(url.replace("sqlite:///", ""))
         if db_path.exists() and os.name != "nt":
-            os.chmod(db_path, 0o600)
+            try:
+                os.chmod(db_path, 0o600)
+            except PermissionError:
+                logger.warning(
+                    "CFG-1: cannot chmod %s to 0600 (not file owner) — "
+                    "permissions left as-is; run `sudo chown $USER` on the DB "
+                    "to restore owner-only hardening",
+                    db_path.name,
+                )
 
 
 def init_database():

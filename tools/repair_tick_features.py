@@ -160,6 +160,10 @@ def main() -> None:
             f"VALUES ({', '.join('?' * (2 + len(temp_cols)))})",
             repair_data,
         )
+        # Without this index the UPDATE FROM plans "SCAN r" as the inner loop:
+        # O(demo_rows × temp_rows) — measured runaway (>40 min, days-scale
+        # projection) on the 429M-row monolith. With it: indexed probes.
+        conn.execute("CREATE INDEX _repair_idx ON _repair(player_name, tick)")
 
         # Single UPDATE FROM — joins on (player_name, tick) within this demo
         # (case/space-insensitive on the monolith side, see _run_repair_update).

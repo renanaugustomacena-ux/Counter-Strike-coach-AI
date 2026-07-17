@@ -22,20 +22,19 @@ import sqlite3
 import sys
 from pathlib import Path
 
-DEMO_BASE = Path("/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from Programma_CS2_RENAN.core.config import get_pro_demo_base  # noqa: E402
+
+# An earlier revision hardcoded the "New Volume" mount of the data box —
+# dead the moment the disk remounts under its UUID. Resolve the demo base
+# through the DP-06 SSOT and everything else relative to the repo.
+DEMO_BASE = get_pro_demo_base()
 MATCH_DATA = DEMO_BASE / "match_data"
-MONOLITH = Path(
-    "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/"
-    "Counter-Strike-coach-AI-main/Programma_CS2_RENAN/backend/storage/database.db"
-)
-INVENTORY = Path(
-    "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/"
-    "Counter-Strike-coach-AI-main/docs/d3_corrupted_match_inventory_2026-05-06.json"
-)
-REPORT_OUT = Path(
-    "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/"
-    "Counter-Strike-coach-AI-main/docs/d3_recovery_report_2026-05-06.json"
-)
+MONOLITH = PROJECT_ROOT / "Programma_CS2_RENAN" / "backend" / "storage" / "database.db"
+INVENTORY = PROJECT_ROOT / "docs" / "d3_corrupted_match_inventory_2026-05-06.json"
+REPORT_OUT = PROJECT_ROOT / "docs" / "d3_recovery_report_2026-05-06.json"
 
 MAP_SUFFIX_RE = re.compile(r"(?:-m\d+)?-([a-z][a-z0-9_]+?)(?:-p\d+)?$")
 KNOWN_MAPS = {
@@ -318,6 +317,102 @@ def apply_recovery(full_entries: list[dict], backup_dir: Path) -> dict:
     }
 
 
+V1_RECOVERED = "v1-d3-recovered"
+V2_RECOVERED = "v2-d3-recovered"
+V2_DEFAULT_RATE = "v2-d3-recovered-default-rate"
+
+
+def rederive_v1_rows(apply: bool, backup_dir: Path) -> dict:
+    """Re-derive tick_rate for legacy d3-recovered metadata rows.
+
+    The 2026-05-06 recovery run wrote parser_version='v1-d3-recovered' with a
+    HARDCODED tick_rate=64.0 (26-NORM-01: a 64.0 written for a 128-tick demo
+    silently halves every time window). For each shard row still carrying that
+    marker — or the honest 'v2-d3-recovered-default-rate' sentinel, in case its
+    .dem has since been re-acquired — re-read the real rate from the .dem
+    header. Rows whose .dem is gone are re-marked with the default-rate
+    sentinel so they stay findable; never silently blessed as header-derived.
+    """
+    dem_map = {p.stem: p for p in DEMO_BASE.rglob("*.dem") if not p.is_symlink()}
+    rate_cache: dict[str, float | None] = {}
+
+    outcome: dict = {
+        "header_rederived": [],
+        "marked_default_rate": [],
+        "already_default_no_dem": [],
+        "errors": [],
+        "backed_up": 0,
+    }
+
+    for shard_path in sorted(MATCH_DATA.glob("match_*.db")):
+        try:
+            conn = sqlite3.connect(
+                f"file:{shard_path}?mode={'rw' if apply else 'ro'}",
+                uri=True,
+                timeout=30,
+            )
+            try:
+                rows = conn.execute(
+                    "SELECT match_id, demo_name, parser_version, tick_rate "
+                    "FROM match_metadata WHERE parser_version IN (?, ?)",
+                    (V1_RECOVERED, V2_DEFAULT_RATE),
+                ).fetchall()
+            except sqlite3.OperationalError:
+                # No match_metadata table — the legacy INSERT path's business.
+                conn.close()
+                continue
+
+            changes: list[tuple[float, str, int]] = []
+            for match_id, demo_name, version, old_rate in rows:
+                dem_path = dem_map.get(demo_name)
+                if dem_path is not None and demo_name not in rate_cache:
+                    rate_cache[demo_name] = dem_header_tick_rate(dem_path)
+                rate = rate_cache.get(demo_name) if dem_path is not None else None
+
+                entry = {
+                    "file": shard_path.name,
+                    "demo_name": demo_name,
+                    "old": {"parser_version": version, "tick_rate": old_rate},
+                }
+                if rate is not None:
+                    entry["new"] = {"parser_version": V2_RECOVERED, "tick_rate": rate}
+                    changes.append((rate, V2_RECOVERED, match_id))
+                    outcome["header_rederived"].append(entry)
+                elif version == V1_RECOVERED:
+                    entry["new"] = {"parser_version": V2_DEFAULT_RATE, "tick_rate": old_rate}
+                    changes.append((float(old_rate), V2_DEFAULT_RATE, match_id))
+                    outcome["marked_default_rate"].append(entry)
+                else:
+                    outcome["already_default_no_dem"].append(entry)
+
+            if apply and changes:
+                backup_path = backup_dir / shard_path.name
+                if not backup_path.exists():
+                    backup_dir.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(str(shard_path), str(backup_path))
+                    outcome["backed_up"] += 1
+                for new_rate, new_version, match_id in changes:
+                    conn.execute(
+                        "UPDATE match_metadata SET tick_rate = ?, parser_version = ? "
+                        "WHERE match_id = ?",
+                        (new_rate, new_version, match_id),
+                    )
+                conn.commit()
+                remaining = conn.execute(
+                    "SELECT COUNT(*) FROM match_metadata WHERE parser_version = ?",
+                    (V1_RECOVERED,),
+                ).fetchone()[0]
+                if remaining:
+                    outcome["errors"].append(
+                        {"file": shard_path.name, "error": f"{remaining} v1 rows remain"}
+                    )
+            conn.close()
+        except Exception as e:  # noqa: BLE001 — per-shard isolation, reported
+            outcome["errors"].append({"file": shard_path.name, "error": str(e)})
+
+    return outcome
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="D3 shard metadata recovery")
     parser.add_argument(
@@ -326,12 +421,49 @@ def main() -> None:
         help="Actually write metadata rows (default: dry-run report only)",
     )
     parser.add_argument(
+        "--rederive-v1",
+        action="store_true",
+        help="Re-derive tick_rate/parser_version for legacy v1-d3-recovered rows "
+        "(and default-rate sentinels whose .dem has been re-acquired)",
+    )
+    parser.add_argument(
         "--report-out",
         type=Path,
         default=REPORT_OUT,
         help="Path for JSON report",
     )
     args = parser.parse_args()
+
+    if args.rederive_v1:
+        ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_dir = MATCH_DATA.parent / f"match_data_backup_rederive_{ts}"
+        result = rederive_v1_rows(args.apply, backup_dir)
+        report = {
+            "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "phase": "D3 v1 tick-rate re-derivation",
+            "mode": "apply" if args.apply else "dry-run",
+            "summary": {
+                "header_rederived": len(result["header_rederived"]),
+                "marked_default_rate": len(result["marked_default_rate"]),
+                "already_default_no_dem": len(result["already_default_no_dem"]),
+                "errors": len(result["errors"]),
+                "shards_backed_up": result["backed_up"],
+            },
+            "details": result,
+        }
+        args.report_out.parent.mkdir(parents=True, exist_ok=True)
+        with open(args.report_out, "w") as f:
+            json.dump(report, f, indent=2)
+        print(
+            f"[D3] Re-derive ({report['mode']}): "
+            f"{report['summary']['header_rederived']} header-derived, "
+            f"{report['summary']['marked_default_rate']} marked default-rate, "
+            f"{report['summary']['errors']} errors"
+        )
+        print(f"[D3] Report: {args.report_out}")
+        if not args.apply:
+            print("[D3] Re-run with --apply to write the changes")
+        return
 
     print("[D3] Building SHA-256 forward map...")
     fwd_map = build_forward_map()

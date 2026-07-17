@@ -51,6 +51,36 @@ class TestBackupMonolith:
             conn.close()
 
 
+class TestBackupFreeSpaceGuard:
+    """The guard must refuse a full-copy backup that cannot fit (2026-07-17:
+    a 154 GB monolith on a 54 GB-free disk filled the volume to 100% and
+    killed the concurrent schema migration)."""
+
+    def _fake_usage(self, free: int):
+        from collections import namedtuple
+
+        Usage = namedtuple("usage", "total used free")
+        return Usage(total=free * 10, used=free * 9, free=free)
+
+    def test_refuses_when_db_larger_than_free_space(self, tmp_path, monkeypatch):
+        from Programma_CS2_RENAN.backend.storage import db_backup
+
+        db_file = tmp_path / "big.db"
+        db_file.write_bytes(b"x" * 4096)
+        monkeypatch.setattr(db_backup.shutil, "disk_usage", lambda p: self._fake_usage(free=1024))
+        with pytest.raises(RuntimeError, match="Refusing backup"):
+            db_backup._check_backup_free_space(db_file, tmp_path)
+
+    def test_allows_when_headroom_available(self, tmp_path, monkeypatch):
+        from Programma_CS2_RENAN.backend.storage import db_backup
+
+        db_file = tmp_path / "small.db"
+        db_file.write_bytes(b"x" * 4096)
+        enough = 4096 + db_backup._BACKUP_HEADROOM_BYTES + 1
+        monkeypatch.setattr(db_backup.shutil, "disk_usage", lambda p: self._fake_usage(free=enough))
+        db_backup._check_backup_free_space(db_file, tmp_path)  # must not raise
+
+
 class TestRestoreBackup:
     """Verify backup restoration with integrity verification."""
 
