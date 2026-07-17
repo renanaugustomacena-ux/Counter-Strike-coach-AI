@@ -122,3 +122,59 @@ class TestSoftGate:
         for tier_name in DEMO_TIERS:
             assert tier_name in TIER_CONFIDENCE, f"Missing confidence for tier {tier_name}"
             assert 0.0 < TIER_CONFIDENCE[tier_name] <= 1.0
+
+
+class TestLandmarkIntegrity:
+    """R4 MED: the hand-written landmark tables (fallback dict AND
+    map_config.json) contradicted map_callouts.py — Mirage T-Spawn projected
+    to pixel_x=6, the extreme left radar edge. Landmarks are now derived
+    from map_callouts; these tests pin projection sanity and source parity."""
+
+    def test_fallback_landmarks_match_map_callouts(self):
+        from Programma_CS2_RENAN.core.map_callouts import _NAMED_POSITIONS
+        from Programma_CS2_RENAN.core.spatial_data import (
+            _FALLBACK_LANDMARK_ALIASES,
+            _derive_fallback_landmarks,
+        )
+
+        derived = _derive_fallback_landmarks()
+        by_map = {}
+        for p in _NAMED_POSITIONS:
+            alias = _FALLBACK_LANDMARK_ALIASES.get(p.name)
+            if alias:
+                by_map.setdefault(p.map_name, {})[alias] = (p.center_x, p.center_y)
+        assert derived == by_map
+
+    def test_all_landmarks_project_inside_radar(self):
+        """Every landmark of every map (JSON config or fallback) must project
+        into the [0, 1] normalized radar frame of its own map — the property
+        the old coordinates violated."""
+        from Programma_CS2_RENAN.core import spatial_data
+
+        loader = spatial_data._get_loader()
+        checked = 0
+        for map_name, marks in loader.landmarks.items():
+            meta = loader.registry.get(map_name)
+            if meta is None:
+                continue
+            for name, (wx, wy) in marks.items():
+                nx, ny = meta.world_to_radar(wx, wy)
+                assert (
+                    0.0 <= nx <= 1.0 and 0.0 <= ny <= 1.0
+                ), f"{map_name}/{name} projects outside the radar: ({nx:.3f}, {ny:.3f})"
+                checked += 1
+        assert checked >= 10, f"expected to check many landmarks, got {checked}"
+
+    def test_mirage_t_spawn_is_on_the_right_side(self):
+        """Direct pin of the reported symptom."""
+        from Programma_CS2_RENAN.core import spatial_data
+
+        loader = spatial_data._get_loader()
+        meta = loader.registry.get("de_mirage")
+        marks = loader.landmarks.get("de_mirage", {})
+        if meta is None or "T-Spawn" not in marks:
+            import pytest
+
+            pytest.skip("de_mirage not configured")
+        nx, _ = meta.world_to_radar(*marks["T-Spawn"])
+        assert nx > 0.5, f"Mirage T-Spawn must sit on the RIGHT half, got nx={nx:.3f}"

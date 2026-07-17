@@ -140,6 +140,35 @@ class TestPlaybackEngine:
         result = PlaybackEngine._interpolate_angle(350, 10, 0.5)
         assert result == pytest.approx(360.0, abs=1.0)
 
+    def test_angle_interpolation_inf_terminates(self):
+        """R4 MED: Inf yaw entered `while diff > 180: diff -= 360` and hung
+        the UI clock callback forever (inf - 360 == inf). Non-finite values
+        must be sanitized like NaN, not just NaN."""
+        assert PlaybackEngine._interpolate_angle(float("inf"), 90.0, 0.5) == 90.0
+        assert PlaybackEngine._interpolate_angle(45.0, float("-inf"), 0.5) == 45.0
+        assert PlaybackEngine._interpolate_angle(float("inf"), float("nan"), 0.5) == 0.0
+
+    def test_demo_frame_sanitizes_inf_yaw(self):
+        """DF-01 extension: PlayerState.__post_init__ must sanitize a
+        non-finite yaw, not only x/y/z."""
+        state = PlayerState(
+            player_id=1,
+            name="InfYaw",
+            team=Team.T,
+            x=1.0,
+            y=2.0,
+            z=3.0,
+            yaw=float("inf"),
+            hp=100,
+            armor=50,
+            is_alive=True,
+            is_flashed=False,
+            has_defuser=False,
+            weapon="ak47",
+            money=800,
+        )
+        assert state.yaw == 0.0
+
     def test_interpolated_player_state(self):
         """Test the InterpolatedPlayerState creation."""
         state = InterpolatedPlayerState(

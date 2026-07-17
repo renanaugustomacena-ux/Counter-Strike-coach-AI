@@ -243,11 +243,13 @@ class PlaybackEngine:
 
     @staticmethod
     def _interpolate_angle(a, b, t):
-        # CORE-10: Sanitize NaN yaw — DF-01 covers x/y/z but not angles
+        # CORE-10 + R4 MED: sanitize NON-FINITE yaw (NaN AND ±Inf). The old
+        # isnan-only guard let Inf through, and `while diff > 180: diff -= 360`
+        # never terminates on Inf — hanging the UI clock callback forever.
         import math
 
-        if math.isnan(a) or math.isnan(b):
-            return b if not math.isnan(b) else (a if not math.isnan(a) else 0.0)
+        if not (math.isfinite(a) and math.isfinite(b)):
+            return b if math.isfinite(b) else (a if math.isfinite(a) else 0.0)
         diff = b - a
         while diff > 180:
             diff -= 360

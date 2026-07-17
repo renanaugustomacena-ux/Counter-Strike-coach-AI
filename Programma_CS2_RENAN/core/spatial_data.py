@@ -98,29 +98,32 @@ _FALLBACK_REGISTRY: Dict[str, MapMetadata] = {
     "de_vertigo_lower": MapMetadata(pos_x=-3168, pos_y=1762, scale=4.0, level="lower"),
 }
 
-_FALLBACK_LANDMARKS: Dict[str, Dict[str, tuple[float, float]]] = {
-    "de_mirage": {
-        "T-Spawn": (-3200, -650),
-        "CT-Spawn": (1000, -2350),
-        "A-Site": (1030, -350),
-        "B-Site": (-1900, -300),
-        "Mid-Window": (-150, -750),
-    },
-    "de_dust2": {
-        "T-Spawn": (-1500, -1000),
-        "CT-Spawn": (50, 2500),
-        "A-Site": (1100, 2400),
-        "B-Site": (-1500, 2500),
-        "Mid-Doors": (0, 0),
-    },
-    "de_nuke": {
-        "T-Spawn": (-955, -960),
-        "CT-Spawn": (800, 1100),
-        "A-Site": (640, 960),
-        "B-Site": (470, -215),  # Lower level
-        "Outside": (-1560, 1760),
-    },
+# R4 MED: the old hand-written landmark dict contradicted map_callouts.py
+# (the WR-77-verified source) — e.g. Mirage "T-Spawn" (-3200, -650) projected
+# to pixel_x=6, the extreme LEFT radar edge, while the real spawn is on the
+# right. Landmarks are now DERIVED from map_callouts at load time so the two
+# sources can never diverge again.
+_FALLBACK_LANDMARK_ALIASES: Dict[str, str] = {
+    "T Spawn": "T-Spawn",
+    "CT Spawn": "CT-Spawn",
+    "A Site": "A-Site",
+    "B Site": "B-Site",
+    "Mid": "Mid",
 }
+
+
+def _derive_fallback_landmarks() -> Dict[str, Dict[str, tuple[float, float]]]:
+    """Canonical landmarks per map, derived from map_callouts._NAMED_POSITIONS."""
+    from Programma_CS2_RENAN.core.map_callouts import _NAMED_POSITIONS
+
+    landmarks: Dict[str, Dict[str, tuple[float, float]]] = {}
+    for pos in _NAMED_POSITIONS:
+        alias = _FALLBACK_LANDMARK_ALIASES.get(pos.name)
+        if alias is None:
+            continue
+        landmarks.setdefault(pos.map_name, {})[alias] = (pos.center_x, pos.center_y)
+    return landmarks
+
 
 _FALLBACK_COMPETITIVE_MAPS = [
     "de_nuke",
@@ -219,7 +222,7 @@ class SpatialConfigLoader:
 
         # Use fallbacks
         self.registry = _FALLBACK_REGISTRY.copy()
-        self.landmarks = _FALLBACK_LANDMARKS.copy()
+        self.landmarks = _derive_fallback_landmarks()
         self.competitive_maps = _FALLBACK_COMPETITIVE_MAPS.copy()
 
     def reload(self):
