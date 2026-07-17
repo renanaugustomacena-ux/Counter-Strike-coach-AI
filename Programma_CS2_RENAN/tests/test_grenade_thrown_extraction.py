@@ -19,10 +19,16 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
-_OVERPASS = Path(
-    "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/"
-    "DEMO_PRO_PLAYERS/astralis-vs-furia-m1-overpass.dem"
-)
+
+def _first_available_demo() -> Path | None:
+    """Any real .dem via the DP-06 SSOT — the old hardcoded 'New Volume'
+    mount died with the disk rename, skipping the test forever."""
+    from Programma_CS2_RENAN.core.config import get_pro_demo_base
+
+    return next(
+        (p for p in sorted(get_pro_demo_base().rglob("*.dem")) if not p.is_symlink()),
+        None,
+    )
 
 
 def _make_df_ticks():
@@ -203,12 +209,13 @@ def test_real_overpass_thrown_geq_detonated():
     """
     if os.environ.get("CS2_INTEGRATION_TESTS") != "1":
         pytest.skip("Requires CS2_INTEGRATION_TESTS=1 and real demo")
-    if not _OVERPASS.exists():
-        pytest.skip(f"canonical test demo missing at {_OVERPASS}")
+    demo = _first_available_demo()
+    if demo is None:
+        pytest.skip("no .dem available under get_pro_demo_base()")
 
     from demoparser2 import DemoParser
 
-    p = DemoParser(str(_OVERPASS))
+    p = DemoParser(str(demo))
     thrown_res = p.parse_events(["grenade_thrown"])
     thrown_df = thrown_res[0][1] if thrown_res else pd.DataFrame()
     thrown_count = len(thrown_df)

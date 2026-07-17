@@ -577,12 +577,16 @@ def seeded_hltv_session():
 
 @pytest.fixture
 def match_data_dir(tmp_path):
-    """Seeded per-match DB directory with one realistic match.
+    """Seeded per-match DB directory with one MINIMAL match.
 
     Creates a MatchDataManager backed by tmp_path with:
     - 1 match (demo_name=test_match.dem, map=de_dust2)
     - 10 tick rows (2 players x 5 ticks)
-    - Basic match metadata
+
+    NOT a full schema replica: no match_metadata table (where the
+    26-NORM-01 per-shard tick_rate lives) and none of the four repaired
+    tick columns. Extend before reusing for metadata/tick-rate tests —
+    today's only consumer checks WAL enforcement.
 
     Returns (MatchDataManager, match_db_path).
     """

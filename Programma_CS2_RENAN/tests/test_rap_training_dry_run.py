@@ -114,6 +114,7 @@ class TestRAPOrchestratorGate:
 # ===========================================================================
 
 
+@pytest.mark.integration
 @pytest.mark.skipif(
     os.environ.get("CS2_INTEGRATION_TESTS") != "1",
     reason="Integration smoke (full RAP run_training path); set CS2_INTEGRATION_TESTS=1 to run.",
@@ -145,11 +146,20 @@ class TestRAPDryRunSmoke:
                 # at the "Insufficient Training Data" guard. That is enough to
                 # prove (a) the gate cleared, (b) the RAP trainer class loaded,
                 # (c) load_nn / save_nn paths import cleanly.
-                orch.manager._fetch_jepa_ticks.return_value = []
-                orch.manager._fetch_rap_ticks = MagicMock(return_value=[])
+                # R4 MED 2026-07-17 renamed the feeds to window fetchers:
+                # _fetch_rap_ticks no longer exists, and a bare MagicMock feed
+                # is truthy — the guard would never fire and len() would blow.
+                orch.manager._fetch_jepa_windows = MagicMock(return_value=[])
+                orch.manager._fetch_rap_windows = MagicMock(return_value=[])
 
                 mock_model = MagicMock()
                 mock_model.to.return_value = mock_model
+                # The orchestrator builds the optimizer BEFORE the data guard,
+                # and the trainer calls next(model.parameters()): every call
+                # must yield a FRESH iterator over at least one real tensor
+                # (surfaced the first time this smoke ever executed, 2026-07-17).
+                _mock_param = torch.nn.Parameter(torch.zeros(1))
+                mock_model.parameters.side_effect = lambda *a, **k: iter([_mock_param])
 
                 with patch("Programma_CS2_RENAN.backend.nn.factory.ModelFactory") as mock_factory:
                     mock_factory.get_model.return_value = mock_model

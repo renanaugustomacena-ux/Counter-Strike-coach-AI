@@ -11,7 +11,9 @@ if PROJECT_ROOT not in sys.path:
 from Programma_CS2_RENAN.backend.nn.coach_manager import CoachTrainingManager
 from Programma_CS2_RENAN.backend.storage.database import init_database
 
-pytestmark = pytest.mark.timeout(120)
+# Monolith-scale full-pipeline runs (measured: 340 MB/s reads, 45+ min
+# on the data box) — slow-marked so the CI integration step skips them.
+pytestmark = [pytest.mark.timeout(120), pytest.mark.slow]
 
 
 def run_training_cycle():

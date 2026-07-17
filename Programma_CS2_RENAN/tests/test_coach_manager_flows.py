@@ -536,9 +536,11 @@ class TestCheckPrerequisites:
         assert ok is True
         assert msg == "Ready"
 
-    def test_not_ready_without_ids_and_no_pro_demos(self, monkeypatch):
+    def test_stalled_without_any_pro_demos(self, monkeypatch):
+        """26-SCHEMA-02: prerequisites are pro-only — with zero pro demos the
+        stall message asks for pro ingestion, never for Steam/FACEIT connect
+        (the connect-state fields were dropped 2026-07-17)."""
         mgr, engine = _make_manager(monkeypatch)
-        # No pro demos, no profile → stalled
         mock_sm = MagicMock()
         monkeypatch.setattr(
             "Programma_CS2_RENAN.backend.storage.state_manager.get_state_manager",
@@ -546,7 +548,8 @@ class TestCheckPrerequisites:
         )
         ok, msg = mgr.check_prerequisites()
         assert ok is False
-        assert "Steam" in msg or "FACEIT" in msg or "required" in msg.lower()
+        assert "Professional demos required" in msg
+        assert "Steam" not in msg and "FACEIT" not in msg
 
     def test_gathering_pro_baseline_with_partial_pros(self, monkeypatch):
         mgr, engine = _make_manager(monkeypatch)

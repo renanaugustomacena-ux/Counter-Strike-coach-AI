@@ -74,8 +74,9 @@ def test_feature_names_length_matches_dim():
     """FEATURE_NAMES tuple length must equal METADATA_DIM (P-X-01)."""
     assert len(FEATURE_NAMES) == METADATA_DIM, (
         f"FEATURE_NAMES has {len(FEATURE_NAMES)} entries; "
-        f"METADATA_DIM={METADATA_DIM}. The vectorizer.py:178 assert should "
-        "have caught this at import time — investigate."
+        f"METADATA_DIM={METADATA_DIM}. The len(FEATURE_NAMES)==METADATA_DIM "
+        "assert in vectorizer.py should have caught this at import time — "
+        "investigate."
     )
 
 
