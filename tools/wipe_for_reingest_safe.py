@@ -5,10 +5,9 @@ Doctrine §57 — Least Privilege; §60 — Incident Response as Design Input.
 Maps to control C-WIPE-01 (SECURITY/CONTROL_CATALOG.md).
 SOP: SECURITY/WIPE_RUNBOOK.md.
 
-This is the SUCCESSOR to tools/wipe_for_reingest_v[1-4].py — kept as a separate
-file (`_safe.py` suffix) until the active v4 ingestion-recovery campaign
-finishes. After that, v1–v4 are deleted and this file may be renamed to
-`tools/wipe_for_reingest.py`.
+This is the SUCCESSOR to tools/wipe_for_reingest_v[1-4].py. v1–v4 have been
+deleted (the v4 recovery campaign is over); the `_safe.py` name is kept
+because SECURITY/WIPE_RUNBOOK.md and the control catalog reference it.
 
 What this adds over v4:
   --confirm-wipe   MANDATORY — without it, the tool refuses to mutate state.
@@ -74,7 +73,13 @@ ENV_KEY_NAME = "CS2_WIPE_SNAPSHOT_KEY"
 def _check_db_unlocked(db: pathlib.Path) -> tuple[bool, list[str]]:
     """Return (is_unlocked, list_of_holders).
 
-    Tries psutil.process_iter first; falls back to `fuser` on Linux.
+    Windows: rename-onto-itself per target — PermissionError means some
+    process holds the file open. This replaces the previous
+    psutil.process_iter(open_files) sweep, whose native handle enumeration
+    is a documented access-violation source on Windows (it hard-crashed
+    this tool's own pre-flight, no Python except can catch it).
+
+    POSIX: psutil.process_iter(open_files) (stable there); `fuser` fallback.
     """
     targets = [db, db.with_suffix(db.suffix + "-wal"), db.with_suffix(db.suffix + "-shm")]
     targets = [t for t in targets if t.exists()]
@@ -82,6 +87,16 @@ def _check_db_unlocked(db: pathlib.Path) -> tuple[bool, list[str]]:
         return True, []
 
     holders: list[str] = []
+
+    if sys.platform == "win32":
+        for t in targets:
+            try:
+                os.rename(t, t)
+            except PermissionError:
+                holders.append(f"{t}: held open by another process (Windows share lock)")
+            except OSError as exc:
+                holders.append(f"{t}: lock probe failed ({exc})")
+        return (not holders), holders
 
     try:
         import psutil  # type: ignore[import-not-found]
@@ -214,7 +229,9 @@ def _emit_audit(event_type: str, fields: dict[str, Any]) -> None:
     payload = {
         "ts": dt.datetime.now(dt.timezone.utc).isoformat(),
         "event_type": event_type,
-        "operator": os.environ.get("USER", "unknown"),
+        # POSIX exports USER; Windows exports USERNAME — check both or the
+        # audit trail records every Windows operator as "unknown".
+        "operator": os.environ.get("USER") or os.environ.get("USERNAME", "unknown"),
         "fields": fields,
     }
     with open(f, "a", encoding="utf-8") as fh:
@@ -262,9 +279,9 @@ def _wipe_rows_mode(db: pathlib.Path, tables: tuple[str, ...], dry_run: bool) ->
 
 def _wipe_swap_mode(_db: pathlib.Path, _tables: tuple[str, ...], _dry_run: bool) -> dict[str, int]:
     raise NotImplementedError(
-        "swap mode (atomic .fresh/.OLD swap) is the v4 algorithm — Phase 2 will "
-        "port it into this safe tool. Until then, run tools/wipe_for_reingest_v4.py "
-        "directly OR use --mode rows (this tool) for selective table truncation."
+        "swap mode (atomic .fresh/.OLD swap) was the v4 algorithm; v1-v4 have "
+        "been deleted and the port never landed. Use --mode rows (selective "
+        "table truncation + VACUUM), which covers every current wipe scenario."
     )
 
 
@@ -310,7 +327,19 @@ def _restore(snapshot_path: pathlib.Path, db: pathlib.Path, confirm: bool, dry_r
                     return 2
             target_dir = db.parent
             target_dir.mkdir(parents=True, exist_ok=True)
-            tar.extractall(target_dir)
+            # Remove current WAL/SHM sidecars BEFORE extracting: if the
+            # snapshot was taken after a clean checkpoint it carries no
+            # -wal/-shm members, and SQLite would otherwise replay the
+            # CURRENT (post-snapshot) WAL on top of the restored .db —
+            # silently mixing two states.
+            for sfx in ("-wal", "-shm"):
+                sidecar = pathlib.Path(str(db) + sfx)
+                if sidecar.exists():
+                    sidecar.unlink()
+            # filter="data" strips setuid/devices/absolute paths (defense in
+            # depth on top of the member-name allowlist above) and silences
+            # the 3.12 DeprecationWarning ahead of the 3.14 default flip.
+            tar.extractall(target_dir, filter="data")
     _emit_audit(
         "wipe_restored",
         {

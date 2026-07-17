@@ -211,7 +211,7 @@
     "backend/processing/player_knowledge.py": "6845979728a633458c7233b1f59f5b5e3ab2aab733e8f40c17dcc3e7e0cdcb1c",
     "backend/processing/rating.py": "b8d5d97b39e5ea8cf9cc141e7ca96b0e0f594551062574bbb035696451baf568",
     "backend/processing/round_reconstructor.py": "a134e995c02c0d3e9a9cbfeca7cae84ed080f0425f8d363b2bb3b51a5df8789c",
-    "backend/processing/round_stats_builder.py": "0432c4f74606a50e0f434cd15c5ea751f637c75fd2bd23653f912e64c48d95fa",
+    "backend/processing/round_stats_builder.py": "95f6389f57595911ee363c7baa6b301f04b8ed000be5a81a81f01cb764284558",
     "backend/processing/skill_assessment.py": "0e5dd001eabc85723a09b78fc7ce0c45a6841cea74c5ae326df0a8fb9cbdfcfa",
     "backend/processing/state_reconstructor.py": "323196e8c6e767bc4bcc0faa9d843a4d7330a784fcecea9107ffd9b4cdb85817",
     "backend/processing/tensor_factory.py": "fba5d921cd50418120e2b4190b6dde1af23390e91c3628cc03803d3dc8b1415b",
@@ -275,7 +275,7 @@
     "ingestion/integrity.py": "8cffb7ed9906092d1eba17eb28308fa913956e6e16064fd1cf0178934f528a76",
     "ingestion/pipelines/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "ingestion/pipelines/json_tournament_ingestor.py": "84e7472cf5929a30ebea09624d9253d7f6671bea42b473d35eb965f404f59d5f",
-    "ingestion/pipelines/user_ingest.py": "dcd726ab257ad5267f3597cd15726c41b753e4151e26ae11397c18d80bb26685",
+    "ingestion/pipelines/user_ingest.py": "187c041c4dc7ca93afc753ba4d200cce70e6979089cac42da8ba9bc156e8c242",
     "ingestion/registry/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "ingestion/registry/lifecycle.py": "8bfa60c15a36882c89496f5a7ca48919889a881b5bd0a33d5da5d6492970a01a",
     "ingestion/registry/registry.py": "7828fb47b53810b254f45297142abdec75a64f24bab82d2f2e6f1356075aee9f",
@@ -291,7 +291,7 @@
     "reporting/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "reporting/report_generator.py": "bd4d4751ee0d581484e4cd5cfe0fc4256e7ea59b11ab2aafbb9745e6de042812",
     "reporting/visualizer.py": "763f7562da9304bf64b90e01267a7eff395b50b35128c4c7976cc0658277df54",
-    "run_ingestion.py": "b58d3a3f2c38db22cc8d967f2ca13c2ed031748a2cfd3d4eb744cf103f16c5ea",
+    "run_ingestion.py": "3d09771f9241686d33715236361e649de22bf31a03d49a4f9cb8ce586ff2f3cf",
     "run_worker.py": "967a709d0eb9bde695c17dccdd2d186413e318b6b4306e52913c90df61503883"
   },
   "version": "2.0"

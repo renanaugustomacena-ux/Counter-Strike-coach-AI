@@ -467,6 +467,16 @@ def _ingest_single_demo(db_manager, storage, demo_path, is_pro):
         for _, row in df.iterrows():
             _save_player_stats(db_manager, row, demo_path.name, is_pro)
 
+        # F6-19 closure: RoundStats + the 14 enrichment fields used to be
+        # written only by tools/populate_round_stats.py, which end users
+        # never run — coach_manager then compared their 0.0 defaults
+        # against real pro baselines. Idempotent and never raises.
+        from Programma_CS2_RENAN.backend.processing.round_stats_builder import (
+            persist_round_stats_and_enrichment,
+        )
+
+        persist_round_stats_and_enrichment(db_manager, str(demo_path), demo_path.stem)
+
     # 2. Parse sequential data (incremental)
     last_processed = _save_sequential_data(db_manager, demo_path, target, start_tick=start_tick)
 
