@@ -933,11 +933,17 @@ class TrainingOrchestrator:
         window_cache = caches["window"]
         event_cache = caches["event"]
 
+        _meta_cache: dict = {}
         for match_id, ticks in match_tick_map.items():
             min_tick = min(ticks)
             max_tick = max(ticks)
-            lookback_start = max(0, min_tick - 320)
-            event_end = max_tick + 64
+            # R4 LOW (26-TICK): lookback/pad in seconds via the per-demo rate
+            # — the fixed 320/64 tick literals halved on 128-tick demos.
+            rate = self._resolve_tick_rate(match_id, match_mgr, _meta_cache)
+            mem_window = int(5.0 * rate)
+            event_pad = int(1.0 * rate)
+            lookback_start = max(0, min_tick - mem_window)
+            event_end = max_tick + event_pad
 
             try:
                 bulk_states = match_mgr.get_all_players_tick_window(
@@ -952,7 +958,7 @@ class TrainingOrchestrator:
                 for t in ticks:
                     wnd_key = (match_id, t)
                     if wnd_key not in window_cache:
-                        wnd_start = max(0, t - 320)
+                        wnd_start = max(0, t - mem_window)
                         window_cache[wnd_key] = {
                             k: v for k, v in bulk_states.items() if wnd_start <= k <= t
                         }
@@ -1284,11 +1290,13 @@ class TrainingOrchestrator:
         if our_player_tick is None:
             return None, [item]
 
-        # Recent history for enemy memory (320-tick window)
+        # Recent history for enemy memory — window_size=None delegates the
+        # 5 s→ticks conversion to the manager's per-match tick rate
+        # (R4 LOW 26-TICK: was a fixed 320-tick literal).
         wnd_key = (match_id, tick)
         if wnd_key not in window_cache:
             window_cache[wnd_key] = match_mgr.get_all_players_tick_window(
-                match_id, tick, window_size=320
+                match_id, tick, window_size=None
             )
         recent_history = window_cache[wnd_key]
 

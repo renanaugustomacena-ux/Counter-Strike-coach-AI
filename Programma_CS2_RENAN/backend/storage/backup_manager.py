@@ -225,12 +225,15 @@ class BackupManager:
             last_4_weeks = []
             if weekly_candidates:
                 # Sort by date desc
-                current_week_start = weekly_candidates[0]["dt"].isocalendar()[1]
+                # R4 LOW: compare (iso_year, iso_week) — the bare week
+                # number made week 20 of different YEARS collide, pruning
+                # a backup that should have held a retention slot.
+                current_week = weekly_candidates[0]["dt"].isocalendar()[:2]
                 for cp in weekly_candidates:
-                    w = cp["dt"].isocalendar()[1]
-                    if w != current_week_start and len(last_4_weeks) < 4:
+                    w = cp["dt"].isocalendar()[:2]
+                    if w != current_week and len(last_4_weeks) < 4:
                         last_4_weeks.append(cp)
-                        current_week_start = w
+                        current_week = w
 
             keep_list.extend(last_4_weeks)
 
