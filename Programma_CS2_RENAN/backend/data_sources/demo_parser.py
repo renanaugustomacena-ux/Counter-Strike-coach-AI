@@ -103,6 +103,10 @@ def _extract_stats_with_full_fields(parser, total_rounds, target_player):
     # Compute per-round variance from round_end kill/damage deltas
     totals["kill_std"] = 0.0
     totals["adr_std"] = 0.0
+    # R4 (impact_rounds contract): share of rounds with >=1 kill, range
+    # [0, 1] — the canonical semantics shared with aggregate_match_stats_sql
+    # and base_features. 0.0 = no event data (R3-01: never fabricated).
+    totals["impact_rounds"] = 0.0
     try:
         round_stats = _compute_per_round_variance(parser)
         if round_stats is not None:
@@ -113,6 +117,13 @@ def _extract_stats_with_full_fields(parser, total_rounds, target_player):
                 totals.drop(
                     columns=["kill_std_calc", "adr_std_calc"], inplace=True, errors="ignore"
                 )
+            if "rounds_with_kill" in totals.columns:
+                totals["impact_rounds"] = (
+                    (totals["rounds_with_kill"].fillna(0.0) / total_rounds)
+                    .clip(0.0, 1.0)
+                    .astype(float)
+                )
+                totals.drop(columns=["rounds_with_kill"], inplace=True, errors="ignore")
     except (ValueError, KeyError, TypeError) as e:
         logger.debug("Could not compute per-round variance: %s", e)
 
@@ -162,9 +173,12 @@ def _apply_hltv2_columns(totals: pd.DataFrame) -> pd.DataFrame:
 
     totals["econ_rating"] = totals["avg_adr"] / RATING_BASELINE_ECON
 
-    # [INTEGRATION FIX] Alias new Rating 2.0 Impact to legacy field
-    # This prevents Frontend/ML breakage (Domino Effect Repair)
-    totals["impact_rounds"] = totals["rating_impact"]
+    # R4 (impact_rounds contract): the old "[INTEGRATION FIX]" alias wrote
+    # the HLTV impact RATING (~1.1-1.8) into impact_rounds, while the SQL
+    # aggregator writes the SHARE of rounds with >=1 kill ([0, 1]) and every
+    # baseline consumer (hybrid_engine mean 0.35, coach_manager default 0.7)
+    # assumes the share. The share is computed in the caller from per-round
+    # kill data; the alias is gone.
 
     return totals
 
@@ -209,6 +223,13 @@ def _compute_per_round_variance(parser):
         )
         kill_std = kills_per_round.groupby(d_name)["kills"].std().fillna(0.0).reset_index()
         kill_std.columns = ["player_name", "kill_std"]
+
+        # Rounds with >=1 kill per player — every row in kills_per_round is a
+        # (player, round) that had at least one kill event by construction.
+        # The caller divides by total_rounds for the impact_rounds share.
+        rwk = kills_per_round.groupby(d_name).size().reset_index(name="rounds_with_kill")
+        rwk.columns = ["player_name", "rounds_with_kill"]
+        kill_std = kill_std.merge(rwk, on="player_name", how="outer").fillna(0.0)
 
         # Per-round damage
         dmg_col = "dmg_health" if "dmg_health" in h_df.columns else "damage"

@@ -47,7 +47,11 @@ class PlayerCardAssimilator:
             # V-2: Defensive normalization for old DB records with percentage values.
             "avg_kast": self.card.kast / 100.0 if self.card.kast > 1.0 else self.card.kast,
             "kd_ratio": self.card.kpr / self.card.dpr if self.card.dpr > 0 else self.card.kpr,
-            "impact_rounds": self.card.impact,
+            # R4 (impact_rounds contract): the HLTV card has no
+            # "share of rounds with >=1 kill" — card.impact is the HLTV
+            # impact RATING (~1.1), a different scale entirely, and using it
+            # here made every z-score comparison on this key invalid.
+            # Absent beats fabricated: the key is omitted.
             "rating": self.card.rating_2_0,
         }
 

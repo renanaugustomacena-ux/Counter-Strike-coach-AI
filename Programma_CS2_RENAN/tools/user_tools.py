@@ -125,7 +125,7 @@ def cmd_manual_entry(args):
             kast = float(input("  KAST %: "))
             hs = float(input("  Headshot %: "))
             kd = float(input("  K/D Ratio: "))
-            impact = float(input("  Impact: "))
+            impact = float(input("  Impact rounds (share of rounds with a kill, 0-1): "))
             accuracy = float(input("  Accuracy: "))
             econ = float(input("  Economic Rating: "))
         except ValueError:
