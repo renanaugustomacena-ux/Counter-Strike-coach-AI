@@ -18,11 +18,14 @@ project_root = script_dir.parent
 # (Path relative to project root, Description, Critical?)
 CHECKS = {
     "headless": ("tools/headless_validator.py", "Headless Validator (Backend + DB + ML)", True),
+    # Critical since the 2026-07-17 orphan sweep: the baseline is Clean
+    # (0 orphans, 0 stale imports), so any regression is new dead code.
+    # --strict makes the detector exit non-zero on findings.
     "dead_code": (
-        "tools/dead_code_detector.py",
+        "tools/dead_code_detector.py --strict",
         "Dead Code & Orphan Detector",
-        False,
-    ),  # Non-critical for now
+        True,
+    ),
     "feature": ("tools/Feature_Audit.py", "Feature Alignment Audit", False),
     "portability": ("tools/portability_test.py", "Cross-Platform Portability", True),
 }
@@ -37,7 +40,10 @@ def run_check(key, fast_fail=True):
         # flush output to keep order
         sys.stdout.flush()
         result = subprocess.run(
-            [sys.executable, path], cwd=project_root, check=False  # We handle return code manually
+            # Entries may carry CLI flags (e.g. "--strict"); split them.
+            [sys.executable, *path.split()],
+            cwd=project_root,
+            check=False,  # We handle return code manually
         )
         elapsed = time.perf_counter() - start
 

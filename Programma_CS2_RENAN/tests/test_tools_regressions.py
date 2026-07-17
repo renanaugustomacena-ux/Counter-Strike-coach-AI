@@ -78,3 +78,34 @@ class TestDeadCodeDetectorPhaseC:
         f = tmp_path / "mod_all.py"
         f.write_text('from mypkg import helper\n\n__all__ = ["helper"]\n', encoding="utf-8")
         assert dcd.scan_stale_imports([f]) == []
+
+
+class TestToolingCompiles:
+    """Task #8: the headless validator's AST checks cover only the package
+    root, so a SyntaxError in tools/, evals/ or a root script would sit
+    unnoticed until someone launched it. This gate parses every one of them
+    in-suite (and therefore in CI on both platforms)."""
+
+    def test_all_tool_and_root_scripts_parse(self):
+        import ast
+        from pathlib import Path
+
+        project_root = Path(__file__).resolve().parents[2]
+        targets: list[Path] = []
+        for rel in ("tools", "Programma_CS2_RENAN/tools", "evals"):
+            targets.extend(sorted((project_root / rel).rglob("*.py")))
+        targets.extend(sorted(project_root.glob("*.py")))
+
+        targets = [t for t in targets if "__pycache__" not in t.parts]
+        assert len(targets) >= 70, (
+            f"only {len(targets)} scripts collected — the tooling tree moved; "
+            "update the target list instead of letting the gate go hollow"
+        )
+
+        failures = []
+        for f in targets:
+            try:
+                ast.parse(f.read_text(encoding="utf-8", errors="replace"), filename=str(f))
+            except SyntaxError as exc:
+                failures.append(f"{f.relative_to(project_root)}: {exc}")
+        assert not failures, "tooling scripts with syntax errors:\n" + "\n".join(failures)
