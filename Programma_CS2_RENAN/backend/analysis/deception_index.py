@@ -20,7 +20,10 @@ logger = get_logger("cs2analyzer.analysis.deception")
 # Configurable detection windows (in seconds)
 FAKE_EXECUTE_WINDOW = 5.0  # Time window to detect site-take fakes
 UTILITY_FOLLOWUP_WINDOW = 3.0  # Time after utility for expected engagement
-FLASH_BLIND_WINDOW_TICKS: int = 128  # ~2 s at 64 tick
+# R4 MED (26-TICK): expressed in SECONDS and converted with the per-demo
+# tick rate — the old FLASH_BLIND_WINDOW_TICKS=128 assumed a 64-tick server,
+# silently halving the blind-attribution window on 128-tick FACEIT demos.
+FLASH_BLIND_WINDOW_SECONDS: float = 2.0
 
 # P8-04: Composite deception index weights. Sum = 1.0.
 # Hand-tuned based on subjective impact assessment:
@@ -60,12 +63,17 @@ class DeceptionAnalyzer:
         self.fake_execute_window = fake_execute_window
         self.utility_followup_window = utility_followup_window
 
-    def analyze_round(self, round_data: pd.DataFrame) -> DeceptionMetrics:
+    def analyze_round(self, round_data: pd.DataFrame, *, tick_rate: float) -> DeceptionMetrics:
         """
         Analyze a single round for deception patterns.
 
         Expected columns: tick, player_name, pos_x, pos_y, event_type,
         event_detail, team, round_number.
+
+        Args:
+            round_data: Tick/event rows for the round.
+            tick_rate: Per-demo server tick rate (26-NORM-01: required, no
+                hardcoded default — resolve via MatchMetadata upstream).
 
         Returns:
             DeceptionMetrics with individual rates and composite index.
@@ -73,7 +81,7 @@ class DeceptionAnalyzer:
         if round_data.empty:
             return DeceptionMetrics()
 
-        fake_flash = self._detect_flash_baits(round_data)
+        fake_flash = self._detect_flash_baits(round_data, tick_rate=tick_rate)
         rotation_feint = self._detect_rotation_feints(round_data)
         sound_deception = self._detect_sound_deception(round_data)
 
@@ -90,7 +98,7 @@ class DeceptionAnalyzer:
             composite_index=min(1.0, composite),
         )
 
-    def _detect_flash_baits(self, df: pd.DataFrame) -> float:
+    def _detect_flash_baits(self, df: pd.DataFrame, *, tick_rate: float) -> float:
         """Detect flash throws that don't blind enemies (bait fakes)."""
         if "event_type" not in df.columns:
             return 0.0
@@ -118,9 +126,8 @@ class DeceptionAnalyzer:
         # Only index valid positions; clamped values for OOB are irrelevant
         # because in_bounds already masks them out.
         safe_idx = np.where(in_bounds, idx, 0)
-        effective_mask = in_bounds & (
-            blind_ticks[safe_idx] <= flash_ticks + FLASH_BLIND_WINDOW_TICKS
-        )
+        window_ticks = int(FLASH_BLIND_WINDOW_SECONDS * tick_rate)
+        effective_mask = in_bounds & (blind_ticks[safe_idx] <= flash_ticks + window_ticks)
         effective_flashes = int(np.sum(effective_mask))
 
         bait_rate = 1.0 - (effective_flashes / max(1, total_flashes))

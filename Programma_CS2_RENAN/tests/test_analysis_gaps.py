@@ -389,19 +389,19 @@ class TestDeceptionAnalyzer:
     def test_empty_round(self):
         analyzer = self._make_analyzer()
         df = pd.DataFrame()
-        result = analyzer.analyze_round(df)
+        result = analyzer.analyze_round(df, tick_rate=64.0)
         assert result.composite_index == 0.0
 
     def test_flash_baits_no_event_type(self):
         analyzer = self._make_analyzer()
         df = pd.DataFrame({"tick": [100, 200]})
-        result = analyzer._detect_flash_baits(df)
+        result = analyzer._detect_flash_baits(df, tick_rate=64.0)
         assert result == 0.0
 
     def test_flash_baits_no_flashes(self):
         analyzer = self._make_analyzer()
         df = pd.DataFrame({"event_type": ["player_death", "player_death"], "tick": [100, 200]})
-        result = analyzer._detect_flash_baits(df)
+        result = analyzer._detect_flash_baits(df, tick_rate=64.0)
         assert result == 0.0
 
     def test_flash_baits_all_ineffective(self):
@@ -412,7 +412,7 @@ class TestDeceptionAnalyzer:
                 "tick": [100, 200],
             }
         )
-        result = analyzer._detect_flash_baits(df)
+        result = analyzer._detect_flash_baits(df, tick_rate=64.0)
         # No blinds → 100% bait rate
         assert result == pytest.approx(1.0)
 
@@ -429,7 +429,7 @@ class TestDeceptionAnalyzer:
                 "tick": [100, 110, 200, 210],
             }
         )
-        result = analyzer._detect_flash_baits(df)
+        result = analyzer._detect_flash_baits(df, tick_rate=64.0)
         assert result == pytest.approx(0.0)
 
     def test_rotation_feints_no_positions(self):
@@ -489,7 +489,7 @@ class TestDeceptionAnalyzer:
                 "is_crouching": [False] * 10,
             }
         )
-        result = analyzer.analyze_round(df)
+        result = analyzer.analyze_round(df, tick_rate=64.0)
         assert 0.0 <= result.composite_index <= 1.0
 
 
@@ -548,7 +548,7 @@ class TestDeceptionFactory:
     def test_constants(self):
         from Programma_CS2_RENAN.backend.analysis.deception_index import (
             FAKE_EXECUTE_WINDOW,
-            FLASH_BLIND_WINDOW_TICKS,
+            FLASH_BLIND_WINDOW_SECONDS,
             UTILITY_FOLLOWUP_WINDOW,
             W_FAKE_FLASH,
             W_ROTATION_FEINT,
@@ -557,5 +557,7 @@ class TestDeceptionFactory:
 
         assert FAKE_EXECUTE_WINDOW == 5.0
         assert UTILITY_FOLLOWUP_WINDOW == 3.0
-        assert FLASH_BLIND_WINDOW_TICKS == 128
+        # R4 MED (26-TICK): seconds-based, converted per-demo — the old
+        # FLASH_BLIND_WINDOW_TICKS=128 hardcoded a 64-tick assumption.
+        assert FLASH_BLIND_WINDOW_SECONDS == 2.0
         assert abs(W_FAKE_FLASH + W_ROTATION_FEINT + W_SOUND_DECEPTION - 1.0) < 1e-6

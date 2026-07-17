@@ -517,18 +517,18 @@ def extract_death_events_from_db() -> pd.DataFrame:
             all_rounds = session.exec(select(RoundStats).limit(MAX_CALIBRATION_SAMPLES)).all()
 
             for rs in all_rounds:
-                # HP bracket estimation from equipment value:
-                #   Full buy (>4000) → full health start
-                #   Force (2000-4000) → likely damaged from previous round
-                #   Eco (<2000) → often critical after save
+                # R4 MED: economy tier is NOT health. The old heuristic
+                # fabricated health=60/30 for force/eco rounds, which
+                # _hp_to_bracket mapped to the "damaged"/"critical" brackets —
+                # so P(death|critical) was silently calibrated to ECO-ROUND
+                # death rates (calibrate() overwrites any bracket with >=10
+                # rows). Per the documented contract, only the "full" bracket
+                # is calibrated from round-level data: keep full-buy rounds
+                # (health genuinely ~100 at round start), DROP eco/force rows
+                # instead of inventing an HP value for them. Finer brackets
+                # need per-engagement tick data (MatchTickState).
                 if rs.equipment_value > 4000:
-                    health = 100
-                elif rs.equipment_value > 2000:
-                    health = 60
-                else:
-                    health = 30
-
-                rows.append({"health": health, "died": rs.deaths > 0})
+                    rows.append({"health": 100, "died": rs.deaths > 0})
 
         if not rows:
             return pd.DataFrame(columns=["health", "died"])
