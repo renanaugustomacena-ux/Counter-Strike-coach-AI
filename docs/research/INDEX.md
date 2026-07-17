@@ -22,7 +22,7 @@ I-JEPA (2301.08243), T-JEPA (2406.12913), JEPA-for-RL (2504.16591), V-JEPA-2 (25
 ## A1 · JEPA & energy-based learning
 | ID | Titolo | Autori (anno) | Perché conta | Stato |
 |---|---|---|---|---|
-| 2511.08544 | LeJEPA: Provable and Scalable SSL Without the Heuristics | Balestriero, LeCun (2025) | **Critico**: rimuove EMA-teacher e stop-gradient (su cui il progetto si fonda: NN-16, NN-JM-04) e li sostituisce con SIGReg. Mette in discussione una scelta architetturale centrale | ⬇ |
+| 2511.08544 | LeJEPA: Provable and Scalable SSL Without the Heuristics | Balestriero, LeCun (2025) | **Critico**: rimuove EMA-teacher e stop-gradient (su cui il progetto si fonda: NN-16, NN-JM-04) e li sostituisce con SIGReg. Mette in discussione una scelta architetturale centrale | 📖 studio 2026-07: `docs/Studies/LeJEPA-SIGReg-vs-EMA.md` (26-LEJEPA-01/A1 chiusi) |
 
 ## A2 · SSL non-contrastivo
 | ID | Titolo | Autori (anno) | Perché conta | Stato |
