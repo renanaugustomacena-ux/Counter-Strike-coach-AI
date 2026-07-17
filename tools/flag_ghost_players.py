@@ -22,7 +22,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from sqlmodel import select, update
+from sqlmodel import select
 
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager, init_database
 from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats

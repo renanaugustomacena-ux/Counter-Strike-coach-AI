@@ -41,7 +41,6 @@ Exit code 0 = CERTIFIED | Exit code 1 = FAILED
 """
 
 import ast
-import hashlib
 import importlib.util
 import json
 import os
@@ -52,7 +51,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 
 class Severity(Enum):

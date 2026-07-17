@@ -16,11 +16,10 @@ Usage:
 import argparse
 import os
 import re
-import shutil
 import sqlite3
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Optional
 
 _IDENTIFIER_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 _SAFE_COL_TYPE_RE = re.compile(r"^[A-Z]+(?: DEFAULT [0-9.]+)?$")

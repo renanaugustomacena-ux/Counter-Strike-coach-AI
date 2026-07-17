@@ -12,7 +12,6 @@ import logging
 import os
 import sys
 import time
-import traceback
 
 # Venv guard
 if sys.prefix == sys.base_prefix and not os.environ.get("CI"):
@@ -264,8 +263,6 @@ def phase_3_model_instantiation():
 def phase_4_jepa_training():
     """Execute a single JEPA training epoch via TrainingOrchestrator."""
     section("PHASE 4: JEPA TRAINING (1 Epoch — Self-Supervised)")
-
-    import torch
 
     from Programma_CS2_RENAN.backend.nn.coach_manager import CoachTrainingManager
     from Programma_CS2_RENAN.backend.nn.config import get_device

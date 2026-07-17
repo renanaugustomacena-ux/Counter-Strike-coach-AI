@@ -21,7 +21,6 @@ if sys.prefix == sys.base_prefix and not os.environ.get("CI"):
     sys.exit(2)
 
 import argparse
-import logging
 import shutil
 import signal
 import sqlite3
@@ -30,7 +29,7 @@ import threading
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Tuple
 
 if sys.platform == "win32":
     import msvcrt
@@ -63,7 +62,6 @@ try:
     from rich.panel import Panel
     from rich.progress_bar import ProgressBar
     from rich.table import Table
-    from rich.text import Text
     from rich.theme import Theme
     from rich.traceback import install as install_rich_traceback
 except ImportError:

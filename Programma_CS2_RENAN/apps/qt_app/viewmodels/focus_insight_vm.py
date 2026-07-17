@@ -60,9 +60,6 @@ class FocusInsightViewModel(QObject):
         try:
             from sqlmodel import select
 
-            from Programma_CS2_RENAN.apps.qt_app.core.match_utils import (  # noqa: F401
-                extract_map_name,
-            )
             from Programma_CS2_RENAN.backend.storage.database import get_db_manager
             from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
             from Programma_CS2_RENAN.core.config import get_setting

@@ -33,9 +33,7 @@ if sys.platform == "win32":
 # --- Rich & Logging Imports ---
 try:
     from rich.console import Console
-    from rich.markdown import Markdown
     from rich.panel import Panel
-    from rich.table import Table
     from rich.theme import Theme
     from rich.traceback import install as install_rich_traceback
 except ImportError:

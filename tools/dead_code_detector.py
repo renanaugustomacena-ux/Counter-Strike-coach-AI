@@ -444,12 +444,17 @@ def scan_stale_imports(all_files: List[Path]) -> List[str]:
                 # names — neither is reportable.
                 if node.module == "__future__":
                     continue
+                for ln in range(node.lineno, (node.end_lineno or node.lineno) + 1):
+                    import_linenos.add(ln)
+                # Node-level `# noqa: F401` (first line of a possibly
+                # multiline import) marks a deliberate re-export.
+                first_line = content.split("\n")[node.lineno - 1]
+                if "noqa" in first_line and "F401" in first_line:
+                    continue
                 for n in node.names:
                     if n.name == "*":
                         continue
                     imports.append((n.asname or n.name, f"{node.module}.{n.name}"))
-                for ln in range(node.lineno, (node.end_lineno or node.lineno) + 1):
-                    import_linenos.add(ln)
 
         # Check usage
         # Naive text usage check in the file content (excluding the import lines themselves?)
@@ -468,12 +473,25 @@ def scan_stale_imports(all_files: List[Path]) -> List[str]:
         # statement itself contains the alias text, so Phase C reported
         # nothing, ever. Test the substring against the content WITHOUT the
         # import lines, so it measures usage outside the import statements.
+        content_lines = content.split("\n")
         content_without_imports = "\n".join(
-            line for i, line in enumerate(content.split("\n"), start=1) if i not in import_linenos
+            line for i, line in enumerate(content_lines, start=1) if i not in import_linenos
         )
+
+        # Deliberate re-exports carry `# noqa: F401` on their import line —
+        # honor the standard marker instead of reporting them.
+        noqa_f401_lines = [
+            content_lines[i - 1]
+            for i in import_linenos
+            if i <= len(content_lines)
+            and "noqa" in content_lines[i - 1]
+            and "F401" in content_lines[i - 1]
+        ]
 
         for alias, original in imports:
             if alias not in used_names:
+                if any(alias in line for line in noqa_f401_lines):
+                    continue
                 if (
                     f"'{alias}'" in content_without_imports
                     or f'"{alias}"' in content_without_imports

@@ -200,8 +200,12 @@ def _compute_per_round_variance(parser):
     """Compute per-round kill and damage std from player_death and player_hurt events."""
 
     try:
-        deaths_evs = parser.parse_events(["player_death"])
-        hurts_evs = parser.parse_events(["player_hurt"])
+        # Runtime E2E 2026-07-17: current demos do NOT include
+        # total_rounds_played on events by default — it must be requested via
+        # `other`. Without it this function silently returned None and
+        # kill_std/adr_std/impact_rounds all died to 0.0 for every player.
+        deaths_evs = parser.parse_events(["player_death"], other=["total_rounds_played"])
+        hurts_evs = parser.parse_events(["player_hurt"], other=["total_rounds_played"])
         if not deaths_evs or not hurts_evs:
             return None
 
@@ -215,6 +219,15 @@ def _compute_per_round_variance(parser):
         h_name = _resolve_name_column(h_df, ["attacker_name", "user_name", "player_name"])
 
         if not d_name or not h_name or "total_rounds_played" not in d_df.columns:
+            # No-silent-degradation: three stats die to 0.0 when this bails.
+            logger.warning(
+                "Per-round variance unavailable: name_col(deaths)=%s, "
+                "name_col(hurts)=%s, has_round_col=%s — kill_std/adr_std/"
+                "impact_rounds will be 0.0 for this demo",
+                d_name,
+                h_name,
+                "total_rounds_played" in d_df.columns,
+            )
             return None
 
         # Per-round kills
@@ -248,6 +261,77 @@ def _compute_per_round_variance(parser):
         return None
 
 
+def _compute_event_kast(parser, d_df, d_name_col, total_rounds):
+    """Per-player KAST computed from REAL death events, not estimated.
+
+    Groups player_death events by round (total_rounds_played) and applies
+    the canonical K/A/S/T logic per round (kast.calculate_kast_for_round).
+    Rounds with no death events count as survival for everyone. Returns
+    {player_name: kast_ratio} — empty dict when the inputs make the real
+    computation impossible (caller falls back to the estimate, loudly).
+    """
+    from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import (
+        calculate_kast_for_round,
+    )
+
+    if (
+        d_df.empty
+        or not d_name_col
+        or total_rounds <= 0
+        or "total_rounds_played" not in d_df.columns
+        or "tick" not in d_df.columns
+    ):
+        return {}
+
+    victim_col = next((c for c in ("user_name", "victim_name") if c in d_df.columns), None)
+    if victim_col is None:
+        return {}
+    assister_col = next(
+        (c for c in ("assister_name", "assister", "assist_player_name") if c in d_df.columns),
+        None,
+    )
+
+    # DS-07: trade window in ticks depends on the demo's tick rate.
+    try:
+        header = parser.parse_header()
+        tick_rate = int(float(header.get("tick_rate", 64) or 64))
+    except Exception as e:
+        logger.warning("Header parse failed for KAST trade window — using 64: %s", e)
+        tick_rate = 64
+
+    rounds_events: dict = {}
+    for _, ev in d_df.iterrows():
+        rounds_events.setdefault(int(ev["total_rounds_played"]), []).append(
+            {
+                "type": "player_death",
+                "attacker": str(ev.get(d_name_col) or ""),
+                "victim": str(ev.get(victim_col) or ""),
+                "assister": str(ev.get(assister_col) or "") if assister_col else "",
+                "tick": int(ev.get("tick") or 0),
+            }
+        )
+
+    # Rounds absent from the event stream had no deaths → survival for all.
+    empty_rounds = max(0, total_rounds - len(rounds_events))
+
+    players = set()
+    for events in rounds_events.values():
+        for ev in events:
+            for key in ("attacker", "victim", "assister"):
+                if ev[key]:
+                    players.add(ev[key])
+
+    kast: dict = {}
+    for player in players:
+        positive = sum(
+            1
+            for events in rounds_events.values()
+            if calculate_kast_for_round(player, events, ticks_per_second=tick_rate)
+        )
+        kast[player] = min(1.0, (positive + empty_rounds) / total_rounds)
+    return kast
+
+
 def _add_event_stats_safe(parser, df, total_rounds):
     """Safe per-player headshot and accuracy extraction.
 
@@ -271,7 +355,10 @@ def _add_event_stats_safe(parser, df, total_rounds):
     try:
         hurt = parser.parse_events(["player_hurt"])
         shots = parser.parse_events(["weapon_fire"])
-        deaths = parser.parse_events(["player_death"])
+        # total_rounds_played must be requested explicitly (current demos do
+        # not carry it on events by default) — it powers the event-driven
+        # KAST below.
+        deaths = parser.parse_events(["player_death"], other=["total_rounds_played"])
 
         h_df = hurt[0][1] if hurt and isinstance(hurt[0], tuple) else pd.DataFrame()
         s_df = shots[0][1] if shots and isinstance(shots[0], tuple) else pd.DataFrame()
@@ -302,6 +389,10 @@ def _add_event_stats_safe(parser, df, total_rounds):
             logger.warning("player_hurt has no name column (columns: %s)", list(h_df.columns))
         if not d_name_col and not d_df.empty:
             logger.warning("player_death has no name column (columns: %s)", list(d_df.columns))
+
+        # Real per-round KAST from the death events (K/A/S/T semantics via
+        # kast.calculate_kast_for_round) — consumed in the loop below.
+        event_kast = _compute_event_kast(parser, d_df, d_name_col, total_rounds)
 
         players_with_data = 0
         for idx, row in df.iterrows():
@@ -345,9 +436,23 @@ def _add_event_stats_safe(parser, df, total_rounds):
                     name,
                 )
             if total_rounds > 0:
-                df.at[idx, "avg_kast"] = estimate_kast_from_stats(
-                    total_kills, total_assists, total_deaths, total_rounds
-                )
+                # Runtime E2E 2026-07-17: real event-driven KAST first. The
+                # closed-form estimate saturates at 1.0 for anyone averaging
+                # >=1 kill/round (min(kills+assists*0.8, rounds) hits the
+                # ceiling) — it stamped avg_kast=1.0 on 8/10 pros of the
+                # first real ingested demo. The estimate stays as fallback.
+                real_kast = event_kast.get(str(row["player_name"]))
+                if real_kast is not None:
+                    df.at[idx, "avg_kast"] = real_kast
+                else:
+                    logger.warning(
+                        "No event-driven KAST for %r — using closed-form "
+                        "estimate (known to saturate for high-kill players)",
+                        row["player_name"],
+                    )
+                    df.at[idx, "avg_kast"] = estimate_kast_from_stats(
+                        total_kills, total_assists, total_deaths, total_rounds
+                    )
                 player_has_data = True
 
             if player_has_data:

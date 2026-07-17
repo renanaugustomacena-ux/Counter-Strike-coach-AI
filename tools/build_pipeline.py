@@ -1,14 +1,10 @@
-import json
-import logging
 import os
 import shutil
 import signal
 import subprocess
 import sys
 import time
-from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
 
 # --- Venv Guard ---
 if sys.prefix == sys.base_prefix and not os.environ.get("CI"):
@@ -30,10 +26,7 @@ if sys.platform == "win32":
 # --- Rich & Logging Imports ---
 try:
     from rich.console import Console
-    from rich.logging import RichHandler
     from rich.panel import Panel
-    from rich.progress import Progress, SpinnerColumn, TextColumn
-    from rich.text import Text
     from rich.theme import Theme
     from rich.traceback import install as install_rich_traceback
 except ImportError:

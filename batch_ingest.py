@@ -181,8 +181,13 @@ def main():
     if args.limit > 0:
         pending = pending[: args.limit]
 
-    # Auto-detect workers: ~6 GB RAM per worker, leave 12 GB headroom
-    total_ram_gb = os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES") / (1024**3)
+    # Auto-detect workers: ~6 GB RAM per worker, leave 12 GB headroom.
+    # psutil, not os.sysconf — sysconf does not exist on Windows, the
+    # project's primary platform (found by the 2026-07-17 runtime E2E pass:
+    # batch_ingest crashed with AttributeError before ingesting anything).
+    import psutil
+
+    total_ram_gb = psutil.virtual_memory().total / (1024**3)
     max_by_ram = max(1, int((total_ram_gb - 12) / 6))
     max_by_cpu = max(1, multiprocessing.cpu_count() // 2)
     workers = args.workers if args.workers > 0 else min(max_by_ram, max_by_cpu, 8)
