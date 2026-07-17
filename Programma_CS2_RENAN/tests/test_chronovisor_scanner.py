@@ -262,3 +262,35 @@ class TestAnalyzeSignalAtScale:
         vals = np.ones(10) * 0.5
         moments = scanner._analyze_signal_at_scale(1, ticks, vals, scale)
         assert isinstance(moments, list)
+
+    def test_lag_converts_ticks_to_entry_units(self):
+        """R4 MED: timeline entries are one-per-window (~stride ticks apart),
+        so a tick-based lag must be converted before array indexing.
+
+        With 32-tick spacing and lag=64 ticks, the effective index lag is 2
+        entries. A step change is then detectable on a short timeline that
+        the old code (lag=64 ENTRIES on 20 entries) could never analyze."""
+        scanner = self._make_scanner_shell()
+        scale = self._make_scale(window_ticks=320, lag=64, threshold=0.2)
+        ticks = np.arange(20) * 32  # one entry every 32 ticks
+        vals = np.concatenate([np.full(10, 0.2), np.full(10, 0.9)])
+        moments = scanner._analyze_signal_at_scale(1, ticks, vals, scale)
+        assert len(moments) >= 1, (
+            "step change must be detected once lag is in entry units "
+            "(old per-tick lag returned [] on any timeline shorter than 65 entries)"
+        )
+        assert all(m.type == "play" for m in moments)
+
+    def test_timeline_entry_uses_last_tick_and_single_value(self):
+        """R4 MED: RAPCoachModel emits ONE value per window — the entry is
+        keyed to the window's LAST tick, never one-entry-per-tick."""
+        from types import SimpleNamespace
+
+        from Programma_CS2_RENAN.backend.nn.rap_coach.chronovisor_scanner import ChronovisorScanner
+
+        window = [SimpleNamespace(tick=t) for t in (100, 116, 132, 148)]
+        vals = np.array([0.73])
+        tick, value = ChronovisorScanner._timeline_entry(window, vals)
+        assert tick == 148
+        assert abs(value - 0.73) < 1e-9
+        assert isinstance(value, float)

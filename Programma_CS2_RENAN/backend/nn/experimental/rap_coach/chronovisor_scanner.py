@@ -237,9 +237,7 @@ class ChronovisorScanner:
                     )
                     vals = outputs["value_estimate"].cpu().numpy().flatten()
 
-                for i, tick_obj in enumerate(window):
-                    if i < len(vals):
-                        timeline_values.append((tick_obj.tick, float(vals[i])))
+                timeline_values.append(self._timeline_entry(window, vals))
 
             # 3. Analyze Signal for CMs
             cms = self._analyze_signal(match_id, timeline_values)
@@ -259,6 +257,18 @@ class ChronovisorScanner:
                 model_loaded=True,
                 ticks_analyzed=0,
             )
+
+    @staticmethod
+    def _timeline_entry(window, vals) -> Tuple[int, float]:
+        """One timeline entry per window, keyed to the window's LAST tick.
+
+        RAPCoachModel emits ONE value per sequence (value_estimate shape
+        (1, 1)); the pre-R4 per-tick loop only ever appended window[0], so
+        the timeline silently collapsed to one entry per window keyed to
+        its FIRST tick. The value estimates the state at the END of the
+        observed sequence, hence the last tick.
+        """
+        return (window[-1].tick, float(vals[0]))
 
     def _analyze_signal(
         self, match_id: int, timeline: List[Tuple[int, float]]
@@ -297,10 +307,20 @@ class ChronovisorScanner:
         scale: ScaleConfig,
     ) -> List[CriticalMoment]:
         """Detect critical moments at a specific temporal scale."""
-        if len(vals) <= scale.lag:
+        # Timeline entries are one-per-window (~sequence_length//2 tick
+        # stride), NOT one-per-tick: scale.lag/window_ticks are expressed in
+        # ticks, so convert the lag into entry units from the actual entry
+        # spacing before using it as an array index.
+        if len(ticks) < 2:
+            return []
+        entry_stride = float(np.median(np.diff(ticks)))
+        if entry_stride <= 0:
+            entry_stride = 1.0
+        lag_entries = max(1, int(round(scale.lag / entry_stride)))
+        if len(vals) <= lag_entries:
             return []
 
-        deltas = vals[scale.lag :] - vals[: -scale.lag]
+        deltas = vals[lag_entries:] - vals[:-lag_entries]
         cms: List[CriticalMoment] = []
 
         # Scale-specific descriptions
@@ -314,7 +334,7 @@ class ChronovisorScanner:
         i = 0
         while i < len(deltas):
             delta = deltas[i]
-            tick_idx = i + scale.lag
+            tick_idx = i + lag_entries
 
             if abs(delta) > scale.threshold:
                 # Find the peak of this event within the window
@@ -325,7 +345,7 @@ class ChronovisorScanner:
                 while (
                     j < len(deltas)
                     and np.sign(deltas[j]) == np.sign(delta)
-                    and (ticks[j + scale.lag] - ticks[tick_idx] < scale.window_ticks)
+                    and (ticks[j + lag_entries] - ticks[tick_idx] < scale.window_ticks)
                 ):
                     if abs(deltas[j]) > abs(max_d):
                         max_d = deltas[j]
@@ -333,7 +353,7 @@ class ChronovisorScanner:
                     j += 1
 
                 # NN-CV-03: Bounds-check before indexing into ticks array
-                peak_idx = max_idx + scale.lag
+                peak_idx = max_idx + lag_entries
                 if peak_idx >= len(ticks):
                     logger.debug(
                         "NN-CV-03: peak_idx %d out of bounds (ticks=%d), skipping moment",

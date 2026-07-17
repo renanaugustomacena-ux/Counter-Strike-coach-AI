@@ -1230,52 +1230,15 @@ class CoachTrainingManager:
             return {"status": "error", "message": str(e), "overlay_results": {}}
 
 
-def _fetch_rap_ticks(db):
-    from Programma_CS2_RENAN.core.config import get_setting
-
-    current_name = get_setting("CS2_PLAYER_NAME")
-    with db.get_session() as s:
-        stmt = select(PlayerTickState).where(PlayerTickState.player_name == current_name)
-        return s.exec(stmt).all()
-
-
-def _train_on_windows(trainer, windows, reconstructor, device):
-    list(map(lambda w: _process_single_rap_window(trainer, w, reconstructor, device), windows))
-    app_logger.info("RAP-Coach complete.")
-
-
-def _process_single_rap_window(trainer, w, recon, device):
-    batch = recon.reconstruct_belief_tensors(w)
-    for k, v in batch.items():
-        if isinstance(v, torch.Tensor):
-            batch[k] = v.to(device)
-    _apply_dynamic_window_targets(batch, w)
-    trainer.train_step(batch)
-
-
-def _apply_dynamic_window_targets(batch, window_ticks):
-    # NOTE (F3-28): Taking the mean of round_outcome across a temporal window creates
-    # an implicit label-smoothing effect. If the window spans a round boundary (loss→win),
-    # the target becomes ~0.5 — an uninformative gradient signal. Acceptable for the
-    # current prototype; a round-boundary-aware windowing strategy would improve label quality.
-    outcomes = [t.round_outcome for t in window_ticks if t.round_outcome is not None]
-    val = np.mean(outcomes) if outcomes else 0.5
-    batch["target_val"] = torch.tensor([[float(val)]], dtype=torch.float32)
-    strat = np.mean([t.equipment_value / 10000.0 for t in window_ticks])
-    t_strat = torch.zeros(1, 10)
-    strat_idx = min(int(strat * 9), 9)  # Clamp to valid index range [0, 9]
-    t_strat[0, strat_idx] = 1.0
-    batch["target_strat"] = t_strat
-
-
-def _calculate_pro_mean(pro_raw, feature_names):
-    rows = [_extract_feature_vector(p, feature_names) for p in pro_raw]
-    return np.mean(rows, axis=0)
-
-
-def _extract_feature_vector(p, feature_names):
-    d = p.model_dump()
-    return [d.get(f, 0) for f in feature_names]
+# R4 MED (2026-07-17): the dead legacy RAP training path that lived here
+# (_fetch_rap_ticks, _train_on_windows, _process_single_rap_window,
+# _apply_dynamic_window_targets, _calculate_pro_mean, _extract_feature_vector)
+# was deleted. It had zero production callers and carried a latent
+# LEAK-01-class defect: _apply_dynamic_window_targets averaged
+# round_outcome across the window as the value target — training on the
+# label of the round being played. The live RAP path is
+# training_orchestrator._prepare_rap_batch, which computes leak-free
+# advantage targets.
 
 
 if __name__ == "__main__":

@@ -247,6 +247,19 @@ class TestHybridModelLoading:
         assert engine.model is None
         assert engine._get_ml_predictions({"avg_adr": 80.0}) is None
 
+    def test_jepa_path_never_emits_positional_predictions(self):
+        """R4 MED: the JEPA coaching head predicts the first 10 CONTRACT
+        features (0=health, 2=has_helmet, 3=has_defuser) — mapping them to
+        recommended_kills/adr/hs mislabeled a health delta as a kills
+        recommendation. With use_jepa the method must return None and leave
+        JEPA contributions to JEPAInsightAdapter in the insight chain."""
+        from Programma_CS2_RENAN.backend.coaching.hybrid_engine import HybridCoachingEngine
+
+        engine = HybridCoachingEngine.__new__(HybridCoachingEngine)
+        engine.use_jepa = True
+        engine.model = object()  # would crash if the positional path ran
+        assert engine._get_ml_predictions({"avg_adr": 80.0}) is None
+
     def test_stale_checkpoint_yields_none(self, monkeypatch):
         import Programma_CS2_RENAN.backend.nn.persistence as persistence
         from Programma_CS2_RENAN.backend.coaching.hybrid_engine import HybridCoachingEngine

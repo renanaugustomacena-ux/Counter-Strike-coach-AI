@@ -1414,23 +1414,23 @@ class TrainingOrchestrator:
             if not stats_by_key:
                 return None
 
-            # Map each batch item to its RoundStats (use round_number estimate from tick)
+            # Map each batch item to its RoundStats via the item's REAL
+            # round_number (PlayerTickState carries it, verified populated on
+            # the production monolith). The previous tick//(64*115) estimate
+            # assumed a 64-tick server AND ~115s rounds (26-TICK violation),
+            # and its round-1 fallback attached round-1 stats to arbitrary
+            # late ticks — fabricated concept labels. A miss now yields None
+            # for that item (excluded from the found count) instead.
             result = []
             found = 0
             for item in raw_items:
                 demo = getattr(item, "demo_name", None)
                 player = getattr(item, "player_name", None)
-                tick = getattr(item, "tick", 0)
-                # Estimate round number from tick (64 tick/s, ~115s per round)
-                est_round = max(1, tick // (64 * 115) + 1)
+                round_no = getattr(item, "round_number", None)
 
                 rs = None
-                if demo and player:
-                    # Try exact round, then nearest
-                    rs = stats_by_key.get((demo, player, est_round))
-                    if rs is None:
-                        # Try round 1 as fallback (common for early ticks)
-                        rs = stats_by_key.get((demo, player, 1))
+                if demo and player and round_no is not None:
+                    rs = stats_by_key.get((demo, player, int(round_no)))
 
                 result.append(rs)
                 if rs is not None:

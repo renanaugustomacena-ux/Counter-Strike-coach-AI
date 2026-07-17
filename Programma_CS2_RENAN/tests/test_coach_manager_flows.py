@@ -10,7 +10,6 @@ CI-portable: uses in-memory SQLite with monkeypatched get_db_manager.
 
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -23,9 +22,6 @@ from Programma_CS2_RENAN.backend.nn.coach_manager import (
     TARGET_INDICES,
     TRAINING_FEATURES,
     CoachTrainingManager,
-    _apply_dynamic_window_targets,
-    _calculate_pro_mean,
-    _extract_feature_vector,
 )
 from Programma_CS2_RENAN.backend.storage.db_models import (
     CoachState,
@@ -714,77 +710,9 @@ class TestFetchTrainingData:
         assert result == []
 
 
-class TestModuleLevelFunctions:
-    """Tests for module-level helper functions."""
-
-    def test_extract_feature_vector(self):
-        """_extract_feature_vector extracts values in feature_names order."""
-
-        class FakeP:
-            def model_dump(self):
-                return {"avg_kills": 20.0, "avg_adr": 85.0, "rating": 1.1}
-
-        vec = _extract_feature_vector(FakeP(), ["avg_kills", "avg_adr", "rating"])
-        assert vec == [20.0, 85.0, 1.1]
-
-    def test_extract_feature_vector_missing_key_defaults_to_zero(self):
-        class FakeP:
-            def model_dump(self):
-                return {"avg_kills": 20.0}
-
-        vec = _extract_feature_vector(FakeP(), ["avg_kills", "missing_feature"])
-        assert vec == [20.0, 0]
-
-    def test_calculate_pro_mean(self):
-        class FakeP:
-            def __init__(self, kills, adr):
-                self._data = {"avg_kills": kills, "avg_adr": adr}
-
-            def model_dump(self):
-                return self._data
-
-        pro_raw = [FakeP(20.0, 80.0), FakeP(24.0, 90.0), FakeP(22.0, 85.0)]
-        mean = _calculate_pro_mean(pro_raw, ["avg_kills", "avg_adr"])
-        assert mean[0] == pytest.approx(22.0)
-        assert mean[1] == pytest.approx(85.0)
-
-    def test_apply_dynamic_window_targets(self):
-        """_apply_dynamic_window_targets populates target_val and target_strat."""
-        batch = {}
-        window_ticks = [
-            SimpleNamespace(round_outcome=1.0, equipment_value=5000),
-            SimpleNamespace(round_outcome=0.0, equipment_value=3000),
-            SimpleNamespace(round_outcome=1.0, equipment_value=4000),
-        ]
-        _apply_dynamic_window_targets(batch, window_ticks)
-
-        assert "target_val" in batch
-        assert "target_strat" in batch
-        assert batch["target_val"].shape == (1, 1)
-        assert batch["target_strat"].shape == (1, 10)
-        # Mean of [1.0, 0.0, 1.0] = 0.667
-        assert batch["target_val"].item() == pytest.approx(2 / 3, abs=0.01)
-        # target_strat should be one-hot
-        assert batch["target_strat"].sum().item() == pytest.approx(1.0)
-
-    def test_apply_dynamic_window_targets_no_outcomes(self):
-        """When no round_outcome data, should use 0.5 fallback."""
-        batch = {}
-        window_ticks = [
-            SimpleNamespace(round_outcome=None, equipment_value=4000),
-        ]
-        _apply_dynamic_window_targets(batch, window_ticks)
-        assert batch["target_val"].item() == pytest.approx(0.5)
-
-    def test_apply_dynamic_window_targets_strat_index_clamped(self):
-        """Equipment value > 10000 should not cause index out of bounds."""
-        batch = {}
-        window_ticks = [
-            SimpleNamespace(round_outcome=1.0, equipment_value=15000),
-        ]
-        _apply_dynamic_window_targets(batch, window_ticks)
-        # strat = 15000/10000 = 1.5, idx = min(int(1.5*9), 9) = 9
-        assert batch["target_strat"][0, 9] == 1.0
+# NOTE (R4 MED, 2026-07-17): TestModuleLevelFunctions was deleted together
+# with the dead module-level RAP helpers it exercised (LEAK-01-class
+# round_outcome value target; zero production callers) — see coach_manager.py.
 
 
 class TestRunFullCycleGuards:
