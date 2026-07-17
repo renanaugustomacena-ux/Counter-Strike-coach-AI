@@ -328,11 +328,12 @@ class JEPACoachingModel(nn.Module):
             similarity = F.cosine_similarity(curr_pooled, prev_pooled, dim=-1)
             distance = 1.0 - similarity
 
-            # If distance is small, state hasn't changed enough to warrant re-decoding
-            # We use .all() because we are in batch mode, but typically inference is batch=1
-            # For batch > 1, we decode if ANY sample changed significantly, or handle individually.
-            # Here we assume batch processing: if average distance < threshold, skip.
-            if distance.mean().item() < threshold:
+            # If distance is small, state hasn't changed enough to warrant
+            # re-decoding. R4 LOW: use the ANY-sample rule (max) — the old
+            # batch-mean gating averaged away one sample's drastic change
+            # when the rest of the batch was static, suppressing the decode
+            # for exactly the sample that needed it.
+            if distance.max().item() < threshold:
                 should_decode = False
 
         # 3. Decode if necessary (Heavy Predictor/Decoder)

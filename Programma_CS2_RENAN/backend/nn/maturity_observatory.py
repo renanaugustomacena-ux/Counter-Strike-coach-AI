@@ -182,8 +182,11 @@ class MaturityObservatory(TrainingCallback):
         )
         snap.maturity_score = self._ema_score
 
-        # State classification
-        snap.state = self._classify_state()
+        # State classification — R4 LOW: pass the CURRENT snapshot; the
+        # history-only variant classified from the previous epoch (the
+        # snapshot is appended only after this returns), so every state
+        # label lagged one epoch and epochs 1-2 were always "doubt".
+        snap.state = self._classify_state(current=snap)
 
         return snap
 
@@ -313,7 +316,13 @@ class MaturityObservatory(TrainingCallback):
                 self._concept_temp_warning_logged = True
 
     def _compute_role_stability(self) -> float:
-        """Consistency of conviction index over recent epochs."""
+        """Consistency of conviction index over recent epochs.
+
+        Deliberately excludes the CURRENT epoch (R4 LOW note): the current
+        snapshot's conviction_index is itself computed FROM role_stability,
+        so including it would be circular — this one-epoch lag is
+        structural, unlike the _classify_state lag that was fixed.
+        """
         if len(self.history) < 3:
             return 0.0
         recent = [s.conviction_index for s in self.history[-10:]]
@@ -335,7 +344,7 @@ class MaturityObservatory(TrainingCallback):
 
     # ── State Machine ────────────────────────────────────────────────
 
-    def _classify_state(self) -> str:
+    def _classify_state(self, current: "MaturitySnapshot" = None) -> str:
         """
         Classify current maturity state from recent history.
 
@@ -347,33 +356,37 @@ class MaturityObservatory(TrainingCallback):
             MATURE:     conviction > 0.75, stable for 20+ epochs,
                         value_accuracy > 0.7, gate_specialization > 0.5
         """
-        if len(self.history) < 2:
+        # Effective view: history plus the not-yet-appended current snapshot.
+        window = list(self.history)
+        if current is not None:
+            window.append(current)
+        if len(window) < 2:
             return "doubt"
 
-        recent = self.history[-5:]
+        recent = window[-5:]
         current = recent[-1]
         conv = current.conviction_index
 
         # Check for CRISIS: sharp drop from recent max
-        recent_max = max(s.conviction_index for s in self.history[-10:])
+        recent_max = max(s.conviction_index for s in window[-10:])
         if recent_max > 0.3 and conv < recent_max * (1 - CRISIS_DROP_PCT):
             return "crisis"
 
         # Check for MATURE
         if (
             conv > MATURE_THRESHOLD
-            and len(self.history) >= MATURE_EPOCHS
+            and len(window) >= MATURE_EPOCHS
             and current.value_accuracy > 0.7
             and current.gate_specialization > 0.5
         ):
-            long_recent = [s.conviction_index for s in self.history[-MATURE_EPOCHS:]]
+            long_recent = [s.conviction_index for s in window[-MATURE_EPOCHS:]]
             if torch.tensor(long_recent).std().item() < CONVICTION_STABILITY:
                 return "mature"
 
         # Check for CONVICTION
         if conv > CONVICTION_THRESHOLD:
-            if len(self.history) >= 10:
-                recent_conv = [s.conviction_index for s in self.history[-10:]]
+            if len(window) >= 10:
+                recent_conv = [s.conviction_index for s in window[-10:]]
                 if torch.tensor(recent_conv).std().item() < CONVICTION_STABILITY:
                     return "conviction"
             return "learning"  # High but not yet stable → still learning

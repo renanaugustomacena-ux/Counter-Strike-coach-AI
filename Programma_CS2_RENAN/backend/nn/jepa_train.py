@@ -97,7 +97,10 @@ class JEPAPretrainDataset(Dataset):
             context = sequence[: self.context_len]
             target = sequence[self.context_len : self.context_len + self.target_len]
         else:
-            start = int(self._rng.integers(0, max_start))
+            # R4 LOW: integers() has an EXCLUSIVE high bound — without +1
+            # the last valid window of every sequence was unreachable,
+            # biasing sampling away from sequence tails.
+            start = int(self._rng.integers(0, max_start + 1))
             context = sequence[start : start + self.context_len]
             target = sequence[start + self.context_len : start + self.context_len + self.target_len]
 
@@ -481,6 +484,7 @@ def train_jepa_pretrain(
     for epoch in range(num_epochs):
         model.train()
         total_loss = 0
+        processed_batches = 0
         final_epoch = epoch
 
         callbacks.fire("on_epoch_start", epoch=epoch)
@@ -491,8 +495,12 @@ def train_jepa_pretrain(
             )
             if batch_loss is not None:
                 total_loss += batch_loss
+                processed_batches += 1
 
-        avg_loss = total_loss / len(dataloader)
+        # R4 LOW: divide by PROCESSED batches — skipped degenerate batches
+        # (singletons) contributed 0 to the numerator but still inflated the
+        # denominator, underestimating avg_loss and skewing EarlyStopping.
+        avg_loss = total_loss / max(1, processed_batches)
         loss_history.append(avg_loss)
         if avg_loss < best_loss:
             best_loss = avg_loss

@@ -132,7 +132,11 @@ def _train_jepa_self_supervised(X, device, context=None):
             batch_size_actual = pred_emb.size(0)
             num_negatives = min(8, batch_size_actual - 1)
             if num_negatives > 0 and batch_size_actual > 1:
-                # NN-61: Vectorized negative sampling using torch.randperm (replaces O(B²) Python loops)
+                # NN-61 → R4 LOW honesty note: this is a PER-SAMPLE randperm loop, not the
+                # vectorized version (that one lives in jepa_train._jepa_negative_indices).
+                # O(B·B log B) worst case; acceptable at the batch sizes this legacy path
+                # sees. Comment corrected — the old text claimed vectorization that never
+                # happened here.
                 neg_indices = torch.zeros(
                     batch_size_actual, num_negatives, dtype=torch.long, device=device
                 )
@@ -275,9 +279,7 @@ def run_training():
     _finalize_training(model)
 
 
-def _log_epoch(epoch, total_loss):
-    if (epoch + 1) % 10 == 0:
-        logger.info("Epoch %s: loss=%s", epoch + 1, format(total_loss, ".4f"))
+# R4 LOW: dead _log_epoch removed — the live loop logs inline.
 
 
 def _finalize_training(model):
