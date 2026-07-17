@@ -276,7 +276,11 @@ def get_all_python_files(root: Path) -> List[Path]:
                 if file.endswith(".py") and file not in EXCLUDE_FILES:
                     files.append(Path(r) / file)
     except Exception as e:
-        print(f"[ERR] Scanning failed at {r}: {e}")
+        # R4 LOW: r was unbound if os.walk failed before the first
+        # iteration, and a partial file list silently skewed every phase.
+        location = locals().get("r", root)
+        print(f"[ERR] Scanning failed at {location}: {e}", file=sys.stderr)
+        raise
     return files
 
 

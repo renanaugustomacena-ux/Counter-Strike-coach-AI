@@ -14,10 +14,19 @@ if not _MANIFEST_HMAC_KEY_RAW:
     # RP-01: Warn when using the static fallback key. Builds targeting
     # end-users should set CS2_MANIFEST_KEY in the environment.
     import logging as _log
+    import sys as _sys
 
+    if getattr(_sys, "frozen", False):
+        # R4 LOW: fail CLOSED in shipped builds — the public fallback
+        # constant lets anyone with source forge a valid signature, which
+        # voids the integrity protection exactly where it matters.
+        raise RuntimeError(
+            "[RP-01] CS2_MANIFEST_KEY is required in frozen builds — "
+            "refusing to fall back to the public development HMAC key."
+        )
     _log.getLogger("cs2analyzer.rasp").warning(
-        "[RP-01] CS2_MANIFEST_KEY not set — using static fallback HMAC key. "
-        "Set the environment variable for production builds."
+        "[RP-01] CS2_MANIFEST_KEY not set — using static fallback HMAC key "
+        "(DEV ONLY; frozen builds refuse to start without the env key)."
     )
     _MANIFEST_HMAC_KEY_RAW = "macena-cs2-integrity-v1"
 _MANIFEST_HMAC_KEY = _MANIFEST_HMAC_KEY_RAW.encode("utf-8")

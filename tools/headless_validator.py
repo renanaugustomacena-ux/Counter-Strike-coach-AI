@@ -2626,7 +2626,7 @@ def verify_no_critical_todos():
 
 
 def verify_type_hint_coverage():
-    """Sample production files; warn if <60% of functions have full type hints."""
+    """Sample production files; warn if <50% of functions have full type hints."""
     import random
 
     files = _get_production_files()

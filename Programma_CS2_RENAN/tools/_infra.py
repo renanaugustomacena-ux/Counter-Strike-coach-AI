@@ -247,9 +247,13 @@ class Console:
     def _detect_color(self) -> bool:
         if os.environ.get("NO_COLOR"):
             return False
+        # R4 LOW: the win32 branch ended in a literal True (never falsy, and
+        # returned str from the env vars) — redirected/CI output got raw ANSI
+        # codes. Both platforms now require a TTY and return a real bool.
+        is_tty = hasattr(sys.stdout, "isatty") and sys.stdout.isatty()
         if sys.platform == "win32":
-            return os.environ.get("TERM") or os.environ.get("WT_SESSION") or True
-        return hasattr(sys.stdout, "isatty") and sys.stdout.isatty()
+            return bool(os.environ.get("TERM") or os.environ.get("WT_SESSION")) and is_tty
+        return is_tty
 
     def _apply(self, text: str, *styles: str) -> str:
         if not self._supports_color:

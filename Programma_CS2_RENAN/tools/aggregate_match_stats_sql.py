@@ -189,12 +189,15 @@ def _read_match_metadata(match_db_path: Path) -> Optional[dict]:
     }
 
 
-def _aggregate_per_player(match_db_path: Path) -> list[dict]:
+def _aggregate_per_player(match_db_path: Path) -> tuple[list[dict], int]:
     """Per-player aggregation from matchtickstate + match_event_state.
 
-    Returns a list of dicts; one entry per real player (observers and
-    bots filtered via MIN_NONZERO_FIELDS_FOR_REAL_PLAYER).
+    Returns (aggregates, noise_rows): one aggregate dict per real player,
+    plus the count of observer/caster/bot rows filtered via
+    MIN_NONZERO_FIELDS_FOR_REAL_PLAYER (R4 LOW: the run report used to
+    hard-code rows_skipped_noise=0, understating the audit trail).
     """
+    noise_rows = 0
     con = sqlite3.connect(f"file:{match_db_path}?mode=ro&immutable=1", uri=True)
     cur = con.cursor()
 
@@ -429,6 +432,7 @@ def _aggregate_per_player(match_db_path: Path) -> list[dict]:
         hs_kills = int(hs_kills or 0)
         if max(kills, deaths, hs_kills) < MIN_NONZERO_FIELDS_FOR_REAL_PLAYER:
             # Observer / caster / bot row — every total counter at zero.
+            noise_rows += 1
             continue
 
         pr = perround.get(
@@ -477,7 +481,7 @@ def _aggregate_per_player(match_db_path: Path) -> list[dict]:
                 ),
             }
         )
-    return aggregates
+    return aggregates, noise_rows
 
 
 def _stdev(values: list[float]) -> float:
@@ -725,7 +729,7 @@ def _reconcile_against_complete(report_path: Path) -> dict:
             drifts.append({"demo_name": demo, "issue": "metadata_unreadable"})
             continue
         try:
-            aggs = _aggregate_per_player(sp)
+            aggs, _noise = _aggregate_per_player(sp)
         except sqlite3.OperationalError as e:
             drifts.append({"demo_name": demo, "issue": f"aggregator_error: {e}"})
             continue
@@ -877,7 +881,8 @@ def main(argv: Optional[list[str]] = None) -> int:
                 report["matches_skipped_missing_metadata"] += 1
                 continue
             try:
-                aggs = _aggregate_per_player(src)
+                aggs, noise_rows = _aggregate_per_player(src)
+                report["rows_skipped_noise"] += noise_rows
             except sqlite3.OperationalError as agg_err:
                 report["errors"].append({"file": src.name, "error": str(agg_err)})
                 continue
