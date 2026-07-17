@@ -15,6 +15,7 @@ Usage:
     python tools/mine_shard_strategies.py --dry-run           # count, no insert
     python tools/mine_shard_strategies.py                     # full run
 """
+
 import argparse
 import bisect
 import hashlib
@@ -29,6 +30,8 @@ from typing import Optional
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
+
+from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE  # noqa: E402
 
 DEFAULT_SHARDS_DIR = Path(
     "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data"
@@ -53,7 +56,7 @@ TRADE_WINDOW_SECONDS = 2.0
 WINDOW_20S = 20.0
 WINDOW_30S = 30.0
 WINDOW_45S = 45.0
-_DEFAULT_TICK_RATE = 64.0
+_DEFAULT_TICK_RATE = float(DEFAULT_TICK_RATE)
 
 # Bomb site centroids from K-means clustering (80 shards, ≥30 plants, ≥1500u separation)
 # Convention: sorted by center_x (lower x = "a", higher x = "b")

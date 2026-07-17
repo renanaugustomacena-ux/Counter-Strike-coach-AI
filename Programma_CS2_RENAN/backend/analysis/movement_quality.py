@@ -32,9 +32,10 @@ logger = get_logger("cs2analyzer.analysis.movement_quality")
 # and was correct only on 128-tick demos (FACEIT). Real-time semantics now live in
 # SECONDS and are converted to tick counts per-demo via the caller's tick_rate, so
 # 64- and 128-tick demos coexist correctly. Default mirrors the codebase canonical
-# rate (core.constants.TICK_RATE / MatchMetadata.tick_rate default 64.0); the real
-# per-demo rate is resolved by the orchestrator from MatchMetadata.
-DEFAULT_TICK_RATE = 64
+# rate (26-NORM-01 SSOT); the real per-demo rate is resolved by the
+# orchestrator from MatchMetadata.
+from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE  # noqa: E402
+
 # Minimum data to attempt analysis (1 second of ticks)
 _MIN_ANALYSIS_SECONDS = 1.0
 # Minimum position hold time to count as "established"

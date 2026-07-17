@@ -7,6 +7,7 @@ from Programma_CS2_RENAN.backend.nn.config import GLOBAL_SEED, get_device
 from Programma_CS2_RENAN.backend.nn.persistence import StaleCheckpointError, load_nn, save_nn
 from Programma_CS2_RENAN.backend.nn.training_callbacks import CallbackRegistry
 from Programma_CS2_RENAN.backend.storage.db_models import DatasetSplit
+from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.nn.orchestrator")
@@ -1012,7 +1013,7 @@ class TrainingOrchestrator:
         # real-time memory/flash windows. Imported lazily to mirror _build_rap_batch.
         from Programma_CS2_RENAN.backend.processing.player_knowledge import PlayerKnowledgeBuilder
 
-        kb_by_rate = {getattr(kb, "tick_rate", 64): kb}
+        kb_by_rate = {getattr(kb, "tick_rate", DEFAULT_TICK_RATE): kb}
 
         for i, item in enumerate(raw_items):
             match_id = getattr(item, "match_id", None)
@@ -1136,7 +1137,9 @@ class TrainingOrchestrator:
         return per_tick_target_pos
 
     @staticmethod
-    def _rap_compute_timespans(raw_items, default_tick_rate: float = 64.0, tick_rates=None):
+    def _rap_compute_timespans(
+        raw_items, default_tick_rate: float = float(DEFAULT_TICK_RATE), tick_rates=None
+    ):
         """RAP-AUDIT-05 / C1.2 (26-TICK-03): inter-tick timespans for the LTC ODE solver.
 
         Without real timespans the LTC treats every tick as 1.0s and loses its
@@ -1162,7 +1165,9 @@ class TrainingOrchestrator:
         return per_tick_dt
 
     @staticmethod
-    def _resolve_tick_rate(match_id, match_mgr, metadata_cache, default: int = 64) -> int:
+    def _resolve_tick_rate(
+        match_id, match_mgr, metadata_cache, default: int = DEFAULT_TICK_RATE
+    ) -> int:
         """C1.2 (26-TICK-01/03): per-demo server tick rate from cached MatchMetadata.
 
         Reuses the same ``metadata_cache`` populated by ``_resolve_map_name`` so no

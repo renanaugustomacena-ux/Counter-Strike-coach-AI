@@ -563,15 +563,14 @@ class TestCheckPrerequisites:
     def test_user_demos_insufficient_with_profile_present(self, monkeypatch):
         """With a profile but insufficient pro demos, still returns not ready.
 
-        26-SCHEMA-02: PlayerProfile does NOT declare steam_connected/
-        faceit_connected (they live on Ext_PlayerPlaystyle and are never
-        written by any code path). check_prerequisites reads them via
-        getattr with a False default, so every profile is "not connected"
-        today; 5/10 pro demos therefore yields "Gathering Pro Baseline".
+        26-SCHEMA-02 (owner decision 2026-07-17): the connect-state fields
+        were removed and prerequisites are pro-only until the connect
+        feature is designed for real. A profile row must not change the
+        outcome: 5/10 pro demos yields "Gathering Pro Baseline".
         """
         mgr, engine = _make_manager(monkeypatch)
         _seed_matches(engine, pro_count=5, user_count=3)
-        # Profile present but not steam/faceit-connected (fields default to False).
+        # A profile row exists but carries no identity the trainer can use.
         with Session(engine) as session:
             session.add(PlayerProfile(player_name="TestPlayer", role="Entry", bio="test"))
             session.commit()
@@ -582,7 +581,7 @@ class TestCheckPrerequisites:
         )
         ok, msg = mgr.check_prerequisites()
         assert ok is False
-        # Unconnected profile + 5/10 pro demos → "Gathering Pro Baseline" path.
+        # Profile row + 5/10 pro demos → "Gathering Pro Baseline" path.
         assert "5/10" in msg or "Gathering" in msg or "Failed" in msg
 
     def test_exception_returns_false(self, monkeypatch):
@@ -807,7 +806,7 @@ class TestFetchJepaTicksB1XL:
         self._seed_ticks(engine)
         first = [t.id for t in mgr._fetch_jepa_ticks(is_pro=True, seed=42, sample_size=10)]
         assert getattr(mgr, "_fetch_scale_cache", None), "cache must populate on first fetch"
-        (key, (total, id_min, id_max)) = next(iter(mgr._fetch_scale_cache.items()))
+        key, (total, id_min, id_max) = next(iter(mgr._fetch_scale_cache.items()))
         assert total == 60 and id_min is not None and id_max is not None
         second = [t.id for t in mgr._fetch_jepa_ticks(is_pro=True, seed=42, sample_size=10)]
         assert first == second  # cached scale → identical selection (DET-01)
