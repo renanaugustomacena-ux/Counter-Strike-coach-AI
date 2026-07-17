@@ -61,9 +61,10 @@ def backup_monolith(target_dir: Optional[Path] = None) -> Path:
     """
     Create a WAL-safe backup of the monolith database.
 
-    1. PRAGMA wal_checkpoint(TRUNCATE) to flush WAL into main db file
-    2. shutil.copy2() to preserve metadata timestamps
-    3. Naming: database_{YYYYMMDD_HHMMSS}.db
+    1. Free-space guard: refuse a full copy that cannot fit (DB + 5 GB)
+    2. SQLite Online Backup API (P0-05) — atomic, safe vs concurrent writes
+    3. PRAGMA integrity_check on the result (P2-08)
+    4. Naming: database_{YYYYMMDD_HHMMSS}.db
     """
     if target_dir is None:
         target_dir = _DEFAULT_BACKUP_ROOT / "database"

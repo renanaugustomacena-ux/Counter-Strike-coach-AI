@@ -14,39 +14,50 @@ from pathlib import Path
 import pytest
 
 
-@pytest.mark.skip(
-    reason="F9-04/F9-01: backup_monolith() may hang waiting on a DB lock. "
-    "Requires pytest-timeout plugin and production DB. "
-    "Re-enable once BackupManager WAL-checkpoint timeout is bounded."
-)
 class TestBackupMonolith:
-    """Verify WAL-safe monolith backup creates a valid database file."""
+    """Verify the Online-Backup-API monolith backup on a temp DB.
 
-    def test_backup_creates_file(self, tmp_path):
+    The old class-level skip ("may hang waiting on a DB lock… requires
+    pytest-timeout") described the pre-P0-05 checkpoint+copy2 strategy:
+    the current implementation uses sqlite3.backup() with a bounded
+    connect timeout, pytest-timeout is pinned in CI, and pytest.ini sets
+    a global timeout — every premise of the skip had expired. Pointing
+    _MONOLITH_DB at a temp DB makes the tests CI-portable.
+    """
+
+    def _point_at_temp_db(self, tmp_path, monkeypatch) -> None:
+        from Programma_CS2_RENAN.backend.storage import db_backup
+
+        src = tmp_path / "monolith.db"
+        conn = sqlite3.connect(str(src))
+        conn.execute("CREATE TABLE t (id INTEGER PRIMARY KEY, v TEXT)")
+        conn.execute("INSERT INTO t VALUES (1, 'x')")
+        conn.commit()
+        conn.close()
+        monkeypatch.setattr(db_backup, "_MONOLITH_DB", src)
+
+    def test_backup_creates_file(self, tmp_path, monkeypatch):
         """backup_monolith() must produce a non-zero .db file."""
-        from Programma_CS2_RENAN.backend.storage.db_backup import _MONOLITH_DB, backup_monolith
+        from Programma_CS2_RENAN.backend.storage.db_backup import backup_monolith
 
-        if not _MONOLITH_DB.exists():
-            pytest.skip("Monolith database not found on this machine")
-
-        backup_path = backup_monolith(target_dir=tmp_path)
+        self._point_at_temp_db(tmp_path, monkeypatch)
+        backup_path = backup_monolith(target_dir=tmp_path / "out")
         assert backup_path.exists(), "Backup file was not created"
         assert backup_path.stat().st_size > 0, "Backup file is empty"
         assert backup_path.suffix == ".db"
 
-    def test_backup_is_valid_sqlite(self, tmp_path):
-        """The backup file must pass PRAGMA integrity_check."""
-        from Programma_CS2_RENAN.backend.storage.db_backup import _MONOLITH_DB, backup_monolith
+    def test_backup_is_valid_sqlite(self, tmp_path, monkeypatch):
+        """The backup file must pass PRAGMA integrity_check and carry data."""
+        from Programma_CS2_RENAN.backend.storage.db_backup import backup_monolith
 
-        if not _MONOLITH_DB.exists():
-            pytest.skip("Monolith database not found on this machine")
-
-        backup_path = backup_monolith(target_dir=tmp_path)
+        self._point_at_temp_db(tmp_path, monkeypatch)
+        backup_path = backup_monolith(target_dir=tmp_path / "out")
         conn = sqlite3.connect(str(backup_path), timeout=10)
         try:
             conn.execute("PRAGMA busy_timeout = 5000")
             result = conn.execute("PRAGMA integrity_check").fetchone()
             assert result[0] == "ok", f"Integrity check failed: {result[0]}"
+            assert conn.execute("SELECT v FROM t WHERE id=1").fetchone()[0] == "x"
         finally:
             conn.close()
 

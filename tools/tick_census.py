@@ -27,7 +27,10 @@ DB_PATH = PROJECT_ROOT / "Programma_CS2_RENAN" / "backend" / "storage" / "databa
 AUDIT_COLUMNS = {
     "health": 0,
     "armor": 1,
-    # has_helmet (idx 2) and has_defuser (idx 3) not in monolith — only per-match DBs
+    # idx 2/3 live in the monolith since the D-4 indexes and were backfilled
+    # by repair_tick_features (2026-07-17) — auditing them is the point.
+    "has_helmet": 2,
+    "has_defuser": 3,
     "equipment_value": 4,
     "is_crouching": 5,
     "is_scoped": 6,
@@ -44,7 +47,15 @@ AUDIT_COLUMNS = {
 }
 
 # Binary/low-frequency features where high zero rate is normal
-EXPECTED_LOW_FREQUENCY = {"is_crouching", "is_scoped", "is_blinded", "bomb_planted"}
+# (has_defuser: CT-side only, and 0 for the ~253 demos whose .dem is gone)
+EXPECTED_LOW_FREQUENCY = {
+    "is_crouching",
+    "is_scoped",
+    "is_blinded",
+    "bomb_planted",
+    "has_helmet",
+    "has_defuser",
+}
 
 # Threshold: flag if a non-low-frequency feature is >90% zero in a demo
 ZERO_RATE_THRESHOLD = 0.90

@@ -242,10 +242,26 @@ class RAPMemory(nn.Module):
         )
 
     def load_state_dict(self, state_dict, strict=True, assign=False):
-        """Override to mark Hopfield as trained when loading a checkpoint."""
+        """Override to mark Hopfield as trained when loading a checkpoint.
+
+        NN-MEM-01: trained is asserted ONLY when the checkpoint actually
+        carries the Hopfield weights. A partial load (strict=False) that
+        misses them must NOT bless random prototypes as trained — that is
+        exactly the corruption the bypass invariant exists to prevent.
+        """
         result = super().load_state_dict(state_dict, strict=strict, assign=assign)
-        self._hopfield_trained = True
-        logger.debug("NN-MEM-01: Hopfield marked as trained via checkpoint load")
+        loaded_hopfield = any(k.startswith("hopfield.") for k in state_dict) and not any(
+            k.startswith("hopfield.") for k in getattr(result, "missing_keys", [])
+        )
+        if loaded_hopfield:
+            self._hopfield_trained = True
+            logger.debug("NN-MEM-01: Hopfield marked as trained via checkpoint load")
+        else:
+            self._hopfield_trained = False
+            logger.warning(
+                "NN-MEM-01: checkpoint carried no Hopfield weights — "
+                "bypass stays active until real forward passes"
+            )
         return result
 
 

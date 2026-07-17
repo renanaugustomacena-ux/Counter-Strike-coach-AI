@@ -31,11 +31,12 @@ from typing import Optional
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+# Resolved via the DP-06 SSOT — an earlier revision hardcoded the dead
+# "New Volume" mount, turning the default run into a silent 0-shard no-op.
+from Programma_CS2_RENAN.core.config import get_pro_demo_base  # noqa: E402
 from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE  # noqa: E402
 
-DEFAULT_SHARDS_DIR = Path(
-    "/media/renan/New Volume/PROIECT/Counter-Strike-coach-AI/DEMO_PRO_PLAYERS/match_data"
-)
+DEFAULT_SHARDS_DIR = get_pro_demo_base() / "match_data"
 DB_PATH = PROJECT_ROOT / "Programma_CS2_RENAN" / "backend" / "storage" / "database.db"
 
 KNOWN_MAPS = {
@@ -56,6 +57,7 @@ TRADE_WINDOW_SECONDS = 2.0
 WINDOW_20S = 20.0
 WINDOW_30S = 30.0
 WINDOW_45S = 45.0
+FLASH_ASSIST_WINDOW_S = 1.0
 _DEFAULT_TICK_RATE = float(DEFAULT_TICK_RATE)
 
 # Bomb site centroids from K-means clustering (80 shards, ≥30 plants, ≥1500u separation)
@@ -519,7 +521,13 @@ def classify_round(
 
         for flash_tick, flasher in flash_events:
             for kill_tick, killer, kt, _, vt, _ in rd.deaths:
-                if kt == team_name and vt != team_name and 0 < (kill_tick - flash_tick) <= 64:
+                if (
+                    kt == team_name
+                    and vt != team_name
+                    # 26-TICK: seconds × per-shard rate, like the named
+                    # windows above — an inline 64 survived the sweep here.
+                    and 0 < (kill_tick - flash_tick) <= int(FLASH_ASSIST_WINDOW_S * rd.tick_rate)
+                ):
                     _emit(
                         "individual.flash_assist",
                         "flash_assist",
