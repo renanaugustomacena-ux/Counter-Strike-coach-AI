@@ -129,6 +129,15 @@ PLAYERTICKSTATE_INDEXES = [
         "ix_playertickstate_demo_name",
         "CREATE INDEX ix_playertickstate_demo_name ON playertickstate (demo_name)",
     ),
+    # Post-R4 additions — kept in the drop/recreate cycle so --full bulk
+    # inserts do not pay live index maintenance for them either.
+    (
+        "ix_playertickstate_demo_player_tick",
+        "CREATE INDEX ix_playertickstate_demo_player_tick "
+        "ON playertickstate (demo_name, player_name, tick)",
+    ),
+    ("ix_pts_has_helmet", "CREATE INDEX ix_pts_has_helmet ON playertickstate (has_helmet)"),
+    ("ix_pts_has_defuser", "CREATE INDEX ix_pts_has_defuser ON playertickstate (has_defuser)"),
 ]
 
 KNOWN_CS2_MAPS = {"mirage", "dust2", "inferno", "nuke", "overpass", "anubis", "ancient", "vertigo"}

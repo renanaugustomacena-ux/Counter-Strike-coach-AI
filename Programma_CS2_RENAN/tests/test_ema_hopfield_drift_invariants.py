@@ -64,27 +64,50 @@ def test_ema_apply_shadow_breaks_shadow_aliasing():
 # --- Hopfield partial-load guard --------------------------------------------
 
 
-def test_hopfield_bypass_after_partial_load():
-    """Loading a state_dict that omits Hopfield weights must not mark the
-    layer as trained — else the model runs with random prototypes."""
+def _make_rap_memory():
+    """Build a small RAPMemory or skip when ncps/hflayers are absent.
+
+    The previous revision of this test imported a class that never
+    existed (RecurrentBeliefState) and skipped forever as "optional
+    dep" — the NN-MEM-01 partial-load guard had zero real coverage.
+    """
+    import pytest
+
     try:
-        from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.memory import (
-            RecurrentBeliefState,
-        )
+        from Programma_CS2_RENAN.backend.nn.experimental.rap_coach.memory import RAPMemory
+
+        return RAPMemory(perception_dim=16, metadata_dim=8, hidden_dim=32)
     except ImportError:
-        import pytest
+        pytest.skip("RAP deps (ncps/hflayers) unavailable")
 
-        pytest.skip("RAP memory module unavailable (optional dep)")
 
-    memory = RecurrentBeliefState(input_dim=8, hidden_dim=16, belief_dim=32)
-    # Build a state_dict that strips all hopfield weights.
-    sd = {k: v for k, v in memory.state_dict().items() if "hopfield" not in k.lower()}
+def test_hopfield_bypass_after_partial_load():
+    """NN-MEM-01: a state_dict that omits the Hopfield weights must not
+    mark the layer as trained — else the model runs associative recall
+    on random prototypes."""
+    memory = _make_rap_memory()
+    sd = {k: v for k, v in memory.state_dict().items() if not k.startswith("hopfield.")}
     memory.load_state_dict(sd, strict=False)
 
-    trained_flag = getattr(memory, "_hopfield_trained", False)
-    assert not trained_flag, (
+    assert memory._hopfield_trained is False, (
         "_hopfield_trained must stay False when Hopfield weights were not "
         "part of the loaded state_dict"
+    )
+
+
+def test_hopfield_trained_after_full_load():
+    """The complement: a FULL checkpoint (Hopfield weights included) must
+    re-arm the layer — otherwise every restart would retrain from scratch."""
+    memory = _make_rap_memory()
+    full_sd = memory.state_dict()
+    assert any(k.startswith("hopfield.") for k in full_sd), "fixture lost the hopfield submodule"
+
+    fresh = _make_rap_memory()
+    fresh.load_state_dict(full_sd)
+
+    assert fresh._hopfield_trained is True, (
+        "_hopfield_trained must be True after loading a checkpoint that "
+        "carries the Hopfield weights"
     )
 
 
