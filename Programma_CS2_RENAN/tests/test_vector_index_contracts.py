@@ -25,7 +25,12 @@ class TestStackUniform:
     def test_non_modal_dims_dropped_loudly(self, caplog):
         import logging
 
-        with caplog.at_level(logging.WARNING):
+        # Bridge project logger for caplog (propagate=False otherwise)
+        lg = logging.getLogger("cs2analyzer.vector_index")
+        prior = lg.propagate
+        lg.propagate = True
+        try:
+            caplog.set_level(logging.WARNING, logger="cs2analyzer.vector_index")
             ids, vecs = VectorIndexManager._stack_uniform(
                 "experience",
                 [10, 11, 12, 13],
@@ -36,6 +41,8 @@ class TestStackUniform:
                     np.ones(384, dtype=np.float32),
                 ],
             )
+        finally:
+            lg.propagate = prior
         assert ids.tolist() == [10, 12, 13], "the 100-dim row must be dropped"
         assert vecs.shape == (3, 384)
         assert any("non-modal dimension" in r.message for r in caplog.records)
