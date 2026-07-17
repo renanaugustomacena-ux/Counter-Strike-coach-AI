@@ -410,7 +410,13 @@ class CoachingDialogueEngine:
             return opening
 
     def respond(self, user_message: str) -> str:
-        """Process a user question and return a coaching response."""
+        """Process a user question and return a coaching response.
+
+        R4 LOW (concurrency): the state lock is held only to SNAPSHOT
+        session state and to APPEND history afterwards — the LLM call (up
+        to 180 s) runs outside it, so get_history()/clear_session() no
+        longer block for a whole generation.
+        """
         with self._state_lock:
             if not self._session_active:
                 # No formal session — still attempt a full LLM response if
@@ -435,30 +441,36 @@ class CoachingDialogueEngine:
                     f"use if relevant, ignore if not]\n{retrieval_context}"
                 )
 
-            # Build message array for Ollama (sliding window — history NOT yet mutated)
+            # Build message array for Ollama (sliding window — history NOT
+            # yet mutated); snapshot the prompt for use outside the lock.
             messages = self._build_chat_messages(augmented_user)
+            system_prompt = self._system_prompt
 
-            # F5-06: append user message only after we have a valid response so that
-            # an LLM exception cannot leave the history in an inconsistent state.
-            # WR-06: timeout protection prevents UI hangs.
-            try:
-                response = self._chat_with_timeout(messages, self._system_prompt)
-            except TimeoutError:
-                logger.warning("Dialogue response timed out for user query")
-                response = self._fallback_response(user_message, intent)
-            except Exception as exc:
-                logger.error("LLM chat raised an exception: %s", exc)
-                response = self._fallback_response(user_message, intent)
+        # F5-06: append user message only after we have a valid response so
+        # that an LLM exception cannot leave the history in an inconsistent
+        # state. WR-06: timeout protection prevents UI hangs. Runs UNLOCKED.
+        try:
+            response = self._chat_with_timeout(messages, system_prompt)
+        except TimeoutError:
+            logger.warning("Dialogue response timed out for user query")
+            response = self._fallback_response(user_message, intent)
+        except Exception as exc:
+            logger.error("LLM chat raised an exception: %s", exc)
+            response = self._fallback_response(user_message, intent)
 
-            # Check for LLM error markers → fall back
-            if response.startswith("[LLM"):
-                logger.warning("LLM error in dialogue: %s", response)
-                response = self._fallback_response(user_message, intent)
+        # Check for LLM error markers → fall back
+        if response.startswith("[LLM"):
+            logger.warning("LLM error in dialogue: %s", response)
+            response = self._fallback_response(user_message, intent)
 
-            # Safe to append now that we have a usable response
-            self._history.append({"role": "user", "content": user_message})
-            self._history.append({"role": "assistant", "content": response})
-            return response
+        # Re-acquire to append now that we have a usable response. If the
+        # session was cleared while generating, drop the exchange instead
+        # of resurrecting a dead session's history.
+        with self._state_lock:
+            if self._session_active:
+                self._history.append({"role": "user", "content": user_message})
+                self._history.append({"role": "assistant", "content": response})
+        return response
 
     def cancel_stream(self) -> None:
         """F2.3: abort any in-flight streaming response (lock-free; safe from
@@ -497,44 +509,51 @@ class CoachingDialogueEngine:
                 )
 
             messages = self._build_chat_messages(augmented_user)
+            system_prompt = self._system_prompt
 
             self._stream_cancel.clear()
 
-            def _on_chunk(accumulated: str) -> None:
-                if self._stream_cancel.is_set():
-                    raise _StreamCancelledError()
-                if progress_callback is not None:
-                    progress_callback(accumulated)
+        # R4 LOW (concurrency): the streaming loop runs UNLOCKED — same
+        # snapshot/re-acquire discipline as respond(), so cancel_stream(),
+        # get_history() and clear_session() stay responsive mid-generation.
+        def _on_chunk(accumulated: str) -> None:
+            if self._stream_cancel.is_set():
+                raise _StreamCancelledError()
+            if progress_callback is not None:
+                progress_callback(accumulated)
 
-            try:
-                response = self._llm.chat_stream(
-                    messages,
-                    system_prompt=self._system_prompt,
-                    on_chunk=_on_chunk,
-                    stall_timeout=_STREAM_STALL_TIMEOUT,
-                )
-            except _StreamCancelledError:
-                logger.info("F2.3: streaming response cancelled — history unchanged")
-                return ""
-            except Exception as exc:
-                # Stall (requests.Timeout), connection loss, malformed chunk —
-                # same fallback ladder as respond(); the UI replaces any
-                # partial render with the fallback text (logged loudly).
-                logger.warning(
-                    "F2.5: stream failed (%s: %s) — falling back to offline response",
-                    type(exc).__name__,
-                    exc,
-                )
-                response = self._fallback_response(user_message, intent)
+        try:
+            response = self._llm.chat_stream(
+                messages,
+                system_prompt=system_prompt,
+                on_chunk=_on_chunk,
+                stall_timeout=_STREAM_STALL_TIMEOUT,
+            )
+        except _StreamCancelledError:
+            logger.info("F2.3: streaming response cancelled — history unchanged")
+            return ""
+        except Exception as exc:
+            # Stall (requests.Timeout), connection loss, malformed chunk —
+            # same fallback ladder as respond(); the UI replaces any
+            # partial render with the fallback text (logged loudly).
+            logger.warning(
+                "F2.5: stream failed (%s: %s) — falling back to offline response",
+                type(exc).__name__,
+                exc,
+            )
+            response = self._fallback_response(user_message, intent)
 
-            if not response or response.startswith("[LLM"):
-                logger.warning("LLM error in streamed dialogue: %s", response or "(empty)")
-                response = self._fallback_response(user_message, intent)
+        if not response or response.startswith("[LLM"):
+            logger.warning("LLM error in streamed dialogue: %s", response or "(empty)")
+            response = self._fallback_response(user_message, intent)
 
-            # F5-06: history mutates only now, with a usable final response.
-            self._history.append({"role": "user", "content": user_message})
-            self._history.append({"role": "assistant", "content": response})
-            return response
+        # F5-06: history mutates only now, with a usable final response —
+        # re-acquired; a session cleared mid-stream drops the exchange.
+        with self._state_lock:
+            if self._session_active:
+                self._history.append({"role": "user", "content": user_message})
+                self._history.append({"role": "assistant", "content": response})
+        return response
 
     def get_history(self) -> List[Dict[str, str]]:
         """Return the full conversation history."""
