@@ -92,15 +92,18 @@ class FocusInsightViewModel(QObject):
         has_data = bool(data.get("has_data"))
         self.has_data_changed.emit(has_data)
         if has_data:
-            # Stub insight — the real computation will replace this body
-            # with a PerformanceVM-driven delta-vs-pro highlight.
+            # R4 MED (anti-fabrication): the old stub asserted a SPECIFIC
+            # measured deficit ("your utility damage trails the pro
+            # baseline") without computing anything — a fabricated claim
+            # rendered as real analysis. Until the PerformanceVM-driven
+            # delta-vs-pro computation lands, the card is an honest
+            # navigation hint that claims no measurement.
             self.insight_changed.emit(
                 {
-                    "area": "Utility usage",
+                    "area": "Performance review",
                     "body": (
-                        "Your utility damage trails the pro baseline on the "
-                        "maps you play most. Open Performance to see the "
-                        "per-map breakdown."
+                        "Your matches are analyzed. Open Performance to see "
+                        "how your stats compare with the pro cohort."
                     ),
                     "navigate_to": "performance",
                 }

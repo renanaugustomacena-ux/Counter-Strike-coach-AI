@@ -130,7 +130,11 @@ class MatchDetailViewModel(QObject):
         try:
             from Programma_CS2_RENAN.backend.reporting.analytics import analytics
 
-            breakdown = analytics.get_hltv2_breakdown(player) or {}
+            # R4 MED: use the match's effective player — on a demo where the
+            # configured user did not play (e.g. a pro demo) the stats and
+            # rounds show the demo's actual player, but this card showed the
+            # configured user's aggregate: mislabeled data.
+            breakdown = analytics.get_hltv2_breakdown(effective_player) or {}
         except Exception as e:
             logger.warning("hltv_breakdown.bg_fetch_failed: %s", e)
 

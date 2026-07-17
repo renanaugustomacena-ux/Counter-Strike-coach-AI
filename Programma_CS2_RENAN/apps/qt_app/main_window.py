@@ -315,7 +315,10 @@ class MainWindow(QMainWindow):
         """
         from Programma_CS2_RENAN.core.config import get_setting, save_user_setting
 
-        dock = QDockWidget(i18n.tr("nav.coach", "Coach"), self)
+        # R4 MED: i18n.tr() resolved to QObject.tr (no such override on
+        # QtLocalizationManager) — with no QTranslator installed it returned
+        # the literal key "nav.coach" as the dock title.
+        dock = QDockWidget(i18n.get_text("nav.coach", "Coach"), self)
         dock.setObjectName("coach_dock")
         dock.setAllowedAreas(Qt.RightDockWidgetArea | Qt.BottomDockWidgetArea)
         dock.setFeatures(
@@ -347,8 +350,15 @@ class MainWindow(QMainWindow):
             # Only persist when the user toggles via the close button — the
             # initial setVisible() calls above also fire this signal, but
             # they happen before user interaction, so guard with a one-shot.
-            if getattr(self, "_coach_dock_init_done", False):
-                save_user_setting("COACH_DOCK_VISIBLE", bool(is_visible))
+            if not getattr(self, "_coach_dock_init_done", False):
+                return
+            # R4 MED: visibilityChanged(False) also fires when the main
+            # window is minimized or destroyed at close — persisting those
+            # non-user hides clobbered COACH_DOCK_VISIBLE to False on every
+            # app exit, so the dock never restored visible.
+            if not is_visible and (self.isMinimized() or not self.isVisible()):
+                return
+            save_user_setting("COACH_DOCK_VISIBLE", bool(is_visible))
 
         dock.topLevelChanged.connect(_on_top_level_changed)
         dock.dockLocationChanged.connect(_on_dock_location_changed)
@@ -357,6 +367,27 @@ class MainWindow(QMainWindow):
         self._coach_dock = dock
         self._coach_dock_init_done = True
 
+    def _sound(self):
+        """Lazy singleton SoundManager (R4 MED: it was never instantiated,
+        so the SOUNDS_ENABLED settings toggle had no effect at all)."""
+        mgr = getattr(self, "_sound_manager", None)
+        if mgr is None:
+            try:
+                from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state
+                from Programma_CS2_RENAN.apps.qt_app.core.sound import SoundManager
+
+                mgr = SoundManager(get_app_state(), self)
+            except Exception:
+                logger.exception("SoundManager init failed — sounds disabled")
+
+                class _NullSound:
+                    def play(self, _name):
+                        return None
+
+                mgr = _NullSound()
+            self._sound_manager = mgr
+        return mgr
+
     def switch_screen(self, name: str):
         """Navigate to a named screen with a fade transition.
 
@@ -364,6 +395,7 @@ class MainWindow(QMainWindow):
         switching the stack — the sidebar 'Coach' nav becomes a show/hide
         toggle for the dock panel.
         """
+        self._sound().play("click")
         if name == "coach":
             dock = getattr(self, "_coach_dock", None)
             if dock is not None:

@@ -189,7 +189,7 @@ def _wire_screen_signals(window: MainWindow, screens: dict) -> None:
     pro_detail.back_requested.connect(lambda: window.switch_screen("pro_comparison"))
 
 
-def _boot_backend_services(splash: QSplashScreen) -> None:
+def _boot_backend_services(splash: QSplashScreen) -> bool:
     """Boot Console + Session Engine daemon. Errors logged, never raised.
 
     Without the Session Engine daemon, the Pulse thread never writes
@@ -199,10 +199,12 @@ def _boot_backend_services(splash: QSplashScreen) -> None:
     _splash_status(splash, "Starting backend services...")
     from Programma_CS2_RENAN.backend.control.console import get_console
 
+    boot_ok = True
     try:
         get_console().boot()
     except Exception:
         logging.exception("Backend boot failed")
+        boot_ok = False
 
     _splash_status(splash, "Starting Session Engine daemon...")
     try:
@@ -210,8 +212,12 @@ def _boot_backend_services(splash: QSplashScreen) -> None:
 
         if lifecycle.launch_daemon() is None:
             logging.error("Session Engine daemon failed to launch")
+            boot_ok = False
     except Exception:
         logging.exception("Session Engine daemon launch failed")
+        boot_ok = False
+
+    return boot_ok
 
 
 def _ensure_sbert_model(splash: QSplashScreen) -> None:
@@ -249,8 +255,11 @@ def _ensure_sbert_model(splash: QSplashScreen) -> None:
         else:
             _splash_status(splash, "AI model download failed — using fallback")
     except Exception:
-        # Don't block app startup over SBERT — coach falls back to dense similarity.
-        pass
+        # Don't block app startup over SBERT — coach falls back to dense
+        # similarity. R4 MED: but never swallow silently (repo rule).
+        logging.exception(
+            "SBERT model check/download failed — coach will fall back to dense similarity"
+        )
 
 
 def _install_qt_excepthook() -> None:
@@ -264,13 +273,16 @@ def _install_qt_excepthook() -> None:
     sys.excepthook = _qt_excepthook
 
 
-def _show_boot_failure_warning_if_needed(window: MainWindow) -> None:
-    """Show a modal warning if Console boot failed — needs visible parent window."""
-    from Programma_CS2_RENAN.backend.control.console import get_console
+def _show_boot_failure_warning_if_needed(window: MainWindow, boot_ok: bool) -> None:
+    """Show a modal warning if Console boot failed — needs visible parent window.
 
-    try:
-        get_console()
-    except Exception:
+    R4 MED: the old probe re-called get_console() and caught exceptions —
+    but boot failures happen inside .boot() (already logged by
+    _boot_backend_services), while get_console() merely re-runs a
+    construction that already succeeded, so the modal never showed. The
+    boot outcome is now threaded through explicitly.
+    """
+    if not boot_ok:
         QMessageBox.warning(
             window,
             "Backend Startup Error",
@@ -328,14 +340,14 @@ def main():
     # Store reference for theme switching from settings later
     window._theme_engine = theme
 
-    _boot_backend_services(splash)
+    boot_ok = _boot_backend_services(splash)
     _ensure_sbert_model(splash)
 
     _splash_status(splash, "Ready!")
     window.show()
     splash.finish(window)
 
-    _show_boot_failure_warning_if_needed(window)
+    _show_boot_failure_warning_if_needed(window, boot_ok)
 
     # Background CoachState polling (10s interval)
     from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state

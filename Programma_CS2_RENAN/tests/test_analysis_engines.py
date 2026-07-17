@@ -4,6 +4,9 @@ Unit tests for Analysis Engines.
 Tests Win Probability, Role Classifier, Utility Analyzer, and Economy Optimizer.
 """
 
+import pytest
+import torch
+
 from Programma_CS2_RENAN.backend.analysis.role_classifier import (
     ROLE_PROFILES,
     PlayerRole,
@@ -15,6 +18,15 @@ from Programma_CS2_RENAN.backend.analysis.win_probability import GameState, WinP
 
 class TestWinProbabilityPredictor:
     """Test suite for win probability prediction."""
+
+    @pytest.fixture(autouse=True)
+    def _seed_torch(self):
+        # DET-01 / no-flaky-tests: WinProbabilityPredictor() runs on Xavier
+        # random weights (no checkpoint), so predictions depend on the
+        # GLOBAL torch RNG state — whichever tests ran before this class
+        # determined the outcome (observed order-dependent failure of
+        # test_even_match_prediction in the full suite, green in isolation).
+        torch.manual_seed(42)
 
     def test_predictor_initialization(self):
         """Test predictor can be initialized with a callable model."""

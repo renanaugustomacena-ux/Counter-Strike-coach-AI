@@ -186,12 +186,11 @@ class PerformanceScreen(QWidget):
     def _on_context(self, context: dict) -> None:
         """Cluster F — store the latest percentile dict.
 
-        ``_build_context_strip`` reads ``self._latest_context`` when the
-        UI is rebuilt by ``_on_data``. The signal arrives just after
-        data_changed in the same VM emit cycle, so we cache here and
-        rely on the data_changed-triggered rebuild to render. If the
-        context arrives BEFORE data (race), the next rebuild picks it
-        up automatically.
+        R4 MED contract: the VM emits ``context_changed`` BEFORE
+        ``data_changed`` (direct same-thread connections), so this cache is
+        already fresh when the data_changed slot rebuilds the UI and
+        ``_build_context_strip`` reads it. The previous ordering (data
+        first) rendered the prior load's percentiles on every visit.
         """
         self._latest_context = dict(context or {})
 

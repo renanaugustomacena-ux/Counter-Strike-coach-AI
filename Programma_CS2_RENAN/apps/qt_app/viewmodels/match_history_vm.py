@@ -44,7 +44,7 @@ class MatchHistoryViewModel(QObject):
         self._cancel.set()
 
     def _bg_load(self):
-        from sqlmodel import select
+        from sqlmodel import or_, select
 
         from Programma_CS2_RENAN.backend.storage.database import get_db_manager
         from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
@@ -57,8 +57,14 @@ class MatchHistoryViewModel(QObject):
             # carry only ~7 of 47 columns and would inflate the dashboard chip
             # without contributing meaningful per-row stats. Real rows are tagged
             # full_sql / full_sql_round_count_anomaly / complete / is_pro_overridden.
+            # R4 MED: SQL three-valued logic — NULL NOT IN (...) is NULL, so
+            # pre-migration rows with NULL data_quality vanished silently.
+            # Untagged rows are legacy full rows: keep them.
             query = select(PlayerMatchStats).where(
-                PlayerMatchStats.data_quality.not_in(("registered_only", "partial", "none"))
+                or_(
+                    PlayerMatchStats.data_quality.is_(None),
+                    PlayerMatchStats.data_quality.not_in(("registered_only", "partial", "none")),
+                )
             )
             if player:
                 query = query.where(
