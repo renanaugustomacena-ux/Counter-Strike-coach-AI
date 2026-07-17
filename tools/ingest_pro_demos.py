@@ -113,6 +113,7 @@ def main():
     # ── Step 3: Clear stale state (full rebuild only) ──────────────────────
     if full_rebuild:
         print("\n[3/5] Clearing stale ingestion state for full rebuild...")
+        pro_demo_stems = {d.stem for d in all_demos}
 
         with db.get_session() as session:
             # Clear all IngestionTask entries
@@ -132,18 +133,23 @@ def main():
             session.commit()
         print(f"  Cleared {len(pro_stats)} pro PlayerMatchStats rows.")
 
-        # Clear pro PlayerTickState rows (use raw SQL for bulk delete)
+        # Clear PlayerTickState rows for the PRO demos only. playertickstate
+        # has no is_pro column, so scope by demo_name: a blanket DELETE also
+        # destroyed the USER's tick data, which a pro re-ingest never
+        # recreates.
         with db.get_session() as session:
-            tick_count_before = (
-                session.exec(text("SELECT COUNT(*) FROM playertickstate")).scalar() or 0
-            )
-            if tick_count_before > 0:
-                session.exec(text("DELETE FROM playertickstate"))
-                session.commit()
-        print(f"  Cleared {tick_count_before} PlayerTickState rows.")
+            tick_cleared = 0
+            for stem in sorted(pro_demo_stems):
+                result = session.exec(
+                    text("DELETE FROM playertickstate WHERE demo_name = :d").bindparams(d=stem)
+                )
+                tick_cleared += result.rowcount or 0
+            session.commit()
+        print(
+            f"  Cleared {tick_cleared} PlayerTickState rows across {len(pro_demo_stems)} pro demos."
+        )
 
         # Delete per-match DBs for these demos so duplicate check passes
-        pro_demo_stems = {d.stem for d in all_demos}
         match_data_dir = DEMO_BASE / "match_data"
         deleted_dbs = 0
         for stem in pro_demo_stems:
@@ -156,12 +162,10 @@ def main():
                     if not suffix:
                         deleted_dbs += 1
         print(f"  Deleted {deleted_dbs} per-match DB files (will be recreated).")
-
-        # Bypass duplicate check for this run
-        import Programma_CS2_RENAN.run_ingestion as ri
-
-        ri._check_duplicate_demo = lambda _db, _demo: False
-        print("  Duplicate check bypassed for full rebuild.")
+        # No duplicate-check bypass: with stats, ticks and per-match DBs
+        # cleared per demo above, _check_duplicate_demo passes naturally.
+        # (The old module-level monkeypatch disabled dedup for EVERYTHING
+        # processed by this interpreter, user demos included.)
     else:
         print("\n[3/5] Clearing stale queue entries...")
         with db.get_session() as session:

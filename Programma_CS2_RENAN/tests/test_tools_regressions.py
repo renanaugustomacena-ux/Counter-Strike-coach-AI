@@ -310,3 +310,52 @@ class TestWipeRestoreClearsStaleWal:
         rows = [r[0] for r in con.execute("SELECT x FROM t ORDER BY x")]
         con.close()
         assert rows == [1], f"restored DB must be the snapshot state, got {rows}"
+
+
+class TestMineShardTickRate:
+    """Pass-2 finding: the strategy miner's windows were baked at 64 tick
+    (TICKS_20S=1280 etc.) — on a 128-tick shard every window covered HALF
+    the intended time, skewing rush/default/execute classification. Windows
+    now derive from match_metadata.tick_rate per shard."""
+
+    @staticmethod
+    def _shard(tmp_path, tick_rate):
+        import sqlite3
+
+        p = tmp_path / "match_1.db"
+        con = sqlite3.connect(p)
+        con.execute(
+            "CREATE TABLE matchtickstate (round_number INT, tick INT, player_name TEXT,"
+            " team TEXT, equipment_value INT, money INT, active_weapon TEXT, health INT,"
+            " has_helmet INT, has_defuser INT, teammates_alive INT, enemies_alive INT,"
+            " team_economy INT, map_name TEXT)"
+        )
+        con.execute(
+            "INSERT INTO matchtickstate VALUES (1, 10, 'p1', 'CT', 1000, 800, 'ak47', 100,"
+            " 1, 0, 4, 5, 4000, 'de_mirage')"
+        )
+        if tick_rate is not None:
+            con.execute("CREATE TABLE match_metadata (tick_rate REAL)")
+            con.execute("INSERT INTO match_metadata VALUES (?)", (tick_rate,))
+        con.commit()
+        con.close()
+        return p
+
+    def test_rate_read_from_metadata(self, tmp_path):
+        import importlib
+
+        mss = importlib.import_module("tools.mine_shard_strategies")
+        rounds = mss.load_shard(self._shard(tmp_path, 128.0))
+        assert rounds and rounds[0].tick_rate == 128.0
+
+    def test_missing_or_invalid_rate_falls_back_with_default(self, tmp_path):
+        import importlib
+
+        mss = importlib.import_module("tools.mine_shard_strategies")
+        rounds = mss.load_shard(self._shard(tmp_path, None))
+        assert rounds and rounds[0].tick_rate == mss._DEFAULT_TICK_RATE
+        # out-of-range rate in its own directory (one shard file per dir)
+        p2 = tmp_path / "b"
+        p2.mkdir()
+        rounds2 = mss.load_shard(self._shard(p2, 9999.0))
+        assert rounds2 and rounds2[0].tick_rate == mss._DEFAULT_TICK_RATE

@@ -46,10 +46,14 @@ KNOWN_MAPS = {
     "de_vertigo": "vertigo",
 }
 PRO_CONFIDENCE = 0.7
-TRADE_WINDOW_TICKS = 128  # ~2s at 64tick
-TICKS_20S = 1280  # 20s at 64tick
-TICKS_30S = 1920  # 30s at 64tick
-TICKS_45S = 2880  # 45s at 64tick
+# Strategy windows in SECONDS — converted per shard from
+# match_metadata.tick_rate (26-TICK: the old *_TICKS constants baked in a
+# 64-tick assumption, halving every window on 128-tick shards).
+TRADE_WINDOW_SECONDS = 2.0
+WINDOW_20S = 20.0
+WINDOW_30S = 30.0
+WINDOW_45S = 45.0
+_DEFAULT_TICK_RATE = 64.0
 
 # Bomb site centroids from K-means clustering (80 shards, ≥30 plants, ≥1500u separation)
 # Convention: sorted by center_x (lower x = "a", higher x = "b")
@@ -105,6 +109,8 @@ class RoundData:
     round_number: int
     start_tick: int
     end_tick: int
+    # Per-shard rate from match_metadata (26-TICK) — windows derive from it.
+    tick_rate: float = _DEFAULT_TICK_RATE
     winner: Optional[str] = None  # "CT" or "T"
     players: dict = field(default_factory=dict)  # name → PlayerSnap
     deaths: list = field(default_factory=list)  # (tick, killer, k_team, victim, v_team, weapon)
@@ -174,6 +180,20 @@ def _extract_rounds(conn: sqlite3.Connection, shard_stem: str) -> list[RoundData
     raw_map = map_row[0] if map_row else "unknown"
     map_name = KNOWN_MAPS.get(raw_map, raw_map.replace("de_", ""))
 
+    # 26-TICK: per-shard rate from match_metadata; validated to [32, 256].
+    tick_rate = _DEFAULT_TICK_RATE
+    try:
+        tr_row = conn.execute("SELECT tick_rate FROM match_metadata LIMIT 1").fetchone()
+        if tr_row and tr_row[0] and 32.0 <= float(tr_row[0]) <= 256.0:
+            tick_rate = float(tr_row[0])
+        else:
+            print(
+                f"  WARN {shard_stem}: match_metadata tick_rate={tr_row[0] if tr_row else None!r}"
+                f" unusable — windows assume {_DEFAULT_TICK_RATE}"
+            )
+    except sqlite3.OperationalError:
+        print(f"  WARN {shard_stem}: no match_metadata — windows assume {_DEFAULT_TICK_RATE}")
+
     rounds: dict[int, RoundData] = {}
     starts = []
     round_nums = []
@@ -184,6 +204,7 @@ def _extract_rounds(conn: sqlite3.Connection, shard_stem: str) -> list[RoundData
             round_number=rn,
             start_tick=start_tick,
             end_tick=end_tick,
+            tick_rate=tick_rate,
         )
         starts.append(start_tick)
         round_nums.append(rn)
@@ -321,6 +342,12 @@ def classify_round(
     if not rd.players:
         return labels
 
+    # 26-TICK: windows derived from the shard's real rate, never a baked 64.
+    trade_window = int(TRADE_WINDOW_SECONDS * rd.tick_rate)
+    w20 = int(WINDOW_20S * rd.tick_rate)
+    w30 = int(WINDOW_30S * rd.tick_rate)
+    w45 = int(WINDOW_45S * rd.tick_rate)
+
     teams: dict[str, list[PlayerSnap]] = defaultdict(list)
     for p in rd.players.values():
         teams[p.team].append(p)
@@ -436,14 +463,14 @@ def classify_round(
                     _emit("individual.awp_aggression", "awp_kill", "kill", 0.10, "player", pname)
                     break
 
-        # Trade kills: kill within TRADE_WINDOW_TICKS of a teammate death
+        # Trade kills: kill within trade_window of a teammate death
         sorted_deaths = sorted(rd.deaths, key=lambda x: x[0])
         for i, (tick, killer, k_team, victim, v_team, _) in enumerate(sorted_deaths):
             if k_team != team_name:
                 continue
             for j in range(max(0, i - 5), i):
                 prev_tick, _, _, prev_victim, prev_v_team, _ = sorted_deaths[j]
-                if prev_v_team == team_name and (tick - prev_tick) <= TRADE_WINDOW_TICKS:
+                if prev_v_team == team_name and (tick - prev_tick) <= trade_window:
                     _emit("individual.trade_kill", "trade_kill", "traded", 0.10, "player", killer)
                     break
 
@@ -705,7 +732,7 @@ def classify_round(
                 kill_ticks = [t for t, _, _, _ in pk]
                 kill_ticks.sort()
                 for ki in range(len(kill_ticks) - 1):
-                    if kill_ticks[ki + 1] - kill_ticks[ki] <= TRADE_WINDOW_TICKS:
+                    if kill_ticks[ki + 1] - kill_ticks[ki] <= trade_window:
                         _emit(
                             "individual.double_kill", "double_kill", outcome, 0.12, "player", p.name
                         )
@@ -732,7 +759,7 @@ def classify_round(
                 continue
             for j_d in range(i_d + 1, min(i_d + 6, len(sorted_deaths))):
                 next_t, next_k, next_kt, _, _, _ = sorted_deaths[j_d]
-                if next_kt == team_name and (next_t - tick_d) <= TRADE_WINDOW_TICKS:
+                if next_kt == team_name and (next_t - tick_d) <= trade_window:
                     _emit(
                         "individual.traded_death",
                         "was_traded",
@@ -817,7 +844,7 @@ def classify_round(
 
             if team_util_count >= 5:
                 first_util_tick = min(t for t, _, _, _ in team_util)
-                if (first_util_tick - rd.start_tick) <= TICKS_20S:
+                if (first_util_tick - rd.start_tick) <= w20:
                     _emit(
                         "setpiece.utility_stack",
                         "heavy_utility_open",
@@ -827,10 +854,10 @@ def classify_round(
 
             if rd.deaths:
                 first_death_tick = rd.deaths[0][0]
-                if (first_death_tick - rd.start_tick) > TICKS_45S:
+                if (first_death_tick - rd.start_tick) > w45:
                     _emit("setpiece.timeplay", "clock_burn", outcome, 0.08 if team_won else -0.05)
 
-            late_util = [u for u in team_util if (u[0] - rd.start_tick) > TICKS_30S]
+            late_util = [u for u in team_util if (u[0] - rd.start_tick) > w30]
             if len(late_util) >= 3 and rd.bomb_planted and side == "T":
                 _emit(
                     "setpiece.delayed_execute", "late_execute", outcome, 0.10 if team_won else -0.05
@@ -840,7 +867,7 @@ def classify_round(
                 side == "T"
                 and avg_equip < 1500
                 and rd.deaths
-                and (rd.deaths[0][0] - rd.start_tick) < TICKS_20S
+                and (rd.deaths[0][0] - rd.start_tick) < w20
             ):
                 _emit("setpiece.eco_rush", "eco_rush", outcome, 0.18 if team_won else -0.03)
 
@@ -1028,14 +1055,14 @@ def classify_round(
             if t_first < round_dur * 0.2 and sorted_d[0][2] == team_name:
                 _emit("setpiece.early_aggression", "early_kill", outcome, 0.08)
 
-            if round_dur < TICKS_20S and rd.round_number not in (1, 13):
+            if round_dur < w20 and rd.round_number not in (1, 13):
                 _emit("setpiece.fast_close", "fast_round", outcome, 0.10 if team_won else -0.08)
 
         if rd.bomb_planted and rd.bomb_plant_tick > 0 and side == "T" and round_dur > 0:
             plant_t = rd.bomb_plant_tick - rd.start_tick
-            if plant_t > TICKS_45S:
+            if plant_t > w45:
                 _emit("setpiece.late_execute", "late_plant", outcome, 0.10 if team_won else -0.05)
-            elif TICKS_20S <= plant_t <= TICKS_45S:
+            elif w20 <= plant_t <= w45:
                 _emit("setpiece.mid_round_plant", "mid_plant", outcome, 0.05 if team_won else -0.03)
 
         # ── T2: Death trading patterns ──
@@ -1044,17 +1071,13 @@ def classify_round(
             team_victim_deaths = [(d[0], d[3]) for d in sorted_d if d[4] == team_name]
             team_kill_ticks = [d[0] for d in sorted_d if d[2] == team_name]
             for dtick, victim in team_victim_deaths:
-                if not any(0 < kt - dtick <= TRADE_WINDOW_TICKS for kt in team_kill_ticks):
+                if not any(0 < kt - dtick <= trade_window for kt in team_kill_ticks):
                     _emit("individual.untraded_death", "untraded", "death", -0.08, "player", victim)
                     break
 
             if len(sorted_d) >= 2:
                 fd, sd = sorted_d[0], sorted_d[1]
-                if (
-                    fd[4] == team_name
-                    and sd[2] == team_name
-                    and sd[0] - fd[0] <= TRADE_WINDOW_TICKS
-                ):
+                if fd[4] == team_name and sd[2] == team_name and sd[0] - fd[0] <= trade_window:
                     _emit("individual.first_blood_trade", "opening_trade", outcome, 0.10)
 
         # ── T2: Utility efficiency ──
@@ -1127,7 +1150,7 @@ def classify_round(
         for d in rd.deaths:
             if d[2] == team_name:
                 for fe in flash_ev_t2:
-                    if 0 < d[0] - fe[0] <= TRADE_WINDOW_TICKS and d[1] != fe[2]:
+                    if 0 < d[0] - fe[0] <= trade_window and d[1] != fe[2]:
                         _emit(
                             "individual.flash_kill",
                             "flash_assist_kill",
@@ -1393,11 +1416,16 @@ def main() -> None:
         print(f"\n=== Truncating existing miner rows ===")
         _conn = sqlite3.connect(str(DB_PATH), timeout=30)
         _conn.execute("PRAGMA journal_mode=WAL")
-        old_count = _conn.execute("SELECT COUNT(*) FROM coachingexperience").fetchone()[0]
-        _conn.execute("DELETE FROM coachingexperience")
+        # Only THIS miner's rows carry strategy_label; a blanket DELETE
+        # also destroyed mine_coaching_experience's records while the
+        # message claimed "miner rows".
+        old_count = _conn.execute(
+            "SELECT COUNT(*) FROM coachingexperience WHERE strategy_label IS NOT NULL"
+        ).fetchone()[0]
+        _conn.execute("DELETE FROM coachingexperience WHERE strategy_label IS NOT NULL")
         _conn.commit()
         _conn.close()
-        print(f"  Deleted {old_count} existing rows")
+        print(f"  Deleted {old_count} strategy-labeled rows (other experiences preserved)")
 
     print(f"\n=== Inserting ===")
     stats = bulk_insert(all_labels, dry_run=args.dry_run)
