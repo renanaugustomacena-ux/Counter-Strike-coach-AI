@@ -607,8 +607,10 @@ class TacticalViewerScreen(QWidget):
         # Show loading dialog with cancel button
         self._demo_cancelled = False
         demo_basename = os.path.basename(path)
-        # Chronovisor scan resolves the DB match_id from this stem after load.
+        # Chronovisor scan resolves the DB match_id from this stem after load;
+        # playback resolves the real tick rate from the full path's header.
         self._loaded_demo_stem = os.path.splitext(demo_basename)[0]
+        self._loaded_demo_path = path
         self._progress_dialog = QProgressDialog(
             f"Parsing {demo_basename}...\n\n"
             "Waiting for first phase (header + player positions)...\n"
@@ -858,8 +860,9 @@ class TacticalViewerScreen(QWidget):
                 )
             self._web_bridge.publish_events(event_payloads)
 
-        # Load frames
-        self._playback_vm.load_frames(frames)
+        # Load frames with the demo's REAL tick rate (26-TICK: the old
+        # default-64 path made 128-tick demos play at half speed).
+        self._playback_vm.load_frames(frames, tick_rate=self._resolve_demo_tick_rate())
 
         # Update timeline
         self._timeline.max_tick = self._playback_vm.total_ticks
@@ -947,6 +950,21 @@ class TacticalViewerScreen(QWidget):
             self._t_sidebar.update_players(t, player_id)
 
     # ── Chronovisor ──
+
+    def _resolve_demo_tick_rate(self) -> int:
+        """Per-demo tick rate from the loaded demo's header (fallback 64, loud)."""
+        path = getattr(self, "_loaded_demo_path", None)
+        if path:
+            try:
+                from Programma_CS2_RENAN.run_ingestion import _parse_demo_header_meta
+
+                _map, rate = _parse_demo_header_meta(str(path))
+                if 32 <= int(rate) <= 256:
+                    return int(rate)
+            except Exception as exc:  # noqa: BLE001 — playback must not die on header quirks
+                logger.warning("Header tick-rate resolution failed for %r: %s", path, exc)
+        logger.warning("Falling back to 64 tick/s for playback (no resolvable header)")
+        return 64
 
     def _on_cm_scan_complete(self, cms, count: int) -> None:
         """Enable/disable the CM transport based on real scan results."""

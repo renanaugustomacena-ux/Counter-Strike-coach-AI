@@ -1,12 +1,17 @@
 from typing import Tuple
 
 from Programma_CS2_RENAN.core.spatial_data import get_map_metadata
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+logger = get_logger("cs2analyzer.spatial_engine")
 
 # Must match the default radar_width in MapMetadata.world_to_radar()
 RADAR_REFERENCE_SIZE = 1024.0
 
 
 class SpatialEngine:
+    _unknown_maps_warned: set = set()
+
     """
     Core engine for handling coordinate transformations between
     Game World (Source Engine units) and UI/Pixel space.
@@ -23,6 +28,16 @@ class SpatialEngine:
         """
         meta = get_map_metadata(map_name)
         if not meta:
+            # R4 LOW (anti-fabrication): (0.5, 0.5) is a FABRICATED center
+            # position — at least leave a once-per-map trace of the
+            # metadata gap it papers over.
+            if map_name not in SpatialEngine._unknown_maps_warned:
+                SpatialEngine._unknown_maps_warned.add(map_name)
+                logger.warning(
+                    "No spatial metadata for map %r — positions render at "
+                    "radar center (0.5, 0.5)",
+                    map_name,
+                )
             return 0.5, 0.5
         return meta.world_to_radar(x, y)
 

@@ -13,6 +13,7 @@ Features:
 """
 
 import os
+import threading
 from dataclasses import dataclass, field
 from typing import Dict, Optional
 
@@ -94,7 +95,10 @@ class AssetAuthority:
     # F6-32: _cache is class-level (shared across all instances). AssetAuthority is a
     # singleton (see __new__), so this is safe — all callers share one instance. If
     # multiple instances are ever created this cache must move to instance level.
+    # R4 LOW: guarded by _cache_lock — get_map_asset does check-then-set and
+    # is reachable concurrently from async loader callbacks and UI threads.
     _cache: Dict[str, SmartAsset] = {}
+    _cache_lock = threading.Lock()
     _fallback_texture: Optional[Texture] = None
 
     def __new__(cls):
@@ -124,8 +128,9 @@ class AssetAuthority:
         cache_key = f"{canonical_name}:{theme}"
 
         # Check cache
-        if cache_key in cls._cache:
-            return cls._cache[cache_key]
+        with cls._cache_lock:
+            if cache_key in cls._cache:
+                return cls._cache[cache_key]
 
         # Build file path with theme suffix
         suffix = ""
@@ -150,9 +155,10 @@ class AssetAuthority:
         else:
             asset = cls._create_fallback_asset()
 
-        # Cache and return
-        cls._cache[cache_key] = asset
-        return asset
+        # Cache and return — setdefault under the lock so a concurrent
+        # builder of the same key yields ONE canonical SmartAsset.
+        with cls._cache_lock:
+            return cls._cache.setdefault(cache_key, asset)
 
     @classmethod
     def _normalize_map_name(cls, map_name: str) -> str:

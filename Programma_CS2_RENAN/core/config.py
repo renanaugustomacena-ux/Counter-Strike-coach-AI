@@ -384,7 +384,17 @@ def get_pro_demo_base() -> Path:
             media_dir = Path("/media")
             if media_dir.exists():
                 for user_dir in media_dir.iterdir():
-                    for mount in user_dir.iterdir():
+                    # R4 LOW: a regular file or unreadable mount under
+                    # /media raised NotADirectoryError/PermissionError out
+                    # of a settings-resolution helper.
+                    if not user_dir.is_dir():
+                        continue
+                    try:
+                        mounts = list(user_dir.iterdir())
+                    except OSError:
+                        app_logger.debug("Skipping unreadable mount dir %s", user_dir)
+                        continue
+                    for mount in mounts:
                         candidate = mount / suffix
                         if candidate.exists():
                             app_logger.info(
@@ -484,7 +494,14 @@ def save_user_setting(key: str, value: Any) -> None:
                     shutil.copy2(SETTINGS_PATH, backup_path)
                     app_logger.warning("Corrupted settings backed up to %s", backup_path)
                 except Exception:
-                    pass
+                    # R4 LOW: the C-04 data-loss protection failing must not
+                    # be silent — the corrupted file is overwritten below.
+                    app_logger.warning(
+                        "Could not back up corrupted settings to %s — the "
+                        "corrupted content will be lost on rewrite",
+                        backup_path,
+                        exc_info=True,
+                    )
 
         data[key] = value
         # C-04: Write atomically via temp file to prevent partial writes

@@ -48,6 +48,18 @@ class AppLifecycleManager:
             self._instance_mutex = kernel32.CreateMutexW(None, True, self.mutex_name)
             last_error = kernel32.GetLastError()
 
+            # R4 LOW: a NULL handle with any error other than 183 means the
+            # mutex was NEVER created (e.g. access denied on the Global
+            # namespace) — returning True would claim single-instance
+            # protection that does not exist. Fail closed like the except.
+            if not self._instance_mutex:
+                logger.error(
+                    "CreateMutexW returned NULL (GetLastError=%s) — "
+                    "single-instance protection could not be established",
+                    last_error,
+                )
+                return False
+
             # ERROR_ALREADY_EXISTS = 183
             if last_error == 183:
                 logger.warning("Another instance of Macena CS2 Analyzer is already running.")
