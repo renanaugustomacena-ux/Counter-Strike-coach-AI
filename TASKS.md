@@ -1,5 +1,8 @@
 # TASKS.md — Macena CS2 Analyzer Backlog
 
+> **RIPRESA SESSIONE (Linux/SSD): leggere PRIMA `docs/SESSION_HANDOFF.md`** — stato al
+> 2026-07-17, findings pass-2, checklist sessione-dati sul monolite e convenzioni operative.
+
 Single source for actionable work items. Bind to AUDIT.md findings via `(AUDIT §x.y)`. Status: **TODO / WIP / DONE / BLOCKED / DROP**.
 
 > Convention: `#N · status · priority · title — context — owner — date-touched`.
