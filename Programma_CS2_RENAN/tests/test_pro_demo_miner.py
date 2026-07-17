@@ -125,7 +125,7 @@ class TestProStatsMiner:
             impact=1.20,
             kast=0.72,
             headshot_pct=0.55,
-            opening_duel_win_pct=50.0,
+            opening_duel_win_pct=0.50,  # ratio form on disk (R4 MED)
         )
         assert miner._classify_archetype(card) == "Star Fragger"
 
@@ -138,7 +138,7 @@ class TestProStatsMiner:
             impact=0.95,
             kast=0.75,
             headshot_pct=0.50,
-            opening_duel_win_pct=45.0,
+            opening_duel_win_pct=0.45,  # ratio form on disk (R4 MED)
         )
         assert miner._classify_archetype(card) == "Support Anchor"
 
@@ -156,7 +156,7 @@ class TestProStatsMiner:
             headshot_pct=0.52,
             maps_played=200,
             opening_kill_ratio=1.2,
-            opening_duel_win_pct=54.0,
+            opening_duel_win_pct=0.54,  # ratio form on disk (R4 MED)
             clutch_win_count=65,
             multikill_round_pct=12.5,
             time_span="all_time",
@@ -192,3 +192,36 @@ class TestProStatsMiner:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestOpeningDuelUnits:
+    """R4 MED: opening_duel_win_pct is a RATIO on disk (monolith range
+    0.46-0.77). The knowledge text used a percent-form literal (> 52) that
+    no ratio could ever satisfy — every pro read 'Disciplined opener.' and
+    the win rate printed as '0.5%'."""
+
+    @staticmethod
+    def _card(opening_ratio):
+        from Programma_CS2_RENAN.backend.storage.db_models import ProPlayerStatCard
+
+        return ProPlayerStatCard(
+            player_id=424242,
+            opening_kill_ratio=1.1,
+            opening_duel_win_pct=opening_ratio,
+        )
+
+    def test_aggressive_entry_recognized_from_ratio(self):
+        from Programma_CS2_RENAN.backend.knowledge.pro_demo_miner import ProStatsMiner
+
+        entries = ProStatsMiner()._generate_player_knowledge(self._card(0.60), "EntryGuy")
+        opening = next(e for e in entries if e["category"] == "opening_duels")
+        assert "Aggressive entry fragger." in opening["description"]
+        assert "60.0%" in opening["description"], "ratio must render as percent"
+
+    def test_disciplined_opener_below_threshold(self):
+        from Programma_CS2_RENAN.backend.knowledge.pro_demo_miner import ProStatsMiner
+
+        entries = ProStatsMiner()._generate_player_knowledge(self._card(0.47), "CalmGuy")
+        opening = next(e for e in entries if e["category"] == "opening_duels")
+        assert "Disciplined opener." in opening["description"]
+        assert "47.0%" in opening["description"]

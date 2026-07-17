@@ -78,6 +78,13 @@ class VectorIndexManager:
         self._indexes: Dict[str, "faiss.Index"] = {}
         self._id_maps: Dict[str, np.ndarray] = {}
         self._dirty: Dict[str, bool] = {"knowledge": False, "experience": False}
+        # R4 MED: per-index rebuild serialization — holding the main lock
+        # across a full rebuild would block reads, but rebuilding must not
+        # run concurrently for the same index (duplicate work + races).
+        self._rebuild_locks: Dict[str, threading.Lock] = {
+            "knowledge": threading.Lock(),
+            "experience": threading.Lock(),
+        }
 
         # Load persisted indexes (or leave empty for lazy build)
         self._load_persisted()
@@ -97,14 +104,25 @@ class VectorIndexManager:
         Returns:
             List of (db_id, similarity_score), or None if index unavailable.
         """
-        # KNW-04: Atomic dirty check + rebuild to prevent concurrent rebuilds
-        with self._lock:
-            needs_rebuild = self._dirty.get(index_name, False)
-        if needs_rebuild:
-            self.rebuild_from_db(index_name)
+        # KNW-04 + R4 MED: the dirty check must stay atomic WITH the rebuild
+        # decision — the old version dropped the lock before rebuilding, so
+        # two threads observing dirty=True both rebuilt. A per-index rebuild
+        # lock serializes that; the double-check inside skips the redundant
+        # second rebuild.
+        rebuild_lock = self._rebuild_locks[index_name]
+        with rebuild_lock:
+            with self._lock:
+                needs_rebuild = self._dirty.get(index_name, False)
+            if needs_rebuild:
+                self.rebuild_from_db(index_name)
 
-        idx = self._indexes.get(index_name)
-        id_map = self._id_maps.get(index_name)
+        # R4 MED: snapshot (idx, id_map) as ONE pair under the lock —
+        # _build_index swaps both atomically, but two separate unlocked
+        # reads here could observe a torn pair from different builds and
+        # map FAISS row indices onto the wrong DB ids.
+        with self._lock:
+            idx = self._indexes.get(index_name)
+            id_map = self._id_maps.get(index_name)
         if idx is None or id_map is None or idx.ntotal == 0:
             return None
 
@@ -228,6 +246,39 @@ class VectorIndexManager:
 
     # ── Internal: DB Extraction ─────────────────────────────────────────
 
+    @staticmethod
+    def _stack_uniform(
+        index_name: str, ids_list: list, vecs_list: list
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Stack embeddings, dropping rows whose dimension differs from the mode.
+
+        R4 MED: the DB can legitimately hold ragged vectors across writes —
+        rag_knowledge falls back to 100-dim hash embeddings when
+        sentence-transformers is unavailable vs 384-dim SBERT otherwise.
+        np.stack on a ragged list raises ValueError, which used to propagate
+        from rebuild_from_db through search() into every retrieval caller.
+        Mixed-dim rows are skipped LOUDLY (ids logged) instead.
+        """
+        if not ids_list:
+            return np.array([], dtype=np.int64), np.empty((0, 0), dtype=np.float32)
+
+        dims = [len(v) for v in vecs_list]
+        modal_dim = max(set(dims), key=dims.count)
+        keep = [i for i, d in enumerate(dims) if d == modal_dim]
+        if len(keep) != len(ids_list):
+            skipped = [ids_list[i] for i, d in enumerate(dims) if d != modal_dim]
+            logger.warning(
+                "'%s' index: skipped %d embeddings with non-modal dimension "
+                "(modal=%d) — ids: %s. Re-embed these rows to reindex them.",
+                index_name,
+                len(skipped),
+                modal_dim,
+                skipped[:20],
+            )
+        kept_ids = np.array([ids_list[i] for i in keep], dtype=np.int64)
+        kept_vecs = np.stack([vecs_list[i] for i in keep])
+        return kept_ids, kept_vecs
+
     def _load_knowledge_vectors(self) -> Tuple[np.ndarray, np.ndarray]:
         """Extract (ids, embeddings) from TacticalKnowledge table."""
         from Programma_CS2_RENAN.backend.storage.db_models import TacticalKnowledge
@@ -248,10 +299,7 @@ class VectorIndexManager:
                 except (json.JSONDecodeError, ValueError):
                     logger.warning("Skipped knowledge entry %s: bad embedding", entry.id)
 
-        if not ids_list:
-            return np.array([], dtype=np.int64), np.empty((0, 0), dtype=np.float32)
-
-        return np.array(ids_list, dtype=np.int64), np.stack(vecs_list)
+        return self._stack_uniform("knowledge", ids_list, vecs_list)
 
     def _load_experience_vectors(self) -> Tuple[np.ndarray, np.ndarray]:
         """Extract (ids, embeddings) from CoachingExperience table."""
@@ -285,14 +333,12 @@ class VectorIndexManager:
                         ids_list.append(entry.id)
                         vecs_list.append(vec)
                     except Exception:
-                        pass
+                        # No-silent-failures: name the row that failed.
+                        logger.warning("Skipped experience entry %s: bad embedding", entry.id)
 
                 offset += BATCH_SIZE
 
-        if not ids_list:
-            return np.array([], dtype=np.int64), np.empty((0, 0), dtype=np.float32)
-
-        return np.array(ids_list, dtype=np.int64), np.stack(vecs_list)
+        return self._stack_uniform("experience", ids_list, vecs_list)
 
 
 # ── Singleton ───────────────────────────────────────────────────────────

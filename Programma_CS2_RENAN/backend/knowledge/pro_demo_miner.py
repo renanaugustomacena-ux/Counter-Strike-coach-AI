@@ -222,9 +222,17 @@ class ProStatsMiner:
                 {
                     "title": f"Opening duels: {nickname}",
                     "description": (
+                        # R4 MED: opening_duel_win_pct is stored as a RATIO
+                        # (monolith range 0.46-0.77, same convention as kast/
+                        # headshot_pct — see line 42). The old literal `> 52`
+                        # compared percent form: never true, so every player
+                        # read "Disciplined opener." and the text printed
+                        # "0.5%". Compare against the archetype threshold and
+                        # format defensively like KAST/HS above.
                         f"{nickname} opening kill ratio: {card.opening_kill_ratio:.2f}, "
-                        f"opening duel win rate: {card.opening_duel_win_pct:.1f}%. "
-                        f"{'Aggressive entry fragger.' if card.opening_duel_win_pct > 52 else 'Disciplined opener.'}"
+                        f"opening duel win rate: "
+                        f"{(card.opening_duel_win_pct * 100 if card.opening_duel_win_pct <= 1.0 else card.opening_duel_win_pct):.1f}%. "
+                        f"{'Aggressive entry fragger.' if card.opening_duel_win_pct > _ENTRY_OPENING_THRESHOLD else 'Disciplined opener.'}"
                     ),
                     "category": "opening_duels",
                     "situation": "Entry fragging reference",
@@ -263,29 +271,37 @@ class ProStatsMiner:
         Returns:
             Number of knowledge entries created.
         """
-        import sqlite3
-        from pathlib import Path
+        # R4 MED: this used raw sqlite3.connect on a path derived from
+        # __file__ — which silently CREATED an empty database.db inside the
+        # package tree when the configured DB lived elsewhere (then mined
+        # zero rows), had no LIMIT, and leaked the connection on any
+        # execute() error. Repo invariant: storage access goes through
+        # get_db_manager(); the session context closes on exception.
+        from sqlalchemy import text
 
-        db_path: str = str(Path(__file__).resolve().parent.parent / "storage" / "database.db")
-        conn = sqlite3.connect(db_path, timeout=30)
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA busy_timeout=30000")
+        from Programma_CS2_RENAN.backend.storage.database import get_db_manager
 
-        # Load all roundstats grouped by (demo_name, player, side)
-        rows = conn.execute(
-            """
-            SELECT demo_name, player_name, side,
-                   SUM(kills) as total_kills,
-                   SUM(damage_dealt) as total_dmg,
-                   CAST(SUM(kast) AS REAL) / COUNT(*) as kast_rate,
-                   CAST(SUM(opening_kill) AS REAL) / COUNT(*) as ok_rate,
-                   AVG(round_rating) as avg_rating,
-                   COUNT(*) as rounds_played
-            FROM roundstats
-            GROUP BY demo_name, player_name, side
-        """
-        ).fetchall()
-        conn.close()
+        _MAX_AGGREGATE_ROWS = 50_000  # bound: (demo, player, side) aggregates
+
+        db = get_db_manager()
+        with db.get_session() as session:
+            rows = session.execute(
+                text(
+                    """
+                    SELECT demo_name, player_name, side,
+                           SUM(kills) as total_kills,
+                           SUM(damage_dealt) as total_dmg,
+                           CAST(SUM(kast) AS REAL) / COUNT(*) as kast_rate,
+                           CAST(SUM(opening_kill) AS REAL) / COUNT(*) as ok_rate,
+                           AVG(round_rating) as avg_rating,
+                           COUNT(*) as rounds_played
+                    FROM roundstats
+                    GROUP BY demo_name, player_name, side
+                    LIMIT :max_rows
+                    """
+                ),
+                {"max_rows": _MAX_AGGREGATE_ROWS},
+            ).fetchall()
 
         # Re-group by (map, player, side) across demos
         aggregates: Dict[Tuple[str, str, str], Dict[str, Any]] = defaultdict(
