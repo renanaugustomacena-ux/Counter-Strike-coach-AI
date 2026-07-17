@@ -53,6 +53,18 @@ _FALLBACK_BASELINE = {
     "entry_rate": {"mean": 0.25, "std": 0.08},
 }
 
+# Metrics where a HIGHER value is WORSE — insight generation must invert
+# the Z-score before judging (runtime E2E 2026-07-17: "Strong Deaths …
+# Z-score +7.1. Keep it up!" praised dying far above the pro cohort).
+_LOWER_IS_BETTER_FEATURES = {
+    "avg_deaths",
+    "dpr",
+    "deaths",
+    "kill_std",
+    "adr_std",
+    "unused_utility_per_round",
+}
+
 
 class InsightPriority(Enum):
     """Priority levels for coaching insights."""
@@ -643,12 +655,20 @@ class HybridCoachingEngine:
         """
         feature_name = feature.replace("avg_", "").replace("_", " ").title()
 
+        # Runtime E2E 2026-07-17: direction-aware evaluation. deaths/dpr are
+        # LOWER-is-better — the old z>0 ⇒ "Strong … Keep it up!" praised a
+        # player for dying 7 sigma more than the pro cohort.
+        higher_is_worse = feature in _LOWER_IS_BETTER_FEATURES
+        effective_z = -z_score if higher_is_worse else z_score
+
         # Build title
         # Emoji stripped — presentation is UI concern
-        if z_score < -1.5:
+        if effective_z < -1.5:
             title = f"Improve Your {feature_name}"
-        elif z_score < 0:
-            title = f"{feature_name} Below Average"
+        elif effective_z < 0:
+            title = (
+                f"{feature_name} Too High" if higher_is_worse else f"{feature_name} Below Average"
+            )
         else:
             title = f"Strong {feature_name}"
 
@@ -661,15 +681,16 @@ class HybridCoachingEngine:
             baseline_entry["mean"] if isinstance(baseline_entry, dict) else float(baseline_entry)
         )
         ref_label = pro_name if pro_name else "pro average"
-        if z_score < 0:
+        direction = "above" if z_score > 0 else "below"
+        if effective_z < 0:
             message_parts.append(
-                f"Your {feature_name.lower()} is below {ref_label} "
-                f"(Z-score: {z_score:.1f}). Target: {baseline:.1f}"
+                f"Your {feature_name.lower()} is {direction} {ref_label} "
+                f"(Z-score: {z_score:+.1f}) — needs work. Target: {baseline:.1f}"
             )
         else:
             message_parts.append(
-                f"Your {feature_name.lower()} exceeds {ref_label} "
-                f"(Z-score: +{z_score:.1f}). Keep it up!"
+                f"Your {feature_name.lower()} is {direction} {ref_label} "
+                f"(Z-score: {z_score:+.1f}). Keep it up!"
             )
 
         # Knowledge-derived insight

@@ -107,7 +107,7 @@
     "backend/coaching/__init__.py": "e0d323aa94e266b6daef232f6570f2e926d3a06504d9e49a74605aec8cf9f931",
     "backend/coaching/correction_engine.py": "1b627a30a24489b693acb51e4418c182e77fc095d1f4d0dcbc65a48f9642af80",
     "backend/coaching/explainability.py": "d0fe98eaa870da2e4d1af992bcf146e0b7e29f6f55eb7f12aad9da3209ae486d",
-    "backend/coaching/hybrid_engine.py": "72bf8c0b608305b00a6e25cd12b0279950a83261b285794291171c4efad4b5bc",
+    "backend/coaching/hybrid_engine.py": "da09dfe564e9aa83d1d27fcb32776461fc27e5bbbfbdc969e2ad105800ac7d87",
     "backend/coaching/jepa_insight_adapter.py": "1250c2962fef34145a9459735fef3587e7038021e43a3596866ed411852b19bc",
     "backend/coaching/longitudinal_engine.py": "6de28e5cd5eed4290b211f402bf118d6967fd9e0cfbf4ac9a0e17a45bac18463",
     "backend/coaching/nn_refinement.py": "d5236da4d23479202fca8355e8aae484cda3386e67157c0830ddab0cde6f82d7",

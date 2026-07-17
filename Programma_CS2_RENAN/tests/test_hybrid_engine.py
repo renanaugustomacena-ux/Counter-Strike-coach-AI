@@ -301,3 +301,68 @@ class TestHybridModelLoading:
         engine = HybridCoachingEngine(use_jepa=True)
         assert engine.model is not None
         assert loaded["version"] == "jepa_brain"
+
+
+class TestDirectionAwareInsights:
+    """Runtime E2E 2026-07-17: deaths above the pro cohort were titled
+    'Strong Deaths … Keep it up!' — lower-is-better metrics must invert
+    the Z-score before judging."""
+
+    @staticmethod
+    def _engine():
+        engine = HybridCoachingEngine.__new__(HybridCoachingEngine)
+        return engine
+
+    def test_high_deaths_is_a_weakness(self):
+        from Programma_CS2_RENAN.backend.coaching.hybrid_engine import InsightPriority
+
+        engine = self._engine()
+        insight = engine._generate_insight(
+            feature="avg_deaths",
+            z_score=7.1,
+            raw_dev=0.5,
+            knowledge=[],
+            ml_predictions=None,
+            priority=InsightPriority.HIGH,
+            confidence=0.6,
+            map_name="de_mirage",
+            active_baseline={"avg_deaths": {"mean": 0.62, "std": 0.08}},
+        )
+        assert "Keep it up" not in insight.message
+        assert "Strong" not in insight.title
+        assert "needs work" in insight.message
+
+    def test_low_deaths_is_a_strength(self):
+        from Programma_CS2_RENAN.backend.coaching.hybrid_engine import InsightPriority
+
+        engine = self._engine()
+        insight = engine._generate_insight(
+            feature="avg_deaths",
+            z_score=-1.2,
+            raw_dev=-0.1,
+            knowledge=[],
+            ml_predictions=None,
+            priority=InsightPriority.LOW,
+            confidence=0.4,
+            map_name=None,
+            active_baseline={"avg_deaths": {"mean": 0.62, "std": 0.08}},
+        )
+        assert insight.title == "Strong Deaths"
+        assert "Keep it up" in insight.message
+
+    def test_higher_is_better_unchanged(self):
+        from Programma_CS2_RENAN.backend.coaching.hybrid_engine import InsightPriority
+
+        engine = self._engine()
+        insight = engine._generate_insight(
+            feature="avg_kast",
+            z_score=1.4,
+            raw_dev=0.07,
+            knowledge=[],
+            ml_predictions=None,
+            priority=InsightPriority.LOW,
+            confidence=0.3,
+            map_name=None,
+            active_baseline={"avg_kast": {"mean": 0.74, "std": 0.05}},
+        )
+        assert insight.title == "Strong Kast"
