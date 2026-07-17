@@ -369,6 +369,8 @@ def check_lesson_system_status() -> Dict[str, Any]:
             demo_count = count
             db_ok = True
     except Exception as e:
+        # R4 LOW: a diagnostic that hides WHY it failed is not a diagnostic.
+        logger.warning("Lesson system DB check failed: %s", e, exc_info=True)
         db_ok = False
 
     return {

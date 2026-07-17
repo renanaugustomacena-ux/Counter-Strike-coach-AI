@@ -92,7 +92,15 @@ class AnalysisOrchestrator:
         n = self._module_failure_counts.get(module, 0) + 1
         self._module_failure_counts[module] = n
         if n <= self._LOG_SUPPRESSION_INITIAL or n % self._LOG_SUPPRESSION_INTERVAL == 0:
-            logger.error("%s analysis failed (consecutive=%s): %s", module, n, error)
+            # R4 LOW: the counter is cumulative per match (reset at match
+            # start, never on success) — say so, and keep the traceback.
+            logger.error(
+                "%s analysis failed (failures_this_match=%s): %s",
+                module,
+                n,
+                error,
+                exc_info=error,
+            )
         # Notify user when failures are persistent (>3 consecutive)
         if n == self._LOG_SUPPRESSION_INITIAL:
             try:

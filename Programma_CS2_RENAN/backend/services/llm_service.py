@@ -42,14 +42,14 @@ def _resolve_default_model() -> str:
     return "gemma4:e2b"
 
 
-DEFAULT_MODEL = _resolve_default_model()
-
-
 class LLMService:
     """Service for generating natural language coaching lessons using Ollama."""
 
-    def __init__(self, model: str = DEFAULT_MODEL, base_url: str = OLLAMA_URL):
-        self.model = model
+    def __init__(self, model: str = "", base_url: str = OLLAMA_URL):
+        # R4 LOW: the model is resolved lazily PER INSTANTIATION — the old
+        # module-level DEFAULT_MODEL froze LLM_COACH_MODEL at import time,
+        # so the CoachScreen selector had no effect until a restart.
+        self.model = model or _resolve_default_model()
         self.base_url = base_url.rstrip("/")
         self._available = None  # Cached availability status
         self._available_checked_at = 0.0  # Timestamp of last check

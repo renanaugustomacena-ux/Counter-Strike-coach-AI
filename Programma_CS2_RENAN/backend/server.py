@@ -67,8 +67,16 @@ class RateLimiter:
         current_time = time.time()
         window_start = current_time - self.window_seconds
 
-        # Clean old entries outside the window
-        self.requests[client_ip] = [ts for ts in self.requests[client_ip] if ts > window_start]
+        # Clean old entries outside the window. R4 LOW: evict idle IPs
+        # entirely — empty lists per stale client leaked memory forever.
+        pruned = [ts for ts in self.requests[client_ip] if ts > window_start]
+        if pruned:
+            self.requests[client_ip] = pruned
+        else:
+            self.requests.pop(client_ip, None)
+        stale_keys = [ip for ip, stamps in self.requests.items() if not stamps]
+        for ip in stale_keys:
+            self.requests.pop(ip, None)
 
         # Check if under limit
         if len(self.requests[client_ip]) < self.max_requests:
