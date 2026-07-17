@@ -25,6 +25,9 @@ _HASH_EXCLUDES = {
     "PHOTO_GUI",
     "data",
     "models",
+    # Vendored third-party: npm packages can ship .py files (flatted) —
+    # present locally, absent in CI checkouts → phantom "removed" drift.
+    "node_modules",
 }
 
 

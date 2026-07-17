@@ -1,5 +1,5 @@
 {
-  "file_count": 293,
+  "file_count": 292,
   "generator": "sync_integrity_manifest.py",
   "hashes": {
     "__init__.py": "d3074031129007f4a6dd65765a0faaad39df9ba8ee41ebe0c94c7f18598c12d0",
@@ -52,7 +52,6 @@
     "apps/qt_app/viewmodels/pro_player_detail_vm.py": "a106d01e77b6afe7e30d162d747ad7e9f46902f0101a5ee5b0dbe113bc8f5da1",
     "apps/qt_app/viewmodels/tactical_vm.py": "bce83b95afe93d03b6a92c3db044fbabd94ca45a6fc614d930e48b5c54aea130",
     "apps/qt_app/viewmodels/user_profile_vm.py": "382b129e243b2a72d695dfe8cff1941e8cf01a2724b68d6b8090e2286bdf751a",
-    "apps/qt_app/web/node_modules/.pnpm/flatted@3.4.2/node_modules/flatted/python/flatted.py": "7fcd888b699ed69375f58da629911c39164e93d3d991634094e5fd5bea20e840",
     "apps/qt_app/widgets/__init__.py": "fe0983a244182c4ec04142c8ac2c21d0dd1dace93145d547d9bcfd8b6b72ac27",
     "apps/qt_app/widgets/charts/__init__.py": "0757dc993d566351b72199f3ba5552d5209d19a2adf1bf4eb673f52f05138ef1",
     "apps/qt_app/widgets/charts/economy_chart.py": "5b9bde1215cdaccb23d3c927f20d3440d871c02eae745873786883d29165bb38",
