@@ -64,6 +64,7 @@ class BlindSpotDetector:
         """
         search = game_tree if game_tree is not None else self._search
         mismatches: Dict[str, List[Dict]] = defaultdict(list)
+        skipped_rounds = 0
 
         for round_data in player_history:
             state = round_data.get("game_state", {})
@@ -89,6 +90,7 @@ class BlindSpotDetector:
                 actual_value = self._evaluate_action(search, state, actual)
                 impact = max(0.0, optimal_value - actual_value)
             except Exception as e:
+                skipped_rounds += 1
                 logger.debug("B-01: Blind spot analysis skipped for round: %s", e)
                 continue
 
@@ -98,6 +100,18 @@ class BlindSpotDetector:
                     "actual": actual,
                     "impact": impact,
                 }
+            )
+
+        # R4 LOW: a systematic failure (schema drift making every state
+        # malformed) used to skip 100% of rounds at DEBUG — an empty result
+        # indistinguishable from "no blind spots". Mirror the P-VEC-02
+        # pattern: warn when the skip ratio is non-trivial.
+        if player_history and skipped_rounds / len(player_history) > 0.05:
+            logger.warning(
+                "B-01: blind-spot analysis skipped %d/%d rounds (>5%%) — "
+                "results may be incomplete; enable DEBUG for per-round causes",
+                skipped_rounds,
+                len(player_history),
             )
 
         # Aggregate into BlindSpot instances
@@ -215,5 +229,7 @@ class BlindSpotDetector:
 
 
 def get_blind_spot_detector() -> BlindSpotDetector:
-    """Factory function for singleton access."""
+    """Factory: returns a NEW instance per call (R4 LOW: the old
+    docstring claimed singleton access — stateful callers relying on
+    that lost accumulated state silently)."""
     return BlindSpotDetector()

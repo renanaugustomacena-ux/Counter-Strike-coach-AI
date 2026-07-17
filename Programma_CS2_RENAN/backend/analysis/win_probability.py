@@ -404,6 +404,13 @@ class MatchResult:
     match_index: int = 0
 
 
+# R4 LOW cross-check note (2026-07-17): EloRatingCalculator,
+# EloAugmentedPredictor, WinProbabilityPredictor.fit_calibration and the
+# PlattScaler path are DORMANT BY DESIGN, not dead code to delete — the
+# Platt/Elo calibration is deliberately deferred to Phase 10 (C6 /
+# 26-WINPROB-01: enabling it before a trained 12-dim checkpoint exists
+# would be a placebo on random weights). Wire-up belongs to R9 after the
+# retrain; see TASKS.md R9 and AUDIT 26-WINPROB-01/02.
 class EloRatingCalculator:
     """Per-player Elo rating calculator with exponential recency weighting.
 

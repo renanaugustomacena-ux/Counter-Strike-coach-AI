@@ -104,7 +104,11 @@ class PlayerCardAssimilator:
         """
         if self.card.impact > 1.3:
             return "Star Fragger"
-        if self.card.kast > 0.75:
+        # R4 LOW: same V-2 defensive normalization as get_coach_baseline —
+        # a legacy percent-form kast (e.g. 71.0) made this comparison always
+        # true, classifying every non-star as "Support Anchor".
+        kast = self.card.kast / 100.0 if self.card.kast > 1.0 else self.card.kast
+        if kast > 0.75:
             return "Support Anchor"
         if self._is_awper():
             return "Sniper Specialist"
