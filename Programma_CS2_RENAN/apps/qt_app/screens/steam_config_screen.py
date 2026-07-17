@@ -1,5 +1,7 @@
 """Steam configuration screen — SteamID64 and API key setup."""
 
+import re
+
 from PySide6.QtCore import Qt, QThreadPool, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices, QFont
 from PySide6.QtWidgets import (
@@ -190,6 +192,13 @@ class SteamConfigScreen(QWidget):
     def _on_save(self):
         steam_id = self._steam_id_input.text().strip()
         api_key = self._api_key_input.text().strip()
+
+        # R4 LOW (zero-trust at boundaries): the placeholder promises a
+        # 17-digit SteamID64 but any string used to be persisted — a typo
+        # only surfaced later as an opaque Steam-sync failure.
+        if steam_id and not re.fullmatch(r"\d{17}", steam_id):
+            self._show_status("Invalid SteamID64 — expected exactly 17 digits", "#f44336")
+            return
 
         if steam_id:
             save_user_setting("STEAM_ID", steam_id)

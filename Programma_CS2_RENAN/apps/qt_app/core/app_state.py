@@ -1,7 +1,10 @@
 """AppState — singleton QObject that polls CoachState from DB every 10 seconds.
 
 Emits typed signals consumed by any Qt screen (HomeScreen, etc.).
-Read-only: the Qt app does NOT write to CoachState — that's session_engine's job.
+Read-only toward CoachState — that's session_engine's job. ONE sanctioned
+write exists (R4 LOW honesty note): _bg_read marks delivered
+ServiceNotification rows is_read=True and commits, so notifications are
+shown once. No other write path may be added here.
 """
 
 from PySide6.QtCore import QObject, QThreadPool, QTimer, Signal
@@ -92,6 +95,12 @@ class AppState(QObject):
             from Programma_CS2_RENAN.backend.storage.database import get_db_manager
             from Programma_CS2_RENAN.backend.storage.db_models import CoachState
         except Exception:
+            # R4 LOW: broken imports (venv damage, migration mid-flight)
+            # made every 10s poll return None with ZERO diagnostics — the
+            # UI showed "Service: Offline" forever. Warn once.
+            if not getattr(self, "_bg_read_error_logged", False):
+                self._bg_read_error_logged = True
+                logger.warning("AppState background read failed", exc_info=True)
             return None
 
         try:

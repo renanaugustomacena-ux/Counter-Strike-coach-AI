@@ -175,6 +175,9 @@ class MatchDetailScreen(QWidget):
             description="",
         )
         self._empty_state.setVisible(False)
+        # R4 LOW: connect ONCE — reconnecting on every failed load
+        # accumulated duplicate slots (N failures → N navigations per click).
+        self._empty_state.action_clicked.connect(lambda: self._navigate("match_history"))
         root.addWidget(self._empty_state)
 
         # ── Tabs ──
@@ -209,7 +212,6 @@ class MatchDetailScreen(QWidget):
                 "The demo may still be processing, or analysis hasn't completed."
             )
             self._empty_state.set_cta_text("Back to Match History")
-            self._empty_state.action_clicked.connect(lambda: self._navigate("match_history"))
             self._empty_state.setVisible(True)
             return
 
@@ -243,7 +245,6 @@ class MatchDetailScreen(QWidget):
         self._empty_state.set_title("Couldn't load match")
         self._empty_state.set_description(str(msg))
         self._empty_state.set_cta_text("Back to Match History")
-        self._empty_state.action_clicked.connect(lambda: self._navigate("match_history"))
         self._empty_state.setVisible(True)
 
     def _navigate(self, screen_name: str) -> None:

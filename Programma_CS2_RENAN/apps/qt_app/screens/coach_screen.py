@@ -83,6 +83,10 @@ class CoachScreen(QWidget):
         self._coach_vm.insights_loaded.connect(self._on_insights)
         self._chat_vm.messages_changed.connect(self._render_messages)
         self._chat_vm.is_loading_changed.connect(self._on_chat_loading)
+        # R4 LOW: the F2 streaming plumbing emitted accumulated chunks that
+        # nothing rendered — the live-token feature was inert. Stream text
+        # replaces the static "thinking" label as it arrives.
+        self._chat_vm.streaming_changed.connect(self._on_stream_progress)
         self._chat_vm.is_available_changed.connect(self._on_chat_availability)
 
         self._build_ui()
@@ -113,6 +117,15 @@ class CoachScreen(QWidget):
         self._belief_desc_label.setText(i18n.get_text("belief_desc"))
         self._insights_card.set_title(i18n.get_text("recent_insights"))
         self._typing_label.setText(i18n.get_text("coach_thinking"))
+
+    def _on_stream_progress(self, accumulated: str) -> None:
+        """DR-14: render the accumulated streamed text in the typing label
+        (whole-message re-render). Falls back to the static thinking text
+        for empty chunks; the final bubble arrives via messages_changed."""
+        if accumulated:
+            preview = accumulated[-400:]
+            self._typing_label.setText(preview)
+            self._typing_label.setTextFormat(Qt.PlainText)
         self._chat_input.setPlaceholderText(i18n.get_text("ask_your_coach"))
         for btn, key in self._qa_buttons:
             btn.setText(i18n.get_text(key))
@@ -679,6 +692,9 @@ class CoachScreen(QWidget):
 
             content_text = msg.get("content", "")
             text_label = QLabel(content_text)
+            # FE-01 (R4 LOW): LLM/DB-sourced content must never be
+            # auto-detected as rich text — same rule as the insight labels.
+            text_label.setTextFormat(Qt.PlainText)
             text_label.setWordWrap(True)
             text_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
             text_label.setFont(Typography.font("body"))
