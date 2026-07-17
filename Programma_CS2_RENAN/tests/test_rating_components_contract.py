@@ -124,11 +124,19 @@ class TestDemoParserParity:
                     f"({row[key]} vs {expected[key]})"
                 )
 
-    def test_impact_rounds_alias_tracks_rating_impact(self, totals):
+    def test_impact_rounds_is_not_aliased_to_rating_impact(self, totals):
+        """R4 (impact_rounds contract): the legacy alias wrote the HLTV
+        impact RATING (~1.1-1.8) into impact_rounds, whose canonical
+        semantics are the SHARE of rounds with >=1 kill ([0, 1] — what the
+        SQL aggregator writes and what every baseline consumer assumes).
+        The HLTV block must leave impact_rounds alone."""
         from Programma_CS2_RENAN.backend.data_sources.demo_parser import _apply_hltv2_columns
 
-        out = _apply_hltv2_columns(totals.copy())
-        assert (out["impact_rounds"] == out["rating_impact"]).all()
+        df = totals.copy()
+        df["impact_rounds"] = [0.6, 0.5, 0.3]  # share written by the caller
+        out = _apply_hltv2_columns(df)
+        assert out["impact_rounds"].tolist() == [0.6, 0.5, 0.3]
+        assert not (out["impact_rounds"] == out["rating_impact"]).any()
 
 
 # ─── Parity: aggregate_match_stats_sql builder ────────────────────────

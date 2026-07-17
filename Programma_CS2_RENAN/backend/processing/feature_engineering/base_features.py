@@ -168,12 +168,13 @@ def extract_match_stats(
     avg_money_per_round = rounds_df["money_spent"].mean()
     stats["econ_rating"] = stats["avg_adr"] / max(1.0, avg_money_per_round)
 
-    # Simple impact calculation (Task 6.3: Uses configurable thresholds)
-    impact_rounds = rounds_df[
-        (rounds_df["kills"] > heuristics.impact_kill_threshold)
-        | (rounds_df["adr"] > heuristics.impact_adr_threshold)
-    ].shape[0]
-    stats["impact_rounds"] = float(impact_rounds)
+    # impact_rounds contract (R4): SHARE of rounds with >=1 kill, [0, 1] —
+    # identical semantics to demo_parser and aggregate_match_stats_sql. The
+    # old value was a raw COUNT with configurable thresholds, so the same
+    # 25-dim feature (index 8) grew with match length for this writer while
+    # the others wrote a bounded share.
+    n_rounds = max(1, len(rounds_df))
+    stats["impact_rounds"] = float((rounds_df["kills"] >= 1).sum() / n_rounds)
 
     # --- HLTV 2.0 Rating (Unified with demo_parser.py) ---
     kpr = stats["avg_kills"]

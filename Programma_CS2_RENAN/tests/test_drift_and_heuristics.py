@@ -22,7 +22,7 @@ class TestDriftMonitor:
         return {
             "avg_adr": {"mean": 80.0, "std": 10.0},
             "kd_ratio": {"mean": 1.1, "std": 0.3},
-            "impact_rounds": {"mean": 5.0, "std": 2.0},
+            "impact_rounds": {"mean": 0.5, "std": 0.15},
             "avg_hs": {"mean": 0.45, "std": 0.1},
             "avg_kast": {"mean": 0.70, "std": 0.08},
         }
@@ -40,7 +40,7 @@ class TestDriftMonitor:
             {
                 "avg_adr": np.full(n, 120.0),  # 4 std above 80
                 "kd_ratio": np.full(n, 1.1),
-                "impact_rounds": np.full(n, 5.0),
+                "impact_rounds": np.full(n, 0.5),
                 "avg_hs": np.full(n, 0.45),
                 "avg_kast": np.full(n, 0.70),
             }
@@ -64,7 +64,7 @@ class TestDriftMonitor:
             {
                 "avg_adr": rng.normal(80.0, 10.0, n),
                 "kd_ratio": rng.normal(1.1, 0.3, n),
-                "impact_rounds": rng.normal(5.0, 2.0, n),
+                "impact_rounds": rng.normal(0.5, 0.15, n),
                 "avg_hs": rng.normal(0.45, 0.1, n),
                 "avg_kast": rng.normal(0.70, 0.08, n),
             }
