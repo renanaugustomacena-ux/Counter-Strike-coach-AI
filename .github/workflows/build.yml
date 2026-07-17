@@ -207,7 +207,10 @@ jobs:
           CS2_INTEGRATION_TESTS: '1'
         # "not slow" keeps the monolith-scale e2e/system-regression suites
         # out of the 10-minute job — they need a data box, not a CI runner.
-        run: python -m pytest Programma_CS2_RENAN/tests/ tests/ -m "integration and not slow" -q --timeout 300
+        # requirements-ci.txt does not carry pytest (same as the test job).
+        run: |
+          pip install pytest pytest-timeout
+          python -m pytest Programma_CS2_RENAN/tests/ tests/ -m "integration and not slow" -q --timeout 300
         timeout-minutes: 8
 
       - name: Run cross-module consistency checks
