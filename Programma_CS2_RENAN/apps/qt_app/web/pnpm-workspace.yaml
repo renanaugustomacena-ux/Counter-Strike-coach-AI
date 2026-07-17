@@ -6,3 +6,12 @@ packages:
 # esbuild ha bisogno del postinstall per collocare il binario nativo della piattaforma
 allowBuilds:
   esbuild: true
+
+# Repo su disco ext4 montato via `wsl --mount`, raggiungibile da Windows solo via UNC (bridge 9P):
+# hardlink store->progetto impossibili (volumi diversi) e symlink del virtual store .pnpm inaffidabili.
+# Layout hoisted (senza symlink) + import per copia. NON rimuovere senza testare `pnpm install` da Windows.
+nodeLinker: hoisted
+packageImportMethod: copy
+# I lifecycle script via cmd.exe falliscono su cwd UNC ("UNC paths are not supported"):
+# la shell emulata di pnpm (JS) esegue gli script senza cmd.exe.
+shellEmulator: true
