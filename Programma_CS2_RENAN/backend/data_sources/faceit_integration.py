@@ -89,7 +89,19 @@ class FACEITIntegration:
                     raise FACEITAPIError(
                         f"Rate limit exceeded {MAX_429_RETRIES} times for {endpoint}"
                     )
-                retry_after = min(int(response.headers.get("Retry-After", 60)), 300)
+                # RFC 7231 allows an HTTP-date Retry-After, which int() can't
+                # parse — and the surrounding handler only catches
+                # requests.RequestException, so a bare int() crashed the whole
+                # request path instead of backing off (R4 MED).
+                _raw_retry = response.headers.get("Retry-After", "60")
+                try:
+                    retry_after = min(int(_raw_retry), 300)
+                except ValueError:
+                    logger.warning(
+                        "Unparseable Retry-After header %r — using 60s backoff",
+                        _raw_retry,
+                    )
+                    retry_after = 60
                 logger.warning(
                     "Rate limit exceeded (attempt %d/%d). Waiting %ds",
                     _retry_count + 1,

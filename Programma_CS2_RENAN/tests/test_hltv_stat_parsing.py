@@ -49,3 +49,23 @@ def _fetcher():
 )
 def test_safe_float(raw, expected):
     assert _fetcher()._safe_float(raw) == pytest.approx(expected)
+
+
+class TestStatsEndDateIsDynamic:
+    """R4 MED: the sub-page endDate was a hardcoded past constant
+    ("2026-05-06") — every stat newer than that day was silently excluded
+    from individual/career/opponents/clutches scrapes, forever."""
+
+    def test_end_date_is_today_utc(self):
+        from datetime import datetime, timezone
+
+        from Programma_CS2_RENAN.backend.data_sources.hltv.stat_fetcher import _hltv_stats_end_date
+
+        assert _hltv_stats_end_date() == datetime.now(timezone.utc).date().isoformat()
+
+    def test_constant_is_gone(self):
+        import Programma_CS2_RENAN.backend.data_sources.hltv.stat_fetcher as sf
+
+        assert not hasattr(
+            sf, "HLTV_STATS_END_DATE"
+        ), "hardcoded end-date constant must not come back"
