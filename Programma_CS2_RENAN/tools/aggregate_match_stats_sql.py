@@ -492,13 +492,6 @@ def _build_player_match_stats(meta: dict, agg: dict, source_path: Path):
     """Compose a PlayerMatchStats SQLModel instance for one (match, player)."""
     from Programma_CS2_RENAN.backend.processing.feature_engineering import kast as kast_mod
     from Programma_CS2_RENAN.backend.processing.feature_engineering import rating as rating_mod
-    from Programma_CS2_RENAN.backend.processing.feature_engineering.rating import (
-        BASELINE_ADR,
-        BASELINE_DPR_COMPLEMENT,
-        BASELINE_IMPACT,
-        BASELINE_KAST,
-        BASELINE_KPR,
-    )
     from Programma_CS2_RENAN.backend.storage.db_models import DatasetSplit, PlayerMatchStats
 
     rounds = meta["round_count"] or agg["rounds_played"] or 1
@@ -519,20 +512,18 @@ def _build_player_match_stats(meta: dict, agg: dict, source_path: Path):
     # KAST estimate from kills/assists/deaths/rounds (closed-form).
     kast = kast_mod.estimate_kast_from_stats(kills, assists, deaths, rounds)
 
-    # HLTV 2.0 rating components + aggregate. rating.py exposes the
-    # aggregate as compute_hltv2_rating(...) but not the per-component
-    # breakdown — we replicate its math here so each rating_* column gets
-    # the canonical normalized value (matching the body of
-    # rating.compute_hltv2_rating, lines 110-124).
-    impact = rating_mod.compute_impact_rating(kpr=kpr, avg_adr=avg_adr, dpr=dpr)
-    rating_kpr = kpr / BASELINE_KPR
-    rating_survival = rating_mod.compute_survival_rating(dpr) / BASELINE_DPR_COMPLEMENT
-    rating_kast = kast / BASELINE_KAST
-    rating_impact = impact / BASELINE_IMPACT
-    rating_adr = avg_adr / BASELINE_ADR
-    rating_aggregate = (
-        rating_kpr + rating_survival + rating_kast + rating_impact + rating_adr
-    ) / 5.0
+    # HLTV 2.0 rating components + aggregate via the canonical SSOT
+    # (rating.compute_rating_components). The rating_* columns carry RAW
+    # components — a prior draft wrote baseline-normalized ratios here,
+    # which silently disagreed with demo_parser/base_features and corrupted
+    # every downstream Z-score against pro_baseline.
+    components = rating_mod.compute_rating_components(kpr=kpr, dpr=dpr, kast=kast, avg_adr=avg_adr)
+    rating_kpr = components["rating_kpr"]
+    rating_survival = components["rating_survival"]
+    rating_kast = components["rating_kast"]
+    rating_impact = components["rating_impact"]
+    rating_adr = components["rating_adr"]
+    rating_aggregate = components["rating"]
 
     kill_std = _stdev(agg["kills_list"])
     adr_per_round = [v / 1.0 for v in agg["adr_list"]]  # rdmg already per-round

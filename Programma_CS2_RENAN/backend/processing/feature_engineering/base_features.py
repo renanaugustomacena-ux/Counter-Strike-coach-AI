@@ -181,7 +181,10 @@ def extract_match_stats(
     kast = stats["avg_kast"]
     avg_adr = stats["avg_adr"]
 
-    stats["rating_impact"] = compute_impact_rating(kpr, avg_adr)
+    # dpr passed so the survival penalty is applied — keeps this writer in
+    # lockstep with demo_parser and aggregate_match_stats_sql (SSOT contract:
+    # rating.compute_rating_components).
+    stats["rating_impact"] = compute_impact_rating(kpr, avg_adr, dpr=dpr)
     stats["rating_survival"] = compute_survival_rating(dpr)
     stats["rating"] = compute_hltv2_rating(
         kpr=kpr, dpr=dpr, kast=kast, avg_adr=avg_adr, impact=stats["rating_impact"]
