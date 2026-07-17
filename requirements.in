@@ -71,7 +71,7 @@ sentry-sdk==2.57.0
 
 # --- Media & Visualization ---
 opencv-python==4.13.0.92
-pillow==11.3.0
+pillow==12.3.0
 matplotlib==3.10.8
 
 # --- NLP (optional — graceful fallback if missing) ---

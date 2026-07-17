@@ -113,7 +113,9 @@ CLAUDE.md
 CONSOLE_ARCHITECTURE.md
 jepa.md
 part1_review.md
-TASKS.md
+# TASKS.md is tracked since 2026-07-17 (owner request): it is the
+# operational source of truth and must travel with git pulls across
+# the Windows dev box and the Linux SSD copy.
 reporting.md
 KNOWLEDGE_TRANSFER_TO_CS2_COACH.md
 PYCHARM_CONFIGURATION_GUIDE.md

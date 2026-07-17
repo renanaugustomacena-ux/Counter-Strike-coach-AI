@@ -403,7 +403,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-lock-cpu.txt
-          pip install pyinstaller
+          # Pinned: an unpinned PyInstaller made release builds
+          # non-reproducible (the runtime lock no longer carries it).
+          pip install pyinstaller==6.17.0
 
       - name: Validate critical data files exist
         run: |
