@@ -8,13 +8,11 @@ training pipeline produces another.
 
 Reference: Reverse-engineered HLTV 2.0 coefficients (Leetify / open-source match data).
 
-CONTRACT — kast argument semantics (CRITICAL — do NOT mix up):
-  - compute_hltv2_rating()            → kast as RATIO  (0.0 – 1.0,  e.g. 0.72)
-  - compute_hltv2_rating_regression() → kast_pct as PERCENTAGE (0 – 100, e.g. 72.0)
-
-The regression function includes a runtime guard that auto-converts a ratio to a
-percentage and emits a warning, because confusing these two produces silently wrong
-ratings (error ~×100 on the KAST term).
+CONTRACT — kast argument semantics (CRITICAL):
+  - compute_hltv2_rating() / compute_rating_components() → kast as RATIO
+    (0.0 – 1.0, e.g. 0.72). The percentage-based regression variant was
+    removed (F2-39/R4 LOW) precisely because its different kast semantics
+    invited silently wrong ×100 ratings.
 """
 
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -163,66 +161,16 @@ def compute_hltv2_rating(
     r_imp = impact / BASELINE_IMPACT
     r_dmg = avg_adr / BASELINE_ADR
 
-    # NOTE (F2-40): This per-component average deliberately diverges from
-    # compute_hltv2_rating_regression(). The two functions serve different purposes:
-    # this one is for per-component deviation analysis (each term is independently
-    # interpretable), the regression formula matches HLTV's published values.
-    # Do NOT reconcile them — the divergence is by design.
+    # NOTE (F2-40): this per-component average deliberately diverges from
+    # HLTV's published regression formula (coefficients above, function
+    # removed in F2-39/R4 LOW): each term here is independently
+    # interpretable for per-component deviation analysis. Do NOT
+    # "reconcile" it to the regression — the divergence is by design.
     return (r_kill + r_surv + r_kast + r_imp + r_dmg) / 5.0
 
 
-# F2-39: DEAD CODE — never called anywhere in the production codebase.
-# Retained for reference only (matches HLTV's published coefficients).
-# Consider deleting when the regression approach is formally deprecated.
-def compute_hltv2_rating_regression(
-    kpr: float,
-    dpr: float,
-    kast_pct: float,
-    avg_adr: float,
-    impact: float = None,
-) -> float:
-    """
-    Computes HLTV 2.0 Rating using regression coefficients.
-
-    This reproduces HLTV's published rating to within +/-0.01.
-    Use this when you need to match HLTV's exact number (e.g.,
-    validating scraped data or displaying a rating on the UI).
-
-    For coaching deviation analysis (comparing player vs pro per
-    component), use compute_hltv2_rating() instead.
-
-    Args:
-        kpr: Kills per round (e.g. 0.78)
-        dpr: Deaths per round (e.g. 0.62)
-        kast_pct: KAST as percentage (e.g. 72.0 for 72%)
-        avg_adr: Average damage per round (e.g. 82.0)
-        impact: HLTV Impact rating. If None, auto-computed from kpr+adr.
-
-    Returns:
-        HLTV 2.0 Rating (float, rounded to 2 decimal places)
-    """
-    # F2-39 guard: kast_pct must be a percentage (0–100), NOT a ratio (0.0–1.0).
-    # HLTV2_COEFF_KAST = 0.00738764 multiplies the percentage value.
-    # Passing 0.72 (ratio) instead of 72.0 (percent) produces a KAST contribution
-    # of ~0.005 instead of ~0.532 — a 100× error that silently corrupts the rating.
-    if kast_pct <= 1.0:
-        _rating_logger.warning(
-            "compute_hltv2_rating_regression() received kast_pct=%.4f which looks like "
-            "a ratio (0.0-1.0). Auto-converting to percentage (×100). "
-            "Pass kast_pct as a percentage, e.g. 72.0 for 72%%.",
-            kast_pct,
-        )
-        kast_pct = kast_pct * 100.0
-
-    if impact is None:
-        impact = compute_impact_rating(kpr, avg_adr, dpr=dpr)
-
-    raw = (
-        HLTV2_COEFF_KAST * kast_pct
-        + HLTV2_COEFF_KPR * kpr
-        + HLTV2_COEFF_DPR * dpr
-        + HLTV2_COEFF_IMPACT * impact
-        + HLTV2_COEFF_ADR * avg_adr
-        + HLTV2_INTERCEPT
-    )
-    return round(raw, 2)
+# F2-39 → R4 LOW (2026-07-17): compute_hltv2_rating_regression DELETED.
+# It had zero production call sites and carried DIFFERENT kast semantics
+# (percentage vs ratio) — an invitation to call the wrong formula. The
+# regression coefficients above are retained for documentation; see
+# docs/strategic_insights/HLTV_RATING_2_0_REVERSE_ENGINEERING.md.

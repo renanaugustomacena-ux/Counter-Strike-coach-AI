@@ -27,7 +27,13 @@ class DEMValidator:
     4. Game version detection
     """
 
-    # File size constraints (bytes)
+    # File size constraints (bytes).
+    # R4 LOW note (intentional layering, do not "fix" to DS-12): this is a
+    # FORMAT pre-screen (magic number/versions), deliberately looser than
+    # the DS-12 ingestion-acceptance floor MIN_DEMO_SIZE=10MB
+    # (backend/data_sources/demo_format_adapter.py) — a 200KB file can be a
+    # structurally valid .dem worth diagnosing even though ingestion
+    # rejects it for training.
     MIN_FILE_SIZE = 100 * 1024  # 100 KB
     MAX_FILE_SIZE = 800 * 1024 * 1024  # 800 MB
 

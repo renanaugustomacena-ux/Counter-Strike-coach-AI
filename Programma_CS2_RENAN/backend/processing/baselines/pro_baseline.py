@@ -381,13 +381,16 @@ def get_pro_positions(map_name: str, max_positions: int = 10000) -> list[tuple[f
                 if meta.map_name != map_name:
                     continue
 
-                # Fetch alive-player positions (sample every 64th tick for density)
+                # Fetch alive-player positions, sampling ~1 per second of
+                # game time. R4 LOW (26-TICK): the fixed %64 stride sampled
+                # at double density on 128-tick demos, biasing the heatmap.
                 # R4-20-01: Limit per-match to prevent a single large match
                 # from dominating memory (e.g. overtime matches with 50+ rounds).
+                stride = int(meta.tick_rate) if 32 <= int(meta.tick_rate or 0) <= 256 else 64
                 ticks = session.exec(
                     sel(MatchTickState.pos_x, MatchTickState.pos_y)
                     .where(MatchTickState.is_alive == True)  # noqa: E712
-                    .where(MatchTickState.tick % 64 == 0)
+                    .where(MatchTickState.tick % stride == 0)
                     .limit(5000)
                 ).all()
 
