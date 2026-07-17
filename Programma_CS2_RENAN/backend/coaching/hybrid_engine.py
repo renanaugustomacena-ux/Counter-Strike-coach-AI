@@ -401,6 +401,15 @@ class HybridCoachingEngine:
         if self.model is None:
             return None
 
+        # R4 MED: the JEPA coaching head predicts deltas for the FIRST
+        # OUTPUT_DIM contract features (index 0=health, 2=has_helmet,
+        # 3=has_defuser — see jepa_insight_adapter._TARGET_FEATURES), so the
+        # positional kills/adr/hs mapping below would label a health delta
+        # "recommended_kills". JEPA contributes through JEPAInsightAdapter in
+        # the insight chain (26-HYB-01); this path stays RAG-only.
+        if self.use_jepa:
+            return None
+
         try:
             from Programma_CS2_RENAN.backend.nn.coach_manager import MATCH_AGGREGATE_FEATURES
 
@@ -410,10 +419,7 @@ class HybridCoachingEngine:
             x = torch.FloatTensor(features).unsqueeze(0).unsqueeze(0)
 
             with torch.no_grad():
-                if self.use_jepa:
-                    output = self.model.forward_coaching(x)
-                else:
-                    output = self.model(x)
+                output = self.model(x)
 
             # Map output to predictions
             predictions = {

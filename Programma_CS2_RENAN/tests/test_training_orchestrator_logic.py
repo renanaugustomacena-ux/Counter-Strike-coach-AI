@@ -227,3 +227,79 @@ class TestResolveTickRateLogging:
             rate = tom.TrainingOrchestrator._resolve_tick_rate(1, None, _EvilCache(), default=64)
         assert rate == 64
         assert any("26-ORCH-02" in str(c) for c in mock_log.warning.call_args_list)
+
+
+class TestFetchRoundStatsForBatch:
+    """R4 MED (G-01/26-TICK): VL concept labels come from the item's REAL
+    round_number — no 64-tick/s round estimation, no round-1 fallback."""
+
+    @staticmethod
+    def _orchestrator_shell():
+        from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
+
+        return TrainingOrchestrator.__new__(TrainingOrchestrator)
+
+    @staticmethod
+    def _seed_db(monkeypatch, rows):
+        from contextlib import contextmanager
+
+        from sqlmodel import Session, SQLModel, create_engine
+
+        import Programma_CS2_RENAN.backend.storage.database as db_mod
+        from Programma_CS2_RENAN.backend.storage.db_models import RoundStats
+
+        engine = create_engine("sqlite:///:memory:")
+        SQLModel.metadata.create_all(engine)
+        with Session(engine) as s:
+            for demo, player, rnd in rows:
+                s.add(RoundStats(demo_name=demo, player_name=player, round_number=rnd))
+            s.commit()
+
+        class _Mgr:
+            @contextmanager
+            def get_session(self, engine_key="default"):
+                with Session(engine) as session:
+                    yield session
+
+        monkeypatch.setattr(db_mod, "get_db_manager", lambda: _Mgr())
+
+    def test_uses_item_round_number_not_tick_estimate(self, monkeypatch):
+        from types import SimpleNamespace
+
+        self._seed_db(monkeypatch, [("demo_a", "p1", 1), ("demo_a", "p1", 15)])
+        orch = self._orchestrator_shell()
+
+        # tick=200_000 would estimate round ~28 under the old 64*115 formula;
+        # the item's real round is 15 and must win.
+        items = [
+            SimpleNamespace(demo_name="demo_a", player_name="p1", round_number=15, tick=200_000)
+        ]
+        result = orch._fetch_round_stats_for_batch(items)
+        assert result is not None
+        assert result[0] is not None
+        assert result[0].round_number == 15
+
+    def test_missing_round_yields_none_not_round1_fallback(self, monkeypatch):
+        from types import SimpleNamespace
+
+        # Round 1 EXISTS for this player — the old code would fall back to it.
+        self._seed_db(monkeypatch, [("demo_a", "p1", 1), ("demo_a", "p1", 2)])
+        orch = self._orchestrator_shell()
+
+        items = [
+            SimpleNamespace(demo_name="demo_a", player_name="p1", round_number=7, tick=50_000),
+            SimpleNamespace(demo_name="demo_a", player_name="p1", round_number=2, tick=9_000),
+        ]
+        result = orch._fetch_round_stats_for_batch(items)
+        assert result is not None
+        assert result[0] is None, "missing round must NOT silently borrow round-1 stats"
+        assert result[1] is not None and result[1].round_number == 2
+
+    def test_all_misses_returns_none(self, monkeypatch):
+        from types import SimpleNamespace
+
+        self._seed_db(monkeypatch, [("demo_a", "p1", 3)])
+        orch = self._orchestrator_shell()
+
+        items = [SimpleNamespace(demo_name="demo_a", player_name="p1", round_number=9, tick=1_000)]
+        assert orch._fetch_round_stats_for_batch(items) is None
