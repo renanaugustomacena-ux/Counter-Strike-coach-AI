@@ -359,7 +359,9 @@ class PerformanceScreen(QWidget):
             cell = QVBoxLayout()
             cell.setContentsMargins(0, 0, 0, 0)
             value_lbl = QLabel(_fmt_pct(float(p)))
-            value_lbl.setFont(Typography.font("h3"))
+            value_lbl.setFont(
+                Typography.font("stat")
+            )  # R4 LOW: "h3" is not a role — it silently fell back to 13px body
             value_lbl.setStyleSheet(f"color: {_sentiment(float(p))}; background: transparent;")
             label_lbl = QLabel(label)
             label_lbl.setFont(Typography.font("caption"))
