@@ -146,8 +146,10 @@ def get_device() -> torch.device:
                 "INFO",
                 "No GPU detected — training will use CPU. " "This is slower but fully functional.",
             )
-        except Exception:
-            pass  # DB not ready yet; log message above is sufficient
+        except Exception as e:
+            # R4 LOW: usually "DB not ready yet", but a programming error
+            # here must not vanish — debug-level breadcrumb (WR-09).
+            logger.debug("WR-09 GPU-fallback notification skipped: %s", e)
     _cached_device = torch.device("cpu")
     return _cached_device
 
