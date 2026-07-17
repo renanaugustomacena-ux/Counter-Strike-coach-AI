@@ -123,14 +123,21 @@ def cmd_build(args):
                     for p in dist_dir.rglob("*")
                     if p.is_file() and os.access(str(p), os.X_OK) and "." not in p.name
                 ]
+            # R4 LOW: accumulate ALL binaries — the manifest was rewritten
+            # inside the loop, so only the last artifact was attested.
+            entries = []
             for exe in binaries:
                 sha = calculate_sha256(exe)
                 print(f"  {exe.name}: SHA256={sha[:16]}...")
-                manifest = {
-                    "file": exe.name,
-                    "sha256": sha,
-                    "built_at": datetime.now(timezone.utc).isoformat(),
-                }
+                entries.append(
+                    {
+                        "file": exe.name,
+                        "sha256": sha,
+                        "built_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                )
+            if entries:
+                manifest = {"binaries": entries}
                 (dist_dir / "build_manifest.json").write_text(json.dumps(manifest, indent=2))
 
     print("\nBuild pipeline complete.")

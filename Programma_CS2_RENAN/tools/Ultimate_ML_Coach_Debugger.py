@@ -144,6 +144,11 @@ class UltimateMLDebugger(BaseValidator):
             return
 
         try:
+            # R4 LOW: a falsification tool must be reproducible — the probe
+            # ran on unseeded random init, so pass/fail flapped between runs.
+            from Programma_CS2_RENAN.backend.nn.config import set_global_seed
+
+            set_global_seed(42)
             model = ModelFactory.get_model("default", input_dim=METADATA_DIM, output_dim=OUTPUT_DIM)
             tensors = self.recon.reconstruct_belief_tensors(match_data)
             out = model(tensors["metadata"])
@@ -197,6 +202,7 @@ class UltimateMLDebugger(BaseValidator):
         """Instantiation + forward-pass smoke test for all model types."""
         import torch.nn as nn
 
+        torch.manual_seed(42)  # R4 LOW: deterministic probe input
         flat_batch = torch.randn(1, METADATA_DIM)
 
         # Test instantiation for all types, forward-pass where safe

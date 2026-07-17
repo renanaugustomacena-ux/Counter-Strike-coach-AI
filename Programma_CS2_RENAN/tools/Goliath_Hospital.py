@@ -605,6 +605,7 @@ class GoliathHospital(BaseValidator):
         try:
             analysis_mod = importlib.import_module("Programma_CS2_RENAN.backend.analysis")
             ok_count = 0
+            factory_failures: list[str] = []
             for fname in ANALYSIS_FACTORIES:
                 fn = getattr(analysis_mod, fname, None)
                 if fn is None:
@@ -613,14 +614,16 @@ class GoliathHospital(BaseValidator):
                     obj = fn()
                     if obj is not None:
                         ok_count += 1
-                except Exception:
-                    pass
+                except Exception as e:
+                    # R4 LOW: the diagnostic exists to surface exactly this.
+                    factory_failures.append(f"{fname}: {type(e).__name__}: {e}")
             self.check(
                 "Cardiology",
                 "analysis_factories",
                 ok_count == len(ANALYSIS_FACTORIES),
                 error=(
                     f"Only {ok_count}/{len(ANALYSIS_FACTORIES)} operational"
+                    + (f" — failures: {'; '.join(factory_failures)}" if factory_failures else "")
                     if ok_count < len(ANALYSIS_FACTORIES)
                     else ""
                 ),
