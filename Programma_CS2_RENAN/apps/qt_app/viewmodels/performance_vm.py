@@ -107,7 +107,7 @@ class PerformanceViewModel(QObject):
         (lower-is-better metrics like deaths-per-round are not part of
         the hero strip so we don't need to invert anything here).
         """
-        from sqlmodel import select
+        from sqlmodel import or_, select
 
         from Programma_CS2_RENAN.backend.storage.database import get_db_manager
         from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
@@ -133,7 +133,14 @@ class PerformanceViewModel(QObject):
                     PlayerMatchStats.avg_kast,
                 ).where(
                     PlayerMatchStats.is_pro == True,  # noqa: E712
-                    PlayerMatchStats.data_quality.not_in(("registered_only", "partial", "none")),
+                    # R4 MED: NULL NOT IN (...) is NULL — keep untagged
+                    # legacy rows instead of silently dropping them.
+                    or_(
+                        PlayerMatchStats.data_quality.is_(None),
+                        PlayerMatchStats.data_quality.not_in(
+                            ("registered_only", "partial", "none")
+                        ),
+                    ),
                 )
             ).all()
 
@@ -166,8 +173,12 @@ class PerformanceViewModel(QObject):
         self.is_loading_changed.emit(False)
         if result:
             history, map_stats, sw, utility, is_pro_overview, context = result
-            self.data_changed.emit(history, map_stats, sw, utility, is_pro_overview)
+            # R4 MED: context BEFORE data — the data_changed slot rebuilds the
+            # UI synchronously (direct same-thread connection) and reads the
+            # screen's cached context; emitting data first rendered the
+            # PREVIOUS load's percentile strip on every visit.
             self.context_changed.emit(context or {})
+            self.data_changed.emit(history, map_stats, sw, utility, is_pro_overview)
 
     def _on_error(self, msg):
         logger.error("performance_vm.load_failed: %s", msg)

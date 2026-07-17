@@ -116,6 +116,8 @@ class TacticalViewerScreen(QWidget):
         self._chronovisor_vm.navigate_to.connect(
             lambda tick, desc: self._playback_vm.seek_to_tick(tick)
         )
+        # R4 MED: enable the CM transport only when a scan found moments.
+        self._chronovisor_vm.scan_complete.connect(self._on_cm_scan_complete)
 
         # Data
         self._full_demo_data = {}
@@ -489,13 +491,18 @@ class TacticalViewerScreen(QWidget):
         row2 = QHBoxLayout()
         row2.setSpacing(8)
 
+        # R4 MED: CM transport starts DISABLED — the old buttons took
+        # clicks and did nothing while _critical_moments was empty (nothing
+        # ever called scan_match). They enable when a scan finds moments.
         prev_cm_btn = QPushButton("⏮")  # ⏮ Skip backward
         prev_cm_btn.setObjectName("playback_control")
         prev_cm_btn.setFixedSize(40, 40)
         prev_cm_btn.setCursor(Qt.PointingHandCursor)
-        prev_cm_btn.setToolTip("Previous critical moment")
+        prev_cm_btn.setToolTip("Previous critical moment (no scan yet)")
+        prev_cm_btn.setEnabled(False)
         prev_cm_btn.clicked.connect(self._jump_prev_cm)
         row2.addWidget(prev_cm_btn)
+        self._prev_cm_btn = prev_cm_btn
 
         self._play_btn = QPushButton("▶")  # ▶ Play
         self._play_btn.setObjectName("playback_control")
@@ -509,9 +516,11 @@ class TacticalViewerScreen(QWidget):
         next_cm_btn.setObjectName("playback_control")
         next_cm_btn.setFixedSize(40, 40)
         next_cm_btn.setCursor(Qt.PointingHandCursor)
-        next_cm_btn.setToolTip("Next critical moment")
+        next_cm_btn.setToolTip("Next critical moment (no scan yet)")
+        next_cm_btn.setEnabled(False)
         next_cm_btn.clicked.connect(self._jump_next_cm)
         row2.addWidget(next_cm_btn)
+        self._next_cm_btn = next_cm_btn
 
         row2.addSpacing(16)
 
@@ -598,6 +607,8 @@ class TacticalViewerScreen(QWidget):
         # Show loading dialog with cancel button
         self._demo_cancelled = False
         demo_basename = os.path.basename(path)
+        # Chronovisor scan resolves the DB match_id from this stem after load.
+        self._loaded_demo_stem = os.path.splitext(demo_basename)[0]
         self._progress_dialog = QProgressDialog(
             f"Parsing {demo_basename}...\n\n"
             "Waiting for first phase (header + player positions)...\n"
@@ -617,6 +628,14 @@ class TacticalViewerScreen(QWidget):
         # are not opaque. The alternative (previously shipped) was an
         # indeterminate spinner with no text updates — user cancelled
         # because they could not distinguish "still working" from "hung".
+        # R4 MED: detach any bridge left over from a cancelled load first —
+        # the old code overwrote self._log_bridge, so the first parse's
+        # completion detached the NEW bridge (killing the second load's
+        # progress text) while the first handler stayed attached to the
+        # demo_loader logger forever, feeding a dead QProgressDialog.
+        if self._log_bridge is not None:
+            self._log_bridge.detach()
+            self._log_bridge = None
         self._log_bridge = _DemoLoaderLogBridge(self)
         self._log_bridge.phase_changed.connect(
             lambda msg: self._progress_dialog
@@ -738,6 +757,11 @@ class TacticalViewerScreen(QWidget):
         self._map_combo.clear()
         self._map_combo.addItems(list(map_data.keys()))
         self._map_combo.blockSignals(False)
+
+        # R4 MED: kick off the critical-moment scan for the loaded demo —
+        # nothing ever called scan_match before, so the CM transport was a
+        # permanent no-op. Best-effort: stays disabled if unresolvable.
+        self._start_chronovisor_scan()
 
         # Switch to first map
         if map_data:
@@ -923,6 +947,51 @@ class TacticalViewerScreen(QWidget):
             self._t_sidebar.update_players(t, player_id)
 
     # ── Chronovisor ──
+
+    def _on_cm_scan_complete(self, cms, count: int) -> None:
+        """Enable/disable the CM transport based on real scan results."""
+        has_moments = bool(count)
+        for btn, label in (
+            (getattr(self, "_prev_cm_btn", None), "Previous critical moment"),
+            (getattr(self, "_next_cm_btn", None), "Next critical moment"),
+        ):
+            if btn is None:
+                continue
+            btn.setEnabled(has_moments)
+            btn.setToolTip(f"{label} ({count} found)" if has_moments else f"{label} (none found)")
+
+    def _start_chronovisor_scan(self) -> None:
+        """Best-effort CM scan for the demo just loaded (R4 MED wiring).
+
+        scan_match needs the DB match_id; a demo opened from an arbitrary
+        file may not be ingested, in which case the transport simply stays
+        disabled. Resolution failures must never break the viewer.
+        """
+        stem = getattr(self, "_loaded_demo_stem", None)
+        if not stem:
+            return
+        try:
+            from sqlmodel import select
+
+            from Programma_CS2_RENAN.backend.storage.database import get_db_manager
+            from Programma_CS2_RENAN.backend.storage.db_models import PlayerTickState
+
+            with get_db_manager().get_session() as session:
+                match_id = session.exec(
+                    select(PlayerTickState.match_id)
+                    .where(PlayerTickState.demo_name == stem)
+                    .limit(1)
+                ).first()
+            if match_id is None:
+                logger.info(
+                    "Chronovisor: demo %r not found in DB — CM scan skipped "
+                    "(transport stays disabled)",
+                    stem,
+                )
+                return
+            self._chronovisor_vm.scan_match(int(match_id))
+        except Exception as exc:
+            logger.warning("Chronovisor scan wiring failed for %r: %s", stem, exc)
 
     def _jump_next_cm(self):
         tick = self._playback_vm.get_current_tick()
