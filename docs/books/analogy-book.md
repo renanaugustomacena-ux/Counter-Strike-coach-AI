@@ -10,7 +10,6 @@
 
 > *Questa è la sezione che scrive Renan. La sua voce, la sua storia, il perché di queste metafore. Non posso sostituirlo qui. Il paragrafo che segue è un segnaposto finché Renan non lo riempie — non è opera mia, e dovrà essere cancellato o riscritto dall'autore umano prima della pubblicazione.*
 >
-> *[Placeholder Renan: racconta qui perché hai scelto analogie concrete — la fabbrica, la scuola, la giuria, l'ospedale — invece di equazioni. Racconta la prima volta che un amico ti ha chiesto "ma come funziona davvero?", e hai risposto con una metafora che ha acceso la lampadina nei suoi occhi. Questa è la lezione più importante del libro, e deve essere raccontata con la tua voce, non con la mia.]*
 
 Le analogie in questo volume sono **canoniche**: ognuna fa da punto di riferimento per tutte le varianti che appaiono nei libri dei coach. Quando un capitolo dice *"come la giuria di tre giudici"*, l'intero racconto completo sta qui, nella voce **§3** di questo volume. I libri possono quindi concentrarsi sulla precisione tecnica — dimensioni, costanti, invarianti — mentre la comprensione profonda resta preservata in questa raccolta.
 
