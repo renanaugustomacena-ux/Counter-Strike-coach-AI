@@ -67,6 +67,7 @@ contendo a razao da degradacao, para que o operador sempre saiba qual modo esta 
 | `explainability.py` | `ExplanationGenerator` | Converte tensores de previsao ML opacos em explicacoes legiveis por humanos com cadeias de atribuicao causal |
 | `pro_bridge.py` | `PlayerCardAssimilator` | Conecta stat cards de jogadores profissionais a insights de coaching via comparacao baseada em funcao (entry fragger, AWPer, etc.) |
 | `token_resolver.py` | `PlayerTokenResolver` | Canonicaliza nomes de jogadores usando fuzzy matching, normalizacao leet-speak e resolucao de alias |
+| `jepa_insight_adapter.py` | `JEPAInsightAdapter` | Converte saídas sigmoid do coaching-head JEPA em objetos `InsightCandidate`. Mapeia os primeiros 10 das 25 dimensões para 5 eixos táticos. Gating por maturidade; ativado pela flag `USE_JEPA_MODEL` (padrão `False`). Conforme NO-WALLHACK — consome apenas dados POV do jogador. |
 
 ## Descricoes dos Modulos
 

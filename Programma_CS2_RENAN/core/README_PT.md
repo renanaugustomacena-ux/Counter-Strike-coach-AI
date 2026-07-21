@@ -31,7 +31,6 @@ do `core/`.
 | `asset_manager.py` | `SmartAsset` (lazy loading), `AssetAuthority` (registro centralizado) |
 | `playback_engine.py` | `PlaybackEngine`: replay de demo interpolado com blending de frames |
 | `localization.py` | `LocalizationManager`: tabelas de strings em Inglês, Italiano, Português |
-| `platform_utils.py` | Detecção de drives cross-platform (Windows, Linux, macOS) |
 | `registry.py` | `ScreenRegistry` para gerenciamento de ciclo de vida de telas Kivy |
 | `lock_files.py` | Lock files baseados em PID para controle de concorrência D-track / HLTV-track |
 | `map_callouts.py` | `NamedPositionRegistry`: tradução coordenadas-callout para mapas CS2 |

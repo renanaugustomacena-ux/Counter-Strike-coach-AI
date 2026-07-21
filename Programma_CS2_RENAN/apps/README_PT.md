@@ -6,24 +6,18 @@
 
 ## Visao Geral
 
-O diretorio `apps/` contem todo o codigo de interface do usuario do Macena CS2 Analyzer.
-Dois frameworks de UI coexistem como parte de uma estrategia de migracao deliberada:
+O diretório `apps/` contém todo o código de interface do usuário do Macena CS2 Analyzer.
+O único framework de UI ativo é `qt_app/` — uma aplicação desktop de produção construída com
+PySide6 (Qt6), escolhida pelo seu visual nativo, modelo de threading maduro (QThreadPool/QRunnable),
+biblioteca de gráficos integrada (QtCharts) e amplo suporte multiplataforma.
 
-- **Fase 0 (Legacy):** `legacy_kivy/` foi o prototipo original construido com Kivy +
-  KivyMD. Serviu como shell de prototipagem rapida durante o desenvolvimento inicial.
-  Nenhuma funcionalidade nova e adicionada aqui; existe apenas como referencia e para
-  componentes ainda nao portados.
+`qt_app/` é uma camada estritamente consumidora: compartilha os mesmos serviços backend
+(`backend/services/`), camada de banco de dados (`backend/storage/`) e sistema de configuração
+(`core/config.py`), mas nunca escreve diretamente no banco de dados.
 
-- **Fase 2+ (Ativo):** `qt_app/` e a UI desktop de producao construida com PySide6
-  (Qt6). Todas as novas telas, widgets e funcionalidades sao destinadas exclusivamente
-  a este framework. Qt foi escolhido pelo seu visual nativo, modelo de threading
-  maduro (QThreadPool/QRunnable), biblioteca de graficos integrada (QtCharts) e amplo
-  suporte multiplataforma.
-
-Ambos os frameworks compartilham os mesmos servicos backend (`backend/services/`),
-camada de banco de dados (`backend/storage/`) e sistema de configuracao (`core/config.py`).
-A camada de UI e estritamente um consumidor dos dados do backend — ela nunca escreve
-diretamente no banco de dados.
+> **Nota histórica:** Um protótipo Kivy + KivyMD (`legacy_kivy/`) serviu como shell de
+> desenvolvimento inicial. Foi substituído pelo frontend Qt e removido em março de 2026
+> (commit `4f04f06`).
 
 ## Estrutura do Diretorio
 
@@ -33,28 +27,8 @@ apps/
 ├── README.md                    # Versao em ingles
 ├── README_IT.md                 # Traducao italiana
 ├── README_PT.md                 # Este arquivo
-├── spatial_debugger.py          # Ferramenta standalone Kivy para validacao de coordenadas do mapa
 │
-├── legacy_kivy/                 # Legacy Kivy + KivyMD (Fase 0)
-│   ├── __init__.py
-│   ├── layout.kv                # Layout root KV (60 KB, 13 telas)
-│   ├── theme.py                 # Constantes de paleta Kivy e cores de rating
-│   ├── ghost_pixel.py           # Widget overlay de mira
-│   ├── player_sidebar.py        # Barra lateral info jogador (Kivy)
-│   ├── timeline.py              # Scrubber timeline de rounds (Kivy)
-│   ├── widgets.py               # Widgets Kivy compartilhados (cards, botoes)
-│   ├── wizard_screen.py         # Wizard de configuracao inicial
-│   ├── help_screen.py           # Tela de ajuda / sobre
-│   ├── match_history_screen.py  # Navegador de lista de partidas
-│   ├── match_detail_screen.py   # Detalhamento de partida individual
-│   ├── performance_screen.py    # Dashboard de estatisticas do jogador
-│   ├── tactical_map.py          # Renderizador de mapa tatico 2D
-│   ├── tactical_viewer_screen.py # Tela de analise tatica
-│   ├── coaching_chat_vm.py      # ViewModel do chat de coaching
-│   ├── tactical_viewmodels.py   # ViewModels de analise tatica
-│   └── data_viewmodels.py       # ViewModels de busca de dados
-│
-└── qt_app/                      # Ativo PySide6 / Qt6 (Fase 2+)
+└── qt_app/                      # Ativo PySide6 / Qt6
     ├── __init__.py
     ├── app.py                   # Ponto de entrada da aplicacao
     ├── main_window.py           # QMainWindow com navegacao sidebar
@@ -65,48 +39,57 @@ apps/
     │   ├── theme_engine.py      # Temas QSS (CS2, CSGO, CS1.6), paletas, fontes
     │   ├── design_tokens.py     # Definicoes de design tokens para o sistema de componentes Qt
     │   ├── qss_generator.py     # Geracao programatica de QSS a partir dos design tokens
-    │   ├── animation.py         # Utilitarios de animacao compartilhados e helpers de easing
-    │   ├── icons.py             # Registro de icones e carregador de assets SVG/icones
-    │   ├── i18n_bridge.py       # Localizacao (en, pt, it) via JSON + fallback
-    │   ├── asset_bridge.py      # Carregador de imagens de mapa (QPixmap), texturas fallback
-    │   └── qt_playback_engine.py # Playback de demo baseado em QTimer (substitui Kivy Clock)
+    │   ├── animation.py         # Utilitários de animação compartilhados
+    │   ├── easing.py            # Curvas de easing personalizadas
+    │   ├── typography.py        # Escala tipográfica e helpers de fonte
+    │   ├── icons.py             # Registro de ícones e carregador de assets SVG
+    │   ├── svg_icon_provider.py # QIconEngine baseado em recursos SVG
+    │   ├── i18n_bridge.py       # Localização (en, pt, it) via JSON + fallback
+    │   ├── sound.py             # Helpers de reprodução de efeitos sonoros
+    │   ├── match_utils.py       # Funções utilitárias de nível de partida para a camada UI
+    │   ├── widgets_helpers.py   # Funções helper genéricas para widgets Qt
+    │   ├── web_bridge.py        # Bridge Python↔JavaScript para as web views integradas
+    │   └── qt_playback_engine.py # Playback de demo baseado em QTimer
     │
-    ├── screens/                 # Um QWidget por tela (camada View)
-    │   ├── home_screen.py       # Dashboard — status do servico, contagem de partidas, training
-    │   ├── coach_screen.py      # AI Coach — interface de chat, coaching insights
+    ├── screens/                 # Um QWidget por tela (camada View) — 15 telas
+    │   ├── home_screen.py           # Dashboard — status do serviço, contagem de partidas, training
+    │   ├── coach_screen.py          # AI Coach — interface de chat, coaching insights
     │   ├── match_history_screen.py  # Lista de partidas com busca e filtros
-    │   ├── match_detail_screen.py   # Analise de partida individual (rounds, economia, eventos)
-    │   ├── performance_screen.py    # Estatisticas do jogador e tendencias
+    │   ├── match_detail_screen.py   # Análise de partida individual (rounds, economia, eventos)
+    │   ├── performance_screen.py    # Estatísticas do jogador e tendências
     │   ├── tactical_viewer_screen.py # Visualizador de mapa 2D com controles de playback
-    │   ├── wizard_screen.py     # Configuracao inicial (caminho Steam, nome do jogador)
-    │   ├── settings_screen.py   # Configuracoes do app (tema, fonte, idioma, caminhos)
-    │   ├── user_profile_screen.py   # Editor de perfil do usuario
-    │   ├── profile_screen.py    # Visao geral do perfil do jogador
-    │   ├── steam_config_screen.py   # Configuracoes de integracao Steam
-    │   ├── faceit_config_screen.py  # Configuracoes de integracao FACEIT
-    │   ├── help_screen.py       # Visualizador de documentacao de ajuda
-    │   └── placeholder.py       # Factory de placeholder para telas nao portadas
+    │   ├── pro_comparison_screen.py # Análise comparativa usuário vs jogador pro
+    │   ├── pro_player_detail_screen.py # Vista de perfil do jogador pro
+    │   ├── wizard_screen.py         # Configuração inicial (caminho Steam, nome do jogador)
+    │   ├── settings_screen.py       # Configurações do app (tema, fonte, idioma, caminhos)
+    │   ├── user_profile_screen.py   # Editor de perfil do usuário
+    │   ├── profile_screen.py        # Visão geral do perfil do jogador
+    │   ├── steam_config_screen.py   # Configurações de integração Steam
+    │   ├── faceit_config_screen.py  # Configurações de integração FACEIT
+    │   ├── help_screen.py           # Visualizador de documentação de ajuda
+    │   └── placeholder.py           # Factory para telas stub
     │
     ├── viewmodels/              # Camada ViewModel (subclasses QObject)
-    │   ├── coach_vm.py          # CoachViewModel — orquestra consultas de coaching
-    │   ├── coaching_chat_vm.py  # Historico de chat e gerenciamento de mensagens
-    │   ├── match_history_vm.py  # Busca de dados e filtragem da lista de partidas
-    │   ├── match_detail_vm.py   # Carregamento de dados de partida individual
-    │   ├── performance_vm.py    # Agregacao de estatisticas do jogador
-    │   ├── tactical_vm.py       # Dados taticos e estado de playback
-    │   └── user_profile_vm.py   # Operacoes CRUD do perfil do usuario
+    │   ├── coach_vm.py              # CoachViewModel — orquestra consultas de coaching
+    │   ├── coaching_chat_vm.py      # Histórico de chat e gerenciamento de mensagens
+    │   ├── focus_insight_vm.py      # ViewModel de detalhe de coaching insight focalizado
+    │   ├── match_history_vm.py      # Busca de dados e filtragem da lista de partidas
+    │   ├── match_detail_vm.py       # Carregamento de dados de partida individual
+    │   ├── performance_vm.py        # Agregação de estatísticas do jogador
+    │   ├── pro_comparison_vm.py     # Dados e pontuação de comparação pro
+    │   ├── pro_player_detail_vm.py  # Carregamento de dados do perfil do jogador pro
+    │   ├── tactical_vm.py           # Dados táticos e estado de playback
+    │   └── user_profile_vm.py       # Operações CRUD do perfil do usuário
     │
     ├── widgets/                 # Biblioteca de widgets reutilizaveis
     │   ├── toast.py             # Overlay de notificacoes toast
     │   ├── skeleton.py          # Widgets placeholder de carregamento skeleton
-    │   ├── charts/              # Visualizacoes baseadas em QtCharts
-    │   │   ├── radar_chart.py       # Radar de habilidades (grafico spider 6 eixos)
-    │   │   ├── economy_chart.py     # Grafico de economia round a round
-    │   │   ├── momentum_chart.py    # Timeline de momentum da equipe
-    │   │   ├── rating_sparkline.py  # Mini-grafico de rating inline
-    │   │   ├── trend_chart.py       # Linhas de tendencia multi-partida
-    │   │   └── utility_bar_chart.py # Grafico de barras de uso de utilitarios
-    │   ├── components/          # Componentes de UI reutilizaveis (design system)
+    │   ├── charts/              # Visualizações QtCharts / QPainter
+    │   │   ├── economy_chart.py     # Economia round a round (gráfico de barras QtCharts)
+    │   │   ├── mini_sparkline.py    # Sparkline compacta (QPainter, sem eixos)
+    │   │   └── momentum_chart.py    # Delta K-D momentum (gráfico de área QtCharts)
+    │   ├── coaching/            # Namespace de widgets de coaching (reservado; widgets removidos PR #32)
+    │   ├── components/          # Componentes de UI reutilizáveis (design system)
     │   │   ├── __init__.py          # Exports dos componentes
     │   │   ├── card.py              # Widget container de card
     │   │   ├── stat_badge.py        # Badge de estatistica com label e valor
@@ -120,31 +103,21 @@ apps/
     │       ├── player_sidebar.py    # Painel de info do jogador
     │       └── timeline_widget.py   # Scrubber de timeline de rounds
     │
+    ├── web/                     # Sub-apps TypeScript (integradas via QWebEngineView)
+    │   ├── coach-chat/          # App React de chat de coaching
+    │   ├── match-detail/        # App React de detalhe de partida
+    │   ├── tactical-viewer/     # App React de visualizador tático
+    │   └── shared/              # Utilitários TypeScript compartilhados
+    │
     └── themes/                  # Folhas de estilo QSS
         ├── cs2.qss              # Tema CS2 (destaque laranja, superficie escura)
         ├── csgo.qss             # Tema CS:GO (destaque azul aco)
         └── cs16.qss             # Tema CS 1.6 (destaque verde, retro)
 ```
 
-## Comparacao entre Frameworks
-
-| Aspecto | `legacy_kivy/` (Kivy) | `qt_app/` (PySide6) |
-|---------|----------------------|----------------------|
-| **Status** | Legacy (Fase 0) — congelado | **Ativo** (Fase 2+) |
-| **Layout** | Linguagem KV (`layout.kv`) | Codigo Python (QLayouts) |
-| **Threading** | `threading.Thread` + `Clock.schedule_once` | `Worker` (QRunnable) + Signals |
-| **Graficos** | matplotlib (pesado) | QtCharts (nativo, leve) |
-| **Temas** | `theme.py` (propriedades Kivy) | `ThemeEngine` + folhas de estilo QSS |
-| **i18n** | `LocalizationManager` (Kivy EventDispatcher) | `QtLocalizationManager` (QObject + Signal) |
-| **Assets** | `AssetAuthority` (Kivy Texture) | `QtAssetBridge` (QPixmap) |
-| **Playback** | `PlaybackEngine` + Kivy Clock | `QtPlaybackEngine` + QTimer |
-| **Telas** | 13 (em `layout.kv`) | 14 (arquivos `.py` individuais) |
-| **Arquivos Python** | 16 | 56 |
-
 ## Arquitetura MVVM
 
-Ambas as UIs seguem o padrao **Model-View-ViewModel**. A implementacao Qt e a
-referencia canonica:
+O app Qt segue o padrão **Model-View-ViewModel**:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -201,13 +174,6 @@ A sequencia de inicializacao em `app.py`:
 A aplicacao tambem pode ser iniciada a partir de um executavel construido com PyInstaller.
 Consulte o diretorio `packaging/` para o arquivo `.spec` e instrucoes de build.
 
-### Ferramentas Standalone
-
-- **`spatial_debugger.py`** — Widget de debug baseado em Kivy para validar as
-  transformacoes de coordenadas do mapa. Exibe uma imagem do mapa com overlays de
-  pontos de referencia e leitura de coordenadas cursor-mundo. Util durante a
-  calibracao dos dados espaciais.
-
 ## Padroes Compartilhados
 
 ### Padrao Worker (`core/worker.py`)
@@ -225,8 +191,7 @@ worker.signals.error.connect(self._on_error)
 QThreadPool.globalInstance().start(worker)
 ```
 
-Isso substitui o padrao Kivy de `Thread(target=fn).start()` seguido por
-`Clock.schedule_once(callback)`.
+Este padrão garante que todo trabalho pesado seja executado fora da thread principal sem bloquear o loop de eventos Qt.
 
 ### AppState (`core/app_state.py`)
 
@@ -269,44 +234,35 @@ Mudancas de idioma emitem um sinal `language_changed`. As telas implementam
 
 ## Diretrizes de Desenvolvimento
 
-1. **Todo novo trabalho de UI vai em `qt_app/`** — nao adicione funcionalidades em `legacy_kivy/`
-2. **Nenhum import Kivy no codigo Qt** — `asset_bridge.py`, `i18n_bridge.py`,
-   `theme_engine.py` usam apenas Qt e stdlib. Imports cross-framework sao proibidos.
-3. **Threading em background e obrigatorio** — nunca bloqueie a thread principal com
+1. **Threading em background é obrigatório** — nunca bloqueie a thread principal com
    consultas ao banco, chamadas de rede ou I/O de arquivo. Use `Worker` de `core/worker.py`.
-4. **Conecte-se aos sinais do `AppState` em `on_enter()`** — este e o barramento de
-   dados ao vivo do backend. Nao consulte o banco de dados a partir das telas.
-5. **Graficos usam QtCharts** (nao matplotlib) — mais leves, integracao nativa Qt,
+2. **Conecte-se aos sinais do `AppState` em `on_enter()`** — este é o barramento de
+   dados ao vivo do backend. Não consulte o banco de dados a partir das telas.
+3. **Gráficos usam QtCharts** (não matplotlib) — mais leves, integração nativa Qt,
    temas consistentes via QSS.
-6. **Localizacao** — todas as strings visiveis ao usuario devem passar por
-   `i18n_bridge.get_text(key)`. Nunca insira texto de exibicao hardcoded no codigo
-   das telas.
-7. **Temas** — use `ThemeEngine.get_color(slot)` para cores e nunca use valores hex
+4. **Localização** — todas as strings visíveis ao usuário devem passar por
+   `i18n_bridge.get_text(key)`. Nunca insira texto hardcoded no código das telas.
+5. **Temas** — use `ThemeEngine.get_color(slot)` para cores e nunca use valores hex
    hardcoded. Todas as constantes visuais residem em `theme_engine.py` ou nos arquivos QSS.
-8. **As telas nao importam umas as outras** — a navegacao e gerenciada por
-   `MainWindow.switch_screen()`. A comunicacao entre telas acontece via sinais ou
+6. **As telas não importam umas as outras** — a navegação é gerenciada por
+   `MainWindow.switch_screen()`. A comunicação entre telas acontece via sinais ou
    `AppState`.
-9. **Toda tela deve implementar `on_enter()`** — chamado por `MainWindow` quando a
-   tela se torna visivel. Use para atualizar dados e conectar sinais.
-10. **Implemente `retranslate()`** — chamado quando o usuario troca de idioma.
-    Atualize todos os labels visiveis ao usuario a partir de `i18n_bridge`.
+7. **Toda tela deve implementar `on_enter()`** — chamado por `MainWindow` quando a
+   tela se torna visível. Use para atualizar dados e conectar sinais.
+8. **Implemente `retranslate()`** — chamado quando o usuário troca de idioma.
+   Atualize todos os labels visíveis ao usuário a partir de `i18n_bridge`.
 
 ## Notas de Desenvolvimento
 
 - O app Qt requer **PySide6 >= 6.5** e **Python 3.10+**.
 - As folhas de estilo QSS estao em `qt_app/themes/` — um arquivo por tema. Edite
   estes para mudancas visuais; nao insira estilos inline no codigo Python.
-- A factory `placeholder.py` gera telas stub para paginas ainda nao portadas do Kivy.
-  Estas exibem uma mensagem "Coming Soon" e sao progressivamente substituidas.
+- A factory `placeholder.py` gera telas stub que exibem uma mensagem "Coming Soon" para telas em desenvolvimento.
 - `MainWindow` usa um `QStackedLayout` com tres camadas: papel de parede de fundo
   (inferior), pilha de telas (central) e notificacoes toast (superior).
 - O console backend (`get_console().boot()`) pode falhar sem quebrar a UI. Uma
   caixa de dialogo de aviso e exibida e a aplicacao continua em modo degradado.
-- `spatial_debugger.py` e o unico arquivo em `apps/` que importa Kivy diretamente.
-  E uma ferramenta de debug standalone e nao e carregada pela aplicacao Qt.
 
 ## Contagem de Arquivos
 
-- `legacy_kivy/`: 16 arquivos Python + 1 layout KV (legacy, congelado)
-- `qt_app/`: 87 arquivos Python distribuidos em `core/`, `screens/`, `viewmodels/`, `widgets/` + 3 temas QSS
-- Raiz `apps/`: 1 ferramenta standalone (`spatial_debugger.py`)
+- `qt_app/`: 78 arquivos Python em `core/`, `screens/`, `viewmodels/`, `widgets/` + 3 temas QSS + 3 sub-apps web integradas

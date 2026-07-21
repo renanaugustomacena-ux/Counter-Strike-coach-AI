@@ -7,7 +7,7 @@
 
 ## Purpose
 
-Matplotlib-backed chart widgets used across the dashboard, performance, and match-detail screens. Each widget renders a Matplotlib figure to a Qt-compatible canvas (`FigureCanvasQTAgg`) and exposes a small Pythonic API for the calling ViewModel — no Matplotlib API surface leaks into the rest of the UI.
+QtCharts and QPainter-based chart widgets used across the dashboard, performance, and match-detail screens. Each widget wraps either a `QChartView` (for `QChart`-based charts) or a custom `QWidget` with `paintEvent` (for QPainter-based sparklines), and exposes a small Pythonic API for the calling ViewModel.
 
 ## File inventory
 
@@ -17,11 +17,6 @@ Matplotlib-backed chart widgets used across the dashboard, performance, and matc
 | `economy_chart.py` | `EconomyChart` | Match Detail (per-round equipment value bars) |
 | `mini_sparkline.py` | `MiniSparkline` | Hero stats strip, dashboards (compact trend line) |
 | `momentum_chart.py` | `MomentumChart` | Match Detail (cumulative kill-death delta with green/red fill) |
-| `radar_chart.py` | `RadarChart` | Performance (skill radar with 5 axes), Pro Comparison |
-| `rating_sparkline.py` | `RatingSparkline` | Performance (rating progression with reference lines at 1.0 / 1.1 / 0.9) |
-| `round_heatmap.py` | `RoundHeatmap` | Match Detail (per-round outcome grid coloured by win/loss + economy state) |
-| `trend_chart.py` | `TrendChart` | Performance (dual-axis: rating left, ADR right, last 20 matches) |
-| `utility_bar_chart.py` | `UtilityBarChart` | Performance (grouped horizontal bars: user vs pro average) |
 
 ## Conventions
 
@@ -37,13 +32,11 @@ All charts read colors from `core/design_tokens.py`:
 
 Hard-coding hex values is a code smell — open a token first.
 
-### Memory hygiene
+### Widget lifecycle
 
-Matplotlib figures are heavy. Every chart widget:
-
-1. Calls `plt.close(fig)` after rendering to free the figure.
-2. Holds the canvas, not the figure, as the long-lived reference.
-3. Implements `clear()` to release figure memory between data refreshes.
+Each chart widget handles data updates via a `set_*()` / `update()` API.
+`QChartView`-based widgets replace the `QChart` series on update;
+QPainter-based widgets call `update()` to trigger a repaint.
 
 ### Theme awareness
 
@@ -57,8 +50,9 @@ Charts subscribe to `theme_engine.themeChanged` and re-render with theme-appropr
 
 ## Adding a chart
 
-1. Subclass `MatplotlibWidget` (defined in `apps/qt_app/widgets/charts/__init__.py` — provides the canvas + `plt.close()` discipline).
-2. Implement `render(data)` — accept a typed ViewModel object, never raw DataFrames.
+1. For QtCharts-based: subclass `QChartView`, build a `QChart` in `__init__`, replace series in `update_data()`.
+   For QPainter-based: subclass `QWidget`, store data in `set_values()`, call `self.update()`, draw in `paintEvent()`.
+2. Accept a typed ViewModel object or a typed list — never raw DataFrames.
 3. Pull colors from `core/design_tokens`.
 4. Add a screen-reader description via `setAccessibleDescription()`.
 5. Subscribe to `theme_engine.themeChanged` and re-render on theme switch.
@@ -66,8 +60,6 @@ Charts subscribe to `theme_engine.themeChanged` and re-render with theme-appropr
 
 ## Do not
 
-- Do not import `matplotlib.pyplot` directly into a screen — go through a chart widget.
-- Do not mutate the figure after `render()` returns; create a new figure on data refresh.
 - Do not commit colour choices that are not in `design_tokens.py`.
 
 ## Related

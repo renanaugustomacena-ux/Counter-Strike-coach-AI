@@ -7,7 +7,7 @@
 
 ## Scopo
 
-Widget grafici basati su Matplotlib usati nelle schermate dashboard, performance e match-detail. Ogni widget renderizza una figura Matplotlib su un canvas Qt-compatibile (`FigureCanvasQTAgg`) ed espone una piccola API Pythonic al ViewModel chiamante -- nessuna superficie API di Matplotlib trapela nel resto dell'UI.
+Widget grafici basati su QtCharts e QPainter usati nelle schermate dashboard, performance e match-detail. Ogni widget racchiude un `QChartView` (per grafici basati su `QChart`) o un `QWidget` personalizzato con `paintEvent` (per sparkline QPainter), esponendo una piccola API Pythonic al ViewModel chiamante.
 
 ## Inventario File
 
@@ -17,11 +17,6 @@ Widget grafici basati su Matplotlib usati nelle schermate dashboard, performance
 | `economy_chart.py` | `EconomyChart` | Match Detail (barre del valore equipaggiamento per round) |
 | `mini_sparkline.py` | `MiniSparkline` | Hero stats strip, dashboard (linea di trend compatta) |
 | `momentum_chart.py` | `MomentumChart` | Match Detail (delta cumulativo kill-death con riempimento verde/rosso) |
-| `radar_chart.py` | `RadarChart` | Performance (radar di skill a 5 assi), Pro Comparison |
-| `rating_sparkline.py` | `RatingSparkline` | Performance (progressione del rating con linee di riferimento a 1.0 / 1.1 / 0.9) |
-| `round_heatmap.py` | `RoundHeatmap` | Match Detail (griglia di esiti per round colorata per win/loss + stato economy) |
-| `trend_chart.py` | `TrendChart` | Performance (dual-axis: rating a sinistra, ADR a destra, ultimi 20 match) |
-| `utility_bar_chart.py` | `UtilityBarChart` | Performance (barre orizzontali raggruppate: utente vs media pro) |
 
 ## Convenzioni
 

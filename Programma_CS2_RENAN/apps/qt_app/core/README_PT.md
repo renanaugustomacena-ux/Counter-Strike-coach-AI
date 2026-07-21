@@ -18,7 +18,6 @@ Módulos aqui são framework-aware (eles importam de `PySide6`) mas são agnóst
 | `__init__.py` | Marcador de pacote. |
 | `animation.py` | Primitivas de animação Qt reutilizáveis (wrappers de `QPropertyAnimation`, presets de easing, helpers parallel/sequence). |
 | `app_state.py` | Singleton de estado a nível de aplicação — tela atual, tema, idioma, hub de signals para broadcasts entre telas. |
-| `asset_bridge.py` | Resolve caminhos de assets via `core/config.get_resource_path()` e os expõe como `QUrl` / `QPixmap`. |
 | `design_tokens.py` | Design tokens com tema CS2 (cores, espaçamento, tamanhos de tipografia) consumidos por `qss_generator.py`. |
 | `easing.py` | Curvas de easing nomeadas (`ease_out_cubic`, `ease_in_out_quart`, etc.) que dão suporte ao `animation.py`. |
 | `i18n_bridge.py` | `QtLocalizationManager` — tupla de idiomas `("en", "pt", "it")` (linha 49), carregamento JSON de `assets/i18n/`, hot-swap em troca de idioma. |

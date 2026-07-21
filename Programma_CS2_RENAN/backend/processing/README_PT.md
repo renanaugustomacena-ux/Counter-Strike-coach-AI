@@ -16,11 +16,8 @@ dados -- nenhum deles armazena ou treina nada.
 | Arquivo | Linhas | Propósito | Exports Principais |
 |---------|--------|-----------|-------------------|
 | `__init__.py` | 1 | Marcador de pacote | -- |
-| `bombsite_encoding.py` | ~192 | Codificacao de centroide de bombsite e classificacao A/B | `encode_bombsite_context()` |
 | `connect_map_context.py` | ~112 | Caracteristicas espaciais Z-aware relativas aos objetivos do mapa | `distance_with_z_penalty()`, `calculate_map_context_features()` |
 | `data_pipeline.py` | ~408 | Limpeza de dados, scaling, split temporal, descontaminacao de jogadores | `ProDataPipeline` |
-| `demo_prioritizer.py` | ~344 | Priorizacao de fila de demos pro (recencia, mapa, rating) | `DemoPrioritizer` |
-| `demo_quality.py` | ~408 | Quality gates de demos (completude de tick, corrupcao, cobertura) | `DemoQualityAssessor` |
 | `external_analytics.py` | ~201 | Comparacao z-score com datasets CSV de referencia elite | `EliteAnalytics` |
 | `heatmap_engine.py` | ~300 | Mapas de ocupacao Gaussiana e heatmaps diferenciais usuario-vs-pro | `HeatmapEngine`, `HeatmapData`, `DifferentialHeatmapData` |
 | `player_knowledge.py` | ~625 | Sistema de percepcao Player-POV (modelo sensorial NO-WALLHACK) | `PlayerKnowledge`, `PlayerKnowledgeBuilder` |

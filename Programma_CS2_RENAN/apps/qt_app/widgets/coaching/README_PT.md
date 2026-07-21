@@ -7,62 +7,36 @@
 
 ## Propósito
 
-Componentes visuais que existem especificamente para expressar o estado de coaching — gauges de belief / threat, sparklines de momentum, contadores animados e labels com underglow. Eles vivem separados dos widgets genéricos de gráficos porque seu vocabulário visual é opinativo e voltado para feedback de coaching, não para analytics gerais.
+Pacote de namespace reservado para widgets visuais específicos de coaching. Os quatro
+widgets especializados que antes viviam aqui — `AnimatedCounter`, `BeliefThreatGauge`,
+`MomentumSparkline` e `UnderglowLabel` — foram removidos na PR #32 (commit `697bac7`)
+como parte da limpeza de módulos órfãos. O feedback de coaching agora é renderizado
+diretamente em `screens/coach_screen.py` via widgets Qt padrão e
+`widgets/charts/momentum_chart.py`.
 
 ## Inventário de arquivos
 
-| Arquivo | Widget | Propósito |
-|------|--------|---------|
-| `__init__.py` | — | Marcador de pacote. |
-| `animated_counter.py` | `AnimatedCounter` | Valor numérico que faz tween suave entre atualizações. Usado para kills, headshots, rating, etc., para que mudanças se registrem de forma subliminar, sem saltos bruscos. |
-| `belief_threat_gauge.py` | `BeliefThreatGauge` | Gauge de dois eixos: barra vertical para **belief** (confiança do RAP coach na decisão atual), barra horizontal para **threat** (nível de ameaça atual). Alimenta o overlay ao vivo do coach durante replays táticos. |
-| `momentum_sparkline.py` | `MomentumSparkline` | Spark de momentum round a round (delta cumulativo K-D) com preenchimento verde-acima / vermelho-abaixo. Variante compacta de `widgets/charts/momentum_chart.py` para exibição inline em cards de coaching. |
-| `underglow_label.py` | `UnderglowLabel` | Label com um glow sutil na parte inferior cuja cor codifica severidade (info / warning / critical). Os insights de coaching usam isto para a manchete. |
+| Arquivo | Propósito |
+|---------|-----------|
+| `__init__.py` | Marcador de pacote (vazio). |
 
-## Por que estes não estão em `widgets/charts/`
+## Nota histórica
 
-`charts/` contém primitivos de analytics que leem DataFrames e produzem visualizações neutras. Os widgets de coaching aqui são **opinativos** — eles apostam na ressonância emocional (transições animadas, metáforas de gauge, sinalização por underglow) porque o modo coaching foi feito para ser *sentido*, não apenas lido. Misturá-los com primitivos de analytics neutros borra o vocabulário visual.
+Os widgets removidos eram componentes opinativos do modo coaching, projetados para
+criar ressonância emocional: tweens numéricos animados, um gauge de dois eixos
+belief/threat, um spark de momentum K-D inline e uma label com underglow colorido
+por severidade. Foram eliminados porque dependiam de APIs internas que foram
+consolidadas, e sua funcionalidade foi absorvida pela tela de coaching e pelo
+pacote compartilhado de gráficos.
 
-## Convenções
+Se no futuro forem necessários novos widgets visuais específicos de coaching, este
+diretório é o local correto para eles. Siga estas convenções do design original:
 
-### Timing de animação
-
-Tudo que se move usa os presets de easing de `core/animation.py` — nunca `QPropertyAnimation` com curvas feitas à mão. Isso mantém o timing consistente em todo o app.
-
-### Cores de severidade
-
-`UnderglowLabel` lê as cores de severidade de `core/design_tokens.py`:
-
-| Severidade | Token | Tom |
-|----------|-------|------|
-| `info` | `accent.info` | Azul / ciano calmo |
-| `warning` | `accent.warning` | Âmbar |
-| `critical` | `accent.critical` | Vermelho, com leve pulso ao aparecer |
-
-### Acessibilidade
-
-- O gauge de belief / threat é pareado com valores em texto para que usuários com percepção reduzida de cores ainda consigam interpretar o estado.
-- Contadores animados respeitam `prefers-reduced-motion` — quando o usuário desabilita movimento nas configurações do SO, as transições saltam em vez de fazer tween.
-- `setAccessibleName()` é definido em todo widget para que screen readers possam anunciar os valores do gauge.
-
-## Integração
-
-```
-apps/qt_app/screens/coach_screen.py
-    +-- BeliefThreatGauge (overlay ao vivo do coach)
-    +-- AnimatedCounter   (placar do round)
-    +-- UnderglowLabel    (manchete do insight)
-
-apps/qt_app/screens/match_detail_screen.py
-    +-- MomentumSparkline (faixa de momentum por round)
-    +-- AnimatedCounter   (atualizações de stat em nível de partida)
-```
-
-## Não faça
-
-- Não coloque gráficos genéricos e neutros em relação ao tema aqui. Eles vão em `widgets/charts/`.
-- Não embuta cores de severidade no código do widget. Puxe de `design_tokens.py`.
-- Não anime sem checar `prefers-reduced-motion` (consulte via `core/animation.py:reduced_motion()`).
+- Puxar todas as cores de `core/design_tokens.py` — sem valores hex hardcoded.
+- Usar os presets de easing de `core/animation.py` para todo movimento.
+- Respeitar `prefers-reduced-motion` via `core/animation.py:reduced_motion()`.
+- Parear cada codificação visual com um valor textual para acessibilidade.
+- Definir `setAccessibleName()` em todo widget.
 
 ## Relacionados
 

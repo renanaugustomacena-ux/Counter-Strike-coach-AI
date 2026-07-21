@@ -30,7 +30,6 @@ Every other package in the project depends on at least one module from `core/`.
 | `asset_manager.py` | `SmartAsset` (lazy loading), `AssetAuthority` (centralized registry) |
 | `playback_engine.py` | `PlaybackEngine`: interpolated demo replay with frame blending |
 | `localization.py` | `LocalizationManager`: English, Italian, Portuguese string tables |
-| `platform_utils.py` | Cross-platform drive detection (Windows, Linux, macOS) |
 | `registry.py` | `ScreenRegistry` for Kivy screen lifecycle management |
 | `lock_files.py` | PID-based lock files for D-track / HLTV-track concurrency control |
 | `map_callouts.py` | `NamedPositionRegistry`: coordinate-to-callout translation for CS2 maps |

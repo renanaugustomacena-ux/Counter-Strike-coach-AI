@@ -16,11 +16,8 @@ validates data -- none of them store or train anything.
 | File | Lines | Purpose | Key Exports |
 |------|-------|---------|-------------|
 | `__init__.py` | 1 | Package marker | -- |
-| `bombsite_encoding.py` | ~192 | Bombsite centroid encoding and A/B site classification | `encode_bombsite_context()` |
 | `connect_map_context.py` | ~112 | Z-aware spatial features relative to map objectives | `distance_with_z_penalty()`, `calculate_map_context_features()` |
 | `data_pipeline.py` | ~408 | Data cleaning, scaling, temporal splitting, player decontamination | `ProDataPipeline` |
-| `demo_prioritizer.py` | ~344 | Pro-demo prioritization queue scoring (recency, map, rating) | `DemoPrioritizer` |
-| `demo_quality.py` | ~408 | Demo quality gates (tick completeness, corruption, coverage) | `DemoQualityAssessor` |
 | `external_analytics.py` | ~201 | Z-score comparison against elite CSV reference datasets | `EliteAnalytics` |
 | `heatmap_engine.py` | ~300 | Gaussian occupancy maps and differential user-vs-pro heatmaps | `HeatmapEngine`, `HeatmapData`, `DifferentialHeatmapData` |
 | `player_knowledge.py` | ~625 | Player-POV perception system (NO-WALLHACK sensorial model) | `PlayerKnowledge`, `PlayerKnowledgeBuilder` |

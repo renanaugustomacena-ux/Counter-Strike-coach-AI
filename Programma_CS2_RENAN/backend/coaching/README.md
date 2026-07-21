@@ -65,6 +65,7 @@ the reason for degradation, so the operator always knows which mode is active.
 | `explainability.py` | `ExplanationGenerator` | Converts opaque ML prediction tensors into human-readable explanations with causal attribution chains |
 | `pro_bridge.py` | `PlayerCardAssimilator` | Links professional player stat cards to coaching insights via role-based comparison (entry fragger, AWPer, etc.) |
 | `token_resolver.py` | `PlayerTokenResolver` | Canonicalizes player names using fuzzy matching, leet-speak normalization, and alias resolution |
+| `jepa_insight_adapter.py` | `JEPAInsightAdapter` | Converts JEPA coaching-head sigmoid outputs to `InsightCandidate` objects. Maps the first 10 of the 25-dim feature contract to 5 tactical axes. Maturity-gated; activated by `USE_JEPA_MODEL` flag (default `False`). NO-WALLHACK compliant — consumes only player-POV data. |
 
 ## Module Descriptions
 

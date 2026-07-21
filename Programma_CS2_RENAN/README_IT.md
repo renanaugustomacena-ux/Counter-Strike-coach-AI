@@ -43,7 +43,6 @@ GUARDA (Ingestione) →  IMPARA (Addestramento) →  PENSA (Inferenza) →  PARL
 Programma_CS2_RENAN/
 ├── apps/                       # Livello interfaccia utente
 │   ├── qt_app/                 # UI desktop PySide6/Qt (primaria, MVVM)
-│   └── legacy_kivy/            # UI desktop Kivy/KivyMD (legacy fallback)
 ├── backend/                    # Livello logica di business
 │   ├── analysis/               # Teoria dei giochi, modelli di credenza, momentum (11 motori)
 │   ├── coaching/               # Pipeline di coaching (COPER, Ibrido, RAG, Neurale)
@@ -92,7 +91,6 @@ Programma_CS2_RENAN/
 | File | Scopo | Come Eseguire |
 |------|-------|---------------|
 | `apps/qt_app/app.py` | Applicazione desktop (GUI Qt, primaria) | `python -m Programma_CS2_RENAN.apps.qt_app.app` |
-| `apps/legacy_kivy/kivy_main.py` | Applicazione desktop (Kivy/KivyMD, legacy) | `python -m Programma_CS2_RENAN.apps.legacy_kivy.kivy_main` |
 | `run_ingestion.py` | Pipeline di ingestione demo | `python -m Programma_CS2_RENAN.run_ingestion` |
 | `run_worker.py` | Worker di ingestione in background (recupero task stale) | `python -m Programma_CS2_RENAN.run_worker` |
 | `hltv_sync_service.py` | Sincronizzazione HLTV in background | Avviato dal daemon Hunter |
@@ -102,7 +100,6 @@ Programma_CS2_RENAN/
 | Livello | Tecnologia |
 |---------|-----------|
 | UI Primaria | PySide6/Qt (pattern MVVM, 15 schermate, 10 ViewModel) |
-| UI Legacy | Kivy + KivyMD (pattern MVVM, 6 schermate) |
 | Framework ML | PyTorch, ncps (neuroni Liquid Time-Constant), hflayers (Hopfield) |
 | Database | SQLite (modalita WAL) via SQLModel/SQLAlchemy |
 | Parsing Demo | demoparser2 (basato su Rust, alte prestazioni) |
