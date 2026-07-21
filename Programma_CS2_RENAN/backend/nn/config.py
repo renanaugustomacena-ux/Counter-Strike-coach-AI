@@ -122,6 +122,14 @@ def get_device() -> torch.device:
     if torch.cuda.is_available():
         dev = _select_best_cuda_device()
         idx = dev.index if dev.index is not None else 0
+        if getattr(torch.version, "hip", None):
+            # ROCm pip wheels ship MIOpen without the rocrand headers its
+            # runtime kernel JIT needs — fused RNN dropout kernels fail with
+            # miopenStatusUnknownError (hiprtc: rocrand_xorwow.h not found,
+            # observed on gfx1201 / torch 2.13.0+rocm7.2). Disabling the
+            # cudnn/MIOpen backend routes nn.LSTM/GRU through plain ATen
+            # kernels, which work on every ROCm device.
+            torch.backends.cudnn.enabled = False
         if not _device_logged:
             logger.info(
                 "ML Device: %s (CUDA %s, %d device(s) detected)",

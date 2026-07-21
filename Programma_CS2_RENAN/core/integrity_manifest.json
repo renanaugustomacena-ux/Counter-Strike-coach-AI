@@ -140,7 +140,7 @@
     "backend/nn/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "backend/nn/advanced/__init__.py": "3971d5e4c0ae524c1e60d8936ca3103a1689b0c89b4591b6ece3283d793254c7",
     "backend/nn/coach_manager.py": "2a3e912efb3456fc3ed527517c184c5920127c27e5691e49cc423883556b0183",
-    "backend/nn/config.py": "4263dc4fec0992e2aae6827fe8eb06e44a936bc395b40592803bdbe8ffbe63cc",
+    "backend/nn/config.py": "aeef4f3675d6067f7cb7a99884b8f14c691627eccb925f6926ae8333499d59ad",
     "backend/nn/data_quality.py": "0860ec134d60f068a9794a6b869b4710bff502e5322d51e98d089ec6baaba2a8",
     "backend/nn/dataset.py": "48c044a0836d27fe50f5ed3aeaade64879737e76421750ed3501758b9ef2c4be",
     "backend/nn/early_stopping.py": "981d47452e64553b6c451f56208215b03d3f719c1c65d1f5087e373b5c9068d2",
