@@ -62,6 +62,25 @@ def parse_demo(demo_path: str, target_player: Optional[str] = None) -> pd.DataFr
         return pd.DataFrame()
 
 
+def _final_scoreboard_totals(df):
+    """Per-player scoreboard totals at each player's LAST observed tick.
+
+    NOT max(): tournament servers get reused and GOTV starts recording
+    during warmup while the previous match's scoreboard is still live in
+    the entities — max() over the whole file captures those stale
+    counters (observed 2026-07-22 on PGL Astana demos: +146 phantom
+    kills). Counters reset at match start, so the last value per player
+    is the true final — also correct for disconnects and mid-match
+    substitutes, who keep the totals they actually earned.
+    """
+    return (
+        df.sort_values("tick")
+        .groupby("player_name")
+        .agg({"kills_total": "last", "deaths_total": "last", "damage_total": "last"})
+        .reset_index()
+    )
+
+
 def _extract_stats_with_full_fields(parser, total_rounds, target_player):
     """Ensures 100% of DB-required fields are calculated or defaulted."""
     raw = parser.parse_ticks(["player_name", "name", "kills_total", "deaths_total", "damage_total"])
@@ -83,11 +102,7 @@ def _extract_stats_with_full_fields(parser, total_rounds, target_player):
         if df.empty:
             return pd.DataFrame()
 
-    totals = (
-        df.groupby("player_name")
-        .agg({"kills_total": "max", "deaths_total": "max", "damage_total": "max"})
-        .reset_index()
-    )
+    totals = _final_scoreboard_totals(df)
 
     # Calculate and Fill ALL Mandatory Fields
     if total_rounds == 0:

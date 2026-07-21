@@ -258,3 +258,68 @@ class TestEventDrivenKast:
 
         df = self._deaths_df().drop(columns=["total_rounds_played"])
         assert _compute_event_kast(self._StubParser(), df, "attacker_name", 3) == {}
+
+
+class TestFinalScoreboardTotals:
+    """Scoreboard totals must come from each player's LAST tick, never max().
+
+    Tournament servers get reused: GOTV starts recording during warmup while
+    the previous match's scoreboard is still live in the entities. max() over
+    the whole file captures those stale counters (observed 2026-07-22 on PGL
+    Astana demos: +146 phantom kills for one player). Counters reset at match
+    start, so the last observed value per player is the true final — also
+    correct for disconnects and mid-match substitutes.
+    """
+
+    @staticmethod
+    def _df(rows):
+        import pandas as pd
+
+        return pd.DataFrame(
+            rows, columns=["tick", "player_name", "kills_total", "deaths_total", "damage_total"]
+        )
+
+    def test_stale_warmup_counters_are_ignored(self):
+        from Programma_CS2_RENAN.backend.data_sources.demo_parser import _final_scoreboard_totals
+
+        df = self._df(
+            [
+                (10, "NiKo", 146, 90, 14000),  # stale from previous match on server
+                (100, "NiKo", 0, 0, 0),  # match-start reset
+                (9000, "NiKo", 12, 19, 1300),  # true final
+                (10, "donk", 0, 0, 0),
+                (9000, "donk", 20, 18, 2100),
+            ]
+        )
+        totals = _final_scoreboard_totals(df).set_index("player_name")
+        assert totals.loc["NiKo", "kills_total"] == 12
+        assert totals.loc["NiKo", "deaths_total"] == 19
+        assert totals.loc["donk", "kills_total"] == 20
+
+    def test_disconnected_player_keeps_own_final(self):
+        from Programma_CS2_RENAN.backend.data_sources.demo_parser import _final_scoreboard_totals
+
+        df = self._df(
+            [
+                (100, "leaver", 5, 3, 500),
+                (4000, "leaver", 9, 7, 900),  # disconnects here
+                (100, "stayer", 1, 0, 100),
+                (9000, "stayer", 25, 10, 2500),
+            ]
+        )
+        totals = _final_scoreboard_totals(df).set_index("player_name")
+        assert totals.loc["leaver", "kills_total"] == 9
+        assert totals.loc["stayer", "kills_total"] == 25
+
+    def test_clean_monotonic_demo_matches_max_semantics(self):
+        from Programma_CS2_RENAN.backend.data_sources.demo_parser import _final_scoreboard_totals
+
+        df = self._df(
+            [
+                (100, "a", 0, 0, 0),
+                (5000, "a", 10, 5, 1000),
+                (9000, "a", 21, 12, 2200),
+            ]
+        )
+        totals = _final_scoreboard_totals(df).set_index("player_name")
+        assert totals.loc["a", "kills_total"] == 21

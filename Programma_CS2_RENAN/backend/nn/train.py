@@ -125,7 +125,11 @@ def _train_jepa_self_supervised(X, device, context=None):
 
             # Forward Pass: Context -> Predicted Target Embedding
             # Target Encoder: Target -> Target Embedding (No Grad)
-            pred_emb, target_emb = model.forward_jepa_pretrain(context_tensor, target)
+            # bf16 autocast on GPU hosts (transparent on CPU)
+            from Programma_CS2_RENAN.backend.nn.config import amp_autocast
+
+            with amp_autocast():
+                pred_emb, target_emb = model.forward_jepa_pretrain(context_tensor, target)
 
             # P1-03: Use contrastive loss to prevent embedding collapse.
             # Sample negatives from current batch (excluding positive for each sample).
@@ -146,10 +150,12 @@ def _train_jepa_self_supervised(X, device, context=None):
                     perm = perm + (perm >= i).long()
                     neg_indices[i] = perm
                 negatives = target_emb[neg_indices]
-                loss = jepa_contrastive_loss(pred_emb, target_emb, negatives)
+                with amp_autocast():
+                    loss = jepa_contrastive_loss(pred_emb, target_emb, negatives)
             else:
                 # Fallback for batch_size=1: use MSE (cannot do contrastive with 1 sample)
-                loss = nn.MSELoss()(pred_emb, target_emb)
+                with amp_autocast():
+                    loss = nn.MSELoss()(pred_emb, target_emb)
 
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)  # P1-06
@@ -236,8 +242,11 @@ def _run_training_epoch(model, loader, optimizer, loss_fn, delay, device, contex
             context.check_state()
         xb, yb = xb.to(device), yb.to(device)
         optimizer.zero_grad()
-        pred = model(xb)
-        loss = loss_fn(pred, yb)
+        from Programma_CS2_RENAN.backend.nn.config import amp_autocast
+
+        with amp_autocast():
+            pred = model(xb)
+            loss = loss_fn(pred, yb)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(
             model.parameters(), max_norm=1.0
