@@ -23,8 +23,7 @@
 - **Solution**: Run `pip install PySide6` in your virtual environment.
 
 ### 7. App Opens but Shows Blank Screen
-- **Qt UI**: Ensure you are running from the project root directory. Launch with: `python -m Programma_CS2_RENAN.apps.qt_app.app`
-- **Legacy Kivy UI**: Verify the layout file exists at `Programma_CS2_RENAN/apps/legacy_kivy/layout.kv` and run with `python -m Programma_CS2_RENAN.apps.legacy_kivy.kivy_main`.
+- Ensure you are running from the project root directory. Launch with: `python -m Programma_CS2_RENAN.apps.qt_app.app`
 
 ## Performance & System
 
