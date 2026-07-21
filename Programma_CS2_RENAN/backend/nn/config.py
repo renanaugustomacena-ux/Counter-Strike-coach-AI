@@ -162,6 +162,20 @@ def get_device() -> torch.device:
     return _cached_device
 
 
+def amp_autocast():
+    """bf16 autocast context for GPU training loops (forward + loss only).
+
+    bf16 keeps the fp32 exponent range, so no GradScaler is needed and
+    master weights/grads stay fp32. On the ROCm gfx1201 wheels this is the
+    only fast matmul path (fp32 GEMM is untuned: ~1.3 vs ~118 TFLOPS).
+    Returns a disabled (transparent) context on CPU-only hosts, so call
+    sites wrap unconditionally. Keep backward/step OUTSIDE the context.
+    """
+    return torch.amp.autocast(
+        device_type="cuda", dtype=torch.bfloat16, enabled=torch.cuda.is_available()
+    )
+
+
 # Data Loader
 BATCH_SIZE = 32
 
