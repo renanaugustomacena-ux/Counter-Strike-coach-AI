@@ -8,11 +8,8 @@ This chapter provides an exhaustive reference for every class, function, constan
 
 1. [Processing Package (`processing/`)](#1-processing-package)
    - 1.1 [`__init__.py`](#11-__init__py)
-   - 1.2 [`bombsite_encoding.py`](#12-bombsite_encodingpy)
    - 1.3 [`connect_map_context.py`](#13-connect_map_contextpy)
    - 1.4 [`data_pipeline.py`](#14-data_pipelinepy)
-   - 1.5 [`demo_prioritizer.py`](#15-demo_prioritizerpy)
-   - 1.6 [`demo_quality.py`](#16-demo_qualitypy)
    - 1.7 [`external_analytics.py`](#17-external_analyticspy)
    - 1.8 [`heatmap_engine.py`](#18-heatmap_enginepy)
    - 1.9 [`player_knowledge.py`](#19-player_knowledgepy)
@@ -53,36 +50,6 @@ This chapter provides an exhaustive reference for every class, function, constan
 **Path:** `Programma_CS2_RENAN/backend/processing/__init__.py`
 
 Empty file. Marks the `processing` directory as a Python package. Contains no exports, classes, or functions.
-
----
-
-### 1.2 `bombsite_encoding.py`
-
-**Path:** `Programma_CS2_RENAN/backend/processing/bombsite_encoding.py`
-
-**Purpose:** Implements bombsite-relative coordinate encoding (tagged KT-10). Instead of raw `(x, y)` positions normalized by map diagonal, positions are encoded as a signed differential distance to bombsite A vs B. Optionally flipped by team side to achieve CT/T equivariance. This module is ADDITIVE -- it does NOT modify `METADATA_DIM=25`.
-
-**Design reference:** "Approximately Equivariant Networks" (ICLR 2026 submission). For CS2's discrete symmetries (|G| = 2), equivariance via projection is trivially cheap.
-
-#### Constants
-
-| Constant | Type | Description |
-|---|---|---|
-| `MAP_BOMBSITE_CENTERS` | `Dict[str, Dict]` | Bombsite center coordinates per active-duty map. Keys are map names (e.g., `"de_dust2"`). Each value contains `"A"` and `"B"` (tuples of `(x, y)` in world units) and `"diagonal"` (float, `sqrt(width^2 + height^2)` for normalization). Covers 9 maps: de_dust2, de_mirage, de_inferno, de_nuke, de_overpass, de_anubis, de_vertigo, de_ancient, de_train. |
-
-#### Functions
-
-**`get_bombsite_distances(pos_x: float, pos_y: float, map_name: str) -> Optional[Tuple[float, float]]`**
-
-Computes the Euclidean distance from a position to each bombsite center (A and B). Returns `(distance_to_A, distance_to_B)` or `None` if the map is not in the registry.
-
-**`normalize_position_equivariant(pos_x: float, pos_y: float, map_name: str, team_side: str = "CT") -> float`**
-
-Computes the bombsite-relative equivariant position encoding as `(dist_A - dist_B) / diagonal`. For the T side, the value is negated to achieve semantic equivariance under team-swap symmetry. Returns a scalar clamped to `[-1, 1]`, or `0.0` if the map is unknown. Protects against a non-positive diagonal by returning `0.0`.
-
-**`compute_site_proximity(pos_x: float, pos_y: float, map_name: str) -> Optional[Tuple[str, float]]`**
-
-Determines which bombsite the player is closest to and the normalized distance. Returns `("A" or "B", normalized_distance)` where normalized distance is in `[0, 1]` (0 = at site, 1 = far away), using half the map diagonal as the normalizing denominator. Returns `None` if the map is unknown.
 
 ---
 
@@ -159,102 +126,6 @@ Generator yielding `(train_cutoff_date, val_cutoff_date)` tuples for growing-win
 
 ---
 
-### 1.5 `demo_prioritizer.py`
-
-**Path:** `Programma_CS2_RENAN/backend/processing/demo_prioritizer.py`
-
-**Purpose:** Ranks available demos by expected coaching value. Uses prediction variance as a proxy for model uncertainty (active-learning inspired selection). Falls back to diversity-based ranking when no trained model is available.
-
-#### Constants
-
-| Constant | Value | Description |
-|---|---|---|
-| `_MIN_TICKS_FOR_VARIANCE` | `64` | Minimum tick records required for meaningful variance computation. |
-| `_MAX_TICKS_SAMPLE` | `2048` | Maximum ticks sampled per demo to avoid OOM. |
-
-#### Dataclass: `DemoPriorityResult`
-
-Fields: `demo_name` (str), `priority_score` (float), `method` (str: "variance" or "diversity"), `tick_count` (int, default 0), `unique_players` (int, default 0).
-
-#### Class: `DemoPrioritizer`
-
-**Constructor:** `__init__(self, model=None)` -- Accepts an optional trained JEPA or coaching model. If `None`, diversity-based fallback is used automatically. Stores `_model` and resolves `_device` via `get_device()`.
-
-**Methods:**
-
-**`rank_demos(self, demo_names: list[str], top_k: int = 10) -> list[tuple[str, float]]`**
-Main ranking entry point. Dispatches to variance-based or diversity-based ranking depending on whether `_model` is loaded. Sorts results descending by priority score and returns the top-k `(demo_name, priority_score)` pairs.
-
-**`_rank_by_variance(self, demo_names) -> list[DemoPriorityResult]`**
-Iterates over demo names, calling `_compute_demo_variance` for each. Failed demos receive score 0.0 (sinks to bottom, not silently dropped).
-
-**`_compute_demo_variance(self, demo_name: str) -> Tuple[float, int]`**
-Loads up to `_MAX_TICKS_SAMPLE` ticks from the database for the demo. If tick count is below `_MIN_TICKS_FOR_VARIANCE`, returns `(0.0, tick_count)`. Otherwise, converts ticks to features via `_ticks_to_features`, feeds through the model in eval mode with `torch.no_grad()`, and computes `predictions.var(dim=-1).mean().item()` as the variance score.
-
-**`_ticks_to_features(ticks: list) -> np.ndarray` [static]**
-Converts `PlayerTickState` rows to a raw numeric feature matrix of shape `(N, 25)`. Extracts positional and state fields aligned with the canonical 25-dim feature vector. Uses hardcoded normalizations (health/100, armor/100, equipment/10000, pos/4096, etc.). Several features default to 0.0 because they are not available in `PlayerTickState` (is_blinded, enemies_visible, z_penalty, kast, map_id, round_phase, weapon_class, time_in_round, bomb_planted, teammates_alive, enemies_alive, team_economy).
-
-**`_rank_by_diversity(self, demo_names) -> list[DemoPriorityResult]`**
-Fallback ranking using three components (each [0, 1]):
-- Player count: normalized to max across all demos.
-- Data completeness: mean quality score (complete=1.0, partial=0.5, else 0.0).
-- Player rarity: inverse of how many demos each player appears in.
-
-Weighted combination: `0.4 * player_score + 0.3 * quality_score + 0.3 * rarity_score`. Demos with no stats get score 0.01.
-
----
-
-### 1.6 `demo_quality.py`
-
-**Path:** `Programma_CS2_RENAN/backend/processing/demo_quality.py`
-
-**Purpose:** Evaluates data quality of ingested demos using robust statistical methods based on the Huber contamination model. Detects incomplete demos, feature sparsity, and statistical outliers via IQR fencing.
-
-#### Constants
-
-| Constant | Value | Description |
-|---|---|---|
-| `_EXPECTED_TICKS_PER_DEMO` | `1_600_000` | Expected tick count for a full CS2 competitive match. |
-| `_MIN_VIABLE_TICKS` | `512_000` | Minimum viable tick count (10 rounds * 80s * 64 tick/s * 10 players). |
-| `_IQR_MULTIPLIER_MODERATE` | `1.5` | Tukey's standard outlier fence multiplier. |
-| `_IQR_MULTIPLIER_EXTREME` | `3.0` | Tukey's extreme outlier fence multiplier. |
-| `_QUALITY_THRESHOLD_USE` | `0.7` | Quality score threshold for "use" recommendation. |
-| `_QUALITY_THRESHOLD_REVIEW` | `0.4` | Quality score threshold for "review" recommendation. Below this is "skip". |
-| `_NONZERO_TICK_FIELDS` | list | Fields that should be non-zero in normal gameplay: `health`, `armor`, `pos_x`, `pos_y`, `pos_z`, `equipment_value`. |
-
-#### Dataclass: `OutlierFlag`
-
-Fields: `metric_name` (str), `value` (float), `lower_fence` (float), `upper_fence` (float), `severity` (Literal["moderate", "extreme"]).
-
-Properties: `is_low` (value below lower fence), `is_high` (value above upper fence).
-
-#### Dataclass: `DemoQualityReport`
-
-Fields: `demo_name` (str), `quality_score` (float in [0,1]), `tick_coverage` (float), `feature_completeness` (float), `outlier_flags` (list of OutlierFlag), `recommendation` (Literal["use", "review", "skip"]), `detail` (str).
-
-#### Class: `DemoQualityScorer`
-
-**Methods:**
-
-**`score_demo(self, demo_name: str) -> DemoQualityReport`**
-Computes a comprehensive quality report combining three phases:
-1. Tick coverage (weighted 0.45).
-2. Feature completeness (weighted 0.35).
-3. Outlier penalty: `min(len(outlier_flags) * 0.1, 0.4)`, contributing `0.20 * (1.0 - penalty)`.
-
-Recommendation logic: "use" if score >= 0.7 and no extreme outliers; "review" if score >= 0.4; else "skip".
-
-**`score_demos_batch(self, demo_names: list[str]) -> list[DemoQualityReport]`**
-Scores multiple demos, returns sorted by quality descending. Failed scores get a 0.0 report with "skip" recommendation.
-
-**`_compute_tick_coverage(self, demo_name: str) -> float`**
-Counts ticks via `SELECT COUNT(id)` from `PlayerTickState` where `demo_name` matches. Returns `tick_count / _EXPECTED_TICKS_PER_DEMO`, clamped to `[0, 1]`.
-
-**`_compute_feature_completeness(self, demo_name: str) -> float`**
-Samples up to 500 ticks, checks each tick's `_NONZERO_TICK_FIELDS` for non-zero values. Returns the fraction of non-zero values among all checks.
-
-**`_detect_outliers(self, demo_name: str) -> list[OutlierFlag]`**
-Loads ALL `PlayerMatchStats` to build reference distributions. Checks 5 metrics: `avg_kills`, `avg_deaths`, `avg_adr`, `kd_ratio`, `avg_kast`. Computes IQR fences using the full reference distribution, then checks whether the target demo's mean metric value falls outside moderate or extreme fences. Requires at least 10 reference rows. Returns a list of `OutlierFlag` objects.
 
 ---
 
@@ -795,7 +666,7 @@ C-02: Numpy-vectorized FOV computation. For each player at each tick, computes p
 
 **Path:** `Programma_CS2_RENAN/backend/processing/feature_engineering/__init__.py`
 
-**Purpose:** Uses lazy imports via `__getattr__` to prevent `_modulelock` deadlocks when daemon threads (ingestion workers) import submodules while the Kivy UI thread is active. Python's import lock is not reentrant across threads.
+**Purpose:** Uses lazy imports via `__getattr__` to prevent `_modulelock` deadlocks when daemon threads (ingestion workers) import submodules concurrently. Python's import lock is not reentrant across threads.
 
 **Mechanism:** Defines three frozen sets mapping attribute names to their source submodules:
 - `_KAST_NAMES`: `calculate_kast_for_round`, `calculate_kast_percentage`, `estimate_kast_from_stats` -> `kast` module.
@@ -1420,8 +1291,7 @@ Rather than a strict cascade, `pro_baseline.py` layers all available data source
 ### Robust Statistics
 
 The codebase uses robust statistical methods throughout:
-- IQR fencing for outlier detection (`demo_quality.py`, `data_pipeline.py`).
-- Huber contamination model assumptions (`demo_quality.py`).
+- IQR fencing for outlier detection (`data_pipeline.py`).
 - Z-score drift detection with epsilon guards (`drift.py`, `external_analytics.py`).
 - NaN/Inf clamping with upstream bug visibility (`vectorizer.py`).
 

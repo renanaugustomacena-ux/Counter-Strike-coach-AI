@@ -113,7 +113,7 @@ D2A SQL-only `PlayerMatchStats` aggregator. The largest tool file. Reads each `m
 
 Seven sections, each a private method called from `define_checks()`:
 
-1. **`_check_environment()`** -- PyTorch availability and version (>=2.0), CUDA status (INFO severity), critical dependencies (psutil, kivymd, sklearn, demoparser2, sqlmodel), METADATA_DIM > 0.
+1. **`_check_environment()`** -- PyTorch availability and version (>=2.0), CUDA status (INFO severity), critical dependencies (psutil, sklearn, demoparser2, sqlmodel), METADATA_DIM > 0.
 
 2. **`_check_database()`** -- Calls `init_database()` and `get_db_manager()`. Verifies: `SELECT 1` connectivity, WAL mode active (`PRAGMA journal_mode`), required tables (playerprofile, coachinginsight, playermatchstats, playertickstate, coachstate, roundstats), CoachState CRUD smoke test, backup recency (<7 days, WARNING severity).
 
@@ -320,7 +320,7 @@ Compact project state snapshot producing all key facts in under 60 lines of outp
 
 #### Constants
 
-- `CRITICAL_DEPS` (8 packages) -- sqlmodel, kivymd, demoparser2, ncps, numpy, psutil, scikit-learn, torch.
+- `CRITICAL_DEPS` (7 packages) -- sqlmodel, demoparser2, ncps, numpy, psutil, scikit-learn, torch.
 - `KEY_TABLES` (5 tables) -- playermatchstats, roundstats, coachinginsight, coachingexperience, playerprofile.
 
 #### Functions
@@ -487,7 +487,7 @@ The file is **not importable** -- it raises `ImportError` if `__name__ != "__mai
 | Phase | Name | Checks |
 |-------|------|--------|
 | 1 | Environment | Project root exists, 26 critical directories exist |
-| 2 | Core Imports | 11 core modules + 4 Kivy-dependent modules |
+| 2 | Core Imports | 11 core modules + 4 Kivy-optional modules (warn-only when Kivy absent) |
 | 3 | Backend Storage | 9 storage modules |
 | 3b | Backend Processing | 17 processing modules |
 | 3c | Backend Neural Networks | 30+ NN modules |

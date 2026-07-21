@@ -212,8 +212,7 @@ Build system configuration:
 - **isort**: profile "black", line_length 100, same skip globs.
 - **mypy**: python_version 3.10, warn_return_any, ignore_missing_imports,
   check_untyped_defs, excludes external_analysis/dist/.venv/tests.
-- **Coverage run**: source `Programma_CS2_RENAN`, omits tests/.venv/tools/legacy
-  kivy/entry-point scripts.
+- **Coverage run**: source `Programma_CS2_RENAN`, omits tests/.venv/tools/entry-point scripts.
 - **Coverage report**: fail_under 40, show_missing, exclude pragmas/main-guards/TYPE_CHECKING.
 
 ### A.8  pytest.ini
@@ -931,30 +930,6 @@ format: `<pid> <iso_timestamp>`.  Stale locks reclaimed if holder PID is dead.
 - `_release_all_on_signal(signum, _frame)`: Releases all held locks, re-raises original
   signal with default disposition.
 - `install_signal_handlers()`: Installs SIGTERM/SIGINT handlers.  Idempotent.
-
----
-
-## Part K -- Core Module: Platform Utilities
-
-### K.1  core/platform_utils.py
-
-Drive detection and platform identification.  85 lines.
-
-**Function `_get_platform() -> str`**: Returns "win", "macosx", "linux", or raw
-sys.platform.
-
-**Module-level constant**: `platform = _get_platform()`.
-
-**Function `get_available_drives() -> List[str]`**:
-- PU-02: Explicit platform handling.
-- Windows: `_get_windows_drives()`.
-- Linux/macOS: Returns `["/"]`.
-- Other: Falls back to validated home directory.
-
-**Function `_get_windows_drives() -> List[str]`**:
-1. ctypes `GetLogicalDrives()` bitmask, validates each drive with `os.path.isdir`.
-2. Fallback: `psutil.disk_partitions()` for writable partitions.
-3. Final fallback: home directory or `"C:\\"`.
 
 ---
 
