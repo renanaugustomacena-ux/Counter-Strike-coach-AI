@@ -3,7 +3,7 @@
 [![CI Pipeline](https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI/actions/workflows/build.yml/badge.svg)](https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI/actions/workflows/build.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Proprietary%20%7C%20Apache--2.0-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-26%20phases%20validator%20%7C%202024%20pytest-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-26%20phases%20validator%20%7C%202293%20pytest-brightgreen.svg)]()
 
 **AI-Powered Tactical Coach for Counter-Strike 2**
 
@@ -82,7 +82,7 @@ Unlike static coaching tools with pre-written tips, this system builds its intel
 
 ### Desktop Application
 
-- **Qt Desktop Application** — PySide6/Qt frontend (primary) with MVVM pattern. Legacy Kivy/KivyMD retained for reference only
+- **Qt Desktop Application** — PySide6/Qt frontend (primary) with MVVM pattern
 - **2D Tactical Viewer** — Real-time demo replay with player positions, kill events, bomb indicators, and AI ghost predictions
 - **Match History** — Scrollable match list with color-coded ratings
 - **Performance Dashboard** — Rating trends, per-map stats, strength/weakness analysis, utility breakdown
@@ -156,7 +156,7 @@ pip install playwright && python -m playwright install chromium
 
 ```bash
 sudo apt update
-sudo apt install -y python3.10 python3.10-venv python3.10-dev libsdl2-dev libglew-dev build-essential
+sudo apt install -y python3.10 python3.10-venv python3.10-dev build-essential
 
 python3.10 -m venv venv_linux
 source venv_linux/bin/activate
@@ -377,7 +377,6 @@ Multi-level maps (Nuke, Vertigo) use Z-axis cutoffs to separate upper and lower 
 | **Associative Memory** | hopfield-layers | Latest | Hopfield network layers for memory |
 | **Demo Parsing** | demoparser2 | 0.40.2 | Tick-level CS2 demo file parsing |
 | **UI Framework (primary)** | PySide6 | 6.8+ | Qt-based cross-platform desktop GUI |
-| **UI Framework (legacy)** | Kivy + KivyMD | 2.3.0 / 1.2.0 | Legacy reference only |
 | **Database ORM** | SQLAlchemy + SQLModel | Latest | Database models and queries |
 | **Migrations** | Alembic | Latest | Database schema migrations |
 | **Web Scraping** | Playwright | 1.57.0 | Headless browser for HLTV |
@@ -417,13 +416,6 @@ Counter-Strike-coach-AI/
 |   |   |   +-- viewmodels/            Signal-driven ViewModels (QObject + Signal/Slot)
 |   |   |   +-- widgets/               Charts (radar, momentum, economy, sparkline),
 |   |   |                               tactical (map widget, player sidebar, timeline)
-|   |   +-- legacy_kivy/                Kivy/KivyMD GUI (legacy, quarantined)
-|   |       +-- kivy_main.py            Kivy entry point
-|   |       +-- layout.kv               KivyMD layout definition
-|   |       +-- screens (inline)        Kivy screen classes (single-directory flat layout)
-|   |       +-- widgets.py              Kivy widget components
-|   |       +-- viewmodels (inline)     Kivy-style ViewModels
-|   |       +-- theme.py                Theme constants and palette registry
 |   |
 |   +-- backend/
 |   |   +-- analysis/                   Game theory and statistical analysis
@@ -496,7 +488,7 @@ Counter-Strike-coach-AI/
 |   |   +-- visualizer.py             Chart and diagram rendering
 |   |   +-- pdf_generator.py          PDF report generation
 |   |
-|   +-- tests/                         Test suite (2,024+ tests)
+|   +-- tests/                         Test suite (2,293+ tests)
 |   +-- data/                          Static data (seed knowledge base, external datasets)
 |
 +-- docs/                              Documentation
@@ -543,14 +535,6 @@ python -m Programma_CS2_RENAN.apps.qt_app.app
 ```
 
 Full graphical interface with tactical viewer, match history, performance dashboard, coach chat, and settings. Opens at 1280x720. On first launch, a 4-step wizard configures the Brain Data Root directory.
-
-### Desktop Application (Kivy GUI — Legacy)
-
-```bash
-python -m Programma_CS2_RENAN.apps.legacy_kivy.kivy_main
-```
-
-Original Kivy/KivyMD interface quarantined under `apps/legacy_kivy/`. Retained as reference for environments where Qt is unavailable.
 
 ### Interactive Console (TUI)
 
@@ -620,7 +604,7 @@ The project maintains a multi-level validation hierarchy:
 | Tool | Scope | Command | Checks |
 |------|-------|---------|--------|
 | Headless Validator | Primary regression gate | `python tools/headless_validator.py` | 26 phases |
-| Pytest Suite | Logic and integration tests | `python -m pytest Programma_CS2_RENAN/tests/ -x -q` | 2,024+ tests |
+| Pytest Suite | Logic and integration tests | `python -m pytest Programma_CS2_RENAN/tests/ -x -q` | 2,293+ tests |
 | Feature Audit | Feature engineering integrity | `python tools/Feature_Audit.py` | Vector dimensions, ranges |
 | Portability Test | Cross-platform compatibility | `python tools/portability_test.py` | Import checks, paths |
 | Dev Health | Development environment | `python tools/dev_health.py` | Dependencies, config |
@@ -820,7 +804,6 @@ Open [http://localhost:6006](http://localhost:6006) to monitor conviction index,
 | Problem | Solution |
 |---------|----------|
 | `ModuleNotFoundError: No module named 'PySide6'` | Install Qt dependencies: `pip install PySide6` |
-| `ModuleNotFoundError: No module named 'kivy'` | For legacy UI: `pip install Kivy==2.3.0 KivyMD==1.2.0` (plus kivy-deps on Windows) |
 | `CUDA not available` | Verify driver with `nvidia-smi`, reinstall PyTorch with `--index-url https://download.pytorch.org/whl/cu121` |
 | `sentence-transformers not installed` | Non-blocking warning. Install with `pip install sentence-transformers` for improved embeddings, or ignore (TF-IDF fallback works) |
 | `database is locked` | Close all Python processes and restart |
@@ -881,10 +864,6 @@ Four tri-lingual vision books + one canonical analogy companion book. Each coach
 
 - [README (EN)](README.md) — [Italiano](README_IT.md) — [Português](README_PT.md)
 
-### Engineering
-
-- [Engineering Handoff](docs/ENGINEERING_HANDOFF.md) — Master reference: full codebase audit, 75 work items, execution plan, product roadmap
-
 ### Infrastructure
 
 - [CI/CD Pipeline & GitHub Configuration](.github/OVERVIEW.md) — [Italiano](.github/OVERVIEW_IT.md) — [Portugues](.github/OVERVIEW_PT.md)
@@ -910,7 +889,6 @@ Four tri-lingual vision books + one canonical analogy companion book. Each coach
 
 - [Apps — User Interface Layer](Programma_CS2_RENAN/apps/README.md) — [Italiano](Programma_CS2_RENAN/apps/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/README_PT.md)
 - [Qt Desktop Application (Primary)](Programma_CS2_RENAN/apps/qt_app/README.md) — [Italiano](Programma_CS2_RENAN/apps/qt_app/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/qt_app/README_PT.md)
-- [Desktop Application (Legacy Kivy/KivyMD)](Programma_CS2_RENAN/apps/legacy_kivy/README.md) — [Italiano](Programma_CS2_RENAN/apps/legacy_kivy/README_IT.md) — [Portugues](Programma_CS2_RENAN/apps/legacy_kivy/README_PT.md)
 
 ### Backend
 
