@@ -72,6 +72,20 @@ def _make_manager(monkeypatch):
     return mgr, engine
 
 
+@pytest.fixture(autouse=True)
+def _isolate_shard_completeness(monkeypatch):
+    """Unit tests must not read real match-shard state.
+
+    assign_dataset_splits consults _get_completed_demo_names (P4-A);
+    None = "completeness info unavailable" keeps legacy full-split
+    behavior. Tests that exercise the eligibility filter override this
+    with their own monkeypatch.
+    """
+    monkeypatch.setattr(
+        CoachTrainingManager, "_get_completed_demo_names", staticmethod(lambda: None)
+    )
+
+
 def _seed_matches(engine, pro_count=0, user_count=0):
     """Seed PlayerMatchStats."""
     with Session(engine) as session:
@@ -813,3 +827,67 @@ class TestFetchJepaTicksB1XL:
         assert total == 60 and id_min is not None and id_max is not None
         second = [t.id for t in mgr._fetch_jepa_ticks(is_pro=True, seed=42, sample_size=10)]
         assert first == second  # cached scale → identical selection (DET-01)
+
+
+class TestEligibilityAwareSplits:
+    """P4-A extension: splits are assigned only over demos whose per-match
+    shard is marked complete; ineligible matches go to UNASSIGNED.
+
+    Rationale (2026-07-21): 259 historical matches have schema-only shards
+    (their demo files are gone — completeness can never backfill), so a
+    global temporal split packed the entire TRAIN block with permanently
+    ineligible demos and training aborted with zero eligible TRAIN data.
+    """
+
+    def test_splits_assigned_only_over_completed_demos(self, monkeypatch):
+        mgr, engine = _make_manager(monkeypatch)
+        _seed_matches(engine, pro_count=10)
+        # Only the 4 NEWEST demos have complete shards
+        completed = {f"pro_demo_{i}" for i in (6, 7, 8, 9)}
+        monkeypatch.setattr(
+            CoachTrainingManager, "_get_completed_demo_names", staticmethod(lambda: completed)
+        )
+        mgr.assign_dataset_splits()
+        with Session(engine) as session:
+            matches = session.exec(
+                select(PlayerMatchStats).order_by(PlayerMatchStats.match_date)
+            ).all()
+        eligible = [m for m in matches if m.demo_name.removesuffix(".dem") in completed]
+        ineligible = [m for m in matches if m.demo_name.removesuffix(".dem") not in completed]
+        # 4 eligible → int(4*0.70)=2 train, int(4*0.85)=3 → 1 val, 1 test
+        splits = [m.dataset_split for m in eligible]
+        assert splits.count("train") == 2
+        assert splits.count("val") == 1
+        assert splits.count("test") == 1
+        assert all(m.dataset_split == "unassigned" for m in ineligible)
+
+    def test_stale_splits_on_ineligible_matches_are_reset(self, monkeypatch):
+        """Ineligible matches holding stale train/val/test must be reset."""
+        mgr, engine = _make_manager(monkeypatch)
+        _seed_matches(engine, pro_count=6)
+        with Session(engine) as session:
+            for m in session.exec(select(PlayerMatchStats)).all():
+                m.dataset_split = "train"
+                session.add(m)
+            session.commit()
+        completed = {"pro_demo_4", "pro_demo_5"}
+        monkeypatch.setattr(
+            CoachTrainingManager, "_get_completed_demo_names", staticmethod(lambda: completed)
+        )
+        mgr.assign_dataset_splits()
+        with Session(engine) as session:
+            matches = session.exec(select(PlayerMatchStats)).all()
+        stale = [m for m in matches if m.demo_name.removesuffix(".dem") not in completed]
+        assert all(m.dataset_split == "unassigned" for m in stale)
+
+    def test_no_completeness_info_keeps_legacy_behavior(self, monkeypatch):
+        """_get_completed_demo_names()=None → all matches split (no filter)."""
+        mgr, engine = _make_manager(monkeypatch)
+        _seed_matches(engine, pro_count=10)
+        monkeypatch.setattr(
+            CoachTrainingManager, "_get_completed_demo_names", staticmethod(lambda: None)
+        )
+        mgr.assign_dataset_splits()
+        with Session(engine) as session:
+            matches = session.exec(select(PlayerMatchStats)).all()
+        assert all(m.dataset_split in ("train", "val", "test") for m in matches)
