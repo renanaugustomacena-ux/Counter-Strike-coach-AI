@@ -86,12 +86,11 @@ Topicos de documentacao atuais:
 
 ### Topicos de Fallback
 
-Tanto a tela de ajuda Qt quanto a Kivy definem listas hardcoded `_FALLBACK_TOPICS`
-que sao utilizadas quando `help_system.py` falha ao ser importado ou quando
-`get_help_system()` levanta uma excecao. Os topicos de fallback cobrem: Getting
-Started, Demo Analysis, AI Coach, Steam Integration, Navigation e Troubleshooting.
-Isso garante que a tela de ajuda nunca fique completamente vazia, mesmo em ambientes
-degradados.
+A tela de ajuda Qt define uma lista hardcoded `_FALLBACK_TOPICS` que e utilizada quando
+`help_system.py` falha ao ser importado ou quando `get_help_system()` levanta uma
+excecao. Os topicos de fallback cobrem: Getting Started, Demo Analysis, AI Coach,
+Steam Integration, Navigation e Troubleshooting. Isso garante que a tela de ajuda
+nunca fique completamente vazia, mesmo em ambientes degradados.
 
 ### Pontuacao de Busca
 
@@ -120,13 +119,6 @@ A tela importa `get_help_system` com um guard try/except e define
 de ajuda e recorre a `_FALLBACK_TOPICS` em caso de falha. A busca e realizada no lado
 do cliente filtrando a lista de topicos ja carregada.
 
-### Kivy Help Screen (`apps/legacy_kivy/help_screen.py`)
-
-O consumidor Kivy legado. Utiliza `MDScreen` com widgets `MDListItem` para a barra
-lateral de topicos e um `MDLabel` para exibicao do conteudo. Segue o mesmo padrao
-de import-guard e fallback da tela Qt, mas popula uma lista vazia em vez de topicos
-de fallback quando o sistema de ajuda nao esta disponivel.
-
 ### Adicionando Novos Topicos de Ajuda
 
 Para adicionar um novo topico de documentacao a ajuda in-app:
@@ -141,8 +133,7 @@ Nenhuma alteracao de codigo e necessaria. O indice e reconstruido dinamicamente 
 ## Notas de Desenvolvimento
 
 - **Thread safety:** `HelpSystem` nao e thread-safe. Foi projetado para acesso
-  single-threaded apenas pela UI. Tanto a tela Qt quanto a Kivy o chamam a partir do
-  thread principal/UI.
+  single-threaded apenas pela UI. A tela de ajuda Qt o chama a partir do thread principal da UI.
 - **Nenhuma operacao de escrita:** O sistema de ajuda nunca modifica arquivos no disco.
   E estritamente um indexador de somente leitura.
 - **Encoding:** Todos os arquivos sao lidos como UTF-8 (`encoding="utf-8"`).

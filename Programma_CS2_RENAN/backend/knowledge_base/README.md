@@ -81,11 +81,11 @@ Current documentation topics:
 
 ### Fallback Topics
 
-Both the Qt and Kivy help screens define hardcoded `_FALLBACK_TOPICS` lists that are
-used when `help_system.py` fails to import or when `get_help_system()` raises an
-exception. The fallback topics cover: Getting Started, Demo Analysis, AI Coach,
-Steam Integration, Navigation, and Troubleshooting. This ensures the help screen
-is never completely empty, even in degraded environments.
+The Qt help screen defines a hardcoded `_FALLBACK_TOPICS` list that is used when
+`help_system.py` fails to import or when `get_help_system()` raises an exception.
+The fallback topics cover: Getting Started, Demo Analysis, AI Coach, Steam Integration,
+Navigation, and Troubleshooting. This ensures the help screen is never completely
+empty, even in degraded environments.
 
 ### Search Scoring
 
@@ -114,13 +114,6 @@ The screen imports `get_help_system` with a try/except guard and sets
 help system and falls back to `_FALLBACK_TOPICS` on failure. Search is performed
 client-side by filtering the already-loaded topic list.
 
-### Kivy Help Screen (`apps/legacy_kivy/help_screen.py`)
-
-The legacy Kivy consumer. Uses `MDScreen` with `MDListItem` widgets for the topic
-sidebar and an `MDLabel` for content display. It follows the same import-guard and
-fallback pattern as the Qt screen, but populates an empty list instead of fallback
-topics when the help system is unavailable.
-
 ### Adding New Help Topics
 
 To add a new documentation topic to the in-app help:
@@ -135,7 +128,7 @@ No code changes are required. The index is rebuilt dynamically from the filesyst
 ## Development Notes
 
 - **Thread safety:** `HelpSystem` is not thread-safe. It is designed for single-threaded
-  UI access only. Both the Qt and Kivy screens call it from the main/UI thread.
+  UI access only. The Qt help screen calls it from the main UI thread.
 - **No write operations:** The help system never modifies files on disk. It is strictly
   a read-only indexer.
 - **Encoding:** All files are read as UTF-8 (`encoding="utf-8"`).

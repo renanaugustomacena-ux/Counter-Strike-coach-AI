@@ -17,16 +17,16 @@ widgets/
 ├── skeleton.py             # Skeletons de carregamento (placeholders shimmer)
 ├── toast.py                # Toasts de notificação transientes
 ├── components/             # Primitivas genéricas de UI (cards, badges, chips, ...)
-├── charts/                 # Gráficos baseados em Matplotlib
-├── coaching/               # Visualizações específicas do coach
+├── charts/                 # Gráficos baseados em QtCharts / QPainter
+├── coaching/               # Namespace de widgets coaching (reservado; widgets removidos PR #32)
 └── tactical/               # Widgets específicos do tactical viewer
 ```
 
 | Sub-pacote | Finalidade | README |
 |------------|------------|--------|
 | `components/` | Primitivas genéricas de UI reutilizadas entre telas | [components/README.md](components/README.md) |
-| `charts/` | Gráficos baseados em Matplotlib para o dashboard | [charts/README.md](charts/README.md) |
-| `coaching/` | Visualizações específicas da tela Coach (gauges, sparkline de momentum) | [coaching/README.md](coaching/README.md) |
+| `charts/` | Gráficos baseados em QtCharts / QPainter para o dashboard | [charts/README.md](charts/README.md) |
+| `coaching/` | Namespace reservado; todos os widgets removidos na PR #32 | [coaching/README.md](coaching/README.md) |
 | `tactical/` | Widgets do tactical viewer (mapa, sidebar, timeline) | [tactical/README.md](tactical/README.md) |
 
 ## Arquivos top-level
@@ -70,4 +70,3 @@ Widgets expõem mudanças de estado via `Signal` (por exemplo, `clicked`, `selec
 - Core da aplicação: `apps/qt_app/core/README.md`
 - Telas (consumidoras): `apps/qt_app/screens/README.md`
 - App pai: `apps/qt_app/README.md`
-- Widgets Kivy legados (apenas referência de migração): `apps/legacy_kivy/widgets.py`

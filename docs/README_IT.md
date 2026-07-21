@@ -2,15 +2,18 @@
 
 > **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
-## Documento Principale
+## Riferimenti Principali (root del progetto)
 
-**[ENGINEERING_HANDOFF.md](ENGINEERING_HANDOFF.md)** — Il riferimento tecnico unificato per l'intero progetto. Contiene: architettura del sistema, audit dello stato attuale, findings aperti, piano di esecuzione (interventi a fasi), roadmap del prodotto, guida al troubleshooting e tutte le appendici (codici errore, variabili d'ambiente, spec del vettore feature, schema database). **Inizia da qui.**
+| Documento | Scopo |
+|-----------|-------|
+| **[REFERENCE.md](../REFERENCE.md)** | Architettura, contratto dimensionale, costanti, skill, test, configurazioni |
+| **[AUDIT.md](../AUDIT.md)** | Findings, diagnostica, stato della build |
+| **[TASKS.md](../TASKS.md)** | Backlog, errori, stato di esecuzione |
 
 ## Struttura della Directory
 
 ```
 docs/
-├── ENGINEERING_HANDOFF.md          # Riferimento tecnico unificato (inizia qui)
 ├── QUICKSTART.md                   # Guida rapida di 5 minuti
 ├── README.md / _IT.md / _PT.md    # Questo indice (3 lingue)
 │
@@ -51,7 +54,7 @@ docs/
 
 ## Ordine di Lettura
 
-1. **[ENGINEERING_HANDOFF.md](ENGINEERING_HANDOFF.md)** — Riferimento tecnico, piano di esecuzione, stato attuale
+1. **[../REFERENCE.md](../REFERENCE.md)** — Architettura, invarianti, riferimento tecnico
 2. **[QUICKSTART.md](QUICKSTART.md)** — Fai partire l'app in 5 minuti
 3. **[guides/USER_GUIDE_IT.md](guides/USER_GUIDE_IT.md)** — Walkthrough completo per l'utente
 4. **[books/](books/)** — Libri di visione (1A -> 1B -> 2 -> 3) per la visione completa del prodotto
@@ -61,20 +64,18 @@ docs/
 
 | Necessita | Dove andare |
 |-----------|-------------|
-| Cos'e questo progetto? | ENGINEERING_HANDOFF, Sezione 1 |
-| Cosa funziona oggi? | ENGINEERING_HANDOFF, Parte II |
-| Cosa deve essere corretto? | ENGINEERING_HANDOFF, Parte III (Open Findings Registry) |
-| Come correggerlo (passi ordinati)? | ENGINEERING_HANDOFF, Parte IV (Execution Plan) |
-| Codici errore | ENGINEERING_HANDOFF, Appendice A |
-| Variabili d'ambiente | ENGINEERING_HANDOFF, Appendice C |
-| Vettore feature (25-dim) | ENGINEERING_HANDOFF, Appendice E |
-| Schema database | ENGINEERING_HANDOFF, Appendice F |
-| Troubleshooting | ENGINEERING_HANDOFF, Appendice G |
-| Roadmap prodotto | ENGINEERING_HANDOFF, Parte V |
+| Cos'e questo progetto? | `../README.md` |
+| Architettura e invarianti | `../REFERENCE.md` |
+| Findings e diagnostica attuali | `../AUDIT.md` |
+| Backlog e piano di esecuzione | `../TASKS.md` |
+| Vettore feature (25-dim) | `../REFERENCE.md` §3 |
+| Schema database | `../REFERENCE.md` §4 |
+| Troubleshooting | `guides/USER_GUIDE_IT.md` — sezione Troubleshooting |
+| Aiuto rivolto all'utente | `data/docs/troubleshooting.md` |
 
 ## Note
 
-- La directory `archive/` contiene i documenti originali individuali che sono stati consolidati in ENGINEERING_HANDOFF.md. Sono preservati per riferimento storico.
+- La directory `archive/` contiene documenti superati preservati per riferimento storico.
 - I Libri di Visione (books/) descrivono la visione aspirazionale del prodotto. Saranno aggiornati per allinearsi al codebase quando il programma sara stabile.
 - Tutta la documentazione e in formato Markdown. I PDF sono generati con i tool in `tooling/`.
 - Il file `CLAUDE.md` nella root del progetto contiene le direttive ingegneristiche e le regole di sviluppo.

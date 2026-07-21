@@ -34,7 +34,7 @@ A intenção é manter os caminhos de treinamento e inferência fisicamente sepa
 | Consumidor | Uso |
 |------------|-----|
 | `apps/qt_app/screens/tactical_viewer_screen.py` | Renderiza projeções de ghost no overlay do mapa tático |
-| `apps/legacy_kivy/tactical_viewmodels.py` (`TacticalGhostViewModel`) | Carrega o engine sob demanda (lazy) para evitar custo de startup |
+| `apps/qt_app/viewmodels/tactical_vm.py` (`TacticalGhostVM`) | Carrega o engine sob demanda (lazy) para evitar custo de startup |
 
 ## Notas de desenvolvimento
 

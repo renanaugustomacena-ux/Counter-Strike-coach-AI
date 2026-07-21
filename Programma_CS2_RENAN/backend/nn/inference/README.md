@@ -34,7 +34,7 @@ The intent is to keep training and inference paths physically separated in the s
 | Consumer | Usage |
 |----------|-------|
 | `apps/qt_app/screens/tactical_viewer_screen.py` | Renders ghost projections on the tactical map overlay |
-| `apps/legacy_kivy/tactical_viewmodels.py` (`TacticalGhostViewModel`) | Lazy-loads the engine on demand to avoid startup cost |
+| `apps/qt_app/viewmodels/tactical_vm.py` (`TacticalGhostVM`) | Lazy-loads the engine on demand to avoid startup cost |
 
 ## Development notes
 

@@ -85,12 +85,11 @@ Argomenti di documentazione attuali:
 
 ### Argomenti di Fallback
 
-Sia lo schermo di aiuto Qt che quello Kivy definiscono liste hardcoded
-`_FALLBACK_TOPICS` utilizzate quando `help_system.py` non riesce ad essere importato
-o quando `get_help_system()` solleva un'eccezione. Gli argomenti di fallback coprono:
-Getting Started, Demo Analysis, AI Coach, Steam Integration, Navigation e
-Troubleshooting. Questo garantisce che lo schermo di aiuto non sia mai completamente
-vuoto, anche in ambienti degradati.
+Lo schermo di aiuto Qt definisce una lista hardcoded `_FALLBACK_TOPICS` utilizzata
+quando `help_system.py` non riesce ad essere importato o quando `get_help_system()`
+solleva un'eccezione. Gli argomenti di fallback coprono: Getting Started, Demo Analysis,
+AI Coach, Steam Integration, Navigation e Troubleshooting. Questo garantisce che lo
+schermo di aiuto non sia mai completamente vuoto, anche in ambienti degradati.
 
 ### Punteggio di Ricerca
 
@@ -119,13 +118,6 @@ Lo schermo importa `get_help_system` con un guard try/except e imposta
 sistema di aiuto e ricade su `_FALLBACK_TOPICS` in caso di errore. La ricerca viene
 eseguita lato client filtrando la lista di argomenti gia caricata.
 
-### Kivy Help Screen (`apps/legacy_kivy/help_screen.py`)
-
-Il consumatore Kivy legacy. Utilizza `MDScreen` con widget `MDListItem` per la
-barra laterale degli argomenti e un `MDLabel` per la visualizzazione del contenuto.
-Segue lo stesso pattern di import-guard e fallback dello schermo Qt, ma popola una
-lista vuota invece di argomenti di fallback quando il sistema di aiuto non e disponibile.
-
 ### Aggiungere Nuovi Argomenti di Aiuto
 
 Per aggiungere un nuovo argomento di documentazione all'aiuto in-app:
@@ -140,8 +132,7 @@ Non sono necessarie modifiche al codice. L'indice viene ricostruito dinamicament
 ## Note di Sviluppo
 
 - **Thread safety:** `HelpSystem` non e thread-safe. E progettato per accesso
-  single-threaded solo dalla UI. Sia lo schermo Qt che Kivy lo chiamano dal thread
-  principale/UI.
+  single-threaded solo dalla UI. Lo schermo di aiuto Qt lo chiama dal thread principale della UI.
 - **Nessuna operazione di scrittura:** Il sistema di aiuto non modifica mai file su
   disco. E strettamente un indicizzatore di sola lettura.
 - **Encoding:** Tutti i file vengono letti come UTF-8 (`encoding="utf-8"`).

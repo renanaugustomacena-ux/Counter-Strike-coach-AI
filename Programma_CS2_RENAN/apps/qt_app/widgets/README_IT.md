@@ -17,16 +17,16 @@ widgets/
 ├── skeleton.py             # Skeleton di caricamento (placeholder shimmer)
 ├── toast.py                # Toast di notifica transienti
 ├── components/             # Primitive UI generiche (card, badge, chip, ...)
-├── charts/                 # Grafici basati su Matplotlib
-├── coaching/               # Visualizzazioni specifiche del Coach
+├── charts/                 # Grafici basati su QtCharts / QPainter
+├── coaching/               # Namespace widget coaching (riservato; widget rimossi PR #32)
 └── tactical/               # Widget specifici del tactical viewer
 ```
 
 | Sotto-pacchetto | Scopo | README |
 |-----------------|-------|--------|
 | `components/` | Primitive UI generiche riutilizzate tra le schermate | [components/README.md](components/README.md) |
-| `charts/` | Grafici basati su Matplotlib per la dashboard | [charts/README.md](charts/README.md) |
-| `coaching/` | Visualizzazioni specifiche della schermata Coach (gauge, sparkline di momentum) | [coaching/README.md](coaching/README.md) |
+| `charts/` | Grafici basati su QtCharts / QPainter per la dashboard | [charts/README.md](charts/README.md) |
+| `coaching/` | Namespace riservato; tutti i widget rimossi nella PR #32 | [coaching/README.md](coaching/README.md) |
 | `tactical/` | Widget per il tactical viewer (mappa, sidebar, timeline) | [tactical/README.md](tactical/README.md) |
 
 ## File di primo livello
@@ -70,4 +70,3 @@ I widget espongono i cambi di stato tramite `Signal` (es. `clicked`, `selectionC
 - Core applicativo: `apps/qt_app/core/README.md`
 - Schermate (consumer): `apps/qt_app/screens/README.md`
 - App parent: `apps/qt_app/README.md`
-- Widget Kivy legacy (solo come riferimento per migrazione): `apps/legacy_kivy/widgets.py`

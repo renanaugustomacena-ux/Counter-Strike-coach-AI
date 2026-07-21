@@ -6,7 +6,7 @@
 
 ## Visao Geral
 
-Aplicacao desktop PySide6/Qt implementando arquitetura Model-View-ViewModel (MVVM) com Qt Signal/Slot para analise tatica CS2 e coaching de IA. Este e o **frontend primario** (87 arquivos Python), substituindo o app legacy Kivy/KivyMD em [`legacy_kivy/`](../legacy_kivy/). A aplicacao conta com 15 telas, 10 ViewModels, 8 widgets de graficos, 3 widgets taticos, 4 widgets de coaching, notificacoes toast, 3 temas QSS (CS2, CSGO, CS1.6), renderizacao de wallpaper de fundo, internacionalizacao (Ingles/Italiano/Portugues) e uma sequencia de encerramento controlado.
+Aplicacao desktop PySide6/Qt implementando arquitetura Model-View-ViewModel (MVVM) com Qt Signal/Slot para analise tatica CS2 e coaching de IA. Este e o **frontend primario** (78 arquivos Python). A aplicacao conta com 15 telas, 10 ViewModels, 3 widgets de graficos, 3 widgets taticos, notificacoes toast, 3 temas QSS (CS2, CSGO, CS1.6), renderizacao de wallpaper de fundo, internacionalizacao (Ingles/Italiano/Portugues) e uma sequencia de encerramento controlado.
 
 ## Ponto de Entrada
 
@@ -40,9 +40,15 @@ qt_app/
 │   ├── design_tokens.py            # Definicoes de design tokens para o sistema de componentes Qt
 │   ├── qss_generator.py            # Geracao programatica de QSS a partir dos design tokens
 │   ├── animation.py                # Utilitarios de animacao compartilhados e helpers de easing
+│   ├── easing.py                   # Curvas de easing personalizadas
+│   ├── typography.py               # Escala tipografica e helpers de fonte
 │   ├── icons.py                    # Registro de icones e carregador de assets SVG/icones
+│   ├── svg_icon_provider.py        # QIconEngine baseado em recursos SVG
+│   ├── sound.py                    # Helpers de reproducao de efeitos sonoros
+│   ├── match_utils.py              # Funcoes utilitarias a nivel de partida para a camada UI
+│   ├── widgets_helpers.py          # Funcoes helper Qt widget genericas
+│   ├── web_bridge.py               # Bridge Python↔JavaScript para web views integradas
 │   ├── worker.py                   # Worker QRunnable + WorkerSignals para tarefas em background
-│   ├── asset_bridge.py             # QtAssetBridge: carrega imagens de mapa como QPixmap (singleton)
 │   ├── i18n_bridge.py              # QtLocalizationManager: i18n baseado em JSON com Signal na troca de idioma
 │   ├── qt_playback_engine.py       # QtPlaybackEngine: reproducao de demo baseada em QTimer a ~60 FPS
 │   └── __init__.py
@@ -60,6 +66,8 @@ qt_app/
 │   ├── help_screen.py              # Documentacao e guias do usuario
 │   ├── steam_config_screen.py      # Configuracao de integracao Steam
 │   ├── faceit_config_screen.py     # Configuracao de integracao Faceit
+│   ├── pro_comparison_screen.py    # Analise comparativa usuario vs jogador pro
+│   ├── pro_player_detail_screen.py # Vista de perfil do jogador pro
 │   ├── placeholder.py              # Factory de placeholder para telas ainda nao portadas
 │   └── __init__.py
 ├── viewmodels/
@@ -69,19 +77,20 @@ qt_app/
 │   ├── tactical_vm.py              # Controle de playback, predicoes ghost AI, varredura chronovisor
 │   ├── coach_vm.py                 # Carregamento de insights de coaching do DB
 │   ├── coaching_chat_vm.py         # Dialogo de coaching interativo via Ollama/LLM
+│   ├── focus_insight_vm.py         # ViewModel de detalhe de insight de coaching focalizado
+│   ├── pro_comparison_vm.py        # Dados e pontuacao de comparacao pro
+│   ├── pro_player_detail_vm.py     # Carregamento de dados do perfil do jogador pro
 │   ├── user_profile_vm.py          # Carregamento e salvamento de dados do perfil do usuario
 │   └── __init__.py
 ├── widgets/
 │   ├── toast.py                    # ToastWidget + ToastContainer: notificacoes efemeras (4 severidades)
 │   ├── skeleton.py                 # Widgets placeholder de carregamento skeleton
 │   ├── charts/
-│   │   ├── radar_chart.py          # RadarChartWidget: radar de desempenho multidimensional
-│   │   ├── momentum_chart.py       # MomentumGraphWidget: evolucao do momentum da equipe por round
-│   │   ├── economy_chart.py        # EconomyGraphWidget: timeline de economia round-by-round
-│   │   ├── rating_sparkline.py     # RatingSparklineWidget: sparkline compacto do historico de rating
-│   │   ├── trend_chart.py          # TrendGraphWidget: visualizacao de tendencias de series temporais
-│   │   ├── utility_bar_chart.py    # UtilityBarWidget: comparacao de uso de utilitarios (usuario vs baseline pro)
+│   │   ├── economy_chart.py        # EconomyGraphWidget: timeline de economia round-by-round (QtCharts)
+│   │   ├── mini_sparkline.py       # MiniSparkline: sparkline compacta com QPainter, sem eixos
+│   │   ├── momentum_chart.py       # MomentumGraphWidget: evolucao do momentum da equipe por round (QtCharts)
 │   │   └── __init__.py
+│   ├── coaching/                   # Namespace reservado; widgets removidos na PR #32
 │   ├── components/                 # Componentes de UI reutilizaveis (design system)
 │   │   ├── __init__.py             # Exports dos componentes
 │   │   ├── card.py                 # Widget container de card
@@ -97,6 +106,11 @@ qt_app/
 │   │   ├── timeline_widget.py      # TimelineWidget: navegacao e scrubbing de playback de demo
 │   │   └── __init__.py
 │   └── __init__.py
+├── web/                            # Sub-apps TypeScript (integradas via QWebEngineView)
+│   ├── coach-chat/
+│   ├── match-detail/
+│   ├── tactical-viewer/
+│   └── shared/
 └── themes/
     ├── cs2.qss                     # Tema CS2: estetica gaming escura com destaque laranja (#D96600)
     ├── csgo.qss                    # Tema CSGO: tons azul-ardosia com destaque aco
@@ -139,7 +153,7 @@ qt_app/
 
 **Fluxo de dados:** Screen <-> ViewModel (QObject + Signals) <-> Database (SQLModel) via Worker threads. Todos os acessos ao banco de dados ocorrem no `QThreadPool`; os resultados sao automaticamente encaminhados de volta ao thread principal via conexoes Signal.
 
-## Telas (13)
+## Telas (15)
 
 | # | Tela | Arquivo | Descricao |
 |---|------|---------|-----------|
@@ -156,8 +170,10 @@ qt_app/
 | 11 | HelpScreen | `help_screen.py` | Documentacao do usuario, guias e FAQ |
 | 12 | SteamConfigScreen | `steam_config_screen.py` | Integracao Steam: configuracao de caminho, deteccao de pasta de demos |
 | 13 | FaceitConfigScreen | `faceit_config_screen.py` | Integracao Faceit: configuracao de API key, ID do jogador |
+| 14 | ProComparisonScreen | `pro_comparison_screen.py` | Comparacao estatistica lado a lado usuario vs jogador pro selecionado |
+| 15 | ProPlayerDetailScreen | `pro_player_detail_screen.py` | Perfil completo do jogador pro: estatisticas de carreira, heatmaps, jogadas caracteristicas |
 
-## ViewModels (7)
+## ViewModels (10)
 
 | ViewModel | Arquivo | Signals Principais | Descricao |
 |-----------|---------|---------------------|-----------|
@@ -169,6 +185,9 @@ qt_app/
 | `TacticalChronovisorVM` | `tactical_vm.py` | `scan_complete(list, int)`, `navigate_to(int, str)`, `is_scanning_changed(bool)` | Varredura de momentos criticos e navegacao jump-to via ChronovisorScanner |
 | `CoachViewModel` | `coach_vm.py` | `insights_loaded(list)`, `is_loading_changed(bool)`, `error_changed(str)` | Carrega as ultimas linhas de `CoachingInsight` para o jogador ativo |
 | `CoachingChatViewModel` | `coaching_chat_vm.py` | `messages_changed(list)`, `session_active_changed(bool)`, `is_available_changed(bool)` | Chat de coaching interativo via CoachingDialogueEngine (backend Ollama) |
+| `FocusInsightViewModel` | `focus_insight_vm.py` | `insight_changed(object)`, `is_loading_changed(bool)` | Carrega e gerencia a vista de detalhe para um unico insight de coaching focalizado |
+| `ProComparisonViewModel` | `pro_comparison_vm.py` | `data_changed(dict)`, `is_loading_changed(bool)`, `error_changed(str)` | Busca e calcula a pontuacao da comparacao estatistica usuario-vs-pro |
+| `ProPlayerDetailViewModel` | `pro_player_detail_vm.py` | `profile_changed(dict)`, `is_loading_changed(bool)`, `error_changed(str)` | Carrega perfil do jogador pro e estatisticas de carreira |
 | `UserProfileViewModel` | `user_profile_vm.py` | `profile_loaded(dict)`, `is_loading_changed(bool)`, `error_changed(str)` | Carrega/salva `PlayerProfile` (bio, funcao) com acesso DB em background |
 
 *Nota: O modulo Tactical contem 3 ViewModels em um unico arquivo (`tactical_vm.py`) por coesao.*
@@ -179,12 +198,9 @@ qt_app/
 
 | Widget | Arquivo | Descricao |
 |--------|---------|-----------|
-| `RadarChartWidget` | `radar_chart.py` | Radar de desempenho multidimensional com renderizacao QPainter customizada |
-| `MomentumGraphWidget` | `momentum_chart.py` | Evolucao do momentum da equipe por round, overlay duplo CT/T |
-| `EconomyGraphWidget` | `economy_chart.py` | Timeline de economia round-by-round mostrando niveis de compra |
-| `RatingSparklineWidget` | `rating_sparkline.py` | Sparkline compacto inline do historico de rating com indicador de tendencia |
-| `TrendGraphWidget` | `trend_chart.py` | Visualizacao de tendencias de series temporais para qualquer metrica entre partidas |
-| `UtilityBarWidget` | `utility_bar_chart.py` | Barras horizontais de comparacao de uso de utilitarios (usuario vs baseline pro) |
+| `EconomyGraphWidget` | `economy_chart.py` | Timeline de economia round-by-round mostrando niveis de compra (QtCharts) |
+| `MiniSparkline` | `mini_sparkline.py` | Sparkline compacta com QPainter, sem eixos, usada em cards de stat hero |
+| `MomentumGraphWidget` | `momentum_chart.py` | Evolucao do momentum da equipe por round, overlay duplo CT/T (QtCharts) |
 
 ### Widgets Taticos (`widgets/tactical/`)
 
@@ -250,13 +266,19 @@ Todas as emissoes de signal sao protegidas por `try/except RuntimeError` para li
 
 | Modulo | Arquivo | Descricao |
 |--------|---------|-----------|
-| `QtAssetBridge` | `core/asset_bridge.py` | Singleton que carrega imagens de mapa como `QPixmap` com cache e fallback de tabuleiro xadrez magenta/preto |
 | `QtLocalizationManager` | `core/i18n_bridge.py` | Singleton (`i18n`) que fornece `get_text(key)` com prioridade JSON, fallback hardcoded, e Signal `language_changed` |
-| `QtPlaybackEngine` | `core/qt_playback_engine.py` | Subclasse de `PlaybackEngine` usando `QTimer` com intervalo de 16ms (~60 FPS) em vez de Kivy Clock |
+| `QtPlaybackEngine` | `core/qt_playback_engine.py` | Subclasse de `PlaybackEngine` usando `QTimer` com intervalo de 16ms (~60 FPS) |
 | `DesignTokens` | `core/design_tokens.py` | Definicoes de design tokens (espacamento, raio, elevacao) para o sistema de componentes Qt |
 | `QSSGenerator` | `core/qss_generator.py` | Geracao programatica de folhas de estilo QSS a partir dos design tokens |
 | `Animation` | `core/animation.py` | Utilitarios de animacao compartilhados e helpers de easing para transicoes de widgets |
 | `Icons` | `core/icons.py` | Registro de icones e carregador de assets SVG/icones para o sistema de componentes |
+| `Easing` | `core/easing.py` | Curvas de easing personalizadas para animacoes de widgets |
+| `Typography` | `core/typography.py` | Definicoes de escala tipografica e helpers de fonte |
+| `SVGIconProvider` | `core/svg_icon_provider.py` | Implementacao QIconEngine baseada em recursos SVG |
+| `Sound` | `core/sound.py` | Helpers de reproducao de efeitos sonoros para feedback UI |
+| `MatchUtils` | `core/match_utils.py` | Funcoes utilitarias a nivel de partida para a camada UI |
+| `WidgetsHelpers` | `core/widgets_helpers.py` | Funcoes helper Qt widget genericas |
+| `WebBridge` | `core/web_bridge.py` | Bridge Python↔JavaScript para web views integradas |
 
 ## Notas de Desenvolvimento
 

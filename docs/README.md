@@ -2,15 +2,18 @@
 
 > **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
-## Primary Document
+## Primary References (project root)
 
-**[ENGINEERING_HANDOFF.md](ENGINEERING_HANDOFF.md)** — The unified technical reference for the entire project. Contains: system architecture, current state audit, open findings, execution plan (phased surgeries), product roadmap, troubleshooting guide, and all appendices (error codes, env vars, feature vector spec, database schema). **Start here.**
+| Document | Purpose |
+|----------|---------|
+| **[REFERENCE.md](../REFERENCE.md)** | Architecture, dim contract, constants, skills, tests, configs |
+| **[AUDIT.md](../AUDIT.md)** | Findings, diagnostics, build health |
+| **[TASKS.md](../TASKS.md)** | Backlog, errors, execution status |
 
 ## Directory Structure
 
 ```
 docs/
-├── ENGINEERING_HANDOFF.md          # Unified technical reference (start here)
 ├── QUICKSTART.md                   # 5-minute quick-start guide
 ├── README.md / _IT.md / _PT.md    # This index (3 languages)
 │
@@ -51,7 +54,7 @@ docs/
 
 ## Reading Order
 
-1. **[ENGINEERING_HANDOFF.md](ENGINEERING_HANDOFF.md)** — Technical reference, execution plan, current state
+1. **[../REFERENCE.md](../REFERENCE.md)** — Architecture, invariants, technical reference
 2. **[QUICKSTART.md](QUICKSTART.md)** — Get the app running in 5 minutes
 3. **[guides/USER_GUIDE.md](guides/USER_GUIDE.md)** — Full user walkthrough
 4. **[books/](books/)** — Vision books (1A -> 1B -> 2 -> 3) for the full product vision
@@ -61,20 +64,18 @@ docs/
 
 | Need | Go to |
 |------|-------|
-| What is this project? | ENGINEERING_HANDOFF, Section 1 |
-| What works today? | ENGINEERING_HANDOFF, Part II |
-| What needs fixing? | ENGINEERING_HANDOFF, Part III (Open Findings Registry) |
-| How to fix it (ordered steps)? | ENGINEERING_HANDOFF, Part IV (Execution Plan) |
-| Error codes | ENGINEERING_HANDOFF, Appendix A |
-| Environment variables | ENGINEERING_HANDOFF, Appendix C |
-| Feature vector (25-dim) | ENGINEERING_HANDOFF, Appendix E |
-| Database schema | ENGINEERING_HANDOFF, Appendix F |
-| Troubleshooting | ENGINEERING_HANDOFF, Appendix G |
-| Product roadmap | ENGINEERING_HANDOFF, Part V |
+| What is this project? | `../README.md` |
+| Architecture and invariants | `../REFERENCE.md` |
+| Current findings and diagnostics | `../AUDIT.md` |
+| Backlog and execution plan | `../TASKS.md` |
+| Feature vector (25-dim) | `../REFERENCE.md` §3 |
+| Database schema | `../REFERENCE.md` §4 |
+| Troubleshooting | `guides/USER_GUIDE.md` — Troubleshooting section |
+| User-facing help | `data/docs/troubleshooting.md` |
 
 ## Notes
 
-- The `archive/` directory contains the original individual documents that were consolidated into ENGINEERING_HANDOFF.md. They are preserved for historical reference.
+- The `archive/` directory contains superseded documents preserved for historical reference.
 - The Vision Books (books/) describe the aspirational product vision. They will be updated to match the codebase once the program is stable.
 - All documentation is in Markdown format. PDFs are generated with the tools in `tooling/`.
 - The `CLAUDE.md` file at the project root contains engineering directives and development rules.
