@@ -74,7 +74,12 @@ def _build_round_boundaries(round_end_df: pd.DataFrame) -> List[Dict]:
     ticks = sorted(round_end_df["tick"].tolist())
 
     for i, (_, row) in enumerate(round_end_df.sort_values("tick").iterrows()):
-        round_num = int(row.get("round", i + 1))
+        # Round numbers are ORDINAL over sorted round_end ticks (1..N), the
+        # same scheme round_context.py uses on the tick side — the two must
+        # agree or every per-round join is misaligned. The raw 'round' column
+        # is untrusted: CS2 patch 14160 (July 2026) shifted it by +1
+        # (a 24-round match emits rounds 2..25); earlier patches emit 1..N.
+        round_num = i + 1
         end_tick = int(row["tick"])
         # H-18: Use previous end_tick + 1 as start to prevent overlap.
         # Round i's end_tick and round i+1's start_tick no longer share a tick.
@@ -90,15 +95,31 @@ def _build_round_boundaries(round_end_df: pd.DataFrame) -> List[Dict]:
             }
         )
 
-    # H-06: Validate round boundary completeness
-    if boundaries:
-        expected_rounds = set(range(1, len(boundaries) + 1))
-        actual_rounds = {b["round_number"] for b in boundaries}
-        missing = expected_rounds - actual_rounds
-        if missing:
-            logger.warning("Missing round boundaries for rounds: %s", sorted(missing))
-        if any(b["start_tick"] > b["end_tick"] for b in boundaries):
-            logger.error("Inverted round boundary detected (start > end)")
+    # H-06: Cross-check the untrusted raw 'round' column against ordinal
+    # numbering — a nonzero offset is expected on patch-14160+ demos and
+    # logged for observability; anything non-uniform means event loss.
+    if boundaries and "round" in round_end_df.columns:
+        raw_sorted = [
+            int(r) for r in round_end_df.sort_values("tick")["round"].tolist() if pd.notna(r)
+        ]
+        if len(raw_sorted) == len(boundaries):
+            offsets = {raw - b["round_number"] for raw, b in zip(raw_sorted, boundaries)}
+            if offsets == {0}:
+                pass  # pre-14160 demo: raw column agrees with ordinal
+            elif len(offsets) == 1:
+                logger.info(
+                    "round_end 'round' column uniformly offset by %+d "
+                    "(patch-14160 style); ordinal numbering applied",
+                    offsets.pop(),
+                )
+            else:
+                logger.warning(
+                    "round_end 'round' column non-uniform vs ordinal (offsets %s) "
+                    "— possible missing round_end events",
+                    sorted(offsets),
+                )
+    if any(b["start_tick"] > b["end_tick"] for b in boundaries):
+        logger.error("Inverted round boundary detected (start > end)")
 
     return boundaries
 
