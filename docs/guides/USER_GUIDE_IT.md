@@ -101,7 +101,7 @@ python -m playwright install chromium
 # Dipendenze di sistema
 sudo apt update
 sudo apt install -y python3.10 python3.10-venv python3.10-dev
-sudo apt install -y libsdl2-dev libglew-dev build-essential
+sudo apt install -y build-essential
 
 # Crea l'ambiente virtuale
 python3.10 -m venv venv_linux
@@ -113,12 +113,9 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 # NVIDIA GPU (CUDA 12.1):
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
-# Installa le dipendenze (ignora kivy-deps specifici per Windows se pip si lamenta)
+# Installa le dipendenze
 pip install -r Programma_CS2_RENAN/requirements.txt
 pip install PySide6
-
-# Opzionale: UI legacy Kivy come fallback (non richiesta)
-# pip install Kivy==2.3.0 KivyMD==1.2.0
 
 # Inizializza il database
 python -c "import sys; sys.path.append('.'); from Programma_CS2_RENAN.backend.storage.database import init_database; init_database()"
@@ -155,8 +152,6 @@ Device: cuda:0
 ```
 
 La finestra si apre a 1280x720. Al **primo avvio**, vedrai la Procedura Guidata di Configurazione (Setup Wizard).
-
-> **UI Legacy Kivy (fallback):** Se preferisci l'interfaccia originale basata su Kivy, avvia con `python Programma_CS2_RENAN/main.py`. Richiede Kivy e KivyMD installati.
 
 ---
 
@@ -524,15 +519,6 @@ PySide6 (il framework dell'interfaccia Qt) non e' installato:
 pip install PySide6
 ```
 
-### UI Legacy: "ModuleNotFoundError: No module named 'kivy'"
-
-Necessario solo se stai usando l'interfaccia legacy Kivy come fallback. Su Windows:
-```bash
-pip install kivy-deps.glew==0.3.1 kivy-deps.sdl2==0.7.0 kivy-deps.angle==0.4.0
-pip install Kivy==2.3.0 KivyMD==1.2.0
-```
-Su Linux, salta i pacchetti `kivy-deps` — sono specifici per Windows.
-
 ### "No module named 'watchdog'"
 
 ```bash
@@ -565,21 +551,6 @@ pip install sentence-transformers
 ```
 La prima esecuzione scarica un modello di ~80MB — questo e' previsto.
 
-### UI Legacy: L'app si blocca all'avvio con errore Kivy GL
-
-Questo si applica solo all'interfaccia legacy Kivy (`python Programma_CS2_RENAN/main.py`). Su Windows, prova:
-```bash
-set KIVY_GL_BACKEND=angle_sdl2
-python Programma_CS2_RENAN/main.py
-```
-Su Linux:
-```bash
-export KIVY_GL_BACKEND=sdl2
-python Programma_CS2_RENAN/main.py
-```
-
-> **Suggerimento:** Se stai usando l'interfaccia Qt principale, questo errore non si applica. Avvia con `python -m Programma_CS2_RENAN.apps.qt_app.app`.
-
 ### Errore di blocco database ("database is locked")
 
 Un altro processo ha il database aperto. Chiudi tutti i processi Python:
@@ -605,12 +576,7 @@ Questo e' un avviso in modalita' sviluppo proveniente dall'audit di sicurezza RA
 
 ### L'app si apre ma mostra una schermata bianca/vuota
 
-**UI Qt:** Assicurati di eseguire dalla directory principale del progetto (non dall'interno di `Programma_CS2_RENAN/`). Prova: `python -m Programma_CS2_RENAN.apps.qt_app.app`
-
-**UI Legacy Kivy:** Il file di layout KV non e' riuscito a caricarsi. Controlla:
-1. Stai eseguendo dalla directory principale del progetto (non dall'interno di `Programma_CS2_RENAN/`)
-2. Il file `Programma_CS2_RENAN/apps/legacy_kivy/layout.kv` esiste
-3. Esegui: `python -m Programma_CS2_RENAN.apps.legacy_kivy.kivy_main` (non `python main.py`)
+Assicurati di eseguire dalla directory principale del progetto (non dall'interno di `Programma_CS2_RENAN/`). Prova: `python -m Programma_CS2_RENAN.apps.qt_app.app`
 
 ### Come ripristinare l'app allo stato di fabbrica
 
