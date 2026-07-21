@@ -28,7 +28,7 @@ coverage==7.15.2
 cycler==0.12.1
 cyclonedx-python-lib==7.6.2
 defusedxml==0.7.1
-demoparser2==0.41.1
+demoparser2==0.41.4
 distlib==0.4.3
 faiss-cpu==1.13.2
 fastapi==0.135.3
