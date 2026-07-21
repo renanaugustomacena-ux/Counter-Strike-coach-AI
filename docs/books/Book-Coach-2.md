@@ -414,7 +414,7 @@ Gestisce l'esperienza dei nuovi utenti attraverso un processo di onboarding a **
 ## 5B. Sottosistema 3B — Motori di Coaching
 
 **Cartella nella repo:** `backend/coaching/`
-**File:** 7 moduli
+**File:** 8 moduli
 
 Questo sottosistema contiene i **motori decisionali di coaching** che trasformano deviazioni statistiche grezze in consigli prioritizzati e contestualizzati. A differenza dei Servizi (Sezione 5) che orchestrano e presentano, i Motori di Coaching contengono la **logica di ragionamento** dell'allenatore.
 
@@ -595,6 +595,7 @@ flowchart LR
         PB["ProBridge<br/>HLTV Card → baseline"]
         TR["TokenResolver<br/>Token statici per confronto"]
         LE["LongitudinalEngine<br/>Trend-aware insights"]
+        JIA["JEPAInsightAdapter<br/>JEPA coaching head → InsightCandidate"]
     end
     CE -->|"top-3 correzioni"| HE
     NR -->|"pesi raffinati"| CE
@@ -602,8 +603,35 @@ flowchart LR
     TR -->|"correction delta"| HE
     HE -->|"insight prioritizzati"| EG
     LE -->|"trend insights"| EG
+    JIA -->|"insight JEPA (maturity-gated)"| HE
     EG -->|"narrative comprensibili"| UI["UI / CoachingService"]
 ```
+
+### -JEPAInsightAdapter (`jepa_insight_adapter.py`)
+
+Converte i vettori grezzi in uscita dalla **Coaching Head JEPA** in oggetti `InsightCandidate` pronti per la pipeline di coaching (F1.1 / W5.1).
+
+**Flusso:**
+
+```mermaid
+flowchart LR
+    CH["Coaching Head JEPA<br/>(sigmoid [0,1])"] --> DELTA["Remapping delta firmato<br/>2*(out - 0.5)"]
+    DELTA --> FILTER["Filtro magnitudine<br/>|delta| < 0.1 → scartato"]
+    FILTER --> GATE["Gating maturità<br/>doubt/crisis / learning / conviction-mature"]
+    GATE --> IC["InsightCandidate<br/>axis · message · confidence · delta"]
+```
+
+**Contratto dimensionale:** Opera sui primi 10 elementi del contratto 25-dim (target features: health, armor, has\_helmet, has\_defuser, equipment\_value, is\_crouching, is\_scoped, is\_blinded, enemies\_visible, pos\_x) mappati su cinque SkillAxes (`survival`, `economy`, `movement`, `utility`, `positioning`).
+
+**Scala maturità:**
+
+| Stato | Moltiplicatore confidenza | Max candidati | Modalità |
+|---|---|---|---|
+| `doubt` / `crisis` | 0.5× | 1 | Hedged: "Observation: …" |
+| `learning` | 0.8× | 2 | Diretto |
+| `conviction` / `mature` | 1.0× | 3 | Diretto |
+
+**Flag di attivazione:** `USE_JEPA_MODEL` (default `False`). Quando disattivata, `generate_jepa_insights()` restituisce lista vuota — nessuna modifica al comportamento esistente (F1.2 byte-identical). Rispetta il vincolo **NO-WALLHACK** (F1.3): consuma esclusivamente la finestra tick del giocatore osservato (contratto POV 25-dim, P-X-01).
 
 ---
 
@@ -1368,71 +1396,6 @@ Mappe di occupazione gaussiane ad alte prestazioni per la visualizzazione tattic
 3. **Ridimensiona** tramite `StandardScaler`
 4. **Suddivide** temporalmente (70/15/15) con ordinamento cronologico per gruppo (pro/utente)
 5. **Mantieni** la colonna `dataset_split` sul posto
-
-### -Scorer Qualità Demo (`demo_quality.py`) — KT-09
-
-Valuta la qualità dei dati delle demo ingerite utilizzando metodi statistici robusti basati sul **modello di contaminazione di Huber** (1981):
-
-| Componente | Peso | Metodo |
-|---|---|---|
-| **Copertura Tick** | 45% | `tick_count / _EXPECTED_TICKS_PER_DEMO` (1.6M) |
-| **Completezza Feature** | 35% | Frazione di valori non-zero in health, armor, pos_x/y/z, equipment_value |
-| **Penalità Outlier** | 20% | Rilevamento IQR su avg_kills, avg_deaths, avg_adr, kd_ratio, avg_kast |
-
-**Rilevamento outlier (metodo IQR di Tukey):**
-
-| Severità | Moltiplicatore IQR | Significato |
-|---|---|---|
-| Moderata | 1.5× | Statistiche insolite — da revisionare |
-| Estrema | 3.0× | Statistiche altamente sospette — probabile corruzione |
-
-**Classificazione qualità:**
-
-| Score | Raccomandazione | Condizioni |
-|---|---|---|
-| ≥ 0.7 | `"use"` | Qualità sufficiente + nessun flag estremo |
-| ≥ 0.4 | `"review"` | Qualità incerta — revisione manuale consigliata |
-| < 0.4 | `"skip"` | Qualità insufficiente — escluso dall'addestramento |
-
-La robustezza del metodo IQR garantisce un breakdown point del 25% (modello epsilon-contamination di Huber): fino al 25% dei dati può essere corrotto senza invalidare il rilevamento.
-
-### -Prioritizzatore Demo (`demo_prioritizer.py`) — KT-09
-
-Classifica le demo disponibili per valore di coaching atteso, ispirato ai principi di **Active Learning** (Settles, 2009):
-
-**Due strategie di ranking:**
-
-| Strategia | Condizione | Metodo | Metrica |
-|---|---|---|---|
-| **Varianza** (primaria) | Modello JEPA caricato | Varianza predizioni latent-space su tick della demo | Alta varianza = alto valore coaching |
-| **Diversità** (fallback) | Nessun modello disponibile | Score composito: 40% giocatori unici + 30% completezza + 30% rarità giocatore | Massimizza copertura distribuzione |
-
-**Costanti:**
-
-| Costante | Valore | Scopo |
-|---|---|---|
-| `_MIN_TICKS_FOR_VARIANCE` | 64 | Tick minimi per varianza significativa |
-| `_MAX_TICKS_SAMPLE` | 2048 | Limite campionamento per evitare OOM |
-
-### -Codifica Bombsite-Relativa (`bombsite_encoding.py`) — KT-10
-
-Codifica posizioni relative ai bombsite per ottenere **equivarianza approssimata** sotto la simmetria CT/T:
-
-**Coordinate bombsite per 9 mappe** (da texture radar DDS + callout della community):
-
-de_dust2, de_mirage, de_inferno, de_nuke, de_overpass, de_anubis, de_vertigo, de_ancient, de_train.
-
-**Funzioni chiave:**
-
-| Funzione | Output | Descrizione |
-|---|---|---|
-| `get_bombsite_distances(pos_x, pos_y, map)` | `(dist_A, dist_B)` | Distanze euclidee ai centri dei bombsite |
-| `normalize_position_equivariant(pos_x, pos_y, map, side)` | `[-1, 1]` | Differenziale firmato: CT positivo, T negato |
-| `compute_site_proximity(pos_x, pos_y, map)` | `(site, dist_norm)` | Sito più vicino + distanza normalizzata |
-
-**Design equivariante:** Per la simmetria discreta di CS2 (|G| = 2, CT vs T), la codifica è banalmente economica: basta negare l'output per il lato opposto. Questo permette al modello di apprendere che "essere vicino al sito A come CT" (difesa) ha semantica opposta a "essere vicino al sito A come T" (attacco).
-
-**ADDITIVE:** NON modifica METADATA_DIM=25. Le feature bombsite-relative sono calcolate come valori derivati che possono opzionalmente sostituire pos_x/pos_y nel vettore feature tramite flag di configurazione, o essere usate come contesto supplementare nell'analisi di coaching.
 
 ### -Generatore di statistiche per round (`round_stats_builder.py`)
 

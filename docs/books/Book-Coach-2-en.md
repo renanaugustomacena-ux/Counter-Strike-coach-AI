@@ -414,7 +414,7 @@ Manages the new user experience through a **3-stage progressive onboarding** pro
 ## 5B. Subsystem 3B — Coaching Engines
 
 **Folder in the repo:** `backend/coaching/`
-**Files:** 7 modules
+**Files:** 8 modules
 
 This subsystem contains the **coaching decision engines** that transform raw statistical deviations into prioritized and contextualized advice. Unlike the Services (Section 5), which orchestrate and present, the Coaching Engines contain the coach's **reasoning logic**.
 
@@ -595,6 +595,7 @@ flowchart LR
         PB["ProBridge<br/>HLTV Card → baseline"]
         TR["TokenResolver<br/>Static tokens for comparison"]
         LE["LongitudinalEngine<br/>Trend-aware insights"]
+        JIA["JEPAInsightAdapter<br/>JEPA coaching head → InsightCandidate"]
     end
     CE -->|"top-3 corrections"| HE
     NR -->|"refined weights"| CE
@@ -602,8 +603,25 @@ flowchart LR
     TR -->|"correction delta"| HE
     HE -->|"prioritized insights"| EG
     LE -->|"trend insights"| EG
+    JIA -->|"JEPA insights (maturity-gated)"| HE
     EG -->|"understandable narratives"| UI["UI / CoachingService"]
 ```
+
+### -JEPAInsightAdapter (`jepa_insight_adapter.py`)
+
+Converts raw output vectors from the **JEPA Coaching Head** into `InsightCandidate` objects ready for the coaching pipeline (F1.1 / W5.1).
+
+**Dimensional contract:** Operates on the first 10 elements of the 25-dim contract (target features: health, armor, has\_helmet, has\_defuser, equipment\_value, is\_crouching, is\_scoped, is\_blinded, enemies\_visible, pos\_x) mapped to five SkillAxes (`survival`, `economy`, `movement`, `utility`, `positioning`).
+
+**Maturity ladder:**
+
+| State | Confidence multiplier | Max candidates | Mode |
+|---|---|---|---|
+| `doubt` / `crisis` | 0.5× | 1 | Hedged: "Observation: …" |
+| `learning` | 0.8× | 2 | Direct |
+| `conviction` / `mature` | 1.0× | 3 | Direct |
+
+**Activation flag:** `USE_JEPA_MODEL` (default `False`). When off, `generate_jepa_insights()` returns an empty list — no change to existing behavior (F1.2 byte-identical). Respects the **NO-WALLHACK** constraint (F1.3): consumes exclusively the observed player's tick window (25-dim POV contract, P-X-01).
 
 ---
 
@@ -1368,71 +1386,6 @@ High-performance Gaussian occupancy maps for tactical visualization:
 3. **Scales** via `StandardScaler`
 4. **Splits** temporally (70/15/15) with chronological ordering per group (pro/user)
 5. **Keeps** the `dataset_split` column in place
-
-### -Demo Quality Scorer (`demo_quality.py`) — KT-09
-
-Evaluates the quality of ingested demo data using robust statistical methods based on **Huber's contamination model** (1981):
-
-| Component | Weight | Method |
-|---|---|---|
-| **Tick coverage** | 45% | `tick_count / _EXPECTED_TICKS_PER_DEMO` (1.6M) |
-| **Feature completeness** | 35% | Fraction of non-zero values across health, armor, pos_x/y/z, equipment_value |
-| **Outlier penalty** | 20% | IQR detection on avg_kills, avg_deaths, avg_adr, kd_ratio, avg_kast |
-
-**Outlier detection (Tukey's IQR method):**
-
-| Severity | IQR multiplier | Meaning |
-|---|---|---|
-| Moderate | 1.5× | Unusual stats — to review |
-| Extreme | 3.0× | Highly suspicious stats — probable corruption |
-
-**Quality classification:**
-
-| Score | Recommendation | Conditions |
-|---|---|---|
-| ≥ 0.7 | `"use"` | Sufficient quality + no extreme flags |
-| ≥ 0.4 | `"review"` | Uncertain quality — manual review recommended |
-| < 0.4 | `"skip"` | Insufficient quality — excluded from training |
-
-The robustness of the IQR method guarantees a 25% breakdown point (Huber's epsilon-contamination model): up to 25% of the data can be corrupt without invalidating the detection.
-
-### -Demo Prioritizer (`demo_prioritizer.py`) — KT-09
-
-Ranks available demos by expected coaching value, inspired by **Active Learning** principles (Settles, 2009):
-
-**Two ranking strategies:**
-
-| Strategy | Condition | Method | Metric |
-|---|---|---|---|
-| **Variance** (primary) | JEPA model loaded | Variance of latent-space predictions on demo ticks | High variance = high coaching value |
-| **Diversity** (fallback) | No model available | Composite score: 40% unique players + 30% completeness + 30% player rarity | Maximize distribution coverage |
-
-**Constants:**
-
-| Constant | Value | Purpose |
-|---|---|---|
-| `_MIN_TICKS_FOR_VARIANCE` | 64 | Minimum ticks for meaningful variance |
-| `_MAX_TICKS_SAMPLE` | 2048 | Sampling cap to avoid OOM |
-
-### -Bombsite-Relative Encoding (`bombsite_encoding.py`) — KT-10
-
-Encodes positions relative to bombsites to obtain **approximate equivariance** under CT/T symmetry:
-
-**Bombsite coordinates for 9 maps** (from DDS radar textures + community callouts):
-
-de_dust2, de_mirage, de_inferno, de_nuke, de_overpass, de_anubis, de_vertigo, de_ancient, de_train.
-
-**Key functions:**
-
-| Function | Output | Description |
-|---|---|---|
-| `get_bombsite_distances(pos_x, pos_y, map)` | `(dist_A, dist_B)` | Euclidean distances to bombsite centers |
-| `normalize_position_equivariant(pos_x, pos_y, map, side)` | `[-1, 1]` | Signed differential: CT positive, T negated |
-| `compute_site_proximity(pos_x, pos_y, map)` | `(site, dist_norm)` | Closest site + normalized distance |
-
-**Equivariant design:** For CS2's discrete symmetry (|G| = 2, CT vs T), the encoding is trivially cheap: just negate the output for the opposite side. This allows the model to learn that "being near A site as CT" (defense) has opposite semantics to "being near A site as T" (attack).
-
-**ADDITIVE:** Does NOT modify METADATA_DIM=25. Bombsite-relative features are computed as derived values that can optionally replace pos_x/pos_y in the feature vector via a config flag, or be used as supplemental context in coaching analysis.
 
 ### -Per-Round Stats Generator (`round_stats_builder.py`)
 
