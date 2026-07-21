@@ -1,6 +1,6 @@
 # Ultimate CS2 Coach — Parte 3: Programa, UI, Ferramentas e Build
 
-> **Topicos:** Schema completo do banco de dados (three-tier storage, SQLite WAL, SQLModel ORM), Regime de treinamento e limites de maturidade (CALIBRATING/LEARNING/MATURE), Catalogo das funcoes de perda, Logica Completa do Programa (do lancamento ao conselho): Session Engine, Digester, Teacher, Hunter, Pulse; Interface desktop Qt/PySide6 (13 telas, ViewModels, Qt Signals); Pipeline de ingestao (demo e pro); Console de controle unificada; Onboarding de novo usuario; Arquitetura de storage; Motor de playback e viewer tatico; Dados espaciais e mapas; Observabilidade e logging; Reporting; Quotas e limites; Tolerancia a falhas; Jornada completa do usuario (4 fluxos); Suite de ferramentas (validacao e diagnostico); Test suite; Pre-commit hooks; Build, packaging, deployment; Migracoes Alembic; HLTV sync service; RASP Guard; MatchVisualizer; Arquivos de configuracao runtime; Entry point root-level; Glossario.
+> **Topicos:** Schema completo do banco de dados (three-tier storage, SQLite WAL, SQLModel ORM), Regime de treinamento e limites de maturidade (CALIBRATING/LEARNING/MATURE), Catalogo das funcoes de perda, Logica Completa do Programa (do lancamento ao conselho): Session Engine, Digester, Teacher, Hunter, Pulse; Interface desktop Qt/PySide6 (15 telas, ViewModels, Qt Signals); Pipeline de ingestao (demo e pro); Console de controle unificada; Onboarding de novo usuario; Arquitetura de storage; Motor de playback e viewer tatico; Dados espaciais e mapas; Observabilidade e logging; Reporting; Quotas e limites; Tolerancia a falhas; Jornada completa do usuario (4 fluxos); Suite de ferramentas (validacao e diagnostico); Test suite; Pre-commit hooks; Build, packaging, deployment; Migracoes Alembic; HLTV sync service; RASP Guard; MatchVisualizer; Arquivos de configuracao runtime; Entry point root-level; Glossario.
 >
 > **Autor:** Renan Augusto Macena
 
@@ -22,7 +22,7 @@
     - 12.2 Session Engine e Quad-Daemon
     - 12.3 Daemon Digester e pipeline de ingestao
     - 12.4 Daemon Teacher e training orchestrator
-    - 12.5 Interface Desktop (Qt/PySide6, 13 telas, ViewModels)
+    - 12.5 Interface Desktop (Qt/PySide6, 15 telas, ViewModels)
     - 12.6 Pipeline de Ingestao (`ingestion/`)
     - 12.7 Console de Controle Unificada (`backend/control/`)
     - 12.8 Onboarding e Fluxo de Novo Usuario
@@ -598,7 +598,7 @@ Este capitulo documenta a **logica completa** do Macena CS2 Analyzer, desde o mo
 ```mermaid
 flowchart TB
     subgraph SYSTEM["MACENA CS2 ANALYZER — ARQUITETURA DE COMPONENTES"]
-        UI["Qt/PySide6 + Kivy UI<br/>(Processo Principal)"]
+        UI["Qt/PySide6 UI<br/>(Processo Principal)"]
         SE["Session Engine<br/>(4 Daemons: Scanner, Digester, Teacher, Pulse)"]
         DB["SQLite WAL Three-Tier<br/>(database.db + hltv_metadata.db + match_data/)"]
         INGEST["Pipeline Ingestao<br/>(Demo → Parse → Enrich → Persist)"]
@@ -626,66 +626,30 @@ flowchart TB
 
 ### 12.1 Ponto de Entrada e Sequencia de Inicializacao
 
-O sistema dispoe de **dois entry points principais** (Qt primario, Kivy legacy) e tres entry points de utilidade:
+O sistema dispoe de **um entry point principal** (Qt) e tres entry points de utilidade:
 
 | # | Entry Point | Comando | Papel |
 |---|---|---|---|
 | 1 | **Qt (primario)** | `python -m Programma_CS2_RENAN.apps.qt_app.app` | UI desktop PySide6 |
-| 2 | Kivy (legacy) | `python -m Programma_CS2_RENAN.main` | UI desktop Kivy/KivyMD |
-| 3 | Session Engine | `python -m Programma_CS2_RENAN.backend.console` | Backend headless |
-| 4 | Headless Validator | `python -m Programma_CS2_RENAN.tools.headless_validator` | Validacao CI/CD |
-| 5 | HLTV Sync | `python -m Programma_CS2_RENAN.tools.hltv_sync` | Scraping dados pro |
+| 2 | Session Engine | `python -m Programma_CS2_RENAN.backend.console` | Backend headless |
+| 3 | Headless Validator | `python -m Programma_CS2_RENAN.tools.headless_validator` | Validacao CI/CD |
+| 4 | HLTV Sync | `python -m Programma_CS2_RENAN.tools.hltv_sync` | Scraping dados pro |
 
 #### 12.1.1 Entry Point Qt (Primario) — `apps/qt_app/app.py`
 
 **Arquivo:** `Programma_CS2_RENAN/apps/qt_app/app.py`
 
-A sequencia de inicializacao Qt segue uma abordagem mais moderna baseada em **QApplication** e **signal/slot** em vez do loop de eventos Kivy:
+A sequencia de inicializacao Qt e baseada em **QApplication** e **signal/slot**:
 
 1. **High-DPI setup** — Habilita scaling automatico para displays de alta densidade
 2. **QApplication** — Cria a instancia aplicacao Qt com gestao de args
 3. **Tema e font** — Registra os 3 temas (CS2, CSGO, CS1.6) via QSS e as fontes personalizadas
-4. **MainWindow** — Constroi `QMainWindow` com sidebar + `QStackedWidget` (14 telas)
+4. **MainWindow** — Constroi `QMainWindow` com sidebar + `QStackedWidget` (15 telas)
 5. **Signal wiring** — Conecta os sinais Qt entre sidebar, telas e backend
 6. **First-run gate** — Se `SETUP_COMPLETED=False`, mostra o wizard; caso contrario a home
 7. **Backend console boot** — Lanca o Session Engine como subprocess
 8. **Window show** — Mostra a janela e inicia o loop de eventos Qt
 9. **CoachState polling** — Timer Qt para atualizacao periodica do estado
-
-#### 12.1.2 Entry Point Kivy (Legacy) — `main.py`
-
-**Arquivo:** `Programma_CS2_RENAN/main.py`
-
-Quando o usuario lanca a aplicacao atraves do entry point legacy, `main.py` orquestra uma **sequencia de inicializacao de 9 fases** rigorosamente ordenada. Cada fase deve completar com sucesso antes que a proxima possa comecar. Se uma fase critica falhar, a aplicacao termina com uma mensagem explicita — nunca silenciosamente.
-
-```mermaid
-flowchart TB
-    S1["1. AUDIT INTEGRIDADE RASP<br/>Verifica codebase antes de carregar<br/>bibliotecas pesadas. Se falhar → TERMINA"]
-    S2["2. ESTABILIZACAO PATHS<br/>config.py: sys.path, DATABASE_URL,<br/>LOG_DIR, MODELS_DIR"]
-    S3["3. MIGRACAO BANCO<br/>Alembic: atualiza schema automaticamente<br/>antes de qualquer operacao DB"]
-    S4["4. SENTRY (OPCIONAL)<br/>Error tracking remoto<br/>Nao bloqueia se indisponivel"]
-    S5["5. CONFIGURACAO KIVY<br/>Resolucao 1280x720, fontes personalizadas<br/>(JetBrains Mono, YUPIX), tema e wallpaper"]
-    S6["6. INICIALIZACAO BANCO<br/>init_database(): cria todas as tabelas<br/>SQLModel em database.db (WAL mode)"]
-    S7["7. LANCAMENTO DAEMON<br/>Session Engine como subprocess separado<br/>Singleton lock (Windows Named Mutex)"]
-    S8["8. CONSTRUCAO UI<br/>Builder.load_file(layout.kv)<br/>ScreenManager + registro das telas"]
-    S9["9. ON_START<br/>Refresh quotas, ML status monitor (10s),<br/>notification checker (15s), daemon keep-alive"]
-    S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7 --> S8 --> S9
-    S9 --> RUN["APLICACAO EM EXECUCAO"]
-    style S1 fill:#ff6b6b,color:#fff
-    style S7 fill:#4a9eff,color:#fff
-    style S9 fill:#51cf66,color:#fff
-```
-
-**Detalhes das fases criticas:**
-
-| Fase | Componente | O que faz | Consequencia da falha |
-| ---- | ---------- | --------- | --------------------- |
-| 1 | `integrity.py` (RASP) | Verifica hash dos arquivos fonte contra o manifesto | Terminacao imediata — possivel adulteracao |
-| 2 | `config.py` | Estabiliza `sys.path`, define todas as constantes de path | Erros de importacao em cascata |
-| 3 | `db_migrate.py` | Executa migracoes Alembic pendentes | Schema incompativel — crash em operacoes DB |
-| 5 | Kivy `Config` | Configura `KIVY_NO_CONSOLELOG`, registra fontes, carrega `.kv` | UI nao renderizavel |
-| 6 | `database.py` | `create_all()` em engine SQLite com `check_same_thread=False` | Nenhuma persistencia possivel |
-| 7 | `lifecycle.py` | Lanca subprocess com PYTHONPATH correto, verifica mutex | Nenhuma automacao em background |
 
 ---
 
@@ -709,7 +673,7 @@ O `AppLifecycleManager` e um **Singleton** que gerencia o ciclo de vida da aplic
 
 ```mermaid
 flowchart LR
-    subgraph MAIN["Processo Principal (Qt/Kivy UI)"]
+    subgraph MAIN["Processo Principal (Qt UI)"]
         LIFE["AppLifecycleManager"]
         LIFE -->|"1. Verifica mutex"| LOCK["Single Instance Lock"]
         LIFE -->|"2. Lanca subprocess"| DAEMON["Session Engine"]
@@ -798,7 +762,7 @@ O sistema gerencia paths com uma atencao especial a **portabilidade Windows/Linu
 
 **Arquivo:** `Programma_CS2_RENAN/core/session_engine.py`
 
-O Session Engine e o **coracao pulsante** da automacao do sistema. Vive como subprocess separado e hospeda **4 daemon threads** que trabalham em paralelo, cada um com uma responsabilidade bem definida. Esse design separa completamente o trabalho pesado (parsing demo, treinamento ML) da interface do usuario, garantindo que a GUI Kivy permaneca sempre responsiva.
+O Session Engine e o **coracao pulsante** da automacao do sistema. Vive como subprocess separado e hospeda **4 daemon threads** que trabalham em paralelo, cada um com uma responsabilidade bem definida. Esse design separa completamente o trabalho pesado (parsing demo, treinamento ML) da interface do usuario, garantindo que a GUI Qt permaneca sempre responsiva.
 
 ```mermaid
 flowchart TB
@@ -841,7 +805,7 @@ flowchart TB
 
 ```mermaid
 sequenceDiagram
-    participant UI as Qt/Kivy UI (Main)
+    participant UI as Qt UI (Main)
     participant LC as Lifecycle Manager
     participant SE as Session Engine
     participant H as Scanner
@@ -886,14 +850,14 @@ Cada daemon e protegido por um `try/except` global. Se um daemon crasha:
 
 ### 12.5 Interface Desktop
 
-A interface desktop tem duas implementacoes: **Qt/PySide6** (primaria) e **Kivy/KivyMD** (legacy). Ambas seguem o pattern **MVVM** (Model-View-ViewModel).
+A interface desktop e construida com **Qt/PySide6** seguindo o pattern **MVVM** (Model-View-ViewModel).
 
-#### 12.5.1 Interface Qt (Primaria) — `apps/qt_app/`
+#### 12.5.1 Interface Qt — `apps/qt_app/`
 
 **Diretorio:** `Programma_CS2_RENAN/apps/qt_app/`
 **Arquivos-chave:** `app.py`, `main_window.py`, `core/i18n_bridge.py`, `core/theme_engine.py`, `screens/`
 
-A interface Qt e construida com **PySide6 (Qt 6)** e utiliza um pattern **MVVM com Qt Signals/Slots**. A `MainWindow` (`QMainWindow`) e composta por uma **sidebar de navegacao** e um **`QStackedWidget`** que hospeda as 14 telas.
+A interface Qt e construida com **PySide6 (Qt 6)** e utiliza um pattern **MVVM com Qt Signals/Slots**. A `MainWindow` (`QMainWindow`) e composta por uma **sidebar de navegacao** e um **`QStackedWidget`** que hospeda as 15 telas.
 
 | Especificacao | Detalhe |
 |---|---|
@@ -923,45 +887,7 @@ A interface Qt inclui **2 web views** baseadas em templates HTML/Jinja2, servida
 
 O `WebBridge` (`core/web_bridge.py`) gerencia a comunicacao bidirecional entre o backend Python e as web views via `QWebChannel`, expondo metodos Python como APIs JavaScript invocaveis a partir do template HTML. Essa arquitetura hibrida permite utilizar bibliotecas de visualizacao web (graficos interativos, formatacao rica) mantendo a logica de negocio no backend Python.
 
-#### 12.5.2 Interface Kivy (Legacy) — `apps/desktop_app/`
-
-**Diretorio:** `Programma_CS2_RENAN/apps/desktop_app/`
-**Arquivos-chave:** `layout.kv`, `wizard_screen.py`, `player_sidebar.py`, `tactical_viewer_screen.py`, `tactical_viewmodels.py`, `tactical_map.py`, `timeline.py`, `widgets.py`, `help_screen.py`, `ghost_pixel.py`
-
-A interface legacy e construida com **Kivy + KivyMD** e segue o pattern **MVVM** (Model-View-ViewModel). O `ScreenManager` gerencia a navegacao entre as telas com transicoes `FadeTransition`.
-
-```mermaid
-flowchart TB
-    SM["ScreenManager<br/>(MDScreenManager + FadeTransition)"]
-    SM --> WIZ["wizard<br/>Setup inicial<br/>(nome, papel, paths)"]
-    SM --> HOME["home<br/>Dashboard principal<br/>(quota, status servicos,<br/>confianca crencas)"]
-    SM --> COACH["coach<br/>Insight coaching + Chat AI<br/>(cards severidade, radar skill,<br/>trends historicos)"]
-    SM --> TV["tactical_viewer<br/>Mapa 2D + Playback<br/>(jogadores, granadas,<br/>fantasma, heatmap)"]
-    SM --> SETTINGS["settings<br/>Personalizacao<br/>(tema, fonte, idioma,<br/>paths demo)"]
-    SM --> HELP["help<br/>Tutorial + FAQ<br/>(sistema ajuda integrado)"]
-    SM --> MH["match_history<br/>Lista demos analisadas"]
-    SM --> MD["match_detail<br/>Estatisticas demo unica"]
-    SM --> PERF["performance<br/>Radar skill + Tendencias"]
-    SM --> UP["user_profile<br/>Bio, papel, Steam sync"]
-    SM --> PROF["profile<br/>Perfil publico jogador"]
-    SM --> STEAM["steam_config<br/>Configuracao Steam API"]
-    SM --> FACEIT["faceit_config<br/>Configuracao FACEIT"]
-    SM --> PROCOMP["pro_comparison<br/>Comparacao com Pro<br/>(benchmark HLTV)"]
-
-    WIZ -->|"SETUP_COMPLETED=True"| HOME
-    HOME -->|"Upload demo"| COACH
-    HOME -->|"Tactical Viewer"| TV
-    UP -->|"Configura Steam"| STEAM
-    UP -->|"Configura FACEIT"| FACEIT
-    PERF -->|"Compara com Pro"| PROCOMP
-
-    style WIZ fill:#ffd43b,color:#000
-    style HOME fill:#4a9eff,color:#fff
-    style COACH fill:#51cf66,color:#fff
-    style TV fill:#ff6b6b,color:#fff
-```
-
-**14 telas da interface:**
+**15 telas da interface:**
 
 | Tela | Papel | Componentes-chave |
 | ---- | ----- | ----------------- |
@@ -978,6 +904,7 @@ flowchart TB
 | **Profile** | Perfil publico | Visualizacao perfil publico do jogador |
 | **Steam Config** | Configuracao Steam | Insercao e validacao API key Steam |
 | **Pro Comparison** | Comparacao pro | Comparacao estatisticas usuario com jogadores profissionais HLTV, benchmark prestacional |
+| **Pro Player Detail** | Detalhe jogador pro | Perfil individual do jogador profissional HLTV com estatisticas completas de carreira |
 | **FACEIT Config** | Configuracao FACEIT | Insercao e validacao API key FACEIT |
 
 **Widgets personalizados:**
@@ -985,7 +912,7 @@ flowchart TB
 | Widget | Arquivo | Funcao |
 | ------ | ------- | ------ |
 | `PlayerSidebar` | `player_sidebar.py` | Lista CT/T com icones de papel, saude/armadura, arma atual, dinheiro, e estado vivo/morto |
-| `TacticalMap` | `tactical_map.py` | Canvas 2D com rendering multi-nivel: textura mapa → heatmap → jogadores → granadas → fantasma (QPainter em Qt, Canvas Kivy em legacy) |
+| `TacticalMap` | `tactical_map.py` | Canvas 2D com rendering multi-nivel: textura mapa → heatmap → jogadores → granadas → fantasma (QPainter) |
 | `Timeline` | `timeline.py` | Scrubber horizontal com tick numbers, marcadores de eventos coloridos, drag-to-seek, double-click jump |
 | `GhostPixel` | `ghost_pixel.py` | Rendering do circulo fantasma semi-transparente (posicao otima predita por RAP) |
 
@@ -1021,7 +948,7 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    subgraph VIEW["VIEW (Kivy Widgets)"]
+    subgraph VIEW["VIEW (Qt Widgets)"]
         TM["TacticalMap<br/>(canvas 2D)"]
         TL["Timeline<br/>(scrubber tick)"]
         PS["PlayerSidebar<br/>(lista CT/T)"]
@@ -1480,7 +1407,7 @@ O sistema de playback tatico permite ao usuario **reviver as proprias partidas**
 ```mermaid
 flowchart TB
     subgraph VIEWER["TACTICAL VIEWER - COMPONENTES"]
-        MAP["TacticalMap (QPainter Qt / Canvas Kivy)<br/>Rendering 2D: jogadores (circulos coloridos),<br/>granadas (overlay HE/molotov/fumo/flash),<br/>heatmap (fundo calor gaussiano),<br/>fantasma AI (circulo transparente posicao otima)"]
+        MAP["TacticalMap (QPainter)<br/>Rendering 2D: jogadores (circulos coloridos),<br/>granadas (overlay HE/molotov/fumo/flash),<br/>heatmap (fundo calor gaussiano),<br/>fantasma AI (circulo transparente posicao otima)"]
         TIMELINE["Timeline (Scrubber)<br/>Barra de rolagem com tick numbers,<br/>marcadores eventos (kills, plantagens),<br/>drag para buscar, double-click para pular"]
         SIDEBAR["PlayerSidebar (CT + T)<br/>Lista jogadores por time,<br/>saude, armadura, arma, dinheiro,<br/>jogador selecionado destacado"]
         CONTROLS["Controles Playback<br/>Play/Pause, velocidade (0.25x → 8x),<br/>seletor round/segmento,<br/>toggle fantasma on/off"]
@@ -1506,7 +1433,7 @@ flowchart TB
 
 **PlaybackEngine — Arquitetura interna:**
 
-O PlaybackEngine gerencia a reproducao frame-by-frame com interpolacao temporal. Na implementacao Qt, o timer de atualizacao utiliza `QTimer` em vez de `Kivy Clock.schedule_interval`, mantendo a mesma logica de interpolacao e buffering:
+O PlaybackEngine gerencia a reproducao frame-by-frame com interpolacao temporal. O timer de atualizacao utiliza `QTimer`, mantendo a mesma logica de interpolacao e buffering:
 
 | Caracteristica | Detalhe |
 | -------------- | ------- |
@@ -1633,7 +1560,7 @@ Gerencia o carregamento das texturas dos mapas e dos assets UI:
 | ----- | ------- | -------------- | ----- |
 | Textura mapa (radar) | PNG 1024x1024 | ~500KB | Sim (in-memory) |
 | Icones jogador | PNG 32x32 | ~2KB | Sim |
-| Fontes (JetBrains Mono, YUPIX) | TTF | ~200KB | Sim (registradas no Kivy) |
+| Fontes (JetBrains Mono, YUPIX) | TTF | ~200KB | Sim (registradas via Qt) |
 | Wallpapers temas | PNG 1920x1080 | ~2MB | Lazy load |
 
 ---
@@ -1761,7 +1688,7 @@ flowchart TB
 | Caracteristica | Detalhe |
 | -------------- | ------- |
 | **Thread-safety** | `generate_heatmap_data()` roda em thread separada (nao bloqueia UI) |
-| **Texture creation** | Apenas no thread principal (requisito OpenGL Kivy) |
+| **Texture creation** | Apenas no thread principal (requisito do thread Qt) |
 | **Tipo** | Ocupacao gaussiana 2D (blur kernel parametrico) |
 | **Diferencial** | Subtrai heatmap pro de heatmap usuario → vermelho (tempo demais), azul (pouco tempo) |
 | **Hotspot** | Identifica clusters de posicao para training posicional |
@@ -1907,7 +1834,7 @@ Esta secao descreve os **4 fluxos principais** que um usuario percorre durante o
 ```mermaid
 sequenceDiagram
     participant U as Usuario
-    participant UI as Qt/Kivy UI
+    participant UI as Qt UI
     participant H as Scanner Daemon
     participant D as Digester Daemon
     participant CS as CoachingService
@@ -2100,7 +2027,7 @@ A suite de ferramentas e uma **colecao de 41 scripts** distribuidos em duas dire
 flowchart TB
     subgraph PYRAMID["PIRAMIDE DE VALIDACAO (do mais rapido ao mais profundo)"]
         L1["NIVEL 1: Headless Validator<br/>23 fases, 319 verificacoes, ~10 segundos<br/>Gate de regressao obrigatorio<br/>Exit code 0 = PASS"]
-        L2["NIVEL 2: pytest Suite<br/>94 arquivos de teste<br/>Unit + Integration + E2E<br/>~2-5 minutos"]
+        L2["NIVEL 2: pytest Suite<br/>130 arquivos de teste<br/>Unit + Integration + E2E<br/>~2-5 minutos"]
         L3["NIVEL 3: Backend Validator<br/>Verifica import, schema,<br/>coerencia interfaces<br/>~30 segundos"]
         L4["NIVEL 4: Goliath Hospital<br/>10 departamentos diagnosticos<br/>Audit profundo multi-sistema<br/>~1-3 minutos"]
         L5["NIVEL 5: Brain Verify (planejado)<br/>118 regras qualidade intelligence<br/>16 secoes de verificacao<br/>~2-5 minutos"]
@@ -2117,7 +2044,7 @@ flowchart TB
 
 | Fase | Verificacao | Detalhe |
 | ---- | ----------- | ------- |
-| 1 | **Ambiente** | Python >= 3.10, dependencias criticas presentes (torch, kivy, sqlmodel, demoparser2) |
+| 1 | **Ambiente** | Python >= 3.10, dependencias criticas presentes (torch, pyside6, sqlmodel, demoparser2) |
 | 2 | **Import Core** | `config.py`, `spatial_data.py`, `lifecycle.py` — os modulos fundamentais se carregam sem erros |
 | 3 | **Import Backend** | `nn/`, `processing/`, `storage/`, `services/`, `coaching/` — todos os subsistemas backend importaveis |
 | 4 | **Schema DB** | As 21 tabelas SQLModel se criam corretamente, as relacoes sao validas |
@@ -2210,7 +2137,7 @@ Esta ferramenta executa um audit em **3 fases** na pipeline ML:
 | `dead_code_detector.py` | `tools/` | Identifica codigo morto nao referenciado |
 | `sync_integrity_manifest.py` | `tools/` | Atualiza `integrity_manifest.json` com hash SHA-256 |
 | `project_snapshot.py` | `tools/` | Snapshot completo do estado do projeto |
-| `ui_diagnostic.py` | `tools/` | Diagnostico especifico UI (Qt/Kivy) |
+| `ui_diagnostic.py` | `tools/` | Diagnostico especifico UI (Qt) |
 | `build_pipeline.py` | Root `tools/` | Pipeline de build completa |
 | `Feature_Audit.py` | Root | Audit do feature vector 25-dim |
 | `Sanitize_Project.py` | Root | Limpeza arquivos temporarios, cache, artifacts |
@@ -2221,7 +2148,7 @@ Esta ferramenta executa um audit em **3 fases** na pipeline ML:
 ### 12.18 Arquitetura da Test Suite (`tests/`)
 
 **Diretorio:** `Programma_CS2_RENAN/tests/`
-**Arquivos totais:** 94 arquivos de teste + `conftest.py` + 10 scripts forensics + 15 scripts de verificacao
+**Arquivos totais:** 130 arquivos de teste + `conftest.py` + 10 scripts forensics + 15 scripts de verificacao
 
 A test suite e organizada segundo o **principio da piramide dos testes**: muitos unit tests (rapidos, isolados), menos integration tests (mais lentos, com dependencias reais), e poucos end-to-end tests (completos mas custosos).
 
@@ -2415,7 +2342,7 @@ Cada fase de remediacao produziu um relatorio detalhado salvo na diretoria `repo
 | F5-35 | Control | `time.sleep()` loop para stop — migrado para `threading.Event` |
 | F6-XX | Analysis | Motores analise sem graceful degradation — crash em inputs incompletos |
 | F7-XX | Knowledge | RAG sem index validation — embedding dimensoes incoerentes |
-| F8-XX | UI | Widgets Kivy sem feedback visual — acoes silenciosas confundem o usuario |
+| F8-XX | UI | Widgets Qt sem feedback visual — acoes silenciosas confundem o usuario |
 
 ---
 
@@ -2482,7 +2409,7 @@ O projeto inclui um sistema de build e packaging para a distribuicao da aplicaca
 
 | Arquivo | Proposito | Dependencias |
 | ------- | --------- | ------------ |
-| `requirements.txt` | **Base** — dependencias principais para execucao | 28 pacotes (torch, kivy, sqlmodel, demoparser2, playwright, httpx, etc.) |
+| `requirements.txt` | **Base** — dependencias principais para execucao | 28 pacotes (torch, pyside6, sqlmodel, demoparser2, playwright, httpx, etc.) |
 | `requirements-ci.txt` | **CI/CD** — adiciona ferramentas de teste e analise | pytest, coverage, mypy, black, isort, pre-commit |
 | `requirements-lock.txt` | **Lock** — versoes exatas para builds reproduciveis | Pin exato de cada dependencia e sub-dependencia |
 
@@ -2798,7 +2725,7 @@ Macena CS2 Analyzer e uma aplicacao **estratificada e modular** organizada em 5 
 ```mermaid
 flowchart TB
     subgraph L1["NIVEL 1: APRESENTACAO"]
-        KIVY["Kivy + KivyMD<br/>ScreenManager, Widgets, Canvas<br/>Layout KV, Font, Tema"]
+        QT["Qt/PySide6<br/>QMainWindow, QStackedWidget<br/>Temas QSS, i18n, QPainter"]
         MVVM["Pattern MVVM<br/>ViewModel para cada tela<br/>Binding propriedades bidirecional"]
     end
     subgraph L2["NIVEL 2: APLICACAO"]
@@ -2846,8 +2773,7 @@ flowchart TB
 | **ML Core** | PyTorch | 2.x | Redes neurais (JEPA, RAP, MoE, NeuralRoleHead, WinProb) |
 | **ML Ext** | ncps | latest | Liquid Time-Constant Networks (LTC) para memoria RAP |
 | **ML Ext** | hflayers | latest | Hopfield layers para atencao associativa |
-| **UI** | Kivy | 2.x | Framework UI cross-platform |
-| **UI** | KivyMD | 1.x | Material Design widgets |
+| **UI** | PySide6 | 6.x | Bindings Qt 6 para Python — framework UI desktop primario |
 | **DB** | SQLModel | latest | ORM (Pydantic + SQLAlchemy) |
 | **DB** | SQLAlchemy | 2.x | Engine banco subjacente |
 | **DB** | Alembic | 1.x | Migracoes schema |
@@ -2876,7 +2802,7 @@ flowchart TB
 
 | Processo | Tipo | Responsabilidades | Comunicacao |
 | -------- | ---- | ----------------- | ----------- |
-| **Main** | Kivy GUI | Interface usuario, rendering, interacao | Polling DB a cada 10-15s |
+| **Main** | Qt GUI | Interface usuario, rendering, interacao | Polling DB a cada 10-15s |
 | **Daemon** | Subprocess (Session Engine) | Scanner, Digester, Teacher, Pulse | stdin pipe (IPC) + DB compartilhado |
 | **Servicos Opcionais** | Processos externos | HLTV sync, Ollama LLM local | HTTP/API + supervisao Console |
 
@@ -2939,16 +2865,6 @@ Sistema de lock file para concorrencia entre processos D-track / HLTV-track. Uti
 | **`lock(name)` (context manager)** | Acquire na entrada, release na saida |
 | **Signal handlers** | `install_signal_handlers()` registra handlers SIGTERM/SIGINT que liberam todos os locks antes da terminacao |
 | **`_held_locks: Set[str]`** | Estado module-level que rastreia os locks atualmente detidos |
-
-**Platform Utilities** (`core/platform_utils.py`):
-
-Deteccao de plataforma e drives disponiveis para operacoes de storage cross-platform.
-
-| Funcao | Descricao |
-|---|---|
-| `_get_platform() → str` | Retorna `"win"`, `"macosx"`, `"linux"` ou raw `sys.platform` |
-| `platform` (constante module-level) | Resultado de `_get_platform()` avaliado no import |
-| `get_available_drives() → List[str]` | **PU-02**: Windows → `_get_windows_drives()` com bitmask ctypes `GetLogicalDrives()` + fallback `psutil.disk_partitions()`; Linux/macOS → `["/"]`; Outro → diretorio home validado |
 
 ---
 
@@ -3013,7 +2929,7 @@ flowchart TB
 
 **Fim do documento — Guia completo do Macena CS2 Analyzer**
 
-Total arquivos `.py` no projeto: **~406** (em `Programma_CS2_RENAN/`, ~480 project-wide)
+Total arquivos `.py` no projeto: **445** (em `Programma_CS2_RENAN/`)
 Total linhas de codigo Python verificadas: **~ 102.000+**
 Subsistemas AI cobertos: **8** (NN Core, VL-JEPA, RAP Coach, Servicos de Coaching, Motores de Coaching, Conhecimento, Analise, Processamento + Observatorio Treinamento)
 Subsistemas programa cobertos: **18** (Inicializacao, Lifecycle, Configuracao, Session Engine, UI Desktop, Ingestao, Storage, Observabilidade, Console de Controle, RASP Guard, HLTV Sync, Orquestrador Ingestao, ResourceManager, Tools Suite, Test Suite, Pre-commit, Build/Packaging, Migracoes Alembic)
@@ -3022,10 +2938,10 @@ Motores de analise documentados: **10** (Papel, WinProb, GameTree, Crenca, Engan
 Motores de coaching documentados: **7** (HybridEngine, CorrectionEngine, ExplainabilityGenerator, NNRefinement, ProBridge, TokenResolver, LongitudinalEngine)
 Servicos adicionais documentados: **7** (CoachingDialogue, LessonGenerator, LLMService, VisualizationService, ProfileService, AnalysisService, TelemetryClient)
 Tabelas do banco documentadas: **21** (distribuidas em arquitetura three-tier storage: `database.db`, `hltv_metadata.db`, `match_data/{id}.db`)
-Telas UI documentadas: **14** (Wizard, Home, Coach, Tactical Viewer, Settings, Help, Match History, Match Detail, Performance, User Profile, Profile, Pro Comparison, Steam Config, FACEIT Config) — Qt/PySide6 (primario) + Kivy/KivyMD (legacy)
+Telas UI documentadas: **15** (Wizard, Home, Coach, Tactical Viewer, Settings, Help, Match History, Match Detail, Performance, User Profile, Profile, Pro Comparison, Steam Config, FACEIT Config, Pro Player Detail) — Qt/PySide6
 Daemons documentados: **4** (Scanner, Digester, Teacher, Pulse)
 Ferramentas de validacao documentadas: **41** (Headless Validator, Brain Verify, Goliath Hospital, DB Inspector, Demo Inspector, ML Coach Debugger, Backend Validator, Dead Code Detector, Dev Health, Feature Audit, etc.)
-Arquivos de teste documentados: **94** (+ conftest.py, 10 forensics, 15 verification scripts)
+Arquivos de teste documentados: **130** (+ conftest.py, 10 forensics, 15 verification scripts)
 Fases headless validator: **23** (319 verificacoes automatizadas)
 Pre-commit hooks documentados: **13** (4 locais custom + 7 padrao + 2 Python)
 Pilares arquiteturais: **24** (incluidos Three-Tier Storage, Calibracao Bayesiana Live, Controle Live Training, Circuit Breaker, Piramide Validacao, RASP Guard, Pre-commit Gate, ResourceManager HW-aware, Forensics)
@@ -3059,10 +2975,10 @@ flowchart TB
     subgraph PART3["PARTE 3 — Programa Completo"]
         P3_DB["Banco<br/>(21 tabelas, three-tier)"]
         P3_TR["Training Regime<br/>(4 fases, VL-JEPA 2-stage)"]
-        P3_UI["Desktop UI<br/>(14 telas, MVVM)"]
+        P3_UI["Desktop UI<br/>(15 telas, MVVM)"]
         P3_SE["Session Engine<br/>(4 daemons)"]
         P3_TL["Tools Suite<br/>(41 ferramentas)"]
-        P3_TS["Test Suite<br/>(94 arquivos)"]
+        P3_TS["Test Suite<br/>(130 arquivos)"]
     end
 
     P1_NN -->|"Modelos usados por"| P2_CE
