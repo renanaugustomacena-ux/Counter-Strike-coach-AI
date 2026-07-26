@@ -15,6 +15,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 import torch
+from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from Programma_CS2_RENAN.backend.nn.coach_manager import (
@@ -72,6 +73,11 @@ def _make_manager(monkeypatch):
     mgr.feature_names = TRAINING_FEATURES
     mgr.target_indices = TARGET_INDICES
     return mgr, engine
+
+
+# Captured before the autouse fixture below replaces it, so the tests that
+# exercise _get_completed_demo_names itself can put the real one back.
+_REAL_GET_COMPLETED_DEMO_NAMES = CoachTrainingManager.__dict__["_get_completed_demo_names"]
 
 
 @pytest.fixture(autouse=True)
@@ -893,6 +899,90 @@ class TestEligibilityAwareSplits:
         with Session(engine) as session:
             matches = session.exec(select(PlayerMatchStats)).all()
         assert all(m.dataset_split in ("train", "val", "test") for m in matches)
+
+
+class TestCompletenessEnumerationIsFaultTolerant:
+    """One unreadable shard must not erase the whole completeness signal.
+
+    2026-07-26: consolidating the scattered shard directories brought four
+    legacy-schema shards (predating the match_complete column) into the live
+    directory. _get_completed_demo_names wrapped the entire enumeration in a
+    single try/except, so the first OperationalError aborted the loop and
+    returned None — "signal unavailable" — which drops the shard gate and lets
+    all 259 permanently-incomplete historical demos back into TRAIN. That is
+    the exact failure the gate exists to prevent, re-entered through its own
+    error handler. Measured live: 310 shards readable, 96 complete, 4 raising.
+    """
+
+    @staticmethod
+    def _install_fake_manager(monkeypatch, metadata_by_id, raising_ids=()):
+        # Undo the autouse isolation fixture: this class tests the real method.
+        monkeypatch.setattr(
+            CoachTrainingManager,
+            "_get_completed_demo_names",
+            _REAL_GET_COMPLETED_DEMO_NAMES,
+        )
+
+        class _FakeMeta:
+            def __init__(self, demo_name, match_complete):
+                self.demo_name = demo_name
+                self.match_complete = match_complete
+
+        class _FakeManager:
+            def list_available_matches(self):
+                return list(metadata_by_id)
+
+            def get_metadata(self, match_id):
+                if match_id in raising_ids:
+                    raise SQLAlchemyError("no such column: match_metadata.match_complete")
+                name, complete = metadata_by_id[match_id]
+                return _FakeMeta(name, complete)
+
+        monkeypatch.setattr(
+            "Programma_CS2_RENAN.backend.storage.match_data_manager.get_match_data_manager",
+            lambda *a, **k: _FakeManager(),
+        )
+
+    def test_unreadable_shard_is_skipped_not_fatal(self, monkeypatch):
+        self._install_fake_manager(
+            monkeypatch,
+            {1: ("good_a", True), 2: ("legacy", True), 3: ("good_b", True)},
+            raising_ids={2},
+        )
+        completed = CoachTrainingManager._get_completed_demo_names()
+        assert completed == {"good_a", "good_b"}
+
+    def test_unreadable_shard_is_treated_as_incomplete(self, monkeypatch):
+        """Conservative direction: unknown completeness must not mean eligible."""
+        self._install_fake_manager(
+            monkeypatch, {1: ("good_a", True), 2: ("legacy", True)}, raising_ids={2}
+        )
+        assert "legacy" not in (CoachTrainingManager._get_completed_demo_names() or set())
+
+    def test_manager_construction_failure_still_returns_none(self, monkeypatch):
+        """A total failure is still 'signal unavailable' — legacy contract kept."""
+
+        monkeypatch.setattr(
+            CoachTrainingManager,
+            "_get_completed_demo_names",
+            _REAL_GET_COMPLETED_DEMO_NAMES,
+        )
+
+        def _boom(*_a, **_k):
+            raise OSError("match_data directory is gone")
+
+        monkeypatch.setattr(
+            "Programma_CS2_RENAN.backend.storage.match_data_manager.get_match_data_manager",
+            _boom,
+        )
+        assert CoachTrainingManager._get_completed_demo_names() is None
+
+    def test_all_shards_unreadable_returns_none(self, monkeypatch):
+        """Zero readable shards is indistinguishable from no signal at all."""
+        self._install_fake_manager(
+            monkeypatch, {1: ("a", True), 2: ("b", True)}, raising_ids={1, 2}
+        )
+        assert CoachTrainingManager._get_completed_demo_names() is None
 
 
 class TestWholeMatchEligibility:

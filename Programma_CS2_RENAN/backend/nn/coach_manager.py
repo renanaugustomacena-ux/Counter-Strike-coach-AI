@@ -964,7 +964,18 @@ class CoachTrainingManager:
     def _get_completed_demo_names():
         """P4-A: Return set of demo_names whose per-match DB has match_complete=True.
 
-        Returns None if match data manager is unavailable (graceful degradation).
+        Returns None only when the signal is genuinely unavailable — the manager
+        cannot be built, the directory cannot be listed, or not one shard could
+        be read. A shard that individually fails to answer is counted as *not
+        complete* and the enumeration continues.
+
+        That distinction is load-bearing. Enumeration used to sit inside one
+        try/except, so the first unreadable shard aborted the loop and returned
+        None; None drops the eligibility gate, which readmits the 259
+        permanently-incomplete historical demos the gate exists to keep out.
+        Four legacy-schema shards predating the match_complete column are enough
+        to trigger it (measured 2026-07-26: 310 readable, 96 complete, 4
+        raising OperationalError).
         """
         try:
             from Programma_CS2_RENAN.backend.storage.match_data_manager import (
@@ -972,15 +983,31 @@ class CoachTrainingManager:
             )
 
             mdm = get_match_data_manager()
-            completed = set()
-            for match_id in mdm.list_available_matches():
-                meta = mdm.get_metadata(match_id)
-                if meta and getattr(meta, "match_complete", False):
-                    completed.add(meta.demo_name)
-            return completed if completed else None
+            match_ids = list(mdm.list_available_matches())
         except (SQLAlchemyError, OSError, AttributeError) as e:
             app_logger.debug("P4-A: match completeness check unavailable: %s", e)
             return None
+
+        completed = set()
+        unreadable = 0
+        for match_id in match_ids:
+            try:
+                meta = mdm.get_metadata(match_id)
+            except (SQLAlchemyError, OSError, AttributeError) as e:
+                unreadable += 1
+                app_logger.debug("P4-A: shard %s could not report completeness: %s", match_id, e)
+                continue
+            if meta and getattr(meta, "match_complete", False):
+                completed.add(meta.demo_name)
+
+        if unreadable:
+            app_logger.warning(
+                "P4-A: %d of %d shards could not report completeness (legacy schema "
+                "or damaged file) — counted as incomplete, not as a missing signal.",
+                unreadable,
+                len(match_ids),
+            )
+        return completed if completed else None
 
     def _train_phase(self, is_pro=True, base_model=None, context=None):
         train_data = self._fetch_training_data(is_pro, split="train")
