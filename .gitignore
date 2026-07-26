@@ -141,6 +141,14 @@ PYCHARM_CONFIGURATION_GUIDE*.md
 *.db.pre_chat*
 *.db.backup
 *.db.pre_*
+*.db.old_*
+*.pre_rating_repair_*.csv
+
+# Storage relocation artifacts: the live monolith and its shard dir are symlinks
+# to whatever volume currently hosts them; the .old_* siblings are pre-migration
+# snapshots kept until the relocated copy is revalidated.
+/Programma_CS2_RENAN/backend/storage/match_data
+/Programma_CS2_RENAN/backend/storage/match_data.old_*/
 
 # Generated FAISS / RAG indexes (rebuilt by the knowledge ingestion pipeline)
 /Programma_CS2_RENAN/indexes/

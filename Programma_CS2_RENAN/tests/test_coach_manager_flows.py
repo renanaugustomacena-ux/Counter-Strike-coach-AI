@@ -19,6 +19,7 @@ from sqlmodel import Session, SQLModel, create_engine, select
 
 from Programma_CS2_RENAN.backend.nn.coach_manager import (
     MATCH_AGGREGATE_FEATURES,
+    MIN_COMPLETE_MAP_ROUNDS,
     TARGET_INDICES,
     TRAINING_FEATURES,
     CoachTrainingManager,
@@ -27,6 +28,7 @@ from Programma_CS2_RENAN.backend.storage.db_models import (
     CoachState,
     PlayerMatchStats,
     PlayerProfile,
+    RoundStats,
 )
 
 # ---------------------------------------------------------------------------
@@ -888,6 +890,199 @@ class TestEligibilityAwareSplits:
             CoachTrainingManager, "_get_completed_demo_names", staticmethod(lambda: None)
         )
         mgr.assign_dataset_splits()
+        with Session(engine) as session:
+            matches = session.exec(select(PlayerMatchStats)).all()
+        assert all(m.dataset_split in ("train", "val", "test") for m in matches)
+
+
+class TestWholeMatchEligibility:
+    """Shard presence is not match completeness.
+
+    2026-07-26: HLTV publishes some maps as two `-p1`/`-p2` files. Each half
+    ingests as an independent match and writes its own shard, so the P4-A
+    shard-completeness gate passed all of them — five fragments (2, 5, 6, 7
+    and 9 rounds) landed in TRAIN, one of them with avg_kills/avg_adr at 0.0
+    for all ten players. The last-tick scoreboard read is correct for a
+    fragment that never reaches a populated scoreboard; the defect is that
+    nothing downstream asserted the match was whole. Round count and nonzero
+    aggregates are the properties that actually express "whole match".
+    """
+
+    @staticmethod
+    def _seed_rounds(engine, demo_name, n_rounds, players=("Pro0",)):
+        with Session(engine) as session:
+            for rnd in range(1, n_rounds + 1):
+                for player in players:
+                    session.add(
+                        RoundStats(demo_name=demo_name, round_number=rnd, player_name=player)
+                    )
+            session.commit()
+
+    def test_fragment_below_round_floor_is_ineligible(self, monkeypatch):
+        """A 5-round half-map never reaches a split, even with a complete shard."""
+        mgr, engine = _make_manager(monkeypatch)
+        _seed_matches(engine, pro_count=4)
+        completed = {f"pro_demo_{i}" for i in range(4)}
+        monkeypatch.setattr(
+            CoachTrainingManager, "_get_completed_demo_names", staticmethod(lambda: completed)
+        )
+        for i in range(3):
+            self._seed_rounds(engine, f"pro_demo_{i}.dem", MIN_COMPLETE_MAP_ROUNDS + 5)
+        self._seed_rounds(engine, "pro_demo_3.dem", 5)  # the fragment
+
+        mgr.assign_dataset_splits()
+
+        with Session(engine) as session:
+            splits = {
+                m.demo_name: m.dataset_split for m in session.exec(select(PlayerMatchStats)).all()
+            }
+        assert splits["pro_demo_3.dem"] == "unassigned"
+        assert all(splits[f"pro_demo_{i}.dem"] != "unassigned" for i in range(3))
+
+    def test_round_floor_boundary_is_inclusive(self, monkeypatch):
+        """13 rounds is the fastest possible decided CS2 map (13-0) — eligible.
+
+        12 is a completed half and must not pass as a whole map.
+        """
+        mgr, engine = _make_manager(monkeypatch)
+        _seed_matches(engine, pro_count=2)
+        completed = {"pro_demo_0", "pro_demo_1"}
+        monkeypatch.setattr(
+            CoachTrainingManager, "_get_completed_demo_names", staticmethod(lambda: completed)
+        )
+        self._seed_rounds(engine, "pro_demo_0.dem", MIN_COMPLETE_MAP_ROUNDS - 1)
+        self._seed_rounds(engine, "pro_demo_1.dem", MIN_COMPLETE_MAP_ROUNDS)
+
+        mgr.assign_dataset_splits()
+
+        with Session(engine) as session:
+            splits = {
+                m.demo_name: m.dataset_split for m in session.exec(select(PlayerMatchStats)).all()
+            }
+        assert splits["pro_demo_0.dem"] == "unassigned"
+        assert splits["pro_demo_1.dem"] != "unassigned"
+
+    def test_all_zero_aggregates_are_ineligible(self, monkeypatch):
+        """Round count alone is not enough — zeroed aggregates are degenerate labels."""
+        mgr, engine = _make_manager(monkeypatch)
+        _seed_matches(engine, pro_count=3)
+        completed = {f"pro_demo_{i}" for i in range(3)}
+        monkeypatch.setattr(
+            CoachTrainingManager, "_get_completed_demo_names", staticmethod(lambda: completed)
+        )
+        for i in range(3):
+            self._seed_rounds(engine, f"pro_demo_{i}.dem", MIN_COMPLETE_MAP_ROUNDS + 8)
+        with Session(engine) as session:
+            zeroed = session.exec(
+                select(PlayerMatchStats).where(PlayerMatchStats.demo_name == "pro_demo_2.dem")
+            ).all()
+            for m in zeroed:
+                m.avg_kills = 0.0
+                m.avg_adr = 0.0
+                session.add(m)
+            session.commit()
+
+        mgr.assign_dataset_splits()
+
+        with Session(engine) as session:
+            splits = {
+                m.demo_name: m.dataset_split for m in session.exec(select(PlayerMatchStats)).all()
+            }
+        assert splits["pro_demo_2.dem"] == "unassigned"
+        assert all(splits[f"pro_demo_{i}.dem"] != "unassigned" for i in range(2))
+
+    def test_stale_split_on_fragment_is_reset(self, monkeypatch):
+        """A fragment already sitting in TRAIN is evicted on the next cycle."""
+        mgr, engine = _make_manager(monkeypatch)
+        _seed_matches(engine, pro_count=3)
+        completed = {f"pro_demo_{i}" for i in range(3)}
+        monkeypatch.setattr(
+            CoachTrainingManager, "_get_completed_demo_names", staticmethod(lambda: completed)
+        )
+        for i in range(2):
+            self._seed_rounds(engine, f"pro_demo_{i}.dem", MIN_COMPLETE_MAP_ROUNDS + 3)
+        self._seed_rounds(engine, "pro_demo_2.dem", 2)
+        with Session(engine) as session:
+            for m in session.exec(select(PlayerMatchStats)).all():
+                m.dataset_split = "train"
+                session.add(m)
+            session.commit()
+
+        mgr.assign_dataset_splits()
+
+        with Session(engine) as session:
+            splits = {
+                m.demo_name: m.dataset_split for m in session.exec(select(PlayerMatchStats)).all()
+            }
+        assert splits["pro_demo_2.dem"] == "unassigned"
+
+    def test_a_match_never_straddles_two_splits(self, monkeypatch):
+        """Split boundaries fall between matches, never inside one.
+
+        2026-07-26: temporal_assign sliced the PlayerMatchStats *row* list, and
+        match_date carries per-row microsecond spread, so a demo whose ten rows
+        crossed the 70%/85% index landed in two splits at once. Observed on the
+        live DB: natus-vincere-vs-g2-m1-dust2 had Aleksib in TRAIN and the other
+        nine players in VAL; natus-vincere-vs-furia-m2-dust2 spanned VAL/TEST.
+        Same map, same ticks, both sides of the boundary — a train/test leak.
+        """
+        mgr, engine = _make_manager(monkeypatch)
+        base_dt = datetime(2024, 1, 1, 14, 0, 0, tzinfo=timezone.utc)
+        demos = [f"pro_demo_{i}" for i in range(4)]
+        players = [f"Pro{p}" for p in range(10)]
+        with Session(engine) as session:
+            for i, demo in enumerate(demos):
+                for p, player in enumerate(players):
+                    session.add(
+                        PlayerMatchStats(
+                            player_name=player,
+                            demo_name=f"{demo}.dem",
+                            # per-row microsecond spread — the live-DB shape
+                            match_date=base_dt + timedelta(days=i, microseconds=p),
+                            is_pro=True,
+                            avg_kills=20.0,
+                            avg_adr=80.0,
+                        )
+                    )
+            session.commit()
+        monkeypatch.setattr(
+            CoachTrainingManager,
+            "_get_completed_demo_names",
+            staticmethod(lambda: set(demos)),
+        )
+        for demo in demos:
+            self._seed_rounds(engine, f"{demo}.dem", MIN_COMPLETE_MAP_ROUNDS + 9, players)
+
+        mgr.assign_dataset_splits()
+
+        with Session(engine) as session:
+            rows = session.exec(select(PlayerMatchStats)).all()
+        by_demo: dict[str, set] = {}
+        for m in rows:
+            by_demo.setdefault(m.demo_name, set()).add(m.dataset_split)
+        straddling = {d: s for d, s in by_demo.items() if len(s) > 1}
+        assert not straddling, f"matches split across sets: {straddling}"
+        # 4 demos → int(4*0.70)=2 train, int(4*0.85)=3 → 1 val, 1 test
+        splits = [next(iter(by_demo[f"{d}.dem"])) for d in demos]
+        assert splits.count("train") == 2
+        assert splits.count("val") == 1
+        assert splits.count("test") == 1
+
+    def test_no_round_data_at_all_keeps_legacy_behavior(self, monkeypatch):
+        """Empty RoundStats = "wholeness unknown", not "everything is a fragment".
+
+        Same graceful-degradation contract as _get_completed_demo_names()=None:
+        a missing signal must not silently empty the training pool.
+        """
+        mgr, engine = _make_manager(monkeypatch)
+        _seed_matches(engine, pro_count=10)
+        completed = {f"pro_demo_{i}" for i in range(10)}
+        monkeypatch.setattr(
+            CoachTrainingManager, "_get_completed_demo_names", staticmethod(lambda: completed)
+        )
+
+        mgr.assign_dataset_splits()
+
         with Session(engine) as session:
             matches = session.exec(select(PlayerMatchStats)).all()
         assert all(m.dataset_split in ("train", "val", "test") for m in matches)
