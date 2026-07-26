@@ -354,6 +354,15 @@ class MatchMetadata(SQLModel, table=True):
     ingested_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class MatchDataUnavailableError(RuntimeError):
+    """Shard storage is configured but its location cannot currently be reached.
+
+    Raised instead of silently substituting an empty directory, so that an
+    unplugged drive or a path that only exists on another machine surfaces as a
+    fixable error rather than as a project that has apparently lost its data.
+    """
+
+
 class MatchDataManager:
     """
     Manager for per-match SQLite databases.
@@ -376,22 +385,42 @@ class MatchDataManager:
         """
         self.match_data_path = match_data_path
 
-        # AUDIT §8.8: a broken symlink at the target path causes
-        # `os.makedirs(..., exist_ok=True)` to raise FileExistsError because
-        # `exist_ok` only swallows the error when the existing path is a
-        # *directory*. Detect the broken-symlink case and replace it with a
-        # real directory so shutdown does not crash when an external mount
-        # disappears.
+        # AUDIT §8.8 addressed a real crash — os.makedirs(exist_ok=True) raises
+        # FileExistsError on a dangling symlink, because exist_ok only forgives
+        # an existing *directory*. The original remedy was to unlink the dead
+        # link and makedirs a fresh empty directory, which cured the crash by
+        # destroying the only record of where the shards actually live: on a
+        # second machine, or with the drive merely unplugged, the app came up
+        # with zero shards, no error, and no way back to the real location.
+        #
+        # A dangling symlink is positive evidence that storage was configured
+        # and is currently unreachable. That is a condition to report, not a
+        # cue to invent empty storage. A path that is simply absent is still
+        # the ordinary fresh-install case and is still created below.
         if os.path.islink(self.match_data_path) and not os.path.exists(self.match_data_path):
             target = os.readlink(self.match_data_path)
-            _logger.warning(
-                "match_data path is a broken symlink (%s -> %s). Removing the "
-                "dead link and creating a fresh local directory. Re-link or "
-                "remount the original target if you need that storage back.",
+            _logger.error(
+                "match_data symlink %s points at unreachable storage (%s); "
+                "leaving the link intact.",
                 self.match_data_path,
                 target,
             )
-            os.unlink(self.match_data_path)
+            raise MatchDataUnavailableError(
+                f"Per-match shard storage is not reachable.\n"
+                f"  link   : {self.match_data_path}\n"
+                f"  target : {target}\n"
+                f"\n"
+                f"The link has been left in place and nothing was deleted, moved or "
+                f"created — it is the only record of where your shards live.\n"
+                f"\n"
+                f"Resolve it by one of:\n"
+                f"  * attach or mount the drive holding {target}\n"
+                f"  * repoint the link:  ln -sfn <current/path/to/match_data> "
+                f"{self.match_data_path}\n"
+                f"  * if that storage is genuinely gone and you want to start a new "
+                f"empty shard store, remove the link deliberately:  "
+                f"rm {self.match_data_path}"
+            )
 
         # Ensure match data directory exists
         os.makedirs(self.match_data_path, exist_ok=True)
