@@ -295,3 +295,59 @@ class TestEnrichFromDemoImport:
 
         assert callable(detect_trade_kills)
         assert callable(analyze_demo_trades)
+
+
+class TestBuildRoundBoundaries:
+    """Round numbering must be ordinal from tick order, not the raw 'round' column.
+
+    CS2 patch 14160 (July 2026) shifted round_end's 'round' prop by +1: a
+    24-round match emits rounds 2..25. Tick-side round_context.py numbers
+    rounds ordinally (1..N over sorted round_end ticks); RoundStats must use
+    the same scheme or every per-round join is misaligned by one round.
+    """
+
+    @staticmethod
+    def _df(rounds, ticks, winners):
+        import pandas as pd
+
+        return pd.DataFrame({"round": rounds, "tick": ticks, "winner": winners})
+
+    def test_shifted_round_column_is_renumbered_ordinally(self):
+        from Programma_CS2_RENAN.backend.processing.round_stats_builder import (
+            _build_round_boundaries,
+        )
+
+        # Patch-14160 style: 3 rounds numbered 2..4
+        df = self._df([2, 3, 4], [5000, 11000, 15000], ["T", "CT", "CT"])
+        boundaries = _build_round_boundaries(df)
+
+        assert [b["round_number"] for b in boundaries] == [1, 2, 3]
+        assert [b["end_tick"] for b in boundaries] == [5000, 11000, 15000]
+        assert [b["winner"] for b in boundaries] == ["T", "CT", "CT"]
+
+    def test_correct_round_column_unchanged(self):
+        from Programma_CS2_RENAN.backend.processing.round_stats_builder import (
+            _build_round_boundaries,
+        )
+
+        # Pre-14160 style: already 1..3 — ordinal numbering is identical
+        df = self._df([1, 2, 3], [5000, 11000, 15000], ["CT", "CT", "T"])
+        boundaries = _build_round_boundaries(df)
+
+        assert [b["round_number"] for b in boundaries] == [1, 2, 3]
+        assert [b["winner"] for b in boundaries] == ["CT", "CT", "T"]
+
+    def test_unsorted_events_pair_winner_with_correct_tick(self):
+        from Programma_CS2_RENAN.backend.processing.round_stats_builder import (
+            _build_round_boundaries,
+        )
+
+        # Events arrive out of tick order — winner must follow its tick
+        df = self._df([3, 2, 4], [11000, 5000, 15000], ["CT", "T", "CT"])
+        boundaries = _build_round_boundaries(df)
+
+        assert [b["round_number"] for b in boundaries] == [1, 2, 3]
+        assert [b["end_tick"] for b in boundaries] == [5000, 11000, 15000]
+        assert [b["winner"] for b in boundaries] == ["T", "CT", "CT"]
+        # H-18 overlap invariant: round i starts one tick after round i-1 ends
+        assert boundaries[1]["start_tick"] == boundaries[0]["end_tick"] + 1

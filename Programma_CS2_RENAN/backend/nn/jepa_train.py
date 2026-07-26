@@ -396,10 +396,13 @@ def _jepa_pretrain_process_batch(
     """
     import math as _math
 
+    from Programma_CS2_RENAN.backend.nn.config import amp_autocast
+
     x_context = batch["context"].to(device)
     x_target = batch["target"].to(device)
 
-    pred, target = model.forward_jepa_pretrain(x_context, x_target)
+    with amp_autocast():
+        pred, target = model.forward_jepa_pretrain(x_context, x_target)
 
     batch_size_actual = pred.size(0)
     if batch_size_actual < 2:
@@ -408,7 +411,8 @@ def _jepa_pretrain_process_batch(
     neg_indices = _jepa_negative_indices(batch_size_actual, num_negatives, device)
     negatives = target[neg_indices]
 
-    loss = jepa_contrastive_loss(pred, target, negatives)
+    with amp_autocast():
+        loss = jepa_contrastive_loss(pred, target, negatives)
 
     optimizer.zero_grad()
     loss.backward()
@@ -634,20 +638,22 @@ def train_jepa_finetune(
             X_batch = X_batch.to(device)
             y_batch = y_batch.to(device)
 
-            # Forward pass
-            predictions = model.forward_coaching(X_batch)
+            # Forward pass + loss under bf16 autocast (no-op on CPU hosts)
+            from Programma_CS2_RENAN.backend.nn.config import amp_autocast
 
-            # Loss
-            loss = loss_fn(predictions, y_batch)
+            with amp_autocast():
+                predictions = model.forward_coaching(X_batch)
 
-            # R4 MED: the Switch-Transformer load-balancing aux loss computed
-            # by _sparse_moe was never added to ANY objective — the claimed
-            # expert-collapse protection was inert (and its autograd graph
-            # was retained between forwards). forward_coaching is the only
-            # training path through the MoE router: consume it here.
-            moe_aux = getattr(model, "_moe_aux_loss", None)
-            if isinstance(moe_aux, torch.Tensor) and moe_aux.requires_grad:
-                loss = loss + moe_aux
+                loss = loss_fn(predictions, y_batch)
+
+                # R4 MED: the Switch-Transformer load-balancing aux loss computed
+                # by _sparse_moe was never added to ANY objective — the claimed
+                # expert-collapse protection was inert (and its autograd graph
+                # was retained between forwards). forward_coaching is the only
+                # training path through the MoE router: consume it here.
+                moe_aux = getattr(model, "_moe_aux_loss", None)
+                if isinstance(moe_aux, torch.Tensor) and moe_aux.requires_grad:
+                    loss = loss + moe_aux
 
             # Backward pass
             optimizer.zero_grad()

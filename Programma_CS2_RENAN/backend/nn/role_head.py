@@ -18,7 +18,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from Programma_CS2_RENAN.backend.analysis.role_classifier import PlayerRole
-from Programma_CS2_RENAN.backend.nn.config import get_device
+from Programma_CS2_RENAN.backend.nn.config import amp_autocast, get_device
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.role_head")
@@ -210,8 +210,9 @@ def train_role_head(
     for epoch in range(max_epochs):
         # --- Train ---
         model.train()
-        log_probs = model.forward_log_softmax(X_train)
-        train_loss = loss_fn(log_probs, y_train)
+        with amp_autocast():
+            log_probs = model.forward_log_softmax(X_train)
+            train_loss = loss_fn(log_probs, y_train)
 
         optimizer.zero_grad()
         train_loss.backward()

@@ -122,6 +122,14 @@ def get_device() -> torch.device:
     if torch.cuda.is_available():
         dev = _select_best_cuda_device()
         idx = dev.index if dev.index is not None else 0
+        if getattr(torch.version, "hip", None):
+            # ROCm pip wheels ship MIOpen without the rocrand headers its
+            # runtime kernel JIT needs — fused RNN dropout kernels fail with
+            # miopenStatusUnknownError (hiprtc: rocrand_xorwow.h not found,
+            # observed on gfx1201 / torch 2.13.0+rocm7.2). Disabling the
+            # cudnn/MIOpen backend routes nn.LSTM/GRU through plain ATen
+            # kernels, which work on every ROCm device.
+            torch.backends.cudnn.enabled = False
         if not _device_logged:
             logger.info(
                 "ML Device: %s (CUDA %s, %d device(s) detected)",
@@ -152,6 +160,20 @@ def get_device() -> torch.device:
             logger.debug("WR-09 GPU-fallback notification skipped: %s", e)
     _cached_device = torch.device("cpu")
     return _cached_device
+
+
+def amp_autocast():
+    """bf16 autocast context for GPU training loops (forward + loss only).
+
+    bf16 keeps the fp32 exponent range, so no GradScaler is needed and
+    master weights/grads stay fp32. On the ROCm gfx1201 wheels this is the
+    only fast matmul path (fp32 GEMM is untuned: ~1.3 vs ~118 TFLOPS).
+    Returns a disabled (transparent) context on CPU-only hosts, so call
+    sites wrap unconditionally. Keep backward/step OUTSIDE the context.
+    """
+    return torch.amp.autocast(
+        device_type="cuda", dtype=torch.bfloat16, enabled=torch.cuda.is_available()
+    )
 
 
 # Data Loader

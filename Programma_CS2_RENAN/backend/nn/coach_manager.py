@@ -331,8 +331,30 @@ class CoachTrainingManager:
             if not all_matches:
                 return
 
-            pros = [m for m in all_matches if m.is_pro]
-            users = [m for m in all_matches if not m.is_pro]
+            # P4-A extension: split only over demos whose per-match shard is
+            # marked complete — a permanently-ineligible demo inside TRAIN
+            # starves training (259 historical matches have schema-only
+            # shards and their demo files are gone; a global temporal split
+            # packed the entire TRAIN block with them → zero eligible TRAIN
+            # data). None (completeness info unavailable) keeps legacy
+            # behavior: everything is split.
+            completed = self._get_completed_demo_names()
+            if completed is not None:
+
+                def _is_eligible(m):
+                    name = _MATCH_STATS_DEMO_SUFFIX_RE.sub("", m.demo_name or "")
+                    return name.removesuffix(".dem") in completed
+
+                eligible_matches = [m for m in all_matches if _is_eligible(m)]
+                for m in all_matches:
+                    if not _is_eligible(m) and m.dataset_split != DatasetSplit.UNASSIGNED:
+                        m.dataset_split = DatasetSplit.UNASSIGNED
+                        session.add(m)
+            else:
+                eligible_matches = all_matches
+
+            pros = [m for m in eligible_matches if m.is_pro]
+            users = [m for m in eligible_matches if not m.is_pro]
 
             def temporal_assign(matches):
                 n = len(matches)
@@ -353,8 +375,13 @@ class CoachTrainingManager:
             temporal_assign(users)
             session.commit()
 
-            total = len(all_matches)
-            app_logger.info("Temporal split assigned for %s matches (70/15/15).", total)
+            total = len(eligible_matches)
+            app_logger.info(
+                "Temporal split assigned for %s eligible matches (70/15/15); "
+                "%s ineligible left UNASSIGNED.",
+                total,
+                len(all_matches) - total,
+            )
             for label, group in [("pro", pros), ("user", users)]:
                 if group:
                     train_end_idx = max(0, int(len(group) * 0.70) - 1)

@@ -23,7 +23,7 @@ click==8.4.2
 colorama==0.4.6
 contourpy==1.3.3
 cycler==0.12.1
-demoparser2==0.41.1
+demoparser2==0.41.4
 faiss-cpu==1.13.2
 fastapi==0.135.3
 filelock==3.30.0

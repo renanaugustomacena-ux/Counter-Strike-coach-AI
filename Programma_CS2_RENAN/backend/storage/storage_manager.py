@@ -249,10 +249,16 @@ class StorageManager:
         ]
 
     def archive_demo(self, demo_path, is_pro=False):
-        """Standard archive: move to ingested folder to prevent re-parsing."""
+        """Standard archive: move to ingested folder to prevent re-parsing.
+
+        Best-effort by contract: a failed archive must never fail an
+        otherwise-successful ingestion (DB dedup by stem already prevents
+        re-parsing). mkdir lives inside the try — with a stale PRO_DEMO_PATH
+        (unmounted disk) the parent chain is missing and mkdir itself raises.
+        """
         target_dir = self.get_ingest_dir(is_pro) / "ingested"
-        target_dir.mkdir(exist_ok=True)
         try:
+            target_dir.mkdir(exist_ok=True)
             shutil.move(str(demo_path), str(target_dir / demo_path.name))
         except Exception as e:
             logger.error("Failed to move demo to ingested: %s", e)
