@@ -81,10 +81,10 @@ sequenceDiagram
 
 | Livello              | Metodo                          | Fiducia | Quando utilizzato                                |
 | -------------------- | ------------------------------- | ------- | ------------------------------------------------ |
-| 1.**COPER**    | `_generate_coper_insights()`  | Massima | Predefinita — sintesi basata sull'esperienza    |
-| 2.**Ibrido**   | `_generate_hybrid_insights()` | Alta    | Se COPER non ha esperienza sufficiente           |
-| 3.**RAG Base** | `_enhance_with_rag()`         | Media   | Se i modelli ML non sono disponibili             |
-| 4.**Template** | Modello statistico di base      | Bassa   | Ultima risorsa — restituisce sempre*qualcosa* |
+| 1.**COPER**    | `_generate_coper_insights()`  | Massima | Se `USE_COPER_COACHING` (default **True**) + mappa + tick data disponibili; eseguito con **timeout di 30s** (`_COACHING_TIMEOUT`), allo scadere degrada al livello 2 |
+| 2.**Ibrido**   | `_generate_hybrid_insights()` | Alta    | Se `USE_HYBRID_COACHING` (default False) + player_stats disponibili |
+| 3.**RAG Base** | `_enhance_with_rag()`         | Media   | Percorso tradizionale (`generate_corrections`) arricchito da RAG se `USE_RAG_COACHING` (default False) + mappa |
+| 4.**Template** | Modello statistico di base      | Bassa   | Ultima risorsa — restituisce sempre*qualcosa* (`_save_generic_insight`, guardia C-01) |
 
 ```mermaid
 flowchart TB
@@ -166,7 +166,7 @@ flowchart LR
 
 ### -Servizi Aggiuntivi (Non documentati in precedenza)
 
-Oltre ai tre servizi principali (CoachingService, OllamaCoachWriter, AnalysisOrchestrator), la directory `backend/services/` contiene **7 servizi aggiuntivi** che completano l'ecosistema di coaching:
+Oltre ai tre servizi principali (CoachingService, OllamaCoachWriter, AnalysisOrchestrator), la directory `backend/services/` contiene **8 servizi aggiuntivi** che completano l'ecosistema di coaching:
 
 #### CoachingDialogueEngine (`coaching_dialogue.py`)
 
@@ -243,11 +243,13 @@ Servizio di integrazione Ollama per inferenza LLM locale:
 | Parametro | Valore | Descrizione |
 |---|---|---|
 | `OLLAMA_URL` | `http://localhost:11434` | Endpoint Ollama (env: `OLLAMA_URL`) |
-| `DEFAULT_MODEL` | `llama3.1:8b` | Modello 8B general-purpose (env: `OLLAMA_MODEL`) |
-| `_AVAILABILITY_TTL` | 60s | Cache di disponibilità |
+| `DEFAULT_MODEL` | `gemma4:e2b` | Modello di default; risoluzione in ordine: env `OLLAMA_MODEL` → setting `LLM_COACH_MODEL` → default hard-coded (`llama3.1:8b` compare solo come baseline di confronto nel CS2 Coach Bench) |
+| `_AVAILABILITY_TTL` | 60s | Cache di disponibilità (health check con timeout 3s) |
 | `temperature` | 0.7 | Creatività delle risposte |
 | `top_p` | 0.9 | Nucleus sampling |
-| `num_predict` | 500 | Limite lunghezza risposta |
+| `num_predict` | -1 | Nessun limite di lunghezza risposta |
+| `num_ctx` | 32768 | Finestra di contesto |
+| Timeout generate/chat | 600s | POST verso Ollama; stream: connect 10s, stall 30s |
 
 **API supportate:**
 
@@ -649,12 +651,13 @@ Implementa una pipeline di **generazione aumentata dal recupero** utilizzando la
 | Componente                          | Dettaglio                                                                                                                                            |
 | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Modello di incorporamento** | `sentence-transformers/all-MiniLM-L6-v2` (vettori a 384 dimensioni)                                                                                |
-| **Fallback**                  | Incorporamenti basati su hash se Sentence-BERT non è disponibile                                                                                    |
+| **Fallback**                  | Incorporamenti hash bag-of-words a 100 dimensioni se Sentence-BERT non è disponibile                                                                                    |
 | **Archiviazione**             | Tabella SQLite `TacticalKnowledge` (embedding memorizzato come array float codificato in JSON)                                                     |
-| **Recupero**                  | Similarità del coseno tramite `scipy.spatial.distance.cosine`                                                                                     |
-| **Top-k**                     | Configurabile, predefinito k=5                                                                                                                       |
-| **Versioning**                | `CURRENT_VERSION = "v3"` (2026-04, Coach Book refactor, Premier S4 active duty alignment); incorporamenti obsoleti v2 ricalcolati automaticamente via `trigger_reembedding()` |
-| **Categorie**                 | 14: obiettivo, posizionamento, utilità, movimento, economia, strategia, posizionamento del mirino, comunicazione, mentale, senso del gioco, trading, **mid_round**, **retakes_post_plant**, **aim_and_duels** |
+| **Recupero**                  | Similarità del coseno via numpy: `np.dot(a,b)/(‖a‖·‖b‖+1e-8)`; fast-path FAISS (`VectorIndexManager`, over-fetch ×10) con fallback brute-force                                                                                     |
+| **Top-k**                     | Configurabile, predefinito k=3 nel retriever                                                                                                                       |
+| **Versioning**                | `CURRENT_VERSION = "v3"`; incorporamenti obsoleti ricalcolati automaticamente |
+| **Sorgente primaria**         | **Coach Book** in `backend/knowledge/book/`: 8 file JSON di contenuto (7 mappe Active Duty + general) + `index.json`, **508 voci** totali |
+| **Categorie**                 | 13 (dal Coach Book): aim_and_duels, positioning, economy, retakes_post_plant, clutch_play, mid_round, utility, anti_strat, role_play_entry, role_play_awp, role_play_support, role_play_lurk, role_play_igl |
 
 >
 > **Correzione M-07 — Rifiuto vettore norma-zero:** `VectorIndex.search()` valida la norma del vettore query prima della ricerca. Se la norma è zero (tipicamente dovuto a un embedding fallback vuoto o a un input corrotto), il metodo ritorna `None` con un warning nel log anziché propagare un errore di divisione per zero nella similarità del coseno. Questo protegge il pipeline RAG da query degenerate senza interrompere il flusso di coaching.
@@ -684,7 +687,7 @@ flowchart TB
 
 ### -Banca Esperienza (`experience_bank.py`) — Framework COPER (KT-01 Enhanced)
 
-Implementa il framework **Osservazione–Previsione–Esperienza–Recupero Contestuale (COPER)** con semantica CRUD, replay prioritizzato e integrazione TrueSkill:
+Implementa il framework **COPER — "Context Optimized with Prompt, Experience, and Replay"** con semantica CRUD, replay prioritizzato e integrazione TrueSkill:
 
 ```mermaid
 graph LR
@@ -760,17 +763,17 @@ flowchart TB
     style DISCARD_CREATE fill:#ffd43b,color:#000
 ```
 
-**Replay Prioritizzato (KT-01):** Le esperienze vengono campionate per il replay con probabilità proporzionale a `priority^REPLAY_ALPHA`, dove `priority = effectiveness_score × confidence_score`. Solo esperienze con `confidence_score ≥ REPLAY_GATE` sono eleggibili. Questo bilancia exploitation (esperienze efficaci) con exploration (esperienze meno testate).
+**Replay Prioritizzato (KT-01):** `sample_for_replay()` campiona le esperienze con priorità **inversa alla frequenza di recupero**: `p_i = (1 / max(times_retrieved, 1))^REPLAY_ALPHA` normalizzata (RNG seedato con `GLOBAL_SEED=42`). Solo esperienze con `confidence_score(κ=1.0) ≥ REPLAY_GATE` (0.4) sono eleggibili. Questo favorisce l'exploration delle esperienze meno rivisitate mantenendo un gate minimo di qualità.
 
-**Integrazione TrueSkill (KT-01):** Campi `mu_skill` e `sigma_skill` per tracking bayesiano della competenza del giocatore nella situazione specifica. I prior TrueSkill influenzano il peso dell'esperienza nel retrieval: esperienze con alta incertezza (`sigma` alto) sono penalizzate rispetto a quelle con segnale stabile.
+**Integrazione TrueSkill (KT-01):** Campi `mu_skill` e `sigma_skill` per tracking bayesiano della qualità dell'esperienza. Su UPDATE la `sigma` si restringe (`σ × 0.95`) e la `mu` si aggiorna con peso 0.8/0.2; il gate di replay usa `confidence_score = μ − κ·σ` (κ=1.0) — esperienze con alta incertezza sono penalizzate. Il DISCARD è un **soft-retire**: azzera la confidence senza cancellare la riga.
 
 **Compressione Embedding:** Gli embedding 384-dim sono ora codificati come `base64(float32)` anziché JSON array, ottenendo una compressione 4× sullo spazio di archiviazione nel database senza perdita di precisione.
 
 **Linking Riferimento Pro:** Ogni esperienza può includere `pro_player_name`, `pro_match_id`, `source_demo` per collegare direttamente a come un professionista specifico ha gestito una situazione analoga.
 
-### -Knowledge Graph
+### -Knowledge Graph (`graph.py`)
 
-Un **grafo entità-relazione** leggero memorizzato in SQLite (tabelle `kg_entities`, `kg_relations`). Supporta `query_subgraph(entity_name)` a 1 salto per il ragionamento multi-salto, al fine di integrare la similarità semantica.
+Un **grafo entità-relazione** leggero gestito da `KnowledgeGraphManager` in un database SQLite dedicato (`knowledge_graph.db`, tabelle `entities` e `relations`). Supporta query di sottografo con esplorazione BFS per il ragionamento multi-salto, a integrazione della similarità semantica. Nota: il grafo è consultato da strumenti diagnostici e test (`tools/Goliath_Hospital.py`), non dal percorso di coaching principale.
 
 ```mermaid
 graph LR
@@ -784,10 +787,10 @@ graph LR
 
 Script di orchestrazione che popola il database RAG con conoscenza tattica da due fonti:
 
-1. **Conoscenza manuale:** Caricamento da file JSON (`data/tactical_knowledge.json`) con suggerimenti curati manualmente per categoria e mappa
-2. **Mining automatico:** Invocazione di `ProDemoMiner.mine_all_pro_demos()` per estrarre pattern tattici dalle demo professionali
+1. **Coach Book (preferito):** Caricamento da `backend/knowledge/book/index.json` — il `KnowledgePopulator` riconosce il formato indice (`"files"` presente e `"knowledge"` assente) e carica gli 8 file di contenuto; le voci passano un **allow-list** di chiavi (`title, description, category, situation, map_name, pro_example`) con strip delle chiavi sconosciute. Fallback legacy: `tactical_knowledge.json`
+2. **Mining automatico:** `auto_populate_from_pro_demos(limit=10)` per estrarre pattern tattici dai dati professionali
 
-Dopo il caricamento, genera un report per categoria e mappa utilizzando query COUNT aggregate (senza caricare tutti i record in memoria).
+Dopo il caricamento, genera un report per categoria e mappa (query COUNT aggregate) e ricostruisce gli indici FAISS: `rebuild_from_db("knowledge")` e `rebuild_from_db("experience")`.
 
 ### -ProDemoMiner (`pro_demo_miner.py`)
 
@@ -870,7 +873,7 @@ Assegna uno dei 6 ruoli utilizzando **soglie statistiche apprese**:
 
 Rete neurale a 12 funzioni che stima P(round_win | game_state):
 
-**Architettura:** `Lineare(12, 64) → ReLU → Dropout(0,2) → Lineare(64, 32) → ReLU → Dropout(0,1) → Lineare(32, 1) → Sigmoide`.
+**Architettura:** `Lineare(12, 64) → ReLU → Dropout(0,2) → Lineare(64, 32) → ReLU → Dropout(0,1) → Lineare(32, 1) → Sigmoide`, con calibrazione opzionale delle probabilità via `PlattScaler`.
 
 **12 Caratteristiche:**
 
@@ -932,11 +935,10 @@ Il `compute_elo_differential(team_histories, enemy_histories)` calcola il differ
 Implementa la **ricerca expectiminimax** con modellazione adattiva dell'avversario:
 
 - **Azioni:** spingi, tieni premuto, ruota, usa_utilità
-- **Modello avversario:** Priorita' economiche (eco/forza/acquisto completo), aggiustamenti laterali, aggiustamenti del vantaggio, pressione temporale
-- **Profondità:** 3 livelli (max → probabilità → min)
-- **Budget nodo:** 1000 (impedisce l'esplosione)
+- **Modello avversario:** Priorità economiche (eco/forza/acquisto completo), aggiustamenti laterali, aggiustamenti del vantaggio, pressione temporale; blending EMA attivo da ≥10 round osservati
+- **Profondità:** 3 livelli di default (max → probabilità → min); il `BlindSpotDetector` invoca l'albero con `depth=2`
+- **Budget nodo:** `DEFAULT_NODE_BUDGET = 1000` (impedisce l'esplosione) + transposition table `_TT_MAX_SIZE = 10.000`
 - **Valutazione foglia:** `WinProbabilityPredictor` (caricamento lazy)
-- **Apprendimento avversario:** Aggiornamento EMA incrementale (α limitato a 0,5)
 
 ```mermaid
 flowchart TB
@@ -965,9 +967,9 @@ flowchart TB
 Modelli P(morte | credenza, HP, armatura, classe_arma):
 
 - **Antecedente:** Tassi di mortalità per fascia HP (pieno ≥80: 0,35, danneggiato 40-79: 0,55, critico <40: 0,80)
-- **Fattori di probabilità:** Livello di minaccia (con decadimento esponenziale exp(−0,1 × età)), riduzione dell'armatura (0,75×), moltiplicatori delle armi (AWP: 1,4×, Fucile: 1,0×, Mitragliatrice: 0,75×, Pistola: 0,6×, Coltello: 0,3×)
+- **Fattori di probabilità:** Livello di minaccia (con decadimento esponenziale, `THREAT_DECAY_LAMBDA = 0.1`), riduzione dell'armatura, moltiplicatori delle armi
 - **Posteriore:** Combinazione logistica nello spazio log-odds
-- **Calibrazione:** `calibrate(historical_rounds)` apprende le priorità empiriche (≥10 campioni per fascia)
+- **Calibrazione:** `AdaptiveBeliefCalibrator.auto_calibrate()` apprende prior empirici, letalità armi e λ di decadimento minaccia (fit `np.polyfit`), con `MIN_SAMPLES = 100` e bound di sicurezza (prior [0.05, 0.95], letalità [0.1, 3.0], decadimento [0.01, 1.0]); ogni calibrazione persiste un `CalibrationSnapshot`
 
 ```mermaid
 flowchart TB
@@ -1056,7 +1058,7 @@ flowchart TB
 
 Misura l'efficacia dell'utilità tramite la **riduzione di entropia di Shannon** delle posizioni nemiche:
 
-- Discretizza le posizioni in una griglia 32×32
+- Discretizza le posizioni in una griglia per-mappa (risoluzione 32–40 celle a seconda della mappa)
 - Calcola `H = −Σ p(cell) × log₂(p(cell))`
 - Impatto di utilità = `H_pre − H_post` (positivo = informazione ottenuta)
 - Riduzioni massime di entropia: Smoke 2,5 bit, Molotov 2,0, Flash 1,8, HE 1,5
@@ -1114,7 +1116,7 @@ Analizza le distanze di uccisione per costruire **profili di ingaggio** specific
 
 | Componente | Scopo |
 |---|---|
-| `NamedPositionRegistry` | Registro di callout per mappa (es. "A Site", "Window", "Banana") con coordinate 3D e raggio |
+| `NamedPositionRegistry` | Registro di callout (in `core/map_callouts.py`): **161 posizioni nominate su 9 mappe competitive**, con coordinate 3D e raggio |
 | `EngagementRangeAnalyzer` | Calcolo distanza euclidea killer-vittima, classificazione e confronto con baseline pro |
 | `EngagementProfile` | Distribuzione % per fascia: close (<500u), medium (500-1500u), long (1500-3000u), extreme (>3000u) |
 
@@ -1130,7 +1132,7 @@ Analizza le distanze di uccisione per costruire **profili di ingaggio** specific
 
 **Soglia di deviazione:** Una differenza >15% rispetto alla baseline del ruolo genera un'osservazione di coaching (es. "Più uccisioni ravvicinate del tipico AWPer — considera angoli più lunghi").
 
-**Mappe supportate:** de_mirage, de_inferno, de_dust2, de_anubis, de_nuke, de_ancient, de_overpass, de_vertigo, de_train (non nell'Active Duty pool attuale, supportata per demo storiche/workshop) — espandibile via JSON.
+**Mappe supportate (9):** de_mirage, de_inferno, de_dust2, de_anubis, de_nuke, de_ancient, de_overpass, de_vertigo, de_train (le ultime due fuori dall'Active Duty pool attuale, supportate per demo storiche/workshop).
 
 ```mermaid
 flowchart TB
@@ -1264,7 +1266,7 @@ L'**unica fonte di verità** per i vettori di feature a livello di tick. Sia l'a
 | 13     | `view_yaw_cos`    | `cos(yaw_rad)`                         | [−1, 1]   |
 | 14     | `view_pitch`      | `/90`                                  | [−1, 1]   |
 | 15     | `z_penalty`       | `compute_z_penalty()`                  | [0, 1]     |
-| 16     | `kast_estimate`   | KAST da statistiche o 0,70 predefinito   | [0, 1]     |
+| 16     | `kast_estimate`   | KAST esplicito o da statistiche; default 0,0   | [0, 1]     |
 | 17     | `map_id`          | Codifica deterministica basata su hash   | [0, 1]     |
 | 18     | `round_phase`     | 0=pistola, 0,33=eco, 0,66=forza, 1=pieno | [0, 1]     |
 | 19     | `weapon_class`    | Mappatura classi arma (0-1)              | [0, 1]     |
@@ -1279,8 +1281,8 @@ L'**unica fonte di verità** per i vettori di feature a livello di tick. Sia l'a
 - **Codifica ciclica dell'imbardata** (sin/cos agli indici 12-13) elimina la discontinuità di ±180°
 - **Penalità Z** (indice 15) quantifica il rischio di livello errato per mappe multilivello
 - **Integrazione del contesto tattico** (indici 19-24) fornisce al modello consapevolezza della situazione di gioco
-- **Catena di fallback della stima KAST:** valore esplicito → calcolo dalle statistiche → valore predefinito 0,70
-- **Codifica dell'identità della mappa:** l'hash deterministico consente l'apprendimento specifico della mappa
+- **Catena di fallback della stima KAST:** valore esplicito → calcolo dalle statistiche (`estimate_kast_from_stats`) → default 0,0
+- **Codifica dell'identità della mappa:** hash deterministico `(md5(map_name) % 10000) / 10000` consente l'apprendimento specifico della mappa
 - **HeuristicConfig** (`base_features.py`) consente di sovrascrivere tutti i limiti di normalizzazione tramite JSON
 
 > **Decisioni progettuali:** La **codifica ciclica dell'imbardata** (sin/cos) risolve la discontinuità angolare: un angolo -179° e +179° differiscono di soli 2° nella realtà ma di 358° in rappresentazione lineare. La coppia (sin θ, cos θ) mappa l'angolo su un cerchio unitario dove la distanza euclidea riflette la distanza angolare reale. La **penalità Z** (`z_penalty` nel vettore 25-dim) segnala esplicitamente il rischio di errore di piano verticale — critico su mappe multilivello (Nuke, Vertigo) dove confondere upper/lower porta a decisioni tattiche completamente errate. L'**integrazione tattica** (economia, vivi, tempo) fornisce al modello il contesto necessario per valutare se una giocata aggressiva è corretta dato il vantaggio numerico, il budget economico e il tempo residuo nel round.
@@ -1296,7 +1298,7 @@ dove:
 R_kill = KPR / 0,679
 R_survival = (1 − DPR) / 0,317
 R_kast = KAST / 0,70
-R_impact = (2,13·KPR + 0,42·ADR/100) / 1,0
+R_impact = (2,13·KPR + 0,42·(ADR/100) − 0,41·(1−DPR)) / 1,0
 R_damage = ADR / 73,3
 ```
 
@@ -1484,7 +1486,7 @@ flowchart TB
 - [**schema.py**](http://schema.py)**:** Validazione dello schema per i record del database
 - [**sanity.py**](http://sanity.py)** / dem\_[validator.py](http://validator.py):** Controlli di integrità dei dati e dei file demo
 
-**Copertura quantitativa:** Il progetto comprende **1.515+ test** distribuiti su 94 file di test e **319+ controlli headless validator** articolati su 24+ fasi di validazione. Questa copertura spazia dall'integrità dello schema DB alla coerenza dei vettori di embedding, dalla correttezza delle pipeline di addestramento alla validazione end-to-end dei flussi di coaching.
+**Copertura quantitativa:** Il progetto comprende **130 file di test** (`test_*.py` in `Programma_CS2_RENAN/tests/`) più i test e gli script `verify_*.py` nella `tests/` root, e un **headless validator** con **39 fasi tematiche di controllo** (da Ambiente/Import fino a Security, GPU, Design-Tokens e Quality-Adv). Questa copertura spazia dall'integrità dello schema DB alla coerenza dei vettori di embedding, dalla correttezza delle pipeline di addestramento alla validazione end-to-end dei flussi di coaching.
 
 ### -PlayerKnowledge — Sistema Percettivo NO-WALLHACK (`player_knowledge.py`)
 
@@ -1500,25 +1502,25 @@ Modello di percezione **Player-POV** che ricostruisce ciò che un giocatore legi
 | `UtilityZone` | position, radius, utility_type, team | Zona utilità attiva |
 | `PlayerKnowledge` | own_state, visible_entities, last_known, heard_events, utility_zones | Output completo |
 
-**Costanti sensoriali:**
+**Costanti sensoriali** (le costanti temporali vivono in `core/constants.py` **in secondi** e sono convertite in tick moltiplicando per il tick-rate della demo — tick-rate aware):
 
 | Costante | Valore | Significato CS2 |
 |---|---|---|
 | `FOV_DEGREES` | 90.0 | Campo visivo orizzontale CS2 |
 | `HEARING_RANGE_GUNFIRE` | 2000.0 | Distanza massima percezione spari (world units) |
-| `HEARING_RANGE_FOOTSTEP` | 1000.0 | Distanza massima percezione passi |
-| `MEMORY_DECAY_TAU` | 160 | Emivita memoria: 2.5s a 64 tick/s |
-| `MEMORY_CUTOFF_TICKS` | 320 | Cutoff memoria: 5 secondi max |
-| `SMOKE_RADIUS` | 200.0 | Raggio zona fumo |
-| `MOLOTOV_RADIUS` | 100.0 | Raggio zona molotov |
+| `MEMORY_DECAY_TAU_S` | 2.5s | Emivita memoria nemici (`× tick_rate` → decadimento `exp(−ticks/τ)`) |
+| `MEMORY_CUTOFF_S` | 7.5s | Cutoff memoria (3 × τ) |
+| `FLASH_DURATION_S` / `SMOKE_DURATION_S` / `MOLOTOV_DURATION_S` | 2.0s / 18.0s / 7.0s | Durate delle utility |
+| `SMOKE_RADIUS` / `FLASH_RADIUS` / `MOLOTOV_RADIUS` | 200.0 / 400.0 / 100.0 | Raggi delle zone utilità |
+| `MAX_TRACKED_ENEMIES` / `MAX_HISTORY_TICKS` | 10 / 512 | Limiti di tracking |
 
 **Pipeline percettiva:**
 
 ```mermaid
 flowchart TB
     TICK["Tick Data<br/>(tutti i giocatori)"] --> VIS["Visibility Check<br/>FOV 90° + enemies_visible count"]
-    TICK --> MEM["Enemy Memory<br/>Last known positions<br/>decay τ=160, cutoff=320 ticks"]
-    TICK --> SND["Sound Inference<br/>Gunfire 2000u, Footsteps 1000u<br/>direction in radians"]
+    TICK --> MEM["Enemy Memory<br/>Last known positions<br/>decay τ=2.5s, cutoff=7.5s<br/>(tick-rate aware)"]
+    TICK --> SND["Sound Inference<br/>Gunfire 2000u<br/>direction in radians"]
     TICK --> UTL["Utility Zones<br/>Smoke 200u, Molotov 100u"]
     VIS --> PK["PlayerKnowledge<br/>(NO-WALLHACK output)"]
     MEM --> PK
@@ -1548,18 +1550,6 @@ Feature spaziali Z-aware per mappe multilivello (Task 2.17.1):
 | `Z_PENALTY_FACTOR` | 2.0× | Moltiplicatore distanza cross-level |
 
 **Output:** Vettore di 6 feature spaziali normalizzate [0,1]: distanza da bombsite A/B, distanza da spawn T/CT, distanza da mid, penalità Z. Distanze calcolate con `distance_with_z_penalty()` per penalizzare percorsi cross-level su Nuke/Vertigo.
-
-### -CVFrameBuffer (`cv_framebuffer.py`)
-
-Ring buffer thread-safe per frame RGB (Task 2.24.2) con estrazione regioni HUD:
-
-| Regione | Coordinate (1920×1080) | Contenuto |
-|---|---|---|
-| `MINIMAP_REGION` | (0, 0, 320, 320) | Minimappa (top-left) |
-| `KILL_FEED_REGION` | (1520, 0, 1920, 300) | Kill feed (top-right) |
-| `SCOREBOARD_REGION` | (760, 0, 1160, 60) | Scoreboard (top-center) |
-
-**Dynamic resolution scaling:** Tutte le regioni scalano automaticamente rispetto a `REFERENCE_RESOLUTION = (1920, 1080)` per supportare risoluzioni diverse. Conversione BGR→RGB integrata nel metodo `capture_frame()`.
 
 ### -EliteAnalytics (`external_analytics.py`)
 
@@ -1603,30 +1593,14 @@ Gestisce tag di team e prefissi clan. Complessità O(n) per query, accettabile p
 
 ```mermaid
 flowchart TB
-    REQ["get_pro_baseline(map_name)"] --> DB{"DB ha<br/>ProPlayerStatCard?"}
-    DB -->|"Sì"| DBBL["Baseline da DB<br/>(aggregata per mappa)"]
-    DB -->|"No"| CSV{"CSV dataset<br/>disponibile?"}
-    CSV -->|"Sì"| CSVBL["Baseline da CSV"]
-    CSV -->|"No"| HARD["HARD_DEFAULT_BASELINE<br/>(16 metriche hardcoded)"]
-    DBBL --> OUT["dict: metric → {mean, std}"]
-    CSVBL --> OUT
-    HARD --> OUT
+    REQ["get_pro_baseline(map_name)"] --> HARD["Strato 1: HARD_DEFAULT_BASELINE<br/>(hardcoded)"]
+    HARD --> CSV["Strato 2: CSV dataset<br/>(se disponibile, sovrascrive)"]
+    CSV --> DEMO["Strato 3: statistiche demo pro<br/>(se disponibili, sovrascrivono)"]
+    DEMO --> HLTV["Strato 4: ProPlayerStatCard HLTV<br/>(se disponibili, sovrascrivono)"]
+    HLTV --> OUT["dict: metric → {mean, std}"]
 ```
 
-**HARD_DEFAULT_BASELINE** (16 metriche con mean + std):
-
-| Metrica | Mean | Std |
-|---|---|---|
-| rating | 1.06 | 0.15 |
-| kpr | 0.68 | 0.12 |
-| dpr | 0.62 | 0.10 |
-| adr | 77.8 | 12.0 |
-| kast | 0.70 | 0.06 |
-| hs_pct | 0.45 | 0.10 |
-| impact | 1.05 | 0.20 |
-| opening_kill_ratio | 1.05 | 0.30 |
-| clutch_win_pct | 0.15 | 0.08 |
-| ... | ... | ... |
+**HARD_DEFAULT_BASELINE** — dizionario di metriche hardcoded con mean + std, ultimo livello della catena di fallback. Copre: `rating`, `kd_ratio`, `avg_kills`, `avg_deaths`, `avg_adr`, `avg_hs`, `avg_kast`, `accuracy`, aggression, utility, opening/clutch, `rating_impact`, `rating_survival`, `rating_kast`. La baseline reale è la **fusione a 4 strati**: hardcoded → CSV → statistiche demo → HLTV (`get_pro_baseline()`).
 
 **`calculate_deviations(player_stats, baseline)`** — Calcola Z-score per ogni feature: `z = (player_value - mean) / std`. Gestisce sia baseline flat (legacy) che strutturate (dict con mean/std).
 
@@ -1650,9 +1624,10 @@ flowchart TB
 
 | Requisito | Valore | Significato |
 |---|---|---|
-| `MIN_SAMPLES_FOR_VALIDITY` | 10 | Minimo campioni per soglia valida |
+| `MIN_SAMPLES_FOR_VALIDITY` | 30 | Minimo campioni per soglia valida |
 | Soglie valide minime | 3 | Per uscire dal cold-start |
 | Cold-start output | `(FLEX, 0.0)` | Ruolo generico, 0% confidenza |
+| Apprendimento soglie | 75° percentile | Le soglie sono apprese dal 75° percentile dei dati pro reali |
 
 **Persistenza:** `persist_to_db()` / `load_from_db()` — le soglie apprese sopravvivono ai riavvii. `validate_consistency()` verifica la coerenza interna (es. entry_rate non può essere negativo).
 
@@ -1733,7 +1708,7 @@ stateDiagram-v2
     CRASHED --> CRASHED: Max retries exceeded
 ```
 
-**Servizi gestiti:** Attualmente solo `hunter` (HLTV sync daemon: `hltv_sync_service.py`). Architettura estensibile per daemon aggiuntivi.
+**Servizi gestiti:** Attualmente solo `hunter` (HLTV sync daemon: `hltv_sync_service.py`, processo separato). Da non confondere con i 4 daemon-thread del Session Engine (Scanner/Digester/Teacher/Pulse) — lo Scanner riporta il proprio stato sotto la chiave storica `hunter` in `CoachState`.
 
 ### -DatabaseGovernor (`db_governor.py`)
 
@@ -1810,7 +1785,7 @@ Supervisore del ciclo di vita ML con intervento in tempo reale:
 
 ### Coordinamento Inter-Daemon
 
-Il Modulo di Controllo orchestra i 4 daemon del sistema (Hunter, Digester, Teacher, Pulse) attraverso canali di comunicazione basati su stato condiviso (`CoachState`) e segnali event-based:
+Il Modulo di Controllo orchestra i 4 daemon del sistema (Scanner, Digester, Teacher, Pulse) attraverso canali di comunicazione basati su stato condiviso (`CoachState`) e segnali event-based:
 
 ```mermaid
 stateDiagram-v2
@@ -1857,13 +1832,13 @@ Dataclass minimale che rappresenta il trend di una singola feature:
 | `volatility` | float | Deviazione standard dei valori (stabilità) |
 | `confidence` | float | min(1.0, num_samples / 30) — richiede 30+ partite per piena fiducia |
 
-### -TrendAnalysis (`trend_analysis.py`)
+### -compute_trend (`trend_analysis.py`)
 
-`compute_trend(values)` — Calcola slope, volatility e confidence da una serie di valori:
+La funzione `compute_trend(values)` — calcola slope, volatility e confidence da una serie di valori (non esiste una classe `TrendAnalysis`; il modulo espone questa funzione libera):
 
 - **Slope:** Coefficiente lineare via `np.polyfit(x, y, 1)[0]`
 - **Volatility:** `np.std(values)`
-- **Confidence:** Scala linearmente con il numero di campioni, piena fiducia a 30+
+- **Confidence:** `min(1.0, n / TREND_CONFIDENCE_SAMPLE_SIZE)` con `TREND_CONFIDENCE_SAMPLE_SIZE = 30`; guardia per `n < 2`
 
 **Integrazione:** I risultati di `compute_trend()` alimentano `FeatureTrend` → `LongitudinalEngine.generate_longitudinal_coaching()` → insight trend-aware nel coaching.
 
@@ -1900,10 +1875,11 @@ flowchart TB
         CALIB["CalibrationSnapshot"]
         RTR["RoleThresholdRecord"]
     end
-    subgraph TIER2["Tier 2 — hltv_metadata.db (Dati Pro)"]
+    subgraph TIER2["Tier 2 — hltv_metadata.db (Dati Pro, 7 tabelle)"]
         PRO["ProPlayer"]
         TEAM["ProTeam"]
         STAT["ProPlayerStatCard"]
+        EXTRA["ProEvent · ProTournament<br/>ProHead2Head · ProMapRecord"]
     end
     subgraph TIER3["Tier 3 — match_*.db (Per-Match)"]
         MTS["MatchTickState<br/>(40+ campi per tick)"]
@@ -1919,11 +1895,11 @@ flowchart TB
     style TIER3 fill:#51cf66,color:#fff
 ```
 
-> **Spiegazione Diagramma:** I tre database sono fisicamente separati: Tier 1 contiene i dati core dell'applicazione (17 tabelle), Tier 2 i dati professionali scaricati da HLTV (3 tabelle), e Tier 3 i dati di telemetria per-match in file SQLite individuali. La separazione evita contesa WAL: le scritture di ingestione (Tier 1) non bloccano le letture HLTV (Tier 2) né la registrazione di telemetria (Tier 3). I riferimenti cross-database sono **logici** (non FK reali) poiché SQLite non supporta FK cross-file.
+> **Spiegazione Diagramma:** I tre database sono fisicamente separati: Tier 1 contiene i dati core dell'applicazione (18 tabelle in `_MONOLITH_TABLES`), Tier 2 i dati professionali scaricati da HLTV (7 tabelle in `_HLTV_TABLES`), e Tier 3 i dati di telemetria per-match in file SQLite individuali (3 tabelle). La separazione evita contesa WAL: le scritture di ingestione (Tier 1) non bloccano le letture HLTV (Tier 2) né la registrazione di telemetria (Tier 3). I riferimenti cross-database sono **logici** (non FK reali) poiché SQLite non supporta FK cross-file.
 
 ### -Modelli di Dati (`db_models.py`)
 
-Lo **schema canonico** di tutto il sistema: definisce ogni tabella, vincolo, indice e validatore tramite SQLModel (Pydantic + SQLAlchemy). Due enum e 20+ modelli organizzati per tier.
+Lo **schema canonico** di tutto il sistema: definisce ogni tabella, vincolo, indice e validatore tramite SQLModel (Pydantic + SQLAlchemy). Due enum e **25 modelli `table=True`** in `db_models.py` (+ 3 per-match in `match_data_manager.py` = 28 totali), organizzati per tier.
 
 **Enum di integrità:**
 
@@ -1962,6 +1938,9 @@ Lo **schema canonico** di tutto il sistema: definisce ogni tabella, vincolo, ind
 | `ProTeam` | Tier 2 | hltv_id (unique), name, world_rank | Team professionistici |
 | `ProPlayer` | Tier 2 | hltv_id (unique), nickname, team_id (FK→ProTeam) | Giocatori professionisti |
 | `ProPlayerStatCard` | Tier 2 | player_id (FK), rating_2_0, kpr, adr, kast, detailed_stats_json | Schede statistiche HLTV con dati granulari |
+| `ProEvent` / `ProTournament` / `ProHead2Head` / `ProMapRecord` | Tier 2 | metadati eventi, tornei, scontri diretti e record per mappa | Tabelle HLTV estese |
+| `DataLineage` | Tier 1 | entity_type, entity_id, source_demo, pipeline_version, processing_step | Audit trail di provenienza append-only (DL-1); scritto via `DatabaseManager.record_lineage()` |
+| `DataQualityMetric` | Tier 1 | run_id, run_type, metric_name, metric_value, sample_count | Metriche qualità append-only per run (P5-E) |
 
 > **Nota architetturale:** `PlayerMatchStats.pro_player_id` è un riferimento **logico** (non una FK reale) a `ProPlayer.hltv_id` perché risiedono in database separati. SQLite non supporta FK cross-file — il join viene effettuato a livello applicativo.
 
@@ -1975,8 +1954,8 @@ Il **custode dell'archivio**: gestisce le connessioni SQLite con WAL mode obblig
 
 | Classe | Database | Tabelle | Engine |
 |---|---|---|---|
-| `DatabaseManager` | `database.db` | 17 tabelle (`_MONOLITH_TABLES`) | `pool_size=1`, `max_overflow=4` |
-| `HLTVDatabaseManager` | `hltv_metadata.db` | 3 tabelle (`_HLTV_TABLES`) | `pool_size=1`, `max_overflow=4` |
+| `DatabaseManager` | `database.db` | 18 tabelle (`_MONOLITH_TABLES`) | `pool_size=1`, `max_overflow=4` |
+| `HLTVDatabaseManager` | `hltv_metadata.db` | 7 tabelle (`_HLTV_TABLES`: ProPlayer, ProTeam, ProPlayerStatCard, ProEvent, ProTournament, ProHead2Head, ProMapRecord) | `pool_size=1`, `max_overflow=4` |
 
 **PRAGMA SQLite (applicati su ogni connessione via `@event.listens_for`):**
 
@@ -1985,6 +1964,8 @@ Il **custode dell'archivio**: gestisce le connessioni SQLite con WAL mode obblig
 | `journal_mode` | `WAL` | Letture concorrenti + singola scrittura |
 | `synchronous` | `NORMAL` | Bilanciamento performance/durabilità |
 | `busy_timeout` | `30000` (30s) | Timeout contesa WAL lock |
+| `foreign_keys` | `ON` | Integrità referenziale (DB-06) |
+| `wal_autocheckpoint` | `512` | Checkpoint WAL automatico (DB-07) |
 
 **API pubblica:**
 
@@ -2052,7 +2033,7 @@ flowchart LR
 
 ### -BackupManager (`backup_manager.py`)
 
-Il **responsabile della sicurezza dei dati**: crea copie di backup non-bloccanti tramite la **SQLite Online Backup API** (`sqlite3.Connection.backup()`) e le gestisce con una politica di rotazione. L'API di backup online (non `VACUUM INTO`) è la scelta corretta perché opera in modo sicuro con WAL-mode e accesso concorrente — copia le pagine in modo incrementale senza richiedere lock esclusivo sull'intero database.
+Il **responsabile della sicurezza dei dati**: crea copie di backup a caldo tramite **`VACUUM INTO`** (hot backup SQLite compatibile con WAL-mode: produce una copia compattata e consistente senza fermare i writer) e le gestisce con una politica di rotazione. Il modulo complementare `db_backup.py` fornisce `backup_monolith`, `backup_match_data`, `rotate_backups` (keep_count=5) e `restore_backup`.
 
 >
 > **Correzione H-02 — DB handle leak:** `_verify_integrity()` utilizza un blocco `try/finally` per garantire la chiusura della connessione `sqlite3` anche in caso di errore. Il PRAGMA utilizzato è `quick_check` (non `integrity_check`) per ridurre il tempo di verifica sui database di grandi dimensioni — `quick_check` omette la validazione degli indici, sufficiente per verificare l'integrità strutturale delle pagine del backup.
@@ -2062,7 +2043,7 @@ Il **responsabile della sicurezza dei dati**: crea copie di backup non-bloccanti
 ```mermaid
 flowchart TB
     TRIGGER["should_run_auto_backup()<br/>Controlla: esiste backup per oggi?"]
-    TRIGGER -->|"No backup oggi"| BACKUP["sqlite3.Connection.backup()<br/>'backup_{label}_{timestamp}.db'"]
+    TRIGGER -->|"No backup oggi"| BACKUP["VACUUM INTO<br/>'backup_{label}_{timestamp}.db'"]
     BACKUP --> EXISTS{"File creato?"}
     EXISTS -->|"No"| FAIL["Errore: file mancante"]
     EXISTS -->|"Sì"| INTEG["PRAGMA quick_check<br/>sulla copia"]
@@ -2082,7 +2063,7 @@ flowchart TB
     style PRUNE_OLD fill:#ff6b6b,color:#fff
 ```
 
-**Sicurezza path:** Il label del backup viene pre-validato con regex `_SAFE_BACKUP_LABEL_RE = ^[a-zA-Z0-9_\-]{1,64}$` (BE-01, DB-03). Il path di destinazione viene verificato tramite `Path.resolve().relative_to()` per garantire che risieda all'interno della directory di backup — difesa in profondità (BE-06) contro path traversal. L'API di backup online (`sqlite3.Connection.backup()`) non coinvolge query SQL per il path, eliminando il rischio di injection a questo livello.
+**Sicurezza path:** Il label del backup viene pre-validato con regex (BE-01, DB-03) e il path di destinazione viene verificato per garantire che risieda all'interno della directory di backup — difesa in profondità (BE-06) contro path traversal.
 
 ### -StorageManager (`storage_manager.py`)
 
@@ -2125,10 +2106,10 @@ flowchart TB
         DBM["DatabaseManager<br/>(WAL, pool_size=1)"]
         HLTV_DBM["HLTVDatabaseManager<br/>(database separato)"]
         MDM["MatchDataManager<br/>(Tier 3, LRU cache 50)"]
-        BM["BackupManager<br/>(Online Backup API, 7d+4w)"]
+        BM["BackupManager<br/>(VACUUM INTO, rotazione)"]
         SM["StorageManager<br/>(demo folders, quote)"]
         STM["StateManager<br/>(CoachState singleton)"]
-        MODELS["db_models.py<br/>(20+ tabelle SQLModel)"]
+        MODELS["db_models.py<br/>(25 tabelle SQLModel)"]
         MIG["db_migrate.py<br/>(Alembic auto-upgrade)"]
     end
     MODELS -->|"schema"| DBM
@@ -2314,7 +2295,7 @@ Per ogni campione nel batch:
 | `_event_cache` | `(match_id, tick)` | Eventi nell'intervallo [-320, +64] |
 | `_metadata_cache` | `match_id` | Metadati match (mappa, etc.) |
 
-> **Correzione F3-11:** I campioni con fallback a zero-tensor vengono **scartati** (non usati per training). Il tasso aggregato viene tracciato e se supera il 10%, un warning viene emesso. Se l'intero batch è fallback, viene saltato completamente.
+> **Correzione F3-11:** I campioni con fallback a zero-tensor vengono **scartati** (non usati per training). Il tasso aggregato viene tracciato lungo tutto il ciclo e, se al termine supera il **30%**, `_finalize_training()` **aborta il run** con errore esplicito. Se l'intero batch è fallback, viene saltato completamente.
 >
 > **Correzione H-03 — Rimozione batch swallowing silenzioso:** I loop di training e validazione del RAP non contengono più il blocco `except (KeyError, TypeError): continue` che mascherava silenziosamente errori nei dati. Ora `train_step()` deve restituire un `dict` con chiave `'loss'` o viene sollevato un `ValueError` esplicito. Questo garantisce che errori strutturali nei batch vengano rilevati immediatamente anziché ignorati, migliorando la diagnosticabilità del pipeline di addestramento.
 
@@ -2382,12 +2363,13 @@ Il trainer specializzato per l'architettura JEPA. Gestisce pre-training self-sup
 | Parametro | Default | Dettaglio |
 |---|---|---|
 | `lr` | 1e-4 | Learning rate per AdamW |
-| `weight_decay` | 1e-4 | Regolarizzazione L2 |
+| `weight_decay` | 1e-2 | Regolarizzazione L2 |
 | `drift_threshold` | 2.5 | Soglia z-score per DriftMonitor |
+| AMP + accumulo | GradScaler (CUDA), `_accumulation_steps=4`, grad clip 1.0 | Mixed precision e batch effettivi più grandi |
 
 - **NN-36**: I parametri del `target_encoder` vengono **esclusi** dall'ottimizzatore — sono aggiornati solo via EMA (Exponential Moving Average), mai con gradienti diretti
 - **KT-05**: I parametri dei layer `concept` ricevono un **moltiplicatore LR 0.05×** (5% del learning rate base) tramite gruppi di parametri separati nell'ottimizzatore. Questo previene il collapse delle embedding concettuali durante il training VL-JEPA (per VL-JEPA paper, Section 4.6, Assran et al.)
-- **Scheduler**: `CosineAnnealingLR` con `T_max=100`, step una volta per epoca
+- **Scheduler**: `SequentialLR` — warmup lineare (5% di T_max, start_factor 0.01) seguito da `CosineAnnealingLR` con `T_max=100`, step una volta per epoca
 
 **Schedule EMA Momentum (J-6):**
 
@@ -2484,8 +2466,10 @@ flowchart TB
 |---|---|---|---|
 | Strategy | 1.0 | MSE | `target_strat` (ruolo tattico one-hot, 10 classi) |
 | Value | 0.5 | MSE | `target_val` (advantage [0,1]) |
-| Sparsity | 1.0 | L1 su gate weights | Interpretabilità: pesi gate → ~0 |
+| Sparsity | 1.0 | Entropia del gate MoE × 1e-4 | Interpretabilità: routing deciso (bassa entropia) |
 | Position | 1.0 | MSE + Z×2.0 | `target_pos` delta (opzionale) |
+
+**Ottimizzazione RAPTrainer:** AdamW (lr=1e-4, weight_decay=1e-2), `CosineAnnealingLR(T_max=100, eta_min=1e-6)`, accumulo gradienti ×4, AMP su CUDA, grad clip 1.0; dopo ogni optimizer step `_notify_memory_step()` attiva la memoria Hopfield.
 
 **Task 2.17.1 — Penalità Z-axis:** La `compute_position_loss()` applica un peso 2× sull'errore asse Z (verticalità), perché nel CS2 gli errori di elevazione (es. nemico su una scala vs piano terra) sono tatticamente critici.
 
@@ -2667,7 +2651,7 @@ flowchart TB
     subgraph RAP_LOSS["RAP Loss Stack"]
         STRAT["MSE(advice_probs, target_strat)<br/>Strategy"]
         VAL2["0.5 × MSE(value_estimate, target_val)<br/>Value"]
-        SPARSE["L1(gate_weights) × λ<br/>Sparsity"]
+        SPARSE["Entropia(gate_probs) × λ<br/>Sparsity"]
         POS2["MSE(δpos) + 2.0× MSE(δz)<br/>Position"]
     end
 
@@ -2683,7 +2667,7 @@ flowchart TB
 
 ### -jepa_contrastive_loss() — InfoNCE
 
-**File:** `jepa_model.py:326` | **Signature:** `(pred, target, negatives, temperature=0.07) → scalar`
+**File:** `jepa_model.py` | **Signature:** `(pred, target, negatives, temperature=0.07) → scalar` (in produzione la temperatura è il parametro appreso `log_temperature`, clamp [0.01, 1.0])
 
 Formula InfoNCE (Noise Contrastive Estimation):
 
@@ -2701,7 +2685,7 @@ La temperatura `τ = 0.07` è bassa, il che rende la loss **sensibile a piccole 
 
 ### -vl_jepa_concept_loss() — Allineamento Concettuale
 
-**File:** `jepa_model.py:913` | **Signature:** `(concept_logits, concept_labels, concept_embeddings, α=0.5, β=0.1) → (total, concept, diversity)`
+**File:** `jepa_model.py` | **Signature:** `(concept_logits, concept_labels, concept_embeddings, α=0.5, β=0.1) → (total, concept, diversity)`
 
 Due componenti:
 
@@ -2710,23 +2694,23 @@ Due componenti:
 | Concept alignment | `BCE_with_logits(logits, labels)` | α = 0.5 | Multi-label: ogni concetto attivato indipendentemente |
 | Diversity (VICReg) | `-mean(std(emb_norm, dim=0))` | β = 0.1 | Previene collapse: penalizza bassa varianza delle embedding concettuali |
 
-I 16 concetti di coaching (`COACHING_CONCEPTS`) coprono: positioning (aggressivo/passivo/esposto), economy (eco/force/full), timing (trade/rotate/patience), utility (flash/smoke/molotov), e communication (info/callout).
+I 16 concetti di coaching (`COACHING_CONCEPTS`) sono organizzati in 5 dimensioni: positioning (0-2), utility (3-4), decision (5-6, 11-12), engagement (7-10) e psychology (13-15) — la tassonomia completa è documentata nella Parte 1A.
 
 ### -compute_sparsity_loss() — Sparsità Gate RAP
 
-**File:** `rap_coach/model.py:105` | **Signature:** `(gate_weights) → scalar`
+**File:** `experimental/rap_coach/model.py` | **Signature:** `(gate_weights) → scalar`
 
 ```
-L_sparsity = λ × mean(|gate_weights|)
+L_sparsity = context_gate_l1_weight × (−Σ p·log p)      # entropia del gate MoE, range [0, log 4]
 ```
 
-L1 norm sui pesi del `ContextGate` (SuperpositionLayer). L'obiettivo è che la maggior parte dei gate sia vicina a 0, con poche attivazioni forti — questo rende il modello **interpretabile** (quali input influenzano davvero la decisione?).
+**Entropia** sulla distribuzione softmax del gate MoE, scalata da `context_gate_l1_weight` (default 1e-4 da `HeuristicConfig`). L'obiettivo è un routing **deciso**: entropia bassa = pochi esperti dominanti — questo rende il modello **interpretabile** (quale esperto ha davvero deciso?).
 
 > **Nota F3-07:** I `gate_weights` vengono passati come parametro esplicito anziché letti da `self._last_gate_weights` — previene race condition in ambienti multi-thread.
 
 ### -Position Loss RAP — Penalità Z-axis
 
-**File:** `rap_coach/trainer.py:89` | **Signature:** `(pred_delta, target_delta) → (loss, z_error)`
+**File:** `experimental/rap_coach/trainer.py` | **Signature:** `(pred_delta, target_delta) → (loss, z_error)`
 
 ```
 L_pos = MSE(Δx) + MSE(Δy) + 2.0 × MSE(Δz)
