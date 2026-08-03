@@ -27,10 +27,26 @@ from Programma_CS2_RENAN.backend.storage.db_models import (
     DatasetSplit,
     PlayerMatchStats,
     PlayerTickState,
+    RoundStats,
 )
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 app_logger = get_logger("cs2analyzer.nn.coach_manager")
+
+# A decided CS2 map (MR12) cannot end before 13 rounds, so a demo carrying
+# fewer recorded rounds is a fragment, not a match. HLTV publishes some maps
+# as two `-p1`/`-p2` files; each half ingests independently and writes its own
+# per-match shard, so the P4-A shard gate accepts both. Observed 2026-07-26 on
+# the live DB: fragments of 2/5/6/7/9 rounds sitting in TRAIN, the shortest
+# with avg_kills/avg_adr at 0.0 for all ten players. Whole maps in the same
+# corpus start at 14 rounds, so the floor sits in a clean gap.
+MIN_COMPLETE_MAP_ROUNDS = 13
+
+
+def _normalize_demo_name(demo_name: str | None) -> str:
+    """Canonical demo key: drop the PlayerMatchStats `.dem_<suffix>` tail and `.dem`."""
+    return _MATCH_STATS_DEMO_SUFFIX_RE.sub("", demo_name or "").removesuffix(".dem")
+
 
 # Tick-level feature names aligned with FeatureExtractor (METADATA_DIM=25).
 # Used by the canonical training path (TrainingOrchestrator + StateReconstructor)
@@ -309,6 +325,71 @@ class CoachTrainingManager:
             get_state_manager().set_error("teacher", f"Cycle Failed: {e}")
             app_logger.error("Training Cycle Crash: %s", e, exc_info=True)
 
+    @staticmethod
+    def _get_demo_round_counts(session) -> dict[str, int]:
+        """Distinct recorded rounds per demo, keyed by normalized demo_name."""
+        rows = session.exec(
+            select(
+                col(RoundStats.demo_name),
+                func.count(func.distinct(col(RoundStats.round_number))),
+            ).group_by(col(RoundStats.demo_name))
+        ).all()
+        return {_normalize_demo_name(name): int(count) for name, count in rows}
+
+    def _build_eligibility_gates(self, session, all_matches):
+        """Predicates a match must all satisfy to enter a train/val/test split.
+
+        Each gate answers a different question and none subsumes the others:
+
+        * P4-A shard completeness — "did the tick data land?" 259 historical
+          matches have schema-only shards and their demo files are gone, so a
+          global temporal split packed TRAIN with permanently ineligible demos
+          and training aborted with zero eligible TRAIN data.
+        * Round floor — "is this a whole map?" Shard presence says where the
+          data was written, not whether the match finished. See
+          MIN_COMPLETE_MAP_ROUNDS.
+        * Nonzero aggregates — "are the labels real?" A fragment that never
+          reaches a populated scoreboard aggregates to 0.0 across every player
+          under the last-tick read; that is a correct read of a useless match.
+
+        A signal that is entirely unavailable is skipped rather than treated as
+        universal failure — a missing input must not silently empty the
+        training pool.
+        """
+        gates = []
+
+        completed = self._get_completed_demo_names()
+        if completed is not None:
+            gates.append(lambda m: _normalize_demo_name(m.demo_name) in completed)
+        else:
+            app_logger.debug("Eligibility: shard-completeness signal unavailable — gate skipped.")
+
+        round_counts = self._get_demo_round_counts(session)
+        if round_counts:
+            gates.append(
+                lambda m: round_counts.get(_normalize_demo_name(m.demo_name), 0)
+                >= MIN_COMPLETE_MAP_ROUNDS
+            )
+        else:
+            app_logger.warning(
+                "Eligibility: RoundStats is empty — whole-match round floor "
+                "(>=%d) cannot be enforced; fragments may enter TRAIN.",
+                MIN_COMPLETE_MAP_ROUNDS,
+            )
+
+        kill_totals: dict[str, float] = {}
+        adr_totals: dict[str, float] = {}
+        for m in all_matches:
+            key = _normalize_demo_name(m.demo_name)
+            kill_totals[key] = kill_totals.get(key, 0.0) + (m.avg_kills or 0.0)
+            adr_totals[key] = adr_totals.get(key, 0.0) + (m.avg_adr or 0.0)
+        gates.append(
+            lambda m: kill_totals.get(_normalize_demo_name(m.demo_name), 0.0) > 0.0
+            and adr_totals.get(_normalize_demo_name(m.demo_name), 0.0) > 0.0
+        )
+
+        return gates
+
     def assign_dataset_splits(self):
         """Chronological 70/15/15 split. Prevents temporal data leakage.
 
@@ -331,65 +412,73 @@ class CoachTrainingManager:
             if not all_matches:
                 return
 
-            # P4-A extension: split only over demos whose per-match shard is
-            # marked complete — a permanently-ineligible demo inside TRAIN
-            # starves training (259 historical matches have schema-only
-            # shards and their demo files are gone; a global temporal split
-            # packed the entire TRAIN block with them → zero eligible TRAIN
-            # data). None (completeness info unavailable) keeps legacy
-            # behavior: everything is split.
-            completed = self._get_completed_demo_names()
-            if completed is not None:
+            gates = self._build_eligibility_gates(session, all_matches)
 
-                def _is_eligible(m):
-                    name = _MATCH_STATS_DEMO_SUFFIX_RE.sub("", m.demo_name or "")
-                    return name.removesuffix(".dem") in completed
+            def _is_eligible(m):
+                return all(gate(m) for gate in gates)
 
-                eligible_matches = [m for m in all_matches if _is_eligible(m)]
-                for m in all_matches:
-                    if not _is_eligible(m) and m.dataset_split != DatasetSplit.UNASSIGNED:
-                        m.dataset_split = DatasetSplit.UNASSIGNED
-                        session.add(m)
-            else:
-                eligible_matches = all_matches
+            eligible_matches = [m for m in all_matches if _is_eligible(m)]
+            for m in all_matches:
+                if not _is_eligible(m) and m.dataset_split != DatasetSplit.UNASSIGNED:
+                    m.dataset_split = DatasetSplit.UNASSIGNED
+                    session.add(m)
 
             pros = [m for m in eligible_matches if m.is_pro]
             users = [m for m in eligible_matches if not m.is_pro]
 
-            def temporal_assign(matches):
-                n = len(matches)
-                if n == 0:
-                    return
+            def temporal_assign(rows):
+                """Slice on matches, never on rows.
+
+                A match contributes one row per player and match_date carries
+                per-row microsecond spread, so an index cut over the flat row
+                list can land inside a demo — putting the same map's ticks on
+                both sides of the boundary (observed 2026-07-26: one player in
+                TRAIN, nine in VAL). Group first, cut between groups.
+                """
+                if not rows:
+                    return []
+                by_demo: dict[str, list] = {}
+                for m in rows:
+                    by_demo.setdefault(_normalize_demo_name(m.demo_name), []).append(m)
+                # Deterministic order: earliest row of each match, demo key breaks ties.
+                demos = sorted(
+                    by_demo.items(), key=lambda kv: (min(m.match_date for m in kv[1]), kv[0])
+                )
+                n = len(demos)
                 train_idx = int(n * 0.70)
                 val_idx = int(n * 0.85)
-                for i, m in enumerate(matches):
+                for i, (_demo, group) in enumerate(demos):
                     if i < train_idx:
-                        m.dataset_split = DatasetSplit.TRAIN
+                        split = DatasetSplit.TRAIN
                     elif i < val_idx:
-                        m.dataset_split = DatasetSplit.VAL
+                        split = DatasetSplit.VAL
                     else:
-                        m.dataset_split = DatasetSplit.TEST
-                    session.add(m)
+                        split = DatasetSplit.TEST
+                    for m in group:
+                        m.dataset_split = split
+                        session.add(m)
+                return demos
 
-            temporal_assign(pros)
-            temporal_assign(users)
+            pro_demos = temporal_assign(pros)
+            user_demos = temporal_assign(users)
             session.commit()
 
             total = len(eligible_matches)
             app_logger.info(
-                "Temporal split assigned for %s eligible matches (70/15/15); "
-                "%s ineligible left UNASSIGNED.",
+                "Temporal split assigned for %s eligible rows across %s matches "
+                "(70/15/15); %s ineligible rows left UNASSIGNED.",
                 total,
+                len(pro_demos) + len(user_demos),
                 len(all_matches) - total,
             )
-            for label, group in [("pro", pros), ("user", users)]:
-                if group:
-                    train_end_idx = max(0, int(len(group) * 0.70) - 1)
+            for label, demos in [("pro", pro_demos), ("user", user_demos)]:
+                if demos:
+                    train_end_idx = max(0, int(len(demos) * 0.70) - 1)
                     app_logger.info(
-                        "Temporal split [%s]: %d total, train cutoff date: %s",
+                        "Temporal split [%s]: %d matches, train cutoff date: %s",
                         label,
-                        len(group),
-                        group[train_end_idx].match_date,
+                        len(demos),
+                        min(m.match_date for m in demos[train_end_idx][1]),
                     )
 
     def _build_callbacks(self):
@@ -875,7 +964,18 @@ class CoachTrainingManager:
     def _get_completed_demo_names():
         """P4-A: Return set of demo_names whose per-match DB has match_complete=True.
 
-        Returns None if match data manager is unavailable (graceful degradation).
+        Returns None only when the signal is genuinely unavailable — the manager
+        cannot be built, the directory cannot be listed, or not one shard could
+        be read. A shard that individually fails to answer is counted as *not
+        complete* and the enumeration continues.
+
+        That distinction is load-bearing. Enumeration used to sit inside one
+        try/except, so the first unreadable shard aborted the loop and returned
+        None; None drops the eligibility gate, which readmits the 259
+        permanently-incomplete historical demos the gate exists to keep out.
+        Four legacy-schema shards predating the match_complete column are enough
+        to trigger it (measured 2026-07-26: 310 readable, 96 complete, 4
+        raising OperationalError).
         """
         try:
             from Programma_CS2_RENAN.backend.storage.match_data_manager import (
@@ -883,15 +983,31 @@ class CoachTrainingManager:
             )
 
             mdm = get_match_data_manager()
-            completed = set()
-            for match_id in mdm.list_available_matches():
-                meta = mdm.get_metadata(match_id)
-                if meta and getattr(meta, "match_complete", False):
-                    completed.add(meta.demo_name)
-            return completed if completed else None
+            match_ids = list(mdm.list_available_matches())
         except (SQLAlchemyError, OSError, AttributeError) as e:
             app_logger.debug("P4-A: match completeness check unavailable: %s", e)
             return None
+
+        completed = set()
+        unreadable = 0
+        for match_id in match_ids:
+            try:
+                meta = mdm.get_metadata(match_id)
+            except (SQLAlchemyError, OSError, AttributeError) as e:
+                unreadable += 1
+                app_logger.debug("P4-A: shard %s could not report completeness: %s", match_id, e)
+                continue
+            if meta and getattr(meta, "match_complete", False):
+                completed.add(meta.demo_name)
+
+        if unreadable:
+            app_logger.warning(
+                "P4-A: %d of %d shards could not report completeness (legacy schema "
+                "or damaged file) — counted as incomplete, not as a missing signal.",
+                unreadable,
+                len(match_ids),
+            )
+        return completed if completed else None
 
     def _train_phase(self, is_pro=True, base_model=None, context=None):
         train_data = self._fetch_training_data(is_pro, split="train")
