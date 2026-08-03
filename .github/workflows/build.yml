@@ -285,12 +285,17 @@ jobs:
           # - checkpoint_hashes.json: CTF-1 SHA-256 registry of model files.
           # - pnpm-lock.yaml / package-lock.json / yarn.lock: package-manager
           #   integrity hashes (SRI) for every transitive dep.
+          # - settings.json: UI preference file (theme, filesystem paths).
+          #   Long Unix paths trip Base64HighEntropyString ('/' is in the
+          #   base64 charset). Credentials NEVER live here — they go through
+          #   .env / get_credential() (enforced by review + Bandit B105).
           detect-secrets scan Programma_CS2_RENAN/ \
             --exclude-files 'tests/' \
             --exclude-files 'external_analysis/' \
             --exclude-files 'integrity_manifest' \
             --exclude-files 'i18n/' \
             --exclude-files 'models/checkpoint_hashes\.json' \
+            --exclude-files 'settings\.json' \
             --exclude-files 'pnpm-lock\.yaml' \
             --exclude-files 'package-lock\.json' \
             --exclude-files 'yarn\.lock' \

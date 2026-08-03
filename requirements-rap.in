@@ -21,5 +21,7 @@
 ncps>=0.0.7,<2.0
 
 # SEC: justified — same reasoning as ncps; community-maintained Hopfield
-# implementation; range pin lets minor/patch updates flow.
-hflayers>=1.3.0,<2.0
+# implementation. TASKS#65: the 'hflayers' dist name does not exist on
+# PyPI — the package installs from the ml-jku repo (import name hflayers);
+# commit-pinned for supply-chain integrity, matching the lock files.
+hopfield-layers @ git+https://github.com/ml-jku/hopfield-layers.git@f56f929c95b77a070ae675ea4f56b6d54d36e730

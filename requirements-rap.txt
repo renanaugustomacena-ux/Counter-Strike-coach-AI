@@ -11,4 +11,6 @@
 # executed on every LTC construction, polluting training stdout (TASKS#60);
 # upstream removed it in 1.x. RAP test suite verified green on 1.0.1.
 ncps>=1.0.1,<2.0
-hflayers>=1.3.0,<2.0
+# TASKS#65: 'hflayers>=1.3.0' does not exist on PyPI (import name != dist
+# name). Pin the same commit the lock files install; provides `hflayers`.
+hopfield-layers @ git+https://github.com/ml-jku/hopfield-layers.git@f56f929c95b77a070ae675ea4f56b6d54d36e730
