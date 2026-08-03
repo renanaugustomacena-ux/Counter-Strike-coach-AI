@@ -14,11 +14,13 @@ Integration Points:
     - PlayerMatchStats / RoundStats: Match & round-level statistical context
 """
 
+import json
 import os
 import re
 import threading
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
+from sqlalchemy import func
 from sqlmodel import desc, select
 
 from Programma_CS2_RENAN.backend.services.llm_service import get_llm_service
@@ -132,6 +134,125 @@ INTENT_KEYWORDS: Dict[str, List[str]] = {
         "this match",
     ],
 }
+
+# DP-03: LLM-driven DB access. The tool phase lets the model query the
+# match database itself instead of relying on regex extraction from the
+# user's phrasing. Every argument the model supplies is UNTRUSTED — the
+# executors validate against DB-known values before touching a query
+# (zero-trust at the LLM boundary, same posture as BE-03).
+_MAX_TOOL_ROUNDS = 4
+_INVENTORY_LIMIT = 60
+_DISAMBIGUATION_LIMIT = 12
+
+COACH_TOOLS: List[Dict[str, Any]] = [
+    {
+        "type": "function",
+        "function": {
+            "name": "list_matches",
+            "description": (
+                "List matches (parsed demo files) in the database. Optional "
+                "filters: a team/player name fragment and/or a CS2 map name. "
+                "Returns demo names with their round counts."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "team": {
+                        "type": "string",
+                        "description": "Team or player name fragment, e.g. 'faze'",
+                    },
+                    "map_name": {
+                        "type": "string",
+                        "description": "CS2 map name, e.g. 'mirage'",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_match_overview",
+            "description": (
+                "Full scoreboard for one match: every player's rating, K/D, "
+                "ADR, HS%, KAST plus the highest-impact rounds. Requires the "
+                "exact demo_name as returned by list_matches."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "demo_name": {
+                        "type": "string",
+                        "description": "Exact demo name from list_matches",
+                    },
+                },
+                "required": ["demo_name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_round_details",
+            "description": (
+                "Per-player breakdown of specific rounds in one match: kills, "
+                "deaths, damage, headshots, opening kills, trades, utility and "
+                "economy, plus a tick-level timeline when available. Max 5 "
+                "rounds per call."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "demo_name": {
+                        "type": "string",
+                        "description": "Exact demo name from list_matches",
+                    },
+                    "rounds": {
+                        "type": "array",
+                        "items": {"type": "integer"},
+                        "description": "Round numbers (1-50), max 5",
+                    },
+                },
+                "required": ["demo_name", "rounds"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "lookup_player",
+            "description": (
+                "Verified profile and statistics for a player by name "
+                "(pro or parsed-demo player)."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Player name or nickname",
+                    },
+                },
+                "required": ["name"],
+            },
+        },
+    },
+]
+
+TOOLS_GUIDANCE = """\
+
+DATABASE TOOLS:
+You can query the real match database directly with the provided tools \
+(list_matches, get_match_overview, get_round_details, lookup_player).
+- When the user asks about matches, rounds, or players, CALL THE TOOLS to \
+fetch real data — never claim you lack access to match data without first \
+calling list_matches.
+- When the user says "pick a match" or "choose a round", call list_matches, \
+pick one, then drill down with get_round_details.
+- If several matches fit the user's description (teams meet more than once), \
+list the candidates and ask which one they mean — do NOT silently pick one.
+- Tool output is real parsed-demo data: ground every claim in it, and say so \
+when a detail is not present in the data."""
 
 # DP-02: Regex patterns for extracting round numbers from user messages
 _ROUND_PATTERN = re.compile(
@@ -332,6 +453,14 @@ class CoachingDialogueEngine:
     MAX_CONTEXT_TURNS = 6
     RETRIEVAL_TOP_K = 3
 
+    # DP-03: class-level defaults so test shells built via __new__ (the
+    # established idiom in this suite) inherit a sane empty state. Every
+    # write below rebinds an instance attribute — the class values are
+    # never mutated.
+    _known_demos: Optional[Dict[str, str]] = None
+    _demo_rounds: Dict[str, int] = {}
+    _match_inventory_cache: Optional[str] = None
+
     def __init__(self):
         self._llm = get_llm_service()
         self._player_lookup = None  # Lazy init to avoid import cost at startup
@@ -349,6 +478,12 @@ class CoachingDialogueEngine:
         # hybrid engine + baseline load at most once per session (latency
         # budget F3.3). None = not computed yet; "" = computed, nothing usable.
         self._session_ml_cache: Optional[str] = None
+        # DP-03: session-scoped caches for DB-grounded match awareness.
+        # _known_demos maps lowercase demo_name -> canonical demo_name and is
+        # the validation whitelist for every LLM-supplied demo argument.
+        self._known_demos: Optional[Dict[str, str]] = None
+        self._demo_rounds: Dict[str, int] = {}
+        self._match_inventory_cache: Optional[str] = None
 
         # Ensure hand-curated tactical knowledge is in the DB for RAG retrieval
         try:
@@ -449,14 +584,23 @@ class CoachingDialogueEngine:
         # F5-06: append user message only after we have a valid response so
         # that an LLM exception cannot leave the history in an inconsistent
         # state. WR-06: timeout protection prevents UI hangs. Runs UNLOCKED.
+        # DP-03: tool phase first — the model queries the DB itself; the
+        # legacy retrieval-stuffed path is the fallback for models without
+        # tool support (or any tool-phase failure).
+        response = None
         try:
-            response = self._chat_with_timeout(messages, system_prompt)
-        except TimeoutError:
-            logger.warning("Dialogue response timed out for user query")
-            response = self._fallback_response(user_message, intent)
+            response = self._respond_via_tools(messages, system_prompt)
         except Exception as exc:
-            logger.error("LLM chat raised an exception: %s", exc)
-            response = self._fallback_response(user_message, intent)
+            logger.warning("Tool phase raised — falling back to plain chat: %s", exc)
+        if not response:
+            try:
+                response = self._chat_with_timeout(messages, system_prompt)
+            except TimeoutError:
+                logger.warning("Dialogue response timed out for user query")
+                response = self._fallback_response(user_message, intent)
+            except Exception as exc:
+                logger.error("LLM chat raised an exception: %s", exc)
+                response = self._fallback_response(user_message, intent)
 
         # Check for LLM error markers → fall back
         if response.startswith("[LLM"):
@@ -522,26 +666,49 @@ class CoachingDialogueEngine:
             if progress_callback is not None:
                 progress_callback(accumulated)
 
+        # DP-03: tool phase first. Tool rounds are non-streaming (function
+        # calls have no useful token stream); the UI gets whole-message
+        # progress pushes ("checking the database...") per DR-14, then one
+        # final push with the complete answer. Legacy streamed path remains
+        # the fallback for models without tool support.
+        response = None
         try:
-            response = self._llm.chat_stream(
-                messages,
-                system_prompt=system_prompt,
-                on_chunk=_on_chunk,
-                stall_timeout=_STREAM_STALL_TIMEOUT,
-            )
-        except _StreamCancelledError:
-            logger.info("F2.3: streaming response cancelled — history unchanged")
-            return ""
+
+            def _tool_notify(tool_name: str) -> None:
+                if progress_callback is not None:
+                    progress_callback(f"_Checking the match database ({tool_name})..._")
+
+            response = self._respond_via_tools(messages, system_prompt, notify=_tool_notify)
+            if response == "" and self._stream_cancel.is_set():
+                logger.info("F2.3: tool-phase response cancelled — history unchanged")
+                return ""
+            if response and progress_callback is not None:
+                progress_callback(response)
         except Exception as exc:
-            # Stall (requests.Timeout), connection loss, malformed chunk —
-            # same fallback ladder as respond(); the UI replaces any
-            # partial render with the fallback text (logged loudly).
-            logger.warning(
-                "F2.5: stream failed (%s: %s) — falling back to offline response",
-                type(exc).__name__,
-                exc,
-            )
-            response = self._fallback_response(user_message, intent)
+            logger.warning("Tool phase raised — falling back to streaming: %s", exc)
+            response = None
+
+        if not response:
+            try:
+                response = self._llm.chat_stream(
+                    messages,
+                    system_prompt=system_prompt,
+                    on_chunk=_on_chunk,
+                    stall_timeout=_STREAM_STALL_TIMEOUT,
+                )
+            except _StreamCancelledError:
+                logger.info("F2.3: streaming response cancelled — history unchanged")
+                return ""
+            except Exception as exc:
+                # Stall (requests.Timeout), connection loss, malformed chunk —
+                # same fallback ladder as respond(); the UI replaces any
+                # partial render with the fallback text (logged loudly).
+                logger.warning(
+                    "F2.5: stream failed (%s: %s) — falling back to offline response",
+                    type(exc).__name__,
+                    exc,
+                )
+                response = self._fallback_response(user_message, intent)
 
         if not response or response.startswith("[LLM"):
             logger.warning("LLM error in streamed dialogue: %s", response or "(empty)")
@@ -567,7 +734,81 @@ class CoachingDialogueEngine:
             self._player_context = {}
             self._session_active = False
             self._session_ml_cache = None  # F3: NN context is per-session
+            # DP-03: match awareness is refreshed per session so newly
+            # ingested demos become visible without a restart.
+            self._known_demos = None
+            self._demo_rounds = {}
+            self._match_inventory_cache = None
             logger.info("Dialogue session cleared")
+
+    # ── DP-03: DB-grounded match awareness ───────────────────────────────
+
+    def _get_known_demos(self) -> Dict[str, str]:
+        """Cached map of lowercase demo_name -> canonical demo_name.
+
+        Doubles as the zero-trust whitelist for LLM-supplied demo names —
+        a demo argument that does not resolve through this map is rejected
+        before it reaches any query.
+        """
+        if self._known_demos is not None:
+            return self._known_demos
+        known: Dict[str, str] = {}
+        rounds: Dict[str, int] = {}
+        try:
+            db = get_db_manager()
+            with db.get_session() as session:
+                names = session.exec(select(PlayerMatchStats.demo_name).distinct()).all()
+                for n in names:
+                    if n:
+                        known[n.lower()] = n
+                round_rows = session.exec(
+                    select(
+                        RoundStats.demo_name,
+                        func.max(RoundStats.round_number),
+                    ).group_by(RoundStats.demo_name)
+                ).all()
+                for demo, max_round in round_rows:
+                    if demo:
+                        rounds[demo] = int(max_round or 0)
+        except Exception as exc:
+            logger.warning("Failed to load demo inventory: %s", exc)
+        self._known_demos = known
+        self._demo_rounds = rounds
+        return known
+
+    def _format_demo_line(self, demo: str) -> str:
+        rounds = self._demo_rounds.get(demo)
+        return f"{demo} ({rounds} rounds)" if rounds else f"{demo} (stats only)"
+
+    def _get_match_inventory(self) -> str:
+        """Compact match-inventory block for the system prompt.
+
+        Without this the LLM has no idea which matches exist and answers
+        "I have no access to match data" — the coach must be able to see
+        the menu before it can pick from it.
+        """
+        if self._match_inventory_cache is not None:
+            return self._match_inventory_cache
+        known = self._get_known_demos()
+        if not known:
+            self._match_inventory_cache = ""
+            return ""
+        demos = sorted(known.values())
+        # Demos with parsed rounds first — they support real drill-down.
+        with_rounds = [d for d in demos if self._demo_rounds.get(d)]
+        stats_only = [d for d in demos if not self._demo_rounds.get(d)]
+        ordered = with_rounds + stats_only
+        shown = ordered[:_INVENTORY_LIMIT]
+        lines = [
+            f"MATCH DATABASE INVENTORY ({len(demos)} matches; "
+            f"{len(with_rounds)} with full round data):"
+        ]
+        lines.extend(f"  - {self._format_demo_line(d)}" for d in shown)
+        remaining = len(ordered) - len(shown)
+        if remaining > 0:
+            lines.append(f"  ...and {remaining} more (filter with the list_matches tool).")
+        self._match_inventory_cache = "\n".join(lines)
+        return self._match_inventory_cache
 
     # ── F3/TASKS#37: NN input beyond player_query ────────────────────────
 
@@ -733,7 +974,6 @@ class CoachingDialogueEngine:
                     clean_msg = _sanitize_llm_context(ins["message"], max_len=300)
                     parts.append(f"  - [{ins['severity']}] {ins['title']}: {clean_msg}")
 
-        player_context_str = "\n".join(parts)
         # BE-03 (AUDIT §9.1): every value in `player_context_str` is sourced
         # from `CoachingInsight.message`, pro nicknames, and HLTV-scraped
         # bios — all attacker-influenceable through poisoned demos or HLTV
@@ -744,6 +984,14 @@ class CoachingDialogueEngine:
         #      could attempt prompt injection downstream. The brace escape
         #      neutralises the `format()` exploit; further LLM-side
         #      hardening is in SYSTEM_PROMPT_TEMPLATE rules.
+        # DP-03: make the match inventory part of the coach's world — the
+        # LLM cannot "choose a match" it has never been shown.
+        inventory = self._get_match_inventory()
+        if inventory:
+            parts.append("")
+            parts.append(inventory)
+
+        player_context_str = "\n".join(parts)
         safe_context = player_context_str.replace("{", "{{").replace("}", "}}")
         return SYSTEM_PROMPT_TEMPLATE.format(player_context=safe_context)
 
@@ -818,37 +1066,214 @@ class CoachingDialogueEngine:
                 rounds.add(start)
         return sorted(rounds)
 
-    def _resolve_demo_name(self, text: str) -> Optional[str]:
-        """DP-02: Resolve a demo name from user message or session context.
+    def _resolve_demo_candidates(self, text: str) -> List[str]:
+        """DP-03: Resolve ALL demos matching the user's message.
 
-        Checks: (1) session demo_name, (2) team-vs-team pattern in text,
-        (3) map mention + team fragment matching against DB.
+        Predecessor `_resolve_demo_name` returned the FIRST demo containing
+        both team fragments — with 4 FaZe–Spirit demos in the DB the coach
+        silently narrated an arbitrary one every time. Now every candidate
+        is returned; the caller disambiguates (1 → use it, >1 → ask the
+        user, 0 → fall back to the session demo).
         """
-        # Prefer session demo if set
-        session_demo = self._player_context.get("demo_name")
-
-        # Check for "X vs Y" pattern in text
         demo_match = _DEMO_PATTERN.search(text)
         if demo_match:
             team_a = demo_match.group(1).lower()
             team_b = demo_match.group(2).lower()
-            # Try to find a matching demo in the DB
-            try:
-                db = get_db_manager()
-                with db.get_session() as session:
-                    all_demos = session.exec(select(PlayerMatchStats.demo_name).distinct()).all()
-                    for demo in all_demos:
-                        demo_lower = demo.lower() if demo else ""
-                        if team_a in demo_lower and team_b in demo_lower:
-                            return demo
-                        if team_b in demo_lower and team_a in demo_lower:
-                            return demo
-            except Exception:
-                # R4 MED: was a bare pass — a DB failure silently degraded
-                # round drill-down to the session demo with no trace.
-                logger.debug("demo-name resolution failed", exc_info=True)
+            candidates = [
+                canonical
+                for lower, canonical in self._get_known_demos().items()
+                if team_a in lower and team_b in lower
+            ]
+            # A map mention narrows the candidate set ("faze vs spirit on nuke").
+            map_name = self._detect_map_mention(text)
+            if map_name and len(candidates) > 1:
+                narrowed = [c for c in candidates if map_name in c.lower()]
+                if narrowed:
+                    candidates = narrowed
+            if candidates:
+                return sorted(candidates)
 
-        return session_demo
+        session_demo = self._player_context.get("demo_name")
+        return [session_demo] if session_demo else []
+
+    def _resolve_demo_name(self, text: str) -> Optional[str]:
+        """Single-demo resolution: unambiguous candidate or None."""
+        candidates = self._resolve_demo_candidates(text)
+        return candidates[0] if len(candidates) == 1 else None
+
+    def _disambiguation_block(self, candidates: List[str]) -> str:
+        """Context block instructing the coach to ask which match is meant."""
+        shown = candidates[:_DISAMBIGUATION_LIMIT]
+        lines = [f"MULTIPLE MATCHES FOUND ({len(candidates)} candidates in the database):"]
+        lines.extend(f"  - {self._format_demo_line(d)}" for d in shown)
+        if len(candidates) > len(shown):
+            lines.append(f"  ...and {len(candidates) - len(shown)} more.")
+        lines.append(
+            "Ask the user which specific match they mean before analyzing — "
+            "do NOT silently pick one."
+        )
+        return "\n".join(lines)
+
+    # ── DP-03: agentic tool phase ────────────────────────────────────────
+
+    _TOOL_ARG_MAX_LEN = 40
+    _TOOL_LIST_LIMIT = 40
+    _TOOL_MAX_ROUNDS_PER_CALL = 5
+    _TOOL_RESULT_MAX_LEN = 8000
+    _TEAM_FRAGMENT_RE = re.compile(r"[^a-z0-9 _-]")
+    _CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+    def _sanitize_tool_result(self, text: str) -> str:
+        """BE-03 posture for the tool channel: DB-sourced text (player
+        nicknames, demo names, insight prose) flows back into the prompt as
+        tool results — strip control characters and cap length before the
+        LLM sees it."""
+        clean = self._CONTROL_CHARS_RE.sub("", text)
+        if len(clean) > self._TOOL_RESULT_MAX_LEN:
+            clean = clean[: self._TOOL_RESULT_MAX_LEN] + "\n[...truncated]"
+        return clean
+
+    def _execute_tool(self, name: str, args: Dict[str, Any]) -> str:
+        """Execute one LLM-requested tool. Every argument is UNTRUSTED:
+        demo names must resolve through the `_get_known_demos` whitelist,
+        strings are length-capped and character-filtered, round numbers are
+        bounded ints. Errors return short 'ERROR: ...' strings the model can
+        recover from — never exception details."""
+        return self._sanitize_tool_result(self._execute_tool_inner(name, args))
+
+    def _execute_tool_inner(self, name: str, args: Dict[str, Any]) -> str:
+        try:
+            if name == "list_matches":
+                return self._tool_list_matches(
+                    str(args.get("team", "") or ""), str(args.get("map_name", "") or "")
+                )
+            if name == "get_match_overview":
+                canonical = self._canonical_demo(args.get("demo_name"))
+                if not canonical:
+                    return "ERROR: unknown demo_name. Call list_matches for exact names."
+                return self._retrieve_match_overview(canonical) or "ERROR: no data for this match."
+            if name == "get_round_details":
+                canonical = self._canonical_demo(args.get("demo_name"))
+                if not canonical:
+                    return "ERROR: unknown demo_name. Call list_matches for exact names."
+                rounds = self._validate_rounds(args.get("rounds"))
+                if not rounds:
+                    return "ERROR: 'rounds' must be integers between 1 and 50 (max 5)."
+                return (
+                    self._retrieve_round_drill_down(canonical, rounds, "")
+                    or "ERROR: no round data for those rounds in this match."
+                )
+            if name == "lookup_player":
+                player = str(args.get("name", "") or "").strip()[: self._TOOL_ARG_MAX_LEN]
+                if not player:
+                    return "ERROR: 'name' is required."
+                lookup = self._get_player_lookup()
+                profile = lookup.lookup_player(player)
+                if not profile:
+                    return f"ERROR: no verified data for player '{player}' in the database."
+                return lookup.format_player_context(profile)
+            return f"ERROR: unknown tool '{name[:32]}'."
+        except Exception as exc:
+            logger.warning("Tool '%s' execution failed: %s", name, exc, exc_info=True)
+            return "ERROR: tool execution failed."
+
+    def _canonical_demo(self, raw: Any) -> Optional[str]:
+        """Whitelist-resolve an LLM-supplied demo name (case-insensitive)."""
+        if not isinstance(raw, str):
+            return None
+        return self._get_known_demos().get(raw.strip().lower())
+
+    def _validate_rounds(self, raw: Any) -> List[int]:
+        if not isinstance(raw, (list, tuple)):
+            return []
+        rounds: List[int] = []
+        for item in raw:
+            try:
+                n = int(item)
+            except (TypeError, ValueError):
+                continue
+            if 1 <= n <= 50:
+                rounds.append(n)
+        return sorted(set(rounds))[: self._TOOL_MAX_ROUNDS_PER_CALL]
+
+    def _tool_list_matches(self, team: str, map_name: str) -> str:
+        team_frag = self._TEAM_FRAGMENT_RE.sub("", team.strip().lower())[: self._TOOL_ARG_MAX_LEN]
+        map_frag = map_name.strip().lower()
+        if map_frag and map_frag not in _CS2_MAP_NAMES:
+            map_frag = ""
+        demos = sorted(self._get_known_demos().values())
+        if team_frag:
+            demos = [d for d in demos if team_frag in d.lower()]
+        if map_frag:
+            demos = [d for d in demos if map_frag in d.lower()]
+        if not demos:
+            return "No matches found for those filters."
+        shown = demos[: self._TOOL_LIST_LIMIT]
+        lines = [f"{len(demos)} matches found:"]
+        lines.extend(f"  - {self._format_demo_line(d)}" for d in shown)
+        if len(demos) > len(shown):
+            lines.append(f"  ...and {len(demos) - len(shown)} more (narrow the filter).")
+        return "\n".join(lines)
+
+    def _respond_via_tools(self, messages, system_prompt, notify=None) -> Optional[str]:
+        """DP-03: agentic exchange — the LLM queries the DB via tools.
+
+        Runs up to _MAX_TOOL_ROUNDS tool rounds, then one forced-answer
+        round. Returns the final answer text, or None when the model/path
+        cannot do tools (caller falls back to the legacy retrieval path).
+        ``notify(tool_name)`` fires before each tool execution so streaming
+        callers can render progress. Cancellation via _stream_cancel aborts
+        between rounds with "" (same contract as respond_stream).
+        """
+        if self._llm.tools_supported is False:
+            return None
+        sys_p = system_prompt + TOOLS_GUIDANCE
+        work: List[Dict[str, Any]] = [dict(m) for m in messages]
+
+        for round_no in range(_MAX_TOOL_ROUNDS + 1):
+            if self._stream_cancel.is_set():
+                return ""
+            resp = self._llm.chat_tools(
+                work,
+                system_prompt=sys_p,
+                tools=COACH_TOOLS,
+                read_timeout=float(_DIALOGUE_TIMEOUT),
+            )
+            content = resp.get("content", "")
+            calls = resp.get("tool_calls", [])
+            if content.startswith("[LLM"):
+                logger.warning("Tool phase aborted: %s", content)
+                return None
+            if calls and round_no < _MAX_TOOL_ROUNDS:
+                work.append({"role": "assistant", "content": content, "tool_calls": calls})
+                for call in calls[:4]:
+                    fn = call.get("function") or {}
+                    tool_name = str(fn.get("name", ""))
+                    raw_args = fn.get("arguments") or {}
+                    if isinstance(raw_args, str):
+                        try:
+                            raw_args = json.loads(raw_args)
+                        except (ValueError, TypeError):
+                            raw_args = {}
+                    if not isinstance(raw_args, dict):
+                        raw_args = {}
+                    if notify is not None:
+                        notify(tool_name)
+                    result = self._execute_tool(tool_name, raw_args)
+                    tool_msg: Dict[str, Any] = {
+                        "role": "tool",
+                        "tool_name": tool_name,
+                        "content": result,
+                    }
+                    if call.get("id"):
+                        tool_msg["tool_call_id"] = call["id"]
+                    work.append(tool_msg)
+                continue
+            # No tool calls (or budget exhausted): the content is the answer.
+            if content.strip():
+                return content
+            return None
+        return None
 
     def _retrieve_context(self, user_message: str, intent: str) -> str:
         """Retrieve RAG knowledge and experiences relevant to the question."""
@@ -938,12 +1363,17 @@ class CoachingDialogueEngine:
         except Exception as exc:
             logger.warning("Experience Bank retrieval failed: %s", exc)
 
-        # DP-02: Round-specific drill-down when the user asks about specific
-        # rounds or a specific match.
+        # DP-02/DP-03: Round-specific drill-down when the user asks about
+        # specific rounds or a specific match. Ambiguous team pairings
+        # (teams that met more than once) surface ALL candidates and
+        # instruct the coach to ask instead of silently picking one.
         round_numbers = self._parse_round_numbers(user_message)
-        demo_name = self._resolve_demo_name(user_message)
+        candidates = self._resolve_demo_candidates(user_message)
+        demo_name = candidates[0] if len(candidates) == 1 else None
 
-        if round_numbers and demo_name:
+        if len(candidates) > 1 and (round_numbers or intent == "match_query"):
+            blocks.append(self._disambiguation_block(candidates))
+        elif round_numbers and demo_name:
             try:
                 round_ctx = self._retrieve_round_drill_down(demo_name, round_numbers, user_message)
                 if round_ctx:

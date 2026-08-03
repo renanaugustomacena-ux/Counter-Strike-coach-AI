@@ -54,6 +54,11 @@ class LLMService:
         self._available = None  # Cached availability status
         self._available_checked_at = 0.0  # Timestamp of last check
         self._AVAILABILITY_TTL = 60.0  # Re-check every 60 seconds
+        # Tool-calling capability: None = unknown, False = Ollama rejected
+        # a tools request for this model (HTTP 400), True = confirmed.
+        # Keyed to the model name so a UI model switch resets the probe.
+        self._tools_supported: Optional[bool] = None
+        self._tools_probe_model: str = ""
 
     def list_models(self) -> List[Dict[str, Any]]:
         """Return Ollama's installed-model inventory via /api/tags.
@@ -219,6 +224,89 @@ class LLMService:
             return f"[LLM Connection Error] {str(e)}"
         except Exception as e:
             return f"[LLM Error] {str(e)}"
+
+    @property
+    def tools_supported(self) -> Optional[bool]:
+        """Tool-calling capability of the current model.
+
+        None until the first chat_tools() call probes it; the cached verdict
+        is dropped whenever ``self.model`` changes (UI model selector).
+        """
+        if self._tools_probe_model != self.model:
+            return None
+        return self._tools_supported
+
+    def chat_tools(
+        self,
+        messages: List[Dict[str, Any]],
+        system_prompt: Optional[str] = None,
+        tools: Optional[List[Dict[str, Any]]] = None,
+        connect_timeout: float = 10.0,
+        read_timeout: float = 300.0,
+    ) -> Dict[str, Any]:
+        """Multi-turn chat with Ollama function/tool calling.
+
+        Accepts the extended message vocabulary tool calling needs:
+        assistant messages carrying ``tool_calls`` and ``{"role": "tool"}``
+        result messages are passed through verbatim.
+
+        Returns ``{"content": str, "tool_calls": list}``. On failure the
+        content carries the usual "[LLM ...]" marker and tool_calls is
+        empty — callers fall back to the plain chat path. An HTTP 400
+        (Ollama's "model does not support tools") caches
+        ``tools_supported = False`` for the current model so later turns
+        skip the tool phase without a wasted round-trip.
+        """
+        chat_messages: List[Dict[str, Any]] = []
+        if system_prompt:
+            chat_messages.append({"role": "system", "content": system_prompt})
+        chat_messages.extend(messages)
+
+        payload: Dict[str, Any] = {
+            "model": self.model,
+            "messages": chat_messages,
+            "stream": False,
+            "options": {
+                "temperature": 0.7,
+                "top_p": 0.9,
+                "num_predict": -1,
+                "num_ctx": 32768,
+            },
+        }
+        if tools:
+            payload["tools"] = tools
+
+        try:
+            response = requests.post(
+                f"{self.base_url}/api/chat",
+                json=payload,
+                timeout=(connect_timeout, read_timeout),
+            )
+            if response.status_code == 200:
+                self._tools_supported = True
+                self._tools_probe_model = self.model
+                msg = response.json().get("message", {}) or {}
+                return {
+                    "content": msg.get("content", "") or "",
+                    "tool_calls": msg.get("tool_calls", []) or [],
+                }
+            if response.status_code == 400 and tools:
+                self._tools_supported = False
+                self._tools_probe_model = self.model
+                logger.warning(
+                    "Model '%s' rejected a tool-calling request (HTTP 400) — "
+                    "disabling the tool phase for this model.",
+                    self.model,
+                )
+                return {"content": "[LLM Tools Unsupported]", "tool_calls": []}
+            return {"content": f"[LLM Error] Status {response.status_code}", "tool_calls": []}
+        except requests.Timeout as e:
+            return {"content": f"[LLM Timeout] {str(e)}", "tool_calls": []}
+        except requests.ConnectionError as e:
+            self._available = False
+            return {"content": f"[LLM Connection Error] {str(e)}", "tool_calls": []}
+        except Exception as e:
+            return {"content": f"[LLM Error] {str(e)}", "tool_calls": []}
 
     def chat_stream(
         self,
