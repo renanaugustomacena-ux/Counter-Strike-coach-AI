@@ -15,47 +15,44 @@ QtCharts and QPainter-based chart widgets used across the dashboard, performance
 |------|--------|---------|
 | `__init__.py` | (re-exports) | — |
 | `economy_chart.py` | `EconomyChart` | Match Detail (per-round equipment value bars) |
-| `mini_sparkline.py` | `MiniSparkline` | Hero stats strip, dashboards (compact trend line) |
+| `mini_sparkline.py` | `MiniSparkline` | Last-match hero card on the home screen (compact trend line) |
 | `momentum_chart.py` | `MomentumChart` | Match Detail (cumulative kill-death delta with green/red fill) |
 
 ## Conventions
 
 ### Color palette
 
-All charts read colors from `core/design_tokens.py`:
+All charts resolve colors from `core/design_tokens.py` via `get_tokens()`:
 
-- **CT side:** `#5C9EE8` (canonical blue)
-- **T side:** `#E8C95C` (canonical gold)
-- **Positive trend / strength:** green family
-- **Negative trend / weakness:** red family
-- **Reference / baseline:** muted gray with dashed stroke
+- **Chart background:** `tokens.chart_bg`
+- **Primary / secondary series (CT / T):** `tokens.chart_line_primary` / `tokens.chart_line_secondary`
+- **Text and axes:** `tokens.text_primary` / `tokens.text_secondary`
 
-Hard-coding hex values is a code smell — open a token first.
+Hard-coding hex values is a code smell — add a token first.
 
 ### Widget lifecycle
 
-Each chart widget handles data updates via a `set_*()` / `update()` API.
-`QChartView`-based widgets replace the `QChart` series on update;
-QPainter-based widgets call `update()` to trigger a repaint.
+`EconomyChart` and `MomentumChart` rebuild their `QChart` series in `plot(rounds)`;
+`MiniSparkline` stores data in `set_values()` and repaints in `paintEvent()`.
 
 ### Theme awareness
 
-Charts subscribe to `theme_engine.themeChanged` and re-render with theme-appropriate styling. Background, text, grid, and reference-line colors all flip per theme.
+Charts resolve every color from the active token set (`get_tokens()`) when they are built or replotted, so a theme switch restyles them on the next plot — they hold no hard-coded palette.
 
 ### Accessibility
 
 - Charts that encode information by colour also include text labels (axis ticks, legend, value annotations).
-- `setAccessibleDescription()` provides a one-paragraph summary for screen-reader users (P4-07 in the project's accessibility checklist).
-- Color contrast meets WCAG 2.0 AA against the active theme background.
+- Add a `setAccessibleDescription()` summary for screen-reader users when introducing a new chart.
+- Keep color contrast at WCAG 2.0 AA against the active theme background.
 
 ## Adding a chart
 
-1. For QtCharts-based: subclass `QChartView`, build a `QChart` in `__init__`, replace series in `update_data()`.
+1. For QtCharts-based: subclass `QChartView`, build a `QChart` in `__init__`, replace series in `plot()`.
    For QPainter-based: subclass `QWidget`, store data in `set_values()`, call `self.update()`, draw in `paintEvent()`.
 2. Accept a typed ViewModel object or a typed list — never raw DataFrames.
-3. Pull colors from `core/design_tokens`.
+3. Pull colors from `core/design_tokens` via `get_tokens()`.
 4. Add a screen-reader description via `setAccessibleDescription()`.
-5. Subscribe to `theme_engine.themeChanged` and re-render on theme switch.
+5. Resolve all colors at plot time so a theme switch restyles on the next plot.
 6. Add the widget to the inventory table above.
 
 ## Do not

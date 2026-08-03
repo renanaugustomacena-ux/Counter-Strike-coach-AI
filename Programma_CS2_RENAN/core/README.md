@@ -19,18 +19,19 @@ Every other package in the project depends on at least one module from `core/`.
 
 | File | Purpose |
 |------|---------|
-| `session_engine.py` | Quad-Daemon Engine: Hunter, Digester, Teacher, Pulse |
+| `session_engine.py` | Quad-Daemon Engine: Scanner, Digester, Teacher, Pulse |
 | `config.py` | Three-level config resolution (defaults, JSON, keyring) |
 | `spatial_data.py` | `MapMetadata` for 9 maps, Z-level support, coordinate transforms |
 | `spatial_engine.py` | `SpatialEngine`: world-to-pixel and pixel-to-world conversions |
-| `map_manager.py` | `MapManager`: UI-facing asset loading with async Kivy support |
+| `tick_rate.py` | 26-NORM-01 SSOT: `DEFAULT_TICK_RATE`, `resolve_tick_rate()` per-demo resolution |
+| `map_manager.py` | `MapManager`: UI-facing asset loading with optional async Kivy support (legacy) |
 | `lifecycle.py` | `AppLifecycleManager`: single-instance mutex, daemon launch/shutdown |
-| `constants.py` | Project-wide constants: tick rate, FOV, utility durations, trade window |
+| `constants.py` | Project-wide constants (seconds-based): FOV, utility durations, memory decay, trade window |
 | `demo_frame.py` | Core data types: `PlayerState`, `GhostState`, `NadeState`, `DemoFrame` |
 | `asset_manager.py` | `SmartAsset` (lazy loading), `AssetAuthority` (centralized registry) |
 | `playback_engine.py` | `PlaybackEngine`: interpolated demo replay with frame blending |
 | `localization.py` | `LocalizationManager`: English, Italian, Portuguese string tables |
-| `registry.py` | `ScreenRegistry` for Kivy screen lifecycle management |
+| `registry.py` | `ScreenRegistry` for KivyMD screen registration (legacy; Qt is the active UI) |
 | `lock_files.py` | PID-based lock files for D-track / HLTV-track concurrency control |
 | `map_callouts.py` | `NamedPositionRegistry`: coordinate-to-callout translation for CS2 maps |
 | `app_types.py` | Shared type aliases and enums used across the application |
@@ -54,8 +55,8 @@ in the monolith database.
 |  5. Launch daemons:                                |
 |                                                    |
 |     +----------+  +-----------+  +---------+       |
-|     |  Hunter  |  | Digester  |  | Teacher |       |
-|     | (Scanner)|  | (Worker)  |  | (ML)    |       |
+|     | Scanner  |  | Digester  |  | Teacher |       |
+|     | (Files)  |  | (Worker)  |  | (ML)    |       |
 |     +----------+  +-----------+  +---------+       |
 |          |              |              |            |
 |     File scan      Queue consume  Retrain check    |
@@ -67,18 +68,23 @@ in the monolith database.
 +----------------------------------------------------+
 ```
 
+A watchdog in the main keep-alive loop checks daemon health every 30 seconds
+and restarts any daemon thread that died unexpectedly.
+
 ### Daemon Responsibilities
 
-- **Hunter (_scanner_daemon_loop):** Scans user and pro demo directories every
+- **Scanner (_scanner_daemon_loop):** Scans user and pro demo directories every
   10 seconds when active. Calls `process_new_demos()` to queue new files.
-  Runs periodic disk-space checks every 5 minutes.
+  Runs periodic disk-space checks every 5 minutes. Reports its status under
+  the state key `"hunter"`.
 
 - **Digester (_digester_daemon_loop):** Consumes the ingestion queue one task at
   a time. Uses `_work_available_event` for efficient wake-up (avoids polling).
   Processes pro demos with higher priority.
 
-- **Teacher (_teacher_daemon_loop):** Checks if new pro samples exceed a 10%
-  growth threshold, then triggers `CoachTrainingManager.run_full_cycle()`.
+- **Teacher (_teacher_daemon_loop):** Checks the retraining trigger every 300
+  seconds -- at least 10 pro samples on cold start, or a 10% growth over the
+  last trained count -- then triggers `CoachTrainingManager.run_full_cycle()`.
   Also runs belief calibration and meta-shift detection after each retraining.
   Respects the module-level `_TRAINING_LOCK` to prevent concurrent training.
 
@@ -155,16 +161,22 @@ coordinates and UI pixel space:
 
 ### constants.py
 
-Project-wide temporal constants derived from `TICK_RATE = 64`:
+Project-wide temporal constants, defined in **seconds only**. Tick windows are
+computed at point of use from the per-demo tick rate (`resolve_tick_rate()` in
+`tick_rate.py`) -- the old import-time seconds-to-ticks derivations were removed
+because they baked in `TICK_RATE = 64`. `TICK_RATE` remains only as a legacy
+alias of `core.tick_rate.DEFAULT_TICK_RATE`.
 
-| Constant | Seconds | Ticks |
-|----------|---------|-------|
-| `SMOKE_DURATION` | 18.0 | 1152 |
-| `MOLOTOV_DURATION` | 7.0 | 448 |
-| `FLASH_DURATION` | 2.0 | 128 |
-| `MEMORY_DECAY_TAU` | 2.5 | 160 |
-| `MEMORY_CUTOFF` | 7.5 | 480 |
-| `TRADE_WINDOW` | 3.0 | 192 |
+| Constant | Seconds |
+|----------|---------|
+| `SMOKE_DURATION_S` | 18.0 |
+| `MOLOTOV_DURATION_S` | 7.0 |
+| `FLASH_DURATION_S` | 2.0 |
+| `MEMORY_DECAY_TAU_S` | 2.5 |
+| `MEMORY_CUTOFF_S` | 7.5 |
+| `TRADE_WINDOW_S` | 3.0 |
+
+Also defines `FOV_DEGREES = 90.0` and `Z_FLOOR_THRESHOLD = 200.0`.
 
 ## Application Lifecycle (`lifecycle.py`)
 
@@ -180,7 +192,7 @@ Registered as an `atexit` handler to guarantee cleanup on process exit.
 ## Integration Points
 
 ```
-main.py ──> lifecycle.launch_daemon() ──> session_engine.run_session_loop()
+apps/qt_app/app.py ──> lifecycle.launch_daemon() ──> session_engine.run_session_loop()
                                               |
                                               +──> config.DATABASE_URL
                                               +──> config.get_setting()

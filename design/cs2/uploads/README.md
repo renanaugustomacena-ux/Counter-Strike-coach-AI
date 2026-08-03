@@ -1,41 +1,35 @@
-# Macena CS2 Coach AI — Design Atlas
+# Macena CS2 Coach AI — Design Atlas (Upload Bundle)
 
 > **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
-Vector design system for the CS2 coaching application. All files are SVG + HTML + JSON — zero binaries, fully portable.
+Flattened upload bundle of the design atlas for the CS2 coaching application — a self-contained copy of the 41 SVG frames plus tokens, laid out flat for easy drag-and-drop into design tools. All files are SVG + HTML + JSON — zero binaries, fully portable. The canonical, structured atlas lives at `design/` (repo root); see `design/README.md`.
 
 ## File Map
 
 ```
-design/
+design/cs2/uploads/
 ├── index.html                  ← master canvas (open in browser)
 ├── README.md
-├── tokens/
-│   └── design-tokens.json      ← W3C DTCG format, 3 themes
-├── frames/                     ← 41 SVG frames, 1440×900 each
-│   ├── 01_cover.svg            Marketing (01–04)
-│   ├── 02_landing_hero.svg
-│   ├── 03_feature_showcase.svg
-│   ├── 04_pitch_slide.svg
-│   ├── 05_home.svg             App Screens (05–20)
-│   ├── ...
-│   ├── 21_system_map.svg       Architecture Diagrams (21–30)
-│   ├── ...
-│   ├── 31_token_system.svg     Design System (31–36)
-│   ├── 36_typography_specimen.svg
-│   ├── 37_rap_7_layer_pipeline.svg          RAP Deep-Dive (37–41)
-│   ├── 38_rap_perception_cnn.svg
-│   ├── 39_rap_memory_ltc_hopfield.svg
-│   ├── 40_rap_chronovisor_multiscale.svg
-│   └── 41_rap_self_correction_loop.svg
-├── architecture/               ← standalone deep-dive SVGs
-│   ├── system_map.svg          1920×1200 full pipeline
-│   ├── jepa_model.svg          1440×1080 full layer diagram
-│   └── data_pipeline.svg       1440×900  25-dim vector lifecycle
-└── assets/
-    ├── icons/sprite.svg        SVG icon sprite
-    └── wallpapers/             cs2.svg · csgo.svg · cs16.svg
+├── README-8252c0ae.md          ← uploaded copy of the project root README
+├── design-tokens.json          ← W3C DTCG format, 3 themes
+├── 01_cover.svg                Marketing (01–04)
+├── 02_landing_hero.svg
+├── 03_feature_showcase.svg
+├── 04_pitch_slide.svg
+├── 05_home.svg                 App Screens (05–20)
+├── ...
+├── 21_system_map.svg           Architecture Diagrams (21–30)
+├── ...
+├── 31_token_system.svg         Design System (31–36)
+├── 36_typography_specimen.svg
+├── 37_rap_7_layer_pipeline.svg          RAP Deep-Dive (37–41)
+├── 38_rap_perception_cnn.svg
+├── 39_rap_memory_ltc_hopfield.svg
+├── 40_rap_chronovisor_multiscale.svg
+└── 41_rap_self_correction_loop.svg
 ```
+
+All 41 frames are 1440×900. The larger standalone architecture SVGs (`system_map.svg`, `jepa_model.svg`, `data_pipeline.svg`) are **not** part of this bundle — they live in `design/architecture/`.
 
 ## How to Use
 
@@ -43,9 +37,9 @@ design/
 
 ```bash
 # open the master canvas
-open design/index.html
+open design/cs2/uploads/index.html
 # or
-firefox design/index.html
+firefox design/cs2/uploads/index.html
 ```
 
 Works as `file://` — no server needed. Load `index.html` as a Claude artifact for interactive use.
@@ -54,15 +48,15 @@ Works as `file://` — no server needed. Load `index.html` as a Claude artifact 
 
 1. Open any SVG frame in a text editor, copy all content.
 2. In Figma: **Edit → Paste in place** — SVG lands as a flat vector frame.
-3. For tokens: install the **Figma Tokens** plugin, load `tokens/design-tokens.json`.
-4. Architecture SVGs (`architecture/`) paste at full resolution — layers are readable.
+3. For tokens: install the **Figma Tokens** plugin, load `design-tokens.json`.
+4. Architecture frames (`21`–`30`) paste at full resolution — layers are readable.
 
 ### After Effects
 
-1. **File → Import → File** — select any `.svg` from `frames/` or `architecture/`.
+1. **File → Import → File** — select any numbered `.svg` from this folder.
 2. AE imports SVG as **vector shape layers** — fully animatable.
-3. Use `architecture/` files for explainer video sections (larger viewBox = more room).
-4. Architecture SVGs with arrows are good candidates for **motion path** animations.
+3. Use the larger SVGs in `design/architecture/` for explainer video sections (larger viewBox = more room).
+4. Diagram SVGs with arrows are good candidates for **motion path** animations.
 
 ### Rive / Lottie
 
@@ -73,7 +67,7 @@ Works as `file://` — no server needed. Load `index.html` as a Claude artifact 
 ### Framer
 
 1. Drag any SVG directly onto a Framer canvas.
-2. Map color tokens: `tokens/design-tokens.json` values → Framer variables.
+2. Map color tokens: `design-tokens.json` values → Framer variables.
 3. Responsive: SVGs use `viewBox` — scale without pixelation.
 
 ### Gamma / Keynote / Google Slides
@@ -83,7 +77,7 @@ SVGs scale losslessly at any resolution. For slide use:
 ```bash
 # export any frame to PNG at 2×, 3×, or 4× using Chrome headless
 chromium --headless --screenshot=frame.png \
-  --window-size=2880,1800 frames/01_cover.svg
+  --window-size=2880,1800 01_cover.svg
 ```
 
 Or open in browser, zoom to 200%, screenshot.
@@ -114,21 +108,21 @@ theme: {
 }
 ```
 
-Drop frames as hero `<img src="frames/01_cover.svg">` — native browser SVG rendering.
+Drop frames as hero `<img src="01_cover.svg">` — native browser SVG rendering.
 
 ### Social Posts (1080×1080 crop)
 
 ```bash
 # headless crop of any frame to square
 chromium --headless --screenshot=post.png \
-  --window-size=1080,1080 frames/03_feature_showcase.svg
+  --window-size=1080,1080 03_feature_showcase.svg
 ```
 
 Or crop in Figma after paste.
 
 ## Themes
 
-Three themes available in `tokens/design-tokens.json`:
+Three themes available in `design-tokens.json`:
 
 | Theme | Accent | Background | Character |
 |-------|--------|------------|-----------|
@@ -148,15 +142,9 @@ Dedicated frames for the flagship **Reflexive Auto-correcting Pedagogue** — th
 | `40_rap_chronovisor_multiscale.svg` | Self-critique | Micro (64t) + Standard (192t) + Macro (640t) scans over V(s) timeline + cross-scale dedup |
 | `41_rap_self_correction_loop.svg` | The big idea | 6-stage circular loop · Humility gate (conf < 0.7 = silence) · reshaped prototypes · expert specialization · LLM-like via gradient |
 
-## Architecture SVGs — Technical Notes
+## Architecture SVGs — Where They Live
 
-The three files in `architecture/` are standalone technical documents, larger than the numbered frames:
-
-| File | ViewBox | Content |
-|------|---------|---------|
-| `system_map.svg` | 1920×1200 | Full pipeline: Ingestion → Features → Storage → Training → Inference. All 7 critical invariants flagged. |
-| `jepa_model.svg` | 1440×1080 | JEPA pre-training path + LSTM fine-tune path + MoE + Hopfield. Layer shapes, file:line anchors. |
-| `data_pipeline.svg` | 1440×900 | 25-dim feature grid (all dims labeled) + downstream batch assembly + train/infer parity note. |
+The three standalone technical documents (`system_map.svg` 1920×1200, `jepa_model.svg` 1440×1080, `data_pipeline.svg` 1440×900) are **not** in this bundle — they live in `design/architecture/` at the repo root. This bundle's architecture coverage is the numbered frames `21`–`30` (plus RAP deep-dives `37`–`41`).
 
 ## Invariants (do not violate)
 

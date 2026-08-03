@@ -11,8 +11,9 @@ managed exclusively through the `persistence.py` module, which enforces atomic
 writes, multi-fallback loading, and strict dimension validation.
 
 No `.pt` files are committed to the repository. This directory exists in version
-control solely to preserve its structure (via `global/README.txt`) and to serve as
-the default write target when `BRAIN_DATA_ROOT` is not configured.
+control to preserve its structure (via `global/README.txt`), to hold the CTF-1
+checkpoint hash registry (`checkpoint_hashes.json`), and to serve as the default
+write target when `BRAIN_DATA_ROOT` is not configured.
 
 ## Directory Structure
 
@@ -20,6 +21,7 @@ the default write target when `BRAIN_DATA_ROOT` is not configured.
 models/
 ├── global/                   # Shared baseline models (not user-specific)
 │   └── README.txt           # Placeholder to preserve directory in git
+├── checkpoint_hashes.json    # CTF-1 SHA-256 hash registry for checkpoints
 ├── README.md                 # This file (English)
 ├── README_IT.md              # Italian translation
 └── README_PT.md              # Portuguese translation
@@ -30,22 +32,29 @@ At runtime, user-specific fine-tuned models are stored in per-user subdirectorie
 ```
 models/
 ├── global/                  # Shared baseline (from pro demo training)
+│   ├── latest.pt           # Default coach model (AdvancedCoachNN)
 │   ├── jepa_brain.pt       # JEPA pre-trained on pro matches
-│   ├── rap_coach.pt        # RAP model checkpoint
-│   └── win_prob.pt         # Win probability model
-└── {user_id}/               # Per-user fine-tuned models (future)
-    └── jepa_brain.pt       # User-adapted JEPA checkpoint
+│   └── rap_coach.pt        # RAP model checkpoint
+└── {user_id}/               # Per-user fine-tuned models
+    └── latest.pt           # User-adapted checkpoint
 ```
+
+Each checkpoint is accompanied by a `.pt.meta.json` sidecar (GAP-07) recording
+`schema_version`, `metadata_dim`, and the feature-name list at save time.
 
 ## Checkpoint Inventory
 
-| Checkpoint | Model Class | Created By | Typical Size | Input Dim |
-|-----------|-------------|-----------|--------------|-----------|
-| `jepa_brain.pt` | JEPACoachingModel | `backend/nn/jepa_trainer.py` | ~3.6 MB | 25 (METADATA_DIM) |
-| `rap_coach.pt` | RAPCoachModel | `backend/nn/experimental/rap_coach/trainer.py` | Variable | 25 (METADATA_DIM) |
-| `coach_brain.pt` | AdvancedCoachNN (legacy) | `backend/nn/train.py` | ~1 MB | 25 (METADATA_DIM) |
-| `win_prob.pt` | WinProbabilityTrainerNN | `backend/nn/win_probability_trainer.py` | ~100 KB | 9 (offline subset) |
-| `role_head.pt` | NeuralRoleHead | Role classification training | ~50 KB | Variable |
+Version strings map to `ModelFactory` model types:
+
+| Checkpoint | Model Class | Created By | Input Dim |
+|-----------|-------------|-----------|-----------|
+| `latest.pt` | AdvancedCoachNN (default) | `backend/nn/train.py`, `coach_manager.py` | 25 (METADATA_DIM) |
+| `jepa_brain.pt` | JEPA coaching model | `backend/nn/jepa_trainer.py` | 25 (METADATA_DIM) |
+| `vl_jepa_brain.pt` | VL-JEPA (concept head) | `backend/nn/training_orchestrator.py` | 25 (METADATA_DIM) |
+| `rap_coach.pt` | RAPCoachModel | `backend/nn/experimental/rap_coach/trainer.py` | 25 (METADATA_DIM) |
+| `rap_lite_coach.pt` | RAP-Lite (LSTM memory) | RAP training with `use_lite_memory` | 25 (METADATA_DIM) |
+| `role_head.pt` | NeuralRoleHead | Role classification training | 5 |
+| `win_prob.pt` | WinProbabilityTrainerNN | `backend/nn/win_probability_trainer.py` (offline utility) | 9 (offline subset) |
 
 ## Checkpoint Format
 
@@ -75,11 +84,12 @@ Direct `torch.save()` / `torch.load()` calls from other modules are forbidden.
 ### Atomic Write Protocol
 
 ```
-save_nn(model, version, user_id=None)
+save_nn(model, version, user_id=None, extra_meta=None)
   1. Resolve target path: models/{user_id or "global"}/{version}.pt
-  2. Write to temporary file: {version}.pt.tmp
-  3. Atomic replace: tmp_path.replace(path)  # POSIX atomic
-  4. On failure: unlink tmp, re-raise
+  2. Write weights and .pt.meta.json sidecar to temporary files
+  3. Atomic replace: tmp_path.replace(path)  # weights first, then sidecar
+  4. Record SHA-256 in checkpoint_hashes.json (CTF-1)
+  5. On failure: unlink tmp files, re-raise
 ```
 
 This prevents corruption when the application crashes mid-write or when the system
@@ -96,6 +106,12 @@ load_nn(version, model, user_id=None)
   5. Fail: raise FileNotFoundError              (no silent random weights)
 ```
 
+Before the weights touch the model, the resolved file is verified against the
+CTF-1 hash registry, and its `.pt.meta.json` sidecar (if present) is validated
+for `schema_version`, `metadata_dim`, and feature-name drift -- any mismatch
+raises `StaleCheckpointError`. Legacy checkpoints without a sidecar load with
+a warning.
+
 ### Dimension Validation
 
 When loading, `model.load_state_dict(state_dict, strict=True)` is used. If the
@@ -110,7 +126,7 @@ signals to callers that re-training is required.
 |----|------|------------------------|
 | NN-14 | Never silently return a model with random weights | Garbage coaching output, user trust destroyed |
 | NN-16 | EMA `apply_shadow()` must `.clone()` shadow tensors | Training corruption, non-recoverable |
-| NN-MEM-01 | Hopfield bypassed until >=2 training forward passes | NaN propagation in RAP memory |
+| NN-MEM-01 | Hopfield memory bypassed until `notify_optimizer_step()` fires | NaN propagation in RAP memory |
 | — | `WinProbabilityNN` (12 features) vs `WinProbabilityTrainerNN` (9 features) | Cross-loading crashes or silent corruption |
 
 The `WinProbabilityNN` (production, 12 features) and `WinProbabilityTrainerNN`
@@ -123,40 +139,39 @@ this automatically via `strict=True` loading and raises `StaleCheckpointError`.
 
 ## Model Versioning
 
-Checkpoints are versioned implicitly by their file name (`version` parameter in
-`save_nn` / `load_nn`). There is no explicit version number embedded in the
-checkpoint. Compatibility is enforced structurally: if the `state_dict` keys or
-tensor shapes do not match the current model class, loading fails deterministically.
+Checkpoints are versioned by their file name (`version` parameter in
+`save_nn` / `load_nn`); the `.pt.meta.json` sidecar additionally embeds a
+`schema_version` (GAP-07). Compatibility is enforced both by the sidecar check
+and structurally: if the `state_dict` keys or tensor shapes do not match the
+current model class, loading fails deterministically.
 
 | Version String | Model | Training Source |
 |---------------|-------|-----------------|
-| `jepa_brain` | JEPACoachingModel | Pro demo dataset (JEPA two-stage training) |
+| `latest` | AdvancedCoachNN | Default training pipeline (`train.py`, `coach_manager.py`) |
+| `jepa_brain` | JEPA coaching model | Pro demo dataset (JEPA two-stage training) |
+| `vl_jepa_brain` | VL-JEPA | Pro demo dataset (concept-head training) |
 | `rap_coach` | RAPCoachModel | Pro demo dataset (RAP LTC-Hopfield training) |
-| `coach_brain` | AdvancedCoachNN | Legacy training pipeline |
-| `win_prob` | WinProbabilityTrainerNN | Round outcome dataset |
+| `rap_lite_coach` | RAP-Lite | RAP training with LSTM fallback memory |
 | `role_head` | NeuralRoleHead | Role classification dataset |
+| `win_prob` | WinProbabilityTrainerNN | Round outcome dataset (offline utility) |
 
 ## Bundling (PyInstaller)
 
-The `global/` subdirectory is included in the frozen executable:
-
-```python
-# In cs2_analyzer_win.spec
-datas += [('models/global', 'models/global')]
-```
-
-At runtime, `get_factory_model_path()` resolves bundled checkpoints through
-`get_resource_path()`, which checks `sys._MEIPASS` for the frozen environment.
+The load chain supports factory-bundled checkpoints: `get_factory_model_path()`
+resolves them through `get_resource_path()`, which checks `sys._MEIPASS` in the
+frozen environment. Note that the current `packaging/cs2_analyzer_win.spec`
+does **not** include a `models/` entry in its `datas` list, so the factory
+tiers only resolve when a build explicitly bundles checkpoints.
 
 ## Integration Points
 
 | Consumer | Checkpoint | Operation |
 |----------|-----------|-----------|
-| `backend/nn/jepa_trainer.py` | `jepa_brain.pt` | Write after training epoch |
-| `backend/nn/coach_manager.py` | `jepa_brain.pt`, `coach_brain.pt` | Load for inference |
-| `backend/nn/training_orchestrator.py` | All | Load/save with `StaleCheckpointError` handling |
+| `backend/nn/jepa_trainer.py` | `jepa_brain.pt` | Write after training |
+| `backend/nn/coach_manager.py` | `latest.pt` | Save global/user models; load for inference |
+| `backend/nn/training_orchestrator.py` | `jepa_brain.pt`, `vl_jepa_brain.pt` | Load/save with `StaleCheckpointError` handling |
 | `backend/nn/experimental/rap_coach/trainer.py` | `rap_coach.pt` | Write after RAP training |
-| `backend/nn/win_probability_trainer.py` | `win_prob.pt` | Write after win-prob training |
+| `backend/nn/win_probability_trainer.py` | `win_prob.pt` | Write after win-prob training (offline) |
 
 ## Development Notes
 

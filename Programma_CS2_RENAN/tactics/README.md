@@ -6,15 +6,15 @@ This directory serves as the centralized repository for map-specific tactical me
 
 ## Technical Overview
 
-The tactical engine relies on these configuration files to validate player actions, suggest improvements, and understand the state of a round. By decoupling tactical data from the core logic, the system allows for easy updates to the "meta" without requiring code changes. The AI coach parses these files to compare real-time game data against predefined "perfect" execution parameters.
+By decoupling tactical data from the core logic, this directory allows updates to the "meta" without requiring code changes. Each JSON file carries a map identifier, a version string, and a list of role-based coaching rules keyed by an in-round trigger.
 
 ## Key Components
 
-- **`mirage_defaults.json`**: This is the primary reference file for the map de_mirage. It contains comprehensive data points including:
-    - **Smoke Lineups**: Precise coordinates and view angles for essential smoke grenades (e.g., Jungle, Stairs, Nest).
-    - **Flash Timings**: Optimal delay and pop-flash durations to maximize enemy blindness.
-    - **Default Setups**: Standard CT-side distributions (e.g., 2-1-2) and T-side default executions.
-    - **Strategic Metadata**: Thresholds for utility efficiency and positioning heatmaps.
+- **`mirage_defaults.json`**: A seed reference file for the map de_mirage (version 1.0). It currently contains two role-based advice rules:
+    - **AWPer / `round_start`**: Check Mid Nest timing — professional standard is reaching window by 1:48.
+    - **Entry Fragger / `t_side_exec`**: Prioritize clearing Sandwich and Firebox during A-site execution.
+
+Each rule is a `{role, trigger, advice}` object; there are no coordinate lineups or utility timings in the current file.
 
 ## Directory Structure
 
@@ -28,7 +28,7 @@ Programma_CS2_RENAN/tactics/
 
 ## Usage
 
-The AI coach utilizes these files during both the ingestion and analysis phases:
-1. **Reference Loading**: At startup, the `tactics/` directory is scanned, and all JSON configurations are cached into memory.
-2. **Comparison Engine**: During match analysis, the engine cross-references player utility usage against the coordinates defined in `mirage_defaults.json`.
-3. **Feedback Generation**: If a player's timing or positioning deviates significantly from the "default," the coach generates specific corrective advice.
+**Status: not yet wired into the runtime.** No code currently loads files from `tactics/`; the coaching pipeline draws its tactical content from `backend/knowledge/` (RAG knowledge base and Coach Book) instead. This directory is the designated home for map-specific rule files should trigger-based tactical coaching be integrated:
+1. **Reference Loading**: Scan the `tactics/` directory and cache JSON configurations in memory.
+2. **Rule Matching**: Match a rule's `trigger` (e.g., `round_start`, `t_side_exec`) and `role` against the player's in-round context.
+3. **Feedback Generation**: Surface the rule's `advice` text as corrective coaching.

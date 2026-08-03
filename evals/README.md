@@ -7,7 +7,7 @@
 
 ## Purpose
 
-This directory serves as the automated framework for measuring and validating the performance of the Counter-Strike AI coach. It provides a systematic way to benchmark the Large Language Models (LLM) and Vision-Language Models (VLM) against expert-curated tactical scenarios, producing quantifiable reports on regressions, hallucinations, and coverage drift.
+This directory serves as the automated framework for measuring and validating the performance of the Counter-Strike AI coach. It provides a systematic way to benchmark the coaching pipeline and its underlying Large Language Models (LLM) against expert-curated tactical scenarios, producing quantifiable reports on regressions, hallucinations, and coverage drift.
 
 ## Technical Overview
 
@@ -17,11 +17,11 @@ The evaluation system operates as a closed-loop benchmarking harness. It simulat
 
 ### CS2 Coach Bench
 Located in **`cs2_coach_bench/`**, this is the primary dataset for evaluation:
-- **`questions.jsonl`**: A collection of 200+ diverse tactical questions covering utility usage, positioning, and round-state analysis.
-- **`rubric.md`**: The gold-standard scoring criteria used to evaluate the quality, accuracy, and professional relevance of the coach's advice.
-- **`run_eval.py`**: The execution engine that feeds the questions into the coach API and collects the raw model responses.
-- **`score_responses.py`**: The validation script that compares model outputs against the rubric and generates final performance metrics (e.g., Accuracy, F1-score, Tactical Soundness).
-- **`reports/`**: Generated per-run JSON reports for historical tracking.
+- **`questions.jsonl`**: A collection of 200 tactical questions (40 per category across 5 categories) covering map tactics, economy, mid-round play, pro knowledge, and mechanics.
+- **`rubric.md`**: The gold-standard scoring criteria — 5 dimensions scored 0-3 each (max 15 per question) — used to evaluate the quality, accuracy, and professional relevance of the coach's advice.
+- **`run_eval.py`**: The execution engine that feeds the questions into a model backend (`coach` full pipeline or `ollama:<model>`) and collects the raw responses plus latency.
+- **`score_responses.py`**: The scoring CLI (`score` / `summary` / `compare` subcommands) that applies the rubric to collected responses and compares models.
+- **`reports/`**: Generated per-run JSONL response files (gitignored, created at first run).
 
 ## Directory Structure
 
@@ -31,8 +31,8 @@ evals/
 │   ├── questions.jsonl     # Standardized evaluation questions
 │   ├── rubric.md           # Expert-defined scoring criteria
 │   ├── run_eval.py         # Execution script
-│   ├── score_responses.py  # Scoring and validation script
-│   └── reports/            # Per-match reports
+│   ├── score_responses.py  # Scoring and comparison CLI
+│   └── reports/            # Per-run response files (gitignored, generated)
 ├── README.md               # This documentation
 ├── README_IT.md            # Italian version
 └── README_PT.md            # Portuguese version
@@ -41,23 +41,25 @@ evals/
 ## Usage
 
 ### 1. Run the Evaluation
-Execute the benchmark against the current coach implementation (e.g., full pipeline or specific model):
+Execute the benchmark against the current coach implementation (full pipeline or a raw Ollama model):
 ```bash
 # Full coaching pipeline (RAG + Experience Bank + LLM)
-python evals/cs2_coach_bench/run_eval.py --model coach --limit 200
+python evals/cs2_coach_bench/run_eval.py --model coach
 
-# Quick smoke (10 questions) against a specific model
-python evals/cs2_coach_bench/run_eval.py --model gpt-4o --limit 10 --output results.json
+# Quick smoke (10 questions) against a raw Ollama baseline
+python evals/cs2_coach_bench/run_eval.py --model ollama:llama3.1:8b --limit 10
 ```
+Responses land in `cs2_coach_bench/reports/<date>_<model>.jsonl` by default (`--output` overrides; `--category` filters to one category).
 
 ### 2. Score the Results
-Generate a performance report by scoring the collected responses:
+Score the collected responses against the rubric, then summarize:
 ```bash
-python evals/cs2_coach_bench/score_responses.py --input results.json --rubric evals/cs2_coach_bench/rubric.md
+python evals/cs2_coach_bench/score_responses.py score --input evals/cs2_coach_bench/reports/<date>_coach.jsonl
+python evals/cs2_coach_bench/score_responses.py summary --input evals/cs2_coach_bench/reports/<date>_coach.scored.jsonl
 ```
 
 ### 3. Analyze Metrics
-The system will output a detailed breakdown of performance by category (e.g., "Smoke Knowledge: 85%", "Economic Advice: 92%"). These metrics are used to gate production deployments and guide model fine-tuning efforts.
+The summary gives a per-category and per-dimension breakdown of rubric scores (5 dimensions, 0-3 each), and `score_responses.py compare a.scored.jsonl b.scored.jsonl` diffs two models. These metrics gate coaching-pipeline changes and guide model fine-tuning efforts.
 
 ## When to evaluate
 

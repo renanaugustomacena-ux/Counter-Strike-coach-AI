@@ -50,8 +50,8 @@ statistics baseline that the coaching engine uses to compare user performance ag
 |------|-------|---------|
 | `__init__.py` | 0 | Package initialization (empty marker) |
 | `docker_manager.py` | 138 | Docker/FlareSolverr container lifecycle: `ensure_flaresolverr()`, health-check, `stop_flaresolverr()` |
-| `flaresolverr_client.py` | 140 | REST client for FlareSolverr API: session management (`create_session`/`destroy_session`), `get()` via proxy |
-| `stat_fetcher.py` | 676 | `HLTVStatFetcher`: discovery (`fetch_top_teams`, `fetch_top_players`), HTML parsing via inline `soup.select()`, rate limiting via `CRAWL_DELAY_MIN/MAX_SECONDS`, database persistence |
+| `flaresolverr_client.py` | 162 | REST client for FlareSolverr API: session management (`create_session`/`destroy_session`), `get()` via proxy with retries (backoff 5s/15s/45s) |
+| `stat_fetcher.py` | 969 | `HLTVStatFetcher`: discovery (`fetch_top_teams`, `fetch_top_players`), HTML parsing via inline `soup.select()`, rate limiting via `CRAWL_DELAY_MIN/MAX_SECONDS` + adaptive backoff, database persistence |
 
 ---
 
@@ -151,14 +151,15 @@ Rate limiting is implemented directly in `stat_fetcher.py` as module-level const
 a separate class:
 
 ```python
-CRAWL_DELAY_MIN_SECONDS = 2  # stat_fetcher.py:50
-CRAWL_DELAY_MAX_SECONDS = 7  # stat_fetcher.py:51
+CRAWL_DELAY_MIN_SECONDS = 2  # stat_fetcher.py:51
+CRAWL_DELAY_MAX_SECONDS = 7  # stat_fetcher.py:52
 ```
 
-Every HTTP request through FlareSolverr is preceded by
-`time.sleep(random.uniform(CRAWL_DELAY_MIN_SECONDS, CRAWL_DELAY_MIN_SECONDS + 2))` or
-equivalent (see stat_fetcher.py:201, 239). The effective delay between any two requests is
-therefore **2.0-7.0 seconds** with uniform jitter.
+Every HTTP request through FlareSolverr is preceded by an adaptive sleep:
+`base_delay = CRAWL_DELAY_MIN_SECONDS + min(consecutive_failures * 2, 10)` followed by
+`time.sleep(random.uniform(base_delay, base_delay + 3))`. The effective delay between
+any two requests is therefore **2-7 seconds** with uniform jitter when healthy, growing
+by up to +10 seconds under consecutive failures (adaptive backoff).
 
 Random jitter is intentionally **unseeded** (F6-25): deterministic jitter would create
 detectable request patterns. Anti-scraping detection relies on apparent human randomness.
@@ -280,7 +281,7 @@ All modules use structured logging via `get_logger("cs2analyzer.<module>")`:
 ### Selector Maintenance
 
 When HLTV changes its page layout, update CSS selectors inline in `stat_fetcher.py`. The
-`_select_fallback()` helper (stat_fetcher.py:131-156) takes an ordered list of candidate
+`_select_fallback()` helper (stat_fetcher.py:145) takes an ordered list of candidate
 selectors and logs a warning when a primary selector fails and a fallback activates, so
 layout drift is detected early without breaking scraping. Inspect the WARNING logs for
 "CSS fallback activated" messages and add new primary selectors above the existing ones.

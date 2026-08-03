@@ -20,14 +20,15 @@ The intent is to keep training and inference paths physically separated in the s
 | File | Purpose |
 |------|---------|
 | `__init__.py` | Package marker. |
-| `ghost_engine.py` | `GhostEngine` — projects predicted player positions into the tactical map for the "ghost AI" overlay in the Tactical Viewer. Loads the active JEPA / RAP checkpoint and runs forward-only inference on tick batches. |
+| `ghost_engine.py` | `GhostEngine` — projects predicted player positions into the tactical map for the "ghost AI" overlay in the Tactical Viewer. Gated behind `USE_RAP_MODEL` (default `False`); loads the `rap_coach` checkpoint and runs forward-only inference per tick. |
 
 ## `GhostEngine` summary
 
-- Loads model via `ModelFactory.get_model(model_type).eval()` and disables grad with `torch.no_grad()`.
-- Accepts a sliding window of recent tick features (25-dim `METADATA_DIM`) and emits projected position deltas.
-- Caches the model handle so repeated calls reuse the same parameters; reset via the public `reset()` helper after a checkpoint swap.
-- Falls back to a zero-prediction path when no checkpoint exists, so the UI remains usable on a fresh installation.
+- Checks `USE_RAP_MODEL` first (default `False`) — when unset, no model is loaded and predictions stay disabled.
+- Loads the RAP model via `ModelFactory.get_model(TYPE_RAP)` + `load_nn("rap_coach", ...)`, then `.eval()`; inference runs under `torch.no_grad()`.
+- `predict_tick()` accepts a single tick (dict or dataclass) plus an optional `game_state` dict, builds view / map / motion tensors via `TensorFactory` and the 25-dim metadata vector via `FeatureExtractor`, and returns `(ghost_x, ghost_y)` world coordinates (current position + delta × `RAP_POSITION_SCALE`).
+- Player-POV tensor mode is opt-in via `USE_POV_TENSORS` (default `False`); legacy tensors are used otherwise.
+- Returns `None` on any failure — model disabled, missing checkpoint, missing `map_name`, or inference error. (R4: the old `(0.0, 0.0)` sentinel was a valid world coordinate near map center and was removed.)
 
 ## Integration points
 
@@ -41,11 +42,11 @@ The intent is to keep training and inference paths physically separated in the s
 - **No training-side imports.** Modules here must not import from `training_orchestrator.py`, trainers, EMA helpers, or DataLoader assemblies.
 - **No file mutation.** Inference utilities never write checkpoints. Saving belongs to `nn/persistence.py:save_nn()` invoked from training paths.
 - **Determinism.** Inference is invoked from UI threads — guard any tensor operation that is not idempotent (e.g. dropout) with `model.eval()`.
-- **Graceful degradation.** Missing checkpoint → zero-prediction fallback, log at `WARNING`. Never raise into the UI thread.
+- **Graceful degradation.** Missing checkpoint or failed inference → `None` return, log at `WARNING`. Never raise into the UI thread.
 
 ## Related
 
 - Trained checkpoints: `Programma_CS2_RENAN/models/global/`
 - Persistence helpers: `backend/nn/persistence.py`
-- Inference orchestration: `backend/services/coaching_service.py`
+- Lazy-loading consumer: `apps/qt_app/viewmodels/tactical_vm.py` (`TacticalGhostVM`)
 - Tactical viewer (consumer): `apps/qt_app/screens/tactical_viewer_screen.py`

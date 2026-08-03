@@ -22,13 +22,15 @@ portability across machines.
 | `database.py` | `DatabaseManager` (monolith) + `HLTVDatabaseManager` + singletons |
 | `match_data_manager.py` | Per-match SQLite partitions (Tier 3) with LRU engine cache |
 | `backup_manager.py` | Hot backup via SQLite Online Backup API, retention (latest + 7 daily + 4 weekly) |
-| `db_backup.py` | SQLite Online Backup API wrapper + tar.gz archival for match data |
+| `db_backup.py` | SQLite Online Backup API wrapper + tar.gz archival for match data; `rotate_backups()` keeps 5 |
 | `db_migrate.py` | Alembic migration runner for automatic schema upgrades on startup |
 | `maintenance.py` | Metadata pruning: removes old tick data while preserving aggregate stats |
 | `state_manager.py` | `StateManager` DAO for the singleton `CoachState` row |
 | `stat_aggregator.py` | `StatCardAggregator`: spider output to `ProPlayer`/`ProPlayerStatCard` |
 | `storage_manager.py` | `StorageManager`: demo file paths, quota enforcement, deduplication |
 | `remote_file_server.py` | FastAPI personal cloud server for cross-machine demo access |
+| `datasets/`, `models/` | README-only placeholder packages (empty `__init__.py`, no code) |
+| `remote_telemetry/` | Sample telemetry JSON only (no code) |
 
 ## Tri-Database Architecture
 
@@ -47,8 +49,10 @@ write-lock contention between daemons and to keep per-match B-tree depth shallow
                 v
 +-------------------------------+
 |    hltv_metadata.db (HLTV)    |
-|  3 tables: ProTeam,           |
-|  ProPlayer, ProPlayerStatCard |
+|  7 tables: ProTeam, ProPlayer,|
+|  ProPlayerStatCard, ProEvent, |
+|  ProTournament, ProHead2Head, |
+|  ProMapRecord                 |
 +-------------------------------+
 
 +-------------------------------+
@@ -118,7 +122,7 @@ Tracks daemon status, training progress, heartbeat, and resource limits. Feature
 ### BackupManager (`backup_manager.py`)
 
 Hot backup using SQLite's Online Backup API (`sqlite3.Connection.backup()` at
-`backup_manager.py:81-89`), WAL-safe and non-blocking. Retention policy:
+`backup_manager.py:80-88`), WAL-safe and non-blocking. Retention policy:
 keep the latest + 7 daily + 4 weekly backups. Every backup is verified with
 `PRAGMA quick_check` before acceptance.
 
@@ -135,7 +139,7 @@ The module defines 25 SQLModel table classes organized into logical groups:
 - **Player telemetry:** `PlayerMatchStats`, `PlayerTickState`, `RoundStats`, `PlayerProfile`
 - **Coaching framework:** `CoachState`, `CoachingInsight`, `CoachingExperience` (COPER)
 - **Knowledge base:** `TacticalKnowledge` (RAG, 384-dim embeddings)
-- **Pro data:** `ProTeam`, `ProPlayer`, `ProPlayerStatCard`
+- **Pro data:** `ProTeam`, `ProPlayer`, `ProPlayerStatCard`, `ProEvent`, `ProTournament`, `ProHead2Head`, `ProMapRecord`
 - **Match structure:** `MatchResult`, `MapVeto`
 - **External data:** `Ext_TeamRoundStats`, `Ext_PlayerPlaystyle`
 - **Pipeline control:** `IngestionTask`, `ServiceNotification`

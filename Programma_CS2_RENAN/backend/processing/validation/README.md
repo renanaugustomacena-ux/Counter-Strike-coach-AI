@@ -13,38 +13,35 @@ This package owns the validation gates that protect every downstream consumer (t
 
 | File | Module | Purpose | Key Exports |
 |------|--------|---------|-------------|
-| `__init__.py` | — | Public re-exports for the validation package. | — |
-| `dem_validator.py` | DemValidator | Validates `.dem` file structure pre-parse. Enforces `MIN_DEMO_SIZE = 10 MB` (invariant `DS-12`), checks magic bytes, rejects truncated files. | `DemValidator`, `validate_dem_file()` |
-| `drift.py` | Drift detection | Statistical drift detection across player feature distributions. Compares last-N-match rolling distribution against the historical baseline; flags when KS-test p-value crosses a threshold. | `detect_feature_drift()`, `DriftReport` |
-| `sanity.py` | Sanity checks | Lightweight runtime assertions on tick-level state (alive players have HP > 0, dead players have HP = 0, equipment value is non-negative, ...). | `assert_tick_sanity()` |
-| `schema.py` | Schema | JSON schema validators for tournament-source ingestion. | `TOURNAMENT_JSON_SCHEMA`, `validate_tournament_json()` |
+| `__init__.py` | — | Empty package marker. | — |
+| `dem_validator.py` | DEMValidator | Validates `.dem` file structure pre-parse: format pre-screen size bounds 100 KB – 800 MB, magic bytes (`PBDEMS2` CS2 / `HL2DEMO` CSGO), truncation check. Deliberately looser than the `DS-12` ingestion floor (`MIN_DEMO_SIZE = 10 MB`, enforced in `data_sources/demo_format_adapter.py`). | `DEMValidator`, `DEMValidationError`, `validate_dem_file()` |
+| `drift.py` | Drift detection | Statistical drift detection across player feature distributions. Compares a recent rolling window (default 10) against past history and flags features whose z-score exceeds a threshold (default 2.5). | `detect_feature_drift()`, `DriftReport`, `DriftMonitor`, `TickFeatureDriftMonitor`, `should_retrain()` |
+| `sanity.py` | Sanity checks | Range checks on parsed demo DataFrames against the `LIMITS` bounds table (HP, armor, equipment value, ...). Strict mode raises `ValueError`; non-strict mode clamps outliers. | `validate_demo_sanity()`, `validate_and_trim()` |
+| `schema.py` | Schema | Versioned structural validation of demo parser output (`SCHEMA_VERSION = 2`: v1 core stats + `accuracy`). | `get_active_schema()`, `validate_demo_schema()` |
 
 ## Where each validator runs
 
 ```
 .dem file lands in the ingest folder
-    +-- DemValidator.validate_dem_file()           [dem_validator.py]
-    |     - rejects files < MIN_DEMO_SIZE
+    +-- validate_dem_file()                        [dem_validator.py]
+    |     - rejects files outside 100 KB - 800 MB
     |     - rejects files with bad magic bytes
     |     - rejects truncated files
     |
     +-- pipeline parses the demo (demoparser2)
     |
-    +-- per tick: assert_tick_sanity()              [sanity.py]
-    |     - HP / armor / equipment_value bounds
-    |     - alive vs dead state coherence
+    +-- parsed DataFrame: validate_demo_schema()   [schema.py]
+    |     - required columns + types per SCHEMA_VERSION
+    |
+    +-- validate_demo_sanity() / validate_and_trim() [sanity.py]
+    |     - HP / armor / equipment_value bounds (LIMITS)
+    |     - strict: raise, non-strict: clamp outliers
     |
     +-- tick rows persisted to per-match SQLite
 
-JSON tournament feed
-    +-- validate_tournament_json(payload)          [schema.py]
-    |     - required keys present
-    |     - per-map keys present
-    |     - safe-int coercion (DS-04)
-
 Training batch boundary
     +-- detect_feature_drift(...)                  [drift.py]
-    |     - rolling distribution KS-test
+    |     - rolling-window z-score comparison
     |     - flags suspect player features before training
 ```
 
@@ -52,13 +49,12 @@ Training batch boundary
 
 | ID | File / Line | Invariant |
 |----|-------------|-----------|
-| `DS-12` | `dem_validator.py` | `MIN_DEMO_SIZE = 10 MB`. Smaller files are rejected (real CS2 demos are typically ≥ 50 MB). |
-| `DS-04` | `schema.py` | `_safe_int()` coerces non-numeric JSON values to `0` rather than raising. |
+| `DS-12` | `data_sources/demo_format_adapter.py` | `MIN_DEMO_SIZE = 10 MB` ingestion-acceptance floor. `dem_validator.py` is a deliberately looser format pre-screen (100 KB – 800 MB). |
 | `P-VEC-02` / `P3-A` | upstream `vectorizer.py` | NaN / Inf clamp + > 5 % per-batch → `DataQualityError`. Validation here ensures the upstream gate cannot be bypassed. |
 
 ## Conventions
 
-- **Fail loudly.** Validators raise typed exceptions (`DemValidationError`, `SchemaValidationError`, `DataQualityError`) — never return silent `None`.
+- **Fail loudly.** Validators raise typed exceptions (`DEMValidationError`) or `ValueError` with an explicit message — never degrade silently.
 - **Pure functions where possible.** Validators take inputs and return a verdict; they do not write to disk or the database.
 - **Structured logging.** All failures log via `get_logger("cs2analyzer.validation.<module>")` with a stable error code so dashboards can aggregate.
 - **Cheap checks first.** Order assertions from cheapest (size, magic bytes) to most expensive (statistical tests) so a broken file fails before the expensive paths run.
@@ -74,7 +70,7 @@ Training batch boundary
 ## Do not
 
 - Do not silently coerce malformed input into "best-effort" values without recording the deviation in `DataLineage` / `DataQualityMetric`. Silent coercion violates Rule 1.
-- Do not duplicate `MIN_DEMO_SIZE`. The constant lives here; everywhere else imports it.
+- Do not duplicate `MIN_DEMO_SIZE`. The constant lives in `data_sources/demo_format_adapter.py`; everywhere else imports it.
 - Do not use validators for inference-time speculative checks ("if data looks weird, skip"). Validators decide; downstream code respects the decision.
 
 ## Related

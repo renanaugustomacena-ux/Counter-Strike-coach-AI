@@ -10,9 +10,9 @@ This directory contains everything needed to build the Macena CS2 Analyzer into 
 
 | File | Purpose |
 |------|---------|
-| `cs2_analyzer_win.spec` | PyInstaller specification (168 lines) |
-| `windows_installer.iss` | Inno Setup script for MSI installer (42 lines) |
-| `BUILD_CHECKLIST.md` | Pre-release verification protocol (76 lines) |
+| `cs2_analyzer_win.spec` | PyInstaller specification (166 lines) |
+| `windows_installer.iss` | Inno Setup script for the Windows installer EXE (78 lines) |
+| `BUILD_CHECKLIST.md` | Pre-release verification protocol (75 lines) |
 
 ## Quick Build
 
@@ -39,36 +39,40 @@ ls dist/Macena_CS2_Analyzer/
 a = Analysis(['Programma_CS2_RENAN/apps/qt_app/app.py'], ...)
 ```
 
-### Bundled Data (43 entries)
+### Bundled Data (10 entries)
 
-The spec bundles all required runtime files:
+The spec bundles all required runtime files (missing paths are filtered out gracefully for CI):
 
 | Category | Files | Purpose |
 |----------|-------|---------|
 | Theme assets | `PHOTO_GUI/` (fonts, backgrounds) | Visual themes |
-| Map config | `map_config.json`, `map_tensors.json` | Spatial data |
-| External data | `data/external/*.csv` | Reference statistics |
-| Knowledge | `data/knowledge/`, `tactical_knowledge.json` | RAG coaching data |
-| Migrations | `alembic/` | Database schema upgrades |
+| Map config | `data/map_config.json` | Spatial data |
+| Datasets | `data/dataset.csv`, `data/external/` | Reference statistics |
+| Integrity | `core/integrity_manifest.json` | RASP source manifest |
+| Knowledge | `backend/knowledge/tactical_knowledge.json` | RAG coaching data |
+| Migrations | `alembic/` (repo root) | Database schema upgrades |
 | Translations | `assets/i18n/` | Localization |
 | Help docs | `data/docs/` | In-app help |
 | Qt themes | `apps/qt_app/themes/` | QSS stylesheets |
 
-### Hidden Imports (92 total)
+### Hidden Imports (35 explicit + auto-collection)
 
 Critical packages that PyInstaller can't detect automatically:
-- **Qt:** PySide6 (QtCore, QtGui, QtWidgets, QtCharts)
+- **Qt:** PySide6 (QtCore, QtGui, QtWidgets)
 - **ML:** torch, torch.nn, torch.optim
-- **Database:** sqlmodel, sqlalchemy, alembic
+- **Database:** sqlmodel, sqlalchemy (incl. sqlite dialect), alembic
 - **Parsing:** demoparser2, pandas, numpy
-- **Project modules:** 30+ internal modules (app_state, jepa_model, coaching_service, etc.)
+- **Project modules:** 21 internal modules with deferred imports (app_state, jepa_model, coaching_service, etc.)
+- Plus `collect_submodules("Programma_CS2_RENAN")` auto-discovers the rest of the package.
 
 ### Excluded Packages
 
 ```python
 excludes = ['pytest', 'coverage', 'pre_commit', 'black', 'isort',
-            'IPython', 'notebook', 'jupyterlab', 'kivy', 'kivymd',
-            'shap', 'playwright']
+            'IPython', 'notebook', 'jupyterlab',
+            'shap', 'playwright',
+            'kivy', 'kivymd',      # migrated to Qt
+            'ncps', 'hflayers']    # RAP optional deps, not needed at runtime
 ```
 
 ### Bundle Sizes
@@ -80,12 +84,13 @@ excludes = ['pytest', 'coverage', 'pre_commit', 'black', 'isort',
 
 ## `windows_installer.iss` — Inno Setup
 
-Creates a Windows MSI installer with:
+Creates a Windows setup executable (`dist/Macena_CS2_Installer.exe`) with:
 - **Install path:** `Program Files\Macena_CS2_Analyzer`
 - **Languages:** English, Italian, Brazilian Portuguese
 - **Compression:** LZMA (solid compression)
 - **Shortcuts:** Start Menu group + optional Desktop icon
-- **Post-install:** Auto-launches the application
+- **MSVC runtime:** silently installs `vc_redist.x64.exe` if missing (place it in `packaging/` before compiling)
+- **Post-install:** Optionally launches the application
 
 Requires [Inno Setup](https://jrsoftware.org/isinfo.php) to compile.
 
@@ -97,7 +102,7 @@ Step-by-step verification before distribution:
 2. **Version sync:** `pyproject.toml` version matches `windows_installer.iss` AppVersion
 3. **Build:** PyInstaller with `--noconfirm`
 4. **Post-build:** Exe launches, UI renders, maps load, charts render, `audit_binaries.py` passes
-5. **Optional:** Compile Inno Setup installer for MSI distribution
+5. **Optional:** Compile the Inno Setup installer for distribution
 
 ## Development Notes
 

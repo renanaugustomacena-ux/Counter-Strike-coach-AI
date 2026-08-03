@@ -15,7 +15,7 @@ This package contains every top-level screen in the Qt frontend. Each module def
 |------|--------|---------|
 | `__init__.py` | — | Package marker. |
 | `home_screen.py` | Home | Landing page: last match summary, focus insight, navigation hub. |
-| `coach_screen.py` | Coach | AI coach chat: dialogue with `CoachingDialogueEngine`, RAG-augmented responses, model picker. |
+| `coach_screen.py` | Coach | AI coach surface: insight cards plus a collapsible chat composer backed by `CoachingDialogueEngine` (via `CoachingChatViewModel`). |
 | `match_history_screen.py` | Match History | Filterable list of user matches with HLTV 2.0 ratings. |
 | `match_detail_screen.py` | Match Detail | Per-match drilldown: rounds, economy, highlights, momentum. |
 | `performance_screen.py` | Performance | Aggregate dashboard: rating trend, per-map stats, strengths / weaknesses, utility breakdown. |
@@ -23,11 +23,11 @@ This package contains every top-level screen in the Qt frontend. Each module def
 | `pro_player_detail_screen.py` | Pro Player Detail | Pro player profile with HLTV stat card, recent matches, role classification. |
 | `tactical_viewer_screen.py` | Tactical Viewer | 2D map replay with playback controls, ghost AI overlay, chronovisor highlights. |
 | `profile_screen.py` | Profile | User profile editor (display name, role preference). |
-| `user_profile_screen.py` | User Profile | Authenticated profile with Steam / FaceIT integration status. |
-| `settings_screen.py` | Settings | Theme, language, paths, ingestion mode, model picker, telemetry toggle. |
+| `user_profile_screen.py` | User Profile | User profile display and editing (bio, role) via `UserProfileViewModel`. |
+| `settings_screen.py` | Settings | Theme, font, language, data paths, ingestion mode, UI toggles. |
 | `steam_config_screen.py` | Steam Config | Steam ID / API key entry with validation. |
 | `faceit_config_screen.py` | FaceIT Config | FaceIT API key entry with validation. |
-| `wizard_screen.py` | First-Run Wizard | 4-step setup: intro → brain path → demo path → finish. |
+| `wizard_screen.py` | First-Run Wizard | 5-step setup: intro → player name → brain path → demo path → finish. |
 | `help_screen.py` | Help | In-app help backed by `backend/knowledge_base/help_system.py`. |
 | `placeholder.py` | (utility) | Stub `EmptyPlaceholderScreen` shown when a route is not yet implemented. |
 
@@ -37,38 +37,38 @@ Each screen follows the same template:
 
 ```
 class FooScreen(QWidget):
-    def __init__(self, app_state, viewmodel: FooViewModel, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
-        self._vm = viewmodel
-        self._build_ui()             # widget composition
-        self._wire_signals()         # bind self._vm.* signals to self._on_*
-        self._apply_theme()          # subscribe to theme_engine.themeChanged
+        self._vm = FooViewModel(self)   # screen owns its ViewModel
+        self._build_ui()                # widget composition
+        self._vm.data_changed.connect(self._on_data)   # signal wiring
 
-    def on_enter(self):              # called by the navigation router on focus
-        self._vm.refresh()
+    def on_enter(self):                 # called by MainWindow.switch_screen()
+        self._vm.load()
 
-    def on_leave(self):              # called when the user navigates away
-        self._vm.cancel_loads()
+    def on_leave(self):                 # optional — implemented where needed
+        self._vm.cancel()
 ```
 
-ViewModels do all data loading; screens marshal results back into widgets. Background work uses `core/worker.QThread` so the UI thread stays responsive.
+ViewModels do all data loading; screens marshal results back into widgets. Background work uses `core/worker.Worker` (a `QRunnable` on `QThreadPool`) so the UI thread stays responsive.
 
 ## Key invariants
 
-- **`on_enter` / `on_leave` are mandatory.** The navigation router calls them; missing implementations leak threads or stale subscriptions.
-- **Signals must be disconnected on `on_leave`.** Use `core/widgets_helpers.disconnect_all()` to avoid double-firing after re-entry.
+- **`on_enter()` is called by `MainWindow.switch_screen()`** when a screen becomes visible — use it to refresh data.
+- **Implement `on_leave()` when the screen holds in-flight work** (coach, match history, performance, and tactical viewer do) and cancel pending ViewModel loads there.
 - **No direct DB access from a screen.** All persistence goes through the ViewModel.
 - **No hard-coded strings.** User-visible text routes through `core/i18n_bridge.QtLocalizationManager.get_text()`.
 
 ## Integration
 
 ```
-qt_app/app.py (router)
-    +-- HomeScreen        --> HomeViewModel        --> backend/services/*
-    +-- CoachScreen       --> CoachViewModel       --> CoachingDialogueEngine + LLMService
-    +-- MatchDetailScreen --> MatchDetailViewModel --> AnalyticsEngine + storage
-    +-- PerformanceScreen --> PerformanceViewModel --> reporting/analytics.py
-    +-- TacticalViewer    --> TacticalPlaybackVM   --> core/playback_engine + GhostEngine
+qt_app/app.py (screen registry) --> MainWindow.switch_screen() (router)
+    +-- HomeScreen        --> MatchHistoryViewModel + FocusInsightViewModel
+    +-- CoachScreen       --> CoachViewModel + CoachingChatViewModel --> CoachingDialogueEngine
+    +-- MatchDetailScreen --> MatchDetailViewModel --> backend storage
+    +-- PerformanceScreen --> PerformanceViewModel
+    +-- TacticalViewer    --> TacticalPlaybackVM / TacticalGhostVM / TacticalChronovisorVM
+                              --> core/playback_engine + GhostEngine
     ... (one route per screen)
 ```
 

@@ -12,8 +12,8 @@ The sole active UI framework is `qt_app/` — a production desktop application b
 built-in chart library (QtCharts), and broad cross-platform support.
 
 `qt_app/` is a strictly consumer layer: it shares the same backend services (`backend/services/`),
-database layer (`backend/storage/`), and configuration system (`core/config.py`), but never writes
-to the database directly.
+database layer (`backend/storage/`), and configuration system (`core/config.py`), and limits its
+database writes to user-owned records (profile, settings).
 
 > **Historical note:** A Kivy + KivyMD prototype (`legacy_kivy/`) served as the early-development
 > shell. It was replaced by the Qt frontend and removed in March 2026 (commit `4f04f06`).
@@ -88,17 +88,26 @@ apps/
     │   │   ├── mini_sparkline.py    # Compact sparkline (QPainter, no axes)
     │   │   └── momentum_chart.py    # K-D delta momentum (QtCharts area chart)
     │   ├── coaching/            # Coaching widget namespace (reserved; all widgets removed PR #32)
-    │   ├── components/          # Reusable UI components (design system)
+    │   ├── components/          # Reusable UI components (design system) — 16 modules
     │   │   ├── __init__.py          # Component exports
-    │   │   ├── card.py              # Card container widget
-    │   │   ├── stat_badge.py        # Stat badge with label and value
+    │   │   ├── card.py              # Card container widget (5 depth variants)
     │   │   ├── empty_state.py       # Empty state placeholder with icon and message
-    │   │   ├── section_header.py    # Section header with title and optional action
-    │   │   ├── progress_ring.py     # Circular progress ring indicator
+    │   │   ├── filter_chip.py       # Toggleable filter pill
+    │   │   ├── focus_insight.py     # Focus insight card (home screen)
+    │   │   ├── hero_stats_strip.py  # Horizontal strip of hero metrics
     │   │   ├── icon_widget.py       # Icon display widget (SVG/pixmap)
-    │   │   └── nav_sidebar.py       # Navigation sidebar component
+    │   │   ├── last_match_hero.py   # Last-match hero card (home screen)
+    │   │   ├── match_mini_card.py   # Compact match summary card
+    │   │   ├── match_row_card.py    # Expanded match row card
+    │   │   ├── nav_sidebar.py       # Collapsible navigation sidebar component
+    │   │   ├── progress_ring.py     # Circular progress ring indicator
+    │   │   ├── section_header.py    # Section header with title and optional action
+    │   │   ├── stat_badge.py        # Stat badge with label and value
+    │   │   ├── status_chip.py       # Colored status pill with text label
+    │   │   ├── stepper.py           # Step progress indicator
+    │   │   └── toggle_switch.py     # Animated boolean switch
     │   └── tactical/            # Tactical viewer components
-    │       ├── map_widget.py        # 2D map renderer (QGraphicsView)
+    │       ├── map_widget.py        # 2D map renderer (QPainter, TacticalMapWidget)
     │       ├── player_sidebar.py    # Player info panel
     │       └── timeline_widget.py   # Round timeline scrubber
     │
@@ -109,6 +118,7 @@ apps/
     │   └── shared/              # Shared TypeScript utilities
     │
     └── themes/                  # QSS stylesheets
+        ├── base.qss.template    # Token-substituted base stylesheet (core/qss_generator.py)
         ├── cs2.qss              # CS2 theme (orange accent, dark surface)
         ├── csgo.qss             # CS:GO theme (steel blue accent)
         └── cs16.qss             # CS 1.6 theme (green accent, retro)
@@ -155,6 +165,9 @@ The Qt app follows the **Model-View-ViewModel** pattern:
 ```bash
 # From project root, with venv activated:
 python -m Programma_CS2_RENAN.apps.qt_app.app
+
+# Or via the launcher script at the repository root (uses .venv, clears stale bytecode):
+./launch.sh
 ```
 
 The boot sequence in `app.py`:
@@ -213,7 +226,7 @@ Three built-in themes mirror the Counter-Strike franchise eras:
 |-------|-------------|---------|
 | CS2 | Orange (`#D96600`) | Dark charcoal |
 | CSGO | Steel blue (`#617D8C`) | Slate gray |
-| CS 1.6 | Green (`#4DB050`) | Dark olive |
+| CS 1.6 | Green (`#4DB04F`) | Dark olive |
 
 Themes are applied via QSS stylesheets (`themes/*.qss`) plus a `QPalette` for
 non-styled widgets. Custom fonts (Roboto, JetBrains Mono, CS Regular, YUPIX,
@@ -251,7 +264,7 @@ to update their labels dynamically.
 
 ## Development Notes
 
-- The Qt app requires **PySide6 >= 6.5** and **Python 3.10+**.
+- The Qt app requires **PySide6 6.11.0** (pinned in `requirements.txt`) and **Python 3.10+**.
 - QSS stylesheets are in `qt_app/themes/` — one file per theme. Edit these for
   visual changes; do not inline styles in Python code.
 - The `placeholder.py` factory generates stub screens that display a "Coming Soon" message for screens under development.
@@ -262,4 +275,4 @@ to update their labels dynamically.
 
 ## File Count
 
-- `qt_app/`: 78 Python files across `core/`, `screens/`, `viewmodels/`, `widgets/` + 3 QSS themes + 3 embedded web sub-apps
+- `qt_app/`: 77 Python files across `core/`, `screens/`, `viewmodels/`, `widgets/` + 3 QSS themes (plus `base.qss.template`) + 3 embedded web sub-apps

@@ -6,7 +6,7 @@
 
 ## Overview
 
-PySide6/Qt desktop application implementing Model-View-ViewModel (MVVM) architecture with Qt Signal/Slot for CS2 tactical analysis and AI coaching. This is the **primary frontend** (78 Python files). The application features 15 screens, 10 ViewModels, 3 chart widgets, 3 tactical widgets, toast notifications, 3 QSS themes (CS2, CSGO, CS1.6), background wallpaper rendering, internationalization (English/Italian/Portuguese), and a graceful shutdown sequence.
+PySide6/Qt desktop application implementing Model-View-ViewModel (MVVM) architecture with Qt Signal/Slot for CS2 tactical analysis and AI coaching. This is the **primary frontend** (77 Python files). The application features 15 screens, 10 ViewModels, 3 chart widgets, 3 tactical widgets, toast notifications, 3 QSS themes (CS2, CSGO, CS1.6), background wallpaper rendering, internationalization (English/Italian/Portuguese), and a graceful shutdown sequence.
 
 ## Entry Point
 
@@ -43,7 +43,7 @@ qt_app/
 │   ├── easing.py                   # Custom easing curves
 │   ├── typography.py               # Typography scale and font helpers
 │   ├── icons.py                    # Icon registry and SVG/icon asset loader
-│   ├── svg_icon_provider.py        # QIconEngine backed by SVG resources
+│   ├── svg_icon_provider.py        # SvgIconProvider: sprite-backed QIcon factory
 │   ├── sound.py                    # Sound effect playback helpers
 │   ├── match_utils.py              # Match-level utility functions for the UI layer
 │   ├── widgets_helpers.py          # Generic Qt widget helper functions
@@ -86,22 +86,31 @@ qt_app/
 │   ├── toast.py                    # ToastWidget + ToastContainer: ephemeral notifications (4 severities)
 │   ├── skeleton.py                 # Skeleton loading placeholder widgets
 │   ├── charts/
-│   │   ├── economy_chart.py        # EconomyGraphWidget: round-by-round economy (QtCharts)
+│   │   ├── economy_chart.py        # EconomyChart: round-by-round economy (QtCharts)
 │   │   ├── mini_sparkline.py       # MiniSparkline: compact QPainter sparkline, no axes
-│   │   ├── momentum_chart.py       # MomentumGraphWidget: team momentum (QtCharts area chart)
+│   │   ├── momentum_chart.py       # MomentumChart: team momentum (QtCharts area chart)
 │   │   └── __init__.py
 │   ├── coaching/                   # Namespace reserved; widgets removed in PR #32
-│   ├── components/                 # Reusable UI components (design system)
+│   ├── components/                 # Reusable UI components (design system) — 16 modules
 │   │   ├── __init__.py             # Component exports
-│   │   ├── card.py                 # Card container widget
-│   │   ├── stat_badge.py           # Stat badge with label and value
+│   │   ├── card.py                 # Card container widget (5 depth variants)
 │   │   ├── empty_state.py          # Empty state placeholder with icon and message
-│   │   ├── section_header.py       # Section header with title and optional action
-│   │   ├── progress_ring.py        # Circular progress ring indicator
+│   │   ├── filter_chip.py          # Toggleable filter pill
+│   │   ├── focus_insight.py        # FocusInsightCard: home-page focus insight card
+│   │   ├── hero_stats_strip.py     # Horizontal strip of hero metrics
 │   │   ├── icon_widget.py          # Icon display widget (SVG/pixmap)
-│   │   └── nav_sidebar.py          # Navigation sidebar component
+│   │   ├── last_match_hero.py      # LastMatchHeroCard: home-page last-match hero card
+│   │   ├── match_mini_card.py      # Compact match summary card
+│   │   ├── match_row_card.py       # Expanded match row card with stat preview
+│   │   ├── nav_sidebar.py          # Collapsible navigation sidebar component
+│   │   ├── progress_ring.py        # Circular progress ring indicator
+│   │   ├── section_header.py       # Section header with title and optional action
+│   │   ├── stat_badge.py           # Stat badge with label and value
+│   │   ├── status_chip.py          # Colored status pill with text label
+│   │   ├── stepper.py              # Step progress indicator (used by the wizard)
+│   │   └── toggle_switch.py        # Animated boolean switch
 │   ├── tactical/
-│   │   ├── map_widget.py           # MapWidget: pixel-accurate 2D tactical map rendering
+│   │   ├── map_widget.py           # TacticalMapWidget: pixel-accurate 2D tactical map rendering
 │   │   ├── player_sidebar.py       # PlayerSidebar: real-time player state display (health, armor, weapons)
 │   │   ├── timeline_widget.py      # TimelineWidget: demo playback navigation and scrubbing
 │   │   └── __init__.py
@@ -112,6 +121,7 @@ qt_app/
 │   ├── tactical-viewer/
 │   └── shared/
 └── themes/
+    ├── base.qss.template           # Token-substituted base stylesheet (core/qss_generator.py)
     ├── cs2.qss                     # CS2 theme: dark gaming aesthetic with orange accent (#D96600)
     ├── csgo.qss                    # CSGO theme: slate-blue tones with steel accent
     └── cs16.qss                    # CS 1.6 theme: retro green terminal aesthetic
@@ -124,7 +134,7 @@ qt_app/
 │                         MainWindow                                  │
 │  ┌──────────┐  ┌─────────────────────────────────────────────────┐  │
 │  │ Sidebar   │  │ QStackedWidget (15 screens)                    │  │
-│  │ (5 nav    │  │  ┌───────────────────────────────────────────┐ │  │
+│  │ (7 nav    │  │  ┌───────────────────────────────────────────┐ │  │
 │  │  buttons) │  │  │  Screen (QWidget)                         │ │  │
 │  │           │  │  │   │                                       │ │  │
 │  │  Home     │  │  │   │ connects to                           │ │  │
@@ -132,13 +142,13 @@ qt_app/
 │  │  History  │  │  │  ViewModel (QObject)                      │ │  │
 │  │  Stats    │  │  │   │ Signal ──────> Screen updates UI      │ │  │
 │  │  Tactical │  │  │   │                                       │ │  │
-│  │           │  │  │   │ Worker (QRunnable)                    │ │  │
-│  │           │  │  │   │ └──> background DB/compute            │ │  │
+│  │  Settings │  │  │   │ Worker (QRunnable)                    │ │  │
+│  │  Help     │  │  │   │ └──> background DB/compute            │ │  │
 │  │           │  │  │   │      └──> Signal.result ──> ViewModel │ │  │
 │  │           │  │  └───────────────────────────────────────────┘ │  │
 │  └──────────┘  └─────────────────────────────────────────────────┘  │
 │                ┌─────────────────────────────────────────────────┐  │
-│                │ _BackgroundWidget (wallpaper, 25% opacity)      │  │
+│                │ _BackgroundWidget (wallpaper, 15% opacity)      │  │
 │                │ ToastContainer (top-right notification overlay) │  │
 │                └─────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────┘
@@ -198,15 +208,15 @@ qt_app/
 
 | Widget | File | Description |
 |--------|------|-------------|
-| `EconomyGraphWidget` | `economy_chart.py` | Round-by-round economy timeline showing buy levels (QtCharts) |
-| `MiniSparkline` | `mini_sparkline.py` | Compact QPainter sparkline with no axes, used in hero stat cards |
-| `MomentumGraphWidget` | `momentum_chart.py` | Team momentum evolution per round, dual-color CT/T overlay (QtCharts) |
+| `EconomyChart` | `economy_chart.py` | Round-by-round economy timeline showing buy levels (QtCharts) |
+| `MiniSparkline` | `mini_sparkline.py` | Compact QPainter sparkline with no axes, used in the last-match hero card |
+| `MomentumChart` | `momentum_chart.py` | Team momentum evolution per round, dual-color CT/T overlay (QtCharts) |
 
 ### Tactical Widgets (`widgets/tactical/`)
 
 | Widget | File | Description |
 |--------|------|-------------|
-| `MapWidget` | `map_widget.py` | Pixel-accurate 2D tactical map rendering with player dots, ghost overlays, and event markers |
+| `TacticalMapWidget` | `map_widget.py` | Pixel-accurate 2D tactical map rendering with player dots, ghost overlays, and event markers |
 | `PlayerSidebar` | `player_sidebar.py` | Real-time player state display: health, armor, weapon, money, alive/dead status |
 | `TimelineWidget` | `timeline_widget.py` | Demo playback navigation with scrubbing, round markers, and critical moment indicators |
 
@@ -244,8 +254,8 @@ AppState is **read-only** from the Qt side. Only the backend session engine writ
 - **3 themes:** CS2 (dark + orange accent), CSGO (slate-blue + steel accent), CS 1.6 (retro green terminal)
 - **QSS stylesheets** loaded from `themes/*.qss`, with dynamic font-family/size injection
 - **QPalette** configuration for widgets that do not honor QSS
-- **5 custom fonts:** Roboto, JetBrains Mono, New Hope, CS Regular, YUPIX
-- **Wallpaper management:** per-theme wallpaper folders, vertical image preference, rendered at 25% opacity via `_BackgroundWidget`
+- **5 custom fonts:** Roboto, JetBrains Mono, New Hope, CS Regular, YUPIX (from `PHOTO_GUI/`), plus optional display fonts auto-scanned from `assets/fonts/`
+- **Wallpaper management:** per-theme wallpaper folders, vertical image preference, rendered at 15% opacity via `_BackgroundWidget`
 - **HLTV rating colors:** green (> 1.10), yellow (0.90-1.10), red (< 0.90) with WCAG 1.4.1 text labels
 
 ## Worker Pattern
@@ -274,7 +284,7 @@ All signal emissions are wrapped in `try/except RuntimeError` to handle the case
 | `Icons` | `core/icons.py` | Icon registry and SVG/icon asset loader for the component system |
 | `Easing` | `core/easing.py` | Custom easing curves for widget animations |
 | `Typography` | `core/typography.py` | Typography scale definitions and font helpers |
-| `SVGIconProvider` | `core/svg_icon_provider.py` | QIconEngine implementation backed by SVG resources |
+| `SvgIconProvider` | `core/svg_icon_provider.py` | Sprite-backed QIcon factory, swapped in via `USE_SVG_ICONS` in `core/icons.py` |
 | `Sound` | `core/sound.py` | Sound effect playback helpers for UI feedback |
 | `MatchUtils` | `core/match_utils.py` | Match-level utility functions for the UI layer |
 | `WidgetsHelpers` | `core/widgets_helpers.py` | Generic Qt widget helper functions |
@@ -283,7 +293,7 @@ All signal emissions are wrapped in `try/except RuntimeError` to handle the case
 ## Development Notes
 
 - **Minimum window size:** 1280x720 pixels
-- **Sidebar width:** 220px fixed, with 5 navigation buttons (Home, Coach, History, Stats, Tactical)
+- **Sidebar:** collapsible 220px ↔ 60px, with 7 navigation buttons (Home, Coach, Match History, Performance, Tactical Viewer, Settings, Help)
 - **Screen lifecycle:** `on_enter()` is called automatically when a screen becomes visible; `retranslate()` is called on language change
 - **Thread safety:** All DB access goes through Worker/QThreadPool. Never access SQLModel sessions on the main thread.
 - **i18n:** 3 languages (en, pt, it) loaded from `assets/i18n/*.json`. The `language_changed` Signal triggers `retranslate()` on all registered screens.

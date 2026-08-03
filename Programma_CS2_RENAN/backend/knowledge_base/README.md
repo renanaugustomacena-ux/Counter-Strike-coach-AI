@@ -132,8 +132,8 @@ No code changes are required. The index is rebuilt dynamically from the filesyst
 - **No write operations:** The help system never modifies files on disk. It is strictly
   a read-only indexer.
 - **Encoding:** All files are read as UTF-8 (`encoding="utf-8"`).
-- **Error handling:** Individual file read failures are caught and printed to stderr
-  (`print()`). This should be migrated to structured logging in a future pass.
+- **Error handling:** Individual file read failures are caught and reported via a plain
+  `print()`. This should be migrated to structured logging in a future pass.
 - **Cache invalidation:** The cache is only rebuilt when `refresh_index()` is called
   explicitly. There is no file-watcher or auto-refresh mechanism.
 - **Content rendering:** The Qt help screen displays content as plain text via

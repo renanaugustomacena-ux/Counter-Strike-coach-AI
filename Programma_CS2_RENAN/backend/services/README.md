@@ -24,17 +24,17 @@ All services use dependency injection for `DatabaseManager` access (via
 | File | Lines | Purpose | Key Exports |
 |------|-------|---------|-------------|
 | `__init__.py` | 0 | Package marker | -- |
-| `coaching_service.py` | ~950 | Main coaching orchestrator (4 modes) | `CoachingService` |
-| `analysis_orchestrator.py` | ~830 | Phase 6 analysis coordination (9 engines) | `AnalysisOrchestrator`, `MatchAnalysis`, `RoundAnalysis` |
-| `analysis_service.py` | 92 | Performance analysis and drift detection | `AnalysisService`, `get_analysis_service()` |
-| `coaching_dialogue.py` | 391 | Interactive multi-turn coaching chat | `CoachingDialogueEngine`, `get_dialogue_engine()` |
-| `lesson_generator.py` | 382 | Structured lesson generation from demos | `LessonGenerator`, `check_lesson_system_status()` |
-| `llm_service.py` | 253 | Ollama LLM provider wrapper | `LLMService`, `get_llm_service()`, `check_ollama_status()` |
-| `ollama_writer.py` | 110 | Natural language polishing for insights | `OllamaCoachWriter`, `get_ollama_writer()` |
-| `player_lookup.py` | ~120 | Player name detection and HLTV data retrieval for chat | `PlayerLookupService` |
-| `profile_service.py` | 167 | Steam/FaceIT profile integration | `ProfileService` |
-| `telemetry_client.py` | 60 | Match telemetry dispatch to ML server | `send_match_telemetry()` |
-| `visualization_service.py` | 131 | Radar charts and comparison plots | `VisualizationService`, `get_visualization_service()` |
+| `coaching_service.py` | ~1068 | Main coaching orchestrator (4 modes) | `CoachingService` |
+| `analysis_orchestrator.py` | ~1097 | Phase 6 analysis coordination (11 engines) | `AnalysisOrchestrator`, `MatchAnalysis`, `RoundAnalysis` |
+| `analysis_service.py` | 91 | Performance analysis and drift detection | `AnalysisService`, `get_analysis_service()` |
+| `coaching_dialogue.py` | ~1544 | Interactive multi-turn coaching chat | `CoachingDialogueEngine`, `get_dialogue_engine()` |
+| `lesson_generator.py` | 380 | Structured lesson generation from demos | `LessonGenerator`, `check_lesson_system_status()` |
+| `llm_service.py` | 367 | Ollama LLM provider wrapper | `LLMService`, `get_llm_service()`, `check_ollama_status()` |
+| `ollama_writer.py` | 108 | Natural language polishing for insights | `OllamaCoachWriter`, `get_ollama_writer()` |
+| `player_lookup.py` | ~557 | Player name detection and HLTV data retrieval for chat | `PlayerLookupService` |
+| `profile_service.py` | 165 | Steam/FaceIT profile integration | `ProfileService` |
+| `telemetry_client.py` | 64 | Match telemetry dispatch to ML server | `send_match_telemetry()` |
+| `visualization_service.py` | 136 | Radar charts and comparison plots | `VisualizationService`, `get_visualization_service()` |
 
 ## Architecture and Concepts
 
@@ -68,8 +68,9 @@ FAISS search, or Ollama polishing stalls.
 
 ### `AnalysisOrchestrator` -- Phase 6 Analysis Coordination
 
-Coordinates 9 analysis engines and produces `CoachingInsight` objects for database
-storage:
+Instantiates 11 analysis engines (the death-probability estimator plus the ten
+below; Game Tree and Blind Spots share a step) and produces `CoachingInsight`
+objects for database storage:
 
 | Step | Engine | Input Required | Focus Area |
 |------|--------|----------------|------------|

@@ -45,14 +45,14 @@ visual output:
 
 3. **Critical Moment Maps** (`render_critical_moments`) -- annotated scatter plot of
    key events identified by `ChronovisorScanner`. Each moment is rendered as a
-   severity-coloured, type-shaped, scale-sized marker:
+   severity-coloured, type-shaped, scale-sized marker; the three attributes are
+   independent fields on the annotation dict:
 
-   | Severity | Colour | Type | Marker | Scale | Pixel Size |
-   |----------|--------|------|--------|-------|------------|
-   | critical | red | play | `^` (up triangle) | macro | 350 |
-   | critical | red | mistake | `v` (down triangle) | standard | 200 |
-   | significant | orange | play/mistake | `^` / `v` | standard | 200 |
-   | notable | gold | play/mistake | `o` (circle) | micro | 100 |
+   | Attribute | Mapping |
+   |-----------|---------|
+   | Severity → colour | critical = red, significant = orange, notable = gold |
+   | Type → marker | play = `^` (up triangle), mistake = `v` (down triangle) |
+   | Scale → pixel size | micro = 100, standard = 200, macro = 350 |
 
 4. **Round Error Plots** (`plot_round_errors`) -- scatter plot marking death locations
    (red `x`) and coach-flagged bad decisions (orange `P`) for a single round.
@@ -112,9 +112,8 @@ visualisation failures never crash the calling pipeline.
 
 | Consumer | Usage |
 |----------|-------|
-| `apps/qt_app/screens/` | Inline chart rendering in `PerformanceScreen`, `MatchDetailScreen` |
-| `backend/services/analysis_orchestrator.py` | Calls `generate_highlight_report()` during post-analysis |
-| `backend/nn/rap_coach/chronovisor_scanner.py` | Supplies `CriticalMoment` objects for rendering |
+| `backend/services/coaching_service.py` | Instantiates `MatchVisualizer` for static report overlays |
+| `backend/nn/rap_coach/chronovisor_scanner.py` | Supplies `CriticalMoment` objects for rendering (imported by `generate_highlight_report()`) |
 | `ingestion/demo_loader.py` | Provides parsed frames consumed by `MatchReportGenerator` |
 | `core/config.py` | `USER_DATA_ROOT` for report output path anchoring |
 
@@ -122,8 +121,7 @@ visualisation failures never crash the calling pipeline.
 
 | Format | DPI | Use Case |
 |--------|-----|----------|
-| PNG | 150 | UI display, inline previews |
-| PNG (high-res) | 300 | PDF embedding, archival |
+| PNG | default (heatmaps, round plots); 150 (overlays, critical-moment maps) | Map visualisations |
 | Markdown | -- | Structured text reports with embedded image references |
 
 ## Development Notes

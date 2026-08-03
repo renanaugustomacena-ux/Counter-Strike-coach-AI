@@ -11,7 +11,8 @@ Namespace package reserved for coaching-specific visual widgets. The four specia
 widgets that previously lived here — `AnimatedCounter`, `BeliefThreatGauge`,
 `MomentumSparkline`, and `UnderglowLabel` — were removed in PR #32 (commit `697bac7`)
 as part of the orphan-module cleanup. Coaching feedback is now rendered directly in
-`screens/coach_screen.py` via standard Qt widgets and `widgets/charts/momentum_chart.py`.
+`screens/coach_screen.py` via standard Qt widgets; the shared charts live in
+`widgets/charts/`.
 
 ## File inventory
 
@@ -31,8 +32,7 @@ If coaching-specific visual widgets are needed again, this directory is the corr
 home for them. Follow these conventions from the original design:
 
 - Pull all colors from `core/design_tokens.py` — no hardcoded hex values.
-- Use `core/animation.py` easing presets for all motion.
-- Respect `prefers-reduced-motion` via `core/animation.py:reduced_motion()`.
+- Use `core/animation.py` / `core/easing.py` presets for all motion.
 - Pair every visual encoding with a text value for accessibility.
 - Set `setAccessibleName()` on every widget.
 

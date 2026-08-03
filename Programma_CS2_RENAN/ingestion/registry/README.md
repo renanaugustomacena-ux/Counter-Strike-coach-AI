@@ -13,9 +13,9 @@ maintains a persistent JSON file that records the set of processed demo names.
 The `DemoLifecycleManager` handles post-ingestion housekeeping, specifically
 the time-based cleanup of old archived demo files.
 
-Together these components ensure that no demo is ingested twice (deduplication)
-and that disk space is reclaimed automatically after a configurable retention
-period.
+Together these components are designed to ensure that no demo is ingested twice
+(deduplication) and that disk space is reclaimed automatically after a
+configurable retention period.
 
 ## File Inventory
 
@@ -105,20 +105,16 @@ exceed the retention threshold.  Each deletion is logged at INFO level.
 ### `schema.sql` -- Reserved
 
 The `schema.sql` file is reserved for a future migration from JSON-based
-registry to SQL-based registry.  Currently empty.  When implemented, it will
-define a `demo_file_records` table with columns for file path, hash, size,
-source type, lifecycle state, error code, retry count, and timestamps.
+registry to SQL-based registry.  It is currently empty (0 bytes).
 
 ## Integration
 
 ### Upstream Consumers
 
-| Consumer | Usage |
-|----------|-------|
-| `ingestion/pipelines/user_ingest.py` | Calls `is_processed()` before ingesting, `mark_processed()` after success |
-| `ingestion/pipelines/json_tournament_ingestor.py` | Batch processing with registry checks |
-| `run_ingestion.py` | Orchestrator-level registry management |
-| `core/session_engine.py` (IngestionWatcher) | Daemon thread that triggers pipelines and consults registry |
+`DemoRegistry` and `DemoLifecycleManager` currently have **no in-code
+consumers**: the production orchestrator (`run_ingestion.py`) performs its own
+SHA-256-based deduplication against the database instead.  The classes remain
+available as the package's standalone dedup/retention utilities.
 
 ### Dependencies
 
