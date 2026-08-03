@@ -6,28 +6,30 @@
 
 ## What lives here
 
-This directory collects machine-generated JSON reports produced by the project's evaluation, audit, and diagnostic tools. Files here are **outputs** of running scripts, not source documents — they are kept under version control as historical evidence.
+This directory collects machine-generated JSON reports produced by the project's evaluation, audit, and diagnostic tools. Files here are **outputs** of running scripts, not source documents. The directory ships empty (only the READMEs are tracked — `reports/*` is gitignored); reports accumulate locally as you run the tools.
 
 ```
 reports/
-├── audit/                                # Goliath audit JSON outputs
-├── eval_<UTC-timestamp>.json             # cs2_coach_bench benchmark runs
-└── goliath_hospital_<timestamp>.json     # Goliath hospital-mode (DB recovery) runs
+├── audit/                                # audit_scanner.py JSON outputs (via --output)
+├── eval_<UTC-timestamp>.json             # tools/eval_harness.py coaching-eval runs
+└── hltv_seed_<timestamp>/                # seed_hltv_top_n.py run reports (pending_vision.json, …)
 ```
 
 ## File categories
 
 | Pattern | Source | Purpose |
 |---------|--------|---------|
-| `eval_*.json` | `evals/cs2_coach_bench/run_eval.py` | Coaching benchmark scoring |
-| `goliath_hospital_*.json` | `goliath.py audit --hospital` | Database integrity scan |
-| `audit/*.json` | `goliath.py audit` | Targeted module audits |
+| `eval_*.json` | `tools/eval_harness.py` | Coaching evaluation runs (timestamped) |
+| `audit/*.json` | `tools/audit_scanner.py --output reports/audit/<name>.json` | Targeted subsystem audits |
+| `hltv_seed_*/` | `tools/seed_hltv_top_n.py` / `seed_hltv_apply_vision.py` | HLTV seeding run artefacts |
+
+(The `cs2_coach_bench` benchmark writes its own JSONL responses to `evals/cs2_coach_bench/reports/`, not here.)
 
 ## Conventions
 
 - **Filenames are timestamped** (`UTC` or local) so reports never overwrite each other.
 - **Reports are immutable.** Re-running a script produces a new file — never edit in place.
-- **Old reports are kept** until storage pressure justifies pruning. Diff between consecutive reports reveals regressions.
+- **Reports are local-only.** `reports/*` is gitignored; keep old ones until storage pressure justifies pruning. Diff between consecutive reports reveals regressions.
 - **No PII.** Reports contain demo names and player aliases but never raw credentials, Steam tokens, or HLTV API keys.
 
 ## Related
@@ -38,11 +40,10 @@ reports/
 
 ## Cleanup
 
-When the directory grows past a few hundred files, prune by month with:
+When the directory grows past a few hundred files, prune by age with:
 
 ```bash
 find reports -name "eval_*.json" -mtime +90 -delete
-find reports -name "goliath_hospital_*.json" -mtime +60 -delete
 ```
 
 Adjust thresholds to your retention preference. There is no automatic cleanup.

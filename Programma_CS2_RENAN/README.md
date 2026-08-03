@@ -12,20 +12,21 @@ The entire system follows a four-stage pipeline that transforms raw demo data in
 
 ```
 WATCH (Ingestion)  →  LEARN (Training)  →  THINK (Inference)  →  SPEAK (Dialogue)
-    Hunter daemon        Teacher daemon       COPER pipeline       Template + Ollama
+    Scanner daemon       Teacher daemon       COPER pipeline       Template + Ollama
     Demo parsing         3-stage maturity     RAG knowledge        Causal attribution
     Feature extraction   Multi-model train    Game theory          Pro comparisons
 ```
 
 ### Stage 1: WATCH (Ingestion)
-- The **Hunter daemon** scrapes professional player statistics from hltv.org
+- The **Scanner daemon** watches user and pro demo directories and queues new `.dem` files
+- The **hunter service** (`hltv_sync_service.py`, supervised by the backend Console) scrapes professional player statistics from hltv.org
 - The **Digester daemon** parses `.dem` files via demoparser2 and extracts the 25-dimensional feature vector
 - Raw tick data is stored in per-match SQLite databases
 
 ### Stage 2: LEARN (Training)
 - The **Teacher daemon** trains neural models on ingested data
 - 3-stage maturity gating: CALIBRATING (0-49 demos) → LEARNING (50-199) → MATURE (200+)
-- Models: JEPA (self-supervised), RAP Coach (7-layer pedagogical), NeuralRoleHead, Win Probability
+- Models: JEPA (self-supervised), RAP Coach (perception/memory/strategy/pedagogy), NeuralRoleHead, Win Probability
 
 ### Stage 3: THINK (Inference)
 - COPER coaching pipeline: Context + Observation + Pro Reference + Experience + Reasoning
@@ -56,29 +57,30 @@ Programma_CS2_RENAN/
 │   ├── processing/             # Feature engineering (25-dim vector), baselines
 │   ├── progress/               # Training progress tracking
 │   ├── reporting/              # Analytics queries for UI
-│   ├── services/               # Service orchestration layer (6 services)
+│   ├── services/               # Service orchestration layer (11 service modules)
 │   └── storage/                # SQLite persistence, models, backup
 ├── core/                       # Runtime foundation
-│   ├── session_engine.py       # Quad-Daemon Engine (Hunter, Digester, Teacher, Pulse)
+│   ├── session_engine.py       # Quad-Daemon Engine (Scanner, Digester, Teacher, Pulse)
 │   ├── config.py               # Configuration system (3-level resolution)
 │   ├── spatial_data.py         # Map spatial intelligence (9 competitive maps)
 │   ├── map_manager.py          # Map asset management
 │   └── lifecycle.py            # Graceful startup/shutdown
 ├── ingestion/                  # Demo ingestion orchestration
-│   ├── pipelines/              # User and pro demo pipelines
-│   ├── registry/               # Demo file tracking and lifecycle
-│   └── hltv/                   # HLTV scraper subsystem
+│   ├── pipelines/              # User and tournament-JSON pipelines
+│   └── registry/               # Demo file tracking and lifecycle
 ├── observability/              # Runtime protection and monitoring
 │   ├── rasp.py                 # RASP integrity guard
 │   ├── logger_setup.py         # Structured JSON logging
 │   └── sentry_setup.py         # Sentry error tracking
 ├── reporting/                  # Visualization and reports
-│   ├── visualizer.py           # Heatmaps, engagement maps, momentum charts
-│   └── report_generator.py     # Multi-page PDF reports
+│   ├── visualizer.py           # Heatmaps, differential overlays, critical moments
+│   └── report_generator.py     # Markdown match reports
 ├── assets/                     # Static assets (i18n, maps)
 ├── data/                       # Runtime data (demos, knowledge, configs)
 ├── models/                     # Trained model checkpoints
-├── tests/                      # Test suite (2,024+ tests in 118 files)
+├── runs/                       # TensorBoard training logs
+├── tactics/                    # Map tactical metadata (JSON)
+├── tests/                      # Test suite (2,190+ tests in 130 files)
 ├── tools/                      # Package-level validation tools
 ├── __init__.py                 # Package init (__version__ = "1.0.0")
 ├── run_ingestion.py            # Demo ingestion entry point
@@ -93,7 +95,7 @@ Programma_CS2_RENAN/
 | `apps/qt_app/app.py` | Desktop application (Qt GUI, primary) | `python -m Programma_CS2_RENAN.apps.qt_app.app` |
 | `run_ingestion.py` | Demo ingestion pipeline | `python -m Programma_CS2_RENAN.run_ingestion` |
 | `run_worker.py` | Background ingestion worker (stale task recovery) | `python -m Programma_CS2_RENAN.run_worker` |
-| `hltv_sync_service.py` | HLTV background sync | Started by Hunter daemon |
+| `hltv_sync_service.py` | HLTV background sync ("hunter" service) | Started as a detached subprocess by the ServiceSupervisor (`backend/control/console.py`) |
 
 ## Technology Stack
 

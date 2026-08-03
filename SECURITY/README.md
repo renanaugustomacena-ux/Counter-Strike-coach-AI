@@ -34,11 +34,14 @@ decision in this directory is defended with **risk-addressed / residual-risk / t
 ## How a contributor uses this directory
 
 1. **Before writing code** — read `THREAT_MODEL.md` for the trust boundary your change crosses.
-2. **While writing** — `tools/policy_runner.py` runs in pre-commit (warn-mode initially) and prevents drift.
-3. **Before merging** — if your change touches a path in `BOUNDARY_FILES.txt`, the CI labels the PR
-   `security-review-required` and `CODEOWNERS` enforces a security review.
-4. **At release** — `goliath.py audit` runs the full chain (SBOM, SLSA attestation, integrity manifest, RASP).
-5. **During an incident** — `INCIDENT_RESPONSE.md` defines the named scenarios; `goliath.py panic` is the kill-switch.
+2. **While writing** — run `python tools/policy_runner.py` (warn-mode by default; `--strict` blocks) to prevent drift.
+3. **Before merging** — if your change touches a path in `BOUNDARY_FILES.txt`, the CI
+   (`.github/workflows/threat-model-gate.yml`) labels the PR `security-review-required` and
+   `CODEOWNERS` enforces a security review.
+4. **At release** — follow `packaging/BUILD_CHECKLIST.md`: `goliath.py integrity` regenerates the
+   source integrity manifest (RASP), `tools/sbom_generator.py` produces the CycloneDX SBOM, and
+   `tools/audit_binaries.py` audits the built binaries.
+5. **During an incident** — `INCIDENT_RESPONSE.md` defines the named scenarios (IR-01…IR-05).
 
 ## Standards anchoring
 

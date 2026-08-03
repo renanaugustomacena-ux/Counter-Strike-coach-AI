@@ -19,19 +19,19 @@ The training pipeline was validated end-to-end on March 12, 2026: 11 pro demos i
 | `config.py` | Central constants (`INPUT_DIM=25`, `OUTPUT_DIM=10`, `HIDDEN_DIM=128`, `GLOBAL_SEED=42`, `RAP_POSITION_SCALE=500.0`), `set_global_seed()`, `get_device()` with discrete GPU selection |
 | `model.py` | `AdvancedCoachNN` (LSTM + Mixture of Experts), `CoachNNConfig` dataclass, `ModelManager` for versioned checkpoint saving |
 | `jepa_model.py` | `JEPAEncoder`, `JEPACoachingModel`, `VLJEPACoachingModel` -- self-supervised JEPA with InfoNCE contrastive loss and concept dictionary |
-| `jepa_train.py` | JEPA two-stage training script (pre-training + fine-tuning), `_MIN_ROUNDS_FOR_SEQUENCE = 6` |
+| `jepa_train.py` | JEPA two-stage training script (pre-training + fine-tuning) over tick-level `PlayerTickState` sequences with seeded windowing (J-1), `_MIN_TICKS_FOR_SEQUENCE = 20`, `_MAX_TICKS_PER_SEQUENCE = 500` |
 | `jepa_trainer.py` | Low-level JEPA training loop with EMA target encoder update |
 | `ema.py` | `EMA` class -- exponential moving average for shadow weight management (invariant NN-16: `.clone()` on `apply_shadow()`) |
-| `role_head.py` | `NeuralRoleHead` (5-dim input, 5-dim softmax output, ~750 params), training and inference helpers for player role classification |
+| `role_head.py` | `NeuralRoleHead` (5-dim input, 5-dim softmax output, ~870 params), training and inference helpers for player role classification |
 | `win_probability_trainer.py` | `WinProbabilityTrainerNN` -- lightweight 9-feature model for offline win probability on pro match DataFrames |
 | `dataset.py` | `ProPerformanceDataset` (supervised) and `SelfSupervisedDataset` (JEPA sliding-window context/target pairs) |
 | `factory.py` | `ModelFactory` -- static factory for unified instantiation across all model types (`default`, `jepa`, `vl-jepa`, `rap`, `rap-lite`, `role_head`) |
-| `persistence.py` | `save_nn()`, `load_nn()`, `get_model_path()` with atomic write (`tmp + os.replace`), `StaleCheckpointError` |
+| `persistence.py` | `save_nn()`, `load_nn()`, `get_model_path()` with atomic write (`tmp + os.replace`), `.pt.meta.json` feature-schema sidecar, SHA-256 checkpoint hash registry (CTF-1), 4-tier load fallback (user -> global -> factory-bundled -> scratch), `StaleCheckpointError` |
 | `early_stopping.py` | `EarlyStopping` with configurable patience and min-delta thresholds |
 | `training_config.py` | `TrainingConfig` and `JEPATrainingConfig` dataclasses centralizing all hyperparameters |
 | `training_orchestrator.py` | `TrainingOrchestrator` -- unified epoch loop with validation, early stopping, checkpointing, LR scheduling, and callback dispatch |
 | `training_controller.py` | `TrainingController` -- demo deduplication, diversity checks, monthly quota management, stop-start logic |
-| `coach_manager.py` | `CoachTrainingManager` -- high-level orchestration with 3-stage maturity gate (doubt / learning / conviction) |
+| `coach_manager.py` | `CoachTrainingManager` -- high-level orchestration of the 5 training phases (JEPA pre-training, pro baseline, user tailoring, RAP, role head) with a 3-tier maturity soft gate (CALIBRATING 0-49 / LEARNING 50-199 / MATURE 200+) |
 | `train.py` | `train_nn()` -- legacy training entry point for `AdvancedCoachNN` |
 | `training_callbacks.py` | `TrainingCallback` (ABC, opt-in hooks) and `CallbackRegistry` (event dispatcher with error isolation) |
 | `tensorboard_callback.py` | `TensorBoardCallback` -- logs 9+ scalar signals, parameter/gradient histograms, custom scalar layouts |
@@ -45,11 +45,11 @@ The training pipeline was validated end-to-end on March 12, 2026: 11 pro demos i
 
 | Package | Purpose |
 |---------|---------|
-| `rap_coach/` | RAP Coach model: 7-layer pedagogical architecture (Perception, Memory, Strategy, Pedagogy, Communication, ChronovisorScanner, SkillModel). Requires `ncps` + `hflayers` for LTC-Hopfield memory. |
+| `rap_coach/` | **Deprecated backward-compatibility shims (P9-01).** Every module re-exports from `experimental/rap_coach/`; `skill_model.py` re-exports from `backend/processing/skill_assessment.py`. See `rap_coach/README.md`. |
 | `advanced/` | **Intentional empty stub.** Original modules removed in remediation G-06. Namespace reserved for future experiments. See `advanced/README.md`. |
 | `inference/` | `GhostEngine` -- real-time prediction engine translating tick-level game state into coaching suggestions via `RAP_POSITION_SCALE`. |
-| `layers/` | `SuperpositionLayer` -- context-gated linear layer enabling dynamic mode blending with L1 sparsity regularization and observability hooks. |
-| `experimental/` | Experimental RAP Coach variant with separate Perception, Strategy, Pedagogy, Communication, Memory modules and test harness. |
+| `layers/` | `SuperpositionLayer` -- FiLM-conditioned linear layer (`y = gamma(context)*(Wx+b) + beta(context)`) with an L1 gate-sparsity loss hook and gate observability hooks. |
+| `experimental/` | Canonical home of the RAP Coach implementation (`experimental/rap_coach/`): Perception, Memory, Strategy, Pedagogy, Communication, ChronovisorScanner. Gated behind `USE_RAP_MODEL`. |
 
 ## Model Architectures
 
@@ -57,17 +57,17 @@ The training pipeline was validated end-to-end on March 12, 2026: 11 pro demos i
 
 Self-supervised Joint-Embedding Predictive Architecture. Two-stage protocol: (1) pre-training on pro demos with InfoNCE contrastive loss + concept dictionary for semantic alignment, (2) LSTM fine-tuning on user data. Uses EMA target encoder (`requires_grad=False` during update, invariant NN-JM-04). Latent dim: 256, LSTM hidden dim: 128.
 
-### 2. RAP Coach (`rap_coach/`) -- Grand Vision Architecture
+### 2. RAP Coach (`experimental/rap_coach/`) -- Grand Vision Architecture
 
-7-layer pedagogical model: ResNet-based Perception, LTC-Hopfield Memory (512 associative slots, `ncp_units=512`, `belief_dim=64`), SuperpositionLayer Strategy with context gating, Causal Pedagogy for mistake attribution, Natural Language Communication, ChronovisorScanner for multi-scale temporal analysis, and SkillModel for player skill estimation. Hopfield is bypassed until 2+ training forward passes (invariant NN-MEM-01).
+7-layer pedagogical model: ResNet-based Perception, LTC-Hopfield Memory (LTC with `ncp_units=512` and a 154->256 output projection, `HopfieldLayer` with 32 trainable prototypes, `belief_dim=64`), Strategy with top-2 sparse MoE routing over 4 SuperpositionLayer (FiLM) experts, Causal Pedagogy for mistake attribution, Natural Language Communication, and ChronovisorScanner for multi-scale temporal analysis. Hopfield is bypassed until the trainer signals the first real optimizer step via `notify_optimizer_step()` (invariant NN-MEM-01). Skill estimation lives in `backend/processing/skill_assessment.py` (`rap_coach/skill_model.py` is a shim).
 
 ### 3. AdvancedCoachNN (`model.py`) -- Legacy Supervised Model
 
-LSTM sequence encoder + Mixture of Experts (3 experts by default) with LayerNorm, role-biased gating, and `tanh` output clamping. Aliased as `TeacherRefinementNN` for backward compatibility.
+LSTM sequence encoder + Mixture of Experts (3 experts by default) with LayerNorm, top-2 sparse gate routing (`_topk_sparse_gate`, GAP-10) with role bias, and `tanh` output clamping. Aliased as `TeacherRefinementNN` for backward compatibility.
 
 ### 4. NeuralRoleHead (`role_head.py`) -- Role Classification
 
-Lightweight MLP (5 -> 32 -> 16 -> 5, ~750 parameters) predicting player role probabilities from playstyle metrics (TAPD, OAP, PODT, rating impact, aggression). KL-divergence loss with label smoothing. Runs as secondary opinion alongside heuristic `RoleClassifier`.
+Lightweight MLP (5 -> 32 -> 16 -> 5, ~870 parameters) predicting player role probabilities from playstyle metrics (TAPD, OAP, PODT, rating impact, aggression). KL-divergence loss with label smoothing. Runs as secondary opinion alongside heuristic `RoleClassifier`.
 
 ### 5. WinProbabilityTrainerNN (`win_probability_trainer.py`) -- Offline Win Prediction
 
@@ -89,9 +89,9 @@ Extends JEPA with visual-linguistic tactical understanding for concept-level coa
 | `LEARNING_RATE` | 0.001 | `config.py` |
 | `RAP_POSITION_SCALE` | 500.0 | `config.py` |
 | `WEIGHT_CLAMP` | 0.5 | `config.py` |
-| RAP `hidden_dim` | 256 | `rap_coach/model.py` |
-| RAP `ncp_units` | 512 | `rap_coach/memory.py` |
-| RAP `belief_dim` | 64 | `rap_coach/memory.py` |
+| RAP `hidden_dim` | 256 | `experimental/rap_coach/model.py` |
+| RAP `ncp_units` | 512 | `experimental/rap_coach/memory.py` |
+| RAP `belief_dim` | 64 | `experimental/rap_coach/model.py` |
 | JEPA `latent_dim` | 256 | `jepa_model.py` |
 | JEPA LSTM `hidden_dim` | 128 | `jepa_model.py` |
 
@@ -109,7 +109,7 @@ The training pipeline includes a 4-layer observability stack, implemented as `Tr
 | ID | Rule |
 |----|------|
 | P-RSB-03 | `round_won` EXCLUDED from training features (label leakage) |
-| NN-MEM-01 | Hopfield bypassed until 2+ training forward passes |
+| NN-MEM-01 | Hopfield bypassed until `notify_optimizer_step()` signals the first real optimizer step |
 | NN-16 | EMA `apply_shadow()` must `.clone()` shadow tensors |
 | NN-JM-04 | Target encoder `requires_grad=False` during EMA update |
 | P-X-01 | `len(FEATURE_NAMES) == METADATA_DIM` compile-time assertion |

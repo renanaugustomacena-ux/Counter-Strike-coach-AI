@@ -6,21 +6,22 @@
 
 This directory contains internal tooling specific to the `Programma_CS2_RENAN` package. These
 are distinct from the root-level `tools/` directory (which holds project-wide entry points like
-`headless_validator.py` invoked by pre-commit hooks). The tools here form a 4-level validation
-hierarchy that ensures system health from fast smoke checks through deep clinical diagnostics.
-Every tool inherits from the shared `BaseValidator` ABC defined in `_infra.py`, producing
-structured `ToolResult` / `ToolReport` objects with severity levels.
+`headless_validator.py` invoked by pre-commit hooks). Together with the root validator and the
+pytest suite, the tools here form a 4-level validation hierarchy that ensures system health from
+fast smoke checks through deep clinical diagnostics. The validators build on the shared
+`BaseValidator` ABC defined in `_infra.py`, producing structured `ToolResult` / `ToolReport`
+objects with severity levels.
 
 ## Validation Hierarchy
 
 The four levels are designed to be run in order of increasing depth and time cost:
 
-| Level | Tool | Checks | Time | Purpose |
-|-------|------|--------|------|---------|
-| 1 | `headless_validator.py` | 26 phases | <20s | Fast regression gate (mandatory before task completion) |
-| 2 | pytest suite | 2,024+ tests in 118 files | ~2min | Logic validation, contract assertions |
-| 3 | `backend_validator.py` | 40 across 7 sections | ~30s | Build health, model zoo, coaching pipeline |
-| 4 | `Goliath_Hospital.py` | 10 departments | ~60s | Comprehensive clinical diagnostic |
+| Level | Tool | Checks | Purpose |
+|-------|------|--------|---------|
+| 1 | `tools/headless_validator.py` (project root) | 42 distinct check phases | Fast regression gate (mandatory before task completion) |
+| 2 | pytest suite | 2,190+ tests in 130 files | Logic validation, contract assertions |
+| 3 | `backend_validator.py` | 7 sections | Build health, model zoo, coaching pipeline |
+| 4 | `Goliath_Hospital.py` | 11 departments | Comprehensive clinical diagnostic |
 
 ## File Inventory
 
@@ -28,22 +29,25 @@ The four levels are designed to be run in order of increasing depth and time cos
 |------|----------|-------------|
 | `_infra.py` | Infrastructure | Shared infrastructure: path stabilization, `BaseValidator` ABC, `Console`, `ToolResult`, `ToolReport`, venv guard |
 | `__init__.py` | Infrastructure | Package marker |
-| `headless_validator.py` | Validation | Fast 7-phase regression gate (environment, core imports, backend imports, database schema, config loading, ML smoke, observability) |
 | `backend_validator.py` | Validation | Backend health gate with 7 sections (environment, database, model zoo, analysis, coaching, resource integrity, service health) |
-| `Goliath_Hospital.py` | Diagnostics | Hospital-style diagnostic suite with 10 departments (ER, Radiology, Pathology Lab, Cardiology, Neurology, Oncology, Pediatrics, ICU, Pharmacy, Tool Clinic) |
-| `ui_diagnostic.py` | Diagnostics | Headless UI validation (resources, localization, assets, KV validation, spatial coordinates) |
-| `Ultimate_ML_Coach_Debugger.py` | Diagnostics | Neural belief state and decision logic falsification tool; checks fidelity thresholds, stability probes, insight traceability |
+| `Goliath_Hospital.py` | Diagnostics | Hospital-style diagnostic suite with 11 departments (ER, Radiology, Pathology, Cardiology, Neurology, Oncology, Pediatrics, ICU, Pharmacy, Tool Clinic, Endocrinology) |
+| `ui_diagnostic.py` | Diagnostics | Headless UI validation (resources, localization, assets, KV validation, Qt frontend, spatial coordinates) |
+| `Ultimate_ML_Coach_Debugger.py` | Diagnostics | Neural belief state and decision logic falsification tool; 9 audit phases (data fidelity, belief stability, insight traceability, model zoo, dimensions, data quality, weight health, convergence, maturity) |
+| `aggregate_match_stats_sql.py` | Data | SQL-only PlayerMatchStats aggregator over `match_*.db` shards (no `.dem` required) |
 | `build_tools.py` | Build | Consolidated build pipeline (lint, test, PyInstaller, hash verification, integrity manifest) |
 | `context_gatherer.py` | Development | Relational context gatherer for a given file (imports, dependents, tests, API surface, git history) |
 | `db_inspector.py` | Development | Database inspection CLI for full DB state without manual queries |
-| `dead_code_detector.py` | Pre-commit | Orphan module detection, stale test import detection, empty package detection |
-| `dev_health.py` | Pre-commit | Development health check with `--quick` (pre-commit, <10s) and `--full` (headless + backend) modes |
 | `demo_inspector.py` | Development | Unified demo file inspection (events, fields, entity tracking); merges 7 legacy probe scripts |
+| `migrate_hltv_schema_2026_05.py` | Data | Idempotent one-off migration extending the `hltv_metadata.db` schema (outside Alembic) |
 | `project_snapshot.py` | Development | Compact project state snapshot (dependencies, git state, DB stats, environment) |
+| `register_orphan_matches.py` | Data | Registration-only pass for orphan `match_*.db` files missing from `playermatchstats` |
+| `repair_rating_scale.py` | Data | One-shot repair returning `rating_*` columns of `full_sql*` rows to RAW scale |
 | `seed_hltv_top20.py` | Data | Seeds the HLTV metadata database with top-20 teams, players, and stat cards |
 | `sync_integrity_manifest.py` | Pre-commit | Regenerates `core/integrity_manifest.json` from production `.py` file SHA-256 hashes |
 | `user_tools.py` | User-facing | Consolidated interactive utilities (personalize, customize, manual-entry, weights, heartbeat) |
-| `logs/` | Infrastructure | Tool execution logs |
+
+Note: `headless_validator.py`, `dev_health.py`, and `dead_code_detector.py` live in the
+root-level `tools/` directory, not here.
 
 ## Shared Infrastructure (`_infra.py`)
 
@@ -66,28 +70,29 @@ The `Goliath_Hospital.py` diagnostic suite organizes checks into medical-themed 
 
 | Department | Focus |
 |------------|-------|
-| Emergency Room (ER) | Critical syntax and import issues |
-| Radiology | Visual asset integrity scans |
-| Pathology Lab | Data quality, mock vs real data detection |
-| Cardiology | Core module health (DB, config, models) |
-| Neurology | ML/AI system integrity |
-| Oncology | Dead code, deprecated patterns, tech debt |
-| Pediatrics | New and recently modified files |
-| ICU | Integration tests, end-to-end flows |
+| Emergency Room (ER) | Syntax, forbidden patterns, namespace collisions |
+| Radiology | Asset integrity (themes, map radars, models, layout) |
+| Pathology | Data quality, mock vs real data detection |
+| Cardiology | Core health (critical modules, DB, config, analysis engines) |
+| Neurology | ML/AI system (delegates to `Ultimate_ML_Coach_Debugger`) |
+| Oncology | Tech debt (deprecated patterns, commented code, long functions) |
+| Pediatrics | Recently modified files |
+| ICU | Integration (import chains, service instantiation) |
 | Pharmacy | Dependency health and version checks |
 | Tool Clinic | Validates all project tool scripts |
+| Endocrinology | System integration (entry points, migrations, JSON configs) |
 
 ## Pre-commit Integration
 
-Three tools in this directory are invoked as pre-commit hooks:
+One tool in this directory is invoked as a pre-commit hook:
 
-1. **`dev_health.py --quick`** -- Import smoke test, DB alive check, config validation (<10s)
-2. **`dead_code_detector.py`** -- Scans for orphan modules and stale test imports
-3. **`sync_integrity_manifest.py`** -- Regenerates the RASP integrity manifest; exits 1 if
-   the on-disk manifest diverges from computed hashes when run with `--verify-only`
+1. **`sync_integrity_manifest.py --verify-only`** -- exits 1 if the on-disk RASP
+   integrity manifest diverges from computed hashes (run without the flag to regenerate)
 
-The `headless_validator.py` is invoked post-task (not as a git hook) and must exit 0 before
-any development task is considered complete.
+The other validation hooks (`headless_validator.py`, `dev_health.py --quick`,
+`dead_code_detector.py`) run from the root-level `tools/` directory; the headless
+validator is both a pre-commit hook and the mandatory post-task gate -- it must exit 0
+before any development task is considered complete.
 
 ## Usage
 
@@ -95,8 +100,8 @@ any development task is considered complete.
 # Activate the virtual environment first
 source ~/.venvs/cs2analyzer/bin/activate
 
-# Headless validation (mandatory post-task gate)
-python Programma_CS2_RENAN/tools/headless_validator.py
+# Headless validation (mandatory post-task gate; lives in root tools/)
+python tools/headless_validator.py
 
 # Backend validation (model zoo, coaching pipeline, services)
 python Programma_CS2_RENAN/tools/backend_validator.py
@@ -104,11 +109,11 @@ python Programma_CS2_RENAN/tools/backend_validator.py
 # Full Goliath Hospital diagnostic
 python Programma_CS2_RENAN/tools/Goliath_Hospital.py
 
-# Quick development health check (pre-commit)
-python Programma_CS2_RENAN/tools/dev_health.py --quick
+# Quick development health check (pre-commit; lives in root tools/)
+python tools/dev_health.py --quick
 
 # Full development health check
-python Programma_CS2_RENAN/tools/dev_health.py --full
+python tools/dev_health.py --full
 
 # Database inspection
 python Programma_CS2_RENAN/tools/db_inspector.py
@@ -131,11 +136,11 @@ python -m Programma_CS2_RENAN.tools.seed_hltv_top20
 - All tools use `_infra.path_stabilize()` for consistent path resolution. Never manipulate
   `sys.path` directly in tool scripts.
 - Exit codes are standardized: `0 = PASS`, `1 = FAIL`. Pre-commit hooks rely on this contract.
-- The `BaseValidator` pattern ensures every tool produces both human-readable console output
-  and machine-readable JSON reports stored in `tools/logs/`.
-- `Goliath_Hospital.py` uses `print()` for console output rather than structured logging. As
-  a diagnostic tool (not a production service), this is acceptable -- all findings are captured
-  in `DiagnosticFinding` objects with severity levels.
+- The `BaseValidator` pattern ensures every tool produces human-readable console output
+  and, with the `--json` flag, a machine-readable JSON report on stdout.
+- `Goliath_Hospital.py` is a `BaseValidator` subclass (`GoliathHospital`); findings are
+  captured as `ToolResult` entries with severity levels, and `--department` runs a single
+  department in isolation.
 - `demo_inspector.py` consolidates 7 legacy probe scripts (`probe_demo_data`, `probe_entity_track`,
   `probe_events_advanced`, `probe_inventory`, `probe_stats_fields`, `probe_trajectories`,
   `probe_inv_direct`) into a single unified tool.

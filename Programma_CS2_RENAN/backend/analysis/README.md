@@ -26,7 +26,7 @@ Every module follows the factory function pattern for thread-safe singleton acce
 | `entropy_analysis.py` | `EntropyAnalyzer`, `UtilityImpact` | `get_entropy_analyzer()` | Shannon entropy for utility effectiveness |
 | `deception_index.py` | `DeceptionAnalyzer`, `DeceptionMetrics` | `get_deception_analyzer()` | Tactical deception quantification |
 | `game_tree.py` | `ExpectiminimaxSearch`, `OpponentModel`, `GameNode` | `get_game_tree_search()` | Adversarial decision tree with chance nodes |
-| `role_classifier.py` | `RoleClassifier`, `RoleProfile` | `get_role_classifier()` | 5-role neural + heuristic classification |
+| `role_classifier.py` | `RoleClassifier`, `RoleProfile` | `get_role_classifier()` | Neural + heuristic classification (5 roles + FLEX fallback) |
 | `utility_economy.py` | `UtilityAnalyzer`, `EconomyOptimizer`, `EconomyDecision` | `get_utility_analyzer()`, `get_economy_optimizer()` | Grenade efficiency and buy-round optimization |
 | `momentum.py` | `MomentumTracker`, `MomentumState` | `get_momentum_tracker()` | Round momentum with tilt detection |
 | `movement_quality.py` | `MovementQualityAnalyzer` | `get_movement_quality_analyzer()` | Positioning-mistake detector (MLMove paper, 4 patterns) |
@@ -69,11 +69,11 @@ The `generate_training_plan()` method produces a natural-language coaching plan 
 
 Computes Euclidean kill distances from 3D positions and classifies them into four bands: close (<500u), medium (500-1500u), long (1500-3000u), extreme (>3000u). The `EngagementProfile` is compared against role-specific pro baselines (AWPer, Entry, Support, Lurker, IGL, Flex) with a 15% deviation threshold.
 
-Includes `NamedPositionRegistry` with 60+ hardcoded callout positions across 9 competitive maps (Mirage, Inferno, Dust2, Anubis, Nuke, Ancient, Overpass, Vertigo, Train). Supports JSON extension for community-contributed callouts. Kill events are annotated with the nearest named position for human-readable output.
+Uses `NamedPositionRegistry` (defined in `core/map_callouts.py`, re-exported here) with 161 callout positions across 9 competitive maps (Mirage, Inferno, Dust2, Anubis, Nuke, Ancient, Overpass, Vertigo, Train). Supports JSON extension for community-contributed callouts. Kill events are annotated with the nearest named position for human-readable output.
 
 #### entropy_analysis.py — Information-Theoretic Utility Evaluation
 
-Measures the Shannon entropy `H = -sum(p * log2(p))` of enemy position distributions before and after utility throws. Positions are discretized onto a 32x32 grid (configurable). Entropy delta quantifies each throw's information gain, normalized against theoretical maximums per utility type (smoke: 2.5 bits, molotov: 2.0, flash: 1.8, HE: 1.5).
+Measures the Shannon entropy `H = -sum(p * log2(p))` of enemy position distributions before and after utility throws. Positions are discretized onto a spatial grid with per-map resolution (32 default, up to 40 for Nuke/Vertigo). Entropy delta quantifies each throw's information gain, normalized against theoretical maximums per utility type (smoke: 2.5 bits, molotov: 2.0, flash: 1.8, HE: 1.5).
 
 Thread safety is maintained via `_buffer_lock` protecting the pre-allocated grid buffer. The `rank_utility_usage()` method sorts throws by effectiveness for coaching output.
 
@@ -102,7 +102,7 @@ The `OpponentModel` adapts action distributions using:
 
 Performance features: transposition table (`_TT_MAX_SIZE = 10000`), deterministic state hashing, configurable node budget (`DEFAULT_NODE_BUDGET = 1000`). The `suggest_strategy()` method returns natural-language recommendations with win probability and confidence level.
 
-#### role_classifier.py — Neural 5-Role Classification
+#### role_classifier.py — Neural Role Classification (5 roles + FLEX)
 
 Dual-classifier architecture combining weighted heuristic scoring with a neural secondary opinion:
 - **Heuristic**: computes per-role affinity scores from stats (AWP kill ratio, entry rate, assist rate, survival rate, solo kills) against learned thresholds from `RoleThresholdStore`.
@@ -157,6 +157,8 @@ Feature Engineering (vectorizer.py, 25-dim)
     |                                |        v
     +--> EconomyOptimizer ----------+    UI / Reports
     |                                |
+    +--> MovementQualityAnalyzer ---+
+    |                                |
     +--> ExpectiminimaxSearch ------+
               |
               v
@@ -182,6 +184,7 @@ from Programma_CS2_RENAN.backend.analysis import (
     get_utility_analyzer,       # -> UtilityAnalyzer
     get_economy_optimizer,      # -> EconomyOptimizer
     get_momentum_tracker,       # -> MomentumTracker
+    get_movement_quality_analyzer,  # -> MovementQualityAnalyzer
 )
 ```
 
@@ -195,7 +198,7 @@ from Programma_CS2_RENAN.backend.analysis import (
 | Exponential threat decay | `belief_model.py` | `P(threat) = visible + inferred * exp(-lambda * age) * 0.5` |
 | Least-squares lambda fit | `belief_model.py` | Log-linearize death rate vs. info age, `polyfit` degree 1 |
 | Xavier-initialized MLP | `win_probability.py` | 12 -> 64 -> 32 -> 1 sigmoid, ReLU + Dropout |
-| Shannon entropy on grid | `entropy_analysis.py` | `H = -sum(p * log2(p))` over 32x32 spatial discretization |
+| Shannon entropy on grid | `entropy_analysis.py` | `H = -sum(p * log2(p))` over per-map spatial grid (32-40 resolution) |
 | Vectorized flash detection | `deception_index.py` | `searchsorted` on sorted blind ticks for O(F log B) matching |
 | Expectiminimax + TT | `game_tree.py` | Max/min/chance tree with transposition table memoization |
 | EMA opponent blending | `game_tree.py` | `(1 - alpha) * base + alpha * learned`, alpha capped at 0.7 |
@@ -216,7 +219,7 @@ from Programma_CS2_RENAN.backend.analysis import (
 
 5. **Checkpoint isolation.** `WinProbabilityNN` (12-dim predictor) and `WinProbabilityTrainerNN` (9-dim trainer) are separate architectures. Rule A-12 validates input dimension before `load_state_dict` to prevent silent corruption.
 
-6. **Named positions.** The `NamedPositionRegistry` ships with 60+ callouts across 9 maps. Additional positions can be loaded from JSON without code changes via `load_from_json()`.
+6. **Named positions.** The `NamedPositionRegistry` (in `core/map_callouts.py`) ships with 161 callouts across 9 maps. Additional positions can be loaded from JSON without code changes via `load_from_json()`.
 
 7. **Safety bounds.** All calibrated parameters are clamped: priors [0.05, 0.95], weapon lethality [0.1, 3.0], decay lambda [0.01, 1.0], momentum [0.7, 1.4]. This prevents pathological values from corrupting downstream analysis.
 

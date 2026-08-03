@@ -20,13 +20,13 @@ validates data -- none of them store or train anything.
 | `data_pipeline.py` | ~408 | Data cleaning, scaling, temporal splitting, player decontamination | `ProDataPipeline` |
 | `external_analytics.py` | ~201 | Z-score comparison against elite CSV reference datasets | `EliteAnalytics` |
 | `heatmap_engine.py` | ~300 | Gaussian occupancy maps and differential user-vs-pro heatmaps | `HeatmapEngine`, `HeatmapData`, `DifferentialHeatmapData` |
-| `player_knowledge.py` | ~625 | Player-POV perception system (NO-WALLHACK sensorial model) | `PlayerKnowledge`, `PlayerKnowledgeBuilder` |
-| `rating.py` | ~230 | Cross-module HLTV rating glue (match-level aggregation) | `compute_match_rating()` |
-| `round_reconstructor.py` | ~575 | Per-round state reconstruction from raw tick streams | `RoundReconstructor` |
-| `round_stats_builder.py` | ~742 | Per-round, per-player statistics from demo events | `build_round_stats()`, `aggregate_round_stats_to_match()`, `enrich_from_demo()` |
+| `player_knowledge.py` | ~672 | Player-POV perception system (NO-WALLHACK sensorial model) | `PlayerKnowledge`, `PlayerKnowledgeBuilder` |
+| `rating.py` | ~230 | PlusMinus and role-adjusted Bayesian rating metrics (KT-06) | `compute_plus_minus()`, `compute_role_adjusted_rating()` |
+| `round_reconstructor.py` | ~614 | Per-round state reconstruction from raw tick streams | `RoundReconstructor` |
+| `round_stats_builder.py` | ~1004 | Per-round, per-player statistics from demo events | `build_round_stats()`, `aggregate_round_stats_to_match()`, `enrich_from_demo()` |
 | `skill_assessment.py` | ~161 | 5-axis skill decomposition and curriculum level projection | `SkillLatentModel`, `SkillAxes` |
 | `state_reconstructor.py` | ~130 | Tick-to-tensor conversion for RAP-Coach training and inference | `RAPStateReconstructor` |
-| `tensor_factory.py` | ~747 | Player-POV perception tensors (map, view, motion) | `TensorFactory`, `TensorConfig`, `TrainingTensorConfig`, `get_tensor_factory()` |
+| `tensor_factory.py` | ~769 | Player-POV perception tensors (map, view, motion) | `TensorFactory`, `TensorConfig`, `TrainingTensorConfig`, `get_tensor_factory()` |
 | `tick_enrichment.py` | ~350 | Cross-player contextual features for METADATA_DIM indices 20-24 | `enrich_tick_data()` |
 
 ## Sub-Packages
@@ -63,7 +63,7 @@ and consumed by `tensor_factory.py`:
 - **Visible enemies:** Only when `enemies_visible > 0` AND within the
   FOV cone. Multi-level maps (Nuke, Vertigo) use a Z-floor threshold.
 - **Last-known enemies:** Memory with exponential decay
-  (`half-life = MEMORY_DECAY_TAU_TICKS`).
+  (tau = `MEMORY_DECAY_TAU_S` from `core/constants.py` x tick rate).
 - **Sound inference:** `weapon_fire` events within `HEARING_RANGE_GUNFIRE`.
 - **Utility zones:** Active smokes, molotovs, and recent flashes.
 - **Bomb state:** Known to all players.

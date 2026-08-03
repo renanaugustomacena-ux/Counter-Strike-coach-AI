@@ -7,7 +7,7 @@
 
 ## Why this directory exists
 
-`./backend/` (this directory, at the repo root) is **not** the application backend package. It is a small filesystem staging area that holds files which need to live outside the Python package tree but logically belong to the backend domain — typically per-match SQLite shards and other large generated artefacts that should not be committed under `Programma_CS2_RENAN/`.
+`./backend/` (this directory, at the repo root) is **not** the application backend package. It is a small filesystem staging area that mirrors the backend domain's layout outside the Python package tree — today it holds only a legacy Alembic migration scaffold under `storage/`.
 
 The actual backend codebase — services, NN training, ingestion, storage managers, knowledge base, processing pipelines — lives at:
 
@@ -19,19 +19,21 @@ That sub-package owns 14 domain modules (`analysis/`, `coaching/`, `control/`, `
 
 ```
 backend/
-└── storage/          # Generated runtime artefacts (per-match SQLite, backups)
+└── storage/
+    └── migrations/   # Legacy Alembic scaffold (2 early revisions) — NOT the active chain
 ```
 
-`backend/storage/` is the runtime data root used by `MatchDataManager` when `PRO_DEMO_PATH` is unconfigured or unavailable. Per-match `match_{id}.db` files land here and accumulate over time. Cleanup is handled by `Programma_CS2_RENAN/backend/storage/maintenance.py` and `BackupManager`'s retention policy.
+`backend/storage/` contains only a vestigial Alembic scaffold ([README](storage/README.md)). The **active** migration chain lives at the repo-root `alembic/` directory (18 revisions), configured by the root `alembic.ini`. Runtime databases do **not** live here: the monolith `database.db` and `hltv_metadata.db` are created under `Programma_CS2_RENAN/backend/storage/`, and per-match shards go to `PRO_DEMO_PATH/match_data/` (falling back to `Programma_CS2_RENAN/backend/storage/match_data/`).
 
 ## Do not
 
 - **Do not** add Python source files here. New backend code goes into `Programma_CS2_RENAN/backend/<domain>/`.
 - **Do not** treat this as the import path. `from backend.foo import ...` will not resolve — the package root is `Programma_CS2_RENAN`.
-- **Do not** commit the contents of `backend/storage/`. Generated `*.db` files are gitignored.
+- **Do not** add new migrations here. New schema changes go through the root `alembic/versions/` chain.
 
 ## Related documentation
 
 - Application backend package: `Programma_CS2_RENAN/backend/README.md`
 - Storage layer specifics: `Programma_CS2_RENAN/backend/storage/README.md`
-- Tri-database architecture: `CLAUDE.md` and `REFERENCE.md`
+- Active migration chain: `alembic/README.md` (repo root)
+- Tri-database architecture: `REFERENCE.md`

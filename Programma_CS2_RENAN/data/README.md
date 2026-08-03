@@ -16,60 +16,57 @@ data/
 │   ├── features.md                 # Coaching features list
 │   ├── getting_started.md          # User setup guide (10/10 rule)
 │   └── troubleshooting.md         # Common issues
-├── external/                        # Third-party statistical datasets (CSV)
-│   ├── all_Time_best_Players_Stats.csv
-│   ├── cs2_playstyle_roles_2024.csv
-│   ├── csgo_games.csv
-│   ├── Maps01_BombPlantOutcomes01.csv
-│   ├── Maps01_RoundOutcomes.csv
-│   ├── Maps02_BombPlantOutcomes.csv
-│   ├── maps_statistics.csv
-│   ├── top_100_players.csv
-│   ├── weapons_statistics.csv
+├── external/                        # External data inputs
 │   └── hltv_stats_urls.txt         # HLTV player URLs for scraper
 ├── knowledge/                       # RAG coaching knowledge base
-│   ├── {map}_coaching.txt          # Per-map coaching text (8 maps)
+│   ├── {map}_coaching.txt          # Per-map coaching text (7 maps)
 │   ├── {map}_coaching_ocr.txt      # OCR-extracted variants
-│   ├── general_coaching.txt        # General CS2 coaching principles
-│   ├── coaching_knowledge_base.json # Structured KB (JSON)
+│   ├── general_coaching.txt        # General CS2 coaching principles (+ OCR variant)
+│   ├── coaching_knowledge_base.json # Structured KB (JSON, + OCR variant)
 │   └── extraction_summary.json     # Knowledge extraction metadata
-├── dataset.csv                      # Training dataset
-├── map_config.json                  # Map spatial configuration (257 lines)
+├── dataset.csv                      # Training dataset placeholder (currently empty)
+├── map_config.json                  # Map spatial configuration (260 lines)
 ├── map_tensors.json                 # 3D tensor coordinate definitions
 └── hltv_sync_state.json            # HLTV scraper sync state
 ```
 
 ## Key Configuration Files
 
-### `map_config.json` (257 lines)
+### `map_config.json` (260 lines)
 
-Spatial definitions for all CS2 competitive maps:
+Spatial definitions for all CS2 competitive maps. Map entries live under the
+top-level `maps` key (alongside `_description`, `_source`, `_last_updated`,
+and `competitive_pool`):
 
 ```json
 {
-  "de_mirage": {
-    "display_name": "Mirage",
-    "pos_x": -3230,
-    "pos_y": 1713,
-    "scale": 5.0,
-    "landmarks": {
-      "a_site": [x, y],
-      "b_site": [x, y],
-      "mid_control": [x, y],
-      "t_spawn": [x, y],
-      "ct_spawn": [x, y]
+  "maps": {
+    "de_mirage": {
+      "pos_x": -3230,
+      "pos_y": 1713,
+      "scale": 5.0,
+      "display_name": "Mirage",
+      "landmarks": {
+        "A-Site": [x, y],
+        "B-Site": [x, y],
+        "Mid": [x, y],
+        "T-Spawn": [x, y],
+        "CT-Spawn": [x, y]
+      }
     }
   }
 }
 ```
 
 - Used by `core/spatial_data.py` for coordinate transformations
-- Multi-level maps (Nuke, Vertigo) include `z_cutoff` boundaries
+- Multi-level maps (Nuke, Vertigo) include `z_cutoff` boundaries and `levels`
 - Competitive pool: nuke, inferno, mirage, dust2, ancient, overpass, vertigo, anubis, train
 
 ### `map_tensors.json`
 
-3D tensor coordinates for ML training:
+3D tensor coordinates for ML training (7 maps: mirage, inferno, dust2, nuke,
+overpass, ancient, anubis):
+- `image_file` radar reference per map
 - Bombsite positions (A/B) with X, Y, Z
 - Spawn positions (T/CT)
 - Mid-control zones and important zones (connector, jungle, palace, etc.)
@@ -82,32 +79,27 @@ Staging directory for professional match `.dem` files. The ingestion pipeline pi
 - Production: ~200 pro demo files on the external SSD
 - Files are processed by `backend/data_sources/demo_parser.py`
 
-## `external/` — Statistical Datasets
+## `external/` — External Data Inputs
 
-Third-party CSV data used for reference analytics and coaching calibration:
+Currently contains a single file:
 
 | File | Content | Used By |
 |------|---------|---------|
-| `top_100_players.csv` | Top 100 HLTV player statistics | `processing/external_analytics.py` |
-| `all_Time_best_Players_Stats.csv` | Historical best player stats | Pro baseline reference |
-| `cs2_playstyle_roles_2024.csv` | Role classification data (2024) | `backend/ingestion/csv_migrator.py` |
-| `maps_statistics.csv` | Map win rates and play rates | Map context analysis |
-| `weapons_statistics.csv` | Weapon damage/accuracy data | Weapon class features |
-| `Maps01_RoundOutcomes.csv` | Round outcome distributions | Win probability training |
-| `Maps01_BombPlantOutcomes01.csv` | Bomb plant outcome data (dataset 1) | Economy analysis |
-| `Maps02_BombPlantOutcomes.csv` | Bomb plant outcome data (dataset 2) | Economy analysis |
-| `csgo_games.csv` | Historical CS:GO match data | Legacy reference |
 | `hltv_stats_urls.txt` | HLTV player profile URLs | HLTV scraper input |
+
+Third-party CSV datasets (player stats, map statistics, round outcomes) are not
+kept in the repository; the tournament JSON ingestor writes its output CSV here
+(`tournament_advanced_stats.csv`) when run.
 
 ## `knowledge/` — RAG Knowledge Base
 
-Coaching knowledge files for the COPER (Context Optimized with Prompt, Experience, Replay) framework:
+Coaching knowledge files for the COPER (Context Optimized with Prompt, Experience, and Replay) framework:
 
-### Per-Map Coaching (8 maps x 2 versions)
+### Per-Map Coaching (7 maps + general, x 2 versions)
 
-Each map has two versions:
-- `{map}_coaching.txt` — Raw coaching text
-- `{map}_coaching_ocr.txt` — OCR-extracted variant
+Each topic has two versions:
+- `{map}_coaching.txt` — Raw coaching text (mostly short stubs)
+- `{map}_coaching_ocr.txt` — OCR-extracted variant (carries the bulk of the content)
 
 Maps covered: Ancient, Anubis, Dust2, Inferno, Mirage, Nuke, Overpass + general
 
@@ -142,7 +134,6 @@ Markdown files served by `backend/knowledge_base/help_system.py`:
 
 - **Do NOT commit demo files** (`.dem`) — they are 50-200MB each
 - `map_config.json` coordinates come from CS2 game files (`resource/overviews/*.txt`)
-- External CSVs are static reference data — update them manually when new data is available
 - `hltv_sync_state.json` tracks scraper progress — empty `{}` means no active sync
 - Knowledge files are the intellectual foundation of coaching — edit with care
-- `dataset.csv` is generated by the training pipeline, not hand-edited
+- `dataset.csv` is currently an empty placeholder (bundled by the PyInstaller spec), not hand-edited

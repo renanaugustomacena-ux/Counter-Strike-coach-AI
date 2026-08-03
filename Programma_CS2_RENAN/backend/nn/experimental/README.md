@@ -58,4 +58,4 @@ Keeping experimental code in a clearly-marked sub-package buys three things:
 - RAP Coach details: `experimental/rap_coach/README.md`
 - Production NN sub-packages: `backend/nn/README.md`
 - Feature-flag handling: `core/config.py:get_setting()`
-- Orchestrator flag gate: `backend/nn/training_orchestrator.py:69-73`
+- Orchestrator flag gate: `backend/nn/training_orchestrator.py:122-125` (`TrainingOrchestrator.__init__`)

@@ -13,7 +13,7 @@ responsibly. **Do not open a public issue.**
 
 ### How to Report
 
-Email **renan.macena@proton.me** with:
+Email **renanaugustomacena@gmail.com** with:
 
 1. A description of the vulnerability and its potential impact.
 2. Steps to reproduce (or a proof-of-concept if applicable).

@@ -14,11 +14,11 @@ This package owns the small, reusable `nn.Module` building blocks that more than
 | File | Purpose | Key Exports |
 |------|---------|-------------|
 | `__init__.py` | Package marker. | — |
-| `superposition.py` | `SuperpositionLayer` — context-gated linear layer with L1 sparsity regularisation, gate-observability hooks (`get_gate_statistics()`, `get_gate_activations()`), and tracing controls. | `SuperpositionLayer` |
+| `superposition.py` | `SuperpositionLayer` — FiLM-conditioned linear layer (`y = γ(context)·(Wx+b) + β(context)`, RAP-AUDIT-06) with an L1 gate-sparsity loss hook (`gate_sparsity_loss()`), gate-observability hooks (`get_gate_statistics()`, `get_gate_activations()`), and tracing controls. | `SuperpositionLayer` |
 
 ## `SuperpositionLayer` in one paragraph
 
-A standard linear projection wrapped in a learnable, context-conditioned gate. The gate output is L1-regularised so the layer learns to keep most of its capacity inactive on a given input, only "lighting up" the subspace relevant to the current state. Used by the RAP Coach Strategy layer to combine multiple expert sub-policies under a single shared parameterisation. Provides observability hooks so the trainer can log gate sparsity per step.
+A standard linear projection modulated by Feature-wise Linear Modulation (FiLM): a sigmoid gate `γ(context)` scales the projection and a zero-initialised additive shift `β(context)` injects context-driven features (RAP-AUDIT-06 — the earlier multiplicative-only gate could suppress features but never add them). Each expert in the RAP Coach Strategy layer uses one as its first, context-adaptable layer. Provides an L1 gate-sparsity loss hook (`gate_sparsity_loss()`) and observability hooks so the trainer can log gate sparsity per step.
 
 ## Why this directory exists
 

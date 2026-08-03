@@ -14,16 +14,16 @@ Generic, reusable UI primitives consumed by multiple screens. Each component doe
 | File | Component | Purpose |
 |------|-----------|---------|
 | `__init__.py` | — | Package marker; re-exports public components. |
-| `card.py` | `Card` | Base elevated-surface container with optional title + body slots. Backed by frosted-glass effect on macOS / Windows 11 with a flat fallback. |
+| `card.py` | `Card` | Base elevated-surface container with optional title + body slots. Five depth variants (`flat`, `raised`, `highlighted`, `floating`, `frosted`); `frosted` uses a semi-transparent fill approximating backdrop blur. |
 | `empty_state.py` | `EmptyState` | Friendly placeholder shown when a list / table / chart has no data. Includes icon, title, optional CTA. |
 | `filter_chip.py` | `FilterChip` | Selectable filter pill — click to toggle, emits `toggled(bool)`. Used by match history and pro comparison. |
-| `focus_insight.py` | `FocusInsight` | Card variant for the home page's focus insight (one prominent coaching insight with severity icon). |
+| `focus_insight.py` | `FocusInsightCard` | Card variant for the home page's focus insight (one prominent coaching insight with severity icon). |
 | `hero_stats_strip.py` | `HeroStatsStrip` | Horizontal strip of large-format metrics (rating, K/D, ADR, KAST). |
 | `icon_widget.py` | `IconWidget` | SVG icon container with theme-aware coloring. Wraps `core/svg_icon_provider.py`. |
-| `last_match_hero.py` | `LastMatchHero` | Home-page hero card summarising the most recent match. |
-| `match_mini_card.py` | `MatchMiniCard` | Compact match summary card (one row in match history). |
-| `match_row_card.py` | `MatchRowCard` | Expanded match card with stat preview (used in match history hero list). |
-| `nav_sidebar.py` | `NavSidebar` | Left navigation sidebar with route icons + labels. Subscribes to `app_state.routeChanged`. |
+| `last_match_hero.py` | `LastMatchHeroCard` | Home-page hero card summarising the most recent match. |
+| `match_mini_card.py` | `MatchMiniCard` | Compact match summary card (home screen and match history). |
+| `match_row_card.py` | `MatchRowCard` | Expanded match card with stat preview (match history rows). |
+| `nav_sidebar.py` | `NavSidebar` | Left navigation sidebar with route icons + labels. Emits `nav_clicked(str)`; collapsible 220px ↔ 60px. |
 | `progress_ring.py` | `ProgressRing` | Circular progress indicator with optional center label. |
 | `section_header.py` | `SectionHeader` | Standardised section-title row (title + optional subtitle + optional action button). |
 | `stat_badge.py` | `StatBadge` | Small label + value pill (e.g. `K/D 1.18`, `ADR 78`). |
@@ -35,7 +35,7 @@ Generic, reusable UI primitives consumed by multiple screens. Each component doe
 
 All components consume tokens from `core/design_tokens.py`. Colors, spacing, radii, and typography are referenced by name — never hard-coded. This guarantees:
 
-- Theme switches (`themeChanged` signal) re-render all components consistently.
+- Theme switches (`theme_changed` signal) re-style all components consistently.
 - Typography scale changes propagate without per-widget edits.
 - Light / dark mode (when added) requires changes only in the token file.
 
@@ -56,7 +56,7 @@ All components consume tokens from `core/design_tokens.py`. Colors, spacing, rad
 3. Pull colors / spacing / typography from `core/design_tokens`.
 4. Expose state via `Signal`s.
 5. Add an entry to the inventory table above.
-6. If the component is theme-aware, subscribe to `theme_engine.themeChanged`.
+6. If the component is theme-aware, resolve colors from the active token set (`get_tokens()`) or connect to `theme_engine.theme_changed`.
 
 ## Related
 

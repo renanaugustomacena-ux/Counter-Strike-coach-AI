@@ -1486,7 +1486,7 @@ flowchart TB
 - [**schema.py**](http://schema.py)**:** Validazione dello schema per i record del database
 - [**sanity.py**](http://sanity.py)** / dem\_[validator.py](http://validator.py):** Controlli di integrità dei dati e dei file demo
 
-**Copertura quantitativa:** Il progetto comprende **130 file di test** (`test_*.py` in `Programma_CS2_RENAN/tests/`) più i test e gli script `verify_*.py` nella `tests/` root, e un **headless validator** con **39 fasi tematiche di controllo** (da Ambiente/Import fino a Security, GPU, Design-Tokens e Quality-Adv). Questa copertura spazia dall'integrità dello schema DB alla coerenza dei vettori di embedding, dalla correttezza delle pipeline di addestramento alla validazione end-to-end dei flussi di coaching.
+**Copertura quantitativa:** Il progetto comprende **130 file di test** (`test_*.py` in `Programma_CS2_RENAN/tests/`) più i test e gli script `verify_*.py` nella `tests/` root, e un **headless validator** con **42 fasi tematiche di controllo** (da Ambiente/Import fino a Security, GPU, Design-Tokens e Quality-Adv). Questa copertura spazia dall'integrità dello schema DB alla coerenza dei vettori di embedding, dalla correttezza delle pipeline di addestramento alla validazione end-to-end dei flussi di coaching.
 
 ### -PlayerKnowledge — Sistema Percettivo NO-WALLHACK (`player_knowledge.py`)
 
@@ -2033,7 +2033,7 @@ flowchart LR
 
 ### -BackupManager (`backup_manager.py`)
 
-Il **responsabile della sicurezza dei dati**: crea copie di backup a caldo tramite **`VACUUM INTO`** (hot backup SQLite compatibile con WAL-mode: produce una copia compattata e consistente senza fermare i writer) e le gestisce con una politica di rotazione. Il modulo complementare `db_backup.py` fornisce `backup_monolith`, `backup_match_data`, `rotate_backups` (keep_count=5) e `restore_backup`.
+Il **responsabile della sicurezza dei dati**: crea copie di backup a caldo tramite la **SQLite Online Backup API** (`sqlite3.Connection.backup()` — scelta esplicitamente al posto di `VACUUM INTO` per evitare interpolazione del path in SQL; copia incrementale sicura in WAL-mode senza fermare i writer) e le gestisce con una politica di rotazione. Il modulo complementare `db_backup.py` usa la stessa API in modo atomico (WR-33, anti-TOCTOU) e fornisce `backup_monolith`, `backup_match_data`, `rotate_backups` (keep_count=5) e `restore_backup`.
 
 >
 > **Correzione H-02 — DB handle leak:** `_verify_integrity()` utilizza un blocco `try/finally` per garantire la chiusura della connessione `sqlite3` anche in caso di errore. Il PRAGMA utilizzato è `quick_check` (non `integrity_check`) per ridurre il tempo di verifica sui database di grandi dimensioni — `quick_check` omette la validazione degli indici, sufficiente per verificare l'integrità strutturale delle pagine del backup.
@@ -2043,7 +2043,7 @@ Il **responsabile della sicurezza dei dati**: crea copie di backup a caldo trami
 ```mermaid
 flowchart TB
     TRIGGER["should_run_auto_backup()<br/>Controlla: esiste backup per oggi?"]
-    TRIGGER -->|"No backup oggi"| BACKUP["VACUUM INTO<br/>'backup_{label}_{timestamp}.db'"]
+    TRIGGER -->|"No backup oggi"| BACKUP["sqlite3.Connection.backup()<br/>'backup_{label}_{timestamp}.db'"]
     BACKUP --> EXISTS{"File creato?"}
     EXISTS -->|"No"| FAIL["Errore: file mancante"]
     EXISTS -->|"Sì"| INTEG["PRAGMA quick_check<br/>sulla copia"]
@@ -2106,7 +2106,7 @@ flowchart TB
         DBM["DatabaseManager<br/>(WAL, pool_size=1)"]
         HLTV_DBM["HLTVDatabaseManager<br/>(database separato)"]
         MDM["MatchDataManager<br/>(Tier 3, LRU cache 50)"]
-        BM["BackupManager<br/>(VACUUM INTO, rotazione)"]
+        BM["BackupManager<br/>(Online Backup API, rotazione)"]
         SM["StorageManager<br/>(demo folders, quote)"]
         STM["StateManager<br/>(CoachState singleton)"]
         MODELS["db_models.py<br/>(25 tabelle SQLModel)"]

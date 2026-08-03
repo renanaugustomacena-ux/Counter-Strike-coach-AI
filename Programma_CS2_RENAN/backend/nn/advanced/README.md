@@ -22,7 +22,7 @@ During the G-06 remediation phase, a dead-code audit revealed that **all three m
 The surviving functionality migrated to its canonical locations before G-06:
 
 - **SuperpositionLayer** -- `backend/nn/layers/superposition.py`. The canonical context-gated linear layer with L1 sparsity regularization, gate observability hooks (`get_gate_statistics()`, `get_gate_activations()`), and tracing controls. Used by the RAP Coach Strategy layer.
-- **BrainBridge orchestration** -- Absorbed into `backend/nn/rap_coach/model.py` (`RAPCoachModel`). The model itself handles the coordination between perception, memory, strategy, pedagogy, and communication layers.
+- **BrainBridge orchestration** -- Absorbed into `backend/nn/experimental/rap_coach/model.py` (`RAPCoachModel`). The model itself handles the coordination between perception, memory, strategy, pedagogy, and communication layers.
 - **Feature engineering** -- `backend/processing/feature_engineering/vectorizer.py` (`FeatureExtractor`). This is the single source of truth for the 25-dimensional feature vector (`METADATA_DIM = 25`). There must never be a second implementation.
 
 ## Why the Namespace is Preserved
@@ -37,7 +37,7 @@ The `advanced/` directory is kept as a valid Python package (with `__init__.py`)
 
 | File | Purpose |
 |------|---------|
-| `__init__.py` | Package stub with G-06 removal history comment (5 lines) |
+| `__init__.py` | Package stub with G-06 removal history comment (4 lines) |
 | `README.md` | This file |
 | `README_IT.md` | Italian translation |
 | `README_PT.md` | Portuguese translation |

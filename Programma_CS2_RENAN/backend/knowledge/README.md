@@ -26,7 +26,8 @@ over time as more demos are analyzed and more feedback is collected.
 | `pro_demo_miner.py` | Mine coaching knowledge from HLTV pro player stat cards | `ProStatsMiner` (`ProDemoMiner` alias), `auto_populate_from_pro_demos()` |
 | `init_knowledge_base.py` | One-shot initialization: loads JSON, mines pro stats, builds FAISS indexes | `initialize_knowledge_base()` |
 | `round_utils.py` | Shared round-phase inference from equipment value | `infer_round_phase()` |
-| `tactical_knowledge.json` | Seed data: 15 hand-authored tactical knowledge entries covering 7 maps | (JSON data) |
+| `book/` | Coach Book corpus: `index.json` + 8 content files (`general.json` + 7 maps), 508 entries across 13 categories | (JSON data) |
+| `tactical_knowledge.json` | Legacy seed data (fallback when `book/index.json` is missing): 15 hand-authored entries across 8 maps + general | (JSON data) |
 | `__init__.py` | Package exports | `KnowledgeGraphManager`, `get_knowledge_graph` |
 
 ---
@@ -135,7 +136,8 @@ support multi-hop traversal up to depth 5.
 
 | Source | Target |
 |--------|--------|
-| `tactical_knowledge.json` | `TacticalKnowledge` table via `KnowledgePopulator.populate_from_json()` |
+| `book/index.json` (Coach Book, 508 entries; entries filtered against the `_ALLOWED_ENTRY_KEYS` allow-list) | `TacticalKnowledge` table via `KnowledgePopulator.populate_from_json()` |
+| `tactical_knowledge.json` (legacy fallback, 15 entries) | `TacticalKnowledge` table via `KnowledgePopulator.populate_from_json()` |
 | HLTV `ProPlayerStatCard` | `TacticalKnowledge` table via `ProStatsMiner.mine_all_pro_stats()` |
 | Parsed demo tick data + events | `CoachingExperience` table via `ExperienceBank.extract_experiences_from_demo()` |
 
@@ -172,13 +174,13 @@ for backward compatibility.
 
 | Constant | Value | Location |
 |----------|-------|----------|
-| `MIN_RETRIEVAL_CONFIDENCE` | 0.3 | `experience_bank.py:42` |
-| `PRO_EXPERIENCE_CONFIDENCE` | 0.7 | `experience_bank.py:43` |
-| `AMATEUR_EXPERIENCE_CONFIDENCE` | 0.5 | `experience_bank.py:44` |
+| `MIN_RETRIEVAL_CONFIDENCE` | 0.3 | `experience_bank.py:48` |
+| `PRO_EXPERIENCE_CONFIDENCE` | 0.7 | `experience_bank.py:49` |
+| `AMATEUR_EXPERIENCE_CONFIDENCE` | 0.5 | `experience_bank.py:50` |
 | `OVERFETCH_KNOWLEDGE` | 10 | `vector_index.py:48` |
 | `OVERFETCH_EXPERIENCE` | 20 | `vector_index.py:49` |
 | `KnowledgeEmbedder.CURRENT_VERSION` | `"v3"` | `rag_knowledge.py:51` |
-| `KnowledgeEmbedder.embedding_dim` | 384 (SBERT) / 100 (fallback) | `rag_knowledge.py:53,67` |
+| `KnowledgeEmbedder.embedding_dim` | 384 (SBERT) / 100 (fallback) | `rag_knowledge.py:56,74` |
 
 ### Pro-Stats Mining Archetype Thresholds
 
@@ -198,5 +200,6 @@ Run `init_knowledge_base.py` once to bootstrap the knowledge system:
 python -m Programma_CS2_RENAN.backend.knowledge.init_knowledge_base
 ```
 
-This loads `tactical_knowledge.json` (15 entries), mines pro stat cards from
-`hltv_metadata.db`, and builds both FAISS indexes.
+This loads the Coach Book via `book/index.json` (508 entries; falls back to the
+legacy `tactical_knowledge.json` with 15 entries if the book index is missing),
+mines pro stat cards from `hltv_metadata.db`, and builds both FAISS indexes.

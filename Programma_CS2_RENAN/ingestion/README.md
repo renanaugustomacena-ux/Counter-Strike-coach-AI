@@ -9,28 +9,28 @@ Demo ingestion infrastructure for professional and user CS2 demos with Steam int
 ```
 ingestion/
 ├── __init__.py
-├── demo_loader.py          # Main demo loading orchestrator
+├── demo_loader.py          # Three-pass demo parser with signed cache
 ├── integrity.py            # Demo file integrity validation
 ├── steam_locator.py        # Steam installation discovery
-├── cache/                  # Parsed demo cache (.mcn files)
 ├── pipelines/              # Ingestion pipeline implementations
 │   ├── user_ingest.py      # User demo ingestion pipeline
 │   └── json_tournament_ingestor.py  # Tournament JSON batch import
 └── registry/               # Demo file tracking and lifecycle
-    ├── lifecycle.py         # Demo lifecycle state machine
+    ├── lifecycle.py         # Demo retention cleanup
     ├── registry.py          # Demo file registry
-    └── schema.sql           # Registry database schema
+    └── schema.sql           # Reserved for a future SQL registry (currently empty)
 ```
 
 ## Core Components
 
 ### Main Orchestrators
 
-**`demo_loader.py`** — Main demo loading orchestrator
-- Coordinates demo file parsing with demoparser2
-- Integrity validation via `integrity.py`
-- Delegates to pipeline implementations based on demo source
-- Progress tracking and error recovery
+**`demo_loader.py`** — `DemoLoader`, the three-pass demo parser
+- Pass 1: player positions per tick; Pass 2: grenade events/trajectories; Pass 3: tick DataFrame → `DemoFrame` objects
+- Parses via demoparser2; also extracts round starts, bomb events, and kill events
+- Caches parsed results as HMAC-SHA256-signed pickle files (`.mcn`) in a `demo_cache/`
+  directory (falls back to `ingestion/cache/`), created at runtime; loads use a
+  restricted unpickler (DS-01) and verify the signature before deserializing
 
 **`steam_locator.py`** — Steam installation discovery
 - Multi-platform CS2 installation detection (Windows, Linux, macOS)
@@ -38,9 +38,10 @@ ingestion/
 - Demo folder auto-detection
 
 **`integrity.py`** — Demo file integrity validation
-- File format verification (PBDEMS2 magic bytes)
-- Header parsing and size validation
-- Corruption detection
+- `validate_dem_file()` delegates to `backend/data_sources/demo_format_adapter`
+  (PBDEMS2 magic bytes, size bounds; legacy CS:GO demos rejected)
+- `compute_sha256()` helper for file hashing
+- Legacy 50 KB / 900 MB size constants kept for backward compatibility only
 
 ## Sub-Packages
 
@@ -48,34 +49,28 @@ ingestion/
 
 **`user_ingest.py`** — User demo ingestion pipeline
 - Parses user demos via demoparser2
-- Extracts round statistics with `round_stats_builder.py`
-- Enriches with `enrich_from_demo()` (noscope/blind kills, flash assists, utility usage)
-- Persists to RoundStats + PlayerMatchStats tables
+- Persists PlayerMatchStats, then RoundStats + enrichment via
+  `round_stats_builder.persist_round_stats_and_enrichment()`
+- Triggers the ML pipeline (`run_ml_pipeline` from `run_ingestion.py`) and
+  archives the demo only after all steps succeed
 
 **`json_tournament_ingestor.py`** — Tournament JSON batch ingestion
 - Bulk import from tournament data exports
-- Schema validation
-- Conflict resolution
+- Schema validation (`_validate_tournament_json`)
+- Flattens the match/map/round hierarchy to a CSV of per-round team stats
 
 ### `registry/`
 
 Demo file registry and lifecycle management.
 
-**`registry.py`** — Demo file tracking
-- Tracks demo processing state (pending, processing, completed, failed)
-- Duplicate detection via file hash
-- Query interface for demo status
+**`registry.py`** — `DemoRegistry`, JSON-backed processed-demo set
+- `is_processed()` / `mark_processed()` with thread + file locking
+- Atomic writes with automatic backup recovery
 
-**`lifecycle.py`** — Demo lifecycle state machine
-- State transitions for demo processing
-- Retention policy enforcement
-- Cleanup automation
+**`lifecycle.py`** — `DemoLifecycleManager`
+- `cleanup_old_demos(days=30)` deletes archived `.dem` files past retention
 
-**`schema.sql`** — Registry database schema definition
-
-### `cache/`
-
-Parsed demo cache directory. Stores `.mcn` intermediate files to avoid re-parsing previously processed demos.
+**`schema.sql`** — Reserved for a future SQL-based registry (currently empty)
 
 ## Important Notes
 

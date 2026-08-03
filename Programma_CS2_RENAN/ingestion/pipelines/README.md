@@ -8,11 +8,10 @@
 
 This package contains the concrete ingestion pipelines that transform raw data
 sources into structured database rows.  Each pipeline targets a specific input
-format -- `.dem` replay files from user matches, `.dem` files from professional
-matches, and structured JSON exports from tournament databases.  The pipelines
-share a common seven-step flow (discovery, validation, parsing, enrichment,
-persistence, registration, archival) but diverge in enrichment logic and
-destination tables.
+format -- `.dem` replay files from user matches and structured JSON exports
+from tournament databases.  The pipelines share a common logical flow
+(discovery, validation, parsing, enrichment, persistence, archival) but
+diverge in enrichment logic and destination tables.
 
 ## File Inventory
 
@@ -27,30 +26,29 @@ destination tables.
 
 ## Architecture and Concepts
 
-### The Seven-Step Ingestion Flow
+### The Ingestion Flow
 
 Every pipeline follows this canonical sequence.  Steps may be implicit in
 simpler pipelines but the logical order is always preserved:
 
-1. **Discovery** -- scan the source directory for unprocessed files (`.dem` or
-   `.json`).  The `DemoRegistry` from `ingestion/registry/` is consulted to
-   skip already-ingested files.
-2. **Validation** -- verify file integrity.  For `.dem` files this means
-   checking the minimum file size (`MIN_DEMO_SIZE = 10 MB`, invariant DS-12).
-   For JSON files the `_validate_tournament_json()` helper asserts required
-   top-level keys (`id`, `slug`, `match_maps`) and per-map keys.
+1. **Discovery** -- glob the source directory for unprocessed files (`.dem` or
+   `.json`).
+2. **Validation** -- verify input integrity.  For `.dem` files the acceptance
+   floor (`MIN_DEMO_SIZE = 10 MB`, invariant DS-12) is enforced upstream by
+   `backend/data_sources/demo_format_adapter`.  For JSON files the
+   `_validate_tournament_json()` helper asserts required top-level keys
+   (`id`, `slug`, `match_maps`) and per-map keys (`map_name`, `games`).
 3. **Parsing** -- extract structured data.  Demo files are parsed by
    `backend/data_sources/demo_parser.parse_demo()` (backed by `demoparser2`).
    JSON files are loaded directly with Python `json.load()`.
-4. **Enrichment** -- compute derived statistics.  User pipelines call
-   `extract_match_stats()` from `base_features.py`.  Tournament pipelines
-   compute per-round accuracy and economy rating inline.
+4. **Enrichment** -- compute derived statistics.  The user pipeline calls
+   `extract_match_stats()` from `base_features.py`, then persists round-level
+   enrichment via `round_stats_builder`.  Tournament pipelines compute
+   per-round accuracy and economy rating inline.
 5. **Persistence** -- write results to the database.  User pipelines upsert
    `PlayerMatchStats` rows via `DatabaseManager`.  Tournament pipelines write
    to CSV for downstream processing.
-6. **Registration** -- mark the file as processed in the `DemoRegistry` so
-   future runs skip it.
-7. **Archival** -- move successfully ingested files to the `processed_dir`
+6. **Archival** -- move successfully ingested files to the `processed_dir`
    directory to keep the source directory clean.
 
 ### `user_ingest.py` in Detail
@@ -70,16 +68,19 @@ Internal flow:
 5. A `PlayerMatchStats` ORM object is created with `is_pro=False` and the
    player name read from `get_setting("CS2_PLAYER_NAME")`.
 6. `db_manager.upsert()` persists the row (insert or update on conflict).
-7. `_trigger_ml_pipeline()` lazily imports `run_ml_pipeline` from
+7. `persist_round_stats_and_enrichment()` from
+   `backend/processing/round_stats_builder` stores `RoundStats` plus
+   enrichment fields (F6-19 closure -- without it, trade/opening/utility
+   axes would stay at 0.0 and pro comparisons would be fabricated).
+8. `_trigger_ml_pipeline()` lazily imports `run_ml_pipeline` from
    `run_ingestion.py` to avoid circular imports, then executes the ML
-   enrichment step (feature vectorisation, model inference).
-8. `_archive_user_demo()` moves the file to `processed_dir` only after all
+   enrichment step (feature vectorisation, model inference).  If the
+   pipeline reports an incomplete run, the demo is left in place for retry.
+9. `_archive_user_demo()` moves the file to `processed_dir` only after all
    previous steps succeeded (invariant R3-H03).
 
-**Important limitation (F6-19):** This pipeline stores basic
-`PlayerMatchStats` only.  `RoundStats`, events, and tick-level data require
-the full enrichment path in `run_ingestion.py` (`enrich_from_demo()` and
-`_extract_and_store_events()`).
+**Remaining limitation:** Tick-level data extraction is not performed here;
+that remains the job of the full path in `run_ingestion.py`.
 
 ### `json_tournament_ingestor.py` in Detail
 
@@ -122,9 +123,8 @@ pointing to `new_datasets/csgo_tournament_data/` and outputting to
 
 ### Downstream Consumers
 
-- **`run_ingestion.py`** -- the orchestrator that calls `run_ml_pipeline()`
-  after user demo ingestion.
-- **`ingestion/registry/`** -- pipelines consult and update the demo registry.
+- **`run_ingestion.py`** -- the orchestrator that provides `run_ml_pipeline()`
+  called after user demo ingestion.
 - **`backend/nn/`** -- ML models consume the `PlayerMatchStats` rows produced
   by these pipelines.
 
@@ -138,11 +138,11 @@ pointing to `new_datasets/csgo_tournament_data/` and outputting to
   all pipeline steps succeed.  If any step raises an exception, the file
   remains in the source directory for retry on the next run.
 - **Thread safety:** The pipelines themselves are not thread-safe.  They are
-  designed to be called from a single thread (the IngestionWatcher daemon).
-  Cross-process safety is delegated to `DemoRegistry` via `FileLock`.
+  designed to be called from a single thread.
 - **Structured logging:** All pipelines log via `get_logger("cs2analyzer.*")`
-  with JSON format and correlation IDs for observability.
+  with JSON format for observability.
 - **Invariant DS-04:** The `_safe_int()` helper in the tournament ingestor
   coerces all numeric fields safely, returning a default of `0` on failure.
 - **Invariant DS-12:** Demo files smaller than `MIN_DEMO_SIZE` (10 MB) are
-  rejected during validation.  Real CS2 demos are typically 50+ MB.
+  rejected by `demo_format_adapter` validation upstream.  Real CS2 demos are
+  typically 50+ MB.

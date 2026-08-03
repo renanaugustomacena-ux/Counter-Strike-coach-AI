@@ -1363,7 +1363,7 @@ Calcola statistiche aggregate a partire dai dati grezzi per-round:
 
 | Caratteristica | Dettaglio |
 | -------------- | --------- |
-| **Meccanismo** | Hot backup via **`VACUUM INTO`** (copia compattata e consistente, sicura in WAL-mode) |
+| **Meccanismo** | Hot backup via **SQLite Online Backup API** (`sqlite3.Connection.backup()`, scelta al posto di `VACUUM INTO` per evitare interpolazione del path in SQL; sicura in WAL-mode) |
 | **Verifica** | `PRAGMA quick_check` sulla copia (`_verify_integrity`, try/finally H-02) |
 | **Trigger automatico** | All'avvio del Session Engine via `should_run_auto_backup()` |
 | **Trigger manuale** | Via Console o UI Settings |
@@ -1998,7 +1998,7 @@ sequenceDiagram
     participant FS as Filesystem
 
     OP->>TOOL: python tools/headless_validator.py
-    TOOL->>TOOL: 39 fasi di controllo (ambiente, import, schema, config, ML, security, GPU, ...)
+    TOOL->>TOOL: 42 fasi di controllo (ambiente, import, schema, config, ML, security, GPU, ...)
     alt Tutte le fasi PASS
         TOOL->>OP: Exit code 0 — Sistema sano ✓
     else Almeno una fase FAIL
@@ -2021,7 +2021,7 @@ sequenceDiagram
 | Demo non parsata | `demo_inspector.py` | ~5s |
 | Training diverge | `Ultimate_ML_Coach_Debugger.py` | ~2min |
 | Check-up completo | `Goliath_Hospital.py` | ~3min |
-| Audit ML profondo | `brain_verify.py` | ~5min |
+| Audit ML profondo | `brain_verify.py` *(pianificato, non implementato)* | ~5min |
 
 ---
 
@@ -2035,7 +2035,7 @@ La suite di strumenti è una **raccolta di 67 script** distribuiti su due direct
 ```mermaid
 flowchart TB
     subgraph PYRAMID["PIRAMIDE DI VALIDAZIONE (dal più veloce al più profondo)"]
-        L1["LIVELLO 1: Headless Validator<br/>39 fasi di controllo, ~10 secondi<br/>Gate di regressione obbligatorio<br/>Exit code 0 = PASS"]
+        L1["LIVELLO 1: Headless Validator<br/>42 fasi di controllo, ~10 secondi<br/>Gate di regressione obbligatorio<br/>Exit code 0 = PASS"]
         L2["LIVELLO 2: pytest Suite<br/>130 file di test<br/>Unit + Integration + E2E<br/>~2-5 minuti"]
         L3["LIVELLO 3: Backend Validator<br/>Verifica import, schema,<br/>coerenza interfacce<br/>~30 secondi"]
         L4["LIVELLO 4: Goliath Hospital<br/>10 reparti diagnostici<br/>Audit profondo multisistema<br/>~1-3 minuti"]
@@ -2049,7 +2049,7 @@ flowchart TB
     style L5 fill:#ff6b6b,color:#fff
 ```
 
-**Headless Validator** (`tools/headless_validator.py`, ~2.900 righe) — il gate di regressione obbligatorio. Eseguito dopo **ogni** task di sviluppo con **39 fasi tematiche di controllo** (funzioni `check()`/`warn()` con severità). Fasi principali:
+**Headless Validator** (`tools/headless_validator.py`, ~2.900 righe) — il gate di regressione obbligatorio. Eseguito dopo **ogni** task di sviluppo con **42 fasi tematiche di controllo** (funzioni `check()`/`warn()` con severità). Fasi principali:
 
 | Gruppo di fasi | Verifica |
 | ---- | -------- |
@@ -2347,7 +2347,7 @@ Il progetto utilizza un sistema di **pre-commit hooks** che si attivano automati
 
 | Hook | Script | Timeout | Descrizione |
 | ---- | ------ | ------- | ----------- |
-| `headless-validator` | `tools/headless_validator.py` | 20s | 39 fasi di controllo, regression gate — il più importante |
+| `headless-validator` | `tools/headless_validator.py` | 20s | 42 fasi di controllo, regression gate — il più importante |
 | `dead-code-detector` | `tools/dead_code_detector.py` | 15s | Identifica import e funzioni non referenziati |
 | `integrity-manifest-check` | `tools/sync_integrity_manifest.py` | 10s | Verifica coerenza hash SHA-256 del manifesto |
 | `dev-health-quick` | `tools/dev_health.py` | 10s | Quick check salute progetto |
@@ -2372,7 +2372,7 @@ flowchart LR
     DEV --> HOOKS["Pre-Commit Hooks<br/>(automatici)"]
     HOOKS --> BF["black + isort<br/>(formattazione)"]
     HOOKS --> STD["7 hook standard<br/>(whitespace, YAML, JSON,<br/>large files, merge conflict,<br/>private key, EOF)"]
-    HOOKS --> VALID["headless-validator<br/>(39 fasi di controllo)"]
+    HOOKS --> VALID["headless-validator<br/>(42 fasi di controllo)"]
     HOOKS --> DEAD["dead-code-detector<br/>(pulizia)"]
     HOOKS --> INTEG["integrity-manifest<br/>(hash SHA-256)"]
     HOOKS --> HEALTH["dev-health-quick<br/>(salute)"]

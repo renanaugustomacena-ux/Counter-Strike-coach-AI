@@ -4,11 +4,12 @@
 
 **Authority:** `Programma_CS2_RENAN/tests/` -- Comprehensive regression and correctness suite for the Macena CS2 Analyzer.
 
-The test suite contains 2,024+ tests distributed across 118 files, following the test pyramid
-(unit > integration > e2e). Every subsystem -- from the 25-dim feature vector through the
-neural networks, coaching engine, database layer, and UI screens -- is covered by deterministic,
-reproducible assertions. Tests run under pytest with a mandatory virtual-environment guard and
-optional integration-test gating via the `CS2_INTEGRATION_TESTS` environment variable.
+The test suite contains 2,190+ tests distributed across 130 files (125 topic-organised files
+here plus 5 in `automated_suite/`), following the test pyramid (unit > integration > e2e).
+Every subsystem -- from the 25-dim feature vector through the neural networks, coaching engine,
+database layer, and UI screens -- is covered by deterministic, reproducible assertions. Tests
+run under pytest with a mandatory virtual-environment guard and optional integration-test
+gating via the `CS2_INTEGRATION_TESTS` environment variable.
 
 ## Key Principles
 
@@ -18,7 +19,11 @@ optional integration-test gating via the `CS2_INTEGRATION_TESTS` environment var
 - **Test hierarchy** -- Unit (>70%) > Integration (>20%) > E2E (~10%)
 - **Deterministic seeding** -- `GLOBAL_SEED=42` everywhere, `torch.manual_seed(42)` in fixtures
 
-## File Inventory
+## File Inventory (selection)
+
+The suite has 125 topic-organised `test_*.py` files at this level; the table below covers a
+representative subset by domain (newer files -- tick-rate SSOT, MoE gates, HLTV parsing,
+security hardening, and others -- follow the same `test_<topic>.py` convention).
 
 | File | Domain | Description |
 |------|--------|-------------|

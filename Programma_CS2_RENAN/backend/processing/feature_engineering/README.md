@@ -70,8 +70,9 @@ order is fixed and enforced by the compile-time assertion
 - **Context features 20-24** are read from `tick_data` first (enriched during
   ingestion), with fallback to a `context` dict (DemoFrame at inference),
   eliminating training/inference skew.
-- **Weapon class** (index 19) maps ~70 CS2 weapon names (internal +
-  demoparser2 display names) to 6 categories via `WEAPON_CLASS_MAP`.
+- **Weapon class** (index 19) maps ~90 CS2 weapon names (internal +
+  demoparser2 display names) to 8 category values via `WEAPON_CLASS_MAP`
+  (knife 0.0, special 0.05, grenade 0.1, tiers 0.2-1.0; unknown 0.5).
 
 ## Architecture & Concepts
 
@@ -143,7 +144,7 @@ Three granularities:
 
 Uses `__getattr__` to defer submodule imports until first attribute access.
 This prevents `_ModuleLock` deadlocks when daemon threads (ingestion workers)
-import submodules while the Kivy UI thread holds the import lock.
+import submodules while the UI thread holds the import lock.
 
 ## Integration Points
 

@@ -9,9 +9,11 @@ Root-level project tools for validation, diagnostics, build orchestration, and m
 
 ## File Inventory
 
+The directory holds **49 Python tools** plus the `fuzz/` harness ([README](fuzz/README.md)) and `hltv_stealth_init.js` (browser stealth snippet for HLTV fetching). The most important ones:
+
 | File | Purpose | Category |
 |------|---------|----------|
-| `headless_validator.py` | Regression gate with 26 validation phases | Validation |
+| `headless_validator.py` | Regression gate with 42 distinct check phases | Validation |
 | `dead_code_detector.py` | Orphan modules, duplicate definitions, stale imports | Validation |
 | `verify_all_safe.py` | Safety verification across all modules | Validation |
 | `portability_test.py` | Cross-platform portability checks | Validation |
@@ -21,7 +23,7 @@ Root-level project tools for validation, diagnostics, build orchestration, and m
 | `build_pipeline.py` | Build pipeline orchestration (5 stages) | Build |
 | `audit_binaries.py` | Post-build binary integrity (SHA-256) | Build |
 | `db_health_diagnostic.py` | Database health diagnostic (10 sections) | Database |
-| `migrate_db.py` | Database migration with backward compatibility | Database |
+| `migrate_db.py` | DEPRECATED pre-Alembic patcher (use `alembic upgrade head`) | Database |
 | `reset_pro_data.py` | Reset professional player data (idempotent) | Database |
 | `dev_health.py` | Development health orchestrator | Maintenance |
 | `Sanitize_Project.py` | Project sanitization (remove local data) | Maintenance |
@@ -32,32 +34,38 @@ Root-level project tools for validation, diagnostics, build orchestration, and m
 
 ## `headless_validator.py` --- The Regression Gate
 
-This is the single most important tool in the project. It runs **26 validation phases** and must exit with code 0 before any commit. It is also wired as a pre-commit hook.
+This is the single most important tool in the project (~2,900 lines). It runs **42 distinct check phases** (banner phases numbered 1–26 — Phase 19 is unused — plus lettered sub-phases 3b–3l and 6b–6f and a table-driven Contract phase) and must exit with code 0 before any commit. It is also wired as a pre-commit hook.
 
 ### Validation Phases
 
 | Phase | What It Checks |
 |-------|---------------|
-| 1. Import Health | All production modules import without errors |
-| 2. Schema Integrity | In-memory database schema matches SQLModel definitions |
-| 3. Config Loading | `get_setting()` and `get_credential()` resolve correctly |
-| 4. ML Smoke Test | Model instantiation and forward pass for all 6 model types |
-| 5. UI Framework | PySide6 and Kivy import successfully |
-| 6. Platform Compat | OS-specific code paths resolve |
-| 7. Contract Validation | Public API contracts match implementations |
-| 8. ML Invariants | METADATA_DIM=25, INPUT_DIM=25, OUTPUT_DIM=10 |
-| 9. DB Integrity | Table counts, foreign keys, index existence |
-| 10. Code Quality | Black formatting, isort ordering |
-| 11. Package Structure | `__init__.py` in all packages, no circular imports |
-| 12. Feature Pipeline | FeatureExtractor produces 25-dim vectors |
-| 13. RAP Forward Pass | RAP Coach model forward pass succeeds |
-| 14. Belief Contracts | Belief model probability ranges [0, 1] |
-| 15. Circuit Breakers | Error thresholds trigger correctly |
-| 16. Integrity Manifest | SHA-256 hashes match `core/integrity_manifest.json` |
-| 17. Security Scan | No hardcoded secrets or credentials |
-| 18. Config Consistency | Settings file schema matches expected keys |
-| 19. Advanced Quality | Cyclomatic complexity, duplicate code detection |
-| 20-23. | Additional specialized checks |
+| 1. Environment | Project root and critical directories exist |
+| 2. Core Imports | Core modules import without errors |
+| 3, 3b–3l. Backend Imports | Per-package import health: storage, processing, NN, analysis, coaching, services, knowledge, control, data sources, ingestion & onboarding, ingestion pipelines, reporting & observability |
+| 4. Database Schema | In-memory database schema matches SQLModel definitions |
+| 5. Config & Data Files | `map_config.json` valid, `get_setting()` types, METADATA_DIM==25, feature alignment |
+| 6. ML Smoke | Model instantiation and forward pass |
+| 6b–6f. Smoke Sub-phases | Baselines, demo format adapter, GPU detection, training pipeline, coaching pipeline |
+| 7. UI Components (Headless) | Qt/PySide6 components import headlessly |
+| 8. Cross-Platform | OS-specific code paths resolve |
+| 9. Cross-Module Contracts | Public API contracts match implementations |
+| 10. Deep ML Invariants | METADATA_DIM=25, OUTPUT_DIM=10, layer shapes |
+| 11. Database Model Integrity | Table registry, columns, indexes |
+| 12. Code Quality Scanning | Anti-pattern detection (incl. stray `print()`) |
+| 13. Package Structure & Config | `__init__.py` in all packages, config integrity |
+| 14. Feature Pipeline Consistency | Vectorizer produces 25-dim vectors |
+| 15. Dependency & Environment | Pinned dependencies importable |
+| 16. RAP Coach & Perception | RAP model forward pass and pipeline |
+| 17. Belief Model & Analysis Engines | Analysis engine contracts, probability ranges |
+| 18. MLControlContext & Training Control | Pause/resume/stop plumbing |
+| 20. Shared Utilities | Shared utility and missing-module imports |
+| 21. Integrity & Security Scanning | SHA-256 manifest, no hardcoded secrets |
+| 22. Configuration Consistency | Settings file schema matches expected keys |
+| 23. Advanced Code Quality | Cyclomatic complexity, duplicate code detection |
+| 24. Qt Frontend Imports | Qt app screens/viewmodels import |
+| 25. Design Token Freshness | Generated design tokens up to date |
+| 26. Web Marquee Scaffold Health | Web app scaffold integrity |
 
 ### Usage
 
@@ -88,42 +96,44 @@ Computes SHA-256 hashes of all files in the build output and compares against ex
 
 | Section | What It Checks |
 |---------|---------------|
-| 1 | WAL mode verification on all 3 databases |
-| 2 | Table existence and row counts |
-| 3 | Foreign key constraint integrity |
-| 4 | Index coverage on frequently queried columns |
-| 5 | Data quality metrics (NaN rates, outliers) |
-| 6 | Alembic migration state |
-| 7 | Per-match database consistency |
-| 8 | HLTV metadata completeness |
-| 9 | Storage usage and file sizes |
-| 10 | Connection pool health |
+| 1 | Structural health — schema & constraints |
+| 2 | Integrity check — corruption detection (`PRAGMA integrity_check`) |
+| 3 | WAL & journal mode verification |
+| 4 | Data consistency & logical stability (duplicates, orphans, impossible values) |
+| 5 | Ingestion pipeline health (task status, stuck tasks, cross-DB) |
+| 6 | Performance health — index coverage & query-plan full-scan check |
+| 7 | Observability — diagnostic metadata coverage |
+| 8 | HLTV pro statistics database |
+| 9 | ML pipeline readiness — CoachState |
+| 10 | Storage summary |
 
-### `migrate_db.py` --- Safe Migration
+### `migrate_db.py` --- DEPRECATED
 
-Wraps Alembic migrations with backward compatibility checks. Safer than running `alembic upgrade head` directly.
+Retained only as a historical archive (R2-11). It patches pre-Alembic databases by adding 5 columns to `CoachState`; that schema is now managed by Alembic revisions `8c443d3d9523` and `3c6ecb5fe20e`. Use `alembic upgrade head` for all schema migrations.
 
 ### `reset_pro_data.py` --- Pro Data Reset
 
-Multi-phase, idempotent reset of professional player data. Safe to run multiple times. Phases: backup -> clear tables -> reset sync state -> verify.
+Multi-phase, idempotent reset for a fresh ingestion & training run. Clears `database.db` data tables + CoachState, `hltv_metadata.db` (skippable with `--preserve-hltv`), `knowledge_graph.db`, caches, model checkpoints, per-match shards, and sync state.
 
 ## Project Maintenance
 
 ### `dev_health.py` --- Health Orchestrator
 
 Runs multiple tools in sequence and produces a unified health report:
-1. Headless validator
-2. Dead code detector
-3. Portability test
-4. Feature audit
+1. Headless validator (always; `--quick` runs only this)
+2. Dead code detector (`--strict`)
+3. Feature alignment audit
+4. Portability test
 
 ### `Sanitize_Project.py` --- Clean Local State
 
-Removes all user-specific and local-only files for clean distribution:
-- `user_settings.json`
-- `database.db` and WAL/SHM files
+Removes all user-specific and local-only data for clean distribution:
+- `Programma_CS2_RENAN/backend/storage/database.db` (main local database)
+- `Programma_CS2_RENAN/backend/storage/hltv_metadata.db`
+- `Programma_CS2_RENAN/backend/storage/match_data/` (per-match SQLite shards)
+- `models/` (ML checkpoints)
 - `logs/` directory
-- `__pycache__/` directories
+- stale `hltv_sync.pid`
 
 ## Usage
 
