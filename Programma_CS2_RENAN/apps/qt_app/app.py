@@ -345,6 +345,11 @@ def main():
 
     _splash_status(splash, "Ready!")
     window.show()
+    # DOCK-01: a restored floating coach dock is its own top-level window
+    # and can steal first presentation — the main window must end up in
+    # front and focused on every boot.
+    window.raise_()
+    window.activateWindow()
     splash.finish(window)
 
     _show_boot_failure_warning_if_needed(window, boot_ok)

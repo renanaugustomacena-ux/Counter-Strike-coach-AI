@@ -29,6 +29,32 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 logger = get_logger("cs2analyzer.qt_main_window")
 
 
+def _restore_dock_state(dock, floating: bool, geometry_b64: str) -> bool:
+    """DOCK-01: apply persisted float state to a dock — float only when a
+    saved geometry restores successfully; anything else re-docks.
+
+    Returns True when the dock ends up floating. A geometry-less or
+    corrupt restore must NOT float: Qt would spawn the dock as a small
+    default-size window in front of the main window (the 2026-08-03
+    "mini window" boot regression).
+    """
+    if not floating or not geometry_b64:
+        dock.setFloating(False)
+        return False
+    from PySide6.QtCore import QByteArray
+
+    dock.setFloating(True)
+    try:
+        restored = dock.restoreGeometry(QByteArray.fromBase64(geometry_b64.encode("ascii")))
+    except Exception:  # noqa: BLE001 — corrupt persisted state must never crash boot
+        logger.warning("coach dock geometry restore failed", exc_info=True)
+        restored = False
+    if not restored:
+        dock.setFloating(False)
+        return False
+    return True
+
+
 class _CustomTitleBar(QFrame):
     """Hand-rolled frameless titlebar — drag zone + Min/Max/Close.
 
@@ -310,8 +336,8 @@ class MainWindow(QMainWindow):
     def _register_coach_dock(self, widget: QWidget) -> None:
         """Wrap CoachScreen in a QDockWidget pinned to the right side.
 
-        Persists visibility/floating state in user_settings.json so the
-        next launch restores the user's preferred dock arrangement.
+        Persists visibility/floating/geometry state in user_settings.json
+        so the next launch restores the user's preferred dock arrangement.
         """
         from Programma_CS2_RENAN.core.config import get_setting, save_user_setting
 
@@ -333,14 +359,29 @@ class MainWindow(QMainWindow):
         area = Qt.BottomDockWidgetArea if saved_area == "bottom" else Qt.RightDockWidgetArea
         self.addDockWidget(area, dock)
 
+        # DOCK-01 (2026-08-03): floating restores ONLY with a restorable
+        # geometry. Restoring a geometry-less float spawned the dock as a
+        # small default-size window (GNOME Wayland: min+close CSD only,
+        # close merely hides a dock) IN FRONT of the main window — users
+        # saw "the app" boot as a broken mini window.
         floating = bool(get_setting("COACH_DOCK_FLOATING", False))
-        dock.setFloating(floating)
+        saved_geometry = str(get_setting("COACH_DOCK_GEOMETRY", "") or "")
+        _restore_dock_state(dock, floating, saved_geometry)
         visible = bool(get_setting("COACH_DOCK_VISIBLE", False))
         dock.setVisible(visible)
+
+        def _save_dock_geometry() -> None:
+            try:
+                geo = bytes(dock.saveGeometry().toBase64()).decode("ascii")
+                save_user_setting("COACH_DOCK_GEOMETRY", geo)
+            except Exception:  # noqa: BLE001 — persistence is best-effort
+                logger.debug("coach dock geometry save failed", exc_info=True)
 
         # Persist on user-driven changes.
         def _on_top_level_changed(is_floating: bool) -> None:
             save_user_setting("COACH_DOCK_FLOATING", bool(is_floating))
+            if is_floating:
+                _save_dock_geometry()
 
         def _on_dock_location_changed(new_area: Qt.DockWidgetArea) -> None:
             label = "bottom" if new_area == Qt.BottomDockWidgetArea else "right"
@@ -358,6 +399,10 @@ class MainWindow(QMainWindow):
             # app exit, so the dock never restored visible.
             if not is_visible and (self.isMinimized() or not self.isVisible()):
                 return
+            # DOCK-01: closing a floating dock should reopen it where it
+            # was — capture the geometry as part of the same user gesture.
+            if not is_visible and dock.isFloating():
+                _save_dock_geometry()
             save_user_setting("COACH_DOCK_VISIBLE", bool(is_visible))
 
         dock.topLevelChanged.connect(_on_top_level_changed)
