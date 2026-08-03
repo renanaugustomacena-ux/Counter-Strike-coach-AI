@@ -275,9 +275,7 @@ class TestCreateCheckpointSizeGuard:
         mgr = self._make_manager(tmp_path, db_bytes=4096)
         monkeypatch.setattr(backup_manager, "_BACKUP_MAX_DB_BYTES", 1024)
         assert mgr.create_checkpoint(label="testguard") is False
-        assert not any(
-            f.startswith("backup_testguard") for f in os.listdir(mgr.backup_dir)
-        )
+        assert not any(f.startswith("backup_testguard") for f in os.listdir(mgr.backup_dir))
 
     def test_refuses_when_no_free_space(self, tmp_path, monkeypatch):
         from collections import namedtuple
@@ -286,14 +284,10 @@ class TestCreateCheckpointSizeGuard:
 
         Usage = namedtuple("Usage", "total used free")
         mgr = self._make_manager(tmp_path, db_bytes=4096)
-        monkeypatch.setattr(
-            backup_manager.shutil, "disk_usage", lambda p: Usage(100, 99, 1024)
-        )
+        monkeypatch.setattr(backup_manager.shutil, "disk_usage", lambda p: Usage(100, 99, 1024))
         assert mgr.create_checkpoint(label="testguard") is False
 
     def test_allows_small_db_with_space(self, tmp_path):
         mgr = self._make_manager(tmp_path, db_bytes=0)
         assert mgr.create_checkpoint(label="testguard") is True
-        assert any(
-            f.startswith("backup_testguard") for f in os.listdir(mgr.backup_dir)
-        )
+        assert any(f.startswith("backup_testguard") for f in os.listdir(mgr.backup_dir))

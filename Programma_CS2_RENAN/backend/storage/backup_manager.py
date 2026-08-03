@@ -80,8 +80,7 @@ class BackupManager:
         free_bytes = shutil.disk_usage(self.backup_dir).free
         if db_size * _BACKUP_FREE_SPACE_MARGIN > free_bytes:
             logger.error(
-                "Refusing backup: need %.1f GiB (incl. margin) but only "
-                "%.1f GiB free at %s.",
+                "Refusing backup: need %.1f GiB (incl. margin) but only " "%.1f GiB free at %s.",
                 db_size * _BACKUP_FREE_SPACE_MARGIN / 1024**3,
                 free_bytes / 1024**3,
                 self.backup_dir,

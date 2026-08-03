@@ -12,9 +12,7 @@ Covers:
 
 import threading
 
-from Programma_CS2_RENAN.backend.services.coaching_dialogue import (
-    CoachingDialogueEngine,
-)
+from Programma_CS2_RENAN.backend.services.coaching_dialogue import CoachingDialogueEngine
 
 KNOWN = {
     "faze-vs-spirit-m2-mirage": 24,
