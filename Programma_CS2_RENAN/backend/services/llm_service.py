@@ -28,17 +28,24 @@ OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 
 
 def _resolve_default_model() -> str:
+    # CFG-ENV-01: import config BEFORE reading the environment — importing
+    # core.config loads the repo-root .env into os.environ (setdefault), so
+    # OLLAMA_MODEL from .env is visible on the very first resolution.
+    get_setting = None
+    try:
+        from Programma_CS2_RENAN.core.config import get_setting
+    except Exception:  # noqa: BLE001 — bootstrap path may run pre-config
+        pass
     env_choice = os.getenv("OLLAMA_MODEL")
     if env_choice:
         return env_choice
-    try:
-        from Programma_CS2_RENAN.core.config import get_setting
-
-        setting_choice = get_setting("LLM_COACH_MODEL", "")
-        if setting_choice:
-            return str(setting_choice)
-    except Exception:  # noqa: BLE001 — bootstrap path may run pre-config
-        pass
+    if get_setting is not None:
+        try:
+            setting_choice = get_setting("LLM_COACH_MODEL", "")
+            if setting_choice:
+                return str(setting_choice)
+        except Exception:  # noqa: BLE001
+            pass
     return "gemma4:e2b"
 
 

@@ -37,6 +37,41 @@ def get_base_dir() -> str:
 BASE_DIR = get_base_dir()
 
 
+def _load_dotenv_file() -> None:
+    """CFG-ENV-01 (2026-08-03): load repo-root `.env` into os.environ.
+
+    The project documents `.env` as a config surface (OLLAMA_MODEL,
+    FLARESOLVERR_URL, STEAM_API_KEY, ...) but nothing ever parsed it —
+    every documented override silently no-opped unless the user exported
+    the variable by hand. Stdlib-only parser; real environment variables
+    always win (setdefault); values are never logged (may hold secrets).
+    """
+    env_path = Path(BASE_DIR).parent / ".env"
+    if not env_path.is_file():
+        return
+    try:
+        for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key = key.strip()
+            if not key or not key.replace("_", "").isalnum():
+                continue
+            # Strip inline comments (unquoted values only) and quotes.
+            if value.lstrip().startswith(('"', "'")):
+                quote = value.lstrip()[0]
+                value = value.strip().strip(quote)
+            else:
+                value = value.split(" #", 1)[0].split("\t#", 1)[0].strip()
+            os.environ.setdefault(key, value)
+    except OSError as exc:
+        app_logger.warning("Could not read .env file: %s", exc)
+
+
+_load_dotenv_file()
+
+
 def get_writeable_dir() -> str:
     """Returns a directory where the application has write permissions."""
     if IS_FROZEN:
