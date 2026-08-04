@@ -208,7 +208,18 @@ commit di `docs/plans/` (untracked, scelta owner) · merge verso `main` remoto �
 | **#28.1** | riesaminato e chiuso senza churn — vedi coda #28. |
 | **Invarianti** | verificate a codice: NN-16 ✅, NN-JM-04 ✅, NN-MEM-01 ✅ (nota: path canonico ora `backend/nn/experimental/rap_coach/memory.py`, CLAUDE.md cita lo shim deprecato), P-RSB-03 ✅ (round_won solo label), 26-HYB-01 ✅ (`load_nn` reale). |
 | **Gates** | suite 2360+ verdi · validator 318/319 PASS · mypy pulito · black/isort ok sui file toccati. |
-| **Owner-gated NON eseguiti** | `rescrape --apply` / `sync_pro_players --apply` (guardrail Fase 5 esplicito: "Mai eseguire"). Restano #38/GAP-05 in attesa di ordine esplicito. |
+| **Owner-gated NON eseguiti** | `rescrape --apply` / `sync_pro_players --apply` (guardrail Fase 5 esplicito: "Mai eseguire"). Restano #38/GAP-05 in attesa di ordine esplicito. → **Gate SBLOCCATO dall'owner in serata** ("si potrebbe fare un re-scrape da hltv"): vedi appendice notte sotto. |
+
+### Appendice notte 2026-08-03→04 (PR #47 + rescrape)
+
+| Item | Esito |
+|---|---|
+| **DOCK-01 (PR #47, merged)** | Il "mini window" riportato dall'owner era il coach dock flottante ripristinato SENZA geometria (`COACH_DOCK_FLOATING=true` in user_settings.json; GNOME decora i dock con solo min+close e close NASCONDE il dock). Fix: `_restore_dock_state()` — float solo con geometria ripristinabile, stato assente/corrotto → re-dock self-healing; persistenza `COACH_DOCK_GEOMETRY`; `raise_()+activateWindow()` post-show. 4 test TDD offscreen. Diagnosi via faulthandler dump + forensica settings. |
+| **FlareSolverr** | Container stale dell'identità compose del vecchio percorso `-main` (log interni di luglio, exit 143 in loop): rimosso e ricreato dal compose corrente — healthy. |
+| **SESSION_HANDOFF "DA FARE SUBITO su Linux"** | Verificata GIÀ ESEGUITA sul monolite punto per punto (rating 0/2501 · tick features sani dove esiste .dem · blind enrichment 979/3512 · matchresult 53 outcome/205 honest-None BY DESIGN P2-09 · d3 rederive 17-07 · alembic head). Nessun lavoro dati pendente. |
+| **#38/GAP-06 rescrape — CHIUSO ✅** | Placeholder cards cresciute 24→72 (tornei nuovi). `rescrape_placeholder_pros --apply` eseguito col gate sbloccato dall'owner: tutte le card scaricate da HLTV (0 FAIL), acceptance PASSATA — `purge_default_stats_rag --dry-run` → **0 placeholder cards**. Statistiche pro aggiornate ai tornei correnti. |
+| **GAP-05 — OBSOLETO** | `sync_pro_players` interroga la tabella `proplayer` che NON esiste più nel monolite (19 tabelle correnti; le repliche pro in main DB sono state rimosse con lo slim-down dello schema). Le "2 righe stale" non esistono più per costruzione: fonte unica pro = `hltv_metadata.db` (separazione DM-02). Tool = one-shot esaurito, candidato archivio con gli altri di #66. |
+| **Nota config macchina** | `PRO_DEMO_PATH` non impostato (fallback `~`): i 5 .dem superstiti stanno in `Counter-Strike-coach-AI_backup/DEMO_PRO_PLAYERS/ingested/` — impostare dalla schermata impostazioni. Wizard MAI completato su questa macchina (user_settings senza SETUP_COMPLETED): al prossimo avvio l'app mostra il wizard, da completare una volta. |
 
 ---
 
