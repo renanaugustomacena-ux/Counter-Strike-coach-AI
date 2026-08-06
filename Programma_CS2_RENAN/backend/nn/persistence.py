@@ -85,7 +85,9 @@ def _register_checkpoint_hash(path: Path) -> None:
                 corrupt_backup,
             )
     registry[str(path)] = _compute_file_hash(path)
-    registry_path.write_text(json.dumps(registry, indent=2))
+    # Trailing newline: the registry is committed to git, and a POSIX-final
+    # newline keeps every runtime refresh lint-clean (end-of-file-fixer).
+    registry_path.write_text(json.dumps(registry, indent=2) + "\n")
 
 
 def _verify_checkpoint_hash(path: Path) -> bool:
