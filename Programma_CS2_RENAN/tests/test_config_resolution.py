@@ -260,6 +260,52 @@ class TestThreadSafety:
         assert all(r == "stable" for r in results)
 
 
+class TestMatchDataPathResolution:
+    """$HOME must never become the per-match shard root.
+
+    2026-07-26: PRO_DEMO_PATH defaulted to os.path.expanduser("~"). $HOME always
+    exists, so _resolve_match_data_path() always chose $HOME/match_data over the
+    in-project directory. Any process that loaded default settings — every test
+    using an isolated empty settings file — then pointed MATCH_DATA_PATH at
+    /home/<user>/match_data, and the auto-migration in get_match_data_manager
+    moved the entire production shard corpus there. Observed twice: 45 shards
+    off the external volume (killing that run with ENOSPC mid-move), then 313
+    shards off /data, taking the root disk from 42 GB to 2 GB free.
+    """
+
+    def test_pro_demo_path_does_not_default_to_home(self, isolated_settings):
+        from Programma_CS2_RENAN.core.config import load_user_settings
+
+        assert load_user_settings()["PRO_DEMO_PATH"] != os.path.expanduser("~")
+
+    def test_unset_pro_demo_path_resolves_in_project(self, isolated_settings, monkeypatch):
+        import Programma_CS2_RENAN.core.config as config_module
+
+        monkeypatch.setitem(config_module._settings, "PRO_DEMO_PATH", "")
+        resolved = config_module._resolve_match_data_path()
+        assert resolved.endswith(os.path.join("backend", "storage", "match_data"))
+
+    def test_home_as_pro_demo_path_is_refused(self, isolated_settings, monkeypatch):
+        """Even an explicit PRO_DEMO_PATH=$HOME must not host shards."""
+        import Programma_CS2_RENAN.core.config as config_module
+
+        monkeypatch.setitem(config_module._settings, "PRO_DEMO_PATH", os.path.expanduser("~"))
+        resolved = config_module._resolve_match_data_path()
+        assert resolved.endswith(os.path.join("backend", "storage", "match_data"))
+        assert os.path.normpath(resolved) != os.path.normpath(
+            os.path.join(os.path.expanduser("~"), "match_data")
+        )
+
+    def test_real_pro_demo_path_is_honoured(self, isolated_settings, monkeypatch, tmp_path):
+        """A deliberately configured directory still works — this is not a blanket ban."""
+        import Programma_CS2_RENAN.core.config as config_module
+
+        pool = tmp_path / "DEMO_PRO_PLAYERS"
+        pool.mkdir()
+        monkeypatch.setitem(config_module._settings, "PRO_DEMO_PATH", str(pool))
+        assert config_module._resolve_match_data_path() == str(pool / "match_data")
+
+
 class TestConstants:
     """Verify critical constants."""
 
