@@ -163,6 +163,15 @@ _clamp_suppressed_since_flush = 0
 _clamp_suppressed_features: Counter = Counter()
 _clamp_window_started = 0.0
 
+# R4-14-01 emission throttle (same D2 discipline as the clamp log above):
+# a teacher-daemon pass over sparse data can hit thousands of (0,0,0)
+# ticks and turn the warning into a disk-filling storm. Verbose for the
+# first occurrences, then one aggregate line per window; the counter
+# stays exact regardless.
+_zero_pos_count = 0
+_zero_pos_suppressed_since_flush = 0
+_zero_pos_window_started = 0.0
+
 # D1: sliding-window quality gate for the SINGLE-sample path (extract()).
 # The batch path has the P3-A gate; inference-time extracts previously had
 # none — live coaching could silently consume garbage vectors. If more than
@@ -179,12 +188,51 @@ _single_gate_tripped = False
 def _reset_quality_gate_state_for_tests() -> None:
     """Test-only: reset D1/D2 module state (never call from production code)."""
     global _clamp_suppressed_since_flush, _clamp_window_started, _single_gate_tripped
+    global _zero_pos_count, _zero_pos_suppressed_since_flush, _zero_pos_window_started
     with _nan_inf_lock:
         _clamp_suppressed_since_flush = 0
         _clamp_suppressed_features.clear()
         _clamp_window_started = 0.0
         _single_clamp_window.clear()
         _single_gate_tripped = False
+        _zero_pos_count = 0
+        _zero_pos_suppressed_since_flush = 0
+        _zero_pos_window_started = 0.0
+
+
+def _log_zero_position_throttled() -> None:
+    """R4-14-01: (0,0,0)-position warning with D2-style emission throttling."""
+    global _zero_pos_count, _zero_pos_suppressed_since_flush, _zero_pos_window_started
+    emit_verbose = False
+    emit_aggregate = None
+    with _nan_inf_lock:
+        _zero_pos_count += 1
+        count_snapshot = _zero_pos_count
+        if count_snapshot <= _CLAMP_VERBOSE_LIMIT:
+            emit_verbose = True
+        else:
+            _zero_pos_suppressed_since_flush += 1
+            now = time.monotonic()
+            if _zero_pos_window_started == 0.0:
+                _zero_pos_window_started = now
+            elif now - _zero_pos_window_started >= _CLAMP_AGGREGATE_WINDOW_S:
+                emit_aggregate = (_zero_pos_suppressed_since_flush, count_snapshot)
+                _zero_pos_suppressed_since_flush = 0
+                _zero_pos_window_started = now
+    if emit_verbose:
+        _logger.warning(
+            "R4-14-01: Position (0,0,0) — likely missing data, not a valid "
+            "coordinate (occurrence #%d)",
+            count_snapshot,
+        )
+    elif emit_aggregate is not None:
+        _logger.warning(
+            "R4-14-01/D2: %d further (0,0,0)-position ticks suppressed over "
+            "the last %.0fs (total %d). Counter remains exact; fix upstream data.",
+            emit_aggregate[0],
+            _CLAMP_AGGREGATE_WINDOW_S,
+            emit_aggregate[1],
+        )
 
 
 # P-X-01: Feature schema names — single source of truth for train/infer parity.
@@ -270,7 +318,7 @@ def _fill_awareness_position_view(vec: np.ndarray, get_val, cfg) -> float:
     pos_z = float(get_val("pos_z", get_val("z", get_val("Z", 0))))
     if pos_x == 0.0 and pos_y == 0.0 and pos_z == 0.0:
         # R4-14-01: On standard CS2 maps, (0,0,0) is outside the playable area.
-        _logger.warning("R4-14-01: Position (0,0,0) — likely missing data, not a valid coordinate")
+        _log_zero_position_throttled()
 
     vec[9] = np.clip(pos_x / cfg.pos_xy_extent, -1.0, 1.0)
     vec[10] = np.clip(pos_y / cfg.pos_xy_extent, -1.0, 1.0)

@@ -501,6 +501,16 @@ class TemporalBaselineDecay:
         if reference_date is None:
             reference_date = datetime.now(timezone.utc)
 
+        # Writers store aware-UTC (db_models default_factory) but SQLite has
+        # no tz type, so rows come back NAIVE. A naive datetime here IS UTC
+        # wall-time; normalising both sides prevents the aware-minus-naive
+        # TypeError that silently downgraded every temporal baseline to the
+        # legacy fallback.
+        if stat_date.tzinfo is None:
+            stat_date = stat_date.replace(tzinfo=timezone.utc)
+        if reference_date.tzinfo is None:
+            reference_date = reference_date.replace(tzinfo=timezone.utc)
+
         age_days = (reference_date - stat_date).total_seconds() / 86400.0
         if age_days <= 0:
             return 1.0
