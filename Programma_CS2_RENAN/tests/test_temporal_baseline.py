@@ -107,6 +107,21 @@ class TestComputeWeight:
         w2 = self.decay.compute_weight(stat_date, self.reference)
         assert w1 == w2
 
+    def test_naive_stat_date_against_default_aware_reference(self):
+        """SQLite round-trips datetimes naive while the default reference is
+        aware UTC — the exact pairing that raised TypeError in production and
+        silently downgraded every temporal baseline to the legacy fallback."""
+        naive_90d_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=90)
+        w = self.decay.compute_weight(naive_90d_ago)  # default reference: aware
+        assert abs(w - 0.5) < 0.05
+
+    def test_aware_stat_date_against_naive_reference(self):
+        """Symmetric mixed pairing must also never raise."""
+        aware = datetime(2026, 3, 3, 12, 0, 0, tzinfo=timezone.utc)
+        naive_ref = datetime(2026, 6, 1, 12, 0, 0)
+        w = self.decay.compute_weight(aware, naive_ref)
+        assert abs(w - 0.5) < 0.05
+
 
 # ---------------------------------------------------------------------------
 # TestComputeWeightedBaseline

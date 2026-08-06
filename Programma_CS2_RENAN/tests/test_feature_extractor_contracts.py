@@ -375,6 +375,41 @@ class TestD1D2QualityGates:
         # D2.2: counters exact regardless of emission throttling
         assert vz._nan_inf_clamp_count - start == 16
 
+    def test_r4_14_01_zero_position_log_throttled(self, monkeypatch):
+        """The (0,0,0)-position warning follows the D2 emission discipline:
+        first _CLAMP_VERBOSE_LIMIT occurrences verbose, then one aggregate
+        line per window — never a per-tick log storm (teacher daemon hit
+        hundreds of repeats per pass). Counter stays exact."""
+        from unittest import mock
+
+        import Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer as vz
+
+        clock = {"t": 1000.0}
+        monkeypatch.setattr(vz.time, "monotonic", lambda: clock["t"])
+
+        tick = self._tick()
+        tick.pos_x = 0.0
+        tick.pos_y = 0.0
+        tick.pos_z = 0.0
+
+        with mock.patch.object(vz, "_logger") as mock_log:
+            for _ in range(15):
+                vz.FeatureExtractor.extract(tick, "de_mirage")
+            verbose = [c for c in mock_log.warning.call_args_list if "R4-14-01: Position" in str(c)]
+            aggregates = [c for c in mock_log.warning.call_args_list if "R4-14-01/D2:" in str(c)]
+            assert len(verbose) == vz._CLAMP_VERBOSE_LIMIT  # only the first 10
+            assert aggregates == []  # window not elapsed yet
+
+            # Advance past the aggregate window; next occurrence flushes summary
+            clock["t"] += vz._CLAMP_AGGREGATE_WINDOW_S + 1
+            vz.FeatureExtractor.extract(tick, "de_mirage")
+            aggregates = [c for c in mock_log.warning.call_args_list if "R4-14-01/D2:" in str(c)]
+            assert len(aggregates) == 1
+            assert "suppressed" in str(aggregates[0])
+
+        # Emission throttled, counter exact
+        assert vz._zero_pos_count == 16
+
     def test_d1_gate_trips_once_with_notification(self, monkeypatch):
         from unittest import mock
 

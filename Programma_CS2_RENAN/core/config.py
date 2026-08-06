@@ -183,7 +183,11 @@ def load_user_settings() -> dict:
             "STEAM_API_KEY": "",
             "FACEIT_API_KEY": "",
             "DEFAULT_DEMO_PATH": os.path.expanduser("~"),
-            "PRO_DEMO_PATH": os.path.expanduser("~"),
+            # Deliberately EMPTY, not $HOME. PRO_DEMO_PATH doubles as the root
+            # for per-match shards (_resolve_match_data_path), and $HOME always
+            # exists — so a $HOME default meant every process running on stock
+            # settings silently relocated the shard root to ~/match_data.
+            "PRO_DEMO_PATH": "",
             "BRAIN_DATA_ROOT": "",
             "CUSTOM_STORAGE_PATH": "",
             "ACTIVE_THEME": "CS2",
@@ -228,6 +232,9 @@ def load_user_settings() -> dict:
             "COACH_DOCK_VISIBLE": False,
             "COACH_DOCK_FLOATING": False,
             "COACH_DOCK_AREA": "right",  # "right" | "bottom"
+            # DOCK-01: saved floating geometry (base64 QByteArray); empty =
+            # never floated with a restorable geometry -> boot re-docked.
+            "COACH_DOCK_GEOMETRY": "",
             # Cluster E — LLM Coach: Ollama model selected from CoachScreen.
             # Empty string = use OLLAMA_MODEL env var or hard default.
             "LLM_COACH_MODEL": "",
@@ -295,16 +302,32 @@ STEAM_ID = _settings["STEAM_ID"]
 STEAM_API_KEY = _settings["STEAM_API_KEY"]
 FACEIT_API_KEY = _settings["FACEIT_API_KEY"]
 DEFAULT_DEMO_PATH = _settings.get("DEFAULT_DEMO_PATH", os.path.expanduser("~"))
-PRO_DEMO_PATH = _settings.get("PRO_DEMO_PATH", os.path.expanduser("~"))
+PRO_DEMO_PATH = _settings.get("PRO_DEMO_PATH", "")
 BRAIN_DATA_ROOT = _settings.get("BRAIN_DATA_ROOT", "")
 
 
 def _resolve_match_data_path() -> str:
-    """Resolve match_data directory: PRO_DEMO_PATH/match_data if available, else in-project."""
+    """Resolve match_data directory: PRO_DEMO_PATH/match_data if available, else in-project.
+
+    A bare home directory is refused as a shard root even when configured
+    explicitly. Shards are tens of GB of primary data; $HOME is a location a
+    path ends up at by accident (unset setting, wrong profile, fresh machine),
+    never one it is chosen as. Accepting it is what let stock settings silently
+    move the whole corpus to ~/match_data.
+    """
     pro_path = str(_settings.get("PRO_DEMO_PATH", ""))
-    if pro_path and os.path.isdir(pro_path):
-        return os.path.join(pro_path, "match_data")
-    return os.path.join(os.path.join(get_base_dir(), "backend", "storage"), "match_data")
+    in_project = os.path.join(os.path.join(get_base_dir(), "backend", "storage"), "match_data")
+    if not pro_path or not os.path.isdir(pro_path):
+        return in_project
+    if os.path.normpath(pro_path) == os.path.normpath(os.path.expanduser("~")):
+        app_logger.warning(
+            "PRO_DEMO_PATH is the home directory (%s); refusing it as a per-match "
+            "shard root. Using %s instead. Point PRO_DEMO_PATH at a real demo pool.",
+            pro_path,
+            in_project,
+        )
+        return in_project
+    return os.path.join(pro_path, "match_data")
 
 
 MATCH_DATA_PATH = _resolve_match_data_path()
@@ -468,7 +491,7 @@ def refresh_settings():
         STEAM_API_KEY = _settings.get("STEAM_API_KEY", "")
         FACEIT_API_KEY = _settings.get("FACEIT_API_KEY", "")
         DEFAULT_DEMO_PATH = _settings.get("DEFAULT_DEMO_PATH", os.path.expanduser("~"))
-        PRO_DEMO_PATH = _settings.get("PRO_DEMO_PATH", os.path.expanduser("~"))
+        PRO_DEMO_PATH = _settings.get("PRO_DEMO_PATH", "")
         CUSTOM_STORAGE_PATH = _settings.get("CUSTOM_STORAGE_PATH", "")
         LANGUAGE = _settings.get("LANGUAGE", "en")
         # CORE-01: These were missing — asymmetric with save_user_setting()

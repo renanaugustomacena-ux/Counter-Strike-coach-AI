@@ -354,6 +354,15 @@ class MatchMetadata(SQLModel, table=True):
     ingested_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class MatchDataUnavailableError(RuntimeError):
+    """Shard storage is configured but its location cannot currently be reached.
+
+    Raised instead of silently substituting an empty directory, so that an
+    unplugged drive or a path that only exists on another machine surfaces as a
+    fixable error rather than as a project that has apparently lost its data.
+    """
+
+
 class MatchDataManager:
     """
     Manager for per-match SQLite databases.
@@ -376,22 +385,42 @@ class MatchDataManager:
         """
         self.match_data_path = match_data_path
 
-        # AUDIT §8.8: a broken symlink at the target path causes
-        # `os.makedirs(..., exist_ok=True)` to raise FileExistsError because
-        # `exist_ok` only swallows the error when the existing path is a
-        # *directory*. Detect the broken-symlink case and replace it with a
-        # real directory so shutdown does not crash when an external mount
-        # disappears.
+        # AUDIT §8.8 addressed a real crash — os.makedirs(exist_ok=True) raises
+        # FileExistsError on a dangling symlink, because exist_ok only forgives
+        # an existing *directory*. The original remedy was to unlink the dead
+        # link and makedirs a fresh empty directory, which cured the crash by
+        # destroying the only record of where the shards actually live: on a
+        # second machine, or with the drive merely unplugged, the app came up
+        # with zero shards, no error, and no way back to the real location.
+        #
+        # A dangling symlink is positive evidence that storage was configured
+        # and is currently unreachable. That is a condition to report, not a
+        # cue to invent empty storage. A path that is simply absent is still
+        # the ordinary fresh-install case and is still created below.
         if os.path.islink(self.match_data_path) and not os.path.exists(self.match_data_path):
             target = os.readlink(self.match_data_path)
-            _logger.warning(
-                "match_data path is a broken symlink (%s -> %s). Removing the "
-                "dead link and creating a fresh local directory. Re-link or "
-                "remount the original target if you need that storage back.",
+            _logger.error(
+                "match_data symlink %s points at unreachable storage (%s); "
+                "leaving the link intact.",
                 self.match_data_path,
                 target,
             )
-            os.unlink(self.match_data_path)
+            raise MatchDataUnavailableError(
+                f"Per-match shard storage is not reachable.\n"
+                f"  link   : {self.match_data_path}\n"
+                f"  target : {target}\n"
+                f"\n"
+                f"The link has been left in place and nothing was deleted, moved or "
+                f"created — it is the only record of where your shards live.\n"
+                f"\n"
+                f"Resolve it by one of:\n"
+                f"  * attach or mount the drive holding {target}\n"
+                f"  * repoint the link:  ln -sfn <current/path/to/match_data> "
+                f"{self.match_data_path}\n"
+                f"  * if that storage is genuinely gone and you want to start a new "
+                f"empty shard store, remove the link deliberately:  "
+                f"rm {self.match_data_path}"
+            )
 
         # Ensure match data directory exists
         os.makedirs(self.match_data_path, exist_ok=True)
@@ -957,6 +986,54 @@ _match_data_manager: Optional[MatchDataManager] = None
 _mdm_lock = threading.Lock()
 
 
+def legacy_in_project_match_data_dir() -> str:
+    """The historical in-project shard directory, kept for stale-location detection."""
+    return os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+        "backend",
+        "storage",
+        "match_data",
+    )
+
+
+def warn_if_shards_in_legacy_location(active_path: str) -> int:
+    """Report — never relocate — shards left in the legacy in-project directory.
+
+    This used to be a "one-time migration" that called migrate_match_data()
+    inline. It was neither one-time nor safe: the trigger was a path comparison
+    rather than a persisted marker, so it re-armed in every process whose
+    config resolved MATCH_DATA_PATH differently, and it moved tens of GB of
+    primary data as a side effect of constructing a singleton. Combined with
+    PRO_DEMO_PATH defaulting to $HOME it fired inside pytest twice on
+    2026-07-26, once running the root disk out of space mid-move.
+
+    Relocation is now explicit: call migrate_match_data() yourself.
+
+    Returns the number of stale shards found (0 when there is nothing to say).
+    """
+    legacy = legacy_in_project_match_data_dir()
+    if os.path.normpath(active_path) == os.path.normpath(legacy):
+        return 0
+    try:
+        stale = [f for f in os.listdir(legacy) if f.startswith("match_") and f.endswith(".db")]
+    except OSError:
+        return 0
+    if not stale:
+        return 0
+
+    from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+    get_logger("cs2analyzer.match_data_migration").warning(
+        "%d per-match shard(s) sit in the legacy directory %s while the active shard "
+        "directory is %s. They are NOT in use and will NOT be moved automatically — "
+        "call migrate_match_data() explicitly if relocation is intended.",
+        len(stale),
+        legacy,
+        active_path,
+    )
+    return len(stale)
+
+
 def get_match_data_manager(match_data_path: Optional[str] = None) -> MatchDataManager:
     """
     Get the singleton MatchDataManager instance.
@@ -978,31 +1055,7 @@ def get_match_data_manager(match_data_path: Optional[str] = None) -> MatchDataMa
 
             match_data_path = MATCH_DATA_PATH
 
-        # One-time migration: move data from old in-project location if needed
-        _OLD_IN_PROJECT = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            "backend",
-            "storage",
-            "match_data",
-        )
-        if (
-            os.path.normpath(match_data_path) != os.path.normpath(_OLD_IN_PROJECT)
-            and os.path.isdir(_OLD_IN_PROJECT)
-            and any(
-                f.startswith("match_") and f.endswith(".db") for f in os.listdir(_OLD_IN_PROJECT)
-            )
-        ):
-            from Programma_CS2_RENAN.observability.logger_setup import get_logger
-
-            _logger = get_logger("cs2analyzer.match_data_migration")
-            _logger.info("One-time migration: %s -> %s", _OLD_IN_PROJECT, match_data_path)
-            result = migrate_match_data(_OLD_IN_PROJECT, match_data_path, logger=_logger)
-            _logger.info(
-                "Migration result: %d moved, %d skipped, %d errors",
-                result["moved"],
-                result["skipped"],
-                len(result["errors"]),
-            )
+        warn_if_shards_in_legacy_location(match_data_path)
 
         _match_data_manager = MatchDataManager(match_data_path)
 
