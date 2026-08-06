@@ -232,6 +232,9 @@ def load_user_settings() -> dict:
             "COACH_DOCK_VISIBLE": False,
             "COACH_DOCK_FLOATING": False,
             "COACH_DOCK_AREA": "right",  # "right" | "bottom"
+            # DOCK-01: saved floating geometry (base64 QByteArray); empty =
+            # never floated with a restorable geometry -> boot re-docked.
+            "COACH_DOCK_GEOMETRY": "",
             # Cluster E — LLM Coach: Ollama model selected from CoachScreen.
             # Empty string = use OLLAMA_MODEL env var or hard default.
             "LLM_COACH_MODEL": "",
