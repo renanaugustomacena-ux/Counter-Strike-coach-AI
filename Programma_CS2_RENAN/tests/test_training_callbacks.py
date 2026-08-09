@@ -197,31 +197,74 @@ class TestCallbackRegistryCloseAll:
 # ─── TensorBoardCallback ──────────────────────────────────────────────
 
 
+def _stub_nn_model():
+    """Minimal module exposing the JEPA attribute names the callback reads."""
+    import torch.nn as nn
+
+    class _Stub(nn.Module):
+        def __init__(self, d_in=8, d_out=16):
+            super().__init__()
+            self.context_encoder = nn.Linear(d_in, d_out)
+            self.target_encoder = nn.Linear(d_in, d_out)
+
+    return _Stub()
+
+
 class TestTensorBoardCallback:
-    """Test TensorBoardCallback graceful behavior when tensorboard is NOT installed."""
+    """TensorBoard availability must be visible, never silent."""
 
     def test_import_without_tensorboard(self):
-        """Module should import even without tensorboard package."""
+        """Module should import regardless of the tensorboard package."""
         from Programma_CS2_RENAN.backend.nn.tensorboard_callback import TensorBoardCallback
 
         assert TensorBoardCallback is not None
 
-    def test_noop_when_tensorboard_missing(self):
-        """All hooks should be no-ops when tensorboard is not installed."""
-        from Programma_CS2_RENAN.backend.nn.tensorboard_callback import (
-            _TB_AVAILABLE,
-            TensorBoardCallback,
-        )
+    def test_writer_created_when_available(self):
+        """With tensorboard installed, a writer must actually exist."""
+        from Programma_CS2_RENAN.backend.nn.tensorboard_callback import TensorBoardCallback
 
         cb = TensorBoardCallback(log_dir=tempfile.mkdtemp(prefix="test_tb_"))
-        # These should not raise even without tensorboard
-        if not _TB_AVAILABLE:
+        assert cb.writer is not None
+        cb.close()
+
+    def test_warns_once_when_unavailable(self, monkeypatch, caplog):
+        """A silent no-op is the bug: absence must be announced exactly once."""
+        import Programma_CS2_RENAN.backend.nn.tensorboard_callback as tbmod
+
+        monkeypatch.setattr(tbmod, "_TB_AVAILABLE", False)
+        cb = tbmod.TensorBoardCallback(log_dir=tempfile.mkdtemp(prefix="test_tb_"))
+
+        with caplog.at_level("WARNING"):
             cb.on_train_start(model=None, config={})
-            cb.on_epoch_start(epoch=0)
-            cb.on_batch_end(batch_idx=0, loss=0.5, outputs={})
-            cb.on_epoch_end(epoch=0, train_loss=0.1, val_loss=0.2, model=None)
-            cb.on_train_end(model=None, final_metrics={"loss": 0.1})
-            cb.close()
+            cb.on_train_start(model=None, config={})
+
+        hits = [r for r in caplog.records if "TensorBoard unavailable" in r.getMessage()]
+        assert len(hits) == 1, "must warn exactly once per run"
+
+    def test_strict_mode_raises_when_unavailable(self, monkeypatch):
+        """CS2_TB_STRICT=1 turns a degraded run into a hard failure."""
+        import pytest
+
+        import Programma_CS2_RENAN.backend.nn.tensorboard_callback as tbmod
+
+        monkeypatch.setattr(tbmod, "_TB_AVAILABLE", False)
+        monkeypatch.setenv("CS2_TB_STRICT", "1")
+
+        with pytest.raises(RuntimeError, match="CS2_TB_STRICT"):
+            tbmod.TensorBoardCallback(log_dir=tempfile.mkdtemp(prefix="test_tb_"))
+
+    def test_hooks_do_not_raise_when_unavailable(self, monkeypatch):
+        """Default behaviour stays degrade-not-crash."""
+        import Programma_CS2_RENAN.backend.nn.tensorboard_callback as tbmod
+
+        monkeypatch.setattr(tbmod, "_TB_AVAILABLE", False)
+        cb = tbmod.TensorBoardCallback(log_dir=tempfile.mkdtemp(prefix="test_tb_"))
+        cb.on_train_start(model=None, config={})
+        cb.on_epoch_start(epoch=0)
+        cb.on_batch_end(batch_idx=0, loss=0.5, outputs={})
+        cb.on_epoch_end(epoch=0, train_loss=0.1, val_loss=0.2, model=None)
+        cb.on_train_end(model=None, final_metrics={"loss": 0.1})
+        cb.close()
 
     def test_active_flag_matches_availability(self):
         """_active should match _TB_AVAILABLE."""
@@ -232,14 +275,21 @@ class TestTensorBoardCallback:
 
         cb = TensorBoardCallback(log_dir=tempfile.mkdtemp(prefix="test_tb_"))
         assert cb._active == _TB_AVAILABLE
+        cb.close()
 
     def test_callback_integrates_with_registry(self):
-        """TensorBoardCallback should work in CallbackRegistry without errors."""
+        """TensorBoardCallback should work in CallbackRegistry without errors.
+
+        Uses a real module rather than None: now that tensorboard is installed
+        the histogram path actually executes, and CallbackRegistry.fire would
+        otherwise swallow the resulting AttributeError.
+        """
         from Programma_CS2_RENAN.backend.nn.tensorboard_callback import TensorBoardCallback
 
         cb = TensorBoardCallback(log_dir=tempfile.mkdtemp(prefix="test_tb_reg_"))
+        model = _stub_nn_model()
         reg = CallbackRegistry([cb])
-        reg.fire("on_train_start", model=None, config={})
+        reg.fire("on_train_start", model=model, config={})
         reg.fire("on_epoch_start", epoch=0)
         reg.fire(
             "on_batch_end",
@@ -252,6 +302,6 @@ class TestTensorBoardCallback:
             epoch=0,
             train_loss=0.1,
             val_loss=0.2,
-            model=None,
+            model=model,
         )
         reg.close_all()

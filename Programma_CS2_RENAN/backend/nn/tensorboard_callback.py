@@ -59,6 +59,8 @@ class TensorBoardCallback(TrainingCallback):
         self._model_type = model_type
         self._epoch = 0
         self._global_step = 0
+        self._warned_unavailable = False
+        self._probe_batch: Optional[Any] = None
         self.writer: Optional[Any] = None
 
         # Stage-4 relocation: default log_dir under the package's RUNS_DIR so
@@ -69,6 +71,12 @@ class TensorBoardCallback(TrainingCallback):
 
             log_dir = os.path.join(RUNS_DIR, "coach_training")
 
+        if not self._active and os.environ.get("CS2_TB_STRICT") == "1":
+            raise RuntimeError(
+                "CS2_TB_STRICT=1 and tensorboard is not installed. "
+                "Install it with: pip install tensorboard==2.21.0"
+            )
+
         if self._active:
             self.writer = SummaryWriter(log_dir)
             logger.info("TensorBoard writer initialized: %s", log_dir)
@@ -77,6 +85,13 @@ class TensorBoardCallback(TrainingCallback):
 
     def on_train_start(self, model, config: Dict[str, Any]) -> None:
         if not self._active or self.writer is None:
+            if not self._warned_unavailable:
+                self._warned_unavailable = True
+                logger.warning(
+                    "TensorBoard unavailable — no metrics will be recorded for "
+                    "this run. Install tensorboard==2.21.0, or set "
+                    "CS2_TB_STRICT=1 to fail instead of degrading."
+                )
             return
         self._model_type = config.get("model_type", self._model_type)
         self._create_custom_layout()
