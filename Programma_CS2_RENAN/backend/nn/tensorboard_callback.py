@@ -23,6 +23,32 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.nn.tensorboard")
 
+
+def resolve_device_tag() -> str:
+    """Name the accelerator training actually ran on, not the one requested."""
+    if not torch.cuda.is_available():
+        return "cpu"
+    if getattr(torch.version, "hip", None):
+        return "rocm"
+    if getattr(torch.version, "cuda", None):
+        return "cuda"
+    return "cpu"
+
+
+def build_run_dir(model_type: str) -> str:
+    """Return RUNS_DIR/<model_type>/<UTC timestamp>-<device tag>.
+
+    Scoping per run keeps experiments from piling into one directory, and the
+    device tag stops a Windows CPU smoke run from being mistaken for a real
+    Linux/ROCm run in the dashboard.
+    """
+    from datetime import datetime, timezone
+
+    from Programma_CS2_RENAN.core.config import RUNS_DIR
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return os.path.join(RUNS_DIR, model_type, f"{stamp}-{resolve_device_tag()}")
+
 try:
     from torch.utils.tensorboard import SummaryWriter
 
