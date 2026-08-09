@@ -35,6 +35,31 @@ def resolve_device_tag() -> str:
     return "cpu"
 
 
+def _extract_probe_context(batch: Any) -> Optional["torch.Tensor"]:
+    """Best-effort context tensor from a heterogeneous probe batch.
+
+    The two training paths hand over different shapes: jepa_train's dataloader
+    yields dicts with a "context" key, while TrainingOrchestrator yields raw
+    window tensors. Returns None when nothing tensor-shaped is found.
+    """
+    if isinstance(batch, torch.Tensor):
+        return batch
+    if isinstance(batch, dict):
+        for key in ("context", "x", "input"):
+            value = batch.get(key)
+            if isinstance(value, torch.Tensor):
+                return value
+        for value in batch.values():
+            if isinstance(value, torch.Tensor):
+                return value
+        return None
+    if isinstance(batch, (list, tuple)):
+        for value in batch:
+            if isinstance(value, torch.Tensor):
+                return value
+    return None
+
+
 def build_run_dir(model_type: str) -> str:
     """Return RUNS_DIR/<model_type>/<UTC timestamp>-<device tag>.
 
@@ -228,7 +253,7 @@ class TensorBoardCallback(TrainingCallback):
         if encoder is None:
             return
 
-        context = self._probe_batch.get("context")
+        context = _extract_probe_context(self._probe_batch)
         if context is None:
             return
 
@@ -237,12 +262,23 @@ class TensorBoardCallback(TrainingCallback):
             compute_ema_drift,
         )
 
-        with torch.no_grad():
-            try:
-                device = next(model.parameters()).device
-            except StopIteration:
-                device = torch.device("cpu")
-            embeddings = encoder(context.to(device))
+        try:
+            with torch.no_grad():
+                try:
+                    device = next(model.parameters()).device
+                except StopIteration:
+                    device = torch.device("cpu")
+                embeddings = encoder(context.to(device))
+        except Exception as exc:
+            # A probe the encoder cannot consume is a wiring problem, not a
+            # training problem. Say so once, then stop retrying every epoch.
+            self._probe_batch = None
+            logger.warning(
+                "Probe batch is not consumable by context_encoder (%s) — "
+                "collapse metrics disabled for this run.",
+                exc,
+            )
+            return
 
         for name, value in compute_collapse_metrics(embeddings).items():
             self.writer.add_scalar(f"embed/{name}", value, epoch)

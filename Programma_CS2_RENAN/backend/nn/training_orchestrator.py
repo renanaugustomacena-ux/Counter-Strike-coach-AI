@@ -502,6 +502,11 @@ class TrainingOrchestrator:
                 "max_epochs": self.max_epochs,
                 "batch_size": self.batch_size,
                 "lr": self.learning_rate,
+                # Fixed probe for representation-collapse telemetry: the same
+                # batch every epoch, so embed/* trends reflect the model
+                # changing rather than the input changing. Observation only —
+                # it is never trained on.
+                "probe_batch": preflight_train[0],
             },
         )
 

@@ -26,9 +26,12 @@ def _build_callbacks(args) -> CallbackRegistry:
     if not args.no_tensorboard:
         from Programma_CS2_RENAN.backend.nn.tensorboard_callback import TensorBoardCallback
 
-        tb = TensorBoardCallback(log_dir=args.tb_logdir)
+        from Programma_CS2_RENAN.backend.nn.tensorboard_callback import build_run_dir
+
+        log_dir = args.tb_logdir or build_run_dir(getattr(args, "model_type", None) or "coach")
+        tb = TensorBoardCallback(log_dir=log_dir)
         registry.add(tb)
-        app_logger.info("TensorBoard callback registered (logdir: %s)", args.tb_logdir)
+        app_logger.info("TensorBoard callback registered (logdir: %s)", log_dir)
         # MaturityObservatory shares the SummaryWriter so its scalars land in
         # the same TensorBoard logdir; falls back to None when TB is no-op.
         tb_writer = getattr(tb, "writer", None)
@@ -46,6 +49,16 @@ def _build_callbacks(args) -> CallbackRegistry:
     observatory = MaturityObservatory(tb_writer=tb_writer)
     registry.add(observatory)
     app_logger.info("MaturityObservatory callback registered")
+
+    # Layer 4 of the Coach Introspection Observatory. It was written but never
+    # registered anywhere, and it self-disables when tb_writer is None — so it
+    # has never run. Sharing the writer (rather than opening its own) is what
+    # keeps a run to a single event file.
+    if tb_writer is not None:
+        from Programma_CS2_RENAN.backend.nn.embedding_projector import EmbeddingProjector
+
+        registry.add(EmbeddingProjector(tb_writer=tb_writer, interval=5))
+        app_logger.info("EmbeddingProjector callback registered (interval=5)")
 
     return registry
 
@@ -75,7 +88,12 @@ def _run_eval_baseline(stage: str) -> None:
         app_logger.warning("B6.1: %s-training eval failed to run: %s", stage, e, exc_info=True)
 
 
-def main():
+def _build_parser() -> argparse.ArgumentParser:
+    """Construct the CLI parser.
+
+    Split out of main() so the argument defaults are testable without
+    executing a training run.
+    """
     parser = argparse.ArgumentParser(
         description="Macena CS2 Analyzer - Training Pipeline Entry Point"
     )
@@ -103,8 +121,13 @@ def main():
     parser.add_argument(
         "--tb-logdir",
         type=str,
-        default=RUNS_DIR,
-        help=f"TensorBoard log directory (default: {RUNS_DIR})",
+        default=None,
+        help=(
+            "TensorBoard log directory. Default None means a run-scoped "
+            f"directory under {RUNS_DIR} (<model_type>/<UTC stamp>-<device>). "
+            "Passing an explicit path disables run scoping and writes there "
+            "directly, which piles every run into one directory."
+        ),
     )
     parser.add_argument(
         "--no-tensorboard",
@@ -151,6 +174,11 @@ def main():
         ),
     )
 
+    return parser
+
+
+def main():
+    parser = _build_parser()
     args = parser.parse_args()
 
     # DET-01: deterministic training requires set_global_seed() before any RNG draw.
