@@ -10,6 +10,42 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-09-tensorboard-jepa-structure-design.md`
 
+## Status: COMPLETE (2026-08-09, branch `feat/tensorboard-jepa-structure`)
+
+All five tasks implemented, tested, and pushed. Three deviations from the plan
+as written, all discovered during execution:
+
+1. **Scope extended to the production path.** The plan only wired
+   `jepa_train.train_jepa_pretrain`, which is a *legacy* entry point.
+   Production training runs `run_full_training_cycle.py` →
+   `TrainingOrchestrator`, which builds its own `train_config` (no
+   `probe_batch`), defaulted `--tb-logdir` to `RUNS_DIR` (defeating run
+   scoping), and never registered `EmbeddingProjector`. As written the plan
+   would have left collapse metrics absent from exactly the runs that matter.
+   Task 5 now covers both paths.
+
+2. **The fragmentation hypothesis was wrong.** `test_shared_writer_produces_
+   single_event_file` passed *before* the projector was wired in, so the
+   historical 8-events-per-run came from repeated `TensorBoardCallback`
+   construction elsewhere — not from the projector opening a second writer.
+   Single-writer ownership is still correct; the test now guards the invariant.
+
+3. **CI needed a separate fix.** CI installs `requirements-ci.txt` → which
+   pulls `requirements.txt` (the range file), *not* the lock files. Pinning
+   tensorboard only in the locks would have left `_TB_AVAILABLE` False on both
+   CI legs, so the new `assert cb.writer is not None` would have failed there
+   while passing locally.
+
+Also noted: `EmbeddingCollapseDetector` (`backend/nn/early_stopping.py`, P9-02)
+already existed. It is a control-flow gate that raises to abort training from
+raw embedding variance; `collapse_metrics` is telemetry on L2-normalized
+embeddings. They are complementary and deliberately not merged — cross-
+referenced in both docstrings so a future reader does not "deduplicate" them.
+
+The probe batch is passed at `fire()` time, not stored in `train_config`:
+`train_config` is persisted into checkpoints via `_jepa_pretrain_finalize`, so
+tensors in it would bloat every saved `.pt`.
+
 ## Global Constraints
 
 - **Never run heavy training on CPU.** Windows is CPU-only here (`torch 2.13.0+cpu`); ROCm/PyTorch is Linux-only. All tests in this plan are cheap CPU unit tests — that is fine. Do not start a training run to validate anything.
