@@ -13,6 +13,15 @@ effective rank of the embedding matrix's singular values. Note it is computed
 on the *uncentered* matrix deliberately — centering first would subtract the
 dominant mean direction that collapse produces, leaving isotropic residual
 noise that scores as high rank, i.e. reporting "healthy" during collapse.
+
+Relationship to EmbeddingCollapseDetector (backend/nn/early_stopping.py):
+that class is a *control-flow gate* — it consumes one scalar (epoch-mean raw
+embedding variance) and raises EmbeddingCollapseError to abort training after
+`patience` collapsed epochs (P9-02). This module is *telemetry*: it computes
+several complementary indicators for observation and never alters control
+flow. They are intentionally separate. Note also that `std_mean` here is
+measured on L2-normalized embeddings, so it is not the same quantity as the
+raw variance that detector expects — do not feed one to the other.
 """
 
 from typing import Dict, Iterable
