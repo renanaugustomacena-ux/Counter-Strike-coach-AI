@@ -94,6 +94,12 @@ class TensorBoardCallback(TrainingCallback):
                 )
             return
         self._model_type = config.get("model_type", self._model_type)
+        self._probe_batch = config.get("probe_batch")
+        if self._probe_batch is None:
+            logger.warning(
+                "No probe_batch supplied — collapse metrics (embed/*) will not "
+                "be logged for this run."
+            )
         self._create_custom_layout()
 
     def on_epoch_start(self, epoch: int) -> None:
@@ -157,6 +163,9 @@ class TensorBoardCallback(TrainingCallback):
                 for i, pg in enumerate(param_groups):
                     self.writer.add_scalar(f"lr/group_{i}", pg["lr"], epoch)
 
+        # ── Representation health ──
+        self._log_collapse_metrics(model, epoch)
+
         # ── Histograms ──
         self._log_parameter_histograms(model, epoch)
         self._log_belief_histogram(model, epoch)
@@ -179,6 +188,46 @@ class TensorBoardCallback(TrainingCallback):
             logger.info("TensorBoard writer closed")
 
     # ── Histogram Helpers ────────────────────────────────────────────
+
+    def _log_collapse_metrics(self, model, epoch: int) -> None:
+        """Log representation-collapse indicators from the fixed probe batch.
+
+        Silent no-ops here are deliberate and narrow: a model without a
+        context_encoder (e.g. RAP) simply has nothing to measure.
+        """
+        if self.writer is None or self._probe_batch is None:
+            return
+
+        encoder = getattr(model, "context_encoder", None)
+        if encoder is None:
+            return
+
+        context = self._probe_batch.get("context")
+        if context is None:
+            return
+
+        from Programma_CS2_RENAN.backend.nn.collapse_metrics import (
+            compute_collapse_metrics,
+            compute_ema_drift,
+        )
+
+        with torch.no_grad():
+            try:
+                device = next(model.parameters()).device
+            except StopIteration:
+                device = torch.device("cpu")
+            embeddings = encoder(context.to(device))
+
+        for name, value in compute_collapse_metrics(embeddings).items():
+            self.writer.add_scalar(f"embed/{name}", value, epoch)
+
+        target = getattr(model, "target_encoder", None)
+        if target is not None:
+            self.writer.add_scalar(
+                "embed/ema_drift",
+                compute_ema_drift(encoder.parameters(), target.parameters()),
+                epoch,
+            )
 
     def _log_parameter_histograms(self, model, epoch: int) -> None:
         """Log parameter and gradient distributions."""
