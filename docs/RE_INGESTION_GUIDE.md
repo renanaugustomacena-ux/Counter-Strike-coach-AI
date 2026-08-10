@@ -5,7 +5,7 @@ to populate all features correctly. This guide covers the complete pipeline.
 
 ## Prerequisites
 
-- Python 3.10+ with the project venv activated (`source ~/.venvs/cs2analyzer/bin/activate`)
+- Python 3.10+ with the project venv activated (`source .venv/bin/activate`)
 - Pro .dem files in `DEMO_PRO_PLAYERS/` directory (97 files as of 2026-04-11; 564 per-match DBs already parsed)
 - ~25 GB free disk space (19.5 GB monolith DB + per-match DBs)
 
@@ -32,10 +32,12 @@ This re-parses every .dem file with the corrected field mappings (ducking, flash
 has_helmet, has_defuser) and rebuilds the monolith playertickstate table.
 
 ```bash
-# Set the DEMO_PRO_PLAYERS path in the script if different on this machine
-# Edit tools/ingest_pro_demos.py line 17: DEMO_BASE = Path("/your/path/to/DEMO_PRO_PLAYERS")
+# The script reads the pro demo folder from PRO_DEMO_PATH in
+# Programma_CS2_RENAN/user_settings.json (set it via the app's
+# Settings > Paths & Data, or edit the JSON directly).
 
 python tools/ingest_pro_demos.py --full
+# (omit --full for incremental; --retrain-only skips ingestion and just retrains)
 ```
 
 **Expected output:** playertickstate rows across all demos, playermatchstats rows (scales with demo count).
@@ -102,7 +104,8 @@ print(f'Map-specific entries created: {count}')
 
 ```bash
 python tools/headless_validator.py
-# Must show: VERDICT: PASS (308/313 passed, 5 warnings for optional deps is OK)
+# Must end with: VERDICT: PASS
+# (the RESULT line reports passed/total; warnings for optional deps are OK)
 ```
 
 ### 9. JEPA Pre-training
@@ -111,8 +114,8 @@ python tools/headless_validator.py
 python -m Programma_CS2_RENAN.backend.nn.jepa_train --mode pretrain
 ```
 
-**Expected:** 50 epochs on pro player sequences (500 ticks each, 25-dim vectors). Sequence count scales with demo corpus.
-Model saved to `models/jepa_model.pt`.
+**Expected:** 50 epochs on pro player sequences (up to 500 ticks each, 25-dim vectors). Sequence count scales with demo corpus.
+Model saved to `jepa_model.pt` in the configured models directory (default `Programma_CS2_RENAN/models/`, or `<Brain Data Root>/models/` if one is set; override with `--model-path`).
 
 ### 10. (Optional) JEPA Fine-tuning on user demos
 

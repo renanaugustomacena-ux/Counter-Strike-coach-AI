@@ -51,6 +51,6 @@ See `rubric.md` for full descriptions. Each 0-3:
 4. **Pro grounding** — references real pros?
 5. **Actionability** — tells you what to do?
 
-## Ship Criterion (from COACH_QUALITY_ROADMAP)
+## Ship Criterion (project coach-quality roadmap)
 
 `cs2coach` must beat vanilla Llama 3.1 8B by >25% on total score AND beat GPT-4 by >5% on CS2-currentness and pro-grounding dimensions.

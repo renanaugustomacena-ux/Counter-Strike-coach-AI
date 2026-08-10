@@ -24,20 +24,29 @@ excludes:               # glob patterns to skip
 kind: line_regex        # one of: line_regex | text_regex | yaml_walker | file_compare | ast_walker
 config:                 # kind-specific block (see below)
   ...
+mapping:                # optional cross-reference to standards (CWE / ASVS / SSDF IDs)
+  cwe: ['CWE-1327']
+  ssdf: ['PO.5']
 ```
 
 ## Kinds
 
 ### `line_regex`
 
-Scans each line of every file matching `applies_to` against `config.pattern`. Reports any match
-unless suppressed by an inline `# noqa: <id>` comment on the same line (or the line above).
+Scans each line of every file matching `applies_to` against each entry in `config.patterns`.
+Reports any match unless the line contains one of the rule's configured `inline_waivers` strings
+(e.g. `# noqa: POL-NET-01` or a `# SEC: <reason>` tag).
 
 ```yaml
 kind: line_regex
 config:
-  pattern: '\bsubprocess\b\s*\([^)]*shell\s*=\s*True'
-  inline_waiver: '# SEC: justified'
+  patterns:
+    - id: shell_true
+      pattern: '\bsubprocess\b\s*\([^)]*shell\s*=\s*True'
+      message: 'shell=True is forbidden; use an argv list.'
+  inline_waivers:
+    - '# SEC: justified'
+    - '# noqa: POL-CODE-01'
 ```
 
 ### `text_regex`
@@ -90,8 +99,7 @@ config:
 - **Strict (block)**: `python tools/policy_runner.py --strict` — exits 1 on any unwaived violation.
 - **Single rule**: `python tools/policy_runner.py --rule POL-DEPS-01` — runs only the specified rule.
 
-## Audit-log integration
+## Waivers
 
-Every violation observed (regardless of strict / warn) emits an audit-log event
-`policy.violation.observed` with the file path, line, rule ID, and severity. Waiver expiry emits
-`policy.waiver.expired`.
+Repo-wide exceptions live in `SECURITY/waivers.yaml`; every entry is time-bound (`expires:`) and
+the runner reports expired waivers. Per-line exceptions use the rule's `inline_waivers` strings.

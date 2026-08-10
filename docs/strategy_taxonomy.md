@@ -1,6 +1,6 @@
 # Strategy Taxonomy — `coachingexperience.strategy_label`
 
-GAP-09 (plan §4 Phase D, AUDIT §10). Closed taxonomy of tactical strategies
+GAP-09 (Academic AI Infrastructure Audit, plan §4 Phase D). Closed taxonomy of tactical strategies
 used to label `CoachingExperience` rows for retrieval-by-playbook coaching.
 
 As of 2026-05-07, **61,894 rows** carry labels across **66 mined
@@ -21,9 +21,10 @@ retrieve_pro_examples).
 ## Label format
 
 `{family}.{strategy}` — lowercase, dot-separated. Two-level only. The
-family is one of the five fixed buckets below. Adding a new family is a
-schema change (the RAG retriever and the coach LLM prompt both inspect
-families); adding a new strategy under an existing family is just a label.
+family is one of the five fixed buckets below. Family filtering works by
+`strategy_label` prefix match in the ExperienceBank, so adding a new
+family means updating every caller that passes a `strategy_family`
+string; adding a new strategy under an existing family is just a label.
 
 ## Families
 
@@ -261,7 +262,8 @@ axes" in player feedback.
 ## Mining sources
 
 ### Active: `tools/mine_shard_strategies.py` (Path B — shard-direct)
-Reads 270 `match_*.db` shards at `/DEMO_PRO_PLAYERS/match_data/`.
+Reads the `match_*.db` shards under `<PRO_DEMO_PATH>/match_data/`
+(path resolved via `get_pro_demo_base()`; 270 shards at the time).
 Heuristic classifier on tick data + events. Last run 2026-05-07:
 258 shards, 5,025 rounds, 62,184 labels, 66 distinct strategies.
 
@@ -270,9 +272,10 @@ from existing shard columns (`matchtickstate` + `match_event_state`)
 by extending `classify_round()` with new heuristics. Key areas:
 economy sub-types (weapon detection), playbook map-outcome combinations,
 individual round-level stats (double-kill, clutch, post-plant), and
-setpiece timing patterns (timeplay, delayed execute). See
-`docs/research/strategy_label_research_2026-05-07.md` for full
-detectability assessment.
+setpiece timing patterns (timeplay, delayed execute). A full
+detectability assessment was written up as
+`strategy_label_research_2026-05-07.md` (a research note that is not
+tracked in the repo — `docs/research/` is git-ignored except `INDEX.md`).
 
 ### Future: `tools/mine_coaching_experience.py` (Path A — monolith)
 Reads from `RoundStats` in the monolith DB. Currently only 5 pattern
@@ -290,7 +293,8 @@ taxonomy marked "needs positional" are targets for this classifier.
   by `strategy_label.startswith("economy.")` on all 4 retrieval paths
 - `ExperienceBank.retrieve_pro_examples(strategy_family="setpiece")`
   same filtering on FAISS and brute-force paths
-- Coach prompt includes strategy_label when retrieved experiences share one
+- (Planned) surfacing strategy_label in the coach LLM prompt when
+  retrieved experiences share one — not yet wired into the coaching path
 
 ## Adding a new label
 
@@ -299,8 +303,8 @@ The column accepts any string; the index supports filtering on it.
 
 Adding a new family: requires
 - a new entry in the table above with explicit description
-- a code change in the retriever (intent → family mapping)
-- a coach-prompt template update referencing the family
+- updating the callers that pass `strategy_family` strings to
+  `ExperienceBank.retrieve_similar` / `retrieve_pro_examples`
 
 ## Cross-references
 

@@ -32,7 +32,7 @@ New .dem file detected (on_created / on_moved)
         │       │       │
         │       │       └── Enqueue as IngestionTask in database
         │       │
-        │       └── Still changing? ──> Re-check (max 120 attempts / ~30s)
+        │       └── Still changing? ──> Re-check (max 120 attempts)
         │
         └── Validate minimum size (MIN_DEMO_SIZE from demo_format_adapter.py)
 ```
@@ -99,6 +99,6 @@ Migrates external statistical CSV files into SQLModel database tables for coachi
 
 - `watcher.py` requires `watchdog` package (`pip install watchdog`)
 - `ResourceManager` is a static utility class — no instantiation needed
-- `CSVMigrator` extends `DatabaseManager` for session access
+- `CSVMigrator` takes a `DatabaseManager` in its constructor for session access
 - The `HP_MODE` env var is for development/benchmarking only — not for production use
 - File stability checking uses `os.path.getsize()` polling, not filesystem locks

@@ -11,7 +11,7 @@
 RAP (Retrieval-Augmented Pedagogical) Coach is the high-fidelity neural coaching model
 within the Macena CS2 Analyzer. It implements a 7-layer architecture that perceives game
 state through CNN streams, maintains temporal memory via Liquid Time-Constant (LTC)
-neurons, makes decisions through a Mixture-of-Experts strategy layer, and generates
+neurons, makes decisions through a top-2 sparse Mixture-of-Experts strategy layer, and generates
 human-readable coaching feedback calibrated to the player's skill level.
 
 The model consumes the canonical 25-dimensional feature vector (`METADATA_DIM=25`)
@@ -73,13 +73,14 @@ pedagogical responsibility. The ASCII diagram below shows the full data flow:
             +---------v-----------+
             |  LTC (Liquid Time-  |   AutoNCP wiring
             |  Constant) neurons  |   ncp_units=512
-            |  hidden_dim=256     |   seed=42
+            |  output 154 -> 256  |   seed=42
+            |  (ltc_projection)   |
             +---------+-----------+
                       |
             +---------v-----------+
-            | Hopfield Associative|   4 attention heads
-            | Memory (512 slots)  |   NN-MEM-01: bypassed
-            | + Residual Addition |   until >=2 fwd passes
+            | HopfieldLayer       |   4 attention heads
+            | (32 prototypes)     |   NN-MEM-01: bypassed
+            | + Residual Addition |   until 1st optim step
             +---------+-----------+
                       |
                combined_state [B, T, 256]
@@ -95,9 +96,9 @@ pedagogical responsibility. The ASCII diagram below shows the full data flow:
   LAYER 3: STRATEGY (RAPStrategy)
                       |
             +---------v-----------+
-            | Mixture of Experts  |   4 experts
-            | + Superposition     |   context = metadata[:,-1,:]
-            | + Context Gate      |   L1 sparsity regularization
+            | Mixture of Experts  |   4 experts, top-2 routing
+            | + Superposition     |   context = metadata+belief
+            | (FiLM) + Gate       |   (89-dim); entropy sparsity
             +---------+-----------+
                       |
                advice_probs [B, OUTPUT_DIM=10]
@@ -159,7 +160,7 @@ pedagogical responsibility. The ASCII diagram below shows the full data flow:
 ## Key Constants
 
 > Line anchors below point to the canonical implementation under
-> `backend/nn/experimental/rap_coach/` -- the files in this package are 4-5 line
+> `backend/nn/experimental/rap_coach/` -- the files in this package are short
 > re-export shims.
 
 | Constant | Value | Source |
@@ -168,18 +169,21 @@ pedagogical responsibility. The ASCII diagram below shows the full data flow:
 | `perception_dim` | 128 | `experimental/rap_coach/model.py:42` (64 + 32 + 32) |
 | `ncp_units` | 512 | `experimental/rap_coach/memory.py:52` (hidden_dim x 2) |
 | `belief_dim` | 64 | `experimental/rap_coach/model.py:61` |
-| `OUTPUT_DIM` | 10 | `nn/config.py:162` |
-| `METADATA_DIM` | 25 | `vectorizer.py:32` |
-| `RAP_POSITION_SCALE` | 500.0 | `nn/config.py:194` |
+| strategy `context_dim` | 89 (25 metadata + 64 belief) | `experimental/rap_coach/model.py:62` |
+| `OUTPUT_DIM` | 10 | `nn/config.py:164` |
+| `METADATA_DIM` | 25 | `vectorizer.py:34` |
+| `RAP_POSITION_SCALE` | 500.0 | `nn/config.py:196` |
 | `num_experts` | 4 | `experimental/rap_coach/strategy.py:32` |
-| `hopfield_heads` | 4 | `experimental/rap_coach/memory.py:92` |
-| `Z_AXIS_PENALTY_WEIGHT` | 2.0 | `experimental/rap_coach/trainer.py:27` |
+| `TOP_K` (experts routed) | 2 | `experimental/rap_coach/strategy.py:30` |
+| `hopfield_heads` | 4 | `experimental/rap_coach/memory.py:118` |
+| hopfield prototypes (`quantity`) | 32 | `experimental/rap_coach/memory.py:119` |
+| `Z_AXIS_PENALTY_WEIGHT` | 2.0 | `experimental/rap_coach/trainer.py:28` |
 
 ## Critical Invariants
 
 | ID | Rule | Consequence if Violated |
 |----|------|------------------------|
-| **NN-MEM-01** | Hopfield memory is bypassed until >=2 training forward passes have occurred. Activation also triggers on checkpoint load. | Random prototypes inject noise instead of signal into combined_state, corrupting early training. |
+| **NN-MEM-01** | Hopfield memory is bypassed until the trainer signals the first real optimizer step via `notify_optimizer_step()`. Checkpoint load activates it only when the checkpoint actually carries Hopfield weights. | Random prototypes inject noise instead of signal into combined_state, corrupting early training. |
 | **NN-RM-01** | `skill_vec` must be shape `[B, 10]`. Mismatched shapes are logged and ignored. | Silent garbage in the pedagogy adapter biases value estimates. |
 | **NN-RM-03** | `gate_weights` must be passed explicitly to `compute_sparsity_loss()` (thread-safety, F3-07). | Race condition on cached state in multi-threaded inference. |
 | **P-X-02** | Input shape assertions enforce `metadata.shape[-1] == METADATA_DIM`. | Cryptic LSTM/CNN dimension errors deep in the forward pass. |
@@ -218,6 +222,7 @@ available via `use_lite_memory=True` in `RAPCoachModel.__init__()`.
   loading in `load_nn()` detects architecture mismatches via `StaleCheckpointError`.
 - The RNG state for AutoNCP wiring is explicitly saved and restored (`seed=42`) to ensure
   deterministic, checkpoint-portable network topology (NN-45 + NN-MEM-02).
-- Trainer uses 4-component weighted loss: strategy (1.0), value (0.5), sparsity (1.0),
-  position (1.0). Z-axis position errors are penalized at 2x weight (NN-TR-02b).
+- Trainer uses 4-component weighted loss: strategy (1.0), value (0.5), sparsity (1.0,
+  entropy-based on gate probabilities, RAP-AUDIT-04), position (1.0). Z-axis position
+  errors are penalized at 2x weight (NN-TR-02b).
 - Communication layer suppresses advice when model confidence is below 0.7 threshold.

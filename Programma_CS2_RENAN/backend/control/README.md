@@ -67,7 +67,7 @@ The `Console` manages three daemon types:
 ### ServiceSupervisor (Hunter)
 
 - Spawns Hunter as a subprocess with `PYTHONPATH` setup
-- Auto-restart: max 3 retries with exponential backoff
+- Auto-restart: max 3 retries with a fixed 5s restart delay
 - Retry reset window: 3600s (resets counter if no crash in 1 hour)
 - Monitor thread watches subprocess output with 3600s timeout
 - Cancels pending restart timers on stop (prevents duplicate spawns)

@@ -11,23 +11,23 @@
 The coaching package is the intelligence layer that transforms raw analysis data into
 actionable player feedback. It implements a **four-mode coaching pipeline** where each
 mode offers a different trade-off between knowledge-driven advice and neural-network
-predictions. The default mode is **COPER** (Contextual Observation Pattern Experience
-Retrieval), which combines an Experience Bank, RAG knowledge retrieval, and professional
+predictions. The default mode is **COPER** ("Context Optimized with Prompt, Experience,
+and Replay"), which combines an Experience Bank, RAG knowledge retrieval, and professional
 player reference data to produce coaching output grounded in real match evidence.
 
 All coaching modes are consumed by a single entry point --
 `backend/services/coaching_service.py` -- which selects the active mode based on the
-feature flags `USE_COPER_COACHING`, `USE_HYBRID_COACHING`, `USE_RAG_COACHING`, and
-`USE_JEPA_MODEL` / `USE_RAP_MODEL` in `core/config.py`.
+feature flags `USE_COPER_COACHING`, `USE_HYBRID_COACHING`, and `USE_RAG_COACHING`
+(the separate `USE_JEPA_MODEL` flag gates the JEPA insight adapter, not mode selection).
 
 ## The Four Coaching Modes
 
 | # | Mode | Flag | Description |
 |---|------|------|-------------|
-| 1 | **COPER** | `USE_COPER_COACHING=True` (default) | Experience Bank semantic retrieval + RAG knowledge + Pro References. No ML model required. |
-| 2 | **Hybrid** | `USE_HYBRID_COACHING=True` | Neural network predictions synthesized with RAG context for blended output. |
-| 3 | **RAG** | `USE_RAG_COACHING=True` | Pure knowledge retrieval from indexed pro demo patterns. No ML inference. |
-| 4 | **Neural** | `USE_JEPA_MODEL=True` or `USE_RAP_MODEL=True` | Pure ML predictions without knowledge augmentation. Requires a trained model checkpoint. |
+| 1 | **COPER** | `USE_COPER_COACHING=True` (default) | Experience Bank semantic retrieval + RAG knowledge + Pro References. Requires map name + tick data. |
+| 2 | **Hybrid** | `USE_HYBRID_COACHING=True` (default False) | Neural network predictions synthesized with RAG context for blended output. Requires player stats. |
+| 3 | **Traditional + RAG** | `USE_RAG_COACHING=True` (default False) | Correction engine enhanced with tactical knowledge retrieval. No ML inference. |
+| 4 | **Traditional** | _(none — always available)_ | Pure deviation-based correction engine. Zero external dependencies; ultimate fallback. |
 
 ### Coaching Fallback Flow
 
@@ -35,19 +35,16 @@ When a higher-fidelity mode is unavailable (missing model, empty knowledge base,
 the pipeline degrades gracefully through the following chain:
 
 ```
-Neural (pure ML)
-   |  [model checkpoint missing or inference error]
+COPER (Experience Bank + RAG + Pro)
+   |  [failure/timeout, or map/tick data missing]
    v
 Hybrid (ML + RAG)
-   |  [RAG index empty or ML unavailable]
+   |  [disabled, player stats missing, or failure]
    v
-COPER (Experience Bank + RAG + Pro)
-   |  [experience bank empty]
+Traditional + RAG (correction engine + knowledge retrieval)
+   |  [USE_RAG_COACHING disabled]
    v
-RAG (knowledge retrieval only)
-   |  [knowledge index empty]
-   v
-Heuristic corrections (correction_engine.py fallback)
+Traditional heuristic corrections (correction_engine.py — terminal)
 ```
 
 Each transition is logged at WARNING level with a structured JSON message containing
@@ -73,7 +70,7 @@ the reason for degradation, so the operator always knows which mode is active.
 
 The `HybridCoachingEngine` is the primary orchestrator for the Hybrid coaching mode.
 It accepts a 25-dimensional feature vector (see `METADATA_DIM` in `nn/config.py`),
-runs ML inference through the active model (JEPA or RAP), retrieves relevant knowledge
+runs ML inference through the active model (JEPA or legacy AdvancedCoachNN), retrieves relevant knowledge
 from the RAG index, and merges both signals into a unified coaching response. The
 engine applies a confidence-weighted blending strategy: high-confidence ML predictions
 dominate, while low-confidence ones defer to RAG knowledge.
@@ -132,7 +129,7 @@ names to entries in the professional player database.
 ```
 coaching_service.py
     |
-    +-- selects coaching mode (COPER / Hybrid / RAG / Neural)
+    +-- selects coaching mode (COPER / Hybrid / Traditional+RAG / Traditional)
     |
     +-- calls hybrid_engine.py (Hybrid mode)
     |       |-- ML inference (JEPA or RAP model)

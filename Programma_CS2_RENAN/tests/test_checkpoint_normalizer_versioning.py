@@ -147,6 +147,16 @@ def test_extra_meta_round_trips(isolated_models_dir):
     assert meta["extra"] == {"ema_step": 12345, "epoch": 7}
 
 
+def test_hash_registry_write_ends_with_newline(isolated_models_dir):
+    """CTF-1 registry is a committed file: runtime refreshes must stay
+    lint-clean (end-of-file-fixer), so every write ends with a newline."""
+    save_nn(_Tiny(), "tiny-registry-eol")
+
+    registry = isolated_models_dir / "checkpoint_hashes.json"
+    assert registry.exists(), "CTF-1: registry not written by save_nn"
+    assert registry.read_bytes().endswith(b"\n")
+
+
 def test_save_nn_rolls_back_both_tmp_files_on_failure(isolated_models_dir, monkeypatch):
     """If the sidecar write fails, the checkpoint .pt must also NOT appear in
     its final position — atomicity guarantee across the pair."""

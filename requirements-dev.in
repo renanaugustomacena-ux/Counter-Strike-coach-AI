@@ -55,3 +55,8 @@ libcst==1.5.0
 
 # --- Pre-commit framework ---
 pre-commit==4.0.1
+
+# --- Training observability ---
+# Optional at runtime (tensorboard_callback degrades to no-op without it) but
+# required if you want the runs/coach_training dashboards to receive data.
+tensorboard==2.21.0

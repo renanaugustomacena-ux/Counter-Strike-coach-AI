@@ -238,3 +238,56 @@ class TestBackupManagerIntegrity:
         corrupt_path.write_bytes(b"this is not a database")
 
         assert mgr._verify_integrity(str(corrupt_path)) is False
+
+
+class TestCreateCheckpointSizeGuard:
+    """ST-BK-01: BackupManager.create_checkpoint must refuse oversized DBs.
+
+    The monolith is a multi-hundred-GB symlink; the auto-backup path
+    (session_engine startup_auto) previously had NO size/space guard and
+    would have copied the whole file into the project drive.
+    """
+
+    def _make_manager(self, tmp_path, db_bytes):
+        import sqlite3
+
+        from Programma_CS2_RENAN.backend.storage.backup_manager import BackupManager
+
+        mgr = BackupManager()
+        db_path = tmp_path / "monolith.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.execute("CREATE TABLE t (id INTEGER)")
+        conn.commit()
+        conn.close()
+        if db_bytes > db_path.stat().st_size:
+            with open(db_path, "ab") as f:
+                f.truncate(db_bytes)
+        mgr.db_path = str(db_path)
+        mgr.backup_dir = str(tmp_path / "backups")
+        import os
+
+        os.makedirs(mgr.backup_dir, exist_ok=True)
+        return mgr
+
+    def test_refuses_above_ceiling(self, tmp_path, monkeypatch):
+        from Programma_CS2_RENAN.backend.storage import backup_manager
+
+        mgr = self._make_manager(tmp_path, db_bytes=4096)
+        monkeypatch.setattr(backup_manager, "_BACKUP_MAX_DB_BYTES", 1024)
+        assert mgr.create_checkpoint(label="testguard") is False
+        assert not any(f.startswith("backup_testguard") for f in os.listdir(mgr.backup_dir))
+
+    def test_refuses_when_no_free_space(self, tmp_path, monkeypatch):
+        from collections import namedtuple
+
+        from Programma_CS2_RENAN.backend.storage import backup_manager
+
+        Usage = namedtuple("Usage", "total used free")
+        mgr = self._make_manager(tmp_path, db_bytes=4096)
+        monkeypatch.setattr(backup_manager.shutil, "disk_usage", lambda p: Usage(100, 99, 1024))
+        assert mgr.create_checkpoint(label="testguard") is False
+
+    def test_allows_small_db_with_space(self, tmp_path):
+        mgr = self._make_manager(tmp_path, db_bytes=0)
+        assert mgr.create_checkpoint(label="testguard") is True
+        assert any(f.startswith("backup_testguard") for f in os.listdir(mgr.backup_dir))

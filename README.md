@@ -3,7 +3,7 @@
 [![CI Pipeline](https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI/actions/workflows/build.yml/badge.svg)](https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI/actions/workflows/build.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Proprietary%20%7C%20Apache--2.0-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-26%20phases%20validator%20%7C%202293%20pytest-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-42%20phases%20validator%20%7C%20130%20test%20files-brightgreen.svg)]()
 
 **AI-Powered Tactical Coach for Counter-Strike 2**
 
@@ -49,7 +49,7 @@ Unlike static coaching tools with pre-written tips, this system builds its intel
 
 ### AI Coaching Pipeline
 
-- **4-Level Fallback Chain** — COPER > Hybrid > RAG > Base, ensuring the system always produces useful advice regardless of model maturity
+- **4-Level Fallback Chain** — COPER > Hybrid > Traditional+RAG > Traditional, ensuring the system always produces useful advice regardless of model maturity
 - **COPER Experience Bank** — Stores and retrieves past coaching experiences weighted by recency, effectiveness, and context similarity
 - **RAG Knowledge Base** — Retrieval-Augmented Generation with professional reference patterns and tactical knowledge
 - **Ollama Integration** — Optional local LLM for natural-language refinement of coaching insights
@@ -61,13 +61,13 @@ Unlike static coaching tools with pre-written tips, this system builds its intel
 - **JEPA Encoder** — Joint-Embedding Predictive Architecture for self-supervised pre-training with InfoNCE contrastive loss and EMA target encoder
 - **VL-JEPA** — Vision-Language extension with 16 tactical concept alignment (positioning, utility, economy, engagement, decision, psychology)
 - **AdvancedCoachNN** — LSTM + Mixture-of-Experts architecture for coaching weight prediction
-- **Neural Role Head** — 5-role MLP classifier (entry, support, lurk, AWP, anchor) with KL-divergence and consensus gating
+- **Neural Role Head** — 5-role MLP classifier (lurker, entry, support, AWPer, IGL) with KL-divergence and consensus gating
 - **Bayesian Belief Models** — Opponent mental state tracking with adaptive calibration from match data
 
 ### Demo Analysis
 
 - **Tick-Level Parsing** — Every tick of `.dem` files is analyzed via demoparser2, preserving full game state (no tick decimation)
-- **HLTV 2.0 Rating** — Calculated per match using the official HLTV 2.0 formula (kills, deaths, ADR, KAST%, survival, flash assists)
+- **HLTV 2.0 Rating** — Calculated per match using the reverse-engineered HLTV 2.0 formula (KPR, DPR, KAST%, Impact, ADR)
 - **Round-by-Round Breakdown** — Economy timeline, engagement analysis, utility usage, momentum tracking
 - **Temporal Baseline Decay** — Tracks player skill evolution over time with exponential decay weighting
 
@@ -129,7 +129,7 @@ cd Counter-Strike-coach-AI
 .\scripts\Setup_Macena_CS2.ps1
 ```
 
-Creates a virtual environment, installs all dependencies, initializes the database, and configures Playwright for HLTV scraping.
+Creates a virtual environment, installs all dependencies, initializes the database, and installs the Playwright Chromium browser.
 
 **For NVIDIA GPU support**, after the script completes:
 
@@ -243,9 +243,9 @@ WATCH (Ingestion)      LEARN (Training)       THINK (Inference)       SPEAK (Dia
 
 **WATCH** — The Scanner daemon continuously monitors configured demo folders for new `.dem` files. When found, the Digester daemon parses every tick using demoparser2, extracts the canonical 25-dimensional feature vector, calculates HLTV 2.0 ratings, and stores everything in per-match SQLite databases.
 
-**LEARN** — The Teacher daemon automatically trains neural models when sufficient data accumulates. Training progresses through 3 maturity stages (CALIBRATING > LEARNING > MATURE). Multiple architectures train in parallel: JEPA for self-supervised representation learning, RAP Coach for tactical decision modeling, NeuralRoleHead for player role classification.
+**LEARN** — The Teacher daemon automatically trains neural models when sufficient data accumulates. Training progresses through 3 maturity stages (CALIBRATING > LEARNING > MATURE). Multiple architectures are trained: JEPA for self-supervised representation learning, RAP Coach for tactical decision modeling, NeuralRoleHead for player role classification.
 
-**THINK** — At inference time, the COPER pipeline combines neural predictions with retrieved coaching experiences, RAG knowledge, and game-theory analysis. A 4-level fallback chain (COPER > Hybrid > RAG > Base) ensures advice is always available regardless of model maturity.
+**THINK** — At inference time, the COPER pipeline combines neural predictions with retrieved coaching experiences, RAG knowledge, and game-theory analysis. A 4-level fallback chain (COPER > Hybrid > Traditional+RAG > Traditional) ensures advice is always available regardless of model maturity.
 
 **SPEAK** — Final coaching output is formatted with severity levels, causal attribution ("why this advice"), and optionally refined through a local Ollama LLM for natural language quality.
 
@@ -260,28 +260,28 @@ WATCH (Ingestion)      LEARN (Training)       THINK (Inference)       SPEAK (Dia
 
 ### COPER Coaching Pipeline
 
-COPER (Coaching via Organized Pattern Experience Retrieval) is the primary coaching engine. It operates a 4-level fallback chain:
+COPER (Context Optimized with Prompt, Experience, and Replay) is the primary coaching engine. It operates a 4-level fallback chain:
 
-1. **COPER Mode** — Full pipeline: Experience Bank retrieval + RAG knowledge + neural model predictions + professional comparisons. Requires trained models.
+1. **COPER Mode** — Full pipeline: Experience Bank retrieval + RAG knowledge + neural model predictions + professional comparisons.
 2. **Hybrid Mode** — Combines neural predictions with template-based advice when some models are still calibrating.
-3. **RAG Mode** — Pure retrieval: searches for relevant coaching patterns in the knowledge base without neural inference. Works with ingested demos alone.
-4. **Base Mode** — Template-based advice from statistical analysis (mean/std deviations from professional baselines). Works immediately.
+3. **Traditional + RAG Mode** — Pure retrieval: searches for relevant coaching patterns in the knowledge base without neural inference. Works with ingested demos alone.
+4. **Traditional Mode** — Template-based advice from statistical analysis (mean/std deviations from professional baselines). Works immediately.
 
 ### Neural Network Architectures
 
 **RAP Coach (7-Layer Architecture)**
 
-The RAP (Reasoning, Attribution, Prediction) Coach is the primary neural model. Its 7 layers process gameplay data through a cognitive pipeline:
+The RAP (Retrieval-Augmented Pedagogical) Coach is the experimental flagship neural model, disabled by default behind `USE_RAP_MODEL`. Its 7 layers process gameplay data through a cognitive pipeline:
 
 | Layer | Function | Details |
 |-------|----------|---------|
 | 1. Perception | Visual + spatial encoding | Conv layers for view frame (64d), map state (32d), movement diff (32d) -> 128d |
-| 2. Memory | Recurrent belief tracking | LSTM + Hopfield network for associative memory. Input: 153d (128 perception + 25 metadata) -> 256d hidden state |
-| 3. Strategy | Decision optimization | Mixture-of-Experts with superposition for context-dependent decisions. 10 action weights |
+| 2. Memory | Recurrent belief tracking | LTC (Liquid Time-Constant) + Hopfield network for associative memory. Input: 153d (128 perception + 25 metadata) -> 256d hidden state |
+| 3. Strategy | Decision optimization | Mixture-of-Experts (4 experts, top-2 routing) with superposition for context-dependent decisions. 10 action weights |
 | 4. Pedagogy | Value estimation | V-function estimation with skill vector integration |
 | 5. Position | Optimal placement | Predicts (dx, dy, dz) delta to optimal position (scale: 500 world units) |
 | 6. Attribution | Causal diagnosis | 5-dimensional attribution explaining decision drivers |
-| 7. Output | Aggregation | advice_probs, belief_state, value_estimate, gate_weights, optimal_pos, attribution |
+| 7. Output | Aggregation | advice_probs, belief_state, value_estimate, gate_weights, optimal_pos, attribution, hidden_state |
 
 **JEPA (Joint-Embedding Predictive Architecture)**
 
@@ -289,7 +289,7 @@ Self-supervised pre-training with:
 - Context encoder + predictor -> predicts target embedding
 - Target encoder updated via EMA (momentum 0.996)
 - InfoNCE contrastive loss with in-batch negatives
-- Latent dimension: 128
+- Latent dimension: 256
 
 **VL-JEPA (Vision-Language Extension)**
 
@@ -372,29 +372,25 @@ Multi-level maps (Nuke, Vertigo) use Z-axis cutoffs to separate upper and lower 
 
 | Category | Package | Version | Purpose |
 |----------|---------|---------|---------|
-| **ML Framework** | PyTorch | Latest | Neural network training and inference |
-| **Recurrent Networks** | ncps | Latest | Liquid Time-Constant (LTC) networks |
-| **Associative Memory** | hopfield-layers | Latest | Hopfield network layers for memory |
-| **Demo Parsing** | demoparser2 | 0.40.2 | Tick-level CS2 demo file parsing |
-| **UI Framework (primary)** | PySide6 | 6.8+ | Qt-based cross-platform desktop GUI |
-| **Database ORM** | SQLAlchemy + SQLModel | Latest | Database models and queries |
-| **Migrations** | Alembic | Latest | Database schema migrations |
-| **Web Scraping** | Playwright | 1.57.0 | Headless browser for HLTV |
+| **ML Framework** | PyTorch | 2.1+ | Neural network training and inference |
+| **Recurrent Networks** | ncps | 1.0.1+ | Liquid Time-Constant (LTC) networks |
+| **Associative Memory** | hflayers | 1.3.0+ | Hopfield network layers for memory |
+| **Demo Parsing** | demoparser2 | 0.41.1 | Tick-level CS2 demo file parsing |
+| **UI Framework (primary)** | PySide6 | 6.11.0 | Qt-based cross-platform desktop GUI |
+| **Database ORM** | SQLAlchemy + SQLModel | 2.0.49 / 0.0.38 | Database models and queries |
+| **Migrations** | Alembic | 1.18.4 | Database schema migrations |
+| **Browser Automation** | Playwright | 1.58.0 | Headless browser automation |
 | **HTTP Client** | HTTPX | 0.28.1 | Async HTTP requests |
-| **Data Science** | NumPy, Pandas, SciPy, scikit-learn | Latest | Numerical computation and analysis |
-| **Visualization** | Matplotlib | Latest | Chart generation |
-| **Graphs** | NetworkX | Latest | Graph-based analysis |
-| **Security** | cryptography | 46.0.3 | Credential encryption |
-| **TUI** | Rich | 14.2.0 | Terminal UI for console mode |
-| **API** | FastAPI + Uvicorn | 0.40.0 | Internal API server |
-| **Validation** | Pydantic | Latest | Data validation and settings |
-| **Testing** | pytest + pytest-cov + pytest-mock | 9.0.2 | Test framework and coverage |
-| **Packaging** | PyInstaller | 6.17.0 | Binary distribution |
-| **Templating** | Jinja2 | 3.1.6 | Template rendering for reports |
-| **HTML Parsing** | BeautifulSoup4 + lxml | 4.12.3 | Web content extraction |
-| **Config** | PyYAML | 6.0.3 | YAML configuration files |
-| **Images** | Pillow | 12.0.0 | Image processing |
-| **Keyring** | keyring | 25.6.0 | Secure credential storage |
+| **Data Science** | NumPy, Pandas, SciPy, scikit-learn | 2.4.3 / 2.3.3 / 1.17.1 / 1.8.0 | Numerical computation and analysis |
+| **Visualization** | Matplotlib | 3.10.8 | Chart generation |
+| **TUI** | Rich | 15.0.0 | Terminal UI for console mode |
+| **API** | FastAPI + Uvicorn | 0.135.3 / 0.44.0 | Internal API server |
+| **Validation** | Pydantic | 2.12.5 | Data validation and settings |
+| **Testing** | pytest + pytest-cov + pytest-timeout | 9.1.1 | Test framework and coverage |
+| **Packaging** | PyInstaller | Latest | Binary distribution |
+| **HTML Parsing** | BeautifulSoup4 | 4.14.3 | Web content extraction |
+| **Images** | Pillow | 12.3.0 | Image processing |
+| **Keyring** | keyring | 25.7.0 | Secure credential storage |
 
 ---
 
@@ -422,7 +418,7 @@ Counter-Strike-coach-AI/
 |   |   |   +-- belief_model.py         Bayesian opponent mental state tracking
 |   |   |   +-- game_tree.py            Expectiminimax decision trees
 |   |   |   +-- momentum.py             Round momentum and confidence trends
-|   |   |   +-- role_classifier.py      Player role detection (entry, support, lurk, AWP, anchor)
+|   |   |   +-- role_classifier.py      Player role detection (AWPer, entry, support, IGL, lurker, flex)
 |   |   |   +-- blind_spots.py          Map awareness and positional weaknesses
 |   |   |   +-- deception_index.py      Positional unpredictability metric
 |   |   |   +-- entropy_analysis.py     Decision randomness quantification
@@ -441,7 +437,7 @@ Counter-Strike-coach-AI/
 |   |   |   +-- jepa_model.py           JEPA encoder + VL-JEPA + ConceptLabeler
 |   |   |   +-- jepa_trainer.py         JEPA training loop with drift monitoring
 |   |   |   +-- training_orchestrator.py Multi-model training orchestration
-|   |   |   +-- rap_coach/              RAP Coach model
+|   |   |   +-- experimental/rap_coach/ RAP Coach model (canonical; nn/rap_coach holds deprecated shims)
 |   |   |   |   +-- model.py            7-layer architecture
 |   |   |   |   +-- trainer.py          RAP-specific training loop
 |   |   |   |   +-- memory.py           LTC + Hopfield memory module
@@ -451,8 +447,8 @@ Counter-Strike-coach-AI/
 |   |   +-- processing/                Feature engineering and data processing
 |   |   |   +-- feature_engineering/
 |   |   |   |   +-- vectorizer.py       Canonical 25-dim feature extraction (METADATA_DIM=25)
-|   |   |   |   +-- tensor_factory.py   View/map tensor construction for RAP Coach
-|   |   |   +-- heatmap/               Spatial heatmap generation
+|   |   |   +-- tensor_factory.py      View/map tensor construction for RAP Coach
+|   |   |   +-- heatmap_engine.py      Spatial heatmap generation
 |   |   |   +-- validation/            Drift detection, data quality checks
 |   |   |
 |   |   +-- knowledge/                 Knowledge management
@@ -460,8 +456,8 @@ Counter-Strike-coach-AI/
 |   |   |   +-- experience_bank.py      COPER experience storage and retrieval
 |   |   |
 |   |   +-- services/                  Application services
-|   |   |   +-- coaching_service.py     4-level coaching pipeline (COPER/Hybrid/RAG/Base)
-|   |   |   +-- ollama_service.py       Local LLM integration for language refinement
+|   |   |   +-- coaching_service.py     4-level coaching pipeline (COPER/Hybrid/Traditional+RAG/Traditional)
+|   |   |   +-- ollama_writer.py        Local LLM integration for language refinement
 |   |   |
 |   |   +-- storage/                   Database layer
 |   |       +-- database.py            SQLite WAL-mode connection management
@@ -477,33 +473,27 @@ Counter-Strike-coach-AI/
 |   |
 |   +-- ingestion/                     Demo ingestion pipeline
 |   |   +-- steam_locator.py           Auto-discovery of Steam CS2 demo paths
-|   |   +-- integrity_check.py         Demo file validation
+|   |   +-- integrity.py               Demo file validation
 |   |
 |   +-- observability/                 Monitoring and security
 |   |   +-- rasp.py                    Runtime Application Self-Protection
-|   |   +-- telemetry.py              TensorBoard metrics and conviction tracking
+|   |   +-- sentry_setup.py           Optional crash reporting (double opt-in, PII scrub)
 |   |   +-- logger_setup.py           Structured logging (cs2analyzer.* namespace)
 |   |
 |   +-- reporting/                     Output generation
 |   |   +-- visualizer.py             Chart and diagram rendering
-|   |   +-- pdf_generator.py          PDF report generation
+|   |   +-- report_generator.py       Match report generation
 |   |
-|   +-- tests/                         Test suite (2,293+ tests)
+|   +-- tests/                         Test suite (130 test files)
 |   +-- data/                          Static data (seed knowledge base, external datasets)
 |
 +-- docs/                              Documentation
-|   +-- USER_GUIDE.md                  Complete user guide (EN)
-|   +-- USER_GUIDE_IT.md               User guide (Italian)
-|   +-- USER_GUIDE_PT.md               User guide (Portuguese)
-|   +-- Book-Coach-1A.md               Vision book — Neural core
-|   +-- Book-Coach-1B.md               Vision book — RAP Coach & data sources
-|   +-- Book-Coach-2.md                Vision book — Services & infrastructure
-|   +-- Book-Coach-3.md                Vision book — Program logic & UI
-|   +-- cybersecurity.md               Security analysis
-|   +-- Studies/                        17 research papers
+|   +-- guides/                        User guides (EN / IT / PT)
+|   +-- books/                         Vision books (Book-Coach 1A/1B/2/3 + analogy book, IT/EN/PT)
+|   +-- research/                      Research library catalog (INDEX.md)
 |
 +-- tools/                             Validation and diagnostic tools
-|   +-- headless_validator.py          Primary regression gate (26 phases)
+|   +-- headless_validator.py          Primary regression gate (42 phases)
 |   +-- Feature_Audit.py              Feature engineering audit
 |   +-- portability_test.py           Cross-platform compatibility checks
 |   +-- dead_code_detector.py         Unused code scanning
@@ -526,7 +516,7 @@ Counter-Strike-coach-AI/
 
 ## Entry Points
 
-The application provides 4 entry points for different use cases:
+The application provides 6 entry points for different use cases:
 
 ### Desktop Application (Qt GUI — Primary)
 
@@ -534,7 +524,7 @@ The application provides 4 entry points for different use cases:
 python -m Programma_CS2_RENAN.apps.qt_app.app
 ```
 
-Full graphical interface with tactical viewer, match history, performance dashboard, coach chat, and settings. Opens at 1280x720. On first launch, a 4-step wizard configures the Brain Data Root directory.
+Full graphical interface with tactical viewer, match history, performance dashboard, coach chat, and settings. Opens at 1280x720. On first launch, a 5-step wizard configures the Brain Data Root directory.
 
 ### Interactive Console (TUI)
 
@@ -550,8 +540,8 @@ Terminal UI with real-time panels for development and runtime control. Commands 
 | **Ingestion** | `ingest start`, `ingest stop`, `ingest mode continuous 5`, `ingest scan` |
 | **Build & Test** | `build run`, `build verify`, `test all`, `test headless`, `test hospital` |
 | **System** | `sys status`, `sys audit`, `sys baseline`, `sys db`, `sys vacuum`, `sys resources` |
-| **Config** | `set steam /path`, `set faceit KEY`, `set config key value` |
-| **Services** | `svc restart coaching` |
+| **Config** | `set steam`, `set faceit`, `set demo-path /path`, `set config key value` |
+| **Services** | `svc status`, `svc restart hunter` |
 
 ### Production CLI (Goliath)
 
@@ -564,11 +554,11 @@ Master orchestrator for production builds, releases, and diagnostics:
 | Command | Description | Flags |
 |---------|-------------|-------|
 | `build` | Industrial build pipeline | `--test-only` |
-| `sanitize` | Clean project for distribution | `--force` |
+| `sanitize` | Clean project for distribution | `-y` |
 | `integrity` | Generate integrity manifest | |
 | `audit` | Verify data and features | `--demo <path>` |
-| `db` | Database schema management | `--force` |
-| `doctor` | Clinical diagnostics | `--department <name>` |
+| `db` | Database schema management | `-y` |
+| `doctor` | Clinical diagnostics | `--dept <name>` |
 | `baseline` | Temporal baseline decay status | |
 
 ### Training Cycle Runner
@@ -585,15 +575,15 @@ Standalone script that executes a full training cycle outside the daemon engine.
 python batch_ingest.py [--workers N] [--limit N]
 ```
 
-Parallel batch ingestion of pro demo files using multiprocessing. Resumable — skips already-ingested demos. Defaults to all CPU cores.
+Parallel batch ingestion of pro demo files using multiprocessing. Resumable — skips already-ingested demos. Worker count auto-scales based on available RAM.
 
 ### Internal API Server
 
 ```bash
-python -m uvicorn Programma_CS2_RENAN.backend.services.api:app --host 127.0.0.1 --port 8000
+python -m uvicorn Programma_CS2_RENAN.backend.server:app --host 127.0.0.1 --port 8000
 ```
 
-FastAPI-based internal API for programmatic access to coaching, ingestion status, and model state. Not exposed externally by default. See `backend/services/` READMEs for endpoint documentation.
+FastAPI-based internal API for programmatic access to coaching insights, training control, and service status. Not exposed externally by default. Endpoints are defined in `Programma_CS2_RENAN/backend/server.py`.
 
 ---
 
@@ -603,8 +593,8 @@ The project maintains a multi-level validation hierarchy:
 
 | Tool | Scope | Command | Checks |
 |------|-------|---------|--------|
-| Headless Validator | Primary regression gate | `python tools/headless_validator.py` | 26 phases |
-| Pytest Suite | Logic and integration tests | `python -m pytest Programma_CS2_RENAN/tests/ -x -q` | 2,293+ tests |
+| Headless Validator | Primary regression gate | `python tools/headless_validator.py` | 42 phases |
+| Pytest Suite | Logic and integration tests | `python -m pytest Programma_CS2_RENAN/tests/ -x -q` | 130 test files |
 | Feature Audit | Feature engineering integrity | `python tools/Feature_Audit.py` | Vector dimensions, ranges |
 | Portability Test | Cross-platform compatibility | `python tools/portability_test.py` | Import checks, paths |
 | Dev Health | Development environment | `python tools/dev_health.py` | Dependencies, config |
@@ -644,7 +634,6 @@ Language can be changed at runtime from Settings without restarting the applicat
 
 - **OS Keyring Integration** — API keys (Steam, FaceIT) stored in Windows Credential Manager / Linux keyring, never in plaintext
 - **No Hardcoded Secrets** — Settings file shows the placeholder `"PROTECTED_BY_WINDOWS_VAULT"`
-- **Cryptographic Operations** — Uses `cryptography==46.0.3` (vetted library, no custom crypto)
 
 ### Database Security
 
@@ -667,14 +656,12 @@ Language can be changed at runtime from Settings without restarting the applicat
 | GPU device | Auto-detected via `get_device()` | CUDA when available, else CPU. Override with `CUDA_VISIBLE_DEVICES` |
 | Training batch size | 32 (`backend/nn/config.py`) | Increase for GPU with >6 GB VRAM. Decrease if OOM |
 | Ingestion workers | CPU count (`batch_ingest.py`) | `--workers N` to limit parallel demo parsing |
-| EMA momentum | 0.996 base, cosine-scheduled to 1.0 (`backend/nn/jepa_train.py:353`) | JEPA target encoder tracking. Lower values track faster but noisier. RAP Coach EMA default is 0.999 (`backend/nn/ema.py:39`) |
+| EMA momentum | 0.996 base, cosine-scheduled to 1.0 (`backend/nn/jepa_train.py`) | JEPA target encoder tracking. Lower values track faster but noisier. The standalone EMA helper defaults to 0.999 (`backend/nn/ema.py`) |
 | TensorBoard | `runs/coach_training` | `tensorboard --logdir runs/coach_training` for live metrics |
 | SQLite WAL mode | Enabled by default | Concurrent read/write. No tuning needed for single-user |
 | Drift detection threshold | Z-score based (`backend/processing/validation/`) | Auto-triggers retraining flag when feature distributions shift |
 
-For GPU users: PyTorch CUDA 12.1 is the tested configuration. Mixed precision is not currently enabled — all training runs at FP32.
-
-> For hardware-specific guidance, see [Study 15 — Hardware and Scaling](docs/Studies/).
+For GPU users: PyTorch CUDA 12.1 is the tested configuration. Mixed precision (AMP) is enabled automatically on CUDA GPUs; CPU training runs at FP32.
 
 ---
 
@@ -716,31 +703,10 @@ Not all subsystems are equally mature. The default coaching mode (COPER) is prod
 | [Book-Coach-1B](docs/books/Book-Coach-1B.md) | RAP Coach (7 components), data sources (demo, HLTV, Steam, FACEIT) |
 | [Book-Coach-2](docs/books/Book-Coach-2.md) | Services, analysis engines, knowledge/COPER, database, training |
 | [Book-Coach-3](docs/books/Book-Coach-3.md) | Full program logic, Qt UI, ingestion, tools, tests, build |
-| [Cybersecurity Analysis](docs/archive/cybersecurity.md) | Security posture and threat model |
 
-### Research Papers (17 Studies)
+### Research Library
 
-The `docs/Studies/` folder contains 17 in-depth research papers covering the theoretical foundations and engineering decisions behind every subsystem:
-
-| # | Study | Topic |
-|---|-------|-------|
-| 01 | Epistemic Foundations | Knowledge representation and reasoning framework |
-| 02 | Ingestion Algebra | Mathematical model of demo data processing |
-| 03 | Recurrent Networks | LTC and Hopfield network theory |
-| 04 | Reinforcement Learning | RL foundations for coaching decisions |
-| 05 | Perceptive Architecture | Visual processing pipeline design |
-| 06 | Cognitive Architecture | Belief modeling and decision systems |
-| 07 | JEPA Architecture | Joint-Embedding Predictive Architecture theory |
-| 08 | Forensic Engineering | Debugging and diagnostic methodology |
-| 09 | Feature Engineering | 25-dimensional vector design and validation |
-| 10 | Database and Storage | SQLite WAL, per-match DB, migration strategy |
-| 11 | Tri-Daemon Engine | Multi-daemon architecture and lifecycle |
-| 12 | Evaluation and Falsification | Testing and validation methodology |
-| 13 | Explainability and Coaching | Causal attribution and coaching UI design |
-| 14 | Ethics, Privacy and Integrity | Data protection and AI ethics |
-| 15 | Hardware and Scaling | Optimization for various hardware configurations |
-| 16 | Maps and GNN | Spatial analysis and graph neural network approaches |
-| 17 | Sociotechnical Impact | Future directions and social implications |
+[docs/research/INDEX.md](docs/research/INDEX.md) catalogs the ~66-paper research library (JEPA, SSL, MoE, Hopfield/LTC, data quality, and more) backing the project's design decisions.
 
 ---
 
@@ -805,13 +771,13 @@ Open [http://localhost:6006](http://localhost:6006) to monitor conviction index,
 |---------|----------|
 | `ModuleNotFoundError: No module named 'PySide6'` | Install Qt dependencies: `pip install PySide6` |
 | `CUDA not available` | Verify driver with `nvidia-smi`, reinstall PyTorch with `--index-url https://download.pytorch.org/whl/cu121` |
-| `sentence-transformers not installed` | Non-blocking warning. Install with `pip install sentence-transformers` for improved embeddings, or ignore (TF-IDF fallback works) |
+| `sentence-transformers not installed` | Non-blocking warning. Install with `pip install sentence-transformers` for improved embeddings, or ignore (hash-based fallback works) |
 | `database is locked` | Close all Python processes and restart |
 | `RuntimeError: mat1 and mat2 shapes cannot be multiplied` | Model checkpoint from different METADATA_DIM. Delete stale checkpoints in `Programma_CS2_RENAN/models/` and retrain |
 | Headless validator fails | Run `python tools/headless_validator.py` for the specific failing phase. Fix before committing |
 | Demo parsing returns 0 rounds | File may be corrupted or below `MIN_DEMO_SIZE` (10 MB). Try a different demo |
 | TensorBoard shows no data | Verify `runs/coach_training/` exists and contains event files. Training must complete at least one epoch |
-| Ollama not responding | Ensure Ollama is running (`ollama serve`) and the configured model is pulled (`ollama pull llama3.1:8b`) |
+| Ollama not responding | Ensure Ollama is running (`ollama serve`) and the configured model is pulled (`ollama pull gemma4:e2b`) |
 | FlareSolverr connection refused | Start Docker: `docker compose up -d`. Verify port 8191 is accessible |
 | Factory reset | Delete `Programma_CS2_RENAN/user_settings.json` and restart |
 
@@ -869,7 +835,6 @@ Four tri-lingual vision books + one canonical analogy companion book. Each coach
 - [CI/CD Pipeline & GitHub Configuration](.github/OVERVIEW.md) — [Italiano](.github/OVERVIEW_IT.md) — [Portugues](.github/OVERVIEW_PT.md)
 - [Database Migration System — Alembic](alembic/README.md) — [Italiano](alembic/README_IT.md) — [Portugues](alembic/README_PT.md)
 - [Documentation Index](docs/README.md) — [Italiano](docs/README_IT.md) — [Portugues](docs/README_PT.md)
-- [The Studies — Bibliotheca](docs/Studies/README.md) — [Italiano](docs/Studies/README_IT.md) — [Portugues](docs/Studies/README_PT.md)
 - [Build and Setup Scripts](scripts/README.md) — [Italiano](scripts/README_IT.md) — [Portugues](scripts/README_PT.md)
 - [Root-Level Verification and Forensic Tests](tests/README.md) — [Italiano](tests/README_IT.md) — [Portugues](tests/README_PT.md)
 - [Root-Level Project Tools](tools/README.md) — [Italiano](tools/README_IT.md) — [Portugues](tools/README_PT.md)

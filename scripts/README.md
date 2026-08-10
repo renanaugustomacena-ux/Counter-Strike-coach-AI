@@ -10,9 +10,10 @@ Build and setup scripts for creating production-ready executables of the Macena 
 
 | File | Purpose | Platform |
 |------|---------|----------|
-| `build_exe.bat` | Development build — creates standalone executable | Windows |
-| `build_production.bat` | Production build — optimized and stripped | Windows |
-| `Setup_Macena_CS2.ps1` | PowerShell setup script for environment configuration | Windows |
+| `build_exe.bat` | Legacy development build — inline PyInstaller invocation (broken: targets the removed Kivy entry point) | Windows |
+| `build_production.bat` | Production build automation — validation, migration, manifest, build, audit, installer | Windows |
+| `Setup_Macena_CS2.ps1` | PowerShell setup — creates `venv_win`, installs CPU torch + requirements, initializes the database, installs Playwright Chromium | Windows |
+| `reaggregate.sh` | Re-aggregation pipeline — repopulates round stats, enriches match stats, mines coaching experiences, rebuilds knowledge base + FAISS indexes | Linux/macOS (bash) |
 
 ## Build Architecture
 
@@ -22,86 +23,70 @@ The build process uses PyInstaller to bundle the entire Python application, its 
 Source Code + Dependencies + Assets
         │
         ▼
-    PyInstaller (build_exe.bat)
+    PyInstaller (packaging/cs2_analyzer_win.spec, driven by build_production.bat)
         │
         ├── Analysis phase (detect imports, collect data files)
         ├── Bundle phase (create archive)
         └── Output phase (generate executable)
         │
         ▼
-    dist/Macena/
-        ├── Macena.exe          # Main executable
-        ├── _internal/          # Bundled Python + deps
-        └── (runtime assets)    # Maps, fonts, themes, knowledge base
+    dist/Macena_CS2_Analyzer/
+        ├── Macena_CS2_Analyzer.exe   # Main executable
+        ├── _internal/                # Bundled Python + deps
+        └── (runtime assets)          # Maps, fonts, themes, knowledge base
 ```
 
-## `build_exe.bat` — Development Build
+## `build_exe.bat` — Legacy Development Build (broken)
 
-This script creates a directory-mode bundle (not a single file) for easier debugging:
-
-### What It Does
+Kept for historical reference. It creates a directory-mode bundle via an inline PyInstaller invocation from `venv_win`:
 
 1. **Cleans** old build artifacts (`dist/`, `build/` directories)
-2. **Runs PyInstaller** with the following configuration:
+2. **Runs PyInstaller** with:
    - `--noconsole` — no terminal window (GUI application)
    - `--name Macena` — executable named `Macena.exe`
    - `--icon` — uses `Programma_CS2_RENAN/PHOTO_GUI/icon.ico`
-3. **Bundles runtime data:**
-   - `PHOTO_GUI/` — fonts, backgrounds, theme images
-   - `apps/` — application screens and layouts
-   - `data/` — knowledge base, external CSVs, map configs
-4. **Collects** all KivyMD and Kivy assets automatically
+   - `--add-data` for `PHOTO_GUI/`, `apps/`, `data/`
+   - `--collect-all kivymd --collect-all kivy`
 
-### Entry Point
+> **Note:** the script targets `Programma_CS2_RENAN/main.py`, the old Kivy entry point, which **no longer exists** (the app migrated to Qt with entry point `apps/qt_app/app.py`). Running it today fails; use `packaging/cs2_analyzer_win.spec` instead.
 
-```python
-# The build starts from the legacy Kivy entry point
-Programma_CS2_RENAN/main.py
-```
+## `build_production.bat` — Production Build Automation
 
-### Output
+The full Windows release pipeline (uses `venv_win`; run `Setup_Macena_CS2.ps1` first):
 
-```
-dist/Macena/
-├── Macena.exe
-└── _internal/
-    ├── PHOTO_GUI/
-    ├── apps/
-    ├── data/
-    └── (Python runtime + all dependencies)
-```
-
-## `build_production.bat` — Production Build
-
-Extends the development build with production optimizations:
-
-| Optimization | Flag | Effect |
-|-------------|------|--------|
-| Python optimization | `-OO` | Removes docstrings and assert statements |
-| Debug stripping | (PyInstaller internal) | Removes debug symbols |
-| Size minimization | Exclude dev packages | Removes pytest, coverage, IPython, etc. |
-| Integrity validation | Post-build check | Verifies executable can launch |
+1. **Pre-flight** — verifies `venv_win`, `Programma_CS2_RENAN/tools/sync_integrity_manifest.py`, `tools/audit_binaries.py`, `packaging/cs2_analyzer_win.spec`, and core deps (keyring, kivymd, sqlmodel, alembic) are present
+2. **Cleanup** — removes `build/` and `dist/`
+3. **Schema sync** — `alembic upgrade head` (aborts on failure)
+4. **Integrity manifest (RASP)** — regenerates `integrity_manifest.json` via `sync_integrity_manifest.py`
+5. **Build** — `python Programma_CS2_RENAN/tools/build_tools.py build` (advanced build debugger; writes `build_debug.log` / `build_report.json`)
+6. **Binary audit** — `python tools/audit_binaries.py` (aborts if the security audit fails)
+7. **Installer (optional)** — compiles `packaging/windows_installer.iss` with Inno Setup 6 if `ISCC.exe` is found, producing `dist\Macena_CS2_Installer.exe`
 
 ## Relationship with `packaging/`
 
-These scripts are the **legacy** build approach. The primary build system has moved to `packaging/cs2_analyzer_win.spec`, which uses the Qt (PySide6) entry point instead of Kivy:
+`build_exe.bat` is the **legacy** approach; the build definition now lives in `packaging/cs2_analyzer_win.spec` (Qt/PySide6 entry point), which `build_production.bat` drives:
 
-| Aspect | `scripts/` (legacy) | `packaging/` (primary) |
+| Aspect | `build_exe.bat` (legacy) | `packaging/` spec (primary) |
 |--------|---------------------|----------------------|
-| Entry point | `main.py` (Kivy) | `apps/qt_app/app.py` (Qt) |
+| Entry point | `main.py` (Kivy — removed) | `apps/qt_app/app.py` (Qt) |
 | UI framework | Kivy + KivyMD | PySide6/Qt |
 | Spec file | Inline in .bat | `cs2_analyzer_win.spec` |
-| Hidden imports | Auto-detected | 92 explicit entries |
-| Installer | None | Inno Setup (MSI) |
+| Hidden imports | Auto-detected | 35 explicit entries + `collect_submodules` |
+| Installer | None | Inno Setup (`Macena_CS2_Installer.exe`) |
 
 ## Usage
 
 ```bat
-REM Development build
-scripts\build_exe.bat
+REM One-time environment setup (creates venv_win)
+powershell -ExecutionPolicy Bypass -File scripts\Setup_Macena_CS2.ps1
 
-REM Production build (optimized)
+REM Production build (validation + build + audit + installer)
 scripts\build_production.bat
+```
+
+```bash
+# Data re-aggregation pipeline (Linux/macOS, venv activated)
+bash scripts/reaggregate.sh
 ```
 
 ## Prerequisites

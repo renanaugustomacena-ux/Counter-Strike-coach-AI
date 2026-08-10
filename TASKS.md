@@ -193,6 +193,36 @@ commit di `docs/plans/` (untracked, scelta owner) · merge verso `main` remoto �
 
 ---
 
+## Sessione 2026-08-03 — Coach DB grounding + ripristino ambiente (PR #46)
+
+> Contesto: macchina Linux nuova (drive WORK_RECOVERED), progetto spostato a `/media/renan/WORK_RECOVERED/PROIECT/Counter-Strike-coach-AI/` (il vecchio subdir `Counter-Strike-coach-AI-main/` non esiste più). Ambiente ricostruito da zero: `.venv` py3.12 + `requirements-lock.txt` (torch 2.13.0+cpu), checkpoint (jepa_brain/rap_coach/latest) ripristinati dal backup gemello, monolite 271GB linkato via symlink `backend/storage/database.db` → `New Volume6/AI/database.db` (già a head alembic `f6a7b8c9d0e1`), hltv_metadata.db ripristinato.
+
+| Item | Esito |
+|---|---|
+| **DP-03 — tool-calling DB** | Il coach ora interroga il DB da solo: fase agentica in `coaching_dialogue.py` (max 4 round) con 4 tool whitelisted (`list_matches`/`get_match_overview`/`get_round_details`/`lookup_player`), zero-trust su ogni argomento LLM (whitelist demo dal DB, int bounded, frammenti char-filtered, risultati sanitizzati+cap 8KB per BE-03), inventario match nel system prompt, disambiguazione candidati per team-pair ambigui (prima: primo match arbitrario, sempre lo stesso). Path legacy = fallback per modelli senza tools. 25 test nuovi. |
+| **Modello** | `gpt-oss:20b` (MoE 3.6B attivi, tool-calling nativo, CPU-friendly su 60GB RAM) pullato e impostato in `.env`; `gemma4:e2b` resta installato come fallback famiglia. |
+| **CFG-ENV-01** | `.env` era superficie di config DOCUMENTATA MA MAI PARSATA (nessun dotenv, nessun sourcing): ogni override documentato era un no-op silenzioso. Loader stdlib in `core/config.py` (setdefault: l'ambiente reale vince; valori mai loggati) + fix d'ordine in `_resolve_default_model` (config import PRIMA di `os.getenv`). 6 test. |
+| **ST-BK-01** | `BackupManager.create_checkpoint` (path auto `startup_auto` di session_engine) NON aveva guardia dimensione/spazio: avrebbe copiato il monolite 271GB nel disco progetto (59GB liberi). Guardia: `CS2_BACKUP_MAX_DB_BYTES` (default 50GiB) + 20% headroom, speculare a `_check_backup_free_space` di db_backup.py. Journal stale 1KB dell'attempt odierno rimosso. 3 test. |
+| **#65** | pin `hflayers>=1.3.0` (inesistente su PyPI) → `hopfield-layers @ git+...@f56f929` (stesso commit dei lock). |
+| **#48/GAP-15** | eval groundedness SHIPPED, baseline 1.00/1.00 — vedi riga #48. |
+| **#28.1** | riesaminato e chiuso senza churn — vedi coda #28. |
+| **Invarianti** | verificate a codice: NN-16 ✅, NN-JM-04 ✅, NN-MEM-01 ✅ (nota: path canonico ora `backend/nn/experimental/rap_coach/memory.py`, CLAUDE.md cita lo shim deprecato), P-RSB-03 ✅ (round_won solo label), 26-HYB-01 ✅ (`load_nn` reale). |
+| **Gates** | suite 2360+ verdi · validator 318/319 PASS · mypy pulito · black/isort ok sui file toccati. |
+| **Owner-gated NON eseguiti** | `rescrape --apply` / `sync_pro_players --apply` (guardrail Fase 5 esplicito: "Mai eseguire"). Restano #38/GAP-05 in attesa di ordine esplicito. → **Gate SBLOCCATO dall'owner in serata** ("si potrebbe fare un re-scrape da hltv"): vedi appendice notte sotto. |
+
+### Appendice notte 2026-08-03→04 (PR #47 + rescrape)
+
+| Item | Esito |
+|---|---|
+| **DOCK-01 (PR #47, merged)** | Il "mini window" riportato dall'owner era il coach dock flottante ripristinato SENZA geometria (`COACH_DOCK_FLOATING=true` in user_settings.json; GNOME decora i dock con solo min+close e close NASCONDE il dock). Fix: `_restore_dock_state()` — float solo con geometria ripristinabile, stato assente/corrotto → re-dock self-healing; persistenza `COACH_DOCK_GEOMETRY`; `raise_()+activateWindow()` post-show. 4 test TDD offscreen. Diagnosi via faulthandler dump + forensica settings. |
+| **FlareSolverr** | Container stale dell'identità compose del vecchio percorso `-main` (log interni di luglio, exit 143 in loop): rimosso e ricreato dal compose corrente — healthy. |
+| **SESSION_HANDOFF "DA FARE SUBITO su Linux"** | Verificata GIÀ ESEGUITA sul monolite punto per punto (rating 0/2501 · tick features sani dove esiste .dem · blind enrichment 979/3512 · matchresult 53 outcome/205 honest-None BY DESIGN P2-09 · d3 rederive 17-07 · alembic head). Nessun lavoro dati pendente. |
+| **#38/GAP-06 rescrape — CHIUSO ✅** | Placeholder cards cresciute 24→72 (tornei nuovi). `rescrape_placeholder_pros --apply` eseguito col gate sbloccato dall'owner: tutte le card scaricate da HLTV (0 FAIL), acceptance PASSATA — `purge_default_stats_rag --dry-run` → **0 placeholder cards**. Statistiche pro aggiornate ai tornei correnti. |
+| **GAP-05 — OBSOLETO** | `sync_pro_players` interroga la tabella `proplayer` che NON esiste più nel monolite (19 tabelle correnti; le repliche pro in main DB sono state rimosse con lo slim-down dello schema). Le "2 righe stale" non esistono più per costruzione: fonte unica pro = `hltv_metadata.db` (separazione DM-02). Tool = one-shot esaurito, candidato archivio con gli altri di #66. |
+| **Nota config macchina** | `PRO_DEMO_PATH` non impostato (fallback `~`): i 5 .dem superstiti stanno in `Counter-Strike-coach-AI_backup/DEMO_PRO_PLAYERS/ingested/` — impostare dalla schermata impostazioni. Wizard MAI completato su questa macchina (user_settings senza SETUP_COMPLETED): al prossimo avvio l'app mostra il wizard, da completare una volta. |
+
+---
+
 ## Sessione 2026-06 — Backlog correzioni (sintesi Fase 4, da AUDIT §12)
 
 > Ordinato per priorità d'implementazione (Fase 5, post-CI-verde). Legenda classe: **(a)** fix sicuro · **(b)** miglioria · **(c)** richiede ok utente / migrazione / ambiente · **(d)** differito. Cross-check invarianti incluso.
@@ -235,7 +265,7 @@ commit di `docs/plans/` (untracked, scelta owner) · merge verso `main` remoto �
 | 45 | TODO | LOW | **GAP-12 deferred** — pause/resume + team_switch events. Low blast radius on current feature set. *(Programme: deferred)* |
 | 46 | DONE | LOW | **GAP-13** `REFERENCE.md` recreated 2026-04-25 in commit `944dc46`. Sections: architecture, METADATA_DIM=25 contract, critical invariants, Phase 0 hygiene gates, storage architecture, global constants, skill triggers, test layout, env vars, doc debt. Referenced from `CLAUDE.md` "Sibling docs" line. |
 | 47 | TODO | LOW | **GAP-14 deferred** — bring `hltv_metadata.db` under alembic. Today schema evolves via `SQLModel.metadata.create_all()` + stale-column drop/recreate. *(Programme Phase G7)* |
-| 48 | TODO | LOW | **GAP-15 deferred** — full LLM A/B baseline (Gemma-4 vs RAP coach on a curated CoachingExperience scenario set). Eval harness has the stub; needs fixture corpus + scoring rubric. *(Programme Phase B6/G6)* |
+| 48 | DONE* | LOW | **GAP-15 — groundedness eval SHIPPED 2026-08-03** (`tools/coach_answer_eval.py`, PR #46): fixtures derivate dal DB vivo (round drill-down, ambiguità team-pair, roster-cluster free-choice, player stats), chieste via CoachingDialogueEngine reale e scorate su groundedness. Prima baseline misurata (gpt-oss:20b + tool phase DP-03): **mean 1.00 su 5 fixture**. *Residuo R9: l'A/B formale Gemma-vs-RAP su scenario-set curato resta nella finestra post-retrain (F1.5).* |
 | 49 | DONE | HIGH | **CI pipeline restoration** 2026-04-25 — 19 consecutive failed runs since 2026-04-12 resolved across 3 commits: `241384a` (Python 3.10→3.11 + md5 tag), `3d6d935` (detect-secrets false-positive excludes), `9404815` (theme + skill_assessment test drift). All 8 stages green on run 24919779641. See AUDIT §11. |
 | 50 | DONE | LOW | **CI-red notification** 2026-04-28 in commit `9185306` — `.github/workflows/notify-failure.yml` triggers on completed Macena CI Pipeline runs filtered to `main`, opens or comments on a single rolling "main CI red — investigate" issue with run URL/SHA/conclusion/triage steps, auto-closes when main returns green. Single rolling issue avoids per-failure spam. |
 
@@ -290,7 +320,7 @@ Per-site analysis: determine which exception types are actually thrown by the wr
 
 | # | Status | Pri | Target | Count | Strategy |
 |---|---|---|---|---|---|
-| 28.1 | TODO | LOW | `backend/services/coaching_service.py` | 12 | Most sites wrap LLM/DB calls. Map each: LLM → `(ollama.RequestError, ConnectionError, TimeoutError)`; DB → `(SQLAlchemyError, OperationalError)`; JSON → `(json.JSONDecodeError, ValueError)`. Keep top-level request-handler `except Exception` but add `exc_info=True`. |
+| 28.1 | DONE | LOW | `backend/services/coaching_service.py` | 12→8 | **Riesaminato 2026-08-03:** restano 8 siti, TUTTI boundary handler di sottosistema che loggano forte (`logger.exception`/`exc_info=True` + notifica UI) — la classe silenziosa è già stata bonificata in R4 e i siti interni sono già stretti (`(ValueError, KeyError, OSError)`, viz `(ImportError, ValueError, RuntimeError, OSError)`). Stringere i boundary aggiungerebbe percorsi di crash senza guadagno osservabile → chiuso senza churn. Il trampolino thread `_run_with_timeout` DEVE restare broad (rilancia via `exception[0]`). |
 | 28.2 | TODO | LOW | `core/session_engine.py` | 20 | Quad-Daemon orchestrator — top-of-daemon excepts MUST stay (crash-contain). Audit each inner except and narrow: heartbeat IO → `OSError`, state-manager writes → `(SQLAlchemyError, OSError)`, worker spawn → `(RuntimeError, subprocess.SubprocessError)`. |
 | 28.3 | TODO | LOW | `backend/data_sources/demo_parser.py` | 3 | demoparser2 boundary — narrow to `(demoparser2.DemoParserException, OSError, ValueError)`. Unknown format → log + skip, don't swallow `KeyboardInterrupt`. |
 | 28.4 | TODO | LOW | `core/lifecycle.py` | 3 | Process spawn/kill/reap — narrow to `(OSError, ProcessLookupError, subprocess.SubprocessError)`. |

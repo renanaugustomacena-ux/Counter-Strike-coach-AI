@@ -108,13 +108,13 @@ All domain exceptions inherit from `CS2AnalyzerError`, which accepts an optional
 
 | Consumer | Usage |
 |----------|-------|
-| `core/session_engine.py` | `set_correlation_id()` at daemon cycle start; `run_rasp_audit()` at boot |
+| `core/session_engine.py` | `set_correlation_id()` at daemon cycle start |
 | `core/config.py` | `configure_log_dir(LOG_DIR)` after path resolution to break circular import |
 | `ingestion/` pipeline | `get_logger()` + correlation IDs for per-demo tracing |
 | `backend/nn/` training | `get_logger()` for epoch/loss logging; `add_breadcrumb()` at checkpoints |
-| `apps/qt_app/` | `init_sentry()` at application startup with user-consented DSN |
+| Sentry opt-in | `init_sentry()` is available for wiring at application startup with a user-consented DSN (no caller currently invokes it) |
 | `tools/` scripts | `get_tool_logger()` for isolated tool diagnostics |
-| Pre-commit hooks | `run_rasp_audit()` via `tools/headless_validator.py` |
+| Pre-commit hooks | `sync_integrity_manifest.py --verify-only` checks the manifest; `tools/headless_validator.py` instantiates `RASPGuard` in its Security phase |
 
 ## Development Notes
 
@@ -127,5 +127,7 @@ All domain exceptions inherit from `CS2AnalyzerError`, which accepts an optional
 - **Testing**: in test suites, `CS2_LOG_LEVEL=DEBUG` and `configure_log_dir(tmp_path)`
   redirect all output to a temporary directory. Sentry is automatically skipped when
   `pytest` is detected in `sys.modules`.
-- **Pre-commit**: the `integrity-manifest` hook regenerates and signs the manifest;
-  `headless_validator.py` runs `run_rasp_audit()` to verify it.
+- **Pre-commit**: the `integrity-manifest-check` hook runs
+  `sync_integrity_manifest.py --verify-only` and fails the commit if the on-disk
+  manifest diverges from computed hashes; run the tool without `--verify-only`
+  to regenerate and re-sign the manifest.

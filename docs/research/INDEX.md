@@ -1,6 +1,6 @@
 # Research Library — Index / Bibliography
 
-> Catalogo della biblioteca di ricerca per **Macena CS2 Analyzer**. I PDF vivono in `docs/research/library/` (git-ignored, binari grandi) e in `docs/research/arxiv/` (collezione JEPA preesistente). Questo catalogo è **tracciato** ed è l'unico file pubblico di `docs/research/`.
+> Catalogo della biblioteca di ricerca per **Macena CS2 Analyzer**. I PDF vivono in `docs/research/library/` e in `docs/research/arxiv/` (collezione JEPA preesistente) sulla macchina di lavoro — entrambe le directory sono **git-ignored** (binari grandi) e quindi assenti in un checkout fresco. Questo catalogo è **tracciato** ed è l'unico file di `docs/research/` presente nel repo; i PDF vanno riscaricati dagli ID arXiv indicati.
 >
 > Sessione: **Studio AI/Data-Engineering 2026-06** (branch `study/ai-data-engineering-2026-06`).
 > Obiettivo: ≥40 PDF, bilanciati 50% fondamenta del progetto · 50% punti ciechi mai considerati, + cluster speciale "visione privilegiata al training". **Totale curato: ~66** (49 arXiv nuovi + 14 JEPA preesistenti + 3 non-arXiv).
@@ -8,7 +8,7 @@
 > Anti-fabbricazione: ogni ID risolto da pagine arxiv.org/host autoritativi e validato al download (magic `%PDF-` + dimensione). Nessun ID inventato.
 
 ## Legenda
-`Stato`: ⬇ scaricato+validato · 📖 letto/diagnosi in AUDIT.md · ⏳ in download. Tutti gli arXiv: PDF a `https://arxiv.org/pdf/<ID>`.
+`Stato`: ⬇ scaricato+validato · 📖 letto/diagnosi completata (annotata nei documenti di lavoro dell'epoca) · ⏳ in download. Tutti gli arXiv: PDF a `https://arxiv.org/pdf/<ID>`.
 
 ---
 
@@ -22,7 +22,7 @@ I-JEPA (2301.08243), T-JEPA (2406.12913), JEPA-for-RL (2504.16591), V-JEPA-2 (25
 ## A1 · JEPA & energy-based learning
 | ID | Titolo | Autori (anno) | Perché conta | Stato |
 |---|---|---|---|---|
-| 2511.08544 | LeJEPA: Provable and Scalable SSL Without the Heuristics | Balestriero, LeCun (2025) | **Critico**: rimuove EMA-teacher e stop-gradient (su cui il progetto si fonda: NN-16, NN-JM-04) e li sostituisce con SIGReg. Mette in discussione una scelta architetturale centrale | 📖 studio 2026-07: `docs/Studies/LeJEPA-SIGReg-vs-EMA.md` (26-LEJEPA-01/A1 chiusi) |
+| 2511.08544 | LeJEPA: Provable and Scalable SSL Without the Heuristics | Balestriero, LeCun (2025) | **Critico**: rimuove EMA-teacher e stop-gradient (su cui il progetto si fonda: NN-16, NN-JM-04) e li sostituisce con SIGReg. Mette in discussione una scelta architetturale centrale | 📖 studio 2026-07: nota `LeJEPA-SIGReg-vs-EMA.md` (26-LEJEPA-01/A1 chiusi; la cartella `docs/Studies/` non è più presente nel repo) |
 
 ## A2 · SSL non-contrastivo
 | ID | Titolo | Autori (anno) | Perché conta | Stato |
@@ -141,7 +141,7 @@ I-JEPA (2301.08243), T-JEPA (2406.12913), JEPA-for-RL (2504.16591), V-JEPA-2 (25
 ## B11 · Graph NN (mappe / spazio-tempo)
 | ID | Titolo | Autori (anno) | Perché conta | Stato |
 |---|---|---|---|---|
-| 1706.02216 | GraphSAGE: Inductive Representation Learning on Large Graphs | Hamilton et al. (2017) | Rappresentazioni su grafi — relazioni giocatori/mappa (`Studies/Mappe-GNN.md`) | ⬇ |
+| 1706.02216 | GraphSAGE: Inductive Representation Learning on Large Graphs | Hamilton et al. (2017) | Rappresentazioni su grafi — relazioni giocatori/mappa (studio "Mappe-GNN", non più presente nel repo) | ⬇ |
 | 1710.10903 | Graph Attention Networks | Veličković et al. (2017) | Attenzione su grafi — interazioni spaziali tra i 10 giocatori | ⬇ |
 
 ## B12 · Analytics sport/esport
@@ -192,8 +192,8 @@ I-JEPA (2301.08243), T-JEPA (2406.12913), JEPA-for-RL (2504.16591), V-JEPA-2 (25
 
 ---
 
-## Stato di avanzamento
-- PDF nuovi (target ≥40): **~49 arXiv + 3 non-arXiv** in download/validati in `docs/research/library/`.
-- Collezione preesistente: 14 JEPA in `docs/research/arxiv/`.
+## Stato di avanzamento (istantanea storica, sessione 2026-06)
+- PDF nuovi (target ≥40): **~49 arXiv + 3 non-arXiv** in download/validati in `docs/research/library/` (directory git-ignored, non nel repo).
+- Collezione preesistente: 14 JEPA in `docs/research/arxiv/` (idem, git-ignored).
 - **Totale biblioteca: ~66 paper** (oltre il doppio del minimo richiesto).
-- Prossimo: completamento download (log `_download_log.txt`) → Fase 2 lettura+diagnosi per cluster.
+- Prossimo passo previsto all'epoca: completamento download (log `_download_log.txt`) → Fase 2 lettura+diagnosi per cluster.

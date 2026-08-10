@@ -22,7 +22,7 @@ visualization output files.
 | File | Lines | Purpose | Key Exports |
 |------|-------|---------|-------------|
 | `__init__.py` | 0 | Package marker | -- |
-| `analytics.py` | 353 | Dashboard math engine | `AnalyticsEngine`, `analytics` (singleton) |
+| `analytics.py` | 418 | Dashboard math engine | `AnalyticsEngine`, `analytics` (singleton) |
 
 ## Architecture and Concepts
 
@@ -30,7 +30,7 @@ visualization output files.
 
 The `AnalyticsEngine` class is the single entry point for all dashboard data
 aggregation. It owns a reference to the database manager (obtained via
-`get_db_manager()`) and exposes seven public methods, each returning a specific
+`get_db_manager()`) and exposes eight public methods, each returning a specific
 data shape for a UI widget.
 
 #### `get_player_trends(player_name, limit=20)` -> DataFrame

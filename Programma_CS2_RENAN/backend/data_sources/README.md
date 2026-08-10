@@ -33,12 +33,12 @@ before being passed to downstream consumers.
 | `demo_format_adapter.py` | `DemoFormatAdapter` | Format validation and conversion between demo parser outputs and internal schemas (`MIN_DEMO_SIZE=10MB`) |
 | `event_registry.py` | Event dispatch | Event type registration and dispatch for demo events (kills, plants, defuses, etc.) |
 | `trade_kill_detector.py` | `TradeKillDetector` | Identifies trade frags from tick data using a 3-second sliding window |
-| `round_context.py` | Round context helper | Enriches per-round data with contextual metadata (economy state, site control, etc.) |
+| `round_context.py` | `extract_round_context()` | Pairs freeze_end/round_end events into round windows, extracts bomb events, assigns rounds to ticks via `merge_asof` |
 | `steam_api.py` | `SteamAPI` | Steam Web API integration for profile synchronization, friend lists, game stats |
 | `steam_demo_finder.py` | `SteamDemoFinder` | Locates CS2 demo files in Steam userdata directories on the local filesystem |
 | `faceit_api.py` | `FaceitAPI` | FACEIT platform API wrapper for match history and player statistics |
 | `faceit_integration.py` | `FaceitIntegration` | High-level FACEIT data ingestion orchestration |
-| `hltv_scraper.py` | `HLTVScraper` | Scrapes professional player statistics from hltv.org (Rating 2.0, K/D, ADR, KAST, HS%) |
+| `hltv_scraper.py` | `run_hltv_sync_cycle()` | Entry point that runs one HLTV stats sync cycle (default limit 50 players) via the `hltv/` sub-package |
 | `hltv/` | Sub-package | Active HLTV implementation: FlareSolverr client, Docker manager, stat fetcher (CSS selectors + rate limiting inline) |
 
 ### HLTV Sub-Package (`hltv/`)
@@ -48,7 +48,7 @@ before being passed to downstream consumers.
 | `__init__.py` | Sub-package root (empty namespace marker) |
 | `flaresolverr_client.py` | REST client that posts requests to the local FlareSolverr container (port 8191) to bypass Cloudflare |
 | `docker_manager.py` | Manages the FlareSolverr Docker container lifecycle (`docker start`, `docker compose up -d`, health check) |
-| `stat_fetcher.py` | `HLTVStatFetcher`: discovery, HTML parsing, persistence. Inline CSS selectors via `soup.select()`; rate limiting via `CRAWL_DELAY_MIN/MAX_SECONDS` (2-7s) + `random.uniform()` |
+| `stat_fetcher.py` | `HLTVStatFetcher`: discovery, HTML parsing, persistence. Inline CSS selectors via `soup.select()`; rate limiting via `CRAWL_DELAY_MIN/MAX_SECONDS` (2-7s) + `random.uniform()` + adaptive backoff on consecutive failures |
 
 ## Data Flow Diagram
 
@@ -111,12 +111,13 @@ kill is defined as a kill occurring within a 3-second window after a teammate's 
 targeting the same enemy who made the original kill. Trade kill data feeds into tactical
 analysis and coaching recommendations about trade discipline.
 
-### round_context.py -- Round Context Helper
+### round_context.py -- extract_round_context()
 
-Enriches per-round data with contextual metadata that is not directly present in raw
-demo output. Computes derived fields such as economy advantage, site control metrics,
-and utility usage patterns. This contextual enrichment helps downstream coaching modules
-produce more relevant advice.
+Builds per-round context directly from demo events: pairs `freeze_end` / `round_end`
+events into round windows (`extract_round_context()`), extracts bomb plant/defuse events
+(`extract_bomb_events()`), and assigns round numbers to tick data with a pandas
+`merge_asof` join (`assign_round_to_ticks()`). This contextual enrichment helps
+downstream coaching modules produce more relevant advice.
 
 ### steam_api.py -- SteamAPI
 
@@ -145,11 +146,12 @@ from API calls through data normalization to database storage. Provides a single
 `sync_player()` entry point that handles the full lifecycle of fetching and persisting
 FACEIT data for a given player.
 
-### hltv_scraper.py -- HLTVScraper
+### hltv_scraper.py -- run_hltv_sync_cycle()
 
-Scrapes professional player statistics from hltv.org. Extracts: Rating 2.0, K/D ratio,
-ADR (Average Damage per Round), KAST percentage, HS% (Headshot percentage), clutch
-statistics, and career history. Data is saved to `hltv_metadata.db` in the `ProPlayer`,
+Thin entry point that runs one professional-statistics sync cycle (default `limit=50`
+players) by delegating to the `hltv/` sub-package. The fetched data covers Rating 2.0,
+K/D ratio, ADR (Average Damage per Round), KAST percentage, HS% (Headshot percentage),
+and team affiliation, saved to `hltv_metadata.db` in the `ProPlayer`,
 `ProPlayerStatCard`, and `ProTeam` tables. **This module scrapes statistics only -- it
 has no connection to demo file management.**
 
@@ -159,7 +161,7 @@ The active HLTV implementation that handles Cloudflare-protected page retrieval.
 `docker_manager.py` manages the FlareSolverr container lifecycle, `flaresolverr_client.py`
 routes HTTP requests through it, and `stat_fetcher.py` orchestrates discovery, HTML
 parsing (inline CSS selectors via BeautifulSoup4), rate limiting (2-7 second randomized
-crawl delay), and database persistence.
+crawl delay with adaptive backoff on consecutive failures), and database persistence.
 
 ## Integration Points
 

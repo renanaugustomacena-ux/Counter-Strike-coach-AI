@@ -32,9 +32,12 @@ design/
 │   ├── system_map.svg          1920×1200 full pipeline
 │   ├── jepa_model.svg          1440×1080 full layer diagram
 │   └── data_pipeline.svg       1440×900  25-dim vector lifecycle
-└── assets/
-    ├── icons/sprite.svg        SVG icon sprite
-    └── wallpapers/             cs2.svg · csgo.svg · cs16.svg
+├── assets/
+│   ├── icons/sprite.svg        SVG icon sprite
+│   ├── motifs/                 tactical-grid.svg background motif
+│   └── wallpapers/             cs2.svg · csgo.svg · cs16.svg
+└── cs2/                        ← marketing deck & video sources (HTML/JSX/scenes)
+    └── uploads/                flattened copy of the 41 frames + tokens (see its README)
 ```
 
 ## How to Use

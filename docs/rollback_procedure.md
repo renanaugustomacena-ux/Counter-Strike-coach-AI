@@ -23,7 +23,12 @@ If any phase of the v3 restoration corrupts `database.db` or
 pkill -f hltv_sync_service || true
 pkill -f Programma_CS2_RENAN.apps.qt_app.app || true
 
-# 2. Acquire rollback lock so no concurrent writer can race
+# 2. Acquire rollback lock so no concurrent writer can race.
+#    Caveat: lock liveness is tied to the holder PID — a lock written by a
+#    short-lived `python -c` process is auto-reclaimed once that process
+#    exits. For real protection, run steps 2-7 from one long-lived shell
+#    session without long pauses, or hold the lock from a single Python
+#    process that performs the restore.
 ./.venv/bin/python -c "from Programma_CS2_RENAN.core import lock_files; lock_files.acquire('rollback')"
 
 # 3. Restore main DB
@@ -78,8 +83,8 @@ PY
 
 ## After rollback
 
-1. Document what triggered the rollback in `AUDIT.md` with a UTC
-   ISO 8601 timestamp.
+1. Document what triggered the rollback in `TASKS.md` (project root)
+   with a UTC ISO 8601 timestamp.
 2. Investigate root cause before re-attempting the failed phase.
 3. If the failed phase needs a code fix, ship the fix on a separate
    branch with a regression test before re-running.

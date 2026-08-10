@@ -14,55 +14,66 @@ alembic/
 ├── env.py                  # Alembic environment configuration
 ├── script.py.mako          # Migration script template
 └── versions/               # Migration history (sequential, immutable)
-    ├── 19fcff36ea0a_...    # Heartbeat telemetry
-    ├── 3c6ecb5fe20e_...    # Fusion plan columns
-    ├── 57a72f0df21e_...    # Nullable heartbeat
-    ├── 609fed4b4dce_...    # Ingestion task tracking
+    ├── f769fbe67229_...    # Profile field completeness (root)
     ├── 7a30a0ea024e_...    # Schema synchronization
     ├── 89850b6e0a49_...    # Professional player statistics
     ├── 8a93567a2798_...    # Pro player physics linking
+    ├── c8a2308770e5_...    # Retraining triggers
     ├── 8c443d3d9523_...    # Triple daemon support
+    ├── 609fed4b4dce_...    # Ingestion task tracking
+    ├── e3013f662fd4_...    # Coaching state sync
+    ├── 57a72f0df21e_...    # Nullable heartbeat
+    ├── da7a6be5c0c7_...    # Service notifications
+    ├── 19fcff36ea0a_...    # Heartbeat telemetry
+    ├── 3c6ecb5fe20e_...    # Fusion plan columns
     ├── a1b2c3d4e5f6_...    # Data quality metrics
     ├── b2c3d4e5f6a7_...    # Player tick enrichment
-    ├── c8a2308770e5_...    # Retraining triggers
-    ├── da7a6be5c0c7_...    # Service notifications
-    ├── e3013f662fd4_...    # Coaching state sync
-    └── f769fbe67229_...    # Profile field completeness
+    ├── c3d4e5f6a7b8_...    # Coaching experience strategy label
+    ├── d4e5f6a7b8c9_...    # SteamID columns
+    ├── e5f6a7b8c9d0_...    # POV stream index
+    └── f6a7b8c9d0e1_...    # Drop connect_state (head)
 ```
 
-## Migration History (14 Revisions)
+## Migration History (18 Revisions)
+
+Single linear chain, oldest first. Current head: `f6a7b8c9d0e1`.
 
 | Revision | Description | Tables Affected |
 |----------|-------------|-----------------|
-| `f769fbe67229` | Add missing profile fields | `UserProfile` |
-| `e3013f662fd4` | Add sync and interval to CoachState | `CoachState` |
-| `da7a6be5c0c7` | Add service notification table | `ServiceNotification` (new) |
-| `c8a2308770e5` | Add retraining trigger support | `TrainingState` |
-| `b2c3d4e5f6a7` | Add enrichment columns to PlayerTickState | `PlayerTickState` |
-| `a1b2c3d4e5f6` | Add data quality to PlayerMatchStats | `PlayerMatchStats` |
-| `8c443d3d9523` | Triple daemon support (Hunter/Digester/Teacher) | `DaemonState` (new) |
-| `8a93567a2798` | Link pro physics to stats | `ProPlayer`, `ProPlayerStatCard` |
-| `89850b6e0a49` | Add professional player statistics | `ProPlayer` (new), `ProPlayerStatCard` (new) |
+| `f769fbe67229` | Add missing profile fields (root) | `UserProfile` |
 | `7a30a0ea024e` | Sync missing tables | Multiple |
+| `89850b6e0a49` | Add professional player statistics | `ProPlayer` (new), `ProPlayerStatCard` (new) |
+| `8a93567a2798` | Link pro physics to stats | `ProPlayer`, `ProPlayerStatCard` |
+| `c8a2308770e5` | Add retraining trigger support | `TrainingState` |
+| `8c443d3d9523` | Triple daemon support (Hunter/Digester/Teacher) | `DaemonState` (new) |
 | `609fed4b4dce` | Add last_tick_processed to IngestionTask | `IngestionTask` |
+| `e3013f662fd4` | Add sync and interval to CoachState | `CoachState` |
 | `57a72f0df21e` | Add nullable heartbeat to CoachState | `CoachState` |
-| `3c6ecb5fe20e` | Fusion plan columns (temporal baseline, role thresholds) | `CoachState` |
+| `da7a6be5c0c7` | Add service notification table | `ServiceNotification` (new) |
 | `19fcff36ea0a` | Add heartbeat telemetry to CoachState | `CoachState` |
+| `3c6ecb5fe20e` | Fusion plan columns (temporal baseline, role thresholds) | `CoachState` |
+| `a1b2c3d4e5f6` | Add data quality to PlayerMatchStats | `PlayerMatchStats` |
+| `b2c3d4e5f6a7` | Add enrichment columns to PlayerTickState | `PlayerTickState` |
+| `c3d4e5f6a7b8` | Add strategy_label to CoachingExperience | `CoachingExperience` |
+| `d4e5f6a7b8c9` | Add steamid to tick and match stats | `PlayerTickState`, `PlayerMatchStats` |
+| `e5f6a7b8c9d0` | Add POV stream index to PlayerTickState | `PlayerTickState` |
+| `f6a7b8c9d0e1` | Drop connect_state from Ext_PlayerPlaystyle (head) | `Ext_PlayerPlaystyle` |
 
 ## `env.py` — Environment Configuration
 
 The environment script handles both offline and online migration modes:
 
 - **Path stabilization** via `core.config.stabilize_paths()` — ensures correct `CORE_DB_DIR` resolution
-- **Model import** — imports all SQLModel classes from `backend/storage/db_models.py` for autogenerate
-- **WAL mode enforcement** — every connection sets `PRAGMA journal_mode=WAL` before running migrations
-- **Database URL** — resolved from `core.config.DATABASE_URL` (always points to monolith `database.db`)
+- **Model import** — explicitly imports 19 SQLModel classes from `backend/storage/db_models.py` so autogenerate diffs against `SQLModel.metadata`
+- **Pre-migration backup** — online mode calls `db_backup.backup_monolith()` before running migrations (non-fatal if it fails)
+- **Database URL** — `CS2_ALEMBIC_URL` (env var, for throwaway verification DBs) wins over `core.config.DATABASE_URL` (the monolith `database.db`)
 
 ```python
-# Connection setup (simplified)
-connectable = create_engine(config.DATABASE_URL)
+# URL resolution + online run (simplified)
+config.set_main_option("sqlalchemy.url", os.environ.get("CS2_ALEMBIC_URL", DATABASE_URL))
+_pre_migration_backup()  # backup_monolith(), non-fatal
+connectable = engine_from_config(..., poolclass=pool.NullPool)
 with connectable.connect() as connection:
-    connection.execute(text("PRAGMA journal_mode=WAL"))
     context.configure(connection=connection, target_metadata=target_metadata)
     with context.begin_transaction():
         context.run_migrations()
@@ -102,7 +113,7 @@ alembic history --verbose
 
 ## Migration Principles
 
-1. **Idempotent** — migrations use `batch_alter_table` for SQLite compatibility and can be re-run safely
+1. **Sequential** — one linear chain, no branches (current head: `f6a7b8c9d0e1`)
 2. **Reversible** — every migration has both `upgrade()` and `downgrade()` functions
 3. **Version-controlled** — migrations are committed to git and never modified after merge
 4. **Tested** — run `python tools/headless_validator.py` after any schema change
@@ -116,8 +127,8 @@ alembic history --verbose
 - The `alembic.ini` file at the project root configures the database URL and logging
 - SQLite does not support all ALTER TABLE operations natively — Alembic's batch mode handles this
 - After creating a new migration, verify it with `alembic upgrade head && alembic downgrade -1 && alembic upgrade head`
-- The `DatabaseGovernor` in `backend/control/db_governor.py` audits migration state on every boot
-- All 61+ SQLModel classes in `db_models.py` are imported by `env.py` for autogenerate detection
+- The `DatabaseGovernor` in `backend/control/db_governor.py` runs periodic integrity audits (`PRAGMA quick_check`) on the live databases
+- `env.py` explicitly imports 19 SQLModel classes from `db_models.py` (which defines 25 `table=True` models) for autogenerate detection — adding a table means adding its import there
 
 ## Common Issues
 

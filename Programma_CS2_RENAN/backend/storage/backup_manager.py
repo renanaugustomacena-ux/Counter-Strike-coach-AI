@@ -1,5 +1,6 @@
 import os
 import re
+import shutil
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,6 +14,17 @@ logger = get_logger("cs2analyzer.backup_manager")
 # before any path construction — prevents pre-validation injection into
 # `target_path`. Strict regex keeps the value safe for filename use too.
 _SAFE_BACKUP_LABEL_RE = re.compile(r"^[a-zA-Z0-9_\-]{1,64}$")
+
+# ST-BK-01 (2026-08-03): the monolith can be hundreds of GB (currently a
+# 271 GB symlink to another drive). sqlite3's online backup would copy the
+# WHOLE file into the backup dir — filling the project disk mid-session.
+# Refuse to back up a DB larger than this ceiling (override via env for
+# machines where a full copy is actually wanted), and always require the
+# copy to fit in free space with headroom.
+_BACKUP_MAX_DB_BYTES = int(
+    os.getenv("CS2_BACKUP_MAX_DB_BYTES", str(50 * 1024**3))  # 50 GiB default
+)
+_BACKUP_FREE_SPACE_MARGIN = 1.2  # require 20% headroom over the DB size
 
 
 class BackupManager:
@@ -50,6 +62,29 @@ class BackupManager:
 
         if not os.path.exists(self.db_path):
             logger.warning("No database found at %s to backup.", self.db_path)
+            return False
+
+        # ST-BK-01: size + free-space guard BEFORE any copy starts.
+        # os.path.getsize follows symlinks — it measures the real monolith.
+        db_size = os.path.getsize(self.db_path)
+        if db_size > _BACKUP_MAX_DB_BYTES:
+            logger.error(
+                "Refusing backup: database is %.1f GiB, above the %.1f GiB "
+                "ceiling (CS2_BACKUP_MAX_DB_BYTES). A full online-backup copy "
+                "of a DB this size would exhaust local disk. Use external/"
+                "drive-level backups for the monolith.",
+                db_size / 1024**3,
+                _BACKUP_MAX_DB_BYTES / 1024**3,
+            )
+            return False
+        free_bytes = shutil.disk_usage(self.backup_dir).free
+        if db_size * _BACKUP_FREE_SPACE_MARGIN > free_bytes:
+            logger.error(
+                "Refusing backup: need %.1f GiB (incl. margin) but only " "%.1f GiB free at %s.",
+                db_size * _BACKUP_FREE_SPACE_MARGIN / 1024**3,
+                free_bytes / 1024**3,
+                self.backup_dir,
+            )
             return False
 
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")

@@ -11,30 +11,47 @@ Root-level verification and forensic tests for critical system components of the
 
 ```
 tests/
-├── conftest.py                     # Root-level pytest configuration and fixtures
-├── verify_chronovisor_logic.py     # Chronovisor logic verification
-├── verify_chronovisor_real.py      # Chronovisor with real demo data
-├── verify_csv_ingestion.py         # CSV ingestion pipeline verification
-├── verify_map_integration.py       # Map integration and spatial data
-├── verify_reporting.py             # Reporting pipeline (PDF, charts)
-├── verify_superposition.py         # Superposition network verification
-├── setup_golden_data.py            # Golden test data setup
-└── forensics/                      # Debug and diagnostic scripts
-    ├── check_db_status.py          # Database connectivity diagnostics
-    ├── check_failed_tasks.py       # Ingestion task failure analysis
-    ├── debug_env.py                # Environment variable debugging
-    ├── debug_nade_cols.py          # Grenade column debugging
-    ├── debug_parser_fields.py      # Demo parser field validation
-    ├── forensic_parser_test.py     # Parser behavior investigation
-    ├── probe_missing_tables.py     # Schema completeness check
-    ├── test_skill_logic.py         # Skill system validation
-    ├── verify_map_dimensions.py    # Map bounds verification
-    └── verify_spatial_integrity.py # Spatial data consistency
+├── conftest.py                        # Root-level pytest path setup
+├── test_d3_rederive.py                # d3_recover_shard_metadata --rederive-v1 tests
+├── test_eval_harness.py               # eval_harness helpers + CLI tests
+├── test_lock_files.py                 # core.lock_files acquire/release/reclaim tests
+├── test_rescrape_placeholder_pros.py  # rescrape_placeholder_pros tool tests
+├── test_sync_pro_players.py           # sync_pro_players stale-count/purge tests
+├── verify_chronovisor_logic.py        # Chronovisor logic verification
+├── verify_chronovisor_real.py         # Chronovisor with real demo data
+├── verify_csv_ingestion.py            # CSV ingestion pipeline verification
+├── verify_map_integration.py          # Map integration and spatial data
+├── verify_reporting.py                # Reporting pipeline (PDF, charts)
+├── verify_superposition.py            # Superposition network verification
+├── setup_golden_data.py               # Golden test data setup
+└── forensics/                         # Debug and diagnostic scripts
+    ├── check_db_status.py             # Database connectivity diagnostics
+    ├── check_failed_tasks.py          # Ingestion task failure analysis
+    ├── debug_env.py                   # Environment variable debugging
+    ├── debug_nade_cols.py             # Grenade column debugging
+    ├── debug_parser_fields.py         # Demo parser field validation
+    ├── test_forensic_parser.py        # Parser behavior investigation
+    ├── probe_missing_tables.py        # Schema completeness check
+    ├── test_skill_logic.py            # Skill system validation
+    ├── verify_map_dimensions.py       # Map bounds verification
+    └── verify_spatial_integrity.py    # Spatial data consistency
 ```
 
 ## Test Categories
 
-### Verification Tests (Main)
+### Pytest Suites (`test_*.py`)
+
+Conventional pytest suites for the root-level tools and core utilities:
+
+| Test File | What It Tests |
+|-----------|---------------|
+| `test_d3_rederive.py` | `tools/d3_recover_shard_metadata.py --rederive-v1` tick-rate re-derivation |
+| `test_eval_harness.py` | `tools/eval_harness.py` pure helpers + CLI entrypoint (live-DB smoke behind `CS2_INTEGRATION_TESTS=1`) |
+| `test_lock_files.py` | `core.lock_files` acquire / release / dead-PID reclaim / signal handling |
+| `test_rescrape_placeholder_pros.py` | `tools/rescrape_placeholder_pros.py` listing, URLs, dry-run (stubbed fetcher, no network) |
+| `test_sync_pro_players.py` | `tools/sync_pro_players.py` stale-count and purge logic (in-memory SQLite) |
+
+### Verification Tests
 
 These tests verify critical system behavior using real data:
 
@@ -59,7 +76,7 @@ The `forensics/` subdirectory contains diagnostic scripts for investigating spec
 | `debug_env.py` | Dumps environment variables relevant to the application |
 | `debug_nade_cols.py` | Verifies grenade-related columns in tick data tables |
 | `debug_parser_fields.py` | Validates demoparser2 field names against expected schema |
-| `forensic_parser_test.py` | Deep investigation of parser behavior on specific demo files |
+| `test_forensic_parser.py` | Deep investigation of parser behavior on specific demo files |
 | `probe_missing_tables.py` | Compares SQLModel definitions against actual database schema |
 | `test_skill_logic.py` | Validates coaching skill selection and weighting logic |
 | `verify_map_dimensions.py` | Checks map bounds, scale factors, and coordinate ranges |
@@ -67,15 +84,11 @@ The `forensics/` subdirectory contains diagnostic scripts for investigating spec
 
 ## `conftest.py` — Root Configuration
 
-The root-level `conftest.py` provides:
-
-- **Path setup** — injects the project root into `sys.path` so all imports resolve correctly
-- **Project root fixture** — `PROJECT_ROOT` path available to all tests
-- **Environment isolation** — ensures tests don't accidentally modify production data
+The root-level `conftest.py` is minimal — it injects the project root into `sys.path` so all imports resolve correctly:
 
 ```python
-# Simplified conftest.py
-PROJECT_ROOT = Path(__file__).parent.parent
+# Essentially the whole conftest.py
+PROJECT_ROOT = Path(__file__).parent.parent.absolute()
 sys.path.insert(0, str(PROJECT_ROOT))
 ```
 
@@ -91,9 +104,9 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 | Aspect | `tests/` (root) | `Programma_CS2_RENAN/tests/` (main) |
 |--------|-----------------|--------------------------------------|
-| Focus | Integration, E2E, forensics | Unit tests, module tests |
-| Test count | ~18 scripts | 2,024+ tests in 118 files |
-| Data | Real demos, production DB | In-memory DB, mocks, fixtures |
+| Focus | Tool tests, integration, forensics | Unit tests, module tests |
+| Test count | 22 scripts (5 test + 6 verify + setup + 10 forensics) | 130 `test_*.py` files |
+| Data | Real demos, production DB (verify/forensics); mocks (test_*) | In-memory DB, mocks, fixtures |
 | Framework | pytest + standalone scripts | pytest with rich fixture ecosystem |
 | Run frequency | On demand, debugging | Every commit (pre-commit hooks) |
 

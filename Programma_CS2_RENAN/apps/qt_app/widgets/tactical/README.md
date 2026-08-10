@@ -14,7 +14,7 @@ Custom widgets exclusive to the **Tactical Viewer** screen. They render the 2D m
 | File | Widget | Purpose |
 |------|--------|---------|
 | `__init__.py` | — | Package marker. |
-| `map_widget.py` | `MapWidget` | The "Living Map" — GPU-accelerated 2D map renderer for player positions, grenade trajectories, kill markers, ghost AI projections. Subscribes to `TacticalPlaybackViewModel.tickAdvanced`. |
+| `map_widget.py` | `TacticalMapWidget` | The "Living Map" — QPainter-based 2D map renderer (loads `PHOTO_GUI/maps/*.png` overviews) for player positions, grenade trajectories, kill markers, ghost AI projections. Driven per frame via `TacticalPlaybackVM.frame_updated`; emits `selected_player_changed`. |
 | `player_sidebar.py` | `PlayerSidebar` | Two-team player roster with live HP / armor / weapon / economy display. Uses widget pooling (object reuse) so per-tick refresh does not allocate. |
 | `timeline_widget.py` | `TimelineWidget` | Interactive scrubber with colour-coded event markers (kills, plants, defuses, round transitions). Click and drag to seek. |
 
@@ -23,48 +23,43 @@ Custom widgets exclusive to the **Tactical Viewer** screen. They render the 2D m
 ```
 TacticalViewerScreen
     |
-    +-- MapWidget         <-- TacticalPlaybackViewModel.tickAdvanced
-    |   +-- TacticalGhostViewModel.predictionReady       (ghost AI overlay)
-    |   +-- TacticalChronovisorViewModel.criticalMoment  (highlight markers)
+    +-- TacticalMapWidget  <-- TacticalPlaybackVM.frame_updated (via the screen)
+    |   +-- ghost overlay data from TacticalGhostVM
+    |   +-- TacticalChronovisorVM.scan_complete / navigate_to  (highlight markers)
     |
-    +-- PlayerSidebar     <-- TacticalPlaybackViewModel.playersUpdated
+    +-- PlayerSidebar      <-- TacticalPlaybackVM.frame_updated (via the screen)
     |
-    +-- TimelineWidget    <-- TacticalPlaybackViewModel.timelineReady
-                          --> TacticalPlaybackViewModel.seekRequested
+    +-- TimelineWidget     <-- TacticalPlaybackVM.current_tick_changed / total_ticks_changed
+                           --> seeks through TacticalPlaybackVM
 ```
 
 ## Performance considerations
 
-### MapWidget
+### TacticalMapWidget
 
-The map renders **every tick** during playback (64 ticks per second). Bottlenecks would freeze the entire UI thread. Mitigations:
+The map repaints **every frame** during playback, so per-frame work must stay minimal:
 
-- Map texture is uploaded **once** per map switch, not per tick.
-- Player positions are batched into a single `QPainter.drawPoints()` call.
-- Grenade trajectories are pre-computed when a nade is thrown and cached until detonation.
-- Kill markers fade out on a `QTimer` rather than being redrawn per tick.
+- The scaled map pixmap is cached and recomputed only on resize or map change — per-frame paints reuse it.
+- When no map overview is found, `paintEvent` draws a dark fallback rect instead of failing.
 
 ### PlayerSidebar
 
-- 10 player cards (5 per team) reuse `PlayerCard` widget instances rather than creating / destroying per tick (widget pooling — same pattern as the legacy Kivy app).
-- Health / armor bars use `QPainter` direct draw inside a `paintEvent` rather than nested `QProgressBar` widgets to avoid layout churn.
+- Player rows reuse pooled widget instances rather than being created / destroyed per tick.
+- The live detail card updates in place.
 
 ### TimelineWidget
 
-- Event markers are rendered into an offscreen `QPixmap` cache once per match and blitted to the widget on `paintEvent`.
-- The cursor (current tick) is drawn separately, on top, so cursor movement does not invalidate the marker cache.
+- Markers and the cursor are drawn in `paintEvent`; keep per-frame allocations out of the paint path.
 
 ## Accessibility
 
-- Player cards include screen-reader-friendly summaries (`setAccessibleName("Player 'Renan' — CT — 100 HP — 4750 equipment")`).
-- Timeline event markers carry text descriptions, so a screen reader announces "kill at 1:23 in round 12" rather than just an icon position.
-- Color-coded events (kill = red, plant = yellow, defuse = blue) are paired with shape / position differences (kill at half height, plant / defuse at full height) so colour-blind users can still parse the state (WCAG 1.4.1).
+- Follow the project convention: pair every colour-coded state (kill / plant / defuse markers, HP bars) with text or shape differences so colour-blind users can still parse it (WCAG 1.4.1).
 
 ## Integration
 
 ```
 TacticalViewerScreen (apps/qt_app/screens/tactical_viewer_screen.py)
-    +-- MapWidget
+    +-- TacticalMapWidget
     +-- PlayerSidebar
     +-- TimelineWidget
             |
@@ -86,5 +81,5 @@ TacticalViewerScreen (apps/qt_app/screens/tactical_viewer_screen.py)
 - Tactical ViewModel cluster: `apps/qt_app/viewmodels/tactical_vm.py`
 - Playback engine: `Programma_CS2_RENAN/core/playback_engine.py`
 - Ghost AI inference: `Programma_CS2_RENAN/backend/nn/inference/ghost_engine.py`
-- Map assets: `Programma_CS2_RENAN/assets/maps/`
+- Map overview images: `Programma_CS2_RENAN/PHOTO_GUI/maps/`
 - Parent: `apps/qt_app/widgets/README.md`

@@ -34,8 +34,8 @@ widgets/
 | File | Purpose |
 |------|---------|
 | `__init__.py` | Package marker. |
-| `skeleton.py` | `SkeletonLoader` — shimmer placeholder shown while ViewModel data loads. |
-| `toast.py` | Transient toast notification with auto-dismiss + action button. Subscribed to `app_state.bus` for global toasts. |
+| `skeleton.py` | `SkeletonRect` / `SkeletonCard` / `SkeletonTable` — shimmer placeholders shown while ViewModel data loads. |
+| `toast.py` | `ToastWidget` + `ToastContainer` — transient notifications with severity-based auto-dismiss; `MainWindow` connects `AppState.notification_received` to the container. |
 
 ## Conventions
 
@@ -63,7 +63,7 @@ Widgets expose state changes via `Signal` (e.g. `clicked`, `selectionChanged`). 
 3. Read tokens via `core/design_tokens` — never hard-code colors.
 4. Expose state via `Signal`s, not getters that mutate.
 5. Add the widget to its sub-package's README inventory table.
-6. If the widget is theme-aware, subscribe to `theme_engine.themeChanged`.
+6. If the widget is theme-aware, resolve colors from the active token set (`get_tokens()`) or connect to `theme_engine.theme_changed`.
 
 ## Related
 
