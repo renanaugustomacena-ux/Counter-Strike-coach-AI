@@ -79,6 +79,117 @@ SAMPLE_MATCHES: list[dict[str, Any]] = [
     },
 ]
 
+# ── Match detail (frames 09/10/11) — keys mirror MatchDetailViewModel._bg_load ──
+
+MATCH_DETAIL_STATS: dict[str, Any] = {
+    "demo_name": "2026-04-22_mirage_comp.dem",
+    "match_date": _dt(2026, 4, 22, 21, 14),
+    "rating": 1.34, "kd_ratio": 1.26, "avg_adr": 82.3, "avg_kast": 0.78,
+    "avg_hs": 0.52, "avg_kills": 24.0, "avg_deaths": 19.0,
+    "kpr": 1.0, "dpr": 0.79,
+    # HLTV 2.0 per-match components (frame 09 left column)
+    "rating_impact": 1.28, "rating_survival": 1.12, "rating_kast": 1.08,
+    "rating_kpr": 1.32, "rating_adr": 1.41,
+    # Trade / duel metrics (frame 09 right column; ratios 0-1)
+    "trade_kill_ratio": 0.34, "was_traded_ratio": 0.62,
+    "opening_duel_win_pct": 0.55, "clutch_win_pct": 0.67,
+    "positional_aggression_score": 0.72,
+    # Kill enrichment (ratios 0-1)
+    "thrusmoke_kill_pct": 0.08, "wallbang_kill_pct": 0.04,
+    "noscope_kill_pct": 0.0, "blind_kill_pct": 0.0,
+    # Utility breakdown
+    "he_damage_per_round": 12.4, "molotov_damage_per_round": 5.8,
+    "smokes_per_round": 0.8, "flash_assists": 3.0,
+    "unused_utility_per_round": 1.2,
+    # Display-only extras — no DB source yet (see screen FIELD-GAP notes).
+    "demo_size_mb": 312, "duration_min": 45,
+}
+
+
+def _md_round(  # noqa: PLR0913 — table row, one arg per frame-10 column
+    n: int, side: str, won: bool, k: int, d: int, dmg: int, equip: int,
+    fk: bool, bomb: str | None, left: int, note: str,
+    sev: str | None = None, od: bool = False,
+) -> dict[str, Any]:
+    return {
+        "round_number": n, "side": side, "round_won": won,
+        "kills": k, "deaths": d, "damage_dealt": dmg,
+        "opening_kill": fk, "opening_death": od, "equipment_value": equip,
+        # Fixture-only display fields (not in the RoundStats payload —
+        # the screen renders them defensively; see its FIELD-GAP notes).
+        "bomb": bomb, "enemies_left": left,
+        "note": note, "note_severity": sev,
+    }
+
+
+# 24 rounds exactly as frame 10 draws them (T half 7W-5L, CT half 9W-3L).
+MATCH_DETAIL_ROUNDS: list[dict[str, Any]] = [
+    _md_round(1, "T", True, 2, 0, 152, 4600, True, "planted", 3, "pistol · eco save CT"),
+    _md_round(2, "T", True, 1, 0, 98, 3800, False, "planted", 2, "force · trade kill at palace"),
+    _md_round(3, "T", False, 0, 1, 18, 5200, False, None, 5,
+              "over-peek jungle vs mid-hold", sev="warning", od=True),
+    _md_round(4, "T", True, 1, 1, 84, 5000, False, "defused", 0, "1v2 clutch win on palace"),
+    _md_round(5, "T", False, 1, 1, 42, 4800, True, None, 4, "got traded fast"),
+    _md_round(6, "T", True, 2, 1, 128, 5200, False, "planted", 2, "A default · flash assist x2"),
+    _md_round(7, "T", True, 2, 1, 144, 5400, True, "planted", 1, "full save by CT"),
+    _md_round(8, "T", True, 1, 0, 76, 5000, False, "planted", 3, "B split execute"),
+    _md_round(9, "T", False, 2, 1, 168, 5200, False, None, 2,
+              "post-plant hold failed", sev="warning"),
+    _md_round(10, "T", False, 0, 1, 32, 5200, False, None, 4,
+              "crossfire death top-mid", od=True),
+    _md_round(11, "T", True, 2, 1, 156, 5400, True, "planted", 1, "opening pick at palace"),
+    _md_round(12, "T", False, 1, 1, 68, 5200, False, None, 3, "last round of half"),
+    _md_round(13, "CT", True, 2, 0, 126, 3800, True, None, 2, "CT pistol · hold A"),
+    _md_round(14, "CT", False, 1, 1, 58, 4200, False, "lost", 3,
+              "B rush · late rotate", od=True),
+    _md_round(15, "CT", True, 1, 0, 72, 4800, False, "defused", 1, "hold connector"),
+    _md_round(16, "CT", True, 2, 0, 148, 5200, True, "defused", 2,
+              "retake 2v4 win", sev="success"),
+    _md_round(17, "CT", True, 1, 1, 88, 5200, False, "lost", 0, "time ran out"),
+    _md_round(18, "CT", True, 2, 0, 134, 5200, True, None, 1, "mid-jungle aim duel"),
+    _md_round(19, "CT", False, 1, 1, 54, 5200, False, "lost", 2,
+              "over-peeked vs flash", sev="warning", od=True),
+    _md_round(20, "CT", True, 2, 1, 112, 5200, False, "defused", 1, "solid hold B"),
+    _md_round(21, "CT", False, 0, 1, 28, 5200, False, "lost", 4,
+              "caught repositioning", od=True),
+    _md_round(22, "CT", True, 2, 0, 142, 5200, True, "defused", 1, "double on A ramp"),
+    _md_round(23, "CT", True, 1, 1, 76, 5200, False, "defused", 3, "mid rotate to B save"),
+    _md_round(24, "CT", True, 2, 1, 98, 5200, False, "defused", 0,
+              "match point · win 16-8", sev="success"),
+]
+
+MATCH_DETAIL_INSIGHTS: list[dict[str, Any]] = [
+    {
+        "title": "Over-peeking on A-site default",
+        "message": "Died first in 3 of 12 T rounds holding the same jungle angle "
+                   "— vary the peek timing or play the off-angle.",
+        "severity": "critical", "focus_area": "Positioning",
+    },
+    {
+        "title": "Utility burn before engage",
+        "message": "HE used avg 4.1s before first contact vs pro baseline 8.3s "
+                   "— throw earlier on executes.",
+        "severity": "warning", "focus_area": "Utility",
+    },
+    {
+        "title": "Crosshair placement improving",
+        "message": "Head-level tracking up 9% over the last five matches — keep "
+                   "the current warmup routine.",
+        "severity": "info", "focus_area": "Aim",
+    },
+    {
+        "title": "Pistol round buy pattern",
+        "message": "Kevlar-only on both pistols; consider a P250 upgrade when "
+                   "playing entry on T side.",
+        "severity": "info", "focus_area": "Economy",
+    },
+]
+
+# Cross-match aggregate — mirrors analytics.get_hltv2_breakdown() keys.
+MATCH_DETAIL_HLTV: dict[str, float] = {
+    "Kill": 1.32, "Survival": 1.12, "KAST": 1.08, "Impact": 1.28, "Damage": 1.41,
+}
+
 # ── Training status (frame 05) — keys mirror AppState.training_changed ──
 
 TRAINING_STATUS: dict[str, Any] = {
@@ -122,3 +233,12 @@ def inject_home(screen: Any) -> None:
 
 def inject_match_history(screen: Any) -> None:
     screen._on_matches_loaded(list(SAMPLE_MATCHES))
+
+
+def inject_match_detail(screen: Any) -> None:
+    screen._on_data(
+        dict(MATCH_DETAIL_STATS),
+        [dict(r) for r in MATCH_DETAIL_ROUNDS],
+        [dict(i) for i in MATCH_DETAIL_INSIGHTS],
+        dict(MATCH_DETAIL_HLTV),
+    )
