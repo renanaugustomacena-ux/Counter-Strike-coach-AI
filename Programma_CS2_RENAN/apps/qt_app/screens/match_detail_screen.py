@@ -680,68 +680,231 @@ class MatchDetailScreen(QWidget):
         ]
         return self._build_stat_band(cells)
 
-    # ── Tab: Rounds ──
+    # ── Tab: Rounds (frame 10) ──
+
+    # (key, i18n key, fallback header, pixel width; -1 = stretch) — widths
+    # trace the frame-10 column grid so header and rows always align.
+    _ROUND_COLS = (
+        ("rnd", "md_col_rnd", "Rnd", 64),
+        ("wl", "md_col_wl", "W/L", 60),
+        ("side", "md_col_side", "Side", 80),
+        ("k", "md_col_k", "K", 40),
+        ("d", "md_col_d", "D", 40),
+        ("dmg", "md_col_dmg", "DMG", 80),
+        ("equip", "md_col_equip", "Equip $", 100),
+        ("fk", "md_col_first_kill", "First Kill", 100),
+        ("bomb", "md_col_bomb", "Bomb", 100),
+        ("left", "md_col_enemies", "Enemies left", 120),
+        ("note", "md_col_notes", "Notes", -1),
+    )
 
     def _build_rounds(self, rounds: list) -> QWidget:
         tokens = get_tokens()
+        page = QWidget()
+        page_layout = QVBoxLayout(page)
+        page_layout.setContentsMargins(0, tokens.spacing_md, 0, 0)
+        page_layout.setSpacing(tokens.spacing_sm)
+
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
         content = QWidget()
         layout = QVBoxLayout(content)
-        layout.setContentsMargins(0, tokens.spacing_md, 0, tokens.spacing_md)
-        layout.setSpacing(tokens.spacing_md)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        card = Card(title="", depth="raised")
-        body = card.content_layout
-        body.setSpacing(2)
-
-        header = QLabel(
-            f"{'RND':<6} {'W/L':<6} {'SIDE':<6} {'K':<4} {'D':<4} " f"{'DMG':<8} {'EQUIP':<8}"
-        )
-        header.setFont(Typography.font("mono"))
-        Typography.apply(header, "caption")
-        header.setStyleSheet(
-            f"color: {tokens.text_tertiary}; background: transparent; "
-            f"padding-bottom: {tokens.spacing_xs}px;"
-        )
-        body.addWidget(header)
-
-        for r in rounds:
-            rnum = int(r.get("round_number") or 0)
-            side = str(r.get("side") or "?")
-            won = bool(r.get("round_won"))
-            kills = int(r.get("kills") or 0)
-            deaths = int(r.get("deaths") or 0)
-            dmg = int(r.get("damage_dealt") or 0)
-            opening = bool(r.get("opening_kill"))
-            equip = int(r.get("equipment_value") or 0)
-
-            result_color = tokens.success if won else tokens.error
-            side_color = tokens.info if side == "CT" else tokens.warning
-            fk_marker = (
-                f'   <span style="color:{tokens.accent_primary}">FK</span>' if opening else ""
-            )
-
-            row_html = (
-                f"<span style='color:{tokens.text_tertiary}'>R{rnum:<3}</span> "
-                f"  <span style='color:{result_color}'>{'W' if won else 'L':<4}</span> "
-                f"  <span style='color:{side_color}'>{side:<4}</span> "
-                f"  <span style='color:{tokens.text_primary}'>{kills:<3}</span> "
-                f"  <span style='color:{tokens.text_primary}'>{deaths:<3}</span> "
-                f"  <span style='color:{tokens.text_primary}'>{dmg:<6}</span> "
-                f"  <span style='color:{tokens.text_secondary}'>${equip:<6}</span>"
-                f"{fk_marker}"
-            )
-            row_label = QLabel(row_html)
-            row_label.setTextFormat(Qt.RichText)
-            row_label.setFont(Typography.font("mono"))
-            body.addWidget(row_label)
-
-        layout.addWidget(card)
+        layout.addWidget(self._round_header_row())
+        for idx, r in enumerate(rounds):
+            layout.addWidget(self._round_row(r, striped=bool(idx % 2)))
+            next_side = rounds[idx + 1].get("side") if idx + 1 < len(rounds) else None
+            side = r.get("side")
+            side_change = side in ("CT", "T") and next_side in ("CT", "T") and next_side != side
+            if side_change or (side not in ("CT", "T") and idx == 11 and len(rounds) > 12):
+                separator = QFrame()
+                separator.setFixedHeight(2)
+                separator.setStyleSheet(f"background: {tokens.accent_muted_30}; border: none;")
+                layout.addSpacing(tokens.spacing_sm)
+                layout.addWidget(separator)
+                layout.addSpacing(tokens.spacing_sm)
         layout.addStretch(1)
         scroll.setWidget(content)
-        return scroll
+        page_layout.addWidget(scroll, 1)
+        page_layout.addWidget(self._round_totals_row(rounds))
+        return page
+
+    def _round_header_row(self) -> QFrame:
+        tokens = get_tokens()
+        row = QFrame()
+        row.setStyleSheet(
+            f"background: {tokens.surface_sunken}; border: none; "
+            f"border-radius: {tokens.radius_sm}px;"
+        )
+        box = QHBoxLayout(row)
+        box.setContentsMargins(tokens.spacing_md, tokens.spacing_sm, tokens.spacing_md, tokens.spacing_sm)
+        box.setSpacing(0)
+        for _key, i18n_key, fallback, width in self._ROUND_COLS:
+            label = QLabel(i18n.get_text(i18n_key, fallback))
+            label.setFont(_mono_font(caption=True))
+            label.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
+            if width > 0:
+                label.setFixedWidth(width)
+                box.addWidget(label)
+            else:
+                box.addWidget(label, 1)
+        return row
+
+    def _round_row(self, r: dict, striped: bool) -> QFrame:
+        tokens = get_tokens()
+        rnum = int(r.get("round_number") or 0)
+        side = str(r.get("side") or "")
+        won = bool(r.get("round_won"))
+        kills = int(r.get("kills") or 0)
+        deaths = int(r.get("deaths") or 0)
+        dmg = int(r.get("damage_dealt") or 0)
+        equip = int(r.get("equipment_value") or 0)
+        opening = bool(r.get("opening_kill"))
+
+        side_known = side in ("CT", "T")
+        side_color = tokens.chart_line_primary if side == "CT" else tokens.chart_line_secondary
+
+        bomb = r.get("bomb")  # FIELD-GAP: bomb outcome is not in the
+        # RoundStats payload (it lives in the per-match shard's
+        # MatchEventState); fixture-only until the VM joins that data.
+        if bomb in ("planted", "defused"):
+            bomb_text = i18n.get_text(f"md_bomb_{bomb}", str(bomb))
+            bomb_color = tokens.success
+        elif bomb == "lost":
+            bomb_text = i18n.get_text("md_bomb_lost", "lost")
+            bomb_color = tokens.text_secondary
+        else:
+            bomb_text, bomb_color = "—", tokens.text_secondary
+
+        enemies_left = r.get("enemies_left")  # FIELD-GAP: not in RoundStats;
+        # fixture-only display field.
+        left_text = "—" if enemies_left is None else str(enemies_left)
+
+        note = r.get("note")
+        if note:
+            severity = str(r.get("note_severity") or "").lower()
+        else:
+            # FIELD-GAP: RoundStats carries no notes text — fall back to the
+            # duel flags the payload does have.
+            if r.get("opening_death"):
+                note, severity = i18n.get_text("md_note_opening_death", "opening death"), ""
+            elif opening:
+                note, severity = i18n.get_text("md_note_opening_kill", "opening kill"), ""
+            else:
+                note, severity = "—", ""
+        if severity == "warning":
+            note_color = tokens.warning
+        elif severity == "success":
+            note_color = tokens.success
+        else:
+            note_color = tokens.text_tertiary
+
+        wl_text = (
+            i18n.get_text("md_round_win", "W") if won else i18n.get_text("md_round_loss", "L")
+        )
+        cells = {
+            "rnd": (f"R{rnum:2d}", tokens.text_primary, False),
+            "wl": (wl_text, tokens.success if won else tokens.error, True),
+            "side": (side if side_known else "—", side_color if side_known else tokens.text_secondary, True),
+            "k": (str(kills), tokens.text_primary, False),
+            "d": (str(deaths), tokens.text_primary, False),
+            "dmg": (str(dmg), tokens.text_primary, False),
+            "equip": (f"${equip}", tokens.text_primary, False),
+            "fk": ("FK" if opening else "", tokens.warning, True),
+            "bomb": (bomb_text, bomb_color, False),
+            "left": (left_text, tokens.text_secondary, False),
+            "note": (note, note_color, False),
+        }
+
+        row = QFrame()
+        background = tokens.surface_raised if striped else "transparent"
+        row.setStyleSheet(f"background: {background}; border: none;")
+        row.setFixedHeight(28)
+        box = QHBoxLayout(row)
+        box.setContentsMargins(tokens.spacing_md, 0, tokens.spacing_md, 0)
+        box.setSpacing(0)
+        for key, _i18n_key, _fallback, width in self._ROUND_COLS:
+            text, color, bold = cells[key]
+            label = QLabel(text)
+            label.setTextFormat(Qt.PlainText)  # FE-01: DB/fixture-sourced text
+            font = _mono_font()
+            font.setBold(bold)
+            label.setFont(font)
+            label.setStyleSheet(f"color: {color}; background: transparent;")
+            if width > 0:
+                label.setFixedWidth(width)
+                box.addWidget(label)
+            else:
+                box.addWidget(label, 1)
+        return row
+
+    def _round_totals_row(self, rounds: list) -> QWidget:
+        tokens = get_tokens()
+        wins = sum(1 for r in rounds if r.get("round_won"))
+        losses = len(rounds) - wins
+        kills = sum(int(r.get("kills") or 0) for r in rounds)
+        deaths = sum(int(r.get("deaths") or 0) for r in rounds)
+        dmg = sum(int(r.get("damage_dealt") or 0) for r in rounds)
+        fk_rounds = [r for r in rounds if r.get("opening_kill")]
+        fk_w = sum(1 for r in fk_rounds if r.get("round_won"))
+
+        host = QWidget()
+        box = QHBoxLayout(host)
+        box.setContentsMargins(tokens.spacing_md, tokens.spacing_sm, tokens.spacing_md, 0)
+        box.setSpacing(tokens.spacing_md)
+
+        def _mono_label(text: str, color: str, bold: bool = False) -> QLabel:
+            label = QLabel(text)
+            font = _mono_font()
+            font.setBold(bold)
+            label.setFont(font)
+            label.setStyleSheet(f"color: {color}; background: transparent;")
+            return label
+
+        box.addWidget(
+            _mono_label(i18n.get_text("md_total", "Total:"), tokens.text_secondary, bold=True)
+        )
+        box.addWidget(
+            _mono_label(
+                i18n.get_text("md_total_w", "{n} W").format(n=wins), tokens.success, bold=True
+            )
+        )
+        box.addWidget(
+            _mono_label(
+                i18n.get_text("md_total_l", "{n} L").format(n=losses), tokens.error, bold=True
+            )
+        )
+        box.addSpacing(tokens.spacing_md)
+        box.addWidget(
+            _mono_label(
+                i18n.get_text("md_total_kdmg", "{k} K · {d} D · {dmg} DMG").format(
+                    k=kills, d=deaths, dmg=dmg
+                ),
+                tokens.text_primary,
+            )
+        )
+        box.addSpacing(tokens.spacing_md)
+        box.addWidget(
+            _mono_label(
+                i18n.get_text("md_total_fk", "{n} First Kills ({w}W / {l}L)").format(
+                    n=len(fk_rounds), w=fk_w, l=len(fk_rounds) - fk_w
+                ),
+                tokens.warning,
+            )
+        )
+        box.addStretch(1)
+
+        footer = MonoFooter(
+            i18n.get_text(
+                "md_footer_rounds", "RoundStats · {n} rows · MatchEventState JOIN on demo_name"
+            ).format(n=len(rounds))
+        )
+        footer.setWordWrap(False)
+        box.addWidget(footer)
+        return host
 
     # ── Tab: Economy ──
 
