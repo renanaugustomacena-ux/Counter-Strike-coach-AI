@@ -7,16 +7,19 @@
 
 ## Purpose
 
-QtCharts and QPainter-based chart widgets used across the dashboard, performance, and match-detail screens. Each widget wraps either a `QChartView` (for `QChart`-based charts) or a custom `QWidget` with `paintEvent` (for QPainter-based sparklines), and exposes a small Pythonic API for the calling ViewModel.
+QPainter chart widgets used across the dashboard, performance, pro-comparison, and match-detail screens. Every widget is a custom `QWidget` with a `paintEvent`, exposing a small Pythonic API for the calling ViewModel. **QtCharts is not used anywhere** — it is GPLv3-or-commercial only and was removed for license compliance; `tests/test_charts.py::TestQtChartsRetired` fails the suite if a `QtCharts`/`QChart` reference reappears under `apps/qt_app/`.
 
 ## File inventory
 
 | File | Widget | Used By |
 |------|--------|---------|
 | `__init__.py` | (re-exports) | — |
-| `economy_chart.py` | `EconomyChart` | Match Detail (per-round equipment value bars) |
+| `economy_chart.py` | `EconomyChart` | Match Detail (per-round equipment value bars, side coloring, $K ladder) |
 | `mini_sparkline.py` | `MiniSparkline` | Last-match hero card on the home screen (compact trend line) |
 | `momentum_chart.py` | `MomentumChart` | Match Detail (cumulative kill-death delta with green/red fill) |
+| `radar_chart.py` | `RadarChart` | Pro Comparison (pentagon skill radar, user-vs-pro overlay) |
+| `rating_sparkline.py` | `RatingSparkline` | Match Detail / Performance (rating trend with 1.0 baseline) |
+| `utility_bar_chart.py` | `UtilityBarChart` | Match Detail / Performance (utility usage bars) |
 
 ## Conventions
 
@@ -32,8 +35,8 @@ Hard-coding hex values is a code smell — add a token first.
 
 ### Widget lifecycle
 
-`EconomyChart` and `MomentumChart` rebuild their `QChart` series in `plot(rounds)`;
-`MiniSparkline` stores data in `set_values()` and repaints in `paintEvent()`.
+`EconomyChart` and `MomentumChart` store their round data in `plot(rounds)` and repaint;
+the other charts store data in their `set_*` methods. All drawing happens in `paintEvent()`.
 
 ### Theme awareness
 
@@ -47,8 +50,7 @@ Charts resolve every color from the active token set (`get_tokens()`) when they 
 
 ## Adding a chart
 
-1. For QtCharts-based: subclass `QChartView`, build a `QChart` in `__init__`, replace series in `plot()`.
-   For QPainter-based: subclass `QWidget`, store data in `set_values()`, call `self.update()`, draw in `paintEvent()`.
+1. Subclass `QWidget`, store data in a `set_*`/`plot()` method, call `self.update()`, draw in `paintEvent()`. (Never QtCharts — see the license note above.)
 2. Accept a typed ViewModel object or a typed list — never raw DataFrames.
 3. Pull colors from `core/design_tokens` via `get_tokens()`.
 4. Add a screen-reader description via `setAccessibleDescription()`.

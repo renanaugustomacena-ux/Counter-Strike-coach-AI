@@ -9,7 +9,7 @@
 The `apps/` directory contains all user-facing interface code for the Macena CS2 Analyzer.
 The sole active UI framework is `qt_app/` — a production desktop application built with PySide6
 (Qt6). It was chosen for its native look-and-feel, mature threading model (QThreadPool/QRunnable),
-built-in chart library (QtCharts), and broad cross-platform support.
+powerful custom-widget painting (QPainter), and broad cross-platform support.
 
 `qt_app/` is a strictly consumer layer: it shares the same backend services (`backend/services/`),
 database layer (`backend/storage/`), and configuration system (`core/config.py`), and limits its
@@ -83,11 +83,14 @@ apps/
     ├── widgets/                 # Reusable widget library
     │   ├── toast.py             # Toast notification overlay
     │   ├── skeleton.py          # Skeleton loading placeholder widgets
-    │   ├── charts/              # QtCharts / QPainter-based visualizations
-    │   │   ├── economy_chart.py     # Round-by-round economy (QtCharts bar chart)
+    │   ├── charts/              # QPainter visualizations (QtCharts removed — GPL-only)
+    │   │   ├── economy_chart.py     # Round-by-round economy bars (QPainter)
     │   │   ├── mini_sparkline.py    # Compact sparkline (QPainter, no axes)
-    │   │   └── momentum_chart.py    # K-D delta momentum (QtCharts area chart)
-    │   ├── coaching/            # Coaching widget namespace (reserved; all widgets removed PR #32)
+    │   │   ├── momentum_chart.py    # K-D delta momentum area chart (QPainter)
+    │   │   ├── radar_chart.py       # Pentagon skill radar (QPainter)
+    │   │   ├── rating_sparkline.py  # Rating trend with baseline (QPainter)
+    │   │   └── utility_bar_chart.py # Utility usage bars (QPainter)
+    │   ├── coaching/            # Coaching widgets (ChatPanel embedded in CoachScreen)
     │   ├── components/          # Reusable UI components (design system) — 16 modules
     │   │   ├── __init__.py          # Component exports
     │   │   ├── card.py              # Card container widget (5 depth variants)
@@ -249,8 +252,9 @@ to update their labels dynamically.
    network calls, or file I/O. Use `Worker` from `core/worker.py`.
 2. **Connect to `AppState` signals in `on_enter()`** — this is the live data bus
    from the backend. Do not poll the database from screens.
-3. **Charts use QtCharts** (not matplotlib) — lighter weight, native Qt integration,
-   consistent theming via QSS.
+3. **Charts are custom QPainter widgets** (not matplotlib, and not QtCharts — the latter
+   is GPL-only and was removed for license compliance) — lightweight, token-themed,
+   guarded by a license-gate test in `tests/test_charts.py`.
 4. **Localization** — all user-visible strings must go through `i18n_bridge.get_text(key)`.
    Never hardcode display text in screen code.
 5. **Themes** — use `design_tokens.get_tokens()` fields for colors and never hardcode

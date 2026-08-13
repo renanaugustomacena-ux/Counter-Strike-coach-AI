@@ -9,7 +9,7 @@
 O diretório `apps/` contém todo o código de interface do usuário do Macena CS2 Analyzer.
 O único framework de UI ativo é `qt_app/` — uma aplicação desktop de produção construída com
 PySide6 (Qt6), escolhida pelo seu visual nativo, modelo de threading maduro (QThreadPool/QRunnable),
-biblioteca de gráficos integrada (QtCharts) e amplo suporte multiplataforma.
+painting poderoso de widgets customizados (QPainter) e amplo suporte multiplataforma.
 
 `qt_app/` é uma camada estritamente consumidora: compartilha os mesmos serviços backend
 (`backend/services/`), camada de banco de dados (`backend/storage/`) e sistema de configuração
@@ -84,11 +84,14 @@ apps/
     ├── widgets/                 # Biblioteca de widgets reutilizaveis
     │   ├── toast.py             # Overlay de notificacoes toast
     │   ├── skeleton.py          # Widgets placeholder de carregamento skeleton
-    │   ├── charts/              # Visualizações QtCharts / QPainter
-    │   │   ├── economy_chart.py     # Economia round a round (gráfico de barras QtCharts)
+    │   ├── charts/              # Visualizações QPainter (QtCharts removido — somente GPL)
+    │   │   ├── economy_chart.py     # Barras de economia round a round (QPainter)
     │   │   ├── mini_sparkline.py    # Sparkline compacta (QPainter, sem eixos)
-    │   │   └── momentum_chart.py    # Delta K-D momentum (gráfico de área QtCharts)
-    │   ├── coaching/            # Namespace de widgets de coaching (reservado; widgets removidos PR #32)
+    │   │   ├── momentum_chart.py    # Gráfico de área delta K-D momentum (QPainter)
+    │   │   ├── radar_chart.py       # Radar pentagonal de skills (QPainter)
+    │   │   ├── rating_sparkline.py  # Tendência de rating com baseline (QPainter)
+    │   │   └── utility_bar_chart.py # Barras de uso de utilitários (QPainter)
+    │   ├── coaching/            # Widgets de coaching (ChatPanel integrado na CoachScreen)
     │   ├── components/          # Componentes de UI reutilizáveis (design system)
     │   │   ├── __init__.py          # Exports dos componentes
     │   │   ├── card.py              # Widget container de card
@@ -238,8 +241,9 @@ Mudancas de idioma emitem um sinal `language_changed`. As telas implementam
    consultas ao banco, chamadas de rede ou I/O de arquivo. Use `Worker` de `core/worker.py`.
 2. **Conecte-se aos sinais do `AppState` em `on_enter()`** — este é o barramento de
    dados ao vivo do backend. Não consulte o banco de dados a partir das telas.
-3. **Gráficos usam QtCharts** (não matplotlib) — mais leves, integração nativa Qt,
-   temas consistentes via QSS.
+3. **Gráficos são widgets QPainter customizados** (não matplotlib, e não QtCharts — este
+   último é somente GPL e foi removido por conformidade de licença) — leves, tematizados
+   via tokens, protegidos por um teste de guarda de licença em `tests/test_charts.py`.
 4. **Localização** — todas as strings visíveis ao usuário devem passar por
    `i18n_bridge.get_text(key)`. Nunca insira texto hardcoded no código das telas.
 5. **Temas** — use os campos de `design_tokens.get_tokens()` para cores e nunca use

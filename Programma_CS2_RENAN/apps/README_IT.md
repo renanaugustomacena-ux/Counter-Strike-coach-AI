@@ -9,7 +9,7 @@
 La directory `apps/` contiene tutto il codice dell'interfaccia utente del Macena CS2
 Analyzer. L'unico framework UI attivo è `qt_app/` — un'applicazione desktop di produzione
 costruita con PySide6 (Qt6), scelta per il suo aspetto nativo, il modello di threading
-maturo (QThreadPool/QRunnable), la libreria grafica integrata (QtCharts) e l'ampio
+maturo (QThreadPool/QRunnable), il potente painting di widget custom (QPainter) e l'ampio
 supporto multipiattaforma.
 
 `qt_app/` è un livello esclusivamente consumatore: condivide gli stessi servizi backend
@@ -85,11 +85,14 @@ apps/
     ├── widgets/                 # Libreria widget riutilizzabili
     │   ├── toast.py             # Overlay notifiche toast
     │   ├── skeleton.py          # Widget placeholder di caricamento skeleton
-    │   ├── charts/              # Visualizzazioni QtCharts / QPainter
-    │   │   ├── economy_chart.py     # Economia round per round (grafico a barre QtCharts)
+    │   ├── charts/              # Visualizzazioni QPainter (QtCharts rimosso — solo GPL)
+    │   │   ├── economy_chart.py     # Barre economia round per round (QPainter)
     │   │   ├── mini_sparkline.py    # Sparkline compatta (QPainter, senza assi)
-    │   │   └── momentum_chart.py    # Delta K-D momentum (grafico area QtCharts)
-    │   ├── coaching/            # Namespace widget coaching (riservato; widget rimossi PR #32)
+    │   │   ├── momentum_chart.py    # Grafico ad area delta K-D momentum (QPainter)
+    │   │   ├── radar_chart.py       # Radar pentagonale delle skill (QPainter)
+    │   │   ├── rating_sparkline.py  # Tendenza rating con baseline (QPainter)
+    │   │   └── utility_bar_chart.py # Barre uso utility (QPainter)
+    │   ├── coaching/            # Widget coaching (ChatPanel integrata in CoachScreen)
     │   ├── components/          # Componenti UI riutilizzabili (design system)
     │   │   ├── __init__.py          # Export dei componenti
     │   │   ├── card.py              # Widget contenitore card
@@ -239,8 +242,9 @@ I cambi di lingua emettono un segnale `language_changed`. Gli screen implementan
    con query DB, chiamate di rete o I/O file. Usare `Worker` da `core/worker.py`.
 2. **Connettersi ai segnali `AppState` in `on_enter()`** — questo è il bus dati live
    dal backend. Non interrogare il database dagli screen.
-3. **I grafici usano QtCharts** (non matplotlib) — più leggeri, integrazione Qt nativa,
-   temi consistenti tramite QSS.
+3. **I grafici sono widget QPainter custom** (non matplotlib, e non QtCharts — quest'ultimo
+   è solo GPL ed è stato rimosso per conformità di licenza) — leggeri, tematizzati via token,
+   protetti da un test di guardia sulla licenza in `tests/test_charts.py`.
 4. **Localizzazione** — tutte le stringhe visibili all'utente devono passare per
    `i18n_bridge.get_text(key)`. Non inserire mai testo hardcoded nel codice degli screen.
 5. **Temi** — usare i campi di `design_tokens.get_tokens()` per i colori e non usare mai

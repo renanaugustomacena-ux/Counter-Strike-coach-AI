@@ -5,6 +5,26 @@ All notable changes to the Macena CS2 Analyzer are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Design-atlas frontend rebuild: all 15 Qt screens rebuilt against the 41-frame design atlas (app frames 05-20), driven by the pre-existing design-token pipeline (per-theme tokens remain the single source for both QSS and QPalette)
+- QPainter chart suite: `EconomyChart`, `MomentumChart`, `RadarChart`, `RatingSparkline`, `UtilityBarChart` (plus the existing `MiniSparkline`)
+- Bundled OFL display fonts in `assets/fonts/` (Space Grotesk, Inter, JetBrains Mono weights)
+- Offscreen UI screenshot harness (`tools/ui_screenshot.py`) with deterministic fixtures (`tools/ui_fixtures.py`) and component gallery (`tools/ui_gallery.py`)
+- Runtime UI smoke suite (boots the real MainWindow: screen walk, live theme switching, language roundtrip, sidebar collapse) and an i18n key-parity guard across en/it/pt
+- Competitive-research-informed surfaces: benchmark-relative delta chips on headline stats, mono provenance lines on AI advice, top-3 ranked coach focus areas, wizard "what happens next" calibration copy, kind-differentiated critical-moment glyphs on the tactical timeline (★ critical / ◆ clutch / ● play, with legend)
+- Trilingual i18n completion: ~565 keys per language (en/it/pt), properly translated
+
+### Changed
+- Coach chat moved from a QDockWidget dock to a stacked CoachScreen with an embedded `ChatPanel` (belief ring, ranked insights, chat in one screen)
+- Match Detail reorganized into 4 underline tabs (Overview · Rounds · Economy · Highlights)
+- Tactical viewer upgraded: named zone overlays (`assets/map_zones/`), movement trails, glyph timeline, and Ghost Mode (dual YOU/GHOST progress + divergence panel)
+- Default background is now flat `surface_base` (no wallpaper); per-theme wallpapers remain available as a persisted user opt-in
+
+### Removed
+- QtCharts dependency — Qt Charts is GPLv3-or-commercial only, incompatible with this proprietary codebase; all charts are custom QPainter widgets and a license-gate test fails the suite if a `QtCharts`/`QChart` reference reappears under `apps/qt_app/`
+
 ## [1.0.0] - 2026-03-20
 
 ### Added
