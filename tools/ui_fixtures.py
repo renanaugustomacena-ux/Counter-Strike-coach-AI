@@ -534,6 +534,23 @@ def inject_match_detail(screen: Any) -> None:
     )
 
 
+# ── Profile (frame 17) — PlayerProfile row shown in the DbRecordCard ──
+PROFILE_DB_ROW: dict[str, Any] = {
+    "id": 42,
+    "player_name": "macena",
+    "created_at": "2025-11-12",
+    "matches_analyzed": 47,
+    "last_match": "2026-04-22",
+}
+
+
+def inject_profile(screen: Any) -> None:
+    screen._name_input.setText("macena")
+    screen._refresh_record_card(dict(PROFILE_DB_ROW))
+    # Frame 17 shows the transient "✓ Saved" chip — pin it visible.
+    screen._saved_chip.setVisible(True)
+
+
 def inject_performance(screen: Any) -> None:
     # Context BEFORE data — the VM's R4 MED emission order: the data slot
     # rebuilds the UI synchronously and reads the cached context strip.
