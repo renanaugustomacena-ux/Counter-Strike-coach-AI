@@ -120,3 +120,59 @@ class TestRatingSparkline:
         spark.set_values([])  # must stay safe on empty input
         assert not spark.grab().isNull()
         spark.deleteLater()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 3. UtilityBarChart (Task 13)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestUtilityBarChart:
+    def test_w_mapping_proportional(self):
+        from Programma_CS2_RENAN.apps.qt_app.widgets.charts.utility_bar_chart import _w
+
+        assert _w(5.0, 10.0, 200.0) == pytest.approx(100.0)
+        assert _w(10.0, 10.0, 200.0) == pytest.approx(200.0)
+
+    def test_w_mapping_zero_and_clamps(self):
+        from Programma_CS2_RENAN.apps.qt_app.widgets.charts.utility_bar_chart import _w
+
+        assert _w(5.0, 0.0, 200.0) == 0.0  # zero-max guard
+        assert _w(-3.0, 10.0, 200.0) == 0.0  # negative values clamp to 0
+        assert _w(15.0, 10.0, 200.0) == pytest.approx(200.0)  # overshoot clamps
+
+    def test_grouped_and_single_modes(self, qapp):
+        from PySide6.QtGui import QColor
+
+        from Programma_CS2_RENAN.apps.qt_app.widgets.charts.utility_bar_chart import (
+            UtilityBarChart,
+        )
+
+        chart = UtilityBarChart()
+        chart.set_rows(
+            [
+                ("HE", 12.4, 15.2),
+                ("Moly", 5.8, 5.9),
+                ("Flash", 3.2, 2.6),
+                ("Waste", 1.2, 0.91, QColor("#ff4444")),  # optional you-bar override
+            ]
+        )
+        assert len(chart._rows) == 4
+        assert chart._mode == "grouped"
+        assert chart.minimumHeight() >= 4 * 34
+        chart.resize(520, 240)
+        assert not chart.grab().isNull()
+
+        chart.set_single(
+            [
+                ("Flashes thrown", 24, QColor("#00D9FF")),
+                ("Smokes thrown", 18, QColor("#00D9FF")),
+            ]
+        )
+        assert chart._mode == "single"
+        assert len(chart._rows) == 2
+        chart.resize(520, 160)
+        assert not chart.grab().isNull()
+        chart.set_rows([])  # empty input stays safe
+        assert not chart.grab().isNull()
+        chart.deleteLater()

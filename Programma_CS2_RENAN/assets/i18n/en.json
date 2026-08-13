@@ -139,5 +139,7 @@
   "open_demo": "Open Demo",
   "tactical_empty_state": "Click 'Open Demo' to load a .dem file\n\nThe tactical viewer will display 2D round replays\nwith player positions, grenades, and timeline.",
   "wallpaper": "Wallpaper",
-  "help": "Help"
+  "help": "Help",
+  "chart_caption_you": "you",
+  "chart_caption_pro": "pro"
 }
