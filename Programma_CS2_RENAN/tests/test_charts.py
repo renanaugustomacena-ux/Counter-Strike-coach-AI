@@ -83,3 +83,40 @@ class TestRadarChart:
         pixmap = chart.grab()
         assert not pixmap.isNull()
         chart.deleteLater()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 2. RatingSparkline (Task 12)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestRatingSparkline:
+    def test_y_mapping_extremes_and_midpoint(self):
+        from Programma_CS2_RENAN.apps.qt_app.widgets.charts.rating_sparkline import _y
+
+        # 6px padding top and bottom of the drawable band.
+        assert abs(_y(1.5, 0.5, 1.5, 100.0) - 6.0) < 1e-6  # max -> top pad
+        assert abs(_y(0.5, 0.5, 1.5, 100.0) - 94.0) < 1e-6  # min -> bottom pad
+        assert abs(_y(1.0, 0.5, 1.5, 100.0) - 50.0) < 1e-6  # midpoint -> center
+
+    def test_y_mapping_zero_span_is_safe(self):
+        from Programma_CS2_RENAN.apps.qt_app.widgets.charts.rating_sparkline import _y
+
+        assert abs(_y(1.0, 1.0, 1.0, 100.0) - 50.0) < 1e-6  # flat data -> center
+
+    def test_sparkline_state_and_render(self, qapp):
+        from Programma_CS2_RENAN.apps.qt_app.widgets.charts.rating_sparkline import (
+            RatingSparkline,
+        )
+
+        spark = RatingSparkline()
+        assert spark.minimumHeight() >= 64
+        spark.set_values([1.02, 1.06, 0.98, 1.09, 1.05, 1.12, 1.08, 1.17])
+        spark.set_reference_lines((0.90, 1.00, 1.10))
+        assert spark._values[-1] == pytest.approx(1.17)
+        assert spark._refs == (0.90, 1.00, 1.10)
+        spark.resize(400, 120)
+        assert not spark.grab().isNull()
+        spark.set_values([])  # must stay safe on empty input
+        assert not spark.grab().isNull()
+        spark.deleteLater()
