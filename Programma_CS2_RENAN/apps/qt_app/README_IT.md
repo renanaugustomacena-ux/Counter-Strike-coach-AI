@@ -112,9 +112,8 @@ qt_app/
 │   ├── tactical-viewer/
 │   └── shared/
 └── themes/
-    ├── cs2.qss                     # Tema CS2: estetica gaming scura con accento arancione (#D96600)
-    ├── csgo.qss                    # Tema CSGO: toni blu-ardesia con accento acciaio
-    └── cs16.qss                    # Tema CS 1.6: estetica retro terminale verde
+    └── base.qss.template           # Foglio di stile a token — unica fonte QSS
+                                    # (renderizzato per tema da core/qss_generator.py)
 ```
 
 ## Architettura MVVM
@@ -242,7 +241,7 @@ AppState e in **sola lettura** dal lato Qt. Solo il session engine del backend s
 `ThemeEngine` (`core/theme_engine.py`) gestisce l'identita visiva dell'applicazione:
 
 - **3 temi:** CS2 (scuro + accento arancione), CSGO (blu-ardesia + accento acciaio), CS 1.6 (retro terminale verde)
-- **Fogli di stile QSS** caricati da `themes/*.qss`, con iniezione dinamica font-family/size
+- **QSS** renderizzato per tema da `themes/base.qss.template` tramite `core/qss_generator.py` (sostituzione dei design token), con iniezione dinamica font-family/size
 - **Configurazione QPalette** per widget che non rispettano QSS
 - **5 font personalizzati:** Roboto, JetBrains Mono, New Hope, CS Regular, YUPIX
 - **Gestione wallpaper:** cartelle wallpaper per tema, preferenza immagini verticali, renderizzati al 25% di opacita tramite `_BackgroundWidget`
