@@ -191,7 +191,11 @@ def load_user_settings() -> dict:
             "BRAIN_DATA_ROOT": "",
             "CUSTOM_STORAGE_PATH": "",
             "ACTIVE_THEME": "CS2",
-            "BACKGROUND_IMAGE": "vertical_wallpaper_cs2_A.jpg",
+            # Design-atlas default: flat surface, NO wallpaper. Only a user's
+            # explicit persisted choice (this key present in
+            # user_settings.json) restores one; save_user_setting writes just
+            # explicit keys, so disk-presence == explicit choice.
+            "BACKGROUND_IMAGE": "",
             "ENABLE_SLIDESHOW": False,
             "FONT_SIZE": "Medium",
             "FONT_TYPE": "Roboto",

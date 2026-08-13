@@ -108,6 +108,21 @@ QPushButton#nav_toggle:hover {
     color: ${text_inverse};
 }
 
+/* Sidebar brand wordmark (frame 05: letterspaced accent caption) */
+QLabel#sidebar_brand {
+    color: ${accent_primary};
+    font-weight: 700;
+    font-size: ${font_size_caption}px;
+    letter-spacing: 3px;
+}
+
+/* Sidebar version tag — bottom, mono tertiary */
+QLabel#version_label {
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    color: ${text_tertiary};
+    font-size: ${font_size_caption}px;
+}
+
 /* ── Cards ── */
 QFrame#dashboard_card {
     background-color: ${surface_raised_rgba};

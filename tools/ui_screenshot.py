@@ -85,6 +85,11 @@ def main() -> int:
         action="store_true",
         help="Render natural (DB / cold-start) state instead of fixture data",
     )
+    ap.add_argument(
+        "--collapse-nav",
+        action="store_true",
+        help="Collapse the nav sidebar to its 60px icon rail before grabbing",
+    )
     ap.add_argument("--size", default="1440x900")
     args = ap.parse_args()
     width, height = (int(x) for x in args.size.lower().split("x"))
@@ -114,6 +119,9 @@ def main() -> int:
         window.resize(width, height)
         window.show()
         app.processEvents()
+        if args.collapse_nav:
+            window._nav_sidebar.toggle_collapse()
+            _wait(app, 400)  # let the 200 ms width animation reach 60px
 
         out_dir = Path(args.out) / theme_name.replace(".", "")
         out_dir.mkdir(parents=True, exist_ok=True)

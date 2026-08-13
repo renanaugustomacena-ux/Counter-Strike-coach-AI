@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
 
 from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
-from Programma_CS2_RENAN.apps.qt_app.widgets.components.nav_sidebar import NavSidebar
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.nav_sidebar import NAV_ITEMS, NavSidebar
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.qt_main_window")
@@ -234,6 +234,9 @@ class MainWindow(QMainWindow):
             _v = "1.0.0"
         self.setWindowTitle(f"Macena CS2 Analyzer v{_v}")
         self.setMinimumSize(1280, 720)
+        # Frame-05 canvas: the atlas is designed at 1440x900; open there by
+        # default instead of the 1280x720 minimum.
+        self.resize(1440, 900)
 
         # Flagship P3 toggle: if enabled, strip the native frame and
         # provide a hand-rolled titlebar above the sidebar + content.
@@ -302,17 +305,9 @@ class MainWindow(QMainWindow):
         # Connect i18n changes
         i18n.language_changed.connect(self._refresh_nav_labels)
 
-        # Keyboard shortcuts for sidebar nav items
-        _nav_shortcuts = [
-            ("Ctrl+1", "home"),
-            ("Ctrl+2", "coach"),
-            ("Ctrl+3", "match_history"),
-            ("Ctrl+4", "performance"),
-            ("Ctrl+5", "tactical_viewer"),
-            ("Ctrl+,", "settings"),
-            ("F1", "help"),
-        ]
-        for keys, screen in _nav_shortcuts:
+        # Keyboard shortcuts for sidebar nav items — NAV_ITEMS is the single
+        # source of truth (same table drives the buttons and their tooltips).
+        for screen, _icon, _i18n_key, keys in NAV_ITEMS:
             shortcut = QShortcut(QKeySequence(keys), self)
             shortcut.activated.connect(lambda s=screen: self.switch_screen(s))
 

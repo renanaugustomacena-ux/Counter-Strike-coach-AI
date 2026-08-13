@@ -87,6 +87,10 @@ class SettingsScreen(QWidget):
         # Inline labels
         self._font_size_label.setText(i18n.get_text("font_size") + ":")
         self._ingest_mode_label.setText(i18n.get_text("ingestion_mode") + ":")
+        # Wallpaper "None" choice (file buttons are filenames — not translated)
+        none_btn = self._wallpaper_buttons.get("")
+        if none_btn is not None:
+            none_btn.setText(i18n.get_text("wallpaper_none", "None"))
 
     # ── UI Construction ──
 
@@ -170,6 +174,17 @@ class SettingsScreen(QWidget):
             return
         wallpapers = self._theme_engine.get_available_wallpapers()
         current_path = self._theme_engine.wallpaper_path
+
+        # Explicit "None" choice first — flat surface is the design default.
+        # Keyed by "" in _wallpaper_buttons (the persisted empty value).
+        none_btn = QPushButton(i18n.get_text("wallpaper_none", "None"))
+        none_btn.setCursor(Qt.PointingHandCursor)
+        none_btn.setFixedHeight(36)
+        none_btn.setMinimumWidth(70)
+        none_btn.clicked.connect(lambda _c: self._on_wallpaper_selected(""))
+        self._wallpaper_buttons[""] = none_btn
+        self._wallpaper_row.addWidget(none_btn)
+
         for filename in wallpapers:
             short = filename.rsplit(".", 1)[0]
             if "16_9" in short:
@@ -203,9 +218,13 @@ class SettingsScreen(QWidget):
 
         tokens = get_tokens()
         for filename, btn in self._wallpaper_buttons.items():
-            is_active = current_path.endswith(os.sep + filename) or current_path.endswith(
-                "/" + filename
-            )
+            if filename == "":
+                # "None" choice — active exactly when no wallpaper is set
+                is_active = current_path == ""
+            else:
+                is_active = current_path.endswith(os.sep + filename) or current_path.endswith(
+                    "/" + filename
+                )
             if is_active:
                 btn.setStyleSheet(
                     f"QPushButton {{ background-color: {tokens.accent_primary}; "
@@ -551,11 +570,12 @@ class SettingsScreen(QWidget):
 
     def _on_wallpaper_selected(self, filename: str):
         self._theme_engine.set_wallpaper(filename)
+        save_user_setting("BACKGROUND_IMAGE", filename)
         self._update_wallpaper_toggles(self._theme_engine.wallpaper_path)
         win = self.window()
         if hasattr(win, "set_wallpaper"):
             win.set_wallpaper(self._theme_engine.wallpaper_path)
-        logger.info("Wallpaper changed to %s", filename)
+        logger.info("Wallpaper changed to %s", filename or "<none>")
 
     def _on_start_ingestion(self):
         if self._ingestion_worker is not None:

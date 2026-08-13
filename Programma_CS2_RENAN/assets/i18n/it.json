@@ -139,5 +139,6 @@
   "open_demo": "Apri Demo",
   "tactical_empty_state": "Clicca 'Apri Demo' per caricare un file .dem\n\nIl visualizzatore tattico mostrerà i replay 2D dei round\ncon posizioni dei giocatori, granate e timeline.",
   "wallpaper": "Sfondo",
+  "wallpaper_none": "Nessuno",
   "help": "Aiuto"
 }

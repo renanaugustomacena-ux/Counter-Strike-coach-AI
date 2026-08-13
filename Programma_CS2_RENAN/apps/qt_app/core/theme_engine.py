@@ -201,24 +201,25 @@ class ThemeEngine(QObject):
         return self._wallpaper_path
 
     def _update_wallpaper(self, theme_name: str):
-        """Set wallpaper to the first image in the theme's folder."""
-        folder = _THEME_WALLPAPER_FOLDER.get(theme_name, "cs2theme")
-        theme_dir = _ASSETS_DIR / folder
-        if not theme_dir.is_dir():
+        """Resolve the wallpaper from the persisted user choice (flat default).
+
+        The design atlas default is NO wallpaper — a flat ``surface_base``
+        canvas. Only an explicit user choice (persisted BACKGROUND_IMAGE
+        setting) brings one back:
+
+        - unset / empty  → flat (``""``)
+        - filename       → resolved inside the active theme's wallpaper
+          folder; missing there (e.g. after a theme switch) → flat.
+        """
+        from Programma_CS2_RENAN.core.config import get_setting
+
+        chosen = get_setting("BACKGROUND_IMAGE", None)
+        if not chosen:
             self._wallpaper_path = ""
             return
-
-        # Pick the first vertical wallpaper, or first image found
-        images = sorted(
-            f for f in os.listdir(theme_dir) if f.lower().endswith((".jpg", ".jpeg", ".png"))
-        )
-        # Prefer vertical wallpapers (they match the app's portrait-ish layout better)
-        vertical = [f for f in images if "vertical" in f.lower()]
-        pick = vertical[0] if vertical else (images[0] if images else "")
-        if pick:
-            self._wallpaper_path = str(theme_dir / pick)
-        else:
-            self._wallpaper_path = ""
+        folder = _THEME_WALLPAPER_FOLDER.get(theme_name, "cs2theme")
+        path = _ASSETS_DIR / folder / str(chosen)
+        self._wallpaper_path = str(path) if path.is_file() else ""
 
     def get_available_wallpapers(self, theme_name: str | None = None) -> list[str]:
         """Return list of wallpaper filenames for a theme."""
@@ -232,8 +233,11 @@ class ThemeEngine(QObject):
         )
 
     def set_wallpaper(self, filename: str):
-        """Set a specific wallpaper by filename."""
+        """Set a specific wallpaper by filename; ``""`` clears to flat."""
+        if not filename:
+            self._wallpaper_path = ""
+            return
         folder = _THEME_WALLPAPER_FOLDER.get(self._active, "cs2theme")
         path = _ASSETS_DIR / folder / filename
-        if path.exists():
+        if path.is_file():
             self._wallpaper_path = str(path)

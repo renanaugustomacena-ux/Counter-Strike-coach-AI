@@ -139,5 +139,6 @@
   "open_demo": "Abrir Demo",
   "tactical_empty_state": "Clique em 'Abrir Demo' para carregar um arquivo .dem\n\nO visualizador tático exibirá replays 2D dos rounds\ncom posições dos jogadores, granadas e linha do tempo.",
   "wallpaper": "Papel de Parede",
+  "wallpaper_none": "Nenhum",
   "help": "Ajuda"
 }
