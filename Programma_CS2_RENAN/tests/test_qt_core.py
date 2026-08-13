@@ -944,23 +944,53 @@ class TestValueAnimations:
         assert ring._value == pytest.approx(0.73)
         ring.deleteLater()
 
-    def test_count_up_enabled_reaches_end_value(self, qapp, monkeypatch):
-        import time
+    def test_count_up_enabled_reaches_end_value(self):
+        """Live-animation path runs in a SUBPROCESS.
 
-        from PySide6.QtWidgets import QLabel
+        Running a real QVariantAnimation to completion inside this shared
+        pytest process poisons Qt's global animation driver on the Windows
+        offscreen platform: the suite then aborts natively (Fatal Python
+        error) during a later processEvents — reproduced 5/5 in-suite,
+        0/10 with the smoke file alone, and bisected to exactly this test.
+        Subprocess isolation keeps the enabled-path coverage without the
+        cross-test poison. The real app is unaffected (native platform).
+        """
+        import subprocess
+        import sys
+        import textwrap
 
-        from Programma_CS2_RENAN.apps.qt_app.core.animation import Animator
-
-        monkeypatch.setenv("MACENA_UI_ANIMATIONS", "1")
-        label = QLabel()
-        anim = Animator.count_up(label, 47.0, fmt="{:.0f}", duration=60)
-        assert anim is not None
-        deadline = time.monotonic() + 2.0
-        while label.text() != "47" and time.monotonic() < deadline:
-            qapp.processEvents()
-            time.sleep(0.01)
-        assert label.text() == "47"
-        label.deleteLater()
+        code = textwrap.dedent(
+            """
+            import os, sys, time
+            os.environ["QT_QPA_PLATFORM"] = "offscreen"
+            os.environ["MACENA_UI_ANIMATIONS"] = "1"
+            sys.path.insert(0, os.getcwd())
+            from PySide6.QtCore import QAbstractAnimation
+            from PySide6.QtWidgets import QApplication, QLabel
+            app = QApplication([])
+            from Programma_CS2_RENAN.apps.qt_app.core.animation import Animator
+            label = QLabel()
+            anim = Animator.count_up(label, 47.0, fmt="{:.0f}", duration=60)
+            assert anim is not None
+            deadline = time.monotonic() + 5.0
+            while anim.state() != QAbstractAnimation.Stopped:
+                if time.monotonic() > deadline:
+                    raise SystemExit("animation never finished")
+                app.processEvents()
+                time.sleep(0.01)
+            assert label.text() == "47", label.text()
+            print("OK")
+            """
+        )
+        proc = subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            cwd=str(_project_root),
+        )
+        assert proc.returncode == 0, f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+        assert "OK" in proc.stdout
 
 
 class TestStepperLabels:
