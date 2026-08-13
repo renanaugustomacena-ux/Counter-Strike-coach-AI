@@ -261,6 +261,7 @@
   "history.hs_pct": "HS%",
   "history.clutch": "clutch",
   "history.demo": "demo",
+  "history.delta_vs_avg": "vs {n}-match avg",
   "md_back": "← Back",
   "md_title": "Match Detail",
   "md_tab_overview": "Overview",

@@ -28,6 +28,7 @@ from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 from Programma_CS2_RENAN.apps.qt_app.core.match_utils import extract_map_name
 from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import rating_color, rating_label
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.delta_chip import DeltaChip
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.pro_badge import ProBadge
 
 
@@ -58,7 +59,13 @@ class MatchRowCard(QFrame):
 
     clicked = Signal(str)  # demo_name
 
-    def __init__(self, match: dict[str, Any], parent: QWidget | None = None):
+    def __init__(
+        self,
+        match: dict[str, Any],
+        baseline_rating: float | None = None,
+        baseline_label: str = "",
+        parent: QWidget | None = None,
+    ):
         super().__init__(parent)
         self.setObjectName("dashboard_card")
         self.setProperty("depth", "raised")
@@ -131,6 +138,16 @@ class MatchRowCard(QFrame):
         text_col.addWidget(detail)
 
         layout.addLayout(text_col, 1)
+
+        # ── Trailing ± chip: this row's rating vs the caller's personal
+        # average (dossier: self-referential comparison defuses rating
+        # distrust). Personal rows only — a pro's rating measured against
+        # YOUR average is not a meaningful comparison — and only when the
+        # caller could compute an honest baseline.
+        if baseline_rating is not None and not is_pro and rating_value > 0:
+            delta_chip = DeltaChip()
+            delta_chip.set_delta(rating_value - baseline_rating, baseline_label)
+            layout.addWidget(delta_chip, 0, Qt.AlignVCenter)
 
     # ── Line composition ──
 

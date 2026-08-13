@@ -2,6 +2,7 @@
 
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.db_record_card import DbRecordCard
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.delta_chip import DeltaChip
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.drivers_list import DriversList
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.empty_state import EmptyState
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.map_tile import MapTile
@@ -18,6 +19,7 @@ from Programma_CS2_RENAN.apps.qt_app.widgets.components.tip_box import TipBox
 __all__ = [
     "Card",
     "DbRecordCard",
+    "DeltaChip",
     "DriversList",
     "EmptyState",
     "MapTile",

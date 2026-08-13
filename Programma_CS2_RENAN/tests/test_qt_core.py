@@ -789,6 +789,54 @@ class TestMetricBarRow:
         row.deleteLater()
 
 
+class TestDeltaChip:
+    """Benchmark-relative ± chip (research 29.2): text, tint, hide rules."""
+
+    def test_construction_and_delta_directions(self, qapp):
+        from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+        from Programma_CS2_RENAN.apps.qt_app.widgets.components import DeltaChip
+
+        chip = DeltaChip()
+        assert chip.objectName() == "delta_chip"
+        assert chip.isHidden()  # starts hidden until a real delta lands
+
+        chip.set_delta(0.09, "vs 30-day avg")
+        assert chip.text() == "▲ +0.09 vs 30-day avg"
+        assert get_tokens().success in chip.styleSheet()
+        assert not chip.isHidden()
+
+        chip.set_delta(-0.12, "vs 47-match avg")
+        assert chip.text() == "▼ -0.12 vs 47-match avg"
+        assert get_tokens().error in chip.styleSheet()
+        assert not chip.isHidden()
+        chip.deleteLater()
+
+    def test_zero_none_and_rounded_zero_hide(self, qapp):
+        from Programma_CS2_RENAN.apps.qt_app.widgets.components import DeltaChip
+
+        chip = DeltaChip()
+        chip.set_delta(0.2, "vs avg")  # show first so hiding is observable
+        assert not chip.isHidden()
+
+        chip.set_delta(0.0, "vs avg")
+        assert chip.isHidden() and chip.text() == ""
+
+        chip.set_delta(0.3, "vs avg")
+        chip.set_delta(None, "vs avg")
+        assert chip.isHidden()
+
+        # A delta that FORMATS to zero must not claim an arrow ("+0.00").
+        chip.set_delta(0.004, "vs avg")
+        assert chip.isHidden()
+        chip.set_delta(-0.004, "vs avg")
+        assert chip.isHidden()
+
+        # Custom fmt: same value is meaningful at higher precision.
+        chip.set_delta(0.004, "vs avg", fmt="{:+.3f}")
+        assert chip.text() == "▲ +0.004 vs avg"
+        chip.deleteLater()
+
+
 class TestProComparisonPure:
     """Frame-15 pure functions: radar mapping, winner rule, style archetypes."""
 

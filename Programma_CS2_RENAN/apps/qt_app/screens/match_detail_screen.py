@@ -390,6 +390,14 @@ class MatchDetailScreen(QWidget):
         return row
 
     def _build_hero_row(self, stats: dict) -> QWidget:
+        # FIELD-GAP: research 29.2 wants a DeltaChip on the hero rating tile
+        # (± vs the player's own average), but no baseline reaches this
+        # screen: the stats payload carries only this match's PlayerMatchStats
+        # row, and the ``hltv`` dict is HLTV-global-normalized components,
+        # not a personal rating average. Until MatchDetailViewModel exposes a
+        # cross-match personal average, the chip lives on Match History rows
+        # (match_history_screen._render_filtered), where the loaded list IS
+        # the baseline.
         tokens = get_tokens()
         rating = float(stats.get("rating") or 0.0)
         kd = float(stats.get("kd_ratio") or 0.0)

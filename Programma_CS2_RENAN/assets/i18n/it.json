@@ -261,6 +261,7 @@
   "history.hs_pct": "HS%",
   "history.clutch": "clutch",
   "history.demo": "demo",
+  "history.delta_vs_avg": "vs media di {n} match",
   "md_back": "← Indietro",
   "md_title": "Dettaglio Partita",
   "md_tab_overview": "Panoramica",

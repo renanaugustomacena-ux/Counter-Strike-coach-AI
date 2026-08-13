@@ -300,6 +300,24 @@ class MatchHistoryScreen(QWidget):
 
         self._body_stack.setCurrentIndex(self._page_list)
 
+        # Benchmark-relative delta chips (research 29.2): each personal row
+        # carries ± vs the personal average of the WHOLE loaded list (not the
+        # filtered view — the baseline must not shift when filters change).
+        # Zero ratings are failed parses, not performances — excluded.
+        personal_ratings = [
+            float(m.get("rating") or 0.0)
+            for m in self._all_matches
+            if not m.get("is_pro") and float(m.get("rating") or 0.0) > 0
+        ]
+        baseline = sum(personal_ratings) / len(personal_ratings) if personal_ratings else None
+        baseline_label = (
+            i18n.get_text("history.delta_vs_avg", "vs {n}-match avg").format(
+                n=len(personal_ratings)
+            )
+            if baseline is not None
+            else ""
+        )
+
         now = datetime.now(timezone.utc)
         groups: dict[str, list[dict]] = defaultdict(list)
         for match in filtered:
@@ -319,7 +337,9 @@ class MatchHistoryScreen(QWidget):
             self._container_layout.insertWidget(self._container_layout.count() - 1, header)
 
             for match in bucket_matches:
-                row = MatchRowCard(match)
+                row = MatchRowCard(
+                    match, baseline_rating=baseline, baseline_label=baseline_label
+                )
                 row.clicked.connect(self._on_match_clicked)
                 self._container_layout.insertWidget(self._container_layout.count() - 1, row)
 
