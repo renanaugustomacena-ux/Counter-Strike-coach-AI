@@ -19,42 +19,51 @@ from Programma_CS2_RENAN.apps.qt_app.screens.placeholder import create_placehold
 
 
 def _create_splash(app_version: str) -> QSplashScreen:
-    """Create a themed splash screen with gradient background and branding."""
+    """Create a themed splash screen with gradient background and branding.
+
+    Colors come from the saved theme's design tokens so the splash never
+    drifts from the app palette (it used to hardcode the pre-atlas hexes).
+    Call AFTER ThemeEngine.register_fonts() so the display stack resolves.
+    """
+    from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+    from Programma_CS2_RENAN.core.config import get_setting
+
+    tokens = get_tokens(get_setting("ACTIVE_THEME", "CS2"))
     width, height = 520, 320
     pixmap = QPixmap(width, height)
 
     painter = QPainter(pixmap)
     painter.setRenderHint(QPainter.Antialiasing)
 
-    # Dark gradient background matching CS2 theme
+    # Deep-surface gradient (base -> sunken)
     gradient = QLinearGradient(0, 0, 0, height)
-    gradient.setColorAt(0.0, QColor("#14141e"))
-    gradient.setColorAt(1.0, QColor("#0a0a14"))
+    gradient.setColorAt(0.0, QColor(tokens.surface_base))
+    gradient.setColorAt(1.0, QColor(tokens.surface_sunken))
     painter.fillRect(0, 0, width, height, gradient)
 
-    # Accent bar at top (CS2 orange)
-    painter.fillRect(0, 0, width, 4, QColor("#d96600"))
+    # Accent bar at top
+    painter.fillRect(0, 0, width, 4, QColor(tokens.accent_primary))
 
-    # App title
-    painter.setPen(QColor("#dcdcdc"))
-    painter.setFont(QFont("Roboto", 22, QFont.Bold))
+    # App title (display stack)
+    painter.setPen(QColor(tokens.text_primary))
+    painter.setFont(QFont("Space Grotesk", 22, QFont.Bold))
     painter.drawText(0, 70, width, 40, Qt.AlignCenter, "MACENA CS2 ANALYZER")
 
     # Subtitle
-    painter.setPen(QColor("#a0a0b0"))
-    painter.setFont(QFont("Roboto", 11))
+    painter.setPen(QColor(tokens.text_secondary))
+    painter.setFont(QFont("Inter", 11))
     painter.drawText(0, 110, width, 25, Qt.AlignCenter, "AI-Powered Coaching Platform")
 
     # Version
-    painter.setPen(QColor("#3a3a5a"))
+    painter.setPen(QColor(tokens.text_tertiary))
     painter.setFont(QFont("JetBrains Mono", 9))
     painter.drawText(0, 145, width, 20, Qt.AlignCenter, f"v{app_version}")
 
     # Divider accent line
-    painter.fillRect(160, 180, 200, 1, QColor("#d96600"))
+    painter.fillRect(160, 180, 200, 1, QColor(tokens.accent_primary))
 
     # Bottom border
-    painter.fillRect(0, height - 2, width, 2, QColor("#d96600"))
+    painter.fillRect(0, height - 2, width, 2, QColor(tokens.accent_primary))
 
     painter.end()
 
@@ -101,11 +110,10 @@ def _install_quit_handler(app: QApplication) -> None:
     app.aboutToQuit.connect(_on_app_quit)
 
 
-def _apply_theme(app: QApplication, splash: QSplashScreen) -> ThemeEngine:
-    """Register fonts and apply the active theme; returns engine for later reuse."""
+def _apply_theme(app: QApplication, splash: QSplashScreen, theme: ThemeEngine) -> ThemeEngine:
+    """Apply the active theme via a pre-built engine (fonts already registered
+    in main() so the splash can use the display stack)."""
     _splash_status(splash, "Loading theme engine...")
-    theme = ThemeEngine()
-    theme.register_fonts()
 
     from Programma_CS2_RENAN.core.config import get_setting
 
@@ -305,6 +313,10 @@ def main():
     app.setApplicationName(f"Macena CS2 Analyzer v{app_version}")
     app.setApplicationVersion(app_version)
 
+    # Fonts must precede the splash so its painter can use the display stack.
+    theme = ThemeEngine()
+    theme.register_fonts()
+
     splash = _create_splash(app_version)
     splash.show()
     QApplication.processEvents()
@@ -312,7 +324,7 @@ def main():
     # Connect graceful shutdown early — active even if boot fails
     _install_quit_handler(app)
 
-    theme = _apply_theme(app, splash)
+    theme = _apply_theme(app, splash, theme)
 
     _splash_status(splash, "Creating main window...")
     window = MainWindow()
