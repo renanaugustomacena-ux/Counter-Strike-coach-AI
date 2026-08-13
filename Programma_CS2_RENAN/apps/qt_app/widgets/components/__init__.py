@@ -4,6 +4,8 @@ from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.db_record_card import DbRecordCard
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.drivers_list import DriversList
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.empty_state import EmptyState
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.map_tile import MapTile
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.metric_bar_row import MetricBarRow
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.mono_footer import MonoFooter
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.numbered_step import NumberedStep
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.pro_badge import ProBadge
@@ -17,6 +19,8 @@ __all__ = [
     "DbRecordCard",
     "DriversList",
     "EmptyState",
+    "MapTile",
+    "MetricBarRow",
     "MonoFooter",
     "NumberedStep",
     "ProBadge",

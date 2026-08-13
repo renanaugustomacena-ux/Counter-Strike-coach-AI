@@ -268,8 +268,8 @@ class AppState(QObject):
         """True when match_detail should prefer the pyqtgraph heatmap.
 
         Requires `pyqtgraph` to be installed; if absent, the match_detail
-        screen transparently falls back to the QtCharts widget and this
-        toggle is a no-op.
+        screen transparently falls back to the built-in QPainter chart
+        widget and this toggle is a no-op.
         """
         return self._read_toggle("USE_PYQTGRAPH_HEATMAP")
 

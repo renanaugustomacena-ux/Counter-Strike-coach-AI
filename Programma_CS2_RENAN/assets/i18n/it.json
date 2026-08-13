@@ -150,5 +150,18 @@
   "chat.offline": "Offline",
   "chat.clear": "Pulisci",
   "chat.placeholder": "Chiedi al tuo coach…",
-  "chat.send": "Invia"
+  "chat.send": "Invia",
+  "chart_caption_you": "tu",
+  "chart_caption_pro": "pro",
+  "chart_economy_title": "Economia per round",
+  "chart_equipment_axis": "Equipaggiamento ($)",
+  "chart_round_axis": "Numero round",
+  "chart_half_label": "metà",
+  "chart_momentum_title": "Momentum (delta kill-death)",
+  "chart_legend_ct_side": "Lato CT",
+  "chart_legend_t_side": "Lato T",
+  "map_tile_rating": "Rating",
+  "map_tile_matches": "partite",
+  "stat_adr": "ADR",
+  "stat_kd": "K/D"
 }
