@@ -17,7 +17,13 @@ from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 class DbRecordCard(QFrame):
     """Database-record card: title, SQL caption, key/value mono grid."""
 
-    def __init__(self, title: str = "", sql: str = "", parent: QWidget | None = None):
+    def __init__(
+        self,
+        title: str = "",
+        sql: str = "",
+        subtitle: str = "",
+        parent: QWidget | None = None,
+    ):
         super().__init__(parent)
         self.setObjectName("dashboard_card")  # inherit raised-card chrome
         tokens = get_tokens()
@@ -32,6 +38,15 @@ class DbRecordCard(QFrame):
         self._title_label.setFont(Typography.font("body", QFont.Bold))
         layout.addWidget(self._title_label)
 
+        # Optional plain caption between title and SQL (frame 17:
+        # "PlayerProfile row auto-created on save."). Hidden when empty
+        # so pre-existing two-arg construction renders unchanged.
+        self._subtitle_label = QLabel(subtitle)
+        self._subtitle_label.setProperty("variant", "caption")
+        self._subtitle_label.setWordWrap(True)
+        self._subtitle_label.setVisible(bool(subtitle))
+        layout.addWidget(self._subtitle_label)
+
         self._sql_label = QLabel(sql)
         self._sql_label.setObjectName("db_record_sql")
         self._sql_label.setWordWrap(True)
@@ -45,6 +60,16 @@ class DbRecordCard(QFrame):
         self._grid.setColumnStretch(1, 1)
         layout.addWidget(self._grid_host)
         layout.addStretch()
+
+    def set_title(self, text: str) -> None:
+        self._title_label.setText(text)
+
+    def set_subtitle(self, text: str) -> None:
+        self._subtitle_label.setText(text)
+        self._subtitle_label.setVisible(bool(text))
+
+    def set_sql(self, text: str) -> None:
+        self._sql_label.setText(text)
 
     def set_rows(self, rows: list[tuple[str, str, str | None]]) -> None:
         """Replace the grid with (key, value, token_name | None) rows."""

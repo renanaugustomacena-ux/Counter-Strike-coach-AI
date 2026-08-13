@@ -534,6 +534,35 @@ def inject_match_detail(screen: Any) -> None:
     )
 
 
+# ── Profile (frame 17) — PlayerProfile row shown in the DbRecordCard ──
+PROFILE_DB_ROW: dict[str, Any] = {
+    "id": 42,
+    "player_name": "macena",
+    "created_at": "2025-11-12",
+    "matches_analyzed": 47,
+    "last_match": "2026-04-22",
+}
+
+
+def inject_profile(screen: Any) -> None:
+    screen._name_input.setText("macena")
+    screen._refresh_record_card(dict(PROFILE_DB_ROW))
+    # Frame 17 shows the transient "✓ Saved" chip — pin it visible.
+    screen._saved_chip.setVisible(True)
+
+
+def inject_wizard(screen: Any) -> None:
+    """Frame 18: jump to the Brain Path step with a real writable temp
+    path so the validation row (writable / free space / existing data)
+    shows live computed values instead of neutral dashes."""
+    import tempfile
+
+    path = tempfile.mkdtemp(prefix="macena_brain_")
+    screen._name_input.setText("macena")
+    screen._brain_input.setText(path)  # textChanged → validation refresh
+    screen._go_to(2)
+
+
 def inject_performance(screen: Any) -> None:
     # Context BEFORE data — the VM's R4 MED emission order: the data slot
     # rebuilds the UI synchronously and reads the cached context strip.

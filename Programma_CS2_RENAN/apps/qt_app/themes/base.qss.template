@@ -918,3 +918,173 @@ QLabel#mono_footer {
     color: ${text_tertiary};
     font-size: ${font_size_caption}px;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   Settings / Profile furniture (frames 16/17, Task 26)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Theme cards — 5 palette swatches + accent name + tagline ── */
+QFrame#theme_card {
+    background-color: ${surface_raised};
+    border: 1px solid ${border_default};
+    border-radius: ${radius_md}px;
+}
+QFrame#theme_card:hover {
+    border: 1px solid ${border_accent_muted};
+}
+QFrame#theme_card[selected="true"] {
+    border: 2px solid ${accent_primary};
+}
+QLabel#theme_card_tagline {
+    color: ${text_secondary};
+    font-size: ${font_size_caption}px;
+    background: transparent;
+}
+
+/* ── Wallpaper cards — gradient preview + dashed "No wallpaper" ── */
+QFrame#wallpaper_card {
+    border: 1px solid ${border_default};
+    border-radius: ${radius_md}px;
+}
+QFrame#wallpaper_card[selected="true"] {
+    border: 2px solid ${accent_primary};
+}
+QFrame#wallpaper_none_card {
+    background-color: transparent;
+    border: 1px dashed ${border_default};
+    border-radius: ${radius_md}px;
+}
+QFrame#wallpaper_none_card:hover {
+    border: 1px dashed ${border_accent_muted};
+}
+QFrame#wallpaper_none_card[selected="true"] {
+    border: 2px solid ${accent_primary};
+}
+QLabel#wallpaper_none_text {
+    color: ${text_secondary};
+    font-size: ${font_size_body}px;
+    background: transparent;
+}
+
+/* ── Live Preview sample surface (frame 16 right column) ── */
+QFrame#live_preview_sample {
+    background-color: ${surface_sunken};
+    border: 1px solid ${border_default};
+    border-radius: ${radius_md}px;
+}
+
+/* ── Wizard Brain-Path page furniture (frame 18, Task 27) ── */
+QFrame#dir_tree_card {
+    background-color: ${surface_sunken};
+    border: 1px solid ${border_default};
+    border-radius: ${radius_md}px;
+}
+QLabel#dir_tree_header {
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    color: ${warning};
+    font-weight: 700;
+    font-size: ${font_size_caption}px;
+    letter-spacing: 2px;
+    background: transparent;
+}
+QLabel#dir_tree_root {
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    color: ${accent_primary};
+    font-weight: 700;
+    font-size: ${font_size_body}px;
+    background: transparent;
+}
+QLabel#dir_tree_body {
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    color: ${text_primary};
+    font-size: ${font_size_caption}px;
+    background: transparent;
+}
+QLabel#wizard_brand {
+    color: ${accent_primary};
+    font-weight: 700;
+    font-size: ${font_size_caption}px;
+    letter-spacing: 3px;
+    background: transparent;
+}
+
+/* ── Help panel furniture (frame 19, Task 27) ── */
+QLabel#help_panel_header {
+    color: ${text_secondary};
+    font-weight: 700;
+    font-size: ${font_size_caption}px;
+    letter-spacing: 2px;
+    background: transparent;
+}
+QFrame#help_topic_row {
+    background-color: transparent;
+    border: none;
+    border-left: 3px solid transparent;
+    border-radius: ${radius_sm}px;
+}
+QFrame#help_topic_row:hover {
+    background-color: ${accent_muted_15};
+}
+QFrame#help_topic_row[selected="true"] {
+    background-color: ${accent_muted_15};
+    border-left: 3px solid ${accent_primary};
+}
+QLabel#help_topic_title {
+    color: ${text_primary};
+    font-weight: 700;
+    font-size: ${font_size_body}px;
+    background: transparent;
+}
+QFrame#help_topic_row[selected="true"] QLabel#help_topic_title {
+    color: ${accent_primary};
+}
+QLabel#help_topic_caption {
+    color: ${text_secondary};
+    font-size: ${font_size_caption}px;
+    background: transparent;
+}
+QFrame#demo_folder_callout {
+    background-color: ${surface_sunken};
+    border: 1px solid ${border_default};
+    border-radius: ${radius_md}px;
+}
+QLabel#demo_folder_title {
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    color: ${warning};
+    font-weight: 700;
+    font-size: ${font_size_caption}px;
+    letter-spacing: 2px;
+    background: transparent;
+}
+QLabel#demo_folder_path {
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    color: ${text_primary};
+    font-size: ${font_size_body}px;
+    background: transparent;
+}
+QFrame#hint_row {
+    background-color: ${surface_sunken};
+    border: 1px solid ${border_subtle};
+    border-radius: ${radius_md}px;
+}
+
+/* ── MiniLinkCard — bold "title →" + caption navigation card (17/19) ── */
+QFrame#mini_link_card {
+    background-color: ${surface_sunken};
+    border: 1px solid ${border_subtle};
+    border-radius: ${radius_md}px;
+}
+QFrame#mini_link_card:hover {
+    border: 1px solid ${accent_primary};
+}
+QLabel#mini_link_title {
+    color: ${text_primary};
+    font-weight: 700;
+    font-size: ${font_size_body}px;
+    background: transparent;
+}
+QLabel#mini_link_caption {
+    color: ${text_secondary};
+    font-size: ${font_size_caption}px;
+    background: transparent;
+}

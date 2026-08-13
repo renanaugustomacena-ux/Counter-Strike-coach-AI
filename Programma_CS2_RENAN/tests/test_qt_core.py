@@ -915,3 +915,61 @@ class TestProComparisonPure:
         assert headline == i18n.get_text("procomp.style.balanced", "balanced all-rounder")
         empty_headline, _ = _style_summary({}, {})
         assert empty_headline == i18n.get_text("procomp.style.balanced", "balanced all-rounder")
+
+
+class TestStepperLabels:
+    """Task 27: optional per-step captions (frame 18) stay backward-compatible."""
+
+    def test_unlabeled_geometry_unchanged(self, qapp):
+        from Programma_CS2_RENAN.apps.qt_app.widgets.components.stepper import Stepper
+
+        s = Stepper(step_count=5, current_step=0)
+        # Original formula: n*dot_diameter + (n-1)*bar + 8 padding; height dot+8.
+        assert s.width() == 5 * 14 + 4 * 48 + 8
+        assert s.height() == 14 + 8
+        assert s.labels == []
+        s.deleteLater()
+
+    def test_labeled_mode_grows_and_paints(self, qapp):
+        from Programma_CS2_RENAN.apps.qt_app.widgets.components.stepper import Stepper
+
+        labels = ["Intro", "Name", "Brain Path", "Demo Path", "Launch"]
+        plain = Stepper(step_count=5)
+        s = Stepper(step_count=5, current_step=2, labels=labels)
+        assert s.labels == labels
+        assert s.height() > plain.height()  # caption row added
+        assert s.width() >= plain.width()
+        assert not s.grab().isNull()  # labeled paint path runs clean
+        s.deleteLater()
+        plain.deleteLater()
+
+    def test_labels_must_match_step_count(self, qapp):
+        import pytest as _pytest
+
+        from Programma_CS2_RENAN.apps.qt_app.widgets.components.stepper import Stepper
+
+        with _pytest.raises(ValueError):
+            Stepper(step_count=5, labels=["only", "three", "labels"])
+        s = Stepper(step_count=3)
+        with _pytest.raises(ValueError):
+            s.set_labels(["a", "b"])
+        s.set_labels(["a", "b", "c"])
+        assert s.labels == ["a", "b", "c"]
+        s.set_labels(None)
+        assert s.labels == []
+        s.deleteLater()
+
+    def test_navigation_still_works_with_labels(self, qapp):
+        from Programma_CS2_RENAN.apps.qt_app.widgets.components.stepper import Stepper
+
+        s = Stepper(step_count=5, labels=["A", "B", "C", "D", "E"])
+        seen = []
+        s.step_changed.connect(seen.append)
+        s.advance()
+        s.advance()
+        s.retreat()
+        assert s.current_step == 1
+        assert seen == [1, 2, 1]
+        s.current_step = 99  # clamps to last step
+        assert s.current_step == 4
+        s.deleteLater()

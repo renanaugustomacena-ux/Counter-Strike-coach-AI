@@ -2,10 +2,12 @@
 
 import errno
 import os
+import shutil
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QFileDialog,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -19,13 +21,39 @@ from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.mono_footer import MonoFooter
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.stepper import Stepper
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.tip_box import TipBox
 from Programma_CS2_RENAN.core.config import save_user_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.qt_wizard")
 
 _BRAIN_SUBDIRS = ("knowledge", "models", "datasets")
+
+# Frame-18 stepper captions: (i18n key, fallback) per step.
+_STEP_LABELS = (
+    ("wizard_step_intro", "Intro"),
+    ("wizard_step_name", "Name"),
+    ("wizard_step_brain", "Brain Path"),
+    ("wizard_step_demo", "Demo Path"),
+    ("wizard_step_launch", "Launch"),
+)
+
+# Directory-tree caption lines (frame 18) per created subdir.
+_TREE_CAPTIONS = {
+    "knowledge": "RAG embeddings · TacticalKnowledge entries · 384-dim vectors",
+    "models": "checkpoint .pt files · JEPA + RAP · latest.pt + history",
+    "datasets": "cached tensors · parsed demos · train/val/test splits",
+}
+
+# The only safely-skippable step: Demo Path is optional by design (name
+# and brain path block Next until valid; intro/finish have no skip).
+_SKIPPABLE_STEPS = frozenset({3})
+
+
+def _step_labels() -> list[str]:
+    return [i18n.get_text(key, fallback) for key, fallback in _STEP_LABELS]
 
 
 class WizardScreen(QWidget):
@@ -43,24 +71,52 @@ class WizardScreen(QWidget):
 
     def on_enter(self):
         """Reset to first step when entering the wizard."""
-        self._stack.setCurrentIndex(0)
-        self._next_btn.setText("Get Started")
+        self._go_to(0)
         self._next_btn.setVisible(True)
 
     def retranslate(self):
         """Update translatable text when language changes."""
+        self._brand.setText(i18n.get_text("app_name", "Macena CS2 Analyzer").upper())
         self._title.setText(i18n.get_text("wizard_title", "Setup Wizard"))
         self._back_btn.setText(i18n.get_text("wizard_back", "Back"))
+        self._skip_btn.setText(i18n.get_text("wizard_skip_step", "Skip this step"))
+        self._stepper.set_labels(_step_labels())
+        # Brain-page copy
+        self._brain_title.setText(
+            i18n.get_text("wizard_brain_title", "Choose a folder for your AI brain data")
+        )
+        self._brain_desc.setText(
+            i18n.get_text(
+                "wizard_brain_desc",
+                "This is where models, knowledge base, and datasets will be stored.",
+            )
+        )
+        self._tree_header.setText(
+            i18n.get_text("dir_tree_header", "DIRECTORY TREE (will be created)")
+        )
+        self._folder_path_label.setText(i18n.get_text("folder_path_label", "Folder path:"))
+        self._val_writable_key.setText(i18n.get_text("val_writable", "Writable:"))
+        self._val_free_key.setText(i18n.get_text("val_free_space", "Free space:"))
+        self._val_est_key.setText(i18n.get_text("val_estimated", "Estimated use:"))
+        self._val_est_value.setText(
+            i18n.get_text("val_estimated_value", "~12 GB first year")
+        )
+        self._val_existing_key.setText(i18n.get_text("val_existing", "Existing data:"))
+        self._brain_tip.set_title(i18n.get_text("wizard_tip_title", "Tip"))
+        self._brain_tip.set_body(
+            i18n.get_text(
+                "wizard_tip_body",
+                "Choose a drive with at least 50 GB free. The knowledge base + "
+                "model checkpoints grow as you ingest more demos.",
+            )
+        )
+        self._refresh_brain_validation()
+        # Step caption + Next label depend on the current index
         step = self._stack.currentIndex()
         self._step_label.setText(
             i18n.get_text("wizard_step", "Step {n} of 5").replace("{n}", str(step + 1))
         )
-        if step == 0:
-            self._next_btn.setText(i18n.get_text("wizard_get_started", "Get Started"))
-        elif step == 4:
-            self._next_btn.setText(i18n.get_text("wizard_launch", "Launch App"))
-        else:
-            self._next_btn.setText(i18n.get_text("wizard_next", "Next"))
+        self._next_btn.setText(self._next_label_for(step))
 
     # ── UI Construction ──
 
@@ -69,9 +125,34 @@ class WizardScreen(QWidget):
         layout.setContentsMargins(24, 24, 24, 24)
         layout.setSpacing(16)
 
+        # Header — brand + h1 top-left, "Step n of 5" + labeled stepper
+        # top-right (frame 18).
+        header = QHBoxLayout()
+        header.setSpacing(16)
+        title_col = QVBoxLayout()
+        title_col.setSpacing(4)
+        self._brand = QLabel(i18n.get_text("app_name", "Macena CS2 Analyzer").upper())
+        self._brand.setObjectName("wizard_brand")
+        title_col.addWidget(self._brand)
         self._title = QLabel(i18n.get_text("wizard_title", "Setup Wizard"))
         Typography.apply(self._title, "h1")
-        layout.addWidget(self._title)
+        title_col.addWidget(self._title)
+        header.addLayout(title_col)
+        header.addStretch()
+
+        step_col = QVBoxLayout()
+        step_col.setSpacing(4)
+        self._step_label = QLabel("Step 1 of 5")
+        self._step_label.setAlignment(Qt.AlignRight)
+        self._step_label.setStyleSheet(
+            f"color: {get_tokens().text_secondary}; "
+            f"font-size: {get_tokens().font_size_caption}px; background: transparent;"
+        )
+        step_col.addWidget(self._step_label)
+        self._stepper = Stepper(step_count=5, current_step=0, labels=_step_labels())
+        step_col.addWidget(self._stepper, alignment=Qt.AlignRight)
+        header.addLayout(step_col)
+        layout.addLayout(header)
 
         # 5-page stack
         self._stack = QStackedWidget()
@@ -91,33 +172,40 @@ class WizardScreen(QWidget):
         content_panel.content_layout.addWidget(self._stack)
         layout.addWidget(content_panel, 1)
 
-        # Bottom bar with Back + Next buttons
+        # Bottom bar — Back / Skip this step (ghost, optional steps only)
+        # ... Next → (frame 18).
         bottom = QHBoxLayout()
+        bottom.setSpacing(12)
         self._back_btn = QPushButton(i18n.get_text("wizard_back", "Back"))
+        self._back_btn.setProperty("variant", "secondary")
         self._back_btn.setFixedHeight(40)
         self._back_btn.setMinimumWidth(100)
         self._back_btn.setCursor(Qt.PointingHandCursor)
         self._back_btn.clicked.connect(self._on_back)
         self._back_btn.setVisible(False)  # Hidden on intro page
         bottom.addWidget(self._back_btn)
-        bottom.addStretch()
-        # Stepper replaces the text "Step N of 5" — reads as progress
-        # at a glance and mirrors Frame 17–19 design.
-        self._stepper = Stepper(step_count=5, current_step=0)
-        bottom.addWidget(self._stepper)
-        self._step_label = QLabel("Step 1 of 5")
-        self._step_label.setStyleSheet(
-            f"color: {get_tokens().text_secondary}; font-size: {get_tokens().font_size_caption}px; margin-left: 12px;"
-        )
-        bottom.addWidget(self._step_label)
+        self._skip_btn = QPushButton(i18n.get_text("wizard_skip_step", "Skip this step"))
+        self._skip_btn.setProperty("variant", "ghost")
+        self._skip_btn.setFixedHeight(40)
+        self._skip_btn.setCursor(Qt.PointingHandCursor)
+        self._skip_btn.clicked.connect(self._on_skip)
+        self._skip_btn.setVisible(False)
+        bottom.addWidget(self._skip_btn)
         bottom.addStretch()
         self._next_btn = QPushButton(i18n.get_text("wizard_get_started", "Get Started"))
+        self._next_btn.setProperty("variant", "primary")
         self._next_btn.setFixedHeight(40)
         self._next_btn.setMinimumWidth(140)
         self._next_btn.setCursor(Qt.PointingHandCursor)
         self._next_btn.clicked.connect(self._on_next)
         bottom.addWidget(self._next_btn)
         layout.addLayout(bottom)
+
+        layout.addWidget(
+            MonoFooter(
+                "wizard_screen.py · QStackedWidget with 5 pages · shown on first run only"
+            )
+        )
 
     def _build_intro_page(self) -> QWidget:
         page = QWidget()
@@ -178,36 +266,120 @@ class WizardScreen(QWidget):
         return page
 
     def _build_brain_page(self) -> QWidget:
+        tokens = get_tokens()
         page = QWidget()
         lay = QVBoxLayout(page)
         lay.setSpacing(12)
 
-        desc = QLabel(
-            "Select a folder for the AI brain data.\n"
-            "This is where models, knowledge base, and datasets will be stored."
+        self._brain_title = QLabel(
+            i18n.get_text("wizard_brain_title", "Choose a folder for your AI brain data")
         )
-        desc.setWordWrap(True)
-        desc.setStyleSheet(
-            f"color: {get_tokens().text_secondary}; font-size: {get_tokens().font_size_body}px;"
+        self._brain_title.setFont(Typography.font("title"))
+        self._brain_title.setStyleSheet(
+            f"color: {tokens.text_primary}; background: transparent;"
         )
-        lay.addWidget(desc)
+        lay.addWidget(self._brain_title)
+
+        self._brain_desc = QLabel(
+            i18n.get_text(
+                "wizard_brain_desc",
+                "This is where models, knowledge base, and datasets will be stored.",
+            )
+        )
+        self._brain_desc.setWordWrap(True)
+        self._brain_desc.setStyleSheet(
+            f"color: {tokens.text_secondary}; font-size: {tokens.font_size_body}px; "
+            "background: transparent;"
+        )
+        lay.addWidget(self._brain_desc)
+
+        # Directory tree preview — the subdirs _validate_brain really
+        # creates (_BRAIN_SUBDIRS), with frame-18 caption lines.
+        tree_card = QFrame()
+        tree_card.setObjectName("dir_tree_card")
+        tree_lay = QVBoxLayout(tree_card)
+        tree_lay.setContentsMargins(
+            tokens.spacing_lg, tokens.spacing_md, tokens.spacing_lg, tokens.spacing_md
+        )
+        tree_lay.setSpacing(tokens.spacing_xs)
+        self._tree_header = QLabel(
+            i18n.get_text("dir_tree_header", "DIRECTORY TREE (will be created)")
+        )
+        self._tree_header.setObjectName("dir_tree_header")
+        tree_lay.addWidget(self._tree_header)
+        self._tree_root = QLabel("")
+        self._tree_root.setObjectName("dir_tree_root")
+        tree_lay.addWidget(self._tree_root)
+        tree_body = QLabel(self._tree_body_html())
+        tree_body.setObjectName("dir_tree_body")
+        tree_body.setTextFormat(Qt.RichText)
+        tree_lay.addWidget(tree_body)
+        lay.addWidget(tree_card)
+
+        self._folder_path_label = QLabel(i18n.get_text("folder_path_label", "Folder path:"))
+        self._folder_path_label.setStyleSheet(
+            f"color: {tokens.text_secondary}; font-size: {tokens.font_size_caption}px; "
+            "background: transparent;"
+        )
+        lay.addWidget(self._folder_path_label)
 
         # Manual entry
         input_row = QHBoxLayout()
         input_row.setSpacing(8)
         self._brain_input = QLineEdit()
+        self._brain_input.setFont(Typography.font("mono"))
         self._brain_input.setPlaceholderText("Enter path or use Select Folder...")
         self._brain_input.returnPressed.connect(self._on_next)
+        self._brain_input.textChanged.connect(self._refresh_brain_validation)
         input_row.addWidget(self._brain_input, 1)
-        browse_btn = QPushButton("Select Folder")
+        browse_btn = QPushButton(i18n.get_text("wizard_select_folder", "Select Folder"))
+        browse_btn.setProperty("variant", "secondary")
         browse_btn.clicked.connect(self._pick_brain_folder)
         input_row.addWidget(browse_btn)
         lay.addLayout(input_row)
 
-        # Selected path display
+        # Validation row — writable / free space / estimated use /
+        # existing data (frame 18). Cheap inline os.access + disk_usage
+        # against the nearest existing ancestor; recomputed per keystroke.
+        val_row = QHBoxLayout()
+        val_row.setSpacing(tokens.spacing_sm)
+
+        def _pair(key_text: str) -> tuple[QLabel, QLabel]:
+            key = QLabel(key_text)
+            key.setStyleSheet(
+                f"color: {tokens.text_secondary}; "
+                f"font-size: {tokens.font_size_caption}px; background: transparent;"
+            )
+            value = QLabel("—")
+            value.setFont(Typography.font("mono"))
+            val_row.addWidget(key)
+            val_row.addWidget(value)
+            val_row.addSpacing(tokens.spacing_lg)
+            return key, value
+
+        self._val_writable_key, self._val_writable = _pair(
+            i18n.get_text("val_writable", "Writable:")
+        )
+        self._val_free_key, self._val_free = _pair(
+            i18n.get_text("val_free_space", "Free space:")
+        )
+        self._val_est_key, self._val_est_value = _pair(
+            i18n.get_text("val_estimated", "Estimated use:")
+        )
+        self._val_est_value.setText(i18n.get_text("val_estimated_value", "~12 GB first year"))
+        self._val_est_value.setStyleSheet(
+            f"color: {tokens.text_primary}; background: transparent;"
+        )
+        self._val_existing_key, self._val_existing = _pair(
+            i18n.get_text("val_existing", "Existing data:")
+        )
+        val_row.addStretch()
+        lay.addLayout(val_row)
+
+        # Selected path display (fallback notices from _validate_brain)
         self._brain_path_label = QLabel("")
         self._brain_path_label.setStyleSheet(
-            f"color: {get_tokens().text_primary}; font-size: {get_tokens().font_size_caption}px;"
+            f"color: {tokens.text_primary}; font-size: {tokens.font_size_caption}px;"
         )
         self._brain_path_label.setWordWrap(True)
         lay.addWidget(self._brain_path_label)
@@ -215,14 +387,102 @@ class WizardScreen(QWidget):
         # Error display
         self._brain_error = QLabel("")
         self._brain_error.setStyleSheet(
-            f"color: {get_tokens().error}; font-size: {get_tokens().font_size_caption}px;"
+            f"color: {tokens.error}; font-size: {tokens.font_size_caption}px;"
         )
         self._brain_error.setWordWrap(True)
         self._brain_error.setVisible(False)
         lay.addWidget(self._brain_error)
 
+        self._brain_tip = TipBox(
+            title=i18n.get_text("wizard_tip_title", "Tip"),
+            body=i18n.get_text(
+                "wizard_tip_body",
+                "Choose a drive with at least 50 GB free. The knowledge base + "
+                "model checkpoints grow as you ingest more demos.",
+            ),
+        )
+        lay.addWidget(self._brain_tip)
+
         lay.addStretch()
+        self._refresh_brain_validation()
         return page
+
+    def _tree_body_html(self) -> str:
+        """Static tree lines for the subdirs the wizard will create."""
+        tokens = get_tokens()
+        glyphs = ["├──"] * (len(_BRAIN_SUBDIRS) - 1) + ["└──"]
+        pipes = ["│"] * (len(_BRAIN_SUBDIRS) - 1) + ["&nbsp;"]
+        lines = []
+        for sub, glyph, pipe in zip(_BRAIN_SUBDIRS, glyphs, pipes):
+            lines.append(f"{glyph} <b>{sub}/</b>")
+            lines.append(
+                f'{pipe}&nbsp;&nbsp;&nbsp;<span style="color:{tokens.info};">'
+                f"{_TREE_CAPTIONS[sub]}</span>"
+            )
+        return "<br>".join(lines)
+
+    def _refresh_brain_validation(self):
+        """Recompute the writable/free-space/existing-data row (frame 18)."""
+        tokens = get_tokens()
+        text = self._brain_input.text().strip()
+        path = os.path.normpath(os.path.expanduser(text)) if text else ""
+        self._tree_root.setText(f"{path or '…'}{os.sep}")
+
+        if not path:
+            for label in (self._val_writable, self._val_free, self._val_existing):
+                label.setText("—")
+                label.setStyleSheet(
+                    f"color: {tokens.text_tertiary}; background: transparent;"
+                )
+            return
+
+        # Nearest existing ancestor — the path itself usually doesn't
+        # exist yet ("will be created").
+        probe = path
+        while probe and not os.path.exists(probe):
+            parent = os.path.dirname(probe)
+            if parent == probe:
+                break
+            probe = parent
+
+        writable = os.path.exists(probe) and os.access(probe, os.W_OK)
+        if writable:
+            self._val_writable.setText(i18n.get_text("val_yes", "✓ yes"))
+            self._val_writable.setStyleSheet(
+                f"color: {tokens.success}; background: transparent;"
+            )
+        else:
+            self._val_writable.setText(i18n.get_text("val_no", "✗ no"))
+            self._val_writable.setStyleSheet(
+                f"color: {tokens.error}; background: transparent;"
+            )
+
+        try:
+            free_gb = shutil.disk_usage(probe).free // (1024**3)
+            self._val_free.setText(f"{free_gb} GB")
+            self._val_free.setStyleSheet(
+                f"color: {tokens.success}; background: transparent;"
+            )
+        except OSError:
+            self._val_free.setText("—")
+            self._val_free.setStyleSheet(
+                f"color: {tokens.text_tertiary}; background: transparent;"
+            )
+
+        try:
+            has_data = os.path.isdir(path) and bool(os.listdir(path))
+        except OSError:
+            has_data = False
+        if has_data:
+            self._val_existing.setText(i18n.get_text("val_existing_found", "found"))
+            self._val_existing.setStyleSheet(
+                f"color: {tokens.warning}; background: transparent;"
+            )
+        else:
+            self._val_existing.setText(i18n.get_text("val_existing_none", "none"))
+            self._val_existing.setStyleSheet(
+                f"color: {tokens.text_secondary}; background: transparent;"
+            )
 
     def _build_demo_page(self) -> QWidget:
         page = QWidget()
@@ -317,20 +577,29 @@ class WizardScreen(QWidget):
         if step > 0:
             self._go_to(step - 1)
 
+    def _on_skip(self):
+        """Skip an optional step without validating or persisting it."""
+        step = self._stack.currentIndex()
+        if step in _SKIPPABLE_STEPS:
+            self._go_to(step + 1)
+
+    def _next_label_for(self, index: int) -> str:
+        if index == 0:
+            return i18n.get_text("wizard_get_started", "Get Started")
+        if index == 4:
+            return i18n.get_text("wizard_launch", "Launch App")
+        return i18n.get_text("wizard_next", "Next") + " →"
+
     def _go_to(self, index: int):
         self._stack.setCurrentIndex(index)
         # Update button visibility and labels
         self._back_btn.setVisible(index > 0)
+        self._skip_btn.setVisible(index in _SKIPPABLE_STEPS)
         self._stepper.current_step = index
         self._step_label.setText(
             i18n.get_text("wizard_step", "Step {n} of 5").replace("{n}", str(index + 1))
         )
-        if index == 0:
-            self._next_btn.setText(i18n.get_text("wizard_get_started", "Get Started"))
-        elif index == 4:
-            self._next_btn.setText(i18n.get_text("wizard_launch", "Launch App"))
-        else:
-            self._next_btn.setText(i18n.get_text("wizard_next", "Next"))
+        self._next_btn.setText(self._next_label_for(index))
 
     # ── Folder Pickers ──
 

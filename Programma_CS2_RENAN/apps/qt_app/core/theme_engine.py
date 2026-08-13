@@ -232,12 +232,19 @@ class ThemeEngine(QObject):
             f for f in os.listdir(theme_dir) if f.lower().endswith((".jpg", ".jpeg", ".png"))
         )
 
+    def resolve_wallpaper(self, filename: str) -> str:
+        """Absolute path of a wallpaper file in the active theme ("" if absent)."""
+        if not filename:
+            return ""
+        folder = _THEME_WALLPAPER_FOLDER.get(self._active, "cs2theme")
+        path = _ASSETS_DIR / folder / filename
+        return str(path) if path.is_file() else ""
+
     def set_wallpaper(self, filename: str):
         """Set a specific wallpaper by filename; ``""`` clears to flat."""
         if not filename:
             self._wallpaper_path = ""
             return
-        folder = _THEME_WALLPAPER_FOLDER.get(self._active, "cs2theme")
-        path = _ASSETS_DIR / folder / filename
-        if path.is_file():
-            self._wallpaper_path = str(path)
+        resolved = self.resolve_wallpaper(filename)
+        if resolved:
+            self._wallpaper_path = resolved
