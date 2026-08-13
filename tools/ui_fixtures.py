@@ -320,6 +320,82 @@ FOCUS_INSIGHT: dict[str, Any] = {
 }
 
 
+# ── Coach (frames 06/07) — keys mirror CoachViewModel._bg_load ──
+
+COACH_INSIGHTS: list[dict[str, Any]] = [
+    {
+        "title": "Over-peeking on A-site default",
+        "message": "Peeked jungle 4× without flash support · ZywOo waited for "
+                   "team util in 87% of comparable rounds.",
+        "severity": "High", "focus_area": "positioning",
+        "created_at": "2026-04-22 21:14",
+        "player_name": "ZywOo", "demo_name": "2026-04-21_vitality_navi_mirage.dem",
+        "is_pro": True,
+    },
+    {
+        "title": "Utility burn before engage",
+        "message": "HE used avg 4.1s before first contact vs pro baseline 8.3s "
+                   "— throw earlier on executes.",
+        "severity": "Medium", "focus_area": "utility",
+        "created_at": "2026-04-22 19:02",
+        "player_name": "macena", "demo_name": "2026-04-22_inferno_comp.dem",
+        "is_pro": False,
+    },
+    {
+        "title": "Crosshair placement improving",
+        "message": "Head-level crosshair held 78% of ticks, up from 64% last "
+                   "10 matches — keep it up.",
+        "severity": "Low", "focus_area": "aim",
+        "created_at": "2026-04-22 16:47",
+        "player_name": "macena", "demo_name": "2026-04-22_mirage_comp.dem",
+        "is_pro": False,
+    },
+    {
+        # Frame 06's fourth row carries no category tag / timestamp — the
+        # row builder must skip its meta line entirely.
+        "title": "Pistol round buy pattern",
+        "message": "Armor pickup rate 42% on loss round 2 — consider full-buy "
+                   "strategy.",
+        "severity": "Low", "focus_area": "", "created_at": "",
+        "player_name": "macena", "demo_name": "", "is_pro": False,
+    },
+]
+
+# Frame-06 belief drivers. Only "samples" has a live source today
+# (AppState total_matches); the rest mirror the aggregate a future VM
+# WOULD provide (see the FIELD-GAP notes in coach_screen.py).
+COACH_DRIVER_STATS: dict[str, Any] = {
+    "samples": 47, "complete": 42, "partial": 5, "none": 0,
+    "maps_seen": 6, "maps_total": 9,
+}
+
+# Frame-07 transcript. Rows mirror CoachingChatViewModel messages
+# (role user/assistant/system + content); confidence/references/source on
+# the "patterns" reply are a payload superset — the names an annotated
+# payload WOULD use — so the mono meta footnote renders under the harness.
+COACH_CHAT: list[dict[str, Any]] = [
+    {
+        "role": "assistant",
+        "content": "Hey macena — analyzed your last 10 Mirage matches.\n"
+                   "Main pattern: over-peeking A-site jungle without util.",
+    },
+    {"role": "user", "content": "How can I improve positioning?"},
+    {
+        "role": "assistant",
+        "content": "Three patterns from your data vs ZywOo pro reference:\n"
+                   "① Hold jungle angle from stairs, not top · ② Delay peek "
+                   "0.4s after flash · ③ Crouch-peek when HP < 60",
+        "confidence": 0.82, "references": 4, "source": "RAP-Pedagogy",
+    },
+    {"role": "user", "content": "Analyze utility usage"},
+    {
+        "role": "assistant",
+        "content": "Your HE avg 4.1s before engage vs pro 8.3s — throw "
+                   "earlier on execute plays.",
+    },
+]
+
+
 def inject(name: str, screen: Any) -> bool:
     """Inject the fixture for ``name`` into ``screen``.
 
@@ -340,6 +416,16 @@ def inject_home(screen: Any) -> None:
     screen._on_matches_changed(list(SAMPLE_MATCHES))
     screen._on_insight_changed(dict(FOCUS_INSIGHT))
     screen._on_training(dict(TRAINING_STATUS))
+
+
+def inject_coach(screen: Any) -> None:
+    screen._on_belief(0.73)
+    screen._set_driver_stats(dict(COACH_DRIVER_STATS))
+    screen._on_insights([dict(i) for i in COACH_INSIGHTS])
+    screen._set_llm_model("gemma3:e2b")
+    screen._on_chat_availability(True)
+    screen._set_chat_open(True)  # pure UI toggle — kicks no VM work
+    screen._render_messages([dict(m) for m in COACH_CHAT])
 
 
 def inject_match_history(screen: Any) -> None:

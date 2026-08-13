@@ -1,10 +1,11 @@
-"""Coach — AI coaching surface with insights + collapsible chat composer.
+"""Coach — RAP Coach Dashboard per frames 06/07.
 
-Top section is the analytics surface (belief ring + recent insights);
-the chat composer slides up from the bottom on demand. Both areas use
-the redesigned chrome (cards, status chip, accent borders, mono code
-where appropriate) and route every color through ``get_tokens()`` so
-themes propagate.
+Row 1 (50/50): Belief State Confidence (COACH ring + drivers list) and
+Recent Insights (severity-worded rows). Row 2: Advanced Analytics empty
+state. Bottom: an embedded ``ChatPanel`` dock wired to
+``CoachingChatViewModel``, toggled by the top-right Chat button. The old
+standalone "LLM Coach" card dissolved into a compact model combo beside
+the chat header.
 
 VM contracts are unchanged — both ``CoachViewModel`` and
 ``CoachingChatViewModel`` interact through the same signals as before.
@@ -14,16 +15,13 @@ from __future__ import annotations
 
 import re
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
     QFrame,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
-    QMessageBox,
     QScrollArea,
-    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -35,10 +33,11 @@ from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.apps.qt_app.core.widgets_helpers import make_button
 from Programma_CS2_RENAN.apps.qt_app.viewmodels.coach_vm import CoachViewModel
 from Programma_CS2_RENAN.apps.qt_app.viewmodels.coaching_chat_vm import CoachingChatViewModel
+from Programma_CS2_RENAN.apps.qt_app.widgets.coaching import ChatPanel
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.drivers_list import DriversList
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.empty_state import EmptyState
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.progress_ring import ProgressRing
-from Programma_CS2_RENAN.apps.qt_app.widgets.components.status_chip import StatusChip
 from Programma_CS2_RENAN.core.config import get_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -52,6 +51,8 @@ _QUICK_ACTION_KEYS = [
 
 _MAP_RE = re.compile(r"(mirage|inferno|dust2|overpass|ancient|anubis|nuke|vertigo|train)")
 
+_EM_DASH = "—"
+
 
 def _map_from_demo(demo_name: str) -> str:
     if not demo_name:
@@ -60,17 +61,18 @@ def _map_from_demo(demo_name: str) -> str:
     return m.group(1).title() if m else ""
 
 
-def _severity_color(severity: str, tokens) -> str:
+def _severity_bucket(severity: str) -> str:
+    """Collapse the DB's severity vocabulary into frame-06's three words."""
     sev = (severity or "").lower()
-    if sev == "high":
-        return tokens.error
-    if sev == "medium":
-        return tokens.warning
-    return tokens.success
+    if sev in ("high", "critical", "error"):
+        return "high"
+    if sev in ("medium", "warning"):
+        return "medium"
+    return "low"
 
 
 class CoachScreen(QWidget):
-    """AI coach dashboard + chat composer."""
+    """RAP Coach Dashboard + embedded chat dock (frames 06/07)."""
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -78,14 +80,32 @@ class CoachScreen(QWidget):
         self._chat_vm = CoachingChatViewModel()
         self._state_connected = False
         self._chat_open = False
-        self._insight_widgets: list[QFrame] = []
+        self._chat_online = False
+        self._llm_model_name = str(get_setting("LLM_COACH_MODEL", "") or "")
+        self._llm_models_loaded = False
+        self._insight_widgets: list[QWidget] = []
+        self._last_insights: list[dict] = []
+        # Belief drivers — sample count is reachable today via AppState
+        # total_matches; the rest have no data source yet and render "—".
+        # # FIELD-GAP: complete/partial/none demo-quality counts (frame 06
+        # # "Data quality" driver) — no parser-quality column exists yet.
+        # # FIELD-GAP: per-map coverage counts (frame 06 "Map coverage"
+        # # driver) — needs a distinct-map aggregate the VM doesn't expose.
+        self._driver_stats: dict = {
+            "samples": None,
+            "complete": None,
+            "partial": None,
+            "none": None,
+            "maps_seen": None,
+            "maps_total": None,
+        }
+        self._stream_bubble: QFrame | None = None
 
         self._coach_vm.insights_loaded.connect(self._on_insights)
         self._chat_vm.messages_changed.connect(self._render_messages)
         self._chat_vm.is_loading_changed.connect(self._on_chat_loading)
-        # R4 LOW: the F2 streaming plumbing emitted accumulated chunks that
-        # nothing rendered — the live-token feature was inert. Stream text
-        # replaces the static "thinking" label as it arrives.
+        # R4 LOW / DR-14: streamed chunks live-update the trailing coach
+        # bubble instead of a detached label.
         self._chat_vm.streaming_changed.connect(self._on_stream_progress)
         self._chat_vm.is_available_changed.connect(self._on_chat_availability)
 
@@ -94,41 +114,60 @@ class CoachScreen(QWidget):
     # ── Lifecycle ──
 
     def on_enter(self) -> None:
+        state = get_app_state()
         if not self._state_connected:
-            get_app_state().belief_confidence_changed.connect(self._on_belief)
+            state.belief_confidence_changed.connect(self._on_belief)
+            state.total_matches_changed.connect(self._on_total_matches)
             self._state_connected = True
-        current = get_app_state().cached_state.get("belief_confidence", 0.0)
+        current = state.cached_state.get("belief_confidence", 0.0)
         if current > 0:
             self._on_belief(current)
+        total = state.cached_state.get("total_matches")
+        if total:
+            self._on_total_matches(int(total))
         self._coach_vm.load_insights()
         self._chat_vm.check_availability()
-        # Lazy-populate the LLM model combobox on first show — Ollama
-        # /api/tags is a local 3 s call but we still defer it past
-        # __init__ so dock construction stays snappy.
-        if not getattr(self, "_llm_models_loaded", False):
+        # Lazy-populate the model combo on first show — Ollama /api/tags is
+        # a local call but still deferred past __init__ for snappy startup.
+        if not self._llm_models_loaded:
             self._refresh_llm_models()
 
     def on_leave(self) -> None:
         self._typing_label.setVisible(False)
 
     def retranslate(self) -> None:
-        self._title_label.setText(i18n.get_text("rap_coach_dashboard"))
+        self._title_label.setText(i18n.get_text("coach.page_title", "RAP Coach Dashboard"))
+        self._chat_toggle_btn.setText(i18n.get_text("chat.title", "Chat"))
         self._belief_card.set_title(i18n.get_text("belief_state"))
-        self._belief_desc_label.setText(i18n.get_text("belief_desc"))
+        self._belief_desc1.setText(i18n.get_text("belief_desc"))
+        self._belief_desc2.setText(
+            i18n.get_text("belief_desc_2", "This grows as you ingest more of your own matches.")
+        )
+        self._drivers_caption.setText(i18n.get_text("coach.drivers", "Drivers:"))
+        self._confidence_caption.setText(
+            i18n.get_text("coach.confidence_grows", "confidence grows as you ingest more maps")
+        )
+        self._update_drivers()
         self._insights_card.set_title(i18n.get_text("recent_insights"))
+        self._on_insights(list(self._last_insights))
+        self._analytics_card.set_title(
+            i18n.get_text("coach.advanced_analytics", "Advanced Analytics")
+        )
+        self._analytics_empty.set_title(
+            i18n.get_text(
+                "coach.analytics_empty_title",
+                "Trend graphs and radar charts will appear here after demo analysis.",
+            )
+        )
+        self._analytics_empty.set_description(
+            i18n.get_text("coach.analytics_empty_desc", "Analyze matches to populate this section.")
+        )
+        self._llm_caption.setText(i18n.get_text("coach.llm_model", "Model"))
+        self._llm_refresh_btn.setToolTip(
+            i18n.get_text("coach.llm_refresh_tip", "Re-query Ollama for installed models")
+        )
         self._typing_label.setText(i18n.get_text("coach_thinking"))
-
-    def _on_stream_progress(self, accumulated: str) -> None:
-        """DR-14: render the accumulated streamed text in the typing label
-        (whole-message re-render). Falls back to the static thinking text
-        for empty chunks; the final bubble arrives via messages_changed."""
-        if accumulated:
-            preview = accumulated[-400:]
-            self._typing_label.setText(preview)
-            self._typing_label.setTextFormat(Qt.PlainText)
-        self._chat_input.setPlaceholderText(i18n.get_text("ask_your_coach"))
-        for btn, key in self._qa_buttons:
-            btn.setText(i18n.get_text(key))
+        self._chat_panel.set_suggestions(self._suggestion_texts())
 
     # ── UI Construction ──
 
@@ -151,91 +190,101 @@ class CoachScreen(QWidget):
         )
         content_layout.setSpacing(tokens.spacing_lg)
 
-        # Title rail with chat toggle on the right
+        # Title rail — h1 + Chat toggle (frame 06 top-right)
         title_row = QHBoxLayout()
         title_row.setContentsMargins(0, 0, 0, 0)
         title_row.setSpacing(tokens.spacing_md)
 
-        self._title_label = QLabel(i18n.get_text("rap_coach_dashboard"))
+        self._title_label = QLabel(i18n.get_text("coach.page_title", "RAP Coach Dashboard"))
         Typography.apply(self._title_label, "h1")
         title_row.addWidget(self._title_label)
         title_row.addStretch(1)
 
-        self._chat_status_chip = StatusChip("Coach: Checking…", severity="neutral")
-        title_row.addWidget(self._chat_status_chip)
-
-        self._chat_toggle_btn = make_button("Open chat", variant="secondary", fixed_width=120)
+        self._chat_toggle_btn = make_button(
+            i18n.get_text("chat.title", "Chat"), variant="secondary", fixed_width=100
+        )
         self._chat_toggle_btn.setFixedHeight(32)
         self._chat_toggle_btn.clicked.connect(self._toggle_chat)
         title_row.addWidget(self._chat_toggle_btn)
         content_layout.addLayout(title_row)
 
-        # Belief confidence card
+        # Row 1 — Belief (left) + Recent Insights (right), 50/50
+        row1 = QHBoxLayout()
+        row1.setContentsMargins(0, 0, 0, 0)
+        row1.setSpacing(tokens.spacing_lg)
         self._belief_card = self._build_belief_card()
-        content_layout.addWidget(self._belief_card)
-
-        # Insights card
+        row1.addWidget(self._belief_card, 1)
         self._insights_card = self._build_insights_card()
-        content_layout.addWidget(self._insights_card)
+        row1.addWidget(self._insights_card, 1)
+        content_layout.addLayout(row1)
 
-        # LLM Coach settings card (Cluster E — Gemma / Ollama model selector)
-        self._llm_settings_card = self._build_llm_settings_card()
-        content_layout.addWidget(self._llm_settings_card)
+        # Row 2 — Advanced Analytics (empty until charts exist)
+        self._analytics_card = self._build_analytics_card()
+        content_layout.addWidget(self._analytics_card)
 
         content_layout.addStretch(1)
         self._main_scroll.setWidget(content)
         root.addWidget(self._main_scroll, 1)
 
-        # ── Chat panel (sticky bottom, hidden by default) ──
-        self._chat_panel = self._build_chat_panel()
-        self._chat_panel.setVisible(False)
-        root.addWidget(self._chat_panel)
+        # ── Chat dock (frame 07) — hidden until the Chat button opens it ──
+        self._chat_dock = self._build_chat_dock()
+        self._chat_dock.setVisible(False)
+        root.addWidget(self._chat_dock)
 
     def _build_belief_card(self) -> Card:
         tokens = get_tokens()
         card = Card(title=i18n.get_text("belief_state"), depth="raised")
         body = card.content_layout
-        body.setSpacing(tokens.spacing_md)
+        body.setSpacing(tokens.spacing_sm)
 
-        self._belief_desc_label = QLabel(i18n.get_text("belief_desc"))
-        self._belief_desc_label.setWordWrap(True)
-        self._belief_desc_label.setFont(Typography.font("body"))
-        self._belief_desc_label.setStyleSheet(
-            f"color: {tokens.text_secondary}; background: transparent;"
+        self._belief_desc1 = QLabel(i18n.get_text("belief_desc"))
+        self._belief_desc2 = QLabel(
+            i18n.get_text("belief_desc_2", "This grows as you ingest more of your own matches.")
         )
-        body.addWidget(self._belief_desc_label)
+        for label in (self._belief_desc1, self._belief_desc2):
+            label.setWordWrap(True)
+            label.setFont(Typography.font("body"))
+            label.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
+            body.addWidget(label)
 
         ring_row = QHBoxLayout()
-        ring_row.setContentsMargins(0, 0, 0, 0)
-        self._belief_ring = ProgressRing(value=0.0, size=96, thickness=8)
-        ring_row.addWidget(self._belief_ring)
+        ring_row.setContentsMargins(0, tokens.spacing_sm, 0, 0)
+        ring_row.setSpacing(tokens.spacing_lg)
 
-        # Adjacent context: caption + numeric label
-        ctx = QVBoxLayout()
-        ctx.setContentsMargins(0, 0, 0, 0)
-        ctx.setSpacing(2)
+        self._belief_ring = ProgressRing(value=0.0, size=ProgressRing.COACH, thickness=8)
+        ring_row.addWidget(self._belief_ring, 0, Qt.AlignTop)
 
-        ctx_caption = QLabel("BELIEF CONFIDENCE")
-        Typography.apply(ctx_caption, "caption")
-        ctx_caption.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
-        ctx.addWidget(ctx_caption)
+        drivers_col = QVBoxLayout()
+        drivers_col.setContentsMargins(0, 0, 0, 0)
+        drivers_col.setSpacing(tokens.spacing_sm)
 
-        self._belief_value_label = QLabel("—")
-        self._belief_value_label.setFont(Typography.font("display"))
-        self._belief_value_label.setStyleSheet(
-            f"color: {tokens.accent_primary}; background: transparent;"
+        self._drivers_caption = QLabel(i18n.get_text("coach.drivers", "Drivers:"))
+        self._drivers_caption.setFont(Typography.font("body"))
+        self._drivers_caption.setStyleSheet(
+            f"color: {tokens.text_secondary}; background: transparent;"
         )
-        ctx.addWidget(self._belief_value_label)
+        drivers_col.addWidget(self._drivers_caption)
 
-        ctx_subtitle = QLabel("How confident the model is in its current read")
-        ctx_subtitle.setFont(Typography.font("body"))
-        ctx_subtitle.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
-        ctx_subtitle.setWordWrap(True)
-        ctx.addWidget(ctx_subtitle)
+        self._drivers_list = DriversList()
+        drivers_col.addWidget(self._drivers_list)
 
-        ring_row.addSpacing(tokens.spacing_lg)
-        ring_row.addLayout(ctx, 1)
+        self._confidence_caption = QLabel(
+            i18n.get_text("coach.confidence_grows", "confidence grows as you ingest more maps")
+        )
+        # Mixed-case small accent line (frame 07) — the caption Typography
+        # role force-uppercases, so downsize the body font via QSS instead.
+        self._confidence_caption.setFont(Typography.font("body"))
+        self._confidence_caption.setStyleSheet(
+            f"color: {tokens.accent_primary}; background: transparent; "
+            f"font-size: {tokens.font_size_caption}px;"
+        )
+        self._confidence_caption.setWordWrap(True)
+        drivers_col.addWidget(self._confidence_caption)
+        drivers_col.addStretch(1)
+
+        ring_row.addLayout(drivers_col, 1)
         body.addLayout(ring_row)
+        self._update_drivers()
         return card
 
     def _build_insights_card(self) -> Card:
@@ -246,123 +295,186 @@ class CoachScreen(QWidget):
 
         self._insights_empty = EmptyState(
             icon_text="◌",
-            title="No insights yet",
-            description=(
-                "Once you analyze a few demos, coaching insights will land " "here automatically."
+            title=i18n.get_text("coach.no_insights_title", "No insights yet"),
+            description=i18n.get_text(
+                "coach.no_insights_desc",
+                "Once you analyze a few demos, coaching insights will land here automatically.",
             ),
         )
         self._insights_container.addWidget(self._insights_empty)
         return card
 
-    # ── LLM Coach settings ──
-
-    def _build_llm_settings_card(self) -> Card:
-        """Local-LLM picker for the natural-language coaching layer.
-
-        Discovers all locally-installed Ollama models via /api/tags and
-        exposes them in a QComboBox. Selection persists to
-        user_settings.json["LLM_COACH_MODEL"] which llm_service.py reads
-        at startup. Refresh button re-queries Ollama (in case the user
-        just `ollama pull`'d a new model).
-        """
-        from Programma_CS2_RENAN.apps.qt_app.core.widgets_helpers import make_button
-
-        tokens = get_tokens()
-        card = Card(title="LLM Coach", subtitle="Local Ollama model", depth="raised")
-        body = card.content_layout
-        body.setSpacing(tokens.spacing_md)
-
-        row = QHBoxLayout()
-        row.setContentsMargins(0, 0, 0, 0)
-        row.setSpacing(tokens.spacing_sm)
-
-        model_label = QLabel("Model:")
-        model_label.setFont(Typography.font("body"))
-        model_label.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
-        row.addWidget(model_label)
-
-        self._llm_model_combo = QComboBox()
-        self._llm_model_combo.setMinimumWidth(220)
-        self._llm_model_combo.currentTextChanged.connect(self._on_llm_model_picked)
-        row.addWidget(self._llm_model_combo, 1)
-
-        refresh_btn = make_button("Refresh", variant="secondary", fixed_width=100)
-        refresh_btn.setFixedHeight(32)
-        refresh_btn.clicked.connect(self._refresh_llm_models)
-        row.addWidget(refresh_btn)
-
-        body.addLayout(row)
-
-        self._llm_model_status = QLabel("Click Refresh to discover installed models.")
-        self._llm_model_status.setFont(Typography.font("caption"))
-        self._llm_model_status.setStyleSheet(
-            f"color: {tokens.text_tertiary}; background: transparent;"
+    def _build_analytics_card(self) -> Card:
+        card = Card(
+            title=i18n.get_text("coach.advanced_analytics", "Advanced Analytics"), depth="raised"
         )
-        self._llm_model_status.setWordWrap(True)
-        body.addWidget(self._llm_model_status)
-
-        # Initial population — run once on first show via on_enter so
-        # the network call doesn't block the dock setup.
-        self._llm_models_loaded = False
+        self._analytics_empty = EmptyState(
+            title=i18n.get_text(
+                "coach.analytics_empty_title",
+                "Trend graphs and radar charts will appear here after demo analysis.",
+            ),
+            description=i18n.get_text(
+                "coach.analytics_empty_desc", "Analyze matches to populate this section."
+            ),
+        )
+        card.content_layout.addWidget(self._analytics_empty)
         return card
 
-    def _refresh_llm_models(self) -> None:
-        """Re-query Ollama and rebuild the model combobox.
+    # ── Chat dock ──
 
-        Runs on the main thread because /api/tags is local + 3 s timeout;
-        an off-thread job would cost more in plumbing than the request
-        itself. If the user has 50+ models it'll still finish in <100 ms.
+    def _build_chat_dock(self) -> QFrame:
+        tokens = get_tokens()
+        dock = QFrame()
+        dock.setObjectName("coach_chat_dock")
+        dock.setStyleSheet(
+            f"QFrame#coach_chat_dock {{ "
+            f"background-color: {tokens.surface_sidebar}; "
+            f"border-top: 1px solid {tokens.border_subtle}; "
+            f"}}"
+        )
+        dock.setFixedHeight(470)
+        layout = QVBoxLayout(dock)
+        layout.setContentsMargins(
+            tokens.spacing_md, tokens.spacing_sm, tokens.spacing_md, tokens.spacing_sm
+        )
+        layout.setSpacing(tokens.spacing_sm)
+
+        # Model picker row beside the chat header — the old standalone
+        # "LLM Coach" card dissolved into this compact combo (kept
+        # capability: discover Ollama models, persist the pick).
+        model_row = QHBoxLayout()
+        model_row.setContentsMargins(0, 0, 0, 0)
+        model_row.setSpacing(tokens.spacing_sm)
+
+        self._typing_label = QLabel(i18n.get_text("coach_thinking"))
+        self._typing_label.setFont(Typography.font("body"))
+        self._typing_label.setStyleSheet(
+            f"color: {tokens.text_secondary}; background: transparent; "
+            f"font-size: {tokens.font_size_caption}px;"
+        )
+        self._typing_label.setVisible(False)
+        model_row.addWidget(self._typing_label)
+        model_row.addStretch(1)
+
+        self._llm_caption = QLabel(i18n.get_text("coach.llm_model", "Model"))
+        self._llm_caption.setFont(Typography.font("caption"))
+        self._llm_caption.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
+        model_row.addWidget(self._llm_caption)
+
+        self._llm_model_combo = QComboBox()
+        self._llm_model_combo.setFixedHeight(28)
+        self._llm_model_combo.setMinimumWidth(160)
+        self._llm_model_combo.setMaximumWidth(260)
+        if self._llm_model_name:
+            # Reflect the saved pick before discovery so the header caption
+            # and combo agree on cold start.
+            self._llm_model_combo.addItem(self._llm_model_name, self._llm_model_name)
+        self._llm_model_combo.currentTextChanged.connect(self._on_llm_model_picked)
+        model_row.addWidget(self._llm_model_combo)
+
+        self._llm_refresh_btn = make_button("↻", variant="ghost", fixed_width=28)
+        self._llm_refresh_btn.setFixedHeight(28)
+        self._llm_refresh_btn.setToolTip(
+            i18n.get_text("coach.llm_refresh_tip", "Re-query Ollama for installed models")
+        )
+        self._llm_refresh_btn.clicked.connect(self._refresh_llm_models)
+        model_row.addWidget(self._llm_refresh_btn)
+        layout.addLayout(model_row)
+
+        # Frame-07 chat surface — VM-agnostic panel; the screen wires it.
+        self._chat_panel = ChatPanel()
+        self._chat_panel.message_submitted.connect(self._chat_vm.send_message)
+        self._chat_panel.suggestion_clicked.connect(self._chat_vm.send_message)
+        self._chat_panel.set_suggestions(self._suggestion_texts())
+        # ChatPanel owns Clear/collapse internally; this screen routes them
+        # to the VM and the dock instead (same-package rewiring — the dock,
+        # not the panel body, is what frames 06/07 collapse).
+        self._chat_panel._clear_btn.clicked.disconnect()
+        self._chat_panel._clear_btn.clicked.connect(self._on_clear_clicked)
+        self._chat_panel._collapse_btn.clicked.disconnect()
+        self._chat_panel._collapse_btn.clicked.connect(self._toggle_chat)
+        layout.addWidget(self._chat_panel, 1)
+
+        return dock
+
+    def _suggestion_texts(self) -> list[str]:
+        return [i18n.get_text(key, fallback) for key, fallback in _QUICK_ACTION_KEYS]
+
+    # ── Actions ──
+
+    def _toggle_chat(self) -> None:
+        self._set_chat_open(not self._chat_open)
+        if self._chat_open:
+            player = get_setting("CS2_PLAYER_NAME", "")
+            if player:
+                self._chat_vm.check_and_start(player)
+            else:
+                self._chat_vm.check_availability()
+
+    def _set_chat_open(self, open_: bool) -> None:
+        """Pure UI toggle — shows/hides the dock, kicks no VM work."""
+        self._chat_open = bool(open_)
+        self._chat_dock.setVisible(self._chat_open)
+
+    def _on_clear_clicked(self) -> None:
+        # Clear locally first so a degraded engine (clear_session returning
+        # early) still leaves a clean panel; the VM's messages_changed([])
+        # re-render is then a no-op.
+        self._chat_panel.clear()
+        self._chat_vm.clear_session()
+
+    # ── LLM model picker ──
+
+    def _refresh_llm_models(self) -> None:
+        """Re-query Ollama and rebuild the model combo.
+
+        Runs on the main thread because /api/tags is local with a short
+        timeout; plumbing a Worker would cost more than the request.
         """
         from Programma_CS2_RENAN.backend.services.llm_service import get_llm_service
-        from Programma_CS2_RENAN.core.config import get_setting
 
         try:
             service = get_llm_service()
             models = service.list_models()
-        except Exception as exc:  # noqa: BLE001 — surface any error in the UI
-            self._llm_model_status.setText(f"Failed to query Ollama: {exc}")
+        except Exception as exc:  # noqa: BLE001 — degraded picker beats a dead screen
+            logger.warning("ollama model discovery failed: %s", exc)
             return
 
         self._llm_model_combo.blockSignals(True)
         self._llm_model_combo.clear()
         if not models:
-            self._llm_model_combo.addItem("(no models found — run `ollama pull <model>`)")
-            self._llm_model_combo.setEnabled(False)
-            self._llm_model_status.setText(
-                "Ollama unreachable or no models installed. "
-                "Start `ollama serve` and `ollama pull gemma4:e2b` to enable the LLM Coach."
+            self._llm_model_combo.addItem(
+                i18n.get_text("coach.llm_no_models", "no models found — run: ollama pull"), ""
             )
+            self._llm_model_combo.setEnabled(False)
             self._llm_model_combo.blockSignals(False)
             return
 
         self._llm_model_combo.setEnabled(True)
-        # Sort: gemma family first (production default), then alphabetical.
+        # Gemma family first (production default), then alphabetical.
         models.sort(key=lambda m: (not m["name"].startswith("gemma"), m["name"]))
         for m in models:
             size_mb = m["size"] // (1024 * 1024) if m["size"] else 0
             label = f"{m['name']}  ({size_mb} MB)" if size_mb else m["name"]
             self._llm_model_combo.addItem(label, m["name"])
 
-        # Select the saved model if present, else first in list.
-        saved = str(get_setting("LLM_COACH_MODEL", "") or "")
-        idx = -1
+        saved = self._llm_model_name
+        idx = 0
         if saved:
             for i in range(self._llm_model_combo.count()):
                 if self._llm_model_combo.itemData(i) == saved:
                     idx = i
                     break
-        if idx < 0:
-            idx = 0
         self._llm_model_combo.setCurrentIndex(idx)
         self._llm_model_combo.blockSignals(False)
-        self._llm_model_status.setText(f"{len(models)} models discovered.")
+        picked = self._llm_model_combo.itemData(idx)
+        if isinstance(picked, str) and picked:
+            self._llm_model_name = picked
+            self._apply_chat_status()
         self._llm_models_loaded = True
 
     def _on_llm_model_picked(self, _label: str) -> None:
-        """Persist the model selection. The actual model name is on the
-        item's userData (the bare 'gemma4:e2b' form, not the size suffix).
-        llm_service.py picks this up on next get_llm_service() invocation
-        via _resolve_default_model()."""
+        """Persist the pick (bare model name lives on the item's userData)."""
         from Programma_CS2_RENAN.core.config import save_user_setting
 
         idx = self._llm_model_combo.currentIndex()
@@ -372,156 +484,37 @@ class CoachScreen(QWidget):
         if not model_name or not isinstance(model_name, str):
             return
         save_user_setting("LLM_COACH_MODEL", model_name)
-        self._llm_model_status.setText(f"Selected: {model_name} (saved)")
+        self._llm_model_name = model_name
+        self._apply_chat_status()
 
-    # ── Chat panel ──
+    def _set_llm_model(self, name: str) -> None:
+        """Reflect ``name`` in the combo + header caption WITHOUT persisting
+        (state-sync slot — also the harness fixture's entry point)."""
+        if not name:
+            return
+        self._llm_model_name = name
+        combo = self._llm_model_combo
+        combo.blockSignals(True)
+        idx = -1
+        for i in range(combo.count()):
+            if combo.itemData(i) == name:
+                idx = i
+                break
+        if idx < 0:
+            combo.addItem(name, name)
+            idx = combo.count() - 1
+        combo.setCurrentIndex(idx)
+        combo.setEnabled(True)
+        combo.blockSignals(False)
+        self._apply_chat_status()
 
-    def _build_chat_panel(self) -> QFrame:
-        tokens = get_tokens()
-        panel = QFrame()
-        panel.setObjectName("chat_panel")
-        panel.setStyleSheet(
-            f"QFrame#chat_panel {{ "
-            f"background-color: {tokens.surface_sidebar}; "
-            f"border-top: 1px solid {tokens.border_subtle}; "
-            f"}}"
-        )
-        panel.setFixedHeight(420)
-        layout = QVBoxLayout(panel)
-        layout.setContentsMargins(
-            tokens.spacing_md, tokens.spacing_sm, tokens.spacing_md, tokens.spacing_sm
-        )
-        layout.setSpacing(tokens.spacing_sm)
-
-        # Header
-        header = QHBoxLayout()
-        header.setContentsMargins(0, 0, 0, 0)
-        header.setSpacing(tokens.spacing_sm)
-
-        chat_title = QLabel("CHAT")
-        Typography.apply(chat_title, "caption")
-        chat_title.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
-        header.addWidget(chat_title)
-
-        self._inline_status_chip = StatusChip("Checking…", severity="neutral")
-        header.addWidget(self._inline_status_chip)
-
-        header.addStretch(1)
-
-        clear_btn = make_button("Clear", variant="ghost", fixed_width=70)
-        clear_btn.setFixedHeight(28)
-        clear_btn.clicked.connect(self._clear_chat)
-        header.addWidget(clear_btn)
-
-        collapse_btn = make_button("▼", variant="ghost", fixed_width=36)
-        collapse_btn.setFixedHeight(28)
-        collapse_btn.clicked.connect(self._toggle_chat)
-        header.addWidget(collapse_btn)
-
-        layout.addLayout(header)
-
-        # Messages
-        msg_scroll = QScrollArea()
-        msg_scroll.setWidgetResizable(True)
-        msg_scroll.setFrameShape(QFrame.NoFrame)
-        msg_scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
-        self._msg_container = QWidget()
-        self._msg_container.setStyleSheet("background: transparent;")
-        self._msg_layout = QVBoxLayout(self._msg_container)
-        self._msg_layout.setContentsMargins(0, 0, 0, 0)
-        self._msg_layout.setSpacing(tokens.spacing_sm)
-        self._msg_layout.addStretch(1)
-        msg_scroll.setWidget(self._msg_container)
-        self._msg_scroll = msg_scroll
-        layout.addWidget(msg_scroll, 1)
-
-        # Typing indicator
-        self._typing_label = QLabel(i18n.get_text("coach_thinking"))
-        self._typing_label.setFont(Typography.font("caption"))
-        self._typing_label.setStyleSheet(
-            f"color: {tokens.text_secondary}; background: transparent;"
-        )
-        self._typing_label.setVisible(False)
-        layout.addWidget(self._typing_label)
-
-        # Quick action chips
-        qa_row = QHBoxLayout()
-        qa_row.setContentsMargins(0, 0, 0, 0)
-        qa_row.setSpacing(tokens.spacing_sm)
-        self._qa_buttons: list[tuple[QWidget, str]] = []
-        for i18n_key, payload in _QUICK_ACTION_KEYS:
-            btn = make_button(i18n.get_text(i18n_key), variant="secondary")
-            btn.setFixedHeight(28)
-            btn.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
-            btn.clicked.connect(lambda _checked, t=payload: self._send_quick(t))
-            qa_row.addWidget(btn)
-            self._qa_buttons.append((btn, i18n_key))
-        qa_row.addStretch(1)
-        layout.addLayout(qa_row)
-
-        # Composer
-        input_row = QHBoxLayout()
-        input_row.setContentsMargins(0, 0, 0, 0)
-        input_row.setSpacing(tokens.spacing_sm)
-
-        self._chat_input = QLineEdit()
-        self._chat_input.setPlaceholderText(i18n.get_text("ask_your_coach"))
-        self._chat_input.setFixedHeight(36)
-        self._chat_input.setStyleSheet(
-            f"QLineEdit {{ "
-            f"background: {tokens.surface_raised}; "
-            f"color: {tokens.text_primary}; "
-            f"border: 1px solid {tokens.border_default}; "
-            f"border-radius: {tokens.radius_md}px; "
-            f"padding: 0 {tokens.spacing_md}px; "
-            f"font-size: {tokens.font_size_body}px; "
-            f"}}"
-            f"QLineEdit:focus {{ border: 1px solid {tokens.accent_primary}; }}"
-        )
-        self._chat_input.returnPressed.connect(self._send_message)
-        input_row.addWidget(self._chat_input, 1)
-
-        send_btn = make_button("Send", variant="primary", fixed_width=80)
-        send_btn.setFixedHeight(36)
-        send_btn.clicked.connect(self._send_message)
-        input_row.addWidget(send_btn)
-        layout.addLayout(input_row)
-
-        return panel
-
-    # ── Actions ──
-
-    def _toggle_chat(self) -> None:
-        self._chat_open = not self._chat_open
-        self._chat_panel.setVisible(self._chat_open)
-        self._chat_toggle_btn.setText("Hide chat" if self._chat_open else "Open chat")
-        if self._chat_open:
-            player = get_setting("CS2_PLAYER_NAME", "")
-            if player:
-                self._chat_vm.check_and_start(player)
-            else:
-                self._chat_vm.check_availability()
-            self._chat_input.setFocus()
-
-    def _send_message(self) -> None:
-        text = self._chat_input.text().strip()
-        if text:
-            self._chat_vm.send_message(text)
-            self._chat_input.clear()
-
-    def _send_quick(self, text: str) -> None:
-        self._chat_vm.send_message(text)
-
-    def _clear_chat(self) -> None:
-        reply = QMessageBox.question(
-            self,
-            "Clear Chat",
-            "Clear the current coaching session?\nThis cannot be undone.",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
-        )
-        if reply == QMessageBox.Yes:
-            self._chat_vm.clear_session()
+    def _apply_chat_status(self) -> None:
+        if self._llm_model_name:
+            self._chat_panel.set_status(self._chat_online, "ollama", self._llm_model_name)
+        else:
+            # No model known yet — skip the backend caption entirely rather
+            # than render a dangling "ollama · ".
+            self._chat_panel.set_status(self._chat_online, "", "")
 
     # ── Signal slots ──
 
@@ -531,215 +524,220 @@ class CoachScreen(QWidget):
         if normalized > 1.0:
             normalized = normalized / 100.0
         self._belief_ring.set_value(max(0.0, min(1.0, normalized)))
-        self._belief_value_label.setText(f"{normalized * 100:.0f}%")
+
+    def _on_total_matches(self, total: int) -> None:
+        self._driver_stats["samples"] = int(total)
+        self._update_drivers()
+
+    def _set_driver_stats(self, stats: dict) -> None:
+        """Merge driver stats (fixture / future VM aggregate) and re-render."""
+        self._driver_stats.update(stats or {})
+        self._update_drivers()
+
+    def _update_drivers(self) -> None:
+        s = self._driver_stats
+
+        def fmt(value) -> str:
+            return _EM_DASH if value is None else str(value)
+
+        sample_text = i18n.get_text(
+            "coach.driver_sample", "Sample count · {n} personal demos analyzed"
+        ).format(n=fmt(s.get("samples")))
+        quality_text = i18n.get_text(
+            "coach.driver_quality", "Data quality · {complete} complete · {partial} partial · {none} none"
+        ).format(complete=fmt(s.get("complete")), partial=fmt(s.get("partial")), none=fmt(s.get("none")))
+        maps_text = i18n.get_text(
+            "coach.driver_maps", "Map coverage · {seen} of {total} competitive maps seen"
+        ).format(seen=fmt(s.get("maps_seen")), total=fmt(s.get("maps_total")))
+
+        rows = [
+            ("success" if s.get("samples") else "warning", sample_text),
+            # Unknown data → neutral square (DriversList falls back to tertiary).
+            ("success" if s.get("complete") is not None else "", quality_text),
+            ("warning" if s.get("maps_seen") is not None else "", maps_text),
+        ]
+        self._drivers_list.set_rows(rows)
 
     def _on_insights(self, insights: list) -> None:
-        # Clear existing
+        self._last_insights = list(insights or [])
         for w in self._insight_widgets:
             self._insights_container.removeWidget(w)
             w.deleteLater()
         self._insight_widgets.clear()
 
         if not insights:
-            self._insights_empty.set_title("No insights yet")
+            self._insights_empty.set_title(i18n.get_text("coach.no_insights_title", "No insights yet"))
             self._insights_empty.set_description(
-                "Once you analyze a few demos, coaching insights will land " "here automatically."
+                i18n.get_text(
+                    "coach.no_insights_desc",
+                    "Once you analyze a few demos, coaching insights will land here automatically.",
+                )
             )
             self._insights_empty.setVisible(True)
             return
 
         self._insights_empty.setVisible(False)
         for insight in insights:
-            card = self._build_insight_card(insight)
-            self._insights_container.addWidget(card)
-            self._insight_widgets.append(card)
+            row = self._build_insight_row(insight)
+            self._insights_container.addWidget(row)
+            self._insight_widgets.append(row)
 
-    def _build_insight_card(self, insight: dict) -> QFrame:
+    def _build_insight_row(self, insight: dict) -> QWidget:
+        """Flat frame-06 insight row: bold title + severity word right,
+        desc, mono category tag + timestamp caption."""
         tokens = get_tokens()
-        sev_color = _severity_color(insight.get("severity", ""), tokens)
+        bucket = _severity_bucket(insight.get("severity", ""))
+        sev_color = {"high": tokens.error, "medium": tokens.warning}.get(bucket, tokens.success)
+        sev_word = {
+            "high": i18n.get_text("coach.sev_high", "High"),
+            "medium": i18n.get_text("coach.sev_medium", "Medium"),
+            "low": i18n.get_text("coach.sev_low", "Low"),
+        }[bucket]
 
-        card = QFrame()
-        card.setObjectName("insight_card")
-        card.setStyleSheet(
-            f"QFrame#insight_card {{ "
-            f"background: {tokens.surface_raised}; "
-            f"border: 1px solid {tokens.border_subtle}; "
-            f"border-left: 3px solid {sev_color}; "
-            f"border-radius: {tokens.radius_md}px; "
-            f"}}"
-        )
-
-        body = QVBoxLayout(card)
-        body.setContentsMargins(
-            tokens.spacing_md, tokens.spacing_md, tokens.spacing_md, tokens.spacing_md
-        )
+        row = QWidget()
+        body = QVBoxLayout(row)
+        body.setContentsMargins(0, 0, 0, 0)
         body.setSpacing(tokens.spacing_xs)
 
-        # Optional pro context
+        # Optional pro context (accent caption, frame 06 first row)
         if insight.get("is_pro"):
-            pro_name = insight.get("player_name", "Pro")
+            player = insight.get("player_name") or "Pro"
             map_tag = _map_from_demo(insight.get("demo_name", ""))
-            ctx_text = f"PRO ANALYSIS · {pro_name.upper()}"
             if map_tag:
-                ctx_text += f" ON {map_tag.upper()}"
+                ctx_text = i18n.get_text("coach.pro_analysis", "Pro Analysis: {player} on {map}").format(
+                    player=player, map=map_tag
+                )
+            else:
+                ctx_text = i18n.get_text("coach.pro_analysis_nomap", "Pro Analysis: {player}").format(
+                    player=player
+                )
             ctx = QLabel(ctx_text)
-            Typography.apply(ctx, "caption")
-            ctx.setStyleSheet(f"color: {tokens.accent_primary}; background: transparent;")
+            ctx.setTextFormat(Qt.PlainText)
+            # Mixed-case per frame 06 ("Pro Analysis: ZywOo on Mirage") —
+            # caption Typography would force-uppercase it.
+            ctx.setFont(Typography.font("body"))
+            ctx.setStyleSheet(
+                f"color: {tokens.accent_primary}; background: transparent; "
+                f"font-size: {tokens.font_size_caption}px;"
+            )
             body.addWidget(ctx)
 
-        # Title row + severity badge
         title_row = QHBoxLayout()
         title_row.setContentsMargins(0, 0, 0, 0)
+        title_row.setSpacing(tokens.spacing_sm)
 
-        title = QLabel(insight.get("title", "Insight"))
+        title = QLabel(insight.get("title", ""))
         title.setTextFormat(Qt.PlainText)  # FE-01 — block HTML rendering
         title.setFont(Typography.font("subtitle"))
         title.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
         title_row.addWidget(title)
         title_row.addStretch(1)
 
-        sev_chip = QLabel((insight.get("severity") or "info").upper())
-        Typography.apply(sev_chip, "caption")
-        sev_chip.setStyleSheet(f"color: {sev_color}; background: transparent;")
-        title_row.addWidget(sev_chip)
+        sev_label = QLabel(sev_word)
+        sev_label.setFont(Typography.font("subtitle"))
+        sev_label.setStyleSheet(f"color: {sev_color}; background: transparent;")
+        title_row.addWidget(sev_label, 0, Qt.AlignTop)
         body.addLayout(title_row)
 
-        # Message
-        msg = QLabel(insight.get("message", ""))
-        msg.setTextFormat(Qt.PlainText)
-        msg.setWordWrap(True)
-        msg.setFont(Typography.font("body"))
-        msg.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
-        body.addWidget(msg)
+        message = insight.get("message", "")
+        if message:
+            msg = QLabel(message)
+            msg.setTextFormat(Qt.PlainText)
+            msg.setWordWrap(True)
+            msg.setFont(Typography.font("body"))
+            msg.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
+            body.addWidget(msg)
 
-        # Meta row
-        meta_row = QHBoxLayout()
-        meta_row.setContentsMargins(0, 0, 0, 0)
-        focus = insight.get("focus_area")
-        if focus:
-            focus_lbl = QLabel(f"Focus  ·  {focus}")
-            focus_lbl.setTextFormat(Qt.PlainText)
-            focus_lbl.setFont(Typography.font("caption"))
-            focus_lbl.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
-            meta_row.addWidget(focus_lbl)
-        meta_row.addStretch(1)
-        date_str = insight.get("created_at") or ""
-        if date_str:
-            date_lbl = QLabel(str(date_str))
-            date_lbl.setFont(Typography.font("mono"))
-            date_lbl.setStyleSheet(
-                f"color: {tokens.text_tertiary}; background: transparent; "
-                f"font-size: {tokens.font_size_caption}px;"
-            )
-            meta_row.addWidget(date_lbl)
-        body.addLayout(meta_row)
+        focus = insight.get("focus_area") or ""
+        date_str = str(insight.get("created_at") or "")
+        if focus or date_str:
+            meta_row = QHBoxLayout()
+            meta_row.setContentsMargins(0, 0, 0, 0)
+            if focus:
+                focus_lbl = QLabel(str(focus).lower())
+                focus_lbl.setTextFormat(Qt.PlainText)
+                focus_lbl.setFont(Typography.font("mono"))
+                focus_lbl.setStyleSheet(
+                    f"color: {tokens.text_tertiary}; background: transparent; "
+                    f"font-size: {tokens.font_size_caption}px;"
+                )
+                meta_row.addWidget(focus_lbl)
+            meta_row.addStretch(1)
+            if date_str:
+                date_lbl = QLabel(date_str)
+                date_lbl.setFont(Typography.font("mono"))
+                date_lbl.setStyleSheet(
+                    f"color: {tokens.text_tertiary}; background: transparent; "
+                    f"font-size: {tokens.font_size_caption}px;"
+                )
+                meta_row.addWidget(date_lbl)
+            body.addLayout(meta_row)
 
-        return card
+        return row
+
+    # ── Chat slots ──
 
     def _render_messages(self, messages: list) -> None:
-        # Clear existing bubbles (preserve trailing stretch at index 0; we
-        # always insert via takeAt(1) so the stretch at top stays intact).
-        # Actually our _msg_layout appends bubbles after the stretch, so
-        # walk from the end.
-        while self._msg_layout.count() > 1:
-            item = self._msg_layout.takeAt(self._msg_layout.count() - 1)
-            w = item.widget() if item is not None else None
-            if w is not None:
-                w.setParent(None)
-                w.deleteLater()
-            else:
-                # spacer / stretch — stop loop
-                break
-
-        # Re-add stretch (since we may have removed it)
-        if self._msg_layout.count() == 0:
-            self._msg_layout.addStretch(1)
-
-        tokens = get_tokens()
+        self._stream_bubble = None
+        self._chat_panel.clear()
         for msg in messages:
-            role = msg.get("role", "assistant")
-            is_user = role == "user"
-            is_system = role == "system"
-
-            bubble = QFrame()
-            bubble.setObjectName("chat_bubble")
-            if is_system:
-                bg = tokens.toast_error_bg
-                border = tokens.error
-                text_color = tokens.error
-            elif is_user:
-                bg = tokens.accent_muted_25
-                border = tokens.accent_primary
-                text_color = tokens.text_primary
+            role_raw = msg.get("role", "assistant")
+            if role_raw == "user":
+                role = "user"
+            elif role_raw == "system":
+                role = "system"
             else:
-                bg = tokens.surface_raised
-                border = tokens.border_subtle
-                text_color = tokens.text_primary
+                role = "coach"
+            meta = self._compose_meta(msg)
+            self._chat_panel.add_message(role, str(msg.get("content", "")), meta or None)
 
-            bubble.setStyleSheet(
-                f"QFrame#chat_bubble {{ "
-                f"background: {bg}; "
-                f"border: 1px solid {border}; "
-                f"border-radius: {tokens.radius_md}px; "
-                f"padding: {tokens.spacing_sm}px {tokens.spacing_md}px; "
-                f"}}"
+    @staticmethod
+    def _compose_meta(msg: dict) -> str:
+        """Mono footnote from optional payload confidence fields.
+
+        # FIELD-GAP: CoachingChatViewModel rows carry only role/content
+        # today; these are the names a confidence-annotated payload WOULD
+        # use (frame 07: "confidence 0.82 · 4 demos referenced ·
+        # RAP-Pedagogy"). Absent fields simply omit the footnote.
+        """
+        parts: list[str] = []
+        conf = msg.get("confidence")
+        if conf is not None:
+            parts.append(
+                i18n.get_text("coach.meta_confidence", "confidence {v}").format(
+                    v=f"{float(conf):.2f}"
+                )
             )
-            bubble.setMaximumWidth(560)
-            b_layout = QVBoxLayout(bubble)
-            b_layout.setContentsMargins(
-                tokens.spacing_md, tokens.spacing_sm, tokens.spacing_md, tokens.spacing_sm
-            )
+        refs = msg.get("references", msg.get("demos_referenced"))
+        if refs:
+            parts.append(i18n.get_text("coach.meta_refs", "{n} demos referenced").format(n=refs))
+        source = msg.get("source")
+        if source:
+            parts.append(str(source))
+        return " · ".join(parts)
 
-            content_text = msg.get("content", "")
-            text_label = QLabel(content_text)
-            # FE-01 (R4 LOW): LLM/DB-sourced content must never be
-            # auto-detected as rich text — same rule as the insight labels.
-            text_label.setTextFormat(Qt.PlainText)
-            text_label.setWordWrap(True)
-            text_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
-            text_label.setFont(Typography.font("body"))
-            text_label.setStyleSheet(f"color: {text_color}; background: transparent;")
-            b_layout.addWidget(text_label)
-
-            wrapper = QWidget()
-            wrap_layout = QHBoxLayout(wrapper)
-            wrap_layout.setContentsMargins(0, 0, 0, 0)
-            if is_user:
-                wrap_layout.addStretch(1)
-                wrap_layout.addWidget(bubble)
-            elif is_system:
-                wrap_layout.addWidget(bubble, 1)
-            else:
-                wrap_layout.addWidget(bubble)
-                wrap_layout.addStretch(1)
-
-            self._msg_layout.addWidget(wrapper)
-
-        self._scroll_chat_bottom()
+    def _on_stream_progress(self, accumulated: str) -> None:
+        """DR-14: live-update the trailing coach bubble as chunks land.
+        The final committed message still arrives via messages_changed."""
+        if not accumulated:
+            return
+        self._typing_label.setVisible(False)
+        if self._stream_bubble is None:
+            self._chat_panel.add_message("coach", accumulated)
+            # Trailing bubble handle for in-place updates (same-package
+            # access — ChatPanel keeps its bubbles in append order).
+            if self._chat_panel._bubbles:
+                self._stream_bubble = self._chat_panel._bubbles[-1]
+        else:
+            self._stream_bubble._text_label.setText(accumulated)
 
     def _on_chat_loading(self, loading: bool) -> None:
-        self._typing_label.setVisible(loading)
-        if loading:
-            self._scroll_chat_bottom()
+        self._typing_label.setVisible(bool(loading))
+        if not loading:
+            # A cancelled stream never re-emits messages_changed — drop the
+            # stale bubble handle here as well.
+            self._stream_bubble = None
 
     def _on_chat_availability(self, available: bool) -> None:
-        if available:
-            self._inline_status_chip.set_label("Online")
-            self._inline_status_chip.set_severity("online")
-            self._chat_status_chip.set_label("Coach: Online")
-            self._chat_status_chip.set_severity("online")
-        else:
-            self._inline_status_chip.set_label("Offline")
-            self._inline_status_chip.set_severity("offline")
-            self._chat_status_chip.set_label("Coach: Offline")
-            self._chat_status_chip.set_severity("offline")
-
-    # ── Internals ──
-
-    def _scroll_chat_bottom(self) -> None:
-        QTimer.singleShot(
-            50,
-            lambda: self._msg_scroll.verticalScrollBar().setValue(
-                self._msg_scroll.verticalScrollBar().maximum()
-            ),
-        )
+        self._chat_online = bool(available)
+        self._apply_chat_status()
