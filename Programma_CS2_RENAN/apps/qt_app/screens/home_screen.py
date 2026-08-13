@@ -1,15 +1,21 @@
-"""Home / Dashboard screen — premium analytics surface.
+"""Home / Dashboard screen — frame 05 composition.
 
-Composition:
-    Title rail            Dashboard                              [● Status chip]
-    Hero pair (50/50)     [Last Match]                           [Focus This Week]
+Composition (top→bottom):
+    Title rail            Dashboard
+    Status strip card     [● Coach: Idle] [● Service: Online] [● Matches: 47]
+    Hero pair (50/50)     [Last Match]         [Focus This Week]
     Recent matches strip  RECENT MATCHES — horizontal MatchMiniCards
-    Utility row (3-col)   [Ingest] · [Training, hidden if idle] · [Tactical]
+    Demo Analysis         path chip · Select/Analyze · status caption
+    Pro Demo Ingestion    path chip · Select/Analyze · status caption
+    Connectivity          [Profile] [Steam Config] [FaceIt Config]
+    Tactical Analysis     [Open Tactical Viewer] [Compare Pro Players]
+    Training Status       highlighted card, visible only while training
 
-Cold-start branch (no user matches yet) replaces the hero pair + recent
-strip with a single onboarding hero card, so the user never sees raw
-"Not set" / empty placeholders. The utility row stays visible — Analyze
-buttons remain reachable.
+The hero pair + recent strip are richer than frame 05 and kept per
+Locked Decision 9. Cold-start branch (no user matches yet) replaces the
+hero pair + recent strip with a single onboarding hero card, so the user
+never sees raw "Not set" / empty placeholders. The frame card stack
+stays visible — Analyze buttons remain reachable.
 """
 
 from __future__ import annotations
@@ -24,7 +30,6 @@ from PySide6.QtWidgets import (
     QLabel,
     QProgressBar,
     QScrollArea,
-    QSizePolicy,
     QStackedLayout,
     QVBoxLayout,
     QWidget,
@@ -43,6 +48,7 @@ from Programma_CS2_RENAN.apps.qt_app.widgets.components.empty_state import Empty
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.focus_insight import FocusInsightCard
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.last_match_hero import LastMatchHeroCard
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.match_mini_card import MatchMiniCard
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.mono_footer import MonoFooter
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.status_chip import StatusChip
 from Programma_CS2_RENAN.core.config import get_setting, save_user_setting
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -51,7 +57,7 @@ logger = get_logger("cs2analyzer.qt_home")
 
 
 class HomeScreen(QWidget):
-    """Dashboard with hero pair, recent matches, and utility cards."""
+    """Dashboard per frame 05 — status strip, hero pair, five-card stack."""
 
     # Wired in app.py to MatchDetailScreen.load_demo + window.switch_screen.
     match_selected = Signal(str)
@@ -61,9 +67,16 @@ class HomeScreen(QWidget):
         self._connected = False
         self._ingestion_worker = None
         self._user_matches: list[dict[str, Any]] = []
-        # Tracks whether _on_matches_changed has populated the dual-count chip;
-        # gates _on_total_matches from clobbering the richer label.
+        # Tracks whether _on_matches_changed has populated the matches chip;
+        # gates _on_total_matches from clobbering the row-derived count.
         self._matches_chip_populated = False
+        # Last-known dynamic state, kept so retranslate() can recompose
+        # every composed label without waiting for the next signal.
+        self._coach_status_raw = ""
+        self._service_state: bool | None = None
+        self._matches_count: int | None = None
+        self._pro_demos_count: int | None = None
+        self._training_data: dict[str, Any] = {}
 
         self._match_history_vm = MatchHistoryViewModel(self)
         self._focus_insight_vm = FocusInsightViewModel(self)
@@ -105,7 +118,7 @@ class HomeScreen(QWidget):
         root.setContentsMargins(
             tokens.spacing_lg, tokens.spacing_lg, tokens.spacing_lg, tokens.spacing_lg
         )
-        root.setSpacing(tokens.spacing_lg)
+        root.setSpacing(tokens.spacing_md)
 
         # ── Title rail ──
         title_row = QHBoxLayout()
@@ -116,16 +129,10 @@ class HomeScreen(QWidget):
         Typography.apply(self._title_label, "h1")
         title_row.addWidget(self._title_label)
         title_row.addStretch(1)
-
-        self._service_chip = StatusChip("Service: Idle", severity="neutral")
-        title_row.addWidget(self._service_chip)
-        # Placeholder until matches_changed or total_matches signal arrives.
-        # Hardcoding "0 matches" misled users when 30 pro rows existed but no
-        # personal demos had been ingested yet (chip read 0 while history showed 30).
-        self._matches_chip = StatusChip("…", severity="neutral")
-        title_row.addWidget(self._matches_chip)
-
         root.addLayout(title_row)
+
+        # ── Status strip card (frame 05: Coach / Service / Matches) ──
+        root.addWidget(self._build_status_strip())
 
         # ── Scrollable content ──
         scroll = QScrollArea()
@@ -170,29 +177,54 @@ class HomeScreen(QWidget):
 
         content_layout.addWidget(self._hero_section)
 
-        # ── Utility row (3-col): Ingest · Training (toggleable) · Tactical ──
-        # Training is hidden by default; stretch is rebalanced in
-        # ``_on_training`` so the slot doesn't leave a gap when idle.
-        self._utility_row = QHBoxLayout()
-        self._utility_row.setContentsMargins(0, 0, 0, 0)
-        self._utility_row.setSpacing(tokens.spacing_lg)
+        # ── Frame-05 card stack ──
+        self._demo_card = self._build_demo_analysis_card()
+        content_layout.addWidget(self._demo_card)
 
-        self._ingest_card = self._build_ingest_card()
-        self._utility_row.addWidget(self._ingest_card, 3)
+        self._pro_card = self._build_pro_ingestion_card()
+        content_layout.addWidget(self._pro_card)
 
-        self._training_card = self._build_training_card()
-        self._utility_row.addWidget(self._training_card, 0)
+        self._connectivity_card = self._build_connectivity_card()
+        content_layout.addWidget(self._connectivity_card)
 
         self._tactical_card = self._build_tactical_card()
-        self._utility_row.addWidget(self._tactical_card, 1)
+        content_layout.addWidget(self._tactical_card)
 
-        content_layout.addLayout(self._utility_row)
+        self._training_card = self._build_training_card()
+        content_layout.addWidget(self._training_card)
+
         content_layout.addStretch(1)
 
         scroll.setWidget(content)
         root.addWidget(scroll, 1)
 
         self._show_onboarding(True)  # default until matches load
+
+    def _build_status_strip(self) -> QWidget:
+        tokens = get_tokens()
+        strip = QFrame()
+        strip.setObjectName("dashboard_card")
+        strip.setProperty("depth", "flat")
+        layout = QHBoxLayout(strip)
+        layout.setContentsMargins(
+            tokens.spacing_lg, tokens.spacing_xs, tokens.spacing_lg, tokens.spacing_xs
+        )
+        layout.setSpacing(tokens.spacing_xxl)
+
+        self._coach_chip = StatusChip(self._coach_chip_text(), severity="neutral")
+        layout.addWidget(self._coach_chip)
+
+        self._service_chip = StatusChip(self._service_chip_text(), severity="neutral")
+        layout.addWidget(self._service_chip)
+
+        # Placeholder until matches_changed or total_matches signal arrives.
+        # Hardcoding "0" misled users when pro rows existed but no personal
+        # demos had been ingested yet.
+        self._matches_chip = StatusChip("…", severity="neutral")
+        layout.addWidget(self._matches_chip)
+
+        layout.addStretch(1)
+        return strip
 
     def _build_recent_strip(self) -> QWidget:
         tokens = get_tokens()
@@ -252,109 +284,233 @@ class HomeScreen(QWidget):
         empty.secondary_action_clicked.connect(lambda: self._navigate("match_history"))
         return empty
 
-    # ── Ingest card ──
+    # ── Frame-05 card builders ──
 
-    def _build_ingest_card(self) -> Card:
+    def _build_path_row(self) -> tuple[QHBoxLayout, QLabel, QLabel]:
+        """`Path:` caption + mono path chip on a sunken rounded frame."""
         tokens = get_tokens()
-        card = Card(title="Ingest", depth="raised")
-        card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(tokens.spacing_sm)
+
+        cap = QLabel(f"{i18n.get_text('home.path', 'Path')}:")
+        cap.setFont(Typography.font("body"))
+        cap.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
+        row.addWidget(cap)
+
+        chip = QFrame()
+        chip.setObjectName("path_chip")
+        chip.setStyleSheet(
+            f"QFrame#path_chip {{ "
+            f"background-color: {tokens.surface_sunken}; "
+            f"border-radius: {tokens.radius_sm}px; "
+            f"}}"
+        )
+        chip_layout = QHBoxLayout(chip)
+        chip_layout.setContentsMargins(tokens.spacing_sm, 2, tokens.spacing_sm, 2)
+        chip_layout.setSpacing(0)
+
+        path_label = QLabel(i18n.get_text("home.not_configured", "Not configured"))
+        Typography.apply(path_label, "mono")
+        path_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        chip_layout.addWidget(path_label)
+
+        row.addWidget(chip)
+        row.addStretch(1)
+        return row, path_label, cap
+
+    def _build_action_row(
+        self,
+        select_cb,
+        analyze_text: str,
+        analyze_cb,
+    ) -> tuple[QHBoxLayout, Any, Any, QLabel]:
+        """[Select Demo Folder] [Analyze …] + mono status caption."""
+        tokens = get_tokens()
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(tokens.spacing_md)
+
+        select_btn = make_button(
+            i18n.get_text("select_demo_folder", "Select Demo Folder"), variant="secondary"
+        )
+        select_btn.setFixedHeight(32)
+        select_btn.clicked.connect(select_cb)
+        row.addWidget(select_btn)
+
+        analyze_btn = make_button(analyze_text, variant="primary")
+        analyze_btn.setFixedHeight(32)
+        analyze_btn.clicked.connect(analyze_cb)
+        row.addWidget(analyze_btn)
+
+        status = QLabel("")
+        status.setFont(Typography.font("mono"))
+        status.setStyleSheet(
+            f"color: {tokens.text_tertiary}; background: transparent; "
+            f"font-size: {tokens.font_size_caption}px;"
+        )
+        row.addWidget(status)
+        row.addStretch(1)
+        return row, select_btn, analyze_btn, status
+
+    def _build_demo_analysis_card(self) -> Card:
+        tokens = get_tokens()
+        card = Card(
+            title=i18n.get_text("demo_analysis", "Demo Analysis"),
+            subtitle=i18n.get_text(
+                "home.demo_analysis_desc",
+                "Analyze .dem files from your configured folder and feed "
+                "them to the coaching pipeline.",
+            ),
+            depth="raised",
+        )
         layout = card.content_layout
         layout.setSpacing(tokens.spacing_md)
 
-        # Personal demos row
-        self._personal_row, self._personal_path_label, self._personal_btn = self._build_ingest_row(
-            kind_caption="PERSONAL",
-            button_text="Analyze",
-            on_click=self._on_start_analysis,
-            pick_action=self._pick_demo_folder,
-        )
-        layout.addLayout(self._personal_row)
+        path_row, self._personal_path_label, self._personal_path_cap = self._build_path_row()
+        layout.addLayout(path_row)
 
-        # Personal status / progress
+        (
+            action_row,
+            self._personal_select_btn,
+            self._personal_btn,
+            self._analyze_status,
+        ) = self._build_action_row(
+            select_cb=self._pick_demo_folder,
+            analyze_text=i18n.get_text("home.analyze_demos", "Analyze Demos"),
+            analyze_cb=self._on_start_analysis,
+        )
+        layout.addLayout(action_row)
+
         self._parsing_bar = QProgressBar()
         self._parsing_bar.setRange(0, 100)
         self._parsing_bar.setValue(0)
         self._parsing_bar.setVisible(False)
         self._parsing_bar.setFixedHeight(6)
+        self._parsing_bar.setTextVisible(False)
         layout.addWidget(self._parsing_bar)
-
-        self._analyze_status = QLabel("")
-        self._analyze_status.setFont(Typography.font("caption"))
-        self._analyze_status.setStyleSheet(
-            f"color: {tokens.text_tertiary}; background: transparent;"
-        )
-        layout.addWidget(self._analyze_status)
-
-        # Pro demos row
-        self._pro_row, self._pro_path_label, self._pro_btn = self._build_ingest_row(
-            kind_caption="PRO BASELINE",
-            button_text="Analyze pro",
-            on_click=self._on_start_pro_analysis,
-            pick_action=self._pick_pro_folder,
-        )
-        layout.addLayout(self._pro_row)
-
-        self._pro_analyze_status = QLabel("")
-        self._pro_analyze_status.setFont(Typography.font("caption"))
-        self._pro_analyze_status.setStyleSheet(
-            f"color: {tokens.text_tertiary}; background: transparent;"
-        )
-        layout.addWidget(self._pro_analyze_status)
 
         return card
 
-    def _build_ingest_row(
-        self,
-        kind_caption: str,
-        button_text: str,
-        on_click,
-        pick_action,
-    ):
+    def _build_pro_ingestion_card(self) -> Card:
         tokens = get_tokens()
-        row = QVBoxLayout()
+        card = Card(
+            title=i18n.get_text("pro_demo_ingestion", "Pro Demo Ingestion"),
+            subtitle=i18n.get_text(
+                "home.pro_ingestion_desc",
+                "Ingest pro player demos to build the reference baseline "
+                "for the JEPA model and chat coach.",
+            ),
+            depth="raised",
+        )
+        layout = card.content_layout
+        layout.setSpacing(tokens.spacing_md)
+
+        path_row, self._pro_path_label, self._pro_path_cap = self._build_path_row()
+        layout.addLayout(path_row)
+
+        (
+            action_row,
+            self._pro_select_btn,
+            self._pro_btn,
+            self._pro_analyze_status,
+        ) = self._build_action_row(
+            select_cb=self._pick_pro_folder,
+            analyze_text=i18n.get_text("home.analyze_pro_demos", "Analyze Pro Demos"),
+            analyze_cb=self._on_start_pro_analysis,
+        )
+        layout.addLayout(action_row)
+
+        return card
+
+    def _build_connectivity_card(self) -> Card:
+        tokens = get_tokens()
+        card = Card(
+            title=i18n.get_text("home.connectivity", "Connectivity"),
+            depth="raised",
+        )
+        layout = card.content_layout
+        layout.setSpacing(tokens.spacing_md)
+
+        row = QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)
-        row.setSpacing(2)
+        row.setSpacing(tokens.spacing_md)
 
-        cap = QLabel(kind_caption)
-        Typography.apply(cap, "caption")
-        cap.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
-        row.addWidget(cap)
+        self._profile_btn = make_button(
+            i18n.get_text("home.btn_profile", "Profile"), variant="secondary"
+        )
+        self._profile_btn.setFixedHeight(32)
+        self._profile_btn.clicked.connect(lambda: self._navigate("profile"))
+        row.addWidget(self._profile_btn)
 
-        path_row = QHBoxLayout()
-        path_row.setContentsMargins(0, 0, 0, 0)
-        path_row.setSpacing(tokens.spacing_sm)
+        self._steam_btn = make_button(
+            i18n.get_text("steam_config", "Steam Config"), variant="secondary"
+        )
+        self._steam_btn.setFixedHeight(32)
+        self._steam_btn.clicked.connect(lambda: self._navigate("steam_config"))
+        row.addWidget(self._steam_btn)
 
-        path_label = QLabel("Not configured")
-        path_label.setFont(Typography.font("mono"))
-        path_label.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
-        path_label.setWordWrap(False)
-        path_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        path_row.addWidget(path_label, 1)
+        self._faceit_btn = make_button(
+            i18n.get_text("faceit_config", "FaceIt Config"), variant="secondary"
+        )
+        self._faceit_btn.setFixedHeight(32)
+        self._faceit_btn.clicked.connect(lambda: self._navigate("faceit_config"))
+        row.addWidget(self._faceit_btn)
 
-        change_btn = make_button("Change", variant="ghost")
-        change_btn.setFixedHeight(26)
-        change_btn.clicked.connect(pick_action)
-        path_row.addWidget(change_btn)
+        row.addStretch(1)
+        layout.addLayout(row)
+        return card
 
-        analyze_btn = make_button(button_text, variant="primary", fixed_width=120)
-        analyze_btn.setFixedHeight(30)
-        analyze_btn.clicked.connect(on_click)
-        path_row.addWidget(analyze_btn)
+    def _build_tactical_card(self) -> Card:
+        tokens = get_tokens()
+        card = Card(
+            title=i18n.get_text("home.tactical_analysis", "Tactical Analysis"),
+            subtitle=i18n.get_text(
+                "home.tactical_desc",
+                "Open the 2D tactical viewer for round-by-round replay, "
+                "or compare any pro player's stats.",
+            ),
+            depth="raised",
+        )
+        layout = card.content_layout
+        layout.setSpacing(tokens.spacing_md)
 
-        row.addLayout(path_row)
-        return row, path_label, analyze_btn
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(tokens.spacing_md)
+
+        self._viewer_btn = make_button(
+            i18n.get_text("open_tactical_viewer", "Open Tactical Viewer"), variant="secondary"
+        )
+        self._viewer_btn.setFixedHeight(32)
+        self._viewer_btn.clicked.connect(lambda: self._navigate("tactical_viewer"))
+        row.addWidget(self._viewer_btn)
+
+        self._compare_btn = make_button(
+            i18n.get_text("home.compare_pro_players", "Compare Pro Players"), variant="secondary"
+        )
+        self._compare_btn.setFixedHeight(32)
+        self._compare_btn.clicked.connect(lambda: self._navigate("pro_comparison"))
+        row.addWidget(self._compare_btn)
+
+        row.addStretch(1)
+        layout.addLayout(row)
+        return card
 
     # ── Training card ──
 
     def _build_training_card(self) -> Card:
         tokens = get_tokens()
-        card = Card(title="Training", depth="raised")
+        card = Card(
+            title=i18n.get_text("training_status", "Training Status"),
+            depth="highlighted",
+        )
         card.setVisible(False)  # hidden until training is active
         layout = card.content_layout
-        layout.setSpacing(tokens.spacing_xs)
+        layout.setSpacing(tokens.spacing_sm)
 
-        self._epoch_label = QLabel("Epoch — / —")
-        self._epoch_label.setFont(Typography.font("title"))
+        self._epoch_label = QLabel(f"{i18n.get_text('home.epoch', 'Epoch')}: — / —")
+        self._epoch_label.setFont(Typography.font("body"))
         self._epoch_label.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
         layout.addWidget(self._epoch_label)
 
@@ -365,56 +521,37 @@ class HomeScreen(QWidget):
         self._train_progress_bar.setTextVisible(False)
         layout.addWidget(self._train_progress_bar)
 
-        self._train_loss_label = QLabel("Loss —")
-        self._train_loss_label.setFont(Typography.font("mono"))
+        loss_row = QHBoxLayout()
+        loss_row.setContentsMargins(0, 0, 0, 0)
+        loss_row.setSpacing(tokens.spacing_xxl)
+
+        self._train_loss_label = QLabel(f"{i18n.get_text('home.train_loss', 'Train Loss')}: —")
+        self._train_loss_label.setFont(Typography.font("body"))
         self._train_loss_label.setStyleSheet(
-            f"color: {tokens.text_secondary}; background: transparent;"
+            f"color: {tokens.text_primary}; background: transparent;"
         )
-        layout.addWidget(self._train_loss_label)
+        loss_row.addWidget(self._train_loss_label)
 
-        self._eta_label = QLabel("ETA —")
-        self._eta_label.setFont(Typography.font("mono"))
-        self._eta_label.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
-        layout.addWidget(self._eta_label)
-
-        layout.addStretch(1)
-        return card
-
-    # ── Tactical card ──
-
-    def _build_tactical_card(self) -> Card:
-        tokens = get_tokens()
-        card = Card(title="Tactical", depth="raised")
-        layout = card.content_layout
-        layout.setSpacing(tokens.spacing_md)
-
-        desc = QLabel(
-            i18n.get_text(
-                "tactical_desc",
-                "Replay any match in 2D with ghost-AI overlay, or compare "
-                "your stats side-by-side with pros.",
-            )
+        self._val_loss_label = QLabel(f"{i18n.get_text('home.val_loss', 'Val Loss')}: —")
+        self._val_loss_label.setFont(Typography.font("body"))
+        self._val_loss_label.setStyleSheet(
+            f"color: {tokens.text_primary}; background: transparent;"
         )
-        desc.setFont(Typography.font("body"))
-        desc.setWordWrap(True)
-        desc.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
-        layout.addWidget(desc)
+        loss_row.addWidget(self._val_loss_label)
 
-        layout.addStretch(1)
+        self._eta_label = QLabel(f"{i18n.get_text('home.eta', 'ETA')}: —")
+        self._eta_label.setFont(Typography.font("body"))
+        self._eta_label.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
+        loss_row.addWidget(self._eta_label)
 
-        button_col = QVBoxLayout()
-        button_col.setSpacing(tokens.spacing_sm)
-        viewer_btn = make_button("Open viewer", variant="primary")
-        viewer_btn.setFixedHeight(30)
-        viewer_btn.clicked.connect(lambda: self._navigate("tactical_viewer"))
-        button_col.addWidget(viewer_btn)
+        loss_row.addStretch(1)
+        layout.addLayout(loss_row)
 
-        compare_btn = make_button("Compare pros", variant="secondary")
-        compare_btn.setFixedHeight(30)
-        compare_btn.clicked.connect(lambda: self._navigate("pro_comparison"))
-        button_col.addWidget(compare_btn)
+        # Static source annotation; batch progress appended defensively in
+        # _on_training when the payload carries batch fields.
+        self._training_footer = MonoFooter(self._training_footer_text())
+        layout.addWidget(self._training_footer)
 
-        layout.addLayout(button_col)
         return card
 
     # ── State helpers ──
@@ -425,18 +562,122 @@ class HomeScreen(QWidget):
     def _refresh_path_display(self) -> None:
         demo_path = get_setting("DEFAULT_DEMO_PATH", "")
         pro_path = get_setting("PRO_DEMO_PATH", "")
-        self._personal_path_label.setText(demo_path or "Not configured")
-        self._pro_path_label.setText(pro_path or "Not configured")
+        not_configured = i18n.get_text("home.not_configured", "Not configured")
+        self._personal_path_label.setText(demo_path or not_configured)
+        self._pro_path_label.setText(pro_path or not_configured)
+
+    # ── Composed label helpers (single source for build + retranslate) ──
+
+    def _coach_chip_text(self) -> str:
+        prefix = i18n.get_text("home.chip_coach", "Coach")
+        status = self._coach_status_raw.strip()
+        if not status or status.lower() == "idle":
+            status = i18n.get_text("home.coach_idle", "Idle")
+        return f"{prefix}: {status}"
+
+    def _service_chip_text(self) -> str:
+        prefix = i18n.get_text("home.chip_service", "Service")
+        if self._service_state is None:
+            return f"{prefix}: —"
+        if self._service_state:
+            return f"{prefix}: {i18n.get_text('home.service_online', 'Online')}"
+        return f"{prefix}: {i18n.get_text('home.service_offline', 'Offline')}"
+
+    def _matches_chip_text(self) -> str:
+        prefix = i18n.get_text("home.chip_matches", "Matches")
+        if self._matches_count is None:
+            return "…"
+        return f"{prefix}: {self._matches_count}"
+
+    def _personal_status_text(self) -> str:
+        if self._matches_count is None:
+            return ""
+        ready = i18n.get_text("home.status_ready", "Ready")
+        analyzed = i18n.get_text("home.analyzed", "analyzed")
+        pending = i18n.get_text("home.pending", "pending")
+        # FIELD-GAP: no signal carries a pending-demos count (the folder scan
+        # lives inside run_ingestion) — render "—" until one exists.
+        return f"{ready} — {self._matches_count} {analyzed} · — {pending}"
+
+    def _pro_status_text(self) -> str:
+        if self._pro_demos_count is None:
+            return ""
+        indexed = i18n.get_text("home.indexed", "indexed")
+        last_sync = i18n.get_text("home.last_sync", "last sync")
+        # FIELD-GAP: no last-sync timestamp signal for the pro corpus —
+        # render "—" until the ingestion service exposes one.
+        return f"{self._pro_demos_count} {indexed} · {last_sync} —"
+
+    def _training_footer_text(self) -> str:
+        static = i18n.get_text("home.training_footer", "teacher daemon · jepa_train.py")
+        batch = self._training_data.get("batch")
+        total_batches = self._training_data.get("total_batches")
+        if batch is not None and total_batches is not None:
+            return f"{static} · batch {batch}/{total_batches}"
+        return static
 
     # ── i18n ──
 
     def retranslate(self) -> None:
         self._title_label.setText(i18n.get_text("dashboard"))
-        # Card titles are static English right now; the pieces below
-        # belong to i18n keys that already exist or will be added.
-        # The new dashboard intentionally avoids dense translatable
-        # copy — every translatable string flows through i18n.get_text
-        # with a sensible English default so missing keys don't break.
+        # Status strip
+        self._coach_chip.set_label(self._coach_chip_text())
+        self._service_chip.set_label(self._service_chip_text())
+        self._matches_chip.set_label(self._matches_chip_text())
+        # Demo Analysis card
+        self._demo_card.set_title(i18n.get_text("demo_analysis", "Demo Analysis"))
+        self._demo_card.set_subtitle(
+            i18n.get_text(
+                "home.demo_analysis_desc",
+                "Analyze .dem files from your configured folder and feed "
+                "them to the coaching pipeline.",
+            )
+        )
+        self._personal_path_cap.setText(f"{i18n.get_text('home.path', 'Path')}:")
+        self._personal_select_btn.setText(i18n.get_text("select_demo_folder", "Select Demo Folder"))
+        self._personal_btn.setText(i18n.get_text("home.analyze_demos", "Analyze Demos"))
+        # Pro ingestion card
+        self._pro_card.set_title(i18n.get_text("pro_demo_ingestion", "Pro Demo Ingestion"))
+        self._pro_card.set_subtitle(
+            i18n.get_text(
+                "home.pro_ingestion_desc",
+                "Ingest pro player demos to build the reference baseline "
+                "for the JEPA model and chat coach.",
+            )
+        )
+        self._pro_path_cap.setText(f"{i18n.get_text('home.path', 'Path')}:")
+        self._pro_select_btn.setText(i18n.get_text("select_demo_folder", "Select Demo Folder"))
+        self._pro_btn.setText(i18n.get_text("home.analyze_pro_demos", "Analyze Pro Demos"))
+        # Connectivity card
+        self._connectivity_card.set_title(i18n.get_text("home.connectivity", "Connectivity"))
+        self._profile_btn.setText(i18n.get_text("home.btn_profile", "Profile"))
+        self._steam_btn.setText(i18n.get_text("steam_config", "Steam Config"))
+        self._faceit_btn.setText(i18n.get_text("faceit_config", "FaceIt Config"))
+        # Tactical card
+        self._tactical_card.set_title(i18n.get_text("home.tactical_analysis", "Tactical Analysis"))
+        self._tactical_card.set_subtitle(
+            i18n.get_text(
+                "home.tactical_desc",
+                "Open the 2D tactical viewer for round-by-round replay, "
+                "or compare any pro player's stats.",
+            )
+        )
+        self._viewer_btn.setText(i18n.get_text("open_tactical_viewer", "Open Tactical Viewer"))
+        self._compare_btn.setText(
+            i18n.get_text("home.compare_pro_players", "Compare Pro Players")
+        )
+        # Training card
+        self._training_card.set_title(i18n.get_text("training_status", "Training Status"))
+        self._training_footer.setText(self._training_footer_text())
+        if self._training_data:
+            self._apply_training_labels(self._training_data)
+        # Paths + status captions (recomposed from stored state)
+        self._refresh_path_display()
+        if self._ingestion_worker is None:
+            if self._matches_count is not None:
+                self._analyze_status.setText(self._personal_status_text())
+            if self._pro_demos_count is not None:
+                self._pro_analyze_status.setText(self._pro_status_text())
 
     # ── Match history → dashboard data ──
 
@@ -448,6 +689,8 @@ class HomeScreen(QWidget):
         # Distinct pro demos = unique demo_name across is_pro rows.
         # PlayerMatchStats stores one row per (demo, player), so the row count
         # would inflate by the number of players analyzed per demo (~10×).
+        # FIELD-GAP: no corpus-size signal exists for the pro library — the
+        # distinct count over the loaded rows (≤50) is the available proxy.
         pro_demos = {m["demo_name"] for m in matches if m.get("is_pro") and m.get("demo_name")}
         self._update_matches_chip(len(user_matches), len(pro_demos))
 
@@ -468,16 +711,24 @@ class HomeScreen(QWidget):
         self._populate_recent_strip(user_matches[:6])
 
     def _update_matches_chip(self, user_n: int, pro_demos_n: int) -> None:
-        # Dual-count label disambiguates the prior "matches" overload
-        # (some screens count rows, some count demos) and surfaces both
-        # the user's own match progress and the pro analysis corpus.
-        label = f"{user_n} yours · {pro_demos_n} pro demos"
-        self._matches_chip.set_label(label)
-        if user_n > 0:
-            self._matches_chip.set_severity("online")
-        else:
-            self._matches_chip.set_severity("neutral")
+        self._matches_count = user_n
+        self._pro_demos_count = pro_demos_n
+        self._matches_chip.set_label(self._matches_chip_text())
+        self._matches_chip.set_severity("online" if user_n > 0 else "neutral")
         self._matches_chip_populated = True
+        # Refresh the card status captions — skip while an analysis worker
+        # is running so busy/progress text isn't clobbered mid-flight.
+        if self._ingestion_worker is None:
+            tokens = get_tokens()
+            for label, text in (
+                (self._analyze_status, self._personal_status_text()),
+                (self._pro_analyze_status, self._pro_status_text()),
+            ):
+                label.setText(text)
+                label.setStyleSheet(
+                    f"color: {tokens.text_tertiary}; background: transparent; "
+                    f"font-size: {tokens.font_size_caption}px;"
+                )
 
     def _populate_recent_strip(self, matches: list[dict[str, Any]]) -> None:
         # Clear existing cards (leave the trailing stretch in place).
@@ -523,14 +774,18 @@ class HomeScreen(QWidget):
     # ── Folder pickers ──
 
     def _pick_demo_folder(self) -> None:
-        folder = QFileDialog.getExistingDirectory(self, "Select Demo Folder")
+        folder = QFileDialog.getExistingDirectory(
+            self, i18n.get_text("select_demo_folder", "Select Demo Folder")
+        )
         if folder:
             save_user_setting("DEFAULT_DEMO_PATH", folder)
             self._personal_path_label.setText(folder)
             logger.info("Demo folder set: %s", folder)
 
     def _pick_pro_folder(self) -> None:
-        folder = QFileDialog.getExistingDirectory(self, "Select Pro Demo Folder")
+        folder = QFileDialog.getExistingDirectory(
+            self, i18n.get_text("select_demo_folder", "Select Demo Folder")
+        )
         if folder:
             save_user_setting("PRO_DEMO_PATH", folder)
             self._pro_path_label.setText(folder)
@@ -544,13 +799,17 @@ class HomeScreen(QWidget):
         demo_path = get_setting("DEFAULT_DEMO_PATH", "")
         if not demo_path:
             tokens = get_tokens()
-            self._analyze_status.setText("Set a demo folder first")
+            self._analyze_status.setText(
+                i18n.get_text("home.set_folder_first", "Set a demo folder first")
+            )
             self._analyze_status.setStyleSheet(
                 f"color: {tokens.error}; background: transparent; "
                 f"font-size: {tokens.font_size_caption}px;"
             )
             return
-        self._set_analyze_busy(True, "Scanning for demos…", is_pro=False)
+        self._set_analyze_busy(
+            True, i18n.get_text("home.scanning", "Scanning for demos…"), is_pro=False
+        )
 
         def _run():
             from Programma_CS2_RENAN.run_ingestion import process_new_demos
@@ -569,13 +828,17 @@ class HomeScreen(QWidget):
         pro_path = get_setting("PRO_DEMO_PATH", "")
         if not pro_path:
             tokens = get_tokens()
-            self._pro_analyze_status.setText("Set a pro demo folder first")
+            self._pro_analyze_status.setText(
+                i18n.get_text("home.set_pro_folder_first", "Set a pro demo folder first")
+            )
             self._pro_analyze_status.setStyleSheet(
                 f"color: {tokens.error}; background: transparent; "
                 f"font-size: {tokens.font_size_caption}px;"
             )
             return
-        self._set_analyze_busy(True, "Scanning pro demos…", is_pro=True)
+        self._set_analyze_busy(
+            True, i18n.get_text("home.scanning_pro", "Scanning pro demos…"), is_pro=True
+        )
 
         def _run():
             from Programma_CS2_RENAN.run_ingestion import process_new_demos
@@ -594,7 +857,7 @@ class HomeScreen(QWidget):
         self._pro_btn.setEnabled(not busy)
         if busy:
             target = self._pro_btn if is_pro else self._personal_btn
-            target.setText("Analyzing…")
+            target.setText(i18n.get_text("home.analyzing", "Analyzing…"))
             status = self._pro_analyze_status if is_pro else self._analyze_status
             status.setText(message)
             status.setStyleSheet(
@@ -608,12 +871,12 @@ class HomeScreen(QWidget):
         self._personal_btn.setEnabled(True)
         self._pro_btn.setEnabled(True)
         if is_pro:
-            self._pro_btn.setText("Analyze pro")
+            self._pro_btn.setText(i18n.get_text("home.analyze_pro_demos", "Analyze Pro Demos"))
             status = self._pro_analyze_status
         else:
-            self._personal_btn.setText("Analyze")
+            self._personal_btn.setText(i18n.get_text("home.analyze_demos", "Analyze Demos"))
             status = self._analyze_status
-        status.setText("Analysis complete")
+        status.setText(i18n.get_text("home.analysis_complete", "Analysis complete"))
         status.setStyleSheet(
             f"color: {tokens.success}; background: transparent; "
             f"font-size: {tokens.font_size_caption}px;"
@@ -636,12 +899,12 @@ class HomeScreen(QWidget):
         self._personal_btn.setEnabled(True)
         self._pro_btn.setEnabled(True)
         if is_pro:
-            self._pro_btn.setText("Analyze pro")
+            self._pro_btn.setText(i18n.get_text("home.analyze_pro_demos", "Analyze Pro Demos"))
             status = self._pro_analyze_status
         else:
-            self._personal_btn.setText("Analyze")
+            self._personal_btn.setText(i18n.get_text("home.analyze_demos", "Analyze Demos"))
             status = self._analyze_status
-        status.setText(f"Error: {error}")
+        status.setText(f"{i18n.get_text('home.error_prefix', 'Error')}: {error}")
         status.setStyleSheet(
             f"color: {tokens.error}; background: transparent; "
             f"font-size: {tokens.font_size_caption}px;"
@@ -655,16 +918,18 @@ class HomeScreen(QWidget):
     # ── Signal slots ──
 
     def _on_service_active(self, active: bool) -> None:
-        self._service_chip.set_label("Service: Online" if active else "Service: Offline")
+        self._service_state = bool(active)
+        self._service_chip.set_label(self._service_chip_text())
         self._service_chip.set_severity("online" if active else "offline")
 
     def _on_coach_status(self, status: str) -> None:
-        # Coach status is folded into the service chip when transient.
-        # Idle/Online stays as-is; anything else swaps in the live state.
-        if not status or status.strip().lower() == "idle":
-            return
-        self._service_chip.set_label(f"Coach: {status}")
-        self._service_chip.set_severity("warning")
+        # Dedicated Coach chip (frame 05) — no longer folded into the
+        # service chip. Must actively reset to Idle/neutral so a transient
+        # "Analyzing" doesn't stick after the coach goes idle again.
+        self._coach_status_raw = status or ""
+        idle = not status or status.strip().lower() == "idle"
+        self._coach_chip.set_label(self._coach_chip_text())
+        self._coach_chip.set_severity("neutral" if idle else "warning")
 
     def _on_parsing_progress(self, progress: float) -> None:
         if 0 < progress < 100:
@@ -674,33 +939,42 @@ class HomeScreen(QWidget):
             self._parsing_bar.setVisible(False)
 
     def _on_training(self, data: dict) -> None:
-        epoch = int(data.get("current_epoch", 0))
         total = int(data.get("total_epochs", 0))
         active = total > 0
         self._training_card.setVisible(active)
-        # Rebalance utility row: when training is hidden the slot's
-        # stretch goes to 0 so Ingest absorbs its share; when active,
-        # restore 2:1:1 (Ingest : Training : Tactical).
-        self._utility_row.setStretchFactor(self._ingest_card, 2 if active else 3)
-        self._utility_row.setStretchFactor(self._training_card, 1 if active else 0)
-        self._utility_row.setStretchFactor(self._tactical_card, 1)
         if not active:
+            self._training_data = {}
             return
-        self._epoch_label.setText(f"Epoch {epoch} / {total}")
+        self._training_data = dict(data)
+        self._apply_training_labels(data)
+
+    def _apply_training_labels(self, data: dict) -> None:
+        epoch = int(data.get("current_epoch", 0))
+        total = int(data.get("total_epochs", 0))
+        self._epoch_label.setText(f"{i18n.get_text('home.epoch', 'Epoch')}: {epoch} / {total}")
         pct = int((epoch / total) * 100) if total > 0 else 0
         self._train_progress_bar.setValue(max(0, min(100, pct)))
         train_loss = float(data.get("train_loss", 0.0))
         val_loss = float(data.get("val_loss", 0.0))
-        self._train_loss_label.setText(f"Loss {train_loss:.4f}  ·  Val {val_loss:.4f}")
-        self._eta_label.setText(f"ETA {self._format_eta(data.get('eta_seconds', 0))}")
+        self._train_loss_label.setText(
+            f"{i18n.get_text('home.train_loss', 'Train Loss')}: {train_loss:.4f}"
+        )
+        self._val_loss_label.setText(
+            f"{i18n.get_text('home.val_loss', 'Val Loss')}: {val_loss:.4f}"
+        )
+        self._eta_label.setText(
+            f"{i18n.get_text('home.eta', 'ETA')}: {self._format_eta(data.get('eta_seconds', 0))}"
+        )
+        self._training_footer.setText(self._training_footer_text())
 
     def _on_total_matches(self, count: int) -> None:
         # AppState reports DISTINCT demo_name across PlayerMatchStats — demos,
-        # not rows. If _on_matches_changed already populated the dual-count
-        # chip, leave that richer label alone (it carries user/pro split).
+        # not rows. If _on_matches_changed already populated the chip from the
+        # row payload, leave that richer (personal-only) count alone.
         if self._matches_chip_populated:
             return
-        self._matches_chip.set_label(f"{count} demos analyzed")
+        self._matches_count = int(count)
+        self._matches_chip.set_label(self._matches_chip_text())
         if count > 0:
             self._matches_chip.set_severity("neutral")
 
