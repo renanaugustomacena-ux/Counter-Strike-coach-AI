@@ -146,13 +146,18 @@ _TOPIC_CAPTIONS = {
     "features": ("topic_caption_features", "Feature tour · what each screen does"),
 }
 
-# External link rows (frame 19). GitHub = the real origin remote; the
-# other URLs are the ones the help content itself references.
+# External link rows (frame 19): (i18n key, fallback label, url). GitHub =
+# the real origin remote; the other URLs are the ones the help content
+# itself references.
 _EXTERNAL_LINKS = (
-    ("GitHub repo", "https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI"),
-    ("Ollama install docs", "https://ollama.com/download"),
-    ("SteamID lookup", "https://steamid.io"),
-    ("Steam API key", "https://steamcommunity.com/dev/apikey"),
+    (
+        "help.ext_github",
+        "GitHub repo",
+        "https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI",
+    ),
+    ("help.ext_ollama", "Ollama install docs", "https://ollama.com/download"),
+    ("help.ext_steamid", "SteamID lookup", "https://steamid.io"),
+    ("help.ext_steamkey", "Steam API key", "https://steamcommunity.com/dev/apikey"),
 )
 
 # Frame-19 Getting Started article — 5 steps: (i18n key stem, title, desc).
@@ -269,6 +274,8 @@ class HelpScreen(QWidget):
         for label, (key, fallback) in zip(self._hint_labels, _KEYBOARD_HINTS):
             label.setText(i18n.get_text(key, fallback))
         self._external_header.setText(i18n.get_text("external_header", "EXTERNAL"))
+        for link, (key, fallback, url) in zip(self._external_links, _EXTERNAL_LINKS):
+            link.setText(self._external_link_html(key, fallback, url))
         self._docs_tip.set_title(i18n.get_text("docs_source_title", "Docs source"))
         self._docs_tip.set_body(
             i18n.get_text(
@@ -286,6 +293,15 @@ class HelpScreen(QWidget):
         self._populate_list(self._visible_topics())
 
     # ── UI ──
+
+    @staticmethod
+    def _external_link_html(key: str, fallback: str, url: str) -> str:
+        """Anchor markup for an EXTERNAL rail row, label resolved via i18n."""
+        tokens = get_tokens()
+        return (
+            f'<a style="color: {tokens.info}; text-decoration: none;" '
+            f'href="{url}">↗ {i18n.get_text(key, fallback)}</a>'
+        )
 
     def _build_ui(self):
         tokens = get_tokens()
@@ -335,16 +351,15 @@ class HelpScreen(QWidget):
         self._external_header = QLabel(i18n.get_text("external_header", "EXTERNAL"))
         self._external_header.setObjectName("help_panel_header")
         left_layout.addWidget(self._external_header)
-        for label, url in _EXTERNAL_LINKS:
-            link = QLabel(
-                f'<a style="color: {tokens.info}; text-decoration: none;" '
-                f'href="{url}">↗ {label}</a>'
-            )
+        self._external_links: list[QLabel] = []
+        for key, fallback, url in _EXTERNAL_LINKS:
+            link = QLabel(self._external_link_html(key, fallback, url))
             link.setTextFormat(Qt.RichText)
             link.setOpenExternalLinks(True)
             link.setStyleSheet(
                 f"font-size: {tokens.font_size_caption}px; background: transparent;"
             )
+            self._external_links.append(link)
             left_layout.addWidget(link)
 
         panels.addWidget(left)

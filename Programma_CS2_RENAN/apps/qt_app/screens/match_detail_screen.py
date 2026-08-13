@@ -35,7 +35,11 @@ from PySide6.QtWidgets import (
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 from Programma_CS2_RENAN.apps.qt_app.core.match_utils import extract_map_name
-from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import rating_color, rating_label
+from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import (
+    rating_color,
+    rating_label,
+    severity_color,
+)
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.apps.qt_app.core.widgets_helpers import make_button
 from Programma_CS2_RENAN.apps.qt_app.viewmodels.match_detail_vm import MatchDetailViewModel
@@ -104,11 +108,10 @@ def _pct_color(frac: float) -> QColor:
     return QColor(tokens.warning)
 
 
-def _mono_font(caption: bool = False):
-    font = Typography.font("mono")
-    if caption:
-        font.setPointSize(get_tokens().font_size_caption)
-    return font
+def _mono_font():
+    """Body-size mono font (round table cells). Caption-size mono comes
+    from ``Typography.mono_caption``."""
+    return Typography.font("mono")
 
 
 class MatchDetailScreen(QWidget):
@@ -133,6 +136,10 @@ class MatchDetailScreen(QWidget):
 
     def load_demo(self, demo_name: str) -> None:
         """Called externally (from match list / dashboard recent strip)."""
+        if demo_name != self._demo_name:
+            # A different demo starts on Overview — the by-name tab restore
+            # in _on_data must not carry the previous match's tab across.
+            self.set_active_tab("overview")
         self._demo_name = demo_name
         self._payload = None
         self._moments = []  # stale moments must never leak across matches
@@ -145,8 +152,14 @@ class MatchDetailScreen(QWidget):
         self._vm.load_detail(demo_name)
 
     def on_enter(self) -> None:
-        if self._demo_name:
-            self.load_demo(self._demo_name)
+        if not self._demo_name:
+            return
+        if self._payload is not None:
+            # Same demo, data already rendered — skip the reload (and its
+            # loading flash) entirely. A demo change goes through load_demo,
+            # which is also the force-refresh path.
+            return
+        self.load_demo(self._demo_name)
 
     def retranslate(self) -> None:
         self._back_btn.setText(i18n.get_text("md_back", "← Back"))
@@ -260,8 +273,14 @@ class MatchDetailScreen(QWidget):
         self._demo_name = demo_name
         self._title_label.setText(self._compose_title(demo_name))
 
-        # Tabs — drop old pages explicitly (QTabWidget.clear() only detaches)
-        prev_index = self._tabs.currentIndex()
+        # Tabs — drop old pages explicitly (QTabWidget.clear() only detaches).
+        # Capture the current tab NAME (reverse lookup) before the rebuild:
+        # index positions shift when the rounds tabs appear/disappear, so a
+        # bare index restore could land on a different tab.
+        current_index = self._tabs.currentIndex()
+        prev_name = next(
+            (name for name, idx in self._tab_index.items() if idx == current_index), None
+        )
         while self._tabs.count():
             page = self._tabs.widget(0)
             self._tabs.removeTab(0)
@@ -283,8 +302,8 @@ class MatchDetailScreen(QWidget):
             "md_tab_highlights",
             "Highlights",
         )
-        if 0 <= prev_index < self._tabs.count():
-            self._tabs.setCurrentIndex(prev_index)
+        restored = self._tab_index.get(prev_name) if prev_name else None
+        self._tabs.setCurrentIndex(restored if restored is not None else 0)
 
     def _on_error(self, msg: str) -> None:
         if not msg:
@@ -384,7 +403,7 @@ class MatchDetailScreen(QWidget):
         if duration_min:
             segments.append(i18n.get_text("md_meta_minutes", "{n} min").format(n=duration_min))
         right = QLabel(" · ".join(segments))
-        right.setFont(_mono_font(caption=True))
+        right.setFont(Typography.mono_caption())
         right.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
         row.addWidget(right)
         return row
@@ -598,7 +617,7 @@ class MatchDetailScreen(QWidget):
 
             if sub:
                 sub_label = QLabel(sub)
-                sub_label.setFont(_mono_font(caption=True))
+                sub_label.setFont(Typography.mono_caption())
                 sub_label.setStyleSheet(
                     f"color: {tokens.text_tertiary}; background: transparent;"
                 )
@@ -754,7 +773,7 @@ class MatchDetailScreen(QWidget):
         box.setSpacing(0)
         for _key, i18n_key, fallback, width in self._ROUND_COLS:
             label = QLabel(i18n.get_text(i18n_key, fallback))
-            label.setFont(_mono_font(caption=True))
+            label.setFont(Typography.mono_caption())
             label.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
             if width > 0:
                 label.setFixedWidth(width)
@@ -805,12 +824,10 @@ class MatchDetailScreen(QWidget):
                 note, severity = i18n.get_text("md_note_opening_kill", "opening kill"), ""
             else:
                 note, severity = "—", ""
-        if severity == "warning":
-            note_color = tokens.warning
-        elif severity == "success":
-            note_color = tokens.success
-        else:
-            note_color = tokens.text_tertiary
+        # severity_color covers the note vocabulary ("warning"→warning,
+        # "success"→success via the low bucket); the no-severity default
+        # stays tertiary exactly as before.
+        note_color = severity_color(severity).name() if severity else tokens.text_tertiary
 
         wl_text = (
             i18n.get_text("md_round_win", "W") if won else i18n.get_text("md_round_loss", "L")
@@ -1071,7 +1088,7 @@ class MatchDetailScreen(QWidget):
                 )
             )
             hint.setWordWrap(True)
-            hint.setFont(_mono_font(caption=True))
+            hint.setFont(Typography.mono_caption())
             hint.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
             body.addWidget(hint)
             return card
@@ -1102,9 +1119,7 @@ class MatchDetailScreen(QWidget):
         title_row = QHBoxLayout()
         title_row.setSpacing(tokens.spacing_sm)
         kind_label = QLabel(kind.upper() if kind else "—")
-        kind_font = _mono_font(caption=True)
-        kind_font.setBold(True)
-        kind_label.setFont(kind_font)
+        kind_label.setFont(Typography.mono_caption(bold=True))
         kind_label.setStyleSheet(f"color: {kind_color}; background: transparent;")
         title_row.addWidget(kind_label)
 
@@ -1126,7 +1141,7 @@ class MatchDetailScreen(QWidget):
                 tick=f"{tick:,}"
             )
         meta = QLabel(meta_text)
-        meta.setFont(_mono_font(caption=True))
+        meta.setFont(Typography.mono_caption())
         meta.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
         text_col.addWidget(meta)
         box.addLayout(text_col, 1)
@@ -1165,16 +1180,10 @@ class MatchDetailScreen(QWidget):
 
     def _build_insight_card(self, ins: dict) -> QFrame:
         tokens = get_tokens()
+        # critical→error, warning→warning, info (and absent)→info — the
+        # severity_color vocabulary reproduces the old local map exactly.
         sev = (ins.get("severity") or "info").lower()
-        if sev == "critical":
-            border_color = tokens.error
-            badge_color = tokens.error
-        elif sev == "warning":
-            border_color = tokens.warning
-            badge_color = tokens.warning
-        else:
-            border_color = tokens.info
-            badge_color = tokens.info
+        border_color = badge_color = severity_color(sev).name()
 
         card = QFrame()
         card.setObjectName("dashboard_card")

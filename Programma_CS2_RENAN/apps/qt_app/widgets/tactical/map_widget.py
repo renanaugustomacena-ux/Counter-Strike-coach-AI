@@ -12,6 +12,7 @@ from PySide6.QtWidgets import QWidget
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
+from Programma_CS2_RENAN.apps.qt_app.widgets.tactical._paint_utils import with_alpha
 from Programma_CS2_RENAN.core.config import get_resource_path
 from Programma_CS2_RENAN.core.demo_frame import NadeType, Team
 from Programma_CS2_RENAN.core.playback_engine import InterpolatedPlayerState
@@ -41,22 +42,16 @@ _NADE_PALETTE_KEYS = {
 }
 
 
-def _with_alpha(color: QColor, alpha: int) -> QColor:
-    """Return a copy of ``color`` with the given 0-255 alpha."""
-    c = QColor(color)
-    c.setAlpha(alpha)
-    return c
-
-
 # Trails keep the last N interpolated positions per player (frame 13 spec).
 TRAIL_MAX_POINTS = 40
 # 35% alpha for trail polylines (frame-13 movement-history treatment).
 _TRAIL_ALPHA = 89
 
 
-def _caption_font(*, mono: bool = False, bold: bool = False) -> QFont:
-    """Caption-sized font for painted annotations — size read from tokens."""
-    f = Typography.font("mono" if mono else "body", QFont.Bold if bold else None)
+def _caption_font(*, bold: bool = False) -> QFont:
+    """Caption-sized BODY font for painted annotations — size read from
+    tokens. Mono captions come from ``Typography.mono_caption``."""
+    f = Typography.font("body", QFont.Bold if bold else None)
     f.setPointSize(get_tokens().font_size_caption)
     return f
 
@@ -129,6 +124,7 @@ class TacticalMapWidget(QWidget):
         # C4 marker, and per-player movement trails.
         self._zones: list[dict] = load_map_zones(self._map_name)
         self._score_info: Optional[dict] = None
+        self._score_layout: Optional[dict] = None
         self._bomb: Optional[dict] = None
         self._trails: dict[int, tuple[bool, deque]] = {}
         self._trails_enabled = True
@@ -153,8 +149,8 @@ class TacticalMapWidget(QWidget):
         return {
             "ct": QColor(t.chart_line_primary),
             "t": QColor(t.chart_line_secondary),
-            "dead": _with_alpha(QColor(t.text_disabled), 128),
-            "selected": _with_alpha(QColor(t.accent_primary), 204),
+            "dead": with_alpha(QColor(t.text_disabled), 128),
+            "selected": with_alpha(QColor(t.accent_primary), 204),
             "he": QColor(t.warning),
             "molotov": QColor(t.error),
             "smoke": QColor(t.text_secondary),
@@ -164,12 +160,12 @@ class TacticalMapWidget(QWidget):
             "well": QColor(t.surface_sunken),
             "hp_high": QColor(t.success),
             "hp_low": QColor(t.error),
-            "zone": _with_alpha(QColor(t.chart_axis), 170),
-            "zone_label": _with_alpha(QColor(t.text_tertiary), 200),
+            "zone": with_alpha(QColor(t.chart_axis), 170),
+            "zone_label": with_alpha(QColor(t.text_tertiary), 200),
             "bomb": QColor(t.warning),
             "bomb_text": QColor(t.text_inverse),
             "accent": QColor(t.accent_primary),
-            "overlay_bg": _with_alpha(QColor(t.surface_base), 178),
+            "overlay_bg": with_alpha(QColor(t.surface_base), 178),
         }
 
     # ── Public API ──
@@ -187,7 +183,54 @@ class TacticalMapWidget(QWidget):
         by the screen as em-dashes. ``None`` hides the box."""
         if self._score_info != info:
             self._score_info = info or None
+            # Segment layout (strings/fonts/offsets) is recomputed HERE, on
+            # score change only — not per paintEvent, where the old code
+            # built ~15 QFontMetrics at 60fps while playing.
+            self._score_layout = self._compose_score_layout(self._score_info)
             self.update()
+
+    @staticmethod
+    def _compose_score_layout(info: "Optional[dict]") -> "Optional[dict]":
+        """Precomputed score-box layout: per-segment (text, palette key,
+        font, x offset) plus box metrics. Colors stay palette KEYS so
+        paintEvent keeps theme-tracking through ``self._pal``."""
+        if not info:
+            return None
+        t = get_tokens()
+        bold_body = Typography.font("body", QFont.Bold)
+        score_font = Typography.font("subtitle")
+        cap_font = _caption_font()
+        bold_fm = QFontMetrics(bold_body)
+        score_fm = QFontMetrics(score_font)
+        cap_fm = QFontMetrics(cap_font)
+
+        segments = [
+            (str(info.get("t_label", "")), "t", bold_body),
+            (f'  {info.get("t_score", "—")}', "text", score_font),
+            (" — ", "muted", bold_body),
+            (f'{info.get("ct_score", "—")}  ', "text", score_font),
+            (str(info.get("ct_label", "")), "ct", bold_body),
+        ]
+        placed: list[tuple[str, str, QFont, float]] = []
+        dx = 0.0
+        for text, key, font in segments:
+            placed.append((text, key, font, dx))
+            dx += (score_fm if font is score_font else bold_fm).horizontalAdvance(text)
+        caption = str(info.get("caption", ""))
+        cap_h = cap_fm.height() if caption else 0
+        pad = t.spacing_md
+        line1_h = max(bold_fm.height(), score_fm.height())
+        return {
+            "segments": placed,
+            "ascent": score_fm.ascent(),
+            "caption": caption,
+            "cap_font": cap_font,
+            "cap_ascent": cap_fm.ascent(),
+            "box_w": max(dx, cap_fm.horizontalAdvance(caption)) + 2 * pad,
+            "box_h": pad + line1_h + (t.spacing_xs + cap_h if caption else 0) + pad,
+            "pad": pad,
+            "gap": t.spacing_xs,
+        }
 
     def set_bomb(self, bomb: Optional[dict]):
         """C4 marker: ``{"x", "y"}`` world coords (``None`` hides it)."""
@@ -385,13 +428,14 @@ class TacticalMapWidget(QWidget):
             p.drawRect(
                 QRectF(ox + zone["x"] * ms, oy + zone["y"] * ms, zone["w"] * ms, zone["h"] * ms)
             )
+        # Build the two label fonts once per paint — not once per zone.
+        major_font = Typography.font("title")
+        minor_font = _caption_font()
         p.setPen(self._pal["zone_label"])
         for zone in self._zones:
             if not zone["label"]:
                 continue
-            p.setFont(
-                Typography.font("title") if zone["major"] else _caption_font()
-            )
+            p.setFont(major_font if zone["major"] else minor_font)
             p.drawText(
                 QRectF(ox + zone["x"] * ms, oy + zone["y"] * ms, zone["w"] * ms, zone["h"] * ms),
                 Qt.AlignCenter,
@@ -403,7 +447,7 @@ class TacticalMapWidget(QWidget):
         for is_ct, points in self._trails.values():
             if len(points) < 2:
                 continue
-            color = _with_alpha(self._pal["ct" if is_ct else "t"], _TRAIL_ALPHA)
+            color = with_alpha(self._pal["ct" if is_ct else "t"], _TRAIL_ALPHA)
             p.setPen(QPen(color, 1))
             polyline = QPolygonF([QPointF(*self._world_to_screen(x, y)) for x, y in points])
             p.drawPolyline(polyline)
@@ -418,10 +462,10 @@ class TacticalMapWidget(QWidget):
         p.setBrush(self._pal["bomb"])
         p.drawEllipse(center, 11, 11)
         p.setPen(self._pal["bomb_text"])
-        p.setFont(_caption_font(mono=True, bold=True))
+        p.setFont(Typography.mono_caption(bold=True))
         p.drawText(QRectF(sx - 11, sy - 11, 22, 22), Qt.AlignCenter, "C4")
         p.setBrush(Qt.NoBrush)
-        p.setPen(QPen(_with_alpha(self._pal["accent"], 180), 1.5))
+        p.setPen(QPen(with_alpha(self._pal["accent"], 180), 1.5))
         p.drawEllipse(center, 18, 18)
 
     def _score_box_anchor_right(self) -> bool:
@@ -467,10 +511,10 @@ class TacticalMapWidget(QWidget):
                 center = self._norm_point(smoke["x"], smoke["y"], ms, ox, oy)
             except (KeyError, TypeError, ValueError):
                 continue
-            pen = QPen(_with_alpha(self._pal["smoke"], 120), 1)
+            pen = QPen(with_alpha(self._pal["smoke"], 120), 1)
             pen.setStyle(Qt.DashLine)
             p.setPen(pen)
-            p.setBrush(_with_alpha(self._pal["smoke"], 46))
+            p.setBrush(with_alpha(self._pal["smoke"], 46))
             p.drawEllipse(center, 30, 30)
             label = str(smoke.get("label", ""))
             if label:
@@ -593,30 +637,12 @@ class TacticalMapWidget(QWidget):
             row_y += row_h
 
     def _draw_score_box(self, p: QPainter):
-        info = self._score_info
+        lay = self._score_layout
+        if not lay:
+            return
         t = get_tokens()
-        bold_body = Typography.font("body", QFont.Bold)
-        score_font = Typography.font("subtitle")
-        cap_font = _caption_font()
-
-        segments = [
-            (str(info.get("t_label", "")), self._pal["t"], bold_body),
-            (f'  {info.get("t_score", "—")}', self._pal["text"], score_font),
-            (" — ", self._pal["muted"], bold_body),
-            (f'{info.get("ct_score", "—")}  ', self._pal["text"], score_font),
-            (str(info.get("ct_label", "")), self._pal["ct"], bold_body),
-        ]
-        line1_w = sum(QFontMetrics(f).horizontalAdvance(s) for s, _c, f in segments)
-        line1_h = max(QFontMetrics(f).height() for _s, _c, f in segments)
-        caption = str(info.get("caption", ""))
-        cap_fm = QFontMetrics(cap_font)
-        cap_h = cap_fm.height() if caption else 0
-
-        pad = t.spacing_md
-        box_w = max(line1_w, cap_fm.horizontalAdvance(caption)) + 2 * pad
-        box_h = pad + line1_h + (t.spacing_xs + cap_h if caption else 0) + pad
         x = (
-            self.width() - t.spacing_lg - box_w
+            self.width() - t.spacing_lg - lay["box_w"]
             if self._score_box_anchor_right()
             else t.spacing_lg
         )
@@ -624,19 +650,20 @@ class TacticalMapWidget(QWidget):
 
         p.setPen(Qt.NoPen)
         p.setBrush(self._pal["overlay_bg"])
-        p.drawRoundedRect(QRectF(x, y, box_w, box_h), t.radius_sm, t.radius_sm)
+        p.drawRoundedRect(QRectF(x, y, lay["box_w"], lay["box_h"]), t.radius_sm, t.radius_sm)
 
-        cx = x + pad
-        baseline = y + pad + QFontMetrics(score_font).ascent()
-        for text, color, font in segments:
+        baseline = y + lay["pad"] + lay["ascent"]
+        for text, key, font, dx in lay["segments"]:
             p.setFont(font)
-            p.setPen(color)
-            p.drawText(QPointF(cx, baseline), text)
-            cx += QFontMetrics(font).horizontalAdvance(text)
-        if caption:
-            p.setFont(cap_font)
+            p.setPen(self._pal[key])
+            p.drawText(QPointF(x + lay["pad"] + dx, baseline), text)
+        if lay["caption"]:
+            p.setFont(lay["cap_font"])
             p.setPen(self._pal["muted"])
-            p.drawText(QPointF(x + pad, baseline + t.spacing_xs + cap_fm.ascent()), caption)
+            p.drawText(
+                QPointF(x + lay["pad"], baseline + lay["gap"] + lay["cap_ascent"]),
+                lay["caption"],
+            )
 
     # ── Player Drawing ──
 
@@ -709,9 +736,9 @@ class TacticalMapWidget(QWidget):
             bar_h = 2
             bar_x = px - r
             bar_y = py + r + 2
-            p.fillRect(QRectF(bar_x, bar_y, bar_w, bar_h), _with_alpha(self._pal["well"], 128))
+            p.fillRect(QRectF(bar_x, bar_y, bar_w, bar_h), with_alpha(self._pal["well"], 128))
             hp_key = "hp_high" if player.hp > 50 else "hp_low"
-            hp_color = _with_alpha(self._pal[hp_key], 204)
+            hp_color = with_alpha(self._pal[hp_key], 204)
             p.fillRect(QRectF(bar_x, bar_y, bar_w * (player.hp / 100.0), bar_h), hp_color)
 
     # ── Grenade Drawing ──
@@ -751,16 +778,16 @@ class TacticalMapWidget(QWidget):
                 age = (self._current_tick - nade.starting_tick) / float(TICK_RATE)
                 size = min(85, 20 + age * 18) if age > 0 else 60
                 p.setPen(Qt.NoPen)
-                p.setBrush(_with_alpha(self._pal["smoke"], 89))
+                p.setBrush(with_alpha(self._pal["smoke"], 89))
                 p.drawEllipse(QPointF(sx, sy), size / 2, size / 2)
-                p.setBrush(_with_alpha(self._pal["text"], 26))
+                p.setBrush(with_alpha(self._pal["text"], 26))
                 p.drawEllipse(QPointF(sx, sy), size * 0.4, size * 0.4)
             elif nade.nade_type == NadeType.MOLOTOV:
                 pulse = 0.5 + 0.15 * math.sin(self._current_tick / TICK_RATE * 8)
                 p.setPen(Qt.NoPen)
-                p.setBrush(_with_alpha(self._pal["molotov"], int(pulse * 255)))
+                p.setBrush(with_alpha(self._pal["molotov"], int(pulse * 255)))
                 p.drawEllipse(QPointF(sx, sy), 25, 25)
-                p.setBrush(_with_alpha(self._pal["he"], int((0.2 + pulse * 0.2) * 255)))
+                p.setBrush(with_alpha(self._pal["he"], int((0.2 + pulse * 0.2) * 255)))
                 p.drawEllipse(QPointF(sx, sy), 15, 15)
 
             # Duration progress arc
@@ -768,7 +795,7 @@ class TacticalMapWidget(QWidget):
             if total_ticks > 0:
                 progress = 1.0 - ((self._current_tick - nade.starting_tick) / total_ticks)
                 if progress > 0:
-                    p.setPen(QPen(_with_alpha(self._pal["text"], 153), 2))
+                    p.setPen(QPen(with_alpha(self._pal["text"], 153), 2))
                     p.setBrush(Qt.NoBrush)
                     span = int(progress * 360 * 16)
                     p.drawArc(QRectF(sx - 10, sy - 10, 20, 20), 90 * 16, span)
@@ -848,7 +875,7 @@ class TacticalMapWidget(QWidget):
                 rel_h = (wz - min_z) / z_range
                 seg_width = 1.0 + rel_h * 2.5
                 seg_alpha = int(base_alpha * (0.6 + rel_h * 0.4) * 255)
-                p.setPen(QPen(_with_alpha(base, seg_alpha), seg_width))
+                p.setPen(QPen(with_alpha(base, seg_alpha), seg_width))
                 p.drawLine(QPointF(last_sx, last_sy), QPointF(sx, sy))
 
             last_sx, last_sy = sx, sy
@@ -858,7 +885,7 @@ class TacticalMapWidget(QWidget):
             ax, ay, _ = nade.trajectory[apex_idx]
             apx, apy = self._world_to_screen(ax, ay)
             p.setPen(Qt.NoPen)
-            p.setBrush(_with_alpha(self._pal["text"], int(base_alpha * 0.8 * 255)))
+            p.setBrush(with_alpha(self._pal["text"], int(base_alpha * 0.8 * 255)))
             p.drawEllipse(QPointF(apx, apy), 3, 3)
 
     # ── Mouse Handling ──

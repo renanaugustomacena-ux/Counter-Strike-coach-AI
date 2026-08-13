@@ -23,6 +23,7 @@ from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import ThemeEngine
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
+from Programma_CS2_RENAN.apps.qt_app.core.widgets_helpers import navigate_to
 from Programma_CS2_RENAN.apps.qt_app.core.worker import Worker
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.mono_footer import MonoFooter
@@ -654,9 +655,7 @@ class SettingsScreen(QWidget):
         target.addWidget(self._quick_links_card)
 
     def _navigate(self, screen_name: str):
-        win = self.window()
-        if win and hasattr(win, "switch_screen"):
-            win.switch_screen(screen_name)
+        navigate_to(self, screen_name)
 
     def _on_reset_wizard(self):
         """Re-arm the first-run wizard and jump straight into it."""

@@ -174,7 +174,7 @@ def _create_screens(theme: ThemeEngine) -> dict:
 
 def _wire_screen_signals(window: MainWindow, screens: dict) -> None:
     """Wire cross-screen routing: history/home → match_detail, wizard → home,
-    pro_comparison → pro_player_detail."""
+    match_detail moments → tactical_viewer, pro_comparison → pro_player_detail."""
     match_detail = screens["match_detail"]
 
     def _on_match_selected(demo_name: str):
@@ -184,6 +184,16 @@ def _wire_screen_signals(window: MainWindow, screens: dict) -> None:
     screens["match_history"].match_selected.connect(_on_match_selected)
     screens["home"].match_selected.connect(_on_match_selected)
     screens["wizard"].setup_completed.connect(lambda: window.switch_screen("home"))
+
+    # Highlights "Open in Tactical Viewer" deep-link: seek (when that demo
+    # is loaded) then switch — the viewer logs/toasts the miss otherwise.
+    tactical = screens["tactical_viewer"]
+
+    def _on_moment(demo: str, tick: int) -> None:
+        tactical.open_moment(demo, tick)
+        window.switch_screen("tactical_viewer")
+
+    match_detail.moment_selected.connect(_on_moment)
 
     # Cluster C — drill-down from pro_comparison Details button.
     pro_detail = screens["pro_player_detail"]

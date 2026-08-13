@@ -38,13 +38,6 @@ def _y(value: float, lo: float, hi: float, h: float) -> float:
     return (h - _PAD) - frac * (h - 2.0 * _PAD)
 
 
-def _caption_font():
-    """Mono family at caption size — chart tick captions (sizes from tokens)."""
-    font = Typography.font("mono")
-    font.setPointSize(get_tokens().font_size_caption)
-    return font
-
-
 class RatingSparkline(QWidget):
     """Rating trend sparkline with dashed, labeled HLTV reference lines."""
 
@@ -80,7 +73,7 @@ class RatingSparkline(QWidget):
         tokens = get_tokens()
         line_color = QColor(tokens.chart_line_primary)
 
-        font = _caption_font()
+        font = Typography.mono_caption()
         fm = QFontMetricsF(font)
         label_w = fm.horizontalAdvance("0.00") + 8.0
         h = float(self.height())

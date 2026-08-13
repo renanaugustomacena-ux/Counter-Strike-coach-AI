@@ -36,10 +36,11 @@ _UTILITY_KINDS = (
 _NON_SECONDARY = ("knife", "c4", "defuse", "kit", "taser", "zeus", "bayonet", "karambit")
 
 
-def _caption_font(*, mono: bool = False, bold: bool = False) -> QFont:
-    """Caption-sized font (size from tokens) without the caption role's
-    all-uppercase treatment — roster metadata stays lowercase per frame 13."""
-    f = Typography.font("mono" if mono else "body", QFont.Bold if bold else None)
+def _caption_font(*, bold: bool = False) -> QFont:
+    """Caption-sized BODY font (size from tokens) without the caption role's
+    all-uppercase treatment — roster metadata stays lowercase per frame 13.
+    Mono captions now come from ``Typography.mono_caption``."""
+    f = Typography.font("body", QFont.Bold if bold else None)
     f.setPointSize(get_tokens().font_size_caption)
     return f
 
@@ -157,13 +158,28 @@ class _PlayerItem(QFrame):
         self._hp_label, self._hp_bar, self._hp_value = self._make_bar_row(layout, "HP")
         self._ar_label, self._ar_bar, self._ar_value = self._make_bar_row(layout, "AR")
 
+        # Live K/D/A readout (restored pre-redesign line) — mono caption fed
+        # from the InterpolatedPlayerState kills/deaths/assists fields.
+        self._kda_label = QLabel()
+        self._kda_label.setFont(Typography.mono_caption())
+        layout.addWidget(self._kda_label)
+
         # Weapon (mono) + utility caption — reused as kill-info lines when dead
         self._weapon_label = QLabel()
-        self._weapon_label.setFont(_caption_font(mono=True))
+        self._weapon_label.setFont(Typography.mono_caption())
         layout.addWidget(self._weapon_label)
         self._util_label = QLabel()
         self._util_label.setFont(_caption_font())
         layout.addWidget(self._util_label)
+
+        # 60fps churn fix: update_data runs per interpolated frame — skip
+        # QLabel.setText when the string is unchanged (per-card cache).
+        self._last_texts: dict[QLabel, str] = {}
+
+    def _set_text(self, label: QLabel, text: str) -> None:
+        if self._last_texts.get(label) != text:
+            self._last_texts[label] = text
+            label.setText(text)
 
     def _make_bar_row(self, parent_layout, caption: str):
         t = get_tokens()
@@ -212,7 +228,7 @@ class _PlayerItem(QFrame):
         name_color = t.text_primary if alive else t.text_disabled
         self._name_label.setStyleSheet(f"color: {name_color}; background: transparent;")
         if alive:
-            self._right_label.setFont(_caption_font(mono=True))
+            self._right_label.setFont(Typography.mono_caption())
             self._right_label.setStyleSheet(
                 f"color: {t.text_secondary}; background: transparent;"
             )
@@ -221,6 +237,9 @@ class _PlayerItem(QFrame):
             )
             util_color = t.info if has_defuser else t.text_secondary
             self._util_label.setStyleSheet(f"color: {util_color}; background: transparent;")
+            self._kda_label.setStyleSheet(
+                f"color: {t.text_secondary}; background: transparent;"
+            )
         else:
             self._right_label.setFont(_caption_font(bold=True))
             self._right_label.setStyleSheet(f"color: {t.error}; background: transparent;")
@@ -228,6 +247,9 @@ class _PlayerItem(QFrame):
                 f"color: {t.text_secondary}; background: transparent;"
             )
             self._util_label.setStyleSheet(f"color: {t.text_tertiary}; background: transparent;")
+            self._kda_label.setStyleSheet(
+                f"color: {t.text_tertiary}; background: transparent;"
+            )
         for lbl in (self._hp_label, self._ar_label, self._hp_value, self._ar_value):
             lbl.setStyleSheet(f"color: {t.text_secondary}; background: transparent;")
 
@@ -239,42 +261,49 @@ class _PlayerItem(QFrame):
         has_defuser = bool(getattr(player, "has_defuser", False))
         self._apply_styles(alive=alive, selected=is_selected, has_defuser=has_defuser)
 
-        self._name_label.setText(player.name)
+        self._set_text(self._name_label, player.name)
 
         hp = int(getattr(player, "hp", 0) or 0)
-        self._hp_value.setText(str(hp))
-        if hp >= 50:
+        self._set_text(self._hp_value, str(hp))
+        # Pre-redesign thresholds preserved: > 60 healthy, >= 30 hurt, else critical.
+        if hp > 60:
             hp_color = t.success
-        elif hp >= 25:
+        elif hp >= 30:
             hp_color = t.warning
         else:
             hp_color = t.error
         self._hp_bar.set_state(hp / 100.0 if alive else 0.0, QColor(hp_color))
 
+        kills = int(getattr(player, "kills", 0) or 0)
+        deaths = int(getattr(player, "deaths", 0) or 0)
+        assists = int(getattr(player, "assists", 0) or 0)
+        self._set_text(self._kda_label, f"K {kills} · D {deaths} · A {assists}")
+
         if alive:
-            self._right_label.setText(f"${int(getattr(player, 'money', 0) or 0):,}")
+            self._set_text(self._right_label, f"${int(getattr(player, 'money', 0) or 0):,}")
             armor = int(getattr(player, "armor", 0) or 0)
             for w in (self._ar_label, self._ar_bar, self._ar_value):
                 w.setVisible(True)
-            self._ar_value.setText(str(armor))
+            self._set_text(self._ar_value, str(armor))
             self._ar_bar.set_state(armor / 100.0, QColor(t.info))
-            self._weapon_label.setText(_weapon_line(player))
-            self._util_label.setText(_utility_caption(player))
+            self._set_text(self._weapon_label, _weapon_line(player))
+            self._set_text(self._util_label, _utility_caption(player))
         else:
-            self._right_label.setText(i18n.get_text("tactical.dead", "DEAD"))
-            self._hp_value.setText("0")
+            self._set_text(self._right_label, i18n.get_text("tactical.dead", "DEAD"))
+            self._set_text(self._hp_value, "0")
             for w in (self._ar_label, self._ar_bar, self._ar_value):
                 w.setVisible(False)
             # FIELD-GAP: no kill-attribution fields exist on the frame payload
             # today — rendered only when a superset provides death_info.
             death = getattr(player, "death_info", None) or {}
             place = death.get("place")
-            self._weapon_label.setText(
+            self._set_text(
+                self._weapon_label,
                 i18n.get_text("tactical.killed_at", "killed @ {place}").replace(
                     "{place}", str(place)
                 )
                 if place
-                else ""
+                else "",
             )
             killer, weapon, tick = death.get("by"), death.get("weapon"), death.get("tick")
             if killer and weapon and tick is not None:
@@ -286,7 +315,7 @@ class _PlayerItem(QFrame):
                 )
             else:
                 by_line = ""
-            self._util_label.setText(by_line)
+            self._set_text(self._util_label, by_line)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -325,17 +354,20 @@ class PlayerSidebar(QWidget):
         header_row.addWidget(self._header_label)
         header_row.addStretch()
         self._money_label = QLabel()
-        self._money_label.setFont(_caption_font(mono=True))
+        self._money_label.setFont(Typography.mono_caption())
         self._money_label.setStyleSheet(
             f"color: {self._team_color}; background: transparent;"
         )
         header_row.addWidget(self._money_label)
         layout.addLayout(header_row)
 
-        # Scroll area for player list
+        # Scroll area for player list. Vertical scrolling only — the K/D/A
+        # line made cards tall enough to overflow the fixed 200px column,
+        # and a horizontal scrollbar would just clip card edges anyway.
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self._list_container = QWidget()
         self._list_layout = QVBoxLayout(self._list_container)
         self._list_layout.setContentsMargins(

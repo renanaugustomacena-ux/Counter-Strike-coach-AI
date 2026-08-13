@@ -1,17 +1,19 @@
 """Economy bar chart — equipment value per round, side-colored (frame 11).
 
 Pure QPainter (the previous chart-view library was GPLv3-or-commercial;
-this repo ships none of it). Public API is preserved from that version:
+this repo ships none of it). Only ``plot()`` is preserved from that
+version; ``set_half_marker()`` is NEW in this rewrite:
 
     chart = EconomyChart()
     chart.plot(rounds)              # list of dicts (see match_detail_vm.py)
-    chart.set_half_marker(13)       # dashed divider before round 13
+    chart.set_half_marker(13)       # NEW: dashed divider before round 13
 
 Rounds payload shape (MatchDetailViewModel.data_changed rounds list):
     {"round_number": int, "side": "CT"|"T", "equipment_value": int, ...}
 Bars are colored by each round's own ``side`` (T = chart_line_secondary,
-CT = chart_line_primary). When a round lacks ``side``, the half marker
-decides: rounds before it read as T, after as CT (frame-11 layout).
+CT = chart_line_primary). When a round lacks a known side ("CT"/"T"),
+the half marker decides: rounds before it read as T, after as CT
+(frame-11 layout).
 """
 
 from __future__ import annotations
@@ -58,13 +60,6 @@ def _top_rounded(rect: QRectF, radius: float) -> QPainterPath:
     return path
 
 
-def _caption_font():
-    """Mono family at caption size — chart tick captions (sizes from tokens)."""
-    font = Typography.font("mono")
-    font.setPointSize(get_tokens().font_size_caption)
-    return font
-
-
 class EconomyChart(QWidget):
     """Bar chart: equipment value per round, cyan=CT, orange=T (frame 11)."""
 
@@ -86,8 +81,11 @@ class EconomyChart(QWidget):
         self.update()
 
     def _side_color(self, r: dict, idx: int, tokens) -> QColor:
-        side = r.get("side")
-        if side is None and self._half:
+        raw = r.get("side")
+        side = str(raw).upper() if raw else ""
+        # Any unknown side value (None, "", "unknown", …) engages the
+        # documented half-marker fallback — not just a missing key.
+        if side not in ("CT", "T") and self._half:
             side = "T" if idx + 1 < self._half else "CT"
         return QColor(
             tokens.chart_line_primary if side == "CT" else tokens.chart_line_secondary
@@ -101,7 +99,7 @@ class EconomyChart(QWidget):
         painter.setBrush(QColor(tokens.chart_bg))
         painter.drawRoundedRect(self.rect(), tokens.radius_md, tokens.radius_md)
 
-        cap_font = _caption_font()
+        cap_font = Typography.mono_caption()
         cap_fm = QFontMetricsF(cap_font)
         title_font = Typography.font("subtitle")
         title_h = QFontMetricsF(title_font).height() + 8.0

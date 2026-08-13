@@ -45,6 +45,10 @@ class Stepper(QWidget):
     _DOT_SPACING = 16  # padding between the dot edge and the bar
     _LABEL_GAP = 4  # vertical gap between dots and labels
     _MIN_PITCH = 64  # labeled mode: minimum horizontal cell per step
+    # Vertical margin around the dot row. The current-step ring is drawn at
+    # dot_radius + 4 with a 2px pen, so its stroke reaches r + 5 from the
+    # center — a 4px margin clipped the ring by 1px top and bottom.
+    _V_MARGIN = 6
 
     def __init__(
         self,
@@ -73,7 +77,7 @@ class Stepper(QWidget):
             )
             self._pitch = pitch
             w = pitch * self._step_count + 8
-            h = self._DOT_RADIUS * 2 + 8 + self._LABEL_GAP + fm.height()
+            h = self._DOT_RADIUS * 2 + 2 * self._V_MARGIN + self._LABEL_GAP + fm.height()
         else:
             self._pitch = 0
             # Width = sum of dot diameters + (n-1) * bar_length + padding
@@ -82,7 +86,7 @@ class Stepper(QWidget):
                 + (self._step_count - 1) * self._BAR_LENGTH
                 + 8
             )
-            h = self._DOT_RADIUS * 2 + 8
+            h = self._DOT_RADIUS * 2 + 2 * self._V_MARGIN
         self.setFixedSize(w, h)
 
     # ── Public ──
@@ -208,7 +212,7 @@ class Stepper(QWidget):
         completed = QColor(tokens.accent_pressed)
         upcoming = QColor(tokens.border_default)
         r = self._DOT_RADIUS
-        cy = 4 + r
+        cy = self._V_MARGIN + r
         fm = QFontMetrics(self._label_font)
 
         glyph_font = Typography.font("caption")

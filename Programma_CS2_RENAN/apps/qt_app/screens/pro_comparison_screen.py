@@ -38,7 +38,7 @@ from PySide6.QtWidgets import (
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
-from Programma_CS2_RENAN.apps.qt_app.core.widgets_helpers import make_button
+from Programma_CS2_RENAN.apps.qt_app.core.widgets_helpers import make_button, navigate_to
 from Programma_CS2_RENAN.apps.qt_app.viewmodels.pro_comparison_vm import (
     ProComparisonViewModel,
 )
@@ -508,9 +508,7 @@ class ProComparisonScreen(QWidget):
             logger.warning("pro_detail_requested: non-int currentData(): %r", hltv_id)
 
     def _navigate(self, screen_name: str) -> None:
-        win = self.window()
-        if win and hasattr(win, "switch_screen"):
-            win.switch_screen(screen_name)
+        navigate_to(self, screen_name)
 
     # ── Data flow ──
 

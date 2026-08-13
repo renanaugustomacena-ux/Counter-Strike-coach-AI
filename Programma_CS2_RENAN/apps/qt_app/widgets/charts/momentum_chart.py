@@ -4,11 +4,12 @@ Pure QPainter (the previous chart-view library was GPLv3-or-commercial;
 this repo ships none of it). Public API is preserved: ``plot(rounds)``.
 
 Per round, momentum = (kills - deaths) normalized by the match's largest
-absolute swing, drawn as a ±100 bar from the zero axis. Rounds with no
-swing draw a 2px stub so every round stays visible. Bars are colored by
-the round's ``side`` (T = chart_line_secondary, CT = chart_line_primary;
-see match_detail_vm.py rounds payload). The HALF divider lands on the
-first side change (fallback: before round 13 when sides are absent).
+absolute swing, drawn as a ±peak bar from the zero axis (axis captions
+show the true peak in K-D units). Rounds with no swing draw a 2px stub so
+every round stays visible. Bars are colored by the round's ``side``
+(T = chart_line_secondary, CT = chart_line_primary; see match_detail_vm.py
+rounds payload). The HALF divider lands on the first side change
+(fallback: before round 13 when sides are absent).
 """
 
 from __future__ import annotations
@@ -23,13 +24,6 @@ from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.apps.qt_app.widgets.charts import token_color
 
 _BAR_FRACTION = 0.6
-
-
-def _caption_font():
-    """Mono family at caption size — chart tick captions (sizes from tokens)."""
-    font = Typography.font("mono")
-    font.setPointSize(get_tokens().font_size_caption)
-    return font
 
 
 class MomentumChart(QWidget):
@@ -61,7 +55,7 @@ class MomentumChart(QWidget):
         painter.setBrush(QColor(tokens.chart_bg))
         painter.drawRoundedRect(self.rect(), tokens.radius_md, tokens.radius_md)
 
-        cap_font = _caption_font()
+        cap_font = Typography.mono_caption()
         cap_fm = QFontMetricsF(cap_font)
         title_font = Typography.font("subtitle")
         title_h = QFontMetricsF(title_font).height() + 8.0
@@ -79,8 +73,18 @@ class MomentumChart(QWidget):
             float(r.get("kills") or 0) - float(r.get("deaths") or 0) for r in self._rounds
         ]
         peak = max((abs(d) for d in deltas), default=0.0) or 1.0
+        # Axis captions carry the TRUE peak in K-D units (recomputed per
+        # plot) — the old literal ±100 implied a percentage scale that
+        # never existed. Sub-1 peaks (defensive) keep one decimal.
+        peak_text = f"{peak:.1f}" if peak < 1 else f"{int(peak)}"
 
-        ladder_w = cap_fm.horizontalAdvance("+100") + 8.0
+        ladder_w = (
+            max(
+                cap_fm.horizontalAdvance(f"+{peak_text}"),
+                cap_fm.horizontalAdvance(f"-{peak_text}"),
+            )
+            + 8.0
+        )
         bottom_h = cap_fm.height() * 2 + 12.0  # x ticks + legend row
         plot = QRectF(
             ladder_w + 8.0, title_h + cap_fm.height() + 4.0,
@@ -91,9 +95,13 @@ class MomentumChart(QWidget):
             return
         zero_y = plot.center().y()
 
-        # ±100 gridlines + captions, then the solid zero axis.
+        # ±peak gridlines + captions, then the solid zero axis.
         painter.setFont(cap_font)
-        for text, y in (("+100", plot.top()), ("0", zero_y), ("-100", plot.bottom())):
+        for text, y in (
+            (f"+{peak_text}", plot.top()),
+            ("0", zero_y),
+            (f"-{peak_text}", plot.bottom()),
+        ):
             painter.setPen(QPen(token_color(tokens.chart_grid), 1))
             painter.drawLine(QPointF(plot.left(), y), QPointF(plot.right(), y))
             painter.setPen(QColor(tokens.text_tertiary))
@@ -110,7 +118,12 @@ class MomentumChart(QWidget):
         bar_w = slot_w * _BAR_FRACTION
         tick_every = max(1, (n + 11) // 12)
         for i, r in enumerate(self._rounds):
-            side = r.get("side") or ("CT" if half_idx and i >= half_idx else "T")
+            raw_side = r.get("side")
+            side = str(raw_side).upper() if raw_side else ""
+            if side not in ("CT", "T"):
+                # Unknown side values ('unknown', '', None, …) engage the
+                # documented half fallback, not the T color by accident.
+                side = "CT" if half_idx and i >= half_idx else "T"
             color = QColor(
                 tokens.chart_line_primary if side == "CT" else tokens.chart_line_secondary
             )

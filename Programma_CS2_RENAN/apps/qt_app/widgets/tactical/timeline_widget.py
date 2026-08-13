@@ -18,6 +18,7 @@ from PySide6.QtWidgets import QWidget
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
+from Programma_CS2_RENAN.apps.qt_app.widgets.tactical._paint_utils import with_alpha
 from Programma_CS2_RENAN.core.demo_frame import EventType, GameEvent
 
 # Bar geometry: caption strip above + 32px scrub bar (frame 13).
@@ -55,13 +56,6 @@ def glyph_kind_for_type(moment_type) -> str:
     if isinstance(moment_type, str):
         return _KIND_BY_TYPE.get(moment_type.strip().lower(), "star")
     return "star"
-
-
-def _with_alpha(color: QColor, alpha: int) -> QColor:
-    """Return a copy of ``color`` with the given 0-255 alpha."""
-    c = QColor(color)
-    c.setAlpha(alpha)
-    return c
 
 
 def _star_path(cx: float, cy: float, outer_r: float) -> QPainterPath:
@@ -127,16 +121,16 @@ class TimelineWidget(QWidget):
         t = get_tokens()
         return {
             "bg": QColor(t.surface_sunken),
-            "progress": _with_alpha(QColor(t.accent_primary), 64),
+            "progress": with_alpha(QColor(t.accent_primary), 64),
             "playhead": QColor(t.accent_primary),
             "round_mark": QColor(t.chart_axis),
             "star": QColor(t.warning),
             "diamond": QColor(t.info),
             "circle": QColor(t.success),
-            "kill": _with_alpha(QColor(t.error), 204),
-            "plant": _with_alpha(QColor(t.warning), 204),
-            "defuse": _with_alpha(QColor(t.info), 204),
-            "empty_text": _with_alpha(QColor(t.text_secondary), 204),
+            "kill": with_alpha(QColor(t.error), 204),
+            "plant": with_alpha(QColor(t.warning), 204),
+            "defuse": with_alpha(QColor(t.info), 204),
+            "empty_text": with_alpha(QColor(t.text_secondary), 204),
         }
 
     # ── Public API ──

@@ -57,3 +57,16 @@ def map_short_name(demo_name: str) -> str:
     if "_" in full:
         return full.split("_", 1)[1]
     return full
+
+
+def count_personal_and_pro(matches: list[dict]) -> tuple[int, int]:
+    """(personal row count, DISTINCT pro demo count) for a matches payload.
+
+    Personal counts loaded rows; pro counts distinct ``demo_name`` values
+    across ``is_pro`` rows — PlayerMatchStats stores one row per
+    (demo, player), so raw pro rows would inflate ~10× per demo. Shared by
+    the Home matches chip and the Match History header caption.
+    """
+    personal = sum(1 for m in matches if not m.get("is_pro"))
+    pro_demos = {m["demo_name"] for m in matches if m.get("is_pro") and m.get("demo_name")}
+    return personal, len(pro_demos)

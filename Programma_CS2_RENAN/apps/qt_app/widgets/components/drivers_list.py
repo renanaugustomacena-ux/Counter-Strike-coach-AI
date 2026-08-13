@@ -10,6 +10,11 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import severity_color
+
+# The vocabulary this widget colors via theme_engine.severity_color;
+# anything else (including "") keeps the tertiary neutral square.
+_KNOWN_SEVERITIES = frozenset({"success", "warning", "error", "info"})
 
 
 class DriversList(QWidget):
@@ -37,23 +42,22 @@ class DriversList(QWidget):
                 widget.deleteLater()
 
         tokens = get_tokens()
-        colors = {
-            "success": tokens.success,
-            "warning": tokens.warning,
-            "error": tokens.error,
-            "info": tokens.info,
-        }
         for severity, text in rows:
             row = QWidget()
             row_layout = QHBoxLayout(row)
             row_layout.setContentsMargins(0, 0, 0, 0)
             row_layout.setSpacing(tokens.spacing_sm)
 
+            color = (
+                severity_color(severity).name()
+                if severity in _KNOWN_SEVERITIES
+                else tokens.text_tertiary
+            )
             square = QFrame()
             square.setObjectName("drivers_square")
             square.setFixedSize(8, 8)
             square.setStyleSheet(
-                f"background-color: {colors.get(severity, tokens.text_tertiary)}; "
+                f"background-color: {color}; "
                 f"border-radius: 1px;"
             )
             row_layout.addWidget(square, alignment=Qt.AlignVCenter)

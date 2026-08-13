@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
+from Programma_CS2_RENAN.apps.qt_app.core.match_utils import map_short_name
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.apps.qt_app.viewmodels.performance_vm import PerformanceViewModel
 from Programma_CS2_RENAN.apps.qt_app.widgets.charts.rating_sparkline import RatingSparkline
@@ -489,9 +490,7 @@ class PerformanceScreen(QWidget):
 
         for idx, (map_name, stats) in enumerate(map_stats.items()):
             # Payload keys are demo-style ("de_mirage") — frame shows "Mirage".
-            display = (
-                str(map_name).replace("de_", "").replace("cs_", "").replace("ar_", "").title()
-            )
+            display = map_short_name(str(map_name)).title()
             tile = MapTile()
             tile.set_data(
                 display,

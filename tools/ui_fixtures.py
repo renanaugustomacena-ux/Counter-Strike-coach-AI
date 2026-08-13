@@ -672,30 +672,38 @@ def _mirage_world(px: float, py: float) -> tuple[float, float]:
 
 
 # Roster verbatim from frame 13 (CT $21,300 total incl. dead cadiaN_bot;
-# T $24,800; CT 4 alive, T 5 alive).
+# T $24,800; CT 4 alive, T 5 alive). ``kda`` feeds the roster card's live
+# K/D/A readout (InterpolatedPlayerState kills/deaths/assists).
 _TACTICAL_ROSTER: list[dict[str, Any]] = [
     dict(pid=1, name="niko_bot", team="ct", pos=(740, 140), yaw=225, hp=100, armor=100,
          money=3500, weapon="M4A1-S", inv=["M4A1-S", "USP", "flash", "flash", "smoke"],
-         defuser=True),
+         defuser=True, kda=(11, 8, 2)),
     dict(pid=2, name="flames_bot", team="ct", pos=(540, 380), yaw=140, hp=84, armor=64,
-         money=1200, weapon="AWP", inv=["AWP", "Deagle", "smoke", "smoke", "HE", "moly"]),
+         money=1200, weapon="AWP", inv=["AWP", "Deagle", "smoke", "smoke", "HE", "moly"],
+         kda=(9, 9, 1)),
     dict(pid=3, name="hooxi_bot", team="ct", pos=(420, 320), yaw=90, hp=40, armor=21,
-         money=4200, weapon="M4A4", inv=["M4A4", "Glock", "flash", "smoke"]),
+         money=4200, weapon="M4A4", inv=["M4A4", "Glock", "flash", "smoke"], kda=(5, 10, 4)),
     dict(pid=4, name="maden_bot", team="ct", pos=(440, 540), yaw=250, hp=100, armor=100,
-         money=8100, weapon="M4A1-S", inv=["M4A1-S", "P250", "flash", "flash", "smoke", "HE"]),
+         money=8100, weapon="M4A1-S", inv=["M4A1-S", "P250", "flash", "flash", "smoke", "HE"],
+         kda=(8, 9, 3)),
     dict(pid=5, name="cadiaN_bot", team="ct", pos=(680, 160), yaw=0, hp=0, armor=0,
          money=4300, weapon="", inv=[], alive=False,
-         death=dict(place="palace", by="macena", weapon="awp", tick=24_402)),
+         death=dict(place="palace", by="macena", weapon="awp", tick=24_402), kda=(6, 11, 2)),
     dict(pid=6, name="macena", team="t", pos=(440, 290), yaw=65, hp=89, armor=100,
-         money=6400, weapon="AK-47", inv=["AK-47", "Glock", "flash", "flash", "smoke", "HE"]),
+         money=6400, weapon="AK-47", inv=["AK-47", "Glock", "flash", "flash", "smoke", "HE"],
+         kda=(14, 7, 3)),
     dict(pid=7, name="boombl4_bot", team="t", pos=(310, 560), yaw=180, hp=70, armor=54,
-         money=4700, weapon="AK-47", inv=["AK-47", "P250", "flash", "smoke", "smoke"]),
+         money=4700, weapon="AK-47", inv=["AK-47", "P250", "flash", "smoke", "smoke"],
+         kda=(7, 8, 5)),
     dict(pid=8, name="s1mple_bot", team="t", pos=(370, 400), yaw=100, hp=100, armor=100,
-         money=2100, weapon="AWP", inv=["AWP", "Deagle", "flash", "smoke", "smoke"]),
+         money=2100, weapon="AWP", inv=["AWP", "Deagle", "flash", "smoke", "smoke"],
+         kda=(12, 6, 1)),
     dict(pid=9, name="electronic_bot", team="t", pos=(400, 410), yaw=45, hp=60, armor=60,
-         money=5200, weapon="AK-47", inv=["AK-47", "USP", "flash", "flash", "moly"]),
+         money=5200, weapon="AK-47", inv=["AK-47", "USP", "flash", "flash", "moly"],
+         kda=(10, 9, 2)),
     dict(pid=10, name="perfecto_bot", team="t", pos=(200, 500), yaw=330, hp=100, armor=80,
-         money=6400, weapon="AK-47", inv=["AK-47", "P250", "flash", "smoke", "HE"]),
+         money=6400, weapon="AK-47", inv=["AK-47", "P250", "flash", "smoke", "HE"],
+         kda=(6, 9, 6)),
 ]
 
 # Frame-13 movement trails (pane coords) — macena's A push, niko's rotate.
@@ -760,6 +768,7 @@ def _tactical_interp_players(overrides: "dict[int, tuple[float, float]] | None" 
     for spec in _TACTICAL_ROSTER:
         pane = (overrides or {}).get(spec["pid"], spec["pos"])
         x, y = _mirage_world(*pane)
+        kills, deaths, assists = spec.get("kda", (0, 0, 0))
         p = InterpolatedPlayerState(
             player_id=spec["pid"], name=spec["name"],
             team=Team.CT if spec["team"] == "ct" else Team.T,
@@ -767,7 +776,7 @@ def _tactical_interp_players(overrides: "dict[int, tuple[float, float]] | None" 
             hp=spec["hp"], armor=spec["armor"],
             is_alive=spec.get("alive", True), is_flashed=False,
             weapon=spec["weapon"], money=spec["money"],
-            kills=0, deaths=0, assists=0, mvps=0,
+            kills=kills, deaths=deaths, assists=assists, mvps=0,
             inventory=list(spec["inv"]),
         )
         # Superset attrs the design needs but the payload lacks (FIELD-GAP

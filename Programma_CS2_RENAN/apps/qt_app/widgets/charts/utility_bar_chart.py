@@ -38,13 +38,6 @@ def _w(value: float, vmax: float, wmax: float) -> float:
     return max(0.0, min(1.0, value / vmax)) * wmax
 
 
-def _caption_font():
-    """Mono family at caption size — chart value captions (sizes from tokens)."""
-    font = Typography.font("mono")
-    font.setPointSize(get_tokens().font_size_caption)
-    return font
-
-
 class UtilityBarChart(QWidget):
     """Horizontal grouped (you-vs-pro) or single-series utility bar chart."""
 
@@ -82,7 +75,7 @@ class UtilityBarChart(QWidget):
         painter.setRenderHint(QPainter.Antialiasing)
         tokens = get_tokens()
         label_font = Typography.font("body")
-        cap_font = _caption_font()
+        cap_font = Typography.mono_caption()
         cap_fm = QFontMetricsF(cap_font)
         label_fm = QFontMetricsF(label_font)
         label_w = max(label_fm.horizontalAdvance(str(r[0])) for r in self._rows) + 12.0

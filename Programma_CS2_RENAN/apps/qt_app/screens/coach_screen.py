@@ -30,6 +30,7 @@ from Programma_CS2_RENAN.apps.qt_app.core.animation import Animator
 from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
+from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import severity_bucket, severity_color
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.apps.qt_app.core.widgets_helpers import make_button
 from Programma_CS2_RENAN.apps.qt_app.viewmodels.coach_vm import CoachViewModel
@@ -60,16 +61,6 @@ def _map_from_demo(demo_name: str) -> str:
         return ""
     m = _MAP_RE.search(demo_name.lower())
     return m.group(1).title() if m else ""
-
-
-def _severity_bucket(severity: str) -> str:
-    """Collapse the DB's severity vocabulary into frame-06's three words."""
-    sev = (severity or "").lower()
-    if sev in ("high", "critical", "error"):
-        return "high"
-    if sev in ("medium", "warning"):
-        return "medium"
-    return "low"
 
 
 # Ranking order for the top-3 shortlist (research 29.4): severity bucket
@@ -106,7 +97,10 @@ class CoachScreen(QWidget):
             "maps_seen": None,
             "maps_total": None,
         }
-        self._stream_bubble: QFrame | None = None
+        # True while a stream is mid-flight and the trailing coach bubble is
+        # the live one (ChatPanel.update_last_message targets it) — the old
+        # QFrame handle is no longer needed.
+        self._streaming_active = False
 
         self._coach_vm.insights_loaded.connect(self._on_insights)
         self._chat_vm.messages_changed.connect(self._render_messages)
@@ -451,6 +445,7 @@ class CoachScreen(QWidget):
         # Clear locally first so a degraded engine (clear_session returning
         # early) still leaves a clean panel; the VM's messages_changed([])
         # re-render is then a no-op.
+        self._streaming_active = False  # any in-flight stream lost its bubble
         self._chat_panel.clear()
         self._chat_vm.clear_session()
 
@@ -492,10 +487,19 @@ class CoachScreen(QWidget):
         saved = self._llm_model_name
         idx = 0
         if saved:
+            idx = -1
             for i in range(self._llm_model_combo.count()):
                 if self._llm_model_combo.itemData(i) == saved:
                     idx = i
                     break
+            if idx < 0:
+                # The persisted pick isn't installed anymore — keep advertising
+                # the SAVED name (truth vs the persisted backend key) instead of
+                # silently swapping to whatever Ollama lists first. Selecting a
+                # real model later persists exactly as before.
+                not_installed = i18n.get_text("coach.llm_not_installed", "not installed")
+                self._llm_model_combo.insertItem(0, f"{saved} ({not_installed})", saved)
+                idx = 0
         self._llm_model_combo.setCurrentIndex(idx)
         self._llm_model_combo.blockSignals(False)
         picked = self._llm_model_combo.itemData(idx)
@@ -629,7 +633,7 @@ class CoachScreen(QWidget):
         # buckets rank first; recency (the VM's emit order) breaks ties.
         ranked = sorted(
             self._last_insights,
-            key=lambda i: _SEV_ORDER[_severity_bucket(i.get("severity", ""))],
+            key=lambda i: _SEV_ORDER[severity_bucket(i.get("severity", ""))],
         )
         top, overflow = ranked[:3], ranked[3:]
 
@@ -677,8 +681,10 @@ class CoachScreen(QWidget):
         the title — only the severity-ranked top three carry one.
         """
         tokens = get_tokens()
-        bucket = _severity_bucket(insight.get("severity", ""))
-        sev_color = {"high": tokens.error, "medium": tokens.warning}.get(bucket, tokens.success)
+        bucket = severity_bucket(insight.get("severity", ""))
+        # severity_color maps the bucket words directly: high→error,
+        # medium→warning, low→success — identical to the old local dict.
+        sev_color = severity_color(bucket).name()
         sev_word = {
             "high": i18n.get_text("coach.sev_high", "High"),
             "medium": i18n.get_text("coach.sev_medium", "Medium"),
@@ -792,7 +798,7 @@ class CoachScreen(QWidget):
     # ── Chat slots ──
 
     def _render_messages(self, messages: list) -> None:
-        self._stream_bubble = None
+        self._streaming_active = False
         self._chat_panel.clear()
         for msg in messages:
             role_raw = msg.get("role", "assistant")
@@ -836,21 +842,20 @@ class CoachScreen(QWidget):
         if not accumulated:
             return
         self._typing_label.setVisible(False)
-        if self._stream_bubble is None:
+        if not self._streaming_active:
+            # First chunk creates the bubble; later chunks update it via
+            # the panel's public streaming API.
             self._chat_panel.add_message("coach", accumulated)
-            # Trailing bubble handle for in-place updates (same-package
-            # access — ChatPanel keeps its bubbles in append order).
-            if self._chat_panel._bubbles:
-                self._stream_bubble = self._chat_panel._bubbles[-1]
+            self._streaming_active = True
         else:
-            self._stream_bubble._text_label.setText(accumulated)
+            self._chat_panel.update_last_message(accumulated)
 
     def _on_chat_loading(self, loading: bool) -> None:
         self._typing_label.setVisible(bool(loading))
         if not loading:
             # A cancelled stream never re-emits messages_changed — drop the
-            # stale bubble handle here as well.
-            self._stream_bubble = None
+            # stale streaming state here as well.
+            self._streaming_active = False
 
     def _on_chat_availability(self, available: bool) -> None:
         self._chat_online = bool(available)

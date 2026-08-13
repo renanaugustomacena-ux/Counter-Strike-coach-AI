@@ -36,7 +36,10 @@ from PySide6.QtWidgets import (
 from Programma_CS2_RENAN.apps.qt_app.core.animation import Animator
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
-from Programma_CS2_RENAN.apps.qt_app.core.match_utils import map_short_name
+from Programma_CS2_RENAN.apps.qt_app.core.match_utils import (
+    count_personal_and_pro,
+    map_short_name,
+)
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.apps.qt_app.viewmodels.match_history_vm import MatchHistoryViewModel
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.empty_state import EmptyState
@@ -442,14 +445,10 @@ class MatchHistoryScreen(QWidget):
     def _update_count_caption(self) -> None:
         """Header-right caption per frame 08: ``47 personal · 2,148 pro reference``.
 
-        Personal counts loaded rows; pro counts DISTINCT pro demo names
-        (PlayerMatchStats stores one row per (demo, player), so raw pro
-        rows would inflate ~10× per demo — same convention as Home).
+        Counts come from ``match_utils.count_personal_and_pro`` — personal
+        rows + DISTINCT pro demo names (same convention as Home).
         """
-        self._personal_count = sum(1 for m in self._all_matches if not m.get("is_pro"))
-        self._pro_count = len(
-            {m["demo_name"] for m in self._all_matches if m.get("is_pro") and m.get("demo_name")}
-        )
+        self._personal_count, self._pro_count = count_personal_and_pro(self._all_matches)
         personal_word = i18n.get_text("history.personal", "personal")
         pro_word = i18n.get_text("history.pro_reference", "pro reference")
         self._count_caption.setText(

@@ -71,6 +71,39 @@ def rating_label(rating: float) -> str:
     return "Below Avg"
 
 
+def severity_bucket(severity: str) -> str:
+    """Collapse the DB/insight severity vocabulary into three words.
+
+    high|critical|error → "high" · medium|warning|warn → "medium" ·
+    everything else → "low". Case-insensitive; the single source of truth
+    for severity ranking across coach/match-detail surfaces.
+    """
+    sev = (severity or "").lower()
+    if sev in ("high", "critical", "error"):
+        return "high"
+    if sev in ("medium", "warning", "warn"):
+        return "medium"
+    return "low"
+
+
+def severity_color(severity: str) -> QColor:
+    """Severity → semantic token QColor (theme-tracking).
+
+    Buckets via :func:`severity_bucket` (high→error, medium→warning,
+    low→success) with one extension: the literal ``info`` severity maps to
+    the ``info`` token (DriversList / insight-card vocabulary).
+    """
+    tokens = get_tokens()
+    if (severity or "").lower() == "info":
+        return QColor(tokens.info)
+    bucket = severity_bucket(severity)
+    if bucket == "high":
+        return QColor(tokens.error)
+    if bucket == "medium":
+        return QColor(tokens.warning)
+    return QColor(tokens.success)
+
+
 class ThemeEngine(QObject):
     """Loads and applies QSS themes + QPalette colors + fonts + wallpapers."""
 

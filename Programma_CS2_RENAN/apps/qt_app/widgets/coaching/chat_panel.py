@@ -206,6 +206,28 @@ class ChatPanel(QWidget):
         self._suggestions_layout.addStretch()
         self._suggestions_row.setVisible(bool(suggestions))
 
+    def update_last_message(self, text: str) -> None:
+        """Replace the last bubble's text in place (streaming updates).
+
+        Reuses the same natural-width recompute path ``add_message`` uses so
+        the bubble keeps hugging its widest line as chunks land. No-op when
+        no bubbles exist yet.
+        """
+        if not self._bubbles:
+            return
+        bubble = self._bubbles[-1]
+        bubble._text_label.setText(text)
+        natural = max(
+            (bubble._text_label.fontMetrics().horizontalAdvance(line) for line in text.split("\n")),
+            default=0,
+        )
+        meta_label = bubble.findChild(QLabel, "chat_bubble_meta")
+        if meta_label is not None:
+            natural = max(natural, meta_label.fontMetrics().horizontalAdvance(meta_label.text()))
+        bubble.setProperty("natural_width", natural)
+        self._apply_bubble_width(bubble)
+        self._scroll_to_bottom()
+
     def clear(self) -> None:
         """Remove every message bubble (suggestions and status stay)."""
         while self._messages_layout.count() > 1:  # keep the trailing stretch

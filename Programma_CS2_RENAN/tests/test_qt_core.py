@@ -1048,9 +1048,11 @@ class TestStepperLabels:
         from Programma_CS2_RENAN.apps.qt_app.widgets.components.stepper import Stepper
 
         s = Stepper(step_count=5, current_step=0)
-        # Original formula: n*dot_diameter + (n-1)*bar + 8 padding; height dot+8.
+        # Width formula: n*dot_diameter + (n-1)*bar + 8 padding. Height:
+        # dot + 2*6px margin — 6px (was 4) so the current-step ring's 2px
+        # stroke at r+4 no longer clips 1px at the top and bottom edges.
         assert s.width() == 5 * 14 + 4 * 48 + 8
-        assert s.height() == 14 + 8
+        assert s.height() == 14 + 12
         assert s.labels == []
         s.deleteLater()
 

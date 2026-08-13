@@ -102,10 +102,11 @@ class _DemoLoaderLogBridge(QObject):
             self._handler = None
 
 
-def _caption_font(*, mono: bool = False, bold: bool = False) -> "QFont":
-    """Caption-sized font (size from tokens) without the caption role's
-    uppercase treatment — ghost-panel metadata stays lowercase per frame 14."""
-    f = Typography.font("mono" if mono else "body", QFont.Bold if bold else None)
+def _caption_font(*, bold: bool = False) -> "QFont":
+    """Caption-sized BODY font (size from tokens) without the caption role's
+    uppercase treatment — ghost-panel metadata stays lowercase per frame 14.
+    Mono captions now come from ``Typography.mono_caption``."""
+    f = Typography.font("body", QFont.Bold if bold else None)
     f.setPointSize(get_tokens().font_size_caption)
     return f
 
@@ -313,7 +314,7 @@ class _GhostPanel(QWidget):
             name.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
             self._div_grid.addWidget(name, row, 0)
             val = QLabel(value)
-            val.setFont(_caption_font(mono=True, bold=True))
+            val.setFont(Typography.mono_caption(bold=True))
             val.setWordWrap(True)
             val.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
             color = verdict_colors.get(verdict, tokens.text_primary)
@@ -436,6 +437,12 @@ class TacticalViewerScreen(QWidget):
         self._empty_overlay.setText(i18n.get_text("tactical_empty_state"))
         self._map_label.setText(i18n.get_text("select_map") + ":")
         self._round_label.setText(i18n.get_text("select_round") + ":")
+        # Recompose the tick counter in the new language (the 100ms timer
+        # only rewrites it while the screen is active).
+        self._tick_label.setText(
+            f"{i18n.get_text('tactical.tick', 'Tick')}: "
+            f"{self._playback_vm.get_current_tick():,}"
+        )
         self._ghost_check.setText(i18n.get_text("tactical.ghost_ai", "Ghost AI"))
         self._cm_marks_check.setText(i18n.get_text("tactical.cm_marks", "CM marks"))
         self._ghost_combo_label.setText(i18n.get_text("tactical.ghost_combo_label", "Ghost:"))
@@ -791,7 +798,7 @@ class TacticalViewerScreen(QWidget):
         std_row.addWidget(self._round_label)
         std_row.addWidget(self._round_combo)
 
-        self._tick_label = QLabel("Tick: 0")
+        self._tick_label = QLabel(f"{i18n.get_text('tactical.tick', 'Tick')}: 0")
         self._tick_label.setObjectName("tick_counter")
         self._tick_label.setMinimumWidth(120)
         std_row.addWidget(self._tick_label)
@@ -1574,6 +1581,39 @@ class TacticalViewerScreen(QWidget):
         self._playback_vm.seek_to_tick(tick)
         # A jump invalidates continuous movement history (frame-13 trails).
         self._map_widget.clear_trails()
+
+    def open_moment(self, demo_name: str, tick: int) -> None:
+        """Deep-link entry: seek to ``tick`` when ``demo_name`` is the demo
+        already loaded in this viewer.
+
+        Wired by the app orchestrator to ``MatchDetailScreen.moment_selected``
+        ("Open in Tactical Viewer" on Highlights moment cards); the wirer
+        switches to this screen afterwards either way. Names are compared by
+        stem so ``foo.dem`` and ``foo`` match the stored ``_loaded_demo_stem``.
+        """
+        wanted = os.path.splitext(os.path.basename(str(demo_name or "")))[0]
+        loaded = getattr(self, "_loaded_demo_stem", None)
+        if self._full_demo_data and wanted and loaded == wanted:
+            self._on_seek(int(tick))
+            return
+        # FIELD-GAP: cross-demo auto-load — the viewer's only load path is
+        # the modal file-picker flow (_open_demo); resolving a demo_name back
+        # to a .dem path and loading it headlessly isn't wired yet.
+        logger.info(
+            "open_moment: demo %r not loaded (loaded=%r) — seek to tick %s skipped",
+            demo_name,
+            loaded,
+            tick,
+        )
+        win = self.window()
+        if win is not None and hasattr(win, "_show_toast"):
+            win._show_toast(
+                "INFO",
+                i18n.get_text(
+                    "tactical.open_moment_missing",
+                    "Open demo {demo} here first to jump to this moment",
+                ).replace("{demo}", str(demo_name)),
+            )
 
     # ── Player Selection ──
 

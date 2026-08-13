@@ -38,6 +38,7 @@ from PySide6.QtWidgets import (
 from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
+from Programma_CS2_RENAN.apps.qt_app.core.match_utils import count_personal_and_pro
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.apps.qt_app.core.widgets_helpers import make_button
 from Programma_CS2_RENAN.apps.qt_app.core.worker import Worker
@@ -686,13 +687,12 @@ class HomeScreen(QWidget):
         user_matches = [m for m in matches if not m.get("is_pro")]
         self._user_matches = user_matches
 
-        # Distinct pro demos = unique demo_name across is_pro rows.
-        # PlayerMatchStats stores one row per (demo, player), so the row count
-        # would inflate by the number of players analyzed per demo (~10×).
+        # Personal rows + DISTINCT pro demo count (shared convention with
+        # Match History — see match_utils.count_personal_and_pro).
         # FIELD-GAP: no corpus-size signal exists for the pro library — the
         # distinct count over the loaded rows (≤50) is the available proxy.
-        pro_demos = {m["demo_name"] for m in matches if m.get("is_pro") and m.get("demo_name")}
-        self._update_matches_chip(len(user_matches), len(pro_demos))
+        personal_n, pro_demos_n = count_personal_and_pro(matches)
+        self._update_matches_chip(personal_n, pro_demos_n)
 
         if not user_matches:
             self._show_onboarding(True)
@@ -784,7 +784,7 @@ class HomeScreen(QWidget):
 
     def _pick_pro_folder(self) -> None:
         folder = QFileDialog.getExistingDirectory(
-            self, i18n.get_text("select_demo_folder", "Select Demo Folder")
+            self, i18n.get_text("select_pro_demo_folder", "Select Pro Demo Folder")
         )
         if folder:
             save_user_setting("PRO_DEMO_PATH", folder)

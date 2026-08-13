@@ -89,3 +89,17 @@ class Typography:
         if weight is not None:
             f.setWeight(QFont.Weight(weight))
         return f
+
+    @classmethod
+    def mono_caption(cls, bold: bool = False) -> QFont:
+        """Mono family at caption size — painted chart/table captions.
+
+        The shared replacement for the per-module ``_caption_font`` copies:
+        no uppercase treatment (unlike the ``caption`` role), size read from
+        tokens so theme switches keep tracking. ``bold=True`` uses DemiBold.
+        """
+        f = cls.font("mono")
+        f.setPointSize(get_tokens().font_size_caption)
+        if bold:
+            f.setWeight(QFont.DemiBold)
+        return f
