@@ -1,4 +1,11 @@
-"""Toast notification widgets — displays ephemeral status messages."""
+"""Toast notification widgets — displays ephemeral status messages.
+
+Frame-20 anatomy: severity-tinted card with a bold title row above the
+message, and a tiny mono ``auto · Ns`` caption bottom-right BELOW the
+card (omitted for CRITICAL, which never auto-dismisses). The styled
+card is an inner frame so the caption can sit outside its border while
+``ToastWidget`` stays one widget for the container's stacking logic.
+"""
 
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
@@ -13,6 +20,7 @@ from PySide6.QtWidgets import (
 
 from Programma_CS2_RENAN.apps.qt_app.core.animation import Animator
 from Programma_CS2_RENAN.apps.qt_app.core.easing import Easing
+from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 
 # Severity → (icon, auto-dismiss milliseconds; 0 = manual dismiss only)
 _SEVERITY_CONFIG = {
@@ -20,6 +28,14 @@ _SEVERITY_CONFIG = {
     "WARNING": ("\u26a0", 8000),  # warning triangle
     "ERROR": ("\u2716", 12000),  # X mark
     "CRITICAL": ("\u2620", 0),  # skull
+}
+
+# Severity title i18n keys (bold row per frames 20/33)
+_SEVERITY_TITLE_KEY = {
+    "INFO": ("toast.info", "Info"),
+    "WARNING": ("toast.warning", "Warning"),
+    "ERROR": ("toast.error", "Error"),
+    "CRITICAL": ("toast.critical", "Critical"),
 }
 
 _MAX_VISIBLE = 3
@@ -34,15 +50,26 @@ class ToastWidget(QFrame):
         super().__init__(parent)
         severity = severity.upper()
         icon_char, auto_ms = _SEVERITY_CONFIG.get(severity, ("\u2139", 8000))
+        title_key, title_fallback = _SEVERITY_TITLE_KEY.get(severity, ("toast.info", "Info"))
 
-        self.setObjectName(f"toast_{severity.lower()}")
-        self.setFixedHeight(50)
+        # Outer widget is transparent (no objectName): it stacks the
+        # severity-styled card + the outside auto-dismiss caption.
         self.setMinimumWidth(300)
         self.setMaximumWidth(500)
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
 
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(12, 4, 8, 4)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        # Severity-styled card (QSS QFrame#toast_<severity>)
+        card = QFrame()
+        card.setObjectName(f"toast_{severity.lower()}")
+        card.setMinimumHeight(50)
+        outer.addWidget(card)
+
+        layout = QHBoxLayout(card)
+        layout.setContentsMargins(12, 6, 8, 6)
         layout.setSpacing(8)
 
         # Severity icon
@@ -51,12 +78,21 @@ class ToastWidget(QFrame):
         icon_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(icon_label)
 
-        # Message
+        # Title (bold severity word) + message stacked
+        text_col = QVBoxLayout()
+        text_col.setContentsMargins(0, 0, 0, 0)
+        text_col.setSpacing(1)
+
+        title_label = QLabel(i18n.get_text(title_key, title_fallback))
+        title_label.setObjectName("toast_title")
+        text_col.addWidget(title_label)
+
         msg_label = QLabel(message)
         msg_label.setObjectName("toast_message")
         msg_label.setWordWrap(True)
         msg_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        layout.addWidget(msg_label, 1)
+        text_col.addWidget(msg_label)
+        layout.addLayout(text_col, 1)
 
         # Dismiss button
         dismiss = QPushButton("\u2715")  # multiplication X
@@ -64,10 +100,14 @@ class ToastWidget(QFrame):
         dismiss.setFixedSize(24, 24)
         dismiss.setCursor(Qt.PointingHandCursor)
         dismiss.clicked.connect(self._remove)
-        layout.addWidget(dismiss)
+        layout.addWidget(dismiss, alignment=Qt.AlignTop)
 
-        # Auto-dismiss timer
+        # Auto-dismiss caption below the card, bottom-right, mono numeric
+        # (frame 20). CRITICAL is manual-only → no caption.
         if auto_ms > 0:
+            caption = QLabel(f"auto · {auto_ms // 1000}s")
+            caption.setObjectName("toast_caption")
+            outer.addWidget(caption, alignment=Qt.AlignRight)
             QTimer.singleShot(auto_ms, self._remove)
 
     def _remove(self):
@@ -137,8 +177,9 @@ class ToastContainer(QWidget):
             return
         self.show()
         n = len(self._toasts)
-        # 12px top margin + 50px per toast + 6px spacing between + 6px pad
-        h = 12 + n * 50 + max(0, n - 1) * 6 + 6
+        # 12px top margin + per-toast hint heights (card + caption vary
+        # with severity/word-wrap) + 6px spacing between + 6px pad.
+        h = 12 + sum(t.sizeHint().height() for t in self._toasts) + max(0, n - 1) * 6 + 6
         w = self._CONTAINER_WIDTH
         parent = self.parentWidget()
         if parent:

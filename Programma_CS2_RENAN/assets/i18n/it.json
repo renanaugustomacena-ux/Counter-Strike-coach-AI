@@ -140,5 +140,15 @@
   "tactical_empty_state": "Clicca 'Apri Demo' per caricare un file .dem\n\nIl visualizzatore tattico mostrerà i replay 2D dei round\ncon posizioni dei giocatori, granate e timeline.",
   "wallpaper": "Sfondo",
   "wallpaper_none": "Nessuno",
-  "help": "Aiuto"
+  "help": "Aiuto",
+  "toast.info": "Info",
+  "toast.warning": "Avviso",
+  "toast.error": "Errore",
+  "toast.critical": "Critico",
+  "chat.title": "Chat",
+  "chat.online": "Online",
+  "chat.offline": "Offline",
+  "chat.clear": "Pulisci",
+  "chat.placeholder": "Chiedi al tuo coach…",
+  "chat.send": "Invia"
 }

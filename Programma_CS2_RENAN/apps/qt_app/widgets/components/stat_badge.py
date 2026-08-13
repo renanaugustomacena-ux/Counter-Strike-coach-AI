@@ -105,6 +105,29 @@ class StatBadge(QWidget):
         color = color_map.get(sentiment, tokens.text_primary)
         self._value_label.setStyleSheet(f"color: {color}; background: transparent;")
 
+    def set_rating(self, value: float, caption: str | None = None) -> None:
+        """Rating variant (frame 33) — HLTV-threshold color + mono caption.
+
+        The value renders in ``theme_engine.rating_color(value)`` (green
+        > 1.10, red < 0.90, yellow between) and the optional threshold
+        caption (e.g. ``"> 1.10 · GREEN"`` — always passed in by the
+        caller, never composed here) replaces the label styling with a
+        mono tertiary line per the component-library frame.
+        """
+        from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import rating_color
+
+        tokens = get_tokens()
+        self._value_label.setText(f"{value:.2f}")
+        self._value_label.setStyleSheet(
+            f"color: {rating_color(value).name()}; background: transparent;"
+        )
+        if caption is not None:
+            mono = Typography.font("mono")
+            mono.setPointSize(tokens.font_size_caption)
+            self._label.setFont(mono)
+            self._label.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
+            self._label.setText(caption)
+
     def set_trend(
         self,
         direction: Optional[_TrendDir],

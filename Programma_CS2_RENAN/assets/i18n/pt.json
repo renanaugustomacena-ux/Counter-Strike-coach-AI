@@ -140,5 +140,15 @@
   "tactical_empty_state": "Clique em 'Abrir Demo' para carregar um arquivo .dem\n\nO visualizador tático exibirá replays 2D dos rounds\ncom posições dos jogadores, granadas e linha do tempo.",
   "wallpaper": "Papel de Parede",
   "wallpaper_none": "Nenhum",
-  "help": "Ajuda"
+  "help": "Ajuda",
+  "toast.info": "Info",
+  "toast.warning": "Aviso",
+  "toast.error": "Erro",
+  "toast.critical": "Critico",
+  "chat.title": "Chat",
+  "chat.online": "Online",
+  "chat.offline": "Offline",
+  "chat.clear": "Limpar",
+  "chat.placeholder": "Pergunte ao seu coach…",
+  "chat.send": "Enviar"
 }

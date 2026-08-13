@@ -9,17 +9,24 @@ guides the user toward the next action. Two display modes:
 The illustration slot accepts either an emoji/unicode character (``icon_text``)
 OR a path relative to ``design/frames/`` (``illustration``) for a Frame-20
 style illustrated empty state.
+
+Frame-20 anatomy details:
+    * the icon sits inside a 64px rounded-square ``surface_sunken`` well
+      (QSS ``QFrame#empty_state_well``);
+    * an optional info-colored ghost link row renders under the CTAs
+      (``link_text`` / ``link_cb`` — e.g. "Or read the Getting Started
+      guide →").
 """
 
 from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtSvgWidgets import QSvgWidget
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
@@ -41,10 +48,15 @@ class EmptyState(QWidget):
         secondary_cta_text: Optional ghost CTA label, shown beside the primary.
         illustration: Optional SVG filename under design/frames/.
         parent: Parent widget.
+        link_text: Optional ghost link row under the CTAs (frame 20's
+            "Or read the Getting Started guide →"). Empty = no row.
+        link_cb: Optional callable invoked on link click (also emitted
+            as ``link_clicked`` for signal-style wiring).
     """
 
     action_clicked = Signal()
     secondary_action_clicked = Signal()
+    link_clicked = Signal()
 
     def __init__(
         self,
@@ -55,6 +67,8 @@ class EmptyState(QWidget):
         secondary_cta_text: str = "",
         illustration: Optional[str] = None,
         parent: QWidget | None = None,
+        link_text: str = "",
+        link_cb: Optional[Callable[[], None]] = None,
     ):
         super().__init__(parent)
         tokens = get_tokens()
@@ -78,15 +92,23 @@ class EmptyState(QWidget):
                 self._svg.setFixedSize(200, 140)
                 layout.addWidget(self._svg, alignment=Qt.AlignCenter)
 
-        # Icon (text fallback / companion)
+        # Icon (text fallback / companion) — sits centered inside a 64px
+        # rounded-square surface_sunken well per frame 20.
         self._icon_label = QLabel(icon_text)
         self._icon_label.setAlignment(Qt.AlignCenter)
         self._icon_label.setFont(Typography.font("display"))
         self._icon_label.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
+
+        self._icon_well = QFrame()
+        self._icon_well.setObjectName("empty_state_well")
+        self._icon_well.setFixedSize(64, 64)
+        well_layout = QVBoxLayout(self._icon_well)
+        well_layout.setContentsMargins(0, 0, 0, 0)
+        well_layout.addWidget(self._icon_label, alignment=Qt.AlignCenter)
         if icon_text and self._svg is None:
-            layout.addWidget(self._icon_label)
+            layout.addWidget(self._icon_well, alignment=Qt.AlignHCenter)
         else:
-            self._icon_label.setVisible(False)
+            self._icon_well.setVisible(False)
 
         # Title
         self._title_label = QLabel(title)
@@ -136,6 +158,19 @@ class EmptyState(QWidget):
         else:
             self._cta_row.setVisible(False)
 
+        # Ghost link row (frame 20) — info-colored flat text button.
+        self._link_button = QPushButton(link_text)
+        self._link_button.setObjectName("empty_state_link")
+        self._link_button.setCursor(Qt.PointingHandCursor)
+        self._link_button.setFlat(True)
+        self._link_button.clicked.connect(self.link_clicked.emit)
+        if link_cb is not None:
+            self._link_button.clicked.connect(lambda: link_cb())
+        if link_text:
+            layout.addWidget(self._link_button, alignment=Qt.AlignHCenter)
+        else:
+            self._link_button.setVisible(False)
+
         # Skeleton bars for loading mode (built lazily so non-loading
         # callers don't pay the layout cost).
         self._skeleton: Optional[QWidget] = None
@@ -160,6 +195,10 @@ class EmptyState(QWidget):
         self._secondary_button.setVisible(bool(text) and not self._loading)
         self._update_cta_row_visibility()
 
+    def set_link_text(self, text: str):
+        self._link_button.setText(text)
+        self._link_button.setVisible(bool(text) and not self._loading)
+
     def set_loading(self, loading: bool) -> None:
         """Toggle loading mode — content hidden, skeleton shown."""
         if loading == self._loading:
@@ -170,11 +209,12 @@ class EmptyState(QWidget):
         # Toggle content vs skeleton visibility
         self._title_label.setVisible(not loading and bool(self._title_label.text()))
         self._desc_label.setVisible(not loading and bool(self._desc_label.text()))
-        self._icon_label.setVisible(
+        self._icon_well.setVisible(
             not loading and bool(self._icon_label.text()) and self._svg is None
         )
         if self._svg is not None:
             self._svg.setVisible(not loading)
+        self._link_button.setVisible(not loading and bool(self._link_button.text()))
         self._update_cta_row_visibility()
         if self._skeleton is not None:
             self._skeleton.setVisible(loading)
@@ -209,8 +249,8 @@ class EmptyState(QWidget):
             skel_layout.addWidget(bar, alignment=Qt.AlignCenter)
 
         self._skeleton = skeleton
-        # Insert after the icon slot (index 0 if no svg, otherwise after svg)
+        # Insert after the icon slot (index 0 if no svg/well, otherwise after it)
         layout = self.layout()
-        insert_at = 1 if (self._svg is not None or self._icon_label.isVisible()) else 0
+        insert_at = 1 if (self._svg is not None or self._icon_well.isVisible()) else 0
         layout.insertWidget(insert_at, skeleton)
         skeleton.setVisible(False)

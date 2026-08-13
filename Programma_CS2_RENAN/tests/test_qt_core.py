@@ -443,3 +443,294 @@ class TestTypography:
         body = Typography.font("body")
         assert fallback.pointSize() == body.pointSize()
         assert fallback.family() == body.family()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 7. Component library alignment — frames 33/20 (Task 8)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestComponentLibrary:
+    """ProBadge, StatBadge rating variant, EmptyState well/link, toast anatomy."""
+
+    def test_pro_badge_side_property_roundtrip(self, qapp):
+        from Programma_CS2_RENAN.apps.qt_app.widgets.components import ProBadge
+
+        badge = ProBadge()
+        assert badge.objectName() == "pro_badge"
+        assert badge.text() == "PRO"
+        assert badge.side() is None
+
+        badge.set_side("ct")
+        assert badge.side() == "ct"
+        assert badge.property("side") == "ct"
+
+        badge.set_side("t")
+        assert badge.side() == "t"
+
+        badge.set_side(None)
+        assert badge.side() is None
+
+    def test_stat_badge_rating_variant_colors_by_threshold(self, qapp):
+        from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import rating_color
+        from Programma_CS2_RENAN.apps.qt_app.widgets.components import StatBadge
+
+        badge = StatBadge()
+        badge.set_rating(1.28, "> 1.10 · GREEN")
+        assert badge._value_label.text() == "1.28"
+        assert badge._label.text() == "> 1.10 · GREEN"
+        assert rating_color(1.28).name() in badge._value_label.styleSheet()
+
+        badge.set_rating(0.84, "< 0.90 · RED")
+        assert rating_color(0.84).name() in badge._value_label.styleSheet()
+
+    def test_empty_state_icon_well_and_ghost_link(self, qapp):
+        from PySide6.QtWidgets import QFrame, QPushButton
+
+        from Programma_CS2_RENAN.apps.qt_app.widgets.components import EmptyState
+
+        clicks: list[str] = []
+        state = EmptyState(
+            icon_text="X",
+            title="No matches found",
+            cta_text="Select Demo Folder",
+            link_text="Or read the guide →",
+            link_cb=lambda: clicks.append("cb"),
+        )
+        well = state.findChild(QFrame, "empty_state_well")
+        assert well is not None
+        assert well.width() == well.height() == 64
+
+        link = state.findChild(QPushButton, "empty_state_link")
+        assert link is not None and link.text() == "Or read the guide →"
+        state.link_clicked.connect(lambda: clicks.append("signal"))
+        link.click()
+        assert "cb" in clicks and "signal" in clicks
+
+    def test_toast_title_and_auto_caption(self, qapp):
+        from PySide6.QtWidgets import QLabel
+
+        from Programma_CS2_RENAN.apps.qt_app.widgets.toast import ToastWidget
+
+        info = ToastWidget("INFO", "Demo analysis complete")
+        title = info.findChild(QLabel, "toast_title")
+        assert title is not None and title.text() == "Info"
+        caption = info.findChild(QLabel, "toast_caption")
+        assert caption is not None and caption.text() == "auto · 5s"
+
+        # CRITICAL never auto-dismisses → no caption row.
+        critical = ToastWidget("CRITICAL", "Teacher daemon crashed")
+        assert critical.findChild(QLabel, "toast_caption") is None
+        assert critical.findChild(QLabel, "toast_title").text() == "Critical"
+
+    def test_progress_ring_size_presets(self, qapp):
+        from Programma_CS2_RENAN.apps.qt_app.widgets.components import ProgressRing
+
+        presets = (ProgressRing.SMALL, ProgressRing.DEFAULT, ProgressRing.COACH, ProgressRing.HERO)
+        assert presets == (48, 64, 80, 128)
+        ring = ProgressRing(0.73)
+        assert ring.width() == ProgressRing.DEFAULT
+        assert ring._thickness == 8
+
+    def test_toast_container_eviction_and_refit(self, qapp):
+        """MAX_VISIBLE eviction + sizeHint-based refit survive the wrapper restructure."""
+        from Programma_CS2_RENAN.apps.qt_app.widgets.toast import _MAX_VISIBLE, ToastContainer
+
+        container = ToastContainer()
+        for i in range(4):
+            container.add_toast("INFO", f"toast {i}")
+        qapp.processEvents()
+        assert len(container._toasts) == _MAX_VISIBLE
+        # Height must fit every visible toast's real (title+caption) hint.
+        assert container.height() >= sum(t.sizeHint().height() for t in container._toasts)
+        assert container.isVisibleTo(container.parentWidget()) or container.isVisible()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 8. ChatPanel — frame 07 (Task 9)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestChatPanel:
+    """Bubble anatomy, meta footnotes, suggestion chips, submit contract."""
+
+    @staticmethod
+    def _bubbles(panel):
+        from PySide6.QtWidgets import QFrame
+
+        return [f for f in panel.findChildren(QFrame) if f.objectName() == "chat_bubble"]
+
+    def test_add_message_with_meta_builds_bubble(self, qapp):
+        from PySide6.QtWidgets import QLabel
+
+        from Programma_CS2_RENAN.apps.qt_app.widgets.coaching import ChatPanel
+
+        panel = ChatPanel()
+        panel.add_message(
+            "coach",
+            "Three patterns from your data vs ZywOo pro reference.",
+            meta="confidence 0.82 · 4 demos referenced · RAP-Pedagogy",
+        )
+        bubbles = self._bubbles(panel)
+        assert len(bubbles) == 1
+        assert bubbles[0].property("role") == "coach"
+        meta = panel.findChild(QLabel, "chat_bubble_meta")
+        assert meta is not None
+        assert meta.text() == "confidence 0.82 · 4 demos referenced · RAP-Pedagogy"
+
+    def test_roles_and_clear(self, qapp):
+        from PySide6.QtWidgets import QLabel
+
+        from Programma_CS2_RENAN.apps.qt_app.widgets.coaching import ChatPanel
+
+        panel = ChatPanel()
+        panel.add_message("coach", "Hey macena — analyzed your last 10 Mirage matches.")
+        panel.add_message("user", "How can I improve positioning?")
+        panel.add_message("system", "Coach is offline.")
+        bubbles = self._bubbles(panel)
+        assert len(bubbles) == 2  # system renders as centered caption, not a bubble
+        assert {b.property("role") for b in bubbles} == {"coach", "user"}
+        assert panel.findChild(QLabel, "chat_system").text() == "Coach is offline."
+
+        panel.clear()
+        assert self._bubbles(panel) == []
+
+    def test_suggestion_click_emits_text(self, qapp):
+        from PySide6.QtWidgets import QPushButton
+
+        from Programma_CS2_RENAN.apps.qt_app.widgets.coaching import ChatPanel
+
+        panel = ChatPanel()
+        panel.set_suggestions(["Analyze utility usage", "How can I improve positioning?"])
+        received: list[str] = []
+        panel.suggestion_clicked.connect(received.append)
+        chips = [
+            b
+            for b in panel._suggestions_row.findChildren(QPushButton)
+            if b.text() == "Analyze utility usage"
+        ]
+        assert len(chips) == 1
+        chips[0].click()
+        assert received == ["Analyze utility usage"]
+
+    def test_submit_clears_input_and_emits(self, qapp):
+        from Programma_CS2_RENAN.apps.qt_app.widgets.coaching import ChatPanel
+
+        panel = ChatPanel()
+        received: list[str] = []
+        panel.message_submitted.connect(received.append)
+        panel._input.setText("  What should I focus on improving?  ")
+        panel._input.returnPressed.emit()
+        assert received == ["What should I focus on improving?"]
+        assert panel._input.text() == ""
+        # Empty input never emits
+        panel._input.setText("   ")
+        panel._input.returnPressed.emit()
+        assert len(received) == 1
+
+    def test_set_status_updates_header(self, qapp):
+        from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+        from Programma_CS2_RENAN.apps.qt_app.widgets.coaching import ChatPanel
+
+        panel = ChatPanel()
+        panel.set_status(True, "ollama", "gemma3:e2b")
+        assert panel._status_text.text() == "Online"
+        assert panel._backend_label.text() == "ollama · gemma3:e2b"
+        assert get_tokens().success in panel._status_dot.styleSheet()
+
+        panel.set_status(False, "ollama", "gemma3:e2b")
+        assert panel._status_text.text() == "Offline"
+        assert get_tokens().error in panel._status_dot.styleSheet()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 9. Shared primitives — frames 06/17/18/19 furniture (Task 10)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestSharedPrimitives:
+    """Construction + text round-trip for the five frame-furniture primitives."""
+
+    def test_drivers_list_rows(self, qapp):
+        from PySide6.QtWidgets import QFrame, QLabel
+
+        from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+        from Programma_CS2_RENAN.apps.qt_app.widgets.components import DriversList
+
+        drivers = DriversList()
+        drivers.set_rows(
+            [
+                ("success", "Sample count · 47 personal demos analyzed"),
+                ("warning", "Map coverage · 6 of 9 competitive maps seen"),
+            ]
+        )
+        texts = [
+            label.text()
+            for label in drivers.findChildren(QLabel)
+            if label.objectName() == "drivers_text"
+        ]
+        assert texts == [
+            "Sample count · 47 personal demos analyzed",
+            "Map coverage · 6 of 9 competitive maps seen",
+        ]
+        squares = [f for f in drivers.findChildren(QFrame) if f.objectName() == "drivers_square"]
+        assert len(squares) == 2 and squares[0].width() == 8
+        assert get_tokens().success in squares[0].styleSheet()
+        assert get_tokens().warning in squares[1].styleSheet()
+
+        drivers.set_rows([("info", "one row")])  # replaces, not appends
+        squares = [f for f in drivers.findChildren(QFrame) if f.objectName() == "drivers_square"]
+        assert len(squares) == 1
+
+    def test_tip_box_text_roundtrip(self, qapp):
+        from Programma_CS2_RENAN.apps.qt_app.widgets.components import TipBox
+
+        tip = TipBox("Stored locally", "Nothing uploaded anywhere. FE-04.")
+        assert tip.objectName() == "tip_box"
+        assert tip._title_label.text() == "Stored locally"
+        assert tip._body_label.text() == "Nothing uploaded anywhere. FE-04."
+        tip.set_title("Tip")
+        tip.set_body("Choose a drive with at least 50 GB free.")
+        assert tip._title_label.text() == "Tip"
+        assert tip._body_label.text() == "Choose a drive with at least 50 GB free."
+
+    def test_numbered_step_texts(self, qapp):
+        from Programma_CS2_RENAN.apps.qt_app.widgets.components import NumberedStep
+
+        step = NumberedStep(3, "Let the analyzer ingest your .dem files", "Click Analyze Demos")
+        assert step._circle.text() == "3"
+        assert step._circle.objectName() == "numbered_step_circle"
+        assert step._title_label.text() == "Let the analyzer ingest your .dem files"
+        assert step._desc_label.text() == "Click Analyze Demos"
+
+    def test_db_record_card_rows_and_value_color(self, qapp):
+        from PySide6.QtWidgets import QLabel
+
+        from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+        from Programma_CS2_RENAN.apps.qt_app.widgets.components import DbRecordCard
+
+        card = DbRecordCard(
+            "Database record", 'SELECT * FROM PlayerProfile WHERE player_name = "macena"'
+        )
+        assert card._title_label.text() == "Database record"
+        assert "PlayerProfile" in card._sql_label.text()
+
+        card.set_rows(
+            [
+                ("id", "42", None),
+                ("matches_analyzed", "47", "success"),
+            ]
+        )
+        values = [
+            label for label in card.findChildren(QLabel) if label.objectName() == "db_record_value"
+        ]
+        assert [v.text() for v in values] == ["42", "47"]
+        assert get_tokens().success in values[1].styleSheet()
+        assert values[0].styleSheet() == ""
+
+    def test_mono_footer_text(self, qapp):
+        from Programma_CS2_RENAN.apps.qt_app.widgets.components import MonoFooter
+
+        footer = MonoFooter("PlayerMatchStats · rating_components from hltv_components JSON")
+        assert footer.objectName() == "mono_footer"
+        assert footer.text() == "PlayerMatchStats · rating_components from hltv_components JSON"

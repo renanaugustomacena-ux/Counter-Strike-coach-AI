@@ -140,5 +140,15 @@
   "tactical_empty_state": "Click 'Open Demo' to load a .dem file\n\nThe tactical viewer will display 2D round replays\nwith player positions, grenades, and timeline.",
   "wallpaper": "Wallpaper",
   "wallpaper_none": "None",
-  "help": "Help"
+  "help": "Help",
+  "toast.info": "Info",
+  "toast.warning": "Warning",
+  "toast.error": "Error",
+  "toast.critical": "Critical",
+  "chat.title": "Chat",
+  "chat.online": "Online",
+  "chat.offline": "Offline",
+  "chat.clear": "Clear",
+  "chat.placeholder": "Ask your coach…",
+  "chat.send": "Send"
 }

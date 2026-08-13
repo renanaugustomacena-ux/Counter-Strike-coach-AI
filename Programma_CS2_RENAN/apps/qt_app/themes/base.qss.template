@@ -740,3 +740,181 @@ QPushButton#custom_titlebar_button:hover {
 QPushButton#custom_titlebar_button:pressed {
     background-color: ${accent_muted_25};
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   Component library alignment — frames 33 + 20 (Task 8)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── ProBadge — mono bold caption pill (frame 33 tag row) ──
+   Default: accent outline. Side variants recolor: CT cyan (info),
+   T orange (chart_line_secondary). */
+QLabel#pro_badge {
+    background-color: transparent;
+    border: 1px solid ${accent_primary};
+    color: ${accent_primary};
+    border-radius: ${radius_sm}px;
+    padding: 1px 8px;
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    font-weight: 700;
+    font-size: ${font_size_caption}px;
+}
+QLabel#pro_badge[side="ct"] {
+    border: 1px solid ${info};
+    color: ${info};
+}
+QLabel#pro_badge[side="t"] {
+    border: 1px solid ${chart_line_secondary};
+    color: ${chart_line_secondary};
+}
+
+/* ── EmptyState — 64px rounded-square icon well + ghost link (frame 20) ── */
+QFrame#empty_state_well {
+    background-color: ${surface_sunken};
+    border-radius: ${radius_md}px;
+}
+QPushButton#empty_state_link {
+    background-color: transparent;
+    color: ${info};
+    border: none;
+    padding: ${spacing_xs}px ${spacing_sm}px;
+    font-size: ${font_size_caption}px;
+}
+QPushButton#empty_state_link:hover {
+    color: ${text_inverse};
+}
+
+/* ── Toast title + auto-dismiss caption (frame 20 anatomy) ── */
+QLabel#toast_title {
+    color: ${text_primary};
+    font-size: ${font_size_body}px;
+    font-weight: 700;
+    background: transparent;
+}
+QLabel#toast_caption {
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    color: ${text_tertiary};
+    font-size: ${font_size_caption}px;
+    background: transparent;
+    padding-right: 2px;
+}
+
+/* ── Indeterminate progress bar (frame 20) ──
+   Consumers: bar.setObjectName("indeterminate"); bar.setRange(0, 0). */
+QProgressBar#indeterminate {
+    background-color: ${surface_sunken};
+    border: none;
+    border-radius: ${radius_sm}px;
+    min-height: 8px;
+    max-height: 8px;
+}
+QProgressBar#indeterminate::chunk {
+    background-color: ${accent_primary};
+    border-radius: ${radius_sm}px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ChatPanel — frame 07 (Task 9)
+   ═══════════════════════════════════════════════════════════════ */
+
+QLabel#chat_title {
+    font-size: ${font_size_subtitle}px;
+    font-weight: 700;
+    color: ${text_primary};
+}
+QLabel#chat_status_text {
+    color: ${text_secondary};
+    font-size: ${font_size_body}px;
+}
+QLabel#chat_backend {
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    color: ${text_tertiary};
+    font-size: ${font_size_caption}px;
+}
+
+/* Bubbles: coach left on raised surface; user right info-tinted
+   (existing toast_info tokens compose the frame's blue tint). */
+QFrame#chat_bubble {
+    border-radius: ${radius_md}px;
+}
+QFrame#chat_bubble[role="coach"] {
+    background-color: ${surface_raised};
+}
+QFrame#chat_bubble[role="user"] {
+    background-color: ${toast_info_bg};
+    border: 1px solid ${toast_info_border};
+}
+QLabel#chat_bubble_text {
+    color: ${text_primary};
+    font-size: ${font_size_body}px;
+    background: transparent;
+}
+QLabel#chat_bubble_meta {
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    color: ${text_tertiary};
+    font-size: ${font_size_caption}px;
+    background: transparent;
+}
+QLabel#chat_system {
+    color: ${text_tertiary};
+    font-size: ${font_size_caption}px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Shared primitives — frames 06/17/18/19 furniture (Task 10)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── TipBox — dashed info callout (frames 17/18) ── */
+QFrame#tip_box {
+    border: 1px dashed ${info};
+    border-radius: ${radius_md}px;
+    background-color: transparent;
+}
+QLabel#tip_box_title {
+    color: ${info};
+    font-weight: 700;
+    font-size: ${font_size_body}px;
+    background: transparent;
+}
+QLabel#tip_box_body {
+    color: ${text_secondary};
+    font-size: ${font_size_body}px;
+    background: transparent;
+}
+
+/* ── NumberedStep — accent circle + title + desc (frame 19) ── */
+QLabel#numbered_step_circle {
+    background-color: ${accent_primary};
+    color: ${text_inverse};
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: ${font_size_caption}px;
+}
+QLabel#numbered_step_desc {
+    color: ${text_secondary};
+    font-size: ${font_size_body}px;
+}
+
+/* ── DbRecordCard — SQL caption + key/value mono grid (frame 17) ── */
+QLabel#db_record_sql {
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    color: ${text_tertiary};
+    font-size: ${font_size_caption}px;
+}
+QLabel#db_record_key {
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    color: ${text_secondary};
+    font-size: ${font_size_caption}px;
+}
+QLabel#db_record_value {
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    color: ${text_primary};
+    font-weight: 700;
+    font-size: ${font_size_caption}px;
+}
+
+/* ── MonoFooter — bottom-of-screen data-source annotation ── */
+QLabel#mono_footer {
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    color: ${text_tertiary};
+    font-size: ${font_size_caption}px;
+}
