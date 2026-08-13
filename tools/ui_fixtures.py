@@ -646,6 +646,235 @@ PRO_COMPARISON_PLAYERS: list[dict[str, Any]] = [
 ]
 
 
+# ── Tactical Viewer (frame 13) — drives the REAL demo-loaded pipeline ──────
+#
+# Payload shapes mirror what TacticalPlaybackVM.frame_updated actually emits:
+# InterpolatedFrame(tick, players: [InterpolatedPlayerState], nades:
+# [NadeState]). Frame-13 fields the payload lacks (scoreboard, bomb position,
+# per-player death attribution, has_defuser) ride along as attribute
+# supersets on the emitted objects — the screen reads them via getattr with
+# matching # FIELD-GAP comments.
+
+_MIRAGE_PANE_W, _MIRAGE_PANE_H = 820.0, 688.0  # frame-13 map pane (svg px)
+_TACTICAL_TICK = 24_582
+_TACTICAL_TOTAL_TICKS = 64_500
+
+
+def _mirage_world(px: float, py: float) -> tuple[float, float]:
+    """Frame-13 pane coords → de_mirage world coords.
+
+    Inverse of MapMetadata.world_to_radar for de_mirage (pos_x=-3230,
+    pos_y=1713, scale=5.0, radar 1024px): world_x = nx*5120 - 3230,
+    world_y = 1713 - ny*5120.
+    """
+    nx, ny = px / _MIRAGE_PANE_W, py / _MIRAGE_PANE_H
+    return nx * 5120.0 - 3230.0, 1713.0 - ny * 5120.0
+
+
+# Roster verbatim from frame 13 (CT $21,300 total incl. dead cadiaN_bot;
+# T $24,800; CT 4 alive, T 5 alive).
+_TACTICAL_ROSTER: list[dict[str, Any]] = [
+    dict(pid=1, name="niko_bot", team="ct", pos=(740, 140), yaw=225, hp=100, armor=100,
+         money=3500, weapon="M4A1-S", inv=["M4A1-S", "USP", "flash", "flash", "smoke"],
+         defuser=True),
+    dict(pid=2, name="flames_bot", team="ct", pos=(540, 380), yaw=140, hp=84, armor=64,
+         money=1200, weapon="AWP", inv=["AWP", "Deagle", "smoke", "smoke", "HE", "moly"]),
+    dict(pid=3, name="hooxi_bot", team="ct", pos=(420, 320), yaw=90, hp=40, armor=21,
+         money=4200, weapon="M4A4", inv=["M4A4", "Glock", "flash", "smoke"]),
+    dict(pid=4, name="maden_bot", team="ct", pos=(440, 540), yaw=250, hp=100, armor=100,
+         money=8100, weapon="M4A1-S", inv=["M4A1-S", "P250", "flash", "flash", "smoke", "HE"]),
+    dict(pid=5, name="cadiaN_bot", team="ct", pos=(680, 160), yaw=0, hp=0, armor=0,
+         money=4300, weapon="", inv=[], alive=False,
+         death=dict(place="palace", by="macena", weapon="awp", tick=24_402)),
+    dict(pid=6, name="macena", team="t", pos=(440, 290), yaw=65, hp=89, armor=100,
+         money=6400, weapon="AK-47", inv=["AK-47", "Glock", "flash", "flash", "smoke", "HE"]),
+    dict(pid=7, name="boombl4_bot", team="t", pos=(310, 560), yaw=180, hp=70, armor=54,
+         money=4700, weapon="AK-47", inv=["AK-47", "P250", "flash", "smoke", "smoke"]),
+    dict(pid=8, name="s1mple_bot", team="t", pos=(370, 400), yaw=100, hp=100, armor=100,
+         money=2100, weapon="AWP", inv=["AWP", "Deagle", "flash", "smoke", "smoke"]),
+    dict(pid=9, name="electronic_bot", team="t", pos=(400, 410), yaw=45, hp=60, armor=60,
+         money=5200, weapon="AK-47", inv=["AK-47", "USP", "flash", "flash", "moly"]),
+    dict(pid=10, name="perfecto_bot", team="t", pos=(200, 500), yaw=330, hp=100, armor=80,
+         money=6400, weapon="AK-47", inv=["AK-47", "P250", "flash", "smoke", "HE"]),
+]
+
+# Frame-13 movement trails (pane coords) — macena's A push, niko's rotate.
+_TRAIL_MACENA = [(650, 580), (600, 480), (500, 400), (460, 320), (440, 290)]
+_TRAIL_NIKO = [(150, 100), (240, 180), (400, 210), (540, 170), (640, 160), (740, 140)]
+
+# Star ticks derived from the frame's star x-positions (82/262/418/610/802
+# of 1196px over 64,500 ticks).
+_TACTICAL_MOMENT_SPECS = [
+    (4_102, 4_422, "play", "pistol conversion at A"),
+    (13_807, 14_127, "mistake", "over-peek jungle vs mid-hold"),
+    (22_216, 22_536, "play", "1v2 clutch win on palace"),
+    (32_576, 32_896, "mistake", "post-plant hold failed"),
+    (42_931, 43_251, "play", "retake 2v4 win"),
+]
+
+_TACTICAL_SCORE: dict[str, Any] = {
+    "t_name": "MACENA", "t_score": 9, "ct_score": 4,
+    "round_no": 14, "time_remaining": "1:32", "bomb_planted": True,
+}
+
+
+def _tactical_segments() -> dict[str, int]:
+    """24 round-start ticks; Round 14 starts at 23,900 so tick 24,582 sits
+    inside it AND lands at ~38% of the 64,500-tick timeline (frame 13)."""
+    seg: dict[str, int] = {}
+    for i in range(1, 25):
+        if i <= 14:
+            seg[f"Round {i}"] = round(23_900 * (i - 1) / 13)
+        else:
+            seg[f"Round {i}"] = 23_900 + (i - 14) * 3_690
+    return seg
+
+
+def _tactical_player_states() -> list:
+    from Programma_CS2_RENAN.core.demo_frame import PlayerState, Team
+
+    out = []
+    for spec in _TACTICAL_ROSTER:
+        x, y = _mirage_world(*spec["pos"])
+        out.append(
+            PlayerState(
+                player_id=spec["pid"], name=spec["name"],
+                team=Team.CT if spec["team"] == "ct" else Team.T,
+                x=x, y=y, z=0.0, yaw=float(spec["yaw"]),
+                hp=spec["hp"], armor=spec["armor"],
+                is_alive=spec.get("alive", True), is_flashed=False,
+                has_defuser=spec.get("defuser", False),
+                weapon=spec["weapon"], money=spec["money"],
+                inventory=list(spec["inv"]),
+            )
+        )
+    return out
+
+
+def _tactical_interp_players(overrides: "dict[int, tuple[float, float]] | None" = None) -> list:
+    from Programma_CS2_RENAN.core.demo_frame import Team
+    from Programma_CS2_RENAN.core.playback_engine import InterpolatedPlayerState
+
+    players = []
+    for spec in _TACTICAL_ROSTER:
+        pane = (overrides or {}).get(spec["pid"], spec["pos"])
+        x, y = _mirage_world(*pane)
+        p = InterpolatedPlayerState(
+            player_id=spec["pid"], name=spec["name"],
+            team=Team.CT if spec["team"] == "ct" else Team.T,
+            x=x, y=y, z=0.0, yaw=float(spec["yaw"]),
+            hp=spec["hp"], armor=spec["armor"],
+            is_alive=spec.get("alive", True), is_flashed=False,
+            weapon=spec["weapon"], money=spec["money"],
+            kills=0, deaths=0, assists=0, mvps=0,
+            inventory=list(spec["inv"]),
+        )
+        # Superset attrs the design needs but the payload lacks (FIELD-GAP
+        # mirrors in player_sidebar.py): defuser flag + death attribution.
+        if spec.get("defuser"):
+            p.has_defuser = True
+        if spec.get("death"):
+            p.death_info = dict(spec["death"])
+        players.append(p)
+    return players
+
+
+def _tactical_nades(tick: int) -> list:
+    from Programma_CS2_RENAN.core.demo_frame import NadeState, NadeType
+
+    sx, sy = _mirage_world(490, 300)  # smoke over jungle (frame 13)
+    mx, my = _mirage_world(410, 430)  # molotov mid
+    return [
+        NadeState(base_id=901, nade_type=NadeType.SMOKE, x=sx, y=sy, z=0.0,
+                  starting_tick=tick - 128, ending_tick=tick + 960),
+        NadeState(base_id=902, nade_type=NadeType.MOLOTOV, x=mx, y=my, z=0.0,
+                  starting_tick=tick - 64, ending_tick=tick + 384),
+    ]
+
+
+def _tactical_demo_frames() -> list:
+    from Programma_CS2_RENAN.core.demo_frame import DemoFrame
+
+    players = _tactical_player_states()
+    nades = _tactical_nades(_TACTICAL_TICK)
+    # A frame at exactly _TACTICAL_TICK matters: the engine snaps
+    # get_current_tick() to loaded frame ticks, and the frame-13 header,
+    # tick counter, and timeline caption all show 24,582.
+    return [
+        DemoFrame(tick=t, round_number=14, time_in_round=0.0, map_name="de_mirage",
+                  players=players, nades=nades)
+        for t in (0, _TACTICAL_TICK, _TACTICAL_TOTAL_TICKS)
+    ]
+
+
+def _interp_polyline(points: list[tuple[float, float]], steps: int) -> list[tuple[float, float]]:
+    segs = len(points) - 1
+    out = []
+    for i in range(steps):
+        f = (i / (steps - 1)) * segs
+        si = min(int(f), segs - 1)
+        u = f - si
+        x0, y0 = points[si]
+        x1, y1 = points[si + 1]
+        out.append((x0 + (x1 - x0) * u, y0 + (y1 - y0) * u))
+    return out
+
+
+def _tactical_walk_frames() -> list:
+    """~30 frames walking macena + niko_bot along their frame-13 trails so
+    the map's per-player trail deques fill through the real update path."""
+    from Programma_CS2_RENAN.core.playback_engine import InterpolatedFrame
+
+    steps = 30
+    macena_path = _interp_polyline(_TRAIL_MACENA, steps)
+    niko_path = _interp_polyline(_TRAIL_NIKO, steps)
+    nades = _tactical_nades(_TACTICAL_TICK)
+    frames = []
+    for i in range(steps):
+        frames.append(
+            InterpolatedFrame(
+                tick=_TACTICAL_TICK - (steps - 1 - i),
+                players=_tactical_interp_players({6: macena_path[i], 1: niko_path[i]}),
+                nades=nades,
+            )
+        )
+    # Superset attrs on the final frame only (# FIELD-GAP mirrors in
+    # tactical_viewer_screen.py): scoreboard + planted C4 position.
+    bx, by = _mirage_world(340, 560)
+    frames[-1].score = dict(_TACTICAL_SCORE)
+    frames[-1].bomb = {"x": bx, "y": by, "planted": True}
+    return frames
+
+
+def _tactical_moments() -> list:
+    from types import SimpleNamespace
+
+    return [
+        SimpleNamespace(start_tick=s, peak_tick=p, end_tick=p + 200, type=t, description=d)
+        for s, p, t, d in _TACTICAL_MOMENT_SPECS
+    ]
+
+
+def inject_tactical_viewer(screen: Any) -> None:
+    # Stem stays unset through _on_demo_loaded so _start_chronovisor_scan
+    # skips its DB lookup — a matching row would kick a real scan_match
+    # whose error path emits scan_complete([], 0) during the harness settle
+    # and wipe the injected stars/footer.
+    screen._loaded_demo_stem = None
+    screen._on_demo_loaded(
+        {"de_mirage": (_tactical_demo_frames(), [], _tactical_segments())}
+    )
+    screen._loaded_demo_stem = "2026-04-22_mirage_comp"
+    screen._round_combo.setCurrentText("Round 14")  # real slot chain → seek
+    screen._on_player_select(6)  # macena — selected card + map highlight
+    for frame in _tactical_walk_frames():
+        screen._playback_vm.frame_updated.emit(frame)
+    screen._on_cm_scan_complete(_tactical_moments(), len(_TACTICAL_MOMENT_SPECS))
+    screen.set_demo_meta(
+        {"source": "demo cache hit", "size_mb": 287, "parser": "demoparser2 v0.4.1"}
+    )
+
+
 def inject_pro_comparison(screen: Any) -> None:
     # on_enter (fired by the harness's switch_screen) kicks a real DB worker;
     # unhook the VM so a late players_loaded/error can't clobber the injected

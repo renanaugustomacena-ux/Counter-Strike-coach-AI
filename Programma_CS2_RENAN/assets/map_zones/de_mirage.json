@@ -1,0 +1,15 @@
+{
+  "map": "de_mirage",
+  "comment": "Zone rects normalized 0-1 within the frame-13 map pane (820x688). Extracted from design/frames/13_tactical_viewer.svg map-outline group.",
+  "zones": [
+    {"name": "ct_spawn", "x": 0.0976, "y": 0.0872, "w": 0.1707, "h": 0.1453, "label": "CT spawn"},
+    {"name": "a_site", "x": 0.6585, "y": 0.0872, "w": 0.2195, "h": 0.2035, "label": "A", "major": true},
+    {"name": "palace", "x": 0.878, "y": 0.1744, "w": 0.0488, "h": 0.0581, "label": "palace"},
+    {"name": "jungle", "x": 0.439, "y": 0.3779, "w": 0.122, "h": 0.1163, "label": "jungle"},
+    {"name": "mid", "x": 0.3902, "y": 0.5233, "w": 0.1951, "h": 0.1163, "label": "MID", "major": true},
+    {"name": "connector", "x": 0.5854, "y": 0.5233, "w": 0.1463, "h": 0.0581, "label": "connector"},
+    {"name": "b_site", "x": 0.3171, "y": 0.7267, "w": 0.2195, "h": 0.1744, "label": "B", "major": true},
+    {"name": "apps", "x": 0.1951, "y": 0.6395, "w": 0.0976, "h": 0.1744, "label": "apps"},
+    {"name": "t_spawn", "x": 0.7073, "y": 0.7849, "w": 0.1707, "h": 0.1453, "label": "T spawn"}
+  ]
+}

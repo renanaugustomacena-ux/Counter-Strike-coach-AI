@@ -4,7 +4,8 @@ import logging
 import os
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Qt, QThreadPool, QTimer, Signal
+from PySide6.QtCore import QObject, QPointF, Qt, QThreadPool, QTimer, Signal
+from PySide6.QtGui import QColor, QPainter, QPolygonF
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -33,7 +34,7 @@ from Programma_CS2_RENAN.apps.qt_app.viewmodels.tactical_vm import (
     TacticalGhostVM,
     TacticalPlaybackVM,
 )
-from Programma_CS2_RENAN.apps.qt_app.widgets.components.status_chip import StatusChip
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.mono_footer import MonoFooter
 from Programma_CS2_RENAN.apps.qt_app.widgets.tactical.map_widget import TacticalMapWidget
 from Programma_CS2_RENAN.apps.qt_app.widgets.tactical.player_sidebar import PlayerSidebar
 from Programma_CS2_RENAN.apps.qt_app.widgets.tactical.timeline_widget import TimelineWidget
@@ -96,6 +97,47 @@ class _DemoLoaderLogBridge(QObject):
             self._handler = None
 
 
+class _TransportIconButton(QPushButton):
+    """Prev/next critical-moment button with a QPainter-drawn skip glyph.
+
+    The previous unicode glyphs (U+23EE / U+23ED) render as tofu boxes on
+    the offscreen platform's fallback fonts — a painted bar + triangle is
+    font-independent. Keeps objectName "playback_control" so the QSS
+    hover/pressed treatment still applies to the button chrome.
+    """
+
+    def __init__(self, kind: str, parent=None):
+        super().__init__("", parent)
+        self._kind = kind  # "prev" | "next"
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        tokens = get_tokens()
+        color = QColor(tokens.text_primary if self.isEnabled() else tokens.text_disabled)
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setPen(Qt.NoPen)
+        p.setBrush(color)
+        cx, cy = self.width() / 2, self.height() / 2
+        half_h = 6.0
+        if self._kind == "prev":
+            p.drawRect(int(cx - 6), int(cy - half_h), 2, int(half_h * 2))
+            triangle = [
+                QPointF(cx + 6, cy - half_h),
+                QPointF(cx + 6, cy + half_h),
+                QPointF(cx - 2, cy),
+            ]
+        else:
+            p.drawRect(int(cx + 4), int(cy - half_h), 2, int(half_h * 2))
+            triangle = [
+                QPointF(cx - 6, cy - half_h),
+                QPointF(cx - 6, cy + half_h),
+                QPointF(cx + 2, cy),
+            ]
+        p.drawPolygon(QPolygonF(triangle))
+        p.end()
+
+
 class TacticalViewerScreen(QWidget):
     """2D tactical replay viewer with playback, sidebars, and timeline."""
 
@@ -112,10 +154,8 @@ class TacticalViewerScreen(QWidget):
         self._playback_vm.set_engine(self._engine)
         self._playback_vm.frame_updated.connect(self._on_frame_update)
 
-        # Chronovisor callbacks
-        self._chronovisor_vm.navigate_to.connect(
-            lambda tick, desc: self._playback_vm.seek_to_tick(tick)
-        )
+        # Chronovisor callbacks (through _on_seek so trails reset on jumps)
+        self._chronovisor_vm.navigate_to.connect(lambda tick, desc: self._on_seek(tick))
         # R4 MED: enable the CM transport only when a scan found moments.
         self._chronovisor_vm.scan_complete.connect(self._on_cm_scan_complete)
 
@@ -153,6 +193,10 @@ class TacticalViewerScreen(QWidget):
         self._empty_overlay.setText(i18n.get_text("tactical_empty_state"))
         self._map_label.setText(i18n.get_text("select_map") + ":")
         self._round_label.setText(i18n.get_text("select_round") + ":")
+        self._ghost_check.setText(i18n.get_text("tactical.ghost_ai", "Ghost AI"))
+        self._cm_marks_check.setText(i18n.get_text("tactical.cm_marks", "CM marks"))
+        self._update_chronovisor_footer()
+        self._update_header_meta()
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -335,8 +379,10 @@ class TacticalViewerScreen(QWidget):
         Typography.apply(self._title_label, "h1")
         header.addWidget(self._title_label)
 
-        self._map_chip = StatusChip("No demo loaded", severity="neutral")
-        header.addWidget(self._map_chip)
+        # Mono meta line: `{demo} · round {n} · tick {t}` (frame 13)
+        self._header_meta = QLabel("—")
+        Typography.apply(self._header_meta, "mono")
+        header.addWidget(self._header_meta)
         header.addStretch()
 
         self._error_label = QLabel()
@@ -361,8 +407,9 @@ class TacticalViewerScreen(QWidget):
         main_area.setContentsMargins(0, 0, 0, 0)
         main_area.setSpacing(0)
 
-        # Sidebar accents — info token for CT (cool blue), warning for T (orange-yellow)
-        self._ct_sidebar = PlayerSidebar("CT", tokens.info)
+        # Side semantics per the design constraints: CT = chart_line_primary
+        # (cyan), T = chart_line_secondary (orange) — same hues the map dots use.
+        self._ct_sidebar = PlayerSidebar("CT", tokens.chart_line_primary)
         self._ct_sidebar.setFixedWidth(200)
         self._ct_sidebar.player_clicked.connect(self._on_player_select)
         main_area.addWidget(self._ct_sidebar)
@@ -422,7 +469,7 @@ class TacticalViewerScreen(QWidget):
 
         main_area.addWidget(map_container, 1)
 
-        self._t_sidebar = PlayerSidebar("T", tokens.warning)
+        self._t_sidebar = PlayerSidebar("T", tokens.chart_line_secondary)
         self._t_sidebar.setFixedWidth(200)
         self._t_sidebar.player_clicked.connect(self._on_player_select)
         main_area.addWidget(self._t_sidebar)
@@ -443,7 +490,7 @@ class TacticalViewerScreen(QWidget):
             f"border-top: 1px solid {tokens.border_subtle}; "
             f"}}"
         )
-        panel.setFixedHeight(130)
+        panel.setFixedHeight(164)
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(
             tokens.spacing_md, tokens.spacing_xs, tokens.spacing_md, tokens.spacing_xs
@@ -454,47 +501,61 @@ class TacticalViewerScreen(QWidget):
         row1 = QHBoxLayout()
         row1.setSpacing(12)
 
+        # Standard selectors live in their own container so Ghost Mode can
+        # swap the row for its ghost/align selectors without relayout churn.
+        self._std_selector_row = QWidget()
+        std_row = QHBoxLayout(self._std_selector_row)
+        std_row.setContentsMargins(0, 0, 0, 0)
+        std_row.setSpacing(12)
+
         self._map_combo = QComboBox()
         self._map_combo.setFixedWidth(140)
         self._map_combo.currentTextChanged.connect(self._on_map_changed)
         self._map_label = QLabel(i18n.get_text("select_map") + ":")
-        row1.addWidget(self._map_label)
-        row1.addWidget(self._map_combo)
+        std_row.addWidget(self._map_label)
+        std_row.addWidget(self._map_combo)
 
         self._round_combo = QComboBox()
         self._round_combo.setFixedWidth(120)
         self._round_combo.currentTextChanged.connect(self._on_round_changed)
         self._round_label = QLabel(i18n.get_text("select_round") + ":")
-        row1.addWidget(self._round_label)
-        row1.addWidget(self._round_combo)
+        std_row.addWidget(self._round_label)
+        std_row.addWidget(self._round_combo)
 
-        self._tick_label = QLabel("Tick 0")
+        self._tick_label = QLabel("Tick: 0")
         self._tick_label.setObjectName("tick_counter")
         self._tick_label.setMinimumWidth(120)
-        row1.addWidget(self._tick_label)
+        std_row.addWidget(self._tick_label)
+        row1.addWidget(self._std_selector_row)
 
         row1.addStretch()
 
-        self._ghost_check = QCheckBox("Ghost AI")
+        self._ghost_check = QCheckBox(i18n.get_text("tactical.ghost_ai", "Ghost AI"))
         self._ghost_check.setObjectName("ghost_toggle")
         self._ghost_check.toggled.connect(self._ghost_vm.set_active)
         row1.addWidget(self._ghost_check)
 
+        # CM marks — toggles the map movement trails (frame 13).
+        self._cm_marks_check = QCheckBox(i18n.get_text("tactical.cm_marks", "CM marks"))
+        self._cm_marks_check.setObjectName("ghost_toggle")
+        self._cm_marks_check.setChecked(True)
+        self._cm_marks_check.toggled.connect(self._map_widget.set_trails_enabled)
+        row1.addWidget(self._cm_marks_check)
+
         layout.addLayout(row1)
 
         # Row 2: playback controls.
-        # Unicode transport glyphs render via system font fallback; we keep
-        # setObjectName("playback_control") so the tight-padding QSS rule
-        # overrides the global QPushButton padding (otherwise 8px 20px on
-        # a 40x40 fixed-size button clips the glyph to zero width — that
-        # was the "blank buttons" bug the user reported post-P1).
+        # setObjectName("playback_control") keeps the tight-padding QSS rule
+        # that overrides the global QPushButton padding (otherwise 8px 20px
+        # on a fixed-size button clips the content — the "blank buttons"
+        # bug reported post-P1).
         row2 = QHBoxLayout()
         row2.setSpacing(8)
 
         # R4 MED: CM transport starts DISABLED — the old buttons took
         # clicks and did nothing while _critical_moments was empty (nothing
         # ever called scan_match). They enable when a scan finds moments.
-        prev_cm_btn = QPushButton("⏮")  # ⏮ Skip backward
+        prev_cm_btn = _TransportIconButton("prev")
         prev_cm_btn.setObjectName("playback_control")
         prev_cm_btn.setFixedSize(40, 40)
         prev_cm_btn.setCursor(Qt.PointingHandCursor)
@@ -504,15 +565,17 @@ class TacticalViewerScreen(QWidget):
         row2.addWidget(prev_cm_btn)
         self._prev_cm_btn = prev_cm_btn
 
-        self._play_btn = QPushButton("▶")  # ▶ Play
+        # Frame 13 labels the play control with text, not a glyph — and the
+        # old ▶/⏸ pair was half-tofu offscreen (U+23F8 has no fallback).
+        self._play_btn = QPushButton(i18n.get_text("tactical.play", "Play"))
         self._play_btn.setObjectName("playback_control")
-        self._play_btn.setFixedSize(48, 40)
+        self._play_btn.setFixedSize(72, 40)
         self._play_btn.setCursor(Qt.PointingHandCursor)
         self._play_btn.setToolTip("Play / Pause")
         self._play_btn.clicked.connect(self._toggle_playback)
         row2.addWidget(self._play_btn)
 
-        next_cm_btn = QPushButton("⏭")  # ⏭ Skip forward
+        next_cm_btn = _TransportIconButton("next")
         next_cm_btn.setObjectName("playback_control")
         next_cm_btn.setFixedSize(40, 40)
         next_cm_btn.setCursor(Qt.PointingHandCursor)
@@ -544,6 +607,22 @@ class TacticalViewerScreen(QWidget):
         # Timeline
         self._timeline = TimelineWidget()
         layout.addWidget(self._timeline)
+
+        # Footer strip: chronovisor summary left, demo meta right (frame 13).
+        footer_row = QHBoxLayout()
+        footer_row.setSpacing(tokens.spacing_md)
+        self._footer_left = MonoFooter()
+        self._footer_left.setWordWrap(False)
+        footer_row.addWidget(self._footer_left)
+        footer_row.addStretch()
+        self._footer_right = MonoFooter()
+        self._footer_right.setWordWrap(False)
+        self._footer_right.setVisible(False)
+        footer_row.addWidget(self._footer_right)
+        layout.addLayout(footer_row)
+        self._cm_count = 0
+        self._demo_meta: dict | None = None
+        self._update_chronovisor_footer()
 
         return panel
 
@@ -831,12 +910,10 @@ class TacticalViewerScreen(QWidget):
         self._ct_sidebar.clear_all()
         self._t_sidebar.clear_all()
 
-        # Update map
+        # Update map (also reloads its zone layer and drops trail history)
         self._map_widget.set_map(map_name)
-
-        # Header chip — surfaces the current map identity at a glance
-        self._map_chip.set_label(f"Map · {map_name.replace('de_', '').upper()}")
-        self._map_chip.set_severity("online")
+        self._map_widget.set_score_info(None)
+        self._map_widget.set_bomb(None)
 
         # Publish map + segments + events to the web marquee (no-op
         # when WebEngine path is off).
@@ -864,9 +941,12 @@ class TacticalViewerScreen(QWidget):
         # default-64 path made 128-tick demos play at half speed).
         self._playback_vm.load_frames(frames, tick_rate=self._resolve_demo_tick_rate())
 
-        # Update timeline
+        # Update timeline (round-boundary dividers from the segment map)
         self._timeline.max_tick = self._playback_vm.total_ticks
         self._timeline.set_events(events)
+        self._timeline.set_round_marks(list((segments or {}).values()))
+        self._timeline.set_critical_moments([])
+        self._update_header_meta()
 
         # Round combo
         self._round_combo.blockSignals(True)
@@ -901,21 +981,97 @@ class TacticalViewerScreen(QWidget):
         ghosts = self._ghost_vm.predict_ghosts(frame.players)
         self._map_widget.update_map(frame.players, frame.nades, ghosts, frame.tick)
 
+        # FIELD-GAP: InterpolatedFrame carries no scoreboard/bomb fields
+        # today — the score strip and C4 marker render only when a payload
+        # superset provides them (em-dash / hidden otherwise).
+        self._map_widget.set_score_info(self._compose_score(getattr(frame, "score", None)))
+        bomb = getattr(frame, "bomb", None)
+        self._map_widget.set_bomb(bomb if isinstance(bomb, dict) else None)
+
         ct_players = [p for p in frame.players if p.team == Team.CT]
         t_players = [p for p in frame.players if p.team == Team.T]
         selected = self._map_widget.selected_player_id
         self._ct_sidebar.update_players(ct_players, selected)
         self._t_sidebar.update_players(t_players, selected)
 
+    def _compose_score(self, score) -> "dict | None":
+        """Frame payload score fields → score-box display dict ("—" absent)."""
+        if not isinstance(score, dict):
+            return None
+
+        def fmt(value):
+            return "—" if value in (None, "") else str(value)
+
+        t_name = str(score.get("t_name") or "").upper()
+        caption_parts = []
+        if score.get("round_no") is not None:
+            caption_parts.append(
+                f"{i18n.get_text('tactical.meta_round', 'round')} {score['round_no']}"
+            )
+        if score.get("time_remaining"):
+            remaining = i18n.get_text("tactical.remaining", "remaining")
+            caption_parts.append(f"{score['time_remaining']} {remaining}")
+        if score.get("bomb_planted"):
+            caption_parts.append(i18n.get_text("tactical.bomb_planted", "bomb planted"))
+        if score.get("ghost_note"):
+            caption_parts.append(str(score["ghost_note"]))
+        return {
+            "t_label": f"T · {t_name}" if t_name else "T",
+            "t_score": fmt(score.get("t_score")),
+            "ct_score": fmt(score.get("ct_score")),
+            "ct_label": "CT",
+            "caption": " · ".join(caption_parts),
+        }
+
+    def _update_header_meta(self):
+        """Compose `{demo} · round {n} · tick {t}` (frame 13)."""
+        parts = [getattr(self, "_loaded_demo_stem", None) or "—"]
+        digits = "".join(ch for ch in self._round_combo.currentText() if ch.isdigit())
+        if digits:
+            parts.append(f"{i18n.get_text('tactical.meta_round', 'round')} {int(digits)}")
+        tick = self._playback_vm.get_current_tick()
+        parts.append(f"{i18n.get_text('tactical.meta_tick', 'tick')} {tick:,}")
+        text = " · ".join(parts)
+        if text != self._header_meta.text():
+            self._header_meta.setText(text)
+
+    def _update_chronovisor_footer(self):
+        template = i18n.get_text(
+            "tactical.footer_chronovisor",
+            "ChronovisorScanner · 3 scales (micro/standard/macro) · "
+            "{n} critical moments detected this round",
+        )
+        self._footer_left.setText(template.replace("{n}", str(self._cm_count)))
+
+    def set_demo_meta(self, meta: "dict | None") -> None:
+        """Right footer: `{source} · {size} MB · {parser}` from whatever the
+        loader can provide. FIELD-GAP: DemoLoader returns no such metadata
+        today — the footer stays hidden until a payload supplies it."""
+        self._demo_meta = meta if isinstance(meta, dict) else None
+        parts = []
+        if self._demo_meta:
+            if self._demo_meta.get("source"):
+                parts.append(str(self._demo_meta["source"]))
+            if self._demo_meta.get("size_mb") is not None:
+                parts.append(f"{self._demo_meta['size_mb']} MB")
+            if self._demo_meta.get("parser"):
+                parts.append(str(self._demo_meta["parser"]))
+        self._footer_right.setText(" · ".join(parts))
+        self._footer_right.setVisible(bool(parts))
+
     def _update_tick_ui(self):
         tick = self._playback_vm.get_current_tick()
-        self._tick_label.setText(f"Tick {tick:,}")
+        self._tick_label.setText(f"{i18n.get_text('tactical.tick', 'Tick')}: {tick:,}")
         self._timeline.current_tick = tick
+        self._update_header_meta()
         playing = self._playback_vm.is_playing
-        # U+23F8 is the pause glyph; U+25B6 the play glyph. The "state"
-        # property drives the QSS accent-fill rule (#playback_control
-        # [state="playing"]) so the button visually reflects the mode.
-        self._play_btn.setText("⏸" if playing else "▶")
+        # The "state" property drives the QSS accent-fill rule
+        # (#playback_control[state="playing"]) so the button reflects the mode.
+        label = i18n.get_text("tactical.pause", "Pause") if playing else i18n.get_text(
+            "tactical.play", "Play"
+        )
+        if self._play_btn.text() != label:
+            self._play_btn.setText(label)
         self._play_btn.setProperty("state", "playing" if playing else "")
         self._play_btn.style().unpolish(self._play_btn)
         self._play_btn.style().polish(self._play_btn)
@@ -936,6 +1092,8 @@ class TacticalViewerScreen(QWidget):
 
     def _on_seek(self, tick: int):
         self._playback_vm.seek_to_tick(tick)
+        # A jump invalidates continuous movement history (frame-13 trails).
+        self._map_widget.clear_trails()
 
     # ── Player Selection ──
 
@@ -977,6 +1135,10 @@ class TacticalViewerScreen(QWidget):
                 continue
             btn.setEnabled(has_moments)
             btn.setToolTip(f"{label} ({count} found)" if has_moments else f"{label} (none found)")
+        # Frame 13: star markers on the timeline + chronovisor footer count.
+        self._timeline.set_critical_moments(cms or [])
+        self._cm_count = int(count or 0)
+        self._update_chronovisor_footer()
 
     def _start_chronovisor_scan(self) -> None:
         """Best-effort CM scan for the demo just loaded (R4 MED wiring).

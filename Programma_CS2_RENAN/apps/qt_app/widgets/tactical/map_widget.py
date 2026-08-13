@@ -1,11 +1,13 @@
 """QPainter-based 2D tactical map — renders players, grenades, and ghosts."""
 
+import json
 import math
 import os
+from collections import deque
 from typing import List, Optional
 
 from PySide6.QtCore import QPointF, QRectF, Qt, Signal
-from PySide6.QtGui import QColor, QFontMetrics, QPainter, QPen, QPixmap, QPolygonF
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen, QPixmap, QPolygonF
 from PySide6.QtWidgets import QWidget
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
@@ -46,6 +48,67 @@ def _with_alpha(color: QColor, alpha: int) -> QColor:
     return c
 
 
+# Trails keep the last N interpolated positions per player (frame 13 spec).
+TRAIL_MAX_POINTS = 40
+# 35% alpha for trail polylines (frame-13 movement-history treatment).
+_TRAIL_ALPHA = 89
+
+
+def _caption_font(*, mono: bool = False, bold: bool = False) -> QFont:
+    """Caption-sized font for painted annotations — size read from tokens."""
+    f = Typography.font("mono" if mono else "body", QFont.Bold if bold else None)
+    f.setPointSize(get_tokens().font_size_caption)
+    return f
+
+
+def load_map_zones(map_name: str) -> list[dict]:
+    """Load named-zone rects for ``map_name`` from ``assets/map_zones/``.
+
+    Schema: ``{"map": ..., "zones": [{"name", "x", "y", "w", "h", "label",
+    "major"?}]}`` with coordinates normalized 0-1 in radar space. Returns
+    a validated list; unknown maps / missing files / malformed entries
+    degrade to ``[]`` so the viewer never breaks on a map without zones.
+
+    Pure function (no Qt) so tests can exercise normalization directly.
+    """
+    clean = (map_name or "").lower().strip()
+    clean = clean.replace(".dem", "").replace(".vpk", "").replace("maps/", "")
+    if not clean:
+        return []
+    candidates = [clean] if clean.startswith("de_") else [clean, f"de_{clean}"]
+    for candidate in candidates:
+        path = get_resource_path(os.path.join("assets", "map_zones", f"{candidate}.json"))
+        if not os.path.exists(path):
+            continue
+        try:
+            with open(path, encoding="utf-8") as fh:
+                data = json.load(fh)
+        except (OSError, ValueError) as exc:
+            _logger.warning("Map zones unreadable for %r (%s): %s", map_name, path, exc)
+            return []
+        zones: list[dict] = []
+        for raw in data.get("zones", []) if isinstance(data, dict) else []:
+            try:
+                x, y = float(raw["x"]), float(raw["y"])
+                w, h = float(raw["w"]), float(raw["h"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            if not (0.0 <= x <= 1.0 and 0.0 <= y <= 1.0 and 0.0 < w <= 1.0 and 0.0 < h <= 1.0):
+                continue
+            zones.append(
+                {
+                    "x": x,
+                    "y": y,
+                    "w": min(w, 1.0 - x),
+                    "h": min(h, 1.0 - y),
+                    "label": str(raw.get("label", raw.get("name", ""))),
+                    "major": bool(raw.get("major", False)),
+                }
+            )
+        return zones
+    return []
+
+
 class TacticalMapWidget(QWidget):
     """2D tactical map with player/grenade rendering via QPainter."""
 
@@ -62,8 +125,15 @@ class TacticalMapWidget(QWidget):
         self._nades: List = []
         self._current_tick = 0
         self._selected_player_id: Optional[int] = None
+        # Frame-13 layers: named zones (from assets/map_zones), score box,
+        # C4 marker, and per-player movement trails.
+        self._zones: list[dict] = load_map_zones(self._map_name)
+        self._score_info: Optional[dict] = None
+        self._bomb: Optional[dict] = None
+        self._trails: dict[int, tuple[bool, deque]] = {}
+        self._trails_enabled = True
 
-        self._name_font = Typography.font("caption")
+        self._name_font = _caption_font(bold=True)  # lowercase, frame-13 style
         self._name_fm = QFontMetrics(self._name_font)
         self._pal = self._palette()
 
@@ -92,14 +162,48 @@ class TacticalMapWidget(QWidget):
             "well": QColor(t.surface_sunken),
             "hp_high": QColor(t.success),
             "hp_low": QColor(t.error),
+            "zone": _with_alpha(QColor(t.chart_axis), 170),
+            "zone_label": _with_alpha(QColor(t.text_tertiary), 200),
+            "bomb": QColor(t.warning),
+            "bomb_text": QColor(t.text_inverse),
+            "accent": QColor(t.accent_primary),
+            "overlay_bg": _with_alpha(QColor(t.surface_base), 178),
         }
 
     # ── Public API ──
 
     def set_map(self, map_name: str):
         self._map_name = map_name
+        self._zones = load_map_zones(map_name)
+        self._trails.clear()
         self._load_map_image()
         self.update()
+
+    def set_score_info(self, info: Optional[dict]):
+        """Score-box overlay data (frame 13): ``{"t_label", "t_score",
+        "ct_score", "ct_label", "caption"}`` — absent values pre-composed
+        by the screen as em-dashes. ``None`` hides the box."""
+        if self._score_info != info:
+            self._score_info = info or None
+            self.update()
+
+    def set_bomb(self, bomb: Optional[dict]):
+        """C4 marker: ``{"x", "y"}`` world coords (``None`` hides it)."""
+        if self._bomb != bomb:
+            self._bomb = bomb or None
+            self.update()
+
+    def set_trails_enabled(self, enabled: bool):
+        """Toggle movement-trail polylines (driven by the CM-marks toggle)."""
+        if self._trails_enabled != bool(enabled):
+            self._trails_enabled = bool(enabled)
+            self.update()
+
+    def clear_trails(self):
+        """Drop trail history — called on seek / round or map change."""
+        if self._trails:
+            self._trails.clear()
+            self.update()
 
     def update_map(
         self,
@@ -112,6 +216,22 @@ class TacticalMapWidget(QWidget):
         self._nades = nades or []
         self._ghosts = ghosts or []
         self._current_tick = tick
+        for p in players or []:
+            if not getattr(p, "is_alive", True):
+                continue
+            entry = self._trails.get(p.player_id)
+            if entry is None:
+                is_ct = (
+                    p.team == Team.CT
+                    if isinstance(p.team, Team)
+                    else "CT" in str(p.team).upper()
+                )
+                entry = (is_ct, deque(maxlen=TRAIL_MAX_POINTS))
+                self._trails[p.player_id] = entry
+            points = entry[1]
+            pos = (float(p.x), float(p.y))
+            if not points or points[-1] != pos:
+                points.append(pos)
         self.update()
 
     @property
@@ -201,16 +321,31 @@ class TacticalMapWidget(QWidget):
             painter.drawPixmap(int(ox), int(oy), self._scaled_pixmap)
         else:
             painter.fillRect(QRectF(ox, oy, ms, ms), self._pal["well"])
-            painter.setPen(self._pal["muted"])
-            painter.drawText(
-                QRectF(ox, oy, ms, ms),
-                Qt.AlignCenter,
-                f"Map: {self._map_name}",
-            )
+            if not self._zones:
+                # The named-zone outlines are the map sketch when present;
+                # only a zone-less map needs the identifying fallback text.
+                painter.setPen(self._pal["muted"])
+                painter.drawText(
+                    QRectF(ox, oy, ms, ms),
+                    Qt.AlignCenter,
+                    f"Map: {self._map_name}",
+                )
+
+        # Layer 1.5: named-zone outlines + labels — UNDER everything dynamic
+        if self._zones:
+            self._draw_zones(painter, ms, ox, oy)
+
+        # Layer 1.75: movement trails (under grenades and players)
+        if self._trails_enabled and self._trails:
+            self._draw_trails(painter)
 
         # Layer 2: Grenades
         for nade in self._nades:
             self._draw_nade(painter, nade)
+
+        # Layer 2.5: planted C4 marker
+        if self._bomb is not None:
+            self._draw_bomb(painter)
 
         # Layer 3: Ghosts
         for ghost in self._ghosts:
@@ -220,7 +355,109 @@ class TacticalMapWidget(QWidget):
         for player in self._players:
             self._draw_player(painter, player)
 
+        # Layer 5: score box overlay (topmost)
+        if self._score_info:
+            self._draw_score_box(painter)
+
         painter.end()
+
+    # ── Zone / trail / bomb / score layers (frame 13) ──
+
+    def _draw_zones(self, p: QPainter, ms: float, ox: float, oy: float):
+        p.setBrush(Qt.NoBrush)
+        p.setPen(QPen(self._pal["zone"], 1))
+        for zone in self._zones:
+            p.drawRect(
+                QRectF(ox + zone["x"] * ms, oy + zone["y"] * ms, zone["w"] * ms, zone["h"] * ms)
+            )
+        p.setPen(self._pal["zone_label"])
+        for zone in self._zones:
+            if not zone["label"]:
+                continue
+            p.setFont(
+                Typography.font("title") if zone["major"] else _caption_font()
+            )
+            p.drawText(
+                QRectF(ox + zone["x"] * ms, oy + zone["y"] * ms, zone["w"] * ms, zone["h"] * ms),
+                Qt.AlignCenter,
+                zone["label"],
+            )
+
+    def _draw_trails(self, p: QPainter):
+        p.setBrush(Qt.NoBrush)
+        for is_ct, points in self._trails.values():
+            if len(points) < 2:
+                continue
+            color = _with_alpha(self._pal["ct" if is_ct else "t"], _TRAIL_ALPHA)
+            p.setPen(QPen(color, 1))
+            polyline = QPolygonF([QPointF(*self._world_to_screen(x, y)) for x, y in points])
+            p.drawPolyline(polyline)
+
+    def _draw_bomb(self, p: QPainter):
+        try:
+            sx, sy = self._world_to_screen(float(self._bomb["x"]), float(self._bomb["y"]))
+        except (KeyError, TypeError, ValueError):
+            return
+        center = QPointF(sx, sy)
+        p.setPen(Qt.NoPen)
+        p.setBrush(self._pal["bomb"])
+        p.drawEllipse(center, 11, 11)
+        p.setPen(self._pal["bomb_text"])
+        p.setFont(_caption_font(mono=True, bold=True))
+        p.drawText(QRectF(sx - 11, sy - 11, 22, 22), Qt.AlignCenter, "C4")
+        p.setBrush(Qt.NoBrush)
+        p.setPen(QPen(_with_alpha(self._pal["accent"], 180), 1.5))
+        p.drawEllipse(center, 18, 18)
+
+    def _score_box_anchor_right(self) -> bool:
+        """Score box pins top-left by default (frame 13)."""
+        return False
+
+    def _draw_score_box(self, p: QPainter):
+        info = self._score_info
+        t = get_tokens()
+        bold_body = Typography.font("body", QFont.Bold)
+        score_font = Typography.font("subtitle")
+        cap_font = _caption_font()
+
+        segments = [
+            (str(info.get("t_label", "")), self._pal["t"], bold_body),
+            (f'  {info.get("t_score", "—")}', self._pal["text"], score_font),
+            (" — ", self._pal["muted"], bold_body),
+            (f'{info.get("ct_score", "—")}  ', self._pal["text"], score_font),
+            (str(info.get("ct_label", "")), self._pal["ct"], bold_body),
+        ]
+        line1_w = sum(QFontMetrics(f).horizontalAdvance(s) for s, _c, f in segments)
+        line1_h = max(QFontMetrics(f).height() for _s, _c, f in segments)
+        caption = str(info.get("caption", ""))
+        cap_fm = QFontMetrics(cap_font)
+        cap_h = cap_fm.height() if caption else 0
+
+        pad = t.spacing_md
+        box_w = max(line1_w, cap_fm.horizontalAdvance(caption)) + 2 * pad
+        box_h = pad + line1_h + (t.spacing_xs + cap_h if caption else 0) + pad
+        x = (
+            self.width() - t.spacing_lg - box_w
+            if self._score_box_anchor_right()
+            else t.spacing_lg
+        )
+        y = t.spacing_lg
+
+        p.setPen(Qt.NoPen)
+        p.setBrush(self._pal["overlay_bg"])
+        p.drawRoundedRect(QRectF(x, y, box_w, box_h), t.radius_sm, t.radius_sm)
+
+        cx = x + pad
+        baseline = y + pad + QFontMetrics(score_font).ascent()
+        for text, color, font in segments:
+            p.setFont(font)
+            p.setPen(color)
+            p.drawText(QPointF(cx, baseline), text)
+            cx += QFontMetrics(font).horizontalAdvance(text)
+        if caption:
+            p.setFont(cap_font)
+            p.setPen(self._pal["muted"])
+            p.drawText(QPointF(x + pad, baseline + t.spacing_xs + cap_fm.ascent()), caption)
 
     # ── Player Drawing ──
 
@@ -278,11 +515,14 @@ class TacticalMapWidget(QWidget):
             p.drawPolygon(cone)
             p.restore()
 
-        # Player name (above)
-        p.setPen(self._pal["text"])
-        p.setFont(self._name_font)
-        tw = self._name_fm.horizontalAdvance(player.name)
-        p.drawText(int(px - tw / 2), int(py - r - 4), player.name)
+        # Player name (above) — selected player only, in team color
+        # (frame 13 labels exactly one dot; naming all ten is unreadable
+        # over the radar).
+        if player.player_id == self._selected_player_id and not is_ghost:
+            p.setPen(self._pal["t" if not is_ct else "ct"])
+            p.setFont(self._name_font)
+            tw = self._name_fm.horizontalAdvance(player.name)
+            p.drawText(int(px - tw / 2), int(py - r - 4), player.name)
 
         # Health bar (below)
         if player.is_alive:
