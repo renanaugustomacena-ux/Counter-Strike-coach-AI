@@ -9,10 +9,10 @@ its own color so glance-value doesn't depend on reading the delta text.
 from typing import Literal, Optional
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 
 _TrendDir = Literal["up", "down", "flat"]
 
@@ -59,13 +59,13 @@ class StatBadge(QWidget):
         # Value label (large)
         self._value_label = QLabel(value)
         self._value_label.setAlignment(Qt.AlignCenter)
-        self._value_label.setFont(QFont("Roboto", tokens.font_size_stat, QFont.Bold))
+        self._value_label.setFont(Typography.font("stat"))
         layout.addWidget(self._value_label)
 
         # Description label (small)
         self._label = QLabel(label)
         self._label.setAlignment(Qt.AlignCenter)
-        self._label.setFont(QFont("Roboto", tokens.font_size_caption))
+        self._label.setFont(Typography.font("caption"))
         self._label.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
         layout.addWidget(self._label)
 
@@ -76,9 +76,9 @@ class StatBadge(QWidget):
         trend_row.setAlignment(Qt.AlignCenter)
 
         self._trend_arrow = QLabel("")
-        self._trend_arrow.setFont(QFont("Roboto", tokens.font_size_caption, QFont.Bold))
+        self._trend_arrow.setFont(Typography.font("caption"))
         self._trend_delta = QLabel("")
-        self._trend_delta.setFont(QFont("JetBrains Mono", tokens.font_size_caption, QFont.Medium))
+        self._trend_delta.setFont(Typography.font("mono"))
         trend_row.addWidget(self._trend_arrow)
         trend_row.addWidget(self._trend_delta)
         layout.addLayout(trend_row)

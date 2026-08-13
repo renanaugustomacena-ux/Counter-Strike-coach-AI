@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.core.demo_frame import Team
 from Programma_CS2_RENAN.core.playback_engine import InterpolatedPlayerState
 
@@ -30,7 +31,7 @@ class _PlayerItem(QFrame):
         self.setCursor(Qt.PointingHandCursor)
         self.setStyleSheet(
             "QFrame { background: transparent; border-radius: 6px; padding: 4px; }"
-            "QFrame:hover { background: rgba(255,255,255,0.05); }"
+            f"QFrame:hover {{ background: {get_tokens().border_subtle}; }}"
         )
 
         layout = QHBoxLayout(self)
@@ -46,7 +47,7 @@ class _PlayerItem(QFrame):
         info = QVBoxLayout()
         info.setSpacing(0)
         self._name_label = QLabel()
-        self._name_label.setFont(QFont("Roboto", 10, QFont.Bold))
+        self._name_label.setFont(Typography.font("body", QFont.Bold))
         self._name_label.setStyleSheet(
             f"color: {get_tokens().text_primary}; background: transparent;"
         )
@@ -60,9 +61,9 @@ class _PlayerItem(QFrame):
         layout.addLayout(info, 1)
 
         self._weapon_label = QLabel()
-        self._weapon_label.setFont(QFont("JetBrains Mono", 9))
+        self._weapon_label.setFont(Typography.font("mono"))
         self._weapon_label.setStyleSheet(
-            "color: #808090; background: transparent; letter-spacing: 1px;"
+            f"color: {get_tokens().text_secondary}; background: transparent; letter-spacing: 1px;"
         )
         self._weapon_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         layout.addWidget(self._weapon_label)
@@ -106,12 +107,13 @@ class _PlayerItem(QFrame):
 
         if is_selected:
             self.setStyleSheet(
-                "QFrame { background: rgba(40, 50, 70, 0.8); border-radius: 6px; padding: 4px; }"
+                f"QFrame {{ background: {get_tokens().frost_bg}; "
+                "border-radius: 6px; padding: 4px; }"
             )
         else:
             self.setStyleSheet(
                 "QFrame { background: transparent; border-radius: 6px; padding: 4px; }"
-                "QFrame:hover { background: rgba(255,255,255,0.05); }"
+                f"QFrame:hover {{ background: {get_tokens().border_subtle}; }}"
             )
 
     def mousePressEvent(self, event):
@@ -133,7 +135,7 @@ class _LivePlayerCard(QFrame):
         layout.setSpacing(4)
 
         self._name_label = QLabel()
-        self._name_label.setFont(QFont("Roboto", 12, QFont.Bold))
+        self._name_label.setFont(Typography.font("subtitle"))
         self._name_label.setAlignment(Qt.AlignCenter)
         self._name_label.setStyleSheet(f"color: {get_tokens().text_primary};")
         layout.addWidget(self._name_label)
@@ -194,13 +196,16 @@ class _LivePlayerCard(QFrame):
         else:
             hp_color = get_tokens().error  # error
         self._hp_bar.setStyleSheet(
-            "QProgressBar { background-color: rgba(0,0,0,0.35); border: none; border-radius: 3px; }"
+            f"QProgressBar {{ background-color: {get_tokens().frost_bg}; "
+            "border: none; border-radius: 3px; }"
             f"QProgressBar::chunk {{ background-color: {hp_color}; border-radius: 3px; }}"
         )
         self._armor_bar.setValue(player.armor)
         self._armor_bar.setStyleSheet(
-            "QProgressBar { background-color: rgba(0,0,0,0.35); border: none; border-radius: 3px; }"
-            "QProgressBar::chunk { background-color: #4a9eff; border-radius: 3px; }"
+            f"QProgressBar {{ background-color: {get_tokens().frost_bg}; "
+            "border: none; border-radius: 3px; }"
+            f"QProgressBar::chunk {{ background-color: {get_tokens().info}; "
+            "border-radius: 3px; }"
         )
         self._money_label.setText(f"${player.money:,}")
         self._kda_label.setText(f"{player.kills} / {player.deaths} / {player.assists}")
@@ -218,10 +223,12 @@ class PlayerSidebar(QWidget):
 
     player_clicked = Signal(object)  # Steam IDs exceed int32
 
-    def __init__(self, team_name: str = "TEAM", team_color: str = "#dcdcdc", parent=None):
+    def __init__(self, team_name: str = "TEAM", team_color: str | None = None, parent=None):
         super().__init__(parent)
         self._team_name = team_name
-        self._team_color = team_color
+        # Default resolves at construction time so it theme-tracks; both
+        # tactical viewer call sites pass an explicit token color.
+        self._team_color = team_color or get_tokens().text_primary
         self._player_items: Dict[int, _PlayerItem] = {}
 
         layout = QVBoxLayout(self)
@@ -232,11 +239,11 @@ class PlayerSidebar(QWidget):
         # Tells the eye "CT" / "T" instantly, mirrors Frame-13 tactical
         # viewer spec.
         header = QLabel(team_name.upper())
-        header.setFont(QFont("JetBrains Mono", 13, QFont.Bold))
+        header.setFont(Typography.font("mono", QFont.Bold))
         header.setStyleSheet(
-            f"color: {team_color};"
+            f"color: {self._team_color};"
             f"padding: 10px 12px;"
-            f"border-left: 3px solid {team_color};"
+            f"border-left: 3px solid {self._team_color};"
             "letter-spacing: 2px;"
             "background: transparent;"
         )

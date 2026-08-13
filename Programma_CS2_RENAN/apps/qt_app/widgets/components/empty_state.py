@@ -18,11 +18,11 @@ from pathlib import Path
 from typing import Optional
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.apps.qt_app.core.widgets_helpers import make_button
 
 # Project-root-relative base so design frames resolve in source-layout
@@ -81,7 +81,7 @@ class EmptyState(QWidget):
         # Icon (text fallback / companion)
         self._icon_label = QLabel(icon_text)
         self._icon_label.setAlignment(Qt.AlignCenter)
-        self._icon_label.setFont(QFont("Roboto", 48))
+        self._icon_label.setFont(Typography.font("display"))
         self._icon_label.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
         if icon_text and self._svg is None:
             layout.addWidget(self._icon_label)
@@ -91,7 +91,7 @@ class EmptyState(QWidget):
         # Title
         self._title_label = QLabel(title)
         self._title_label.setAlignment(Qt.AlignCenter)
-        self._title_label.setFont(QFont("Roboto", tokens.font_size_title, QFont.Bold))
+        self._title_label.setFont(Typography.font("title"))
         self._title_label.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
         self._title_label.setWordWrap(True)
         layout.addWidget(self._title_label)
@@ -99,7 +99,7 @@ class EmptyState(QWidget):
         # Description
         self._desc_label = QLabel(description)
         self._desc_label.setAlignment(Qt.AlignCenter)
-        self._desc_label.setFont(QFont("Roboto", tokens.font_size_body))
+        self._desc_label.setFont(Typography.font("body"))
         self._desc_label.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
         self._desc_label.setWordWrap(True)
         if description:

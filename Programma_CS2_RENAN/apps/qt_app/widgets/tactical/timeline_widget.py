@@ -3,16 +3,19 @@
 from typing import Callable, List, Optional
 
 from PySide6.QtCore import QRectF, Qt
-from PySide6.QtGui import QColor, QFont, QPainter
+from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QWidget
 
+from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.core.demo_frame import EventType, GameEvent
 
-COLOR_BG = QColor(51, 51, 51)
-COLOR_PROGRESS = QColor(77, 179, 77)
-COLOR_KILL = QColor(230, 51, 51, 204)
-COLOR_PLANT = QColor(230, 204, 51, 204)
-COLOR_DEFUSE = QColor(51, 153, 230, 204)
+
+def _with_alpha(color: QColor, alpha: int) -> QColor:
+    """Return a copy of ``color`` with the given 0-255 alpha."""
+    c = QColor(color)
+    c.setAlpha(alpha)
+    return c
 
 
 class TimelineWidget(QWidget):
@@ -27,6 +30,22 @@ class TimelineWidget(QWidget):
 
         self.setFixedHeight(40)
         self.setMouseTracking(False)
+
+    def _palette(self) -> dict[str, QColor]:
+        """Token-derived paint palette, refreshed each paintEvent.
+
+        Reading get_tokens() per paint keeps the timeline theme-tracking.
+        Marker alphas (204) mirror the retired module constants.
+        """
+        t = get_tokens()
+        return {
+            "bg": QColor(t.surface_sunken),
+            "progress": QColor(t.accent_primary),
+            "kill": _with_alpha(QColor(t.error), 204),
+            "plant": _with_alpha(QColor(t.warning), 204),
+            "defuse": _with_alpha(QColor(t.info), 204),
+            "empty_text": _with_alpha(QColor(t.text_secondary), 204),
+        }
 
     # ── Public API ──
 
@@ -63,30 +82,31 @@ class TimelineWidget(QWidget):
         p.setRenderHint(QPainter.Antialiasing)
         w = self.width()
         h = self.height()
+        pal = self._palette()
 
         # Background
-        p.fillRect(0, 0, w, h, COLOR_BG)
+        p.fillRect(0, 0, w, h, pal["bg"])
 
         if self._max_tick <= 0:
             # Empty state
-            p.setPen(QColor(128, 128, 128, 204))
-            p.setFont(QFont("Roboto", 10))
+            p.setPen(pal["empty_text"])
+            p.setFont(Typography.font("body"))
             p.drawText(QRectF(0, 0, w, h), Qt.AlignCenter, "Load a demo to enable timeline")
             p.end()
             return
 
         # Progress bar
         ratio = self._current_tick / self._max_tick
-        p.fillRect(QRectF(0, 0, w * ratio, h), COLOR_PROGRESS)
+        p.fillRect(QRectF(0, 0, w * ratio, h), pal["progress"])
 
         # Event markers
         for evt in self._game_events:
             if evt.event_type == EventType.KILL:
-                p.fillRect(self._marker_rect(evt, w, h, 0.5), COLOR_KILL)
+                p.fillRect(self._marker_rect(evt, w, h, 0.5), pal["kill"])
             elif evt.event_type == EventType.BOMB_PLANT:
-                p.fillRect(self._marker_rect(evt, w, h, 1.0), COLOR_PLANT)
+                p.fillRect(self._marker_rect(evt, w, h, 1.0), pal["plant"])
             elif evt.event_type == EventType.BOMB_DEFUSE:
-                p.fillRect(self._marker_rect(evt, w, h, 1.0), COLOR_DEFUSE)
+                p.fillRect(self._marker_rect(evt, w, h, 1.0), pal["defuse"])
 
         p.end()
 

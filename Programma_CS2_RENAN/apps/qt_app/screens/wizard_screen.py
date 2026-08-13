@@ -4,7 +4,6 @@ import errno
 import os
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
@@ -127,7 +126,7 @@ class WizardScreen(QWidget):
         lay.setSpacing(16)
 
         welcome = QLabel("Welcome to Macena CS2 Analyzer")
-        welcome.setFont(QFont("Roboto", 18, QFont.Bold))
+        welcome.setFont(Typography.font("title"))
         welcome.setAlignment(Qt.AlignCenter)
         welcome.setStyleSheet(f"color: {get_tokens().text_primary};")
         lay.addWidget(welcome)
@@ -277,7 +276,7 @@ class WizardScreen(QWidget):
         lay.setSpacing(16)
 
         done = QLabel("You're all set!")
-        done.setFont(QFont("Roboto", 18, QFont.Bold))
+        done.setFont(Typography.font("title"))
         done.setAlignment(Qt.AlignCenter)
         done.setStyleSheet(f"color: {get_tokens().text_primary};")
         lay.addWidget(done)

@@ -1,7 +1,6 @@
 """User Profile screen — displays player name, role, bio with edit dialog."""
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
@@ -23,15 +22,23 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.qt_user_profile")
 
-_ROLE_COLORS = {
-    "entry": "#ff3333",
-    "entry fragger": "#ff3333",
-    "awper": "#3399ff",
-    "lurker": "#9933cc",
-    "support": "#33cc33",
-    "igl": "#ffcc00",
-    "all-rounder": "#808080",
+# Role → semantic token field. Resolved through get_tokens() at render
+# time so role colors theme-track (CS2 / CSGO / CS1.6).
+_ROLE_TOKEN_FIELDS = {
+    "entry": "error",
+    "entry fragger": "error",
+    "awper": "info",
+    "lurker": "warning",
+    "support": "success",
+    "igl": "accent_primary",
+    "all-rounder": "text_secondary",
 }
+
+
+def _role_color(role: str) -> str:
+    """Return the token color for a player role (unknown → text_secondary)."""
+    field = _ROLE_TOKEN_FIELDS.get(role.lower(), "text_secondary")
+    return getattr(get_tokens(), field)
 
 
 class UserProfileScreen(QWidget):
@@ -102,13 +109,15 @@ class UserProfileScreen(QWidget):
 
         self._name_label = QLabel("Player")
         self._name_label.setAlignment(Qt.AlignCenter)
-        self._name_label.setFont(QFont("Roboto", 18, QFont.Bold))
+        self._name_label.setFont(Typography.font("title"))
         self._name_label.setStyleSheet(f"color: {get_tokens().text_primary};")
         avatar_section.addWidget(self._name_label)
 
         self._role_label = QLabel("All-Rounder")
         self._role_label.setAlignment(Qt.AlignCenter)
-        self._role_label.setStyleSheet("color: #808080; font-size: 14px; font-weight: bold;")
+        self._role_label.setStyleSheet(
+            f"color: {get_tokens().text_secondary}; font-size: 14px; font-weight: bold;"
+        )
         avatar_section.addWidget(self._role_label)
 
         self._content_layout.addLayout(avatar_section)
@@ -119,7 +128,7 @@ class UserProfileScreen(QWidget):
         bio_layout = QVBoxLayout(bio_card)
         bio_layout.setSpacing(4)
         self._bio_title = QLabel(i18n.get_text("bio"))
-        self._bio_title.setFont(QFont("Roboto", 14, QFont.Bold))
+        self._bio_title.setFont(Typography.font("subtitle"))
         self._bio_title.setStyleSheet(f"color: {get_tokens().text_primary};")
         bio_layout.addWidget(self._bio_title)
         self._bio_label = QLabel("No description yet.")
@@ -161,7 +170,7 @@ class UserProfileScreen(QWidget):
         self._bio_label.setText(bio)
 
         # Role with color
-        color = _ROLE_COLORS.get(role.lower(), "#808080")
+        color = _role_color(role)
         self._role_label.setText(role)
         self._role_label.setStyleSheet(f"color: {color}; font-size: 14px; font-weight: bold;")
 

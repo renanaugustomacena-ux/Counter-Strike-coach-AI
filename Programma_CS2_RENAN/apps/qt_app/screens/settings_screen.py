@@ -384,7 +384,7 @@ class SettingsScreen(QWidget):
             text_col = QVBoxLayout()
             text_col.setSpacing(2)
             name_label = QLabel(label_text)
-            name_label.setFont(QFont("Roboto", 13, QFont.DemiBold))
+            name_label.setFont(Typography.font("body", QFont.DemiBold))
             name_label.setStyleSheet(
                 f"color: {get_tokens().text_primary}; background: transparent;"
             )

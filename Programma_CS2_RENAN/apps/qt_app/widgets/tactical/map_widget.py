@@ -5,9 +5,11 @@ import os
 from typing import List, Optional
 
 from PySide6.QtCore import QPointF, QRectF, Qt, Signal
-from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen, QPixmap, QPolygonF
+from PySide6.QtGui import QColor, QFontMetrics, QPainter, QPen, QPixmap, QPolygonF
 from PySide6.QtWidgets import QWidget
 
+from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.core.config import get_resource_path
 from Programma_CS2_RENAN.core.demo_frame import NadeType, Team
 from Programma_CS2_RENAN.core.playback_engine import InterpolatedPlayerState
@@ -21,23 +23,27 @@ TICK_RATE = DEFAULT_TICK_RATE
 PLAYER_RADIUS = 8
 HITBOX_MULTIPLIER = 2.5
 
-CT_COLOR = QColor(77, 128, 255)
-T_COLOR = QColor(255, 153, 51)
-DEAD_COLOR = QColor(128, 128, 128, 128)
-SELECTED_COLOR = QColor(255, 255, 255, 204)
-
 GRENADE_RADII = {
     NadeType.HE: 350,
     NadeType.MOLOTOV: 180,
     NadeType.SMOKE: 144,
     NadeType.FLASH: 1000,
 }
-GRENADE_OVERLAY_COLORS = {
-    NadeType.HE: QColor(255, 51, 51),
-    NadeType.MOLOTOV: QColor(255, 128, 0),
-    NadeType.SMOKE: QColor(153, 153, 153),
-    NadeType.FLASH: QColor(255, 255, 77),
+
+# Grenade type → semantic palette key (resolved in _palette per paint).
+_NADE_PALETTE_KEYS = {
+    NadeType.HE: "he",
+    NadeType.MOLOTOV: "molotov",
+    NadeType.SMOKE: "smoke",
+    NadeType.FLASH: "flash",
 }
+
+
+def _with_alpha(color: QColor, alpha: int) -> QColor:
+    """Return a copy of ``color`` with the given 0-255 alpha."""
+    c = QColor(color)
+    c.setAlpha(alpha)
+    return c
 
 
 class TacticalMapWidget(QWidget):
@@ -57,11 +63,36 @@ class TacticalMapWidget(QWidget):
         self._current_tick = 0
         self._selected_player_id: Optional[int] = None
 
-        self._name_font = QFont("Roboto", 7)
+        self._name_font = Typography.font("caption")
         self._name_fm = QFontMetrics(self._name_font)
+        self._pal = self._palette()
 
         self.setMinimumSize(200, 200)
         self.setMouseTracking(False)
+
+    def _palette(self) -> dict[str, QColor]:
+        """Token-derived paint palette, refreshed each paintEvent.
+
+        Reading get_tokens() per paint keeps the map theme-tracking
+        (CS2 / CSGO / CS1.6). Baked alphas mirror the retired module
+        constants (dead 128, selected 204).
+        """
+        t = get_tokens()
+        return {
+            "ct": QColor(t.chart_line_primary),
+            "t": QColor(t.chart_line_secondary),
+            "dead": _with_alpha(QColor(t.text_disabled), 128),
+            "selected": _with_alpha(QColor(t.accent_primary), 204),
+            "he": QColor(t.warning),
+            "molotov": QColor(t.error),
+            "smoke": QColor(t.text_secondary),
+            "flash": QColor(t.info),
+            "text": QColor(t.text_primary),
+            "muted": QColor(t.text_secondary),
+            "well": QColor(t.surface_sunken),
+            "hp_high": QColor(t.success),
+            "hp_low": QColor(t.error),
+        }
 
     # ── Public API ──
 
@@ -155,6 +186,10 @@ class TacticalMapWidget(QWidget):
         painter.setRenderHint(QPainter.Antialiasing)
         ms, ox, oy = self._map_geometry()
 
+        # Refresh the token palette once per paint (cheap dict of QColors)
+        # so every layer below theme-tracks.
+        self._pal = self._palette()
+
         # Layer 1: Map image (cached rescale — only recomputed on resize/map change)
         if self._map_pixmap and not self._map_pixmap.isNull():
             ms_int = int(ms)
@@ -165,8 +200,8 @@ class TacticalMapWidget(QWidget):
                 self._cached_map_size = ms_int
             painter.drawPixmap(int(ox), int(oy), self._scaled_pixmap)
         else:
-            painter.fillRect(QRectF(ox, oy, ms, ms), QColor(25, 25, 30))
-            painter.setPen(QColor(150, 150, 150))
+            painter.fillRect(QRectF(ox, oy, ms, ms), self._pal["well"])
+            painter.setPen(self._pal["muted"])
             painter.drawText(
                 QRectF(ox, oy, ms, ms),
                 Qt.AlignCenter,
@@ -199,11 +234,11 @@ class TacticalMapWidget(QWidget):
         )
 
         if not player.is_alive:
-            color = QColor(DEAD_COLOR)
+            color = QColor(self._pal["dead"])
         elif is_ct:
-            color = QColor(CT_COLOR)
+            color = QColor(self._pal["ct"])
         else:
-            color = QColor(T_COLOR)
+            color = QColor(self._pal["t"])
 
         if is_ghost or getattr(player, "is_ghost", False):
             color.setAlpha(77)
@@ -213,7 +248,7 @@ class TacticalMapWidget(QWidget):
         # Selection highlight
         if player.player_id == self._selected_player_id:
             p.setPen(Qt.NoPen)
-            p.setBrush(SELECTED_COLOR)
+            p.setBrush(self._pal["selected"])
             p.drawEllipse(QPointF(px, py), r + 4, r + 4)
 
         # Player circle
@@ -244,7 +279,7 @@ class TacticalMapWidget(QWidget):
             p.restore()
 
         # Player name (above)
-        p.setPen(QColor(255, 255, 255))
+        p.setPen(self._pal["text"])
         p.setFont(self._name_font)
         tw = self._name_fm.horizontalAdvance(player.name)
         p.drawText(int(px - tw / 2), int(py - r - 4), player.name)
@@ -255,8 +290,9 @@ class TacticalMapWidget(QWidget):
             bar_h = 2
             bar_x = px - r
             bar_y = py + r + 2
-            p.fillRect(QRectF(bar_x, bar_y, bar_w, bar_h), QColor(0, 0, 0, 128))
-            hp_color = QColor(0, 255, 0, 204) if player.hp > 50 else QColor(255, 0, 0, 204)
+            p.fillRect(QRectF(bar_x, bar_y, bar_w, bar_h), _with_alpha(self._pal["well"], 128))
+            hp_key = "hp_high" if player.hp > 50 else "hp_low"
+            hp_color = _with_alpha(self._pal[hp_key], 204)
             p.fillRect(QRectF(bar_x, bar_y, bar_w * (player.hp / 100.0), bar_h), hp_color)
 
     # ── Grenade Drawing ──
@@ -296,16 +332,16 @@ class TacticalMapWidget(QWidget):
                 age = (self._current_tick - nade.starting_tick) / float(TICK_RATE)
                 size = min(85, 20 + age * 18) if age > 0 else 60
                 p.setPen(Qt.NoPen)
-                p.setBrush(QColor(179, 179, 204, 89))
+                p.setBrush(_with_alpha(self._pal["smoke"], 89))
                 p.drawEllipse(QPointF(sx, sy), size / 2, size / 2)
-                p.setBrush(QColor(230, 230, 255, 26))
+                p.setBrush(_with_alpha(self._pal["text"], 26))
                 p.drawEllipse(QPointF(sx, sy), size * 0.4, size * 0.4)
             elif nade.nade_type == NadeType.MOLOTOV:
                 pulse = 0.5 + 0.15 * math.sin(self._current_tick / TICK_RATE * 8)
                 p.setPen(Qt.NoPen)
-                p.setBrush(QColor(255, 77, 0, int(pulse * 255)))
+                p.setBrush(_with_alpha(self._pal["molotov"], int(pulse * 255)))
                 p.drawEllipse(QPointF(sx, sy), 25, 25)
-                p.setBrush(QColor(255, 179, 0, int((0.2 + pulse * 0.2) * 255)))
+                p.setBrush(_with_alpha(self._pal["he"], int((0.2 + pulse * 0.2) * 255)))
                 p.drawEllipse(QPointF(sx, sy), 15, 15)
 
             # Duration progress arc
@@ -313,14 +349,14 @@ class TacticalMapWidget(QWidget):
             if total_ticks > 0:
                 progress = 1.0 - ((self._current_tick - nade.starting_tick) / total_ticks)
                 if progress > 0:
-                    p.setPen(QPen(QColor(255, 255, 255, 153), 2))
+                    p.setPen(QPen(_with_alpha(self._pal["text"], 153), 2))
                     p.setBrush(Qt.NoBrush)
                     span = int(progress * 360 * 16)
                     p.drawArc(QRectF(sx - 10, sy - 10, 20, 20), 90 * 16, span)
 
         # Central dot
         p.setPen(Qt.NoPen)
-        p.setBrush(QColor(255, 255, 255))
+        p.setBrush(self._pal["text"])
         p.drawEllipse(QPointF(sx, sy), 3, 3)
 
     def _draw_detonation_overlay(self, p: QPainter, nade, sx, sy):
@@ -328,7 +364,7 @@ class TacticalMapWidget(QWidget):
         if radius_units is None:
             return
 
-        color = GRENADE_OVERLAY_COLORS.get(nade.nade_type, QColor(255, 255, 255))
+        color = self._pal[_NADE_PALETTE_KEYS.get(nade.nade_type, "text")]
         origin_px, _ = self._world_to_screen(nade.x, nade.y)
         edge_px, _ = self._world_to_screen(nade.x + radius_units, nade.y)
         pixel_radius = abs(edge_px - origin_px)
@@ -373,14 +409,7 @@ class TacticalMapWidget(QWidget):
         if base_alpha <= 0:
             return
 
-        if nade.nade_type == NadeType.SMOKE:
-            rgb = (179, 179, 204)
-        elif nade.nade_type == NadeType.MOLOTOV:
-            rgb = (255, 102, 0)
-        elif nade.nade_type == NadeType.FLASH:
-            rgb = (255, 255, 255)
-        else:
-            rgb = (255, 51, 51)
+        base = self._pal[_NADE_PALETTE_KEYS.get(nade.nade_type, "he")]
 
         min_z = min(pt[2] for pt in nade.trajectory)
         max_z = max(pt[2] for pt in nade.trajectory)
@@ -400,7 +429,7 @@ class TacticalMapWidget(QWidget):
                 rel_h = (wz - min_z) / z_range
                 seg_width = 1.0 + rel_h * 2.5
                 seg_alpha = int(base_alpha * (0.6 + rel_h * 0.4) * 255)
-                p.setPen(QPen(QColor(rgb[0], rgb[1], rgb[2], seg_alpha), seg_width))
+                p.setPen(QPen(_with_alpha(base, seg_alpha), seg_width))
                 p.drawLine(QPointF(last_sx, last_sy), QPointF(sx, sy))
 
             last_sx, last_sy = sx, sy
@@ -410,7 +439,7 @@ class TacticalMapWidget(QWidget):
             ax, ay, _ = nade.trajectory[apex_idx]
             apx, apy = self._world_to_screen(ax, ay)
             p.setPen(Qt.NoPen)
-            p.setBrush(QColor(255, 255, 255, int(base_alpha * 0.8 * 255)))
+            p.setBrush(_with_alpha(self._pal["text"], int(base_alpha * 0.8 * 255)))
             p.drawEllipse(QPointF(apx, apy), 3, 3)
 
     # ── Mouse Handling ──

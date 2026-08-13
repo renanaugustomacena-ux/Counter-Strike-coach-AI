@@ -1,7 +1,7 @@
 """FaceIT configuration screen — API key setup."""
 
 from PySide6.QtCore import Qt, QTimer, QUrl
-from PySide6.QtGui import QDesktopServices, QFont
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -73,9 +73,10 @@ class FaceitConfigScreen(QWidget):
             )
             warn.setWordWrap(True)
             warn.setStyleSheet(
-                "color: #ffcc00; background-color: #332b00; "
-                "border: 1px solid #665500; border-radius: 4px; "
-                "padding: 8px; font-size: 13px;"
+                f"color: {get_tokens().warning}; "
+                f"background-color: {get_tokens().toast_warning_bg}; "
+                f"border: 1px solid {get_tokens().toast_warning_border}; "
+                "border-radius: 4px; padding: 8px; font-size: 13px;"
             )
             layout.addWidget(warn)
 
@@ -86,7 +87,7 @@ class FaceitConfigScreen(QWidget):
         card_layout.setSpacing(8)
 
         card_title = QLabel("FaceIT API Key")
-        card_title.setFont(QFont("Roboto", 14, QFont.Bold))
+        card_title.setFont(Typography.font("subtitle"))
         card_title.setStyleSheet(f"color: {get_tokens().text_primary};")
         card_layout.addWidget(card_title)
 

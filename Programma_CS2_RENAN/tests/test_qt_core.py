@@ -394,3 +394,52 @@ class TestThemeEngine:
         # a color. (The previous hard-coded `#1a1a1a` survived ec0a24a's
         # re-theming and broke CI once install got past numpy==2.4.3.)
         assert engine.chart_bg == CS2_TOKENS.chart_bg
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 6. Typography (role fonts for painters and non-QLabel widgets)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestTypography:
+    """Test Typography.font() role sizing and the optional weight override."""
+
+    def test_font_role_sizes_come_from_tokens(self, qapp):
+        from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+        from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
+
+        tokens = get_tokens()
+        assert Typography.font("title").pointSize() == tokens.font_size_title
+        assert Typography.font("body").pointSize() == tokens.font_size_body
+        assert Typography.font("stat").pointSize() == tokens.font_size_stat
+
+    def test_font_weight_override_applies(self, qapp):
+        from PySide6.QtGui import QFont
+
+        from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
+
+        default = Typography.font("body")
+        assert default.weight() == QFont.Normal
+
+        bold = Typography.font("body", QFont.Bold)
+        assert bold.weight() == QFont.Bold
+        # Weight override must not disturb the role's size or family.
+        assert bold.pointSize() == default.pointSize()
+        assert bold.family() == default.family()
+
+    def test_font_mono_keeps_mono_family(self, qapp):
+        from PySide6.QtGui import QFont
+
+        from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
+
+        mono_bold = Typography.font("mono", QFont.Bold)
+        assert "Mono" in mono_bold.family()
+        assert mono_bold.weight() == QFont.Bold
+
+    def test_font_unknown_role_falls_back_to_body(self, qapp):
+        from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
+
+        fallback = Typography.font("no_such_role")
+        body = Typography.font("body")
+        assert fallback.pointSize() == body.pointSize()
+        assert fallback.family() == body.family()

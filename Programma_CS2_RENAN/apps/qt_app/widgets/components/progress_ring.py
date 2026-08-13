@@ -5,10 +5,11 @@ Draws a background arc and a foreground arc proportional to the value.
 """
 
 from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import QColor, QConicalGradient, QFont, QPainter, QPen
+from PySide6.QtGui import QColor, QConicalGradient, QPainter, QPen
 from PySide6.QtWidgets import QWidget
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 
 
 class ProgressRing(QWidget):
@@ -71,11 +72,13 @@ class ProgressRing(QWidget):
         span_angle = -int(self._value * 360 * 16)
         painter.drawArc(rect, start_angle, span_angle)
 
-        # Center text
+        # Center text — stat role family/weight, point size scaled to the
+        # ring diameter (geometry math, not a design constant).
         if self._show_text:
             painter.setPen(QColor(tokens.text_primary))
-            font_size = max(9, side // 5)
-            painter.setFont(QFont("Roboto", font_size, QFont.Bold))
+            font = Typography.font("stat")
+            font.setPointSize(max(9, side // 5))
+            painter.setFont(font)
             painter.drawText(self.rect(), Qt.AlignCenter, f"{int(self._value * 100)}%")
 
         painter.end()

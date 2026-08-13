@@ -25,10 +25,11 @@ Depth tiers (opt-in via ``depth=`` kwarg):
 
 from typing import Literal
 
-from PySide6.QtGui import QColor, QFont
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QFrame, QGraphicsDropShadowEffect, QLabel, QVBoxLayout, QWidget
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 _logger = get_logger("cs2analyzer.qt_app.card")
@@ -77,7 +78,7 @@ class Card(QFrame):
 
         # Title
         self._title_label = QLabel(title)
-        self._title_label.setFont(QFont("Roboto", tokens.font_size_subtitle, QFont.Bold))
+        self._title_label.setFont(Typography.font("subtitle"))
         self._title_label.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
         if title:
             self._layout.addWidget(self._title_label)

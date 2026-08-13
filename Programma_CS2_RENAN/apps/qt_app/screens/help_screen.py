@@ -1,7 +1,6 @@
 """Help screen — two-panel topic browser with search."""
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -14,7 +13,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
+from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.qt_help")
@@ -151,9 +152,9 @@ class HelpScreen(QWidget):
         layout.setSpacing(12)
 
         self._title_label = QLabel(i18n.get_text("help_center"))
+        # QLabel#section_title QSS rule provides the token-driven font
+        # and text_inverse color — no per-widget literals needed.
         self._title_label.setObjectName("section_title")
-        self._title_label.setFont(QFont("Roboto", 22, QFont.Bold))
-        self._title_label.setStyleSheet("color: #ffffff;")
         layout.addWidget(self._title_label)
 
         # Two-panel layout
@@ -177,7 +178,9 @@ class HelpScreen(QWidget):
         self._topic_list.setStyleSheet(
             "QListWidget { font-size: 15px; }"
             "QListWidget::item { padding: 8px 12px; }"
-            "QListWidget::item:selected { background: #2a2a3a; color: #ffffff; }"
+            "QListWidget::item:selected { "
+            f"background: {get_tokens().surface_raised}; "
+            f"color: {get_tokens().text_primary}; }}"
         )
         self._topic_list.currentItemChanged.connect(self._on_topic_selected)
         left_layout.addWidget(self._topic_list, 1)
@@ -193,9 +196,10 @@ class HelpScreen(QWidget):
         self._content_label.setWordWrap(True)
         self._content_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         self._content_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        self._content_label.setFont(QFont("Roboto", 14))
+        self._content_label.setFont(Typography.font("body"))
         self._content_label.setStyleSheet(
-            "color: #e0e0e0; line-height: 1.6; padding: 16px; " "background: transparent;"
+            f"color: {get_tokens().text_primary}; line-height: 1.6; padding: 16px; "
+            "background: transparent;"
         )
         right_scroll.setWidget(self._content_label)
 
