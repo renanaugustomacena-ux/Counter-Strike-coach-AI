@@ -35,11 +35,25 @@ class CoachingChatViewModel(QObject):
         self._stream_buf = ""
         self._stream_dirty = False
 
-    def _ensure_engine(self):
-        if self._engine is None:
-            from Programma_CS2_RENAN.backend.services.coaching_dialogue import get_dialogue_engine
+    def _ensure_engine(self) -> bool:
+        """Lazily import the dialogue engine; returns False when unavailable.
 
-            self._engine = get_dialogue_engine()
+        The import can fail transiently (concurrent first-import of the
+        sqlalchemy stack from a Worker thread) or permanently (backend
+        missing) — the chat must degrade to offline, never crash the UI.
+        """
+        if self._engine is None:
+            try:
+                from Programma_CS2_RENAN.backend.services.coaching_dialogue import (
+                    get_dialogue_engine,
+                )
+
+                self._engine = get_dialogue_engine()
+            except Exception:  # noqa: BLE001 — degraded chat beats a dead screen
+                logger.exception("coaching dialogue engine unavailable — chat offline")
+                self.is_available_changed.emit(False)
+                return False
+        return True
 
     # ── Public API ──
 
@@ -47,14 +61,16 @@ class CoachingChatViewModel(QObject):
         """Check availability, then start session if available (no race condition)."""
         self._pending_player = player_name
         self._pending_demo = demo_name
-        self._ensure_engine()
+        if not self._ensure_engine():
+            return
         worker = Worker(self._bg_check)
         worker.signals.result.connect(self._on_availability_then_start)
         worker.signals.error.connect(self._on_error)
         QThreadPool.globalInstance().start(worker)
 
     def check_availability(self):
-        self._ensure_engine()
+        if not self._ensure_engine():
+            return
         worker = Worker(self._bg_check)
         worker.signals.result.connect(self._on_availability)
         worker.signals.error.connect(self._on_error)
@@ -63,7 +79,8 @@ class CoachingChatViewModel(QObject):
     def start_session(self, player_name: str, demo_name: str | None = None):
         if self._session_active:
             return
-        self._ensure_engine()
+        if not self._ensure_engine():
+            return
         self.is_loading_changed.emit(True)
         worker = Worker(self._bg_start, player_name, demo_name)
         worker.signals.result.connect(self._on_session_started)
@@ -74,7 +91,8 @@ class CoachingChatViewModel(QObject):
         text = text.strip()
         if not text:
             return
-        self._ensure_engine()
+        if not self._ensure_engine():
+            return
 
         with self._lock:
             self._messages.append({"role": "user", "content": text})
@@ -95,7 +113,8 @@ class CoachingChatViewModel(QObject):
 
     def clear_session(self):
         self.cancel_response()
-        self._ensure_engine()
+        if not self._ensure_engine():
+            return
         # QT-02: Wrap engine call in Worker to avoid main-thread freeze
         worker = Worker(self._engine.clear_session)
         worker.signals.finished.connect(self._on_session_cleared)

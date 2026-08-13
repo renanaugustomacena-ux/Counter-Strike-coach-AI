@@ -231,14 +231,6 @@ def load_user_settings() -> dict:
             "USE_RAG_COACHING": False,
             "USE_RAP_MODEL": False,
             "ZOMBIE_TASK_THRESHOLD_SECONDS": 300,
-            # Cluster D — Coach screen as QDockWidget. Persists user's
-            # preferred dock arrangement across launches.
-            "COACH_DOCK_VISIBLE": False,
-            "COACH_DOCK_FLOATING": False,
-            "COACH_DOCK_AREA": "right",  # "right" | "bottom"
-            # DOCK-01: saved floating geometry (base64 QByteArray); empty =
-            # never floated with a restorable geometry -> boot re-docked.
-            "COACH_DOCK_GEOMETRY": "",
             # Cluster E — LLM Coach: Ollama model selected from CoachScreen.
             # Empty string = use OLLAMA_MODEL env var or hard default.
             "LLM_COACH_MODEL": "",

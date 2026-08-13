@@ -9,7 +9,6 @@ from pathlib import Path
 from PySide6.QtCore import QEvent, QPoint, Qt, Signal
 from PySide6.QtGui import QKeySequence, QPainter, QPixmap, QShortcut
 from PySide6.QtWidgets import (
-    QDockWidget,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -27,32 +26,6 @@ from Programma_CS2_RENAN.apps.qt_app.widgets.components.nav_sidebar import NAV_I
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.qt_main_window")
-
-
-def _restore_dock_state(dock, floating: bool, geometry_b64: str) -> bool:
-    """DOCK-01: apply persisted float state to a dock — float only when a
-    saved geometry restores successfully; anything else re-docks.
-
-    Returns True when the dock ends up floating. A geometry-less or
-    corrupt restore must NOT float: Qt would spawn the dock as a small
-    default-size window in front of the main window (the 2026-08-03
-    "mini window" boot regression).
-    """
-    if not floating or not geometry_b64:
-        dock.setFloating(False)
-        return False
-    from PySide6.QtCore import QByteArray
-
-    dock.setFloating(True)
-    try:
-        restored = dock.restoreGeometry(QByteArray.fromBase64(geometry_b64.encode("ascii")))
-    except Exception:  # noqa: BLE001 — corrupt persisted state must never crash boot
-        logger.warning("coach dock geometry restore failed", exc_info=True)
-        restored = False
-    if not restored:
-        dock.setFloating(False)
-        return False
-    return True
 
 
 class _CustomTitleBar(QFrame):
@@ -318,94 +291,12 @@ class MainWindow(QMainWindow):
     def register_screen(self, name: str, widget: QWidget):
         """Add a screen widget to the stack.
 
-        The 'coach' screen is special-cased as a dockable side panel
-        (QDockWidget) so users can float / pin to right or bottom / hide it.
-        Other screens go into the QStackedWidget as before.
+        Coach registers like every other screen since the frames-06/07
+        redesign — the QDockWidget pathway (and its DOCK-01 float-restore
+        contract) was removed with it.
         """
-        if name == "coach":
-            self._register_coach_dock(widget)
-            return
         idx = self._stack.addWidget(widget)
         self._screens[name] = idx
-
-    def _register_coach_dock(self, widget: QWidget) -> None:
-        """Wrap CoachScreen in a QDockWidget pinned to the right side.
-
-        Persists visibility/floating/geometry state in user_settings.json
-        so the next launch restores the user's preferred dock arrangement.
-        """
-        from Programma_CS2_RENAN.core.config import get_setting, save_user_setting
-
-        # R4 MED: i18n.tr() resolved to QObject.tr (no such override on
-        # QtLocalizationManager) — with no QTranslator installed it returned
-        # the literal key "nav.coach" as the dock title.
-        dock = QDockWidget(i18n.get_text("nav.coach", "Coach"), self)
-        dock.setObjectName("coach_dock")
-        dock.setAllowedAreas(Qt.RightDockWidgetArea | Qt.BottomDockWidgetArea)
-        dock.setFeatures(
-            QDockWidget.DockWidgetClosable
-            | QDockWidget.DockWidgetMovable
-            | QDockWidget.DockWidgetFloatable
-        )
-        dock.setWidget(widget)
-
-        # Restore persisted state. Default: hidden, pinned to right.
-        saved_area = get_setting("COACH_DOCK_AREA", "right")
-        area = Qt.BottomDockWidgetArea if saved_area == "bottom" else Qt.RightDockWidgetArea
-        self.addDockWidget(area, dock)
-
-        # DOCK-01 (2026-08-03): floating restores ONLY with a restorable
-        # geometry. Restoring a geometry-less float spawned the dock as a
-        # small default-size window (GNOME Wayland: min+close CSD only,
-        # close merely hides a dock) IN FRONT of the main window — users
-        # saw "the app" boot as a broken mini window.
-        floating = bool(get_setting("COACH_DOCK_FLOATING", False))
-        saved_geometry = str(get_setting("COACH_DOCK_GEOMETRY", "") or "")
-        _restore_dock_state(dock, floating, saved_geometry)
-        visible = bool(get_setting("COACH_DOCK_VISIBLE", False))
-        dock.setVisible(visible)
-
-        def _save_dock_geometry() -> None:
-            try:
-                geo = bytes(dock.saveGeometry().toBase64()).decode("ascii")
-                save_user_setting("COACH_DOCK_GEOMETRY", geo)
-            except Exception:  # noqa: BLE001 — persistence is best-effort
-                logger.debug("coach dock geometry save failed", exc_info=True)
-
-        # Persist on user-driven changes.
-        def _on_top_level_changed(is_floating: bool) -> None:
-            save_user_setting("COACH_DOCK_FLOATING", bool(is_floating))
-            if is_floating:
-                _save_dock_geometry()
-
-        def _on_dock_location_changed(new_area: Qt.DockWidgetArea) -> None:
-            label = "bottom" if new_area == Qt.BottomDockWidgetArea else "right"
-            save_user_setting("COACH_DOCK_AREA", label)
-
-        def _on_visibility_changed(is_visible: bool) -> None:
-            # Only persist when the user toggles via the close button — the
-            # initial setVisible() calls above also fire this signal, but
-            # they happen before user interaction, so guard with a one-shot.
-            if not getattr(self, "_coach_dock_init_done", False):
-                return
-            # R4 MED: visibilityChanged(False) also fires when the main
-            # window is minimized or destroyed at close — persisting those
-            # non-user hides clobbered COACH_DOCK_VISIBLE to False on every
-            # app exit, so the dock never restored visible.
-            if not is_visible and (self.isMinimized() or not self.isVisible()):
-                return
-            # DOCK-01: closing a floating dock should reopen it where it
-            # was — capture the geometry as part of the same user gesture.
-            if not is_visible and dock.isFloating():
-                _save_dock_geometry()
-            save_user_setting("COACH_DOCK_VISIBLE", bool(is_visible))
-
-        dock.topLevelChanged.connect(_on_top_level_changed)
-        dock.dockLocationChanged.connect(_on_dock_location_changed)
-        dock.visibilityChanged.connect(_on_visibility_changed)
-
-        self._coach_dock = dock
-        self._coach_dock_init_done = True
 
     def _sound(self):
         """Lazy singleton SoundManager (R4 MED: it was never instantiated,
@@ -429,21 +320,8 @@ class MainWindow(QMainWindow):
         return mgr
 
     def switch_screen(self, name: str):
-        """Navigate to a named screen with a fade transition.
-
-        The 'coach' screen toggles its QDockWidget visibility instead of
-        switching the stack — the sidebar 'Coach' nav becomes a show/hide
-        toggle for the dock panel.
-        """
+        """Navigate to a named screen."""
         self._sound().play("click")
-        if name == "coach":
-            dock = getattr(self, "_coach_dock", None)
-            if dock is not None:
-                visible = not dock.isVisible()
-                dock.setVisible(visible)
-                if visible:
-                    dock.raise_()
-            return
         if name not in self._screens:
             logger.warning("switch_screen: unknown screen '%s'", name)
             return

@@ -98,6 +98,13 @@ def main() -> int:
 
     app = QApplication.instance() or QApplication(sys.argv)
 
+    # Preload the DB stack on the main thread: screens' on_enter workers and
+    # main-thread lazy imports otherwise race sqlalchemy's first import.
+    try:
+        import sqlmodel  # noqa: F401
+    except ImportError:
+        pass
+
     import ui_fixtures
     from Programma_CS2_RENAN.apps.qt_app import app as qt_app_module
     from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import ThemeEngine
