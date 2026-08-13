@@ -190,6 +190,36 @@ MATCH_DETAIL_HLTV: dict[str, float] = {
     "Kill": 1.32, "Survival": 1.12, "KAST": 1.08, "Impact": 1.28, "Damage": 1.41,
 }
 
+# Critical moments — keys mirror chronovisor_scanner.CriticalMoment.to_dict()
+# plus a display-only "round" (the scanner result carries no round number).
+MATCH_DETAIL_MOMENTS: list[dict[str, Any]] = [
+    {
+        "description": "1v2 clutch win on palace", "type": "play", "round": 4,
+        "start_tick": 61440, "peak_tick": 61888, "end_tick": 62220,
+        "severity": 0.42, "scale": "standard",
+    },
+    {
+        "description": "Over-peek jungle vs mid-hold", "type": "mistake", "round": 3,
+        "start_tick": 48120, "peak_tick": 48310, "end_tick": 48540,
+        "severity": 0.38, "scale": "micro",
+    },
+    {
+        "description": "Post-plant hold failed", "type": "mistake", "round": 9,
+        "start_tick": 118400, "peak_tick": 118750, "end_tick": 119100,
+        "severity": 0.35, "scale": "standard",
+    },
+    {
+        "description": "Retake 2v4 win", "type": "play", "round": 16,
+        "start_tick": 201300, "peak_tick": 201740, "end_tick": 202150,
+        "severity": 0.51, "scale": "macro",
+    },
+    {
+        "description": "Opening pick at palace", "type": "play", "round": 11,
+        "start_tick": 142080, "peak_tick": 142200, "end_tick": 142380,
+        "severity": 0.22, "scale": "micro",
+    },
+]
+
 # ── Training status (frame 05) — keys mirror AppState.training_changed ──
 
 TRAINING_STATUS: dict[str, Any] = {
@@ -236,6 +266,9 @@ def inject_match_history(screen: Any) -> None:
 
 
 def inject_match_detail(screen: Any) -> None:
+    # Moments first (no rebuild yet — the payload lands right after and
+    # builds every tab exactly once).
+    screen.set_critical_moments([dict(m) for m in MATCH_DETAIL_MOMENTS])
     screen._on_data(
         dict(MATCH_DETAIL_STATS),
         [dict(r) for r in MATCH_DETAIL_ROUNDS],

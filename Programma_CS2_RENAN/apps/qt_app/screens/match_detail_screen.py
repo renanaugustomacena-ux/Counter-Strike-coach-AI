@@ -126,6 +126,7 @@ class MatchDetailScreen(QWidget):
         self._demo_name: str = ""
         self._payload: tuple | None = None
         self._tab_index: dict[str, int] = {}
+        self._moments: list[dict] = []
         self._build_ui()
 
     # ── Lifecycle ──
@@ -134,6 +135,7 @@ class MatchDetailScreen(QWidget):
         """Called externally (from match list / dashboard recent strip)."""
         self._demo_name = demo_name
         self._payload = None
+        self._moments = []  # stale moments must never leak across matches
         self._title_label.setText(self._compose_title(demo_name))
         self._tabs.setVisible(False)
         self._empty_state.set_title(i18n.get_text("md_loading", "Loading match details…"))
@@ -906,7 +908,22 @@ class MatchDetailScreen(QWidget):
         box.addWidget(footer)
         return host
 
-    # ── Tab: Economy ──
+    # ── Tab: Economy (frame 11) ──
+
+    # CS2 buy-classification thresholds (equipment $) — frame-11 captions.
+    _FULL_BUY_MIN = 4500
+    _FORCE_BUY_MIN = 3000
+
+    @staticmethod
+    def _half_round(rounds: list) -> int:
+        """1-based round number opening the second half; 0 = unknown."""
+        first = rounds[0].get("side") if rounds else None
+        if first in ("CT", "T"):
+            for r in rounds[1:]:
+                side = r.get("side")
+                if side in ("CT", "T") and side != first:
+                    return int(r.get("round_number") or 0)
+        return 13 if len(rounds) >= 13 else 0
 
     def _build_economy(self, rounds: list) -> QWidget:
         tokens = get_tokens()
@@ -916,20 +933,89 @@ class MatchDetailScreen(QWidget):
         content = QWidget()
         layout = QVBoxLayout(content)
         layout.setContentsMargins(0, tokens.spacing_md, 0, tokens.spacing_md)
+        layout.setSpacing(tokens.spacing_lg)
 
-        card = Card(title="Economy by round", depth="raised")
-        body = card.content_layout
+        # The chart paints its own titled chart_bg panel (frame 11 shows no
+        # outer card around it).
         chart = EconomyChart()
-        chart.setMinimumHeight(320)
+        chart.setMinimumHeight(460)
         chart.plot(rounds)
-        body.addWidget(chart)
-        layout.addWidget(card)
-        layout.addStretch(1)
+        half = self._half_round(rounds)
+        if half:
+            chart.set_half_marker(half)
+        layout.addWidget(chart, 1)
 
+        layout.addWidget(self._build_economy_band(rounds))
         scroll.setWidget(content)
         return scroll
 
-    # ── Tab: Highlights ──
+    def _build_economy_band(self, rounds: list) -> QFrame:
+        tokens = get_tokens()
+        equips = [int(r.get("equipment_value") or 0) for r in rounds]
+
+        def _side_cell(
+            side: str, label_key: str, fallback: str, color: str
+        ) -> tuple[str, str, str, str]:
+            side_rounds = [r for r in rounds if r.get("side") == side]
+            if side_rounds:
+                avg = sum(int(r.get("equipment_value") or 0) for r in side_rounds) / len(
+                    side_rounds
+                )
+                wins = sum(1 for r in side_rounds if r.get("round_won"))
+                value = f"${avg:,.0f}"
+                sub = i18n.get_text("md_eco_side_detail", "{n} rounds · {w}W · {l}L").format(
+                    n=len(side_rounds), w=wins, l=len(side_rounds) - wins
+                )
+            else:
+                value, sub = "—", ""
+            return (i18n.get_text(label_key, fallback), value, color, sub)
+
+        full = sum(1 for v in equips if v >= self._FULL_BUY_MIN)
+        force = sum(1 for v in equips if self._FORCE_BUY_MIN <= v < self._FULL_BUY_MIN)
+        eco = sum(1 for v in equips if v < self._FORCE_BUY_MIN)
+
+        cells = [
+            _side_cell("T", "md_eco_t_avg", "T-side avg equip", tokens.chart_line_secondary),
+            _side_cell("CT", "md_eco_ct_avg", "CT-side avg equip", tokens.chart_line_primary),
+            (
+                i18n.get_text("md_eco_full", "Full buys"),
+                str(full),
+                tokens.text_primary,
+                i18n.get_text("md_eco_full_cap", "≥ $4,500 threshold"),
+            ),
+            (
+                i18n.get_text("md_eco_force", "Force buys"),
+                str(force),
+                tokens.text_primary,
+                i18n.get_text("md_eco_force_cap", "$3,000-4,500"),
+            ),
+            (
+                i18n.get_text("md_eco_eco", "Eco / Save rounds"),
+                str(eco),
+                tokens.text_primary,
+                i18n.get_text("md_eco_eco_cap", "< $3,000"),
+            ),
+        ]
+        return self._build_stat_band(cells)
+
+    # ── Tab: Highlights (Locked Decision 2: momentum → moments → insights) ──
+
+    def set_critical_moments(self, moments: list) -> None:
+        """Feed Chronovisor critical moments into the Highlights tab.
+
+        Accepts dicts shaped like ``chronovisor_scanner.CriticalMoment
+        .to_dict()`` (description/type/start_tick/peak_tick/severity/scale)
+        plus an optional display-only ``round``.
+
+        FIELD-GAP: producing these in-app needs TacticalChronovisorVM
+        .scan_match(match_id) against the per-match tick DB — the
+        match-detail payload carries neither a match_id nor tick data, so
+        the caller (app shell or fixtures) supplies the list; without one
+        the tab renders a defensive empty state.
+        """
+        self._moments = [dict(m) for m in (moments or [])]
+        if self._payload is not None:
+            self._on_data(*self._payload)
 
     def _build_highlights(self, rounds: list, insights: list) -> QWidget:
         tokens = get_tokens()
@@ -941,39 +1027,133 @@ class MatchDetailScreen(QWidget):
         layout.setContentsMargins(0, tokens.spacing_md, 0, tokens.spacing_md)
         layout.setSpacing(tokens.spacing_lg)
 
-        # Insights card
-        insights_card = Card(title="Coaching insights", depth="raised")
-        insights_body = insights_card.content_layout
-        insights_body.setSpacing(tokens.spacing_md)
+        # Side-colored momentum chart — paints its own titled panel.
+        if rounds:
+            momentum = MomentumChart()
+            momentum.setMinimumHeight(300)
+            momentum.plot(rounds)
+            layout.addWidget(momentum)
 
-        if insights:
-            for ins in insights:
-                insights_body.addWidget(self._build_insight_card(ins))
-        else:
+        layout.addWidget(self._build_moments_card())
+        layout.addWidget(self._build_insights_card(insights))
+        layout.addStretch(1)
+        scroll.setWidget(content)
+        return scroll
+
+    def _build_moments_card(self) -> Card:
+        tokens = get_tokens()
+        card = Card(title=i18n.get_text("md_moments_title", "Critical Moments"), depth="raised")
+        body = card.content_layout
+        body.setSpacing(tokens.spacing_sm)
+
+        if not self._moments:
             empty = QLabel(
-                "No coaching insights for this match yet — once analysis "
-                "completes, suggestions will surface here."
+                i18n.get_text(
+                    "md_moments_empty", "No critical moments scanned for this match yet."
+                )
             )
             empty.setWordWrap(True)
             empty.setFont(Typography.font("body"))
             empty.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
-            insights_body.addWidget(empty)
+            body.addWidget(empty)
+            hint = QLabel(
+                i18n.get_text(
+                    "md_moments_empty_hint",
+                    "Run a Chronovisor scan from the Tactical Viewer to surface them.",
+                )
+            )
+            hint.setWordWrap(True)
+            hint.setFont(_mono_font(caption=True))
+            hint.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
+            body.addWidget(hint)
+            return card
 
-        layout.addWidget(insights_card)
+        for moment in self._moments:
+            body.addWidget(self._moment_row(moment))
+        return card
 
-        # Momentum chart
-        if rounds:
-            momentum_card = Card(title="Momentum", depth="raised")
-            momentum_body = momentum_card.content_layout
-            momentum = MomentumChart()
-            momentum.setMinimumHeight(260)
-            momentum.plot(rounds)
-            momentum_body.addWidget(momentum)
-            layout.addWidget(momentum_card)
+    def _moment_row(self, moment: dict) -> QFrame:
+        tokens = get_tokens()
+        kind = str(moment.get("type") or "").lower()
+        kind_color = {"play": tokens.success, "mistake": tokens.error}.get(kind, tokens.info)
+        # Same tick shown and emitted — TacticalChronovisorVM.navigate_to
+        # seeks by start_tick, so the deep-link does too.
+        tick = int(moment.get("start_tick") or moment.get("peak_tick") or 0)
 
-        layout.addStretch(1)
-        scroll.setWidget(content)
-        return scroll
+        row = QFrame()
+        row.setObjectName("surface_sunken")
+        box = QHBoxLayout(row)
+        box.setContentsMargins(
+            tokens.spacing_md, tokens.spacing_sm, tokens.spacing_md, tokens.spacing_sm
+        )
+        box.setSpacing(tokens.spacing_md)
+
+        text_col = QVBoxLayout()
+        text_col.setSpacing(tokens.spacing_xs)
+
+        title_row = QHBoxLayout()
+        title_row.setSpacing(tokens.spacing_sm)
+        kind_label = QLabel(kind.upper() if kind else "—")
+        kind_font = _mono_font(caption=True)
+        kind_font.setBold(True)
+        kind_label.setFont(kind_font)
+        kind_label.setStyleSheet(f"color: {kind_color}; background: transparent;")
+        title_row.addWidget(kind_label)
+
+        label = QLabel(str(moment.get("description") or ""))
+        label.setTextFormat(Qt.PlainText)  # FE-01: scanner/fixture-sourced text
+        label.setFont(Typography.font("body"))
+        label.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
+        title_row.addWidget(label)
+        title_row.addStretch(1)
+        text_col.addLayout(title_row)
+
+        round_no = moment.get("round")
+        if round_no:
+            meta_text = i18n.get_text("md_moment_meta", "round {round} · tick {tick}").format(
+                round=round_no, tick=f"{tick:,}"
+            )
+        else:
+            meta_text = i18n.get_text("md_moment_tick_only", "tick {tick}").format(
+                tick=f"{tick:,}"
+            )
+        meta = QLabel(meta_text)
+        meta.setFont(_mono_font(caption=True))
+        meta.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
+        text_col.addWidget(meta)
+        box.addLayout(text_col, 1)
+
+        open_btn = make_button(
+            i18n.get_text("md_moment_open", "Open in Tactical Viewer"), variant="ghost"
+        )
+        open_btn.clicked.connect(
+            lambda _=False, t=tick: self.moment_selected.emit(self._demo_name, t)
+        )
+        box.addWidget(open_btn)
+        return row
+
+    def _build_insights_card(self, insights: list) -> Card:
+        tokens = get_tokens()
+        card = Card(title=i18n.get_text("md_insights_title", "Coaching insights"), depth="raised")
+        body = card.content_layout
+        body.setSpacing(tokens.spacing_md)
+
+        if insights:
+            for ins in insights:
+                body.addWidget(self._build_insight_card(ins))
+        else:
+            empty = QLabel(
+                i18n.get_text(
+                    "md_insights_empty",
+                    "No coaching insights for this match yet — once analysis "
+                    "completes, suggestions will surface here.",
+                )
+            )
+            empty.setWordWrap(True)
+            empty.setFont(Typography.font("body"))
+            empty.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
+            body.addWidget(empty)
+        return card
 
     def _build_insight_card(self, ins: dict) -> QFrame:
         tokens = get_tokens()
@@ -1021,7 +1201,7 @@ class MatchDetailScreen(QWidget):
 
         focus = ins.get("focus_area")
         if focus:
-            focus_label = QLabel(f"Focus  ·  {focus}")
+            focus_label = QLabel(i18n.get_text("md_insight_focus", "Focus · {area}").format(area=focus))
             focus_label.setTextFormat(Qt.PlainText)
             focus_label.setFont(Typography.font("caption"))
             focus_label.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
