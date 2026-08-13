@@ -253,8 +253,9 @@ to update their labels dynamically.
    consistent theming via QSS.
 4. **Localization** — all user-visible strings must go through `i18n_bridge.get_text(key)`.
    Never hardcode display text in screen code.
-5. **Themes** — use `ThemeEngine.get_color(slot)` for colors and never hardcode hex values.
-   All visual constants live in `theme_engine.py` or QSS files.
+5. **Themes** — use `design_tokens.get_tokens()` fields for colors and never hardcode
+   hex values. Tokens are generated from `design/tokens/design-tokens.json`; the QSS
+   template and the QPalette both derive from the same `DesignTokens` instance.
 6. **Screens don't import each other** — navigation is handled by `MainWindow.switch_screen()`.
    Inter-screen communication goes through signals or `AppState`.
 7. **Every screen must implement `on_enter()`** — called by `MainWindow` when the screen

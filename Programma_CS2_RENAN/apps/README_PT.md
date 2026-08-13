@@ -242,8 +242,9 @@ Mudancas de idioma emitem um sinal `language_changed`. As telas implementam
    temas consistentes via QSS.
 4. **Localização** — todas as strings visíveis ao usuário devem passar por
    `i18n_bridge.get_text(key)`. Nunca insira texto hardcoded no código das telas.
-5. **Temas** — use `ThemeEngine.get_color(slot)` para cores e nunca use valores hex
-   hardcoded. Todas as constantes visuais residem em `theme_engine.py` ou nos arquivos QSS.
+5. **Temas** — use os campos de `design_tokens.get_tokens()` para cores e nunca use
+   valores hex hardcoded. Os tokens são gerados de `design/tokens/design-tokens.json`;
+   o template QSS e a QPalette derivam da mesma instância `DesignTokens`.
 6. **As telas não importam umas as outras** — a navegação é gerenciada por
    `MainWindow.switch_screen()`. A comunicação entre telas acontece via sinais ou
    `AppState`.

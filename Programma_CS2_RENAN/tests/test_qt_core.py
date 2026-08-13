@@ -335,21 +335,31 @@ class TestAppStateApply:
 
 
 class TestThemeEngine:
-    """Test palette data and rating functions."""
+    """Test token-derived palette behavior and rating functions."""
 
-    def test_palettes_all_themes_present(self):
-        from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import PALETTES
+    def test_all_themes_resolvable(self):
+        from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+        from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import THEME_NAMES
 
-        assert "CS2" in PALETTES
-        assert "CSGO" in PALETTES
-        assert "CS1.6" in PALETTES
+        assert set(THEME_NAMES) == {"CS2", "CSGO", "CS1.6"}
+        for name in THEME_NAMES:
+            assert get_tokens(name).theme_name == name
 
-    def test_palette_has_required_slots(self):
-        from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import PALETTES
+    def test_qpalette_derives_from_tokens(self, qapp):
+        from PySide6.QtGui import QColor
 
-        required = {"surface", "surface_alt", "accent_primary", "chart_bg"}
-        for name, palette in PALETTES.items():
-            assert required.issubset(set(palette.keys())), f"{name} missing slots"
+        from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+        from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import ThemeEngine
+
+        engine = ThemeEngine()
+        engine.apply_theme("CS2", qapp)
+        pal = qapp.palette()
+        tokens = get_tokens("CS2")
+        assert pal.color(pal.ColorRole.Window) == QColor(tokens.surface_base)
+        assert pal.color(pal.ColorRole.Highlight) == QColor(tokens.accent_primary)
+        assert pal.color(pal.ColorRole.Base) == QColor(tokens.surface_sunken)
+        # Restore default so later session-scoped tests see the boot theme.
+        engine.apply_theme("CS2", qapp)
 
     def test_rating_color_good(self, qapp):
         from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import rating_color

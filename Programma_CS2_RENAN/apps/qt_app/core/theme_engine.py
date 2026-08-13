@@ -1,13 +1,14 @@
 """
-Theme engine for Qt — loads QSS stylesheets and manages the CS2/CSGO/CS1.6 palette.
+Theme engine for Qt — renders token-driven QSS and manages CS2/CSGO/CS1.6 skins.
 
-Reuses the palette data and rating functions from the existing theme.py (pure data,
-no Kivy imports needed for the constants themselves).
+Every color flows from design_tokens.py (generated from
+design/tokens/design-tokens.json) — the QSS template, the QPalette, and the
+rating helpers all read the same DesignTokens instance. No second palette.
 """
 
 import os
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QColor, QFontDatabase, QPalette
@@ -23,36 +24,10 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 _logger = get_logger("cs2analyzer.qt_theme_engine")
 
-# ── Palette data (mirrored from legacy_kivy/theme.py to avoid Kivy import chain) ──
-
-COLOR_GREEN = (0.30, 0.69, 0.31, 1)
-COLOR_YELLOW = (1.0, 0.60, 0.0, 1)
-COLOR_RED = (0.96, 0.26, 0.21, 1)
-COLOR_CARD_BG = (0.12, 0.12, 0.14, 1)
+THEME_NAMES = ("CS2", "CSGO", "CS1.6")
 
 RATING_GOOD = 1.10
 RATING_BAD = 0.90
-
-PALETTES = {
-    "CS2": {
-        "surface": [0.08, 0.08, 0.12, 0.85],
-        "surface_alt": [0.06, 0.06, 0.18, 0.9],
-        "accent_primary": [0.85, 0.4, 0.0, 1],
-        "chart_bg": "#1a1a1a",
-    },
-    "CSGO": {
-        "surface": [0.10, 0.11, 0.13, 0.85],
-        "surface_alt": [0.08, 0.10, 0.14, 0.9],
-        "accent_primary": [0.38, 0.49, 0.55, 1],
-        "chart_bg": "#1c1e20",
-    },
-    "CS1.6": {
-        "surface": [0.07, 0.10, 0.07, 0.85],
-        "surface_alt": [0.05, 0.14, 0.08, 0.9],
-        "accent_primary": [0.30, 0.69, 0.31, 1],
-        "chart_bg": "#181e18",
-    },
-}
 
 _THEMES_DIR = Path(__file__).parent.parent / "themes"
 _ASSETS_DIR = Path(__file__).parent.parent.parent.parent / "PHOTO_GUI"
@@ -75,18 +50,14 @@ _FONT_FILES = {
 }
 
 
-def rgba_to_qcolor(rgba: List[float]) -> QColor:
-    """Convert [r, g, b, a] (0-1 floats) to QColor."""
-    return QColor.fromRgbF(rgba[0], rgba[1], rgba[2], rgba[3] if len(rgba) > 3 else 1.0)
-
-
 def rating_color(rating: float) -> QColor:
-    """HLTV rating → green/yellow/red QColor."""
+    """HLTV rating → semantic token QColor (theme-tracking)."""
+    tokens = get_tokens()
     if rating > RATING_GOOD:
-        return rgba_to_qcolor(list(COLOR_GREEN))
+        return QColor(tokens.success)
     if rating < RATING_BAD:
-        return rgba_to_qcolor(list(COLOR_RED))
-    return rgba_to_qcolor(list(COLOR_YELLOW))
+        return QColor(tokens.error)
+    return QColor(tokens.warning)
 
 
 def rating_label(rating: float) -> str:
@@ -127,15 +98,9 @@ class ThemeEngine(QObject):
     def chart_bg(self) -> str:
         return self.tokens.chart_bg
 
-    def get_color(self, slot: str) -> QColor:
-        """Return QColor for a palette slot (surface, surface_alt, accent_primary)."""
-        palette = PALETTES.get(self._active, PALETTES["CS2"])
-        rgba = palette.get(slot, [0.08, 0.08, 0.12, 0.85])
-        return rgba_to_qcolor(rgba)
-
     def apply_theme(self, name: str, app: Optional[QApplication] = None):
         """Switch to a named theme. Renders QSS from template and sets QPalette."""
-        if name not in PALETTES:
+        if name not in THEME_NAMES:
             return
         self._active = name
         set_active_theme(name)
@@ -154,30 +119,22 @@ class ThemeEngine(QObject):
         )
         target.setStyleSheet(qss + font_rule)
 
-        # Set QPalette for widgets that don't use QSS
-        palette_data = PALETTES[name]
+        # QPalette for widgets that don't honor QSS — same token source.
         p = QPalette()
-
-        surface = rgba_to_qcolor(palette_data["surface"])
-        surface_alt = rgba_to_qcolor(palette_data["surface_alt"])
-        accent = rgba_to_qcolor(palette_data["accent_primary"])
-        text_color = QColor(220, 220, 220)
-        dim_text = QColor(160, 160, 160)
-
-        p.setColor(QPalette.Window, surface)
-        p.setColor(QPalette.WindowText, text_color)
-        p.setColor(QPalette.Base, surface_alt)
-        p.setColor(QPalette.AlternateBase, surface)
-        p.setColor(QPalette.Text, text_color)
-        p.setColor(QPalette.BrightText, QColor(255, 255, 255))
-        p.setColor(QPalette.Button, surface)
-        p.setColor(QPalette.ButtonText, text_color)
-        p.setColor(QPalette.Highlight, accent)
-        p.setColor(QPalette.HighlightedText, QColor(255, 255, 255))
-        p.setColor(QPalette.ToolTipBase, surface_alt)
-        p.setColor(QPalette.ToolTipText, text_color)
-        p.setColor(QPalette.PlaceholderText, dim_text)
-        p.setColor(QPalette.Link, accent)
+        p.setColor(QPalette.Window, QColor(tokens.surface_base))
+        p.setColor(QPalette.WindowText, QColor(tokens.text_primary))
+        p.setColor(QPalette.Base, QColor(tokens.surface_sunken))
+        p.setColor(QPalette.AlternateBase, QColor(tokens.surface_raised))
+        p.setColor(QPalette.Text, QColor(tokens.text_primary))
+        p.setColor(QPalette.BrightText, QColor(tokens.text_inverse))
+        p.setColor(QPalette.Button, QColor(tokens.surface_raised))
+        p.setColor(QPalette.ButtonText, QColor(tokens.text_primary))
+        p.setColor(QPalette.Highlight, QColor(tokens.accent_primary))
+        p.setColor(QPalette.HighlightedText, QColor(tokens.text_inverse))
+        p.setColor(QPalette.ToolTipBase, QColor(tokens.surface_overlay))
+        p.setColor(QPalette.ToolTipText, QColor(tokens.text_primary))
+        p.setColor(QPalette.PlaceholderText, QColor(tokens.text_tertiary))
+        p.setColor(QPalette.Link, QColor(tokens.accent_primary))
 
         target.setPalette(p)
 
