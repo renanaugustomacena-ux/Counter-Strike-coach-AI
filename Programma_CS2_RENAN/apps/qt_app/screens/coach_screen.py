@@ -150,6 +150,9 @@ class CoachScreen(QWidget):
         )
         self._update_drivers()
         self._insights_card.set_title(i18n.get_text("recent_insights"))
+        # Driver rows + the n-chip are i18n-composed from cached stats —
+        # re-render them in the new language.
+        self._update_drivers()
         self._on_insights(list(self._last_insights))
         self._analytics_card.set_title(
             i18n.get_text("coach.advanced_analytics", "Advanced Analytics")
@@ -253,7 +256,28 @@ class CoachScreen(QWidget):
         ring_row.setSpacing(tokens.spacing_lg)
 
         self._belief_ring = ProgressRing(value=0.0, size=ProgressRing.COACH, thickness=8)
-        ring_row.addWidget(self._belief_ring, 0, Qt.AlignTop)
+
+        # Ring + sample-size chip beneath (research 29.3: "trust is a
+        # designed surface" — the belief % is only believable next to the
+        # evidence count it rests on). Fed by the same driver wiring as the
+        # sample-count row: _on_total_matches (live) / _set_driver_stats
+        # (fixture) both land in _update_drivers(). Hidden until a count
+        # exists — never renders "n=— demos".
+        ring_col = QVBoxLayout()
+        ring_col.setContentsMargins(0, 0, 0, 0)
+        ring_col.setSpacing(tokens.spacing_xs)
+        ring_col.addWidget(self._belief_ring, 0, Qt.AlignHCenter)
+        self._belief_n_chip = QLabel("")
+        self._belief_n_chip.setFont(Typography.font("mono"))
+        self._belief_n_chip.setStyleSheet(
+            f"color: {tokens.text_tertiary}; background: transparent; "
+            f"font-size: {tokens.font_size_caption}px;"
+        )
+        self._belief_n_chip.setAlignment(Qt.AlignHCenter)
+        self._belief_n_chip.setVisible(False)
+        ring_col.addWidget(self._belief_n_chip)
+        ring_col.addStretch(1)
+        ring_row.addLayout(ring_col)
 
         drivers_col = QVBoxLayout()
         drivers_col.setContentsMargins(0, 0, 0, 0)
@@ -564,6 +588,16 @@ class CoachScreen(QWidget):
         ]
         self._drivers_list.set_rows(rows)
 
+        # Sample-size chip under the belief ring — same source of truth.
+        samples = s.get("samples")
+        if samples is None:
+            self._belief_n_chip.setVisible(False)
+        else:
+            self._belief_n_chip.setText(
+                i18n.get_text("coach.belief_n", "n={n} demos").format(n=samples)
+            )
+            self._belief_n_chip.setVisible(True)
+
     def _on_insights(self, insights: list) -> None:
         self._last_insights = list(insights or [])
         for w in self._insight_widgets:
@@ -654,20 +688,34 @@ class CoachScreen(QWidget):
             msg.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
             body.addWidget(msg)
 
+        # ── Mono provenance line (research 29.3: provenance badges on every
+        # AI claim). Composed ONLY from fields the CoachViewModel payload
+        # actually carries: focus_area · source demo file · created_at.
+        # Absent segments are omitted — never faked with placeholders.
+        # # FIELD-GAP: model/confidence/reference provenance ("RAP-Pedagogy
+        # # · conf 0.82 · 4 demos") — CoachingInsight rows expose no such
+        # # columns; chat bubbles already render those fields when their
+        # # payload carries them (_compose_meta), so nothing is duplicated
+        # # or invented here.
+        # # FIELD-GAP: "revalidated {date}" caption for advice older than
+        # # the latest model retrain — no retrain-timestamp field reaches
+        # # any qt_app VM payload today.
         focus = insight.get("focus_area") or ""
+        demo_src = str(insight.get("demo_name") or "")
         date_str = str(insight.get("created_at") or "")
-        if focus or date_str:
+        provenance = " · ".join(seg for seg in (str(focus).lower(), demo_src) if seg)
+        if provenance or date_str:
             meta_row = QHBoxLayout()
             meta_row.setContentsMargins(0, 0, 0, 0)
-            if focus:
-                focus_lbl = QLabel(str(focus).lower())
-                focus_lbl.setTextFormat(Qt.PlainText)
-                focus_lbl.setFont(Typography.font("mono"))
-                focus_lbl.setStyleSheet(
+            if provenance:
+                prov_lbl = QLabel(provenance)
+                prov_lbl.setTextFormat(Qt.PlainText)
+                prov_lbl.setFont(Typography.font("mono"))
+                prov_lbl.setStyleSheet(
                     f"color: {tokens.text_tertiary}; background: transparent; "
                     f"font-size: {tokens.font_size_caption}px;"
                 )
-                meta_row.addWidget(focus_lbl)
+                meta_row.addWidget(prov_lbl)
             meta_row.addStretch(1)
             if date_str:
                 date_lbl = QLabel(date_str)

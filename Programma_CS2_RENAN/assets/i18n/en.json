@@ -158,6 +158,7 @@
   "coach.driver_quality": "Data quality · {complete} complete · {partial} partial · {none} none",
   "coach.driver_maps": "Map coverage · {seen} of {total} competitive maps seen",
   "coach.confidence_grows": "confidence grows as you ingest more maps",
+  "coach.belief_n": "n={n} demos",
   "coach.advanced_analytics": "Advanced Analytics",
   "coach.analytics_empty_title": "Trend graphs and radar charts will appear here after demo analysis.",
   "coach.analytics_empty_desc": "Analyze matches to populate this section.",

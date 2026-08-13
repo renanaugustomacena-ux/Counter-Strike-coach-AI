@@ -158,6 +158,7 @@
   "coach.driver_quality": "Qualidade dos dados · {complete} completas · {partial} parciais · {none} nulas",
   "coach.driver_maps": "Cobertura de mapas · {seen} de {total} mapas competitivos vistos",
   "coach.confidence_grows": "a confiança cresce à medida que você ingere mais mapas",
+  "coach.belief_n": "n={n} demos",
   "coach.advanced_analytics": "Análises Avançadas",
   "coach.analytics_empty_title": "Gráficos de tendência e radar aparecerão aqui após a análise das demos.",
   "coach.analytics_empty_desc": "Analise partidas para preencher esta seção.",
