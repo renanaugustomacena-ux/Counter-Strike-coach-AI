@@ -8,6 +8,23 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 
 
+def test_i18n_key_parity_across_languages():
+    """en/it/pt must expose identical key sets — a missing translation is a bug."""
+    import json
+
+    i18n_dir = REPO / "Programma_CS2_RENAN" / "assets" / "i18n"
+    keysets = {}
+    for lang in ("en", "it", "pt"):
+        data = json.loads((i18n_dir / f"{lang}.json").read_text(encoding="utf-8"))
+        keysets[lang] = set(data)
+    assert keysets["en"] == keysets["it"], (
+        f"en↔it drift: {sorted(keysets['en'] ^ keysets['it'])}"
+    )
+    assert keysets["en"] == keysets["pt"], (
+        f"en↔pt drift: {sorted(keysets['en'] ^ keysets['pt'])}"
+    )
+
+
 def _ttf_family_name(path: Path) -> str:
     """Read the family name (nameID 1) straight from a TTF's name table.
 
