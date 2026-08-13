@@ -545,3 +545,92 @@ def inject_performance(screen: Any) -> None:
         {side: dict(vals) for side, vals in PERFORMANCE_UTILITY.items()},
         False,  # is_pro_overview — 47 personal demos analyzed
     )
+
+
+# ── Pro Comparison (frame 15) — ZywOo vs donk ──────────────────────────────
+#
+# Stats dict keys mirror ProComparisonViewModel's ``comparison_ready``
+# payload EXACTLY where the VM emits them (COMPARISON_METRICS db fields).
+# The five extra keys (clutch_win_pct, he_damage_per_round,
+# flash_assists_per_match, smoke_kill_pct, trade_kill_ratio) carry the
+# names the payload WOULD use — ProPlayerStatCard has no such columns yet
+# (# FIELD-GAP, see _H2H_ROWS in pro_comparison_screen.py) — so the frame-15
+# table and all 8 radar axes exercise their full-data paths under the
+# harness.
+#
+# Derived rows land on the frame's exact numbers: K/D = kpr/dpr
+# (0.7524/0.57 = 1.32 · 0.9306/0.66 = 1.41) and Survival = 1 - dpr
+# (43% · 34%).
+
+PRO_COMPARISON_STATS_ZYWOO: dict[str, float] = {
+    "rating_2_0": 1.28,
+    "kpr": 0.7524,
+    "dpr": 0.57,
+    "adr": 88.2,
+    "kast": 0.78,
+    "headshot_pct": 0.52,
+    "impact": 1.35,
+    "opening_duel_win_pct": 0.56,
+    "opening_kill_ratio": 1.12,
+    "clutch_win_count": 31,
+    "multikill_round_pct": 0.19,
+    "maps_played": 20,
+    # FIELD-GAP superset keys (names the payload WOULD use):
+    "clutch_win_pct": 0.67,
+    "he_damage_per_round": 15.8,
+    "flash_assists_per_match": 2.8,
+    "smoke_kill_pct": 0.12,
+    "trade_kill_ratio": 0.36,
+}
+
+PRO_COMPARISON_STATS_DONK: dict[str, float] = {
+    "rating_2_0": 1.24,
+    "kpr": 0.9306,
+    "dpr": 0.66,
+    "adr": 92.7,
+    "kast": 0.72,
+    "headshot_pct": 0.58,
+    "impact": 1.29,
+    "opening_duel_win_pct": 0.61,
+    "opening_kill_ratio": 1.38,
+    "clutch_win_count": 22,
+    "multikill_round_pct": 0.24,
+    "maps_played": 20,
+    # FIELD-GAP superset keys (names the payload WOULD use):
+    "clutch_win_pct": 0.58,
+    "he_damage_per_round": 12.4,
+    "flash_assists_per_match": 2.9,
+    "smoke_kill_pct": 0.08,
+    "trade_kill_ratio": 0.42,
+}
+
+# Roster mirrors players_loaded payload keys; 312 entries so the selector
+# caption reads "312 pros loaded · HLTVDatabase" exactly as in frame 15.
+# Sorted like the VM (team_rank, nickname): ZywOo lands in combo A, donk is
+# the combo-B default (index 1) — the frame's selected pair.
+PRO_COMPARISON_PLAYERS: list[dict[str, Any]] = [
+    {"hltv_id": 11893, "nickname": "ZywOo", "team": "Vitality", "team_rank": 1},
+    {"hltv_id": 20698, "nickname": "donk", "team": "Spirit", "team_rank": 3},
+] + [
+    {"hltv_id": 90000 + i, "nickname": f"player{i:03d}", "team": "—", "team_rank": 999}
+    for i in range(310)
+]
+
+
+def inject_pro_comparison(screen: Any) -> None:
+    # on_enter (fired by the harness's switch_screen) kicks a real DB worker;
+    # unhook the VM so a late players_loaded/error can't clobber the injected
+    # roster mid-render. Injection still goes through the screen's own slots.
+    try:
+        screen._vm.players_loaded.disconnect(screen._on_players_loaded)
+        screen._vm.comparison_ready.disconnect(screen._on_comparison)
+        screen._vm.error_changed.disconnect(screen._on_error)
+    except (TypeError, RuntimeError):
+        pass
+    screen._on_players_loaded([dict(p) for p in PRO_COMPARISON_PLAYERS])
+    screen._on_comparison(
+        dict(PRO_COMPARISON_STATS_ZYWOO),
+        dict(PRO_COMPARISON_STATS_DONK),
+        "ZywOo",
+        "donk",
+    )

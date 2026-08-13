@@ -787,3 +787,131 @@ class TestMetricBarRow:
         row.resize(420, 28)
         assert not row.grab().isNull()
         row.deleteLater()
+
+
+class TestProComparisonPure:
+    """Frame-15 pure functions: radar mapping, winner rule, style archetypes."""
+
+    def _fixture_pair(self):
+        from tools.ui_fixtures import (
+            PRO_COMPARISON_STATS_DONK,
+            PRO_COMPARISON_STATS_ZYWOO,
+        )
+
+        return dict(PRO_COMPARISON_STATS_ZYWOO), dict(PRO_COMPARISON_STATS_DONK)
+
+    def test_radar_axes_frame15_shape(self):
+        from Programma_CS2_RENAN.apps.qt_app.screens.pro_comparison_screen import (
+            _radar_axes,
+        )
+
+        a, b = self._fixture_pair()
+        vals_a, vals_b = _radar_axes(a, b)
+        assert len(vals_a) == len(vals_b) == 8
+        assert all(0.0 <= v <= 100.0 for v in vals_a + vals_b)
+        # Frame 15: ZywOo leads Aim/Utility/Clutch/Positioning/Economy/Survival,
+        # donk leads Opening/Aggression (axis order per _RADAR_AXIS_KEYS).
+        zywoo_leads = (0, 2, 3, 4, 6, 7)
+        donk_leads = (1, 5)
+        for i in zywoo_leads:
+            assert vals_a[i] > vals_b[i], f"axis {i}: expected ZywOo lead"
+        for i in donk_leads:
+            assert vals_b[i] > vals_a[i], f"axis {i}: expected donk lead"
+
+    def test_radar_axes_empty_axis_renders_neutral_midpoint(self):
+        from Programma_CS2_RENAN.apps.qt_app.screens.pro_comparison_screen import (
+            _radar_axes,
+        )
+
+        # No utility/clutch keys on either side (today's real VM payload):
+        # those axes must fall back to 50/50, never spike to center.
+        a = {"rating_2_0": 1.1, "kpr": 0.7, "dpr": 0.6, "kast": 0.7,
+             "headshot_pct": 0.5, "opening_duel_win_pct": 0.5}
+        b = {"rating_2_0": 1.0, "kpr": 0.8, "dpr": 0.7, "kast": 0.65,
+             "headshot_pct": 0.55, "opening_duel_win_pct": 0.52}
+        vals_a, vals_b = _radar_axes(a, b)
+        assert vals_a[2] == vals_b[2] == 50.0  # Utility
+        assert vals_a[3] == vals_b[3] == 50.0  # Clutch
+        # One-sided keys are skipped pairwise: smoke on A only must not
+        # distort Aim.
+        a_smoke = dict(a, smoke_kill_pct=0.2)
+        vals_a2, vals_b2 = _radar_axes(a_smoke, b)
+        assert vals_a2[0] == pytest.approx(vals_a[0])
+        assert vals_b2[0] == pytest.approx(vals_b[0])
+
+    def test_h2h_winner_rule(self):
+        from Programma_CS2_RENAN.apps.qt_app.screens.pro_comparison_screen import (
+            _h2h_winner,
+        )
+
+        assert _h2h_winner(1.28, 1.24, 0.02) == 1        # ZywOo +0.04
+        assert _h2h_winner(88.2, 92.7, 0.5) == -1        # donk +4.5
+        assert _h2h_winner(2.8, 2.9, 0.5) == 0           # flash assists: even
+        assert _h2h_winner(20, 20, None) is None         # neutral row (maps)
+        assert _h2h_winner(None, 1.2, 0.02) is None      # absent side: no winner
+
+    def test_h2h_fixture_outcomes_match_frame15(self):
+        from Programma_CS2_RENAN.apps.qt_app.screens.pro_comparison_screen import (
+            _H2H_ROWS,
+            _h2h_winner,
+            _metric_value,
+        )
+
+        a, b = self._fixture_pair()
+        outcomes = [
+            _h2h_winner(_metric_value(a, key), _metric_value(b, key), eps)
+            for key, _i18n, _fb, _kind, eps in _H2H_ROWS
+        ]
+        # rating kd adr kast hs opening clutch he flash smoke trade survival maps
+        assert outcomes == [1, -1, -1, 1, -1, -1, 1, 1, 0, 1, -1, 1, None]
+
+    def test_style_summary_support_and_entry(self):
+        from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
+        from Programma_CS2_RENAN.apps.qt_app.screens.pro_comparison_screen import (
+            _style_summary,
+        )
+
+        a, b = self._fixture_pair()
+        headline_a, detail_a = _style_summary(a, b)
+        assert headline_a == i18n.get_text("procomp.style.support", "team-enabling support")
+        assert detail_a
+        headline_b, _ = _style_summary(b, a)
+        assert headline_b == i18n.get_text("procomp.style.entry", "aggressive entry rifler")
+
+    def test_style_summary_anchor_branch(self):
+        from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
+        from Programma_CS2_RENAN.apps.qt_app.screens.pro_comparison_screen import (
+            _style_summary,
+        )
+
+        a = {"kast": 0.70, "he_damage_per_round": 10.0, "kpr": 0.60, "dpr": 0.50,
+             "opening_duel_win_pct": 0.48, "clutch_win_pct": 0.62, "adr": 70.0}
+        b = {"kast": 0.75, "he_damage_per_round": 12.0, "kpr": 0.78, "dpr": 0.60,
+             "opening_duel_win_pct": 0.55, "clutch_win_pct": 0.50, "adr": 85.0}
+        headline, _ = _style_summary(a, b)
+        assert headline == i18n.get_text("procomp.style.anchor", "late-round anchor")
+
+    def test_style_summary_damage_branch(self):
+        from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
+        from Programma_CS2_RENAN.apps.qt_app.screens.pro_comparison_screen import (
+            _style_summary,
+        )
+
+        a = {"adr": 95.0, "kast": 0.70, "kpr": 0.60, "dpr": 0.60,
+             "opening_duel_win_pct": 0.50}
+        b = {"adr": 80.0, "kast": 0.70, "kpr": 0.60, "dpr": 0.60,
+             "opening_duel_win_pct": 0.50}
+        headline, _ = _style_summary(a, b)
+        assert headline == i18n.get_text("procomp.style.damage", "damage-first playmaker")
+
+    def test_style_summary_balanced_fallback(self):
+        from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
+        from Programma_CS2_RENAN.apps.qt_app.screens.pro_comparison_screen import (
+            _style_summary,
+        )
+
+        a, _b = self._fixture_pair()
+        headline, _ = _style_summary(dict(a), dict(a))  # identical → nothing dominant
+        assert headline == i18n.get_text("procomp.style.balanced", "balanced all-rounder")
+        empty_headline, _ = _style_summary({}, {})
+        assert empty_headline == i18n.get_text("procomp.style.balanced", "balanced all-rounder")
