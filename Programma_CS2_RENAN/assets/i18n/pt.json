@@ -159,6 +159,8 @@
   "coach.driver_maps": "Cobertura de mapas · {seen} de {total} mapas competitivos vistos",
   "coach.confidence_grows": "a confiança cresce à medida que você ingere mais mapas",
   "coach.belief_n": "n={n} demos",
+  "coach.show_all": "Mostrar todos ({n})",
+  "coach.show_top": "Mostrar top 3",
   "coach.advanced_analytics": "Análises Avançadas",
   "coach.analytics_empty_title": "Gráficos de tendência e radar aparecerão aqui após a análise das demos.",
   "coach.analytics_empty_desc": "Analise partidas para preencher esta seção.",

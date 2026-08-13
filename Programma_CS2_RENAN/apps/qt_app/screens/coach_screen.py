@@ -72,6 +72,12 @@ def _severity_bucket(severity: str) -> str:
     return "low"
 
 
+# Ranking order for the top-3 shortlist (research 29.4): severity bucket
+# first; Python's stable sort then preserves the VM's recency-desc order
+# within each bucket.
+_SEV_ORDER = {"high": 0, "medium": 1, "low": 2}
+
+
 class CoachScreen(QWidget):
     """RAP Coach Dashboard + embedded chat dock (frames 06/07)."""
 
@@ -617,14 +623,59 @@ class CoachScreen(QWidget):
             return
 
         self._insights_empty.setVisible(False)
-        for insight in insights:
-            row = self._build_insight_row(insight)
+
+        # Research 29.4 (Garmin Catalyst "3 Opportunities"): advice ships as
+        # a ranked shortlist of exactly three, never a 10-row dump. Severity
+        # buckets rank first; recency (the VM's emit order) breaks ties.
+        ranked = sorted(
+            self._last_insights,
+            key=lambda i: _SEV_ORDER[_severity_bucket(i.get("severity", ""))],
+        )
+        top, overflow = ranked[:3], ranked[3:]
+
+        for rank, insight in enumerate(top, start=1):
+            row = self._build_insight_row(insight, rank=rank)
             self._insights_container.addWidget(row)
             self._insight_widgets.append(row)
 
-    def _build_insight_row(self, insight: dict) -> QWidget:
+        if overflow:
+            self._insights_overflow = QWidget()
+            overflow_col = QVBoxLayout(self._insights_overflow)
+            overflow_col.setContentsMargins(0, 0, 0, 0)
+            overflow_col.setSpacing(get_tokens().spacing_md)
+            for insight in overflow:
+                overflow_col.addWidget(self._build_insight_row(insight))
+            # Collapsed on every reload — the shortlist is the default view.
+            self._insights_overflow.setVisible(False)
+            self._insights_container.addWidget(self._insights_overflow)
+            self._insight_widgets.append(self._insights_overflow)
+
+            self._show_all_btn = make_button(
+                self._overflow_btn_text(expanded=False), variant="ghost"
+            )
+            self._show_all_btn.clicked.connect(self._toggle_insights_overflow)
+            self._insights_container.addWidget(self._show_all_btn, 0, Qt.AlignLeft)
+            self._insight_widgets.append(self._show_all_btn)
+
+    def _overflow_btn_text(self, expanded: bool) -> str:
+        if expanded:
+            return i18n.get_text("coach.show_top", "Show top 3")
+        return i18n.get_text("coach.show_all", "Show all ({n})").format(
+            n=len(self._last_insights)
+        )
+
+    def _toggle_insights_overflow(self) -> None:
+        expanded = not self._insights_overflow.isVisible()
+        self._insights_overflow.setVisible(expanded)
+        self._show_all_btn.setText(self._overflow_btn_text(expanded))
+
+    def _build_insight_row(self, insight: dict, rank: int | None = None) -> QWidget:
         """Flat frame-06 insight row: bold title + severity word right,
-        desc, mono category tag + timestamp caption."""
+        desc, mono provenance + timestamp caption.
+
+        ``rank`` (1-based) prints an accent-mono 01/02/03 numeral left of
+        the title — only the severity-ranked top three carry one.
+        """
         tokens = get_tokens()
         bucket = _severity_bucket(insight.get("severity", ""))
         sev_color = {"high": tokens.error, "medium": tokens.warning}.get(bucket, tokens.success)
@@ -665,6 +716,15 @@ class CoachScreen(QWidget):
         title_row = QHBoxLayout()
         title_row.setContentsMargins(0, 0, 0, 0)
         title_row.setSpacing(tokens.spacing_sm)
+
+        if rank is not None:
+            rank_lbl = QLabel(f"{rank:02d}")
+            rank_lbl.setFont(Typography.font("mono", weight=700))
+            rank_lbl.setStyleSheet(
+                f"color: {tokens.accent_primary}; background: transparent; "
+                f"font-size: {tokens.font_size_subtitle}px;"
+            )
+            title_row.addWidget(rank_lbl, 0, Qt.AlignTop)
 
         title = QLabel(insight.get("title", ""))
         title.setTextFormat(Qt.PlainText)  # FE-01 — block HTML rendering
