@@ -22,6 +22,7 @@ from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.mono_footer import MonoFooter
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.numbered_step import NumberedStep
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.stepper import Stepper
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.tip_box import TipBox
 from Programma_CS2_RENAN.core.config import save_user_setting
@@ -108,6 +109,47 @@ class WizardScreen(QWidget):
                 "wizard_tip_body",
                 "Choose a drive with at least 50 GB free. The knowledge base + "
                 "model checkpoints grow as you ingest more demos.",
+            )
+        )
+        # Launch-page "What happens next" section (research 29.6)
+        self._next_header.setText(i18n.get_text("wizard_next_header", "What happens next"))
+        self._next_step1.set_title(
+            i18n.get_text("wizard_next_step1_title", "Scanner watches your folder")
+        )
+        self._next_step1.set_description(
+            i18n.get_text(
+                "wizard_next_step1_desc",
+                "New .dem files are detected and queued automatically — "
+                "no manual imports.",
+            )
+        )
+        self._next_step2.set_title(
+            i18n.get_text(
+                "wizard_next_step2_title", "First report ~2 min after your first demo"
+            )
+        )
+        self._next_step2.set_description(
+            i18n.get_text(
+                "wizard_next_step2_desc",
+                "Analysis runs locally — the match report lands on your Dashboard.",
+            )
+        )
+        self._next_step3.set_title(
+            i18n.get_text("wizard_next_step3_title", "Coach unlocks as belief grows")
+        )
+        self._next_step3.set_description(
+            i18n.get_text(
+                "wizard_next_step3_desc",
+                "The AI coach starts advising once it has seen enough of "
+                "your matches to be sure.",
+            )
+        )
+        self._launch_tip.set_title(i18n.get_text("wizard_calib_title", "Calibration"))
+        self._launch_tip.set_body(
+            i18n.get_text(
+                "wizard_calib_body",
+                "Belief starts low and grows with every demo you analyze — "
+                "you'll see the exact % on the Coach screen.",
             )
         )
         self._refresh_brain_validation()
@@ -530,15 +572,16 @@ class WizardScreen(QWidget):
         return page
 
     def _build_finish_page(self) -> QWidget:
+        tokens = get_tokens()
         page = QWidget()
         lay = QVBoxLayout(page)
-        lay.setAlignment(Qt.AlignCenter)
         lay.setSpacing(16)
+        lay.addStretch(1)
 
         done = QLabel("You're all set!")
         done.setFont(Typography.font("title"))
         done.setAlignment(Qt.AlignCenter)
-        done.setStyleSheet(f"color: {get_tokens().text_primary};")
+        done.setStyleSheet(f"color: {tokens.text_primary};")
         lay.addWidget(done)
 
         info = QLabel(
@@ -548,10 +591,83 @@ class WizardScreen(QWidget):
         info.setAlignment(Qt.AlignCenter)
         info.setWordWrap(True)
         info.setStyleSheet(
-            f"color: {get_tokens().text_secondary}; font-size: {get_tokens().font_size_subtitle}px;"
+            f"color: {tokens.text_secondary}; font-size: {tokens.font_size_subtitle}px;"
         )
         lay.addWidget(info)
 
+        # ── "What happens next" (research 29.6: onboarding must end in
+        # proof, and calibration must be visible before the first number
+        # ever appears — so early belief values don't overclaim). Pure
+        # copy + existing primitives; launch behavior is untouched.
+        next_box = QWidget()
+        # Fixed (not maximum) width: word-wrapped step descriptions need a
+        # determinate width for height-for-width negotiation — with only a
+        # max, the layout measures them unwrapped and the rows overlap.
+        next_box.setFixedWidth(560)
+        next_col = QVBoxLayout(next_box)
+        next_col.setContentsMargins(0, tokens.spacing_md, 0, 0)
+        next_col.setSpacing(tokens.spacing_md)
+
+        self._next_header = QLabel(i18n.get_text("wizard_next_header", "What happens next"))
+        # font("caption") (not the QSS variant) — the QFont role carries the
+        # uppercase + letterspacing treatment the stepper captions use.
+        self._next_header.setFont(Typography.font("caption"))
+        self._next_header.setStyleSheet(
+            f"color: {tokens.text_secondary}; background: transparent;"
+        )
+        next_col.addWidget(self._next_header)
+
+        self._next_step1 = NumberedStep(
+            1,
+            i18n.get_text("wizard_next_step1_title", "Scanner watches your folder"),
+            i18n.get_text(
+                "wizard_next_step1_desc",
+                "New .dem files are detected and queued automatically — "
+                "no manual imports.",
+            ),
+        )
+        self._next_step2 = NumberedStep(
+            2,
+            i18n.get_text(
+                "wizard_next_step2_title", "First report ~2 min after your first demo"
+            ),
+            i18n.get_text(
+                "wizard_next_step2_desc",
+                "Analysis runs locally — the match report lands on your Dashboard.",
+            ),
+        )
+        self._next_step3 = NumberedStep(
+            3,
+            i18n.get_text("wizard_next_step3_title", "Coach unlocks as belief grows"),
+            i18n.get_text(
+                "wizard_next_step3_desc",
+                "The AI coach starts advising once it has seen enough of "
+                "your matches to be sure.",
+            ),
+        )
+        for step in (self._next_step1, self._next_step2, self._next_step3):
+            next_col.addWidget(step)
+
+        self._launch_tip = TipBox(
+            i18n.get_text("wizard_calib_title", "Calibration"),
+            i18n.get_text(
+                "wizard_calib_body",
+                "Belief starts low and grows with every demo you analyze — "
+                "you'll see the exact % on the Coach screen.",
+            ),
+        )
+        next_col.addWidget(self._launch_tip)
+
+        # Centered via side stretches, NOT an alignment flag: box layouts
+        # drop height-for-width for aligned items, which clips the
+        # word-wrapped calibration note to one line.
+        center_row = QHBoxLayout()
+        center_row.setContentsMargins(0, 0, 0, 0)
+        center_row.addStretch(1)
+        center_row.addWidget(next_box)
+        center_row.addStretch(1)
+        lay.addLayout(center_row)
+        lay.addStretch(1)
         return page
 
     # ── Navigation ──
