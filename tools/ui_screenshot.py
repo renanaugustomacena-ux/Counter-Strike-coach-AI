@@ -90,6 +90,16 @@ def main() -> int:
         action="store_true",
         help="Collapse the nav sidebar to its 60px icon rail before grabbing",
     )
+    ap.add_argument(
+        "--md-tab",
+        default="",
+        help=(
+            "Activate a named tab before grabbing, on any screen exposing "
+            "set_active_tab(name) (match_detail: overview|rounds|economy|"
+            "highlights). The output filename gains a _<tab> suffix so "
+            "per-tab grabs never overwrite each other."
+        ),
+    )
     ap.add_argument("--size", default="1440x900")
     args = ap.parse_args()
     width, height = (int(x) for x in args.size.lower().split("x"))
@@ -143,7 +153,13 @@ def main() -> int:
             if not args.no_fixtures:
                 ui_fixtures.inject(name, screens[name])
             _wait(app, 400)  # let list fade-ins and property animations finish
-            dest = out_dir / f"{name}.png"
+            suffix = ""
+            tab = args.md_tab.strip().lower()
+            if tab and hasattr(screens[name], "set_active_tab"):
+                screens[name].set_active_tab(tab)
+                _wait(app, 150)
+                suffix = f"_{tab}"
+            dest = out_dir / f"{name}{suffix}.png"
             if not window.grab().save(str(dest), "PNG"):
                 print(f"FAILED to save {dest}", file=sys.stderr)
                 exit_code = 1
