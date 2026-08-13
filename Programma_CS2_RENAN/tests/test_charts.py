@@ -176,3 +176,89 @@ class TestUtilityBarChart:
         chart.set_rows([])  # empty input stays safe
         assert not chart.grab().isNull()
         chart.deleteLater()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 4. EconomyChart + MomentumChart QPainter rewrite (Task 14)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _sample_rounds(n: int = 24) -> list:
+    rounds = []
+    for i in range(n):
+        rounds.append(
+            {
+                "round_number": i + 1,
+                "side": "T" if i < n // 2 else "CT",
+                "equipment_value": 3800 + (i % 5) * 400,
+                "kills": i % 4,
+                "deaths": (i + 1) % 3,
+                "damage_dealt": 80 * (i % 4),
+                "opening_kill": i % 6 == 0,
+                "round_won": i % 3 != 1,
+            }
+        )
+    return rounds
+
+
+class TestEconomyChart:
+    def test_half_x_proportional(self):
+        from Programma_CS2_RENAN.apps.qt_app.widgets.charts.economy_chart import _half_x
+
+        # Boundary sits at the LEFT edge of round_no's slot.
+        assert _half_x(13, 24, 480.0) == pytest.approx(240.0)
+        assert _half_x(1, 24, 480.0) == pytest.approx(0.0)
+        assert _half_x(7, 12, 300.0) == pytest.approx(150.0)
+
+    def test_bar_rect_non_negative(self):
+        from PySide6.QtCore import QRectF
+
+        from Programma_CS2_RENAN.apps.qt_app.widgets.charts.economy_chart import _bar_rect
+
+        plot = QRectF(10.0, 10.0, 240.0, 100.0)
+        rect = _bar_rect(0, 24, 4000.0, 8000.0, plot)
+        assert rect.height() == pytest.approx(50.0)
+        assert rect.bottom() == pytest.approx(plot.bottom())
+        assert _bar_rect(3, 24, 0.0, 8000.0, plot).height() >= 0.0
+        assert _bar_rect(3, 24, 500.0, 0.0, plot).height() >= 0.0  # zero-max guard
+
+    def test_economy_plot_api_preserved(self, qapp):
+        from Programma_CS2_RENAN.apps.qt_app.widgets.charts.economy_chart import (
+            EconomyChart,
+        )
+
+        chart = EconomyChart()
+        chart.plot(_sample_rounds())  # pre-rewrite public API
+        chart.set_half_marker(13)  # Task 14 addition
+        chart.resize(900, 360)
+        assert not chart.grab().isNull()
+        chart.plot([])  # empty input stays safe
+        assert not chart.grab().isNull()
+        chart.deleteLater()
+
+
+class TestMomentumChart:
+    def test_momentum_plot_api_preserved(self, qapp):
+        from Programma_CS2_RENAN.apps.qt_app.widgets.charts.momentum_chart import (
+            MomentumChart,
+        )
+
+        chart = MomentumChart()
+        chart.plot(_sample_rounds())  # pre-rewrite public API
+        chart.resize(700, 300)
+        assert not chart.grab().isNull()
+        chart.plot([])
+        assert not chart.grab().isNull()
+        chart.deleteLater()
+
+
+class TestQtChartsRetired:
+    def test_no_qtcharts_references_in_qt_app_code(self):
+        """License gate: QtCharts is GPL-only — zero code references allowed."""
+        qt_app = _project_root / "Programma_CS2_RENAN" / "apps" / "qt_app"
+        offenders = []
+        for path in qt_app.rglob("*.py"):
+            text = path.read_text(encoding="utf-8", errors="replace")
+            if "QtCharts" in text or "QChart" in text:
+                offenders.append(str(path))
+        assert offenders == [], f"QtCharts references linger in: {offenders}"

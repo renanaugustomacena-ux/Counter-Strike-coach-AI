@@ -141,5 +141,12 @@
   "wallpaper": "Sfondo",
   "help": "Aiuto",
   "chart_caption_you": "tu",
-  "chart_caption_pro": "pro"
+  "chart_caption_pro": "pro",
+  "chart_economy_title": "Economia per round",
+  "chart_equipment_axis": "Equipaggiamento ($)",
+  "chart_round_axis": "Numero round",
+  "chart_half_label": "metà",
+  "chart_momentum_title": "Momentum (delta kill-death)",
+  "chart_legend_ct_side": "Lato CT",
+  "chart_legend_t_side": "Lato T"
 }

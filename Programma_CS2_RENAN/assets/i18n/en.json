@@ -141,5 +141,12 @@
   "wallpaper": "Wallpaper",
   "help": "Help",
   "chart_caption_you": "you",
-  "chart_caption_pro": "pro"
+  "chart_caption_pro": "pro",
+  "chart_economy_title": "Economy per Round",
+  "chart_equipment_axis": "Equipment ($)",
+  "chart_round_axis": "Round number",
+  "chart_half_label": "half",
+  "chart_momentum_title": "Momentum (Kill-Death Delta)",
+  "chart_legend_ct_side": "CT side",
+  "chart_legend_t_side": "T side"
 }

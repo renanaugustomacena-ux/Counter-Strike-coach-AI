@@ -10,17 +10,17 @@ Depth tiers (opt-in via ``depth=`` kwarg):
                  sparingly to draw the eye to the most important card on
                  a screen. No shadow.
     floating     QGraphicsDropShadowEffect (blur=20, offset=(0,4), 35% alpha).
-                 Guarded against cards containing QChartView / QtCharts —
-                 combining drop shadow + chart redraw causes a 10-20x FPS
-                 drop (documented Qt issue). When a chart child is detected
-                 at first render, depth silently downgrades to 'raised' and
-                 emits one WARNING via cs2analyzer.qt_app.card.
     frosted      Soft-frost surface — semi-transparent fill (frost_bg),
                  hairline highlight border (frost_border), and an
                  elevated drop shadow tinted with the theme's accent
                  (frost_glow). Approximates the visual of a backdrop-blur
                  panel without true backdrop compositing (which Qt does
-                 not natively support). Same QChartView guard as floating.
+                 not natively support).
+
+The chart-view guard both shadow tiers used to carry (drop shadow + chart
+redraw caused a 10-20x FPS drop with the retired GPL-only chart library)
+went away with that library — all chart widgets are now plain QPainter
+QWidgets that composite normally.
 """
 
 from typing import Literal
@@ -30,9 +30,6 @@ from PySide6.QtWidgets import QFrame, QGraphicsDropShadowEffect, QLabel, QVBoxLa
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
-from Programma_CS2_RENAN.observability.logger_setup import get_logger
-
-_logger = get_logger("cs2analyzer.qt_app.card")
 
 
 class Card(QFrame):
@@ -131,34 +128,11 @@ class Card(QFrame):
         """Attach or strip the drop-shadow effect based on self._depth.
 
         ``floating`` and ``frosted`` both mount a QGraphicsDropShadowEffect.
-        Both are guarded against QChartView descendants — drop-shadow +
-        chart redraw causes a 10-20x FPS drop. When a chart child is
-        present, the depth silently downgrades to ``raised`` with one
-        WARNING so the bug is visible without needing a profiler.
+        (The historical chart-view child guard is gone — QPainter chart
+        widgets composite under drop shadows without the FPS collapse the
+        retired chart library exhibited.)
         """
         if self._depth not in ("floating", "frosted"):
-            self.setGraphicsEffect(None)
-            return
-
-        # Lazy-imported to avoid forcing QtCharts onto every screen at
-        # import time; only pay the cost when we're about to decide.
-        try:
-            from PySide6.QtCharts import QChartView  # type: ignore
-        except ImportError:  # pragma: no cover — QtCharts is always in Essentials
-            QChartView = None  # type: ignore
-
-        if QChartView is not None and self.findChildren(QChartView):
-            _logger.warning(
-                "Card depth=%s downgraded to raised on %r: "
-                "QChartView child present (drop-shadow + chart redraw "
-                "causes 10-20x FPS drop)",
-                self._depth,
-                self.title_label.text() or "<untitled>",
-            )
-            self._depth = "raised"
-            self.setProperty("depth", "raised")
-            self.style().unpolish(self)
-            self.style().polish(self)
             self.setGraphicsEffect(None)
             return
 

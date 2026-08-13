@@ -426,7 +426,7 @@ class SettingsScreen(QWidget):
             "Higher-fidelity match-detail heatmap via pyqtgraph if installed.",
             app_state.use_pyqtgraph_heatmap,
             app_state.set_use_pyqtgraph_heatmap,
-            note="Falls back to QtCharts if pyqtgraph missing",
+            note="Falls back to the built-in chart if pyqtgraph missing",
         )
 
         target.addWidget(self._flagship_card)

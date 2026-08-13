@@ -141,5 +141,12 @@
   "wallpaper": "Papel de Parede",
   "help": "Ajuda",
   "chart_caption_you": "você",
-  "chart_caption_pro": "pro"
+  "chart_caption_pro": "pro",
+  "chart_economy_title": "Economia por round",
+  "chart_equipment_axis": "Equipamento ($)",
+  "chart_round_axis": "Número do round",
+  "chart_half_label": "metade",
+  "chart_momentum_title": "Momentum (delta kill-death)",
+  "chart_legend_ct_side": "Lado CT",
+  "chart_legend_t_side": "Lado T"
 }
