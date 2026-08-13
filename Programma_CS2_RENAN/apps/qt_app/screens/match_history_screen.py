@@ -42,7 +42,6 @@ from Programma_CS2_RENAN.apps.qt_app.viewmodels.match_history_vm import MatchHis
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.empty_state import EmptyState
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.filter_chip import FilterChip
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.match_row_card import MatchRowCard
-from Programma_CS2_RENAN.apps.qt_app.widgets.components.status_chip import StatusChip
 from Programma_CS2_RENAN.apps.qt_app.widgets.skeleton import SkeletonTable
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -120,6 +119,8 @@ class MatchHistoryScreen(QWidget):
 
     def retranslate(self):
         self._title_label.setText(i18n.get_text("match_history_title"))
+        if self._all_matches:
+            self._update_count_caption()
 
     # ── UI Construction ──
 
@@ -139,8 +140,15 @@ class MatchHistoryScreen(QWidget):
         Typography.apply(self._title_label, "h1")
         title_row.addWidget(self._title_label)
         title_row.addStretch(1)
-        self._count_chip = StatusChip("0 matches", severity="neutral")
-        title_row.addWidget(self._count_chip)
+        # Frame 08 header-right caption: "47 personal · 2,148 pro reference"
+        self._personal_count = 0
+        self._pro_count = 0
+        self._count_caption = QLabel("")
+        self._count_caption.setFont(Typography.font("body"))
+        self._count_caption.setStyleSheet(
+            f"color: {tokens.text_secondary}; background: transparent;"
+        )
+        title_row.addWidget(self._count_caption)
         root.addLayout(title_row)
 
         # ── Source filter chips (mutually exclusive) ──
@@ -258,7 +266,7 @@ class MatchHistoryScreen(QWidget):
             self._empty_state.set_title("No matches found")
             self._empty_state.set_description("Play and analyze a demo to see it here.")
             self._body_stack.setCurrentIndex(self._page_empty)
-            self._update_count_chip(0)
+            self._update_count_caption()
             return
 
         # Pro-only banner — visible until user has at least one personal match.
@@ -276,8 +284,8 @@ class MatchHistoryScreen(QWidget):
         # Refresh map filter row
         self._rebuild_map_chips()
 
-        # Update title status chip
-        self._update_count_chip(all_count)
+        # Update title caption (frame 08: "N personal · M pro reference")
+        self._update_count_caption()
 
         # Render filtered + grouped rows
         self._render_filtered()
@@ -411,9 +419,22 @@ class MatchHistoryScreen(QWidget):
         if win and hasattr(win, "switch_screen"):
             win.switch_screen("home")
 
-    def _update_count_chip(self, count: int) -> None:
-        self._count_chip.set_label(f"{count} matches")
-        self._count_chip.set_severity("online" if count > 0 else "neutral")
+    def _update_count_caption(self) -> None:
+        """Header-right caption per frame 08: ``47 personal · 2,148 pro reference``.
+
+        Personal counts loaded rows; pro counts DISTINCT pro demo names
+        (PlayerMatchStats stores one row per (demo, player), so raw pro
+        rows would inflate ~10× per demo — same convention as Home).
+        """
+        self._personal_count = sum(1 for m in self._all_matches if not m.get("is_pro"))
+        self._pro_count = len(
+            {m["demo_name"] for m in self._all_matches if m.get("is_pro") and m.get("demo_name")}
+        )
+        personal_word = i18n.get_text("history.personal", "personal")
+        pro_word = i18n.get_text("history.pro_reference", "pro reference")
+        self._count_caption.setText(
+            f"{self._personal_count:,} {personal_word} · {self._pro_count:,} {pro_word}"
+        )
 
     def _clear_container(self) -> None:
         while self._container_layout.count() > 1:

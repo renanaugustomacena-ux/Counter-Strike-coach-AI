@@ -197,5 +197,13 @@
   "home.scanning_pro": "Procurando demos pro…",
   "home.analyzing": "Analisando…",
   "home.analysis_complete": "Análise concluída",
-  "home.error_prefix": "Erro"
+  "home.error_prefix": "Erro",
+  "history.personal": "pessoais",
+  "history.pro_reference": "referência pro",
+  "history.kills": "Abates",
+  "history.deaths": "Mortes",
+  "history.kast": "KAST",
+  "history.hs_pct": "HS%",
+  "history.clutch": "clutch",
+  "history.demo": "demo"
 }

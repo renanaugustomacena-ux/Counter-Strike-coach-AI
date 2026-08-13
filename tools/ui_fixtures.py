@@ -24,6 +24,12 @@ def _dt(y: int, mo: int, d: int, h: int, mi: int) -> datetime:
 # up by _older_personal_rows() so the corpus totals 47 personal matches —
 # the number frame 05's "Matches: 47" chip and "47 analyzed" caption and
 # frame 08's "47 personal" header caption all derive by counting rows.
+#
+# clutches_won / clutches_total / demo_size_mb / pro_teams / pro_event /
+# pro_score are a superset of today's VM payload: PlayerMatchStats has no
+# such columns yet (see the FIELD-GAP comments in match_history_vm.py).
+# They carry the names the payload WOULD use, so MatchRowCard's defensive
+# rendering exercises its full-data path under the harness.
 
 _CURATED_MATCHES: list[dict[str, Any]] = [
     {
@@ -31,6 +37,8 @@ _CURATED_MATCHES: list[dict[str, Any]] = [
         "match_date": _dt(2026, 4, 22, 21, 14),
         "rating": 1.34, "kd_ratio": 1.26, "avg_adr": 82.3,
         "avg_kills": 24.0, "avg_deaths": 19.0, "avg_kast": 0.78,
+        "avg_hs": 0.52, "clutch_win_pct": 0.67,
+        "clutches_won": 2, "clutches_total": 3, "demo_size_mb": 312,
         "is_pro": False, "player_name": "macena",
     },
     {
@@ -38,6 +46,8 @@ _CURATED_MATCHES: list[dict[str, Any]] = [
         "match_date": _dt(2026, 4, 22, 19, 2),
         "rating": 1.12, "kd_ratio": 1.05, "avg_adr": 74.1,
         "avg_kills": 22.0, "avg_deaths": 21.0, "avg_kast": 0.71,
+        "avg_hs": 0.47, "clutch_win_pct": 0.0,
+        "clutches_won": 0, "clutches_total": 2, "demo_size_mb": 287,
         "is_pro": False, "player_name": "macena",
     },
     {
@@ -45,13 +55,18 @@ _CURATED_MATCHES: list[dict[str, Any]] = [
         "match_date": _dt(2026, 4, 21, 18, 30),
         "rating": 1.47, "kd_ratio": 1.68, "avg_adr": 96.8,
         "avg_kills": 27.0, "avg_deaths": 16.0, "avg_kast": 0.83,
+        "avg_hs": 0.58, "clutch_win_pct": 0.75,
         "is_pro": True, "player_name": "ZywOo",
+        "pro_teams": "Vitality vs NAVI", "pro_event": "ESL Pro League",
+        "pro_score": "16-11 CT",
     },
     {
         "demo_name": "2026-04-21_nuke_comp.dem",
         "match_date": _dt(2026, 4, 21, 15, 47),
         "rating": 0.94, "kd_ratio": 0.87, "avg_adr": 58.4,
         "avg_kills": 18.0, "avg_deaths": 20.0, "avg_kast": 0.62,
+        "avg_hs": 0.44, "clutch_win_pct": 0.0,
+        "clutches_won": 0, "clutches_total": 1, "demo_size_mb": 198,
         "is_pro": False, "player_name": "macena",
     },
     {
@@ -59,6 +74,8 @@ _CURATED_MATCHES: list[dict[str, Any]] = [
         "match_date": _dt(2026, 4, 20, 22, 18),
         "rating": 0.74, "kd_ratio": 0.71, "avg_adr": 51.2,
         "avg_kills": 15.0, "avg_deaths": 21.0, "avg_kast": 0.54,
+        "avg_hs": 0.38, "clutch_win_pct": 0.0,
+        "clutches_won": 0, "clutches_total": 2, "demo_size_mb": 164,
         "is_pro": False, "player_name": "macena",
     },
     {
@@ -66,13 +83,18 @@ _CURATED_MATCHES: list[dict[str, Any]] = [
         "match_date": _dt(2026, 4, 19, 20, 0),
         "rating": 1.21, "kd_ratio": 1.29, "avg_adr": 87.3,
         "avg_kills": 23.0, "avg_deaths": 18.0, "avg_kast": 0.76,
+        "avg_hs": 0.51, "clutch_win_pct": 0.5,
         "is_pro": True, "player_name": "NiKo",
+        "pro_teams": "G2 vs FaZe", "pro_event": "BLAST Paris Major",
+        "pro_score": "16-13 T",
     },
     {
         "demo_name": "2026-04-19_overpass_comp.dem",
         "match_date": _dt(2026, 4, 19, 14, 22),
         "rating": 1.08, "kd_ratio": 1.00, "avg_adr": 70.5,
         "avg_kills": 20.0, "avg_deaths": 20.0, "avg_kast": 0.68,
+        "avg_hs": 0.41, "clutch_win_pct": 0.5,
+        "clutches_won": 1, "clutches_total": 2, "demo_size_mb": 241,
         "is_pro": False, "player_name": "macena",
     },
     {
@@ -80,6 +102,8 @@ _CURATED_MATCHES: list[dict[str, Any]] = [
         "match_date": _dt(2026, 4, 18, 21, 50),
         "rating": 1.22, "kd_ratio": 1.18, "avg_adr": 88.1,
         "avg_kills": 26.0, "avg_deaths": 22.0, "avg_kast": 0.74,
+        "avg_hs": 0.49, "clutch_win_pct": 1.0,
+        "clutches_won": 1, "clutches_total": 1, "demo_size_mb": 302,
         "is_pro": False, "player_name": "macena",
     },
 ]
@@ -99,6 +123,7 @@ def _older_personal_rows(count: int = 41) -> list[dict[str, Any]]:
         rating = ratings[i % len(ratings)]
         kills = 14 + (i * 3) % 13
         deaths = 15 + (i * 5) % 9
+        clutches_total = i % 3
         base = _dt(2026, 4, 17, 20 - (i % 6), (i * 7) % 60)
         match_date = base - timedelta(days=i)  # walks back into March
         rows.append(
@@ -112,6 +137,13 @@ def _older_personal_rows(count: int = 41) -> list[dict[str, Any]]:
                 "avg_kills": float(kills),
                 "avg_deaths": float(deaths),
                 "avg_kast": round(0.52 + (rating - 0.74) * 0.4, 2),
+                "avg_hs": round(0.34 + (rating - 0.74) * 0.3, 2),
+                "clutch_win_pct": 0.0 if clutches_total == 0 else round(
+                    min(i % 2, clutches_total) / clutches_total, 2
+                ),
+                "clutches_won": min(i % 2, clutches_total),
+                "clutches_total": clutches_total,
+                "demo_size_mb": 150 + (i * 13) % 200,
                 "is_pro": False,
                 "player_name": "macena",
             }

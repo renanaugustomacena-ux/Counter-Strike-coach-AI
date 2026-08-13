@@ -197,5 +197,13 @@
   "home.scanning_pro": "Scanning pro demos…",
   "home.analyzing": "Analyzing…",
   "home.analysis_complete": "Analysis complete",
-  "home.error_prefix": "Error"
+  "home.error_prefix": "Error",
+  "history.personal": "personal",
+  "history.pro_reference": "pro reference",
+  "history.kills": "Kills",
+  "history.deaths": "Deaths",
+  "history.kast": "KAST",
+  "history.hs_pct": "HS%",
+  "history.clutch": "clutch",
+  "history.demo": "demo"
 }
