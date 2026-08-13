@@ -39,7 +39,10 @@ from Programma_CS2_RENAN.apps.qt_app.viewmodels.tactical_vm import (
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.mono_footer import MonoFooter
 from Programma_CS2_RENAN.apps.qt_app.widgets.tactical.map_widget import TacticalMapWidget
 from Programma_CS2_RENAN.apps.qt_app.widgets.tactical.player_sidebar import PlayerSidebar
-from Programma_CS2_RENAN.apps.qt_app.widgets.tactical.timeline_widget import TimelineWidget
+from Programma_CS2_RENAN.apps.qt_app.widgets.tactical.timeline_widget import (
+    GLYPH_LEGEND,
+    TimelineWidget,
+)
 from Programma_CS2_RENAN.core.demo_frame import Team
 from Programma_CS2_RENAN.core.playback_engine import InterpolatedFrame
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
@@ -437,12 +440,27 @@ class TacticalViewerScreen(QWidget):
         self._cm_marks_check.setText(i18n.get_text("tactical.cm_marks", "CM marks"))
         self._ghost_combo_label.setText(i18n.get_text("tactical.ghost_combo_label", "Ghost:"))
         self._align_label.setText(i18n.get_text("tactical.align_method", "Align method:"))
+        self._refresh_glyph_legend()
         self._update_chronovisor_footer()
         self._update_header_meta()
         if self._ghost_mode_on:
             # Recompose every ghost-owned string in the active language.
             self._ghost_mode_on = False
             self._update_ghost_mode()
+
+    def _refresh_glyph_legend(self) -> None:
+        """Compose the `★ critical · ◆ clutch · ● play` caption from the
+        timeline's kind mapping, each glyph tinted to its paint color."""
+        t = get_tokens()
+        color_by_kind = {"star": t.warning, "diamond": t.info, "circle": t.success}
+        parts = [
+            f'<span style="color: {color_by_kind[kind]};">{glyph}</span> '
+            f"{i18n.get_text(f'tactical.glyph_{label}', label)}"
+            for kind, glyph, label in GLYPH_LEGEND
+        ]
+        self._glyph_legend.setText(
+            f'<span style="color: {t.text_secondary};">{" &nbsp;·&nbsp; ".join(parts)}</span>'
+        )
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -892,6 +910,15 @@ class TacticalViewerScreen(QWidget):
 
         row2.addStretch()
         layout.addLayout(row2)
+
+        # Glyph legend (29.5) — caption row under the transport bar naming
+        # the timeline's kind-differentiated moment glyphs (★/◆/●).
+        self._glyph_legend = QLabel()
+        self._glyph_legend.setTextFormat(Qt.RichText)
+        self._glyph_legend.setFont(_caption_font())
+        self._glyph_legend.setStyleSheet("background: transparent;")
+        self._refresh_glyph_legend()
+        layout.addWidget(self._glyph_legend)
 
         # Timeline
         self._timeline = TimelineWidget()
@@ -1458,6 +1485,7 @@ class TacticalViewerScreen(QWidget):
         self._std_selector_row.setVisible(not active)
         self._ghost_selector_row.setVisible(active)
         self._timeline.setVisible(not active)
+        self._glyph_legend.setVisible(not active)
         self._dual_progress.setVisible(active)
         if active:
             self._update_dual_progress()

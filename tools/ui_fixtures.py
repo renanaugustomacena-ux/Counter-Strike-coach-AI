@@ -703,11 +703,12 @@ _TRAIL_MACENA = [(650, 580), (600, 480), (500, 400), (460, 320), (440, 290)]
 _TRAIL_NIKO = [(150, 100), (240, 180), (400, 210), (540, 170), (640, 160), (740, 140)]
 
 # Star ticks derived from the frame's star x-positions (82/262/418/610/802
-# of 1196px over 64,500 ticks).
+# of 1196px over 64,500 ticks). The scanner emits play/mistake today;
+# "clutch" is the UI-mapped forward kind (29.5) so the ◆ glyph renders.
 _TACTICAL_MOMENT_SPECS = [
     (4_102, 4_422, "play", "pistol conversion at A"),
     (13_807, 14_127, "mistake", "over-peek jungle vs mid-hold"),
-    (22_216, 22_536, "play", "1v2 clutch win on palace"),
+    (22_216, 22_536, "clutch", "1v2 clutch win on palace"),
     (32_576, 32_896, "mistake", "post-plant hold failed"),
     (42_931, 43_251, "play", "retake 2v4 win"),
 ]

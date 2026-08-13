@@ -82,6 +82,67 @@ class TestTimelineStars:
         assert widget.star_hit_test(star_x, widget.height() - 10) is None
 
 
+class TestGlyphKinds:
+    """29.5 — CriticalMoment.type → glyph shape id, star fallback."""
+
+    @pytest.mark.parametrize(
+        "moment_type, expected",
+        [
+            ("mistake", "star"),  # Advantage Loss → generic critical ★
+            ("clutch", "diamond"),
+            ("play", "circle"),  # Advantage Gain → ●
+            ("PLAY", "circle"),  # case-insensitive
+            (" clutch ", "diamond"),  # whitespace-tolerant
+        ],
+    )
+    def test_known_types_map_to_shapes(self, moment_type, expected):
+        from Programma_CS2_RENAN.apps.qt_app.widgets.tactical.timeline_widget import (
+            glyph_kind_for_type,
+        )
+
+        assert glyph_kind_for_type(moment_type) == expected
+
+    @pytest.mark.parametrize("moment_type", [None, "", "brilliancy", 42, {"t": "play"}])
+    def test_unknown_or_missing_types_fall_back_to_star(self, moment_type):
+        from Programma_CS2_RENAN.apps.qt_app.widgets.tactical.timeline_widget import (
+            glyph_kind_for_type,
+        )
+
+        assert glyph_kind_for_type(moment_type) == "star"
+
+    def test_set_critical_moments_carries_kind_per_moment(self, qapp):
+        from Programma_CS2_RENAN.apps.qt_app.widgets.tactical.timeline_widget import (
+            TimelineWidget,
+        )
+
+        widget = TimelineWidget()
+        widget.max_tick = 64_500
+        widget.set_critical_moments(
+            [
+                {"start_tick": 100, "peak_tick": 200, "type": "play"},
+                {"start_tick": 300, "peak_tick": 400, "type": "clutch"},
+                {"start_tick": 500, "peak_tick": 600, "type": "mistake"},
+                {"start_tick": 700, "peak_tick": 800},  # no type → ★
+            ]
+        )
+        assert [kind for _p, _s, kind in widget._star_marks] == [
+            "circle",
+            "diamond",
+            "star",
+            "star",
+        ]
+
+    def test_legend_covers_every_mapped_kind(self):
+        from Programma_CS2_RENAN.apps.qt_app.widgets.tactical.timeline_widget import (
+            GLYPH_LEGEND,
+            glyph_kind_for_type,
+        )
+
+        legend_kinds = {kind for kind, _glyph, _label in GLYPH_LEGEND}
+        for moment_type in ("mistake", "clutch", "play", "unknown"):
+            assert glyph_kind_for_type(moment_type) in legend_kinds
+
+
 class TestDivergenceAdapter:
     """_divergence_rows renders ONLY what the ghost payload carries
     (Locked Decision 8) — em-dash + neutral verdict for everything else."""
