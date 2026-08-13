@@ -855,6 +855,79 @@ def _tactical_moments() -> list:
     ]
 
 
+# ── Ghost Mode (frame 14) — payload the screen's set_ghost_payload slot
+# renders defensively (Locked Decision 8: TacticalGhostVM has no divergence
+# fields today; these carry the names a divergence-capable VM WOULD emit).
+
+_GHOST_PANE_W, _GHOST_PANE_H = 980.0, 688.0  # frame-14 map pane (svg px)
+
+
+def _ghost_norm(points: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    return [(x / _GHOST_PANE_W, y / _GHOST_PANE_H) for x, y in points]
+
+
+TACTICAL_GHOST_PAYLOAD: dict[str, Any] = {
+    "pro": "ZywOo", "team": "Vitality", "map": "Mirage", "event": "ESL Paris",
+    "player": "macena",
+    "you": {"side": "T", "map": "Mirage", "path": "T spawn → jungle → A",
+            "decision": "4.2s @ connector", "outcome": "died", "died": True},
+    "ghost": {"context": "Same round · ESL Paris", "path": "T spawn → palace → A",
+              "decision": "8.7s @ palace", "outcome": "won"},
+    "divergence": {
+        "entry_timing": {"value": "-4.5s", "verdict": "bad"},
+        "peek_angle": {"value": "jungle vs palace", "verdict": "bad"},
+        "flash_support": {"value": "0 vs 2", "verdict": "bad"},
+        "crouch_ratio": {"value": "22% vs 41%", "verdict": "warn"},
+        "crosshair_placement": {"value": "good", "verdict": "good"},
+        "outcome": {"value": "died vs won", "verdict": "bad"},
+    },
+    "causal": {"top_score": 0.87, "top_factor": "positioning",
+               "positioning": 0.87, "utility": 0.21, "aim": 0.04,
+               "aggression": 0.12, "rotation": 0.08},
+    "sync_offset_s": 4.2,
+    "you_path": _ghost_norm(
+        [(810, 650), (760, 540), (640, 450), (560, 380), (510, 340), (490, 300)]
+    ),
+    "ghost_path": _ghost_norm(
+        [(810, 650), (820, 560), (840, 470), (860, 380), (870, 300),
+         (820, 230), (760, 180), (700, 160)]
+    ),
+    "you_label": "you (died)", "ghost_label": "ghost (won)",
+    "divergence_points": [
+        {"x": 820 / _GHOST_PANE_W, "y": 560 / _GHOST_PANE_H, "label": "split: +4.5s delay"},
+        {"x": 860 / _GHOST_PANE_W, "y": 380 / _GHOST_PANE_H, "label": "palace vs jungle"},
+    ],
+    "smokes": [
+        {"x": 640 / _GHOST_PANE_W, "y": 320 / _GHOST_PANE_H, "label": "smoke (ghost)"}
+    ],
+}
+
+
+def inject_tactical_viewer_ghost(screen: Any) -> None:
+    """Frame 14: base frame-13 state + ghost overlay + Ghost AI enabled."""
+    inject_tactical_viewer(screen)
+    # Checking Ghost AI lazy-loads the real torch GhostEngine via the VM —
+    # disconnect that path so the harness flip stays checkpoint-free
+    # (same pattern as inject_pro_comparison's worker unhook).
+    try:
+        screen._ghost_check.toggled.disconnect(screen._ghost_vm.set_active)
+    except (TypeError, RuntimeError):
+        pass
+    screen.set_ghost_payload(dict(TACTICAL_GHOST_PAYLOAD))
+    screen._ghost_check.setChecked(True)
+
+    # Frame 14 shows the comparison scene, not live dots/nades: emit a bare
+    # frame whose score box carries the ghost caption (`T 9 — 4 CT`).
+    from Programma_CS2_RENAN.core.playback_engine import InterpolatedFrame
+
+    frame = InterpolatedFrame(tick=_TACTICAL_TICK, players=[], nades=[])
+    frame.score = {  # FIELD-GAP superset (see _on_frame_update)
+        "t_score": 9, "ct_score": 4, "round_no": 14,
+        "ghost_note": "1:32 · Ghost: ESL Paris",
+    }
+    screen._playback_vm.frame_updated.emit(frame)
+
+
 def inject_tactical_viewer(screen: Any) -> None:
     # Stem stays unset through _on_demo_loaded so _start_chronovisor_scan
     # skips its DB lookup — a matching row would kick a real scan_match

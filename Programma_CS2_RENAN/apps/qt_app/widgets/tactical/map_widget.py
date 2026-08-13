@@ -132,6 +132,8 @@ class TacticalMapWidget(QWidget):
         self._bomb: Optional[dict] = None
         self._trails: dict[int, tuple[bool, deque]] = {}
         self._trails_enabled = True
+        # Frame-14 Ghost Mode overlay (paths/divergences/legend), or None.
+        self._ghost_overlay: Optional[dict] = None
 
         self._name_font = _caption_font(bold=True)  # lowercase, frame-13 style
         self._name_fm = QFontMetrics(self._name_font)
@@ -204,6 +206,15 @@ class TacticalMapWidget(QWidget):
         if self._trails:
             self._trails.clear()
             self.update()
+
+    def set_ghost_overlay(self, payload: Optional[dict]):
+        """Frame-14 Ghost Mode overlay. Keys (all optional, normalized 0-1
+        radar coords): ``you_path``/``ghost_path`` point lists, ``you_label``
+        / ``ghost_label``, ``you_died``, ``divergence_points`` ([{x, y,
+        label}]), ``smokes`` ([{x, y, label}]), ``legend`` ({title, you,
+        ghost, divergence}). ``None`` disables the overlay."""
+        self._ghost_overlay = payload or None
+        self.update()
 
     def update_map(
         self,
@@ -355,6 +366,10 @@ class TacticalMapWidget(QWidget):
         for player in self._players:
             self._draw_player(painter, player)
 
+        # Layer 4.5: Ghost Mode dual-path overlay (frame 14)
+        if self._ghost_overlay:
+            self._draw_ghost_overlay(painter, ms, ox, oy)
+
         # Layer 5: score box overlay (topmost)
         if self._score_info:
             self._draw_score_box(painter)
@@ -410,8 +425,172 @@ class TacticalMapWidget(QWidget):
         p.drawEllipse(center, 18, 18)
 
     def _score_box_anchor_right(self) -> bool:
-        """Score box pins top-left by default (frame 13)."""
-        return False
+        """Score box pins top-left (frame 13) unless Ghost Mode's legend
+        occupies that corner (frame 14) — then it pins top-right."""
+        return self._ghost_overlay is not None
+
+    # ── Ghost Mode overlay (frame 14) ──
+
+    def _norm_point(self, nx: float, ny: float, ms: float, ox: float, oy: float) -> QPointF:
+        return QPointF(ox + float(nx) * ms, oy + float(ny) * ms)
+
+    def _draw_ghost_overlay(self, p: QPainter, ms: float, ox: float, oy: float):
+        ov = self._ghost_overlay
+        t = get_tokens()
+        # Frame 14 draws the ghost in purple; no purple token exists, so the
+        # ghost channel uses the in-system analog `info` per token discipline.
+        info = QColor(t.info)
+        accent = QColor(self._pal["accent"])
+        label_font = _caption_font(bold=True)
+        p.setFont(label_font)
+        fm = QFontMetrics(label_font)
+
+        def points_of(key):
+            return [
+                self._norm_point(pt[0], pt[1], ms, ox, oy)
+                for pt in (ov.get(key) or [])
+                if isinstance(pt, (tuple, list)) and len(pt) >= 2
+            ]
+
+        def endpoint(center: QPointF, color: QColor, label: str):
+            p.setPen(QPen(self._pal["text"], 2))
+            p.setBrush(color)
+            p.drawEllipse(center, 9, 9)
+            if label:
+                p.setPen(color)
+                tw = fm.horizontalAdvance(label)
+                p.drawText(QPointF(center.x() - tw / 2, center.y() - 14), label)
+
+        # Ghost smokes (dashed muted circles + caption)
+        for smoke in ov.get("smokes") or []:
+            try:
+                center = self._norm_point(smoke["x"], smoke["y"], ms, ox, oy)
+            except (KeyError, TypeError, ValueError):
+                continue
+            pen = QPen(_with_alpha(self._pal["smoke"], 120), 1)
+            pen.setStyle(Qt.DashLine)
+            p.setPen(pen)
+            p.setBrush(_with_alpha(self._pal["smoke"], 46))
+            p.drawEllipse(center, 30, 30)
+            label = str(smoke.get("label", ""))
+            if label:
+                p.setPen(self._pal["muted"])
+                p.setFont(_caption_font())
+                p.drawText(
+                    QRectF(center.x() - 60, center.y() - 8, 120, 16), Qt.AlignCenter, label
+                )
+                p.setFont(label_font)
+
+        # Ghost (pro) path — dashed 2px info
+        ghost_pts = points_of("ghost_path")
+        if len(ghost_pts) >= 2:
+            pen = QPen(info, 2)
+            pen.setStyle(Qt.CustomDashLine)
+            pen.setDashPattern([4.0, 3.0])
+            p.setPen(pen)
+            p.setBrush(Qt.NoBrush)
+            p.drawPolyline(QPolygonF(ghost_pts))
+        if ghost_pts:
+            endpoint(ghost_pts[-1], info, str(ov.get("ghost_label", "")))
+
+        # Your path — solid 3px accent
+        you_pts = points_of("you_path")
+        if len(you_pts) >= 2:
+            p.setPen(QPen(accent, 3))
+            p.setBrush(Qt.NoBrush)
+            p.drawPolyline(QPolygonF(you_pts))
+        if you_pts:
+            endpoint(you_pts[-1], accent, str(ov.get("you_label", "")))
+            if ov.get("you_died"):
+                end = you_pts[-1]
+                p.setPen(QPen(QColor(t.error), 2))
+                p.drawLine(QPointF(end.x() - 6, end.y() - 6), QPointF(end.x() + 6, end.y() + 6))
+                p.drawLine(QPointF(end.x() - 6, end.y() + 6), QPointF(end.x() + 6, end.y() - 6))
+
+        # Divergence points — dashed accent rings + captions
+        div_pen = QPen(accent, 1.5)
+        div_pen.setStyle(Qt.CustomDashLine)
+        div_pen.setDashPattern([3.0, 2.0])
+        cap_font = _caption_font()
+        cap_fm = QFontMetrics(cap_font)
+        for point in ov.get("divergence_points") or []:
+            try:
+                center = self._norm_point(point["x"], point["y"], ms, ox, oy)
+            except (KeyError, TypeError, ValueError):
+                continue
+            p.setPen(div_pen)
+            p.setBrush(Qt.NoBrush)
+            p.drawEllipse(center, 14, 14)
+            label = str(point.get("label", ""))
+            if label:
+                p.setFont(cap_font)
+                p.setPen(accent)
+                tw = cap_fm.horizontalAdvance(label)
+                p.drawText(QPointF(center.x() - tw / 2, center.y() + 14 + cap_fm.ascent() + 2), label)
+                p.setFont(label_font)
+
+        # Legend chip strip (top-left)
+        legend = ov.get("legend") or {}
+        if legend:
+            self._draw_ghost_legend(p, legend, info, accent)
+
+    def _draw_ghost_legend(self, p: QPainter, legend: dict, info: QColor, accent: QColor):
+        t = get_tokens()
+        pad = t.spacing_md
+        title_font = _caption_font(bold=True)
+        row_font = _caption_font()
+        title_fm = QFontMetrics(title_font)
+        row_fm = QFontMetrics(row_font)
+        rows = [
+            ("you", legend.get("you", "")),
+            ("ghost", legend.get("ghost", "")),
+            ("divergence", legend.get("divergence", "")),
+        ]
+        title = str(legend.get("title", ""))
+        sample_w = 20 + t.spacing_sm
+        box_w = (
+            max(
+                title_fm.horizontalAdvance(title),
+                max((row_fm.horizontalAdvance(str(text)) for _k, text in rows), default=0)
+                + sample_w,
+            )
+            + 2 * pad
+        )
+        row_h = row_fm.height() + t.spacing_xs
+        box_h = pad + title_fm.height() + t.spacing_xs + len(rows) * row_h + pad - t.spacing_xs
+        x = y = t.spacing_lg
+
+        p.setPen(Qt.NoPen)
+        p.setBrush(self._pal["overlay_bg"])
+        p.drawRoundedRect(QRectF(x, y, box_w, box_h), t.radius_sm, t.radius_sm)
+
+        p.setFont(title_font)
+        p.setPen(self._pal["text"])
+        baseline = y + pad + title_fm.ascent()
+        p.drawText(QPointF(x + pad, baseline), title)
+
+        p.setFont(row_font)
+        row_y = y + pad + title_fm.height() + t.spacing_xs
+        for kind, text in rows:
+            mid = row_y + row_fm.height() / 2
+            if kind == "you":
+                p.setPen(QPen(accent, 3))
+                p.drawLine(QPointF(x + pad, mid), QPointF(x + pad + 20, mid))
+            elif kind == "ghost":
+                pen = QPen(info, 3)
+                pen.setStyle(Qt.CustomDashLine)
+                pen.setDashPattern([2.0, 1.5])
+                p.setPen(pen)
+                p.drawLine(QPointF(x + pad, mid), QPointF(x + pad + 20, mid))
+            else:
+                pen = QPen(accent, 1.5)
+                pen.setStyle(Qt.DashLine)
+                p.setPen(pen)
+                p.setBrush(Qt.NoBrush)
+                p.drawEllipse(QPointF(x + pad + 10, mid), 5, 5)
+            p.setPen(self._pal["text"])
+            p.drawText(QPointF(x + pad + sample_w, row_y + row_fm.ascent()), str(text))
+            row_y += row_h
 
     def _draw_score_box(self, p: QPainter):
         info = self._score_info

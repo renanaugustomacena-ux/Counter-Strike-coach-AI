@@ -100,6 +100,16 @@ def main() -> int:
             "per-tab grabs never overwrite each other."
         ),
     )
+    ap.add_argument(
+        "--variant",
+        default="",
+        help=(
+            "Inject a named fixture variant: calls inject_<screen>_<variant> "
+            "when ui_fixtures defines it (e.g. tactical_viewer + ghost), "
+            "falling back to the plain fixture otherwise. The output "
+            "filename gains a _<variant> suffix when the variant applied."
+        ),
+    )
     ap.add_argument("--size", default="1440x900")
     args = ap.parse_args()
     width, height = (int(x) for x in args.size.lower().split("x"))
@@ -150,15 +160,21 @@ def main() -> int:
                 continue
             window.switch_screen(name)
             _settle(app)
-            if not args.no_fixtures:
-                ui_fixtures.inject(name, screens[name])
-            _wait(app, 400)  # let list fade-ins and property animations finish
             suffix = ""
+            if not args.no_fixtures:
+                variant = args.variant.strip().lower()
+                variant_fn = getattr(ui_fixtures, f"inject_{name}_{variant}", None) if variant else None
+                if variant_fn is not None:
+                    variant_fn(screens[name])
+                    suffix = f"_{variant}"
+                else:
+                    ui_fixtures.inject(name, screens[name])
+            _wait(app, 400)  # let list fade-ins and property animations finish
             tab = args.md_tab.strip().lower()
             if tab and hasattr(screens[name], "set_active_tab"):
                 screens[name].set_active_tab(tab)
                 _wait(app, 150)
-                suffix = f"_{tab}"
+                suffix += f"_{tab}"
             dest = out_dir / f"{name}{suffix}.png"
             if not window.grab().save(str(dest), "PNG"):
                 print(f"FAILED to save {dest}", file=sys.stderr)

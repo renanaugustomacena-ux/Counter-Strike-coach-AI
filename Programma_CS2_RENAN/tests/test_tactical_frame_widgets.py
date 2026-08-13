@@ -80,3 +80,54 @@ class TestTimelineStars:
         assert widget.star_hit_test(star_x, widget.height() - 10) is None
         widget.set_critical_moments([{"kind": "no tick keys"}])
         assert widget.star_hit_test(star_x, widget.height() - 10) is None
+
+
+class TestDivergenceAdapter:
+    """_divergence_rows renders ONLY what the ghost payload carries
+    (Locked Decision 8) — em-dash + neutral verdict for everything else."""
+
+    def _rows(self, payload):
+        from Programma_CS2_RENAN.apps.qt_app.screens.tactical_viewer_screen import (
+            _divergence_rows,
+        )
+
+        return _divergence_rows(payload)
+
+    def test_full_payload_maps_all_six_metrics(self):
+        payload = {
+            "divergence": {
+                "entry_timing": {"value": "-4.5s", "verdict": "bad"},
+                "peek_angle": {"value": "jungle vs palace", "verdict": "bad"},
+                "flash_support": {"value": "0 vs 2", "verdict": "bad"},
+                "crouch_ratio": {"value": "22% vs 41%", "verdict": "warn"},
+                "crosshair_placement": {"value": "good", "verdict": "good"},
+                "outcome": {"value": "died vs won", "verdict": "bad"},
+            }
+        }
+        rows = self._rows(payload)
+        assert len(rows) == 6
+        assert [(value, verdict) for _label, value, verdict in rows] == [
+            ("-4.5s", "bad"),
+            ("jungle vs palace", "bad"),
+            ("0 vs 2", "bad"),
+            ("22% vs 41%", "warn"),
+            ("good", "good"),
+            ("died vs won", "bad"),
+        ]
+        assert all(label for label, _v, _d in rows)
+
+    @pytest.mark.parametrize(
+        "payload", [None, {}, {"divergence": None}, {"divergence": {}}, {"divergence": 3}]
+    )
+    def test_absent_payload_renders_dashes(self, payload):
+        rows = self._rows(payload)
+        assert len(rows) == 6
+        assert all(value == "—" and verdict == "neutral" for _label, value, verdict in rows)
+
+    def test_partial_scalar_and_malformed_entries(self):
+        rows = self._rows(
+            {"divergence": {"entry_timing": "-4.5s", "outcome": {"verdict": "bad"}}}
+        )
+        assert rows[0][1:] == ("-4.5s", "neutral")  # bare scalar → neutral
+        assert rows[5][1:] == ("—", "bad")  # value missing → em-dash keeps verdict
+        assert all(value == "—" for _label, value, _v in rows[1:5])
