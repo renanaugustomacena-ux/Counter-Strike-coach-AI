@@ -395,6 +395,96 @@ COACH_CHAT: list[dict[str, Any]] = [
     },
 ]
 
+# ── Performance (frame 12) — keys mirror PerformanceViewModel._bg_load ──
+#
+# data_changed(history, map_stats, sw, utility, is_pro_overview) plus the
+# context_changed(dict) percentile strip emitted BEFORE it (R4 MED order).
+# History rows carry analytics.get_rating_history keys; map_stats carries
+# get_per_map_stats keys; sw carries get_strength_weakness (name, z) tuples
+# (curated display names); utility carries get_utility_breakdown user/pro.
+
+# Last 8 ratings per the frame-12 sparkline. 1.04→1.07 and 1.12→1.14 vs the
+# frame's dot comment so the last-5 average lands EXACTLY on the frame's
+# "Recent trend: 1.17" (the frame's own dots average 1.16 — it rounds).
+_PERF_RATING_TAIL = [0.94, 0.74, 0.87, 1.08, 1.07, 1.22, 1.14, 1.34]
+
+
+def _performance_history() -> list[dict[str, Any]]:
+    """47 rows: avg exactly 1.08, range 0.71 — 1.34, last-5 avg exactly 1.17.
+
+    Sum check: 37×1.10 + 0.95 + 0.71 + sum(tail 8.40) = 50.76 = 47 × 1.08.
+    """
+    ratings = [1.10] * 37 + [0.95, 0.71] + list(_PERF_RATING_TAIL)
+    first = _dt(2026, 1, 2, 20, 30)
+    return [
+        {
+            "rating": r,
+            "match_date": first + timedelta(days=2 * i, minutes=7 * i),
+            "demo_name": f"2026_comp_{i + 1:02d}.dem",
+            "kd_ratio": 1.09,
+            "avg_adr": 74.6,
+            "avg_kast": 0.71,
+        }
+        for i, r in enumerate(ratings)
+    ]
+
+
+PERFORMANCE_MAP_STATS: dict[str, dict[str, Any]] = {
+    "de_mirage": {"rating": 1.22, "adr": 84, "kd": 1.19, "matches": 12},
+    "de_inferno": {"rating": 1.12, "adr": 74, "kd": 1.05, "matches": 9},
+    "de_nuke": {"rating": 0.94, "adr": 58, "kd": 0.87, "matches": 8},
+    "de_ancient": {"rating": 0.78, "adr": 53, "kd": 0.72, "matches": 6},
+    "de_overpass": {"rating": 1.08, "adr": 70, "kd": 1.00, "matches": 7},
+    "de_anubis": {"rating": 1.18, "adr": 79, "kd": 1.12, "matches": 5},
+}
+
+PERFORMANCE_SW: dict[str, list[tuple[str, float]]] = {
+    "strengths": [
+        ("Clutch Win %", 1.8),
+        ("Opening Kill Delta", 1.4),
+        ("Flash Assists", 1.1),
+        ("Thru-smoke Kills", 0.9),
+    ],
+    "weaknesses": [
+        ("Unused Utility", -2.1),
+        ("Trade Response", -1.6),
+        ("HS %", -1.3),
+        ("Positional Aggression", -0.8),
+    ],
+}
+
+# Pro values pinned to the frame's chart captions (pro 15.2 / 5.9 / 2.6 /
+# 0.91); the metric-row percentages derive from this SAME payload, so two
+# rows land 1 point off the frame's rounded copy (frame +22% → real +23%,
+# frame -31% → real -32% — the frame is internally inconsistent there).
+# Smokes/blind pro baselines are chosen so +12% and +8% land exactly.
+PERFORMANCE_UTILITY: dict[str, dict[str, float]] = {
+    "user": {
+        "he_damage": 12.4,
+        "molotov_damage": 5.8,
+        "smokes_per_round": 0.80,
+        "flash_blind_time": 2.3,
+        "flash_assists": 3.2,
+        "unused_utility": 1.2,
+    },
+    "pro": {
+        "he_damage": 15.2,
+        "molotov_damage": 5.9,
+        "smokes_per_round": 0.714,
+        "flash_blind_time": 2.13,
+        "flash_assists": 2.6,
+        "unused_utility": 0.91,
+    },
+}
+
+# Cluster F percentile strip (context_changed payload keys).
+PERFORMANCE_CONTEXT: dict[str, float] = {
+    "rating": 0.68,
+    "kd": 0.61,
+    "adr": 0.64,
+    "kast": 0.71,
+}
+
 
 def inject(name: str, screen: Any) -> bool:
     """Inject the fixture for ``name`` into ``screen``.
@@ -441,4 +531,17 @@ def inject_match_detail(screen: Any) -> None:
         [dict(r) for r in MATCH_DETAIL_ROUNDS],
         [dict(i) for i in MATCH_DETAIL_INSIGHTS],
         dict(MATCH_DETAIL_HLTV),
+    )
+
+
+def inject_performance(screen: Any) -> None:
+    # Context BEFORE data — the VM's R4 MED emission order: the data slot
+    # rebuilds the UI synchronously and reads the cached context strip.
+    screen._on_context(dict(PERFORMANCE_CONTEXT))
+    screen._on_data(
+        _performance_history(),
+        {name: dict(stats) for name, stats in PERFORMANCE_MAP_STATS.items()},
+        {kind: list(rows) for kind, rows in PERFORMANCE_SW.items()},
+        {side: dict(vals) for side, vals in PERFORMANCE_UTILITY.items()},
+        False,  # is_pro_overview — 47 personal demos analyzed
     )

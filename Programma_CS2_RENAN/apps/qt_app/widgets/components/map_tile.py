@@ -43,7 +43,9 @@ class MapTile(QFrame):
         self._adr: float = 0.0
         self._kd: float = 0.0
         self._matches: int = 0
-        self.setMinimumSize(150, 112)
+        # 4 text lines + paddings + the 4px bar: 112 made the matches
+        # caption collide with the bar at current token font sizes.
+        self.setMinimumSize(150, 132)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
     def set_data(
