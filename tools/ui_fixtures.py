@@ -551,6 +551,18 @@ def inject_profile(screen: Any) -> None:
     screen._saved_chip.setVisible(True)
 
 
+def inject_wizard(screen: Any) -> None:
+    """Frame 18: jump to the Brain Path step with a real writable temp
+    path so the validation row (writable / free space / existing data)
+    shows live computed values instead of neutral dashes."""
+    import tempfile
+
+    path = tempfile.mkdtemp(prefix="macena_brain_")
+    screen._name_input.setText("macena")
+    screen._brain_input.setText(path)  # textChanged → validation refresh
+    screen._go_to(2)
+
+
 def inject_performance(screen: Any) -> None:
     # Context BEFORE data — the VM's R4 MED emission order: the data slot
     # rebuilds the UI synchronously and reads the cached context strip.
