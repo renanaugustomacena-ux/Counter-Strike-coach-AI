@@ -19,6 +19,8 @@ import sys
 from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+# Deterministic end-states: value animations (count-ups, ring sweeps) snap.
+os.environ.setdefault("MACENA_UI_ANIMATIONS", "0")
 
 _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO))

@@ -19,6 +19,7 @@ from pathlib import Path
 import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+os.environ.setdefault("MACENA_UI_ANIMATIONS", "0")  # deterministic end states
 
 _REPO = Path(__file__).resolve().parents[2]
 if str(_REPO) not in sys.path:

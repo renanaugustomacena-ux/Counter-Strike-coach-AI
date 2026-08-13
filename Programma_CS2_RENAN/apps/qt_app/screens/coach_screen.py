@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from Programma_CS2_RENAN.apps.qt_app.core.animation import Animator
 from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
@@ -523,7 +524,12 @@ class CoachScreen(QWidget):
         normalized = float(confidence)
         if normalized > 1.0:
             normalized = normalized / 100.0
-        self._belief_ring.set_value(max(0.0, min(1.0, normalized)))
+        normalized = max(0.0, min(1.0, normalized))
+        # Sweep only on a real change — repeated polls must not re-animate.
+        if abs(normalized - getattr(self, "_last_belief", -1.0)) < 0.001:
+            return
+        self._last_belief = normalized
+        Animator.sweep_ring(self._belief_ring, normalized)
 
     def _on_total_matches(self, total: int) -> None:
         self._driver_stats["samples"] = int(total)

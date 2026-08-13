@@ -917,6 +917,52 @@ class TestProComparisonPure:
         assert empty_headline == i18n.get_text("procomp.style.balanced", "balanced all-rounder")
 
 
+class TestValueAnimations:
+    """Task 28 micro-motions: deterministic under the kill-switch, live otherwise."""
+
+    def test_count_up_disabled_sets_immediately(self, qapp, monkeypatch):
+        from PySide6.QtWidgets import QLabel
+
+        from Programma_CS2_RENAN.apps.qt_app.core.animation import Animator
+
+        monkeypatch.setenv("MACENA_UI_ANIMATIONS", "0")
+        label = QLabel()
+        anim = Animator.count_up(label, 1.34, fmt="{:.2f}")
+        assert anim is None
+        assert label.text() == "1.34"
+        label.deleteLater()
+
+    def test_sweep_ring_disabled_sets_immediately(self, qapp, monkeypatch):
+        from Programma_CS2_RENAN.apps.qt_app.core.animation import Animator
+        from Programma_CS2_RENAN.apps.qt_app.widgets.components.progress_ring import (
+            ProgressRing,
+        )
+
+        monkeypatch.setenv("MACENA_UI_ANIMATIONS", "0")
+        ring = ProgressRing()
+        assert Animator.sweep_ring(ring, 0.73) is None
+        assert ring._value == pytest.approx(0.73)
+        ring.deleteLater()
+
+    def test_count_up_enabled_reaches_end_value(self, qapp, monkeypatch):
+        import time
+
+        from PySide6.QtWidgets import QLabel
+
+        from Programma_CS2_RENAN.apps.qt_app.core.animation import Animator
+
+        monkeypatch.setenv("MACENA_UI_ANIMATIONS", "1")
+        label = QLabel()
+        anim = Animator.count_up(label, 47.0, fmt="{:.0f}", duration=60)
+        assert anim is not None
+        deadline = time.monotonic() + 2.0
+        while label.text() != "47" and time.monotonic() < deadline:
+            qapp.processEvents()
+            time.sleep(0.01)
+        assert label.text() == "47"
+        label.deleteLater()
+
+
 class TestStepperLabels:
     """Task 27: optional per-step captions (frame 18) stay backward-compatible."""
 
