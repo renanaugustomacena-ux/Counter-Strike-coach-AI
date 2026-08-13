@@ -443,3 +443,56 @@ class TestTypography:
         body = Typography.font("body")
         assert fallback.pointSize() == body.pointSize()
         assert fallback.family() == body.family()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 7. MapTile + MetricBarRow (per-map grid and HLTV bar-row primitives)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestMapTile:
+    def test_construction_and_value_roundtrip(self, qapp):
+        from Programma_CS2_RENAN.apps.qt_app.widgets.components.map_tile import MapTile
+
+        tile = MapTile()
+        tile.set_data("Mirage", 1.22, 84, 1.19, 12)
+        assert tile._map_name == "Mirage"
+        assert tile._rating == pytest.approx(1.22)
+        assert tile._adr == pytest.approx(84)
+        assert tile._kd == pytest.approx(1.19)
+        assert tile._matches == 12
+        # Bottom bar fill = min(rating / 1.5, 1.0) in the rating color.
+        assert tile._fill_frac() == pytest.approx(1.22 / 1.5)
+        tile.set_data("Ancient", 2.4, 53, 0.72, 6)
+        assert tile._fill_frac() == pytest.approx(1.0)  # clamps at full
+        tile.resize(320, 130)
+        assert not tile.grab().isNull()
+        tile.deleteLater()
+
+    def test_exported_from_components_package(self):
+        from Programma_CS2_RENAN.apps.qt_app.widgets.components import (  # noqa: F401
+            MapTile,
+            MetricBarRow,
+        )
+
+
+class TestMetricBarRow:
+    def test_construction_and_value_roundtrip(self, qapp):
+        from PySide6.QtGui import QColor
+
+        from Programma_CS2_RENAN.apps.qt_app.widgets.components.metric_bar_row import (
+            MetricBarRow,
+        )
+
+        row = MetricBarRow()
+        row.set_metric("Rating Impact", "1.28", 1.28 / 1.5, QColor("#4caf50"))
+        assert row._label == "Rating Impact"
+        assert row._value_text == "1.28"
+        assert row._frac == pytest.approx(1.28 / 1.5)
+        row.set_metric("Clutch Win%", "67%", 1.7, QColor("#4caf50"))
+        assert row._frac == pytest.approx(1.0)  # overshoot clamps
+        row.set_metric("Was Traded", "0.62", -0.4, QColor("#00D9FF"))
+        assert row._frac == pytest.approx(0.0)  # negative clamps
+        row.resize(420, 28)
+        assert not row.grab().isNull()
+        row.deleteLater()

@@ -148,5 +148,9 @@
   "chart_half_label": "metade",
   "chart_momentum_title": "Momentum (delta kill-death)",
   "chart_legend_ct_side": "Lado CT",
-  "chart_legend_t_side": "Lado T"
+  "chart_legend_t_side": "Lado T",
+  "map_tile_rating": "Rating",
+  "map_tile_matches": "partidas",
+  "stat_adr": "ADR",
+  "stat_kd": "K/D"
 }
