@@ -10,8 +10,17 @@ from datetime import datetime, timedelta, timezone
 
 from sqlmodel import Session, SQLModel, create_engine, select
 
-from Programma_CS2_RENAN import run_worker
 from Programma_CS2_RENAN.backend.storage.db_models import IngestionTask
+
+# NB: run_worker is imported INSIDE tests — the entry script self-inserts
+# Programma_CS2_RENAN into sys.path (S5), which at collection time makes
+# `import tools` resolve the ptools package and breaks root-tests imports.
+
+
+def _run_worker():
+    from Programma_CS2_RENAN import run_worker
+
+    return run_worker
 
 
 class _DB:
@@ -51,7 +60,7 @@ def test_recovery_threshold_uses_p4b_setting(monkeypatch):
         "Programma_CS2_RENAN.core.config.get_setting",
         lambda key, default=None: default,
     )
-    run_worker._recover_stale_tasks(_DB(engine))
+    _run_worker()._recover_stale_tasks(_DB(engine))
     with Session(engine) as s:
         assert s.exec(select(IngestionTask)).first().status == "processing", (
             "10-min-old task recovered — the 5-minute copy is back"
@@ -65,7 +74,7 @@ def test_recovery_fires_past_the_threshold(monkeypatch):
         "Programma_CS2_RENAN.core.config.get_setting",
         lambda key, default=None: default,
     )
-    run_worker._recover_stale_tasks(_DB(engine))
+    _run_worker()._recover_stale_tasks(_DB(engine))
     with Session(engine) as s:
         assert s.exec(select(IngestionTask)).first().status == "queued"
 
@@ -73,6 +82,6 @@ def test_recovery_fires_past_the_threshold(monkeypatch):
 def test_release_claim_requeues_processing_task():
     engine = _engine()
     task_id = _add_task(engine, status="processing")
-    run_worker._release_claim(_DB(engine), task_id)
+    _run_worker()._release_claim(_DB(engine), task_id)
     with Session(engine) as s:
         assert s.get(IngestionTask, task_id).status == "queued"

@@ -12,10 +12,19 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from Programma_CS2_RENAN import hltv_sync_service as svc
+# NB: hltv_sync_service is imported INSIDE tests — the entry script
+# self-inserts Programma_CS2_RENAN into sys.path (S5), which at collection
+# time shadows the root `tools` namespace for later-collected root tests.
+
+
+def _svc():
+    from Programma_CS2_RENAN import hltv_sync_service
+
+    return hltv_sync_service
 
 
 def test_detached_spawn_targets_importable_module(tmp_path, monkeypatch):
+    svc = _svc()
     monkeypatch.setattr(svc, "PID_FILE", tmp_path / "hltv_sync.pid")
     with patch.object(svc.subprocess, "Popen") as popen:
         popen.return_value.pid = 4242
@@ -33,6 +42,7 @@ class _StopLoop(Exception):
 
 
 def test_dormant_path_retries_connectivity(monkeypatch):
+    svc = _svc()
     solver = MagicMock()
     solver.is_available.return_value = True
     # First connectivity probe fails -> dormant; second succeeds -> proceed.
