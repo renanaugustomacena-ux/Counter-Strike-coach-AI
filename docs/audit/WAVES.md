@@ -6,6 +6,26 @@ PNGs eyeballed by name for UI waves), CI status both legs.
 
 (entries appended chronologically; R0 baseline lives in BASELINE.md)
 
+## Pass 2 boundary — 2026-08-14 (lenses L1–L10 + L-COV + sweeps S-4/S-6/S-7) — **DIAGNOSIS COMPLETE, CP0 PRESENTED**
+
+- Scope: all ten cross-cutting lenses assembled into CONTRACTS.md (one commit
+  each or grouped), every one of the 618 ledger rows now carries ≥1 lens tag
+  (L-COV rule satisfied, 0 untagged). Sweeps closed: S-6 delegated censuses
+  (verified counts), S-4 redo (satisfied via L3/L9 assembly), S-7 (performed
+  through Phase-T dossiers; asymmetries recorded).
+- S-6 headline results: the 22 core→backend layering edges are ALL in
+  session_engine (composition root — W3 shrinks to an ADR paragraph); ZERO
+  real bare-excepts (validator enforces the ban); ZERO `raise e`; prints
+  ~all in __main__ debug blocks; 17 naive-datetime hits with NO cross-boundary
+  arithmetic hazard; seed discipline exemplary (P1-02 SSOT).
+- Register FINAL for CP0: **F-0001..F-0044 — 0 P0 / 12 P1 / 32 P2.**
+  CP0.md written: severity table, 7 decision clusters, wave scopes.
+- Gate (Pass-2 boundary): **2 failed, 2500 passed, 48 skipped, 5 errors —
+  74.4s — IDENTICAL to R0 baseline**; coverage 55.40% ≥ 33%;
+  test_ui_smoke.py named run **4/4 in 7.71s**. Campaign has touched zero
+  production code, as designed.
+- NEXT: CP0 user checkpoint — NO fixes until approval.
+
 ## Phase I boundary — 2026-08-14 (batch B76, 39 files / ~3,090 LOC read) — **PASS 1 COMPLETE: 618/618 ledger rows (100%)**
 
 - Scope: ALL infra/config — 4 CI workflows (build.yml 471 read in full), root +
