@@ -11,8 +11,7 @@ PNGs eyeballed by name for UI waves), CI status both legs.
 - Scope: backend/analysis complete — win probability + Elo, engagement range,
   momentum, blind spots, entropy, belief model, game tree, deception, movement
   quality, role classifier, utility/economy. No study module scheduled.
-- Commits: (B16), (B17), e0c9dbe (B18) — B16/B17 SHAs in git log between
-  493c56e and e0c9dbe. All pushed.
+- Commits: f374198 (B16), 7cca008 (B17), e0c9dbe (B18). All pushed.
 - Findings: F-0021, F-0022 registered (2× P2, both silent-degradation contract
   drift): deception flash-bait detection keyed to dead CS2 event vocabulary
   (player_blind never emitted → bait rate degenerates 1.0/0.0); engagement
