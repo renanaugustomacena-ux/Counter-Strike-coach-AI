@@ -39,16 +39,10 @@ from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE  # noqa: E402
 DEFAULT_SHARDS_DIR = get_pro_demo_base() / "match_data"
 DB_PATH = PROJECT_ROOT / "Programma_CS2_RENAN" / "backend" / "storage" / "database.db"
 
-KNOWN_MAPS = {
-    "de_mirage": "mirage",
-    "de_dust2": "dust2",
-    "de_inferno": "inferno",
-    "de_nuke": "nuke",
-    "de_overpass": "overpass",
-    "de_ancient": "ancient",
-    "de_anubis": "anubis",
-    "de_vertigo": "vertigo",
-}
+# map-SSOT (CP0 #2): id->bare mapping derived from the authority.
+from Programma_CS2_RENAN.core.known_maps import KNOWN_MAP_NAMES as _KM
+
+KNOWN_MAPS = {f"de_{m}": m for m in _KM}
 PRO_CONFIDENCE = 0.7
 # Strategy windows in SECONDS — converted per shard from
 # match_metadata.tick_rate (26-TICK: the old *_TICKS constants baked in a

@@ -21,7 +21,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 DB_PATH = str(PROJECT_ROOT / "Programma_CS2_RENAN" / "backend" / "storage" / "database.db")
 
-KNOWN_MAPS = {"mirage", "dust2", "inferno", "nuke", "overpass", "ancient", "anubis", "vertigo"}
+# map-SSOT (CP0 #2)
+from Programma_CS2_RENAN.core.known_maps import KNOWN_MAP_NAMES as KNOWN_MAPS
 
 
 def _extract_map_name(demo_name: str) -> str:

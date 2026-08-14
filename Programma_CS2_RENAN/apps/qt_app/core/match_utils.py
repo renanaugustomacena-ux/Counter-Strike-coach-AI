@@ -18,21 +18,8 @@ import re
 # ``de_mirage`` not ``de_mirage_2026``. ``[a-z0-9]+`` deliberately
 # excludes ``_`` so the suffix never gets swallowed.
 _MAP_PATTERN = re.compile(r"(de_[a-z0-9]+|cs_[a-z0-9]+|ar_[a-z0-9]+)")
-_KNOWN_MAPS: frozenset[str] = frozenset(
-    {
-        "mirage",
-        "inferno",
-        "dust2",
-        "overpass",
-        "ancient",
-        "anubis",
-        "nuke",
-        "vertigo",
-        "train",
-        "cache",
-        "office",
-    }
-)
+# map-SSOT (CP0 #2): the authority lives in core.known_maps.
+from Programma_CS2_RENAN.core.known_maps import KNOWN_MAP_NAMES as _KNOWN_MAPS
 
 
 def extract_map_name(demo_name: str) -> str:

@@ -1,5 +1,5 @@
 {
-  "file_count": 308,
+  "file_count": 309,
   "generator": "sync_integrity_manifest.py",
   "hashes": {
     "__init__.py": "d3074031129007f4a6dd65765a0faaad39df9ba8ee41ebe0c94c7f18598c12d0",
@@ -13,7 +13,7 @@
     "apps/qt_app/core/easing.py": "2f0fbde9d0d66b4409235d8223fef08cfe8345cf24d47c03c6a6046e7f35b46e",
     "apps/qt_app/core/i18n_bridge.py": "969932860d8bb25fc57db82d4b4e3b2f51ef3eb4edcc5cd7116542967e4d98be",
     "apps/qt_app/core/icons.py": "c69f15d8d96c5a8af07e284922eae5afa21d5bb8a32a93f05b5373734f1c0499",
-    "apps/qt_app/core/match_utils.py": "41998298b1471cae1bcbec5c315e668aaf30fac6950a2e4aaf415e56bc5ea849",
+    "apps/qt_app/core/match_utils.py": "9caa07bb9707840c2a72d3cbac36e40bccb3456cff45d347794e63f0c1e8bd73",
     "apps/qt_app/core/qss_generator.py": "936cfb09189a402f62b5ede8b7ada6781c21cd8323736033278ceabe8215625d",
     "apps/qt_app/core/qt_playback_engine.py": "a8e32da37907978b4cde4ad34512ce32a379c91ec18ef3f76a2eac09a635b667",
     "apps/qt_app/core/sound.py": "e1712bf16a33a6698e317da82f775d6048158599993957d24d04aacaf1ba2594",
@@ -25,7 +25,7 @@
     "apps/qt_app/core/worker.py": "ac23da8758afcd841a86117dc7a2288e183c4d38c065e4e8bbbc83d34dc39c0e",
     "apps/qt_app/main_window.py": "cbcfe898096691cc8e8f0a7954e4f8815029296a80afdd52b408a41f936f9ef3",
     "apps/qt_app/screens/__init__.py": "2dae9eebf61a5718034075c98de5849a8bef4967984bb78a1329e995fd4e89fb",
-    "apps/qt_app/screens/coach_screen.py": "339854b32aedb15a7ca04afd380c32d030100de6ad9604f872cf9a5f709b8218",
+    "apps/qt_app/screens/coach_screen.py": "344b9dd359ff91570666affe9a5aea16dabc915d4e47d11379dcad9e17e125fe",
     "apps/qt_app/screens/faceit_config_screen.py": "1d3354163f8c75731c7befaa934bf7374e407752f67e7fab344efee66cc68d11",
     "apps/qt_app/screens/help_screen.py": "dfe47477aba580758363fdc55a80c4be174fc9cd23285458da57f4634a831b39",
     "apps/qt_app/screens/home_screen.py": "03e5001d86d0791c1364596dcc3f9db6c58158c71c7f3b0e8cd6b6451c63dd61",
@@ -275,6 +275,7 @@
     "core/constants.py": "13dfb30d3d430319032f6c2bc1e1b598beb7fa9931a764d575b135e911a4d000",
     "core/demo_frame.py": "7d4eb49f37b061dc45d9ae1c70773940ffbb3585b66631eeb792278185382c16",
     "core/frozen_hook.py": "ef258579eddf5b6b1779f1432c9f83b0b74931d9f71d03ec55c7b464d6b5226c",
+    "core/known_maps.py": "107004570a6f1319631e7392068d6427d97f0c57da7ba9b3f65c0e538424dbf5",
     "core/lifecycle.py": "36fcaa66b959b6ec83a74f028096c16ad8d280301b15abe9e85b174839d53633",
     "core/localization.py": "78de91c6749e1251f54d0446865b6f9c04432af1e8fc4f2dd44f79a33bbb05f0",
     "core/lock_files.py": "ec87cf5dedac7dd9dd18ed7b965c94723dc4d5559485c62b7cabafc85f07af07",

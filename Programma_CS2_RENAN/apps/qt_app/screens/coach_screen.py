@@ -51,7 +51,8 @@ _QUICK_ACTION_KEYS = [
     ("quick_action_focus", "What should I focus on improving?"),
 ]
 
-_MAP_RE = re.compile(r"(mirage|inferno|dust2|overpass|ancient|anubis|nuke|vertigo|train)")
+# map-SSOT (CP0 #2): alternation comes from the authority list.
+from Programma_CS2_RENAN.core.known_maps import MAP_NAME_RE as _MAP_RE
 
 _EM_DASH = "—"
 
