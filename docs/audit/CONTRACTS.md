@@ -176,4 +176,3 @@ Assembled 2026-08-14. Consolidated dead/drift ledger (W3 fuel).
 | fuzzer help text demoparser2==0.41.1 vs pinned 0.41.4 | doc drift (P3) | B76 |
 | help_screen + 3 tooling sites: gemma3 vs gemma4 | stale strings (W3/W6) | B45/B50 |
 | Stale Bug#4 demonstration tests (never call production) | test debt (W3) | B63 |
-

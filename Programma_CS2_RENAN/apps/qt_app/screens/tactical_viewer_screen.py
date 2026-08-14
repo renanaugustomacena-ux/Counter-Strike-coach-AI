@@ -44,8 +44,8 @@ from Programma_CS2_RENAN.apps.qt_app.widgets.tactical.timeline_widget import (
     TimelineWidget,
 )
 from Programma_CS2_RENAN.core.demo_frame import Team
-from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE
 from Programma_CS2_RENAN.core.playback_engine import InterpolatedFrame
+from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.qt_tactical_viewer")
