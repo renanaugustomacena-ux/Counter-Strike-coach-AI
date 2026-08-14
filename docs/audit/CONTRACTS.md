@@ -70,13 +70,46 @@ Assembled 2026-08-14.
 (pending)
 
 ## L5 — Resource lifecycle
-(pending)
+Assembled 2026-08-14 (module 33 rubric).
+
+| Domain | Contract & state | Evidence |
+|---|---|---|
+| torch.load | weights_only=True at EVERY loader found (ML debugger, persistence, tests) | B60, test_nn_infrastructure |
+| Checkpoint saves | persistence save_nn/load_nn + StaleCheckpointError + NN-14 FileNotFoundError; sidecar meta (best_val_loss B3.2); EMA counters rehydration REPR-01 | test_persistence_stale_checkpoint, B63 |
+| EMA aliasing | NN-16: apply_shadow/restore break storage aliasing (memory-safety) | test_ema_hopfield_drift_invariants |
+| Training-loop memory | losses via .item() discipline verified at B19-B25; epoch-loss denominator R4; zero-step scheduler guard TASKS#59 | B19-25 dossiers, test_training_orchestrator_flows |
+| SQLite handles | ro-URI opens in tools (d4, D2A, tick_census); contextlib.closing in register_orphan; WAL sidecar hygiene at wipe/restore | B52-B61 |
+| Tempfiles | correct delete=False+unlink (generate_zh_pdfs, jepa e2e ft-path); Windows-hostile delete=True in fuzzer (P3 B57); test_jepa_model leaks one tmp .pt (P3) | B57/B63 |
+| Subprocesses | list-args+timeouts everywhere except the ONE shell=True (F-0041 build_tools, broken anyway); B47 F7-29 goliath child cleanup | S5, B76 |
+| Qt objects | deleteLater discipline OK; toast timer fire-on-corpse F-0036; QPainter guards in charts (offscreen render tests pass) | B38-39, test_charts |
+| Locks/PID files | lock_files reclaim+atomicity; hltv_sync.pid stale detection (F8-35) | test_lock_files, B61 |
+
 
 ## L6 — Config/settings & path portability
-(pending)
+Assembled 2026-08-14.
+
+| Domain | Contract & state | Evidence |
+|---|---|---|
+| Settings flow | get_setting/save_user_setting under _settings_lock; secrets (STEAM/FACEIT/STORAGE_API_KEY) route through OS keyring FE-04/FE-06 with PROTECTED sentinel on disk; set/get robustness asymmetry = F-0007 | test_config_resolution, B61 verify |
+| $HOME family (the 2026-07-26 disasters) | THREE guards pinned: PRO_DEMO_PATH never defaults to HOME + explicit-HOME refused; NO implicit shard migration; dangling symlink fails LOUD (F-0003 suite, Linux) — get_pro_demo_base residual $HOME fallback = F-0008 | test_config_resolution, test_match_data_no_implicit_migration, test_match_data_dangling_symlink |
+| Env overrides | 4 path keys env-overridable (BRAIN_DATA_ROOT verified live at T-DIAG); .env layering tested; .env.example honest | test_config_dotenv, B76 |
+| Path bootstrap | path_stabilize SSOT (_infra) + per-file sys.path inserts (S5: 92 hits/83 files — convention, dual-import hazard documented); module 30 resolution-order grounding | S5, STUDY_LOG |
+| Cross-OS | CRLF-normalized manifest hashing; .gitattributes line-ending POLICY (no global renormalize — BINDING); win32 UTF-8 reconfigure; POSIX-only os.kill fixed 26-WIN-02 | B58/B76 |
+| Shadow config | pytest.ini duplicate = F-0044 (invocation-dependent) | B76 |
+| Hardcoded personal paths | generate_zh_pdfs (env-overridable, personal docs tool P3); forbidden-pattern scans (Desktop paths) in goliath ER + CI | B57/B59 |
+
 
 ## L7 — i18n & user-facing text
-(pending)
+Assembled 2026-08-14. THE SYSTEMIC REGISTER ENTRY (CP0 decision cluster).
+
+| Domain | State | Evidence |
+|---|---|---|
+| Parity gates EXIST | en/it/pt key parity tested at THREE tiers: test_ui_harness (harness), ui_diagnostic §2 (validator, WARNING), test_unit localization (unit incl. LOC-02 fallback) | B69/B61/B62 |
+| get_text coverage — screens | md_*/procomp/coach/tactical screens near-clean ✓; EN-heavy: pro_player_detail (near-zero i18n), faceit config, wizard; constructor-arg literals ESCAPED S3's setter grep (census corrected at B40): home "RECENT MATCHES"/"View all →", match_history bucket headers, steam "Sync Now" restore drift | L7 ledger (B34-B45) |
+| EN advice cluster (DECISION NEEDED at CP0) | ALL coaching advice EN by construction (ExplanationGenerator, hybrid titles "Strong Deaths", COPER messages, rating_label); FOUR test suites hard-pin the EN strings (coper_pathway, coaching_engines, coaching_service_flows, hybrid_engine) — i18n-ifying advice = engine+4-suite coordinated wave; alternative = deliberate EN-advice product decision (zero churn) | D-B68 |
+| READMEs | trilingual EN/IT/PT everywhere incl. SECURITY/ and logs/ exceptions; W6 ONLY | B76 |
+| Known stale strings | help_screen gemma3:e2b vs llm_service gemma4:e2b (4 sites incl. ui_gallery/ui_fixtures); placeholder.py README naming drift (W6) | B45/B50 |
+
 
 ## L8 — Numerical & ML correctness
 (pending)
