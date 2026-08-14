@@ -6,6 +6,41 @@ PNGs eyeballed by name for UI waves), CI status both legs.
 
 (entries appended chronologically; R0 baseline lives in BASELINE.md)
 
+## W1 + W2 — 2026-08-14 — **ALL 12 P1s FIXED + gate fully green** (CP0 approved: advice stays EN; F-0039 fix-not-delete; JEPA stays guarded)
+
+- W1 (infra): F-0001 manifest resync + stale root manifest DELETED (verify-only
+  GREEN; headless [Integrity] green); F-0004 CI filter feat/**+chore/** — CI now
+  RUNS on our branch; F-0005 validator asserts base.qss.template →
+  **headless_validator VERDICT: PASS (first time)**. First-ever CI run exposed
+  branch-wide format drift → isolated chore(lint) black/isort sweep (28 files;
+  suite byte-identical) + pre-commit ALL PASS locally.
+- W2 gate-greening pair: F-0002 SSOT import (tick_ssot 8/8) + F-0003 symlink
+  capability skipif → **default gate FULLY GREEN for the first time:
+  0 failed / 0 errors** (2499→2537 passed as regression suites landed).
+- W2 P1s, each with same-commit regression tests:
+  F-0012 _logger NameError fallbacks (3 sites) · F-0030 role-vocabulary guard
+  (no more fabricated "IGL 100%") · F-0032 TrainingStopRequested propagates
+  (operator STOP works; crash path intact) · F-0040 test-only never sanitizes ·
+  F-0039 safety runner gates all 13 census members (9 new prefix families +
+  skip-list; safe tools stay scheduled) · F-0015 P4-B threshold SSOT + claimed-
+  but-skipped release · F-0014 daemon spawns its own module (replace-not-delete)
+  + dormant path really retries · F-0043 (P2 rider) training abort exits 3 +
+  integrity-test data-gate · F-0006 parse_guard SSOT absorbs pyo3 panics AND
+  demoparser2's own error class (second latent gap found: narrowed guards
+  missed it; MRO verified live) · F-0037 atomic conditional-UPDATE claim (one
+  runner wins each task) · F-0038 three screens split DB work onto Workers +
+  PERMANENT doctrine-sweep test (no get_db_manager in screen functions).
+- Collection-hygiene fix en route: entry-script imports deferred past pytest
+  collection (S5 sys.path shadow made root tests resolve ptools).
+- Gate at W2 close: **2537 passed, 0 failed, 56 skipped, 0 errors — 76.1s;
+  coverage 55.77%**; ui_smoke 4/4 named; manifest verify GREEN; headless PASS;
+  renders EYEBALLED by name: profile.png, wizard.png, tactical_viewer.png
+  (CS2) — all intact post-Worker refactor. CI runs in flight on every push.
+- Register: F-0001..F-0006, F-0012, F-0014/15, F-0030, F-0032, F-0037/38/39/40,
+  F-0043 all fixed@sha. Remaining open: 24 P2s (W3/W4/W5 scope) + P3 batches.
+- Plan note: /code-review is due at end of W2 — it is user-triggered
+  (/code-review ultra); ready when you want to run it.
+
 ## Pass 2 boundary — 2026-08-14 (lenses L1–L10 + L-COV + sweeps S-4/S-6/S-7) — **DIAGNOSIS COMPLETE, CP0 READY**
 
 - Scope: all ten cross-cutting lenses assembled into CONTRACTS.md (one commit
