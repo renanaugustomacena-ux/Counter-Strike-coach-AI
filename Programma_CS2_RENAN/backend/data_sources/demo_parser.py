@@ -29,6 +29,36 @@ RATING_BASELINE_ECON = 85.0  # Economy-specific, not part of HLTV 2.0
 DEFAULT_KAST_FALLBACK = None  # R3-01: No fabricated fallback — NaN propagates to rating
 
 
+def _run_with_parse_timeout(fn, args, timeout, label, demo_ref):
+    """Run a parser call with a REAL timeout (F-0013).
+
+    The old `with ThreadPoolExecutor(...)` shape raised FutureTimeoutError
+    correctly — and then the with-block exit called shutdown(wait=True),
+    BLOCKING on the still-running parse thread (Python threads cannot be
+    killed). A hung demoparser2 call therefore hung the caller (and the
+    Digester daemon) forever despite the docstring's promise. Manual
+    executor + shutdown(wait=False) abandons the orphan thread loudly;
+    the GIL is released during Rust parsing so the process stays live.
+
+    Returns (ok, result): ok False on timeout.
+    """
+    executor = ThreadPoolExecutor(max_workers=1)
+    future = executor.submit(fn, *args)
+    try:
+        return True, future.result(timeout=timeout)
+    except FutureTimeoutError:
+        logger.error(
+            "%s timed out after %ds for %s — abandoning orphan parse thread.",
+            label,
+            timeout,
+            demo_ref,
+        )
+        future.cancel()
+        return False, None
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
+
+
 def parse_demo(demo_path: str, target_player: Optional[str] = None) -> pd.DataFrame:
     """Extremely stable parsing with full data integrity checks."""
     demo_name = os.path.basename(demo_path)
@@ -37,18 +67,15 @@ def parse_demo(demo_path: str, target_player: Optional[str] = None) -> pd.DataFr
         return pd.DataFrame()
     try:
         parser = DemoParser(demo_path)
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(parser.parse_events, ["round_end"])
-            try:
-                timeout = _get_parse_timeout(demo_path)
-                evs = future.result(timeout=timeout)
-            except FutureTimeoutError:
-                logger.error(
-                    "parse_demo timed out after %ds for %s",
-                    _get_parse_timeout(demo_path),
-                    demo_name,
-                )
-                return pd.DataFrame()
+        ok, evs = _run_with_parse_timeout(
+            parser.parse_events,
+            (["round_end"],),
+            _get_parse_timeout(demo_path),
+            "parse_demo",
+            demo_name,
+        )
+        if not ok:
+            return pd.DataFrame()
         if not evs:
             logger.warning("parse_demo: no round_end events in %s", demo_name)
             return pd.DataFrame()
@@ -586,18 +613,15 @@ def parse_sequential_ticks(demo_path: str, target_player: str, start_tick: int =
 
         # Run parser.parse_ticks in a thread with timeout to prevent indefinite
         # hangs on corrupted or very large demo files.
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(parser.parse_ticks, fields)
-            try:
-                timeout = _get_parse_timeout(demo_path)
-                raw_ticks = future.result(timeout=timeout)
-            except FutureTimeoutError:
-                logger.error(
-                    "Demo parser timed out after %ds for %s — skipping demo.",
-                    _get_parse_timeout(demo_path),
-                    demo_path,
-                )
-                return pd.DataFrame()
+        ok, raw_ticks = _run_with_parse_timeout(
+            parser.parse_ticks,
+            (fields,),
+            _get_parse_timeout(demo_path),
+            "parse_sequential_ticks",
+            demo_path,
+        )
+        if not ok:
+            return pd.DataFrame()
 
         t_parse = _time.monotonic()
         df = pd.DataFrame(raw_ticks)
