@@ -6,6 +6,48 @@ PNGs eyeballed by name for UI waves), CI status both legs.
 
 (entries appended chronologically; R0 baseline lives in BASELINE.md)
 
+## Phase U boundary — 2026-08-14 (batches B34–B45, ~90 files / ~19,900 LOC read)
+
+- Scope: entire apps/qt_app — app shell + core bridges (B34), theme/tokens
+  core (B35), all 11 viewmodels (B36), 44+ widgets across components/charts/
+  tactical/overlay (B37–B39), all 17 screens (B40–B45). Study module 20-gui
+  before B34 (STUDY_LOG row); S3 sweeps executed and CLOSED (sweeps/S-3.md).
+- Commits: 079dfa1 (B34), ad311f5 (B35), d3e226e (B36), d0f65d9 (B37),
+  375cc4f (B38), 50d544d (B39), ad95bac (B40), 8c99c47 (B41), 673ebea
+  (B42), b2eee99 (B43), 157e494 (B44), 9a04ab9 (B45). All pushed.
+- Findings: F-0033..F-0038 (2× P1, 4× P2). **P1s**: F-0037 ingestion
+  concurrency (three trigger surfaces — daemon auto-cycle default ON, Home,
+  Settings — share an exclusion-free pipeline; snapshot task claim +
+  check-then-act dedupe → double parses and duplicate stats rows); F-0038
+  three screens touch the DB on the GUI thread (profile save / chronovisor
+  lookup / wizard finish) against the self-documented doctrine. P2s: F-0033
+  AppState staticmethod-self NameError; F-0034 MACENA_UI_ANIMATIONS honored
+  by only 2/10 helpers (README claim overbroad); F-0035 EmptyState CTA rows
+  never reappear (match-detail no-data/error states lose "Back to Match
+  History" — invisible to the render matrix); F-0036 toast auto-dismiss
+  timers fire on destroyed widgets (eviction guarantees it).
+- S3 sweeps CLOSED: effects doctrine settled repo-wide (context-scoped ban,
+  consistently applied; card shadows static + single frosted site; NO
+  violations — memory row refined); hex census = parameter defaults +
+  sanctioned token SSOT; i18n setter-census CORRECTED (constructor-arg EN
+  literals escaped the grep — full L7 ledger rebuilt per dossier for Pass 2).
+- Verdicts: F-0002 tick-rate semantics settled (loud fallback only, real
+  header resolution — NO upgrade); F-0016/F-0019 consumer surfaces
+  confirmed coherent (ratio×100 displays, dual-scale formatter); icons
+  fallback census CLOSED (zero unsafe callers); MVP purity PASS (no VM
+  imports widgets); streaming chat wiring verified correct end-to-end.
+- Cross-phase ledgers assembled for Pass 2: theme-switch instance-style
+  staleness (FilterChip/StatusChip/roster/banners — systemic L2/L6),
+  fade_in-during-layout tension (1 site), map-SSOT cluster grew to 7
+  lists, L7 systemic evidence per-screen (match_detail/procomp/coach
+  nearly clean vs pro_player_detail/faceit/wizard EN-heavy).
+- Gate (full suite + cov, Windows `-p no:timeout`): **2 failed, 2500
+  passed, 48 skipped, 5 errors — 73.7s — IDENTICAL to R0 baseline**
+  (known reds F-0002/F-0003 only). Coverage 55.40% (floor 33%) ✓.
+  test_ui_smoke.py: 4/4 green (named run, 7.6s).
+- CI: not triggered (docs-only; F-0004 filter). Render matrix: unchanged
+  (no UI edits; committed design-close matrix stands).
+
 ## Phase K boundary — 2026-08-14 (batches B26–B33, 50 files / ~12,300 LOC read)
 
 - Scope: knowledge (experience bank, RAG/FAISS/graph, pro miner), coaching
