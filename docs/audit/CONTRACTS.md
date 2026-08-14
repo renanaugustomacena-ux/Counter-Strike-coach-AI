@@ -36,7 +36,20 @@ Assembled 2026-08-14 from D-B01..B76 cross-refs; spot verifications noted. Test-
 | map-SSOT CLUSTER (CP0) | 12 divergent known-map lists (match_utils 11, coach _MAP_RE 9, rebuild_monolith 8, mine_* 8, populate_match_results, d3_recover, seed tools, REQUIRED_MAPS 7, spatial registry, map_config.json, headless EXPECTED, ui fixtures) — single-authority fix is a CP0 decision | none — the cluster IS the finding |
 
 ## L2 — Thread & Qt-signal safety
-(pending)
+Assembled 2026-08-14. The MVVM doctrine (Worker(QRunnable)+Signals; screens never touch DB) held across all 17 screens at Pass 1 with THREE exceptions — all registered.
+
+| Domain | Contract & state | Evidence/test net |
+|---|---|---|
+| Worker signal contract | result/error/finished-ALWAYS; VMs emit, screens slot | test_qt_core TestWorker; B36 all-11-VMs MVP-pure verify |
+| Screens touching DB (auto ≥P1 rule) | THREE violations registered: profile_screen._save, tactical _start_chronovisor_scan, wizard._finish = **F-0038** (P1, 3 sites) | B44/B45 dossiers |
+| Ingestion worker slots | home + settings + console share `_ingestion_worker` single-slot pattern; concurrency hazard = **F-0037** (P1, FIVE trigger surfaces: home, settings, console ingest, batch_ingest, ingest_pro_demos) | B40/B44/B46/B47/B56 |
+| Timers | toast singleShot fire-on-corpse = **F-0036**; skeleton pulse stops in hideEvent ✓; playback QTimer main-thread ✓ (Inf-yaw hang pinned) | B39, test_playback_engine |
+| Cross-thread delivery | Qt auto-queued connections validated as THE doctrine (module 20); chat streaming first-chunk/update_last split correct (B43) | test_chat_streaming, coach_screen verify |
+| Daemon lifecycle | session_engine graceful shutdown (signal→flag→drain→join) ✓ course-validated; run_worker stale-threshold copy = **F-0015**; hltv_sync dead main.py launch = **F-0014** | test_session_engine, test_lock_files |
+| Locks | lock_files: TOCTOU-hardened acquire, exactly-one-winner ATOMICITY test, dead-PID reclaim (Windows OpenProcess fix 26-WIN-02); release() ownership gap = **F-0009**; lock ordering: no nested cross-order acquire found in Pass 1 (d_track_running and hltv_schema_migration never nested) | test_lock_files |
+| Singletons under threads | tensor-factory 10-thread same-instance test ✓; config._settings_lock thread test ✓; contextvars correlation-ID behavior pinned | test_tensor_factory, test_config_resolution, test_observability |
+| Theme-switch staleness (SYSTEMIC, CP0) | instance-styled widgets (FilterChip/StatusChip/roster cards/banners) never re-styled on theme_changed — hosts don't call refresh_styling; register at CP0 as one cluster | B37-B45 ledger |
+| GIL note | demoparser2 (Rust) releases GIL during parse — thread-based parse timeout sound in principle; wrong implementation = **F-0013** | module 10 study |
 
 ## L3 — DB session & transaction lifecycle
 (pending)
