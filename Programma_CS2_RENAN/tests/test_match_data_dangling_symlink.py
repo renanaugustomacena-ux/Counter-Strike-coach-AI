@@ -15,8 +15,33 @@ still created.
 """
 
 import os
+import tempfile
 
 import pytest
+
+
+def _can_symlink() -> bool:
+    """CPython test.support.can_symlink pattern — F-0003.
+
+    On Windows without SeCreateSymbolicLinkPrivilege (no Developer Mode,
+    not elevated) os.symlink raises OSError WinError 1314. These tests
+    then cannot even build their fixtures; skip them honestly instead of
+    erroring. Linux/CI runners keep enforcing the contract.
+    """
+    with tempfile.TemporaryDirectory() as td:
+        target = os.path.join(td, "probe_target")
+        link = os.path.join(td, "probe_link")
+        try:
+            os.symlink(target, link)
+        except (OSError, NotImplementedError):
+            return False
+        return True
+
+
+pytestmark = pytest.mark.skipif(
+    not _can_symlink(),
+    reason="symlink creation not permitted (Windows without symlink privilege) — F-0003",
+)
 
 from Programma_CS2_RENAN.backend.storage import match_data_manager as mdm
 from Programma_CS2_RENAN.backend.storage.match_data_manager import (

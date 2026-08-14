@@ -44,6 +44,7 @@ from Programma_CS2_RENAN.apps.qt_app.widgets.tactical.timeline_widget import (
     TimelineWidget,
 )
 from Programma_CS2_RENAN.core.demo_frame import Team
+from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE
 from Programma_CS2_RENAN.core.playback_engine import InterpolatedFrame
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -405,7 +406,7 @@ class TacticalViewerScreen(QWidget):
         # ghost payload is present (Locked Decision 8: defensive rendering).
         self._ghost_payload: dict | None = None
         self._ghost_mode_on = False
-        self._demo_tick_rate = 64
+        self._demo_tick_rate = DEFAULT_TICK_RATE
 
         # Tick UI timer
         self._tick_timer = QTimer(self)
@@ -1630,8 +1631,10 @@ class TacticalViewerScreen(QWidget):
                     return int(rate)
             except Exception as exc:  # noqa: BLE001 — playback must not die on header quirks
                 logger.warning("Header tick-rate resolution failed for %r: %s", path, exc)
-        logger.warning("Falling back to 64 tick/s for playback (no resolvable header)")
-        return 64
+        logger.warning(
+            "Falling back to %s tick/s for playback (no resolvable header)", DEFAULT_TICK_RATE
+        )
+        return DEFAULT_TICK_RATE
 
     def _on_cm_scan_complete(self, cms, count: int) -> None:
         """Enable/disable the CM transport based on real scan results."""
