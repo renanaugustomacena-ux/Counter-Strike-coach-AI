@@ -6,6 +6,32 @@ PNGs eyeballed by name for UI waves), CI status both legs.
 
 (entries appended chronologically; R0 baseline lives in BASELINE.md)
 
+## Phase I boundary — 2026-08-14 (batch B76, 39 files / ~3,090 LOC read) — **PASS 1 COMPLETE: 618/618 ledger rows (100%)**
+
+- Scope: ALL infra/config — 4 CI workflows (build.yml 471 read in full), root +
+  SHADOW pytest.ini, pyproject, pre-commit, alembic.ini, .gitignore/.gitattributes/
+  .env.example, 8-file requirements family, docker-compose, packaging specs +
+  installer, 9 shell/batch scripts, launch.sh, both integrity manifests, SECURITY/
+  governance set (skim per plan). Study module 30-troubleshooting read first.
+- Findings: **F-0044 (P2) shadow pytest.ini** (invocation-dependent test config;
+  file was MISSED by S1 — ledger corrected to 618 rows); **F-0041 gained (e)**:
+  build_tools targets a NONEXISTENT macena.spec; **F-0001 RESOLVED the
+  authoritative-manifest question** (core/ authoritative; root copy = the stale
+  phantom-main.py carrier, W1 deletes it); F-0014 evidence #4 (scripts/
+  build_exe.bat pyinstalls deleted main.py with Kivy); F-0004's exact filter
+  line confirmed (feature/** vs feat/**). Register: F-0001..F-0044
+  (0 P0 / 12 P1 / 32 P2).
+- Binding W-wave constraints discovered: line-ending policy in .gitattributes
+  ("do NOT renormalize globally" — 478 CRLF / 623 LF historic mix); LFS
+  attributes on *.db/*.pt; black pin drift (pre-commit 24.1.1 vs plan's W4a
+  24.10.0 target); compose TAG-pinned (C-DOCK-01 --check would flag).
+- Gate: **2 failed, 2500 passed, 48 skipped, 5 errors — 77.9s — IDENTICAL to
+  R0 baseline**; coverage 55.40% ≥ 33%. test_ui_smoke.py (named): **4/4 in
+  8.19s**. CI: not triggered (docs-only; F-0004).
+- Pass-1 totals: 76 batches + R0, ~154.6k LOC read personally, 44 findings
+  (0 P0 / 12 P1 / 32 P2), 76 dossiers, 7 study modules logged, T-DIAG executed
+  with evidence. Next: Pass 2 (S6 sweeps → L1–L10 + L-COV).
+
 ## Phase T boundary — 2026-08-14 (batches B62–B75 + T-DIAG, 167 files / ~27,500 LOC read)
 
 - Scope: EVERY test file in the repo — infra+conftest+automated_suite (B62), NN
