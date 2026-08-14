@@ -72,7 +72,16 @@ class TestDanglingSymlinkIsAnError:
         with pytest.raises(MatchDataUnavailableError):
             MatchDataManager(str(link))
         assert os.path.islink(link), "the symlink was deleted"
-        assert os.readlink(link) == str(dead_target), "the symlink was repointed"
+        # Windows os.readlink returns the extended-length path (prefixed
+        # with backslash-backslash-questionmark-backslash) for absolute
+        # targets — privileged CI runners execute this suite there.
+        # Compare normalized paths, not raw strings.
+        raw_target = os.readlink(link)
+        if raw_target.startswith("\\\\?\\"):
+            raw_target = raw_target[4:]
+        assert os.path.normpath(raw_target) == os.path.normpath(
+            str(dead_target)
+        ), "the symlink was repointed"
 
     def test_no_empty_directory_is_invented(self, dangling_link):
         link, _ = dangling_link

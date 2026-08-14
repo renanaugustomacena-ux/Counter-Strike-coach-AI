@@ -42,6 +42,7 @@ A differenza degli strumenti di coaching statici con suggerimenti pre-scritti, q
 - [Indice Completo della Documentazione](#indice-completo-della-documentazione)
 - [Licenza](#licenza)
 - [Autore](#autore)
+- [Qualità e Verifica (audit 2026-08)](#qualità-e-verifica-audit-nuke-proof-2026-08)
 
 ---
 

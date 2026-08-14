@@ -42,6 +42,7 @@ Diferente de ferramentas de coaching estaticas com dicas pre-escritas, este sist
 - [Indice Completo da Documentacao](#indice-completo-da-documentacao)
 - [Licenca](#licenca)
 - [Autor](#autor)
+- [Qualidade e Verificação (auditoria "nuke-proof" 2026-08)](#qualidade-e-verificação-auditoria-nuke-proof-2026-08)
 
 ---
 

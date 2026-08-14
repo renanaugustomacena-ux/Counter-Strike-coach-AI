@@ -32,6 +32,7 @@ Unlike static coaching tools with pre-written tips, this system builds its intel
 - [Project Structure](#project-structure)
 - [Entry Points](#entry-points)
 - [Validation and Quality](#validation-and-quality)
+- [Quality & Verification (2026-08 audit)](#quality--verification-2026-08-nuke-proof-audit)
 - [Multi-Language Support](#multi-language-support)
 - [Security Features](#security-features)
 - [Performance Tuning](#performance-tuning)
