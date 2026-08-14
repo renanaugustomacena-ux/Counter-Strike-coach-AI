@@ -67,7 +67,20 @@ Assembled 2026-08-14.
 | Session-per-row vs bulk | data_pipeline F2-22 chunked UPDATE (500/id-IN chunk under SQLITE_MAX_VARIABLE_NUMBER); rebuild_monolith bulk-PRAGMA pairs + checkpoint/resume | B11/B54 |
 
 ## L4 — Error-handling & logging consistency
-(pending)
+Assembled 2026-08-14 (module 07 rubric; S-6 census evidence).
+
+| Domain | Contract & state | Evidence |
+|---|---|---|
+| Bare except | ZERO in production; headless_validator ENFORCES the ban as a gate phase | S6-B |
+| raise e (traceback destruction) | ZERO occurrences | S6-F |
+| BaseException doctrine | the one violation class = pyo3 PanicException slipping past `except Exception` = **F-0006** (P1); module-07 fix shape locked (catch PanicException explicitly, never blanket BaseException) | register |
+| Exception taxonomy | domain hierarchies + stable error codes (observability/error_codes) tested; narrowed-except DESIGN asserted in tests (OSError caught, RuntimeError propagates by design) | test_observability, test_coach_manager_flows |
+| Logging | JSON formatter + correlation IDs (contextvars behavior pinned); logger.exception discipline spot-verified through Pass 1; mock-logger assertion idiom pins LOUD-fallback doctrine (26-ORCH-02, TASKS#59, REPR-01, DR-17, GAP-01) | test_observability + Phase T pins |
+| Loud-fallback doctrine | fabricate-nothing + warn-with-doctrine-ID is the house pattern; alert-once escalation (drift CRITICAL once); never-raises telemetry guards | B63-B65 pins |
+| print() residue | 24 hits: ~22 inside __main__ debug blocks (L10 debt list); 2 live-path (help_system, training_callbacks) = W3 one-liners | S6-C |
+| Naive datetime | 17 hits, NO cross-boundary naive-vs-aware arithmetic found; W3 mechanical utc batch | S6-D |
+| Swallow-and-wrong-shape (P0 class) | none found in either pass — every graceful degradation returns typed/documented fallbacks | Pass-1 dossiers |
+
 
 ## L5 — Resource lifecycle
 Assembled 2026-08-14 (module 33 rubric).
