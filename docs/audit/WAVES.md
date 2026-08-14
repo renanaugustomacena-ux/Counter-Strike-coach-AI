@@ -6,6 +6,46 @@ PNGs eyeballed by name for UI waves), CI status both legs.
 
 (entries appended chronologically; R0 baseline lives in BASELINE.md)
 
+## Phase K boundary — 2026-08-14 (batches B26–B33, 50 files / ~12,300 LOC read)
+
+- Scope: knowledge (experience bank, RAG/FAISS/graph, pro miner), coaching
+  engines (hybrid, JEPA adapter, satellites), services (coaching_service,
+  coaching_dialogue solo, analysis_orchestrator, LLM stack), control plane
+  (console/supervisor/ML/ingest/governor), server, reporting. No study
+  module scheduled.
+- Commits: 0c33788 (B26), 54b75cb (B27), ba9d106 (B28), 849f429 (B29),
+  c282fa2 (B30), dac6558 (B31), b6e5567 (B32), eb9dedc (B33). All pushed.
+- Findings: F-0027..F-0032 (2× P1, 4× P2). **P1s**: F-0030 live "IGL 100%
+  confidence" fabrication (classifier fed a dict with zero of its
+  vocabulary keys; kd-balance bonus is the only live signal); F-0032
+  operator STOP broken (TrainingStopRequested swallowed per phase —
+  training continues, status reports Error). P2s: F-0027 phantom conn
+  lock in knowledge graph; F-0028 hybrid engine discards its ML
+  predictions; F-0029 JEPA adapter arms on pretrain-only checkpoints
+  (untrained head noise); F-0031 Phase-6 dark modules (utility *_thrown
+  vocabulary has no producer; game_states pending T-DIAG). F-0015 widened
+  (ingest_manager same 5-min threshold). F-0016 radius widened (chat
+  drill-down WON/LOST + BEST WINNING ROUNDS + momentum + orchestrator).
+- Census closures (the carried list): EliteAnalytics consumer =
+  analysis_service (F-0020 exposure); TemporalBaselineDecay,
+  calculate_deviations ×2, MetaDrift, detect_feature_drift,
+  round_reconstructor.format_for_llm, WR-76 timelines, F-0021 caller
+  (live), F-0022 exposure (live) — all FOUND. F-0017 scope SETTLED
+  (overlay path orientation correct; dead rgba only). role-stat
+  vocabulary suppliers resolved (F-0030). S2 shims have a LIVE consumer
+  (visualizer highlight report — W3 must update import). L7 systemic
+  evidence complete (EN insights persisted to DB; one localized fragment).
+- Showcases: coaching_dialogue = anti-fabrication + prompt-injection
+  defense at its most mature (DP-03 zero-trust tool phase, BE-03, CHAT-02,
+  WR-78); console.py D1-D10 lifecycle discipline; experience bank KT-01
+  CRUD; player_lookup CHAT-06 sentinel suppression. B26/B30/B33
+  zero-new-findings batches.
+- Gate (full suite + cov, Windows `-p no:timeout`): **2 failed, 2500
+  passed, 48 skipped, 5 errors — 72.8s — IDENTICAL to R0 baseline**
+  (known reds F-0002/F-0003 only). Coverage floor passed.
+  test_ui_smoke.py: 4/4 green (named run, 7.5s).
+- CI: not triggered (docs-only; F-0004 filter). Render matrix: unchanged.
+
 ## Phase N boundary — 2026-08-14 (batches B19–B25, 52 files / ~11,300 LOC read)
 
 - Scope: entire backend/nn — foundations, JEPA/VL-JEPA model + both trainers,
