@@ -1,6 +1,16 @@
 # Research Library — Index / Bibliography
 
-> Catalogo della biblioteca di ricerca per **Macena CS2 Analyzer**. I PDF vivono in `docs/research/library/` e in `docs/research/arxiv/` (collezione JEPA preesistente) sulla macchina di lavoro — entrambe le directory sono **git-ignored** (binari grandi) e quindi assenti in un checkout fresco. Questo catalogo è **tracciato** ed è l'unico file di `docs/research/` presente nel repo; i PDF vanno riscaricati dagli ID arXiv indicati.
+> Catalogo della biblioteca di ricerca per **Macena CS2 Analyzer**. I PDF vivono in `docs/research/library/` e in `docs/research/arxiv/` (collezione JEPA preesistente) sulla macchina di lavoro — entrambe le directory sono **git-ignored** (binari grandi) e quindi assenti in un checkout fresco. Questo catalogo è **tracciato**; i PDF vanno riscaricati dagli ID arXiv indicati.
+
+## Dossier UI/UX competitivi (2026-08-13, tracciati nel repo)
+
+Ricerca per il rebuild frontend (`docs/superpowers/plans/2026-08-13-frontend-design-atlas.md`):
+
+| File | Contenuto |
+|---|---|
+| `cs_platforms.md` | Teardown UI di 7 piattaforme CS + 5 emergenti (Leetify, Scope.gg, Refrag, FACEIT, csstats, Esportal, JumpThrow…): pattern trasferibili, hex reali dai CSS, sentiment recensioni. Finding chiave: trasparenza del rating > oracolo; navy tattico è posizionamento libero. |
+| `global_startups.md` | 12 deep-dive mondiali (Mobalytics/EFG, OP.GG, STRATZ, Garmin Catalyst, Trophi/Track Titan, chess.com, iTero, Tencent 营地…) + sintesi dei pattern + mappa del white-space (ledger delle predizioni, bande di confidenza belief-state, divergenza ghost quantificata). |
+| `github_gems.md` | ~30 repo OSS valutati con licenze verificate (CS Demo Manager MIT deep-dive, awpy, csgoverview, BreezeStyleSheets, PyDracula, pyqtgraph…). ⚠ Finding legale: **QtCharts è GPLv3-only** — migrazione a QPainter pianificata (Task 14). Le voci GPL sono study-only. |
 >
 > Sessione: **Studio AI/Data-Engineering 2026-06** (branch `study/ai-data-engineering-2026-06`).
 > Obiettivo: ≥40 PDF, bilanciati 50% fondamenta del progetto · 50% punti ciechi mai considerati, + cluster speciale "visione privilegiata al training". **Totale curato: ~66** (49 arXiv nuovi + 14 JEPA preesistenti + 3 non-arXiv).

@@ -60,6 +60,24 @@ def _parse_events_safe(parser, event_name: str) -> pd.DataFrame:
     return pd.DataFrame()
 
 
+def _normalize_winner(raw) -> Optional[str]:
+    """F-0016: round_end `winner` arrives as int team_num (2=T, 3=CT — the
+    registry-documented dtype), full team names, or short codes depending
+    on parser version. The old str()-cast compared "3".upper() == "CT" —
+    never true — so round_won was silently always-False for int-emitting
+    demos. Normalize every known shape to "CT"/"T"; unknown -> None."""
+    if raw is None or (not isinstance(raw, str) and pd.isna(raw)):
+        return None
+    if isinstance(raw, (int, float)) and not isinstance(raw, bool):
+        return {2: "T", 3: "CT"}.get(int(raw))
+    token = str(raw).strip().upper()
+    if token in ("CT", "COUNTER-TERRORIST", "COUNTER_TERRORIST", "COUNTERTERRORIST", "3"):
+        return "CT"
+    if token in ("T", "TERRORIST", "TERRORISTS", "2"):
+        return "T"
+    return None
+
+
 def _build_round_boundaries(round_end_df: pd.DataFrame) -> List[Dict]:
     """
     Build round metadata from round_end events.
@@ -84,7 +102,7 @@ def _build_round_boundaries(round_end_df: pd.DataFrame) -> List[Dict]:
         # H-18: Use previous end_tick + 1 as start to prevent overlap.
         # Round i's end_tick and round i+1's start_tick no longer share a tick.
         start_tick = ticks[i - 1] + 1 if i > 0 else 0
-        winner = str(row.get("winner", "")).strip() if pd.notna(row.get("winner")) else None
+        winner = _normalize_winner(row.get("winner"))
 
         boundaries.append(
             {

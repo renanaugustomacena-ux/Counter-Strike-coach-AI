@@ -10,7 +10,6 @@ if sys.prefix == sys.base_prefix:
         print("ERROR: Not in venv.", file=sys.stderr)
         sys.exit(2)
 
-import torch
 
 # Path setup
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

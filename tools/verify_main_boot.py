@@ -93,9 +93,13 @@ def main():
             f"NAV_ITEMS is a non-empty list ({len(NAV_ITEMS)} entries)",
         )
         for i, item in enumerate(NAV_ITEMS):
+            # (key, icon, i18n_key, shortcut) — shortcut added with the nav rework.
+            is_4_tuple = isinstance(item, (list, tuple)) and len(item) == 4
+            _check(is_4_tuple, f"NAV_ITEMS[{i}] is a 4-tuple: {item!r:.60}")
+            shortcut = item[3] if is_4_tuple else None
             _check(
-                isinstance(item, (list, tuple)) and len(item) == 3,
-                f"NAV_ITEMS[{i}] is a 3-tuple: {item!r:.60}",
+                isinstance(shortcut, str) and bool(shortcut.strip()),
+                f"NAV_ITEMS[{i}] shortcut is a non-empty str: {shortcut!r}",
             )
 
     except Exception as e:
@@ -122,29 +126,39 @@ def main():
         f"All {len(discovered)} screen modules imported ({imported_count}/{len(discovered)})",
     )
 
-    # --- 4. Theme files — actual QSS content validation ---
-    print("\n[Phase 4] Theme files (content validation)")
-    qss_files = sorted(_THEMES_DIR.glob("*.qss")) if _THEMES_DIR.is_dir() else []
-    _check(len(qss_files) >= 3, f"Found {len(qss_files)} .qss theme files (need >= 3)")
+    # --- 4. Theme template — token render validation for all three themes ---
+    # The per-theme *.qss files are gone: themes/base.qss.template is the sole
+    # stylesheet source, rendered at runtime per theme via qss_generator.
+    print("\n[Phase 4] Theme template (render validation)")
+    _check(
+        (_THEMES_DIR / "base.qss.template").is_file(),
+        "themes/base.qss.template exists",
+    )
 
-    # QSS must contain actual selectors — at minimum a QWidget block.
+    # Rendered QSS must contain actual selectors — at minimum a QWidget block.
     _QSS_SELECTOR_RE = re.compile(r"Q\w+\s*\{")
 
-    for qss_path in qss_files:
-        name = qss_path.name
-        try:
-            content = qss_path.read_text(encoding="utf-8")
-            _check(
-                len(content) >= 200,
-                f"{name}: length {len(content)} chars (>= 200)",
-            )
-            _check(
-                bool(_QSS_SELECTOR_RE.search(content)),
-                f"{name}: contains QSS selectors (QWidget {{...}})",
-            )
-        except Exception as e:
-            errors.append(f"Theme read error: {name} — {e}")
-            print(f"  [FAIL] {name}: {e}")
+    try:
+        from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+        from Programma_CS2_RENAN.apps.qt_app.core.qss_generator import render_qss
+
+        for theme_name in ("CS2", "CSGO", "CS1.6"):
+            try:
+                content = render_qss(get_tokens(theme_name))
+                _check(
+                    len(content) >= 200,
+                    f"{theme_name}: rendered QSS length {len(content)} chars (>= 200)",
+                )
+                _check(
+                    bool(_QSS_SELECTOR_RE.search(content)),
+                    f"{theme_name}: rendered QSS contains selectors (QWidget {{...}})",
+                )
+            except Exception as e:
+                errors.append(f"Theme render error: {theme_name} — {e}")
+                print(f"  [FAIL] {theme_name}: {e}")
+    except Exception as e:
+        errors.append(f"Failed to import theme renderer: {e}")
+        print(f"  [FAIL] Import design_tokens/qss_generator: {e}")
 
     # --- Summary ---
     print("\n" + "=" * 60)

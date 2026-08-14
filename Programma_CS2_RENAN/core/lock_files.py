@@ -19,6 +19,7 @@ Why repo-root .locks/ and not /tmp or /var/run:
 
 from __future__ import annotations
 
+import logging
 import os
 import signal
 import time
@@ -26,6 +27,8 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator, Optional, Set, Tuple
+
+logger = logging.getLogger("cs2analyzer.lock_files")
 
 # Locks live under ``<repo_root>/.locks/``. The repo root is two levels up
 # from this file (``Programma_CS2_RENAN/core/lock_files.py``).
@@ -188,8 +191,27 @@ def acquire(name: str) -> Path:
 
 
 def release(name: str) -> None:
-    """Release a named lock. Idempotent — releasing an unheld lock is a no-op."""
+    """Release a named lock. Idempotent — releasing an unheld lock is a no-op.
+
+    F-0009: "unheld" now MEANS unheld. The old body unlinked whatever
+    existed, so a caller releasing a lock it never acquired destroyed a
+    FOREIGN live lock and defeated the D-track / HLTV-track mutual
+    exclusion. We only unlink when this process holds the lock (tracked
+    in _held_locks) or the on-disk PID is ours; a foreign live lock is
+    left untouched with a loud warning.
+    """
     path = _lock_path(name)
+    if name not in _held_locks:
+        existing = _read_lock(path)
+        if existing is not None and existing[0] != os.getpid():
+            logger.warning(
+                "release(%r) ignored: lock is held by PID %s, not us (%s) — "
+                "F-0009 foreign-lock protection",
+                name,
+                existing[0],
+                os.getpid(),
+            )
+            return
     try:
         path.unlink()
     except FileNotFoundError:

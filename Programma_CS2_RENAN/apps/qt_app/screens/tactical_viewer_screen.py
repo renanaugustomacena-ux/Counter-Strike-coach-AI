@@ -4,16 +4,19 @@ import logging
 import os
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Qt, QThreadPool, QTimer, Signal
+from PySide6.QtCore import QObject, QPointF, Qt, QThreadPool, QTimer, Signal
+from PySide6.QtGui import QColor, QFont, QPainter, QPolygonF
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
     QComboBox,
     QFileDialog,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QMessageBox,
+    QProgressBar,
     QProgressDialog,
     QPushButton,
     QVBoxLayout,
@@ -33,12 +36,16 @@ from Programma_CS2_RENAN.apps.qt_app.viewmodels.tactical_vm import (
     TacticalGhostVM,
     TacticalPlaybackVM,
 )
-from Programma_CS2_RENAN.apps.qt_app.widgets.components.status_chip import StatusChip
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.mono_footer import MonoFooter
 from Programma_CS2_RENAN.apps.qt_app.widgets.tactical.map_widget import TacticalMapWidget
 from Programma_CS2_RENAN.apps.qt_app.widgets.tactical.player_sidebar import PlayerSidebar
-from Programma_CS2_RENAN.apps.qt_app.widgets.tactical.timeline_widget import TimelineWidget
+from Programma_CS2_RENAN.apps.qt_app.widgets.tactical.timeline_widget import (
+    GLYPH_LEGEND,
+    TimelineWidget,
+)
 from Programma_CS2_RENAN.core.demo_frame import Team
 from Programma_CS2_RENAN.core.playback_engine import InterpolatedFrame
+from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.qt_tactical_viewer")
@@ -96,6 +103,272 @@ class _DemoLoaderLogBridge(QObject):
             self._handler = None
 
 
+def _caption_font(*, bold: bool = False) -> "QFont":
+    """Caption-sized BODY font (size from tokens) without the caption role's
+    uppercase treatment — ghost-panel metadata stays lowercase per frame 14.
+    Mono captions now come from ``Typography.mono_caption``."""
+    f = Typography.font("body", QFont.Bold if bold else None)
+    f.setPointSize(get_tokens().font_size_caption)
+    return f
+
+
+# Fixed metric order of the frame-14 divergence grid.
+_DIVERGENCE_METRICS = (
+    ("entry_timing", "tactical.entry_timing", "Entry timing"),
+    ("peek_angle", "tactical.peek_angle", "Peek angle"),
+    ("flash_support", "tactical.flash_support", "Flash support"),
+    ("crouch_ratio", "tactical.crouch_ratio", "Crouch ratio"),
+    ("crosshair_placement", "tactical.crosshair_placement", "Crosshair placement"),
+    ("outcome", "tactical.outcome", "Outcome"),
+)
+
+
+def _divergence_rows(ghost_payload: "dict | None") -> list[tuple[str, str, str]]:
+    """Adapter: ghost payload → 6 ``(label, value, verdict)`` rows.
+
+    Reads ONLY the ``divergence`` dict the payload actually carries; every
+    absent metric renders as an em-dash with a neutral verdict (Locked
+    Decision 8 — no backend model changes this pass).
+    FIELD-GAP: TacticalGhostVM exposes none of these metrics today; the
+    shape mirrors what a divergence-capable VM payload WOULD provide
+    (per-metric ``{"value", "verdict"}`` dicts or bare scalars).
+    """
+    divergence = (ghost_payload or {}).get("divergence")
+    if not isinstance(divergence, dict):
+        divergence = {}
+    rows: list[tuple[str, str, str]] = []
+    for field, key, fallback in _DIVERGENCE_METRICS:
+        raw = divergence.get(field)
+        if isinstance(raw, dict):
+            value = str(raw.get("value") or "—")
+            verdict = str(raw.get("verdict") or "neutral")
+        elif raw not in (None, ""):
+            value, verdict = str(raw), "neutral"
+        else:
+            value, verdict = "—", "neutral"
+        rows.append((i18n.get_text(key, fallback), value, verdict))
+    return rows
+
+
+class _GhostPanel(QWidget):
+    """Frame-14 left panel: YOU card, GHOST card, divergence analysis."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        tokens = get_tokens()
+        self.setFixedWidth(240)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(
+            tokens.spacing_lg, tokens.spacing_lg, tokens.spacing_md, tokens.spacing_lg
+        )
+        layout.setSpacing(tokens.spacing_sm)
+
+        def card() -> tuple[QFrame, QVBoxLayout]:
+            frame = QFrame()
+            frame.setObjectName("ghost_card")
+            box = QVBoxLayout(frame)
+            box.setContentsMargins(
+                tokens.spacing_md, tokens.spacing_md, tokens.spacing_md, tokens.spacing_md
+            )
+            box.setSpacing(tokens.spacing_xs)
+            return frame, box
+
+        def caption_label(color: str) -> QLabel:
+            label = QLabel()
+            label.setFont(_caption_font())
+            label.setWordWrap(True)
+            label.setStyleSheet(f"color: {color}; background: transparent;")
+            return label
+
+        # YOU section — caption-size bold WITHOUT the caption role's
+        # uppercase/letterspacing (frame 14 keeps names lowercase and the
+        # 240px panel can't spare the tracking).
+        self._you_header = QLabel()
+        self._you_header.setFont(_caption_font(bold=True))
+        self._you_header.setStyleSheet(
+            f"color: {tokens.chart_line_secondary}; background: transparent;"
+        )
+        layout.addWidget(self._you_header)
+        you_card, you_box = card()
+        you_card.setStyleSheet(
+            f"QFrame#ghost_card {{ background: {tokens.surface_raised}; "
+            f"border: 1px solid {tokens.border_subtle}; border-radius: {tokens.radius_md}px; }}"
+        )
+        self._you_title = QLabel()
+        self._you_title.setFont(Typography.font("body", QFont.Bold))
+        self._you_title.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
+        you_box.addWidget(self._you_title)
+        self._you_path = caption_label(tokens.text_secondary)
+        you_box.addWidget(self._you_path)
+        self._you_decision = caption_label(tokens.text_secondary)
+        you_box.addWidget(self._you_decision)
+        layout.addWidget(you_card)
+
+        # GHOST section — frame purple has no token; `info` is the approved
+        # in-system analog for the ghost channel.
+        self._ghost_header = QLabel()
+        self._ghost_header.setFont(_caption_font(bold=True))
+        self._ghost_header.setStyleSheet(f"color: {tokens.info}; background: transparent;")
+        layout.addWidget(self._ghost_header)
+        ghost_card, ghost_box = card()
+        ghost_card.setStyleSheet(
+            f"QFrame#ghost_card {{ background: {tokens.surface_raised}; "
+            f"border: 1px solid {tokens.info}; border-radius: {tokens.radius_md}px; }}"
+        )
+        self._ghost_title = QLabel()
+        self._ghost_title.setFont(Typography.font("body", QFont.Bold))
+        self._ghost_title.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
+        ghost_box.addWidget(self._ghost_title)
+        self._ghost_path = caption_label(tokens.text_secondary)
+        ghost_box.addWidget(self._ghost_path)
+        self._ghost_decision = caption_label(tokens.info)
+        ghost_box.addWidget(self._ghost_decision)
+        layout.addWidget(ghost_card)
+
+        # DIVERGENCE ANALYSIS
+        div_card, div_box = card()
+        div_card.setStyleSheet(
+            f"QFrame#ghost_card {{ background: {tokens.surface_raised}; "
+            f"border: 1px solid {tokens.border_subtle}; border-radius: {tokens.radius_md}px; }}"
+        )
+        self._div_header = QLabel()
+        self._div_header.setFont(_caption_font(bold=True))
+        self._div_header.setStyleSheet(f"color: {tokens.accent_primary}; background: transparent;")
+        div_box.addWidget(self._div_header)
+        self._div_grid = QGridLayout()
+        self._div_grid.setHorizontalSpacing(tokens.spacing_sm)
+        self._div_grid.setVerticalSpacing(tokens.spacing_xs + 1)
+        self._div_grid.setColumnStretch(0, 0)
+        self._div_grid.setColumnStretch(1, 1)
+        div_box.addLayout(self._div_grid)
+        div_box.addSpacing(tokens.spacing_sm)
+        self._causal_caption = caption_label(tokens.text_tertiary)
+        div_box.addWidget(self._causal_caption)
+        self._causal_stat = QLabel()
+        self._causal_stat.setFont(Typography.font("subtitle"))
+        self._causal_stat.setStyleSheet(f"color: {tokens.accent_primary}; background: transparent;")
+        div_box.addWidget(self._causal_stat)
+        self._causal_bar = QProgressBar()
+        self._causal_bar.setRange(0, 100)
+        self._causal_bar.setFixedHeight(6)
+        self._causal_bar.setTextVisible(False)
+        self._causal_bar.setStyleSheet(
+            f"QProgressBar {{ background-color: {tokens.surface_sunken}; border: none; "
+            f"border-radius: {tokens.radius_sm // 2}px; }}"
+            f"QProgressBar::chunk {{ background-color: {tokens.accent_primary}; "
+            f"border-radius: {tokens.radius_sm // 2}px; }}"
+        )
+        div_box.addWidget(self._causal_bar)
+        layout.addWidget(div_card)
+        layout.addStretch()
+
+    def set_payload(self, payload: dict) -> None:
+        tokens = get_tokens()
+        you = payload.get("you") if isinstance(payload.get("you"), dict) else {}
+        ghost = payload.get("ghost") if isinstance(payload.get("ghost"), dict) else {}
+
+        player = payload.get("player") or "—"
+        self._you_header.setText(f"{i18n.get_text('tactical.you', 'YOU')} · {player}")
+        side, map_name = you.get("side") or "—", payload.get("map") or you.get("map") or "—"
+        self._you_title.setText(
+            i18n.get_text("tactical.side_map", "{side} side · {map}")
+            .replace("{side}", str(side))
+            .replace("{map}", str(map_name))
+        )
+        path_tpl = i18n.get_text("tactical.path", "Path: {path}")
+        decision_tpl = i18n.get_text("tactical.decision_time", "Decision time: {d}")
+        self._you_path.setText(path_tpl.replace("{path}", str(you.get("path") or "—")))
+        self._you_decision.setText(decision_tpl.replace("{d}", str(you.get("decision") or "—")))
+
+        pro, team = payload.get("pro") or "—", payload.get("team")
+        ghost_name = f"{pro} ({team})" if team else str(pro)
+        self._ghost_header.setText(f"{i18n.get_text('tactical.ghost', 'GHOST')} · {ghost_name}")
+        self._ghost_title.setText(str(ghost.get("context") or "—"))
+        self._ghost_path.setText(path_tpl.replace("{path}", str(ghost.get("path") or "—")))
+        self._ghost_decision.setText(decision_tpl.replace("{d}", str(ghost.get("decision") or "—")))
+
+        self._div_header.setText(
+            i18n.get_text("tactical.divergence_analysis", "DIVERGENCE ANALYSIS")
+        )
+        while self._div_grid.count():
+            item = self._div_grid.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+        verdict_colors = {
+            "good": tokens.success,
+            "bad": tokens.error,
+            "warn": tokens.warning,
+        }
+        for row, (label, value, verdict) in enumerate(_divergence_rows(payload)):
+            name = QLabel(label)
+            name.setFont(_caption_font())
+            name.setWordWrap(True)
+            name.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
+            self._div_grid.addWidget(name, row, 0)
+            val = QLabel(value)
+            val.setFont(Typography.mono_caption(bold=True))
+            val.setWordWrap(True)
+            val.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            color = verdict_colors.get(verdict, tokens.text_primary)
+            val.setStyleSheet(f"color: {color}; background: transparent;")
+            self._div_grid.addWidget(val, row, 1)
+
+        self._causal_caption.setText(
+            i18n.get_text("tactical.causal_score", "Causal score (RAPPedagogy)")
+        )
+        causal = payload.get("causal") if isinstance(payload.get("causal"), dict) else {}
+        score, factor = causal.get("top_score"), causal.get("top_factor")
+        if isinstance(score, (int, float)):
+            self._causal_stat.setText(f"{score:.2f} {factor}" if factor else f"{score:.2f}")
+            self._causal_bar.setValue(int(max(0.0, min(1.0, float(score))) * 100))
+        else:
+            # FIELD-GAP: no causal attribution source on the VM yet.
+            self._causal_stat.setText("—")
+            self._causal_bar.setValue(0)
+
+
+class _TransportIconButton(QPushButton):
+    """Prev/next critical-moment button with a QPainter-drawn skip glyph.
+
+    The previous unicode glyphs (U+23EE / U+23ED) render as tofu boxes on
+    the offscreen platform's fallback fonts — a painted bar + triangle is
+    font-independent. Keeps objectName "playback_control" so the QSS
+    hover/pressed treatment still applies to the button chrome.
+    """
+
+    def __init__(self, kind: str, parent=None):
+        super().__init__("", parent)
+        self._kind = kind  # "prev" | "next"
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        tokens = get_tokens()
+        color = QColor(tokens.text_primary if self.isEnabled() else tokens.text_disabled)
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setPen(Qt.NoPen)
+        p.setBrush(color)
+        cx, cy = self.width() / 2, self.height() / 2
+        half_h = 6.0
+        if self._kind == "prev":
+            p.drawRect(int(cx - 6), int(cy - half_h), 2, int(half_h * 2))
+            triangle = [
+                QPointF(cx + 6, cy - half_h),
+                QPointF(cx + 6, cy + half_h),
+                QPointF(cx - 2, cy),
+            ]
+        else:
+            p.drawRect(int(cx + 4), int(cy - half_h), 2, int(half_h * 2))
+            triangle = [
+                QPointF(cx - 6, cy - half_h),
+                QPointF(cx - 6, cy + half_h),
+                QPointF(cx + 2, cy),
+            ]
+        p.drawPolygon(QPolygonF(triangle))
+        p.end()
+
+
 class TacticalViewerScreen(QWidget):
     """2D tactical replay viewer with playback, sidebars, and timeline."""
 
@@ -112,10 +385,8 @@ class TacticalViewerScreen(QWidget):
         self._playback_vm.set_engine(self._engine)
         self._playback_vm.frame_updated.connect(self._on_frame_update)
 
-        # Chronovisor callbacks
-        self._chronovisor_vm.navigate_to.connect(
-            lambda tick, desc: self._playback_vm.seek_to_tick(tick)
-        )
+        # Chronovisor callbacks (through _on_seek so trails reset on jumps)
+        self._chronovisor_vm.navigate_to.connect(lambda tick, desc: self._on_seek(tick))
         # R4 MED: enable the CM transport only when a scan found moments.
         self._chronovisor_vm.scan_complete.connect(self._on_cm_scan_complete)
 
@@ -130,6 +401,12 @@ class TacticalViewerScreen(QWidget):
         self._progress_dialog = None
         self._log_bridge: "_DemoLoaderLogBridge | None" = None
         self._demo_cancelled: bool = False
+
+        # Ghost Mode (frame 14) — active only when the toggle is on AND a
+        # ghost payload is present (Locked Decision 8: defensive rendering).
+        self._ghost_payload: dict | None = None
+        self._ghost_mode_on = False
+        self._demo_tick_rate = DEFAULT_TICK_RATE
 
         # Tick UI timer
         self._tick_timer = QTimer(self)
@@ -153,6 +430,37 @@ class TacticalViewerScreen(QWidget):
         self._empty_overlay.setText(i18n.get_text("tactical_empty_state"))
         self._map_label.setText(i18n.get_text("select_map") + ":")
         self._round_label.setText(i18n.get_text("select_round") + ":")
+        # Recompose the tick counter in the new language (the 100ms timer
+        # only rewrites it while the screen is active).
+        self._tick_label.setText(
+            f"{i18n.get_text('tactical.tick', 'Tick')}: "
+            f"{self._playback_vm.get_current_tick():,}"
+        )
+        self._ghost_check.setText(i18n.get_text("tactical.ghost_ai", "Ghost AI"))
+        self._cm_marks_check.setText(i18n.get_text("tactical.cm_marks", "CM marks"))
+        self._ghost_combo_label.setText(i18n.get_text("tactical.ghost_combo_label", "Ghost:"))
+        self._align_label.setText(i18n.get_text("tactical.align_method", "Align method:"))
+        self._refresh_glyph_legend()
+        self._update_chronovisor_footer()
+        self._update_header_meta()
+        if self._ghost_mode_on:
+            # Recompose every ghost-owned string in the active language.
+            self._ghost_mode_on = False
+            self._update_ghost_mode()
+
+    def _refresh_glyph_legend(self) -> None:
+        """Compose the `★ critical · ◆ clutch · ● play` caption from the
+        timeline's kind mapping, each glyph tinted to its paint color."""
+        t = get_tokens()
+        color_by_kind = {"star": t.warning, "diamond": t.info, "circle": t.success}
+        parts = [
+            f'<span style="color: {color_by_kind[kind]};">{glyph}</span> '
+            f"{i18n.get_text(f'tactical.glyph_{label}', label)}"
+            for kind, glyph, label in GLYPH_LEGEND
+        ]
+        self._glyph_legend.setText(
+            f'<span style="color: {t.text_secondary};">{" &nbsp;·&nbsp; ".join(parts)}</span>'
+        )
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -335,8 +643,10 @@ class TacticalViewerScreen(QWidget):
         Typography.apply(self._title_label, "h1")
         header.addWidget(self._title_label)
 
-        self._map_chip = StatusChip("No demo loaded", severity="neutral")
-        header.addWidget(self._map_chip)
+        # Mono meta line: `{demo} · round {n} · tick {t}` (frame 13)
+        self._header_meta = QLabel("—")
+        Typography.apply(self._header_meta, "mono")
+        header.addWidget(self._header_meta)
         header.addStretch()
 
         self._error_label = QLabel()
@@ -361,11 +671,17 @@ class TacticalViewerScreen(QWidget):
         main_area.setContentsMargins(0, 0, 0, 0)
         main_area.setSpacing(0)
 
-        # Sidebar accents — info token for CT (cool blue), warning for T (orange-yellow)
-        self._ct_sidebar = PlayerSidebar("CT", tokens.info)
+        # Side semantics per the design constraints: CT = chart_line_primary
+        # (cyan), T = chart_line_secondary (orange) — same hues the map dots use.
+        self._ct_sidebar = PlayerSidebar("CT", tokens.chart_line_primary)
         self._ct_sidebar.setFixedWidth(200)
         self._ct_sidebar.player_clicked.connect(self._on_player_select)
         main_area.addWidget(self._ct_sidebar)
+
+        # Ghost Mode swaps the left roster for the YOU/GHOST/divergence panel.
+        self._ghost_panel = _GhostPanel()
+        self._ghost_panel.setVisible(False)
+        main_area.addWidget(self._ghost_panel)
 
         self._web_view = None
         self._web_bridge: MarqueeBridge | None = None
@@ -422,7 +738,7 @@ class TacticalViewerScreen(QWidget):
 
         main_area.addWidget(map_container, 1)
 
-        self._t_sidebar = PlayerSidebar("T", tokens.warning)
+        self._t_sidebar = PlayerSidebar("T", tokens.chart_line_secondary)
         self._t_sidebar.setFixedWidth(200)
         self._t_sidebar.player_clicked.connect(self._on_player_select)
         main_area.addWidget(self._t_sidebar)
@@ -443,7 +759,7 @@ class TacticalViewerScreen(QWidget):
             f"border-top: 1px solid {tokens.border_subtle}; "
             f"}}"
         )
-        panel.setFixedHeight(130)
+        panel.setFixedHeight(164)
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(
             tokens.spacing_md, tokens.spacing_xs, tokens.spacing_md, tokens.spacing_xs
@@ -454,47 +770,88 @@ class TacticalViewerScreen(QWidget):
         row1 = QHBoxLayout()
         row1.setSpacing(12)
 
+        # Standard selectors live in their own container so Ghost Mode can
+        # swap the row for its ghost/align selectors without relayout churn.
+        self._std_selector_row = QWidget()
+        std_row = QHBoxLayout(self._std_selector_row)
+        std_row.setContentsMargins(0, 0, 0, 0)
+        std_row.setSpacing(12)
+
         self._map_combo = QComboBox()
         self._map_combo.setFixedWidth(140)
         self._map_combo.currentTextChanged.connect(self._on_map_changed)
         self._map_label = QLabel(i18n.get_text("select_map") + ":")
-        row1.addWidget(self._map_label)
-        row1.addWidget(self._map_combo)
+        std_row.addWidget(self._map_label)
+        std_row.addWidget(self._map_combo)
 
         self._round_combo = QComboBox()
         self._round_combo.setFixedWidth(120)
         self._round_combo.currentTextChanged.connect(self._on_round_changed)
         self._round_label = QLabel(i18n.get_text("select_round") + ":")
-        row1.addWidget(self._round_label)
-        row1.addWidget(self._round_combo)
+        std_row.addWidget(self._round_label)
+        std_row.addWidget(self._round_combo)
 
-        self._tick_label = QLabel("Tick 0")
+        self._tick_label = QLabel(f"{i18n.get_text('tactical.tick', 'Tick')}: 0")
         self._tick_label.setObjectName("tick_counter")
         self._tick_label.setMinimumWidth(120)
-        row1.addWidget(self._tick_label)
+        std_row.addWidget(self._tick_label)
+        row1.addWidget(self._std_selector_row)
+
+        # Ghost Mode selector row (frame 14) — swapped in for the standard
+        # selectors while the mode is active.
+        self._ghost_selector_row = QWidget()
+        ghost_row = QHBoxLayout(self._ghost_selector_row)
+        ghost_row.setContentsMargins(0, 0, 0, 0)
+        ghost_row.setSpacing(12)
+        self._ghost_combo_label = QLabel(i18n.get_text("tactical.ghost_combo_label", "Ghost:"))
+        ghost_row.addWidget(self._ghost_combo_label)
+        self._ghost_combo = QComboBox()
+        self._ghost_combo.setFixedWidth(200)
+        # FIELD-GAP: no ghost-library source exists yet — the selector shows
+        # the active overlay's identity and stays disabled.
+        self._ghost_combo.setEnabled(False)
+        self._ghost_combo.setToolTip(
+            i18n.get_text("tactical.ghost_source_gap", "Ghost library source not connected yet")
+        )
+        ghost_row.addWidget(self._ghost_combo)
+        self._align_label = QLabel(i18n.get_text("tactical.align_method", "Align method:"))
+        ghost_row.addWidget(self._align_label)
+        self._align_combo = QComboBox()
+        self._align_combo.setFixedWidth(140)
+        self._align_combo.addItem(i18n.get_text("tactical.align_round_time", "round time"))
+        ghost_row.addWidget(self._align_combo)
+        self._ghost_selector_row.setVisible(False)
+        row1.addWidget(self._ghost_selector_row)
 
         row1.addStretch()
 
-        self._ghost_check = QCheckBox("Ghost AI")
+        self._ghost_check = QCheckBox(i18n.get_text("tactical.ghost_ai", "Ghost AI"))
         self._ghost_check.setObjectName("ghost_toggle")
         self._ghost_check.toggled.connect(self._ghost_vm.set_active)
+        self._ghost_check.toggled.connect(self._update_ghost_mode)
         row1.addWidget(self._ghost_check)
+
+        # CM marks — toggles the map movement trails (frame 13).
+        self._cm_marks_check = QCheckBox(i18n.get_text("tactical.cm_marks", "CM marks"))
+        self._cm_marks_check.setObjectName("ghost_toggle")
+        self._cm_marks_check.setChecked(True)
+        self._cm_marks_check.toggled.connect(self._map_widget.set_trails_enabled)
+        row1.addWidget(self._cm_marks_check)
 
         layout.addLayout(row1)
 
         # Row 2: playback controls.
-        # Unicode transport glyphs render via system font fallback; we keep
-        # setObjectName("playback_control") so the tight-padding QSS rule
-        # overrides the global QPushButton padding (otherwise 8px 20px on
-        # a 40x40 fixed-size button clips the glyph to zero width — that
-        # was the "blank buttons" bug the user reported post-P1).
+        # setObjectName("playback_control") keeps the tight-padding QSS rule
+        # that overrides the global QPushButton padding (otherwise 8px 20px
+        # on a fixed-size button clips the content — the "blank buttons"
+        # bug reported post-P1).
         row2 = QHBoxLayout()
         row2.setSpacing(8)
 
         # R4 MED: CM transport starts DISABLED — the old buttons took
         # clicks and did nothing while _critical_moments was empty (nothing
         # ever called scan_match). They enable when a scan finds moments.
-        prev_cm_btn = QPushButton("⏮")  # ⏮ Skip backward
+        prev_cm_btn = _TransportIconButton("prev")
         prev_cm_btn.setObjectName("playback_control")
         prev_cm_btn.setFixedSize(40, 40)
         prev_cm_btn.setCursor(Qt.PointingHandCursor)
@@ -504,15 +861,17 @@ class TacticalViewerScreen(QWidget):
         row2.addWidget(prev_cm_btn)
         self._prev_cm_btn = prev_cm_btn
 
-        self._play_btn = QPushButton("▶")  # ▶ Play
+        # Frame 13 labels the play control with text, not a glyph — and the
+        # old ▶/⏸ pair was half-tofu offscreen (U+23F8 has no fallback).
+        self._play_btn = QPushButton(i18n.get_text("tactical.play", "Play"))
         self._play_btn.setObjectName("playback_control")
-        self._play_btn.setFixedSize(48, 40)
+        self._play_btn.setFixedSize(72, 40)
         self._play_btn.setCursor(Qt.PointingHandCursor)
         self._play_btn.setToolTip("Play / Pause")
         self._play_btn.clicked.connect(self._toggle_playback)
         row2.addWidget(self._play_btn)
 
-        next_cm_btn = QPushButton("⏭")  # ⏭ Skip forward
+        next_cm_btn = _TransportIconButton("next")
         next_cm_btn.setObjectName("playback_control")
         next_cm_btn.setFixedSize(40, 40)
         next_cm_btn.setCursor(Qt.PointingHandCursor)
@@ -538,12 +897,81 @@ class TacticalViewerScreen(QWidget):
             self._speed_buttons.append(btn)
             row2.addWidget(btn)
 
+        row2.addSpacing(16)
+        # Ghost sync offset (frame 14) — mono, info-colored, shown only when
+        # the ghost payload carries a known offset.
+        self._sync_offset_label = QLabel()
+        Typography.apply(self._sync_offset_label, "mono")
+        self._sync_offset_label.setStyleSheet(f"color: {tokens.info};")
+        self._sync_offset_label.setVisible(False)
+        row2.addWidget(self._sync_offset_label)
+
         row2.addStretch()
         layout.addLayout(row2)
+
+        # Glyph legend (29.5) — caption row under the transport bar naming
+        # the timeline's kind-differentiated moment glyphs (★/◆/●).
+        self._glyph_legend = QLabel()
+        self._glyph_legend.setTextFormat(Qt.RichText)
+        self._glyph_legend.setFont(_caption_font())
+        self._glyph_legend.setStyleSheet("background: transparent;")
+        self._refresh_glyph_legend()
+        layout.addWidget(self._glyph_legend)
 
         # Timeline
         self._timeline = TimelineWidget()
         layout.addWidget(self._timeline)
+
+        # Ghost Mode dual progress (frame 14): YOU (accent) / GHOST (info)
+        # thin bars synced to playback, swapped in for the timeline.
+        self._dual_progress = QWidget()
+        dual_box = QVBoxLayout(self._dual_progress)
+        dual_box.setContentsMargins(0, tokens.spacing_xs, 0, tokens.spacing_xs)
+        dual_box.setSpacing(tokens.spacing_xs + 2)
+
+        def dual_row(caption_key: str, fallback: str, color: str) -> QProgressBar:
+            row = QHBoxLayout()
+            row.setSpacing(tokens.spacing_sm)
+            label = QLabel(i18n.get_text(caption_key, fallback))
+            label.setFont(_caption_font(bold=True))
+            label.setStyleSheet(f"color: {color}; background: transparent;")
+            label.setFixedWidth(52)
+            label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            row.addWidget(label)
+            bar = QProgressBar()
+            bar.setRange(0, 1000)
+            bar.setFixedHeight(10)
+            bar.setTextVisible(False)
+            bar.setStyleSheet(
+                f"QProgressBar {{ background-color: {tokens.surface_sunken}; border: none; "
+                f"border-radius: {tokens.radius_sm}px; }}"
+                f"QProgressBar::chunk {{ background-color: {color}; "
+                f"border-radius: {tokens.radius_sm}px; }}"
+            )
+            row.addWidget(bar, 1)
+            dual_box.addLayout(row)
+            return bar
+
+        self._you_progress = dual_row("tactical.you", "YOU", tokens.accent_primary)
+        self._ghost_progress = dual_row("tactical.ghost", "GHOST", tokens.info)
+        self._dual_progress.setVisible(False)
+        layout.addWidget(self._dual_progress)
+
+        # Footer strip: chronovisor summary left, demo meta right (frame 13).
+        footer_row = QHBoxLayout()
+        footer_row.setSpacing(tokens.spacing_md)
+        self._footer_left = MonoFooter()
+        self._footer_left.setWordWrap(False)
+        footer_row.addWidget(self._footer_left)
+        footer_row.addStretch()
+        self._footer_right = MonoFooter()
+        self._footer_right.setWordWrap(False)
+        self._footer_right.setVisible(False)
+        footer_row.addWidget(self._footer_right)
+        layout.addLayout(footer_row)
+        self._cm_count = 0
+        self._demo_meta: dict | None = None
+        self._update_chronovisor_footer()
 
         return panel
 
@@ -831,12 +1259,10 @@ class TacticalViewerScreen(QWidget):
         self._ct_sidebar.clear_all()
         self._t_sidebar.clear_all()
 
-        # Update map
+        # Update map (also reloads its zone layer and drops trail history)
         self._map_widget.set_map(map_name)
-
-        # Header chip — surfaces the current map identity at a glance
-        self._map_chip.set_label(f"Map · {map_name.replace('de_', '').upper()}")
-        self._map_chip.set_severity("online")
+        self._map_widget.set_score_info(None)
+        self._map_widget.set_bomb(None)
 
         # Publish map + segments + events to the web marquee (no-op
         # when WebEngine path is off).
@@ -862,11 +1288,15 @@ class TacticalViewerScreen(QWidget):
 
         # Load frames with the demo's REAL tick rate (26-TICK: the old
         # default-64 path made 128-tick demos play at half speed).
-        self._playback_vm.load_frames(frames, tick_rate=self._resolve_demo_tick_rate())
+        self._demo_tick_rate = self._resolve_demo_tick_rate()
+        self._playback_vm.load_frames(frames, tick_rate=self._demo_tick_rate)
 
-        # Update timeline
+        # Update timeline (round-boundary dividers from the segment map)
         self._timeline.max_tick = self._playback_vm.total_ticks
         self._timeline.set_events(events)
+        self._timeline.set_round_marks(list((segments or {}).values()))
+        self._timeline.set_critical_moments([])
+        self._update_header_meta()
 
         # Round combo
         self._round_combo.blockSignals(True)
@@ -901,21 +1331,224 @@ class TacticalViewerScreen(QWidget):
         ghosts = self._ghost_vm.predict_ghosts(frame.players)
         self._map_widget.update_map(frame.players, frame.nades, ghosts, frame.tick)
 
+        # FIELD-GAP: InterpolatedFrame carries no scoreboard/bomb fields
+        # today — the score strip and C4 marker render only when a payload
+        # superset provides them (em-dash / hidden otherwise).
+        self._map_widget.set_score_info(self._compose_score(getattr(frame, "score", None)))
+        bomb = getattr(frame, "bomb", None)
+        self._map_widget.set_bomb(bomb if isinstance(bomb, dict) else None)
+
         ct_players = [p for p in frame.players if p.team == Team.CT]
         t_players = [p for p in frame.players if p.team == Team.T]
         selected = self._map_widget.selected_player_id
         self._ct_sidebar.update_players(ct_players, selected)
         self._t_sidebar.update_players(t_players, selected)
 
+    def _compose_score(self, score) -> "dict | None":
+        """Frame payload score fields → score-box display dict ("—" absent)."""
+        if not isinstance(score, dict):
+            return None
+
+        def fmt(value):
+            return "—" if value in (None, "") else str(value)
+
+        t_name = str(score.get("t_name") or "").upper()
+        caption_parts = []
+        if score.get("round_no") is not None:
+            caption_parts.append(
+                f"{i18n.get_text('tactical.meta_round', 'round')} {score['round_no']}"
+            )
+        if score.get("time_remaining"):
+            remaining = i18n.get_text("tactical.remaining", "remaining")
+            caption_parts.append(f"{score['time_remaining']} {remaining}")
+        if score.get("bomb_planted"):
+            caption_parts.append(i18n.get_text("tactical.bomb_planted", "bomb planted"))
+        if score.get("ghost_note"):
+            caption_parts.append(str(score["ghost_note"]))
+        return {
+            "t_label": f"T · {t_name}" if t_name else "T",
+            "t_score": fmt(score.get("t_score")),
+            "ct_score": fmt(score.get("ct_score")),
+            "ct_label": "CT",
+            "caption": " · ".join(caption_parts),
+        }
+
+    def _update_header_meta(self):
+        """Compose `{demo} · round {n} · tick {t}` (frame 13)."""
+        if self._ghost_mode_on:
+            return  # Ghost Mode owns the meta line (`ghost overlay: …`)
+        parts = [getattr(self, "_loaded_demo_stem", None) or "—"]
+        digits = "".join(ch for ch in self._round_combo.currentText() if ch.isdigit())
+        if digits:
+            parts.append(f"{i18n.get_text('tactical.meta_round', 'round')} {int(digits)}")
+        tick = self._playback_vm.get_current_tick()
+        parts.append(f"{i18n.get_text('tactical.meta_tick', 'tick')} {tick:,}")
+        text = " · ".join(parts)
+        if text != self._header_meta.text():
+            self._header_meta.setText(text)
+
+    def _update_chronovisor_footer(self):
+        template = i18n.get_text(
+            "tactical.footer_chronovisor",
+            "ChronovisorScanner · 3 scales (micro/standard/macro) · "
+            "{n} critical moments detected this round",
+        )
+        self._footer_left.setText(template.replace("{n}", str(self._cm_count)))
+
+    def set_demo_meta(self, meta: "dict | None") -> None:
+        """Right footer: `{source} · {size} MB · {parser}` from whatever the
+        loader can provide. FIELD-GAP: DemoLoader returns no such metadata
+        today — the footer stays hidden until a payload supplies it."""
+        self._demo_meta = meta if isinstance(meta, dict) else None
+        parts = []
+        if self._demo_meta:
+            if self._demo_meta.get("source"):
+                parts.append(str(self._demo_meta["source"]))
+            if self._demo_meta.get("size_mb") is not None:
+                parts.append(f"{self._demo_meta['size_mb']} MB")
+            if self._demo_meta.get("parser"):
+                parts.append(str(self._demo_meta["parser"]))
+        self._footer_right.setText(" · ".join(parts))
+        self._footer_right.setVisible(bool(parts))
+
+    # ── Ghost Mode (frame 14) ──
+
+    def set_ghost_payload(self, payload: "dict | None") -> None:
+        """Attach (or clear) the ghost-overlay payload.
+
+        FIELD-GAP: TacticalGhostVM only predicts per-tick positions today —
+        it has no signal carrying paths/divergence/causal data. This public
+        slot is the seam a divergence-capable VM (or the fixture) feeds;
+        every field is optional and renders defensively (Locked Decision 8).
+        """
+        self._ghost_payload = payload if isinstance(payload, dict) else None
+        self._update_ghost_mode()
+
+    def _update_ghost_mode(self, _checked: bool = False) -> None:
+        active = self._ghost_check.isChecked() and bool(self._ghost_payload)
+        if active == self._ghost_mode_on:
+            if active:  # payload may have changed while active
+                self._ghost_panel.set_payload(self._ghost_payload)
+                self._map_widget.set_ghost_overlay(self._compose_ghost_overlay())
+            return
+        self._ghost_mode_on = active
+        payload = self._ghost_payload or {}
+        tokens = get_tokens()
+
+        if active:
+            suffix = i18n.get_text("tactical.ghost_mode_suffix", " — Ghost Mode")
+            self._title_label.setText(i18n.get_text("tactical_analyzer") + suffix)
+            overlay_tpl = i18n.get_text(
+                "tactical.ghost_overlay", "ghost overlay: {pro} · same round on {map}"
+            )
+            self._header_meta.setText(
+                overlay_tpl.replace("{pro}", str(payload.get("pro") or "—")).replace(
+                    "{map}", str(payload.get("map") or "—")
+                )
+            )
+            self._header_meta.setStyleSheet(f"color: {tokens.info};")
+            self._ghost_panel.set_payload(payload)
+            # Stale trail history has no meaning under the overlay comparison.
+            self._map_widget.clear_trails()
+            self._map_widget.set_ghost_overlay(self._compose_ghost_overlay())
+            ghost_id = " · ".join(
+                str(part)
+                for part in (payload.get("pro"), payload.get("team"), payload.get("map"))
+                if part
+            )
+            self._ghost_combo.clear()
+            if ghost_id:
+                self._ghost_combo.addItem(ghost_id)
+            offset = payload.get("sync_offset_s")
+            if isinstance(offset, (int, float)):
+                offset_tpl = i18n.get_text("tactical.sync_offset", "ghost sync offset: {offset}")
+                self._sync_offset_label.setText(offset_tpl.replace("{offset}", f"{offset:+.1f}s"))
+                self._sync_offset_label.setVisible(True)
+            else:
+                self._sync_offset_label.setVisible(False)  # FIELD-GAP: offset unknown
+            self._footer_left.setText(self._causal_footer_text(payload))
+        else:
+            self._title_label.setText(i18n.get_text("tactical_analyzer"))
+            self._header_meta.setStyleSheet("")
+            self._update_header_meta()
+            self._map_widget.set_ghost_overlay(None)
+            self._sync_offset_label.setVisible(False)
+            self._update_chronovisor_footer()
+
+        self._ct_sidebar.setVisible(not active)
+        self._t_sidebar.setVisible(not active)
+        self._ghost_panel.setVisible(active)
+        self._std_selector_row.setVisible(not active)
+        self._ghost_selector_row.setVisible(active)
+        self._timeline.setVisible(not active)
+        self._glyph_legend.setVisible(not active)
+        self._dual_progress.setVisible(active)
+        if active:
+            self._update_dual_progress()
+
+    def _compose_ghost_overlay(self) -> "dict | None":
+        payload = self._ghost_payload or {}
+        if not payload:
+            return None
+        you = payload.get("you") if isinstance(payload.get("you"), dict) else {}
+        return {
+            "you_path": payload.get("you_path") or [],
+            "ghost_path": payload.get("ghost_path") or [],
+            "you_label": payload.get("you_label") or i18n.get_text("tactical.map_you", "you"),
+            "ghost_label": payload.get("ghost_label")
+            or i18n.get_text("tactical.map_ghost", "ghost"),
+            "you_died": bool(you.get("died")),
+            "divergence_points": payload.get("divergence_points") or [],
+            "smokes": payload.get("smokes") or [],
+            "legend": {
+                "title": i18n.get_text("tactical.legend_title", "Ghost Mode Legend"),
+                "you": i18n.get_text("tactical.legend_you", "your path"),
+                "ghost": i18n.get_text("tactical.legend_ghost", "ghost (pro) path"),
+                "divergence": i18n.get_text("tactical.legend_divergence", "divergence point"),
+            },
+        }
+
+    @staticmethod
+    def _causal_footer_text(payload: dict) -> str:
+        """Frame-14 footer from whatever causal components exist — absent
+        components are dropped, not dashed (mono debug line)."""
+        causal = payload.get("causal") if isinstance(payload.get("causal"), dict) else {}
+        parts = ["RAPPedagogy.CausalAttributor"]
+        for key in ("positioning", "utility", "aim", "aggression", "rotation"):
+            value = causal.get(key)
+            if isinstance(value, (int, float)):
+                parts.append(f"{key} {value:.2f}")
+        return " · ".join(parts)
+
+    def _update_dual_progress(self) -> None:
+        total = max(1, self._playback_vm.total_ticks)
+        tick = self._playback_vm.get_current_tick()
+        you = max(0.0, min(1.0, tick / total))
+        offset = (self._ghost_payload or {}).get("sync_offset_s")
+        offset_ticks = (
+            float(offset) * self._demo_tick_rate if isinstance(offset, (int, float)) else 0.0
+        )
+        ghost = max(0.0, min(1.0, (tick + offset_ticks) / total))
+        self._you_progress.setValue(int(you * 1000))
+        self._ghost_progress.setValue(int(ghost * 1000))
+
     def _update_tick_ui(self):
         tick = self._playback_vm.get_current_tick()
-        self._tick_label.setText(f"Tick {tick:,}")
+        self._tick_label.setText(f"{i18n.get_text('tactical.tick', 'Tick')}: {tick:,}")
         self._timeline.current_tick = tick
+        self._update_header_meta()
+        if self._ghost_mode_on:
+            self._update_dual_progress()
         playing = self._playback_vm.is_playing
-        # U+23F8 is the pause glyph; U+25B6 the play glyph. The "state"
-        # property drives the QSS accent-fill rule (#playback_control
-        # [state="playing"]) so the button visually reflects the mode.
-        self._play_btn.setText("⏸" if playing else "▶")
+        # The "state" property drives the QSS accent-fill rule
+        # (#playback_control[state="playing"]) so the button reflects the mode.
+        label = (
+            i18n.get_text("tactical.pause", "Pause")
+            if playing
+            else i18n.get_text("tactical.play", "Play")
+        )
+        if self._play_btn.text() != label:
+            self._play_btn.setText(label)
         self._play_btn.setProperty("state", "playing" if playing else "")
         self._play_btn.style().unpolish(self._play_btn)
         self._play_btn.style().polish(self._play_btn)
@@ -936,6 +1569,41 @@ class TacticalViewerScreen(QWidget):
 
     def _on_seek(self, tick: int):
         self._playback_vm.seek_to_tick(tick)
+        # A jump invalidates continuous movement history (frame-13 trails).
+        self._map_widget.clear_trails()
+
+    def open_moment(self, demo_name: str, tick: int) -> None:
+        """Deep-link entry: seek to ``tick`` when ``demo_name`` is the demo
+        already loaded in this viewer.
+
+        Wired by the app orchestrator to ``MatchDetailScreen.moment_selected``
+        ("Open in Tactical Viewer" on Highlights moment cards); the wirer
+        switches to this screen afterwards either way. Names are compared by
+        stem so ``foo.dem`` and ``foo`` match the stored ``_loaded_demo_stem``.
+        """
+        wanted = os.path.splitext(os.path.basename(str(demo_name or "")))[0]
+        loaded = getattr(self, "_loaded_demo_stem", None)
+        if self._full_demo_data and wanted and loaded == wanted:
+            self._on_seek(int(tick))
+            return
+        # FIELD-GAP: cross-demo auto-load — the viewer's only load path is
+        # the modal file-picker flow (_open_demo); resolving a demo_name back
+        # to a .dem path and loading it headlessly isn't wired yet.
+        logger.info(
+            "open_moment: demo %r not loaded (loaded=%r) — seek to tick %s skipped",
+            demo_name,
+            loaded,
+            tick,
+        )
+        win = self.window()
+        if win is not None and hasattr(win, "_show_toast"):
+            win._show_toast(
+                "INFO",
+                i18n.get_text(
+                    "tactical.open_moment_missing",
+                    "Open demo {demo} here first to jump to this moment",
+                ).replace("{demo}", str(demo_name)),
+            )
 
     # ── Player Selection ──
 
@@ -963,8 +1631,10 @@ class TacticalViewerScreen(QWidget):
                     return int(rate)
             except Exception as exc:  # noqa: BLE001 — playback must not die on header quirks
                 logger.warning("Header tick-rate resolution failed for %r: %s", path, exc)
-        logger.warning("Falling back to 64 tick/s for playback (no resolvable header)")
-        return 64
+        logger.warning(
+            "Falling back to %s tick/s for playback (no resolvable header)", DEFAULT_TICK_RATE
+        )
+        return DEFAULT_TICK_RATE
 
     def _on_cm_scan_complete(self, cms, count: int) -> None:
         """Enable/disable the CM transport based on real scan results."""
@@ -977,6 +1647,10 @@ class TacticalViewerScreen(QWidget):
                 continue
             btn.setEnabled(has_moments)
             btn.setToolTip(f"{label} ({count} found)" if has_moments else f"{label} (none found)")
+        # Frame 13: star markers on the timeline + chronovisor footer count.
+        self._timeline.set_critical_moments(cms or [])
+        self._cm_count = int(count or 0)
+        self._update_chronovisor_footer()
 
     def _start_chronovisor_scan(self) -> None:
         """Best-effort CM scan for the demo just loaded (R4 MED wiring).
@@ -988,28 +1662,43 @@ class TacticalViewerScreen(QWidget):
         stem = getattr(self, "_loaded_demo_stem", None)
         if not stem:
             return
+
+        # F-0038: the match_id lookup used to run on the GUI thread right
+        # after demo load (429M-row table; a slow probe froze the viewer).
+        # It now rides a Worker; scan_match fires in the result slot.
+        from Programma_CS2_RENAN.apps.qt_app.core.worker import Worker
+
+        worker = Worker(self._resolve_match_id_for_cm, stem)
+        worker.signals.result.connect(self._on_cm_match_resolved)
+        worker.signals.error.connect(
+            lambda err: logger.warning("Chronovisor scan wiring failed for %r: %s", stem, err)
+        )
+        QThreadPool.globalInstance().start(worker)
+
+    @staticmethod
+    def _resolve_match_id_for_cm(stem: str):
+        """Worker thread — DB only, no widget access."""
+        from sqlmodel import select
+
+        from Programma_CS2_RENAN.backend.storage.database import get_db_manager
+        from Programma_CS2_RENAN.backend.storage.db_models import PlayerTickState
+
+        with get_db_manager().get_session() as session:
+            return session.exec(
+                select(PlayerTickState.match_id).where(PlayerTickState.demo_name == stem).limit(1)
+            ).first()
+
+    def _on_cm_match_resolved(self, match_id):
+        """Main-thread slot."""
+        if match_id is None:
+            logger.info(
+                "Chronovisor: demo not found in DB — CM scan skipped " "(transport stays disabled)"
+            )
+            return
         try:
-            from sqlmodel import select
-
-            from Programma_CS2_RENAN.backend.storage.database import get_db_manager
-            from Programma_CS2_RENAN.backend.storage.db_models import PlayerTickState
-
-            with get_db_manager().get_session() as session:
-                match_id = session.exec(
-                    select(PlayerTickState.match_id)
-                    .where(PlayerTickState.demo_name == stem)
-                    .limit(1)
-                ).first()
-            if match_id is None:
-                logger.info(
-                    "Chronovisor: demo %r not found in DB — CM scan skipped "
-                    "(transport stays disabled)",
-                    stem,
-                )
-                return
             self._chronovisor_vm.scan_match(int(match_id))
         except Exception as exc:
-            logger.warning("Chronovisor scan wiring failed for %r: %s", stem, exc)
+            logger.warning("Chronovisor scan_match failed: %s", exc)
 
     def _jump_next_cm(self):
         tick = self._playback_vm.get_current_tick()

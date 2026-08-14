@@ -17,16 +17,16 @@ widgets/
 ├── skeleton.py             # Loading skeletons (shimmer placeholders)
 ├── toast.py                # Transient notification toasts
 ├── components/             # Generic UI primitives (cards, badges, chips, ...)
-├── charts/                 # QtCharts / QPainter-based charts
-├── coaching/               # Coaching widget namespace (reserved; widgets removed PR #32)
+├── charts/                 # QPainter charts (QtCharts removed — GPL-only)
+├── coaching/               # Coaching widgets (embedded ChatPanel)
 └── tactical/               # Tactical-viewer specific widgets
 ```
 
 | Sub-package | Purpose | README |
 |-------------|---------|--------|
 | `components/` | Generic UI primitives reused across screens | [components/README.md](components/README.md) |
-| `charts/` | QtCharts / QPainter-based charts for the dashboard | [charts/README.md](charts/README.md) |
-| `coaching/` | Reserved namespace; all widgets removed in PR #32 | [coaching/README.md](coaching/README.md) |
+| `charts/` | QPainter charts for the dashboard (QtCharts removed for GPL compliance) | [charts/README.md](charts/README.md) |
+| `coaching/` | Coaching widgets — `ChatPanel` embedded in CoachScreen | [coaching/README.md](coaching/README.md) |
 | `tactical/` | Tactical viewer widgets (map, sidebar, timeline) | [tactical/README.md](tactical/README.md) |
 
 ## Top-level files

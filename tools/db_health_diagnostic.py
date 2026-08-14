@@ -297,7 +297,7 @@ def _diag_consistency() -> None:
         ),
     ]
 
-    print(f"\n   [4.3] Impossible value checks:")
+    print("\n   [4.3] Impossible value checks:")
     for label, sql in neg_checks:
         result = run_query(MAIN_DB, sql)
         val = result[0]["cnt"] if result else "error"
@@ -305,7 +305,7 @@ def _diag_consistency() -> None:
         print(f"      {flag} {label}: {val}")
 
     # 4.3b Schema drift check — verify DB columns match model fields
-    print(f"\n   [4.3b] Schema drift check (DB columns vs model fields):")
+    print("\n   [4.3b] Schema drift check (DB columns vs model fields):")
     for model_cls, model_cols, tbl_name in [
         (PlayerMatchStats, _PMS_COLUMNS, _PMS_TABLE),
         (IngestionTask, _IT_COLUMNS, _IT_TABLE),
@@ -333,7 +333,7 @@ def _diag_consistency() -> None:
     """,
     )
     if split_dist:
-        print(f"\n   [4.4] Dataset split distribution:")
+        print("\n   [4.4] Dataset split distribution:")
         for s in split_dist:
             print(f"      {s.get('dataset_split', '?')}: {s.get('cnt', 0)} rows")
 
@@ -347,7 +347,7 @@ def _diag_consistency() -> None:
     """,
     )
     if pro_dist:
-        print(f"\n   [4.5] Pro vs Non-Pro distribution:")
+        print("\n   [4.5] Pro vs Non-Pro distribution:")
         for s in pro_dist:
             print(f"      is_pro={s.get('is_pro', '?')}: {s.get('cnt', 0)} rows")
 
@@ -368,7 +368,7 @@ def _diag_ingestion_pipeline() -> None:
     """,
     )
     if task_stats:
-        print(f"\n   [5.1] Ingestion task status distribution:")
+        print("\n   [5.1] Ingestion task status distribution:")
         for t in task_stats:
             print(
                 f"      {t.get('status','?')}: {t.get('cnt',0)} tasks  (avg retries: {t.get('avg_retries',0):.1f})"
@@ -391,7 +391,7 @@ def _diag_ingestion_pipeline() -> None:
                 f"      Task {s.get('id','?')}: {s.get('demo_path','?')} (retries: {s.get('retry_count',0)})"
             )
     else:
-        print(f"\n   [5.2] [OK] No stuck ingestion tasks")
+        print("\n   [5.2] [OK] No stuck ingestion tasks")
 
     # 5.3: Cross-DB consistency — match files vs main DB records
     if os.path.exists(MATCH_DATA_DIR):
@@ -409,7 +409,7 @@ def _diag_ingestion_pipeline() -> None:
         orphan_files = match_file_ids - main_ids
         missing_files = main_ids - match_file_ids
 
-        print(f"\n   [5.3] Cross-DB consistency:")
+        print("\n   [5.3] Cross-DB consistency:")
         print(f"      Match files on disk:        {len(match_file_ids)}")
         print(f"      MatchResult rows in main:   {len(main_ids)}")
         print(
@@ -447,7 +447,7 @@ def _diag_performance_observability_and_summary(schema_info: dict) -> None:
             print(f"      {tbl}: {len(idxs)} indexes")
 
     # Check EXPLAIN QUERY PLAN for critical queries
-    print(f"\n   [6.2] Query plan analysis (critical queries):")
+    print("\n   [6.2] Query plan analysis (critical queries):")
     critical_queries = [
         (
             "Player stats lookup by name",

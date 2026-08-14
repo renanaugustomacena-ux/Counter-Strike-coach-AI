@@ -1,8 +1,8 @@
 """MiniSparkline — chrome-less line chart for at-a-glance trend rendering.
 
-Unlike ``RatingSparkline`` (QChartView with axes, title, and reference
-lines, sized for the Performance screen), this is a true sparkline:
-QPainter-based, ~60px tall, no labels, no axes. Used in dashboard
+Unlike ``RatingSparkline`` (labeled reference lines and area fill, sized
+for the Performance screen), this is a true sparkline: ~60px tall, no
+labels, no axes. Used in dashboard
 hero cards where you want trend-shape only, not exact values.
 
 API:

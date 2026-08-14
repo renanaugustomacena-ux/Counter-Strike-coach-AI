@@ -1,13 +1,6 @@
 @echo off
-echo --- Building Macena Standalone Executable ---
-echo Cleaning old builds...
-rmdir /s /q dist
-rmdir /s /q build
-
-echo Building...
-.\venv_win\Scripts\pyinstaller --noconsole --name Macena --icon=Programma_CS2_RENAN/PHOTO_GUI/icon.ico --add-data "Programma_CS2_RENAN/PHOTO_GUI;Programma_CS2_RENAN/PHOTO_GUI" --add-data "Programma_CS2_RENAN/apps;Programma_CS2_RENAN/apps" --add-data "Programma_CS2_RENAN/data;Programma_CS2_RENAN/data" --collect-all kivymd --collect-all kivy Programma_CS2_RENAN/main.py
-
-echo.
-echo Build Complete!
-echo Check the 'dist/Macena' folder.
-pause
+REM W3 (replace-not-delete): the old script PyInstalled the DELETED Kivy
+REM main.py with --collect-all kivy. The PySide6 build lives in
+REM packaging/cs2_analyzer_win.spec via the production script.
+echo --- Macena build: delegating to the current PySide6 pipeline ---
+call "%~dp0build_production.bat" %*

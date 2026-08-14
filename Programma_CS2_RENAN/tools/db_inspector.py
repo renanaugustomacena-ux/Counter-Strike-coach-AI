@@ -399,8 +399,10 @@ def format_compact(data, table_detail=None):
         total = ig.get("total", 0)
         q = st.get("queued", 0)
         p = st.get("processing", 0)
-        d = st.get("done", 0)
-        e = st.get("error", 0)
+        # R4 (W3): statuses are completed/failed — done/error never
+        # existed and permanently displayed 0 (project_snapshot had the fix).
+        d = st.get("completed", 0)
+        e = st.get("failed", 0)
         lines.append(
             f"\ningest queued:{q}{SEP}processing:{p}{SEP}done:{d}{SEP}error:{e}{SEP}total:{total}"
         )

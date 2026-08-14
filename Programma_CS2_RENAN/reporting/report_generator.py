@@ -75,7 +75,7 @@ class MatchReportGenerator:
 
         try:
             with open(report_path, "w", encoding="utf-8") as f:
-                f.write(f"# CS2 Coach Match Report\n")
+                f.write("# CS2 Coach Match Report\n")
                 f.write(f"**Map**: {map_name}\n")
                 f.write(f"**Date**: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n")
 

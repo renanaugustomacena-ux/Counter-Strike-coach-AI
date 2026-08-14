@@ -3,6 +3,11 @@
 # ================================================================================
 
 $ErrorActionPreference = "Continue"
+
+# Always operate from the repository root, wherever the script is invoked from
+# (requirements.txt, venv_win, and the package path are root-relative).
+Set-Location (Join-Path $PSScriptRoot "..")
+
 Write-Host "Starting Macena CS2 Analyzer Setup..." -ForegroundColor Cyan
 
 # 1. Environment Verification
@@ -48,5 +53,5 @@ Write-Host "[*] Finalizing browser components..." -ForegroundColor Yellow
 
 Write-Host "`n" + "="*60 -ForegroundColor Cyan
 Write-Host "INSTALLATION COMPLETE" -ForegroundColor Green
-Write-Host "To start the application, run: .\venv_win\Scripts\python.exe Programma_CS2_RENAN/main.py" -ForegroundColor Yellow
+Write-Host "To start the application, run: .\venv_win\Scripts\python.exe -m Programma_CS2_RENAN.apps.qt_app.app" -ForegroundColor Yellow
 Write-Host "="*60 -ForegroundColor Cyan

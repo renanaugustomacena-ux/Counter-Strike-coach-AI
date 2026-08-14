@@ -10,7 +10,6 @@ if sys.prefix == sys.base_prefix:
         sys.exit(2)
 
 import torch
-import torch.nn as nn
 
 # Path setup
 current_dir = os.path.dirname(os.path.abspath(__file__))

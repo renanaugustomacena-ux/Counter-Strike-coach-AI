@@ -42,8 +42,28 @@ A differenza degli strumenti di coaching statici con suggerimenti pre-scritti, q
 - [Indice Completo della Documentazione](#indice-completo-della-documentazione)
 - [Licenza](#licenza)
 - [Autore](#autore)
+- [Qualità e Verifica (audit 2026-08)](#qualità-e-verifica-audit-nuke-proof-2026-08)
 
 ---
+
+## Qualità e Verifica (audit "nuke-proof" 2026-08)
+
+L'intera codebase (618 file, ~155k LOC) è stata letta due volte e
+verificata da cima a fondo nell'agosto 2026. Risultati, evidenze e
+dossier per file sono in `docs/audit/`.
+
+- **Gate dei test**: 2574 passati / 0 falliti / 0 errori; soglia
+  coverage 50% (la suite è a ~56%). `tools/headless_validator.py`:
+  PASS. `sync_integrity_manifest.py --verify-only`: VERDE.
+- **44 finding registrati, 44 risolti** — 31 corretti con test di
+  regressione nello stesso commit, 13 rinviati con motivazioni
+  scritte (`docs/audit/FINDINGS.md`).
+- **CI** su ogni push (`feat/**`, `chore/**`, `main`): lint
+  (pre-commit incl. ruff), test su Ubuntu + Windows, integrazione,
+  sicurezza (Bandit, detect-secrets, pip-audit), type-check, build web.
+- **Decisioni di prodotto**: i consigli del coach sono deliberatamente
+  in inglese; il contratto JEPA 25-vs-10 resta protetto (26-RANGE-01)
+  finché il filone di ricerca non riprende.
 
 ## Funzionalita Principali
 

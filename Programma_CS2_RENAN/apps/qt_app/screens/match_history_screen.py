@@ -36,13 +36,12 @@ from PySide6.QtWidgets import (
 from Programma_CS2_RENAN.apps.qt_app.core.animation import Animator
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
-from Programma_CS2_RENAN.apps.qt_app.core.match_utils import map_short_name
+from Programma_CS2_RENAN.apps.qt_app.core.match_utils import count_personal_and_pro, map_short_name
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.apps.qt_app.viewmodels.match_history_vm import MatchHistoryViewModel
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.empty_state import EmptyState
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.filter_chip import FilterChip
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.match_row_card import MatchRowCard
-from Programma_CS2_RENAN.apps.qt_app.widgets.components.status_chip import StatusChip
 from Programma_CS2_RENAN.apps.qt_app.widgets.skeleton import SkeletonTable
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -120,6 +119,8 @@ class MatchHistoryScreen(QWidget):
 
     def retranslate(self):
         self._title_label.setText(i18n.get_text("match_history_title"))
+        if self._all_matches:
+            self._update_count_caption()
 
     # ── UI Construction ──
 
@@ -139,8 +140,15 @@ class MatchHistoryScreen(QWidget):
         Typography.apply(self._title_label, "h1")
         title_row.addWidget(self._title_label)
         title_row.addStretch(1)
-        self._count_chip = StatusChip("0 matches", severity="neutral")
-        title_row.addWidget(self._count_chip)
+        # Frame 08 header-right caption: "47 personal · 2,148 pro reference"
+        self._personal_count = 0
+        self._pro_count = 0
+        self._count_caption = QLabel("")
+        self._count_caption.setFont(Typography.font("body"))
+        self._count_caption.setStyleSheet(
+            f"color: {tokens.text_secondary}; background: transparent;"
+        )
+        title_row.addWidget(self._count_caption)
         root.addLayout(title_row)
 
         # ── Source filter chips (mutually exclusive) ──
@@ -258,7 +266,7 @@ class MatchHistoryScreen(QWidget):
             self._empty_state.set_title("No matches found")
             self._empty_state.set_description("Play and analyze a demo to see it here.")
             self._body_stack.setCurrentIndex(self._page_empty)
-            self._update_count_chip(0)
+            self._update_count_caption()
             return
 
         # Pro-only banner — visible until user has at least one personal match.
@@ -276,8 +284,8 @@ class MatchHistoryScreen(QWidget):
         # Refresh map filter row
         self._rebuild_map_chips()
 
-        # Update title status chip
-        self._update_count_chip(all_count)
+        # Update title caption (frame 08: "N personal · M pro reference")
+        self._update_count_caption()
 
         # Render filtered + grouped rows
         self._render_filtered()
@@ -291,6 +299,24 @@ class MatchHistoryScreen(QWidget):
             return
 
         self._body_stack.setCurrentIndex(self._page_list)
+
+        # Benchmark-relative delta chips (research 29.2): each personal row
+        # carries ± vs the personal average of the WHOLE loaded list (not the
+        # filtered view — the baseline must not shift when filters change).
+        # Zero ratings are failed parses, not performances — excluded.
+        personal_ratings = [
+            float(m.get("rating") or 0.0)
+            for m in self._all_matches
+            if not m.get("is_pro") and float(m.get("rating") or 0.0) > 0
+        ]
+        baseline = sum(personal_ratings) / len(personal_ratings) if personal_ratings else None
+        baseline_label = (
+            i18n.get_text("history.delta_vs_avg", "vs {n}-match avg").format(
+                n=len(personal_ratings)
+            )
+            if baseline is not None
+            else ""
+        )
 
         now = datetime.now(timezone.utc)
         groups: dict[str, list[dict]] = defaultdict(list)
@@ -311,7 +337,7 @@ class MatchHistoryScreen(QWidget):
             self._container_layout.insertWidget(self._container_layout.count() - 1, header)
 
             for match in bucket_matches:
-                row = MatchRowCard(match)
+                row = MatchRowCard(match, baseline_rating=baseline, baseline_label=baseline_label)
                 row.clicked.connect(self._on_match_clicked)
                 self._container_layout.insertWidget(self._container_layout.count() - 1, row)
 
@@ -411,9 +437,18 @@ class MatchHistoryScreen(QWidget):
         if win and hasattr(win, "switch_screen"):
             win.switch_screen("home")
 
-    def _update_count_chip(self, count: int) -> None:
-        self._count_chip.set_label(f"{count} matches")
-        self._count_chip.set_severity("online" if count > 0 else "neutral")
+    def _update_count_caption(self) -> None:
+        """Header-right caption per frame 08: ``47 personal · 2,148 pro reference``.
+
+        Counts come from ``match_utils.count_personal_and_pro`` — personal
+        rows + DISTINCT pro demo names (same convention as Home).
+        """
+        self._personal_count, self._pro_count = count_personal_and_pro(self._all_matches)
+        personal_word = i18n.get_text("history.personal", "personal")
+        pro_word = i18n.get_text("history.pro_reference", "pro reference")
+        self._count_caption.setText(
+            f"{self._personal_count:,} {personal_word} · {self._pro_count:,} {pro_word}"
+        )
 
     def _clear_container(self) -> None:
         while self._container_layout.count() > 1:

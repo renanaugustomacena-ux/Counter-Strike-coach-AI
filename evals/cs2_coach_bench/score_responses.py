@@ -56,8 +56,8 @@ def score_manually(responses: list[dict], output_path: Path) -> list[dict]:
 
     print(f"\nManual scoring: {len(responses)} responses")
     print(f"Dimensions: {', '.join(DIMENSIONS)}")
-    print(f"Scale: 0-3 each (max 15 per question)")
-    print(f"Type 's' to skip, 'q' to quit and save progress\n")
+    print("Scale: 0-3 each (max 15 per question)")
+    print("Type 's' to skip, 'q' to quit and save progress\n")
 
     with open(output_path, "w") as out:
         for i, resp in enumerate(responses):
@@ -174,7 +174,7 @@ def compare_reports(path_a: Path, path_b: Path):
     print(f"{'Percentage':25s} {pct_a:>9.1f}% {pct_b:>9.1f}% {pct_b - pct_a:>+9.1f}%")
 
     # Per-dimension comparison
-    print(f"\nPer-dimension (0-3 avg):")
+    print("\nPer-dimension (0-3 avg):")
     for dim in DIMENSIONS:
         vals_a = [r["scores"][dim] for r in scored_a if dim in r.get("scores", {})]
         vals_b = [r["scores"][dim] for r in scored_b if dim in r.get("scores", {})]

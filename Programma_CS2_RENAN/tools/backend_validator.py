@@ -85,7 +85,7 @@ class BackendValidator(BaseValidator):
             "Critical dependencies",
             deps_ok,
             error=f"Missing: {', '.join(missing)}" if missing else "",
-            detail=f"5/5 loaded" if deps_ok else f"{5 - len(missing)}/5",
+            detail="5/5 loaded" if deps_ok else f"{5 - len(missing)}/5",
         )
 
         # METADATA_DIM

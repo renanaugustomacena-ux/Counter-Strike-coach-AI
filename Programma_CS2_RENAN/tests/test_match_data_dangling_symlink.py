@@ -15,8 +15,33 @@ still created.
 """
 
 import os
+import tempfile
 
 import pytest
+
+
+def _can_symlink() -> bool:
+    """CPython test.support.can_symlink pattern — F-0003.
+
+    On Windows without SeCreateSymbolicLinkPrivilege (no Developer Mode,
+    not elevated) os.symlink raises OSError WinError 1314. These tests
+    then cannot even build their fixtures; skip them honestly instead of
+    erroring. Linux/CI runners keep enforcing the contract.
+    """
+    with tempfile.TemporaryDirectory() as td:
+        target = os.path.join(td, "probe_target")
+        link = os.path.join(td, "probe_link")
+        try:
+            os.symlink(target, link)
+        except (OSError, NotImplementedError):
+            return False
+        return True
+
+
+pytestmark = pytest.mark.skipif(
+    not _can_symlink(),
+    reason="symlink creation not permitted (Windows without symlink privilege) — F-0003",
+)
 
 from Programma_CS2_RENAN.backend.storage import match_data_manager as mdm
 from Programma_CS2_RENAN.backend.storage.match_data_manager import (
@@ -47,7 +72,16 @@ class TestDanglingSymlinkIsAnError:
         with pytest.raises(MatchDataUnavailableError):
             MatchDataManager(str(link))
         assert os.path.islink(link), "the symlink was deleted"
-        assert os.readlink(link) == str(dead_target), "the symlink was repointed"
+        # Windows os.readlink returns the extended-length path (prefixed
+        # with backslash-backslash-questionmark-backslash) for absolute
+        # targets — privileged CI runners execute this suite there.
+        # Compare normalized paths, not raw strings.
+        raw_target = os.readlink(link)
+        if raw_target.startswith("\\\\?\\"):
+            raw_target = raw_target[4:]
+        assert os.path.normpath(raw_target) == os.path.normpath(
+            str(dead_target)
+        ), "the symlink was repointed"
 
     def test_no_empty_directory_is_invented(self, dangling_link):
         link, _ = dangling_link

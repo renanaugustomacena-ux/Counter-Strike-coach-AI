@@ -7,18 +7,20 @@
 
 ## Purpose
 
-Namespace package reserved for coaching-specific visual widgets. The four specialized
-widgets that previously lived here — `AnimatedCounter`, `BeliefThreatGauge`,
-`MomentumSparkline`, and `UnderglowLabel` — were removed in PR #32 (commit `697bac7`)
-as part of the orphan-module cleanup. Coaching feedback is now rendered directly in
-`screens/coach_screen.py` via standard Qt widgets; the shared charts live in
-`widgets/charts/`.
+Coaching-specific visual widgets. The package hosts `ChatPanel`, the embedded coach
+chat introduced by the design-atlas rebuild (frames 06/07): message bubbles, a mono
+provenance meta line, availability states, and the input row. It is hosted by
+`screens/coach_screen.py` — the old QDockWidget chat dock was removed with the
+frames-06/07 redesign. (An earlier generation of widgets — `AnimatedCounter`,
+`BeliefThreatGauge`, `MomentumSparkline`, `UnderglowLabel` — was removed in PR #32,
+commit `697bac7`; see the historical note below.)
 
 ## File inventory
 
 | File | Purpose |
 |------|---------|
-| `__init__.py` | Package marker (empty). |
+| `__init__.py` | Package exports (`ChatPanel`). |
+| `chat_panel.py` | `ChatPanel` — embedded coach chat panel hosted by CoachScreen. |
 
 ## Historical note
 

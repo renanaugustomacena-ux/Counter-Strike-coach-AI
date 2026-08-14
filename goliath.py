@@ -11,7 +11,6 @@ Industrial Standard Version 2.0
 import argparse
 import atexit
 import logging
-import os
 import signal
 import sys
 from datetime import datetime

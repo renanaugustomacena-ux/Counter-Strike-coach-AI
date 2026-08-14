@@ -15,6 +15,7 @@ SAFETY NOTE — QGraphicsOpacityEffect:
     whenever a widget may repaint concurrently.
 """
 
+import os
 from typing import Iterable, Literal
 
 from PySide6.QtCore import (
@@ -24,10 +25,17 @@ from PySide6.QtCore import (
     QRect,
     QSequentialAnimationGroup,
     QTimer,
+    QVariantAnimation,
 )
 from PySide6.QtWidgets import QGraphicsOpacityEffect, QWidget
 
 from Programma_CS2_RENAN.apps.qt_app.core.easing import Easing
+
+
+def animations_enabled() -> bool:
+    """Global kill-switch — the screenshot harness and tests set
+    MACENA_UI_ANIMATIONS=0 so grabs capture deterministic end states."""
+    return os.environ.get("MACENA_UI_ANIMATIONS", "1") != "0"
 
 
 def _ensure_opacity_effect(widget: QWidget) -> QGraphicsOpacityEffect:
@@ -46,6 +54,11 @@ class Animator:
     @staticmethod
     def fade_in(widget: QWidget, duration: int = 200) -> QPropertyAnimation:
         """Fade widget from 0 to 1 opacity."""
+        # F-0034: honor the kill-switch — jump to the end state.
+        if not animations_enabled() or duration <= 0:
+            _ensure_opacity_effect(widget).setOpacity(1.0)
+            widget.setVisible(True)
+            return None
         effect = _ensure_opacity_effect(widget)
         effect.setOpacity(0.0)
         widget.setVisible(True)
@@ -63,6 +76,12 @@ class Animator:
         widget: QWidget, duration: int = 150, hide_on_finish: bool = False
     ) -> QPropertyAnimation:
         """Fade widget from current opacity to 0."""
+        # F-0034: honor the kill-switch — jump to the end state.
+        if not animations_enabled() or duration <= 0:
+            _ensure_opacity_effect(widget).setOpacity(0.0)
+            if hide_on_finish:
+                widget.setVisible(False)
+            return None
         effect = _ensure_opacity_effect(widget)
 
         anim = QPropertyAnimation(effect, b"opacity", widget)
@@ -86,6 +105,10 @@ class Animator:
 
         Returns the animation group so callers can stop() it when loading finishes.
         """
+        # F-0034: with animations off, hold a static mid opacity (no loop).
+        if not animations_enabled() or duration <= 0:
+            _ensure_opacity_effect(widget).setOpacity((low + high) / 2)
+            return None
         effect = _ensure_opacity_effect(widget)
         effect.setOpacity(low)
 
@@ -119,6 +142,12 @@ class Animator:
 
         Fades out old_widget, then fades in new_widget.
         """
+        # F-0034: instant swap when animations are off.
+        if not animations_enabled() or duration <= 0:
+            _ensure_opacity_effect(old_widget).setOpacity(0.0)
+            _ensure_opacity_effect(new_widget).setOpacity(1.0)
+            new_widget.setVisible(True)
+            return
         # Ensure new widget starts invisible
         new_effect = _ensure_opacity_effect(new_widget)
         new_effect.setOpacity(0.0)
@@ -137,6 +166,54 @@ class Animator:
 
         fade_out.finished.connect(_on_fade_out_done)
         fade_out.start(QAbstractAnimation.DeleteWhenStopped)
+
+    # ── Value animations (no graphics effects — always safe) ──────────
+
+    @staticmethod
+    def count_up(
+        label,
+        end: float,
+        fmt: str = "{:.2f}",
+        duration: int = 600,
+        start: float | None = None,
+    ) -> QVariantAnimation | None:
+        """Animate a QLabel's text counting toward ``end`` (OutExpo).
+
+        Research-validated micro-motion for KPI tiles. With animations
+        disabled (harness/tests) the end value is set immediately.
+        """
+        if not animations_enabled() or duration <= 0:
+            label.setText(fmt.format(end))
+            return None
+        anim = QVariantAnimation(label)
+        anim.setStartValue(float(start if start is not None else 0.0))
+        anim.setEndValue(float(end))
+        anim.setDuration(duration)
+        anim.setEasingCurve(QEasingCurve.OutExpo)
+        anim.valueChanged.connect(lambda v: label.setText(fmt.format(v)))
+        anim.finished.connect(lambda: label.setText(fmt.format(end)))
+        anim.start(QAbstractAnimation.DeleteWhenStopped)
+        return anim
+
+    @staticmethod
+    def sweep_ring(ring, end: float, duration: int = 700) -> QVariantAnimation | None:
+        """Sweep a ProgressRing's value 0→``end`` (0-1 fraction, OutCubic).
+
+        With animations disabled the value is applied immediately.
+        """
+        end = max(0.0, min(1.0, end))
+        if not animations_enabled() or duration <= 0:
+            ring.set_value(end)
+            return None
+        anim = QVariantAnimation(ring)
+        anim.setStartValue(0.0)
+        anim.setEndValue(end)
+        anim.setDuration(duration)
+        anim.setEasingCurve(QEasingCurve.OutCubic)
+        anim.valueChanged.connect(lambda v: ring.set_value(float(v)))
+        anim.finished.connect(lambda: ring.set_value(end))
+        anim.start(QAbstractAnimation.DeleteWhenStopped)
+        return anim
 
     # ── Geometry animations (safe on mid-repaint widgets) ─────────────
 
@@ -157,7 +234,12 @@ class Animator:
         The widget must already have its final geometry set (via layout or
         `setGeometry`). `distance_px` is how far offset the start position
         is from the resting position along `direction`.
+
+        F-0034: with animations off the widget simply shows at rest.
         """
+        if not animations_enabled() or duration <= 0:
+            widget.setVisible(True)
+            return None
         widget.setVisible(True)
         end = widget.geometry()
         dx, dy = 0, 0
@@ -194,6 +276,11 @@ class Animator:
         Safe on mid-repaint widgets (animates `geometry`, not opacity).
         Optionally hides the widget once the animation finishes.
         """
+        # F-0034: honor the kill-switch — jump to the end state.
+        if not animations_enabled() or duration <= 0:
+            if hide_on_finish:
+                widget.setVisible(False)
+            return None
         start = widget.geometry()
         dx, dy = 0, 0
         if direction == "right":
@@ -231,6 +318,11 @@ class Animator:
         by bento grids, card lists, and skeleton rows.
         """
         anims: list[QPropertyAnimation] = []
+        # F-0034: with animations off, show everything immediately.
+        if not animations_enabled() or duration <= 0:
+            for w in widgets:
+                w.setVisible(True)
+            return anims
         for i, w in enumerate(widgets):
             QTimer.singleShot(
                 i * delay_ms,
@@ -255,6 +347,11 @@ class Animator:
         `widget.setFixedWidth(to_width)` called before/after to settle.
         For a plain sidebar pattern this is fine.
         """
+        # F-0034: honor the kill-switch — jump to the target width.
+        if not animations_enabled() or duration <= 0:
+            g = widget.geometry()
+            widget.setGeometry(QRect(g.x(), g.y(), to_width, g.height()))
+            return None
         start = widget.geometry()
         end = QRect(start.x(), start.y(), to_width, start.height())
         anim = QPropertyAnimation(widget, b"geometry", widget)

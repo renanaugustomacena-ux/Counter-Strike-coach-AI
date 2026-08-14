@@ -46,8 +46,10 @@ class KnowledgeGraphManager:
             return self._conn
         # R4 LOW: the cached connection outlives the creating thread —
         # sqlite3's default check_same_thread=True would raise
-        # ProgrammingError from any other thread. Cross-thread access is
-        # serialized by _conn_lock at the call sites.
+        # ProgrammingError from any other thread. F-0027: no `_conn_lock`
+        # ever existed — serialization actually comes from WAL +
+        # busy_timeout below plus the callers' single-worker usage; the
+        # comment now tells the truth instead of naming a phantom lock.
         conn = sqlite3.connect(self.DB_PATH, check_same_thread=False)
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA synchronous=NORMAL")

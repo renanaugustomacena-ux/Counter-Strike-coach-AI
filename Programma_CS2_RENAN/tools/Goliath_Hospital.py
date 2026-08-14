@@ -1014,7 +1014,14 @@ class GoliathHospital(BaseValidator):
 
     def _check_endocrinology(self):
         # Entry points
-        for ep in ("main.py", "run_ingestion.py", "run_worker.py", "hltv_sync_service.py"):
+        # W3 (replace-not-delete): main.py (Kivy) is gone — the Qt entry is
+        # apps/qt_app/app.py.
+        for ep in (
+            "apps/qt_app/app.py",
+            "run_ingestion.py",
+            "run_worker.py",
+            "hltv_sync_service.py",
+        ):
             ep_path = SOURCE_ROOT / ep
             if not ep_path.exists():
                 self.check("Endocrinology", f"entry:{ep}", False, error="Entry point not found")

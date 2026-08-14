@@ -52,9 +52,9 @@ class EngagementProfile:
 # Expected engagement profiles by role (pro baselines)
 _ROLE_RANGE_BASELINES: Dict[str, EngagementProfile] = {
     "awper": EngagementProfile(close_pct=0.10, medium_pct=0.30, long_pct=0.45, extreme_pct=0.15),
-    "entry_fragger": EngagementProfile(
-        close_pct=0.40, medium_pct=0.40, long_pct=0.15, extreme_pct=0.05
-    ),
+    # F-0022: canonical enum value is "entry" (PlayerRole.ENTRY) — the old
+    # "entry_fragger" key was unreachable via classifier output.
+    "entry": EngagementProfile(close_pct=0.40, medium_pct=0.40, long_pct=0.15, extreme_pct=0.05),
     "support": EngagementProfile(close_pct=0.25, medium_pct=0.45, long_pct=0.25, extreme_pct=0.05),
     "lurker": EngagementProfile(close_pct=0.35, medium_pct=0.35, long_pct=0.20, extreme_pct=0.10),
     "igl": EngagementProfile(close_pct=0.25, medium_pct=0.40, long_pct=0.25, extreme_pct=0.10),
@@ -132,7 +132,7 @@ class EngagementRangeAnalyzer:
 
         Args:
             profile: Player's computed engagement profile.
-            role: Player's classified role (e.g., "awper", "entry_fragger").
+            role: Player's classified role (e.g., "awper", "entry").
 
         Returns:
             List of coaching observations (strings).

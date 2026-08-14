@@ -140,7 +140,8 @@ PLAYERTICKSTATE_INDEXES = [
     ("ix_pts_has_defuser", "CREATE INDEX ix_pts_has_defuser ON playertickstate (has_defuser)"),
 ]
 
-KNOWN_CS2_MAPS = {"mirage", "dust2", "inferno", "nuke", "overpass", "anubis", "ancient", "vertigo"}
+# map-SSOT (CP0 #2): the old 8-entry copy missed train/cache/office.
+from Programma_CS2_RENAN.core.known_maps import KNOWN_MAP_NAMES as KNOWN_CS2_MAPS
 
 
 def demo_stem_to_match_id(stem: str) -> int:

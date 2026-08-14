@@ -7,12 +7,14 @@ ACTIVE Qt tactical map (apps/qt_app/widgets/tactical/map_widget.py).
 History: these constants originally lived in the legacy Kivy TacticalMap. That
 UI was migrated to PySide6/Qt and the legacy package removed; the Qt map_widget
 owns the production constants now (identical CS2 game values), so this test was
-repointed at the live module. The constant checks now actually run (they were
-skipped while the source-of-truth was the never-imported Kivy module).
+repointed at the live module. Overlay colors then moved from a module-level
+QColor dict to design tokens: _NADE_PALETTE_KEYS maps each NadeType to a
+semantic palette key resolved by TacticalMapWidget._palette() per paint, so
+overlays theme-track (CS2 / CSGO / CS1.6).
 
 Validates:
 - Grenade radius constants are correct CS2 game values
-- Overlay colors are defined for all grenade types
+- Every grenade type maps to a token-palette color
 - _draw_detonation_overlay exists and is wired into nade drawing
 """
 
@@ -22,15 +24,18 @@ import pytest
 
 from Programma_CS2_RENAN.core.demo_frame import NadeType
 
-# Importing the Qt widget module only defines the class + module-level constant
-# dicts (no QApplication needed). Guard so the suite still degrades gracefully
-# on an environment without PySide6 installed.
+# Must be set BEFORE any QApplication is created — enables headless CI.
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+# Guard so the suite still degrades gracefully on an environment without
+# PySide6 installed.
 try:
     from PySide6.QtGui import QColor
 
     from Programma_CS2_RENAN.apps.qt_app.widgets.tactical.map_widget import (
-        GRENADE_OVERLAY_COLORS,
+        _NADE_PALETTE_KEYS,
         GRENADE_RADII,
+        TacticalMapWidget,
     )
 
     _QT_AVAILABLE = True
@@ -49,6 +54,14 @@ _QT_SOURCE = os.path.join(
 pytestmark = pytest.mark.skipif(
     not _QT_AVAILABLE, reason="PySide6 not available — cannot import Qt map_widget"
 )
+
+
+@pytest.fixture(scope="module")
+def qapp():
+    """Provide a QApplication so TacticalMapWidget can be constructed."""
+    from PySide6.QtWidgets import QApplication
+
+    return QApplication.instance() or QApplication([])
 
 
 class TestGrenadeConstants:
@@ -73,18 +86,21 @@ class TestGrenadeConstants:
             assert radius > 0, f"{nade_type} has non-positive radius: {radius}"
 
     def test_overlay_colors_defined_for_all_types(self):
-        """Every NadeType with a radius must have an overlay color."""
+        """Every NadeType with a radius must map to a palette key."""
         for nade_type in GRENADE_RADII:
-            assert (
-                nade_type in GRENADE_OVERLAY_COLORS
-            ), f"{nade_type} missing from GRENADE_OVERLAY_COLORS"
+            assert nade_type in _NADE_PALETTE_KEYS, f"{nade_type} missing from _NADE_PALETTE_KEYS"
 
-    def test_overlay_colors_are_valid_qcolors(self):
-        """Overlay colors must be QColor instances with in-range RGB channels."""
-        for nade_type, color in GRENADE_OVERLAY_COLORS.items():
+    def test_overlay_colors_are_valid_qcolors(self, qapp):
+        """Palette colors for every grenade type must be valid QColors."""
+        widget = TacticalMapWidget()
+        palette = widget._palette()
+        for nade_type, key in _NADE_PALETTE_KEYS.items():
+            assert key in palette, f"{nade_type} key {key!r} missing from _palette()"
+            color = palette[key]
             assert isinstance(color, QColor), f"{nade_type} color is not a QColor"
             for channel in (color.red(), color.green(), color.blue()):
                 assert 0 <= channel <= 255, f"{nade_type} channel {channel} out of [0, 255]"
+        widget.deleteLater()
 
 
 class TestTacticalMapOverlayIntegration:
@@ -96,10 +112,10 @@ class TestTacticalMapOverlayIntegration:
             return f.read()
 
     def test_constants_defined_in_source(self):
-        """map_widget source must define the grenade overlay constants."""
+        """map_widget source must define the grenade radius + palette maps."""
         source = self._source()
         assert "GRENADE_RADII" in source
-        assert "GRENADE_OVERLAY_COLORS" in source
+        assert "_NADE_PALETTE_KEYS" in source
 
     def test_draw_detonation_overlay_method_exists(self):
         """_draw_detonation_overlay must be defined in map_widget.py."""

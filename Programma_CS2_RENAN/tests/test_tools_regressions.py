@@ -2,8 +2,6 @@
 
 import sqlite3
 
-import pytest
-
 
 class TestRegisterOrphanAggregates:
     """R4 MED: SUM(MAX(kills_this_round)) undercounts (~50% on cross-checked

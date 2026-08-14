@@ -9,7 +9,6 @@ Uses multiprocessing to leverage all CPU cores.
 Usage:
     python batch_ingest.py [--workers N] [--limit N]
 """
-import logging
 import os
 import sys
 import time

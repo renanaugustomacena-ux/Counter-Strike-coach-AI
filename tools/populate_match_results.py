@@ -34,17 +34,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 DB_PATH = str(PROJECT_ROOT / "Programma_CS2_RENAN" / "backend" / "storage" / "database.db")
 
-KNOWN_MAPS = {
-    "mirage",
-    "overpass",
-    "inferno",
-    "dust2",
-    "ancient",
-    "nuke",
-    "anubis",
-    "vertigo",
-    "train",
-}
+# map-SSOT (CP0 #2)
+from Programma_CS2_RENAN.core.known_maps import KNOWN_MAP_NAMES as KNOWN_MAPS
 
 
 def parse_demo_name(name: str) -> dict:
@@ -252,7 +243,7 @@ def main() -> None:
     conn.commit()
     conn.close()
 
-    print(f"\n=== Done ===")
+    print("\n=== Done ===")
     print(f"  Inserted: {total_inserted}")
     print(f"  Skipped (existing): {total_skipped}")
     print(f"  With winner derived: {total_with_winner}")

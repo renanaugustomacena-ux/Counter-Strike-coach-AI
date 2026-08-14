@@ -42,3 +42,15 @@ def make_button(
         style.unpolish(btn)
         style.polish(btn)
     return btn
+
+
+def navigate_to(widget: QWidget, screen_name: str) -> None:
+    """Switch the MainWindow to ``screen_name`` from any child widget.
+
+    The standard screen `_navigate` copy: resolve the top-level window and
+    call its ``switch_screen`` when present (no-op under tests/harness
+    where the widget may be parentless).
+    """
+    win = widget.window()
+    if win and hasattr(win, "switch_screen"):
+        win.switch_screen(screen_name)

@@ -802,7 +802,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         print("ERROR: --really-force without --commit makes no sense; aborting.")
         return 2
 
-    print(f"=== D2A — SQL-only PlayerMatchStats aggregator ===")
+    print("=== D2A — SQL-only PlayerMatchStats aggregator ===")
     print(f"  Mode:               {'COMMIT' if write_mode else 'DRY-RUN'}")
     print(f"  Force flags:        force={args.force} really_force={args.really_force}")
     print(f"  Reconcile-only:     {args.reconcile}")

@@ -38,17 +38,8 @@ INVENTORY = PROJECT_ROOT / "docs" / "d3_corrupted_match_inventory_2026-05-06.jso
 REPORT_OUT = PROJECT_ROOT / "docs" / "d3_recovery_report_2026-05-06.json"
 
 MAP_SUFFIX_RE = re.compile(r"(?:-m\d+)?-([a-z][a-z0-9_]+?)(?:-p\d+)?$")
-KNOWN_MAPS = {
-    "mirage",
-    "dust2",
-    "inferno",
-    "nuke",
-    "overpass",
-    "anubis",
-    "ancient",
-    "vertigo",
-    "train",
-}
+# map-SSOT (CP0 #2)
+from Programma_CS2_RENAN.core.known_maps import KNOWN_MAP_NAMES as KNOWN_MAPS
 
 
 def demo_stem_to_match_id(stem: str) -> int:

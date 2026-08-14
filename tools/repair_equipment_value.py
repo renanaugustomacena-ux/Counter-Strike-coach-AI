@@ -85,7 +85,7 @@ def repair_demo(conn: sqlite3.Connection, demo_stem: str) -> int:
 
     tuples = extract_equipment_value(dem_path)
     if not tuples:
-        print(f" no data")
+        print(" no data")
         return 0
 
     t_extract = time.monotonic() - t0
@@ -168,7 +168,7 @@ def main():
             )
 
     # Verification
-    print(f"\n=== Verification ===")
+    print("\n=== Verification ===")
     c = conn.cursor()
     for demo in AFFECTED_DEMOS:
         c.execute(
