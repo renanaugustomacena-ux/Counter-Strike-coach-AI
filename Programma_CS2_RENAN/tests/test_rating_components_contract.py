@@ -203,3 +203,51 @@ class TestAggregateBuilderParity:
         record = _build_player_match_stats(meta, agg, tmp_path / "match_x.db")
         assert record.rating_survival == pytest.approx(1.0 - deaths / rounds)
         assert record.rating_survival < 1.0
+
+
+class TestRepairToolConstantsParity:
+    """W3 lockstep closure: repair_rating_scale duplicates the BASELINE_*
+    constants (stdlib-only by design, for WSL). Its docstring promised
+    this file kept them in lockstep — now it actually does."""
+
+    def test_baseline_constants_match_the_ssot(self):
+        import importlib.util
+        from pathlib import Path
+
+        from Programma_CS2_RENAN.backend.processing.feature_engineering import rating
+
+        tool = Path(__file__).resolve().parents[1] / "tools" / "repair_rating_scale.py"
+        spec = importlib.util.spec_from_file_location("repair_rating_scale_ut", tool)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+
+        assert mod.BASELINE_KPR == rating.BASELINE_KPR
+        assert mod.BASELINE_KAST == rating.BASELINE_KAST
+        assert mod.BASELINE_ADR == rating.BASELINE_ADR
+        assert mod.BASELINE_IMPACT == rating.BASELINE_IMPACT
+        assert mod.BASELINE_DPR_COMPLEMENT == rating.BASELINE_DPR_COMPLEMENT
+
+    def test_repair_formula_matches_the_ssot(self):
+        import importlib.util
+        from pathlib import Path
+
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.rating import (
+            compute_rating_components,
+        )
+
+        tool = Path(__file__).resolve().parents[1] / "tools" / "repair_rating_scale.py"
+        spec = importlib.util.spec_from_file_location("repair_rating_scale_ut2", tool)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+
+        ours = compute_rating_components(kpr=0.7, dpr=0.6, kast=0.72, avg_adr=80.0)
+        theirs = mod.compute_components(0.7, 0.6, 0.72, 80.0)
+        for key in (
+            "rating_kpr",
+            "rating_survival",
+            "rating_kast",
+            "rating_impact",
+            "rating_adr",
+            "rating",
+        ):
+            assert abs(ours[key] - theirs[key]) < 1e-9, key

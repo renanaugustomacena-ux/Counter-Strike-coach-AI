@@ -65,15 +65,36 @@ class TestFeatureListIntegrity:
 
 
 class TestPrepareTensorsNoneHandling:
-    """BUG #4: Expose silent None → NaN/0.0 poisoning in _prepare_tensors.
+    """W3 test-debt fix: the old tests here DEMONSTRATED the dict.get(None)
+    semantics on an inline re-implementation and never called production —
+    they passed whether or not Bug #4 was fixed. This suite drives the REAL
+    _prepare_tensors with None-laden rows and pins the fix (walrus None
+    guard): NULL DB values become 0.0, never NaN."""
 
-    When PlayerMatchStats has NULL DB values, model_dump() returns {field: None}.
-    stats.get(f, 0.0) returns None (key exists), not 0.0.
-    np.array([..., None, ...], dtype=np.float32) produces NaN or raises.
-    """
+    def _mgr(self):
+        from unittest.mock import MagicMock, patch
 
-    def _make_fake_stats(self, overrides=None):
-        """Create a mock object that mimics PlayerMatchStats.model_dump()."""
+        import numpy as np
+
+        from Programma_CS2_RENAN.backend.nn.coach_manager import (
+            MATCH_AGGREGATE_FEATURES,
+            TARGET_INDICES,
+            TRAINING_FEATURES,
+            CoachTrainingManager,
+        )
+
+        mgr = CoachTrainingManager.__new__(CoachTrainingManager)
+        mgr.target_indices = TARGET_INDICES
+        mgr.feature_names = TRAINING_FEATURES
+        patcher = patch.object(
+            CoachTrainingManager,
+            "_get_pro_baseline_vector",
+            return_value=np.ones(len(MATCH_AGGREGATE_FEATURES), dtype=np.float32),
+        )
+        return mgr, patcher
+
+    @staticmethod
+    def _fake_stats(overrides=None):
         from Programma_CS2_RENAN.backend.nn.coach_manager import MATCH_AGGREGATE_FEATURES
 
         base = {f: 0.5 for f in MATCH_AGGREGATE_FEATURES}
@@ -86,78 +107,23 @@ class TestPrepareTensorsNoneHandling:
 
         return FakeStats()
 
-    def test_all_valid_values_produce_clean_tensor(self):
-        """With all valid float values, tensor should have no NaN."""
-        from Programma_CS2_RENAN.backend.nn.coach_manager import MATCH_AGGREGATE_FEATURES
+    def test_null_db_values_become_zero_not_nan(self):
+        import torch
 
-        stats = self._make_fake_stats()
-        d = stats.model_dump()
-        vec = np.array([d.get(f, 0.0) for f in MATCH_AGGREGATE_FEATURES], dtype=np.float32)
+        mgr, patcher = self._mgr()
+        rows = [self._fake_stats({"avg_kills": None, "avg_adr": None, "rating": None})]
+        with patcher:
+            X, y = mgr._prepare_tensors(rows)
+        assert not torch.any(torch.isnan(X)), "None leaked into the tensor as NaN"
+        assert not torch.any(torch.isnan(y))
 
-        assert not np.any(np.isnan(vec)), "Clean data should produce no NaN values"
-        assert vec.shape == (len(MATCH_AGGREGATE_FEATURES),)
+    def test_clean_rows_unaffected(self):
+        import torch
 
-    def test_none_value_in_dict_is_not_replaced_by_default(self):
-        """BUG #4: dict.get(key, 0.0) returns None when key exists with None value.
-
-        This is a Python semantics issue: dict.get() only returns the default
-        when the key is ABSENT. If key exists with value None, it returns None.
-        """
-        from Programma_CS2_RENAN.backend.nn.coach_manager import MATCH_AGGREGATE_FEATURES
-
-        # Simulate a DB record where some fields are NULL
-        stats = self._make_fake_stats({"avg_kills": None, "avg_adr": None, "rating": None})
-        d = stats.model_dump()
-
-        # This is how _prepare_tensors extracts values:
-        values = [d.get(f, 0.0) for f in MATCH_AGGREGATE_FEATURES]
-
-        # The bug: None values are NOT replaced by 0.0
-        none_count = sum(1 for v in values if v is None)
-        assert none_count > 0, (
-            "Precondition: model_dump() with None values should produce None in get() results. "
-            "If this fails, the DB model may have changed to use non-None defaults."
-        )
-
-    def test_none_value_causes_nan_in_numpy_array(self):
-        """Demonstrate that None values from dict.get() cause NaN in numpy arrays.
-
-        This is the downstream effect of Bug #4: the feature vector contains NaN
-        which poisons gradient computation during training.
-        """
-        from Programma_CS2_RENAN.backend.nn.coach_manager import MATCH_AGGREGATE_FEATURES
-
-        stats = self._make_fake_stats({"avg_kills": None, "avg_adr": None})
-        d = stats.model_dump()
-        values = [d.get(f, 0.0) for f in MATCH_AGGREGATE_FEATURES]
-
-        # numpy converts None to nan for float32 arrays
-        # (or raises TypeError on some numpy versions)
-        try:
-            vec = np.array(values, dtype=np.float32)
-            has_nan = np.any(np.isnan(vec))
-            assert has_nan, (
-                "BUG #4: None values from DB should cause NaN in feature vector. "
-                "If this assertion fails, numpy may have auto-converted None to 0.0 "
-                "on this platform, but the behavior is undefined and unreliable."
-            )
-        except (TypeError, ValueError):
-            # Some numpy versions raise instead of producing NaN — this is also a bug
-            # because _prepare_tensors doesn't catch this exception
-            pass  # Test passes: the error proves the bug exists
-
-    def test_feature_vector_dimensions(self):
-        """Feature vector from _prepare_tensors must have exactly METADATA_DIM dims."""
-        from Programma_CS2_RENAN.backend.nn.coach_manager import MATCH_AGGREGATE_FEATURES
-        from Programma_CS2_RENAN.backend.processing.feature_engineering import METADATA_DIM
-
-        stats = self._make_fake_stats()
-        d = stats.model_dump()
-        vec = np.array([d.get(f, 0.0) for f in MATCH_AGGREGATE_FEATURES], dtype=np.float32)
-
-        assert vec.shape == (
-            METADATA_DIM,
-        ), f"Feature vector should be ({METADATA_DIM},), got {vec.shape}"
+        mgr, patcher = self._mgr()
+        with patcher:
+            X, _ = mgr._prepare_tensors([self._fake_stats()])
+        assert torch.all(torch.isfinite(X))
 
 
 class TestDemoTiersAndConfidence:
