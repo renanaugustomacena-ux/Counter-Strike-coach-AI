@@ -52,7 +52,19 @@ Assembled 2026-08-14. The MVVM doctrine (Worker(QRunnable)+Signals; screens neve
 | GIL note | demoparser2 (Rust) releases GIL during parse — thread-based parse timeout sound in principle; wrong implementation = **F-0013** | module 10 study |
 
 ## L3 — DB session & transaction lifecycle
-(pending)
+Assembled 2026-08-14.
+
+| Domain | Contract & state | Evidence/test net |
+|---|---|---|
+| Session shape | `Session(engine, expire_on_commit=False)` everywhere (database.py:230/498; every test fake replicates it) | B36 verify; conftest mock_db_manager |
+| DB separation principle | main database.db vs hltv_metadata.db — "conflating them = trust below zero"; _HLTV_TABLES registry is the SSOT (create_all `tables=` filter); leak guard in H1 migration (exit 3) | test_hltv_table_registry (R4 CRIT), migrate_hltv_schema |
+| Migration-path plurality (RESOLVED map) | ONE canonical alembic tree (alembic.ini → alembic/, binds database.db ONLY) + hltv DB deliberately OUTSIDE alembic (idempotent one-off scripts, H1 pattern) + migrate_db.py = proper R2-11 tombstone + schema.py hot-patch (identifier-validated) — plurality is DESIGNED, not drift; W3 optional: one doc paragraph | B47/B53/B58/B76 |
+| WAL discipline | journal_mode=WAL enforced + tested; wipe/restore clears stale WAL sidecars; backup via sqlite backup API; free-space guard (154GB war story) | test_database_wal_enforcement, test_db_backup, test_tools_regressions |
+| Check-then-act inventory | run_ingestion `_is_demo_already_ingested` + queued-snapshot (**F-0037**); D2A existing-quality check-then-upsert (single-writer under lock — OK); register_orphan same (gated) | register |
+| Ingestion claim semantics | ingest_manager statuses queued/processing/completed/failed; stale-recovery threshold: session_engine 30-min (P4-B) vs run_worker 5-min copy = **F-0015**; db_inspector displays done/error = stale vocabulary (P3, W3) | test_session_engine, D-B60/61 |
+| SQL injection posture | whitelist+bracket table names (db_inspector/project_snapshot); schema.py safe_identifier/col_type/default validators TESTED; D2A nosec B608 justified (module constants) | test_security_hardening |
+| StatCard identity | player_id-only upsert convention, ONE-card invariant, (player_id,time_span) uniqueness DEFERRED by H1 §11 — every writer must keep the convention or reads go nondeterministic | D-B58 contract |
+| Session-per-row vs bulk | data_pipeline F2-22 chunked UPDATE (500/id-IN chunk under SQLITE_MAX_VARIABLE_NUMBER); rebuild_monolith bulk-PRAGMA pairs + checkpoint/resume | B11/B54 |
 
 ## L4 — Error-handling & logging consistency
 (pending)
