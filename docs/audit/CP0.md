@@ -14,26 +14,28 @@ war-story discipline (R4/WR/26-*/GAP doctrine comments + pinning
 tests) is the strongest I have seen in a personal project — Phase T
 confirmed nearly every historical bug has a regression net.
 
-## The 12 P1s (proposed W1/W2 scope)
-| ID | One-liner | Fix size |
-|---|---|---|
-| F-0001 | Both integrity manifests stale (45/15/0 drift; root copy carries deleted main.py) | W1 opener: resync core/, DELETE root copy |
-| F-0004 | CI branch filter misses feat/** and chore/** — zero CI runs on real branches | 1-line filter + PR workflow |
-| F-0006 | pyo3 PanicException bypasses every demo-parse guard | catch (Exception, PanicException) at ~6 sites |
-| F-0012/F-0013 | parse-timeout implementation + executor shutdown traps (Phase D pair) | scoped rework, tests exist |
-| F-0014 | hltv_sync start_detached launches DELETED main.py; dormant path lies | point at real entrypoint; continue-not-return |
-| F-0015 | run_worker keeps the 5-min stale threshold P4-B already fixed at 30 | align to SSOT setting |
-| F-0037 | Ingestion double-processing: check-then-act + FIVE trigger surfaces | claim-atomically; single fix, 5 surfaces covered |
-| F-0038 | Main-thread DB writes in 3 screens (profile save, chronovisor scan, wizard finish) | move to Worker pattern (template exists) |
-| F-0039 | verify_all_safe schedules 13 bare-invocation MUTATING tools (rebuild_monolith timeout-kill = data loss) | prefix/allowlist gate + per-tool dry-run defaults |
-| F-0040 | build_pipeline SANITIZES (deletes DBs/models/logs) before honoring --test-only | move sanitize after the early-return |
-| F-0043 | Training entry exits 0 on "Training Aborted" — automation blind | non-zero exit + test data-gate |
+## The 12 P1s (grep-verified against the register; proposed W1/W2 scope)
+| ID | Subsystem | One-liner | Fix size |
+|---|---|---|---|
+| F-0001 | infra/integrity | Both manifests stale (45/15/0 drift; root copy carries deleted main.py) | W1 opener: resync core/, DELETE root copy |
+| F-0004 | infra/ci | Branch filter misses feat/** and chore/** — zero CI runs on real branches | 1-line filter + PR workflow |
+| F-0006 | ingestion/parsing | pyo3 PanicException bypasses every demo-parse guard | catch (Exception, PanicException) at all parser sites |
+| F-0012 | storage/shards | Undefined name `logger` (module has only `_logger`) — fallback paths raise NameError | rename + regression test |
+| F-0014 | daemons/hltv | start_detached launches DELETED main.py; dormant path exits while notifying "retrying" | real entrypoint; continue-not-return |
+| F-0015 | daemons/run_worker | Keeps the 5-min stale threshold P4-B already fixed at 30 (duplicate-processing) + skip-after-claim leak | align to SSOT setting; check-before-claim |
+| F-0030 | services/role-insights | Live insight fabricates "IGL (100% confidence)" for balanced-K/D players | feed real features / suppress fabricated confidence |
+| F-0032 | control/ml-stop | Operator STOP is swallowed per phase — training continues, status lies | propagate stop exception; honest final status |
+| F-0037 | ingestion/concurrency | Zero cross-runner exclusion — concurrent triggers double-parse demos (FIVE trigger surfaces) | atomic claim; single fix covers all surfaces |
+| F-0038 | ui/threading | THREE screens touch the DB on the GUI thread | move to Worker pattern (template exists) |
+| F-0039 | tools/safety | "Safe" runner executes 13 bare-invocation MUTATING tools (rebuild_monolith timeout-kill = data loss) | gate list + dry-run defaults |
+| F-0040 | tools/build | build_pipeline SANITIZES (deletes DBs/models/logs) BEFORE honoring --test-only | move sanitize after the early-return |
 
 (F-0002/F-0003 — the two known-red gate members — are P2 one-liners
-that W2 clears first so the gate goes fully green early.)
+W2 clears first so the gate goes fully green early. F-0043, exit-0 on
+"Training Aborted", is P2 and rides with the safety cluster below.)
 
 ## Decision clusters (need your call at this checkpoint)
-1. **Safety-tool family (F-0039/40/41/43)** — the "safe" runner and
+1. **Safety-tool family (F-0039/40 P1 + F-0041/43 P2)** — the "safe" runner and
    build tooling can destroy data or lie about success. Proposed: one
    focused W2 sub-wave; gold standard already exists in-repo
    (wipe_for_reingest_safe / seed_hltv_top_n patterns).

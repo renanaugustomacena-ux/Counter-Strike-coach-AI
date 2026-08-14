@@ -6,7 +6,7 @@ PNGs eyeballed by name for UI waves), CI status both legs.
 
 (entries appended chronologically; R0 baseline lives in BASELINE.md)
 
-## Pass 2 boundary — 2026-08-14 (lenses L1–L10 + L-COV + sweeps S-4/S-6/S-7) — **DIAGNOSIS COMPLETE, CP0 PRESENTED**
+## Pass 2 boundary — 2026-08-14 (lenses L1–L10 + L-COV + sweeps S-4/S-6/S-7) — **DIAGNOSIS COMPLETE, CP0 READY**
 
 - Scope: all ten cross-cutting lenses assembled into CONTRACTS.md (one commit
   each or grouped), every one of the 618 ledger rows now carries ≥1 lens tag
