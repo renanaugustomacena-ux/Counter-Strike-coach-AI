@@ -6,6 +6,49 @@ PNGs eyeballed by name for UI waves), CI status both legs.
 
 (entries appended chronologically; R0 baseline lives in BASELINE.md)
 
+## Phase T boundary — 2026-08-14 (batches B62–B75 + T-DIAG, 167 files / ~27,500 LOC read)
+
+- Scope: EVERY test file in the repo — infra+conftest+automated_suite (B62), NN
+  training (B63), COPER/RAP/chronovisor (B64), analysis (B65), feature/tensor
+  (B66), storage/config (B67), coaching engines (B68), UI suites (B69),
+  regression tiers (B70), extended suites (B71), data-layer + both known-reds
+  (B72), NN support (B73), remaining Programma tests (B74), root tests +
+  forensics + evals (B75). Study module 08-testing read before B62 (STUDY_LOG).
+  Ledger: 579/617 rows read (93.8%). Commits: one per batch, all pushed.
+- Findings: **F-0043 (P2) registered from T-DIAG** — run_full_training_cycle
+  exits 0 on "Training Aborted" (automation-blinding; latent inverse-guard test
+  misreads it as a save bug). F-0002 enumerated LIVE: exactly ONE offender
+  (tactical_viewer_screen.py:416) — W2 is a one-line SSOT import. F-0003
+  decoded: fixture needs SeCreateSymbolicLink (WinError 1314) — Linux-correct
+  suite, W2 = skipif-unprivileged-Windows. Register: F-0001..F-0043
+  (0 P0 / 12 P1 / 31 P2).
+- **T-DIAG (bounded, backed up, evidence recorded)**: DB backed up via sqlite
+  backup API + models/ copied + checkpoint SHA-256s taken FIRST.
+  (1) test_e2e_user_journey → SKIPPED cleanly (2 < 5 PMS rows — gate honest).
+  (2) test_system_regression → 2 passed, read-only. 2.13s.
+  (3) test_dry_run_checkpoint_integrity → dry-run leg PASSED (Law-7 guard:
+  exit 0, zero .pt in redirected root); real-run leg FAILED → root-caused to
+  F-0043 (abort-as-success), NOT a save bug. After-state verified: the
+  acknowledged dry-run split write landed (UNASSIGNED×2 → TRAIN 1 + TEST 1,
+  matching the B63-pinned boundary math); CoachState unchanged; **all 5
+  production checkpoints byte-identical** (BRAIN_DATA_ROOT redirect held).
+  No latent-suite activation work done (per plan).
+- Tests-lens results for CP0: stale Bug#4 demonstration suite (B63); EN-advice
+  assertion landmine spans 4 suites (B64/B68 — i18n decision must budget test
+  churn or keep advice EN deliberately); rating-constants lockstep gap
+  (repair_rating_scale mirror unpinned, B72); `slow` mark unregistered
+  (warning noise, W4 one-liner); doctrine-pin coverage otherwise EXCELLENT —
+  the war-story catalogue from Phases F-C is comprehensively pinned, incl.
+  three operational disasters ($HOME shard migration, backup free-space,
+  dangling-symlink self-repair).
+- Gate (full suite + cov, Windows `-p no:timeout`): **2 failed, 2500 passed,
+  48 skipped, 5 errors — 74.8s — IDENTICAL to R0 baseline** (known reds
+  F-0002/F-0003 only; T-DIAG's split-label write changed nothing). Coverage
+  floor ≥33% passed. test_ui_smoke.py (named run): **4/4 green in 7.76s**.
+- User directive logged mid-phase: END STATE = ONE BRANCH (merge audit →
+  design-atlas → main after W6; memory + task #20).
+- CI: not triggered (docs-only; F-0004 filter). Render matrix: unchanged.
+
 ## Phase C boundary — 2026-08-14 (batches B46–B61, 80 files / ~33,000 LOC read)
 
 - Scope: BOTH tools directories end-to-end — console.py solo + S5 sweeps (B46), root
