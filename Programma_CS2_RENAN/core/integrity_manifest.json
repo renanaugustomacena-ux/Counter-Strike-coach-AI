@@ -106,7 +106,7 @@
     "backend/analysis/game_tree.py": "e7e2394a76edec151794a827322e6f03522b02ed6f2c80129d1467ebae6cea4e",
     "backend/analysis/momentum.py": "2577c801533f9851f30738f51b804d51040baa48ef60743a419151e6d5dccce4",
     "backend/analysis/movement_quality.py": "05d0f6df107b77a2d8a5404d5e2167d71ab3767c0ac17a3f5f9cc9f4119b27f5",
-    "backend/analysis/role_classifier.py": "1b8ffefa7b5171040ff060f51971f875b3e4a308ef31f78800b6dbb61422cd7f",
+    "backend/analysis/role_classifier.py": "c3f5dbe88a9f81b5aa4035855db861219c6826c3463f2631c5a3a6de06a9327b",
     "backend/analysis/utility_economy.py": "9fc30d59eeba732776cef2ee733ba9f96ba3421ab0d10178f46235c8472fd4ab",
     "backend/analysis/win_probability.py": "0b80e83cffe1120732df4c71d88c8c0610d074ce0c822d77871003501454c8ac",
     "backend/coaching/__init__.py": "e0d323aa94e266b6daef232f6570f2e926d3a06504d9e49a74605aec8cf9f931",
