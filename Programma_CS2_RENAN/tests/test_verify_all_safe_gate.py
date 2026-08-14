@@ -65,8 +65,8 @@ def test_genuinely_safe_tools_stay_scheduled():
         "dev_health.py",
         "policy_runner.py",
         "drift_detector.py",
-        "merge_demo_pool.py",       # dry-run default
+        "merge_demo_pool.py",  # dry-run default
         "rescrape_placeholder_pros.py",  # dry-run default
-        "sync_pro_players.py",      # dry-run default
+        "sync_pro_players.py",  # dry-run default
     ]:
         assert _is_safe(name), f"{name} should remain scheduled"

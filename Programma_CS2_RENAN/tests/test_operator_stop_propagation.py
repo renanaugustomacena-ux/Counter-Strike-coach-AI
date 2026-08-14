@@ -21,9 +21,7 @@ def _mgr() -> CoachTrainingManager:
 
 def test_jepa_phase_reraises_stop():
     mgr = _mgr()
-    with patch(
-        "Programma_CS2_RENAN.backend.nn.coach_manager.TrainingOrchestrator"
-    ) as orch_cls:
+    with patch("Programma_CS2_RENAN.backend.nn.coach_manager.TrainingOrchestrator") as orch_cls:
         orch_cls.return_value.run_training.side_effect = TrainingStopRequested("stop")
         with pytest.raises(TrainingStopRequested):
             mgr.run_jepa_pretraining(context=MagicMock())
@@ -31,9 +29,7 @@ def test_jepa_phase_reraises_stop():
 
 def test_rap_phase_reraises_stop():
     mgr = _mgr()
-    with patch(
-        "Programma_CS2_RENAN.backend.nn.coach_manager.TrainingOrchestrator"
-    ) as orch_cls:
+    with patch("Programma_CS2_RENAN.backend.nn.coach_manager.TrainingOrchestrator") as orch_cls:
         orch_cls.return_value.run_training.side_effect = TrainingStopRequested("stop")
         with pytest.raises(TrainingStopRequested):
             mgr.run_rap_cycle(context=MagicMock())

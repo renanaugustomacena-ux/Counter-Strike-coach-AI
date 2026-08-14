@@ -7,6 +7,7 @@ import pandas as pd
 
 from Programma_CS2_RENAN.backend.coaching.correction_engine import generate_corrections
 from Programma_CS2_RENAN.backend.data_sources.demo_parser import parse_demo
+from Programma_CS2_RENAN.backend.data_sources.parse_guard import is_parse_error
 from Programma_CS2_RENAN.backend.ingestion.resource_manager import ResourceManager
 from Programma_CS2_RENAN.backend.nn.model import RAPCoachModel, RAPCommunication
 from Programma_CS2_RENAN.backend.processing.state_reconstructor import RAPStateReconstructor
@@ -29,7 +30,6 @@ from Programma_CS2_RENAN.backend.storage.state_manager import (  # NEW: For prog
 from Programma_CS2_RENAN.backend.storage.storage_manager import StorageManager
 from Programma_CS2_RENAN.core.config import MIN_DEMOS_FOR_COACHING, refresh_settings
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
-from Programma_CS2_RENAN.backend.data_sources.parse_guard import is_parse_error
 
 logger = get_logger("cs2analyzer.ingestion_runner")
 

@@ -6,6 +6,7 @@ from typing import Optional
 import pandas as pd
 from demoparser2 import DemoParser
 
+from Programma_CS2_RENAN.backend.data_sources.parse_guard import is_parse_error
 from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import estimate_kast_from_stats
 from Programma_CS2_RENAN.backend.processing.feature_engineering.rating import (
     BASELINE_ADR,
@@ -14,7 +15,6 @@ from Programma_CS2_RENAN.backend.processing.feature_engineering.rating import (
     BASELINE_KPR,
 )
 from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE
-from Programma_CS2_RENAN.backend.data_sources.parse_guard import is_parse_error
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.demo_parser")

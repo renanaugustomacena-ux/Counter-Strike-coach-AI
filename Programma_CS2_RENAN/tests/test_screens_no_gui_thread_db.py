@@ -27,9 +27,7 @@ def test_profile_save_is_split():
     gui_src = _method_source(ProfileScreen, "_save")
     assert "get_db_manager" not in gui_src, "_save touches the DB on the GUI thread"
     assert "Worker(" in gui_src
-    assert isinstance(
-        inspect.getattr_static(ProfileScreen, "_ensure_profile_row"), staticmethod
-    )
+    assert isinstance(inspect.getattr_static(ProfileScreen, "_ensure_profile_row"), staticmethod)
 
 
 def test_wizard_finish_is_split():
@@ -38,15 +36,11 @@ def test_wizard_finish_is_split():
     gui_src = _method_source(WizardScreen, "_finish")
     assert "get_db_manager" not in gui_src, "_finish touches the DB on the GUI thread"
     assert "Worker(" in gui_src
-    assert isinstance(
-        inspect.getattr_static(WizardScreen, "_ensure_profile_row"), staticmethod
-    )
+    assert isinstance(inspect.getattr_static(WizardScreen, "_ensure_profile_row"), staticmethod)
 
 
 def test_tactical_cm_wiring_is_split():
-    from Programma_CS2_RENAN.apps.qt_app.screens.tactical_viewer_screen import (
-        TacticalViewerScreen,
-    )
+    from Programma_CS2_RENAN.apps.qt_app.screens.tactical_viewer_screen import TacticalViewerScreen
 
     gui_src = _method_source(TacticalViewerScreen, "_start_chronovisor_scan")
     assert "get_db_manager" not in gui_src
@@ -66,9 +60,7 @@ def test_no_screen_module_calls_db_outside_worker_functions():
         tree = ast.parse(py.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                src_names = {
-                    n.id for n in ast.walk(node) if isinstance(n, ast.Name)
-                } | {
+                src_names = {n.id for n in ast.walk(node) if isinstance(n, ast.Name)} | {
                     n.attr for n in ast.walk(node) if isinstance(n, ast.Attribute)
                 }
                 if "get_db_manager" in src_names and node.name not in allowed_funcs:

@@ -1685,17 +1685,14 @@ class TacticalViewerScreen(QWidget):
 
         with get_db_manager().get_session() as session:
             return session.exec(
-                select(PlayerTickState.match_id)
-                .where(PlayerTickState.demo_name == stem)
-                .limit(1)
+                select(PlayerTickState.match_id).where(PlayerTickState.demo_name == stem).limit(1)
             ).first()
 
     def _on_cm_match_resolved(self, match_id):
         """Main-thread slot."""
         if match_id is None:
             logger.info(
-                "Chronovisor: demo not found in DB — CM scan skipped "
-                "(transport stays disabled)"
+                "Chronovisor: demo not found in DB — CM scan skipped " "(transport stays disabled)"
             )
             return
         try:

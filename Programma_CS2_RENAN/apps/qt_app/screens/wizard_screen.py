@@ -4,7 +4,7 @@ import errno
 import os
 import shutil
 
-from PySide6.QtCore import QThreadPool, Qt, Signal
+from PySide6.QtCore import Qt, QThreadPool, Signal
 from PySide6.QtWidgets import (
     QFileDialog,
     QFrame,

@@ -62,9 +62,9 @@ def test_recovery_threshold_uses_p4b_setting(monkeypatch):
     )
     _run_worker()._recover_stale_tasks(_DB(engine))
     with Session(engine) as s:
-        assert s.exec(select(IngestionTask)).first().status == "processing", (
-            "10-min-old task recovered — the 5-minute copy is back"
-        )
+        assert (
+            s.exec(select(IngestionTask)).first().status == "processing"
+        ), "10-min-old task recovered — the 5-minute copy is back"
 
 
 def test_recovery_fires_past_the_threshold(monkeypatch):

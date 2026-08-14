@@ -9,8 +9,8 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
-from sqlmodel import Session, SQLModel, create_engine, select
 from sqlalchemy.pool import StaticPool
+from sqlmodel import Session, SQLModel, create_engine, select
 
 
 def _lazy_ri():
@@ -35,9 +35,7 @@ def _engine():
     engine = create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
-    SQLModel.metadata.create_all(
-        engine, tables=[IngestionTask.__table__, CoachState.__table__]
-    )
+    SQLModel.metadata.create_all(engine, tables=[IngestionTask.__table__, CoachState.__table__])
     return engine
 
 
@@ -46,7 +44,9 @@ def _queue(engine, path="a.dem", is_pro=False):
 
     with Session(engine) as s:
         t = IngestionTask(
-            demo_path=path, status="queued", is_pro=is_pro,
+            demo_path=path,
+            status="queued",
+            is_pro=is_pro,
             updated_at=datetime.now(timezone.utc),
         )
         s.add(t)
@@ -74,7 +74,9 @@ def test_preclaimed_task_is_skipped_not_double_processed():
     assert ri._claim_task(db, id_theirs)
 
     ingested = []
-    with patch.object(ri, "_ingest_single_demo", side_effect=lambda *a: ingested.append(str(a[2])) or (True, "ok")):
+    with patch.object(
+        ri, "_ingest_single_demo", side_effect=lambda *a: ingested.append(str(a[2])) or (True, "ok")
+    ):
         with patch.object(ri, "_check_duplicate_demo", return_value=False):
             ri.process_queued_tasks(db, MagicMock(), is_pro=False, high_priority=False)
 

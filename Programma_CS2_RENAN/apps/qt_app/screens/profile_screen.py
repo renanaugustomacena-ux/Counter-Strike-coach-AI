@@ -8,7 +8,7 @@ Below: Related navigation mini-cards, a "Stored locally" TipBox and the
 mono data-source footer.
 """
 
-from PySide6.QtCore import QThreadPool, Qt, QTimer
+from PySide6.QtCore import Qt, QThreadPool, QTimer
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
@@ -262,9 +262,7 @@ class ProfileScreen(QWidget):
 
         worker = Worker(self._ensure_profile_row, name)
         worker.signals.result.connect(self._on_profile_saved)
-        worker.signals.error.connect(
-            lambda err: logger.error("Profile save failed: %s", err)
-        )
+        worker.signals.error.connect(lambda err: logger.error("Profile save failed: %s", err))
         QThreadPool.globalInstance().start(worker)
 
     @staticmethod

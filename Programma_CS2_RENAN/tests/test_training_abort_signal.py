@@ -19,18 +19,14 @@ def _orch() -> TrainingOrchestrator:
 
 def test_quality_gate_abort_returns_false():
     orch = _orch()
-    with patch(
-        "Programma_CS2_RENAN.backend.nn.data_quality.run_pre_training_quality_check"
-    ) as qc:
+    with patch("Programma_CS2_RENAN.backend.nn.data_quality.run_pre_training_quality_check") as qc:
         qc.return_value = MagicMock(passed=False, summary=lambda: "bad data")
         assert orch.run_training() is False
 
 
 def test_no_data_abort_returns_false():
     orch = _orch()
-    with patch(
-        "Programma_CS2_RENAN.backend.nn.data_quality.run_pre_training_quality_check"
-    ) as qc:
+    with patch("Programma_CS2_RENAN.backend.nn.data_quality.run_pre_training_quality_check") as qc:
         qc.return_value = MagicMock(passed=True)
         with patch.object(orch, "_load_or_init_model", return_value=MagicMock()):
             with patch.object(orch, "_fetch_batches", return_value=[]):
@@ -40,9 +36,7 @@ def test_no_data_abort_returns_false():
 
 def test_completed_training_returns_true():
     orch = _orch()
-    with patch(
-        "Programma_CS2_RENAN.backend.nn.data_quality.run_pre_training_quality_check"
-    ) as qc:
+    with patch("Programma_CS2_RENAN.backend.nn.data_quality.run_pre_training_quality_check") as qc:
         qc.return_value = MagicMock(passed=True)
         with patch.object(orch, "_load_or_init_model", return_value=MagicMock()):
             batches = [[1] * 11 for _ in range(20)]
