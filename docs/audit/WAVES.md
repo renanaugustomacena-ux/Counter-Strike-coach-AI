@@ -6,7 +6,7 @@ PNGs eyeballed by name for UI waves), CI status both legs.
 
 (entries appended chronologically; R0 baseline lives in BASELINE.md)
 
-## Phase C boundary — 2026-08-14 (batches B46–B61, 60 files / ~33,000 LOC read)
+## Phase C boundary — 2026-08-14 (batches B46–B61, 80 files / ~33,000 LOC read)
 
 - Scope: BOTH tools directories end-to-end — console.py solo + S5 sweeps (B46), root
   CLIs (B47), headless_validator solo (B48), verify/portability tools (B49), UI
@@ -24,7 +24,7 @@ PNGs eyeballed by name for UI waves), CI status both legs.
   drift + space-unsafe interpolation (the repo's one shell=True, closed from S5);
   F-0042 (P2) manual-entry percent-into-ratio pro rows.** F-0014 evidence grew to
   3 tools (goliath entry-point + dead_code ENTRY_POINTS; manifest itself is clean).
-  Register now F-0001..F-0042: 8× P1, 0× P0.
+  Register now F-0001..F-0042: 0× P0, 12× P1, 30× P2 (grep-verified vs the register).
 - Cross-cutting closures: verify_all_safe scope precisely mapped (root tools/
   rglob — ptools entirely outside); MCIV lineage resolved (probe player named
   after the superseded Clinical_Integration_Validator); dataset_split ownership
