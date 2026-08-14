@@ -10,8 +10,8 @@ PNGs eyeballed by name for UI waves), CI status both legs.
 
 - Scope: pipeline core, round-stats, tensor factory + player knowledge + heatmap,
   feature engineering, baselines + validation. No study module scheduled this phase.
-- Commits: a58869b (B11), 4bcaf54 (B12), cfffdcb (B13), 8b0445a (B14=cfffdcb note:
-  B14 commit cfffdcb, B15 commit 8b0445a). All pushed.
+- Commits: a58869b (B11), 4bcaf54 (B12), b0e9a5e (B13), cfffdcb (B14),
+  8b0445a (B15). All pushed.
 - Findings: F-0016..F-0020 registered (5× P2). F-0016 winner-dtype contract conflict
   (T-DIAG probe scheduled — escalates P1 if demoparser2 emits int); F-0017 heatmap
   double-Y-flip Kivy residue (dead display surface); F-0018 baseline fusion
