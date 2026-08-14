@@ -56,10 +56,7 @@ class DriversList(QWidget):
             square = QFrame()
             square.setObjectName("drivers_square")
             square.setFixedSize(8, 8)
-            square.setStyleSheet(
-                f"background-color: {color}; "
-                f"border-radius: 1px;"
-            )
+            square.setStyleSheet(f"background-color: {color}; " f"border-radius: 1px;")
             row_layout.addWidget(square, alignment=Qt.AlignVCenter)
 
             label = QLabel(text)

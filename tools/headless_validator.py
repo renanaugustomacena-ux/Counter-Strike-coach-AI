@@ -1744,7 +1744,9 @@ def verify_qt_app_structure():
     # single token-driven template rendered by qss_generator at runtime.
     qss_template = themes_dir / "base.qss.template"
     if not qss_template.exists():
-        raise AssertionError("apps/qt_app/themes/base.qss.template missing (qss_generator contract)")
+        raise AssertionError(
+            "apps/qt_app/themes/base.qss.template missing (qss_generator contract)"
+        )
     screens_dir = qt_root / "screens"
     if not screens_dir.is_dir():
         raise AssertionError("apps/qt_app/screens/ directory missing")

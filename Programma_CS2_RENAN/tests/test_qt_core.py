@@ -771,9 +771,7 @@ class TestMetricBarRow:
     def test_construction_and_value_roundtrip(self, qapp):
         from PySide6.QtGui import QColor
 
-        from Programma_CS2_RENAN.apps.qt_app.widgets.components.metric_bar_row import (
-            MetricBarRow,
-        )
+        from Programma_CS2_RENAN.apps.qt_app.widgets.components.metric_bar_row import MetricBarRow
 
         row = MetricBarRow()
         row.set_metric("Rating Impact", "1.28", 1.28 / 1.5, QColor("#4caf50"))
@@ -841,17 +839,12 @@ class TestProComparisonPure:
     """Frame-15 pure functions: radar mapping, winner rule, style archetypes."""
 
     def _fixture_pair(self):
-        from tools.ui_fixtures import (
-            PRO_COMPARISON_STATS_DONK,
-            PRO_COMPARISON_STATS_ZYWOO,
-        )
+        from tools.ui_fixtures import PRO_COMPARISON_STATS_DONK, PRO_COMPARISON_STATS_ZYWOO
 
         return dict(PRO_COMPARISON_STATS_ZYWOO), dict(PRO_COMPARISON_STATS_DONK)
 
     def test_radar_axes_frame15_shape(self):
-        from Programma_CS2_RENAN.apps.qt_app.screens.pro_comparison_screen import (
-            _radar_axes,
-        )
+        from Programma_CS2_RENAN.apps.qt_app.screens.pro_comparison_screen import _radar_axes
 
         a, b = self._fixture_pair()
         vals_a, vals_b = _radar_axes(a, b)
@@ -867,16 +860,26 @@ class TestProComparisonPure:
             assert vals_b[i] > vals_a[i], f"axis {i}: expected donk lead"
 
     def test_radar_axes_empty_axis_renders_neutral_midpoint(self):
-        from Programma_CS2_RENAN.apps.qt_app.screens.pro_comparison_screen import (
-            _radar_axes,
-        )
+        from Programma_CS2_RENAN.apps.qt_app.screens.pro_comparison_screen import _radar_axes
 
         # No utility/clutch keys on either side (today's real VM payload):
         # those axes must fall back to 50/50, never spike to center.
-        a = {"rating_2_0": 1.1, "kpr": 0.7, "dpr": 0.6, "kast": 0.7,
-             "headshot_pct": 0.5, "opening_duel_win_pct": 0.5}
-        b = {"rating_2_0": 1.0, "kpr": 0.8, "dpr": 0.7, "kast": 0.65,
-             "headshot_pct": 0.55, "opening_duel_win_pct": 0.52}
+        a = {
+            "rating_2_0": 1.1,
+            "kpr": 0.7,
+            "dpr": 0.6,
+            "kast": 0.7,
+            "headshot_pct": 0.5,
+            "opening_duel_win_pct": 0.5,
+        }
+        b = {
+            "rating_2_0": 1.0,
+            "kpr": 0.8,
+            "dpr": 0.7,
+            "kast": 0.65,
+            "headshot_pct": 0.55,
+            "opening_duel_win_pct": 0.52,
+        }
         vals_a, vals_b = _radar_axes(a, b)
         assert vals_a[2] == vals_b[2] == 50.0  # Utility
         assert vals_a[3] == vals_b[3] == 50.0  # Clutch
@@ -888,15 +891,13 @@ class TestProComparisonPure:
         assert vals_b2[0] == pytest.approx(vals_b[0])
 
     def test_h2h_winner_rule(self):
-        from Programma_CS2_RENAN.apps.qt_app.screens.pro_comparison_screen import (
-            _h2h_winner,
-        )
+        from Programma_CS2_RENAN.apps.qt_app.screens.pro_comparison_screen import _h2h_winner
 
-        assert _h2h_winner(1.28, 1.24, 0.02) == 1        # ZywOo +0.04
-        assert _h2h_winner(88.2, 92.7, 0.5) == -1        # donk +4.5
-        assert _h2h_winner(2.8, 2.9, 0.5) == 0           # flash assists: even
-        assert _h2h_winner(20, 20, None) is None         # neutral row (maps)
-        assert _h2h_winner(None, 1.2, 0.02) is None      # absent side: no winner
+        assert _h2h_winner(1.28, 1.24, 0.02) == 1  # ZywOo +0.04
+        assert _h2h_winner(88.2, 92.7, 0.5) == -1  # donk +4.5
+        assert _h2h_winner(2.8, 2.9, 0.5) == 0  # flash assists: even
+        assert _h2h_winner(20, 20, None) is None  # neutral row (maps)
+        assert _h2h_winner(None, 1.2, 0.02) is None  # absent side: no winner
 
     def test_h2h_fixture_outcomes_match_frame15(self):
         from Programma_CS2_RENAN.apps.qt_app.screens.pro_comparison_screen import (
@@ -915,9 +916,7 @@ class TestProComparisonPure:
 
     def test_style_summary_support_and_entry(self):
         from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
-        from Programma_CS2_RENAN.apps.qt_app.screens.pro_comparison_screen import (
-            _style_summary,
-        )
+        from Programma_CS2_RENAN.apps.qt_app.screens.pro_comparison_screen import _style_summary
 
         a, b = self._fixture_pair()
         headline_a, detail_a = _style_summary(a, b)
@@ -928,35 +927,41 @@ class TestProComparisonPure:
 
     def test_style_summary_anchor_branch(self):
         from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
-        from Programma_CS2_RENAN.apps.qt_app.screens.pro_comparison_screen import (
-            _style_summary,
-        )
+        from Programma_CS2_RENAN.apps.qt_app.screens.pro_comparison_screen import _style_summary
 
-        a = {"kast": 0.70, "he_damage_per_round": 10.0, "kpr": 0.60, "dpr": 0.50,
-             "opening_duel_win_pct": 0.48, "clutch_win_pct": 0.62, "adr": 70.0}
-        b = {"kast": 0.75, "he_damage_per_round": 12.0, "kpr": 0.78, "dpr": 0.60,
-             "opening_duel_win_pct": 0.55, "clutch_win_pct": 0.50, "adr": 85.0}
+        a = {
+            "kast": 0.70,
+            "he_damage_per_round": 10.0,
+            "kpr": 0.60,
+            "dpr": 0.50,
+            "opening_duel_win_pct": 0.48,
+            "clutch_win_pct": 0.62,
+            "adr": 70.0,
+        }
+        b = {
+            "kast": 0.75,
+            "he_damage_per_round": 12.0,
+            "kpr": 0.78,
+            "dpr": 0.60,
+            "opening_duel_win_pct": 0.55,
+            "clutch_win_pct": 0.50,
+            "adr": 85.0,
+        }
         headline, _ = _style_summary(a, b)
         assert headline == i18n.get_text("procomp.style.anchor", "late-round anchor")
 
     def test_style_summary_damage_branch(self):
         from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
-        from Programma_CS2_RENAN.apps.qt_app.screens.pro_comparison_screen import (
-            _style_summary,
-        )
+        from Programma_CS2_RENAN.apps.qt_app.screens.pro_comparison_screen import _style_summary
 
-        a = {"adr": 95.0, "kast": 0.70, "kpr": 0.60, "dpr": 0.60,
-             "opening_duel_win_pct": 0.50}
-        b = {"adr": 80.0, "kast": 0.70, "kpr": 0.60, "dpr": 0.60,
-             "opening_duel_win_pct": 0.50}
+        a = {"adr": 95.0, "kast": 0.70, "kpr": 0.60, "dpr": 0.60, "opening_duel_win_pct": 0.50}
+        b = {"adr": 80.0, "kast": 0.70, "kpr": 0.60, "dpr": 0.60, "opening_duel_win_pct": 0.50}
         headline, _ = _style_summary(a, b)
         assert headline == i18n.get_text("procomp.style.damage", "damage-first playmaker")
 
     def test_style_summary_balanced_fallback(self):
         from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
-        from Programma_CS2_RENAN.apps.qt_app.screens.pro_comparison_screen import (
-            _style_summary,
-        )
+        from Programma_CS2_RENAN.apps.qt_app.screens.pro_comparison_screen import _style_summary
 
         a, _b = self._fixture_pair()
         headline, _ = _style_summary(dict(a), dict(a))  # identical → nothing dominant
@@ -982,9 +987,7 @@ class TestValueAnimations:
 
     def test_sweep_ring_disabled_sets_immediately(self, qapp, monkeypatch):
         from Programma_CS2_RENAN.apps.qt_app.core.animation import Animator
-        from Programma_CS2_RENAN.apps.qt_app.widgets.components.progress_ring import (
-            ProgressRing,
-        )
+        from Programma_CS2_RENAN.apps.qt_app.widgets.components.progress_ring import ProgressRing
 
         monkeypatch.setenv("MACENA_UI_ANIMATIONS", "0")
         ring = ProgressRing()

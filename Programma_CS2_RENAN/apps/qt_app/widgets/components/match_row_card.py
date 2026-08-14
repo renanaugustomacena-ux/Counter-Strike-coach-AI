@@ -99,8 +99,7 @@ class MatchRowCard(QFrame):
         rating_tag = QLabel(rating_label(rating_value))
         rating_tag.setFont(Typography.font("body"))
         rating_tag.setStyleSheet(
-            f"color: {color}; background: transparent; "
-            f"font-size: {tokens.font_size_caption}px;"
+            f"color: {color}; background: transparent; " f"font-size: {tokens.font_size_caption}px;"
         )
         rating_tag.setAlignment(Qt.AlignHCenter)
         rating_col.addWidget(rating_tag)
@@ -180,9 +179,7 @@ class MatchRowCard(QFrame):
     def _detail_text(match: dict[str, Any], is_pro: bool) -> str:
         if is_pro:
             event_bits = [
-                str(match[key])
-                for key in ("pro_teams", "pro_event", "pro_score")
-                if match.get(key)
+                str(match[key]) for key in ("pro_teams", "pro_event", "pro_score") if match.get(key)
             ]
             if event_bits:
                 return " · ".join(event_bits)
@@ -213,8 +210,7 @@ class MatchRowCard(QFrame):
             demo = "—"  # FIELD-GAP: demo file size not recorded at ingest.
 
         return (
-            f"{kast_word} {kast} · {hs_word} {hs} · "
-            f"{clutch_word} {clutch} · {demo_word} {demo}"
+            f"{kast_word} {kast} · {hs_word} {hs} · " f"{clutch_word} {clutch} · {demo_word} {demo}"
         )
 
     # ── API ──

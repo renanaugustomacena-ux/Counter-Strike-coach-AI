@@ -45,9 +45,7 @@ def qapp():
 
 class TestTimelineStars:
     def _widget(self, qapp):
-        from Programma_CS2_RENAN.apps.qt_app.widgets.tactical.timeline_widget import (
-            TimelineWidget,
-        )
+        from Programma_CS2_RENAN.apps.qt_app.widgets.tactical.timeline_widget import TimelineWidget
 
         widget = TimelineWidget()
         widget.resize(1196, widget.height())
@@ -111,9 +109,7 @@ class TestGlyphKinds:
         assert glyph_kind_for_type(moment_type) == "star"
 
     def test_set_critical_moments_carries_kind_per_moment(self, qapp):
-        from Programma_CS2_RENAN.apps.qt_app.widgets.tactical.timeline_widget import (
-            TimelineWidget,
-        )
+        from Programma_CS2_RENAN.apps.qt_app.widgets.tactical.timeline_widget import TimelineWidget
 
         widget = TimelineWidget()
         widget.max_tick = 64_500
@@ -148,9 +144,7 @@ class TestDivergenceAdapter:
     (Locked Decision 8) — em-dash + neutral verdict for everything else."""
 
     def _rows(self, payload):
-        from Programma_CS2_RENAN.apps.qt_app.screens.tactical_viewer_screen import (
-            _divergence_rows,
-        )
+        from Programma_CS2_RENAN.apps.qt_app.screens.tactical_viewer_screen import _divergence_rows
 
         return _divergence_rows(payload)
 
@@ -186,9 +180,7 @@ class TestDivergenceAdapter:
         assert all(value == "—" and verdict == "neutral" for _label, value, verdict in rows)
 
     def test_partial_scalar_and_malformed_entries(self):
-        rows = self._rows(
-            {"divergence": {"entry_timing": "-4.5s", "outcome": {"verdict": "bad"}}}
-        )
+        rows = self._rows({"divergence": {"entry_timing": "-4.5s", "outcome": {"verdict": "bad"}}})
         assert rows[0][1:] == ("-4.5s", "neutral")  # bare scalar → neutral
         assert rows[5][1:] == ("—", "bad")  # value missing → em-dash keeps verdict
         assert all(value == "—" for _label, value, _v in rows[1:5])

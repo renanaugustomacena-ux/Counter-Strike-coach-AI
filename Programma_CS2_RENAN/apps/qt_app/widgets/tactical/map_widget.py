@@ -276,9 +276,7 @@ class TacticalMapWidget(QWidget):
             entry = self._trails.get(p.player_id)
             if entry is None:
                 is_ct = (
-                    p.team == Team.CT
-                    if isinstance(p.team, Team)
-                    else "CT" in str(p.team).upper()
+                    p.team == Team.CT if isinstance(p.team, Team) else "CT" in str(p.team).upper()
                 )
                 entry = (is_ct, deque(maxlen=TRAIL_MAX_POINTS))
                 self._trails[p.player_id] = entry
@@ -520,9 +518,7 @@ class TacticalMapWidget(QWidget):
             if label:
                 p.setPen(self._pal["muted"])
                 p.setFont(_caption_font())
-                p.drawText(
-                    QRectF(center.x() - 60, center.y() - 8, 120, 16), Qt.AlignCenter, label
-                )
+                p.drawText(QRectF(center.x() - 60, center.y() - 8, 120, 16), Qt.AlignCenter, label)
                 p.setFont(label_font)
 
         # Ghost (pro) path — dashed 2px info
@@ -570,7 +566,9 @@ class TacticalMapWidget(QWidget):
                 p.setFont(cap_font)
                 p.setPen(accent)
                 tw = cap_fm.horizontalAdvance(label)
-                p.drawText(QPointF(center.x() - tw / 2, center.y() + 14 + cap_fm.ascent() + 2), label)
+                p.drawText(
+                    QPointF(center.x() - tw / 2, center.y() + 14 + cap_fm.ascent() + 2), label
+                )
                 p.setFont(label_font)
 
         # Legend chip strip (top-left)

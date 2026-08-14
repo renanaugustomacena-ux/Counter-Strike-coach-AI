@@ -36,10 +36,7 @@ from PySide6.QtWidgets import (
 from Programma_CS2_RENAN.apps.qt_app.core.animation import Animator
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
-from Programma_CS2_RENAN.apps.qt_app.core.match_utils import (
-    count_personal_and_pro,
-    map_short_name,
-)
+from Programma_CS2_RENAN.apps.qt_app.core.match_utils import count_personal_and_pro, map_short_name
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.apps.qt_app.viewmodels.match_history_vm import MatchHistoryViewModel
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.empty_state import EmptyState
@@ -340,9 +337,7 @@ class MatchHistoryScreen(QWidget):
             self._container_layout.insertWidget(self._container_layout.count() - 1, header)
 
             for match in bucket_matches:
-                row = MatchRowCard(
-                    match, baseline_rating=baseline, baseline_label=baseline_label
-                )
+                row = MatchRowCard(match, baseline_rating=baseline, baseline_label=baseline_label)
                 row.clicked.connect(self._on_match_clicked)
                 self._container_layout.insertWidget(self._container_layout.count() - 1, row)
 

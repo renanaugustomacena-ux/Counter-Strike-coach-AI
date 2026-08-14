@@ -62,16 +62,15 @@ class MomentumChart(QWidget):
         painter.setFont(title_font)
         painter.setPen(QColor(tokens.text_primary))
         painter.drawText(
-            QRectF(0, 4, self.width(), title_h), Qt.AlignHCenter | Qt.AlignVCenter,
+            QRectF(0, 4, self.width(), title_h),
+            Qt.AlignHCenter | Qt.AlignVCenter,
             i18n.get_text("chart_momentum_title", "Momentum (Kill-Death Delta)"),
         )
         if not self._rounds:
             return
 
         n = len(self._rounds)
-        deltas = [
-            float(r.get("kills") or 0) - float(r.get("deaths") or 0) for r in self._rounds
-        ]
+        deltas = [float(r.get("kills") or 0) - float(r.get("deaths") or 0) for r in self._rounds]
         peak = max((abs(d) for d in deltas), default=0.0) or 1.0
         # Axis captions carry the TRUE peak in K-D units (recomputed per
         # plot) — the old literal ±100 implied a percentage scale that
@@ -87,7 +86,8 @@ class MomentumChart(QWidget):
         )
         bottom_h = cap_fm.height() * 2 + 12.0  # x ticks + legend row
         plot = QRectF(
-            ladder_w + 8.0, title_h + cap_fm.height() + 4.0,
+            ladder_w + 8.0,
+            title_h + cap_fm.height() + 4.0,
             self.width() - ladder_w - 20.0,
             self.height() - title_h - cap_fm.height() - bottom_h - 10.0,
         )
@@ -107,7 +107,8 @@ class MomentumChart(QWidget):
             painter.setPen(QColor(tokens.text_tertiary))
             painter.drawText(
                 QRectF(0.0, y - cap_fm.height() / 2.0, ladder_w - 4.0, cap_fm.height()),
-                Qt.AlignRight | Qt.AlignVCenter, text,
+                Qt.AlignRight | Qt.AlignVCenter,
+                text,
             )
         painter.setPen(QPen(token_color(tokens.chart_axis), 1))
         painter.drawLine(QPointF(plot.left(), zero_y), QPointF(plot.right(), zero_y))
@@ -141,9 +142,9 @@ class MomentumChart(QWidget):
                 painter.setPen(QColor(tokens.text_tertiary))
                 painter.setFont(cap_font)
                 painter.drawText(
-                    QRectF(x + bar_w / 2.0 - 20.0, plot.bottom() + 4.0,
-                           40.0, cap_fm.height()),
-                    Qt.AlignHCenter | Qt.AlignTop, str(r.get("round_number", i + 1)),
+                    QRectF(x + bar_w / 2.0 - 20.0, plot.bottom() + 4.0, 40.0, cap_fm.height()),
+                    Qt.AlignHCenter | Qt.AlignTop,
+                    str(r.get("round_number", i + 1)),
                 )
 
         # HALF divider: dashed vertical at the side change + caption above.
@@ -155,7 +156,8 @@ class MomentumChart(QWidget):
             painter.setFont(cap_font)
             painter.drawText(
                 QRectF(x - 40.0, plot.top() - cap_fm.height() - 2.0, 80.0, cap_fm.height()),
-                Qt.AlignHCenter | Qt.AlignBottom, i18n.get_text("chart_half_label", "half"),
+                Qt.AlignHCenter | Qt.AlignBottom,
+                i18n.get_text("chart_half_label", "half"),
             )
 
         # Legend chips: CT side / T side (frame 34).
@@ -175,6 +177,7 @@ class MomentumChart(QWidget):
             painter.setPen(QColor(tokens.text_secondary))
             painter.drawText(
                 QRectF(x + chip + 4.0, legend_y - 2.0, w - chip - 4.0, chip + 4.0),
-                Qt.AlignLeft | Qt.AlignVCenter, text,
+                Qt.AlignLeft | Qt.AlignVCenter,
+                text,
             )
             x += w

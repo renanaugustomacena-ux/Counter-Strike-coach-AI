@@ -105,9 +105,7 @@ class TestRatingSparkline:
         assert abs(_y(1.0, 1.0, 1.0, 100.0) - 50.0) < 1e-6  # flat data -> center
 
     def test_sparkline_state_and_render(self, qapp):
-        from Programma_CS2_RENAN.apps.qt_app.widgets.charts.rating_sparkline import (
-            RatingSparkline,
-        )
+        from Programma_CS2_RENAN.apps.qt_app.widgets.charts.rating_sparkline import RatingSparkline
 
         spark = RatingSparkline()
         assert spark.minimumHeight() >= 64
@@ -144,9 +142,7 @@ class TestUtilityBarChart:
     def test_grouped_and_single_modes(self, qapp):
         from PySide6.QtGui import QColor
 
-        from Programma_CS2_RENAN.apps.qt_app.widgets.charts.utility_bar_chart import (
-            UtilityBarChart,
-        )
+        from Programma_CS2_RENAN.apps.qt_app.widgets.charts.utility_bar_chart import UtilityBarChart
 
         chart = UtilityBarChart()
         chart.set_rows(
@@ -223,9 +219,7 @@ class TestEconomyChart:
         assert _bar_rect(3, 24, 500.0, 0.0, plot).height() >= 0.0  # zero-max guard
 
     def test_economy_plot_api_preserved(self, qapp):
-        from Programma_CS2_RENAN.apps.qt_app.widgets.charts.economy_chart import (
-            EconomyChart,
-        )
+        from Programma_CS2_RENAN.apps.qt_app.widgets.charts.economy_chart import EconomyChart
 
         chart = EconomyChart()
         chart.plot(_sample_rounds())  # pre-rewrite public API
@@ -239,9 +233,7 @@ class TestEconomyChart:
 
 class TestMomentumChart:
     def test_momentum_plot_api_preserved(self, qapp):
-        from Programma_CS2_RENAN.apps.qt_app.widgets.charts.momentum_chart import (
-            MomentumChart,
-        )
+        from Programma_CS2_RENAN.apps.qt_app.widgets.charts.momentum_chart import MomentumChart
 
         chart = MomentumChart()
         chart.plot(_sample_rounds())  # pre-rewrite public API

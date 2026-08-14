@@ -339,14 +339,10 @@ class MatchDetailScreen(QWidget):
         layout.addWidget(self._section_title(i18n.get_text("md_hltv_title", "HLTV 2.0 Components")))
         layout.addLayout(self._build_hltv_grid(stats))
 
-        layout.addWidget(
-            self._section_title(i18n.get_text("md_enrich_title", "Kill Enrichment"))
-        )
+        layout.addWidget(self._section_title(i18n.get_text("md_enrich_title", "Kill Enrichment")))
         layout.addWidget(self._build_enrichment_band(stats, rounds))
 
-        layout.addWidget(
-            self._section_title(i18n.get_text("md_util_title", "Utility Per Round"))
-        )
+        layout.addWidget(self._section_title(i18n.get_text("md_util_title", "Utility Per Round")))
         layout.addWidget(self._build_utility_band(stats))
 
         layout.addStretch(1)
@@ -432,8 +428,16 @@ class MatchDetailScreen(QWidget):
                 ),
                 rating_color(rating).name(),
             ),
-            (f"{kd:.2f}", i18n.get_text("md_hero_kd", "K/D Ratio"), _sentiment_hex(_kd_sentiment(kd))),
-            (f"{adr:.1f}", i18n.get_text("md_hero_adr", "ADR"), _sentiment_hex(_adr_sentiment(adr))),
+            (
+                f"{kd:.2f}",
+                i18n.get_text("md_hero_kd", "K/D Ratio"),
+                _sentiment_hex(_kd_sentiment(kd)),
+            ),
+            (
+                f"{adr:.1f}",
+                i18n.get_text("md_hero_adr", "ADR"),
+                _sentiment_hex(_adr_sentiment(adr)),
+            ),
             (
                 f"{kast * 100:.0f}%",
                 i18n.get_text("md_hero_kast", "KAST"),
@@ -605,9 +609,7 @@ class MatchDetailScreen(QWidget):
 
             caption_label = QLabel(caption)
             caption_label.setFont(Typography.font("body"))
-            caption_label.setStyleSheet(
-                f"color: {tokens.text_secondary}; background: transparent;"
-            )
+            caption_label.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
             col.addWidget(caption_label)
 
             value_label = QLabel(value)
@@ -618,9 +620,7 @@ class MatchDetailScreen(QWidget):
             if sub:
                 sub_label = QLabel(sub)
                 sub_label.setFont(Typography.mono_caption())
-                sub_label.setStyleSheet(
-                    f"color: {tokens.text_tertiary}; background: transparent;"
-                )
+                sub_label.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
                 col.addWidget(sub_label)
             col.addStretch(1)
             row.addLayout(col, 1)
@@ -665,9 +665,7 @@ class MatchDetailScreen(QWidget):
             color = tokens.success if ok > 0 else tokens.text_primary
         else:
             value, sub, color = "—", "", tokens.text_primary
-        cells.append(
-            (i18n.get_text("md_enrich_opening", "Opening Kills"), value, color, sub)
-        )
+        cells.append((i18n.get_text("md_enrich_opening", "Opening Kills"), value, color, sub))
         return self._build_stat_band(cells)
 
     def _build_utility_band(self, stats: dict) -> QFrame:
@@ -769,7 +767,9 @@ class MatchDetailScreen(QWidget):
             f"border-radius: {tokens.radius_sm}px;"
         )
         box = QHBoxLayout(row)
-        box.setContentsMargins(tokens.spacing_md, tokens.spacing_sm, tokens.spacing_md, tokens.spacing_sm)
+        box.setContentsMargins(
+            tokens.spacing_md, tokens.spacing_sm, tokens.spacing_md, tokens.spacing_sm
+        )
         box.setSpacing(0)
         for _key, i18n_key, fallback, width in self._ROUND_COLS:
             label = QLabel(i18n.get_text(i18n_key, fallback))
@@ -829,13 +829,15 @@ class MatchDetailScreen(QWidget):
         # stays tertiary exactly as before.
         note_color = severity_color(severity).name() if severity else tokens.text_tertiary
 
-        wl_text = (
-            i18n.get_text("md_round_win", "W") if won else i18n.get_text("md_round_loss", "L")
-        )
+        wl_text = i18n.get_text("md_round_win", "W") if won else i18n.get_text("md_round_loss", "L")
         cells = {
             "rnd": (f"R{rnum:2d}", tokens.text_primary, False),
             "wl": (wl_text, tokens.success if won else tokens.error, True),
-            "side": (side if side_known else "—", side_color if side_known else tokens.text_secondary, True),
+            "side": (
+                side if side_known else "—",
+                side_color if side_known else tokens.text_secondary,
+                True,
+            ),
             "k": (str(kills), tokens.text_primary, False),
             "d": (str(deaths), tokens.text_primary, False),
             "dmg": (str(dmg), tokens.text_primary, False),
@@ -1073,9 +1075,7 @@ class MatchDetailScreen(QWidget):
 
         if not self._moments:
             empty = QLabel(
-                i18n.get_text(
-                    "md_moments_empty", "No critical moments scanned for this match yet."
-                )
+                i18n.get_text("md_moments_empty", "No critical moments scanned for this match yet.")
             )
             empty.setWordWrap(True)
             empty.setFont(Typography.font("body"))
@@ -1137,9 +1137,7 @@ class MatchDetailScreen(QWidget):
                 round=round_no, tick=f"{tick:,}"
             )
         else:
-            meta_text = i18n.get_text("md_moment_tick_only", "tick {tick}").format(
-                tick=f"{tick:,}"
-            )
+            meta_text = i18n.get_text("md_moment_tick_only", "tick {tick}").format(tick=f"{tick:,}")
         meta = QLabel(meta_text)
         meta.setFont(Typography.mono_caption())
         meta.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
@@ -1218,7 +1216,9 @@ class MatchDetailScreen(QWidget):
 
         focus = ins.get("focus_area")
         if focus:
-            focus_label = QLabel(i18n.get_text("md_insight_focus", "Focus · {area}").format(area=focus))
+            focus_label = QLabel(
+                i18n.get_text("md_insight_focus", "Focus · {area}").format(area=focus)
+            )
             focus_label.setTextFormat(Qt.PlainText)
             focus_label.setFont(Typography.font("caption"))
             focus_label.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")

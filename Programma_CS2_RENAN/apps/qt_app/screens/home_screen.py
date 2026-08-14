@@ -664,9 +664,7 @@ class HomeScreen(QWidget):
             )
         )
         self._viewer_btn.setText(i18n.get_text("open_tactical_viewer", "Open Tactical Viewer"))
-        self._compare_btn.setText(
-            i18n.get_text("home.compare_pro_players", "Compare Pro Players")
-        )
+        self._compare_btn.setText(i18n.get_text("home.compare_pro_players", "Compare Pro Players"))
         # Training card
         self._training_card.set_title(i18n.get_text("training_status", "Training Status"))
         self._training_footer.setText(self._training_footer_text())

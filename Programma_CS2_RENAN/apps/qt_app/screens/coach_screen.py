@@ -584,8 +584,11 @@ class CoachScreen(QWidget):
             "coach.driver_sample", "Sample count · {n} personal demos analyzed"
         ).format(n=fmt(s.get("samples")))
         quality_text = i18n.get_text(
-            "coach.driver_quality", "Data quality · {complete} complete · {partial} partial · {none} none"
-        ).format(complete=fmt(s.get("complete")), partial=fmt(s.get("partial")), none=fmt(s.get("none")))
+            "coach.driver_quality",
+            "Data quality · {complete} complete · {partial} partial · {none} none",
+        ).format(
+            complete=fmt(s.get("complete")), partial=fmt(s.get("partial")), none=fmt(s.get("none"))
+        )
         maps_text = i18n.get_text(
             "coach.driver_maps", "Map coverage · {seen} of {total} competitive maps seen"
         ).format(seen=fmt(s.get("maps_seen")), total=fmt(s.get("maps_total")))
@@ -616,7 +619,9 @@ class CoachScreen(QWidget):
         self._insight_widgets.clear()
 
         if not insights:
-            self._insights_empty.set_title(i18n.get_text("coach.no_insights_title", "No insights yet"))
+            self._insights_empty.set_title(
+                i18n.get_text("coach.no_insights_title", "No insights yet")
+            )
             self._insights_empty.set_description(
                 i18n.get_text(
                     "coach.no_insights_desc",
@@ -664,9 +669,7 @@ class CoachScreen(QWidget):
     def _overflow_btn_text(self, expanded: bool) -> str:
         if expanded:
             return i18n.get_text("coach.show_top", "Show top 3")
-        return i18n.get_text("coach.show_all", "Show all ({n})").format(
-            n=len(self._last_insights)
-        )
+        return i18n.get_text("coach.show_all", "Show all ({n})").format(n=len(self._last_insights))
 
     def _toggle_insights_overflow(self) -> None:
         expanded = not self._insights_overflow.isVisible()
@@ -701,13 +704,13 @@ class CoachScreen(QWidget):
             player = insight.get("player_name") or "Pro"
             map_tag = _map_from_demo(insight.get("demo_name", ""))
             if map_tag:
-                ctx_text = i18n.get_text("coach.pro_analysis", "Pro Analysis: {player} on {map}").format(
-                    player=player, map=map_tag
-                )
+                ctx_text = i18n.get_text(
+                    "coach.pro_analysis", "Pro Analysis: {player} on {map}"
+                ).format(player=player, map=map_tag)
             else:
-                ctx_text = i18n.get_text("coach.pro_analysis_nomap", "Pro Analysis: {player}").format(
-                    player=player
-                )
+                ctx_text = i18n.get_text(
+                    "coach.pro_analysis_nomap", "Pro Analysis: {player}"
+                ).format(player=player)
             ctx = QLabel(ctx_text)
             ctx.setTextFormat(Qt.PlainText)
             # Mixed-case per frame 06 ("Pro Analysis: ZywOo on Mirage") —

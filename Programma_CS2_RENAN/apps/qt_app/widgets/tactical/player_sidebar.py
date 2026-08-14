@@ -11,14 +11,7 @@ from typing import Dict, List, Optional
 
 from PySide6.QtCore import QRectF, Qt, Signal
 from PySide6.QtGui import QColor, QFont, QPainter
-from PySide6.QtWidgets import (
-    QFrame,
-    QHBoxLayout,
-    QLabel,
-    QScrollArea,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QScrollArea, QVBoxLayout, QWidget
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
@@ -222,34 +215,22 @@ class _PlayerItem(QFrame):
         self.setStyleSheet(card)
 
         dot_color = self._team_color if alive else t.text_disabled
-        self._dot.setStyleSheet(
-            f"background: {dot_color}; border-radius: 5px; border: none;"
-        )
+        self._dot.setStyleSheet(f"background: {dot_color}; border-radius: 5px; border: none;")
         name_color = t.text_primary if alive else t.text_disabled
         self._name_label.setStyleSheet(f"color: {name_color}; background: transparent;")
         if alive:
             self._right_label.setFont(Typography.mono_caption())
-            self._right_label.setStyleSheet(
-                f"color: {t.text_secondary}; background: transparent;"
-            )
-            self._weapon_label.setStyleSheet(
-                f"color: {t.text_primary}; background: transparent;"
-            )
+            self._right_label.setStyleSheet(f"color: {t.text_secondary}; background: transparent;")
+            self._weapon_label.setStyleSheet(f"color: {t.text_primary}; background: transparent;")
             util_color = t.info if has_defuser else t.text_secondary
             self._util_label.setStyleSheet(f"color: {util_color}; background: transparent;")
-            self._kda_label.setStyleSheet(
-                f"color: {t.text_secondary}; background: transparent;"
-            )
+            self._kda_label.setStyleSheet(f"color: {t.text_secondary}; background: transparent;")
         else:
             self._right_label.setFont(_caption_font(bold=True))
             self._right_label.setStyleSheet(f"color: {t.error}; background: transparent;")
-            self._weapon_label.setStyleSheet(
-                f"color: {t.text_secondary}; background: transparent;"
-            )
+            self._weapon_label.setStyleSheet(f"color: {t.text_secondary}; background: transparent;")
             self._util_label.setStyleSheet(f"color: {t.text_tertiary}; background: transparent;")
-            self._kda_label.setStyleSheet(
-                f"color: {t.text_tertiary}; background: transparent;"
-            )
+            self._kda_label.setStyleSheet(f"color: {t.text_tertiary}; background: transparent;")
         for lbl in (self._hp_label, self._ar_label, self._hp_value, self._ar_value):
             lbl.setStyleSheet(f"color: {t.text_secondary}; background: transparent;")
 
@@ -299,11 +280,13 @@ class _PlayerItem(QFrame):
             place = death.get("place")
             self._set_text(
                 self._weapon_label,
-                i18n.get_text("tactical.killed_at", "killed @ {place}").replace(
-                    "{place}", str(place)
-                )
-                if place
-                else "",
+                (
+                    i18n.get_text("tactical.killed_at", "killed @ {place}").replace(
+                        "{place}", str(place)
+                    )
+                    if place
+                    else ""
+                ),
             )
             killer, weapon, tick = death.get("by"), death.get("weapon"), death.get("tick")
             if killer and weapon and tick is not None:
@@ -343,21 +326,15 @@ class PlayerSidebar(QWidget):
 
         # Header — caption caps team label left, mono team money right.
         header_row = QHBoxLayout()
-        header_row.setContentsMargins(
-            t.spacing_md, t.spacing_md, t.spacing_md, t.spacing_sm
-        )
+        header_row.setContentsMargins(t.spacing_md, t.spacing_md, t.spacing_md, t.spacing_sm)
         self._header_label = QLabel(team_name.upper())
         self._header_label.setFont(Typography.font("caption", QFont.Bold))
-        self._header_label.setStyleSheet(
-            f"color: {self._team_color}; background: transparent;"
-        )
+        self._header_label.setStyleSheet(f"color: {self._team_color}; background: transparent;")
         header_row.addWidget(self._header_label)
         header_row.addStretch()
         self._money_label = QLabel()
         self._money_label.setFont(Typography.mono_caption())
-        self._money_label.setStyleSheet(
-            f"color: {self._team_color}; background: transparent;"
-        )
+        self._money_label.setStyleSheet(f"color: {self._team_color}; background: transparent;")
         header_row.addWidget(self._money_label)
         layout.addLayout(header_row)
 

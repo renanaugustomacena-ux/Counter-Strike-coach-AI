@@ -87,9 +87,7 @@ class EconomyChart(QWidget):
         # documented half-marker fallback — not just a missing key.
         if side not in ("CT", "T") and self._half:
             side = "T" if idx + 1 < self._half else "CT"
-        return QColor(
-            tokens.chart_line_primary if side == "CT" else tokens.chart_line_secondary
-        )
+        return QColor(tokens.chart_line_primary if side == "CT" else tokens.chart_line_secondary)
 
     def paintEvent(self, event):  # noqa: ARG002 — Qt signature
         painter = QPainter(self)
@@ -107,7 +105,8 @@ class EconomyChart(QWidget):
         painter.setFont(title_font)
         painter.setPen(QColor(tokens.text_primary))
         painter.drawText(
-            QRectF(0, 4, self.width(), title_h), Qt.AlignHCenter | Qt.AlignVCenter,
+            QRectF(0, 4, self.width(), title_h),
+            Qt.AlignHCenter | Qt.AlignVCenter,
             i18n.get_text("chart_economy_title", "Economy per Round"),
         )
         if not self._rounds:
@@ -121,7 +120,8 @@ class EconomyChart(QWidget):
         ladder_w = cap_fm.horizontalAdvance(f"${int(vmax)}") + 8.0
         bottom_h = cap_fm.height() * 2 + 26.0  # ticks + axis title + legend
         plot = QRectF(
-            ladder_w + cap_fm.height() + 10.0, title_h + cap_fm.height() + 4.0,
+            ladder_w + cap_fm.height() + 10.0,
+            title_h + cap_fm.height() + 4.0,
             self.width() - ladder_w - cap_fm.height() - 22.0,
             self.height() - title_h - cap_fm.height() - bottom_h - 8.0,
         )
@@ -137,9 +137,14 @@ class EconomyChart(QWidget):
             painter.drawLine(QPointF(plot.left(), y), QPointF(plot.right(), y))
             painter.setPen(QColor(tokens.text_tertiary))
             painter.drawText(
-                QRectF(plot.left() - ladder_w - 4.0, y - cap_fm.height() / 2.0,
-                       ladder_w, cap_fm.height()),
-                Qt.AlignRight | Qt.AlignVCenter, f"${int(money)}",
+                QRectF(
+                    plot.left() - ladder_w - 4.0,
+                    y - cap_fm.height() / 2.0,
+                    ladder_w,
+                    cap_fm.height(),
+                ),
+                Qt.AlignRight | Qt.AlignVCenter,
+                f"${int(money)}",
             )
             money += step
 
@@ -149,9 +154,9 @@ class EconomyChart(QWidget):
         painter.translate(cap_fm.height(), plot.center().y())
         painter.rotate(-90)
         painter.drawText(
-            QRectF(-plot.height() / 2.0, -cap_fm.height() / 2.0,
-                   plot.height(), cap_fm.height()),
-            Qt.AlignCenter, i18n.get_text("chart_equipment_axis", "Equipment ($)"),
+            QRectF(-plot.height() / 2.0, -cap_fm.height() / 2.0, plot.height(), cap_fm.height()),
+            Qt.AlignCenter,
+            i18n.get_text("chart_equipment_axis", "Equipment ($)"),
         )
         painter.restore()
 
@@ -167,9 +172,9 @@ class EconomyChart(QWidget):
                 painter.setPen(QColor(tokens.text_tertiary))
                 painter.setFont(cap_font)
                 painter.drawText(
-                    QRectF(rect.center().x() - 20.0, plot.bottom() + 4.0,
-                           40.0, cap_fm.height()),
-                    Qt.AlignHCenter | Qt.AlignTop, str(r.get("round_number", i + 1)),
+                    QRectF(rect.center().x() - 20.0, plot.bottom() + 4.0, 40.0, cap_fm.height()),
+                    Qt.AlignHCenter | Qt.AlignTop,
+                    str(r.get("round_number", i + 1)),
                 )
                 painter.setPen(Qt.NoPen)
 
@@ -182,7 +187,8 @@ class EconomyChart(QWidget):
             painter.setFont(cap_font)
             painter.drawText(
                 QRectF(x - 40.0, plot.top() - cap_fm.height() - 2.0, 80.0, cap_fm.height()),
-                Qt.AlignHCenter | Qt.AlignBottom, i18n.get_text("chart_half_label", "half"),
+                Qt.AlignHCenter | Qt.AlignBottom,
+                i18n.get_text("chart_half_label", "half"),
             )
 
         # X-axis title + CT/T legend chips.
@@ -206,6 +212,7 @@ class EconomyChart(QWidget):
             painter.setPen(QColor(tokens.text_secondary))
             painter.drawText(
                 QRectF(x + chip + 4.0, legend_y - 2.0, w - chip - 4.0, chip + 4.0),
-                Qt.AlignLeft | Qt.AlignVCenter, text,
+                Qt.AlignLeft | Qt.AlignVCenter,
+                text,
             )
             x += w

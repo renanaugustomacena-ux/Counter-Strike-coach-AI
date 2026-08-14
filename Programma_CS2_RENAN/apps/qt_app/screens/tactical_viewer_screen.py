@@ -232,9 +232,7 @@ class _GhostPanel(QWidget):
         )
         self._div_header = QLabel()
         self._div_header.setFont(_caption_font(bold=True))
-        self._div_header.setStyleSheet(
-            f"color: {tokens.accent_primary}; background: transparent;"
-        )
+        self._div_header.setStyleSheet(f"color: {tokens.accent_primary}; background: transparent;")
         div_box.addWidget(self._div_header)
         self._div_grid = QGridLayout()
         self._div_grid.setHorizontalSpacing(tokens.spacing_sm)
@@ -247,9 +245,7 @@ class _GhostPanel(QWidget):
         div_box.addWidget(self._causal_caption)
         self._causal_stat = QLabel()
         self._causal_stat.setFont(Typography.font("subtitle"))
-        self._causal_stat.setStyleSheet(
-            f"color: {tokens.accent_primary}; background: transparent;"
-        )
+        self._causal_stat.setStyleSheet(f"color: {tokens.accent_primary}; background: transparent;")
         div_box.addWidget(self._causal_stat)
         self._causal_bar = QProgressBar()
         self._causal_bar.setRange(0, 100)
@@ -281,18 +277,14 @@ class _GhostPanel(QWidget):
         path_tpl = i18n.get_text("tactical.path", "Path: {path}")
         decision_tpl = i18n.get_text("tactical.decision_time", "Decision time: {d}")
         self._you_path.setText(path_tpl.replace("{path}", str(you.get("path") or "—")))
-        self._you_decision.setText(
-            decision_tpl.replace("{d}", str(you.get("decision") or "—"))
-        )
+        self._you_decision.setText(decision_tpl.replace("{d}", str(you.get("decision") or "—")))
 
         pro, team = payload.get("pro") or "—", payload.get("team")
         ghost_name = f"{pro} ({team})" if team else str(pro)
         self._ghost_header.setText(f"{i18n.get_text('tactical.ghost', 'GHOST')} · {ghost_name}")
         self._ghost_title.setText(str(ghost.get("context") or "—"))
         self._ghost_path.setText(path_tpl.replace("{path}", str(ghost.get("path") or "—")))
-        self._ghost_decision.setText(
-            decision_tpl.replace("{d}", str(ghost.get("decision") or "—"))
-        )
+        self._ghost_decision.setText(decision_tpl.replace("{d}", str(ghost.get("decision") or "—")))
 
         self._div_header.setText(
             i18n.get_text("tactical.divergence_analysis", "DIVERGENCE ANALYSIS")
@@ -810,9 +802,7 @@ class TacticalViewerScreen(QWidget):
         ghost_row = QHBoxLayout(self._ghost_selector_row)
         ghost_row.setContentsMargins(0, 0, 0, 0)
         ghost_row.setSpacing(12)
-        self._ghost_combo_label = QLabel(
-            i18n.get_text("tactical.ghost_combo_label", "Ghost:")
-        )
+        self._ghost_combo_label = QLabel(i18n.get_text("tactical.ghost_combo_label", "Ghost:"))
         ghost_row.addWidget(self._ghost_combo_label)
         self._ghost_combo = QComboBox()
         self._ghost_combo.setFixedWidth(200)
@@ -1471,9 +1461,7 @@ class TacticalViewerScreen(QWidget):
             offset = payload.get("sync_offset_s")
             if isinstance(offset, (int, float)):
                 offset_tpl = i18n.get_text("tactical.sync_offset", "ghost sync offset: {offset}")
-                self._sync_offset_label.setText(
-                    offset_tpl.replace("{offset}", f"{offset:+.1f}s")
-                )
+                self._sync_offset_label.setText(offset_tpl.replace("{offset}", f"{offset:+.1f}s"))
                 self._sync_offset_label.setVisible(True)
             else:
                 self._sync_offset_label.setVisible(False)  # FIELD-GAP: offset unknown
@@ -1505,8 +1493,7 @@ class TacticalViewerScreen(QWidget):
         return {
             "you_path": payload.get("you_path") or [],
             "ghost_path": payload.get("ghost_path") or [],
-            "you_label": payload.get("you_label")
-            or i18n.get_text("tactical.map_you", "you"),
+            "you_label": payload.get("you_label") or i18n.get_text("tactical.map_you", "you"),
             "ghost_label": payload.get("ghost_label")
             or i18n.get_text("tactical.map_ghost", "ghost"),
             "you_died": bool(you.get("died")),
@@ -1537,9 +1524,9 @@ class TacticalViewerScreen(QWidget):
         tick = self._playback_vm.get_current_tick()
         you = max(0.0, min(1.0, tick / total))
         offset = (self._ghost_payload or {}).get("sync_offset_s")
-        offset_ticks = float(offset) * self._demo_tick_rate if isinstance(
-            offset, (int, float)
-        ) else 0.0
+        offset_ticks = (
+            float(offset) * self._demo_tick_rate if isinstance(offset, (int, float)) else 0.0
+        )
         ghost = max(0.0, min(1.0, (tick + offset_ticks) / total))
         self._you_progress.setValue(int(you * 1000))
         self._ghost_progress.setValue(int(ghost * 1000))
@@ -1554,8 +1541,10 @@ class TacticalViewerScreen(QWidget):
         playing = self._playback_vm.is_playing
         # The "state" property drives the QSS accent-fill rule
         # (#playback_control[state="playing"]) so the button reflects the mode.
-        label = i18n.get_text("tactical.pause", "Pause") if playing else i18n.get_text(
-            "tactical.play", "Play"
+        label = (
+            i18n.get_text("tactical.pause", "Pause")
+            if playing
+            else i18n.get_text("tactical.play", "Play")
         )
         if self._play_btn.text() != label:
             self._play_btn.setText(label)

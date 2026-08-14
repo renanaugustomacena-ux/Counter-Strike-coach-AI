@@ -99,9 +99,7 @@ class WizardScreen(QWidget):
         self._val_writable_key.setText(i18n.get_text("val_writable", "Writable:"))
         self._val_free_key.setText(i18n.get_text("val_free_space", "Free space:"))
         self._val_est_key.setText(i18n.get_text("val_estimated", "Estimated use:"))
-        self._val_est_value.setText(
-            i18n.get_text("val_estimated_value", "~12 GB first year")
-        )
+        self._val_est_value.setText(i18n.get_text("val_estimated_value", "~12 GB first year"))
         self._val_existing_key.setText(i18n.get_text("val_existing", "Existing data:"))
         self._brain_tip.set_title(i18n.get_text("wizard_tip_title", "Tip"))
         self._brain_tip.set_body(
@@ -119,14 +117,11 @@ class WizardScreen(QWidget):
         self._next_step1.set_description(
             i18n.get_text(
                 "wizard_next_step1_desc",
-                "New .dem files are detected and queued automatically — "
-                "no manual imports.",
+                "New .dem files are detected and queued automatically — " "no manual imports.",
             )
         )
         self._next_step2.set_title(
-            i18n.get_text(
-                "wizard_next_step2_title", "First report ~2 min after your first demo"
-            )
+            i18n.get_text("wizard_next_step2_title", "First report ~2 min after your first demo")
         )
         self._next_step2.set_description(
             i18n.get_text(
@@ -244,9 +239,7 @@ class WizardScreen(QWidget):
         layout.addLayout(bottom)
 
         layout.addWidget(
-            MonoFooter(
-                "wizard_screen.py · QStackedWidget with 5 pages · shown on first run only"
-            )
+            MonoFooter("wizard_screen.py · QStackedWidget with 5 pages · shown on first run only")
         )
 
     def _build_intro_page(self) -> QWidget:
@@ -317,9 +310,7 @@ class WizardScreen(QWidget):
             i18n.get_text("wizard_brain_title", "Choose a folder for your AI brain data")
         )
         self._brain_title.setFont(Typography.font("title"))
-        self._brain_title.setStyleSheet(
-            f"color: {tokens.text_primary}; background: transparent;"
-        )
+        self._brain_title.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
         lay.addWidget(self._brain_title)
 
         self._brain_desc = QLabel(
@@ -402,16 +393,12 @@ class WizardScreen(QWidget):
         self._val_writable_key, self._val_writable = _pair(
             i18n.get_text("val_writable", "Writable:")
         )
-        self._val_free_key, self._val_free = _pair(
-            i18n.get_text("val_free_space", "Free space:")
-        )
+        self._val_free_key, self._val_free = _pair(i18n.get_text("val_free_space", "Free space:"))
         self._val_est_key, self._val_est_value = _pair(
             i18n.get_text("val_estimated", "Estimated use:")
         )
         self._val_est_value.setText(i18n.get_text("val_estimated_value", "~12 GB first year"))
-        self._val_est_value.setStyleSheet(
-            f"color: {tokens.text_primary}; background: transparent;"
-        )
+        self._val_est_value.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
         self._val_existing_key, self._val_existing = _pair(
             i18n.get_text("val_existing", "Existing data:")
         )
@@ -473,9 +460,7 @@ class WizardScreen(QWidget):
         if not path:
             for label in (self._val_writable, self._val_free, self._val_existing):
                 label.setText("—")
-                label.setStyleSheet(
-                    f"color: {tokens.text_tertiary}; background: transparent;"
-                )
+                label.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
             return
 
         # Nearest existing ancestor — the path itself usually doesn't
@@ -490,26 +475,18 @@ class WizardScreen(QWidget):
         writable = os.path.exists(probe) and os.access(probe, os.W_OK)
         if writable:
             self._val_writable.setText(i18n.get_text("val_yes", "✓ yes"))
-            self._val_writable.setStyleSheet(
-                f"color: {tokens.success}; background: transparent;"
-            )
+            self._val_writable.setStyleSheet(f"color: {tokens.success}; background: transparent;")
         else:
             self._val_writable.setText(i18n.get_text("val_no", "✗ no"))
-            self._val_writable.setStyleSheet(
-                f"color: {tokens.error}; background: transparent;"
-            )
+            self._val_writable.setStyleSheet(f"color: {tokens.error}; background: transparent;")
 
         try:
             free_gb = shutil.disk_usage(probe).free // (1024**3)
             self._val_free.setText(f"{free_gb} GB")
-            self._val_free.setStyleSheet(
-                f"color: {tokens.success}; background: transparent;"
-            )
+            self._val_free.setStyleSheet(f"color: {tokens.success}; background: transparent;")
         except OSError:
             self._val_free.setText("—")
-            self._val_free.setStyleSheet(
-                f"color: {tokens.text_tertiary}; background: transparent;"
-            )
+            self._val_free.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
 
         try:
             has_data = os.path.isdir(path) and bool(os.listdir(path))
@@ -517,9 +494,7 @@ class WizardScreen(QWidget):
             has_data = False
         if has_data:
             self._val_existing.setText(i18n.get_text("val_existing_found", "found"))
-            self._val_existing.setStyleSheet(
-                f"color: {tokens.warning}; background: transparent;"
-            )
+            self._val_existing.setStyleSheet(f"color: {tokens.warning}; background: transparent;")
         else:
             self._val_existing.setText(i18n.get_text("val_existing_none", "none"))
             self._val_existing.setStyleSheet(
@@ -612,9 +587,7 @@ class WizardScreen(QWidget):
         # font("caption") (not the QSS variant) — the QFont role carries the
         # uppercase + letterspacing treatment the stepper captions use.
         self._next_header.setFont(Typography.font("caption"))
-        self._next_header.setStyleSheet(
-            f"color: {tokens.text_secondary}; background: transparent;"
-        )
+        self._next_header.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
         next_col.addWidget(self._next_header)
 
         self._next_step1 = NumberedStep(
@@ -622,15 +595,12 @@ class WizardScreen(QWidget):
             i18n.get_text("wizard_next_step1_title", "Scanner watches your folder"),
             i18n.get_text(
                 "wizard_next_step1_desc",
-                "New .dem files are detected and queued automatically — "
-                "no manual imports.",
+                "New .dem files are detected and queued automatically — " "no manual imports.",
             ),
         )
         self._next_step2 = NumberedStep(
             2,
-            i18n.get_text(
-                "wizard_next_step2_title", "First report ~2 min after your first demo"
-            ),
+            i18n.get_text("wizard_next_step2_title", "First report ~2 min after your first demo"),
             i18n.get_text(
                 "wizard_next_step2_desc",
                 "Analysis runs locally — the match report lands on your Dashboard.",

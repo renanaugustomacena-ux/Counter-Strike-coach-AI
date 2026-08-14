@@ -268,9 +268,7 @@ class HelpScreen(QWidget):
         self._title_label.setText(i18n.get_text("help_center"))
         self._search_input.setPlaceholderText(i18n.get_text("search_placeholder"))
         self._related_header.setText(i18n.get_text("related_header", "RELATED"))
-        self._hints_header.setText(
-            i18n.get_text("keyboard_hints_header", "KEYBOARD HINTS")
-        )
+        self._hints_header.setText(i18n.get_text("keyboard_hints_header", "KEYBOARD HINTS"))
         for label, (key, fallback) in zip(self._hint_labels, _KEYBOARD_HINTS):
             label.setText(i18n.get_text(key, fallback))
         self._external_header.setText(i18n.get_text("external_header", "EXTERNAL"))
@@ -356,9 +354,7 @@ class HelpScreen(QWidget):
             link = QLabel(self._external_link_html(key, fallback, url))
             link.setTextFormat(Qt.RichText)
             link.setOpenExternalLinks(True)
-            link.setStyleSheet(
-                f"font-size: {tokens.font_size_caption}px; background: transparent;"
-            )
+            link.setStyleSheet(f"font-size: {tokens.font_size_caption}px; background: transparent;")
             self._external_links.append(link)
             left_layout.addWidget(link)
 
@@ -425,8 +421,7 @@ class HelpScreen(QWidget):
         )
         callout_lay.addWidget(self._callout_body)
         callout_path = QLabel(
-            "~/.steam/steam/steamapps/common/Counter-Strike Global Offensive"
-            "/game/csgo/replays/"
+            "~/.steam/steam/steamapps/common/Counter-Strike Global Offensive" "/game/csgo/replays/"
         )
         callout_path.setObjectName("demo_folder_path")
         callout_path.setWordWrap(True)
@@ -465,9 +460,7 @@ class HelpScreen(QWidget):
         article_layout.addLayout(self._related_row)
 
         # KEYBOARD HINTS — sunken rows
-        self._hints_header = QLabel(
-            i18n.get_text("keyboard_hints_header", "KEYBOARD HINTS")
-        )
+        self._hints_header = QLabel(i18n.get_text("keyboard_hints_header", "KEYBOARD HINTS"))
         self._hints_header.setObjectName("help_panel_header")
         article_layout.addWidget(self._hints_header)
         self._hint_labels = []
@@ -480,9 +473,7 @@ class HelpScreen(QWidget):
             )
             hint_label = QLabel(i18n.get_text(key, fallback))
             hint_label.setWordWrap(True)
-            hint_label.setStyleSheet(
-                f"color: {tokens.text_primary}; background: transparent;"
-            )
+            hint_label.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
             row_lay.addWidget(hint_label)
             self._hint_labels.append(hint_label)
             article_layout.addWidget(row)
@@ -542,9 +533,7 @@ class HelpScreen(QWidget):
                 w.deleteLater()
         self._topic_rows = []
 
-        self._topics_header.setText(
-            f"{i18n.get_text('topics_header', 'TOPICS')} · {len(topics)}"
-        )
+        self._topics_header.setText(f"{i18n.get_text('topics_header', 'TOPICS')} · {len(topics)}")
         for topic in topics:
             topic_id = topic.get("id", "")
             caption_spec = _TOPIC_CAPTIONS.get(topic_id)

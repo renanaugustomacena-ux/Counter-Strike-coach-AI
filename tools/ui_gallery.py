@@ -40,16 +40,14 @@ from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography  # noqa: 
 from Programma_CS2_RENAN.apps.qt_app.core.widgets_helpers import make_button  # noqa: E402
 from Programma_CS2_RENAN.apps.qt_app.widgets.coaching import ChatPanel  # noqa: E402
 from Programma_CS2_RENAN.apps.qt_app.widgets.components import (  # noqa: E402
+    DbRecordCard,
+    DriversList,
     EmptyState,
+    MonoFooter,
+    NumberedStep,
     ProBadge,
     ProgressRing,
     StatBadge,
-)
-from Programma_CS2_RENAN.apps.qt_app.widgets.components import (  # noqa: E402
-    DbRecordCard,
-    DriversList,
-    MonoFooter,
-    NumberedStep,
     TipBox,
 )
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.status_chip import StatusChip  # noqa: E402
@@ -248,7 +246,7 @@ def build_chat_page() -> QWidget:
     col.addWidget(_section("MonoFooter"))
     col.addWidget(
         MonoFooter(
-            "profile_screen.py · save_user_setting(\"CS2_PLAYER_NAME\", ...) · "
+            'profile_screen.py · save_user_setting("CS2_PLAYER_NAME", ...) · '
             "PlayerProfile insert on first save"
         )
     )

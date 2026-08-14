@@ -128,6 +128,7 @@ def main() -> int:
         pass
 
     import ui_fixtures
+
     from Programma_CS2_RENAN.apps.qt_app import app as qt_app_module
     from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import ThemeEngine
     from Programma_CS2_RENAN.apps.qt_app.main_window import MainWindow
@@ -165,7 +166,9 @@ def main() -> int:
             suffix = ""
             if not args.no_fixtures:
                 variant = args.variant.strip().lower()
-                variant_fn = getattr(ui_fixtures, f"inject_{name}_{variant}", None) if variant else None
+                variant_fn = (
+                    getattr(ui_fixtures, f"inject_{name}_{variant}", None) if variant else None
+                )
                 if variant_fn is not None:
                     variant_fn(screens[name])
                     suffix = f"_{variant}"

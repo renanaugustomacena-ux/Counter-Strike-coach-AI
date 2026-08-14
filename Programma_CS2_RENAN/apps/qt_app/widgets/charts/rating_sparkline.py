@@ -98,9 +98,7 @@ class RatingSparkline(QWidget):
             pen = QPen(color, 1, Qt.DashLine)
             painter.setPen(pen)
             painter.drawLine(QPointF(plot_left, ry), QPointF(plot_right, ry))
-            painter.drawText(
-                QPointF(plot_right + 6.0, ry + fm.ascent() / 2.0 - 1.0), f"{ref:.2f}"
-            )
+            painter.drawText(QPointF(plot_right + 6.0, ry + fm.ascent() / 2.0 - 1.0), f"{ref:.2f}")
 
         # Area fill under the polyline (18% alpha of the line color).
         line_path = QPainterPath(to_point(0, self._values[0]))

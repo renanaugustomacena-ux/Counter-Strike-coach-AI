@@ -39,9 +39,7 @@ from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.apps.qt_app.core.widgets_helpers import make_button, navigate_to
-from Programma_CS2_RENAN.apps.qt_app.viewmodels.pro_comparison_vm import (
-    ProComparisonViewModel,
-)
+from Programma_CS2_RENAN.apps.qt_app.viewmodels.pro_comparison_vm import ProComparisonViewModel
 from Programma_CS2_RENAN.apps.qt_app.widgets.charts.radar_chart import RadarChart
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.empty_state import EmptyState
@@ -333,11 +331,15 @@ class ProComparisonScreen(QWidget):
         mode_row.setContentsMargins(0, 0, 0, 0)
         mode_row.setSpacing(tokens.spacing_sm)
 
-        self._chip_p_vs_p = FilterChip(i18n.get_text("procomp.mode_pvp", "Pro vs Pro"), checked=True)
+        self._chip_p_vs_p = FilterChip(
+            i18n.get_text("procomp.mode_pvp", "Pro vs Pro"), checked=True
+        )
         self._chip_p_vs_p.toggled.connect(lambda _c: self._set_mode("pro_vs_pro"))
         mode_row.addWidget(self._chip_p_vs_p)
 
-        self._chip_m_vs_p = FilterChip(i18n.get_text("procomp.mode_mvp", "Me vs Pro"), checked=False)
+        self._chip_m_vs_p = FilterChip(
+            i18n.get_text("procomp.mode_mvp", "Me vs Pro"), checked=False
+        )
         self._chip_m_vs_p.toggled.connect(lambda _c: self._set_mode("me_vs_pro"))
         mode_row.addWidget(self._chip_m_vs_p)
 
@@ -594,9 +596,7 @@ class ProComparisonScreen(QWidget):
 
     # ── Results builders ──
 
-    def _build_radar_card(
-        self, stats_a: dict, stats_b: dict, name_a: str, name_b: str
-    ) -> Card:
+    def _build_radar_card(self, stats_a: dict, stats_b: dict, name_a: str, name_b: str) -> Card:
         tokens = get_tokens()
         card = Card(
             title=i18n.get_text("procomp.radar_title", "Skill Radar — 8 axes (0-100)"),
@@ -660,9 +660,7 @@ class ProComparisonScreen(QWidget):
                 return ""
         return ""
 
-    def _build_h2h_card(
-        self, stats_a: dict, stats_b: dict, name_a: str, name_b: str
-    ) -> Card:
+    def _build_h2h_card(self, stats_a: dict, stats_b: dict, name_a: str, name_b: str) -> Card:
         tokens = get_tokens()
         # FIELD-GAP: frame 15 titles this "Head-to-head metrics · {period}
         # form" — the comparison payload carries no period/time_span field,
@@ -712,17 +710,24 @@ class ProComparisonScreen(QWidget):
             grid.addWidget(metric, row_idx, 0)
 
             # Better raw value green-tinted per frame; absent values tertiary.
-            color_a = tokens.success if winner == 1 else (
-                tokens.text_tertiary if val_a is None else tokens.text_primary
+            color_a = (
+                tokens.success
+                if winner == 1
+                else (tokens.text_tertiary if val_a is None else tokens.text_primary)
             )
-            color_b = tokens.success if winner == -1 else (
-                tokens.text_tertiary if val_b is None else tokens.text_primary
+            color_b = (
+                tokens.success
+                if winner == -1
+                else (tokens.text_tertiary if val_b is None else tokens.text_primary)
             )
             grid.addWidget(self._stat_cell(_fmt_metric(kind, val_a), color_a), row_idx, 1)
             grid.addWidget(self._stat_cell(_fmt_metric(kind, val_b), color_b), row_idx, 2)
 
             if winner == 1:
-                win_text, win_color = f"{name_a} {_fmt_delta(kind, val_a - val_b)}", tokens.accent_primary
+                win_text, win_color = (
+                    f"{name_a} {_fmt_delta(kind, val_a - val_b)}",
+                    tokens.accent_primary,
+                )
             elif winner == -1:
                 win_text, win_color = f"{name_b} {_fmt_delta(kind, val_b - val_a)}", tokens.info
             elif winner == 0:
@@ -734,9 +739,7 @@ class ProComparisonScreen(QWidget):
             grid.addWidget(win_cell, row_idx, 3)
 
         card.content_layout.addWidget(grid_widget)
-        card.content_layout.addWidget(
-            self._build_style_summary(stats_a, stats_b, name_a, name_b)
-        )
+        card.content_layout.addWidget(self._build_style_summary(stats_a, stats_b, name_a, name_b))
         card.content_layout.addWidget(self._build_footer(stats_a, stats_b))
         card.content_layout.addStretch(1)
         return card
@@ -747,8 +750,7 @@ class ProComparisonScreen(QWidget):
         tokens = get_tokens()
         box = QFrame()
         box.setStyleSheet(
-            f"background: {tokens.surface_sunken}; "
-            f"border-radius: {tokens.radius_md}px;"
+            f"background: {tokens.surface_sunken}; " f"border-radius: {tokens.radius_md}px;"
         )
         lay = QVBoxLayout(box)
         lay.setContentsMargins(

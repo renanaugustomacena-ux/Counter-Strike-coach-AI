@@ -39,7 +39,7 @@
 **Design-token architecture** (`src/ui/styles/variables.css`) — three layers, maps 1:1 onto our W3C-tokens→QSS engine:
 1. primitive palettes `--dark-gray-50..900` / `--light-gray-50..900`;
 2. semantic aliases flipped per theme (`html.dark { --gray-100: var(--dark-gray-100) }`);
-3. framework exposure (Tailwind `@theme`). Domain tokens live at layer 3: 
+3. framework exposure (Tailwind `@theme`). Domain tokens live at layer 3:
 
 ```css
 /* From akiver/cs-demo-manager (MIT) — src/ui/styles/variables.css */

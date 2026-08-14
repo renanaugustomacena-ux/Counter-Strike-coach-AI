@@ -104,9 +104,7 @@ class _ThemeCard(QFrame):
         text_col.setSpacing(2)
         name_label = QLabel(display_name)
         name_label.setFont(Typography.font("body", QFont.Bold))
-        name_label.setStyleSheet(
-            f"color: {theme_tokens.accent_primary}; background: transparent;"
-        )
+        name_label.setStyleSheet(f"color: {theme_tokens.accent_primary}; background: transparent;")
         text_col.addWidget(name_label)
 
         self.tagline_label = QLabel("")
@@ -284,9 +282,7 @@ class SettingsScreen(QWidget):
         self._language_card.set_title(i18n.get_text("language"))
         # Inline labels
         self._font_size_label.setText(i18n.get_text("font_size") + ":")
-        self._interface_font_label.setText(
-            i18n.get_text("interface_font", "Interface font") + ":"
-        )
+        self._interface_font_label.setText(i18n.get_text("interface_font", "Interface font") + ":")
         self._ingest_mode_label.setText(i18n.get_text("ingestion_mode") + ":")
         # Theme card taglines
         for key, card in self._theme_cards.items():
@@ -348,9 +344,7 @@ class SettingsScreen(QWidget):
         # Frame 16 footer — the REAL persistence target composed from
         # core.config (save_user_setting writes atomically then chmods
         # 0o600 on POSIX — FE-04).
-        layout.addWidget(
-            MonoFooter(f"settings saved to {SETTINGS_PATH} · chmod 0o600 (FE-04)")
-        )
+        layout.addWidget(MonoFooter(f"settings saved to {SETTINGS_PATH} · chmod 0o600 (FE-04)"))
 
     def _make_tab(self) -> tuple[QScrollArea, QVBoxLayout]:
         """Create a scrollable container for a tab."""
@@ -540,9 +534,7 @@ class SettingsScreen(QWidget):
         )
         self._font_size_card.layout().addLayout(row)
 
-        self._interface_font_label = QLabel(
-            i18n.get_text("interface_font", "Interface font") + ":"
-        )
+        self._interface_font_label = QLabel(i18n.get_text("interface_font", "Interface font") + ":")
         self._interface_font_label.setObjectName("section_subtitle")
         self._font_size_card.layout().addWidget(self._interface_font_label)
         row1 = self._make_toggle_group(
@@ -616,9 +608,7 @@ class SettingsScreen(QWidget):
             "sample_body", "This is how body text appears in the {size} size."
         ).replace("{size}", i18n.get_text(f"size_{size_name.lower()}", size_name))
         self._sample_body.setText(body)
-        self._accent_dot.setStyleSheet(
-            f"color: {tokens.accent_primary}; background: transparent;"
-        )
+        self._accent_dot.setStyleSheet(f"color: {tokens.accent_primary}; background: transparent;")
         self._accent_line.setText(
             f"{i18n.get_text('accent_primary_label', 'Accent primary')} = "
             f"{tokens.accent_primary}"

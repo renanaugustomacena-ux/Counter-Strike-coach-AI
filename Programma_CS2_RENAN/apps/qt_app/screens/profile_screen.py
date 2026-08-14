@@ -9,14 +9,7 @@ mono data-source footer.
 """
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtWidgets import (
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QPushButton,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
@@ -138,9 +131,7 @@ class ProfileScreen(QWidget):
             )
         )
         self._desc.setWordWrap(True)
-        self._desc.setStyleSheet(
-            f"color: {tokens.text_secondary}; background: transparent;"
-        )
+        self._desc.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
         editor_card.layout().addWidget(self._desc)
 
         self._name_input = QLineEdit()
@@ -182,9 +173,7 @@ class ProfileScreen(QWidget):
 
         self._record_card = DbRecordCard(
             title=i18n.get_text("db_record", "Database record"),
-            subtitle=i18n.get_text(
-                "db_record_caption", "PlayerProfile row auto-created on save."
-            ),
+            subtitle=i18n.get_text("db_record_caption", "PlayerProfile row auto-created on save."),
         )
         content_row.addWidget(self._record_card, 2)
         layout.addLayout(content_row)

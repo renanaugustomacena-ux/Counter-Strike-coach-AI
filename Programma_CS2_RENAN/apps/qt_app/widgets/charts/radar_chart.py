@@ -33,9 +33,7 @@ _RINGS = 4  # concentric grid rings at 25/50/75/100%
 _LABEL_GAP = 14.0  # px between outer ring and axis label anchor
 
 
-def _vertex(
-    cx: float, cy: float, r: float, idx: int, n: int, frac: float
-) -> tuple[float, float]:
+def _vertex(cx: float, cy: float, r: float, idx: int, n: int, frac: float) -> tuple[float, float]:
     """Return the (x, y) of axis ``idx`` of ``n`` at ``frac`` of radius ``r``.
 
     Axis 0 points straight up; axes proceed clockwise (Qt y grows down).
@@ -109,9 +107,7 @@ class RadarChart(QWidget):
         painter.setPen(grid_pen)
         for ring in range(1, _RINGS + 1):
             frac = ring / _RINGS
-            poly = QPolygonF(
-                [QPointF(*_vertex(cx, cy, radius, i, n, frac)) for i in range(n)]
-            )
+            poly = QPolygonF([QPointF(*_vertex(cx, cy, radius, i, n, frac)) for i in range(n)])
             painter.drawPolygon(poly)
 
         spoke_pen = QPen(token_color(tokens.chart_axis), 1)

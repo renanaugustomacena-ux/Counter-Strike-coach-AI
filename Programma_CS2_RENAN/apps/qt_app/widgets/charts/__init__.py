@@ -40,14 +40,10 @@ def token_color(value: str) -> QColor:
 
 # Chart widget exports (import AFTER token_color is defined — the chart
 # modules pull token_color from this package during their own import).
-from Programma_CS2_RENAN.apps.qt_app.widgets.charts.economy_chart import (  # noqa: E402
-    EconomyChart,
-)
+from Programma_CS2_RENAN.apps.qt_app.widgets.charts.economy_chart import EconomyChart  # noqa: E402
 from Programma_CS2_RENAN.apps.qt_app.widgets.charts.momentum_chart import (  # noqa: E402
     MomentumChart,
 )
-from Programma_CS2_RENAN.apps.qt_app.widgets.charts.radar_chart import (  # noqa: E402
-    RadarChart,
-)
+from Programma_CS2_RENAN.apps.qt_app.widgets.charts.radar_chart import RadarChart  # noqa: E402
 
 __all__ = ["EconomyChart", "MomentumChart", "RadarChart", "token_color"]

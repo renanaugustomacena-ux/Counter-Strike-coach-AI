@@ -33,8 +33,8 @@ try:
     from PySide6.QtGui import QColor
 
     from Programma_CS2_RENAN.apps.qt_app.widgets.tactical.map_widget import (
-        GRENADE_RADII,
         _NADE_PALETTE_KEYS,
+        GRENADE_RADII,
         TacticalMapWidget,
     )
 
@@ -88,9 +88,7 @@ class TestGrenadeConstants:
     def test_overlay_colors_defined_for_all_types(self):
         """Every NadeType with a radius must map to a palette key."""
         for nade_type in GRENADE_RADII:
-            assert (
-                nade_type in _NADE_PALETTE_KEYS
-            ), f"{nade_type} missing from _NADE_PALETTE_KEYS"
+            assert nade_type in _NADE_PALETTE_KEYS, f"{nade_type} missing from _NADE_PALETTE_KEYS"
 
     def test_overlay_colors_are_valid_qcolors(self, qapp):
         """Palette colors for every grenade type must be valid QColors."""

@@ -55,7 +55,6 @@ class DeltaChip(QLabel):
         arrow, color = ("▲", tokens.success) if float(value) > 0 else ("▼", tokens.error)
         self.setText(f"{arrow} {formatted} {baseline_label}".rstrip())
         self.setStyleSheet(
-            f"color: {color}; background: transparent; "
-            f"font-size: {tokens.font_size_caption}px;"
+            f"color: {color}; background: transparent; " f"font-size: {tokens.font_size_caption}px;"
         )
         self.show()

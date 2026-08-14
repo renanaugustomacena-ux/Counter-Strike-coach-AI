@@ -48,9 +48,7 @@ class MapTile(QFrame):
         self.setMinimumSize(150, 132)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
-    def set_data(
-        self, map_name: str, rating: float, adr: float, kd: float, matches: int
-    ) -> None:
+    def set_data(self, map_name: str, rating: float, adr: float, kd: float, matches: int) -> None:
         self._map_name = str(map_name)
         self._rating = float(rating)
         self._adr = float(adr)
@@ -93,7 +91,8 @@ class MapTile(QFrame):
         line_h = QFontMetricsF(rating_font).height()
         rating_word = i18n.get_text("map_tile_rating", "Rating")
         painter.drawText(
-            QRectF(x, y, width, line_h), Qt.AlignLeft,
+            QRectF(x, y, width, line_h),
+            Qt.AlignLeft,
             f"{rating_word}: {self._rating:.2f} ({rating_label(self._rating)})",
         )
         y += line_h + 4.0
@@ -106,7 +105,8 @@ class MapTile(QFrame):
         adr_word = i18n.get_text("stat_adr", "ADR")
         kd_word = i18n.get_text("stat_kd", "K/D")
         painter.drawText(
-            QRectF(x, y, width, small_h), Qt.AlignLeft,
+            QRectF(x, y, width, small_h),
+            Qt.AlignLeft,
             f"{adr_word}: {self._adr:g} {kd_word}: {self._kd:.2f}",
         )
         y += small_h + 4.0
@@ -114,7 +114,8 @@ class MapTile(QFrame):
         # Matches caption.
         painter.setPen(QColor(tokens.text_tertiary))
         painter.drawText(
-            QRectF(x, y, width, small_h), Qt.AlignLeft,
+            QRectF(x, y, width, small_h),
+            Qt.AlignLeft,
             f"{self._matches} {i18n.get_text('map_tile_matches', 'matches')}",
         )
 
