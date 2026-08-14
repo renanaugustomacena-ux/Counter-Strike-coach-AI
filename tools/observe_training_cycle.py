@@ -359,7 +359,7 @@ def phase_4_jepa_training():
         results["losses"] = observer.losses
 
         if observer.losses:
-            print(f"\n  Training Summary:")
+            print("\n  Training Summary:")
             print(f"    Batches processed: {len(observer.losses)}")
             print(f"    First batch loss:  {observer.losses[0]:.6f}")
             print(f"    Last batch loss:   {observer.losses[-1]:.6f}")
@@ -435,8 +435,6 @@ def phase_6_knowledge():
     """Check if the knowledge layer has any data."""
     section("PHASE 6: KNOWLEDGE STATE (Conoscenza)")
 
-    from sqlmodel import func, select
-
     from Programma_CS2_RENAN.backend.storage.database import get_db_manager
 
     db = get_db_manager()
@@ -463,7 +461,7 @@ def phase_6_knowledge():
             state = session.exec(
                 text("SELECT status, detail, last_trained_sample_count FROM coachstate")
             ).one()
-            print(f"\n  Coach State:")
+            print("\n  Coach State:")
             print(f"    Status: {state[0]}")
             print(f"    Detail: {state[1]}")
             print(f"    Trained samples: {state[2]}")

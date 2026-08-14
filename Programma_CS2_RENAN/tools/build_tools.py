@@ -272,7 +272,7 @@ def cmd_debug_build(args):
 
     cmd = [sys.executable, "-m", "PyInstaller", "--clean", "--noconfirm", str(spec_file)]
     print(f"  Running: {' '.join(cmd)}")
-    print(f"  Streaming output...\n")
+    print("  Streaming output...\n")
 
     errors = []
     # F-0041(a): argv list, shell=False — the old shell=True string broke on

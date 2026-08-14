@@ -79,7 +79,7 @@ def run_census():
     c.execute("SELECT DISTINCT demo_name FROM playertickstate")
     all_demos = [r[0] for r in c.fetchall()]
 
-    print(f"=== Tick Census ===")
+    print("=== Tick Census ===")
     print(f"Total rowid range: {min_id:,} — {max_id:,}")
     print(f"Demos: {len(all_demos)}")
     print(f"Chunk size: {CHUNK_SIZE:,}\n")

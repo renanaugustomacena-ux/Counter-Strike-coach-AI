@@ -119,7 +119,7 @@ def cmd_events(args):
 
     # Probe critical events
     critical = ["player_death", "bomb_planted", "round_end", "weapon_fire", "player_hurt"]
-    print(f"\n[Critical Events]")
+    print("\n[Critical Events]")
     for event_name in critical:
         try:
             res = parser.parse_events([event_name])
@@ -162,7 +162,7 @@ def cmd_fields(args):
 
     # Player stats fields
     stat_fields = ["health", "kills_total", "deaths_total", "money", "player_name", "team_num"]
-    print(f"\n[Player Stats]")
+    print("\n[Player Stats]")
     try:
         df = parser.parse_ticks(stat_fields)
         print(f"  Columns found: {list(df.columns)}")
@@ -176,7 +176,7 @@ def cmd_fields(args):
     inv_fields = ["tick", "player_name", "active_weapon_name"]
     for i in range(5):
         inv_fields.append(f"weapon_{i}")
-    print(f"\n[Weapon Inventory]")
+    print("\n[Weapon Inventory]")
     try:
         df = parser.parse_ticks(inv_fields)
         print(f"  Columns found: {list(df.columns)}")
@@ -186,7 +186,7 @@ def cmd_fields(args):
         print(f"  ERROR: {e}")
 
     # Direct inventory blob
-    print(f"\n[Inventory Blob]")
+    print("\n[Inventory Blob]")
     try:
         df = parser.parse_ticks(["tick", "steamid", "inventory"])
         print(f"  Columns: {list(df.columns)}")
@@ -215,7 +215,7 @@ def cmd_track(args):
 
     # Smoke grenade tracking
     if entity_type in ("smoke", "all"):
-        print(f"\n[Smoke Grenade Trajectories]")
+        print("\n[Smoke Grenade Trajectories]")
         try:
             res = parser.parse_events(["smokegrenade_detonate"])
             df = extract_df(res)
@@ -247,7 +247,7 @@ def cmd_track(args):
 
     # Grenade thrown
     if entity_type in ("grenade", "all"):
-        print(f"\n[Grenade Throws]")
+        print("\n[Grenade Throws]")
         try:
             res = parser.parse_events(["grenade_thrown"])
             df = extract_df(res)
@@ -262,7 +262,7 @@ def cmd_track(args):
 
     # Entity listing
     if entity_type == "all":
-        print(f"\n[Entity Classes at tick 1000]")
+        print("\n[Entity Classes at tick 1000]")
         try:
             entities = parser.list_entities(1000)
             if entities:

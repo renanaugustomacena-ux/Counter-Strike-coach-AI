@@ -1848,7 +1848,6 @@ def verify_no_nan_inf_extraction():
 
 def verify_extract_batch_shape():
     """Verify batch extraction produces correct shape."""
-    import numpy as np
 
     from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import (
         METADATA_DIM,
@@ -1899,7 +1898,7 @@ def verify_torch_ops():
 
 def verify_sqlmodel_api():
     """Verify sqlmodel core API is available."""
-    from sqlmodel import Field, Session, SQLModel, select  # noqa: F811
+    from sqlmodel import SQLModel  # noqa: F811
 
     for attr in ("metadata",):
         if not hasattr(SQLModel, attr):

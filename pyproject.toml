@@ -72,10 +72,46 @@ omit = [
 # omitted from denominator for honest production coverage measurement.
 # Kept in sync with the CI gate (build.yml: pytest --cov-fail-under=33).
 # Raise BOTH together when the suite sustainably clears a higher bar.
-fail_under = 33
+fail_under = 50  # W4: raised from 33 (suite sits at ~55.8%); keep in sync with build.yml
 show_missing = true
 exclude_lines = [
     "pragma: no cover",
     "if __name__ == .__main__.",
     "if TYPE_CHECKING:",
+]
+
+# W4b: ruff — curated starter ruleset (course-22 §Pre-commit candidates).
+# E/F = pycodestyle+pyflakes core; B = bugbear (real bug patterns);
+# I is OFF (isort owns imports); UP/SIM/DTZ etc. are the NEXT ratchet
+# steps — enable one family per commit with its own autofix sweep.
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = ["external_analysis", "dist", ".venv", "venv*", "docs", "web"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "B"]
+ignore = [
+    "E731",  # lambda assignments — used deliberately for Qt slots
+    "B008",  # function call in default — argparse Path defaults
+    "B905",  # zip strict — py<3.10 style retained in places
+    "E402",  # module-import-not-at-top — the house sys.path-bootstrap pattern
+    "E712",  # == True/False — SQLModel/SQLAlchemy filter expressions REQUIRE it
+    # NEXT ratchet steps (enable one per commit with its own sweep):
+    # F841 unused-variable, B007 unused-loop-var, B904 raise-from,
+    # E741 ambiguous-name, B023 loop-capture, then UP/SIM/DTZ families.
+    "F841",
+    "B007",
+    "B904",
+    "E741",
+    "B023",
+    "B027",
+    "B017",
+    "F811",
+    "E721",
+    "B005",
+    "B024",
+    "B028",
+    "B009",
+    "B033",
 ]

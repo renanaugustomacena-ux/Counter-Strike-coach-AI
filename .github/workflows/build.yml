@@ -121,6 +121,11 @@ jobs:
           pip install -r requirements-ci.txt
           pip install pytest pytest-cov pytest-timeout
 
+      # W4: dependency-conflict gate (course-30) — resolver-level breakage
+      # fails fast instead of surfacing as weird runtime errors.
+      - name: Dependency conflict check
+        run: pip check
+
       # Coverage is platform-independent (it measures code paths, not OS behaviour),
       # so the coverage gate runs once, on Linux. Windows still runs the full test
       # suite to validate cross-platform behaviour, but without coverage — pytest-cov
@@ -133,7 +138,7 @@ jobs:
           --cov=Programma_CS2_RENAN
           --cov-report=xml:coverage.xml
           --cov-report=term-missing
-          --cov-fail-under=33
+          --cov-fail-under=50
 
       - name: Run pytest (Windows — cross-platform test validation, no coverage)
         if: runner.os == 'Windows'

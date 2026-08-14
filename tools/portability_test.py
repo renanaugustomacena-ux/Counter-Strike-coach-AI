@@ -46,12 +46,11 @@ import json
 import os
 import re
 import sys
-from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import List
 
 
 class Severity(Enum):
@@ -1208,7 +1207,7 @@ class PortabilityVerifier:
                                         line=line_num,
                                         severity=Severity.WARNING,
                                         category="Resource Path",
-                                        message=f"Resource path may not be portable",
+                                        message="Resource path may not be portable",
                                         code_snippet=line.strip(),
                                         suggestion="Use Path(__file__).parent or pkg_resources",
                                     )

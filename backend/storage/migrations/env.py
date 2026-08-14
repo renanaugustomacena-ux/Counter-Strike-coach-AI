@@ -24,7 +24,6 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-import os
 
 # IMPORTS FOR ALEMBIC
 import sys
@@ -35,7 +34,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
 from sqlmodel import SQLModel
 
-from Programma_CS2_RENAN.backend.storage.db_models import *
+from Programma_CS2_RENAN.backend.storage.db_models import *  # noqa: F403 — canonical alembic autogenerate pattern
 
 # add your model's MetaData object here
 # for 'autogenerate' support

@@ -124,7 +124,6 @@ def test_real_overpass_demo_header_if_present():
     Marked 'integration' and skipped unless CS2_INTEGRATION_TESTS=1.
     """
     import os
-    from pathlib import Path
 
     if os.environ.get("CS2_INTEGRATION_TESTS") != "1":
         pytest.skip("Requires CS2_INTEGRATION_TESTS=1 and real demo")

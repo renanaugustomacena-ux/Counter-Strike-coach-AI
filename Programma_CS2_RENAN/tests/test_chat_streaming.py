@@ -8,7 +8,6 @@ F5-06 history discipline), and the Worker progress plumbing.
 
 from __future__ import annotations
 
-from types import SimpleNamespace
 from unittest import mock
 
 import pytest

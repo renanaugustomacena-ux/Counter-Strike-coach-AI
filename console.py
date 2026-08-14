@@ -1288,7 +1288,7 @@ class TUIRenderer:
         grid.add_row(
             f"  [info]tool[/]   {_D}demo [events|fields|track|all] | user | logs | list{_E}"
         )
-        grid.add_row(f"  [info]help[/]   [error]exit[/]")
+        grid.add_row("  [info]help[/]   [error]exit[/]")
         return Panel(grid, title="Command Interface", border_style="white")
 
 

@@ -1606,7 +1606,7 @@ class CoachingDialogueEngine:
             key_rounds = session.exec(key_stmt).all()
 
             if key_rounds:
-                lines = [f"KEY ROUNDS (multi-kill rounds, sorted by impact):"]
+                lines = ["KEY ROUNDS (multi-kill rounds, sorted by impact):"]
                 for r in key_rounds:
                     opener = " OPENER" if r.opening_kill else ""
                     lines.append(

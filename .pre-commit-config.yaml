@@ -67,6 +67,13 @@ repos:
       - id: detect-private-key
 
   # Python-specific hooks
+  # W4b: ruff — fast lint gate (config in pyproject [tool.ruff])
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+
   - repo: https://github.com/psf/black
     rev: 24.1.1
     hooks:

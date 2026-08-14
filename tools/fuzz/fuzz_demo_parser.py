@@ -30,7 +30,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import logging
-import os
 import pathlib
 import random
 import signal
@@ -171,7 +170,7 @@ def _run_atheris(args: argparse.Namespace, log: logging.Logger) -> int:
         [
             sys.argv[0],
             f"-max_total_time={int(args.time_budget)}",
-            f"-runs=-1",
+            "-runs=-1",
             f"-seed={int(args.seed)}",
             f"-artifact_prefix={crash_dir.as_posix()}/",
         ],

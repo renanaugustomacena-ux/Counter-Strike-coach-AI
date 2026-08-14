@@ -4,7 +4,6 @@ The guard used to return True unconditionally off-Windows ("the project
 currently targets Windows-only deployments") — contradicting the Linux
 deploy doctrine and permitting concurrent SQLite writers."""
 
-import sys
 from unittest.mock import patch
 
 import pytest

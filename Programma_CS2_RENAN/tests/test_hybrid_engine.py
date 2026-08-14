@@ -128,9 +128,9 @@ class TestHybridCoachingEngine:
         assert all(isinstance(i, HybridInsight) for i in insights)
         # Verify insights contain real content (not empty placeholders)
         for i in insights:
-            assert i.title, f"Insight should have a non-empty title"
-            assert i.message, f"Insight should have a non-empty message"
-            assert i.feature, f"Insight should reference a feature"
+            assert i.title, "Insight should have a non-empty title"
+            assert i.message, "Insight should have a non-empty message"
+            assert i.feature, "Insight should reference a feature"
 
     def test_insights_sorted_by_priority(self):
         """Test insights are sorted by priority."""
@@ -234,7 +234,6 @@ class TestHybridModelLoading:
     weights — a model survives _load_model only if a checkpoint loads."""
 
     def test_no_checkpoint_yields_none_and_rag_only(self, monkeypatch):
-        from unittest import mock
 
         import Programma_CS2_RENAN.backend.nn.persistence as persistence
         from Programma_CS2_RENAN.backend.coaching.hybrid_engine import HybridCoachingEngine

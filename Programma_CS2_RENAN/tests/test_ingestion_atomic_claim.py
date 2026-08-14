@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine, select
+from sqlmodel import Session, SQLModel, create_engine
 
 
 def _lazy_ri():

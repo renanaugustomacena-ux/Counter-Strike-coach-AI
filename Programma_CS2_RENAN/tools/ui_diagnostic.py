@@ -10,7 +10,6 @@ Sections: Resources, Localization, Assets, KV Validation, Qt Frontend, Spatial C
 Exit codes: 0 = PASS, 1 = FAIL
 """
 
-import re
 import sys
 
 from _infra import SOURCE_ROOT, BaseValidator, Severity, path_stabilize

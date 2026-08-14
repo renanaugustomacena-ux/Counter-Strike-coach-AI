@@ -35,7 +35,7 @@ def main():
         print(f"ERROR: File does not have .dem extension: {demo_path}")
         sys.exit(1)
 
-    print(f"=== CS2 Coaching Pipeline Validator ===")
+    print("=== CS2 Coaching Pipeline Validator ===")
     print(f"Demo: {demo_path.name}")
     print(f"Size: {demo_path.stat().st_size / (1024 * 1024):.1f} MB")
     print()
@@ -219,7 +219,7 @@ def _print_coaching_results(insights_text, corrections, player_name, clean_demo_
         print(f"  Feature:  {insight['feature']}")
         print(f"  Category: {insight['category']}")
         print(f"  Severity: {insight['severity']}")
-        print(f"  Message:")
+        print("  Message:")
         msg = insight["message"]
         for line in msg.split("\n"):
             print(f"    {line}")

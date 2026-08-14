@@ -1,10 +1,9 @@
 import ast
 import os
-import re
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set
 
 # --- Venv Guard ---
 if sys.prefix == sys.base_prefix and not os.environ.get("CI"):

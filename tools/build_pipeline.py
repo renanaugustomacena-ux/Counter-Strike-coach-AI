@@ -136,7 +136,7 @@ class IndustrialBuildPipeline:
     def execute(self):
         console.print(
             Panel.fit(
-                f"[bold cyan]MACENA CS2 ANALYZER[/bold cyan]\nIndustrial Build Pipeline v2.0",
+                "[bold cyan]MACENA CS2 ANALYZER[/bold cyan]\nIndustrial Build Pipeline v2.0",
                 title="System Init",
                 border_style="blue",
             )

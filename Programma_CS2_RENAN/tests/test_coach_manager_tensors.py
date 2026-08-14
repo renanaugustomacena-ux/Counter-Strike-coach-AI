@@ -13,8 +13,6 @@ Also verifies:
 - Pro baseline vector has correct dimensions
 """
 
-import numpy as np
-
 
 class TestFeatureListIntegrity:
     """Verify that feature lists are aligned with METADATA_DIM."""
@@ -72,7 +70,7 @@ class TestPrepareTensorsNoneHandling:
     guard): NULL DB values become 0.0, never NaN."""
 
     def _mgr(self):
-        from unittest.mock import MagicMock, patch
+        from unittest.mock import patch
 
         import numpy as np
 

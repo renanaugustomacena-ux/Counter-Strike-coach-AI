@@ -50,13 +50,13 @@ def cmd_personalize(args):
     if steam_key:
         save_user_setting("STEAM_API_KEY", steam_key)
         print(
-            f"  Saved STEAM_API_KEY = ***"
+            "  Saved STEAM_API_KEY = ***"
         )  # F8-10: no key fragment — avoids partial credential exposure
 
     faceit_key = input("FACEIT API Key (leave blank to skip): ").strip()
     if faceit_key:
         save_user_setting("FACEIT_API_KEY", faceit_key)
-        print(f"  Saved FACEIT_API_KEY = ***")  # F8-10: no key fragment
+        print("  Saved FACEIT_API_KEY = ***")  # F8-10: no key fragment
 
     refresh_settings()
     print("\nPersonalization complete.")
@@ -236,7 +236,7 @@ def cmd_heartbeat(args):
             select(func.count(IngestionTask.id)).where(IngestionTask.status == "failed")
         ).one()
 
-        print(f"  Ingestion Queue:")
+        print("  Ingestion Queue:")
         print(f"    Queued:     {queued}")
         print(f"    Processing: {processing}")
         print(f"    Completed:  {completed}")
@@ -249,7 +249,7 @@ def cmd_heartbeat(args):
         # Coach state
         state = s.exec(select(CoachState)).first()
         if state:
-            print(f"\n  Coach State:")
+            print("\n  Coach State:")
             print(f"    HLTV:    {state.hltv_status}")
             print(f"    Ingest:  {state.ingest_status}")
             print(f"    ML:      {state.ml_status}")
@@ -259,7 +259,7 @@ def cmd_heartbeat(args):
     try:
         import psutil
 
-        print(f"\n  System Resources:")
+        print("\n  System Resources:")
         print(f"    CPU:    {psutil.cpu_percent(interval=0.5)}%")
         print(f"    Memory: {psutil.virtual_memory().percent}%")
         print(f"    Disk:   {psutil.disk_usage('/').percent}%")
@@ -275,11 +275,11 @@ def cmd_heartbeat(args):
             pid = int(pid_f.read_text().strip())
             print(f"\n  HLTV Daemon: PID {pid} ({'alive' if psutil.pid_exists(pid) else 'stale'})")
         except (psutil.NoSuchProcess, ProcessLookupError):
-            print(f"\n  HLTV Daemon: PID file exists but process is dead (stale lock)")  # F8-35
+            print("\n  HLTV Daemon: PID file exists but process is dead (stale lock)")  # F8-35
         except Exception as e:
             print(f"\n  HLTV Daemon: could not read PID — {e}")
     else:
-        print(f"\n  HLTV Daemon: not running")
+        print("\n  HLTV Daemon: not running")
 
 
 # =============================================================================

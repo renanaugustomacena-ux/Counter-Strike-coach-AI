@@ -243,7 +243,7 @@ def main() -> None:
     conn.commit()
     conn.close()
 
-    print(f"\n=== Done ===")
+    print("\n=== Done ===")
     print(f"  Inserted: {total_inserted}")
     print(f"  Skipped (existing): {total_skipped}")
     print(f"  With winner derived: {total_with_winner}")

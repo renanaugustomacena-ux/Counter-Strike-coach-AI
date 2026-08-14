@@ -215,7 +215,7 @@ def main() -> None:
     final = conn2.execute("SELECT COUNT(*) FROM coachingexperience").fetchone()[0]
     conn2.close()
 
-    print(f"\n=== Done ===")
+    print("\n=== Done ===")
     print(f"  Inserted: {inserted}")
     print(f"  Skipped (duplicate): {skipped}")
     print(f"  Total CoachingExperience records: {final}")

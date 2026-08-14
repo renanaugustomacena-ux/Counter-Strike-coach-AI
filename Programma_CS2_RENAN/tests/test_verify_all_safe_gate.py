@@ -19,7 +19,6 @@ _spec = importlib.util.spec_from_file_location(
 
 def _is_safe(name: str) -> bool:
     import os
-    import sys
     from unittest.mock import patch
 
     mod = importlib.util.module_from_spec(_spec)
