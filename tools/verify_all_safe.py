@@ -64,15 +64,43 @@ def is_safe_to_run(path_obj):
     if "deprecated" in name:
         return False
 
-    # 2. Skip Destructive/Maintenance by convention
-    # "fix_", "reset_", "migrate_", "patch_", "cleanup_", "force_"
-    unsafe_prefixes = ["fix_", "reset_", "migrate_", "patch_", "cleanup_", "force_"]
+    # 2. Skip Destructive/Maintenance by convention.
+    # F-0039: the original six prefixes missed 13 tools whose BARE
+    # invocation mutates live data (audit census, docs/audit/FINDINGS.md)
+    # — worst case rebuild_monolith, whose delete-first/bulk-insert-last
+    # phase left pro stats EMPTY when the 120s timeout killed it mid-run.
+    # The prefix families below cover every census member; tools that are
+    # dry-run-by-default (rescrape_, sync_, merge_, seed_, d3_, d4_) stay
+    # scheduled because their bare run is read-only by construction.
+    unsafe_prefixes = [
+        "fix_",
+        "reset_",
+        "migrate_",
+        "patch_",
+        "cleanup_",
+        "force_",
+        # F-0039 additions — bare invocation writes to live data:
+        "repair_",
+        "flag_",
+        "purge_",
+        "mine_",
+        "populate_",
+        "rebuild_",
+        "observe_",
+        "ingest_",
+        "wipe_",
+    ]
     if any(name.startswith(p) for p in unsafe_prefixes):
         return False
 
     # 3. Skip Interactive or Long Running
     if name in [
         "run_console_boot.py",
+        # F-0039: Confirm-prompt blocks under a non-interactive runner
+        # (the destructive path is only reachable via explicit --yes).
+        "sanitize_project.py",
+        # F-0039: default 30-minute fuzz budget guarantees a timeout-fail.
+        "fuzz_demo_parser.py",
     ]:
         return False
 
