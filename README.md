@@ -45,6 +45,25 @@ Unlike static coaching tools with pre-written tips, this system builds its intel
 
 ---
 
+## Quality & Verification (2026-08 nuke-proof audit)
+
+The entire codebase (618 files, ~155k LOC) was read twice and audited
+end-to-end in August 2026. The results, evidence and per-file dossiers
+live in `docs/audit/`.
+
+- **Test gate**: 2574 passed / 0 failed / 0 errors; coverage floor 50%
+  (suite sits at ~56%). `tools/headless_validator.py`: PASS.
+  `sync_integrity_manifest.py --verify-only`: GREEN.
+- **44 findings registered, 44 resolved** — 31 fixed with same-commit
+  regression tests, 13 deferred with explicit written reasons
+  (`docs/audit/FINDINGS.md`).
+- **CI** runs on every push (`feat/**`, `chore/**`, `main`): lint
+  (pre-commit incl. ruff), tests on Ubuntu + Windows, integration,
+  security (Bandit, detect-secrets, pip-audit), type-check, web build.
+- **Product decisions**: coaching advice is deliberately English;
+  the JEPA 25-vs-10 fine-tune contract stays guarded (26-RANGE-01)
+  until the research track resumes.
+
 ## Key Features
 
 ### AI Coaching Pipeline

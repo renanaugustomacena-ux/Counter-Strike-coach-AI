@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Audited (2026-08 nuke-proof campaign)
+- Full two-pass audit of all 618 files (~155k LOC) with per-file dossiers, a
+  44-finding register (all resolved: 31 fixed + 13 explicitly deferred), ten
+  cross-cutting contract lenses, and per-wave gate evidence — see `docs/audit/`
+- Default test gate now FULLY GREEN (2574 passed, 0 failed, 0 errors) with the
+  coverage floor raised 33% → 50%; `headless_validator` PASS; integrity
+  manifest verify GREEN; CI green on Ubuntu + Windows
+
+### Fixed (campaign highlights)
+- Operator STOP now actually stops training; training aborts exit non-zero
+- Ingestion: atomic task claim (no more double-parsed demos across runners);
+  parse guards absorb Rust panics and demoparser2's own error class; the parse
+  timeout no longer joins a hung worker
+- Safety tooling: `verify_all_safe` gates every bare-invocation mutating tool;
+  `build_pipeline --test-only` never wipes data; `reset_pro_data` is dry-run by
+  default with a pre-delete backup; `build_tools` builds the real packaging spec
+  with argv lists (last `shell=True` removed)
+- Three screens moved GUI-thread DB work onto Workers (with a permanent
+  doctrine test); chips restyle live on theme switch; toast timers can no
+  longer fire on destroyed widgets; the animations kill-switch is honored by
+  every helper
+- Known-maps single source of truth (`core/known_maps.py`) replaces seven
+  divergent lists; round-winner dtype normalized (int team_num demos no longer
+  record every round as lost)
+- HLTV daemon spawns its real module entry point and retries after dormancy;
+  POSIX single-instance enforcement; lock release honours ownership; secrets
+  saving degrades gracefully without a keyring; `$HOME` can never again become
+  a data directory
+- CI: branch filter covers `feat/**`/`chore/**` (the pipeline now actually
+  runs); ruff joins pre-commit; `pip check` dependency gate
+
+
 ### Added
 - Design-atlas frontend rebuild: all 15 Qt screens rebuilt against the 41-frame design atlas (app frames 05-20), driven by the pre-existing design-token pipeline (per-theme tokens remain the single source for both QSS and QPalette)
 - QPainter chart suite: `EconomyChart`, `MomentumChart`, `RadarChart`, `RatingSparkline`, `UtilityBarChart` (plus the existing `MiniSparkline`)
