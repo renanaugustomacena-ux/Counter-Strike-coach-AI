@@ -6,6 +6,28 @@ PNGs eyeballed by name for UI waves), CI status both legs.
 
 (entries appended chronologically; R0 baseline lives in BASELINE.md)
 
+## Phase P boundary — 2026-08-14 (batches B11–B15, 30 files / ~8,700 LOC read)
+
+- Scope: pipeline core, round-stats, tensor factory + player knowledge + heatmap,
+  feature engineering, baselines + validation. No study module scheduled this phase.
+- Commits: a58869b (B11), 4bcaf54 (B12), cfffdcb (B13), 8b0445a (B14=cfffdcb note:
+  B14 commit cfffdcb, B15 commit 8b0445a). All pushed.
+- Findings: F-0016..F-0020 registered (5× P2). F-0016 winner-dtype contract conflict
+  (T-DIAG probe scheduled — escalates P1 if demoparser2 emits int); F-0017 heatmap
+  double-Y-flip Kivy residue (dead display surface); F-0018 baseline fusion
+  layer-priority inversion; F-0019 metric-scale incoherence (CSV percent vs ratio +
+  sanity headshot band 100× loose); F-0020 all elite-comparison CSVs absent
+  (feature dark on fresh installs — CP0 decision). Two campaign highlights:
+  vectorizer.py is the strongest file audited so far (P-X-01/P3-A/D1/D2 quality
+  architecture); B14 closed the slot-16 KAST-scale risk as VERIFIED COHERENT.
+  Empirical DB verification used R0 backups (ProPlayerStatCard=0 rows, pro
+  demos=0, avg_hs/avg_kast confirmed ratio-scale).
+- Gate (full suite + cov, Windows `-p no:timeout`): **2 failed, 2500 passed,
+  48 skipped, 5 errors — 72.0s — IDENTICAL to R0 baseline** (known reds
+  F-0002/F-0003 only; no regression from audit commits). Coverage 55.40%
+  (floor 33%) ✓. test_ui_smoke.py: 4/4 green (named run, 7.5s).
+- CI: not triggered (docs-only; F-0004 filter). Render matrix: unchanged (no UI edits).
+
 ## Phase D boundary — 2026-08-14 (batches B04–B10, 69 files / ~13,900 LOC read)
 
 - Scope: storage core/data/aux + 3 migration trees + demo parsing + external sources
