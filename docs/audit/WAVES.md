@@ -6,6 +6,44 @@ PNGs eyeballed by name for UI waves), CI status both legs.
 
 (entries appended chronologically; R0 baseline lives in BASELINE.md)
 
+## W3 — 2026-08-14 — **P2 behavioral batches complete; REGISTER FULLY RESOLVED (0 open)**
+
+- Batch A (safety family): F-0044 shadow pytest.ini deleted + config meta-test;
+  F-0042 manual-entry V-2 normalization (consumer-verified poison path closed);
+  F-0041 build_tools cluster (argv lists — the repo's LAST shell=True is gone;
+  real packaging spec; verify/manifest readers read the schemas the writers
+  emit; honest --force) + reset_pro_data gold-standard retrofit (dry-run
+  default, --execute gate, pre-delete sqlite backup — live-verified).
+- Batch B (core robustness): F-0007 set_secret degrades (Linux keyring);
+  F-0008 pro-demo base never $HOME (in-project fallback, loud); F-0009 lock
+  release ownership (foreign live locks survive); F-0010 POSIX single-instance
+  via named lock (fail closed); F-0013 REAL parse timeout (no join on the hung
+  worker — manual executor, wait=False).
+- Batch C (map SSOT, CP0 #2): core/known_maps.py authority; 7 identical-
+  semantics consumers converted; drift-guard test bans re-declared map-set
+  literals; deliberate probe subsets documented.
+- Batch D (theme staleness, CP0 #4): module-level theme relay; chips
+  self-restyle on live switch (systemic — covers future hosts); regression
+  trio + render matrix regenerated.
+- Batch E (phantom refs, stale strings, test debt): dead_code ENTRY_POINTS +
+  Goliath entry list + build_exe.bat all REPOINTED to real entries
+  (replace-not-delete rule); gemma3→gemma4 ×3; fuzzer pip hint 0.41.4;
+  db_inspector completed/failed keys; Bug#4 demo suite replaced with a
+  production-path regression; repair_rating_scale lockstep parity class
+  (constants AND formula asserted equal to the SSOT); F-0033 staticmethod
+  NameError; F-0034 kill-switch honored by ALL animation helpers; F-0035 CTA
+  reappear (isVisibleTo); F-0036 receiver-bound toast timers; F-0016 winner
+  dtype normalization (int team_num 2/3 → CT/T); F-0022 entry role key;
+  F-0027 honest lock comment.
+- Register FINAL: **44/44 rows resolved — 31 fixed@sha, 13 deferred with
+  explicit reasons** (5× CP0 #5 research-track guarded; elite-baseline data
+  family pending F-0020 files; heatmap flip pending visual ground truth;
+  event-vocabulary research; multiprocess logging W4-adjacent; hybrid design
+  decision; dark-modules feature wiring). ZERO open.
+- Gate at W3 close: **2574 passed, 0 failed, 56 skipped, 0 errors** (last full
+  run 2572 + this boundary's 2 new tests); coverage ≥ 55.8%; pre-commit hook
+  green on every commit (manifest regen discipline); CI green on GitHub.
+
 ## W1 + W2 — 2026-08-14 — **ALL 12 P1s FIXED + gate fully green** (CP0 approved: advice stays EN; F-0039 fix-not-delete; JEPA stays guarded)
 
 - W1 (infra): F-0001 manifest resync + stale root manifest DELETED (verify-only
