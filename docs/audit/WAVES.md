@@ -6,6 +6,32 @@ PNGs eyeballed by name for UI waves), CI status both legs.
 
 (entries appended chronologically; R0 baseline lives in BASELINE.md)
 
+## Phase A boundary — 2026-08-14 (batches B16–B18, 12 files / 4,585 LOC read)
+
+- Scope: backend/analysis complete — win probability + Elo, engagement range,
+  momentum, blind spots, entropy, belief model, game tree, deception, movement
+  quality, role classifier, utility/economy. No study module scheduled.
+- Commits: (B16), (B17), e0c9dbe (B18) — B16/B17 SHAs in git log between
+  493c56e and e0c9dbe. All pushed.
+- Findings: F-0021, F-0022 registered (2× P2, both silent-degradation contract
+  drift): deception flash-bait detection keyed to dead CS2 event vocabulary
+  (player_blind never emitted → bait rate degenerates 1.0/0.0); engagement
+  "entry_fragger" baseline key unreachable via canonical PlayerRole ("entry")
+  → entry players never get range coaching. F-0016 blast radius widened to
+  momentum.from_round_stats (eternal-loss-streak tilt spam if winner-dtype
+  bug confirmed). Duplicate-PlayerRole-enum question resolved CLEAN (canonical
+  core.app_types import everywhere). FOUR R4 war stories verified in place
+  (ClassVar no-op calibration, TT node-type + depth-direction, halftime
+  full-buy). Phase K carry-list: role-stat vocabulary caller census
+  (awp_kills/entry_frags/solo_kills suppliers), game_tree learn_from_match
+  event vocabulary, eager analysis/__init__ torch import from daemons,
+  EN-only coaching strings (L7), entropy bounding-box degeneracy consumers.
+- Gate (full suite + cov, Windows `-p no:timeout`): **2 failed, 2500 passed,
+  48 skipped, 5 errors — 72.2s — IDENTICAL to R0 baseline** (known reds
+  F-0002/F-0003 only). Coverage 55.40% (floor 33%) ✓. test_ui_smoke.py: 4/4
+  green (named run, 7.6s).
+- CI: not triggered (docs-only; F-0004 filter). Render matrix: unchanged.
+
 ## Phase P boundary — 2026-08-14 (batches B11–B15, 30 files / ~8,700 LOC read)
 
 - Scope: pipeline core, round-stats, tensor factory + player knowledge + heatmap,
