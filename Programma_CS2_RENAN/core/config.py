@@ -413,7 +413,8 @@ def get_pro_demo_base() -> Path:
     Returns the PRO_DEMO_PATH from user_settings.json. If the configured path
     doesn't exist (e.g. SSD mounted at a different path on another machine),
     scans common mount points for the expected directory structure (DP-06).
-    Falls back to HOME if nothing found.
+    Falls back to the IN-PROJECT storage directory if nothing is found
+    (F-0008: never $HOME).
     """
     raw = get_setting("PRO_DEMO_PATH", "")
     configured = Path(str(raw)) if raw else None
@@ -463,7 +464,19 @@ def get_pro_demo_base() -> Path:
                             )
                             return candidate
 
-    return Path(os.path.expanduser("~"))
+    # F-0008: NEVER fall back to $HOME — the module's own doctrine
+    # (":186-190) documents why ($HOME always exists, so a $HOME default
+    # silently relocated data; the 2026-07-26 shard incidents). The safe
+    # default is the sanctioned IN-PROJECT storage dir: every DEMO_BASE
+    # composition stays valid, and accidental sweeps touch a small
+    # project-local tree instead of the user profile.
+    fallback = Path(__file__).resolve().parent.parent / "backend" / "storage"
+    app_logger.warning(
+        "PRO_DEMO_PATH not configured/found — falling back to in-project %s "
+        "(set PRO_DEMO_PATH in settings for a real pro-demo pool)",
+        fallback,
+    )
+    return fallback
 
 
 def get_credential(key: str) -> str:
