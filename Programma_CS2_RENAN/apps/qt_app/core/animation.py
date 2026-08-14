@@ -54,6 +54,11 @@ class Animator:
     @staticmethod
     def fade_in(widget: QWidget, duration: int = 200) -> QPropertyAnimation:
         """Fade widget from 0 to 1 opacity."""
+        # F-0034: honor the kill-switch — jump to the end state.
+        if not animations_enabled() or duration <= 0:
+            _ensure_opacity_effect(widget).setOpacity(1.0)
+            widget.setVisible(True)
+            return None
         effect = _ensure_opacity_effect(widget)
         effect.setOpacity(0.0)
         widget.setVisible(True)
@@ -71,6 +76,12 @@ class Animator:
         widget: QWidget, duration: int = 150, hide_on_finish: bool = False
     ) -> QPropertyAnimation:
         """Fade widget from current opacity to 0."""
+        # F-0034: honor the kill-switch — jump to the end state.
+        if not animations_enabled() or duration <= 0:
+            _ensure_opacity_effect(widget).setOpacity(0.0)
+            if hide_on_finish:
+                widget.setVisible(False)
+            return None
         effect = _ensure_opacity_effect(widget)
 
         anim = QPropertyAnimation(effect, b"opacity", widget)
@@ -94,6 +105,10 @@ class Animator:
 
         Returns the animation group so callers can stop() it when loading finishes.
         """
+        # F-0034: with animations off, hold a static mid opacity (no loop).
+        if not animations_enabled() or duration <= 0:
+            _ensure_opacity_effect(widget).setOpacity((low + high) / 2)
+            return None
         effect = _ensure_opacity_effect(widget)
         effect.setOpacity(low)
 
@@ -127,6 +142,12 @@ class Animator:
 
         Fades out old_widget, then fades in new_widget.
         """
+        # F-0034: instant swap when animations are off.
+        if not animations_enabled() or duration <= 0:
+            _ensure_opacity_effect(old_widget).setOpacity(0.0)
+            _ensure_opacity_effect(new_widget).setOpacity(1.0)
+            new_widget.setVisible(True)
+            return
         # Ensure new widget starts invisible
         new_effect = _ensure_opacity_effect(new_widget)
         new_effect.setOpacity(0.0)
@@ -213,7 +234,12 @@ class Animator:
         The widget must already have its final geometry set (via layout or
         `setGeometry`). `distance_px` is how far offset the start position
         is from the resting position along `direction`.
+
+        F-0034: with animations off the widget simply shows at rest.
         """
+        if not animations_enabled() or duration <= 0:
+            widget.setVisible(True)
+            return None
         widget.setVisible(True)
         end = widget.geometry()
         dx, dy = 0, 0
@@ -250,6 +276,11 @@ class Animator:
         Safe on mid-repaint widgets (animates `geometry`, not opacity).
         Optionally hides the widget once the animation finishes.
         """
+        # F-0034: honor the kill-switch — jump to the end state.
+        if not animations_enabled() or duration <= 0:
+            if hide_on_finish:
+                widget.setVisible(False)
+            return None
         start = widget.geometry()
         dx, dy = 0, 0
         if direction == "right":
@@ -287,6 +318,11 @@ class Animator:
         by bento grids, card lists, and skeleton rows.
         """
         anims: list[QPropertyAnimation] = []
+        # F-0034: with animations off, show everything immediately.
+        if not animations_enabled() or duration <= 0:
+            for w in widgets:
+                w.setVisible(True)
+            return anims
         for i, w in enumerate(widgets):
             QTimer.singleShot(
                 i * delay_ms,
@@ -311,6 +347,11 @@ class Animator:
         `widget.setFixedWidth(to_width)` called before/after to settle.
         For a plain sidebar pattern this is fine.
         """
+        # F-0034: honor the kill-switch — jump to the target width.
+        if not animations_enabled() or duration <= 0:
+            g = widget.geometry()
+            widget.setGeometry(QRect(g.x(), g.y(), to_width, g.height()))
+            return None
         start = widget.geometry()
         end = QRect(start.x(), start.y(), to_width, start.height())
         anim = QPropertyAnimation(widget, b"geometry", widget)

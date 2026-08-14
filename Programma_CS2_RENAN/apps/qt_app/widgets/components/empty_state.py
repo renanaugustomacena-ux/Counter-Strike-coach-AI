@@ -222,9 +222,13 @@ class EmptyState(QWidget):
     # ── Internals ──
 
     def _update_cta_row_visibility(self) -> None:
+        # F-0035: isVisible() is EFFECTIVE visibility — false whenever any
+        # ancestor (the row we are toggling!) is hidden, so once the row
+        # hid, the buttons could never bring it back. isVisibleTo(self)
+        # asks only for the widget's OWN intended visibility.
         any_cta_visible = (not self._loading) and (
-            (bool(self._cta_button.text()) and self._cta_button.isVisible())
-            or (bool(self._secondary_button.text()) and self._secondary_button.isVisible())
+            (bool(self._cta_button.text()) and self._cta_button.isVisibleTo(self))
+            or (bool(self._secondary_button.text()) and self._secondary_button.isVisibleTo(self))
         )
         self._cta_row.setVisible(any_cta_visible)
 

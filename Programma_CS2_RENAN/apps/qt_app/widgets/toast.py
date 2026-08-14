@@ -108,11 +108,14 @@ class ToastWidget(QFrame):
             caption = QLabel(f"auto · {auto_ms // 1000}s")
             caption.setObjectName("toast_caption")
             outer.addWidget(caption, alignment=Qt.AlignRight)
-            QTimer.singleShot(auto_ms, self._remove)
+            # F-0036: bind the timer to THIS widget as receiver context —
+            # Qt then cancels the callback when the toast is destroyed
+            # (container eviction), instead of firing on a corpse.
+            QTimer.singleShot(auto_ms, self, self._remove)
 
     def _remove(self):
         Animator.fade_out(self, duration=200, hide_on_finish=True)
-        QTimer.singleShot(220, self._cleanup)
+        QTimer.singleShot(220, self, self._cleanup)  # F-0036: receiver-bound
 
     def _cleanup(self):
         self.setParent(None)
