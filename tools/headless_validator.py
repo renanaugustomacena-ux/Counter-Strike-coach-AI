@@ -1740,9 +1740,11 @@ def verify_qt_app_structure():
     themes_dir = qt_root / "themes"
     if not themes_dir.is_dir():
         raise AssertionError("apps/qt_app/themes/ directory missing")
-    qss_files = list(themes_dir.glob("*.qss"))
-    if not qss_files:
-        raise AssertionError("No .qss theme files found in apps/qt_app/themes/")
+    # F-0005: the design-atlas rebuild replaced per-theme .qss files with a
+    # single token-driven template rendered by qss_generator at runtime.
+    qss_template = themes_dir / "base.qss.template"
+    if not qss_template.exists():
+        raise AssertionError("apps/qt_app/themes/base.qss.template missing (qss_generator contract)")
     screens_dir = qt_root / "screens"
     if not screens_dir.is_dir():
         raise AssertionError("apps/qt_app/screens/ directory missing")
