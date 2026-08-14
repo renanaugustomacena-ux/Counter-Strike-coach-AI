@@ -6,6 +6,28 @@ PNGs eyeballed by name for UI waves), CI status both legs.
 
 (entries appended chronologically; R0 baseline lives in BASELINE.md)
 
+## W4 + W5 — 2026-08-14 — **tooling ratchet landed; hygiene preflight CLEAN**
+
+- W4: ruff introduced (pyproject curated E/F/B gate + pre-commit hook pinned;
+  ALL PASSES repo-wide after 115 safe F401/F541 autofixes; NEXT-family ladder
+  documented in-config). FIRST-RUN CATCH: lesson_generator had NO logger —
+  except-branch NameError (F-0012 class), fixed. Coverage floor RAISED 33→50
+  in pyproject AND build.yml together (P6-01 rule; suite at 55.8%). pip check
+  dependency gate added to the CI test job. mypy stays informational (W4c
+  ladder documented; F0 posture per course-09). black/isort remain at the
+  pre-commit pins that CI enforces (the operating truth — no mid-campaign bump).
+- W5 preflight (AUTHORITATIVE, per plan): git ls-files shows ZERO tracked
+  .db/.pt/.log/.dem/venv artifacts — the only tracked "binaries" are the two
+  deliberate fresh-install seeds (database.db.empty_backup,
+  hltv_metadata.db.empty_backup; tiny, filter-unspecified, KEPT by policy).
+  No stray checkpoint_hashes.json / portability_report.json on disk; both now
+  gitignored as insurance (+ Build_Health_Report/build_report). Line-ending
+  policy RESPECTED throughout (no renormalize — per .gitattributes 2026-07-02
+  doctrine); LFS attributes remain declared-but-dormant (no tracked db/pt).
+  Nothing deleted on disk; no git rm needed. R4 recon-contradiction risk
+  CLOSED: this clone was already clean.
+- Gate: suite 2574 passed / 0 failed; hooks fully green each commit; CI green.
+
 ## W3 — 2026-08-14 — **P2 behavioral batches complete; REGISTER FULLY RESOLVED (0 open)**
 
 - Batch A (safety family): F-0044 shadow pytest.ini deleted + config meta-test;
