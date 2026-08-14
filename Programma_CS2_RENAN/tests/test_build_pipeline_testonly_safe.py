@@ -9,6 +9,11 @@ import importlib.util
 from pathlib import Path
 from unittest.mock import MagicMock
 
+import pytest
+
+# build_pipeline hard-exits without rich (CLI-only dep, absent on CI runners).
+pytest.importorskip("rich", reason="build_pipeline requires rich (tools-only dep)")
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
