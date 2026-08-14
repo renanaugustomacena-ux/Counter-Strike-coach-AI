@@ -353,6 +353,22 @@ def process_new_demos(is_pro=False, high_priority=False, limit=0):
     process_queued_tasks(db_manager, storage, is_pro, high_priority, limit=effective_limit)
 
 
+def _claim_task(db_manager, task_id) -> bool:
+    """Atomically claim a queued task (F-0037). True iff WE claimed it."""
+    from sqlalchemy import update as _sa_update
+
+    from Programma_CS2_RENAN.backend.storage.db_models import IngestionTask
+
+    with db_manager.get_session() as session:
+        result = session.exec(
+            _sa_update(IngestionTask)
+            .where(IngestionTask.id == task_id, IngestionTask.status == "queued")
+            .values(status="processing", updated_at=datetime.now(timezone.utc))
+        )
+        session.commit()
+        return bool(getattr(result, "rowcount", 0))
+
+
 def process_queued_tasks(db_manager, storage, is_pro, high_priority, limit=0):
     """Orchestrates the ingestion of queued tasks with throttling."""
     from sqlmodel import select
@@ -375,14 +391,16 @@ def process_queued_tasks(db_manager, storage, is_pro, high_priority, limit=0):
     processed_count = 0
     total_tasks = len(tasks)
     for task in tasks:
-        # F6-13: Objects fetched in one session; do not access lazy-loaded attrs after
-        # session closes. Re-attach via session.add(task) before modifying, or
-        # re-fetch in the new session if lazy-loaded attributes are needed.
-        with db_manager.get_session() as session:
-            session.add(task)
-            task.status = "processing"
-            task.updated_at = datetime.now(timezone.utc)
-            session.commit()
+        # F-0037: ATOMIC CLAIM. The old path snapshot-SELECTed the queue and
+        # then blindly wrote status='processing' — any concurrent runner
+        # (home screen, settings, console ingest, batch_ingest,
+        # ingest_pro_demos, run_worker) took the same snapshot and both
+        # parsed the same demos, writing duplicate stats. The conditional
+        # UPDATE ... WHERE status='queued' is atomic at the SQL level:
+        # exactly ONE runner wins each task; losers skip silently.
+        if not _claim_task(db_manager, task.id):
+            logger.debug("Task %s already claimed by another runner — skipping.", task.id)
+            continue
 
         # Update progress in CoachState
         with db_manager.get_session("knowledge") as session_k:
