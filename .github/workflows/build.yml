@@ -101,6 +101,10 @@ jobs:
       VIRTUAL_ENV: 'ci'
       KIVY_NO_ARGS: '1'  # Transitional: needed while 24 Kivy files remain
       QT_QPA_PLATFORM: offscreen  # PySide6 tests run headless (no display on CI runners)
+      # Windows runner: QtWebEngine (embedded web views in MainWindow) crashes
+      # natively without these — same cure launch.sh applies on Linux GPUs.
+      QTWEBENGINE_CHROMIUM_FLAGS: '--disable-gpu --no-sandbox'
+      QT_OPENGL: software
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
