@@ -104,6 +104,25 @@ def severity_color(severity: str) -> QColor:
     return QColor(tokens.success)
 
 
+class _ThemeRelay(QObject):
+    """Module-level theme_changed relay (theme-staleness fix, CP0 #4).
+
+    ThemeEngine instances are per-boot, so instance-styled widgets could
+    not subscribe to restyle themselves — chips styled at construction
+    kept the OLD theme after a live switch. Widgets connect to this
+    relay; Qt auto-disconnects destroyed receivers.
+    """
+
+    theme_changed = Signal(str)
+
+
+_relay = _ThemeRelay()
+
+
+def get_theme_relay() -> _ThemeRelay:
+    return _relay
+
+
 class ThemeEngine(QObject):
     """Loads and applies QSS themes + QPalette colors + fonts + wallpapers."""
 
@@ -176,6 +195,7 @@ class ThemeEngine(QObject):
 
         # Notify widgets that the theme changed
         self.theme_changed.emit(name)
+        _relay.theme_changed.emit(name)
 
     # ── Font Management ──
 
