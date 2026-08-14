@@ -6,6 +6,42 @@ PNGs eyeballed by name for UI waves), CI status both legs.
 
 (entries appended chronologically; R0 baseline lives in BASELINE.md)
 
+## Phase C boundary — 2026-08-14 (batches B46–B61, 60 files / ~33,000 LOC read)
+
+- Scope: BOTH tools directories end-to-end — console.py solo + S5 sweeps (B46), root
+  CLIs (B47), headless_validator solo (B48), verify/portability tools (B49), UI
+  tooling (B50), shard/db-maintenance/repair/pipeline/eval/seed/supply-chain tools
+  (B51–B56), misc+fuzz+docs tooling (B57), then Programma_CS2_RENAN/tools complete:
+  hltv group (B58), goliath+D2A (B59), inspectors (B60), infra+consolidated
+  utilities (B61). Ledger: 411/617 rows read (66.6%).
+- Commits: 0c6f9fc f5cf0c7 6bbabd2 a55a148 fceba4c 76d88b3 02d8c00 227eba1 553601e
+  677add1 319792d 86c3fe0 66e8a43 ddd67fd 2b563c3 7f6877e (+ this boundary commit).
+  All pushed.
+- Findings this phase: **F-0037 grown to five trigger surfaces; F-0038 three screens;
+  F-0039 registered→P1, census CLOSED at 13 bare-invocation mutating members;
+  F-0040 (P1) build_pipeline sanitizes BEFORE honoring --test-only (compounds
+  F-0039 via the verify_all_safe special-case); F-0041 (P2) build_tools triple
+  drift + space-unsafe interpolation (the repo's one shell=True, closed from S5);
+  F-0042 (P2) manual-entry percent-into-ratio pro rows.** F-0014 evidence grew to
+  3 tools (goliath entry-point + dead_code ENTRY_POINTS; manifest itself is clean).
+  Register now F-0001..F-0042: 8× P1, 0× P0.
+- Cross-cutting closures: verify_all_safe scope precisely mapped (root tools/
+  rglob — ptools entirely outside); MCIV lineage resolved (probe player named
+  after the superseded Clinical_Integration_Validator); dataset_split ownership
+  contract (insert-time provisional → data_pipeline temporal P-DP-02 owns);
+  StatCard identity contract (player_id-only upsert, one-card invariant,
+  (player_id,time_span) uniqueness deferred by H1); KAST provenance ladder
+  (estimator → event-accurate by data_quality); DEFAULT_STATS sentinel origin
+  found (seed_hltv_top20); F-0001 manifest re-verified LIVE: 45 changed / 15 new /
+  0 removed, exit 1 — identical to R0 (campaign added zero drift).
+- Gate (full suite + cov, Windows `-p no:timeout`): **2 failed, 2500 passed,
+  48 skipped, 5 errors — 75.1s — IDENTICAL to R0 baseline** (known reds
+  F-0002/F-0003 only; no regression from audit commits). Coverage 55.40% ≥ 33%.
+- test_ui_smoke.py (named run): **4/4 green in 8.02s** (screen walk, theme
+  switching, language roundtrip, collapse/resize).
+- CI: not triggered (docs-only; F-0004 filter). Render matrix: unchanged (no UI
+  edits).
+
 ## Phase U boundary — 2026-08-14 (batches B34–B45, ~90 files / ~19,900 LOC read)
 
 - Scope: entire apps/qt_app — app shell + core bridges (B34), theme/tokens
