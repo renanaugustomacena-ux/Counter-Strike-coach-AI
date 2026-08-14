@@ -4,7 +4,7 @@ import errno
 import os
 import shutil
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QThreadPool, Qt, Signal
 from PySide6.QtWidgets import (
     QFileDialog,
     QFrame,
@@ -802,25 +802,39 @@ class WizardScreen(QWidget):
     # ── Finish ──
 
     def _finish(self):
-        # Create PlayerProfile in DB so coaching pipeline can find it
+        # F-0038: the PlayerProfile creation used to run HERE on the GUI
+        # thread (WZ finish froze on a busy WAL). It now rides a Worker;
+        # the wizard completes immediately — the row is best-effort and the
+        # coaching pipeline re-ensures it on first use.
         if self._player_name:
-            try:
-                from sqlmodel import select
+            from Programma_CS2_RENAN.apps.qt_app.core.worker import Worker
 
-                from Programma_CS2_RENAN.backend.storage.database import get_db_manager
-                from Programma_CS2_RENAN.backend.storage.db_models import PlayerProfile
-
-                with get_db_manager().get_session() as session:
-                    existing = session.exec(
-                        select(PlayerProfile).where(PlayerProfile.player_name == self._player_name)
-                    ).first()
-                    if not existing:
-                        session.add(PlayerProfile(player_name=self._player_name))
-                        session.commit()
-                        logger.info("Created PlayerProfile for '%s'", self._player_name)
-            except Exception:
-                logger.exception("Failed to create PlayerProfile during wizard finish")
+            worker = Worker(self._ensure_profile_row, self._player_name)
+            worker.signals.error.connect(
+                lambda err: logger.error("Wizard profile creation failed: %s", err)
+            )
+            QThreadPool.globalInstance().start(worker)
 
         save_user_setting("SETUP_COMPLETED", True)
         logger.info("Setup wizard completed")
         self.setup_completed.emit()
+
+    @staticmethod
+    def _ensure_profile_row(player_name: str) -> None:
+        """Worker thread — DB only, no widget access."""
+        try:
+            from sqlmodel import select
+
+            from Programma_CS2_RENAN.backend.storage.database import get_db_manager
+            from Programma_CS2_RENAN.backend.storage.db_models import PlayerProfile
+
+            with get_db_manager().get_session() as session:
+                existing = session.exec(
+                    select(PlayerProfile).where(PlayerProfile.player_name == player_name)
+                ).first()
+                if not existing:
+                    session.add(PlayerProfile(player_name=player_name))
+                    session.commit()
+                    logger.info("Created PlayerProfile for '%s'", player_name)
+        except Exception:
+            logger.exception("Failed to create PlayerProfile during wizard finish")

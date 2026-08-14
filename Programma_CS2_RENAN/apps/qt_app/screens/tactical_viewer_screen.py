@@ -1662,28 +1662,46 @@ class TacticalViewerScreen(QWidget):
         stem = getattr(self, "_loaded_demo_stem", None)
         if not stem:
             return
+
+        # F-0038: the match_id lookup used to run on the GUI thread right
+        # after demo load (429M-row table; a slow probe froze the viewer).
+        # It now rides a Worker; scan_match fires in the result slot.
+        from Programma_CS2_RENAN.apps.qt_app.core.worker import Worker
+
+        worker = Worker(self._resolve_match_id_for_cm, stem)
+        worker.signals.result.connect(self._on_cm_match_resolved)
+        worker.signals.error.connect(
+            lambda err: logger.warning("Chronovisor scan wiring failed for %r: %s", stem, err)
+        )
+        QThreadPool.globalInstance().start(worker)
+
+    @staticmethod
+    def _resolve_match_id_for_cm(stem: str):
+        """Worker thread — DB only, no widget access."""
+        from sqlmodel import select
+
+        from Programma_CS2_RENAN.backend.storage.database import get_db_manager
+        from Programma_CS2_RENAN.backend.storage.db_models import PlayerTickState
+
+        with get_db_manager().get_session() as session:
+            return session.exec(
+                select(PlayerTickState.match_id)
+                .where(PlayerTickState.demo_name == stem)
+                .limit(1)
+            ).first()
+
+    def _on_cm_match_resolved(self, match_id):
+        """Main-thread slot."""
+        if match_id is None:
+            logger.info(
+                "Chronovisor: demo not found in DB — CM scan skipped "
+                "(transport stays disabled)"
+            )
+            return
         try:
-            from sqlmodel import select
-
-            from Programma_CS2_RENAN.backend.storage.database import get_db_manager
-            from Programma_CS2_RENAN.backend.storage.db_models import PlayerTickState
-
-            with get_db_manager().get_session() as session:
-                match_id = session.exec(
-                    select(PlayerTickState.match_id)
-                    .where(PlayerTickState.demo_name == stem)
-                    .limit(1)
-                ).first()
-            if match_id is None:
-                logger.info(
-                    "Chronovisor: demo %r not found in DB — CM scan skipped "
-                    "(transport stays disabled)",
-                    stem,
-                )
-                return
             self._chronovisor_vm.scan_match(int(match_id))
         except Exception as exc:
-            logger.warning("Chronovisor scan wiring failed for %r: %s", stem, exc)
+            logger.warning("Chronovisor scan_match failed: %s", exc)
 
     def _jump_next_cm(self):
         tick = self._playback_vm.get_current_tick()

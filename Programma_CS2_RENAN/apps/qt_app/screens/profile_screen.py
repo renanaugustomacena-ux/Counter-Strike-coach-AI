@@ -8,7 +8,7 @@ Below: Related navigation mini-cards, a "Stored locally" TipBox and the
 mono data-source footer.
 """
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QThreadPool, Qt, QTimer
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
@@ -254,7 +254,22 @@ class ProfileScreen(QWidget):
             return
         save_user_setting("CS2_PLAYER_NAME", name)
 
-        # Ensure a PlayerProfile row exists in DB for the coaching pipeline
+        # F-0038: the PlayerProfile upsert used to run HERE, on the GUI
+        # thread (doctrine breach — screens never touch the DB; a busy WAL
+        # froze the click). The DB work now rides a Worker; the UI updates
+        # in the result slot.
+        from Programma_CS2_RENAN.apps.qt_app.core.worker import Worker
+
+        worker = Worker(self._ensure_profile_row, name)
+        worker.signals.result.connect(self._on_profile_saved)
+        worker.signals.error.connect(
+            lambda err: logger.error("Profile save failed: %s", err)
+        )
+        QThreadPool.globalInstance().start(worker)
+
+    @staticmethod
+    def _ensure_profile_row(name: str) -> dict:
+        """Runs on the worker thread — DB only, no widget access."""
         profile_id = None
         try:
             from sqlmodel import select
@@ -279,8 +294,11 @@ class ProfileScreen(QWidget):
         row = {"player_name": name}
         if profile_id is not None:
             row["id"] = profile_id
-        self._refresh_record_card(row)
+        return row
 
+    def _on_profile_saved(self, row: dict):
+        """Main-thread slot: widget updates only."""
+        self._refresh_record_card(row)
         self._saved_chip.setVisible(True)
         QTimer.singleShot(2500, lambda: self._saved_chip.setVisible(False))
-        logger.info("Player name saved: %s", name)
+        logger.info("Player name saved: %s", row.get("player_name"))
