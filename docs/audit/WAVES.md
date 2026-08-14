@@ -6,6 +6,38 @@ PNGs eyeballed by name for UI waves), CI status both legs.
 
 (entries appended chronologically; R0 baseline lives in BASELINE.md)
 
+## Phase N boundary — 2026-08-14 (batches B19–B25, 52 files / ~11,300 LOC read)
+
+- Scope: entire backend/nn — foundations, JEPA/VL-JEPA model + both trainers,
+  training orchestrator (solo), support/observatory, coach_manager + ghost
+  inference + superposition, both rap_coach trees. Study module
+  33-profiling-memoria-gc (STUDY_LOG row; leak-catalog lens applied — all
+  training paths CLEAN on .item()/detach/bounded-cache discipline).
+- Commits: dea0d2a (B19), 97dd1c2 (B20), f714e36 (B21), 2067e67 (B22),
+  ec9bf6b (B23), 9fb4117 (B24), 5e12991 (B25). All pushed.
+- Findings: F-0023..F-0026 registered (4× P2, all ML-correctness): VL-JEPA
+  BCE-on-raw-cosine miscalibration (labels unfittable, train/readout
+  divergence); P9-02 collapse hard-stop bypassed on the production
+  orchestrator path; RAP labels computed under a team attribute the monolith
+  rows don't have (EMPIRICAL: no `team` column → every sample CT-perspective);
+  RAP train/serve tensor-resolution skew (64² training vs 128/224 at all
+  THREE inference sites — P-SR-02 injection exists, unused). Three of four
+  gated behind USE_RAP_MODEL=False. F-0016/F-0020 blast radii widened
+  (concept labels; neural role head starved by missing CSV).
+- S2 sweep DISSOLVED: rap_coach non-experimental tree = clean P9-01 shims,
+  zero drift (sweeps/S-2.md). Three-training-paths question closed (all
+  alive by design). B19/B23 zero-findings batches; persistence.py +
+  vectorizer-grade quality (GAP-07 sidecars, CTF-1 hashes, atomic saves).
+  CP0 status items: JEPA finetune deliberately disabled (26-RANGE-01/
+  TASKS#64); win-prob predictor heuristic-only until R9 12-dim retrain;
+  RAP-quality cluster (F-0025/F-0026 + concept→topic modulo scramble + EN
+  advice) gates any future USE_RAP_MODEL enablement.
+- Gate (full suite + cov, Windows `-p no:timeout`): **2 failed, 2500 passed,
+  48 skipped, 5 errors — 71.8s — IDENTICAL to R0 baseline** (known reds
+  F-0002/F-0003 only). Coverage floor passed. test_ui_smoke.py: 4/4 green
+  (named run, 7.6s).
+- CI: not triggered (docs-only; F-0004 filter). Render matrix: unchanged.
+
 ## Phase A boundary — 2026-08-14 (batches B16–B18, 12 files / 4,585 LOC read)
 
 - Scope: backend/analysis complete — win probability + Elo, engagement range,
