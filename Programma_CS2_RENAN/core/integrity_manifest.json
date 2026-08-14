@@ -275,7 +275,7 @@
     "core/constants.py": "13dfb30d3d430319032f6c2bc1e1b598beb7fa9931a764d575b135e911a4d000",
     "core/demo_frame.py": "7d4eb49f37b061dc45d9ae1c70773940ffbb3585b66631eeb792278185382c16",
     "core/frozen_hook.py": "ef258579eddf5b6b1779f1432c9f83b0b74931d9f71d03ec55c7b464d6b5226c",
-    "core/lifecycle.py": "cdf0bf143ff29721ba9b78ea48211039c31938fa2e00c1a91632b5ecb6557386",
+    "core/lifecycle.py": "36fcaa66b959b6ec83a74f028096c16ad8d280301b15abe9e85b174839d53633",
     "core/localization.py": "78de91c6749e1251f54d0446865b6f9c04432af1e8fc4f2dd44f79a33bbb05f0",
     "core/lock_files.py": "ec87cf5dedac7dd9dd18ed7b965c94723dc4d5559485c62b7cabafc85f07af07",
     "core/map_callouts.py": "425ea95f61b4aa317969e15953b3216d224088bacfac4c75e2e1fa3fa94ef901",

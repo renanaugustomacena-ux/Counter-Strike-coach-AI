@@ -33,15 +33,29 @@ class AppLifecycleManager:
 
     def ensure_single_instance(self):
         """
-        Enforces Single Instance Rule using Windows Named Mutex.
+        Enforces the Single Instance Rule.
         Returns: True if this is the only instance, False otherwise.
 
-        Note: On non-Windows platforms this is a no-op (always returns True)
-        because the project currently targets Windows-only deployments.
+        Windows: named kernel mutex. POSIX (F-0010): the in-house
+        lock_files named lock — Linux IS the deploy target, and two
+        instances mean concurrent SQLite writers, the exact hazard this
+        guard exists to prevent ("fail closed to protect the DB").
         """
         if sys.platform != "win32":
-            # Non-Windows: no single-instance enforcement (Windows-centric project)
-            return True
+            # F-0010: real enforcement via the TOCTOU-hardened named lock
+            # (dead-PID reclaim included). Fail closed on conflict.
+            try:
+                from Programma_CS2_RENAN.core import lock_files
+
+                lock_files.acquire("app_single_instance")
+                self._instance_lock_name = "app_single_instance"
+                return True
+            except lock_files.LockConflict:
+                logger.warning("Another instance of Macena CS2 Analyzer is already running.")
+                return False
+            except Exception:
+                logger.exception("Single-instance lock could not be established — failing closed")
+                return False
 
         try:
             kernel32 = ctypes.windll.kernel32
@@ -168,6 +182,15 @@ class AppLifecycleManager:
 
         # Mutex is released automatically by OS on process exit,
         # but explicit close is good hygiene.
+        # F-0010: POSIX shutdown releases the named single-instance lock.
+        if getattr(self, "_instance_lock_name", None) and sys.platform != "win32":
+            try:
+                from Programma_CS2_RENAN.core import lock_files
+
+                lock_files.release(self._instance_lock_name)
+            except Exception:
+                logger.debug("single-instance lock release failed", exc_info=True)
+
         if self._instance_mutex and sys.platform == "win32":
             try:
                 ctypes.windll.kernel32.CloseHandle(self._instance_mutex)
