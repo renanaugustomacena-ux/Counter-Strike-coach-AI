@@ -14,6 +14,7 @@ from Programma_CS2_RENAN.backend.processing.feature_engineering.rating import (
     BASELINE_KPR,
 )
 from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE
+from Programma_CS2_RENAN.backend.data_sources.parse_guard import is_parse_error
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.demo_parser")
@@ -57,7 +58,9 @@ def parse_demo(demo_path: str, target_player: Optional[str] = None) -> pd.DataFr
             return pd.DataFrame()
 
         return _extract_stats_with_full_fields(parser, len(rounds_df), target_player)
-    except (OSError, ValueError, RuntimeError, KeyError) as e:
+    except BaseException as e:  # noqa: BLE001 — F-0006, filtered by is_parse_error
+        if not is_parse_error(e):
+            raise
         logger.exception("parse_demo failed for %s: %s", demo_name, e)
         return pd.DataFrame()
 
@@ -311,7 +314,9 @@ def _compute_event_kast(parser, d_df, d_name_col, total_rounds):
     try:
         header = parser.parse_header()
         tick_rate = int(float(header.get("tick_rate", 64) or 64))
-    except Exception as e:
+    except BaseException as e:  # noqa: BLE001 — F-0006, filtered by is_parse_error
+        if not is_parse_error(e):
+            raise
         logger.warning("Header parse failed for KAST trade window — using DEFAULT_TICK_RATE: %s", e)
         tick_rate = DEFAULT_TICK_RATE
 
@@ -648,6 +653,8 @@ def parse_sequential_ticks(demo_path: str, target_player: str, start_tick: int =
             _time.monotonic() - t_start,
         )
         return df
-    except (OSError, ValueError, RuntimeError, KeyError) as e:
+    except BaseException as e:  # noqa: BLE001 — F-0006, filtered by is_parse_error
+        if not is_parse_error(e):
+            raise
         logger.exception("Seq failure for %s", demo_path)
         return pd.DataFrame()

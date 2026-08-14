@@ -29,6 +29,7 @@ from Programma_CS2_RENAN.backend.storage.state_manager import (  # NEW: For prog
 from Programma_CS2_RENAN.backend.storage.storage_manager import StorageManager
 from Programma_CS2_RENAN.core.config import MIN_DEMOS_FOR_COACHING, refresh_settings
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
+from Programma_CS2_RENAN.backend.data_sources.parse_guard import is_parse_error
 
 logger = get_logger("cs2analyzer.ingestion_runner")
 
@@ -1105,7 +1106,9 @@ def _parse_demo_header_meta(demo_path) -> tuple[str, float]:
     default_tr = 64.0
     try:
         header = _DemoParser(str(demo_path)).parse_header()
-    except Exception as exc:
+    except BaseException as exc:  # noqa: BLE001 — F-0006, filtered by is_parse_error
+        if not is_parse_error(exc):
+            raise
         logger.warning(
             "Failed to read demo header for %s: %s (defaults map=%s tick_rate=%.1f)",
             demo_path,
