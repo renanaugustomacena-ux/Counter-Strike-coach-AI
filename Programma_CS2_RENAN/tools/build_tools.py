@@ -28,10 +28,12 @@ console = Console()
 
 
 def run_command(cmd, label, cwd=None, capture=False):
-    """Execute a command with status reporting."""
-    import shlex
+    """Execute a command with status reporting.
 
-    cmd_list = shlex.split(cmd) if isinstance(cmd, str) else cmd
+    F-0041: pass argv LISTS. shlex.split on a Windows path eats
+    backslashes (posix rules) and splits on spaces.
+    """
+    cmd_list = list(cmd) if not isinstance(cmd, str) else cmd.split()
     try:
         result = subprocess.run(
             cmd_list,
@@ -76,36 +78,56 @@ def cmd_build(args):
 
     console.section("Pre-Build Checks")
     ok, _ = run_command(
-        "python -m black --check --line-length 100 Programma_CS2_RENAN/", "Black format check"
+        [sys.executable, "-m", "black", "--check", "--line-length", "100", "Programma_CS2_RENAN/"],
+        "Black format check",
     )
-    if not ok and not getattr(args, "force", False):
+    if not ok:
         print("  Run 'black Programma_CS2_RENAN/' to fix formatting.")
+        # F-0041(d): --force now does what its help says — without it,
+        # lint failures BLOCK the build.
+        if not getattr(args, "force", False):
+            sys.exit(1)
 
     ok, _ = run_command(
-        "python -m isort --check --profile black --line-length 100 Programma_CS2_RENAN/",
+        [
+            sys.executable,
+            "-m",
+            "isort",
+            "--check",
+            "--profile",
+            "black",
+            "--line-length",
+            "100",
+            "Programma_CS2_RENAN/",
+        ],
         "isort import check",
     )
 
     console.section("Test Suite")
-    ok, _ = run_command("python -m pytest Programma_CS2_RENAN/tests/ -x -q", "Pytest suite")
+    ok, _ = run_command(
+        [sys.executable, "-m", "pytest", "Programma_CS2_RENAN/tests/", "-x", "-q"], "Pytest suite"
+    )
     if not ok:
         print("  ABORT: Tests must pass before build.")
         sys.exit(1)
 
     console.section("Database Migration")
-    ok, _ = run_command("python -m alembic upgrade head", "Alembic migration")
+    ok, _ = run_command([sys.executable, "-m", "alembic", "upgrade", "head"], "Alembic migration")
     if not ok:
         print("  ABORT: Database migration must succeed before build.")
         sys.exit(1)
 
     console.section("PyInstaller Build")
-    spec_file = SOURCE_ROOT / "macena.spec"
+    # F-0041(e): the real spec lives in packaging/ — the old phantom spec
+    # name never existed after the packaging move; the tool could never build.
+    spec_file = PROJECT_ROOT / "packaging" / "cs2_analyzer_win.spec"
     if spec_file.exists():
         ok, _ = run_command(
-            f"python -m PyInstaller --clean --noconfirm {spec_file}", "PyInstaller build"
+            [sys.executable, "-m", "PyInstaller", "--clean", "--noconfirm", str(spec_file)],
+            "PyInstaller build",
         )
     else:
-        console.check("PyInstaller build", False, detail="macena.spec not found")
+        console.check("PyInstaller build", False, detail=f"{spec_file} not found")
         ok = False
 
     if ok:
@@ -181,9 +203,9 @@ def cmd_verify(args):
 
     # Required files
     console.section("Required Files")
-    required = ["macena.spec"]  # Add more as needed
+    required = ["packaging/cs2_analyzer_win.spec"]  # F-0041(e)
     for req in required:
-        p = SOURCE_ROOT / req
+        p = PROJECT_ROOT / req
         console.check(f"{req} exists", p.exists())
 
     # SHA256 manifest
@@ -191,8 +213,14 @@ def cmd_verify(args):
     manifest = dist_dir / "build_manifest.json"
     if manifest.exists():
         data = json.loads(manifest.read_text())
+        # F-0041(b): the writer emits {"binaries": [...]} since the R4
+        # multi-artifact fix; the old single-binary check could never pass.
+        binaries = data.get("binaries", [])
+        ok_manifest = bool(binaries) and all("sha256" in b for b in binaries)
         console.check(
-            "Build manifest valid", "sha256" in data, detail=f"file={data.get('file', '?')}"
+            "Build manifest valid",
+            ok_manifest,
+            detail=f"{len(binaries)} attested binaries",
         )
     else:
         console.check("Build manifest", False, detail="not found (run build first)")
@@ -237,19 +265,20 @@ def cmd_debug_build(args):
     """Run build with real-time error analysis and categorization."""
     console.header("Build Debugger", "3.0")
 
-    spec_file = SOURCE_ROOT / "macena.spec"
+    spec_file = PROJECT_ROOT / "packaging" / "cs2_analyzer_win.spec"
     if not spec_file.exists():
-        print("  macena.spec not found.")
+        print(f"  {spec_file} not found.")
         sys.exit(1)
 
-    cmd = f"python -m PyInstaller --clean --noconfirm {spec_file}"
-    print(f"  Running: {cmd}")
+    cmd = [sys.executable, "-m", "PyInstaller", "--clean", "--noconfirm", str(spec_file)]
+    print(f"  Running: {' '.join(cmd)}")
     print(f"  Streaming output...\n")
 
     errors = []
+    # F-0041(a): argv list, shell=False — the old shell=True string broke on
+    # space-containing paths and was the repo's only B602.
     process = subprocess.Popen(
         cmd,
-        shell=True,  # nosec B602 — internal build tool, not user input
         cwd=str(PROJECT_ROOT),
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -308,7 +337,8 @@ def cmd_manifest(args):
             print("  Manifest not found.")
             sys.exit(1)
         data = json.loads(manifest_path.read_text())
-        print(f"  Manifest loaded: {len(data.get('files', {}))} files")
+        # F-0041(c): the sync tool writes "hashes", not "files".
+        print(f"  Manifest loaded: {len(data.get('hashes', {}))} files")
         sys.exit(0)
 
     # Generate manifest
