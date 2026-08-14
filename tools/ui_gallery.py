@@ -172,7 +172,7 @@ def build_chat_page() -> QWidget:
     col.addWidget(_section("ChatPanel · frame 07"))
     chat = ChatPanel()
     chat.setMinimumHeight(660)
-    chat.set_status(True, "ollama", "gemma3:e2b")
+    chat.set_status(True, "ollama", "gemma4:e2b")
     chat.add_message(
         "coach",
         "Hey macena — analyzed your last 10 Mirage matches.\n"

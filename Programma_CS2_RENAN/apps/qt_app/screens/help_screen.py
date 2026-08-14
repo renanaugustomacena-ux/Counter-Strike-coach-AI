@@ -185,7 +185,7 @@ _GETTING_STARTED_STEPS = (
     (
         "help_step5",
         "Chat with the AI Coach",
-        "Requires Ollama + gemma3:e2b model — see AI Coach section",
+        "Requires Ollama + gemma4:e2b model — see AI Coach section",
     ),
 )
 

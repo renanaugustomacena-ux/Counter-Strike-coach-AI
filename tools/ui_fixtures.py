@@ -682,7 +682,7 @@ def inject_coach(screen: Any) -> None:
     screen._on_belief(0.73)
     screen._set_driver_stats(dict(COACH_DRIVER_STATS))
     screen._on_insights([dict(i) for i in COACH_INSIGHTS])
-    screen._set_llm_model("gemma3:e2b")
+    screen._set_llm_model("gemma4:e2b")
     screen._on_chat_availability(True)
     screen._set_chat_open(True)  # pure UI toggle — kicks no VM work
     screen._render_messages([dict(m) for m in COACH_CHAT])

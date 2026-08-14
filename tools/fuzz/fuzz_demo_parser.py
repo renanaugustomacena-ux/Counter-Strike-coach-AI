@@ -250,7 +250,7 @@ def main(argv: list[str] | None = None) -> int:
         return _reproduce(args, log)
 
     if not _demoparser2_available():
-        log.error("demoparser2 is not installed; cannot fuzz. " "pip install demoparser2==0.41.1")
+        log.error("demoparser2 is not installed; cannot fuzz. " "pip install demoparser2==0.41.4")
         return 2
 
     args.crash_dir.mkdir(parents=True, exist_ok=True)
