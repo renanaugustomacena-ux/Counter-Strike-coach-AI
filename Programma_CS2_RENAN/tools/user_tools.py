@@ -124,6 +124,11 @@ def cmd_manual_entry(args):
             adr = float(input("  ADR: "))
             kast = float(input("  KAST %: "))
             hs = float(input("  Headshot %: "))
+            # F-0042 (V-2 normalization, same rule as seed_hltv_top20): the
+            # DB columns are RATIO-scale [0,1]; typed percents (71) used to
+            # land raw as is_pro=True rows and poison pro baselines ~100x.
+            kast = kast / 100.0 if kast > 1.0 else kast
+            hs = hs / 100.0 if hs > 1.0 else hs
             kd = float(input("  K/D Ratio: "))
             impact = float(input("  Impact rounds (share of rounds with a kill, 0-1): "))
             accuracy = float(input("  Accuracy: "))
