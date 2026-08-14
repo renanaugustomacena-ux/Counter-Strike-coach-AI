@@ -112,10 +112,55 @@ Assembled 2026-08-14. THE SYSTEMIC REGISTER ENTRY (CP0 decision cluster).
 
 
 ## L8 — Numerical & ML correctness
-(pending)
+Assembled 2026-08-14.
+
+| Domain | Contract & state | Evidence |
+|---|---|---|
+| rating_* scale | RAW HLTV components in columns; normalization ONLY in `rating` aggregate; THREE writers pinned to compute_rating_components; **GAP: repair_rating_scale stdlib mirror NOT in the parity net** (W3: 4th parity class) | test_rating_components_contract, D-B61/B72 |
+| KAST provenance ladder | estimate_kast_from_stats (closed-form, ~0.91 inflation documented) → event-accurate (repair_kast) by data_quality tier; tests pin BOUNDS not accuracy (correct given the ladder) | D-B53/59, test_feature_kast_roles |
+| dataset_split ownership | FOUR writers enumerated: coach_manager.assign_dataset_splits (chronological 70/15/15, per-cohort), data_pipeline P-DP-02 (temporal + player decontamination, bulk chunked), D2A MD5 insert-time (provisional), register_orphan UNASSIGNED; pipeline re-derives each cycle → insert-time values provisional BY DESIGN; T-DIAG live-verified the boundary math (2 rows → TRAIN+TEST) | D-B59/B61/B63, T-DIAG |
+| Percent-vs-ratio boundary | V-2 normalization (>1.0→÷100) at seed/vision writers; VM dual-scale display tolerance; **manual-entry hole = F-0042** (consumer confirmed unfiltered); conftest seeded_hltv_session encodes PRE-fix percent scale (W2 companion) | D-B58/61/62 |
+| MR12 format awareness | half-switch at 13 (not 16), OT $10k, [13,36] round band (81% mis-flag war story) | test_game_theory, D-B59 |
+| Determinism | GLOBAL_SEED=42; B1 per-epoch rotation (train=seed+epoch, val fixed); DET-01 window fetch reproducible; seeded probes in falsification tools | test_nn_config_reproducibility, test_training_orchestrator_flows, B60 |
+| Calibration math | 26-WINPROB-03 Platt Newton-Raphson vs closed-form ground truth (Hessian-sign divergence pinned); ECE Naeini in eval_harness; anti-fabrication: eco rows DROPPED not mapped (belief), per-starting-side outcomes only (populate_match_results) | test_analysis_engines_extended, B52/55 |
+| NaN/Inf discipline | vectorizer clamp gate (thread-local); _prepare_tensors None guard (Bug#4 FIXED — stale demo tests noted W3); Inf-yaw sanitize; NaN/Inf checkpoint scans | B63, test_playback_engine, ML debugger |
+
 
 ## L9 — Security & input boundaries
-(pending)
+Assembled 2026-08-14.
+
+| Boundary | Contract & state | Evidence |
+|---|---|---|
+| Secrets | OS keyring for 3 API keys (FE-04/FE-06, STORAGE gap war story fixed); no key fragments printed (F8-10/P7-02); repo-wide hardcode scans AS TESTS; detect-secrets + Bandit MEDIUM+ in CI; .env gitignored w/ example | B61 verify, test_security, build.yml |
+| Demo ingest path | FE-03 realpath containment + .dem allowlist + MIN_DEMO_SIZE (DS-12); PanicException gap = **F-0006** (P1, all demoparser2 sites); fuzz harness Phase 1 + nightly (develop-only) | B42, register, B76 |
+| LLM boundary | sanitize_llm_context prompt-injection tests; R3/R4 anti-fabrication doctrine; Ollama-absent honest exits | test_security_hardening, B55 |
+| SQL | see L3 row (validators tested; nosec justified) | test_security_hardening |
+| Network | DS-08 SSRF prevention TESTED (remote_file_server); FlareSolverr local-only compose; robots.txt preflights on scrapers; retry+backoff over fetch throttle | test_handoff_regressions, B56 |
+| Supply chain | actions SHA-pinned (POL-CI-01 enforced BY policy file + practice); model pins C-MOD-01; compose digests C-DOCK-01 (compose still tag-pinned — W4/W5); SBOM CycloneDX; binary hash-lock post-build; pip-audit CI | B56/B76 |
+| Shell | ONE shell=True total (F-0041, internal+broken); shlex+shell=False elsewhere; `svc spawn` path traversal P3 (B46) | S5, register |
+| Wipe safety | wipe gold standard (HMAC snapshots, JSONL audit, dry-run default); the DANGEROUS family = F-0039/F-0040/F-0041/F-0043 cluster (CP0 headline) | B52, register |
+| Governance | SECURITY/ full set + policy_runner (§54) + waivers w/ expiry + threat-model-gate on boundary files | B54/B76 |
+
 
 ## L10 — API-contract drift & dead code
-(pending)
+Assembled 2026-08-14. Consolidated dead/drift ledger (W3 fuel).
+
+| Item | Class | Source |
+|---|---|---|
+| SvgIconProvider: 15 zero-caller game-glyph methods | dead API | B35/B38 census |
+| chronovisor cancel_scan never called | dead API | B42 |
+| goliath.py CLI vs console dispatch duplication; Goliath_Hospital overlap | duplication | B47/B59 |
+| dead_code_detector ENTRY_POINTS lists deleted main.py (masks orphans under it) | stale anchor (F-0014 x-ref) | B57 |
+| scripts/build_exe.bat — Kivy corpse building deleted main.py | dead script (W3 delete) | B76 |
+| Root integrity_manifest.json stale duplicate | dead config (W1 delete) | B76 (F-0001) |
+| build_tools.py: phantom macena.spec + 2 schema-drift readers + no-op --force | drift cluster = **F-0041** | B61/B76 |
+| db_inspector done/error status keys (sibling fixed) | drift (P3 W3) | B61 |
+| mine_coaching_experience duplicates round_utils.infer_round_phase (untested copy) | duplication | B55, test_coper_pathway |
+| repair_rating_scale constants mirror unpinned | accepted-w/-gap (W3 parity test) | B61/B72 |
+| _infra.validate_tool_contract zero callers (candidate) | dead API (verify at W3) | B61 |
+| verify_*.py root scripts not pytest-collected | tier labeling (S7/W3) | B75 |
+| ~18 production __main__ debug blocks | debt list | S5 |
+| fuzzer help text demoparser2==0.41.1 vs pinned 0.41.4 | doc drift (P3) | B76 |
+| help_screen + 3 tooling sites: gemma3 vs gemma4 | stale strings (W3/W6) | B45/B50 |
+| Stale Bug#4 demonstration tests (never call production) | test debt (W3) | B63 |
+
