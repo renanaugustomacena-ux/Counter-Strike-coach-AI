@@ -86,3 +86,15 @@ production checkpoints byte-identical (hash-verified) and the only DB
 delta was the dry-run's own documented split-label write.
 
 **Approve the wave plan (or amend the clusters above) and W1 starts.**
+
+---
+## Decision log (user, 2026-08-14)
+- **APPROVED**: wave plan W1–W6 as written.
+- **#3 language**: coaching advice STAYS ENGLISH (product decision;
+  document at W6; zero test churn). UI-chrome i18n gaps still fixed.
+- **#1/F-0039**: FIX not delete — gate the runner + make the tools
+  harmless on bare invocation ("o eliminarli o sistemarli così non
+  sono più dannosi" → sistemarli).
+- **#5 JEPA 25-vs-10**: explained; stays GUARDED (design decision
+  deferred; docs note at W6).
+- All other clusters: proposed defaults approved.
