@@ -152,8 +152,9 @@ def set_secret(key: str, value: str) -> bool:
     Returns:
         True if successful, False if keyring unavailable
 
-    Raises:
-        RuntimeError: If keyring storage fails
+    Returns:
+        False when keyring is unavailable or storage fails — callers fall
+        back to the FE-04 plaintext path (F-0007: never raises).
     """
     if not keyring:
         app_logger.warning("Keyring unavailable, cannot store secret '%s'", key)
@@ -164,8 +165,12 @@ def set_secret(key: str, value: str) -> bool:
         app_logger.info("Secret '%s' stored in keyring", key)
         return True
     except Exception as e:
+        # F-0007: degrade like get_secret — on Linux (the deploy target)
+        # a missing keyring backend used to RAISE out of the settings-save
+        # path, crashing the UI save. False routes the caller to the
+        # FE-04 plaintext fallback (chmod 600) instead.
         app_logger.error("Failed to store secret '%s' in keyring: %s", key, e)
-        raise RuntimeError(f"Keyring storage failed for '{key}': {e}") from e
+        return False
 
 
 def mask_secret(value: str) -> str:
