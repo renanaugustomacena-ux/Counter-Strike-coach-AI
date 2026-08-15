@@ -11,7 +11,7 @@
 > *Questa è la sezione che scrive Renan. La sua voce, la sua storia, il perché di queste metafore. Non posso sostituirlo qui. Il paragrafo che segue è un segnaposto finché Renan non lo riempie — non è opera mia, e dovrà essere cancellato o riscritto dall'autore umano prima della pubblicazione.*
 >
 
-Le analogie in questo volume sono **canoniche**: ognuna fa da punto di riferimento per tutte le varianti che appaiono nei libri dei coach. Quando un capitolo dice *"come la giuria di tre giudici"*, l'intero racconto completo sta qui, nella voce **§3** di questo volume. I libri possono quindi concentrarsi sulla precisione tecnica — dimensioni, costanti, invarianti — mentre la comprensione profonda resta preservata in questa raccolta.
+Le analogie in questo volume sono **canoniche**: ognuna fa da punto di riferimento per tutte le varianti che appaiono nei libri dei coach. Quando un capitolo dice *"come la giuria di tre giudici"*, l'intero racconto completo sta qui, nella voce **§1.2** di questo volume. I libri possono quindi concentrarsi sulla precisione tecnica — dimensioni, costanti, invarianti — mentre la comprensione profonda resta preservata in questa raccolta.
 
 Questa separazione non è un compromesso — è un guadagno. I libri tecnici del coach sono densi per necessità: devono citare file e righe, descrivere invarianti matematiche, specificare parametri e contratti. Se dentro quella densità si inserissero le metafore a piena lunghezza, il lettore tecnico troverebbe le analogie come un rallentamento; ma le analogie sono indispensabili per chi non vive nel codice. Separandole in questo volume, abbiamo due libri complementari: uno per chi deve *implementare*, uno per chi deve *capire*. I lettori migliori useranno entrambi.
 
@@ -19,7 +19,7 @@ Questa separazione non è un compromesso — è un guadagno. I libri tecnici del
 
 ## Come leggere questo libro
 
-1. **Apri il capitolo del libro-coach che stai studiando** (Parte 1A, 1B, 2 o 3). Quando incontri una riga `> **Analogia:** [titolo — vedi Libro delle Analogie §X.Y]`, torna qui.
+1. **Apri il capitolo del libro-coach che stai studiando** (Parte 1A, 1B, 2 o 3). Quando un passaggio tecnico ti resiste, cerca l'argomento nella tabella **Legenda** qui sotto: la colonna *Dove nasce* elenca il capitolo di provenienza di ogni voce, quindi si legge anche al contrario — dal capitolo all'analogia.
 2. **Leggi l'analogia canonica** in questo volume (sezione corrispondente).
 3. **Ritorna al libro** e continua la lettura tecnica: a quel punto la metafora è fissata e il resto del capitolo può parlare di `METADATA_DIM=25`, `GLOBAL_SEED=42` e `input_dim=153` senza perdere il filo narrativo.
 4. **Cerca i confronti** (sezione *"Confronta con"* in fondo a ogni voce): molte analogie si illuminano a vicenda.
@@ -29,57 +29,62 @@ Il volume è organizzato in **dieci sezioni tematiche** che corrispondono ai gra
 - **§1 — Nucleo Neurale** (7 voci): i modelli che fanno il pensiero centrale — MoE, Superposition, ResNet, Value Critic, GhostEngine.
 - **§2 — Memoria e Tempo** (3 voci): come il coach ricorda, cosa dimentica, e la scala temporale delle sue osservazioni.
 - **§3 — Percezione e Dati** (2 voci): i cinque sensi del coach e il contratto canonico a 25 dimensioni che li unifica.
-- **§4 — Strategia e Coaching** (5 voci): il piano di battaglia, la catena di fallback dei servizi, l'attribuzione dei ruoli narrativi.
+- **§4 — Strategia e Coaching** (6 voci): il piano di battaglia, la catena di fallback dei servizi, l'attribuzione dei ruoli narrativi, la diffidenza verso ciò che il coach chiede da sé.
 - **§5 — Conoscenza e Recupero** (3 voci): come il coach sa cosa sa — biblioteca FAISS, diario COPER, grafo dei fatti.
 - **§6 — Addestramento e Orchestrazione** (4 voci): la scuola, l'orchestra, l'esame, il talent scout — come si cresce dal nulla a master chef.
 - **§7 — Motori di Analisi** (3 voci): i detective specializzati che vedono cose che gli altri motori non vedono.
-- **§8 — Dati e Ingestione** (3 voci): l'ufficio postale, il doganiere, il cronista — come i demo arrivano e vengono capiti.
+- **§8 — Dati e Ingestione** (4 voci): l'ufficio postale, il doganiere, il cronista, il biglietto della coda — come i demo arrivano, vengono capiti e vengono presi in carico una volta sola.
 - **§9 — Database e Storage** (2 voci): l'archivio a tre livelli, la cassaforte del backup.
-- **§10 — Visione d'Insieme** (3 voci): il robot che guarda video, la città del coach, il cruscotto a cinque strati.
+- **§10 — Visione d'Insieme** (4 voci): il robot che guarda video, la città del coach, il cruscotto a cinque strati, la tavolozza unica che li colora.
 
 ---
 
 ## Legenda — dove nasce ogni analogia
 
-Questa tabella mappa le **35 voci canoniche** alle loro posizioni originali nei quattro libri. Utile quando un lettore vuole tornare al contesto tecnico dove la metafora è stata introdotta per la prima volta.
+Questa tabella mappa le **38 voci canoniche** ai capitoli dei quattro libri dove il concetto tecnico viene trattato. Utile quando un lettore vuole tornare al contesto da cui la metafora nasce.
 
-| Voce | Titolo | Fonte (Libro : riga) |
-|------|--------|----------------------|
-| §1.1 | La Fabbrica dei 6 Reparti | 1A:84 |
-| §1.2 | La Giuria dei 3 Giudici | 1A:329, 1B:230 |
-| §1.3 | Il Mixer a 256 Canali | 1A:854, 1B:236 |
-| §1.4 | L'Edificio a 7 Piani | 1B:53, 1B:147 |
-| §1.5 | I Tre Occhiali dell'Allenatore | 1B:119 |
-| §1.6 | L'Ologramma del Miglior Te | 1B:514, 3:1605 |
-| §1.7 | La Pagella Mentale | 1A:1134, 1A:1250 |
-| §2.1 | L'Album di Hopfield | 1B:172, 1B:164, 1B:184 |
-| §2.2 | Il Mentore Lento (EMA) | 1A:399, 1A:872 |
-| §2.3 | Le Tre Lenti del Chronovisor | 1B:449, 1B:459 |
-| §3.1 | I 5 Sensi del Coach | 1B:620, 1A:267, 1B:932 |
-| §3.2 | Le 25 Domande del Sensore | 1A:937, 3:1195 |
-| §4.1 | L'Ospedale e la Reception | 2:50, 2:89 |
-| §4.2 | Il Detective dei 5 Errori | 1B:282, 1B:307 |
-| §4.3 | Il Commentatore del Valore | 1B:268 |
-| §4.4 | L'Albero di Scacchi CS2 | 2:886, 2:921 |
-| §4.5 | Il Poker-Face dell'Inganno | 2:964 |
-| §5.1 | La Biblioteca FAISS | 1B:1032, 2:589 |
-| §5.2 | Il Libro di Testo + Diario | 2:573, 2:620, 2:700 |
-| §5.3 | Il Grafo dei Fatti | 2:714 |
-| §6.1 | La Scuola del Coach | 1A:878, 3:399, 3:431 |
-| §6.2 | L'Orchestra del Training | 2:2228, 2:2462, 2:2681 |
-| §6.3 | L'Esame con Risposte sul Retro | 1A:599, 3:556, 3:574, 3:591 |
-| §6.4 | Il Talent Scout dei Ruoli | 2:808, 2:812, 2:1722 |
-| §7.1 | La Squadra dei Detective | 2:154, 2:776 |
-| §7.2 | L'Anello dell'Umore | 2:990, 2:1370 |
-| §7.3 | L'Istruttore di Guida | 2:1043, 2:1136 |
-| §8.1 | L'Ufficio Postale della Lettera | 3:1107, 3:2626 |
-| §8.2 | Il Doganiere Demo | 1B:702, 2:1388 |
-| §8.3 | Il Cronista Sportivo HLTV | 1B:677, 1B:779, 3:2667 |
-| §9.1 | L'Archivio a 3 Livelli | 3:100, 3:1369, 2:2047, 2:2083 |
-| §9.2 | La Cassaforte del Backup | 2:2134, 3:1885 |
-| §10.1 | Il Robot che Guarda Video | 1A:62 |
-| §10.2 | La Città del Coach | 3:618, 3:841 |
-| §10.3 | Il Cruscotto a Cinque Strati | 3:944, 3:2905, 3:2984 |
+> **Nota sui riferimenti.** Fino all'agosto 2026 questa colonna conteneva coordinate di riga (`1A:329`). Erano una promessa che nessuno poteva mantenere: bastava aggiungere un paragrafo in un libro perché tutte le righe successive scivolassero, e le edizioni inglese e portoghese portavano comunque i numeri di riga *italiani*, che nei loro file non significavano nulla. I riferimenti sono ora per **capitolo**: sopravvivono alle revisioni e valgono identici in tutte e tre le lingue.
+
+| Voce | Titolo | Dove nasce |
+|------|--------|------------|
+| §1.1 | La Fabbrica dei 6 Reparti | Parte 1A §2 (panoramica dell'architettura) |
+| §1.2 | La Giuria dei 3 Giudici | Parte 1A §3 (MoE) · Parte 1B §4 (Strategia) |
+| §1.3 | Il Mixer a 256 Canali | Parte 1A §3 (SuperpositionLayer) · Parte 1B §4 (Strategia) |
+| §1.4 | L'Edificio a 7 Piani | Parte 1B §4 (RAP Coach, 7 componenti) |
+| §1.5 | I Tre Occhiali dell'Allenatore | Parte 1B §4 (Percezione) |
+| §1.6 | L'Ologramma del Miglior Te | Parte 1B §4 (GhostEngine) · Parte 3 §12.10 |
+| §1.7 | La Pagella Mentale | Parte 1A §3 (Maturity Observatory) |
+| §2.1 | L'Album di Hopfield | Parte 1B §4 (Memoria LTC + Hopfield) |
+| §2.2 | Il Mentore Lento (EMA) | Parte 1A §3 (modulo EMA) |
+| §2.3 | Le Tre Lenti del Chronovisor | Parte 1B §4 (ChronovisorScanner) |
+| §3.1 | I 5 Sensi del Coach | Parte 1B §5 (Sorgenti Dati) · Parte 1A §2 |
+| §3.2 | Le 25 Domande del Sensore | Parte 1A §2 (contratto 25-dim) · Parte 3 §12.6 |
+| §4.1 | L'Ospedale e la Reception | Parte 2 §5 (Servizi di Coaching) |
+| §4.2 | Il Detective dei 5 Errori | Parte 1B §4 (Pedagogia — Attribuzione Causale) |
+| §4.3 | Il Commentatore del Valore | Parte 1B §4 (Pedagogia — Valore) |
+| §4.4 | L'Albero di Scacchi CS2 | Parte 2 §7 (Motori di Analisi — teoria dei giochi) |
+| §4.5 | Il Poker-Face dell'Inganno | Parte 2 §7 (Indice di Inganno) |
+| §4.6 | Il Bibliotecario Diffidente | Parte 2 §5 (CoachingDialogueEngine — fase agentica) |
+| §5.1 | La Biblioteca FAISS | Parte 1B §5 (Indice Vettoriale) · Parte 2 §6 |
+| §5.2 | Il Libro di Testo + Diario | Parte 2 §6 (Conoscenza e Recupero) |
+| §5.3 | Il Grafo dei Fatti | Parte 2 §6 (Knowledge Graph) |
+| §6.1 | La Scuola del Coach | Parte 1A §3 · Parte 3 §10 (regime di formazione) |
+| §6.2 | L'Orchestra del Training | Parte 2 §12 (Pipeline di Addestramento) |
+| §6.3 | L'Esame con Risposte sul Retro | Parte 2 §13 · Parte 3 §11 (funzioni di perdita) |
+| §6.4 | Il Talent Scout dei Ruoli | Parte 2 §7 (Classificatore di Ruoli) |
+| §7.1 | La Squadra dei Detective | Parte 2 §7 (gli 11 motori di analisi) |
+| §7.2 | L'Anello dell'Umore | Parte 2 §7 (Momentum) |
+| §7.3 | L'Istruttore di Guida | Parte 2 §7 (Qualità del Movimento) |
+| §8.1 | L'Ufficio Postale della Lettera | Parte 3 §12.6 (Pipeline di Ingestione) |
+| §8.2 | Il Doganiere Demo | Parte 1B §5 (Demo Format Adapter) |
+| §8.3 | Il Cronista Sportivo HLTV | Parte 1B §5 (Modulo HLTV) · Parte 3 §12.24 |
+| §8.4 | Il Biglietto della Coda | Parte 3 §12.6 (claim atomico dei task) |
+| §9.1 | L'Archivio a 3 Livelli | Parte 2 §11 · Parte 3 §9 e §12.9 |
+| §9.2 | La Cassaforte del Backup | Parte 2 §11 · Parte 3 §12.9 |
+| §10.1 | Il Robot che Guarda Video | Parte 1A §1 (riepilogo esecutivo) |
+| §10.2 | La Città del Coach | Parte 3 §12 (logica completa del programma) |
+| §10.3 | Il Cruscotto a Cinque Strati | Parte 3 §12.5 · Mappa delle Interconnessioni |
+| §10.4 | La Tavolozza Unica | Parte 3 §12.5 (design token e relay di tema) |
 
 ---
 
@@ -193,6 +198,12 @@ Il `DeceptionIndex` è un **punteggio poker-face**: quantifica quanto sei imprev
 
 **Confronta con:** §7.2 (L'Anello dell'Umore — deception + momentum insieme raccontano la personalità del round), §4.2 (Il Detective — le 5 materie di cui deception è un sovra-livello).
 
+## §4.6 Il Bibliotecario Diffidente
+
+Da agosto 2026 il coach può andarsi a prendere i dati da solo: se gli chiedi *"come ho giocato il quinto round su Mirage?"* non aspetta che qualcuno gli metta davanti il contesto giusto, ma chiama uno dei suoi quattro strumenti e interroga il database. Il modo in cui gli viene concesso di farlo è però quello di una **biblioteca a scaffale chiuso**. In una biblioteca simile il lettore non entra fra gli scaffali: compila una scheda di richiesta e la porge al bibliotecario, che la confronta con il catalogo e va a prendere il volume. Se la scheda riporta un titolo che nel catalogo non esiste, il bibliotecario non si mette a cercare per tentativi, non apre gli scaffali per far vedere cosa c'è, e non si offende: restituisce la scheda dicendo *"questo titolo non è a catalogo, consulta l'elenco"*. Il coach è il lettore, e va trattato come un lettore qualsiasi — non per sfiducia nei suoi confronti, ma perché ciò che scrive sulla scheda è **testo generato**, non un valore scelto da un menù: può essere plausibile e insieme inesistente. Così ogni nome di partita che il modello produce viene risolto contro un elenco costruito interrogando il database, i numeri di round devono essere interi entro un intervallo, i frammenti di nome squadra vengono ripuliti di ogni carattere che non serva, e persino la risposta che torna dallo scaffale viene ripulita e accorciata prima di essere consegnata — perché quel testo, una volta consegnato, diventa a sua volta parte di ciò che il coach legge. C'è un'ultima cortesia, che è anche la più efficace: all'ingresso della biblioteca è affisso **l'elenco dei volumi disponibili**. Senza quell'elenco il lettore chiedeva libri inventati, e ogni richiesta era un giro a vuoto; con l'elenco davanti, chiede quello che esiste.
+
+**Confronta con:** §4.1 (L'Ospedale e la Reception — la catena di servizi in cui questo bibliotecario lavora), §8.2 (Il Doganiere — la stessa diffidenza applicata ai file invece che alle parole), §5.1 (La Biblioteca FAISS — l'altra biblioteca, quella a scaffale aperto per similarità).
+
 # §5 — Conoscenza e Recupero
 
 ## §5.1 La Biblioteca FAISS
@@ -279,6 +290,12 @@ Il `DemoParser` è un **cronista sportivo esperto** che, guardando un demo, comp
 
 **Confronta con:** §3.1 (I 5 Sensi — il sesto senso del coach), §9.1 (L'Archivio — dove il cronista archivia i suoi reporti).
 
+## §8.4 Il Biglietto della Coda
+
+Alla salumeria si prende un numero. Non perché il negoziante sia burocratico, ma perché senza numero due banconisti servono lo stesso cliente e nessuno serve quello dietro. L'ingestione ha esattamente questo problema: **sei** porte diverse possono avviarla — la schermata Home, le impostazioni, il comando della console, l'ingestione a lotti, quella dei demo professionistici e il worker di fondo. Per un lungo periodo ciascuna di queste porte guardava la coda, vedeva un lavoro in attesa e lo prendeva; se due porte guardavano nello stesso istante vedevano **la stessa fotografia**, e la stessa demo veniva analizzata due volte, scrivendo statistiche doppie che poi nessuno sapeva più distinguere da quelle buone. La soluzione non è stata mettere un vigile a coordinare i banconisti — sarebbe stato un secondo meccanismo da mantenere, e da sbagliare. È stata cambiare il gesto: invece di *"leggo che è libero, poi lo prendo"*, il runner dice al database *"assegnalo a me **solo se** risulta ancora libero"*, tutto in una sola istruzione che il database non può spezzare a metà. Chi vince riceve una conferma, chi perde riceve un silenzioso zero e passa al lavoro successivo senza protestare. È la differenza fra gestire una collisione e **renderla impossibile**, ed è quasi sempre la scelta migliore: un problema che non può verificarsi non ha bisogno di essere monitorato, spiegato in un log, o ricordato da chi manutiene il codice tre anni dopo. Resta una sola cortesia da osservare: se prendi il biglietto e poi rinunci, il numero va rimesso in circolo — altrimenti quel lavoro resta per sempre in uno stato di *"in lavorazione"* che nessuno sta lavorando.
+
+**Confronta con:** §8.1 (L'Ufficio Postale — la coda su cui si prende il biglietto), §9.1 (L'Archivio a 3 Livelli — dove finiscono le statistiche che non devono essere doppie).
+
 # §9 — Database e Storage
 
 ## §9.1 L'Archivio a 3 Livelli
@@ -309,15 +326,21 @@ Dal punto di vista dell'infrastruttura, l'intero sistema è una **piccola città
 
 ## §10.3 Il Cruscotto a Cinque Strati
 
-L'interfaccia desktop Qt/PySide6 è il **cruscotto di un'auto sportiva moderna**: tutto ciò che il guidatore (il giocatore) deve sapere è visibile a colpo d'occhio, ogni quadrante ha un significato preciso, e sotto il cruscotto c'è un **CAN bus** di segnali e slot — il pattern Signal/Slot di Qt — che fa dialogare 15 schermate con 10 ViewModels senza accoppiamento stretto. L'architettura complessiva è una **torta a cinque strati**: (1) UI Qt in cima (`apps/qt_app/screens/`), (2) ViewModels MVVM che espongono property osservabili, (3) Servizi di coaching e analisi (backend/services + backend/analysis), (4) Modelli neurali e logica pura (backend/nn + backend/processing + backend/coaching), (5) Storage (backend/storage) in fondo. I confini tra strati sono attraversati solo in una direzione — UI chiama ViewModel, ViewModel chiama Service, Service chiama Model o Storage — e mai viceversa, per evitare dipendenze circolari che trasformerebbero la torta in un plastico di spaghetti. La **cassetta degli attrezzi** del progetto contiene PyTorch (reti neurali), ncps (LTC), hopfield-layers (Hopfield), demoparser2 (demo parsing Rust-based), PySide6 (UI primaria), SQLAlchemy+SQLModel (ORM), Alembic (migrations), Playwright (HLTV scraping), Rich (console TUI), FastAPI (internal API), Pydantic (validazione). Ogni attrezzo è un artigiano specializzato: usi quello giusto per ogni lavoro, mai un martello per una vite. La torta a cinque strati è una delle invarianti architetturali più preziose del progetto — è ciò che rende il codebase manutenibile nonostante abbia superato le 100.000 righe di Python. Violare la direzionalità dei flussi (per esempio, far chiamare al modello un ViewModel) produrrebbe un code smell noto come *callback hell* o *architectural spaghetti*, e la manutenzione diventerebbe un incubo. La disciplina dei cinque strati, applicata con rigore, è il motivo per cui il coach può essere esteso nel tempo senza collassare sotto il proprio peso.
+L'interfaccia desktop Qt/PySide6 è il **cruscotto di un'auto sportiva moderna**: tutto ciò che il guidatore (il giocatore) deve sapere è visibile a colpo d'occhio, ogni quadrante ha un significato preciso, e sotto il cruscotto c'è un **CAN bus** di segnali e slot — il pattern Signal/Slot di Qt — che fa dialogare 15 schermate con 10 ViewModels senza accoppiamento stretto. L'architettura complessiva è una **torta a cinque strati**: (1) UI Qt in cima (`apps/qt_app/screens/`), (2) ViewModels MVVM che espongono property osservabili, (3) Servizi di coaching e analisi (backend/services + backend/analysis), (4) Modelli neurali e logica pura (backend/nn + backend/processing + backend/coaching), (5) Storage (backend/storage) in fondo. I confini tra strati sono attraversati solo in una direzione — UI chiama ViewModel, ViewModel chiama Service, Service chiama Model o Storage — e mai viceversa, per evitare dipendenze circolari che trasformerebbero la torta in un plastico di spaghetti. La **cassetta degli attrezzi** del progetto contiene PyTorch (reti neurali), ncps (LTC), hopfield-layers (Hopfield), demoparser2 (demo parsing Rust-based), PySide6 (UI primaria), SQLAlchemy+SQLModel (ORM), Alembic (migrations), Playwright (HLTV scraping), Rich (console TUI), FastAPI (internal API), Pydantic (validazione). Ogni attrezzo è un artigiano specializzato: usi quello giusto per ogni lavoro, mai un martello per una vite. La torta a cinque strati è una delle invarianti architetturali più preziose del progetto — è ciò che rende il codebase manutenibile nonostante abbia superato le 120.000 righe di Python. Violare la direzionalità dei flussi (per esempio, far chiamare al modello un ViewModel) produrrebbe un code smell noto come *callback hell* o *architectural spaghetti*, e la manutenzione diventerebbe un incubo. La disciplina dei cinque strati, applicata con rigore, è il motivo per cui il coach può essere esteso nel tempo senza collassare sotto il proprio peso.
 
 **Confronta con:** §10.2 (La Città — l'infrastruttura che il cruscotto comanda), §1.1 (La Fabbrica — i reparti che la torta a 5 strati codifica).
+
+## §10.4 La Tavolozza Unica
+
+Un teatro che allestisce tre spettacoli diversi può dipingere tre fondali completi, oppure può dipingerne **uno solo** e cambiare le luci. La prima strada è più intuitiva e si paga in manutenzione: quando il regista decide che il rosso deve virare all'arancio, qualcuno deve ritoccare tre fondali, e prima o poi ne dimentica uno — così il terzo spettacolo resta con il rosso vecchio e nessuno se ne accorge finché non va in scena. Per anni il coach ha avuto tre fondali: tre fogli di stile completi, uno per tema, con i colori scritti dentro. Oggi ne ha uno — un unico modello di foglio di stile con dei **buchi** al posto dei colori — e tre tavolozze che si limitano a dire quale colore va in quale buco. Il vantaggio non è l'eleganza: è che un colore adesso **esiste in un punto solo**. La stessa tavolozza che riempie il foglio di stile riempie anche la palette di sistema della finestra e la funzione che decide di che colore mostrare un rating — quindi non può più succedere che il foglio di stile dica una cosa e la palette un'altra, che è il tipo di incoerenza che nessun test coglie e ogni utente vede. Aggiungere un quarto tema smette di essere la riscrittura di un fondale e diventa la compilazione di un elenco di colori. Resta un dettaglio da raccontare, perché è il genere di cosa che si scopre solo dal vivo: quando l'utente cambia tema, i widget che si dipingono da soli devono accorgersene. Ma il motore dei temi vive quanto una sessione dell'applicazione, e un widget non può iscriversi a qualcosa che verrà sostituito — sarebbe come lasciare il proprio recapito a un usciere che smonta a fine turno. Serviva un indirizzo stabile: una **portineria** che resta al suo posto attraverso i cambi di turno, a cui i widget si annunciano una volta sola e che avvisa tutti quando le luci cambiano.
+
+**Confronta con:** §10.3 (Il Cruscotto — la superficie che questa tavolozza colora), §1.1 (La Fabbrica — il principio della fonte unica applicato ai reparti).
 
 ---
 
 ## Nota finale dell'autore
 
-Queste 35 analogie non esauriscono la ricchezza dei quattro libri-coach — ne sono la sintesi pedagogica. Dove un libro tecnico scriverebbe *"il SuperpositionLayer applica un gating contestuale attraverso L1-sparsity regolata"*, qui scriviamo *"il mixer a 256 canali abbassa automaticamente i volumi inutili"*. Nessuna delle due formulazioni è più corretta dell'altra — sono complementari. La prima è indispensabile per chi scrive il codice; la seconda è indispensabile per chi ne vuole capire l'intenzione.
+Queste 38 analogie non esauriscono la ricchezza dei quattro libri-coach — ne sono la sintesi pedagogica. Dove un libro tecnico scriverebbe *"il SuperpositionLayer applica un gating contestuale attraverso L1-sparsity regolata"*, qui scriviamo *"il mixer a 256 canali abbassa automaticamente i volumi inutili"*. Nessuna delle due formulazioni è più corretta dell'altra — sono complementari. La prima è indispensabile per chi scrive il codice; la seconda è indispensabile per chi ne vuole capire l'intenzione.
 
 Se durante la lettura di un capitolo ti trovi a pensare *"ok, tecnicamente chiaro, ma perché questa scelta?"*, torna a questo volume. Se ti trovi a pensare *"ok, metafora chiara, ma come si implementa?"*, torna al capitolo tecnico. Le due letture fatte insieme sono la comprensione piena.
 

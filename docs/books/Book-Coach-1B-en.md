@@ -1,8 +1,10 @@
 # Ultimate CS2 Coach — Part 1B: The Senses and the Specialist
 
-> **Topics:** RAP Coach Model (7-component architecture: Perception, LTC+Hopfield Memory, Strategy, Pedagogy, Causal Attribution, Positioning, Communication), ChronovisorScanner (multi-scale critical moment detection), GhostEngine (4-tensor inference pipeline), and all external data sources (Demo Parser, HLTV, Steam, FACEIT, TensorFactory, FrameBuffer, FAISS, Round Context).
+> **Topics:** RAP Coach Model (7-component architecture: Perception, LTC+Hopfield Memory, Strategy, Pedagogy, Causal Attribution, Positioning, Communication), ChronovisorScanner (multi-scale critical moment detection), GhostEngine (4-tensor inference pipeline), and all external data sources (Demo Parser, HLTV, Steam, FACEIT, TensorFactory, FAISS, Round Context).
 >
 > **Author:** Renan Augusto Macena
+>
+> **Base revision:** in sync with `Book-Coach-1B.md` (Italian canonical) as of 2026-08-15.
 
 ---
 
@@ -27,9 +29,8 @@
    - Event Registry (CS2 Events Schema)
    - Trade Kill Detector
    - Steam API + Steam Demo Finder
-   - HLTV Module (stat_fetcher, FlareSolverr, Docker, Rate Limiter)
+   - HLTV Module (stat_fetcher, FlareSolverr, Docker, adaptive rate limiting)
    - FACEIT API + Integration
-   - FrameBuffer (Circular Buffer for HUD Extraction)
    - TensorFactory — Tensor Factory (Player-POV Perception NO-WALLHACK)
    - FAISS Vector Index (High-Speed Semantic Search)
    - Round Context (Temporal Grid)
@@ -148,9 +149,8 @@ This part addresses the fundamental challenge that the CS2 coach is a **Partiall
 **Liquid Time-Constant (LTC) network with AutoNCP wiring:**
 
 - Input: 153 dim (128 perception + 25 metadata)
-- NCP units: **512** (`hidden_dim * 2` = 256 × 2) — a 2:1 ratio that guarantees enough inter-neurons for sparse AutoNCP wiring
-- Output: 256-dim hidden state
-- Uses the `ncps` library with sparse connectivity patterns, similar to those of the brain
+- NCP units: **512** (`hidden_dim * 2` = 256 × 2), split by the AutoNCP wiring into **154 motor / 143 command / 215 inter** neurons; the 154-dim motor output is projected to 256-dim through `ltc_projection`
+- Uses the `ncps` library with sparse connectivity patterns, similar to those of the brain; an internal `_patched_ode_solver` corrects an ncps batch-broadcast bug
 - Adapts temporal resolution to the pace of the game (slow setups vs. fast firefights)
 - Deterministic seeding (NN-MEM-02): numpy + torch RNG seeded at 42 during AutoNCP wiring creation, with restoration of the original RNG state after initialization — guarantees checkpoint portability across different runs
 
@@ -158,16 +158,15 @@ This part addresses the fundamental challenge that the CS2 coach is a **Partiall
 
 - Input/Output: 256-dim
 - Heads: 4
-- Uses `hflayers.Hopfield` as **content-addressable memory** for prototype round retrieval
+- Uses `hflayers.HopfieldLayer` with **32 trainable prototype patterns** (`quantity=32`, 32×256 = 8,192 parameters) as **content-addressable memory** for prototype round retrieval
+- The prototypes can be initialized via **K-means (K=32)** on real data through `initialize_prototypes()` (Phase 5B)
 
 **Hopfield activation delay (NN-MEM-01 + RAP-M-04):**
 
-The Hopfield network **does not activate immediately** during training. The memorized patterns start from random initialization (`torch.randn * 0.02`) and the attention would be nearly uniform across all slots, adding noise rather than signal. For this reason:
+The Hopfield network **does not activate immediately** during training: patterns that have not yet been shaped would produce nearly uniform attention across all slots, adding noise rather than signal. For this reason:
 
-- `_training_forward_count` counts the forward passes during training
-- `_hopfield_trained` (boolean flag) remains `False` until ≥2 training forward passes
+- The `_hopfield_trained` flag remains `False` until the trainer calls `notify_optimizer_step()` — that is, until the **first real optimizer step** that has shaped the patterns
 - Before activation, the forward pass returns `torch.zeros_like(ltc_out)` instead of the Hopfield output
-- After ≥2 forwards (ensuring that at least one backward + optimizer.step has shaped the patterns), Hopfield activates and contributes to the combined_state
 - Loading a checkpoint (`load_state_dict`) sets `_hopfield_trained = True` immediately, assuming the model has already been trained
 
 **RAPMemoryLite — Pure LSTM fallback:**
@@ -208,11 +207,11 @@ return combined_state, belief, hidden
 
 ### -Strategy Layer (`strategy.py`) — Superposition + MoE
 
-Implements **SuperpositionLayer** combined with a context-conditioned mixture of experts:
+Implements **SuperpositionLayer** combined with a context-conditioned mixture of experts using **Top-2 sparse routing**:
 
-**SuperpositionLayers** (`layers/superposition.py`): context-dependent gating where `output = F.linear(x, weight, bias) * sigmoid(context_gate(context))`. A sigmoid gate vector conditioned on the **25-dim** context (full METADATA_DIM) selectively masks the expert outputs. The L1 sparsity loss (`context_gate_l1_weight = 1e-4`) encourages sparse and interpretable gating. Observable: gate statistics (mean, std, sparsity, active_ratio) can be tracked.
+**SuperpositionLayer** (`layers/superposition.py`): **FiLM** conditioning where `output = γ(context) · (W·x + b) + β(context)`, with `γ = sigmoid(context_gate(context))` and `β = context_beta(context)` (zero-initialized). The multiplicative gate selectively masks the expert outputs; the additive term lets the context inject features. The L1 sparsity loss (`context_gate_l1_weight = 1e-4`) encourages sparse and interpretable gating. Observable: gate statistics (mean, std, sparsity, active_ratio) can be tracked.
 
-> **Note:** `RAPStrategy.__init__` uses `context_dim=25` (METADATA_DIM). The gate network is `Linear(hidden_dim=256, num_experts=4) → Softmax(dim=-1)`.
+> **Note:** `RAPStrategy.__init__` uses `context_dim=89` — the context is the concatenation of **metadata (25) + belief vector (64)**. The gate network is `nn.Linear(hidden_dim=256, num_experts=4)` followed by softmax and Top-2 renormalization.
 
 ```mermaid
 flowchart TB
@@ -225,16 +224,16 @@ flowchart TB
     CTX -.->|"modulates"| E2
     CTX -.->|"modulates"| E3
     CTX -.->|"modulates"| E4
-    E1 --> GATE["Gate (softmax - sums to 1.0)<br/>0.35 / 0.40 / 0.15 / 0.10"]
+    E1 --> GATE["Top-2 Gate (softmax + renorm.)<br/>0.55 / 0.45 / 0 / 0"]
     E2 --> GATE
     E3 --> GATE
     E4 --> GATE
     GATE --> OUT["Weighted sum to 10-dim<br/>advice probabilities"]
 ```
 
-**4 Expert Modules:** Each expert is a `ModuleDict`: `SuperpositionLayer(256→128, context_dim=25) → ReLU → Linear(128→10)`.
+**4 Expert Modules:** Each expert is composed of `SuperpositionLayer (FiLM, context_dim=89) → ReLU → Linear(→10)`.
 
-**Gate Network:** `Linear(256→4) → Softmax`.
+**Gate Network:** `nn.Linear(256→4)` (raw logits) → softmax → **renormalized Top-2** (the other two experts stay at zero weight).
 
 **Output:** 10-dimensional advice probability distribution and 4-dimensional gate weights vector.
 
@@ -309,15 +308,17 @@ The Z-scores are converted to percentiles via the **logistic approximation** `1/
 Orchestrates the training loop with a **composite loss function**:
 
 ```
-L_total = L_strategy + 0.5 × L_value + L_sparsity + L_position
+L_total = 1.0 × L_strategy + 0.5 × L_value + 1.0 × L_sparsity + 1.0 × L_position
 ```
 
 | Loss term          | Formula                                                   | Weight | Purpose                                                          |
 | ------------------ | --------------------------------------------------------- | ------ | ---------------------------------------------------------------- |
 | `L_strategy`       | `MSELoss(advice_probs, target_strat)`                     | 1.0    | Correct tactical recommendation                                  |
-| `L_value`          | `MSELoss(V(s), true_advantage)`                           | 0.5    | Accurate advantage estimation                                    |
-| `L_sparsity`       | `model.compute_sparsity_loss(gate_weights)` — L1 on gate weights (explicit parameter, thread-safe) | 1e-4 | Expert specialization                                            |
-| `L_position`       | `MSE(pred_xy, true_xy) + 2.0 × MSE(pred_z, true_z)`       | 1.0    | Optimal positioning, **strict penalty on the Z-axis**            |
+| `L_value`          | `MSELoss(V(s), true_advantage)` (with optional `val_mask`) | 0.5    | Accurate advantage estimation                                    |
+| `L_sparsity`       | `model.compute_sparsity_loss(gate_weights)` — **gate entropy**: `context_gate_l1_weight × (−Σ p·log p)`, range [0, log 4 ≈ 1.386], scale 1e-4 (explicit parameter, thread-safe) | 1e-4 | Expert specialization |
+| `L_position`       | `MSE(pred_x) + MSE(pred_y) + 2.0 × MSE(pred_z)`           | 1.0    | Optimal positioning, **strict penalty on the Z-axis**            |
+
+**Optimization:** AdamW (lr=1e-4, weight_decay=1e-2), `CosineAnnealingLR(T_max=100, eta_min=1e-6)` scheduler, **gradient accumulation** over 4 steps (`accumulation_steps=4`), AMP `GradScaler` (CUDA only).
 
 > **Note:** The 2× multiplier on the Z-axis exists because vertical positioning errors (e.g., a wrong floor on Nuke/Vertigo) are tactically catastrophic: they represent wrong-floor errors that no horizontal correction can fix.
 
@@ -326,7 +327,7 @@ flowchart LR
     subgraph LOSS["L_total = L_strategy + 0.5xL_value + L_sparsity + L_position"]
         S["Strategy<br/>Weight: 1<br/><br/>Did you give<br/>the right advice?"]
         V["Value<br/>Weight: 0.5<br/><br/>Did you estimate<br/>the advantage correctly?"]
-        SP["Sparsity<br/>Weight: 0.0001<br/><br/>Did you use<br/>few experts?<br/>(simpler = better)"]
+        SP["Sparsity (gate entropy)<br/>Scale: 0.0001<br/><br/>Did you use<br/>few experts?<br/>(decisive routing = better)"]
         P["Position<br/>Weight: 1<br/><br/>Did you find<br/>the right spot?<br/>XY + 2Z"]
     end
     LOSS --> GOAL["Goal: minimize ALL four, better coaching!"]
@@ -524,11 +525,11 @@ The model produces a delta normalized in [-1, 1] that is scaled to world coordin
 
 | Fallback Mode | Condition | Behavior |
 |---|---|---|
-| **Model disabled** | `USE_RAP_MODEL=False` | Skip loading, returns `(0.0, 0.0)` |
-| **Missing checkpoint** | Training not completed | `model = None`, predictions disabled |
-| **Missing map name** | No spatial context | Returns `(0.0, 0.0)` immediately |
-| **PlayerKnowledge error** | Knowledge construction failed | Degrades to legacy tensors (all zeros) |
-| **Inference error** | RuntimeError / CUDA OOM | Logs error, returns `(0.0, 0.0)` |
+| **Model disabled** | `USE_RAP_MODEL=False` (default) | Skip loading, no prediction (`None`) |
+| **Missing checkpoint** | Training not completed | `model = None`, `is_trained = False`, predictions disabled |
+| **Missing map name** | No spatial context | Returns `None` immediately |
+| **PlayerKnowledge error** | Knowledge construction failed | Degrades to legacy tensors |
+| **Inference error** | RuntimeError / CUDA OOM | Logs error, returns `None` |
 
 ```mermaid
 flowchart TB
@@ -554,7 +555,7 @@ flowchart TB
         DELTA -->|"× RAP_POSITION_SCALE<br/>(500.0)"| GHOST["(ghost_x, ghost_y)<br/>Ghost position"]
     end
     subgraph FALLBACK["Phase 5: Fallback"]
-        ERR["Any error"] --> SAFE["(0.0, 0.0)<br/>Never crash"]
+        ERR["Any error"] --> SAFE["None<br/>(no ghost)<br/>Never crash"]
     end
     GHOST --> RENDER["Overlay on tactical map"]
 
@@ -568,7 +569,7 @@ flowchart TB
 ## 5. Subsystem 1B — Data Sources
 
 **Program folder:** `backend/data_sources/`
-**Files:** `demo_parser.py`, `demo_format_adapter.py`, `event_registry.py`, `trade_kill_detector.py`, `hltv_scraper.py`, `hltv_metadata.py`, `steam_api.py`, `steam_demo_finder.py`, `faceit_api.py`, `faceit_integration.py`, `__init__.py`
+**Files:** `demo_parser.py`, `demo_format_adapter.py`, `event_registry.py`, `trade_kill_detector.py`, `round_context.py`, `hltv_scraper.py`, `steam_api.py`, `steam_demo_finder.py`, `faceit_api.py`, `faceit_integration.py`, `__init__.py`
 
 The Data Sources subsystem is the **entry point for all external data** into the system. It collects information from 5 distinct sources: CS2 demo files, HLTV statistics, Steam profiles, FACEIT data, and game event registry.
 
@@ -607,13 +608,11 @@ flowchart TB
 
 ### -Demo Parser (`demo_parser.py`)
 
-Robust wrapper around the `demoparser2` library for extracting statistics from CS2 demo files.
-
-**HLTV 2.0 Baseline** — normalization constants for rating computation:
+Robust wrapper around the `demoparser2` library for extracting statistics from CS2 demo files. The rating is computed through the **unified rating module** `feature_engineering/rating.py`, which defines the HLTV 2.0 baselines:
 
 | Constant | Value | Meaning |
 |---|---|---|
-| `RATING_BASELINE_KPR` | 0.679 | Pro average: kills per round |
+| `BASELINE_KPR` | 0.679 | Pro average: kills per round |
 | `RATING_BASELINE_SURVIVAL` | 0.317 | Pro average: survival rate |
 | `RATING_BASELINE_KAST` | 0.70 | Pro average: Kill/Assist/Survive/Trade % |
 | `RATING_BASELINE_ADR` | 73.3 | Pro average: average damage per round |
@@ -626,6 +625,26 @@ Robust wrapper around the `demoparser2` library for extracting statistics from C
 - Variance: `kill_std`, `adr_std` (via `_compute_per_round_variance`)
 - Advanced statistics: `avg_hs`, `accuracy`, `impact_rounds`, `econ_rating`
 - Approximate HLTV 2.0 rating (hand-tuned approximation, not the official formula)
+
+**The parse guard (`parse_guard.py`).** `demoparser2` is a Rust extension, and a malformed demo does not raise an ordinary Python exception: it makes **the Rust code panic**, which pyo3 translates into a `PanicException`. That class derives from `BaseException`, not from `Exception` — so every `except Exception` in the pipeline let it through, and a single corrupted demo aborted an entire ingestion session despite docstrings promising otherwise.
+
+The fix could not be `except pyo3_runtime.PanicException`, because **pyo3 creates that class lazily, at the first panic**: before then the module is not even importable. The guard therefore recognizes the exception **by class name**:
+
+```python
+_PROPAGATE = (KeyboardInterrupt, SystemExit, GeneratorExit)
+
+def is_parse_error(exc: BaseException) -> bool:
+    if isinstance(exc, _PROPAGATE):
+        return False          # these must ALWAYS propagate
+    if isinstance(exc, Exception):
+        return True
+    return type(exc).__name__ == "PanicException"
+```
+
+The call-site idiom is `except BaseException as exc: if not is_parse_error(exc): raise`. The discipline is explicit and worth stating: the only `BaseException` this system allows itself to absorb is the named panic; keyboard interrupt, process exit and generator close always pass through.
+
+**The parse timeout is real.** The previous version used `with ThreadPoolExecutor(...)`: the `FutureTimeoutError` was raised correctly, but on leaving the `with` block the implicit `shutdown(wait=True)` sat down to wait for the very parse thread that had hung. The timeout fired and the caller stayed blocked anyway. Today `_run_with_parse_timeout()` manages the executor by hand and closes with `shutdown(wait=False, cancel_futures=True)`, **abandoning** the orphan thread and logging it as an error instead of hiding it. The test `test_parse_timeout_real.py` hangs a worker for 30 seconds and demands the caller return in under 5.
+
 
 ### -Demo Format Adapter (`demo_format_adapter.py`)
 
@@ -719,20 +738,13 @@ Auto-discovery of CS2 demos from the local Steam installation.
 
 ### -HLTV Module (`backend/data_sources/hltv/`)
 
-The HLTV subsystem is composed of 5 specialized modules that collaborate to extract professional statistics from HLTV.org, bypassing Cloudflare anti-scraping protections:
+The HLTV subsystem is made of 3 specialized modules (`stat_fetcher.py`, `flaresolverr_client.py`, `docker_manager.py`) that work together to extract professional statistics from HLTV.org, getting past Cloudflare's anti-scraping protections:
 
-**`HLTVStatFetcher`** (`stat_fetcher.py`) — Main scraping orchestrator:
+**`HLTVStatFetcher`** (`stat_fetcher.py`) — main scraping orchestrator:
 
-| Method | Description |
-|---|---|
-| `fetch_top_players()` | Scrape Top 50 players page → list of profile URLs |
-| `fetch_and_save_player(url)` | Full player statistics fetch + DB save |
-| `_fetch_player_stats(url)` | Deep-crawl: main page + sub-pages (clutch, multikill, career) |
-| `_parse_overview(soup)` | Parse main statistics (rating, KPR, ADR, etc.) |
-| `_parse_trait_sections(soup)` | Parse Firepower, Entrying, Utility sections |
-| `_parse_clutches(soup)` | Parse 1v1/1v2/1v3 clutch wins |
-| `_parse_multikills(soup)` | Parse 3K/4K/5K counts |
-| `_parse_career(soup)` | Parse historical rating by year |
+- **robots.txt preflight** before any crawl
+- Discovers players through the team ranking page (`fetch_top_teams`), then for each player retrieves the overview page and the sub-pages (individual, career, opponents, clutches)
+- Saves to `ProPlayer` + `ProPlayerStatCard` the fields: rating_2_0, kpr, dpr, adr, kast, impact, headshot_pct, maps_played, opening_kill_ratio, opening_duel_win_pct, clutch_win_count, multikill_round_pct, detailed_stats_json; teams and rosters go to `ProTeam`
 
 **Statistics extracted and saved in `ProPlayerStatCard`:**
 
@@ -742,28 +754,17 @@ The HLTV subsystem is composed of 5 specialized modules that collaborate to extr
 | **Efficiency** | `kast` (Kill/Assist/Survival/Trade %), `headshot_pct`, `impact` |
 | **Opening** | `opening_kill_ratio`, `opening_duel_win_pct` |
 | **Traits (JSON)** | Firepower (kpr_win, adr_win), Entrying (traded_deaths_pct), Utility (flash_assists) |
-| **Insights (JSON)** | Clutch (1on1/1on2/1on3), Multikill (3k/4k/5k), Career (rating per period) |
+| **Deep dives (JSON)** | Clutch (1on1/1on2/1on3), Multikill (3k/4k/5k), Career (rating per period) |
 
-**`RateLimiter`** (`rate_limit.py`) — 4-level rate limiting with anti-detection jitter:
+**Adaptive rate limiting** (in `stat_fetcher.py`): random delay between requests of `CRAWL_DELAY_MIN_SECONDS = 2` – `CRAWL_DELAY_MAX_SECONDS = 7` seconds, with an **adaptive backoff** that grows with `_consecutive_failures` — after consecutive failures the fetcher progressively slows down instead of insisting.
 
-| Level | Min–Max Delay | Use case |
-|---|---|---|
-| **micro** | 2.0s – 3.5s | Fast consecutive requests |
-| **standard** | 4.0s – 8.0s | Navigation between player profiles |
-| **heavy** | 10.0s – 20.0s | Transitions between sections (main → clutch → multikill → career) |
-| **backoff** | 45.0s – 90.0s | Suspected block or failure (graceful degradation) |
+**`DockerManager`** (`docker_manager.py`) — FlareSolverr container management with a cascading startup strategy:
+1. **Fast path:** returns `True` if already healthy
+2. **Docker start:** attempts `docker start flaresolverr`
+3. **Docker Compose fallback:** attempts `docker compose up -d`
+4. **Health polling:** checks availability every 3s (`_POLL_INTERVAL_S`) for at most 45s (`_MAX_WAIT_S`)
 
-> **Note (F6-25):** The jitter (`random.uniform(-0.5, 0.5)`) is **intentionally unseeded** — deterministic jitter would be detected by anti-scraping systems as an artificial pattern. The 2.0s minimum floor is always applied.
-
-**`DockerManager`** (`docker_manager.py`) — FlareSolverr container management with cascading startup strategy:
-1. **Fast path:** Returns `True` if already healthy (health check on `http://localhost:8191/`)
-2. **Docker start:** Attempts `docker start flaresolverr` (15s timeout)
-3. **Docker Compose fallback:** Attempts `docker-compose up -d` (60s timeout)
-4. **Health polling:** Verifies availability every 3s for max 45s
-
-**`FlareSolverrClient`** (`flaresolverr_client.py`) — Automatic bypass of Cloudflare JavaScript challenges. All HTTP requests are routed through FlareSolverr on `http://localhost:8191/`. The resolved HTML is passed to BeautifulSoup for parsing.
-
-**`selectors`** (`selectors.py`) — CSS selectors for scraping HLTV pages, centralized for maintainability.
+**`FlareSolverrClient`** (`flaresolverr_client.py`) — automatic bypass of Cloudflare JavaScript challenges. All HTTP requests are routed through FlareSolverr at `http://localhost:8191/v1` (pinned Docker image `flaresolverr:v3.4.6`, the only service in the project's `docker-compose.yml`). Retries: `_MAX_RETRIES = 3` with exponential backoff base 5 (5/15/45s), 60s timeout per request. The resolved HTML is handed to BeautifulSoup for parsing.
 
 ```mermaid
 flowchart LR
@@ -774,28 +775,25 @@ flowchart LR
         HTML --> BS["BeautifulSoup<br/>(CSS selectors)"]
         BS --> STATS["Extracted Statistics<br/>rating, kpr, adr, kast..."]
     end
-    subgraph RATE["Rate Limiter"]
-        MICRO["micro: 2-3.5s"]
-        STD["standard: 4-8s"]
-        HEAVY["heavy: 10-20s"]
-        BACK["backoff: 45-90s"]
+    subgraph RATE["Adaptive Rate Limiting"]
+        DELAY["random 2-7s delay"]
+        BACK["adaptive backoff<br/>on consecutive failures"]
     end
     subgraph SAVE["Persistence"]
         STATS --> DB["ProPlayer + ProPlayerStatCard<br/>(hltv_metadata.db)"]
     end
-    RATE -.->|"controls pace"| FETCH
+    RATE -.->|"paces"| FETCH
 
     style FLARE fill:#ffd43b,color:#000
     style DB fill:#4a9eff,color:#fff
 ```
 
-> **Architectural note:** The complete HLTV subsystem (with `HLTVApiService`, `CircuitBreaker`, `BrowserManager`, `CacheProxy`, `collectors`) resides in `ingestion/hltv/` and is documented in Part 3. The files in `data_sources/hltv/` are the low-level implementation of scraping and rate limiting.
+> **Architectural note:** `data_sources/hltv/` is the only HLTV scraping subsystem: there is no (longer any) `HLTVApiService`, `CircuitBreaker` or `BrowserManager` module — resilience rests on the fetcher's adaptive backoff and the FlareSolverr client's retries. The synchronization daemon (`hltv_sync_service.py`, a separate process) is documented in Part 3.
 
-> **HLTV database status (April 2026):** The `hltv_metadata.db` database contains **161 real professional players**, **32 teams**, and **156 stat cards** collected from live scraping of hltv.org via FlareSolverr. The CSS selectors in `selectors.py` are equipped with fallback chains to resist site layout changes. The `HybridCoachingEngine` uses these data for automatic reference pro selection: when generating an analysis, it automatically finds the pro player whose `rating_2_0` is closest to the user's and names them in the feedback ("your ADR is lower than [pro name]'s"), via `_find_best_match_pro()` in `coaching_service.py` and `_get_pro_name()` in `hybrid_engine.py`.
+> **Automatic reference-pro selection:** The `HybridCoachingEngine` uses the data in `hltv_metadata.db` (tables `ProPlayer`, `ProTeam`, `ProPlayerStatCard` plus the extended `ProEvent`, `ProTournament`, `ProHead2Head`, `ProMapRecord`): when generating an analysis it automatically finds the pro player whose `rating_2_0` is closest to the user's and names them in the feedback ("your ADR is below [pro name]'s"), via `_find_best_match_pro()` in `coaching_service.py` and `_get_pro_name()` in `hybrid_engine.py`.
 
-**`hltv_scraper.py` / `hltv_metadata.py`** (entry point in `data_sources/`):
-- `run_hltv_sync_cycle(limit=20)` — Sync cycle orchestrator that imports `HLTVApiService` from the full pipeline
-- `hltv_metadata.py` — Debug script for page saving via Playwright (CSS selector validation)
+**`hltv_scraper.py`** (entry point in `data_sources/`):
+- `run_hltv_sync_cycle(limit=50)` — orchestrator of the pro statistics synchronization cycle
 
 ### -FACEIT API and Integration (`faceit_api.py`, `faceit_integration.py`)
 
@@ -809,60 +807,9 @@ flowchart LR
 | `RATE_LIMIT_DELAY` | 6 seconds | 10 req/min = 1 req every 6s (free tier) |
 
 **`FACEITIntegration`** class with:
-- `_rate_limited_request(endpoint, params)` — requests with automatic rate limiting and exponential backoff on 429
-- Match history management and demo download
+- `_rate_limited_request(endpoint, params)` — requests with automatic rate limiting; on HTTP 429 it honours the `Retry-After` header (cap 300s, default 60s) with `MAX_429_RETRIES = 3`
+- Match history, match detail and demo download management
 - Dedicated exception `FACEITAPIError`
-
-### -FrameBuffer — Circular Buffer for HUD Extraction (`backend/processing/cv_framebuffer.py`)
-
-The **FrameBuffer** is a thread-safe circular buffer for capturing and analyzing game screen frames. It functions as the "retina" of the system: it captures frames from the screen, stores them in a fixed-size ring, and allows the extraction of HUD (Head-Up Display) regions for visual analysis.
-
-**Configuration:**
-
-| Parameter | Default | Description |
-|---|---|---|
-| `resolution` | `(1920, 1080)` | Target frame resolution |
-| `buffer_size` | `30` | Circular buffer capacity (frames) |
-
-**Main operations:**
-- `capture_frame(source)` — Ingests frame from file or numpy array → BGR→RGB, uint8, resize → push to circular buffer
-- `get_latest(count=1)` — Retrieves the N most recent frames (newest to oldest)
-- `extract_hud_elements(frame)` — Extracts all HUD regions into a dictionary
-
-**HUD Regions (1920×1080 reference):**
-
-| Region | Coordinates | Position | Content |
-|---|---|---|---|
-| **Minimap** | `(0, 0, 320, 320)` | Top-left | CS2 radar (player positions) |
-| **Kill Feed** | `(1520, 0, 1920, 300)` | Top-right | Kill feed and events |
-| **Scoreboard** | `(760, 0, 1160, 60)` | Top-center | Team score |
-
-**Resolution adaptation** (`_scale_region()`): Coordinates are defined for the 1920×1080 reference resolution. For different resolutions, they are scaled proportionally: `sx = frame_width / 1920`, `sy = frame_height / 1080`. This makes the system **resolution-agnostic** — it works identically on 1080p, 1440p, or 4K monitors.
-
-**Thread-safety:** A `threading.Lock()` protects all read and write operations on the buffer. The write index (`_write_index`) advances circularly modulo `buffer_size`, guaranteeing O(1) for insertion and retrieval.
-
-```mermaid
-flowchart LR
-    subgraph INPUT["Capture"]
-        SCR["Screen/File"]
-        SCR --> BGR["BGR → RGB<br/>uint8"]
-        BGR --> RESIZE["Resize to<br/>1920×1080"]
-    end
-    subgraph RING["Circular Buffer (30 slots)"]
-        S1["Frame 28"]
-        S2["Frame 29"]
-        S3["Frame 0<br/>(oldest)"]
-        S4["..."]
-    end
-    RESIZE -->|"Lock"| RING
-    subgraph HUD["HUD Extraction"]
-        RING --> MINI["Minimap<br/>(0,0)→(320,320)"]
-        RING --> KILL["Kill Feed<br/>(1520,0)→(1920,300)"]
-        RING --> SCORE["Scoreboard<br/>(760,0)→(1160,60)"]
-    end
-
-    style RING fill:#4a9eff,color:#fff
-```
 
 ### -TensorFactory — Tensor Factory (`backend/processing/tensor_factory.py`)
 
@@ -1066,7 +1013,7 @@ Part 1B has documented the **two perceptual and diagnostic pillars** of the coac
 | Subsystem | Role | Key Components |
 |---|---|---|
 | **2. RAP Coach** | The **specialist doctor** — 7-component architecture for complete coaching under POMDP conditions | Perception (3-stream ResNet, 24 conv), Memory (LTC **512** NCP units + Hopfield 4 heads + NN-MEM-01 activation delay + **RAPMemoryLite** LSTM fallback), Strategy (4 MoE experts + SuperpositionLayer), Pedagogy (Value Critic + Skill Adapter), Causal Attribution (5 categories, learned utility signal), Positioning (Linear 256→3), Communication (template), ChronovisorScanner (3 temporal scales + 50K tick safety limit + cross-scale deduplication + structured ScanResult), GhostEngine (4-tensor pipeline with POV mode R4-04-01, hidden_state NN-40, 5-level fallback) |
-| **1B. Data Sources** | The **senses** — acquire and structure data from the outside world | Demo Parser (demoparser2 + HLTV 2.0 rating), Demo Format Adapter (PBDEMS2 magic bytes), Event Registry (complete CS2 schema), Trade Kill Detector (192-tick window), Steam API (retry + backoff), Steam Demo Finder (cross-platform), HLTV (FlareSolverr + 4-level rate limiting + CSS selectors with fallback chain — **161 real pro players, 32 teams, 156 stat cards** in hltv_metadata.db), FACEIT API, FrameBuffer (30-frame ring buffer), TensorFactory (3 NO-WALLHACK rasterizers), FAISS (IndexFlatIP 384-dim), Round Context (merge_asof O(n log m)) |
+| **1B. Data Sources** | The **senses** — acquire and structure data from the outside world | Demo Parser (demoparser2 + unified HLTV 2.0 rating), Demo Format Adapter (PBDEMS2 magic bytes), Event Registry (CS2 schema), Trade Kill Detector (3s tick-aware window), Steam API (retry + backoff), Steam Demo Finder (cross-platform), HLTV (FlareSolverr v3.4.6 + 2–7s adaptive delay + robots.txt preflight → hltv_metadata.db, 7 Pro* tables), FACEIT API (10 req/min, Retry-After on 429), TensorFactory (3 NO-WALLHACK rasterizers), FAISS (IndexFlatIP over 384-dim embeddings), Round Context (merge_asof O(n log m)) |
 
 ```mermaid
 flowchart LR
@@ -1075,7 +1022,7 @@ flowchart LR
         OBS["Observatory<br/>(Maturity + TensorBoard)"]
     end
     subgraph PART1B["PART 1B — The Senses and the Specialist (this document)"]
-        DS["Data Sources<br/>(Demo, HLTV, Steam,<br/>FACEIT, FrameBuffer)"]
+        DS["Data Sources<br/>(Demo, HLTV, Steam,<br/>FACEIT, Round Context)"]
         TF["TensorFactory<br/>(map + view + motion)"]
         FAISS_P1["FAISS Index<br/>(semantic search)"]
         RAP["RAP Coach<br/>(7 components +<br/>ChronovisorScanner +<br/>GhostEngine)"]

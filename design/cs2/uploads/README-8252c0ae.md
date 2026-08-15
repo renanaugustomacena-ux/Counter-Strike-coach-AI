@@ -852,7 +852,6 @@ Every README and technical document in the project. Click any link to open the d
 
 ### Book Coach Series (PDF)
 
-- [Ultimate CS2 Coach — Sistema AI](docs/books/Book-Coach-1.pdf)
 - [Ultimate CS2 Coach — Parte 1A — Il Cervello](docs/books/Book-Coach-1A.pdf)
 - [Ultimate CS2 Coach — Parte 1B — I Sensi e lo Specialista](docs/books/Book-Coach-1B.pdf)
 - [Ultimate CS2 Coach — Parte 2 — Servizi, Analisi e Database](docs/books/Book-Coach-2.pdf)

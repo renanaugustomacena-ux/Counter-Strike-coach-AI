@@ -823,7 +823,6 @@ Every README and technical document in the project. Click any link to open the d
 Four tri-lingual vision books + one canonical analogy companion book. Each coach book is available as Markdown (editable source) and PDF.
 
 **Italian (canonical source):**
-- [Ultimate CS2 Coach — Sistema AI](docs/books/Book-Coach-1.pdf) — umbrella PDF
 - [Parte 1A — Il Cervello](docs/books/Book-Coach-1A.md) ([PDF](docs/books/Book-Coach-1A.pdf))
 - [Parte 1B — I Sensi e lo Specialista](docs/books/Book-Coach-1B.md) ([PDF](docs/books/Book-Coach-1B.pdf))
 - [Parte 2 — Servizi, Analisi e Database](docs/books/Book-Coach-2.md) ([PDF](docs/books/Book-Coach-2.pdf))

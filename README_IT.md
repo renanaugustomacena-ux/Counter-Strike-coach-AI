@@ -857,7 +857,6 @@ Tutti i README e documenti tecnici del progetto. Clicca su qualsiasi link per ap
 Quattro libri di visione tri-lingui + un libro compagno di analogie canoniche. Ogni libro-coach è disponibile in Markdown (sorgente modificabile) e PDF.
 
 **Italiano (sorgente canonica):**
-- [Ultimate CS2 Coach — Sistema AI](docs/books/Book-Coach-1.pdf) — PDF ombrello
 - [Parte 1A — Il Cervello](docs/books/Book-Coach-1A.md) ([PDF](docs/books/Book-Coach-1A.pdf))
 - [Parte 1B — I Sensi e lo Specialista](docs/books/Book-Coach-1B.md) ([PDF](docs/books/Book-Coach-1B.pdf))
 - [Parte 2 — Servizi, Analisi e Database](docs/books/Book-Coach-2.md) ([PDF](docs/books/Book-Coach-2.pdf))

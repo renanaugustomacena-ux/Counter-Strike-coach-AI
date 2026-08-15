@@ -3,6 +3,8 @@
 > **Topicos:** Servicos de Coaching (pipeline 4-modos: COPER/Hibrido/RAG/Base, Ollama LLM), Motores de Coaching (11 motores de analise game-theoretic e estatistica), Conhecimento e Recuperacao (RAG + Experience Bank COPER), Motores de analise (belief model bayesiano, expectiminimax, momentum, papeis, deception index, entropia, engagement range, utility economy, win probability), Processamento e Feature Engineering (vetor canonico 25-dim, baselines profissionais), Modulo de Controle (lifecycle daemon, fila de ingestao, controle ML), Progresso e Tendencias (tracking longitudinal), Banco de Dados e Storage (schema SQLite WAL three-tier), Pipeline de Treinamento e Orquestracao, Funcoes de Perda.
 >
 > **Autor:** Renan Augusto Macena
+>
+> **Revisao base:** em sincronia com `Book-Coach-2.md` (canonico italiano) em 2026-08-15.
 
 ---
 
@@ -81,10 +83,10 @@ sequenceDiagram
 
 | Nivel                | Metodo                          | Confianca | Quando utilizado                                |
 | -------------------- | ------------------------------- | --------- | ----------------------------------------------- |
-| 1.**COPER**    | `_generate_coper_insights()`  | Maxima | Padrao — sintese baseada na experiencia    |
-| 2.**Hibrido**   | `_generate_hybrid_insights()` | Alta    | Se COPER nao tem experiencia suficiente           |
-| 3.**RAG Base** | `_enhance_with_rag()`         | Media   | Se os modelos ML nao estao disponiveis             |
-| 4.**Template** | Modelo estatistico de base      | Baixa   | Ultimo recurso — retorna sempre*algo* |
+| 1.**COPER**    | `_generate_coper_insights()`  | Maxima | Se `USE_COPER_COACHING` (default **True**) + mapa + tick data disponiveis; executado com **timeout de 30s** |
+| 2.**Hibrido**   | `_generate_hybrid_insights()` | Alta    | Se `USE_HYBRID_COACHING` (default False) + player_stats disponiveis |
+| 3.**RAG Base** | `_enhance_with_rag()`         | Media   | Caminho tradicional (`generate_corrections`) enriquecido por RAG se `USE_RAG_COACHING` (default False) + mapa |
+| 4.**Template** | Modelo estatistico de base      | Baixa   | Ultimo recurso — retorna sempre*algo* (`_save_generic_insight`, guarda C-01) |
 
 ```mermaid
 flowchart TB
@@ -166,7 +168,7 @@ flowchart LR
 
 ### -Servicos Adicionais (Nao documentados anteriormente)
 
-Alem dos tres servicos principais (CoachingService, OllamaCoachWriter, AnalysisOrchestrator), o diretorio `backend/services/` contem **7 servicos adicionais** que completam o ecossistema de coaching:
+Alem dos tres servicos principais (CoachingService, OllamaCoachWriter, AnalysisOrchestrator), o diretorio `backend/services/` contem **8 servicos adicionais** que completam o ecossistema de coaching:
 
 #### CoachingDialogueEngine (`coaching_dialogue.py`)
 
@@ -208,6 +210,37 @@ sequenceDiagram
 
 **Seguranca do historico (F5-06):** A mensagem do usuario e adicionada ao historico apenas *apos* obter uma resposta valida do LLM, evitando estados inconsistentes em caso de excecao.
 
+
+##### A fase agentica: o coach consulta o banco de dados sozinho
+
+Ate agosto de 2026 o coach recebia um contexto pre-embalado e, se a pergunta exigia um dado que ninguem havia colocado a sua frente, respondia que nao tinha acesso aos dados das partidas. O contexto era decidido *antes* de saber o que seria necessario.
+
+Hoje, quando o modelo LLM suporta tool-calling nativo, `respond()` tenta primeiro um **ciclo agentico** no qual e o proprio coach que pede o que lhe falta. Quatro ferramentas, deliberadamente poucas e de granularidade grossa:
+
+| Ferramenta | O que retorna |
+|---|---|
+| `list_matches(team?, map_name?)` | A lista das partidas disponiveis, filtravel por time ou por mapa |
+| `get_match_overview(demo_name)` | O panorama de uma partida: placar, scoreboard, metricas por jogador |
+| `get_round_details(demo_name, rounds[])` | O detalhe de rounds especificos |
+| `lookup_player(name)` | A stat card de um jogador profissional |
+
+O ciclo roda no maximo `_MAX_TOOL_ROUNDS = 4` vezes mais uma rodada final na qual a resposta e obrigatoria, e executa no maximo quatro chamadas por rodada. Entre uma rodada e outra verifica se o usuario cancelou. Se o modelo nao suporta ferramentas, o metodo retorna `None` e se volta ao caminho classico com o contexto pre-carregado: a fase agentica e uma melhoria, nao um requisito.
+
+**Duas decisoes de projeto merecem ser contadas.**
+
+*O inventario no prompt de sistema.* O prompt inclui um bloco `MATCH DATABASE INVENTORY` com a lista das partidas realmente presentes (primeiro as que tem dados por round, ate `_INVENTORY_LIMIT = 60`). A razao e tao simples quanto vinculante: **um LLM nao pode escolher uma partida que nunca lhe foi mostrada**. Sem o inventario o modelo inventava nomes de demo plausiveis e depois falhava a chamada.
+
+*A confianca zero nos argumentos.* Tudo o que o LLM produz como argumento e tratado como input nao confiavel, porque o e — e texto gerado, nao um valor validado por um formulario:
+
+- cada `demo_name` passa por `_canonical_demo()`, que o resolve contra uma **whitelist construida consultando o banco de dados**; se nao corresponder, a ferramenta retorna `ERROR: unknown demo_name. Call list_matches for exact names.` — uma mensagem da qual o modelo pode se recuperar, nao uma excecao;
+- os numeros de round devem ser inteiros, sao limitados ao intervalo 1–50, deduplicados e cortados em `_TOOL_MAX_ROUNDS_PER_CALL = 5`;
+- os fragmentos de nome de time sao limpos de tudo que nao seja `[a-z0-9 _-]` e truncados em `_TOOL_ARG_MAX_LEN = 40`; um `map_name` que nao pertenca a lista conhecida e simplesmente ignorado;
+- o resultado de cada ferramenta e limpo dos caracteres de controle e truncado em `_TOOL_RESULT_MAX_LEN = 8000` caracteres **antes de reentrar no prompt**, porque o que volta do banco de dados se torna, por sua vez, input do modelo.
+
+Os erros retornados sao strings curtas e neutras: nunca o texto de uma excecao, que revelaria estrutura interna a um componente que nao tem motivo para conhece-la.
+
+Durante as rodadas de ferramentas a resposta **nao e em streaming** — a interface recebe avisos de progresso (*"consultando o banco de dados das partidas…"*) e depois uma unica resposta completa.
+
 #### LessonGenerator (`lesson_generator.py`)
 
 Gerador de licoes educacionais estruturadas a partir da analise das demos:
@@ -243,11 +276,13 @@ Servico de integracao Ollama para inferencia LLM local:
 | Parametro | Valor | Descricao |
 |---|---|---|
 | `OLLAMA_URL` | `http://localhost:11434` | Endpoint Ollama (env: `OLLAMA_URL`) |
-| `DEFAULT_MODEL` | `llama3.1:8b` | Modelo 8B general-purpose (env: `OLLAMA_MODEL`) |
-| `_AVAILABILITY_TTL` | 60s | Cache de disponibilidade |
+| `DEFAULT_MODEL` | `gemma4:e2b` | Modelo default; ordem de resolucao: env `OLLAMA_MODEL` → setting `LLM_COACH_MODEL` → default hard-coded |
+| `_AVAILABILITY_TTL` | 60s | Cache de disponibilidade (health check com timeout de 3s) |
 | `temperature` | 0.7 | Criatividade das respostas |
 | `top_p` | 0.9 | Nucleus sampling |
-| `num_predict` | 500 | Limite comprimento resposta |
+| `num_predict` | -1 | Nenhum limite de comprimento da resposta |
+| `num_ctx` | 32768 | Janela de contexto |
+| Timeout generate/chat | 600s | POST para o Ollama; stream: connect 10s, stall 30s |
 
 **APIs suportadas:**
 
@@ -611,6 +646,16 @@ flowchart LR
 
 Converte os vetores de saida brutos da **Coaching Head JEPA** em objetos `InsightCandidate` prontos para a pipeline de coaching (F1.1 / W5.1).
 
+**Fluxo:**
+
+```mermaid
+flowchart LR
+    CH["Coaching Head JEPA<br/>(sigmoid [0,1])"] --> DELTA["Remapeamento delta assinado<br/>2*(out - 0.5)"]
+    DELTA --> FILTER["Filtro de magnitude<br/>|delta| < 0.1 → descartado"]
+    FILTER --> GATE["Gating de maturidade<br/>doubt/crisis / learning / conviction-mature"]
+    GATE --> IC["InsightCandidate<br/>axis · message · confidence · delta"]
+```
+
 **Contrato dimensional:** Opera nos primeiros 10 elementos do contrato 25-dim (target features: health, armor, has\_helmet, has\_defuser, equipment\_value, is\_crouching, is\_scoped, is\_blinded, enemies\_visible, pos\_x) mapeados em cinco SkillAxes (`survival`, `economy`, `movement`, `utility`, `positioning`).
 
 **Escala de maturidade:**
@@ -639,12 +684,13 @@ Implementa uma pipeline de **retrieval augmented generation** usando a busca por
 | Componente                          | Detalhe                                                                                                                                            |
 | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Modelo de embedding** | `sentence-transformers/all-MiniLM-L6-v2` (vetores de 384 dimensoes)                                                                                |
-| **Fallback**                  | Embeddings baseados em hash se Sentence-BERT nao esta disponivel                                                                                    |
+| **Fallback**                  | Embeddings hash bag-of-words de 100 dimensoes se Sentence-BERT nao esta disponivel                                                                                    |
 | **Armazenamento**             | Tabela SQLite `TacticalKnowledge` (embedding memorizado como array float codificado em JSON)                                                     |
-| **Retrieval**                  | Similaridade do cosseno via `scipy.spatial.distance.cosine`                                                                                     |
-| **Top-k**                     | Configuravel, padrao k=5                                                                                                                       |
-| **Versioning**                | `CURRENT_VERSION = "v3"` (2026-04, Coach Book refactor, Premier S4 active duty alignment); embeddings obsoletos v2 recalculados automaticamente via `trigger_reembedding()` |
-| **Categorias**                 | 14: objetivo, posicionamento, utility, movimento, economia, estrategia, posicionamento da mira, comunicacao, mental, senso do jogo, trading, **mid_round**, **retakes_post_plant**, **aim_and_duels** |
+| **Retrieval**                  | Similaridade do cosseno via numpy: `np.dot(a,b)/(‖a‖·‖b‖+1e-8)`; fast-path FAISS (`VectorIndexManager`, over-fetch ×10) com fallback linear |
+| **Top-k**                     | Configuravel, padrao k=3 no retriever                                                                                                          |
+| **Versioning**                | `CURRENT_VERSION = "v3"`; embeddings obsoletos recalculados automaticamente |
+| **Fonte primaria**            | **Coach Book** em `backend/knowledge/book/`: 8 arquivos JSON de conteudo (7 mapas Active Duty + general) + `index.json`, **508 entradas** no total |
+| **Categorias**                 | 13 (do Coach Book): aim_and_duels, positioning, economy, retakes_post_plant, clutch_play, mid_round, utility, anti_strat, role_play_entry, role_play_lurk, role_play_igl, role_play_support, role_play_awp |
 
 >
 > **Correcao M-07 — Rejeicao vetor norma-zero:** `VectorIndex.search()` valida a norma do vetor query antes da busca. Se a norma e zero (tipicamente devido a um embedding fallback vazio ou a um input corrompido), o metodo retorna `None` com um warning no log ao inves de propagar um erro de divisao por zero na similaridade do cosseno. Isto protege o pipeline RAG de queries degeneradas sem interromper o fluxo de coaching.
@@ -674,7 +720,7 @@ flowchart TB
 
 ### -Banca Experiencia (`experience_bank.py`) — Framework COPER (KT-01 Enhanced)
 
-Implementa o framework **Observacao-Previsao-Experiencia-Recuperacao Contextual (COPER)** com semantica CRUD, replay priorizado e integracao TrueSkill:
+Implementa o framework **COPER — "Context Optimized with Prompt, Experience, and Replay"** com semantica CRUD, replay priorizado e integracao TrueSkill:
 
 ```mermaid
 graph LR
@@ -758,9 +804,9 @@ flowchart TB
 
 **Linking Referencia Pro:** Cada experiencia pode incluir `pro_player_name`, `pro_match_id`, `source_demo` para conectar diretamente a como um profissional especifico gerenciou uma situacao analoga.
 
-### -Knowledge Graph
+### -Knowledge Graph (`graph.py`)
 
-Um **grafo entidade-relacao** leve memorizado em SQLite (tabelas `kg_entities`, `kg_relations`). Suporta `query_subgraph(entity_name)` a 1 hop para o raciocinio multi-hop, a fim de integrar a similaridade semantica.
+Um **grafo entidade-relacao** leve gerenciado pelo `KnowledgeGraphManager` num banco SQLite dedicado (`knowledge_graph.db`, tabelas `entities` e `relations`). Suporta queries de subgrafo a 1 hop para o raciocinio multi-hop, a fim de integrar a similaridade semantica.
 
 ```mermaid
 graph LR
@@ -774,10 +820,10 @@ graph LR
 
 Script de orquestracao que popula o banco de dados RAG com conhecimento tatico de duas fontes:
 
-1. **Conhecimento manual:** Carregamento de arquivo JSON (`data/tactical_knowledge.json`) com sugestoes curadas manualmente por categoria e mapa
-2. **Mining automatico:** Invocacao de `ProDemoMiner.mine_all_pro_demos()` para extrair padroes taticos das demos profissionais
+1. **Coach Book (preferido):** Carregamento de `backend/knowledge/book/index.json` — o `KnowledgePopulator` reconhece o formato de indice e o segue ate os 8 arquivos de conteudo
+2. **Mining automatico:** `auto_populate_from_pro_demos(limit=10)` para extrair padroes taticos dos dados profissionais
 
-Apos o carregamento, gera um relatorio por categoria e mapa usando queries COUNT agregadas (sem carregar todos os records em memoria).
+Apos o carregamento, gera um relatorio por categoria e mapa (queries COUNT agregadas) e reconstroi os indices FAISS: `rebuild_from_db("knowledge")` e `rebuild_from_db("experiences")`.
 
 ### -ProDemoMiner (`pro_demo_miner.py`)
 
@@ -855,6 +901,15 @@ Atribui um dos 6 papeis usando **limiares estatisticos aprendidos**:
 **Protecao para cold-start:** `RoleThresholdStore` requer >=10 amostras e >=3 limiares validos para sair do cold-start. Retorna `(FLEX, 0.0)` se em cold-start. Os limiares sao **mantidos no banco de dados** via `persist_to_db()` e `load_from_db()` — completamente implementados, nao como stub.
 
 **Audit do balanceamento do team** (`audit_team_balance()`): detecta multiplos AWPers (ALTA), Entry faltando (ALTA), Support faltando (MEDIA), nenhuma diversidade (CRITICA), multiplos Lurkers (MEDIA).
+
+
+**A guarda de vocabulario (F-0030).** Este classificador produziu, por meses, uma frase que parecia um diagnostico e nao era: *"Papel: IGL detectado, confianca 100%"*, sobre jogadores que nao eram IGLs.
+
+O mecanismo do defeito vale mais do que a correcao. As cinco pontuacoes de afinidade leem chaves estatisticas precisas — `awp_kills`, `total_kills`, `entry_frags`, `rounds_played`, `assists`, `rounds_survived`, `solo_kills`. O caminho vivo do orquestrador, porem, passava dicionarios de forma diferente, agregados em nivel de partida, que continham `kd_ratio` mas **nenhuma** daquelas sete chaves. Cada afinidade valia portanto zero, exceto uma: o bonus de equilibrio do IGL, que dispara quando a razao kills/deaths fica entre 0,9 e 1,2. A normalizacao final divide cada pontuacao pela soma — e a soma era aquele unico bonus. Um unico sinal fraco tornava-se assim uma certeza de 100%.
+
+O defeito nao estava na formula: estava no fato de que ninguem verificava se o input tinha a forma esperada. Hoje `classify()` verifica logo de inicio que o dicionario contenha ao menos uma chave do vocabulario de papeis e, se nao contiver, retorna `(FLEX, 0.0)` com um aviso explicito no log. A confianca zero aciona a guarda ja presente a jusante no orquestrador, que pula o insight em vez de publica-lo.
+
+E o mesmo principio do resto do sistema: **melhor um sentinela documentado do que um zero plausivel** — e melhor ainda um silencio declarado do que uma certeza fabricada. O teste `test_role_vocabulary_guard.py` fixa o comportamento.
 
 ### -Preditor de Probabilidade de Vitoria (`win_probability.py`)
 
@@ -1104,7 +1159,7 @@ Analisa as distancias de kill para construir **perfis de engajamento** especific
 
 | Componente | Proposito |
 |---|---|
-| `NamedPositionRegistry` | Registro de callouts por mapa (ex: "A Site", "Window", "Banana") com coordenadas 3D e raio |
+| `NamedPositionRegistry` | Registro de callouts (em `core/map_callouts.py`): **160 posicoes nomeadas em 9 mapas competitivos**, com coordenadas 3D e raio |
 | `EngagementRangeAnalyzer` | Calculo distancia euclidiana killer-vitima, classificacao e comparacao com baseline pro |
 | `EngagementProfile` | Distribuicao % por faixa: close (<500u), medium (500-1500u), long (1500-3000u), extreme (>3000u) |
 
@@ -1474,7 +1529,7 @@ flowchart TB
 - [**schema.py**](http://schema.py)**:** Validacao do schema para os registros do banco de dados
 - [**sanity.py**](http://sanity.py)** / dem\_[validator.py](http://validator.py):** Controles de integridade dos dados e dos arquivos demo
 
-**Cobertura quantitativa:** O projeto compreende **1.515+ testes** distribuidos em 94 arquivos de teste e **319+ controles headless validator** articulados em 24+ fases de validacao. Esta cobertura vai da integridade do schema DB a coerencia dos vetores de embedding, da correcao das pipelines de treinamento a validacao end-to-end dos fluxos de coaching.
+**Cobertura quantitativa:** O projeto compreende **167 arquivos de teste** (`test_*.py` em `Programma_CS2_RENAN/tests/`) mais os testes e os scripts `verify_*.py` na `tests/` raiz, e um **headless validator** com **39 fases tematicas de controle** (de Ambiente/Import ate Security, GPU, Design-Tokens e Quality-Adv). Esta cobertura vai da integridade do schema DB a coerencia dos vetores de embedding, da correcao das pipelines de treinamento a validacao end-to-end dos fluxos de coaching.
 
 ### -PlayerKnowledge — Sistema Perceptivo NO-WALLHACK (`player_knowledge.py`)
 
@@ -1539,18 +1594,6 @@ Features espaciais Z-aware para mapas multi-nivel (Task 2.17.1):
 
 **Output:** Vetor de 6 features espaciais normalizadas [0,1]: distancia de bombsite A/B, distancia de spawn T/CT, distancia de mid, penalidade Z. Distancias calculadas com `distance_with_z_penalty()` para penalizar percursos cross-level em Nuke/Vertigo.
 
-### -CVFrameBuffer (`cv_framebuffer.py`)
-
-Ring buffer thread-safe para frames RGB (Task 2.24.2) com extracao regioes HUD:
-
-| Regiao | Coordenadas (1920x1080) | Conteudo |
-|---|---|---|
-| `MINIMAP_REGION` | (0, 0, 320, 320) | Minimapa (top-left) |
-| `KILL_FEED_REGION` | (1520, 0, 1920, 300) | Kill feed (top-right) |
-| `SCOREBOARD_REGION` | (760, 0, 1160, 60) | Scoreboard (top-center) |
-
-**Dynamic resolution scaling:** Todas as regioes escalam automaticamente em relacao a `REFERENCE_RESOLUTION = (1920, 1080)` para suportar resolucoes diferentes. Conversao BGR->RGB integrada no metodo `capture_frame()`.
-
 ### -EliteAnalytics (`external_analytics.py`)
 
 Carrega e analisa datasets CSV de referencia (top 100 jogadores, estatisticas match, dados torneios):
@@ -1589,36 +1632,20 @@ Gerencia tags de team e prefixos clan. Complexidade O(n) por query, aceitavel pa
 
 ### -ProBaseline (`pro_baseline.py`)
 
-**Task 2.18.1:** Sistema de baseline pro com suporte map-specific e cadeia de fallback a 3 niveis:
+**Task 2.18.1:** Sistema de baseline pro com suporte map-specific e cadeia de fallback em camadas:
 
 ```mermaid
 flowchart TB
-    REQ["get_pro_baseline(map_name)"] --> DB{"DB tem<br/>ProPlayerStatCard?"}
-    DB -->|"Sim"| DBBL["Baseline de DB<br/>(agregada por mapa)"]
-    DB -->|"Nao"| CSV{"CSV dataset<br/>disponivel?"}
-    CSV -->|"Sim"| CSVBL["Baseline de CSV"]
-    CSV -->|"Nao"| HARD["HARD_DEFAULT_BASELINE<br/>(16 metricas hardcoded)"]
-    DBBL --> OUT["dict: metric -> {mean, std}"]
-    CSVBL --> OUT
-    HARD --> OUT
+    REQ["get_pro_baseline(map_name)"] --> HARD["Camada 1: HARD_DEFAULT_BASELINE<br/>(hardcoded)"]
+    HARD --> CSV["Camada 2: dataset CSV<br/>(se disponivel, sobrescreve)"]
+    CSV --> DEMO["Camada 3: estatisticas demo pro<br/>(se disponiveis, sobrescrevem)"]
+    DEMO --> HLTV["Camada 4: ProPlayerStatCard HLTV<br/>(se disponiveis, sobrescrevem)"]
+    HLTV --> OUT["dict: metric → {mean, std}"]
 ```
 
-**HARD_DEFAULT_BASELINE** (16 metricas com mean + std):
+**HARD_DEFAULT_BASELINE** — dicionario de metricas hardcoded com mean + std, ultima camada da cadeia de fallback. Cobre: `rating`, `kd_ratio`, `avg_kills`, `avg_deaths`, `avg_adr`, `avg_hs`, `avg_kast`, `accuracy`, aggression, utility, opening/clutch, `rating_impact`, `rating_survival`, `rating_kast`. A baseline real e a **fusao em 4 camadas**: hardcoded → CSV → estatisticas demo → HLTV (`get_pro_baseline()`).
 
-| Metrica | Mean | Std |
-|---|---|---|
-| rating | 1.06 | 0.15 |
-| kpr | 0.68 | 0.12 |
-| dpr | 0.62 | 0.10 |
-| adr | 77.8 | 12.0 |
-| kast | 0.70 | 0.06 |
-| hs_pct | 0.45 | 0.10 |
-| impact | 1.05 | 0.20 |
-| opening_kill_ratio | 1.05 | 0.30 |
-| clutch_win_pct | 0.15 | 0.08 |
-| ... | ... | ... |
-
-**`calculate_deviations(player_stats, baseline)`** — Calcula Z-score para cada feature: `z = (player_value - mean) / std`. Gerencia tanto baseline flat (legacy) quanto estruturadas (dict com mean/std).
+**`calculate_deviations(player_stats, baseline)`** — Calcula o Z-score para cada feature: `z = (player_value - mean) / std`. Gerencia tanto baselines flat (legacy) quanto estruturadas (dict com mean/std).
 
 ### -RoleThresholdStore (`role_thresholds.py`)
 
@@ -1640,7 +1667,8 @@ flowchart TB
 
 | Requisito | Valor | Significado |
 |---|---|---|
-| `MIN_SAMPLES_FOR_VALIDITY` | 10 | Minimo amostras para limiar valido |
+| `MIN_SAMPLES_FOR_VALIDITY` | 30 | Minimo amostras para limiar valido |
+| Aprendizado dos limiares | 75o percentil | Os limiares sao aprendidos do 75o percentil dos dados pro reais |
 | Limiares validos minimos | 3 | Para sair do cold-start |
 | Cold-start output | `(FLEX, 0.0)` | Papel generico, 0% confianca |
 
@@ -1800,7 +1828,7 @@ Supervisor do ciclo de vida ML com intervencao em tempo real:
 
 ### Coordenacao Inter-Daemon
 
-O Modulo de Controle orquestra os 4 daemons do sistema (Hunter, Digester, Teacher, Pulse) atraves de canais de comunicacao baseados em estado compartilhado (`CoachState`) e sinais event-based:
+O Modulo de Controle orquestra os 4 daemons do sistema (Scanner, Digester, Teacher, Pulse) atraves de canais de comunicacao baseados em estado compartilhado (`CoachState`) e sinais event-based:
 
 ```mermaid
 stateDiagram-v2
@@ -1847,13 +1875,13 @@ Dataclass minimal que representa o trend de uma unica feature:
 | `volatility` | float | Desvio padrao dos valores (estabilidade) |
 | `confidence` | float | min(1.0, num_samples / 30) — requer 30+ partidas para plena confianca |
 
-### -TrendAnalysis (`trend_analysis.py`)
+### -compute_trend (`trend_analysis.py`)
 
-`compute_trend(values)` — Calcula slope, volatility e confidence de uma serie de valores:
+A funcao `compute_trend(values)` — calcula slope, volatility e confidence de uma serie de valores (nao existe uma classe `TrendAnalysis`; o modulo expoe esta funcao):
 
 - **Slope:** Coeficiente linear via `np.polyfit(x, y, 1)[0]`
 - **Volatility:** `np.std(values)`
-- **Confidence:** Escala linearmente com o numero de amostras, plena confianca em 30+
+- **Confidence:** `min(1.0, n / TREND_CONFIDENCE_SAMPLE_SIZE)` com `TREND_CONFIDENCE_SAMPLE_SIZE = 30`; guarda para `n < 2`
 
 **Integracao:** Os resultados de `compute_trend()` alimentam `FeatureTrend` -> `LongitudinalEngine.generate_longitudinal_coaching()` -> insights trend-aware no coaching.
 
@@ -1909,11 +1937,11 @@ flowchart TB
     style TIER3 fill:#51cf66,color:#fff
 ```
 
-> **Explicacao Diagrama:** Os tres bancos de dados sao fisicamente separados: Tier 1 contem os dados core da aplicacao (17 tabelas), Tier 2 os dados profissionais baixados de HLTV (3 tabelas), e Tier 3 os dados de telemetria per-match em arquivos SQLite individuais. A separacao evita contencao WAL: as escritas de ingestao (Tier 1) nao bloqueiam as leituras HLTV (Tier 2) nem o registro de telemetria (Tier 3). As referencias cross-database sao **logicas** (nao FK reais) pois SQLite nao suporta FK cross-file.
+> **Explicacao Diagrama:** Os tres bancos de dados sao fisicamente separados: Tier 1 contem os dados core da aplicacao (18 tabelas em `_MONOLITH_TABLES`), Tier 2 os dados profissionais baixados de HLTV (7 tabelas), e Tier 3 os dados de telemetria per-match em arquivos SQLite individuais. A separacao evita contencao WAL: as escritas de ingestao (Tier 1) nao bloqueiam as leituras HLTV (Tier 2) nem o registro de telemetria (Tier 3). As referencias cross-database sao **logicas** (nao FK reais) pois SQLite nao suporta FK cross-file.
 
 ### -Modelos de Dados (`db_models.py`)
 
-O **esquema canonico** de todo o sistema: define cada tabela, constraint, indice e validador via SQLModel (Pydantic + SQLAlchemy). Dois enums e 20+ modelos organizados por tier.
+O **esquema canonico** de todo o sistema: define cada tabela, constraint, indice e validador via SQLModel (Pydantic + SQLAlchemy). Dois enums e **25 modelos `table=True`** organizados por tier.
 
 **Enum de integridade:**
 
@@ -1952,6 +1980,9 @@ O **esquema canonico** de todo o sistema: define cada tabela, constraint, indice
 | `ProTeam` | Tier 2 | hltv_id (unique), name, world_rank | Teams profissionais |
 | `ProPlayer` | Tier 2 | hltv_id (unique), nickname, team_id (FK->ProTeam) | Jogadores profissionais |
 | `ProPlayerStatCard` | Tier 2 | player_id (FK), rating_2_0, kpr, adr, kast, detailed_stats_json | Stat cards HLTV com dados granulares |
+| `ProEvent` / `ProTournament` / `ProHead2Head` / `ProMapRecord` | Tier 2 | metadados de eventos, torneios, confrontos diretos e records por mapa | Tabelas HLTV estendidas |
+| `DataLineage` | Tier 1 | entity_type, entity_id, source_demo, pipeline_version, processing_step | Audit trail de proveniencia append-only (DL-1) |
+| `DataQualityMetric` | Tier 1 | run_id, run_type, metric_name, metric_value, sample_count | Metricas de qualidade append-only por run (P5-E) |
 
 > **Nota arquitetural:** `PlayerMatchStats.pro_player_id` e uma referencia **logica** (nao uma FK real) a `ProPlayer.hltv_id` porque residem em bancos de dados separados. SQLite nao suporta FK cross-file — o join e efetuado em nivel aplicativo.
 
@@ -1965,14 +1996,16 @@ O **guardiao do arquivo**: gerencia as conexoes SQLite com WAL mode obrigatorio,
 
 | Classe | Banco de dados | Tabelas | Engine |
 |---|---|---|---|
-| `DatabaseManager` | `database.db` | 17 tabelas (`_MONOLITH_TABLES`) | `pool_size=1`, `max_overflow=4` |
-| `HLTVDatabaseManager` | `hltv_metadata.db` | 3 tabelas (`_HLTV_TABLES`) | `pool_size=1`, `max_overflow=4` |
+| `DatabaseManager` | `database.db` | 18 tabelas (`_MONOLITH_TABLES`) | `pool_size=1`, `max_overflow=4` |
+| `HLTVDatabaseManager` | `hltv_metadata.db` | 7 tabelas (`_HLTV_TABLES`: ProPlayer, ProTeam, ProPlayerStatCard, ProEvent, ProTournament, ProHead2Head, ProMapRecord) | `pool_size=1`, `max_overflow=4` |
 
 **PRAGMA SQLite (aplicados em cada conexao via `@event.listens_for`):**
 
 | PRAGMA | Valor | Proposito |
 |---|---|---|
 | `journal_mode` | `WAL` | Leituras concorrentes + unica escrita |
+| `foreign_keys` | `ON` | Integridade referencial (DB-06) |
+| `wal_autocheckpoint` | `512` | Checkpoint WAL automatico (DB-07) |
 | `synchronous` | `NORMAL` | Balanceamento performance/durabilidade |
 | `busy_timeout` | `30000` (30s) | Timeout contencao WAL lock |
 
@@ -2118,7 +2151,7 @@ flowchart TB
         BM["BackupManager<br/>(Online Backup API, 7d+4w)"]
         SM["StorageManager<br/>(demo folders, quotas)"]
         STM["StateManager<br/>(CoachState singleton)"]
-        MODELS["db_models.py<br/>(20+ tabelas SQLModel)"]
+        MODELS["db_models.py<br/>(25 tabelas SQLModel)"]
         MIG["db_migrate.py<br/>(Alembic auto-upgrade)"]
     end
     MODELS -->|"schema"| DBM
@@ -2372,7 +2405,8 @@ O trainer especializado para a arquitetura JEPA. Gerencia pre-training self-supe
 | Parametro | Default | Detalhe |
 |---|---|---|
 | `lr` | 1e-4 | Learning rate para AdamW |
-| `weight_decay` | 1e-4 | Regularizacao L2 |
+| `weight_decay` | 1e-2 | Regularizacao L2 |
+| AMP + acumulo | GradScaler (CUDA), `_accumulation_steps=4`, grad clip 1.0 | Mixed precision e batches efetivos maiores |
 | `drift_threshold` | 2.5 | Limiar z-score para DriftMonitor |
 
 - **NN-36**: Os parametros do `target_encoder` sao **excluidos** do otimizador — sao atualizados apenas via EMA (Exponential Moving Average), nunca com gradientes diretos

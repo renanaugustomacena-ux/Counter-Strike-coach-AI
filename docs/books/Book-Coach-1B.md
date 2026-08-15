@@ -1,6 +1,6 @@
 # Ultimate CS2 Coach — Parte 1B: I Sensi e lo Specialista
 
-> **Argomenti:** Modello RAP Coach (architettura 7 componenti: Percezione, Memoria LTC+Hopfield, Strategia, Pedagogia, Attribuzione Causale, Posizionamento, Comunicazione), ChronovisorScanner (rilevamento momenti critici multi-scala), GhostEngine (pipeline inferenza 4-tensori), e tutte le sorgenti dati esterne (Demo Parser, HLTV, Steam, FACEIT, TensorFactory, FrameBuffer, FAISS, Round Context).
+> **Argomenti:** Modello RAP Coach (architettura 7 componenti: Percezione, Memoria LTC+Hopfield, Strategia, Pedagogia, Attribuzione Causale, Posizionamento, Comunicazione), ChronovisorScanner (rilevamento momenti critici multi-scala), GhostEngine (pipeline inferenza 4-tensori), e tutte le sorgenti dati esterne (Demo Parser, HLTV, Steam, FACEIT, TensorFactory, FAISS, Round Context).
 >
 > **Autore:** Renan Augusto Macena
 
@@ -623,6 +623,25 @@ Wrapper robusto attorno alla libreria `demoparser2` per l'estrazione di statisti
 - Varianza: `kill_std`, `adr_std` (via `_compute_per_round_variance`)
 - Statistiche avanzate: `avg_hs`, `accuracy`, `impact_rounds`, `econ_rating`
 - Rating HLTV 2.0 approssimato (approssimazione hand-tuned, non formula ufficiale)
+
+**La guardia di parsing (`parse_guard.py`).** `demoparser2` è un'estensione Rust, e una demo malformata non solleva un'eccezione Python normale: fa **andare in panico il codice Rust**, che pyo3 traduce in una `PanicException`. Quella classe deriva da `BaseException`, non da `Exception` — quindi ogni `except Exception` della pipeline la lasciava passare, e una singola demo corrotta interrompeva l'intera sessione di ingestione, nonostante i docstring promettessero il contrario.
+
+La correzione non poteva essere `except pyo3_runtime.PanicException`, perché **pyo3 crea quella classe pigramente, al primo panic**: prima di allora il modulo non è nemmeno importabile. La guardia riconosce quindi l'eccezione **per nome di classe**:
+
+```python
+_PROPAGATE = (KeyboardInterrupt, SystemExit, GeneratorExit)
+
+def is_parse_error(exc: BaseException) -> bool:
+    if isinstance(exc, _PROPAGATE):
+        return False          # questi devono SEMPRE propagare
+    if isinstance(exc, Exception):
+        return True
+    return type(exc).__name__ == "PanicException"
+```
+
+L'idioma al punto di chiamata è `except BaseException as exc: if not is_parse_error(exc): raise`. La disciplina è esplicita e vale la pena enunciarla: l'unica `BaseException` che questo sistema si permette di assorbire è il panic nominato: interruzione da tastiera, uscita dal processo e chiusura di un generatore passano sempre.
+
+**Il timeout di parsing è reale.** La versione precedente usava `with ThreadPoolExecutor(...)`: il `FutureTimeoutError` veniva sollevato correttamente, ma all'uscita dal blocco `with` lo `shutdown(wait=True)` implicito si metteva ad aspettare proprio il thread di parsing appeso. Il timeout scattava e il chiamante restava bloccato lo stesso. Oggi `_run_with_parse_timeout()` gestisce l'esecutore a mano e chiude con `shutdown(wait=False, cancel_futures=True)`, **abbandonando** il thread orfano e scrivendolo a log come errore invece di nasconderlo. Il test `test_parse_timeout_real.py` mette un worker appeso per 30 secondi e pretende che il chiamante torni in meno di 5.
 
 ### -Demo Format Adapter (`demo_format_adapter.py`)
 

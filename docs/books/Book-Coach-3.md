@@ -36,7 +36,8 @@
     - 12.16 Viaggio Completo dell'Utente — 4 Flussi Principali
     - 12.17 Suite di Strumenti — Validazione e Diagnostica (`tools/`)
     - 12.18 Architettura della Test Suite (`tests/`)
-    - 12.19 Le 12 Fasi di Rimediazione Sistematica
+    - 12.19 Le Fasi di Rimediazione Sistematica
+      - 12.19.1 La campagna di audit integrale (agosto 2026)
     - 12.20 Pre-commit Hooks e Quality Gates
     - 12.21 Build, Packaging e Deployment
     - 12.22 Sistema Migrazioni Alembic
@@ -697,10 +698,15 @@ flowchart LR
 
 **File:** `Programma_CS2_RENAN/core/config.py`
 
-Il sistema utilizza **tre livelli di configurazione**, ciascuno con un diverso livello di persistenza e sicurezza:
+Il sistema utilizza **quattro livelli di configurazione**, ciascuno con un diverso livello di persistenza e sicurezza:
 
 ```mermaid
 flowchart TB
+    subgraph L0["Livello 0: AMBIENTE (.env + variabili reali)"]
+        EV1["OLLAMA_MODEL, FLARESOLVERR_URL"]
+        EV2["PRO_DEMO_PATH, DEFAULT_DEMO_PATH"]
+        EV3["setdefault: l'ambiente reale vince sempre"]
+    end
     subgraph L1["Livello 1: HARDCODED (config.py)"]
         HC1["CS2_PLAYER_NAME, DEFAULT_DEMO_PATH"]
         HC2["ACTIVE_THEME, FONT_SIZE, FONT_TYPE"]
@@ -718,12 +724,22 @@ flowchart TB
         SK2["FACEIT_API_KEY"]
         SK3["Mai in JSON, mai in log"]
     end
+    L0 -->|"Popola os.environ prima di tutto"| L1
     L1 -->|"Sovrascrivibile da"| L2
     L2 -->|"Riferisce a"| L3
+    style L0 fill:#868e96,color:#fff
     style L1 fill:#4a9eff,color:#fff
     style L2 fill:#ffd43b,color:#000
     style L3 fill:#ff6b6b,color:#fff
 ```
+
+**Il livello 0 e la lezione che porta con sé.** Fino all'agosto 2026 il file `.env` era una superficie di configurazione **documentata ma mai letta**: nessuna dipendenza lo interpretava e nessuno script lo caricava, quindi ogni override descritto nella documentazione era un'istruzione che non faceva niente — falliva in silenzio, che è il modo peggiore di fallire. Oggi `_load_dotenv_file()` in `core/config.py` lo analizza con la sola libreria standard, al momento dell'import del modulo, e lo fa con tre cautele deliberate:
+
+- scrive con `os.environ.setdefault`, quindi **una variabile d'ambiente reale vince sempre** sul file — chi lancia il programma dentro un container o un job CI non viene scavalcato da un file sul disco;
+- scarta le chiavi che non siano alfanumeriche più underscore, così una riga malformata non inietta nulla di strano nell'ambiente del processo;
+- **non logga mai i valori**, perché `.env` può contenere chiavi API.
+
+Se il file non esiste non succede nulla; se non è leggibile si ottiene un avviso, non un errore fatale. Sopra questo livello, quattro chiavi di percorso (`PRO_DEMO_PATH`, `DEFAULT_DEMO_PATH`, `BRAIN_DATA_ROOT`, `CUSTOM_STORAGE_PATH`) possono essere riscritte dall'ambiente anche quando `user_settings.json` contiene già un valore, e tre segreti (`STEAM_API_KEY`, `FACEIT_API_KEY`, `STORAGE_API_KEY`) arrivano dal portachiavi di sistema. `set_secret()` **restituisce `False` invece di sollevare un'eccezione** quando il portachiavi non è disponibile: su una macchina Linux senza backend installato, salvare le impostazioni non deve far cadere l'applicazione.
 
 **Costanti critiche del sistema:**
 
@@ -868,16 +884,27 @@ L'interfaccia Qt è costruita con **PySide6 (Qt 6)** e utilizza un pattern **MVV
 | **Pattern** | MVVM con Qt Signals/Slots |
 | **Piattaforme** | Windows, macOS, Linux |
 | **Risoluzione** | Adattiva, High-DPI nativo |
-| **Temi** | 3: CS2 (arancione), CSGO (blu-grigio), CS1.6 (verde) — QSS + QPalette |
-| **i18n** | 3 lingue: EN, IT, PT — JSON + `QtLocalizationManager` |
-| **Grafici** | QPainter per mappa tattica, widget nativi Qt per chart |
+| **Temi** | 3: CS2 (arancione), CSGO (blu-grigio), CS1.6 (verde) — un unico template QSS parametrizzato da design token |
+| **i18n** | 3 lingue: EN, IT, PT — JSON + `QtLocalizationManager`, 572 chiavi per lingua |
+| **Grafici** | QPainter puro ovunque: mappa tattica e tutti i widget grafici |
 
 **Sistema i18n:** Il `QtLocalizationManager` (`core/i18n_bridge.py`) carica file JSON per lingua (`en.json`, `it.json`, `pt.json`) e gestisce il cambio lingua a runtime tramite segnali Qt. Ogni stringa UI viene risolta dinamicamente tramite chiave di localizzazione.
 
-**Sistema temi:** Il `ThemeEngine` (`core/theme_engine.py`) applica fogli di stile QSS e configura la `QPalette` Qt per ciascun tema:
-- **CS2** — Palette arancione (#FF6600) con sfondo scuro, ispirata alla UI di CS2
-- **CSGO** — Palette blu-grigio (#4A90D9) con toni freddi, ispirata a CS:GO
-- **CS1.6** — Palette verde (#33CC33) su sfondo nero, ispirata al look retrò di CS 1.6
+**Sistema temi:** dall'agosto 2026 i tre temi non sono più tre fogli di stile. La cartella `apps/qt_app/themes/` contiene **un solo file**, `base.qss.template`, e il colore arriva da una pipeline in tre stadi:
+
+1. `design/tokens/design-tokens.json` è la fonte di verità dei colori. `tools/gen_design_tokens.py` lo compila in `core/design_tokens.py`, un modulo **generato** — da non modificare a mano — che espone tre istanze congelate di `DesignTokens`: `CS2_TOKENS`, `CSGO_TOKENS`, `CS16_TOKENS`.
+2. `core/qss_generator.py` esegue `Template(base.qss.template).safe_substitute(asdict(tokens))` e tiene in cache un foglio di stile già reso per ciascun nome di tema.
+3. `core/theme_engine.py` applica quel QSS e poi costruisce la `QPalette` **dalla stessa istanza di token**, così foglio di stile e palette non possono più divergere.
+
+Il guadagno pratico è che aggiungere un tema significa aggiungere un blocco di token, non riscrivere un foglio di stile da centinaia di righe; e un colore corretto in un punto si propaga insieme a QSS, `QPalette` e `rating_color()`.
+
+| Tema | Accento | Superficie di base | Ispirazione |
+|---|---|---|---|
+| **CS2** (default) | `#FF6A00` arancione | `#0B1628` blu notte | UI moderna di Counter-Strike 2 |
+| **CSGO** | `#617D8C` blu-grigio | `#1A1C21` grigio quasi nero | Counter-Strike: Global Offensive |
+| **CS1.6** | `#4DB04F` verde | `#121A12` verde-nero | Counter-Strike 1.6 classico |
+
+**Il relay di tema.** Un `ThemeEngine` vive quanto un avvio dell'applicazione. I widget che si ricoloravano da soli non avevano quindi un oggetto stabile a cui iscriversi, e dopo un cambio tema restavano del colore vecchio. La soluzione è un **relay a livello di modulo**, `get_theme_relay()`: i widget con stile applicato per istanza — chip di filtro e di stato, card del roster, banner — si iscrivono al relay, che sopravvive ai singoli motori, e Qt scollega da solo i destinatari distrutti.
 
 **Web Views** (`apps/qt_app/web/`):
 
@@ -915,20 +942,31 @@ La comunicazione bidirezionale tra il backend Python e le web app passa per `QWe
 
 | Widget | File | Funzione |
 | ------ | ---- | -------- |
-| `PlayerSidebar` | `player_sidebar.py` | Lista CT/T con icone ruolo, salute/armatura, arma corrente, denaro, e stato vivo/morto |
-| `TacticalMap` | `tactical_map.py` | Canvas 2D con rendering multilivello: texture mappa → heatmap → giocatori → granate → fantasma (QPainter) |
-| `Timeline` | `timeline.py` | Scrubber orizzontale con tick numbers, marcatori eventi colorati, drag-to-seek, double-click jump |
-| `GhostPixel` | `ghost_pixel.py` | Rendering del cerchio fantasma semi-trasparente (posizione ottimale predetta da RAP) |
+| `PlayerSidebar` | `tactical/player_sidebar.py` | Lista CT/T con icone ruolo, salute/armatura, arma corrente, denaro e stato vivo/morto (`_PlayerItem`, `_StatBar`) |
+| `TacticalMapWidget` | `tactical/map_widget.py` | Canvas 2D con rendering multilivello: texture mappa → zone → heatmap → giocatori → granate → fantasma (QPainter) |
+| `TimelineWidget` | `tactical/timeline_widget.py` | Scrubber orizzontale con numeri di tick, glifi evento (stella, rombo), drag-to-seek e salto al doppio clic |
+| `with_alpha` | `tactical/_paint_utils.py` | Helper condiviso di disegno: applica un canale alfa a un `QColor` senza duplicare la logica in ogni widget |
 
-**Temi disponibili:**
+**Widget grafici (`widgets/charts/`):**
 
-L'applicazione supporta **3 temi** selezionabili dalla schermata Settings, ciascuno con una palette colori e wallpaper personalizzati:
+QtCharts è stato **ritirato** per una ragione di licenza, non di gusto: è distribuito sotto GPLv3, incompatibile con la distribuzione di questo progetto. I grafici sono stati riscritti in QPainter puro conservando l'API pubblica, così le schermate che li usavano non hanno dovuto cambiare. Un test di gate (`tests/test_charts.py`, classe `TestQtChartsRetired`) fallisce se un solo riferimento a `QtCharts` o `QChart` rientra nel codice.
 
-| Tema | Palette primaria | Ispirazione |
-| ---- | --------------- | ----------- |
-| **CS2** (default) | Blu acciaio + arancio | Counter-Strike 2 UI moderna |
-| **CSGO** | Verde militare + giallo | Counter-Strike: Global Offensive |
-| **CS 1.6** | Marrone scuro + verde lime | Counter-Strike 1.6 classico (nostalgia) |
+Tutti leggono i token dentro `paintEvent`, quindi si ridisegnano del colore giusto dopo un cambio tema.
+
+| Widget | File | Funzione |
+| ------ | ---- | -------- |
+| `RadarChart` | `radar_chart.py` | Radar delle abilità a N assi (N ≥ 3), griglia a poligoni concentrici, una figura piena per serie — usato per sovrapporre utente e professionista |
+| `RatingSparkline` | `rating_sparkline.py` | Andamento del rating con linee di riferimento HLTV tratteggiate a 0,90 / 1,00 / 1,10 e didascalie a bordo destro |
+| `UtilityBarChart` | `utility_bar_chart.py` | Barre raggruppate utente-vs-pro (`set_rows`) oppure una barra per riga con scala a tacche (`set_single`) |
+| `EconomyChart` | `economy_chart.py` | Valore di equipaggiamento per round, barre colorate dal lato di quel round; `set_half_marker()` traccia il cambio di metà |
+| `MomentumChart` | `momentum_chart.py` | Barre dello scarto uccisioni-morti per round, normalizzate sullo scarto massimo |
+| `MiniSparkline` | `mini_sparkline.py` | Forma di tendenza minima, senza assi né cornice, per stare dentro una card |
+
+**Libreria di componenti (`widgets/components/`):**
+
+26 componenti riusabili costruiti sull'atlante di design. I più caratterizzanti: `MapTile` (riquadro per mappa con barra di avanzamento e etichetta di accessibilità), `DeltaChip` (scarto rispetto a un riferimento — *il confronto è l'informazione*), `ProBadge`, `MetricBarRow`, `DbRecordCard`, `TipBox`, `NumberedStep`, `DriversList`, `MonoFooter` (riga di provenienza del dato: da quale tabella e da quale colonna arriva il numero mostrato).
+
+Il pannello di chat del coach (`widgets/coaching/chat_panel.py`) è deliberatamente **agnostico rispetto al ViewModel**: non parla mai direttamente con un VM, è una schermata a cablarlo (`panel.message_submitted → vm.send_message`, `vm.messages_changed → panel.add_message`). Così lo stesso pannello può servire contesti diversi senza sapere nulla di chi lo alimenta.
 
 **Coach Screen — Layout dettagliato:**
 
@@ -1010,6 +1048,23 @@ flowchart TB
     style COACH fill:#51cf66,color:#fff
     style INSIGHT fill:#ffd43b,color:#000
 ```
+
+**Chi prende in carico il task, e perché uno solo.**
+
+Il passo 2 del diagramma — *"il Digester preleva"* — nasconde un problema di concorrenza che è costato dati duplicati. Le superfici che possono avviare un'ingestione sono **sei**: la schermata Home, le impostazioni, il comando di ingest della console, `batch_ingest`, `ingest_pro_demos` e `run_worker`. Il percorso vecchio faceva una `SELECT` della coda e poi scriveva `status='processing'` senza condizioni: due runner avviati a poca distanza leggevano la **stessa fotografia** della coda, entrambi la ritenevano propria, e la stessa demo veniva analizzata due volte scrivendo statistiche duplicate.
+
+La correzione è una sola istruzione SQL, e la sua forza sta nella clausola `WHERE`:
+
+```python
+_sa_update(IngestionTask)
+    .where(IngestionTask.id == task_id, IngestionTask.status == "queued")
+    .values(status="processing", updated_at=...)
+# rowcount == 1 → il task è nostro;  rowcount == 0 → l'ha preso un altro
+```
+
+L'`UPDATE ... WHERE status='queued'` è atomico a livello di database: **esattamente un runner vince ogni task**, gli altri leggono `rowcount == 0` e passano oltre in silenzio. Non serve un lock applicativo, non serve coordinamento fra processi — la condizione di corsa viene eliminata invece che gestita, che è sempre la soluzione preferibile. Un test dedicato (`test_ingestion_atomic_claim.py`) verifica sia il claim esclusivo sia il fatto che un task già reclamato venga saltato.
+
+Alla chiusura del cerchio ci pensa `run_worker.py`: se un task viene reclamato ma poi scartato, `_release_claim()` lo riporta a `queued` invece di lasciarlo bloccato in `processing` per sempre.
 
 **DemoLoader — Il parser del cuore della pipeline:**
 
@@ -1503,6 +1558,16 @@ Ogni momento viene posizionato sulla Timeline come un marcatore cliccabile. Il c
 **File:** `Programma_CS2_RENAN/core/spatial_data.py`, `spatial_engine.py`, `data/map_config.json`
 
 Il sistema di gestione mappe traduce le **coordinate mondo di CS2** (valori tipici: -2000 a +2000 su X/Y) in **coordinate pixel** sulla texture della mappa (0.0 a 1.0 normalizzato), e viceversa.
+
+**Prima della geometria, l'identità: quali mappe esistono.** Un censimento dell'agosto 2026 ha trovato **dodici** elenchi di mappe note dichiarati in punti diversi del progetto, con contenuti divergenti: chi ne conosceva undici, chi nove, chi otto. La conseguenza non era teorica — la stessa demo poteva essere riconosciuta da uno strumento e ignorata da un altro, a seconda di quale elenco quel modulo si portava dietro.
+
+`core/known_maps.py` è oggi l'autorità unica: `KNOWN_MAP_NAMES` (i nomi nudi), `KNOWN_MAP_IDS` (gli stessi con il prefisso `de_`), l'espressione regolare per riconoscere una mappa dentro un nome di file, e i tre helper `bare_name()`, `is_known_map()`, `sniff_map_from_text()`. L'insieme è deliberatamente un **soprainsieme** di tutti e dodici gli elenchi trovati: meglio riconoscere una mappa che non è nella rotazione competitiva che ignorarne una che c'è.
+
+Va detto con precisione fin dove arriva, perché una SSOT dichiarata più ampia di quello che è vale meno di nessuna SSOT. **Sette consumatori** sono stati convertiti e sono presidiati dal test `test_known_maps_ssot.py`, che vieta di ridichiarare il trio mirage/inferno/nuke e verifica che ciascuno importi ancora il modulo:
+
+`apps/qt_app/core/match_utils.py` · `apps/qt_app/screens/coach_screen.py` · `tools/d3_recover_shard_metadata.py` · `tools/mine_coaching_experience.py` · `tools/mine_shard_strategies.py` · `tools/populate_match_results.py` · `tools/rebuild_monolith.py`
+
+Restano fuori quattro elenchi locali — in `coaching_dialogue.py`, `reporting/analytics.py`, `knowledge/pro_demo_miner.py` e in `Goliath_Hospital.py` — e due di questi sono esclusioni **volute**: `REQUIRED_MAPS` di Goliath verifica la presenza di file di asset, non l'identità di una mappa, e il registro spaziale porta geometrie radar calibrate a mano che non hanno senso fuori dal loro contesto. Gli altri due sono debito residuo, non progetto.
 
 ```mermaid
 flowchart LR
@@ -1998,7 +2063,7 @@ sequenceDiagram
     participant FS as Filesystem
 
     OP->>TOOL: python tools/headless_validator.py
-    TOOL->>TOOL: 42 fasi di controllo (ambiente, import, schema, config, ML, security, GPU, ...)
+    TOOL->>TOOL: 39 fasi di controllo (ambiente, import, schema, config, ML, security, GPU, ...)
     alt Tutte le fasi PASS
         TOOL->>OP: Exit code 0 — Sistema sano ✓
     else Almeno una fase FAIL
@@ -2035,8 +2100,8 @@ La suite di strumenti è una **raccolta di 67 script** distribuiti su due direct
 ```mermaid
 flowchart TB
     subgraph PYRAMID["PIRAMIDE DI VALIDAZIONE (dal più veloce al più profondo)"]
-        L1["LIVELLO 1: Headless Validator<br/>42 fasi di controllo, ~10 secondi<br/>Gate di regressione obbligatorio<br/>Exit code 0 = PASS"]
-        L2["LIVELLO 2: pytest Suite<br/>130 file di test<br/>Unit + Integration + E2E<br/>~2-5 minuti"]
+        L1["LIVELLO 1: Headless Validator<br/>39 fasi di controllo, ~10 secondi<br/>Gate di regressione obbligatorio<br/>Exit code 0 = PASS"]
+        L2["LIVELLO 2: pytest Suite<br/>167 file di test<br/>Unit + Integration + E2E<br/>~2-5 minuti"]
         L3["LIVELLO 3: Backend Validator<br/>Verifica import, schema,<br/>coerenza interfacce<br/>~30 secondi"]
         L4["LIVELLO 4: Goliath Hospital<br/>10 reparti diagnostici<br/>Audit profondo multisistema<br/>~1-3 minuti"]
         L5["LIVELLO 5: Brain Verify (pianificato)<br/>118 regole qualità intelligence<br/>16 sezioni di verifica<br/>~2-5 minuti"]
@@ -2049,7 +2114,7 @@ flowchart TB
     style L5 fill:#ff6b6b,color:#fff
 ```
 
-**Headless Validator** (`tools/headless_validator.py`, ~2.900 righe) — il gate di regressione obbligatorio. Eseguito dopo **ogni** task di sviluppo con **42 fasi tematiche di controllo** (funzioni `check()`/`warn()` con severità). Fasi principali:
+**Headless Validator** (`tools/headless_validator.py`, ~2.900 righe) — il gate di regressione obbligatorio. Eseguito dopo **ogni** task di sviluppo con **39 fasi tematiche di controllo** (funzioni `check()`/`warn()` con severità). Fasi principali:
 
 | Gruppo di fasi | Verifica |
 | ---- | -------- |
@@ -2158,13 +2223,13 @@ Questo strumento esegue un audit a **3 fasi** sulla pipeline ML:
 
 ### 12.18 Architettura della Test Suite (`tests/`)
 
-**Directory:** `Programma_CS2_RENAN/tests/` (130 file `test_*.py`: 125 nella suite piatta + 5 in `automated_suite/`, più `conftest.py`) e `tests/` root (7 file `test_*.py`, 6 script `verify_*.py` e la cartella `forensics/` con 10 script diagnostici)
+**Directory:** `Programma_CS2_RENAN/tests/` (157 file `test_*.py`: 152 nella suite piatta + 5 in `automated_suite/`, più `conftest.py`) e `tests/` root (8 file `test_*.py`, 6 script `verify_*.py` e la cartella `forensics/` con 10 script diagnostici, 2 dei quali `test_*.py`) — **167 file di test in totale**
 
 La test suite è organizzata secondo il **principio della piramide dei test**: molti unit test (veloci, isolati), meno integration test (più lenti, con dipendenze reali), e pochi end-to-end test (completi ma costosi).
 
 ```mermaid
 flowchart TB
-    subgraph PYRAMID["PIRAMIDE DEI TEST (130 FILE)"]
+    subgraph PYRAMID["PIRAMIDE DEI TEST (167 FILE)"]
         UNIT["UNIT TEST<br/>Testano singole funzioni/classi<br/>Mock per I/O esterno<br/>Velocità: <1s per test"]
         INTEG["INTEGRATION TEST<br/>Testano pipeline complete<br/>DB SQLite reale (in-memory o temp)<br/>Velocità: 1-10s per test"]
         E2E["E2E / SMOKE TEST<br/>Testano flussi utente completi<br/>Tutte le dipendenze reali<br/>Velocità: 10-60s per test"]
@@ -2250,7 +2315,7 @@ I seguenti moduli hanno alta complessità (>500 LOC) ma copertura test limitata:
 
 ### 12.19 Le Fasi di Rimediazione Sistematica
 
-Il progetto ha attraversato un processo di **rimediazione sistematica**: 12 fasi iniziali (**370+ problemi** risolti, dettagliate sotto), completate da una 13ª fase e da due ondate successive che hanno portato il totale a **610+ problemi risolti** (cfr. Riepilogo esecutivo in Parte 1A). Ogni fase si è concentrata su una categoria specifica di problemi, dalla correzione di bug critici alla ristrutturazione architetturale.
+Il progetto ha attraversato un processo di **rimediazione sistematica**: 12 fasi iniziali (**370+ problemi** risolti, dettagliate sotto), completate da una 13ª fase e da due ondate successive che hanno portato il totale a **610+ problemi risolti** (cfr. Riepilogo esecutivo in Parte 1A). Ogni fase si è concentrata su una categoria specifica di problemi, dalla correzione di bug critici alla ristrutturazione architetturale. A queste si aggiunge la campagna di audit dell'agosto 2026, che ha cambiato metodo — leggere tutto prima di decidere cosa sia un problema — ed è descritta in §12.19.1.
 
 ```mermaid
 flowchart TB
@@ -2335,6 +2400,34 @@ Ogni fase di rimediazione ha prodotto un report dettagliato salvato nella direct
 | F7-XX | Knowledge | RAG senza index validation — embedding dimensioni incoerenti |
 | F8-XX | UI | Widget Qt senza feedback visivo — azioni silenti confondono l'utente |
 
+#### 12.19.1 La campagna di audit integrale (agosto 2026)
+
+Le ondate precedenti partivano da un sintomo: qualcosa si rompeva, si cercava la causa, si correggeva. La campagna dell'agosto 2026 ha invertito il metodo — ha letto **tutti** i file del repository, in due passaggi, prima di decidere cosa fosse un problema.
+
+Il primo passaggio è stato per file: 618 file letti in 76 lotti, ciascuno con il proprio dossier in `docs/audit/dossiers/`. Il secondo è stato trasversale, per lente: dieci contratti che tagliano il codice di traverso invece che per cartella — tick e tensori, sicurezza dei thread Qt, ciclo di vita delle sessioni DB, gestione degli errori, risorse, configurazione e percorsi, internazionalizzazione, correttezza numerica e ML, sicurezza, codice morto (`docs/audit/CONTRACTS.md`).
+
+Ne sono usciti **44 finding**: nessun P0, 12 P1 (correttezza, threading o risorse sotto uso reale), 32 P2 (deriva di contratto e codice morto). Trentuno sono stati corretti, **ciascuno con il proprio test di regressione nello stesso commit**; tredici sono stati differiti, ognuno con la condizione bloccante scritta per esteso — dati di riferimento assenti, verità visiva mancante, o una domanda di ricerca che non si risolve con una patch.
+
+La parte che sopravvive alla campagna non sono però le 31 correzioni: sono i **test di dottrina**, che non verificano un comportamento ma vietano il ritorno di un'intera classe di errore.
+
+| Invariante | Test | Come morde |
+| ---------- | ---- | ---------- |
+| Nessun accesso al DB dal thread della GUI | `test_screens_no_gui_thread_db.py` | Ispeziona il sorgente delle schermate: la funzione che tocca il DB deve essere una `staticmethod` eseguita da un `Worker` |
+| Nessun tick rate scritto a mano | `test_tick_rate_ssot.py` | Scansione **AST** (immune a commenti e docstring) con un test-esca che fallisce se lo scanner smette di mordere |
+| Nessuna lista di mappe ridichiarata | `test_known_maps_ssot.py` | Vieta il trio mirage/inferno/nuke nei consumatori convertiti e verifica che importino la SSOT |
+| Una sola configurazione pytest | `test_single_pytest_config.py` | Verifica l'assenza del file ombra e conferma con un sottoprocesso quale configurazione viene risolta |
+| Ogni tool mutante è protetto | `test_verify_all_safe_gate.py` | Censimento: nessuno strumento distruttivo può essere invocato nudo |
+| Ogni token citato esiste davvero | `test_design_token_references.py` | Confronta ogni `tokens.<nome>` nel codice Qt con i campi reali della dataclass |
+| I chip si ricolorano al cambio tema | `test_theme_live_restyle.py` | Passa dal relay di modulo |
+| Il timeout di parsing è reale | `test_parse_timeout_real.py` | Con un worker appeso 30 s, il chiamante deve tornare in meno di 5 |
+| Un solo runner reclama ogni demo | `test_ingestion_atomic_claim.py` | Claim esclusivo e task già reclamato che viene saltato |
+| Il classificatore rifiuta dizionari senza vocabolario | `test_role_vocabulary_guard.py` | Vedi Parte 2, motori di analisi |
+| Zero import di QtCharts | `test_charts.py` | Gate di licenza |
+
+Nella stessa campagna la soglia minima di copertura è salita da 33% a **50%** (`pyproject.toml`), è entrato `ruff` con un insieme di regole di partenza, ed è stato aggiunto un gate `pip check` sulle dipendenze.
+
+> Le cifre del cancello di test riportate dalla campagna — 2.574 test verdi, zero falliti, zero errori — sono quelle registrate in `docs/audit/FINAL_REPORT.md` al 14 agosto 2026. Ciò che è verificabile leggendo il repository, senza eseguire nulla, è la sua dimensione: **167 file di test** e **2.470 funzioni `test_`**.
+
 ---
 
 ### 12.20 Pre-commit Hooks e Quality Gates
@@ -2347,7 +2440,7 @@ Il progetto utilizza un sistema di **pre-commit hooks** che si attivano automati
 
 | Hook | Script | Timeout | Descrizione |
 | ---- | ------ | ------- | ----------- |
-| `headless-validator` | `tools/headless_validator.py` | 20s | 42 fasi di controllo, regression gate — il più importante |
+| `headless-validator` | `tools/headless_validator.py` | 20s | 39 fasi di controllo, regression gate — il più importante |
 | `dead-code-detector` | `tools/dead_code_detector.py` | 15s | Identifica import e funzioni non referenziati |
 | `integrity-manifest-check` | `tools/sync_integrity_manifest.py` | 10s | Verifica coerenza hash SHA-256 del manifesto |
 | `dev-health-quick` | `tools/dev_health.py` | 10s | Quick check salute progetto |
@@ -2372,7 +2465,7 @@ flowchart LR
     DEV --> HOOKS["Pre-Commit Hooks<br/>(automatici)"]
     HOOKS --> BF["black + isort<br/>(formattazione)"]
     HOOKS --> STD["7 hook standard<br/>(whitespace, YAML, JSON,<br/>large files, merge conflict,<br/>private key, EOF)"]
-    HOOKS --> VALID["headless-validator<br/>(42 fasi di controllo)"]
+    HOOKS --> VALID["headless-validator<br/>(39 fasi di controllo)"]
     HOOKS --> DEAD["dead-code-detector<br/>(pulizia)"]
     HOOKS --> INTEG["integrity-manifest<br/>(hash SHA-256)"]
     HOOKS --> HEALTH["dev-health-quick<br/>(salute)"]
@@ -2870,8 +2963,8 @@ flowchart TB
 
 **Fine documento — Guida completa di Macena CS2 Analyzer**
 
-Totale file `.py` nel progetto: **444** (in `Programma_CS2_RENAN/`)
-Totale righe di codice Python: **≈ 114.000**
+Totale file `.py` nel progetto: **493** (in `Programma_CS2_RENAN/`)
+Totale righe di codice Python: **≈ 126.400**
 Sottosistemi AI coperti: **8** (NN Core, VL-JEPA, RAP Coach, Servizi di Coaching, Motori di Coaching, Conoscenza, Analisi, Elaborazione + Osservatorio Addestramento)
 Sottosistemi programma coperti: **18** (Avvio, Lifecycle, Configurazione, Session Engine, UI Desktop, Ingestione, Storage, Osservabilità, Console di Controllo, RASP Guard, HLTV Sync, Orchestratore Ingestione, ResourceManager, Tools Suite, Test Suite, Pre-commit, Build/Packaging, Migrazioni Alembic)
 Modelli documentati: **6** (AdvancedCoachNN/TeacherRefinementNN, JEPA, VL-JEPA, RAPCoachModel, NeuralRoleHead, WinProbabilityNN)
@@ -2881,7 +2974,7 @@ Servizi aggiuntivi documentati: **8** (CoachingDialogue, LessonGenerator, LLMSer
 Tabelle di database documentate: **28** (18 monolite + 7 HLTV + 3 per-match, su architettura three-tier storage: `database.db`, `hltv_metadata.db`, `match_data/{id}.db`)
 Schermate UI documentate: **15** (Wizard, Home, Coach, Tactical Viewer, Settings, Help, Match History, Match Detail, Performance, User Profile, Profile, Pro Comparison, Pro Player Detail, Steam Config, FACEIT Config) — Qt/PySide6
 Daemon documentati: **4** (Scanner, Digester, Teacher, Pulse)
-Strumenti di validazione documentati: **67** (49 root + 18 nel pacchetto: Headless Validator, Goliath Hospital, DB Inspector, Demo Inspector, ML Coach Debugger, Backend Validator, Dead Code Detector, Dev Health, Feature Audit, etc.)
+Strumenti di validazione documentati: **71** (53 root + 18 nel pacchetto: Headless Validator, Goliath Hospital, DB Inspector, Demo Inspector, ML Coach Debugger, Backend Validator, Dead Code Detector, Dev Health, Feature Audit, etc.)
 File di test documentati: **130** in `Programma_CS2_RENAN/tests/` (+ conftest.py; nella root: 7 test, 6 verify script, 10 file forensics)
 Fasi headless validator: **39** fasi tematiche di controllo
 Pre-commit hooks documentati: **13** (4 locali custom + 7 standard + 2 Python)
@@ -2918,7 +3011,7 @@ flowchart TB
         P3_UI["Desktop UI<br/>(15 schermate, MVVM)"]
         P3_SE["Session Engine<br/>(4 daemon)"]
         P3_TL["Tools Suite<br/>(67 strumenti)"]
-        P3_TS["Test Suite<br/>(130 file)"]
+        P3_TS["Test Suite<br/>(167 file)"]
     end
 
     P1_NN -->|"Modelli usati da"| P2_CE

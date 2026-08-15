@@ -3,6 +3,8 @@
 > **Topics:** Complete database schema (three-tier storage, SQLite WAL, SQLModel ORM), Training regime and maturity gates (CALIBRATING/LEARNING/MATURE), Loss function catalog, Complete Program Logic (from launch to advice): Session Engine, Digester, Teacher, Hunter, Pulse; Qt/PySide6 desktop interface (15 screens, ViewModels, Qt Signals); Ingestion pipeline (demo and pro); Unified control console; New user onboarding; Storage architecture; Playback engine and tactical viewer; Spatial data and maps; Observability and logging; Reporting; Quotas and limits; Fault tolerance; Complete user journey (4 flows); Tool suite (validation and diagnostics); Test suite; Pre-commit hooks; Build, packaging, deployment; Alembic migrations; HLTV sync service; RASP Guard; MatchVisualizer; Runtime configuration files; Root-level entry points; Glossary.
 >
 > **Author:** Renan Augusto Macena
+>
+> **Base revision:** in sync with `Book-Coach-3.md` (Italian canonical) as of 2026-08-15.
 
 ---
 
@@ -36,7 +38,8 @@
     - 12.16 Complete User Journey — 4 Main Flows
     - 12.17 Tool Suite — Validation and Diagnostics (`tools/`)
     - 12.18 Test Suite Architecture (`tests/`)
-    - 12.19 The 12 Phases of Systematic Remediation
+    - 12.19 The Phases of Systematic Remediation
+      - 12.19.1 The full audit campaign (August 2026)
     - 12.20 Pre-commit Hooks and Quality Gates
     - 12.21 Build, Packaging, and Deployment
     - 12.22 Alembic Migration System
@@ -54,11 +57,11 @@
 
 ## 9. Database schema and data lifecycle
 
-The project uses **SQLModel** (Pydantic + SQLAlchemy) with SQLite (WAL mode) and a specialized **three-tier storage architecture**. In total **24 SQLModel tables** (`backend/storage/db_models.py`: 21 monolith+HLTV tables; `backend/storage/match_data_manager.py`: 3 per-match tables) distributed across 3 storage tiers:
+The project uses **SQLModel** (Pydantic + SQLAlchemy) with SQLite (WAL mode) and a specialized **three-tier storage architecture**. In total **28 SQLModel tables** (`backend/storage/db_models.py`: 25 monolith+HLTV tables; `backend/storage/match_data_manager.py`: 3 per-match tables) distributed across 3 storage tiers:
 
-1. **`database.db`** — Main monolithic application database (**18 tables**, explicitly listed in `database.py:_MONOLITH_TABLES` lines 54-73). Contains all core tables: player statistics (`PlayerMatchStats`), coach state (`CoachState`), ingestion tasks (`IngestionTask`), coaching insights (`CoachingInsight`), user profiles (`PlayerProfile`), system notifications (`ServiceNotification`), RAG base (`TacticalKnowledge`), COPER experience bank (`CoachingExperience`), match results (`MatchResult`, `MapVeto`), calibrations (`CalibrationSnapshot`), role thresholds (`RoleThresholdRecord`), provenance tracking (`DataLineage`, `DataQualityMetric`), and extended tables for team round (`Ext_TeamRoundStats`) and playstyle (`Ext_PlayerPlaystyle`), plus archival `RoundStats` and `PlayerTickState`.
-2. **`hltv_metadata.db`** — Professional metadata database (**3 tables**, `database.py:_HLTV_TABLES` lines 78-82): pro player profiles (`ProPlayer`, `ProTeam`) and stat cards (`ProPlayerStatCard`). Kept separate from the monolith because it is written by a separate process (HLTV sync service) to eliminate WAL contention with the session engine daemons.
-3. **`match_data/{id}.db`** — Per-match telemetry database (**3 tables**, defined in `match_data_manager.py`: `MatchTickState`:110, `MatchEventState`:190, `MatchMetadata`:242). Each match has its own dedicated SQLite file containing tick-by-tick data (~100,000 rows per match). Managed by `MatchDataManager`. This separation solves the "Telemetry Cliff" problem — it prevents the monolith database from growing indefinitely with high-frequency data.
+1. **`database.db`** — Main monolithic application database (**18 tables**, explicitly listed in `database.py:_MONOLITH_TABLES`). Contains all core tables: player statistics (`PlayerMatchStats`), coach state (`CoachState`), ingestion tasks (`IngestionTask`), coaching insights (`CoachingInsight`), user profiles (`PlayerProfile`), system notifications (`ServiceNotification`), RAG base (`TacticalKnowledge`), COPER experience bank (`CoachingExperience`), match results (`MatchResult`, `MapVeto`), calibrations (`CalibrationSnapshot`), role thresholds (`RoleThresholdRecord`), provenance tracking (`DataLineage`, `DataQualityMetric`), and extended tables for team round (`Ext_TeamRoundStats`) and playstyle (`Ext_PlayerPlaystyle`), plus archival `RoundStats` and `PlayerTickState`.
+2. **`hltv_metadata.db`** — Professional metadata database (**7 tables**, `database.py:_HLTV_TABLES`): pro player profiles (`ProPlayer`, `ProTeam`), stat cards (`ProPlayerStatCard`) plus the extended tables `ProEvent`, `ProTournament`, `ProHead2Head`, `ProMapRecord`. Kept separate from the monolith because it is written by a separate process (HLTV sync service) to eliminate WAL contention with the session engine daemons.
+3. **`match_data/{id}.db`** — Per-match telemetry database (**3 tables**, defined in `match_data_manager.py`: `MatchTickState`, `MatchEventState`, `MatchMetadata`). Each match has its own dedicated SQLite file containing tick-by-tick data (~100,000 rows per match). Managed by `MatchDataManager`. This separation solves the "Telemetry Cliff" problem — it prevents the monolith database from growing indefinitely with high-frequency data.
 
 This three-tier separation ensures that the session engine's intensive write operations (demo ingestion, ML training → `database.db`) do not contend for WAL locks with HLTV scraping in a separate process (`hltv_metadata.db`), and that high-frequency per-match telemetry does not bloat the monolith (`match_data/{id}.db`).
 
@@ -82,7 +85,8 @@ flowchart TB
         DL_DB["DataLineage<br/>(append-only)"]
         DQM_DB["DataQualityMetric<br/>(append-only)"]
     end
-    subgraph DB2["hltv_metadata.db (Pro Data — 3 tables)"]
+    subgraph DB2["hltv_metadata.db (Pro Data — 7 tables)"]
+        EXT_HLTV["ProEvent · ProTournament<br/>ProHead2Head · ProMapRecord"]
         PRO_DB["ProPlayer"]
         TEAM_DB["ProTeam"]
         STAT_DB["ProPlayerStatCard"]
@@ -459,36 +463,37 @@ flowchart TB
 | 1 | Context encoder, predictor | Target encoder (EMA) | InfoNCE (τ=0.07) | General latent representations |
 | 2 | Concept embeddings, concept projector, concept temperature | Encoder (optional fine-tuning) | BCE + VICReg diversity | Alignment with 16 coaching concepts |
 
-**The 16 Coaching Concepts (taxonomy):**
+**The 16 Coaching Concepts (taxonomy — from `COACHING_CONCEPTS` in `jepa_model.py`):**
 
-| Index | Concept | Category | Description |
-| ----- | ------- | -------- | ----------- |
-| 0 | Positioning Quality | Positioning | Position quality relative to context |
-| 1 | Trade Readiness | Positioning | Readiness for trade kill |
-| 2 | Rotation Speed | Positioning | Rotation speed between sites |
-| 3 | Utility Usage | Utility | Grenade use frequency and quality |
-| 4 | Utility Effectiveness | Utility | Effectiveness of utilities used |
-| 5 | Decision Quality | Decision | In-game decision quality |
-| 6 | Risk Assessment | Decision | Pre-action risk evaluation |
-| 7 | Engagement Timing | Engagement | Timing of engagements |
-| 8 | Engagement Distance | Engagement | Optimal engagement distance |
-| 9 | Crosshair Placement | Engagement | Pre-peek crosshair placement |
-| 10 | Recoil Control | Engagement | Recoil control |
-| 11 | Economy Management | Decision | Team economy management |
-| 12 | Information Gathering | Decision | Information gathering (peek, info utility) |
-| 13 | Composure Under Pressure | Psychology | Composure under pressure |
-| 14 | Aggression Control | Psychology | Aggression control |
-| 15 | Adaptation Speed | Psychology | Speed of adaptation to opponent meta |
+| Index | Concept | Dimension | Description |
+|---|---|---|---|
+| 0 | positioning_aggressive | Positioning | Close-range fights, pushing angles |
+| 1 | positioning_passive | Positioning | Long angles, avoids contact |
+| 2 | positioning_exposed | Positioning | Vulnerable position, high death probability |
+| 3 | utility_effective | Utility | Utility with significant impact |
+| 4 | utility_wasteful | Utility | Utility unused or low-impact |
+| 5 | economy_efficient | Decision | Equipment aligned with the round type |
+| 6 | economy_wasteful | Decision | Unfavourable force-buys or dying with expensive gear |
+| 7 | engagement_favorable | Engagement | Fights with an HP / position / numbers advantage |
+| 8 | engagement_unfavorable | Engagement | Fights while outnumbered or on low HP |
+| 9 | trade_responsive | Engagement | Fast trade kills, good coordination |
+| 10 | trade_isolated | Engagement | Dying without a trade, playing too isolated |
+| 11 | rotation_fast | Decision | Fast positional rotation after information |
+| 12 | information_gathered | Decision | Good intel gathering, enemies spotted |
+| 13 | momentum_leveraged | Psychology | Capitalizes on a hot streak with confident plays |
+| 14 | clutch_composed | Psychology | Calm decisions in 1vN situations |
+| 15 | aggression_calibrated | Psychology | Aggression appropriate to the situation |
 
 **AdamW + CosineAnnealing (JEPA Trainer):**
 
 | Hyperparameter | Value | Purpose |
 | -------------- | ----- | ------- |
 | Optimizer | AdamW | Weight decay separated from gradients |
-| Learning rate | 1e-4 (default) | Initial learning rate |
+| Learning rate | 1e-4 (default; concept layers at lr×0.05) | Initial learning rate |
 | Weight decay | 0.01 | L2 regularization |
-| Scheduler | CosineAnnealingLR | Cosine LR decay down to 0 |
-| EMA decay | 0.996 | Target encoder momentum update |
+| Scheduler | SequentialLR: linear warmup (5%) → CosineAnnealingLR | Warmup + cosine decay of the LR |
+| EMA decay | 0.996 base, cosine schedule → 1.0 | Target encoder momentum update |
+| AMP + accumulation | GradScaler (CUDA) + 4 accumulation steps | Efficiency on low-VRAM GPUs |
 | Gradient clip | 1.0 | Gradient explosion prevention |
 
 **DriftMonitor (z_threshold=2.5):**
@@ -517,8 +522,9 @@ The JEPA pre-training dataset uses **temporal windows** to create context-target
 | --------- | ----- | ------- |
 | `context_len` | 10 ticks | Context window length (input) |
 | `target_len` | 10 ticks | Target window length (to predict) |
-| Gap | 0-5 ticks (random) | Variable distance between context and target |
-| Batch size | 32 | Number of pairs per batch |
+| `seed` | 42 | Dedicated RNG for reproducible windows |
+| Batch size (standalone pretrain) | 16 | Number of pairs per batch |
+| Sequence constraints | min 20 / max 500 ticks | `_MIN_TICKS_FOR_SEQUENCE` / `_MAX_TICKS_PER_SEQUENCE` |
 
 ---
 
@@ -531,9 +537,9 @@ The JEPA pre-training dataset uses **temporal windows** to create context-target
 | **AdvancedCoachNN** | Supervised                | `MSELoss(MoE_output, y_true)`                                                                                                 | Match-level training                                                 |
 | **RAP**             | Strategy                  | `MSELoss(advice_probs, target_strat)`                                                                                         | Correct tactical recommendation                                      |
 | **RAP**             | Value                     | `0.5 × MSE(V(s), true_advantage)`                                                                                            | Accurate advantage estimation                                        |
-| **RAP**             | Sparsity                  | `L1(gate_weights)`                                                                                                            | Expert specialization                                                |
+| **RAP**             | Sparsity                  | `Entropy(gate_probs) × context_gate_l1_weight (1e-4)`                                                                                                            | Expert specialization                                                |
 | **RAP**             | Position                  | `MSE(xy) + 2× MSE(z)`                                                                                                        | Optimal positioning with Z-axis penalty                              |
-| **WinProb**         | Prediction                | `BCEWithLogitsLoss(pred, outcome)`                                                                                            | Round outcome prediction                                             |
+| **WinProb**         | Prediction                | `BCELoss(pred, outcome)` (the output already passed through Sigmoid)                                                                                            | Round outcome prediction                                             |
 | **NeuralRoleHead**  | KL-Divergence             | `KLDivLoss(log_softmax(pred), target)` with label smoothing ε=0.02                                                            | Role probability distribution match                                  |
 | **VL-JEPA**         | Concept Alignment         | `BCE(concept_logits, concept_labels)` + `VICReg(concept_diversity)`                                                           | Visual-language concept grounding                                    |
 
@@ -561,12 +567,14 @@ The VL-JEPA concept alignment loss combines two components:
 L_concept = BCE(concept_logits, concept_labels) + α·VICReg_diversity
 ```
 
-Where `VICReg_diversity` is composed of:
+In implementation detail:
 
-| VICReg Term | Formula | Weight | Purpose |
+| Term | Formula | Weight | Purpose |
 | ----------- | ------- | ------ | ------- |
-| **Variance** | `max(0, γ - std(z))` for each dimension | α=0.5 | Prevents representation collapse — each dimension must vary |
-| **Covariance** | `Σᵢ≠ⱼ cov(zᵢ, zⱼ)²` | β=0.1 | Decorrelation — each dimension must capture different information |
+| **Concept alignment** | `BCE_with_logits(concept_logits, labels)` | α=0.5 | Aligns the embeddings with the correct concepts |
+| **Diversity** | `−std(L2_norm(concept_embeddings), dim=0).mean()` | β=0.1 | Prevents collapse — concept embeddings must stay distinct |
+
+A full VICReg regularization (`vicreg_regularization`, λ_var=25.0, λ_cov=1.0) is available separately and is added with weight 0.01 to the InfoNCE loss in the JEPA trainer.
 
 **Detail: RAP Multi-Task Loss**
 
@@ -576,7 +584,7 @@ The RAP Coach combines 4 losses into a total weighted loss:
 flowchart LR
     STRAT["L_strategy<br/>MSE(advice_probs, target_strat)<br/>Weight: 1.0"]
     VALUE["L_value<br/>0.5 × MSE(V(s), advantage)<br/>Weight: 0.5"]
-    SPARSE["L_sparsity<br/>L1(gate_weights)<br/>Weight: 0.01"]
+    SPARSE["L_sparsity<br/>Entropy(gate_probs) × 1e-4<br/>Weight: 1.0"]
     POS["L_position<br/>MSE(xy) + 2×MSE(z)<br/>Weight: 1.0"]
     STRAT --> TOTAL["L_total =<br/>Σ wᵢ × Lᵢ"]
     VALUE --> TOTAL
@@ -628,10 +636,10 @@ The system has **one main entry point** (Qt) and three utility entry points:
 
 | # | Entry Point | Command | Role |
 |---|---|---|---|
-| 1 | **Qt (primary)** | `python -m Programma_CS2_RENAN.apps.qt_app.app` | PySide6 desktop UI |
-| 2 | Session Engine | `python -m Programma_CS2_RENAN.backend.console` | Headless backend |
-| 3 | Headless Validator | `python -m Programma_CS2_RENAN.tools.headless_validator` | CI/CD validation |
-| 4 | HLTV Sync | `python -m Programma_CS2_RENAN.tools.hltv_sync` | Pro data scraping |
+| 1 | **Qt (primary)** | `python -m Programma_CS2_RENAN.apps.qt_app.app` (via `launch.sh`) | PySide6 desktop UI |
+| 2 | Operator console | `python console.py` (root, Rich TUI + CLI) | System control |
+| 3 | Headless Validator | `python tools/headless_validator.py` (root) | CI/CD validation |
+| 4 | HLTV Sync | `python -m Programma_CS2_RENAN.hltv_sync_service` | Pro data scraping |
 
 #### 12.1.1 Qt Entry Point (Primary) — `apps/qt_app/app.py`
 
@@ -692,10 +700,15 @@ flowchart LR
 
 **File:** `Programma_CS2_RENAN/core/config.py`
 
-The system uses **three configuration levels**, each with a different level of persistence and security:
+The system uses **four configuration levels**, each with a different level of persistence and security:
 
 ```mermaid
 flowchart TB
+    subgraph L0["Level 0: ENVIRONMENT (.env + real variables)"]
+        EV1["OLLAMA_MODEL, FLARESOLVERR_URL"]
+        EV2["PRO_DEMO_PATH, DEFAULT_DEMO_PATH"]
+        EV3["setdefault: the real environment always wins"]
+    end
     subgraph L1["Level 1: HARDCODED (config.py)"]
         HC1["CS2_PLAYER_NAME, DEFAULT_DEMO_PATH"]
         HC2["ACTIVE_THEME, FONT_SIZE, FONT_TYPE"]
@@ -720,6 +733,14 @@ flowchart TB
     style L3 fill:#ff6b6b,color:#fff
 ```
 
+**Level 0 and the lesson it carries.** Until August 2026 the `.env` file was a configuration surface that was **documented but never read**: no dependency parsed it and no script sourced it, so every override described in the documentation was an instruction that did nothing — it failed silently, which is the worst way to fail. Today `_load_dotenv_file()` in `core/config.py` parses it using the standard library alone, at module import time, and does so with three deliberate cautions:
+
+- it writes with `os.environ.setdefault`, so **a real environment variable always beats** the file — whoever launches the program inside a container or a CI job is not overridden by a file on disk;
+- it discards keys that are not alphanumeric plus underscore, so a malformed line cannot inject anything strange into the process environment;
+- it **never logs the values**, because `.env` may hold API keys.
+
+If the file does not exist, nothing happens; if it is unreadable you get a warning, not a fatal error. Above this level, four path keys (`PRO_DEMO_PATH`, `DEFAULT_DEMO_PATH`, `BRAIN_DATA_ROOT`, `CUSTOM_STORAGE_PATH`) can be overwritten by the environment even when `user_settings.json` already holds a value, and three secrets (`STEAM_API_KEY`, `FACEIT_API_KEY`, `STORAGE_API_KEY`) come from the system keyring. `set_secret()` **returns `False` instead of raising** when the keyring is unavailable: on a Linux machine with no backend installed, saving the settings must not bring the application down.
+
 **Critical system constants:**
 
 | Constant | Value | File | Purpose |
@@ -729,14 +750,14 @@ flowchart TB
 | `MAX_DEMOS_PER_MONTH` | 10 | `config.py` | Monthly demo upload quota |
 | `MAX_TOTAL_DEMOS` | 100 | `config.py` | Lifetime total demo limit |
 | `MIN_DEMOS_FOR_COACHING` | 10 | `config.py` | Threshold for full personalized coaching |
-| `TRADE_WINDOW_TICKS` | 192 | `trade_kill_detector.py` | Trade kill time window (~3 seconds at 64 tick) |
-| `HLTV_BASELINE_KPR` | 0.679 | `demo_parser.py` | HLTV 2.0 baseline for KPR |
-| `HLTV_BASELINE_SURVIVAL` | 0.317 | `demo_parser.py` | HLTV 2.0 baseline for survival |
-| `FOV_DEGREES` | 90 | `player_knowledge.py` | Simulated player field of view |
-| `MEMORY_DECAY_TAU` | 160 | `player_knowledge.py` | Memory decay constant in ticks |
+| `TRADE_WINDOW_S` | 3.0 | `trade_kill_detector.py` | Trade kill time window in seconds (tick-rate aware: 192 ticks at 64/s, 384 at 128/s) |
+| `BASELINE_KPR` | 0.679 | `feature_engineering/rating.py` | HLTV 2.0 baseline for KPR |
+| `BASELINE_DPR_COMPLEMENT` | 0.317 | `feature_engineering/rating.py` | HLTV 2.0 baseline for survival |
+| `FOV_DEGREES` | 90 | `core/constants.py` | Simulated player field of view |
+| `MEMORY_DECAY_TAU_S` | 2.5s | `core/constants.py` | Enemy memory half-life (× tick_rate) |
 | `CONFIDENCE_ROUNDS_CEILING` | 300 | `correction_engine.py` | Round ceiling for max confidence |
 | `SILENCE_THRESHOLD` | 0.2 | `explainability.py` | Threshold below which silence is valid action |
-| `MIN_SAMPLES_FOR_VALIDITY` | 10 | `role_thresholds.py` | Minimum samples for a valid role threshold |
+| `MIN_SAMPLES_FOR_VALIDITY` | 30 | `role_thresholds.py` | Minimum samples for a valid role threshold |
 | `HALF_LIFE_DAYS` | 90 | `pro_baseline.py` | Temporal decay for pro data |
 | `Z_LEVEL_THRESHOLD` | 200 | `connect_map_context.py` | Z threshold for floor classification |
 
@@ -837,7 +858,7 @@ Each daemon is protected by a global `try/except`. If a daemon crashes:
 1. The error is logged with a full traceback
 2. The `StateManager` registers the error (`set_error(daemon, message)`)
 3. A `ServiceNotification` is created for the user
-4. The daemon **is not automatically restarted** (by design: a daemon crash indicates a bug, not a transient error)
+4. A Session Engine **watchdog** checks the daemon threads every 30 seconds and **automatically restarts** the dead ones
 5. The other daemons continue to function independently
 
 **Zombie Task Cleanup:** On startup, the Session Engine looks for tasks with `status="processing"` left over from a previous crash and resets them to `status="queued"`, enabling automatic recovery without data loss.
@@ -863,27 +884,39 @@ The Qt interface is built with **PySide6 (Qt 6)** and uses an **MVVM pattern wit
 | **Pattern** | MVVM with Qt Signals/Slots |
 | **Platforms** | Windows, macOS, Linux |
 | **Resolution** | Adaptive, native High-DPI |
-| **Themes** | 3: CS2 (orange), CSGO (blue-gray), CS1.6 (green) — QSS + QPalette |
-| **i18n** | 3 languages: EN, IT, PT — JSON + `QtLocalizationManager` |
-| **Charts** | QPainter for tactical map, native Qt widgets for charts |
+| **Themes** | 3: CS2 (orange), CSGO (blue-gray), CS1.6 (green) — a single QSS template parameterized by design tokens |
+| **i18n** | 3 languages: EN, IT, PT — JSON + `QtLocalizationManager`, 572 keys per language |
+| **Charts** | Pure QPainter everywhere: tactical map and every chart widget |
 
 **i18n system:** The `QtLocalizationManager` (`core/i18n_bridge.py`) loads per-language JSON files (`en.json`, `it.json`, `pt.json`) and handles runtime language switching via Qt signals. Every UI string is dynamically resolved via a localization key.
 
-**Theme system:** The `ThemeEngine` (`core/theme_engine.py`) applies QSS stylesheets and configures Qt's `QPalette` for each theme:
-- **CS2** — Orange palette (#FF6600) with dark background, inspired by the CS2 UI
-- **CSGO** — Blue-gray palette (#4A90D9) with cool tones, inspired by CS:GO
-- **CS1.6** — Green palette (#33CC33) on black background, inspired by the retro look of CS 1.6
+**Theme system:** since August 2026 the three themes are no longer three stylesheets. The `apps/qt_app/themes/` folder contains **a single file**, `base.qss.template`, and colour arrives through a three-stage pipeline:
 
-**Web Views** (`apps/qt_app/views/`):
+1. `design/tokens/design-tokens.json` is the source of truth for colours. `tools/gen_design_tokens.py` compiles it into `core/design_tokens.py`, a **generated** module — not to be hand-edited — exposing three frozen `DesignTokens` instances: `CS2_TOKENS`, `CSGO_TOKENS`, `CS16_TOKENS`.
+2. `core/qss_generator.py` runs `Template(base.qss.template).safe_substitute(asdict(tokens))` and caches one rendered stylesheet per theme name.
+3. `core/theme_engine.py` applies that QSS and then builds the `QPalette` **from the same token instance**, so stylesheet and palette can no longer diverge.
 
-The Qt interface includes **2 web views** based on HTML/Jinja2 templates, served via `QWebEngineView` for content that benefits from web-native rendering:
+The practical gain is that adding a theme means adding a block of tokens, not rewriting a stylesheet hundreds of lines long; and a colour corrected in one place propagates to QSS, `QPalette` and `rating_color()` together.
 
-| Web View | File | Description |
+| Theme | Accent | Base surface | Inspiration |
+|---|---|---|---|
+| **CS2** (default) | `#FF6A00` orange | `#0B1628` midnight blue | Modern Counter-Strike 2 UI |
+| **CSGO** | `#617D8C` blue-gray | `#1A1C21` near-black gray | Counter-Strike: Global Offensive |
+| **CS1.6** | `#4DB04F` green | `#121A12` green-black | Classic Counter-Strike 1.6 |
+
+**The theme relay.** A `ThemeEngine` lives as long as one application launch. Widgets that recoloured themselves therefore had no stable object to subscribe to, and after a theme switch they kept the old colour. The solution is a **module-level relay**, `get_theme_relay()`: widgets with per-instance styling — filter and status chips, roster cards, banners — subscribe to the relay, which outlives individual engines, and Qt disconnects destroyed receivers by itself.
+
+**Web Views** (`apps/qt_app/web/`):
+
+The Qt interface includes **3 React web apps** (React 18 + TypeScript + Vite, pnpm workspace) rendered in a `QWebEngineView`:
+
+| Web View | Directory | Description |
 |---|---|---|
-| **Match Detail** | `match_detail_view.py` | Detailed match visualization with timeline, per-round statistics and heatmap — HTML rendering for interactive charts |
-| **Coach Chat** | `coach_chat_view.py` | Chat interface with the AI coach — HTML rendering for rich text formatting, markdown, code highlighting |
+| **Coach Chat** | `web/coach-chat/` | Chat interface with the AI coach — rich text formatting |
+| **Match Detail** | `web/match-detail/` | Detailed match visualization with timeline and per-round statistics |
+| **Tactical Viewer** | `web/tactical-viewer/` | Layered tactical viewer (`MapCanvas`, `PlayerLayer`, `GhostLayer`, `HeatmapLayer`, `TrailsLayer`, `RoundTimeline`, `ControlBar`) |
 
-The `WebBridge` (`core/web_bridge.py`) handles bidirectional communication between the Python backend and web views via `QWebChannel`, exposing Python methods as JavaScript APIs callable from the HTML template. This hybrid architecture allows using web visualization libraries (interactive charts, rich formatting) while keeping business logic in the Python backend.
+Bidirectional communication between the Python backend and the web apps goes through `QWebChannel` (`web/shared/qwebchannel.ts` + a per-app `bridge.ts`), exposing Python methods as JavaScript APIs. This hybrid architecture allows using web visualization libraries while keeping business logic in the Python backend.
 
 **15 interface screens:**
 
@@ -909,20 +942,31 @@ The `WebBridge` (`core/web_bridge.py`) handles bidirectional communication betwe
 
 | Widget | File | Function |
 | ------ | ---- | -------- |
-| `PlayerSidebar` | `player_sidebar.py` | CT/T list with role icons, health/armor, current weapon, money, and alive/dead status |
-| `TacticalMap` | `tactical_map.py` | 2D canvas with multi-layer rendering: map texture → heatmap → players → grenades → ghost (QPainter) |
-| `Timeline` | `timeline.py` | Horizontal scrubber with tick numbers, color-coded event markers, drag-to-seek, double-click jump |
-| `GhostPixel` | `ghost_pixel.py` | Rendering of the semi-transparent ghost circle (optimal position predicted by RAP) |
+| `PlayerSidebar` | `tactical/player_sidebar.py` | CT/T list with role icons, health/armor, current weapon, money and alive/dead status (`_PlayerItem`, `_StatBar`) |
+| `TacticalMapWidget` | `tactical/map_widget.py` | 2D canvas with multi-layer rendering: map texture → zones → heatmap → players → grenades → ghost (QPainter) |
+| `TimelineWidget` | `tactical/timeline_widget.py` | Horizontal scrubber with tick numbers, event glyphs (star, diamond), drag-to-seek and double-click jump |
+| `with_alpha` | `tactical/_paint_utils.py` | Shared drawing helper: applies an alpha channel to a `QColor` without duplicating the logic in every widget |
 
-**Available themes:**
+**Chart widgets (`widgets/charts/`):**
 
-The application supports **3 themes** selectable from the Settings screen, each with a custom color palette and wallpaper:
+QtCharts was **retired** for a licensing reason, not a matter of taste: it ships under GPLv3, incompatible with this project's distribution. The charts were rewritten in pure QPainter keeping the public API, so the screens that used them did not have to change. A gate test (`tests/test_charts.py`, class `TestQtChartsRetired`) fails if a single reference to `QtCharts` or `QChart` comes back into the code.
 
-| Theme | Primary palette | Inspiration |
-| ----- | --------------- | ----------- |
-| **CS2** (default) | Steel blue + orange | Modern Counter-Strike 2 UI |
-| **CSGO** | Military green + yellow | Counter-Strike: Global Offensive |
-| **CS 1.6** | Dark brown + lime green | Classic Counter-Strike 1.6 (nostalgia) |
+All of them read the tokens inside `paintEvent`, so they repaint in the right colour after a theme switch.
+
+| Widget | File | Function |
+| ------ | ---- | -------- |
+| `RadarChart` | `radar_chart.py` | N-axis skill radar (N ≥ 3), concentric polygon grid, one filled shape per series — used to overlay user and professional |
+| `RatingSparkline` | `rating_sparkline.py` | Rating trend with dashed HLTV reference lines at 0.90 / 1.00 / 1.10 and right-edge captions |
+| `UtilityBarChart` | `utility_bar_chart.py` | Grouped you-vs-pro bars (`set_rows`) or one bar per row with a tick ladder (`set_single`) |
+| `EconomyChart` | `economy_chart.py` | Equipment value per round, bars coloured by that round's side; `set_half_marker()` draws the half switch |
+| `MomentumChart` | `momentum_chart.py` | Per-round kill-death swing bars, normalized on the largest swing |
+| `MiniSparkline` | `mini_sparkline.py` | Minimal trend shape, no axes or frame, small enough to sit inside a card |
+
+**Component library (`widgets/components/`):**
+
+26 reusable components built on the design atlas. The most characteristic: `MapTile` (per-map tile with progress bar and accessibility label), `DeltaChip` (delta against a reference — *the comparison is the information*), `ProBadge`, `MetricBarRow`, `DbRecordCard`, `TipBox`, `NumberedStep`, `DriversList`, `MonoFooter` (data provenance line: which table and which column the displayed number comes from).
+
+The coach chat panel (`widgets/coaching/chat_panel.py`) is deliberately **ViewModel-agnostic**: it never talks to a VM directly, a screen wires it (`panel.message_submitted → vm.send_message`, `vm.messages_changed → panel.add_message`). The same panel can therefore serve different contexts without knowing anything about what feeds it.
 
 **Coach Screen — Detailed layout:**
 
@@ -1005,6 +1049,23 @@ flowchart TB
     style INSIGHT fill:#ffd43b,color:#000
 ```
 
+**Who takes the task, and why only one.**
+
+Step 2 of the diagram — *"the Digester picks it up"* — hides a concurrency problem that cost duplicated data. There are **six** surfaces that can start an ingestion: the Home screen, the settings, the console's ingest command, `batch_ingest`, `ingest_pro_demos` and `run_worker`. The old path did a `SELECT` of the queue and then wrote `status='processing'` unconditionally: two runners started moments apart read **the same snapshot** of the queue, both believed it was theirs, and the same demo was parsed twice, writing duplicate statistics.
+
+The fix is a single SQL statement, and its strength lies in the `WHERE` clause:
+
+```python
+_sa_update(IngestionTask)
+    .where(IngestionTask.id == task_id, IngestionTask.status == "queued")
+    .values(status="processing", updated_at=...)
+# rowcount == 1 → the task is ours;  rowcount == 0 → someone else took it
+```
+
+`UPDATE ... WHERE status='queued'` is atomic at the database level: **exactly one runner wins each task**, the others read `rowcount == 0` and move on silently. No application lock is needed, no cross-process coordination — the race condition is eliminated rather than managed, which is always the preferable solution. A dedicated test (`test_ingestion_atomic_claim.py`) checks both the exclusive claim and that an already-claimed task is skipped.
+
+Closing the circle is `run_worker.py`: if a task is claimed but then discarded, `_release_claim()` returns it to `queued` instead of leaving it stuck in `processing` forever.
+
 **DemoLoader — The parser at the heart of the pipeline:**
 
 The `DemoLoader` is the wrapper around **demoparser2** (high-performance Rust library) that transforms a binary `.dem` file into Python data structures:
@@ -1074,7 +1135,7 @@ After base parsing, `enrich_from_demo()` adds advanced metrics computed from eve
 
 | Enriched Metric | Computation | Source |
 | --------------- | ----------- | ------ |
-| Trade kills | `TradeKillDetector.detect()` with TRADE_WINDOW_TICKS=192 | Kill/death events |
+| Trade kills | `TradeKillDetector.detect()` with a 3s tick-rate-aware window | Kill/death events |
 | Flash assists | Count of blinds within time window before a kill | Blind + kill events |
 | Noscope kills | Kills with sniper weapon without scope active | Kill event + weapon state |
 | Wallbang kills | Kills through penetrable surfaces | Kill event with penetration flag |
@@ -1090,10 +1151,9 @@ After base parsing, `enrich_from_demo()` adds advanced metrics computed from eve
 | **IntegrityChecker** | `integrity.py` | Verifies that demo files are valid, complete, and not corrupt before parsing |
 | **UserIngestPipeline** | `pipelines/user_ingest.py` | Complete pipeline for user demos: parse → enrich → stats → coaching |
 | **JsonTournamentIngestor** | `pipelines/json_tournament_ingestor.py` | Imports tournament data from structured JSON files |
-| **Registry** | `registry/registry.py` | Tracks all processed demos, prevents duplicates |
-| **ResourceManager** | `ingestion/resource_manager.py` | Hardware resource management: CPU/RAM throttling, disk space |
-| **JsonTournamentIngestor** | `pipelines/json_tournament_ingestor.py` | Imports tournament data from structured JSON files |
-| **RegistryLifecycle** | `registry/lifecycle.py` | Lifecycle management of ingestion records |
+| **Registry** | `registry/registry.py` | `DemoRegistry`: tracks all processed demos, prevents duplicates |
+| **ResourceManager** | `backend/ingestion/resource_manager.py` | Hardware resource management: CPU/RAM throttling, disk space |
+| **RegistryLifecycle** | `registry/lifecycle.py` | `DemoLifecycleManager`: cleanup of old demos (default 30 days) |
 
 **SteamLocator** (`ingestion/steam_locator.py`) — automatic CS2 demo location:
 
@@ -1248,7 +1308,7 @@ flowchart TB
         DL_ST["DataLineage<br/>(append-only provenance)"]
         DQM_ST["DataQualityMetric<br/>(append-only quality metrics)"]
     end
-    subgraph T_HLTV["hltv_metadata.db (Pro Data — 3 tables)"]
+    subgraph T_HLTV["hltv_metadata.db (Pro Data — 7 tables)"]
         PRO["ProPlayer + ProTeam +<br/>ProPlayerStatCard"]
     end
     subgraph T3["match_XXXX.db (Per-Match SQLite)"]
@@ -1266,12 +1326,12 @@ flowchart TB
 
 | # | Table | Database | Category | Description |
 | - | ----- | -------- | -------- | ----------- |
-| 1 | `PlayerMatchStats` | database.db | Core | Aggregated per-player/match statistics (32 fields) |
-| 2 | `PlayerTickState` | database.db | Core | Per-tick state (128 Hz), also archived in separate per-match DBs |
+| 1 | `PlayerMatchStats` | database.db | Core | Aggregated per-player/match statistics |
+| 2 | `PlayerTickState` | database.db | Core | Per-tick state, also archived in separate per-match DBs |
 | 3 | `PlayerProfile` | database.db | User | User profile (name, role, Steam ID, monthly quota) |
 | 4 | `RoundStats` | database.db | Core | Per-round isolated statistics (kills, rating, enrichment) |
 | 5 | `CoachingInsight` | database.db | Coaching | Advice generated by the coaching service |
-| 6 | `CoachingExperience` | database.db | Coaching | COPER experience bank (context, outcome, effectiveness, TrueSkill μ/σ, replay priority — KT-01) |
+| 6 | `CoachingExperience` | database.db | Coaching | COPER experience bank (context, outcome, effectiveness, TrueSkill μ/σ) |
 | 7 | `IngestionTask` | database.db | System | Work queue for the Digester daemon |
 | 8 | `CoachState` | database.db | System | Global state (training metrics, heartbeat, status) |
 | 9 | `ServiceNotification` | database.db | System | Error/event messages from daemons → UI |
@@ -1279,14 +1339,18 @@ flowchart TB
 | 11 | `ProPlayer` | hltv_metadata.db | Pro | Pro player profiles |
 | 12 | `ProTeam` | hltv_metadata.db | Pro | Pro team metadata |
 | 13 | `ProPlayerStatCard` | hltv_metadata.db | Pro | Seasonal statistics per pro player |
-| 14 | `Ext_PlayerPlaystyle` | database.db | External | Playstyle data from CSV (for NeuralRoleHead) |
-| 15 | `Ext_TeamRoundStats` | database.db | External | External tournament statistics |
-| 16 | `MatchResult` | database.db | Matches | Match outcomes |
-| 17 | `MapVeto` | database.db | Matches | Map selection history |
-| 18 | `CalibrationSnapshot` | database.db | System | Belief model calibration log (timestamp, samples, outcome) |
-| 19 | `RoleThresholdRecord` | database.db | System | Learned thresholds for role classification (persistent across restarts) |
-| 20 | `DataLineage` | database.db | Provenance | Append-only data provenance log: entity_type, entity_id, source_demo, pipeline_version, processing_step |
-| 21 | `DataQualityMetric` | database.db | Provenance | Append-only quality metrics per run: run_id, run_type, metric_name, metric_value, sample_count |
+| 14 | `ProEvent` | hltv_metadata.db | Pro | HLTV events/competitions |
+| 15 | `ProTournament` | hltv_metadata.db | Pro | HLTV tournaments |
+| 16 | `ProHead2Head` | hltv_metadata.db | Pro | Head-to-head between players |
+| 17 | `ProMapRecord` | hltv_metadata.db | Pro | Per-map records |
+| 18 | `Ext_PlayerPlaystyle` | database.db | External | Playstyle data from CSV (for NeuralRoleHead) |
+| 19 | `Ext_TeamRoundStats` | database.db | External | External tournament statistics |
+| 20 | `MatchResult` | database.db | Matches | Match outcomes |
+| 21 | `MapVeto` | database.db | Matches | Map selection history |
+| 22 | `CalibrationSnapshot` | database.db | System | Belief model calibration log (timestamp, samples, outcome) |
+| 23 | `RoleThresholdRecord` | database.db | System | Learned thresholds for role classification (persistent across restarts) |
+| 24 | `DataLineage` | database.db | Provenance | Append-only data provenance log: entity_type, entity_id, source_demo, pipeline_version |
+| 25 | `DataQualityMetric` | database.db | Provenance | Append-only per-run quality metrics: run_id, run_type, metric_name, metric_value |
 
 **Support enums (not tables):**
 
@@ -1303,13 +1367,12 @@ The MatchDataManager is responsible for managing high-density per-match data (Pl
 
 | Method | Description |
 | ------ | ----------- |
-| `create_match_db(demo_name)` | Creates a new per-match database with `PlayerTickState` schema |
-| `store_tick_data(demo_name, ticks)` | Bulk insert of tick data into the dedicated DB |
-| `load_match_frames(demo_name)` | Loads all frames for the Tactical Viewer |
-| `get_match_db_path(demo_name)` | Resolves the path of the per-match DB |
-| `list_available_matches()` | Lists all matches with DB available |
-| `delete_match_data(demo_name)` | Removes the per-match DB and updates the registry |
-| `get_match_statistics(demo_name)` | Computes aggregate statistics from tick data |
+| `get_match_session(match_id)` | Transactional context manager on the per-match DB (engine from an LRU cache) |
+| `store_tick_batch(match_id, ticks)` | Bulk insert of `MatchTickState` into the dedicated DB |
+| `store_event_batch(match_id, events)` | Bulk insert of `MatchEventState` |
+| `store_metadata(match_id, metadata)` | Upsert of the match metadata |
+| `list_available_matches()` | Lists all matches with a DB available |
+| `delete_match(match_id)` | Removes the per-match DB |
 
 **StorageManager** (`backend/storage/storage_manager.py`):
 
@@ -1398,7 +1461,7 @@ flowchart LR
 
 ### 12.10 Playback Engine and Tactical Viewer
 
-**File:** `Programma_CS2_RENAN/core/playback.py`, `playback_engine.py`, `apps/desktop_app/tactical_viewer_screen.py`, `tactical_map.py`, `timeline.py`, `player_sidebar.py`
+**File:** `Programma_CS2_RENAN/core/playback_engine.py`, `apps/qt_app/screens/tactical_viewer_screen.py`, `apps/qt_app/widgets/tactical/map_widget.py`, `timeline_widget.py`, `player_sidebar.py`
 
 The tactical playback system allows the user to **relive their matches** on an interactive 2D map, with AI overlay (optimal ghost position), event markers (kills, bomb plants), and full playback controls.
 
@@ -1491,6 +1554,16 @@ Each moment is placed on the Timeline as a clickable marker. Clicking jumps play
 **File:** `Programma_CS2_RENAN/core/spatial_data.py`, `spatial_engine.py`, `data/map_config.json`
 
 The map management system translates **CS2 world coordinates** (typical values: -2000 to +2000 on X/Y) into **pixel coordinates** on the map texture (0.0 to 1.0 normalized), and vice versa.
+
+**Before geometry, identity: which maps exist.** An August 2026 census found **twelve** known-map lists declared in different places across the project, with diverging contents: one knew eleven, another nine, another eight. The consequence was not theoretical — the same demo could be recognized by one tool and ignored by another, depending on which list that module carried around.
+
+`core/known_maps.py` is today the single authority: `KNOWN_MAP_NAMES` (the bare names), `KNOWN_MAP_IDS` (the same with the `de_` prefix), the regular expression that recognizes a map inside a filename, and the three helpers `bare_name()`, `is_known_map()`, `sniff_map_from_text()`. The set is deliberately a **superset** of all twelve lists found: better to recognize a map that is not in the competitive rotation than to ignore one that is.
+
+Its reach must be stated precisely, because an SSOT declared broader than it is is worth less than no SSOT at all. **Seven consumers** were converted and are guarded by the test `test_known_maps_ssot.py`, which forbids re-declaring the mirage/inferno/nuke trio and checks that each still imports the module:
+
+`apps/qt_app/core/match_utils.py` · `apps/qt_app/screens/coach_screen.py` · `tools/d3_recover_shard_metadata.py` · `tools/mine_coaching_experience.py` · `tools/mine_shard_strategies.py` · `tools/populate_match_results.py` · `tools/rebuild_monolith.py`
+
+Four local lists remain outside — in `coaching_dialogue.py`, `reporting/analytics.py`, `knowledge/pro_demo_miner.py` and in `Goliath_Hospital.py` — and two of these are **deliberate** exclusions: Goliath's `REQUIRED_MAPS` checks the presence of asset files, not the identity of a map, and the spatial registry carries hand-calibrated radar geometries that make no sense outside their context. The other two are residual debt, not design.
 
 ```mermaid
 flowchart LR
@@ -2039,15 +2112,16 @@ flowchart TB
 
 **Headless Validator** (`tools/headless_validator.py`) — the mandatory regression gate (Dev Rule 9). Executed after **every** development task with 23 phases and 319 checks:
 
-| Phase | Verification | Detail |
-| ----- | ------------ | ------ |
-| 1 | **Environment** | Python ≥ 3.10, critical dependencies present (torch, pyside6, sqlmodel, demoparser2) |
-| 2 | **Core Import** | `config.py`, `spatial_data.py`, `lifecycle.py` — the fundamental modules load without errors |
-| 3 | **Backend Import** | `nn/`, `processing/`, `storage/`, `services/`, `coaching/` — all backend subsystems importable |
-| 4 | **DB Schema** | The 21 SQLModel tables are created correctly, the relationships are valid |
-| 5 | **Configuration** | `METADATA_DIM`, paths, constants — consistent and reachable values |
-| 6 | **ML Smoke** | Model instantiation (JEPA, RAP, MoE) with random weights — verify dimensions and forward pass |
-| 7 | **Observability** | `get_logger()` working, `StateManager` initializable, writable log path |
+| Phase group | Verification |
+| ---- | -------- |
+| Environment / Deps / GPU / Platform | Python and critical dependencies present (torch, pyside6, sqlmodel, demoparser2), device and platform |
+| Core / NewImport / Structure | The fundamental modules (`config.py`, `spatial_data.py`, `lifecycle.py`) load without errors |
+| NN / ML / ML-Deep / RAP / Training | Model instantiation with random weights — dimensions and forward pass |
+| DB / DB-Deep / Schema / Storage | The SQLModel tables (25 + 3 per-match) are created correctly |
+| Config / Config-Deep / Features / Processing | `METADATA_DIM`, paths, consistent constants |
+| Coaching / Knowledge / Services / Analysis / Belief / Baseline | Contracts of the coaching and analysis subsystems |
+| Ingestion / DataSrc / Adapter / Integrity / Security | Ingestion pipeline, demo validation, security |
+| UI / Qt-Import / Design-Tokens / Reporting / Quality / Quality-Adv | Interface, design tokens, quality |
 
 **Shared Infrastructure** (`tools/_infra.py`):
 
@@ -2102,17 +2176,18 @@ flowchart TB
 The "Goliath Hospital" is the **most complete diagnostic system** of the project, organized as a hospital with 10 specialized departments:
 
 | Department | Name | Checks |
-| ---------- | ---- | ------ |
-| 1 | **Emergency Room (ER)** | Critical imports, immediate crashes, path resolution |
-| 2 | **Radiology** | File/directory structure, missing files, permissions |
-| 3 | **Pathology** | DB schema, data integrity, anomalous records |
-| 4 | **Cardiology** | Session Engine, daemon heartbeat, IPC |
-| 5 | **Neurology** | ML models, forward pass, gradient flow |
-| 6 | **Oncology** | Dead code, unused imports, circular dependencies |
-| 7 | **Pediatrics** | Onboarding, first-user flows, wizard |
-| 8 | **Intensive Care (ICU)** | Concurrency, race conditions, WAL contention |
+| ------- | ---- | --------- |
+| 1 | **Emergency Room (ER)** | Syntax, forbidden patterns, namespace |
+| 2 | **Radiology** | Assets, file/directory structure |
+| 3 | **Pathology** | Data quality, mock-data detection |
+| 4 | **Cardiology** | Core modules, DB, config, analysis engines |
+| 5 | **Neurology** | ML/AI, forward pass |
+| 6 | **Oncology** | Technical debt |
+| 7 | **Pediatrics** | Recently modified files |
+| 8 | **Intensive Care (ICU)** | Integration, imports |
 | 9 | **Pharmacy** | Dependencies, versions, compatibility |
 | 10 | **Tool Clinic** | Validation of other tools (meta-test) |
+| 11 | **Endocrinology** | Entry points, migrations, JSON validation |
 
 **Ultimate ML Coach Debugger** (`tools/Ultimate_ML_Coach_Debugger.py`) — neural belief falsification:
 
@@ -2195,32 +2270,13 @@ flowchart TB
 | Knowledge | `test_rag.py`, `test_experience_bank.py`, `test_knowledge_graph.py` | Retrieval, COPER effectiveness, KG query |
 | Ingestion | `test_ingest_pipeline.py`, `test_registry.py` | Complete pipeline, deduplication |
 
-**Forensics** (`tests/forensics/`, 10 scripts):
+**Forensics** (`tests/forensics/` in the root, 10 scripts):
 
-Forensics scripts are diagnostic tools for post-mortem investigations:
+The forensics scripts are diagnostic tools for post-mortem investigations: `check_db_status.py`, `check_failed_tasks.py`, `debug_env.py`, `debug_nade_cols.py`, `debug_parser_fields.py`, `probe_missing_tables.py`, `test_forensic_parser.py`, `test_skill_logic.py`, `verify_map_dimensions.py`, `verify_spatial_integrity.py`.
 
-| Script | Purpose |
-| ------ | ------- |
-| `diagnose_training_failure.py` | Analyzes training logs to identify divergence, NaN, gradient explosion |
-| `inspect_model_weights.py` | Weight distribution, layer statistics, dead neurons |
-| `replay_ingestion.py` | Re-runs ingestion of a specific demo with verbose logging |
-| `trace_coaching_path.py` | Traces the path of an insight from demo to UI |
-| `db_consistency_check.py` | Verifies consistency across the 3 databases |
+**Verification Scripts** (6 `verify_*.py` files in the root `tests/`):
 
-**Verification Scripts** (15 files in `tests/` root):
-
-One-shot verification scripts to validate specific aspects of the system:
-
-| Script | Verification |
-| ------ | ------------ |
-| `verify_feature_pipeline.py` | METADATA_DIM=25 respected in all paths |
-| `verify_training_cycle.py` | 4 training phases complete without error |
-| `verify_db_schema.py` | 21 tables present with correct schema |
-| `verify_coaching_pipeline.py` | Demo → insight end-to-end path |
-| `verify_imports.py` | All modules importable without circular errors |
-| `verify_rag_index.py` | Knowledge base indexed with correct dimensions (384-dim) |
-| `verify_pro_baseline.py` | Pro baseline loaded and valid |
-| `verify_hltv_sync.py` | HLTV sync service configured correctly |
+One-shot verification scripts to validate specific aspects of the system (spatial consistency, data pipeline, integrity), alongside the root tests `test_d3_rederive.py`, `test_eval_harness.py`, `test_lock_files.py`, `test_rescrape_placeholder_pros.py`, `test_sync_pro_players.py`.
 
 **Test strategy by criticality:**
 
@@ -2254,9 +2310,9 @@ The following modules have high complexity (>500 LOC) but limited test coverage:
 
 ---
 
-### 12.19 The 12 Phases of Systematic Remediation
+### 12.19 The Phases of Systematic Remediation
 
-The project went through a **12-phase remediation** process that overall resolved **370+ issues** identified during progressive quality audits. Each phase focused on a specific category of problems, from critical bug fixes to architectural restructuring.
+The project went through a **12-phase remediation** process that overall resolved **370+ issues** identified during progressive quality audits. Each phase focused on a specific category of problems, from critical bug fixes to architectural restructuring. On top of these comes the August 2026 audit campaign, which changed the method — read everything before deciding what counts as a problem — and is described in §12.19.1.
 
 ```mermaid
 flowchart TB
@@ -2340,6 +2396,37 @@ Each remediation phase produced a detailed report saved in the `reports/` direct
 | F6-XX | Analysis | Analysis engines without graceful degradation — crash on incomplete input |
 | F7-XX | Knowledge | RAG without index validation — inconsistent embedding dimensions |
 | F8-XX | UI | Qt widget without visual feedback — silent actions confuse the user |
+
+---
+
+
+#### 12.19.1 The full audit campaign (August 2026)
+
+The previous waves started from a symptom: something broke, the cause was hunted down, the fix was applied. The August 2026 campaign inverted the method — it read **every** file in the repository, in two passes, before deciding what counted as a problem.
+
+The first pass went file by file: 618 files read in 76 batches, each with its own dossier under `docs/audit/dossiers/`. The second went crosswise, by lens: ten contracts that cut across the code rather than along folders — ticks and tensors, Qt thread safety, DB session lifecycle, error handling, resources, configuration and paths, internationalization, numerical and ML correctness, security, dead code (`docs/audit/CONTRACTS.md`).
+
+Out of it came **44 findings**: no P0, 12 P1 (correctness, threading or resources under real use), 32 P2 (contract drift and dead code). Thirty-one were fixed, **each with its own regression test in the same commit**; thirteen were deferred, each with the blocking condition written out in full — missing reference data, missing visual ground truth, or a research question a patch does not settle.
+
+What outlives the campaign, however, is not the 31 fixes: it is the **doctrine tests**, which do not verify a behavior but forbid the return of an entire class of error.
+
+| Invariant | Test | How it bites |
+| --------- | ---- | ------------ |
+| No DB access from the GUI thread | `test_screens_no_gui_thread_db.py` | Inspects the screens' source: the function touching the DB must be a `staticmethod` run by a `Worker` |
+| No hand-written tick rate | `test_tick_rate_ssot.py` | **AST** scan (immune to comments and docstrings) with a seeded-violation test that fails if the scanner stops biting |
+| No re-declared map lists | `test_known_maps_ssot.py` | Forbids the mirage/inferno/nuke trio in the converted consumers and checks each still imports the SSOT |
+| A single pytest configuration | `test_single_pytest_config.py` | Asserts the shadow file is absent and confirms with a subprocess which configuration gets resolved |
+| Every mutating tool is gated | `test_verify_all_safe_gate.py` | Census: no destructive tool can be invoked bare |
+| Every cited token really exists | `test_design_token_references.py` | Matches every `tokens.<name>` in the Qt code against the dataclass's real fields |
+| Chips restyle on theme switch | `test_theme_live_restyle.py` | Goes through the module relay |
+| The parse timeout is real | `test_parse_timeout_real.py` | With a worker hung for 30s, the caller must return in under 5 |
+| One runner claims each demo | `test_ingestion_atomic_claim.py` | Exclusive claim plus already-claimed task being skipped |
+| The classifier refuses vocabulary-less dicts | `test_role_vocabulary_guard.py` | See Part 2, analysis engines |
+| Zero QtCharts imports | `test_charts.py` | Licensing gate |
+
+In the same campaign the minimum coverage floor rose from 33% to **50%** (`pyproject.toml`), `ruff` was introduced with a starter ruleset, and a `pip check` dependency gate was added.
+
+> The test-gate figures reported by the campaign — 2,574 tests green, zero failed, zero errors — are those recorded in `docs/audit/FINAL_REPORT.md` on 14 August 2026. What is verifiable by reading the repository, without running anything, is its size: **167 test files** and **2,470 static `test_` functions**.
 
 ---
 
@@ -2460,18 +2547,15 @@ Migrations specific to the storage layer, kept separate for modularity. They han
 
 | Function | Role |
 | -------- | ---- |
-| `discover_demos()` | Scans configured directories, filters valid `.dem` files |
-| `validate_demo_file()` | Checks magic bytes, size, pre-parsing integrity |
-| `process_single_demo()` | Complete pipeline for a demo: parse → extract → enrich → persist |
-| `batch_process()` | Processes multiple demos in sequence with progress tracking |
-| `enrich_round_stats()` | Post-processing: computes trade kills, blind kills, flash assists |
-| `compute_hltv_rating()` | Computes HLTV 2.0 rating for each player |
-| `assign_dataset_split()` | Assigns 70% train / 15% val / 15% test with temporal split |
-| `generate_coaching_insights()` | Invokes CoachingService to generate 5-20 insights |
-| `update_ingestion_task()` | Updates task status in DB (queued → processing → completed/failed) |
-| `cleanup_failed_tasks()` | Cleans up failed tasks, resets to queued if recoverable |
-| `report_progress()` | Structured logging of overall progress |
-| `handle_duplicate_detection()` | Verifies via Registry whether the demo has already been processed |
+| `_check_duplicate_demo()` | **SHA-256** deduplication across 3 stores: IngestionTask (exact path), PlayerMatchStats (by stem), and Registry |
+| `_ingest_single_demo()` | Complete pipeline for one demo: aggregate parse → `persist_round_stats_and_enrichment()` → per-match shard save |
+| `_save_player_stats()` | Persists `PlayerMatchStats` with NaN/Inf sanitization (`_sanitize_value`) |
+| `_save_sequential_data()` | Chunked tick extraction: `BATCH_SIZE = 10000` if `HP_MODE=1`, otherwise `2000`; dual-write to the per-match DB |
+| `enrich_tick_data()` | (from `backend/processing/tick_enrichment.py`) computes cross-player features 20-24 per tick |
+| `_EventExtractor` / `_extract_and_store_events()` | Extracts weapon_fire/hurt/death/grenades/bomb → `MatchEventState` in the per-match DB |
+| `_build_match_tick_dataframe()` | Tick DataFrame for all players (full POV) |
+| `_finalize_match_record()` | Closes the match record and its metadata |
+| `run_ml_pipeline()` / `_save_insights()` | Follow-on ML and `CoachingInsight` persistence |
 
 **ResourceManager** (`ingestion/resource_manager.py`):
 
@@ -2496,78 +2580,28 @@ The HLTV Sync Service is a **background daemon** that automatically synchronizes
 ```mermaid
 flowchart TB
     subgraph HLTV_SYNC["HLTV SYNC SERVICE"]
-        DAEMON["Background Daemon<br/>(monitored by ServiceSupervisor)"]
-        DAEMON --> CB["Circuit Breaker<br/>MAX_FAILURES=10<br/>RESET_WINDOW=3600s"]
-        CB --> RL["Rate Limiter<br/>Delay between requests<br/>Respects HLTV ToS"]
-        RL --> BM["Browser Manager<br/>Playwright sync<br/>FlareSolverr proxy"]
-        BM --> CP["Cache Proxy<br/>Response caching<br/>Configurable TTL"]
+        DAEMON["Background Daemon<br/>(separate process, monitored<br/>by ServiceSupervisor as 'hunter')"]
+        DAEMON --> FS["ensure_flaresolverr()<br/>FlareSolverr Docker container"]
+        FS --> FETCH["HLTVStatFetcher<br/>robots.txt preflight,<br/>2-7s delay + adaptive backoff"]
     end
     subgraph CYCLE["OPERATING CYCLE"]
-        SCAN["HLTV Scan<br/>(every 1 hour)"]
-        DORMANT["Dormant Mode<br/>(6 hours on failure)"]
-        PID["PID Management<br/>(duplicate instance prevention)"]
+        FULL["Full refresh<br/>(every 7 days)"]
+        INCR["Top-30 incremental refresh<br/>(every 24 hours)"]
+        REST["Rest between cycles<br/>(1 hour)"]
+        DORMANT["Dormant Mode<br/>(6 hours if HLTV unreachable)"]
+        PID["PID file + stop-signal file<br/>(duplicate instance prevention)"]
     end
-    CP -->|"Pro data"| DB["hltv_metadata.db<br/>(ProPlayer, ProTeam,<br/>ProPlayerStatCard)"]
-    SCAN --> DAEMON
+    FETCH -->|"Pro data (text statistics only,<br/>NEVER demo downloads)"| DB["hltv_metadata.db<br/>(ProPlayer, ProTeam,<br/>ProPlayerStatCard + extended tables)"]
+    FULL --> DAEMON
+    INCR --> DAEMON
     DAEMON -->|"failure"| DORMANT
     PID --> DAEMON
     style DAEMON fill:#4a9eff,color:#fff
-    style CB fill:#ff6b6b,color:#fff
+    style FS fill:#ffd43b,color:#000
     style DB fill:#51cf66,color:#fff
 ```
 
-| Component | File | Role |
-| --------- | ---- | ---- |
-| **CircuitBreaker** | `circuit_breaker.py` | Protects against cascade failure: CLOSED→OPEN (after 10 fails)→HALF_OPEN (test)→CLOSED |
-| **BrowserManager** | `browser_manager.py` | Headless Playwright browser management with FlareSolverr for Cloudflare bypass |
-| **CacheProxy** | `cache_proxy.py` | Local cache of HLTV responses to reduce requests |
-| **RateLimiter** | `rate_limiter.py` | Configurable delay between requests to respect ToS |
-
-**HLTV Internal Architecture — Collectors and Selectors:**
-
-The `ingestion/hltv/` tree also contains specialized modules for data collection:
-
-| Module | Type | Description |
-| ------ | ---- | ----------- |
-| `player_collector.py` | Collector | Collects pro player profiles from HLTV pages |
-| `team_collector.py` | Collector | Collects rosters and team statistics |
-| `match_collector.py` | Collector | Collects match results and demo links |
-| `stat_selector.py` | Selector | Extracts specific statistics from parsed HTML pages |
-| `demo_selector.py` | Selector | Identifies and downloads demo links from match pages |
-
-**Detailed operating cycle:**
-
-```mermaid
-sequenceDiagram
-    participant SS as ServiceSupervisor
-    participant HS as HLTV Sync Service
-    participant CB as Circuit Breaker
-    participant BM as Browser Manager
-    participant DB as hltv_metadata.db
-
-    SS->>HS: start() (monitored)
-    loop Every 1 hour
-        HS->>CB: check_state()
-        alt Circuit CLOSED
-            HS->>BM: launch_browser()
-            BM->>BM: Playwright + FlareSolverr
-            BM-->>HS: page HTML
-            HS->>HS: Parse players, teams, stats
-            HS->>DB: Upsert ProPlayer, ProTeam, ProPlayerStatCard
-            HS->>CB: record_success()
-        else Circuit OPEN
-            HS->>HS: Skip — wait for reset (3600s)
-        else Circuit HALF_OPEN
-            HS->>BM: test_request()
-            alt Success
-                HS->>CB: record_success() → CLOSED
-            else Failure
-                HS->>CB: record_failure() → OPEN
-            end
-        end
-    end
-    Note over HS: After failure: dormant mode 6h
-```
+**Refresh policy:** **full synchronization every 7 days**, **top-30 incremental every 24 hours**, a 1-hour rest between cycles, and a **6-hour dormant mode** when HLTV is unreachable. The service writes **text statistics only** (Rating 2.0, K/D, ADR, KAST, HS%) — it never downloads demo files. It runs as a detached process (`subprocess.Popen`) with a **PID file** and a **stop-signal file** (`start_detached` / `stop_service`), kept apart from the session engine to avoid WAL contention on the monolith.
 
 ---
 
@@ -2677,14 +2711,15 @@ Level 2 configuration file (cf. section 12.3). Saved in the project directory, c
 
 Besides `main.py`, the project includes several **executable scripts** at the root level that serve as alternative entry points for specific operations:
 
-| Script | Lines | Purpose | Invocation |
-| ------ | ----- | ------- | ---------- |
-| `console.py` | ~61KB | Complete interactive TUI console with Rich — command registry, CLI and interactive modes, complete system management | `python console.py` |
-| `run_ingestion.py` | 1,057 | Standalone ingestion orchestrator (cf. 12.23) — batch demo processing | `python run_ingestion.py [path]` |
-| `goliath.py` | ~200 | Launcher for Goliath Hospital diagnostics (cf. 12.17) | `python goliath.py` |
-| `schema.py` | ~100 | Generation and visualization of the current DB schema | `python schema.py` |
-| `run_full_training_cycle.py` | ~150 | Standalone 4-phase complete training (JEPA→Pro→User→RAP) | `python run_full_training_cycle.py` |
-| `hflayers.py` | ~50 | Utility for Hopfield layers (NCPs integration) | Import only |
+| Script | Location | Purpose | Invocation |
+| ------ | -------- | ------- | ---------- |
+| `console.py` | root | "MACENA UNIFIED CONSOLE v3.0": Rich TUI + argparse CLI, CommandRegistry with 10 categories (ml, ingest, build, db, …) | `python console.py` |
+| `run_ingestion.py` | `Programma_CS2_RENAN/` | Standalone ingestion orchestrator (cf. 12.23) | `python -m Programma_CS2_RENAN.run_ingestion` |
+| `batch_ingest.py` | root | Parallel batch ingestion driver (delegates to `run_ingestion`) | `python batch_ingest.py` / `./ingest.sh` |
+| `goliath.py` | root | "MACENA GOLIATH": Rich orchestrator with `build`, `sanitize`, `integrity`, `audit`, `db`, `doctor` subcommands | `python goliath.py <subcommand>` |
+| `schema.py` | root | `SchemaSuite`: **raw** sqlite3 CLI (not ORM) for DB inspection/migration — `inspect`, `migrate`, `verify` subcommands | `python schema.py <subcommand>` |
+| `run_full_training_cycle.py` | root | Standalone complete training (JEPA→Pro→User→RAP→RoleHead) with CLI flags (cf. Part 1A) | `python run_full_training_cycle.py` |
+| `run_worker.py` | `Programma_CS2_RENAN/` | Ingestion worker with atomic task claim and stale recovery | `python -m Programma_CS2_RENAN.run_worker` |
 
 **Interactive console** (`console.py`, ~61KB):
 

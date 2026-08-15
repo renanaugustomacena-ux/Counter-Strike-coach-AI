@@ -1,8 +1,10 @@
 # Ultimate CS2 Coach — Parte 1B: Os Sentidos e o Especialista
 
-> **Topicos:** Modelo RAP Coach (arquitetura de 7 componentes: Percepcao, Memoria LTC+Hopfield, Estrategia, Pedagogia, Atribuicao Causal, Posicionamento, Comunicacao), ChronovisorScanner (deteccao multi-escala de momentos criticos), GhostEngine (pipeline de inferencia 4-tensores), e todas as fontes de dados externas (Demo Parser, HLTV, Steam, FACEIT, TensorFactory, FrameBuffer, FAISS, Round Context).
+> **Topicos:** Modelo RAP Coach (arquitetura de 7 componentes: Percepcao, Memoria LTC+Hopfield, Estrategia, Pedagogia, Atribuicao Causal, Posicionamento, Comunicacao), ChronovisorScanner (deteccao multi-escala de momentos criticos), GhostEngine (pipeline de inferencia 4-tensores), e todas as fontes de dados externas (Demo Parser, HLTV, Steam, FACEIT, TensorFactory, FAISS, Round Context).
 >
 > **Autor:** Renan Augusto Macena
+>
+> **Revisao base:** em sincronia com `Book-Coach-1B.md` (canonico italiano) em 2026-08-15.
 
 ---
 
@@ -27,9 +29,8 @@
    - Event Registry (Schema de Eventos CS2)
    - Trade Kill Detector
    - Steam API + Steam Demo Finder
-   - Modulo HLTV (stat_fetcher, FlareSolverr, Docker, Rate Limiter)
+   - Modulo HLTV (stat_fetcher, FlareSolverr, Docker, rate limiting adaptativo)
    - FACEIT API + Integration
-   - FrameBuffer (Buffer Circular para Extracao de HUD)
    - TensorFactory — Fabrica de Tensores (Percepcao Player-POV NO-WALLHACK)
    - Indice Vetorial FAISS (Busca Semantica de Alta Velocidade)
    - Contexto dos Rounds (Grade Temporal)
@@ -148,9 +149,8 @@ Esta parte enfrenta o desafio fundamental de que o coach CS2 e um **Processo de 
 **Rede de constante de tempo liquida (LTC) com cabeamento AutoNCP:**
 
 - Entrada: 153 dim (128 percepcao + 25 metadados)
-- Unidades NCP: **512** (`hidden_dim * 2` = 256 x 2) — razao 2:1 que garante inter-neuronios suficientes para o cabeamento esparso AutoNCP
-- Saida: estado oculto de 256 dim
-- Usa a biblioteca `ncps` com padroes de conectividade esparsos, similares aos do cerebro
+- Unidades NCP: **512** (`hidden_dim * 2` = 256 x 2), repartidas pelo wiring AutoNCP em **154 neuronios motores / 143 command / 215 inter**; a saida motora (154-dim) e projetada para 256-dim atraves de `ltc_projection`
+- Usa a biblioteca `ncps` com padroes de conectividade esparsos, similares aos do cerebro; um `_patched_ode_solver` interno corrige um bug de batch-broadcast do ncps
 - Adapta a resolucao temporal ao ritmo do jogo (configuracoes lentas vs. tiroteios rapidos)
 - Seeding deterministico (NN-MEM-02): numpy + torch RNG seedados em 42 durante a criacao do wiring AutoNCP, com restauracao do estado RNG original apos a inicializacao — garante portabilidade dos checkpoints entre diferentes execucoes
 
@@ -158,16 +158,15 @@ Esta parte enfrenta o desafio fundamental de que o coach CS2 e um **Processo de 
 
 - Entrada/Saida: 256-dim
 - Cabecas: 4
-- Usa `hflayers.Hopfield` como **memoria enderecavel por conteudo** para a recuperacao dos rounds prototipo
+- Usa `hflayers.HopfieldLayer` com **32 padroes-prototipo treinaveis** (`quantity=32`, 32x256 = 8.192 parametros) como **memoria enderecavel por conteudo** para a recuperacao dos rounds prototipo
+- Os prototipos podem ser inicializados via **K-means (K=32)** sobre os dados reais atraves de `initialize_prototypes()` (Fase 5B)
 
 **Atraso de ativacao Hopfield (NN-MEM-01 + RAP-M-04):**
 
-A rede de Hopfield **nao se ativa imediatamente** durante o treinamento. Os padroes memorizados partem de inicializacao aleatoria (`torch.randn * 0.02`) e a atencao seria quase uniforme em todos os slots, adicionando ruido em vez de sinal. Por isso:
+A rede de Hopfield **nao se ativa imediatamente** durante o treinamento: padroes ainda nao modelados produziriam atencao quase uniforme em todos os slots, adicionando ruido em vez de sinal. Por isso:
 
-- `_training_forward_count` conta os passos forward durante o training
-- `_hopfield_trained` (flag booleano) permanece `False` ate >=2 forward passes de treinamento
+- O flag `_hopfield_trained` permanece `False` ate que o trainer chame `notify_optimizer_step()` - ou seja, ate o **primeiro optimizer step real** que modelou os padroes
 - Antes da ativacao, o forward pass retorna `torch.zeros_like(ltc_out)` no lugar da saida Hopfield
-- Apos >=2 forwards (garantindo que pelo menos um backward + optimizer.step tenha modelado os padroes), Hopfield ativa e contribui para o combined_state
 - O carregamento de um checkpoint (`load_state_dict`) define `_hopfield_trained = True` imediatamente, assumindo que o modelo ja foi treinado
 
 **RAPMemoryLite — Fallback LSTM puro:**
@@ -208,11 +207,11 @@ return combined_state, belief, hidden
 
 ### -Camada Estrategia (`strategy.py`) — Superposicao + MoE
 
-Implementa **SuperpositionLayer** combinado com uma mistura de especialistas contextualizados:
+Implementa **SuperpositionLayer** combinado com uma mistura de especialistas contextualizados com **roteamento esparso Top-2**:
 
-**SuperpositionLayers** (`layers/superposition.py`): controle dependente do contexto onde `output = F.linear(x, weight, bias) * sigmoid(context_gate(context))`. Um vetor de gate sigmoide condicionado no contexto **25-dim** (METADATA_DIM completo) mascara seletivamente as saidas dos especialistas. A perda de esparsidade L1 (`context_gate_l1_weight = 1e-4`) incentiva um gating esparso e interpretavel. Observavel: as estatisticas do gate (media, std, sparsidade, active_ratio) podem ser rastreadas.
+**SuperpositionLayer** (`layers/superposition.py`): condicionamento **FiLM** onde `output = gamma(context) . (W.x + b) + beta(context)`, com `gamma = sigmoid(context_gate(context))` e `beta = context_beta(context)` (inicializado em zero). O gate multiplicativo mascara seletivamente as saidas dos especialistas; o termo aditivo permite ao contexto injetar features. A perda de esparsidade L1 (`context_gate_l1_weight = 1e-4`) incentiva um gating esparso e interpretavel. Observavel: as estatisticas do gate (media, std, sparsidade, active_ratio) podem ser rastreadas.
 
-> **Nota:** `RAPStrategy.__init__` usa `context_dim=25` (METADATA_DIM). A rede de gate e `Linear(hidden_dim=256, num_experts=4) -> Softmax(dim=-1)`.
+> **Nota:** `RAPStrategy.__init__` usa `context_dim=89` - o contexto e a concatenacao de **metadados (25) + vetor de crencas (64)**. A rede de gate e `nn.Linear(hidden_dim=256, num_experts=4)` seguida de softmax e renormalizacao Top-2.
 
 ```mermaid
 flowchart TB
@@ -225,16 +224,16 @@ flowchart TB
     CTX -.->|"modula"| E2
     CTX -.->|"modula"| E3
     CTX -.->|"modula"| E4
-    E1 --> GATE["Gate (softmax - soma 1.0)<br/>0.35 / 0.40 / 0.15 / 0.10"]
+    E1 --> GATE["Gate Top-2 (softmax + renorm.)<br/>0.55 / 0.45 / 0 / 0"]
     E2 --> GATE
     E3 --> GATE
     E4 --> GATE
     GATE --> OUT["Soma ponderada 10-dim<br/>probabilidades conselhos"]
 ```
 
-**4 Modulos Especialistas:** Cada especialista e um `ModuleDict`: `SuperpositionLayer(256->128, context_dim=25) -> ReLU -> Linear(128->10)`.
+**4 Modulos Especialistas:** Cada especialista e composto por `SuperpositionLayer (FiLM, context_dim=89) -> ReLU -> Linear(->10)`.
 
-**Gate Network:** `Linear(256->4) -> Softmax`.
+**Gate Network:** `nn.Linear(256->4)` (logits brutos) -> softmax -> **Top-2 renormalizado** (os outros dois especialistas ficam com peso zero).
 
 **Saida:** Distribuicao de probabilidade de conselhos de 10 dimensoes e vetor de pesos de gate de 4 dimensoes.
 
@@ -309,15 +308,17 @@ As pontuacoes Z sao convertidas em percentis via a **aproximacao logistica** `1/
 Orquestra o ciclo de treinamento com uma **funcao de perda composta**:
 
 ```
-L_total = L_estrategia + 0,5 x L_valor + L_esparsidade + L_posicao
+L_total = 1.0 x L_estrategia + 0.5 x L_valor + 1.0 x L_esparsidade + 1.0 x L_posicao
 ```
 
 | Termo de perda   | Formula                                                   | Peso | Proposito                                                        |
 | ---------------- | --------------------------------------------------------- | ---- | ---------------------------------------------------------------- |
 | `L_strategy`   | `MSELoss(advice_probs, target_strat)`                   | 1.0  | Recomendacao tatica correta                                      |
-| `L_value`      | `MSELoss(V(s), true_advantage)`                         | 0.5  | Estimativa precisa da vantagem                                   |
-| `L_sparsity`   | `model.compute_sparsity_loss(gate_weights)` — L1 nos pesos dos gates (parametro explicito, thread-safe) | 1e-4 | Especializacao de experts                                        |
-| `L_position`   | `MSE(pred_xy, true_xy) + 2.0 x MSE(pred_z, true_z)`    | 1.0  | Posicionamento otimo,**penalidade rigorosa no eixo Z** |
+| `L_value`      | `MSELoss(V(s), true_advantage)` (com `val_mask` opcional) | 0.5  | Estimativa precisa da vantagem                                   |
+| `L_sparsity`   | `model.compute_sparsity_loss(gate_weights)` — **entropia do gate**: `context_gate_l1_weight x (-sum p.log p)`, faixa [0, log 4 ~ 1.386], escala 1e-4 (parametro explicito, thread-safe) | 1e-4 | Especializacao de experts |
+| `L_position`   | `MSE(pred_x) + MSE(pred_y) + 2.0 x MSE(pred_z)`         | 1.0  | Posicionamento otimo,**penalidade rigorosa no eixo Z** |
+
+**Otimizacao:** AdamW (lr=1e-4, weight_decay=1e-2), scheduler `CosineAnnealingLR(T_max=100, eta_min=1e-6)`, **acumulo de gradientes** em 4 passos (`accumulation_steps=4`), AMP `GradScaler` (somente CUDA).
 
 > **Nota:** O multiplicador 2x no eixo Z existe porque os erros de posicionamento vertical (por exemplo, um nivel errado em Nuke/Vertigo) sao taticamente catastroficos: representam erros de andar errado que nenhuma correcao horizontal pode corrigir.
 
@@ -326,7 +327,7 @@ flowchart LR
     subgraph LOSS["L_total = L_estrategia + 0.5xL_valor + L_esparsidade + L_posicao"]
         S["Estrategia<br/>Peso: 1<br/><br/>Voce deu<br/>o conselho certo?"]
         V["Valor<br/>Peso: 0.5<br/><br/>Voce estimou<br/>a vantagem correta?"]
-        SP["Esparsidade<br/>Peso: 0.0001<br/><br/>Voce usou<br/>poucos especialistas?<br/>(simples = melhor)"]
+        SP["Esparsidade (entropia do gate)<br/>Escala: 0.0001<br/><br/>Voce usou<br/>poucos especialistas?<br/>(roteamento decidido = melhor)"]
         P["Posicao<br/>Peso: 1<br/><br/>Voce encontrou<br/>o ponto certo?<br/>XY + 2Z"]
     end
     LOSS --> GOAL["Objetivo: minimizar TODOS os quatro, coaching melhor!"]
@@ -524,11 +525,11 @@ O modelo produz um delta normalizado em [-1, 1] que e escalado para coordenadas 
 
 | Modo Fallback | Condicao | Comportamento |
 |---|---|---|
-| **Modelo desabilitado** | `USE_RAP_MODEL=False` | Skip carregamento, retorna `(0.0, 0.0)` |
-| **Checkpoint ausente** | Treinamento nao concluido | `model = None`, previsoes desabilitadas |
-| **Nome do mapa ausente** | Nenhum contexto espacial | Retorna `(0.0, 0.0)` imediatamente |
-| **Erro PlayerKnowledge** | Construcao conhecimento falhou | Degrada para tensores legacy (todos zeros) |
-| **Erro de inferencia** | RuntimeError / CUDA OOM | Log erro, retorna `(0.0, 0.0)` |
+| **Modelo desabilitado** | `USE_RAP_MODEL=False` (default) | Skip carregamento, nenhuma previsao (`None`) |
+| **Checkpoint ausente** | Treinamento nao concluido | `model = None`, `is_trained = False`, previsoes desabilitadas |
+| **Nome do mapa ausente** | Nenhum contexto espacial | Retorna `None` imediatamente |
+| **Erro PlayerKnowledge** | Construcao conhecimento falhou | Degrada para tensores legacy |
+| **Erro de inferencia** | RuntimeError / CUDA OOM | Log erro, retorna `None` |
 
 ```mermaid
 flowchart TB
@@ -554,7 +555,7 @@ flowchart TB
         DELTA -->|"x RAP_POSITION_SCALE<br/>(500.0)"| GHOST["(ghost_x, ghost_y)<br/>Posicao fantasma"]
     end
     subgraph FALLBACK["Fase 5: Fallback"]
-        ERR["Qualquer erro"] --> SAFE["(0.0, 0.0)<br/>Nunca crash"]
+        ERR["Qualquer erro"] --> SAFE["None<br/>(nenhum fantasma)<br/>Nunca crash"]
     end
     GHOST --> RENDER["Overlay no mapa tatico"]
 
@@ -568,7 +569,7 @@ flowchart TB
 ## 5. Subsistema 1B — Fontes de Dados
 
 **Pasta no programa:** `backend/data_sources/`
-**Arquivos:** `demo_parser.py`, `demo_format_adapter.py`, `event_registry.py`, `trade_kill_detector.py`, `hltv_scraper.py`, `hltv_metadata.py`, `steam_api.py`, `steam_demo_finder.py`, `faceit_api.py`, `faceit_integration.py`, `__init__.py`
+**Arquivos:** `demo_parser.py`, `demo_format_adapter.py`, `event_registry.py`, `trade_kill_detector.py`, `round_context.py`, `hltv_scraper.py`, `steam_api.py`, `steam_demo_finder.py`, `faceit_api.py`, `faceit_integration.py`, `__init__.py`
 
 O subsistema Fontes de Dados e o **ponto de entrada de todos os dados externos** no sistema. Coleta informacoes de 5 fontes distintas: arquivos demo CS2, estatisticas HLTV, perfis Steam, dados FACEIT e registry de eventos do jogo.
 
@@ -607,13 +608,11 @@ flowchart TB
 
 ### -Demo Parser (`demo_parser.py`)
 
-Wrapper robusto em torno da biblioteca `demoparser2` para a extracao de estatisticas de arquivos demo CS2.
-
-**Baseline HLTV 2.0** — constantes de normalizacao para o calculo de rating:
+Wrapper robusto em torno da biblioteca `demoparser2` para a extracao de estatisticas de arquivos demo CS2. O rating e calculado atraves do **modulo de avaliacao unificado** `feature_engineering/rating.py`, que define as baselines HLTV 2.0:
 
 | Constante | Valor | Significado |
 |---|---|---|
-| `RATING_BASELINE_KPR` | 0.679 | Media pro: kills por round |
+| `BASELINE_KPR` | 0.679 | Media pro: kills por round |
 | `RATING_BASELINE_SURVIVAL` | 0.317 | Media pro: taxa de sobrevivencia |
 | `RATING_BASELINE_KAST` | 0.70 | Media pro: Kill/Assist/Survive/Trade % |
 | `RATING_BASELINE_ADR` | 73.3 | Media pro: dano medio por round |
@@ -626,6 +625,25 @@ Wrapper robusto em torno da biblioteca `demoparser2` para a extracao de estatist
 - Variancia: `kill_std`, `adr_std` (via `_compute_per_round_variance`)
 - Estatisticas avancadas: `avg_hs`, `accuracy`, `impact_rounds`, `econ_rating`
 - Rating HLTV 2.0 aproximado (aproximacao hand-tuned, nao formula oficial)
+
+**A guarda de parsing (`parse_guard.py`).** `demoparser2` e uma extensao Rust, e uma demo malformada nao levanta uma excecao Python normal: faz o **codigo Rust entrar em panico**, que o pyo3 traduz numa `PanicException`. Aquela classe deriva de `BaseException`, nao de `Exception` - portanto todo `except Exception` do pipeline a deixava passar, e uma unica demo corrompida interrompia a sessao inteira de ingestao, apesar de os docstrings prometerem o contrario.
+
+A correcao nao podia ser `except pyo3_runtime.PanicException`, porque **o pyo3 cria aquela classe preguicosamente, no primeiro panico**: antes disso o modulo nem sequer e importavel. A guarda reconhece portanto a excecao **pelo nome da classe**:
+
+```python
+_PROPAGATE = (KeyboardInterrupt, SystemExit, GeneratorExit)
+
+def is_parse_error(exc: BaseException) -> bool:
+    if isinstance(exc, _PROPAGATE):
+        return False          # estes devem SEMPRE propagar
+    if isinstance(exc, Exception):
+        return True
+    return type(exc).__name__ == "PanicException"
+```
+
+O idioma no ponto de chamada e `except BaseException as exc: if not is_parse_error(exc): raise`. A disciplina e explicita e vale a pena enuncia-la: a unica `BaseException` que este sistema se permite absorver e o panico nomeado; interrupcao de teclado, saida do processo e fechamento de um gerador sempre passam.
+
+**O timeout de parsing e real.** A versao anterior usava `with ThreadPoolExecutor(...)`: o `FutureTimeoutError` era levantado corretamente, mas na saida do bloco `with` o `shutdown(wait=True)` implicito ficava esperando justamente a thread de parsing travada. O timeout disparava e o chamador ficava bloqueado do mesmo jeito. Hoje `_run_with_parse_timeout()` gerencia o executor a mao e fecha com `shutdown(wait=False, cancel_futures=True)`, **abandonando** a thread orfa e registrando-a em log como erro em vez de esconde-la. O teste `test_parse_timeout_real.py` trava um worker por 30 segundos e exige que o chamador retorne em menos de 5.
 
 ### -Demo Format Adapter (`demo_format_adapter.py`)
 
@@ -719,20 +737,13 @@ Auto-discovery das demos CS2 da instalacao Steam local.
 
 ### -Modulo HLTV (`backend/data_sources/hltv/`)
 
-O subsistema HLTV e composto por 5 modulos especializados que colaboram para extrair estatisticas profissionais do site HLTV.org, superando as protecoes anti-scraping do Cloudflare:
+O subsistema HLTV e composto por 3 modulos especializados (`stat_fetcher.py`, `flaresolverr_client.py`, `docker_manager.py`) que colaboram para extrair estatisticas profissionais do site HLTV.org, superando as protecoes anti-scraping do Cloudflare:
 
-**`HLTVStatFetcher`** (`stat_fetcher.py`) — Orquestrador principal do scraping:
+**`HLTVStatFetcher`** (`stat_fetcher.py`) — orquestrador principal do scraping:
 
-| Metodo | Descricao |
-|---|---|
-| `fetch_top_players()` | Scraping pagina Top 50 jogadores -> lista URLs de perfis |
-| `fetch_and_save_player(url)` | Fetch completo estatisticas jogador + salvamento DB |
-| `_fetch_player_stats(url)` | Deep-crawl: pagina principal + sub-paginas (clutch, multikill, carreira) |
-| `_parse_overview(soup)` | Parsing estatisticas principais (rating, KPR, ADR, etc.) |
-| `_parse_trait_sections(soup)` | Parsing secoes Firepower, Entrying, Utility |
-| `_parse_clutches(soup)` | Parsing vitorias clutch 1v1/1v2/1v3 |
-| `_parse_multikills(soup)` | Parsing contagens 3K/4K/5K |
-| `_parse_career(soup)` | Parsing historico rating por ano |
+- **Preflight robots.txt** antes de qualquer crawl
+- Descobre os jogadores atraves da pagina do ranking dos times (`fetch_top_teams`), depois para cada jogador recupera a pagina overview e as sub-paginas (individual, career, opponents, clutches)
+- Salva em `ProPlayer` + `ProPlayerStatCard` os campos: rating_2_0, kpr, dpr, adr, kast, impact, headshot_pct, maps_played, opening_kill_ratio, opening_duel_win_pct, clutch_win_count, multikill_round_pct, detailed_stats_json; os times e os rosters em `ProTeam`
 
 **Estatisticas extraidas e salvas em `ProPlayerStatCard`:**
 
@@ -744,58 +755,44 @@ O subsistema HLTV e composto por 5 modulos especializados que colaboram para ext
 | **Tracos (JSON)** | Firepower (kpr_win, adr_win), Entrying (traded_deaths_pct), Utility (flash_assists) |
 | **Aprofundamentos (JSON)** | Clutch (1on1/1on2/1on3), Multikill (3k/4k/5k), Carreira (rating por periodo) |
 
-**`RateLimiter`** (`rate_limit.py`) — Rate limiting em 4 niveis com jitter anti-deteccao:
+**Rate limiting adaptativo** (em `stat_fetcher.py`): atraso aleatorio entre requisicoes de `CRAWL_DELAY_MIN_SECONDS = 2` – `CRAWL_DELAY_MAX_SECONDS = 7` segundos, com **backoff adaptativo** que cresce com `_consecutive_failures` — apos falhas consecutivas o fetcher desacelera progressivamente em vez de insistir.
 
-| Nivel | Atraso Min-Max | Caso de uso |
-|---|---|---|
-| **micro** | 2.0s – 3.5s | Requisicoes consecutivas rapidas |
-| **standard** | 4.0s – 8.0s | Navegacao entre perfis de jogador |
-| **heavy** | 10.0s – 20.0s | Transicoes entre secoes (principal -> clutch -> multikill -> carreira) |
-| **backoff** | 45.0s – 90.0s | Suspeita de bloqueio ou falha (degradacao gradual) |
+**`DockerManager`** (`docker_manager.py`) — gerenciamento do container FlareSolverr com estrategia de inicializacao em cascata:
+1. **Fast path:** retorna `True` se ja estiver saudavel
+2. **Docker start:** tenta `docker start flaresolverr`
+3. **Docker Compose fallback:** tenta `docker compose up -d`
+4. **Health polling:** verifica a disponibilidade a cada 3s (`_POLL_INTERVAL_S`) por no maximo 45s (`_MAX_WAIT_S`)
 
-> **Nota (F6-25):** O jitter (`random.uniform(-0.5, 0.5)`) e **intencionalmente nao seedado** — um jitter deterministico seria detectado pelos sistemas anti-scraping como padrao artificial. O piso minimo de 2.0s e sempre aplicado.
-
-**`DockerManager`** (`docker_manager.py`) — Gerenciamento de containers FlareSolverr com estrategia de inicializacao em cascata:
-1. **Fast path:** Retorna `True` se ja em bom estado (health check em `http://localhost:8191/`)
-2. **Docker start:** Tenta `docker start flaresolverr` (timeout 15s)
-3. **Docker Compose fallback:** Tenta `docker-compose up -d` (timeout 60s)
-4. **Health polling:** Verifica disponibilidade a cada 3s por no maximo 45s
-
-**`FlareSolverrClient`** (`flaresolverr_client.py`) — Bypass automatico de Cloudflare JavaScript challenges. Todas as requisicoes HTTP sao roteadas atraves de FlareSolverr em `http://localhost:8191/`. O HTML resolvido e passado ao BeautifulSoup para o parsing.
-
-**`selectors`** (`selectors.py`) — Seletores CSS para o scraping das paginas HLTV, centralizados para manutenibilidade.
+**`FlareSolverrClient`** (`flaresolverr_client.py`) — bypass automatico dos JavaScript challenges do Cloudflare. Todas as requisicoes HTTP sao roteadas atraves do FlareSolverr em `http://localhost:8191/v1` (imagem Docker fixada `flaresolverr:v3.4.6`, unico servico do `docker-compose.yml` do projeto). Retry: `_MAX_RETRIES = 3` com backoff exponencial base 5 (5/15/45s), timeout de 60s por requisicao. O HTML resolvido e passado ao BeautifulSoup para o parsing.
 
 ```mermaid
 flowchart LR
     subgraph FETCH["Pipeline HLTV"]
-        URL["URL Jogador<br/>hltv.org/stats/..."]
-        URL --> FLARE["FlareSolverr<br/>(Docker container)<br/>Bypass Cloudflare"]
+        URL["URL do Jogador<br/>hltv.org/stats/..."]
+        URL --> FLARE["FlareSolverr<br/>(container Docker)<br/>Bypass Cloudflare"]
         FLARE --> HTML["HTML Resolvido"]
         HTML --> BS["BeautifulSoup<br/>(seletores CSS)"]
         BS --> STATS["Estatisticas Extraidas<br/>rating, kpr, adr, kast..."]
     end
-    subgraph RATE["Rate Limiter"]
-        MICRO["micro: 2-3.5s"]
-        STD["standard: 4-8s"]
-        HEAVY["heavy: 10-20s"]
-        BACK["backoff: 45-90s"]
+    subgraph RATE["Rate Limiting Adaptativo"]
+        DELAY["delay aleatorio 2-7s"]
+        BACK["backoff adaptativo<br/>em falhas consecutivas"]
     end
     subgraph SAVE["Persistencia"]
         STATS --> DB["ProPlayer + ProPlayerStatCard<br/>(hltv_metadata.db)"]
     end
-    RATE -.->|"controla ritmo"| FETCH
+    RATE -.->|"controla o ritmo"| FETCH
 
     style FLARE fill:#ffd43b,color:#000
     style DB fill:#4a9eff,color:#fff
 ```
 
-> **Nota arquitetural:** O subsistema HLTV completo (com `HLTVApiService`, `CircuitBreaker`, `BrowserManager`, `CacheProxy`, `collectors`) reside em `ingestion/hltv/` e e documentado na Parte 3. Os arquivos em `data_sources/hltv/` sao a implementacao de baixo nivel do scraping e do rate limiting.
+> **Nota arquitetural:** `data_sources/hltv/` e o unico subsistema de scraping HLTV: nao existe (mais) nenhum modulo `HLTVApiService`, `CircuitBreaker` ou `BrowserManager` — a resiliencia esta confiada ao backoff adaptativo do fetcher e aos retries do cliente FlareSolverr. O daemon de sincronizacao (`hltv_sync_service.py`, processo separado) esta documentado na Parte 3.
 
-> **Estado do banco de dados HLTV (abril 2026):** O banco de dados `hltv_metadata.db` contem **161 jogadores profissionais reais**, **32 times** e **156 stat cards** coletados do scraping live de hltv.org via FlareSolverr. Os seletores CSS em `selectors.py` sao dotados de cadeias de fallback para resistir as mudancas de layout do site. O `HybridCoachingEngine` usa esses dados para a selecao automatica do pro de referencia: quando gera uma analise, encontra automaticamente o jogador pro cujo `rating_2_0` e mais proximo ao do usuario e o cita nos feedbacks ("seu ADR e inferior ao de [nome pro]"), via `_find_best_match_pro()` em `coaching_service.py` e `_get_pro_name()` em `hybrid_engine.py`.
+> **Selecao automatica do pro de referencia:** O `HybridCoachingEngine` utiliza os dados de `hltv_metadata.db` (tabelas `ProPlayer`, `ProTeam`, `ProPlayerStatCard` mais as tabelas estendidas `ProEvent`, `ProTournament`, `ProHead2Head`, `ProMapRecord`): quando gera uma analise, encontra automaticamente o jogador pro cujo `rating_2_0` esta mais proximo do do usuario e o nomeia nos feedbacks ("seu ADR e inferior ao de [nome do pro]"), via `_find_best_match_pro()` em `coaching_service.py` e `_get_pro_name()` em `hybrid_engine.py`.
 
-**`hltv_scraper.py` / `hltv_metadata.py`** (entry points em `data_sources/`):
-- `run_hltv_sync_cycle(limit=20)` — Orquestrador do ciclo de sincronizacao que importa `HLTVApiService` do pipeline completo
-- `hltv_metadata.py` — Script de debug para salvamento de paginas via Playwright (validacao seletores CSS)
+**`hltv_scraper.py`** (entry point em `data_sources/`):
+- `run_hltv_sync_cycle(limit=50)` — orquestrador do ciclo de sincronizacao das estatisticas pro
 
 ### -FACEIT API e Integracao (`faceit_api.py`, `faceit_integration.py`)
 
@@ -809,60 +806,9 @@ flowchart LR
 | `RATE_LIMIT_DELAY` | 6 segundos | 10 req/min = 1 req a cada 6s (tier gratuito) |
 
 **`FACEITIntegration`** classe com:
-- `_rate_limited_request(endpoint, params)` — requisicoes com rate limiting automatico e backoff exponencial em 429
-- Gerenciamento de match history e download de demos
+- `_rate_limited_request(endpoint, params)` — requisicoes com rate limiting automatico; em HTTP 429 respeita o header `Retry-After` (cap 300s, default 60s) com `MAX_429_RETRIES = 3`
+- Gerenciamento de match history, detalhes da partida e download de demos
 - Excecao dedicada `FACEITAPIError`
-
-### -FrameBuffer — Buffer Circular para Extracao de HUD (`backend/processing/cv_framebuffer.py`)
-
-O **FrameBuffer** e um buffer circular thread-safe para a captura e analise dos frames da tela do jogo. Funciona como a "retina" do sistema: captura frames da tela, os armazena em um anel de tamanho fixo e permite a extracao das regioes HUD (Head-Up Display) para a analise visual.
-
-**Configuracao:**
-
-| Parametro | Default | Descricao |
-|---|---|---|
-| `resolution` | `(1920, 1080)` | Resolucao alvo dos frames |
-| `buffer_size` | `30` | Capacidade do buffer circular (frames) |
-
-**Operacoes principais:**
-- `capture_frame(source)` — Ingere frame de arquivo ou array numpy -> BGR->RGB, uint8, resize -> push no buffer circular
-- `get_latest(count=1)` — Recupera os N frames mais recentes (do mais novo ao mais antigo)
-- `extract_hud_elements(frame)` — Extrai todas as regioes HUD em um dicionario
-
-**Regioes HUD (referencia 1920x1080):**
-
-| Regiao | Coordenadas | Posicao | Conteudo |
-|---|---|---|---|
-| **Minimap** | `(0, 0, 320, 320)` | Superior-esquerda | Radar CS2 (posicoes jogadores) |
-| **Kill Feed** | `(1520, 0, 1920, 300)` | Superior-direita | Feed de kills e eventos |
-| **Scoreboard** | `(760, 0, 1160, 60)` | Superior-centro | Placar times |
-
-**Adaptacao de resolucao** (`_scale_region()`): As coordenadas sao definidas para a resolucao de referencia 1920x1080. Para resolucoes diferentes, sao escaladas proporcionalmente: `sx = largura_frame / 1920`, `sy = altura_frame / 1080`. Isto torna o sistema **agnostico a resolucao** — funciona identicamente em monitores 1080p, 1440p ou 4K.
-
-**Thread-safety:** Um `threading.Lock()` protege todas as operacoes de leitura e escrita no buffer. O indice de escrita (`_write_index`) avanca circularmente modulo `buffer_size`, garantindo O(1) para insercao e recuperacao.
-
-```mermaid
-flowchart LR
-    subgraph INPUT["Captura"]
-        SCR["Tela/Arquivo"]
-        SCR --> BGR["BGR -> RGB<br/>uint8"]
-        BGR --> RESIZE["Resize para<br/>1920x1080"]
-    end
-    subgraph RING["Buffer Circular (30 slots)"]
-        S1["Frame 28"]
-        S2["Frame 29"]
-        S3["Frame 0<br/>(mais antigo)"]
-        S4["..."]
-    end
-    RESIZE -->|"Lock"| RING
-    subgraph HUD["Extracao HUD"]
-        RING --> MINI["Minimap<br/>(0,0)->(320,320)"]
-        RING --> KILL["Kill Feed<br/>(1520,0)->(1920,300)"]
-        RING --> SCORE["Scoreboard<br/>(760,0)->(1160,60)"]
-    end
-
-    style RING fill:#4a9eff,color:#fff
-```
 
 ### -TensorFactory — Fabrica de Tensores (`backend/processing/tensor_factory.py`)
 
@@ -1066,7 +1012,7 @@ A Parte 1B documentou os **dois pilares perceptivos e diagnosticos** do sistema 
 | Subsistema | Papel | Componentes Chave |
 |---|---|---|
 | **2. RAP Coach** | O **medico especialista** — arquitetura de 7 componentes para coaching completo em condicoes POMDP | Percepcao (ResNet de 3 fluxos, 24 conv), Memoria (LTC **512** unidades NCP + Hopfield 4 cabecas + atraso de ativacao NN-MEM-01 + **RAPMemoryLite** fallback LSTM), Estrategia (4 especialistas MoE + SuperpositionLayer), Pedagogia (Value Critic + Skill Adapter), Atribuicao Causal (5 categorias, sinal utilitarios aprendido), Posicionamento (Linear 256->3), Comunicacao (template), ChronovisorScanner (3 escalas temporais + 50K ticks safety limit + deduplicacao cross-escala + ScanResult estruturado), GhostEngine (pipeline 4-tensores com POV mode R4-04-01, hidden_state NN-40, fallback em 5 niveis) |
-| **1B. Fontes de Dados** | Os **sentidos** — adquirem e estruturam dados do mundo externo | Demo Parser (demoparser2 + HLTV 2.0 rating), Demo Format Adapter (magic bytes PBDEMS2), Event Registry (schema CS2 completo), Trade Kill Detector (janela 192 ticks), Steam API (retry + backoff), Steam Demo Finder (cross-platform), HLTV (FlareSolverr + rate limiting 4 niveis + seletores CSS com fallback chain — **161 jogadores pro reais, 32 times, 156 stat cards** em hltv_metadata.db), FACEIT API, FrameBuffer (ring buffer 30 frames), TensorFactory (3 rasterizadores NO-WALLHACK), FAISS (IndexFlatIP 384-dim), Round Context (merge_asof O(n log m)) |
+| **1B. Fontes de Dados** | Os **sentidos** — adquirem e estruturam dados do mundo externo | Demo Parser (demoparser2 + rating HLTV 2.0 unificado), Demo Format Adapter (magic bytes PBDEMS2), Event Registry (schema CS2), Trade Kill Detector (janela 3s ciente do tick), Steam API (retry + backoff), Steam Demo Finder (cross-platform), HLTV (FlareSolverr v3.4.6 + delay adaptativo 2–7s + preflight robots.txt → hltv_metadata.db, 7 tabelas Pro*), FACEIT API (10 req/min, Retry-After em 429), TensorFactory (3 rasterizadores NO-WALLHACK), FAISS (IndexFlatIP sobre embeddings 384-dim), Round Context (merge_asof O(n log m)) |
 
 ```mermaid
 flowchart LR
@@ -1075,7 +1021,7 @@ flowchart LR
         OBS["Observatorio<br/>(Maturidade + TensorBoard)"]
     end
     subgraph PARTE1B["PARTE 1B — Os Sentidos e o Especialista (este documento)"]
-        DS["Fontes de Dados<br/>(Demo, HLTV, Steam,<br/>FACEIT, FrameBuffer)"]
+        DS["Fontes de Dados<br/>(Demo, HLTV, Steam,<br/>FACEIT, Round Context)"]
         TF["TensorFactory<br/>(mapa + vista + movimento)"]
         FAISS_P1["FAISS Index<br/>(busca semantica)"]
         RAP["RAP Coach<br/>(7 componentes +<br/>ChronovisorScanner +<br/>GhostEngine)"]
