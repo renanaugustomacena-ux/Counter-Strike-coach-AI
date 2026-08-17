@@ -51,6 +51,7 @@ class StatusChip(QFrame):
         layout.addWidget(self._label)
 
         self.refresh_styling()
+        self._subscribe_theme_relay()
 
     def set_label(self, text: str) -> None:
         self._label.setText(text)
@@ -61,6 +62,13 @@ class StatusChip(QFrame):
 
     def severity(self) -> Severity:
         return self._severity
+
+    def _subscribe_theme_relay(self) -> None:
+        # CP0 #4: self-restyle on live theme switch (relay auto-
+        # disconnects when this widget is destroyed).
+        from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import get_theme_relay
+
+        get_theme_relay().theme_changed.connect(lambda _n: self.refresh_styling())
 
     def refresh_styling(self) -> None:
         """Re-read tokens and restyle. Call after a theme change."""

@@ -1,15 +1,15 @@
-"""Performance — aggregate analytics dashboard.
+"""Performance — aggregate analytics dashboard (frame 12).
 
 Composition:
-    Title rail        Performance               [● N matches]
+    Title rail        Advanced Analytics       47 personal demos analyzed
     Pro-overview banner   (visible when no personal data yet)
     Hero stats row    Avg rating · Matches · K/D · ADR · KAST
-    Section: Trend    average / range / recent (text summary; chart-free
-                      to avoid GPU segfaults on some Linux drivers, per
-                      the prior implementation's note).
-    Section: Per-map  3-column grid of map mini-cards.
-    Section: S/W vs pro  two columns (when not pro-overview).
-    Section: Utility  ADR/round comparison row vs pro baseline.
+    Context strip     percentile rank vs the pro cohort (Cluster F)
+    Row 1 (50/50)     Rating Trend card (label/value rows + RatingSparkline)
+                      | Strengths & Weaknesses (vs Pro Average) card
+    Per-map card      3-column grid of MapTile widgets.
+    Utility card      6 metric rows (value + tinted vs-pro delta) left,
+                      grouped you-vs-pro UtilityBarChart right.
 
 Body is housed in a QStackedWidget so loading / empty / data swaps
 don't push the title rail around.
@@ -17,6 +17,8 @@ don't push the title rail around.
 
 from __future__ import annotations
 
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
@@ -30,16 +32,18 @@ from PySide6.QtWidgets import (
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
-from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import rating_color, rating_label
+from Programma_CS2_RENAN.apps.qt_app.core.match_utils import map_short_name
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.apps.qt_app.viewmodels.performance_vm import PerformanceViewModel
+from Programma_CS2_RENAN.apps.qt_app.widgets.charts.rating_sparkline import RatingSparkline
+from Programma_CS2_RENAN.apps.qt_app.widgets.charts.utility_bar_chart import UtilityBarChart
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.card import Card
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.empty_state import EmptyState
 from Programma_CS2_RENAN.apps.qt_app.widgets.components.hero_stats_strip import (
     HeroStat,
     HeroStatsStrip,
 )
-from Programma_CS2_RENAN.apps.qt_app.widgets.components.status_chip import StatusChip
+from Programma_CS2_RENAN.apps.qt_app.widgets.components.map_tile import MapTile
 from Programma_CS2_RENAN.apps.qt_app.widgets.skeleton import SkeletonTable
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -74,6 +78,7 @@ class PerformanceScreen(QWidget):
         self._vm.is_loading_changed.connect(self._on_loading)
 
         self._latest_context: dict = {}
+        self._demo_count: int = 0
         self._build_ui()
 
     # ── Lifecycle ──
@@ -87,6 +92,7 @@ class PerformanceScreen(QWidget):
 
     def retranslate(self) -> None:
         self._title_label.setText(i18n.get_text("advanced_analytics"))
+        self._update_count_caption(self._demo_count)
 
     # ── UI Construction ──
 
@@ -106,8 +112,13 @@ class PerformanceScreen(QWidget):
         Typography.apply(self._title_label, "h1")
         title_row.addWidget(self._title_label)
         title_row.addStretch(1)
-        self._count_chip = StatusChip("0 matches", severity="neutral")
-        title_row.addWidget(self._count_chip)
+        # Frame 12: plain right-aligned caption, not a chip.
+        self._count_caption = QLabel("")
+        Typography.apply(self._count_caption, "caption")
+        self._count_caption.setStyleSheet(
+            f"color: {tokens.text_secondary}; background: transparent;"
+        )
+        title_row.addWidget(self._count_caption)
         root.addLayout(title_row)
 
         # Provenance banner — visible only when surfacing pro data as ref
@@ -210,12 +221,12 @@ class PerformanceScreen(QWidget):
                 "Analyze a demo to start seeing your aggregate trends."
             )
             self._body_stack.setCurrentIndex(self._page_empty)
-            self._update_count_chip(0)
+            self._update_count_caption(0)
             self._pro_banner.setVisible(False)
             return
 
         self._pro_banner.setVisible(is_pro_overview)
-        self._update_count_chip(len(history) if history else 0)
+        self._update_count_caption(len(history) if history else 0)
 
         # Hero strip — top-of-page snapshot.
         self._content_layout.insertWidget(
@@ -231,14 +242,30 @@ class PerformanceScreen(QWidget):
             self._build_context_strip(),
         )
 
-        # Sections: trend, map stats, strengths/weaknesses, utility.
+        # Row 1 (frame 12): Rating Trend | Strengths & Weaknesses, 50/50.
+        # When S&W has no data the trend card takes the full row width.
+        trend_card = None
         try:
-            self._content_layout.insertWidget(
-                self._content_layout.count() - 1,
-                self._build_trend(history, is_pro_overview),
-            )
+            trend_card = self._build_trend(history, is_pro_overview)
         except Exception as e:
             logger.error("trend section failed: %s", e)
+
+        sw_card = None
+        if not is_pro_overview and sw and (sw.get("strengths") or sw.get("weaknesses")):
+            try:
+                sw_card = self._build_strengths_weaknesses(sw)
+            except Exception as e:
+                logger.error("strengths/weaknesses failed: %s", e)
+
+        if trend_card is not None or sw_card is not None:
+            row1 = QWidget()
+            row1_layout = QHBoxLayout(row1)
+            row1_layout.setContentsMargins(0, 0, 0, 0)
+            row1_layout.setSpacing(get_tokens().spacing_lg)
+            for half in (trend_card, sw_card):
+                if half is not None:
+                    row1_layout.addWidget(half, 1)
+            self._content_layout.insertWidget(self._content_layout.count() - 1, row1)
 
         if map_stats:
             try:
@@ -248,15 +275,6 @@ class PerformanceScreen(QWidget):
                 )
             except Exception as e:
                 logger.error("map grid failed: %s", e)
-
-        if not is_pro_overview and sw and (sw.get("strengths") or sw.get("weaknesses")):
-            try:
-                self._content_layout.insertWidget(
-                    self._content_layout.count() - 1,
-                    self._build_strengths_weaknesses(sw),
-                )
-            except Exception as e:
-                logger.error("strengths/weaknesses failed: %s", e)
 
         if utility and utility.get("user"):
             try:
@@ -376,7 +394,9 @@ class PerformanceScreen(QWidget):
         return card
 
     def _build_trend(self, history: list, is_pro_overview: bool) -> Card:
-        title = "Rating trend" + (" — pro reference" if is_pro_overview else "")
+        title = i18n.get_text("perf.rating_trend", "Rating Trend") + (
+            " — pro reference" if is_pro_overview else ""
+        )
         card = Card(title=title, depth="raised")
         body = card.content_layout
         tokens = get_tokens()
@@ -395,42 +415,69 @@ class PerformanceScreen(QWidget):
         avg_recent = sum(recent) / len(recent)
 
         if avg_recent > avg_r + 0.05:
-            arrow = "▲"
-            arrow_color = tokens.success
-            sub = "Improving"
+            arrow, trend_color = "▲", tokens.success
+            trend_word = i18n.get_text("perf.improving", "Improving")
         elif avg_recent < avg_r - 0.05:
-            arrow = "▼"
-            arrow_color = tokens.error
-            sub = "Declining"
+            arrow, trend_color = "▼", tokens.error
+            trend_word = i18n.get_text("perf.declining", "Declining")
         else:
-            arrow = "─"
-            arrow_color = tokens.text_secondary
-            sub = "Stable"
+            arrow, trend_color = "─", tokens.text_secondary
+            trend_word = i18n.get_text("perf.stable", "Stable")
 
-        # Strip layout: average · range · recent · trend arrow
-        strip = QHBoxLayout()
-        strip.setContentsMargins(0, 0, 0, 0)
-        strip.setSpacing(tokens.spacing_xxl)
-
-        strip.addWidget(self._stat_block(f"{avg_r:.2f}", "AVERAGE"))
-        strip.addWidget(self._stat_block(f"{min_r:.2f} — {max_r:.2f}", "RANGE", mono=True))
-        strip.addWidget(
-            self._stat_block(
-                f"{avg_recent:.2f}", f"LAST {len(recent)}", color_value=tokens.text_primary
-            )
+        # Frame-12 rows. The average is an informational value (tokens.info):
+        # the frame's green fill would break the >1.10 rating-color contract.
+        rows = (
+            (
+                i18n.get_text("perf.matches_analyzed", "Matches analyzed:"),
+                f"{len(history)}",
+                tokens.text_primary,
+            ),
+            (
+                i18n.get_text("perf.average_rating", "Average rating:"),
+                f"{avg_r:.2f}",
+                tokens.info,
+            ),
+            (
+                i18n.get_text("perf.range", "Range:"),
+                f"{min_r:.2f} — {max_r:.2f}",
+                tokens.text_primary,
+            ),
+            (
+                i18n.get_text("perf.recent_trend", "Recent trend:"),
+                f"{avg_recent:.2f}  {arrow} {trend_word}",
+                trend_color,
+            ),
         )
+        for label, value, color in rows:
+            body.addWidget(self._kv_row(label, value, color))
 
-        trend_block = self._stat_block(f"{arrow}  {sub}", "TREND", color_value=arrow_color)
-        strip.addWidget(trend_block)
-        strip.addStretch(1)
-
-        wrapper = QWidget()
-        wrapper.setLayout(strip)
-        body.addWidget(wrapper)
+        # Sparkline strip: "Last N matches" caption + last-8 rating trend.
+        tail = ratings[-8:]
+        if len(tail) >= 2:
+            strip = QHBoxLayout()
+            strip.setContentsMargins(0, tokens.spacing_sm, 0, 0)
+            strip.setSpacing(tokens.spacing_md)
+            caption = QLabel(
+                i18n.get_text("perf.last_matches", "Last {n} matches").format(n=len(tail))
+            )
+            Typography.apply(caption, "caption")
+            caption.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
+            strip.addWidget(caption, 0, Qt.AlignBottom)
+            spark = RatingSparkline()
+            spark.set_values(tail)
+            # Default 64px squeezes the three HLTV ref captions into each
+            # other when the data spans 0.71–1.34 — give them air.
+            spark.setMinimumHeight(100)
+            strip.addWidget(spark, 1)
+            wrap = QWidget()
+            wrap.setLayout(strip)
+            body.addWidget(wrap)
         return card
 
     def _build_map_grid(self, map_stats: dict, is_pro_overview: bool) -> Card:
-        title = "Per-map performance" + (" — pro reference" if is_pro_overview else "")
+        title = i18n.get_text("perf.per_map_title", "Per-Map Performance") + (
+            " — pro reference" if is_pro_overview else ""
+        )
         card = Card(title=title, depth="raised")
         body = card.content_layout
         tokens = get_tokens()
@@ -442,52 +489,26 @@ class PerformanceScreen(QWidget):
         cols = 3
 
         for idx, (map_name, stats) in enumerate(map_stats.items()):
-            grid.addWidget(self._build_map_tile(map_name, stats), idx // cols, idx % cols)
+            # Payload keys are demo-style ("de_mirage") — frame shows "Mirage".
+            display = map_short_name(str(map_name)).title()
+            tile = MapTile()
+            tile.set_data(
+                display,
+                float(stats.get("rating") or 0),
+                float(stats.get("adr") or 0),
+                float(stats.get("kd") or 0),
+                int(stats.get("matches") or 0),
+            )
+            grid.addWidget(tile, idx // cols, idx % cols)
 
         body.addWidget(grid_widget)
         return card
 
-    def _build_map_tile(self, map_name: str, stats: dict) -> QFrame:
-        tokens = get_tokens()
-        tile = QFrame()
-        tile.setObjectName("dashboard_card")
-        tile.setProperty("depth", "flat")
-
-        tile_layout = QVBoxLayout(tile)
-        tile_layout.setContentsMargins(
-            tokens.spacing_md, tokens.spacing_sm, tokens.spacing_md, tokens.spacing_sm
-        )
-        tile_layout.setSpacing(2)
-
-        name = QLabel(map_name.replace("de_", "").upper())
-        Typography.apply(name, "caption")
-        name.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
-        tile_layout.addWidget(name)
-
-        rating_value = float(stats.get("rating") or 0)
-        rating_label_widget = QLabel(f"{rating_value:.2f}")
-        rating_label_widget.setFont(Typography.font("h1"))
-        rating_label_widget.setStyleSheet(
-            f"color: {rating_color(rating_value).name()}; background: transparent;"
-        )
-        tile_layout.addWidget(rating_label_widget)
-
-        adr = float(stats.get("adr") or 0)
-        kd = float(stats.get("kd") or 0)
-        detail = QLabel(f"K/D {kd:.2f}    ADR {adr:.0f}")
-        detail.setFont(Typography.font("mono"))
-        detail.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
-        tile_layout.addWidget(detail)
-
-        n_matches = int(stats.get("matches") or 0)
-        meta = QLabel(f"{n_matches} matches  ·  {rating_label(rating_value)}")
-        meta.setFont(Typography.font("caption"))
-        meta.setStyleSheet(f"color: {tokens.text_tertiary}; background: transparent;")
-        tile_layout.addWidget(meta)
-        return tile
-
     def _build_strengths_weaknesses(self, sw: dict) -> Card:
-        card = Card(title="Strengths & weaknesses vs pro", depth="raised")
+        card = Card(
+            title=i18n.get_text("perf.sw_title", "Strengths & Weaknesses (vs Pro Average)"),
+            depth="raised",
+        )
         body = card.content_layout
         tokens = get_tokens()
 
@@ -495,13 +516,26 @@ class PerformanceScreen(QWidget):
         row.setContentsMargins(0, 0, 0, 0)
         row.setSpacing(tokens.spacing_xl)
 
-        row.addWidget(self._sw_column("Strengths", sw.get("strengths") or [], tokens.success))
         row.addWidget(
             self._sw_column(
-                "Weaknesses", sw.get("weaknesses") or [], tokens.error, sign_inverse=True
-            )
+                i18n.get_text("perf.strengths", "Strengths"),
+                sw.get("strengths") or [],
+                tokens.success,
+                i18n.get_text("perf.above_avg", "above avg"),
+                "+",
+            ),
+            1,
         )
-        row.addStretch(1)
+        row.addWidget(
+            self._sw_column(
+                i18n.get_text("perf.weaknesses", "Weaknesses"),
+                sw.get("weaknesses") or [],
+                tokens.error,
+                i18n.get_text("perf.below_avg", "below avg"),
+                "-",
+            ),
+            1,
+        )
 
         wrapper = QWidget()
         wrapper.setLayout(row)
@@ -513,15 +547,17 @@ class PerformanceScreen(QWidget):
         title: str,
         entries: list,
         color: str,
-        sign_inverse: bool = False,
+        relation: str,
+        sign: str,
     ) -> QWidget:
+        """One frame-12 column: tinted bold header + "+1.8 above avg — X" rows."""
         tokens = get_tokens()
         col = QVBoxLayout()
         col.setContentsMargins(0, 0, 0, 0)
         col.setSpacing(tokens.spacing_xs)
 
-        header = QLabel(title.upper())
-        Typography.apply(header, "caption")
+        header = QLabel(title)
+        header.setFont(Typography.font("body", QFont.Bold))
         header.setStyleSheet(f"color: {color}; background: transparent;")
         col.addWidget(header)
 
@@ -532,19 +568,26 @@ class PerformanceScreen(QWidget):
             col.addWidget(empty)
         else:
             for name, z in entries:
-                display = name.replace("_", " ").title()
-                sign = "−" if sign_inverse else "+"
-                lbl = QLabel(f"{sign}{abs(z):.1f}σ   {display}")
+                # Analytics ships curated display names ("Clutch Win %") —
+                # only raw fallback keys need their underscores spaced out
+                # (.title() would mangle "HS %" into "Hs %").
+                display = str(name).replace("_", " ")
+                lbl = QLabel(f"{sign}{abs(float(z)):.1f} {relation} — {display}")
                 lbl.setFont(Typography.font("body"))
                 lbl.setStyleSheet(f"color: {color}; background: transparent;")
                 col.addWidget(lbl)
+        col.addStretch(1)
 
         wrapper = QWidget()
         wrapper.setLayout(col)
         return wrapper
 
     def _build_utility(self, utility: dict, is_pro_overview: bool) -> Card:
-        title = "Utility effectiveness" + (" — pro reference" if is_pro_overview else " vs pro")
+        title = (
+            "Utility effectiveness — pro reference"
+            if is_pro_overview
+            else i18n.get_text("perf.utility_title", "Utility Effectiveness (vs Pro)")
+        )
         card = Card(title=title, depth="raised")
         body = card.content_layout
         tokens = get_tokens()
@@ -555,87 +598,210 @@ class PerformanceScreen(QWidget):
             self._add_body_label(body, "No utility data available yet.", muted=True)
             return card
 
-        labels = {
-            "he_damage": "HE damage / round",
-            "molotov_damage": "Molotov damage / round",
-            "smokes_per_round": "Smokes / round",
-            "flash_blind_time": "Flash blind time",
-            "flash_assists": "Flash assists",
-            "unused_utility": "Unused utility",
-        }
-        for key, display_name in labels.items():
-            user_val = float(user.get(key, 0) or 0)
-            pro_val = float((pro or {}).get(key, 0) or 0)
+        per_match = i18n.get_text("perf.per_match", "/match")
+        per_round = i18n.get_text("perf.per_round", "/round")
+        # (payload key, i18n key, fallback, value formatter, higher-is-waste)
+        specs = (
+            ("he_damage", "perf.he_damage", "HE Damage/Round:", lambda v: f"{v:.1f}", False),
+            (
+                "molotov_damage",
+                "perf.molotov_damage",
+                "Molotov Damage/Round:",
+                lambda v: f"{v:.1f}",
+                False,
+            ),
+            ("smokes_per_round", "perf.smokes", "Smokes/Round:", lambda v: f"{v:.2f}", False),
+            (
+                "flash_blind_time",
+                "perf.flash_blind",
+                "Flash Blind Time:",
+                lambda v: f"{v:.1f}s",
+                False,
+            ),
+            (
+                "flash_assists",
+                "perf.flash_assists",
+                "Flash Assists:",
+                lambda v: f"{v:.1f}{per_match}",
+                False,
+            ),
+            (
+                "unused_utility",
+                "perf.unused_utility",
+                "Unused Utility:",
+                lambda v: f"{v:.1f}{per_round}",
+                True,
+            ),
+        )
 
-            row = QHBoxLayout()
-            row.setContentsMargins(0, 0, 0, 0)
-            row.setSpacing(tokens.spacing_md)
+        left = QVBoxLayout()
+        left.setContentsMargins(0, 0, 0, 0)
+        left.setSpacing(tokens.spacing_sm)
+        for key, label_key, fallback, fmt, is_waste in specs:
+            left.addWidget(
+                self._utility_row(
+                    i18n.get_text(label_key, fallback),
+                    float(user.get(key, 0) or 0),
+                    float(pro.get(key, 0) or 0),
+                    fmt,
+                    is_waste,
+                    is_pro_overview,
+                )
+            )
+        left.addStretch(1)
+        left_wrap = QWidget()
+        left_wrap.setLayout(left)
 
-            name = QLabel(display_name)
-            name.setFont(Typography.font("body"))
-            name.setFixedWidth(220)
-            name.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
-            row.addWidget(name)
+        columns = QHBoxLayout()
+        columns.setContentsMargins(0, 0, 0, 0)
+        columns.setSpacing(tokens.spacing_xl)
+        columns.addWidget(left_wrap, 1)
 
-            value = QLabel(f"{user_val:.2f}")
-            value.setFont(Typography.font("mono"))
-            value.setFixedWidth(80)
-            value.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
-            row.addWidget(value)
+        # Right column: grouped you-vs-pro bars for the frame-12 quartet.
+        right = QVBoxLayout()
+        right.setContentsMargins(0, 0, 0, 0)
+        right.setSpacing(tokens.spacing_sm)
+        chart_caption = QLabel(
+            i18n.get_text("perf.vs_pro_grouped", "You vs Pro Average — grouped bars")
+        )
+        # body-bold, not the caption QFont role — that role uppercases and
+        # letterspaces, but the frame caption is mixed-case.
+        chart_caption.setFont(Typography.font("body", QFont.Bold))
+        chart_caption.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
+        right.addWidget(chart_caption)
 
-            comparison_color = tokens.text_tertiary
-            comparison_text = ""
-            if pro_val > 0 and not is_pro_overview:
-                pct = ((user_val - pro_val) / pro_val) * 100
-                if pct > 10:
-                    comparison_text = f"▲ {pct:+.0f}% vs pro"
-                    # "More" is good for damage stats, bad for unused — keep neutral
-                    comparison_color = tokens.success if key != "unused_utility" else tokens.error
-                elif pct < -10:
-                    comparison_text = f"▼ {pct:+.0f}% vs pro"
-                    comparison_color = tokens.error if key != "unused_utility" else tokens.success
+        chart_keys = (
+            ("perf.bar_he", "HE", "he_damage"),
+            ("perf.bar_moly", "Moly", "molotov_damage"),
+            ("perf.bar_flash", "Flash", "flash_assists"),
+            ("perf.bar_waste", "Waste", "unused_utility"),
+        )
+        if not is_pro_overview and any(float(pro.get(k, 0) or 0) > 0 for _, _, k in chart_keys):
+            chart = UtilityBarChart()
+            chart_rows: list[tuple] = []
+            for label_key, fallback, key in chart_keys:
+                label = i18n.get_text(label_key, fallback)
+                you_v = float(user.get(key, 0) or 0)
+                pro_v = float(pro.get(key, 0) or 0)
+                if key == "unused_utility":
+                    # Frame 12 tints the waste you-bar error red.
+                    chart_rows.append((label, you_v, pro_v, tokens.error))
                 else:
-                    comparison_text = "≈ pro level"
-                    comparison_color = tokens.text_secondary
-            comparison = QLabel(comparison_text)
-            comparison.setFont(Typography.font("mono"))
-            comparison.setStyleSheet(f"color: {comparison_color}; background: transparent;")
-            row.addWidget(comparison, 1)
+                    chart_rows.append((label, you_v, pro_v))
+            chart.set_rows(chart_rows)
+            right.addWidget(chart)
+        else:
+            # FIELD-GAP: no pro utility baseline in the DB yet (requires pro
+            # demos ingested) — degrade to the same "—" the metric rows use.
+            self._add_body_label(right, "—", muted=True)
+        right.addStretch(1)
+        right_wrap = QWidget()
+        right_wrap.setLayout(right)
+        columns.addWidget(right_wrap, 1)
 
-            wrapper = QWidget()
-            wrapper.setLayout(row)
-            body.addWidget(wrapper)
-
+        columns_wrap = QWidget()
+        columns_wrap.setLayout(columns)
+        body.addWidget(columns_wrap)
         return card
+
+    def _utility_row(
+        self,
+        label: str,
+        user_val: float,
+        pro_val: float,
+        fmt,
+        is_waste: bool,
+        is_pro_overview: bool,
+    ) -> QWidget:
+        """Frame-12 utility metric row: label · bold mono value · tinted delta.
+
+        The waste row's value is warning-tinted (frame 12) since a high
+        number is a problem even before the vs-pro comparison lands.
+        """
+        tokens = get_tokens()
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(tokens.spacing_md)
+
+        name = QLabel(label)
+        name.setFont(Typography.font("body"))
+        name.setFixedWidth(220)
+        name.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
+        row.addWidget(name)
+
+        value = QLabel(fmt(user_val))
+        value.setFont(Typography.font("mono", QFont.Bold))
+        value.setFixedWidth(110)
+        value.setStyleSheet(
+            f"color: {tokens.warning if is_waste else tokens.text_primary}; "
+            f"background: transparent;"
+        )
+        row.addWidget(value)
+
+        delta_text, delta_color = self._utility_delta(user_val, pro_val, is_waste, is_pro_overview)
+        delta = QLabel(delta_text)
+        delta.setFont(Typography.font("mono"))
+        delta.setStyleSheet(f"color: {delta_color}; background: transparent;")
+        row.addWidget(delta, 1)
+
+        wrap = QWidget()
+        wrap.setLayout(row)
+        return wrap
+
+    def _utility_delta(
+        self, user_val: float, pro_val: float, is_waste: bool, is_pro_overview: bool
+    ) -> tuple[str, str]:
+        """Compose the vs-pro delta caption + its color.
+
+        Band: within ±5% of the pro baseline reads "≈ pro level" — frame 12
+        tags +8% as a real ▲, so the previous ±10% band was too wide. The
+        sign follows SENTIMENT, not the raw delta: the frame presents more
+        waste than pro as "▼ -31% vs pro (waste)".
+        """
+        tokens = get_tokens()
+        if is_pro_overview:
+            return "", tokens.text_tertiary
+        if pro_val <= 0:
+            # FIELD-GAP: pro baseline absent for this metric (no pro demos
+            # ingested) — placeholder rather than a fake comparison.
+            return "—", tokens.text_tertiary
+
+        pct = ((user_val - pro_val) / pro_val) * 100
+        if abs(pct) <= 5:
+            return i18n.get_text("perf.pro_level", "≈ pro level"), tokens.text_secondary
+
+        vs_pro = i18n.get_text("perf.vs_pro", "vs pro")
+        good = (pct < 0) if is_waste else (pct > 0)
+        arrow = "▲" if good else "▼"
+        sign = "+" if good else "-"
+        text = f"{arrow} {sign}{abs(pct):.0f}% {vs_pro}"
+        if is_waste and not good:
+            text += f" {i18n.get_text('perf.waste', '(waste)')}"
+        return text, tokens.success if good else tokens.error
 
     # ── Helpers ──
 
-    def _stat_block(
-        self,
-        value: str,
-        label: str,
-        mono: bool = False,
-        color_value: str | None = None,
-    ) -> QWidget:
+    def _kv_row(self, label: str, value: str, value_color: str) -> QWidget:
+        """Frame-12 card row: secondary label column, bold value at a fixed tab."""
         tokens = get_tokens()
-        block = QWidget()
-        col = QVBoxLayout(block)
-        col.setContentsMargins(0, 0, 0, 0)
-        col.setSpacing(2)
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(tokens.spacing_md)
 
-        v = QLabel(value)
-        if mono:
-            v.setFont(Typography.font("mono"))
-        else:
-            v.setFont(Typography.font("h1"))
-        v.setStyleSheet(f"color: {color_value or tokens.text_primary}; background: transparent;")
-        col.addWidget(v)
+        lbl = QLabel(label)
+        lbl.setFont(Typography.font("body"))
+        lbl.setFixedWidth(180)
+        lbl.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
+        row.addWidget(lbl)
 
-        l = QLabel(label)
-        Typography.apply(l, "caption")
-        l.setStyleSheet(f"color: {tokens.text_secondary}; background: transparent;")
-        col.addWidget(l)
-        return block
+        val = QLabel(value)
+        val.setFont(Typography.font("body", QFont.Bold))
+        val.setStyleSheet(f"color: {value_color}; background: transparent;")
+        row.addWidget(val, 1)
+
+        wrap = QWidget()
+        wrap.setLayout(row)
+        return wrap
 
     def _add_body_label(self, layout, text: str, muted: bool = False) -> None:
         tokens = get_tokens()
@@ -648,9 +814,10 @@ class PerformanceScreen(QWidget):
         lbl.setWordWrap(True)
         layout.addWidget(lbl)
 
-    def _update_count_chip(self, count: int) -> None:
-        self._count_chip.set_label(f"{count} matches")
-        self._count_chip.set_severity("online" if count > 0 else "neutral")
+    def _update_count_caption(self, count: int) -> None:
+        self._demo_count = int(count)
+        word = i18n.get_text("perf.demos_analyzed", "personal demos analyzed")
+        self._count_caption.setText(f"{self._demo_count} {word}" if self._demo_count else "")
 
     def _clear_content(self) -> None:
         while self._content_layout.count() > 1:

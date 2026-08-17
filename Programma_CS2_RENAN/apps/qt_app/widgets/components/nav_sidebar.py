@@ -23,15 +23,18 @@ from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
 from Programma_CS2_RENAN.apps.qt_app.core.icons import IconProvider
 
 # ── Navigation definition ──
-# (screen_key, icon_func, i18n_key)
+# (screen_key, icon_func, i18n_key, shortcut)
+# Single source of truth for nav routing AND keyboard shortcuts:
+# MainWindow builds its QShortcuts from this table, and each button's
+# tooltip composes "label — shortcut" from the same row.
 NAV_ITEMS = [
-    ("home", IconProvider.home, "dashboard"),
-    ("coach", IconProvider.brain, "rap_coach_dashboard"),
-    ("match_history", IconProvider.list_icon, "match_history_title"),
-    ("performance", IconProvider.chart, "advanced_analytics"),
-    ("tactical_viewer", IconProvider.crosshair, "tactical_analyzer"),
-    ("settings", IconProvider.gear, "settings"),
-    ("help", IconProvider.help_circle, "help_center"),
+    ("home", IconProvider.home, "dashboard", "Ctrl+1"),
+    ("coach", IconProvider.brain, "rap_coach_dashboard", "Ctrl+2"),
+    ("match_history", IconProvider.list_icon, "match_history_title", "Ctrl+3"),
+    ("performance", IconProvider.chart, "advanced_analytics", "Ctrl+4"),
+    ("tactical_viewer", IconProvider.crosshair, "tactical_analyzer", "Ctrl+5"),
+    ("settings", IconProvider.gear, "settings", "Ctrl+,"),
+    ("help", IconProvider.help_circle, "help_center", "F1"),
 ]
 
 _EXPANDED_WIDTH = 220
@@ -41,10 +44,11 @@ _COLLAPSED_WIDTH = 60
 class _NavButton(QPushButton):
     """Checkable sidebar button with vector icon and label for collapse support."""
 
-    def __init__(self, icon_func, label: str, key: str):
+    def __init__(self, icon_func, label: str, key: str, shortcut: str):
         super().__init__()
         self._icon_func = icon_func
         self._label = label
+        self._shortcut = shortcut
         self.screen_key = key
         self.setObjectName("nav_button")
         self.setCheckable(True)
@@ -54,6 +58,7 @@ class _NavButton(QPushButton):
         self._collapsed = False
         self._refresh_icon()
         self._update_text()
+        self._refresh_tooltip()
 
     def _refresh_icon(self):
         tokens = get_tokens()
@@ -62,6 +67,10 @@ class _NavButton(QPushButton):
 
     def _update_text(self):
         self.setText("" if self._collapsed else f"  {self._label}")
+
+    def _refresh_tooltip(self):
+        """Always-on tooltip — the only label surface when collapsed."""
+        self.setToolTip(f"{self._label} — {self._shortcut}")
 
     def set_collapsed(self, collapsed: bool):
         """Toggle between icon-only and icon+label display."""
@@ -72,6 +81,7 @@ class _NavButton(QPushButton):
         """Update the translatable label text."""
         self._label = label
         self._update_text()
+        self._refresh_tooltip()
 
 
 class NavSidebar(QWidget):
@@ -101,17 +111,17 @@ class NavSidebar(QWidget):
         self._toggle_btn.clicked.connect(self.toggle_collapse)
         layout.addWidget(self._toggle_btn, alignment=Qt.AlignRight)
 
-        # App title
+        # Brand wordmark (frame 05: letterspaced accent caption)
         self._title = QLabel("MACENA CS2")
-        self._title.setObjectName("accent_label")
+        self._title.setObjectName("sidebar_brand")
         self._title.setAlignment(Qt.AlignCenter)
         layout.addWidget(self._title)
         layout.addSpacing(16)
 
         # Nav buttons
         self._buttons: dict[str, _NavButton] = {}
-        for key, icon, i18n_key in NAV_ITEMS:
-            btn = _NavButton(icon, i18n.get_text(i18n_key), key)
+        for key, icon, i18n_key, shortcut in NAV_ITEMS:
+            btn = _NavButton(icon, i18n.get_text(i18n_key), key, shortcut)
             btn.clicked.connect(self._on_clicked)
             layout.addWidget(btn)
             self._buttons[key] = btn
@@ -124,7 +134,7 @@ class NavSidebar(QWidget):
         except PackageNotFoundError:
             _v = "dev"
         self._version_label = QLabel(f"v{_v}")
-        self._version_label.setObjectName("section_subtitle")
+        self._version_label.setObjectName("version_label")
         self._version_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self._version_label)
 
@@ -138,7 +148,7 @@ class NavSidebar(QWidget):
 
     def retranslate(self):
         """Update button labels when language changes."""
-        for key, _icon, i18n_key in NAV_ITEMS:
+        for key, _icon, i18n_key, _shortcut in NAV_ITEMS:
             if key in self._buttons:
                 btn = self._buttons[key]
                 btn.update_label(i18n.get_text(i18n_key))

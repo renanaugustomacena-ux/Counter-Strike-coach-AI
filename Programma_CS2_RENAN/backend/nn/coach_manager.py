@@ -11,6 +11,10 @@ from sqlmodel import col, func, select
 # retrain rung. Below the cap the exact-uniform materialization is kept.
 _ID_MATERIALIZE_CAP = 2_000_000
 
+# F-0032: the operator-stop exception (F5-16). The old `except StopIteration`
+# guards matched an exception check_state() no longer raises, so Stop fell
+# into every phase's broad `except Exception` and training marched on.
+from Programma_CS2_RENAN.backend.control.ml_controller import TrainingStopRequested
 from Programma_CS2_RENAN.backend.nn.config import OUTPUT_DIM, RAP_POSITION_SCALE
 from Programma_CS2_RENAN.backend.nn.persistence import save_nn
 from Programma_CS2_RENAN.backend.nn.train import train_nn
@@ -319,7 +323,7 @@ class CoachTrainingManager:
                 context.check_state()
             self._execute_training_phases(context=context)
 
-        except StopIteration:
+        except TrainingStopRequested:
             raise
         except Exception as e:
             get_state_manager().set_error("teacher", f"Cycle Failed: {e}")
@@ -567,7 +571,7 @@ class CoachTrainingManager:
         try:
             orchestrator = TrainingOrchestrator(self, model_type="jepa", callbacks=callbacks)
             orchestrator.run_training(context=context)
-        except StopIteration:
+        except TrainingStopRequested:
             raise
         except ValueError as e:
             app_logger.warning("JEPA Skipping: %s", e)
@@ -580,7 +584,7 @@ class CoachTrainingManager:
         try:
             orchestrator = TrainingOrchestrator(self, model_type="rap", callbacks=callbacks)
             orchestrator.run_training(context=context)
-        except StopIteration:
+        except TrainingStopRequested:
             raise
         except ValueError as e:
             app_logger.warning("RAP Skipping: %s", e)
@@ -599,7 +603,7 @@ class CoachTrainingManager:
                 app_logger.info("Role Head training complete.")
             else:
                 app_logger.info("Role Head training skipped (insufficient data).")
-        except StopIteration:
+        except TrainingStopRequested:
             raise
         except Exception as e:
             app_logger.warning("Role Head training failed (non-fatal): %s", e)

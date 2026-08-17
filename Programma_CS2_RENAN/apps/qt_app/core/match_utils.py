@@ -18,21 +18,8 @@ import re
 # ``de_mirage`` not ``de_mirage_2026``. ``[a-z0-9]+`` deliberately
 # excludes ``_`` so the suffix never gets swallowed.
 _MAP_PATTERN = re.compile(r"(de_[a-z0-9]+|cs_[a-z0-9]+|ar_[a-z0-9]+)")
-_KNOWN_MAPS: frozenset[str] = frozenset(
-    {
-        "mirage",
-        "inferno",
-        "dust2",
-        "overpass",
-        "ancient",
-        "anubis",
-        "nuke",
-        "vertigo",
-        "train",
-        "cache",
-        "office",
-    }
-)
+# map-SSOT (CP0 #2): the authority lives in core.known_maps.
+from Programma_CS2_RENAN.core.known_maps import KNOWN_MAP_NAMES as _KNOWN_MAPS
 
 
 def extract_map_name(demo_name: str) -> str:
@@ -57,3 +44,16 @@ def map_short_name(demo_name: str) -> str:
     if "_" in full:
         return full.split("_", 1)[1]
     return full
+
+
+def count_personal_and_pro(matches: list[dict]) -> tuple[int, int]:
+    """(personal row count, DISTINCT pro demo count) for a matches payload.
+
+    Personal counts loaded rows; pro counts distinct ``demo_name`` values
+    across ``is_pro`` rows — PlayerMatchStats stores one row per
+    (demo, player), so raw pro rows would inflate ~10× per demo. Shared by
+    the Home matches chip and the Match History header caption.
+    """
+    personal = sum(1 for m in matches if not m.get("is_pro"))
+    pro_demos = {m["demo_name"] for m in matches if m.get("is_pro") and m.get("demo_name")}
+    return personal, len(pro_demos)

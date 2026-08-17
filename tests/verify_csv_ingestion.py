@@ -1,4 +1,3 @@
-import os
 import sys
 from pathlib import Path
 
@@ -14,7 +13,7 @@ if sys.prefix == sys.base_prefix:
     print("ERROR: Not in venv.", file=sys.stderr)
     sys.exit(2)
 
-from sqlmodel import Session, func, select
+from sqlmodel import func, select
 
 # Add project root to sys.path
 sys.path.append(str(Path(__file__).parents[1]))

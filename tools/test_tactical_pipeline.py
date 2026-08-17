@@ -73,7 +73,7 @@ def main():
     # ── Resolve demo path ──
     demo_path = sys.argv[1] if len(sys.argv) > 1 else find_demo()
     if not demo_path or not os.path.isfile(demo_path):
-        print(f"ERROR: No .dem file found. Pass a path as argument.")
+        print("ERROR: No .dem file found. Pass a path as argument.")
         sys.exit(1)
 
     print(f"\nDemo: {os.path.basename(demo_path)}")

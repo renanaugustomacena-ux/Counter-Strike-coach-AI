@@ -6,7 +6,7 @@
 
 ## Overview
 
-PySide6/Qt desktop application implementing Model-View-ViewModel (MVVM) architecture with Qt Signal/Slot for CS2 tactical analysis and AI coaching. This is the **primary frontend** (77 Python files). The application features 15 screens, 10 ViewModels, 3 chart widgets, 3 tactical widgets, toast notifications, 3 QSS themes (CS2, CSGO, CS1.6), background wallpaper rendering, internationalization (English/Italian/Portuguese), and a graceful shutdown sequence.
+PySide6/Qt desktop application implementing Model-View-ViewModel (MVVM) architecture with Qt Signal/Slot for CS2 tactical analysis and AI coaching. This is the **primary frontend** (91 Python files). The application features 15 screens, 10 ViewModels, 6 QPainter chart widgets (QtCharts was removed for license compliance), 3 tactical widgets, a design-system component library (26 modules) plus an embedded coaching ChatPanel, toast notifications, 3 token-driven themes (CS2, CSGO, CS1.6), optional background wallpaper (default: flat), internationalization (English/Italian/Portuguese, ~565 keys per language), and a graceful shutdown sequence.
 
 ## Entry Point
 
@@ -54,9 +54,9 @@ qt_app/
 │   └── __init__.py
 ├── screens/
 │   ├── home_screen.py              # Dashboard and overview
-│   ├── coach_screen.py             # AI coaching interface with chat panel
+│   ├── coach_screen.py             # AI coaching screen with embedded ChatPanel (dock removed)
 │   ├── match_history_screen.py     # Match listing with color-coded HLTV 2.0 ratings
-│   ├── match_detail_screen.py      # Multi-section match analysis (overview, rounds, economy, momentum)
+│   ├── match_detail_screen.py      # 4-tab match analysis (Overview · Rounds · Economy · Highlights)
 │   ├── performance_screen.py       # Performance analytics (trends, per-map stats, Z-score comparisons)
 │   ├── tactical_viewer_screen.py   # 2D map replay with pixel-accurate rendering and timeline
 │   ├── user_profile_screen.py      # User profile display and editing
@@ -85,34 +85,49 @@ qt_app/
 ├── widgets/
 │   ├── toast.py                    # ToastWidget + ToastContainer: ephemeral notifications (4 severities)
 │   ├── skeleton.py                 # Skeleton loading placeholder widgets
-│   ├── charts/
-│   │   ├── economy_chart.py        # EconomyChart: round-by-round economy (QtCharts)
+│   ├── charts/                     # All QPainter — QtCharts removed (GPL-only)
+│   │   ├── economy_chart.py        # EconomyChart: round-by-round economy bars (QPainter)
 │   │   ├── mini_sparkline.py       # MiniSparkline: compact QPainter sparkline, no axes
-│   │   ├── momentum_chart.py       # MomentumChart: team momentum (QtCharts area chart)
+│   │   ├── momentum_chart.py       # MomentumChart: team momentum area chart (QPainter)
+│   │   ├── radar_chart.py          # RadarChart: pentagon skill radar (user vs pro overlay)
+│   │   ├── rating_sparkline.py     # RatingSparkline: rating trend with baseline
+│   │   ├── utility_bar_chart.py    # UtilityBarChart: utility usage horizontal bars
 │   │   └── __init__.py
-│   ├── coaching/                   # Namespace reserved; widgets removed in PR #32
-│   ├── components/                 # Reusable UI components (design system) — 16 modules
+│   ├── coaching/
+│   │   ├── chat_panel.py           # ChatPanel: embedded coach chat (bubbles, meta line, input row)
+│   │   └── __init__.py
+│   ├── components/                 # Reusable UI components (design system) — 26 modules
 │   │   ├── __init__.py             # Component exports
 │   │   ├── card.py                 # Card container widget (5 depth variants)
+│   │   ├── db_record_card.py       # DbRecordCard: mono DB row echo (table · column · value)
+│   │   ├── delta_chip.py           # DeltaChip: ▲/▼ benchmark-relative delta pill
+│   │   ├── drivers_list.py         # DriversList: signed contribution rows (what moved a stat)
 │   │   ├── empty_state.py          # Empty state placeholder with icon and message
 │   │   ├── filter_chip.py          # Toggleable filter pill
 │   │   ├── focus_insight.py        # FocusInsightCard: home-page focus insight card
 │   │   ├── hero_stats_strip.py     # Horizontal strip of hero metrics
 │   │   ├── icon_widget.py          # Icon display widget (SVG/pixmap)
 │   │   ├── last_match_hero.py      # LastMatchHeroCard: home-page last-match hero card
+│   │   ├── map_tile.py             # MapTile: per-map stat tile with win-rate accent
 │   │   ├── match_mini_card.py      # Compact match summary card
 │   │   ├── match_row_card.py       # Expanded match row card with stat preview
+│   │   ├── metric_bar_row.py       # MetricBarRow: label + horizontal metric bar + value
+│   │   ├── mini_link_card.py       # MiniLinkCard: small related-link navigation card
+│   │   ├── mono_footer.py          # MonoFooter: mono provenance/status footer line
 │   │   ├── nav_sidebar.py          # Collapsible navigation sidebar component
+│   │   ├── numbered_step.py        # NumberedStep: 01/02/03 accent-mono step row
+│   │   ├── pro_badge.py            # ProBadge: PRO/tier pill for pro-player surfaces
 │   │   ├── progress_ring.py        # Circular progress ring indicator
 │   │   ├── section_header.py       # Section header with title and optional action
 │   │   ├── stat_badge.py           # Stat badge with label and value
 │   │   ├── status_chip.py          # Colored status pill with text label
-│   │   ├── stepper.py              # Step progress indicator (used by the wizard)
+│   │   ├── stepper.py              # Labeled step progress indicator (used by the wizard)
+│   │   ├── tip_box.py              # TipBox: accent-bordered tip/callout box
 │   │   └── toggle_switch.py        # Animated boolean switch
 │   ├── tactical/
-│   │   ├── map_widget.py           # TacticalMapWidget: pixel-accurate 2D tactical map rendering
+│   │   ├── map_widget.py           # TacticalMapWidget: 2D map rendering + zone overlays (assets/map_zones/) + movement trails
 │   │   ├── player_sidebar.py       # PlayerSidebar: real-time player state display (health, armor, weapons)
-│   │   ├── timeline_widget.py      # TimelineWidget: demo playback navigation and scrubbing
+│   │   ├── timeline_widget.py      # TimelineWidget: scrubbing, round dividers, ★/◆/● moment glyphs
 │   │   └── __init__.py
 │   └── __init__.py
 ├── web/                            # TypeScript web sub-apps (embedded via QWebEngineView)
@@ -121,10 +136,8 @@ qt_app/
 │   ├── tactical-viewer/
 │   └── shared/
 └── themes/
-    ├── base.qss.template           # Token-substituted base stylesheet (core/qss_generator.py)
-    ├── cs2.qss                     # CS2 theme: dark gaming aesthetic with orange accent (#D96600)
-    ├── csgo.qss                    # CSGO theme: slate-blue tones with steel accent
-    └── cs16.qss                    # CS 1.6 theme: retro green terminal aesthetic
+    └── base.qss.template           # Token-substituted stylesheet — sole QSS source
+                                    # (rendered per theme by core/qss_generator.py)
 ```
 
 ## MVVM Architecture
@@ -168,16 +181,16 @@ qt_app/
 | # | Screen | File | Description |
 |---|--------|------|-------------|
 | 1 | HomeScreen | `home_screen.py` | Dashboard with service status, match count, training progress, parsing progress |
-| 2 | CoachScreen | `coach_screen.py` | AI coaching interface with insight cards and interactive chat panel (Ollama) |
+| 2 | CoachScreen | `coach_screen.py` | AI coaching **stacked screen** with belief ring, top-3 ranked insights, and an embedded ChatPanel (Ollama) — the old QDockWidget chat dock was removed |
 | 3 | MatchHistoryScreen | `match_history_screen.py` | Match listing with color-coded HLTV 2.0 ratings, emits `match_selected` Signal |
-| 4 | MatchDetailScreen | `match_detail_screen.py` | Multi-section match analysis: overview stats, round-by-round, economy chart, momentum |
+| 4 | MatchDetailScreen | `match_detail_screen.py` | 4-tab match analysis: Overview · Rounds · Economy · Highlights (underline tabs, frame 09) |
 | 5 | PerformanceScreen | `performance_screen.py` | Performance analytics: rating trends, per-map stats, strength/weakness, utility breakdown |
-| 6 | TacticalViewerScreen | `tactical_viewer_screen.py` | 2D map replay with pixel-accurate rendering, ghost AI overlay, chronovisor scanning |
+| 6 | TacticalViewerScreen | `tactical_viewer_screen.py` | 2D map replay with zone overlays, movement trails, glyph timeline (★ critical · ◆ clutch · ● play), chronovisor scanning, and Ghost Mode (dual progress + divergence panel) |
 | 7 | UserProfileScreen | `user_profile_screen.py` | User profile display with bio and role editing |
-| 8 | ProfileScreen | `profile_screen.py` | Profile management and configuration |
-| 9 | SettingsScreen | `settings_screen.py` | Application settings: theme selection, font type/size, language, data paths |
-| 10 | WizardScreen | `wizard_screen.py` | First-time setup wizard for Steam path, player name, Faceit config; emits `setup_completed` |
-| 11 | HelpScreen | `help_screen.py` | User documentation, guides, and FAQ |
+| 8 | ProfileScreen | `profile_screen.py` | In-game name editor (frame 17): case-sensitivity caption, DbRecordCard echo, related-link cards, stored-locally note |
+| 9 | SettingsScreen | `settings_screen.py` | Application settings: clickable theme preview cards, font type/size, live preview, language, data paths |
+| 10 | WizardScreen | `wizard_screen.py` | First-time setup wizard with labeled stepper (Intro · Name · Brain Path · Demo Path · Launch) and "What happens next" calibration copy; emits `setup_completed` |
+| 11 | HelpScreen | `help_screen.py` | Structured help article: numbered getting-started steps, topic cards, keyboard hints, docs provenance |
 | 12 | SteamConfigScreen | `steam_config_screen.py` | Steam integration: path configuration, demo folder detection |
 | 13 | FaceitConfigScreen | `faceit_config_screen.py` | Faceit integration: API key, player ID configuration |
 | 14 | ProComparisonScreen | `pro_comparison_screen.py` | Side-by-side statistical comparison of user vs selected pro player |
@@ -204,21 +217,47 @@ qt_app/
 
 ## Widgets
 
-### Chart Widgets (`widgets/charts/`)
+### Chart Widgets (`widgets/charts/`) — all QPainter
+
+> **QtCharts was removed** from the app: Qt Charts is GPLv3-or-commercial only (unlike LGPL base Qt), incompatible with this proprietary repo. Every chart is now a custom `QWidget.paintEvent` implementation; a license-gate test (`test_charts.py::TestQtChartsRetired`) fails the suite if any `QtCharts`/`QChart` reference reappears under `apps/qt_app/`.
 
 | Widget | File | Description |
 |--------|------|-------------|
-| `EconomyChart` | `economy_chart.py` | Round-by-round economy timeline showing buy levels (QtCharts) |
-| `MiniSparkline` | `mini_sparkline.py` | Compact QPainter sparkline with no axes, used in the last-match hero card |
-| `MomentumChart` | `momentum_chart.py` | Team momentum evolution per round, dual-color CT/T overlay (QtCharts) |
+| `EconomyChart` | `economy_chart.py` | Round-by-round economy bars with side coloring, half divider, and $K ladder |
+| `MiniSparkline` | `mini_sparkline.py` | Compact sparkline with no axes, used in the last-match hero card |
+| `MomentumChart` | `momentum_chart.py` | Team momentum evolution per round, dual-color CT/T area overlay |
+| `RadarChart` | `radar_chart.py` | Pentagon skill radar with user-vs-pro polygon overlay (pro comparison) |
+| `RatingSparkline` | `rating_sparkline.py` | Rating trend line with 1.0 baseline (match detail / performance) |
+| `UtilityBarChart` | `utility_bar_chart.py` | Horizontal utility-usage bars (flash/smoke/HE/molly) |
+
+### Coaching Widgets (`widgets/coaching/`)
+
+| Widget | File | Description |
+|--------|------|-------------|
+| `ChatPanel` | `chat_panel.py` | Embedded coach chat: message bubbles, mono provenance meta line, availability states, input row — hosted by CoachScreen (replaces the removed chat dock) |
+
+### Component Primitives added in the design-atlas rebuild (`widgets/components/`)
+
+| Widget | File | Description |
+|--------|------|-------------|
+| `ProBadge` | `pro_badge.py` | PRO/tier pill for pro-player surfaces |
+| `DeltaChip` | `delta_chip.py` | ▲/▼ benchmark-relative delta pill (vs 30-day avg / pro baseline) |
+| `DriversList` | `drivers_list.py` | Signed contribution rows explaining what moved a headline stat |
+| `TipBox` | `tip_box.py` | Accent-bordered tip/callout box (wizard, help) |
+| `NumberedStep` | `numbered_step.py` | 01/02/03 accent-mono step row (wizard launch page, help) |
+| `DbRecordCard` | `db_record_card.py` | Mono DB row echo (`table · column · value`, frame 17) |
+| `MonoFooter` | `mono_footer.py` | Mono provenance/status footer line (screen-bottom captions) |
+| `MiniLinkCard` | `mini_link_card.py` | Small related-link navigation card |
+| `MapTile` | `map_tile.py` | Per-map stat tile with win-rate accent |
+| `MetricBarRow` | `metric_bar_row.py` | Label + horizontal metric bar + value row |
 
 ### Tactical Widgets (`widgets/tactical/`)
 
 | Widget | File | Description |
 |--------|------|-------------|
-| `TacticalMapWidget` | `map_widget.py` | Pixel-accurate 2D tactical map rendering with player dots, ghost overlays, and event markers |
+| `TacticalMapWidget` | `map_widget.py` | 2D tactical map rendering with player dots, named zone overlays (`assets/map_zones/*.json`), movement trails, ghost overlays, and event markers |
 | `PlayerSidebar` | `player_sidebar.py` | Real-time player state display: health, armor, weapon, money, alive/dead status |
-| `TimelineWidget` | `timeline_widget.py` | Demo playback navigation with scrubbing, round markers, and critical moment indicators |
+| `TimelineWidget` | `timeline_widget.py` | Demo playback scrubbing with round dividers, event markers, and kind-differentiated critical-moment glyphs (★ critical / ◆ clutch / ● play, star fallback) |
 
 ### Toast Notifications (`widgets/toast.py`)
 
@@ -251,11 +290,10 @@ AppState is **read-only** from the Qt side. Only the backend session engine writ
 
 `ThemeEngine` (`core/theme_engine.py`) manages the visual identity of the application:
 
-- **3 themes:** CS2 (dark + orange accent), CSGO (slate-blue + steel accent), CS 1.6 (retro green terminal)
-- **QSS stylesheets** loaded from `themes/*.qss`, with dynamic font-family/size injection
-- **QPalette** configuration for widgets that do not honor QSS
-- **5 custom fonts:** Roboto, JetBrains Mono, New Hope, CS Regular, YUPIX (from `PHOTO_GUI/`), plus optional display fonts auto-scanned from `assets/fonts/`
-- **Wallpaper management:** per-theme wallpaper folders, vertical image preference, rendered at 15% opacity via `_BackgroundWidget`
+- **3 themes:** CS2 (deep navy + tactical orange), CSGO (slate-blue + steel accent), CS 1.6 (retro green terminal)
+- **Design tokens are the single source of truth:** per-theme token sets (`core/design_tokens.py`) feed **both** the QSS render (`themes/base.qss.template` via `core/qss_generator.py`, with dynamic font-family/size injection) and the `QPalette` configuration for widgets that do not honor QSS — no hand-maintained color values outside the token tables
+- **Fonts:** legacy `PHOTO_GUI/` faces (Roboto, JetBrains Mono, New Hope, CS Regular, YUPIX) plus the bundled OFL display stack auto-scanned from `assets/fonts/` (Space Grotesk, Inter, JetBrains Mono weights — see `assets/fonts/README.txt` for sources/licenses)
+- **Wallpaper:** default is **no wallpaper** — a flat `surface_base` background per the design atlas. A persisted user choice can select a per-theme wallpaper file, rendered at 15% opacity via `_BackgroundWidget`
 - **HLTV rating colors:** green (> 1.10), yellow (0.90-1.10), red (< 0.90) with WCAG 1.4.1 text labels
 
 ## Worker Pattern
@@ -289,6 +327,21 @@ All signal emissions are wrapped in `try/except RuntimeError` to handle the case
 | `MatchUtils` | `core/match_utils.py` | Match-level utility functions for the UI layer |
 | `WidgetsHelpers` | `core/widgets_helpers.py` | Generic Qt widget helper functions |
 | `WebBridge` | `core/web_bridge.py` | Python↔JavaScript bridge for embedded web views |
+
+## Testing
+
+The UI suite runs fully offscreen (`QT_QPA_PLATFORM=offscreen`) with animations disabled (`MACENA_UI_ANIMATIONS=0`):
+
+| File | Covers |
+|------|--------|
+| `tests/test_qt_core.py` | Core modules (tokens, QSS generation, i18n bridge, workers) — includes a **subprocess-isolated** live-animation test so the animations-enabled path is exercised without polluting the offscreen run |
+| `tests/test_ui_smoke.py` | **Runtime walk**: boots the real MainWindow, visits every screen, switches all 3 themes live, round-trips languages (retranslate), collapses/expands the sidebar |
+| `tests/test_ui_harness.py` | **i18n key parity** across en/it/pt (`test_i18n_key_parity_across_languages`) + runs the screenshot harness end-to-end as a subprocess |
+| `tests/test_charts.py` | QPainter chart widgets + the QtCharts license gate (`TestQtChartsRetired`) |
+| `tests/test_tactical_frame_widgets.py` | Map-zone loader, timeline glyph-kind mapping + star hit-test, ghost divergence-row adapter |
+| `tests/test_detonation_overlays.py` | Grenade/bomb detonation overlay painting |
+
+Screenshot tooling: `tools/ui_screenshot.py` (offscreen harness — real screens + fixture data from `tools/ui_fixtures.py`, per-theme PNGs) and `tools/ui_gallery.py` (component gallery sheet).
 
 ## Development Notes
 

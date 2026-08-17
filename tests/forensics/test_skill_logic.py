@@ -3,7 +3,6 @@ FORENSIC TEST SUITE - SKILL MODEL VALIDATION
 Implementation of Step 11 [TESTABILITY]: Unit Test Harness for SkillModel.
 """
 
-import pytest
 import torch
 
 from Programma_CS2_RENAN.backend.nn.rap_coach.skill_model import SkillAxes, SkillLatentModel

@@ -31,10 +31,7 @@ import numpy as np
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
-from Programma_CS2_RENAN.backend.nn.rap_coach.chronovisor_scanner import (
-    ChronovisorScanner,
-    CriticalMoment,
-)
+from Programma_CS2_RENAN.backend.nn.rap_coach.chronovisor_scanner import ChronovisorScanner
 
 
 class TestChronovisorLogic(unittest.TestCase):

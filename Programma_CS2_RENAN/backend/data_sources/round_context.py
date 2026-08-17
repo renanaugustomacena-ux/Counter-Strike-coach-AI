@@ -14,6 +14,7 @@ from typing import List
 import pandas as pd
 from demoparser2 import DemoParser
 
+from Programma_CS2_RENAN.backend.data_sources.parse_guard import is_parse_error
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.round_context")
@@ -38,7 +39,9 @@ def extract_round_context(demo_path: str) -> pd.DataFrame:
     """
     try:
         parser = DemoParser(demo_path)
-    except Exception as e:
+    except BaseException as e:  # noqa: BLE001 — F-0006, filtered by is_parse_error
+        if not is_parse_error(e):
+            raise
         logger.error("Failed to create DemoParser for round context: %s", e)
         return pd.DataFrame()
 
@@ -50,7 +53,9 @@ def extract_round_context(demo_path: str) -> pd.DataFrame:
             df = res[0][1] if isinstance(res[0], tuple) else pd.DataFrame(res)
             if not df.empty and "tick" in df.columns:
                 freeze_end_ticks = sorted(df["tick"].astype(int).tolist())
-    except Exception as e:
+    except BaseException as e:  # noqa: BLE001 — F-0006, filtered by is_parse_error
+        if not is_parse_error(e):
+            raise
         logger.warning("Failed to parse round_freeze_end events: %s", e)
 
     # Extract round_end ticks (marks when round ends)
@@ -61,7 +66,9 @@ def extract_round_context(demo_path: str) -> pd.DataFrame:
             df = res[0][1] if isinstance(res[0], tuple) else pd.DataFrame(res)
             if not df.empty and "tick" in df.columns:
                 round_end_ticks = sorted(df["tick"].astype(int).tolist())
-    except Exception as e:
+    except BaseException as e:  # noqa: BLE001 — F-0006, filtered by is_parse_error
+        if not is_parse_error(e):
+            raise
         logger.warning("Failed to parse round_end events: %s", e)
 
     if not round_end_ticks:
@@ -127,7 +134,9 @@ def extract_bomb_events(demo_path: str) -> pd.DataFrame:
     """
     try:
         parser = DemoParser(demo_path)
-    except Exception as e:
+    except BaseException as e:  # noqa: BLE001 — F-0006, filtered by is_parse_error
+        if not is_parse_error(e):
+            raise
         logger.error("Failed to create DemoParser for bomb events: %s", e)
         return pd.DataFrame()
 
@@ -145,7 +154,9 @@ def extract_bomb_events(demo_path: str) -> pd.DataFrame:
                 if not df.empty and "tick" in df.columns:
                     for tick in df["tick"].astype(int).tolist():
                         rows.append({"tick": tick, "event_type": event_label})
-        except Exception as e:
+        except BaseException as e:  # noqa: BLE001 — F-0006, filtered by is_parse_error
+            if not is_parse_error(e):
+                raise
             logger.debug("No %s events found: %s", event_name, e)
 
     if not rows:

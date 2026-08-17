@@ -152,8 +152,9 @@ def set_secret(key: str, value: str) -> bool:
     Returns:
         True if successful, False if keyring unavailable
 
-    Raises:
-        RuntimeError: If keyring storage fails
+    Returns:
+        False when keyring is unavailable or storage fails — callers fall
+        back to the FE-04 plaintext path (F-0007: never raises).
     """
     if not keyring:
         app_logger.warning("Keyring unavailable, cannot store secret '%s'", key)
@@ -164,8 +165,12 @@ def set_secret(key: str, value: str) -> bool:
         app_logger.info("Secret '%s' stored in keyring", key)
         return True
     except Exception as e:
+        # F-0007: degrade like get_secret — on Linux (the deploy target)
+        # a missing keyring backend used to RAISE out of the settings-save
+        # path, crashing the UI save. False routes the caller to the
+        # FE-04 plaintext fallback (chmod 600) instead.
         app_logger.error("Failed to store secret '%s' in keyring: %s", key, e)
-        raise RuntimeError(f"Keyring storage failed for '{key}': {e}") from e
+        return False
 
 
 def mask_secret(value: str) -> str:
@@ -191,7 +196,11 @@ def load_user_settings() -> dict:
             "BRAIN_DATA_ROOT": "",
             "CUSTOM_STORAGE_PATH": "",
             "ACTIVE_THEME": "CS2",
-            "BACKGROUND_IMAGE": "vertical_wallpaper_cs2_A.jpg",
+            # Design-atlas default: flat surface, NO wallpaper. Only a user's
+            # explicit persisted choice (this key present in
+            # user_settings.json) restores one; save_user_setting writes just
+            # explicit keys, so disk-presence == explicit choice.
+            "BACKGROUND_IMAGE": "",
             "ENABLE_SLIDESHOW": False,
             "FONT_SIZE": "Medium",
             "FONT_TYPE": "Roboto",
@@ -227,14 +236,6 @@ def load_user_settings() -> dict:
             "USE_RAG_COACHING": False,
             "USE_RAP_MODEL": False,
             "ZOMBIE_TASK_THRESHOLD_SECONDS": 300,
-            # Cluster D — Coach screen as QDockWidget. Persists user's
-            # preferred dock arrangement across launches.
-            "COACH_DOCK_VISIBLE": False,
-            "COACH_DOCK_FLOATING": False,
-            "COACH_DOCK_AREA": "right",  # "right" | "bottom"
-            # DOCK-01: saved floating geometry (base64 QByteArray); empty =
-            # never floated with a restorable geometry -> boot re-docked.
-            "COACH_DOCK_GEOMETRY": "",
             # Cluster E — LLM Coach: Ollama model selected from CoachScreen.
             # Empty string = use OLLAMA_MODEL env var or hard default.
             "LLM_COACH_MODEL": "",
@@ -412,7 +413,8 @@ def get_pro_demo_base() -> Path:
     Returns the PRO_DEMO_PATH from user_settings.json. If the configured path
     doesn't exist (e.g. SSD mounted at a different path on another machine),
     scans common mount points for the expected directory structure (DP-06).
-    Falls back to HOME if nothing found.
+    Falls back to the IN-PROJECT storage directory if nothing is found
+    (F-0008: never $HOME).
     """
     raw = get_setting("PRO_DEMO_PATH", "")
     configured = Path(str(raw)) if raw else None
@@ -462,7 +464,19 @@ def get_pro_demo_base() -> Path:
                             )
                             return candidate
 
-    return Path(os.path.expanduser("~"))
+    # F-0008: NEVER fall back to $HOME — the module's own doctrine
+    # (":186-190) documents why ($HOME always exists, so a $HOME default
+    # silently relocated data; the 2026-07-26 shard incidents). The safe
+    # default is the sanctioned IN-PROJECT storage dir: every DEMO_BASE
+    # composition stays valid, and accidental sweeps touch a small
+    # project-local tree instead of the user profile.
+    fallback = Path(__file__).resolve().parent.parent / "backend" / "storage"
+    app_logger.warning(
+        "PRO_DEMO_PATH not configured/found — falling back to in-project %s "
+        "(set PRO_DEMO_PATH in settings for a real pro-demo pool)",
+        fallback,
+    )
+    return fallback
 
 
 def get_credential(key: str) -> str:

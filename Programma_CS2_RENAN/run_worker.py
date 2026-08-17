@@ -23,9 +23,21 @@ logger = get_logger("cs2analyzer.worker")
 def _recover_stale_tasks(db):
     # IM-02: Only recover tasks whose updated_at is older than the stale threshold.
     # Tasks that started processing recently may still be running in another process.
+    # F-0015: threshold comes from the SAME setting session_engine's P4-B
+    # recovery uses (default 1800 s) — the old hardcoded 5 minutes was exactly
+    # the value P4-B documented as THE duplicate-processing bug ("large demos
+    # legitimately take 10+ minutes").
     from datetime import timedelta
 
-    _STALE_THRESHOLD = timedelta(minutes=5)
+    from Programma_CS2_RENAN.core.config import get_setting
+
+    try:
+        _threshold_s = int(get_setting("ZOMBIE_TASK_THRESHOLD_SECONDS", default=1800))
+        if _threshold_s <= 0:
+            _threshold_s = 1800
+    except (TypeError, ValueError):
+        _threshold_s = 1800
+    _STALE_THRESHOLD = timedelta(seconds=_threshold_s)
     cutoff = datetime.now(timezone.utc) - _STALE_THRESHOLD
     with db.get_session() as session:
         stmt = select(IngestionTask).where(
@@ -129,6 +141,17 @@ def _mark_task_status_failed(db, task_id, error_msg):
             session.commit()
 
 
+def _release_claim(db, task_id):
+    """Return a claimed-but-skipped task to the queue (F-0015)."""
+    with db.get_session() as session:
+        task = session.get(IngestionTask, task_id)
+        if task is not None and task.status == "processing":
+            task.status = "queued"
+            task.updated_at = datetime.now(timezone.utc)
+            session.add(task)
+            session.commit()
+
+
 def _process_next_task_cycle(db, storage):
     task_data = _fetch_next_task_data(db)
     if not task_data:
@@ -139,6 +162,10 @@ def _process_next_task_cycle(db, storage):
     demo_path = task_data["demo_path"]
 
     if _should_skip_pro_task(db, is_pro):
+        # F-0015: the task was already CLAIMED (status=processing) by
+        # _fetch_next_task_data — release it, or it sits claimed until
+        # zombie recovery requeues it and the claim/skip loop churns.
+        _release_claim(db, task_id)
         return time.sleep(10)
 
     _execute_task(db, storage, task_id, demo_path, is_pro)

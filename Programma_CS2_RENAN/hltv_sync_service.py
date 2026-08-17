@@ -86,9 +86,14 @@ def run_sync_loop():
         return
 
     # --- Pre-flight: HLTV connectivity test ---
-    logger.info("Testing HLTV connectivity via FlareSolverr...")
-    test_html = solver.get("https://www.hltv.org/stats")
-    if not test_html:
+    # F-0014: the dormant path used to sleep and then RETURN — the service
+    # exited while the WR-15 notification promised "Retrying in 6 hours".
+    # It now actually retries after each dormant sleep.
+    while True:
+        logger.info("Testing HLTV connectivity via FlareSolverr...")
+        test_html = solver.get("https://www.hltv.org/stats")
+        if test_html:
+            break
         logger.error(
             "HLTV unreachable even via FlareSolverr. Dormant mode (%s hours).",
             _DORMANT_SLEEP_S // 3600,
@@ -101,7 +106,6 @@ def run_sync_loop():
             f"HLTV unreachable via FlareSolverr. " f"Retrying in {_DORMANT_SLEEP_S // 3600} hours.",
         )
         _dormant_sleep(_DORMANT_SLEEP_S)
-        return
 
     logger.info("HLTV connectivity test passed. Creating persistent session...")
 
@@ -234,10 +238,11 @@ def start_detached():
             PID_FILE.unlink(missing_ok=True)
 
     python_exe = sys.executable
-    main_script = SCRIPT_DIR / "main.py"
-
+    # F-0014 (replace-not-delete): the Kivy-era main.py entry point is gone —
+    # the child died instantly (stderr DEVNULL) and the PID file recorded a
+    # corpse. The service module IS the entry point now.
     process = subprocess.Popen(
-        [python_exe, str(main_script), "--hltv-service"],
+        [python_exe, "-m", "Programma_CS2_RENAN.hltv_sync_service"],
         creationflags=(
             subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
             if os.name == "nt"

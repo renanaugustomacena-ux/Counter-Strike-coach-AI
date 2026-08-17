@@ -10,7 +10,9 @@ name: Macena CI Pipeline
 
 on:
   push:
-    branches: [main, develop, 'feature/**', 'fix/**']
+    # F-0004: the project's real branch conventions are feat/** and chore/**
+    # (the 46-commit design-atlas branch had ZERO CI runs under the old list).
+    branches: [main, develop, 'feature/**', 'feat/**', 'fix/**', 'chore/**']
     paths-ignore:
       - '**.md'
       - 'docs/**'
@@ -99,6 +101,10 @@ jobs:
       VIRTUAL_ENV: 'ci'
       KIVY_NO_ARGS: '1'  # Transitional: needed while 24 Kivy files remain
       QT_QPA_PLATFORM: offscreen  # PySide6 tests run headless (no display on CI runners)
+      # Windows runner: QtWebEngine (embedded web views in MainWindow) crashes
+      # natively without these — same cure launch.sh applies on Linux GPUs.
+      QTWEBENGINE_CHROMIUM_FLAGS: '--disable-gpu --no-sandbox'
+      QT_OPENGL: software
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
@@ -113,11 +119,22 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq libgl1 libegl1 libxkbcommon0 libdbus-1-3
 
+      # One native command per step — on the Windows leg pwsh propagates only
+      # the LAST command's exit code, so a mid-step pip failure could hide
+      # behind the trailing install (the trap that hit build-distribution).
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
       - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-ci.txt
-          pip install pytest pytest-cov pytest-timeout
+        run: pip install -r requirements-ci.txt
+
+      - name: Install test runners
+        run: pip install pytest pytest-cov pytest-timeout
+
+      # W4: dependency-conflict gate (course-30) — resolver-level breakage
+      # fails fast instead of surfacing as weird runtime errors.
+      - name: Dependency conflict check
+        run: pip check
 
       # Coverage is platform-independent (it measures code paths, not OS behaviour),
       # so the coverage gate runs once, on Linux. Windows still runs the full test
@@ -131,7 +148,7 @@ jobs:
           --cov=Programma_CS2_RENAN
           --cov-report=xml:coverage.xml
           --cov-report=term-missing
-          --cov-fail-under=33
+          --cov-fail-under=50
 
       - name: Run pytest (Windows — cross-platform test validation, no coverage)
         if: runner.os == 'Windows'
@@ -409,24 +426,43 @@ jobs:
   build-distribution:
     name: Build Distribution
     runs-on: windows-latest
-    timeout-minutes: 20
+    # 20 min was set before this stage ever executed; the full lock install
+    # (torch CPU + PySide6) plus a real PyInstaller pack needs headroom.
+    # Tighten back once a green run gives a measured ceiling.
+    timeout-minutes: 40
     needs: [integration, security]
     if: github.ref == 'refs/heads/main'
+    env:
+      # hopfield-layers is a git sdist whose setup.py reads its README without
+      # an explicit encoding; the runner's cp1252 default dies on it with
+      # UnicodeDecodeError (run 31833678830). UTF-8 mode cures the build.
+      PYTHONUTF8: '1'
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          # The lock was frozen on Python 3.12.10 (see the header of
+          # requirements-lock-cpu.txt); installing it on the interpreter it
+          # was frozen for is part of the reproducibility contract. The rest
+          # of CI runs PYTHON_VERSION against ranged requirements instead.
+          python-version: '3.12'
           cache: pip
 
-      - name: Install dependencies (locked CPU versions for reproducible builds)
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-lock-cpu.txt
-          # Pinned: an unpinned PyInstaller made release builds
-          # non-reproducible (the runtime lock no longer carries it).
-          pip install pyinstaller==6.17.0
+      # One native command per step: pwsh propagates only the LAST command's
+      # exit code, so a multi-command step here shipped a green job whose lock
+      # install had failed outright (run 31833678830 — PyInstaller packed an
+      # executable with no numpy/PySide6/torch and still exited 0).
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      - name: Install locked CPU dependencies (reproducible builds)
+        run: pip install -r requirements-lock-cpu.txt
+
+      # Pinned: an unpinned PyInstaller made release builds non-reproducible
+      # (the runtime lock intentionally does not carry it).
+      - name: Install PyInstaller (pinned)
+        run: pip install pyinstaller==6.17.0
 
       - name: Validate critical data files exist
         run: |

@@ -1,10 +1,9 @@
 import ast
 import os
-import re
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set
 
 # --- Venv Guard ---
 if sys.prefix == sys.base_prefix and not os.environ.get("CI"):
@@ -22,7 +21,9 @@ SOURCE_DIR = project_root / "Programma_CS2_RENAN"
 TOOLS_DIR = project_root / "tools"
 INNER_TOOLS_DIR = SOURCE_DIR / "tools"
 ENTRY_POINTS = {
-    SOURCE_DIR / "main.py",
+    # W3 (replace-not-delete): the Kivy main.py is gone; the Qt app
+    # module is the real GUI entry point.
+    SOURCE_DIR / "apps" / "qt_app" / "app.py",
     SOURCE_DIR / "apps" / "qt_app" / "app.py",
     project_root / "goliath.py",
     project_root / "console.py",

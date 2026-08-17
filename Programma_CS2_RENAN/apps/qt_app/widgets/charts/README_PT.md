@@ -7,67 +7,63 @@
 
 ## Finalidade
 
-Widgets de gráfico baseados em QtCharts e QPainter, usados nas telas de dashboard, performance e match-detail. Cada widget encapsula um `QChartView` (para gráficos baseados em `QChart`) ou um `QWidget` personalizado com `paintEvent` (para sparklines QPainter), expondo uma pequena API Pythonic para a ViewModel chamadora.
+Widgets de gráfico QPainter usados nas telas de dashboard, performance, comparação pro e match-detail. Cada widget é um `QWidget` personalizado com `paintEvent`, expondo uma pequena API Pythonic para a ViewModel chamadora. **QtCharts não é usado em lugar nenhum** — está disponível apenas sob licença GPLv3 ou comercial e foi removido por conformidade de licença; `tests/test_charts.py::TestQtChartsRetired` falha a suite se uma referência `QtCharts`/`QChart` reaparecer sob `apps/qt_app/`.
 
 ## Inventário de arquivos
 
 | Arquivo | Widget | Usado por |
 |---------|--------|-----------|
 | `__init__.py` | (re-exports) | — |
-| `economy_chart.py` | `EconomyChart` | Match Detail (barras de valor de equipamento por round) |
-| `mini_sparkline.py` | `MiniSparkline` | Hero stats strip, dashboards (linha de tendência compacta) |
+| `economy_chart.py` | `EconomyChart` | Match Detail (barras de valor de equipamento por round, coloração por lado, escala $K) |
+| `mini_sparkline.py` | `MiniSparkline` | Card hero da última partida na home (linha de tendência compacta) |
 | `momentum_chart.py` | `MomentumChart` | Match Detail (delta cumulativo kill-death com fill verde/vermelho) |
+| `radar_chart.py` | `RadarChart` | Comparação Pro (radar pentagonal de skills, overlay usuário-vs-pro) |
+| `rating_sparkline.py` | `RatingSparkline` | Match Detail / Desempenho (tendência de rating com baseline 1.0) |
+| `utility_bar_chart.py` | `UtilityBarChart` | Match Detail / Desempenho (barras de uso de utilitários) |
 
 ## Convenções
 
 ### Paleta de cores
 
-Todos os gráficos leem cores de `core/design_tokens.py`:
+Todos os gráficos resolvem cores de `core/design_tokens.py` via `get_tokens()`:
 
-- **Lado CT:** `#5C9EE8` (azul canônico)
-- **Lado T:** `#E8C95C` (dourado canônico)
-- **Tendência positiva / força:** família verde
-- **Tendência negativa / fraqueza:** família vermelha
-- **Referência / baseline:** cinza neutro com traço pontilhado
+- **Fundo do gráfico:** `tokens.chart_bg`
+- **Série primária / secundária (CT / T):** `tokens.chart_line_primary` / `tokens.chart_line_secondary`
+- **Texto e eixos:** `tokens.text_primary` / `tokens.text_secondary`
 
-Hard-coding de valores hex é code smell — abra um token primeiro.
+Hard-codar valores hexadecimais é um code smell — adicione um token primeiro.
 
-### Higiene de memória
+### Ciclo de vida do widget
 
-Figuras Matplotlib são pesadas. Cada widget de gráfico:
-
-1. Chama `plt.close(fig)` após renderização para liberar a figura.
-2. Mantém o canvas, não a figura, como a referência de longa vida.
-3. Implementa `clear()` para liberar memória da figura entre refreshes de dados.
+`EconomyChart` e `MomentumChart` armazenam os dados dos rounds em `plot(rounds)` e repintam;
+os demais gráficos armazenam dados em seus métodos `set_*`. Todo o desenho acontece em `paintEvent()`.
 
 ### Consciência de tema
 
-Gráficos se inscrevem em `theme_engine.themeChanged` e re-renderizam com estilização apropriada ao tema. Cores de fundo, texto, grade e linhas de referência todas trocam por tema.
+Os gráficos resolvem cada cor do conjunto de tokens ativo (`get_tokens()`) quando são construídos ou re-plotados, então uma troca de tema os reestiliza no próximo plot — não guardam nenhuma paleta hard-coded.
 
 ### Acessibilidade
 
 - Gráficos que codificam informação por cor também incluem labels de texto (ticks de eixo, legenda, anotações de valor).
-- `setAccessibleDescription()` fornece um resumo de um parágrafo para usuários de leitor de tela (P4-07 no checklist de acessibilidade do projeto).
-- O contraste de cor atende WCAG 2.0 AA contra o background do tema ativo.
+- Adicione um resumo `setAccessibleDescription()` para usuários de leitores de tela ao introduzir um novo gráfico.
+- Mantenha o contraste de cor em WCAG 2.0 AA contra o fundo do tema ativo.
 
 ## Adicionando um gráfico
 
-1. Faça subclasse de `MatplotlibWidget` (definido em `apps/qt_app/widgets/charts/__init__.py` — fornece o canvas + a disciplina de `plt.close()`).
-2. Implemente `render(data)` — aceite um objeto tipado da ViewModel, nunca DataFrames brutos.
-3. Puxe cores de `core/design_tokens`.
-4. Adicione uma descrição para leitor de tela via `setAccessibleDescription()`.
-5. Inscreva-se em `theme_engine.themeChanged` e re-renderize ao trocar de tema.
+1. Subclasse `QWidget`, armazene dados em um método `set_*`/`plot()`, chame `self.update()`, desenhe em `paintEvent()`. (Nunca QtCharts — veja a nota de licença acima.)
+2. Aceite um objeto ViewModel tipado ou uma lista tipada — nunca DataFrames crus.
+3. Puxe as cores de `core/design_tokens` via `get_tokens()`.
+4. Adicione uma descrição para leitores de tela via `setAccessibleDescription()`.
+5. Resolva todas as cores no momento do plot para que uma troca de tema reestilize no próximo plot.
 6. Adicione o widget à tabela de inventário acima.
 
-## Não faça
+## Não fazer
 
-- Não importe `matplotlib.pyplot` diretamente em uma tela — passe por um widget de gráfico.
-- Não mute a figura após `render()` retornar; crie uma nova figura no refresh de dados.
-- Não comite escolhas de cor que não estejam em `design_tokens.py`.
+- Não commitar escolhas de cor que não estejam em `design_tokens.py`.
 
 ## Relacionados
 
-- Dados do backend: `Programma_CS2_RENAN/backend/reporting/analytics.py` (`AnalyticsEngine`)
+- Dados backend: `Programma_CS2_RENAN/backend/reporting/analytics.py` (`AnalyticsEngine`)
 - Design tokens: `apps/qt_app/core/design_tokens.py`
 - Theme engine: `apps/qt_app/core/theme_engine.py`
-- Pai: `apps/qt_app/widgets/README.md`
+- Parent: `apps/qt_app/widgets/README.md`

@@ -7,18 +7,20 @@
 
 ## Propósito
 
-Pacote de namespace reservado para widgets visuais específicos de coaching. Os quatro
-widgets especializados que antes viviam aqui — `AnimatedCounter`, `BeliefThreatGauge`,
-`MomentumSparkline` e `UnderglowLabel` — foram removidos na PR #32 (commit `697bac7`)
-como parte da limpeza de módulos órfãos. O feedback de coaching agora é renderizado
-diretamente em `screens/coach_screen.py` via widgets Qt padrão e
-`widgets/charts/momentum_chart.py`.
+Widgets visuais específicos de coaching. O pacote hospeda o `ChatPanel`, o chat do
+coach integrado introduzido pelo rebuild design-atlas (frames 06/07): balões de
+mensagem, linha meta mono de proveniência, estados de disponibilidade e linha de
+input. É hospedado por `screens/coach_screen.py` — o antigo dock de chat QDockWidget
+foi removido com o redesign dos frames 06/07. (Uma geração anterior de widgets —
+`AnimatedCounter`, `BeliefThreatGauge`, `MomentumSparkline`, `UnderglowLabel` — foi
+removida na PR #32, commit `697bac7`; veja a nota histórica abaixo.)
 
 ## Inventário de arquivos
 
 | Arquivo | Propósito |
 |---------|-----------|
-| `__init__.py` | Marcador de pacote (vazio). |
+| `__init__.py` | Exports do pacote (`ChatPanel`). |
+| `chat_panel.py` | `ChatPanel` — painel de chat do coach integrado hospedado pela CoachScreen. |
 
 ## Nota histórica
 

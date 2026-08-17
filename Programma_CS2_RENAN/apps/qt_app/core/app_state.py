@@ -14,6 +14,9 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.qt_app_state")
 
+# F-0033: warn-once flag for the staticmethod import-failure branch.
+_BG_READ_ERROR_LOGGED = False
+
 _instance: "AppState | None" = None
 
 
@@ -98,8 +101,12 @@ class AppState(QObject):
             # R4 LOW: broken imports (venv damage, migration mid-flight)
             # made every 10s poll return None with ZERO diagnostics — the
             # UI showed "Service: Offline" forever. Warn once.
-            if not getattr(self, "_bg_read_error_logged", False):
-                self._bg_read_error_logged = True
+            # F-0033: this is a @staticmethod — `self` raised NameError,
+            # replacing the diagnostic with a crash in the poll thread.
+            # Warn-once via a module-level flag instead.
+            global _BG_READ_ERROR_LOGGED
+            if not _BG_READ_ERROR_LOGGED:
+                _BG_READ_ERROR_LOGGED = True
                 logger.warning("AppState background read failed", exc_info=True)
             return None
 
@@ -268,8 +275,8 @@ class AppState(QObject):
         """True when match_detail should prefer the pyqtgraph heatmap.
 
         Requires `pyqtgraph` to be installed; if absent, the match_detail
-        screen transparently falls back to the QtCharts widget and this
-        toggle is a no-op.
+        screen transparently falls back to the built-in QPainter chart
+        widget and this toggle is a no-op.
         """
         return self._read_toggle("USE_PYQTGRAPH_HEATMAP")
 

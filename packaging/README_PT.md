@@ -57,7 +57,7 @@ O spec inclui todos os arquivos necessários em tempo de execução:
 ### Hidden Imports (92 no total)
 
 Pacotes críticos que o PyInstaller não consegue detectar automaticamente:
-- **Qt:** PySide6 (QtCore, QtGui, QtWidgets, QtCharts)
+- **Qt:** PySide6 (QtCore, QtGui, QtWidgets)
 - **ML:** torch, torch.nn, torch.optim
 - **Banco de dados:** sqlmodel, sqlalchemy, alembic
 - **Parsing:** demoparser2, pandas, numpy

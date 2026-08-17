@@ -39,16 +39,10 @@ from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE  # noqa: E402
 DEFAULT_SHARDS_DIR = get_pro_demo_base() / "match_data"
 DB_PATH = PROJECT_ROOT / "Programma_CS2_RENAN" / "backend" / "storage" / "database.db"
 
-KNOWN_MAPS = {
-    "de_mirage": "mirage",
-    "de_dust2": "dust2",
-    "de_inferno": "inferno",
-    "de_nuke": "nuke",
-    "de_overpass": "overpass",
-    "de_ancient": "ancient",
-    "de_anubis": "anubis",
-    "de_vertigo": "vertigo",
-}
+# map-SSOT (CP0 #2): id->bare mapping derived from the authority.
+from Programma_CS2_RENAN.core.known_maps import KNOWN_MAP_NAMES as _KM
+
+KNOWN_MAPS = {f"de_{m}": m for m in _KM}
 PRO_CONFIDENCE = 0.7
 # Strategy windows in SECONDS — converted per shard from
 # match_metadata.tick_rate (26-TICK: the old *_TICKS constants baked in a
@@ -1248,7 +1242,7 @@ def bulk_insert(experiences: list[LabeledExperience], dry_run: bool = False) -> 
 
     from datetime import datetime, timezone
 
-    print(f"  Building + deduplicating records...")
+    print("  Building + deduplicating records...")
     rows = []
     seen_hashes = set()
     now = datetime.now(timezone.utc).isoformat()
@@ -1363,7 +1357,7 @@ def main() -> None:
     if args.limit > 0:
         shards = shards[: args.limit]
 
-    print(f"=== Shard Strategy Miner ===")
+    print("=== Shard Strategy Miner ===")
     print(f"  Shards dir: {args.shards_dir}")
     print(f"  Shards to process: {len(shards)}")
     print(f"  Mode: {'DRY RUN' if args.dry_run else 'LIVE'}\n")
@@ -1405,26 +1399,26 @@ def main() -> None:
     label_counts = Counter(exp.strategy_label for exp in all_labels)
     family_counts = Counter(exp.strategy_label.split(".")[0] for exp in all_labels)
 
-    print(f"\n=== Mining Summary ===")
+    print("\n=== Mining Summary ===")
     print(f"  Shards processed: {shard_stats['processed']}")
     print(f"  Shards skipped: {shard_stats['skipped']}")
     print(f"  Total rounds: {shard_stats['total_rounds']}")
     print(f"  Total labels mined: {len(all_labels)}")
     print(f"  Distinct strategy labels: {len(label_counts)}")
-    print(f"\n  By family:")
+    print("\n  By family:")
     for fam, count in sorted(family_counts.items()):
         print(f"    {fam}: {count}")
-    print(f"\n  By label (top 30):")
+    print("\n  By label (top 30):")
     for label, count in label_counts.most_common(30):
         print(f"    {label}: {count}")
 
     if args.dry_run:
-        print(f"\n  DRY RUN — no records inserted.")
+        print("\n  DRY RUN — no records inserted.")
         return
 
     # Insert
     if args.fresh:
-        print(f"\n=== Truncating existing miner rows ===")
+        print("\n=== Truncating existing miner rows ===")
         _conn = sqlite3.connect(str(DB_PATH), timeout=30)
         _conn.execute("PRAGMA journal_mode=WAL")
         # Only THIS miner's rows carry strategy_label; a blanket DELETE
@@ -1438,9 +1432,9 @@ def main() -> None:
         _conn.close()
         print(f"  Deleted {old_count} strategy-labeled rows (other experiences preserved)")
 
-    print(f"\n=== Inserting ===")
+    print("\n=== Inserting ===")
     stats = bulk_insert(all_labels, dry_run=args.dry_run)
-    print(f"\n=== Done ===")
+    print("\n=== Done ===")
     print(f"  Inserted: {stats['inserted']}")
     print(f"  Duplicates skipped: {stats['skipped_dup']}")
     print(f"  Errors: {stats['errors']}")

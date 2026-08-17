@@ -137,7 +137,7 @@ class DEMValidator:
                     return "CSGO"
                 else:
                     raise DEMValidationError(
-                        f"Invalid DEM header. Expected CS2 or CSGO magic number."
+                        "Invalid DEM header. Expected CS2 or CSGO magic number."
                     )
         except IOError as e:
             raise DEMValidationError(f"Failed to read file header: {e}")

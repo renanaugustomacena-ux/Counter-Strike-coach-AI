@@ -3,7 +3,7 @@
 import re
 
 from PySide6.QtCore import Qt, QThreadPool, QTimer, QUrl
-from PySide6.QtGui import QDesktopServices, QFont
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -94,9 +94,10 @@ class SteamConfigScreen(QWidget):
             )
             warn.setWordWrap(True)
             warn.setStyleSheet(
-                "color: #ffcc00; background-color: #332b00; "
-                "border: 1px solid #665500; border-radius: 4px; "
-                "padding: 8px; font-size: 13px;"
+                f"color: {get_tokens().warning}; "
+                f"background-color: {get_tokens().toast_warning_bg}; "
+                f"border: 1px solid {get_tokens().toast_warning_border}; "
+                "border-radius: 4px; padding: 8px; font-size: 13px;"
             )
             content_layout.addWidget(warn)
 
@@ -182,7 +183,7 @@ class SteamConfigScreen(QWidget):
         card_layout = QVBoxLayout(card)
         card_layout.setSpacing(8)
         lbl = QLabel(i18n.get_text(i18n_key))
-        lbl.setFont(QFont("Roboto", 14, QFont.Bold))
+        lbl.setFont(Typography.font("subtitle"))
         lbl.setStyleSheet(f"color: {get_tokens().text_primary};")
         card_layout.addWidget(lbl)
         return card, lbl
@@ -197,7 +198,7 @@ class SteamConfigScreen(QWidget):
         # 17-digit SteamID64 but any string used to be persisted — a typo
         # only surfaced later as an opaque Steam-sync failure.
         if steam_id and not re.fullmatch(r"\d{17}", steam_id):
-            self._show_status("Invalid SteamID64 — expected exactly 17 digits", "#f44336")
+            self._show_status("Invalid SteamID64 — expected exactly 17 digits", get_tokens().error)
             return
 
         if steam_id:
@@ -205,7 +206,7 @@ class SteamConfigScreen(QWidget):
         if api_key:
             save_user_setting("STEAM_API_KEY", api_key)
 
-        self._show_status("Saved!", "#4caf50")
+        self._show_status("Saved!", get_tokens().success)
         logger.info("Steam configuration saved (ID=%s)", "set" if steam_id else "empty")
 
     def _on_sync(self):
@@ -214,12 +215,12 @@ class SteamConfigScreen(QWidget):
 
         steam_id = self._steam_id_input.text().strip()
         if not steam_id:
-            self._show_status("Enter your SteamID64 first.", "#ff5555")
+            self._show_status("Enter your SteamID64 first.", get_tokens().error)
             return
 
         self._sync_btn.setEnabled(False)
         self._sync_btn.setText("Syncing...")
-        self._show_status("Connecting to Steam...", "#a0a0b0")
+        self._show_status("Connecting to Steam...", get_tokens().text_secondary)
 
         worker = Worker(self._bg_sync, steam_id)
         worker.signals.result.connect(self._on_sync_result)
@@ -238,21 +239,21 @@ class SteamConfigScreen(QWidget):
 
         if not result or "error" in result:
             err = result.get("error", "Unknown error") if result else "No response"
-            self._show_status(f"Sync failed: {err}", "#ff5555")
+            self._show_status(f"Sync failed: {err}", get_tokens().error)
             return
 
         nickname = result.get("nickname", "Unknown")
         hours = result.get("playtime_forever", 0)
         self._show_status(
             f"Synced! Steam: {nickname} | CS2: {hours:.0f} hours",
-            "#4caf50",
+            get_tokens().success,
         )
         logger.info("Steam sync success: %s (%.0fh)", nickname, hours)
 
     def _on_sync_error(self, error_msg: str):
         self._sync_btn.setEnabled(True)
         self._sync_btn.setText("Sync Now")
-        self._show_status(f"Sync failed: {error_msg}", "#ff5555")
+        self._show_status(f"Sync failed: {error_msg}", get_tokens().error)
         logger.error("Steam sync error: %s", error_msg)
 
     def _navigate(self, screen_name: str):

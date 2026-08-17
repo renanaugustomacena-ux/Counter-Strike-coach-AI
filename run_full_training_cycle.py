@@ -24,9 +24,10 @@ def _build_callbacks(args) -> CallbackRegistry:
 
     tb_writer = None
     if not args.no_tensorboard:
-        from Programma_CS2_RENAN.backend.nn.tensorboard_callback import TensorBoardCallback
-
-        from Programma_CS2_RENAN.backend.nn.tensorboard_callback import build_run_dir
+        from Programma_CS2_RENAN.backend.nn.tensorboard_callback import (
+            TensorBoardCallback,
+            build_run_dir,
+        )
 
         log_dir = args.tb_logdir or build_run_dir(getattr(args, "model_type", None) or "coach")
         tb = TensorBoardCallback(log_dir=log_dir)
@@ -221,6 +222,7 @@ def main():
     if run_eval:
         _run_eval_baseline("pre")
 
+    aborted_phases: list = []
     try:
         if args.model_type in ["all", "jepa"]:
             app_logger.info(">>> Starting Phase 1: JEPA Pre-Training (World Model) <<<")
@@ -234,7 +236,8 @@ def main():
                 val_samples=args.val_samples,
                 dry_run=args.dry_run,
             )
-            orchestrator_jepa.run_training()
+            jepa_ok = orchestrator_jepa.run_training()
+            aborted_phases += [] if jepa_ok else ["jepa"]
 
             if args.model_type == "all":
                 del orchestrator_jepa
@@ -257,7 +260,18 @@ def main():
                 callbacks=callbacks,
                 dry_run=args.dry_run,
             )
-            orchestrator_rap.run_training()
+            rap_ok = orchestrator_rap.run_training()
+            aborted_phases += [] if rap_ok else ["rap"]
+
+        # F-0043: an ABORTED phase (insufficient data / failed quality gate)
+        # exited 0 — automation (ingest_pro_demos retrain, batch scripts, the
+        # dry-run integrity test) read "success" with zero training done.
+        if aborted_phases:
+            app_logger.error(
+                "Training Cycle ABORTED for phase(s): %s — exiting 3.",
+                ", ".join(aborted_phases),
+            )
+            sys.exit(3)
 
         app_logger.info("Full Training Cycle Completed Successfully.")
 

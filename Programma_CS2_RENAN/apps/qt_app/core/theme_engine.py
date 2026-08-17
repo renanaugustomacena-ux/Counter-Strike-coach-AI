@@ -1,13 +1,14 @@
 """
-Theme engine for Qt — loads QSS stylesheets and manages the CS2/CSGO/CS1.6 palette.
+Theme engine for Qt — renders token-driven QSS and manages CS2/CSGO/CS1.6 skins.
 
-Reuses the palette data and rating functions from the existing theme.py (pure data,
-no Kivy imports needed for the constants themselves).
+Every color flows from design_tokens.py (generated from
+design/tokens/design-tokens.json) — the QSS template, the QPalette, and the
+rating helpers all read the same DesignTokens instance. No second palette.
 """
 
 import os
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QColor, QFontDatabase, QPalette
@@ -23,36 +24,10 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 _logger = get_logger("cs2analyzer.qt_theme_engine")
 
-# ── Palette data (mirrored from legacy_kivy/theme.py to avoid Kivy import chain) ──
-
-COLOR_GREEN = (0.30, 0.69, 0.31, 1)
-COLOR_YELLOW = (1.0, 0.60, 0.0, 1)
-COLOR_RED = (0.96, 0.26, 0.21, 1)
-COLOR_CARD_BG = (0.12, 0.12, 0.14, 1)
+THEME_NAMES = ("CS2", "CSGO", "CS1.6")
 
 RATING_GOOD = 1.10
 RATING_BAD = 0.90
-
-PALETTES = {
-    "CS2": {
-        "surface": [0.08, 0.08, 0.12, 0.85],
-        "surface_alt": [0.06, 0.06, 0.18, 0.9],
-        "accent_primary": [0.85, 0.4, 0.0, 1],
-        "chart_bg": "#1a1a1a",
-    },
-    "CSGO": {
-        "surface": [0.10, 0.11, 0.13, 0.85],
-        "surface_alt": [0.08, 0.10, 0.14, 0.9],
-        "accent_primary": [0.38, 0.49, 0.55, 1],
-        "chart_bg": "#1c1e20",
-    },
-    "CS1.6": {
-        "surface": [0.07, 0.10, 0.07, 0.85],
-        "surface_alt": [0.05, 0.14, 0.08, 0.9],
-        "accent_primary": [0.30, 0.69, 0.31, 1],
-        "chart_bg": "#181e18",
-    },
-}
 
 _THEMES_DIR = Path(__file__).parent.parent / "themes"
 _ASSETS_DIR = Path(__file__).parent.parent.parent.parent / "PHOTO_GUI"
@@ -75,18 +50,14 @@ _FONT_FILES = {
 }
 
 
-def rgba_to_qcolor(rgba: List[float]) -> QColor:
-    """Convert [r, g, b, a] (0-1 floats) to QColor."""
-    return QColor.fromRgbF(rgba[0], rgba[1], rgba[2], rgba[3] if len(rgba) > 3 else 1.0)
-
-
 def rating_color(rating: float) -> QColor:
-    """HLTV rating → green/yellow/red QColor."""
+    """HLTV rating → semantic token QColor (theme-tracking)."""
+    tokens = get_tokens()
     if rating > RATING_GOOD:
-        return rgba_to_qcolor(list(COLOR_GREEN))
+        return QColor(tokens.success)
     if rating < RATING_BAD:
-        return rgba_to_qcolor(list(COLOR_RED))
-    return rgba_to_qcolor(list(COLOR_YELLOW))
+        return QColor(tokens.error)
+    return QColor(tokens.warning)
 
 
 def rating_label(rating: float) -> str:
@@ -98,6 +69,58 @@ def rating_label(rating: float) -> str:
     if rating >= RATING_BAD:
         return "Average"
     return "Below Avg"
+
+
+def severity_bucket(severity: str) -> str:
+    """Collapse the DB/insight severity vocabulary into three words.
+
+    high|critical|error → "high" · medium|warning|warn → "medium" ·
+    everything else → "low". Case-insensitive; the single source of truth
+    for severity ranking across coach/match-detail surfaces.
+    """
+    sev = (severity or "").lower()
+    if sev in ("high", "critical", "error"):
+        return "high"
+    if sev in ("medium", "warning", "warn"):
+        return "medium"
+    return "low"
+
+
+def severity_color(severity: str) -> QColor:
+    """Severity → semantic token QColor (theme-tracking).
+
+    Buckets via :func:`severity_bucket` (high→error, medium→warning,
+    low→success) with one extension: the literal ``info`` severity maps to
+    the ``info`` token (DriversList / insight-card vocabulary).
+    """
+    tokens = get_tokens()
+    if (severity or "").lower() == "info":
+        return QColor(tokens.info)
+    bucket = severity_bucket(severity)
+    if bucket == "high":
+        return QColor(tokens.error)
+    if bucket == "medium":
+        return QColor(tokens.warning)
+    return QColor(tokens.success)
+
+
+class _ThemeRelay(QObject):
+    """Module-level theme_changed relay (theme-staleness fix, CP0 #4).
+
+    ThemeEngine instances are per-boot, so instance-styled widgets could
+    not subscribe to restyle themselves — chips styled at construction
+    kept the OLD theme after a live switch. Widgets connect to this
+    relay; Qt auto-disconnects destroyed receivers.
+    """
+
+    theme_changed = Signal(str)
+
+
+_relay = _ThemeRelay()
+
+
+def get_theme_relay() -> _ThemeRelay:
+    return _relay
 
 
 class ThemeEngine(QObject):
@@ -127,15 +150,9 @@ class ThemeEngine(QObject):
     def chart_bg(self) -> str:
         return self.tokens.chart_bg
 
-    def get_color(self, slot: str) -> QColor:
-        """Return QColor for a palette slot (surface, surface_alt, accent_primary)."""
-        palette = PALETTES.get(self._active, PALETTES["CS2"])
-        rgba = palette.get(slot, [0.08, 0.08, 0.12, 0.85])
-        return rgba_to_qcolor(rgba)
-
     def apply_theme(self, name: str, app: Optional[QApplication] = None):
         """Switch to a named theme. Renders QSS from template and sets QPalette."""
-        if name not in PALETTES:
+        if name not in THEME_NAMES:
             return
         self._active = name
         set_active_theme(name)
@@ -154,30 +171,22 @@ class ThemeEngine(QObject):
         )
         target.setStyleSheet(qss + font_rule)
 
-        # Set QPalette for widgets that don't use QSS
-        palette_data = PALETTES[name]
+        # QPalette for widgets that don't honor QSS — same token source.
         p = QPalette()
-
-        surface = rgba_to_qcolor(palette_data["surface"])
-        surface_alt = rgba_to_qcolor(palette_data["surface_alt"])
-        accent = rgba_to_qcolor(palette_data["accent_primary"])
-        text_color = QColor(220, 220, 220)
-        dim_text = QColor(160, 160, 160)
-
-        p.setColor(QPalette.Window, surface)
-        p.setColor(QPalette.WindowText, text_color)
-        p.setColor(QPalette.Base, surface_alt)
-        p.setColor(QPalette.AlternateBase, surface)
-        p.setColor(QPalette.Text, text_color)
-        p.setColor(QPalette.BrightText, QColor(255, 255, 255))
-        p.setColor(QPalette.Button, surface)
-        p.setColor(QPalette.ButtonText, text_color)
-        p.setColor(QPalette.Highlight, accent)
-        p.setColor(QPalette.HighlightedText, QColor(255, 255, 255))
-        p.setColor(QPalette.ToolTipBase, surface_alt)
-        p.setColor(QPalette.ToolTipText, text_color)
-        p.setColor(QPalette.PlaceholderText, dim_text)
-        p.setColor(QPalette.Link, accent)
+        p.setColor(QPalette.Window, QColor(tokens.surface_base))
+        p.setColor(QPalette.WindowText, QColor(tokens.text_primary))
+        p.setColor(QPalette.Base, QColor(tokens.surface_sunken))
+        p.setColor(QPalette.AlternateBase, QColor(tokens.surface_raised))
+        p.setColor(QPalette.Text, QColor(tokens.text_primary))
+        p.setColor(QPalette.BrightText, QColor(tokens.text_inverse))
+        p.setColor(QPalette.Button, QColor(tokens.surface_raised))
+        p.setColor(QPalette.ButtonText, QColor(tokens.text_primary))
+        p.setColor(QPalette.Highlight, QColor(tokens.accent_primary))
+        p.setColor(QPalette.HighlightedText, QColor(tokens.text_inverse))
+        p.setColor(QPalette.ToolTipBase, QColor(tokens.surface_overlay))
+        p.setColor(QPalette.ToolTipText, QColor(tokens.text_primary))
+        p.setColor(QPalette.PlaceholderText, QColor(tokens.text_tertiary))
+        p.setColor(QPalette.Link, QColor(tokens.accent_primary))
 
         target.setPalette(p)
 
@@ -186,6 +195,7 @@ class ThemeEngine(QObject):
 
         # Notify widgets that the theme changed
         self.theme_changed.emit(name)
+        _relay.theme_changed.emit(name)
 
     # ── Font Management ──
 
@@ -244,24 +254,25 @@ class ThemeEngine(QObject):
         return self._wallpaper_path
 
     def _update_wallpaper(self, theme_name: str):
-        """Set wallpaper to the first image in the theme's folder."""
-        folder = _THEME_WALLPAPER_FOLDER.get(theme_name, "cs2theme")
-        theme_dir = _ASSETS_DIR / folder
-        if not theme_dir.is_dir():
+        """Resolve the wallpaper from the persisted user choice (flat default).
+
+        The design atlas default is NO wallpaper — a flat ``surface_base``
+        canvas. Only an explicit user choice (persisted BACKGROUND_IMAGE
+        setting) brings one back:
+
+        - unset / empty  → flat (``""``)
+        - filename       → resolved inside the active theme's wallpaper
+          folder; missing there (e.g. after a theme switch) → flat.
+        """
+        from Programma_CS2_RENAN.core.config import get_setting
+
+        chosen = get_setting("BACKGROUND_IMAGE", None)
+        if not chosen:
             self._wallpaper_path = ""
             return
-
-        # Pick the first vertical wallpaper, or first image found
-        images = sorted(
-            f for f in os.listdir(theme_dir) if f.lower().endswith((".jpg", ".jpeg", ".png"))
-        )
-        # Prefer vertical wallpapers (they match the app's portrait-ish layout better)
-        vertical = [f for f in images if "vertical" in f.lower()]
-        pick = vertical[0] if vertical else (images[0] if images else "")
-        if pick:
-            self._wallpaper_path = str(theme_dir / pick)
-        else:
-            self._wallpaper_path = ""
+        folder = _THEME_WALLPAPER_FOLDER.get(theme_name, "cs2theme")
+        path = _ASSETS_DIR / folder / str(chosen)
+        self._wallpaper_path = str(path) if path.is_file() else ""
 
     def get_available_wallpapers(self, theme_name: str | None = None) -> list[str]:
         """Return list of wallpaper filenames for a theme."""
@@ -274,9 +285,19 @@ class ThemeEngine(QObject):
             f for f in os.listdir(theme_dir) if f.lower().endswith((".jpg", ".jpeg", ".png"))
         )
 
-    def set_wallpaper(self, filename: str):
-        """Set a specific wallpaper by filename."""
+    def resolve_wallpaper(self, filename: str) -> str:
+        """Absolute path of a wallpaper file in the active theme ("" if absent)."""
+        if not filename:
+            return ""
         folder = _THEME_WALLPAPER_FOLDER.get(self._active, "cs2theme")
         path = _ASSETS_DIR / folder / filename
-        if path.exists():
-            self._wallpaper_path = str(path)
+        return str(path) if path.is_file() else ""
+
+    def set_wallpaper(self, filename: str):
+        """Set a specific wallpaper by filename; ``""`` clears to flat."""
+        if not filename:
+            self._wallpaper_path = ""
+            return
+        resolved = self.resolve_wallpaper(filename)
+        if resolved:
+            self._wallpaper_path = resolved

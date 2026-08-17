@@ -33,6 +33,29 @@ import pytest
 # the budget — monolith-scale, not CI/laptop material (F7 class).
 pytestmark = pytest.mark.slow
 
+
+def _enough_training_data() -> bool:
+    """F-0043 companion: same idea as test_e2e's skip-gate — these tests
+    need a data box. On a small clone the entry point now honestly exits 3
+    ('Training Aborted'), which is correct behavior, not a save bug."""
+    try:
+        from sqlmodel import func, select
+
+        from Programma_CS2_RENAN.backend.storage.database import get_db_manager
+        from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
+
+        with get_db_manager().get_session() as session:
+            n = session.exec(select(func.count(PlayerMatchStats.id))).one()
+        return int(n) >= 5
+    except Exception:
+        return False
+
+
+_needs_data = pytest.mark.skipif(
+    not _enough_training_data(),
+    reason="needs a data box (>=5 PlayerMatchStats rows) — F-0043 data-gate",
+)
+
 # .../Counter-Strike-coach-AI-main (where run_full_training_cycle.py lives)
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ENTRY = "run_full_training_cycle.py"
@@ -67,6 +90,7 @@ def _checkpoints(models_root: Path) -> list:
 
 @pytest.mark.integration
 @pytest.mark.timeout(1000)
+@_needs_data
 def test_dry_run_writes_no_checkpoint(tmp_path):
     models_root = tmp_path / "brain"
     models_root.mkdir()
@@ -83,6 +107,7 @@ def test_dry_run_writes_no_checkpoint(tmp_path):
 
 @pytest.mark.integration
 @pytest.mark.timeout(1000)
+@_needs_data
 def test_real_run_writes_checkpoint(tmp_path):
     models_root = tmp_path / "brain"
     models_root.mkdir()

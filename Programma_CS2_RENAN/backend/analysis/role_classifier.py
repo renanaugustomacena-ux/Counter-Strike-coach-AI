@@ -106,6 +106,21 @@ ROLE_PROFILES = {
 }
 
 
+# F-0030: the stat keys the affinity scorers actually read. classify()
+# refuses dicts carrying none of them (see the vocabulary guard).
+_ROLE_VOCABULARY = frozenset(
+    {
+        "awp_kills",
+        "total_kills",
+        "entry_frags",
+        "rounds_played",
+        "assists",
+        "rounds_survived",
+        "solo_kills",
+    }
+)
+
+
 class RoleClassifier:
     """
     Classifies player roles from match statistics.
@@ -160,6 +175,20 @@ class RoleClassifier:
             logger.warning(
                 "Cold start: Cannot classify role without learned thresholds. "
                 "Returning FLEX with 0% confidence."
+            )
+            return PlayerRole.FLEX, 0.0, ROLE_PROFILES[PlayerRole.FLEX]
+
+        # F-0030 VOCABULARY GUARD: refuse stat dicts that carry NONE of the
+        # role-signal keys. A MATCH_AGGREGATE-shaped dict (kd_ratio present,
+        # role vocabulary absent) used to score 0 on every affinity except
+        # the IGL balanced-KD bonus — normalization then fabricated
+        # "IGL (100% confidence)" from a single feature. No vocabulary,
+        # no classification.
+        if not (_ROLE_VOCABULARY & player_stats.keys()):
+            logger.warning(
+                "Role classification refused: stats dict has none of the role "
+                "vocabulary keys %s — returning FLEX with 0%% confidence.",
+                sorted(_ROLE_VOCABULARY),
             )
             return PlayerRole.FLEX, 0.0, ROLE_PROFILES[PlayerRole.FLEX]
 

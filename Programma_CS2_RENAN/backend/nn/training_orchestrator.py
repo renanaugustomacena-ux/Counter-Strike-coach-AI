@@ -453,7 +453,7 @@ class TrainingOrchestrator:
                 "P3-D: Training ABORTED — pre-training quality check FAILED.\n%s",
                 quality_report.summary(),
             )
-            return
+            return False  # F-0043: aborted — callers/CLI must see non-success
 
         model = self._load_or_init_model()
 
@@ -472,7 +472,7 @@ class TrainingOrchestrator:
 
         if not preflight_train:
             logger.warning("Training Aborted: Insufficient Training Data")
-            return
+            return False  # F-0043: aborted — callers/CLI must see non-success
 
         total_train_samples = len(preflight_train) * self.batch_size
         _MIN_TRAINING_SAMPLES = 100
@@ -483,7 +483,7 @@ class TrainingOrchestrator:
                 total_train_samples,
                 _MIN_TRAINING_SAMPLES,
             )
-            return
+            return False  # F-0043: aborted — callers/CLI must see non-success
 
         logger.info(
             "B2: Training on ~%d samples/epoch (cap=%d, rotated), "
@@ -518,6 +518,7 @@ class TrainingOrchestrator:
 
         final_epoch = self._run_epoch_loop(trainer, model, val_data, context)
         self._finalize_training(model, final_epoch)
+        return True  # F-0043: training genuinely ran to completion
 
     def _fetch_batches(self, is_train=True, epoch=0):
         """Fetch and batch data from Manager.

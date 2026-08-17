@@ -1,9 +1,9 @@
 """
 QSS Template Renderer — generates theme-specific Qt stylesheets from a single template.
 
-Replaces three duplicate QSS files (cs2.qss, csgo.qss, cs16.qss) with one
-base.qss.template where every color is a $token_name variable substituted
-at runtime from the active DesignTokens instance.
+themes/base.qss.template is the sole stylesheet source: every color is a
+$token_name variable substituted at runtime from the active DesignTokens
+instance (one rendered stylesheet per theme, cached).
 """
 
 from dataclasses import asdict

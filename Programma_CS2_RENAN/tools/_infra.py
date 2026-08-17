@@ -311,7 +311,7 @@ class Console:
             if not r.passed and r.severity in (Severity.CRITICAL, Severity.ERROR)
         ]
         if hard_fails:
-            print(f"\n  Failures:")
+            print("\n  Failures:")
             for r in hard_fails:
                 err = f" — {r.error}" if r.error else ""
                 print(f"    {self._apply('[FAIL]', 'red')} {r.phase}/{r.name}{err}")
@@ -323,7 +323,7 @@ class Console:
             if not r.passed and r.severity not in (Severity.CRITICAL, Severity.ERROR)
         ]
         if warns:
-            print(f"\n  Warnings:")
+            print("\n  Warnings:")
             for r in warns:
                 err = f" — {r.error}" if r.error else ""
                 print(f"    {self._apply('[WARN]', 'yellow')} {r.phase}/{r.name}{err}")

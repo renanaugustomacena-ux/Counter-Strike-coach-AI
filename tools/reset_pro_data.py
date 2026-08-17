@@ -585,6 +585,29 @@ def phase_verify(preserve_hltv: bool = True) -> bool:
     return all_ok
 
 
+def _backup_main_db_first() -> None:
+    """Pre-delete safety net (W3): sqlite-API backup of database.db."""
+    import sqlite3
+
+    src_path = os.path.join(
+        PROJECT_ROOT, "Programma_CS2_RENAN", "backend", "storage", "database.db"
+    )
+    if not os.path.exists(src_path):
+        return
+    stamp = datetime.now().strftime("%Y%m%dT%H%M%S")
+    backups_dir = os.path.join(os.path.dirname(src_path), "backups")
+    os.makedirs(backups_dir, exist_ok=True)
+    dst_path = os.path.join(backups_dir, f"pre_reset_{stamp}.db")
+    src = sqlite3.connect(src_path)
+    dst = sqlite3.connect(dst_path)
+    try:
+        src.backup(dst)
+        log(f"  Backup written: {dst_path}", CYAN)
+    finally:
+        dst.close()
+        src.close()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Reset CS2 Analyzer data for fresh ingestion & training.",
@@ -608,6 +631,22 @@ def main() -> int:
         action="store_true",
         default=False,
         help="Skip interactive confirmation prompt",
+    )
+    # W3 safety retrofit (CP0 #6): this tool deletes MORE than
+    # wipe_for_reingest_safe yet had none of its safety generation.
+    # DRY-RUN is now the default; --execute is required to delete, and a
+    # sqlite backup of database.db is taken first (gold-standard family).
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        default=False,
+        help="Actually delete. Without this flag the tool only PRINTS the plan.",
+    )
+    parser.add_argument(
+        "--no-backup",
+        action="store_true",
+        default=False,
+        help="Skip the pre-delete database.db backup (not recommended).",
     )
     args = parser.parse_args()
 
@@ -636,11 +675,18 @@ def main() -> int:
         preserved.insert(0, "HLTV pro stats")
     log(f"\nPreserved: {', '.join(preserved)}")
 
+    if not args.execute:
+        log("DRY-RUN - nothing deleted. Re-run with --execute to proceed.", YELLOW + BOLD)
+        return 0
+
     if not args.yes:
         confirm = input(f"\n{BOLD}Proceed? [y/N]: {RESET}").strip().lower()
         if confirm != "y":
             log("\nAborted.", YELLOW)
             return 1
+
+    if not args.no_backup:
+        _backup_main_db_first()
 
     phase_main_database(preserve_hltv=preserve_hltv)
     phase_hltv_metadata(preserve_hltv=preserve_hltv)

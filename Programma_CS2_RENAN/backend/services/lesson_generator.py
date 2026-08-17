@@ -16,6 +16,9 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from Programma_CS2_RENAN.backend.services.llm_service import check_ollama_status, get_llm_service
+from Programma_CS2_RENAN.observability.logger_setup import get_logger
+
+logger = get_logger("cs2analyzer.lesson_generator")
 
 # F5-18: Named thresholds — no magic numbers in lesson generation logic.
 _ADR_STRONG_THRESHOLD: float = 75.0  # ADR above this = "good impact"

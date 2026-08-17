@@ -485,7 +485,7 @@ class MatchDataManager:
                 except Exception:
                     # R4 LOW: never swallow silently — the disconnect itself
                     # still raises below; this only affects observability.
-                    logger.warning(
+                    _logger.warning(
                         "WR-14: could not record the storage-disconnect "
                         "notification (state manager unavailable?)",
                         exc_info=True,
@@ -827,14 +827,14 @@ class MatchDataManager:
             if 32 <= candidate <= 256:
                 rate = candidate
             else:
-                logger.warning(
+                _logger.warning(
                     "Match %s has no usable tick_rate (%r) — memory window "
                     "falls back to 64 tick/s",
                     match_id,
                     candidate,
                 )
         except Exception:
-            logger.warning(
+            _logger.warning(
                 "Metadata lookup failed for match %s — memory window falls " "back to 64 tick/s",
                 match_id,
                 exc_info=True,

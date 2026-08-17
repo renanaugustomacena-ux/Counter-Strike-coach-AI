@@ -82,9 +82,21 @@ class MatchHistoryViewModel(QObject):
                     "avg_deaths": m.avg_deaths,
                     "avg_adr": m.avg_adr,
                     "avg_kast": m.avg_kast,
+                    "avg_hs": m.avg_hs,
                     "kd_ratio": m.kd_ratio,
+                    "clutch_win_pct": m.clutch_win_pct,
                     "is_pro": m.is_pro,
                     "player_name": m.player_name,
+                    # FIELD-GAP: PlayerMatchStats stores only clutch_win_pct
+                    # (0..1) — no clutches_won / clutches_total counts, so the
+                    # frame-08 "clutch 2/3" form can't be produced from the DB.
+                    # MatchRowCard renders the pct fallback when counts are
+                    # absent from the payload.
+                    # FIELD-GAP: no demo_size_mb column (demo file size is not
+                    # recorded at ingest); MatchRowCard renders "demo —".
+                    # FIELD-GAP: no pro event columns (pro_teams / pro_event /
+                    # pro_score à la "Vitality vs NAVI · ESL Pro League ·
+                    # 16-11 CT"); pro rows fall back to the personal stat line.
                 }
                 for m in results
             ]

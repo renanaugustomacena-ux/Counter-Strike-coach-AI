@@ -55,6 +55,7 @@ class FilterChip(QFrame):
 
         self.set_count(count)
         self.refresh_styling()
+        self._subscribe_theme_relay()
 
     # ── Public API ──
 
@@ -77,6 +78,13 @@ class FilterChip(QFrame):
         else:
             self._count_label.setText(f"·  {count}")
             self._count_label.setVisible(True)
+
+    def _subscribe_theme_relay(self) -> None:
+        # CP0 #4: self-restyle on live theme switch (relay auto-
+        # disconnects when this widget is destroyed).
+        from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import get_theme_relay
+
+        get_theme_relay().theme_changed.connect(lambda _n: self.refresh_styling())
 
     def refresh_styling(self) -> None:
         """Re-read tokens and repaint. Call after a theme change."""

@@ -19,7 +19,6 @@ Usage:
 
 import ast
 import json
-import os
 import re
 import sys
 from collections import defaultdict
@@ -372,9 +371,9 @@ def format_markdown(report: dict) -> str:
 
     lines.append(f"# Audit Report: `{sub}`")
     lines.append(f"\n**Date:** {report['scan_date']}")
-    lines.append(f"\n## Summary\n")
-    lines.append(f"| Metric | Value |")
-    lines.append(f"|--------|-------|")
+    lines.append("\n## Summary\n")
+    lines.append("| Metric | Value |")
+    lines.append("|--------|-------|")
     lines.append(f"| Files | {s['total_files']} |")
     lines.append(f"| Total LOC | {s['total_loc']} |")
     lines.append(f"| Files with tests | {s['files_with_tests']} ({s['test_coverage_pct']}%) |")
@@ -382,7 +381,7 @@ def format_markdown(report: dict) -> str:
     lines.append(f"| High complexity functions (>10) | {s['high_complexity_functions']} |")
     lines.append(f"| TODO/FIXME/HACK markers | {s['todos']} |")
 
-    lines.append(f"\n## Module Registry\n")
+    lines.append("\n## Module Registry\n")
     lines.append("| File | LOC | Classes | Functions | Test | Violations | Max Complexity |")
     lines.append("|------|-----|---------|-----------|------|------------|----------------|")
     for f in report["files"]:
@@ -398,7 +397,7 @@ def format_markdown(report: dict) -> str:
         )
 
     if report["high_complexity"]:
-        lines.append(f"\n## High Complexity Functions (>10)\n")
+        lines.append("\n## High Complexity Functions (>10)\n")
         lines.append("| File | Function | Line | Complexity |")
         lines.append("|------|----------|------|------------|")
         for hc in sorted(report["high_complexity"], key=lambda x: -x["complexity"]):
@@ -407,7 +406,7 @@ def format_markdown(report: dict) -> str:
             )
 
     if report["todos"]:
-        lines.append(f"\n## TODO/FIXME/HACK Markers\n")
+        lines.append("\n## TODO/FIXME/HACK Markers\n")
         lines.append("| File | Line | Text |")
         lines.append("|------|------|------|")
         for td in report["todos"]:
@@ -421,7 +420,7 @@ def format_markdown(report: dict) -> str:
             if v["type"] != "todo":
                 violation_types[v["type"]] += 1
     if violation_types:
-        lines.append(f"\n## Pattern Violations by Type\n")
+        lines.append("\n## Pattern Violations by Type\n")
         lines.append("| Type | Count |")
         lines.append("|------|-------|")
         for vtype, count in sorted(violation_types.items(), key=lambda x: -x[1]):

@@ -88,6 +88,10 @@ class MatchDetailViewModel(QObject):
 
             stats_dict = {}
             if match_stats:
+                # Every field below exists on backend.storage.db_models
+                # .PlayerMatchStats (frame-09 Overview consumes them). The
+                # kill-enrichment pct fields are model columns too, though
+                # older ingests may have left them at their 0.0 default.
                 stats_dict = {
                     "demo_name": match_stats.demo_name,
                     "match_date": match_stats.match_date,
@@ -100,6 +104,29 @@ class MatchDetailViewModel(QObject):
                     "avg_hs": match_stats.avg_hs,
                     "kpr": match_stats.kpr,
                     "dpr": match_stats.dpr,
+                    # HLTV 2.0 per-match components
+                    "rating_impact": match_stats.rating_impact,
+                    "rating_survival": match_stats.rating_survival,
+                    "rating_kast": match_stats.rating_kast,
+                    "rating_kpr": match_stats.rating_kpr,
+                    "rating_adr": match_stats.rating_adr,
+                    # Trade / duel metrics (ratios 0-1)
+                    "trade_kill_ratio": match_stats.trade_kill_ratio,
+                    "was_traded_ratio": match_stats.was_traded_ratio,
+                    "opening_duel_win_pct": match_stats.opening_duel_win_pct,
+                    "clutch_win_pct": match_stats.clutch_win_pct,
+                    "positional_aggression_score": match_stats.positional_aggression_score,
+                    # Kill enrichment (ratios 0-1)
+                    "thrusmoke_kill_pct": match_stats.thrusmoke_kill_pct,
+                    "wallbang_kill_pct": match_stats.wallbang_kill_pct,
+                    "noscope_kill_pct": match_stats.noscope_kill_pct,
+                    "blind_kill_pct": match_stats.blind_kill_pct,
+                    # Utility breakdown
+                    "he_damage_per_round": match_stats.he_damage_per_round,
+                    "molotov_damage_per_round": match_stats.molotov_damage_per_round,
+                    "smokes_per_round": match_stats.smokes_per_round,
+                    "flash_assists": match_stats.flash_assists,
+                    "unused_utility_per_round": match_stats.unused_utility_per_round,
                 }
 
             rounds_data = [
@@ -110,6 +137,8 @@ class MatchDetailViewModel(QObject):
                     "deaths": r.deaths,
                     "damage_dealt": r.damage_dealt,
                     "opening_kill": r.opening_kill,
+                    # RoundStats.opening_death — feeds the Overview OK-delta caption
+                    "opening_death": r.opening_death,
                     "equipment_value": r.equipment_value,
                     "round_won": r.round_won,
                 }

@@ -5,10 +5,10 @@ action button or label.
 """
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 
 
 class SectionHeader(QWidget):
@@ -38,12 +38,12 @@ class SectionHeader(QWidget):
         left.setSpacing(2)
 
         self._title_label = QLabel(title)
-        self._title_label.setFont(QFont("Roboto", tokens.font_size_title, QFont.Bold))
+        self._title_label.setFont(Typography.font("title"))
         self._title_label.setStyleSheet(f"color: {tokens.text_primary}; background: transparent;")
         left.addWidget(self._title_label)
 
         self._subtitle_label = QLabel(subtitle)
-        self._subtitle_label.setFont(QFont("Roboto", tokens.font_size_body))
+        self._subtitle_label.setFont(Typography.font("body"))
         self._subtitle_label.setStyleSheet(
             f"color: {tokens.text_secondary}; background: transparent;"
         )

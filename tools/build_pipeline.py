@@ -136,14 +136,21 @@ class IndustrialBuildPipeline:
     def execute(self):
         console.print(
             Panel.fit(
-                f"[bold cyan]MACENA CS2 ANALYZER[/bold cyan]\nIndustrial Build Pipeline v2.0",
+                "[bold cyan]MACENA CS2 ANALYZER[/bold cyan]\nIndustrial Build Pipeline v2.0",
                 title="System Init",
                 border_style="blue",
             )
         )
 
-        # 1. Sanitization
-        if not self.run_stage(
+        # 1. Sanitization — DESTRUCTIVE (deletes database.db, hltv_metadata.db,
+        # match_data/, models/, logs/). F-0040: NEVER in test-only mode — the
+        # old order wiped live data on `--test-only` (and verify_all_safe's
+        # special-cased run made that wipe deterministic on every sweep).
+        if self.test_only:
+            console.print(
+                "[info]Test-Only Mode — skipping Project Sanitization (destructive stage).[/info]"
+            )
+        elif not self.run_stage(
             "Project Sanitization", f'"{sys.executable}" tools/Sanitize_Project.py --yes'
         ):
             return False
