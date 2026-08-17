@@ -22,6 +22,7 @@ torch>=2.1.0,<3.0  # platform-specific (ROCm/CUDA/CPU); range pin intentional
 numpy==2.4.3
 scipy==1.17.1
 scikit-learn==1.8.0
+tensorboard==2.21.0  # training observability; TensorBoardCallback is inert without it
 
 # --- Web & API ---
 fastapi==0.135.3

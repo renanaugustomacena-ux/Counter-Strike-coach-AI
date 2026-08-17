@@ -1,5 +1,5 @@
 {
-  "file_count": 309,
+  "file_count": 310,
   "generator": "sync_integrity_manifest.py",
   "hashes": {
     "__init__.py": "d3074031129007f4a6dd65765a0faaad39df9ba8ee41ebe0c94c7f18598c12d0",
@@ -156,6 +156,7 @@
     "backend/nn/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "backend/nn/advanced/__init__.py": "3971d5e4c0ae524c1e60d8936ca3103a1689b0c89b4591b6ece3283d793254c7",
     "backend/nn/coach_manager.py": "21f5c9e9d176d8a46d17cc4c23658bea50cf7fc5cbd88b746d2237b3b2840a6a",
+    "backend/nn/collapse_metrics.py": "61cd4c8e91fe06c9d116c457293e492b336140ed142988b8c925a2a107383c93",
     "backend/nn/config.py": "1c115b750c5cb5174593f85edeebe3670b1f95d43249fbbd7a72b6eeb29e4c46",
     "backend/nn/data_quality.py": "0860ec134d60f068a9794a6b869b4710bff502e5322d51e98d089ec6baaba2a8",
     "backend/nn/dataset.py": "48c044a0836d27fe50f5ed3aeaade64879737e76421750ed3501758b9ef2c4be",
@@ -179,7 +180,7 @@
     "backend/nn/inference/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "backend/nn/inference/ghost_engine.py": "6b4aeac5a32f1d4da1376c14085d079d6acfd18d95b35588018fe292bcfea299",
     "backend/nn/jepa_model.py": "03da5559f35719f00e2a9ad919069dc62526dd04159052b7478fe861c39cf58d",
-    "backend/nn/jepa_train.py": "25b76c9313ea837509af54104288ee8b9c7b7c65006b3cbf2d5a0809167c8276",
+    "backend/nn/jepa_train.py": "38b0b436139b1b1078624877d0a79be8b86d86a4aa689c96e7a3b00d297bf74c",
     "backend/nn/jepa_trainer.py": "f945e645402e6fb9430d3d7fa806a65003d5e8a50ed64a3ca5dd3b296f2decdb",
     "backend/nn/layers/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "backend/nn/layers/superposition.py": "98caf630a9c1a312b5a224c07d06d823245b3a84a0ca19481c0b5dcd72e296b9",
@@ -197,13 +198,13 @@
     "backend/nn/rap_coach/strategy.py": "c6a1518f65cce4b90180e6f21b3e2e15cd06a97eec34e3eba7707247cfb5b333",
     "backend/nn/rap_coach/trainer.py": "3c7051b5e6d65a07613c385291d06ed929bede5036649ea17aa7d7d207db62d1",
     "backend/nn/role_head.py": "6e56c8a3f3b60e08305213701860cff0a40938aed3446857185fa74991a8424c",
-    "backend/nn/tensorboard_callback.py": "95d3de2add6908a76e6f5490f8a09a59493291332d493393c1c929939c72c3d0",
+    "backend/nn/tensorboard_callback.py": "f05ecc409ae613aa76b37cf658aba71f1f82c81b65eea94f28ba2e2dacfd4dad",
     "backend/nn/train.py": "fd0774320685c88433ebb27499d1e007a10315032ef106736b1fedd3340c874b",
     "backend/nn/training_callbacks.py": "698d05bdb078046424d9ed0de0932e27b757b24dfc78dac90d4228d09a44b0d5",
     "backend/nn/training_config.py": "d26faefb1ce391cd8e8a4ec0ff70606e551b060ed49e933815c49880047d4820",
     "backend/nn/training_controller.py": "8a5176b6aafa1f54f41074abe5ac1581ebec0b9a511afaa257406d89dd6d4e92",
     "backend/nn/training_monitor.py": "ad66d4b4f0847a2f740192f05e2d3e2a885e878455f5fe8a831578a73ec2a058",
-    "backend/nn/training_orchestrator.py": "83f9521dde7f692825b7c719a90ddb9a0837228bee369fbec5cdcc029b835c38",
+    "backend/nn/training_orchestrator.py": "93d1695bd468ddc1084e80db60a03aebf2f92f2de48aefb65b572b7ddabe505f",
     "backend/nn/win_probability_trainer.py": "08eb06bfb5132049f179b21913ba0870f46aef216bafa132b55606427e052f0f",
     "backend/onboarding/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "backend/onboarding/new_user_flow.py": "7261d0722370ac0a210de9fa9923969ace0610b6054268a6e65187afe747582e",
@@ -309,7 +310,7 @@
     "reporting/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "reporting/report_generator.py": "84b7e4f76e6460c9049ea1bfe93173405627d0c4d0f0aa55fe835c0b70583244",
     "reporting/visualizer.py": "763f7562da9304bf64b90e01267a7eff395b50b35128c4c7976cc0658277df54",
-    "run_ingestion.py": "dda6192608f91acf82ea7738a7e493c28a321c1c03376e7fd90e37e10ed91a45",
+    "run_ingestion.py": "ebcd87ebedac33822163de1f2f74c8d40ab3c09e673ce486432a3fe6ca543752",
     "run_worker.py": "ccbf40a32e038cff555e85ce4516cc8084d6312e01bf32331e0be0dadb9a0716"
   },
   "version": "2.0"

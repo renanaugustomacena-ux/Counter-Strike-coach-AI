@@ -441,7 +441,7 @@ def train_jepa_pretrain(
     batch_size: int = 16,
     learning_rate: float = 1e-4,
     num_negatives: int = 8,
-    log_dir: str = "runs/jepa_pretrain",
+    log_dir: str = None,
 ):
     """JEPA pre-training on pro demos (self-supervised)."""
     from Programma_CS2_RENAN.backend.nn.config import set_global_seed
@@ -452,8 +452,17 @@ def train_jepa_pretrain(
     set_global_seed()  # P1-02: Reproducible training
     logger.info("Starting JEPA pre-training...")
 
+    from Programma_CS2_RENAN.backend.nn.embedding_projector import EmbeddingProjector
+    from Programma_CS2_RENAN.backend.nn.tensorboard_callback import build_run_dir
+
+    if log_dir is None:
+        log_dir = build_run_dir("jepa_pretrain")
+
     tb_callback = TensorBoardCallback(log_dir=log_dir, model_type="jepa_pretrain")
-    callbacks = CallbackRegistry([tb_callback])
+    # Layer 4 shares the writer rather than opening its own — one event file
+    # per run keeps the dashboard readable.
+    projector = EmbeddingProjector(tb_writer=tb_callback.writer, interval=5)
+    callbacks = CallbackRegistry([tb_callback, projector])
 
     def _worker_init(worker_id: int) -> None:
         set_global_seed(42 + worker_id)
@@ -483,7 +492,15 @@ def train_jepa_pretrain(
         "num_batches": len(dataloader),
         "device": str(device),
     }
-    callbacks.fire("on_train_start", model=model, config=train_config)
+    # probe_batch is merged in at fire time rather than stored in train_config:
+    # train_config is persisted into the checkpoint by _jepa_pretrain_finalize
+    # (model._training_metadata -> torch.save), so putting a batch of tensors
+    # in it would bloat every saved checkpoint on disk.
+    callbacks.fire(
+        "on_train_start",
+        model=model,
+        config={**train_config, "probe_batch": next(iter(dataloader))},
+    )
 
     for epoch in range(num_epochs):
         model.train()
