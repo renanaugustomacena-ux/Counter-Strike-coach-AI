@@ -23,6 +23,58 @@ from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.nn.tensorboard")
 
+
+def resolve_device_tag() -> str:
+    """Name the accelerator training actually ran on, not the one requested."""
+    if not torch.cuda.is_available():
+        return "cpu"
+    if getattr(torch.version, "hip", None):
+        return "rocm"
+    if getattr(torch.version, "cuda", None):
+        return "cuda"
+    return "cpu"
+
+
+def _extract_probe_context(batch: Any) -> Optional["torch.Tensor"]:
+    """Best-effort context tensor from a heterogeneous probe batch.
+
+    The two training paths hand over different shapes: jepa_train's dataloader
+    yields dicts with a "context" key, while TrainingOrchestrator yields raw
+    window tensors. Returns None when nothing tensor-shaped is found.
+    """
+    if isinstance(batch, torch.Tensor):
+        return batch
+    if isinstance(batch, dict):
+        for key in ("context", "x", "input"):
+            value = batch.get(key)
+            if isinstance(value, torch.Tensor):
+                return value
+        for value in batch.values():
+            if isinstance(value, torch.Tensor):
+                return value
+        return None
+    if isinstance(batch, (list, tuple)):
+        for value in batch:
+            if isinstance(value, torch.Tensor):
+                return value
+    return None
+
+
+def build_run_dir(model_type: str) -> str:
+    """Return RUNS_DIR/<model_type>/<UTC timestamp>-<device tag>.
+
+    Scoping per run keeps experiments from piling into one directory, and the
+    device tag stops a Windows CPU smoke run from being mistaken for a real
+    Linux/ROCm run in the dashboard.
+    """
+    from datetime import datetime, timezone
+
+    from Programma_CS2_RENAN.core.config import RUNS_DIR
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return os.path.join(RUNS_DIR, model_type, f"{stamp}-{resolve_device_tag()}")
+
+
 try:
     from torch.utils.tensorboard import SummaryWriter
 
@@ -59,6 +111,8 @@ class TensorBoardCallback(TrainingCallback):
         self._model_type = model_type
         self._epoch = 0
         self._global_step = 0
+        self._warned_unavailable = False
+        self._probe_batch: Optional[Any] = None
         self.writer: Optional[Any] = None
 
         # Stage-4 relocation: default log_dir under the package's RUNS_DIR so
@@ -69,6 +123,12 @@ class TensorBoardCallback(TrainingCallback):
 
             log_dir = os.path.join(RUNS_DIR, "coach_training")
 
+        if not self._active and os.environ.get("CS2_TB_STRICT") == "1":
+            raise RuntimeError(
+                "CS2_TB_STRICT=1 and tensorboard is not installed. "
+                "Install it with: pip install tensorboard==2.21.0"
+            )
+
         if self._active:
             self.writer = SummaryWriter(log_dir)
             logger.info("TensorBoard writer initialized: %s", log_dir)
@@ -77,8 +137,21 @@ class TensorBoardCallback(TrainingCallback):
 
     def on_train_start(self, model, config: Dict[str, Any]) -> None:
         if not self._active or self.writer is None:
+            if not self._warned_unavailable:
+                self._warned_unavailable = True
+                logger.warning(
+                    "TensorBoard unavailable — no metrics will be recorded for "
+                    "this run. Install tensorboard==2.21.0, or set "
+                    "CS2_TB_STRICT=1 to fail instead of degrading."
+                )
             return
         self._model_type = config.get("model_type", self._model_type)
+        self._probe_batch = config.get("probe_batch")
+        if self._probe_batch is None:
+            logger.warning(
+                "No probe_batch supplied — collapse metrics (embed/*) will not "
+                "be logged for this run."
+            )
         self._create_custom_layout()
 
     def on_epoch_start(self, epoch: int) -> None:
@@ -142,6 +215,9 @@ class TensorBoardCallback(TrainingCallback):
                 for i, pg in enumerate(param_groups):
                     self.writer.add_scalar(f"lr/group_{i}", pg["lr"], epoch)
 
+        # ── Representation health ──
+        self._log_collapse_metrics(model, epoch)
+
         # ── Histograms ──
         self._log_parameter_histograms(model, epoch)
         self._log_belief_histogram(model, epoch)
@@ -164,6 +240,57 @@ class TensorBoardCallback(TrainingCallback):
             logger.info("TensorBoard writer closed")
 
     # ── Histogram Helpers ────────────────────────────────────────────
+
+    def _log_collapse_metrics(self, model, epoch: int) -> None:
+        """Log representation-collapse indicators from the fixed probe batch.
+
+        Silent no-ops here are deliberate and narrow: a model without a
+        context_encoder (e.g. RAP) simply has nothing to measure.
+        """
+        if self.writer is None or self._probe_batch is None:
+            return
+
+        encoder = getattr(model, "context_encoder", None)
+        if encoder is None:
+            return
+
+        context = _extract_probe_context(self._probe_batch)
+        if context is None:
+            return
+
+        from Programma_CS2_RENAN.backend.nn.collapse_metrics import (
+            compute_collapse_metrics,
+            compute_ema_drift,
+        )
+
+        try:
+            with torch.no_grad():
+                try:
+                    device = next(model.parameters()).device
+                except StopIteration:
+                    device = torch.device("cpu")
+                embeddings = encoder(context.to(device))
+        except Exception as exc:
+            # A probe the encoder cannot consume is a wiring problem, not a
+            # training problem. Say so once, then stop retrying every epoch.
+            self._probe_batch = None
+            logger.warning(
+                "Probe batch is not consumable by context_encoder (%s) — "
+                "collapse metrics disabled for this run.",
+                exc,
+            )
+            return
+
+        for name, value in compute_collapse_metrics(embeddings).items():
+            self.writer.add_scalar(f"embed/{name}", value, epoch)
+
+        target = getattr(model, "target_encoder", None)
+        if target is not None:
+            self.writer.add_scalar(
+                "embed/ema_drift",
+                compute_ema_drift(encoder.parameters(), target.parameters()),
+                epoch,
+            )
 
     def _log_parameter_histograms(self, model, epoch: int) -> None:
         """Log parameter and gradient distributions."""

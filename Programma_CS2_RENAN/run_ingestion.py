@@ -211,7 +211,7 @@ def _execute_rap_logic(db_manager, player_name, skill_level: int = 5):
         return []
     recon, model, comm = RAPStateReconstructor(), RAPCoachModel(), RAPCommunication()
     try:
-        model = load_nn("latest_rap", model, user_id=player_name)
+        model = load_nn("rap_coach", model, user_id=player_name)
     except Exception:
         logger.warning(
             "RAP model checkpoint incompatible for %s. Skipping RAP insights.", player_name
