@@ -74,6 +74,7 @@ def build_run_dir(model_type: str) -> str:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     return os.path.join(RUNS_DIR, model_type, f"{stamp}-{resolve_device_tag()}")
 
+
 try:
     from torch.utils.tensorboard import SummaryWriter
 

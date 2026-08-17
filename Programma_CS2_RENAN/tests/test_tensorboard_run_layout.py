@@ -10,10 +10,7 @@ import re
 
 import pytest
 
-from Programma_CS2_RENAN.backend.nn.tensorboard_callback import (
-    build_run_dir,
-    resolve_device_tag,
-)
+from Programma_CS2_RENAN.backend.nn.tensorboard_callback import build_run_dir, resolve_device_tag
 
 pytestmark = pytest.mark.timeout(60)
 
