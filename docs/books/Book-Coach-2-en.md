@@ -3,6 +3,8 @@
 > **Topics:** Coaching Services (4-mode pipeline: COPER/Hybrid/RAG/Base, Ollama LLM), Coaching Engines (11 game-theoretic and statistical analysis engines), Knowledge and Retrieval (RAG + COPER Experience Bank), Analysis Engines (Bayesian belief model, expectiminimax, momentum, roles, deception index, entropy, engagement range, utility economy, win probability), Processing and Feature Engineering (25-dim canonical vector, professional baselines), Control Module (lifecycle daemon, ingestion queue, ML control), Progress and Trends (longitudinal tracking), Database and Storage (three-tier SQLite WAL schema), Training and Orchestration Pipeline, Loss Functions.
 >
 > **Author:** Renan Augusto Macena
+>
+> **Base revision:** in sync with `Book-Coach-2.md` (Italian canonical) as of 2026-08-15.
 
 ---
 
@@ -81,10 +83,10 @@ sequenceDiagram
 
 | Tier            | Method                          | Confidence | When used                                          |
 | --------------- | ------------------------------- | ---------- | -------------------------------------------------- |
-| 1. **COPER**    | `_generate_coper_insights()`    | Maximum    | Default — experience-based synthesis               |
-| 2. **Hybrid**   | `_generate_hybrid_insights()`   | High       | If COPER lacks enough experience                   |
-| 3. **Base RAG** | `_enhance_with_rag()`           | Medium     | If the ML models are unavailable                   |
-| 4. **Template** | Basic statistical template      | Low        | Last resort — always returns *something*           |
+| 1. **COPER**    | `_generate_coper_insights()`    | Maximum    | If `USE_COPER_COACHING` (default **True**) + map + tick data available; executed with a **30s timeout** |
+| 2. **Hybrid**   | `_generate_hybrid_insights()`   | High       | If `USE_HYBRID_COACHING` (default False) + player_stats available |
+| 3. **Base RAG** | `_enhance_with_rag()`           | Medium     | Traditional path (`generate_corrections`) enriched by RAG if `USE_RAG_COACHING` (default False) + map |
+| 4. **Template** | Basic statistical template      | Low        | Last resort — always returns *something* (`_save_generic_insight`, guard C-01) |
 
 ```mermaid
 flowchart TB
@@ -166,7 +168,7 @@ flowchart LR
 
 ### -Additional Services (Not previously documented)
 
-Beyond the three main services (CoachingService, OllamaCoachWriter, AnalysisOrchestrator), the `backend/services/` directory contains **7 additional services** that complete the coaching ecosystem:
+Beyond the three main services (CoachingService, OllamaCoachWriter, AnalysisOrchestrator), the `backend/services/` directory contains **8 additional services** that complete the coaching ecosystem:
 
 #### CoachingDialogueEngine (`coaching_dialogue.py`)
 
@@ -208,6 +210,37 @@ sequenceDiagram
 
 **History safety (F5-06):** The user message is added to history only *after* a valid response is obtained from the LLM, avoiding inconsistent states on exceptions.
 
+
+##### The agentic phase: the coach queries the database on its own
+
+Until August 2026 the coach received a pre-packaged context and, if the question needed a datum nobody had placed in front of it, it answered that it had no access to match data. The context was decided *before* knowing what would be needed.
+
+Today, when the LLM model supports native tool-calling, `respond()` first attempts an **agentic loop** in which the coach itself asks for what it lacks. Four tools, deliberately few and coarse-grained:
+
+| Tool | What it returns |
+|---|---|
+| `list_matches(team?, map_name?)` | The list of available matches, filterable by team or by map |
+| `get_match_overview(demo_name)` | The overview of a match: score, scoreboard, per-player metrics |
+| `get_round_details(demo_name, rounds[])` | The detail of specific rounds |
+| `lookup_player(name)` | The stat card of a professional player |
+
+The loop runs at most `_MAX_TOOL_ROUNDS = 4` times plus a final round in which an answer is mandatory, and executes at most four calls per round. Between rounds it checks whether the user has cancelled. If the model does not support tools, the method returns `None` and the classic pre-loaded-context path takes over: the agentic phase is an improvement, not a requirement.
+
+**Two design decisions are worth telling.**
+
+*The inventory in the system prompt.* The prompt includes a `MATCH DATABASE INVENTORY` block listing the matches actually present (those with per-round data first, up to `_INVENTORY_LIMIT = 60`). The reason is as simple as it is binding: **an LLM cannot choose a match it has never been shown**. Without the inventory the model invented plausible demo names and then failed the call.
+
+*Zero trust on arguments.* Everything the LLM produces as an argument is treated as untrusted input, because it is — it is generated text, not a value validated by a form:
+
+- every `demo_name` goes through `_canonical_demo()`, which resolves it against a **whitelist built by querying the database**; if it does not match, the tool returns `ERROR: unknown demo_name. Call list_matches for exact names.` — a message the model can recover from, not an exception;
+- round numbers must be integers, are bounded to the range 1–50, deduplicated and capped at `_TOOL_MAX_ROUNDS_PER_CALL = 5`;
+- team-name fragments are stripped of everything that is not `[a-z0-9 _-]` and truncated to `_TOOL_ARG_MAX_LEN = 40`; a `map_name` that does not belong to the known list is simply dropped;
+- every tool result is cleaned of control characters and truncated to `_TOOL_RESULT_MAX_LEN = 8000` characters **before re-entering the prompt**, because what comes back from the database becomes model input in its turn.
+
+The errors returned are short, neutral strings: never the text of an exception, which would reveal internal structure to a component that has no reason to know it.
+
+During tool rounds the answer is **not streamed** — the interface receives progress notices (*"checking the match database…"*) and then a single complete answer.
+
 #### LessonGenerator (`lesson_generator.py`)
 
 Structured educational lesson generator starting from demo analysis:
@@ -243,11 +276,13 @@ Ollama integration service for local LLM inference:
 | Parameter | Value | Description |
 |---|---|---|
 | `OLLAMA_URL` | `http://localhost:11434` | Ollama endpoint (env: `OLLAMA_URL`) |
-| `DEFAULT_MODEL` | `llama3.1:8b` | 8B general-purpose model (env: `OLLAMA_MODEL`) |
-| `_AVAILABILITY_TTL` | 60s | Availability cache |
+| `DEFAULT_MODEL` | `gemma4:e2b` | Default model; resolution order: env `OLLAMA_MODEL` → setting `LLM_COACH_MODEL` → hard-coded default |
+| `_AVAILABILITY_TTL` | 60s | Availability cache (health check with 3s timeout) |
 | `temperature` | 0.7 | Response creativity |
 | `top_p` | 0.9 | Nucleus sampling |
-| `num_predict` | 500 | Response length limit |
+| `num_predict` | -1 | No response length limit |
+| `num_ctx` | 32768 | Context window |
+| generate/chat timeout | 600s | POST to Ollama; stream: connect 10s, stall 30s |
 
 **Supported APIs:**
 
@@ -611,6 +646,16 @@ flowchart LR
 
 Converts raw output vectors from the **JEPA Coaching Head** into `InsightCandidate` objects ready for the coaching pipeline (F1.1 / W5.1).
 
+**Flow:**
+
+```mermaid
+flowchart LR
+    CH["JEPA Coaching Head<br/>(sigmoid [0,1])"] --> DELTA["Signed delta remap<br/>2*(out - 0.5)"]
+    DELTA --> FILTER["Magnitude filter<br/>|delta| < 0.1 → discarded"]
+    FILTER --> GATE["Maturity gating<br/>doubt/crisis / learning / conviction-mature"]
+    GATE --> IC["InsightCandidate<br/>axis · message · confidence · delta"]
+```
+
 **Dimensional contract:** Operates on the first 10 elements of the 25-dim contract (target features: health, armor, has\_helmet, has\_defuser, equipment\_value, is\_crouching, is\_scoped, is\_blinded, enemies\_visible, pos\_x) mapped to five SkillAxes (`survival`, `economy`, `movement`, `utility`, `positioning`).
 
 **Maturity ladder:**
@@ -639,12 +684,13 @@ Implements a **retrieval-augmented generation** pipeline using dense vector simi
 | Component                          | Detail                                                                                                                                               |
 | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Embedding model**                | `sentence-transformers/all-MiniLM-L6-v2` (384-dimensional vectors)                                                                                   |
-| **Fallback**                       | Hash-based embeddings if Sentence-BERT is unavailable                                                                                                |
+| **Fallback**                       | 100-dimensional bag-of-words hash embeddings if Sentence-BERT is unavailable                                                                        |
 | **Storage**                        | `TacticalKnowledge` SQLite table (embedding stored as a JSON-encoded float array)                                                                    |
-| **Retrieval**                      | Cosine similarity via `scipy.spatial.distance.cosine`                                                                                                |
-| **Top-k**                          | Configurable, default k=5                                                                                                                            |
-| **Versioning**                     | `CURRENT_VERSION = "v3"` (2026-04, Coach Book refactor, Premier S4 active duty alignment); stale v2 embeddings automatically recomputed via `trigger_reembedding()` |
-| **Categories**                     | 14: aim, positioning, utility, movement, economy, strategy, crosshair placement, communication, mental, game sense, trading, **mid_round**, **retakes_post_plant**, **aim_and_duels** |
+| **Retrieval**                      | Cosine similarity via numpy: `np.dot(a,b)/(‖a‖·‖b‖+1e-8)`; FAISS fast-path (`VectorIndexManager`, over-fetch ×10) with linear fallback |
+| **Top-k**                          | Configurable, default k=3 in the retriever                                                                                                          |
+| **Versioning**                     | `CURRENT_VERSION = "v3"`; stale embeddings automatically recomputed |
+| **Primary source**                 | **Coach Book** in `backend/knowledge/book/`: 8 JSON content files (7 Active Duty maps + general) + `index.json`, **508 entries** in total |
+| **Categories**                     | 13 (from the Coach Book): aim_and_duels, positioning, economy, retakes_post_plant, clutch_play, mid_round, utility, anti_strat, role_play_entry, role_play_lurk, role_play_igl, role_play_support, role_play_awp |
 
 >
 > **Fix M-07 — Zero-norm vector rejection:** `VectorIndex.search()` validates the query vector norm before the search. If the norm is zero (typically due to an empty fallback embedding or corrupted input), the method returns `None` with a log warning instead of propagating a division-by-zero error in cosine similarity. This protects the RAG pipeline from degenerate queries without interrupting the coaching flow.
@@ -674,7 +720,7 @@ flowchart TB
 
 ### -Experience Bank (`experience_bank.py`) — COPER Framework (KT-01 Enhanced)
 
-Implements the **Contextual Observation–Prediction–Experience–Retrieval (COPER)** framework with CRUD semantics, prioritized replay, and TrueSkill integration:
+Implements the **COPER — "Context Optimized with Prompt, Experience, and Replay"** framework with CRUD semantics, prioritized replay, and TrueSkill integration:
 
 ```mermaid
 graph LR
@@ -758,9 +804,9 @@ flowchart TB
 
 **Pro reference linking:** Each experience can include `pro_player_name`, `pro_match_id`, `source_demo` to link directly to how a specific professional handled an analogous situation.
 
-### -Knowledge Graph
+### -Knowledge Graph (`graph.py`)
 
-A lightweight **entity-relation graph** stored in SQLite (`kg_entities`, `kg_relations` tables). Supports `query_subgraph(entity_name)` at 1 hop for multi-hop reasoning to complement semantic similarity.
+A lightweight **entity-relation graph** managed by `KnowledgeGraphManager` in a dedicated SQLite database (`knowledge_graph.db`, tables `entities` and `relations`). Supports 1-hop subgraph queries for multi-hop reasoning to complement semantic similarity.
 
 ```mermaid
 graph LR
@@ -774,10 +820,10 @@ graph LR
 
 Orchestration script that populates the RAG database with tactical knowledge from two sources:
 
-1. **Manual knowledge:** Loading from JSON files (`data/tactical_knowledge.json`) with manually curated tips per category and map
-2. **Automatic mining:** Invocation of `ProDemoMiner.mine_all_pro_demos()` to extract tactical patterns from professional demos
+1. **Coach Book (preferred):** Loading from `backend/knowledge/book/index.json` — the `KnowledgePopulator` recognizes the index format and follows it to the 8 content files
+2. **Automatic mining:** `auto_populate_from_pro_demos(limit=10)` to extract tactical patterns from professional data
 
-After loading, it generates a report per category and map using aggregate COUNT queries (without loading every record into memory).
+After loading, it generates a report per category and map (aggregate COUNT queries) and rebuilds the FAISS indexes: `rebuild_from_db("knowledge")` and `rebuild_from_db("experiences")`.
 
 ### -ProDemoMiner (`pro_demo_miner.py`)
 
@@ -855,6 +901,15 @@ Assigns one of 6 roles using **learned statistical thresholds**:
 **Cold-start protection:** `RoleThresholdStore` requires ≥10 samples and ≥3 valid thresholds to exit cold-start. Returns `(FLEX, 0.0)` if in cold-start. Thresholds are **persisted in the database** via `persist_to_db()` and `load_from_db()` — fully implemented, not stubs.
 
 **Team balance audit** (`audit_team_balance()`): detects multiple AWPers (HIGH), missing Entry (HIGH), missing Support (MEDIUM), no diversity (CRITICAL), multiple Lurkers (MEDIUM).
+
+
+**The vocabulary guard (F-0030).** This classifier produced, for months, a sentence that looked like a diagnosis and was not: *"Role: IGL detected, confidence 100%"*, on players who were not IGLs.
+
+The mechanism of the defect is worth more than the fix. The five affinity scores read precise statistical keys — `awp_kills`, `total_kills`, `entry_frags`, `rounds_played`, `assists`, `rounds_survived`, `solo_kills`. The live orchestrator path, however, passed dictionaries of a different shape, aggregated at match level, which contained `kd_ratio` but **none** of those seven keys. Every affinity therefore scored zero, except one: the IGL balance bonus, which fires when the kill/death ratio sits between 0.9 and 1.2. The final normalization divides each score by the sum — and the sum was that single bonus. One weak signal thus became a 100% certainty.
+
+The defect was not in the formula: it was in the fact that nobody checked the input had the expected shape. Today `classify()` verifies up front that the dictionary contains at least one key of the role vocabulary and, if it does not, returns `(FLEX, 0.0)` with an explicit warning in the log. The zero confidence trips the guard already present downstream in the orchestrator, which skips the insight instead of publishing it.
+
+It is the same principle as the rest of the system: **better a documented sentinel than a plausible zero** — and better still a declared silence than a fabricated certainty. The test `test_role_vocabulary_guard.py` pins the behavior.
 
 ### -Win Probability Predictor (`win_probability.py`)
 
@@ -1474,7 +1529,7 @@ flowchart TB
 - [**schema.py**](http://schema.py)**:** Schema validation for database records
 - [**sanity.py**](http://sanity.py)** / dem\_[validator.py](http://validator.py):** Data and demo-file integrity checks
 
-**Quantitative coverage:** The project includes **1,515+ tests** distributed across 94 test files and **319+ headless validator checks** organized across 24+ validation phases. This coverage spans DB schema integrity, embedding vector consistency, training pipeline correctness, and end-to-end validation of coaching flows.
+**Quantitative coverage:** The project includes **167 test files** (`test_*.py` in `Programma_CS2_RENAN/tests/`) plus the tests and `verify_*.py` scripts in the root `tests/`, and a **headless validator** with **39 thematic check phases** (from Environment/Imports through Security, GPU, Design-Tokens and Quality-Adv). This coverage spans DB schema integrity, embedding vector consistency, training pipeline correctness, and end-to-end validation of coaching flows.
 
 ### -PlayerKnowledge — NO-WALLHACK Perception System (`player_knowledge.py`)
 
@@ -1539,18 +1594,6 @@ Z-aware spatial features for multilevel maps (Task 2.17.1):
 
 **Output:** A 6-feature normalized spatial vector [0,1]: distance to bombsite A/B, distance to T/CT spawn, distance to mid, Z penalty. Distances computed with `distance_with_z_penalty()` to penalize cross-level paths on Nuke/Vertigo.
 
-### -CVFrameBuffer (`cv_framebuffer.py`)
-
-Thread-safe ring buffer for RGB frames (Task 2.24.2) with HUD region extraction:
-
-| Region | Coordinates (1920×1080) | Content |
-|---|---|---|
-| `MINIMAP_REGION` | (0, 0, 320, 320) | Minimap (top-left) |
-| `KILL_FEED_REGION` | (1520, 0, 1920, 300) | Kill feed (top-right) |
-| `SCOREBOARD_REGION` | (760, 0, 1160, 60) | Scoreboard (top-center) |
-
-**Dynamic resolution scaling:** All regions scale automatically relative to `REFERENCE_RESOLUTION = (1920, 1080)` to support different resolutions. BGR→RGB conversion is integrated into the `capture_frame()` method.
-
 ### -EliteAnalytics (`external_analytics.py`)
 
 Loads and analyzes CSV reference datasets (top 100 players, match stats, tournament data):
@@ -1589,36 +1632,20 @@ Handles team tags and clan prefixes. O(n) complexity per query, acceptable for <
 
 ### -ProBaseline (`pro_baseline.py`)
 
-**Task 2.18.1:** Pro baseline system with map-specific support and a 3-tier fallback chain:
+**Task 2.18.1:** Pro baseline system with map-specific support and a layered fallback chain:
 
 ```mermaid
 flowchart TB
-    REQ["get_pro_baseline(map_name)"] --> DB{"DB has<br/>ProPlayerStatCard?"}
-    DB -->|"Yes"| DBBL["Baseline from DB<br/>(aggregated by map)"]
-    DB -->|"No"| CSV{"CSV dataset<br/>available?"}
-    CSV -->|"Yes"| CSVBL["Baseline from CSV"]
-    CSV -->|"No"| HARD["HARD_DEFAULT_BASELINE<br/>(16 hardcoded metrics)"]
-    DBBL --> OUT["dict: metric → {mean, std}"]
-    CSVBL --> OUT
-    HARD --> OUT
+    REQ["get_pro_baseline(map_name)"] --> HARD["Layer 1: HARD_DEFAULT_BASELINE<br/>(hardcoded)"]
+    HARD --> CSV["Layer 2: CSV dataset<br/>(if available, overrides)"]
+    CSV --> DEMO["Layer 3: pro demo statistics<br/>(if available, override)"]
+    DEMO --> HLTV["Layer 4: HLTV ProPlayerStatCard<br/>(if available, override)"]
+    HLTV --> OUT["dict: metric → {mean, std}"]
 ```
 
-**HARD_DEFAULT_BASELINE** (16 metrics with mean + std):
+**HARD_DEFAULT_BASELINE** — a dictionary of hardcoded metrics with mean + std, the last layer of the fallback chain. It covers: `rating`, `kd_ratio`, `avg_kills`, `avg_deaths`, `avg_adr`, `avg_hs`, `avg_kast`, `accuracy`, aggression, utility, opening/clutch, `rating_impact`, `rating_survival`, `rating_kast`. The real baseline is the **4-layer fusion**: hardcoded → CSV → demo statistics → HLTV (`get_pro_baseline()`).
 
-| Metric | Mean | Std |
-|---|---|---|
-| rating | 1.06 | 0.15 |
-| kpr | 0.68 | 0.12 |
-| dpr | 0.62 | 0.10 |
-| adr | 77.8 | 12.0 |
-| kast | 0.70 | 0.06 |
-| hs_pct | 0.45 | 0.10 |
-| impact | 1.05 | 0.20 |
-| opening_kill_ratio | 1.05 | 0.30 |
-| clutch_win_pct | 0.15 | 0.08 |
-| ... | ... | ... |
-
-**`calculate_deviations(player_stats, baseline)`** — Computes the Z-score for each feature: `z = (player_value - mean) / std`. Handles both flat baselines (legacy) and structured baselines (dict with mean/std).
+**`calculate_deviations(player_stats, baseline)`** — Computes a Z-score for every feature: `z = (player_value - mean) / std`. Handles both flat (legacy) and structured baselines (dict with mean/std).
 
 ### -RoleThresholdStore (`role_thresholds.py`)
 
@@ -1640,7 +1667,8 @@ flowchart TB
 
 | Requirement | Value | Meaning |
 |---|---|---|
-| `MIN_SAMPLES_FOR_VALIDITY` | 10 | Minimum samples for a valid threshold |
+| `MIN_SAMPLES_FOR_VALIDITY` | 30 | Minimum samples for a valid threshold |
+| Threshold learning | 75th percentile | Thresholds are learned from the 75th percentile of real pro data |
 | Minimum valid thresholds | 3 | Required to exit cold-start |
 | Cold-start output | `(FLEX, 0.0)` | Generic role, 0% confidence |
 
@@ -1800,7 +1828,7 @@ Supervisor of the ML lifecycle with real-time intervention:
 
 ### Inter-Daemon Coordination
 
-The Control Module orchestrates the system's 4 daemons (Hunter, Digester, Teacher, Pulse) through communication channels based on shared state (`CoachState`) and event-based signals:
+The Control Module orchestrates the system's 4 daemons (Scanner, Digester, Teacher, Pulse) through communication channels based on shared state (`CoachState`) and event-based signals:
 
 ```mermaid
 stateDiagram-v2
@@ -1847,13 +1875,13 @@ Minimal dataclass representing the trend of a single feature:
 | `volatility` | float | Standard deviation of values (stability) |
 | `confidence` | float | min(1.0, num_samples / 30) — requires 30+ matches for full confidence |
 
-### -TrendAnalysis (`trend_analysis.py`)
+### -compute_trend (`trend_analysis.py`)
 
-`compute_trend(values)` — Computes slope, volatility, and confidence from a series of values:
+The function `compute_trend(values)` — computes slope, volatility, and confidence from a series of values (there is no `TrendAnalysis` class; the module exposes this function):
 
 - **Slope:** Linear coefficient via `np.polyfit(x, y, 1)[0]`
 - **Volatility:** `np.std(values)`
-- **Confidence:** Scales linearly with sample count, full confidence at 30+
+- **Confidence:** `min(1.0, n / TREND_CONFIDENCE_SAMPLE_SIZE)` with `TREND_CONFIDENCE_SAMPLE_SIZE = 30`; guard for `n < 2`
 
 **Integration:** The results of `compute_trend()` feed `FeatureTrend` → `LongitudinalEngine.generate_longitudinal_coaching()` → trend-aware insights in coaching.
 
@@ -1909,11 +1937,11 @@ flowchart TB
     style TIER3 fill:#51cf66,color:#fff
 ```
 
-> **Diagram Explanation:** The three databases are physically separated: Tier 1 contains the application's core data (17 tables), Tier 2 the professional data scraped from HLTV (3 tables), and Tier 3 the per-match telemetry data in individual SQLite files. The separation avoids WAL contention: ingestion writes (Tier 1) do not block HLTV reads (Tier 2) or telemetry recording (Tier 3). Cross-database references are **logical** (not real FKs) since SQLite does not support cross-file FKs.
+> **Diagram Explanation:** The three databases are physically separated: Tier 1 contains the application's core data (18 tables in `_MONOLITH_TABLES`), Tier 2 the professional data scraped from HLTV (7 tables), and Tier 3 the per-match telemetry data in individual SQLite files. The separation avoids WAL contention: ingestion writes (Tier 1) do not block HLTV reads (Tier 2) or telemetry recording (Tier 3). Cross-database references are **logical** (not real FKs) since SQLite does not support cross-file FKs.
 
 ### -Data Models (`db_models.py`)
 
-The **canonical schema** of the whole system: defines every table, constraint, index, and validator through SQLModel (Pydantic + SQLAlchemy). Two enums and 20+ models organized per tier.
+The **canonical schema** of the whole system: defines every table, constraint, index, and validator through SQLModel (Pydantic + SQLAlchemy). Two enums and **25 `table=True` models** organized per tier.
 
 **Integrity enums:**
 
@@ -1952,6 +1980,9 @@ The **canonical schema** of the whole system: defines every table, constraint, i
 | `ProTeam` | Tier 2 | hltv_id (unique), name, world_rank | Professional teams |
 | `ProPlayer` | Tier 2 | hltv_id (unique), nickname, team_id (FK→ProTeam) | Professional players |
 | `ProPlayerStatCard` | Tier 2 | player_id (FK), rating_2_0, kpr, adr, kast, detailed_stats_json | HLTV stat cards with granular data |
+| `ProEvent` / `ProTournament` / `ProHead2Head` / `ProMapRecord` | Tier 2 | event, tournament, head-to-head and per-map record metadata | Extended HLTV tables |
+| `DataLineage` | Tier 1 | entity_type, entity_id, source_demo, pipeline_version, processing_step | Append-only provenance audit trail (DL-1) |
+| `DataQualityMetric` | Tier 1 | run_id, run_type, metric_name, metric_value, sample_count | Append-only per-run quality metrics (P5-E) |
 
 > **Architectural note:** `PlayerMatchStats.pro_player_id` is a **logical** reference (not a real FK) to `ProPlayer.hltv_id` because they live in separate databases. SQLite does not support cross-file FKs — the join is performed at the application level.
 
@@ -1965,14 +1996,16 @@ The **archive keeper**: manages SQLite connections with mandatory WAL mode, phys
 
 | Class | Database | Tables | Engine |
 |---|---|---|---|
-| `DatabaseManager` | `database.db` | 17 tables (`_MONOLITH_TABLES`) | `pool_size=1`, `max_overflow=4` |
-| `HLTVDatabaseManager` | `hltv_metadata.db` | 3 tables (`_HLTV_TABLES`) | `pool_size=1`, `max_overflow=4` |
+| `DatabaseManager` | `database.db` | 18 tables (`_MONOLITH_TABLES`) | `pool_size=1`, `max_overflow=4` |
+| `HLTVDatabaseManager` | `hltv_metadata.db` | 7 tables (`_HLTV_TABLES`: ProPlayer, ProTeam, ProPlayerStatCard, ProEvent, ProTournament, ProHead2Head, ProMapRecord) | `pool_size=1`, `max_overflow=4` |
 
 **SQLite PRAGMAs (applied to every connection via `@event.listens_for`):**
 
 | PRAGMA | Value | Purpose |
 |---|---|---|
 | `journal_mode` | `WAL` | Concurrent reads + single writer |
+| `foreign_keys` | `ON` | Referential integrity (DB-06) |
+| `wal_autocheckpoint` | `512` | Automatic WAL checkpoint (DB-07) |
 | `synchronous` | `NORMAL` | Balance performance/durability |
 | `busy_timeout` | `30000` (30s) | WAL-lock contention timeout |
 
@@ -2118,7 +2151,7 @@ flowchart TB
         BM["BackupManager<br/>(Online Backup API, 7d+4w)"]
         SM["StorageManager<br/>(demo folders, quotas)"]
         STM["StateManager<br/>(CoachState singleton)"]
-        MODELS["db_models.py<br/>(20+ SQLModel tables)"]
+        MODELS["db_models.py<br/>(25 SQLModel tables)"]
         MIG["db_migrate.py<br/>(Alembic auto-upgrade)"]
     end
     MODELS -->|"schema"| DBM
@@ -2372,7 +2405,8 @@ The specialized trainer for the JEPA architecture. Manages self-supervised pre-t
 | Parameter | Default | Detail |
 |---|---|---|
 | `lr` | 1e-4 | Learning rate for AdamW |
-| `weight_decay` | 1e-4 | L2 regularization |
+| `weight_decay` | 1e-2 | L2 regularization |
+| AMP + accumulation | GradScaler (CUDA), `_accumulation_steps=4`, grad clip 1.0 | Mixed precision and larger effective batches |
 | `drift_threshold` | 2.5 | z-score threshold for DriftMonitor |
 
 - **NN-36**: `target_encoder` parameters are **excluded** from the optimizer — they are updated only via EMA (Exponential Moving Average), never by direct gradients
@@ -2474,7 +2508,7 @@ flowchart TB
 |---|---|---|---|
 | Strategy | 1.0 | MSE | `target_strat` (one-hot tactical role, 10 classes) |
 | Value | 0.5 | MSE | `target_val` (advantage [0,1]) |
-| Sparsity | 1.0 | L1 on gate weights | Interpretability: gate weights → ~0 |
+| Sparsity | 1.0 | MoE gate entropy × 1e-4 | Interpretability: decisive routing (low entropy) |
 | Position | 1.0 | MSE + Z×2.0 | `target_pos` delta (optional) |
 
 **Task 2.17.1 — Z-axis penalty:** `compute_position_loss()` applies a 2× weight on Z-axis error (verticality), because in CS2 elevation errors (e.g. enemy on a stairway vs ground floor) are tactically critical.
@@ -2657,7 +2691,7 @@ flowchart TB
     subgraph RAP_LOSS["RAP Loss Stack"]
         STRAT["MSE(advice_probs, target_strat)<br/>Strategy"]
         VAL2["0.5 × MSE(value_estimate, target_val)<br/>Value"]
-        SPARSE["L1(gate_weights) × λ<br/>Sparsity"]
+        SPARSE["Entropy(gate_probs) × λ<br/>Sparsity"]
         POS2["MSE(δpos) + 2.0× MSE(δz)<br/>Position"]
     end
 
@@ -2707,7 +2741,7 @@ The 16 coaching concepts (`COACHING_CONCEPTS`) cover: positioning (aggressive/pa
 **File:** `rap_coach/model.py:105` | **Signature:** `(gate_weights) → scalar`
 
 ```
-L_sparsity = λ × mean(|gate_weights|)
+L_sparsity = context_gate_l1_weight × (−Σ p·log p)      # MoE gate entropy, range [0, log 4]
 ```
 
 L1 norm on `ContextGate` (SuperpositionLayer) weights. The goal is that most gates are close to 0, with a few strong activations — this makes the model **interpretable** (which inputs really influence the decision?).

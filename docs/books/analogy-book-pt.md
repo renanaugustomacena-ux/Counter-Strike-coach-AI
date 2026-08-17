@@ -1,6 +1,7 @@
 # O Livro das Analogias — Ultimate CS2 Coach
 
 > **Autor:** Renan Augusto Macena
+> **Revisao base:** em sincronia com `analogy-book.md` (canonico italiano) em 2026-08-15.
 > **Lingua canonica:** Italiano (veja `analogy-book.md`). Traducao inglesa em `analogy-book-en.md`; esta e a traducao brasileira em portugues.
 > **Proposito:** Reunir num unico volume todas as analogias didaticas que aparecem espalhadas pelas quatro partes do *Ultimate CS2 Coach*. As analogias sao o coracao pedagogico do livro — tornam compreensivel a qualquer pessoa um sistema que de outro modo exigiria um doutorado em engenharia de machine learning.
 
@@ -12,7 +13,7 @@
 >
 > *[Marcador Renan: conte aqui por que voce escolheu analogias concretas — a fabrica, a escola, o juri, o hospital — em vez de equacoes. Conte a primeira vez que um amigo perguntou "mas como funciona de verdade?", e voce respondeu com uma metafora que acendeu a lampada nos olhos dele. Esta e a licao mais importante do livro, e deve ser contada com a sua voz, nao com a minha.]*
 
-As analogias neste volume sao **canonicas**: cada uma serve de ponto de referencia para todas as variantes que aparecem nos livros-coach. Quando um capitulo diz *"como o juri de tres juizes"*, o relato completo esta aqui, na voz **§3** deste volume. Os livros podem entao concentrar-se na precisao tecnica — dimensoes, constantes, invariantes — enquanto a compreensao profunda fica preservada nesta coletanea.
+As analogias neste volume sao **canonicas**: cada uma serve de ponto de referencia para todas as variantes que aparecem nos livros-coach. Quando um capitulo diz *"como o juri de tres juizes"*, o relato completo esta aqui, na voz **§1.2** deste volume. Os livros podem entao concentrar-se na precisao tecnica — dimensoes, constantes, invariantes — enquanto a compreensao profunda fica preservada nesta coletanea.
 
 Esta separacao nao e um compromisso — e um ganho. Os livros tecnicos do coach sao densos por necessidade: devem citar arquivos e linhas, descrever invariantes matematicas, especificar parametros e contratos. Se dentro dessa densidade se inserissem as metaforas em extensao completa, o leitor tecnico as encontraria como um retardo; mas as metaforas sao indispensaveis para quem nao vive no codigo. Separando-as neste volume, temos dois livros complementares: um para quem precisa *implementar*, um para quem precisa *entender*. Os melhores leitores usarao ambos.
 
@@ -20,7 +21,7 @@ Esta separacao nao e um compromisso — e um ganho. Os livros tecnicos do coach 
 
 ## Como ler este livro
 
-1. **Abra o capitulo do livro-coach que voce esta estudando** (Parte 1A, 1B, 2 ou 3). Quando encontrar uma linha `> **Analogia:** [titulo — veja Livro das Analogias §X.Y]`, volte aqui.
+1. **Abra o capitulo do livro-coach que voce esta estudando** (Parte 1A, 1B, 2 ou 3). Quando um trecho tecnico resistir, procure o assunto na tabela **Legenda** abaixo: a coluna *Onde nasce* lista o capitulo de origem de cada voz, portanto le-se tambem ao contrario — do capitulo para a analogia.
 2. **Leia a analogia canonica** neste volume (secao correspondente).
 3. **Retorne ao livro** e continue a leitura tecnica: nesse ponto a metafora esta fixada e o resto do capitulo pode falar de `METADATA_DIM=25`, `GLOBAL_SEED=42` e `input_dim=153` sem perder o fio narrativo.
 4. **Procure as comparacoes** (secao *"Compare com"* ao final de cada voz): muitas analogias se iluminam umas as outras.
@@ -30,57 +31,62 @@ O volume esta organizado em **dez secoes tematicas** que correspondem aos grande
 - **§1 — Nucleo Neural** (7 vozes): os modelos que fazem o pensamento central — MoE, Superposition, ResNet, Value Critic, GhostEngine.
 - **§2 — Memoria e Tempo** (3 vozes): como o coach lembra, o que esquece, e a escala temporal de suas observacoes.
 - **§3 — Percepcao e Dados** (2 vozes): os cinco sentidos do coach e o contrato canonico de 25 dimensoes que os unifica.
-- **§4 — Estrategia e Coaching** (5 vozes): o plano de batalha, a cadeia de fallback dos servicos, a atribuicao dos papeis narrativos.
+- **§4 — Estrategia e Coaching** (6 vozes): o plano de batalha, a cadeia de fallback dos servicos, a atribuicao dos papeis narrativos, a desconfianca em relacao ao que o coach pede por conta propria.
 - **§5 — Conhecimento e Recuperacao** (3 vozes): como o coach sabe o que sabe — biblioteca FAISS, diario COPER, grafo dos fatos.
 - **§6 — Treinamento e Orquestracao** (4 vozes): a escola, a orquestra, o exame, o talent scout — como se cresce do nada a master chef.
 - **§7 — Motores de Analise** (3 vozes): os detetives especializados que veem coisas que os outros motores nao veem.
-- **§8 — Dados e Ingestao** (3 vozes): o correio, o agente alfandegario, o cronista — como os demos chegam e sao compreendidos.
+- **§8 — Dados e Ingestao** (4 vozes): o correio, o agente alfandegario, o cronista, a senha da fila — como os demos chegam, sao compreendidos e sao assumidos uma unica vez.
 - **§9 — Banco de Dados e Storage** (2 vozes): o arquivo em tres niveis, o cofre do backup.
-- **§10 — Visao de Conjunto** (3 vozes): o robo que assiste videos, a cidade do coach, o painel de cinco camadas.
+- **§10 — Visao de Conjunto** (4 vozes): o robo que assiste videos, a cidade do coach, o painel de cinco camadas, a paleta unica que os colore.
 
 ---
 
 ## Legenda — onde nasce cada analogia
 
-Esta tabela mapeia as **35 vozes canonicas** para suas posicoes originais nos quatro livros. Util quando um leitor quer voltar ao contexto tecnico onde a metafora foi introduzida pela primeira vez.
+Esta tabela mapeia as **38 vozes canonicas** para os capitulos dos quatro livros onde o conceito tecnico e tratado. Util quando um leitor quer voltar ao contexto de onde a metafora nasce.
 
-| Voz | Titulo | Fonte (Livro : linha) |
-|-----|--------|-----------------------|
-| §1.1 | A Fabrica dos 6 Departamentos | 1A:84 |
-| §1.2 | O Juri dos 3 Juizes | 1A:329, 1B:230 |
-| §1.3 | O Mixer de 256 Canais | 1A:854, 1B:236 |
-| §1.4 | O Edificio de 7 Andares | 1B:53, 1B:147 |
-| §1.5 | Os Tres Oculos do Treinador | 1B:119 |
-| §1.6 | O Holograma do Melhor Voce | 1B:514, 3:1605 |
-| §1.7 | O Boletim Mental | 1A:1134, 1A:1250 |
-| §2.1 | O Album de Hopfield | 1B:172, 1B:164, 1B:184 |
-| §2.2 | O Mentor Lento (EMA) | 1A:399, 1A:872 |
-| §2.3 | As Tres Lentes do Chronovisor | 1B:449, 1B:459 |
-| §3.1 | Os 5 Sentidos do Coach | 1B:620, 1A:267, 1B:932 |
-| §3.2 | As 25 Perguntas do Sensor | 1A:937, 3:1195 |
-| §4.1 | O Hospital e a Recepcao | 2:50, 2:89 |
-| §4.2 | O Detetive dos 5 Erros | 1B:282, 1B:307 |
-| §4.3 | O Comentarista do Valor | 1B:268 |
-| §4.4 | A Arvore de Xadrez CS2 | 2:886, 2:921 |
-| §4.5 | O Poker-Face do Engano | 2:964 |
-| §5.1 | A Biblioteca FAISS | 1B:1032, 2:589 |
-| §5.2 | O Livro-Texto + Diario | 2:573, 2:620, 2:700 |
-| §5.3 | O Grafo dos Fatos | 2:714 |
-| §6.1 | A Escola do Coach | 1A:878, 3:399, 3:431 |
-| §6.2 | A Orquestra do Training | 2:2228, 2:2462, 2:2681 |
-| §6.3 | O Exame com Respostas no Verso | 1A:599, 3:556, 3:574, 3:591 |
-| §6.4 | O Talent Scout dos Papeis | 2:808, 2:812, 2:1722 |
-| §7.1 | A Equipe dos Detetives | 2:154, 2:776 |
-| §7.2 | O Anel de Humor | 2:990, 2:1370 |
-| §7.3 | O Instrutor de Direcao | 2:1043, 2:1136 |
-| §8.1 | Os Correios da Carta | 3:1107, 3:2626 |
-| §8.2 | O Agente Alfandegario de Demo | 1B:702, 2:1388 |
-| §8.3 | O Cronista Esportivo HLTV | 1B:677, 1B:779, 3:2667 |
-| §9.1 | O Arquivo em 3 Niveis | 3:100, 3:1369, 2:2047, 2:2083 |
-| §9.2 | O Cofre do Backup | 2:2134, 3:1885 |
-| §10.1 | O Robo que Assiste Videos | 1A:62 |
-| §10.2 | A Cidade do Coach | 3:618, 3:841 |
-| §10.3 | O Painel de Cinco Camadas | 3:944, 3:2905, 3:2984 |
+> **Nota sobre as referencias.** Ate agosto de 2026 esta coluna continha coordenadas de linha (`1A:329`). Eram uma promessa que ninguem podia cumprir: bastava acrescentar um paragrafo a um livro para que todas as linhas seguintes deslizassem, e as edicoes inglesa e portuguesa carregavam de qualquer forma os numeros de linha *italianos*, que nos seus proprios arquivos nao significavam nada. As referencias agora sao por **capitulo**: sobrevivem as revisoes e valem identicas nas tres linguas.
+
+| Voz | Titulo | Onde nasce |
+|-----|--------|------------|
+| §1.1 | A Fabrica dos 6 Departamentos | Parte 1A §2 (panorama da arquitetura) |
+| §1.2 | O Juri dos 3 Juizes | Parte 1A §3 (MoE) · Parte 1B §4 (Estrategia) |
+| §1.3 | O Mixer de 256 Canais | Parte 1A §3 (SuperpositionLayer) · Parte 1B §4 (Estrategia) |
+| §1.4 | O Edificio de 7 Andares | Parte 1B §4 (RAP Coach, 7 componentes) |
+| §1.5 | Os Tres Oculos do Treinador | Parte 1B §4 (Percepcao) |
+| §1.6 | O Holograma do Melhor Voce | Parte 1B §4 (GhostEngine) · Parte 3 §12.10 |
+| §1.7 | O Boletim Mental | Parte 1A §3 (Maturity Observatory) |
+| §2.1 | O Album de Hopfield | Parte 1B §4 (Memoria LTC + Hopfield) |
+| §2.2 | O Mentor Lento (EMA) | Parte 1A §3 (modulo EMA) |
+| §2.3 | As Tres Lentes do Chronovisor | Parte 1B §4 (ChronovisorScanner) |
+| §3.1 | Os 5 Sentidos do Coach | Parte 1B §5 (Fontes de Dados) · Parte 1A §2 |
+| §3.2 | As 25 Perguntas do Sensor | Parte 1A §2 (contrato 25-dim) · Parte 3 §12.6 |
+| §4.1 | O Hospital e a Recepcao | Parte 2 §5 (Servicos de Coaching) |
+| §4.2 | O Detetive dos 5 Erros | Parte 1B §4 (Pedagogia — Atribuicao Causal) |
+| §4.3 | O Comentarista do Valor | Parte 1B §4 (Pedagogia — Valor) |
+| §4.4 | A Arvore de Xadrez CS2 | Parte 2 §7 (Motores de Analise — teoria dos jogos) |
+| §4.5 | O Poker-Face do Engano | Parte 2 §7 (Indice de Engano) |
+| §4.6 | O Bibliotecario Desconfiado | Parte 2 §5 (CoachingDialogueEngine — fase agentica) |
+| §5.1 | A Biblioteca FAISS | Parte 1B §5 (Indice Vetorial) · Parte 2 §6 |
+| §5.2 | O Livro-Texto + Diario | Parte 2 §6 (Conhecimento e Recuperacao) |
+| §5.3 | O Grafo dos Fatos | Parte 2 §6 (Knowledge Graph) |
+| §6.1 | A Escola do Coach | Parte 1A §3 · Parte 3 §10 (regime de formacao) |
+| §6.2 | A Orquestra do Training | Parte 2 §12 (Pipeline de Treinamento) |
+| §6.3 | O Exame com Respostas no Verso | Parte 2 §13 · Parte 3 §11 (funcoes de perda) |
+| §6.4 | O Olheiro dos Papeis | Parte 2 §7 (Classificador de Papeis) |
+| §7.1 | A Equipe de Detetives | Parte 2 §7 (os 11 motores de analise) |
+| §7.2 | O Anel do Humor | Parte 2 §7 (Momentum) |
+| §7.3 | O Instrutor de Direcao | Parte 2 §7 (Qualidade do Movimento) |
+| §8.1 | O Correio da Carta | Parte 3 §12.6 (Pipeline de Ingestao) |
+| §8.2 | O Agente Alfandegario Demo | Parte 1B §5 (Demo Format Adapter) |
+| §8.3 | O Cronista Esportivo HLTV | Parte 1B §5 (modulo HLTV) · Parte 3 §12.24 |
+| §8.4 | A Senha da Fila | Parte 3 §12.6 (claim atomico das tarefas) |
+| §9.1 | O Arquivo de 3 Niveis | Parte 2 §11 · Parte 3 §9 e §12.9 |
+| §9.2 | O Cofre do Backup | Parte 2 §11 · Parte 3 §12.9 |
+| §10.1 | O Robo que Assiste Videos | Parte 1A §1 (resumo executivo) |
+| §10.2 | A Cidade do Coach | Parte 3 §12 (logica completa do programa) |
+| §10.3 | O Painel de Cinco Camadas | Parte 3 §12.5 · Mapa das Interconexoes |
+| §10.4 | A Paleta Unica | Parte 3 §12.5 (design tokens e relay de tema) |
 
 ---
 
@@ -118,7 +124,7 @@ A camada de Percepcao do RAP Coach e como **tres pares de oculos** usados simult
 
 ## §1.6 O Holograma do Melhor Voce
 
-O `GhostEngine` produz um **holograma transparente** no mapa tatico que mostra *onde voce deveria ter estado*. A cada tick, pergunta ao RAP Coach: *"Dada esta situacao exata, onde DEVERIA estar o jogador?"*. A resposta e um pequeno delta posicional — por exemplo *"cinco unidades a direita, tres a frente"* — escalado de ×500 em coordenadas do mapa CS2. O resultado e um *"voce ideal"* fantasma desenhado no minimap, que corre ao lado do jogador real. Se o fantasma esta longe, voce sabe que estava numa posicao ruim; se esta perto, seu posicionamento estava correto. A inferencia acontece em tempo real gracas a um `FrameBuffer` circular que mantem os ultimos 32 ticks — um "gravador de fita circular" — e o motor de inferencia mantem o estado LSTM entre ticks consecutivos (o famoso `hidden_state` do setimo output do RAP Coach), assim nao "esquece" o que aconteceu cinco segundos atras quando te avalia agora. O ghost nao e um julgamento definitivo sobre seu jogo: e uma referencia visual, um "melhor voce" que aparece onde o coach pensa que voce deveria ter estado, e some quando coincidem. A beleza do ghost e que ele nao e prescritivo de forma autoritaria — e sugestivo de forma gentil. Nao lhe diz "voce errou"; mostra *onde seria melhor estar*, e deixa a voce a escolha de segui-lo. Depois de algumas horas de pratica com o ghost visivel, os jogadores relatam sentir sua presenca mesmo quando esta desligado — interiorizaram o padrao, e nao precisam mais do holograma porque agora ja pensam como ele. O ghost e portanto um professor transitorio: te ajuda a crescer e depois se torna dispensavel.
+O `GhostEngine` produz um **holograma transparente** no mapa tatico que mostra *onde voce deveria ter estado*. A cada tick, pergunta ao RAP Coach: *"Dada esta situacao exata, onde DEVERIA estar o jogador?"*. A resposta e um pequeno delta posicional — por exemplo *"cinco unidades a direita, tres a frente"* — escalado de ×500 em coordenadas do mapa CS2. O resultado e um *"voce ideal"* fantasma desenhado no minimap, que corre ao lado do jogador real. Se o fantasma esta longe, voce sabe que estava numa posicao ruim; se esta perto, seu posicionamento estava correto. A inferencia acontece em tempo real sobre uma **janela dos ultimos 32 ticks** (o `sequence_length` do reconstrutor de estado e a janela de trajetoria da TensorFactory) — um "gravador de fita circular" — e o motor de inferencia mantem o estado recorrente da memoria entre ticks consecutivos (o famoso `hidden_state` do setimo output do RAP Coach), assim nao "esquece" o que aconteceu cinco segundos atras quando te avalia agora. O ghost nao e um julgamento definitivo sobre seu jogo: e uma referencia visual, um "melhor voce" que aparece onde o coach pensa que voce deveria ter estado, e some quando coincidem. A beleza do ghost e que ele nao e prescritivo de forma autoritaria — e sugestivo de forma gentil. Nao lhe diz "voce errou"; mostra *onde seria melhor estar*, e deixa a voce a escolha de segui-lo. Depois de algumas horas de pratica com o ghost visivel, os jogadores relatam sentir sua presenca mesmo quando esta desligado — interiorizaram o padrao, e nao precisam mais do holograma porque agora ja pensam como ele. O ghost e portanto um professor transitorio: te ajuda a crescer e depois se torna dispensavel.
 
 **Compare com:** §3.2 (As 25 Perguntas — o input que alimenta o holograma), §4.3 (O Comentarista do Valor — julgamento sobre "quao boa" e a posicao).
 
@@ -193,6 +199,12 @@ Para cenarios estrategicos complexos — *"Eco-force CT em Inferno 1v3, bomba pl
 O `DeceptionIndex` e uma **pontuacao poker-face**: quantifica quao imprevisivel voce e em relacao ao jogador profissional medio no mesmo mapa no mesmo side. Conta flash fakes (voce simulou uma abertura lancando flash sem empurrar?), fake sites (sumiu do radar em direcao a B para depois voltar a A?), walk/run mixing (alterna movimento silencioso e barulhento para desorientar?), pre-utility tosses (lanca granadas antes de mover para confundir o timing?). Cada item tem um peso calibrado na frequencia com que os pros o fazem naquela situacao, e o indice final e uma padronizacao z-score: 0 = voce joga exatamente como a mediana pro, +2 = voce e claramente mais enganador que o pro medio, -2 = voce e completamente legivel. Um deception index baixo nao e automaticamente ruim — ha papeis (anchor puro, lurker disciplinado) onde a previsibilidade e funcional — mas um indice cronicamente baixo para um entry fragger e um sinal de alarme: estao te prevendo, e aquela e a explicacao mais provavel dos seus duelos perdidos. O coach o comunica com um grafico radar de 5 eixos e com a voz *"hoje voce joga de forma muito linear: tente mudar o lado da flash no mid de Mirage quando o CT te leu duas vezes seguidas"*. O Indice do Engano e um dos indicadores mais sutis do coach: uma vez interiorizado, o jogador consegue gerenciar ativamente sua propria previsibilidade — se tornar mais lido em alguns momentos (para construir padroes que depois quebrara) e menos lido em outros (para maximizar a vantagem da quebra). E a mente estrategica que emerge do gameplay mecanico, e o coach fornece a lente para ve-la.
 
 **Compare com:** §7.2 (O Anel de Humor — deception + momentum juntos contam a personalidade do round), §4.2 (O Detetive — as 5 materias de que deception e um sobre-nivel).
+
+## §4.6 O Bibliotecario Desconfiado
+
+Desde agosto de 2026 o coach pode ir buscar os dados sozinho: se voce pergunta *"como joguei o quinto round na Mirage?"* ele nao espera que alguem coloque o contexto certo a sua frente — chama uma das suas quatro ferramentas e consulta o banco de dados. O modo como isso lhe e permitido, porem, e o de uma **biblioteca de estante fechada**. Numa biblioteca assim o leitor nao entra entre as estantes: preenche uma ficha de pedido e a entrega ao bibliotecario, que a confere com o catalogo e vai buscar o volume. Se a ficha traz um titulo que nao existe no catalogo, o bibliotecario nao sai adivinhando, nao abre as estantes para mostrar o que ha, e nao se ofende: devolve a ficha dizendo *"este titulo nao esta catalogado, consulte a lista"*. O coach e o leitor, e deve ser tratado como qualquer leitor — nao por desconfianca dele, mas porque o que escreve na ficha e **texto gerado**, nao um valor escolhido num menu: pode ser plausivel e inexistente ao mesmo tempo. Assim cada nome de partida que o modelo produz e resolvido contra uma lista construida consultando o banco de dados, os numeros de round devem ser inteiros dentro de um intervalo, os fragmentos de nome de time sao limpos de todo caractere que nao sirva, e ate a resposta que volta da estante e limpa e encurtada antes da entrega — porque aquele texto, uma vez entregue, passa a fazer parte do que o coach le. Ha uma ultima cortesia, e e a mais eficaz: **a lista dos volumes disponiveis fica afixada na entrada da biblioteca**. Sem aquela lista o leitor pedia livros inventados e cada pedido era uma viagem perdida; com a lista a frente, pede o que existe.
+
+**Compare com:** §4.1 (O Hospital e a Recepcao — a cadeia de servicos em que este bibliotecario trabalha), §8.2 (O Agente Alfandegario — a mesma desconfianca aplicada a arquivos em vez de palavras), §5.1 (A Biblioteca FAISS — a outra biblioteca, a de estante aberta por similaridade).
 
 # §5 — Conhecimento e Recuperacao
 
@@ -280,11 +292,17 @@ O `DemoParser` e um **cronista esportivo experiente** que, assistindo um demo, c
 
 **Compare com:** §3.1 (Os 5 Sentidos — o sexto sentido do coach), §9.1 (O Arquivo — onde o cronista arquiva seus reports).
 
+## §8.4 A Senha da Fila
+
+Na padaria se tira uma senha. Nao porque o dono seja burocratico, mas porque sem senha dois atendentes servem o mesmo cliente e ninguem serve quem esta atras. A ingestao tem exatamente esse problema: **seis** portas diferentes podem inicia-la — a tela Home, as configuracoes, o comando do console, a ingestao em lote, a das demos profissionais e o worker de fundo. Por um longo periodo cada uma dessas portas olhava a fila, via um trabalho a espera e o tomava; se duas portas olhassem no mesmo instante viam **a mesma fotografia**, e a mesma demo era analisada duas vezes, escrevendo estatisticas duplicadas que depois ninguem sabia distinguir das boas. A solucao nao foi colocar um fiscal para coordenar os atendentes — seria um segundo mecanismo a manter, e a errar. Foi mudar o gesto: em vez de *"leio que esta livre, depois o tomo"*, o runner diz ao banco de dados *"atribua-o a mim **somente se** ainda estiver livre"*, tudo numa unica instrucao que o banco nao pode partir ao meio. Quem vence recebe uma confirmacao, quem perde recebe um zero silencioso e passa ao trabalho seguinte sem protestar. E a diferenca entre gerenciar uma colisao e **torna-la impossivel**, e e quase sempre a escolha melhor: um problema que nao pode acontecer nao precisa ser monitorado, nem explicado num log, nem lembrado por quem mantem o codigo tres anos depois. Resta uma cortesia: se voce tira a senha e depois desiste, o numero deve voltar a circular — caso contrario aquele trabalho fica para sempre num estado de *"em andamento"* que ninguem esta andando.
+
+**Compare com:** §8.1 (O Correio — a fila de onde se tira a senha), §9.1 (O Arquivo de 3 Niveis — onde acabam as estatisticas que nao devem ser duplicadas).
+
 # §9 — Banco de Dados e Storage
 
 ## §9.1 O Arquivo em 3 Niveis
 
-O sistema de storage e um **arquivo em tres niveis**, cada um projetado para evitar um tipo diferente de problema. O **nivel 1** e `database.db`, o monolite principal (18 tabelas SQLModel definidas em `database.py:_MONOLITH_TABLES` linhas 54-73): estatisticas jogadores, estado do coach, tasks de ingestao, insights de coaching, RAG knowledge, COPER experience bank, calibracoes. O **nivel 2** e `hltv_metadata.db` (3 tabelas: `ProPlayer`, `ProTeam`, `ProPlayerStatCard`), separado do monolite porque e escrito por um processo externo (HLTV sync service) e a separacao elimina a disputa WAL entre esse processo e os daemons do session engine. O **nivel 3** e `match_data/{id}.db`: um banco SQLite dedicado para cada partida, contendo os dados tick-por-tick (~100.000 linhas por partida) — tres tabelas em cada DB: `MatchTickState:110`, `MatchEventState:190`, `MatchMetadata:242` em `match_data_manager.py`. Esta separacao resolve o *Telemetry Cliff*: impede que o monolite cresca indefinidamente com telemetria de alta frequencia. O **modo WAL** (Write-Ahead Logging) e a porta giratoria do arquivo: leitores e escritores concorrentes entram sem se chocar, porque a escrita ocorre num arquivo separado (.wal) que e periodicamente consolidado. Total: 24 tabelas SQLModel distribuidas em 3 tiers, com 5 PRAGMA (`database.py:110-118`): WAL on, synchronous NORMAL, foreign_keys ON (DB-06), wal_autocheckpoint 512 (DB-07), busy_timeout 5000. A arquitetura em 3 niveis nao e apenas engenharia — e uma filosofia dos dados. Dados diferentes tem exigencias diferentes: o monolite tem dados quentes de baixa frequencia (player stats que mudam raramente), o HLTV tem dados externos atualizados semanalmente, a telemetria per-match tem dados imensos e "arquivaveis" apos a analise. Coloca-los juntos criaria disputas, lentidoes, e faria explodir o arquivo do monolite. Separa-los permite que cada nivel otimize independentemente.
+O sistema de storage e um **arquivo em tres niveis**, cada um projetado para evitar um tipo diferente de problema. O **nivel 1** e `database.db`, o monolite principal (18 tabelas SQLModel definidas em `database.py:_MONOLITH_TABLES` linhas 54-73): estatisticas jogadores, estado do coach, tasks de ingestao, insights de coaching, RAG knowledge, COPER experience bank, calibracoes. O **nivel 2** e `hltv_metadata.db` (7 tabelas: `ProPlayer`, `ProTeam`, `ProPlayerStatCard`), separado do monolite porque e escrito por um processo externo (HLTV sync service) e a separacao elimina a disputa WAL entre esse processo e os daemons do session engine. O **nivel 3** e `match_data/{id}.db`: um banco SQLite dedicado para cada partida, contendo os dados tick-por-tick (~100.000 linhas por partida) — tres tabelas em cada DB: `MatchTickState:110`, `MatchEventState:190`, `MatchMetadata:242` em `match_data_manager.py`. Esta separacao resolve o *Telemetry Cliff*: impede que o monolite cresca indefinidamente com telemetria de alta frequencia. O **modo WAL** (Write-Ahead Logging) e a porta giratoria do arquivo: leitores e escritores concorrentes entram sem se chocar, porque a escrita ocorre num arquivo separado (.wal) que e periodicamente consolidado. Total: 24 tabelas SQLModel distribuidas em 3 tiers, com 5 PRAGMA (`database.py:110-118`): WAL on, synchronous NORMAL, foreign_keys ON (DB-06), wal_autocheckpoint 512 (DB-07), busy_timeout 5000. A arquitetura em 3 niveis nao e apenas engenharia — e uma filosofia dos dados. Dados diferentes tem exigencias diferentes: o monolite tem dados quentes de baixa frequencia (player stats que mudam raramente), o HLTV tem dados externos atualizados semanalmente, a telemetria per-match tem dados imensos e "arquivaveis" apos a analise. Coloca-los juntos criaria disputas, lentidoes, e faria explodir o arquivo do monolite. Separa-los permite que cada nivel otimize independentemente.
 
 **Compare com:** §8.1 (Os Correios — a etapa 3 envia os demos aqui), §9.2 (O Cofre — quem protege o arquivo).
 
@@ -310,15 +328,23 @@ Do ponto de vista da infraestrutura, o sistema inteiro e uma **pequena cidade** 
 
 ## §10.3 O Painel de Cinco Camadas
 
-A interface desktop Qt/PySide6 e o **painel de um carro esportivo moderno**: tudo o que o condutor (o jogador) deve saber e visivel a primeiro olhar, cada quadrante tem um significado preciso, e sob o painel ha um **CAN bus** de signals e slots — o padrao Signal/Slot de Qt — que faz 15 telas dialogarem com 7 ViewModels sem acoplamento estreito. A arquitetura completa e um **bolo de cinco camadas**: (1) UI Qt no topo (`apps/qt_app/screens/`), (2) ViewModels MVVM que expoem property observaveis, (3) Servicos de coaching e analise (backend/services + backend/analysis), (4) Modelos neurais e logica pura (backend/nn + backend/processing + backend/coaching), (5) Storage (backend/storage) no fundo. Os confins entre camadas sao atravessados apenas em uma direcao — UI chama ViewModel, ViewModel chama Service, Service chama Model ou Storage — e nunca o contrario, para evitar dependencias circulares que transformariam o bolo num plastico de espaguete. A **caixa de ferramentas** do projeto contem PyTorch (redes neurais), ncps (LTC), hopfield-layers (Hopfield), demoparser2 (demo parsing Rust-based), PySide6 (UI primaria), SQLAlchemy+SQLModel (ORM), Alembic (migrations), Playwright (HLTV scraping), Rich (console TUI), FastAPI (internal API), Pydantic (validacao). Cada ferramenta e um artesao especializado: voce usa a certa para cada trabalho, nunca um martelo para um parafuso. O bolo de cinco camadas e uma das invariantes arquiteturais mais preciosas do projeto — e o que torna o codebase mantivel apesar de ter superado as 100.000 linhas de Python. Violar a direcionalidade dos fluxos (por exemplo, fazer com que o modelo chame um ViewModel) produziria um code smell conhecido como *callback hell* ou *architectural spaghetti*, e a manutencao se tornaria um pesadelo. A disciplina das cinco camadas, aplicada com rigor, e a razao pela qual o coach pode ser estendido no tempo sem desabar sob seu proprio peso.
+A interface desktop Qt/PySide6 e o **painel de um carro esportivo moderno**: tudo o que o condutor (o jogador) deve saber e visivel a primeiro olhar, cada quadrante tem um significado preciso, e sob o painel ha um **CAN bus** de signals e slots — o padrao Signal/Slot de Qt — que faz 15 telas dialogarem com 7 ViewModels sem acoplamento estreito. A arquitetura completa e um **bolo de cinco camadas**: (1) UI Qt no topo (`apps/qt_app/screens/`), (2) ViewModels MVVM que expoem property observaveis, (3) Servicos de coaching e analise (backend/services + backend/analysis), (4) Modelos neurais e logica pura (backend/nn + backend/processing + backend/coaching), (5) Storage (backend/storage) no fundo. Os confins entre camadas sao atravessados apenas em uma direcao — UI chama ViewModel, ViewModel chama Service, Service chama Model ou Storage — e nunca o contrario, para evitar dependencias circulares que transformariam o bolo num plastico de espaguete. A **caixa de ferramentas** do projeto contem PyTorch (redes neurais), ncps (LTC), hopfield-layers (Hopfield), demoparser2 (demo parsing Rust-based), PySide6 (UI primaria), SQLAlchemy+SQLModel (ORM), Alembic (migrations), Playwright (HLTV scraping), Rich (console TUI), FastAPI (internal API), Pydantic (validacao). Cada ferramenta e um artesao especializado: voce usa a certa para cada trabalho, nunca um martelo para um parafuso. O bolo de cinco camadas e uma das invariantes arquiteturais mais preciosas do projeto — e o que torna o codebase mantivel apesar de ter superado as 120.000 linhas de Python. Violar a direcionalidade dos fluxos (por exemplo, fazer com que o modelo chame um ViewModel) produziria um code smell conhecido como *callback hell* ou *architectural spaghetti*, e a manutencao se tornaria um pesadelo. A disciplina das cinco camadas, aplicada com rigor, e a razao pela qual o coach pode ser estendido no tempo sem desabar sob seu proprio peso.
 
 **Compare com:** §10.2 (A Cidade — a infraestrutura que o painel comanda), §1.1 (A Fabrica — os departamentos que o bolo de 5 camadas codifica).
 
 ---
 
+## §10.4 A Paleta Unica
+
+Um teatro que monta tres espetaculos diferentes pode pintar tres cenarios completos, ou pode pintar **um so** e mudar a iluminacao. O primeiro caminho e mais intuitivo e se paga em manutencao: quando o diretor decide que o vermelho deve puxar para o laranja, alguem precisa retocar tres cenarios, e cedo ou tarde esquece um — entao o terceiro espetaculo fica com o vermelho antigo e ninguem percebe ate a estreia. Por anos o coach teve tres cenarios: tres folhas de estilo completas, uma por tema, com as cores escritas dentro. Hoje tem uma so — um unico modelo de folha de estilo com **buracos** no lugar das cores — e tres paletas cuja unica funcao e dizer qual cor vai em qual buraco. A vantagem nao e a elegancia: e que uma cor agora **existe num unico lugar**. A mesma paleta que preenche a folha de estilo preenche tambem a palette de sistema da janela e a funcao que decide de que cor mostrar um rating — portanto nao pode mais acontecer que a folha de estilo diga uma coisa e a palette outra, que e o tipo de incoerencia que nenhum teste pega e todo usuario ve. Acrescentar um quarto tema deixa de ser a repintura de um cenario e passa a ser o preenchimento de uma lista de cores. Resta um detalhe que vale contar, porque e o tipo de coisa que so se descobre ao vivo: quando o usuario troca de tema, os widgets que se pintam sozinhos precisam ficar sabendo. Mas o motor de temas vive apenas o tempo de uma sessao da aplicacao, e um widget nao pode se inscrever em algo que sera substituido — seria como deixar seu contato com um porteiro que sai no fim do turno. Era preciso um endereco estavel: uma **portaria** que fica no lugar atraves das trocas de turno, a qual os widgets se anunciam uma unica vez e que avisa todos quando as luzes mudam.
+
+**Compare com:** §10.3 (O Painel — a superficie que esta paleta colore), §1.1 (A Fabrica — o principio da fonte unica aplicado aos departamentos).
+
+---
+
 ## Nota final do autor
 
-Estas 35 analogias nao esgotam a riqueza dos quatro livros-coach — sao a sintese pedagogica. Onde um livro tecnico escreveria *"o SuperpositionLayer aplica um gating contextual atraves de L1-sparsity regulada"*, aqui escrevemos *"o mixer de 256 canais abaixa automaticamente os volumes inuteis"*. Nenhuma das duas formulacoes e mais correta que a outra — sao complementares. A primeira e indispensavel para quem escreve o codigo; a segunda e indispensavel para quem quer compreender sua intencao.
+Estas 38 analogias nao esgotam a riqueza dos quatro livros-coach — sao a sintese pedagogica. Onde um livro tecnico escreveria *"o SuperpositionLayer aplica um gating contextual atraves de L1-sparsity regulada"*, aqui escrevemos *"o mixer de 256 canais abaixa automaticamente os volumes inuteis"*. Nenhuma das duas formulacoes e mais correta que a outra — sao complementares. A primeira e indispensavel para quem escreve o codigo; a segunda e indispensavel para quem quer compreender sua intencao.
 
 Se durante a leitura de um capitulo voce se encontra a pensar *"ok, tecnicamente claro, mas por que esta escolha?"*, volte a este volume. Se voce se encontra a pensar *"ok, metafora clara, mas como se implementa?"*, volte ao capitulo tecnico. As duas leituras feitas juntas sao a compreensao plena.
 
@@ -326,4 +352,4 @@ Um ultimo pensamento. Escrever boas analogias e mais dificil que escrever docume
 
 ---
 
-*Fim do Livro das Analogias (versao canonica em portugues brasileiro). A versao canonica em italiano esta em `analogy-book.md`; a versao inglesa em `analogy-book-en.md`, parity-checked em relacao a estas.*
+*Fim do Livro das Analogias (traducao em portugues brasileiro). A versao canonica em italiano esta em `analogy-book.md`; a traducao inglesa em `analogy-book-en.md`, parity-checked em relacao a ela.*

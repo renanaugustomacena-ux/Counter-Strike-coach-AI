@@ -81,21 +81,53 @@ const COVER_DATA = {
     title: "Ultimate CS2 Coach",
     subtitle: "Parte 3 — Programma, UI, Tools e Build",
     description:
-      "Logica Programma, UI Qt/PySide6, Ingestion Pipeline, 17 Tools Diagnostici, 81 Test Files, Remediation",
+      "Logica Programma, UI Qt/PySide6, Design Atlas, Ingestion Pipeline, Tools Diagnostici, Suite di Test, Rimediazione",
   },
   "Book-Coach-3-en": {
     title: "Ultimate CS2 Coach",
     subtitle: "Part 3 — Application, UI, Tools and Build",
     description:
-      "Application Logic, UI Qt/PySide6, Ingestion Pipeline, 17 Diagnostic Tools, 81 Test Files, Remediation",
+      "Application Logic, UI Qt/PySide6, Design Atlas, Ingestion Pipeline, Diagnostic Tools, Test Suite, Remediation",
   },
   "Book-Coach-3-pt": {
     title: "Ultimate CS2 Coach",
     subtitle: "Parte 3 — Aplicacao, UI, Ferramentas e Build",
     description:
-      "Logica Aplicacao, UI Qt/PySide6, Ingestion Pipeline, 17 Ferramentas Diagnosticas, 81 Arquivos de Teste, Remediacao",
+      "Logica Aplicacao, UI Qt/PySide6, Design Atlas, Ingestion Pipeline, Ferramentas Diagnosticas, Suite de Testes, Remediacao",
+  },
+  "analogy-book": {
+    title: "Ultimate CS2 Coach",
+    subtitle: "Il Libro delle Analogie",
+    description:
+      "38 analogie didattiche che spiegano l'architettura — dal Nucleo Neurale alla Visione d'Insieme",
+  },
+  "analogy-book-en": {
+    title: "Ultimate CS2 Coach",
+    subtitle: "The Book of Analogies",
+    description:
+      "38 teaching analogies explaining the architecture — from the Neural Core to the Big Picture",
+  },
+  "analogy-book-pt": {
+    title: "Ultimate CS2 Coach",
+    subtitle: "O Livro das Analogias",
+    description:
+      "38 analogias didaticas que explicam a arquitetura — do Nucleo Neural a Visao Geral",
   },
 };
+
+// Cover chrome follows the edition's language, taken from the filename suffix:
+// an English reader should not meet an Italian byline on page one.
+const COVER_CHROME = {
+  it: { author: "Autore", date: "Agosto 2026", page: "Pagina", of: "di" },
+  en: { author: "Author", date: "August 2026", page: "Page", of: "of" },
+  pt: { author: "Autor", date: "Agosto 2026", page: "Pagina", of: "de" },
+};
+
+function editionLang(fileBaseName) {
+  if (fileBaseName.endsWith("-en")) return "en";
+  if (fileBaseName.endsWith("-pt")) return "pt";
+  return "it";
+}
 
 function buildCoverHtml(fileBaseName) {
   const data = COVER_DATA[fileBaseName] || {
@@ -103,6 +135,7 @@ function buildCoverHtml(fileBaseName) {
     subtitle: "",
     description: "",
   };
+  const chrome = COVER_CHROME[editionLang(fileBaseName)];
   return `
 <div class="cover-page">
   <div class="cover-content">
@@ -111,8 +144,8 @@ function buildCoverHtml(fileBaseName) {
     <div class="cover-divider"></div>
     <h2 class="cover-subtitle">${data.subtitle}</h2>
     <p class="cover-description">${data.description}</p>
-    <p class="cover-author">Autore: Renan Augusto Macena</p>
-    <p class="cover-date">Marzo 2026</p>
+    <p class="cover-author">${chrome.author}: Renan Augusto Macena</p>
+    <p class="cover-date">${chrome.date}</p>
   </div>
 </div>`;
 }
@@ -551,6 +584,7 @@ async function convertFile(browser, inputPath, outputPath) {
   const bookTitle = COVER_DATA[fileBaseName]
     ? `${COVER_DATA[fileBaseName].title} — ${COVER_DATA[fileBaseName].subtitle}`
     : title;
+  const footerChrome = COVER_CHROME[editionLang(fileBaseName)];
 
   console.log(`[md2pdf] Generating PDF: ${outputPath}`);
   await page.pdf({
@@ -563,7 +597,7 @@ async function convertFile(browser, inputPath, outputPath) {
       <span>${bookTitle}</span>
     </div>`,
     footerTemplate: `<div style="font-size:7.5pt; color:#aaa; width:100%; text-align:center; padding:0 18mm 4px 18mm; font-family: 'Segoe UI', sans-serif;">
-      Pagina <span class="pageNumber"></span> di <span class="totalPages"></span>
+      ${footerChrome.page} <span class="pageNumber"></span> ${footerChrome.of} <span class="totalPages"></span>
     </div>`,
   });
 
@@ -611,6 +645,9 @@ async function main() {
         "Book-Coach-3.md",
         "Book-Coach-3-en.md",
         "Book-Coach-3-pt.md",
+        "analogy-book.md",
+        "analogy-book-en.md",
+        "analogy-book-pt.md",
       ];
 
       console.log(`[md2pdf] Batch mode: ${files.length} files from ${docsDir}`);

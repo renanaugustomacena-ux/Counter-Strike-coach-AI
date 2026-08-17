@@ -1,7 +1,8 @@
 # The Book of Analogies — Ultimate CS2 Coach
 
 > **Author:** Renan Augusto Macena
-> **Canonical language:** Italian (English and Portuguese translations follow in `analogy-book-en.md` and `analogy-book-pt.md`).
+> **Base revision:** in sync with `analogy-book.md` (Italian canonical) as of 2026-08-15.
+> **Canonical language:** Italian (see `analogy-book.md`). This is the English translation; the Portuguese one is in `analogy-book-pt.md`.
 > **Purpose:** To gather in a single volume every pedagogical analogy scattered across the four parts of the *Ultimate CS2 Coach*. The analogies are the pedagogical heart of the book — they make comprehensible to anyone a system that would otherwise require a doctorate in machine-learning engineering.
 
 ---
@@ -12,7 +13,7 @@
 >
 > *[Placeholder Renan: tell here why you chose concrete analogies — the factory, the school, the jury, the hospital — instead of equations. Tell the first time a friend asked you "but how does it really work?", and you answered with a metaphor that lit up the lightbulb in his eyes. This is the most important lesson of the book, and it must be told in your voice, not mine.]*
 
-The analogies in this volume are **canonical**: each one is the reference point for all the variants that appear across the coach books. When a chapter says *"like the jury of three judges"*, the entire full story lives here, in voice **§3** of this volume. The books can then focus on technical precision — dimensions, constants, invariants — while deep understanding remains preserved in this collection.
+The analogies in this volume are **canonical**: each one is the reference point for all the variants that appear across the coach books. When a chapter says *"like the jury of three judges"*, the entire full story lives here, in entry **§1.2** of this volume. The books can then focus on technical precision — dimensions, constants, invariants — while deep understanding remains preserved in this collection.
 
 This separation is not a compromise — it is a gain. The coach's technical books are dense by necessity: they must cite files and lines, describe mathematical invariants, specify parameters and contracts. If the full-length metaphors were embedded inside that density, the technical reader would find the analogies a slowdown; but the analogies are indispensable for anyone who does not live in the code. By separating them into this volume, we end up with two complementary books: one for those who must *implement*, one for those who must *understand*. The best readers will use both.
 
@@ -20,7 +21,7 @@ This separation is not a compromise — it is a gain. The coach's technical book
 
 ## How to read this book
 
-1. **Open the chapter of the coach book you are studying** (Part 1A, 1B, 2, or 3). When you hit a line `> **Analogy:** [title — see Book of Analogies §X.Y]`, come back here.
+1. **Open the chapter of the coach book you are studying** (Part 1A, 1B, 2, or 3). When a technical passage resists you, look the topic up in the **Legend** table below: the *Where it originates* column lists the source chapter of every entry, so it reads backwards too — from chapter to analogy.
 2. **Read the canonical analogy** in this volume (the corresponding section).
 3. **Return to the book** and continue the technical reading: at that point the metaphor is anchored and the rest of the chapter can talk about `METADATA_DIM=25`, `GLOBAL_SEED=42`, and `input_dim=153` without losing the narrative thread.
 4. **Follow the cross-references** (the *"Compare with"* section at the end of each entry): many analogies illuminate each other.
@@ -30,57 +31,62 @@ The volume is organized into **ten thematic sections** matching the major blocks
 - **§1 — Neural Core** (7 entries): the models that do the central thinking — MoE, Superposition, ResNet, Value Critic, GhostEngine.
 - **§2 — Memory and Time** (3 entries): how the coach remembers, what it forgets, and the temporal scale of its observations.
 - **§3 — Perception and Data** (2 entries): the coach's five senses and the canonical 25-dimensional contract that unifies them.
-- **§4 — Strategy and Coaching** (5 entries): the battle plan, the fallback chain of services, the attribution of narrative roles.
+- **§4 — Strategy and Coaching** (6 entries): the battle plan, the fallback chain of services, the attribution of narrative roles, the distrust toward what the coach asks for on its own.
 - **§5 — Knowledge and Retrieval** (3 entries): how the coach knows what it knows — the FAISS library, the COPER diary, the graph of facts.
 - **§6 — Training and Orchestration** (4 entries): the school, the orchestra, the exam, the talent scout — how one grows from nothing to master chef.
 - **§7 — Analysis Engines** (3 entries): the specialized detectives who see things the other engines don't see.
-- **§8 — Data and Ingestion** (3 entries): the post office, the customs officer, the sports chronicler — how demos arrive and get understood.
+- **§8 — Data and Ingestion** (4 entries): the post office, the customs officer, the chronicler, the deli counter ticket — how demos arrive, get understood, and get taken in charge exactly once.
 - **§9 — Database and Storage** (2 entries): the three-tier archive, the backup vault.
-- **§10 — System Overview** (3 entries): the robot that watches videos, the coach's city, the five-layer dashboard.
+- **§10 — System Overview** (4 entries): the robot that watches videos, the coach's city, the five-layer dashboard, the single palette that colours them.
 
 ---
 
 ## Legend — where each analogy originates
 
-This table maps the **35 canonical entries** to their original positions in the four books. Useful when a reader wants to go back to the technical context where the metaphor was first introduced.
+This table maps the **38 canonical entries** to the chapters of the four books where the technical concept is covered. Useful when a reader wants to go back to the context the metaphor grows out of.
 
-| Entry | Title | Source (Book:line) |
-|------|--------|----------------------|
-| §1.1 | The Factory with 6 Departments | 1A:84 |
-| §1.2 | The Jury of 3 Judges | 1A:329, 1B:230 |
-| §1.3 | The 256-Channel Mixer | 1A:854, 1B:236 |
-| §1.4 | The 7-Story Building | 1B:53, 1B:147 |
-| §1.5 | The Coach's Three Pairs of Glasses | 1B:119 |
-| §1.6 | The Hologram of the Better You | 1B:514, 3:1605 |
-| §1.7 | The Mental Report Card | 1A:1134, 1A:1250 |
-| §2.1 | The Hopfield Album | 1B:172, 1B:164, 1B:184 |
-| §2.2 | The Slow Mentor (EMA) | 1A:399, 1A:872 |
-| §2.3 | The Three Lenses of the Chronovisor | 1B:449, 1B:459 |
-| §3.1 | The Coach's 5 Senses | 1B:620, 1A:267, 1B:932 |
-| §3.2 | The Sensor's 25 Questions | 1A:937, 3:1195 |
-| §4.1 | The Hospital and the Reception Desk | 2:50, 2:89 |
-| §4.2 | The Detective of 5 Errors | 1B:282, 1B:307 |
-| §4.3 | The Commentator of Value | 1B:268 |
-| §4.4 | The CS2 Chess Tree | 2:886, 2:921 |
-| §4.5 | The Poker Face of Deception | 2:964 |
-| §5.1 | The FAISS Library | 1B:1032, 2:589 |
-| §5.2 | The Textbook + Diary | 2:573, 2:620, 2:700 |
-| §5.3 | The Graph of Facts | 2:714 |
-| §6.1 | The Coach's School | 1A:878, 3:399, 3:431 |
-| §6.2 | The Training Orchestra | 2:2228, 2:2462, 2:2681 |
-| §6.3 | The Exam with Answers on the Back | 1A:599, 3:556, 3:574, 3:591 |
-| §6.4 | The Talent Scout of Roles | 2:808, 2:812, 2:1722 |
-| §7.1 | The Squad of Detectives | 2:154, 2:776 |
-| §7.2 | The Mood Ring | 2:990, 2:1370 |
-| §7.3 | The Driving Instructor | 2:1043, 2:1136 |
-| §8.1 | The Post Office of the Letter | 3:1107, 3:2626 |
-| §8.2 | The Demo Customs Officer | 1B:702, 2:1388 |
-| §8.3 | The HLTV Sports Chronicler | 1B:677, 1B:779, 3:2667 |
-| §9.1 | The 3-Tier Archive | 3:100, 3:1369, 2:2047, 2:2083 |
-| §9.2 | The Backup Vault | 2:2134, 3:1885 |
-| §10.1 | The Robot that Watches Video | 1A:62 |
-| §10.2 | The Coach's City | 3:618, 3:841 |
-| §10.3 | The Five-Layer Dashboard | 3:944, 3:2905, 3:2984 |
+> **A note on references.** Until August 2026 this column carried line coordinates (`1A:329`). They were a promise nobody could keep: adding a single paragraph to a book slid every line after it, and the English and Portuguese editions carried the *Italian* line numbers anyway, which meant nothing in their own files. References are now by **chapter**: they survive revisions and read identically in all three languages.
+
+| Entry | Title | Where it originates |
+|-------|-------|---------------------|
+| §1.1 | The Factory with 6 Departments | Part 1A §2 (architecture overview) |
+| §1.2 | The Jury of 3 Judges | Part 1A §3 (MoE) · Part 1B §4 (Strategy) |
+| §1.3 | The 256-Channel Mixer | Part 1A §3 (SuperpositionLayer) · Part 1B §4 (Strategy) |
+| §1.4 | The 7-Story Building | Part 1B §4 (RAP Coach, 7 components) |
+| §1.5 | The Coach's Three Pairs of Glasses | Part 1B §4 (Perception) |
+| §1.6 | The Hologram of the Better You | Part 1B §4 (GhostEngine) · Part 3 §12.10 |
+| §1.7 | The Mental Report Card | Part 1A §3 (Maturity Observatory) |
+| §2.1 | The Hopfield Album | Part 1B §4 (LTC + Hopfield Memory) |
+| §2.2 | The Slow Mentor (EMA) | Part 1A §3 (EMA module) |
+| §2.3 | The Three Lenses of the Chronovisor | Part 1B §4 (ChronovisorScanner) |
+| §3.1 | The Coach's 5 Senses | Part 1B §5 (Data Sources) · Part 1A §2 |
+| §3.2 | The Sensor's 25 Questions | Part 1A §2 (25-dim contract) · Part 3 §12.6 |
+| §4.1 | The Hospital and the Reception Desk | Part 2 §5 (Coaching Services) |
+| §4.2 | The Detective of 5 Errors | Part 1B §4 (Pedagogy — Causal Attribution) |
+| §4.3 | The Commentator of Value | Part 1B §4 (Pedagogy — Value) |
+| §4.4 | The CS2 Chess Tree | Part 2 §7 (Analysis Engines — game theory) |
+| §4.5 | The Poker Face of Deception | Part 2 §7 (Deception Index) |
+| §4.6 | The Distrustful Librarian | Part 2 §5 (CoachingDialogueEngine — agentic phase) |
+| §5.1 | The FAISS Library | Part 1B §5 (Vector Index) · Part 2 §6 |
+| §5.2 | The Textbook + Diary | Part 2 §6 (Knowledge and Retrieval) |
+| §5.3 | The Graph of Facts | Part 2 §6 (Knowledge Graph) |
+| §6.1 | The Coach's School | Part 1A §3 · Part 3 §10 (training regime) |
+| §6.2 | The Training Orchestra | Part 2 §12 (Training Pipeline) |
+| §6.3 | The Exam with Answers on the Back | Part 2 §13 · Part 3 §11 (loss functions) |
+| §6.4 | The Talent Scout of Roles | Part 2 §7 (Role Classifier) |
+| §7.1 | The Squad of Detectives | Part 2 §7 (the 11 analysis engines) |
+| §7.2 | The Mood Ring | Part 2 §7 (Momentum) |
+| §7.3 | The Driving Instructor | Part 2 §7 (Movement Quality) |
+| §8.1 | The Post Office of the Letter | Part 3 §12.6 (Ingestion Pipeline) |
+| §8.2 | The Demo Customs Officer | Part 1B §5 (Demo Format Adapter) |
+| §8.3 | The HLTV Sports Chronicler | Part 1B §5 (HLTV module) · Part 3 §12.24 |
+| §8.4 | The Deli Counter Ticket | Part 3 §12.6 (atomic task claim) |
+| §9.1 | The 3-Tier Archive | Part 2 §11 · Part 3 §9 and §12.9 |
+| §9.2 | The Backup Vault | Part 2 §11 · Part 3 §12.9 |
+| §10.1 | The Robot that Watches Video | Part 1A §1 (executive summary) |
+| §10.2 | The Coach's City | Part 3 §12 (complete program logic) |
+| §10.3 | The Five-Layer Dashboard | Part 3 §12.5 · Interconnection Map |
+| §10.4 | The Single Palette | Part 3 §12.5 (design tokens and theme relay) |
 
 ---
 
@@ -118,7 +124,7 @@ The RAP Coach's Perception layer is like **three pairs of glasses** worn simulta
 
 ## §1.6 The Hologram of the Better You
 
-The `GhostEngine` produces a **transparent hologram** on the tactical map that shows *where you should have been*. At every tick, it asks the RAP Coach: *"Given this exact situation, where SHOULD the player be?"*. The answer is a small positional delta — for example *"five units to the right, three forward"* — scaled by ×500 into CS2 map coordinates. The result is an *"ideal you"* ghost drawn on the minimap, running alongside the real player. If the ghost is far away, you know you were in a bad position; if it is close to you, your positioning was correct. Inference happens in real time thanks to a `FrameBuffer` circular buffer that holds the last 32 ticks — a "circular tape recorder" — and the inference engine maintains the LSTM state between consecutive ticks (the famous `hidden_state` from the seventh output of the RAP Coach), so it does not "forget" what happened five seconds ago when it evaluates you now. The ghost is not a final judgment of your play: it is a visual reference, a "better you" that appears where the coach thinks you should have been, and disappears when you coincide with it. The beauty of the ghost is that it is not prescriptive in an authoritarian way — it is suggestive in a gentle way. It doesn't tell you "you were wrong"; it shows *where it would be better to be*, and leaves the choice to you to follow it. After a few hours of practice with the ghost visible, players report feeling its presence even when it is turned off — they have internalized the pattern, and no longer need the hologram because now they already think like it. The ghost is therefore a transitional teacher: it helps you grow and then becomes unnecessary.
+The `GhostEngine` produces a **transparent hologram** on the tactical map that shows *where you should have been*. At every tick, it asks the RAP Coach: *"Given this exact situation, where SHOULD the player be?"*. The answer is a small positional delta — for example *"five units to the right, three forward"* — scaled by ×500 into CS2 map coordinates. The result is an *"ideal you"* ghost drawn on the minimap, running alongside the real player. If the ghost is far away, you know you were in a bad position; if it is close to you, your positioning was correct. Inference happens in real time over a **window of the last 32 ticks** (the `sequence_length` of the state reconstructor and the TensorFactory trajectory window) — a "circular tape recorder" — and the inference engine keeps the recurrent memory state between consecutive ticks (the famous `hidden_state` from the seventh output of the RAP Coach), so it does not "forget" what happened five seconds ago when it evaluates you now. The ghost is not a final judgment of your play: it is a visual reference, a "better you" that appears where the coach thinks you should have been, and disappears when you coincide with it. The beauty of the ghost is that it is not prescriptive in an authoritarian way — it is suggestive in a gentle way. It doesn't tell you "you were wrong"; it shows *where it would be better to be*, and leaves the choice to you to follow it. After a few hours of practice with the ghost visible, players report feeling its presence even when it is turned off — they have internalized the pattern, and no longer need the hologram because now they already think like it. The ghost is therefore a transitional teacher: it helps you grow and then becomes unnecessary.
 
 **Compare with:** §3.2 (The 25 Questions — the input that feeds the hologram), §4.3 (The Commentator of Value — judgment on "how good" the position is).
 
@@ -193,6 +199,12 @@ For complex strategic scenarios — *"Eco-force CT on Inferno 1v3, bomb planted,
 The `DeceptionIndex` is a **poker-face score**: it quantifies how unpredictable you are compared to the average professional player on the same map and the same side. It counts flash fakes (did you simulate an opening by throwing a flash without pushing?), fake sites (did you disappear from radar toward B only to come back to A?), walk/run mixing (do you alternate silent and loud movement to confuse?), pre-utility tosses (do you throw grenades before moving to confuse the timing?). Every entry has a weight calibrated on how often pros do it in that situation, and the final index is a z-score standardization: 0 = you play exactly like the pro median, +2 = you are clearly more deceptive than the average pro, -2 = you are completely readable. A low deception index is not automatically bad — there are roles (a pure anchor, a disciplined lurker) where predictability is functional — but a chronically low index for an entry fragger is a red flag: you are being read, and that is the most likely explanation for your lost duels. The coach communicates it with a 5-axis radar chart and with the voice *"today you are playing too linearly: try switching the side of the flash on Mirage mid when the CT has read you twice in a row"*. The Deception Index is one of the subtler indicators of the coach: once internalized, the player manages to actively govern their own predictability — becoming more readable at some moments (to build patterns that they will later break) and less readable at others (to maximize the advantage of the break). It is the strategic mind that emerges from mechanical gameplay, and the coach provides the lens to see it.
 
 **Compare with:** §7.2 (The Mood Ring — deception + momentum together tell the personality of the round), §4.2 (The Detective — the 5 subjects of which deception is a meta-level).
+
+## §4.6 The Distrustful Librarian
+
+Since August 2026 the coach can go and fetch the data itself: ask it *"how did I play the fifth round on Mirage?"* and it no longer waits for someone to place the right context in front of it — it calls one of its four tools and queries the database. The way it is allowed to do so, however, is that of a **closed-stack library**. In such a library the reader does not walk among the shelves: they fill in a request slip and hand it to the librarian, who checks it against the catalogue and goes to fetch the volume. If the slip names a title that is not in the catalogue, the librarian does not start guessing, does not open the stacks to show what is there, and does not take offence: they hand the slip back saying *"that title is not catalogued, consult the list"*. The coach is the reader, and it must be treated like any other reader — not out of distrust, but because what it writes on the slip is **generated text**, not a value picked from a menu: it can be plausible and non-existent at the same time. So every match name the model produces is resolved against a whitelist built by querying the database, round numbers must be integers within a bounded range, team-name fragments are stripped of every character that serves no purpose, and even the answer coming back from the stacks is cleaned and shortened before delivery — because that text, once delivered, becomes part of what the coach reads. There is one last courtesy, and it is the most effective: **the list of available volumes is posted at the library entrance**. Without that list the reader asked for invented books and every request was a wasted trip; with the list in front of it, it asks for what exists.
+
+**Compare with:** §4.1 (The Hospital and the Reception Desk — the service chain this librarian works in), §8.2 (The Customs Officer — the same distrust applied to files instead of words), §5.1 (The FAISS Library — the other library, the open-stack one for similarity).
 
 # §5 — Knowledge and Retrieval
 
@@ -280,11 +292,17 @@ The `DemoParser` is an **experienced sports chronicler** who, watching a demo, c
 
 **Compare with:** §3.1 (The 5 Senses — the coach's sixth sense), §9.1 (The Archive — where the chronicler files their reports).
 
+## §8.4 The Deli Counter Ticket
+
+At the deli you take a number. Not because the shopkeeper is bureaucratic, but because without a number two clerks serve the same customer and nobody serves the one behind. Ingestion has exactly this problem: **six** different doors can start it — the Home screen, the settings, the console command, batch ingestion, professional-demo ingestion, and the background worker. For a long stretch each of these doors looked at the queue, saw a waiting job and took it; if two doors looked at the same instant they saw **the same snapshot**, and the same demo was parsed twice, writing duplicate statistics that nobody could later tell apart from the good ones. The fix was not to post a supervisor to coordinate the clerks — that would have been a second mechanism to maintain, and to get wrong. It was to change the gesture: instead of *"I read that it is free, then I take it"*, the runner tells the database *"assign it to me **only if** it is still free"*, all in a single statement the database cannot split in half. The winner gets a confirmation, the loser gets a silent zero and moves on to the next job without complaint. This is the difference between managing a collision and **making it impossible**, and it is almost always the better choice: a problem that cannot occur needs no monitoring, no log line explaining it, and no memory from whoever maintains the code three years later. One courtesy remains: if you take a ticket and then give up, the number must go back into circulation — otherwise that job stays forever in an *"in progress"* state that nobody is progressing.
+
+**Compare with:** §8.1 (The Post Office — the queue the ticket is taken from), §9.1 (The 3-Tier Archive — where the statistics that must not be duplicated end up).
+
 # §9 — Database and Storage
 
 ## §9.1 The 3-Tier Archive
 
-The storage system is a **three-tier archive**, each tier designed to avoid a different type of problem. **Tier 1** is `database.db`, the main monolith (18 SQLModel tables defined in `database.py:_MONOLITH_TABLES` lines 54-73): player statistics, coach state, ingestion tasks, coaching insights, RAG knowledge, COPER experience bank, calibrations. **Tier 2** is `hltv_metadata.db` (3 tables: `ProPlayer`, `ProTeam`, `ProPlayerStatCard`), separated from the monolith because it is written by an external process (HLTV sync service) and the separation eliminates WAL contention between that process and the session engine daemons. **Tier 3** is `match_data/{id}.db`: a dedicated SQLite database for every match, containing tick-by-tick data (~100,000 rows per match) — three tables in every DB: `MatchTickState:110`, `MatchEventState:190`, `MatchMetadata:242` in `match_data_manager.py`. This separation solves the *Telemetry Cliff*: it prevents the monolith from growing indefinitely with high-frequency telemetry. The **WAL mode** (Write-Ahead Logging) is the revolving door of the archive: concurrent readers and writers enter without bumping into each other, because writes happen in a separate file (.wal) that is periodically consolidated. Total: 24 SQLModel tables distributed across 3 tiers, with 5 PRAGMAs (`database.py:110-118`): WAL on, synchronous NORMAL, foreign_keys ON (DB-06), wal_autocheckpoint 512 (DB-07), busy_timeout 5000. The 3-tier architecture is not just engineering — it is a philosophy of data. Different data have different needs: the monolith has hot, low-frequency data (player stats that change rarely), HLTV has external data refreshed weekly, per-match telemetry has huge data that is "archivable" after analysis. Putting them together would create contention, slowdowns, and make the monolith file explode. Separating them allows each tier to optimize independently.
+The storage system is a **three-tier archive**, each tier designed to avoid a different type of problem. **Tier 1** is `database.db`, the main monolith (18 SQLModel tables defined in `database.py:_MONOLITH_TABLES` lines 54-73): player statistics, coach state, ingestion tasks, coaching insights, RAG knowledge, COPER experience bank, calibrations. **Tier 2** is `hltv_metadata.db` (7 tables: `ProPlayer`, `ProTeam`, `ProPlayerStatCard`), separated from the monolith because it is written by an external process (HLTV sync service) and the separation eliminates WAL contention between that process and the session engine daemons. **Tier 3** is `match_data/{id}.db`: a dedicated SQLite database for every match, containing tick-by-tick data (~100,000 rows per match) — three tables in every DB: `MatchTickState:110`, `MatchEventState:190`, `MatchMetadata:242` in `match_data_manager.py`. This separation solves the *Telemetry Cliff*: it prevents the monolith from growing indefinitely with high-frequency telemetry. The **WAL mode** (Write-Ahead Logging) is the revolving door of the archive: concurrent readers and writers enter without bumping into each other, because writes happen in a separate file (.wal) that is periodically consolidated. Total: 24 SQLModel tables distributed across 3 tiers, with 5 PRAGMAs (`database.py:110-118`): WAL on, synchronous NORMAL, foreign_keys ON (DB-06), wal_autocheckpoint 512 (DB-07), busy_timeout 5000. The 3-tier architecture is not just engineering — it is a philosophy of data. Different data have different needs: the monolith has hot, low-frequency data (player stats that change rarely), HLTV has external data refreshed weekly, per-match telemetry has huge data that is "archivable" after analysis. Putting them together would create contention, slowdowns, and make the monolith file explode. Separating them allows each tier to optimize independently.
 
 **Compare with:** §8.1 (The Post Office — stage 3 sends the demos here), §9.2 (The Vault — who protects the archive).
 
@@ -310,15 +328,23 @@ From the infrastructure point of view, the whole system is a **small self-suffic
 
 ## §10.3 The Five-Layer Dashboard
 
-The Qt/PySide6 desktop interface is the **dashboard of a modern sports car**: everything the driver (the player) needs to know is visible at a glance, every gauge has a precise meaning, and under the dashboard there is a **CAN bus** of signals and slots — Qt's Signal/Slot pattern — that lets 15 screens talk to 7 ViewModels without tight coupling. The overall architecture is a **five-layer cake**: (1) Qt UI on top (`apps/qt_app/screens/`), (2) MVVM ViewModels exposing observable properties, (3) Coaching and analysis Services (backend/services + backend/analysis), (4) Neural models and pure logic (backend/nn + backend/processing + backend/coaching), (5) Storage (backend/storage) at the bottom. The boundaries between layers are crossed only in one direction — UI calls ViewModel, ViewModel calls Service, Service calls Model or Storage — and never the other way around, to avoid circular dependencies that would turn the cake into a spaghetti plastic model. The project's **toolbox** contains PyTorch (neural networks), ncps (LTC), hopfield-layers (Hopfield), demoparser2 (Rust-based demo parsing), PySide6 (primary UI), SQLAlchemy+SQLModel (ORM), Alembic (migrations), Playwright (HLTV scraping), Rich (console TUI), FastAPI (internal API), Pydantic (validation). Every tool is a specialized craftsman: you use the right one for each job, never a hammer for a screw. The five-layer cake is one of the most valuable architectural invariants of the project — it is what makes the codebase maintainable despite having surpassed 100,000 lines of Python. Violating the directionality of the flows (for example, letting the model call a ViewModel) would produce a code smell known as *callback hell* or *architectural spaghetti*, and maintenance would become a nightmare. The discipline of the five layers, applied rigorously, is the reason the coach can be extended over time without collapsing under its own weight.
+The Qt/PySide6 desktop interface is the **dashboard of a modern sports car**: everything the driver (the player) needs to know is visible at a glance, every gauge has a precise meaning, and under the dashboard there is a **CAN bus** of signals and slots — Qt's Signal/Slot pattern — that lets 15 screens talk to 7 ViewModels without tight coupling. The overall architecture is a **five-layer cake**: (1) Qt UI on top (`apps/qt_app/screens/`), (2) MVVM ViewModels exposing observable properties, (3) Coaching and analysis Services (backend/services + backend/analysis), (4) Neural models and pure logic (backend/nn + backend/processing + backend/coaching), (5) Storage (backend/storage) at the bottom. The boundaries between layers are crossed only in one direction — UI calls ViewModel, ViewModel calls Service, Service calls Model or Storage — and never the other way around, to avoid circular dependencies that would turn the cake into a spaghetti plastic model. The project's **toolbox** contains PyTorch (neural networks), ncps (LTC), hopfield-layers (Hopfield), demoparser2 (Rust-based demo parsing), PySide6 (primary UI), SQLAlchemy+SQLModel (ORM), Alembic (migrations), Playwright (HLTV scraping), Rich (console TUI), FastAPI (internal API), Pydantic (validation). Every tool is a specialized craftsman: you use the right one for each job, never a hammer for a screw. The five-layer cake is one of the most valuable architectural invariants of the project — it is what makes the codebase maintainable despite having surpassed 120,000 lines of Python. Violating the directionality of the flows (for example, letting the model call a ViewModel) would produce a code smell known as *callback hell* or *architectural spaghetti*, and maintenance would become a nightmare. The discipline of the five layers, applied rigorously, is the reason the coach can be extended over time without collapsing under its own weight.
 
 **Compare with:** §10.2 (The City — the infrastructure the dashboard commands), §1.1 (The Factory — the departments the 5-layer cake encodes).
 
 ---
 
+## §10.4 The Single Palette
+
+A theatre staging three different shows can paint three complete backdrops, or it can paint **one** and change the lighting. The first road is more intuitive and is paid for in maintenance: when the director decides the red should shift toward orange, someone has to retouch three backdrops, and sooner or later forgets one — so the third show keeps the old red and nobody notices until opening night. For years the coach had three backdrops: three complete stylesheets, one per theme, with the colours written inside them. Today it has one — a single stylesheet template with **holes** where the colours go — and three palettes whose only job is to say which colour fills which hole. The gain is not elegance: it is that a colour now **exists in exactly one place**. The same palette that fills the stylesheet also fills the window's system palette and the function that decides what colour to show a rating in — so it can no longer happen that the stylesheet says one thing and the palette another, which is the kind of inconsistency no test catches and every user sees. Adding a fourth theme stops being the repainting of a backdrop and becomes the filling-in of a colour list. One detail remains worth telling, because it is the sort of thing you only discover live: when the user switches theme, the widgets that paint themselves must find out. But the theme engine lives only as long as an application session, and a widget cannot subscribe to something that will be replaced — it would be like leaving your contact details with a doorman who goes off shift. What was needed was a stable address: a **porter's lodge** that stays put across shift changes, which widgets announce themselves to once and which notifies everyone when the lights change.
+
+**Compare with:** §10.3 (The Dashboard — the surface this palette colours), §1.1 (The Factory — the single-source principle applied to departments).
+
+---
+
 ## Final note from the author
 
-These 35 analogies do not exhaust the richness of the four coach books — they are the pedagogical synthesis of them. Where a technical book would write *"the SuperpositionLayer applies a contextual gating regulated through L1-sparsity"*, here we write *"the 256-channel mixer automatically lowers the useless volumes"*. Neither of the two formulations is more correct than the other — they are complementary. The first is indispensable for whoever writes the code; the second is indispensable for whoever wants to understand the intent.
+These 38 analogies do not exhaust the richness of the four coach books — they are the pedagogical synthesis of them. Where a technical book would write *"the SuperpositionLayer applies a contextual gating regulated through L1-sparsity"*, here we write *"the 256-channel mixer automatically lowers the useless volumes"*. Neither of the two formulations is more correct than the other — they are complementary. The first is indispensable for whoever writes the code; the second is indispensable for whoever wants to understand the intent.
 
 If during the reading of a chapter you find yourself thinking *"ok, technically clear, but why this choice?"*, come back to this volume. If you find yourself thinking *"ok, metaphor clear, but how is it implemented?"*, return to the technical chapter. The two readings done together are full understanding.
 
@@ -326,4 +352,4 @@ One last thought. Writing good analogies is harder than writing technical docume
 
 ---
 
-*End of the Book of Analogies (canonical Italian version). The English and Portuguese translations follow in `analogy-book-en.md` and `analogy-book-pt.md`, parity-checked against this version.*
+*End of the Book of Analogies (English translation). The Italian canonical version is in `analogy-book.md`; the Portuguese translation in `analogy-book-pt.md`, parity-checked against it.*

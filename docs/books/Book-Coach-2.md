@@ -208,6 +208,36 @@ sequenceDiagram
 
 **Sicurezza dello storico (F5-06):** Il messaggio utente viene aggiunto alla cronologia solo *dopo* aver ottenuto una risposta valida dal LLM, evitando stati inconsistenti in caso di eccezione.
 
+##### La fase agentica: il coach interroga il database da solo
+
+Fino all'agosto 2026 il coach riceveva un contesto pre-confezionato e, se la domanda richiedeva un dato che nessuno gli aveva messo davanti, rispondeva che non aveva accesso ai dati delle partite. Il contesto era deciso *prima* di sapere cosa servisse.
+
+Oggi, quando il modello LLM supporta il tool-calling nativo, `respond()` prova prima un **ciclo agentico** in cui è il coach a chiedere ciò che gli manca. Quattro strumenti, deliberatamente pochi e a grana grossa:
+
+| Strumento | Cosa restituisce |
+|---|---|
+| `list_matches(team?, map_name?)` | L'elenco delle partite disponibili, filtrabile per squadra o per mappa |
+| `get_match_overview(demo_name)` | Il quadro d'insieme di una partita: punteggio, tabellino, metriche per giocatore |
+| `get_round_details(demo_name, rounds[])` | Il dettaglio di round specifici |
+| `lookup_player(name)` | La scheda di un giocatore professionista |
+
+Il ciclo gira al massimo `_MAX_TOOL_ROUNDS = 4` volte più un giro finale in cui la risposta è obbligatoria, ed esegue al massimo quattro chiamate per giro. Fra un giro e l'altro controlla se l'utente ha annullato. Se il modello non supporta gli strumenti, il metodo restituisce `None` e si torna al percorso classico con il contesto pre-caricato: la fase agentica è un miglioramento, non un requisito.
+
+**Due decisioni di progetto meritano di essere raccontate.**
+
+*L'inventario nel prompt di sistema.* Il prompt include un blocco `MATCH DATABASE INVENTORY` con l'elenco delle partite realmente presenti (prima quelle con i dati per round, fino a `_INVENTORY_LIMIT = 60`). La ragione è semplice quanto vincolante: **un LLM non può scegliere una partita che non gli è mai stata mostrata**. Senza inventario il modello inventava nomi di demo plausibili e poi falliva la chiamata.
+
+*La fiducia zero sugli argomenti.* Tutto ciò che l'LLM produce come argomento è trattato come input non fidato, perché lo è — è testo generato, non un valore validato da un form:
+
+- ogni `demo_name` passa da `_canonical_demo()`, che lo risolve contro una **whitelist costruita interrogando il database**; se non corrisponde, lo strumento restituisce `ERROR: unknown demo_name. Call list_matches for exact names.` — un messaggio da cui il modello può riprendersi, non un'eccezione;
+- i numeri di round devono essere interi, sono limitati all'intervallo 1–50, deduplicati e tagliati a `_TOOL_MAX_ROUNDS_PER_CALL = 5`;
+- i frammenti di nome squadra sono ripuliti di tutto ciò che non sia `[a-z0-9 _-]` e troncati a `_TOOL_ARG_MAX_LEN = 40`; un `map_name` che non appartiene alla lista nota viene semplicemente ignorato;
+- il risultato di ogni strumento viene ripulito dai caratteri di controllo e troncato a `_TOOL_RESULT_MAX_LEN = 8000` caratteri **prima di rientrare nel prompt**, perché ciò che torna dal database diventa a sua volta input del modello.
+
+Gli errori restituiti sono stringhe brevi e neutre: mai il testo di un'eccezione, che rivelerebbe struttura interna a un componente che non ha motivo di conoscerla.
+
+Durante i giri di strumenti la risposta **non è in streaming** — l'interfaccia riceve avvisi di avanzamento (*"sto consultando il database delle partite…"*) e poi un'unica risposta completa.
+
 #### LessonGenerator (`lesson_generator.py`)
 
 Generatore di lezioni educative strutturate a partire dall'analisi delle demo:
@@ -869,6 +899,14 @@ Assegna uno dei 6 ruoli utilizzando **soglie statistiche apprese**:
 
 **Audit del bilanciamento del team** (`audit_team_balance()`): rileva più AWPer (ALTA), Entry mancante (ALTA), Supporto mancante (MEDIA), nessuna diversità (CRITICA), più Lurker (MEDIA).
 
+**La guardia di vocabolario (F-0030).** Questo classificatore ha prodotto per mesi una frase che sembrava una diagnosi e non lo era: *"Ruolo: IGL rilevato, confidenza 100%"*, su giocatori che non erano IGL.
+
+Il meccanismo del difetto vale più della correzione. I cinque punteggi di affinità leggono chiavi statistiche precise — `awp_kills`, `total_kills`, `entry_frags`, `rounds_played`, `assists`, `rounds_survived`, `solo_kills`. Il percorso vivo dell'orchestratore però passava dizionari di forma diversa, aggregati a livello di partita, che contenevano `kd_ratio` ma **nessuna** di quelle sette chiavi. Ogni affinità valeva quindi zero, tranne una: il bonus di equilibrio dell'IGL, che scatta quando il rapporto uccisioni/morti sta fra 0,9 e 1,2. La normalizzazione finale divide ciascun punteggio per la somma — e la somma era quell'unico bonus. Un solo segnale debole diventava così una certezza del 100%.
+
+Il difetto non era nella formula: era nel fatto che nessuno verificasse che l'input avesse la forma attesa. Oggi `classify()` controlla in apertura che il dizionario contenga almeno una chiave del vocabolario dei ruoli e, se non la contiene, restituisce `(FLEX, 0.0)` con un avviso esplicito nel log. La confidenza a zero fa scattare la guardia già presente a valle nell'orchestratore, che salta l'insight invece di pubblicarlo.
+
+È lo stesso principio del resto del sistema: **meglio un sentinella documentato di uno zero plausibile** — e meglio ancora un silenzio dichiarato di una certezza fabbricata. Il test `test_role_vocabulary_guard.py` fissa il comportamento.
+
 ### -Predittore di Probabilità di Vittoria (`win_probability.py`)
 
 Rete neurale a 12 funzioni che stima P(round_win | game_state):
@@ -1116,7 +1154,7 @@ Analizza le distanze di uccisione per costruire **profili di ingaggio** specific
 
 | Componente | Scopo |
 |---|---|
-| `NamedPositionRegistry` | Registro di callout (in `core/map_callouts.py`): **161 posizioni nominate su 9 mappe competitive**, con coordinate 3D e raggio |
+| `NamedPositionRegistry` | Registro di callout (in `core/map_callouts.py`): **160 posizioni nominate su 9 mappe competitive**, con coordinate 3D e raggio |
 | `EngagementRangeAnalyzer` | Calcolo distanza euclidea killer-vittima, classificazione e confronto con baseline pro |
 | `EngagementProfile` | Distribuzione % per fascia: close (<500u), medium (500-1500u), long (1500-3000u), extreme (>3000u) |
 
@@ -1486,7 +1524,7 @@ flowchart TB
 - [**schema.py**](http://schema.py)**:** Validazione dello schema per i record del database
 - [**sanity.py**](http://sanity.py)** / dem\_[validator.py](http://validator.py):** Controlli di integrità dei dati e dei file demo
 
-**Copertura quantitativa:** Il progetto comprende **130 file di test** (`test_*.py` in `Programma_CS2_RENAN/tests/`) più i test e gli script `verify_*.py` nella `tests/` root, e un **headless validator** con **42 fasi tematiche di controllo** (da Ambiente/Import fino a Security, GPU, Design-Tokens e Quality-Adv). Questa copertura spazia dall'integrità dello schema DB alla coerenza dei vettori di embedding, dalla correttezza delle pipeline di addestramento alla validazione end-to-end dei flussi di coaching.
+**Copertura quantitativa:** Il progetto comprende **167 file di test** (`test_*.py` in `Programma_CS2_RENAN/tests/`) più i test e gli script `verify_*.py` nella `tests/` root, e un **headless validator** con **39 fasi tematiche di controllo** (da Ambiente/Import fino a Security, GPU, Design-Tokens e Quality-Adv). Questa copertura spazia dall'integrità dello schema DB alla coerenza dei vettori di embedding, dalla correttezza delle pipeline di addestramento alla validazione end-to-end dei flussi di coaching.
 
 ### -PlayerKnowledge — Sistema Percettivo NO-WALLHACK (`player_knowledge.py`)
 

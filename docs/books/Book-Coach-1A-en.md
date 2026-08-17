@@ -3,6 +3,8 @@
 > **Topics:** Complete neural architecture, training regime, deep learning models (JEPA, VL-JEPA, LSTM+MoE), Coach Introspection Observatory, 25-dim contract, NO-WALLHACK principle, and system architecture overview (startup, Qt/PySide6 desktop interface, quad-daemon architecture, general pipeline).
 >
 > **Author:** Renan Augusto Macena
+>
+> **Base revision:** in sync with `Book-Coach-1A.md` (Italian canonical) as of 2026-08-15.
 
 ---
 
@@ -51,13 +53,13 @@ I hope something in there can be useful.
 
 ## 1. Executive Summary
 
-CS2 Ultimate is a **hybrid AI-based coaching system** for Counter-Strike 2 (CS2). It combines deep learning models (JEPA, VL-JEPA, LSTM+MoE, a 7-component RAP architecture (Perception, LTC+Hopfield Memory, Strategy, Pedagogy, Causal Attribution, Positioning Head + external Communication), a Neural Role Classification Head), a Coach Introspection Observatory, a Retrieval-Augmented Generation (RAG), the COPER experience bank, game-theoretic search, Bayesian belief modeling, and a Quad-Daemon architecture (Hunter, Digester, Teacher, Pulse) into a unified pipeline that:
+CS2 Ultimate is a **hybrid AI-based coaching system** for Counter-Strike 2 (CS2). It combines deep learning models (JEPA, VL-JEPA, LSTM+MoE, a 7-component RAP architecture (Perception, LTC+Hopfield Memory, Strategy, Pedagogy, Causal Attribution, Positioning Head + external Communication), a Neural Role Classification Head), a Coach Introspection Observatory, a Retrieval-Augmented Generation (RAG), the COPER experience bank, game-theoretic search, Bayesian belief modeling, and a Quad-Daemon architecture (Scanner, Digester, Teacher, Pulse — the Scanner is exposed in system state under the historical key `hunter`) into a unified pipeline that:
 
 1. **Ingests** professional and user demo files, extracting tick-level and match-level state statistics.
 2. **Trains** multiple neural network models through a phased program with maturity gates (3 levels: CALIBRATION → LEARNING → MATURE). 3. **Infers** training advice by fusing machine learning predictions with tactical knowledge retrieved semantically via a 4-tier fallback chain (COPER → Hybrid → RAG → Baseline).
 3. **Explains** its reasoning through causal attribution, template-based narratives, professional player comparisons, and an optional LLM refinement (Ollama).
 
-The system contains **≈ 103,600 lines of Python** spread across 445 `.py` files under `Programma_CS2_RENAN/`, extending over **eight logical AI subsystems** (NN Core with VL-JEPA, RAP Coach + RAP Lite, Coaching Services, Knowledge & Retrieval, Analysis Engines (11), Processing & Feature Engineering, Data Sources, Coaching Engines), a training Observatory, a Control module (Console with REST API, DB Governor, Ingest Manager, ML Controller), a Quad-Daemon architecture for background automation (Hunter, Digester, Teacher, Pulse), a Qt/PySide6 desktop interface with 15 screens and MVVM patterns (migrated from Kivy in March 2026), a complete ingestion system (with a dedicated HLTV subsystem: HLTVApiService, CircuitBreaker, RateLimiter), storage and reporting, a **Tools Suite** with 41 Python validation and diagnostic scripts (29 root + 12 in the package — Goliath Hospital, headless validator, Ultimate ML Coach Debugger, validate_coaching_pipeline, ingest_pro_demos, dead_code_detector, dev_health, rebuild_monolith, tick_census), a specialized tri-database architecture with 18 SQLModel tables in the monolith (+ 3 in the separate HLTV database + 3 in the per-match databases = 24 total), and a **Test Suite** with 130 test files organized into 6 categories: analysis/theory, coaching/training, ML/models, data/storage, UI/playback, integration/misc. The project has gone through a systematic **13-phase remediation process** that resolved 412+ issues of code quality, ML correctness, security, and architecture, including the elimination of label leakage in training (G-01), implementation of the visual danger zone in the view tensor (G-02), automatic calibration of the Bayesian estimator (G-07), and correction of the COPER coaching fallback (G-08), followed by a **second remediation wave** that resolved an additional 162 issues (31 HIGH + 131 MEDIUM) related to thread safety, schema drift, Qt lifecycle, and observability hardening, and a **third wave** (April 2026) that addressed 40+ additional issues including type safety (SA-14–SA-27), dependency pinning (DEP-1), checkpoint security (CTF-1/2), DataLineage audit trail (DL-1), and UI/UX fixes (UX-1/2/3). The end-to-end pipeline was completed on March 12, 2026: 11 professional demos ingested, 17.3M tick rows, 6.4GB database, pre-trained JEPA (train loss 0.9506, val loss 1.8248). April 2026 update: 156 per-match databases, fully trained AdvancedCoachNN (`latest.pt`), HLTV database populated with **161 real professional players** (32 teams, 156 stat cards), HybridCoachingEngine enhanced with automatic reference pro selection by name in coaching feedback, **Coach Book v4** expanded to **502 entries** of tactical knowledge in 8 JSON files (7 maps + general) with 13 categories, **CoachingDialogueEngine** for multi-turn coaching with per-player and per-round drill-down, **MovementQualityAnalyzer** (11th analysis engine), **EloAugmentedPredictor** for win probability with Elo features, **PlusMinus rating metric**, COPER enhancements (TrueSkill uncertainty, CRUD semantics, prioritized replay), bombsite-relative position encoding, demo prioritization by coaching variance with quality scoring via Huber model, and **CS2 Coach Bench** 200-question evaluation benchmark.
+The system contains **≈ 126,400 lines of Python** spread across 493 `.py` files under `Programma_CS2_RENAN/`, extending over **eight logical AI subsystems** (NN Core with VL-JEPA, RAP Coach + RAP Lite, Coaching Services, Knowledge & Retrieval, Analysis Engines (11), Processing & Feature Engineering, Data Sources, Coaching Engines), a training Observatory, a Control module (Console with REST API, DB Governor, Ingest Manager, ML Controller), a Quad-Daemon architecture for background automation (Scanner, Digester, Teacher, Pulse), a Qt/PySide6 desktop interface with 15 screens and MVVM patterns (migrated from Kivy in March 2026, rebuilt on the design atlas in August 2026: themes generated from design tokens, charts in pure QPainter, 26 reusable components), a complete ingestion system (with a dedicated FlareSolverr-based HLTV subsystem: HLTVStatFetcher, FlareSolverrClient, DockerManager), storage and reporting, a **Tools Suite** with 71 Python validation and diagnostic scripts (53 root + 18 in the package — Goliath Hospital, headless validator, Ultimate ML Coach Debugger, validate_coaching_pipeline, ingest_pro_demos, dead_code_detector, dev_health, rebuild_monolith, tick_census), a specialized tri-database architecture with 28 SQLModel tables (18 in the monolith + 7 in the separate HLTV database + 3 in the per-match databases), and a **Test Suite** with 167 test files (`test_*.py`: 152 in the flat suite + 5 in `automated_suite/` — smoke, unit, functional, e2e, regression — plus 8 in root `tests/` and 2 in `tests/forensics/`). The project has gone through a systematic **13-phase remediation process** that resolved 412+ issues of code quality, ML correctness, security, and architecture, including the elimination of label leakage in training (G-01), implementation of the visual danger zone in the view tensor (G-02), automatic calibration of the Bayesian estimator (G-07), and correction of the COPER coaching fallback (G-08), followed by a **second remediation wave** that resolved an additional 162 issues (31 HIGH + 131 MEDIUM) related to thread safety, schema drift, Qt lifecycle, and observability hardening, and a **third wave** (April 2026) that addressed 40+ additional issues including type safety (SA-14–SA-27), dependency pinning (DEP-1), checkpoint security (CTF-1/2), DataLineage audit trail (DL-1), and UI/UX fixes (UX-1/2/3), and finally by a **full audit campaign** (August 2026) that read every file in the repository and registered 44 findings — 31 fixed, each with its own regression test in the same commit, and 13 deferred with the blocking condition written out in full (`docs/audit/`). The end-to-end pipeline was completed on March 12, 2026: 11 professional demos ingested, 17.3M tick rows, 6.4GB database, pre-trained JEPA (train loss 0.9506, val loss 1.8248). April 2026 update: 156 per-match databases, fully trained AdvancedCoachNN (`latest.pt`), HLTV database populated with **161 real professional players** (32 teams, 156 stat cards), HybridCoachingEngine enhanced with automatic reference pro selection by name in coaching feedback, **Coach Book v4** expanded to **508 entries** of tactical knowledge in 8 JSON files (7 maps + general) with 13 categories, **CoachingDialogueEngine** for multi-turn coaching with per-player and per-round drill-down, **MovementQualityAnalyzer** (11th analysis engine), **EloAugmentedPredictor** for win probability with Elo blending (α=0.15), **PlusMinus rating metric**, COPER enhancements (TrueSkill uncertainty, CRUD semantics, prioritized replay), and **CS2 Coach Bench** 200-question evaluation benchmark (5 categories × 40).
 
 ```mermaid
 flowchart LR
@@ -71,7 +73,7 @@ flowchart LR
     style K fill:#51cf66,color:#fff
 ```
 
-> 445 .py files · 102,000+ lines · 8 AI subsystems + Observatory + Control Module (REST API) + Quad-Daemon + Qt/PySide6 Desktop UI (15 screens) + 41 Tools (29 root + 12 inner) · 130 test files · 21 SQLModel tables (monolith) + 3 per-match · Tri-database architecture (database.db + hltv_metadata.db + per-match database) · FAISS vector indexing (IndexFlatIP 384-dim) · i18n Internationalization (EN/IT/PT) · WCAG 1.4.1 Accessibility (theme.py) · 12 comprehensive audit reports (incl. 140KB literature review, 30 peer-reviewed articles) · 610+ issues resolved (412 in 13 phases + 162 in second wave + 40+ in third wave) · End-to-end pipeline completed (156 per-match DB · JEPA + AdvancedCoachNN trained · 161 real HLTV players, 32 teams, 156 stat cards · Coach Book v4: 502 entries, 8 files, 13 categories · CS2 Coach Bench: 200 questions)
+> 493 .py files · ≈126,400 lines · 8 AI subsystems + Observatory + Control Module (+ FastAPI REST API in `backend/server.py`) + Quad-Daemon + Qt/PySide6 Desktop UI (15 screens, 10 ViewModels, 26 components, 6 chart widgets, 3 design-token themes) + 71 Tools (53 root + 18 inner) · 167 test files · 28 SQLModel tables (18 monolith + 7 HLTV + 3 per-match) · Tri-database architecture (database.db + hltv_metadata.db + per-match database) · FAISS vector indexing (IndexFlatIP over 384-dim Sentence-BERT vectors) · i18n Internationalization (EN/IT/PT, 572 keys each) · WCAG 1.4.1 Accessibility (`theme_engine.py`: rating_color + rating_label) · 610+ issues resolved across successive remediation waves, plus 44 findings from the August 2026 audit campaign · End-to-end pipeline completed (JEPA + AdvancedCoachNN trained · real HLTV data in hltv_metadata.db · Coach Book v4: 508 entries, 8 files, 13 categories · CS2 Coach Bench: 200 questions)
 
 ---
 
@@ -84,8 +86,8 @@ graph TB
     subgraph Acquisition["Acquisition (Data Sources)"]
         DEMO[".dem Files"] --> FMT_ADAPT["Format Adapter<br/>(magic bytes, validation)"]
         FMT_ADAPT --> PARSER["Demo Parser<br/>(demoparser2)"]
-        PARSER --> TRADE_DET["Trade Kill Detector<br/>(192 tick window)"]
-        HLTV["HLTV Crawler<br/>(CircuitBreaker, RateLimiter)"] --> PRO_DB["Pro Player DB"]
+        PARSER --> TRADE_DET["Trade Kill Detector<br/>(3s window, tick-rate aware)"]
+        HLTV["HLTV Fetcher<br/>(FlareSolverr, adaptive delay)"] --> PRO_DB["Pro Player DB"]
         CSV["External CSV"] --> EXT_DB["CSV Migrator"]
         STEAM_API["Steam Web API<br/>(retry + backoff)"] --> STEAM_PROFILE["Player Profile"]
         STEAM_FIND["Steam Demo Finder<br/>(cross-platform)"] --> DEMO
@@ -101,7 +103,6 @@ graph TB
         PARSER --> PK["PlayerKnowledge<br/>(NO-WALLHACK)"]
         PK --> TF
         TF --> SR
-        FB["FrameBuffer<br/>(30-frame ring buffer,<br/>HUD extraction)"] -.-> TF
     end
 
     subgraph Training
@@ -143,7 +144,7 @@ graph TB
         BS["Blind Spot Detector"]
         UE["Utility and Economy<br/>Purchase Optimizer"]
         ER["Engagement Analyzer<br/>50+ positions 8 maps"]
-        MQ["Movement Quality<br/>Trajectory + economy analysis"]
+        MQ["Movement Quality<br/>4 positional error types"]
     end
 
     subgraph Coaching_Engines["Coaching Engines"]
@@ -174,7 +175,7 @@ graph TB
     end
 
     subgraph Control["Control Module"]
-        CTRL_CONSOLE["System Console<br/>(Rich TUI, CLI, REST API)"]
+        CTRL_CONSOLE["Console (in-process orchestrator)<br/>+ Rich TUI root console.py<br/>+ FastAPI REST API server.py"]
         CTRL_DB["DB Governor<br/>(WAL audit, Tier 1-3)"]
         CTRL_INGEST["Ingest Manager<br/>(Thread-safe, 30min re-scan)"]
         CTRL_ML["ML Controller<br/>(Throttle, Stop)"]
@@ -190,7 +191,7 @@ graph TB
 
     subgraph Platform["Platform & Accessibility"]
         I18N["i18n<br/>(en.json, it.json, pt.json)"]
-        THEME["theme.py<br/>(WCAG 1.4.1,<br/>rating_color + rating_label)"]
+        THEME["theme_engine.py<br/>(WCAG 1.4.1,<br/>rating_color + rating_label)"]
     end
     I18N --> UI
     THEME --> UI
@@ -277,7 +278,7 @@ modules.
 ## 3. Subsystem 1 — Neural Network Core
 
 **Program folder:** `backend/nn/`
-**Key files:** `model.py`, `jepa_model.py`, `jepa_train.py`, `jepa_trainer.py`, `coach_manager.py`, `training_orchestrator.py`, `config.py`, `factory.py`, `persistence.py`, `role_head.py`, `training_callbacks.py`, `tensorboard_callback.py`, `maturity_observatory.py`, `embedding_projector.py`, `dataset.py`, `data_quality.py`, `evaluate.py`, `train_pipeline.py`, `training_monitor.py`, `early_stopping.py`, `ema.py`, `training_controller.py`, `win_probability_trainer.py`, `training_config.py`
+**Key files:** `model.py`, `jepa_model.py`, `jepa_train.py`, `jepa_trainer.py`, `coach_manager.py`, `training_orchestrator.py`, `config.py`, `factory.py`, `persistence.py`, `role_head.py`, `training_callbacks.py`, `tensorboard_callback.py`, `maturity_observatory.py`, `embedding_projector.py`, `dataset.py`, `data_quality.py`, `evaluate.py`, `train.py`, `training_monitor.py`, `early_stopping.py`, `ema.py`, `training_controller.py`, `win_probability_trainer.py`, `training_config.py`
 
 This subsystem contains all the neural network models, the "brain" of the coaching system. It includes six distinct model architectures (AdvancedCoachNN, JEPA, VL-JEPA, RAP Coach, RAP Lite, NeuralRoleHead), a training manager, a Coach Introspection Observatory, and utilities for model creation and persistence.
 
@@ -305,10 +306,10 @@ Defined in `model.py`, this is the foundation of supervised coaching.
 | Component                      | Detail                                                                                                                                                                                                               |
 | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Input dimension**      | 25 features (`METADATA_DIM` from vectorizer.py)                                                                                                                                                                      |
-| **Config**               | `CoachNNConfig` dataclass: `input_dim=25`, `output_dim=METADATA_DIM` (default 25, but overridden to `OUTPUT_DIM=10` by `ModelFactory`), `hidden_dim=128`, `num_experts=3`, `num_lstm_layers=2`, `dropout=0.2`, `use_layer_norm=True`                                      |
+| **Config**               | `CoachNNConfig` dataclass: `input_dim=METADATA_DIM` (25), `output_dim=OUTPUT_DIM` (10), `hidden_dim=128`, `num_experts=3`, `num_lstm_layers=2`, `dropout=0.2`, `use_layer_norm=True`                                      |
 | **Hidden layers**        | 2-layer LSTM (128 hidden, `batch_first=True`, dropout=0.2) with `LayerNorm` post-LSTM                                                                                                                           |
-| **Expert head**          | 3 parallel linear experts (configurable), softmax-gated via a learned gating network                                                                                                                             |
-| **Output**               | Weighted sum of expert outputs → 10-dimensional coaching score vector. The `CoachNNConfig` defines `output_dim=METADATA_DIM` (25) as default, but `ModelFactory` overrides with `OUTPUT_DIM=10` in production. The alias `TeacherRefinementNN = AdvancedCoachNN` is kept for backward compatibility |
+| **Expert head**          | 3 parallel linear experts (configurable) with **Top-2 sparse routing**: the `nn.Linear(hidden, num_experts)` gate produces raw logits, `_topk_sparse_gate()` selects the best `gate_top_k = min(2, num_experts)` experts, applies softmax over those only and zeroes the rest. Checkpoints carrying the old dense softmax gate raise `StaleCheckpointError` |
+| **Output**               | Weighted (sparse) sum of expert outputs → `torch.tanh(...)` → 10-dimensional coaching score vector. The alias `TeacherRefinementNN = AdvancedCoachNN` is kept for backward compatibility (deprecated, NN-L-01) |
 | **Role bias**            | Optional `role_id` parameter: `gate_weights = (gate_weights + role_bias) / 2.0` — biases expert selection toward role-specific knowledge                                                        |
 | **Input validation**     | `_validate_input_dim()` automatically reshapes 1D → `unsqueeze(0).unsqueeze(0)` and 2D → `unsqueeze(0)` for robustness                                                                                      |
 
@@ -321,7 +322,8 @@ Each expert module in AdvancedCoachNN: `Linear(128→128) → LayerNorm(128) →
 ```
 h, _ = LSTM(x) # x: [batch, seq_len, 25]
 h = LayerNorm(h[:, -1, :]) # take the last timestep → [batch, 128]
-gate_weights = softmax(W_gate · h) # [batch, 3]
+gate_logits = W_gate · h             # [batch, 3] — raw logits
+gate_weights = topk_sparse(gate_logits, k=2)  # softmax over top-2, zero elsewhere
 expert_outputs = [E_i(h) for i in 1..3]
 output = tanh(Σ gate_weights_i × expert_outputs_i)
 ```
@@ -337,7 +339,7 @@ flowchart TB
     E1 --> S1["score1"]
     E2 --> S2["score2"]
     E3 --> S3["score3"]
-    SUM --> GATE["Gate: 60% / 30% / 10%"]
+    SUM --> GATE["Top-2 Gate: 65% / 35% / 0%<br/>(the third expert is zeroed)"]
     GATE -.-> S1
     GATE -.-> S2
     GATE -.-> S3
@@ -370,9 +372,10 @@ graph LR
 | Module                       | Parameters                                                                                               |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------- |
 | **Online encoder**     | Linear(input_dim, 512) → LayerNorm → GELU → Dropout(0.1) → Linear(512, latent_dim=256) → LayerNorm |
-| **Target encoder**     | Structurally identical; updated via exponential moving average (τ = 0.996). `EMA.state_dict()` returns **cloned** tensors to prevent aliasing (a previous bug allowed accidental modification of target weights through shared references) |
+| **Target encoder**     | Structurally identical; updated via exponential moving average (base τ = 0.996, with cosine scheduling toward 1.0). `update_target_encoder()` raises `RuntimeError` if the target encoder has `requires_grad=True`. `EMA.state_dict()` returns **cloned** tensors to prevent aliasing (F3-30) |
 | **Predictor**          | Linear(256, 512) → LayerNorm → GELU → Dropout(0.1) → Linear(512, 256)                               |
-| **Coaching Head**      | LSTM(256, hidden_dim, 2 layers, dropout=0.2) → 3 MoE experts → gated output                     |
+| **Coaching Head**      | LSTM(256, hidden_dim=128, 2 layers, dropout=0.15) → 3 MoE experts with **Top-2 sparse routing** and a load-balancing aux loss (weight 0.01) → final output passed through `torch.sigmoid` (WR-52). **Additive** role bias in gate-logit space: `gate_logits + role_bias` with `role_bias[role_id]=2.0` |
+| **Learned temperature** | `log_temperature = nn.Parameter(log(0.07))`, used by the InfoNCE loss with clamp `[0.01, 1.0]`; MoCo negative queue of size 4096 |
 
 ```mermaid
 flowchart TB
@@ -397,12 +400,12 @@ flowchart TB
 1. Loads `PlayerTickState` sequences from professional demo SQLite files.
 2. Splits each sequence into context and target windows.
 3. Encodes the context via the online encoder + predictor, encodes the target via the target encoder (EMA).
-4. Minimizes the **InfoNCE contrastive loss** using in-batch negatives with cosine similarity and temperature τ=0.07.
-5. After each batch, performs the EMA update: `θ_target ← τ·θ_target + (1−τ)·θ_online`.
+4. Minimizes the **InfoNCE contrastive loss** using in-batch negatives with cosine similarity and a **learned temperature** (`log_temperature`, init log(0.07), clamped [0.01, 1.0]), plus a VICReg regularization term weighted 0.01.
+5. After each batch, performs the EMA update: `θ_target ← τ·θ_target + (1−τ)·θ_online`, with τ starting at 0.996 and following a **cosine schedule** toward 1.0 (J-6).
 6. **Drift monitoring**: Tracks DriftReport objects; triggers automatic retraining if drift > 2.5σ.
 7. **Outcome-based labels (Fix G-01):** The `ConceptLabeler` in VL-JEPA training now generates labels from `RoundStats` data (per-round outcomes: kills, deaths, damage, survival) instead of tick-level features. This eliminates **label leakage** — the previous problem where concept labels were derived from the same features used as input, allowing the model to "cheat" during training without actually learning the patterns. The `label_from_round_stats(rs)` method produces a vector of 16 concept labels based on measurable outcomes. If `RoundStats` data is not available, the system falls back to the legacy heuristic with a one-time log warning.
 
-**Selective Decoding** (`forward_selective`): skips the entire forward pass if the cosine distance between the current and previous embedding is below a threshold (`skip_threshold=0.05`). Uses `1.0 - F.cosine_similarity()` as distance metric and, during the skip operation, returns the previously cached output. This allows efficient real-time inference with dynamic frame skipping: during static gameplay moments (players holding angles), most frames are skipped entirely.
+**Selective Decoding** (`forward_selective`): skips the entire forward pass if the cosine distance between the current and previous embedding is below the threshold (`threshold=0.05`). Uses `1.0 - F.cosine_similarity()` as distance metric with a **batch-maximum** rule (`distance.max() < threshold` — a single sample above threshold forces recomputation) and, during the skip operation, returns the previously cached output. This allows efficient real-time inference with dynamic frame skipping: during static gameplay moments (players holding angles), most frames are skipped entirely.
 
 **JEPA Coaching Adapter** (`jepa_insight_adapter.py`): converts the Coaching Head's raw output vectors into `InsightCandidate` objects ready for the coaching pipeline. Maps the first 10 elements of the 25-dim contract to increase/decrease message pairs per tactical axis (survival, economy, movement, utility, positioning). Sigmoid output is normalized to signed deltas `2*(out−0.5)`; deltas with magnitude below 0.1 are discarded as noise. Candidate count and confidence multiplier are scaled by maturity state: `doubt/crisis` → 0.5×, 1 candidate; `learning` → 0.8×, 2 candidates; `conviction/mature` → 1.0×, 3 candidates. Activated by `USE_JEPA_MODEL` flag (off by default, F1.2 — byte-identical behavior to current when off). Respects the NO-WALLHACK constraint: consumes exclusively the observed player's tick window (25-dim POV contract, P-X-01).
 
@@ -460,7 +463,7 @@ Each concept is defined as an immutable `CoachingConcept` dataclass with `(id, n
 |---|---|---|
 | **concept_embeddings** | `nn.Embedding(16, latent_dim=256)` | 16 concept prototypes learned in latent space |
 | **concept_projector** | `Linear(256→256) → GELU → Linear(256→256)` | Projects encoder embedding into concept-aligned space |
-| **concept_temperature** | `nn.Parameter(0.07)`, clamped `[0.01, 1.0]` | Learned temperature for cosine similarity scaling |
+| **concept_temperature** | `nn.Parameter(0.10)`, clamped `[0.01, 1.0]` | Learned temperature for cosine similarity scaling |
 
 All parent forward paths (`forward`, `forward_coaching`, `forward_selective`, `forward_jepa_pretrain`) are **preserved unchanged** via inheritance. The new `forward_vl()` path adds concept alignment.
 
@@ -477,7 +480,7 @@ flowchart TB
     subgraph VLNEW["New VL-JEPA Components"]
         CEMB["Concept Embeddings<br/>nn.Embedding(16, 256)<br/>16 learned prototypes"]
         CPROJ["Concept Projector<br/>Linear(256→256)→GELU→Linear(256→256)"]
-        CTEMP["concept_temperature<br/>nn.Parameter(0.07)"]
+        CTEMP["concept_temperature<br/>nn.Parameter(0.10)"]
     end
 
     X["Input: [B, seq, 25]"] --> CE
@@ -633,7 +636,7 @@ flowchart TB
         LAST --> E1C["Expert 1: Lin→ReLU→Lin"]
         LAST --> E2C["Expert 2"]
         LAST --> E3C["Expert 3"]
-        GATE_C --> WS["Weighted Sum → tanh"]
+        GATE_C --> WS["Weighted Sum (Top-2) → sigmoid"]
         E1C --> WS
         E2C --> WS
         E3C --> WS
@@ -645,7 +648,7 @@ flowchart TB
         CEMB_W["16 Concept Embeddings<br/>[16, 256]"] --> NORM_E["L2 Norm"]
         NORM_P --> COSIM["Cosine Sim<br/>[B, 16]"]
         NORM_E --> COSIM
-        COSIM --> TEMP["/ temperature<br/>(0.07, learned)"]
+        COSIM --> TEMP["/ temperature<br/>(init 0.10, learned)"]
         TEMP --> PROBS["Softmax → concept_probs"]
     end
     style VL fill:#be4bdb,color:#fff
@@ -659,10 +662,13 @@ Defined in `jepa_trainer.py`. Manages both standard JEPA training and VL-JEPA, w
 
 | Parameter | Default | Purpose |
 |---|---|---|
-| **Optimizer** | AdamW (lr=1e-4, weight_decay=1e-4) | Optimization with weight decay |
-| **Scheduler** | CosineAnnealingLR (T_max=100) | Cyclic learning rate decay |
+| **Optimizer** | AdamW (lr=1e-4, weight_decay=1e-2) | Optimization with weight decay; `target_encoder` parameters are **excluded** (NN-36), concept layers get lr×0.05 (KT-05) |
+| **Scheduler** | SequentialLR: linear warmup (5% of T_max, start_factor 0.01) → CosineAnnealingLR (T_max=100) | Warmup + cosine learning-rate decay |
+| **AMP + accumulation** | GradScaler (CUDA only), `_accumulation_steps=4`, grad clip 1.0 | Mixed precision and larger effective batches |
+| **EMA momentum** | cosine schedule from 0.996 → 1.0 (J-6) | Target encoder update |
 | **DriftMonitor** | z_threshold=2.5 | Detects feature drift beyond 2.5σ |
 | **drift_history** | `List[DriftReport]` | Drift report history |
+| **EmbeddingCollapseDetector** | threshold=0.01, patience=2 | Stops training after 2 consecutive epochs with collapsed embedding variance |
 
 **Shared negative encoding — `encode_raw_negatives(negatives, seq_len)` (NN-H-02):**
 
@@ -718,23 +724,18 @@ python -m Programma_CS2_RENAN.backend.nn.jepa_train --mode finetune --model-path
 |---|---|---|
 | `context_len` | 10 | Context window length (ticks) |
 | `target_len` | 10 | Target window length (ticks) |
-| `match_sequences` | `List[np.ndarray]` | Match sequences `[num_rounds, METADATA_DIM]` |
+| `seed` | 42 | Dedicated RNG generator for reproducible windows |
+| `match_sequences` | `List[np.ndarray]` | Tick-level sequences `[num_ticks, METADATA_DIM]` |
 
-For each sample, it selects a random starting point in the sequence and returns `{"context": [context_len, 25], "target": [target_len, 25]}`.
+For each sample, it selects a random starting point (seeded RNG, `worker_init_fn` for DataLoader workers) in the sequence and returns `{"context": [context_len, 25], "target": [target_len, 25]}`.
 
-> **Note (F3-25):** The starting point uses `np.random.randint()` with non-seeded global state → windows not reproducible across runs. For deterministic training, use `worker_init_fn` or a dedicated `Generator` in the `DataLoader`.
+**Tick-level data source (J-1 correction):** `load_pro_demo_sequences(limit=100)` (invoked during pre-training with `limit=2000`) queries **`PlayerTickState`** directly — real tick sequences vectorized to 25 dimensions — instead of the old per-round aggregate features from `RoundStats`. Likewise `load_user_match_sequences(limit=200)` loads tick windows for fine-tuning. This removes the old F3-08 problem at the root (an `np.tile` fallback that degenerated pre-training into an identity operation): the RoundStats-aggregate path no longer exists.
 
-**`_roundstats_to_features(rs: RoundStats)` → `List[float]`:** Extracts a **16-feature** vector from a single `RoundStats` row: `[kills, deaths, damage_dealt/100, headshot_kills, assists, trade_kills, was_traded, opening_kill, opening_death, he_damage/100, molotov_damage/100, flashes_thrown, smokes_thrown, equipment_value/5000, round_rating, side_CT]`. The vector is then padded to `METADATA_DIM` (25) with zeros.
+**Sequence constraints:** `_MIN_TICKS_FOR_SEQUENCE = 20` (a sequence must hold at least context+target ticks; asserted at import time) and `_MAX_TICKS_PER_SEQUENCE = 500` (upper cap per sequence, to bound RAM). Sequences shorter than the minimum are discarded.
 
-> **Exclusion of `round_won` (P-RSB-03):** The `round_won` field is **deliberately excluded** from the feature vector. Including it would cause data leakage: the model would see the round's outcome in the input data, allowing it to trivially predict outcomes from the result itself. `round_won` is correctly used as a **label** in `label_from_round_stats()` (jepa_model.py), where it generates supervision labels for the VL-JEPA branch.
+> **Exclusion of `round_won` (P-RSB-03):** The `round_won` field remains **deliberately excluded** from the input features: it is used only as a **label** in `label_from_round_stats()` (jepa_model.py) for the VL-JEPA branch. Including it in the inputs would cause data leakage.
 
-**`_MIN_ROUNDS_FOR_SEQUENCE = 6`:** Minimum round requirement to build a valid training sequence. Matches with fewer than 6 rounds do not provide enough temporal context to learn meaningful tactical patterns and are silently discarded.
-
-**`load_pro_demo_sequences(limit=100)`:** Loads professional demo sequences from the database. Uses `_roundstats_to_features()` to extract real per-round features from `RoundStats`, with a fallback to 12 match-level aggregate features from `PlayerMatchStats` (padded to `METADATA_DIM` with zeros) only when `RoundStats` is not available.
-
-> **Critical Warning (F3-08):** In the match-aggregate fallback path, the script uses `np.tile(features, (20, 1))` to create 20 identical frames from a single aggregated vector. This makes JEPA pre-training **an identity operation** — the model simply learns to copy the input, not temporal dynamics. The primary path with real `RoundStats` and the `TrainingOrchestrator` in the production path **are not affected** by this issue and use real per-round/per-tick data.
-
-**`train_jepa_pretrain()`:** 50 epochs, batch_size=16, lr=1e-4, 8 in-batch negatives. The optimizer includes ONLY `context_encoder` and `predictor` — the `target_encoder` is updated exclusively via EMA.
+**`train_jepa_pretrain()`:** 50 epochs, batch_size=16, lr=1e-4 (AdamW, weight_decay=1e-2), 8 in-batch negatives, EarlyStopping(patience=10, min_delta=1e-5), EMA with base 0.996 and cosine scheduling. The optimizer includes ONLY `context_encoder` and `predictor` — the `target_encoder` is updated exclusively via EMA.
 
 **`train_jepa_finetune()`:** 30 epochs, batch_size=16, lr=1e-3, weight_decay=1e-3. Freezes the encoders and optimizes only LSTM + MoE + Gate.
 
@@ -742,7 +743,7 @@ For each sample, it selects a random starting point in the sequence and returns 
 
 #### SuperpositionLayer — Contextual Gating (`layers/superposition.py`)
 
-Standalone module that implements a linear layer with **context-dependent gating**, used within the RAP Coach Strategy Layer.
+Standalone module that implements a linear layer with context-dependent **FiLM conditioning** (Feature-wise Linear Modulation, Perez et al. 2018), used within the RAP Coach Strategy Layer.
 
 ```python
 class SuperpositionLayer(nn.Module):
@@ -750,17 +751,19 @@ class SuperpositionLayer(nn.Module):
         self.weight = nn.Parameter(empty(out_features, in_features))
         nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))  # P1-09: Kaiming init
         self.bias = nn.Parameter(zeros(out_features))
-        self.context_gate = nn.Linear(context_dim, out_features)  # Superposition Controller
+        self.context_gate = nn.Linear(context_dim, out_features)  # gamma (multiplicative)
+        self.context_beta = nn.Linear(context_dim, out_features)  # beta (additive, zero-init)
 
     def forward(self, x, context):
-        gate = sigmoid(self.context_gate(context))  # [B, out_features]
-        self._last_gate_live = gate                  # With gradient (for sparsity loss)
+        gamma = sigmoid(self.context_gate(context))   # [B, out_features]
+        beta = self.context_beta(context)             # [B, out_features]
+        self._last_gate_live = gamma                  # With gradient (for sparsity loss)
         self._last_gate_activations = gate.detach()  # Detached copy (for observability)
         out = F.linear(x, self.weight, self.bias)
-        return out * gate  # Contextual modulation
+        return out * gamma + beta                     # FiLM modulation: y = γ(ctx)·(Wx+b) + β(ctx)
 ```
 
-**Mechanism:** Each neuron's output is multiplied by a sigmoid gate conditioned on context features (25-dim). This allows the model to dynamically "turn on" or "turn off" neurons depending on the game situation.
+**Mechanism:** Each neuron's output is modulated FiLM-style: a sigmoid gate `γ(context)` scales it (turning neurons on or off depending on the game situation) and an additive term `β(context)` — zero-initialized, so the layer starts out behaving as pure multiplicative gating — lets the context **inject** features rather than only suppress them.
 
 **Kaiming initialization (P1-09):** Weights are initialized with `kaiming_uniform_` (Kaiming He distribution, 2015) instead of `torch.randn()`. This initialization ensures that weight variance is proportional to the layer's fan-in, preventing vanishing or exploding gradients in deep networks. The `a=math.sqrt(5)` parameter is the standard value for linear layers in PyTorch.
 
@@ -782,7 +785,7 @@ flowchart TB
     LIVE --> SPARSITY["gate_sparsity_loss()<br/>L1: mean(|gate|)"]
     DET --> STATS["get_gate_statistics()<br/>mean, std, sparsity,<br/>active_ratio, top/bottom 3"]
     X["input x"] --> LIN["F.linear(x, weight, bias)"]
-    SIG --> MUL["output = linear × gate"]
+    SIG --> MUL["output = linear × γ + β<br/>(FiLM)"]
     LIN --> MUL
     style LIVE fill:#ff6b6b,color:#fff
     style DET fill:#51cf66,color:#fff
@@ -823,13 +826,14 @@ with torch.no_grad():
 
 **Invariants:**
 - The EMA update **always happens after** `optimizer.step()` — never before, otherwise gradients are not yet applied
-- The target encoder **never receives direct gradients** — only EMA updates
-- The momentum 0.996 means the target encoder "absorbs" only 0.4% of the online encoder's weights at each step — a very conservative update
-- `state_dict()` of the model returns **cloned** tensors (`.clone()`) to prevent accidental aliasing — a real bug fixed during audit where `state_dict()` returned direct references to the model tensors instead of copies, causing corruption when the caller modified the dictionary
+- The target encoder **never receives direct gradients** — only EMA updates; `update_target_encoder()` raises `RuntimeError` if the target has `requires_grad=True`
+- The base momentum 0.996 means the target encoder "absorbs" only 0.4% of the online encoder's weights at each step; during training the momentum follows a cosine schedule toward 1.0 (J-6)
+- `state_dict()` returns **cloned** tensors (`.clone()`, F3-30) to prevent accidental aliasing — a real bug fixed during audit where `state_dict()` returned direct references to the model tensors instead of copies
+- The standalone `ema.py` module (class `EMA`, used by the RAP path) has a distinct `decay=0.999` parameter — it is a separate mechanism from the JEPA target-encoder EMA
 
 ### -CoachTrainingManager (Orchestration)
 
-Defined in `coach_manager.py`. This is the **brain of the training process**, which manages a rigorous **3-level, maturity-based training cycle**, divided into 4 phases:
+Defined in `coach_manager.py`. This is the **brain of the training process**, which manages a rigorous **3-level, maturity-based training cycle**, divided into 5 phases (`_execute_training_phases`):
 
 ```mermaid
 graph TD
@@ -838,13 +842,15 @@ graph TD
     CHECK -->|"50-199 demos"| LEARN["LEARNING<br/>80% confidence"]
     CHECK -->|"200+ demos"| MAT["MATURE<br/>100% confidence"]
     CAL --> P1["Phase 1: Self-Supervised JEPA<br/>(InfoNCE on pro demos)"]
-    P1 --> P2["Phase 2: Pro Baseline<br/>(Supervised on HLTV data)"]
+    P1 --> P2["Phase 2: Pro Baseline<br/>(Supervised on pro data)"]
     P2 --> P3["Phase 3: User Fine-Tuning<br/>(Personalized coaching)"]
     P3 --> P4["Phase 4: Behavioral<br/>Optimization RAP"]
+    P4 --> P5["Phase 5: NeuralRoleHead<br/>(Role classification)"]
     style P1 fill:#4a9eff,color:#fff
     style P2 fill:#228be6,color:#fff
     style P3 fill:#15aabf,color:#fff
     style P4 fill:#ff6b6b,color:#fff
+    style P5 fill:#cc5de8,color:#fff
 ```
 
 **Maturity levels and confidence multipliers:**
@@ -867,7 +873,7 @@ flowchart TB
     style MAT fill:#51cf66,color:#fff
 ```
 
-**Prerequisites (10/10 Rule):** Requires ≥10 professional demos OR (≥10 user demos + connected Steam/FACEIT account) before starting any training.
+**Prerequisites:** Requires ≥10 processed professional demos before starting any training; below the `MATURITY_THRESHOLD = 50` demo mark the maturity gate reports the "Calibrating" state (soft gate: it warns, it does not block). The manager also applies the chronological 70/15/15 dataset split and handles tick-window fetching (`_fetch_jepa_windows` window_len=11, `_fetch_rap_windows` window_size=96).
 
 The manager uses a rigorous **training contract** with 25 features (matching `METADATA_DIM`).
 
@@ -892,13 +898,16 @@ Defined in `training_orchestrator.py`. Unified epoch cycle, validation, early st
 
 | Parameter      | Default     | Purpose                                                                      |
 | -------------- | ----------- | ---------------------------------------------------------------------------- |
-| `model_type` | "jepa"      | Routes to JEPA, VL-JEPA, RAP, or RAP Lite trainer                            |
+| `model_type` | "jepa"      | Routes to the JEPA, VL-JEPA (lr=1e-4), RAP or RAP Lite trainer (lr=5e-5, requires `USE_RAP_MODEL=True`) |
 | `max_epochs` | 100         | Maximum training limit                                                       |
 | `patience`   | 10          | Early stopping patience                                                      |
 | `batch_size` | 32          | Samples per batch                                                            |
-| `callbacks`  | `None`      | List of `TrainingCallback` instances for Observatory integration             |
+| `accumulation_steps` | 4   | Gradient accumulation for larger effective batches                           |
+| `callbacks`  | `CallbackRegistry()` | `TrainingCallback` instances for Observatory integration            |
 
-The orchestrator integrates with the Observatory via `CallbackRegistry`. It fires lifecycle events at **5 points**: `on_train_start` (before the first epoch), `on_epoch_start` (beginning of each epoch), `on_batch_end` (after each training batch, includes loss output and trainer), `on_epoch_end` (after validation, includes model and losses), `on_train_end` (after training completion or early stopping). When no callbacks are registered, all `fire()` calls are zero-cost operations. Callback errors are caught and logged, never causing the training loop to crash.
+**Per-epoch subsampling (B1):** Every epoch resamples the training set (default 50,000 train samples, 10,000 val) with a rotating seed `GLOBAL_SEED + epoch`; the validation set stays fixed. Preflight probe: training aborts if fewer than 100 samples are available.
+
+The orchestrator integrates with the Observatory via `CallbackRegistry`. The `TrainingCallback` ABC exposes **7 opt-in hooks** (F3-31, none is an `@abstractmethod`): `on_train_start`, `on_epoch_start`, `on_batch_end`, `on_epoch_end`, `on_validation_end`, `on_train_end`, `close`. When no callbacks are registered, all `fire()` calls are zero-cost operations. Callback errors are caught and logged, never causing the training loop to crash.
 
 **Cross-match negative pool (NN-H-03):** The orchestrator maintains a pool of feature vectors from previous batches (`_neg_pool`, max 500 vectors). Contrastive negatives are sampled from this pool instead of from the current batch, ensuring negatives come from **different matches** and not from the same temporal context/target sequence. When the pool is still empty (warm-up), the system falls back to in-batch sampling. This avoids false negatives: two ticks from the same gameplay action would be too similar to serve as useful negatives.
 
@@ -931,11 +940,11 @@ flowchart TB
 | `TYPE_RAP_LITE` ("rap-lite")   | `RAPCoachModel`         | `"rap_lite_coach"`   | `metadata_dim=METADATA_DIM(25)`, `output_dim=10`, `use_lite_memory=True` |
 | `TYPE_ROLE_HEAD` ("role_head") | `NeuralRoleHead`        | `"role_head"`        | `input_dim=5`, `hidden_dim=32`, `output_dim=5`     |
 
-> **Note (P1-08):** In a previous version, the factory used `output_dim=4` and `hidden_dim=64` for legacy models, creating a mismatch with `CoachNNConfig`. This has been fixed: now all coaching models (Legacy, JEPA, VL-JEPA) use `OUTPUT_DIM = 10` — the first 10 core aggregate features on which the model predicts delta adjustments. `HIDDEN_DIM = 128` is aligned in both `config.py` and `factory.py`. The RAP and RAP Lite models share the same `RAPCoachModel` class, but RAP Lite activates `use_lite_memory=True`, replacing LTC-Hopfield memory with a pure-PyTorch LSTM fallback (useful when `ncps`/`hflayers` dependencies are not available). The RAP model is imported from the canonical path `backend/nn/experimental/rap_coach/model.py` (the old `backend/nn/rap_coach/model.py` is a redirection shim).
+> **Note (P1-08):** In a previous version, the factory used `output_dim=4` and `hidden_dim=64` for legacy models, creating a mismatch with `CoachNNConfig`. This has been fixed: now all coaching models (Legacy, JEPA, VL-JEPA) use `OUTPUT_DIM = 10` — the first 10 core aggregate features on which the model predicts delta adjustments — and `CoachNNConfig` itself now has `output_dim=OUTPUT_DIM` as its default. `HIDDEN_DIM = 128` is aligned in both `config.py` and `factory.py`. For RAP and RAP Lite the factory uses a hardcoded `output_dim=10`. The RAP and RAP Lite models share the same `RAPCoachModel` class, but RAP Lite activates `use_lite_memory=True`, replacing LTC-Hopfield memory with a pure-PyTorch LSTM fallback (useful when `ncps`/`hflayers` dependencies are not available). The RAP model is imported from the canonical path `backend/nn/experimental/rap_coach/model.py` (the old `backend/nn/rap_coach/model.py` is a redirection shim).
 >
 > **StaleCheckpointError:** If the dimensions of a saved checkpoint do not match the current model configuration (for example after an upgrade from `output_dim=4` to `output_dim=10`), the system raises `StaleCheckpointError` instead of silently loading incompatible weights, preventing silent corruption.
 
-**Persistence** (`persistence.py`): Save/load models with `weights_only=True` (security -- prevents arbitrary code execution during checkpoint deserialization). Implements a **SHA-256 hash registry** for checkpoint integrity validation: every saved file is accompanied by a `.sha256` sidecar file containing the checkpoint hash; at loading time, the system verifies the hash matches before proceeding with deserialization. **3-level fallback chain**: (1) user-specific checkpoint, (2) global checkpoint, (3) skip -- train from scratch. Handles mismatched dimensions via `StaleCheckpointError`.
+**Persistence** (`persistence.py`): Save/load models with `weights_only=True` (security — prevents arbitrary code execution during checkpoint deserialization, CTF-2). Atomic state_dict write accompanied by a **`.pt.meta.json` sidecar** (schema_version, metadata_dim, feature_names) and by a **SHA-256 hash registry** (CTF-1): at load time a mismatching hash raises an explicit error ("CTF-1: Checkpoint hash mismatch"); unregistered factory-bundled checkpoints are allowed. **4-level fallback chain**: (1) user-specific checkpoint, (2) global checkpoint, (3) factory-bundled checkpoint, (4) skip — train from scratch. Mismatched dimensions or schema raise `StaleCheckpointError`.
 
 ```mermaid
 flowchart TB
@@ -971,7 +980,7 @@ RAP_POSITION_SCALE = 500.0         # P9-01: Scale factor for position delta ([-1
 
 > **Note:** `INPUT_DIM` is imported from `feature_engineering/__init__.py` where `METADATA_DIM = 25`. `OUTPUT_DIM = 10` defines the number of features on which the model produces adjustment predictions — the first 10 match aggregate features (avg_kills, avg_deaths, avg_adr, avg_hs, avg_kast, kill_std, adr_std, kd_ratio, impact_rounds, accuracy). This design choice focuses the model's predictive capacity on the most actionable performance metrics, rather than trying to predict all 25 features (many of which are contextual and not directly improvable by the player). `RAP_POSITION_SCALE = 500.0` is the canonical factor to convert the RAP model's normalized outputs (in the [-1, 1] range) into displacements in CS2 world units.
 >
-> **Architectural note:** The `CoachNNConfig` dataclass in `model.py` defines `output_dim = METADATA_DIM` (25) as default, but `ModelFactory` always overrides this value with `OUTPUT_DIM = 10` during instantiation. The effective output_dim in production for all models (Legacy, JEPA, VL-JEPA, RAP, RAP Lite) is therefore **10**, not 25. Historically, `OUTPUT_DIM` was 4 (4 selected metrics), then raised to 10 to cover the most relevant aggregate features.
+> **Architectural note:** The `CoachNNConfig` dataclass in `model.py` now defines `output_dim = OUTPUT_DIM` (10) as its default, aligned with `ModelFactory`. The effective output_dim in production for all models (Legacy, JEPA, VL-JEPA, RAP, RAP Lite) is therefore **10**, not 25. Historically, `OUTPUT_DIM` was 4 (4 selected metrics), then raised to 10 to cover the most relevant aggregate features.
 
 **Device management:** `get_device()` implements a **3-tier smart GPU selection**:
 
@@ -1226,6 +1235,8 @@ maturity/conviction_index, maturity/maturity_score
 
 Plus a text log of the current state via structured logger.
 
+**Temperature saturation alarm (PRE-6):** The Observatory also monitors VL-JEPA's `concept_temperature`: if the parameter stays within 5% of the `[0.01, 1.0]` bounds for 10 consecutive epochs, a saturation alarm is raised — a signal that the learned temperature has stopped discriminating.
+
 **Design guarantees:**
 
 - **Zero impact if disabled:** When no callbacks are registered, all `CallbackRegistry.fire()` calls are no-ops. No memory allocation, no compute overhead.
@@ -1236,7 +1247,11 @@ Plus a text log of the current state via structured logger.
 
 - `--no-tensorboard` — disables the TensorBoard callback
 - `--tb-logdir <path>` — sets the TensorBoard log directory (default: `runs/`)
-- `--umap-interval <N>` — UMAP projection every N epochs (default: 10)
+- `--model-type {all, jepa, rap}` — selects the model to train
+- `--epochs`, `--patience`, `--train-samples` (default 50000), `--val-samples` (default 10000) — hyperparameter overrides
+- `--seed` — RNG seed for the determinism probe (B5); `--dry-run` — single verification epoch; `--eval-baseline` — runs `tools/eval_harness.py` before and after training (B6.1)
+
+The `EmbeddingProjector` projects embeddings every `interval` epochs (default 5), degrading gracefully if `umap-learn`/`matplotlib` are not installed.
 
 ---
 
@@ -1246,10 +1261,10 @@ Part 1A documented the **cognitive core** of the coaching system — the entire 
 
 | Component | Role | Key Details |
 |---|---|---|
-| **AdvancedCoachNN** | Supervised baseline coaching | 2-layer LSTM + 3 MoE experts, 25-dim input, 10-dim output |
-| **JEPA** | Self-supervised pre-training | Online/target encoder (EMA τ=0.996), InfoNCE contrastive |
+| **AdvancedCoachNN** | Supervised baseline coaching | 2-layer LSTM + 3 MoE experts (Top-2 sparse routing), 25-dim input, 10-dim output |
+| **JEPA** | Self-supervised pre-training | Online/target encoder (EMA base τ 0.996, cosine schedule), InfoNCE with learned temperature |
 | **VL-JEPA** | Vision-language alignment | 16 coaching concepts across 5 tactical dimensions |
-| **SuperpositionLayer** | Contextual gating | 25-dim context-dependent modulation with integrated observability |
+| **SuperpositionLayer** | FiLM conditioning | γ/β modulation dependent on 25-dim context with integrated observability |
 | **CoachTrainingManager** | Training orchestration | 3 maturity levels (CALIBRATION→LEARNING→MATURE) |
 | **TrainingOrchestrator** | Unified epoch cycle | Early stopping, checkpoints, callbacks, cross-match negative pool, quality gate |
 | **ModelFactory** | Model instantiation | 6 model types (+ RAP Lite) with persistence and fallback |
@@ -1265,7 +1280,7 @@ flowchart LR
     end
     subgraph PART1B["PART 1B — The Senses and the Specialist"]
         RAP["RAP Coach<br/>(7 components +<br/>ChronovisorScanner +<br/>GhostEngine)"]
-        DS["Data Sources<br/>(Demo, HLTV, Steam,<br/>FACEIT, TensorFactory,<br/>FrameBuffer, FAISS)"]
+        DS["Data Sources<br/>(Demo, HLTV, Steam,<br/>FACEIT, TensorFactory,<br/>FAISS)"]
     end
     subgraph PART2["PART 2 — Services and Infrastructure"]
         SVC["Coaching Services<br/>(4-tier fallback)"]
@@ -1289,4 +1304,4 @@ flowchart LR
     style PART2 fill:#f0f8e8
 ```
 
-> **Continued in Part 1B** — *The Senses and the Specialist: RAP Coach Model, ChronovisorScanner, GhostEngine, Data Sources (Demo Parser, HLTV, Steam, FACEIT, TensorFactory, FrameBuffer, FAISS, Round Context)*
+> **Continued in Part 1B** — *The Senses and the Specialist: RAP Coach Model, ChronovisorScanner, GhostEngine, Data Sources (Demo Parser, HLTV, Steam, FACEIT, TensorFactory, FAISS, Round Context)*

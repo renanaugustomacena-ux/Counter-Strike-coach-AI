@@ -35,7 +35,7 @@ docs/
 │   ├── Book-Coach-1B .md/.pdf      # RAP Coach, data sources (demo, HLTV, Steam)
 │   ├── Book-Coach-2  .md/.pdf      # Services, analysis engines, COPER, database
 │   ├── Book-Coach-3  .md/.pdf      # Program logic, Qt UI, ingestion, tools, build
-│   │                               # (each with -en / -pt variants; plus Book-Coach-1.pdf)
+│   │                               # (each with -en / -pt variants)
 │   ├── analogy-book .md/.pdf       # Analogy companion (with -en / -pt variants)
 │   ├── codebase-understanding/     # 9-chapter codebase walkthrough (01–09)
 │   ├── REFACTOR_PLAN.md
