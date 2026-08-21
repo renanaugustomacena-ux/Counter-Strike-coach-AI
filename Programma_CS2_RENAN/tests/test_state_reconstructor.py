@@ -99,3 +99,30 @@ class TestRAPStateReconstructorInit:
         assert recon.sequence_length == 32
         assert recon.metadata_dim == METADATA_DIM
         assert recon.map_name == "de_mirage"
+
+
+class TestTrainingInferenceResolutionParity:
+    """F-0026: inference must run at the training resolution (64x64)."""
+
+    def test_ghost_engine_factory_matches_training_config(self, monkeypatch):
+        from Programma_CS2_RENAN.backend.nn.inference.ghost_engine import GhostEngine
+        from Programma_CS2_RENAN.backend.processing.tensor_factory import TrainingTensorConfig
+
+        engine = GhostEngine.__new__(GhostEngine)
+        from Programma_CS2_RENAN.backend.processing.tensor_factory import TensorFactory
+
+        engine._tensor_factory = TensorFactory(TrainingTensorConfig())
+        tf = engine._get_inference_tensor_factory()
+        cfg = TrainingTensorConfig()
+        assert tf.config.map_resolution == cfg.map_resolution == 64
+        assert tf.config.view_resolution == cfg.view_resolution == 64
+
+    def test_reconstructor_accepts_training_config(self):
+        from Programma_CS2_RENAN.backend.processing.state_reconstructor import (
+            RAPStateReconstructor,
+        )
+        from Programma_CS2_RENAN.backend.processing.tensor_factory import TrainingTensorConfig
+
+        rec = RAPStateReconstructor(tensor_config=TrainingTensorConfig())
+        assert rec.tensor_factory.config.map_resolution == 64
+        assert rec.tensor_factory.config.view_resolution == 64

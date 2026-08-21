@@ -1316,7 +1316,14 @@ class CoachTrainingManager:
             model.to(device)
 
             model.eval()  # Ensure eval mode
-            reconstructor = RAPStateReconstructor()
+            # F-0026 / P-SR-02: pass the TRAINING tensor config — the
+            # default singleton (128/224) silently skews grid-unit
+            # statistics vs the 64x64 the checkpoint was trained on.
+            from Programma_CS2_RENAN.backend.processing.tensor_factory import (
+                TrainingTensorConfig,
+            )
+
+            reconstructor = RAPStateReconstructor(tensor_config=TrainingTensorConfig())
 
             # Fetch ticks for this match
             with self.db.get_session() as s:

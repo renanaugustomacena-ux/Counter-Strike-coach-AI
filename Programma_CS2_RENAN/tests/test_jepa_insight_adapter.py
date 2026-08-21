@@ -242,3 +242,63 @@ class TestServiceWiring:
         ctx.__exit__ = mock.MagicMock(return_value=False)
         svc.db_manager.get_session.return_value = ctx
         assert svc._jepa_maturity_state() == expected
+
+
+class TestHeadTrainedGate:
+    """F-0029: the adapter refuses pretrain-only checkpoints — arming
+    requires a sidecar carrying extra.head_trained == True."""
+
+    def _sidecar(self, tmp_path, monkeypatch, extra):
+        import json
+
+        import Programma_CS2_RENAN.backend.nn.persistence as persistence
+        from Programma_CS2_RENAN.backend.coaching import jepa_insight_adapter as jia
+
+        ckpt = tmp_path / "jepa_brain.pt"
+        ckpt.write_bytes(b"fake")
+        sidecar = tmp_path / "jepa_brain.pt.meta.json"
+        if extra is not None:
+            sidecar.write_text(json.dumps({"extra": extra}))
+        monkeypatch.setattr(persistence, "get_model_path", lambda version, user_id=None: ckpt)
+        jia._MODEL_CACHE.clear()
+        return jia
+
+    def test_pretrain_only_sidecar_refused(self, tmp_path, monkeypatch):
+        jia = self._sidecar(tmp_path, monkeypatch, {"head_trained": False})
+        assert jia.load_jepa_for_insights() is None
+        jia._MODEL_CACHE.clear()
+
+    def test_missing_sidecar_refused(self, tmp_path, monkeypatch):
+        jia = self._sidecar(tmp_path, monkeypatch, None)
+        assert jia.load_jepa_for_insights() is None
+        jia._MODEL_CACHE.clear()
+
+    def test_head_trained_true_arms(self, tmp_path, monkeypatch):
+        import Programma_CS2_RENAN.backend.nn.persistence as persistence
+        from Programma_CS2_RENAN.backend.nn import factory as factory_mod
+
+        jia = self._sidecar(tmp_path, monkeypatch, {"head_trained": True})
+
+        class _FakeModel:
+            def eval(self):
+                return self
+
+        monkeypatch.setattr(factory_mod.ModelFactory, "get_model", lambda t: _FakeModel())
+        monkeypatch.setattr(persistence, "load_nn", lambda version, model, user_id=None: model)
+        armed = jia.load_jepa_for_insights()
+        assert armed is not None
+        jia._MODEL_CACHE.clear()
+
+
+class TestOrchestratorStampsHeadTrained:
+    def test_checkpoint_extra_meta_marks_pretrain_head(self):
+        from Programma_CS2_RENAN.backend.nn.training_orchestrator import TrainingOrchestrator
+
+        orch = TrainingOrchestrator.__new__(TrainingOrchestrator)
+        orch.model_type = "jepa"
+        assert orch._checkpoint_extra_meta() == {"head_trained": False}
+
+        orch.model_type = "rap"
+        meta = orch._checkpoint_extra_meta()
+        assert meta["map_resolution"] == 64
+        assert meta["view_resolution"] == 64
