@@ -205,3 +205,67 @@ class TestRecordModuleFailureNotification:
                 orch._record_module_failure("momentum", RuntimeError("x"))
         warned = [c for c in mock_log.warning.call_args_list if "26-ORCH-01" in str(c)]
         assert warned, "notification failure must produce a 26-ORCH-01 warning"
+
+
+class TestUtilityFromRoundStats:
+    """F-0031: production player_stats dicts never carry *_thrown keys —
+    the orchestrator derives them from RoundStats for (player, demo)."""
+
+    class _FakeExec:
+        def __init__(self, rows):
+            self._rows = rows
+
+        def all(self):
+            return self._rows
+
+    def _patch_db(self, monkeypatch, rows):
+        import contextlib
+        from types import SimpleNamespace
+
+        outer = self
+
+        class _FakeDB:
+            def get_session(self):
+                @contextlib.contextmanager
+                def _cm():
+                    yield SimpleNamespace(exec=lambda q: outer._FakeExec(rows))
+
+                return _cm()
+
+        import Programma_CS2_RENAN.backend.storage.database as database
+
+        monkeypatch.setattr(database, "get_db_manager", lambda: _FakeDB())
+
+    @staticmethod
+    def _round_row(flashes=2, smokes=1, he=30.0, molotov=15.0):
+        from types import SimpleNamespace
+
+        return SimpleNamespace(
+            flashes_thrown=flashes, smokes_thrown=smokes, he_damage=he, molotov_damage=molotov
+        )
+
+    def test_derives_utility_insight_from_roundstats(self, monkeypatch):
+        from Programma_CS2_RENAN.backend.services.analysis_orchestrator import AnalysisOrchestrator
+
+        self._patch_db(monkeypatch, [self._round_row() for _ in range(10)])
+        orch = AnalysisOrchestrator()
+        insights = orch._analyze_utility("ZywOo", "vit-m1-mirage", {})
+        assert len(insights) == 1
+        assert insights[0].focus_area == "utility"
+        assert "Flash" in insights[0].message or "Smoke" in insights[0].message
+
+    def test_no_roundstats_and_no_keys_stays_silent(self, monkeypatch):
+        from Programma_CS2_RENAN.backend.services.analysis_orchestrator import AnalysisOrchestrator
+
+        self._patch_db(monkeypatch, [])
+        orch = AnalysisOrchestrator()
+        assert orch._analyze_utility("nobody", "demo", {}) == []
+
+    def test_explicit_keys_still_take_precedence(self, monkeypatch):
+        from Programma_CS2_RENAN.backend.services.analysis_orchestrator import AnalysisOrchestrator
+
+        self._patch_db(monkeypatch, [])
+        orch = AnalysisOrchestrator()
+        stats = {"smoke_thrown": 12, "rounds_played": 24}
+        insights = orch._analyze_utility("p", "d", stats)
+        assert len(insights) == 1
