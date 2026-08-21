@@ -1,17 +1,22 @@
 """
 Hybrid Coaching Engine
 
-Synthesizes ML model predictions with RAG knowledge retrieval
+Synthesizes pro-baseline Z-score deviations with RAG knowledge retrieval
 for unified, contextual coaching insights.
 
 Architecture:
-    1. ML Model → Deviation predictions (Z-scores)
+    1. Pro baseline → Z-score deviations per feature
     2. RAG Retriever → Relevant tactical knowledge
     3. Synthesizer → Unified insights with confidence scoring
 
+F-0028 (2026-08-21): the engine used to run real neural-net inference on
+every call and then discard the result — outputs never reached any insight.
+The dead inference seam was removed; neural contributions enter the insight
+chain through JEPAInsightAdapter (26-HYB-01 / TASKS#58) instead.
+
 From Phase 1B Roadmap:
     - Eliminates duplicate/conflicting advice
-    - Adds confidence scoring (ML + knowledge effectiveness)
+    - Adds confidence scoring (|Z| signal + knowledge effectiveness)
     - Context-aware retrieval (map, side, round type)
 """
 
@@ -22,11 +27,9 @@ from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
-import torch
 
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager, get_hltv_db_manager
 from Programma_CS2_RENAN.backend.storage.db_models import CoachingInsight, TacticalKnowledge
-from Programma_CS2_RENAN.core.config import get_setting
 from Programma_CS2_RENAN.core.localization import i18n
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
@@ -108,10 +111,10 @@ class HybridInsight:
 
 class HybridCoachingEngine:
     """
-    Combines ML predictions with RAG knowledge for unified coaching.
+    Combines baseline Z-score deviations with RAG knowledge for coaching.
 
     Pipeline:
-        1. ML model predicts deviations from pro baseline
+        1. Z-score deviations from the fused pro baseline
         2. RAG retrieves relevant tactical knowledge
         3. Synthesize into unified insights
         4. Score confidence and prioritize
@@ -120,16 +123,14 @@ class HybridCoachingEngine:
         - Duplicate insights
         - Conflicting advice
         - Generic recommendations
+
+    Neural-net contributions do NOT flow through this class (F-0028): the
+    JEPAInsightAdapter (26-HYB-01) injects model-derived insight candidates
+    into the chain separately, gated on a genuinely trained coaching head.
     """
 
-    def __init__(self, use_jepa: bool = None):
-        """
-        Initialize hybrid engine.
-
-        Args:
-            use_jepa: Use JEPA model (True) or AdvancedCoachNN (False).
-                     If None, uses config setting.
-        """
+    def __init__(self):
+        """Initialize hybrid engine (RAG + baseline-Z; no model loading)."""
         # DB must be initialized at app startup before instantiating this class (F4-04).
         # Calling init_database() here was a constructor side-effect that violated
         # single-responsibility and made unit testing require live DB infrastructure.
@@ -137,13 +138,6 @@ class HybridCoachingEngine:
         # AC-15-01: Lazy-load SBERT model — KnowledgeRetriever loads sentence-transformers
         # on init which is expensive. Defer to first query.
         self._retriever = None
-
-        # Model selection
-        if use_jepa is None:
-            use_jepa = get_setting("USE_JEPA_MODEL", default=False)
-
-        self.use_jepa = use_jepa
-        self.model = self._load_model()
 
         # Pro baseline for deviation calculation.
         # _using_fallback_baseline is set True when get_pro_baseline() fails (F4-02).
@@ -160,57 +154,6 @@ class HybridCoachingEngine:
 
             self._retriever = KnowledgeRetriever()
         return self._retriever
-
-    def _load_model(self):
-        """Load the ML model WITH trained weights, or return None (26-HYB-01).
-
-        Before 2026-07-02 this constructed a randomly-initialized model and
-        the live P9-03 Hybrid tier ran real inference on it — untrained
-        outputs reached the coaching chain. Now a model survives only if a
-        trained checkpoint actually loads (persistence.load_nn: sidecar-
-        verified, hash-checked, StaleCheckpointError on architecture drift);
-        otherwise None, which every caller already treats as "ML unavailable,
-        RAG-only fallback" (_get_ml_predictions early-returns on None).
-
-        Known remaining gap (full F1/W5.1 adapter): even with weights loaded,
-        this seam feeds MATCH_AGGREGATE_FEATURES into encoders trained on
-        tick-level FEATURE_NAMES vectors — same width (25), different
-        semantics. The JEPAInsightAdapter (F1.1) replaces this seam with
-        tick-window inputs + concept activations.
-        """
-        from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
-        from Programma_CS2_RENAN.backend.nn.persistence import StaleCheckpointError, load_nn
-
-        model_type = ModelFactory.TYPE_JEPA if self.use_jepa else ModelFactory.TYPE_LEGACY
-        try:
-            model = ModelFactory.get_model(model_type)
-            ckpt_name = ModelFactory.get_checkpoint_name(model_type)
-            load_nn(ckpt_name, model)
-            model.eval()
-            logger.info(
-                "Hybrid ML model loaded with trained weights: %s (checkpoint '%s')",
-                model_type,
-                ckpt_name,
-            )
-            return model
-        except FileNotFoundError:
-            logger.warning(
-                "26-HYB-01: no trained checkpoint for '%s' — Hybrid ML disabled, "
-                "insights fall back to RAG-only",
-                model_type,
-            )
-            return None
-        except StaleCheckpointError as e:
-            logger.warning(
-                "26-HYB-01: stale checkpoint for '%s' (%s) — Hybrid ML disabled, "
-                "insights fall back to RAG-only",
-                model_type,
-                e,
-            )
-            return None
-        except Exception as e:
-            logger.error("Failed to load ML model: %s", e, exc_info=True)
-            return None
 
     def _ensure_fresh_baseline(self) -> None:
         """C-2: Refresh baseline if TTL expired. Prevents stale z-scores in long-lived engines."""
@@ -320,16 +263,12 @@ class HybridCoachingEngine:
         # Step 1: Calculate deviations from the active baseline
         deviations = self._calculate_deviations(player_stats, active_baseline)
 
-        # Step 2: Get ML predictions (if model available)
-        ml_predictions = self._get_ml_predictions(player_stats)
-
-        # Step 3: Retrieve relevant knowledge
+        # Step 2: Retrieve relevant knowledge
         knowledge = self._retrieve_contextual_knowledge(deviations, map_name, side, round_type)
 
-        # Step 4: Synthesize insights (TASK 2.7.1: pass demo_name and tick_data for Reference Clip)
+        # Step 3: Synthesize insights (TASK 2.7.1: pass demo_name and tick_data for Reference Clip)
         insights = self._synthesize_insights(
             deviations,
-            ml_predictions,
             knowledge,
             map_name,
             active_baseline,
@@ -408,44 +347,6 @@ class HybridCoachingEngine:
         # Delegate to centralized math logic
         return calculate_deviations(player_stats, target_baseline)
 
-    def _get_ml_predictions(self, player_stats: Dict[str, float]) -> Optional[Dict[str, float]]:
-        """Get ML model predictions."""
-        if self.model is None:
-            return None
-
-        # R4 MED: the JEPA coaching head predicts deltas for the FIRST
-        # OUTPUT_DIM contract features (index 0=health, 2=has_helmet,
-        # 3=has_defuser — see jepa_insight_adapter._TARGET_FEATURES), so the
-        # positional kills/adr/hs mapping below would label a health delta
-        # "recommended_kills". JEPA contributes through JEPAInsightAdapter in
-        # the insight chain (26-HYB-01); this path stays RAG-only.
-        if self.use_jepa:
-            return None
-
-        try:
-            from Programma_CS2_RENAN.backend.nn.coach_manager import MATCH_AGGREGATE_FEATURES
-
-            # All 25 match-aggregate features — no zero-padding needed
-            features = [player_stats.get(f, 0.0) for f in MATCH_AGGREGATE_FEATURES]
-
-            x = torch.FloatTensor(features).unsqueeze(0).unsqueeze(0)
-
-            with torch.no_grad():
-                output = self.model(x)
-
-            # Map output to predictions
-            predictions = {
-                "recommended_kills": output[0, 0].item(),
-                "recommended_adr": output[0, 2].item() if output.shape[1] > 2 else 0,
-                "recommended_hs": output[0, 3].item() if output.shape[1] > 3 else 0,
-            }
-
-            return predictions
-
-        except Exception as e:
-            logger.error("ML prediction failed: %s", e)
-            return None
-
     def _retrieve_contextual_knowledge(
         self,
         deviations: Dict[str, Tuple[float, float]],
@@ -491,7 +392,6 @@ class HybridCoachingEngine:
     def _synthesize_insights(
         self,
         deviations: Dict[str, Tuple[float, float]],
-        ml_predictions: Optional[Dict[str, float]],
         knowledge: List[TacticalKnowledge],
         map_name: Optional[str],
         active_baseline: Dict[str, float],
@@ -500,11 +400,11 @@ class HybridCoachingEngine:
         pro_name: Optional[str] = None,
     ) -> List[HybridInsight]:
         """
-        Synthesize ML and RAG into unified insights.
+        Synthesize baseline deviations and RAG into unified insights.
 
         Strategy:
-        - High-confidence ML (|Z| > 2): Lead with ML, support with RAG
-        - Low-confidence ML (|Z| < 1): Lead with RAG
+        - High-confidence signal (|Z| > 2): Lead with the deviation, support with RAG
+        - Low-confidence signal (|Z| < 1): Lead with RAG
         - Medium: Balanced approach
 
         TASK 2.7.1: Now includes Reference Clip information via demo_name and tick_data.
@@ -547,7 +447,6 @@ class HybridCoachingEngine:
                 z_score,
                 raw_dev,
                 matching_knowledge,
-                ml_predictions,
                 priority,
                 confidence,
                 map_name,
@@ -596,19 +495,20 @@ class HybridCoachingEngine:
         Calculate combined confidence score.
 
         Factors:
-        - ML confidence: |Z-score| (higher = more confident)
+        - Deviation confidence: |Z-score| vs the pro baseline (F-0028: this
+          was historically named "ML confidence" but is pure baseline math)
         - Knowledge effectiveness: Usage count
-        - NEW: Meta-Drift adjustment (Stability of pro baseline)
+        - Meta-Drift adjustment (Stability of pro baseline)
         """
         from Programma_CS2_RENAN.backend.processing.baselines.meta_drift import MetaDriftEngine
 
         Z_SCORE_CONFIDENCE_CAP = 3.0
-        ml_confidence = min(abs(z_score) / Z_SCORE_CONFIDENCE_CAP, 1.0)
+        z_confidence = min(abs(z_score) / Z_SCORE_CONFIDENCE_CAP, 1.0)
 
-        # Weighted average (ML signal 60%, knowledge signal 40%)
-        ML_WEIGHT = 0.6
+        # Weighted average (deviation signal 60%, knowledge signal 40%)
+        Z_WEIGHT = 0.6
         KNOWLEDGE_WEIGHT = 0.4
-        base_confidence = ml_confidence * ML_WEIGHT + knowledge_effectiveness * KNOWLEDGE_WEIGHT
+        base_confidence = z_confidence * Z_WEIGHT + knowledge_effectiveness * KNOWLEDGE_WEIGHT
 
         # Apply Meta-Drift penalty (guard against engine failure)
         try:
@@ -638,7 +538,6 @@ class HybridCoachingEngine:
         z_score: float,
         raw_dev: float,
         knowledge: List[TacticalKnowledge],
-        ml_predictions: Optional[Dict[str, float]],
         priority: InsightPriority,
         confidence: float,
         map_name: Optional[str],
