@@ -1089,9 +1089,13 @@ class TrainingOrchestrator:
             # Advantage function (continuous [0, 1])
             all_players = all_players_cache.get((match_id, tick), [])
             if all_players and knowledge is not None:
+                # F-0025: PlayerTickState has NO team column — the old
+                # getattr(item, "team", "CT") was a constant "CT", labeling
+                # every T-side sample with CT-perspective advantage. The
+                # real side lives on the shard row via knowledge.own_team.
                 val = self._compute_advantage(
                     all_players,
-                    str(getattr(item, "team", "CT")),
+                    self._resolve_item_side(item, knowledge),
                     knowledge.bomb_planted,
                 )
                 per_tick_val_mask.append(True)
@@ -1493,6 +1497,22 @@ class TrainingOrchestrator:
     ROLE_PASSIVE_HOLD = 9
 
     @staticmethod
+    def _resolve_item_side(item, knowledge):
+        """F-0025: normalized side ('CT'/'T') for a training sample.
+
+        Priority: the item's own team attribute (test fakes, shard rows)
+        → knowledge.own_team (populated from the shard row for production
+        PlayerTickState items, which have no team column) → 'CT' as the
+        documented last resort.
+        """
+        from Programma_CS2_RENAN.core.team_codes import normalize_team
+
+        side = normalize_team(getattr(item, "team", None))
+        if side is None and knowledge is not None:
+            side = normalize_team(getattr(knowledge, "own_team", None))
+        return side or "CT"
+
+    @staticmethod
     def _compute_advantage(all_players_at_tick, player_team, bomb_planted):
         """Compute continuous advantage value [0, 1] from game state.
 
@@ -1508,10 +1528,14 @@ class TrainingOrchestrator:
         enemy_hp = 0
         enemy_equip = 0
 
+        from Programma_CS2_RENAN.core.team_codes import normalize_team
+
         for p in all_players_at_tick:
             if not getattr(p, "is_alive", True):
                 continue
-            p_team = str(getattr(p, "team", ""))
+            # F-0025: shard rows carry 'CT'/'TERRORIST' — normalize before
+            # comparing (the raw string never equaled "T").
+            p_team = normalize_team(getattr(p, "team", None))
             hp = int(getattr(p, "health", 100))
             equip = int(getattr(p, "equipment_value", 0))
 
@@ -1560,7 +1584,10 @@ class TrainingOrchestrator:
         visibility, and bomb state for classification. Falls back to
         simplified team-based default when knowledge is unavailable.
         """
-        team = str(getattr(item, "team", "CT"))
+        # F-0025: resolve the real side (item.team when present — fakes and
+        # shard rows — else knowledge.own_team); the old bare getattr made
+        # every production sample CT.
+        team = self._resolve_item_side(item, knowledge)
         is_ct = team == "CT"
         equip = int(getattr(item, "equipment_value", 0) or 0)
         is_crouching = bool(getattr(item, "is_crouching", False))

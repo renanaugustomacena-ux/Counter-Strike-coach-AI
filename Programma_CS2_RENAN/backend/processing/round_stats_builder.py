@@ -20,6 +20,7 @@ from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 
+from Programma_CS2_RENAN.core.team_codes import normalize_team
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.round_stats_builder")
@@ -65,17 +66,10 @@ def _normalize_winner(raw) -> Optional[str]:
     registry-documented dtype), full team names, or short codes depending
     on parser version. The old str()-cast compared "3".upper() == "CT" —
     never true — so round_won was silently always-False for int-emitting
-    demos. Normalize every known shape to "CT"/"T"; unknown -> None."""
-    if raw is None or (not isinstance(raw, str) and pd.isna(raw)):
-        return None
-    if isinstance(raw, (int, float)) and not isinstance(raw, bool):
-        return {2: "T", 3: "CT"}.get(int(raw))
-    token = str(raw).strip().upper()
-    if token in ("CT", "COUNTER-TERRORIST", "COUNTER_TERRORIST", "COUNTERTERRORIST", "3"):
-        return "CT"
-    if token in ("T", "TERRORIST", "TERRORISTS", "2"):
-        return "T"
-    return None
+    demos. Promoted to the core.team_codes SSOT (F-0025 needed the same
+    normalization on the RAP training path); this alias keeps the local
+    call sites and tests stable."""
+    return normalize_team(raw)
 
 
 def _build_round_boundaries(round_end_df: pd.DataFrame) -> List[Dict]:

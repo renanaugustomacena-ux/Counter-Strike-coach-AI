@@ -1,5 +1,5 @@
 {
-  "file_count": 311,
+  "file_count": 312,
   "generator": "sync_integrity_manifest.py",
   "hashes": {
     "__init__.py": "d3074031129007f4a6dd65765a0faaad39df9ba8ee41ebe0c94c7f18598c12d0",
@@ -205,7 +205,7 @@
     "backend/nn/training_config.py": "d26faefb1ce391cd8e8a4ec0ff70606e551b060ed49e933815c49880047d4820",
     "backend/nn/training_controller.py": "8a5176b6aafa1f54f41074abe5ac1581ebec0b9a511afaa257406d89dd6d4e92",
     "backend/nn/training_monitor.py": "ad66d4b4f0847a2f740192f05e2d3e2a885e878455f5fe8a831578a73ec2a058",
-    "backend/nn/training_orchestrator.py": "93d1695bd468ddc1084e80db60a03aebf2f92f2de48aefb65b572b7ddabe505f",
+    "backend/nn/training_orchestrator.py": "e1bdf72764c70de11c8a155a9867faa5c55367423b8ce6fb59f8994f2fe85a7a",
     "backend/nn/win_probability_trainer.py": "08eb06bfb5132049f179b21913ba0870f46aef216bafa132b55606427e052f0f",
     "backend/onboarding/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "backend/onboarding/new_user_flow.py": "7261d0722370ac0a210de9fa9923969ace0610b6054268a6e65187afe747582e",
@@ -229,7 +229,7 @@
     "backend/processing/player_knowledge.py": "c8681c9a99e2fdb647b00390dc034b810976609d0b97a7aa6ab9afb440949b5a",
     "backend/processing/rating.py": "b8d5d97b39e5ea8cf9cc141e7ca96b0e0f594551062574bbb035696451baf568",
     "backend/processing/round_reconstructor.py": "a134e995c02c0d3e9a9cbfeca7cae84ed080f0425f8d363b2bb3b51a5df8789c",
-    "backend/processing/round_stats_builder.py": "ef77a2b4278561c6de2aa2055e5c31bf77c76bd9ea600bc571133a0ed90d4993",
+    "backend/processing/round_stats_builder.py": "6110f955d62c9c1b622bdb1c23cc102d3d2056f40614296f42f672f52d9e206e",
     "backend/processing/skill_assessment.py": "0e5dd001eabc85723a09b78fc7ce0c45a6841cea74c5ae326df0a8fb9cbdfcfa",
     "backend/processing/state_reconstructor.py": "323196e8c6e767bc4bcc0faa9d843a4d7330a784fcecea9107ffd9b4cdb85817",
     "backend/processing/tensor_factory.py": "fba5d921cd50418120e2b4190b6dde1af23390e91c3628cc03803d3dc8b1415b",
@@ -288,6 +288,7 @@
     "core/session_engine.py": "e21184d75b8fbaa2ceafceef7e926ba68620e900b8157ff1802bbe7772ddb69c",
     "core/spatial_data.py": "42f0661f1685daa7dce4917ac23332ee4e66cc0f3f220ac711ebf0853a9623f9",
     "core/spatial_engine.py": "9ac0e5beadee17e8ed1bd9b4e4487b694c91bdaddb3ee8eaed93a503669ba9b5",
+    "core/team_codes.py": "613293615a95f10827ea59e681fa3b735b4ef8270c0bdcfef5db8e623b6d1055",
     "core/tick_rate.py": "2a74c9ae258465eb86f89962f2419bf2c29e4e14f6d1311c36124bc43098b9ea",
     "hltv_sync_service.py": "2e7eb5ef24b4be16a495ab08f17b5c445e77787e7fd90e743fa528407e778096",
     "ingestion/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
