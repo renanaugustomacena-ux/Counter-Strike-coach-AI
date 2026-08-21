@@ -11,9 +11,11 @@ SCRIPT_DIR = Path(os.path.dirname(os.path.abspath(__file__)))
 PROJECT_ROOT = SCRIPT_DIR
 sys.path.insert(0, str(PROJECT_ROOT))
 
-# F-0011: own per-process log file (cs2_analyzer_worker.log) — must be set
-# before the first get_logger() call creates the handlers.
-os.environ.setdefault("CS2_LOG_ROLE", "worker")
+# F-0011: own per-process log file (cs2_analyzer_worker.log) — set before
+# the first get_logger() call creates the handlers, and only when actually
+# running as the worker (imports must not flip the importer's role).
+if __name__ == "__main__":
+    os.environ.setdefault("CS2_LOG_ROLE", "worker")
 
 from Programma_CS2_RENAN.backend.storage.database import get_db_manager, init_database
 from Programma_CS2_RENAN.backend.storage.db_models import IngestionTask, PlayerMatchStats

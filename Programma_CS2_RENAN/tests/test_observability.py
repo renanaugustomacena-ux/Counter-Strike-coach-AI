@@ -345,12 +345,18 @@ class TestSingleHandlerArchitecture:
 
         root = logging.getLogger("cs2analyzer")
         saved_handlers = root.handlers[:]
+        saved_level = root.level
         saved_dir = ls._log_dir
+        monkeypatch.delenv("CS2_LOG_ROLE", raising=False)
         root.handlers = []
+        # Order-independence: earlier tests may leave the shared root at a
+        # filtered level; these tests emit at WARNING.
+        root.setLevel(logging.INFO)
         yield
         for h in root.handlers:
             h.close()
         root.handlers = saved_handlers
+        root.setLevel(saved_level)
         ls._log_dir = saved_dir
 
     def test_children_share_one_file_handler(self, tmp_path):

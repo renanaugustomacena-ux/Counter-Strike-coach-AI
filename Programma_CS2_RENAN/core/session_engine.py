@@ -14,9 +14,12 @@ root = os.path.dirname(os.path.dirname(current))
 if root not in sys.path:
     sys.path.insert(0, root)
 
-# F-0011: own per-process log file. lifecycle.launch_daemon sets the role
-# explicitly; setdefault covers direct `python session_engine.py` runs.
-os.environ.setdefault("CS2_LOG_ROLE", "daemon")
+# F-0011: own per-process log file — only when actually RUNNING as the
+# daemon (lifecycle.launch_daemon exports the role for spawned runs; this
+# covers direct `python session_engine.py`). Importers of this module
+# (watcher.signal_work_available) must NOT have their role flipped.
+if __name__ == "__main__":
+    os.environ.setdefault("CS2_LOG_ROLE", "daemon")
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import select
@@ -54,7 +57,9 @@ def _monitor_stdin():
                 logger.info("Received STOP command. Shutting down...")
                 _shutdown_event.set()
                 break
-    except Exception as e:
+    except (OSError, ValueError) as e:
+        # #28.2: readline() raises ValueError on an already-closed stdin and
+        # OSError on pipe/handle failures — the only IO this loop performs.
         logger.warning("Stdin monitor error: %s", e)
         _shutdown_event.set()
 
@@ -342,6 +347,10 @@ def _scanner_daemon_loop():
                         logger.debug("[Scanner] Steam auto-discovery skipped: %s", steam_err)
 
                 except Exception as scan_err:
+                    # #28.2: stays broad BY DESIGN — process_new_demos reaches
+                    # demoparser2 (F-0006 class: even BaseException-grade
+                    # panics exist on that boundary); narrowing here would
+                    # re-open the exact hole is_parse_error closed.
                     logger.exception("[Scanner] Scan Cycle Failed")
                     get_state_manager().set_error("hunter", str(scan_err))
 

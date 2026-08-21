@@ -53,7 +53,10 @@ class AppLifecycleManager:
             except lock_files.LockConflict:
                 logger.warning("Another instance of Macena CS2 Analyzer is already running.")
                 return False
-            except Exception:
+            except (ImportError, OSError):
+                # #28.4: acquire() raises LockConflict (caught above) or
+                # OS-level errors from mkdir/open/write; plus the import
+                # itself. Fail-closed semantics preserved.
                 logger.exception("Single-instance lock could not be established — failing closed")
                 return False
 
@@ -191,7 +194,9 @@ class AppLifecycleManager:
                 from Programma_CS2_RENAN.core import lock_files
 
                 lock_files.release(self._instance_lock_name)
-            except Exception:
+            except (ImportError, OSError):
+                # #28.4: release() swallows FileNotFoundError internally and
+                # otherwise raises only unlink OS errors.
                 logger.debug("single-instance lock release failed", exc_info=True)
 
         if self._instance_mutex and sys.platform == "win32":

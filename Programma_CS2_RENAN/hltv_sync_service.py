@@ -14,9 +14,11 @@ import sys
 import time
 from pathlib import Path
 
-# F-0011: own per-process log file (cs2_analyzer_hltv_sync.log) — must be
-# set before the first get_logger() call creates the handlers.
-os.environ.setdefault("CS2_LOG_ROLE", "hltv_sync")
+# F-0011: own per-process log file (cs2_analyzer_hltv_sync.log) — set
+# before the first get_logger() call creates the handlers, and only when
+# actually running as the service (imports must not flip the role).
+if __name__ == "__main__":
+    os.environ.setdefault("CS2_LOG_ROLE", "hltv_sync")
 
 from Programma_CS2_RENAN.backend.data_sources.hltv.flaresolverr_client import FlareSolverrClient
 from Programma_CS2_RENAN.backend.data_sources.hltv.stat_fetcher import HLTVStatFetcher
