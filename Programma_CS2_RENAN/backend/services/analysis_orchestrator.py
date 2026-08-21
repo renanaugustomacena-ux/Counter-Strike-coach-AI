@@ -755,6 +755,21 @@ class AnalysisOrchestrator:
             has_utility_data = any(player_stats.get(k, 0) > 0 for k in utility_keys)
 
             if not has_utility_data:
+                # F-0031: no production caller builds *_thrown keys — derive
+                # them from RoundStats so the module isn't permanently dark.
+                derived = self._derive_utility_stats_from_roundstats(player_name, demo_name)
+                if derived:
+                    merged = dict(player_stats)
+                    merged.update(derived)
+                    # Flash effectiveness needs enemies-affected; map the
+                    # enrichment count when the caller supplied it.
+                    blinded = player_stats.get("utility_enemies_blinded", 0)
+                    if blinded and "flash_affected" not in merged:
+                        merged["flash_affected"] = blinded
+                    player_stats = merged
+                    has_utility_data = any(player_stats.get(k, 0) > 0 for k in utility_keys)
+
+            if not has_utility_data:
                 return insights
 
             report = self.utility_analyzer.analyze(player_stats)
@@ -796,6 +811,43 @@ class AnalysisOrchestrator:
             self._record_module_failure("utility_analysis", e)
 
         return insights
+
+    def _derive_utility_stats_from_roundstats(
+        self, player_name: str, demo_name: str
+    ) -> Optional[Dict[str, float]]:
+        """F-0031: aggregate per-round utility counters into the vocabulary
+        the utility analyzer expects.
+
+        RoundStats carries flashes_thrown / smokes_thrown and he/molotov
+        DAMAGE totals only — he_grenade_thrown / molotov_thrown counts do
+        not exist even at round level, so those stay honestly absent (the
+        analyzer treats missing types as zero-thrown).
+        """
+        try:
+            from sqlmodel import select
+
+            from Programma_CS2_RENAN.backend.storage.database import get_db_manager
+            from Programma_CS2_RENAN.backend.storage.db_models import RoundStats
+
+            with get_db_manager().get_session() as s:
+                rows = s.exec(
+                    select(RoundStats).where(
+                        RoundStats.demo_name == demo_name,
+                        RoundStats.player_name == player_name,
+                    )
+                ).all()
+            if not rows:
+                return None
+            return {
+                "flash_thrown": int(sum(r.flashes_thrown for r in rows)),
+                "smoke_thrown": int(sum(r.smokes_thrown for r in rows)),
+                "he_grenade_damage": float(sum(r.he_damage for r in rows)),
+                "molotov_damage": float(sum(r.molotov_damage for r in rows)),
+                "rounds_played": len(rows),
+            }
+        except Exception as e:
+            self._record_module_failure("utility_roundstats_derivation", e)
+            return None
 
     def _analyze_economy(
         self,
