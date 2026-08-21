@@ -467,6 +467,29 @@ class CoachTrainingManager:
             user_demos = temporal_assign(users)
             session.commit()
 
+            # OI-2: name the share of rows whose match_date is really just
+            # the ingestion clock — for those, "chronological" split order
+            # is ingestion order, not match chronology.
+            from Programma_CS2_RENAN.backend.ingestion.match_date_resolver import (
+                CHRONOLOGICAL_SOURCES,
+            )
+
+            non_chrono = sum(
+                1
+                for m in eligible_matches
+                if (getattr(m, "match_date_source", None) or "ingested_at")
+                not in CHRONOLOGICAL_SOURCES
+            )
+            if eligible_matches and non_chrono:
+                app_logger.warning(
+                    "OI-2: %d/%d eligible rows have no real match date "
+                    "(match_date_source is ingestion/mtime) — the chronological "
+                    "split is ingestion-ordered for them. Run "
+                    "tools/backfill_match_dates.py --apply to improve provenance.",
+                    non_chrono,
+                    len(eligible_matches),
+                )
+
             total = len(eligible_matches)
             app_logger.info(
                 "Temporal split assigned for %s eligible rows across %s matches "

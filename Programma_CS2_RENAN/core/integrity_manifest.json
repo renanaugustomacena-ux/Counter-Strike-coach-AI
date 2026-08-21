@@ -1,5 +1,5 @@
 {
-  "file_count": 310,
+  "file_count": 311,
   "generator": "sync_integrity_manifest.py",
   "hashes": {
     "__init__.py": "d3074031129007f4a6dd65765a0faaad39df9ba8ee41ebe0c94c7f18598c12d0",
@@ -141,6 +141,7 @@
     "backend/data_sources/trade_kill_detector.py": "358b229458b07bef56268eec32c3399bc46663e2558a4780e465502407940fd0",
     "backend/ingestion/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "backend/ingestion/csv_migrator.py": "f37ddebe461c99860a644dd7f6c5a5df85d5f71cc6e6497ea5c46c869ce29a64",
+    "backend/ingestion/match_date_resolver.py": "3ab337c119b3dcffa5a220bca6e1919fffae5d9e3c567744b39f580b8ac5b0cd",
     "backend/ingestion/resource_manager.py": "bc1caf360ff3ee04efc0e02606a03928e062a8f6e3ad6c949cb4a53ff02fde11",
     "backend/ingestion/watcher.py": "a4de721f87580cf5b915335a9a21f2349192d9236e9ad32a0cae1bbe69431776",
     "backend/knowledge/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -155,7 +156,7 @@
     "backend/knowledge_base/help_system.py": "62ab4f6b0729102d6d1c875b3a7fc5621e7716608c923c4e6079e8b0ee1896ec",
     "backend/nn/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "backend/nn/advanced/__init__.py": "3971d5e4c0ae524c1e60d8936ca3103a1689b0c89b4591b6ece3283d793254c7",
-    "backend/nn/coach_manager.py": "21f5c9e9d176d8a46d17cc4c23658bea50cf7fc5cbd88b746d2237b3b2840a6a",
+    "backend/nn/coach_manager.py": "dcb61c582b27e03fc3da08fb1b14e5f5724a4e398c88ef8e26a23fb1837ce507",
     "backend/nn/collapse_metrics.py": "61cd4c8e91fe06c9d116c457293e492b336140ed142988b8c925a2a107383c93",
     "backend/nn/config.py": "1c115b750c5cb5174593f85edeebe3670b1f95d43249fbbd7a72b6eeb29e4c46",
     "backend/nn/data_quality.py": "6fbe2d738391efc4a7fda3534c8a6293de04c5f394b4642963c6687b7fcef5fe",
@@ -262,7 +263,7 @@
     "backend/storage/datasets/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "backend/storage/db_backup.py": "071af7ef87a842728d03b2f6f6044582a039d7863cb9ce1cdee1c5d8604654d3",
     "backend/storage/db_migrate.py": "2448dd69005090185dd312a4e7e0b93127778d67c246d26d68956d719dabb2c4",
-    "backend/storage/db_models.py": "3334d38d69568ac2725aa86791018c11ca658b7e71605a54251dba243bcb5617",
+    "backend/storage/db_models.py": "ff76a7f0585bae6e8693bbd6c706a4299205bf4dd2a15bc32224d836273bd228",
     "backend/storage/maintenance.py": "50d83de4cb8c50203c7fa56f920a1b0545fb19912f0f999d4c07121ec7b6687d",
     "backend/storage/match_data_manager.py": "9ce22b455f373ce4f9ce2abba6a1c00d7f7d9320f06ed639e408dc24f309796f",
     "backend/storage/remote_file_server.py": "9fbb01036b89f900079acfbd3c8a6d8cacab6a8697e0cfdbc9fdf6cf9d965060",
@@ -294,7 +295,7 @@
     "ingestion/integrity.py": "8cffb7ed9906092d1eba17eb28308fa913956e6e16064fd1cf0178934f528a76",
     "ingestion/pipelines/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "ingestion/pipelines/json_tournament_ingestor.py": "84e7472cf5929a30ebea09624d9253d7f6671bea42b473d35eb965f404f59d5f",
-    "ingestion/pipelines/user_ingest.py": "187c041c4dc7ca93afc753ba4d200cce70e6979089cac42da8ba9bc156e8c242",
+    "ingestion/pipelines/user_ingest.py": "8d3ab8e3224b57cf5e1aabffdf5a2edaef05f50f4b7c8aad54b28aab0334cc0f",
     "ingestion/registry/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "ingestion/registry/lifecycle.py": "8bfa60c15a36882c89496f5a7ca48919889a881b5bd0a33d5da5d6492970a01a",
     "ingestion/registry/registry.py": "7828fb47b53810b254f45297142abdec75a64f24bab82d2f2e6f1356075aee9f",
@@ -310,7 +311,7 @@
     "reporting/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "reporting/report_generator.py": "84b7e4f76e6460c9049ea1bfe93173405627d0c4d0f0aa55fe835c0b70583244",
     "reporting/visualizer.py": "763f7562da9304bf64b90e01267a7eff395b50b35128c4c7976cc0658277df54",
-    "run_ingestion.py": "ebcd87ebedac33822163de1f2f74c8d40ab3c09e673ce486432a3fe6ca543752",
+    "run_ingestion.py": "6129d52a501f90110457b724ab1f0adb86a4188264504499ba15845374195d7c",
     "run_worker.py": "2783e88610262b706d424c878af32610aea56e1efa3d06d42a9e92371ea6443c"
   },
   "version": "2.0"
