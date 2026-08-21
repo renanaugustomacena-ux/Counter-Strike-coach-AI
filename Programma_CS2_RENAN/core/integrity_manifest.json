@@ -224,7 +224,7 @@
     "backend/processing/feature_engineering/rating.py": "d81958815f9c31a49624a6922cc01bf04be2ecacbb36d4303f96a1792e40b9cc",
     "backend/processing/feature_engineering/role_features.py": "3679f289c2f952e4706d2da05f3c4c9dec06bf90c80d95d56fcf0632a155b433",
     "backend/processing/feature_engineering/vectorizer.py": "5caffeb54256612be02a25bae9dd5954a1bc6482a17aec4a746cd3eadf4c8ffe",
-    "backend/processing/heatmap_engine.py": "b30141db296e923ffc563d8ac42fc80b2b339e1c725d857875ad91d419a73b6e",
+    "backend/processing/heatmap_engine.py": "0fc11eba093ecada74655ce85e6bb344373065ba39a5d3cdb3fe59cd009fa042",
     "backend/processing/player_knowledge.py": "c8681c9a99e2fdb647b00390dc034b810976609d0b97a7aa6ab9afb440949b5a",
     "backend/processing/rating.py": "b8d5d97b39e5ea8cf9cc141e7ca96b0e0f594551062574bbb035696451baf568",
     "backend/processing/round_reconstructor.py": "a134e995c02c0d3e9a9cbfeca7cae84ed080f0425f8d363b2bb3b51a5df8789c",
