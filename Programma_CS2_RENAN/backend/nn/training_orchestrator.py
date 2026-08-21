@@ -104,6 +104,8 @@ class TrainingOrchestrator:
         # Zero means no optimizer step happened, so the LR scheduler must not
         # advance (it would silently skip the first LR of the schedule).
         self._last_train_batch_count = 0
+        # F-0024: per-epoch embedding variances feeding the collapse detector.
+        self._last_epoch_variances: list = []
         _LTC_CURRICULUM_EPOCHS = 5
         self._ltc_curriculum_epochs = _LTC_CURRICULUM_EPOCHS
 
@@ -330,6 +332,20 @@ class TrainingOrchestrator:
                 break
 
             train_loss = self._run_epoch(trainer, train_data, is_train=True, context=context)
+
+            # F-0024: feed the P9-02 embedding-collapse hard-stop from the
+            # PRODUCTION epoch loop (it was wired only inside the never-called
+            # JEPATrainer.train_epoch). EmbeddingCollapseError propagates and
+            # aborts the run — that is the mandated behavior.
+            if self._last_epoch_variances and hasattr(trainer, "embedding_collapse_detector"):
+                mean_variance = sum(self._last_epoch_variances) / len(self._last_epoch_variances)
+                logger.info(
+                    "Epoch %d embedding variance: mean=%.6f over %d batches",
+                    epoch,
+                    mean_variance,
+                    len(self._last_epoch_variances),
+                )
+                trainer.embedding_collapse_detector.update(mean_variance)
 
             if val_data:
                 val_loss = self._run_epoch(trainer, val_data, is_train=False, context=context)
@@ -681,6 +697,9 @@ class TrainingOrchestrator:
         # had non-comparable val losses, corrupting best-checkpoint and
         # early-stopping decisions.
         processed_count = 0
+        # F-0024: collect per-batch embedding variances for the P9-02
+        # collapse detector (consumed by _run_epoch_loop after the epoch).
+        epoch_variances: list = []
 
         for batch_idx, batch in enumerate(batches):
             if context:
@@ -699,6 +718,10 @@ class TrainingOrchestrator:
                 train_batch_count += 1
                 do_step = train_batch_count % accum == 0
                 loss, result = self._train_step_dispatch(trainer, tensor_batch, do_step)
+                if isinstance(result, dict):
+                    variance = result.get("embedding_variance")
+                    if variance is not None:
+                        epoch_variances.append(float(variance))
                 self.callbacks.fire(
                     "on_batch_end",
                     batch_idx=batch_idx,
@@ -718,6 +741,7 @@ class TrainingOrchestrator:
 
         if is_train:
             self._last_train_batch_count = train_batch_count
+            self._last_epoch_variances = epoch_variances
 
         return total_loss / max(processed_count, 1)
 

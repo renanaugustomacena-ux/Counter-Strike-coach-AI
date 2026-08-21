@@ -1056,3 +1056,53 @@ class TestTrainDriftWiring(TestPrepareTensorBatchJEPA):
         exploding.check_drift.side_effect = RuntimeError("boom")
         # Must swallow-and-log, returning prior alert state unchanged.
         assert orch._check_train_drift(exploding, self._make_tick_items(11), 1, False) is False
+
+
+class TestCollapseDetectorWiredIntoEpochLoop:
+    """F-0024: the P9-02 hard-stop must fire from the PRODUCTION epoch loop
+    (it was only wired inside JEPATrainer.train_epoch, which the orchestrator
+    never calls)."""
+
+    def _looping_orchestrator(self):
+        orch = _make_orchestrator(max_epochs=5, patience=10)
+        orch.dry_run = True  # suppress checkpoint writes
+        return orch
+
+    def test_collapsed_variance_aborts_within_patience(self):
+        from Programma_CS2_RENAN.backend.nn.early_stopping import (
+            EmbeddingCollapseDetector,
+            EmbeddingCollapseError,
+        )
+
+        orch = self._looping_orchestrator()
+        trainer = MagicMock()
+        trainer.embedding_collapse_detector = EmbeddingCollapseDetector(threshold=0.01, patience=2)
+        trainer.scheduler = None
+
+        def _collapsed_epoch(tr, batches, is_train=True, context=None):
+            if is_train:
+                orch._last_epoch_variances = [0.0, 0.0]
+            return 1.5
+
+        with patch.object(orch, "_run_epoch", side_effect=_collapsed_epoch):
+            with patch.object(orch, "_fetch_batches", return_value=[[1, 2, 3]]):
+                with pytest.raises(EmbeddingCollapseError):
+                    orch._run_epoch_loop(trainer, MagicMock(), [[1]], None)
+
+    def test_healthy_variance_completes(self):
+        from Programma_CS2_RENAN.backend.nn.early_stopping import EmbeddingCollapseDetector
+
+        orch = self._looping_orchestrator()
+        trainer = MagicMock()
+        trainer.embedding_collapse_detector = EmbeddingCollapseDetector(threshold=0.01, patience=2)
+        trainer.scheduler = None
+
+        def _healthy_epoch(tr, batches, is_train=True, context=None):
+            if is_train:
+                orch._last_epoch_variances = [0.5, 0.6]
+            return 1.5
+
+        with patch.object(orch, "_run_epoch", side_effect=_healthy_epoch):
+            with patch.object(orch, "_fetch_batches", return_value=[[1, 2, 3]]):
+                final = orch._run_epoch_loop(trainer, MagicMock(), [[1]], None)
+        assert final == 5

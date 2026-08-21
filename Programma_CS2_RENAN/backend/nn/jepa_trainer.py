@@ -564,7 +564,10 @@ class JEPATrainer:
             )
             infonce_loss = infonce_loss + 0.01 * vicreg_regularization(pred_embedding)
             vl_output = self.model.forward_vl(x_context_aug)
-            concept_logits = vl_output["concept_logits"]
+            # F-0023: train on the temperature-SCALED logits so the BCE
+            # objective matches the softmax(logits/τ) inference readout and
+            # τ finally receives gradient from the concept loss.
+            concept_logits = vl_output["concept_logits_scaled"]
 
         self.model.enqueue(target_embedding)
 
@@ -590,6 +593,8 @@ class JEPATrainer:
                 "concept_loss": 0.0,
                 "diversity_loss": 0.0,
                 "label_source": LABEL_SOURCE_SKIPPED_NO_ROUND_STATS,
+                # F-0024: the VL path must feed the collapse detector too.
+                "embedding_variance": self._log_embedding_diversity(pred_embedding),
             }
 
         with torch.amp.autocast(device_type=self._device_type, enabled=self._amp_enabled):
@@ -614,4 +619,6 @@ class JEPATrainer:
             "concept_loss": concept_loss.item(),
             "diversity_loss": diversity_loss.item(),
             "label_source": LABEL_SOURCE_ROUND_STATS,
+            # F-0024: the VL path must feed the collapse detector too.
+            "embedding_variance": self._log_embedding_diversity(pred_embedding),
         }
