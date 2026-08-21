@@ -534,3 +534,51 @@ class TestVLJEPAIntegration:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestConceptTemperatureScaling:
+    """F-0023: the training loss consumes temperature-SCALED logits, matching
+    the softmax(logits/tau) inference readout, and tau receives gradient."""
+
+    def _model(self):
+        return VLJEPACoachingModel(
+            input_dim=METADATA_DIM,
+            output_dim=OUTPUT_DIM,
+            latent_dim=64,
+        )
+
+    def test_forward_vl_exports_scaled_logits(self):
+        model = self._model()
+        x = torch.randn(4, 10, METADATA_DIM)
+        result = model.forward_vl(x)
+        assert "concept_logits_scaled" in result
+        temp = model.concept_temperature.clamp(min=0.01, max=1.0)
+        expected = result["concept_logits"] / temp
+        assert torch.allclose(result["concept_logits_scaled"], expected, atol=1e-5)
+
+    def test_scaled_sigmoid_covers_label_range(self):
+        """At tau=0.10, a cosine similarity of +/-1 must reach sigmoid values
+        beyond [0.05, 0.95] — the raw logits were confined to [0.269, 0.731]."""
+        model = self._model()
+        with torch.no_grad():
+            model.concept_temperature.fill_(0.10)
+        hi = torch.sigmoid(torch.tensor(1.0) / 0.10)
+        lo = torch.sigmoid(torch.tensor(-1.0) / 0.10)
+        assert hi > 0.99
+        assert lo < 0.01
+
+    def test_temperature_receives_gradient_from_concept_loss(self):
+        from Programma_CS2_RENAN.backend.nn.jepa_model import vl_jepa_concept_loss
+
+        model = self._model()
+        x = torch.randn(4, 10, METADATA_DIM)
+        result = model.forward_vl(x)
+        labels = torch.rand(4, NUM_COACHING_CONCEPTS)
+        total, _, _ = vl_jepa_concept_loss(
+            result["concept_logits_scaled"],
+            labels,
+            model.concept_embeddings.weight,
+        )
+        total.backward()
+        assert model.concept_temperature.grad is not None
+        assert model.concept_temperature.grad.abs().item() > 0.0

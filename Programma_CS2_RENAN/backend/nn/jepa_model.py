@@ -988,6 +988,11 @@ class VLJEPACoachingModel(JEPACoachingModel):
         return {
             "concept_probs": concept_probs,
             "concept_logits": concept_logits,
+            # F-0023: the TEMPERATURE-SCALED logits — the training loss must
+            # consume these (mirroring the softmax readout above); raw cosine
+            # logits confined sigmoid to [0.269, 0.731] and gave the learned
+            # temperature zero gradient.
+            "concept_logits_scaled": concept_logits_scaled,
             "top_concepts": top_concepts,
             "coaching_output": coaching_output,
             "latent": latent,
