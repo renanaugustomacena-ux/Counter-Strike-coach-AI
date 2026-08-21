@@ -117,3 +117,97 @@ class TestProMapRecordUniqueness:
             s.add(ProMapRecord(team_hltv_id=4608, map_name="de_inferno"))
             s.add(ProMapRecord(team_hltv_id=6667, map_name="de_inferno"))
             s.add(ProMapRecord(player_hltv_id=7998, map_name="de_inferno"))
+
+
+class TestNonDestructiveReconciliation:
+    """#47/GAP-14 hardening: schema drift must never silently destroy rows."""
+
+    def _mgr(self, tmp_path, monkeypatch, name="hltv_reconcile_probe.db"):
+        url = f"sqlite:///{(tmp_path / name).as_posix()}"
+        monkeypatch.setattr(db_mod, "HLTV_DATABASE_URL", url)
+        mgr = db_mod.HLTVDatabaseManager()
+        mgr.create_db_and_tables()
+        return mgr
+
+    def _raw(self, mgr, sql):
+        import sqlalchemy
+
+        with mgr.engine.connect() as conn:
+            result = conn.execute(sqlalchemy.text(sql))
+            conn.commit()
+            return result
+
+    def test_additive_drift_adds_column_in_place(self, tmp_path, monkeypatch):
+        mgr = self._mgr(tmp_path, monkeypatch)
+        with mgr.get_session() as s:
+            s.add(ProEvent(hltv_id=1001, name="BLAST Fall 2026", tier="S-Tier"))
+        # Simulate an OLDER schema: the DB lacks a column the model has.
+        self._raw(mgr, 'ALTER TABLE "proevent" DROP COLUMN "tier"')
+
+        mgr2 = db_mod.HLTVDatabaseManager()
+        mgr2.create_db_and_tables()
+
+        with mgr2.get_session() as s:
+            survivors = s.exec(select(ProEvent).where(ProEvent.hltv_id == 1001)).all()
+        assert len(survivors) == 1, "additive drift must preserve rows"
+        assert survivors[0].tier is None  # re-added column, honest NULL
+
+    def test_non_additive_drift_preserves_stale_snapshot(self, tmp_path, monkeypatch):
+        import sqlalchemy
+
+        mgr = self._mgr(tmp_path, monkeypatch, name="hltv_nonadditive_probe.db")
+        with mgr.get_session() as s:
+            s.add(ProEvent(hltv_id=2002, name="IEM Cologne 2026", tier="S-Tier"))
+        # Simulate incompatible drift: model column gone AND foreign column present.
+        self._raw(mgr, 'ALTER TABLE "proevent" DROP COLUMN "tier"')
+        self._raw(mgr, 'ALTER TABLE "proevent" ADD COLUMN "legacy_junk" TEXT')
+
+        mgr2 = db_mod.HLTVDatabaseManager()
+        mgr2.create_db_and_tables()
+
+        with mgr2.engine.connect() as conn:
+            tables = [
+                r[0]
+                for r in conn.execute(
+                    sqlalchemy.text("SELECT name FROM sqlite_master WHERE type='table'")
+                )
+            ]
+        stale = [t for t in tables if t.startswith("proevent_stale_")]
+        assert len(stale) == 1, f"expected preserved snapshot, tables={tables}"
+        with mgr2.engine.connect() as conn:
+            count = conn.execute(sqlalchemy.text(f'SELECT COUNT(*) FROM "{stale[0]}"')).scalar()
+        assert count == 1, "snapshot must keep the old rows"
+
+        # Fresh table exists and is empty.
+        with mgr2.get_session() as s:
+            assert s.exec(select(ProEvent).where(ProEvent.hltv_id == 2002)).all() == []
+
+        # A third startup must NOT purge the stale snapshot as an orphan.
+        mgr3 = db_mod.HLTVDatabaseManager()
+        mgr3.create_db_and_tables()
+        with mgr3.engine.connect() as conn:
+            tables3 = [
+                r[0]
+                for r in conn.execute(
+                    sqlalchemy.text("SELECT name FROM sqlite_master WHERE type='table'")
+                )
+            ]
+        assert stale[0] in tables3, "stale snapshot must survive orphan purge"
+
+    def test_true_orphans_still_dropped(self, tmp_path, monkeypatch):
+        import sqlalchemy
+
+        mgr = self._mgr(tmp_path, monkeypatch, name="hltv_orphan_probe.db")
+        self._raw(mgr, 'CREATE TABLE "junk_table" (id INTEGER)')
+
+        mgr2 = db_mod.HLTVDatabaseManager()
+        mgr2.create_db_and_tables()
+
+        with mgr2.engine.connect() as conn:
+            tables = [
+                r[0]
+                for r in conn.execute(
+                    sqlalchemy.text("SELECT name FROM sqlite_master WHERE type='table'")
+                )
+            ]
+        assert "junk_table" not in tables
