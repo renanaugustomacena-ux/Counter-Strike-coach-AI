@@ -13,6 +13,8 @@ import time
 from pathlib import Path
 from unittest import mock
 
+import pytest
+
 # Ensure project root is importable
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -331,3 +333,57 @@ class TestConfigureRetention:
             configure_retention(max_days=1)
         finally:
             ls._log_dir = original_log_dir
+
+
+class TestSingleHandlerArchitecture:
+    """F-0011: handlers live once on the shared 'cs2analyzer' parent; every
+    process owns its log file via CS2_LOG_ROLE."""
+
+    @pytest.fixture(autouse=True)
+    def _isolated_root(self, monkeypatch):
+        import Programma_CS2_RENAN.observability.logger_setup as ls
+
+        root = logging.getLogger("cs2analyzer")
+        saved_handlers = root.handlers[:]
+        saved_dir = ls._log_dir
+        root.handlers = []
+        yield
+        for h in root.handlers:
+            h.close()
+        root.handlers = saved_handlers
+        ls._log_dir = saved_dir
+
+    def test_children_share_one_file_handler(self, tmp_path):
+        import Programma_CS2_RENAN.observability.logger_setup as ls
+
+        ls.configure_log_dir(str(tmp_path))
+        a = ls.get_logger("cs2analyzer.f0011_a")
+        b = ls.get_logger("cs2analyzer.f0011_b")
+        assert a.handlers == []
+        assert b.handlers == []
+        root = logging.getLogger("cs2analyzer")
+        file_handlers = [h for h in root.handlers if isinstance(h, logging.FileHandler)]
+        assert len(file_handlers) == 1
+
+        a.warning("hello-f0011")
+        for h in root.handlers:
+            h.flush()
+        assert "hello-f0011" in (tmp_path / "cs2_analyzer.log").read_text(encoding="utf-8")
+
+    def test_role_env_selects_per_process_file(self, tmp_path, monkeypatch):
+        import Programma_CS2_RENAN.observability.logger_setup as ls
+
+        monkeypatch.setenv("CS2_LOG_ROLE", "daemon")
+        ls.configure_log_dir(str(tmp_path))
+        ls.get_logger("cs2analyzer.f0011_c").warning("role-test")
+        root = logging.getLogger("cs2analyzer")
+        for h in root.handlers:
+            h.flush()
+        assert (tmp_path / "cs2_analyzer_daemon.log").exists()
+
+    def test_foreign_name_joins_hierarchy(self, tmp_path):
+        import Programma_CS2_RENAN.observability.logger_setup as ls
+
+        ls.configure_log_dir(str(tmp_path))
+        alien = ls.get_logger("f0011_alien")
+        assert alien.name == "cs2analyzer.f0011_alien"

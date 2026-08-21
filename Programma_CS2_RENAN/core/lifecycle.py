@@ -107,6 +107,9 @@ class AppLifecycleManager:
             # Prepare Environment
             env = os.environ.copy()
             env["PYTHONPATH"] = str(self.project_root) + os.pathsep + env.get("PYTHONPATH", "")
+            # F-0011: the daemon process writes its own rotating log file
+            # (cs2_analyzer_daemon.log) instead of racing the app's file.
+            env["CS2_LOG_ROLE"] = "daemon"
 
             # CORE-12: Close old handles before opening new ones on re-launch
             for handle in (self._out_log, self._err_log):

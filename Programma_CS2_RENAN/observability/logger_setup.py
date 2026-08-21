@@ -172,18 +172,43 @@ def _create_file_handler(log_path: str, formatter: logging.Formatter) -> logging
 # ---------------------------------------------------------------------------
 
 
-def get_logger(name: str) -> logging.Logger:
-    """Return a logger wired to the centralized JSON file + console handlers.
+_ROOT_LOGGER_NAME = "cs2analyzer"
 
-    Safe to call repeatedly — handlers are attached only once.
-    All loggers share the ``cs2_analyzer.log`` sink.
+
+def _process_log_filename() -> str:
+    """Per-process log file name (F-0011).
+
+    Every process used to write the same ``cs2_analyzer.log`` — the Qt app
+    and the session_engine daemon rotating the shared file under each other
+    (Windows: PermissionError, the LS-01 symptom; POSIX: stale-fd writes
+    into rotated files). Processes now declare a role via the
+    ``CS2_LOG_ROLE`` env var (set by lifecycle.launch_daemon and the worker
+    entry points) and each role owns its rotating file exclusively.
     """
-    logger = logging.getLogger(name)
+    role = os.environ.get("CS2_LOG_ROLE", "").strip()
+    if role:
+        safe = "".join(c if (c.isalnum() or c in "-_") else "_" for c in role)
+        return f"cs2_analyzer_{safe}.log"
+    return "cs2_analyzer.log"
 
-    if logger.handlers:
-        return logger
 
-    logger.setLevel(_resolve_log_level())
+def _ensure_root_handlers() -> logging.Logger:
+    """Attach the file + console handlers ONCE, on the shared parent logger.
+
+    F-0011: previously every named logger got its OWN RotatingFileHandler on
+    the same file (187 distinct names → 187 handles, rotation races) with
+    ``propagate = False``. Handlers now live only on the ``cs2analyzer``
+    parent; children propagate. The correlation filter sits on the handlers
+    (parent-logger filters do not fire for propagated child records).
+    """
+    root = logging.getLogger(_ROOT_LOGGER_NAME)
+    # Idempotence keyed on OUR file handler — third parties (pytest's
+    # logging plugin force-attaches LogCaptureHandlers to non-propagating
+    # loggers) may add stream handlers of their own.
+    if any(isinstance(h, logging.FileHandler) for h in root.handlers):
+        return root
+
+    root.setLevel(_resolve_log_level())
 
     formatter = JSONFormatter()
 
@@ -191,7 +216,7 @@ def get_logger(name: str) -> logging.Logger:
     log_dir = _log_dir or "logs"
     os.makedirs(log_dir, exist_ok=True)
 
-    file_handler = _create_file_handler(os.path.join(log_dir, "cs2_analyzer.log"), formatter)
+    file_handler = _create_file_handler(os.path.join(log_dir, _process_log_filename()), formatter)
 
     # Console handler uses human-readable format, WARNING threshold
     console_formatter = logging.Formatter(
@@ -202,12 +227,34 @@ def get_logger(name: str) -> logging.Logger:
     console_handler.setFormatter(console_formatter)
     console_handler.setLevel(logging.WARNING)
 
-    logger.addHandler(file_handler)
-    logger.addHandler(console_handler)
-    logger.addFilter(_CorrelationFilter())
-    logger.propagate = False
+    correlation = _CorrelationFilter()
+    file_handler.addFilter(correlation)
+    console_handler.addFilter(correlation)
 
-    return logger
+    root.addHandler(file_handler)
+    root.addHandler(console_handler)
+    # Stop at our parent — records must not double-print via python-root
+    # handlers (basicConfig in tools, pytest's root capture, lastResort).
+    root.propagate = False
+
+    return root
+
+
+def get_logger(name: str) -> logging.Logger:
+    """Return a logger wired to the centralized JSON file + console handlers.
+
+    Safe to call repeatedly. F-0011: handlers live once on the shared
+    ``cs2analyzer`` parent; named loggers are plain children that propagate
+    into it. Each process writes its own file (see _process_log_filename).
+    """
+    _ensure_root_handlers()
+
+    if name != _ROOT_LOGGER_NAME and not name.startswith(_ROOT_LOGGER_NAME + "."):
+        # Foreign-named loggers join the hierarchy under the shared parent so
+        # their records reach the centralized handlers.
+        name = f"{_ROOT_LOGGER_NAME}.{name}"
+
+    return logging.getLogger(name)
 
 
 # ---------------------------------------------------------------------------

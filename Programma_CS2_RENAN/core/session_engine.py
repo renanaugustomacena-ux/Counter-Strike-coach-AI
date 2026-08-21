@@ -14,6 +14,9 @@ root = os.path.dirname(os.path.dirname(current))
 if root not in sys.path:
     sys.path.insert(0, root)
 
+# F-0011: own per-process log file. lifecycle.launch_daemon sets the role
+# explicitly; setdefault covers direct `python session_engine.py` runs.
+os.environ.setdefault("CS2_LOG_ROLE", "daemon")
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import select
