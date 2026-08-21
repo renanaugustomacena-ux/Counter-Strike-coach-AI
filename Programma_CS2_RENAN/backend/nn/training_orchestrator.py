@@ -439,9 +439,7 @@ class TrainingOrchestrator:
         if self.model_type in ("jepa", "vl-jepa"):
             meta["head_trained"] = False
         if self.model_type in ("rap", "pov-rap"):
-            from Programma_CS2_RENAN.backend.processing.tensor_factory import (
-                TrainingTensorConfig,
-            )
+            from Programma_CS2_RENAN.backend.processing.tensor_factory import TrainingTensorConfig
 
             cfg = TrainingTensorConfig()
             meta["map_resolution"] = cfg.map_resolution

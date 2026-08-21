@@ -118,9 +118,7 @@ class TestTrainingInferenceResolutionParity:
         assert tf.config.view_resolution == cfg.view_resolution == 64
 
     def test_reconstructor_accepts_training_config(self):
-        from Programma_CS2_RENAN.backend.processing.state_reconstructor import (
-            RAPStateReconstructor,
-        )
+        from Programma_CS2_RENAN.backend.processing.state_reconstructor import RAPStateReconstructor
         from Programma_CS2_RENAN.backend.processing.tensor_factory import TrainingTensorConfig
 
         rec = RAPStateReconstructor(tensor_config=TrainingTensorConfig())
