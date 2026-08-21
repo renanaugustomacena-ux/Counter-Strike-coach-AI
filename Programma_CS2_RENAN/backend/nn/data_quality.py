@@ -121,13 +121,26 @@ def run_pre_training_quality_check(
             mdm = get_match_data_manager()
             match_ids = mdm.list_available_matches()
             for mid in match_ids:
-                meta = mdm.get_metadata(mid)
+                # OI-1: per-item guard — one unreadable shard must not abort
+                # the whole enumeration (which zeroed both counters while the
+                # report still said PASS).
+                try:
+                    meta = mdm.get_metadata(mid)
+                except Exception as item_err:
+                    logger.warning(
+                        "Match completeness: metadata read failed for match %s "
+                        "— counted incomplete: %s",
+                        mid,
+                        item_err,
+                    )
+                    report.incomplete_matches += 1
+                    continue
                 if meta and getattr(meta, "match_complete", False):
                     report.complete_matches += 1
                 else:
                     report.incomplete_matches += 1
         except Exception as e:
-            logger.debug("Match completeness check skipped: %s", e)
+            logger.warning("Match completeness check skipped: %s", e)
 
         # 5. Verdict
         if report.total_tick_rows < min_samples:
