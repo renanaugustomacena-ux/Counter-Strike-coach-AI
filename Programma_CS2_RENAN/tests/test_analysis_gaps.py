@@ -406,15 +406,27 @@ class TestDeceptionAnalyzer:
 
     def test_flash_baits_all_ineffective(self):
         analyzer = self._make_analyzer()
+        # F-0021: the all-bait verdict requires a blind SIGNAL that never
+        # fired — a frame with no signal source at all is dark (0.0).
+        df = pd.DataFrame(
+            {
+                "event_type": ["flashbang_throw", "flashbang_throw"],
+                "tick": [100, 200],
+                "is_blinded": [False, False],
+            }
+        )
+        result = analyzer._detect_flash_baits(df, tick_rate=64.0)
+        assert result == pytest.approx(1.0)
+
+    def test_flash_baits_no_signal_source_is_dark(self):
+        analyzer = self._make_analyzer()
         df = pd.DataFrame(
             {
                 "event_type": ["flashbang_throw", "flashbang_throw"],
                 "tick": [100, 200],
             }
         )
-        result = analyzer._detect_flash_baits(df, tick_rate=64.0)
-        # No blinds → 100% bait rate
-        assert result == pytest.approx(1.0)
+        assert analyzer._detect_flash_baits(df, tick_rate=64.0) == 0.0
 
     def test_flash_baits_all_effective(self):
         analyzer = self._make_analyzer()

@@ -100,7 +100,7 @@
     "backend/analysis/__init__.py": "8b49c37e19be2c3de425b1ce585f39a5073a21319361d8846cf97bbaef0fa31e",
     "backend/analysis/belief_model.py": "bea0d5c0e9d91ddfa8ff9b7fa62e5d637d6c94975514a3dbb02aa77ce116df39",
     "backend/analysis/blind_spots.py": "d31c56d8eeec0fe709e7d60dbfad3d98443cadd46e21111cbf991321e318cefb",
-    "backend/analysis/deception_index.py": "b61cc5313be9b0eac2cc89e957c10d65bbaae21d3a41e0d604256fe1fa3d2b9d",
+    "backend/analysis/deception_index.py": "f3e94db7c9d863792a38abf98067715d7285adc25504703b281eca7209de0a22",
     "backend/analysis/engagement_range.py": "8d568fba5f1e41ca10930f6323786b4ad848659983515e7a6cf355f34320a9a1",
     "backend/analysis/entropy_analysis.py": "84adb8a29364d1bdf5ed092a17792d06567d47ba59240d7ed27e24a8acccd4c5",
     "backend/analysis/game_tree.py": "e7e2394a76edec151794a827322e6f03522b02ed6f2c80129d1467ebae6cea4e",
