@@ -5,6 +5,7 @@ from typing import Optional
 
 from Programma_CS2_RENAN.core.config import BASE_DIR as PROJECT_ROOT
 from Programma_CS2_RENAN.core.config import (
+    DATA_DIR,
     MAX_DEMOS_PER_MONTH,
     MAX_TOTAL_DEMOS_PER_USER,
     get_setting,
@@ -25,7 +26,18 @@ class StorageManager:
 
     def __init__(self):
         # Configuration
-        self.local_path = Path(get_setting("DEFAULT_DEMO_PATH", os.path.expanduser("~")))
+        # OI-8 / F-0008 doctrine: $HOME is never a demo root — scan_new_demos
+        # rglobs the whole ingest tree and archive_demo used to write
+        # ~/ingested/. Unset/home/missing paths resolve to the managed
+        # DATA_DIR/demos directory instead.
+        managed_default = Path(DATA_DIR) / "demos"
+        home = Path(os.path.expanduser("~"))
+        raw_demo_path = str(get_setting("DEFAULT_DEMO_PATH", "") or "").strip()
+        candidate = Path(raw_demo_path) if raw_demo_path else home
+        if not raw_demo_path or candidate == home:
+            self.local_path = managed_default
+        else:
+            self.local_path = candidate
         self.quota_gb = float(get_setting("LOCAL_QUOTA_GB", 10.0))
 
         # "The Brain" Storage (Managed Data)
@@ -41,9 +53,13 @@ class StorageManager:
             self.pro_archive_dir = self.brain_dir / "pro_archive"
 
         # Fallback if settings contain invalid E:/D: paths that don't exist
-        if not self.local_path.exists():
-            logger.warning("Configured path %s not found. Reverting to default.", self.local_path)
-            self.local_path = Path(os.path.expanduser("~"))
+        if not self.local_path.exists() and self.local_path != managed_default:
+            logger.warning(
+                "Configured path %s not found. Reverting to managed default %s.",
+                self.local_path,
+                managed_default,
+            )
+            self.local_path = managed_default
 
         # Legacy/Ingestion paths (User Demos)
         self.ingest_dir = self.local_path
@@ -255,10 +271,19 @@ class StorageManager:
         otherwise-successful ingestion (DB dedup by stem already prevents
         re-parsing). mkdir lives inside the try — with a stale PRO_DEMO_PATH
         (unmounted disk) the parent chain is missing and mkdir itself raises.
+
+        OI-8: the DEMO_ARCHIVE_PATH setting (long declared, never honored)
+        overrides the default <ingest>/ingested sibling when set. The sibling
+        default keeps the scan-exclusion contract in scan_new_demos ("ingested"
+        in parts); an external archive path needs no exclusion at all.
         """
-        target_dir = self.get_ingest_dir(is_pro) / "ingested"
+        override = str(get_setting("DEMO_ARCHIVE_PATH", "") or "").strip()
+        if override:
+            target_dir = Path(override)
+        else:
+            target_dir = self.get_ingest_dir(is_pro) / "ingested"
         try:
-            target_dir.mkdir(exist_ok=True)
+            target_dir.mkdir(parents=bool(override), exist_ok=True)
             shutil.move(str(demo_path), str(target_dir / demo_path.name))
         except Exception as e:
             logger.error("Failed to move demo to ingested: %s", e)

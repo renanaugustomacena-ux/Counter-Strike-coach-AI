@@ -268,7 +268,7 @@
     "backend/storage/remote_file_server.py": "9fbb01036b89f900079acfbd3c8a6d8cacab6a8697e0cfdbc9fdf6cf9d965060",
     "backend/storage/stat_aggregator.py": "7278cd7a151fb157ca7621386e8d25b400cdfaa43d68c52efb0141667dfd8d1b",
     "backend/storage/state_manager.py": "666b7aa81eb4d39fa4fada5e8ed07b35ecde81c96964e7b3e53cc3ae45e107e3",
-    "backend/storage/storage_manager.py": "415a2fe7b2c030c609746a39c0fb5d7ce340d8dc0e37b025f42d08ec96129782",
+    "backend/storage/storage_manager.py": "63c6680fe6cd3c11dc04a8d36bf1bd1b63d23a69f38ba58410408439f04d39b2",
     "core/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "core/app_types.py": "51b921d7b68dc79d4e13279e352cdc1518ababce5d6651ff4ba58f916e17cda7",
     "core/asset_manager.py": "1550f6d20de0e34e16a82124353cdc3a7884d92ec5bb8038de40d23af2a1a837",

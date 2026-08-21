@@ -53,3 +53,53 @@ def test_archive_demo_moves_into_ingested_when_dir_exists(storage, tmp_path):
     target = storage.pro_ingest_dir / "ingested" / demo.name
     assert target.exists(), "demo must be moved into the ingested/ subfolder"
     assert not demo.exists(), "original demo path must be gone after the move"
+
+
+class TestManagedDemoRoot:
+    """OI-8: $HOME is never a demo root; DEMO_ARCHIVE_PATH is honored."""
+
+    def _make_manager(self, monkeypatch, tmp_path, settings):
+        import Programma_CS2_RENAN.backend.storage.storage_manager as sm
+
+        monkeypatch.setattr(sm, "DATA_DIR", str(tmp_path / "data"))
+        monkeypatch.setattr(sm, "get_setting", lambda key, default=None: settings.get(key, default))
+        return sm.StorageManager()
+
+    def test_unset_default_path_uses_managed_dir_not_home(self, monkeypatch, tmp_path):
+        import os
+
+        s = self._make_manager(monkeypatch, tmp_path, {})
+        assert s.local_path == tmp_path / "data" / "demos"
+        assert Path(os.path.expanduser("~")) != s.local_path
+
+    def test_home_configured_is_refused(self, monkeypatch, tmp_path):
+        import os
+
+        s = self._make_manager(
+            monkeypatch, tmp_path, {"DEFAULT_DEMO_PATH": os.path.expanduser("~")}
+        )
+        assert s.local_path == tmp_path / "data" / "demos"
+
+    def test_missing_configured_path_falls_back_to_managed(self, monkeypatch, tmp_path):
+        s = self._make_manager(
+            monkeypatch, tmp_path, {"DEFAULT_DEMO_PATH": str(tmp_path / "gone" / "dir")}
+        )
+        assert s.local_path == tmp_path / "data" / "demos"
+
+    def test_valid_configured_path_is_respected(self, monkeypatch, tmp_path):
+        good = tmp_path / "my_demos"
+        good.mkdir()
+        s = self._make_manager(monkeypatch, tmp_path, {"DEFAULT_DEMO_PATH": str(good)})
+        assert s.local_path == good
+
+    def test_demo_archive_path_override(self, monkeypatch, tmp_path):
+        archive = tmp_path / "elsewhere" / "archive"
+        s = self._make_manager(monkeypatch, tmp_path, {"DEMO_ARCHIVE_PATH": str(archive)})
+        s.pro_ingest_dir = tmp_path / "DEMO_PRO_PLAYERS"
+        s.pro_ingest_dir.mkdir()
+        demo = _make_demo(tmp_path)
+
+        s.archive_demo(demo, is_pro=True)
+
+        assert (archive / demo.name).exists()
+        assert not demo.exists()
