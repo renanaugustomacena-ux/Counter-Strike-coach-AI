@@ -39,10 +39,19 @@ def _map_and_pipeline_user(demo_path, rounds_df, db_manager, processed_dir):
         return
     # R3-04: Use .stem (without .dem extension) for consistent demo_name normalization
     demo_name = demo_path.stem
+
+    # OI-2: real match date + provenance (filename/mtime ladder) instead of
+    # the ingestion wall-clock default.
+    from Programma_CS2_RENAN.backend.ingestion.match_date_resolver import resolve_match_date
+
+    match_date, match_date_source = resolve_match_date(demo_name, demo_path)
+
     match_stats = PlayerMatchStats(
         player_name=get_setting("CS2_PLAYER_NAME", ""),
         demo_name=demo_name,
         is_pro=False,
+        match_date=match_date,
+        match_date_source=match_date_source,
         **match_stats_dict,
     )
     db_manager.upsert(match_stats)

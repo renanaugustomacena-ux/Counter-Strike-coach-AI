@@ -66,6 +66,11 @@ class PlayerMatchStats(SQLModel, table=True):
     match_date: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc), index=True
     )  # Task 2.17.2: Chronological Sort
+    # OI-2: provenance of match_date — one of match_date_resolver's source
+    # markers ('filename_date', 'filename_year', 'hltv_event_date',
+    # 'file_mtime', 'ingested_at'). Rows sourced 'ingested_at'/'file_mtime'
+    # carry NO real match chronology; the split logs their share.
+    match_date_source: Optional[str] = Field(default="ingested_at")
     processed_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc), nullable=False
     )

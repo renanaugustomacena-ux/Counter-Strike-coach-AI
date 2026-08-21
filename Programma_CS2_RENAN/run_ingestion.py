@@ -483,8 +483,21 @@ def _ingest_single_demo(db_manager, storage, demo_path, is_pro):
                 target,
             )
             return False, f"Empty data for '{target}'"
+        # OI-2: resolve the real match date ONCE per demo (filename token /
+        # year prefix / file mtime ladder) with its provenance marker.
+        from Programma_CS2_RENAN.backend.ingestion.match_date_resolver import resolve_match_date
+
+        match_date, match_date_source = resolve_match_date(demo_path.stem, demo_path)
+
         for _, row in df.iterrows():
-            _save_player_stats(db_manager, row, demo_path.name, is_pro)
+            _save_player_stats(
+                db_manager,
+                row,
+                demo_path.name,
+                is_pro,
+                match_date=match_date,
+                match_date_source=match_date_source,
+            )
 
         # F6-19 closure: RoundStats + the 14 enrichment fields used to be
         # written only by tools/populate_round_stats.py, which end users
@@ -515,7 +528,7 @@ def _ingest_single_demo(db_manager, storage, demo_path, is_pro):
         return True, "No new ticks"
 
 
-def _save_player_stats(db_manager, row, demo_name, is_pro):
+def _save_player_stats(db_manager, row, demo_name, is_pro, match_date=None, match_date_source=None):
 
     p_name = row["player_name"]
     stats_dict = row.to_dict()
@@ -552,10 +565,20 @@ def _save_player_stats(db_manager, row, demo_name, is_pro):
     # and tie demo ingestion to HLTV availability. Leave the column NULL on
     # ingest; an out-of-band job (hltv_sync_service / ProPlayerLinker.backfill)
     # may populate it later against hltv_metadata.db without blocking ingestion.
+    # OI-2: persist the resolved match date + provenance when the caller
+    # supplied them; the model defaults (now / 'ingested_at') stay the
+    # honest fallback for legacy call paths.
+    date_kwargs = {}
+    if match_date is not None:
+        date_kwargs["match_date"] = match_date
+    if match_date_source is not None:
+        date_kwargs["match_date_source"] = match_date_source
+
     match_stats = PlayerMatchStats(
         player_name=p_name,
         demo_name=clean_demo_name,
         is_pro=is_pro,
+        **date_kwargs,
         **stats_dict,
     )
     db_manager.upsert(match_stats)
@@ -1510,6 +1533,17 @@ def _finalize_match_record(
     Teacher daemon only trains on completed matches, preventing learning from
     half-written data.
     """
+    # OI-2: populate the (previously always-NULL) shard match_date so the
+    # aggregate/orphan tools stop falling back to shard-file mtime.
+    from Programma_CS2_RENAN.backend.ingestion.match_date_resolver import (
+        SOURCE_INGESTED_AT,
+        resolve_match_date,
+    )
+
+    resolved_date, resolved_source = resolve_match_date(
+        str(Path(str(demo_name)).stem), Path(demo_path) if demo_path else None
+    )
+
     meta = MatchMetadata(
         match_id=match_id,
         demo_name=demo_name,
@@ -1517,6 +1551,8 @@ def _finalize_match_record(
         tick_count=int(last_tick - start_tick),
         player_count=meta_player_count,
         tick_rate=meta_tick_rate,
+        # Honest NULL when nothing better than the ingestion clock exists.
+        match_date=None if resolved_source == SOURCE_INGESTED_AT else resolved_date,
     )
     match_manager.store_metadata(match_id, meta)
 
