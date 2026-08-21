@@ -19,8 +19,8 @@ class EliteAnalytics:
         if "Name" in self.players_df.columns:
             self.players_df = self.players_df.dropna(subset=["Name"])
         self.match_players_df = self._read_safe("match_players.csv")
-        self.maps_df = self._read_safe("maps_statistics.csv").fillna(0)
-        self.weapons_df = self._read_safe("weapons_statistics.csv").fillna(0)
+        # F-0020: maps_statistics.csv / weapons_statistics.csv were loaded but
+        # never consumed anywhere in the repo — dead data, dropped.
         self.roles_df = self._read_safe("cs2_playstyle_roles_2024.csv")
         self.best_players_df = self._read_safe("all_Time_best_Players_Stats.csv")
         self.tournament_df = self._read_safe("tournament_advanced_stats.csv")
@@ -30,8 +30,6 @@ class EliteAnalytics:
             for df in [
                 self.players_df,
                 self.match_players_df,
-                self.maps_df,
-                self.weapons_df,
                 self.roles_df,
                 self.best_players_df,
                 self.tournament_df,
@@ -94,27 +92,31 @@ class EliteAnalytics:
                 self.tournament_stds = self.tournament_df[avail].std().to_dict()
 
     def analyze_user_vs_elite(self, user_stats):
-        """Compares user metrics against Top 100 and Historical data."""
+        """Compares user metrics against Top 100 and Historical data.
+
+        F-0020: each component degrades independently — a missing
+        top_100_players.csv no longer blanks the historical/tournament
+        z-scores that other datasets can still provide.
+        """
         # P3-03: Guard against missing data or columns before accessing DataFrame
         if not self.is_healthy():
             return {"elite_rating_avg": 0, "z_scores": {}, "tournament_z_scores": {}}
-        required_cols = {"CS Rating", "Win_Rate"}
-        if not required_cols.issubset(self.players_df.columns):
-            # P-EA-02: Log missing columns so callers can distinguish degradation from cold start
-            _logger.warning(
-                "P-EA-02: Missing required columns for elite analysis: %s",
-                required_cols - set(self.players_df.columns),
-            )
-            return {"elite_rating_avg": 0, "z_scores": {}, "tournament_z_scores": {}}
 
-        elite_avg = self.players_df[["CS Rating", "Win_Rate"]].mean()
-        z_scores = self._calc_z_scores(user_stats)
-        t_z_scores = self._calc_tournament_z(user_stats)
+        elite_avg = 0
+        if not self.players_df.empty and "CS Rating" in self.players_df.columns:
+            elite_avg = self.players_df["CS Rating"].mean()
+        else:
+            # P-EA-02: name the gap so callers can distinguish degradation
+            # from cold start.
+            _logger.warning(
+                "P-EA-02: top_100_players.csv absent or missing 'CS Rating' — "
+                "elite_rating_avg degraded to 0"
+            )
 
         return {
-            "elite_rating_avg": elite_avg.get("CS Rating", 0),
-            "z_scores": z_scores,
-            "tournament_z_scores": t_z_scores,
+            "elite_rating_avg": elite_avg,
+            "z_scores": self._calc_z_scores(user_stats),
+            "tournament_z_scores": self._calc_tournament_z(user_stats),
         }
 
     def _calc_z_scores(self, user_stats):
