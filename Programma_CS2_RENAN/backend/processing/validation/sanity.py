@@ -19,14 +19,21 @@ logger = get_logger(LOGGER_NAME)
 # Format: {column: (min, max)}
 # R4-24-04: KAST is stored as a ratio [0, 1] (e.g., 0.70 = 70%),
 # NOT as a percentage [0, 100]. estimate_kast_from_stats() returns ratio.
+# F-0019: headshot_pct follows the same ratio convention (the parser emits
+# ratio; stat_fetcher stores hs_pct/100). The old (0, 100) band was 100x
+# too loose and let corrupt ratio-scale values like 37.0 pass strict mode.
 LIMITS = {
     "kills": (0, 10),
     "deaths": (0, 10),
     "assists": (0, 10),
     "adr": (0.0, 200.0),
-    "headshot_pct": (0.0, 100.0),
+    "headshot_pct": (0.0, 1.0),
     "kast": (0.0, 1.0),
 }
+
+# Ratio-scaled columns whose percent-styled inputs (>1.0) are self-healed
+# in trim mode (P-SAN-01 pattern, extended to headshot_pct by F-0019).
+_RATIO_SELF_HEAL_COLUMNS = ("kast", "headshot_pct")
 
 
 def validate_demo_sanity(df: pd.DataFrame) -> None:
@@ -72,15 +79,17 @@ def validate_and_trim(df: pd.DataFrame, strict: bool = False) -> pd.DataFrame:
     trimmed_columns = []
     df_trimmed = df.copy()
 
-    # P-SAN-01: Detect KAST stored as percentage (>1.0) and convert to ratio.
-    if "kast" in df_trimmed.columns:
-        pct_mask = df_trimmed["kast"] > 1.0
-        if pct_mask.any():
-            logger.warning(
-                "P-SAN-01: %d KAST values > 1.0 detected — converting percentage to ratio",
-                pct_mask.sum(),
-            )
-            df_trimmed.loc[pct_mask, "kast"] = df_trimmed.loc[pct_mask, "kast"] / 100.0
+    # P-SAN-01: Detect ratio columns stored as percentage (>1.0) and convert.
+    for ratio_col in _RATIO_SELF_HEAL_COLUMNS:
+        if ratio_col in df_trimmed.columns:
+            pct_mask = df_trimmed[ratio_col] > 1.0
+            if pct_mask.any():
+                logger.warning(
+                    "P-SAN-01: %d %s values > 1.0 detected — converting percentage to ratio",
+                    pct_mask.sum(),
+                    ratio_col,
+                )
+                df_trimmed.loc[pct_mask, ratio_col] = df_trimmed.loc[pct_mask, ratio_col] / 100.0
 
     for column, (min_val, max_val) in LIMITS.items():
         if column not in df_trimmed.columns:

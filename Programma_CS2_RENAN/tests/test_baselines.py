@@ -422,3 +422,148 @@ class TestRoleThresholdStore:
     def test_min_samples_constant(self):
         store = self._make_store()
         assert store.MIN_SAMPLES_FOR_VALIDITY == 30
+
+
+# ---------------------------------------------------------------------------
+# F-0018 / F-0019 / OI-7 — fusion layer priority, CSV scale, thin-baseline MIN
+# ---------------------------------------------------------------------------
+class _FakeRow:
+    """PlayerMatchStats-shaped row for the demo-stats layer."""
+
+    def __init__(
+        self, player, rating=1.1, kills=0.8, deaths=0.6, adr=85.0, hs=0.5, kast=0.72, acc=0.2
+    ):
+        self.player_name = player
+        self.rating = rating
+        self.avg_kills = kills
+        self.avg_deaths = deaths
+        self.avg_adr = adr
+        self.avg_hs = hs
+        self.avg_kast = kast
+        self.accuracy = acc
+
+
+class _FakeExec:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def all(self):
+        return self._rows
+
+
+class _FakeSession:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def exec(self, _query):
+        return _FakeExec(self._rows)
+
+
+class _FakeDemoDB:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def get_session(self):
+        import contextlib
+
+        @contextlib.contextmanager
+        def _cm():
+            yield _FakeSession(self._rows)
+
+        return _cm()
+
+
+def _fake_rows(n):
+    # Vary values so per-metric std is non-zero.
+    return [_FakeRow(f"p{i % 10}", rating=1.0 + 0.01 * i, adr=80.0 + i) for i in range(n)]
+
+
+class TestFusionLayerPriority:
+    """F-0018: layers must emit ONLY empirical keys — hard defaults come from
+    the fusion base and must never ride inside a layer's return value."""
+
+    def test_demo_layer_returns_only_empirical_keys(self, monkeypatch):
+        from Programma_CS2_RENAN.backend.processing.baselines import pro_baseline as pb
+
+        monkeypatch.setattr(pb, "get_db_manager", lambda: _FakeDemoDB(_fake_rows(40)))
+        result = pb._load_pro_from_demo_stats()
+        assert result is not None
+        keys = {k for k in result if not k.startswith("_")}
+        # Empirical surface only: no hard-default-only metrics may leak in.
+        assert "utility_blind_time" not in keys
+        assert "rating_impact" not in keys
+        assert "opening_duel_win_pct" not in keys
+        assert {"rating", "avg_adr"}.issubset(keys)
+
+    def test_csv_layer_returns_only_empirical_keys(self, tmp_path):
+        from Programma_CS2_RENAN.backend.processing.baselines import pro_baseline as pb
+
+        csv = tmp_path / "all_Time_best_Players_Stats.csv"
+        csv.write_text("Rating1.0,Impact\n1.20,1.35\n1.10,1.25\n1.30,1.15\n")
+        result = pb._load_pro_from_csv(str(csv))
+        assert result is not None
+        keys = {k for k in result if not k.startswith("_")}
+        assert keys == {"rating", "rating_impact"}
+
+    def test_earlier_empirical_layer_survives_later_layer_defaults(self, monkeypatch):
+        from Programma_CS2_RENAN.backend.processing.baselines import pro_baseline as pb
+
+        monkeypatch.setattr(
+            pb, "_load_pro_from_csv", lambda path: {"rating_impact": {"mean": 1.4, "std": 0.2}}
+        )
+        monkeypatch.setattr(
+            pb,
+            "_load_pro_from_demo_stats",
+            lambda map_name=None: {"rating": {"mean": 1.0, "std": 0.1}},
+        )
+        monkeypatch.setattr(pb, "_load_pro_from_db", lambda map_name=None: None)
+        monkeypatch.setattr(pb.os.path, "exists", lambda p: True)
+        fused = pb.get_pro_baseline()
+        # CSV's empirical Impact must NOT be clobbered by a demo-layer default.
+        assert fused["rating_impact"]["mean"] == 1.4
+        assert fused["rating"]["mean"] == 1.0
+
+
+class TestCsvScaleNormalization:
+    """F-0019: HLTV-style CSVs publish KAST / Headshot % as PERCENT; the
+    baseline keys avg_kast / avg_hs are RATIO [0, 1]."""
+
+    def test_percent_columns_normalized_to_ratio(self, tmp_path):
+        from Programma_CS2_RENAN.backend.processing.baselines import pro_baseline as pb
+
+        csv = tmp_path / "stats.csv"
+        csv.write_text("KAST,Headshot %\n71.2,46.3\n69.5,50.1\n73.0,44.2\n")
+        result = pb._load_pro_from_csv(str(csv))
+        assert 0.6 < result["avg_kast"]["mean"] < 0.8
+        assert 0.4 < result["avg_hs"]["mean"] < 0.6
+
+    def test_ratio_styled_csv_not_double_divided(self, tmp_path):
+        from Programma_CS2_RENAN.backend.processing.baselines import pro_baseline as pb
+
+        csv = tmp_path / "stats.csv"
+        csv.write_text("KAST,Headshot %\n0.71,0.46\n0.70,0.50\n0.73,0.44\n")
+        result = pb._load_pro_from_csv(str(csv))
+        assert 0.6 < result["avg_kast"]["mean"] < 0.8
+        assert 0.4 < result["avg_hs"]["mean"] < 0.6
+
+
+class TestThinBaselineFloor:
+    """OI-7: 10 rows = one 5v5 match — std collapse / inflated z-scores.
+    Floor raised to MIN_DEMO_BASELINE_ROWS (30 = three matches)."""
+
+    def test_ten_rows_rejected(self, monkeypatch):
+        from Programma_CS2_RENAN.backend.processing.baselines import pro_baseline as pb
+
+        monkeypatch.setattr(pb, "get_db_manager", lambda: _FakeDemoDB(_fake_rows(10)))
+        assert pb._load_pro_from_demo_stats() is None
+
+    def test_thirty_rows_accepted(self, monkeypatch):
+        from Programma_CS2_RENAN.backend.processing.baselines import pro_baseline as pb
+
+        monkeypatch.setattr(pb, "get_db_manager", lambda: _FakeDemoDB(_fake_rows(30)))
+        assert pb._load_pro_from_demo_stats() is not None
+
+    def test_floor_is_named_constant(self):
+        from Programma_CS2_RENAN.backend.processing.baselines import pro_baseline as pb
+
+        assert pb.MIN_DEMO_BASELINE_ROWS == 30

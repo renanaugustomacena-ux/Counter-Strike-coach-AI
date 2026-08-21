@@ -178,3 +178,38 @@ class TestLandmarkIntegrity:
             pytest.skip("de_mirage not configured")
         nx, _ = meta.world_to_radar(*marks["T-Spawn"])
         assert nx > 0.5, f"Mirage T-Spawn must sit on the RIGHT half, got nx={nx:.3f}"
+
+
+class TestHeadshotScaleCoherence:
+    """F-0019: headshot_pct is ratio-scaled like kast; the old (0, 100) band
+    let corrupt ratio-scale values (e.g. 37.0) pass strict validation."""
+
+    def test_strict_mode_rejects_percent_scale_headshot(self):
+        import pandas as pd
+        import pytest
+
+        from Programma_CS2_RENAN.backend.processing.validation.sanity import validate_demo_sanity
+
+        df = pd.DataFrame({"headshot_pct": [0.4, 37.0]})
+        with pytest.raises(ValueError):
+            validate_demo_sanity(df)
+
+    def test_trim_mode_self_heals_percent_scale_headshot(self):
+        import pandas as pd
+
+        from Programma_CS2_RENAN.backend.processing.validation.sanity import validate_and_trim
+
+        df = pd.DataFrame({"headshot_pct": [0.4, 37.0, 46.3]})
+        out = validate_and_trim(df, strict=False)
+        assert abs(out["headshot_pct"].iloc[1] - 0.37) < 1e-9
+        assert abs(out["headshot_pct"].iloc[2] - 0.463) < 1e-9
+        assert abs(out["headshot_pct"].iloc[0] - 0.4) < 1e-9
+
+    def test_kast_self_heal_still_works(self):
+        import pandas as pd
+
+        from Programma_CS2_RENAN.backend.processing.validation.sanity import validate_and_trim
+
+        df = pd.DataFrame({"kast": [0.7, 71.0]})
+        out = validate_and_trim(df, strict=False)
+        assert abs(out["kast"].iloc[1] - 0.71) < 1e-9
