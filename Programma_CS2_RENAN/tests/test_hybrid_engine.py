@@ -21,7 +21,7 @@ class TestHybridCoachingEngine:
 
     def test_engine_initialization(self):
         """Test engine can be initialized."""
-        engine = HybridCoachingEngine(use_jepa=False)
+        engine = HybridCoachingEngine()
 
         assert engine.retriever is not None
         assert engine.pro_baseline is not None
@@ -29,7 +29,7 @@ class TestHybridCoachingEngine:
 
     def test_calculate_deviations(self):
         """Test deviation calculation."""
-        engine = HybridCoachingEngine(use_jepa=False)
+        engine = HybridCoachingEngine()
 
         player_stats = {
             "avg_adr": 70.0,  # Below 85 baseline
@@ -49,7 +49,7 @@ class TestHybridCoachingEngine:
 
     def test_priority_determination(self):
         """Test priority classification."""
-        engine = HybridCoachingEngine(use_jepa=False)
+        engine = HybridCoachingEngine()
 
         # Critical: |Z| > 2.5, high confidence
         assert engine._determine_priority(3.0, 0.9) == InsightPriority.CRITICAL
@@ -65,7 +65,7 @@ class TestHybridCoachingEngine:
 
     def test_confidence_calculation(self):
         """Test confidence scoring with real MetaDriftEngine."""
-        engine = HybridCoachingEngine(use_jepa=False)
+        engine = HybridCoachingEngine()
 
         # High Z-score, high effectiveness → confidence should be meaningful
         confidence_high = engine._calculate_confidence(2.5, 0.8)
@@ -80,7 +80,7 @@ class TestHybridCoachingEngine:
 
     def test_feature_category_matching(self):
         """Test feature to category matching."""
-        engine = HybridCoachingEngine(use_jepa=False)
+        engine = HybridCoachingEngine()
 
         assert engine._feature_matches_category("avg_adr", "positioning")
         assert engine._feature_matches_category("avg_adr", "aim")
@@ -92,7 +92,7 @@ class TestHybridCoachingEngine:
 
     def test_generate_insights_basic(self):
         """Test basic insight generation."""
-        engine = HybridCoachingEngine(use_jepa=False)
+        engine = HybridCoachingEngine()
 
         player_stats = {
             "avg_kills": 14.0,
@@ -118,7 +118,7 @@ class TestHybridCoachingEngine:
 
     def test_generate_insights_with_map_context(self):
         """Test insight generation with map context."""
-        engine = HybridCoachingEngine(use_jepa=False)
+        engine = HybridCoachingEngine()
 
         player_stats = {"avg_adr": 70.0, "avg_kills": 15.0}
 
@@ -134,7 +134,7 @@ class TestHybridCoachingEngine:
 
     def test_insights_sorted_by_priority(self):
         """Test insights are sorted by priority."""
-        engine = HybridCoachingEngine(use_jepa=False)
+        engine = HybridCoachingEngine()
 
         player_stats = {
             "avg_adr": 50.0,  # Very low (critical)
@@ -163,7 +163,7 @@ class TestHybridCoachingEngine:
             "Programma_CS2_RENAN.backend.coaching.hybrid_engine.get_db_manager",
             return_value=mock_db_manager,
         ):
-            engine = HybridCoachingEngine(use_jepa=False)
+            engine = HybridCoachingEngine()
 
         insights = [
             HybridInsight(
@@ -229,77 +229,17 @@ if __name__ == "__main__":
     pytest.main([__file__, "-v"])
 
 
-class TestHybridModelLoading:
-    """26-HYB-01 (W5.1 step 1): the Hybrid tier must never infer on random
-    weights — a model survives _load_model only if a checkpoint loads."""
+class TestNoDeadInference:
+    """F-0028: the engine no longer loads or calls a neural model — model
+    inference enters the chain only via JEPAInsightAdapter (26-HYB-01)."""
 
-    def test_no_checkpoint_yields_none_and_rag_only(self, monkeypatch):
-
-        import Programma_CS2_RENAN.backend.nn.persistence as persistence
+    def test_engine_has_no_model_seam(self):
         from Programma_CS2_RENAN.backend.coaching.hybrid_engine import HybridCoachingEngine
 
-        def _missing(version, model, user_id=None):
-            raise FileNotFoundError(f"no checkpoint {version}")
-
-        monkeypatch.setattr(persistence, "load_nn", _missing)
-        engine = HybridCoachingEngine(use_jepa=False)
-        assert engine.model is None
-        assert engine._get_ml_predictions({"avg_adr": 80.0}) is None
-
-    def test_jepa_path_never_emits_positional_predictions(self):
-        """R4 MED: the JEPA coaching head predicts the first 10 CONTRACT
-        features (0=health, 2=has_helmet, 3=has_defuser) — mapping them to
-        recommended_kills/adr/hs mislabeled a health delta as a kills
-        recommendation. With use_jepa the method must return None and leave
-        JEPA contributions to JEPAInsightAdapter in the insight chain."""
-        from Programma_CS2_RENAN.backend.coaching.hybrid_engine import HybridCoachingEngine
-
-        engine = HybridCoachingEngine.__new__(HybridCoachingEngine)
-        engine.use_jepa = True
-        engine.model = object()  # would crash if the positional path ran
-        assert engine._get_ml_predictions({"avg_adr": 80.0}) is None
-
-    def test_stale_checkpoint_yields_none(self, monkeypatch):
-        import Programma_CS2_RENAN.backend.nn.persistence as persistence
-        from Programma_CS2_RENAN.backend.coaching.hybrid_engine import HybridCoachingEngine
-
-        def _stale(version, model, user_id=None):
-            raise persistence.StaleCheckpointError("gate.0.weight -> gate.weight")
-
-        monkeypatch.setattr(persistence, "load_nn", _stale)
-        engine = HybridCoachingEngine(use_jepa=False)
-        assert engine.model is None
-
-    def test_loaded_checkpoint_yields_eval_model(self, monkeypatch):
-        import Programma_CS2_RENAN.backend.nn.persistence as persistence
-        from Programma_CS2_RENAN.backend.coaching.hybrid_engine import HybridCoachingEngine
-
-        loaded = {}
-
-        def _ok(version, model, user_id=None):
-            loaded["version"] = version
-            return model
-
-        monkeypatch.setattr(persistence, "load_nn", _ok)
-        engine = HybridCoachingEngine(use_jepa=False)
-        assert engine.model is not None
-        assert engine.model.training is False  # eval mode enforced
-        assert loaded["version"] == "latest"  # TYPE_LEGACY checkpoint name
-
-    def test_jepa_flag_targets_jepa_brain(self, monkeypatch):
-        import Programma_CS2_RENAN.backend.nn.persistence as persistence
-        from Programma_CS2_RENAN.backend.coaching.hybrid_engine import HybridCoachingEngine
-
-        loaded = {}
-
-        def _ok(version, model, user_id=None):
-            loaded["version"] = version
-            return model
-
-        monkeypatch.setattr(persistence, "load_nn", _ok)
-        engine = HybridCoachingEngine(use_jepa=True)
-        assert engine.model is not None
-        assert loaded["version"] == "jepa_brain"
+        engine = HybridCoachingEngine()
+        assert not hasattr(engine, "model")
+        assert not hasattr(engine, "_get_ml_predictions")
+        assert not hasattr(engine, "_load_model")
 
 
 class TestDirectionAwareInsights:
@@ -321,7 +261,6 @@ class TestDirectionAwareInsights:
             z_score=7.1,
             raw_dev=0.5,
             knowledge=[],
-            ml_predictions=None,
             priority=InsightPriority.HIGH,
             confidence=0.6,
             map_name="de_mirage",
@@ -340,7 +279,6 @@ class TestDirectionAwareInsights:
             z_score=-1.2,
             raw_dev=-0.1,
             knowledge=[],
-            ml_predictions=None,
             priority=InsightPriority.LOW,
             confidence=0.4,
             map_name=None,
@@ -358,7 +296,6 @@ class TestDirectionAwareInsights:
             z_score=1.4,
             raw_dev=0.07,
             knowledge=[],
-            ml_predictions=None,
             priority=InsightPriority.LOW,
             confidence=0.3,
             map_name=None,
