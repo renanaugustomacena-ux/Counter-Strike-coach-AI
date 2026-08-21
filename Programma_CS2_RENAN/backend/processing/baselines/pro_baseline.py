@@ -14,6 +14,11 @@ _logger = get_logger("cs2analyzer.pro_baseline")
 
 EXTERNAL_DATA_DIR = os.path.join(BASE_DIR, "data", "external")
 
+# OI-7: the demo-stats layer used to activate at 10 rows = exactly ONE 5v5
+# match — per-metric stds collapse and z-scores inflate on thin local
+# installs. 30 rows ≈ three matches minimum for a usable spread.
+MIN_DEMO_BASELINE_ROWS = 30
+
 # Hard-coded Professional Standards (Used if DB is empty)
 HARD_DEFAULT_BASELINE = {
     "rating": {"mean": 1.15, "std": 0.15},
@@ -135,7 +140,13 @@ def _load_pro_from_db(map_name: Optional[str] = None):
             player_stats = {}
             for c in cards_iter:
                 has_data = True
-                pid = c.player_id if c.player_id else c.name
+                # F-0018 bonus: ProPlayerStatCard has no `name` attribute — the
+                # old `c.name` fallback raised AttributeError and silently
+                # killed the whole HLTV layer via the broad except below.
+                pid = c.player_id
+                if not pid:
+                    _logger.warning("ProPlayerStatCard row without player_id — skipped")
+                    continue
                 if pid not in player_stats:
                     player_stats[pid] = {
                         "rating": [],
@@ -165,7 +176,7 @@ def _load_pro_from_db(map_name: Optional[str] = None):
                 stats["rating_survival"].append(max(0.0, min(1.0, 1.0 - c.dpr)))
                 stats["rating_kast"].append(c.kast)
 
-            if not has_data:
+            if not has_data or not player_stats:
                 return None
 
             # Average per player, then flatten for global baseline
@@ -199,7 +210,8 @@ def _load_pro_from_demo_stats(map_name: Optional[str] = None):
     (PlayerMatchStats with is_pro=True) to build a baseline. More accurate than
     hardcoded defaults since it reflects real tournament-level play.
 
-    Requires at least 10 records to avoid thin/noisy baselines.
+    Requires at least MIN_DEMO_BASELINE_ROWS records to avoid thin/noisy
+    baselines (OI-7).
 
     Args:
         map_name: Optional map filter. Matches demo_name containing the map
@@ -217,7 +229,7 @@ def _load_pro_from_demo_stats(map_name: Optional[str] = None):
                 query = query.where(PlayerMatchStats.demo_name.contains(clean_map))
             records = s.exec(query).all()
 
-        if len(records) < 10:
+        if len(records) < MIN_DEMO_BASELINE_ROWS:
             return None
 
         # Compute per-player averages first, then global mean/std
@@ -272,20 +284,17 @@ def _load_pro_from_demo_stats(map_name: Optional[str] = None):
                 continue
             baseline[feat] = {"mean": float(np.mean(vals)), "std": std_val}
 
-        # Merge with HARD defaults for metrics not available in demo stats
-        defaults = HARD_DEFAULT_BASELINE
-        for k, v in defaults.items():
-            if k not in baseline:
-                baseline[k] = v
-
+        # F-0018: return ONLY empirically-derived keys. get_pro_baseline()
+        # starts its fusion from HARD_DEFAULT_BASELINE, so merging defaults
+        # here would clobber earlier empirical layers (CSV) with hardcoded
+        # values whenever this layer is active.
         baseline["_provenance"] = "demo_stats"
         _logger.info(
             "Pro baseline computed from %d players across %d demo records "
-            "(%d metrics from demos, %d from defaults)",
+            "(%d empirical metrics)",
             len(player_avgs),
             len(records),
             len(flattened),
-            len(baseline) - len(flattened) - 1,  # -1 for _provenance
         )
         return baseline
     except Exception as e:
@@ -304,6 +313,11 @@ def _load_pro_from_csv(path):
         "KAST": "avg_kast",
         "Impact": "rating_impact",
     }
+    # F-0019: HLTV publishes these as PERCENT (71.2, 46.3) while the baseline
+    # keys avg_kast / avg_hs are RATIO [0, 1] (same convention as
+    # stat_fetcher's /100.0 at ingest). Detect by column max so a hand-made
+    # ratio-styled CSV is not double-divided.
+    _CSV_PERCENT_COLUMNS = {"KAST", "Headshot %"}
     try:
         df = pd.read_csv(path)
         baseline = {}
@@ -312,24 +326,28 @@ def _load_pro_from_csv(path):
             if csv_col in df.columns:
                 col_data = pd.to_numeric(df[csv_col], errors="coerce").dropna()
                 if len(col_data) >= 2:
+                    if csv_col in _CSV_PERCENT_COLUMNS and float(col_data.max()) > 1.5:
+                        _logger.info(
+                            "CSV column '%s' read as percent — normalized to ratio",
+                            csv_col,
+                        )
+                        col_data = col_data / 100.0
                     baseline[baseline_key] = {
                         "mean": float(col_data.mean()),
                         "std": max(float(col_data.std()), 0.01),
                     }
                     loaded_from_csv.append(csv_col)
 
-        # Merge with HARD defaults for any missing keys
-        for k, v in HARD_DEFAULT_BASELINE.items():
-            if k not in baseline:
-                baseline[k] = v
-
+        # F-0018: return ONLY empirically-derived keys — the fusion base in
+        # get_pro_baseline() already guarantees hard-default coverage, and a
+        # default merged here would clobber nothing today (CSV runs first)
+        # but poisons the layer contract.
         _logger.info(
-            "CSV baseline loaded: %d columns from CSV (%s), %d from defaults",
+            "CSV baseline loaded: %d empirical columns from CSV (%s)",
             len(loaded_from_csv),
             loaded_from_csv,
-            len(baseline) - len(loaded_from_csv),
         )
-        return baseline
+        return baseline if baseline else None
     except Exception as e:
         _logger.error("Failed to load pro baseline from CSV '%s': %s", path, e)
         return None
