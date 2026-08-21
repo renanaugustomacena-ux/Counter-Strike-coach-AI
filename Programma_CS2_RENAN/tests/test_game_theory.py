@@ -237,12 +237,13 @@ class TestDeceptionAnalyzer:
         assert result.composite_index == 0.0
 
     def test_flash_bait_detection(self):
-        """Flashbangs without blinds should produce non-zero fake_flash_rate."""
+        """F-0021: with a blind signal present that never fires, every flash
+        is a bait; with NO blind signal source the metric is dark (0.0)."""
         from Programma_CS2_RENAN.backend.analysis.deception_index import DeceptionAnalyzer
 
         analyzer = DeceptionAnalyzer()
 
-        # 3 flashes thrown, 0 blinds -> 100% bait rate
+        # 3 flashes thrown, is_blinded signal present but never True -> all bait
         df = pd.DataFrame(
             {
                 "tick": [100, 200, 300],
@@ -250,11 +251,16 @@ class TestDeceptionAnalyzer:
                 "player_name": ["player1"] * 3,
                 "pos_x": [0.0] * 3,
                 "pos_y": [0.0] * 3,
+                "is_blinded": [False] * 3,
             }
         )
 
         result = analyzer.analyze_round(df, tick_rate=64.0)
-        assert result.fake_flash_rate == 1.0, "All flashes without blinds should be baits"
+        assert result.fake_flash_rate == 1.0, "Signal present, zero blinds -> all baits"
+
+        # Same frame WITHOUT any blind signal source -> honest dark, not 1.0
+        dark = analyzer.analyze_round(df.drop(columns=["is_blinded"]), tick_rate=64.0)
+        assert dark.fake_flash_rate == 0.0
 
     def test_composite_index_bounded(self):
         """composite_index computed by analyzer must be in [0, 1]."""

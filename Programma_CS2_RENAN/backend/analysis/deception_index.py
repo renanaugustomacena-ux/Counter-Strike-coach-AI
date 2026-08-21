@@ -99,7 +99,15 @@ class DeceptionAnalyzer:
         )
 
     def _detect_flash_baits(self, df: pd.DataFrame, *, tick_rate: float) -> float:
-        """Detect flash throws that don't blind enemies (bait fakes)."""
+        """Detect flash throws that don't blind enemies (bait fakes).
+
+        F-0021: CS2 demos emit no ``player_blind`` events, so the blind
+        signal is resolved in order: (1) ``player_blind`` event rows (CS:GO
+        demos / synthetic frames), (2) ``is_blinded`` per-tick transitions.
+        When flashes exist but NO blind signal source is available in the
+        frame, the metric is honestly dark (0.0) — never the old degenerate
+        all-bait 1.0.
+        """
         if "event_type" not in df.columns:
             return 0.0
 
@@ -107,16 +115,28 @@ class DeceptionAnalyzer:
         if flashes.empty:
             return 0.0
 
-        blinds = df[df["event_type"] == "player_blind"]
         total_flashes = len(flashes)
 
-        if blinds.empty:
-            # No blinds at all — every flash is a bait
+        blinds = df[df["event_type"] == "player_blind"]
+        if not blinds.empty:
+            blind_ticks_raw = blinds["tick"].values
+        elif "is_blinded" in df.columns:
+            blind_ticks_raw = df.loc[df["is_blinded"].astype(bool), "tick"].values
+        else:
+            logger.debug(
+                "F-0021: flashes present but no blind signal (no player_blind "
+                "events, no is_blinded column) — flash-bait metric dark"
+            )
+            return 0.0
+
+        if len(blind_ticks_raw) == 0:
+            # A blind signal source EXISTS and never fired — every flash
+            # genuinely blinded nobody.
             return 1.0
 
         # Vectorized: use sorted blind ticks + searchsorted for O(F·log B)
         flash_ticks = flashes["tick"].values
-        blind_ticks = np.sort(blinds["tick"].values)
+        blind_ticks = np.sort(blind_ticks_raw)
 
         # For each flash, find the first blind tick >= flash_tick
         idx = np.searchsorted(blind_ticks, flash_ticks, side="left")
