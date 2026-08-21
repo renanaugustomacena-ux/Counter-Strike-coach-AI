@@ -17,18 +17,23 @@ docs/
 ├── QUICKSTART.md                   # 5-minute quick-start guide
 ├── README.md / _IT.md / _PT.md     # This index (3 languages)
 │
+├── OPEN_ISSUES.md                  # Consolidated still-open issues (2026-08-21 doc sweep)
 ├── RE_INGESTION_GUIDE.md           # Ops: full re-ingestion & training pipeline
 ├── concurrency_policy.md           # Ops: DB lock policy for long-running migrations
 ├── rollback_procedure.md           # Ops: DB rollback to the 2026-05-03 baseline
 ├── strategy_taxonomy.md            # coachingexperience.strategy_label taxonomy
 │
-├── DIAGNOSIS_2026-05.md            # Historical: May 2026 data diagnosis
-├── SESSION_HANDOFF.md              # Historical: session handoff notes
-├── jepa_training_tuning_observations_2026-05-06.md   # Historical training notes
-├── rap_training_known_issue_2026-05-05.md            # Historical known issue
+├── DIAGNOSIS_2026-05.md            # Historical diagnosis (status superseded by docs/audit)
+├── SESSION_HANDOFF.md              # Operational conventions (historical state removed)
+├── jepa_training_tuning_observations_2026-05-06.md   # R8 retrain ladder + B5 probe record
+├── rap_training_known_issue_2026-05-05.md            # Resolved: rationale for the live ncps LTC patch
 ├── restoration_baseline_2026-05-03.json              # Rollback baseline row counts
-├── d2a/d2c/d3/d4/m1 *_report_*.json, dem_availability.json,
-│   playermatchstats_coverage_report_2026-05-05.json  # Historical run reports (dated)
+├── d3_rederive_report_2026-07-17.json                # D3 tick-rate re-derivation report (shards)
+│
+├── audit/                          # Nuke-Proof Audit archive (closed 2026-08-14)
+│   ├── FINAL_REPORT.md             # Campaign close-out (start here)
+│   ├── FINDINGS.md                 # 44-finding register (13 deferred → OPEN_ISSUES.md)
+│   └── ...                         # WAVES, CONTRACTS, dossiers, sweeps, ledger
 │
 ├── books/                          # Vision books (project vision & architecture)
 │   ├── Book-Coach-1A .md/.pdf      # Neural core: JEPA, VL-JEPA, AdvancedCoachNN
@@ -46,13 +51,19 @@ docs/
 │   ├── USER_GUIDE_IT.md            # Guida utente (Italiano)
 │   └── USER_GUIDE_PT.md            # Guia do usuário (Português)
 │
-├── research/                       # Research library catalog
-│   └── INDEX.md                    # Bibliography index; the PDFs themselves are
-│                                   # git-ignored and not present in a fresh checkout
+├── research/                       # Research library catalog + design research
+│   ├── INDEX.md                    # Bibliography index; the PDFs themselves are
+│   │                               # git-ignored and not present in a fresh checkout
+│   └── cs_platforms.md / github_gems.md / global_startups.md   # UI/UX redesign dossiers
+│
+├── superpowers/                    # Implementation plans & design specs (skill workflows)
+│   ├── plans/
+│   └── specs/
 │
 ├── ux-audit/                       # UX visual audit + screen renders
 │   ├── UX_VISUAL_AUDIT.md
-│   └── renders/                    # CS16 / CS2 / CSGO screenshots
+│   ├── renders/                    # CS16 / CS2 / CSGO screenshots
+│   └── renders-atlas/              # CS16 / CS2 / CSGO screenshots (design-atlas pass)
 │
 └── tooling/                        # PDF generation utilities
     ├── generate_zh_pdfs.py         # Mermaid → SVG + dark-themed PDF generator

@@ -8,36 +8,16 @@ state changes; do not append narrative.
 
 ---
 
-## 1. Executive summary
+## 1–2. Status snapshot — SUPERSEDED (see audit final report)
 
-Repo state is **GREEN** for runtime and validation; **1 test failure** (eval-harness dry-run timeout >30s — TASKS#56 / Programme B6.2):
+The validator/pytest figures that used to live here were the 2026-07-02 baseline
+(318/319 validator PASS · 2088/1/9 pytest) and are **no longer current**. The newest
+verified whole-project state is the **Nuke-Proof Audit close-out of 2026-08-14** —
+see [audit/FINAL_REPORT.md](audit/FINAL_REPORT.md): 0 failed / 2574 passed / 0 errors,
+headless_validator PASS, integrity manifest GREEN, CI green on every push.
 
-- `./.venv/bin/python tools/headless_validator.py` → **318/319 PASS, 0 fail, 1 warn, exit 0** (`VERDICT: PASS`).
-- `./.venv/bin/python -m pytest` (scoped) → **2088 passed, 1 failed, 9 skipped, 40 deselected** (archived: `reports/baseline_pytest_2026-07-02.txt`).
-- All REFERENCE.md §3 invariants enforced (code spot-verified 2026-06-13; environment re-verified 2026-07-02).
-- JEPA training: val loss ~1.8977, maturity state `doubt`. Sampling fix (B1–B3) LANDED 2026-06-19 (`dd31e39`/`330e28f`/`4fb2f87`); eval-gated retrain still pending (Programme G5, gated on B4–B6).
-- Research library: 14 JEPA PDFs in `docs/research/arxiv/` + ~52 more in `docs/research/library/` (see `docs/research/INDEX.md`, ~66 total).
-
-Open work tracked in [TASKS.md](../TASKS.md) and `~/.claude/plans/cs2-completion-2026-06-13/` (completion programme, 7 phases A–G).
-
----
-
-## 2. Validator current status
-
-Run: `./.venv/bin/python tools/headless_validator.py 2>&1 | tail -25` — 2026-07-02, full output archived at `reports/baseline_validator_2026-07-02.txt`.
-
-```
-RESULT: 318/319 passed, 0 failed, 1 warnings
-VERDICT: PASS
-```
-
-Residual warnings (all by-design / known-deferred):
-
-| # | Source | Warning | Disposition |
-|---|---|---|---|
-| 1 | Deps | `Optional deps not installed: shap` | Optional model-explainability dep; coaching pipeline tolerates absence. |
-
-Note: kivy/kivymd warnings retired by C11 (`2b1ff16`); web/match-detail + web/coach-chat scaffolds landed (validator Phase 26 all PASS); ncps + hflayers installed in venv.
+Open work is tracked in [TASKS.md](../TASKS.md); still-open issues from the historical
+docs are consolidated in [OPEN_ISSUES.md](OPEN_ISSUES.md).
 
 ---
 
@@ -98,44 +78,21 @@ Programme phases: A (foundation/truth) → B (training engine) → C (code quali
 
 ---
 
-## 6. Replaced these 9 stale docs (removed 2026-05-03)
+## 6. Doc-consolidation record (2026-05-03)
 
-This file consolidates and supersedes nine prior dump-style docs that violated the CLAUDE.md canonical sibling-doc rule. They were already gitignored under the `.gitignore` "Internal review / audit / engineering handoff documents" section (lines 95+) — i.e., **never tracked in git history**. Removed from local disk 2026-05-03 via plain `rm` (not `git rm`); 384 KB freed; no repo-history change since they never lived there:
-
-1. `PYCHARM_CONFIGURATION_GUIDE.md` (749 L) — IDE setup, external-tool config; not part of code or build.
-2. `PYCHARM_CONFIGURATION_GUIDE _reference.md` (830 L, note literal space in filename) — duplicate of #1.
-3. `KNOWLEDGE_TRANSFER_TO_CS2_COACH.md` (1019 L) — narrative from prior project; superseded by current code state.
-4. `reporting.md` (89 L) — superseded by `Programma_CS2_RENAN/reporting/` source.
-5. `docs/AUDIT_PROGRESS.md` (5.4K) — duplicate intent with `AUDIT.md`.
-6. `docs/DEEP_AUDIT_FINDINGS.md` (14K) — frozen findings; relevant items absorbed into `AUDIT.md`.
-7. `docs/COACH_QUALITY_ROADMAP.md` (31K) — phase planning superseded by master plan.
-8. `docs/ENGINEERING_HANDOFF.md` (163K) — large narrative handoff; superseded.
-9. `docs/FRONTEND_ANALYSIS.md` (8.8K) — pre-redesign legacy UI analysis.
+This file consolidated and superseded nine prior dump-style docs (PyCharm guides,
+knowledge-transfer narrative, `reporting.md`, `AUDIT_PROGRESS`, `DEEP_AUDIT_FINDINGS`,
+`COACH_QUALITY_ROADMAP`, `ENGINEERING_HANDOFF`, `FRONTEND_ANALYSIS`). They were
+gitignored (never tracked) and removed from disk with plain `rm` on 2026-05-03 —
+**irreversible**; if anything is needed again, regenerate from current code state.
 
 **Do NOT delete:**
+
 - `jepa.md` (active reference, linked from `REFERENCE.md`)
-- `docs/OPEN_PROBLEMS.md` (active roadmap)
 - `docs/books/*.md` (genuine educational content)
 - `docs/archive/*` (intentionally archived; already removed from active surface)
 - Two PDFs in repo root (`CS2_Coach_Modernization_Report.pdf`, `CS2_Coach_Supplement_N260.pdf`) — already untracked per `.gitignore`.
 - `_rocm_smoke.sh`, `.cs2_req_no_torch.txt` — cross-stack parity artifacts (see §4).
-
-Audit trail (executed 2026-05-03):
-
-```bash
-rm \
-  PYCHARM_CONFIGURATION_GUIDE.md \
-  'PYCHARM_CONFIGURATION_GUIDE _reference.md' \
-  KNOWLEDGE_TRANSFER_TO_CS2_COACH.md \
-  reporting.md \
-  docs/AUDIT_PROGRESS.md \
-  docs/DEEP_AUDIT_FINDINGS.md \
-  docs/COACH_QUALITY_ROADMAP.md \
-  docs/ENGINEERING_HANDOFF.md \
-  docs/FRONTEND_ANALYSIS.md
-```
-
-This action is irreversible (the files were never tracked, so they exist nowhere in git history). If anything in them is later needed, regenerate from current code state or recreate from external backups.
 
 ---
 
@@ -143,11 +100,12 @@ This action is irreversible (the files were never tracked, so they exist nowhere
 
 When state changes materially (new validator failure, invariant breach, hardware swap, master-plan phase completion):
 
-1. Run `./.venv/bin/python tools/headless_validator.py 2>&1 | tail -15` and update §2.
+1. Run `./.venv/bin/python tools/headless_validator.py 2>&1 | tail -15` and
+   `./.venv/bin/python -m pytest Programma_CS2_RENAN/tests/ --tb=no -q | tail -3`,
+   then update the §1–2 snapshot (currently a pointer to the 2026-08-14 audit state).
 2. Diff `git log --oneline ${LAST_REFRESH_COMMIT}..HEAD` and update §5.
-3. Run `./.venv/bin/python -m pytest Programma_CS2_RENAN/tests/ --tb=no -q | tail -3` and update §1.
-4. If invariants changed, update §3 against `CLAUDE.md` "Critical Invariants" section.
-5. Bump the **Last refresh** date at the top.
+3. If invariants changed, update §3 against `CLAUDE.md` "Critical Invariants" section.
+4. Bump the **Last refresh** date at the top.
 
 Keep this file under 250 lines; prune §5 once items absorbed elsewhere.
 
