@@ -1,4 +1,7 @@
-# Campaign Risk Register (live)
+# Campaign Risk Register
+
+> **Campaign closed 2026-08-14** — see [FINAL_REPORT.md](FINAL_REPORT.md). The rows
+> below are the register as it stood during the campaign (archive, no longer live).
 
 | R# | Risk | Mitigation hook | Status |
 |---|---|---|---|

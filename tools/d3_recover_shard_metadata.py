@@ -457,6 +457,17 @@ def main() -> None:
             print("[D3] Re-run with --apply to write the changes")
         return
 
+    if not INVENTORY.exists():
+        # The one-shot D3 recovery was executed 2026-05-06; its input inventory
+        # was removed from docs/ in the 2026-08-21 sweep (recoverable from git
+        # history). Only --rederive-v1 remains operational.
+        print(
+            f"[D3] Historical inventory {INVENTORY.name} not present — the "
+            "one-shot recovery already ran 2026-05-06. Nothing to do "
+            "(use --rederive-v1 for the live re-derivation mode)."
+        )
+        return
+
     print("[D3] Building SHA-256 forward map...")
     fwd_map = build_forward_map()
     print(f"[D3] Forward map: {len(fwd_map)} demo names")
