@@ -443,7 +443,8 @@ class HLTVDatabaseManager:
         """Creates schema in the HLTV metadata database.
 
         Handles pre-existing hltv_metadata.db files with stale schemas by
-        dropping and recreating tables whose columns don't match the model.
+        adding missing columns in place (additive drift) or preserving the
+        table under a *_stale_* name before recreation (non-additive drift).
         """
         try:
             self._reconcile_stale_schema()
@@ -453,8 +454,26 @@ class HLTVDatabaseManager:
             raise
 
     def _reconcile_stale_schema(self):
-        """Drop HLTV tables whose column set doesn't match the current model."""
+        """Reconcile HLTV tables whose column set doesn't match the model.
+
+        #47/GAP-14 hardening (2026-08-21): the old logic DROPPED any table
+        missing a model column — a silent data wipe on every additive model
+        evolution (the class of loss that destroyed the Phase-H1 tables).
+        Now:
+          - additive drift (model has NEW columns, every existing DB column
+            still in the model) → ALTER TABLE ADD COLUMN, data preserved;
+          - non-additive drift (typed/renamed/removed columns) → the table
+            is RENAMED to <name>_stale_<ts> (data preserved for manual
+            recovery) and recreated fresh by create_all;
+          - orphan purge never touches *_stale_* snapshots.
+        Formal alembic adoption for hltv_metadata.db remains Phase G7.
+        """
+        import re as _re
+        from datetime import datetime as _dt
+
         from sqlalchemy import inspect as sa_inspect
+
+        _SAFE_TABLE_NAME = _re.compile(r"^[a-zA-Z0-9_]+$")
 
         inspector = sa_inspect(self.engine)
         existing_tables = inspector.get_table_names()
@@ -467,21 +486,72 @@ class HLTVDatabaseManager:
             db_cols = {c["name"] for c in inspector.get_columns(tbl_name)}
             model_cols = {c.name for c in table.columns}
 
-            if not model_cols.issubset(db_cols):
-                missing = model_cols - db_cols
-                logger.warning(
-                    "HLTV table '%s' missing columns %s — recreating with current schema.",
+            if model_cols.issubset(db_cols):
+                continue
+
+            missing = model_cols - db_cols
+            extra = db_cols - model_cols
+            if not extra:
+                # Additive-only drift: add the missing columns in place.
+                logger.info(
+                    "HLTV table '%s' missing columns %s — adding in place " "(rows preserved).",
                     tbl_name,
-                    missing,
+                    sorted(missing),
                 )
-                table.drop(self.engine, checkfirst=True)
+                with self.engine.connect() as conn:
+                    for column in table.columns:
+                        if column.name not in missing:
+                            continue
+                        col_type = column.type.compile(self.engine.dialect)
+                        conn.execute(
+                            sqlalchemy.text(
+                                f'ALTER TABLE "{tbl_name}" '
+                                f'ADD COLUMN "{column.name}" {col_type}'
+                            )
+                        )
+                    conn.commit()
+            else:
+                # Non-additive drift: preserve the data under a stale name
+                # and let create_all rebuild the fresh table.
+                stale_name = f"{tbl_name}_stale_{_dt.now().strftime('%Y%m%d%H%M%S')}"
+                logger.warning(
+                    "HLTV table '%s' has non-additive schema drift "
+                    "(missing %s, extra %s) — preserving rows as '%s' and "
+                    "recreating with the current schema. Recover manually "
+                    "if needed, then drop the snapshot.",
+                    tbl_name,
+                    sorted(missing),
+                    sorted(extra),
+                    stale_name,
+                )
+                with self.engine.connect() as conn:
+                    conn.execute(
+                        sqlalchemy.text(f'ALTER TABLE "{tbl_name}" RENAME TO "{stale_name}"')
+                    )
+                    # SQLite keeps secondary indexes (with their ORIGINAL
+                    # names) attached to the renamed table — they would
+                    # collide with create_all's fresh indexes. Drop them on
+                    # the snapshot; the DATA stays intact.
+                    stale_indexes = conn.execute(
+                        sqlalchemy.text(
+                            "SELECT name FROM sqlite_master WHERE type='index' "
+                            "AND tbl_name = :t AND name NOT LIKE 'sqlite_autoindex%'"
+                        ),
+                        {"t": stale_name},
+                    ).fetchall()
+                    for (idx_name,) in stale_indexes:
+                        if _SAFE_TABLE_NAME.match(idx_name):
+                            conn.execute(sqlalchemy.text(f'DROP INDEX IF EXISTS "{idx_name}"'))
+                    conn.commit()
+
         # Also drop tables that don't belong in the HLTV database
         hltv_table_names = {t.name for t in _HLTV_TABLES}
-        import re as _re
-
-        _SAFE_TABLE_NAME = _re.compile(r"^[a-zA-Z0-9_]+$")
         for orphan in set(existing_tables) - hltv_table_names:
             if orphan in ("sqlite_sequence",):
+                continue
+            if "_stale_" in orphan:
+                # Preserved snapshots from non-additive reconciliation —
+                # never auto-purged.
                 continue
             # P7-04: Validate table name before using in SQL to prevent injection
             if not _SAFE_TABLE_NAME.match(orphan):
