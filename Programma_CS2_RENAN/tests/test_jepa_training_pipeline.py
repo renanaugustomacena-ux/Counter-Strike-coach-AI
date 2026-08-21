@@ -17,7 +17,7 @@ import numpy as np
 import pytest
 import torch
 
-from Programma_CS2_RENAN.backend.nn.config import GLOBAL_SEED, INPUT_DIM
+from Programma_CS2_RENAN.backend.nn.config import GLOBAL_SEED, INPUT_DIM, OUTPUT_DIM
 from Programma_CS2_RENAN.backend.nn.jepa_model import JEPACoachingModel, jepa_contrastive_loss
 from Programma_CS2_RENAN.backend.nn.jepa_train import (
     _MAX_TICKS_PER_SEQUENCE,
@@ -57,14 +57,24 @@ def short_sequences(metadata_dim):
 
 @pytest.fixture
 def model(metadata_dim):
-    """Fresh JEPACoachingModel."""
-    return JEPACoachingModel(input_dim=metadata_dim, output_dim=metadata_dim)
+    """Fresh JEPACoachingModel at the PRODUCTION shape (TASKS#64/15f).
+
+    The CLI always builds output_dim=OUTPUT_DIM (10); the old
+    output_dim=metadata_dim (25) fixtures exercised a shape combination
+    that cannot exist in production and green-lit the undefined 25-target
+    finetune contract.
+    """
+    from Programma_CS2_RENAN.backend.nn.config import OUTPUT_DIM
+
+    return JEPACoachingModel(input_dim=metadata_dim, output_dim=OUTPUT_DIM)
 
 
 @pytest.fixture
 def pretrained_model(metadata_dim, dummy_sequences):
     """Model that has been through a minimal pre-training cycle."""
-    m = JEPACoachingModel(input_dim=metadata_dim, output_dim=metadata_dim)
+    from Programma_CS2_RENAN.backend.nn.config import OUTPUT_DIM
+
+    m = JEPACoachingModel(input_dim=metadata_dim, output_dim=OUTPUT_DIM)
     # Freeze target encoder (as train_jepa_pretrain does)
     for p in m.target_encoder.parameters():
         p.requires_grad = False
@@ -352,7 +362,7 @@ class TestCheckpointSaveLoad:
             path = f.name
         try:
             save_jepa_model(model, path)
-            loaded = load_jepa_model(path, input_dim=metadata_dim, output_dim=metadata_dim)
+            loaded = load_jepa_model(path, input_dim=metadata_dim, output_dim=OUTPUT_DIM)
             assert loaded.is_pretrained is True
             # Compare parameters
             for (n1, p1), (n2, p2) in zip(model.state_dict().items(), loaded.state_dict().items()):
@@ -373,7 +383,7 @@ class TestCheckpointSaveLoad:
 
     def test_load_nonexistent_raises(self, metadata_dim):
         with pytest.raises(Exception):
-            load_jepa_model("/nonexistent/path.pt", input_dim=metadata_dim, output_dim=metadata_dim)
+            load_jepa_model("/nonexistent/path.pt", input_dim=metadata_dim, output_dim=OUTPUT_DIM)
 
     def test_pretrained_flag_preserved(self, model, metadata_dim):
         """is_pretrained flag should survive save/load."""
@@ -383,7 +393,7 @@ class TestCheckpointSaveLoad:
                 path = f.name
             try:
                 save_jepa_model(model, path)
-                loaded = load_jepa_model(path, input_dim=metadata_dim, output_dim=metadata_dim)
+                loaded = load_jepa_model(path, input_dim=metadata_dim, output_dim=OUTPUT_DIM)
                 assert loaded.is_pretrained == flag
             finally:
                 os.unlink(path)
@@ -464,14 +474,14 @@ class TestTrainJepaFinetune:
     def test_finetune_runs(self, pretrained_model, metadata_dim):
         """Fine-tuning should complete without errors."""
         X = np.random.randn(8, 20, metadata_dim).astype(np.float32)
-        y = np.random.randn(8, metadata_dim).astype(np.float32)
+        y = np.random.rand(8, OUTPUT_DIM).astype(np.float32)  # 15f: real 10-dim head
         result = train_jepa_finetune(pretrained_model, X, y, num_epochs=2, batch_size=4)
         assert result is not None
 
     def test_finetune_keeps_encoders_frozen(self, pretrained_model, metadata_dim):
         """Encoders should stay frozen during fine-tuning."""
         X = np.random.randn(8, 20, metadata_dim).astype(np.float32)
-        y = np.random.randn(8, metadata_dim).astype(np.float32)
+        y = np.random.rand(8, OUTPUT_DIM).astype(np.float32)  # 15f: real 10-dim head
         result = train_jepa_finetune(pretrained_model, X, y, num_epochs=1, batch_size=4)
         for p in result.context_encoder.parameters():
             assert not p.requires_grad
@@ -482,7 +492,7 @@ class TestTrainJepaFinetune:
         """LSTM head should be updated during fine-tuning."""
         lstm_before = {n: p.clone() for n, p in pretrained_model.lstm.named_parameters()}
         X = np.random.randn(8, 20, metadata_dim).astype(np.float32)
-        y = np.random.randn(8, metadata_dim).astype(np.float32)
+        y = np.random.rand(8, OUTPUT_DIM).astype(np.float32)  # 15f: real 10-dim head
         result = train_jepa_finetune(pretrained_model, X, y, num_epochs=3, batch_size=4)
         changed = False
         for name, param in result.lstm.named_parameters():
@@ -494,7 +504,7 @@ class TestTrainJepaFinetune:
     def test_finetune_no_nan(self, pretrained_model, metadata_dim):
         """No NaN in weights after fine-tuning."""
         X = np.random.randn(8, 20, metadata_dim).astype(np.float32)
-        y = np.random.randn(8, metadata_dim).astype(np.float32)
+        y = np.random.rand(8, OUTPUT_DIM).astype(np.float32)  # 15f: real 10-dim head
         result = train_jepa_finetune(pretrained_model, X, y, num_epochs=2, batch_size=4)
         for name, param in result.named_parameters():
             assert not torch.isnan(param).any(), f"NaN in {name}"
@@ -580,7 +590,7 @@ class TestEndToEndSmoke:
         mock_load.return_value = [
             np.random.randn(50, metadata_dim).astype(np.float32) for _ in range(8)
         ]
-        model = JEPACoachingModel(input_dim=metadata_dim, output_dim=metadata_dim)
+        model = JEPACoachingModel(input_dim=metadata_dim, output_dim=OUTPUT_DIM)
         model = train_jepa_pretrain(model, num_epochs=2, batch_size=4)
         assert model is not None
         assert model.is_pretrained
@@ -592,12 +602,12 @@ class TestEndToEndSmoke:
             save_jepa_model(model, path)
 
             # Load
-            loaded = load_jepa_model(path, input_dim=metadata_dim, output_dim=metadata_dim)
+            loaded = load_jepa_model(path, input_dim=metadata_dim, output_dim=OUTPUT_DIM)
             assert loaded.is_pretrained
 
             # Finetune
             X = np.random.randn(8, 20, metadata_dim).astype(np.float32)
-            y = np.random.randn(8, metadata_dim).astype(np.float32)
+            y = np.random.rand(8, OUTPUT_DIM).astype(np.float32)  # 15f: real 10-dim head
             finetuned = train_jepa_finetune(loaded, X, y, num_epochs=2, batch_size=4)
             assert finetuned is not None
 
@@ -693,12 +703,17 @@ class TestFinetuneTargetContractGuard:
         model = JEPACoachingModel(input_dim=metadata_dim, output_dim=10)
         model.is_pretrained = True
         X = np.random.randn(8, 20, metadata_dim).astype(np.float32)
-        y = np.random.randn(8, metadata_dim).astype(np.float32)  # 25 ≠ 10
+        y = np.random.randn(8, metadata_dim).astype(np.float32)  # 25 ≠ 10 — must raise
         with pytest.raises(ValueError, match="26-RANGE-01"):
             train_jepa_finetune(model, X, y, num_epochs=1, batch_size=4)
 
-    def test_matching_dims_pass_the_guard(self, pretrained_model, metadata_dim):
+    def test_ten_dim_targets_pass_the_guard(self, pretrained_model, metadata_dim):
+        """15f: targets matching the REAL head (OUTPUT_DIM=10) pass. The old
+        version fed 25-dim y to a 25-out fixture — green-lighting the exact
+        wrong contract the guard exists to block."""
+        from Programma_CS2_RENAN.backend.nn.config import OUTPUT_DIM
+
         X = np.random.randn(8, 20, metadata_dim).astype(np.float32)
-        y = np.random.randn(8, metadata_dim).astype(np.float32)
+        y = np.random.rand(8, OUTPUT_DIM).astype(np.float32)  # [0,1] per (δ+1)/2
         result = train_jepa_finetune(pretrained_model, X, y, num_epochs=1, batch_size=4)
         assert result is not None

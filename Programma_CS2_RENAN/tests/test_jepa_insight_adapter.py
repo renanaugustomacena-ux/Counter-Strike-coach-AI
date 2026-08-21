@@ -302,3 +302,19 @@ class TestOrchestratorStampsHeadTrained:
         meta = orch._checkpoint_extra_meta()
         assert meta["map_resolution"] == 64
         assert meta["view_resolution"] == 64
+
+
+class TestTargetFeatureContract:
+    """15f/#64: the adapter's 10 axes ARE the first 10 of the tick-level
+    vectorizer contract. (MATCH_AGGREGATE_FEATURES[0:10] is a DIFFERENT
+    25-dim vocabulary feeding AdvancedCoachNN via _calculate_deltas — both
+    docs claimed to be 'the first 10 of the 25-dim contract'; this pins
+    which one the JEPA head means.)"""
+
+    def test_adapter_axes_pin_vectorizer_contract(self):
+        from Programma_CS2_RENAN.backend.coaching.jepa_insight_adapter import _TARGET_FEATURES
+        from Programma_CS2_RENAN.backend.processing.feature_engineering.vectorizer import (
+            FEATURE_NAMES,
+        )
+
+        assert tuple(_TARGET_FEATURES) == tuple(FEATURE_NAMES[:10])
