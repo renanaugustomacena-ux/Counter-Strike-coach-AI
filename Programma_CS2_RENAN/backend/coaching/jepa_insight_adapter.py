@@ -177,12 +177,42 @@ def deltas_to_insights(
 _MODEL_CACHE: dict = {}
 
 
+def _checkpoint_head_trained() -> bool:
+    """F-0029: read the sidecar's head_trained marker for the JEPA checkpoint.
+
+    Pretrain-only checkpoints have trained ENCODERS but a randomly
+    initialized coaching head — their sigmoid outputs wander around 0.5
+    widely enough to beat the 0.1 magnitude gate, turning noise into
+    "insights". Only a checkpoint whose sidecar carries
+    extra.head_trained == True may arm the adapter; the marker's only
+    writer is the (future, TASKS#64/R9) supervised finetune promotion.
+    Missing sidecar / missing marker → False.
+    """
+    import json
+
+    from Programma_CS2_RENAN.backend.nn.factory import ModelFactory
+    from Programma_CS2_RENAN.backend.nn.persistence import _sidecar_path, get_model_path
+
+    try:
+        path = get_model_path(ModelFactory.get_checkpoint_name(ModelFactory.TYPE_JEPA), None)
+        sidecar = _sidecar_path(path)
+        if not sidecar.exists():
+            return False
+        meta = json.loads(sidecar.read_text())
+        return bool((meta.get("extra") or {}).get("head_trained"))
+    except Exception as e:
+        logger.debug("F-0029: head_trained sidecar read failed: %s", e)
+        return False
+
+
 def load_jepa_for_insights():
     """Load the production JEPA checkpoint once, or None (26-HYB-01 rules).
 
     Same discipline as the Hybrid fix: a model exists only if trained
     weights actually load (sidecar-verified via persistence.load_nn);
     FileNotFoundError / StaleCheckpointError degrade loudly to None.
+    F-0029: additionally refuses pretrain-only checkpoints (coaching head
+    untrained) via the sidecar head_trained marker.
     """
     if "model" in _MODEL_CACHE:
         return _MODEL_CACHE["model"]
@@ -191,6 +221,14 @@ def load_jepa_for_insights():
     from Programma_CS2_RENAN.backend.nn.persistence import StaleCheckpointError, load_nn
 
     try:
+        if not _checkpoint_head_trained():
+            logger.warning(
+                "F-0029: JEPA checkpoint is pretrain-only (coaching head "
+                "untrained) — insight adapter disabled until a finetuned "
+                "checkpoint with head_trained=True is promoted"
+            )
+            _MODEL_CACHE["model"] = None
+            return None
         model = ModelFactory.get_model(ModelFactory.TYPE_JEPA)
         load_nn(ModelFactory.get_checkpoint_name(ModelFactory.TYPE_JEPA), model)
         model.eval()

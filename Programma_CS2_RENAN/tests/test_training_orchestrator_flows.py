@@ -897,7 +897,10 @@ class TestBestValLossResume:
 
                     # First save_nn call should be the "best" save with extra_meta
                     best_call = mock_save.call_args_list[0]
-                    assert best_call.kwargs.get("extra_meta") == {"best_val_loss": 1.5}
+                    extra = best_call.kwargs.get("extra_meta")
+                    assert extra["best_val_loss"] == 1.5
+                    # F-0029: pretrain saves stamp the untrained coaching head.
+                    assert extra.get("head_trained") is False
 
 
 class TestEMATotalSteps:

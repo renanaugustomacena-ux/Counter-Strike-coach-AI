@@ -386,14 +386,19 @@ class TrainingOrchestrator:
                         model,
                         self.model_name,
                         user_id=None,
-                        extra_meta={"best_val_loss": val_loss},
+                        extra_meta={"best_val_loss": val_loss, **self._checkpoint_extra_meta()},
                     )
                     logger.info("New Best Model Saved (Val Loss: %s)", format(val_loss, ".6f"))
             else:
                 self.patience_counter += 1
 
             if not self.dry_run:
-                save_nn(model, f"{self.model_name}_latest", user_id=None)
+                save_nn(
+                    model,
+                    f"{self.model_name}_latest",
+                    user_id=None,
+                    extra_meta=self._checkpoint_extra_meta(),
+                )
             _flush_all_loggers()
 
             if self.patience_counter >= self.patience:
@@ -402,6 +407,30 @@ class TrainingOrchestrator:
                 break
 
         return final_epoch
+
+    def _checkpoint_extra_meta(self) -> dict:
+        """Sidecar metadata for every orchestrator checkpoint save.
+
+        - head_trained (F-0029): the orchestrated jepa/vl-jepa runs are
+          PRETRAIN-only — the coaching head stays randomly initialized. The
+          insight adapter refuses checkpoints without head_trained=True; a
+          future supervised finetune-promotion path is the only writer of
+          True (TASKS#64 / R9).
+        - map/view_resolution (F-0026): the training tensor resolution, so
+          inference sites can verify parity against their factory config.
+        """
+        meta: dict = {}
+        if self.model_type in ("jepa", "vl-jepa"):
+            meta["head_trained"] = False
+        if self.model_type in ("rap", "pov-rap"):
+            from Programma_CS2_RENAN.backend.processing.tensor_factory import (
+                TrainingTensorConfig,
+            )
+
+            cfg = TrainingTensorConfig()
+            meta["map_resolution"] = cfg.map_resolution
+            meta["view_resolution"] = cfg.view_resolution
+        return meta
 
     def _finalize_training(self, model, final_epoch):
         """Post-loop gates and on_train_end callback."""
