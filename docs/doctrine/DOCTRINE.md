@@ -172,6 +172,16 @@ CHAT-xx, WR-xx, DP-xx, BE-xx…); new work must extend that register, never bypa
 
 ## 3. Defect register (adjudicated from the full read; fix before or alongside new AI work)
 
+> **Status ledger (2026-08-28, improvement round 1 — see
+> [notes/17-ai-improvement-round1.md](notes/17-ai-improvement-round1.md)):**
+> FIXED: D-02 (PR #76), D-03 (#75), D-04 (#77), D-13 (#78), D-14 (#79),
+> D-15 (#80), D-16 (#81), D-18..D-22 (#82). REFUTED: D-06's SkillLatentModel
+> half (one implementation exists, carrying the R4 fix; the RAP trees are
+> fully shimmed — residue is 3 production imports via the shim path).
+> AMENDED: D-04 gained a fourth site (round_stats_builder:236) and the
+> trade_kill claim was stale (constant already used; validity window was the
+> real gap). New entries D-13..D-26 below.
+
 Confirmed contradictions and drift, with the owning note:
 
 - **D-01 Zombie-threshold schism** (notes 02/13b): config.py default 300 s vs run_worker's P4-B
@@ -225,6 +235,39 @@ Confirmed contradictions and drift, with the owning note:
   extraction's thin `_infer_action`/thirds-grid position areas (move to callouts, rule 7);
   AppState write-path exceptions in the UI; the dormant telemetry client/server pair needs a
   contract test if ever wired (rule 4).
+
+Entries from improvement round 1 (evidence and fix specs in note 17; asterisks = fixed):
+
+- ***D-13** P9-02 false abort: single-window batches reported constant-0.0 "variance" and the
+  collapse detector killed every orchestrated run at epoch 2; VICReg inert at B=1 (comment
+  stands until true window-stacked batches land).
+- ***D-14** VL-JEPA label mismatch: per-tick RoundStats vs per-window logits crashed BCE (or
+  silently mispaired); one-label-per-sample contract now loud.
+- ***D-15** CLI pretrain split contamination + nondeterministic ordering (Law II / DET-01).
+- ***D-16** Dead embed/* telemetry: unconsumable ORM-row probe; now prepared tensor + loud
+  unconsumable warning. (With D-13: all three collapse layers were broken at once.)
+- **D-17** eval_harness `_expert_utilization` reads a nonexistent `model.encoder` (section
+  ERRORs once a checkpoint exists), measures only the last forward, unlabeled synthetic input.
+- ***D-18** Val loss used default temperature while training optimized learned tau.
+- ***D-19** P3-C abort returned success (F-0043 residue); verdict now threads through
+  run_training, log warns not to promote the already-written checkpoints.
+- ***D-20** Split-blind LIMIT fallback in `_fetch_jepa_ticks` (identical rows for TRAIN and
+  VAL when fired) — replaced by a named empty refusal.
+- ***D-21** Sample gate counted windows×batch_size (~3× fiction); now real rows.
+- ***D-22** JEPA windows spanning the round reset (R5-lite guard: drop, never pad; full R5
+  stays roadmap).
+- **D-23** RAP training path (dormant, USE_RAP_MODEL=False; fix before arming): 320/64 event
+  literals; fabricated [0,0,0] terminal position label (mask per LEAK-01); fully-masked val
+  batches in the denominator; first-1000-rows warmup bias in `_fetch_rap_windows`.
+- **D-24** MoCo queue same-stream near-duplicate negatives (no identity to mask against) —
+  NN-H-03's failure re-created in latent space.
+- **D-25** Orchestrator save path drops the J-6 EMA counters and `is_pretrained` (silent
+  schedule restart on resume; `set_total_steps` mixes units); val negatives churn with the
+  train pool + shared RNG (val data pinned, objective not).
+- **D-26** `CoachingService.generate_new_insights` appears production-orphaned (run_ingestion
+  carries a parallel implementation) — if confirmed, the P9-03 chain, C-01 guarantees and the
+  F1.2 JEPA write seam are dead code: wire or tombstone (rule 2). Adjudicate at the
+  entrypoint level first.
 
 ## 4. The AI roadmap (paper-grounded, invariant-filtered)
 
