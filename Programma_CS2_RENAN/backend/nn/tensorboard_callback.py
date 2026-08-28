@@ -39,8 +39,10 @@ def _extract_probe_context(batch: Any) -> Optional["torch.Tensor"]:
     """Best-effort context tensor from a heterogeneous probe batch.
 
     The two training paths hand over different shapes: jepa_train's dataloader
-    yields dicts with a "context" key, while TrainingOrchestrator yields raw
-    window tensors. Returns None when nothing tensor-shaped is found.
+    yields dicts with a "context" key, and TrainingOrchestrator yields a
+    PREPARED tensor-batch dict (D-16 — it used to hand over raw ORM rows,
+    which this function could not consume, silently killing the embed/*
+    telemetry). Returns None when nothing tensor-shaped is found.
     """
     if isinstance(batch, torch.Tensor):
         return batch
@@ -151,6 +153,16 @@ class TensorBoardCallback(TrainingCallback):
             logger.warning(
                 "No probe_batch supplied — collapse metrics (embed/*) will not "
                 "be logged for this run."
+            )
+        elif _extract_probe_context(self._probe_batch) is None:
+            # D-16 (26-ORCH-01 spirit — failure telemetry must fail loudly):
+            # an unconsumable probe used to disable embed/* SILENTLY; the
+            # production orchestrator passed raw ORM rows for months and no
+            # run ever logged a collapse metric.
+            logger.warning(
+                "probe_batch of type %s is unconsumable — collapse metrics "
+                "(embed/*) will not be logged for this run.",
+                type(self._probe_batch).__name__,
             )
         self._create_custom_layout()
 
