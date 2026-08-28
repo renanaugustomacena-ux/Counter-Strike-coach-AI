@@ -1,16 +1,21 @@
 """
 Coaching Dialogue Engine
 
-Multi-turn coaching dialogue with RAG, Experience Bank, and Neural Network
+Multi-turn coaching dialogue with RAG, Experience Bank, and baseline-deviation
 augmentation.  Evolves the single-shot OllamaCoachWriter into an interactive
 session where players can ask follow-up questions about their performance.
+
+D-02 (F-0028 caller drift): this module used to claim "Neural Network
+augmentation" — no neural model ever runs here. Since F-0028, neural output
+enters coaching only via JEPAInsightAdapter (26-HYB-01); this engine augments
+chat with pro-baseline Z-score analysis and retrieval.
 
 Integration Points:
     - llm_service.py: LLMService.chat() for multi-turn Ollama conversations
     - rag_knowledge.py: KnowledgeRetriever for tactical knowledge retrieval
     - experience_bank.py: ExperienceBank for COPER experience retrieval
     - coaching_service.py: Existing push-coaching (unchanged, parallel capability)
-    - hybrid_engine.py: On-demand ML model predictions for mentioned players
+    - hybrid_engine.py: On-demand baseline Z-deviation analysis for mentioned players
     - PlayerMatchStats / RoundStats: Match & round-level statistical context
 """
 
@@ -384,17 +389,17 @@ artificial length limit. The user runs this system locally with no token costs �
 never truncate or summarize when they ask for depth.
 - When the user asks for a minimum word count or detailed analysis, ALWAYS honor \
 that request. Write as much as needed. You have no output length restrictions.
-- When match data, round data, or ML insights are provided in the context, use them \
+- When match data, round data, or coaching insights are provided in the context, use them \
 extensively — cite specific rounds, specific stats. \
 Build your analysis around real data, not generic advice.
 - Do NOT repeat raw numbers — interpret and explain them.
-- Only claim AI/ML analysis when ML-BACKED COACHING INSIGHTS are actually present \
-in the context below. If no ML insights are provided, do not reference neural \
-network analysis — instead focus on the statistical data and coaching knowledge.
+- Only claim neural-network/AI-model analysis when a context block explicitly says a \
+model produced it; otherwise describe the insights as statistical analysis of parsed \
+demos. Never invent neural provenance.
 
 CRITICAL RULES FOR FACTUAL ACCURACY:
 - When player data is provided in a "VERIFIED PLAYER DATA" block, use ONLY that data.
-- When MATCH STATISTICS, BEST WINNING ROUNDS, or ML-BACKED COACHING INSIGHTS \
+- When MATCH STATISTICS, BEST WINNING ROUNDS, or COACHING INSIGHTS \
 blocks are present, treat them as real analyzed data from parsed demo files.
 - NEVER guess or fabricate a player's team, nationality, real name, or statistics.
 - If no verified data is available for a player, say: \
@@ -553,6 +558,10 @@ class CoachingDialogueEngine:
         longer block for a whole generation.
         """
         with self._state_lock:
+            # F2.3 follow-up: a cancel flag left set by a previous stream
+            # must not silently disable the DP-03 tool phase for
+            # non-streaming turns (only respond_stream cleared it).
+            self._stream_cancel.clear()
             if not self._session_active:
                 # No formal session — still attempt a full LLM response if
                 # Ollama is available, using a default system prompt.
@@ -810,23 +819,29 @@ class CoachingDialogueEngine:
         self._match_inventory_cache = "\n".join(lines)
         return self._match_inventory_cache
 
-    # ── F3/TASKS#37: NN input beyond player_query ────────────────────────
+    # ── F3/TASKS#37: baseline-deviation input beyond player_query ────────
 
     _NN_COACHING_INTENTS = ("positioning", "aim", "utility", "economy", "general")
 
     def _should_inject_session_ml(self, intent: str) -> bool:
-        """F3.2: general coaching questions get NN input when the session is
-        grounded in a pro reference — previously the NN only fired when a
-        player was explicitly mentioned (player_query path)."""
-        return intent in self._NN_COACHING_INTENTS and bool(
-            self._player_context.get("using_pro_reference")
-        )
+        """F3.2 (revised with D-02): inject the baseline-deviation block for
+        coaching intents whenever the session player has match stats.
+
+        The old ``using_pro_reference`` gate selected exactly the sessions
+        where the player has NO data (tutor mode = zero personal insight
+        rows), then analyzed that player's own PlayerMatchStats — so the
+        block was structurally near-inert even before the D-02 breakage.
+        _get_ml_analysis_for_players already returns "" when no stats
+        exist, and the "" is session-cached, so this stays cheap.
+        """
+        return intent in self._NN_COACHING_INTENTS
 
     def _get_session_ml_context(self) -> str:
-        """F3.3: cached, session-scoped NN analysis for the active player.
+        """F3.3: cached, session-scoped baseline-deviation analysis for the
+        active player (D-02: statistical Z-scores, no neural model).
 
         The hybrid engine + pro baseline load exactly once per session; a
-        session without a player (or with no usable NN output) caches ""
+        session without a player (or with no usable output) caches ""
         so later turns pay nothing.
         """
         if self._session_ml_cache is not None:
@@ -1279,8 +1294,9 @@ class CoachingDialogueEngine:
         """Retrieve RAG knowledge and experiences relevant to the question."""
         blocks: List[str] = []
 
-        # F3/TASKS#37: NN-backed analysis for coaching intents (cached per
-        # session). Player-mention questions keep their own richer ML path.
+        # F3/TASKS#37: baseline-deviation analysis for coaching intents
+        # (cached per session). Player-mention questions keep their own
+        # richer per-player path. (D-02: no neural model runs here.)
         if self._should_inject_session_ml(intent):
             ml_block = self._get_session_ml_context()
             if ml_block:
@@ -1388,9 +1404,9 @@ class CoachingDialogueEngine:
             except Exception as exc:
                 logger.warning("Match overview retrieval failed: %s", exc)
 
-        # Analytical context: match stats, round data, and ML-backed insights
-        # for any player mentioned in the query (when no specific round/match
-        # drill-down was triggered above).
+        # Analytical context: match stats, round data, and stored coaching
+        # insights for any player mentioned in the query (when no specific
+        # round/match drill-down was triggered above).
         if not round_numbers and intent != "match_query":
             try:
                 analytical = self._retrieve_analytical_context(user_message, intent)
@@ -1402,17 +1418,18 @@ class CoachingDialogueEngine:
         return "\n\n".join(blocks)
 
     # ------------------------------------------------------------------
-    # Analytical context — match stats, round data, ML insights
+    # Analytical context — match stats, round data, stored insights
     # ------------------------------------------------------------------
 
     def _retrieve_analytical_context(self, user_message: str, intent: str) -> str:
-        """Query match/round statistics and ML-backed coaching insights
+        """Query match/round statistics and stored coaching insights
         for players mentioned in the user message.
 
-        This bridges the gap between the neural network analysis pipeline
-        (which stores insights during post-match processing) and the
-        interactive dialogue — so the LLM can reference actual NN-backed
-        data when answering questions about specific players.
+        This bridges the gap between the post-match analysis pipeline
+        (which stores insights during processing) and the interactive
+        dialogue — so the LLM can reference real analyzed data when
+        answering questions about specific players. (D-02: labels claim
+        neural provenance only where a model actually produced the row.)
         """
         # Detect player names in the message
         mentioned: List[str] = []
@@ -1434,8 +1451,8 @@ class CoachingDialogueEngine:
                 if player_block:
                     blocks.append(player_block)
 
-        # On-demand ML predictions for mentioned players (if hybrid engine
-        # is available and player stats exist in the DB).
+        # On-demand baseline Z-deviation analysis for mentioned players
+        # (if the hybrid engine loads and player stats exist in the DB).
         ml_block = self._get_ml_analysis_for_players(mentioned[:3])
         if ml_block:
             blocks.append(ml_block)
@@ -1632,9 +1649,11 @@ class CoachingDialogueEngine:
         matches = session.exec(match_stmt).all()
 
         if matches:
+            # D-02 relabel: these rows are parsed-demo statistics, not model
+            # output — the old "analyzed by ML pipeline" overclaimed.
             lines = [
                 f"MATCH STATISTICS for {player_name} "
-                f"({len(matches)} recent matches analyzed by ML pipeline):"
+                f"({len(matches)} recent matches from parsed demo files):"
             ]
             for m in matches:
                 lines.append(
@@ -1705,7 +1724,12 @@ class CoachingDialogueEngine:
             except Exception:
                 logger.debug("Round reconstruction unavailable for %s", player_name, exc_info=True)
 
-        # --- Coaching insights already generated by NN pipeline ---
+        # --- Coaching insights already generated by the analysis pipeline ---
+        # D-02 relabel: CoachingInsight rows come from the correction engine,
+        # longitudinal trends, Phase-6 engines, COPER and hybrid baseline-Z
+        # synthesis; only RAP-written (and future armed-JEPA) rows are
+        # genuinely NN-derived, and per-row provenance is not stored — so
+        # the block claims neither "neural" nor "not neural" (Law I).
         insight_stmt = (
             select(CoachingInsight)
             .where(CoachingInsight.player_name == player_name)
@@ -1716,8 +1740,8 @@ class CoachingDialogueEngine:
 
         if insights:
             lines = [
-                f"ML-BACKED COACHING INSIGHTS for {player_name} "
-                f"({len(insights)} insights from neural network analysis — "
+                f"COACHING INSIGHTS for {player_name} "
+                f"({len(insights)} insights from the analysis pipeline — "
                 f"describing {player_name}'s gameplay, rendered in 3rd person):"
             ]
             for ins in insights:
@@ -1736,15 +1760,17 @@ class CoachingDialogueEngine:
 
     @staticmethod
     def _get_ml_analysis_for_players(player_names: List[str]) -> str:
-        """Run NN model predictions for mentioned players.
+        """Baseline Z-deviation analysis for mentioned players.
 
-        Aggregates each player's match stats and feeds them through the
-        AdvancedCoachNN or JEPA model to get fresh NN-backed predictions.
+        Aggregates each player's match stats and synthesizes pro-baseline
+        Z-score insights via the hybrid engine. NO neural model runs here
+        (F-0028 removed that seam; neural output enters coaching only via
+        JEPAInsightAdapter, 26-HYB-01 — armed-JEPA output reaches chat as
+        persisted 'World-model read:' CoachingInsight rows instead).
 
-        IMPORTANT: Only calls the NN model + pro baseline (deviations +
-        ML predictions + synthesis).  Does NOT touch the RAG retriever
-        to avoid double-loading SBERT, which causes CUDA OOM on GPUs
-        with < 4 GiB VRAM.
+        IMPORTANT: does NOT touch the RAG retriever, to avoid
+        double-loading SBERT, which causes CUDA OOM on GPUs with
+        < 4 GiB VRAM.
         """
         try:
             from Programma_CS2_RENAN.backend.coaching.hybrid_engine import HybridCoachingEngine
@@ -1752,7 +1778,7 @@ class CoachingDialogueEngine:
             db = get_db_manager()
             blocks: List[str] = []
 
-            # Create engine ONCE outside the loop (loads NN model + baseline).
+            # Create engine ONCE outside the loop (loads the pro baseline).
             # The retriever (SBERT) is lazy-loaded — we never touch it here.
             engine = HybridCoachingEngine()
 
@@ -1799,13 +1825,19 @@ class CoachingDialogueEngine:
                     vals = [getattr(r, field, 0.0) or 0.0 for r in stats_rows]
                     player_stats[field] = sum(vals) / len(vals) if vals else 0.0
 
-                # Run ONLY the NN parts: deviations + ML predictions + synthesis.
-                # Bypass _retrieve_contextual_knowledge (which loads SBERT) by
-                # passing an empty knowledge list to _synthesize_insights.
+                # D-02 (F-0028 caller drift): the old chain called the deleted
+                # _get_ml_predictions and the pre-F-0028 5-arg
+                # _synthesize_insights — it raised AttributeError on EVERY
+                # call, swallowed by the except below, so this block NEVER
+                # rendered. Repaired against the current API: baseline
+                # Z-deviations + synthesis only. Empty knowledge list keeps
+                # SBERT unloaded (CUDA OOM guard); no map context in chat.
                 deviations = engine._calculate_deviations(player_stats)
-                ml_preds = engine._get_ml_predictions(player_stats)
                 insights = engine._synthesize_insights(
-                    deviations, ml_preds, [], None, engine.pro_baseline
+                    deviations,  # deviations
+                    [],  # knowledge: none (SBERT guard)
+                    None,  # map_name: chat has no map context
+                    engine.pro_baseline,  # active_baseline
                 )
                 # Sort by priority (same as generate_insights)
                 insights.sort(
@@ -1816,10 +1848,15 @@ class CoachingDialogueEngine:
                 )
 
                 if insights:
+                    # D-02 relabel: no neural model ran — claiming "LIVE
+                    # NEURAL NETWORK ANALYSIS" here was fabricated
+                    # provenance (Law I; F-0028 renamed this exact math
+                    # from 'ML confidence' to baseline math).
                     lines = [
-                        f"LIVE NEURAL NETWORK ANALYSIS for {name} "
-                        f"(AdvancedCoachNN/JEPA model predictions — "
-                        f"describing {name}'s gameplay, rendered in 3rd person):"
+                        f"BASELINE DEVIATION ANALYSIS for {name} "
+                        f"(statistical Z-scores vs the pro baseline — no "
+                        f"neural model ran; describing {name}'s gameplay "
+                        f"in 3rd person):"
                     ]
                     for ins in insights[:5]:
                         # Header already names the player — suppress prefix.
@@ -1835,7 +1872,10 @@ class CoachingDialogueEngine:
             return "\n\n".join(blocks)
 
         except Exception as exc:
-            logger.warning("On-demand ML analysis failed: %s", exc)
+            # D-02: before the repair, an AttributeError died here on EVERY
+            # call — a broad except must never be the only witness to a
+            # dead feature, so the log now names the block it silences.
+            logger.warning("Baseline deviation analysis block failed: %s", exc)
             return ""
 
     def _build_chat_messages(self, augmented_user: str) -> List[Dict[str, str]]:

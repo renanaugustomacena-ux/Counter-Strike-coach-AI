@@ -196,16 +196,20 @@ class TestSessionMLContext:
 
     def test_gating_truth_table(self):
         eng = self._engine_shell()
-        eng._player_context = {"using_pro_reference": True}
+        # F3.2 (revised with D-02): the block injects for every coaching
+        # intent — the old using_pro_reference gate selected exactly the
+        # sessions where the player has NO stats, so it was near-inert.
+        # Data-gating lives downstream: _get_ml_analysis_for_players
+        # returns "" when the player has no PlayerMatchStats rows.
         for intent in ("positioning", "aim", "utility", "economy", "general"):
             assert eng._should_inject_session_ml(intent) is True
-        # player_query keeps its own richer mention-based ML path
+        # player_query keeps its own richer mention-based per-player path
         assert eng._should_inject_session_ml("player_query") is False
-        # without a pro reference, never inject
-        eng._player_context = {"using_pro_reference": False}
-        assert eng._should_inject_session_ml("positioning") is False
+        # pro-reference state no longer changes the gate either way
+        eng._player_context = {"using_pro_reference": True}
+        assert eng._should_inject_session_ml("positioning") is True
         eng._player_context = {}
-        assert eng._should_inject_session_ml("general") is False
+        assert eng._should_inject_session_ml("general") is True
 
     def test_cache_computes_once_per_session(self):
         from unittest import mock
