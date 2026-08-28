@@ -106,6 +106,10 @@ class TrainingOrchestrator:
         self._last_train_batch_count = 0
         # F-0024: per-epoch embedding variances feeding the collapse detector.
         self._last_epoch_variances: list = []
+        # D-13: pooled per-window embeddings for the cross-window collapse
+        # measurement (single-window batches cannot measure within-batch
+        # variance — see _run_epoch_loop's D-13 block).
+        self._last_epoch_embeddings: list = []
         _LTC_CURRICULUM_EPOCHS = 5
         self._ltc_curriculum_epochs = _LTC_CURRICULUM_EPOCHS
 
@@ -337,15 +341,40 @@ class TrainingOrchestrator:
             # PRODUCTION epoch loop (it was wired only inside the never-called
             # JEPATrainer.train_epoch). EmbeddingCollapseError propagates and
             # aborts the run — that is the mandated behavior.
-            if self._last_epoch_variances and hasattr(trainer, "embedding_collapse_detector"):
-                mean_variance = sum(self._last_epoch_variances) / len(self._last_epoch_variances)
-                logger.info(
-                    "Epoch %d embedding variance: mean=%.6f over %d batches",
-                    epoch,
-                    mean_variance,
-                    len(self._last_epoch_variances),
-                )
-                trainer.embedding_collapse_detector.update(mean_variance)
+            # D-13: production batches are ONE window (B=1, R4 CRIT), so
+            # within-batch variance is unmeasurable — the old feed averaged
+            # the trainer's constant 0.0 sentinels and false-fired the abort
+            # at epoch 2 of EVERY orchestrated run. When no batch could
+            # measure, compute CROSS-window variance over the epoch's pooled
+            # embeddings: all windows collapsing to one point IS the failure
+            # this detector exists to catch. NOTE (Law I, hand-tuned
+            # constant): the 0.01 threshold was tuned for within-batch
+            # variance; cross-window variance is a different unit —
+            # re-validate on the first real multi-epoch run.
+            if hasattr(trainer, "embedding_collapse_detector"):
+                collapse_variance = None
+                basis = ""
+                n_samples = 0
+                if self._last_epoch_variances:
+                    collapse_variance = sum(self._last_epoch_variances) / len(
+                        self._last_epoch_variances
+                    )
+                    basis = "within-batch mean"
+                    n_samples = len(self._last_epoch_variances)
+                elif len(self._last_epoch_embeddings) >= 2:
+                    stacked = torch.stack(list(self._last_epoch_embeddings))
+                    collapse_variance = stacked.var(dim=0).mean().item()
+                    basis = "cross-window (D-13)"
+                    n_samples = len(self._last_epoch_embeddings)
+                if collapse_variance is not None:
+                    logger.info(
+                        "Epoch %d embedding variance: %s=%.6f over %d samples",
+                        epoch,
+                        basis,
+                        collapse_variance,
+                        n_samples,
+                    )
+                    trainer.embedding_collapse_detector.update(collapse_variance)
 
             if val_data:
                 val_loss = self._run_epoch(trainer, val_data, is_train=False, context=context)
@@ -698,6 +727,10 @@ class TrainingOrchestrator:
         # F-0024: collect per-batch embedding variances for the P9-02
         # collapse detector (consumed by _run_epoch_loop after the epoch).
         epoch_variances: list = []
+        # D-13: also collect pooled per-window embeddings — with B=1 window
+        # batches, within-batch variance is unmeasurable (None) and the
+        # collapse quantity must be computed ACROSS windows after the epoch.
+        epoch_embeddings: list = []
 
         for batch_idx, batch in enumerate(batches):
             if context:
@@ -720,6 +753,9 @@ class TrainingOrchestrator:
                     variance = result.get("embedding_variance")
                     if variance is not None:
                         epoch_variances.append(float(variance))
+                    pooled = result.get("pred_embedding_pooled")
+                    if pooled is not None:
+                        epoch_embeddings.append(pooled)
                 self.callbacks.fire(
                     "on_batch_end",
                     batch_idx=batch_idx,
@@ -740,6 +776,7 @@ class TrainingOrchestrator:
         if is_train:
             self._last_train_batch_count = train_batch_count
             self._last_epoch_variances = epoch_variances
+            self._last_epoch_embeddings = epoch_embeddings
 
         return total_loss / max(processed_count, 1)
 

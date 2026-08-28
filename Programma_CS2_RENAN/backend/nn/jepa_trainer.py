@@ -257,6 +257,10 @@ class JEPATrainer:
             loss = jepa_contrastive_loss(pred_embedding, target_embedding, negatives, tau)
 
             # Phase 2E: VICReg regularization on pred embeddings
+            # D-13 caveat: at the production batch shape (B=1 — one window
+            # per batch, R4 CRIT) vicreg_regularization returns 0.0, so the
+            # anti-collapse term is INERT on the orchestrated path until
+            # windows are stacked into true (N, ctx, feat) batches (Phase B).
             vicreg = vicreg_regularization(pred_embedding, lambda_var=25.0, lambda_cov=1.0)
             loss = loss + 0.01 * vicreg
 
@@ -275,6 +279,10 @@ class JEPATrainer:
         return {
             "loss": loss.item(),
             "embedding_variance": embedding_variance,
+            # D-13: batch-mean latent for the orchestrator's CROSS-window
+            # collapse measurement — single-window batches (B=1) cannot
+            # measure within-batch variance.
+            "pred_embedding_pooled": pred_embedding.detach().float().mean(dim=0).cpu(),
             "grad_norm": grad_norm,
             "temperature": tau.item(),
             "vicreg": vicreg.item(),
@@ -315,15 +323,23 @@ class JEPATrainer:
         logger.debug("Grad norm: %.4f", grad_norm)
         return grad_norm
 
-    def _log_embedding_diversity(self, embeddings: torch.Tensor) -> float:
+    def _log_embedding_diversity(self, embeddings: torch.Tensor) -> Optional[float]:
         """Monitor embedding collapse risk (P9-02 acceptance criterion).
 
-        Returns the mean variance across latent dimensions. A healthy value
-        should be > 0.01; below that indicates potential representation collapse.
+        Returns the mean variance across latent dimensions, or ``None`` when
+        the batch is too small to measure. A healthy value should be > 0.01;
+        below that indicates potential representation collapse.
+
+        D-13: this used to return 0.0 for B < 2 — but production batches are
+        ONE contiguous window (R4 CRIT), so every batch reported a constant
+        0.0 and the epoch mean of those false-fired the P9-02 hard abort at
+        epoch 2 of EVERY orchestrated run. 0.0 meant "unmeasurable", not
+        "collapsed" — None is the honest sentinel; the orchestrator measures
+        CROSS-window variance instead (see _run_epoch_loop's D-13 block).
         """
         with torch.no_grad():
             if embeddings.shape[0] < 2:
-                return 0.0
+                return None
             variance = embeddings.var(dim=0).mean().item()
             if variance < 0.01:
                 logger.warning(
@@ -595,6 +611,8 @@ class JEPATrainer:
                 "label_source": LABEL_SOURCE_SKIPPED_NO_ROUND_STATS,
                 # F-0024: the VL path must feed the collapse detector too.
                 "embedding_variance": self._log_embedding_diversity(pred_embedding),
+                # D-13: cross-window collapse feed (see train_step).
+                "pred_embedding_pooled": pred_embedding.detach().float().mean(dim=0).cpu(),
             }
 
         with torch.amp.autocast(device_type=self._device_type, enabled=self._amp_enabled):
@@ -621,4 +639,6 @@ class JEPATrainer:
             "label_source": LABEL_SOURCE_ROUND_STATS,
             # F-0024: the VL path must feed the collapse detector too.
             "embedding_variance": self._log_embedding_diversity(pred_embedding),
+            # D-13: cross-window collapse feed (see train_step).
+            "pred_embedding_pooled": pred_embedding.detach().float().mean(dim=0).cpu(),
         }
