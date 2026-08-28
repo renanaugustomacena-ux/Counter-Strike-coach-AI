@@ -185,14 +185,33 @@ def load_pro_demo_sequences(limit: int = 100) -> List[np.ndarray]:
     """
     conn = _open_db()
     try:
+        # D-15 (Law II): this CLI path used to bypass the P4-A chronological
+        # split entirely — pretraining consumed VAL/TEST matches,
+        # contaminating every downstream eval on those splits. NULL/legacy
+        # split rows are ineligible (a missing signal is honestly unknown,
+        # never assumed TRAIN); ORDER BY makes the loaded set deterministic
+        # (DET-01 — the unordered LIMIT was engine-dependent).
         rows = conn.execute(
             "SELECT demo_name, player_name FROM playermatchstats "
             "WHERE is_pro = 1 AND sample_weight > 0 "
+            "AND dataset_split = 'train' "
+            "ORDER BY demo_name, player_name "
             "LIMIT ?",
             (limit,),
         ).fetchall()
+        excluded = conn.execute(
+            "SELECT COUNT(*) FROM playermatchstats "
+            "WHERE is_pro = 1 AND sample_weight > 0 "
+            "AND (dataset_split IS NULL OR dataset_split != 'train')"
+        ).fetchone()[0]
     finally:
         conn.close()
+
+    if excluded:
+        logger.info(
+            "D-15: excluded %d pro rows outside the TRAIN split (val/test/unassigned)",
+            excluded,
+        )
 
     sequences = []
     skipped = 0
@@ -225,9 +244,13 @@ def load_user_match_sequences(limit: int = 200) -> tuple:
     """
     conn = _open_db()
     try:
+        # D-15 (Law II): fine-tuning is training too — restrict to the
+        # TRAIN split (NULL/legacy rows ineligible, same rule as the pro
+        # loader above).
         rows = conn.execute(
             "SELECT demo_name, player_name FROM playermatchstats "
             "WHERE is_pro = 0 AND sample_weight > 0 "
+            "AND dataset_split = 'train' "
             "ORDER BY match_date "
             "LIMIT ?",
             (limit,),
