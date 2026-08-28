@@ -566,6 +566,22 @@ class TrainingOrchestrator:
             self._val_samples,
         )
 
+        # D-16: pass a PREPARED tensor batch — the raw ORM row list was
+        # unconsumable by _extract_probe_context, so the embed/* collapse
+        # telemetry (RankMe, effective rank, EMA drift) was silently dead on
+        # every production run. is_train=False keeps the probe out of the
+        # NN-H-03 negative pool; the RNG state is snapshotted/restored so
+        # this observation-only prep leaves the training negative stream
+        # byte-identical (DET-01).
+        _rng_state = self._neg_rng.bit_generator.state
+        try:
+            probe_prepared = self._prepare_tensor_batch(preflight_train[0], is_train=False)
+        except Exception:
+            logger.warning("D-16: probe batch preparation failed", exc_info=True)
+            probe_prepared = None
+        finally:
+            self._neg_rng.bit_generator.state = _rng_state
+
         self.callbacks.fire(
             "on_train_start",
             model=model,
@@ -578,7 +594,7 @@ class TrainingOrchestrator:
                 # batch every epoch, so embed/* trends reflect the model
                 # changing rather than the input changing. Observation only —
                 # it is never trained on.
-                "probe_batch": preflight_train[0],
+                "probe_batch": probe_prepared,
             },
         )
 
