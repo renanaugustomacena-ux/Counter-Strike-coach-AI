@@ -518,7 +518,22 @@ class CoachScreen(QWidget):
         if not model_name or not isinstance(model_name, str):
             return
         save_user_setting("LLM_COACH_MODEL", model_name)
-        self._llm_model_name = model_name
+        # DOCTRINE D-03: re-resolve the LIVE service — the singleton froze
+        # the model at first construction, so without this the selector only
+        # took effect after an app restart. Cheap in-process state change
+        # (no network), safe on the GUI thread. The caption then shows the
+        # EFFECTIVE model (env override / family fallback included), not
+        # the raw pick — Law I, the caption must tell the truth.
+        effective = model_name
+        try:
+            from Programma_CS2_RENAN.backend.services.llm_service import get_llm_service
+
+            svc = get_llm_service()
+            svc.refresh_model()
+            effective = svc.model
+        except Exception as exc:  # noqa: BLE001 — degraded picker beats a dead screen
+            logger.warning("could not apply LLM model pick to live service: %s", exc)
+        self._llm_model_name = effective
         self._apply_chat_status()
 
     def _set_llm_model(self, name: str) -> None:

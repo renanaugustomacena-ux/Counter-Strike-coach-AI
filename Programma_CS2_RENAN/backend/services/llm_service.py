@@ -67,6 +67,28 @@ class LLMService:
         self._tools_supported: Optional[bool] = None
         self._tools_probe_model: str = ""
 
+    def refresh_model(self) -> None:
+        """Re-resolve the model after a settings change (DOCTRINE D-03).
+
+        The process singleton froze the model at first construction, so the
+        CoachScreen pick (saved as LLM_COACH_MODEL) only took effect after
+        an app restart. This re-runs the EXISTING resolution ladder
+        (OLLAMA_MODEL env -> LLM_COACH_MODEL setting -> hard default)
+        rather than accepting a raw name, so env precedence is preserved
+        by construction and the ladder stays the single source of truth.
+        The availability cache is invalidated on change so the next call
+        validates the new model immediately (family-fallback then fires
+        loudly if it is not installed); the tools-capability probe is
+        keyed to the model name and re-probes automatically.
+        """
+        new = _resolve_default_model()
+        if new == self.model:
+            return
+        logger.info("D-03: LLM model re-resolved '%s' -> '%s'", self.model, new)
+        self.model = new
+        self._available = None
+        self._available_checked_at = 0.0
+
     def list_models(self) -> List[Dict[str, Any]]:
         """Return Ollama's installed-model inventory via /api/tags.
 
