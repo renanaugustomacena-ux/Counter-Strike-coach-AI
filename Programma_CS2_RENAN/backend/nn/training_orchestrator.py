@@ -475,19 +475,27 @@ class TrainingOrchestrator:
             meta["view_resolution"] = cfg.view_resolution
         return meta
 
-    def _finalize_training(self, model, final_epoch):
-        """Post-loop gates and on_train_end callback."""
+    def _finalize_training(self, model, final_epoch) -> bool:
+        """Post-loop gates and on_train_end callback. Returns success.
+
+        D-19 (F-0043 residue): the P3-C branch used to log "ABORTED" and
+        return None — run_training ignored it and returned True, so a run
+        trained mostly on zero-fallback tensors reported SUCCESS with its
+        checkpoints already promoted. The abort must surface as non-success.
+        """
         if self._total_samples > 0 and self._total_fallbacks > 0:
             rate = self._total_fallbacks / self._total_samples * 100
             if rate > 30:
                 logger.error(
                     "P3-C: Training ABORTED — aggregate zero-tensor fallback rate %.1f%% "
-                    "(%d/%d samples) exceeds 30%% threshold. Match databases may be missing.",
+                    "(%d/%d samples) exceeds 30%% threshold. Match databases may be missing. "
+                    "NOTE: per-epoch best/latest checkpoints were already written during "
+                    "this run — do NOT promote them.",
                     rate,
                     self._total_fallbacks,
                     self._total_samples,
                 )
-                return
+                return False  # F-0043: callers/CLI must see non-success
             level = logger.warning if rate > 10 else logger.info
             level(
                 "Training complete — zero-tensor fallback rate: %.1f%% (%d/%d samples)",
@@ -511,6 +519,7 @@ class TrainingOrchestrator:
             },
         )
         logger.info("Training Cycle Complete.")
+        return True
 
     def run_training(self, context=None):
         """Execute the full training pipeline."""
@@ -546,7 +555,11 @@ class TrainingOrchestrator:
             logger.warning("Training Aborted: Insufficient Training Data")
             return False  # F-0043: aborted — callers/CLI must see non-success
 
-        total_train_samples = len(preflight_train) * self.batch_size
+        # D-21 (R4-CRIT residue): batches are WINDOWS since the contiguous-
+        # window refactor — multiplying window count by batch_size overstated
+        # JEPA rows ~3x and understated RAP, so the P3-C minimum-data gate
+        # and the B2 log both reported fiction. Count the real rows.
+        total_train_samples = sum(len(w) for w in preflight_train)
         _MIN_TRAINING_SAMPLES = 100
         if total_train_samples < _MIN_TRAINING_SAMPLES:
             logger.error(
@@ -562,7 +575,7 @@ class TrainingOrchestrator:
             "Validating on %d (cap=%d, fixed)",
             total_train_samples,
             self._train_samples,
-            len(val_data) * self.batch_size if val_data else 0,
+            sum(len(w) for w in val_data) if val_data else 0,
             self._val_samples,
         )
 
@@ -605,8 +618,9 @@ class TrainingOrchestrator:
             trainer.set_total_steps(self.max_epochs, steps_per_epoch)
 
         final_epoch = self._run_epoch_loop(trainer, model, val_data, context)
-        self._finalize_training(model, final_epoch)
-        return True  # F-0043: training genuinely ran to completion
+        # D-19/F-0043: thread the P3-C gate's verdict through — "ABORTED"
+        # must never report success.
+        return self._finalize_training(model, final_epoch)
 
     def _fetch_batches(self, is_train=True, epoch=0):
         """Fetch and batch data from Manager.
@@ -701,7 +715,14 @@ class TrainingOrchestrator:
             raw_neg = raw_neg.to(next(trainer.model.parameters()).device)
         seq_len = tensor_batch["context"].shape[1]
         neg_latent = trainer.encode_raw_negatives(raw_neg, seq_len)
-        return jepa_contrastive_loss(pred, target, neg_latent).item()
+        # D-18: training optimizes a LEARNED temperature while validation
+        # used the 0.07 default — best-checkpoint and early-stopping ranked
+        # epochs on a loss scaled off-objective as tau drifted. Use the
+        # model's tau (detached). The negatives-count asymmetry vs the
+        # MoCo-augmented train loss is acceptable: val stays self-consistent
+        # across epochs, which is all checkpoint ranking needs.
+        tau = trainer.model.log_temperature.exp().clamp(0.01, 1.0).detach()
+        return jepa_contrastive_loss(pred, target, neg_latent, tau).item()
 
     def _eval_step_rap(self, trainer, tensor_batch):
         """RAP validation: value estimate loss with optional val_mask."""

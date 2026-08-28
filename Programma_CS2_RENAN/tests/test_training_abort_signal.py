@@ -42,7 +42,24 @@ def test_completed_training_returns_true():
             batches = [[1] * 11 for _ in range(20)]
             with patch.object(orch, "_fetch_batches", return_value=batches):
                 with patch.object(orch, "_run_epoch_loop", return_value=1):
-                    with patch.object(orch, "_finalize_training"):
+                    # D-19/F-0043: run_training now returns the finalize
+                    # gate's verdict, so the mock must state one.
+                    with patch.object(orch, "_finalize_training", return_value=True):
                         orch.TrainerClass = MagicMock()
                         orch.callbacks = MagicMock()
                         assert orch.run_training() is True
+
+
+def test_p3c_finalize_abort_returns_false():
+    """D-19/F-0043: a P3-C finalize abort must surface as non-success."""
+    orch = _orch()
+    with patch("Programma_CS2_RENAN.backend.nn.data_quality.run_pre_training_quality_check") as qc:
+        qc.return_value = MagicMock(passed=True)
+        with patch.object(orch, "_load_or_init_model", return_value=MagicMock()):
+            batches = [[1] * 11 for _ in range(20)]
+            with patch.object(orch, "_fetch_batches", return_value=batches):
+                with patch.object(orch, "_run_epoch_loop", return_value=1):
+                    with patch.object(orch, "_finalize_training", return_value=False):
+                        orch.TrainerClass = MagicMock()
+                        orch.callbacks = MagicMock()
+                        assert orch.run_training() is False

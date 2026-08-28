@@ -909,7 +909,10 @@ class TestEMATotalSteps:
     def test_set_total_steps_called_with_planned_values(self):
         """B3.3: set_total_steps called with max_epochs * steps_per_epoch."""
         orch = _make_orchestrator(max_epochs=100)
-        orch.manager._fetch_jepa_windows.return_value = [[MagicMock()] * 11 for _ in range(4)]
+        # D-21: the sample gate now counts REAL rows (sum of window lengths),
+        # not windows*batch_size — 10 windows x 11 ticks = 110 >= the 100-row
+        # minimum (the old 4-window fixture passed only via the *32 fiction).
+        orch.manager._fetch_jepa_windows.return_value = [[MagicMock()] * 11 for _ in range(10)]
 
         mock_model = MagicMock()
         mock_model.to.return_value = mock_model
