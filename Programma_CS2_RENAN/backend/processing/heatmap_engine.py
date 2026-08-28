@@ -14,7 +14,8 @@ class DifferentialHeatmapData:
     F-0017: the RGBA texture surface (rgba_bytes / diff_matrix and the whole
     Kivy texture path) had zero consumers and carried a Kivy-era double
     Y-flip; it was removed. The sole production consumer
-    (coaching_service._analyze_positioning_differential) reads .hotspots.
+    (coaching_service.generate_differential_insights) reads .hotspots.
+    (Law I repair: the comment previously named a method that never existed.)
     """
 
     resolution: int
