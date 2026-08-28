@@ -20,7 +20,7 @@ from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 
-from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE
+from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE, resolve_tick_rate
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.trade_kill_detector")
@@ -351,9 +351,20 @@ def analyze_demo_trades(parser) -> Tuple[TradeKillResult, Dict[str, Dict[str, fl
         return TradeKillResult(), {}
 
     # Step 4: Detect trade kills (DS-07: use actual tick_rate from demo header)
+    # D-04 / 26-NORM-01: route through the SSOT ladder — the old direct
+    # header read skipped the [32,256] validity window, so a
+    # corrupt-but-numeric rate silently scaled the trade window to nonsense.
     try:
         header = parser.parse_header()
-        tick_rate = int(float(header.get("tick_rate", DEFAULT_TICK_RATE) or DEFAULT_TICK_RATE))
+        rate = resolve_tick_rate(
+            header_rate=header.get("tick_rate"), context="trade window (DS-07)"
+        )
+        if rate is None:
+            logger.warning(
+                "26-NORM-01: no valid header tick rate — DEFAULT_TICK_RATE for trade window"
+            )
+            rate = DEFAULT_TICK_RATE
+        tick_rate = int(rate)
     except Exception as e:
         # R4 MED: never swallow this silently — on a 128-tick demo the 3s
         # trade window silently halves (192 vs 384 ticks), dropping every

@@ -21,6 +21,7 @@ from typing import Dict, List, Optional, Tuple
 import pandas as pd
 
 from Programma_CS2_RENAN.core.team_codes import normalize_team
+from Programma_CS2_RENAN.core.tick_rate import resolve_tick_rate
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.round_stats_builder")
@@ -233,14 +234,20 @@ def _derive_flash_assist_window(parser) -> int:
     """
     try:
         header = parser.parse_header()
-        tick_rate = int(float(header.get("tick_rate", 64) or 64))
-        if not (32 <= tick_rate <= 256):
+        # D-04 / 26-NORM-01: the SSOT ladder owns the [32,256] validity
+        # window — the old bare `header.get("tick_rate", 64)` literal
+        # escaped the sweep and this function hand-rolled the range check.
+        rate = resolve_tick_rate(
+            header_rate=header.get("tick_rate"), context="flash assist window (P-RSB-05)"
+        )
+        if rate is None:
             logger.warning(
-                "P-RSB-05: tick_rate %d outside valid range [32, 256], using default",
-                tick_rate,
+                "P-RSB-05/26-NORM-01: no valid header tick rate — flash-assist "
+                "window falls back to %d ticks",
+                _DEFAULT_FLASH_ASSIST_WINDOW_TICKS,
             )
             return _DEFAULT_FLASH_ASSIST_WINDOW_TICKS
-        return tick_rate * 2
+        return int(rate) * 2
     except Exception:
         # R4 LOW: a header failure masking systematic tick-rate
         # misconfiguration across a whole batch must leave a trace.

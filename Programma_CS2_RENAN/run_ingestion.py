@@ -1138,13 +1138,17 @@ def _parse_demo_header_meta(demo_path) -> tuple[str, float]:
     hardcoded tick_rate=64.0, silently halving time_in_round on 128-tick
     demos. Validation range [32, 256] mirrors P-RSB-05.
 
-    Returns safe defaults ("de_unknown", 64.0) on any header read failure so
-    ingestion never aborts on metadata.
+    Returns safe defaults ("de_unknown", DEFAULT_TICK_RATE) on any header
+    read failure so ingestion never aborts on metadata.
     """
     from demoparser2 import DemoParser as _DemoParser
 
+    from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE
+
     default_map = "de_unknown"
-    default_tr = 64.0
+    # D-04: `default_tr = 64.0` was an aliased bare literal the SSOT sweep
+    # could not see ("default_tr" is not a tick-rate-ish name).
+    default_tr = float(DEFAULT_TICK_RATE)
     try:
         header = _DemoParser(str(demo_path)).parse_header()
     except BaseException as exc:  # noqa: BLE001 — F-0006, filtered by is_parse_error

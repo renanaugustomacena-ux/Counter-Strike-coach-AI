@@ -71,7 +71,12 @@ def _violations_in(tree: ast.AST) -> list[int]:
         if isinstance(node, ast.Assign):
             names = [t.id for t in node.targets if isinstance(t, ast.Name)]
             names += [t.attr for t in node.targets if isinstance(t, ast.Attribute)]
-            if any(_is_ticky(n) or n.upper() == "TICK_RATE" for n in names) and _is_64(node.value):
+            # D-04: subtree walk, not a direct-constant test — the old check
+            # missed `tick_rate = int(float(header.get("tick_rate", 64)))`,
+            # so three real production sites escaped the ban structurally.
+            if any(_is_ticky(n) or n.upper() == "TICK_RATE" for n in names) and any(
+                _is_64(n) for n in ast.walk(node.value)
+            ):
                 hits.append(node.lineno)
 
         elif isinstance(node, ast.AnnAssign):
@@ -82,12 +87,11 @@ def _violations_in(tree: ast.AST) -> list[int]:
                 else target.attr if isinstance(target, ast.Attribute) else ""
             )
             if _is_ticky(name) and node.value is not None:
-                if _is_64(node.value):
+                # D-04: subtree walk covers the direct constant, the
+                # Field(default=64.0) shape, AND wrapped calls like
+                # `tick_rate: float = float(header.get("tick_rate", 64.0))`.
+                if any(_is_64(n) for n in ast.walk(node.value)):
                     hits.append(node.lineno)
-                elif isinstance(node.value, ast.Call):  # Field(default=64.0)
-                    for kw in node.value.keywords:
-                        if kw.arg == "default" and _is_64(kw.value):
-                            hits.append(node.lineno)
 
         elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             args = node.args
@@ -112,6 +116,18 @@ def _violations_in(tree: ast.AST) -> list[int]:
                 and isinstance(node.args[1], ast.Constant)
                 and _is_ticky(str(node.args[1].value))
                 and _is_64(node.args[2])
+            ):
+                hits.append(node.lineno)
+            # D-04: `header.get("tick_rate", 64)` — a POSITIONAL default to a
+            # .get() call was invisible to every branch above (note 13b #11);
+            # the demo_loader viewer path survived the ban structurally.
+            if (
+                isinstance(node.func, ast.Attribute)
+                and node.func.attr == "get"
+                and len(node.args) >= 2
+                and isinstance(node.args[0], ast.Constant)
+                and _is_ticky(str(node.args[0].value))
+                and _is_64(node.args[1])
             ):
                 hits.append(node.lineno)
 
@@ -151,11 +167,20 @@ class TestNoBareTickRateLiterals:
         )
 
     def test_scanner_catches_a_seeded_violation(self):
-        """The ban must actually bite: a synthetic offender IS detected."""
+        """The ban must actually bite: a synthetic offender IS detected.
+
+        D-04 additions: the wrapped-call assign and the positional .get
+        default are exactly the shapes three real production sites used to
+        escape through (demo_parser, demo_loader, round_stats_builder).
+        The wrapped ticky assign counts twice (Assign subtree + .get
+        positional) — one hit per matching rule is fine; zero was the bug.
+        """
         tree = ast.parse(
             "def f(tick_rate: int = 64):\n"
             "    x = {'tick_rate': 64.0}\n"
             "    y = getattr(obj, 'tick_rate', 64)\n"
             "    TICK_RATE = 64\n"
+            "    tick_rate2 = int(float(header.get('tick_rate', 64) or 64))\n"
+            "    z = cfg.get('tick_rate', 64.0)\n"
         )
-        assert len(_violations_in(tree)) == 4
+        assert len(_violations_in(tree)) == 7
