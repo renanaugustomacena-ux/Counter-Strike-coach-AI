@@ -57,6 +57,16 @@ def _resolve_concept_labels(
         idx_t = torch.tensor(valid_indices, dtype=torch.long, device=concept_logits.device)
         concept_logits = concept_logits.index_select(0, idx_t)
 
+    # D-14 loud contract (decision rule 3): the caller must supply ONE
+    # RoundStats per SAMPLE. Per-tick labels against per-window logits
+    # crashed BCE at (10,16) vs (1,16) — or silently mispaired at (1,16).
+    if concept_labels.shape[0] != concept_logits.shape[0]:
+        raise ValueError(
+            f"D-14: concept label batch {concept_labels.shape[0]} != logits "
+            f"batch {concept_logits.shape[0]} — the caller must supply one "
+            f"RoundStats per sample, not one per tick"
+        )
+
     return concept_labels, concept_logits
 
 

@@ -872,9 +872,19 @@ class TrainingOrchestrator:
             # G-01: For VL-JEPA, fetch RoundStats to provide outcome-based concept labels
             # (eliminates label leakage from heuristic labeling)
             if self._use_vl:
-                round_stats = self._fetch_round_stats_for_batch(raw_items[:_JEPA_CONTEXT_LEN])
-                if round_stats is not None:
-                    result["round_stats"] = round_stats
+                rs_list = self._fetch_round_stats_for_batch(raw_items[:_JEPA_CONTEXT_LEN])
+                if rs_list is not None:
+                    # D-14: one label per SAMPLE, not per tick — the batch is
+                    # ONE window with (1, 16) concept logits, but this used
+                    # to pass one RoundStats per CONTEXT TICK: (10, 16)
+                    # labels against (1, 16) logits crashed BCE (no
+                    # broadcast), and the single-valid-tick case silently
+                    # mispaired an arbitrary tick's round label. Use the
+                    # LAST context tick's round — the round the window's
+                    # prediction target lives in.
+                    rs = next((r for r in reversed(rs_list) if r is not None), None)
+                    if rs is not None:
+                        result["round_stats"] = [rs]
 
             return result
         else:
