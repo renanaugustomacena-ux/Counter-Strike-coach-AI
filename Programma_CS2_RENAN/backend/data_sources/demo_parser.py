@@ -14,7 +14,7 @@ from Programma_CS2_RENAN.backend.processing.feature_engineering.rating import (
     BASELINE_KAST,
     BASELINE_KPR,
 )
-from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE
+from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE, resolve_tick_rate
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 logger = get_logger("cs2analyzer.demo_parser")
@@ -338,9 +338,20 @@ def _compute_event_kast(parser, d_df, d_name_col, total_rounds):
     )
 
     # DS-07: trade window in ticks depends on the demo's tick rate.
+    # D-04 / 26-NORM-01: route through the SSOT ladder — the old bare
+    # `header.get("tick_rate", 64)` skipped the [32,256] validity window,
+    # so a corrupt-but-numeric header rate mis-scaled the KAST trade window.
     try:
         header = parser.parse_header()
-        tick_rate = int(float(header.get("tick_rate", 64) or 64))
+        rate = resolve_tick_rate(
+            header_rate=header.get("tick_rate"), context="KAST trade window (DS-07)"
+        )
+        if rate is None:
+            logger.warning(
+                "26-NORM-01: no valid header tick rate — DEFAULT_TICK_RATE for KAST trade window"
+            )
+            rate = DEFAULT_TICK_RATE
+        tick_rate = int(rate)
     except BaseException as e:  # noqa: BLE001 — F-0006, filtered by is_parse_error
         if not is_parse_error(e):
             raise

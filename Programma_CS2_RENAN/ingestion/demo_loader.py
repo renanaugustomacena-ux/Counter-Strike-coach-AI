@@ -19,6 +19,7 @@ from Programma_CS2_RENAN.core.demo_frame import (
     PlayerState,
     Team,
 )
+from Programma_CS2_RENAN.core.tick_rate import DEFAULT_TICK_RATE, resolve_tick_rate
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 app_logger = get_logger("cs2analyzer.demo_loader")
@@ -225,8 +226,10 @@ class DemoLoader:
                 t_tick = int(t_row["tick"])
                 t_pos = pos_by_tick.get(t_tick, {}).get(sid)
                 if not t_pos:
-                    # Fallback: nearest previous tick (≤ 0.5s at 64 t/s)
-                    for offset in range(1, 33):
+                    # Fallback: nearest previous tick (≤ 0.5s at the demo's
+                    # REAL rate — D-04: the fixed 32-tick scan covered only
+                    # 0.25s on a 128-tick demo).
+                    for offset in range(1, int(tick_rate // 2) + 1):
                         tp = pos_by_tick.get(t_tick - offset, {}).get(sid)
                         if tp:
                             t_pos = tp
@@ -263,10 +266,16 @@ class DemoLoader:
                             et = int(s_row.tick) + MAX_NADE_DURATION
                             duration_capped = True
                             if not ends.empty:
+                                # D-04 (26-TICK class): the old `30 * 64`
+                                # literal halved this "30s" window to 15s on
+                                # 128-tick demos — REAL end events past 15s
+                                # were dropped, ending_tick was fabricated at
+                                # the heuristic cap, and the row was falsely
+                                # flagged is_duration_estimated.
                                 e_match = ends[
                                     (ends["entityid"] == eid)
                                     & (ends["tick"] > s_row.tick)
-                                    & (ends["tick"] < s_row.tick + (30 * 64))
+                                    & (ends["tick"] < s_row.tick + (30 * int(tick_rate)))
                                 ]
                                 if not e_match.empty:
                                     et = min(et, int(e_match.iloc[0].tick))
@@ -716,7 +725,16 @@ class DemoLoader:
         app_logger.info("Parsing headers and base data for %s", path)
         parser = DemoParser(path)
         header = parser.parse_header()
-        tick_rate: float = float(header.get("tick_rate", 64.0) or 64.0)
+        # D-04 / 26-NORM-01: route through the SSOT ladder — the old bare
+        # `header.get("tick_rate", 64.0)` skipped the validity window and
+        # halved every derived window on 128-tick demos when headers lied.
+        _rate = resolve_tick_rate(header_rate=header.get("tick_rate"), context="viewer demo_loader")
+        if _rate is None:
+            app_logger.warning(
+                "26-NORM-01: no valid header tick rate for %s — using DEFAULT_TICK_RATE", path
+            )
+            _rate = float(DEFAULT_TICK_RATE)
+        tick_rate: float = _rate
         default_map: str = str(header.get("map_name", "unknown") or "unknown")
 
         pos_by_tick, pass1_failed = DemoLoader._pass1_positions(parser)
