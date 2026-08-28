@@ -715,13 +715,22 @@ class CoachTrainingManager:
                 scale_cache[cache_key] = scale
             total, _cached_id_min, _cached_id_max = scale
 
-            # Fallback for legacy data without demo_name
+            # D-20 (Law II): the old "legacy data without demo_name" LIMIT
+            # fallback dropped the split/is_pro/completeness filters
+            # entirely, so TRAIN and VAL both received the identical first
+            # rows of the whole monolith (train==val, TEST ticks in TRAIN).
+            # Its justification was stale — demo_name is required with no
+            # default (R2-08). Degrade to a NAMED empty result instead:
+            # callers abort on empty TRAIN (F-0043) and warn on empty VAL.
             if not total:
-                app_logger.warning("No ticks found with demo_name filter, using LIMIT fallback")
-                fallback_stmt = select(PlayerTickState).limit(min(sample_size, 1000))
-                ticks = session.exec(fallback_stmt).all()
-                app_logger.info("Loaded %s ticks for %s split (fallback)", len(ticks), split)
-                return ticks
+                app_logger.error(
+                    "LAW-II/D-20: no ticks match the %s split's demo names — "
+                    "refusing the cross-split LIMIT fallback (it returned "
+                    "identical rows for TRAIN and VAL). Returning empty; "
+                    "check demo-name normalization (WR-76) or re-ingest.",
+                    split,
+                )
+                return []
 
             rng = np.random.default_rng(seed)
             n_select = min(sample_size, total)
@@ -854,6 +863,7 @@ class CoachTrainingManager:
             return []
 
         windows: list = []
+        boundary_dropped = 0
         with self.db.get_session() as session:
             for anchor in anchors:
                 rows = session.exec(
@@ -866,16 +876,31 @@ class CoachTrainingManager:
                     .order_by(PlayerTickState.tick)
                     .limit(window_len)
                 ).all()
-                if len(rows) == window_len:
-                    windows.append(list(rows))
+                if len(rows) != window_len:
+                    continue
+                # D-22 (R5-lite): a window crossing the round reset is not a
+                # next-step pair — the "target" is a spawn-teleported,
+                # economy-reset state. Drop, never pad (J-5). Incidence is
+                # ~0.1-0.2% of windows on per-native-tick storage; full R5
+                # (action-span/DP segmentation) remains the roadmap item.
+                if (
+                    rows[0].round_number is not None
+                    and rows[-1].round_number is not None
+                    and rows[0].round_number != rows[-1].round_number
+                ):
+                    boundary_dropped += 1
+                    continue
+                windows.append(list(rows))
 
-        dropped = len(anchors) - len(windows)
+        dropped = len(anchors) - len(windows) - boundary_dropped
         app_logger.info(
             "JEPA windows: %d contiguous single-player windows of %d ticks "
-            "(%d end-of-stream anchors dropped, seed=%d, %s split)",
+            "(%d end-of-stream anchors dropped, %d round-boundary windows "
+            "dropped [D-22], seed=%d, %s split)",
             len(windows),
             window_len,
             dropped,
+            boundary_dropped,
             seed,
             split,
         )
