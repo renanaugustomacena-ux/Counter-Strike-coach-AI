@@ -487,7 +487,8 @@
   "wizard_next_step3_title": "O Coach desbloqueia conforme a crença cresce",
   "wizard_next_step3_desc": "O coach de IA começa a aconselhar quando já viu partidas suas o bastante para ter certeza.",
   "wizard_calib_title": "Calibração",
-  "wizard_calib_body": "A crença começa baixa e cresce a cada demo que você analisa — você verá a % exata na tela do Coach.",  "topics_header": "TÓPICOS",
+  "wizard_calib_body": "A crença começa baixa e cresce a cada demo que você analisa — você verá a % exata na tela do Coach.",
+  "topics_header": "TÓPICOS",
   "external_header": "EXTERNOS",
   "related_header": "RELACIONADOS",
   "keyboard_hints_header": "DICAS DE TECLADO",
@@ -569,5 +570,6 @@
   "tactical.legend_title": "Legenda do Ghost Mode",
   "tactical.legend_you": "seu caminho",
   "tactical.legend_ghost": "caminho do ghost (pro)",
-  "tactical.legend_divergence": "ponto de divergência"
+  "tactical.legend_divergence": "ponto de divergência",
+  "chart_awaiting_data": "Aguardando dados dos rounds — analise uma demo"
 }

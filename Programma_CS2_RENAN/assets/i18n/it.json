@@ -487,7 +487,8 @@
   "wizard_next_step3_title": "Il Coach si sblocca man mano che la credenza cresce",
   "wizard_next_step3_desc": "Il coach AI inizia a darti consigli quando ha visto abbastanza tue partite da esserne sicuro.",
   "wizard_calib_title": "Calibrazione",
-  "wizard_calib_body": "La credenza parte bassa e cresce con ogni demo che analizzi — vedrai la % esatta nella schermata Coach.",  "topics_header": "ARGOMENTI",
+  "wizard_calib_body": "La credenza parte bassa e cresce con ogni demo che analizzi — vedrai la % esatta nella schermata Coach.",
+  "topics_header": "ARGOMENTI",
   "external_header": "ESTERNI",
   "related_header": "CORRELATI",
   "keyboard_hints_header": "SCORCIATOIE TASTIERA",
@@ -569,5 +570,6 @@
   "tactical.legend_title": "Legenda Ghost Mode",
   "tactical.legend_you": "il tuo percorso",
   "tactical.legend_ghost": "percorso ghost (pro)",
-  "tactical.legend_divergence": "punto di divergenza"
+  "tactical.legend_divergence": "punto di divergenza",
+  "chart_awaiting_data": "In attesa dei dati dei round — analizza una demo"
 }

@@ -24,7 +24,8 @@ import os
 from pathlib import Path
 from typing import Callable, Optional
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QPointF, Qt, Signal
+from PySide6.QtGui import QColor, QPainter, QPen
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
@@ -175,6 +176,54 @@ class EmptyState(QWidget):
         # callers don't pay the layout cost).
         self._skeleton: Optional[QWidget] = None
         self._loading: bool = False
+
+    def paintEvent(self, event):  # noqa: ARG002 — Qt signature
+        """Q4 (workbench): tactical motif behind every empty state.
+
+        A faint grid across the widget plus a scope-ring crosshair centered
+        on the icon well — pure QPainter (QGraphicsEffect stays banned on
+        Linux), tokens re-read per paint so it tracks theme switches.
+        Hidden while the loading skeleton is up: the skeleton IS the state.
+        """
+        super().paintEvent(event)
+        if self._loading:
+            return
+        tokens = get_tokens()
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        grid = QColor(tokens.text_primary)
+        grid.setAlphaF(0.025)
+        painter.setPen(QPen(grid, 1))
+        step = 28.0
+        x = step
+        while x < self.width():
+            painter.drawLine(QPointF(x, 0.0), QPointF(x, float(self.height())))
+            x += step
+        y = step
+        while y < self.height():
+            painter.drawLine(QPointF(0.0, y), QPointF(float(self.width()), y))
+            y += step
+
+        # Crosshair rings track the icon well when shown, else the center.
+        if self._icon_well.isVisibleTo(self):
+            center = QPointF(self._icon_well.geometry().center())
+        else:
+            center = QPointF(self.rect().center())
+        ring = QColor(tokens.accent_primary)
+        painter.setBrush(Qt.NoBrush)
+        for radius, alpha in ((58.0, 0.10), (86.0, 0.05)):
+            ring.setAlphaF(alpha)
+            painter.setPen(QPen(ring, 1.5))
+            painter.drawEllipse(center, radius, radius)
+        tick = QColor(tokens.accent_primary)
+        tick.setAlphaF(0.28)
+        painter.setPen(QPen(tick, 1.5))
+        for dx, dy in ((0, -1), (0, 1), (-1, 0), (1, 0)):
+            painter.drawLine(
+                QPointF(center.x() + dx * 50.0, center.y() + dy * 50.0),
+                QPointF(center.x() + dx * 66.0, center.y() + dy * 66.0),
+            )
 
     # ── Public API ──
 
