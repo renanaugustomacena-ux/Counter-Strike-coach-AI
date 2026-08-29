@@ -182,6 +182,17 @@ CHAT-xx, WR-xx, DP-xx, BE-xx…); new work must extend that register, never bypa
 > trade_kill claim was stale (constant already used; validity window was the
 > real gap). New entries D-13..D-26 below.
 
+> **Status ledger (2026-08-29, verification round 2 — see
+> [notes/18-verification-round2.md](notes/18-verification-round2.md)):**
+> AMENDED: D-15 → D-15b — the round-1 fix filtered by enum VALUE
+> (`'train'`) but SQLAlchemy stores the enum NAME (`'TRAIN'`); it matched
+> ZERO rows on real DBs (fixed, PR #84, with an ORM→raw-SQL lockstep
+> test). FIXED: D-27 (#85), D-28 (#86). OPEN: D-29 (operator decision).
+> Ladder rerun green: L1 318/319, L2 2706/0 failed, L3 35/40, L4 both
+> pass, meta-gate 27/28 (the one red IS D-29, honestly reported). All 15
+> Qt screens rendered and eyeballed; one content bug (gemma3→gemma4
+> help docs) fixed in #86.
+
 Confirmed contradictions and drift, with the owning note:
 
 - **D-01 Zombie-threshold schism** (notes 02/13b): config.py default 300 s vs run_worker's P4-B
@@ -244,6 +255,7 @@ Entries from improvement round 1 (evidence and fix specs in note 17; asterisks =
 - ***D-14** VL-JEPA label mismatch: per-tick RoundStats vs per-window logits crashed BCE (or
   silently mispaired); one-label-per-sample contract now loud.
 - ***D-15** CLI pretrain split contamination + nondeterministic ordering (Law II / DET-01).
+  Amended D-15b (note 18): the first fix filtered by enum VALUE; on-disk is the enum NAME.
 - ***D-16** Dead embed/* telemetry: unconsumable ORM-row probe; now prepared tensor + loud
   unconsumable warning. (With D-13: all three collapse layers were broken at once.)
 - **D-17** eval_harness `_expert_utilization` reads a nonexistent `model.encoder` (section
@@ -268,6 +280,20 @@ Entries from improvement round 1 (evidence and fix specs in note 17; asterisks =
   carries a parallel implementation) — if confirmed, the P9-03 chain, C-01 guarantees and the
   F1.2 JEPA write seam are dead code: wire or tombstone (rule 2). Adjudicate at the
   entrypoint level first.
+
+Entries from verification round 2 (evidence in note 18; asterisks = fixed):
+
+- ***D-27** Goliath_Hospital scanner defects: credential pattern flagged short test
+  dummies; bare-namespace check matched docstring prose (now AST-based); CRITICAL_MODULES
+  pinned a module that never existed (`core/logger.py` → `observability/logger_setup.py`).
+- ***D-28** Sweep tool honesty: verify_lock_hashes crashed on ✓/✗ under piped cp1252
+  stdout (crash masked its real verdict); sync_pro_players crashed on fresh DBs missing the
+  legacy pro tables; verify_all_safe's skip list now name→reason, printed per skip, with the
+  F-0039 guard asserting every named skip carries a stated reason.
+- **D-29** POL-DEPS-01 violation: both requirements-lock files carry ZERO `--hash` lines
+  (252 findings). The meta-gate stays honestly red until resolved. OPEN — operator decision:
+  regenerating (`uv pip compile --generate-hashes`) needs network, changes 250+ pins, and
+  may affect the Linux training environment.
 
 ## 4. The AI roadmap (paper-grounded, invariant-filtered)
 
