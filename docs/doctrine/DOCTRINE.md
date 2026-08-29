@@ -296,6 +296,16 @@ Entries from verification round 2 (evidence in note 18; asterisks = fixed):
   training campaign, not before (network + 250+ pin changes could destabilize that env).
   Until then the sweep's one red is known, named noise — never skip-list it.
 
+> **Status ledger (2026-08-29 late, aesthetic round 1 — see
+> [notes/20-aesthetic-round1.md](notes/20-aesthetic-round1.md)):** operator
+> answered workbench Q1–Q6. FIXED: D-31 fonts (#91), Q3 charts (#92), Q4
+> empty states (#93), Q6 slideshow (#94) + tray/single-instance (#95), Q5
+> atlas repaint (#96 — D-30 fully resolved, launch palette lives in git
+> history). NEW REGISTERED: D-32 packaging gap (dist ships no models/
+> knowledge/FAISS/hltv db; fonts part fixed), D-33 coaching chain unwired
+> end-to-end (extends D-26; maturity counter counts cycles not demos).
+> Full gate on merged main: 2719 passed / 0 failed.
+
 Entries from the design-folder study (evidence in note 19):
 
 - **D-30** Design-atlas staleness (partially fixed): gemma3→gemma4 fixed in frames 07/19
@@ -305,10 +315,32 @@ Entries from the design-folder study (evidence in note 19):
   as a class (all sampled concepts still true; the 5 RAP anchors point at P9-01 shim
   tombstones instead of `experimental/rap_coach/`); `cs2/uploads/design-tokens.json` is a
   dead snapshot claiming the reversed flow; stray `README-8252c0ae.md` in uploads.
-  Operator chose option B (2026-08-29, executed): palette truth note added to
-  design/README in all 3 languages; Themes tables + Tailwind snippets corrected to the
-  live token values. Frames stay in the launch palette as the historical source;
-  anchor re-pinning and the uploads snapshot remain registered-only.
+  Operator chose option B (2026-08-29, executed), then SUPERSEDED it the same day with
+  the full repaint (workbench Q5, PR #96): all 126 SVGs + galleries now carry the live
+  palette; the stale uploads tokens snapshot was replaced with the canonical file;
+  launch-palette originals live in git history. RESOLVED. Anchor re-pinning (~40
+  file:line labels inside the diagrams) remains registered-only.
+
+Entries from aesthetic round 1 (evidence in note 20; asterisks = fixed):
+
+- ***D-31** Font system honesty: picker saved display labels that match no registered
+  family (silent Segoe UI fallback); `PHOTO_GUI/JetBrainsMono-Regular.ttf` was an
+  impostor (name table: DejaVu Sans Mono); the win spec never bundled assets/fonts.
+  All three fixed (#91) with name-table lockstep tests. Residue registered: FONT_TYPE
+  only reaches the generic QWidget rule (hardcoded QSS families + QPainter text ignore
+  it); the appended px rule overrides Typography point sizes.
+- **D-32** Windows packaging gap: the spec ships no .pt checkpoints, no
+  hltv_metadata.db, no FAISS index, no coach-book dir — persistence.load_nn's
+  factory-bundle fallback points at paths the bundle never contains, so neural
+  features silently no-op on fresh installs; database.db is a pro+user monolith with
+  an unwired .empty_backup. Decide at packaging time.
+- **D-33** Coaching chain unwired end-to-end (extends D-26): run_ml_pipeline /
+  CoachingService / ExperienceBank.extract_experiences_from_demo /
+  RoleThresholdStore.learn_from_pro_data / CSVMigrator seeding all lack production
+  callers — the coach screen reads CoachingInsight rows nothing writes; role
+  classification is in permanent cold start; the maturity counter increments per
+  TRAINING CYCLE, not per demo (MATURE=200 effectively unreachable). The wiring
+  campaign to pair with Linux training.
 
 ## 4. The AI roadmap (paper-grounded, invariant-filtered)
 
