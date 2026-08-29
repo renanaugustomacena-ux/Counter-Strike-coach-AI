@@ -42,6 +42,7 @@ logger = get_logger("cs2analyzer.sync_pro_players")
 
 
 def _count_stale() -> dict:
+    from sqlalchemy import inspect
     from sqlmodel import func, select
 
     from Programma_CS2_RENAN.backend.storage.database import get_db_manager
@@ -49,6 +50,25 @@ def _count_stale() -> dict:
 
     db = get_db_manager()
     with db.get_session() as s:
+        # D-28: a fresh main DB never had the legacy pro tables at all —
+        # `no such table: proplayer` crashed the tool (seen in the
+        # verify_all_safe sweep) where the honest answer is "nothing to
+        # purge". Absent tables count as zero rows, idempotently. Probed
+        # via the session's bind so patched test managers work too.
+        existing = set(inspect(s.get_bind()).get_table_names())
+        required = {"proplayer", "proplayerstatcard", "proteam"}
+        if not required.issubset(existing):
+            missing = sorted(required - existing)
+            print(
+                f"[sync_pro_players] Legacy pro tables absent in main DB "
+                f"({missing}) — nothing to purge."
+            )
+            return {
+                "proplayer_count": 0,
+                "proplayerstatcard_count": 0,
+                "proteam_count": 0,
+                "samples": [],
+            }
         np = s.exec(select(func.count()).select_from(ProPlayer)).one()
         ns = s.exec(select(func.count()).select_from(ProPlayerStatCard)).one()
         nt = s.exec(select(func.count()).select_from(ProTeam)).one()

@@ -171,6 +171,14 @@ def discover_lockfiles(roots: Iterable[pathlib.Path]) -> list[pathlib.Path]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # D-28: the summary lines print ✓/✗ — under a piped stdout
+    # Windows falls back to cp1252 and the tool CRASHED with
+    # UnicodeEncodeError instead of reporting (seen in the
+    # verify_all_safe sweep). Force UTF-8 with replacement so output
+    # degrades, never the exit code.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
