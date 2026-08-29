@@ -115,9 +115,10 @@ def _apply_theme(app: QApplication, splash: QSplashScreen, theme: ThemeEngine) -
     in main() so the splash can use the display stack)."""
     _splash_status(splash, "Loading theme engine...")
 
+    from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import normalize_font_family
     from Programma_CS2_RENAN.core.config import get_setting
 
-    font_type = get_setting("FONT_TYPE", "Roboto")
+    font_type = normalize_font_family(get_setting("FONT_TYPE", "Roboto"))
     font_sizes = {"Small": 11, "Medium": 13, "Large": 16}
     font_pt = font_sizes.get(get_setting("FONT_SIZE", "Medium"), 13)
     theme._font_family = font_type

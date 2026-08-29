@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
 from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
-from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import ThemeEngine
+from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import ThemeEngine, normalize_font_family
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.apps.qt_app.core.widgets_helpers import navigate_to
 from Programma_CS2_RENAN.apps.qt_app.core.worker import Worker
@@ -543,8 +543,11 @@ class SettingsScreen(QWidget):
             self._on_font_type_selected,
         )
         self._font_size_card.layout().addLayout(row1)
+        # Q6-FONTS: keys are the EMBEDDED family names Qt actually matches
+        # ("NewHope", "Counter-Strike") — the old pretty-label keys resolved
+        # to nothing and silently fell back to Segoe UI. Labels stay pretty.
         row2 = self._make_toggle_group(
-            {"New Hope": "New Hope", "CS Regular": "CS Regular", "YUPIX": "YUPIX"},
+            {"NewHope": "New Hope", "Counter-Strike": "CS Regular", "YUPIX": "YUPIX"},
             self._font_type_buttons,
             self._on_font_type_selected,
         )
@@ -891,7 +894,9 @@ class SettingsScreen(QWidget):
         """Re-read config and update all toggle groups."""
         self._update_theme_cards(get_setting("ACTIVE_THEME", "CS2"))
         self._update_toggle_group(self._font_size_buttons, get_setting("FONT_SIZE", "Medium"))
-        self._update_toggle_group(self._font_type_buttons, get_setting("FONT_TYPE", "Roboto"))
+        self._update_toggle_group(
+            self._font_type_buttons, normalize_font_family(get_setting("FONT_TYPE", "Roboto"))
+        )
         self._update_toggle_group(self._language_buttons, get_setting("LANGUAGE", "en"))
         is_auto = get_setting("INGEST_MODE_AUTO", True)
         self._update_toggle_group(self._ingest_mode_buttons, "auto" if is_auto else "manual")
@@ -925,7 +930,7 @@ class SettingsScreen(QWidget):
     def _on_font_size_selected(self, size: str):
         save_user_setting("FONT_SIZE", size)
         pt = _FONT_SIZES.get(size, 13)
-        font_type = get_setting("FONT_TYPE", "Roboto")
+        font_type = normalize_font_family(get_setting("FONT_TYPE", "Roboto"))
         self._theme_engine.set_font(font_type, pt)
         self._update_toggle_group(self._font_size_buttons, size)
         logger.info("Font size changed to %s (%dpt)", size, pt)
