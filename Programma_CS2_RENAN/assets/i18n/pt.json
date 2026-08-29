@@ -507,7 +507,7 @@
   "help_step4_title": "Explore o Histórico de partidas e o Desempenho",
   "help_step4_desc": "Suas estatísticas, detalhamento por mapa, pontos fortes e fracos",
   "help_step5_title": "Converse com o Coach de IA",
-  "help_step5_desc": "Requer Ollama + modelo gemma3:e2b — veja a seção Coach de IA",
+  "help_step5_desc": "Requer Ollama + modelo gemma4:e2b — veja a seção Coach de IA",
   "demo_folder_title": "PASTA DE DEMOS · ONDE O CS2 SALVA OS .DEM",
   "demo_folder_body": "Caminho típico no Linux / Steam:",
   "demo_folder_caption": "O analisador espera arquivos .dem ≥ 10 MB (guarda DS-12).",
