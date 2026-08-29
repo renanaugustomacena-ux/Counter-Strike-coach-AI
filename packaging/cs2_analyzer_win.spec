@@ -40,6 +40,10 @@ datas = [
     (str(APP_DIR / "apps" / "qt_app" / "themes"), "Programma_CS2_RENAN/apps/qt_app/themes"),
     # i18n translations
     (str(APP_DIR / "assets" / "i18n"), "Programma_CS2_RENAN/assets/i18n"),
+    # Design-atlas type stack (Inter, Space Grotesk, JetBrains Mono weights).
+    # Q6-FONTS: was missing — the packaged app shipped only PHOTO_GUI fonts,
+    # so every mono/display QSS rule silently fell back to Consolas/Roboto.
+    (str(APP_DIR / "assets" / "fonts"), "Programma_CS2_RENAN/assets/fonts"),
     # Tactical map named-zone overlays (map_widget.load_map_zones)
     (str(APP_DIR / "assets" / "map_zones"), "Programma_CS2_RENAN/assets/map_zones"),
 ]

@@ -68,12 +68,54 @@ def test_design_fonts_bundled():
         "JetBrainsMono-Medium.ttf": "JetBrains Mono",
         "JetBrainsMono-SemiBold.ttf": "JetBrains Mono",
         "JetBrainsMono-Bold.ttf": "JetBrains Mono",
+        "JetBrainsMono-Regular.ttf": "JetBrains Mono",
     }
     for filename, family in expected.items():
         path = fonts_dir / filename
         assert path.exists(), f"{filename} not bundled in assets/fonts/"
         actual = _ttf_family_name(path)
         assert actual.startswith(family), f"{filename}: family {actual!r} != {family!r}"
+
+
+def test_picker_families_resolve_to_real_files():
+    """Q6-FONTS: every family the settings picker can SAVE must exist as a
+    registered file whose EMBEDDED name-table family matches exactly.
+
+    Two historical defects this pins against: the picker saved pretty labels
+    ('New Hope', 'CS Regular') that matched no family — Qt silently fell back
+    to Segoe UI; and PHOTO_GUI/JetBrainsMono-Regular.ttf was an impostor
+    whose name table said 'DejaVu Sans Mono'.
+    """
+    from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import _FONT_FILES
+
+    photo_gui = REPO / "Programma_CS2_RENAN" / "PHOTO_GUI"
+    # Families the picker offers, minus 'Arial' (OS-provided, not bundled).
+    picker_families = ["Roboto", "JetBrains Mono", "NewHope", "Counter-Strike", "YUPIX"]
+    for family in picker_families:
+        assert family in _FONT_FILES, f"picker family {family!r} not in _FONT_FILES"
+        path = photo_gui / _FONT_FILES[family]
+        assert path.exists(), f"{path.name} missing from PHOTO_GUI/"
+        actual = _ttf_family_name(path)
+        assert actual == family, (
+            f"{path.name}: embedded family {actual!r} != picker value {family!r} — "
+            "either an impostor font file or a picker/QSS name mismatch"
+        )
+
+
+def test_legacy_font_type_values_normalize():
+    """Persisted FONT_TYPE values from before Q6-FONTS must keep working."""
+    from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import normalize_font_family
+
+    assert normalize_font_family("New Hope") == "NewHope"
+    assert normalize_font_family("CS Regular") == "Counter-Strike"
+    assert normalize_font_family("Roboto") == "Roboto"  # passthrough
+
+
+def test_win_spec_bundles_design_fonts():
+    """Q6-FONTS: the packaged app must ship assets/fonts — without it every
+    mono/display QSS rule silently falls back (Consolas/Roboto) in dist."""
+    spec = (REPO / "packaging" / "cs2_analyzer_win.spec").read_text(encoding="utf-8")
+    assert '"assets" / "fonts"' in spec, "assets/fonts missing from win spec datas"
 
 
 def test_register_fonts_scans_assets_dir():

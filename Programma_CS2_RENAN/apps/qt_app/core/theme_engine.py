@@ -41,13 +41,30 @@ _THEME_WALLPAPER_FOLDER = {
     "CS1.6": "cs16theme",
 }
 
+# Keys are the EMBEDDED family names (TTF name table id 1) — Qt matches
+# stylesheets against those, never against filenames or pretty labels.
 _FONT_FILES = {
     "Roboto": "Roboto-Regular.ttf",
     "JetBrains Mono": "JetBrainsMono-Regular.ttf",
-    "New Hope": "NewHope.ttf",
-    "CS Regular": "cs_regular.ttf",
+    "NewHope": "NewHope.ttf",
+    "Counter-Strike": "cs_regular.ttf",
     "YUPIX": "YUPIX.otf",
 }
+
+# Q6-FONTS: the settings picker historically SAVED display labels ("New Hope",
+# "CS Regular") that match no registered family — Qt silently walked the
+# fallback chain and landed on Segoe UI, so those picks all rendered
+# identically. Persisted settings still carry the legacy values; normalize
+# every read/write through this map so old configs keep working.
+_LEGACY_FAMILY_ALIASES = {
+    "New Hope": "NewHope",
+    "CS Regular": "Counter-Strike",
+}
+
+
+def normalize_font_family(family: str) -> str:
+    """Resolve legacy persisted FONT_TYPE values to real embedded family names."""
+    return _LEGACY_FAMILY_ALIASES.get(family, family)
 
 
 def rating_color(rating: float) -> QColor:
@@ -201,7 +218,7 @@ class ThemeEngine(QObject):
 
     def set_font(self, family: str, size_pt: int):
         """Change the app font and re-apply stylesheet to propagate everywhere."""
-        self._font_family = family
+        self._font_family = normalize_font_family(family)
         self._font_size = size_pt
         invalidate_cache()  # Font rule is appended after QSS, so re-render
         self.apply_theme(self._active)

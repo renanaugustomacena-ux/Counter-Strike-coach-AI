@@ -12,10 +12,13 @@ Bundled files, sources, and licenses (all SPDX: OFL-1.1):
     Space Grotesk 2.0.0 static builds — Florian Karsten
     https://github.com/floriankarsten/space-grotesk/releases/tag/2.0.0
 
-  JetBrainsMono-Medium.ttf / JetBrainsMono-SemiBold.ttf / JetBrainsMono-Bold.ttf
+  JetBrainsMono-Regular.ttf / JetBrainsMono-Medium.ttf /
+  JetBrainsMono-SemiBold.ttf / JetBrainsMono-Bold.ttf
     JetBrains Mono v2.304 — JetBrains
     https://github.com/JetBrains/JetBrainsMono/releases/tag/v2.304
-    (JetBrainsMono-Regular.ttf ships separately under PHOTO_GUI/.)
+    (Regular added 2026-08-29, Q6-FONTS: the PHOTO_GUI copy used to be an
+    impostor file whose name table said "DejaVu Sans Mono" — both copies
+    are now the genuine v2.304 Regular, verified by test_ui_harness.py.)
 
 Role mapping (core/typography.py + themes/base.qss.template):
   UI body        Inter (fallback Roboto, Segoe UI, system sans)
