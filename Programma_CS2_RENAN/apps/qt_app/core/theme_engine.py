@@ -41,6 +41,11 @@ _THEME_WALLPAPER_FOLDER = {
     "CS1.6": "cs16theme",
 }
 
+# Q6-SLIDESHOW: persisted BACKGROUND_IMAGE sentinel meaning "rotate through
+# every wallpaper of the active theme" instead of one fixed file. Kept
+# deliberately un-filename-like so it can never collide with a real asset.
+WALLPAPER_SLIDESHOW = "::slideshow::"
+
 # Keys are the EMBEDDED family names (TTF name table id 1) — Qt matches
 # stylesheets against those, never against filenames or pretty labels.
 _FONT_FILES = {
@@ -287,6 +292,11 @@ class ThemeEngine(QObject):
         if not chosen:
             self._wallpaper_path = ""
             return
+        if str(chosen) == WALLPAPER_SLIDESHOW:
+            # Slideshow survives theme switches — it is theme-relative by
+            # construction (rotates whatever the new theme's folder holds).
+            self._wallpaper_path = WALLPAPER_SLIDESHOW
+            return
         folder = _THEME_WALLPAPER_FOLDER.get(theme_name, "cs2theme")
         path = _ASSETS_DIR / folder / str(chosen)
         self._wallpaper_path = str(path) if path.is_file() else ""
@@ -310,10 +320,25 @@ class ThemeEngine(QObject):
         path = _ASSETS_DIR / folder / filename
         return str(path) if path.is_file() else ""
 
+    @property
+    def wallpaper_is_slideshow(self) -> bool:
+        """True when the persisted choice is the slideshow sentinel (Q6)."""
+        return self._wallpaper_path == WALLPAPER_SLIDESHOW
+
+    def slideshow_paths(self) -> list[str]:
+        """Absolute paths of every wallpaper in the active theme's folder."""
+        return [
+            p for p in (self.resolve_wallpaper(f) for f in self.get_available_wallpapers()) if p
+        ]
+
     def set_wallpaper(self, filename: str):
-        """Set a specific wallpaper by filename; ``""`` clears to flat."""
+        """Set a specific wallpaper by filename; ``""`` clears to flat;
+        ``WALLPAPER_SLIDESHOW`` arms the rotating mode (Q6)."""
         if not filename:
             self._wallpaper_path = ""
+            return
+        if filename == WALLPAPER_SLIDESHOW:
+            self._wallpaper_path = WALLPAPER_SLIDESHOW
             return
         resolved = self.resolve_wallpaper(filename)
         if resolved:
