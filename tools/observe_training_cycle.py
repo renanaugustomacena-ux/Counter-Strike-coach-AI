@@ -65,7 +65,11 @@ def phase_1_data_discovery():
     from sqlmodel import func, select
 
     from Programma_CS2_RENAN.backend.storage.database import get_db_manager
-    from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats, PlayerTickState
+    from Programma_CS2_RENAN.backend.storage.db_models import (
+        DatasetSplit,
+        PlayerMatchStats,
+        PlayerTickState,
+    )
 
     db = get_db_manager()
     results = {}
@@ -109,7 +113,8 @@ def phase_1_data_discovery():
         train_demos = session.exec(
             select(PlayerMatchStats.demo_name).where(
                 PlayerMatchStats.is_pro == True,
-                PlayerMatchStats.dataset_split == "TRAIN",
+                PlayerMatchStats.dataset_split
+                == DatasetSplit.TRAIN,  # D-27: enum SSOT, not a string literal
             )
         ).all()
         train_demo_names = list(set(train_demos))
@@ -489,14 +494,15 @@ def main():
     from sqlmodel import select
 
     from Programma_CS2_RENAN.backend.storage.database import get_db_manager
-    from Programma_CS2_RENAN.backend.storage.db_models import PlayerMatchStats
+    from Programma_CS2_RENAN.backend.storage.db_models import DatasetSplit, PlayerMatchStats
 
     db = get_db_manager()
     with db.get_session() as session:
         train_demos = session.exec(
             select(PlayerMatchStats.demo_name).where(
                 PlayerMatchStats.is_pro == True,
-                PlayerMatchStats.dataset_split == "TRAIN",
+                PlayerMatchStats.dataset_split
+                == DatasetSplit.TRAIN,  # D-27: enum SSOT, not a string literal
             )
         ).all()
         # Find a TRAIN demo that also has tick data

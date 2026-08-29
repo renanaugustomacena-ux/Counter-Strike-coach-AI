@@ -60,8 +60,11 @@ EXCLUDE_DIRS = {
 FORBIDDEN_PATTERNS = [
     r"/home/[a-z]+/Desktop",
     r"C:\\Users\\[A-Za-z]+\\Desktop",
-    r'password\s*=\s*["\'][^"\']+["\']',
-    r'api_key\s*=\s*["\'][^"\']+["\']',
+    # D-27: require >= 8 chars in the literal — real secrets are long;
+    # the old [^"']+ flagged test dummies like api_key = "test" (false
+    # positive on test_handoff_regressions.py's DS-08 fixture).
+    r'password\s*=\s*["\'][^"\']{8,}["\']',
+    r'api_key\s*=\s*["\'][^"\']{8,}["\']',
 ]
 
 MOCK_DATA_INDICATORS = [
@@ -91,7 +94,9 @@ DEPRECATED_PATTERNS = [
 
 CRITICAL_MODULES = [
     "Programma_CS2_RENAN/core/config.py",
-    "Programma_CS2_RENAN/core/logger.py",
+    # D-27 (replace-not-delete): core/logger.py never existed — the real
+    # logging entry point is observability/logger_setup.py; repointed.
+    "Programma_CS2_RENAN/observability/logger_setup.py",
     "Programma_CS2_RENAN/core/asset_manager.py",
     "Programma_CS2_RENAN/core/session_engine.py",
     "Programma_CS2_RENAN/core/spatial_data.py",
@@ -322,9 +327,10 @@ class GoliathHospital(BaseValidator):
                 self.check("ER", f"read:{rel}", False, error=str(e))
                 continue
 
-            # Syntax check
+            # Syntax check (tree retained for the AST-based namespace scan)
+            tree = None
             try:
-                ast.parse(content)
+                tree = ast.parse(content)
                 syntax_ok = True
             except SyntaxError as e:
                 syntax_ok = False
@@ -351,23 +357,39 @@ class GoliathHospital(BaseValidator):
                                 severity=Severity.ERROR,
                             )
 
-            # Namespace collisions
-            for i, line in enumerate(content.splitlines(), 1):
-                stripped = line.strip()
-                if (
-                    stripped.startswith("from backend")
-                    or stripped.startswith("from core")
-                    or stripped.startswith("from ingestion")
-                ):
-                    if "Programma_CS2_RENAN" not in stripped:
-                        self.check(
-                            "ER",
-                            f"namespace:{rel}:{i}",
-                            False,
-                            error=f"Bare import: {stripped[:50]}",
-                            detail="Use Programma_CS2_RENAN prefix",
-                            severity=Severity.ERROR,
-                        )
+            # Namespace collisions — AST-based (D-27: the old line-based
+            # startswith matched DOCSTRING prose, e.g. match_date_resolver's
+            # "...real chronology / from ingestion order." line). Real
+            # imports only; also covers plain `import backend` forms the
+            # line scan missed.
+            if tree is not None:
+                _BARE_ROOTS = {"backend", "core", "ingestion"}
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.ImportFrom):
+                        if (
+                            node.level == 0
+                            and node.module
+                            and node.module.split(".")[0] in _BARE_ROOTS
+                        ):
+                            self.check(
+                                "ER",
+                                f"namespace:{rel}:{node.lineno}",
+                                False,
+                                error=f"Bare import: from {node.module}",
+                                detail="Use Programma_CS2_RENAN prefix",
+                                severity=Severity.ERROR,
+                            )
+                    elif isinstance(node, ast.Import):
+                        for alias in node.names:
+                            if alias.name.split(".")[0] in _BARE_ROOTS:
+                                self.check(
+                                    "ER",
+                                    f"namespace:{rel}:{node.lineno}",
+                                    False,
+                                    error=f"Bare import: import {alias.name}",
+                                    detail="Use Programma_CS2_RENAN prefix",
+                                    severity=Severity.ERROR,
+                                )
 
     # =================================================================
     # 2. Radiology — Asset Integrity
