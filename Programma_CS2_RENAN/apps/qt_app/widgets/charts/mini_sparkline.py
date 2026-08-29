@@ -41,7 +41,8 @@ class MiniSparkline(QWidget):
         painter.setRenderHint(QPainter.Antialiasing)
 
         tokens = get_tokens()
-        accent = QColor(tokens.chart_line_primary)
+        # Q3 (workbench): the player's own trend leads with the theme accent.
+        accent = QColor(tokens.accent_primary)
 
         rect = self.rect().adjusted(2, 4, -2, -4)
         n = len(self._values)
@@ -96,8 +97,9 @@ class MiniSparkline(QWidget):
         painter.setBrush(Qt.NoBrush)
         painter.drawPath(line_path)
 
-        # End-point dot — anchors the trend's "now" position
+        # End-point dot — anchors the trend's "now" position; text_primary so
+        # it stays visible on the accent-colored line (Q3).
         end_pt = to_point(n - 1, self._values[-1])
         painter.setPen(Qt.NoPen)
-        painter.setBrush(accent)
+        painter.setBrush(QColor(tokens.text_primary))
         painter.drawEllipse(end_pt, 3.0, 3.0)

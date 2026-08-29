@@ -74,10 +74,13 @@ def _create_splash(app_version: str) -> QSplashScreen:
 
 def _splash_status(splash: QSplashScreen, message: str) -> None:
     """Update splash screen status message and process events."""
+    from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
+
+    # Token, not a literal — the old hardcoded #a0a0b0 was pre-atlas text_secondary.
     splash.showMessage(
         f"  {message}",
         Qt.AlignBottom | Qt.AlignLeft,
-        QColor("#a0a0b0"),
+        QColor(get_tokens().text_secondary),
     )
     QApplication.processEvents()
 

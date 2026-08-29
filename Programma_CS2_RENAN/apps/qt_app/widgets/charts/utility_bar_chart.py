@@ -2,8 +2,9 @@
 
 Frames 12/34. Two modes:
     grouped  set_rows([(label, you, pro)])         — per row, a you-bar
-             (chart_line_primary) over a pro-bar (chart_line_secondary) on
-             sunken tracks, with right-aligned mono captions "you 12.4" /
+             (accent_primary — Q3: the player's series speaks the accent)
+             over a pro-bar (info cyan, the comparison voice) on sunken
+             tracks, with right-aligned mono captions "you 12.4" /
              "pro 15.2" tinted per series. A 4th tuple element optionally
              overrides the you-bar color (frame 12 tints the waste row red).
     single   set_single([(label, value, QColor)])  — one caller-colored bar
@@ -104,8 +105,10 @@ class UtilityBarChart(QWidget):
             return
         for i, row in enumerate(self._rows):
             label, you, pro = str(row[0]), float(row[1]), float(row[2])
-            you_color = QColor(row[3]) if len(row) > 3 else QColor(tokens.chart_line_primary)
-            pro_color = QColor(tokens.chart_line_secondary)
+            # Q3 (workbench): you-bar speaks the accent; the pro baseline keeps
+            # the informational cyan voice so the pair never reads as CT/T.
+            you_color = QColor(row[3]) if len(row) > 3 else QColor(tokens.accent_primary)
+            pro_color = QColor(tokens.info)
             top = i * _ROW_H
             pair_h = 2 * _BAR_H + 4.0
             y_you = top + (_ROW_H - pair_h) / 2.0
