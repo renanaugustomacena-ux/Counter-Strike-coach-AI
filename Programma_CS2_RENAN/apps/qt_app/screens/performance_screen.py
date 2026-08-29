@@ -435,7 +435,7 @@ class PerformanceScreen(QWidget):
             (
                 i18n.get_text("perf.average_rating", "Average rating:"),
                 f"{avg_r:.2f}",
-                tokens.info,
+                tokens.accent_primary,  # Q3: the player's headline stat speaks the accent
             ),
             (
                 i18n.get_text("perf.range", "Range:"),

@@ -71,7 +71,9 @@ class RatingSparkline(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         tokens = get_tokens()
-        line_color = QColor(tokens.chart_line_primary)
+        # Q3 (workbench): charts speak the accent language — the player's own
+        # series leads with the theme accent; cyan stays the comparison voice.
+        line_color = QColor(tokens.accent_primary)
 
         font = Typography.mono_caption()
         fm = QFontMetricsF(font)
@@ -126,6 +128,7 @@ class RatingSparkline(QWidget):
         for i, v in enumerate(self._values):
             painter.drawEllipse(to_point(i, v), 2.5, 2.5)
 
-        # Endpoint dot in the accent color anchors "now".
-        painter.setBrush(QColor(tokens.accent_primary))
+        # Endpoint dot anchors "now" — text_primary, because the line itself
+        # is accent now and an accent dot would vanish into it.
+        painter.setBrush(QColor(tokens.text_primary))
         painter.drawEllipse(to_point(len(self._values) - 1, self._values[-1]), 3.5, 3.5)
