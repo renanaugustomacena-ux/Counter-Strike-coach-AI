@@ -291,9 +291,21 @@ Entries from verification round 2 (evidence in note 18; asterisks = fixed):
   legacy pro tables; verify_all_safe's skip list now name→reason, printed per skip, with the
   F-0039 guard asserting every named skip carries a stated reason.
 - **D-29** POL-DEPS-01 violation: both requirements-lock files carry ZERO `--hash` lines
-  (252 findings). The meta-gate stays honestly red until resolved. OPEN — operator decision:
-  regenerating (`uv pip compile --generate-hashes`) needs network, changes 250+ pins, and
-  may affect the Linux training environment.
+  (252 findings). The meta-gate stays honestly red until resolved. DEFERRED — operator
+  decision 2026-08-29: regenerate (`uv pip compile --generate-hashes`) AFTER the Linux
+  training campaign, not before (network + 250+ pin changes could destabilize that env).
+  Until then the sweep's one red is known, named noise — never skip-list it.
+
+Entries from the design-folder study (evidence in note 19):
+
+- **D-30** Design-atlas staleness (partially fixed): gemma3→gemma4 fixed in frames 07/19
+  ×3 copies; REGISTERED, operator decision pending — all 38 palette-bearing SVGs draw the
+  pre-Phase-0 palette (`#14141e`/`#d96600`) vs the tokens-SSOT/live-app `#0B1628`/`#FF6A00`
+  (README Themes tables in 3 languages repeat the old palette); ~40 file:line anchors stale
+  as a class (all sampled concepts still true; the 5 RAP anchors point at P9-01 shim
+  tombstones instead of `experimental/rap_coach/`); `cs2/uploads/design-tokens.json` is a
+  dead snapshot claiming the reversed flow; stray `README-8252c0ae.md` in uploads.
+  Recommended: option B (truth note in design/README) — see note 19.
 
 ## 4. The AI roadmap (paper-grounded, invariant-filtered)
 
