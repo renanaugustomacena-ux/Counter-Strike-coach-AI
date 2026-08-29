@@ -27,6 +27,7 @@ from Programma_CS2_RENAN.backend.processing.feature_engineering import (
     METADATA_DIM,
     FeatureExtractor,
 )
+from Programma_CS2_RENAN.backend.storage.db_models import DatasetSplit
 from Programma_CS2_RENAN.observability.logger_setup import get_logger
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
@@ -191,18 +192,27 @@ def load_pro_demo_sequences(limit: int = 100) -> List[np.ndarray]:
         # split rows are ineligible (a missing signal is honestly unknown,
         # never assumed TRAIN); ORDER BY makes the loaded set deterministic
         # (DET-01 — the unordered LIMIT was engine-dependent).
+        # D-15b (verification round 2): SQLAlchemy's Enum column stores the
+        # enum NAME ('TRAIN') on disk, not the value ('train') — the first
+        # fix filtered by value and matched ZERO rows on real databases
+        # (fail-safe direction, but a functional regression). Filter
+        # case-insensitively and derive the literal from the enum SSOT so
+        # both on-disk forms match and a future storage change fails loudly
+        # in the D-15 tests rather than silently here.
+        train_name = DatasetSplit.TRAIN.name  # 'TRAIN'
         rows = conn.execute(
             "SELECT demo_name, player_name FROM playermatchstats "
             "WHERE is_pro = 1 AND sample_weight > 0 "
-            "AND dataset_split = 'train' "
+            "AND UPPER(dataset_split) = ? "
             "ORDER BY demo_name, player_name "
             "LIMIT ?",
-            (limit,),
+            (train_name, limit),
         ).fetchall()
         excluded = conn.execute(
             "SELECT COUNT(*) FROM playermatchstats "
             "WHERE is_pro = 1 AND sample_weight > 0 "
-            "AND (dataset_split IS NULL OR dataset_split != 'train')"
+            "AND (dataset_split IS NULL OR UPPER(dataset_split) != ?)",
+            (train_name,),
         ).fetchone()[0]
     finally:
         conn.close()
@@ -246,14 +256,15 @@ def load_user_match_sequences(limit: int = 200) -> tuple:
     try:
         # D-15 (Law II): fine-tuning is training too — restrict to the
         # TRAIN split (NULL/legacy rows ineligible, same rule as the pro
-        # loader above).
+        # loader above). D-15b: match the on-disk enum NAME, derived from
+        # the SSOT, case-insensitively (see the pro loader's comment).
         rows = conn.execute(
             "SELECT demo_name, player_name FROM playermatchstats "
             "WHERE is_pro = 0 AND sample_weight > 0 "
-            "AND dataset_split = 'train' "
+            "AND UPPER(dataset_split) = ? "
             "ORDER BY match_date "
             "LIMIT ?",
-            (limit,),
+            (DatasetSplit.TRAIN.name, limit),
         ).fetchall()
     finally:
         conn.close()
