@@ -181,7 +181,7 @@
     "backend/nn/inference/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "backend/nn/inference/ghost_engine.py": "fefdb1303ef96671649d25193debde9a65b8d8bca54d558a25c61560fdd875f0",
     "backend/nn/jepa_model.py": "bce5e93157a0c4bfee8ee1b659d8aa94106df5e2b801c4312c009675e11a3b39",
-    "backend/nn/jepa_train.py": "74905a0fddd1dc51562f975d67d2143f0caa00d263b8d7167c1510c31085c8e0",
+    "backend/nn/jepa_train.py": "345a3ef4b7894f67ad01740b8c487dbdba9eb82c14b72e8ec435d77d25724fd2",
     "backend/nn/jepa_trainer.py": "fe56bd1603a69c846c0b463cac361a500394c9f5b28aa91a9795dd1ee09a1055",
     "backend/nn/layers/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "backend/nn/layers/superposition.py": "98caf630a9c1a312b5a224c07d06d823245b3a84a0ca19481c0b5dcd72e296b9",
