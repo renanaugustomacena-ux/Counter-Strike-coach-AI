@@ -110,6 +110,14 @@ class EconomyChart(QWidget):
             i18n.get_text("chart_economy_title", "Economy per Round"),
         )
         if not self._rounds:
+            from Programma_CS2_RENAN.apps.qt_app.widgets.charts import paint_chart_empty
+
+            paint_chart_empty(
+                painter,
+                QRectF(8.0, title_h + 4.0, self.width() - 16.0, self.height() - title_h - 12.0),
+                tokens,
+                i18n.get_text("chart_awaiting_data", "Awaiting round data — analyze a demo"),
+            )
             return
 
         n = len(self._rounds)

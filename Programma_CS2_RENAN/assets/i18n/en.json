@@ -487,7 +487,8 @@
   "wizard_next_step3_title": "Coach unlocks as belief grows",
   "wizard_next_step3_desc": "The AI coach starts advising once it has seen enough of your matches to be sure.",
   "wizard_calib_title": "Calibration",
-  "wizard_calib_body": "Belief starts low and grows with every demo you analyze — you'll see the exact % on the Coach screen.",  "topics_header": "TOPICS",
+  "wizard_calib_body": "Belief starts low and grows with every demo you analyze — you'll see the exact % on the Coach screen.",
+  "topics_header": "TOPICS",
   "external_header": "EXTERNAL",
   "related_header": "RELATED",
   "keyboard_hints_header": "KEYBOARD HINTS",
@@ -569,5 +570,6 @@
   "tactical.legend_title": "Ghost Mode Legend",
   "tactical.legend_you": "your path",
   "tactical.legend_ghost": "ghost (pro) path",
-  "tactical.legend_divergence": "divergence point"
+  "tactical.legend_divergence": "divergence point",
+  "chart_awaiting_data": "Awaiting round data — analyze a demo"
 }
