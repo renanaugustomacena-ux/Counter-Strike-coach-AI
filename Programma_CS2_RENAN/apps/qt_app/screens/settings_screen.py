@@ -272,6 +272,7 @@ class SettingsScreen(QWidget):
         self._font_type_buttons: dict = {}
         self._language_buttons: dict = {}
         self._ingest_mode_buttons: dict = {}
+        self._close_behavior_buttons: dict = {}  # Q6-TRAY
 
         # Value display widgets
         self._default_path_label: QLabel | None = None
@@ -606,6 +607,20 @@ class SettingsScreen(QWidget):
             self._on_font_type_selected,
         )
         self._font_size_card.layout().addLayout(row2)
+
+        # Q6-TRAY: close-button behavior (persisted CLOSE_TO_TRAY bool).
+        self._close_behavior_label = QLabel(i18n.get_text("close_behavior", "Close button") + ":")
+        self._close_behavior_label.setObjectName("section_subtitle")
+        self._font_size_card.layout().addWidget(self._close_behavior_label)
+        row3 = self._make_toggle_group(
+            {
+                "tray": i18n.get_text("close_to_tray", "Minimize to tray"),
+                "exit": i18n.get_text("close_exit", "Exit the app"),
+            },
+            self._close_behavior_buttons,
+            self._on_close_behavior_selected,
+        )
+        self._font_size_card.layout().addLayout(row3)
         self._font_size_card.layout().addStretch()
         target.addWidget(self._font_size_card, 1)
 
@@ -954,6 +969,8 @@ class SettingsScreen(QWidget):
         self._update_toggle_group(self._language_buttons, get_setting("LANGUAGE", "en"))
         is_auto = get_setting("INGEST_MODE_AUTO", True)
         self._update_toggle_group(self._ingest_mode_buttons, "auto" if is_auto else "manual")
+        to_tray = get_setting("CLOSE_TO_TRAY", True)
+        self._update_toggle_group(self._close_behavior_buttons, "tray" if to_tray else "exit")
 
     # ── Action Handlers ──
 
@@ -1013,6 +1030,11 @@ class SettingsScreen(QWidget):
         self._theme_engine.set_font(font_name, pt)
         self._update_toggle_group(self._font_type_buttons, font_name)
         logger.info("Font type changed to %s", font_name)
+
+    def _on_close_behavior_selected(self, key: str):
+        save_user_setting("CLOSE_TO_TRAY", key == "tray")
+        self._update_toggle_group(self._close_behavior_buttons, key)
+        logger.info("Close behavior set to %s", key)
 
     def _on_language_selected(self, lang_code: str):
         save_user_setting("LANGUAGE", lang_code)

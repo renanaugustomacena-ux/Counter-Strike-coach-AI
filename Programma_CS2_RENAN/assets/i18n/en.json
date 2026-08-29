@@ -573,5 +573,14 @@
   "tactical.legend_divergence": "divergence point",
   "chart_awaiting_data": "Awaiting round data — analyze a demo",
   "wallpaper_slideshow": "Slideshow",
-  "wallpaper_slideshow_caption": "rotates every 2 min"
+  "wallpaper_slideshow_caption": "rotates every 2 min",
+  "tray_open": "Open Macena",
+  "tray_coach": "AI Coach",
+  "tray_cli": "CLI Console",
+  "tray_quit": "Quit",
+  "tray_bg_title": "Still running",
+  "tray_bg_body": "Macena keeps coaching in the background — right-click the tray icon to quit.",
+  "close_behavior": "Close button",
+  "close_to_tray": "Minimize to tray",
+  "close_exit": "Exit the app"
 }

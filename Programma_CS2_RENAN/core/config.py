@@ -200,8 +200,11 @@ def load_user_settings() -> dict:
             # explicit persisted choice (this key present in
             # user_settings.json) restores one; save_user_setting writes just
             # explicit keys, so disk-presence == explicit choice.
+            # Q6: "::slideshow::" here arms the rotating mode (the legacy
+            # ENABLE_SLIDESHOW bool was a dead key nothing ever read).
             "BACKGROUND_IMAGE": "",
-            "ENABLE_SLIDESHOW": False,
+            # Q6-TRAY: close button hides to the system tray by default.
+            "CLOSE_TO_TRAY": True,
             "FONT_SIZE": "Medium",
             "FONT_TYPE": "Roboto",
             "LANGUAGE": "en",
