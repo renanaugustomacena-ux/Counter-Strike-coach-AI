@@ -63,9 +63,38 @@ def test_genuinely_safe_tools_stay_scheduled():
         "verify_lock_hashes.py",
         "dev_health.py",
         "policy_runner.py",
-        "drift_detector.py",
-        "merge_demo_pool.py",  # dry-run default
         "rescrape_placeholder_pros.py",  # dry-run default
         "sync_pro_players.py",  # dry-run default
     ]:
         assert _is_safe(name), f"{name} should remain scheduled"
+
+
+# D-28: safe (no mutation) but CANNOT succeed bare — argparse-required
+# args, missing prerequisites, or external services. The sweep is an
+# exit-code gate, so scheduling these guarantees a false "SYSTEM
+# UNSTABLE". Each must be a NAMED skip whose reason prints in the
+# report; a bare name in a list would erode coverage silently.
+CANNOT_SUCCEED_BARE = [
+    "audit_scanner.py",
+    "build_web.py",
+    "coach_answer_eval.py",
+    "drift_detector.py",  # exit 2 until an operator records --baseline
+    "merge_demo_pool.py",  # --source/--target are required=True
+    "seed_hltv_apply_vision.py",
+    "seed_hltv_top_n.py",
+    "test_tactical_pipeline.py",
+    "validate_coaching_pipeline.py",
+]
+
+
+def test_named_skips_are_gated_with_reasons():
+    import os
+    from unittest.mock import patch
+
+    mod = importlib.util.module_from_spec(_spec)
+    with patch.dict(os.environ, {"CI": "1"}):
+        _spec.loader.exec_module(mod)
+    for name in CANNOT_SUCCEED_BARE:
+        assert not mod.is_safe_to_run(Path(name)), f"{name} should be skipped"
+        reason = mod._NAMED_SKIPS.get(name.lower(), "")
+        assert reason.strip(), f"{name} skipped without a stated reason"

@@ -507,7 +507,7 @@
   "help_step4_title": "Explore Match History and Performance",
   "help_step4_desc": "Your stats, per-map breakdown, strengths & weaknesses",
   "help_step5_title": "Chat with the AI Coach",
-  "help_step5_desc": "Requires Ollama + gemma3:e2b model — see AI Coach section",
+  "help_step5_desc": "Requires Ollama + gemma4:e2b model — see AI Coach section",
   "demo_folder_title": "DEMO FOLDER · WHERE CS2 SAVES .DEM FILES",
   "demo_folder_body": "Typical path on Linux / Steam:",
   "demo_folder_caption": "The analyzer expects .dem files ≥ 10 MB (DS-12 guard).",

@@ -507,7 +507,7 @@
   "help_step4_title": "Esplora Cronologia match e Prestazioni",
   "help_step4_desc": "Le tue statistiche, il dettaglio per mappa, punti di forza e debolezze",
   "help_step5_title": "Chatta con il Coach AI",
-  "help_step5_desc": "Richiede Ollama + modello gemma3:e2b — vedi la sezione Coach AI",
+  "help_step5_desc": "Richiede Ollama + modello gemma4:e2b — vedi la sezione Coach AI",
   "demo_folder_title": "CARTELLA DEMO · DOVE CS2 SALVA I FILE .DEM",
   "demo_folder_body": "Percorso tipico su Linux / Steam:",
   "demo_folder_caption": "L'analizzatore si aspetta file .dem ≥ 10 MB (guardia DS-12).",

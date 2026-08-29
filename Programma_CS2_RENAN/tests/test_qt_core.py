@@ -633,12 +633,12 @@ class TestChatPanel:
         from Programma_CS2_RENAN.apps.qt_app.widgets.coaching import ChatPanel
 
         panel = ChatPanel()
-        panel.set_status(True, "ollama", "gemma3:e2b")
+        panel.set_status(True, "ollama", "gemma4:e2b")
         assert panel._status_text.text() == "Online"
-        assert panel._backend_label.text() == "ollama · gemma3:e2b"
+        assert panel._backend_label.text() == "ollama · gemma4:e2b"
         assert get_tokens().success in panel._status_dot.styleSheet()
 
-        panel.set_status(False, "ollama", "gemma3:e2b")
+        panel.set_status(False, "ollama", "gemma4:e2b")
         assert panel._status_text.text() == "Offline"
         assert get_tokens().error in panel._status_dot.styleSheet()
 

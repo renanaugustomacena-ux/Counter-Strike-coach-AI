@@ -93,18 +93,34 @@ def is_safe_to_run(path_obj):
     if any(name.startswith(p) for p in unsafe_prefixes):
         return False
 
-    # 3. Skip Interactive or Long Running
-    if name in [
-        "run_console_boot.py",
-        # F-0039: Confirm-prompt blocks under a non-interactive runner
-        # (the destructive path is only reachable via explicit --yes).
-        "sanitize_project.py",
-        # F-0039: default 30-minute fuzz budget guarantees a timeout-fail.
-        "fuzz_demo_parser.py",
-    ]:
+    # 3. Skip Interactive, Long Running, or Input-Requiring — each entry
+    # names WHY (D-28: the sweep used to run these bare and report their
+    # argparse usage errors as "SYSTEM UNSTABLE", drowning real failures).
+    if name in _NAMED_SKIPS:
         return False
 
     return True
+
+
+# D-28: tools whose bare run cannot succeed BY DESIGN — not instability.
+# filename (lowercase) -> reason shown in the sweep report.
+_NAMED_SKIPS = {
+    "run_console_boot.py": "interactive console boot",
+    # F-0039: Confirm-prompt blocks under a non-interactive runner
+    # (the destructive path is only reachable via explicit --yes).
+    "sanitize_project.py": "destructive; confirm-prompt blocks non-interactive run",
+    # F-0039: default 30-minute fuzz budget guarantees a timeout-fail.
+    "fuzz_demo_parser.py": "30-minute fuzz budget exceeds the 120s tool budget",
+    "audit_scanner.py": "requires a subsystem argument",
+    "build_web.py": "requires the Node/pnpm toolchain",
+    "coach_answer_eval.py": "requires a running Ollama for the LLM eval",
+    "drift_detector.py": "two-phase: needs a recorded --baseline first",
+    "merge_demo_pool.py": "requires --source/--target demo pools",
+    "seed_hltv_apply_vision.py": "data-entry tool; requires per-player args",
+    "seed_hltv_top_n.py": "requires an explicit --dry-run/--apply and network",
+    "test_tactical_pipeline.py": "requires a .dem file argument",
+    "validate_coaching_pipeline.py": "requires a .dem file argument",
+}
 
 
 def verify_all_dynamic():
@@ -128,7 +144,10 @@ def verify_all_dynamic():
             skipped.append(tool_path.name)
 
     print(f"Found {len(all_tools)} scripts.")
-    print(f"Skipping {len(skipped)} unsafe/interactive scripts (e.g. {skipped[:3]}).")
+    print(f"Skipping {len(skipped)} scripts (unsafe-by-prefix or named):")
+    for s in skipped:
+        reason = _NAMED_SKIPS.get(s.lower(), "destructive/maintenance prefix (F-0039)")
+        print(f"  - {s}: {reason}")
     print(f"Scheduled {len(safe_tools)} tools for execution.")
     print("-" * 80)
 
