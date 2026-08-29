@@ -21,7 +21,11 @@ from PySide6.QtWidgets import (
 from Programma_CS2_RENAN.apps.qt_app.core.app_state import get_app_state
 from Programma_CS2_RENAN.apps.qt_app.core.design_tokens import get_tokens
 from Programma_CS2_RENAN.apps.qt_app.core.i18n_bridge import i18n
-from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import ThemeEngine, normalize_font_family
+from Programma_CS2_RENAN.apps.qt_app.core.theme_engine import (
+    WALLPAPER_SLIDESHOW,
+    ThemeEngine,
+    normalize_font_family,
+)
 from Programma_CS2_RENAN.apps.qt_app.core.typography import Typography
 from Programma_CS2_RENAN.apps.qt_app.core.widgets_helpers import navigate_to
 from Programma_CS2_RENAN.apps.qt_app.core.worker import Worker
@@ -181,6 +185,47 @@ class _WallpaperCard(QFrame):
     def mousePressEvent(self, event):  # noqa: D401
         if event.button() == Qt.LeftButton:
             self._on_select(self._filename)
+        super().mousePressEvent(event)
+
+
+class _WallpaperSlideshowCard(QFrame):
+    """Dashed 'Slideshow' card (Q6) — rotates all wallpapers of the theme.
+
+    Shares the ``wallpaper_none_card`` QSS identity so the dashed styling
+    (and its selected ring) applies without a template change.
+    """
+
+    def __init__(self, on_select, parent=None):
+        super().__init__(parent)
+        self.setObjectName("wallpaper_none_card")
+        self.setCursor(Qt.PointingHandCursor)
+        self.setAttribute(Qt.WA_Hover, True)
+        self.setFixedSize(150, 80)
+        self._on_select = on_select
+        tokens = get_tokens()
+
+        col = QVBoxLayout(self)
+        col.setContentsMargins(8, 8, 8, 8)
+        col.setSpacing(2)
+        self.text_label = QLabel(i18n.get_text("wallpaper_slideshow", "Slideshow"))
+        self.text_label.setObjectName("wallpaper_none_text")
+        self.text_label.setAlignment(Qt.AlignCenter)
+        col.addWidget(self.text_label)
+        caption = QLabel(i18n.get_text("wallpaper_slideshow_caption", "rotates every 2 min"))
+        caption.setAlignment(Qt.AlignCenter)
+        caption.setStyleSheet(
+            f"color: {tokens.text_secondary}; "
+            f"font-size: {tokens.font_size_caption}px; background: transparent;"
+        )
+        col.addWidget(caption)
+
+    def set_selected(self, selected: bool) -> None:
+        self.setProperty("selected", "true" if selected else "false")
+        _repolish(self)
+
+    def mousePressEvent(self, event):  # noqa: D401
+        if event.button() == Qt.LeftButton:
+            self._on_select(WALLPAPER_SLIDESHOW)
         super().mousePressEvent(event)
 
 
@@ -455,6 +500,13 @@ class SettingsScreen(QWidget):
             self._wallpaper_cards[filename] = card
             cards.append(card)
 
+        # Dashed "Slideshow" card (Q6) — keyed by the persisted sentinel.
+        # Only offered when the theme has 2+ wallpapers to rotate.
+        if len(wallpapers) >= 2:
+            slideshow_card = _WallpaperSlideshowCard(self._on_wallpaper_selected)
+            self._wallpaper_cards[WALLPAPER_SLIDESHOW] = slideshow_card
+            cards.append(slideshow_card)
+
         # Dashed "No wallpaper" card — flat surface is the design default.
         # Keyed by "" in _wallpaper_cards (the persisted empty value).
         none_card = _WallpaperNoneCard(self._on_wallpaper_selected)
@@ -477,6 +529,8 @@ class SettingsScreen(QWidget):
             if filename == "":
                 # "None" choice — active exactly when no wallpaper is set
                 is_active = current_path == ""
+            elif filename == WALLPAPER_SLIDESHOW:
+                is_active = current_path == WALLPAPER_SLIDESHOW
             else:
                 is_active = current_path.endswith(os.sep + filename) or current_path.endswith(
                     "/" + filename
@@ -909,8 +963,8 @@ class SettingsScreen(QWidget):
         self._refresh_all_toggles()
         self._rebuild_wallpaper_cards()
         win = self.window()
-        if hasattr(win, "set_wallpaper"):
-            win.set_wallpaper(self._theme_engine.wallpaper_path)
+        if hasattr(win, "apply_wallpaper_state"):
+            win.apply_wallpaper_state(self._theme_engine)
         logger.info("Theme changed to %s", name)
 
     def _on_path_change(self, target: str):
@@ -971,8 +1025,8 @@ class SettingsScreen(QWidget):
         save_user_setting("BACKGROUND_IMAGE", filename)
         self._update_wallpaper_toggles(self._theme_engine.wallpaper_path)
         win = self.window()
-        if hasattr(win, "set_wallpaper"):
-            win.set_wallpaper(self._theme_engine.wallpaper_path)
+        if hasattr(win, "apply_wallpaper_state"):
+            win.apply_wallpaper_state(self._theme_engine)
         logger.info("Wallpaper changed to %s", filename or "<none>")
 
     def _on_start_ingestion(self):

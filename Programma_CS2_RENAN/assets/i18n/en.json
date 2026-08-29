@@ -571,5 +571,7 @@
   "tactical.legend_you": "your path",
   "tactical.legend_ghost": "ghost (pro) path",
   "tactical.legend_divergence": "divergence point",
-  "chart_awaiting_data": "Awaiting round data — analyze a demo"
+  "chart_awaiting_data": "Awaiting round data — analyze a demo",
+  "wallpaper_slideshow": "Slideshow",
+  "wallpaper_slideshow_caption": "rotates every 2 min"
 }

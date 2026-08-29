@@ -571,5 +571,7 @@
   "tactical.legend_you": "il tuo percorso",
   "tactical.legend_ghost": "percorso ghost (pro)",
   "tactical.legend_divergence": "punto di divergenza",
-  "chart_awaiting_data": "In attesa dei dati dei round — analizza una demo"
+  "chart_awaiting_data": "In attesa dei dati dei round — analizza una demo",
+  "wallpaper_slideshow": "Presentazione",
+  "wallpaper_slideshow_caption": "ruota ogni 2 min"
 }

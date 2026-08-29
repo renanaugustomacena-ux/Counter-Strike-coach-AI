@@ -342,7 +342,7 @@ def main():
 
     _splash_status(splash, "Creating main window...")
     window = MainWindow()
-    window.set_wallpaper(theme.wallpaper_path)
+    window.apply_wallpaper_state(theme)
 
     placeholders = create_placeholder_screens()
 

@@ -6,7 +6,7 @@ Replaces the Kivy ScreenManager + layout.kv root FloatLayout.
 
 from pathlib import Path
 
-from PySide6.QtCore import QEvent, QPoint, Qt, Signal
+from PySide6.QtCore import QEvent, QPoint, Qt, QTimer, QVariantAnimation, Signal
 from PySide6.QtGui import QKeySequence, QPainter, QPixmap, QShortcut
 from PySide6.QtWidgets import (
     QFrame,
@@ -126,6 +126,11 @@ class _BackgroundWidget(QWidget):
         / "tactical-grid.svg"
     )
 
+    # Q6-SLIDESHOW: rotation cadence + crossfade length. The fade runs on a
+    # QVariantAnimation repaint loop (no QGraphicsEffect — Linux ban).
+    _SLIDESHOW_INTERVAL_MS = 120_000
+    _SLIDESHOW_FADE_MS = 900
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self._pixmap: QPixmap | None = None
@@ -139,6 +144,13 @@ class _BackgroundWidget(QWidget):
         # Keep the motif barely perceptible — it's a subconscious
         # texture cue, not a decoration. Tweak via settings later.
         self._motif_opacity: float = 0.05
+        # Slideshow state (Q6) — inert until set_slideshow() arms it.
+        self._slideshow_paths: list[str] = []
+        self._slideshow_idx: int = 0
+        self._slideshow_timer: QTimer | None = None
+        self._fade_anim: QVariantAnimation | None = None
+        self._fade_t: float = 1.0  # 1.0 = incoming fully shown
+        self._old_scaled: QPixmap | None = None
 
     @classmethod
     def _render_motif_tile(cls) -> QPixmap | None:
@@ -161,6 +173,10 @@ class _BackgroundWidget(QWidget):
         return pm
 
     def set_image(self, path: str):
+        self.stop_slideshow()
+        self._set_pixmap_from_path(path)
+
+    def _set_pixmap_from_path(self, path: str):
         if path and __import__("os").path.exists(path):
             self._pixmap = QPixmap(path)
         else:
@@ -168,12 +184,91 @@ class _BackgroundWidget(QWidget):
         self._scaled_cache = None
         self.update()
 
+    # ── Slideshow (Q6) ──
+
+    def set_slideshow(self, paths: list[str]):
+        """Rotate through ``paths`` with a crossfade every 2 minutes.
+
+        An empty/degenerate list degrades to the flat default. A single
+        image shows statically (no pointless self-fades).
+        """
+        import os
+
+        real = [p for p in paths if p and os.path.exists(p)]
+        self.stop_slideshow()
+        if not real:
+            self._set_pixmap_from_path("")
+            return
+        self._slideshow_paths = real
+        self._slideshow_idx = 0
+        self._set_pixmap_from_path(real[0])
+        if len(real) < 2:
+            return
+        self._slideshow_timer = QTimer(self)
+        self._slideshow_timer.setInterval(self._SLIDESHOW_INTERVAL_MS)
+        self._slideshow_timer.timeout.connect(self._advance_slideshow)
+        self._slideshow_timer.start()
+
+    def stop_slideshow(self):
+        if self._slideshow_timer is not None:
+            self._slideshow_timer.stop()
+            self._slideshow_timer.deleteLater()
+            self._slideshow_timer = None
+        if self._fade_anim is not None:
+            self._fade_anim.stop()
+            self._fade_anim = None
+        self._slideshow_paths = []
+        self._old_scaled = None
+        self._fade_t = 1.0
+
+    def _advance_slideshow(self):
+        import os
+
+        if not self._slideshow_paths:
+            return
+        self._slideshow_idx = (self._slideshow_idx + 1) % len(self._slideshow_paths)
+        next_path = self._slideshow_paths[self._slideshow_idx]
+        # The harness (and users who disable animations) get a hard cut.
+        if os.environ.get("MACENA_UI_ANIMATIONS") == "0":
+            self._set_pixmap_from_path(next_path)
+            return
+        # Keep the outgoing frame for the crossfade, then swap the source.
+        self._old_scaled = self._scaled_cache
+        self._set_pixmap_from_path(next_path)
+        if self._fade_anim is not None:
+            self._fade_anim.stop()
+        anim = QVariantAnimation(self)
+        anim.setDuration(self._SLIDESHOW_FADE_MS)
+        anim.setStartValue(0.0)
+        anim.setEndValue(1.0)
+
+        def _tick(value):
+            self._fade_t = float(value)
+            self.update()
+
+        def _done():
+            self._old_scaled = None
+            self._fade_t = 1.0
+            self._fade_anim = None
+            self.update()
+
+        anim.valueChanged.connect(_tick)
+        anim.finished.connect(_done)
+        self._fade_anim = anim
+        self._fade_t = 0.0
+        anim.start()
+
     def resizeEvent(self, event):
         self._scaled_cache = None  # Invalidate cache on resize
+        self._old_scaled = None  # A mid-fade resize drops the outgoing frame
         super().resizeEvent(event)
 
     def paintEvent(self, event):
         painter = QPainter(self)
+        fading = self._old_scaled is not None and self._fade_t < 1.0
+        if fading:
+            painter.setOpacity(self._opacity * (1.0 - self._fade_t))
+            painter.drawPixmap(0, 0, self._old_scaled)
         if self._pixmap and not self._pixmap.isNull():
             if self._scaled_cache is None or self._scaled_cache.size() != self.size():
                 scaled = self._pixmap.scaled(
@@ -183,7 +278,7 @@ class _BackgroundWidget(QWidget):
                 x = (scaled.width() - self.width()) // 2
                 y = (scaled.height() - self.height()) // 2
                 self._scaled_cache = scaled.copy(x, y, self.width(), self.height())
-            painter.setOpacity(self._opacity)
+            painter.setOpacity(self._opacity * (self._fade_t if fading else 1.0))
             painter.drawPixmap(0, 0, self._scaled_cache)
         if self._motif_tile is not None:
             painter.setOpacity(self._motif_opacity)
@@ -287,6 +382,22 @@ class MainWindow(QMainWindow):
     def set_wallpaper(self, path: str):
         """Set the background wallpaper image path."""
         self._bg_widget.set_image(path)
+
+    def set_wallpaper_slideshow(self, paths: list[str]):
+        """Arm the rotating wallpaper slideshow (Q6)."""
+        self._bg_widget.set_slideshow(paths)
+
+    def apply_wallpaper_state(self, theme) -> None:
+        """Push the ThemeEngine's current wallpaper choice to the canvas.
+
+        Single seam for all three wallpaper triggers (boot, theme switch,
+        settings pick) — branches static path vs the slideshow sentinel so
+        no caller re-implements the mode logic.
+        """
+        if getattr(theme, "wallpaper_is_slideshow", False):
+            self.set_wallpaper_slideshow(theme.slideshow_paths())
+        else:
+            self.set_wallpaper(theme.wallpaper_path)
 
     def register_screen(self, name: str, widget: QWidget):
         """Add a screen widget to the stack.
