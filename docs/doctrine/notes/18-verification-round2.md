@@ -102,6 +102,13 @@ user_profile, faceit_config, steam_config.
   text. The D-03 surface (model caption + MODEL picker on coach) is intact.
 - **Observation, not a defect**: pro_player_detail shows an honest "No pro
   selected" empty state (hltv_metadata.db uninitialized on this machine).
+- **Observation (registered, not fixed)**: 14/15 atlas renders plus both
+  galleries are byte-deterministic across consecutive `ui_screenshot.py` runs;
+  **wizard.png hashes differently on every run** (three runs, three hashes) —
+  some nondeterministic element in the wizard screen. Consequence: every bare
+  sweep dirties this one tracked file. D-28-class follow-up: find and pin the
+  varying element (or render the wizard with it frozen) before it trains anyone
+  to `git checkout --` render diffs unread.
 - user_profile renders the real live-DB player ("Knowledge_mc") — the screen
   reads production data correctly.
 
