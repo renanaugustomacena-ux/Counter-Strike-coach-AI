@@ -305,7 +305,10 @@ Entries from the design-folder study (evidence in note 19):
   as a class (all sampled concepts still true; the 5 RAP anchors point at P9-01 shim
   tombstones instead of `experimental/rap_coach/`); `cs2/uploads/design-tokens.json` is a
   dead snapshot claiming the reversed flow; stray `README-8252c0ae.md` in uploads.
-  Recommended: option B (truth note in design/README) — see note 19.
+  Operator chose option B (2026-08-29, executed): palette truth note added to
+  design/README in all 3 languages; Themes tables + Tailwind snippets corrected to the
+  live token values. Frames stay in the launch palette as the historical source;
+  anchor re-pinning and the uploads snapshot remain registered-only.
 
 ## 4. The AI roadmap (paper-grounded, invariant-filtered)
 

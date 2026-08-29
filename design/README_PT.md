@@ -4,6 +4,8 @@
 
 Sistema de design vetorial para a aplicação de coaching de CS2. Todos os arquivos são SVG + HTML + JSON — zero binários, totalmente portátil.
 
+> **Nota sobre a paleta (2026-08-29, D-30):** os frames SVG foram desenhados na paleta original de lançamento (`#14141e` navy / `#d96600` laranja) e permanecem como fonte histórica do design. A paleta atual do produto vive em `tokens/design-tokens.json` (CS2: base `#0B1628` / acento `#FF6A00`, mais os tokens frost/glass) e é o que o app realmente renderiza — o arquivo de tokens é a única fonte de verdade. Os layouts dos frames continuam precisos; apenas as cores precedem a mudança de paleta da Fase 0.
+
 ## Mapa de arquivos
 
 ```
@@ -96,13 +98,13 @@ Mapeie os tokens para `tailwind.config.js`:
 theme: {
   extend: {
     colors: {
-      surface: { base: '#14141e', raised: '#1a1a2e', sunken: '#0f0f2e' },
-      accent:  { DEFAULT: '#d96600', hover: '#e67a1a', pressed: '#b85500' },
-      text:    { primary: '#dcdcdc', secondary: '#a0a0b0' },
+      surface: { base: '#0B1628', raised: '#121E2E', sunken: '#07101C' },
+      accent:  { DEFAULT: '#FF6A00', hover: '#FF8533', pressed: '#CC5500' },
+      text:    { primary: '#F5F7FA', secondary: '#8B94A5' },
       ok:      '#4caf50',
       warn:    '#ffaa00',
       err:     '#ff4444',
-      info:    '#4a9eff',
+      info:    '#00D9FF',
     },
     fontFamily: {
       sans: ['Roboto', 'Inter', 'system-ui', 'sans-serif'],
@@ -132,9 +134,9 @@ Três temas disponíveis em `tokens/design-tokens.json`:
 
 | Tema | Accent | Background | Caráter |
 |-------|--------|------------|-----------|
-| **CS2** | `#d96600` laranja | `#14141e` deep navy | Moderno · escuro · tático |
+| **CS2** | `#FF6A00` laranja | `#0B1628` deep navy | Moderno · escuro · tático |
 | **CSGO** | `#617d8c` aço | `#1a1c21` ardósia escura | Militar · esmaecido |
-| **CS1.6** | `#4db04f` verde | `#0d1a0d` terminal | Retrô · hacker |
+| **CS1.6** | `#4db04f` verde | `#121a12` terminal | Retrô · hacker |
 
 ## RAP Deep-Dive (37–41)
 
