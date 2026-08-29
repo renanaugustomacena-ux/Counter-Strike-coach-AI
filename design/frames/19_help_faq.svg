@@ -133,7 +133,7 @@
           <circle cx="12" cy="12" r="12" fill="#d96600"/>
           <text x="12" y="16" text-anchor="middle" fill="#14141e" font-weight="700" font-size="11">5</text>
           <text x="36" y="10" fill="#dcdcdc" font-weight="700">Chat with the AI Coach</text>
-          <text x="36" y="28" fill="#a0a0b0">Requires Ollama + gemma3:e2b model — see AI Coach section</text>
+          <text x="36" y="28" fill="#a0a0b0">Requires Ollama + gemma4:e2b model — see AI Coach section</text>
         </g>
       </g>
 
