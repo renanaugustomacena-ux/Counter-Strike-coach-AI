@@ -8,18 +8,18 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --bg:          #14141e;
-    --surface:     #1a1a2e;
-    --surface2:    #0f0f2e;
-    --border:      #3a3a5a;
+    --bg:          #0B1628;
+    --surface:     #121E2E;
+    --surface2:    #07101C;
+    --border:      #2A3A55;
     --border-sub:  rgba(255,255,255,0.05);
-    --text:        #dcdcdc;
-    --text-sec:    #a0a0b0;
-    --text-ter:    #3a3a5a;
-    --accent:      #d96600;
-    --accent-h:    #e67a1a;
+    --text:        #F5F7FA;
+    --text-sec:    #8B94A5;
+    --text-ter:    #2A3A55;
+    --accent:      #FF6A00;
+    --accent-h:    #FF8533;
     --warn:        #ffaa00;
-    --info:        #4a9eff;
+    --info:        #00D9FF;
     --ok:          #4caf50;
     --err:         #ff4444;
     --purple:      #a855f7;
@@ -43,8 +43,8 @@
   #topbar .logo { font-size: 11px; letter-spacing: 3px; font-weight: 700; color: var(--accent); white-space: nowrap; }
   #topbar .title { font-size: 15px; font-weight: 700; color: var(--text); }
   #topbar .sep { flex: 1; }
-  #topbar .badge { font-size: 10px; background: rgba(217,102,0,0.15); border: 1px solid var(--accent); color: var(--accent); padding: 3px 10px; border-radius: 4px; font-family: var(--mono); }
-  #topbar .badge.info { background: rgba(74,158,255,0.12); border-color: var(--info); color: var(--info); }
+  #topbar .badge { font-size: 10px; background: rgba(255, 106, 0,0.15); border: 1px solid var(--accent); color: var(--accent); padding: 3px 10px; border-radius: 4px; font-family: var(--mono); }
+  #topbar .badge.info { background: rgba(0, 217, 255,0.12); border-color: var(--info); color: var(--info); }
   #topbar .badge.ok   { background: rgba(76,175,80,0.12);  border-color: var(--ok);   color: var(--ok);   }
 
   /* ── LEFT NAV ── */
@@ -123,9 +123,9 @@
   }
   .frame-card:hover {
     border-color: var(--accent);
-    box-shadow: 0 0 0 1px rgba(217,102,0,0.2), 0 8px 32px rgba(0,0,0,0.4);
+    box-shadow: 0 0 0 1px rgba(255, 106, 0,0.2), 0 8px 32px rgba(0,0,0,0.4);
   }
-  .frame-card.arch:hover { border-color: var(--info); box-shadow: 0 0 0 1px rgba(74,158,255,0.2), 0 8px 32px rgba(0,0,0,0.4); }
+  .frame-card.arch:hover { border-color: var(--info); box-shadow: 0 0 0 1px rgba(0, 217, 255,0.2), 0 8px 32px rgba(0,0,0,0.4); }
 
   .frame-label {
     display: flex; align-items: center; gap: 10px;
@@ -136,8 +136,8 @@
   .frame-label .name { font-size: 12px; font-weight: 600; color: var(--text); flex: 1; }
   .frame-label .dims { font-family: var(--mono); font-size: 10px; color: var(--text-ter); }
   .frame-label .tag { font-size: 9px; letter-spacing: 1px; font-weight: 700; padding: 2px 6px; border-radius: 3px; text-transform: uppercase; }
-  .tag-ui   { background: rgba(217,102,0,0.15); color: var(--accent); }
-  .tag-arch { background: rgba(74,158,255,0.15); color: var(--info);   }
+  .tag-ui   { background: rgba(255, 106, 0,0.15); color: var(--accent); }
+  .tag-arch { background: rgba(0, 217, 255,0.15); color: var(--info);   }
   .tag-ds   { background: rgba(76,175,80,0.15);  color: var(--ok);     }
   .tag-mkt  { background: rgba(255,170,0,0.15);  color: var(--warn);   }
   .tag-rap  { background: rgba(255,68,68,0.15);  color: #ff4444;       }
@@ -229,28 +229,28 @@
 <!-- ====== RIGHT INSPECTOR ====== -->
 <aside id="inspector">
   <div class="insp-section">CS2 Theme</div>
-  <div class="swatch-row"><div class="swatch" style="background:#14141e;"></div><div class="swatch-label">#14141e</div><div class="swatch-name">surface.base</div></div>
-  <div class="swatch-row"><div class="swatch" style="background:#1a1a2e;"></div><div class="swatch-label">#1a1a2e</div><div class="swatch-name">surface.raised</div></div>
-  <div class="swatch-row"><div class="swatch" style="background:#0f0f2e;"></div><div class="swatch-label">#0f0f2e</div><div class="swatch-name">surface.sunken</div></div>
-  <div class="swatch-row"><div class="swatch" style="background:#d96600;"></div><div class="swatch-label">#d96600</div><div class="swatch-name">accent.primary</div></div>
-  <div class="swatch-row"><div class="swatch" style="background:#e67a1a;"></div><div class="swatch-label">#e67a1a</div><div class="swatch-name">accent.hover</div></div>
-  <div class="swatch-row"><div class="swatch" style="background:#b85500;"></div><div class="swatch-label">#b85500</div><div class="swatch-name">accent.pressed</div></div>
-  <div class="swatch-row"><div class="swatch" style="background:#dcdcdc;"></div><div class="swatch-label">#dcdcdc</div><div class="swatch-name">text.primary</div></div>
-  <div class="swatch-row"><div class="swatch" style="background:#a0a0b0;"></div><div class="swatch-label">#a0a0b0</div><div class="swatch-name">text.secondary</div></div>
-  <div class="swatch-row"><div class="swatch" style="background:#3a3a5a;"></div><div class="swatch-label">#3a3a5a</div><div class="swatch-name">border.default</div></div>
+  <div class="swatch-row"><div class="swatch" style="background:#0B1628;"></div><div class="swatch-label">#0B1628</div><div class="swatch-name">surface.base</div></div>
+  <div class="swatch-row"><div class="swatch" style="background:#121E2E;"></div><div class="swatch-label">#121E2E</div><div class="swatch-name">surface.raised</div></div>
+  <div class="swatch-row"><div class="swatch" style="background:#07101C;"></div><div class="swatch-label">#07101C</div><div class="swatch-name">surface.sunken</div></div>
+  <div class="swatch-row"><div class="swatch" style="background:#FF6A00;"></div><div class="swatch-label">#FF6A00</div><div class="swatch-name">accent.primary</div></div>
+  <div class="swatch-row"><div class="swatch" style="background:#FF8533;"></div><div class="swatch-label">#FF8533</div><div class="swatch-name">accent.hover</div></div>
+  <div class="swatch-row"><div class="swatch" style="background:#CC5500;"></div><div class="swatch-label">#CC5500</div><div class="swatch-name">accent.pressed</div></div>
+  <div class="swatch-row"><div class="swatch" style="background:#F5F7FA;"></div><div class="swatch-label">#F5F7FA</div><div class="swatch-name">text.primary</div></div>
+  <div class="swatch-row"><div class="swatch" style="background:#8B94A5;"></div><div class="swatch-label">#8B94A5</div><div class="swatch-name">text.secondary</div></div>
+  <div class="swatch-row"><div class="swatch" style="background:#2A3A55;"></div><div class="swatch-label">#2A3A55</div><div class="swatch-name">border.default</div></div>
 
   <div class="insp-section">Semantic</div>
   <div class="swatch-row"><div class="swatch" style="background:#4caf50;"></div><div class="swatch-label">#4caf50</div><div class="swatch-name">success</div></div>
   <div class="swatch-row"><div class="swatch" style="background:#ffaa00;"></div><div class="swatch-label">#ffaa00</div><div class="swatch-name">warning</div></div>
   <div class="swatch-row"><div class="swatch" style="background:#ff4444;"></div><div class="swatch-label">#ff4444</div><div class="swatch-name">error</div></div>
-  <div class="swatch-row"><div class="swatch" style="background:#4a9eff;"></div><div class="swatch-label">#4a9eff</div><div class="swatch-name">info</div></div>
+  <div class="swatch-row"><div class="swatch" style="background:#00D9FF;"></div><div class="swatch-label">#00D9FF</div><div class="swatch-name">info</div></div>
 
   <div class="insp-section">CSGO Theme</div>
   <div class="swatch-row"><div class="swatch" style="background:#1a1c21;"></div><div class="swatch-label">#1a1c21</div><div class="swatch-name">surface.base</div></div>
   <div class="swatch-row"><div class="swatch" style="background:#617d8c;"></div><div class="swatch-label">#617d8c</div><div class="swatch-name">accent.primary</div></div>
 
   <div class="insp-section">CS1.6 Theme</div>
-  <div class="swatch-row"><div class="swatch" style="background:#0d1a0d;"></div><div class="swatch-label">#0d1a0d</div><div class="swatch-name">surface.base</div></div>
+  <div class="swatch-row"><div class="swatch" style="background:#121a12;"></div><div class="swatch-label">#121a12</div><div class="swatch-name">surface.base</div></div>
   <div class="swatch-row"><div class="swatch" style="background:#4db04f;"></div><div class="swatch-label">#4db04f</div><div class="swatch-name">accent.primary</div></div>
 
   <div class="insp-section">Spacing</div>

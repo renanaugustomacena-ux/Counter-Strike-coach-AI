@@ -4,7 +4,7 @@
 
 Design system vettoriale per l'applicazione di coaching CS2. Tutti i file sono SVG + HTML + JSON — zero binari, completamente portabile.
 
-> **Nota sulla palette (2026-08-29, D-30):** i frame SVG sono disegnati nella palette originale di lancio (`#14141e` navy / `#d96600` arancione) e restano la fonte storica del design. La palette attuale del prodotto vive in `tokens/design-tokens.json` (CS2: base `#0B1628` / accento `#FF6A00`, più i token frost/glass) ed è ciò che l'app renderizza davvero — il file dei token è l'unica fonte di verità. I layout dei frame restano accurati; solo i colori precedono il cambio di palette della Fase 0.
+> **Nota sulla palette (2026-08-29, D-30 risolto):** i frame SVG sono stati RIDIPINTI nella palette live del prodotto (CS2: base `#0B1628` / accento `#FF6A00` — decisione dell'operatore, workbench Q5); gli originali nella palette di lancio sopravvivono nella cronologia git prima di questa data. `tokens/design-tokens.json` resta l'unica fonte di verità da cui l'app è generata; ora i frame la rispecchiano.
 
 ## Mappa dei file
 

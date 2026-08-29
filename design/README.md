@@ -4,7 +4,7 @@
 
 Vector design system for the CS2 coaching application. All files are SVG + HTML + JSON — zero binaries, fully portable.
 
-> **Palette note (2026-08-29, D-30):** the SVG frames are drawn in the original launch palette (`#14141e` navy / `#d96600` orange) and are kept as the historical design source. The current product palette lives in `tokens/design-tokens.json` (CS2: `#0B1628` base / `#FF6A00` accent, plus the frost/glass tokens) and is what the app actually renders — the tokens file is the single source of truth. The frames' layouts remain accurate; only their colors predate the Phase 0 palette shift.
+> **Palette note (2026-08-29, D-30 resolved):** the SVG frames were REPAINTED to the live product palette (CS2: `#0B1628` base / `#FF6A00` accent — operator decision, workbench Q5); the launch-palette originals survive in git history before this date. `tokens/design-tokens.json` remains the single source of truth the app is generated from; the frames now match it.
 
 ## File Map
 
