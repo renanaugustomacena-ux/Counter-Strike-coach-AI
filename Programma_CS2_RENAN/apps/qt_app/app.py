@@ -327,6 +327,19 @@ def main():
     app.setApplicationName(f"Macena CS2 Analyzer v{app_version}")
     app.setApplicationVersion(app_version)
 
+    # Q6-TRAY: the single-instance guard finally has a production caller —
+    # two GUI processes mean two Consoles + two session-engine daemons
+    # writing the same SQLite files (the exact hazard the guard documents).
+    from Programma_CS2_RENAN.core.lifecycle import lifecycle
+
+    if not lifecycle.ensure_single_instance():
+        QMessageBox.warning(
+            None,
+            "Macena CS2 Analyzer",
+            "Macena is already running — check the system tray " "(bottom-right, near the clock).",
+        )
+        return 1
+
     # Fonts must precede the splash so its painter can use the display stack.
     theme = ThemeEngine()
     theme.register_fonts()
@@ -368,6 +381,16 @@ def main():
 
     boot_ok = _boot_backend_services(splash)
     _ensure_sbert_model(splash)
+
+    # Q6-TRAY: tray icon + close-to-tray. When a tray exists the app must
+    # NOT die with the last hidden window — quit flows only through the
+    # tray's Quit action (or an unarmed close falling through closeEvent).
+    from Programma_CS2_RENAN.apps.qt_app.core.tray import build_tray
+
+    tray = build_tray(window)
+    if tray is not None:
+        window.attach_tray(tray)
+        app.setQuitOnLastWindowClosed(False)
 
     _splash_status(splash, "Ready!")
     window.show()

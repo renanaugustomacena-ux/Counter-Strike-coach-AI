@@ -573,5 +573,14 @@
   "tactical.legend_divergence": "punto di divergenza",
   "chart_awaiting_data": "In attesa dei dati dei round — analizza una demo",
   "wallpaper_slideshow": "Presentazione",
-  "wallpaper_slideshow_caption": "ruota ogni 2 min"
+  "wallpaper_slideshow_caption": "ruota ogni 2 min",
+  "tray_open": "Apri Macena",
+  "tray_coach": "AI Coach",
+  "tray_cli": "Console CLI",
+  "tray_quit": "Esci",
+  "tray_bg_title": "Ancora in esecuzione",
+  "tray_bg_body": "Macena continua ad allenarti in background — tasto destro sull'icona nella tray per uscire.",
+  "close_behavior": "Pulsante chiudi",
+  "close_to_tray": "Riduci nella tray",
+  "close_exit": "Esci dall'app"
 }

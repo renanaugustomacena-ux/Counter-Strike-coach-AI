@@ -379,6 +379,46 @@ class MainWindow(QMainWindow):
             shortcut = QShortcut(QKeySequence(keys), self)
             shortcut.activated.connect(lambda s=screen: self.switch_screen(s))
 
+    # ── System tray (Q6) ──
+
+    def attach_tray(self, tray) -> None:
+        """Adopt the tray icon; arms close-to-tray in closeEvent."""
+        self._tray = tray
+
+    def closeEvent(self, event):
+        """Close button minimizes to the tray when armed (Q6).
+
+        Two guards: a tray must be attached and the CLOSE_TO_TRAY setting
+        on (default). The tray's Quit action calls QApplication.quit()
+        directly — that path never enters closeEvent. Hiding keeps the
+        backend alive: the scanner daemon goes on ingesting demos while
+        the window is away.
+        """
+        from Programma_CS2_RENAN.core.config import get_setting
+
+        tray = getattr(self, "_tray", None)
+        if tray is not None and get_setting("CLOSE_TO_TRAY", True):
+            event.ignore()
+            self.hide()
+            if not getattr(self, "_tray_balloon_shown", False):
+                self._tray_balloon_shown = True
+                tray.showMessage(
+                    i18n.get_text("tray_bg_title", "Still running"),
+                    i18n.get_text(
+                        "tray_bg_body",
+                        "Macena keeps coaching in the background — "
+                        "right-click the tray icon to quit.",
+                    ),
+                )
+            return
+        if tray is not None:
+            # Tray mode disables quit-on-last-window; an unarmed close must
+            # still exit the app rather than strand a windowless process.
+            from PySide6.QtWidgets import QApplication
+
+            QApplication.instance().quit()
+        super().closeEvent(event)
+
     def set_wallpaper(self, path: str):
         """Set the background wallpaper image path."""
         self._bg_widget.set_image(path)
