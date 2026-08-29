@@ -1,0 +1,23 @@
+<!-- @dsCard group="Spacing" -->
+<!doctype html><html><head><meta charset="utf-8">
+<title>Spacing + radius</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Roboto:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  :root{--base:#0B1628;--raised:#121E2E;--sunken:#07101C;--border:#2A3A55;
+    --bsub:rgba(255, 255, 255, 0.05);--t1:#F5F7FA;--t2:#8B94A5;--t3:#3B4A68;--acc:#FF6A00;--acch:#FF8533;
+    --accp:#CC5500;--ok:#4caf50;--warn:#ffaa00;--err:#ff4444;--info:#00D9FF;
+    --chartbg:#0D1624;--frost:rgba(11, 22, 40, 0.78);--frostb:rgba(255, 255, 255, 0.08);--glow:rgba(255, 106, 0, 0.4);
+    --mono:'JetBrains Mono',Consolas,monospace;
+    --sans:Inter,Roboto,'Segoe UI',system-ui,sans-serif}
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--base);color:var(--t1);font:400 14px/1.55 var(--sans);
+    padding:22px;-webkit-font-smoothing:antialiased}
+  h1{font:700 16px/1.2 var(--sans);margin-bottom:2px}
+  .sub{font:400 11px/1.5 var(--mono);color:var(--t3);margin-bottom:16px}
+  .lbl{font:500 10px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;
+    color:var(--t3);margin:16px 0 8px}
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+</style></head><body>
+<h1>Spacing + radius</h1><div class="sub">spacing 4→48 · radius 4/8/16/24 · frame 31</div>
+<div class="lbl">Spacing scale</div><div class="row" style="align-items:flex-end"><div style="text-align:center"><div style="width:30px;height:6.8px;background:rgba(255,106,0,.3);border-top:2px solid var(--acc)"></div><div style="font:400 10px/1.6 var(--mono);color:var(--t2)">4</div></div><div style="text-align:center"><div style="width:30px;height:13.6px;background:rgba(255,106,0,.3);border-top:2px solid var(--acc)"></div><div style="font:400 10px/1.6 var(--mono);color:var(--t2)">8</div></div><div style="text-align:center"><div style="width:30px;height:20.4px;background:rgba(255,106,0,.3);border-top:2px solid var(--acc)"></div><div style="font:400 10px/1.6 var(--mono);color:var(--t2)">12</div></div><div style="text-align:center"><div style="width:30px;height:27.2px;background:rgba(255,106,0,.3);border-top:2px solid var(--acc)"></div><div style="font:400 10px/1.6 var(--mono);color:var(--t2)">16</div></div><div style="text-align:center"><div style="width:30px;height:40.8px;background:rgba(255,106,0,.3);border-top:2px solid var(--acc)"></div><div style="font:400 10px/1.6 var(--mono);color:var(--t2)">24</div></div><div style="text-align:center"><div style="width:30px;height:54.4px;background:rgba(255,106,0,.3);border-top:2px solid var(--acc)"></div><div style="font:400 10px/1.6 var(--mono);color:var(--t2)">32</div></div><div style="text-align:center"><div style="width:30px;height:81.6px;background:rgba(255,106,0,.3);border-top:2px solid var(--acc)"></div><div style="font:400 10px/1.6 var(--mono);color:var(--t2)">48</div></div></div><div class="lbl">Radius</div><div class="row"><div style="width:58px;height:58px;background:var(--sunken);border:1px solid var(--border);border-radius:4px;display:grid;place-items:center;font:400 10px/1 var(--mono);color:var(--t2)">sm 4</div><div style="width:58px;height:58px;background:var(--sunken);border:1px solid var(--border);border-radius:8px;display:grid;place-items:center;font:400 10px/1 var(--mono);color:var(--t2)">md 8</div><div style="width:58px;height:58px;background:var(--sunken);border:1px solid var(--border);border-radius:16px;display:grid;place-items:center;font:400 10px/1 var(--mono);color:var(--t2)">lg 16</div><div style="width:58px;height:58px;background:var(--sunken);border:1px solid var(--border);border-radius:24px;display:grid;place-items:center;font:400 10px/1 var(--mono);color:var(--t2)">xl 24</div></div>
+</body></html>

@@ -1,0 +1,71 @@
+<!-- @dsCard group="Brand" -->
+<!doctype html><html><head><meta charset="utf-8">
+<title>Frost · motif · wallpapers</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Roboto:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  :root{--base:#0B1628;--raised:#121E2E;--sunken:#07101C;--border:#2A3A55;
+    --bsub:rgba(255, 255, 255, 0.05);--t1:#F5F7FA;--t2:#8B94A5;--t3:#3B4A68;--acc:#FF6A00;--acch:#FF8533;
+    --accp:#CC5500;--ok:#4caf50;--warn:#ffaa00;--err:#ff4444;--info:#00D9FF;
+    --chartbg:#0D1624;--frost:rgba(11, 22, 40, 0.78);--frostb:rgba(255, 255, 255, 0.08);--glow:rgba(255, 106, 0, 0.4);
+    --mono:'JetBrains Mono',Consolas,monospace;
+    --sans:Inter,Roboto,'Segoe UI',system-ui,sans-serif}
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--base);color:var(--t1);font:400 14px/1.55 var(--sans);
+    padding:22px;-webkit-font-smoothing:antialiased}
+  h1{font:700 16px/1.2 var(--sans);margin-bottom:2px}
+  .sub{font:400 11px/1.5 var(--mono);color:var(--t3);margin-bottom:16px}
+  .lbl{font:500 10px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;
+    color:var(--t3);margin:16px 0 8px}
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+</style></head><body>
+<h1>Frost · motif · wallpapers</h1><div class="sub">frost tokens (reserved, Q1) · tactical-grid.svg · assets/wallpapers</div>
+<div class="lbl">Frost recipe</div><div style="border-radius:8px;padding:24px;background:repeating-linear-gradient(90deg, rgba(255,255,255,.04) 0 1px, transparent 1px 36px),repeating-linear-gradient(0deg, rgba(255,255,255,.04) 0 1px, transparent 1px 36px),radial-gradient(320px 130px at 22% 0%, rgba(255,106,0,.15), transparent 60%),var(--chartbg)"><div style="max-width:340px;background:var(--frost);backdrop-filter:blur(12px);border:1px solid var(--frostb);border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.45),0 0 22px -6px var(--glow);padding:14px 16px;font:400 12px/1.5 var(--sans);color:var(--t2)"><b style="color:var(--t1)">Reserved by decision (Q1).</b> rgba(11, 22, 40, 0.78) · blur 12 · hairline rgba(255, 255, 255, 0.08) — sticky nav + overlays only.</div></div><div class="lbl">Tactical-grid motif (tiled at 5% in-app)</div><div style="width:128px;border:1px solid var(--bsub);border-radius:6px;overflow:hidden"><svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Neo-tactical noir grid motif — tiled at 2.5% opacity behind surface base.
+       64px tile: a 32px cross (minor gridline) + 1px corners (major gridline
+       anchor). Scale-neutral; reads as "tactical map" rather than "checker". -->
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F5F7FA" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#F5F7FA" stop-opacity="0.14"/>
+    </linearGradient>
+  </defs>
+  <!-- Cross at cell center (32,32) -->
+  <line x1="24" y1="32" x2="40" y2="32" stroke="url(#g)" stroke-width="1"/>
+  <line x1="32" y1="24" x2="32" y2="40" stroke="url(#g)" stroke-width="1"/>
+  <!-- Corner anchors (1px dots) -->
+  <rect x="0" y="0" width="1" height="1" fill="#F5F7FA" fill-opacity="0.35"/>
+  <rect x="63" y="0" width="1" height="1" fill="#F5F7FA" fill-opacity="0.35"/>
+  <rect x="0" y="63" width="1" height="1" fill="#F5F7FA" fill-opacity="0.35"/>
+  <rect x="63" y="63" width="1" height="1" fill="#F5F7FA" fill-opacity="0.35"/>
+</svg>
+</div><div class="lbl">Theme wallpapers</div><div class="row"><div style="width:180px"><div style="border-radius:6px;overflow:hidden;border:1px solid var(--bsub)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <radialGradient id="g1" cx="20%" cy="15%" r="70%"><stop offset="0%" stop-color="#FF6A00" stop-opacity="0.45"/><stop offset="45%" stop-color="#CC5500" stop-opacity="0.15"/><stop offset="100%" stop-color="#0B1628" stop-opacity="0"/></radialGradient>
+    <radialGradient id="g2" cx="85%" cy="80%" r="60%"><stop offset="0%" stop-color="#00D9FF" stop-opacity="0.25"/><stop offset="100%" stop-color="#07101C" stop-opacity="0"/></radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#2A3A55" stroke-width="0.4" opacity="0.25"/></pattern>
+  </defs>
+  <rect width="1440" height="900" fill="#0B1628"/>
+  <rect width="1440" height="900" fill="url(#grid)"/>
+  <rect width="1440" height="900" fill="url(#g1)"/>
+  <rect width="1440" height="900" fill="url(#g2)"/>
+</svg>
+</div><div style="font:400 10px/1.6 var(--mono);color:var(--t2);text-align:center">cs2.svg</div></div><div style="width:180px"><div style="border-radius:6px;overflow:hidden;border:1px solid var(--bsub)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <radialGradient id="g1" cx="25%" cy="25%" r="65%"><stop offset="0%" stop-color="#617d8c" stop-opacity="0.40"/><stop offset="100%" stop-color="#1a1c21" stop-opacity="0"/></radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#3a3e48" stroke-width="0.4" opacity="0.3"/></pattern>
+  </defs>
+  <rect width="1440" height="900" fill="#1a1c21"/>
+  <rect width="1440" height="900" fill="url(#grid)"/>
+  <rect width="1440" height="900" fill="url(#g1)"/>
+</svg>
+</div><div style="font:400 10px/1.6 var(--mono);color:var(--t2);text-align:center">csgo.svg</div></div><div style="width:180px"><div style="border-radius:6px;overflow:hidden;border:1px solid var(--bsub)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <radialGradient id="g1" cx="20%" cy="20%" r="70%"><stop offset="0%" stop-color="#4db04f" stop-opacity="0.40"/><stop offset="100%" stop-color="#121a12" stop-opacity="0"/></radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#2a3e2a" stroke-width="0.4" opacity="0.3"/></pattern>
+  </defs>
+  <rect width="1440" height="900" fill="#121a12"/>
+  <rect width="1440" height="900" fill="url(#grid)"/>
+  <rect width="1440" height="900" fill="url(#g1)"/>
+</svg>
+</div><div style="font:400 10px/1.6 var(--mono);color:var(--t2);text-align:center">cs16.svg</div></div></div>
+</body></html>

@@ -1,0 +1,23 @@
+<!-- @dsCard group="Charts" -->
+<!doctype html><html><head><meta charset="utf-8">
+<title>Chart library</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Roboto:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  :root{--base:#0B1628;--raised:#121E2E;--sunken:#07101C;--border:#2A3A55;
+    --bsub:rgba(255, 255, 255, 0.05);--t1:#F5F7FA;--t2:#8B94A5;--t3:#3B4A68;--acc:#FF6A00;--acch:#FF8533;
+    --accp:#CC5500;--ok:#4caf50;--warn:#ffaa00;--err:#ff4444;--info:#00D9FF;
+    --chartbg:#0D1624;--frost:rgba(11, 22, 40, 0.78);--frostb:rgba(255, 255, 255, 0.08);--glow:rgba(255, 106, 0, 0.4);
+    --mono:'JetBrains Mono',Consolas,monospace;
+    --sans:Inter,Roboto,'Segoe UI',system-ui,sans-serif}
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--base);color:var(--t1);font:400 14px/1.55 var(--sans);
+    padding:22px;-webkit-font-smoothing:antialiased}
+  h1{font:700 16px/1.2 var(--sans);margin-bottom:2px}
+  .sub{font:400 11px/1.5 var(--mono);color:var(--t3);margin-bottom:16px}
+  .lbl{font:500 10px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;
+    color:var(--t3);margin:16px 0 8px}
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+</style></head><body>
+<h1>Chart library</h1><div class="sub">widgets/charts/* · QPainter only · frame 34</div>
+<div class="lbl">Voice rules (Q3)</div><div style="font:400 12.5px/1.9 var(--sans);color:var(--t2);max-width:520px"><span style="color:var(--acc);font-weight:700">■</span> your series lead with accent · <span style="color:var(--info);font-weight:700">■</span> pro baseline speaks cyan · <span style="color:var(--t1);font-weight:700">●</span> “now” dots are text-primary<br>Tactical views only: <span style="color:var(--info)">cyan = CT</span> · <span style="color:var(--acc)">orange = T</span> — team identity outranks the accent rule.</div><div class="lbl">RatingSparkline · history[].rating</div><svg width="240" height="48" style="background:var(--chartbg);border-radius:4px"><polyline points="0,34 14,38 28,30 42,33 56,22 70,25 84,12 98,16 112,6" fill="none" stroke="#FF6A00" stroke-width="2"/><circle cx="112" cy="6" r="3.4" fill="#F5F7FA"/></svg><div class="lbl">UtilityBarChart · you vs pro</div><div style="max-width:380px;font:400 11px/2 var(--mono);color:var(--t2)">Flashes thrown<br><div style="height:8px;width:72%;background:#FF6A00;border-radius:2px"></div><div style="height:8px;width:88%;background:#00D9FF;border-radius:2px;margin-top:3px"></div>Smokes thrown<br><div style="height:8px;width:56%;background:#FF6A00;border-radius:2px"></div><div style="height:8px;width:64%;background:#00D9FF;border-radius:2px;margin-top:3px"></div></div><div class="lbl">RadarChart · 8 axes · 0–100</div><div class="row" style="font:500 10px/1 var(--mono);color:var(--t2)"><span style="border:1px solid var(--border);border-radius:999px;padding:5px 9px">AIM</span><span style="border:1px solid var(--border);border-radius:999px;padding:5px 9px">MOVE</span><span style="border:1px solid var(--border);border-radius:999px;padding:5px 9px">POS</span><span style="border:1px solid var(--border);border-radius:999px;padding:5px 9px">UTIL</span><span style="border:1px solid var(--border);border-radius:999px;padding:5px 9px">CLUTCH</span><span style="border:1px solid var(--border);border-radius:999px;padding:5px 9px">ECON</span><span style="border:1px solid var(--border);border-radius:999px;padding:5px 9px">DUEL</span><span style="border:1px solid var(--border);border-radius:999px;padding:5px 9px">TRADE</span></div><div class="lbl">Per-Map Grid · text-only (GPU-safe)</div><div class="row" style="font:400 11.5px/1.6 var(--mono)"><div style="background:var(--raised);border:1px solid var(--bsub);border-radius:8px;padding:10px 14px">de_mirage<br><b style="color:#4caf50">1.28</b> · 12 matches · 75% W</div><div style="background:var(--raised);border:1px solid var(--bsub);border-radius:8px;padding:10px 14px">de_inferno<br><b style="color:#ffaa00">1.04</b> · 8 matches · 50% W</div><div style="background:var(--raised);border:1px solid var(--bsub);border-radius:8px;padding:10px 14px">de_nuke<br><b style="color:#ff4444">0.84</b> · 5 matches · 20% W</div></div>
+</body></html>
