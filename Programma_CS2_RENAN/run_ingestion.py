@@ -427,7 +427,18 @@ def process_queued_tasks(db_manager, storage, is_pro, high_priority, limit=0):
             processed_count += 1
             continue  # Skip to next demo
 
-        success, msg = _ingest_single_demo(db_manager, storage, demo_path, is_pro)
+        # Only the two parser entry calls are guarded internally (F-0006);
+        # everything downstream (interpolation, enrichment, dataframe build,
+        # dual to_sql) is not. Without this boundary one bad demo aborts the
+        # batch AND strands its task at 'processing' — unreachable by the
+        # queued-only selector forever.
+        try:
+            success, msg = _ingest_single_demo(db_manager, storage, demo_path, is_pro)
+        except (KeyboardInterrupt, SystemExit, GeneratorExit):
+            raise
+        except BaseException as e:  # noqa: BLE001 — per-demo failure boundary
+            logger.exception("Unhandled ingestion failure for %s", demo_basename)
+            success, msg = False, f"Unhandled ingestion failure: {type(e).__name__}: {e}"
 
         with db_manager.get_session() as session:
             session.add(task)
@@ -1329,12 +1340,19 @@ def _build_match_tick_dataframe(df_ticks):
             "is_alive": df_ticks.get("is_alive", pd.Series(True, index=df_ticks.index)).astype(
                 bool
             ),
+            # demoparser2 'ducking' is the correct field for crouch state; the
+            # legacy 'is_crouching' prop is never returned for CS2 demos, so
+            # reading it alone leaves the shard column all-False (the monolith
+            # path below already coalesced — this mirrors it).
             "is_crouching": df_ticks.get(
-                "is_crouching", pd.Series(False, index=df_ticks.index)
-            ).astype(bool),
-            "is_scoped": df_ticks.get("is_scoped", pd.Series(False, index=df_ticks.index)).astype(
-                bool
-            ),
+                "ducking",
+                df_ticks.get("is_crouching", pd.Series(False, index=df_ticks.index)),
+            )
+            .fillna(False)
+            .astype(bool),
+            "is_scoped": df_ticks.get("is_scoped", pd.Series(False, index=df_ticks.index))
+            .fillna(False)
+            .astype(bool),
             # F6.1/DQ-02: CS2 removed the legacy is_blinded signal (column reads
             # False forever) — derive from flash_duration > 0, demoparser2's real
             # blind-state field (already requested by parse_sequential_ticks and
@@ -1347,7 +1365,9 @@ def _build_match_tick_dataframe(df_ticks):
                     )
                     > 0
                 )
-                | df_ticks.get("is_blinded", pd.Series(False, index=df_ticks.index)).astype(bool)
+                | df_ticks.get("is_blinded", pd.Series(False, index=df_ticks.index))
+                .fillna(False)
+                .astype(bool)
             ).astype(bool),
             "active_weapon": df_ticks.get(
                 "active_weapon", pd.Series("unknown", index=df_ticks.index)
@@ -1359,12 +1379,12 @@ def _build_match_tick_dataframe(df_ticks):
             "enemies_visible": df_ticks.get(
                 "enemies_visible", pd.Series(0, index=df_ticks.index)
             ).astype(int),
-            "has_helmet": df_ticks.get("has_helmet", pd.Series(False, index=df_ticks.index)).astype(
-                bool
-            ),
-            "has_defuser": df_ticks.get(
-                "has_defuser", pd.Series(False, index=df_ticks.index)
-            ).astype(bool),
+            "has_helmet": df_ticks.get("has_helmet", pd.Series(False, index=df_ticks.index))
+            .fillna(False)
+            .astype(bool),
+            "has_defuser": df_ticks.get("has_defuser", pd.Series(False, index=df_ticks.index))
+            .fillna(False)
+            .astype(bool),
             "ping": df_ticks.get("ping", pd.Series(0, index=df_ticks.index)).astype(int),
             "kills_this_round": df_ticks.get(
                 "kills_this_round", pd.Series(0, index=df_ticks.index)
@@ -1464,16 +1484,24 @@ def _build_legacy_tick_dataframe(df_ticks, demo_name, target_player, meta_map_na
                 df_legacy_source.get(
                     "is_crouching", pd.Series(False, index=df_legacy_source.index)
                 ),
-            ).astype(bool),
+            )
+            .fillna(False)
+            .astype(bool),
             "is_scoped": df_legacy_source.get(
                 "is_scoped", pd.Series(False, index=df_legacy_source.index)
-            ).astype(bool),
+            )
+            .fillna(False)
+            .astype(bool),
             "has_helmet": df_legacy_source.get(
                 "has_helmet", pd.Series(False, index=df_legacy_source.index)
-            ).astype(bool),
+            )
+            .fillna(False)
+            .astype(bool),
             "has_defuser": df_legacy_source.get(
                 "has_defuser", pd.Series(False, index=df_legacy_source.index)
-            ).astype(bool),
+            )
+            .fillna(False)
+            .astype(bool),
             "active_weapon": df_legacy_source.get(
                 "active_weapon", pd.Series("unknown", index=df_legacy_source.index)
             ),

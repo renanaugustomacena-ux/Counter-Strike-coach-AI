@@ -8,7 +8,7 @@
 PySide6==6.11.0
 
 # --- Demo Parsing ---
-demoparser2==0.41.4
+demoparser2==0.42.0
 
 # --- Data & ORM ---
 sqlmodel==0.0.38

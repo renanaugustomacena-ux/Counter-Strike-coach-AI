@@ -6,7 +6,7 @@ from typing import Optional
 import pandas as pd
 from demoparser2 import DemoParser
 
-from Programma_CS2_RENAN.backend.data_sources.parse_guard import is_parse_error
+from Programma_CS2_RENAN.backend.data_sources.parse_guard import ParseTimeoutError, is_parse_error
 from Programma_CS2_RENAN.backend.processing.feature_engineering.kast import estimate_kast_from_stats
 from Programma_CS2_RENAN.backend.processing.feature_engineering.rating import (
     BASELINE_ADR,
@@ -632,7 +632,10 @@ def parse_sequential_ticks(demo_path: str, target_player: str, start_tick: int =
             demo_path,
         )
         if not ok:
-            return pd.DataFrame()
+            raise ParseTimeoutError(
+                f"parse_sequential_ticks timed out after "
+                f"{_get_parse_timeout(demo_path)}s for {demo_path}"
+            )
 
         t_parse = _time.monotonic()
         df = pd.DataFrame(raw_ticks)
