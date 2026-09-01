@@ -26,10 +26,16 @@
 set -e
 cd "$(dirname "$0")"
 
-VENV_PYTHON="$HOME/.venvs/cs2analyzer/bin/python"
+# Repo-local venv is the project's canonical interpreter (lock files and
+# docs/QUICKSTART.md target .venv); ~/.venvs/cs2analyzer is kept only as a
+# fallback for legacy setups.
+VENV_PYTHON="$(dirname "$0")/.venv/bin/python"
 if [ ! -x "$VENV_PYTHON" ]; then
-    echo "ERROR: venv not found at $VENV_PYTHON" >&2
-    echo "Create it with: python3.10 -m venv ~/.venvs/cs2analyzer" >&2
+    VENV_PYTHON="$HOME/.venvs/cs2analyzer/bin/python"
+fi
+if [ ! -x "$VENV_PYTHON" ]; then
+    echo "ERROR: no venv found at ./.venv or ~/.venvs/cs2analyzer" >&2
+    echo "Create it with: python3 -m venv .venv && .venv/bin/pip install -r requirements.txt -r requirements-rap.txt" >&2
     exit 1
 fi
 
