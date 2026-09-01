@@ -7,6 +7,11 @@ Usage:
     python tools/ingest_pro_demos.py                # incremental: skip already-ingested
     python tools/ingest_pro_demos.py --full          # full rebuild: re-ingest everything
     python tools/ingest_pro_demos.py --retrain-only  # skip ingestion, just retrain
+    python tools/ingest_pro_demos.py --no-train      # ingest only, skip the retrain step
+
+Incremental mode reclaims interrupted work: tasks left 'failed' or
+'processing' (orphaned by a crash) whose .dem still exists are scrubbed
+per-stem (tick/round/match rows + shard file) and requeued.
 """
 
 import sys
@@ -168,18 +173,53 @@ def main():
         # (The old module-level monkeypatch disabled dedup for EVERYTHING
         # processed by this interpreter, user demos included.)
     else:
-        print("\n[3/5] Clearing stale queue entries...")
+        print("\n[3/5] Clearing stale queue entries and reclaiming interrupted work...")
+        match_data_dir = DEMO_BASE / "match_data"
         with db.get_session() as session:
             stale = session.exec(
-                select(IngestionTask).where(IngestionTask.status.in_(["queued", "failed"]))
+                select(IngestionTask).where(
+                    IngestionTask.status.in_(["queued", "failed", "processing"]),
+                    IngestionTask.is_pro == True,  # noqa: E712
+                )
             ).all()
             cleared = 0
+            requeued = 0
             for task in stale:
                 if not Path(task.demo_path).exists():
                     session.delete(task)
                     cleared += 1
+                    continue
+                if task.status == "queued":
+                    continue
+                # 'failed' or 'processing' with the .dem still on disk.
+                # 'processing' is always an orphan here: this tool is the
+                # single runner, so no live claimant can exist at startup.
+                # Requeue is only safe with a per-stem scrub first —
+                # last_tick_processed resets to 0 and ticks are written
+                # with to_sql(if_exists="append"), so leftover partial
+                # rows would be duplicated; and leftover PlayerMatchStats
+                # rows would make _check_duplicate_demo mark the retry
+                # "completed" with zero ticks.
+                stem = Path(task.demo_path).stem
+                session.exec(
+                    text("DELETE FROM playertickstate WHERE demo_name = :d").bindparams(d=stem)
+                )
+                session.exec(text("DELETE FROM roundstats WHERE demo_name = :d").bindparams(d=stem))
+                session.exec(
+                    text("DELETE FROM playermatchstats WHERE demo_name = :d").bindparams(d=stem)
+                )
+                match_id = int(hashlib.sha256(stem.encode()).hexdigest(), 16) % (2**63 - 1)
+                for suffix in ("", "-shm", "-wal"):
+                    p = Path(str(match_data_dir / f"match_{match_id}.db") + suffix)
+                    if p.exists():
+                        p.unlink()
+                task.status = "queued"
+                task.last_tick_processed = 0
+                task.error_message = None
+                session.add(task)
+                requeued += 1
             session.commit()
-        print(f"  Cleared {cleared} stale tasks.")
+        print(f"  Cleared {cleared} stale tasks; requeued {requeued} interrupted (scrubbed).")
 
     print()
 
@@ -209,16 +249,19 @@ def main():
     print()
 
     # ── Step 5: Retrain coach models ───────────────────────────────────────
-    print("[5/5] Retraining coach models (this may take a few minutes)...")
-    manager = CoachTrainingManager()
-    ready, reason = manager.check_prerequisites()
-    if not ready:
-        print(f"  Prerequisites not met: {reason}")
-        print("  Skipping retraining — ingest more demos first.")
+    if "--no-train" in sys.argv:
+        print("[5/5] Skipping retraining (--no-train).")
     else:
-        print(f"  Prerequisites OK ({reason}). Starting full cycle...")
-        manager.run_full_cycle()
-        print("  Retraining complete.")
+        print("[5/5] Retraining coach models (this may take a few minutes)...")
+        manager = CoachTrainingManager()
+        ready, reason = manager.check_prerequisites()
+        if not ready:
+            print(f"  Prerequisites not met: {reason}")
+            print("  Skipping retraining — ingest more demos first.")
+        else:
+            print(f"  Prerequisites OK ({reason}). Starting full cycle...")
+            manager.run_full_cycle()
+            print("  Retraining complete.")
 
     print("\n=== Done ===")
 

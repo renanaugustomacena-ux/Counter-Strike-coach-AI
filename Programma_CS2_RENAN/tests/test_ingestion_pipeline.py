@@ -5,6 +5,7 @@ and the _is_profile_ready gate.
 """
 
 import math
+from pathlib import Path
 
 import pytest
 from sqlmodel import Session, SQLModel, create_engine
@@ -266,3 +267,75 @@ class TestCorrectionEngine:
         for c in result:
             assert "weighted_z" in c
             assert "feature" in c
+
+
+class TestPerDemoFailureBoundary:
+    """One crashing demo must mark its task 'failed' and not abort the batch."""
+
+    def test_crash_marks_failed_and_batch_continues(
+        self, mock_db_manager, ingestion_db, monkeypatch, tmp_path
+    ):
+        from unittest.mock import MagicMock
+
+        import Programma_CS2_RENAN.run_ingestion as ri
+
+        session, _ = ingestion_db
+        demo_a = tmp_path / "crasher.dem"
+        demo_b = tmp_path / "survivor.dem"
+        demo_a.write_bytes(b"x")
+        demo_b.write_bytes(b"x")
+        session.add(IngestionTask(demo_path=str(demo_a), status="queued", is_pro=True))
+        session.add(IngestionTask(demo_path=str(demo_b), status="queued", is_pro=True))
+        session.commit()
+
+        calls = []
+
+        def fake_ingest(db_manager, storage, demo_path, is_pro):
+            calls.append(demo_path.name)
+            if demo_path.name == "crasher.dem":
+                raise KeyError("X")  # unguarded-dataframe-step class of crash
+            return True, "Success"
+
+        monkeypatch.setattr(ri, "_ingest_single_demo", fake_ingest)
+        monkeypatch.setattr(ri, "_check_duplicate_demo", lambda *a, **k: False)
+        monkeypatch.setattr(
+            "Programma_CS2_RENAN.backend.storage.state_manager.get_state_manager",
+            lambda: MagicMock(),
+        )
+
+        ri.process_queued_tasks(
+            mock_db_manager, MagicMock(), is_pro=True, high_priority=True, limit=0
+        )
+
+        assert calls == ["crasher.dem", "survivor.dem"]
+        from sqlmodel import select
+
+        with mock_db_manager.get_session() as check:
+            rows = {Path(t.demo_path).name: t for t in check.exec(select(IngestionTask)).all()}
+        assert rows["crasher.dem"].status == "failed"
+        assert "Unhandled ingestion failure" in rows["crasher.dem"].error_message
+        assert "KeyError" in rows["crasher.dem"].error_message
+        assert rows["survivor.dem"].status == "completed"
+
+
+class TestParseTimeoutPropagation:
+    """Tick-parse timeout must FAIL the demo, not complete it with zero ticks."""
+
+    def test_timeout_raises_parse_timeout_error(self, monkeypatch, tmp_path):
+        import Programma_CS2_RENAN.backend.data_sources.demo_parser as dp
+        from Programma_CS2_RENAN.backend.data_sources.parse_guard import ParseTimeoutError
+
+        demo = tmp_path / "hung.dem"
+        demo.write_bytes(b"x")
+        monkeypatch.setattr(dp, "_run_with_parse_timeout", lambda *a, **k: (False, None))
+        with pytest.raises(ParseTimeoutError):
+            dp.parse_sequential_ticks(str(demo), "ALL")
+
+    def test_guard_propagates_timeout(self):
+        from Programma_CS2_RENAN.backend.data_sources.parse_guard import (
+            ParseTimeoutError,
+            is_parse_error,
+        )
+
+        assert is_parse_error(ParseTimeoutError("t")) is False
+        assert is_parse_error(ValueError("v")) is True

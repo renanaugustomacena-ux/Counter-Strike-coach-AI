@@ -24,7 +24,18 @@ Usage at a call site::
 
 from __future__ import annotations
 
-_PROPAGATE = (KeyboardInterrupt, SystemExit, GeneratorExit)
+
+class ParseTimeoutError(RuntimeError):
+    """Tick-parse timeout. Raised instead of returning an empty DataFrame:
+    an empty frame is indistinguishable from a legitimately fully-processed
+    incremental parse, so a timeout that returned one was recorded as
+    'completed / No new ticks' — full aggregate stats, zero ticks, never
+    retried. Lives here (not in demo_parser) so ``is_parse_error`` can
+    PROPAGATE it: a timeout is an infrastructure verdict, not a malformed
+    demo, and must reach the task-status machinery as a failure."""
+
+
+_PROPAGATE = (KeyboardInterrupt, SystemExit, GeneratorExit, ParseTimeoutError)
 
 
 def is_parse_error(exc: BaseException) -> bool:
