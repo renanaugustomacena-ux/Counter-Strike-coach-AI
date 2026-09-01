@@ -35,7 +35,7 @@
 PySide6==6.11.0
 
 # --- Demo Parsing (C/Rust extension; sandboxed in Phase 2 §6.6) ---
-demoparser2==0.41.1
+demoparser2==0.42.0
 
 # --- Data & ORM ---
 sqlmodel==0.0.38
