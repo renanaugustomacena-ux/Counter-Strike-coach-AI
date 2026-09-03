@@ -25,7 +25,7 @@ Their names are similar but their responsibilities are disjoint:
 | File | Lines | Purpose | Key Exports |
 |------|-------|---------|-------------|
 | `__init__.py` | 1 | Package marker | — |
-| `help_system.py` | ~83 | Markdown documentation lookup, indexing, and search | `HelpSystem`, `get_help_system()` |
+| `help_system.py` | ~81 | Markdown documentation lookup, indexing, and search | `HelpSystem`, `get_help_system()` |
 
 ## Architecture & Concepts
 
@@ -75,14 +75,15 @@ Current documentation topics:
 
 | File | Topic | Content Summary |
 |------|-------|-----------------|
-| `getting_started.md` | Getting Started | Setup wizard, demo paths, Steam/FACEIT linking, 10/10 rule, ingestion modes |
-| `features.md` | Feature Guide | Dashboard, Skill Radar, RAP AI Coach, Tactical Viewer, Advanced Analytics |
-| `troubleshooting.md` | Troubleshooting | Neural stall fixes, demo detection, UI launch issues, performance tuning |
+| `getting_started.md` | Getting Started with Macena CS2 Analyzer | Launching the app, initial setup, the "10/10 Rule", ingestion & training service, data maturity |
+| `features.md` | Feature Guide | Dashboard & Skill Radar, RAP AI Coach, Tactical Viewer (2D Replay), Advanced Analytics |
+| `troubleshooting.md` | Troubleshooting Guide | Neural/data issues (neural stall, idle coach, missing demos), UI & launch issues, performance & HLTV sync |
 
 ### Fallback Topics
 
 The Qt help screen defines a hardcoded `_FALLBACK_TOPICS` list that is used when
-`help_system.py` fails to import or when `get_help_system()` raises an exception.
+`help_system.py` fails to import, when `get_help_system()` raises an exception,
+or when the index comes back empty.
 The fallback topics cover: Getting Started, Demo Analysis, AI Coach, Steam Integration,
 Navigation, and Troubleshooting. This ensures the help screen is never completely
 empty, even in degraded environments.
@@ -104,15 +105,18 @@ content receives a combined score of 11.
 
 ### Qt Help Screen (`apps/qt_app/screens/help_screen.py`)
 
-The primary UI consumer. Implements a two-panel layout:
+The primary UI consumer. Implements a header row plus a two-panel layout:
 
-- **Left panel** (240px fixed): Search input (`QLineEdit`) + topic list (`QListWidget`)
-- **Right panel** (flexible): Scrollable content viewer (`QLabel` inside `QScrollArea`)
+- **Header:** Screen title on the left, search input (`QLineEdit`, 320px fixed) on the right
+- **Left panel** (300px fixed): "TOPICS" rail of custom `_TopicRow` widgets plus an "EXTERNAL" links section
+- **Right panel** (flexible): Scrollable article view (`QScrollArea`) with title, content, and related-topic `MiniLinkCard` shortcuts
 
 The screen imports `get_help_system` with a try/except guard and sets
 `_HELP_AVAILABLE = True/False`. On `on_enter()`, it attempts to load topics from the
-help system and falls back to `_FALLBACK_TOPICS` on failure. Search is performed
-client-side by filtering the already-loaded topic list.
+help system and falls back to `_FALLBACK_TOPICS` on failure or when the index is
+empty. Search is performed client-side by filtering the already-loaded topic list.
+The "Getting Started" topic renders a structured article (numbered steps + demo
+folder callout); all other topics render their Markdown content verbatim.
 
 ### Adding New Help Topics
 
@@ -136,9 +140,10 @@ No code changes are required. The index is rebuilt dynamically from the filesyst
   `print()`. This should be migrated to structured logging in a future pass.
 - **Cache invalidation:** The cache is only rebuilt when `refresh_index()` is called
   explicitly. There is no file-watcher or auto-refresh mechanism.
-- **Content rendering:** The Qt help screen displays content as plain text via
-  `QLabel.setText()`. Markdown formatting (headers, lists, links) is not rendered —
-  content appears as-is. A future enhancement could use `QTextBrowser` with
+- **Content rendering:** The Qt help screen displays topic content as plain text via
+  `QLabel.setText()` (except "Getting Started", which uses a structured widget
+  layout). Markdown formatting (headers, lists, links) is not rendered — content
+  appears as-is. A future enhancement could use `QTextBrowser` with
   `setMarkdown()` for rich rendering.
 - **Search limitations:** Substring matching means searching for "demo" will match
   "demonstration" and "demographics". There is no word-boundary awareness.

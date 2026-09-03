@@ -64,9 +64,10 @@ filesystem.
 
 Key behaviours:
 
-- **HMAC signing** (`R1-12`): the manifest itself is signed with an HMAC-SHA256 key.
-  Production builds inject the key via `CS2_MANIFEST_KEY`; development falls back to
-  a static key with a logged warning (`RP-01`).
+- **HMAC signing** (`R1-12`): the manifest itself is signed with an HMAC-SHA256 key
+  injected via `CS2_MANIFEST_KEY`. Development falls back to a static key with a
+  logged warning (`RP-01`); frozen (PyInstaller) builds fail closed instead,
+  refusing to start when the env key is missing.
 - **Frozen binary support**: when running inside a PyInstaller bundle, the manifest
   is resolved from `sys._MEIPASS` with multiple candidate paths.
 - **Convenience entry point**: `run_rasp_audit(project_root)` instantiates the guard,
@@ -124,6 +125,11 @@ All domain exceptions inherit from `CS2AnalyzerError`, which accepts an optional
 - **Thread safety**: `_correlation_local` uses `threading.local()`, so correlation IDs
   are isolated per thread. Daemon threads in the Quad-Daemon engine each set their
   own ID at cycle start.
+- **Rotation is single-writer only (F-0011)**: every named logger attaches its own
+  `RotatingFileHandler` to the shared `cs2_analyzer.log`, so concurrent handlers —
+  and especially concurrent processes — can race the same rotation and interleave
+  lines. Current usage is single-writer; the multiprocess logging redesign is
+  tracked in `docs/OPEN_ISSUES.md` (F-0011).
 - **Testing**: in test suites, `CS2_LOG_LEVEL=DEBUG` and `configure_log_dir(tmp_path)`
   redirect all output to a temporary directory. Sentry is automatically skipped when
   `pytest` is detected in `sys.modules`.

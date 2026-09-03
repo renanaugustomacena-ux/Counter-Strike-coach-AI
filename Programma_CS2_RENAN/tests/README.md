@@ -4,7 +4,7 @@
 
 **Authority:** `Programma_CS2_RENAN/tests/` -- Comprehensive regression and correctness suite for the Macena CS2 Analyzer.
 
-The test suite contains 2,190+ tests distributed across 130 files (125 topic-organised files
+The test suite contains 2,540+ tests distributed across 166 files (161 topic-organised files
 here plus 5 in `automated_suite/`), following the test pyramid (unit > integration > e2e).
 Every subsystem -- from the 25-dim feature vector through the neural networks, coaching engine,
 database layer, and UI screens -- is covered by deterministic, reproducible assertions. Tests
@@ -21,9 +21,10 @@ gating via the `CS2_INTEGRATION_TESTS` environment variable.
 
 ## File Inventory (selection)
 
-The suite has 125 topic-organised `test_*.py` files at this level; the table below covers a
+The suite has 161 topic-organised `test_*.py` files at this level; the table below covers a
 representative subset by domain (newer files -- tick-rate SSOT, MoE gates, HLTV parsing,
-security hardening, and others -- follow the same `test_<topic>.py` convention).
+security hardening, TensorBoard logging, UI smoke/harness, chart widgets, and others --
+follow the same `test_<topic>.py` convention).
 
 | File | Domain | Description |
 |------|--------|-------------|
@@ -102,7 +103,7 @@ security hardening, and others -- follow the same `test_<topic>.py` convention).
 | `test_spatial_engine.py` | Analysis | Spatial engine coordinate transforms |
 | `test_state_reconstructor.py` | Processing | RAP state reconstruction from ticks |
 | `test_tactical_features.py` | Processing | Tactical feature extraction |
-| `test_temporal_baseline.py` | Analysis | 20 temporal baseline decay tests |
+| `test_temporal_baseline.py` | Analysis | 22 temporal baseline decay tests |
 | `test_tensor_factory.py` | NN | `TensorFactory` shape and dtype contracts |
 | `test_trade_kill_detector.py` | Analysis | Trade kill detection logic |
 | `test_training_callbacks.py` | NN | Training callback registry tests |
@@ -111,7 +112,7 @@ security hardening, and others -- follow the same `test_<topic>.py` convention).
 | `test_v1_blockers.py` | Regression | V1 production readiness blocker fixes |
 | `test_z_penalty.py` | Processing | `compute_z_penalty()` edge cases |
 | `automated_suite/` | Infrastructure | Automated test runner (smoke, unit, functional, e2e, regression) |
-| `data/` | Infrastructure | Test data fixtures and sample files |
+| `data/` | Infrastructure | Placeholder for on-disk test data (currently only `.gitkeep`) |
 
 ## Fixture Architecture
 
@@ -119,7 +120,7 @@ All shared fixtures live in `conftest.py`. The hierarchy is:
 
 ```
 in_memory_db          -- Empty schema via SQLModel.metadata.create_all()
-  seeded_db_session   -- Pre-populated with 6 PlayerMatchStats, 12 RoundStats, 1 PlayerProfile
+  seeded_db_session   -- Pre-populated with 6 PlayerMatchStats, 8 RoundStats, 1 PlayerProfile
     seeded_player_stats  -- First PlayerMatchStats from seeded DB
     seeded_round_stats   -- First RoundStats from seeded DB
 
@@ -127,6 +128,8 @@ real_db_session       -- Opens production database.db (skips if absent)
   real_player_stats   -- First real PlayerMatchStats (skips if empty)
   real_round_stats    -- First real RoundStats (skips if empty)
 
+seeded_hltv_session   -- In-memory HLTV metadata DB (2 ProTeams, 4 ProPlayers, 4 stat cards)
+match_data_dir        -- tmp_path per-match DB with 1 minimal match (10 tick rows)
 mock_db_manager       -- In-memory DatabaseManager replacement with get_session() / upsert()
 isolated_settings     -- Redirects user_settings.json to tmp_path, restores at teardown
 torch_no_grad         -- Wraps test body in torch.no_grad() context
@@ -144,12 +147,17 @@ CS2_INTEGRATION_TESTS=1 python -m pytest Programma_CS2_RENAN/tests/ -x -q
 ```
 
 The `pytest_collection_modifyitems` hook in `conftest.py` applies the skip marker automatically
-when the environment variable is unset.
+unless the environment variable is set to `1`.
+
+Markers are registered in the root `pytest.ini` (which runs with `--strict-markers`): `slow`,
+`integration`, `unit`, `portability`, `known_fail`, `flaky`, and `timeout`. The `integration`
+marker is additionally registered by `conftest.py`.
 
 ## Virtual Environment Guard
 
-The `conftest.py` venv guard prevents running tests outside the `cs2analyzer` virtual environment.
-If `sys.prefix == sys.base_prefix` and neither `CI` nor `GITHUB_ACTIONS` is set, pytest exits
+The `conftest.py` venv guard prevents running tests outside a Python virtual environment
+(the project uses `venv_win` on Windows and `venv_linux` on Linux). If
+`sys.prefix == sys.base_prefix` and neither `CI` nor `GITHUB_ACTIONS` is set, pytest exits
 immediately with return code 2. This avoids confusing import failures when tests are accidentally
 run with system Python.
 
@@ -157,7 +165,8 @@ run with system Python.
 
 ```bash
 # Activate the virtual environment first
-source ~/.venvs/cs2analyzer/bin/activate
+source venv_linux/bin/activate      # Linux
+# .\venv_win\Scripts\activate       # Windows
 
 # Run all tests (stop on first failure)
 python -m pytest Programma_CS2_RENAN/tests/ -x -q

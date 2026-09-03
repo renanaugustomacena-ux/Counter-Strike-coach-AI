@@ -6,7 +6,7 @@
 
 This directory contains internal tooling specific to the `Programma_CS2_RENAN` package. These
 are distinct from the root-level `tools/` directory (which holds project-wide entry points like
-`headless_validator.py` invoked by pre-commit hooks). Together with the root validator and the
+`headless_validator.py` invoked by the pre-commit framework's hooks). Together with the root validator and the
 pytest suite, the tools here form a 4-level validation hierarchy that ensures system health from
 fast smoke checks through deep clinical diagnostics. The validators build on the shared
 `BaseValidator` ABC defined in `_infra.py`, producing structured `ToolResult` / `ToolReport`
@@ -19,7 +19,7 @@ The four levels are designed to be run in order of increasing depth and time cos
 | Level | Tool | Checks | Purpose |
 |-------|------|--------|---------|
 | 1 | `tools/headless_validator.py` (project root) | 42 distinct check phases | Fast regression gate (mandatory before task completion) |
-| 2 | pytest suite | 2,190+ tests in 130 files | Logic validation, contract assertions |
+| 2 | pytest suite | 2,500+ tests in 176 files | Logic validation, contract assertions |
 | 3 | `backend_validator.py` | 7 sections | Build health, model zoo, coaching pipeline |
 | 4 | `Goliath_Hospital.py` | 11 departments | Comprehensive clinical diagnostic |
 
@@ -51,16 +51,18 @@ root-level `tools/` directory, not here.
 
 ## Shared Infrastructure (`_infra.py`)
 
-All tools in this directory build on the shared infrastructure module `_infra.py`, which provides:
+The validation, diagnostic, and development tools in this directory build on the shared
+infrastructure module `_infra.py` (the standalone data scripts do not -- see Development
+Notes), which provides:
 
 - **`path_stabilize()`** -- Canonical path setup; adds `PROJECT_ROOT` to `sys.path`, sets
   `KIVY_NO_ARGS=1`, configures UTF-8 encoding. Returns `(PROJECT_ROOT, SOURCE_ROOT)`.
-- **`require_venv()`** -- Venv guard that exits if not in the `cs2analyzer` virtualenv
-  (bypassed when `CI` is set).
+- **`require_venv()`** -- Venv guard that exits when not running inside a virtual
+  environment (the expected venv is `cs2analyzer`; bypassed when `CI` is set).
 - **`BaseValidator`** -- Abstract base class with `define_checks()`, `check()`, `run()`,
   `Console` integration, and JSON report generation.
 - **`ToolResult`** / **`ToolReport`** -- Structured dataclasses for check results with
-  `Severity` levels (CRITICAL, WARNING, INFO, OK).
+  `Severity` levels (CRITICAL, ERROR, WARNING, INFO, HEALTHY).
 - **`Console`** -- Rich-style terminal output with section headers, pass/fail indicators,
   and summary tables.
 
@@ -89,10 +91,11 @@ One tool in this directory is invoked as a pre-commit hook:
 1. **`sync_integrity_manifest.py --verify-only`** -- exits 1 if the on-disk RASP
    integrity manifest diverges from computed hashes (run without the flag to regenerate)
 
-The other validation hooks (`headless_validator.py`, `dev_health.py --quick`,
-`dead_code_detector.py`) run from the root-level `tools/` directory; the headless
-validator is both a pre-commit hook and the mandatory post-task gate -- it must exit 0
-before any development task is considered complete.
+The other validation hooks run from the root-level `tools/` directory:
+`dev_health.py --quick` at the pre-commit stage, `headless_validator.py` and
+`dead_code_detector.py` at the pre-push stage. The headless validator is both a
+pre-push hook and the mandatory post-task gate -- it must exit 0 before any
+development task is considered complete.
 
 ## Usage
 
@@ -133,11 +136,14 @@ python -m Programma_CS2_RENAN.tools.seed_hltv_top20
 
 ## Development Notes
 
-- All tools use `_infra.path_stabilize()` for consistent path resolution. Never manipulate
-  `sys.path` directly in tool scripts.
+- Validation, diagnostic, and development tools use `_infra.path_stabilize()` for consistent
+  path resolution instead of manipulating `sys.path` directly. The standalone data scripts
+  (`aggregate_match_stats_sql.py`, `migrate_hltv_schema_2026_05.py`, `register_orphan_matches.py`,
+  `repair_rating_scale.py`, `seed_hltv_top20.py`) deliberately do not depend on `_infra` --
+  e.g. `repair_rating_scale.py` is stdlib-only so it can run where the project venv does not exist.
 - Exit codes are standardized: `0 = PASS`, `1 = FAIL`. Pre-commit hooks rely on this contract.
-- The `BaseValidator` pattern ensures every tool produces human-readable console output
-  and, with the `--json` flag, a machine-readable JSON report on stdout.
+- The `BaseValidator` pattern ensures every `BaseValidator`-based tool produces human-readable
+  console output and, with the `--json` flag, a machine-readable JSON report on stdout.
 - `Goliath_Hospital.py` is a `BaseValidator` subclass (`GoliathHospital`); findings are
   captured as `ToolResult` entries with severity levels, and `--department` runs a single
   department in isolation.

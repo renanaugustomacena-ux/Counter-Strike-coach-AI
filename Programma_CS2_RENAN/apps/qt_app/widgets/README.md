@@ -35,7 +35,7 @@ widgets/
 |------|---------|
 | `__init__.py` | Package marker. |
 | `skeleton.py` | `SkeletonRect` / `SkeletonCard` / `SkeletonTable` — shimmer placeholders shown while ViewModel data loads. |
-| `toast.py` | `ToastWidget` + `ToastContainer` — transient notifications with severity-based auto-dismiss; `MainWindow` connects `AppState.notification_received` to the container. |
+| `toast.py` | `ToastWidget` + `ToastContainer` — transient notifications with severity-based auto-dismiss (CRITICAL never auto-dismisses); `MainWindow` connects `AppState.notification_received` to the container. |
 
 ## Conventions
 
@@ -45,7 +45,7 @@ Most widgets are `QWidget` containers that compose smaller pieces. Avoid deep in
 
 ### Theme-aware styling
 
-Every widget reads colors / spacing / typography from `core/design_tokens.py` rather than hard-coding them. The QSS generator in `core/qss_generator.py` materialises tokens into a stylesheet that's applied app-wide.
+Every widget reads colors / spacing / typography from `core/design_tokens.py` rather than hard-coding them. The QSS generator in `core/qss_generator.py` materialises tokens into a stylesheet that's applied app-wide, and the application `QPalette` is likewise derived from the tokens (`core/theme_engine.py`) — the legacy per-theme `.qss` files were removed; the token-driven template is the sole styling source.
 
 ### Signal-based API
 

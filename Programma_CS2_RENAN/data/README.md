@@ -17,7 +17,7 @@ data/
 │   ├── getting_started.md          # User setup guide (10/10 rule)
 │   └── troubleshooting.md         # Common issues
 ├── external/                        # External data inputs
-│   └── hltv_stats_urls.txt         # HLTV player URLs for scraper
+│   └── hltv_stats_urls.txt         # HLTV player URLs (historical input list)
 ├── knowledge/                       # RAG coaching knowledge base
 │   ├── {map}_coaching.txt          # Per-map coaching text (7 maps)
 │   ├── {map}_coaching_ocr.txt      # OCR-extracted variants
@@ -73,10 +73,15 @@ overpass, ancient, anubis):
 
 ## `demos/pro_ingest/`
 
-Staging directory for professional match `.dem` files. The ingestion pipeline picks up files from here for pro baseline training.
+Repository-side placeholder for professional match `.dem` files, kept for local
+dev-scale tests (`tests/test_demo_parser.py` skips when it is empty).
 
 - Currently tracked via `.gitkeep` (empty in the repository)
-- Production: ~200 pro demo files on the external SSD
+- The runtime pro ingest directory is user-configured: the `PRO_DEMO_PATH` setting
+  when set, otherwise `pro_ingest/` under the storage root
+  (`backend/storage/storage_manager.py`)
+- The full pro demo corpus and the monolith training database live on the
+  Linux data box, not in this repository (see `docs/OPEN_ISSUES.md` §3)
 - Files are processed by `backend/data_sources/demo_parser.py`
 
 ## `external/` — External Data Inputs
@@ -85,10 +90,12 @@ Currently contains a single file:
 
 | File | Content | Used By |
 |------|---------|---------|
-| `hltv_stats_urls.txt` | HLTV player profile URLs | HLTV scraper input |
+| `hltv_stats_urls.txt` | HLTV player profile URLs | No active code consumer (input list of a since-removed fetch helper; kept as data) |
 
 Third-party CSV datasets (player stats, map statistics, round outcomes) are not
-kept in the repository; the tournament JSON ingestor writes its output CSV here
+kept in the repository; `backend/processing/external_analytics.py` reads them from
+here when present, and the tournament JSON ingestor
+(`ingestion/pipelines/json_tournament_ingestor.py`) writes its output CSV here
 (`tournament_advanced_stats.csv`) when run.
 
 ## `knowledge/` — RAG Knowledge Base
@@ -111,13 +118,20 @@ Maps covered: Ancient, Anubis, Dust2, Inferno, Mirage, Nuke, Overpass + general
 
 ### How Knowledge Is Used
 
+These files are the raw source material of the coaching knowledge. The runtime
+RAG knowledge base is seeded from `backend/knowledge/book/index.json` (Coach Book,
+with `backend/knowledge/tactical_knowledge.json` as legacy fallback) into the
+`tacticalknowledge` database table by `backend/knowledge/init_knowledge_base.py`;
+the only automated consumer of `data/knowledge/` itself is a structure check in
+`tools/headless_validator.py`.
+
 ```
-knowledge/ files
+tacticalknowledge DB table (seeded by init_knowledge_base.py)
     │
     └── backend/knowledge/rag_knowledge.py (KnowledgeEmbedder)
             │
             ├── Sentence-BERT embeds text chunks (384-dim vectors)
-            └── FAISS indexes for fast similarity search
+            └── FAISS index when available (brute-force cosine fallback)
                     │
                     └── CoachingService retrieves relevant knowledge per query
 ```
@@ -134,6 +148,8 @@ Markdown files served by `backend/knowledge_base/help_system.py`:
 
 - **Do NOT commit demo files** (`.dem`) — they are 50-200MB each
 - `map_config.json` coordinates come from CS2 game files (`resource/overviews/*.txt`)
-- `hltv_sync_state.json` tracks scraper progress — empty `{}` means no active sync
+- `hltv_sync_state.json` holds HLTV sync state — empty `{}` means no active sync
+  (currently only reset by `tools/reset_pro_data.py`)
 - Knowledge files are the intellectual foundation of coaching — edit with care
 - `dataset.csv` is currently an empty placeholder (bundled by the PyInstaller spec), not hand-edited
+- The PyInstaller spec also bundles `map_config.json`, `external/`, and `docs/` from here

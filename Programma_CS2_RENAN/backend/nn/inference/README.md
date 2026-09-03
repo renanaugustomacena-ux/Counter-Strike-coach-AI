@@ -25,8 +25,9 @@ The intent is to keep training and inference paths physically separated in the s
 ## `GhostEngine` summary
 
 - Checks `USE_RAP_MODEL` first (default `False`) — when unset, no model is loaded and predictions stay disabled.
-- Loads the RAP model via `ModelFactory.get_model(TYPE_RAP)` + `load_nn("rap_coach", ...)`, then `.eval()`; inference runs under `torch.no_grad()`.
+- Loads the RAP model via `ModelFactory.get_model(TYPE_RAP)` + `load_nn(ModelFactory.get_checkpoint_name(TYPE_RAP), ...)` (checkpoint name `"rap_coach"`), then `.eval()`; inference runs under `torch.no_grad()`.
 - `predict_tick()` accepts a single tick (dict or dataclass) plus an optional `game_state` dict, builds view / map / motion tensors via `TensorFactory` and the 25-dim metadata vector via `FeatureExtractor`, and returns `(ghost_x, ghost_y)` world coordinates (current position + delta × `RAP_POSITION_SCALE`).
+- Tensors come from the shared singleton `TensorFactory` with its **default** config (map 128×128, view/motion 224×224), while RAP training renders at 64×64 (`TrainingTensorConfig`). `RAPPerception`'s `AdaptiveAvgPool2d` accepts any resolution, so inference runs — but the train/inference resolution skew is an open finding (**F-0026** in `docs/OPEN_ISSUES.md`).
 - Player-POV tensor mode is opt-in via `USE_POV_TENSORS` (default `False`); legacy tensors are used otherwise.
 - Returns `None` on any failure — model disabled, missing checkpoint, missing `map_name`, or inference error. (R4: the old `(0.0, 0.0)` sentinel was a valid world coordinate near map center and was removed.)
 

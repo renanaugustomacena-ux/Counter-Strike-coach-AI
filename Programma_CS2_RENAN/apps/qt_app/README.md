@@ -6,7 +6,7 @@
 
 ## Overview
 
-PySide6/Qt desktop application implementing Model-View-ViewModel (MVVM) architecture with Qt Signal/Slot for CS2 tactical analysis and AI coaching. This is the **primary frontend** (91 Python files). The application features 15 screens, 10 ViewModels, 6 QPainter chart widgets (QtCharts was removed for license compliance), 3 tactical widgets, a design-system component library (26 modules) plus an embedded coaching ChatPanel, toast notifications, 3 token-driven themes (CS2, CSGO, CS1.6), optional background wallpaper (default: flat), internationalization (English/Italian/Portuguese, ~565 keys per language), and a graceful shutdown sequence.
+PySide6/Qt desktop application implementing Model-View-ViewModel (MVVM) architecture with Qt Signal/Slot for CS2 tactical analysis and AI coaching. This is the **primary frontend** (92 Python files). The application features 15 screens, 10 ViewModels, 6 QPainter chart widgets (QtCharts was removed for license compliance), 3 tactical widgets, a design-system component library (26 modules) plus an embedded coaching ChatPanel, toast notifications, 3 token-driven themes (CS2, CSGO, CS1.6), optional background wallpaper (default: flat), an optional frameless window mode with a custom title bar, internationalization (English/Italian/Portuguese, 572 keys per language), and a graceful shutdown sequence.
 
 ## Entry Point
 
@@ -18,14 +18,16 @@ The `main()` function in `app.py` performs the following boot sequence:
 
 1. Enables High-DPI scaling (`PassThrough` rounding policy)
 2. Creates `QApplication` and resolves the package version
-3. Connects the graceful shutdown handler (`aboutToQuit` signal)
-4. Instantiates `ThemeEngine`, registers custom fonts, applies the active theme
-5. Creates `MainWindow` and sets the initial wallpaper
-6. Instantiates and registers all 15 screens (real implementations, not placeholders)
-7. Wires inter-screen signals (match selection: history -> detail, wizard completion -> home)
-8. First-run gate: shows WizardScreen if `SETUP_COMPLETED` is False, otherwise HomeScreen
-9. Boots the backend console (DB audit, conditional FlareSolverr/Hunter) with error dialog fallback
-10. Starts AppState background polling (10-second interval)
+3. Instantiates `ThemeEngine`, registers custom fonts, shows a themed splash screen (gradient + branding rendered from the saved theme's design tokens)
+4. Connects the graceful shutdown handler (`aboutToQuit` signal)
+5. Applies the active theme with the persisted font family/size settings
+6. Creates `MainWindow` and sets the initial wallpaper
+7. Instantiates and registers all 15 screens (real implementations override the placeholder registry)
+8. Wires inter-screen signals (match selection: history/home -> detail, wizard completion -> home, highlight moments -> tactical viewer, pro comparison -> pro detail)
+9. First-run gate: shows WizardScreen if `SETUP_COMPLETED` is False, otherwise HomeScreen
+10. Boots the backend console (conditional FlareSolverr/Hunter, database schema initialization) and launches the Session Engine daemon, with error dialog fallback
+11. Ensures the SBERT language model is present (~90 MB download on first run, splash progress)
+12. Starts AppState background polling (10-second interval) and installs a Qt-aware excepthook
 
 ## Directory Structure
 
@@ -36,13 +38,13 @@ qt_app/
 ├── __init__.py
 ├── core/
 │   ├── app_state.py                # AppState singleton: polls CoachState DB every 10s, emits Signals
-│   ├── theme_engine.py             # ThemeEngine: QSS loading, QPalette, fonts, wallpaper management
+│   ├── theme_engine.py             # ThemeEngine: token QSS render, QPalette, fonts, wallpaper management
 │   ├── design_tokens.py            # Design token definitions for the Qt component system
-│   ├── qss_generator.py            # Programmatic QSS generation from design tokens
+│   ├── qss_generator.py            # Renders themes/base.qss.template with token substitution
 │   ├── animation.py                # Shared animation utilities
 │   ├── easing.py                   # Custom easing curves
 │   ├── typography.py               # Typography scale and font helpers
-│   ├── icons.py                    # Icon registry and SVG/icon asset loader
+│   ├── icons.py                    # IconProvider facade: SVG sprite with QPainterPath fallback
 │   ├── svg_icon_provider.py        # SvgIconProvider: sprite-backed QIcon factory
 │   ├── sound.py                    # Sound effect playback helpers
 │   ├── match_utils.py              # Match-level utility functions for the UI layer
@@ -68,7 +70,7 @@ qt_app/
 │   ├── faceit_config_screen.py     # Faceit integration configuration
 │   ├── pro_comparison_screen.py    # Side-by-side user vs pro player analysis
 │   ├── pro_player_detail_screen.py # Pro player profile view
-│   ├── placeholder.py              # Placeholder factory for stub screens
+│   ├── placeholder.py              # Placeholder factory (all entries overridden by real screens)
 │   └── __init__.py
 ├── viewmodels/
 │   ├── match_history_vm.py         # Match list data, filtering, and sorting
@@ -89,7 +91,7 @@ qt_app/
 │   │   ├── economy_chart.py        # EconomyChart: round-by-round economy bars (QPainter)
 │   │   ├── mini_sparkline.py       # MiniSparkline: compact QPainter sparkline, no axes
 │   │   ├── momentum_chart.py       # MomentumChart: team momentum area chart (QPainter)
-│   │   ├── radar_chart.py          # RadarChart: pentagon skill radar (user vs pro overlay)
+│   │   ├── radar_chart.py          # RadarChart: N-axis skill radar (user vs pro overlay)
 │   │   ├── rating_sparkline.py     # RatingSparkline: rating trend with baseline
 │   │   ├── utility_bar_chart.py    # UtilityBarChart: utility usage horizontal bars
 │   │   └── __init__.py
@@ -125,6 +127,7 @@ qt_app/
 │   │   ├── tip_box.py              # TipBox: accent-bordered tip/callout box
 │   │   └── toggle_switch.py        # Animated boolean switch
 │   ├── tactical/
+│   │   ├── _paint_utils.py         # Shared QPainter helpers for the tactical widgets
 │   │   ├── map_widget.py           # TacticalMapWidget: 2D map rendering + zone overlays (assets/map_zones/) + movement trails
 │   │   ├── player_sidebar.py       # PlayerSidebar: real-time player state display (health, armor, weapons)
 │   │   ├── timeline_widget.py      # TimelineWidget: scrubbing, round dividers, ★/◆/● moment glyphs
@@ -202,15 +205,15 @@ qt_app/
 |-----------|------|-------------|-------------|
 | `MatchHistoryViewModel` | `match_history_vm.py` | `matches_changed(list)`, `is_loading_changed(bool)`, `error_changed(str)` | Loads match list from `PlayerMatchStats` with cancellation support |
 | `MatchDetailViewModel` | `match_detail_vm.py` | `data_changed(dict, list, list, dict)`, `is_loading_changed(bool)`, `error_changed(str)` | Loads match stats, round data, coaching insights, HLTV breakdown |
-| `PerformanceViewModel` | `performance_vm.py` | `data_changed(list, dict, dict, dict)`, `is_loading_changed(bool)`, `error_changed(str)` | Loads rating history, per-map stats, strength/weakness, utility data |
+| `PerformanceViewModel` | `performance_vm.py` | `data_changed(list, dict, dict, dict, bool)`, `context_changed(dict)`, `is_loading_changed(bool)`, `error_changed(str)` | Loads rating history, per-map stats, strength/weakness, utility data, plus pro-cohort percentile context |
 | `TacticalPlaybackVM` | `tactical_vm.py` | `frame_updated(object)`, `current_tick_changed(int)`, `is_playing_changed(bool)` | Playback control: play/pause, speed, seek, tick tracking via PlaybackEngine |
 | `TacticalGhostVM` | `tactical_vm.py` | `ghost_active_changed(bool)`, `is_loaded_changed(bool)` | Ghost AI position predictions via lazy-loaded GhostEngine |
 | `TacticalChronovisorVM` | `tactical_vm.py` | `scan_complete(list, int)`, `navigate_to(int, str)`, `is_scanning_changed(bool)` | Critical moment scanning and jump-to navigation via ChronovisorScanner |
 | `CoachViewModel` | `coach_vm.py` | `insights_loaded(list)`, `is_loading_changed(bool)`, `error_changed(str)` | Loads latest `CoachingInsight` rows for the active player |
-| `CoachingChatViewModel` | `coaching_chat_vm.py` | `messages_changed(list)`, `session_active_changed(bool)`, `is_available_changed(bool)` | Interactive coaching chat via CoachingDialogueEngine (Ollama backend) |
-| `FocusInsightViewModel` | `focus_insight_vm.py` | `insight_changed(object)`, `is_loading_changed(bool)` | Loads and manages the detail view for a single focused coaching insight |
-| `ProComparisonViewModel` | `pro_comparison_vm.py` | `data_changed(dict)`, `is_loading_changed(bool)`, `error_changed(str)` | Fetches and scores user-vs-pro statistical comparison |
-| `ProPlayerDetailViewModel` | `pro_player_detail_vm.py` | `profile_changed(dict)`, `is_loading_changed(bool)`, `error_changed(str)` | Loads pro player profile and career statistics |
+| `CoachingChatViewModel` | `coaching_chat_vm.py` | `messages_changed(list)`, `session_active_changed(bool)`, `is_available_changed(bool)`, `streaming_changed(str)` | Interactive coaching chat via CoachingDialogueEngine (Ollama backend) |
+| `FocusInsightViewModel` | `focus_insight_vm.py` | `insight_changed(dict)`, `has_data_changed(bool)` | Loads and manages the detail view for a single focused coaching insight |
+| `ProComparisonViewModel` | `pro_comparison_vm.py` | `players_loaded(list)`, `comparison_ready(dict, dict, str, str)`, `error_changed(str)` | Fetches and scores user-vs-pro statistical comparison |
+| `ProPlayerDetailViewModel` | `pro_player_detail_vm.py` | `profile_loaded(dict)`, `error_changed(str)` | Loads pro player profile and career statistics |
 | `UserProfileViewModel` | `user_profile_vm.py` | `profile_loaded(dict)`, `is_loading_changed(bool)`, `error_changed(str)` | Loads/saves `PlayerProfile` (bio, role) with background DB access |
 
 *Note: The Tactical module contains 3 ViewModels in a single file (`tactical_vm.py`) for cohesion.*
@@ -226,7 +229,7 @@ qt_app/
 | `EconomyChart` | `economy_chart.py` | Round-by-round economy bars with side coloring, half divider, and $K ladder |
 | `MiniSparkline` | `mini_sparkline.py` | Compact sparkline with no axes, used in the last-match hero card |
 | `MomentumChart` | `momentum_chart.py` | Team momentum evolution per round, dual-color CT/T area overlay |
-| `RadarChart` | `radar_chart.py` | Pentagon skill radar with user-vs-pro polygon overlay (pro comparison) |
+| `RadarChart` | `radar_chart.py` | N-axis skill radar (N >= 3) with user-vs-pro polygon overlay (8 axes in pro comparison) |
 | `RatingSparkline` | `rating_sparkline.py` | Rating trend line with 1.0 baseline (match detail / performance) |
 | `UtilityBarChart` | `utility_bar_chart.py` | Horizontal utility-usage bars (flash/smoke/HE/molly) |
 
@@ -268,7 +271,7 @@ qt_app/
 | ERROR | (X) | 12 seconds |
 | CRITICAL | (skull) | Manual only |
 
-Maximum 3 visible toasts at once. Oldest toast is removed when the limit is exceeded. The `ToastContainer` is rendered as a top-right overlay above all screen content via `QStackedLayout.StackAll`.
+Maximum 3 visible toasts at once. Oldest toast is removed when the limit is exceeded. The `ToastContainer` is a floating top-right child of the content area (not part of the `QStackedLayout`), repositioned via an event filter and hidden when empty so it never blocks events.
 
 ## AppState Singleton
 
@@ -284,7 +287,7 @@ Maximum 3 visible toasts at once. Oldest toast is removed when the limit is exce
 | `training_changed` | `dict` | Any of: current_epoch, total_epochs, train_loss, val_loss, eta_seconds |
 | `notification_received` | `(str, str)` | Unread `ServiceNotification` rows (severity + message) |
 
-AppState is **read-only** from the Qt side. Only the backend session engine writes to `CoachState`.
+AppState is **read-only toward `CoachState`** — only the backend session engine writes it. One sanctioned write exists: delivered `ServiceNotification` rows are marked `is_read=True` so notifications are shown once. AppState also persists four UI toggles (`sounds_enabled`, `use_frameless_window`, `use_pyqtgraph_heatmap`, `use_webengine_marquee`), each with its own `*_changed` Signal.
 
 ## ThemeEngine
 
@@ -293,12 +296,13 @@ AppState is **read-only** from the Qt side. Only the backend session engine writ
 - **3 themes:** CS2 (deep navy + tactical orange), CSGO (slate-blue + steel accent), CS 1.6 (retro green terminal)
 - **Design tokens are the single source of truth:** per-theme token sets (`core/design_tokens.py`) feed **both** the QSS render (`themes/base.qss.template` via `core/qss_generator.py`, with dynamic font-family/size injection) and the `QPalette` configuration for widgets that do not honor QSS — no hand-maintained color values outside the token tables
 - **Fonts:** legacy `PHOTO_GUI/` faces (Roboto, JetBrains Mono, New Hope, CS Regular, YUPIX) plus the bundled OFL display stack auto-scanned from `assets/fonts/` (Space Grotesk, Inter, JetBrains Mono weights — see `assets/fonts/README.txt` for sources/licenses)
-- **Wallpaper:** default is **no wallpaper** — a flat `surface_base` background per the design atlas. A persisted user choice can select a per-theme wallpaper file, rendered at 15% opacity via `_BackgroundWidget`
+- **Wallpaper:** default is **no wallpaper** — a flat `surface_base` background per the design atlas. A persisted user choice can select a per-theme wallpaper file, rendered at 15% opacity via `_BackgroundWidget`, which also tiles a barely-perceptible tactical-grid motif (5% opacity) behind all content
 - **HLTV rating colors:** green (> 1.10), yellow (0.90-1.10), red (< 0.90) with WCAG 1.4.1 text labels
+- **Live restyle:** theme switches emit `theme_changed` on the engine **and** on a module-level relay (`get_theme_relay()`), so chip-style widgets restyle without a restart
 
 ## Worker Pattern
 
-The `Worker` class (`core/worker.py`) is a `QRunnable` that wraps any callable for execution on `QThreadPool.globalInstance()`. It emits three signals via `WorkerSignals`:
+The `Worker` class (`core/worker.py`) is a `QRunnable` that wraps any callable for execution on `QThreadPool.globalInstance()`. It emits three always-available signals via `WorkerSignals` (plus an opt-in `progress` signal — constructing with `wants_progress=True` injects a `progress_callback` into the wrapped callable for streaming partial results):
 
 ```python
 worker = Worker(some_function, arg1, arg2)
@@ -316,21 +320,21 @@ All signal emissions are wrapped in `try/except RuntimeError` to handle the case
 |--------|------|-------------|
 | `QtLocalizationManager` | `core/i18n_bridge.py` | Singleton (`i18n`) providing `get_text(key)` with JSON priority, hardcoded fallback, and `language_changed` Signal |
 | `QtPlaybackEngine` | `core/qt_playback_engine.py` | Subclass of `PlaybackEngine` using `QTimer` at 16ms interval (~60 FPS) |
-| `DesignTokens` | `core/design_tokens.py` | Design token definitions (spacing, radius, elevation) for the Qt component system |
-| `QSSGenerator` | `core/qss_generator.py` | Programmatic QSS stylesheet generation from design tokens |
-| `Animation` | `core/animation.py` | Shared animation utilities and easing helpers for widget transitions |
-| `Icons` | `core/icons.py` | Icon registry and SVG/icon asset loader for the component system |
-| `Easing` | `core/easing.py` | Custom easing curves for widget animations |
-| `Typography` | `core/typography.py` | Typography scale definitions and font helpers |
-| `SvgIconProvider` | `core/svg_icon_provider.py` | Sprite-backed QIcon factory, swapped in via `USE_SVG_ICONS` in `core/icons.py` |
-| `Sound` | `core/sound.py` | Sound effect playback helpers for UI feedback |
-| `MatchUtils` | `core/match_utils.py` | Match-level utility functions for the UI layer |
-| `WidgetsHelpers` | `core/widgets_helpers.py` | Generic Qt widget helper functions |
-| `WebBridge` | `core/web_bridge.py` | Python↔JavaScript bridge for embedded web views |
+| `DesignTokens` | `core/design_tokens.py` | Per-theme design tokens (colors, spacing, radius, typography) — GENERATED from `design/tokens/design-tokens.json` |
+| `render_qss` | `core/qss_generator.py` | Renders `themes/base.qss.template` with token substitution, cached per theme |
+| `Animator` | `core/animation.py` | Shared animation helpers (fade, slide, pulse, stagger, count-up, ring-sweep) with a `MACENA_UI_ANIMATIONS=0` kill-switch |
+| `IconProvider` | `core/icons.py` | Icon facade: SVG-sprite primary path with a `QPainterPath` fallback (`USE_SVG_ICONS` flag) |
+| `Easing` | `core/easing.py` | Named `QEasingCurve` aliases (Remotion port) plus `cubic_bezier()` |
+| `Typography` | `core/typography.py` | Typography role scale and font helpers (sizes read from `get_tokens()`) |
+| `SvgIconProvider` | `core/svg_icon_provider.py` | Sprite-backed QIcon factory (`design/assets/icons/sprite.svg`), swapped in via `USE_SVG_ICONS` in `core/icons.py` |
+| `SoundManager` | `core/sound.py` | Four preloaded `QSoundEffect` WAVs (click, success, error, notification), gated by `AppState.sounds_enabled` |
+| `match_utils` | `core/match_utils.py` | Match helpers: `extract_map_name`, `map_short_name`, `count_personal_and_pro` |
+| `widgets_helpers` | `core/widgets_helpers.py` | Widget factories built on the QSS template: `make_button`, `navigate_to` |
+| `MarqueeBridge` | `core/web_bridge.py` | `QWebChannel` Python↔JavaScript bridge for the embedded web views |
 
 ## Testing
 
-The UI suite runs fully offscreen (`QT_QPA_PLATFORM=offscreen`) with animations disabled (`MACENA_UI_ANIMATIONS=0`):
+The UI suite (under `Programma_CS2_RENAN/tests/`) runs fully offscreen (`QT_QPA_PLATFORM=offscreen`) with animations disabled (`MACENA_UI_ANIMATIONS=0`):
 
 | File | Covers |
 |------|--------|
@@ -345,11 +349,12 @@ Screenshot tooling: `tools/ui_screenshot.py` (offscreen harness — real screens
 
 ## Development Notes
 
-- **Minimum window size:** 1280x720 pixels
-- **Sidebar:** collapsible 220px ↔ 60px, with 7 navigation buttons (Home, Coach, Match History, Performance, Tactical Viewer, Settings, Help)
-- **Screen lifecycle:** `on_enter()` is called automatically when a screen becomes visible; `retranslate()` is called on language change
+- **Window size:** opens at 1440x900 (the design-atlas canvas); minimum 1280x720 pixels
+- **Sidebar:** collapsible 220px ↔ 60px, with 7 navigation buttons (Home, Coach, Match History, Performance, Tactical Viewer, Settings, Help), each with a keyboard shortcut (Ctrl+1..Ctrl+5, Ctrl+,, F1) driven by the shared `NAV_ITEMS` table
+- **Frameless mode:** an AppState toggle (`use_frameless_window`) strips the native frame and adds a custom draggable title bar; read once at construction, so flipping it requires a restart
+- **Screen lifecycle:** `MainWindow.switch_screen()` calls `on_leave()` on the outgoing screen and `on_enter()` on the incoming one; `retranslate()` is called on language change
 - **Thread safety:** All DB access goes through Worker/QThreadPool. Never access SQLModel sessions on the main thread.
 - **i18n:** 3 languages (en, pt, it) loaded from `assets/i18n/*.json`. The `language_changed` Signal triggers `retranslate()` on all registered screens.
-- **Graceful shutdown:** `app.aboutToQuit` stops AppState polling and shuts down the backend console
+- **Graceful shutdown:** `app.aboutToQuit` stops AppState polling, shuts down the Session Engine daemon (`lifecycle.shutdown()`), and shuts down the backend console
 - **First-run gate:** If `SETUP_COMPLETED` setting is False, the app starts on WizardScreen instead of HomeScreen
 - **Backend boot failure:** If the backend console fails to boot, a `QMessageBox` warning is shown but the app continues running in degraded mode

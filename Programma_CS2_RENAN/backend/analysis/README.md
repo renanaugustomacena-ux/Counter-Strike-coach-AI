@@ -9,9 +9,9 @@
 
 ## Overview
 
-This directory contains 11 analytical engines that form the tactical intelligence layer of the CS2 coaching system. They transform raw demo data (tick positions, kill events, economy snapshots, utility throws) into actionable coaching insights through game theory, probabilistic modeling, and statistical analysis.
+This directory contains 12 analytical engines across 11 modules that form the tactical intelligence layer of the CS2 coaching system. They transform raw demo data (tick positions, kill events, economy snapshots, utility throws) into actionable coaching insights through game theory, probabilistic modeling, and statistical analysis.
 
-Every module follows the factory function pattern for thread-safe singleton access. All engines are orchestrated by `backend/services/coaching_service.py` and exposed to the UI through the analysis orchestrator.
+Every module follows the factory function pattern for thread-safe singleton access. All engines are orchestrated by `backend/services/analysis_orchestrator.py` (invoked from `coaching_service.py`), which exposes their insights to the UI.
 
 ---
 
@@ -69,7 +69,7 @@ The `generate_training_plan()` method produces a natural-language coaching plan 
 
 Computes Euclidean kill distances from 3D positions and classifies them into four bands: close (<500u), medium (500-1500u), long (1500-3000u), extreme (>3000u). The `EngagementProfile` is compared against role-specific pro baselines (AWPer, Entry, Support, Lurker, IGL, Flex) with a 15% deviation threshold.
 
-Uses `NamedPositionRegistry` (defined in `core/map_callouts.py`, re-exported here) with 161 callout positions across 9 competitive maps (Mirage, Inferno, Dust2, Anubis, Nuke, Ancient, Overpass, Vertigo, Train). Supports JSON extension for community-contributed callouts. Kill events are annotated with the nearest named position for human-readable output.
+Uses `NamedPositionRegistry` (defined in `core/map_callouts.py`, re-exported here) with 160 callout positions across 9 competitive maps (Mirage, Inferno, Dust2, Anubis, Nuke, Ancient, Overpass, Vertigo, Train). Supports JSON extension for community-contributed callouts. Kill events are annotated with the nearest named position for human-readable output.
 
 #### entropy_analysis.py — Information-Theoretic Utility Evaluation
 
@@ -80,11 +80,15 @@ Thread safety is maintained via `_buffer_lock` protecting the pre-allocated grid
 #### deception_index.py — Tactical Deception Quantification
 
 Computes a composite deception index from three sub-metrics:
-- **Fake flash rate** (weight 0.25): fraction of flashbangs that fail to blind enemies within 128 ticks (~2s). Detected via vectorized `searchsorted` over blind event ticks.
+- **Fake flash rate** (weight 0.25): fraction of flashbangs that fail to blind enemies within a 2-second window (`FLASH_BLIND_WINDOW_SECONDS`, converted with the per-demo tick rate). Detected via vectorized `searchsorted` over blind event ticks. Caveat (open finding F-0021, see `docs/OPEN_ISSUES.md`): the detection is keyed to the `player_blind` event, which current CS2 demos do not emit — in practice the rate degenerates to 1.0 or 0.0.
 - **Rotation feint rate** (weight 0.40): significant direction reversals (>108 degrees) in sampled movement paths, normalized by map extent.
 - **Sound deception score** (weight 0.35): inverse crouch ratio as a proxy for deliberate noise generation vs. silent movement.
 
 The `compare_to_baseline()` method produces natural-language coaching output comparing player metrics against pro baselines.
+
+#### movement_quality.py — Positioning-Mistake Detection
+
+Detects 4 common positioning mistakes from tick data, based on the MLMove paper (SIGGRAPH 2024): leaving high ground unnecessarily, leaving established positions prematurely, over-aggression when trading, and over-passivity when supporting. Time thresholds are expressed in seconds and converted to tick counts with the per-demo tick rate (26-TICK-02), so 64- and 128-tick demos coexist correctly. The module is additive — movement metrics are derived features and do not modify the `METADATA_DIM=25` contract.
 
 ---
 
@@ -109,7 +113,7 @@ Dual-classifier architecture combining weighted heuristic scoring with a neural 
 - **Neural**: 5-class softmax head loaded from checkpoint (`load_role_head()`), with feature normalization using training statistics.
 - **Consensus**: agreement boosts confidence (+0.1), neural overrides heuristic only with sufficient margin (+0.1).
 
-Cold-start guard returns FLEX with 0% confidence when thresholds are not yet learned. Team-level classification (`classify_team()`) enforces composition constraints (max 1 AWPer). The `audit_team_balance()` method detects structural weaknesses (missing Entry, duplicate Lurkers, etc.).
+Cold-start guard returns FLEX with 0% confidence when thresholds are not yet learned. A vocabulary guard (F-0030 fix) makes `classify()` refuse stat dicts that carry none of the role-signal keys — returning FLEX with 0% confidence and a warning instead of fabricating a high-confidence role from a single incidental feature. Team-level classification (`classify_team()`) enforces composition constraints (max 1 AWPer). The `audit_team_balance()` method detects structural weaknesses (missing Entry, duplicate Lurkers, etc.).
 
 Role-specific coaching tips are retrieved via RAG (`KnowledgeRetriever`) with fallback to static `_FALLBACK_TIPS`.
 
@@ -219,7 +223,7 @@ from Programma_CS2_RENAN.backend.analysis import (
 
 5. **Checkpoint isolation.** `WinProbabilityNN` (12-dim predictor) and `WinProbabilityTrainerNN` (9-dim trainer) are separate architectures. Rule A-12 validates input dimension before `load_state_dict` to prevent silent corruption.
 
-6. **Named positions.** The `NamedPositionRegistry` (in `core/map_callouts.py`) ships with 161 callouts across 9 maps. Additional positions can be loaded from JSON without code changes via `load_from_json()`.
+6. **Named positions.** The `NamedPositionRegistry` (in `core/map_callouts.py`) ships with 160 callouts across 9 maps. Additional positions can be loaded from JSON without code changes via `load_from_json()`.
 
 7. **Safety bounds.** All calibrated parameters are clamped: priors [0.05, 0.95], weapon lethality [0.1, 3.0], decay lambda [0.01, 1.0], momentum [0.7, 1.4]. This prevents pathological values from corrupting downstream analysis.
 

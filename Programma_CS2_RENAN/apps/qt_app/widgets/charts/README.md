@@ -7,19 +7,19 @@
 
 ## Purpose
 
-QPainter chart widgets used across the dashboard, performance, pro-comparison, and match-detail screens. Every widget is a custom `QWidget` with a `paintEvent`, exposing a small Pythonic API for the calling ViewModel. **QtCharts is not used anywhere** — it is GPLv3-or-commercial only and was removed for license compliance; `tests/test_charts.py::TestQtChartsRetired` fails the suite if a `QtCharts`/`QChart` reference reappears under `apps/qt_app/`.
+QPainter chart widgets used across the home, performance, pro-comparison, and match-detail screens. Every widget is a custom `QWidget` with a `paintEvent`, exposing a small Pythonic API for the calling ViewModel. **QtCharts is not used anywhere** — it is GPLv3-or-commercial only and was removed for license compliance; `Programma_CS2_RENAN/tests/test_charts.py::TestQtChartsRetired` fails the suite if a `QtCharts`/`QChart` reference reappears under `apps/qt_app/`.
 
 ## File inventory
 
 | File | Widget | Used By |
 |------|--------|---------|
-| `__init__.py` | (re-exports) | — |
-| `economy_chart.py` | `EconomyChart` | Match Detail (per-round equipment value bars, side coloring, $K ladder) |
-| `mini_sparkline.py` | `MiniSparkline` | Last-match hero card on the home screen (compact trend line) |
-| `momentum_chart.py` | `MomentumChart` | Match Detail (cumulative kill-death delta with green/red fill) |
-| `radar_chart.py` | `RadarChart` | Pro Comparison (pentagon skill radar, user-vs-pro overlay) |
-| `rating_sparkline.py` | `RatingSparkline` | Match Detail / Performance (rating trend with 1.0 baseline) |
-| `utility_bar_chart.py` | `UtilityBarChart` | Match Detail / Performance (utility usage bars) |
+| `__init__.py` | `token_color()` helper + re-exports (`EconomyChart`, `MomentumChart`, `RadarChart`) | `token_color()` parses `#RRGGBB` / `rgb()` / `rgba()` design-token strings into `QColor` |
+| `economy_chart.py` | `EconomyChart` | Match Detail (per-round equipment value bars, side coloring, $ ladder, `set_half_marker()` divider) |
+| `mini_sparkline.py` | `MiniSparkline` | Last-match hero card on the home screen (chrome-less trend line, via `components/last_match_hero.py`) |
+| `momentum_chart.py` | `MomentumChart` | Match Detail (per-round K-D swing bars around a zero axis, side-colored, HALF divider) |
+| `radar_chart.py` | `RadarChart` | Pro Comparison (N-axis skill radar, N >= 3 — the screen uses 8 axes; dual-series user-vs-pro overlay) |
+| `rating_sparkline.py` | `RatingSparkline` | Performance (rating trend with HLTV reference lines at 0.90 / 1.00 / 1.10) |
+| `utility_bar_chart.py` | `UtilityBarChart` | Performance (grouped you-vs-pro bars via `set_rows()`, or single-series via `set_single()`) |
 
 ## Conventions
 
@@ -40,7 +40,7 @@ the other charts store data in their `set_*` methods. All drawing happens in `pa
 
 ### Theme awareness
 
-Charts resolve every color from the active token set (`get_tokens()`) when they are built or replotted, so a theme switch restyles them on the next plot — they hold no hard-coded palette.
+Charts resolve every color from the active token set (`get_tokens()`) inside `paintEvent()`, so a theme switch restyles them on the next repaint — they hold no hard-coded palette.
 
 ### Accessibility
 
@@ -54,7 +54,7 @@ Charts resolve every color from the active token set (`get_tokens()`) when they 
 2. Accept a typed ViewModel object or a typed list — never raw DataFrames.
 3. Pull colors from `core/design_tokens` via `get_tokens()`.
 4. Add a screen-reader description via `setAccessibleDescription()`.
-5. Resolve all colors at plot time so a theme switch restyles on the next plot.
+5. Resolve all colors inside `paintEvent()` so a theme switch restyles on the next repaint.
 6. Add the widget to the inventory table above.
 
 ## Do not

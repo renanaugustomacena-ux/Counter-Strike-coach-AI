@@ -14,9 +14,9 @@ The scaffold uses SQLAlchemy/SQLModel as the ORM layer and Alembic for schema ev
 The **`migrations/`** subdirectory contains the scaffold:
 - **`env.py`**: The Alembic environment entry point (imports all models from `Programma_CS2_RENAN.backend.storage.db_models` and targets `SQLModel.metadata`).
 - **`script.py.mako`**: A template file used by Alembic to generate new migration scripts.
-- **`README`**: The stock single-line Alembic scaffold marker.
+- **`README`**: A deprecation notice (R2-01) marking this chain as legacy and pointing at the root `alembic/` directory.
 - **`versions/`**: The two early migration scripts.
-    - **`b609a11e13cc_baseline_schema.py`**: Establishes the initial tables (`matchresult`, `mapveto`).
+    - **`b609a11e13cc_baseline_schema.py`**: Establishes the initial tables (`matchresult`, `mapveto`) and extends `proplayerstatcard`.
     - **`5d5764ef9f26_add_rating_components.py`**: Adds Rating 2.0 component columns (kpr, dpr, …) to `playermatchstats`.
 
 ## Directory Structure
@@ -26,7 +26,7 @@ backend/storage/
 ├── migrations/             # Legacy Alembic scaffold
 │   ├── env.py              # Environment configuration
 │   ├── script.py.mako      # Migration script template
-│   ├── README              # Stock Alembic marker file
+│   ├── README              # R2-01 deprecation notice
 │   └── versions/           # Two early schema revisions
 ├── README.md               # This documentation
 ├── README_IT.md            # Italian version

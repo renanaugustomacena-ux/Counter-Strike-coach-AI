@@ -23,7 +23,7 @@ validates data -- none of them store or train anything.
 | `player_knowledge.py` | ~672 | Player-POV perception system (NO-WALLHACK sensorial model) | `PlayerKnowledge`, `PlayerKnowledgeBuilder` |
 | `rating.py` | ~230 | PlusMinus and role-adjusted Bayesian rating metrics (KT-06) | `compute_plus_minus()`, `compute_role_adjusted_rating()` |
 | `round_reconstructor.py` | ~614 | Per-round state reconstruction from raw tick streams | `RoundReconstructor` |
-| `round_stats_builder.py` | ~1004 | Per-round, per-player statistics from demo events | `build_round_stats()`, `aggregate_round_stats_to_match()`, `enrich_from_demo()` |
+| `round_stats_builder.py` | ~1043 | Per-round, per-player statistics from demo events | `build_round_stats()`, `aggregate_round_stats_to_match()`, `enrich_from_demo()`, `persist_round_stats_and_enrichment()` |
 | `skill_assessment.py` | ~161 | 5-axis skill decomposition and curriculum level projection | `SkillLatentModel`, `SkillAxes` |
 | `state_reconstructor.py` | ~130 | Tick-to-tensor conversion for RAP-Coach training and inference | `RAPStateReconstructor` |
 | `tensor_factory.py` | ~769 | Player-POV perception tensors (map, view, motion) | `TensorFactory`, `TensorConfig`, `TrainingTensorConfig`, `get_tensor_factory()` |
@@ -34,7 +34,7 @@ validates data -- none of them store or train anything.
 | Sub-Package | Files | Purpose |
 |-------------|-------|---------|
 | `feature_engineering/` | `vectorizer.py`, `base_features.py`, `role_features.py`, `rating.py`, `kast.py` | Unified 25-dim feature extraction (`FeatureExtractor`), HLTV 2.0 rating, KAST calculation, role-specific features |
-| `baselines/` | `pro_baseline.py`, `role_thresholds.py`, `meta_drift.py`, `nickname_resolver.py` | Professional baselines, role thresholds, temporal decay, meta-drift detection, nickname resolution |
+| `baselines/` | `pro_baseline.py`, `role_thresholds.py`, `meta_drift.py`, `nickname_resolver.py`, `pro_player_linker.py` | Professional baselines, role thresholds, temporal decay, meta-drift detection, nickname resolution, pro-player linking |
 | `validation/` | `dem_validator.py`, `schema.py`, `sanity.py`, `drift.py` | Demo file validation, schema compliance, sanity checks, feature drift detection |
 
 ## Architecture & Concepts
@@ -74,7 +74,7 @@ and consumed by `tensor_factory.py`:
 
 | Tensor | Channel 0 | Channel 1 | Channel 2 |
 |--------|-----------|-----------|-----------|
-| **map** | Teammate positions | Enemy positions (visible + last-known with decay) | Utility zones + bomb |
+| **map** | Teammate positions | Last-known enemy positions (memory with temporal decay) | Utility zones + bomb |
 | **view** | FOV mask (geometric cone) | Visible entities (distance-weighted) | Active utility zones |
 | **motion** | Trajectory trail (last 32 ticks) | Velocity radial gradient | Crosshair yaw-delta encoding |
 
@@ -115,17 +115,24 @@ Gaussian CDF approximation (`sigmoid(1.702 * z)`).
   RAP-Coach and JEPA models.
 - **Coaching Engine:** `skill_assessment.SkillLatentModel` feeds the
   curriculum layer. `external_analytics.EliteAnalytics` provides z-score
-  comparisons for the correction engine.
-- **UI / Visualization:** `heatmap_engine.HeatmapEngine` generates
-  RGBA data for position heatmaps and differential overlays.
+  comparisons for `backend/services/analysis_service.py`. Note: all 7
+  reference CSVs under `data/external/` are currently absent, so the
+  elite comparison is degraded on fresh installs (F-0020 in
+  `docs/OPEN_ISSUES.md`).
+- **UI / Visualization:** `heatmap_engine.HeatmapEngine` computes
+  differential position density and hotspot metadata.
 
 ## Development Notes
 
 - All spatial distance calculations on multi-level maps must use
   `distance_with_z_penalty()` from `connect_map_context.py`, not raw
   Euclidean distance.
-- `HeatmapEngine.generate_heatmap_data()` and
-  `generate_differential_heatmap_data()` are thread-safe.
+- `HeatmapEngine.generate_differential_heatmap_data()` is thread-safe.
+  F-0017 (closed 2026-08-21): the dead Kivy texture surface
+  (`generate_heatmap_data`/`create_texture_from_data`/
+  `generate_heatmap_texture`, `rgba_bytes`) was removed and the grid now
+  follows the C-03 single-Y-flip convention shared with
+  `tensor_factory._world_to_grid`; only hotspot metadata is produced.
 - `ProDataPipeline` limits in-memory rows to `_MAX_PIPELINE_ROWS`
   (50,000) to prevent OOM on large deployments.
 - `player_knowledge.py` caps tracked enemies at `MAX_TRACKED_ENEMIES`

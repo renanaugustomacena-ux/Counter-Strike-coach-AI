@@ -28,22 +28,25 @@ over time as more demos are analyzed and more feedback is collected.
 | `round_utils.py` | Shared round-phase inference from equipment value | `infer_round_phase()` |
 | `book/` | Coach Book corpus: `index.json` + 8 content files (`general.json` + 7 maps), 508 entries across 13 categories | (JSON data) |
 | `tactical_knowledge.json` | Legacy seed data (fallback when `book/index.json` is missing): 15 hand-authored entries across 8 maps + general | (JSON data) |
-| `__init__.py` | Package exports | `KnowledgeGraphManager`, `get_knowledge_graph` |
+| `__init__.py` | Package root | (empty -- namespace only) |
 
 ---
 
 ## Architecture
 
-The module is organized around four retrieval strategies that feed into the
-coaching engine through `generate_unified_coaching_insight()`:
+The module is organized around two retrieval pillars that the coaching layers
+consume directly -- `KnowledgeRetriever` for RAG tactical knowledge and
+`ExperienceBank` for COPER experiences. (`rag_knowledge.py` also exposes
+`generate_rag_coaching_insight()` and `generate_unified_coaching_insight()` as
+module-level entry points that combine both pillars, but production consumers
+currently instantiate the classes directly.)
 
 ```
                      +---------------------+
                      | coaching_service.py  |
-                     |  (COPER / Hybrid)    |
+                     | coaching_dialogue.py |
+                     | hybrid_engine.py ... |
                      +----------+----------+
-                                |
-                 generate_unified_coaching_insight()
                                 |
               +-----------------+-----------------+
               |                                   |
@@ -98,7 +101,9 @@ score = (similarity + hash_bonus + effectiveness_bonus) * confidence
 Where:
 - `similarity` -- cosine similarity from FAISS or brute-force (0.0 to 1.0)
 - `hash_bonus` -- 0.2 if `context_hash` matches exactly (same map + side + phase + area)
-- `effectiveness_bonus` -- `effectiveness_score * 0.4` for validated experiences
+- `effectiveness_bonus` -- `effectiveness_score * 0.4`, applied only when the
+  experience is `outcome_validated` and has at least `_MIN_EFFECTIVENESS_TRIALS`
+  advice trials (C-2 fix)
 - `confidence` -- per-experience reliability weight (0.1 to 1.0)
 
 ### Feedback Loop
@@ -114,7 +119,8 @@ The Experience Bank implements a closed-loop learning cycle:
 ### Knowledge Graph
 
 `KnowledgeGraphManager` provides a SQLite-backed entity-relation graph for
-structured tactical reasoning. Entities (e.g., "Mirage/Window", type "Spot")
+structured tactical reasoning, stored in `<USER_DATA_ROOT>/knowledge_graph.db`
+(WAL mode, cached connection). Entities (e.g., "Mirage/Window", type "Spot")
 carry JSON observation lists. Relations are directed edges (e.g.,
 `"Mirage/Window" --[CONNECTS_TO]--> "Mirage/Mid"`). BFS subgraph queries
 support multi-hop traversal up to depth 5.
@@ -127,10 +133,12 @@ support multi-hop traversal up to depth 5.
 
 | Consumer | Usage |
 |----------|-------|
-| `backend/services/coaching_service.py` | Calls `generate_unified_coaching_insight()` in COPER and Hybrid modes |
-| `backend/coaching/hybrid_engine.py` | Merges RAG knowledge context with ML predictions |
-| `backend/coaching/correction_engine.py` | Retrieves pro examples for correction suggestions |
-| `core/session_engine.py` (Teacher daemon) | Triggers experience extraction after demo ingestion |
+| `backend/services/coaching_service.py` | COPER mode: builds an `ExperienceContext`, queries `get_experience_bank()`, and calls `collect_feedback_from_match()` after each analyzed match; also uses `KnowledgeRetriever` and `round_utils.infer_round_phase()` |
+| `backend/services/coaching_dialogue.py` | Chat grounding: `KnowledgeRetriever.retrieve()` + Experience Bank retrieval; calls `ensure_seed_knowledge_loaded()` on startup |
+| `backend/coaching/hybrid_engine.py` | Lazy-loads a `KnowledgeRetriever` (AC-15-01) to merge RAG knowledge context with ML predictions |
+| `backend/analysis/role_classifier.py` | Retrieves role-specific coaching entries via `KnowledgeRetriever.retrieve()` |
+| `core/session_engine.py` | First-run bootstrap: calls `initialize_knowledge_base()` when the `TacticalKnowledge` table is empty; also starts the ingestion watcher |
+| `apps/qt_app/app.py` | Splash screen: checks `KnowledgeEmbedder` model cache and pre-downloads the SBERT model on first launch |
 
 ### Data Sources
 
@@ -147,7 +155,7 @@ All major components use thread-safe singleton factories:
 
 - `get_experience_bank()` -- double-checked locking with `threading.Lock`
 - `get_vector_index_manager()` -- returns `None` if FAISS is unavailable
-- `get_knowledge_graph()` -- lazy initialization
+- `get_knowledge_graph()` -- double-checked locking with `threading.Lock`
 - `_get_retriever()` -- cached `KnowledgeRetriever` to avoid reloading SBERT
 
 ---

@@ -27,9 +27,9 @@ All services use dependency injection for `DatabaseManager` access (via
 | `coaching_service.py` | ~1068 | Main coaching orchestrator (4 modes) | `CoachingService` |
 | `analysis_orchestrator.py` | ~1097 | Phase 6 analysis coordination (11 engines) | `AnalysisOrchestrator`, `MatchAnalysis`, `RoundAnalysis` |
 | `analysis_service.py` | 91 | Performance analysis and drift detection | `AnalysisService`, `get_analysis_service()` |
-| `coaching_dialogue.py` | ~1544 | Interactive multi-turn coaching chat | `CoachingDialogueEngine`, `get_dialogue_engine()` |
-| `lesson_generator.py` | 380 | Structured lesson generation from demos | `LessonGenerator`, `check_lesson_system_status()` |
-| `llm_service.py` | 367 | Ollama LLM provider wrapper | `LLMService`, `get_llm_service()`, `check_ollama_status()` |
+| `coaching_dialogue.py` | ~1974 | Interactive multi-turn coaching chat with DB tool-calling | `CoachingDialogueEngine`, `get_dialogue_engine()` |
+| `lesson_generator.py` | 383 | Structured lesson generation from demos | `LessonGenerator`, `check_lesson_system_status()` |
+| `llm_service.py` | 462 | Ollama LLM provider wrapper (incl. tool calling) | `LLMService`, `get_llm_service()`, `check_ollama_status()` |
 | `ollama_writer.py` | 108 | Natural language polishing for insights | `OllamaCoachWriter`, `get_ollama_writer()` |
 | `player_lookup.py` | ~557 | Player name detection and HLTV data retrieval for chat | `PlayerLookupService` |
 | `profile_service.py` | 165 | Steam/FaceIT profile integration | `ProfileService` |
@@ -44,8 +44,10 @@ The central coaching engine with a prioritized 4-mode fallback chain (P9-03):
 
 1. **COPER** (default, `USE_COPER_COACHING=True`): Context-aware coaching using
    Experience Bank + RAG + Pro References. Requires `map_name` and `tick_data`.
-2. **Hybrid** (`USE_HYBRID_COACHING=True`): ML predictions synthesized with RAG
-   knowledge retrieval. Requires `player_stats`.
+2. **Hybrid** (`USE_HYBRID_COACHING=True`): baseline-deviation Z-scores synthesized
+   with RAG knowledge retrieval. Requires `player_stats`. Note: ML predictions are
+   computed but currently not consumed by the synthesis step (open finding F-0028,
+   see `docs/OPEN_ISSUES.md`).
 3. **Traditional + RAG** (`USE_RAG_COACHING=True`): Correction engine enhanced with
    tactical knowledge retrieval.
 4. **Traditional** (always available): Pure deviation-based correction engine. Lowest
@@ -55,6 +57,8 @@ Fallback transitions: COPER failure -> Hybrid (if enabled) -> Traditional.
 
 Post-coaching pipelines (non-blocking):
 - Phase 6 Advanced Analysis (momentum, deception, entropy, game theory)
+- JEPA insight generation (F1.2, gated by `USE_JEPA_MODEL`, default off; open
+  finding F-0029 — the adapter arms on pretrain-only checkpoints)
 - Longitudinal Trend Coaching (regression/improvement detection via `compute_trend()`)
 - Ollama natural language polishing (via `OllamaCoachWriter`)
 - Explainability narratives (via `ExplanationGenerator`)
@@ -68,9 +72,9 @@ FAISS search, or Ollama polishing stalls.
 
 ### `AnalysisOrchestrator` -- Phase 6 Analysis Coordination
 
-Instantiates 11 analysis engines (the death-probability estimator plus the ten
-below; Game Tree and Blind Spots share a step) and produces `CoachingInsight`
-objects for database storage:
+Instantiates 11 analysis engines eagerly (the movement-quality analyzer is
+lazy-imported at analysis time) and runs an 11-step suite (Game Tree and Blind
+Spots share a step) producing `CoachingInsight` objects for database storage:
 
 | Step | Engine | Input Required | Focus Area |
 |------|--------|----------------|------------|
@@ -83,6 +87,12 @@ objects for database storage:
 | 7 | Role Classifier | `player_stats` | Player role identification |
 | 8 | Utility Analyzer | `player_stats` | Utility usage efficiency |
 | 9 | Economy Optimizer | `game_states` | Buy/save decision analysis |
+| 10 | Death Probability Estimator | `tick_data` | Bayesian death risk assessment |
+| 11 | Movement Quality Analyzer | `tick_data` | Positioning-mistake detection |
+
+Known limitation (open finding F-0031, see `docs/OPEN_ISSUES.md`): the utility,
+strategy, and economy steps are currently dark on the live path — the analyzers
+require stat keys / game-state fields that no upstream producer emits.
 
 Data structures: `RoundAnalysis` (per-round insights) and `MatchAnalysis`
 (aggregated match insights with `all_insights` property).
@@ -103,9 +113,16 @@ Lightweight service for performance retrieval and drift detection:
 
 Multi-turn coaching dialogue with RAG and Experience Bank augmentation:
 
-- **Session lifecycle**: `start_session()` -> `respond()` (repeated) -> `clear_session()`
-- **Intent classification**: Keyword-based routing into 4 categories (positioning,
-  utility, economy, aim) plus "general" fallback
+- **Session lifecycle**: `start_session()` -> `respond()` / `respond_stream()`
+  (repeated) -> `clear_session()`
+- **Intent classification**: Keyword-based routing into 7 categories (positioning,
+  utility, economy, aim, player_query, round_query, match_query) plus "general"
+  fallback
+- **Database tool-calling (DP-03)**: When the active Ollama model supports
+  function calling, responses route through a tool phase (max 4 tool rounds)
+  with four DB tools — `list_matches`, `get_match_overview`, `get_round_details`,
+  `lookup_player` — grounding answers in real parsed-demo data; models without
+  tool support fall back to the plain chat path
 - **RAG augmentation**: Each user message triggers `KnowledgeRetriever` and
   `ExperienceBank` retrieval, injected as context into the LLM prompt
 - **Sliding context window**: Last `MAX_CONTEXT_TURNS * 2` messages (default 12)
@@ -130,7 +147,11 @@ Generates educational coaching lessons from demo analysis:
 
 Wraps the Ollama REST API for local LLM inference:
 
-- **Endpoints**: `/api/generate` (single-shot) and `/api/chat` (multi-turn)
+- **Endpoints**: `/api/generate` (single-shot) and `/api/chat` (multi-turn,
+  streaming via `chat_stream()`)
+- **Tool calling (DP-03)**: `chat_tools()` sends Ollama function-calling
+  requests; an HTTP 400 caches `tools_supported=False` for the current model so
+  later turns skip the tool phase
 - **Availability caching**: 60-second TTL on `is_available()` checks
 - **Auto model selection**: If the configured model is not found, falls back to
   the first available model
@@ -187,13 +208,13 @@ Desktop App (Qt)
             |
             +-- CoachingService.generate_new_insights()
             |       +-- correction_engine (traditional)
-            |       +-- coper_engine (Experience Bank + RAG)
-            |       +-- hybrid_engine (ML + RAG)
+            |       +-- experience_bank (COPER synthesis: Experience Bank + RAG)
+            |       +-- hybrid_engine (baseline Z + RAG)
             |       +-- OllamaCoachWriter.polish()
             |       +-- AnalysisOrchestrator.analyze_match()
             |
             +-- CoachingDialogueEngine.respond()
-            |       +-- LLMService.chat()
+            |       +-- LLMService.chat() / chat_tools()
             |       +-- KnowledgeRetriever.retrieve()
             |       +-- ExperienceBank.retrieve_similar()
             |

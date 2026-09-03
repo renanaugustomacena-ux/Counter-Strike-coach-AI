@@ -20,14 +20,14 @@ If a module in here graduates to production-ready, it moves to a non-experimenta
 ```
 experimental/
 ├── __init__.py
-└── rap_coach/        # RAP Coach (Reasoning + Acting + Pedagogy) — see rap_coach/README.md
+└── rap_coach/        # RAP Coach (Reasoning, Adaptation, Pedagogy) — see rap_coach/README.md
 ```
 
 ## Sub-packages
 
 | Sub-package | Status | Flag | Description |
 |-------------|--------|------|-------------|
-| `rap_coach/` | Experimental | `USE_RAP_MODEL=True` | 7-layer multi-head policy net (perception, memory, strategy, pedagogy, communication, etc.). Uses `ncps` LTC cells with the RAP-LTC-FIX shape patch in `memory.py`. |
+| `rap_coach/` | Experimental | `USE_RAP_MODEL=True` | Multi-head policy net: 6 learnable components (perception, LTC-Hopfield memory, MoE strategy, pedagogy value head, causal attribution, position head) plus an external template communication layer. Uses `ncps` LTC cells with the RAP-LTC-FIX shape patch in `memory.py`. |
 
 See `rap_coach/README.md` for the full RAP architecture.
 

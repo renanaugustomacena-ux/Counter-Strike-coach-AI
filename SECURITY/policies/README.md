@@ -63,7 +63,7 @@ config:
   query: '.services.*.ports[*]'
   rule: must_not_match
   pattern: '^0\.0\.0\.0:'
-  message: 'Service binds to all interfaces; use 127.0.0.1 or add a # SEC: bind-public waiver.'
+  message: 'Service binds to all interfaces; use 127.0.0.1.'
 ```
 
 ### `file_compare`
@@ -84,7 +84,8 @@ config:
 
 ### `ast_walker`
 
-(Phase 2) Walks the Python AST. Will require `libcst==1.5.0` as a dev dep.
+(Phase 2 — not yet implemented; the runner currently emits an info-level notice for `ast_walker`
+rules.) Walks the Python AST. Will require `libcst` as a dev dep.
 
 ## Adding a new rule
 
@@ -96,10 +97,14 @@ config:
 ## Modes
 
 - **Default (warn-mode)**: `python tools/policy_runner.py` — exits 0 even on violations; prints report.
-- **Strict (block)**: `python tools/policy_runner.py --strict` — exits 1 on any unwaived violation.
-- **Single rule**: `python tools/policy_runner.py --rule POL-DEPS-01` — runs only the specified rule.
+- **Strict (block)**: `python tools/policy_runner.py --strict` — exits 1 on any unwaived
+  error-severity violation or expired waiver.
+- **Single rule**: `python tools/policy_runner.py --rule POL-DEPS-01` — runs only the specified rule
+  (repeatable).
+- **JSON**: `python tools/policy_runner.py --json` — machine-readable output instead of the human report.
 
 ## Waivers
 
 Repo-wide exceptions live in `SECURITY/waivers.yaml`; every entry is time-bound (`expires:`) and
-the runner reports expired waivers. Per-line exceptions use the rule's `inline_waivers` strings.
+the runner reports expired waivers (which fail `--strict`). Per-line exceptions use the rule's
+`inline_waivers` strings.

@@ -27,7 +27,7 @@ decision in this directory is defended with **risk-addressed / residual-risk / t
 | [`CONFIG_REFERENCE.md`](CONFIG_REFERENCE.md) | Environment variables: defaults, sensitivity, validation |
 | [`CVE_LOG.md`](CVE_LOG.md) | Append-only CVE triage log |
 | [`BOUNDARY_FILES.txt`](BOUNDARY_FILES.txt) | Trust-boundary file list — PRs touching any line require security review |
-| [`WIPE_RUNBOOK.md`](WIPE_RUNBOOK.md) | Standard operating procedure for `tools/wipe_for_reingest*.py` |
+| [`WIPE_RUNBOOK.md`](WIPE_RUNBOOK.md) | Standard operating procedure for `tools/wipe_for_reingest_safe.py` |
 | `policies/` | Policy-as-code rules consumed by `tools/policy_runner.py` |
 | `waivers.yaml` | Time-bound exceptions to policies (every entry: `risk:`, `expires:`, `owner:`, `justification:`) |
 
@@ -39,8 +39,8 @@ decision in this directory is defended with **risk-addressed / residual-risk / t
    (`.github/workflows/threat-model-gate.yml`) labels the PR `security-review-required` and
    `CODEOWNERS` enforces a security review.
 4. **At release** — follow `packaging/BUILD_CHECKLIST.md`: `goliath.py integrity` regenerates the
-   source integrity manifest (RASP), `tools/sbom_generator.py` produces the CycloneDX SBOM, and
-   `tools/audit_binaries.py` audits the built binaries.
+   source integrity manifest (RASP), and `tools/audit_binaries.py` audits the built binaries.
+   `tools/sbom_generator.py` produces the CycloneDX SBOM (standalone tool; not yet a checklist step).
 5. **During an incident** — `INCIDENT_RESPONSE.md` defines the named scenarios (IR-01…IR-05).
 
 ## Standards anchoring
@@ -66,4 +66,5 @@ decision in this directory is defended with **risk-addressed / residual-risk / t
 Reports of vulnerabilities or security concerns must reach the repository owner:
 **Renan Augusto Macena** — see CODEOWNERS for contact routing.
 
-For coordinated disclosure, do **not** open a public issue. Use a private channel.
+For coordinated disclosure, do **not** open a public issue. Use a private channel — the
+repository-level [`SECURITY.md`](../SECURITY.md) defines the reporting process.

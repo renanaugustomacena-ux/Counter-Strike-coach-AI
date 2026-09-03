@@ -9,13 +9,14 @@ Root-level project tools for validation, diagnostics, build orchestration, and m
 
 ## File Inventory
 
-The directory holds **49 Python tools** plus the `fuzz/` harness ([README](fuzz/README.md)) and `hltv_stealth_init.js` (browser stealth snippet for HLTV fetching). The most important ones:
+The directory holds **53 Python tools** plus the `fuzz/` harness ([README](fuzz/README.md)) and `hltv_stealth_init.js` (browser stealth snippet for HLTV fetching). The most important ones:
 
 | File | Purpose | Category |
 |------|---------|----------|
 | `headless_validator.py` | Regression gate with 42 distinct check phases | Validation |
 | `dead_code_detector.py` | Orphan modules, duplicate definitions, stale imports | Validation |
-| `verify_all_safe.py` | Safety verification across all modules | Validation |
+| `audit_scanner.py` | Mechanical subsystem audit (LOC, imports, complexity, TODOs) | Validation |
+| `verify_all_safe.py` | Discovers and runs all safe (read-only) tools, skipping unsafe/interactive ones | Validation |
 | `portability_test.py` | Cross-platform portability checks | Validation |
 | `Feature_Audit.py` | Feature alignment audit (parser vs ML pipeline) | Validation |
 | `run_console_boot.py` | Console boot verification | Validation |
@@ -27,14 +28,19 @@ The directory holds **49 Python tools** plus the `fuzz/` harness ([README](fuzz/
 | `reset_pro_data.py` | Reset professional player data (idempotent) | Database |
 | `dev_health.py` | Development health orchestrator | Maintenance |
 | `Sanitize_Project.py` | Project sanitization (remove local data) | Maintenance |
-| `observe_training_cycle.py` | Training metrics monitoring | Observability |
-| `test_rap_lite.py` | RAP model lite testing | Testing |
-| `test_tactical_pipeline.py` | Tactical inference pipeline testing | Testing |
+| `observe_training_cycle.py` | End-to-end training-cycle diagnostic (acquisition → knowledge) | Observability |
+| `ui_screenshot.py` | Offscreen screenshot harness for real screens (fixture data) | UI |
+| `ui_gallery.py` | Offscreen component-gallery renderer (one grab per theme) | UI |
+| `ui_fixtures.py` | Frame-realistic fixture payloads for the UI harness | UI |
+| `test_rap_lite.py` | RAP-Lite integration test (dimensional contracts) | Testing |
+| `test_tactical_pipeline.py` | Tactical viewer pipeline end-to-end test on a real .dem | Testing |
 | `validate_coaching_pipeline.py` | End-to-end coaching pipeline validation | Testing |
+
+The remainder covers monolith data repair (`repair_*.py`, `tick_census.py`), shard recovery and monolith rebuild (`d3_recover_shard_metadata.py`, `rebuild_monolith.py`), read-only disk audits (`d4_disk_hygiene_audit.py`), experience/strategy mining (`mine_coaching_experience.py`, `mine_shard_strategies.py`), HLTV metadata seeding (`seed_hltv_top_n.py`, `seed_hltv_apply_vision.py`), supply-chain pinning (`sbom_generator.py`, `verify_lock_hashes.py`, `refresh_model_pins.py`, `refresh_compose_digests.py`), security policy and drift scanning (`policy_runner.py`, `drift_detector.py`), and offline evals (`eval_harness.py`, `coach_answer_eval.py`).
 
 ## `headless_validator.py` --- The Regression Gate
 
-This is the single most important tool in the project (~2,900 lines). It runs **42 distinct check phases** (banner phases numbered 1–26 — Phase 19 is unused — plus lettered sub-phases 3b–3l and 6b–6f and a table-driven Contract phase) and must exit with code 0 before any commit. It is also wired as a pre-commit hook.
+This is the single most important tool in the project (~2,900 lines). It runs **42 distinct check phases** (banner phases numbered 1–26 — Phase 19 is unused — plus lettered sub-phases 3b–3l and 6b–6f and a table-driven Contract phase) and must exit with code 0 before any commit. It is also wired into `.pre-commit-config.yaml` as a pre-push hook.
 
 ### Validation Phases
 
@@ -123,7 +129,7 @@ Runs multiple tools in sequence and produces a unified health report:
 1. Headless validator (always; `--quick` runs only this)
 2. Dead code detector (`--strict`)
 3. Feature alignment audit
-4. Portability test
+4. Portability test (`--full` only)
 
 ### `Sanitize_Project.py` --- Clean Local State
 

@@ -22,10 +22,10 @@ corruption known as *Inference-Training Skew*.
 |------|---------|-------------|
 | `vectorizer.py` | 25-dim feature vector extraction and validation | `FeatureExtractor`, `FEATURE_NAMES`, `METADATA_DIM`, `DataQualityError`, `WEAPON_CLASS_MAP` |
 | `base_features.py` | Configurable heuristic thresholds + match-level aggregation | `HeuristicConfig`, `extract_match_stats()`, `load_learned_heuristics()`, `save_heuristic_config()` |
-| `rating.py` | Unified HLTV 2.0 rating formula (component + regression) | `compute_hltv2_rating()`, `compute_impact_rating()`, `compute_survival_rating()`, `compute_hltv2_rating_regression()` |
+| `rating.py` | Unified HLTV 2.0 rating formula and RAW `rating_*` components | `compute_hltv2_rating()`, `compute_rating_components()`, `compute_impact_rating()`, `compute_survival_rating()` |
 | `kast.py` | KAST (Kill/Assist/Survive/Trade) calculation | `calculate_kast_for_round()`, `calculate_kast_percentage()`, `estimate_kast_from_stats()` |
 | `role_features.py` | Role-specific features and classification | `classify_role()`, `extract_role_features()`, `get_role_coaching_focus()`, `get_adaptive_signatures()`, `ROLE_SIGNATURES`, `PlayerRole` |
-| `__init__.py` | Lazy-import dispatcher (prevents import-lock deadlocks) | Re-exports all public names from submodules |
+| `__init__.py` | Lazy-import dispatcher (prevents import-lock deadlocks) | Lazily re-exports the `vectorizer`, `kast`, and `role_features` public names; `base_features` and `rating` are imported directly by their consumers |
 
 ## The 25-Dimensional Feature Vector
 
@@ -73,6 +73,10 @@ order is fixed and enforced by the compile-time assertion
 - **Weapon class** (index 19) maps ~90 CS2 weapon names (internal +
   demoparser2 display names) to 8 category values via `WEAPON_CLASS_MAP`
   (knife 0.0, special 0.05, grenade 0.1, tiers 0.2-1.0; unknown 0.5).
+- **`kast_estimate` (index 16)** keeps its historical name but now reads
+  real KAST data (`kast` / `avg_kast` keys injected during ingestion) and
+  defaults to 0.0 -- the old per-slot `estimate_kast_from_stats()`
+  heuristic was retired.
 
 ## Architecture & Concepts
 
@@ -90,7 +94,8 @@ Key methods:
 - `get_feature_names()` -- delegates to `FEATURE_NAMES` tuple.
 
 Safety mechanisms:
-- `P-VEC-01`: Warning on missing `map_name` (z_penalty defaults to 0.0).
+- `P-VEC-01`: Auto-resolves `map_name` from `tick_data` when the caller
+  omits it; warns and defaults z_penalty to 0.0 when unavailable.
 - `P-VEC-02`: NaN/Inf detection with ERROR logging and clamp to defaults.
 - `P-VEC-03`: `_config_override` parameter for batch consistency.
 - `P3-A`: Batch quality gate -- `DataQualityError` raised when >5% of
@@ -109,16 +114,26 @@ functions to prevent Inference-Training Skew.
 
 ### HLTV 2.0 Rating (`rating.py`)
 
-Two implementations coexist by design (`F2-40`):
+One production formula plus a components contract:
 
 1. **`compute_hltv2_rating()`** -- per-component average, each term
-   independently interpretable.  Used for coaching deviation analysis.
-2. **`compute_hltv2_rating_regression()`** -- regression coefficients
-   matching HLTV published values (R^2=0.995).  Used for UI display
-   validation.  Includes a runtime guard against kast ratio/percentage
-   confusion.
+   normalized against a formula baseline and independently interpretable.
+   Used for coaching deviation analysis.  The `kast` argument is a RATIO
+   (0.0-1.0), never a percentage.
+2. **`compute_rating_components()`** -- single source of truth for the
+   `PlayerMatchStats` `rating_*` columns.  Contract: the columns store
+   RAW components (`rating_kpr = kpr`, `rating_survival = 1 - dpr`,
+   `rating_kast` = KAST ratio [0, 1], `rating_adr` = raw ADR) -- baseline
+   normalization happens ONLY inside the `rating` aggregate.  Writing
+   normalized ratios into these columns silently corrupts every
+   downstream Z-score.
 
-The two functions deliberately diverge -- do NOT reconcile them.
+The former `compute_hltv2_rating_regression()` was DELETED (F2-39/R4 LOW,
+2026-07-17): it had zero production call sites and carried percentage kast
+semantics that invited silently wrong x100 ratings.  The regression
+coefficients (R^2=0.995) remain in the module as documentation constants.
+The per-component average deliberately diverges from HLTV's published
+regression formula (`F2-40`) -- do NOT reconcile them.
 
 ### KAST Calculation (`kast.py`)
 
@@ -150,12 +165,12 @@ import submodules while the UI thread holds the import lock.
 
 | Consumer | Usage |
 |----------|-------|
-| `backend/nn/rap_coach/trainer.py` | `FeatureExtractor.extract_batch()` for training data |
-| `backend/nn/jepa_trainer.py` | `FeatureExtractor.extract_batch()` with `validate_feature_parity()` |
-| `backend/services/coaching_service.py` | `FeatureExtractor.extract()` for live inference |
-| `backend/services/analysis_orchestrator.py` | `extract_match_stats()` for match-level analysis |
-| `backend/processing/baselines/role_thresholds.py` | `classify_role()` for threshold validation |
-| `core/session_engine.py` | `FeatureExtractor.configure()` at startup |
+| `backend/nn/training_orchestrator.py` | `FeatureExtractor.extract_batch()` for training data |
+| `backend/nn/jepa_train.py` | `FeatureExtractor.extract_batch()` for JEPA training |
+| `backend/processing/state_reconstructor.py` | `extract_batch()` + `validate_feature_parity()` for RAP-Coach tensors |
+| `backend/nn/inference/ghost_engine.py` | `validate_feature_parity()` at the inference boundary |
+| `backend/services/coaching_service.py` | `FeatureExtractor` extraction for live inference |
+| `backend/coaching/pro_bridge.py`, `ingestion/pipelines/user_ingest.py` | `extract_match_stats()` for match-level stats |
 
 ## Development Notes
 

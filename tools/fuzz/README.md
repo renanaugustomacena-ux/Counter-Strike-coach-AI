@@ -34,7 +34,7 @@ python tools/fuzz/fuzz_demo_parser.py --time-budget 600 --seed 42
 python tools/fuzz/fuzz_demo_parser.py --reproduce .fuzz/crashes/<hash>-<size>.dem
 ```
 
-When [Atheris](https://github.com/google/atheris) is installed, the run is coverage-guided; otherwise it falls back to a deterministic random-input loop (`--force-fallback` skips Atheris explicitly). Crash inputs are written to `--crash-dir` (default `.fuzz/crashes/`) as `<sha256>-<size>.dem` plus a `.meta` sidecar recording the exception class and message.
+When [Atheris](https://github.com/google/atheris) is installed, the run is coverage-guided; otherwise it falls back to a deterministic random-input loop (`--force-fallback` skips Atheris explicitly). Crash inputs are written to `--crash-dir` (default `.fuzz/crashes/`) as `<sha256-prefix>-<size>.dem` (first 16 hex chars of the SHA-256) plus a `.meta` sidecar recording the exception class and message.
 
 ## Failure modes the fuzzer protects against
 

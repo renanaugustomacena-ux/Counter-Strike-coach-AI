@@ -33,17 +33,25 @@ No UI logic lives here. The backend exposes its capabilities through a **service
 | 1 | `analysis/` | 12 | Game theory engines: belief models, momentum tracking, win probability, entropy analysis, deception index, blind spot detection | `belief_model.py`, `win_probability.py`, `momentum.py` |
 | 2 | `coaching/` | 9 | 4-mode coaching pipeline: COPER experience-based, Hybrid (NN + rules), RAG retrieval-augmented, traditional corrections | `hybrid_engine.py`, `correction_engine.py`, `pro_bridge.py` |
 | 3 | `control/` | 5 | Daemon lifecycle management, ingestion queue governance, ML training control, database resource limits | `ingest_manager.py`, `ml_controller.py`, `db_governor.py` |
-| 4 | `data_sources/` | 15 | External data integration: demo parser (demoparser2), HLTV pro statistics scraper (FlareSolverr/Docker), Steam API, FACEIT API | `demo_parser.py`, `hltv/`, `steam_api.py`, `faceit_api.py` |
+| 4 | `data_sources/` | 16 | External data integration: demo parser (demoparser2), HLTV pro statistics scraper (FlareSolverr/Docker), Steam API, FACEIT API | `demo_parser.py`, `hltv/`, `steam_api.py`, `faceit_api.py` |
 | 5 | `ingestion/` | 4 | Runtime file watching for new demos, CSV migration from legacy formats, OS resource governance | `watcher.py`, `resource_manager.py`, `csv_migrator.py` |
 | 6 | `knowledge/` | 8 | RAG knowledge base with FAISS vector index, COPER experience bank, pro demo mining, tactical knowledge graph | `rag_knowledge.py`, `experience_bank.py`, `vector_index.py` |
 | 7 | `knowledge_base/` | 2 | In-app help system: Markdown doc indexing and text search for the UI help screen | `help_system.py` |
-| 8 | `nn/` | 52 | Neural network architectures (6 model types), training pipeline, inference, EMA, early stopping, data quality, RAP Coach, JEPA | `jepa_model.py`, `rap_coach/`, `train.py`, `config.py` |
+| 8 | `nn/` | 53 | Neural network architectures (6 model types), training pipeline, inference, EMA, early stopping, data quality, RAP Coach, JEPA | `jepa_model.py`, `rap_coach/`, `train.py`, `config.py` |
 | 9 | `onboarding/` | 2 | New user progression flow: demo-count staging and coach readiness gating | `new_user_flow.py` |
 | 10 | `processing/` | 30 | Feature engineering (25-dim vector), baseline computation, pro baselines, heatmap generation, validation, tick enrichment | `feature_engineering/vectorizer.py`, `baselines/`, `validation/` |
-| 11 | `progress/` | 3 | Longitudinal training tracking: session trends, improvement metrics, skill curve analysis | `longitudinal.py`, `trend_analysis.py` |
+| 11 | `progress/` | 3 | Longitudinal player performance tracking: per-feature trend computation (slope, volatility, confidence) | `longitudinal.py`, `trend_analysis.py` |
 | 12 | `reporting/` | 2 | Analytics query layer for UI screens: aggregated match stats, trend summaries, performance breakdowns | `analytics.py` |
 | 13 | `services/` | 12 | Service orchestration layer: coaching service, analysis orchestrator, dialogue engine, LLM integration, profile management, telemetry | `coaching_service.py`, `analysis_orchestrator.py`, `llm_service.py` |
 | 14 | `storage/` | 14 | Tri-database persistence (SQLite WAL): database manager, SQLModel ORM, backup, match data manager, state manager, remote telemetry | `database.py`, `db_models.py`, `match_data_manager.py` |
+
+File counts are recursive `.py` files (including `__init__.py`), excluding `__pycache__`.
+
+**Top-level module:** besides the sub-packages, the package root contains `server.py` --
+a **standalone FastAPI utility server** (telemetry ingestion endpoint with rate limiting,
+Ollama proxy). Per its docstring it is **NOT wired** into the app lifecycle: it is not
+imported or launched by `main.py`, `session_engine.py`, or `lifecycle.py`. To use it, run
+`uvicorn Programma_CS2_RENAN.backend.server:app` manually.
 
 ---
 
@@ -154,7 +162,8 @@ Layer 5 (Orchestration): services/  reporting/  control/
 
 - Lower layers NEVER import from higher layers.
 - `storage/` has ZERO domain logic -- it is pure persistence.
-- `services/` is the ONLY layer consumed by UI packages (`apps/`).
+- `services/` is the primary layer consumed by UI packages (`apps/`); the read-only
+  `reporting/` analytics singleton is also imported directly by dashboard ViewModels.
 - `nn/` may read from `processing/` and `storage/`, but never from `coaching/`.
 - `coaching/` may invoke `nn/` for inference, but never triggers training.
 - `control/` manages daemon lifecycle and may touch any layer for orchestration.
@@ -194,16 +203,16 @@ Layer 5 (Orchestration): services/  reporting/  control/
 
 ### Testing
 
-- Framework: `pytest`, 130 test files in `Programma_CS2_RENAN/tests/` (+7 in root `tests/`).
+- Framework: `pytest`, 166 `test_*.py` files in `Programma_CS2_RENAN/tests/` (+10 in root `tests/`).
 - Integration tests require `CS2_INTEGRATION_TESTS=1`.
 - Key fixtures: `in_memory_db`, `seeded_db_session`, `mock_db_manager`, `torch_no_grad`.
 
 ### Pre-Commit Hooks
 
-13 hooks must pass before any commit: headless-validator, dead-code-detector,
+14 hooks must pass before any commit: headless-validator, dead-code-detector,
 integrity-manifest, dev-health, trailing-whitespace, end-of-file-fixer,
 check-yaml, check-json, large-files (1 MB), merge-conflict, detect-private-key,
-black (100 cols, py3.12), isort (profile=black).
+ruff (--fix), black (100 cols, py3.12), isort (profile=black).
 
 ### Post-Task Validation
 

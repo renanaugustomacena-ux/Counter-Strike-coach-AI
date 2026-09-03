@@ -2,7 +2,7 @@
 
 > **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
-Vector design system for the CS2 coaching application. All files are SVG + HTML + JSON — zero binaries, fully portable.
+Vector design system for the CS2 coaching application. All files are SVG + HTML + JSON/JSX — zero binaries, fully portable.
 
 > **Palette note (2026-08-29, D-30 resolved):** the SVG frames were REPAINTED to the live product palette (CS2: `#0B1628` base / `#FF6A00` accent — operator decision, workbench Q5); the launch-palette originals survive in git history before this date. `tokens/design-tokens.json` remains the single source of truth the app is generated from; the frames now match it.
 
@@ -13,7 +13,9 @@ design/
 ├── index.html                  ← master canvas (open in browser)
 ├── README.md
 ├── tokens/
-│   └── design-tokens.json      ← W3C DTCG format, 3 themes
+│   └── design-tokens.json      ← W3C DTCG format, 3 themes — token SSOT:
+│                                 tools/gen_design_tokens.py generates the Qt
+│                                 theme dataclass (core/design_tokens.py) from it
 ├── frames/                     ← 41 SVG frames, 1440×900 each
 │   ├── 01_cover.svg            Marketing (01–04)
 │   ├── 02_landing_hero.svg
@@ -39,7 +41,8 @@ design/
 │   ├── motifs/                 tactical-grid.svg background motif
 │   └── wallpapers/             cs2.svg · csgo.svg · cs16.svg
 └── cs2/                        ← marketing deck & video sources (HTML/JSX/scenes)
-    └── uploads/                flattened copy of the 41 frames + tokens (see its README)
+    └── uploads/                flattened copy of the 41 frames + an older token
+                                snapshot (see its README)
 ```
 
 ## How to Use
@@ -175,7 +178,7 @@ These are hardcoded in the architecture diagrams for reference:
 | `NN-JM-04` | `target_encoder` requires_grad=False during EMA |
 | `DS-12` | MIN_DEMO_SIZE = 10 MB |
 | `P-VEC-02` | NaN/Inf clamp + >5% batch → DataQualityError |
-| `METADATA_DIM=25` | Sole source: `vectorizer.py:32` |
+| `METADATA_DIM=25` | Sole source: `vectorizer.py` |
 
 ## Compatibility Matrix
 
