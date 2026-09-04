@@ -1,11 +1,11 @@
-# Backend Ingestion — File Watching, Resource Governance & CSV Migration
+# Backend Ingestion — File Watching, Resource Governance, Match Date Resolution & CSV Migration
 
 > **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
 > **Authority:** Rule 2 (Backend Sovereignty), Rule 4 (Data Persistence)
 > **Skill:** `/resilience-check`, `/data-lifecycle-review`
 
-This module handles the runtime ingestion layer: watching for new demo files on disk, governing system resources during background processing, and migrating external CSV datasets into the database.
+This module handles the runtime ingestion layer: watching for new demo files on disk, governing system resources during background processing, resolving real match dates for chronological dataset splits, and migrating external CSV datasets into the database.
 
 **Note:** This is distinct from the top-level `Programma_CS2_RENAN/ingestion/` directory, which handles the multi-stage pipeline orchestration. This module provides the low-level building blocks.
 
@@ -16,6 +16,7 @@ This module handles the runtime ingestion layer: watching for new demo files on 
 | `watcher.py` | ~238 | Filesystem monitor for `.dem` files | `DemoFileHandler(FileSystemEventHandler)`, `IngestionWatcher` |
 | `resource_manager.py` | ~201 | CPU/RAM throttling for background tasks | `ResourceManager` |
 | `csv_migrator.py` | ~213 | External CSV import into SQLModel tables | `CSVMigrator` |
+| `match_date_resolver.py` | ~93 | Resolve real match dates with provenance markers | `resolve_match_date()`, `CHRONOLOGICAL_SOURCES` |
 
 ## `watcher.py` — Demo File Monitor
 
@@ -81,6 +82,25 @@ Migrates external statistical CSV files into SQLModel database tables for coachi
 - **Encoding:** UTF-8
 - **Safe parsing:** `_safe_float()` and `_safe_int()` prevent NaN propagation
 - **Standalone entry point:** Can be run directly via `python -m Programma_CS2_RENAN.backend.ingestion.csv_migrator` (uses the `get_db_manager()` singleton)
+
+## `match_date_resolver.py` — Real Match Dates
+
+Resolves a demo's true match date instead of using the ingestion timestamp, so that chronological dataset splits reflect real match order rather than ingestion order.
+
+### Resolution Ladder (best first)
+
+| Rung | Source | Signal |
+|------|--------|--------|
+| 1 | `filename_date` | 8-digit `YYYYMMDD` token in the demo name (e.g. `demo_mirage_20240615`) |
+| 2 | `filename_year` | Leading `YYYY-` HLTV-archive prefix (coarse: January 1 of that year) |
+| 3 | `file_mtime` | File modification time (weakest real signal — destroyed by copies/moves) |
+| 4 | `ingested_at` | `datetime.now()` — NOT a match date; splits treat these rows as ingestion-ordered |
+
+An `hltv_event_date` rung (joining `ProEvent.start_date`) exists only in `tools/backfill_match_dates.py`, which requires the populated `hltv_metadata.db`.
+
+- **Sanity bounds:** parsed dates must fall between 2012 and 2035
+- **Provenance markers:** each returned date carries its source string so downstream consumers (`assign_dataset_splits`) can distinguish real chronology from ingestion order
+- **`CHRONOLOGICAL_SOURCES`:** the frozenset `{filename_date, filename_year, hltv_event_date}` — only rows with one of these sources count as truly chronological for the training split
 
 ## Integration
 

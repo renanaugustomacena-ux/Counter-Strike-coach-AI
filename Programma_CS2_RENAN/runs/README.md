@@ -16,6 +16,6 @@ The path is resolved as `RUNS_DIR = USER_DATA_ROOT/runs` in `core/config.py` (cr
 
 ## Usage
 
-1. **Training**: `python run_full_training_cycle.py` registers the TensorBoard callback by default; `--tb-logdir` overrides the destination (default `None` means a run-scoped directory from `build_run_dir()`; an explicit path disables run scoping and writes there directly) and `--no-tensorboard` disables logging. Full-scale training over the demo corpus runs on the Linux data box (see `docs/OPEN_ISSUES.md` §3); runs produced locally on Windows are dev-scale smoke runs, typically tagged `-cpu`.
+1. **Training**: `python run_full_training_cycle.py` registers the TensorBoard callback by default; `--tb-logdir` overrides the destination (default `None` means a run-scoped directory from `build_run_dir()`; an explicit path disables run scoping and writes there directly) and `--no-tensorboard` disables logging. The device tag (`-cpu`, `-cuda`, `-rocm`) makes runs from different hardware configurations immediately distinguishable in the dashboard.
 2. **Viewing**: Launch `tensorboard --logdir Programma_CS2_RENAN/runs` and open the printed URL to inspect training curves.
 3. **Cleanup**: Event files are volatile, regeneratable artifacts — old run directories can be deleted freely to save disk space.

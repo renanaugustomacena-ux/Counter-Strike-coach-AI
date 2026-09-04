@@ -17,9 +17,9 @@ The directory is organized into thematic subdirectories that define the look and
 - **`cs2theme/`**: Next-gen assets tailored for Counter-Strike 2.
 
 ### Map Overviews
-The **`maps/`** subdirectory contains top-down overview PNGs for the competitive maps:
-- **`de_dust2.png`**, **`de_mirage.png`**, etc. (including lower levels for Nuke and Vertigo).
-- "`_dark`" and "`_light`" variations of most maps for better contrast.
+The **`maps/`** subdirectory contains 31 top-down overview PNGs for the competitive maps:
+- **`de_dust2.png`**, **`de_mirage.png`**, **`de_anubis.png`**, etc. (including lower levels for Nuke and Vertigo).
+- "`_dark`" and "`_light`" variations of most maps for better contrast (Anubis currently has the base variant only).
 
 ### Typography & Branding
 Font files shipped in this directory (five are registered at startup by the theme engine; `NewHope-Line.ttf` ships alongside but is not in the loader's font map):
@@ -48,6 +48,6 @@ Programma_CS2_RENAN/PHOTO_GUI/
 
 ## Usage
 
-1. **GUI Rendering**: The theme engine registers five fonts at startup. Wallpapers are off by default (flat surface); when the user picks one in Settings (persisted `BACKGROUND_IMAGE` setting), it is resolved inside the active theme's folder (`cs2theme/`, `csgotheme/`, `cs16theme/`).
+1. **GUI Rendering**: The theme engine registers five fonts at startup. Wallpapers are off by default (flat surface); when the user picks one in Settings (persisted `BACKGROUND_IMAGE` setting), it is resolved inside the active theme's folder (`cs2theme/`, `csgotheme/`, `cs16theme/`). A wallpaper slideshow mode (`WALLPAPER_SLIDESHOW`) rotates through the images in the active theme's folder.
 2. **Tactical Overlays**: The native tactical map widget (`TacticalMapWidget`) loads the `maps/*.png` overviews and draws player positions, trajectories, and markers on top of them during 2D replay.
 3. **Optional UI Sounds**: `apps/qt_app/core/sound.py` scans an optional `PHOTO_GUI/sounds/` folder for user-supplied WAV files; the app degrades silently if it is absent.

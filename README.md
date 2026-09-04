@@ -1,9 +1,9 @@
 # Macena CS2 Analyzer
 
 [![CI Pipeline](https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI/actions/workflows/build.yml/badge.svg)](https://github.com/renanaugustomacena-ux/Counter-Strike-coach-AI/actions/workflows/build.yml)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Proprietary%20%7C%20Apache--2.0-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-42%20phases%20validator%20%7C%20166%20test%20files-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-headless%20validator%20%7C%20182%20test%20files-brightgreen.svg)]()
 
 **AI-Powered Tactical Coach for Counter-Strike 2**
 
@@ -58,9 +58,10 @@ live in `docs/audit/`.
 - **44 findings registered, 44 resolved** — 31 fixed with same-commit
   regression tests, 13 deferred with explicit written reasons
   (`docs/audit/FINDINGS.md`).
-- **CI** runs on every push (`feat/**`, `chore/**`, `main`): lint
-  (pre-commit incl. ruff), tests on Ubuntu + Windows, integration,
-  security (Bandit, detect-secrets, pip-audit), type-check, web build.
+- **CI** runs on every push (`main`, `develop`, `feature/**`, `feat/**`,
+  `fix/**`, `chore/**`): lint (pre-commit incl. ruff), tests on
+  Ubuntu + Windows, integration, security (Bandit, detect-secrets,
+  pip-audit), type-check, web build.
 - **Product decisions**: coaching advice is deliberately English;
   the JEPA 25-vs-10 fine-tune contract stays guarded (26-RANGE-01)
   until the research track resumes.
@@ -128,7 +129,7 @@ live in `docs/audit/`.
 | OS | Windows 10 / Ubuntu 24.04 | Windows 10/11 |
 | Python | 3.11 | 3.11 or 3.12 |
 | RAM | 8 GB | 16 GB |
-| GPU | None (CPU mode) | NVIDIA GTX 1650+ (CUDA 12.1) |
+| GPU | None (CPU mode) | NVIDIA GTX 1650+ (CUDA 12.1) or an AMD GPU with ROCm support |
 | Disk | 3 GB free | 5 GB free |
 | Display | 1280x720 | 1920x1080 |
 
@@ -178,12 +179,13 @@ pip install playwright && python -m playwright install chromium
 sudo apt update
 sudo apt install -y python3.12 python3.12-venv python3.12-dev build-essential
 
-python3.12 -m venv venv_linux
-source venv_linux/bin/activate
+python3.12 -m venv .venv
+source .venv/bin/activate
 
-# PyTorch (choose ONE):
+# PyTorch (choose ONE — see https://pytorch.org/get-started/locally/ for current index URLs):
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu       # CPU only
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121     # NVIDIA GPU
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm<VER> # AMD GPU (ROCm — pick your ROCm version)
 
 pip install -r requirements.txt
 python -c "import sys; sys.path.append('.'); from Programma_CS2_RENAN.backend.storage.database import init_database; init_database()"
@@ -395,7 +397,7 @@ Multi-level maps (Nuke, Vertigo) use Z-axis cutoffs to separate upper and lower 
 | **ML Framework** | PyTorch | 2.1+ | Neural network training and inference |
 | **Recurrent Networks** | ncps | 1.0.1+ | Liquid Time-Constant (LTC) networks |
 | **Associative Memory** | hopfield-layers | git-pinned (provides `hflayers`) | Hopfield network layers for memory |
-| **Demo Parsing** | demoparser2 | 0.41.4 | Tick-level CS2 demo file parsing |
+| **Demo Parsing** | demoparser2 | 0.42.0 | Tick-level CS2 demo file parsing |
 | **UI Framework (primary)** | PySide6 | 6.11.0 | Qt-based cross-platform desktop GUI |
 | **Database ORM** | SQLAlchemy + SQLModel | 2.0.49 / 0.0.38 | Database models and queries |
 | **Migrations** | Alembic | 1.18.4 | Database schema migrations |
@@ -406,7 +408,7 @@ Multi-level maps (Nuke, Vertigo) use Z-axis cutoffs to separate upper and lower 
 | **Training Observability** | TensorBoard | 2.21.0 | Live training dashboards (`runs/`) |
 | **Vector Search** | faiss-cpu | 1.13.2 | Experience/RAG retrieval (optional; brute-force fallback) |
 | **Text Embeddings** | sentence-transformers | 3.4.1 | Semantic embeddings (optional; hash-based fallback) |
-| **TUI** | Rich | 15.0.0 | Terminal UI for console mode |
+| **TUI** | Rich | 15.0.0 | Terminal UI for console mode (pinned in the lock files, not requirements.txt) |
 | **API** | FastAPI + Uvicorn | 0.135.3 / 0.44.0 | Internal API server |
 | **Validation** | Pydantic | 2.12.5 | Data validation and settings |
 | **Testing** | pytest + pytest-cov + pytest-timeout | 8.3.4 / 6.0.0 / 2.4.0 | Test framework and coverage |
@@ -519,7 +521,7 @@ Counter-Strike-coach-AI/
 |   +-- assets/                        Static resources (themes, i18n, wallpapers)
 |   +-- models/                        Neural network checkpoint storage
 |   +-- tools/                         Package-level tools (integrity manifest sync, diagnostics)
-|   +-- tests/                         Test suite (166 test files)
+|   +-- tests/                         Test suite (182 test files)
 |   +-- data/                          Static data (seed knowledge base, map_config.json, external datasets)
 |
 +-- docs/                              Documentation
@@ -528,7 +530,8 @@ Counter-Strike-coach-AI/
 |   +-- research/                      Research library catalog (INDEX.md)
 |
 +-- tools/                             Validation and diagnostic tools
-|   +-- headless_validator.py          Primary regression gate (42 phases)
+|   +-- headless_validator.py          Primary regression gate
+|   +-- ingest_pro_demos.py           Pro demo ingestion (incremental/full/retrain-only)
 |   +-- Feature_Audit.py              Feature engineering audit
 |   +-- portability_test.py           Cross-platform compatibility checks
 |   +-- dead_code_detector.py         Unused code scanning
@@ -548,13 +551,14 @@ Counter-Strike-coach-AI/
 +-- batch_ingest.py                   Parallel batch ingestion of pro demos
 +-- schema.py                         Database & migration suite
 +-- run_full_training_cycle.py        Standalone training cycle runner
++-- train.sh                         Training wrapper (canonical; uses .venv, logs output)
 ```
 
 ---
 
 ## Entry Points
 
-The application provides 7 entry points for different use cases:
+The application provides 8 entry points for different use cases:
 
 ### Desktop Application (Qt GUI — Primary)
 
@@ -620,18 +624,31 @@ Unified controller for database lifecycle events:
 ### Training Cycle Runner
 
 ```bash
+./train.sh              # recommended wrapper (uses .venv, logs to logs/)
+# or directly:
 python run_full_training_cycle.py
 ```
 
-Standalone script that executes a full training cycle outside the daemon engine. Useful for manual training or debugging.
+`train.sh` is the canonical wrapper: it locates the repo-local `.venv` (falling back to `~/.venvs/cs2analyzer`), forwards flags, and tee-logs to `logs/`. Useful flags: `-d` (dry run), `-e N` (epochs), `-m jepa|rap|all` (model type), `-T` (no TensorBoard). The underlying script `run_full_training_cycle.py` accepts additional flags such as `--patience`, `--train-samples`, `--val-samples`, `--seed`, and `--eval-baseline`/`--no-eval-baseline`.
+
+### Pro Demo Ingestion
+
+```bash
+python tools/ingest_pro_demos.py             # incremental (skip already-ingested)
+python tools/ingest_pro_demos.py --full       # full rebuild: re-ingest everything
+python tools/ingest_pro_demos.py --retrain-only  # skip ingestion, just retrain
+python tools/ingest_pro_demos.py --no-train   # ingest only, skip retrain step
+```
+
+Primary ingestion entry point. In incremental mode, scrubs and requeues failed or orphaned `IngestionTask` rows per demo stem. Populates the monolith database and per-match shards, then triggers retraining unless `--no-train` is passed.
 
 ### Batch Ingestion
 
 ```bash
-python batch_ingest.py [--workers N] [--limit N]
+python batch_ingest.py [--workers N] [--limit N] [--demo-dir DIR] [--no-train]
 ```
 
-Parallel batch ingestion of pro demo files using multiprocessing. Resumable — skips already-ingested demos. Worker count auto-scales based on available RAM.
+Parallel batch ingestion of pro demo files using multiprocessing. Resumable — skips already-ingested demos. Worker count auto-scales based on available RAM. Use `--no-train` to skip the automatic training pass after ingestion.
 
 ### Internal API Server
 
@@ -649,8 +666,8 @@ The project maintains a multi-level validation hierarchy:
 
 | Tool | Scope | Command | Checks |
 |------|-------|---------|--------|
-| Headless Validator | Primary regression gate | `python tools/headless_validator.py` | 42 phases |
-| Pytest Suite | Logic and integration tests | `python -m pytest Programma_CS2_RENAN/tests/ -x -q` | 166 test files |
+| Headless Validator | Primary regression gate | `python tools/headless_validator.py` | Multi-phase contract checks |
+| Pytest Suite | Logic and integration tests | `python -m pytest Programma_CS2_RENAN/tests/ -x -q` | 182 test files |
 | Feature Audit | Feature engineering integrity | `python tools/Feature_Audit.py` | Vector dimensions, ranges |
 | Portability Test | Cross-platform compatibility | `python tools/portability_test.py` | Import checks, paths |
 | Dev Health | Development environment | `python tools/dev_health.py` | Dependencies, config |
@@ -709,15 +726,15 @@ Language can be changed at runtime from Settings without restarting the applicat
 
 | Knob | Default | Effect |
 |------|---------|--------|
-| GPU device | Auto-detected via `get_device()` | CUDA when available, else CPU. Override with `CUDA_VISIBLE_DEVICES` |
+| GPU device | Auto-detected via `get_device()` | CUDA/ROCm when available, else CPU. Override with `CUDA_VISIBLE_DEVICES` or settings `CUDA_DEVICE` |
 | Training batch size | 32 (`backend/nn/config.py`) | Increase for GPU with >6 GB VRAM. Decrease if OOM |
 | Ingestion workers | Auto: RAM- and CPU-based, capped at 8 (`batch_ingest.py`) | `--workers N` to override parallel demo parsing |
-| EMA momentum | 0.996 base, cosine-scheduled to 1.0 (`backend/nn/jepa_train.py`) | JEPA target encoder tracking. Lower values track faster but noisier. The standalone EMA helper defaults to 0.999 (`backend/nn/ema.py`) |
+| EMA momentum | 0.996 base, cosine-scheduled to 1.0 (`backend/nn/jepa_trainer.py`) | JEPA target encoder tracking. Lower values track faster but noisier. The standalone EMA helper defaults to 0.999 (`backend/nn/ema.py`) |
 | TensorBoard | `runs/coach_training` | `tensorboard --logdir runs/coach_training` for live metrics |
 | SQLite WAL mode | Enabled by default | Concurrent read/write. No tuning needed for single-user |
 | Drift detection threshold | Z-score based (`backend/processing/validation/`) | Auto-triggers retraining flag when feature distributions shift |
 
-For GPU users: PyTorch CUDA 12.1 is the tested configuration. Mixed precision (AMP) is enabled automatically on CUDA GPUs; CPU training runs at FP32.
+For GPU users: PyTorch CUDA 12.1 is a tested configuration; AMD GPUs are supported via ROCm (see `backend/nn/config.py:get_device()`). Mixed precision (bf16 autocast) is enabled automatically on CUDA/ROCm GPUs; CPU training runs at FP32.
 
 ---
 
@@ -747,6 +764,7 @@ Not all subsystems are equally mature. The default coaching mode (COPER) is prod
 
 | Document | Description |
 |----------|-------------|
+| [Quickstart](docs/QUICKSTART.md) | Get coaching feedback from a demo in under 5 minutes |
 | [User Guide (EN)](docs/guides/USER_GUIDE.md) | Complete installation, setup wizard, API keys, all screens, demo acquisition, troubleshooting |
 | [Guida Utente (IT)](docs/guides/USER_GUIDE_IT.md) | Full user guide in Italian |
 | [Guia do Usuario (PT)](docs/guides/USER_GUIDE_PT.md) | Full user guide in Portuguese |
@@ -762,7 +780,7 @@ Not all subsystems are equally mature. The default coaching mode (COPER) is prod
 
 ### Research Library
 
-[docs/research/INDEX.md](docs/research/INDEX.md) catalogs the ~66-paper research library (JEPA, SSL, MoE, Hopfield/LTC, data quality, and more) backing the project's design decisions.
+[docs/research/INDEX.md](docs/research/INDEX.md) catalogs the research library (JEPA, SSL, MoE, Hopfield/LTC, data quality, and more) backing the project's design decisions.
 
 ---
 
@@ -887,6 +905,7 @@ Four tri-lingual vision books + one canonical analogy companion book. Each coach
 
 ### Infrastructure
 
+- [Quickstart Guide](docs/QUICKSTART.md)
 - [CI/CD Pipeline & GitHub Configuration](.github/OVERVIEW.md) — [Italiano](.github/OVERVIEW_IT.md) — [Portugues](.github/OVERVIEW_PT.md)
 - [Database Migration System — Alembic](alembic/README.md) — [Italiano](alembic/README_IT.md) — [Portugues](alembic/README_PT.md)
 - [Documentation Index](docs/README.md) — [Italiano](docs/README_IT.md) — [Portugues](docs/README_PT.md)

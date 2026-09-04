@@ -10,7 +10,7 @@
 
 This package is the machine learning core of the CS2 coaching system. It contains six distinct neural network architectures, a unified training orchestrator with plugin-based callback instrumentation, and a real-time inference engine (GhostEngine). Every model consumes the canonical 25-dimensional feature vector produced by `FeatureExtractor` in `backend/processing/feature_engineering/vectorizer.py`. All randomness is seeded via `GLOBAL_SEED = 42` for deterministic, reproducible training runs.
 
-The training pipeline was validated end-to-end on March 12, 2026: 11 pro demos ingested (17.3M tick rows, 6.4 GB database), JEPA dry-run completed producing `jepa_brain.pt` (3.6 MB).
+The 2026-09-01 rebuild cleared all production weights; pre-rebuild checkpoints are archived under `models/global/archive_pre_rebuild_2026-09-01/`.
 
 ## File Inventory
 
@@ -18,7 +18,7 @@ The training pipeline was validated end-to-end on March 12, 2026: 11 pro demos i
 |------|---------|
 | `config.py` | Central constants (`INPUT_DIM=25`, `OUTPUT_DIM=10`, `HIDDEN_DIM=128`, `GLOBAL_SEED=42`, `RAP_POSITION_SCALE=500.0`), `set_global_seed()`, `get_device()` with discrete GPU selection |
 | `model.py` | `AdvancedCoachNN` (LSTM + Mixture of Experts), `CoachNNConfig` dataclass, `ModelManager` for versioned checkpoint saving |
-| `jepa_model.py` | `JEPAEncoder`, `JEPACoachingModel`, `VLJEPACoachingModel` -- self-supervised JEPA with InfoNCE contrastive loss and concept dictionary |
+| `jepa_model.py` | `JEPAEncoder`, `JEPACoachingModel`, `VLJEPACoachingModel`, `ConceptLabeler` -- self-supervised JEPA with InfoNCE contrastive loss, VICReg regularization, and MoCo momentum contrast |
 | `jepa_train.py` | JEPA two-stage training script (pre-training + fine-tuning) over tick-level `PlayerTickState` sequences with seeded windowing (J-1), `_MIN_TICKS_FOR_SEQUENCE = 20`, `_MAX_TICKS_PER_SEQUENCE = 500` |
 | `jepa_trainer.py` | Low-level JEPA training loop with EMA target encoder update |
 | `ema.py` | `EMA` class -- exponential moving average for shadow weight management (invariant NN-16: `.clone()` on `apply_shadow()`) |
@@ -40,7 +40,7 @@ The training pipeline was validated end-to-end on March 12, 2026: 11 pro demos i
 | `embedding_projector.py` | `EmbeddingProjector` -- UMAP 2D projections and TensorBoard embedding export for belief/concept space visualization |
 | `training_monitor.py` | `TrainingMonitor` -- JSON-persisted epoch metrics with atomic write for real-time progress tracking |
 | `evaluate.py` | `evaluate_adjustments()` -- SHAP-compatible evaluation of model weight adjustments per feature |
-| `data_quality.py` | `DataQualityReport` -- pre-training data quality checks (NaN rate, zero-position rate, class balance, match completeness) run via `run_pre_training_quality_check()`. Known defect: the match-completeness counters can print `Complete matches: 0, Incomplete: 0` on a green report (OI-1 in `docs/OPEN_ISSUES.md`) |
+| `data_quality.py` | `DataQualityReport` -- pre-training data quality checks (NaN rate, zero-position rate, class balance, match completeness) run via `run_pre_training_quality_check()`. Match-completeness counters now enumerate per-item results (OI-1 closed). |
 
 ## Sub-packages
 
@@ -56,11 +56,11 @@ The training pipeline was validated end-to-end on March 12, 2026: 11 pro demos i
 
 ### 1. JEPA (`jepa_model.py`) -- Primary Training Path
 
-Self-supervised Joint-Embedding Predictive Architecture. Two-stage protocol: (1) pre-training on pro demos with InfoNCE contrastive loss + concept dictionary for semantic alignment, (2) LSTM fine-tuning on user data. Uses EMA target encoder (`requires_grad=False` during update, invariant NN-JM-04). Latent dim: 256, LSTM hidden dim: 128.
+Self-supervised Joint-Embedding Predictive Architecture. Two-stage protocol: (1) pre-training on pro demos with InfoNCE contrastive loss, VICReg regularization, and MoCo v3 momentum contrast (queue size 4096, learned temperature), (2) LSTM fine-tuning on user data. 3-expert top-2 sparse MoE with role bias and sigmoid output (WR-52). Uses EMA target encoder (`requires_grad=False` during update, invariant NN-JM-04). Latent dim: 256, LSTM hidden dim: 128.
 
 ### 2. RAP Coach (`experimental/rap_coach/`) -- Grand Vision Architecture
 
-7-layer pedagogical model: ResNet-based Perception, LTC-Hopfield Memory (LTC with `ncp_units=512` and a 154->256 output projection, `HopfieldLayer` with 32 trainable prototypes, `belief_dim=64`), Strategy with top-2 sparse MoE routing over 4 SuperpositionLayer (FiLM) experts, Causal Pedagogy for mistake attribution, Natural Language Communication, and ChronovisorScanner for multi-scale temporal analysis. Hopfield is bypassed until the trainer signals the first real optimizer step via `notify_optimizer_step()` (invariant NN-MEM-01). Skill estimation lives in `backend/processing/skill_assessment.py` (`rap_coach/skill_model.py` is a shim).
+7-layer pedagogical model: ResNet-based Perception, LTC-Hopfield Memory (LTC with `ncp_units=512` and a 153->256 output projection, `HopfieldLayer` with 32 trainable prototypes, `belief_dim=64`), Strategy with top-2 sparse MoE routing over 4 SuperpositionLayer (FiLM) experts, Causal Pedagogy for mistake attribution, Natural Language Communication, and ChronovisorScanner for multi-scale temporal analysis. Hopfield is bypassed until the trainer signals the first real optimizer step via `notify_optimizer_step()` (invariant NN-MEM-01). Skill estimation lives in `backend/processing/skill_assessment.py` (`rap_coach/skill_model.py` is a shim).
 
 ### 3. AdvancedCoachNN (`model.py`) -- Legacy Supervised Model
 
@@ -76,7 +76,7 @@ Lightweight MLP (5 -> 32 -> 16 -> 5, ~870 parameters) predicting player role pro
 
 ### 6. VL-JEPA (`jepa_model.py`) -- Vision-Language Extension
 
-Extends JEPA with visual-linguistic tactical understanding for concept-level coaching explanations.
+Extends `JEPACoachingModel` with a `ConceptLabeler` (16 coaching concepts), concept projector, and learned concept temperature for concept-level coaching explanations.
 
 ## Key Constants
 
@@ -124,7 +124,7 @@ The full stack is wired into both training paths: `jepa_train.py` attaches `Tens
 - **Reproducibility:** Always call `set_global_seed(42)` before training runs.
 - **Device selection:** `get_device()` auto-selects discrete GPU by VRAM; override via `CUDA_DEVICE` setting.
 - **Feature alignment:** Any change to the 25-dim vector must update `FEATURE_NAMES`, `METADATA_DIM`, `extract()` docstring, and all model `input_dim` assertions simultaneously.
-- **Optional dependencies:** RAP Coach requires `ncps` and `hflayers`. Imports are guarded with `try/except`; check `_RAP_DEPS_AVAILABLE` before instantiation.
+- **Optional dependencies:** RAP Coach requires `ncps` and `hopfield-layers` (imported as `hflayers`; the distribution name differs from the import name). Imports are guarded with `try/except`; check `_RAP_DEPS_AVAILABLE` before instantiation.
 - **Atomic writes:** All checkpoint saves and JSON persistence use `tmp + os.replace()` to prevent corruption on crash.
 - **Tick decimation is STRICTLY FORBIDDEN** -- all tick-level data must be preserved as ingested.
 

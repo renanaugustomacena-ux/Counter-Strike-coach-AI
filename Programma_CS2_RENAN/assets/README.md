@@ -7,8 +7,8 @@
 This directory contains static resources consumed by the application at runtime.
 Paths are resolved through `core/config.py:get_resource_path()`, which abstracts
 the difference between development source trees and frozen executables (the
-`i18n/` translations and `map_zones/` overlays are bundled into the PyInstaller
-distribution). Nothing in this directory is generated at runtime; every file is
+`i18n/` translations, `fonts/` type stack, and `map_zones/` overlays are bundled
+into the PyInstaller distribution). Nothing in this directory is generated at runtime; every file is
 committed to version control and treated as immutable after release.
 
 ## Directory Structure
@@ -17,11 +17,11 @@ committed to version control and treated as immutable after release.
 assets/
 ├── fonts/                    # Display fonts (auto-scanned by the theme engine)
 │   ├── Inter-*.ttf          # Inter v4.1 static builds (4 weights)
-│   ├── JetBrainsMono-*.ttf  # JetBrains Mono v2.304 (3 weights)
+│   ├── JetBrainsMono-*.ttf  # JetBrains Mono v2.304 (4 weights)
 │   ├── SpaceGrotesk-*.ttf   # Space Grotesk 2.0.0 (3 weights)
 │   └── README.txt           # Sources, licenses (OFL-1.1), role mapping
 ├── i18n/                     # Internationalization (translations)
-│   ├── en.json              # English (572 keys) — primary/fallback
+│   ├── en.json              # English (584 keys) — primary/fallback
 │   ├── pt.json              # Brazilian Portuguese
 │   └── it.json              # Italian
 ├── map_zones/                # Tactical viewer named-zone overlays
@@ -46,11 +46,11 @@ assets/
 
 | File / Directory | Type | Count | Purpose |
 |------------------|------|-------|---------|
-| `fonts/*.ttf` | TTF font | 10 files | Design-atlas type stack (Inter, Space Grotesk, JetBrains Mono static builds, all OFL-1.1); the theme engine auto-scans any `.ttf`/`.otf` here at startup |
+| `fonts/*.ttf` | TTF font | 11 files | Design-atlas type stack (Inter, Space Grotesk, JetBrains Mono static builds, all OFL-1.1); the theme engine auto-scans any `.ttf`/`.otf` here at startup |
 | `fonts/README.txt` | Text | 1 file | Font sources, versions, licenses, and role mapping (UI body: Inter; display: Space Grotesk; mono: JetBrains Mono) |
-| `i18n/en.json` | JSON | 572 keys | English UI strings (primary and fallback language) |
-| `i18n/pt.json` | JSON | 572 keys | Brazilian Portuguese UI strings |
-| `i18n/it.json` | JSON | 572 keys | Italian UI strings |
+| `i18n/en.json` | JSON | 584 keys | English UI strings (primary and fallback language) |
+| `i18n/pt.json` | JSON | 584 keys | Brazilian Portuguese UI strings |
+| `i18n/it.json` | JSON | 584 keys | Italian UI strings |
 | `map_zones/de_mirage.json` | JSON | 1 file | Named-zone rects for the Qt tactical viewer overlay (Mirage only so far) |
 | `maps/de_*_radar.dds` | DDS image | 10 files | Radar overhead images (1024x1024) for CS2 competitive maps |
 
@@ -61,7 +61,7 @@ is identical across all language files: when a key exists in `en.json`, it must 
 exist in `pt.json` and `it.json`. If a translation is missing, the English fallback
 is used automatically by the `QtLocalizationManager`.
 
-### Key Categories (572 keys total)
+### Key Categories (584 keys total)
 
 | Category | Example Keys | Purpose |
 |----------|-------------|---------|
@@ -93,7 +93,7 @@ The JSON files are loaded once at import time. Dynamic placeholder substitution
 ### Adding a New Language
 
 1. Copy `en.json` to `{language_code}.json` (e.g., `fr.json`)
-2. Translate all 572 values (keep keys unchanged)
+2. Translate all 584 values (keep keys unchanged)
 3. Register the new language code in `apps/qt_app/core/i18n_bridge.py` (`_load_json_translations`)
 4. Add language toggle button in `apps/qt_app/screens/settings_screen.py`
 5. Update `core/localization.py` if the legacy hardcoded fallback dicts (`TRANSLATIONS`) need the new language
@@ -162,19 +162,20 @@ a `zones` list of rects normalized 0-1 within the map pane (`name`, `x`, `y`, `w
 
 ## Bundling (PyInstaller)
 
-The translations and zone overlays are included in the frozen executable via
+The translations, fonts, and zone overlays are included in the frozen executable via
 `packaging/cs2_analyzer_win.spec` (at the repository root):
 
 ```python
 (str(APP_DIR / "assets" / "i18n"), "Programma_CS2_RENAN/assets/i18n"),
+(str(APP_DIR / "assets" / "fonts"), "Programma_CS2_RENAN/assets/fonts"),
 (str(APP_DIR / "assets" / "map_zones"), "Programma_CS2_RENAN/assets/map_zones"),
 ```
 
-The `assets/maps/` radar images and `assets/fonts/` TTFs are not currently listed
-in the spec `datas` (the frozen tactical viewer uses the `PHOTO_GUI/maps/` PNG
-overviews, and `PHOTO_GUI/` fonts, which are bundled). At runtime, paths are
-resolved through `get_resource_path()`, which checks `sys._MEIPASS` (frozen)
-before falling back to the source tree path.
+The `assets/maps/` radar DDS images are not listed in the spec `datas` (the
+frozen tactical viewer uses the `PHOTO_GUI/maps/` PNG overviews, which are
+bundled separately). At runtime, paths are resolved through
+`get_resource_path()`, which checks `sys._MEIPASS` (frozen) before falling
+back to the source tree path.
 
 ## Integration Points
 
@@ -193,8 +194,8 @@ before falling back to the source tree path.
   keys; keep it in sync when renaming or removing keys from the JSON files
 - Map coordinate values originate from CS2 game files (`resource/overviews/*.txt`)
 - Pre-commit hook `check-json` validates JSON syntax on every commit
-- All 572 keys must be present in every language file; missing keys degrade gracefully
+- All 584 keys must be present in every language file; missing keys degrade gracefully
   to English but indicate an incomplete translation
 - Fonts are static builds under the SIL Open Font License 1.1; sources and versions
-  are documented in `fonts/README.txt` (`JetBrainsMono-Regular.ttf` ships separately
-  under `PHOTO_GUI/`)
+  are documented in `fonts/README.txt` (`JetBrainsMono-Regular.ttf` is also present
+  under `PHOTO_GUI/` as a legacy font registered by the theme engine)

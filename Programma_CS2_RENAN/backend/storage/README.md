@@ -94,11 +94,16 @@ Singleton access: **always** use `get_db_manager()` (double-checked locking).
 ### HLTVDatabaseManager (`database.py`)
 
 Dedicated manager for `hltv_metadata.db`, isolated to avoid WAL contention with
-the session engine daemons. Includes `_reconcile_stale_schema()` which drops and
-recreates tables whose column set has drifted from the model definition. Note:
+the session engine daemons. Includes `_reconcile_stale_schema()` which reconciles
+tables whose column set has drifted from the model definition: additive drift
+(model has new columns, all existing DB columns still in the model) is handled via
+`ALTER TABLE ADD COLUMN` in place (rows preserved); non-additive drift
+(typed/renamed/removed columns) renames the table to `<name>_stale_<ts>` (data
+preserved for manual recovery) and recreates it fresh. Orphan tables absent from
+`_HLTV_TABLES` are dropped, but `*_stale_*` snapshots are never touched.
 `hltv_metadata.db` is NOT under Alembic yet — its schema evolves only via
-`create_all()` plus this drop/recreate reconciliation (backlog item #47 in
-`TASKS.md` tracks bringing it under Alembic).
+`create_all()` plus this reconciliation (backlog item #47 in `TASKS.md` tracks
+bringing it under Alembic, deferred to Phase G7).
 
 Singleton access: `get_hltv_db_manager()`.
 
@@ -126,7 +131,7 @@ Tracks daemon status, training progress, heartbeat, and resource limits. Feature
 ### BackupManager (`backup_manager.py`)
 
 Hot backup using SQLite's Online Backup API (`sqlite3.Connection.backup()` at
-`backup_manager.py:115-123`), WAL-safe and non-blocking. Retention policy:
+`backup_manager.py:119`), WAL-safe and non-blocking. Retention policy:
 keep 7 daily backups (the newest is always kept) + 4 weekly backups. Every
 backup is verified with `PRAGMA quick_check` before acceptance. Size guard
 (ST-BK-01, 2026-08-03): refuses to back up a database larger than 50 GiB

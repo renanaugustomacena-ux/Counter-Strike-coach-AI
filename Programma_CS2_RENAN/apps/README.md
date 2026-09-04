@@ -48,7 +48,8 @@ apps/
     │   ├── match_utils.py       # Match-level utility functions for the UI layer
     │   ├── widgets_helpers.py   # Generic Qt widget helper functions
     │   ├── web_bridge.py        # Python↔JavaScript bridge for embedded web views
-    │   └── qt_playback_engine.py # QTimer-based demo playback
+    │   ├── qt_playback_engine.py # QTimer-based demo playback
+    │   └── tray.py              # System tray icon + menu (close-to-tray, AI Coach shortcut)
     │
     ├── screens/                 # One QWidget per screen (View layer) — 15 screens
     │   ├── home_screen.py           # Dashboard — service status, match count, training
@@ -185,15 +186,17 @@ python -m Programma_CS2_RENAN.apps.qt_app.app
 The boot sequence in `app.py`:
 1. High-DPI scaling configured
 2. `QApplication` created, version read from package metadata
-3. `ThemeEngine` created and custom fonts registered; a themed splash screen (colors from the active theme's design tokens) is shown
-4. Graceful shutdown handler connected (`aboutToQuit`)
-5. Persisted theme and font settings applied
-6. `MainWindow` created with sidebar navigation
-7. All 15 screens instantiated and registered in the `QStackedWidget`; cross-screen signals wired (match selection → detail, wizard → home, highlight moments → tactical viewer, pro comparison → pro detail)
-8. First-run gate: shows `WizardScreen` if setup not completed, else `HomeScreen`
-9. Backend console booted (`get_console().boot()`) and the Session Engine daemon launched
-10. SBERT language model checked (downloaded on first run, with splash progress)
-11. `AppState` polling started (10-second interval)
+3. Single-instance guard (`lifecycle.ensure_single_instance()`) — shows a warning dialog and exits if another instance is already running
+4. `ThemeEngine` created and custom fonts registered; a themed splash screen (colors from the active theme's design tokens) is shown
+5. Graceful shutdown handler connected (`aboutToQuit`)
+6. Persisted theme and font settings applied
+7. `MainWindow` created with sidebar navigation
+8. All 15 screens instantiated and registered in the `QStackedWidget`; cross-screen signals wired (match selection → detail, wizard → home, highlight moments → tactical viewer, pro comparison → pro detail)
+9. First-run gate: shows `WizardScreen` if setup not completed, else `HomeScreen`
+10. Backend console booted (`get_console().boot()`) and the Session Engine daemon launched
+11. SBERT language model checked (downloaded on first run, with splash progress)
+12. System tray built (`build_tray`); if a tray is available, `setQuitOnLastWindowClosed(False)` enables close-to-tray behavior
+13. `AppState` polling started (10-second interval)
 
 ### PyInstaller Bundle
 
@@ -297,4 +300,4 @@ to update their labels dynamically.
 
 ## File Count
 
-- `qt_app/`: 92 Python files (`app.py`, `main_window.py`, `core/`, `screens/`, `viewmodels/`, `widgets/`) + 1 QSS template (`themes/base.qss.template`) + 3 embedded web sub-apps
+- `qt_app/`: 93 Python files (`app.py`, `main_window.py`, `core/`, `screens/`, `viewmodels/`, `widgets/`) + 1 QSS template (`themes/base.qss.template`) + 3 embedded web sub-apps

@@ -23,7 +23,7 @@ backend/
     └── migrations/   # Legacy Alembic scaffold (2 early revisions) — NOT the active chain
 ```
 
-`backend/storage/` contains only a vestigial Alembic scaffold ([README](storage/README.md)). The **active** migration chain lives at the repo-root `alembic/` directory (18 revisions), configured by the root `alembic.ini`. Runtime databases do **not** live here: the monolith `database.db` and `hltv_metadata.db` are created under `Programma_CS2_RENAN/backend/storage/`, and per-match shards go to `PRO_DEMO_PATH/match_data/` (falling back to `Programma_CS2_RENAN/backend/storage/match_data/`).
+`backend/storage/` contains only a vestigial Alembic scaffold ([README](storage/README.md)). The **active** migration chain lives at the repo-root `alembic/` directory (19 revisions), configured by the root `alembic.ini`. Runtime databases do **not** live here: the monolith `database.db` and `hltv_metadata.db` are created under `Programma_CS2_RENAN/backend/storage/`, and per-match shards go to `PRO_DEMO_PATH/match_data/` (falling back to `Programma_CS2_RENAN/backend/storage/match_data/`).
 
 ## Do not
 

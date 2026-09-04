@@ -24,7 +24,7 @@ Architecturally it is perception → memory, with parallel heads off the memory 
 |------|-----------|---------|
 | `__init__.py` | — | Package marker. |
 | `perception.py` | `RAPPerception` | Visual / spatial feature aggregator. Consumes per-tick views, mini-map, and motion tensors and projects to a unified perception embedding. |
-| `memory.py` | `RAPMemory`, `RAPMemoryLite` | Temporal memory over the 32-tick window: LTC with 512 NCP units (154 motor outputs projected to 256 via `ltc_projection`) + `HopfieldLayer` associative memory (4 heads, 32 trainable prototypes, bypassed until `notify_optimizer_step()`, NN-MEM-01) + belief head; `RAPMemoryLite` is the LSTM fallback. **Contains the RAP-LTC-FIX** monkey-patch on `ncps.LTCCell._ode_solver` (lines 70–93) — patches a 1-D / 2-D shape mismatch in `cm / (elapsed_time / ode_unfolds)`. |
+| `memory.py` | `RAPMemory`, `RAPMemoryLite` | Temporal memory over the 32-tick window: LTC with 512 NCP units (153 motor outputs projected to 256 via `ltc_projection`) + `HopfieldLayer` associative memory (4 heads, 32 trainable prototypes, bypassed until `notify_optimizer_step()`, NN-MEM-01) + belief head; `RAPMemoryLite` is the LSTM fallback. **Contains the RAP-LTC-FIX** monkey-patch on `ncps.LTCCell._ode_solver` (lines 70–93) — patches a 1-D / 2-D shape mismatch in `cm / (elapsed_time / ode_unfolds)`. |
 | `strategy.py` | `RAPStrategy` | Strategy head: Top-2 sparse MoE routing (RAP-AUDIT-08) over 4 experts (SuperpositionLayer FiLM → ReLU → Linear). Gate emits raw logits; top-2 are softmax-renormalised, full gate softmax is returned for the entropy sparsity loss. Context = metadata + belief, 89-dim (RAP-AUDIT-09). |
 | `pedagogy.py` | `RAPPedagogy`, `CausalAttributor` | `RAPPedagogy`: critic value head (256→64→1) with skill adapter (10→256). `CausalAttributor`: maps latent state + position delta to 5 concept attributions (Positioning, Crosshair Placement, Aggression, Utility, Rotation). |
 | `communication.py` | `RAPCommunication` | Communication layer: skill-tiered template engine (plain class, not an `nn.Module`) that turns model outputs into templated advice; suppresses advice below the 0.7 confidence threshold. |
@@ -73,7 +73,7 @@ orch.run_training()
 | ID | File / line | Invariant |
 |----|-------------|-----------|
 | RAP-LTC-FIX | `memory.py:70-93` | `_ode_solver` shape patch — must remain in place; future ncps upgrades may make it redundant but should not break it silently. |
-| RAP-AUDIT-01 | `training_orchestrator.py:799` | `RAP_SEQ_LEN = 32` — temporal window for LTC sequence processing. Must match `state_reconstructor.py` default. |
+| RAP-AUDIT-01 | `training_orchestrator.py:934` | `RAP_SEQ_LEN = 32` — temporal window for LTC sequence processing. Must match `state_reconstructor.py` default. |
 | RAP-AUDIT-02 | `training_orchestrator.py:_rap_compute_target_pos` | Per-tick position deltas required for position-head training. |
 | RAP-AUDIT-05 | `training_orchestrator.py:_rap_compute_timespans` | Inter-tick `dt` required for LTC ODE integration. Computed from real tick deltas and the per-demo server tick rate (C1.2 / 26-TICK-03, from `MatchMetadata`, fallback 64) so 128-tick demos feed the correct `dt`. |
 | LEAK-01 | `training_orchestrator.py:_rap_collect_per_tick` | `val_mask=False` when the per-tick advantage inputs (`all_players` + POV knowledge) are unavailable — the leaky end-of-round outcome is never substituted as a value target. |
@@ -83,10 +83,7 @@ orch.run_training()
 
 Tests for these invariants live in `Programma_CS2_RENAN/tests/test_rap_training_dry_run.py` and `Programma_CS2_RENAN/tests/test_rap_coach.py`.
 
-Known open findings (tracked in `docs/OPEN_ISSUES.md`, not yet fixed):
-
-- **F-0025** — the RAP value/strategy label pipeline resolves `team` from an attribute the monolith rows don't carry, so every training sample is currently labeled as CT.
-- **F-0026** — train/inference tensor-resolution skew: training renders tensors at 64² (`TrainingTensorConfig`), while both inference paths (`GhostEngine`, `ChronovisorScanner`) use the default `TensorFactory` config (map 128², view/motion 224²).
+Previously open findings F-0025 (CT-only team labels) and F-0026 (train/inference tensor-resolution skew) were closed by the 2026-08-21 sweep. See `docs/OPEN_ISSUES.md` for details.
 
 ## Boundaries
 
@@ -102,4 +99,4 @@ Known open findings (tracked in `docs/OPEN_ISSUES.md`, not yet fixed):
 - Smoke / regression test: `Programma_CS2_RENAN/tests/test_rap_training_dry_run.py`
 - ncps upstream: <https://github.com/mlech26l/ncps>
 - RAP-LTC-FIX rationale (resolved): `docs/rap_training_known_issue_2026-05-05.md`
-- Open findings F-0025 / F-0026: `docs/OPEN_ISSUES.md`
+- Closed findings F-0025 / F-0026: `docs/OPEN_ISSUES.md`

@@ -33,7 +33,7 @@ estimates, value functions, optimal positioning deltas, and causal attribution s
 | `pedagogy.py` | `RAPPedagogy`, `CausalAttributor` | Shim re-exporting causal feedback layer. |
 | `communication.py` | `RAPCommunication` | Shim re-exporting natural-language advice generator. |
 | `chronovisor_scanner.py` | `ChronovisorScanner`, `CriticalMoment`, `ScanResult`, `ScaleConfig`, `ANALYSIS_SCALES` | Shim re-exporting multi-scale critical moment detection. |
-| `skill_model.py` | `SkillAxes`, `SkillLatentModel` | Shim re-exporting player skill axes (5-axis stat decomposition projected onto a 1-10 curriculum level). Canonical location: `backend/processing/skill_assessment`. |
+| `skill_model.py` | `SkillAxes`, `SkillLatentModel` | Shim re-exporting player skill axes (5-axis stat decomposition projected onto a 1-10 curriculum level). Canonical location: `backend/processing/skill_assessment.py`. |
 
 ## Architecture: The 7-Layer RAP Pipeline
 
@@ -76,7 +76,7 @@ outside the `nn.Module` graph (see the note after the diagram):
             +---------v-----------+
             |  LTC (Liquid Time-  |   AutoNCP wiring
             |  Constant) neurons  |   ncp_units=512
-            |  output 154 -> 256  |   seed=42
+            |  output 153 -> 256  |   seed=42
             |  (ltc_projection)   |
             +---------+-----------+
                       |
@@ -167,11 +167,12 @@ outside the `nn.Module` graph (see the note after the diagram):
 > post-processes the returned outputs; and `ChronovisorScanner` is a separate offline
 > scanner that drives the trained model over match timelines.
 >
-> **Note — input resolution (F-0026).** The `[B, 3, 64, 64]` input shapes reflect the
-> training configuration (`TrainingTensorConfig`, 64x64). The default inference
-> `TensorFactory` config renders map at 128x128 and view/motion at 224x224 —
-> `RAPPerception`'s `AdaptiveAvgPool2d` accepts any resolution, but the train/inference
-> skew is an open finding (F-0026 in `docs/OPEN_ISSUES.md`).
+> **Note — input resolution.** The `[B, 3, 64, 64]` input shapes reflect the
+> training configuration (`TrainingTensorConfig`, 64×64). `GhostEngine` uses
+> `TrainingTensorConfig` to match training resolution (F-0026 closed).
+> `ChronovisorScanner` uses the default `TensorConfig` (128/224) via
+> `RAPStateReconstructor`; `RAPPerception`'s `AdaptiveAvgPool2d` accommodates the
+> mismatch.
 
 ## Key Constants
 
@@ -222,11 +223,11 @@ The RAP Coach integrates with the broader Macena CS2 Analyzer through several to
 |---------|---------|-----------|
 | `torch` | Core tensor operations, nn.Module | Required |
 | `ncps` | LTC neurons, AutoNCP wiring | Optional (guarded by `_RAP_DEPS_AVAILABLE`) |
-| `hflayers` | Hopfield associative memory | Optional (guarded by `_RAP_DEPS_AVAILABLE`) |
+| `hopfield-layers` (imported as `hflayers`) | Hopfield associative memory | Optional (guarded by `_RAP_DEPS_AVAILABLE`) |
 | `numpy` | Signal processing in ChronovisorScanner | Required |
 | `sqlmodel` | Database queries in ChronovisorScanner | Required (at scan time) |
 
-When `ncps` / `hflayers` are not installed, `RAPMemoryLite` (LSTM-based fallback) is
+When `ncps` / `hopfield-layers` are not installed, `RAPMemoryLite` (LSTM-based fallback) is
 available via `use_lite_memory=True` in `RAPCoachModel.__init__()`.
 
 ## Development Notes
@@ -242,7 +243,4 @@ available via `use_lite_memory=True` in `RAPCoachModel.__init__()`.
   entropy-based on gate probabilities, RAP-AUDIT-04), position (1.0). Z-axis position
   errors are penalized at 2x weight (NN-TR-02b).
 - Communication layer suppresses advice when model confidence is below 0.7 threshold.
-- Known open findings (tracked in `docs/OPEN_ISSUES.md`, not yet fixed): **F-0025** — the
-  value/strategy label pipeline resolves `team` from an attribute the monolith rows don't
-  carry, so every training sample is currently labeled as CT; **F-0026** — train/inference
-  tensor-resolution skew (training 64x64, inference default 128/224, see the diagram note).
+- Previously open findings F-0025 (CT-only team labels) and F-0026 (train/inference tensor-resolution skew) were closed by the 2026-08-21 sweep. See `docs/OPEN_ISSUES.md`.

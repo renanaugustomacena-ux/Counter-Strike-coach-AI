@@ -6,7 +6,7 @@
 
 ## Overview
 
-PySide6/Qt desktop application implementing Model-View-ViewModel (MVVM) architecture with Qt Signal/Slot for CS2 tactical analysis and AI coaching. This is the **primary frontend** (92 Python files). The application features 15 screens, 10 ViewModels, 6 QPainter chart widgets (QtCharts was removed for license compliance), 3 tactical widgets, a design-system component library (26 modules) plus an embedded coaching ChatPanel, toast notifications, 3 token-driven themes (CS2, CSGO, CS1.6), optional background wallpaper (default: flat), an optional frameless window mode with a custom title bar, internationalization (English/Italian/Portuguese, 572 keys per language), and a graceful shutdown sequence.
+PySide6/Qt desktop application implementing Model-View-ViewModel (MVVM) architecture with Qt Signal/Slot for CS2 tactical analysis and AI coaching. This is the **primary frontend** (93 Python files). The application features 15 screens, 10 ViewModels, 6 QPainter chart widgets (QtCharts was removed for license compliance), 3 tactical widgets, a design-system component library (26 modules) plus an embedded coaching ChatPanel, toast notifications, 3 token-driven themes (CS2, CSGO, CS1.6), optional background wallpaper (default: flat) with a slideshow mode, a system tray icon with close-to-tray behavior, an optional frameless window mode with a custom title bar, internationalization (English/Italian/Portuguese, 584 keys per language), and a graceful shutdown sequence.
 
 ## Entry Point
 
@@ -18,16 +18,18 @@ The `main()` function in `app.py` performs the following boot sequence:
 
 1. Enables High-DPI scaling (`PassThrough` rounding policy)
 2. Creates `QApplication` and resolves the package version
-3. Instantiates `ThemeEngine`, registers custom fonts, shows a themed splash screen (gradient + branding rendered from the saved theme's design tokens)
-4. Connects the graceful shutdown handler (`aboutToQuit` signal)
-5. Applies the active theme with the persisted font family/size settings
-6. Creates `MainWindow` and sets the initial wallpaper
-7. Instantiates and registers all 15 screens (real implementations override the placeholder registry)
-8. Wires inter-screen signals (match selection: history/home -> detail, wizard completion -> home, highlight moments -> tactical viewer, pro comparison -> pro detail)
-9. First-run gate: shows WizardScreen if `SETUP_COMPLETED` is False, otherwise HomeScreen
-10. Boots the backend console (conditional FlareSolverr/Hunter, database schema initialization) and launches the Session Engine daemon, with error dialog fallback
-11. Ensures the SBERT language model is present (~90 MB download on first run, splash progress)
-12. Starts AppState background polling (10-second interval) and installs a Qt-aware excepthook
+3. Single-instance guard (`lifecycle.ensure_single_instance()`) — shows a warning dialog and exits if another instance is already running
+4. Instantiates `ThemeEngine`, registers custom fonts, shows a themed splash screen (gradient + branding rendered from the saved theme's design tokens)
+5. Connects the graceful shutdown handler (`aboutToQuit` signal)
+6. Applies the active theme with the persisted font family/size settings
+7. Creates `MainWindow` and sets the initial wallpaper
+8. Instantiates and registers all 15 screens (real implementations override the placeholder registry)
+9. Wires inter-screen signals (match selection: history/home -> detail, wizard completion -> home, highlight moments -> tactical viewer, pro comparison -> pro detail)
+10. First-run gate: shows WizardScreen if `SETUP_COMPLETED` is False, otherwise HomeScreen
+11. Boots the backend console (conditional FlareSolverr/Hunter, database schema initialization) and launches the Session Engine daemon, with error dialog fallback
+12. Ensures the SBERT language model is present (~90 MB download on first run, splash progress)
+13. System tray built (`build_tray`); if a tray is available, `setQuitOnLastWindowClosed(False)` enables close-to-tray behavior
+14. Starts AppState background polling (10-second interval) and installs a Qt-aware excepthook
 
 ## Directory Structure
 
@@ -53,6 +55,7 @@ qt_app/
 │   ├── worker.py                   # Worker QRunnable + WorkerSignals for background tasks
 │   ├── i18n_bridge.py              # QtLocalizationManager: JSON-based i18n with Signal on language change
 │   ├── qt_playback_engine.py       # QtPlaybackEngine: QTimer-based demo playback at ~60 FPS
+│   ├── tray.py                     # System tray icon + menu (close-to-tray, AI Coach shortcut)
 │   └── __init__.py
 ├── screens/
 │   ├── home_screen.py              # Dashboard and overview
@@ -296,7 +299,7 @@ AppState is **read-only toward `CoachState`** — only the backend session engin
 - **3 themes:** CS2 (deep navy + tactical orange), CSGO (slate-blue + steel accent), CS 1.6 (retro green terminal)
 - **Design tokens are the single source of truth:** per-theme token sets (`core/design_tokens.py`) feed **both** the QSS render (`themes/base.qss.template` via `core/qss_generator.py`, with dynamic font-family/size injection) and the `QPalette` configuration for widgets that do not honor QSS — no hand-maintained color values outside the token tables
 - **Fonts:** legacy `PHOTO_GUI/` faces (Roboto, JetBrains Mono, New Hope, CS Regular, YUPIX) plus the bundled OFL display stack auto-scanned from `assets/fonts/` (Space Grotesk, Inter, JetBrains Mono weights — see `assets/fonts/README.txt` for sources/licenses)
-- **Wallpaper:** default is **no wallpaper** — a flat `surface_base` background per the design atlas. A persisted user choice can select a per-theme wallpaper file, rendered at 15% opacity via `_BackgroundWidget`, which also tiles a barely-perceptible tactical-grid motif (5% opacity) behind all content
+- **Wallpaper:** default is **no wallpaper** — a flat `surface_base` background per the design atlas. A persisted user choice can select a per-theme wallpaper file, rendered at 15% opacity via `_BackgroundWidget`, which also tiles a barely-perceptible tactical-grid motif (5% opacity) behind all content. A `WALLPAPER_SLIDESHOW` sentinel (`"::slideshow::"`) enables 2-minute crossfade rotation through all wallpapers for the active theme
 - **HLTV rating colors:** green (> 1.10), yellow (0.90-1.10), red (< 0.90) with WCAG 1.4.1 text labels
 - **Live restyle:** theme switches emit `theme_changed` on the engine **and** on a module-level relay (`get_theme_relay()`), so chip-style widgets restyle without a restart
 
@@ -331,6 +334,7 @@ All signal emissions are wrapped in `try/except RuntimeError` to handle the case
 | `match_utils` | `core/match_utils.py` | Match helpers: `extract_map_name`, `map_short_name`, `count_personal_and_pro` |
 | `widgets_helpers` | `core/widgets_helpers.py` | Widget factories built on the QSS template: `make_button`, `navigate_to` |
 | `MarqueeBridge` | `core/web_bridge.py` | `QWebChannel` Python↔JavaScript bridge for the embedded web views |
+| `build_tray` | `core/tray.py` | System-tray integration: three always-present actions (Open Macena, AI Coach, Quit) plus a conditional CLI Console entry (Windows source layout only); icon painted at runtime from design tokens; returns `None` when no system tray is available |
 
 ## Testing
 

@@ -92,7 +92,7 @@ demos_uploaded >= RECOMMENDED_DEMOS  -->  COACH_READY
 
 ## Integration
 
-- **Current consumers:** As of 2026-08, no production code imports this
+- **Current consumers:** As of 2026-09-04, no production code imports this
   module -- it is exercised only by `tests/test_onboarding.py`. The Qt
   `HomeScreen` shows its own onboarding hero card driven directly by
   match-data presence, without querying `get_status()`.

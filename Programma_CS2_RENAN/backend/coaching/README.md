@@ -25,7 +25,7 @@ feature flags `USE_COPER_COACHING`, `USE_HYBRID_COACHING`, and `USE_RAG_COACHING
 | # | Mode | Flag | Description |
 |---|------|------|-------------|
 | 1 | **COPER** | `USE_COPER_COACHING=True` (default) | Experience Bank semantic retrieval + RAG knowledge + Pro References. Requires map name + tick data. |
-| 2 | **Hybrid** | `USE_HYBRID_COACHING=True` (default False) | Baseline-deviation Z-scores synthesized with RAG context. ML predictions are computed but currently not consumed by the synthesis (F-0028). Requires player stats. |
+| 2 | **Hybrid** | `USE_HYBRID_COACHING=True` (default False) | Baseline-deviation Z-scores synthesized with RAG context. Requires player stats. |
 | 3 | **Traditional + RAG** | `USE_RAG_COACHING=True` (default False) | Correction engine enhanced with tactical knowledge retrieval. No ML inference. |
 | 4 | **Traditional** | _(none — always available)_ | Pure deviation-based correction engine. Zero external dependencies; ultimate fallback. |
 
@@ -47,7 +47,7 @@ Traditional + RAG (correction engine + knowledge retrieval)
 Traditional heuristic corrections (correction_engine.py — terminal)
 ```
 
-Each transition is logged at WARNING level with a structured JSON message containing
+Each transition is logged at WARNING level with a message containing
 the reason for degradation, so the operator always knows which mode is active.
 
 Note: the chain above is a *priority ladder*. At failure time, COPER
@@ -62,14 +62,14 @@ only at dispatch time when neither COPER nor Hybrid is selected and
 | File | Primary Export | Purpose |
 |------|---------------|---------|
 | `__init__.py` | Package API | Re-exports `HybridCoachingEngine`, `generate_corrections`, `ExplanationGenerator`, `PlayerCardAssimilator`, `get_pro_baseline_for_coach` |
-| `hybrid_engine.py` | `HybridCoachingEngine` | Hybrid-mode orchestrator: baseline Z-score deviations + RAG knowledge retrieval; ML predictions computed but not yet consumed by the synthesis (F-0028) |
+| `hybrid_engine.py` | `HybridCoachingEngine` | Hybrid-mode orchestrator: baseline Z-score deviations + RAG knowledge retrieval + confidence scoring |
 | `correction_engine.py` | `generate_corrections()` | Ranks precomputed Z-score deviations into the top-3 weighted corrections (confidence and importance scaling) |
 | `nn_refinement.py` | `apply_nn_refinement()` | Correction weight scaling — multiplies Z-score deviations by feature-specific weights. Does NOT perform NN inference (historical name) |
 | `longitudinal_engine.py` | `generate_longitudinal_coaching()` | Turns precomputed performance trends into regression/improvement insights for long-term advice |
 | `explainability.py` | `ExplanationGenerator` | Template-based narrative generation per skill axis, plus insight severity classification |
 | `pro_bridge.py` | `PlayerCardAssimilator` | Assimilates professional player stat cards into coach-format baselines and archetypes |
 | `token_resolver.py` | `PlayerTokenResolver` | Retrieves static pro "Player Tokens" (stat cards) from `hltv_metadata.db` and compares match stats against them |
-| `jepa_insight_adapter.py` | `generate_jepa_insights()` | Converts JEPA coaching-head sigmoid outputs to `InsightCandidate` objects. Maps the first 10 of the 25-dim feature contract to 5 tactical axes. Maturity-gated; activated by `USE_JEPA_MODEL` flag (default `False`). NO-WALLHACK compliant — consumes only player-POV data. Open finding F-0029: it arms on any sidecar-verified checkpoint, including pretrain-only ones whose coaching head is untrained. |
+| `jepa_insight_adapter.py` | `generate_jepa_insights()` | Converts JEPA coaching-head sigmoid outputs to `InsightCandidate` objects. Maps the first 10 of the 25-dim feature contract to 5 tactical axes. Maturity-gated; activated by `USE_JEPA_MODEL` flag (default `False`). NO-WALLHACK compliant — consumes only player-POV data. A `head_trained` sidecar marker (F-0029) gates activation, so pretrain-only checkpoints do not arm the adapter. |
 
 ## Module Descriptions
 
@@ -77,15 +77,12 @@ only at dispatch time when neither COPER nor Hybrid is selected and
 
 The `HybridCoachingEngine` is the primary orchestrator for the Hybrid coaching mode.
 Its pipeline: compute Z-score deviations of `player_stats` against the pro baseline
-(optionally a contextual baseline from a specific pro's stat card), run ML inference
-through the legacy AdvancedCoachNN when a trained checkpoint loads (26-HYB-01;
-skipped entirely when `USE_JEPA_MODEL` is on — that path is RAG-only), retrieve
-relevant knowledge from the RAG index, and synthesize insights from the deviations
-and knowledge. Open finding F-0028 (see `docs/OPEN_ISSUES.md`): the ML predictions
-are computed but currently not consumed by the synthesis step — output is grounded
-in baseline Z-scores + RAG only. Insight confidence combines |Z| with knowledge
-usage counts; stale fallback baselines tag every insight with a degraded-baseline
-warning (F4-02).
+(optionally a contextual baseline from a specific pro's stat card), retrieve relevant
+knowledge from the RAG index, and synthesize unified insights from the deviations
+and knowledge context. Neural contributions enter the insight chain through
+`JEPAInsightAdapter` when the `USE_JEPA_MODEL` flag is enabled (26-HYB-01). Insight
+confidence combines |Z| with knowledge usage counts; stale fallback baselines tag
+every insight with a degraded-baseline warning (F4-02).
 
 ### correction_engine.py -- generate_corrections()
 
@@ -159,7 +156,6 @@ coaching_service.py
     |
     +-- calls hybrid_engine.py (Hybrid mode)
     |       |-- baseline Z-score deviations (pro_bridge.py contextual baselines)
-    |       |-- ML inference (legacy AdvancedCoachNN -- output unused, F-0028)
     |       +-- RAG retrieval (knowledge/)
     |
     +-- calls correction_engine.py (Traditional modes and failure fallbacks)
@@ -192,6 +188,6 @@ for how the player's skill level has evolved over recent sessions.
 
 ## Dependencies
 
-- **PyTorch** -- ML model loading and inference in `hybrid_engine.py` and `jepa_insight_adapter.py`
+- **PyTorch** -- JEPA insight adapter model inference in `jepa_insight_adapter.py`
 - **sentence-transformers** -- Embedding generation for RAG and Experience Bank retrieval
 - **SQLModel** -- Database access (tactical knowledge, coaching insights, pro stat cards)

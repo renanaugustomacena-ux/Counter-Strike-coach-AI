@@ -80,8 +80,8 @@ dev-scale tests (`tests/test_demo_parser.py` skips when it is empty).
 - The runtime pro ingest directory is user-configured: the `PRO_DEMO_PATH` setting
   when set, otherwise `pro_ingest/` under the storage root
   (`backend/storage/storage_manager.py`)
-- The full pro demo corpus and the monolith training database live on the
-  Linux data box, not in this repository (see `docs/OPEN_ISSUES.md` §3)
+- The full pro demo corpus and the monolith training database live on an
+  external volume, not in this repository (see `docs/OPEN_ISSUES.md` §2)
 - Files are processed by `backend/data_sources/demo_parser.py`
 
 ## `external/` — External Data Inputs

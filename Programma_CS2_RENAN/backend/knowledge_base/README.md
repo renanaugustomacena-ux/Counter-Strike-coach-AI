@@ -24,7 +24,7 @@ Their names are similar but their responsibilities are disjoint:
 
 | File | Lines | Purpose | Key Exports |
 |------|-------|---------|-------------|
-| `__init__.py` | 1 | Package marker | — |
+| `__init__.py` | 1 | Package docstring (`knowledge_base` package) | — |
 | `help_system.py` | ~81 | Markdown documentation lookup, indexing, and search | `HelpSystem`, `get_help_system()` |
 
 ## Architecture & Concepts

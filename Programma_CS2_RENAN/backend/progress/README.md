@@ -76,9 +76,6 @@ def compute_trend(values: List[float]) -> Tuple[float, float, float]:
 | 20--29 | 0.67--0.97 | Reliable trend |
 | 30+ | 1.0 | Full confidence |
 
-The threshold of 30 matches the classical bootstrap confidence interval requirement,
-yielding sample error under 8% at the 95% confidence level.
-
 ## Integration
 
 ```
@@ -129,5 +126,6 @@ PlayerMatchStats (historical records in database.db)
   very different than 5.0 for K/D.
 - **No caching**: Results are computed fresh each time. The coaching service decides
   when to call and how to cache.
-- **Thread safety**: Both `FeatureTrend` (immutable dataclass) and `compute_trend()`
-  (pure function) are inherently thread-safe.
+- **Thread safety**: `compute_trend()` is a pure function with no shared state.
+  `FeatureTrend` is a plain `@dataclass` (not frozen), so instances are mutable;
+  callers should treat them as read-only after construction.

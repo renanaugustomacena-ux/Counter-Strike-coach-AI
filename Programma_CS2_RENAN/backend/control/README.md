@@ -14,18 +14,22 @@ This module contains the central control plane for the Macena CS2 Analyzer. It m
 | `console.py` | Unified control console — singleton orchestrator | `Console`, `ServiceSupervisor`, `SystemState`, `ServiceStatus` |
 | `db_governor.py` | Database tier health auditing + auto-recovery | `DatabaseGovernor` |
 | `ingest_manager.py` | Ingestion queue controller (SINGLE/CONTINUOUS/TIMED) | `IngestionManager`, `IngestMode` |
-| `ml_controller.py` | ML training lifecycle with cross-process safety locks | `MLController`, `MLControlContext`, `TrainingStopRequested` |
+| `ml_controller.py` | ML training lifecycle with safety locks | `MLController`, `MLControlContext`, `TrainingStopRequested` |
 
 ## System States
 
-```
-IDLE ──> BOOTING ──> BUSY ──> IDLE
-                       │
-                       ├──> MAINTENANCE
-                       └──> ERROR
-                             │
-                             └──> SHUTTING_DOWN
-```
+`_compute_state()` evaluates a priority cascade — the first matching
+condition wins:
+
+1. **SHUTTING_DOWN** — `_shutting_down` flag set
+2. **BOOTING** — `_booting` flag set
+3. **ERROR** — DB integrity failure, a supervised service crashed, or a
+   CoachState daemon status is `"Error"`
+4. **BUSY** — ML training or ingestion actively running
+5. **IDLE** — fallthrough default
+
+MAINTENANCE is defined in the `SystemState` enum but currently never
+assigned by `_compute_state()`.
 
 ## Boot Sequence
 
@@ -66,7 +70,7 @@ The `Console` manages three daemon types:
 |--------|-----------|---------|
 | **Hunter** | `ServiceSupervisor` | HLTV pro stats scraping (subprocess) |
 | **Digester** | `IngestionManager` | Demo parsing + feature extraction (thread) |
-| **Teacher** | `MLController` | Neural network training (thread with file lock) |
+| **Teacher** | `MLController` | Neural network training (thread with in-process lock) |
 
 ### ServiceSupervisor (Hunter)
 
@@ -91,10 +95,13 @@ Thread-safe with `threading.Event` for graceful shutdown. Processes at most 10 d
   - `check_state()`: Called per batch — raises `TrainingStopRequested` on stop
   - Pause support with `Event.wait()` (no busy-waiting)
   - Throttle factor: 0.0 (full speed) to 1.0 (max delay)
-- **Cross-process file lock** (`training.lock`): Prevents concurrent training
-  - Uses `fcntl` (Unix) / `msvcrt` (Windows)
-  - Non-blocking: raises `RuntimeError` if lock held
-  - PID-based tracking for debugging
+- **In-process threading lock** (`_TRAINING_LOCK`): `MLController.start_training()`
+  acquires this module-level `threading.Lock` to prevent concurrent training within
+  the same process. Non-blocking: returns immediately if the lock is held.
+- **Cross-process file lock** (`training_file_lock()`): Exported context manager
+  that locks `DATA_DIR/training.lock` via `fcntl`/`msvcrt` for cross-process
+  safety. Currently not called by `MLController` itself — available for external
+  callers that need to coordinate across processes.
 
 ## Lock Ordering (Critical)
 

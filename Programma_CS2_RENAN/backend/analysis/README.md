@@ -80,7 +80,7 @@ Thread safety is maintained via `_buffer_lock` protecting the pre-allocated grid
 #### deception_index.py — Tactical Deception Quantification
 
 Computes a composite deception index from three sub-metrics:
-- **Fake flash rate** (weight 0.25): fraction of flashbangs that fail to blind enemies within a 2-second window (`FLASH_BLIND_WINDOW_SECONDS`, converted with the per-demo tick rate). Detected via vectorized `searchsorted` over blind event ticks. Caveat (open finding F-0021, see `docs/OPEN_ISSUES.md`): the detection is keyed to the `player_blind` event, which current CS2 demos do not emit — in practice the rate degenerates to 1.0 or 0.0.
+- **Fake flash rate** (weight 0.25): fraction of flashbangs that fail to blind enemies within a 2-second window (`FLASH_BLIND_WINDOW_SECONDS`, converted with the per-demo tick rate). Detected via vectorized `searchsorted` over blind event ticks. The blind signal is resolved in priority order (F-0021): `player_blind` event rows first, then `is_blinded` per-tick transitions; when neither source is available, the metric is marked dark and excluded from scoring.
 - **Rotation feint rate** (weight 0.40): significant direction reversals (>108 degrees) in sampled movement paths, normalized by map extent.
 - **Sound deception score** (weight 0.35): inverse crouch ratio as a proxy for deliberate noise generation vs. silent movement.
 

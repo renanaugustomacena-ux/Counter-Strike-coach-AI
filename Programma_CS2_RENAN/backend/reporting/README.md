@@ -55,7 +55,7 @@ Computes normalized skill attributes (0--100) for the radar chart widget:
 | Skill Axis | Formula | Ceiling |
 |-----------|---------|---------|
 | **Aim** | `(accuracy * 100 * 0.5) + (HS% * 100 * 0.5)` | not clamped |
-| **Utility** | `(blind_enemies / 2.0 * 100 * 0.6) + (flash_assists / 1.0 * 100 * 0.4)` | 100 |
+| **Utility** | `min(100, blind_enemies / 2.0 * 100) * 0.6 + min(100, flash_assists / 1.0 * 100) * 0.4` | 100 |
 | **Positioning** | `min(100, (KAST / 0.75) * 100)` | 100 |
 | **Map Sense** | `min(100, (ADR / 100.0) * 100)` | 100 |
 | **Clutch** | `min(100, clutch_win_pct * 100)` | 100 |

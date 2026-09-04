@@ -13,7 +13,7 @@ QPainter chart widgets used across the home, performance, pro-comparison, and ma
 
 | File | Widget | Used By |
 |------|--------|---------|
-| `__init__.py` | `token_color()` helper + re-exports (`EconomyChart`, `MomentumChart`, `RadarChart`) | `token_color()` parses `#RRGGBB` / `rgb()` / `rgba()` design-token strings into `QColor` |
+| `__init__.py` | `token_color()` helper, `paint_chart_empty()` shared empty-state painter, re-exports (`EconomyChart`, `MomentumChart`, `RadarChart`) | `token_color()` parses `#RRGGBB` / `rgb()` / `rgba()` design-token strings into `QColor`; `paint_chart_empty()` draws a ring-and-tick resting state used by `EconomyChart` and `MomentumChart` |
 | `economy_chart.py` | `EconomyChart` | Match Detail (per-round equipment value bars, side coloring, $ ladder, `set_half_marker()` divider) |
 | `mini_sparkline.py` | `MiniSparkline` | Last-match hero card on the home screen (chrome-less trend line, via `components/last_match_hero.py`) |
 | `momentum_chart.py` | `MomentumChart` | Match Detail (per-round K-D swing bars around a zero axis, side-colored, HALF divider) |
@@ -28,7 +28,9 @@ QPainter chart widgets used across the home, performance, pro-comparison, and ma
 All charts resolve colors from `core/design_tokens.py` via `get_tokens()`:
 
 - **Chart background:** `tokens.chart_bg`
-- **Primary / secondary series (CT / T):** `tokens.chart_line_primary` / `tokens.chart_line_secondary`
+- **Side coloring (CT / T):** `tokens.chart_line_primary` (CT) / `tokens.chart_line_secondary` (T) — used by `EconomyChart` and `MomentumChart` for per-round side distinction
+- **Player series:** `tokens.accent_primary` (the player's own data speaks the theme accent)
+- **Comparison / pro series:** info cyan (`tokens.info`) — the pro-benchmark voice in `RadarChart` and `UtilityBarChart`, deliberately distinct from CT / T side coloring
 - **Text and axes:** `tokens.text_primary` / `tokens.text_secondary`
 
 Hard-coding hex values is a code smell — add a token first.

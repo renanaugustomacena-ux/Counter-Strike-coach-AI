@@ -2,7 +2,7 @@
 
 # Legacy Migration Scaffold
 
-This directory holds a **legacy Alembic scaffold** from an early iteration of the persistent data layer. It is kept for historical reference only — the **active** migration chain for the application lives at the repo-root `alembic/` directory (18 revisions, configured by the root `alembic.ini`).
+This directory holds a **legacy Alembic scaffold** from an early iteration of the persistent data layer. It is kept for historical reference only — the **active** migration chain for the application lives at the repo-root `alembic/` directory (19 revisions, configured by the root `alembic.ini`).
 
 ## Technical Overview
 

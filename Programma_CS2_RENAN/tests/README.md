@@ -4,7 +4,7 @@
 
 **Authority:** `Programma_CS2_RENAN/tests/` -- Comprehensive regression and correctness suite for the Macena CS2 Analyzer.
 
-The test suite contains 2,540+ tests distributed across 166 files (161 topic-organised files
+The test suite contains 2,500+ tests distributed across 182 files (177 topic-organised files
 here plus 5 in `automated_suite/`), following the test pyramid (unit > integration > e2e).
 Every subsystem -- from the 25-dim feature vector through the neural networks, coaching engine,
 database layer, and UI screens -- is covered by deterministic, reproducible assertions. Tests
@@ -21,7 +21,7 @@ gating via the `CS2_INTEGRATION_TESTS` environment variable.
 
 ## File Inventory (selection)
 
-The suite has 161 topic-organised `test_*.py` files at this level; the table below covers a
+The suite has 177 topic-organised `test_*.py` files at this level; the table below covers a
 representative subset by domain (newer files -- tick-rate SSOT, MoE gates, HLTV parsing,
 security hardening, TensorBoard logging, UI smoke/harness, chart widgets, and others --
 follow the same `test_<topic>.py` convention).
@@ -155,9 +155,8 @@ marker is additionally registered by `conftest.py`.
 
 ## Virtual Environment Guard
 
-The `conftest.py` venv guard prevents running tests outside a Python virtual environment
-(the project uses `venv_win` on Windows and `venv_linux` on Linux). If
-`sys.prefix == sys.base_prefix` and neither `CI` nor `GITHUB_ACTIONS` is set, pytest exits
+The `conftest.py` venv guard prevents running tests outside a Python virtual environment.
+If `sys.prefix == sys.base_prefix` and neither `CI` nor `GITHUB_ACTIONS` is set, pytest exits
 immediately with return code 2. This avoids confusing import failures when tests are accidentally
 run with system Python.
 
@@ -165,8 +164,8 @@ run with system Python.
 
 ```bash
 # Activate the virtual environment first
-source venv_linux/bin/activate      # Linux
-# .\venv_win\Scripts\activate       # Windows
+source .venv/bin/activate           # Linux
+# .\.venv\Scripts\activate          # Windows
 
 # Run all tests (stop on first failure)
 python -m pytest Programma_CS2_RENAN/tests/ -x -q

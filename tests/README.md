@@ -113,7 +113,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 | Aspect | `tests/` (root) | `Programma_CS2_RENAN/tests/` (main) |
 |--------|-----------------|--------------------------------------|
 | Focus | Tool tests, integration, forensics | Unit tests, module tests |
-| Test count | 25 scripts (8 test + 6 verify + setup + 10 forensics) | 166 `test_*.py` files |
+| Test count | 25 scripts (8 test + 6 verify + setup + 10 forensics) | 182 `test_*.py` files |
 | Data | Real demos, production DB (verify/forensics); mocks (test_*) | In-memory DB, mocks, fixtures |
 | Framework | pytest + standalone scripts | pytest with rich fixture ecosystem |
 | Run frequency | CI on every push (`test_*.py`); on demand (verify/forensics) | CI on every push (`build.yml`) |
@@ -122,7 +122,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 ```bash
 # Activate virtual environment
-source /home/renan/.venvs/cs2analyzer/bin/activate
+source .venv/bin/activate
 
 # Run the pytest suites (test_*.py, including forensics/)
 python -m pytest tests/ -v

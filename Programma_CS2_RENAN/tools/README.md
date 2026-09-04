@@ -18,8 +18,8 @@ The four levels are designed to be run in order of increasing depth and time cos
 
 | Level | Tool | Checks | Purpose |
 |-------|------|--------|---------|
-| 1 | `tools/headless_validator.py` (project root) | 42 distinct check phases | Fast regression gate (mandatory before task completion) |
-| 2 | pytest suite | 2,500+ tests in 176 files | Logic validation, contract assertions |
+| 1 | `tools/headless_validator.py` (project root) | 39 distinct check phases | Fast regression gate (mandatory before task completion) |
+| 2 | pytest suite | 2,500+ tests in 182 files | Logic validation, contract assertions |
 | 3 | `backend_validator.py` | 7 sections | Build health, model zoo, coaching pipeline |
 | 4 | `Goliath_Hospital.py` | 11 departments | Comprehensive clinical diagnostic |
 
@@ -32,7 +32,7 @@ The four levels are designed to be run in order of increasing depth and time cos
 | `backend_validator.py` | Validation | Backend health gate with 7 sections (environment, database, model zoo, analysis, coaching, resource integrity, service health) |
 | `Goliath_Hospital.py` | Diagnostics | Hospital-style diagnostic suite with 11 departments (ER, Radiology, Pathology, Cardiology, Neurology, Oncology, Pediatrics, ICU, Pharmacy, Tool Clinic, Endocrinology) |
 | `ui_diagnostic.py` | Diagnostics | Headless UI validation (resources, localization, assets, KV validation, Qt frontend, spatial coordinates) |
-| `Ultimate_ML_Coach_Debugger.py` | Diagnostics | Neural belief state and decision logic falsification tool; 9 audit phases (data fidelity, belief stability, insight traceability, model zoo, dimensions, data quality, weight health, convergence, maturity) |
+| `Ultimate_ML_Coach_Debugger.py` | Diagnostics | Neural belief state and decision logic falsification tool; 9 audit phases (data fidelity, belief stability, decision traceability, model zoo, dimensions, data quality, weight health, convergence, maturity) |
 | `aggregate_match_stats_sql.py` | Data | SQL-only PlayerMatchStats aggregator over `match_*.db` shards (no `.dem` required) |
 | `build_tools.py` | Build | Consolidated build pipeline (lint, test, PyInstaller, hash verification, integrity manifest) |
 | `context_gatherer.py` | Development | Relational context gatherer for a given file (imports, dependents, tests, API surface, git history) |
@@ -57,8 +57,9 @@ Notes), which provides:
 
 - **`path_stabilize()`** -- Canonical path setup; adds `PROJECT_ROOT` to `sys.path`, sets
   `KIVY_NO_ARGS=1`, configures UTF-8 encoding. Returns `(PROJECT_ROOT, SOURCE_ROOT)`.
-- **`require_venv()`** -- Venv guard that exits when not running inside a virtual
-  environment (the expected venv is `cs2analyzer`; bypassed when `CI` is set).
+- **`require_venv()`** -- Venv guard that exits with code 2 when
+  `sys.prefix == sys.base_prefix` (i.e. no virtual environment is active);
+  bypassed when `CI` is set.
 - **`BaseValidator`** -- Abstract base class with `define_checks()`, `check()`, `run()`,
   `Console` integration, and JSON report generation.
 - **`ToolResult`** / **`ToolReport`** -- Structured dataclasses for check results with
@@ -101,7 +102,7 @@ development task is considered complete.
 
 ```bash
 # Activate the virtual environment first
-source ~/.venvs/cs2analyzer/bin/activate
+source .venv/bin/activate
 
 # Headless validation (mandatory post-task gate; lives in root tools/)
 python tools/headless_validator.py
