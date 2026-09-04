@@ -1,6 +1,6 @@
 > **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
-# RAP Coach — Retrieval-Augmented Pedagogical Neural Architecture
+# RAP Coach — Reasoning, Adaptation, Pedagogy Neural Architecture
 
 **Authority:** `Programma_CS2_RENAN/backend/nn/rap_coach/`
 **Canonical location:** `backend/nn/experimental/rap_coach/` (this package is a backward-compatibility shim since P9-01)
@@ -8,10 +8,11 @@
 
 ## Introduction
 
-RAP (Retrieval-Augmented Pedagogical) Coach is the high-fidelity neural coaching model
-within the Macena CS2 Analyzer. It implements a 7-layer architecture that perceives game
-state through CNN streams, maintains temporal memory via Liquid Time-Constant (LTC)
-neurons, makes decisions through a top-2 sparse Mixture-of-Experts strategy layer, and generates
+RAP (Reasoning, Adaptation, Pedagogy) Coach is the high-fidelity neural coaching model
+within the Macena CS2 Analyzer. It couples six learnable components inside `RAPCoachModel` —
+CNN perception, Liquid Time-Constant (LTC) + Hopfield temporal memory, a top-2 sparse
+Mixture-of-Experts strategy layer, a pedagogy value head, causal attribution, and a
+position head — with an external template-based communication layer that generates
 human-readable coaching feedback calibrated to the player's skill level.
 
 The model consumes the canonical 25-dimensional feature vector (`METADATA_DIM=25`)
@@ -28,16 +29,18 @@ estimates, value functions, optimal positioning deltas, and causal attribution s
 | `memory.py` | `RAPMemory` | Shim re-exporting LTC-Hopfield memory layer. |
 | `trainer.py` | `RAPTrainer` | Shim re-exporting training orchestrator. |
 | `perception.py` | `RAPPerception`, `ResNetBlock` | Shim re-exporting CNN perception layer. |
-| `strategy.py` | `RAPStrategy`, `ContextualAttention` | Shim re-exporting MoE strategy layer. |
+| `strategy.py` | `RAPStrategy` | Shim re-exporting MoE strategy layer. |
 | `pedagogy.py` | `RAPPedagogy`, `CausalAttributor` | Shim re-exporting causal feedback layer. |
 | `communication.py` | `RAPCommunication` | Shim re-exporting natural-language advice generator. |
 | `chronovisor_scanner.py` | `ChronovisorScanner`, `CriticalMoment`, `ScanResult`, `ScaleConfig`, `ANALYSIS_SCALES` | Shim re-exporting multi-scale critical moment detection. |
-| `skill_model.py` | `SkillAxes`, `SkillLatentModel` | Shim re-exporting player skill axes (VAE-style). Canonical location: `backend/processing/skill_assessment`. |
+| `skill_model.py` | `SkillAxes`, `SkillLatentModel` | Shim re-exporting player skill axes (5-axis stat decomposition projected onto a 1-10 curriculum level). Canonical location: `backend/processing/skill_assessment`. |
 
 ## Architecture: The 7-Layer RAP Pipeline
 
-The RAP model processes game state through seven distinct layers, each with a specific
-pedagogical responsibility. The ASCII diagram below shows the full data flow:
+The diagram below organizes the RAP stack into seven processing stages, each with a
+specific pedagogical responsibility. Stages 1-4 and 7 are learnable components inside
+`RAPCoachModel`; stage 5 (`RAPCommunication`) and stage 6 (`ChronovisorScanner`) live
+outside the `nn.Module` graph (see the note after the diagram):
 
 ```
                          RAP Coach — 7-Layer Architecture
@@ -123,7 +126,7 @@ pedagogical responsibility. The ASCII diagram below shows the full data flow:
                attribution [B, 5]
                       |
   ====================|================================================
-  LAYER 5: COMMUNICATION (RAPCommunication)
+  LAYER 5: COMMUNICATION (RAPCommunication — outside the nn.Module graph)
                       |
             +---------v-----------+
             | Skill-Conditioned   |   Tiers: low (1-3),
@@ -134,7 +137,7 @@ pedagogical responsibility. The ASCII diagram below shows the full data flow:
                natural-language coaching advice
                       |
   ====================|================================================
-  LAYER 6: TEMPORAL ANALYSIS (ChronovisorScanner)
+  LAYER 6: TEMPORAL ANALYSIS (ChronovisorScanner — separate offline utility)
                       |
             +---------v-----------+
             | Multi-Scale Signal  |   micro:  64 ticks (~1s)
@@ -157,6 +160,19 @@ pedagogical responsibility. The ASCII diagram below shows the full data flow:
   ========================================================================
 ```
 
+> **Note — staging vs. the literal forward graph.** The vertical flow above is a
+> pedagogical staging, not the exact `RAPCoachModel.forward` graph: the strategy,
+> pedagogy, and position heads all consume the memory hidden state **in parallel**;
+> `CausalAttributor` additionally consumes the position delta; `RAPCommunication`
+> post-processes the returned outputs; and `ChronovisorScanner` is a separate offline
+> scanner that drives the trained model over match timelines.
+>
+> **Note — input resolution (F-0026).** The `[B, 3, 64, 64]` input shapes reflect the
+> training configuration (`TrainingTensorConfig`, 64x64). The default inference
+> `TensorFactory` config renders map at 128x128 and view/motion at 224x224 —
+> `RAPPerception`'s `AdaptiveAvgPool2d` accepts any resolution, but the train/inference
+> skew is an open finding (F-0026 in `docs/OPEN_ISSUES.md`).
+
 ## Key Constants
 
 > Line anchors below point to the canonical implementation under
@@ -170,9 +186,9 @@ pedagogical responsibility. The ASCII diagram below shows the full data flow:
 | `ncp_units` | 512 | `experimental/rap_coach/memory.py:52` (hidden_dim x 2) |
 | `belief_dim` | 64 | `experimental/rap_coach/model.py:61` |
 | strategy `context_dim` | 89 (25 metadata + 64 belief) | `experimental/rap_coach/model.py:62` |
-| `OUTPUT_DIM` | 10 | `nn/config.py:164` |
+| `OUTPUT_DIM` | 10 | `nn/config.py:186` |
 | `METADATA_DIM` | 25 | `vectorizer.py:34` |
-| `RAP_POSITION_SCALE` | 500.0 | `nn/config.py:196` |
+| `RAP_POSITION_SCALE` | 500.0 | `nn/config.py:218` |
 | `num_experts` | 4 | `experimental/rap_coach/strategy.py:32` |
 | `TOP_K` (experts routed) | 2 | `experimental/rap_coach/strategy.py:30` |
 | `hopfield_heads` | 4 | `experimental/rap_coach/memory.py:118` |
@@ -193,12 +209,12 @@ pedagogical responsibility. The ASCII diagram below shows the full data flow:
 
 The RAP Coach integrates with the broader Macena CS2 Analyzer through several touchpoints:
 
-- **CoachTrainingManager** (`backend/nn/coach_manager.py`) -- controls maturity gate for ChronovisorScanner
+- **CoachTrainingManager** (`backend/nn/coach_manager.py`) -- advisory maturity gate for ChronovisorScanner (sub-maturity scans proceed with a warning)
 - **FeatureExtractor** (`backend/processing/feature_engineering/vectorizer.py`) -- produces the 25-dim metadata vector
 - **RAPStateReconstructor** (`backend/processing/state_reconstructor.py`) -- converts raw tick data into model-ready tensor batches
 - **SuperpositionLayer** (`backend/nn/layers/superposition.py`) -- context-modulated linear layer used by RAPStrategy experts
 - **Persistence** (`backend/nn/persistence.py`) -- `load_nn("rap_coach", model)` / `save_nn()` for checkpoint management
-- **Structured Logging** -- all modules use `get_logger("cs2analyzer.nn.experimental.rap_coach.<module>")`
+- **Structured Logging** -- neural modules log under `cs2analyzer.nn.experimental.rap_coach.<module>`; `ChronovisorScanner` logs under `cs2analyzer.nn.chronovisor`
 
 ## Dependencies
 
@@ -226,3 +242,7 @@ available via `use_lite_memory=True` in `RAPCoachModel.__init__()`.
   entropy-based on gate probabilities, RAP-AUDIT-04), position (1.0). Z-axis position
   errors are penalized at 2x weight (NN-TR-02b).
 - Communication layer suppresses advice when model confidence is below 0.7 threshold.
+- Known open findings (tracked in `docs/OPEN_ISSUES.md`, not yet fixed): **F-0025** — the
+  value/strategy label pipeline resolves `team` from an attribute the monolith rows don't
+  carry, so every training sample is currently labeled as CT; **F-0026** — train/inference
+  tensor-resolution skew (training 64x64, inference default 128/224, see the diagram note).

@@ -14,9 +14,10 @@ Custom widgets exclusive to the **Tactical Viewer** screen. They render the 2D m
 | File | Widget | Purpose |
 |------|--------|---------|
 | `__init__.py` | — | Package marker. |
-| `map_widget.py` | `TacticalMapWidget` | The "Living Map" — QPainter-based 2D map renderer (loads `PHOTO_GUI/maps/*.png` overviews) for player positions, grenade trajectories, kill markers, ghost AI projections. Driven per frame via `TacticalPlaybackVM.frame_updated`; emits `selected_player_changed`. |
-| `player_sidebar.py` | `PlayerSidebar` | Two-team player roster with live HP / armor / weapon / economy display. Uses widget pooling (object reuse) so per-tick refresh does not allocate. |
-| `timeline_widget.py` | `TimelineWidget` | Interactive scrubber with colour-coded event markers (kills, plants, defuses, round transitions). Click and drag to seek. |
+| `_paint_utils.py` | — | Shared QPainter helpers for the tactical widgets (`with_alpha()` — copy a `QColor` with a given alpha). |
+| `map_widget.py` | `TacticalMapWidget` | The "Living Map" — QPainter-based 2D map renderer (loads `PHOTO_GUI/maps/*.png` overviews) for player positions and trails, zone callouts, C4/bomb state, grenade trajectories and detonation overlays, ghost AI projections, the score box, and the frame-14 Ghost Mode overlay (dual you-vs-ghost paths, divergence points, legend — `set_ghost_overlay()`). Driven per frame via `TacticalPlaybackVM.frame_updated`; emits `selected_player_changed`. |
+| `player_sidebar.py` | `PlayerSidebar` | Single-team roster column (the screen instantiates two — CT and T): team header with alive count and team money over frame-13 roster cards carrying HP / armor / weapon / economy / utility inline. Reuses per-player row widgets so per-tick refresh does not allocate. |
+| `timeline_widget.py` | `TimelineWidget` | Interactive scrubber with colour-coded event markers (kills, plants, defuses), round dividers, a mono `t={tick}` caption strip, and kind-differentiated chronovisor moment glyphs (star = critical/mistake, diamond = clutch, circle = play; clicking a glyph seeks to the moment's start tick). Click and drag to seek. |
 
 ## Architecture
 
@@ -24,12 +25,13 @@ Custom widgets exclusive to the **Tactical Viewer** screen. They render the 2D m
 TacticalViewerScreen
     |
     +-- TacticalMapWidget  <-- TacticalPlaybackVM.frame_updated (via the screen)
-    |   +-- ghost overlay data from TacticalGhostVM
-    |   +-- TacticalChronovisorVM.scan_complete / navigate_to  (highlight markers)
+    |   +-- ghost projections from TacticalGhostVM.predict_ghosts (via the screen)
     |
-    +-- PlayerSidebar      <-- TacticalPlaybackVM.frame_updated (via the screen)
+    +-- PlayerSidebar x2 (CT / T)  <-- TacticalPlaybackVM.frame_updated (via the screen)
     |
     +-- TimelineWidget     <-- TacticalPlaybackVM.current_tick_changed / total_ticks_changed
+                           <-- TacticalChronovisorVM.scan_complete  (moment glyphs, via the screen)
+                           <-- TacticalChronovisorVM.navigate_to    (seek, via the screen)
                            --> seeks through TacticalPlaybackVM
 ```
 
@@ -44,8 +46,7 @@ The map repaints **every frame** during playback, so per-frame work must stay mi
 
 ### PlayerSidebar
 
-- Player rows reuse pooled widget instances rather than being created / destroyed per tick.
-- The live detail card updates in place.
+- Player rows reuse per-player widget instances (updated in place, stale entries evicted) rather than being created / destroyed per tick.
 
 ### TimelineWidget
 
@@ -60,13 +61,13 @@ The map repaints **every frame** during playback, so per-frame work must stay mi
 ```
 TacticalViewerScreen (apps/qt_app/screens/tactical_viewer_screen.py)
     +-- TacticalMapWidget
-    +-- PlayerSidebar
+    +-- PlayerSidebar (x2)
     +-- TimelineWidget
             |
             +-- ViewModels in apps/qt_app/viewmodels/tactical_vm.py
                     |
-                    +-- core/playback_engine.PlaybackEngine
-                    +-- core/qt_playback_engine.QtPlaybackEngine (Qt timer)
+                    +-- Programma_CS2_RENAN/core/playback_engine.PlaybackEngine
+                    +-- apps/qt_app/core/qt_playback_engine.QtPlaybackEngine (Qt timer, held by the screen)
                     +-- backend/nn/inference/ghost_engine.GhostEngine
 ```
 

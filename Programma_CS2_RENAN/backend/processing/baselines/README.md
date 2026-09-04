@@ -40,8 +40,13 @@ later layers override earlier ones), not a first-wins cascade:
    metric distributions so the coach can still function on a fresh install.
 2. **CSV** -- `data/external/all_Time_best_Players_Stats.csv` for broad
    historical data.  Dynamically maps CSV columns via `_CSV_COLUMN_MAP`.
+   Currently inactive: the CSV is absent on fresh installs (F-0020), and
+   when it ships the loader reads KAST / Headshot % percent-scale into a
+   ratio-scaled baseline (F-0019) -- see `docs/OPEN_ISSUES.md`.
 3. **Demo stats** -- Real match data from ingested pro demos via
    `_load_pro_from_demo_stats()` (supplies `accuracy`, demo-derived fields).
+   Activates at exactly 10 `PlayerMatchStats` rows (a single match), so
+   thin local installs get tiny stds and inflated Z-scores (OI-7).
 4. **HLTV** -- `ProPlayerStatCard` rows from `hltv_metadata.db` aggregated
    per player, then global mean/std.  Supports optional `map_name`
    filtering (Task 2.18.1) for map-specific coaching; supplies opening
@@ -49,6 +54,15 @@ later layers override earlier ones), not a first-wins cascade:
 
 A `_provenance` key records the chain of sources used.  When only
 `hard_default` is available the baseline is logged as degraded.
+
+> **Known open finding F-0018** (`docs/OPEN_ISSUES.md`): the layer order
+> above is the documented contract, not yet the fused reality.  Layers 2
+> and 3 pad their return dicts with `HARD_DEFAULT_BASELINE` values for
+> metrics they could not compute, and the fusion loop copies every key --
+> so a padded hard default from a later layer can clobber an earlier
+> layer's empirical value (e.g. the demo layer's default `rating_impact`
+> overwrites the CSV's empirical Impact whenever >= 10 pro demo rows exist
+> and the HLTV layer is empty).
 
 Guard rails:
 - `P-PB-01`: K/D ratio skipped when DPR < 0.01 (avoids inflated ratios).
@@ -122,11 +136,12 @@ acceptable for < 1000 registered pros.
 
 | Consumer | Usage |
 |----------|-------|
-| `CoachingService` | Calls `get_pro_baseline()` and `calculate_deviations()` to generate Z-score reports |
-| `Teacher` daemon | Calls `MetaDriftEngine.calculate_drift_coefficient()` after retraining |
-| `AnalysisOrchestrator` | Uses `TemporalBaselineDecay.get_temporal_baseline()` for recency-weighted comparisons |
-| `RoleClassifier` | Reads `get_role_threshold_store()` for learned thresholds |
-| `NicknameResolver` | Called during demo ingestion to tag pro players |
+| `CoachingService` (`backend/services/coaching_service.py`) | Calls `get_pro_baseline()` / `calculate_deviations()` and `TemporalBaselineDecay` for Z-score reports |
+| `SkillLatentModel` (`backend/processing/skill_assessment.py`) | `get_pro_baseline()` for skill-axis Z-scores |
+| `HybridCoachingEngine` (`backend/coaching/hybrid_engine.py`) | `get_pro_baseline()` + `MetaDriftEngine.get_meta_confidence_adjustment()` |
+| `RoleClassifier` (`backend/analysis/role_classifier.py`) | Reads `get_role_threshold_store()` for learned thresholds |
+| `PlayerLookupService` (`backend/services/player_lookup.py`) | `NicknameResolver.find_pro_player_id()` for chat queries |
+| `tools/aggregate_match_stats_sql.py` | `ProPlayerLinker.backfill_all()` (D2C backfill; a per-ingestion hook is available) |
 | `role_features.py` | Calls `MetaDriftEngine.get_meta_confidence_adjustment()` for adaptive signatures |
 
 ## Data Sources
@@ -136,7 +151,8 @@ acceptable for < 1000 registered pros.
 - **`database.db`** -- `PlayerMatchStats`, `PlayerTickState` for spatial
   drift analysis and pro position retrieval.
 - **Per-match databases** -- `match_data/<id>.db` for `get_pro_positions()`.
-- **CSV fallback** -- `data/external/all_Time_best_Players_Stats.csv`.
+- **CSV fallback** -- `data/external/all_Time_best_Players_Stats.csv`
+  (currently absent on fresh installs -- F-0020).
 
 ## Development Notes
 

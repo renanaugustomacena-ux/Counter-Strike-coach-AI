@@ -15,8 +15,8 @@ round-trips.
 
 | File | Lines | Purpose | Key Exports |
 |------|-------|---------|-------------|
-| `__init__.py` | 1 | Package marker | -- |
-| `new_user_flow.py` | ~136 | Onboarding stage management and demo-count caching | `UserOnboardingManager`, `OnboardingStatus`, `OnboardingStage`, `get_onboarding_manager()` |
+| `__init__.py` | 0 | Package marker (empty) | -- |
+| `new_user_flow.py` | ~140 | Onboarding stage management and demo-count caching | `UserOnboardingManager`, `OnboardingStatus`, `OnboardingStage`, `get_onboarding_manager()` |
 
 ## Architecture & Concepts
 
@@ -92,13 +92,14 @@ demos_uploaded >= RECOMMENDED_DEMOS  -->  COACH_READY
 
 ## Integration
 
-- **UI (Qt):** `HomeScreen` and the onboarding wizard query `get_status()`
-  to display progress indicators, welcome messages, and gating dialogs.
-- **CoachingService:** Checks `coach_ready` before generating
-  high-confidence coaching insights. When `coach_ready` is `False`,
-  insights are still generated but annotated with a low-confidence warning.
-- **Ingestion Pipeline:** After a demo is ingested, the pipeline calls
-  `invalidate_cache()` so the next UI poll sees the updated count.
+- **Current consumers:** As of 2026-08, no production code imports this
+  module -- it is exercised only by `tests/test_onboarding.py`. The Qt
+  `HomeScreen` shows its own onboarding hero card driven directly by
+  match-data presence, without querying `get_status()`.
+- **Intended usage:** UI surfaces and services can call `get_status()` to
+  display progress and derive a confidence level from `coach_ready` /
+  `baseline_stable`. After a demo is ingested, callers should invoke
+  `invalidate_cache()` so the next poll sees the updated count.
 - **Database:** The module reads from `PlayerMatchStats` in
   `database.db`. It performs no writes or mutations.
 

@@ -63,6 +63,7 @@ Programma_CS2_RENAN/
 │   ├── session_engine.py       # Quad-Daemon Engine (Scanner, Digester, Teacher, Pulse)
 │   ├── config.py               # Configuration system (3-level resolution)
 │   ├── spatial_data.py         # Map spatial intelligence (9 competitive maps)
+│   ├── known_maps.py           # Known-map SSOT (single authority list)
 │   ├── map_manager.py          # Map asset management
 │   └── lifecycle.py            # Graceful startup/shutdown
 ├── ingestion/                  # Demo ingestion orchestration
@@ -77,14 +78,18 @@ Programma_CS2_RENAN/
 │   └── report_generator.py     # Markdown match reports
 ├── assets/                     # Static assets (i18n, maps)
 ├── data/                       # Runtime data (demos, knowledge, configs)
+├── logs/                       # Runtime log output (cs2_analyzer.log)
+├── migrations/                 # Alembic migration environment (env.py, script.py.mako)
 ├── models/                     # Trained model checkpoints
+├── PHOTO_GUI/                  # Runtime theme assets and fonts (cs16/csgo/cs2 themes, maps)
 ├── runs/                       # TensorBoard training logs
 ├── tactics/                    # Map tactical metadata (JSON)
-├── tests/                      # Test suite (2,190+ tests in 130 files)
+├── tests/                      # Test suite (2,540+ tests in 166 files)
 ├── tools/                      # Package-level validation tools
 ├── __init__.py                 # Package init (__version__ = "1.0.0")
 ├── run_ingestion.py            # Demo ingestion entry point
 ├── run_worker.py               # Background ingestion worker (stale-task recovery)
+├── settings.json               # Legacy theme/demo-path defaults (read by tools/Goliath_Hospital.py)
 └── hltv_sync_service.py        # Background HLTV sync daemon
 ```
 

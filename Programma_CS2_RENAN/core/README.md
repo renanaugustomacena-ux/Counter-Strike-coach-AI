@@ -14,6 +14,8 @@ three-level configuration system that resolves user settings at runtime, the
 spatial data layer that maps all nine competitive CS2 maps into coordinate
 space, and the lifecycle manager that enforces single-instance execution.
 Every other package in the project depends on at least one module from `core/`.
+Not to be confused with `apps/qt_app/core/`, which hosts Qt-side UI helpers
+(icons, QSS generation, theme engine) and has its own README.
 
 ## File Inventory
 
@@ -23,16 +25,17 @@ Every other package in the project depends on at least one module from `core/`.
 | `config.py` | Three-level config resolution (defaults, JSON, keyring) |
 | `spatial_data.py` | `MapMetadata` for 9 maps, Z-level support, coordinate transforms |
 | `spatial_engine.py` | `SpatialEngine`: world-to-pixel and pixel-to-world conversions |
+| `known_maps.py` | Known-map SSOT (CP0 #2): `KNOWN_MAP_NAMES`, `is_known_map()`, filename sniffing |
 | `tick_rate.py` | 26-NORM-01 SSOT: `DEFAULT_TICK_RATE`, `resolve_tick_rate()` per-demo resolution |
 | `map_manager.py` | `MapManager`: UI-facing asset loading with optional async Kivy support (legacy) |
-| `lifecycle.py` | `AppLifecycleManager`: single-instance mutex, daemon launch/shutdown |
+| `lifecycle.py` | `AppLifecycleManager`: single-instance lock (Windows mutex / POSIX named lock), daemon launch/shutdown |
 | `constants.py` | Project-wide constants (seconds-based): FOV, utility durations, memory decay, trade window |
 | `demo_frame.py` | Core data types: `PlayerState`, `GhostState`, `NadeState`, `DemoFrame` |
 | `asset_manager.py` | `SmartAsset` (lazy loading), `AssetAuthority` (centralized registry) |
 | `playback_engine.py` | `PlaybackEngine`: interpolated demo replay with frame blending |
 | `localization.py` | `LocalizationManager`: English, Italian, Portuguese string tables |
 | `registry.py` | `ScreenRegistry` for KivyMD screen registration (legacy; Qt is the active UI) |
-| `lock_files.py` | PID-based lock files for D-track / HLTV-track concurrency control |
+| `lock_files.py` | PID-based named locks: D-track / HLTV-track concurrency, POSIX single-instance; ownership-aware release (F-0009) |
 | `map_callouts.py` | `NamedPositionRegistry`: coordinate-to-callout translation for CS2 maps |
 | `app_types.py` | Shared type aliases and enums used across the application |
 | `frozen_hook.py` | PyInstaller runtime hook for frozen-build path correction |
@@ -49,7 +52,8 @@ in the monolith database.
 |              run_session_loop()                     |
 |                                                    |
 |  1. init_database()                                |
-|  2. BackupManager.create_checkpoint("startup")     |
+|  2. BackupManager.create_checkpoint(               |
+|         label="startup_auto")                      |
 |  3. Knowledge base init (if empty)                 |
 |  4. _monitor_stdin (parent-death detection)        |
 |  5. Launch daemons:                                |
@@ -121,6 +125,8 @@ OS keyring for secrets (Steam API key, Faceit API key).
 - Module-level globals (`CS2_PLAYER_NAME`, etc.) -- snapshot at import, **stale in daemon
   threads**; use `get_setting()` instead
 - `save_user_setting(key, value)` -- atomic write via tmp file + `os.replace()`
+- `set_secret(key, value)` -- returns `False` instead of raising when the keyring is
+  unavailable (F-0007); callers fall back to disk storage
 - `refresh_settings()` -- reloads from disk under lock, updates globals
 
 ### Path Architecture
@@ -133,6 +139,12 @@ MATCH_DATA_PATH = PRO_DEMO_PATH/match_data/    (or fallback in-project)
 
 The core database stays in the project folder for portability. `BRAIN_DATA_ROOT`
 affects only regeneratable artifacts (models, logs, cache).
+
+`get_pro_demo_base()` resolves the pro-demo pool: it returns the configured
+`PRO_DEMO_PATH`, auto-detects relocated SSD mounts under `/media` when the
+configured path is missing (DP-06), and otherwise falls back to the in-project
+`backend/storage/` directory -- never `$HOME` (F-0008). A bare home directory
+is likewise refused as a `MATCH_DATA_PATH` shard root.
 
 ## Spatial Intelligence
 
@@ -159,6 +171,18 @@ coordinates and UI pixel space:
 - `normalized_to_pixel()` / `pixel_to_normalized()` -- viewport scaling
 - `world_to_pixel()` / `pixel_to_world()` -- direct conversion shortcuts
 
+### known_maps.py
+
+Single authority for "is this a known map?" checks (map-SSOT, CP0 #2), replacing
+the divergent per-tool lists found during the audit:
+
+- `KNOWN_MAP_NAMES` (11 bare names) / `KNOWN_MAP_IDS` (`de_`-prefixed)
+- `is_known_map(name)` -- accepts either convention
+- `sniff_map_from_text(text)` -- longest-first filename sniffing via `MAP_NAME_RE`
+
+The 9-map `SPATIAL_REGISTRY` in `spatial_data.py` is a deliberate subset
+(maps with calibrated radar geometry), not drift.
+
 ### constants.py
 
 Project-wide temporal constants, defined in **seconds only**. Tick windows are
@@ -180,10 +204,13 @@ Also defines `FOV_DEGREES = 90.0` and `Z_FLOOR_THRESHOLD = 200.0`.
 
 ## Application Lifecycle (`lifecycle.py`)
 
-`AppLifecycleManager` enforces single-instance execution (Windows named mutex)
-and manages the session engine subprocess:
+`AppLifecycleManager` enforces single-instance execution and manages the
+session engine subprocess. On Windows the guard is a named kernel mutex; on
+POSIX it is the `lock_files` named lock `app_single_instance` with dead-PID
+reclaim, failing closed on any lock error to protect the SQLite database
+(F-0010):
 
-- `ensure_single_instance()` -- returns False if another instance holds the mutex
+- `ensure_single_instance()` -- returns False if another instance holds the lock
 - `launch_daemon()` -- spawns `session_engine.py` as a subprocess with stdin pipe for IPC
 - `shutdown()` -- graceful terminate with 3-second timeout, then force kill
 

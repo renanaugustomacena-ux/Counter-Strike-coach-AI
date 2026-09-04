@@ -26,7 +26,7 @@ to prevent memory leaks.
 
 ### Map Visualisation Engine (`visualizer.py`)
 
-`MatchVisualizer` is the central rendering class. It produces three categories of
+`MatchVisualizer` is the central rendering class. It produces four categories of
 visual output:
 
 1. **Position Heatmaps** (`generate_heatmap`) -- 2D histogram of player positions
@@ -128,9 +128,13 @@ visualisation failures never crash the calling pipeline.
 
 - **Figure lifecycle**: every Matplotlib figure must be created and closed within the
   same method scope. Never store figure references as instance attributes.
-- **Deterministic output**: file names include map name and timestamp to prevent
-  collisions. Heatmap bins and colourmap are fixed for reproducibility.
+- **Deterministic output**: PNG file names are derived from the map name (or round
+  ID) only, so re-rendering the same map overwrites the previous image; only the
+  Markdown report carries a timestamp. Heatmap bins and colourmap are fixed for
+  reproducibility.
 - **Dependency isolation**: `scipy.ndimage.gaussian_filter` is the only SciPy import;
   `numpy` is used for grid computation. Both are mandatory dependencies.
-- **Testing**: visualiser tests use `matplotlib.use("Agg")` to avoid GUI backend
-  requirements. Report generator tests mock `DemoLoader` and verify file output.
+- **Testing**: the repo-root smoke script `tests/verify_reporting.py` instantiates
+  `MatchVisualizer` and `MatchReportGenerator` against a scratch output directory;
+  `Programma_CS2_RENAN/tests/test_chronovisor_highlights.py` verifies that
+  `render_critical_moments()` writes a valid PNG.

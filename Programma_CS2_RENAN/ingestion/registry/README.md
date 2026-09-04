@@ -68,7 +68,8 @@ consistent ordering prevents deadlocks.
 
 Writes use a write-ahead strategy to prevent corruption:
 
-1. Create a backup of the existing registry (`.json.backup`).
+1. Create a backup of the existing registry (`.json.backup`) -- skipped on
+   the first write, when no registry file exists yet.
 2. Write the new state to a temporary file (`tempfile.mkstemp()`).
 3. Atomically replace the original file via `os.replace()`.
 4. If any step fails, the temporary file is cleaned up and the exception
@@ -113,8 +114,11 @@ registry to SQL-based registry.  It is currently empty (0 bytes).
 
 `DemoRegistry` and `DemoLifecycleManager` currently have **no in-code
 consumers**: the production orchestrator (`run_ingestion.py`) performs its own
-SHA-256-based deduplication against the database instead.  The classes remain
-available as the package's standalone dedup/retention utilities.
+deduplication in `_check_duplicate_demo()`, which checks the `IngestionTask`
+table (exact demo path), `PlayerMatchStats` (demo name stem), and per-match DB
+file existence (`match_id` derived from the SHA-256 of the name stem) -- no
+file-content hashing.  The classes remain available as the package's
+standalone dedup/retention utilities.
 
 ### Dependencies
 
@@ -166,9 +170,10 @@ available as the package's standalone dedup/retention utilities.
   `tempfile.mkstemp()` + `os.replace()` to guarantee that the registry file is
   never left in a half-written state.  This is critical because a crash during
   write would otherwise corrupt the entire ingestion history.
-- **Backup safety:** Before every write, a copy of the current registry is
-  created at `<path>.json.backup`.  The backup is validated on recovery to
-  prevent restoring from a corrupted backup.
+- **Backup safety:** Before every write that overwrites an existing registry,
+  a copy of the current file is created at `<path>.json.backup`.  The backup
+  is validated on recovery to prevent restoring from a corrupted backup, and
+  a successfully recovered backup is copied back over the primary file.
 - **Retention default:** The default retention period of 30 days is a
   conservative balance between disk space and the ability to re-analyse recent
   demos.  It can be overridden via the `days` parameter.

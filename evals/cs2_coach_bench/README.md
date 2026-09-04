@@ -14,13 +14,13 @@ python evals/cs2_coach_bench/run_eval.py --model coach --limit 10
 python evals/cs2_coach_bench/run_eval.py --model ollama:llama3.1:8b --limit 10
 
 # Score responses manually
-python evals/cs2_coach_bench/score_responses.py score --input reports/2026-04-12_coach.jsonl
+python evals/cs2_coach_bench/score_responses.py score --input evals/cs2_coach_bench/reports/2026-04-12_coach.jsonl
 
 # Print scoring summary
-python evals/cs2_coach_bench/score_responses.py summary --input reports/2026-04-12_coach.scored.jsonl
+python evals/cs2_coach_bench/score_responses.py summary --input evals/cs2_coach_bench/reports/2026-04-12_coach.scored.jsonl
 
 # Compare two models
-python evals/cs2_coach_bench/score_responses.py compare reports/model_a.scored.jsonl reports/model_b.scored.jsonl
+python evals/cs2_coach_bench/score_responses.py compare evals/cs2_coach_bench/reports/model_a.scored.jsonl evals/cs2_coach_bench/reports/model_b.scored.jsonl
 ```
 
 ## Structure
@@ -28,8 +28,8 @@ python evals/cs2_coach_bench/score_responses.py compare reports/model_a.scored.j
 - `questions.jsonl` — 200 questions (40 per category)
 - `rubric.md` — 5-dimension scoring rubric (0-3 each, max 15/question)
 - `run_eval.py` — Runs questions through a model, saves responses + latency
-- `score_responses.py` — Manual scoring CLI + comparison tools
-- `reports/` — Generated response files (gitignored)
+- `score_responses.py` — Manual scoring CLI (`score` / `summary` / `compare` subcommands)
+- `reports/` — Generated response files (gitignored, created on first run)
 
 ## Categories
 
@@ -51,6 +51,8 @@ See `rubric.md` for full descriptions. Each 0-3:
 4. **Pro grounding** — references real pros?
 5. **Actionability** — tells you what to do?
 
-## Ship Criterion (project coach-quality roadmap)
+## Ship Criterion
 
-`cs2coach` must beat vanilla Llama 3.1 8B by >25% on total score AND beat GPT-4 by >5% on CS2-currentness and pro-grounding dimensions.
+`cs2coach` (the planned fine-tuned coach model) must beat vanilla Llama 3.1 8B by >25% on total score AND beat GPT-4 by >5% on CS2-currentness and pro-grounding dimensions.
+
+Notes: the criterion originated in the retired `COACH_QUALITY_ROADMAP` doc (consolidated away on 2026-05-03, see `docs/DIAGNOSIS_2026-05.md`) — this README now carries it. Fine-tuning runs on the dedicated Linux training machine, not this workstation. `run_eval.py` only wires the `coach` and `ollama:<model>` backends, so the GPT-4 baseline must be collected externally and scored with the same rubric.
