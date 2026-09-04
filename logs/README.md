@@ -41,7 +41,7 @@ tail -f logs/cs2_analyzer.log
 ```
 
 ### Log Rotation
-A `RotatingFileHandler` rotates `cs2_analyzer.log` at 5 MB, keeping 3 historical versions (e.g., `cs2_analyzer.log.1`) to prevent disk space exhaustion. If the handler cannot be created (PermissionError), the setup falls back to a plain `FileHandler` (no rotation). Rotation is only safe for today's single-writer usage — when two processes share the same rotating log file, rotation can race (open issue F-0011 in `docs/OPEN_ISSUES.md`). The other files here (`goliath_master_*`, `spawn_*`, `wipe_audit_*`) are not rotated; `configure_retention()` in `logger_setup.py` can purge `.log`/`.json` files older than 30 days.
+A `RotatingFileHandler` rotates `cs2_analyzer.log` at 5 MB, keeping 3 historical versions (e.g., `cs2_analyzer.log.1`) to prevent disk space exhaustion. If the handler cannot be created (PermissionError), the setup falls back to a plain `FileHandler` (no rotation). Each process writes its own log file (keyed on the `CS2_LOG_ROLE` env var), so each rotating handler has a single writer. The other files here (`goliath_master_*`, `spawn_*`, `wipe_audit_*`) are not rotated; `configure_retention()` in `logger_setup.py` can purge `.log`/`.json` files older than 30 days.
 
 ### Filtering for Errors
 To quickly identify critical issues within the logs:

@@ -31,12 +31,13 @@ alembic/
     ├── c3d4e5f6a7b8_...    # Coaching experience strategy label
     ├── d4e5f6a7b8c9_...    # SteamID columns
     ├── e5f6a7b8c9d0_...    # POV stream index
-    └── f6a7b8c9d0e1_...    # Drop connect_state (head)
+    ├── f6a7b8c9d0e1_...    # Drop connect_state
+    └── a7b8c9d0e1f2_...    # Match date source (head)
 ```
 
-## Migration History (18 Revisions)
+## Migration History (19 Revisions)
 
-Single linear chain, oldest first. Current head: `f6a7b8c9d0e1`.
+Single linear chain, oldest first. Current head: `a7b8c9d0e1f2`.
 
 | Revision | Description | Tables Affected |
 |----------|-------------|-----------------|
@@ -57,7 +58,8 @@ Single linear chain, oldest first. Current head: `f6a7b8c9d0e1`.
 | `c3d4e5f6a7b8` | Add strategy_label to CoachingExperience | `CoachingExperience` |
 | `d4e5f6a7b8c9` | Add steamid to tick and match stats | `PlayerTickState`, `PlayerMatchStats` |
 | `e5f6a7b8c9d0` | Add POV stream index to PlayerTickState | `PlayerTickState` (index only) |
-| `f6a7b8c9d0e1` | Drop connect_state from Ext_PlayerPlaystyle (head) | `Ext_PlayerPlaystyle` |
+| `f6a7b8c9d0e1` | Drop connect_state from Ext_PlayerPlaystyle | `Ext_PlayerPlaystyle` |
+| `a7b8c9d0e1f2` | Add match_date_source provenance marker (head) | `PlayerMatchStats` |
 
 ## `env.py` — Environment Configuration
 
@@ -114,7 +116,7 @@ alembic history --verbose
 
 ## Migration Principles
 
-1. **Sequential** — one linear chain, no branches (current head: `f6a7b8c9d0e1`)
+1. **Sequential** — one linear chain, no branches (current head: `a7b8c9d0e1f2`)
 2. **Reversible** — every migration has both `upgrade()` and `downgrade()` functions
 3. **Version-controlled** — migrations are committed to git and never modified after merge
 4. **Tested** — run `python tools/headless_validator.py` after any schema change

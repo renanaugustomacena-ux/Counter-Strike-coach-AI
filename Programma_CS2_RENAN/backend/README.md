@@ -34,7 +34,7 @@ No UI logic lives here. The backend exposes its capabilities through a **service
 | 2 | `coaching/` | 9 | 4-mode coaching pipeline: COPER experience-based, Hybrid (NN + rules), RAG retrieval-augmented, traditional corrections | `hybrid_engine.py`, `correction_engine.py`, `pro_bridge.py` |
 | 3 | `control/` | 5 | Daemon lifecycle management, ingestion queue governance, ML training control, database resource limits | `ingest_manager.py`, `ml_controller.py`, `db_governor.py` |
 | 4 | `data_sources/` | 16 | External data integration: demo parser (demoparser2), HLTV pro statistics scraper (FlareSolverr/Docker), Steam API, FACEIT API | `demo_parser.py`, `hltv/`, `steam_api.py`, `faceit_api.py` |
-| 5 | `ingestion/` | 4 | Runtime file watching for new demos, CSV migration from legacy formats, OS resource governance | `watcher.py`, `resource_manager.py`, `csv_migrator.py` |
+| 5 | `ingestion/` | 5 | Runtime file watching for new demos, match date resolution, CSV migration from legacy formats, OS resource governance | `watcher.py`, `resource_manager.py`, `csv_migrator.py`, `match_date_resolver.py` |
 | 6 | `knowledge/` | 8 | RAG knowledge base with FAISS vector index, COPER experience bank, pro demo mining, tactical knowledge graph | `rag_knowledge.py`, `experience_bank.py`, `vector_index.py` |
 | 7 | `knowledge_base/` | 2 | In-app help system: Markdown doc indexing and text search for the UI help screen | `help_system.py` |
 | 8 | `nn/` | 53 | Neural network architectures (6 model types), training pipeline, inference, EMA, early stopping, data quality, RAP Coach, JEPA | `jepa_model.py`, `rap_coach/`, `train.py`, `config.py` |
@@ -203,7 +203,7 @@ Layer 5 (Orchestration): services/  reporting/  control/
 
 ### Testing
 
-- Framework: `pytest`, 166 `test_*.py` files in `Programma_CS2_RENAN/tests/` (+10 in root `tests/`).
+- Framework: `pytest`, 182 `test_*.py` files in `Programma_CS2_RENAN/tests/` (+10 in root `tests/`).
 - Integration tests require `CS2_INTEGRATION_TESTS=1`.
 - Key fixtures: `in_memory_db`, `seeded_db_session`, `mock_db_manager`, `torch_no_grad`.
 

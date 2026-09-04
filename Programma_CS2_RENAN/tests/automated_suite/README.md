@@ -25,7 +25,7 @@ The split keeps a fast smoke lane available and lets the slow suites be deselect
 ## Running
 
 ```bash
-# Activate the virtual environment first (venv_win on Windows, venv_linux on Linux)
+# Activate the virtual environment first (.venv at repository root)
 
 # Smoke only (fast)
 python -m pytest Programma_CS2_RENAN/tests/automated_suite/test_smoke.py -v

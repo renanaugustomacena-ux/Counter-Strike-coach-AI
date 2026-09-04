@@ -83,7 +83,7 @@ bash scripts/reaggregate.sh
 
 ## Prerequisites
 
-- Python 3.10+ with virtual environment activated
+- Python 3.11+ with virtual environment activated
 - PyInstaller installed (`pip install pyinstaller`)
 - All project dependencies installed
 - Windows environment (batch scripts)

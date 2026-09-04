@@ -13,22 +13,25 @@ multi-fallback loading, and strict dimension validation.
 No `.pt` files are committed to the repository. This directory exists in version
 control to preserve its structure (via `global/README.txt`), to hold the CTF-1
 checkpoint hash registry (`checkpoint_hashes.json`), and to serve as the default
-write target when `BRAIN_DATA_ROOT` is not configured. Full-scale training over
-the pro demo corpus runs on the Linux data box (see `docs/OPEN_ISSUES.md` §3);
-its trained checkpoints live there, not in this repository. Local runs on this
-machine are dev-scale only.
+write target when `BRAIN_DATA_ROOT` is not configured. Trained checkpoints are
+local runtime artifacts (gitignored); see `docs/OPEN_ISSUES.md` §2 for
+outstanding training and data tasks.
 
 ## Directory Structure
 
 ```
 models/
 ├── global/                   # Shared baseline models (not user-specific)
+│   ├── archive_pre_rebuild_2026-09-01/  # Archived pre-rebuild weights (gitignored .pt files)
 │   └── README.txt           # Placeholder to preserve directory in git
 ├── checkpoint_hashes.json    # CTF-1 SHA-256 hash registry for checkpoints
 ├── README.md                 # This file (English)
 ├── README_IT.md              # Italian translation
 └── README_PT.md              # Portuguese translation
 ```
+
+After the 2026-09-01 rebuild, `models/` contains no production `.pt` files. Pre-rebuild
+weights were archived under `global/archive_pre_rebuild_2026-09-01/` (gitignored).
 
 At runtime, user-specific fine-tuned models are stored in per-user subdirectories:
 
@@ -67,8 +70,8 @@ Version strings map to `ModelFactory` model types:
 
 The orchestrator additionally writes a `{version}_latest.pt` rolling checkpoint
 per epoch, and the standalone two-stage pipeline `backend/nn/jepa_train.py`
-(pretrain/finetune CLI over the monolith database, run at full scale on the
-Linux data box) writes `jepa_model.pt` / `jepa_model_finetuned.pt` in its own
+(pretrain/finetune CLI over the monolith database) writes
+`jepa_model.pt` / `jepa_model_finetuned.pt` in its own
 wrapped-dictionary format.
 
 ## Checkpoint Format
@@ -177,8 +180,8 @@ current model class, loading fails deterministically.
 | `role_head` | NeuralRoleHead | Role classification dataset |
 | `win_prob` | WinProbabilityTrainerNN | Round outcome dataset (offline utility; no production caller — the predictor stays heuristic until the 12-dim retrain) |
 
-Full-scale runs against the pro demo dataset happen on the Linux data box, where
-the monolith training database lives (`docs/OPEN_ISSUES.md` §3).
+Full-scale runs require the monolith training database; see
+`docs/OPEN_ISSUES.md` §2 for outstanding data and training tasks.
 
 ## Bundling (PyInstaller)
 
@@ -206,7 +209,7 @@ tiers only resolve when a build explicitly bundles checkpoints.
 - The `MODELS_DIR` path is resolved from `core/config.py` and defaults to this directory
 - When `BRAIN_DATA_ROOT` (or, as fallback, `CUSTOM_STORAGE_PATH`) is set and exists,
   models are written to `{BRAIN_DATA_ROOT}/models/` instead
-- `checkpoint_hashes.json` is keyed by absolute checkpoint path; the committed
-  entries were recorded during training runs on the Linux data box
+- `checkpoint_hashes.json` is keyed by absolute checkpoint path; entries were
+  recorded during training runs across various local storage volumes
 - Always use `save_nn()` / `load_nn()` from `persistence.py` — never call `torch.save()` directly
 - After changing model architecture, delete stale checkpoints and retrain from scratch

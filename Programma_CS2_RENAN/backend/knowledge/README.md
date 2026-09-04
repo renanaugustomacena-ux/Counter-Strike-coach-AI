@@ -135,7 +135,7 @@ support multi-hop traversal up to depth 5.
 |----------|-------|
 | `backend/services/coaching_service.py` | COPER mode: builds an `ExperienceContext`, queries `get_experience_bank()`, and calls `collect_feedback_from_match()` after each analyzed match; also uses `KnowledgeRetriever` and `round_utils.infer_round_phase()` |
 | `backend/services/coaching_dialogue.py` | Chat grounding: `KnowledgeRetriever.retrieve()` + Experience Bank retrieval; calls `ensure_seed_knowledge_loaded()` on startup |
-| `backend/coaching/hybrid_engine.py` | Lazy-loads a `KnowledgeRetriever` (AC-15-01) to merge RAG knowledge context with ML predictions |
+| `backend/coaching/hybrid_engine.py` | Lazy-loads a `KnowledgeRetriever` (AC-15-01) to merge RAG knowledge context with baseline Z-score deviations |
 | `backend/analysis/role_classifier.py` | Retrieves role-specific coaching entries via `KnowledgeRetriever.retrieve()` |
 | `core/session_engine.py` | First-run bootstrap: calls `initialize_knowledge_base()` when the `TacticalKnowledge` table is empty; also starts the ingestion watcher |
 | `apps/qt_app/app.py` | Splash screen: checks `KnowledgeEmbedder` model cache and pre-downloads the SBERT model on first launch |
@@ -189,6 +189,10 @@ for backward compatibility.
 | `OVERFETCH_EXPERIENCE` | 20 | `vector_index.py:49` |
 | `KnowledgeEmbedder.CURRENT_VERSION` | `"v3"` | `rag_knowledge.py:51` |
 | `KnowledgeEmbedder.embedding_dim` | 384 (SBERT) / 100 (fallback) | `rag_knowledge.py:56,74` |
+| `_MIN_EFFECTIVENESS_TRIALS` | 5 | `experience_bank.py:45` |
+| `DUPLICATE_SIMILARITY_THRESHOLD` | 0.9 | `experience_bank.py:53` |
+| `REPLAY_ALPHA` | 0.6 | `experience_bank.py:59` |
+| `REPLAY_GATE` | 0.4 | `experience_bank.py:60` |
 
 ### Pro-Stats Mining Archetype Thresholds
 

@@ -27,6 +27,7 @@ Not to be confused with `apps/qt_app/core/`, which hosts Qt-side UI helpers
 | `spatial_engine.py` | `SpatialEngine`: world-to-pixel and pixel-to-world conversions |
 | `known_maps.py` | Known-map SSOT (CP0 #2): `KNOWN_MAP_NAMES`, `is_known_map()`, filename sniffing |
 | `tick_rate.py` | 26-NORM-01 SSOT: `DEFAULT_TICK_RATE`, `resolve_tick_rate()` per-demo resolution |
+| `team_codes.py` | Team-side normalization SSOT (F-0025 / F-0016): `normalize_team()` maps raw team vocabularies (`'CT'`, `'TERRORIST'`, numeric codes) to canonical `'CT'` / `'T'` |
 | `map_manager.py` | `MapManager`: UI-facing asset loading with optional async Kivy support (legacy) |
 | `lifecycle.py` | `AppLifecycleManager`: single-instance lock (Windows mutex / POSIX named lock), daemon launch/shutdown |
 | `constants.py` | Project-wide constants (seconds-based): FOV, utility durations, memory decay, trade window |

@@ -8,7 +8,7 @@ until they are (re)generated.
 
 ## Regeneration (F-0020)
 
-On the machine that holds the populated databases (the Linux data box):
+On the machine that holds the populated databases:
 
 ```bash
 python tools/build_elite_csvs.py            # dry-run report

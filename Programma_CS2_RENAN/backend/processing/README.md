@@ -15,11 +15,11 @@ validates data -- none of them store or train anything.
 
 | File | Lines | Purpose | Key Exports |
 |------|-------|---------|-------------|
-| `__init__.py` | 1 | Package marker | -- |
+| `__init__.py` | 0 | Package marker | -- |
 | `connect_map_context.py` | ~112 | Z-aware spatial features relative to map objectives | `distance_with_z_penalty()`, `calculate_map_context_features()` |
 | `data_pipeline.py` | ~408 | Data cleaning, scaling, temporal splitting, player decontamination | `ProDataPipeline` |
-| `external_analytics.py` | ~201 | Z-score comparison against elite CSV reference datasets | `EliteAnalytics` |
-| `heatmap_engine.py` | ~300 | Gaussian occupancy maps and differential user-vs-pro heatmaps | `HeatmapEngine`, `HeatmapData`, `DifferentialHeatmapData` |
+| `external_analytics.py` | ~206 | Z-score comparison against elite CSV reference datasets | `EliteAnalytics` |
+| `heatmap_engine.py` | ~148 | Differential user-vs-pro hotspot metadata | `HeatmapEngine`, `DifferentialHeatmapData` |
 | `player_knowledge.py` | ~672 | Player-POV perception system (NO-WALLHACK sensorial model) | `PlayerKnowledge`, `PlayerKnowledgeBuilder` |
 | `rating.py` | ~230 | PlusMinus and role-adjusted Bayesian rating metrics (KT-06) | `compute_plus_minus()`, `compute_role_adjusted_rating()` |
 | `round_reconstructor.py` | ~614 | Per-round state reconstruction from raw tick streams | `RoundReconstructor` |
@@ -115,10 +115,10 @@ Gaussian CDF approximation (`sigmoid(1.702 * z)`).
   RAP-Coach and JEPA models.
 - **Coaching Engine:** `skill_assessment.SkillLatentModel` feeds the
   curriculum layer. `external_analytics.EliteAnalytics` provides z-score
-  comparisons for `backend/services/analysis_service.py`. Note: all 7
-  reference CSVs under `data/external/` are currently absent, so the
-  elite comparison is degraded on fresh installs (F-0020 in
-  `docs/OPEN_ISSUES.md`).
+  comparisons for `backend/services/analysis_service.py`. The 5
+  reference CSVs under `data/external/` are absent until D-3 is run
+  (`tools/build_elite_csvs.py --apply`); `EliteAnalytics` reports
+  per-component degradation when datasets are missing.
 - **UI / Visualization:** `heatmap_engine.HeatmapEngine` computes
   differential position density and hotspot metadata.
 

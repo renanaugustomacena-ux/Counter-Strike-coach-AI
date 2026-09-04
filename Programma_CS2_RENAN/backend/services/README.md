@@ -15,9 +15,11 @@ dispatch. Each service encapsulates a distinct business capability while dependi
 lower-level modules (storage, processing, analysis, knowledge) for data and
 computation.
 
-All services use dependency injection for `DatabaseManager` access (via
-`get_db_manager()` singleton) and structured logging (via
-`get_logger("cs2analyzer.<module>")`).
+Most services use dependency injection for `DatabaseManager` access (via
+`get_db_manager()` singleton). Services that have no database dependency
+(`LLMService`, `OllamaCoachWriter`, `VisualizationService`,
+`telemetry_client`) operate standalone. All services use structured logging
+(via `get_logger("cs2analyzer.<module>")`).
 
 ## File Inventory
 
@@ -25,11 +27,11 @@ All services use dependency injection for `DatabaseManager` access (via
 |------|-------|---------|-------------|
 | `__init__.py` | 0 | Package marker | -- |
 | `coaching_service.py` | ~1068 | Main coaching orchestrator (4 modes) | `CoachingService` |
-| `analysis_orchestrator.py` | ~1097 | Phase 6 analysis coordination (11 engines) | `AnalysisOrchestrator`, `MatchAnalysis`, `RoundAnalysis` |
+| `analysis_orchestrator.py` | ~1149 | Phase 6 analysis coordination (11 engines) | `AnalysisOrchestrator`, `MatchAnalysis`, `RoundAnalysis` |
 | `analysis_service.py` | 91 | Performance analysis and drift detection | `AnalysisService`, `get_analysis_service()` |
-| `coaching_dialogue.py` | ~1974 | Interactive multi-turn coaching chat with DB tool-calling | `CoachingDialogueEngine`, `get_dialogue_engine()` |
+| `coaching_dialogue.py` | ~2014 | Interactive multi-turn coaching chat with DB tool-calling | `CoachingDialogueEngine`, `get_dialogue_engine()` |
 | `lesson_generator.py` | 383 | Structured lesson generation from demos | `LessonGenerator`, `check_lesson_system_status()` |
-| `llm_service.py` | 462 | Ollama LLM provider wrapper (incl. tool calling) | `LLMService`, `get_llm_service()`, `check_ollama_status()` |
+| `llm_service.py` | ~484 | Ollama LLM provider wrapper (incl. tool calling) | `LLMService`, `get_llm_service()`, `check_ollama_status()` |
 | `ollama_writer.py` | 108 | Natural language polishing for insights | `OllamaCoachWriter`, `get_ollama_writer()` |
 | `player_lookup.py` | ~557 | Player name detection and HLTV data retrieval for chat | `PlayerLookupService` |
 | `profile_service.py` | 165 | Steam/FaceIT profile integration | `ProfileService` |
@@ -44,10 +46,10 @@ The central coaching engine with a prioritized 4-mode fallback chain (P9-03):
 
 1. **COPER** (default, `USE_COPER_COACHING=True`): Context-aware coaching using
    Experience Bank + RAG + Pro References. Requires `map_name` and `tick_data`.
-2. **Hybrid** (`USE_HYBRID_COACHING=True`): baseline-deviation Z-scores synthesized
-   with RAG knowledge retrieval. Requires `player_stats`. Note: ML predictions are
-   computed but currently not consumed by the synthesis step (open finding F-0028,
-   see `docs/OPEN_ISSUES.md`).
+2. **Hybrid** (`USE_HYBRID_COACHING=True`): pro-baseline Z-score deviations
+   synthesized with RAG knowledge retrieval. Requires `player_stats`. Neural-net
+   contributions reach the insight chain through the `jepa_insight_adapter` module, not through
+   this engine (F-0028, closed 2026-08-21).
 3. **Traditional + RAG** (`USE_RAG_COACHING=True`): Correction engine enhanced with
    tactical knowledge retrieval.
 4. **Traditional** (always available): Pure deviation-based correction engine. Lowest
@@ -57,8 +59,9 @@ Fallback transitions: COPER failure -> Hybrid (if enabled) -> Traditional.
 
 Post-coaching pipelines (non-blocking):
 - Phase 6 Advanced Analysis (momentum, deception, entropy, game theory)
-- JEPA insight generation (F1.2, gated by `USE_JEPA_MODEL`, default off; open
-  finding F-0029 — the adapter arms on pretrain-only checkpoints)
+- JEPA insight generation (F1.2, gated by `USE_JEPA_MODEL`, default off; the
+  adapter now refuses pretrain-only checkpoints via a `head_trained` sidecar gate,
+  F-0029 closed 2026-08-21)
 - Longitudinal Trend Coaching (regression/improvement detection via `compute_trend()`)
 - Ollama natural language polishing (via `OllamaCoachWriter`)
 - Explainability narratives (via `ExplanationGenerator`)
@@ -72,7 +75,7 @@ FAISS search, or Ollama polishing stalls.
 
 ### `AnalysisOrchestrator` -- Phase 6 Analysis Coordination
 
-Instantiates 11 analysis engines eagerly (the movement-quality analyzer is
+Instantiates 10 analysis engines eagerly (the movement-quality analyzer is
 lazy-imported at analysis time) and runs an 11-step suite (Game Tree and Blind
 Spots share a step) producing `CoachingInsight` objects for database storage:
 
@@ -90,9 +93,9 @@ Spots share a step) producing `CoachingInsight` objects for database storage:
 | 10 | Death Probability Estimator | `tick_data` | Bayesian death risk assessment |
 | 11 | Movement Quality Analyzer | `tick_data` | Positioning-mistake detection |
 
-Known limitation (open finding F-0031, see `docs/OPEN_ISSUES.md`): the utility,
-strategy, and economy steps are currently dark on the live path — the analyzers
-require stat keys / game-state fields that no upstream producer emits.
+The utility step now derives throw counts from `RoundStats` (F-0031, closed
+2026-08-21). The strategy, win-probability, and economy steps remain dark because
+no upstream producer populates `game_states` (see `docs/OPEN_ISSUES.md` R9).
 
 Data structures: `RoundAnalysis` (per-round insights) and `MatchAnalysis`
 (aggregated match insights with `all_insights` property).
@@ -126,6 +129,9 @@ Multi-turn coaching dialogue with RAG and Experience Bank augmentation:
 - **RAG augmentation**: Each user message triggers `KnowledgeRetriever` and
   `ExperienceBank` retrieval, injected as context into the LLM prompt
 - **Sliding context window**: Last `MAX_CONTEXT_TURNS * 2` messages (default 12)
+- **RAG top-k**: `RETRIEVAL_TOP_K = 3` results from knowledge/experience retrieval
+- **Timeouts** (env-overridable): `_DIALOGUE_TIMEOUT` 180 s, `_OPENING_TIMEOUT`
+  90 s, `_FALLBACK_RETRY_TIMEOUT` 90 s, `_STREAM_STALL_TIMEOUT` 30 s
 - **Thread safety**: All mutable state protected by `_state_lock` (threading.Lock)
 - **Offline fallback**: Template-based responses with RAG knowledge when Ollama is
   unavailable
@@ -147,14 +153,19 @@ Generates educational coaching lessons from demo analysis:
 
 Wraps the Ollama REST API for local LLM inference:
 
-- **Endpoints**: `/api/generate` (single-shot) and `/api/chat` (multi-turn,
-  streaming via `chat_stream()`)
+- **Model resolution ladder** (evaluated at construction and on `refresh_model()`):
+  `OLLAMA_MODEL` env → `LLM_COACH_MODEL` user setting → `"gemma4:e2b"` hard default
+- **Endpoints**: `/api/generate` (single-shot), `/api/chat` (multi-turn),
+  streaming via `chat_stream()`, model listing via `list_models()` (`/api/tags`)
 - **Tool calling (DP-03)**: `chat_tools()` sends Ollama function-calling
-  requests; an HTTP 400 caches `tools_supported=False` for the current model so
-  later turns skip the tool phase
+  requests; an HTTP 400 caches `tools_supported=False` (exposed via the
+  `tools_supported` property) for the current model so later turns skip the tool
+  phase
+- **`refresh_model()`** (D-03): Re-resolves the model from the settings ladder so
+  a CoachScreen model pick takes effect without restarting the service
 - **Availability caching**: 60-second TTL on `is_available()` checks
 - **Auto model selection**: If the configured model is not found, falls back to
-  the first available model
+  the first available model (preferring the same family)
 - **Error markers**: All error responses start with `[LLM` prefix for easy
   downstream detection
 - Specialized methods: `generate_lesson()`, `explain_round_decision()`,
@@ -168,6 +179,28 @@ Transforms structured coaching data into conversational advice via Ollama:
   message; returns original text unchanged if Ollama is disabled or unavailable
 - Feature flag: `USE_OLLAMA_COACHING` setting controls enablement
 - Lazy initialization of LLM service to avoid import-time HTTP calls
+
+### `PlayerLookupService` -- Chat Player Detection
+
+Detects player name mentions in coaching chat messages and retrieves
+structured factual data from the HLTV and monolith databases:
+
+- `detect_player_mentions(message)`: Tokenizes the user message, filters
+  stop words, and exact-matches tokens against a cached nickname set
+  (TTL 60 s, sourced from `ProPlayer` in `hltv_metadata.db` with a
+  `PlayerMatchStats` fallback); falls back to fuzzy matching
+  (`SequenceMatcher`, threshold `_CHAT_FUZZY_THRESHOLD=0.75`) only when
+  no exact match is found
+- `lookup_player(name)`: Assembles a `ProPlayerProfile` dataclass from
+  `ProPlayer`, `ProPlayerStatCard`, `ProTeam`, and demo-derived
+  `PlayerMatchStats` rows. Marks profiles built from the DEFAULT_STATS
+  sentinel (CHAT-06) with `is_default_stats=True` so the renderer can
+  show "stats not yet scraped" instead of fabricated numbers
+- `format_player_context(profile)`: Renders the profile into a
+  `VERIFIED PLAYER DATA` text block injected into the LLM prompt by
+  `CoachingDialogueEngine`
+- Cross-database: reads `hltv_metadata.db` via `get_hltv_db_manager()`
+  and `database.db` via `get_db_manager()`
 
 ### `ProfileService` -- External Profile Integration
 

@@ -46,10 +46,15 @@ docs/
 │   ├── REFACTOR_PLAN.md
 │   └── TRANSLATION_GLOSSARY.md
 │
+├── doctrine/                       # AI architecture doctrine (derived from code)
+│   ├── DOCTRINE.md                 # Invariants, contracts, and design rationale
+│   └── notes/                      # Per-cluster reading notes + READING-MANIFEST.md
+│
 ├── guides/                         # User-facing documentation
 │   ├── USER_GUIDE.md               # Complete user guide (English)
 │   ├── USER_GUIDE_IT.md            # Guida utente (Italiano)
-│   └── USER_GUIDE_PT.md            # Guia do usuário (Português)
+│   ├── USER_GUIDE_PT.md            # Guia do usuário (Português)
+│   └── PROJETO_EXPLICADO_PT.md     # Project overview in Portuguese (for developers from other stacks)
 │
 ├── research/                       # Research library catalog + design research
 │   ├── INDEX.md                    # Bibliography index; the PDFs themselves are
@@ -74,10 +79,11 @@ docs/
 ## Reading Order
 
 1. **[../REFERENCE.md](../REFERENCE.md)** — Architecture, invariants, technical reference
-2. **[QUICKSTART.md](QUICKSTART.md)** — Get the app running in 5 minutes
-3. **[guides/USER_GUIDE.md](guides/USER_GUIDE.md)** — Full user walkthrough
-4. **[books/](books/)** — Vision books (1A -> 1B -> 2 -> 3) for the full product vision
-5. **[research/INDEX.md](research/INDEX.md)** — Research paper bibliography
+2. **[doctrine/DOCTRINE.md](doctrine/DOCTRINE.md)** — AI architecture doctrine (code-derived invariants and contracts)
+3. **[QUICKSTART.md](QUICKSTART.md)** — Get the app running in 5 minutes
+4. **[guides/USER_GUIDE.md](guides/USER_GUIDE.md)** — Full user walkthrough
+5. **[books/](books/)** — Vision books (1A → 1B → 2 → 3) for the full product vision
+6. **[research/INDEX.md](research/INDEX.md)** — Research paper bibliography
 
 ## Quick Reference
 
@@ -96,6 +102,7 @@ docs/
 
 - Files with dates in their names (`*_2026-*`) are historical snapshots from past
   restoration/training runs — they describe the state at that date, not the current state.
-- The Vision Books (books/) describe the aspirational product vision. They will be updated
-  to match the codebase once the program is stable.
+- The Vision Books (books/) describe the product vision and were realigned with the codebase
+  on 2026-08-17. The Doctrine (doctrine/) is the code-derived authority for architecture and
+  invariants; when the two disagree, the doctrine reflects the current implementation.
 - All documentation is in Markdown format. PDFs are generated with the tools in `tooling/`.

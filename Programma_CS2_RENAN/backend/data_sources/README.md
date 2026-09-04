@@ -30,7 +30,7 @@ before being passed to downstream consumers.
 |------|---------------|---------|
 | `__init__.py` | Package root | (empty -- namespace only) |
 | `demo_parser.py` | `parse_demo()`, `parse_sequential_ticks()` | demoparser2 wrapper with HLTV 2.0 rating calculation; real parse timeout (F-0013) and per-demo tick rate read from the header |
-| `parse_guard.py` | `is_parse_error()` | F-0006 parse-guard SSOT: classifies which exceptions a demoparser2 guard may absorb (incl. pyo3 `PanicException`); `KeyboardInterrupt`/`SystemExit`/`GeneratorExit` always propagate |
+| `parse_guard.py` | `is_parse_error()`, `ParseTimeoutError` | F-0006 parse-guard SSOT: classifies which exceptions a demoparser2 guard may absorb (incl. pyo3 `PanicException`); `KeyboardInterrupt`/`SystemExit`/`GeneratorExit`/`ParseTimeoutError` always propagate |
 | `demo_format_adapter.py` | `DemoFormatAdapter` | Format validation and conversion between demo parser outputs and internal schemas (`MIN_DEMO_SIZE=10MB`) |
 | `event_registry.py` | `EVENT_REGISTRY` | Canonical schema registry of CS2 game events (fields, priority, handler coverage) -- documentation/coverage tool, not a runtime dispatcher |
 | `trade_kill_detector.py` | `detect_trade_kills()`, `analyze_demo_trades()` | Identifies trade frags from death events using a 3-second window converted to ticks from the demo's tick rate |
@@ -105,7 +105,7 @@ extension: a malformed .dem can raise a pyo3 `PanicException`, which subclasses
 `BaseException` and used to fly past every `except Exception` guard, aborting whole
 ingestion runs. `is_parse_error()` tells a guard whether to absorb an exception; the
 name-based check is required because pyo3 creates the class lazily at first panic.
-`KeyboardInterrupt`, `SystemExit`, and `GeneratorExit` always propagate.
+`KeyboardInterrupt`, `SystemExit`, `GeneratorExit`, and `ParseTimeoutError` always propagate.
 
 ### demo_format_adapter.py -- DemoFormatAdapter
 

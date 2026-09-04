@@ -84,7 +84,7 @@ Programma_CS2_RENAN/
 ├── PHOTO_GUI/                  # Runtime theme assets and fonts (cs16/csgo/cs2 themes, maps)
 ├── runs/                       # TensorBoard training logs
 ├── tactics/                    # Map tactical metadata (JSON)
-├── tests/                      # Test suite (2,540+ tests in 166 files)
+├── tests/                      # Test suite (2,500+ test function definitions across 182 files)
 ├── tools/                      # Package-level validation tools
 ├── __init__.py                 # Package init (__version__ = "1.0.0")
 ├── run_ingestion.py            # Demo ingestion entry point
@@ -107,7 +107,7 @@ Programma_CS2_RENAN/
 | Layer | Technology |
 |-------|-----------|
 | Primary UI | PySide6/Qt (MVVM pattern, 15 screens, 10 ViewModels) |
-| ML Framework | PyTorch, ncps (Liquid Time-Constant neurons), hflayers (Hopfield) |
+| ML Framework | PyTorch, ncps (Liquid Time-Constant neurons), hopfield-layers (Hopfield associative memory) |
 | Database | SQLite (WAL mode) via SQLModel/SQLAlchemy |
 | Demo Parsing | demoparser2 (Rust-based, high performance) |
 | Pro Stats | BeautifulSoup4 + FlareSolverr/Docker (HLTV scraping) |

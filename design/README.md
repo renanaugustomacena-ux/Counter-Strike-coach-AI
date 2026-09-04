@@ -40,9 +40,12 @@ design/
 │   ├── icons/sprite.svg        SVG icon sprite
 │   ├── motifs/                 tactical-grid.svg background motif
 │   └── wallpapers/             cs2.svg · csgo.svg · cs16.svg
+├── claude-design/              ← sync-ready component library for claude.ai/design
+│   ├── previews/               12 self-contained HTML preview cards
+│   └── README.md
 └── cs2/                        ← marketing deck & video sources (HTML/JSX/scenes)
-    └── uploads/                flattened copy of the 41 frames + an older token
-                                snapshot (see its README)
+    └── uploads/                flattened copy of the 41 frames + tokens
+                                (see its README)
 ```
 
 ## How to Use

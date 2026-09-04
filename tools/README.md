@@ -9,11 +9,11 @@ Root-level project tools for validation, diagnostics, build orchestration, and m
 
 ## File Inventory
 
-The directory holds **53 Python tools** plus the `fuzz/` harness ([README](fuzz/README.md)) and `hltv_stealth_init.js` (browser stealth snippet for HLTV fetching). The most important ones:
+The directory holds **55 Python tools** plus the `fuzz/` harness ([README](fuzz/README.md)) and `hltv_stealth_init.js` (browser stealth snippet for HLTV fetching). The most important ones:
 
 | File | Purpose | Category |
 |------|---------|----------|
-| `headless_validator.py` | Regression gate with 42 distinct check phases | Validation |
+| `headless_validator.py` | Regression gate with 41 distinct check phases | Validation |
 | `dead_code_detector.py` | Orphan modules, duplicate definitions, stale imports | Validation |
 | `audit_scanner.py` | Mechanical subsystem audit (LOC, imports, complexity, TODOs) | Validation |
 | `verify_all_safe.py` | Discovers and runs all safe (read-only) tools, skipping unsafe/interactive ones | Validation |
@@ -36,11 +36,11 @@ The directory holds **53 Python tools** plus the `fuzz/` harness ([README](fuzz/
 | `test_tactical_pipeline.py` | Tactical viewer pipeline end-to-end test on a real .dem | Testing |
 | `validate_coaching_pipeline.py` | End-to-end coaching pipeline validation | Testing |
 
-The remainder covers monolith data repair (`repair_*.py`, `tick_census.py`), shard recovery and monolith rebuild (`d3_recover_shard_metadata.py`, `rebuild_monolith.py`), read-only disk audits (`d4_disk_hygiene_audit.py`), experience/strategy mining (`mine_coaching_experience.py`, `mine_shard_strategies.py`), HLTV metadata seeding (`seed_hltv_top_n.py`, `seed_hltv_apply_vision.py`), supply-chain pinning (`sbom_generator.py`, `verify_lock_hashes.py`, `refresh_model_pins.py`, `refresh_compose_digests.py`), security policy and drift scanning (`policy_runner.py`, `drift_detector.py`), and offline evals (`eval_harness.py`, `coach_answer_eval.py`).
+The remainder covers pro-demo ingestion (`ingest_pro_demos.py`), monolith data repair (`repair_*.py`, `tick_census.py`), shard recovery and monolith rebuild (`d3_recover_shard_metadata.py`, `rebuild_monolith.py`), read-only disk audits (`d4_disk_hygiene_audit.py`), experience/strategy mining (`mine_coaching_experience.py`, `mine_shard_strategies.py`), HLTV metadata seeding (`seed_hltv_top_n.py`, `seed_hltv_apply_vision.py`), match-date and round-stats backfill (`backfill_match_dates.py`, `populate_match_results.py`, `populate_round_stats.py`), elite CSV export (`build_elite_csvs.py`), ghost-player flagging (`flag_ghost_players.py`), pro-player maintenance (`rescrape_placeholder_pros.py`, `sync_pro_players.py`), demo-pool merging (`merge_demo_pool.py`), safe reingest wipe (`wipe_for_reingest_safe.py`), design-token generation (`gen_design_tokens.py`), web build (`build_web.py`), RAG data purge (`purge_default_stats_rag.py`), supply-chain pinning (`sbom_generator.py`, `verify_lock_hashes.py`, `refresh_model_pins.py`, `refresh_compose_digests.py`), security policy and drift scanning (`policy_runner.py`, `drift_detector.py`), and offline evals (`eval_harness.py`, `coach_answer_eval.py`).
 
 ## `headless_validator.py` --- The Regression Gate
 
-This is the single most important tool in the project (~2,900 lines). It runs **42 distinct check phases** (banner phases numbered 1–26 — Phase 19 is unused — plus lettered sub-phases 3b–3l and 6b–6f and a table-driven Contract phase) and must exit with code 0 before any commit. It is also wired into `.pre-commit-config.yaml` as a pre-push hook.
+This is the single most important tool in the project (~2,900 lines). It runs **41 distinct check phases** (banner phases numbered 1–26 — Phase 19 is unused — plus lettered sub-phases 3b–3l and 6b–6f; Phase 9 is the table-driven cross-module contract validation) and must exit with code 0 before any commit. It is also wired into `.pre-commit-config.yaml` as a pre-push hook.
 
 ### Validation Phases
 
@@ -145,7 +145,7 @@ Removes all user-specific and local-only data for clean distribution:
 
 ```bash
 # Activate virtual environment
-source /home/renan/.venvs/cs2analyzer/bin/activate
+source .venv/bin/activate
 
 # Headless validation (run before every commit)
 python tools/headless_validator.py

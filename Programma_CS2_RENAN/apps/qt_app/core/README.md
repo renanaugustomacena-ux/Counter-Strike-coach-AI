@@ -27,7 +27,8 @@ Modules here are framework-aware (they import from `PySide6`) but are agnostic o
 | `qt_playback_engine.py` | Qt-native playback driver wrapping `core/playback_engine.PlaybackEngine` with `QTimer`-driven tick advancement. |
 | `sound.py` | `SoundManager` — four preloaded `QSoundEffect` WAVs (click, success, error, notification) from `PHOTO_GUI/sounds/`, gated by `AppState.sounds_enabled` (default off); missing files warn once. |
 | `svg_icon_provider.py` | `SvgIconProvider` — sprite-backed `QIcon` factory, swappable with the `QPainterPath` provider via `USE_SVG_ICONS` in `icons.py`. |
-| `theme_engine.py` | Switches between CS2 / CSGO / CS1.6 themes, emits `theme_changed` (instance signal + module-level relay); registers fonts and resolves wallpapers; `rating_color()` / `rating_label()` and severity helpers (WCAG 1.4.1). |
+| `theme_engine.py` | Switches between CS2 / CSGO / CS1.6 themes, emits `theme_changed` (instance signal + module-level relay); registers fonts and resolves wallpapers (including a `WALLPAPER_SLIDESHOW` sentinel for 2-minute crossfade rotation via `_BackgroundWidget`); `rating_color()` / `rating_label()` and severity helpers (WCAG 1.4.1). |
+| `tray.py` | System-tray integration: `build_tray()` creates the tray icon (painted at runtime from design tokens) with three always-present actions (Open Macena, AI Coach, Quit) plus a conditional CLI Console entry (Windows source layout only); returns `None` when no system tray is available. |
 | `typography.py` | Typography role scale and per-role font helpers (sans: Roboto, display: Space Grotesk, mono: JetBrains Mono); sizes read from `get_tokens()`. |
 | `web_bridge.py` | `MarqueeBridge` (QObject) — bidirectional `QWebChannel` bridge between Qt and the embedded web apps (`web/`). |
 | `widgets_helpers.py` | Small Qt convenience helpers built on the QSS template (`make_button`, `navigate_to`). |

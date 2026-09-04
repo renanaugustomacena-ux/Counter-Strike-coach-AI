@@ -9,7 +9,7 @@ Demo ingestion infrastructure for professional and user CS2 demos with Steam int
 ```
 ingestion/
 ├── __init__.py
-├── .validated_cache.json   # Runtime artifact, reset by tools/reset_pro_data.py (repo root)
+├── .validated_cache.json   # Legacy runtime artifact; only reset by tools/reset_pro_data.py (repo root), not written by this package
 ├── demo_loader.py          # Three-pass demo parser with signed cache
 ├── integrity.py            # Demo file integrity validation
 ├── steam_locator.py        # Steam installation discovery
@@ -80,7 +80,7 @@ Demo file registry and lifecycle management.
 - The main ingestion orchestrator function `_ingest_single_demo()` lives in `run_ingestion.py` at the package root
 - The production orchestrator does **not** import this package: `run_ingestion.py` parses via
   `backend/data_sources/demo_parser` and uses `backend/ingestion/` (resource manager).
-  This package's consumers are `reporting/report_generator.py` and
+  This package's consumers are `Programma_CS2_RENAN/reporting/report_generator.py` and
   `apps/qt_app/screens/tactical_viewer_screen.py` (`DemoLoader`), `core/session_engine.py`
   (`steam_locator`), and the test suite (`integrity`)
 - Pro demo ingestion uses the same core pipeline as user demos; pro demos parse all

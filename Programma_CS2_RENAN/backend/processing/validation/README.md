@@ -16,7 +16,7 @@ This package owns the validation gates that protect every downstream consumer (t
 | `__init__.py` | — | Empty package marker. | — |
 | `dem_validator.py` | DEMValidator | Validates `.dem` file structure pre-parse: filename integrity (shell metacharacters, `F2-26`), format pre-screen size bounds 100 KB – 800 MB, magic bytes (`PBDEMS2` CS2 / `HL2DEMO` CSGO), truncation check. Deliberately looser than the `DS-12` ingestion floor (`MIN_DEMO_SIZE = 10 MB`, enforced in `data_sources/demo_format_adapter.py`). | `DEMValidator`, `DEMValidationError`, `validate_dem_file()` |
 | `drift.py` | Drift detection | Statistical drift detection across player feature distributions. Compares a recent rolling window (default 10) against past history and flags features whose z-score exceeds a threshold (default 2.5). `DRIFT_FEATURES` covers match-aggregate stats; `TickFeatureDriftMonitor` covers the 25-dim model-input vector (`DRIFT-01`). | `detect_feature_drift()`, `DriftReport`, `DriftMonitor`, `TickFeatureDriftMonitor`, `should_retrain()` |
-| `sanity.py` | Sanity checks | Range checks on parsed demo DataFrames against the `LIMITS` bounds table (kills, deaths, assists, ADR, headshot_pct, KAST). Strict mode raises `ValueError`; trim mode clamps outliers and self-heals percent-scale KAST (`> 1.0` → `/100`, `P-SAN-01`). | `validate_demo_sanity()`, `validate_and_trim()` |
+| `sanity.py` | Sanity checks | Range checks on parsed demo DataFrames against the `LIMITS` bounds table (kills, deaths, assists, ADR, headshot_pct, KAST). Strict mode raises `ValueError`; trim mode clamps outliers and self-heals percent-scale KAST and headshot_pct (`> 1.0` → `/100`, `P-SAN-01`). | `validate_demo_sanity()`, `validate_and_trim()` |
 | `schema.py` | Schema | Versioned structural validation of demo parser output (`SCHEMA_VERSION = 2`: v1 core stats + `accuracy`). | `get_active_schema()`, `validate_demo_schema()` |
 
 ## Where each validator runs
@@ -51,7 +51,7 @@ Training batch boundary
 |----|-------------|-----------|
 | `DS-12` | `data_sources/demo_format_adapter.py` | `MIN_DEMO_SIZE = 10 MB` ingestion-acceptance floor. `dem_validator.py` is a deliberately looser format pre-screen (100 KB – 800 MB). |
 | `P-VEC-02` / `P3-A` | upstream `vectorizer.py` | NaN / Inf clamp + > 5 % per-batch → `DataQualityError`. Validation here ensures the upstream gate cannot be bypassed. |
-| `F-0019` (open) | `sanity.py` `LIMITS` | The `headshot_pct` band is percent-scaled (0.0 – 100.0) while the parser emits ratio-scale values, so the band cannot catch ratio-scale corruption; KAST is the only self-healing column (`P-SAN-01`). Tracked in `docs/OPEN_ISSUES.md`. |
+| `F-0019` (closed 2026-08-21) | `sanity.py` `LIMITS` | Both `headshot_pct` and `kast` bands are ratio-scaled (0.0 – 1.0) and both are self-healing columns in `_RATIO_SELF_HEAL_COLUMNS` (`P-SAN-01`). Values above 1.0 are divided by 100 and clamped. |
 
 ## Conventions
 

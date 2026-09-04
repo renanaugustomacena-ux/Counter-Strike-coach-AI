@@ -7,7 +7,7 @@
 
 ## Purpose
 
-This package owns the small, reusable `nn.Module` building blocks that more than one model in the project depends on. Anything that is unique to a single model architecture stays inside that model's package — only blocks with multiple consumers get promoted here.
+This package owns the canonical definitions of shared `nn.Module` building blocks. It was created during the G-06 remediation to consolidate duplicate implementations into a single authoritative location. Currently its sole occupant, `SuperpositionLayer`, is consumed by the RAP Coach Strategy layer.
 
 ## File inventory
 
@@ -26,9 +26,9 @@ Before the G-06 cleanup, the project briefly had two parallel implementations of
 
 ## Adding a new layer
 
-A block belongs here only when it is:
+A block belongs here when it is:
 
-1. **Reused by ≥ 2 models.** A block used by a single model lives in that model's package.
+1. **The single canonical definition** of a building block that must not be duplicated elsewhere (G-06 principle).
 2. **Stateless w.r.t. training/inference mode** beyond the standard `model.eval()` switch — no global registries, no module-level mutable state.
 3. **Documented in this README.** Update the file inventory table and add a one-paragraph summary.
 

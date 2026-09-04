@@ -17,7 +17,7 @@ failures, and strict PII isolation before any data leaves the process boundary.
 
 | File | Purpose | Key Exports |
 |------|---------|-------------|
-| `logger_setup.py` | Centralised structured JSON logging with correlation IDs | `get_logger()`, `get_tool_logger()`, `set_correlation_id()`, `configure_log_dir()`, `configure_retention()` |
+| `logger_setup.py` | Centralised structured JSON logging with correlation IDs | `get_logger()`, `get_tool_logger()`, `set_correlation_id()`, `configure_log_dir()`, `configure_log_level()`, `configure_retention()` |
 | `rasp.py` | Runtime Application Self-Protection integrity guard | `RASPGuard`, `run_rasp_audit()`, `IntegrityError` |
 | `sentry_setup.py` | Sentry SDK integration with double opt-in and PII scrubbing | `init_sentry()`, `add_breadcrumb()` |
 | `error_codes.py` | Centralised error code registry with severity and remediation | `ErrorCode`, `log_with_code()`, `get_all_codes()` |

@@ -2,7 +2,7 @@
 
 > **[English](README.md)** | **[Italiano](README_IT.md)** | **[Português](README_PT.md)**
 
-Flattened upload bundle of the design atlas for the CS2 coaching application — a self-contained copy of the 41 SVG frames plus an earlier snapshot of the design tokens, laid out flat for easy drag-and-drop into design tools. All files are SVG + HTML + JSON — zero binaries, fully portable. The canonical, structured atlas lives at `design/` (repo root); see `design/README.md`.
+Flattened upload bundle of the design atlas for the CS2 coaching application — a self-contained copy of the 41 SVG frames plus the design tokens, laid out flat for easy drag-and-drop into design tools. All files are SVG + HTML + JSON — zero binaries, fully portable. The canonical, structured atlas lives at `design/` (repo root); see `design/README.md`.
 
 ## File Map
 
@@ -11,8 +11,8 @@ design/cs2/uploads/
 ├── index.html                  ← copy of the atlas canvas (see Browser note below)
 ├── README.md
 ├── README-8252c0ae.md          ← uploaded copy of the project root README
-├── design-tokens.json          ← W3C DTCG format, 3 themes — older snapshot; the
-│                                 token SSOT is design/tokens/design-tokens.json
+├── design-tokens.json          ← W3C DTCG format, 3 themes — identical copy of
+│                                 the token SSOT (design/tokens/design-tokens.json)
 ├── 01_cover.svg                Marketing (01–04)
 ├── 02_landing_hero.svg
 ├── 03_feature_showcase.svg
@@ -93,13 +93,13 @@ Map tokens to `tailwind.config.js`:
 theme: {
   extend: {
     colors: {
-      surface: { base: '#14141e', raised: '#1a1a2e', sunken: '#0f0f2e' },
-      accent:  { DEFAULT: '#d96600', hover: '#e67a1a', pressed: '#b85500' },
-      text:    { primary: '#dcdcdc', secondary: '#a0a0b0' },
+      surface: { base: '#0B1628', raised: '#121E2E', sunken: '#07101C' },
+      accent:  { DEFAULT: '#FF6A00', hover: '#FF8533', pressed: '#CC5500' },
+      text:    { primary: '#F5F7FA', secondary: '#8B94A5' },
       ok:      '#4caf50',
       warn:    '#ffaa00',
       err:     '#ff4444',
-      info:    '#4a9eff',
+      info:    '#00D9FF',
     },
     fontFamily: {
       sans: ['Roboto', 'Inter', 'system-ui', 'sans-serif'],
@@ -129,11 +129,11 @@ Three themes available in `design-tokens.json`:
 
 | Theme | Accent | Background | Character |
 |-------|--------|------------|-----------|
-| **CS2** | `#d96600` orange | `#14141e` deep navy | Modern · dark · tactical |
+| **CS2** | `#FF6A00` orange | `#0B1628` deep navy | Modern · dark · tactical |
 | **CSGO** | `#617d8c` steel | `#1a1c21` dark slate | Military · muted |
 | **CS1.6** | `#4db04f` green | `#121a12` terminal | Retro · hacker |
 
-Note: this bundle's tokens and frames use the earlier CS2 palette; the current token SSOT (`design/tokens/design-tokens.json`) uses `#FF6A00` on `#0B1628`.
+Note: this bundle's tokens and frames match the current SSOT (`design/tokens/design-tokens.json`): `#FF6A00` on `#0B1628`.
 
 ## RAP Deep-Dive (37–41)
 

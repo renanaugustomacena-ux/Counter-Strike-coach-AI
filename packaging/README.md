@@ -10,7 +10,7 @@ This directory contains everything needed to build the Macena CS2 Analyzer into 
 
 | File | Purpose |
 |------|---------|
-| `cs2_analyzer_win.spec` | PyInstaller specification (168 lines) |
+| `cs2_analyzer_win.spec` | PyInstaller specification (172 lines) |
 | `windows_installer.iss` | Inno Setup script for the Windows installer EXE (78 lines) |
 | `BUILD_CHECKLIST.md` | Pre-release verification protocol (75 lines) |
 
@@ -39,7 +39,7 @@ dir dist\Macena_CS2_Analyzer
 a = Analysis(['Programma_CS2_RENAN/apps/qt_app/app.py'], ...)
 ```
 
-### Bundled Data (11 entries)
+### Bundled Data (12 entries)
 
 The spec bundles all required runtime files (missing paths are filtered out gracefully for CI):
 
@@ -54,6 +54,7 @@ The spec bundles all required runtime files (missing paths are filtered out grac
 | Translations | `assets/i18n/` | Localization |
 | Help docs | `data/docs/` | In-app help |
 | Qt themes | `apps/qt_app/themes/` | QSS stylesheets |
+| Fonts | `assets/fonts/` | Design-atlas type stack |
 | Map zones | `assets/map_zones/` | Named-zone overlays for the tactical map |
 
 ### Hidden Imports (35 explicit + auto-collection)
@@ -99,7 +100,7 @@ Requires [Inno Setup](https://jrsoftware.org/isinfo.php) to compile.
 
 Step-by-step verification before distribution:
 
-1. **Pre-build:** All 13 pre-commit hooks pass, test coverage >= 30%, validator exits 0
+1. **Pre-build:** All 14 pre-commit hooks pass, test coverage >= 50%, validator exits 0
 2. **Version sync:** `pyproject.toml` version matches `windows_installer.iss` AppVersion
 3. **Build:** PyInstaller with `--noconfirm`
 4. **Post-build:** Exe launches, UI renders, maps load, charts render, `audit_binaries.py` passes
